@@ -2,29 +2,104 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>XCPETS: coming soon</title>
-<meta name="description" content="The XCPETS game is coming soon. This will be its home.">
-<meta property="og:title" content="XCPETS">
-<meta property="og:description" content="The XCPETS game is coming soon. This will be its home.">
-<meta property="og:image" content="https://xcpets.fun/xcpets.png">
-<link rel="icon" href="xcpets.png">
-<style>
-html,body{margin:0;height:100%;background:#0e0b16;color:#e9e4f5;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
-img{width:min(78vw,72vh,560px);height:auto;image-rendering:pixelated;border-radius:12px;box-shadow:0 0 60px rgba(120,90,200,.25)}
-h1{margin:22px 0 8px;font-size:clamp(2rem,6vw,3.2rem);letter-spacing:.08em}
-p{margin:6px 0;font-size:1.15rem;color:#c9c1dd}
-a{color:#f7931a}
-.small{font-size:.95rem;margin-top:14px}
-</style>
-</head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XCPETS — 8-bit meme pets, rolled from Bitcoin blocks</title>
+<meta name="description" content="XCPETS: twelve 8-bit meme characters, each pet rolled deterministically from a Bitcoin block hash. Play the game.">
+<meta property="og:title" content="XCPETS — 8-bit meme pets">
+<meta property="og:description" content="Twelve 8-bit meme characters, rolled from Bitcoin block hashes. Six stages, four rarity tiers, stacking gear.">
+<meta property="og:image" content="img/cast.png">
+
+
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var v=localStorage.getItem("xcpets-bg")||"pets",o=["pets","btc","xcp","mix"];if(v==="rotate")v=o[Math.floor(Math.random()*o.length)];document.documentElement.setAttribute("data-bg",v);})();</script><link rel="icon" href="img/favicon.png"><link rel="stylesheet" href="css/game.css"><style>.tokenpanel{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.tokenpanel h2{margin-top:0}.sharedart canvas.commsprite{width:96px;height:96px;margin:0;border:3px solid #3ddc84;border-radius:8px;box-shadow:none;background:#2a3a2e}</style></head>
 <body>
-<main>
-  <img src="xcpets.png" alt="XCPETS token: twelve pixel pets in a ring around a cloaked figure with a gold question mark" width="1024" height="1024">
-  <h1>XCPETS</h1>
-  <p>The XCPETS game is coming soon. This will be its home.</p>
-  <p class="small"><a href="https://longbranch13.github.io/xcpets-promo/play.html">Try the play demo</a></p>
+<header class="nav">
+  <a class="brand" href="#top"><img src="img/logo.png" alt="XCPETS logo: a pixel Pepe pet" width="28" height="28"> XCPETS</a>
+  <nav>
+    <a href="#how">How it works</a><a href="#cast">The cast</a><a href="#shared">Shared pet</a><a href="#gallery">Gallery</a><a href="play.html">Play</a><a href="ranking.html">Ranking</a>
+  </nav>
+</header><div class="pixdiv" aria-hidden="true"></div>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-pets" id="heroPets" aria-label="Animated XCPETS pets"></div>
+    <div class="hero-copy">
+      <h1 class="meme"><span>XCPETS</span></h1>
+      <p class="tagline">8-bit meme pets, rolled from Bitcoin blocks.</p>
+      <p class="lede">Twelve pixel meme characters: Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge and Lenny. Every pet is derived from a block hash (plus a pet id), so anyone can re-derive any pet and get exactly the same pixels.</p>
+      <div class="cta">
+        <button class="btn" type="button" id="xcpConnect" data-xcp-connect="xcpMsg">Connect wallet</button>
+        <a class="btn ghost" href="play.html">Play the game</a>
+        <a class="btn ghost" href="#cast">Meet the cast</a>
+      </div>
+      <span class="risk-short" style="display:inline-block;font-size:12px;color:#ff9a9a;margin:4px 6px">⚠️ Experimental. Burns are final. Use at your own risk.</span>
+      <div class="small" id="xcpMsg" aria-live="polite"></div>
+    </div>
+  </section>
+  <section id="token" class="panel tokenpanel">
+    <img src="img/xcpets_token.png" alt="XCPETS token image: twelve pets in a clock around a hooded Satoshi Nakamoto with a question mark" width="160" height="160" class="pixel" style="image-rendering:pixelated;border:3px solid var(--pixline,#3ddc84);border-radius:4px;box-shadow:4px 4px 0 #000;flex:none">
+    <div><h2 class="sec meme" data-ico="flame">XCPETS token</h2>
+    <p>The burn-to-play token on Counterparty, from an <a href="https://xcp.fun" rel="noopener">xcp.fun</a> XCP-69 launch. Every <code>destroy</code> feeds the community pet; tagged burns hatch, name and grow your own pet.</p>
+    <p class="muted small">Hold XCPETS in a Counterparty wallet (e.g. XCP Wallet) to play.</p>
+    <div class="cta"><a class="btn" href="https://xcp.fun" rel="noopener">xcp.fun</a> <a class="btn ghost" href="https://xcp.fun/docs" rel="noopener">xcp.fun docs</a></div></div>
+  </section>
+
+  <section id="how" class="panel">
+    <h2 class="sec" data-ico="flame">How it works</h2>
+    <div class="facts">
+      <div><b>Seeded by Bitcoin</b><span class="muted small">Block hash + pet id → SHA-256 → sfc32 PRNG → traits → 32×32 pixels. Fully deterministic.</span></div>
+      <div><b>Four rarity tiers</b><span class="muted small">Common 60% · Uncommon 27% · Rare 10% · Legendary 3%. Rarer tiers unlock rarer species, patterns and gear.</span></div>
+      <div><b>Six stages</b><span class="muted small">Egg → Hatchling → Juvenile → Adult → Elder → Mythic. Each stage changes the expression and adds a gear rank.</span></div>
+      <div><b>Stacking gear</b><span class="muted small">Headband/scarf, armor, cape, weapon, crown. Tier caps the slots: Common 1, Uncommon 2, Rare 4, Legendary 5.</span></div>
+      <div><b>Burn XCPETS to play</b><span class="muted small">Every extra costs XCPETS, and the tokens are burned for good. Burn to hatch a pet, then keep burning to feed it. Each burn grows it toward the next stage, and every new stage unlocks more gear.</span></div>
+      <div><b>The community pet: Nakamoto</b><span class="muted small">Everyone grows one pet together. Every burn feeds it, and its name grows from Sat to Satoshi Nakamoto to the full title.</span></div>
+    </div>
+  </section>
+
+  <section id="shared" class="panel">
+    <h2 class="sec meme" data-ico="pet">The community pet: <span id="crName">Sat</span></h2>
+    <div class="sharedwrap">
+      <div class="sharedart"><canvas id="crCanvas" class="commsprite" width="32" height="32" role="img" aria-label="Community pet"></canvas></div>
+      <div>
+        <p class="muted">It's <b>Nakamoto</b>, always Legendary. Everyone grows it together with every XCPETS burn. Its name grows too: Sat, then Satoshi Nakamoto at Elder, then the full title after The Return (69,000,000 XCPETS burned).</p>
+        <div class="stats"><div><span>Stage</span><b id="crStage">…</b></div><div><span>Community-fed</span><b id="crFed">…</b></div><div><span>Next stage</span><b id="crNext">…</b></div></div>
+        <div class="progress"><div id="crProg"></div></div>
+        <div class="stats"><div><span>XCPETS burned</span><b id="crBurned">…</b></div><div><span>Burns</span><b id="crBurns">…</b></div><div><span>Pets hatched</span><b id="crPets">…</b></div></div>
+        <p class="small"><b>Satoshi gear:</b> <span id="crGear">…</span></p>
+        <p class="small"><b>The Return quest</b> (to 69M): <span id="crQuestTxt">…</span></p><div class="progress"><div id="crQuest"></div></div>
+        <div class="live"><b>🟢 Live on Counterparty</b> · <span id="crNet"></span> <div class="small muted" id="crNote">Reading the chain…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cast" class="panel">
+    <h2 class="sec" data-ico="pet">The cast</h2>
+    <p class="muted">Pets hatch as one of twelve 8-bit meme characters. Pick a tier to see how much gear a pet can wear.</p>
+    <div class="tabs" id="castTiers"></div>
+    <div class="cast" id="castRows"></div>
+  </section>
+
+  <section id="gallery" class="panel">
+    <h2 class="sec" data-ico="pet">Pixel gallery</h2>
+    <p class="muted">Random examples rolled from a real block hash, shown at different stages. Hit reroll for a fresh batch.</p>
+    <button class="btn ghost" id="reroll" type="button">Reroll</button>
+    <div class="cards" id="galleryCards"></div>
+  </section>
 </main>
+
+<div class="pixdiv" aria-hidden="true"></div><footer>
+  <p><a href="play.html">Play the game</a> · <a href="#cast">The cast</a> · <a href="ranking.html">Ranking</a> · <a href="cemetery.html">🪦 Pet Cemetery</a></p>
+  <p class="muted small">XCPETS is a meme/game token on Counterparty. No promise of value, not financial advice. Character art is fan-made pixel homage.</p>
+<div class="parade" aria-label="The XCPETS cast"><img src="img/theme/sp-pepe.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-wojak.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-chud.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-bobo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-mumu.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-snibby.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-dodo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-kevin.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-peepo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-sarutobi.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-doge.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-lenny.png" alt="" width="40" height="40" loading="lazy"></div><div class="bgpick small"><label>Background <select id="bgPick" aria-label="Page background"><option value="pets">Pets</option><option value="btc">Bitcoin ₿</option><option value="xcp">XCP</option><option value="mix">Mix</option><option value="rotate">Rotate each visit</option></select></label></div><script>(function(){var s=document.getElementById("bgPick");s.value=localStorage.getItem("xcpets-bg")||"pets";s.onchange=function(){localStorage.setItem("xcpets-bg",s.value);location.reload();};})();</script></footer>
+
+<script src="js/pet-core.js"></script>
+<script src="js/promo.js"></script>
+<script src="js/game-core.js"></script>
+<script src="js/bonus-gear.js"></script>
+<script src="js/demo-core.js"></script>
+<script src="rjs/config.js"></script><script src="rjs/pet-core.js"></script><script src="rjs/game-core.js"></script><script src="rjs/bonus-gear.js"></script><script src="rjs/real-core.js"></script><script src="rjs/chain.js"></script><script src="rjs/community-reveal.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/xcp-connect.js"></script>
+<p class="risk" style="max-width:1100px;margin:16px auto;padding:10px 14px;border:2px dashed #ff5a5a;border-radius:12px;color:#ff9a9a;font-size:13px;text-align:center">⚠️ This is experimental software. Token burns are irreversible. You can lose XCPETS and Bitcoin transaction fees. No one guarantees this game will work as expected or that the token will retain any value. Use at your own risk.</p>
 </body>
 </html>
