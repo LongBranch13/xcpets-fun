@@ -28,6 +28,15 @@
     document.head.appendChild(st);
     var rel = document.getElementById('bRelease');  /* Release vs Discard hint (wording only; release logic untouched) */
     if (rel && !document.getElementById('relHint')) { rel.title = RW; var h = document.createElement('span'); h.id = 'relHint'; h.className = 'small muted'; h.textContent = RW; h.style.marginLeft = '6px'; rel.parentNode.insertBefore(h, rel.nextSibling); }
+    /* '🗑️ Discard selected' (bulk): confirm with the count -> the same free local discard (Undo toast) -> selection cleared. Disabled with 0 selected. */
+    if (rel && !document.getElementById('bDiscSel')) { var ds = document.createElement('button'); ds.type = 'button'; ds.className = 'q'; ds.id = 'bDiscSel'; ds.textContent = '🗑️ Discard selected'; ds.title = DW;
+      var hn = document.getElementById('relHint'); rel.parentNode.insertBefore(ds, (hn || rel).nextSibling);
+      var upd = function () { var n = D.S().sel.length; ds.disabled = !n; ds.textContent = '🗑️ Discard selected' + (n ? ' (' + n + ')' : ''); };
+      ds.onclick = function () { var ids = D.S().sel.slice(); if (!ids.length) return; var n = ids.length;
+        if (!window.confirm('Discard ' + n + ' pet' + (n > 1 ? 's' : '') + '? Free, only hidden in this browser, Undo anytime, no burn.')) return;
+        D.discardIds(ids); var S = D.S(); S.sel = []; D.selUi(); upd(); };
+      var sc = document.getElementById('selCount'); if (sc && window.MutationObserver) new MutationObserver(upd).observe(sc, { childList: true, characterData: true, subtree: true }); upd();
+      window.V2PetDiscard && (window.V2PetDiscard.updDiscSel = upd); }
     box.addEventListener('click', function (e) { onClick(e, D); }, true);
     box.querySelectorAll('.pet.card[data-pid]').forEach(addBtn);
     if (window.MutationObserver) new MutationObserver(function (ms) { ms.forEach(function (m) { for (var i = 0; i < m.addedNodes.length; i++) addBtn(m.addedNodes[i]); }); }).observe(box, { childList: true });

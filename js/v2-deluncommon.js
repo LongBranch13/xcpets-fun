@@ -4,10 +4,18 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
+  function commons(D) { return D.mine(D.world()).filter(function (p) { return p.tier === 0; }).map(function (p) { return p.id; }); }
   function uncommons(D) { return D.mine(D.world()).filter(function (p) { return p.tier === 1; }).map(function (p) { return p.id; }); }
   function init() {
     var D = window.__demo, rel = $('bRelease'); if (!D || !rel || $('bDelUnc')) return;
     var b = document.createElement('button'); b.className = 'q'; b.id = 'bDelUnc'; b.type = 'button'; b.textContent = '🗑️ Delete Uncommons'; b.title = 'Discard: free, only hidden in this browser, Undo anytime, no burn.'; rel.parentNode.insertBefore(b, rel.nextSibling);
+    /* 'Delete all Commons' (2026-10-14): v2's play page kept the live confirm dialog (#delCommonsBox, dcYes -> the free local discard with Undo)
+     * but make-page.py dropped the button that opened it. Re-added right next to Delete Uncommons, with the same dialog style and count. */
+    var dc = $('delCommonsBox'), c = null;
+    if (dc && $('dcYes') && !$('bDelCom')) { c = document.createElement('button'); c.className = 'q'; c.id = 'bDelCom'; c.type = 'button'; c.textContent = '🗑️ Delete Commons'; c.title = b.title; b.parentNode.insertBefore(c, b);
+      c.onclick = function () { var n = commons(D).length; if (!n) return toast('No Commons to hide.');
+        $('dcBody').innerHTML = '<p><b>Delete ' + n + ' Common pet' + (n > 1 ? 's' : '') + '?</b></p><p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from <i>Show discarded</i>.</p>';
+        dc.classList.add('on'); }; }
     var box = document.createElement('div'); box.className = 'reveal'; box.id = 'delUncBox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'duTitle');
     box.innerHTML = '<div class="box"><h2 id="duTitle" class="sec">Delete Uncommons</h2><div id="duBody"></div><div class="row" style="justify-content:center"><button class="btn" id="duYes">Hide Uncommons</button><button class="q" id="duNo">Cancel</button></div></div>';
     document.body.appendChild(box);
@@ -20,6 +28,6 @@
     $('duYes').onclick = function () { box.classList.remove('on'); var now = uncommons(D).filter(function (id) { return ids.indexOf(id) >= 0; }); if (!now.length) return toast('No Uncommons to hide.'); D.discardIds(now); };
   }
   function toast(t) { var c = $('toasts'); if (!c) return; var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; c.appendChild(d); setTimeout(function () { d.remove(); }, 4000); }
-  window.V2DelUnc = { init: init, uncommons: uncommons };
+  window.V2DelUnc = { init: init, uncommons: uncommons, commons: commons };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
