@@ -381,7 +381,7 @@
     var bred = (p.children || []).map(function (cid) { var c = w.byId[cid]; if (!c || !c.parents) return null; var mate = c.parents.filter(function (x) { return String(x) !== String(p.id); })[0];
       return (mate != null ? L(mate) : '?') + ' <span class="muted">(block ' + Number(c.hatchBlock).toLocaleString('en-US') + ')</span> → ' + (c.stage === 0 ? 'Egg ' : '') + '<a href="pet.html?id=' + c.id + '">#' + c.id + ' ' + esc(c.name) + '</a>'; }).filter(Boolean);
     out.push('<b>Bred with:</b> ' + (bred.length ? bred.join(' · ') : 'nobody yet'));
-    if (p.carried && p.carried.length) out.push('<b>Carries:</b> ' + p.carried.map(function (c) { return esc(V2 && V2.speciesLabel ? V2.speciesLabel(c.species) : c.species) + ' traits from ' + L(c.from); }).join(' · '));
+    if (p.carried && p.carried.length) out.push('<b>Carries:</b> ' + p.carried.map(function (c) { return esc(V2 && V2.speciesLabel ? V2.speciesLabel(c.species) : c.species) + ' traits from ' + L(c.from) + ' <span class="muted">(' + esc(String(c.stat).toUpperCase()) + ' ' + c.value + ' floor for its future children)</span>'; }).join(' · '));
     var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
     out.push('<b>Breedings:</b> ' + (p.breeds || 0) + '/' + (V2 ? V2.BREED_MAX : 3) + cd);
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
