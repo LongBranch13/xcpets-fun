@@ -117,6 +117,12 @@
 
   // ---------------------------------------------------------------- tags
   function idOk(s) { return /^[0-9]{1,9}$/.test(s || ''); }
+  /** battleBlock(w, tag, tip) -> null | message. Same once-per-144-block-day rule the battle button and replay use; checked before any
+   * fight / accept burn is composed (single, bulk, wallet), so a pet that already battled today can't have a battle burn sent. */
+  function battleBlock(w, tag, tip) { var t = parseTag(tag); if (!t || (t.action !== 'fight' && t.action !== 'accept')) return null; var d = day(tip), ids;
+    if (t.action === 'fight') ids = [t.a, t.b]; else { var F = w.fights && w.fights[t.fightId - 1]; if (!F) return null; ids = [F.b].concat(day(F.block) !== d ? [F.a] : []); }
+    for (var i = 0; i < ids.length; i++) { var p = w.byId[ids[i]]; if (p && p.fightDays && p.fightDays[d]) return 'This pet already battled today: #' + p.id + (p.name ? ' ' + p.name : '') + ' (one battle per pet per 144-block day)'; }
+    return null; }
   function parseTag(tag) {
     var t = String(tag || '').trim().toUpperCase(), p = t.split(':'); if (p[0] !== 'PET') return { action: 'plain' };
     var a = p[1], n = function (i) { return parseInt(p[i], 10); };
@@ -337,6 +343,7 @@
         if (F && !err && b - F.block > FIGHT_WINDOW) F.status = 'expired';
         var Pa = F && pet(F.a), Pb = F && pet(F.b);
         if (!err) err = fightable(Pa, b) || fightable(Pb, b); if (!err && Pb.fightDays[day(b)]) err = 'pet already fought this day';
+        if (!err && day(F.block) !== day(b) && Pa.fightDays[day(b)]) err = 'challenger already fought this day'; /* 2026-10-14: a challenge from an earlier day can't give the challenger a second battle today */
         if (!err && !bh) err = 'block hash pending';
         if (err) { if (F && err === 'challenge expired') F.status = 'expired'; return L(r, 'rejected', err); }
         Pb.fightDays[day(b)] = 1; Pa.fightDays[day(b)] = 1;
@@ -666,7 +673,7 @@
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
-    isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, releaseBatches: releaseBatches, burnSummary: burnSummary,
+    isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,

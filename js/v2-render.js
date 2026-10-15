@@ -210,7 +210,20 @@
     for (var k = 0; k < m.length; k++) { if (k >= b0 && k <= b1) continue; var ty = k < b0 ? fy0 - (b0 - k) : fy1 + (k - b1);
       for (x = 0; x < w; x++) { var ch = m[k].charAt(x); if (ch === '.') continue; var tx = cx - Math.floor(w / 2) + x; if (k > b1 && !bd[(ty * 32 + tx) * 4 + 3]) continue; put(tx, ty, ch); } }
     return true; }
+  /* Doge black eye (2026-10-14, demo working build): the battle-loser 'v2-black-eye' overlay lands on the 'eyes' anchor, which on Doge's
+   * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
+   * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
+  var DOGE_SHINER = { 1: [4, -1], 2: [4, -1], 3: [4, 0], 4: [4, -1], 5: [4, 0] }; /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
+    if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
+    var ov2 = extraOv.slice(); ov2.splice(k, 1); var fa = framesWith0(art, stage, itemIds, ov2, cap, baseGo);
+    return fb.map(function (f, n) { var A = fa[n] ? fa[n].data : f.data, B = f.data, d = new Uint8ClampedArray(A), x, y;
+      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { var i = (y * 32 + x) * 4; if (A[i] === B[i] && A[i + 1] === B[i + 1] && A[i + 2] === B[i + 2]) continue;
+        var X = x + off[0], Y = y + off[1]; if (X < 0 || Y < 0 || X > 31 || Y > 31) continue; var j = (Y * 32 + X) * 4;
+        d[j] = B[i]; d[j + 1] = B[i + 1]; d[j + 2] = B[i + 2]; d[j + 3] = 255; }
+      return Object.assign({}, f, { data: d }); }); }
+  function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
     itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
     var go = Object.assign({}, baseGo || {}), ov = (extraOv || []).slice(); /* baseGo: a classic kit (Max Pepe) that must actually be drawn */
     (itemIds || []).forEach(function (id) { var it = V.GEAR_BY_ID[id]; if (!it) return; if (it.src === 'core' && !CORE_OVERLAY[id]) go[it.coreSlot] = it.id; else { if (CORE_OVERLAY[id] && !BonusGear.DEFS[id]) BonusGear.DEFS[id] = CORE_OVERLAY[id]; ov.push(it.id); } });
@@ -244,7 +257,22 @@
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest') F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); }); }
     return fr;
   }
-  function petFrames(p, w, extra) {
+  /* Counterparty logo override (2026-10-14, DEMO working build): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
+   * v2 swaps it for the real Counterparty mark (infinity loop, from counterparty.io/favicon.svg) as a 9x5 pixel infinity glyph, same tint, same
+   * 10px grid. pet-core.js is untouched; only pets hatched at/after the cutoff are repainted, so pre-cutoff pets look exactly like live. */
+  var OLD_XCP = ['.###.', '#.#.#', '##.##', '#.#.#', '.###.'], CP_LOGO = ['.##...##.', '#..#.#..#', '#...#...#', '#..#.#..#', '.##...##.'];
+  function cpHex(c) { c = String(c || '#000000').replace('#', ''); return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]; }
+  function cpMix(a, b, t) { return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)]; }
+  function cpLogo(img, art) { var bg = art && art.background; if (bg !== 'xcp' && bg !== 'bxmix') return img;
+    var base = cpHex(art.bgColor), ink = cpMix(base, [0x33, 0xd6, 0xff], 0.22), d = new Uint8ClampedArray(img.data), x, y;
+    function is(i, c) { return d[i] === c[0] && d[i + 1] === c[1] && d[i + 2] === c[2]; } function put(i, c) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
+    for (var cy = 0; cy < 32; cy += 10) for (var cx = 0; cx < 32; cx += 10) { if (bg === 'bxmix' && !((cx / 10 + cy / 10) % 2)) continue;
+      for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) { var X = cx + 2 + x, Y = cy + 2 + y, i = (Y * 32 + X) * 4; if (X < 32 && Y < 32 && OLD_XCP[y].charAt(x) === '#' && is(i, ink)) put(i, base); }
+      for (y = 0; y < 5; y++) for (x = 0; x < 9; x++) { var X2 = cx + x, Y2 = cy + 2 + y, j = (Y2 * 32 + X2) * 4; if (X2 < 32 && Y2 < 32 && CP_LOGO[y].charAt(x) === '#' && is(j, base)) put(j, ink); } }
+    return Object.assign({}, img, { data: d }); }
+  function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra), cut = V.CUTOFF_BLOCK || 971500;
+    return p && p.art && p.hatchBlock > cut ? fr.map(function (f) { return cpLogo(f, p.art); }) : fr; }
+  function petFrames0(p, w, extra) {
     var ids = V.wornOf(w, p.id).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
     if (p.classicKit) { var k2 = V.kitWith(p.classicKit, ids, p.showcase), go = k2.go; ids = k2.ids;
@@ -314,7 +342,7 @@
     box.querySelectorAll('[data-gslot]').forEach(function (b) { b.onclick = function () { box.setAttribute('data-open', open === b.dataset.gslot ? '' : b.dataset.gslot); gearPicker(box, o); }; });
     if (o.msg) say(o.msg);
   }
-  window.V2Render = { drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFrames, itemIcon: itemIcon, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
+  window.V2Render = { drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFrames, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
