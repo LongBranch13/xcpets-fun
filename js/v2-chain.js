@@ -16,7 +16,15 @@
   function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
   function world() { if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore }); opsSig = JSON.stringify(S.ops || []); } return cache; }
   function burn() { var m = 'Burns from the v2 pages are not wired to a wallet in this build. Nothing was burned.'; try { var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = m; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } else alert(m); } catch (e) {} }
-  function load() {
+  /* hotfix 3: a short-TTL (60 s) sessionStorage copy of the burns + tip, so moving between pages doesn't re-read the whole chain;
+   * refresh() always goes to the network. Block hashes were already cached in localStorage (HKEY). */
+  var SKEY = 'xcpets-v2-prod-rows', STTL = 60000;
+  function fromSession() { try { var c = JSON.parse(sessionStorage.getItem(SKEY)); if (!c || Date.now() - c.at > STTL || !c.rows) return false;
+    var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
+    S.rows = c.rows; S.tip = c.tip; S.hashes = hc; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; cache = null; return true; } catch (e) { return false; } }
+  function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), rows: S.rows, tip: S.tip, me: ME, balance: S.balance })); } catch (e) {} }
+  function load(force) {
+    if (!force && fromSession()) return Promise.resolve();
     var chain = new E.Chain();
     var hc = (function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } })();
     return Promise.all([chain.destructions(E.CFG.asset), chain.tip().catch(function () { return null; })]).then(function (r) {
@@ -26,11 +34,11 @@
         S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
         if (ME) return chain.balance(ME, E.CFG.asset).then(function (b) { S.balance = Number(b) / 1e8; }, function () {});
       });
-    }).then(function () { cache = null; });
+    }).then(function () { cache = null; toSession(); });
   }
   function boot(then) { var st = document.getElementById('v2boot');
     load().then(function () { if (st) st.remove(); then(); }, function (e) { if (st) st.textContent = 'Could not reach the Counterparty API (' + e.message + '). Your pets are safe on chain. Reload to retry.'; }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
-  function refresh(cb) { var n = S.rows.length, t = S.tip; return load().then(function () { if (S.rows.length !== n || S.tip !== t) cb(); }, function () {}); }
+  function refresh(cb) { var n = S.rows.length, t = S.tip; return load(true).then(function () { if (S.rows.length !== n || S.tip !== t) cb(); }, function () {}); }
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, seed: function () {}, boot: boot, refresh: refresh };
 })();

@@ -95,18 +95,28 @@
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
+  /* hotfix 3: the filtered + sorted pet list (shared by renderPets and the sort-only reorder) */
+  function petList(alive, dead) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value);
+    var list = (cem ? dead : V.hideAtOrBelow(alive, hide)).filter(function (p) { return cem || fT === 'all' || TIER_ID[p.tier] === fT; }).slice().reverse();
+    if (fS === 'tier') list.sort(function (a, b) { return b.tier - a.tier || b.id - a.id; }); if (fS === 'stage') list.sort(function (a, b) { return b.stage - a.stage || b.care - a.care || b.id - a.id; });
+    return list; }
+  /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
+  function resort() { var w = world(), all = mine(w), list = petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })), box = $('pets'), m = {};
+    box.querySelectorAll(':scope > .pet.card[data-pid]').forEach(function (d) { m[d.dataset.pid] = d; });
+    if (Object.keys(m).length !== list.length || !list.every(function (p) { return m[p.id]; })) return false;
+    var f = document.createDocumentFragment(); list.forEach(function (p) { f.appendChild(m[p.id]); }); box.insertBefore(f, box.firstChild); return true; }
   function renderPets(w) {
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
-    var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value);
-    var list = (cem ? dead : V.hideAtOrBelow(alive, hide)).filter(function (p) { return cem || fT === 'all' || TIER_ID[p.tier] === fT; }).slice().reverse();
-    if (fS === 'tier') list.sort(function (a, b) { return b.tier - a.tier || b.id - a.id; }); if (fS === 'stage') list.sort(function (a, b) { return b.stage - a.stage || b.care - a.care || b.id - a.id; });
+    var list = petList(alive, dead);
     S.sel = S.sel.filter(function (id) { return alive.some(function (p) { return p.id === id; }); });
     $('selAll').checked = list.length > 0 && list.every(function (p) { return S.sel.indexOf(p.id) >= 0; });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
     var box = $('pets'); box.innerHTML = list.length ? '' : '<p class="muted">No pets match this filter.</p>';
-    list.forEach(function (p) {
+    /* hotfix 3: cards are built in chunks of 150 with a yield between them, so a 2,000-pet wallet never blocks the page for seconds */
+    var tok = renderPets.tok = (renderPets.tok || 0) + 1, CH = 150, tail = document.createComment('pets-more');
+    function mk(p) {
       var d = document.createElement('div'), on = S.sel.indexOf(p.id) >= 0; d.className = 'pet card' + (p.dead ? ' dead' : '') + (on ? ' selected' : ''); d.tabIndex = 0; d.dataset.pid = p.id;
       var th = V.thresholdsFor(p.species), fed = p.dead ? '🪦 Died of neglect' : p.fedToday ? 'Fed today: ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full';
       d.innerHTML = (p.dead ? '' : '<input type="checkbox" class="pick-cb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '>') + '<canvas class="sprite" width="32" height="32"></canvas><h4>' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
@@ -115,8 +125,11 @@
         '<div class="bar"><i style="width:' + Math.min(100, 100 * p.care / th[5]).toFixed(1) + '%"></i></div><div class="small muted">care ' + fmt(p.care) + ' / ' + fmt(th[5]) + '</div>';
       var cb = d.querySelector('.pick-cb'); if (cb) cb.onclick = function (e) { e.stopPropagation(); toggle(p.id); };
       d.onclick = function () { detailId = p.id; detail(p, w); };
-      box.appendChild(d); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); /* hotfix 2: drawn when on screen */
-    });
+      return d; }
+    function put(ps, before) { var f = document.createDocumentFragment(), ds = ps.map(function (p) { var d = mk(p); f.appendChild(d); return [d, p]; }); if (before) box.insertBefore(f, before); else box.appendChild(f);
+      ds.forEach(function (x) { R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
+    put(list.slice(0, CH)); box.appendChild(tail);
+    (function more(i) { if (i >= list.length) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, i + CH), tail); more(i + CH); }, 0); })(CH);
     var gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hiddenIds().indexOf(p.id) >= 0; });
     if (gone.length && !cem) { var hb = document.createElement('div'); hb.className = 'hiddenbox'; hb.innerHTML = '<details><summary>Show discarded (' + gone.length + ')</summary><p class="small muted">Pets you hid in this browser. They still exist on-chain (others and other devices see them).</p>' +
       gone.map(function (p) { return '<span class="chip">#' + p.id + ' ' + esc(p.name || spLabel(p.species)) + ' <a href="#" data-restore="' + p.id + '">Restore</a></span>'; }).join(' ') + '</details>';
@@ -130,7 +143,7 @@
   function toggle(id) { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); save(); selUi(); }
   $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); $('tabCem').classList.remove('on'); render(); };
   $('tabCem').onclick = function () { cem = true; this.classList.add('on'); $('tabAlive').classList.remove('on'); render(); };
-  ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
+  ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); if (id === 'fSort' && resort()) return; render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
     var shown = V.hideAtOrBelow(mine(w).filter(function (p) { return !p.dead; }), hide).filter(function (p) { return fT === 'all' || TIER_ID[p.tier] === fT; });
     S.sel = this.checked ? shown.map(function (p) { return p.id; }) : []; save(); selUi(); };
