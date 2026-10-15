@@ -276,10 +276,22 @@
       for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) { var X = cx + 2 + x, Y = cy + 2 + y, i = (Y * 32 + X) * 4; if (X < 32 && Y < 32 && OLD_XCP[y].charAt(x) === '#' && is(i, ink)) put(i, base); }
       for (y = 0; y < 5; y++) for (x = 0; x < 9; x++) { var X2 = cx + x, Y2 = cy + 2 + y, j = (Y2 * 32 + X2) * 4; if (X2 < 32 && Y2 < 32 && CP_LOGO[y].charAt(x) === '#' && is(j, base)) put(j, ink); } }
     return Object.assign({}, img, { data: d }); }
+  /* Hotfix 2 (2026-10-14): first-load freeze. worn(w, id) = V.wornOf via a per-world index (a replayed world is cached and not mutated
+   * by the UI); petFrames results are cached by pet look (id, stage, worn gear, black eye, crown, art), so re-renders / sort toggles reuse
+   * them; lazy(c, make[, still]) draws a grid sprite only when its canvas scrolls near the screen. */
+  var wornIx = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function worn(w, id) { if (!wornIx || !w || !w.items) return V.wornOf(w, id); var ix = wornIx.get(w);
+    if (!ix) { ix = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.on != null) (ix[g.on] = ix[g.on] || []).push(g); }); wornIx.set(w, ix); }
+    return (ix[id] || []).slice(); }
+  var frCache = new Map(), FR_MAX = 6000;
+  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + (p.classicKit ? JSON.stringify(p.classicKit) + p.showcase : '') + '|' + p.hatchBlock + '|' + JSON.stringify(p.art); }
+  function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
+  var lazyQ = new Map(), lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting) return; var j = lazyQ.get(e.target); if (!j) return; lazyQ.delete(e.target); lazyObs.unobserve(e.target); j(); }); }, { rootMargin: '300px' }) : null;
+  function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra), cut = V.CUTOFF_BLOCK || 971500;
     return p && p.art && p.hatchBlock > cut ? fr.map(function (f) { return cpLogo(f, p.art); }) : fr; }
   function petFrames0(p, w, extra) {
-    var ids = V.wornOf(w, p.id).map(function (g) { return g.item; }), ov = [];
+    var ids = worn(w, p.id).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
     if (p.classicKit) { var k2 = V.kitWith(p.classicKit, ids, p.showcase), go = k2.go; ids = k2.ids;
       var fr = framesWith(Object.assign({}, p.art, go), p.stage, ids, ov, 5, go); return fr; } /* go is passed as the override too: before, it was only merged into art and ignored by the gearOverride render */
@@ -348,7 +360,7 @@
     box.querySelectorAll('[data-gslot]').forEach(function (b) { b.onclick = function () { box.setAttribute('data-open', open === b.dataset.gslot ? '' : b.dataset.gslot); gearPicker(box, o); }; });
     if (o.msg) say(o.msg);
   }
-  window.V2Render = { drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFrames, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
+  window.V2Render = { drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

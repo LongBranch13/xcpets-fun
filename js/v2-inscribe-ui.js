@@ -27,7 +27,7 @@
     var id = c.getContext('2d').createImageData(f.w, f.h); for (var i = 0; i < f.data.length; i += 4) { var p = P.pal[P.map(f.data[i], f.data[i + 1], f.data[i + 2])]; id.data[i] = p[0]; id.data[i + 1] = p[1]; id.data[i + 2] = p[2]; id.data[i + 3] = 255; }
     c.getContext('2d').putImageData(id, 0, 0); return { bytes: bytesFromDataURL(c.toDataURL('image/png')), colors: P.pal.length, unique: P.unique }; }
   function b64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
-  function mockLink(id) { return '<span class="insclink" title="MOCK id: not on chain, not a live link">ordinals.com/inscription/' + esc(String(id).slice(0, 10)) + '…' + esc(String(id).slice(-6)) + ' <em>(mock)</em></span>'; }
+  function mockLink(id) { return '<span class="insclink" title="Preview id: not on chain, not a live link">ordinals.com/inscription/' + esc(String(id).slice(0, 10)) + '…' + esc(String(id).slice(-6)) + ' <em>(preview)</em></span>'; }
   function thumb(frame) { var c = document.createElement('canvas'), f = I.scaleUp(frame, 2); c.width = f.w; c.height = f.h; var d = c.getContext('2d').createImageData(f.w, f.h); d.data.set(f.data); c.getContext('2d').putImageData(d, 0, 0); return c.toDataURL('image/png'); }
   function distinctFrames(fr) { var out = [fr[0]]; for (var k = 1; k < fr.length; k++) { var a = fr[k].data, b = fr[0].data, same = true; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) { same = false; break; } if (!same) out.push(fr[k]); } return out.length > 1 ? fr : [fr[0]]; }
   /** prepare(req): validate + render the still from the pet id. Never takes image data from the caller. -> { ok, pet, frame, frames, still, r, hash } | { ok:false, error } */
@@ -46,12 +46,12 @@
     if (pet.parents && pet.parents.length === 2) { var pa = I.latestOfPet(L, pet.parents[0]), pb = I.latestOfPet(L, pet.parents[1]);
       h.push('Parents: <a href="pet.html?id=' + pet.parents[0] + '">#' + pet.parents[0] + '</a> ' + (pa ? '(inscription #' + pa.n + ')' : '(not inscribed)') + ' × <a href="pet.html?id=' + pet.parents[1] + '">#' + pet.parents[1] + '</a> ' + (pb ? '(inscription #' + pb.n + ')' : '(not inscribed)') +
         (pa && pb ? ' · a new inscription of this pet records both as parents' : ' · parents are recorded only when both are inscribed')); }
-    mine.forEach(function (x) { var par = (x.parents || []).map(function (id) { var p = L.filter(function (q) { return q.id === id; })[0]; return p ? '#' + p.n : 'mock'; });
+    mine.forEach(function (x) { var par = (x.parents || []).map(function (id) { var p = L.filter(function (q) { return q.id === id; })[0]; return p ? '#' + p.n : 'preview'; });
       h.push('⛓️ Inscription <b>#' + x.n + '</b> (inscription ' + x.perPet + ' of this pet) · still PNG, frame ' + ((x.frame || 0) + 1) + ' · ' + x.kb + ' KB · ' + mockLink(x.id) + (par.length ? ' · parents ' + par.join(' × ') : '')); });
     L.filter(function (c) { return (c.parents || []).length && c.parents.some(function (id) { return mine.some(function (m) { return m.id === id; }); }); }).forEach(function (c) { h.push('Child pet: <a href="pet.html?id=' + c.petId + '">#' + c.petId + '</a> (inscription #' + c.n + ')'); });
     return h.join('<br>'); }
   function fail(msg) { var b = ensureBox(); b.busy = false;
-    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe <span class="chip">MOCK</span></h2><p class="stuck" id="inscErr">⛔ ' + esc(msg) + '</p><p><button type="button" class="btn ghost" id="inscBack">Close</button></p>';
+    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe <span class="chip">PREVIEW</span></h2><p class="stuck" id="inscErr">⛔ ' + esc(msg) + '</p><p><button type="button" class="btn ghost" id="inscBack">Close</button></p>';
     $('inscX').onclick = close; $('inscBack').onclick = close; b.classList.add('on'); return { ok: false, error: msg }; }
   // Persistent 'Inscribing' pet header card (Jake 2026-10-14): shown through every step (preview, commit, reveal, stuck/retry, done),
   // in the modal and at the top of the Inscriptions page for in-progress inscriptions.
@@ -77,7 +77,7 @@
     var parentTxt = parents.length ? 'parents: inscriptions ' + parents.map(function (id) { return '#' + L.filter(function (q) { return q.id === id; })[0].n; }).join(' × ') : (pet.parents ? 'no parent link (both parents must be inscribed first)' : 'no parents (hatched)');
     var what = '#' + pet.id + ' ' + pet.name, nf = P.frames.length;
     var picker = nf > 1 ? '<p class="small" id="inscFramePick">Frame to inscribe: ' + P.frames.map(function (f, k) { return '<button type="button" class="btn ghost' + (k === P.frame ? ' on' : '') + '"' + (k === P.frame ? '' : ' style="opacity:.5"') + ' data-frame="' + k + '" aria-pressed="' + (k === P.frame) + '">' + (k + 1) + '</button>'; }).join(' ') + ' <span class="muted">(your pet is animated; the inscription is ONE still frame)</span></p>' : '';
-    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe ' + esc(what) + ' <span class="chip">MOCK</span></h2>' +
+    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe ' + esc(what) + ' <span class="chip">PREVIEW</span></h2>' +
       headCard({ petId: pet.id, name: pet.name, species: pet.species, stageName: pet.stageName, tier: pet.tier, thumb: thumb(P.still), n: n, perPet: per, step: 'preview' }) +
       '<p class="small" id="inscNamePick">Name on the art: ' + I.NAME_POS.map(function (k) { return '<button type="button" class="btn ghost' + (k === P.nameStamp ? ' on' : '') + '"' + (k === P.nameStamp ? '' : ' style="opacity:.5"') + ' data-name="' + k + '" aria-pressed="' + (k === P.nameStamp) + '">' + { top: 'Top', bottom: 'Bottom', none: 'No name' }[k] + '</button>'; }).join(' ') +
       (P.nameText ? ' <span class="muted">“' + esc(P.nameText) + '” (your pet\'s name, 3×5 pixel font)</span>' : '') + '</p>' +
@@ -86,10 +86,10 @@
       '<p class="bigamt" id="inscKB">' + r.kb + ' KB <span class="small muted">/ 385 KB cap · still PNG · ' + r.colors + ' colours · quality ' + (r.psnr >= 99 ? 'lossless' : r.psnr + ' dB') + '</span></p>' +
       '<p class="small" id="inscTrim">Trimmed: ' + (r.trims.length ? esc(r.trims.join('; ')) : 'nothing (fits at full scale)') + '</p>' +
       '<p class="small"><label>Fee rate <input type="number" id="inscRate" min="1" max="500" value="12" style="width:5em"> sat/vB</label> · <span id="inscFee"></span></p>' +
-      '<p class="small">🔑 Taproot only: the inscription goes to a <b>bc1p…</b> address (mock: <code>' + MOCK_ADDR.slice(0, 14) + '…</code> ' + (I.isTaproot(MOCK_ADDR) ? '✓ Taproot' : '✗') + '). Pets only: the image is always rendered from your pet (no uploads). Hosted mode (default) stays free.</p>' +
+      '<p class="small">🔑 Taproot only: the inscription goes to a <b>bc1p…</b> address (preview: <code>' + MOCK_ADDR.slice(0, 14) + '…</code> ' + (I.isTaproot(MOCK_ADDR) ? '✓ Taproot' : '✗') + '). Pets only: the image is always rendered from your pet (no uploads). Hosted mode (default) stays free.</p>' +
       '<p class="small"><label><input type="checkbox" id="inscStuck"> simulate a stuck reveal (commit in, reveal not)</label></p>' +
       '<div id="inscStatus" class="logbox small" aria-live="polite"></div>' +
-      '<p><button type="button" class="btn ghost" id="inscBack">← Back</button> <button type="button" class="btn" id="inscOk">Confirm (mock)</button></p>';
+      '<p><button type="button" class="btn ghost" id="inscBack">← Back</button> <button type="button" class="btn" id="inscOk">Confirm (preview)</button></p>';
     R.animate($('inscOrig'), P.frames.map(function (f) { return { width: 32, height: 32, data: f.data }; }));
     Array.prototype.forEach.call(document.querySelectorAll('#inscFramePick [data-frame]'), function (el) { el.onclick = function () { request({ petId: pet.id, frame: Number(el.getAttribute('data-frame')), nameStamp: P.nameStamp }, onDone); }; });
     Array.prototype.forEach.call(document.querySelectorAll('#inscNamePick [data-name]'), function (el) { el.onclick = function () { request({ petId: pet.id, frame: P.frame, nameStamp: el.getAttribute('data-name') }, onDone); }; });
@@ -108,12 +108,12 @@
       var rec = I.record(list(), { id: id, kind: 'pet', petId: pet.id, label: what, parents: parents, frame: P.frame, nameStamp: P.nameStamp, imgHash: P.hash, kb: r.kb, format: 'png', size: r.width + 'x' + r.height, scale: r.scale,
         frames: 1, colors: r.colors, feeRate: rate(), feeSats: f.sats, block: M.state().tip, commitTx: commitTx, thumb: thumb(P.still) });
       rec.status = 'committing'; M.save(); setStep('commit', rec);
-      var steps = [function () { st.innerHTML += '<div>⏳ Committing… (mock: building the commit to ' + MOCK_ADDR.slice(0, 14) + '…, nothing is signed)</div>'; },
-        function () { rec.status = 'commit-only'; M.save(); setStep('commit', rec); st.innerHTML += '<div>📡 Commit broadcast (mock txid ' + commitTx.slice(0, 12) + '…)</div>'; },
+      var steps = [function () { st.innerHTML += '<div>⏳ Committing… (preview: building the commit to ' + MOCK_ADDR.slice(0, 14) + '…, nothing is signed)</div>'; },
+        function () { rec.status = 'commit-only'; M.save(); setStep('commit', rec); st.innerHTML += '<div>📡 Commit broadcast (preview txid ' + commitTx.slice(0, 12) + '…)</div>'; },
         function () { if (stuck) { rec.stuck = true; M.save(); setStep('stuck', rec); st.innerHTML += '<div class="stuck">⚠️ The commit is in, but the reveal has not confirmed. Your sats are safe in the commit output: <b>do not re-commit</b>. ' +
             'Wait for the commit to confirm, then retry the reveal with the same key (or a higher fee rate). Keep this page open; the reveal can be retried any time from the commit output.</div>' +
-            '<button type="button" class="btn" id="inscRetry">Retry reveal (mock)</button>'; b.busy = false; $('inscRetry').onclick = function () { this.disabled = true; b.busy = true; stuck = false; rec.stuck = false; M.save(); setStep('reveal', rec); run(3); }; return 'stop'; }
-          setStep('reveal', rec); st.innerHTML += '<div>🔓 Revealing… (mock)</div>'; },
+            '<button type="button" class="btn" id="inscRetry">Retry reveal (preview)</button>'; b.busy = false; $('inscRetry').onclick = function () { this.disabled = true; b.busy = true; stuck = false; rec.stuck = false; M.save(); setStep('reveal', rec); run(3); }; return 'stop'; }
+          setStep('reveal', rec); st.innerHTML += '<div>🔓 Revealing… (preview)</div>'; },
         function () { // re-validate + re-derive BEFORE REVEAL: the revealed bytes must be the pet's own art, hash-identical to the commit
           var P3 = prepare({ petId: pet.id, frame: rec.frame, nameStamp: rec.nameStamp }); if (!P3.ok) { abort(P3.error, rec); return 'stop'; }
           if (P3.hash !== rec.imgHash) { abort('Reveal refused: the art no longer matches the committed pet image.', rec); return 'stop'; }
@@ -125,7 +125,7 @@
   /** pet page section */
   function petSection(host, pet, w, mine) {
     var L = list(), insc = I.ofPet(L, pet.id), head = w ? V.wornOf(w, pet.id).filter(function (g) { return g.slot === 'head'; })[0] : null;
-    host.innerHTML = '<h2 class="sec" data-ico="pet">⛓️ On-chain art <span class="chip">MOCK</span></h2><p class="small">' + (insc.length ? 'Inscribed ' + insc.length + '× (latest: inscription #' + insc[insc.length - 1].n + '). The hosted art stays the default view.' : 'Art: <b>hosted</b> (default, free). Upgrade it to an on-chain inscription: one still PNG of your pet (Taproot, under 385 KB).') + '</p>' +
+    host.innerHTML = '<h2 class="sec" data-ico="pet">⛓️ On-chain art <span class="chip">PREVIEW</span></h2><p class="small">' + (insc.length ? 'Inscribed ' + insc.length + '× (latest: inscription #' + insc[insc.length - 1].n + '). The hosted art stays the default view.' : 'Art: <b>hosted</b> (default, free). Upgrade it to an on-chain inscription: one still PNG of your pet (Taproot, under 385 KB).') + '</p>' +
       '<p class="small" id="inscLineage">' + (lineage(pet) || 'No inscriptions yet.') + '</p>' +
       (mine && !pet.dead ? '<p><button type="button" class="btn" id="inscPetBtn">⛓️ Inscribe on-chain…</button>' + (head ? ' <span class="small muted">' + esc(head.label) + ' is drawn on the pet in its own inscription (only pets are inscribed).</span>' : '') + '</p>' : '');
     var re = function () { petSection(host, pet, M.world(), mine); };

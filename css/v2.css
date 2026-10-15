@@ -91,3 +91,6 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 
 /* footer Telegram link (Jake 2026-10-14) */
 .tgline { margin: 8px 0 0; } a.tglink { color: #33d6ff; font-weight: 700; text-decoration: none; border-bottom: 1px dotted #33d6ff; } a.tglink:hover { color: #8be8ff; }
+
+/* Community pet heading icon (hotfix 2026-10-14): Mythic Nakamoto rendered from pet-core + v2 rework, instead of the generic Pepe pet.png */
+.sec[data-ico="naka"]::before { background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACQUlEQVR42uVXXyhDURz+rolpkqu0Gq1JHnhavMmDF+VBUgoPKzzMKy+eJCE18SBP8oAHRUppeVjxsIclybJSVv61tE2jLA/yp+Z6ca673XPvOXeziPOys9852/fd73y/3/ldARJ+dBQA/5xAodEf2ESH6tDiyYiQdwIEeHJuTLU2Ic5I2RIRWCbUA1YRGZ0xrIguAZvokHiAlSMYDMK76eMmwXUE0WhUFQsL6wCAesmVFrdarejsa4dX9Ek8JLg9QADvb57TF+zr8jSTTE4KEPmVT39/84xKe0naPlos0z96Smh6wCY6pPNoSBU3rTYAAFKDZ9xPWWopF7I6glDoUhVr0lnTVLPDoekHXQLh8An2Yp6M6Kfc+72q/TQPJBKJ7E1I8lo5WkZMCCykqHGj4EwPAMDV9Jscqx0vkue0uHu4Pw3cu+ljFiZmGtbNmhXf3mUFaHFIX+lagTauqsishFoyK4+BxOslFw7vVvBw+4KY38JVDZkEBuebcPGZjqQIaeX9Y+INpxsmQ/cBsx84Dh7J80p7iQxOyJBPAh5PRoRvu4yIClWtT4j5LThwtgIAmkN+quuVCvD2CgJPT0hrQmgEaOmZdSnOVKDGWaa7L7CQ0iWlRYLpgXgyIsT8FtRVO39HT8hSQe+I8toVE8CWEZM8Z8mfl7a80exGo9nNBc5tQs/iFHavJzUBAWDRs4SegS4AwNbaDncxYlZC8qcAEH7d/rp6i7tV+wmwkUrI3ZbzjLy8F2A5R1MM5Urgr7+cfgAhGBArHYN0LgAAAABJRU5ErkJggg==); }

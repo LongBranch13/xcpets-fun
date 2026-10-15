@@ -143,7 +143,7 @@
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
     $('crNet').textContent = ' chain'; $('crNote').textContent = 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.';
     cast(w);
-    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
+    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
   function ranking() {
     var w = M.world(), all = false, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
@@ -158,7 +158,7 @@
         return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">#' + r.rank + (p.owner === ME ? '<div class="small">' + (mine.filter(function (m) { return m.id === p.id; })[0] || {}).note + '</div>' : '') + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(p.owner.slice(0, 8)) + (p.owner === ME ? ' (you)' : '…') + '</div></td><td>' +
           (s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>') + '<div class="small muted">care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</div></td></tr>';
       }).join('') + '<tr class="end"><td colspan="4">💀 NGMI</td></tr></table></div>';
-      document.querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.paint(c, R.petFrames(p, w)[0]); });
+      document.querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
       var b = $('boardAll'); b.style.display = rows.length > 20 ? '' : 'none'; b.textContent = all ? 'Show top 10 and bottom 10' : 'Show all ' + rows.length;
     }
     $('boardAll').onclick = function () { all = !all; render(); };

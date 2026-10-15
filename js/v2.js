@@ -107,15 +107,15 @@
     $('bulkRow').style.display = cem ? 'none' : '';
     var box = $('pets'); box.innerHTML = list.length ? '' : '<p class="muted">No pets match this filter.</p>';
     list.forEach(function (p) {
-      var d = document.createElement('div'), on = S.sel.indexOf(p.id) >= 0; d.className = 'pet card' + (p.dead ? ' dead' : '') + (on ? ' selected' : ''); d.tabIndex = 0;
+      var d = document.createElement('div'), on = S.sel.indexOf(p.id) >= 0; d.className = 'pet card' + (p.dead ? ' dead' : '') + (on ? ' selected' : ''); d.tabIndex = 0; d.dataset.pid = p.id;
       var th = V.thresholdsFor(p.species), fed = p.dead ? '🪦 Died of neglect' : p.fedToday ? 'Fed today: ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full';
       d.innerHTML = (p.dead ? '' : '<input type="checkbox" class="pick-cb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '>') + '<canvas class="sprite" width="32" height="32"></canvas><h4>' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
         '<span class="chip">' + esc(spLabel(p.species)) + '</span>' + tierPill(p.tier) + '<span class="chip stg">' + p.stageName + '</span><span class="chip' + (p.hungry ? ' warn' : '') + '">' + fed + '</span>' +
-        '<span class="chip gearchip">🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots</span>' + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + '</div>' +
+        '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + '</div>' +
         '<div class="bar"><i style="width:' + Math.min(100, 100 * p.care / th[5]).toFixed(1) + '%"></i></div><div class="small muted">care ' + fmt(p.care) + ' / ' + fmt(th[5]) + '</div>';
       var cb = d.querySelector('.pick-cb'); if (cb) cb.onclick = function (e) { e.stopPropagation(); toggle(p.id); };
       d.onclick = function () { detailId = p.id; detail(p, w); };
-      box.appendChild(d); var cvs = d.querySelector('canvas'), frs = petFrames(p, w); paint(cvs, frs[0]); animated.push({ c: cvs, fr: frs, f: 0 });
+      box.appendChild(d); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); /* hotfix 2: drawn when on screen */
     });
     var gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hiddenIds().indexOf(p.id) >= 0; });
     if (gone.length && !cem) { var hb = document.createElement('div'); hb.className = 'hiddenbox'; hb.innerHTML = '<details><summary>Show discarded (' + gone.length + ')</summary><p class="small muted">Pets you hid in this browser. They still exist on-chain (others and other devices see them).</p>' +
@@ -123,14 +123,18 @@
       box.appendChild(hb); hb.querySelectorAll('[data-restore]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); restoreLocal([Number(a.getAttribute('data-restore'))]); }; }); }
     $('petPager').textContent = list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
   }
-  function toggle(id) { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); save(); render(); }
+  /* hotfix 2: a selection change only updates that card + the count (no full render / replay) */
+  function selUi() { var w = world(), alive = mine(w).filter(function (p) { return !p.dead; }), cards = document.querySelectorAll('#pets .pet.card[data-pid]');
+    $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
+    var all = cards.length > 0; cards.forEach(function (d) { var on = S.sel.indexOf(Number(d.dataset.pid)) >= 0; d.classList.toggle('selected', on); var cb = d.querySelector('.pick-cb'); if (cb) cb.checked = on; if (!on) all = false; }); $('selAll').checked = all; }
+  function toggle(id) { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); save(); selUi(); }
   $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); $('tabCem').classList.remove('on'); render(); };
   $('tabCem').onclick = function () { cem = true; this.classList.add('on'); $('tabAlive').classList.remove('on'); render(); };
   ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
     var shown = V.hideAtOrBelow(mine(w).filter(function (p) { return !p.dead; }), hide).filter(function (p) { return fT === 'all' || TIER_ID[p.tier] === fT; });
-    S.sel = this.checked ? shown.map(function (p) { return p.id; }) : []; save(); render(); };
-  $('selNone').onclick = function () { S.sel = []; save(); render(); toast('Selection cleared'); };
+    S.sel = this.checked ? shown.map(function (p) { return p.id; }) : []; save(); selUi(); };
+  $('selNone').onclick = function () { S.sel = []; save(); selUi(); toast('Selection cleared'); };
   $('bFeedHungry').onclick = function () { confirmPlans('Feed all hungry pets', V.feedQueue(world(), ME, null)); };
   $('bFeedSel').onclick = function () { confirmPlans('Feed selected pets', V.feedQueue(world(), ME, sel())); };
   $('bRoll').onclick = function () { confirmPlans('Gear-roll queue', V.rollQueue(world(), ME, sel(), Number($('rollN').value) || 1)); };
@@ -223,7 +227,7 @@
   $('hatchBtn').textContent = 'Hatch (69)'; $('hatchBtn').onclick = function () { confirmPlans('Hatch', [{ tag: 'pet:hatch', amount: 69 }]); };
   $('dozenBtn').onclick = function () { confirmPlans('Dozen ×12', [{ tag: 'pet:hatch12', amount: 690 }]); };
   $('caseBtn').onclick = function () { confirmPlans('Case ×144', [{ tag: 'pet:hatch144', amount: 6900 }]); };
-  $('reload').onclick = function () { render(); toast('Replayed the mock chain'); };
+  $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
   document.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.q; render(); }; });
   $('cAmt').oninput = function () { $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.floor(Number(this.value) || 0)) + ')'; };
   $('cfeedBtn').onclick = function () { var p = V.communityFeedPlan($('cAmt').value); if (!p.ok) return toast('⚠️ ' + p.error); confirmPlans('Feed the ' + V.COMMUNITY_PET, [{ tag: p.tag, amount: p.amount }]); };
@@ -306,7 +310,7 @@
         d.className = 'pet card' + (String(p.id) === sel ? ' sel' : '') + (x.why ? ' off' : ''); d.setAttribute('data-role', role); d.dataset.pid = p.id;
         d.title = x.why ? 'Can\'t pick: ' + x.why : 'Pick #' + p.id + ' as parent ' + role; d.setAttribute('aria-pressed', String(p.id) === sel);
         d.innerHTML = '<canvas width="32" height="32"></canvas><b style="color:var(--ink)">' + esc(p.name) + '</b><div class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</div>' + (p.owner !== ME ? '<div class="muted">' + esc(p.owner) + '</div>' : '');
-        paint(d.querySelector('canvas'), petFrames(p, w)[0]);
+        R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }, true);
         d.onclick = function () { if (x.why) return toast('#' + p.id + ': ' + x.why); input.value = String(p.id) === input.value ? '' : String(p.id); if (input === $('bA') && $('bB').value === input.value) $('bB').value = ''; renderBreed(world()); };
         box.appendChild(d); }); }
     grid($('bGridA'), L.mine, a, 'A', $('bA')); grid($('bGridB'), L.partners, b, 'B', $('bB'));
@@ -371,7 +375,7 @@
   $('wdisconnect').onclick = function () { toast('Read-only build: open play.html?addr=YOUR_ADDRESS to view your pets'); };
   $('gWallet').onclick = function () { toast('Demo: no owner login needed'); };
   function showTx(tx) { var w = world(), l = w.log.filter(function (x) { return x.tx === tx; })[0], r = S.rows.filter(function (x) { return x.tx_hash === tx; })[0]; if (!l) return;
-    $('txInfo').innerHTML = '<p class="small"><b>' + esc(l.kind) + '</b> · ' + esc(l.msg) + '</p><table class="small"><tr><td>block</td><td>' + l.block + '</td></tr><tr><td>tx</td><td><code>' + esc(tx) + '</code></td></tr>' + (r ? '<tr><td>from</td><td>' + esc(r.source) + '</td></tr><tr><td>tag</td><td><code>' + esc(r.tag) + '</code></td></tr><tr><td>amount</td><td>' + fmt(r.amount) + ' XCPETS</td></tr>' : '') + '</table><p class="small muted">Mock burn stored in this browser only.</p>'; open('txBox'); }
+    $('txInfo').innerHTML = '<p class="small"><b>' + esc(l.kind) + '</b> · ' + esc(l.msg) + '</p><table class="small"><tr><td>block</td><td>' + l.block + '</td></tr><tr><td>tx</td><td><code>' + esc(tx) + '</code></td></tr>' + (r ? '<tr><td>from</td><td>' + esc(r.source) + '</td></tr><tr><td>tag</td><td><code>' + esc(r.tag) + '</code></td></tr><tr><td>amount</td><td>' + fmt(r.amount) + ' XCPETS</td></tr>' : '') + '</table><p class="small muted">Burn sent from your XCP Wallet.</p>'; open('txBox'); }
   ['pending', 'log'].forEach(function (id) { $(id).onclick = function (e) { var a = e.target.closest('a[data-tx]'); if (!a) return; e.preventDefault(); showTx(a.dataset.tx); }; });
   function route() { var m = /^#pet-(\d+)$/.exec(location.hash); if (m && world().byId[m[1]]) { detailId = Number(m[1]); detail(world().byId[detailId]); }
     var dm = /^#discard-(\d+)$/.exec(location.hash); if (dm) { var dp = world().byId[dm[1]]; history.replaceState(null, '', location.pathname + location.search);
