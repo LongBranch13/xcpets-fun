@@ -175,6 +175,12 @@
   function flag(word, bg, edge, ink) { var rows = ['y' + new Array(word.length * 4 + 2).join(bg)], j, i;
     for (j = 0; j < 5; j++) { var r = 'L' + bg; for (i = 0; i < word.length; i++) r += FONT[word[i]][j].replace(/\./g, bg).replace(/w/g, ink) + bg; rows.push(r); }
     rows.push('L' + new Array(word.length * 4 + 2).join(edge)); for (j = 0; j < 22; j++) rows.push(j % 3 ? 'L' : 'l'); return rows; }
+  // NGU sign only (2026-10-15, Jake): wider, shorter glyphs so the N reads as a capital N. Same 14x7 flag; word starts flush at the pole so the U keeps a 1-px right margin; other banners keep FONT.
+  var WIDE = { N: ['w..w', 'ww.w', 'w.ww', 'w..w'], G: ['www', 'w..', 'w.w', 'www'], U: ['w.w', 'w.w', 'w.w', 'www'] };
+  function wideFlag(word, bg, edge, ink) { var W = word.length * 4 + 1, rows = flag(word, bg, edge, ink), j, i;
+    for (j = 0; j < 5; j++) { var r = 'L'; for (i = 0; i < word.length; i++) r += j < 4 ? WIDE[word[i]][j].replace(/\./g, bg).replace(/w/g, ink) + bg : new Array(WIDE[word[i]][0].length + 2).join(bg);
+      rows[j + 1] = ('L' + (r.slice(1) + new Array(W + 1).join(bg)).slice(0, W)); }
+    return rows; }
   var BANNERS = [ // id, label, tier, word, flag colour, bottom edge, letters
     ['v2-wagmi-flag', 'WAGMI flag', 0, 'WAGMI', 'm', 'Z', 'w'], ['v2-gm-flag', 'GM flag', 0, 'GM', 'g', 'G', 'n'],
     ['v2-few-sign', 'Few understand sign', 1, 'FEW', 'v', 'V', 'w'], ['v2-xcp-flag', 'XCP flag', 1, 'XCP', 'b', 'C', 'w'],
@@ -349,7 +355,7 @@
     DEFS[c[0]] = { slot: 'head', tier: c[2], label: c[1], at: 'head', dy: hr && hr.dy != null ? hr.dy : T.crown.dy, map: map, origin: null, exclusive: false, kind: 'crown' };
     ITEMS.push({ id: c[0], label: c[1], slot: 'head', tier: c[2], origin: null, exclusive: false, legendary: false, kind: 'crown', overlay: true }); });
   BANNERS.forEach(function (b) { var id = b[0];
-    DEFS[id] = { slot: 'back', tier: b[2], label: b[1], at: 'banner', map: flag(b[3], b[4], b[5], b[6]), origin: null, exclusive: false, kind: 'banner' };
+    DEFS[id] = { slot: 'back', tier: b[2], label: b[1], at: 'banner', map: (b[0] === 'v2-ngu-sign' ? wideFlag : flag)(b[3], b[4], b[5], b[6]), origin: null, exclusive: false, kind: 'banner' };
     ITEMS.push({ id: id, label: b[1], slot: 'back', tier: b[2], origin: null, exclusive: false, legendary: false, kind: 'banner', overlay: true }); });
   JEWELRY.forEach(function (j) { DEFS[j[0]] = { slot: 'face', tier: j[2], label: j[1], at: j[3], map: j[4], origin: null, exclusive: false, kind: j[5] || 'jewelry' };
     ITEMS.push({ id: j[0], label: j[1], slot: 'face', tier: j[2], origin: null, exclusive: false, legendary: false, kind: j[5] || 'jewelry', overlay: true }); });
