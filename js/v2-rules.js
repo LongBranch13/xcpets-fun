@@ -18,7 +18,7 @@
   var V2_FROM_BLOCK = CUTOFF_BLOCK + 1; // first v2 block: v2 tags (fight/accept/rumble/breed, 69-min community feed) count from here
   var LIVE_DEATH_FROM_BLOCK = 971280, LIVE_UNIT = 1e8; // live real-core.js: death clock anchor; GameCore.UNIT (raw quantity per XCPETS)
   var BLOCKS_PER_DAY = 144, WEEK = 1008, NEGLECT_DAYS = 7, NEGLECTED_AFTER_DAYS = 3;
-  var COSTS = { hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, croll: 690 };
+  var COSTS = { hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, croll: 690, froll: 0.00000001 };
   var FEED_QUICK = [69, 690, 6900];
   var FEE_SATS = 1500;                 // mock BTC miner fee per burn tx (shown up front in the confirm modal)
   var MAX_RELEASE_PER_BURN = 120, MAX_TAG_BYTES = 34;
@@ -35,6 +35,32 @@
    * Inert before the block: older burns replay exactly as before. */
   var ACTIVATE_TOKENS_BLOCK = 971525;  // Bitcoin tip 971,522 at 2026-10-15 01:11 CT + 3 (Jake approved)
   var TOKEN_DROP_10K = { stageUp: 2500, meal: 200 };
+  /* FOUNDER GRANT (PROTOTYPE 2026-10-15, not live): per pre-cutoff 25,000 pet:c:roll burn, the burner's address gets FOUNDER_KIT_PER_ROLL (EXISTING
+   * Legendary pieces, into the inventory, unequipped) + FOUNDER_CREDITS_PER_ROLL free gear rolls (spent with pet:fr:ID, any amount >= 1 sat) at
+   * ACTIVATE_FOUNDER_BLOCK. Hard-coded by txid so replay is exact; nothing changes before the block.
+   * Switch: gear-only = CREDITS 0 · rolls-only = KIT [] and CREDITS 72 or 36 · mix = both (default). */
+  var ACTIVATE_FOUNDER_BLOCK = 971526;  // Bitcoin tip 971,523 at 2026-10-15 01:21 CT + 3 (Jake approved)
+  var FOUNDER_KIT_PER_ROLL = ['v2-crown-gold', 'golden-sword', 'gold', 'goldcape', 'v2-gold-aviators']; // Royal gold crown, Golden sword, Gold armor, Golden cape, Gold aviators
+  var FOUNDER_CREDITS_PER_ROLL = 36;
+  var FOUNDER_ROLLS = [ // [block, txid, address] in chain order (6 x bc1qs88..., 1 x bc1pvnxv...)
+    [971084, 'f0c82ec93a28357b6c3a2db6c51d4bc7d8f79a46c68e5a9cd5c7df986b854545', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n'],
+    [971087, 'd0c3016929f382efb94103e83df630b3b2a9c7daf827f1ab6511b3397fe821d5', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n'],
+    [971102, '6a1b691dd27a31a9df16c8a971d5a9bf20d642e956aaf051d7644d637abb20ac', 'bc1pvnxvtzx2u2wctpnl0m2n8hvz8hy59k5c0u4947qmeph8grsyg6fswcrnsm'],
+    [971152, 'abccbb66eaf9b41088d9bc0793920836f9fba38d4dd3d90d5bda72a288e69cae', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n'],
+    [971153, 'c20620b8c46a5850415da75836ffbf5065e1f2f654d32825eea9e2ae0b0e20ec', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n'],
+    [971153, 'e29199376ebc12f3e142a4ee0a1e7b6c7c21fd7de580252fafb8c9e47f1e32c7', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n'],
+    [971187, '9b76d1fc9b64ffec5bb1e15300503b1e42b6ae34cf2511f772a2eff8c81b64ea', 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n']];
+  /** grantFounders(w, b): once, the first time replay reaches block b >= ACTIVATE_FOUNDER_BLOCK (before that block's burns). Only rolls the frozen engine saw count. */
+  function grantFounders(w, b) { if (w.founderGranted || b < ACTIVATE_FOUNDER_BLOCK) return; w.founderGranted = b;
+    FOUNDER_ROLLS.forEach(function (f) { if (w.founderSeen && !w.founderSeen[f[1]]) return; var got = [];
+      FOUNDER_KIT_PER_ROLL.forEach(function (id) { var it = BY_ID[id]; if (!it) return; var g = newItem(w, it, f[2], 'founder'); g.founderTx = f[1]; got.push(it.label); });
+      w.freeRolls[f[2]] = (w.freeRolls[f[2]] || 0) + FOUNDER_CREDITS_PER_ROLL;
+      w.log.push({ block: b, tx: f[1], kind: 'founder', msg: 'founder grant for community roll ' + f[1].slice(0, 10) + '…: ' + (got.length ? got.join(', ') : 'no gear') + ' + ' + FOUNDER_CREDITS_PER_ROLL + ' free rolls' }); }); }
+  /** freeRolls(w, owner, pendingTags): founder free rolls the play page may offer = credits after replay minus this address's still-unconfirmed pet:fr burns.
+   * on = false before ACTIVATE_FOUNDER_BLOCK (by chain tip), for non-founders and when nothing is left. */
+  function freeRolls(w, owner, pendingTags) { var have = (w.freeRolls && w.freeRolls[owner]) || 0, pend = (pendingTags || []).filter(function (t) { return /^pet:fr:\d+$/i.test(String(t)); }).length, left = Math.max(0, have - pend);
+    return { on: w.tip != null && w.tip >= ACTIVATE_FOUNDER_BLOCK && left > 0, left: left, pending: pend }; }
+  function freeRollPlan(petId) { return { tag: 'pet:fr:' + petId, amount: COSTS.froll, petId: petId, label: 'Free roll #' + petId }; }
   var ACTIVATE_FEEDM_BLOCK = 971515;  // Bitcoin tip 971,512 at 2026-10-15 00:14 CT + 3 (Jake approved)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
@@ -145,6 +171,7 @@
     if (a === 'FEED' && p.length === 2) return { action: 'cfeed' };
     if (a === 'FEED' && p.length === 3 && idOk(p[2])) return { action: 'feed', petId: n(2) };
     if (a === 'ROLL' && p.length === 3 && idOk(p[2])) return { action: 'roll', petId: n(2) };
+    if (a === 'FR' && p.length === 3 && idOk(p[2])) return { action: 'froll', petId: n(2) };
     if (a === 'FIGHT' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'fight', a: n(2), b: n(3) };
     if (a === 'ACCEPT' && p.length === 3 && idOk(p[2])) return { action: 'accept', fightId: n(2) };
     if (a === 'RUMBLE' && p.length === 3 && idOk(p[2])) return { action: 'rumble', petId: n(2) };
@@ -217,8 +244,9 @@
     function L(e, kind, msg, extra) { var o = Object.assign({ block: e.block_index, tx: e.tx_hash, kind: kind, msg: msg }, extra || {}); w.log.push(o); return o; }
     var resolvedWeeks = {};
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
+    w.freeRolls = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
-      maybeRumbles(e.b);
+      grantFounders(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1;
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
@@ -227,7 +255,7 @@
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
-    maybeRumbles(tip);
+    grantFounders(w, tip); maybeRumbles(tip);
     w.pets.forEach(function (p) { finish(w, p, tip); });
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
@@ -359,6 +387,14 @@
         var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier);
         var ni = newItem(w, it, g.owner, 'roll'); ni.rolledOn = g.id; wear(w, g, ni);
         return L(r, 'roll', '#' + g.id + ' rolled ' + it.label + ' (' + slotLabel(slot) + ')', { petId: g.id, gid: ni.gid });
+      }
+      case 'froll': {  /* free gear roll (founder credits): any amount (1 sat of XCPETS is enough); same roll as pet:roll; one credit per successful roll */
+        if (b < ACTIVATE_FOUNDER_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        var fg = pet(t.petId), fw = !(w.freeRolls[src] > 0) ? 'no free rolls left' : !fg ? 'no such pet' : fg.released ? 'released' : fg.owner !== src ? 'owner only' : fg.dead ? 'dead' : !bh ? 'block hash pending' : null;
+        if (fw) return L(r, 'rejected', fw);
+        var fh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), fsl = fg.openSlots[parseInt(fh.slice(16, 24), 16) % fg.openSlots.length], fit = pickItem(fh, fsl, fg.species, fg.tier);
+        w.freeRolls[src]--; var fni = newItem(w, fit, fg.owner, 'froll'); fni.rolledOn = fg.id; wear(w, fg, fni);
+        return L(r, 'roll', '#' + fg.id + ' free roll: ' + fit.label + ' (' + slotLabel(fsl) + ') · ' + w.freeRolls[src] + ' free rolls left', { petId: fg.id, gid: fni.gid, free: true });
       }
       case 'release': {
         var done = []; t.ids.forEach(function (id) { var x = w.byId[id]; if (x && !x.released && x.owner === src) { x.released = b; done.push(id); wornOf(w, id).forEach(function (gg) { gg.on = null; }); } });
@@ -741,7 +777,7 @@
     BREED_COOLDOWN: BREED_COOLDOWN, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };

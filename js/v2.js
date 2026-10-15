@@ -181,7 +181,7 @@
     $('dStats').innerHTML = statBars(p);
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
     var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a><p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(V.thresholdsFor(p.species)[5]) + (p.species === 'nakamoto' ? ' (Nakamoto: 10× thresholds, ~30 daily meals to Mythic)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
-    if (!p.dead) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button><button class="btn ghost ico-flame" data-a="roll">Gear roll (345)</button><button class="act ghost" id="dDiscard" title="Hides it in this browser. Free; restore any time from Show discarded.">🗑️ Discard pet</button></div>';
+    if (!p.dead) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button><button class="btn ghost ico-flame" data-a="roll">Gear roll (345)</button>' + frBtn(w) + '<button class="act ghost" id="dDiscard" title="Hides it in this browser. Free; restore any time from Show discarded.">🗑️ Discard pet</button></div>';
     h += '<h3 class="sec" data-ico="gear">Gear <span class="small muted gcount">' + V.wornOf(w, p.id).length + '/' + p.capacity + '</span></h3><div class="gpicker" id="gPicker"></div>'; // pop-up cleanup 2026-10-14: no long capacity/signature/how-to text
     h += '<h3 class="sec" data-ico="egg">Born traits</h3><table class="small borntraits">' + V.bornTraits(p, p.stage).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
     h += '<h3 class="sec" data-ico="egg">Family tree</h3>' + tree(V.familyTree(w, p.id)) + '<p class="small">Children: ' + (p.children.length ? '#' + p.children.join(', #') : 'none') + ' · breedings ' + p.breeds + '/' + V.BREED_MAX + (p.lastBreed != null && S.tip - p.lastBreed < V.BREED_COOLDOWN ? ' · cooldown ' + (V.BREED_COOLDOWN - (S.tip - p.lastBreed)) + ' blocks' : '') + '</p>';
@@ -191,9 +191,12 @@
     R.gearPicker($('gPicker'), { compact: true, world: w, owner: ME, pet: p, msg: detail.msg, onEquip: function (op, m) { op.block_index = S.tip; S.ops.push(op); save(); detail.msg = '✓ ' + m; render(); detail.msg = null; toast(esc(m) + ' (free)'); } });
     $('detail').querySelector('.box').scrollTop = keepY;
     if ($('dDiscard')) $('dDiscard').onclick = function () { var id = p.id; close('detail'); discardIds([id]); };
-    $('dInfo').querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { var a = b.dataset.a; confirmPlans(a === 'feed' ? 'Feed #' + p.id : 'Gear roll #' + p.id, a === 'feed' ? V.feedQueue(world(), ME, [p.id]) : V.rollQueue(world(), ME, [p.id], 1)); }; });
+    $('dInfo').querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { var a = b.dataset.a; if (a === 'froll') return confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); confirmPlans(a === 'feed' ? 'Feed #' + p.id : 'Gear roll #' + p.id, a === 'feed' ? V.feedQueue(world(), ME, [p.id]) : V.rollQueue(world(), ME, [p.id], 1)); }; });
     open('detail');
   }
+  /* founder free rolls (prototype 2026-10-15): pet:fr:ID button + "Free rolls left: N" (minus our unconfirmed pet:fr burns); hidden at 0, non-founders, before activation */
+  function frPendingTags() { var T = window.V2Wallet && V2Wallet.tracker ? V2Wallet.tracker.list() : []; return T.filter(function (t) { return !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).map(function (t) { return t.tag; }); }
+  function frBtn(w) { var f = V.freeRolls(w, ME, frPendingTags()); return f.on ? '<button class="btn ghost ico-flame" data-a="froll" title="Founder reward: a gear roll for a 1-sat burn">Free roll</button><span class="small muted frleft">Free rolls left: ' + fmt(f.left) + '</span>' : ''; }
   $('dClose').onclick = function () { close('detail'); detailId = null; };
 
   // ---------------------------------------------------------------- inventory (live invcards)
