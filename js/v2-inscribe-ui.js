@@ -1,146 +1,192 @@
-/* XCPETS v2: inscription UI (MOCK). Preview modal -> mock commit -> mock reveal; lineage; Inscriptions page list.
- * NOTHING is signed, broadcast or sent to a wallet: ids are sha-derived fakes, links are ordinals.com-STYLE text only (not live links).
- * 2026-10-14 (Jake): PETS ONLY + STILL PNG ONLY.
- *  - The single entry point is request({ petId, frame }) (open() is an alias). It accepts ONLY a positive integer id of a live pet owned by the mock wallet;
- *    any image / dataURL / url / bytes / frames field is rejected. The image is ALWAYS rendered here from the pet's sprite + worn gear.
- *  - The art is re-derived from the pet id and its hash compared before the mock commit AND before the reveal; any mismatch / tamper aborts and
- *    leaves no record. Headwear-as-child inscriptions are gone (hats are not pets; a worn hat is part of the pet's own inscription).
- *  - Animated pets inscribe ONE still frame (frame picker in the preview, default frame 0). No GIFs.
- *  Client-only demo: this is UX + tamper resistance, not security. Live needs the indexer/server to re-derive and refuse anything else. */
+/* XCPETS v2: REAL inscription UI (2026-10-15). Preview -> XCP Wallet connect -> spendable UTXOs (no Counterparty assets, no likely inscriptions)
+ * -> commit PSBT + temp-key-signed reveal -> FORCED recovery-file download -> XCP Wallet signs the commit (xcp_signBitcoinPsbt) -> broadcast commit, then reveal
+ * -> confirmation tracking. Inscriptions page: chain-rebuilt registry (V2InscribeReg), pending list, Recover / Refund screen (loads the recovery file).
+ * Rules kept from the mock (Jake 2026-10-14): PETS ONLY, still PNG only, single entry point request({ petId, frame }) via V2Inscribe.checkRequest; the art is ALWAYS
+ * rendered here from the chain (canonical render at block b + the declared worn gear), never taken from the caller.
+ * Jake 2026-10-15: XCP Wallet ONLY; the player pays Bitcoin fees only (no site fee output); no XCPETS burn; numbers from the registry (block height, tx index).
+ * Environment (network, APIs, wallet provider, chain replay) comes from window.V2InscribeEnv (live: v2-inscribe-env.js; demo: signet simulation). */
 (function () {
   'use strict';
-  var I = window.V2Inscribe, V = window.V2Rules, R = window.V2Render, M = window.V2Mock;
-  if (!I || !V || !R || !M) return;
-  var MOCK_ADDR = 'bc1p' + V.sha('xcpets-demo-v2-taproot').replace(/[^02-9ac-hj-np-z]/g, '').slice(0, 58).padEnd(58, 'q');
+  var I = window.V2Inscribe, V = window.V2Rules, R = window.V2Render, M = window.V2Mock, E = window.V2InscribeEnv, B = window.BtcSigner;
+  if (!I || !V || !R || !M || !E || !B) return;
+  var T = window.V2InscribeTx, G = window.V2InscribeReg(T), PKEY = 'xcpets-insc-pending-' + E.network, VKEY = 'xcpets-insc-valid-' + E.network, LIKELY_INSC_MAX = 10000;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function $(id) { return document.getElementById(id); }
-  var THUMB_RE = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/;
-  /** list(): the mock registry, sanitised on every read (tampered localStorage cannot inject non-pet / GIF / foreign-image records into the page). */
-  function list() { var S = M.state(), w = null; S.insc = (S.insc || []).filter(function (x) {
-      if (!x || x.kind !== 'pet' || x.format !== 'png' || !Number.isSafeInteger(x.petId) || x.petId <= 0 || !Number.isSafeInteger(x.n)) return false;
-      w = w || M.world(); if (!w.pets.some(function (p) { return p.id === x.petId; })) return false;
-      if (x.thumb && !THUMB_RE.test(x.thumb)) x.thumb = null; return true; });
-    return S.insc; }
+  function sats(n) { return Number(n || 0).toLocaleString('en-US') + ' sats'; }
+  function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function pending() { return lsGet(PKEY, []); }
+  function savePending(rec) { var l = pending().filter(function (x) { return x.commitTxid !== rec.commitTxid; }); l.push(rec); lsSet(PKEY, l); }
+  function F(p, o) { return E.fetch(E.mempoolApi + p, o); }
+  function json(p) { return F(p).then(function (r) { if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; } return r.json(); }); }
+  function broadcast(raw) { return F('/tx', { method: 'POST', body: raw }).then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error('broadcast refused: ' + t.slice(0, 200)); return t.trim(); }); }); }
+  function txLink(id) { return '<a href="' + esc(E.explorer) + '/tx/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…</a>'; }
+  function inscLink(id) { return E.ordinals ? '<a href="' + esc(E.ordinals) + '/inscription/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…i0</a>' : '<span title="' + esc(id) + '">' + esc(id.slice(0, 10)) + '…i0</span>'; }
   function toF(img) { return { w: img.width || 32, h: img.height || 32, data: new Uint8ClampedArray(img.data) }; }
+  function distinctFrames(fr) { var out = [fr[0]]; for (var k = 1; k < fr.length; k++) { var a = fr[k].data, b = fr[0].data, same = true; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) { same = false; break; } if (!same) out.push(fr[k]); } return out.length > 1 ? fr : [fr[0]]; }
+  /* ---- canonical render: the ONLY art source (inscribing AND validating others' inscriptions) ---- */
+  var wcache = {};
+  function worldAt(b, ops) { var k = b + '|' + JSON.stringify(ops); if (!wcache[k]) { if (Object.keys(wcache).length > 24) wcache = {}; wcache[k] = E.replayAt(b, ops); } return wcache[k]; }
+  function canonical(m) { var w0 = worldAt(m.b, []), p0 = w0.byId ? w0.byId[m.pet] : w0.pets.filter(function (q) { return q.id === m.pet; })[0];
+    if (!p0) return { error: 'pet #' + m.pet + ' does not exist at block ' + m.b }; if (p0.dead || p0.released) return { error: 'pet #' + m.pet + ' is not alive at block ' + m.b };
+    var ops = (m.g || []).map(function (x) { return { kind: 'equip', owner: p0.owner, petId: m.pet, slot: x[0], gid: x[1], block_index: m.b }; });
+    var w = ops.length ? worldAt(m.b, ops) : w0, p = w.byId ? w.byId[m.pet] : w.pets.filter(function (q) { return q.id === m.pet; })[0], fr = distinctFrames(R.petFrames(p, w).map(toF));
+    if (m.f >= fr.length) return { error: 'frame ' + m.f + ' does not exist' };
+    return { pet: p, world: w, frames: fr, frame: I.stampName(fr[m.f], p.name, m.s), owner: E.addrOf(p.owner), ownerKey: p.owner }; }
+  function inflate(z) { if (E.inflate) return E.inflate(z); var ds = new DecompressionStream('deflate'), s = new Blob([z]).stream().pipeThrough(ds); return new Response(s).arrayBuffer().then(function (b) { return new Uint8Array(b); }); }
   function bytesFromDataURL(u) { var b = atob(u.split(',')[1]), o = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) o[i] = b.charCodeAt(i); return o; }
   function pngBrowser(f, colors) { var P = I.palette([f], Math.min(256, colors || 256)), c = document.createElement('canvas'); c.width = f.w; c.height = f.h;
     var id = c.getContext('2d').createImageData(f.w, f.h); for (var i = 0; i < f.data.length; i += 4) { var p = P.pal[P.map(f.data[i], f.data[i + 1], f.data[i + 2])]; id.data[i] = p[0]; id.data[i + 1] = p[1]; id.data[i + 2] = p[2]; id.data[i + 3] = 255; }
     c.getContext('2d').putImageData(id, 0, 0); return { bytes: bytesFromDataURL(c.toDataURL('image/png')), colors: P.pal.length, unique: P.unique }; }
   function b64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
-  function mockLink(id) { return '<span class="insclink" title="Preview id: not on chain, not a live link">ordinals.com/inscription/' + esc(String(id).slice(0, 10)) + '…' + esc(String(id).slice(-6)) + ' <em>(preview)</em></span>'; }
-  function thumb(frame) { var c = document.createElement('canvas'), f = I.scaleUp(frame, 2); c.width = f.w; c.height = f.h; var d = c.getContext('2d').createImageData(f.w, f.h); d.data.set(f.data); c.getContext('2d').putImageData(d, 0, 0); return c.toDataURL('image/png'); }
-  function distinctFrames(fr) { var out = [fr[0]]; for (var k = 1; k < fr.length; k++) { var a = fr[k].data, b = fr[0].data, same = true; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) { same = false; break; } if (!same) out.push(fr[k]); } return out.length > 1 ? fr : [fr[0]]; }
-  /** prepare(req): validate + render the still from the pet id. Never takes image data from the caller. -> { ok, pet, frame, frames, still, r, hash } | { ok:false, error } */
+  function pngURL(bytes) { return 'data:image/png;base64,' + b64(bytes); }
+  /** prepare(req): checkRequest (pets only, yours, alive) + canonical render at the current tip with the pet's CURRENT worn gear. Never takes image data from the caller. */
   function prepare(req) {
     var w = M.world(), c = I.checkRequest(req, w, M.ME); if (!c.ok) return c;
-    var all = distinctFrames(R.petFrames(c.pet, w).map(toF)), frame = req.frame || 0, pos = req.nameStamp || I.NAME_POS[0];
-    if (frame >= all.length) return { ok: false, error: 'Rejected: pet #' + c.pet.id + ' has ' + all.length + ' frame' + (all.length > 1 ? 's' : '') + ' (got frame ' + frame + ').' };
-    var still = I.stampName(all[frame], c.pet.name, pos), r = I.shrink({ frames: [still], pixelArt: true }, { encodePNG: pngBrowser }), err = I.payloadError(r.bytes);
+    var g = V.wornOf(w, c.pet.id).map(function (x) { return [x.slot, x.gid]; }).sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+    var meta = { pet: c.pet.id, b: E.tip(), f: req.frame || 0, s: req.nameStamp || I.NAME_POS[0], g: g }, K = canonical(meta); if (K.error) return { ok: false, error: 'Rejected: ' + K.error + '.' };
+    var r = I.shrink({ frames: [K.frame], pixelArt: true }, { encodePNG: pngBrowser }), err = I.payloadError(r.bytes);
     if (err) return { ok: false, error: err }; if (!r.ok) return { ok: false, error: 'Rejected: PNG over the 385 KB cap.' };
-    return { ok: true, pet: c.pet, frame: frame, nameStamp: pos, nameText: pos === 'none' ? '' : I.sanitizeName(c.pet.name), frames: all, still: still, r: r, hash: I.imageHash(r.bytes), world: w }; }
+    return { ok: true, pet: c.pet, meta: meta, frames: K.frames, still: K.frame, r: r, owner: K.owner, hash: I.imageHash(r.bytes) }; }
+  /** selfCheck: the bytes we are about to inscribe must pass the SAME pixel validation every visitor will run (else it would get no number). */
+  function selfCheck(P) { return G.decodePNG(P.r.bytes, inflate).then(function (img) { if (!G.pixelsMatch(img, canonical(P.meta).frame)) throw new Error('This art would not validate (palette fallback changed pixels). Pick another frame or no name stamp.'); }); }
+  /* ---- modal ---- */
   function ensureBox() { var b = $('inscBox'); if (b) return b; b = document.createElement('div'); b.id = 'inscBox'; b.className = 'reveal insc'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-modal', 'true');
     b.innerHTML = '<div class="box wide" id="inscInner"></div>'; document.body.appendChild(b);
     b.addEventListener('click', function (e) { if (e.target === b && !b.busy) close(); }); document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && b.classList.contains('on') && !b.busy) close(); }); return b; }
-  function close() { var b = $('inscBox'); if (b) b.classList.remove('on'); }
-  function lineage(pet) { var L = list(), mine = I.ofPet(L, pet.id), h = [];
-    if (pet.parents && pet.parents.length === 2) { var pa = I.latestOfPet(L, pet.parents[0]), pb = I.latestOfPet(L, pet.parents[1]);
-      h.push('Parents: <a href="pet.html?id=' + pet.parents[0] + '">#' + pet.parents[0] + '</a> ' + (pa ? '(inscription #' + pa.n + ')' : '(not inscribed)') + ' × <a href="pet.html?id=' + pet.parents[1] + '">#' + pet.parents[1] + '</a> ' + (pb ? '(inscription #' + pb.n + ')' : '(not inscribed)') +
-        (pa && pb ? ' · a new inscription of this pet records both as parents' : ' · parents are recorded only when both are inscribed')); }
-    mine.forEach(function (x) { var par = (x.parents || []).map(function (id) { var p = L.filter(function (q) { return q.id === id; })[0]; return p ? '#' + p.n : 'preview'; });
-      h.push('⛓️ Inscription <b>#' + x.n + '</b> (inscription ' + x.perPet + ' of this pet) · still PNG, frame ' + ((x.frame || 0) + 1) + ' · ' + x.kb + ' KB · ' + mockLink(x.id) + (par.length ? ' · parents ' + par.join(' × ') : '')); });
-    L.filter(function (c) { return (c.parents || []).length && c.parents.some(function (id) { return mine.some(function (m) { return m.id === id; }); }); }).forEach(function (c) { h.push('Child pet: <a href="pet.html?id=' + c.petId + '">#' + c.petId + '</a> (inscription #' + c.n + ')'); });
-    return h.join('<br>'); }
-  function fail(msg) { var b = ensureBox(); b.busy = false;
-    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe <span class="chip">PREVIEW</span></h2><p class="stuck" id="inscErr">⛔ ' + esc(msg) + '</p><p><button type="button" class="btn ghost" id="inscBack">Close</button></p>';
-    $('inscX').onclick = close; $('inscBack').onclick = close; b.classList.add('on'); return { ok: false, error: msg }; }
-  // Persistent 'Inscribing' pet header card (Jake 2026-10-14): shown through every step (preview, commit, reveal, stuck/retry, done),
-  // in the modal and at the top of the Inscriptions page for in-progress inscriptions.
-  var STEPS = { preview: '👀 Preview', commit: '⏳ Committing', reveal: '🔓 Revealing', stuck: '⚠️ Stuck: reveal pending', done: '✅ Inscribed' };
-  function stepOf(rec) { return !rec ? 'preview' : rec.status === 'inscribed' ? 'done' : rec.status === 'commit-only' ? (rec.stuck ? 'stuck' : 'reveal') : 'commit'; }
-  function headCard(o) { // o: { pet?, petId, name, species, stageName, tier, thumb, n, perPet, step }
-    var tl = (V.TIER_LABELS || [])[o.tier], sp = o.species ? (V.speciesLabel ? V.speciesLabel(o.species) : o.species) : '';
-    return '<div class="inschead" data-step="' + esc(o.step) + '" data-pet="' + esc(o.petId) + '">' + (o.thumb ? '<img class="insctb" alt="" src="' + esc(o.thumb) + '">' : '') +
-      '<div class="ihb"><div class="ihk">Inscribing</div><div class="ihn"><b>' + esc(o.name) + '</b> <span class="muted">pet #' + esc(o.petId) + '</span></div>' +
-      '<div class="ihm">' + esc(sp) + (o.stageName ? ' · ' + esc(o.stageName) : '') + (tl ? ' · <span class="ihr t' + o.tier + '">' + esc(tl) + '</span>' : '') + '</div>' +
-      '<div class="ihm">Inscription <b>#' + esc(o.n) + '</b> · ' + esc(o.perPet) + (o.perPet === 1 ? 'st' : o.perPet === 2 ? 'nd' : o.perPet === 3 ? 'rd' : 'th') + ' of this pet</div></div>' +
-      '<div class="ihs">' + (STEPS[o.step] || esc(o.step)) + '</div></div>'; }
-  function petInfo(petId) { var w = M.world(), p = w.pets.filter(function (q) { return q.id === petId; })[0]; return p || { id: petId, name: '#' + petId }; }
-  function cardFor(rec) { var p = petInfo(rec.petId); return headCard({ petId: rec.petId, name: p.name, species: p.species, stageName: p.stageName, tier: p.tier, thumb: rec.thumb, n: rec.n, perPet: rec.perPet, step: stepOf(rec) }); }
-  function active() { var L = list(); return L.filter(function (x) { return x.status !== 'inscribed'; }); }
-  function renderActive() { var host = $('inscActive'); if (!host) { var lst = $('inscList'); if (!lst) return; host = document.createElement('div'); host.id = 'inscActive'; lst.parentNode.insertBefore(host, lst); }
-    var A = active(); host.innerHTML = A.length ? '<h3 class="sec">In progress</h3>' + A.slice().reverse().map(function (x) { return cardFor(x) + (x.status === 'commit-only' && x.stuck ? '<p class="small stuck">Commit in, reveal pending: reopen this pet\'s inscription to retry the reveal (do not re-commit).</p>' : ''); }).join('') : ''; }
-  function setStep(step, rec) { var h = document.querySelector('#inscInner .inschead'); if (h) { h.setAttribute('data-step', step); h.querySelector('.ihs').innerHTML = STEPS[step]; } renderActive(); }
-  /** request(req, onDone): THE entry point. req = { petId:int, frame?:int }. Returns { ok } or { ok:false, error } (and shows the error). */
+  function close() { var b = $('inscBox'); if (b) { b.classList.remove('on'); b.busy = false; } }
+  function chip() { return E.label ? ' <span class="chip">' + esc(E.label) + '</span>' : ''; }
+  function shell(title, body) { var b = ensureBox(); $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ ' + esc(title) + chip() + '</h2>' + body;
+    $('inscX').onclick = function () { if (!b.busy || confirm('Close? If the commit was already signed, finish or recover it later from the Inscriptions page (your recovery file has everything).')) close(); }; b.classList.add('on'); return b; }
+  function fail(msg) { shell('Inscribe', '<p class="stuck" id="inscErr">⛔ ' + esc(msg) + '</p><p><button type="button" class="btn ghost" id="inscBack">Close</button></p>'); $('inscBack').onclick = close; return { ok: false, error: msg }; }
+  function feeRate() { return json('/v1/fees/recommended').then(function (f) { var x = Math.ceil(Number(f.halfHourFee || f.hourFee)); return x >= 1 ? x : 2; }).catch(function () { return 4; }); }
+  /** spendable(addr): confirmed UTXOs minus Counterparty-attached ones (CP API, must answer) minus <= 10,000-sat outputs (likely inscriptions/attached dust). */
+  function spendable(addr) {
+    var cp = (E.cpRead || []).slice();
+    function cpUtxos(i) { if (i >= cp.length) return Promise.reject(new Error('Could not check your UTXOs for Counterparty assets (all Counterparty APIs failed). Nothing was signed; try again later.'));
+      return E.fetch(cp[i] + '/addresses/' + addr + '/balances?type=utxo&limit=1000').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad answer'); var o = {}; j.result.forEach(function (x) { if (x.utxo) o[x.utxo] = 1; }); return o; }, function () { return cpUtxos(i + 1); }); }
+    return Promise.all([json('/address/' + addr + '/utxo'), cpUtxos(0)]).then(function (r) { var all = r[0], att = r[1], ex = { cp: 0, small: 0, unconf: 0 };
+      var ok = all.filter(function (u) { if (!u.status || !u.status.confirmed) { ex.unconf++; return false; } if (att[u.txid + ':' + u.vout]) { ex.cp++; return false; } if (u.value <= LIKELY_INSC_MAX) { ex.small++; return false; } return true; })
+        .map(function (u) { return { txid: u.txid, vout: u.vout, value: u.value }; });
+      return { utxos: ok, excluded: ex }; }); }
+  function download(name, obj) { var a = document.createElement('a'), u = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' })); a.href = u; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 1000); }
+  /** request({ petId, frame?, nameStamp? }, onDone): the single entry point. */
   function request(req, onDone) {
     var P = prepare(req); if (!P.ok) return fail(P.error);
-    var pet = P.pet, r = P.r, L = list(), b = ensureBox(), n = I.nextNumber(L), per = I.ofPet(L, pet.id).length + 1, parents = I.parentsFor(L, pet);
-    var parentTxt = parents.length ? 'parents: inscriptions ' + parents.map(function (id) { return '#' + L.filter(function (q) { return q.id === id; })[0].n; }).join(' × ') : (pet.parents ? 'no parent link (both parents must be inscribed first)' : 'no parents (hatched)');
-    var what = '#' + pet.id + ' ' + pet.name, nf = P.frames.length;
-    var picker = nf > 1 ? '<p class="small" id="inscFramePick">Frame to inscribe: ' + P.frames.map(function (f, k) { return '<button type="button" class="btn ghost' + (k === P.frame ? ' on' : '') + '"' + (k === P.frame ? '' : ' style="opacity:.5"') + ' data-frame="' + k + '" aria-pressed="' + (k === P.frame) + '">' + (k + 1) + '</button>'; }).join(' ') + ' <span class="muted">(your pet is animated; the inscription is ONE still frame)</span></p>' : '';
-    $('inscInner').innerHTML = '<button type="button" class="q" id="inscX" style="float:right" aria-label="Close">&times;</button><h2 class="sec">⛓️ Inscribe ' + esc(what) + ' <span class="chip">PREVIEW</span></h2>' +
-      headCard({ petId: pet.id, name: pet.name, species: pet.species, stageName: pet.stageName, tier: pet.tier, thumb: thumb(P.still), n: n, perPet: per, step: 'preview' }) +
-      '<p class="small" id="inscNamePick">Name on the art: ' + I.NAME_POS.map(function (k) { return '<button type="button" class="btn ghost' + (k === P.nameStamp ? ' on' : '') + '"' + (k === P.nameStamp ? '' : ' style="opacity:.5"') + ' data-name="' + k + '" aria-pressed="' + (k === P.nameStamp) + '">' + { top: 'Top', bottom: 'Bottom', none: 'No name' }[k] + '</button>'; }).join(' ') +
-      (P.nameText ? ' <span class="muted">“' + esc(P.nameText) + '” (your pet\'s name, 3×5 pixel font)</span>' : '') + '</p>' +
-      '<p class="small">Will be <b>inscription #' + n + '</b> · <b>inscription ' + per + ' of this pet</b> · ' + esc(parentTxt) + '</p>' + picker +
-      '<div class="inscgrid"><figure><canvas id="inscOrig" width="32" height="32"></canvas><figcaption class="small">Hosted art (32×32' + (nf > 1 ? ', animated: stays hosted, not inscribed' : '') + ')</figcaption></figure><figure><img id="inscImg" alt="exact still PNG that will be inscribed" src="data:image/png;base64,' + b64(r.bytes) + '"><figcaption class="small"><b>This exact still will be inscribed</b>: PNG ' + r.width + '×' + r.height + ' (integer scale ' + r.scale + ')' + (nf > 1 ? ', frame ' + (P.frame + 1) + ' of ' + nf : '') + '</figcaption></figure></div>' +
-      '<p class="bigamt" id="inscKB">' + r.kb + ' KB <span class="small muted">/ 385 KB cap · still PNG · ' + r.colors + ' colours · quality ' + (r.psnr >= 99 ? 'lossless' : r.psnr + ' dB') + '</span></p>' +
-      '<p class="small" id="inscTrim">Trimmed: ' + (r.trims.length ? esc(r.trims.join('; ')) : 'nothing (fits at full scale)') + '</p>' +
-      '<p class="small"><label>Fee rate <input type="number" id="inscRate" min="1" max="500" value="12" style="width:5em"> sat/vB</label> · <span id="inscFee"></span></p>' +
-      '<p class="small">🔑 Taproot only: the inscription goes to a <b>bc1p…</b> address (preview: <code>' + MOCK_ADDR.slice(0, 14) + '…</code> ' + (I.isTaproot(MOCK_ADDR) ? '✓ Taproot' : '✗') + '). Pets only: the image is always rendered from your pet (no uploads). Hosted mode (default) stays free.</p>' +
-      '<p class="small"><label><input type="checkbox" id="inscStuck"> simulate a stuck reveal (commit in, reveal not)</label></p>' +
-      '<div id="inscStatus" class="logbox small" aria-live="polite"></div>' +
-      '<p><button type="button" class="btn ghost" id="inscBack">← Back</button> <button type="button" class="btn" id="inscOk">Confirm (preview)</button></p>';
-    R.animate($('inscOrig'), P.frames.map(function (f) { return { width: 32, height: 32, data: f.data }; }));
-    Array.prototype.forEach.call(document.querySelectorAll('#inscFramePick [data-frame]'), function (el) { el.onclick = function () { request({ petId: pet.id, frame: Number(el.getAttribute('data-frame')), nameStamp: P.nameStamp }, onDone); }; });
-    Array.prototype.forEach.call(document.querySelectorAll('#inscNamePick [data-name]'), function (el) { el.onclick = function () { request({ petId: pet.id, frame: P.frame, nameStamp: el.getAttribute('data-name') }, onDone); }; });
-    function rate() { var v = Number($('inscRate').value); return isFinite(v) && v >= 1 ? Math.min(500, v) : 1; }
-    function feeTxt() { var f = I.fee(r.bytes.length, rate()); $('inscFee').innerHTML = 'estimate <b>' + f.sats.toLocaleString('en-US') + ' sats</b> (' + f.btc.toFixed(8) + ' BTC) for ~' + f.vbytes + ' vB (commit + reveal; image KB/4 vbytes)'; return f; }
-    feeTxt(); $('inscRate').oninput = feeTxt; $('inscBack').onclick = close; $('inscX').onclick = close;
-    $('inscOk').onclick = function () {
-      var st = $('inscStatus'), stuck = $('inscStuck').checked;
-      function abort(msg, rec) { if (rec) { var LL = list(), i = LL.indexOf(rec); if (i >= 0) LL.splice(i, 1); M.save(); renderActive(); }
-        st.innerHTML += '<div class="stuck" id="inscErr">⛔ ' + esc(msg) + ' Nothing was recorded.</div>'; b.busy = false; $('inscBack').disabled = false; $('inscBack').textContent = 'Close'; }
-      // re-validate + re-derive BEFORE COMMIT (pet still yours? art unchanged since the preview?)
-      var P2 = prepare({ petId: pet.id, frame: P.frame, nameStamp: P.nameStamp }); if (!P2.ok) return abort(P2.error);
-      if (P2.hash !== P.hash) return abort('The pet\'s art changed since the preview (gear / state). Reopen the preview.');
-      var f = feeTxt(), commitTx = V.sha('mock-commit:' + n + ':' + what), id = V.sha('mock-reveal:' + n + ':' + what) + 'i0';
-      b.busy = true; $('inscOk').disabled = true; $('inscBack').disabled = true; Array.prototype.forEach.call(document.querySelectorAll('#inscFramePick [data-frame], #inscNamePick [data-name]'), function (el) { el.disabled = true; });
-      var rec = I.record(list(), { id: id, kind: 'pet', petId: pet.id, label: what, parents: parents, frame: P.frame, nameStamp: P.nameStamp, imgHash: P.hash, kb: r.kb, format: 'png', size: r.width + 'x' + r.height, scale: r.scale,
-        frames: 1, colors: r.colors, feeRate: rate(), feeSats: f.sats, block: M.state().tip, commitTx: commitTx, thumb: thumb(P.still) });
-      rec.status = 'committing'; M.save(); setStep('commit', rec);
-      var steps = [function () { st.innerHTML += '<div>⏳ Committing… (preview: building the commit to ' + MOCK_ADDR.slice(0, 14) + '…, nothing is signed)</div>'; },
-        function () { rec.status = 'commit-only'; M.save(); setStep('commit', rec); st.innerHTML += '<div>📡 Commit broadcast (preview txid ' + commitTx.slice(0, 12) + '…)</div>'; },
-        function () { if (stuck) { rec.stuck = true; M.save(); setStep('stuck', rec); st.innerHTML += '<div class="stuck">⚠️ The commit is in, but the reveal has not confirmed. Your sats are safe in the commit output: <b>do not re-commit</b>. ' +
-            'Wait for the commit to confirm, then retry the reveal with the same key (or a higher fee rate). Keep this page open; the reveal can be retried any time from the commit output.</div>' +
-            '<button type="button" class="btn" id="inscRetry">Retry reveal (preview)</button>'; b.busy = false; $('inscRetry').onclick = function () { this.disabled = true; b.busy = true; stuck = false; rec.stuck = false; M.save(); setStep('reveal', rec); run(3); }; return 'stop'; }
-          setStep('reveal', rec); st.innerHTML += '<div>🔓 Revealing… (preview)</div>'; },
-        function () { // re-validate + re-derive BEFORE REVEAL: the revealed bytes must be the pet's own art, hash-identical to the commit
-          var P3 = prepare({ petId: pet.id, frame: rec.frame, nameStamp: rec.nameStamp }); if (!P3.ok) { abort(P3.error, rec); return 'stop'; }
-          if (P3.hash !== rec.imgHash) { abort('Reveal refused: the art no longer matches the committed pet image.', rec); return 'stop'; }
-          rec.status = 'inscribed'; delete rec.stuck; M.save(); setStep('done', rec); st.innerHTML += '<div>✅ Inscribed! <b>Inscription #' + rec.n + '</b> (inscription ' + rec.perPet + ' of this pet, still PNG) · ' + mockLink(id) + '</div>';
-          b.busy = false; $('inscBack').disabled = false; $('inscBack').textContent = 'Close'; if (onDone) onDone(rec); }];
-      function run(i) { if (i >= steps.length) return; setTimeout(function () { if (steps[i]() === 'stop') return; run(i + 1); }, 650); }
-      run(0); };
-    b.classList.add('on'); return { ok: true, petId: pet.id, frame: P.frame, nameStamp: P.nameStamp, kb: r.kb, hash: P.hash }; }
-  /** pet page section */
+    var pet = P.pet, r = P.r, thumb = pngURL(r.bytes);
+    shell('Inscribe pet #' + pet.id, '<div class="inscprev"><img alt="" src="' + thumb + '" style="width:192px;height:192px;image-rendering:pixelated"><div class="small">' +
+      '<p><b>' + esc(pet.name) + '</b> · pet #' + pet.id + ' · rendered from the chain at block ' + P.meta.b + (P.meta.g.length ? ' with its worn gear' : '') + '</p>' +
+      '<p>Still PNG ' + r.width + '×' + r.height + ' (' + esc(r.scale) + ', lossless) · ' + r.kb + ' KB</p>' +
+      (P.frames.length > 1 ? '<p><label>Frame to inscribe <select id="inscFrame">' + P.frames.map(function (_, i) { return '<option value="' + i + '"' + (i === P.meta.f ? ' selected' : '') + '>frame ' + (i + 1) + '</option>'; }).join('') + '</select></label></p>' : '') +
+      '<p><label>Name stamp <select id="inscStamp">' + I.NAME_POS.map(function (x) { return '<option value="' + x + '"' + (x === P.meta.s ? ' selected' : '') + '>' + (x === 'none' ? 'No name' : x) + '</option>'; }).join('') + '</select></label></p>' +
+      '<p><label>Fee rate <input type="number" id="inscRate" min="1" max="500" value="" style="width:5em"> sat/vB</label> <span id="inscFee" class="muted"></span></p>' +
+      '<p class="muted">This exact still will be inscribed to your address <b>' + esc(P.owner) + '</b>. You pay Bitcoin network fees only (no site fee, no XCPETS). Signed in <b>XCP Wallet</b>.</p></div></div>' +
+      '<div id="inscSteps" class="small"></div><p><button type="button" class="btn" id="inscGo2">Continue with XCP Wallet…</button> <button type="button" class="btn ghost" id="inscBack">Back</button></p>');
+    $('inscBack').onclick = close;
+    var re = function () { request({ petId: pet.id, frame: $('inscFrame') ? Number($('inscFrame').value) : 0, nameStamp: $('inscStamp').value }, onDone); };
+    if ($('inscFrame')) $('inscFrame').onchange = re; $('inscStamp').onchange = re;
+    function est() { var x = Number($('inscRate').value); if (!(x > 0)) return; try { var pl = T.plan({ tempPriv: T.newTempKey(), meta: P.meta, bytes: r.bytes, network: E.network, feeRate: x, receiver: P.owner });
+        $('inscFee').textContent = '≈ ' + sats(pl.revealFee + Math.ceil(150 * x)) + ' network fees + ' + sats(pl.postage) + ' that stays with the inscription in your wallet'; } catch (e) { $('inscFee').textContent = e.message; } }
+    feeRate().then(function (x) { if ($('inscRate')) { $('inscRate').value = x; est(); } }); $('inscRate').oninput = est;
+    $('inscGo2').onclick = function () { flow(P, Number($('inscRate').value), onDone); };
+    return { ok: true, petId: pet.id, frame: P.meta.f, nameStamp: P.meta.s, kb: r.kb, hash: P.hash };
+  }
+  function step(html, cls) { var s = $('inscSteps'); if (s) s.insertAdjacentHTML('beforeend', '<div class="' + (cls || '') + '">' + html + '</div>'); }
+  function flow(P, rate, onDone) {
+    var b = ensureBox(), go = $('inscGo2'), back = $('inscBack'); if (!(rate > 0 && rate <= 500)) return step('⛔ Enter a fee rate between 1 and 500 sat/vB.', 'stuck');
+    go.disabled = true; b.busy = true; ['inscFrame', 'inscStamp', 'inscRate'].forEach(function (k) { if ($(k)) $(k).disabled = true; });
+    var prov, addr, rec, C, tempPriv = T.newTempKey();
+    function stop(e) { b.busy = false; step('⛔ ' + esc(e && e.message || e), 'stuck'); back.textContent = 'Close'; }
+    selfCheck(P).then(function () { step('🔌 Connecting XCP Wallet…'); return E.provider(); }).then(function (p) { prov = p; return p.request({ method: 'xcp_requestAccounts' }); })
+      .then(function (res) { addr = (res && res.accounts && res.accounts[0]) || (Array.isArray(res) ? res[0] : null);
+        if (addr !== P.owner) throw new Error('XCP Wallet is on ' + (addr || 'no address') + ', but pet #' + P.pet.id + ' belongs to ' + P.owner + '. Switch the active address in XCP Wallet.');
+        T.requireOwnerAddr(addr, E.network); step('✓ Connected: ' + esc(addr) + '. Reading your spendable BTC…');
+        return Promise.all([spendable(addr), prov.request({ method: 'xcp_getAddresses' }).catch(function () { return null; })]); })
+      .then(function (x) { var S = x[0], ga = x[1], pk = ga && ga.active && (ga.active.publicKey || ga.active.pubkey), tik = null;
+        if (pk && T.addrType(addr, E.network) === 'tr') tik = pk.length === 66 ? pk.slice(2) : pk;
+        if (S.excluded.cp || S.excluded.small || S.excluded.unconf) step('<span class="muted">Not used: ' + [S.excluded.cp && S.excluded.cp + ' UTXO(s) holding Counterparty assets', S.excluded.small && S.excluded.small + ' small UTXO(s) ≤ 10,000 sats (may hold inscriptions)', S.excluded.unconf && S.excluded.unconf + ' unconfirmed'].filter(Boolean).join(' · ') + '.</span>');
+        var pl = T.plan({ tempPriv: tempPriv, meta: P.meta, bytes: P.r.bytes, network: E.network, feeRate: rate, receiver: addr });
+        C = T.buildCommitPsbt({ plan: pl, from: addr, utxos: S.utxos, feeRate: rate, network: E.network, tapInternalKey: tik });
+        var Rv = T.revealFromLeaf({ tempPriv: tempPriv, leaf: pl.leaf, network: E.network, receiver: addr, commitTxid: C.txid, commitAmount: pl.commitAmount });
+        rec = { network: E.network, petId: P.pet.id, owner: addr, tempPriv: T.hex.encode(tempPriv), tempPubX: pl.tempPubX, commitAddress: pl.commitAddress, commitTxid: C.txid, commitAmount: pl.commitAmount,
+          commitPsbtHex: C.psbtHex, revealHex: Rv.hex, revealTxid: Rv.txid, leafHex: pl.leafHex, status: 'unsigned', created: new Date().toISOString(), meta: P.meta };
+        savePending(rec);
+        step('🧾 Commit: ' + sats(pl.commitAmount) + ' to the inscription script + ' + sats(C.fee) + ' fee' + (C.change ? ' (change ' + sats(C.change) + ' back to you)' : '') + ' · Reveal: ' + sats(pl.revealFee) + ' fee, ' + sats(pl.postage) + ' to you with the inscription. <b>Total network fees ' + sats(C.fee + pl.revealFee) + '</b>.');
+        step('💾 <b>Download the recovery file first.</b> It holds the one-time key for this inscription\'s commit and the signed reveal; with it you can always finish or refund. <button type="button" class="btn" id="inscDl">Download recovery file</button> <button type="button" class="btn" id="inscSign" disabled>Sign in XCP Wallet</button>');
+        $('inscDl').onclick = function () { download('xcpets-inscription-pet' + P.pet.id + '-' + C.txid.slice(0, 8) + '.json', T.recoveryFile(rec)); rec.fileSaved = true; savePending(rec); $('inscSign').disabled = false; };
+        $('inscSign').onclick = function () { this.disabled = true; $('inscDl').disabled = true; sign(); };
+        b.busy = false; })
+      .catch(stop);
+    function sign() { b.busy = true; step('✍️ Approve the payment in XCP Wallet (to ' + esc(rec.commitAddress.slice(0, 14)) + '…, ' + sats(rec.commitAmount) + ')…');
+      var si = {}; si[addr] = C.used.map(function (_, i) { return i; });
+      prov.request({ method: 'xcp_signBitcoinPsbt', params: [{ hex: C.psbtHex, signInputs: si, sighashTypes: C.used.map(function () { return 1; }),
+        intent: { standard: 'xcp-wallet/bitcoin-payment', version: 1, action: 'pay', outputs: [{ address: rec.commitAddress, amountSats: rec.commitAmount }], description: 'XCPETS inscription of pet #' + rec.petId + ' (commit)', reference: 'xcpets-insc-' + rec.petId } }] })
+        .then(function (res) { var Fz = T.finalizeSigned(typeof res === 'string' ? res : res && res.hex); if (Fz.txid !== rec.commitTxid) throw new Error('XCP Wallet returned a different commit (' + Fz.txid.slice(0, 10) + '…); not broadcasting. Nothing was sent.');
+          rec.commitHex = Fz.hex; rec.status = 'signed'; savePending(rec); step('📡 Broadcasting the commit…');
+          return broadcast(Fz.hex).catch(function (e) { return prov.request({ method: 'xcp_broadcastTransaction', params: [Fz.hex] }).then(function (x) { return x && x.txid; }, function () { throw e; }); }); })
+        .then(function () { rec.status = 'commit-sent'; savePending(rec); step('✓ Commit sent ' + txLink(rec.commitTxid) + '. 📡 Broadcasting the reveal…');
+          return broadcast(rec.revealHex).then(function () { rec.status = 'reveal-sent'; savePending(rec); step('✓ Reveal sent ' + txLink(rec.revealTxid) + '. Inscription ' + inscLink(rec.revealTxid) + ' gets its XCPETS number when it confirms.'); },
+            function (e) { step('⚠️ Reveal not accepted yet (' + esc(e.message) + '). Your BTC is safe in the commit output: <b>do not re-commit</b>. It will be retried automatically; you can also retry from the Inscriptions page.', 'stuck'); }); })
+        .then(function () { b.busy = false; back.textContent = 'Close'; track(rec, function (st) { step(st); if (onDone) onDone(rec); }); })
+        .catch(function (e) { if (e && e.code === 4001) { rec.status = 'cancelled'; savePending(rec); return stop('You cancelled in XCP Wallet. Nothing was signed or sent.'); } stop(e); }); }
+  }
+  /* ---- confirmation tracking (+ automatic reveal retry once the commit is in) ---- */
+  var tracking = {};
+  function track(rec, cb) { if (tracking[rec.commitTxid]) return; tracking[rec.commitTxid] = 1;
+    (function poll() { Promise.all([json('/tx/' + rec.commitTxid + '/status').catch(function () { return null; }), json('/tx/' + rec.revealTxid + '/status').catch(function () { return null; })]).then(function (s) {
+      var c = s[0], v = s[1];
+      if (v && v.confirmed) { rec.status = 'confirmed'; rec.height = v.block_height; savePending(rec); delete tracking[rec.commitTxid]; return cb && cb('✅ Inscription confirmed in block ' + v.block_height + '.'); }
+      if (c && !v && rec.status !== 'refunded') broadcast(rec.revealHex).then(function () { rec.status = 'reveal-sent'; savePending(rec); }, function () {});
+      setTimeout(poll, E.pollMs || 30000); }); })(); }
+  /* ---- recovery / refund (loads the recovery file) ---- */
+  function recover(o, host) {
+    host.innerHTML = '<p class="small">Checking ' + txLink(o.commitTxid) + '…</p>';
+    Promise.all([json('/tx/' + o.commitTxid + '/status').catch(function (e) { return e.status === 404 || e.status === 400 ? null : Promise.reject(e); }), json('/tx/' + o.commitTxid + '/outspend/0').catch(function () { return null; })]).then(function (s) {
+      var st = s[0], sp = s[1], h = '<p class="small">Pet #' + esc(o.petId) + ' · owner ' + esc(o.owner) + ' · commit ' + txLink(o.commitTxid) + ' (' + sats(o.commitAmountSats) + ')</p>';
+      if (!st) { host.innerHTML = h + '<p>The commit was never broadcast (or not seen yet): nothing was spent. If you just signed it, wait a minute and load the file again.</p>'; return; }
+      if (sp && sp.spent) { host.innerHTML = h + (sp.txid === o.revealTxid ? '<p>✅ Already revealed: inscription ' + inscLink(o.revealTxid) + '.</p>' : '<p>The commit output was already spent by ' + txLink(sp.txid) + ' (refunded?). Nothing left to do.</p>'); return; }
+      host.innerHTML = h + '<p>The commit output is unspent' + (st.confirmed ? ' (confirmed)' : ' (unconfirmed)') + '. Finish the inscription, or take the BTC back.</p>' +
+        '<p><button type="button" class="btn" id="recReveal">Broadcast reveal</button> <label class="small">or refund at <input type="number" id="recRate" min="1" max="500" value="3" style="width:4em"> sat/vB</label> <button type="button" class="btn ghost" id="recRefund">Refund to ' + esc(o.owner.slice(0, 12)) + '…</button></p><p class="small" id="recMsg"></p>';
+      $('recReveal').onclick = function () { broadcast(o.revealTxHex).then(function () { $('recMsg').innerHTML = '✓ Reveal sent: ' + inscLink(o.revealTxid); }, function (e) { $('recMsg').textContent = '⛔ ' + e.message; }); };
+      $('recRefund').onclick = function () { try { var Rf = T.buildRefund({ tempPriv: o.tempPrivateKey, leaf: o.envelopeLeafHex, network: o.network, feeRate: Number($('recRate').value), to: o.owner, commitTxid: o.commitTxid, commitAmount: o.commitAmountSats });
+          if (!confirm('Refund ' + sats(Rf.amount) + ' to ' + o.owner + ' (fee ' + sats(Rf.fee) + ')? The inscription will NOT happen.')) return;
+          broadcast(Rf.hex).then(function () { $('recMsg').innerHTML = '✓ Refund sent ' + txLink(Rf.txid); var l = pending(); l.forEach(function (x) { if (x.commitTxid === o.commitTxid) x.status = 'refunded'; }); lsSet(PKEY, l); }, function (e) { $('recMsg').textContent = '⛔ ' + e.message; }); }
+        catch (e) { $('recMsg').textContent = '⛔ ' + e.message; } };
+    }, function (e) { host.innerHTML = '<p class="stuck">⛔ Could not reach ' + esc(E.mempoolApi) + ': ' + esc(e.message) + '</p>'; }); }
+  function recoverPanel(host) {
+    host.innerHTML = '<h3 class="sec">Recover / refund</h3><p class="small">Load the recovery file you downloaded before signing. It finishes a stuck inscription or returns the commit BTC to your address. Nothing leaves this browser except the transaction you choose to broadcast.</p>' +
+      '<p><input type="file" id="recFile" accept="application/json,.json"></p><div id="recOut"></div>' +
+      (pending().filter(function (x) { return x.status !== 'confirmed' && x.status !== 'refunded' && x.status !== 'cancelled'; }).map(function (x) {
+        return '<p class="small">⏳ Pet #' + esc(x.petId) + ' · ' + esc(x.status) + ' · commit ' + txLink(x.commitTxid) + ' <button type="button" class="btn ghost" data-rec="' + esc(x.commitTxid) + '">Check / recover</button></p>'; }).join(''));
+    $('recFile').onchange = function () { var f = this.files && this.files[0]; if (!f) return; if (f.size > 2e6) { $('recOut').textContent = '⛔ File too large.'; return; }
+      f.text().then(function (t) { var o; try { o = T.parseRecovery(t); } catch (e) { $('recOut').textContent = '⛔ ' + e.message; return; } if (o.network !== E.network) { $('recOut').textContent = '⛔ This file is for ' + o.network + '; this page is on ' + E.network + '.'; return; } recover(o, $('recOut')); }); };
+    host.querySelectorAll('[data-rec]').forEach(function (bt) { bt.onclick = function () { var x = pending().filter(function (q) { return q.commitTxid === bt.getAttribute('data-rec'); })[0]; if (x) recover(T.recoveryFile(x), $('recOut')); }; }); }
+  /* ---- registry (numbers) ---- */
+  var regP = null;
+  function registry(force) { if (regP && !force) return regP; var w = M.world(), owners = {};
+    w.pets.forEach(function (p) { var a = E.addrOf(p.owner); try { if (a) { T.requireOwnerAddr(a, E.network); owners[a] = 1; } } catch (e) {} });
+    var cache = lsGet(VKEY, {}), Rg = new G.Registry({ fetch: E.fetch, mempoolApi: E.mempoolApi, fromBlock: E.fromBlock, inflate: inflate, cache: cache, expected: function (m) { try { return canonical(m); } catch (e) { return { error: e.message }; } } });
+    regP = Rg.build(Object.keys(owners)).then(function (res) { lsSet(VKEY, Rg.cache); return res; }); return regP; }
   function petSection(host, pet, w, mine) {
-    var L = list(), insc = I.ofPet(L, pet.id), head = w ? V.wornOf(w, pet.id).filter(function (g) { return g.slot === 'head'; })[0] : null;
-    host.innerHTML = '<h2 class="sec" data-ico="pet">⛓️ On-chain art <span class="chip">PREVIEW</span></h2><p class="small">' + (insc.length ? 'Inscribed ' + insc.length + '× (latest: inscription #' + insc[insc.length - 1].n + '). The hosted art stays the default view.' : 'Art: <b>hosted</b> (default, free). Upgrade it to an on-chain inscription: one still PNG of your pet (Taproot, under 385 KB).') + '</p>' +
-      '<p class="small" id="inscLineage">' + (lineage(pet) || 'No inscriptions yet.') + '</p>' +
-      (mine && !pet.dead ? '<p><button type="button" class="btn" id="inscPetBtn">⛓️ Inscribe on-chain…</button>' + (head ? ' <span class="small muted">' + esc(head.label) + ' is drawn on the pet in its own inscription (only pets are inscribed).</span>' : '') + '</p>' : '');
-    var re = function () { petSection(host, pet, M.world(), mine); };
-    if ($('inscPetBtn')) $('inscPetBtn').onclick = function () { request({ petId: pet.id }, re); }; }
-  /** Inscriptions page: the picker lists ONLY pets that pass the entry-point check (exist, yours, alive). */
+    host.innerHTML = '<h2 class="sec" data-ico="pet">⛓️ On-chain art' + chip() + '</h2><p class="small" id="inscPetList">Reading inscriptions…</p>' +
+      (mine && !pet.dead ? '<p><button type="button" class="btn" id="inscPetBtn">⛓️ Inscribe on-chain…</button> <span class="small muted">Signed in XCP Wallet; you pay Bitcoin fees only.</span></p>' : '');
+    if ($('inscPetBtn')) $('inscPetBtn').onclick = function () { request({ petId: pet.id }, function () { regP = null; }); };
+    registry().then(function (res) { var mineL = res.list.filter(function (c) { return c.petId === pet.id; }), pend = res.pending.filter(function (c) { return c.meta.pet === pet.id; });
+      $('inscPetList').innerHTML = (mineL.length ? mineL.map(function (c) { return '⛓️ <b>Inscription #' + c.n + '</b> (' + c.perPet + ' of this pet) · block ' + c.height + ' · ' + inscLink(c.revealTxid); }).join('<br>') : 'Art: hosted (not inscribed yet).') +
+        (pend.length ? '<br>⏳ ' + pend.length + ' pending (unconfirmed)' : ''); }, function (e) { $('inscPetList').textContent = 'Could not read inscriptions: ' + e.message; }); }
   function page() {
-    var w = M.world(), L = list(), sel = $('inscPet');
-    var mine = w.pets.filter(function (p) { return I.checkRequest({ petId: p.id }, w, M.ME).ok; });
-    sel.innerHTML = mine.length ? mine.map(function (p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + esc(V.speciesLabel(p.species)) + ', ' + esc(p.stageName) + ')' + (I.ofPet(L, p.id).length ? ' ⛓️' : '') + '</option>'; }).join('') : '<option value="">(no pets you can inscribe)</option>';
-    $('inscGo').onclick = function () { if (!/^[1-9]\d*$/.test(sel.value)) return fail('Pick one of your pets.'); request({ petId: Number(sel.value) }, page); };
-    $('status').textContent = L.length + ' preview inscription' + (L.length === 1 ? '' : 's') + ' (global numbers #1…#' + L.length + ') · pets only · still PNG · nothing here is on chain.';
-    $('inscList').innerHTML = L.length ? '<table class="insctable"><tr><th>#</th><th>art</th><th>pet</th><th>status</th><th>parent(s)</th><th>size</th><th>fee est.</th><th>id</th></tr>' + L.slice().reverse().map(function (x) {
-      var par = (x.parents || []).map(function (id) { var p = L.filter(function (q) { return q.id === id; })[0]; return p ? '<a href="#insc-' + p.n + '">#' + p.n + '</a>' : '?'; }).join(' × ') || '—';
-      return '<tr id="insc-' + x.n + '"><td><b>#' + x.n + '</b></td><td>' + (x.thumb ? '<img class="inscthumb" src="' + esc(x.thumb) + '" alt="">' : '') + '</td><td><a href="pet.html?id=' + x.petId + '">' + esc(x.label) + '</a><div class="muted">pet · inscription ' + x.perPet + ' of this pet · still frame ' + ((x.frame || 0) + 1) + '</div></td>' +
-        '<td>' + (x.status === 'inscribed' ? '✅ inscribed' : x.status === 'commit-only' ? '⚠️ commit in, reveal pending' : '⏳ ' + esc(x.status)) + '</td><td>' + par + '</td><td>' + esc(x.kb) + ' KB PNG<div class="muted">' + esc(x.size) + ' ' + esc(x.scale) + '</div></td><td>' + Number(x.feeSats || 0).toLocaleString('en-US') + ' sats<div class="muted">@ ' + esc(x.feeRate) + ' sat/vB</div></td><td>' + mockLink(x.id) + '</td></tr>'; }).join('') + '</table>'
-      : '<p class="muted">No inscriptions yet. Pick a pet above, or use “Inscribe on-chain” on any pet page.</p>'; renderActive(); }
-  window.V2InscribeUI = { headCard: headCard, active: active, renderActive: renderActive, request: request, open: request, prepare: prepare, petSection: petSection, page: page, lineage: lineage, close: close, list: list, MOCK_ADDR: MOCK_ADDR };
+    var w = M.world(), sel = $('inscPet'), mine = w.pets.filter(function (p) { return I.checkRequest({ petId: p.id }, w, M.ME).ok; });
+    sel.innerHTML = mine.length ? mine.map(function (p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + esc(V.speciesLabel(p.species)) + ', ' + esc(p.stageName) + ')</option>'; }).join('') : '<option value="">(no pets yet: connect your wallet on Play)</option>';
+    $('inscGo').onclick = function () { if (!/^[1-9]\d*$/.test(sel.value)) return fail('Pick one of your pets.'); request({ petId: Number(sel.value) }, function () { regP = null; page(); }); };
+    if ($('inscRecover')) recoverPanel($('inscRecover'));
+    pending().filter(function (x) { return x.status === 'reveal-sent' || x.status === 'commit-sent'; }).forEach(function (x) { track(x); });
+    $('status').textContent = 'Reading inscriptions from the chain…';
+    registry(true).then(function (res) {
+      $('status').textContent = res.list.length + ' XCPETS inscription' + (res.list.length === 1 ? '' : 's') + (res.pending.length ? ' · ' + res.pending.length + ' pending' : '') + ' · numbered in chain order (block, position in block) · only pet art that matches the pet\'s render gets a number.' + (res.errors.length ? ' (' + res.errors.length + ' address lookup(s) failed; reload to retry)' : '');
+      $('inscList').innerHTML = (res.list.length ? '<table class="insctable"><tr><th>#</th><th>art</th><th>pet</th><th>block</th><th>inscription</th></tr>' + res.list.slice().reverse().map(function (c) {
+        return '<tr id="insc-' + c.n + '"><td><b>#' + c.n + '</b></td><td><img class="inscthumb" alt="" src="' + pngURL(c.body) + '" style="width:64px;height:64px;image-rendering:pixelated"></td><td><a href="pet.html?id=' + c.petId + '">pet #' + c.petId + '</a><div class="muted">inscription ' + c.perPet + ' of this pet</div></td><td>' + c.height + '</td><td>' + inscLink(c.revealTxid) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">No inscriptions yet.</p>') +
+        (res.invalid.length ? '<details class="small"><summary>' + res.invalid.length + ' XCPETS-tagged inscription(s) without a number</summary>' + res.invalid.map(function (c) { return '<div>' + txLink(c.revealTxid) + ': ' + esc(c.reason) + '</div>'; }).join('') + '</details>' : ''); },
+      function (e) { $('status').textContent = 'Could not read inscriptions: ' + e.message; }); }
+  window.V2InscribeUI = { request: request, open: request, prepare: prepare, canonical: canonical, selfCheck: selfCheck, petSection: petSection, page: page, registry: registry, recover: recover, close: close, spendable: spendable, track: track };
 })();

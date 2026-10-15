@@ -60,7 +60,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=6a2b6d3e3c'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=a3bd391df3'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return in the demo shows Nakamoto's entry from current data). */
@@ -212,11 +212,12 @@
     (function () { var gs0 = $('gear').closest('section') || $('gear').parentNode, bt = $('bornTraits') || document.createElement('section'); bt.className = 'panel'; bt.id = 'bornTraits';
       bt.innerHTML = '<h2 class="sec" data-ico="egg">Born traits</h2><table class="small borntraits">' + V.bornTraits(p, p.stage).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
       if (!bt.parentNode) gs0.parentNode.insertBefore(bt, gs0.nextSibling); })();
+    if (window.V2InscribeEnv && window.V2InscribeUI) { var gs1 = $('gear').closest('section') || $('gear').parentNode, h1 = document.createElement('section'); h1.className = 'panel'; h1.id = 'inscPanel'; gs1.parentNode.insertBefore(h1, gs1.nextSibling); V2InscribeUI.petSection(h1, p, w, p.owner === ME); return; } // TEST LINK only (?inscribe=test)
     // Inscriptions: COMING SOON (the inscribe flow is not live; no preview/commit is offered)
     (function () { var gs = $('gear').closest('section') || $('gear').parentNode, host = document.createElement('section'); host.className = 'panel'; host.id = 'inscPanel';
       host.innerHTML = '<h2 class="sec" data-ico="pet">On-chain art</h2><p><button type="button" class="btn" disabled aria-disabled="true">⛓️ Inscribe: coming soon</button></p><p class="small muted">Inscribing pet art on Bitcoin is not live yet. Art is hosted on this site for now.</p>';
       gs.parentNode.insertBefore(host, gs.nextSibling); })();
   }
-  function inscriptions() { /* coming soon: static notice only */ }
+  function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* else coming soon: static notice only */ }
   var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive }[page]; if (go) go();
 })();
