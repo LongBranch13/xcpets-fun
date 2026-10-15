@@ -200,7 +200,7 @@
   var invView = S.ui_inv || 'mine', invSlot = S.ui_invSlot || 'all';
   function renderInv(w) {
     var items = w.itemList.filter(function (g) { return g.owner === ME; }), box = $('inv'); $('invCount').textContent = items.filter(function (g) { return g.on == null; }).length;
-    $('tokens').textContent = '0'; $('keys').textContent = '0';
+    $('tokens').textContent = String(V.tokensOf(w, ME)); // roll tokens this wallet's pets found (each already became a free gear item)
     var cat = V.catalogBySlot(), slots = invSlot === 'all' ? V.V2_SLOTS : [invSlot];
     var h = '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (invView === 'mine' ? ' on' : '') + '" data-iv="mine">My gear by slot</button><button type="button" class="tab' + (invView === 'all' ? ' on' : '') + '" data-iv="all">Every piece by slot (' + V.ALL_GEAR.length + ')</button></div>' +
       '<div class="chips slotfilter"><button type="button" class="q' + (invSlot === 'all' ? ' on' : '') + '" data-is="all">All slots</button>' + V.V2_SLOTS.map(function (sl) { return '<button type="button" class="q' + (invSlot === sl ? ' on' : '') + '" data-is="' + sl + '">' + SL(sl) + '</button>'; }).join('') + '</div>';
