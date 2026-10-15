@@ -46,9 +46,16 @@
     n = vi(); for (i = 0; i < n; i++) { var val = parseInt(le(rd(hex, o, 8)), 16); o += 8; var l = vi(), spk = rd(hex, o, l); o += l; outs.push({ value: val, opReturn: spk.slice(0, 2) === '6a' }); }
     return { ins: ins, outs: outs };
   }
-  function live() { var t = Date.now(); spent = spent.filter(function (x) { return t - x.at < SPENT_MS; }); return spent.map(function (x) { return x.u; }); }
+  /* hotfix-compose (2026-10-15): exclusions are only for OUR still-unconfirmed burns. Drop an entry once its burn is confirmed (tracker), after 3 h,
+   * and keep at most MAX_EX so the compose URL stays short; chainClear() wipes them after a failed compose. */
+  var MAX_EX = 30, CHAIN_CAP = 24;
+  function confirmedTx() { var o = {}; try { tracker.list().forEach(function (x) { if (x.status === 'confirmed') o[x.txid] = 1; }); } catch (e) { } return o; }
+  function live() { var t = Date.now(), c = confirmedTx(); spent = spent.filter(function (x) { return t - x.at < SPENT_MS && !(x.tx && c[x.tx]); }).slice(-MAX_EX);
+    if (lastChange && (t - lastChange.at >= SPENT_MS || c[lastChange.u.split(':')[0]])) lastChange = null; return spent.map(function (x) { return x.u; }); }
+  function chainClear() { spent = []; lastChange = null; }
+  function pendingChain() { live(); var o = {}; spent.forEach(function (x) { if (x.tx) o[x.tx] = 1; }); return Object.keys(o).length; }
   function noteSent(res, txid) {
-    try { var d = decodeTx(res.rawtransaction), t = Date.now(); d.ins.forEach(function (u) { spent.push({ u: u, at: t }); });
+    try { var d = decodeTx(res.rawtransaction), t = Date.now(); d.ins.forEach(function (u) { spent.push({ u: u, at: t, tx: txid }); });
       var ch = -1; d.outs.forEach(function (x, i) { if (!x.opReturn && (res.btc_change == null || x.value === Number(res.btc_change))) ch = i; });
       lastChange = ch >= 0 && txid ? { u: txid + ':' + ch, at: t } : null; } catch (e) { /* undecodable: keep going, node view only */ }
   }
@@ -86,7 +93,7 @@
       tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode);
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
       return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status); e5.retryable = true; e5.backoff = true; throw e5; } return r.json(); }, function (e) {
-        if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'unreachable'); e2.retryable = true; e2.backoff = true; throw e2; })
+        if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; e2.backoff = true; throw e2; })
         .then(function (j) {
           if (j.error) { var e3 = new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); e3.retryable = /unsupported node operation|not ready|unavailable/i.test(e3.message); throw e3; }
           var chk = BurnCore.checkComposeResult(j.result, exp); if (!chk.ok) { var e4 = new Error('compose mismatch: ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
@@ -99,12 +106,18 @@
       else if (/balance|insufficient/i.test(m)) m = 'Not enough XCPETS for this burn. Node said: ' + e.message;
       return new Error(m);
     }
+    function host(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
+    var chained = !!(live().length || lastChange), plainRetry = false;
     function go(i) {
-      if (i >= urls.length) return Promise.reject(new Error('Could not build your burn: every Counterparty node failed (' + errs.join('; ') + ').'));
+      if (i >= urls.length) {
+        if (chained && !plainRetry) { plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry */
+        return Promise.reject(new Error('Could not build your burn: every Counterparty node failed. ' + errs.join(' · ')));
+      }
       if (onTry) onTry(i + 1, urls.length);
       return call(i, false).catch(function (e) {
-        if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message)) return (lastChange ? call(i, 'change').catch(function () { return call(i, 'unconf'); }) : call(i, 'unconf')).catch(function (e2) { throw friendly(e2); });
-        if (e.retryable) { errs.push('node ' + (i + 1) + ': ' + e.message); return go(i + 1); }
+        if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message)) return (lastChange ? call(i, 'change').catch(function () { return call(i, 'unconf'); }) : call(i, 'unconf')).catch(function (e2) {
+          if (chained && !plainRetry) { plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { throw friendly(e3); }); } throw friendly(e2); });
+        if (e.retryable) { errs.push(host(urls[i]) + ': ' + e.message); return go(i + 1); }
         throw friendly(e);
       });
     }
@@ -114,6 +127,7 @@
   function send(plan, viewed, onTry) {
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
+      if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
       return feeRate().then(function (fee) { return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
         return w.signAndBroadcast(res).then(function (r) {
           noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.tag, amount: plan.amount, label: plan.label || plan.tag, at: Date.now(), status: 'sent' });
@@ -131,6 +145,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = errHtml(e); }); }; }
   }
-  return { send: send, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
+  return { send: send, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; }, current: function () { return wallet && wallet.address; } };
 });
