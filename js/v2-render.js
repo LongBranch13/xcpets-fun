@@ -7,10 +7,16 @@
   BonusGear.DEFS['v2-black-eye'] = BonusGear.DEFS['v2-black-eye'] || { slot: 'face', tier: 0, label: 'Black eye', at: 'eyes', map: ['VV.......', 'VnV......', '.VV......'] };
   BonusGear.DEFS['v2-rumble-crown'] = BonusGear.DEFS['v2-rumble-crown'] || { slot: 'head', tier: 3, label: 'Rumble crown', at: 'head', dy: -1, map: ['y.y.y', 'yyyyy', 'yQyQy'] };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
-  function paint(c, img) { c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.data), 32, 32), 0, 0); }
-  var animated = [];
-  setInterval(function () { animated = animated.filter(function (a) { return document.body.contains(a.c); }); animated.forEach(function (a) { a.f = (a.f + 1) % a.fr.length; paint(a.c, a.fr[a.f]); }); }, 300);
-  function animate(c, fr) { animated = animated.filter(function (a) { return a.c !== c; }); paint(c, fr[0]); if (fr.length > 1) animated.push({ c: c, fr: fr, f: 0 }); return c; }
+  /* Unfreeze hotfix (2026-10-14): with thousands of pets the old 300 ms tick repainted EVERY animated canvas (on screen or not, allocating a
+   * new ImageData each time) and animate() re-filtered the whole list per canvas (O(n^2) on render). Now: ImageData cached per frame,
+   * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
+  var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
+  function paint(c, img) { c.getContext('2d').putImageData(imgOf(img), 0, 0); }
+  var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (a) a.vis = e.isIntersecting; }); }) : null;
+  setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
+    animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
+  function animate(c, fr) { paint(c, fr[0]); if (fr.length > 1) { var o = animated.get(c); animated.set(c, { fr: fr, f: 0, vis: o ? o.vis : !seen }); if (seen && !o) seen.observe(c); } else if (animated.has(c)) { animated.delete(c); if (seen) seen.unobserve(c); } return c; }
 
   // ---------------------------------------------------------------- v2 face spots (2026-10-14): nose + mouth found on the ACTUAL bare sprite
   /** faceSpots(bareImg, a) -> { ey, ex, nose:{x0,x1,y0,y1}|null, mouth:{x,y,src} }. bareImg = the gear-less render on the magenta key; a = BonusGear.anchors().
