@@ -92,7 +92,7 @@
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')';
-    renderPets(w); renderInv(w); renderBattles(w); renderRumble(w); renderBreed(w); renderLog(w);
+    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); renderRumble(w); renderBreed(w); renderLog(w);
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
@@ -286,6 +286,23 @@
       else if (B && B.owner === ME) out.push('<div class="txrow pend-in">⏳ <b>Challenged by:</b> ' + petLbl(w, u.t.a) + ' vs your ' + petLbl(w, u.t.b) + ' · pending confirmation' + (when ? ' · seen ' + when : '') + ' · you can accept once it confirms' + txa(u.x.tx_hash) + '</div>'); });
     return out;
   }
+  /* fight results (2026-10-15, Jake): on live the accept only resolves once its burn CONFIRMS, so playing the fight right after sending did nothing
+   * (the fight had no turns yet). Now: after sending, say so; when a fight involving one of your pets turns 'done' in the replayed world, BOTH players
+   * get the fight animation once (per browser) plus a result toast: winner, the piece taken, the loser's black eye. Display only, nothing replayed differently. */
+  function afterAccept(id) { var f = world().fights[id - 1]; if (f && f.status === 'done') { seenFight(f.id); return playFight(f); }
+    toast('⚔️ Accept sent for fight ' + id + '. The fight plays here for both players once your accept burn confirms in a block.', 9000); }
+  var FKEY = 'xcpets-v2-fights-seen-' + KEY + '-' + ME;
+  function fightSeen() { try { return JSON.parse(localStorage.getItem(FKEY)); } catch (e) { return null; } }
+  function seenFight(id) { var s = fightSeen() || {}; s[id] = 1; try { localStorage.setItem(FKEY, JSON.stringify(s)); } catch (e) { } }
+  function notifyFights(w) { if (!ME) return; var seen = fightSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
+    w.fights.forEach(function (f) { if (f.status !== 'done' || seen[f.id]) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!(A && A.owner === ME) && !(B && B.owner === ME) && f.challenger !== ME) return;
+      seen[f.id] = 1; if (first && tip - f.acceptBlock > V.FIGHT_WINDOW) return; q.push(f); }); /* first visit: only fights resolved in the last day play */
+    try { localStorage.setItem(FKEY, JSON.stringify(seen)); } catch (e) { }
+    q.forEach(function (f) { var win = w.byId[f.winner], los = w.byId[f.loser], mineWon = win && win.owner === ME;
+      toast('⚔️ Fight ' + f.id + ' result: ' + (mineWon ? 'your ' : '') + esc(win ? win.name : '') + ' #' + f.winner + ' beat ' + (!mineWon ? 'your ' : '') + esc(los ? los.name : '') + ' #' + f.loser +
+        (f.spoils ? ' and took ' + esc(f.spoils.label) : ' (no takeable gear)') + ' · #' + f.loser + ' has a black eye until block ' + fmt(f.acceptBlock + V.BLACK_EYE_BLOCKS) + '. <a href="#" data-replay="' + f.id + '">▶ Replay</a>', 15000);
+      var a = $('toasts').lastChild.querySelector('[data-replay]'); if (a) a.onclick = function (e) { e.preventDefault(); playFight(world().fights[f.id - 1]); }; });
+    if (q.length) setTimeout(function () { playFight(q[q.length - 1]); }, 600); }
   function renderBattles(w) {
     var a = $('fMine').value, b = $('fTheirs').value;
     $('fMine').innerHTML = fighters(w, ME).map(opt).join('') || '<option value="">no eligible pet</option>'; $('fTheirs').innerHTML = fighters(w, ME, true).map(opt).join('');
@@ -293,13 +310,13 @@
     $('fights').innerHTML = w.fights.slice().reverse().map(function (f) { var A = w.byId[f.a], B = w.byId[f.b];
       return '<div class="txrow">⚔️ fight ' + f.id + ': #' + f.a + ' ' + esc(A.name) + ' vs #' + f.b + ' ' + esc(B.name) + ' · ' + f.status + (f.status === 'open' ? ' (accept by block ' + f.expires + ')' : '') +
         (f.status === 'done' ? ' · winner #' + f.winner + (f.spoils ? ' took ' + esc(f.spoils.label) : '') + ' <button class="q" data-view="' + f.id + '">▶ Replay</button>' : '') +
-        (f.status === 'open' && B.owner !== ME ? ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>' : '') + (f.status === 'open' && B.owner === ME ? ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (690)</button>' : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
+        (f.status === 'open' && B.owner !== ME ? (M.prod ? ' <span class="muted small">waiting for the owner of #' + f.b + ' to accept</span>' : ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>') : '') + (f.status === 'open' && B.owner === ME ? ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (690)</button>' : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
     var pb = ME ? pendingBattles(w) : [];
     $('fPending').innerHTML = '<h3 class="sec" data-ico="sword">Your pending challenges</h3>' + (pb.join('') || '<p class="muted small">' + (ME ? 'No pending challenges sent or received.' : 'Connect your wallet to see your challenges.') + '</p>');
-    $('fPending').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { playFight(world().fights[x.dataset.acc - 1]); }); }; });
+    $('fPending').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
     $('fights').querySelectorAll('[data-view]').forEach(function (x) { x.onclick = function () { playFight(world().fights[x.dataset.view - 1]); }; });
     $('fights').querySelectorAll('[data-npc]').forEach(function (x) { x.onclick = function () { var f = world().fights[x.dataset.npc - 1]; adv(3); burn(world().byId[f.b].owner, 'pet:accept:' + f.id, 690); save(); render(); playFight(world().fights[f.id - 1]); }; });
-    $('fights').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { playFight(world().fights[x.dataset.acc - 1]); }); }; });
+    $('fights').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
   }
   $('fGo').onclick = function () { var a = $('fMine').value, b = $('fTheirs').value; if (!a || !b) return toast('Pick both pets'); confirmPlans('Challenge #' + b, [{ tag: V.buildTag('fight', { a: a, b: b }), amount: 690 }]); };
   $('fNpc').onclick = function () { var w = world(), my = fighters(w, ME), np = fighters(w, ME, true).filter(function (p) { return !p.fightDays[V.day(S.tip)]; });
@@ -350,6 +367,7 @@
   }
   $('rGo').onclick = function () { var o = $('rPet').selectedOptions[0]; if (!o) return toast('No eligible pet'); confirmPlans('Royal Rumble entry #' + o.value, [{ tag: 'pet:rumble:' + o.value, amount: Number(o.dataset.c) }]); };
   $('rNpc').onclick = function () { var w = world(); fighters(w, ME, true).forEach(function (p) { var has = V.wornOf(w, p.id).some(function (g) { return !g.legendary; }); burn(p.owner, 'pet:rumble:' + p.id, has ? 69 : 759); }); save(); render(); };
+  if (M.prod) ['fNpc', 'rNpc', 'rSeed'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* demo-only NPC simulation buttons: nothing to simulate on the live chain */
   $('rSeed').onclick = function () { adv(V.seedBlockOfWeek(V.weekOf(S.tip)) - S.tip + 1); save(); render(); };
   // ---------------------------------------------------------------- breeding
   function renderBreed(w) {
@@ -426,7 +444,8 @@
   window.V2PlayBreed = playBreed; window.V2PetIds = petIds; // used by the screenshot/UI check
   // ---------------------------------------------------------------- burns + log (live .txrow look)
   function renderLog(w) {
-    var row = function (l) { return '<a href="#" class="txrow" data-tx="' + esc(l.tx) + '">' + esc(l.kind) + ' · block ' + l.block + ' · ' + esc(l.msg) + '</a>'; };
+    var KL = { fight: 'challenge', fightDone: 'fight result' }; /* 2026-10-15: plain labels for battle lines (display only) */
+    var row = function (l) { return '<a href="#" class="txrow" data-tx="' + esc(l.tx) + '">' + esc(KL[l.kind] || l.kind) + ' · block ' + l.block + ' · ' + esc(l.msg) + '</a>'; };
     var mineTx = {}; S.rows.forEach(function (r) { if (r.source === ME) mineTx[r.tx_hash] = 1; });
     var pend = V2Wallet.tracker.list().filter(function (t) { return !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).reverse().map(function (t) { return '<div class="small">⏳ ' + esc(t.label || t.tag) + ' · ' + fmt(t.amount) + ' XCPETS · <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + t.txid + '">' + t.txid.slice(0, 8) + '…</a> · waiting for a block</div>'; }).join('');
     $('pending').innerHTML = pend + (w.log.filter(function (l) { return mineTx[l.tx]; }).slice(-8).reverse().map(row).join('') || (pend ? '' : 'None yet.'));
