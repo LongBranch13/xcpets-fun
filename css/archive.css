@@ -1,0 +1,30 @@
+/* Community Pets Archive: Jake's Option C (gallery with featured player), 2026-10-14. All archive styling lives here (.archive-* classes). */
+.archive-intro { color: #9fb3a5; max-width: 720px; }
+.archive-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.archive-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 2px solid #2c3a30; border-radius: 999px; background: #141c17; color: #e8f5e9; font-size: 13px; font-weight: 700; cursor: pointer; }
+.archive-chip.on { border-color: #ffc93c; color: #ffc93c; }
+.archive-feat { display: grid; grid-template-columns: 1.3fr 1fr; gap: 22px; align-items: start; }
+.archive-player { position: relative; aspect-ratio: 16 / 10; background: #0a0f0b; border: 3px solid #3ddc84; border-radius: 6px; display: grid; place-items: center; overflow: hidden; }
+.archive-fsprite { width: 192px; height: 192px; image-rendering: pixelated; border-radius: 10px; border: 3px solid #000; background: #2a3a2e; }
+.archive-play { position: absolute; inset: auto 0 18px 0; display: flex; justify-content: center; }
+.archive-cap { position: absolute; top: 10px; left: 12px; font-family: 'Press Start 2P', ui-monospace, monospace; font-size: 10px; color: #3ddc84; }
+.archive-watch[disabled] { opacity: .6; cursor: not-allowed; }
+.archive-tag { display: inline-block; font-family: 'Press Start 2P', ui-monospace, monospace; font-size: 9px; padding: 4px 7px; border-radius: 4px; border: 2px solid #000; }
+.archive-tag.done { background: #3ddc84; color: #04210f; } .archive-tag.live { background: #ffc93c; color: #2a1a00; } .archive-tag.myth { background: #b06cff; color: #16002a; }
+.archive-name { margin-top: 10px; font-size: 20px; }
+.archive-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 12px 0; }
+.archive-stat { background: #0a0f0b; border: 2px solid #2c3a30; border-radius: 6px; padding: 8px 10px; }
+.archive-stat b { display: block; font: 800 18px/1.2 ui-monospace, Menlo, Consolas, monospace; color: #ffc93c; } .archive-stat span { font-size: 12px; color: #9fb3a5; }
+.archive-tx code { word-break: break-all; } .archive-h3 { font-size: 11px; margin: 10px 0 0; }
+ol.archive-feed { margin: 4px 0 0; padding-left: 22px; font: 13px ui-monospace, Menlo, monospace; } ol.archive-feed li span { color: #ffc93c; }
+.archive-h2 { margin: 22px 0 10px; }
+.archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.archive-card { background: #141c17; border: 3px solid #2b4a33; border-radius: 6px; padding: 12px; box-shadow: 3px 3px 0 #000; color: #e8f5e9; text-align: left; cursor: pointer; font: inherit; }
+.archive-card.sel { border-color: #ffc93c; box-shadow: 3px 3px 0 #000, 0 0 0 3px #ffc93c inset; }
+.archive-csprite { display: block; width: 100%; aspect-ratio: 1; height: auto; border-radius: 8px; image-rendering: pixelated; background: #2a3a2e; }
+.archive-card h3 { font-size: 12px; margin: 10px 0 4px; } .archive-card p { margin: 0; font-size: 13px; color: #9fb3a5; }
+.archive-back { display: inline-block; margin-top: 20px; font-weight: 700; }
+@media (max-width: 760px) { .archive-feat { grid-template-columns: 1fr; } .archive-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+/* phone: the watch button goes BELOW the sprite (it overlapped the sprite in the mockup) */
+@media (max-width: 520px) { .archive-player { aspect-ratio: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 10px 12px; }
+  .archive-play { position: static; width: 100%; } .archive-play .btn { width: 100%; justify-content: center; } .archive-fsprite { width: 160px; height: 160px; } }

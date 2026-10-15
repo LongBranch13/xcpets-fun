@@ -124,6 +124,7 @@
       case 'chest': return [16 - Math.ceil(w / 2), a.row(a.gear.armor[0]) + 1];
       case 'mouth': return [Math.floor(cx - w / 2), eyeY(a) + 4];
       case 'nose': return [Math.floor(cx - w / 2), eyeY(a) + 3];
+      case 'eyes': return [Math.floor(cx - w / 2), eyeY(a) - 1];
       case 'coin': return [Math.min(N - 8, a.maxX - 1), 21];
     }
     return [0, 0];
@@ -153,7 +154,8 @@
         return img;
       }
       case 'banner':
-        L.sprite(Math.max(1, a.minX - 2), Math.max(0, 28 - BANNER.length + 1), BANNER);
+        var BN = it.map || BANNER; // items may pass their own banner map; HODL banner unchanged
+        L.sprite(Math.max(1, a.minX - 2), Math.max(0, 28 - BN.length + 1), BN);
         blit(img, L, function (x2, y2) { return a.isSil(x2, y2) && y2 > 7; }); return img;
       case 'sats': L.sprite(Math.min(N - 12, a.maxX - 3), 20, SATS); blit(img, L); return img;
       case 'beam':
@@ -172,9 +174,10 @@
       case 'pinksweater': {
         var ey2 = Math.min(a.eyeL ? a.eyeL[1] : 99, a.eyeR ? a.eyeR[1] : 99); if (ey2 > 31) ey2 = a.minY + Math.round((a.maxY - a.minY) * 0.4);
         var eyeTop = Math.min(ey2 - 2, a.minY + 6);
+        if (!(DEFS['pink-sweater'] && DEFS['pink-sweater'].sweaterOnly)) { // sweaterOnly flag (set by an installer): body part only; default unchanged
         for (y = a.minY - 1; y <= eyeTop; y++) for (x = a.minX - 1; x <= a.maxX + 1; x++)
           if (a.isSil(x, y) || a.isSil(x, y + 1) || a.isSil(x - 1, y) || a.isSil(x + 1, y)) L.set(x, y, y === eyeTop ? 'k' : 'K');
-        L.set(16, a.minY - 2, 'K'); L.set(15, a.minY - 2, 'K');
+        L.set(16, a.minY - 2, 'K'); L.set(15, a.minY - 2, 'K'); }
         var t = a.row(a.gear.armor[0]);
         for (y = t; y <= a.maxY - 1; y++) for (x = a.minX; x <= a.maxX; x++) if (a.isSil(x, y) && a.isSil(x, y - 1)) L.set(x, y, (x === 15 || x === 16) && y < t + 3 ? 'H' : y === t ? 'k' : 'K');
         blit(img, L); return img;

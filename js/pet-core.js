@@ -3,7 +3,7 @@
  * One file, shared by the browser (window.PetCore) and Node (require).
  * No dependencies. Same seed => same pet, byte for byte.
  *
- * Algorithm:
+ * Algorithm (see generator/ALGORITHM.md):
  *   seedString = lower(trim(blockHash)) + ":" + lower(trim(petId))
  *   digest     = SHA-256(UTF-8(seedString))            (32 bytes)
  *   PRNG       = sfc32 seeded with digest words 0..3 (big-endian uint32), 12 warm-up draws
@@ -18,7 +18,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSION = 'xcpets-pet-core/3.16.0-promo';
+  var VERSION = 'xcpets-pet-core/3.16.0';
   var N = 32;
 
   // ------------------------------------------------------------------ SHA-256
@@ -123,7 +123,7 @@
   var GEAR_RANKS = ['band', 'armor', 'cape', 'weapon', 'crown'];
 
   /*
-   * SPECIES: the twelve meme characters (personal pets).
+   * SPECIES: the twelve meme characters (personal pets) + Nakamoto (the community pet; no hood, signature hachimaki from Adult).
    * All are original, hand-authored pixel maps drawn for this project (not traced/copied from any image).
    * Map legend:  .  transparent      b body      a accent      l belly/secondary
    *              k  ink detail       B brow (erasable ink)     w white
@@ -558,9 +558,171 @@
         ['Delighted', 'base', 'keep', 'grin'], ['Knowing', 'halflid', 'keep', 'base']],
       stageMaps: LENNY_MAPS,
       map: LENNY_MAP },
+    // ---- The community pet: NAKAMOTO (never rolled for personal pets). A Rare-Pepe 'Nakamoto Card' face (green skin,
+    // grey hair, black glasses, droopy red lips), drawn closer to Bitcoin Stamp #613 ('Nakamoto punk') from Elder on.
+    // v3.14: the hood is gone at every stage, Mythic included. Each stage has its own pixel map (stageMaps).
+    { id: 'nakamoto', label: 'Nakamoto', w: 0, t: 0, community: true,
+      canon: { body: '#488101', accent: '#555555', belly: '#7f7f7f' },
+      colors: { '1': '#555555', '2': '#888888', '3': '#568023', '4': '#41621a', '5': '#7f7f7f', '6': '#c1291c',
+        '8': '#4a4a4a', '9': '#c8c8c8', r: '#636084', v: '#8677b3', e: '#c9c3e6' },
+      eyeWhite: '#a82060', pupil: '#880858', lasers: true, symLenses: true,
+      patternKeys: ['sp3', 'sp2'], patternBelowFace: true, patternCx: -5, // pattern fix 2026-10-12: patterns on his green neck + shirt (no plain body area)
+      // v3.14 signature headwear: a white hachimaki (tied headband) with a small orange Bitcoin disc on the front, worn from
+      // Adult up on every Nakamoto (render-only, not a rolled trait; his rolled band slot stays the neck scarf).
+      hachimaki: true, noCheeks: true, // v3.14 stamp look: flat face, no blush
+      // Egg: no hood. A pale grey-green shell with green speckles (spots = the DNA speckles) and a tiny pair of thin black
+      // rectangular glasses (1-px white lenses) drawn on the shell as a hint of what hatches; the usual crack at frames 2-3.
+      egg: { shell: '#a9b3a0', spot: '#488101', glasses: true },
+      gear: { armor: [22, 23, 3], band: 6, scarf: 20, cape: 19, crownSink: 1, noHeadband: true },
+      pose: { col: 12, row: 16, map: ['.kkkkk.', 'k33333k', 'k33333k', 'kkkk33k', '.k333k.', '.k22k..', 'k22k...'] }, // v3.14: one row lower so the lip shows
+      arc: [['Shy', 'base', 'keep', 'base'], ['Curious', 'base', 'raised', 'base'], ['Studious', 'halflid', 'keep', 'base'],
+        ['Sullen', 'base', 'angry', 'base'], ['Mysterious', 'base', 'keep', 'base']], // v3.14: mouth 'base' keeps the single red stamp lip
+      // Growth arc (no hood at any stage since v3.14):
+      // 1 Hatchling: a small green Pepe-style baby face: big heavy-lidded Pepe eyes (both pupils on the same side), wide red lips
+      // 2 Juvenile: a dark hair tuft, brows, Pepe eyes (both glancing the same way), a nose and red lips
+      // 3 Adult: green Pepe-style face, dark hair, thin black rectangular glasses (1-px frames, white lenses, centred pupils)
+      // 4 Elder (v3.14, after Stamp #613): a big bushy grey mop ('5' #7f7f7f with '9' #c8c8c8 strands) that comes down the
+      //   sides to the glasses, thick black glasses spanning the face (4-px white lenses, 2-px centred pupils), a big nose,
+      //   droopy red lips, jowls, dark shirt
+      // 5 Mythic: the same face with the hand-to-chin pose (green hand, dark sleeve) and all gear
+      // Eyes are level and natural at every stage (no inward/cross-eyed pupils); powered laser eyes centre on the pupils.
+      stageMaps: {
+        1: [
+          '....................',
+          '....................',
+          '....................',
+          '....................',
+          '..33334444333.......',
+          '.333343333433333....',
+          '.3333333333433333...',
+          '.333333333333333333.',
+          '.333333333333333333.',
+          '.kkkkk3kkkkk3333333.',
+          '.kPPPkkkPPPkk3333...',
+          '.kEEEk3kEEEk33333...',
+          '..kkk333kkk33334....',
+          '..333443333333......',
+          '..33333343433.......',
+          '...4m333333333......',
+          '....mmmm33333.......',
+          '...4333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '...2333333222.......',
+          '..22233322222.......'
+        ],
+        2: [
+          '....................',
+          '....................',
+          '..8888888888888.....',
+          '..88888833888888....',
+          '..88334444333888....',
+          '.888343333433888....',
+          '.8833333333438888...',
+          '.883333333333888888.',
+          '.833333333333888888.',
+          '.kkkkk3kkkkk3888888.',
+          '.kPPPkkkPPPkk8888...',
+          '.kEEEk3kEEEk38338...',
+          '..kkk333kkk33834....',
+          '..333443333333......',
+          '..33333343433.......',
+          '...4m333333333......',
+          '....mmmm33333.......',
+          '...4333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '...2333333222.......',
+          '..22233322222.......'
+        ],
+        3: [
+          '....................',
+          '....................',
+          '..8888888888888.....',
+          '..88888833888888....',
+          '..88334444333888....',
+          '.888343333433888....',
+          '.8833333333438888...',
+          '.883333333333888888.',
+          '.833333333333888888.',
+          '.kkkkk3kkkkk3888888.',
+          '.kPPPkkkPPPkk8888...',
+          '.kEEEk3kEEEk38338...',
+          '..kkk333kkk33834....',
+          '..333443333333......',
+          '..33333343433.......',
+          '...4m333333333......',
+          '....mmmm33333.......',
+          '...4333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '...2333333222.......',
+          '..22233322222.......'
+        ],
+        4: [
+          '....................',
+          '....................',
+          '..5555555555555.....',
+          '..55555533555555....',
+          '..55334444333555....',
+          '.555343333433555....',
+          '.5533333333435555...',
+          '.553333333333555555.',
+          '.533333333333555555.',
+          '.kkkkk3kkkkk3555555.',
+          '.kPPPkkkPPPkk5555...',
+          '.kEEEk3kEEEk35335...',
+          '..kkk333kkk33534....',
+          '..333443333333......',
+          '..33333343433.......',
+          '...4m333333333......',
+          '....mmmm33333.......',
+          '...4333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '....333333333.......',
+          '...2333333222.......',
+          '..22233322222.......'
+        ]
+      },
+      // v3.14: no hood at any stage. Mythic = the Elder face (Stamp #613 'Nakamoto punk' look) plus the pose and gear.
+      map: [
+        '....................',
+        '....................',
+        '..5555555555555.....',
+        '..55555533555555....',
+        '..55334444333555....',
+        '.555343333433555....',
+        '.5533333333435555...',
+        '.553333333333555555.',
+        '.533333333333555555.',
+        '.kkkkk3kkkkk3555555.',
+        '.kPPPkkkPPPkk5555...',
+        '.kEEEk3kEEEk35335...',
+        '..kkk333kkk33534....',
+        '..333443333333......',
+        '..33333343433.......',
+        '...4m333333333......',
+        '....mmmm33333.......',
+        '...4333333333.......',
+        '....333333333.......',
+        '....333333333.......',
+        '....333333333.......',
+        '....333333333.......',
+        '...2333333222.......',
+        '..22233322222.......'
+      ] }
   ];
+  var COMMUNITY_SPECIES = 'nakamoto';
   var CHARKEY = { b: 'body', a: 'accent', l: 'belly', k: 'ink', B: 'brow', w: 'white', E: 'eye', P: 'pupil', m: 'mouth',
-    h: 'horn', g: 'gold', T: 'tear', f: 'ember', F: 'ember2',
+    h: 'horn', g: 'gold', T: 'tear', f: 'ember', F: 'ember2', r: 'spr', v: 'spv', e: 'spe',
     '1': 'sp1', '2': 'sp2', '3': 'sp3', '4': 'sp4', '5': 'sp5', '6': 'sp6', '7': 'sp7', '8': 'sp8', '9': 'sp9' }; // 1-9: per-species fixed/derived colours (SPECIES[].colors)
 
   // v3.16: palettes removed. Every pet renders in its species' canon (Classic) colours. The roll slot that used to pick a
@@ -577,7 +739,7 @@
   var EYES = [
     { id: 'classic', label: 'Classic', w: 30, t: 0 }, { id: 'beady', label: 'Sunglasses', w: 10, t: 0 },
     { id: 'tinted', label: 'Tinted', w: 10, t: 1 }, { id: 'star', label: 'Star', w: 8, t: 2 },
-    { id: 'beam', label: 'Beam eyes', w: 8, t: 3 }
+    { id: 'laser', label: 'Laser eyes', w: 8, t: 3 }
   ];
   // Gear pools. What is SHOWN depends on stage (rank unlock) and tier (gearSlots);
   // which variant is shown is rolled from the seed. Higher tiers favour better variants.
@@ -661,7 +823,9 @@
   function seedString(blockHash, petId) { return normalizeHash(blockHash) + ':' + normalizeHash(petId); }
 
   /**
-   * generate({blockHash, petId, overrides}) -> pet traits (plain JSON-able object).
+   * generate({blockHash, petId, community, overrides}) -> pet traits (plain JSON-able object).
+   * community: true => the community pet: species is always Nakamoto and the tier is always Legendary
+   *   (so it can wear every gear rank); every other trait is still rolled from the seed.
    * overrides (optional) replace trait ids AFTER rolling, so the PRNG sequence is unchanged.
    */
   function generate(input) {
@@ -674,8 +838,10 @@
     if (r < TIERS[3].chance) tierIdx = 3;
     else if (r < TIERS[3].chance + TIERS[2].chance) tierIdx = 2;
     else if (r < TIERS[3].chance + TIERS[2].chance + TIERS[1].chance) tierIdx = 1;
+    if (input.community) tierIdx = 3;
 
     var species = rng.pick(SPECIES, tierIdx);
+    if (input.community) species = byId(SPECIES, COMMUNITY_SPECIES);
     rng.next(); // v3.16: former palette roll (one PRNG draw, result discarded) so later traits do not shift
     var pattern = rng.pick(PATTERNS, tierIdx);
     var eyes = rng.pick(EYES, tierIdx);
@@ -695,7 +861,7 @@
 
     var pet = {
       version: VERSION, seed: seed, dna: toHex(digest),
-      tier: TIERS[tierIdx].id, tierIndex: tierIdx,
+      tier: TIERS[tierIdx].id, tierIndex: tierIdx, community: !!input.community,
       species: species.id, pattern: pattern.id, eyes: eyes.id, cheeks: cheeks,
       band: band.id, armor: armor.id, cape: cape.id, weapon: weapon.id, crown: crown.id,
       background: background.id, bgColor: bgColor,
@@ -757,7 +923,7 @@
     m: hex('#ff5ca8'), h: hex('#f4e3b5'), e: hex('#ff9f1c')
   };
   var RAINBOW = ['#ff5c5c', '#ff9f43', '#ffd93d', '#6bcB77', '#4d96ff', '#9b5de5'].map(hex);
-  var NO_SHADE = { tint: 1, ink: 1, brow: 1, white: 1, eye: 1, pupil: 1, mouth: 1, galstar: 1, gold: 1, beam: 1, beamlite: 1, tear: 1,
+  var NO_SHADE = { tint: 1, hachi: 1, hachish: 1, btc: 1, ink: 1, brow: 1, white: 1, eye: 1, pupil: 1, mouth: 1, galstar: 1, gold: 1, laser: 1, laserlite: 1, tear: 1,
     tongue: 1, eyegold: 1, shade: 1, sgFrame: 1, ember: 1, ember2: 1, blade: 1, gem: 1, gemB: 1, flame: 1, flame2: 1, wood: 1, lwood: 1, iron: 1, capeTrim: 1 };
   var FACE_KEYS = { eye: 1, pupil: 1, mouth: 1, brow: 1, ink: 1, tear: 1, gold: 1, horn: 1, ember: 1, ember2: 1, frame: 1, lens: 1 };
 
@@ -929,7 +1095,8 @@
     if (stage === 0) {
       drawEgg(cv, pet, digest, frame);
       eggSp = byId(SPECIES, pet.species);
-      if (!(eggSp && eggSp.egg)) eggSp = null; // species egg = shell/spot recolour
+      if (eggSp && eggSp.egg) drawSpeciesEgg(cv, eggSp, frame);
+      else eggSp = null;
     } else {
       if (go) { for (var gs in LISTS) if (go[gs] && byId(LISTS[gs], go[gs])) gear[gs] = true; }
       else gearFor(pet, stage, opts).forEach(function (g) { gear[g] = true; });
@@ -958,6 +1125,8 @@
       if (pet.eyes === 'beady' && sp.sunLens) drawShadesMap(cv, sp.sunLens, box);
       else if (pet.eyes === 'beady') drawShades(cv, { eyes: eyes0.slice().sort(function (p1, p2) { return p1.cx - p2.cx; }), oneEye: true, frame: true });
       else if (sp.shades && hasShades(pet, sp, stage)) drawShades(cv, a);
+      if (sp.symLenses) symmetricLenses(cv);
+      if (sp.hachimaki && stage >= 3) drawHachimaki(cv);
       if (gear.band) drawBand(cv, pet, sp, box, a);
       // Mythic only: the smug hand-to-chin thinking pose (drawn over armor/band; weapons stay on the other side)
       if (stage === 5 && sp.pose) cv.spriteKeys(box.x0 + sp.pose.col, box.y0 + sp.pose.row, sp.pose.map, CHARKEY);
@@ -968,8 +1137,8 @@
     var colors = {
       body: hex(pal.body), accent: hex(pal.accent), belly: hex(pal.belly), horn: FIXED.h, gold: FIXED.g,
       ink: INK, brow: INK, white: WHITE, eye: hex((sp && stage > 0 && sp.eyeWhite) || '#f4f1ea'), pupil: (sp && stage > 0 && sp.pupil) ? hex(sp.pupil) : INK, mouth: INK, tear: hex('#7fc8ff'), tongue: FIXED.r,
-      beam: FIXED.R, beamlite: hex('#ffb0b0'), eyegold: hex('#fff1a8'), ember: hex('#ff7a1a'), ember2: hex('#ffd23f'),
-      gal: hex('#2a1a5e'), galstar: WHITE,
+      laser: FIXED.R, laserlite: hex('#ffb0b0'), eyegold: hex('#fff1a8'), ember: hex('#ff7a1a'), ember2: hex('#ffd23f'),
+      gal: hex('#2a1a5e'), galstar: WHITE, hachi: hex('#f4f4f0'), hachish: hex('#c4c4cc'), btc: hex('#f7931a'),
       metal: hex(armor.metal), metalTrim: hex(armor.trim), cape: hex(cape.color), capeTrim: hex(cape.trim),
       band: hex(band.color), band2: mix(hex(band.color), BLACK, 0.3),
       blade: hex('#e6eaf2'), iron: hex('#8d96a8'), wood: hex('#8a5a2b'), lwood: hex('#c8955a'), gem: hex('#e0314f'), gemB: hex('#4f9dff'),
@@ -1012,6 +1181,10 @@
       drawCheeksV2(cv, pet, eyes0, out);
       if (gear.crown) drawCrown(cv, pet, a, frame, sp);
     }
+    // powered (render option, not a trait): Bitcoin Stamp #3 style laser eyes for species with lasers: true
+    // symLenses (Nakamoto): beams start at the centre of each lens as finally drawn (after symmetricLenses, glasses and the
+    // stage/bounce/pose offsets), derived per frame from the lens pixels rather than the pre-glasses eye boxes.
+    if (opts.powered && sp && sp.lasers && stage > 0) drawLasers(cv, sp.symLenses ? lensAnchors(cv, eyes0) : eyes0, frame);
     for (i = 0; i < N * N; i++) if (cv.top[i]) { out[i * 4] = cv.top[i][0]; out[i * 4 + 1] = cv.top[i][1]; out[i * 4 + 2] = cv.top[i][2]; }
     return { width: N, height: N, data: out };
   }
@@ -1107,6 +1280,46 @@
       cv.key[i0] = fillKeyNear(cv, x + 1, y);
       if (t && !FACE_KEYS[t] && t !== 'outline') cv.key[(y + d) * N + x] = 'tear';
     });
+  }
+  /** Nakamoto's hachimaki: a 2-row white headband across the head three rows above the top of the glasses (one face row
+   *  stays between band and frame), a grey lower edge, a solid 2x2 orange Bitcoin disc on the front (a white B does not survive at 2 px)
+   *  (centred between the lenses), and two knot tails flowing off the back of the head (the hair side, away from the face). */
+  function drawHachimaki(cv) {
+    var pts = [], i, x, y;
+    for (i = 0; i < N * N; i++) if (cv.key[i] === 'eye' || cv.key[i] === 'pupil') pts.push(i);
+    if (!pts.length) return;
+    var gy = N, x0 = N, x1 = -1;
+    pts.forEach(function (i) { gy = Math.min(gy, Math.floor(i / N)); x0 = Math.min(x0, i % N); x1 = Math.max(x1, i % N); });
+    var by = gy - 4, cx = Math.round((x0 + x1) / 2), L = N, R = -1;
+    for (x = 0; x < N; x++) if (cv.isSil(x, by) || cv.isSil(x, by + 1)) { L = Math.min(L, x); R = Math.max(R, x); }
+    if (R < 0) return;
+    for (x = L; x <= R; x++) { cv.setKey(x, by, 'hachi'); cv.setKey(x, by + 1, 'hachish'); }
+    cv.setKey(cx, by, 'btc'); cv.setKey(cx + 1, by, 'btc'); cv.setKey(cx, by + 1, 'btc'); cv.setKey(cx + 1, by + 1, 'btc');
+    // knot + tails off the back (right side of the head = the hair side on this left-facing face)
+    var k = R + 1;
+    cv.setKey(k, by, 'hachi'); cv.setKey(k, by + 1, 'hachish');
+    cv.setKey(k + 1, by + 1, 'hachi'); cv.setKey(k + 2, by + 2, 'hachi'); cv.setKey(k + 1, by + 2, 'hachish');
+    cv.setKey(k + 1, by - 1, 'hachi'); cv.setKey(k + 2, by - 1, 'hachish');
+  }
+  /** symLenses (Nakamoto): stage scaling can drop a column or row from one lens of a pair of glasses. Grow the smaller lens
+   *  outward (away from the bridge) to the bigger one's size, copying its eye/pupil rows, and close it with a black frame. */
+  function symmetricLenses(cv) {
+    var pts = [], i;
+    for (i = 0; i < N * N; i++) if (cv.key[i] === 'eye' || cv.key[i] === 'pupil') pts.push(i);
+    if (!pts.length) return;
+    var xs = pts.map(function (i) { return i % N; }).sort(function (a, b) { return a - b; }), cut = -1;
+    for (i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] > 1) { cut = xs[i]; break; }
+    if (cut < 0) return;
+    function box(left) { var b = { minX: N, maxX: -1, minY: N, maxY: -1 }; pts.forEach(function (i) { var x = i % N, y = Math.floor(i / N);
+      if ((x < cut) === left) { b.minX = Math.min(b.minX, x); b.maxX = Math.max(b.maxX, x); b.minY = Math.min(b.minY, y); b.maxY = Math.max(b.maxY, y); } }); return b; }
+    var L = box(true), R = box(false), wL = L.maxX - L.minX, wR = R.maxX - R.minX, hL = L.maxY - L.minY, hR = R.maxY - R.minY;
+    if (wL === wR && hL === hR) return;
+    var big = (wR > wL || hR > hL) ? R : L, small = big === R ? L : R, toLeft = small === L, x, y;
+    var W = big.maxX - big.minX + 1, Hh = big.maxY - big.minY + 1, nx0 = toLeft ? small.maxX - W + 1 : small.minX, ny0 = small.minY;
+    for (y = 0; y < Hh; y++) for (x = 0; x < W; x++) cv.setKey(nx0 + x, ny0 + y, cv.getKey(big.minX + x, big.minY + y));
+    var fx = toLeft ? nx0 - 1 : nx0 + W;
+    for (y = ny0 - 1; y <= ny0 + Hh; y++) cv.setKey(fx, y, 'ink');
+    for (x = nx0; x < nx0 + W; x++) { cv.setKey(x, ny0 - 1, 'ink'); cv.setKey(x, ny0 + Hh, 'ink'); }
   }
   function fillKeyNear(cv, x, y) {
     var cand = [cv.getKey(x, y)];
@@ -1215,8 +1428,8 @@
   }
   /** Clear eyeglasses (species with glasses: true): an ink frame one pixel outside each eye box, a bridge and short
    *  temple arms. Only frame pixels are drawn, so the eyes stay visible through the clear lenses. */
-  // eye pixels already recoloured by a rolled eye trait (beam / star): glasses must keep them, not glaze them over as lens
-  var TRAIT_EYE = { tint: 1, beam: 1, beamlite: 1, gold: 1, eyegold: 1 };
+  // eye pixels already recoloured by a rolled eye trait (laser / star): glasses must keep them, not glaze them over as lens
+  var TRAIT_EYE = { tint: 1, laser: 1, laserlite: 1, gold: 1, eyegold: 1 };
   function drawGlasses(cv, eyes) {
     if (eyes.length < 2) return;
     var L = eyes[0].cx < eyes[1].cx ? eyes[0] : eyes[1], R = L === eyes[0] ? eyes[1] : eyes[0], x, y;
@@ -1237,7 +1450,7 @@
     if (eyes.length < 2) return;
     var lens = eyes.map(function (b) {
       var x0 = b.minX - 1, x1 = Math.max(b.maxX + 1, b.minX + 3), y0 = b.minY - 1, y1 = Math.max(b.maxY + 1, b.minY + 2), pupil = false, x, y;
-      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) if (cv.getKey(x, y) === 'pupil' || cv.getKey(x, y) === 'beam' || cv.getKey(x, y) === 'gold') pupil = true;
+      for (y = y0 + 1; y < y1; y++) for (x = x0 + 1; x < x1; x++) if (cv.getKey(x, y) === 'pupil' || cv.getKey(x, y) === 'laser' || cv.getKey(x, y) === 'gold') pupil = true;
       return { x0: x0 + 1, y0: y0 + 1, w: x1 - x0 - 1, h: y1 - y0 - 1, pupil: pupil };
     });
     var A = lens[0], B = lens[1];
@@ -1245,6 +1458,57 @@
     var src = A.pupil ? A : B, dst = A.pupil ? B : A, x, y;
     for (y = 0; y < src.h; y++) for (x = 0; x < src.w; x++) cv.setKey(dst.x0 + x, dst.y0 + y, cv.getKey(src.x0 + x, src.y0 + y));
   }
+  /** Species egg extras drawn over the standard speckled egg (drawEgg + the species shell/spot colours).
+   *  glasses: a tiny pair of thin black rectangular frames with 1-px white lenses (Nakamoto), below the crack line. */
+  function drawSpeciesEgg(cv, sp, frame) {
+    var wob = [0, 0, 1, -1][frame], cx = 16 + wob, x, y;
+    if (!sp.egg.glasses) return; // shell/spot recolour only (e.g. KEVIN's orange egg)
+    [cx - 4, cx + 1].forEach(function (x0) {
+      for (x = x0; x < x0 + 3; x++) for (y = 19; y < 22; y++) cv.setKey(x, y, (x === x0 + 1 && y === 20) ? 'white' : 'ink');
+    });
+    cv.setKey(cx - 1, 19, 'ink'); cv.setKey(cx, 19, 'ink'); // bridge
+  }
+  /** Lens anchors for glasses-wearing laser species: one box per connected eye/pupil blob (the lenses), left to right. An
+   *  even-width lens has two middle columns; take the outer one on each side so the pair stays mirror-symmetric. */
+  function lensAnchors(cv, fallback) {
+    var seen = {}, out = [], i;
+    function isLens(j) { var k = cv.key[j]; return k === 'eye' || k === 'pupil'; }
+    for (i = 0; i < N * N; i++) {
+      if (!isLens(i) || seen[i]) continue;
+      var st = [i], pts = []; seen[i] = 1;
+      while (st.length) {
+        var j = st.pop(), x = j % N, y = Math.floor(j / N); pts.push([x, y]);
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+          var X = x + dx, Y = y + dy, q = Y * N + X;
+          if (X >= 0 && X < N && Y >= 0 && Y < N && !seen[q] && isLens(q)) { seen[q] = 1; st.push(q); }
+        }
+      }
+      out.push(bbox(pts));
+    }
+    if (out.length !== 2) return fallback;
+    out.sort(function (p, q) { return p.minX - q.minX; });
+    out[0].left = true; out[1].left = false;
+    out[0].cx = Math.floor(out[0].cx); out[1].cx = Math.ceil(out[1].cx);
+    var cy = Math.ceil(Math.max(out[0].cy, out[1].cy)); out[0].cy = out[1].cy = cy;
+    return out;
+  }
+  /** Laser eyes (Bitcoin Stamp #3 palette): hot core, red cross, orange glow and outward beams. Drawn on the top layer. */
+  var LASER = { core: hex('#ffdb3c'), red: hex('#fb1a06'), glow: hex('#f85c0f') };
+  function drawLasers(cv, eyes, frame) {
+    eyes.forEach(function (b) {
+      var ex = Math.round(b.cx), ey = Math.round(b.cy), dir = (b.left != null ? b.left : b.cx < 16) ? -1 : 1, d;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1], [-2, 0], [2, 0], [0, -2], [0, 2]].forEach(function (o) { cv.paint(ex + o[0], ey + o[1], LASER.glow); });
+      [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { cv.paint(ex + o[0], ey + o[1], LASER.red); });
+      cv.paint(ex, ey, LASER.core);
+      var len = 5 + (frame % 2);
+      for (d = 3; d < 3 + len; d++) {
+        cv.paint(ex + dir * d, ey, d % 2 ? LASER.red : LASER.glow);
+        if (d < 5) { cv.paint(ex + dir * d, ey - 1, LASER.glow); cv.paint(ex + dir * d, ey + 1, LASER.glow); }
+      }
+      cv.paint(ex - dir, ey - 3, LASER.glow); cv.paint(ex + dir * 2, ey + 3, LASER.glow); // little glow rays
+    });
+  }
+
   /** Thin ink upper lid over each still-open eye (species with eyeLid: true). */
   function drawEyeLids(cv, a) {
     a.eyes.forEach(function (b) {
@@ -1261,7 +1525,7 @@
         if (k !== 'eye' && k !== 'pupil') continue;
         if (e === 'tinted' && k === 'pupil') cv.key[i] = 'tint';
         else if (e === 'star') cv.key[i] = k === 'pupil' ? 'gold' : 'eyegold';
-        else if (e === 'beam') cv.key[i] = k === 'pupil' ? 'beam' : 'beamlite';
+        else if (e === 'laser') cv.key[i] = k === 'pupil' ? 'laser' : 'laserlite';
       }
     });
   }
@@ -1288,10 +1552,10 @@
     a.eyes.forEach(function (b) {
       var outer = ((b.left != null ? b.left : b.cx < 16)) ? b.minX - 1 : b.maxX + 1;
       if (cheeksId(pet) === 'blush' && !(byId(SPECIES, pet.species) || {}).noCheeks && cv.isSil(outer, b.maxY + 2)) { cv.paint(outer, b.maxY + 2, FIXED.p); cv.paint((b.left != null ? b.left : b.cx < 16) ? outer + 1 : outer - 1, b.maxY + 2, FIXED.p); }
-      if (pet.eyes === 'beam') {
-        var hasBeam = false;
-        for (var yy = b.minY; yy <= b.maxY; yy++) for (var xx = b.minX; xx <= b.maxX; xx++) if (cv.getKey(xx, yy) === 'beam') hasBeam = true;
-        if (!hasBeam) return; // eyes closed at this stage
+      if (pet.eyes === 'laser') {
+        var hasLaser = false;
+        for (var yy = b.minY; yy <= b.maxY; yy++) for (var xx = b.minX; xx <= b.maxX; xx++) if (cv.getKey(xx, yy) === 'laser') hasLaser = true;
+        if (!hasLaser) return; // eyes closed at this stage
         var dir = (b.left != null ? b.left : b.cx < 16) ? -1 : 1, yb = Math.round(b.cy), col = frame % 2 ? FIXED.R : hex('#ff6060');
         for (var x = dir < 0 ? b.minX - 1 : b.maxX + 1; x >= 0 && x < N; x += dir) cv.paint(x, yb, col);
       }
@@ -1389,7 +1653,7 @@
   function renderFrames(pet, opts) {
     opts = opts || {};
     var frames = [];
-    for (var f = 0; f < (opts.frames || 4); f++) frames.push(render(pet, { stage: opts.stage, frame: f, gearCap: opts.gearCap, gearOverride: opts.gearOverride }));
+    for (var f = 0; f < (opts.frames || 4); f++) frames.push(render(pet, { stage: opts.stage, frame: f, powered: opts.powered, gearCap: opts.gearCap, gearOverride: opts.gearOverride }));
     return frames;
   }
 
@@ -1436,6 +1700,7 @@
     sarutobi: { band: 'gold-headband', armor: 'leather', cape: 'green', weapon: 'staff', crown: 'gold-crown' },
     doge: { band: 'red-scarf', armor: 'gold', cape: 'royal', weapon: 'golden-sword', crown: 'jeweled-crown' },
     lenny: { band: 'black-headband', armor: 'obsidian', cape: 'midnight', weapon: 'trident', crown: 'silver-crown' },
+    nakamoto: { band: 'purple-scarf', armor: 'obsidian', cape: 'midnight', weapon: 'staff', crown: 'gold-crown' }
   };
   /** A character's canonical look at a tier, with its signature kit. */
   function characterPet(speciesId, opts) {
@@ -1452,7 +1717,7 @@
 
   return {
     VERSION: VERSION, SIZE: N, TIERS: TIERS, STAGES: STAGES, STAGE_MULT: STAGE_MULT, STAT_KEYS: STAT_KEYS, GEAR_RANKS: GEAR_RANKS,
-    SPECIES: SPECIES, PATTERNS: PATTERNS, EYES: EYES,
+    SPECIES: SPECIES, COMMUNITY_SPECIES: COMMUNITY_SPECIES, PATTERNS: PATTERNS, EYES: EYES,
     BANDS: BANDS, ARMORS: ARMORS, CAPES: CAPES, WEAPONS: WEAPONS, CROWNS: CROWNS, BACKGROUNDS: BACKGROUNDS, BG_V2: BG_V2, BG_V2_FROM_BLOCK: BG_V2_FROM_BLOCK, CHEEKS: CHEEKS, CHEEKS_V2_FROM_BLOCK: CHEEKS_V2_FROM_BLOCK, cheeksId: cheeksId, sunFrameColor: function (sp, body) { var c = sunFrameColor(sp, hex(body)); return '#' + c.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }, CHARKEY: CHARKEY,
     sha256Hex: sha256Hex, sha256Bytes: sha256Bytes, utf8Bytes: utf8Bytes, sfc32: sfc32,
     seedString: seedString, generate: generate, gearFor: gearFor, expressionFor: expressionFor, stats: stats,

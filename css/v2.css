@@ -1,0 +1,93 @@
+/* demo v2 additions ONLY (everything else is the live css/style.css + css/game.css). Derived from live tokens/components. */
+.mockbar { background:#1d3a24; color:#c8f7d8; }
+.returnbox { margin-top:10px; border-top:2px dashed var(--line); padding-top:8px; }
+.returnbox h3 { margin:4px 0; font-size:16px; } .lb { margin:4px 0 0 18px; padding:0; } .lb li.me { color: var(--acc2); font-weight:800; }
+input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
+.bulkrow { background:#0a0f0b; border:2px solid var(--line); border-radius:6px; padding:6px 8px; position:sticky; top:0; z-index:5; }
+.bulkrow .btn { font-size:12px; padding:5px 10px; }
+.pet.card { position:relative; } .pet.card .pick-cb { position:absolute; top:8px; left:8px; z-index:2; width:20px; height:20px; accent-color: var(--green); }
+.pet.card.selected { border-color: var(--acc2) !important; box-shadow: 4px 4px 0 #000, 0 0 0 3px var(--acc2) inset; }
+.arenawrap { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start; }
+#arena { width:540px; max-width:100%; height:auto; image-rendering:pixelated; background:#0a0f0b; border:3px solid #3ddc84; border-radius:6px; }
+#fightLog { flex:1 1 260px; margin:0; padding-left:22px; }
+.bracket { display:flex; gap:10px; overflow-x:auto; padding:6px 0; } .bracket .rcol { display:flex; flex-direction:column; gap:6px; justify-content:space-around; min-width:110px; }
+.bracket .chip.win { background:#1d3a24; color: var(--acc2); }
+.tree { margin:2px 0 0 14px; padding:0; } .tree li { list-style:'└ '; }
+.slottbl { width:100%; font-size:12px; border-collapse:collapse; } .slottbl td { padding:2px 4px; border-bottom:1px solid var(--line); }
+/* --- demo v2 round 3: community sprite size, standalone gear icons, click-to-equip picker, view-by-slot inventory --- */
+#shared .sharedwrap { grid-template-columns: minmax(260px, 420px) 1fr; }
+/* community pet: crisp integer scale (32px sprite x8 / x6) so it fits its section at every width (Jake 2026-10-14) */
+#shared .sharedart canvas#crCanvas { width: 256px; height: 256px; max-width: none; margin: 0 auto; border-radius: 16px; image-rendering: pixelated; display: block; }
+@media (max-width: 1100px) { #shared .sharedart canvas#crCanvas { width: 192px; height: 192px; } }
+@media (max-width: 640px) { #shared .sharedwrap { grid-template-columns: 1fr; } #shared .sharedart canvas#crCanvas { width: 192px; height: 192px; } }
+#communityPanel .cgrid { grid-template-columns: 176px 1fr; }
+#communityPanel .cgrid .commsprite { width: 160px; height: 160px; }
+@media (max-width: 520px) { #communityPanel .cgrid { grid-template-columns: 112px 1fr; } #communityPanel .cgrid .commsprite { width: 104px; height: 104px; } }
+.invtabs { margin-top: 10px; } .slotfilter { margin: 4px 0 6px; } .slotfilter .q.on { background: #2a3a2e; color: #fff; border-color: var(--acc2); }
+.invcard.unowned { opacity: .55; } .invcard.unowned:hover { opacity: 1; }
+.gpicker { margin: 6px 0 12px; }
+.gp-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.gp-slot { font: inherit; text-align: left; cursor: pointer; background: var(--bg2); color: inherit; border: 3px solid #3a4a3e; border-radius: 6px; padding: 6px 8px; box-shadow: 3px 3px 0 #000; }
+.gp-slot b { display: block; font-size: 13px; } .gp-slot span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.gp-slot.on { border-color: var(--acc2); background: #2a3a2e; } .gp-slot.locked { opacity: .6; }
+.gp-head { margin: 8px 0 4px; }
+.gp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; max-height: 260px; overflow-y: auto; padding: 4px; background: #0a0f0b; border: 2px solid #3a4a3e; border-radius: 6px; }
+.gp-item { position: relative; padding: 2px; cursor: pointer; background: var(--bg2); border: 3px solid #9aa3b5; border-radius: 6px; }
+.gp-item.t1 { border-color: #4fd18b; } .gp-item.t2 { border-color: #4f9dff; } .gp-item.t3 { border-color: #ffc93c; }
+.gp-item canvas { width: 42px; height: 42px; image-rendering: pixelated; display: block; margin: 0 auto; }
+.gp-item.no { opacity: .38; filter: grayscale(.7); } .gp-item.no:hover { opacity: .8; }
+.gp-item.worn { box-shadow: 0 0 0 3px var(--acc2); }
+.gp-item:hover, .gp-item:focus { transform: translateY(-1px); outline: 2px solid #fff; }
+.gp-n { position: absolute; bottom: 0; right: 2px; font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.gp-star { position: absolute; top: -2px; left: 2px; font-size: 10px; color: #ffc93c; } .gp-on { position: absolute; top: 0; right: 1px; font-size: 8px; background: #1d3a24; color: #c8f7d8; border-radius: 4px; padding: 0 2px; }
+.gp-msg { min-height: 1.2em; margin-top: 4px; }
+.gicon { width: 42px; height: 42px; image-rendering: pixelated; }
+.board tr.me td { background: var(--bg2); } .board tr.me td.rk { color: var(--acc2); font-weight:800; }
+.bgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:8px; margin:6px 0 12px; }
+.bgrid .pet.card { padding:6px; text-align:center; font-size:11px; } .bgrid .pet.card canvas { width:64px; height:64px; image-rendering:pixelated; display:block; margin:0 auto 4px; }
+.bgrid .pet.card.sel { border-color:#3ddc84; box-shadow:0 0 0 2px #3ddc84, 3px 3px 0 #000; } .bgrid .pet.card.sel::after { content:'✓ ' attr(data-role); display:block; color:#3ddc84; font-weight:700; }
+.bgrid .pet.card.off { opacity:.45; cursor:not-allowed; filter:grayscale(.6); } .bgrid .pet.card.off:hover { transform:none; border-color:var(--pixline); }
+#breedArena { width:540px; max-width:100%; height:auto; image-rendering:pixelated; background:#0a0f0b; border:3px solid #3ddc84; border-radius:6px; }
+.bgrid .pet.card b { color:var(--ink); }
+.chip.hyb { background:#3b2a5a; color:#ffc93c; font-weight:700; letter-spacing:1px; font-size:10px; }
+
+/* animation pop-up (battle / rumble / breeding) */
+.reveal.anim .box { max-width: 460px; text-align: left; } .reveal.anim .arenawrap { display: block !important; } .reveal.anim canvas { width: 100%; max-width: 400px; height: auto; image-rendering: pixelated; display: block; margin: 0 auto 8px; }
+.reveal.anim .logbox { max-height: 160px; overflow: auto; }
+
+/* inscriptions (mock) */
+.reveal.insc .box { max-width: 720px; text-align: left; } .inscgrid { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.inscgrid figure { margin: 0; } .inscgrid canvas, .inscgrid img { width: 256px; height: 256px; image-rendering: pixelated; border: 2px solid #2a3a2e; background: #0a0f0b; object-fit: contain; }
+.insclink { color: #9fd8ff; text-decoration: underline dotted; } .insclink em { color: #ffc93c; font-style: normal; } .stuck { color: #ffc93c; margin: 6px 0; }
+.insctable { width: 100%; border-collapse: collapse; font-size: 13px; } .insctable td, .insctable th { border-bottom: 1px solid #2a3a2e; padding: 6px; text-align: left; vertical-align: top; }
+.inscthumb { width: 64px; height: 64px; image-rendering: pixelated; } .inscpick { margin: 10px 0; }
+
+/* pet pop-up: prominent 'Open pet page' primary button, right under the name/art (2026-10-14) */
+#detail .openpet { display: block; width: 100%; box-sizing: border-box; text-align: center; font-size: 17px; padding: 12px 18px; margin: 12px 0 14px; background: #3ddc84; color: #06210f; border: 2px solid #0b3d20; box-shadow: 0 4px 0 #0b3d20; border-radius: 10px; font-weight: 800; text-decoration: none; }
+#detail .openpet:hover, #detail .openpet:focus-visible { background: #5ff0a0; outline: 3px solid #ffd23f; outline-offset: 2px; }
+/* persistent 'Inscribing' pet header card */
+.inschead { display: flex; gap: 12px; align-items: center; background: #13201a; border: 2px solid #f7931a; border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; }
+.inschead .insctb { width: 64px; height: 64px; image-rendering: pixelated; background: #0b0f0c; border-radius: 6px; flex: none; }
+.inschead .ihb { flex: 1; min-width: 0; } .inschead .ihk { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #f7931a; }
+.inschead .ihn { font-size: 16px; } .inschead .ihm { font-size: 13px; color: #c9d6cc; } .inschead .ihr.t3 { color: #ffc93c; } .inschead .ihr.t2 { color: #9fd8ff; }
+.inschead .ihs { font-weight: bold; white-space: nowrap; padding: 4px 10px; border-radius: 999px; background: #1f2f26; }
+.inschead[data-step="stuck"] { border-color: #ffc93c; } .inschead[data-step="done"] { border-color: #3ddc84; }
+/* hero grid (2026-10-14): crisp integer scaling of the 32-px sprites (3x, 4x on wide screens) instead of a fractional ~3.6x stretch */
+.hero-pets{grid-template-columns:repeat(3,96px);max-width:none;justify-content:center}
+.hero-pets canvas{width:96px;height:96px;aspect-ratio:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+@media (min-width:900px){.hero-pets{grid-template-columns:repeat(3,128px)}.hero-pets canvas{width:128px;height:128px}}
+
+/* gear-win notification (same .toast look) */
+.toast.wintoast{border-color:#ffd23f;max-width:420px}.toast.wintoast .winrow{display:flex;align-items:center;gap:6px;margin-top:4px}.toast.wintoast .winico canvas{width:32px;height:32px;image-rendering:pixelated;vertical-align:middle}.toast.wintoast .winlist{max-height:50vh;overflow:auto}
+
+/* front-page Cold Storage link (Jake 2026-10-14): the whole label + bar links to archive.html, visuals unchanged */
+a.returnlink { display: block; color: inherit; text-decoration: none; cursor: pointer; border-radius: 6px; } a.returnlink:hover { color: inherit; text-decoration: none; } a.returnlink:focus-visible { outline: 2px solid #ffc93c; outline-offset: 3px; }
+/* Cold Storage button (Jake 2026-10-14: must look clickable): game button style, pixel snowflake, arrow; hover lift, active press, focus ring */
+a.returnlink .coldbtn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 3px solid #000; border-radius: 6px; background: #33d6ff; color: #04202a; font-weight: 800; box-shadow: 3px 3px 0 #000; transition: transform .08s, box-shadow .08s, filter .08s; }
+a.returnlink .coldico { image-rendering: pixelated; flex: none; } a.returnlink .coldico path { fill: #04202a; }
+a.returnlink:hover .coldbtn { filter: brightness(1.12); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
+a.returnlink:active .coldbtn { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbtn { outline: 3px solid #ffc93c; outline-offset: 3px; }
+
+/* footer Telegram link (Jake 2026-10-14) */
+.tgline { margin: 8px 0 0; } a.tglink { color: #33d6ff; font-weight: 700; text-decoration: none; border-bottom: 1px dotted #33d6ff; } a.tglink:hover { color: #8be8ff; }
