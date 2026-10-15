@@ -92,7 +92,7 @@
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')';
-    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); renderRumble(w); renderBreed(w); renderLog(w);
+    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); notifyBreeds(w); renderRumble(w); renderBreed(w); renderLog(w);
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
@@ -184,7 +184,7 @@
     if (!p.dead) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button><button class="btn ghost ico-flame" data-a="roll">Gear roll (345)</button>' + frBtn(w) + '<button class="act ghost" id="dDiscard" title="Hides it in this browser. Free; restore any time from Show discarded.">🗑️ Discard pet</button></div>';
     h += '<h3 class="sec" data-ico="gear">Gear <span class="small muted gcount">' + V.wornOf(w, p.id).length + '/' + p.capacity + '</span></h3><div class="gpicker" id="gPicker"></div>'; // pop-up cleanup 2026-10-14: no long capacity/signature/how-to text
     h += '<h3 class="sec" data-ico="egg">Born traits</h3><table class="small borntraits">' + V.bornTraits(p, p.stage).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
-    h += '<h3 class="sec" data-ico="egg">Family tree</h3>' + tree(V.familyTree(w, p.id)) + '<p class="small">Children: ' + (p.children.length ? '#' + p.children.join(', #') : 'none') + ' · breedings ' + p.breeds + '/' + V.BREED_MAX + (p.lastBreed != null && S.tip - p.lastBreed < V.BREED_COOLDOWN ? ' · cooldown ' + (V.BREED_COOLDOWN - (S.tip - p.lastBreed)) + ' blocks' : '') + '</p>';
+    h += '<h3 class="sec" data-ico="egg">Family tree</h3>' + tree(V.familyTree(w, p.id)) + R.familyHtml(w, p, S.tip) + '';
     var keepOpen = $('gPicker') ? $('gPicker').getAttribute('data-open') : null, keepY = $('detail').querySelector('.box') ? $('detail').querySelector('.box').scrollTop : 0;
     $('dInfo').innerHTML = h;
     if (keepOpen && detail.lastId === p.id) $('gPicker').setAttribute('data-open', keepOpen); detail.lastId = p.id;
@@ -284,6 +284,16 @@
     unconf.forEach(function (u) { if (u.t.action !== 'fight') return; var A = w.byId[u.t.a], B = w.byId[u.t.b], when = agoLbl(u.x.at);
       if (u.mine) out.push('<div class="txrow pend-out">⏳ <b>Challenged:</b> ' + petLbl(w, u.t.a) + ' vs ' + petLbl(w, u.t.b) + ' · challenge sent, pending confirmation' + (when ? ' · sent ' + when : '') + ' · stake ' + fmt(u.x.amount || V.COSTS.fight) + ' XCPETS · opponent has ' + V.FIGHT_WINDOW + ' blocks to accept once it confirms' + txa(u.x.tx_hash) + '</div>');
       else if (B && B.owner === ME) out.push('<div class="txrow pend-in">⏳ <b>Challenged by:</b> ' + petLbl(w, u.t.a) + ' vs your ' + petLbl(w, u.t.b) + ' · pending confirmation' + (when ? ' · seen ' + when : '') + ' · you can accept once it confirms' + txa(u.x.tx_hash) + '</div>'); });
+    /* breed requests (2026-10-15): incoming = a request for one of your pets (Accept burns the mirrored pet:breed:B:A), outgoing = yours, waiting */
+    var bwin = V.BREED_WINDOW, bacc = {}; unconf.forEach(function (u) { if (u.t.action === 'breed') bacc[u.t.b + ':' + u.t.a] = u.x; });
+    w.breedReqs.forEach(function (r) { if (r.used || (tip && tip - r.block > bwin)) return; var A = w.byId[r.a], B = w.byId[r.b], m = bacc[r.a + ':' + r.b], until = 'until block ' + fmt(r.block + bwin);
+      if (r.owner === ME) out.push('<div class="txrow pend-out">💞 <b>Breed request sent:</b> ' + petLbl(w, r.a) + ' × ' + petLbl(w, r.b) + ' · ' + (m ? 'partner accepted, pending confirmation' : 'waiting for the owner of #' + r.b + ' to accept') + ' · sent at block ' + fmt(r.block) + ' · ' + until + txa(r.tx) + '</div>');
+      else if (B && B.owner === ME) out.push('<div class="txrow pend-in">💞 <b>Breed request:</b> ' + petLbl(w, r.a) + ' asks your ' + petLbl(w, r.b) + ' · from ' + esc(String(r.owner).slice(0, 10)) + '… at block ' + fmt(r.block) + ' · ' + until + ' · the egg goes to the requester' +
+        (m ? ' · ⏳ your accept is pending confirmation' + txa(m.tx_hash) : ' <button class="btn ico-flame" data-bracc="' + r.b + ':' + r.a + '">Accept breed (' + fmt(V.COSTS.breed) + ')</button>') + '</div>'); });
+    unconf.forEach(function (u) { if (u.t.action !== 'breed') return; var B = w.byId[u.t.b]; if (!B || B.owner === (u.mine ? ME : '') ) return;
+      if (w.breedReqs.some(function (r) { return !r.used && r.a === u.t.b && r.b === u.t.a; })) return; /* it is an accept, shown above */
+      if (u.mine) out.push('<div class="txrow pend-out">⏳ <b>Breed request sent:</b> ' + petLbl(w, u.t.a) + ' × ' + petLbl(w, u.t.b) + ' · pending confirmation' + txa(u.x.tx_hash) + '</div>');
+      else if (B.owner === ME) out.push('<div class="txrow pend-in">⏳ <b>Breed request:</b> ' + petLbl(w, u.t.a) + ' asks your ' + petLbl(w, u.t.b) + ' · pending confirmation · you can accept once it confirms' + txa(u.x.tx_hash) + '</div>'); });
     return out;
   }
   /* fight results (2026-10-15, Jake): on live the accept only resolves once its burn CONFIRMS, so playing the fight right after sending did nothing
@@ -302,7 +312,24 @@
       toast('⚔️ Fight ' + f.id + ' result: ' + (mineWon ? 'your ' : '') + esc(win ? win.name : '') + ' #' + f.winner + ' beat ' + (!mineWon ? 'your ' : '') + esc(los ? los.name : '') + ' #' + f.loser +
         (f.spoils ? ' and took ' + esc(f.spoils.label) : ' (no takeable gear)') + ' · #' + f.loser + ' has a black eye until block ' + fmt(f.acceptBlock + V.BLACK_EYE_BLOCKS) + '. <a href="#" data-replay="' + f.id + '">▶ Replay</a>', 15000);
       var a = $('toasts').lastChild.querySelector('[data-replay]'); if (a) a.onclick = function (e) { e.preventDefault(); playFight(world().fights[f.id - 1]); }; });
-    if (q.length) setTimeout(function () { playFight(q[q.length - 1]); }, 600); }
+    q.forEach(function (f) { queueAnim(function () { playFight(world().fights[f.id - 1]); }); }); }
+  /* breed results (2026-10-15, Jake): a breed between two owners resolves when the partner's owner burns the mirrored tag (pet:breed:B:A within
+   * BREED_WINDOW blocks; the egg goes to the requester). Only the sender used to see the animation, right after sending. Now: when an egg whose parent
+   * (or the egg itself) is one of your pets appears in the replayed world, BOTH owners get the breeding animation once per browser + a message with Replay.
+   * Same first-visit cut-off as fights (only breeds from the last 144 blocks auto-play). Display only. */
+  var BKEY = 'xcpets-v2-breeds-seen-' + KEY + '-' + ME;
+  function breedSeen() { try { return JSON.parse(localStorage.getItem(BKEY)); } catch (e) { return null; } }
+  function seenBreed(id) { var s = breedSeen() || {}; s[id] = 1; try { localStorage.setItem(BKEY, JSON.stringify(s)); } catch (e) { } }
+  function replayBreed(kidId) { var w = world(), kid = w.byId[kidId]; if (!kid || !kid.parents) return; var n0 = petIds(); delete n0[kid.id + ':' + (kid.parents || '')]; playBreed(kid.parents[0], kid.parents[1], n0); }
+  function notifyBreeds(w) { if (!ME) return; var seen = breedSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
+    w.pets.forEach(function (k) { if (!k.parents || seen[k.id]) return; var A = w.byId[k.parents[0]], B = w.byId[k.parents[1]];
+      if (k.owner !== ME && !(A && A.owner === ME) && !(B && B.owner === ME)) return; seen[k.id] = 1; if (first && tip - k.hatchBlock > V.BREED_WINDOW) return; q.push(k); });
+    try { localStorage.setItem(BKEY, JSON.stringify(seen)); } catch (e) { }
+    q.forEach(function (k) { var A = w.byId[k.parents[0]], B = w.byId[k.parents[1]], nm = function (p, id) { return (p && p.owner === ME ? 'your ' : '') + esc(p ? p.name : 'Pet') + ' #' + id; };
+      toast('🥚 Breed: ' + nm(A, k.parents[0]) + ' × ' + nm(B, k.parents[1]) + ' → ' + (k.owner === ME ? 'your ' : '') + 'egg ' + esc(k.name) + ' #' + k.id + (k.hybrid ? ' (hybrid ' + esc(k.hybrid.name) + ')' : '') +
+        (k.owner === ME ? '' : ' (owner ' + esc(String(k.owner).slice(0, 8)) + '…)') + ' at block ' + fmt(k.hatchBlock) + '. <a href="#" data-breplay="' + k.id + '">▶ Replay</a>', 15000);
+      var a = $('toasts').lastChild.querySelector('[data-breplay]'); if (a) a.onclick = function (e) { e.preventDefault(); replayBreed(k.id); }; });
+    q.forEach(function (k) { queueAnim(function () { replayBreed(k.id); }); }); }
   function renderBattles(w) {
     var a = $('fMine').value, b = $('fTheirs').value;
     $('fMine').innerHTML = fighters(w, ME).map(opt).join('') || '<option value="">no eligible pet</option>'; $('fTheirs').innerHTML = fighters(w, ME, true).map(opt).join('');
@@ -312,7 +339,8 @@
         (f.status === 'done' ? ' · winner #' + f.winner + (f.spoils ? ' took ' + esc(f.spoils.label) : '') + ' <button class="q" data-view="' + f.id + '">▶ Replay</button>' : '') +
         (f.status === 'open' && B.owner !== ME ? (M.prod ? ' <span class="muted small">waiting for the owner of #' + f.b + ' to accept</span>' : ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>') : '') + (f.status === 'open' && B.owner === ME ? ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (690)</button>' : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
     var pb = ME ? pendingBattles(w) : [];
-    $('fPending').innerHTML = '<h3 class="sec" data-ico="sword">Your pending challenges</h3>' + (pb.join('') || '<p class="muted small">' + (ME ? 'No pending challenges sent or received.' : 'Connect your wallet to see your challenges.') + '</p>');
+    $('fPending').innerHTML = '<h3 class="sec" data-ico="sword">Your pending challenges &amp; breed requests</h3>' + (pb.join('') || '<p class="muted small">' + (ME ? 'No pending challenges sent or received.' : 'Connect your wallet to see your challenges.') + '</p>');
+    $('fPending').querySelectorAll('[data-bracc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bracc.split(':'); confirmPlans('Accept breed: your #' + q[0] + ' × #' + q[1], [{ tag: 'pet:breed:' + q[0] + ':' + q[1], amount: 690 }], function () { toast('💞 Breed accept sent. The egg appears and both owners see the breeding once it confirms.', 9000); render(); }); }; });
     $('fPending').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
     $('fights').querySelectorAll('[data-view]').forEach(function (x) { x.onclick = function () { playFight(world().fights[x.dataset.view - 1]); }; });
     $('fights').querySelectorAll('[data-npc]').forEach(function (x) { x.onclick = function () { var f = world().fights[x.dataset.npc - 1]; adv(3); burn(world().byId[f.b].owner, 'pet:accept:' + f.id, 690); save(); render(); playFight(world().fights[f.id - 1]); }; });
@@ -323,14 +351,17 @@
     if (!my.length || !np.length) return toast('No eligible pets'); var m = my[S.n % my.length], n = np[S.n % np.length]; burn(n.owner, 'pet:fight:' + n.id + ':' + m.id, 690); save(); render(); toast('⚔️ ' + n.owner + ' challenged #' + m.id); };
   // Animation pop-up (2026-10-14): battle / rumble / breeding animations play in a centred modal over a dimmed backdrop; the page never scrolls.
   // The arena element is moved into the modal and put back on close (finish, Skip, Esc, backdrop click); scroll position is restored.
-  var animM = { el: null, home: null, y: 0, iv: null, onClose: null };
+  var animM = { el: null, home: null, y: 0, iv: null, onClose: null }, animQ = [];
+  /* result animations (fights, breeds) queue up and play one after another, each once (2026-10-15) */
+  function queueAnim(fn) { animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
+  function nextAnim() { if (animM.el || !animQ.length) return; animQ.shift()(); }
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
       box.addEventListener('click', function (e) { if (e.target === box) animClose(); }); $('animClose').onclick = function () { animClose(); }; }
     animM.y = window.scrollY; animM.el = el; animM.home = document.createComment('arena'); el.parentNode.insertBefore(animM.home, el); $('animSlot').appendChild(el); animM.onClose = onClose || null;
     box.classList.add('on'); window.scrollTo(0, animM.y); }
   function animClose(silent) { var box = $('animBox'); if (!animM.el) return; var y = animM.y, cb = animM.onClose; animM.home.parentNode.insertBefore(animM.el, animM.home); animM.home.remove(); animM.el = null; animM.onClose = null;
-    if (box) box.classList.remove('on'); if (!silent && cb) cb(); window.scrollTo(0, y); }
+    if (box) box.classList.remove('on'); if (!silent && cb) cb(); window.scrollTo(0, y); if (animQ.length) setTimeout(nextAnim, 500); }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && animM.el) animClose(); });
   window.V2AnimClose = animClose; window.V2PlayFight = function (f) { playFight(f); };
   function playFight(f) {
@@ -409,7 +440,7 @@
     if (!okA.length) $('bGridA').__w = null; if (!okB.length) $('bGridB').__w = null;
     $('bSelA').textContent = a ? '#' + a + ' ' + w.byId[a].name : 'pick one'; $('bSelB').textContent = b ? '#' + b + ' ' + w.byId[b].name : 'pick one';
     $('bKids').innerHTML = w.pets.filter(function (p) { return p.parents; }).map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + TL[k.tier] + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>';
-    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>#' + r.a + ' → #' + r.b + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + (w.byId[r.b].owner !== ME ? '<button class="q" data-bacc="' + r.a + ':' + r.b + '">Partner accepts</button>' : '') + '</div>'; }).join('') || '<div class="muted">none</div>';
+    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>#' + r.a + ' → #' + r.b + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + (w.byId[r.b].owner !== ME ? (M.prod ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<button class="q" data-bacc="' + r.a + ':' + r.b + '">Partner accepts</button>') : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') || '<div class="muted">none</div>';
     $('bReqs').querySelectorAll('[data-bacc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bacc.split(':'), n0 = petIds(); burn(world().byId[q[1]].owner, 'pet:breed:' + q[1] + ':' + q[0], 690); save(); render(); playBreed(q[0], q[1], n0); }; });
   }
   $('bGo').onclick = function () { var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();

@@ -5,6 +5,9 @@
   var V = window.V2Rules;
   V2Gear.install(BonusGear);
   BonusGear.DEFS['v2-black-eye'] = BonusGear.DEFS['v2-black-eye'] || { slot: 'face', tier: 0, label: 'Black eye', at: 'eyes', map: ['VV.......', 'VnV......', '.VV......'] };
+  /* black eye fit (2026-10-15, Jake: on Dodo it sat on the back of the head): traced on the real eye pixels of this species/stage/frame (drawEyeGear 'shiner'),
+   * a bruise ring around the viewer-right eye, like eyewear; the old fixed 'eyes'-anchor map is only the fallback when no eye can be found. */
+  BonusGear.DEFS['v2-black-eye'].v2eye = { s: 'shiner' };
   BonusGear.DEFS['v2-rumble-crown'] = BonusGear.DEFS['v2-rumble-crown'] || { slot: 'head', tier: 3, label: 'Rumble crown', at: 'head', dy: -1, map: ['y.y.y', 'yyyyy', 'yQyQy'] };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /* Unfreeze hotfix (2026-10-14): with thousands of pets the old 300 ms tick repainted EVERY animated canvas (on screen or not, allocating a
@@ -131,6 +134,9 @@
     function put(x, y, k) { if (!k || x < 0 || y < 0 || x > 31 || y > 31 || !a.isSil(x, y)) return; var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; D[q] = parseInt(c.slice(0, 2), 16); D[q + 1] = parseInt(c.slice(2, 4), 16); D[q + 2] = parseInt(c.slice(4, 6), 16); }
     var B = E.map(function (e) { var b = { x0: 99, x1: -1, y0: 99, y1: -1 }; e[2].forEach(function (q) { b.x0 = Math.min(b.x0, q[0]); b.x1 = Math.max(b.x1, q[0]); b.y0 = Math.min(b.y0, q[1]); b.y1 = Math.max(b.y1, q[1]); }); return b; }).sort(function (p, q) { return p.x0 - q.x0; });
     var x, y, eyeAt = {}; if (a.eyeL || a.eyeR) E.forEach(function (e) { e[2].forEach(function (q) { eyeAt[q[0] + ',' + q[1]] = 1; }); });
+    if (g.s === 'shiner') { var sb = B[B.length - 1]; /* bruise ring hugging the eye box: dark purple, deeper under the eye; the eye pixels themselves stay */
+      for (y = sb.y0 - 1; y <= sb.y1 + 1; y++) for (x = sb.x0 - 1; x <= sb.x1 + 1; x++) { if (eyeAt[x + ',' + y] || (x >= sb.x0 && x <= sb.x1 && y >= sb.y0 && y <= sb.y1)) continue; put(x, y, y === sb.y1 + 1 ? 'n' : 'V'); }
+      for (x = sb.x0; x <= sb.x1; x++) if (!eyeAt[x + ',' + (sb.y1 + 2)]) put(x, sb.y1 + 2, 'V'); return; }
     if (g.s === 'bags') { B.forEach(function (b) { for (x = b.x0; x <= b.x1; x++) put(x, b.y1 + 1, g.f); }); return; }
     var ecy = Math.round(E.reduce(function (t, e) { return t + e[1]; }, 0) / E.length), top = Math.max(ecy - 1, Math.min.apply(null, B.map(function (b) { return b.y0; }))) - (g.up || 0), bot = Math.min(ecy + 1, Math.max.apply(null, B.map(function (b) { return b.y1; }))) + (g.drop || 0); // lenses stay on the eye line (tall eyes, e.g. Peepo, are not boxed whole)
     if (spid === 'chud' && (g.s === 'glasses' || g.s === 'visor')) { /* Chud's built-in dark-framed glasses: equipped eyewear covers them whole (no double frame) */
@@ -219,7 +225,7 @@
   /* Doge black eye (2026-10-14, demo working build): the battle-loser 'v2-black-eye' overlay lands on the 'eyes' anchor, which on Doge's
    * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
-  var DOGE_SHINER = { 1: [4, -1], 2: [4, -1], 3: [4, 0], 4: [4, -1], 5: [4, 0] }; /* 2026-10-14: his RIGHT eye as seen by the viewer */
+  var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
@@ -368,7 +374,18 @@
     window.PetCore = NG; try { return framesWith(nk, 5, ids, [], 6); } finally { window.PetCore = live; } }
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
-  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
+  /** familyHtml(w, p): the family line for the pet popup AND the public pet page (2026-10-15, Jake). Parents linked ('none (hatched from a mint)' for
+   * minted pets), every breeding partner with block and the resulting egg/pet linked, breedings n/max (+ cooldown). Display only. */
+  function familyHtml(w, p, tip) { var V2 = window.V2Rules, L = function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '">' + (q ? esc(q.name) + ' ' : '') + '#' + id + '</a>'; }, out = [];
+    out.push('<b>Parents:</b> ' + (p.parents && p.parents.length ? p.parents.map(L).join(' × ') + ' <span class="muted">(bred at block ' + Number(p.hatchBlock).toLocaleString('en-US') + ')</span>' : 'none (hatched from a mint)'));
+    var bred = (p.children || []).map(function (cid) { var c = w.byId[cid]; if (!c || !c.parents) return null; var mate = c.parents.filter(function (x) { return String(x) !== String(p.id); })[0];
+      return (mate != null ? L(mate) : '?') + ' <span class="muted">(block ' + Number(c.hatchBlock).toLocaleString('en-US') + ')</span> → ' + (c.stage === 0 ? 'Egg ' : '') + '<a href="pet.html?id=' + c.id + '">#' + c.id + ' ' + esc(c.name) + '</a>'; }).filter(Boolean);
+    out.push('<b>Bred with:</b> ' + (bred.length ? bred.join(' · ') : 'nobody yet'));
+    if (p.carried && p.carried.length) out.push('<b>Carries:</b> ' + p.carried.map(function (c) { return esc(V2 && V2.speciesLabel ? V2.speciesLabel(c.species) : c.species) + ' traits from ' + L(c.from); }).join(' · '));
+    var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
+    out.push('<b>Breedings:</b> ' + (p.breeds || 0) + '/' + (V2 ? V2.BREED_MAX : 3) + cd);
+    return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
+  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
@@ -386,7 +403,7 @@
     var s = document.createElement('span'); s.innerHTML = '<b></b><br><span class="muted"></span>'; s.firstChild.textContent = (t.name || '') + ' #' + t.id; s.lastChild.textContent = sp + ' · ' + (TL[t.tier] || ''); a.appendChild(s); d.appendChild(a); return d; }
   function branch(t, lvl) { var li = document.createElement('li'); li.appendChild(node(t)); if (lvl < 2 && t.parents && t.parents.length) { var ul = document.createElement('ul'); t.parents.forEach(function (x) { if (x) ul.appendChild(branch(x, lvl + 1)); }); li.appendChild(ul); } return li; }
   function chart(id) { var V = window.V2Rules, w; try { w = window.V2Mock.world(); } catch (e) { return null; } var t = V && V.familyTree && V.familyTree(w, id, 2); if (!t) return null;
-    var box = document.createElement('div'); box.className = 'ftchart'; if (!t.parents || !t.parents.length) { box.innerHTML = '<p class="small muted">No recorded parents.</p>'; return box; }
+    var box = document.createElement('div'); box.className = 'ftchart'; if (!t.parents || !t.parents.length) { return box; /* no parents: the family line under it says 'Parents: none (hatched from a mint)' (2026-10-15) */ }
     var ul = document.createElement('ul'); ul.appendChild(branch(t, 0)); box.appendChild(ul); return box; }
   function trees() { document.querySelectorAll('ul.tree').forEach(function (u) { if (u.parentNode && u.parentNode.closest && u.parentNode.closest('ul.tree')) return; var m = /#(\d+)/.exec(u.textContent); var c = m && chart(+m[1]); if (c) u.parentNode.replaceChild(c, u); }); }
   function css() { if (!document.getElementById('ftcss')) { var st = document.createElement('style'); st.id = 'ftcss'; st.textContent = '.ftchart{overflow-x:auto;padding:6px 0}.ftchart ul{display:flex;justify-content:center;padding:14px 0 0;margin:0;position:relative;list-style:none}.ftchart>ul{padding-top:0}.ftchart li{display:flex;flex-direction:column;align-items:center;position:relative;padding:14px 4px 0}.ftchart>ul>li{padding-top:0}.ftchart li::before,.ftchart li::after{content:"";position:absolute;top:0;width:50%;height:14px;border-top:2px solid #6b5;}.ftchart li::before{right:50%}.ftchart li::after{left:50%;border-left:2px solid #6b5}.ftchart li:only-child::before,.ftchart li:only-child::after{border-top:0}.ftchart li:first-child::before,.ftchart li:last-child::after{border-top:0}.ftchart li:last-child::before{border-right:2px solid #6b5;border-top:2px solid #6b5;width:50%}.ftchart li:last-child::after{border:0}.ftchart li:first-child::after{border-top:2px solid #6b5}.ftchart>ul>li::before,.ftchart>ul>li::after{display:none}.ftchart ul ul::before{content:"";position:absolute;top:0;left:50%;height:14px;border-left:2px solid #6b5}.ftchart ul ul{padding-top:28px}.ftchart ul ul::before{height:14px}.ftnode a{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:inherit;border:2px solid #444;border-radius:6px;padding:4px 6px;background:rgba(0,0,0,.25);font-size:11px;text-align:center;min-width:72px}.ftsprite{width:48px;height:48px;image-rendering:pixelated}.ftnode.tier-rare a{border-color:#4af}.ftnode.tier-legendary a{border-color:#fb3}.ftnode.tier-uncommon a{border-color:#5c5}@media(max-width:520px){.ftnode a{min-width:56px;font-size:10px}.ftsprite{width:32px;height:32px}.ftchart li{padding-left:2px;padding-right:2px}}'; (document.head || document.body).appendChild(st); } }
