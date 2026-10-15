@@ -143,9 +143,25 @@
     if (!p.length && all.length) { var m = Math.min.apply(null, all.map(function (x) { return x.tier; })); p = all.filter(function (x) { return x.tier === m; }); }
     return p.map(function (x) { return { it: x, w: x.w * (x.tier === tierIdx ? 4 : 1) }; });
   }
-  function pickItem(hex, slot, species, tierIdx) { var p = pool(slot, species, tierIdx); if (!p.length) return null;
+  /* Duplicate damping (2026-10-15, Jake approved): from ACTIVATE_DEDUP_BLOCK each copy of an item the roller already owns makes that item 10% less
+   * likely (weight x 0.9 per copy, integer math so every replay is exact). Rarity odds are unchanged: the tier is still the tier of the
+   * old draw (hex 8..16); only the item inside that tier is redrawn (hex 24..32) with damped weights, and only if the roller owns a copy of
+   * something in that tier (else the old pick stands). copies(id) = items held by the address (inventory + worn, all pets, incl. gear of
+   * released/dead pets and pets hidden by the local discard, since those stay owned on chain); community roll = every piece Nakamoto has rolled. */
+  var ACTIVATE_DEDUP_BLOCK = 971588;  // Bitcoin tip 971,585 at 2026-10-15 09:20 CT + 3 (Jake approved)
+  var DEDUP_NUM = 9, DEDUP_DEN = 10, DEDUP_SCALE = 1000000;
+  function dampW(w0, c) { var x = w0 * DEDUP_SCALE; for (var i = 0; i < c && x > 1; i++) x = Math.floor(x * DEDUP_NUM / DEDUP_DEN); return Math.max(1, x); }
+  function ownedCounts(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
+  function communityCounts(w) { var m = {}; (w.community.gearLog || []).forEach(function (g) { m[g.item] = (m[g.item] || 0) + 1; }); return m; }
+  function pickItem(hex, slot, species, tierIdx, owned) { var p = pool(slot, species, tierIdx); if (!p.length) return null;
     var tot = p.reduce(function (a, b) { return a + b.w; }, 0), r = parseInt(hex.slice(8, 16), 16) % tot;
-    var hit = p[p.length - 1].it; for (var i = 0; i < p.length; i++) { if (r < p[i].w) { hit = p[i].it; break; } r -= p[i].w; } return hit.alias ? BY_ID[hit.alias] : hit; }
+    var hit = p[p.length - 1].it; for (var i = 0; i < p.length; i++) { if (r < p[i].w) { hit = p[i].it; break; } r -= p[i].w; }
+    if (owned) { var rid = function (x) { return x.alias || x.id; }, tier = p.filter(function (e) { return e.it.tier === hit.tier; });
+      if (tier.some(function (e) { return owned[rid(e.it)] > 0; })) {
+        var dw = tier.map(function (e) { return dampW(e.w, owned[rid(e.it)] || 0); }), dt = dw.reduce(function (a, b) { return a + b; }, 0), r2 = parseInt(hex.slice(24, 32), 16) % dt;
+        hit = tier[tier.length - 1].it; for (var j = 0; j < tier.length; j++) { if (r2 < dw[j]) { hit = tier[j].it; break; } r2 -= dw[j]; } } }
+    return hit.alias ? BY_ID[hit.alias] : hit; }
+  function dedupFor(w, b, owner) { return b >= ACTIVATE_DEDUP_BLOCK ? ownedCounts(w, owner) : null; }
 
   // ---------------------------------------------------------------- capacity by AGE + CARE (not rarity)
   /** capacity(ageDays, fedDays): 1 base + 1 each at age 2/5/10 days + 1 at >=50% of days fed + 1 at >=80% (min 3 fed days). Max 6. */
@@ -341,7 +357,7 @@
     function token(p, kind) { if (b < ACTIVATE_TOKENS_BLOCK || !bh || !p) return;
       var d = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-drop'); if (parseInt(d.slice(0, 8), 16) % 10000 >= TOKEN_DROP_10K[kind]) return;
       liveAt(w, p, b); p.tokens = (p.tokens || 0) + 1; w.tokens[p.owner] = (w.tokens[p.owner] || 0) + 1;
-      var h = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-roll'), sl = p.openSlots[parseInt(h.slice(16, 24), 16) % p.openSlots.length], it = pickItem(h, sl, p.species, p.tier);
+      var h = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-roll'), sl = p.openSlots[parseInt(h.slice(16, 24), 16) % p.openSlots.length], it = pickItem(h, sl, p.species, p.tier, dedupFor(w, b, p.owner));
       if (!it) return L(r, 'token', '#' + p.id + ' found a roll token (' + (kind === 'meal' ? 'meal' : 'stage-up') + '), no gear for ' + slotLabel(sl), { petId: p.id, token: true });
       var ni = newItem(w, it, p.owner, 'token'); ni.rolledOn = p.id; wear(w, p, ni);
       return L(r, 'token', '#' + p.id + ' found a roll token (' + (kind === 'meal' ? 'meal' : 'stage-up') + '): free roll ' + it.label + ' (' + slotLabel(sl) + ')', { petId: p.id, gid: ni.gid, token: true, wk: 'tok' + p.id }); }
@@ -384,7 +400,7 @@
       case 'roll': {
         var g = pet(t.petId), wy = !g ? 'no such pet' : g.released ? 'released' : g.owner !== src ? 'owner only' : g.dead ? 'dead' : amt < COSTS.roll ? 'below roll cost 345' : !bh ? 'block hash pending' : null;
         if (wy) return L(r, 'rejected', wy);
-        var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier);
+        var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier, dedupFor(w, b, g.owner));
         var ni = newItem(w, it, g.owner, 'roll'); ni.rolledOn = g.id; wear(w, g, ni);
         return L(r, 'roll', '#' + g.id + ' rolled ' + it.label + ' (' + slotLabel(slot) + ')', { petId: g.id, gid: ni.gid });
       }
@@ -392,7 +408,7 @@
         if (b < ACTIVATE_FOUNDER_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var fg = pet(t.petId), fw = !(w.freeRolls[src] > 0) ? 'no free rolls left' : !fg ? 'no such pet' : fg.released ? 'released' : fg.owner !== src ? 'owner only' : fg.dead ? 'dead' : !bh ? 'block hash pending' : null;
         if (fw) return L(r, 'rejected', fw);
-        var fh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), fsl = fg.openSlots[parseInt(fh.slice(16, 24), 16) % fg.openSlots.length], fit = pickItem(fh, fsl, fg.species, fg.tier);
+        var fh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), fsl = fg.openSlots[parseInt(fh.slice(16, 24), 16) % fg.openSlots.length], fit = pickItem(fh, fsl, fg.species, fg.tier, dedupFor(w, b, fg.owner));
         w.freeRolls[src]--; var fni = newItem(w, fit, fg.owner, 'froll'); fni.rolledOn = fg.id; wear(w, fg, fni);
         return L(r, 'roll', '#' + fg.id + ' free roll: ' + fit.label + ' (' + slotLabel(fsl) + ') · ' + w.freeRolls[src] + ' free rolls left', { petId: fg.id, gid: fni.gid, free: true });
       }
@@ -450,7 +466,7 @@
         if (b < ACTIVATE_CROLL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (amt < COSTS.croll) return L(r, 'rejected', 'below community roll cost ' + COSTS.croll + ' (burn still feeds the community pet)');
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var ch = sha(bh + r.tx_hash + 'XCPETS:v2:community-roll'), cs = t.slot || V2_SLOTS[parseInt(ch.slice(16, 24), 16) % V2_SLOTS.length], ci = pickItem(ch, cs, 'nakamoto', 3);
+        var ch = sha(bh + r.tx_hash + 'XCPETS:v2:community-roll'), cs = t.slot || V2_SLOTS[parseInt(ch.slice(16, 24), 16) % V2_SLOTS.length], ci = pickItem(ch, cs, 'nakamoto', 3, b >= ACTIVATE_DEDUP_BLOCK ? communityCounts(w) : null);
         if (!ci) return L(r, 'rejected', 'no community gear for ' + slotLabel(cs));
         var cg = { item: ci.id, label: ci.label, slot: ci.slot, tier: ci.tier, legendary: isLegendary(ci), block: b, tx: r.tx_hash, by: src };
         w.community.gear[ci.slot] = cg; w.community.gearLog.push(cg);
@@ -777,7 +793,7 @@
     BREED_COOLDOWN: BREED_COOLDOWN, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };
