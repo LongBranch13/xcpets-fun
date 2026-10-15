@@ -244,6 +244,9 @@
   $('dozenBtn').onclick = function () { confirmPlans('Dozen ×12', [{ tag: 'pet:hatch12', amount: 690 }]); };
   $('caseBtn').onclick = function () { confirmPlans('Case ×144', [{ tag: 'pet:hatch144', amount: 6900 }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
+  /* community feed amount (2026-10-15, Jake): three fixed choices 69 / 690 / 6,900 (69 by default) instead of a free amount field; same tag + burn flow */
+  document.querySelectorAll('[data-camt]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.camt;
+    document.querySelectorAll('[data-camt]').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); }); render(); }; });
   document.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.q; render(); }; });
   $('cAmt').oninput = function () { $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.floor(Number(this.value) || 0)) + ')'; };
   $('cfeedBtn').onclick = function () { var p = V.communityFeedPlan($('cAmt').value); if (!p.ok) return toast('⚠️ ' + p.error); confirmPlans('Feed the ' + V.COMMUNITY_PET, [{ tag: p.tag, amount: p.amount }]); };

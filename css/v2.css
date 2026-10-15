@@ -23,7 +23,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 #communityPanel .cgrid { grid-template-columns: 176px 1fr; }
 #communityPanel .cgrid .commsprite { width: 160px; height: 160px; }
 @media (max-width: 520px) { #communityPanel .cgrid { grid-template-columns: 112px 1fr; } #communityPanel .cgrid .commsprite { width: 104px; height: 104px; } }
-.invtabs { margin-top: 10px; } .slotfilter { margin: 4px 0 6px; } .slotfilter .q.on { background: #2a3a2e; color: #fff; border-color: var(--acc2); }
+.invtabs { margin-top: 10px; } .slotfilter { margin: 4px 0 6px; } .slotfilter .q.on, .camtseg .q.on { background: #2a3a2e; color: #fff; border-color: var(--acc2); } .camtseg .q.on { box-shadow: inset 0 0 0 2px var(--acc2); }
 .invcard.unowned { opacity: .55; } .invcard.unowned:hover { opacity: 1; }
 .gpicker { margin: 6px 0 12px; }
 .gp-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
