@@ -1,12 +1,11 @@
 /* XCPETS v2 — THE RETURN animation (pixel style, 160x90 canvas scaled x4, integer scaling).
- * Story: Nakamoto (Mythic) sends all his Bitcoin to the Counterparty burn address 1CounterpartyXXXXXXXXXXXXXXXUWLpVr: pixel ₿ coins
- * arc from him into a burn vault with a fire, a counter ticks up, the vault flares, Nakamoto fades, and the Bitcoin Wizard egg appears
- * as the new community pet. Triggered by CHAIN STATE (community total >= V2Rules.COMMUNITY_GOAL), so every visitor sees it once
+ * Story (no spoiler text, 2026-10-15): pixel ₿ coins arc from Nakamoto into a vault with a fire, a counter ticks up, the vault flares,
+ * Nakamoto fades, and a new community pet appears. Triggered by CHAIN STATE (community total >= V2Rules.COMMUNITY_GOAL), so every visitor sees it once
  * (localStorage seen-flag keyed by the trigger tx); 'Watch The Return' replays it; ?preview=return previews it any time.
  * window.V2Return = { draw(ctx, t, sprites), FRAMES, play(opts), maybeAutoplay(world, opts), SEEN_KEY, seen(), previewRequested() } */
 (function (root) {
   'use strict';
-  var W = 160, H = 90, S = 4, FRAMES = 420, ADDR = '1CounterpartyXXXXXXXXXXXXXXXUWLpVr', BTC = 1100000, SEEN_KEY = 'xcpets-v2-return-seen';
+  var W = 160, H = 90, S = 4, FRAMES = 420, BTC = 1100000, SEEN_KEY = 'xcpets-v2-return-seen';
   var C = { bg: '#142018', bg2: '#1b2b21', ink: '#e8f5e9', dim: '#7fa58a', gold: '#ffc93c', gold2: '#c98a12', fire1: '#ff5a2a', fire2: '#ffb02e', fire3: '#fff07a', stone: '#4b5563', stone2: '#2f3742', cyan: '#33d6ff' };
   function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
   function coin(ctx, x, y) { px(ctx, x - 2, y - 3, 5, 7, C.gold2); px(ctx, x - 3, y - 2, 7, 5, C.gold2); px(ctx, x - 2, y - 2, 5, 5, C.gold); px(ctx, x - 1, y - 2, 1, 5, C.gold2); px(ctx, x, y - 2, 2, 1, C.gold2); px(ctx, x, y, 2, 1, C.gold2); px(ctx, x, y + 2, 2, 1, C.gold2); }
@@ -42,14 +41,14 @@
     var nkA = t < flare ? 1 : Math.max(0, 1 - (t - flare) / 30), nf = sp.nakamoto ? sp.nakamoto[(t >> 3) % sp.nakamoto.length] : null;
     if (nkA > 0) sprite(ctx, nf, 14, 38 + (t < send0 ? 0 : (t >> 4) % 2), 1.25, nkA);
     vault(ctx, t, t >= send1 && t < flare + 40);
-    text(ctx, 'Burn address: ' + ADDR, 80, 79.5, C.cyan, 4, 'center');
+    text(ctx, 'Every XCPETS burn counted', 80, 79.5, C.cyan, 4, 'center');
     if (t >= send0 && t < send1 + 12) for (var k = 0; k < 6; k++) { var u = ((t - send0) / 26 + k / 6) % 1; if (t - send0 < k * 4) continue;
       var x = 34 + (126 - 34) * u, y = 50 - Math.sin(u * Math.PI) * 30 + u * 8; coin(ctx, x, y); }
-    text(ctx, t < send0 ? 'THE RETURN' : t < flare ? 'Nakamoto sends all his Bitcoin to the burn address' : t < egg0 ? 'Gone. Burned forever.' : 'A new community pet appears…', 80, 4, C.gold, t < send0 ? 9 : 5, 'center');
+    text(ctx, t < send0 ? 'THE RETURN' : t < flare ? 'The Return' : t < egg0 ? 'Gone. Burned forever.' : 'A new community pet appears…', 80, 4, C.gold, t < send0 ? 9 : 5, 'center');
     if (t < egg0) text(ctx, '₿ ' + fmt(BTC * p) + ' sent', 80, t < send0 ? 15 : 13, '#ffffff', 7, 'center');
     if (t >= flare && t < flare + 14) { ctx.globalAlpha = 1 - (t - flare) / 14; px(ctx, 0, 0, W, H, '#ffffff'); ctx.globalAlpha = 1; }
     if (t >= egg0) { var a = Math.min(1, (t - egg0) / 30), ef = sp.egg ? sp.egg[(t >> 3) % sp.egg.length] : null; sprite(ctx, ef, 58, 30 - Math.round((1 - a) * 8), 1.4, a);
-      if (t > egg0 + 30) text(ctx, 'The Bitcoin Wizard egg · grow it together', 80, 13, '#ffffff', 5, 'center'); }
+      if (t > egg0 + 30) text(ctx, 'A new community pet · grow it together', 80, 13, '#ffffff', 5, 'center'); }
     flushText(ctx);
   }
   function seenTx() { try { return localStorage.getItem(SEEN_KEY); } catch (e) { return null; } }
@@ -71,5 +70,5 @@
     if (!c || !c.returned) return false; var key = String(c.returnTx || c.returnBlock); if (seenTx() === key) return false;
     try { localStorage.setItem(SEEN_KEY, key); } catch (e) { } api.play(o); return true;
   }
-  var api = root.V2Return = { W: W, H: H, S: S, FRAMES: FRAMES, ADDR: ADDR, SEEN_KEY: SEEN_KEY, draw: draw, play: play, maybeAutoplay: maybeAutoplay, seen: seenTx, previewRequested: previewRequested };
+  var api = root.V2Return = { W: W, H: H, S: S, FRAMES: FRAMES, SEEN_KEY: SEEN_KEY, draw: draw, play: play, maybeAutoplay: maybeAutoplay, seen: seenTx, previewRequested: previewRequested };
 })(typeof window !== 'undefined' ? window : this);

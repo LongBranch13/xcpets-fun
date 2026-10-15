@@ -34,9 +34,9 @@
   var WIZARD_THRESHOLDS = NAKAMOTO_THRESHOLDS.map(function (v) { return v * 10; }); // community pet: 10x Nakamoto => Mythic 6,906,900
   /* THE RETURN (Jake 2026-10-14, final): ONE constant, COMMUNITY_GOAL = 1,111,111 TOTAL community XCPETS burned (every valid burn, all-time,
    * the same total as the live site), counted from zero: progress = min(burned, 1,111,111) / 1,111,111; The Return fires when burned >= 1,111,111.
-   * Until then the community pet is Nakamoto at Mythic; after it the Bitcoin Wizard egg is the community pet and grows from the burns AFTER the
+   * Until then the community pet is Nakamoto at Mythic; after it a new community pet and grows from the burns AFTER the
    * trigger (WIZARD_THRESHOLDS). It is chain state, so every visitor sees it. Mainnet at go-live: 725,034 -> 65.3%. */
-  var COMMUNITY_GOAL = 1111111, COMMUNITY_GOAL_NAME = 'The Return', COMMUNITY_PET = 'Bitcoin Wizard', BURN_ADDRESS = '1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
+  var COMMUNITY_GOAL = 1111111, COMMUNITY_GOAL_NAME = 'The Return', COMMUNITY_PET = 'community pet', BURN_ADDRESS = null;  // not shown to players (no spoilers)
   // totals are float sums of 8-decimal amounts: round to 1e-8 so 1,111,111 exactly always fires and the counter shows clean numbers
   function returnProgress(burned) { var b = Math.round(Math.max(0, Number(burned) || 0) * 1e8) / 1e8, x = Math.min(b, COMMUNITY_GOAL); return { count: x, goal: COMMUNITY_GOAL, pct: x / COMMUNITY_GOAL, done: b >= COMMUNITY_GOAL }; }
   var STAGE_NAMES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];

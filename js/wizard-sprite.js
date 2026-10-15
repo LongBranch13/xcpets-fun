@@ -1,5 +1,5 @@
-/* Bitcoin Wizard (community pet, demo v2): 6 hand-drawn 8-bit stages, 32x32, same frame format as PetCore.render ({data: RGBA array}).
- * Reference: /workspace/ref/bitcoin_wizard (blue robe + pointed hat, grey beard, wooden staff with an orange ₿ orb). Few colours, ink outline, 4-frame bob. */
+/* Next community pet (demo v2): 6 hand-drawn 8-bit stages, 32x32, same frame format as PetCore.render ({data: RGBA array}).
+ * Reference art (blue robe + pointed hat, grey beard, wooden staff with an orange ₿ orb). Few colours, ink outline, 4-frame bob. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.WizardSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, PAL = { n: '#1a1020', B: '#2f6fe0', b: '#1d48a8', c: '#7fb2ff', S: '#f2c48d', G: '#a9a9b3', g: '#7c7c88', w: '#ffffff', L: '#8a5a2b', O: '#f7931a', o: '#c46a00', y: '#ffd23f', k: '#0f1530' };

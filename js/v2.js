@@ -76,7 +76,7 @@
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
     $('tip').textContent = fmt(S.tip); $('dayn').textContent = V.day(S.tip); $('cut').textContent = fmt(V.V2_FROM_BLOCK);
     $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
-    // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the Bitcoin Wizard (same .commsprite slot as live)
+    // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
     var wiz = !!c.returned, fr;
     if (wiz) fr = WizardSprite.frames(c.wizardStage, '#2a3a2e');
     else { var NG = window.GenPetCore || PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);

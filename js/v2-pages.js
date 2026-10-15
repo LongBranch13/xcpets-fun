@@ -60,7 +60,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=836a46c700'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=43c93e5194'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return in the demo shows Nakamoto's entry from current data). */
@@ -78,24 +78,24 @@
       var all = Object.keys(tot).map(function (k) { return { address: k, amount: tot[k] }; }).sort(function (x, y) { return y.amount - x.amount; });
       return { e: e, done: done, block: blk, tx: done ? e.tx(c) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c); })[0] : null }; }).filter(Boolean); }
   /* Archive layout = Jake's Option C (gallery with featured player); styles in css/archive.css (.archive-*). Spoiler rules: nothing before The Return on chain
-   * (neutral empty state); after it, Nakamoto (completed: Return blurb + replay) and the Bitcoin Wizard (in progress: one general line; never the egg sprite).
+   * (neutral empty state); after it, Nakamoto (completed: Return blurb + replay) and the next community pet (in progress: one general line; never its sprite).
    * No placeholder for a next pet. */
   function shortAddr(s) { s = String(s || ''); return s.length > 14 ? s.slice(0, 6) + '…' + s.slice(-4) : s; }
   function archive() {
     var w = M.world(), c = w.community, preview = /preview=return/.test(location.search), list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
     var items = list.map(function (x) { return { kind: 'done', x: x, id: x.e.id, name: x.e.name, done: x.done }; });
-    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard', done: false });
+    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Community pet', done: false });
     var filt = 'all', sel = items[0].id;
     function sprites(it) { return it.kind === 'live' ? (c.wizardStage > 0 ? WizardSprite.frames(c.wizardStage, '#2a3a2e') : null) : it.x.e.sprites(); }
     function feat(it) {
-      if (it.kind === 'live') return '<div class="archive-player"><span class="archive-cap">BITCOIN WIZARD · IN PROGRESS</span>' + (c.wizardStage > 0 ? '<canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' : '') +
+      if (it.kind === 'live') return '<div class="archive-player"><span class="archive-cap">COMMUNITY PET · IN PROGRESS</span>' + (c.wizardStage > 0 ? '<canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' : '') +
         '</div><div class="archive-fdesc"><span class="archive-tag live">IN PROGRESS</span> <span class="archive-tag myth">' + esc(V.STAGE_NAMES[c.wizardStage].toUpperCase()) + '</span>' +
-        '<h2 class="archive-name">Bitcoin Wizard</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div></div>';
+        '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div></div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '\'S RETURN</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
         '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ Watch the Return</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
-        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>At <b>The Return</b>, Nakamoto sent all his Bitcoin to the Counterparty burn address, and the community cycle came full circle.</p><div class="archive-stats">' +
+        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>At <b>The Return</b>, the community cycle came full circle.</p><div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
         (x.tx ? '<p class="small archive-tx">Triggering tx <code>' + esc(x.tx) + '</code></p>' : '') + '<h3 class="archive-h3">Top feeders</h3><ol class="archive-feed">' + x.top.map(function (t) { return '<li title="' + esc(t.address) + '">' + esc(shortAddr(t.address)) + ' · <span>' + fmt(Math.floor(t.amount)) + '</span></li>'; }).join('') + '</ol></div>'; }
@@ -122,7 +122,7 @@
   function front() {
     heroGrid();
     var w = M.world(), c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage, rp = V.returnProgress(c.burned);
-    // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total); then the Bitcoin Wizard egg, grown by later burns
+    // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total); then the next community pet, grown by later burns
     var NG = window.GenPetCore || PetCore; if (NG.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0] && V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e');
