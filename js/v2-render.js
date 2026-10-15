@@ -360,7 +360,15 @@
     box.querySelectorAll('[data-gslot]').forEach(function (b) { b.onclick = function () { box.setAttribute('data-open', open === b.dataset.gslot ? '' : b.dataset.gslot); gearPicker(box, o); }; });
     if (o.msg) say(o.msg);
   }
-  window.V2Render = { drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
+  /** communityFrames(w): the community pet Nakamoto (Mythic) wearing its community-roll gear (newest roll per slot); no gear => the plain sprite as before. */
+  function communityFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
+    var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
+    var ids = w && V.communityGear ? V.communityGear(w) : [];
+    if (!ids.length) return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); });
+    window.PetCore = NG; try { return framesWith(nk, 5, ids, [], 6); } finally { window.PetCore = live; } }
+  /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
+  function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
+  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

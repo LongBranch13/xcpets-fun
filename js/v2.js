@@ -79,14 +79,15 @@
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
     var wiz = !!c.returned, fr;
     if (wiz) fr = WizardSprite.frames(c.wizardStage, '#2a3a2e');
-    else { var NG = window.GenPetCore || PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
-      var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
-      fr = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }); }
+    else fr = R.communityFrames(w); /* community roll (2026-10-15): Nakamoto wears its community-roll gear */
     if (!commAnim) { var cv = document.createElement('canvas'); cv.width = cv.height = 32; cv.className = 'commsprite'; $('community').parentNode.insertBefore(cv, $('community')); commAnim = { c: cv }; }
     R.animate(commAnim.c, fr); commAnim.fr = fr;
     var T = V.WIZARD_THRESHOLDS, nx = wiz && c.wizardStage < 5 ? T[c.wizardStage + 1] : null, rp = V.returnProgress(c.burned);
     $('community').innerHTML = '<b>' + esc(c.petName) + '</b> · ' + c.petStageName + ' · ' + fmt(Math.floor(c.burned)) + ' <span class="asset">XCPETS</span> burned' +
-      '';
+      (!wiz && R.communityGearText(w) ? '<div class="small muted">Gear: ' + esc(R.communityGearText(w)) + '</div>' : '');
+    var crOn = V.crollOn(S.tip); $('crollBtn').textContent = 'Community roll (' + fmt(V.COSTS.croll) + ')'; $('crollBtn').disabled = !crOn;
+    if (!crOn) $('community').insertAdjacentHTML('beforeend', '<div class="small muted" id="crollNote">Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + '.</div>');
+    $('crollBtn').title = crOn ? 'Burn ' + fmt(V.COSTS.croll) + ' XCPETS: Nakamoto gets one random gear item' : 'Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK);
     $('goalBar').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
@@ -250,7 +251,9 @@
   document.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.q; render(); }; });
   $('cAmt').oninput = function () { $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.floor(Number(this.value) || 0)) + ')'; };
   $('cfeedBtn').onclick = function () { var p = V.communityFeedPlan($('cAmt').value); if (!p.ok) return toast('⚠️ ' + p.error); confirmPlans('Feed the ' + V.COMMUNITY_PET, [{ tag: p.tag, amount: p.amount }]); };
-  $('crollBtn').onclick = function () { toast('Community roll is paused in v2: pet:croll is not a v2 burn yet, so no burn is offered (nothing is sent).'); };
+  /* community roll (2026-10-15, Jake): pet:c:roll, 690, Nakamoto gets one random gear item; offered only once the tip reaches ACTIVATE_CROLL_BLOCK */
+  $('crollBtn').onclick = function () { if (!V.crollOn(S.tip)) return toast('Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + ' (chain tip ' + fmt(S.tip) + ').');
+    var pl = V.communityRollPlan(); confirmPlans('Community roll: Nakamoto gets one random gear item', [pl], function () { toast('🎲 Community roll submitted. Nakamoto\'s new piece depends on the block your burn lands in.', 9000); }); };
   $('balRefresh').onclick = render;
 
   // ---------------------------------------------------------------- battles
