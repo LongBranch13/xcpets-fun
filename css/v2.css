@@ -99,3 +99,6 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 .bulkrow { position:static; }
 .petsticky { position:sticky; top:var(--navh, 52px); z-index:4; background:#0a0f0b; padding:4px 0; box-shadow:0 2px 0 #000; }
 @media (max-width: 700px) { .petsticky { position:static; box-shadow:none; } }
+/* pending challenges (2026-10-15) */
+#fPending { max-height: none; margin: 6px 0 10px; } #fPending .txrow { padding: 6px 8px; margin: 3px 0; border-radius: 6px; background: #17211a; line-height: 1.5; }
+#fPending .pend-out { border-left: 3px solid #33d6ff; } #fPending .pend-in { border-left: 3px solid #ffb02e; } #fPending .txrow a { color: #33d6ff; }

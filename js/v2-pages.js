@@ -60,7 +60,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=0deda41e03'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=6a2b6d3e3c'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return in the demo shows Nakamoto's entry from current data). */
@@ -151,8 +151,8 @@
     var rows = w.pets.filter(function (p) { return !p.dead && !p.released; }).sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }).map(function (p, i) { return { rank: i + 1, p: p }; });
     function render() {
       var mine = V.myRanks(rows, ME), mineIds = {}; mine.forEach(function (m) { mineIds[m.id] = 1; });
-      var show = rows, cut = !all && rows.length > 20; if (cut) { show = []; rows.forEach(function (r, i) { if (i < 10 || i >= rows.length - 10 || mineIds[r.p.id]) { if (show.length && show[show.length - 1] && show[show.length - 1].rank !== r.rank - 1) show.push({ gap: r.rank - show[show.length - 1].rank - 1 }); show.push(r); } }); } // own pets stay pinned in their place
-      $('myRank').innerHTML = mine.length ? '<b>Your pets</b> (' + esc(ME) + '): ' + mine.map(function (m) { return '<a href="pet.html?id=' + m.id + '"><b>' + esc(m.name) + '</b></a> ' + m.label + ' <span class="muted">(' + m.note + ')</span>'; }).join(' · ') : 'This address has no living pets on the board yet.';
+      /* top 100 (Jake 2026-10-15): ranks 1-100 in the same format (all of them when fewer than 100); 'Show all' lists the rest */
+      var TOP = 100, show = all || rows.length <= TOP ? rows : rows.slice(0, TOP);
       $('board').innerHTML = '<div class="tw"><table class="board"><tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' + show.map(function (r) {
         if (r.gap) return '<tr class="gap"><td colspan="4">… ' + r.gap + ' more …</td></tr>';
         var p = r.p, s = streak(p, w.tip);
@@ -160,10 +160,18 @@
           (s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>') + '<div class="small muted">care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</div></td></tr>';
       }).join('') + '<tr class="end"><td colspan="4">💀 NGMI</td></tr></table></div>';
       document.querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
-      var b = $('boardAll'); b.style.display = rows.length > 20 ? '' : 'none'; b.textContent = all ? 'Show top 10 and bottom 10' : 'Show all ' + rows.length;
+      var b = $('boardAll'); b.style.display = rows.length > TOP ? '' : 'none'; b.textContent = all ? 'Show top ' + TOP : 'Show all ' + rows.length;
     }
     $('boardAll').onclick = function () { all = !all; render(); };
-    if (!$('myRank')) { var mr = document.createElement('p'); mr.className = 'small'; mr.id = 'myRank'; $('status').parentNode.insertBefore(mr, $('board')); }
+    /* 'Your pets' summary removed from the rankings page (Jake 2026-10-15); your rows stay highlighted in the board */
+    /* closest to dying (Jake 2026-10-15): the 10 living pets with the fewest blocks left, using the engine's own death block
+     * (V2Rules liveAt: deathBlock = (day of last feed + 7 + 1) x 144; Mythic-care pets never starve, so they are not listed) */
+    if ($('nearDeath')) { var tipB = w.tip, near = w.pets.filter(function (p) { return !p.dead && !p.released && p.deathBlock != null && p.deathBlock > tipB; })
+        .sort(function (a, b) { return a.deathBlock - b.deathBlock || a.id - b.id; }).slice(0, 10);
+      var left = function (n) { var m = n * 10; return fmt(n) + ' block' + (n === 1 ? '' : 's') + ' (~' + (m < 120 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : (m / 1440).toFixed(1) + ' days') + ')'; };
+      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="pet">Closest to dying</h2><p class="small muted">Living pets with the least time left before they starve (no feed for 7 full days after the day of their last feed). Feed them to reset the clock.</p>' +
+        (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(p.owner.slice(0, 8)) + (p.owner === ME ? ' (you)' : '…') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
+      $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
     $('status').textContent = rows.length + ' pets ranked from ' + M.state().rows.length + ' XCPETS burns.'; render();
   }
   function cemetery() {
