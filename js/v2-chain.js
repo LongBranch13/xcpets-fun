@@ -41,8 +41,22 @@
       });
     }).then(function () { cache = null; toSession(); });
   }
+  /* Boot with a clear failure state (2026-10-16): chain.js fails over quickly (6 s primary / 5 s backups, ~20 s worst case per request). If the read
+   * fails, or is still running after BOOT_WATCH_MS, the spinner text becomes a message with a Retry button that re-runs the boot (no full reload;
+   * location.reload() if anything throws). A late success still completes the boot. Data and replay are unchanged. */
+  var BOOT_WATCH_MS = 30000, booted = false;
+  function bootFail(st, then, why) { if (!st || booted) return; st.textContent = ''; st.className = 'small muted bootfail';
+    var m = document.createElement('p'); m.textContent = "Couldn't reach the chain servers right now. Your pets are safe on chain."; m.style.margin = '6px 0';
+    var d = document.createElement('p'); d.className = 'small muted'; d.textContent = why ? '(' + why + ')' : ''; d.style.margin = '0 0 6px';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.id = 'v2bootRetry'; b.textContent = 'Retry';
+    b.onclick = function () { try { st.textContent = 'Reading XCPETS burns from the chain…'; st.className = 'small muted'; run(st, then); } catch (e) { location.reload(); } };
+    st.appendChild(m); if (why) st.appendChild(d); st.appendChild(b); }
+  function run(st, then) { var done = false, w = setTimeout(function () { if (!done) bootFail(st, then, 'still waiting for the chain servers'); }, BOOT_WATCH_MS);
+    load(true).then(function () { done = true; clearTimeout(w); if (booted) return; booted = true; if (st) st.remove(); then(); },
+      function (e) { done = true; clearTimeout(w); bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : ''); }); }
   function boot(then) { var st = document.getElementById('v2boot');
-    load().then(function () { if (st) st.remove(); then(); }, function (e) { if (st) st.textContent = 'Could not reach the Counterparty API (' + e.message + '). Your pets are safe on chain. Reload to retry.'; }); }
+    if (fromSession()) { booted = true; if (st) st.remove(); then(); return; }
+    run(st, then); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   function refresh(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, seed: function () {}, boot: boot, refresh: refresh };
