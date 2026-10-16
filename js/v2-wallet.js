@@ -52,12 +52,16 @@
   function confirmedTx() { var o = {}; try { tracker.list().forEach(function (x) { if (x.status === 'confirmed') o[x.txid] = 1; }); } catch (e) { } return o; }
   function live() { var t = Date.now(), c = confirmedTx(); spent = spent.filter(function (x) { return t - x.at < SPENT_MS && !(x.tx && c[x.tx]); }).slice(-MAX_EX);
     if (lastChange && (t - lastChange.at >= SPENT_MS || c[lastChange.u.split(':')[0]])) lastChange = null; return spent.map(function (x) { return x.u; }); }
-  function chainClear() { spent = []; lastChange = null; }
+  function chainClear() { spent = []; lastChange = null; saveSpent(); }
+  /* build 2 (2026-10-16): the spent-input list survives a reload (per network + address) so Continue after a reload does not rebuild on spent inputs */
+  var spentAddr = null; function spentKey(a) { return 'xcpets-v2-spent-' + NET + '-' + a; }
+  function saveSpent() { if (!spentAddr) return; try { if (spent.length || lastChange) store.setItem(spentKey(spentAddr), JSON.stringify({ spent: spent, lastChange: lastChange })); else store.removeItem(spentKey(spentAddr)); } catch (e) { } }
+  function loadSpent(a) { if (spentAddr === a) return; spentAddr = a; try { var o = JSON.parse(store.getItem(spentKey(a)) || 'null'); if (o && Array.isArray(o.spent)) { var have = {}; spent.forEach(function (x) { have[x.u] = 1; }); o.spent.forEach(function (x) { if (x && x.u && !have[x.u]) spent.push(x); }); if (!lastChange && o.lastChange) lastChange = o.lastChange; } } catch (e) { } live(); saveSpent(); }
   function pendingChain() { live(); var o = {}; spent.forEach(function (x) { if (x.tx) o[x.tx] = 1; }); return Object.keys(o).length; }
   function noteSent(res, txid) {
     try { var d = decodeTx(res.rawtransaction), t = Date.now(); d.ins.forEach(function (u) { spent.push({ u: u, at: t, tx: txid }); });
       var ch = -1; d.outs.forEach(function (x, i) { if (!x.opReturn && (res.btc_change == null || x.value === Number(res.btc_change))) ch = i; });
-      lastChange = ch >= 0 && txid ? { u: txid + ':' + ch, at: t } : null; } catch (e) { /* undecodable: keep going, node view only */ }
+      lastChange = ch >= 0 && txid ? { u: txid + ':' + ch, at: t } : null; } catch (e) { /* undecodable: keep going, node view only */ } saveSpent();
   }
   function setMe(a) { try { store.setItem(ME_KEY, a); store.setItem(ADDR_KEY, a); } catch (e) { } }
   function getWallet() {
@@ -69,7 +73,7 @@
         if (!r.address) throw new Error('XCP Wallet returned no address');
         return x.network().then(function (n) {
           if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) throw new Error('XCP Wallet is on ' + n + ' but this page is on ' + NET + '. Switch one of them.');
-          wallet = x; setMe(x.address);
+          wallet = x; setMe(x.address); loadSpent(x.address);
           if (p.on) p.on('accountsChanged', function (a) { if (a && a[0]) { wallet.address = a[0]; setMe(a[0]); if (win.location) win.location.reload(); } });
           return x;
         });
@@ -106,17 +110,19 @@
       else if (/balance|insufficient/i.test(m)) m = 'Not enough XCPETS for this burn. Node said: ' + e.message;
       return new Error(m);
     }
+    /* build 2: our earlier burns are still unconfirmed -> stop instead of clearing exclusions (that would double-spend their inputs) */
+    function waitErr() { var e = new Error('Burn N is waiting to confirm. Wait about one block, then press Continue.'); e.waitConfirm = true; return e; }
     function host(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
     var chained = !!(live().length || lastChange), plainRetry = false;
     function go(i) {
       if (i >= urls.length) {
-        if (chained && !plainRetry) { plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry */
+        if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry (never while our own burns are unconfirmed) */
         return Promise.reject(new Error('Could not build your burn: every Counterparty node failed. ' + errs.join(' · ')));
       }
       if (onTry) onTry(i + 1, urls.length);
       return call(i, false).catch(function (e) {
         if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message)) return (lastChange ? call(i, 'change').catch(function () { return call(i, 'unconf'); }) : call(i, 'unconf')).catch(function (e2) {
-          if (chained && !plainRetry) { plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { throw friendly(e3); }); } throw friendly(e2); });
+          if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { throw friendly(e3); }); } throw friendly(e2); });
         if (e.retryable) { errs.push(host(urls[i]) + ': ' + e.message); return go(i + 1); }
         throw friendly(e);
       });

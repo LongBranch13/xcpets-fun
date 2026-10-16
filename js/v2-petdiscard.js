@@ -18,7 +18,7 @@
     var b = t && t.closest ? t.closest('.' + CLS) : null; if (!b) return;
     e.stopPropagation(); e.preventDefault();
     var id = Number(b.dataset.discard); if (!id) return;
-    if (!window.confirm('Discard pet #' + id + '?\n\n' + DW)) return;
+    if (!window.confirm((D.isKept && D.isKept(id) ? '#' + id + ' is starred as kept.\n' : '') + 'Discard pet #' + id + '?\n\n' + DW)) return;
     D.discardIds([id]);
   }
   function init() {
@@ -32,7 +32,7 @@
       var hn = document.getElementById('relHint'); rel.parentNode.insertBefore(ds, (hn || rel).nextSibling);
       var upd = function () { var n = D.S().sel.length; ds.disabled = !n; ds.textContent = '🗑️ Discard selected' + (n ? ' (' + n + ')' : ''); };
       ds.onclick = function () { var ids = D.S().sel.slice(); if (!ids.length) return; var n = ids.length;
-        if (!window.confirm('Discard ' + n + ' pet' + (n > 1 ? 's' : '') + '? Free, only hidden in this browser, Undo anytime, no burn.')) return;
+        var kk = D.isKept ? ids.filter(D.isKept) : []; if (!window.confirm('Discard ' + n + ' pet' + (n > 1 ? 's' : '') + '?' + (kk.length ? ' ' + kk.length + ' of them ' + (kk.length > 1 ? 'are' : 'is') + ' starred as kept (' + D.idList(kk) + ').' : '') + ' Free, only hidden in this browser, Undo anytime, no burn.')) return;
         D.discardIds(ids); var S = D.S(); S.sel = []; D.selUi(); upd(); };
       var sc = document.getElementById('selCount'); if (sc && window.MutationObserver) new MutationObserver(upd).observe(sc, { childList: true, characterData: true, subtree: true }); upd();
       window.V2PetDiscard && (window.V2PetDiscard.updDiscSel = upd); }
