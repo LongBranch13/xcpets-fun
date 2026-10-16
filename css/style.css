@@ -118,3 +118,8 @@ span.chip.danger { background:#d11; color:#fff; } span.chip.warn { background:#2
 
 .nav nav a.navico { display:inline-flex; align-items:center; vertical-align:middle; margin-left:12px; line-height:1; } .nav nav a.navico svg { display:block; }
 @media (max-width:640px) { .nav nav a.navico { margin-left:10px; } }
+/* mobile overflow (2026-10-16): wide tables scroll inside their box with a right-edge hint; long owner addresses are shortened (tap to expand) */
+.scrollx { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch;
+  background: linear-gradient(to left, rgba(24,34,27,1) 30%, rgba(24,34,27,0)) right center / 28px 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgba(61,220,132,.55), rgba(61,220,132,0)) right center / 12px 100% no-repeat scroll; }
+.scrollx > table { min-width: 760px; }
+code.addr { cursor: pointer; text-decoration: underline dotted; } code.addr.open { word-break: break-all; text-decoration: none; }
