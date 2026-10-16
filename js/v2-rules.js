@@ -107,6 +107,23 @@
    * (child species by the normal 50/50 parent rule). Before the block: exactly the old 10x thresholds and 'Nakamoto cannot breed'.
    * The community pet (p.community) and WIZARD_THRESHOLDS are unaffected. b omitted => old behaviour (pre-activation). */
   var ACTIVATE_NAKA_NORMAL_BLOCK = 971659;  // Bitcoin tip 971,653 at 2026-10-15 21:55 CT + 6 (Jake approved)
+  /* Nakamoto 1 in 777, always Legendary (Jake approved 2026-10-15, option D). From ACTIVATE_NAKA_777_BLOCK every hatch (single, dozen, case) first draws
+   * sha(bh + id + 'XCPETS:v2:naka777') mod 777 == 0 -> Nakamoto; otherwise the species comes from the other 12 with their SPECIES13 weights (total 99).
+   * A hatched Nakamoto is forced Legendary: tier, stats and every tier-weighted look come from the SAME seed rolled at tier 3 (exactly what a naturally
+   * Legendary pet with that seed gets). A breed child whose species comes out Nakamoto is also forced Legendary (tier only; stats stay parent-derived).
+   * Before the block: exactly the old 13-way pick (Nakamoto 5/104, any tier). Existing pets keep their tier. Community pet / Wizard untouched. */
+  var ACTIVATE_NAKA_777_BLOCK = 971665;  // Bitcoin tip 971,659 at 2026-10-15 22:52 CT + 6 (Jake approved)
+  var SPECIES12 = SPECIES13.filter(function (s) { return s.id !== 'nakamoto'; });
+  function naka777(b) { return b != null && b >= ACTIVATE_NAKA_777_BLOCK; }
+  function pickSpecies12(hex) { var tot = SPECIES12.reduce(function (a, s) { return a + s.w; }, 0), r = parseInt(hex.slice(0, 8), 16) % tot;
+    for (var i = 0; i < SPECIES12.length; i++) { if (r < SPECIES12[i].w) return SPECIES12[i].id; r -= SPECIES12[i].w; } return SPECIES12[0].id; }
+  var LEG_KEYS = ['tier', 'tierIndex', 'pattern', 'eyes', 'band', 'armor', 'cape', 'weapon', 'crown', 'baseStats'];
+  /** hatchArt(bh, id, b): the art for one hatched egg (seed id = tx or tx:i), species set. */
+  function hatchArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), spHex = sha(bh + id + 'XCPETS:v2:species');
+    if (!naka777(b)) { art.species = pickSpecies(spHex); return art; }
+    if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = pickSpecies12(spHex); return art; }
+    var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
+    LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
   function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
   function thresholdsFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
   function mealSizesFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
@@ -376,14 +393,14 @@
       case 'hatch': {
         if (amt < COSTS.hatch) return L(r, 'rejected', 'below hatch cost 69');
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var art = PetCore.generate({ blockHash: bh, petId: r.tx_hash, blockHeight: b }), sp = pickSpecies(sha(bh + r.tx_hash + 'XCPETS:v2:species'));
-        art.species = sp; var p = mk(w, src, noBornShades(art), b, COSTS.hatch, r.tx_hash);
+        var art = hatchArt(bh, r.tx_hash, b), sp = art.species;
+        var p = mk(w, src, noBornShades(art), b, COSTS.hatch, r.tx_hash);
         var hl = L(r, 'hatch', 'hatched #' + p.id + ' ' + sp, { petId: p.id }); token(p, 'stageUp'); return hl;
       }
       case 'pack': {
         if (amt < t.cost) return L(r, 'rejected', 'below pack price ' + t.cost);
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var first = w.nextPet; for (var i = 0; i < t.n; i++) { var a2 = PetCore.generate({ blockHash: bh, petId: r.tx_hash + ':' + i, blockHeight: b }); a2.species = pickSpecies(sha(bh + r.tx_hash + ':' + i + 'XCPETS:v2:species')); mk(w, src, noBornShades(a2), b, COSTS.hatch, r.tx_hash + ':' + i); }
+        var first = w.nextPet; for (var i = 0; i < t.n; i++) { var a2 = hatchArt(bh, r.tx_hash + ':' + i, b); mk(w, src, noBornShades(a2), b, COSTS.hatch, r.tx_hash + ':' + i); }
         var pl = L(r, 'hatch', 'pack hatched #' + first + '-#' + (w.nextPet - 1)); for (var pi = first; pi < w.nextPet; pi++) token(w.byId[pi], 'stageUp'); return pl;
       }
       case 'cfeed': {
@@ -597,7 +614,7 @@
   }
   function breed(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
-    art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
+    if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
@@ -801,7 +818,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
