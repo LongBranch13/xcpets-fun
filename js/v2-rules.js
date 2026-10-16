@@ -312,7 +312,7 @@
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
     w.freeRolls = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
-      grantFounders(w, e.b); relabelTiers(w, e.b); maybeRumbles(e.b);
+      grantFounders(w, e.b); relabelTiers(w, e.b); repairGear(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1;
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
@@ -321,7 +321,7 @@
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
-    grantFounders(w, tip); relabelTiers(w, tip); maybeRumbles(tip);
+    grantFounders(w, tip); relabelTiers(w, tip); repairGear(w, tip); maybeRumbles(tip);
     w.pets.forEach(function (p) { finish(w, p, tip); });
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
@@ -384,10 +384,23 @@
     Object.keys(lo || {}).forEach(function (pid) { Object.keys(lo[pid] || {}).forEach(function (sl) { var o = lo[pid][sl] || {}, v2sl = CORE_SLOT[sl] || sl;
       ops.push({ kind: 'equip', owner: owner, petId: Number(pid), slot: v2sl, gid: o.gid == null ? null : 'L' + o.gid, block_index: block != null ? block : (w.cutoff ? w.cutoff.block : V2_FROM_BLOCK) }); }); });
     return ops; }
+  /* Gear cap repair (2026-10-16, Jake approved). Root cause: the live loadout import mapped the live game's separate band and crown slots both onto v2
+   * 'head' (and a later roll could add to it), so a few pets wear two items in one slot: worn count > capacity (e.g. #2393 5/4). From
+   * ACTIVATE_GEAR_CAP_BLOCK: once, the first time replay reaches the block (before its burns), every pet keeps at most one worn item per open slot and
+   * nothing in a locked slot; the excess goes back to the owner's inventory (unequipped, never deleted), the most recently created item first
+   * (item creation order). Logged ('gearfix') on the pet's history and in p.gearFix. Also from the block, wearing an item clears EVERY item in that slot. */
+  var ACTIVATE_GEAR_CAP_BLOCK = 999999999;  // set at push: fresh tip + 6
+  function gearCapOn(b) { return b != null && b >= ACTIVATE_GEAR_CAP_BLOCK; }
+  function repairGear(w, b) { if (w.gearRepaired || !gearCapOn(b)) return; w.gearRepaired = b; var ks = Object.keys(w.items);
+    w.pets.forEach(function (p) { if (p.community) return; if (p.hatchBlock != null) liveAt(w, p, b); var mine = ks.map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === p.id; }), keep = {}, off = [];
+      mine.forEach(function (g) { if ((p.openSlots || []).indexOf(g.slot) < 0 || keep[g.slot]) off.push(g); else keep[g.slot] = g; }); /* oldest stays, newer duplicates come off */
+      if (!off.length) return; off.forEach(function (g) { g.on = null; });
+      p.gearFix = { block: b, items: off.map(function (g) { return g.label || g.item; }) };
+      w.log.push({ block: b, tx: null, kind: 'gearfix', petId: p.id, msg: '#' + p.id + ': gear over capacity repaired, back to inventory: ' + p.gearFix.items.join(', ') }); }); }
   function wornOf(w, pid) { return Object.keys(w.items).map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === pid; }); }
   function wornIn(w, pid, slot) { return wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
   function newItem(w, it, owner, src) { var gid = 'g' + (w.nextItem++); w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: owner, on: null, src: src }; return w.items[gid]; }
-  function wear(w, p, g) { if (p.openSlots.indexOf(g.slot) < 0) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; g.on = p.id; return true; }
+  function wear(w, p, g) { if (p.openSlots.indexOf(g.slot) < 0) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
   function giveRandomPiece(w, loser, winnerPet, seedHex, why) {
     var take = wornOf(w, loser.id).filter(function (g) { return !g.legendary; }); // legendary species pieces are never takeable
     if (!take.length) return null;
@@ -867,7 +880,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
