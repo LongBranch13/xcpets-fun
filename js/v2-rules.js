@@ -87,7 +87,7 @@
   var TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   var NAKAMOTO_CAST_STAGE = 3;         // Nakamoto joins the front-page Cast once any hatched Nakamoto reaches this stage (3 = Adult; set 5 for Mythic)
   /** castShowsNakamoto(w): true once any hatched Nakamoto (dead/released ones count: they reached it) is at NAKAMOTO_CAST_STAGE or higher. */
-  function castShowsNakamoto(w) { return !!(w && w.pets || []).some(function (p) { return p.species === 'nakamoto' && !p.max && p.stage >= NAKAMOTO_CAST_STAGE; }); }
+  function castShowsNakamoto(w) { return !!(w && w.pets || []).some(function (p) { return p.species === 'nakamoto' && p.stage >= NAKAMOTO_CAST_STAGE; }); }
 
   // ---------------------------------------------------------------- helpers
   function sha(s) { return PetCore.sha256Hex(String(s)); }
@@ -551,8 +551,8 @@
       default: return L(r, 'plain', 'plain burn (community food)');
     }
   }
-  /* Jake 2026-10-14: black sunglasses are GEAR only ('v2-bobo-face' "Shades"), never a born trait. v2 births (hatch / pack / breed / hybrids /
-   * showcase) go through noBornShades: Bobo's DNA shades trait is forced off (pet.shades = false) and the 'beady' eye trait (label "Sunglasses",
+  /* Jake 2026-10-14: black sunglasses are GEAR only ('v2-bobo-face' "Shades"), never a born trait. v2 births (hatch / pack / breed / hybrids)
+   * go through noBornShades: Bobo's DNA shades trait is forced off (pet.shades = false) and the 'beady' eye trait (label "Sunglasses",
    * same tier 0 as 'classic') becomes 'classic'. pet-core.js is untouched; pre-cutoff pets come from the frozen live engine and keep theirs. */
   function noBornShades(art) { art.shades = false; if (art.eyes === 'beady') art.eyes = 'classic'; if (art.hybrid && art.hybrid.eyes === 'beady') art.hybrid.eyes = 'classic'; return art; }
   /** bornTraits(pet, stage): the birth traits the generator assigned, as drawn (v2 overrides applied: no born sunglasses after the cutoff). Read-only. */
@@ -746,31 +746,7 @@
       R.highlights.push('FINAL: #' + champ.id + ' is the Royal Rumble champion (crown until block ' + (b + WEEK) + ')');
     }
   }
-  /** bestKit(species): the BEST piece for every slot in the game. classic = the 5 pet-core kit slots (band/armor/cape/weapon/crown,
-   * highest tier, first listed on ties); slots = the 6 v2 slots (head = the species legendary; others = highest-tier eligible overlay piece,
-   * the species' own piece first on ties). */
-  function bestKit(species) {
-    var classic = {}; Object.keys(CORE_LISTS).forEach(function (k) { var l = (PetCore[CORE_LISTS[k]] || []).filter(function (x) { return x.id !== 'none'; }), m = Math.max.apply(null, l.map(function (x) { return x.t || 0; }));
-      classic[k] = l.filter(function (x) { return (x.t || 0) === m; })[0].id; });
-    var slots = {}; V2_SLOTS.forEach(function (sl) {
-      var lh = legendaryOf(species).filter(function (x) { return x.slot === 'head'; })[0]; if (sl === 'head' && lh) { slots[sl] = lh.id; return; }
-      var c = ALL.filter(function (x) { return x.slot === sl && x.src !== 'core' && x.kind !== 'banner' && x.kind !== 'jewelry' && !(x.sig && x.slot !== 'head') && !x.card && eligible(x, species); }), /* signature pieces (except the head one) stay out of the showcase kit: Max Pepe's look is unchanged */ /* 2026-10-14 additions stay out of Max Pepe's showcase kit (unchanged look) */ m = Math.max.apply(null, c.map(function (x) { return x.tier; }));
-      c = c.filter(function (x) { return x.tier === m; }).sort(function (a, b) { return (b.origin === species) - (a.origin === species) || (b.src === 'v2') - (a.src === 'v2') || (a.label < b.label ? -1 : 1); });
-      slots[sl] = c[0].id; });
-    return { classic: classic, slots: slots };
-  }
-  /** op 'maxpet': the showcase pet (e.g. Max Pepe): Legendary, Mythic, every stat 31, all 6 slots open, best piece in every slot + full classic kit. */
-  function makeMaxPet(w, o) {
-    var sp = o.species || 'pepe', art = PetCore.characterPet(sp, { tier: 'legendary', bgColor: o.bgColor || '#2a3a2e' }), kit = bestKit(sp);
-    art.tierIndex = 3; art.tier = 'legendary'; PetCore.STAT_KEYS.forEach(function (k) { art.baseStats[k] = 31; }); Object.assign(art, kit.classic);
-    var b0 = o.block_index - 30 * BLOCKS_PER_DAY, p = mk(w, o.owner, noBornShades(art), b0, thresholdsFor(sp)[5], 'maxpet:' + sp);
-    p.name = o.name || 'Max Pepe'; p.max = true; p.classicKit = kit.classic; p.showcase = Object.keys(kit.slots).map(function (k) { return kit.slots[k]; });
-    for (var d = day(b0); d <= day(o.block_index); d++) p.feedDays[d] = 1; p.lastFed = o.block_index;
-    V2_SLOTS.forEach(function (sl) { var g = newItem(w, BY_ID[kit.slots[sl]], o.owner, 'showcase'); liveAt(w, p, o.block_index); wear(w, p, g); });
-    return p;
-  }
   function applyOp(w, o) {
-    if (o.kind === 'maxpet') { if (!w.pets.some(function (q) { return q.max && q.owner === o.owner; })) makeMaxPet(w, o); return; }
     if (o.kind !== 'equip') return; var p = w.byId[o.petId]; if (!p || p.owner !== o.owner) return; liveAt(w, p, o.block_index); if (p.dead || p.released) return;
     if (o.gid == null) { var cur = wornIn(w, p.id, o.slot); if (cur) cur.on = null; return; }
     var g = w.items[o.gid]; if (!g || g.owner !== o.owner) return; wear(w, p, g);
@@ -892,14 +868,6 @@
     accept: 'pet:accept:' + o.fightId, rumble: 'pet:rumble:' + o.petId, breed: 'pet:breed:' + o.a + ':' + o.b }[kind]; return t && utf8Len(t) <= MAX_TAG_BYTES ? t : null; }
 
   /** Ranking-page "where do my pets rank": ranked = [{rank, p}] (rank 1 = best). Returns the owner's entries with "#R of N" and a top/bottom X% note. */
-  /** kitWith(classicKit, wornIds): a pet with a classic kit (Max Pepe) still shows what it actually wears. A worn core piece (iron/gold armor,
-   * capes, bands...) REPLACES the kit's piece in that core slot. Bug fixed 2026-10-14: worn core pieces were filtered out and the kit's piece
-   * was drawn instead, so equipping Iron or Gold armor (or any core piece) on such a pet never showed. Returns { go, ids (overlays only) }. */
-  // A worn non-core piece that is NOT part of the showcase defaults replaces the classic piece drawn in that slot (headwear -> crown, outfit -> armor, drip -> cape, grip -> weapon).
-  var KIT_SLOT_OF = { head: 'crown', body: 'armor', back: 'cape', hand: 'weapon' };
-  function kitWith(classicKit, wornIds, showcase) { var go = Object.assign({}, classicKit || {}), ids = [];
-    (wornIds || []).forEach(function (id) { var it = BY_ID[id]; if (it && it.src === 'core') go[it.coreSlot] = id; else { ids.push(id); if (it && KIT_SLOT_OF[it.slot] && (showcase || []).indexOf(id) < 0) delete go[KIT_SLOT_OF[it.slot]]; } });
-    return { go: go, ids: ids }; }
   /** breedPicker(w, owner, tip, selA): cards for the breeding picker. Nakamoto + the community pet are left out silently (rule unchanged).
    * mine = owner's living pets (parent A), partners = every other living pet (parent B); each { p, why } where why = null if selectable. */
   function breedPicker(w, owner, tip, selA) {
@@ -913,12 +881,12 @@
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
   return { ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
-    COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
+    COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
-    autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
+    autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };
 });
