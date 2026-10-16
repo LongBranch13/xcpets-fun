@@ -707,7 +707,7 @@
     for (var i = 0; i < (n || 1); i++) out.push({ tag: 'pet:roll:' + p.id, amount: COSTS.roll, petId: p.id, label: 'Gear roll #' + p.id }); }); return out; }
   /** crollOn(tip): the play page offers the community roll only once the chain tip has reached ACTIVATE_CROLL_BLOCK (unknown tip => off). */
   function crollOn(tip) { return tip != null && Number(tip) >= ACTIVATE_CROLL_BLOCK; }
-  function communityRollPlan(slot) { var tag = 'pet:c:roll' + (slot ? ':' + String(slot).toUpperCase() : ''); return { tag: tag, amount: COSTS.croll, label: 'Community roll' }; }
+  function communityRollPlan(slot) { var tag = 'pet:c:roll' + (slot ? ':' + String(slot).toUpperCase() : ''); return { tag: tag, amount: COSTS.croll, label: 'Community gear roll' }; }
   /** communityGear(w) -> worn community item ids (newest roll per slot, slot order). */
   function communityGear(w) { var g = (w.community && w.community.gear) || {}; return V2_SLOTS.filter(function (s) { return g[s]; }).map(function (s) { return g[s].item; }); }
   function communityFeedPlan(amount) { amount = Math.floor(Number(amount)); if (!(amount >= COSTS.feedMin)) return { ok: false, error: 'minimum community feed is ' + COSTS.feedMin }; return { ok: true, tag: 'pet:feed', amount: amount }; }
