@@ -392,10 +392,36 @@
   if (typeof document === 'undefined' || !document.addEventListener) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   function shareUrl(p) { var V = window.V2Rules, base = location.href.replace(/[^\/]*([?#].*)?$/, ''), link = base + 'pet.html?id=' + p.id;
-    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥';
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id); return a; }
   function petById(id) { try { return window.V2Mock.world().byId[id]; } catch (e) { return null; } }
+  /* Share image (Jake 2026-10-15, UI only): renders the pet card to a PNG (crisp nearest-neighbour sprite + name/#id/tier/species/stage) and shares the FILE
+   * via navigator.share({files}) when canShare allows; otherwise copies the PNG to the clipboard (ClipboardItem) and downloads it. Toast says which happened. */
+  function cardCanvas(p) { var W = 1200, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d'), V = window.V2Rules;
+    var TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'], col = TCOL[p.tier] || '#3ddc84';
+    g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H); g.fillStyle = '#18221b'; g.fillRect(16, 16, W - 32, H - 32); g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(21, 21, W - 42, H - 42);
+    var s = document.createElement('canvas'); s.width = s.height = 32; try { var w = window.V2Mock.world(); window.V2Render.paint(s, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
+    g.imageSmoothingEnabled = false; g.drawImage(s, 152, 40, 896, 896); /* 32px sprite x28 nearest-neighbour */
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, F = "'Press Start 2P', monospace"; g.textAlign = 'center'; g.fillStyle = '#ffffff';
+    g.font = '44px ' + F; g.fillText(((p.name || '') + ' #' + p.id).slice(0, 22), W / 2, 1010);
+    g.fillStyle = col; g.font = '30px ' + F; g.fillText((TL[p.tier] || '') + ' ' + sp + ' · ' + (p.stageName || ''), W / 2, 1072);
+    g.fillStyle = '#3ddc84'; g.font = '28px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
+  function toast(msg) { var t = document.createElement('div'); t.className = 'shtoast'; t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18221b;color:#fff;border:2px solid #3ddc84;border-radius:10px;padding:10px 16px;z-index:99999;font-size:14px;max-width:90vw;text-align:center';
+    document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000); }
+  function shareImage(p) { var c = cardCanvas(p), name = 'xcpets-' + p.id + '.png', link = location.href.replace(/[^\/]*([?#].*)?$/, '') + 'pet.html?id=' + p.id,
+      text = 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS 🔥 @XCPets ' + link;
+    c.toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; }
+      var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+      if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], text: text }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }
+      fallback();
+      function fallback() { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+        var cp = window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]) : Promise.reject();
+        cp.then(function () { toast('Image copied to clipboard and downloaded'); }, function () { toast('Image downloaded'); }); } }, 'image/png'); }
+  function imgButton(p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn imgshare'; b.textContent = '🖼️ Share image'; b.setAttribute('data-pet', p.id); b.onclick = function () { shareImage(p); }; return b; }
+  function shareRow(p) { var d = document.createElement('p'); d.appendChild(imgButton(p)); d.appendChild(document.createTextNode(' ')); d.appendChild(button(p)); return d; }
+  window.XCPShare = { cardCanvas: cardCanvas, shareImage: shareImage };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];
   function node(t) { var d = document.createElement('div'); d.className = 'ftnode tier-' + (TC[t.tier] || ''); var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'ftsprite';
     try { var w = window.V2Mock.world(), p = w.byId[t.id]; window.V2Render.paint(c, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
@@ -409,9 +435,9 @@
   function css() { if (!document.getElementById('ftcss')) { var st = document.createElement('style'); st.id = 'ftcss'; st.textContent = '.ftchart{overflow-x:auto;padding:6px 0}.ftchart ul{display:flex;justify-content:center;padding:14px 0 0;margin:0;position:relative;list-style:none}.ftchart>ul{padding-top:0}.ftchart li{display:flex;flex-direction:column;align-items:center;position:relative;padding:14px 4px 0}.ftchart>ul>li{padding-top:0}.ftchart li::before,.ftchart li::after{content:"";position:absolute;top:0;width:50%;height:14px;border-top:2px solid #6b5;}.ftchart li::before{right:50%}.ftchart li::after{left:50%;border-left:2px solid #6b5}.ftchart li:only-child::before,.ftchart li:only-child::after{border-top:0}.ftchart li:first-child::before,.ftchart li:last-child::after{border-top:0}.ftchart li:last-child::before{border-right:2px solid #6b5;border-top:2px solid #6b5;width:50%}.ftchart li:last-child::after{border:0}.ftchart li:first-child::after{border-top:2px solid #6b5}.ftchart>ul>li::before,.ftchart>ul>li::after{display:none}.ftchart ul ul::before{content:"";position:absolute;top:0;left:50%;height:14px;border-left:2px solid #6b5}.ftchart ul ul{padding-top:28px}.ftchart ul ul::before{height:14px}.ftnode a{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:inherit;border:2px solid #444;border-radius:6px;padding:4px 6px;background:rgba(0,0,0,.25);font-size:11px;text-align:center;min-width:72px}.ftsprite{width:48px;height:48px;image-rendering:pixelated}.ftnode.tier-rare a{border-color:#4af}.ftnode.tier-legendary a{border-color:#fb3}.ftnode.tier-uncommon a{border-color:#5c5}@media(max-width:520px){.ftnode a{min-width:56px;font-size:10px}.ftsprite{width:32px;height:32px}.ftchart li{padding-left:2px;padding-right:2px}}'; (document.head || document.body).appendChild(st); } }
   function inject() { trees();
     var bt = document.getElementById('bornTraits'), m = /[?&]id=(\d+)/.exec(location.search);
-    if (bt && m && !document.querySelector('.tgshare[data-pet="' + m[1] + '"]')) { var p = petById(+m[1]); if (p) { var d = document.createElement('p'); d.appendChild(button(p)); bt.appendChild(d); } }
+    if (bt && m && !document.querySelector('.tgshare[data-pet="' + m[1] + '"]')) { var p = petById(+m[1]); if (p) { bt.appendChild(shareRow(p)); } }
     var dt = document.querySelector('#detail .borntraits'), dd = document.getElementById('detail'), idm = dt && document.getElementById('dTitle') && /#(\d+)/.exec(document.getElementById('dTitle').textContent);
-    if (dt && !document.getElementById('bornTraits') && idm && !dd.querySelector('.tgshare')) { var q = petById(+idm[1]); if (q) { var e = document.createElement('p'); e.appendChild(button(q)); dt.parentNode.insertBefore(e, dt.nextSibling); } }
+    if (dt && !document.getElementById('bornTraits') && idm && !dd.querySelector('.tgshare')) { var q = petById(+idm[1]); if (q) { dt.parentNode.insertBefore(shareRow(q), dt.nextSibling); } }
   }
   function start() { css(); new MutationObserver(inject).observe(document.body, { childList: true, subtree: true }); inject(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
