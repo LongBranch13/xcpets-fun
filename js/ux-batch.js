@@ -24,6 +24,7 @@
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
   function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || F.flip || F.sort !== 'num'); }
   window.UXB = {};
+  UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
   UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, '');
     return { flip: !!F.flip, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false;
       if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
