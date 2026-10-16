@@ -1,10 +1,10 @@
 /* XCPETS v2: REAL inscription UI (2026-10-15). Preview -> XCP Wallet connect -> spendable UTXOs (no Counterparty assets, no likely inscriptions)
  * -> commit PSBT + temp-key-signed reveal -> FORCED recovery-file download -> XCP Wallet signs the commit (xcp_signBitcoinPsbt) -> broadcast commit, then reveal
  * -> confirmation tracking. Inscriptions page: chain-rebuilt registry (V2InscribeReg), pending list, Recover / Refund screen (loads the recovery file).
- * Rules kept from the mock (Jake 2026-10-14): PETS ONLY, still PNG only, single entry point request({ petId, frame }) via V2Inscribe.checkRequest; the art is ALWAYS
+ * Rules (Jake 2026-10-14): PETS ONLY, still PNG only, single entry point request({ petId, frame }) via V2Inscribe.checkRequest; the art is ALWAYS
  * rendered here from the chain (canonical render at block b + the declared worn gear), never taken from the caller.
  * Jake 2026-10-15: XCP Wallet ONLY; the player pays Bitcoin fees only (no site fee output); no XCPETS burn; numbers from the registry (block height, tx index).
- * Environment (network, APIs, wallet provider, chain replay) comes from window.V2InscribeEnv (live: v2-inscribe-env.js; demo: signet simulation). */
+ * Environment (network, APIs, wallet provider, chain replay) comes from window.V2InscribeEnv (v2-inscribe-env.js). */
 (function () {
   'use strict';
   var I = window.V2Inscribe, V = window.V2Rules, R = window.V2Render, M = window.V2Mock, E = window.V2InscribeEnv, B = window.BtcSigner;

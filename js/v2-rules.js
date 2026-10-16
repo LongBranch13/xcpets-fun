@@ -1,6 +1,6 @@
 /*!
- * XCPETS demo v2 rules (LOCAL DEMO ONLY: mocked chain, nothing is ever signed or broadcast).
- * Pure + deterministic: world = replay(rows, blockHashes, ops, opts). rows = mock destroy rows {tx_hash, block_index, source, amount, tag};
+ * XCPETS v2 game rules (live game). Rules only: nothing here signs or broadcasts.
+ * Pure + deterministic: world = replay(rows, blockHashes, ops, opts). rows = destroy rows {tx_hash, block_index, source, amount, tag};
  * ops = free local actions (equip) {block_index, kind:'equip', owner, petId, gid|null, slot}. No Math.random; all luck = sha256(block hash + tx + label).
  * Every number is a PROPOSAL for the owner to approve.
  */
@@ -20,7 +20,7 @@
   var BLOCKS_PER_DAY = 144, WEEK = 1008, NEGLECT_DAYS = 7, NEGLECTED_AFTER_DAYS = 3;
   var COSTS = { hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, croll: 690, froll: 0.00000001 };
   var FEED_QUICK = [69, 690, 6900];
-  var FEE_SATS = 1500;                 // mock BTC miner fee per burn tx (shown up front in the confirm modal)
+  var FEE_SATS = 1500;                 // fallback BTC miner fee estimate per burn tx (sats)
   var MAX_RELEASE_PER_BURN = 120, MAX_TAG_BYTES = 34;
   /* Multi-pet feed (2026-10-15, Jake): pet:fm:START:MASK feeds every pet in the base32 bitmask (same mask format as pet:rel) in ONE burn.
    * Inert until ACTIVATE_FEEDM_BLOCK: before it a pet:fm tag replays exactly as today (unknown pet: tag, community food only). */
@@ -365,7 +365,7 @@
   // ---------------------------------------------------------------- live reader + cutoff import (2026-10-14)
   var LIVE_ENGINE = null; function setLiveEngine(e) { LIVE_ENGINE = e || null; }
   /** readBurns(rows): the live burn reader's rules. Only status 'valid' rows (when a status is given); amount = quantity / UNIT (raw API rows) or
-   *  the given amount (mock rows); duplicates dropped; order = block_index, then tx_index (chain order; mock rows without tx_index keep their order). r.raw = the API row for the live engine. */
+   *  the given amount (test rows); duplicates dropped; order = block_index, then tx_index (chain order; rows without tx_index keep their order). r.raw = the API row for the live engine. */
   function readBurns(rows) { var seen = {}, out = [];
     (rows || []).forEach(function (r, i) { if (!r || seen[r.tx_hash]) return; seen[r.tx_hash] = 1; if (r.status != null && String(r.status).toLowerCase() !== 'valid') return;
       var amt = r.quantity != null ? Number(r.quantity) / LIVE_UNIT : Number(r.amount), tag = r.tag;
@@ -568,7 +568,7 @@
       lastFed: null, feedDays: {}, fightDays: {}, breeds: 0, lastBreed: null, parents: null, children: [], wins: 0, losses: 0, trophies: [] };
     w.pets.push(p); w.byId[p.id] = p; liveAt(w, p, b); return p;
   }
-  // ---------------------------------------------------------------- HYBRIDS (demo v2, 2026-10-14)
+  // ---------------------------------------------------------------- HYBRIDS (v2, 2026-10-14)
   // HYBRID_NAMES: display name per ORDERED pair 'parentA:parentB' (A = the requester / first pet). 13 x 12 = 156 entries; the 24 Nakamoto pairs
   // are listed for completeness but unreachable (Nakamoto can't breed). PLACEHOLDER names, generated as blends (first part of A + end of B).
   // Edit freely: one line per parent A; keep names unique.
@@ -774,7 +774,7 @@
       if (!g[tx]) { g[tx] = []; order.push(tx); } g[tx].push(p); });
     return { groups: order.map(function (tx) { return { tx: tx, eggs: g[tx], n: g[tx].length }; }), seen: s, first: first };
   }
-  // ---------------------------------------------------------------- bulk planners (pure; UI turns plans into mock burns)
+  // ---------------------------------------------------------------- bulk planners (pure; UI turns plans into burns)
   function feedQueue(w, owner, ids, nextBlock) { // ids null => all hungry. From ACTIVATE_FEEDM_BLOCK: always bundled, as many pets per burn as the 34-byte tag fits
     var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!ids || ids.indexOf(p.id) >= 0); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */

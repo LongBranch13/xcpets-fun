@@ -1,16 +1,16 @@
-/* XCPETS PLAY DEMO v2 UI — LOCAL ONLY. Mock wallet + mock chain in localStorage. Nothing is signed, broadcast or sent anywhere. */
+/* XCPETS play page UI (live game): reads real XCPETS burns via js/v2-chain.js; every burn is signed by the player in XCP Wallet. */
 (function () {
   'use strict';
   var V = window.V2Rules, $ = function (id) { return document.getElementById(id); }, KEY = V2Mock.KEY, ME = V2Mock.ME;
   var fmt = function (n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 }); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
 
-  // ---------------------------------------------------------------- mock chain (shared with the other demo pages: js/v2-mock.js)
+  // ---------------------------------------------------------------- chain state (shared with the other pages: js/v2-chain.js, V2Mock interface)
   var M = window.V2Mock, S = M.state();
   function save() { M.save(); } function burn(src, tag, amount) { M.burn(src, tag, amount); } function adv(n) { M.adv(n); }
   function world() { return M.world(); } function seedWorld() { M.seed(); S = M.state(); }
 
-  // ---------------------------------------------------------------- rendering (shared with every demo page: js/v2-render.js)
+  // ---------------------------------------------------------------- rendering (shared with every page: js/v2-render.js)
   var R = window.V2Render, paint = R.paint, petFrames = R.petFrames;
   var animated = { push: function (a) { R.animate(a.c, a.fr); } };
   var TL = V.TIER_LABELS, TC = ['#9aa3b2', '#5fd35f', '#4f9dff', '#ffb02e'];
@@ -74,7 +74,6 @@
   function render() {
     var w = world(), c = w.community; notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
-    $('tip').textContent = fmt(S.tip); $('dayn').textContent = V.day(S.tip); $('cut').textContent = fmt(V.V2_FROM_BLOCK);
     $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
     var wiz = !!c.returned, fr;
@@ -229,7 +228,7 @@
     box.querySelectorAll('[data-is]').forEach(function (b) { b.onclick = function () { invSlot = S.ui_invSlot = b.dataset.is; save(); renderInv(world()); }; });
   }
 
-  // ---------------------------------------------------------------- confirm (live #confirmBox) + per-burn mock signing with progress
+  // ---------------------------------------------------------------- confirm (live #confirmBox) + per-burn XCP Wallet signing with progress
   var pendingPlans = null, pendingAfter = null;
   function confirmPlans(title, plans, after) {
     var bw = world(), skip = []; plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
@@ -403,7 +402,7 @@
   }
   $('rGo').onclick = function () { var o = $('rPet').selectedOptions[0]; if (!o) return toast('No eligible pet'); confirmPlans('Royal Rumble entry #' + o.value, [{ tag: 'pet:rumble:' + o.value, amount: Number(o.dataset.c) }]); };
   $('rNpc').onclick = function () { var w = world(); fighters(w, ME, true).forEach(function (p) { var has = V.wornOf(w, p.id).some(function (g) { return !g.legendary; }); burn(p.owner, 'pet:rumble:' + p.id, has ? 69 : 759); }); save(); render(); };
-  if (M.prod) ['fNpc', 'rNpc', 'rSeed'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* demo-only NPC simulation buttons: nothing to simulate on the live chain */
+  if (M.prod) ['fNpc', 'rNpc', 'rSeed'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* NPC simulation buttons: nothing to simulate on the live chain */
   $('rSeed').onclick = function () { adv(V.seedBlockOfWeek(V.weekOf(S.tip)) - S.tip + 1); save(); render(); };
   // ---------------------------------------------------------------- breeding
   function renderBreed(w) {
@@ -487,9 +486,7 @@
     $('pending').innerHTML = pend + (w.log.filter(function (l) { return mineTx[l.tx]; }).slice(-8).reverse().map(row).join('') || (pend ? '' : 'None yet.'));
     $('log').innerHTML = w.log.slice(-200).reverse().map(row).join('');
   }
-  $('advDay').onclick = function () { adv(144); save(); render(); }; $('advBlk').onclick = function () { adv(12); save(); render(); };
-  $('reset').onclick = function () { if (confirm('Reset the local demo?')) { localStorage.removeItem(KEY); localStorage.removeItem(WKEY); localStorage.removeItem(HKEY); seedWorld(); render(); } };
-  // ---------------------------------------------------------------- every other live control works in the demo
+  // ---------------------------------------------------------------- other controls
   $('dcYes').onclick = function () { var ids = mine(world()).filter(function (p) { return p.tier === 0; }).map(function (p) { return p.id; }); close('delCommonsBox'); if (!ids.length) return toast('No Commons to hide.'); discardIds(ids); };
   $('dcNo').onclick = function () { close('delCommonsBox'); };
   $('itemClose').onclick = function () { close('itemBox'); };

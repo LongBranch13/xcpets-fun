@@ -1,4 +1,4 @@
-/* XCPETS demo v2: SPECIES GEAR (13 species x 9 pieces minus the removed Rare Pepe beret, Tennis ball, Pincer blade, Energy drink, Pearl and Rose = 111 new items). ADDITIONS ONLY: nothing in bonus-gear.js / pet-core is removed.
+/* XCPETS v2: SPECIES GEAR (13 species x 9 pieces minus the removed Rare Pepe beret, Tennis ball, Pincer blade, Energy drink, Pearl and Rose = 111 new items). ADDITIONS ONLY: nothing in bonus-gear.js / pet-core is removed.
  * Every piece is an 8-bit overlay map drawn with the shared BonusGear palette (2-3 colours each) through BonusGear.apply anchors.
  * v2 slots: head (band / hat / crown), face, back (cape), hand (weapon / held), feet, body (NEW: armor).
  * Removed on request: the Rare Pepe beret (v2-pepe-hat). Pepe has 8 pieces; total 116.
@@ -12,7 +12,7 @@
   if (typeof module === 'object' && module.exports) module.exports = factory(); else root.V2Gear = factory();
 })(this, function () {
   'use strict';
-  // ---------------------------------------------------------------- NAKAMOTO REWORK (2026-10-14, demo v2 runtime only; generator/pet-core.js and live are untouched)
+  // ---------------------------------------------------------------- NAKAMOTO REWORK (2026-10-14, v2 runtime only; pet-core.js is untouched)
   // The community pet's base sprite becomes a human 'anon dev': calm face, dark hair that greys with age (Elder/Mythic grey), dark hoodie with a
   // Bitcoin-orange pin, and a sleek dark VR headset BAKED INTO the base (not gear) whose lenses glow orange. No hood, no hachimaki, no magenta shades.
   // The headset lenses keep the 'eye'/'pupil' keys so eye anchors, eye traits and the Powered laser eyes still centre on them.

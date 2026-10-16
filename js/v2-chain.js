@@ -1,4 +1,4 @@
-/* XCPETS v2 PRODUCTION chain adapter (replaces the demo's v2-mock.js; same V2Mock interface so every v2 page runs unchanged).
+/* XCPETS v2 PRODUCTION chain adapter (same V2Mock interface as the old v2-mock.js so every v2 page runs unchanged).
  * READ-ONLY: real XCPETS destroys from the Counterparty API the live site uses (rjs/config.js -> api.xcp.fun/node/v2, then counterparty.io),
  * replayed by V2Rules with the FROZEN live engine (window.LiveEngine.RealCore) for every burn at or before CUTOFF_BLOCK (971,500).
  * Burns go through js/v2-wallet.js (live compose + XCP Wallet signing); this file only reads. Local equips are saved per device. */

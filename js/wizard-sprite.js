@@ -1,4 +1,4 @@
-/* Next community pet (demo v2): 6 hand-drawn 8-bit stages, 32x32, same frame format as PetCore.render ({data: RGBA array}).
+/* Community pet sprite (v2): 6 hand-drawn 8-bit stages, 32x32, same frame format as PetCore.render ({data: RGBA array}).
  * Reference art (blue robe + pointed hat, grey beard, wooden staff with an orange ₿ orb). Few colours, ink outline, 4-frame bob. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.WizardSprite = factory(); })(this, function () {
   'use strict';

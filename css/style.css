@@ -104,7 +104,7 @@ button.q { background: #22332a; color: var(--ink); padding: 6px 10px; }
 .hero h1 span { color: var(--green); } h2 { color: var(--green); } .nav nav a:hover { color: var(--green); }
 
 
-/* Pet Cemetery (neglect death): My Pets tabs, dead cards, hunger danger chip, tombstone cards (demo + game) */
+/* Pet Cemetery (neglect death): My Pets tabs, dead cards, hunger danger chip, tombstone cards */
 .pettabs { display:flex; gap:6px; margin:4px 0 10px; flex-wrap:wrap; } .pettabs .tab { font:inherit; font-size:13px; padding:6px 12px; border-radius:10px 10px 0 0; border:2px solid #3a4a3e; border-bottom:none; background:#18221b; color:#cfd8d0; cursor:pointer; }
 .pettabs .tab.on { background:#2a3a2e; color:#fff; border-color:#6b8f72; font-weight:bold; }
 span.chip.danger { background:#d11; color:#fff; } span.chip.warn { background:#2e1414; color:#ff5a5a; } span.chip.dead { background:#2a2a2a; color:#bbb; }

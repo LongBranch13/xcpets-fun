@@ -1,6 +1,6 @@
-/* XCPETS demo v2: INSCRIPTIONS (2026-10-14). MOCK ONLY: nothing is signed, broadcast or sent to a wallet; ids are fake.
+/* XCPETS v2: INSCRIPTIONS (2026-10-14). Shared rules and registry helpers; signing happens only in XCP Wallet (see v2-inscribe-ui.js / v2-inscribe-tx.js).
  * Core (node + browser): integer-only auto-shrink to the 385 KB inscription cap (nearest-neighbour; never a fractional scale), then a reduced palette (fallback only); PNG encoder hook (still images only; GIF removed); quality score (PSNR vs the original); fee estimate (KB/4 vbytes).
- * UI (browser only): window.V2InscribeUI = preview modal + mock commit/reveal + lineage, used by the pet page and the Inscriptions page. */
+ * UI (browser only): window.V2InscribeUI = preview modal + commit/reveal + lineage, used by the pet page and the Inscriptions page. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(); else root.V2Inscribe = factory();
 })(this, function () {
@@ -124,9 +124,9 @@
     L.forEach(function (t, li) { var w = t.length * 4 - 1, x0 = Math.floor((32 - w) / 2);
       t.split('').forEach(function (ch, k) { var g = FONT[ch]; for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) if (g[r * 3 + c] === '1') set(x0 + k * 4 + c, y0 + 1 + li * 6 + r, [0xff, 0xf1, 0xe8]); }); });
     return o; }
-  // ---------------------------------------------------------------- PETS-ONLY lock (2026-10-14). The demo is client-only: this is UX + tamper resistance, NOT security;
+  // ---------------------------------------------------------------- PETS-ONLY lock (2026-10-14). The site is client-only: this is UX + tamper resistance, NOT security;
   // real enforcement needs the indexer/server to re-derive the art from the pet id and refuse anything else.
-  var ALLOWED_FORMATS = ['png', 'jpeg', 'webp']; // allowed on-chain formats; the demo always renders PNG. GIF / animation: never.
+  var ALLOWED_FORMATS = ['png', 'jpeg', 'webp']; // allowed on-chain formats; the site always renders PNG. GIF / animation: never.
   /** isStillPNG(bytes): PNG signature and NO animation chunk (acTL = APNG). */
   function isStillPNG(b) { if (!b || b.length < 33) return false; var sig = [137, 80, 78, 71, 13, 10, 26, 10]; for (var i = 0; i < 8; i++) if (b[i] !== sig[i]) return false;
     for (var p = 8; p + 8 <= b.length;) { var len = (b[p] << 24 >>> 0) + (b[p + 1] << 16) + (b[p + 2] << 8) + b[p + 3], t = String.fromCharCode(b[p + 4], b[p + 5], b[p + 6], b[p + 7]);
@@ -136,7 +136,7 @@
   function payloadError(b) { if (isGIF(b)) return 'GIF / animated payloads are not accepted: inscriptions are still PNG images only.'; if (!isStillPNG(b)) return 'Only a still PNG rendered from your pet can be inscribed (animated PNG / other bytes rejected).'; return null; }
   var REQ_KEYS = ['petId', 'frame', 'feeRate', 'stuck', 'nameStamp']; // nameStamp = position only ('top' default | 'bottom' | 'none'); the TEXT always comes from the pet
   /** checkRequest(req, world, owner): the SINGLE entry-point validator. req = { petId: positive integer, frame?: integer, feeRate?, stuck? } and NOTHING else
-   * (no image / dataURL / url / bytes / frames). The pet must exist in the demo world, be owned by owner, and be alive. -> { ok, pet } | { ok:false, error } */
+   * (no image / dataURL / url / bytes / frames). The pet must exist in the world, be owned by owner, and be alive. -> { ok, pet } | { ok:false, error } */
   function checkRequest(req, world, owner) {
     if (!req || typeof req !== 'object' || Array.isArray(req)) return { ok: false, error: 'Bad request: expected { petId }.' };
     var extra = Object.keys(req).filter(function (k) { return REQ_KEYS.indexOf(k) < 0; });
@@ -156,7 +156,7 @@
   /** fee estimate: commit + reveal; reveal witness = bytes/4 vbytes (witness discount) + overhead. */
   function fee(bytes, satvb) { var vb = COMMIT_VB + REVEAL_OVERHEAD_VB + Math.ceil(bytes / 4); return { vbytes: vb, sats: Math.ceil(vb * satvb), btc: Math.ceil(vb * satvb) / 1e8 }; }
   function isTaproot(addr) { return /^bc1p[02-9ac-hj-np-z]{58}$/.test(String(addr || '')); }
-  /** registry helpers over the demo state (S.insc = [{n, id, kind, petId, gid, label, parents:[id], ...}]) */
+  /** registry helpers over the local state (S.insc = [{n, id, kind, petId, gid, label, parents:[id], ...}]) */
   function nextNumber(list) { return (list || []).reduce(function (m, x) { return Math.max(m, x.n || 0); }, 0) + 1; }
   function ofPet(list, petId) { return (list || []).filter(function (x) { return x.kind === 'pet' && String(x.petId) === String(petId) && x.status === 'inscribed'; }); }
   function latestOfPet(list, petId) { var l = ofPet(list, petId); return l.length ? l[l.length - 1] : null; }

@@ -1,5 +1,4 @@
-/* demo v2 additions ONLY (everything else is the live css/style.css + css/game.css). Derived from live tokens/components. */
-.mockbar { background:#1d3a24; color:#c8f7d8; }
+/* v2 additions ONLY (everything else is the live css/style.css + css/game.css). Derived from live tokens/components. */
 .returnbox { margin-top:10px; border-top:2px dashed var(--line); padding-top:8px; }
 .returnbox h3 { margin:4px 0; font-size:16px; } .lb { margin:4px 0 0 18px; padding:0; } .lb li.me { color: var(--acc2); font-weight:800; }
 input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
@@ -14,7 +13,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .bracket .chip.win { background:#1d3a24; color: var(--acc2); }
 .tree { margin:2px 0 0 14px; padding:0; } .tree li { list-style:'└ '; }
 .slottbl { width:100%; font-size:12px; border-collapse:collapse; } .slottbl td { padding:2px 4px; border-bottom:1px solid var(--line); }
-/* --- demo v2 round 3: community sprite size, standalone gear icons, click-to-equip picker, view-by-slot inventory --- */
+/* --- v2 round 3: community sprite size, standalone gear icons, click-to-equip picker, view-by-slot inventory --- */
 #shared .sharedwrap { grid-template-columns: minmax(260px, 420px) 1fr; }
 /* community pet: crisp integer scale (32px sprite x8 / x6) so it fits its section at every width (Jake 2026-10-14) */
 #shared .sharedart canvas#crCanvas { width: 256px; height: 256px; max-width: none; margin: 0 auto; border-radius: 16px; image-rendering: pixelated; display: block; }
@@ -55,7 +54,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .reveal.anim .box { max-width: 460px; text-align: left; } .reveal.anim .arenawrap { display: block !important; } .reveal.anim canvas { width: 100%; max-width: 400px; height: auto; image-rendering: pixelated; display: block; margin: 0 auto 8px; }
 .reveal.anim .logbox { max-height: 160px; overflow: auto; }
 
-/* inscriptions (mock) */
+/* inscriptions */
 .reveal.insc .box { max-width: 720px; text-align: left; } .inscgrid { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
 .inscgrid figure { margin: 0; } .inscgrid canvas, .inscgrid img { width: 256px; height: 256px; image-rendering: pixelated; border: 2px solid #2a3a2e; background: #0a0f0b; object-fit: contain; }
 .insclink { color: #9fd8ff; text-decoration: underline dotted; } .insclink em { color: #ffc93c; font-style: normal; } .stuck { color: #ffc93c; margin: 6px 0; }

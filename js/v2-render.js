@@ -1,4 +1,4 @@
-/* XCPETS demo v2 shared rendering (every demo page): pet frames with v2 gear, STANDALONE 8-bit gear icons, and the
+/* XCPETS v2 shared rendering (every page): pet frames with v2 gear, STANDALONE 8-bit gear icons, and the
  * click-to-equip gear picker. LOCAL ONLY: no network. Needs PetCore, BonusGear, V2Gear, V2Rules. */
 (function () {
   'use strict';
@@ -222,7 +222,7 @@
     for (var k = 0; k < m.length; k++) { if (k >= b0 && k <= b1) continue; var ty = k < b0 ? fy0 - (b0 - k) : fy1 + (k - b1);
       for (x = 0; x < w; x++) { var ch = m[k].charAt(x); if (ch === '.') continue; var tx = cx - Math.floor(w / 2) + x; if (k > b1 && !bd[(ty * 32 + tx) * 4 + 3]) continue; put(tx, ty, ch); } }
     return true; }
-  /* Doge black eye (2026-10-14, demo working build): the battle-loser 'v2-black-eye' overlay lands on the 'eyes' anchor, which on Doge's
+  /* Doge black eye (2026-10-14): the battle-loser 'v2-black-eye' overlay lands on the 'eyes' anchor, which on Doge's
    * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
@@ -269,7 +269,7 @@
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest') F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); }); }
     return fr;
   }
-  /* Counterparty logo override (2026-10-14, DEMO working build): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
+  /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
    * v2 swaps it for the real Counterparty mark (infinity loop, from counterparty.io/favicon.svg) as a 9x5 pixel infinity glyph, same tint, same
    * 10px grid. pet-core.js is untouched; only pets hatched at/after the cutoff are repainted, so pre-cutoff pets look exactly like live. */
   var OLD_XCP = ['.###.', '#.#.#', '##.##', '#.#.#', '.###.'], CP_LOGO = ['.##...##.', '#..#.#..#', '#...#...#', '#..#.#..#', '.##...##.'];
@@ -411,7 +411,7 @@
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
   window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
-/* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
+/* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
   if (typeof document === 'undefined' || !document.addEventListener) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];

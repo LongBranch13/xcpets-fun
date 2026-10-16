@@ -1,5 +1,5 @@
-/* XCPETS v2: the live front page / ranking / cemetery / pet page wired to the LOCAL mock chain (js/v2-mock.js).
- * Same markup + ids as xcpets.fun; data comes from V2Mock.world() instead of the Counterparty API. No network, nothing signed. */
+/* XCPETS v2: the front page / ranking / cemetery / pet page, wired to the live chain via js/v2-chain.js (V2Mock interface).
+ * Data comes from real XCPETS burns read from the Counterparty API. Nothing is signed here. */
 (function () {
   'use strict';
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
@@ -9,10 +9,6 @@
   function streak(p, tip) { var d = V.day(tip), n = 0; if (!p.feedDays[d]) d--; while (p.feedDays[d]) { n++; d--; } return n; }
   function small(fr, c) { R.animate(c, fr); }
   var page = document.body.getAttribute('data-v2page');
-  // demo banner (same .panel component as the live site)
-  var bar = document.createElement('section'); bar.className = 'panel compact mockbar'; bar.id = 'mockBar';
-  bar.innerHTML = '<b>XCPETS v2</b> · live chain data (read-only) · block <b>' + fmt(M.state().tip) + '</b> · <a href="play.html">play →</a>';
-  var main = document.querySelector('main'); if (main) main.insertBefore(bar, main.firstChild);
 
   /** Cast gating: Nakamoto joins the live Cast (12 species) only once V2Rules.castShowsNakamoto(world) (stage >= NAKAMOTO_CAST_STAGE). */
   function cast(w) {
@@ -30,7 +26,7 @@
     add(); new MutationObserver(add).observe(box, { childList: true });
     if (show) { var t = function (sel, a, b) { var e = document.querySelector(sel); if (e) e.innerHTML = e.innerHTML.replace(a, b); };
       t('#cast p.muted', 'one of twelve', 'one of thirteen'); t('.hero-copy .lede', 'Twelve pixel meme characters', 'Thirteen pixel meme characters'); t('.hero-copy .lede', 'Doge and Lenny.', 'Doge, Lenny and Nakamoto.'); }
-    // Hybrids tab: appears once any hybrid exists in the demo state; one Cast entry per hybrid pair (Egg..Mythic of its own look)
+    // Hybrids tab: appears once any hybrid exists on chain; one Cast entry per hybrid pair (Egg..Mythic of its own look)
     var hyb = V.castHybrids(w);
     if (hyb.length && !$('castHybTab')) { var tb = document.createElement('button'); tb.type = 'button'; tb.id = 'castHybTab'; tb.className = ($('castTiers').firstElementChild || {}).className || '';
       tb.classList.remove('on'); tb.textContent = '🧬 Hybrids (' + hyb.length + ')'; $('castTiers').appendChild(tb);
@@ -60,10 +56,10 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=0ff5567717'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=157733570d'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
-   * (?preview=return in the demo shows Nakamoto's entry from current data). */
+   * (?preview=return shows Nakamoto's entry from current data). */
   function nakaFrames() { var NG = window.GenPetCore || PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }); }
@@ -256,7 +252,7 @@
         return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + fmt(r.amount || 0) + '</td><td>' + esc(r.tag || '') + '</td><td>' + esc(e.kind + ': ' + e.msg) + '</td></tr>'; }).join('');
     }
     draw();
-    // On-chain art (inscriptions, MOCK): hosted by default, upgrade action + lineage
+    // On-chain art (inscriptions): hosted by default, upgrade action + lineage
     (function () { var gs0 = $('gear').closest('section') || $('gear').parentNode, bt = $('bornTraits') || document.createElement('section'); bt.className = 'panel'; bt.id = 'bornTraits';
       bt.innerHTML = '<h2 class="sec" data-ico="egg">Born traits</h2><table class="small borntraits">' + V.bornTraits(p, p.stage).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
       if (!bt.parentNode) gs0.parentNode.insertBefore(bt, gs0.nextSibling); })();

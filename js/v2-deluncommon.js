@@ -1,4 +1,4 @@
-/* '🗑️ Delete Uncommons' (2026-10-14, DEMO working build). Bulk-row button next to 'Release selected': selects every one of my Uncommon pets
+/* '🗑️ Delete Uncommons' (2026-10-14, v2). Bulk-row button next to 'Release selected': selects every one of my Uncommon pets
  * (same S.sel selection as the checkboxes), asks for confirmation with the count, then runs the SAME free local Discard as 'Delete all Commons'
  * (hide in this browser, Undo toast, restorable; nothing is burned or signed). Release selected is different: it is a pet:rel BURN. */
 (function () {

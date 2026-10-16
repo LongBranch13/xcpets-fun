@@ -1,4 +1,4 @@
-/* XCPETS demo v2: FIT + LAYERING (2026-10-14). Render-time only; nothing here changes pet-core / bonus-gear or any game rule.
+/* XCPETS v2: FIT + LAYERING (2026-10-14). Render-time only; nothing here changes pet-core / bonus-gear or any game rule.
  * - torso(a): a per-species, per-stage torso box (armor rows, cut to the body silhouette, never above the mouth line; low-armor species
  *   such as Wojak / KEVIN / Snibby get a minimum torso height so armour stops being a thin strip at the bottom).
  * - outfit(): v2 Outfit maps are scaled (nearest-neighbour) into that box and clipped to the body; no outline on the background.

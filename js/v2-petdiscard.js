@@ -1,4 +1,4 @@
-/* Per-pet discard (2026-10-14, DEMO working build). A small 🗑️ button in the bottom-right of each living pet card on play.html.
+/* Per-pet discard (2026-10-14, v2). A small 🗑️ button in the bottom-right of each living pet card on play.html.
  * Click -> confirm -> the SAME free local Discard as 'Delete all Commons' (hidden in this browser, Undo toast, restorable). No burn, nothing signed.
  * One capture-phase listener on #pets (event delegation, fine for 2,000 pets); it stops propagation so the card's selection/detail never toggles.
  * Buttons are added to cards as they are rendered (chunked) by one MutationObserver on #pets. */

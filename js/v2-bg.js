@@ -1,4 +1,4 @@
-/* v2 background variety (2026-10-14, DEMO working build). pet-core.js is untouched: pets hatched AFTER the v2 cutoff (block 971,500) whose
+/* v2 background variety (2026-10-14, v2). pet-core.js is untouched: pets hatched AFTER the v2 cutoff (block 971,500) whose
  * pet-core background is one of the repetitive 'btc' / 'xcp' / 'bxmix' / 'solid' patterns get a variant picked deterministically from their DNA
  * (FNV-1a of 'XCPETS:bg:v3:' + dna; no randomness at render time). Only background pixels (and the ground shadow) are repainted, in the same
  * faint low-contrast pixel style, so sprites never clash. Hooked in v2-render.js petFrames (post-cutoff branch only). */
