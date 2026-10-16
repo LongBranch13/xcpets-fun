@@ -3,7 +3,7 @@
 .returnbox { margin-top:10px; border-top:2px dashed var(--line); padding-top:8px; }
 .returnbox h3 { margin:4px 0; font-size:16px; } .lb { margin:4px 0 0 18px; padding:0; } .lb li.me { color: var(--acc2); font-weight:800; }
 input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
-.bulkrow { background:#0a0f0b; border:2px solid var(--line); border-radius:6px; padding:6px 8px; position:sticky; top:0; z-index:5; }
+.bulkrow { background:#0a0f0b; border:2px solid var(--line); border-radius:6px; padding:6px 8px; }
 .bulkrow .btn { font-size:12px; padding:5px 10px; }
 .pet.card { position:relative; } .pet.card .pick-cb { position:absolute; top:8px; left:8px; z-index:2; width:20px; height:20px; accent-color: var(--green); }
 .pet.card.selected { border-color: var(--acc2) !important; box-shadow: 4px 4px 0 #000, 0 0 0 3px var(--acc2) inset; }
@@ -97,8 +97,8 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 
 /* layout hotfix (2026-10-14): one sticky wrapper (filters + bulk row) under the sticky nav; never over it */
 .bulkrow { position:static; }
-.petsticky { position:sticky; top:var(--navh, 52px); z-index:4; background:#0a0f0b; padding:4px 0; box-shadow:0 2px 0 #000; }
-@media (max-width: 700px) { .petsticky { position:static; box-shadow:none; } }
+/* My Pets filter/search + bulk row scroll with the list (2026-10-16): the sticky version glitched (bar stuck while cards slid over/under it). */
+.petsticky { position:static; background:#0a0f0b; padding:4px 0; }
 /* pending challenges (2026-10-15) */
 #fPending { max-height: none; margin: 6px 0 10px; } #fPending .txrow { padding: 6px 8px; margin: 3px 0; border-radius: 6px; background: #17211a; line-height: 1.5; }
 #fPending .pend-out { border-left: 3px solid #33d6ff; } #fPending .pend-in { border-left: 3px solid #ffb02e; } #fPending .txrow a { color: #33d6ff; }
