@@ -28,6 +28,12 @@
    * community pet Nakamoto one gear item right away (seed: block hash + tx, like a token roll). Inert until ACTIVATE_CROLL_BLOCK: before it the tag
    * replays exactly as before (unknown pet: tag, community food only). The 7 old 25,000 pet:c:roll burns are pre-cutoff (frozen live engine). */
   var ACTIVATE_CROLL_BLOCK = 971519;  // Bitcoin tip 971,516 at 2026-10-15 00:40 CT + 3 (Jake approved)
+  /* Multi-piece community roll (2026-10-15, Jake approved): from ACTIVATE_CROLL_MULTI_BLOCK a pet:c:roll[:SLOT] burn gives
+   * pieces = min(10, floor(amount / 690)) items (690 = 1, 6,900 = 10). Piece 0 uses the same seed as the 1-item roll; piece i > 0 uses
+   * sha(block hash + tx + ':' + i + 'XCPETS:v2:community-roll'). A named slot puts every piece in that slot; otherwise each piece picks its
+   * own slot as before. Pieces apply in order, so the newest per slot is worn. Before the block: exactly the old 1-item roll. */
+  var ACTIVATE_CROLL_MULTI_BLOCK = 971648;  // Bitcoin tip 971,642 at 2026-10-15 20:2x CT + 6 (Jake approved)
+  var CROLL_MAX_PIECES = 10;
   /* Roll tokens (2026-10-15, Jake approved): from ACTIVATE_TOKENS_BLOCK a pet that moves up a stage (hatching counts: single hatch and packs)
    * has a 25% chance of a roll token, and a pet that eats without a stage-up 2% (each pet of a bundled pet:fm feed rolls on its own); at most
    * one token per pet per burn. Seed = sha(block hash + tx + ':' + pet id + 'XCPETS:v2:token-drop'). A token turns into one free gear item right
@@ -471,11 +477,17 @@
         if (b < ACTIVATE_CROLL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (amt < COSTS.croll) return L(r, 'rejected', 'below community roll cost ' + COSTS.croll + ' (burn still feeds the community pet)');
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var ch = sha(bh + r.tx_hash + 'XCPETS:v2:community-roll'), cs = t.slot || V2_SLOTS[parseInt(ch.slice(16, 24), 16) % V2_SLOTS.length], ci = pickItem(ch, cs, 'nakamoto', 3, b >= ACTIVATE_DEDUP_BLOCK ? communityCounts(w) : null);
-        if (!ci) return L(r, 'rejected', 'no community gear for ' + slotLabel(cs));
-        var cg = { item: ci.id, label: ci.label, slot: ci.slot, tier: ci.tier, legendary: isLegendary(ci), block: b, tx: r.tx_hash, by: src };
-        w.community.gear[ci.slot] = cg; w.community.gearLog.push(cg);
-        return L(r, 'croll', 'community roll: Nakamoto got ' + ci.label + ' (' + slotLabel(ci.slot) + ')', { item: ci.id, slot: ci.slot });
+        var np = b >= ACTIVATE_CROLL_MULTI_BLOCK ? Math.min(CROLL_MAX_PIECES, Math.floor(amt / COSTS.croll + 1e-9)) : 1, got = [];
+        for (var pc = 0; pc < np; pc++) {
+          var ch = sha(bh + r.tx_hash + (pc ? ':' + pc : '') + 'XCPETS:v2:community-roll'), cs = t.slot || V2_SLOTS[parseInt(ch.slice(16, 24), 16) % V2_SLOTS.length], ci = pickItem(ch, cs, 'nakamoto', 3, b >= ACTIVATE_DEDUP_BLOCK ? communityCounts(w) : null);
+          if (!ci) { if (np === 1) return L(r, 'rejected', 'no community gear for ' + slotLabel(cs)); continue; }
+          var cg = { item: ci.id, label: ci.label, slot: ci.slot, tier: ci.tier, legendary: isLegendary(ci), block: b, tx: r.tx_hash, by: src };
+          if (np > 1) cg.piece = pc;
+          w.community.gear[ci.slot] = cg; w.community.gearLog.push(cg); got.push(ci);
+        }
+        if (!got.length) return L(r, 'rejected', 'no community gear for ' + slotLabel(t.slot || '?'));
+        if (np === 1) return L(r, 'croll', 'community roll: Nakamoto got ' + got[0].label + ' (' + slotLabel(got[0].slot) + ')', { item: got[0].id, slot: got[0].slot });
+        return L(r, 'croll', 'community roll x' + got.length + ': Nakamoto got ' + got.map(function (x) { return x.label + ' (' + slotLabel(x.slot) + ')'; }).join(', '), { item: got[got.length - 1].id, slot: got[got.length - 1].slot, items: got.map(function (x) { return x.id; }), slots: got.map(function (x) { return x.slot; }), pieces: got.length });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
       default: return L(r, 'plain', 'plain burn (community food)');
@@ -801,7 +813,7 @@
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, ACTIVATE_CROLL_MULTI_BLOCK: ACTIVATE_CROLL_MULTI_BLOCK, _setCrollMultiActivation: function (b) { ACTIVATE_CROLL_MULTI_BLOCK = b; }, CROLL_MAX_PIECES: CROLL_MAX_PIECES, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };
