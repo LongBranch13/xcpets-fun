@@ -102,3 +102,5 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 /* pending challenges (2026-10-15) */
 #fPending { max-height: none; margin: 6px 0 10px; } #fPending .txrow { padding: 6px 8px; margin: 3px 0; border-radius: 6px; background: #17211a; line-height: 1.5; }
 #fPending .pend-out { border-left: 3px solid #33d6ff; } #fPending .pend-in { border-left: 3px solid #ffb02e; } #fPending .txrow a { color: #33d6ff; }
+/* ux-batch: "Coming soon" tag (Rumble) */
+.chip.soon{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;border:2px solid #ffc93c;color:#ffc93c;background:rgba(255,201,60,.08);font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-radius:4px}

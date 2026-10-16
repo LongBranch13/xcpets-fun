@@ -93,6 +93,10 @@
   function sha(s) { return PetCore.sha256Hex(String(s)); }
   function stream(seed) { var n = 0, buf = '', i = 0; return function () { if (i + 8 > buf.length) { buf = sha(seed + ':' + (n++)); i = 0; } var v = parseInt(buf.slice(i, i + 8), 16); i += 8; return v; }; }
   function day(b) { return Math.floor(b / BLOCKS_PER_DAY); }
+  /* Rumble off (Jake 2026-10-16): from ACTIVATE_RUMBLE_OFF_BLOCK a pet:rumble burn is not an entry (it still burns and feeds the community pet like
+   * any stray burn). A rumble whose entries were made before the block still resolves normally at its seed block. Before the block: unchanged. */
+  var ACTIVATE_RUMBLE_OFF_BLOCK = 971800;  // set at push time
+  function rumbleOff(b) { return b != null && b >= ACTIVATE_RUMBLE_OFF_BLOCK; }
   function weekOf(b) { return Math.floor(b / WEEK); }
   function seedBlockOfWeek(w) { return (w + 1) * WEEK; }
   function utf8Len(s) { return unescape(encodeURIComponent(s)).length; }
@@ -124,11 +128,11 @@
   var ACTIVATE_TIER_SPECIES_BLOCK = 971669;  // Bitcoin tip 971,663 at 2026-10-15 23:18 CT + 6 (Jake approved)
   var TIER_UNLOCK = { pepe: 0, wojak: 0, chud: 0, bobo: 1, mumu: 1, snibby: 2, dodo: 3, peepo: 0, doge: 0, sarutobi: 1, lenny: 1, kevin: 2 };
   function tierSpeciesOn(b) { return b != null && b >= ACTIVATE_TIER_SPECIES_BLOCK; }
-  /* Legendary boost (Jake approved drafting 2026-10-16): from ACTIVATE_LEG_BOOST_BLOCK the Legendary-tier pool uses weights x LEG_SCALE and
+  /* Legendary boost (Jake approved 2026-10-16): from ACTIVATE_LEG_BOOST_BLOCK the Legendary-tier pool uses weights x LEG_SCALE and
    * KEVIN, Sarutobi and Lenny get LEG_BOOST_W each instead of 5 x LEG_SCALE, so P(Legendary X) = 0.03 x 776/777 x 66112/1338336 ~= 1.14999 x (1/777)
    * (~1 in 676 each) and Nakamoto (1 in 777) is the rarest Legendary again. Tier odds, the 777 check and the Common/Uncommon/Rare pools are
    * unchanged; the other Legendary species renormalize slightly. Before the block: exactly the old pool. */
-  var ACTIVATE_LEG_BOOST_BLOCK = 971767;  // Bitcoin tip 971,761 at 2026-10-16 15:10 CT + 6 (DRAFT: re-set at push time)
+  var ACTIVATE_LEG_BOOST_BLOCK = 971767;  // Bitcoin tip 971,761 at 2026-10-16 15:10 CT + 6 (Jake approved)
   var LEG_SCALE = 10000, LEG_BOOST_W = { kevin: 66112, sarutobi: 66112, lenny: 66112 };
   function legBoostOn(b) { return b != null && b >= ACTIVATE_LEG_BOOST_BLOCK; }
   function tierPool(tierIdx, b) { var boost = tierIdx === 3 && legBoostOn(b); return SPECIES12.filter(function (s) { return TIER_UNLOCK[s.id] <= tierIdx; })
@@ -513,6 +517,7 @@
         return L(r, 'fightDone', 'fight ' + F.id + ': #' + win.id + ' beat #' + los.id + (piece ? ' and took ' + piece.label : ' (no takeable gear)'), { fightId: F.id });
       }
       case 'rumble': {
+        if (rumbleOff(b)) return L(r, 'rejected', 'Royal Rumble entries are off (coming soon): plain burn (community food)');
         var P = pet(t.petId), wk = weekOf(b), R = w.rumbles[wk] || (w.rumbles[wk] = { week: wk, seedBlock: seedBlockOfWeek(wk), entrants: [], done: false });
         var hasGear = P && wornOf(w, P.id).some(function (g) { return !g.legendary; }), need = COSTS.rumble + (hasGear ? 0 : COSTS.rumbleStake);
         var er = !P || P.owner !== src ? 'your pet only' : fightable(P, b) || (b >= R.seedBlock ? 'entries closed (seed block)' : null) || (R.entrants.some(function (x) { return x.id === P.id; }) ? 'already entered' : null) || (amt < need ? 'needs ' + need + (hasGear ? '' : ' (69 entry + 690 stake: no gear to risk)') : null);
@@ -887,7 +892,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
