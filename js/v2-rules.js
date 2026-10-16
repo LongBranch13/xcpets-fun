@@ -68,7 +68,7 @@
   var NAKAMOTO_THRESHOLDS = x10(THRESHOLDS);                       // [0, 69, 83490, 221490, 414690, 690690]; hatch stays 69
   var NAKAMOTO_MEALS = [0, 7, 7, 7, 9];                            // 30 daily meals => Mythic ~ day 30 (~a month)
   var NAKAMOTO_MEAL_SIZES = NAKAMOTO_MEALS.map(function (n, k) { return k ? Math.ceil((NAKAMOTO_THRESHOLDS[k + 1] - NAKAMOTO_THRESHOLDS[k]) / n) : 0; });
-  var WIZARD_THRESHOLDS = NAKAMOTO_THRESHOLDS.map(function (v) { return v * 10; }); // community pet: 10x Nakamoto => Mythic 6,906,900
+  var WIZARD_THRESHOLDS = NAKAMOTO_THRESHOLDS.map(function (v, i) { return i === 1 ? 69000 : v * 10; }); // community pet: 10x Nakamoto => Mythic 6,906,900; hatch 69,000 (Jake 2026-10-15, immediate, no activation block)
   /* THE RETURN (Jake 2026-10-14, final): ONE constant, COMMUNITY_GOAL = 1,111,111 TOTAL community XCPETS burned (every valid burn, all-time,
    * the same total as the live site), counted from zero: progress = min(burned, 1,111,111) / 1,111,111; The Return fires when burned >= 1,111,111.
    * Until then the community pet is Nakamoto at Mythic; after it a new community pet and grows from the burns AFTER the
