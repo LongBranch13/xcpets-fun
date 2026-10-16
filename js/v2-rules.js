@@ -102,10 +102,16 @@
   SPECIES13.push({ id: 'nakamoto', label: 'Nakamoto', w: 5 });     // 13th hatchable species (rare-ish weight like KEVIN/Lenny)
   function pickSpecies(hex) { var tot = SPECIES13.reduce(function (a, s) { return a + s.w; }, 0), r = parseInt(hex.slice(0, 8), 16) % tot;
     for (var i = 0; i < SPECIES13.length; i++) { if (r < SPECIES13[i].w) return SPECIES13[i].id; r -= SPECIES13[i].w; } return SPECIES13[0].id; }
-  function thresholdsFor(species) { return species === 'nakamoto' ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
-  function mealSizesFor(species) { return species === 'nakamoto' ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
+  /* Hatched Nakamoto: normal growth + breeding (Jake approved 2026-10-15). From ACTIVATE_NAKA_NORMAL_BLOCK a hatched (or bred) Nakamoto uses the
+   * standard THRESHOLDS / MEAL_SIZES (its stage is recomputed from total care, so existing ones may jump stages) and can breed like any species
+   * (child species by the normal 50/50 parent rule). Before the block: exactly the old 10x thresholds and 'Nakamoto cannot breed'.
+   * The community pet (p.community) and WIZARD_THRESHOLDS are unaffected. b omitted => old behaviour (pre-activation). */
+  var ACTIVATE_NAKA_NORMAL_BLOCK = 971659;  // Bitcoin tip 971,653 at 2026-10-15 21:55 CT + 6 (Jake approved)
+  function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
+  function thresholdsFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
+  function mealSizesFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
   function stageFor(care, th) { var s = 0; for (var k = 1; k < 6; k++) if (care >= th[k]) s = k; return s; }
-  function mealFor(care, species) { var th = thresholdsFor(species), ms = mealSizesFor(species); if (care >= th[5]) return 0; if (care < th[1]) return th[1] - care;
+  function mealFor(care, species, b) { var th = thresholdsFor(species, b), ms = mealSizesFor(species, b); if (care >= th[5]) return 0; if (care < th[1]) return th[1] - care;
     var k = Math.min(4, Math.max(1, stageFor(care, th))); return Math.min(ms[k], th[k + 1] - care); }
   function mealsToMythic(species) { var c = THRESHOLDS[1], n = 0; while (mealFor(c, species) > 0) { c += mealFor(c, species); n++; } return n; }
   function wizardStage(burned) { return stageFor(burned, WIZARD_THRESHOLDS); }
@@ -290,7 +296,7 @@
     return w;
   }
   function liveAt(w, p, b) { // refresh age/death/neglect at block b
-    var last = p.lastFed != null ? p.lastFed : p.hatchBlock, th = thresholdsFor(p.species); if (p.clockFrom != null) last = Math.max(last, p.clockFrom); // live pets: live death-clock anchor
+    var last = p.lastFed != null ? p.lastFed : p.hatchBlock, th = thresholdsFor(p.species, b); if (p.clockFrom != null) last = Math.max(last, p.clockFrom); // live pets: live death-clock anchor
     p.mythicCare = p.care >= th[5] || !!p.ascended;
     p.deathBlock = p.mythicCare ? null : (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY;
     p.dead = !p.released && p.deathBlock != null && b >= p.deathBlock;
@@ -303,7 +309,7 @@
   function finish(w, p, tip) {
     liveAt(w, p, tip);
     if (p.dead) Object.keys(w.items).forEach(function (k) { if (w.items[k].on === p.id) w.items[k].on = null; });
-    p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species); p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
+    p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species, tip); p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
     p.blackEye = p.blackEyeUntil != null && tip < p.blackEyeUntil; p.crowned = p.crownUntil != null && tip < p.crownUntil;
   }
   // ---------------------------------------------------------------- live reader + cutoff import (2026-10-14)
@@ -351,7 +357,7 @@
     return g;
   }
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
-  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto') return 'Nakamoto cannot breed';
+  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
@@ -386,15 +392,15 @@
         return L(r, 'cfeed', 'fed ' + COMMUNITY_PET + ' ' + amt);
       }
       case 'feed': {
-        var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species) === 0 ? 'fully fed' : amt < mealFor(q.care, q.species) ? 'below meal ' + mealFor(q.care, q.species) : null;
+        var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species, b) === 0 ? 'fully fed' : amt < mealFor(q.care, q.species, b) ? 'below meal ' + mealFor(q.care, q.species, b) : null;
         if (why) return L(r, 'rejected', why);
-        var qs = q.stage; q.care += mealFor(q.care, q.species); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
+        var qs = q.stage; q.care += mealFor(q.care, q.species, b); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
         var fl = L(r, 'feed', 'fed #' + q.id + ' (care ' + q.care + ')', { petId: q.id }); token(q, q.stage > qs ? 'stageUp' : 'meal'); return fl;
       }
       case 'feedm': {  /* pets in ascending id order, each takes its own meal from the burn; a pet that can't be fed (or that the rest of the burn can't pay for) is skipped */
         if (b < ACTIVATE_FEEDM_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var left = amt, fed = [], skip = [], up = {};
-        t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species) : 0,
+        t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species, b) : 0,
             no = !z ? 'no such pet' : z.released ? 'released' : z.owner !== src ? 'owner only' : z.dead ? 'dead (Pet Cemetery)' : z.feedDays[day(b)] ? 'already fed this day' : m === 0 ? 'fully fed' : left + 1e-9 < m ? 'burn too small for meal ' + m : null;
           if (no) { skip.push('#' + id + ' ' + no); return; }
           var zs = z.stage; left -= m; z.care += m; z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); up[z.id] = z.stage > zs; fed.push(z.id); });
@@ -787,7 +793,7 @@
   /** breedPicker(w, owner, tip, selA): cards for the breeding picker. Nakamoto + the community pet are left out silently (rule unchanged).
    * mine = owner's living pets (parent A), partners = every other living pet (parent B); each { p, why } where why = null if selectable. */
   function breedPicker(w, owner, tip, selA) {
-    var live = w.pets.filter(function (p) { return !p.dead && !p.released && p.species !== 'nakamoto' && !p.community; });
+    var live = w.pets.filter(function (p) { return !p.dead && !p.released && (p.species !== 'nakamoto' || nakaNormal(tip)) && !p.community; });
     var why = function (p) { var r = breedable(p, tip); if (!r && selA != null && String(p.id) === String(selA)) r = 'already parent A'; return r || null; };
     return { mine: live.filter(function (p) { return p.owner === owner; }).map(function (p) { return { p: p, why: breedable(p, tip) || null }; }),
       partners: live.map(function (p) { return { p: p, why: why(p) }; }) }; }
@@ -795,13 +801,13 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { CUTOFF_BLOCK: CUTOFF_BLOCK, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, kitWith: kitWith, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };
