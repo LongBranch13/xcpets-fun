@@ -51,7 +51,7 @@
     text(ctx, 'Every XCPETS burn counted', 80, 79.5, C.cyan, 4, 'center');
     if (t >= send0 && t < send1 + 12) for (var k = 0; k < 6; k++) { var u = ((t - send0) / 26 + k / 6) % 1; if (t - send0 < k * 4) continue;
       var x = 34 + (126 - 34) * u, y = 50 - Math.sin(u * Math.PI) * 30 + u * 8; coin(ctx, x, y); }
-    text(ctx, t < send0 ? 'THE RETURN' : t < flare ? 'The Return' : t < egg0 ? 'Gone. Burned forever.' : 'A new community pet appears…', 80, 4, C.gold, t < send0 ? 9 : 5, 'center');
+    text(ctx, t < send0 ? 'COMMUNITY PET' : t < flare ? 'Community pet' : t < egg0 ? 'Gone. Burned forever.' : 'A new community pet appears…', 80, 4, C.gold, t < send0 ? 9 : 5, 'center');
     if (t < egg0) text(ctx, '₿ ' + fmt(BTC * p) + ' sent', 80, t < send0 ? 15 : 13, '#ffffff', 7, 'center');
     if (t >= flare && t < flare + 14) { ctx.globalAlpha = 1 - (t - flare) / 14; px(ctx, 0, 0, W, H, '#ffffff'); ctx.globalAlpha = 1; }
     if (t >= egg0) { var a = Math.min(1, (t - egg0) / 30), ef = sp.egg ? sp.egg[(t >> 3) % sp.egg.length] : null; sprite(ctx, ef, 58, 30 - Math.round((1 - a) * 8), 1.4, a);
@@ -62,7 +62,7 @@
   function previewRequested() { try { return new URLSearchParams(location.search).get('preview') === 'return'; } catch (e) { return false; } }
   /** play({sprites, onDone, info}) -> overlay with the animation; Skip / Close; never blocks the page. */
   function play(o) {
-    o = o || {}; var ov = document.createElement('div'); ov.className = 'reveal on returnov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'The Return');
+    o = o || {}; var ov = document.createElement('div'); ov.className = 'reveal on returnov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Community pet');
     ov.innerHTML = '<div class="box wide" style="text-align:center"><canvas width="' + W * S + '" height="' + H * S + '" class="returncv" style="width:' + W * S + 'px;max-width:100%;image-rendering:pixelated"></canvas>' +
       '<p class="small muted retinfo">' + (o.info || '') + '</p><div class="row" style="justify-content:center"><button class="btn retclose" type="button">Close</button></div></div>';
     document.body.appendChild(ov); var cv = ov.querySelector('canvas'), ctx = cv.getContext('2d'), t = 0, stop = false, last = 0;

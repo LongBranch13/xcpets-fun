@@ -85,7 +85,7 @@
     var w = M.world(), c = w.community, preview = /preview=return/.test(location.search), list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
     var items = list.map(function (x) { return { kind: 'done', x: x, id: x.e.id, name: x.e.name, done: x.done }; });
-    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Community pet', done: false });
+    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
     var filt = 'all', sel = items[0].id;
     function sprites(it) { return it.kind === 'live' ? (c.wizardStage > 0 ? WizardSprite.frames(c.wizardStage, '#2a3a2e') : null) : it.x.e.sprites(); }
     function feat(it) {
@@ -93,9 +93,9 @@
         '</div><div class="archive-fdesc"><span class="archive-tag live">IN PROGRESS</span> <span class="archive-tag myth">' + esc(V.STAGE_NAMES[c.wizardStage].toUpperCase()) + '</span>' +
         '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div></div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
-      return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '\'S RETURN</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
-        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ Watch the Return</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
-        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>At <b>The Return</b>, the community cycle came full circle.</p><div class="archive-stats">' +
+      return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
+        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ Watch the replay</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
+        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>The community cycle came full circle.</p><div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
         (x.tx ? '<p class="small archive-tx">Triggering tx <code>' + esc(x.tx) + '</code></p>' : '') + '<h3 class="archive-h3">Top feeders</h3><ol class="archive-feed">' + x.top.map(function (t) { return '<li title="' + esc(t.address) + '">' + esc(shortAddr(t.address)) + ' · <span>' + fmt(Math.floor(t.amount)) + '</span></li>'; }).join('') + '</ol></div>'; }
@@ -114,7 +114,7 @@
       if (cur && $('archFeatCv')) R.animate($('archFeatCv'), sprites(cur));
       Array.prototype.forEach.call(box.querySelectorAll('.archive-chip'), function (b) { b.onclick = function () { filt = b.dataset.f; draw(); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.archive-card'), function (b) { b.onclick = function () { sel = b.dataset.id; draw(); }; });
-      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + "'s Return" + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
+      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + "'s replay" + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
       if (cur && cur.x && cur.x.done && !(cur.x.row && cur.x.row.block_time) && window.LiveEngine && LiveEngine.Chain) try { new LiveEngine.Chain().getJson('/blocks/' + cur.x.block).then(function (j) { var bt = j && j.result && j.result.block_time, el = box.querySelector('.archdate'); if (bt && el) el.textContent = new Date(bt * 1000).toISOString().slice(0, 10); }, function () {}); } catch (e) { }
     }
     draw(); withReturn(function () {});
@@ -128,14 +128,14 @@
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e');
     R.animate($('crCanvas'), wiz ? WizardSprite.frames(st, '#2a3a2e') : R.communityFrames(w)); /* community roll gear (2026-10-15) */
     if ($('crGearTxt')) $('crGearTxt').textContent = !wiz && R.communityGearText(w) ? 'Gear: ' + R.communityGearText(w) : ''; $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
-    $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
+    $('crName').textContent = wiz ? c.petName + ' · community pet' : c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(hi - fed) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
     $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
-    $('crQuestTxt').textContent = wiz ? fmt(Math.floor(c.burned)) + ' XCPETS burned' : fmt(Math.floor(rp.count)) + ' / ' + fmt(V.COMMUNITY_GOAL) + ' XCPETS burned (' + (rp.pct * 100).toFixed(1) + '%)';
-    var info = wiz ? 'The Return · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview of The Return (not reached yet: ' + fmt(Math.floor(rp.count)) + ' / ' + fmt(V.COMMUNITY_GOAL) + ')';
+    $('crQuestTxt').textContent = wiz ? fmt(Math.floor(c.burned)) + ' XCPETS burned' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
+    var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
