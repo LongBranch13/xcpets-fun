@@ -409,19 +409,33 @@
     g.fillStyle = '#3ddc84'; g.font = '28px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
   function toast(msg) { var t = document.createElement('div'); t.className = 'shtoast'; t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18221b;color:#fff;border:2px solid #3ddc84;border-radius:10px;padding:10px 16px;z-index:99999;font-size:14px;max-width:90vw;text-align:center';
     document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000); }
-  function shareImage(p) { var c = cardCanvas(p), name = 'xcpets-' + p.id + '.png', link = location.href.replace(/[^\/]*([?#].*)?$/, '') + 'pet.html?id=' + p.id,
-      text = 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS 🔥 @XCPets ' + link;
-    c.toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; }
-      var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+  /* Pet share (Jake 2026-10-15): row sits under the stats (pet page #stats, play dialog #dStats). Share image = native share sheet with the PNG file
+   * + text + pet URL when navigator.canShare({files}) (mobile: pick X / Telegram / ...); else copy PNG to clipboard + download (as before).
+   * Post on X = copy PNG (ClipboardItem) then open x.com/intent/post with text + url; no clipboard -> download + toast. Save image = download. */
+  function petLink(p) { return location.href.replace(/[^\/]*([?#].*)?$/, '') + 'pet.html?id=' + p.id; }
+  function shortText(p) { return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
+  function withBlob(p, fn) { cardCanvas(p).toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; } fn(blob, 'xcpets-' + p.id + '.png'); }, 'image/png'); }
+  function download(blob, name) { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000); }
+  function copyPng(blob) { return window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]) : Promise.reject(new Error('no clipboard')); }
+  function shareImage(p) { var link = petLink(p), text = shortText(p) + ' 🔥 @XCPets';
+    withBlob(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
       if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], text: text }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }
+        navigator.share({ files: [file], text: text + ' ' + link, url: link }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }
       fallback();
-      function fallback() { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-        var cp = window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]) : Promise.reject();
-        cp.then(function () { toast('Image copied to clipboard and downloaded'); }, function () { toast('Image downloaded'); }); } }, 'image/png'); }
-  function imgButton(p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn imgshare'; b.textContent = '🖼️ Share image'; b.setAttribute('data-pet', p.id); b.onclick = function () { shareImage(p); }; return b; }
-  function shareRow(p) { var d = document.createElement('p'); d.appendChild(imgButton(p)); d.appendChild(document.createTextNode(' ')); d.appendChild(button(p)); return d; }
-  window.XCPShare = { cardCanvas: cardCanvas, shareImage: shareImage };
+      function fallback() { download(blob, name); copyPng(blob).then(function () { toast('Image copied to clipboard and downloaded'); }, function () { toast('Image downloaded'); }); } }); }
+  function postX(p) { /* open the tab synchronously (popup blockers), then point it at the intent once the image is on the clipboard */
+    var intent = 'https://x.com/intent/post?text=' + encodeURIComponent(shortText(p) + ' @XCPets') + '&url=' + encodeURIComponent(petLink(p)), win = window.open('about:blank', '_blank');
+    if (win) { try { win.opener = null; } catch (e) {} }
+    function go() { if (win && !win.closed) win.location.href = intent; else window.open(intent, '_blank', 'noopener'); }
+    withBlob(p, function (blob, name) { copyPng(blob).then(function () { go(); toast('Image copied, paste it into your post (Ctrl/Cmd+V)'); },
+      function () { download(blob, name); go(); toast('Image downloaded, attach it to your post'); }); }); }
+  function saveImage(p) { withBlob(p, function (blob, name) { download(blob, name); toast('Image saved'); }); }
+  function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
+  function imgButton(p) { return btn('imgshare', '🖼️ Share image', 'Share the pet card image', shareImage, p); }
+  function shareRow(p) { var d = document.createElement('p'); d.className = 'petshare'; d.setAttribute('data-pet', p.id);
+    [imgButton(p), btn('xshare', '𝕏 Post on X', 'Post on X with the pet card image', postX, p), button(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
+    return d; }
+  window.XCPShare = { cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];
   function node(t) { var d = document.createElement('div'); d.className = 'ftnode tier-' + (TC[t.tier] || ''); var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'ftsprite';
     try { var w = window.V2Mock.world(), p = w.byId[t.id]; window.V2Render.paint(c, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
@@ -434,10 +448,12 @@
   function trees() { document.querySelectorAll('ul.tree').forEach(function (u) { if (u.parentNode && u.parentNode.closest && u.parentNode.closest('ul.tree')) return; var m = /#(\d+)/.exec(u.textContent); var c = m && chart(+m[1]); if (c) u.parentNode.replaceChild(c, u); }); }
   function css() { if (!document.getElementById('ftcss')) { var st = document.createElement('style'); st.id = 'ftcss'; st.textContent = '.ftchart{overflow-x:auto;padding:6px 0}.ftchart ul{display:flex;justify-content:center;padding:14px 0 0;margin:0;position:relative;list-style:none}.ftchart>ul{padding-top:0}.ftchart li{display:flex;flex-direction:column;align-items:center;position:relative;padding:14px 4px 0}.ftchart>ul>li{padding-top:0}.ftchart li::before,.ftchart li::after{content:"";position:absolute;top:0;width:50%;height:14px;border-top:2px solid #6b5;}.ftchart li::before{right:50%}.ftchart li::after{left:50%;border-left:2px solid #6b5}.ftchart li:only-child::before,.ftchart li:only-child::after{border-top:0}.ftchart li:first-child::before,.ftchart li:last-child::after{border-top:0}.ftchart li:last-child::before{border-right:2px solid #6b5;border-top:2px solid #6b5;width:50%}.ftchart li:last-child::after{border:0}.ftchart li:first-child::after{border-top:2px solid #6b5}.ftchart>ul>li::before,.ftchart>ul>li::after{display:none}.ftchart ul ul::before{content:"";position:absolute;top:0;left:50%;height:14px;border-left:2px solid #6b5}.ftchart ul ul{padding-top:28px}.ftchart ul ul::before{height:14px}.ftnode a{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:inherit;border:2px solid #444;border-radius:6px;padding:4px 6px;background:rgba(0,0,0,.25);font-size:11px;text-align:center;min-width:72px}.ftsprite{width:48px;height:48px;image-rendering:pixelated}.ftnode.tier-rare a{border-color:#4af}.ftnode.tier-legendary a{border-color:#fb3}.ftnode.tier-uncommon a{border-color:#5c5}@media(max-width:520px){.ftnode a{min-width:56px;font-size:10px}.ftsprite{width:32px;height:32px}.ftchart li{padding-left:2px;padding-right:2px}}'; (document.head || document.body).appendChild(st); } }
   function inject() { trees();
-    var bt = document.getElementById('bornTraits'), m = /[?&]id=(\d+)/.exec(location.search);
-    if (bt && m && !document.querySelector('.tgshare[data-pet="' + m[1] + '"]')) { var p = petById(+m[1]); if (p) { bt.appendChild(shareRow(p)); } }
-    var dt = document.querySelector('#detail .borntraits'), dd = document.getElementById('detail'), idm = dt && document.getElementById('dTitle') && /#(\d+)/.exec(document.getElementById('dTitle').textContent);
-    if (dt && !document.getElementById('bornTraits') && idm && !dd.querySelector('.tgshare')) { var q = petById(+idm[1]); if (q) { dt.parentNode.insertBefore(shareRow(q), dt.nextSibling); } }
+    var st = document.getElementById('stats'), m = /[?&]id=(\d+)/.exec(location.search);
+    if (st && document.getElementById('page') && m && !document.querySelector('.petshare[data-pet="' + m[1] + '"]')) { var p = petById(+m[1]); if (p) { st.parentNode.insertBefore(shareRow(p), st.nextSibling); } }
+    var ds = document.getElementById('dStats'), idm = ds && document.getElementById('dTitle') && /#(\d+)/.exec(document.getElementById('dTitle').textContent);
+    if (ds && !document.getElementById('page') && idm) { var cur = ds.parentNode.querySelector('.petshare');
+      if (cur && cur.getAttribute('data-pet') !== idm[1]) { cur.parentNode.removeChild(cur); cur = null; }
+      if (!cur) { var q = petById(+idm[1]); if (q) ds.parentNode.insertBefore(shareRow(q), ds.nextSibling); } }
   }
   function start() { css(); new MutationObserver(inject).observe(document.body, { childList: true, subtree: true }); inject(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
