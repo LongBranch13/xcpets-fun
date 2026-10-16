@@ -612,7 +612,7 @@
    * (2) BONUS: the bred-true pattern / eye bonus applies only if the chosen option is a strict upgrade (higher t) over the (capped) trait;
    *     otherwise the SAME draw x gives the +BRED_TRUE_STAT stat bonus. The bonus can never downgrade, side-grade or no-op.
    * Before the block: byte-identical to the old behaviour. Forward-only: no migration of existing babies. */
-  var ACTIVATE_BREED_FIX_BLOCK = 971768;  // Bitcoin tip 971,762 at 2026-10-16 15:30 CT + 6 (DRAFT: re-set at push time)
+  var ACTIVATE_BREED_FIX_BLOCK = 971772; // tip 971766 + 6 at push time (Jake approved 2026-10-16)
   function breedFixOn(b) { return b != null && b >= ACTIVATE_BREED_FIX_BLOCK; }
   var CAP_POOLS = { pattern: 'PATTERNS', eyes: 'EYES', band: 'BANDS', armor: 'ARMORS', cape: 'CAPES', weapon: 'WEAPONS', crown: 'CROWNS', background: 'BACKGROUNDS' };
   function capOne(pool, id, tier) { var cur = pool.filter(function (o) { return o.id === id; })[0]; if (!cur || cur.t <= tier) return id;
