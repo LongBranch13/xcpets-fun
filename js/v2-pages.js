@@ -19,7 +19,7 @@
     var show = V.castShowsNakamoto(w), G = window.GenPetCore || PetCore, box = $('castRows'); if (!box) return show;
     // rarity no longer caps gear in v2: drop the live "(1/2/4/5 gear)" from the tier tabs
     Array.prototype.forEach.call($('castTiers').children, function (b) { b.textContent = b.textContent.replace(/, \d gear\)/, ')'); });
-    function add() { if (!show || box.querySelector('[data-sp="nakamoto"]')) return; var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
+    function add() { if (!show || window.PromoLiveCast || box.querySelector('[data-sp="nakamoto"]')) return; /* live-rules cast (promo.js) has its own Nakamoto row on the Legendary tab */ var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
       var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', pet = G.characterPet('nakamoto', { tier: tier });
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', 'nakamoto');
       row.innerHTML = '<div><h4>Nakamoto</h4><p class="muted">Hatchable 13th species (v2) · rare · grows and breeds like the others from block 971,659</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
