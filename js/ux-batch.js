@@ -49,8 +49,11 @@
   UXB.origin = function (p, w) { var o = originOf(p), par = p.parents || [];
     function lk(id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '" data-jump="' + id + '">#' + id + '</a>' + (o === 'hybrid' && q ? ' ' + esc(spL(q.species)) : ''); }
     if (o === 'hatched') return '<span class="chip origin" title="Hatched from an egg burn">🥚 Hatched</span>';
-    var two = par.length >= 2, txt = o === 'hybrid' ? '🧬 ' + (two ? lk(par[0]) + ' × ' + lk(par[1]) : 'Hybrid') : '👪 ' + (two ? 'Bred from ' + lk(par[0]) + ' × ' + lk(par[1]) : 'Bred');
-    return '<span class="chip origin ' + o + '">' + txt + (p.breedBonus ? ' <span title="Bred true: same-species bonus (' + esc(p.breedBonus.kind || 'bonus') + ')">✨</span>' : '') + '</span>'; };
+    var two = par.length >= 2, bonus = p.breedBonus ? ' <span title="Bred true: same-species bonus (' + esc(p.breedBonus.kind || 'bonus') + ')">✨</span>' : '', R = window.V2Render;
+    var bf = two && R && R.bredFrom ? R.bredFrom(w, p, true) : '';
+    if (o === 'hybrid') return '<span class="chip origin hybrid">🧬 ' + (two ? lk(par[0]) + ' × ' + lk(par[1]) : 'Hybrid') + bonus + '</span>' + bf;
+    if (bf) return bf.replace(/<\/span>$/, bonus + '</span>');
+    return '<span class="chip origin bred">💞 Bred' + bonus + '</span>'; };
   function jump(id) { var c = document.querySelector('#pets .pet.card[data-pid="' + id + '"]'); if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(function () { c.classList.remove('flash'); }, 1600); } else U.detail(Number(id)); }
 
   // ================================================================ D. selection: tri-state, tap/shift-range, sticky bar with costs

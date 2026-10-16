@@ -409,7 +409,10 @@
     var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
     out.push('<b>Breedings:</b> ' + (p.breeds || 0) + '/' + (V2 ? V2.BREED_MAX : 3) + cd);
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
-  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
+  /** bredFrom(w, p, jump): '💞 Bred from #A Name × #B Name' chip for any bred pet/egg (p.parents); '' otherwise. jump adds data-jump for in-page jumps. Display only. */
+  function bredFrom(w, p, jump) { if (!p || !p.parents || p.parents.length < 2) return ''; var L = function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '"' + (jump ? ' data-jump="' + id + '"' : '') + '>#' + id + (q ? ' ' + esc(q.name) : '') + '</a>'; };
+    return '<span class="chip origin bred bredfrom">💞 Bred from ' + L(p.parents[0]) + ' × ' + L(p.parents[1]) + '</span>'; }
+  window.V2Render = { bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
