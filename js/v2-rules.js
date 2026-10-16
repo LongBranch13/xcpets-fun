@@ -121,7 +121,7 @@
    * and picks its species from that tier's pool, seed sha(bh + id + 'XCPETS:v2:tierspecies'): a species is eligible when its unlock tier t <= the egg's tier,
    * weight w, x4 in its own unlock tier (the pre-v2 PetCore rule). Original 7 keep their pet-core unlock tiers; the v2 five are a PROPOSAL for Jake
    * (Peepo/Doge Common, Sarutobi/Lenny Uncommon, KEVIN Rare). Nakamoto is never in the pool. Before the block: unchanged. Existing pets are never re-tiered. */
-  var ACTIVATE_TIER_SPECIES_BLOCK = 971667;  // PLACEHOLDER: Bitcoin tip 971,661 at 2026-10-15 23:07 CT + 6 (not yet approved by Jake)
+  var ACTIVATE_TIER_SPECIES_BLOCK = 971669;  // Bitcoin tip 971,663 at 2026-10-15 23:18 CT + 6 (Jake approved)
   var TIER_UNLOCK = { pepe: 0, wojak: 0, chud: 0, bobo: 1, mumu: 1, snibby: 2, dodo: 3, peepo: 0, doge: 0, sarutobi: 1, lenny: 1, kevin: 2 };
   function tierSpeciesOn(b) { return b != null && b >= ACTIVATE_TIER_SPECIES_BLOCK; }
   function tierPool(tierIdx) { return SPECIES12.filter(function (s) { return TIER_UNLOCK[s.id] <= tierIdx; })
