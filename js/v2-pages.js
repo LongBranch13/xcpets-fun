@@ -147,32 +147,80 @@
     var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
   function ranking() {
-    var w = M.world(), all = false, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
-    var rows = w.pets.filter(function (p) { return !p.dead && !p.released; }).sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }).map(function (p, i) { return { rank: i + 1, p: p }; });
+    var w = M.world(), score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
+    /* ranking tabs (ux-batch 2026-10-16, UI only): every board is computed from the same replayed world; dead and released pets never count */
+    var live = w.pets.filter(function (p) { return !p.dead && !p.released; }), tip = w.tip || M.state().tip || 0, WEEK = 1008, RW = [1, 3, 10, 33];
+    var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
+    var inWeek = function (b) { return b != null && b > tip - WEEK; };
+    var BOARDS = [
+      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Stage first, then feed streak, then care. Best cared for at the top.', pets: true },
+      { id: 'pets', label: 'Most pets', note: 'Living pets owned. This week: pets hatched or bred in the last 1,008 blocks.', players: true, week: true },
+      { id: 'power', label: 'Most powerful', note: 'Power = Vigor + Spark + Grit + Zoom + Luck. Players: their single strongest pet.', pets: true, players: true },
+      { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet. This week: pets hatched or bred in the last 1,008 blocks.', players: true, week: true },
+      { id: 'burn', label: 'Top burners', note: 'XCPETS burned with any XCPETS burn (hatch, feed, gear, battles, plain burns). This week: the last 1,008 blocks.', players: true, week: true },
+      { id: 'wins', label: 'Battle wins', note: 'Battles won. This week: battles decided in the last 1,008 blocks.', pets: true, players: true, week: true },
+      { id: 'leg', label: 'Legendary hunters', note: 'Living Legendary pets owned. This week: Legendaries hatched or bred in the last 1,008 blocks.', players: true, week: true },
+      { id: 'old', label: 'Oldest pets', note: 'Living pets by hatch block, oldest first.', pets: true }
+    ];
+    var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: 100 };
+    if (!BOARDS.some(function (x) { return x.id === st.board; })) st.board = 'wagmi';
+    var burned = {}, burnedWk = {}; (M.state().rows || []).forEach(function (r) { var a = Number(r.amount) || 0; burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
+    var winsWk = {}; (w.fights || []).forEach(function (f) { if (f.status === 'done' && inWeek(f.acceptBlock)) winsWk[f.winner] = (winsWk[f.winner] || 0) + 1; });
+    function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
+    function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
+    function petRows(B, wk) { var L = live.slice(), sc;
+      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) }; }); }
+      if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
+      sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
+      L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
+      return L.map(function (r) { return { p: r.p, score: fmt(r.v) + (B.id === 'power' ? ' power' : ' win' + (r.v === 1 ? '' : 's')), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : '' }; }); }
+    function playerRows(B, wk) { var m = {}, best = {};
+      function add(o, v, p) { m[o] = (m[o] || 0) + v; if (p && (!best[o] || p.tier > best[o].tier || (p.tier === best[o].tier && p.stage > best[o].stage))) best[o] = p; }
+      if (B.id === 'burn') Object.keys(wk ? burnedWk : burned).forEach(function (o) { add(o, (wk ? burnedWk : burned)[o]); });
+      live.forEach(function (p) { var fresh = !wk || inWeek(p.hatchBlock);
+        if (B.id === 'pets' && fresh) add(p.owner, 1, p);
+        if (B.id === 'rare' && fresh) add(p.owner, RW[p.tier] || 0, p);
+        if (B.id === 'leg' && fresh && p.tier === 3) add(p.owner, 1, p);
+        if (B.id === 'wins') add(p.owner, wk ? (winsWk[p.id] || 0) : (p.wins || 0), p);
+        if (B.id === 'power') { var v = power(p); if (!m[p.owner] || v > m[p.owner]) { m[p.owner] = v; best[p.owner] = p; } }
+        if (B.id === 'burn' && m[p.owner] && (!best[p.owner] || p.tier > best[p.owner].tier)) best[p.owner] = p; });
+      var unit = { pets: ' pets', rare: ' pts', leg: ' Legendary', wins: ' wins', power: ' power', burn: ' XCPETS' }[B.id];
+      return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: fmt(Math.round(m[o] * 1e8) / 1e8) + unit }; }); }
+    var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
+    function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
     function render() {
-      var mine = V.myRanks(rows, ME), mineIds = {}; mine.forEach(function (m) { mineIds[m.id] = 1; });
-      /* top 100 (Jake 2026-10-15): ranks 1-100 in the same format (all of them when fewer than 100); 'Show all' lists the rest */
-      var TOP = 100, show = all || rows.length <= TOP ? rows : rows.slice(0, TOP);
-      $('board').innerHTML = '<div class="tw"><table class="board"><tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' + show.map(function (r) {
-        if (r.gap) return '<tr class="gap"><td colspan="4">… ' + r.gap + ' more …</td></tr>';
-        var p = r.p, s = streak(p, w.tip);
-        return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">#' + r.rank + (p.owner === ME ? '<div class="small">' + (mine.filter(function (m) { return m.id === p.id; })[0] || {}).note + '</div>' : '') + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(p.owner.slice(0, 8)) + (p.owner === ME ? ' (you)' : '…') + '</div></td><td>' +
-          (s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>') + '<div class="small muted">care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</div></td></tr>';
-      }).join('') + '<tr class="end"><td colspan="4">💀 NGMI</td></tr></table></div>';
-      document.querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
-      var b = $('boardAll'); b.style.display = rows.length > TOP ? '' : 'none'; b.textContent = all ? 'Show top ' + TOP : 'Show all ' + rows.length;
+      var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', rows = md === 'pets' ? petRows(B, wk) : playerRows(B, wk);
+      try { var u = new URL(location.href); u.searchParams.set('board', B.id); if (B.pets && B.players) u.searchParams.set('mode', md); else u.searchParams.delete('mode'); if (wk) u.searchParams.set('span', 'week'); else u.searchParams.delete('span'); history.replaceState(null, '', u); } catch (e) { }
+      var tabs = '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { return '<button type="button" role="tab" class="tab' + (x.id === B.id ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + (x.id === B.id) + '">' + esc(x.label) + '</button>'; }).join('') + '</div>';
+      var ctl = '<div class="row rkctl">' + (B.pets && B.players ? '<span class="seg"><button type="button" class="q' + (md === 'pets' ? ' on' : '') + '" data-mode="pets">Pets</button><button type="button" class="q' + (md === 'players' ? ' on' : '') + '" data-mode="players">Players</button></span>' : '') +
+        (B.week ? '<span class="seg"><button type="button" class="q' + (wk ? ' on' : '') + '" data-span="week">This week</button><button type="button" class="q' + (!wk ? ' on' : '') + '" data-span="all">All time</button></span>' : '') +
+        (ME ? '<button type="button" class="q" id="rkFind">📍 Find me</button>' : '') + '</div><p class="small muted rknote">' + esc(B.note) + (wk ? ' (blocks ' + fmt(tip - WEEK + 1) + '–' + fmt(tip) + ')' : '') + '</p>';
+      var show = rows.slice(0, st.n), mineRank = -1; rows.forEach(function (r, i) { if (mineRank < 0 && (r.owner || (r.p && r.p.owner)) === ME) mineRank = i; });
+      var body = show.map(function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
+        var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
+          : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
+        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + '</div>' : '') + '</td></tr>'; }).join('');
+      var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
+      $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">Nobody on this board yet.</p>');
+      var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Load more (' + fmt(rows.length - st.n) + ' left)';
+      $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = 100; render(); }; });
+      $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = 100; render(); }; });
+      $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = 100; render(); }; });
+      if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
+      $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pets' : ' players') + ' on this board · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
     }
-    $('boardAll').onclick = function () { all = !all; render(); };
+    $('boardAll').onclick = function () { st.n += 100; render(); };
     /* 'Your pets' summary removed from the rankings page (Jake 2026-10-15); your rows stay highlighted in the board */
     /* closest to dying (Jake 2026-10-15): the 10 living pets with the fewest blocks left, using the engine's own death block
      * (V2Rules liveAt: deathBlock = (day of last feed + 7 + 1) x 144; Mythic-care pets never starve, so they are not listed) */
     if ($('nearDeath')) { var tipB = w.tip, near = w.pets.filter(function (p) { return !p.dead && !p.released && p.deathBlock != null && p.deathBlock > tipB; })
         .sort(function (a, b) { return a.deathBlock - b.deathBlock || a.id - b.id; }).slice(0, 10);
       var left = function (n) { var m = n * 10; return fmt(n) + ' block' + (n === 1 ? '' : 's') + ' (~' + (m < 120 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : (m / 1440).toFixed(1) + ' days') + ')'; };
-      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="pet">Closest to dying</h2><p class="small muted">Living pets with the least time left before they starve (no feed for 7 full days after the day of their last feed). Feed them to reset the clock.</p>' +
+      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small muted">Living pets with the least time left before they starve (no feed for 7 full days after the day of their last feed). Feed them to reset the clock.</p>' +
         (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(p.owner.slice(0, 8)) + (p.owner === ME ? ' (you)' : '…') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
       $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
-    $('status').textContent = rows.length + ' pets ranked from ' + M.state().rows.length + ' XCPETS burns.'; render();
+    render();
   }
   function cemetery() {
     var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock; });
