@@ -117,11 +117,33 @@
   function naka777(b) { return b != null && b >= ACTIVATE_NAKA_777_BLOCK; }
   function pickSpecies12(hex) { var tot = SPECIES12.reduce(function (a, s) { return a + s.w; }, 0), r = parseInt(hex.slice(0, 8), 16) % tot;
     for (var i = 0; i < SPECIES12.length; i++) { if (r < SPECIES12[i].w) return SPECIES12[i].id; r -= SPECIES12[i].w; } return SPECIES12[0].id; }
+  /* Tier-gated species (Jake request 2026-10-15). From ACTIVATE_TIER_SPECIES_BLOCK a hatched egg that is not the 1-in-777 Nakamoto keeps its rolled tier
+   * and picks its species from that tier's pool, seed sha(bh + id + 'XCPETS:v2:tierspecies'): a species is eligible when its unlock tier t <= the egg's tier,
+   * weight w, x4 in its own unlock tier (the pre-v2 PetCore rule). Original 7 keep their pet-core unlock tiers; the v2 five are a PROPOSAL for Jake
+   * (Peepo/Doge Common, Sarutobi/Lenny Uncommon, KEVIN Rare). Nakamoto is never in the pool. Before the block: unchanged. Existing pets are never re-tiered. */
+  var ACTIVATE_TIER_SPECIES_BLOCK = 971667;  // PLACEHOLDER: Bitcoin tip 971,661 at 2026-10-15 23:07 CT + 6 (not yet approved by Jake)
+  var TIER_UNLOCK = { pepe: 0, wojak: 0, chud: 0, bobo: 1, mumu: 1, snibby: 2, dodo: 3, peepo: 0, doge: 0, sarutobi: 1, lenny: 1, kevin: 2 };
+  function tierSpeciesOn(b) { return b != null && b >= ACTIVATE_TIER_SPECIES_BLOCK; }
+  function tierPool(tierIdx) { return SPECIES12.filter(function (s) { return TIER_UNLOCK[s.id] <= tierIdx; })
+    .map(function (s) { return { id: s.id, label: s.label, w: s.w * (TIER_UNLOCK[s.id] === tierIdx ? 4 : 1) }; }); }
+  function pickTierSpecies(hex, tierIdx) { var P = tierPool(tierIdx), tot = P.reduce(function (a, s) { return a + s.w; }, 0), r = parseInt(hex.slice(0, 8), 16) % tot;
+    for (var i = 0; i < P.length; i++) { if (r < P[i].w) return P[i].id; r -= P[i].w; } return P[0].id; }
+  /* Relabel (Jake request 2026-10-15): from ACTIVATE_TIER_SPECIES_BLOCK every existing pet whose species is below its lowest allowed tier
+   * (TIER_UNLOCK; Nakamoto = Legendary, incl. pre-777 hatched Nakamotos) keeps its species but is raised to that tier, once, the first time replay
+   * reaches the block (before that block's burns). Stats get the tier bonus difference (PetCore TIERS statBonus 0/3/6/10); looks are kept (every
+   * trait rolled at a lower tier is still valid at a higher one); v2 gear slots do not depend on tier. Hybrids and the community pet are untouched.
+   * Bred children from the block are floored the same way. Nothing changes before the block, so replays/port-check at the cutoff are identical. */
+  function minTierOf(species) { return species === 'nakamoto' ? 3 : (TIER_UNLOCK[species] != null ? TIER_UNLOCK[species] : 0); }
+  function raiseTier(o, statsKey) { var m = minTierOf(o.species); if (o.tier == null || o.tier >= m) return null;
+    var d = PetCore.TIERS[m].statBonus - PetCore.TIERS[o.tier].statBonus, from = o.tier; Object.keys(o[statsKey]).forEach(function (k) { o[statsKey][k] += d; }); o.tier = m; return { from: from, to: m, bonus: d }; }
+  function relabelTiers(w, b) { if (w.tierRelabeled || !tierSpeciesOn(b)) return; w.tierRelabeled = b;
+    w.pets.forEach(function (p) { if (p.community || p.hybrid || (p.art && p.art.hybrid)) return; var r = raiseTier(p, 'stats'); if (!r) return;
+      if (p.art) { p.art.tierIndex = p.tier; p.art.tier = PetCore.TIERS[p.tier].id; } p.relabeled = { block: b, from: r.from, to: r.to, bonus: r.bonus }; }); }
   var LEG_KEYS = ['tier', 'tierIndex', 'pattern', 'eyes', 'band', 'armor', 'cape', 'weapon', 'crown', 'baseStats'];
   /** hatchArt(bh, id, b): the art for one hatched egg (seed id = tx or tx:i), species set. */
   function hatchArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), spHex = sha(bh + id + 'XCPETS:v2:species');
     if (!naka777(b)) { art.species = pickSpecies(spHex); return art; }
-    if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = pickSpecies12(spHex); return art; }
+    if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = tierSpeciesOn(b) ? pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex) : pickSpecies12(spHex); return art; }
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
     LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
   function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
@@ -290,7 +312,7 @@
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
     w.freeRolls = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
-      grantFounders(w, e.b); maybeRumbles(e.b);
+      grantFounders(w, e.b); relabelTiers(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1;
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
@@ -299,7 +321,7 @@
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
-    grantFounders(w, tip); maybeRumbles(tip);
+    grantFounders(w, tip); relabelTiers(w, tip); maybeRumbles(tip);
     w.pets.forEach(function (p) { finish(w, p, tip); });
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
@@ -614,7 +636,7 @@
   }
   function breed(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
-    if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
+    if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
@@ -818,7 +840,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
