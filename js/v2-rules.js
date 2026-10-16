@@ -95,7 +95,7 @@
   function day(b) { return Math.floor(b / BLOCKS_PER_DAY); }
   /* Rumble off (Jake 2026-10-16): from ACTIVATE_RUMBLE_OFF_BLOCK a pet:rumble burn is not an entry (it still burns and feeds the community pet like
    * any stray burn). A rumble whose entries were made before the block still resolves normally at its seed block. Before the block: unchanged. */
-  var ACTIVATE_RUMBLE_OFF_BLOCK = 971800;  // set at push time
+  var ACTIVATE_RUMBLE_OFF_BLOCK = 971771; // tip 971,765 + 6 at push time (Jake approved 2026-10-16)
   function rumbleOff(b) { return b != null && b >= ACTIVATE_RUMBLE_OFF_BLOCK; }
   function weekOf(b) { return Math.floor(b / WEEK); }
   function seedBlockOfWeek(w) { return (w + 1) * WEEK; }
@@ -132,7 +132,7 @@
    * KEVIN, Sarutobi and Lenny get LEG_BOOST_W each instead of 5 x LEG_SCALE, so P(Legendary X) = 0.03 x 776/777 x 66112/1338336 ~= 1.14999 x (1/777)
    * (~1 in 676 each) and Nakamoto (1 in 777) is the rarest Legendary again. Tier odds, the 777 check and the Common/Uncommon/Rare pools are
    * unchanged; the other Legendary species renormalize slightly. Before the block: exactly the old pool. */
-  var ACTIVATE_LEG_BOOST_BLOCK = 971767;  // Bitcoin tip 971,761 at 2026-10-16 15:10 CT + 6 (Jake approved)
+  var ACTIVATE_LEG_BOOST_BLOCK = 971771; // tip 971,765 + 6 at push time (Jake approved 2026-10-16)
   var LEG_SCALE = 10000, LEG_BOOST_W = { kevin: 66112, sarutobi: 66112, lenny: 66112 };
   function legBoostOn(b) { return b != null && b >= ACTIVATE_LEG_BOOST_BLOCK; }
   function tierPool(tierIdx, b) { var boost = tierIdx === 3 && legBoostOn(b); return SPECIES12.filter(function (s) { return TIER_UNLOCK[s.id] <= tierIdx; })
