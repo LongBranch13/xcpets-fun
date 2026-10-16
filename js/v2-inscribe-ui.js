@@ -30,7 +30,7 @@
   function canonical(m) { var w0 = worldAt(m.b, []), p0 = w0.byId ? w0.byId[m.pet] : w0.pets.filter(function (q) { return q.id === m.pet; })[0];
     if (!p0) return { error: 'pet #' + m.pet + ' does not exist at block ' + m.b }; if (p0.dead || p0.released) return { error: 'pet #' + m.pet + ' is not alive at block ' + m.b };
     var ops = (m.g || []).map(function (x) { return { kind: 'equip', owner: p0.owner, petId: m.pet, slot: x[0], gid: x[1], block_index: m.b }; });
-    var w = ops.length ? worldAt(m.b, ops) : w0, p = w.byId ? w.byId[m.pet] : w.pets.filter(function (q) { return q.id === m.pet; })[0], fr = distinctFrames(R.petFrames(p, w).map(toF));
+    var w = ops.length ? worldAt(m.b, ops) : w0, p = w.byId ? w.byId[m.pet] : w.pets.filter(function (q) { return q.id === m.pet; })[0], fr = distinctFrames(R.petFrames(p, w, { noHunger: true }).map(toF));
     if (m.f >= fr.length) return { error: 'frame ' + m.f + ' does not exist' };
     return { pet: p, world: w, frames: fr, frame: I.stampName(fr[m.f], p.name, m.s), owner: E.addrOf(p.owner), ownerKey: p.owner }; }
   function inflate(z) { if (E.inflate) return E.inflate(z); var ds = new DecompressionStream('deflate'), s = new Blob([z]).stream().pipeThrough(ds); return new Response(s).arrayBuffer().then(function (b) { return new Uint8Array(b); }); }

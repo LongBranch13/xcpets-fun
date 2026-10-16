@@ -290,11 +290,12 @@
     if (!ix) { ix = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.on != null) (ix[g.on] = ix[g.on] || []).push(g); }); wornIx.set(w, ix); }
     return (ix[id] || []).slice(); }
   var frCache = new Map(), FR_MAX = 6000;
-  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + (p.classicKit ? JSON.stringify(p.classicKit) + p.showcase : '') + '|' + p.hatchBlock + '|' + JSON.stringify(p.art); }
+  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + (p.classicKit ? JSON.stringify(p.classicKit) + p.showcase : '') + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)); }
   function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
   var lazyQ = new Map(), lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting) return; var j = lazyQ.get(e.target); if (!j) return; lazyQ.delete(e.target); lazyObs.unobserve(e.target); j(); }); }, { rootMargin: '300px' }) : null;
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
-  function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra), cut = V.CUTOFF_BLOCK || 971500;
+  function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra), cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
+    if (hd) fr = hungerLook(fr, p, w, extra, hd);
     return p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; }
   function petFrames0(p, w, extra) {
     var ids = worn(w, p.id).map(function (g) { return g.item; }), ov = [];
@@ -303,6 +304,31 @@
       var fr = framesWith(Object.assign({}, p.art, go), p.stage, ids, ov, 5, go); return fr; } /* go is passed as the override too: before, it was only merged into art and ignored by the gearOverride render */
     return framesWith(p.art, p.stage, ids, ov);
   }
+  /* Hunger look (2026-10-16, visual only): an unfed pet's sprite deteriorates day by day, derived from the rules' own clock
+   * (deathBlock = (day(lastFed)+NEGLECT_DAYS+1)*BLOCKS_PER_DAY, so day(lastFed) = deathBlock/BPD - NEGLECT_DAYS - 1). Days unfed = day(tip) - day(lastFed),
+   * capped at 7. Mythic (deathBlock null), dead and released pets are never touched; a meal moves lastFed, so the look resets. No rule changes. */
+  function hungerDays(p, w) { if (!p || p.dead || p.released || p.mythicCare || p.deathBlock == null || !w || w.tip == null) return 0;
+    var B = V.BLOCKS_PER_DAY || 144, N = V.NEGLECT_DAYS || 7, d = V.day(w.tip) - (Math.round(p.deathBlock / B) - N - 1); return d > 0 ? Math.min(7, d) : 0; }
+  function hungerLook(fr, p, w, extra, days) { if (!days) return fr;
+    var mp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), mk = petFrames0(mp, w, extra), t = days / 7;
+    return fr.map(function (f, fi) { var m = (mk[fi] || mk[0]).data, s = f.data, d = new s.constructor(s), o = Object.assign({}, f, { data: d }), i, x, y, minX = 32, maxX = -1, minY = 32, sil = [];
+      var isS = function (q) { return !(m[q] === 255 && m[q + 1] === 0 && m[q + 2] === 254); };
+      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { i = (y * 32 + x) * 4; if (!isS(i)) continue; sil.push(i); if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; }
+      var de = Math.min(0.8, 0.12 + t * 0.7), gr = Math.max(0, t - 0.15) * 0.45, dim = days >= 5 ? (days - 4) * 0.07 : 0;
+      sil.forEach(function (q) { var r = d[q], g = d[q + 1], b = d[q + 2], L = 0.3 * r + 0.59 * g + 0.11 * b;
+        r += (L - r) * de; g += (L - g) * de; b += (L - b) * de;           /* washed out */
+        r += (118 - r) * gr; g += (150 - g) * gr; b += (78 - b) * gr;        /* sickly green cast */
+        r *= 1 - dim; g *= 1 - dim; b *= 1 - dim;                            /* dull, low energy */
+        d[q] = r; d[q + 1] = g; d[q + 2] = b; });
+      function put(x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var q = (y * 32 + x) * 4; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; d[q + 3] = 255; }
+      if (days >= 3 && maxX >= 0) { var sx = Math.min(31, maxX + 1), sy = minY + 3 + (fi % 2), SW = [150, 210, 255], SH = [235, 250, 255]; /* sweat drop, bobbing with the frames */
+        put(sx, sy, SH); put(sx, sy + 1, SW); put(sx, sy + 2, SH); put(sx + 1, sy + 2, SW); put(sx, sy + 3, SW); put(sx + 1, sy + 3, SW);
+        if (days >= 6) { var lx = Math.max(0, minX - 1); put(lx, sy + 1, SH); put(lx, sy + 2, SW); put(lx, sy + 3, SW); } }
+      if (days >= 4) { var n = Math.round(sil.length * (days - 3) * 0.018), h = (p.id * 2654435761) >>> 0, SK = [[96, 168, 56], [70, 130, 40], [150, 190, 70]]; /* sick blotches */
+        for (var k = 0; k < n && sil.length; k++) { h = (h * 1103515245 + 12345) >>> 0; var q = sil[h % sil.length], c = SK[(h >>> 8) % 3]; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; } }
+      if (days >= 6) for (x = minX; x <= maxX; x++) { var top = -1; for (y = 0; y < 32; y++) if (isS((y * 32 + x) * 4)) { top = y; break; } /* droop: the top line sags */
+        if (top >= 0 && (x + fi) % 3 === 0) { var q2 = (top * 32 + x) * 4, q3 = ((top + 1) * 32 + x) * 4; d[q2] = d[q3]; d[q2 + 1] = d[q3 + 1]; d[q2 + 2] = d[q3 + 2]; } }
+      return o; }); }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)
   var iconCache = {}, NONE = { band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' };
   function bare(sp) { return Object.assign(PetCore.characterPet(sp, { tier: 'common', bgColor: '#000000' }), { background: 'solid', bgColor: '#000000', pattern: 'none' }); }
@@ -385,7 +411,7 @@
     var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
     out.push('<b>Breedings:</b> ' + (p.breeds || 0) + '/' + (V2 ? V2.BREED_MAX : 3) + cd);
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
-  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Demo and prod. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
