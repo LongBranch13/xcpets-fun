@@ -535,6 +535,7 @@
     var art = Object.assign({}, p.art, { species: p.hybrid ? p.hybrid.shape || p.species : p.species }), d = {}; try { d = PetCore.describe(art, stage == null ? 3 : stage) || {}; } catch (e) { d = {}; }
     var rows = [['Pattern', d.Pattern], ['Eye trait', d.Eyes], ['Cheeks', d.Cheeks], ['Background', d.Background], ['Background colour', p.art.bgColor], ['Expression', d.Expression]];
     if (d.Shades && d.Shades !== 'None') rows.splice(2, 0, ['Shades', d.Shades]);
+    if (p.breedBonus) rows.push(['Bred-true bonus', p.breedBonus.label]);
     if (p.hybrid) rows.unshift(['Hybrid', speciesLabel(p.hybrid.a || p.hybrid.shape) + ' × ' + speciesLabel(p.hybrid.b || p.hybrid.color)]);
     return rows.filter(function (r) { return r[1] != null && r[1] !== ''; }); }
   function mk(w, owner, art, b, care, tx) {
@@ -563,6 +564,30 @@
   };
   var HYBRID_CHANCE_10K = 1500;      // 15% of cross-species purebred breeds give a hybrid
   var HYBRID_RARITY_UP_10K = 1000;   // hybrid rarity = higher parent's tier; 10% one tier up (capped at Legendary)
+  /* Hybrid rate (Jake 2026-10-16, "all pets can hybrid"): from ACTIVATE_HYBRID_RATE_BLOCK two DIFFERENT purebred species (Nakamoto included) breed a
+   * hybrid with probability exactly 684773435 / 1e9 (68.4773435%), replacing HYBRID_CHANCE_10K and the Nakamoto exclusion. stream() gives 32-bit draws, and
+   * 2^32 mod 1e9 would bias the result by ~3 points, so after activation TWO draws are combined into a 53-bit integer (x = d1 * 2^21 + (d2 >>> 11)),
+   * then x mod 1e9: bias < 1e9 / 2^53 ~ 1.1e-7. Before the block the old single 10K draw (and no draw for Nakamoto pairs) is used, so replays are identical.
+   * Same-species pairs stay purebred; hybrid-parent rules unchanged. */
+  var ACTIVATE_HYBRID_RATE_BLOCK = 971674;  // Bitcoin tip 971,668 at 2026-10-16 00:14 CT + 6 (Jake approved)
+  var HYBRID_RATE_1E9 = 684773435;
+  function hybridRateOn(b) { return b != null && b >= ACTIVATE_HYBRID_RATE_BLOCK; }
+  function draw1e9(R) { var hi = R(), lo = R() >>> 11; return (hi * 2097152 + lo) % 1e9; }
+  /* Bred-true bonus (Jake 2026-10-16, PROPOSAL pool): from ACTIVATE_HYBRID_RATE_BLOCK every same-species purebred breed (incl. Nakamoto x Nakamoto)
+   * gives exactly one bonus, from its own stream sha-seeded 'XCPETS:v2:breed-bonus:' + hex (no existing draw moves). Pool (weights of 100):
+   *   stat 50: +BRED_TRUE_STAT to one random stat;  pattern 30: the rarest pattern allowed at the child's tier (t <= tier) it doesn't already have;
+   *   eyes 20: the rarest eye trait allowed at its tier it doesn't have (never Sunglasses/'beady': no born shades after the cutoff).
+   * Laser eyes / Galaxy / Rainbow only for Legendary children, Star / Checker / Two-tone from Rare, etc. (PetCore t rule). If no new trait is allowed
+   * (e.g. a Common child already on Classic eyes), it falls back to the stat bonus. The game has no shiny/sparkle effect, so none is offered. */
+  var BRED_TRUE_STAT = 3, BRED_TRUE_POOL = [{ k: 'stat', w: 50 }, { k: 'pattern', w: 30 }, { k: 'eyes', w: 20 }];
+  function bredTrueBonus(hex, art, tier, stats) { var R = stream('XCPETS:v2:breed-bonus:' + hex), r = R() % 100, kind = 'stat';
+    for (var i = 0; i < BRED_TRUE_POOL.length; i++) { if (r < BRED_TRUE_POOL[i].w) { kind = BRED_TRUE_POOL[i].k; break; } r -= BRED_TRUE_POOL[i].w; }
+    var x = R();
+    function rarest(pool, cur, skip) { var ok = pool.filter(function (o) { return o.t <= tier && o.id !== cur && skip.indexOf(o.id) < 0; }); if (!ok.length) return null;
+      var top = Math.max.apply(null, ok.map(function (o) { return o.t; })); ok = ok.filter(function (o) { return o.t === top; }); return ok[x % ok.length]; }
+    if (kind === 'pattern') { var pt = rarest(PetCore.PATTERNS, art.pattern, []); if (pt) { art.pattern = pt.id; return { kind: 'pattern', id: pt.id, label: pt.label }; } }
+    if (kind === 'eyes') { var ey = rarest(PetCore.EYES, art.eyes, ['beady']); if (ey) { art.eyes = ey.id; return { kind: 'eyes', id: ey.id, label: ey.label }; } }
+    var keys = PetCore.STAT_KEYS, sk = keys[x % keys.length]; stats[sk] += BRED_TRUE_STAT; return { kind: 'stat', stat: sk, value: BRED_TRUE_STAT, label: '+' + BRED_TRUE_STAT + ' ' + sk.toUpperCase() }; }
   var HYBRID_TRUE_10K = 5000;        // hybrid x a root species: 50% that hybrid again, else the purebred
   function isHybrid(sp) { return typeof sp === 'string' && sp.indexOf('hyb:') === 0; }
   function hybridKey(a, b) { return 'hyb:' + a + ':' + b; }
@@ -572,9 +597,10 @@
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
-  function hybridSpecies(R, a, b, coin) {
+  function hybridSpecies(R, a, b, coin, blk) {
     var ha = isHybrid(a), hb = isHybrid(b);
-    if (!ha && !hb) { if (a === b || a === 'nakamoto' || b === 'nakamoto') return coin; return R() % 10000 < HYBRID_CHANCE_10K ? hybridKey(a, b) : coin; }
+    if (!ha && !hb) { if (a === b) return coin; if (hybridRateOn(blk)) return draw1e9(R) < HYBRID_RATE_1E9 ? hybridKey(a, b) : coin;
+      if (a === 'nakamoto' || b === 'nakamoto') return coin; return R() % 10000 < HYBRID_CHANCE_10K ? hybridKey(a, b) : coin; }
     if (ha && hb && a === b) return samePairHybridRule(R, a);
     var H = ha ? a : b, O = ha ? b : a, roots = hybridRoots(H);
     if (!isHybrid(O) && roots.indexOf(O) >= 0) return R() % 10000 < HYBRID_TRUE_10K ? H : O; // hybrid x one of its roots
@@ -620,12 +646,12 @@
   function castHybrids(w) { var seen = {}, out = []; (w && w.pets || []).forEach(function (p) { if (!isHybrid(p.species) || seen[p.species]) return; seen[p.species] = 1;
       var r = hybridRoots(p.species); out.push({ key: p.species, name: hybridName(p.species), a: r[0], b: r[1], plan: hybridPlan(sha('cast:' + p.species), p.species) }); }); return out; }
   /** breedChild(hex, A, B) -> { species, tier, stats } (pure: used by replay and by the odds test). */
-  function breedChild(hex, A, B) {
+  function breedChild(hex, A, B, blk) {
     var R = stream('XCPETS:v2:breed:' + hex), species = R() % 2 ? B.species : A.species, lo = Math.min(A.tier, B.tier), hi = Math.max(A.tier, B.tier), roll = R() % 10000;
     var tier = roll < RARITY_UP_10K ? Math.min(3, hi + 1) : roll < RARITY_UP_10K + RARITY_HIGH_10K ? hi : lo, stats = {};
     Object.keys(A.stats).forEach(function (k) { stats[k] = Math.max(1, Math.round((A.stats[k] + B.stats[k]) / 2) + (R() % 5) - 2); });
     // hybrids: extra draws from the SAME stream, after the purebred draws (so purebred-only pairs give exactly the same results as before)
-    if (isHybrid(A.species) || isHybrid(B.species) || A.species !== B.species) species = hybridSpecies(R, A.species, B.species, species);
+    if (isHybrid(A.species) || isHybrid(B.species) || A.species !== B.species) species = hybridSpecies(R, A.species, B.species, species, blk);
     if (isHybrid(species)) {
       var up = R() % 10000; tier = up < HYBRID_RARITY_UP_10K ? Math.min(3, hi + 1) : hi;
       var best = function (P) { return Object.keys(P.stats).reduce(function (m, k) { return P.stats[k] > P.stats[m] ? k : m; }, Object.keys(P.stats)[0]); };
@@ -635,11 +661,12 @@
     return { species: species, tier: tier, stats: stats };
   }
   function breed(w, A, B, bh, tx, b, owner) {
-    var c = breedChild(sha(bh + tx), A, B), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
+    var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
-    var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
+    var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats) : null;
+    var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; if (bonus) kid.breedBonus = bonus; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
     [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); });
     if (b >= ACTIVATE_BREEDCARRY_BLOCK && B.owner !== owner && A.owner === owner) { var bk = Object.keys(A.stats).reduce(function (m, k) { return A.stats[k] > A.stats[m] ? k : m; }, Object.keys(A.stats)[0]);
       (B.carried = B.carried || []).push({ from: A.id, species: A.species, stat: bk, value: A.stats[bk], block: b, child: kid.id }); } /* breed carry: parent B (accepting owner, no egg) */
@@ -840,7 +867,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, bestKit: bestKit, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
