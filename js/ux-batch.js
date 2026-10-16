@@ -5,7 +5,7 @@
   'use strict';
   var V = window.V2Rules, U = window.V2UI, R = window.V2Render; if (!V || !U || !R) return;
   var $ = function (id) { return document.getElementById(id); }, ME = U.ME;
-  var fmt = function (n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 }); };
+  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'], SL = V.slotLabel, SLOTS = V.V2_SLOTS, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
   var LSK = 'xcpets-ux-' + (ME || 'anon');
@@ -67,12 +67,12 @@
     var hungry = alive.filter(function (p) { return p.hungry; }), hq = V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
     $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS)</span>'; $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
-    $('bRelease').disabled = !n; $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
+    if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (!n) return;
     var ids = S.sel.slice(), fq = V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     $('selBarCount').innerHTML = '<b>' + n + '</b> selected';
     $('bFeedSel').innerHTML = 'Feed selected <span class="cost">' + (fq.length ? fmt(fq.length) + ' pet' + (fq.length === 1 ? '' : 's') + ' · ' + fmt(sum(fq)) + ' XCPETS' : '') + '</span>'; $('bFeedSel').disabled = !fq.length;
-    $('bRoll').innerHTML = 'Roll gear ×' + rn + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : '') + '</span>'; $('bRoll').disabled = !rq.length;
+    $('bRoll').innerHTML = 'Roll gear ×' + rn + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : '345 XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq.length; $('bRoll').title = rq.length ? '' : 'Select one or more of your pets, then roll gear (345 XCPETS per roll)';
     var ae = V.autoEquipOps(w, ME, ids, S.tip); $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae.length;
     var why = []; if (!fq.length) why.push('Feed: none of them is hungry'); if (!rq.length) why.push('Roll: no living pet of yours selected'); if (!ae.length) why.push('Auto-equip: nothing better in your bag');
     $('selWhy').textContent = why.join(' · ');

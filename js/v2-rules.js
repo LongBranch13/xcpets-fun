@@ -81,6 +81,11 @@
   // display names only (internal keys unchanged; body and back stay separate slots). No emojis.
   var SLOT_LABELS = { head: 'Headwear', face: 'Guise', back: 'Drip', hand: 'Grip', body: 'Outfits', feet: 'Footwear' };
   function slotLabel(sl) { return SLOT_LABELS[sl] || String(sl); }
+  /* Slot-name codes for pet:c:roll:SLOT (2026-10-16): from ACTIVATE_SLOTNAME_BLOCK the tag also accepts the player-facing slot names
+   * HEADWEAR / GRIP / OUTFITS / DRIP / GUISE / FOOTWEAR (same slots as HEAD / HAND / BODY / BACK / FACE / FEET, which stay valid forever).
+   * Before the block a name code is an unknown tag (community food), exactly as it always was. */
+  var ACTIVATE_SLOTNAME_BLOCK = 971773; // tip 971,767 + 6 at push time (2026-10-16)
+  var SLOT_NAME_CODES = { HEADWEAR: 'head', GRIP: 'hand', OUTFITS: 'body', DRIP: 'back', GUISE: 'face', FOOTWEAR: 'feet' };
   var BLACK_EYE_BLOCKS = 72, FIGHT_WINDOW = 144, FIGHT_TURNS = 12;
   var BREED_COOLDOWN = 1008, BREED_MAX = 3, BREED_WINDOW = 144;
   var RARITY_UP_10K = 500, RARITY_HIGH_10K = 3000;                  // 5% one tier above best parent; 30% the higher parent; else the lower
@@ -256,6 +261,7 @@
     if (a === 'FM' && p.length === 4 && idOk(p[2]) && /^[0-9A-V]{1,27}$/.test(p[3])) { var fids = [];
       for (var q = 0; q < p[3].length; q++) { var fv = parseInt(p[3][q], 32); for (var fb = 0; fb < 5; fb++) if (fv & (1 << fb)) fids.push(n(2) + 5 * q + fb); } return { action: 'feedm', ids: fids }; }
     if (a === 'C' && p[2] === 'ROLL' && (p.length === 3 || (p.length === 4 && V2_SLOTS.indexOf(p[3].toLowerCase()) >= 0))) return { action: 'croll', slot: p.length === 4 ? p[3].toLowerCase() : null };
+    if (a === 'C' && p[2] === 'ROLL' && p.length === 4 && SLOT_NAME_CODES[p[3]]) return { action: 'croll', slot: SLOT_NAME_CODES[p[3]], nameCode: true }; /* new slot-name codes, valid from ACTIVATE_SLOTNAME_BLOCK */
     if (a === 'REL') {
       if (p.length === 3 && idOk(p[2])) return { action: 'release', ids: [n(2)] };
       if (p.length === 4 && idOk(p[2]) && /^[0-9A-V]{1,24}$/.test(p[3])) { var ids = [];
@@ -539,6 +545,7 @@
       }
       case 'croll': {  /* community roll: Nakamoto (Mythic, every slot open) gets one item; the newest roll in a slot is worn */
         if (b < ACTIVATE_CROLL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        if (t.nameCode && b < ACTIVATE_SLOTNAME_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (amt < COSTS.croll) return L(r, 'rejected', 'below community roll cost ' + COSTS.croll + ' (burn still feeds the community pet)');
         if (!bh) return L(r, 'rejected', 'block hash pending');
         var ch = sha(bh + r.tx_hash + 'XCPETS:v2:community-roll'), cs = t.slot || V2_SLOTS[parseInt(ch.slice(16, 24), 16) % V2_SLOTS.length], ci = pickItem(ch, cs, 'nakamoto', 3, b >= ACTIVATE_DEDUP_BLOCK ? communityCounts(w) : null);
@@ -799,7 +806,7 @@
     for (var i = 0; i < (n || 1); i++) out.push({ tag: 'pet:roll:' + p.id, amount: COSTS.roll, petId: p.id, label: 'Gear roll #' + p.id }); }); return out; }
   /** crollOn(tip): the play page offers the community roll only once the chain tip has reached ACTIVATE_CROLL_BLOCK (unknown tip => off). */
   function crollOn(tip) { return tip != null && Number(tip) >= ACTIVATE_CROLL_BLOCK; }
-  function communityRollPlan(slot) { var tag = 'pet:c:roll' + (slot ? ':' + String(slot).toUpperCase() : ''); return { tag: tag, amount: COSTS.croll, label: 'Community gear roll' }; }
+  function communityRollPlan(slot, tip) { var code = slot ? String(slot).toUpperCase() : ''; if (code && tip != null && Number(tip) >= ACTIVATE_SLOTNAME_BLOCK) { var nm = (SLOT_LABELS[code.toLowerCase()] || '').toUpperCase(); if (SLOT_NAME_CODES[nm]) code = nm; } var tag = 'pet:c:roll' + (code ? ':' + code : ''); return { tag: tag, amount: COSTS.croll, label: 'Community gear roll' }; }
   /** communityGear(w) -> worn community item ids (newest roll per slot, slot order). */
   function communityGear(w) { var g = (w.community && w.community.gear) || {}; return V2_SLOTS.filter(function (s) { return g[s]; }).map(function (s) { return g[s].item; }); }
   function communityFeedPlan(amount) { amount = Math.floor(Number(amount)); if (!(amount >= COSTS.feedMin)) return { ok: false, error: 'minimum community feed is ' + COSTS.feedMin }; return { ok: true, tag: 'pet:feed', amount: amount }; }
@@ -881,7 +888,7 @@
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
   return { ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
-    COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
+    COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,

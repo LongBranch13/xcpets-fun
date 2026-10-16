@@ -68,7 +68,9 @@
     document.body.appendChild(ov); var cv = ov.querySelector('canvas'), ctx = cv.getContext('2d'), t = 0, stop = false, last = 0;
     function done() { stop = true; ov.remove(); if (o.onDone) o.onDone(); }
     ov.querySelector('.retclose').onclick = done;
-    (function step(ts) { if (stop) return; if (!last || ts - last >= 33) { last = ts || 0; draw(ctx, Math.min(t, FRAMES - 1), o.sprites); t++; } if (t < FRAMES + 60) requestAnimationFrame(step); else ov.querySelector('.retclose').textContent = 'Close'; })();
+    /* non-blocking (2026-10-16): click outside the box or press Esc to close; closes itself a few seconds after the animation ends */
+    ov.addEventListener('click', function (e) { if (e.target === ov) done(); }); function esc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', esc); done(); } } document.addEventListener('keydown', esc);
+    (function step(ts) { if (stop) return; if (!last || ts - last >= 33) { last = ts || 0; draw(ctx, Math.min(t, FRAMES - 1), o.sprites); t++; } if (t < FRAMES + 60) requestAnimationFrame(step); else { ov.querySelector('.retclose').textContent = 'Close'; setTimeout(function () { if (!stop) done(); }, 4000); } })();
     return { el: ov, close: done };
   }
   /** autoplay once per visitor after The Return (chain state); returns true when it played */

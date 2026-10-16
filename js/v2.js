@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var V = window.V2Rules, $ = function (id) { return document.getElementById(id); }, KEY = V2Mock.KEY, ME = V2Mock.ME;
-  var fmt = function (n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 }); };
+  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
 
   // ---------------------------------------------------------------- chain state (shared with the other pages: js/v2-chain.js, V2Mock interface)
@@ -159,7 +159,7 @@
   $('bFeedHungry').onclick = function () { var w = world(), h = hiddenIds(); confirmPlans('Feed all hungry pets', noDiscarded(V.feedQueue(w, ME, w.pets.filter(function (p) { return p.owner === ME && h.indexOf(p.id) < 0; }).map(function (p) { return p.id; })))); };
   $('bFeedSel').onclick = function () { var h = hiddenIds(); confirmPlans('Feed selected pets', noDiscarded(V.feedQueue(world(), ME, sel().filter(function (id) { return h.indexOf(id) < 0; })))); };
   $('bRoll').onclick = function () { confirmPlans('Gear-roll queue', V.rollQueue(world(), ME, sel(), Number($('rollN').value) || 1)); };
-  $('bRelease').onclick = function () { if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
+  if ($('bRelease')) $('bRelease').onclick = function () { if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
   $('bAuto').onclick = function () { var ops = V.autoEquipOps(world(), ME, sel(), S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip: ' + ops.length + ' pieces (free, no burn)'); render(); };
   if ($('bOutfit')) $('bOutfit').onclick = function () {
     if (!S.sel.length) return toast('Select pets first'); var w = world(), inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; });
@@ -231,6 +231,7 @@
   // ---------------------------------------------------------------- confirm (live #confirmBox) + per-burn XCP Wallet signing with progress
   var pendingPlans = null, pendingAfter = null;
   function confirmPlans(title, plans, after) {
+    if (!ME) { /* no wallet (2026-10-16): say so and open the connect prompt instead of silently doing nothing */ toast('🔌 Connect XCP Wallet first: every action is a burn signed in your wallet. Opening the connect prompt…'); var wc = $('wconnect'); if (wc) { try { wc.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } wc.click(); } return; }
     var bw = world(), skip = []; plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ' battles: ' + skip.join(' · ')); window.V2LastBlocked = skip; }
     if (!plans.length) { if (!skip.length) toast('Nothing to do'); return; }
@@ -260,7 +261,7 @@
   $('cfeedBtn').onclick = function () { var p = V.communityFeedPlan($('cAmt').value); if (!p.ok) return toast('⚠️ ' + p.error); confirmPlans('Feed the ' + V.COMMUNITY_PET, [{ tag: p.tag, amount: p.amount }]); };
   /* community gear roll (2026-10-15, Jake): pet:c:roll, 690, Nakamoto gets one random gear item; offered only once the tip reaches ACTIVATE_CROLL_BLOCK */
   $('crollBtn').onclick = function () { if (!V.crollOn(S.tip)) return toast('Community gear roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + ' (chain tip ' + fmt(S.tip) + ').');
-    var pl = V.communityRollPlan(); confirmPlans('Community gear roll: Nakamoto gets one random gear item', [pl], function () { toast('🎲 Community gear roll submitted. Nakamoto\'s new piece depends on the block your burn lands in.', 9000); }); };
+    var pl = V.communityRollPlan(); confirmPlans('Community gear roll: the community pet gets one random gear item', [pl], function () { toast('🎲 Community gear roll submitted. The community pet\'s new piece depends on the block your burn lands in.', 9000); }); };
   $('balRefresh').onclick = render;
 
   // ---------------------------------------------------------------- battles
@@ -447,7 +448,7 @@
     $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>#' + r.a + ' → #' + r.b + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + (w.byId[r.b].owner !== ME ? (M.prod ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<button class="q" data-bacc="' + r.a + ':' + r.b + '">Partner accepts</button>') : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') || '<div class="muted">none</div>';
     $('bReqs').querySelectorAll('[data-bacc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bacc.split(':'), n0 = petIds(); burn(world().byId[q[1]].owner, 'pet:breed:' + q[1] + ':' + q[0], 690); save(); render(); playBreed(q[0], q[1], n0); }; });
   }
-  $('bGo').onclick = function () { var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();
+  $('bGo').onclick = function () { if (!ME) return confirmPlans('Breed', [{}]); var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();
     confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); window.scrollTo(0, y); playBreed(a, b, n0); }); };
   function petIds() { var o = {}; world().pets.forEach(function (p) { o[p.id + ':' + (p.parents || '')] = 1; }); return o; } // pets before the breed
   /** playBreed: the battle arena's approach for a breed. Both parents hop together, hearts, the egg appears, then the result. Display only. Skippable. */

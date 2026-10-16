@@ -26,8 +26,7 @@
     var st = document.createElement('style');
     st.textContent = '#pets .pet.card{position:relative}#pets .' + CLS + '{position:absolute;right:4px;bottom:4px;padding:1px 4px;font-size:12px;line-height:1;min-width:0;cursor:pointer;opacity:.7;background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:4px}#pets .' + CLS + ':hover,#pets .' + CLS + ':focus{opacity:1}#pets .pet.card{padding-bottom:26px}#pets .' + RC + '{position:absolute;left:4px;bottom:4px;padding:1px 6px;font-size:11px;line-height:1.3;min-width:0;cursor:pointer;background:rgba(255,90,40,.12);border:1px solid rgba(255,120,60,.55);border-radius:4px;color:inherit}';
     document.head.appendChild(st);
-    var rel = document.getElementById('bRelease');  /* Release vs Discard hint (wording only; release logic untouched) */
-    if (rel && !document.getElementById('relHint')) { rel.title = RW; var h = document.createElement('span'); h.id = 'relHint'; h.className = 'small muted'; h.textContent = RW; h.style.marginLeft = '6px'; rel.parentNode.insertBefore(h, rel.nextSibling); }
+    var rel = document.getElementById('bulkAnchor');  /* anchor for the bulk Discard buttons (the Release burn button was removed 2026-10-16; pet:rel replay untouched) */
     /* '🗑️ Discard selected' (bulk): confirm with the count -> the same free local discard (Undo toast) -> selection cleared. Disabled with 0 selected. */
     if (rel && !document.getElementById('bDiscSel')) { var ds = document.createElement('button'); ds.type = 'button'; ds.className = 'q'; ds.id = 'bDiscSel'; ds.textContent = '🗑️ Discard selected'; ds.title = DW;
       var hn = document.getElementById('relHint'); rel.parentNode.insertBefore(ds, (hn || rel).nextSibling);

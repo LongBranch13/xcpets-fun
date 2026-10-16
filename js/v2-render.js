@@ -447,12 +447,10 @@
         navigator.share({ files: [file], text: text + ' ' + link, url: link }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }
       fallback();
       function fallback() { download(blob, name); copyPng(blob).then(function () { toast('Image copied to clipboard and downloaded'); }, function () { toast('Image downloaded'); }); } }); }
-  function postX(p) { /* open the tab synchronously (popup blockers), then point it at the intent once the image is on the clipboard */
-    var intent = 'https://x.com/intent/post?text=' + encodeURIComponent(shortText(p) + ' @XCPets') + '&url=' + encodeURIComponent(petLink(p)), win = window.open('about:blank', '_blank');
-    if (win) { try { win.opener = null; } catch (e) {} }
-    function go() { if (win && !win.closed) win.location.href = intent; else window.open(intent, '_blank', 'noopener'); }
-    withBlob(p, function (blob, name) { copyPng(blob).then(function () { go(); toast('Image copied, paste it into your post (Ctrl/Cmd+V)'); },
-      function () { download(blob, name); go(); toast('Image downloaded, attach it to your post'); }); }); }
+  function postX(p) { /* (2026-10-16) open the X intent right away with text + link (no blank tab), then try to put the card image on the clipboard; never auto-downloads */
+    var intent = 'https://x.com/intent/post?text=' + encodeURIComponent(shortText(p) + ' @XCPets') + '&url=' + encodeURIComponent(petLink(p));
+    window.open(intent, '_blank', 'noopener');
+    withBlob(p, function (blob) { copyPng(blob).then(function () { toast('Image copied: paste it into your post (Ctrl/Cmd+V)'); }, function () { toast('Tip: use 💾 Save image to attach the pet card to your post'); }); }); }
   function saveImage(p) { withBlob(p, function (blob, name) { download(blob, name); toast('Image saved'); }); }
   function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
   function imgButton(p) { return btn('imgshare', '🖼️ Share image', 'Share the pet card image', shareImage, p); }

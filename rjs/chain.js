@@ -9,7 +9,8 @@
   'use strict';
   // From config.js: mainnet = xcp.fun then counterparty.io; testnet4/signet = the official Counterparty node for that network.
   var APIS = CFG.read.slice();
-  var BLOCK_APIS = CFG.read.slice().map(function (b) { return b + '/blocks/'; }).concat(['mempool:' + CFG.mempoolApi + '/block-height/']);
+  /* block-hash order (2026-10-16): first read API, then mempool.space (fast, CORS-friendly), then the remaining Counterparty APIs (api.counterparty.io:4000 often times out, which browsers report as a CORS error) */
+  var BLOCK_APIS = CFG.read.slice(0, 1).map(function (b) { return b + '/blocks/'; }).concat(['mempool:' + CFG.mempoolApi + '/block-height/']).concat(CFG.read.slice(1).map(function (b) { return b + '/blocks/'; }));
   var ASSET = CFG.asset;
   var READ_MS = 8000, FINAL_DEPTH = 6;
   /* Failover (2026-10-16, Jake approved): per-request timeouts PRIMARY_MS (first server) / BACKUP_MS (others); on HTTP 429/5xx, timeout or network

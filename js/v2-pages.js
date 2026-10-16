@@ -3,11 +3,13 @@
 (function () {
   'use strict';
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
-  var fmt = function (n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 }); };
+  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'];
   function spLabel(id) { return V.speciesLabel(id); }
   function streak(p, tip) { var d = V.day(tip), n = 0; if (!p.feedDays[d]) d--; while (p.feedDays[d]) { n++; d--; } return n; }
   function small(fr, c) { R.animate(c, fr); }
+  function tagText(t) { t = t == null ? '' : String(t); if (/^([0-9a-f]{2})+$/i.test(t)) { try { return decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (e) { } } return t; }
+  function burnAmt(r) { return r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; }
   var page = document.body.getAttribute('data-v2page');
 
   /** Cast gating: Nakamoto joins the live Cast (12 species) only once V2Rules.castShowsNakamoto(world) (stage >= NAKAMOTO_CAST_STAGE). */
@@ -56,7 +58,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=157733570d'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=8b7d385d4c'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -70,7 +72,7 @@
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c); if (!done && !preview) return null;
       var blk = done ? e.block(c) : null, tot = {}, sum = 0;
-      rows.forEach(function (r) { if (blk != null && r.block_index > blk) return; var a = Number(r.amount) || 0; sum += a; tot[r.source] = (tot[r.source] || 0) + a; });
+      rows.forEach(function (r) { if (blk != null && r.block_index > blk) return; var a = burnAmt(r); sum += a; tot[r.source] = (tot[r.source] || 0) + a; });
       var all = Object.keys(tot).map(function (k) { return { address: k, amount: tot[k] }; }).sort(function (x, y) { return y.amount - x.amount; });
       return { e: e, done: done, block: blk, tx: done ? e.tx(c) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c); })[0] : null }; }).filter(Boolean); }
   /* Archive layout = Jake's Option C (gallery with featured player); styles in css/archive.css (.archive-*). Spoiler rules: nothing before The Return on chain
@@ -126,11 +128,11 @@
     if ($('crGearTxt')) $('crGearTxt').textContent = !wiz && R.communityGearText(w) ? 'Gear: ' + R.communityGearText(w) : ''; $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
     $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
-    $('crNext').textContent = hi ? fmt(hi - fed) + ' to ' + N[st + 1] : 'Mythic reached';
+    $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
-    $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
+    if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
-    $('crQuestTxt').textContent = wiz ? fmt(Math.floor(c.burned)) + ' XCPETS burned' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
+    $('crQuestTxt').textContent = wiz ? '' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     withReturn(function () {
@@ -160,7 +162,7 @@
     ];
     var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: 100 };
     if (!BOARDS.some(function (x) { return x.id === st.board; })) st.board = 'wagmi';
-    var burned = {}, burnedWk = {}; (M.state().rows || []).forEach(function (r) { var a = Number(r.amount) || 0; burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
+    var burned = {}, burnedWk = {}; (M.state().rows || []).forEach(function (r) { if (r.status != null && String(r.status).toLowerCase() !== 'valid') return; var a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; /* chain rows carry raw quantity (1e8 units), not amount */ burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
     var winsWk = {}; (w.fights || []).forEach(function (f) { if (f.status === 'done' && inWeek(f.acceptBlock)) winsWk[f.winner] = (winsWk[f.winner] || 0) + 1; });
     function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
     function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
@@ -224,7 +226,7 @@
     $('tombs').innerHTML = dead.length ? dead.map(function (p) {
       return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
         '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted">owner ' + esc(p.owner) + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div></div>'; }).join('')
-      : '<p class="muted">The Pet Cemetery is empty. Every pet is still being fed. 🌱</p>';
+      : '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>';
     dead.forEach(function (p) { var c = document.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.paint(c, R.framesWith(p.art, p.stage, [])[0]); });
   }
   function pet() {
@@ -247,9 +249,21 @@
       else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
       else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
         R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, onEquip: function (op, m) { op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); } }); }
-      var hist = w.log.filter(function (e) { return e.petId === id || (e.ids && e.ids.indexOf(id) >= 0) || new RegExp(':' + id + '(:|$)').test((M.state().rows.filter(function (r) { return r.tx_hash === e.tx; })[0] || {}).tag || ''); });
-      $('hist').innerHTML = '<tr><td>block</td><td>from</td><td>XCPETS</td><td>tag</td><td>result</td></tr>' + hist.map(function (e) { var r = M.state().rows.filter(function (x) { return x.tx_hash === e.tx; })[0] || {};
-        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + fmt(r.amount || 0) + '</td><td>' + esc(r.tag || '') + '</td><td>' + esc(e.kind + ': ' + e.msg) + '</td></tr>'; }).join('');
+      /* history (2026-10-16 fix): chain rows carry hex tags + raw quantity; decode them, match every log entry that names this pet
+       * (petId / ids / '#ID' in the message incl. pack ranges and fights), add the hatch row and pre-v2 burns, in chain order. */
+      var RW = M.state().rows || [], byTx = {}; RW.forEach(function (r) { byTx[r.tx_hash] = r; });
+      var rx = new RegExp('#' + id + '(?![0-9])'), tagRx = new RegExp(':' + id + '(:|$)');
+      function names(e) { if (e.petId === id || (e.ids && e.ids.indexOf(id) >= 0) || rx.test(e.msg || '')) return true;
+        var m = /#(\d+)-#(\d+)/.exec(e.msg || ''); if (m && id >= +m[1] && id <= +m[2]) return true; return tagRx.test(tagText((byTx[e.tx] || {}).tag)); }
+      var hist = w.log.filter(names).map(function (e) { return { block: e.block, tx: e.tx, res: e.kind + ': ' + e.msg }; }), seen = {}; hist.forEach(function (h) { if (h.tx) seen[h.tx] = 1; });
+      var cut = V.CUTOFF_BLOCK || 971500;
+      RW.forEach(function (r) { if (seen[r.tx_hash] || r.block_index > cut) return; var t = tagText(r.tag);
+        if (r.tx_hash === p.hatchTx) hist.push({ block: r.block_index, tx: r.tx_hash, res: 'hatch: hatched #' + id + ' (before v2)' });
+        else if (tagRx.test(t)) hist.push({ block: r.block_index, tx: r.tx_hash, res: 'before v2: ' + t }); seen[r.tx_hash] = 1; });
+      if (p.hatchBlock != null && !hist.some(function (h) { return /^hatch/.test(h.res) || (p.hatchTx && h.tx === p.hatchTx); })) hist.push({ block: p.hatchBlock, tx: p.hatchTx, res: p.parents ? 'born: egg from #' + p.parents.join(' x #') : 'hatch: hatched #' + id });
+      hist.sort(function (x, y) { return x.block - y.block; });
+      $('hist').innerHTML = '<tr><td>block</td><td>from</td><td>XCPETS</td><td>tag</td><td>result</td></tr>' + hist.map(function (e) { var r = byTx[e.tx] || {};
+        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + (e.tx && byTx[e.tx] ? fmt(burnAmt(r)) : '') + '</td><td>' + esc(tagText(r.tag)) + '</td><td>' + esc(e.res) + '</td></tr>'; }).join('');
     }
     draw();
     // On-chain art (inscriptions): hosted by default, upgrade action + lineage

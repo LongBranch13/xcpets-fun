@@ -161,3 +161,6 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 .rktabs{flex-wrap:wrap}.rkctl{gap:8px;align-items:center;margin:6px 0}.seg{display:inline-flex;gap:0}.seg .q.on,.rkctl .q.on{background:#3ddc84;color:#0b0f1a}.board td.num{text-align:right;white-space:nowrap}
 
 #fOldRow{display:none!important}
+
+/* community feed amounts: clearly separate buttons (2026-10-16) */
+.camtseg{display:inline-flex;gap:6px;align-items:center}.camtunit{margin:0 8px 0 4px}

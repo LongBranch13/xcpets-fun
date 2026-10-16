@@ -7,7 +7,7 @@
   function commons(D) { return D.mine(D.world()).filter(function (p) { return p.tier === 0; }).map(function (p) { return p.id; }); }
   function uncommons(D) { return D.mine(D.world()).filter(function (p) { return p.tier === 1; }).map(function (p) { return p.id; }); }
   function init() {
-    var D = window.__demo, rel = $('bRelease'); if (!D || !rel || $('bDelUnc')) return;
+    var D = window.__demo, rel = $('bulkAnchor'); if (!D || !rel || $('bDelUnc')) return;
     var b = document.createElement('button'); b.className = 'q'; b.id = 'bDelUnc'; b.type = 'button'; b.textContent = '🗑️ Delete Uncommons'; b.title = 'Discard: free, only hidden in this browser, Undo anytime, no burn.'; rel.parentNode.insertBefore(b, rel.nextSibling);
     /* 'Delete all Commons' (2026-10-14): v2's play page kept the live confirm dialog (#delCommonsBox, dcYes -> the free local discard with Undo)
      * but make-page.py dropped the button that opened it. Re-added right next to Delete Uncommons, with the same dialog style and count. */
