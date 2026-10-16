@@ -338,6 +338,10 @@
   /* pending challenges (2026-10-15, Jake): the battles box lists the connected player's open challenges in BOTH directions:
    * sent (still waiting for acceptance) and received (with Accept). Confirmed ones come from the replayed world (w.fights, status 'open');
    * unconfirmed ones come from the node mempool (S.mempool, read-only) + this browser's sent-burn tracker. Display only: nothing here feeds the replay. */
+  /* breeding UI (build fix): short address (ranking-board format 6…4) with the full one in title; pet label with tier pill */
+  function shortAddr(a) { a = String(a || ''); return '<span class="addr" title="' + esc(a) + '">' + esc(a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a) + '</span>'; }
+  function petLblT(w, id) { var p = w.byId[id]; return petLbl(w, id) + (p ? ' ' + tierPill(p.tier) : ''); }
+  function breedSum(w, a, b) { var A = w.byId[a], B = w.byId[b]; return '<div class="bsum small">' + [A, B].map(function (p, i) { return p ? '<div><b>' + (i ? 'Partner' : 'Your pet') + ':</b> ' + esc(p.name) + ' <span class="muted">#' + p.id + '</span> ' + tierPill(p.tier) + (p.owner !== ME ? ' <span class="muted">owner ' + shortAddr(p.owner) + '</span>' : '') + '</div>' : ''; }).join('') + '</div>'; }
   function petLbl(w, id) { var p = w.byId[id]; return (p && p.name ? esc(p.name) + ' ' : 'Pet ') + '#' + id; }
   function agoLbl(ms) { if (!ms) return ''; var m = Math.max(0, Math.round((Date.now() - ms) / 60000)); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; }
   function pendingBattles(w) {
@@ -360,13 +364,13 @@
     /* breed requests (2026-10-15): incoming = a request for one of your pets (Accept burns the mirrored pet:breed:B:A), outgoing = yours, waiting */
     var bwin = V.BREED_WINDOW, bacc = {}; unconf.forEach(function (u) { if (u.t.action === 'breed') bacc[u.t.b + ':' + u.t.a] = u.x; });
     w.breedReqs.forEach(function (r) { if (r.used || (tip && tip - r.block > bwin)) return; var A = w.byId[r.a], B = w.byId[r.b], m = bacc[r.a + ':' + r.b], until = 'until block ' + fmt(r.block + bwin);
-      if (r.owner === ME) out.push('<div class="txrow pend-out">💞 <b>Breed request sent:</b> ' + petLbl(w, r.a) + ' × ' + petLbl(w, r.b) + ' · ' + (m ? 'partner accepted, pending confirmation' : 'waiting for the owner of #' + r.b + ' to accept') + ' · sent at block ' + fmt(r.block) + ' · ' + until + txa(r.tx) + '</div>');
-      else if (B && B.owner === ME) out.push('<div class="txrow pend-in">💞 <b>Breed request:</b> ' + petLbl(w, r.a) + ' asks your ' + petLbl(w, r.b) + ' · from ' + esc(String(r.owner).slice(0, 10)) + '… at block ' + fmt(r.block) + ' · ' + until + ' · the egg goes to the requester' +
+      if (r.owner === ME) out.push('<div class="txrow pend-out">💞 <b>Breed request sent:</b> ' + petLblT(w, r.a) + ' × ' + petLblT(w, r.b) + ' · ' + (m ? 'partner accepted, pending confirmation' : 'waiting for the owner of #' + r.b + ' to accept') + ' · sent at block ' + fmt(r.block) + ' · ' + until + txa(r.tx) + '</div>');
+      else if (B && B.owner === ME) out.push('<div class="txrow pend-in">💞 <b>Breed request:</b> ' + petLblT(w, r.a) + ' asks your ' + petLblT(w, r.b) + ' · from ' + shortAddr(r.owner) + ' at block ' + fmt(r.block) + ' · ' + until + ' · the egg goes to the requester' +
         (m ? ' · ⏳ your accept is pending confirmation' + txa(m.tx_hash) : ' <button class="btn ico-flame" data-bracc="' + r.b + ':' + r.a + '">Accept breed (' + fmt(V.COSTS.breed) + ')</button>') + '</div>'); });
     unconf.forEach(function (u) { if (u.t.action !== 'breed') return; var B = w.byId[u.t.b]; if (!B || B.owner === (u.mine ? ME : '') ) return;
       if (w.breedReqs.some(function (r) { return !r.used && r.a === u.t.b && r.b === u.t.a; })) return; /* it is an accept, shown above */
-      if (u.mine) out.push('<div class="txrow pend-out">⏳ <b>Breed request sent:</b> ' + petLbl(w, u.t.a) + ' × ' + petLbl(w, u.t.b) + ' · pending confirmation' + txa(u.x.tx_hash) + '</div>');
-      else if (B.owner === ME) out.push('<div class="txrow pend-in">⏳ <b>Breed request:</b> ' + petLbl(w, u.t.a) + ' asks your ' + petLbl(w, u.t.b) + ' · pending confirmation · you can accept once it confirms' + txa(u.x.tx_hash) + '</div>'); });
+      if (u.mine) out.push('<div class="txrow pend-out">⏳ <b>Breed request sent:</b> ' + petLblT(w, u.t.a) + ' × ' + petLblT(w, u.t.b) + ' · pending confirmation' + txa(u.x.tx_hash) + '</div>');
+      else if (B.owner === ME) out.push('<div class="txrow pend-in">⏳ <b>Breed request:</b> ' + petLblT(w, u.t.a) + ' asks your ' + petLblT(w, u.t.b) + ' · pending confirmation · you can accept once it confirms' + txa(u.x.tx_hash) + '</div>'); });
     return out;
   }
   /* fight results (2026-10-15, Jake): on live the accept only resolves once its burn CONFIRMS, so playing the fight right after sending did nothing
@@ -413,7 +417,7 @@
         (f.status === 'open' && B.owner !== ME ? (M.prod ? ' <span class="muted small">waiting for the owner of #' + f.b + ' to accept</span>' : ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>') : '') + (f.status === 'open' && B.owner === ME ? ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (690)</button>' : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
     var pb = ME ? pendingBattles(w) : [];
     $('fPending').innerHTML = '<h3 class="sec" data-ico="sword">Your pending challenges &amp; breed requests</h3>' + (pb.join('') || '<p class="muted small">' + (ME ? 'No pending challenges sent or received.' : 'Connect your wallet to see your challenges.') + '</p>');
-    $('fPending').querySelectorAll('[data-bracc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bracc.split(':'); confirmPlans('Accept breed: your #' + q[0] + ' × #' + q[1], [{ tag: 'pet:breed:' + q[0] + ':' + q[1], amount: 690 }], function () { toast('💞 Breed accept sent. The egg appears and both owners see the breeding once it confirms.', 9000); render(); }); }; });
+    $('fPending').querySelectorAll('[data-bracc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bracc.split(':'); confirmPlans('Accept breed: your #' + q[0] + ' × #' + q[1], [{ tag: 'pet:breed:' + q[0] + ':' + q[1], amount: 690 }], function () { toast('💞 Breed accept sent. The egg appears and both owners see the breeding once it confirms.', 9000); render(); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), q[0], q[1])); }; });
     $('fPending').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
     $('fights').querySelectorAll('[data-view]').forEach(function (x) { x.onclick = function () { playFight(world().fights[x.dataset.view - 1]); }; });
     $('fights').querySelectorAll('[data-npc]').forEach(function (x) { x.onclick = function () { var f = world().fights[x.dataset.npc - 1]; adv(3); burn(world().byId[f.b].owner, 'pet:accept:' + f.id, 690); save(); render(); playFight(world().fights[f.id - 1]); }; });
@@ -482,7 +486,7 @@
      * ONCE per world (one HTML string -> one fragment, lazy sprites, one delegated click per grid) and a pick only updates the affected cards. */
     function card(x, role, sel) { var p = x.p, on = String(p.id) === sel;
       return '<button type="button" class="pet card' + (on ? ' sel' : '') + (x.why ? ' off' : '') + '" data-role="' + role + '" data-pid="' + p.id + '" title="' + esc(x.why ? 'Can\'t pick: ' + x.why : 'Pick #' + p.id + ' as parent ' + role) + '" aria-pressed="' + on + '">' +
-        '<canvas width="32" height="32"></canvas><b style="color:var(--ink)">' + esc(p.name) + '</b><div class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</div>' + (p.owner !== ME ? '<div class="muted">' + esc(p.owner) + '</div>' : '') + '</button>'; }
+        '<canvas width="32" height="32"></canvas><b style="color:var(--ink)">' + esc(p.name) + '</b><div class="muted">#' + p.id + ' ' + tierPill(p.tier) + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</div>' + (p.owner !== ME ? '<div class="muted">' + shortAddr(p.owner) + '</div>' : '') + '</button>'; }
     function patch(box, pid, role) { var x = pid && box.__by[pid], d = x && box.querySelector('.pet.card[data-pid="' + pid + '"]'); if (!d) return;
       d.classList.toggle('off', !!x.why); d.title = x.why ? 'Can\'t pick: ' + x.why : 'Pick #' + pid + ' as parent ' + role; }
     function grid(box, list, sel, role, input) {
@@ -511,12 +515,12 @@
     if (!okA.length) $('bGridA').innerHTML = '<p class="small bempty">' + (L.mine.length ? 'None of your pets can breed yet: ' + reasons(L.mine) + '. ' : 'You have no living pets. ') + RULE + '</p>';
     if (!okB.length) $('bGridB').innerHTML = '<p class="small bempty">No partner can breed right now' + (L.partners.length ? ': ' + reasons(L.partners) : '') + '. ' + RULE + '</p>';
     if (!okA.length) $('bGridA').__w = null; if (!okB.length) $('bGridB').__w = null;
-    $('bSelA').textContent = a ? '#' + a + ' ' + w.byId[a].name : 'pick one'; $('bSelB').textContent = b ? '#' + b + ' ' + w.byId[b].name : 'pick one';
+    $('bSelA').innerHTML = a ? '#' + a + ' ' + esc(w.byId[a].name) + ' ' + tierPill(w.byId[a].tier) : 'pick one'; $('bSelB').innerHTML = b ? '#' + b + ' ' + esc(w.byId[b].name) + ' ' + tierPill(w.byId[b].tier) + (w.byId[b].owner !== ME ? ' <span class="muted">' + shortAddr(w.byId[b].owner) + '</span>' : '') : 'pick one';
     $('bKids').innerHTML = w.pets.filter(function (p) { return p.parents; }).map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + TL[k.tier] + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>';
-    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>#' + r.a + ' → #' + r.b + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + (w.byId[r.b].owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') || '<div class="muted">none</div>';
+    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + (w.byId[r.b].owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') || '<div class="muted">none</div>';
   }
   $('bGo').onclick = function () { if (!ME) return confirmPlans('Breed', [{}]); var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();
-    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); window.scrollTo(0, y); playBreed(a, b, n0); }); };
+    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); window.scrollTo(0, y); playBreed(a, b, n0); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), a, b)); };
   function petIds() { var o = {}; world().pets.forEach(function (p) { o[p.id + ':' + (p.parents || '')] = 1; }); return o; } // pets before the breed
   /** playBreed: the battle arena's approach for a breed. Both parents hop together, hearts, the egg appears, then the result. Display only. Skippable. */
   /** feedEgg(id): the normal feed flow for a freshly bred egg (existing confirm dialog, default 69). */
