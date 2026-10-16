@@ -142,3 +142,7 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 .tomb h4 { margin:6px 0 2px; color:#fff; } .tomb h4 a { color:#fff; } .tomb .muted, .tomb .small { color:#c4c6cc; } .tomb .died { margin-top:6px; font-size:12px; color:#ffd7d7; }
 .deathnote { background:#2a2a2a; color:#ddd; border-left:4px solid #888; padding:6px 10px; border-radius:6px; }
 .sec[data-ico="skull"]::before { background-image: url(../img/theme/skull.png); }
+/* a11y (2026-10-16): cast rows use h3 (no skipped heading level) but keep the old h4 look */
+.cast-row h3.ch{margin:0 0 4px;font-size:1em;font-family:inherit;color:inherit;letter-spacing:normal;line-height:inherit;font-weight:bold}
+/* a11y (2026-10-16): nav tap targets at least 44px tall on phones (spacing only) */
+@media (max-width:640px){nav a{display:inline-flex;align-items:center;min-height:44px;min-width:24px}}

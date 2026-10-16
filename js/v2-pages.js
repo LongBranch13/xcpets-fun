@@ -20,7 +20,7 @@
     function add() { if (!show || window.PromoLiveCast || box.querySelector('[data-sp="nakamoto"]')) return; /* live-rules cast (promo.js) has its own Nakamoto row on the Legendary tab */ var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
       var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', pet = G.characterPet('nakamoto', { tier: tier });
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', 'nakamoto');
-      row.innerHTML = '<div><h4>Nakamoto</h4><p class="muted">Hatchable 13th species (v2) · rare · grows and breeds like the others from block 971,659</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
+      row.innerHTML = '<div><h3 class="ch">Nakamoto</h3><p class="muted">Hatchable 13th species (v2) · rare · grows and breeds like the others from block 971,659</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
       var strip = document.createElement('div'); strip.className = 'strip6';
       G.STAGES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Nakamoto, ' + name);
         R.paint(c, G.render(pet, { stage: si })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -35,7 +35,7 @@
       var hb = document.createElement('div'); hb.className = 'cast'; hb.id = 'castHybrids'; hb.style.display = 'none'; box.parentNode.insertBefore(hb, box.nextSibling);
       hyb.forEach(function (e) { var art = (window.GenPetCore || PetCore).characterPet(e.plan.shape, { tier: 'legendary' }); art.hybrid = e.plan;
         var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-hyb', e.key);
-        row.innerHTML = '<div><h4>' + esc(e.name) + ' <span class="chip hyb">HYBRID</span></h4><p class="muted">' + esc(spLabel(e.a)) + ' × ' + esc(spLabel(e.b)) + ' (parent A × parent B) · ' + esc(spLabel(e.plan.shape)) + ' build, ' + esc(spLabel(e.plan.color)) + ' colours</p></div>';
+        row.innerHTML = '<div><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted">' + esc(spLabel(e.a)) + ' × ' + esc(spLabel(e.b)) + ' (parent A × parent B) · ' + esc(spLabel(e.plan.shape)) + ' build, ' + esc(spLabel(e.plan.color)) + ' colours</p></div>';
         var strip = document.createElement('div'); strip.className = 'strip6';
         V.STAGE_NAMES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', e.name + ', ' + name);
           R.paint(c, V.hybridRender(art, { stage: si, frame: 0 })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -237,7 +237,7 @@
     if (!p) { $('title').textContent = 'Pet #' + id + ' does not exist (yet).'; return; }
     function draw(msg) {
       w = M.world(); p = w.byId[id];
-      $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent + ' (v2)';
+      $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
       $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, '🔥 streak ' + streak(p, w.tip), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.crowned ? '<span class="chip">👑 Rumble champion</span>' : '');
