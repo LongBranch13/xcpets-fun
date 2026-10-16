@@ -87,7 +87,7 @@
       (!wiz && R.communityGearText(w) ? '<div class="small muted">Gear: ' + esc(R.communityGearText(w)) + '</div>' : '');
     var crOn = V.crollOn(S.tip); $('crollBtn').textContent = 'Community roll (' + fmt(V.COSTS.croll) + ')'; $('crollBtn').disabled = !crOn;
     if (!crOn) $('community').insertAdjacentHTML('beforeend', '<div class="small muted" id="crollNote">Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + '.</div>');
-    $('crollBtn').title = crOn ? 'Burn ' + fmt(V.COSTS.croll) + ' XCPETS: Nakamoto gets one random gear item (from block ' + fmt(V.ACTIVATE_CROLL_MULTI_BLOCK) + ' one piece per 690, up to 10 at 6,900)' : 'Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK);
+    $('crollBtn').title = crOn ? 'Burn ' + fmt(V.COSTS.croll) + ' XCPETS: Nakamoto gets one random gear item' : 'Community roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK);
     $('goalBar').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
