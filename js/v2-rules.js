@@ -389,7 +389,7 @@
    * ACTIVATE_GEAR_CAP_BLOCK: once, the first time replay reaches the block (before its burns), every pet keeps at most one worn item per open slot and
    * nothing in a locked slot; the excess goes back to the owner's inventory (unequipped, never deleted), the most recently created item first
    * (item creation order). Logged ('gearfix') on the pet's history and in p.gearFix. Also from the block, wearing an item clears EVERY item in that slot. */
-  var ACTIVATE_GEAR_CAP_BLOCK = 999999999;  // set at push: fresh tip + 6
+  var ACTIVATE_GEAR_CAP_BLOCK = 971720;  // Bitcoin tip 971,714 at 2026-10-16 08:20 CT + 6 (Jake approved)
   function gearCapOn(b) { return b != null && b >= ACTIVATE_GEAR_CAP_BLOCK; }
   function repairGear(w, b) { if (w.gearRepaired || !gearCapOn(b)) return; w.gearRepaired = b; var ks = Object.keys(w.items);
     w.pets.forEach(function (p) { if (p.community) return; if (p.hatchBlock != null) liveAt(w, p, b); var mine = ks.map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === p.id; }), keep = {}, off = [];
