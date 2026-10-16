@@ -29,7 +29,6 @@
     { id: 'hatch', label: 'pet:hatch — hatch your own pet', minKey: 'hatch', id_: 'none', name: false, help: 'Hatches a new pet owned by this address. Its look comes from the block hash your burn lands in plus the tx hash. The whole amount becomes its starting care.' },
     { id: 'feedPet', label: 'pet:feed:ID — feed pet #ID (anyone can)', minKey: 'feedPet', id_: 'required', name: false, help: 'Adds the amount to pet #ID\'s care. Gifting to other players\' pets is allowed.' },
     { id: 'play', label: 'pet:play / pet:play:ID — play with your newest pet (or #ID)', minKey: 'play', id_: 'optional', name: false, help: 'Adds care and +1 play to your newest pet, or to pet #ID.' },
-    { id: 'name', label: 'pet:name:NAME / pet:name:ID:NAME — name your pet (owner only)', minKey: 'name', id_: 'optional', name: true, help: 'Names your newest pet (or #ID). 1-16 characters A-Z 0-9 _ -, starting with a letter. Owner only; the last valid naming wins.' },
     { id: 'evolve', label: 'pet:evolve / pet:evolve:ID — ascend an Elder to Mythic (owner only)', minKey: 'evolve', id_: 'optional', name: false, help: 'Ascends the pet to Mythic if its care (including this burn) reaches 5,000,000. If care is too low the burn is still added as care.' }
   ];
   function action(id) { for (var i = 0; i < ACTIONS.length; i++) if (ACTIONS[i].id === id) return ACTIONS[i]; return null; }
@@ -58,7 +57,6 @@
       case 'feed': tag = 'pet:feed'; break;
       case 'hatch': tag = 'pet:hatch'; break;
       case 'feedPet': tag = 'pet:feed:' + idStr; break;
-      case 'name': tag = 'pet:name:' + (idStr ? idStr + ':' : '') + name; break;
       default: tag = 'pet:' + a.id + (idStr ? ':' + idStr : '');
     }
     if (utf8Len(tag) > MAX_TAG_BYTES) return { ok: false, error: 'tag is ' + utf8Len(tag) + ' bytes; destroy tags are cut at ' + MAX_TAG_BYTES };
