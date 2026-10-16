@@ -17,13 +17,14 @@
   // Bitcoin-orange pin, and a sleek dark VR headset BAKED INTO the base (not gear) whose lenses glow orange. No hood, no hachimaki, no magenta shades.
   // The headset lenses keep the 'eye'/'pupil' keys so eye anchors, eye traits and the Powered laser eyes still centre on them.
   // Face-slot gear is drawn OVER the headset (face gear wins; nothing is hidden).
-  // Nakamoto (scaled back 2026-10-14, supersedes the anon-dev redraw): keep his pet-core look (green face, hachimaki, hair, pose).
+  // Nakamoto (scaled back 2026-10-14, supersedes the anon-dev redraw): keep his pet-core look (green face, hair, pose); since 2026-10-16 without the hachimaki.
   // Only: VR glasses baked into the face (the eye/lens colours become a dark headset visor with an orange glow; the lens shape and
   // frames are pet-core's own, so face gear still layers on top), and the stray white hook (the hachimaki knot tails off the back
   // of the head) is removed in the v2 render. His old signature hat item is deleted (see v2-nakamoto-rework.test.js). generator/pet-core.js is not edited.
   var NAKA_MAPS = null, NAKA_VR = { eyeWhite: '#1c1c22', pupil: '#f7931a' };
   function reworkNakamoto(PC) { var sp = PC && PC.SPECIES && PC.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp || sp.v2rework) return;
     sp.v2rework = true; sp.eyeWhite = NAKA_VR.eyeWhite; sp.pupil = NAKA_VR.pupil;
+    sp.hachimaki = false; /* 2026-10-16 (Jake): no white headband / Bitcoin disc in Nakamoto's art at any stage (visual only; the Genesis Block headband gear item stays) */
     var orig = PC.render; if (!orig || orig.v2naka) return;
     /* Nakamoto face/head pass (2026-10-14, Jake; v2 only): hatched stages get (1) a mouth: a small 4 px line (ink corners, mouth-pink centre) two rows under the visor/eyes, centred
      * under the pupils, painted on skin only, so faceSpots / mouth gear (cigarette...) find it; (2) a rounder skull: the flat top outline is raised
@@ -46,16 +47,7 @@
         for (x = a0 - 2 + 1; x <= a1 + 2 - 1; x++) if (x > a0 - 2 && x < a1 + 2 && (i === 1 ? x > x0 + 1 && x < x1 - 1 : true) && x > a0 - 1 - 0 && x < a1 + 1 && same(at(x, top - i + 1), OL)) put(x, top - i + 1, hc[x]); }
       return r; }
     var wrapped = function (pet, opts) { if (pet && pet.species === 'nakamoto' && opts && opts.powered) opts = Object.assign({}, opts, { powered: false }); /* 2026-10-14 (Jake): no laser eyes in Nakamoto's Powered look (v2 only) */ var r = wrapped0.call(this, pet, opts); return pet && pet.species === 'nakamoto' && r && r.data ? nakaFace(r, opts) : r; };
-    var wrapped0 = function (pet, opts) { var r = orig.apply(this, arguments);
-      if (!pet || pet.species !== 'nakamoto' || !sp.hachimaki || !r || !r.data) return r;
-      r = Object.assign({}, r, { data: new Uint8ClampedArray(r.data) }); // the core may reuse its buffer between renders
-      sp.hachimaki = false; var r2; try { r2 = orig.apply(this, arguments); } finally { sp.hachimaki = true; }
-      var W = r.width || 32, H = r.height || 32, d = r.data, e = r2.data, rows = {}, x, y, q;
-      for (y = 0; y < H; y++) for (x = 0; x < W; x++) { q = (y * W + x) * 4; if (d[q] !== e[q] || d[q + 1] !== e[q + 1] || d[q + 2] !== e[q + 2]) (rows[y] = rows[y] || []).push(x); }
-      var by = -1, best = 0; Object.keys(rows).forEach(function (k) { if (rows[k].length > best) { best = rows[k].length; by = Number(k); } }); if (by < 0 || best < 6) return r;
-      var kx = -1; rows[by].forEach(function (x2) { var q2 = (by * W + x2) * 4; if (d[q2] > 230 && d[q2 + 1] > 230 && d[q2 + 2] > 220) kx = Math.max(kx, x2); }); if (kx < 0) return r; // the knot (rightmost white band pixel)
-      for (y = by - 2; y <= by + 3; y++) if (rows[y]) rows[y].forEach(function (x2) { if (x2 < kx) return; var q3 = (y * W + x2) * 4; d[q3] = e[q3]; d[q3 + 1] = e[q3 + 1]; d[q3 + 2] = e[q3 + 2]; d[q3 + 3] = e[q3 + 3]; });
-      return r; };
+    var wrapped0 = function (pet, opts) { return orig.apply(this, arguments); }; /* the old hachimaki-knot trim is gone with the headband */
     wrapped.v2naka = true; PC.render = wrapped;
     var origRF = PC.renderFrames; if (origRF) PC.renderFrames = function (pet, opts) { if (!pet || pet.species !== 'nakamoto') return origRF.apply(this, arguments); opts = opts || {}; var out = [];
       for (var f = 0; f < (opts.frames || 4); f++) out.push(wrapped(pet, { stage: opts.stage, frame: f, powered: opts.powered, gearCap: opts.gearCap, gearOverride: opts.gearOverride })); return out; }; }
