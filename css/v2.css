@@ -172,3 +172,4 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 
 #selMode.on{background:#2a3a2e;color:#fff;border-color:var(--acc2)}body.selmode .pet.card:not(.dead){outline:1px dashed var(--acc2);outline-offset:-2px}
 #breedPanel .bgrid .pet.card>*,#breedPanel .bpick>*,#fPending .txrow,#bReqs>div,.bsum>div{min-width:0;overflow-wrap:anywhere}#breedPanel .bgrid .pet.card{min-width:0;overflow:hidden}#breedPanel .pill.tier,#fPending .pill.tier,.bsum .pill.tier{white-space:nowrap}.bsum{margin:0 0 8px}
+#bReqs>div.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4}

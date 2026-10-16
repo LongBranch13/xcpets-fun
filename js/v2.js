@@ -519,7 +519,7 @@
     if (!okA.length) $('bGridA').__w = null; if (!okB.length) $('bGridB').__w = null;
     $('bSelA').innerHTML = a ? '#' + a + ' ' + esc(w.byId[a].name) + ' ' + tierPill(w.byId[a].tier) : 'pick one'; $('bSelB').innerHTML = b ? '#' + b + ' ' + esc(w.byId[b].name) + ' ' + tierPill(w.byId[b].tier) + (w.byId[b].owner !== ME ? ' <span class="muted">' + shortAddr(w.byId[b].owner) + '</span>' : '') : 'pick one';
     $('bKids').innerHTML = w.pets.filter(function (p) { return p.parents; }).map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + TL[k.tier] + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>';
-    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div>' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + ((w.byId[r.b] || {}).owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') + unconfBreeds(w) || '<div class="muted">none</div>';
+    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div data-btx="' + esc(r.tx || '') + '">' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + ((w.byId[r.b] || {}).owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : '<span class="muted">accept it in Your pending challenges above</span>') + '</div>'; }).join('') + unconfBreeds(w) || '<div class="muted">none</div>';
   }
   /* unconfirmed breed burns (node mempool + this browser's tracker) shown in the open list until the tx is in S.rows (display only) */
   function unconfBreeds(w) { var conf = {}, seen = {}, out = []; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
@@ -538,6 +538,17 @@
   /** feedEgg(id): the normal feed flow for a freshly bred egg (existing confirm dialog, default 69). */
   function feedEgg(id) { if (animM.el) animClose(true); var y = window.scrollY; confirmPlans('Feed #' + id, [{ tag: 'pet:feed:' + id, amount: 69, petId: id, label: 'Feed #' + id }], function () { render(); window.scrollTo(0, y); toast('🍼 Fed egg #' + id); }); }
   window.V2FeedEgg = feedEgg;
+  /* breed review Skip (fix): dismiss the current result (persisted per address), hide the box, then advance: next queued breed/egg animation,
+   * else the next open breed request not yet reviewed (scrolled to + flashed), else 'Nothing left to review'. Display only. */
+  var BRKEY = 'xcpets-v2-breedrev-dismissed-' + KEY + '-' + ME;
+  function brDis() { try { return JSON.parse(localStorage.getItem(BRKEY)) || {}; } catch (e) { return {}; } }
+  function brMark(k) { var d = brDis(); d[k] = 1; try { localStorage.setItem(BRKEY, JSON.stringify(d)); } catch (e) { } }
+  function breedSkip(kidId) { if (kidId != null) { brMark('k' + kidId); seenBreed(kidId); }
+    if (animM.el === $('breedStage')) animClose(); $('breedStage').style.display = 'none'; $('breedMsg').textContent = '';
+    if (animQ.length) return; /* nextAnim plays the next queued breed/egg result */
+    var d = brDis(), row = [].slice.call($('bReqs').querySelectorAll('[data-btx]')).filter(function (x) { return x.dataset.btx && !d['r' + x.dataset.btx]; })[0];
+    if (row) { brMark('r' + row.dataset.btx); row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.classList.add('flash'); setTimeout(function () { row.classList.remove('flash'); }, 2400); toast('Next to review: open breed request ' + esc(row.innerText.split(' (until')[0])); return; }
+    toast('Nothing left to review'); }
   function playBreed(a, b, n0) {
     var w = world(), A = w.byId[a], B = w.byId[b], kid = w.pets.filter(function (p) { return !n0[p.id + ':' + (p.parents || '')]; }).filter(function (p) { return p.parents && p.parents.map(String).indexOf(String(a)) >= 0 && p.parents.map(String).indexOf(String(b)) >= 0; })[0];
     if (!A || !B) return; var c = $('breedArena'), ctx = c.getContext('2d'), tmp = document.createElement('canvas'); tmp.width = tmp.height = 32; ctx.imageSmoothingEnabled = false;
@@ -557,7 +568,8 @@
       ctx.fillText(t < 14 ? 'BREED: #' + A.id + ' x #' + B.id : t < 30 ? '<3 <3 <3' : kid ? (kid.hybrid ? 'HYBRID! ' + kid.hybrid.name.toUpperCase() : 'EGG #' + kid.id + '!') : 'REQUEST SENT', 12, 158);
       if (t >= 40 && kid && !$('bFeedEgg')) { $('breedMsg').innerHTML = (kid.hybrid ? '🧬 <span class="chip hyb">HYBRID</span> <b>' + esc(kid.hybrid.name) + '</b> (' + esc(V.speciesLabel(kid.hybrid.a)) + ' × ' + esc(V.speciesLabel(kid.hybrid.b)) + ') · ' : '') + '🥚 <b>#' + kid.id + ' ' + esc(kid.name) + '</b> · ' + TL[kid.tier] + ' ' + esc(spLabel(kid.species)) + ' · starts as an Egg · parents #' + A.id + ' × #' + B.id + '<br><span class="hatchnote">Your new egg #' + kid.id + ' is in My Pets. Feed it 69 XCPETS to hatch.</span> <button type="button" class="q" id="bFeedEgg" data-egg="' + kid.id + '">🍼 Feed to hatch</button>'; $('bFeedEgg').onclick = function () { feedEgg(kid.id); }; } }
     clearInterval(playBreed.iv); frame(); playBreed.iv = setInterval(function () { k++; frame(); if (k >= END) { clearInterval(playBreed.iv); setTimeout(function () { if (animM.el === $('breedStage')) animClose(); }, 1200); } }, 120);
-    $('bSkip').onclick = function () { clearInterval(playBreed.iv); k = END; frame(); animClose(); };
+    $('bSkip').onclick = function () { clearInterval(playBreed.iv); k = END; frame(); breedSkip(kid ? kid.id : null); };
+    $('bSkip').disabled = false; var bn = $('bSkipNote'); if (bn) bn.remove();
     animOpen($('breedStage'), playBreed.iv, function () { clearInterval(playBreed.iv); k = END; frame(); });
   }
   window.V2PlayBreed = playBreed; window.V2PetIds = petIds; // used by the screenshot/UI check
