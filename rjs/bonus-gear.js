@@ -50,9 +50,9 @@
     'chart-shield': { slot: 'weapon', tier: 2, species: 'snibby', label: 'Sideways-chart shield', at: 'handL', map: ['DDDDDDD', 'DbbbbbD', 'DbbbbbD', 'DMMMMMD', 'DbbbbbD', '.DbbbD.', '..DDD..'] },
     'shell-helm': { slot: 'crown', tier: 3, species: 'snibby', label: 'Seashell helmet', at: 'head', dy: 2, map: ['...UUU...', '.UuUuUuU.', 'UUuUuUuUU', 'UuUuUuUuU', 'UuUuUuUuU', '..uuuuu..'] },
     'swan-quill': { slot: 'weapon', tier: 3, species: 'dodo', label: 'Black Swan quill', at: 'handR', map: ['....Z', '...ZZ', '..ZZj', '.ZZj.', '.Zj..', 'Zj...', 'd....', 'n....'] },
-    'event-card': { slot: 'weapon', tier: 2, species: 'dodo', label: '"?" event card', at: 'handL', map: ['vvvvv', 'vwwwv', 'vvvwv', 'vvwwv', 'vvwvv', 'vvvvv', 'vvwvv', 'vvvvv'] },
-    'name-tag': { slot: 'band', tier: 1, species: 'kevin', label: 'KEVIN name tag', at: 'chest', dx: 2, map: ['QQQQQ', 'wwwww', 'wnwnw', 'wwwww'] },
-    'cp-stamp': { slot: 'weapon', tier: 2, species: 'kevin', label: 'Copy-paste stamp', at: 'handR', map: ['.XXX.', '.XXX.', '..X..', 'DDDDD', 'QQQQQ'] },
+    'event-card': { slot: 'weapon', tier: 2, species: 'dodo', label: 'Tail-event ticket', at: 'handL', map: ['vvvvv', 'vwwwv', 'vvvwv', 'vvwwv', 'vvwvv', 'vvvvv', 'vvwvv', 'vvvvv'] },
+    'name-tag': { slot: 'band', tier: 1, species: 'kevin', label: 'KEVIN name tag', at: 'chest', fitSil: true, dx: 2, map: ['QQQQQ', 'wwwww', 'wnwnw', 'wwwww'] },
+    'cp-stamp': { slot: 'weapon', tier: 2, species: 'kevin', label: 'Date stamper', at: 'handR', map: ['.XXX.', '.XXX.', '..X..', 'DDDDD', 'QQQQQ'] },
     'clone-mirror': { slot: 'weapon', tier: 3, species: 'kevin', label: 'Clone mirror', at: 'handL', map: ['.ggg.', 'gcWcg', 'gcccg', 'gccWg', 'gcccg', '.ggg.', '..X..', '..X..'] },
     'bino-hat': { slot: 'crown', tier: 2, species: 'peepo', label: 'Binoculars hat', at: 'head', dy: 1, map: ['.ZZZ.ZZZ.', '.ZcZ.ZcZ.', '.ZZZZZZZ.', '..bbbbb..', '.bbbbbbb.', 'bbbbbbbbbb'] },
     'party-hat': { slot: 'crown', tier: 1, species: 'peepo', label: 'Party hat', at: 'head', dy: 1, map: ['....g....', '...KKK...', '...KbK...', '..KKKKK..', '..bKKKb..', '.KKKKKKK.', 'gggggggg.'] },
@@ -121,7 +121,7 @@
       case 'handL': return [Math.max(0, a.minX - w + 2), hy - Math.floor(h / 2)];
       case 'tallR': return [Math.min(N - w, a.maxX - 1), 28 - h];
       case 'neck': return [16 - Math.ceil(w / 2), a.row(a.gear.scarf)];
-      case 'chest': return [16 - Math.ceil(w / 2), a.row(a.gear.armor[0]) + 1];
+      case 'chest': var cy = a.row(a.gear.armor[0]) + 1; if (it.fitSil) while (cy > eyeY(a) + 4 && !(a.isSil(15, cy + h - 1) && a.isSil(17, cy + h - 1))) cy--; return [16 - Math.ceil(w / 2), cy]; /* fitSil (KEVIN name tag, 2026-10-16): keep the piece on the body (short bodies like KEVIN's let it hang below) */
       case 'mouth': return [Math.floor(cx - w / 2), eyeY(a) + 4];
       case 'nose': return [Math.floor(cx - w / 2), eyeY(a) + 3];
       case 'coin': return [Math.min(N - 8, a.maxX - 1), 21];
