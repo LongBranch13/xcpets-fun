@@ -579,24 +579,24 @@
   }
   // ---------------------------------------------------------------- HYBRIDS (v2, 2026-10-14)
   // HYBRID_NAMES: display name per ORDERED pair 'parentA:parentB' (A = the requester / first pet). 13 x 12 = 156 entries; the 24 Nakamoto pairs
-  // are listed for completeness but unreachable (Nakamoto can't breed). PLACEHOLDER names, generated as blends (first part of A + end of B).
-  // Edit freely: one line per parent A; keep names unique.
+  // are reachable from block 971,674 (ACTIVATE_HYBRID_RATE_BLOCK: all pets can hybrid). Names are mashups of both parents (renamed 2026-10-16);
+  // display-only: keys, replay and pet records never use them. Keep names unique and never equal to a species name.
   var HYBRID_NAMES = {
-    'pepe:wojak': 'Pejak', 'pepe:chud': 'Pechud', 'pepe:bobo': 'Pebo', 'pepe:mumu': 'Pemu', 'pepe:snibby': 'Pebby', 'pepe:dodo': 'Pedo', 'pepe:kevin': 'Pevin', 'pepe:peepo': 'Pepo', 'pepe:sarutobi': 'Pebi', 'pepe:doge': 'Pege', 'pepe:lenny': 'Penny', 'pepe:nakamoto': 'Peto',
-    'wojak:pepe': 'Wope', 'wojak:chud': 'Wochud', 'wojak:bobo': 'Wobo', 'wojak:mumu': 'Womu', 'wojak:snibby': 'Wobby', 'wojak:dodo': 'Wodo', 'wojak:kevin': 'Wovin', 'wojak:peepo': 'Wopo', 'wojak:sarutobi': 'Wobi', 'wojak:doge': 'Woge', 'wojak:lenny': 'Wonny', 'wojak:nakamoto': 'Woto',
-    'chud:pepe': 'Chupe', 'chud:wojak': 'Chujak', 'chud:bobo': 'Chubo', 'chud:mumu': 'Chumu', 'chud:snibby': 'Chubby', 'chud:dodo': 'Chudo', 'chud:kevin': 'Chuvin', 'chud:peepo': 'Chupo', 'chud:sarutobi': 'Chubi', 'chud:doge': 'Chuge', 'chud:lenny': 'Chunny', 'chud:nakamoto': 'Chuto',
-    'bobo:pepe': 'Bope', 'bobo:wojak': 'Bojak', 'bobo:chud': 'Bochud', 'bobo:mumu': 'Bomu', 'bobo:snibby': 'Bobby', 'bobo:dodo': 'Bodo', 'bobo:kevin': 'Bovin', 'bobo:peepo': 'Bopo', 'bobo:sarutobi': 'Bobi', 'bobo:doge': 'Boge', 'bobo:lenny': 'Bonny', 'bobo:nakamoto': 'Boto',
-    'mumu:pepe': 'Mupe', 'mumu:wojak': 'Mujak', 'mumu:chud': 'Muchud', 'mumu:bobo': 'Mubo', 'mumu:snibby': 'Mubby', 'mumu:dodo': 'Mudo', 'mumu:kevin': 'Muvin', 'mumu:peepo': 'Mupo', 'mumu:sarutobi': 'Mubi', 'mumu:doge': 'Muge', 'mumu:lenny': 'Munny', 'mumu:nakamoto': 'Muto',
-    'snibby:pepe': 'Snipe', 'snibby:wojak': 'Snijak', 'snibby:chud': 'Snichud', 'snibby:bobo': 'Snibo', 'snibby:mumu': 'Snimu', 'snibby:dodo': 'Snido', 'snibby:kevin': 'Snivin', 'snibby:peepo': 'Snipo', 'snibby:sarutobi': 'Snibi', 'snibby:doge': 'Snige', 'snibby:lenny': 'Sninny', 'snibby:nakamoto': 'Snito',
-    'dodo:pepe': 'Dope', 'dodo:wojak': 'Dojak', 'dodo:chud': 'Dochud', 'dodo:bobo': 'Dobo', 'dodo:mumu': 'Domu', 'dodo:snibby': 'Dobby', 'dodo:kevin': 'Dovin', 'dodo:peepo': 'Dopo', 'dodo:sarutobi': 'Dobi', 'dodo:doge': 'Dodoge', 'dodo:lenny': 'Donny', 'dodo:nakamoto': 'Doto',
-    'kevin:pepe': 'Kepe', 'kevin:wojak': 'Kejak', 'kevin:chud': 'Kechud', 'kevin:bobo': 'Kebo', 'kevin:mumu': 'Kemu', 'kevin:snibby': 'Kebby', 'kevin:dodo': 'Kedo', 'kevin:peepo': 'Kepo', 'kevin:sarutobi': 'Kebi', 'kevin:doge': 'Kege', 'kevin:lenny': 'Kenny', 'kevin:nakamoto': 'Keto',
-    'peepo:pepe': 'Peepe', 'peepo:wojak': 'Peejak', 'peepo:chud': 'Peechud', 'peepo:bobo': 'Peebo', 'peepo:mumu': 'Peemu', 'peepo:snibby': 'Peebby', 'peepo:dodo': 'Peedo', 'peepo:kevin': 'Peevin', 'peepo:sarutobi': 'Peebi', 'peepo:doge': 'Peege', 'peepo:lenny': 'Peenny', 'peepo:nakamoto': 'Peeto',
-    'sarutobi:pepe': 'Sape', 'sarutobi:wojak': 'Sajak', 'sarutobi:chud': 'Sachud', 'sarutobi:bobo': 'Sabo', 'sarutobi:mumu': 'Samu', 'sarutobi:snibby': 'Sabby', 'sarutobi:dodo': 'Sado', 'sarutobi:kevin': 'Savin', 'sarutobi:peepo': 'Sapo', 'sarutobi:doge': 'Sage', 'sarutobi:lenny': 'Sanny', 'sarutobi:nakamoto': 'Sato',
-    'doge:pepe': 'Dopepe', 'doge:wojak': 'Dowojak', 'doge:chud': 'Dogechud', 'doge:bobo': 'Dobobo', 'doge:mumu': 'Domumu', 'doge:snibby': 'Dosnibby', 'doge:dodo': 'Dododo', 'doge:kevin': 'Dokevin', 'doge:peepo': 'Dopeepo', 'doge:sarutobi': 'Dotobi', 'doge:lenny': 'Dolenny', 'doge:nakamoto': 'Domoto',
-    'lenny:pepe': 'Lepe', 'lenny:wojak': 'Lejak', 'lenny:chud': 'Lechud', 'lenny:bobo': 'Lebo', 'lenny:mumu': 'Lemu', 'lenny:snibby': 'Lebby', 'lenny:dodo': 'Ledo', 'lenny:kevin': 'Levin', 'lenny:peepo': 'Lepo', 'lenny:sarutobi': 'Lebi', 'lenny:doge': 'Lege', 'lenny:nakamoto': 'Leto',
-    'nakamoto:pepe': 'Nape', 'nakamoto:wojak': 'Najak', 'nakamoto:chud': 'Nachud', 'nakamoto:bobo': 'Nabo', 'nakamoto:mumu': 'Namu', 'nakamoto:snibby': 'Nabby', 'nakamoto:dodo': 'Nado', 'nakamoto:kevin': 'Navin', 'nakamoto:peepo': 'Napo', 'nakamoto:sarutobi': 'Nabi', 'nakamoto:doge': 'Nage', 'nakamoto:lenny': 'Nanny'
+    'pepe:wojak': 'Pejak', 'pepe:chud': 'Pechud', 'pepe:bobo': 'Pebo', 'pepe:mumu': 'Pemu', 'pepe:snibby': 'Pebby', 'pepe:dodo': 'Pepodo', 'pepe:kevin': 'Pevin', 'pepe:peepo': 'Pepeep', 'pepe:sarutobi': 'Pebi', 'pepe:doge': 'Pege', 'pepe:lenny': 'Pelen', 'pepe:nakamoto': 'Peto',
+    'wojak:pepe': 'Wope', 'wojak:chud': 'Wochud', 'wojak:bobo': 'Wobo', 'wojak:mumu': 'Womu', 'wojak:snibby': 'Wobby', 'wojak:dodo': 'Wodo', 'wojak:kevin': 'Wovin', 'wojak:peepo': 'Wopo', 'wojak:sarutobi': 'Wobi', 'wojak:doge': 'Woge', 'wojak:lenny': 'Wolen', 'wojak:nakamoto': 'Woto',
+    'chud:pepe': 'Chupe', 'chud:wojak': 'Chujak', 'chud:bobo': 'Chubo', 'chud:mumu': 'Chumu', 'chud:snibby': 'Chusnib', 'chud:dodo': 'Chudo', 'chud:kevin': 'Chuvin', 'chud:peepo': 'Chupo', 'chud:sarutobi': 'Chubi', 'chud:doge': 'Chuge', 'chud:lenny': 'Chulen', 'chud:nakamoto': 'Chuto',
+    'bobo:pepe': 'Bope', 'bobo:wojak': 'Bojak', 'bobo:chud': 'Bochud', 'bobo:mumu': 'Bomu', 'bobo:snibby': 'Bosnib', 'bobo:dodo': 'Bodo', 'bobo:kevin': 'Bovin', 'bobo:peepo': 'Bopo', 'bobo:sarutobi': 'Bobi', 'bobo:doge': 'Boge', 'bobo:lenny': 'Bolen', 'bobo:nakamoto': 'Bomoto',
+    'mumu:pepe': 'Mupe', 'mumu:wojak': 'Mujak', 'mumu:chud': 'Muchud', 'mumu:bobo': 'Mubo', 'mumu:snibby': 'Mubby', 'mumu:dodo': 'Mudod', 'mumu:kevin': 'Muvin', 'mumu:peepo': 'Mupo', 'mumu:sarutobi': 'Mubi', 'mumu:doge': 'Muge', 'mumu:lenny': 'Mulen', 'mumu:nakamoto': 'Mumoto',
+    'snibby:pepe': 'Snipe', 'snibby:wojak': 'Snijak', 'snibby:chud': 'Snichud', 'snibby:bobo': 'Snibo', 'snibby:mumu': 'Snimu', 'snibby:dodo': 'Snido', 'snibby:kevin': 'Snivin', 'snibby:peepo': 'Snipo', 'snibby:sarutobi': 'Snibi', 'snibby:doge': 'Snige', 'snibby:lenny': 'Snilen', 'snibby:nakamoto': 'Snito',
+    'dodo:pepe': 'Dopep', 'dodo:wojak': 'Dojak', 'dodo:chud': 'Dochud', 'dodo:bobo': 'Dobo', 'dodo:mumu': 'Domu', 'dodo:snibby': 'Dosnib', 'dodo:kevin': 'Dovin', 'dodo:peepo': 'Dopeep', 'dodo:sarutobi': 'Dobi', 'dodo:doge': 'Dodog', 'dodo:lenny': 'Dolen', 'dodo:nakamoto': 'Doto',
+    'kevin:pepe': 'Kepe', 'kevin:wojak': 'Kejak', 'kevin:chud': 'Kechud', 'kevin:bobo': 'Kebo', 'kevin:mumu': 'Kemu', 'kevin:snibby': 'Kebby', 'kevin:dodo': 'Kedo', 'kevin:peepo': 'Kepo', 'kevin:sarutobi': 'Kebi', 'kevin:doge': 'Kege', 'kevin:lenny': 'Kelen', 'kevin:nakamoto': 'Kemoto',
+    'peepo:pepe': 'Peepep', 'peepo:wojak': 'Peejak', 'peepo:chud': 'Peechud', 'peepo:bobo': 'Peebo', 'peepo:mumu': 'Peemu', 'peepo:snibby': 'Peebby', 'peepo:dodo': 'Peedo', 'peepo:kevin': 'Peevin', 'peepo:sarutobi': 'Peebi', 'peepo:doge': 'Peege', 'peepo:lenny': 'Peelen', 'peepo:nakamoto': 'Peeto',
+    'sarutobi:pepe': 'Sape', 'sarutobi:wojak': 'Sajak', 'sarutobi:chud': 'Sachud', 'sarutobi:bobo': 'Sabo', 'sarutobi:mumu': 'Samu', 'sarutobi:snibby': 'Sabby', 'sarutobi:dodo': 'Sadod', 'sarutobi:kevin': 'Savin', 'sarutobi:peepo': 'Sapeep', 'sarutobi:doge': 'Sadoge', 'sarutobi:lenny': 'Salen', 'sarutobi:nakamoto': 'Samoto',
+    'doge:pepe': 'Dogpe', 'doge:wojak': 'Dogjak', 'doge:chud': 'Dogchud', 'doge:bobo': 'Dogbo', 'doge:mumu': 'Dogmu', 'doge:snibby': 'Dogsnib', 'doge:dodo': 'Dogdo', 'doge:kevin': 'Dogvin', 'doge:peepo': 'Dogpeep', 'doge:sarutobi': 'Dogtobi', 'doge:lenny': 'Doglen', 'doge:nakamoto': 'Dogmoto',
+    'lenny:pepe': 'Lepe', 'lenny:wojak': 'Lejak', 'lenny:chud': 'Lechud', 'lenny:bobo': 'Lebo', 'lenny:mumu': 'Lemu', 'lenny:snibby': 'Lebby', 'lenny:dodo': 'Ledo', 'lenny:kevin': 'Lekev', 'lenny:peepo': 'Lepo', 'lenny:sarutobi': 'Lebi', 'lenny:doge': 'Lege', 'lenny:nakamoto': 'Leto',
+    'nakamoto:pepe': 'Napep', 'nakamoto:wojak': 'Najak', 'nakamoto:chud': 'Nachud', 'nakamoto:bobo': 'Nabo', 'nakamoto:mumu': 'Namu', 'nakamoto:snibby': 'Nabby', 'nakamoto:dodo': 'Nadod', 'nakamoto:kevin': 'Navin', 'nakamoto:peepo': 'Napo', 'nakamoto:sarutobi': 'Nabi', 'nakamoto:doge': 'Nage', 'nakamoto:lenny': 'Nalen'
   };
-  var HYBRID_CHANCE_10K = 1500;      // 15% of cross-species purebred breeds give a hybrid
+  var HYBRID_CHANCE_10K = 1500;      // LEGACY (blocks 971,501-971,673 only, kept so those breeds replay exactly): old 15% cross-species hybrid rate
   var HYBRID_RARITY_UP_10K = 1000;   // hybrid rarity = higher parent's tier; 10% one tier up (capped at Legendary)
   /* Hybrid rate (Jake 2026-10-16, "all pets can hybrid"): from ACTIVATE_HYBRID_RATE_BLOCK two DIFFERENT purebred species (Nakamoto included) breed a
    * hybrid with probability exactly 684773435 / 1e9 (68.4773435%), replacing HYBRID_CHANCE_10K and the Nakamoto exclusion. stream() gives 32-bit draws, and
@@ -641,62 +641,110 @@
     if (kind === 'eyes') { var ey = rarest(PetCore.EYES, art.eyes, ['beady']); if (ey && (!fix || ey.t > tOf(PetCore.EYES, art.eyes))) { art.eyes = ey.id; return { kind: 'eyes', id: ey.id, label: ey.label }; } }
     var keys = PetCore.STAT_KEYS, sk = keys[x % keys.length]; stats[sk] += BRED_TRUE_STAT; return { kind: 'stat', stat: sk, value: BRED_TRUE_STAT, label: '+' + BRED_TRUE_STAT + ' ' + sk.toUpperCase() }; }
   var HYBRID_TRUE_10K = 5000;        // hybrid x a root species: 50% that hybrid again, else the purebred
-  function isHybrid(sp) { return typeof sp === 'string' && sp.indexOf('hyb:') === 0; }
+  function isHybrid(sp) { return typeof sp === 'string' && (sp.indexOf('hyb:') === 0 || sp.indexOf('hyb3:') === 0); }
+  function isHybrid3(sp) { return typeof sp === 'string' && sp.indexOf('hyb3:') === 0; }
   function hybridKey(a, b) { return 'hyb:' + a + ':' + b; }
-  function hybridRoots(sp) { return isHybrid(sp) ? sp.slice(4).split(':') : [sp]; }
-  function hybridName(sp) { var r = hybridRoots(sp); return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
+  function hybrid3Key(a, b, c) { return 'hyb3:' + a + ':' + b + ':' + c; }
+  function hybridRoots(sp) { return isHybrid3(sp) ? sp.slice(5).split(':') : isHybrid(sp) ? sp.slice(4).split(':') : [sp]; }
+  /* Three-way names (display-only): first part of A + middle of B + end of C, e.g. hyb3:pepe:dodo:kevin = Pe+do+vin = 'Pedovin'. */
+  var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto'];
+  var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka'],
+    H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto'];
+  function h3part(T, sp) { var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
+  function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
+    return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
   function speciesLabel(sp) { if (isHybrid(sp)) return hybridName(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
+  /* THREE-WAY MIXES + "hybrids never go pure" (owner 2026-10-16). From ACTIVATE_HYBRID3_BLOCK, any breed with at least one hybrid parent ALWAYS
+   * gives a hybrid (never a pure species). U = the union of both parents' root species (A's roots first, then B's new ones). All draws come from
+   * the breed stream R after the purebred draws; one 50% draw (R() % 2), then deterministic picks:
+   *   |U| = 2 (same pair either order, or a 2-way x one of its roots): 50% the hybrid parent's key (A's if both), else that pair in reverse order.
+   *   two 3-ways with the SAME three species: 50% parent A's 3-way key, else a 2-way of two of the three (R-shuffle, first two, in that order).
+   *   any other |U| >= 3 (2-way x 2-way of different pairs, 2-way x outside pure, 3-way x pure/2-way/other 3-way): 50% a 3-way of an R-shuffle
+   *     of U (first three, in that order), else a 2-way of the first two.
+   * Pure x pure is unchanged (68.4773435% hybrid). Before the block the old rules below run unchanged (no 3-way pets can exist yet). */
+  var ACTIVATE_HYBRID3_BLOCK = 971789; // tip 971,783 + 6 at push time (2026-10-16)
+  function hybrid3On(b) { return b != null && b >= ACTIVATE_HYBRID3_BLOCK; }
+  function shuffled(R, arr) { var u = arr.slice(); for (var i = u.length - 1; i > 0; i--) { var j = R() % (i + 1), t = u[i]; u[i] = u[j]; u[j] = t; } return u; }
+  function hybrid3Species(R, a, b) {
+    var ra = hybridRoots(a), rb = hybridRoots(b), U = ra.slice(); rb.forEach(function (x) { if (U.indexOf(x) < 0) U.push(x); });
+    var keep = R() % 2 === 0;
+    if (U.length === 2) { var H = isHybrid(a) ? a : b, r = hybridRoots(H); return keep ? H : hybridKey(r[1], r[0]); }
+    if (isHybrid3(a) && isHybrid3(b) && U.length === 3) { if (keep) return a; var s2 = shuffled(R, U); return hybridKey(s2[0], s2[1]); }
+    var s = shuffled(R, U); return keep ? hybrid3Key(s[0], s[1], s[2]) : hybridKey(s[0], s[1]);
+  }
   function hybridSpecies(R, a, b, coin, blk) {
     var ha = isHybrid(a), hb = isHybrid(b);
+    if ((ha || hb) && hybrid3On(blk)) return hybrid3Species(R, a, b);
     if (!ha && !hb) { if (a === b) return coin; if (hybridRateOn(blk)) return draw1e9(R) < HYBRID_RATE_1E9 ? hybridKey(a, b) : coin;
-      if (a === 'nakamoto' || b === 'nakamoto') return coin; return R() % 10000 < HYBRID_CHANCE_10K ? hybridKey(a, b) : coin; }
+      if (a === 'nakamoto' || b === 'nakamoto') return coin; /* LEGACY (971,501-971,673): Nakamoto exclusion + 15% rate */ return R() % 10000 < HYBRID_CHANCE_10K ? hybridKey(a, b) : coin; }
     if (ha && hb && a === b) return samePairHybridRule(R, a);
     var H = ha ? a : b, O = ha ? b : a, roots = hybridRoots(H);
     if (!isHybrid(O) && roots.indexOf(O) >= 0) return R() % 10000 < HYBRID_TRUE_10K ? H : O; // hybrid x one of its roots
     return roots[R() % 2]; // hybrid x anything else (incl. a different hybrid pair: parent A's hybrid roots if A is a hybrid): no 3-species hybrids
   }
   /** hybridPlan(hex, key): deterministic art assembly from the breed hash: body/head shape from one parent, colours + eyes + one signature feature from the other. */
-  function hybridPlan(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex), s = R() % 2, shape = r[s], color = r[1 - s];
-    return { key: key, a: r[0], b: r[1], name: hybridName(key), shape: shape, color: color, feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
+  function hybridPlan(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex);
+    if (r.length === 3) { var o = shuffled(R, r); /* 3-way: body shape, colours and signature feature each from a different parent */
+      return { key: key, a: r[0], b: r[1], c: r[2], roots: r.slice(), name: hybridName(key), shape: o[0], color: o[1], featSp: o[2], feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
+    var s = R() % 2, shape = r[s], color = r[1 - s]; // 2-way: unchanged
+    return { key: key, a: r[0], b: r[1], roots: r.slice(), name: hybridName(key), shape: shape, color: color, feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
   function speciesObj(id) { return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame. */
+  /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame.
+   * 3-way plans take the signature feature from plan.featSp (2-way: from the colour parent). Cleanup 2026-10-16: a Nakamoto body takes the colour
+   * parent's skin/hair (no grey hood, each blend distinct); Mumu bodies take the colour parent's belly on the blaze/snout and Pepe bodies its accent
+   * on the lips (so Pepe- and Mumu-bodied blends read apart); laser beams stop at the sprite edge; side features keep only pixels connected to the
+   * body; the badge moves to the top-left corner when a crest fills the top-right. */
   function hybridRender(art, opts) {
-    var h = art.hybrid, S = speciesObj(h.shape), C = speciesObj(h.color), o = Object.assign({}, opts || {}), img;
-    var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color });
-    function withColours(fn) { var keep = S.canon; S.canon = C.canon; try { return fn(); } finally { S.canon = keep; } }
+    var h = art.hybrid, S = speciesObj(h.shape), C = speciesObj(h.color), F = speciesObj(h.featSp || h.color), o = Object.assign({}, opts || {}), img;
+    var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color }), featArt = Object.assign({}, art, { species: F.id });
+    var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
+    var shade = function (c3, k) { var v = hx(c3); return '#' + v.map(function (n) { var m = Math.max(0, Math.min(255, Math.round(n * k))); return (m < 16 ? '0' : '') + m.toString(16); }).join(''); };
+    function withColours(fn) { var keep = S.canon, kc = S.colors, cc = C.canon; S.canon = cc;
+      if (S.id === 'nakamoto' && kc) S.colors = Object.assign({}, kc, { '3': cc.body, '4': shade(cc.body, 0.78), '1': shade(cc.accent, 0.8), '2': shade(cc.accent, 1.15), '5': cc.accent, '8': shade(cc.accent, 0.65), '9': cc.belly });
+      if (S.id === 'mumu' && kc) S.colors = Object.assign({}, kc, { '2': shade(cc.belly, 1.05), '3': cc.belly, '4': shade(cc.belly, 1.15) });
+      if (S.id === 'pepe' && C.id !== 'pepe') S.canon = Object.assign({}, cc, { belly: cc.accent });
+      try { return fn(); } finally { S.canon = keep; S.colors = kc; } }
     if ((o.stage == null ? 3 : o.stage) === 0) { var L = PetCore.render(shapeArt, o), Rt = PetCore.render(colArt, o); img = { width: 32, height: 32, data: new Uint8ClampedArray(L.data) };
       for (var y = 0; y < 32; y++) for (var x = 16; x < 32; x++) for (var c = 0; c < 4; c++) img.data[(y * 32 + x) * 4 + c] = Rt.data[(y * 32 + x) * 4 + c];
     } else {
+      var calm = PetCore.EYES[0].id, laser = h.eyes === 'laser';
       shapeArt.eyes = h.eyes; img = withColours(function () { return PetCore.render(shapeArt, o); });
       var key = function (a2) { return Object.assign({}, a2, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }); };
-      var kS = withColours(function () { return PetCore.render(key(shapeArt), o); }), kF = PetCore.render(key(colArt), o);
+      var kS = withColours(function () { return PetCore.render(key(Object.assign({}, shapeArt, { eyes: calm })), o); }), kF = PetCore.render(key(Object.assign({}, featArt, { eyes: calm })), o);
       var sil = function (k, i) { return !(k.data[i] === 255 && k.data[i + 1] === 0 && k.data[i + 2] === 255); }, top = 32, x0 = 32, x1 = -1;
+      if (laser) { var base = withColours(function () { return PetCore.render(Object.assign({}, shapeArt, { eyes: calm }), o); }); // clip beams to the body
+        for (var q0 = 0; q0 < 1024; q0++) if (!sil(kS, q0 * 4)) for (var c1 = 0; c1 < 4; c1++) img.data[q0 * 4 + c1] = base.data[q0 * 4 + c1]; }
       for (var i = 0; i < 1024; i++) if (sil(kS, i * 4)) { top = Math.min(top, i >> 5); x0 = Math.min(x0, i & 31); x1 = Math.max(x1, i & 31); }
       var pick = function (feat) { var out = []; for (var j = 0; j < 1024; j++) { var yy = j >> 5, xx = j & 31; if (!sil(kF, j * 4) || sil(kS, j * 4)) continue;
         if (feat === 'head' ? yy < top : (yy >= top + 8 && (xx < x0 || xx > x1))) out.push(j); }
-        /* ear fix (2026-10-14): ears + head outline always come from the SHAPE parent. 'head' used to take the colour parent's top 3 rows,
-         * which pasted that parent's ears (or crown dome) beside/between the shape's own ears = doubled, misplaced ears (e.g. Bobo x Sarutobi).
-         * Now only a crest that rises ABOVE the shape's head, kept only where it grows out of the shape (no floating bits). */
-        if (feat === 'head') { var on = {}, keep = {}, q = []; out.forEach(function (j) { on[j] = 1; });
-          out.forEach(function (j) { if (sil(kS, (j + 32) * 4) && (j >> 5) < 31) { keep[j] = 1; q.push(j); } });
-          while (q.length) { var c0 = q.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; q.push(n); } }); }
-          out = out.filter(function (j) { return keep[j]; }); }
-        return out; };
+        /* ear fix (2026-10-14): ears + head outline always come from the SHAPE parent; a head crest is kept only where it grows out of the shape.
+         * Side fix (2026-10-16): side features likewise keep only pixels connected (4-way) to the body, so no stray/floating pixels. */
+        var on = {}, keep = {}, qq = []; out.forEach(function (j) { on[j] = 1; });
+        var touches = function (j) { var xx = j & 31; return (feat === 'head' ? [j + 32] : [j + 32, j - 32, xx > 0 ? j - 1 : -1, xx < 31 ? j + 1 : -1]).some(function (n) { return n >= 0 && n < 1024 && sil(kS, n * 4); }); };
+        out.forEach(function (j) { if (touches(j)) { keep[j] = 1; qq.push(j); } });
+        while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
+        return out.filter(function (j) { return keep[j]; }); };
       var px = pick(h.feature); if (px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
+      var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
+      var left = busy > 2;
     }
-    var hex = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
-    [[29, 0, '#1a1020'], [28, 1, '#1a1020'], [30, 1, '#1a1020'], [27, 2, '#1a1020'], [31, 2, '#1a1020'], [28, 2, S.canon.body], [29, 1, S.canon.body], [29, 2, '#ffc93c'], [30, 2, C.canon.body], [29, 3, C.canon.body], [28, 3, '#1a1020'], [30, 3, '#1a1020'], [29, 4, '#1a1020']]
-      .forEach(function (q) { var v = hex(q[2]), k3 = (q[1] * 32 + q[0]) * 4; img.data[k3] = v[0]; img.data[k3 + 1] = v[1]; img.data[k3 + 2] = v[2]; img.data[k3 + 3] = 255; });
+    var mark = [[29, 0, '#1a1020'], [28, 1, '#1a1020'], [30, 1, '#1a1020'], [27, 2, '#1a1020'], [31, 2, '#1a1020'], [28, 2, S.canon.body], [29, 1, S.canon.body], [29, 2, '#ffc93c'], [30, 2, C.canon.body], [29, 3, C.canon.body], [28, 3, '#1a1020'], [30, 3, '#1a1020'], [29, 4, '#1a1020']];
+    if (h.featSp) mark.push([30, 3, F.canon.body], [28, 3, F.canon.body]);
+    mark.forEach(function (q) { var v = hx(q[2]), qx = left ? q[0] - 27 : q[0], k3 = (q[1] * 32 + qx) * 4; img.data[k3] = v[0]; img.data[k3 + 1] = v[1]; img.data[k3 + 2] = v[2]; img.data[k3 + 3] = 255; });
     return img;
   }
   function hybridFrames(art, opts) { var fr = []; for (var f = 0; f < 4; f++) fr.push(hybridRender(art, Object.assign({}, opts, { frame: f }))); return fr; }
   /** castHybrids(w): one Cast entry per hybrid pair that exists in the state (Cast "Hybrids" tab). */
   function castHybrids(w) { var seen = {}, out = []; (w && w.pets || []).forEach(function (p) { if (!isHybrid(p.species) || seen[p.species]) return; seen[p.species] = 1;
-      var r = hybridRoots(p.species); out.push({ key: p.species, name: hybridName(p.species), a: r[0], b: r[1], plan: hybridPlan(sha('cast:' + p.species), p.species) }); }); return out; }
+      var r = hybridRoots(p.species), plan = hybridPlan(sha('cast:' + p.species), p.species);
+      /* builds: one plan per possible body shape (each root as the body; colours/feature from the others), for the Cast tab */
+      var builds = r.map(function (sh, i) { var rest = r.filter(function (x, j) { return j !== i; }); return Object.assign({}, plan, { shape: sh, color: rest[0], featSp: rest.length > 1 ? rest[1] : undefined }); });
+      out.push({ key: p.species, name: hybridName(p.species), a: r[0], b: r[1], c: r[2], roots: r, plan: plan, builds: builds }); }); return out; }
   /** breedChild(hex, A, B) -> { species, tier, stats } (pure: used by replay and by the odds test). */
   function breedChild(hex, A, B, blk) {
     var R = stream('XCPETS:v2:breed:' + hex), species = R() % 2 ? B.species : A.species, lo = Math.min(A.tier, B.tier), hi = Math.max(A.tier, B.tier), roll = R() % 10000;
@@ -897,5 +945,5 @@
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
-    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids };
+    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
 });

@@ -33,13 +33,17 @@
     if (hyb.length && !$('castHybTab')) { var tb = document.createElement('button'); tb.type = 'button'; tb.id = 'castHybTab'; tb.className = ($('castTiers').firstElementChild || {}).className || '';
       tb.classList.remove('on'); tb.textContent = '🧬 Hybrids (' + hyb.length + ')'; $('castTiers').appendChild(tb);
       var hb = document.createElement('div'); hb.className = 'cast'; hb.id = 'castHybrids'; hb.style.display = 'none'; box.parentNode.insertBefore(hb, box.nextSibling);
-      hyb.forEach(function (e) { var art = (window.GenPetCore || PetCore).characterPet(e.plan.shape, { tier: 'legendary' }); art.hybrid = e.plan;
+      hyb.forEach(function (e) { var roots = e.roots || [e.a, e.b];
         var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-hyb', e.key);
-        row.innerHTML = '<div><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted">' + esc(spLabel(e.a)) + ' × ' + esc(spLabel(e.b)) + ' (parent A × parent B) · ' + esc(spLabel(e.plan.shape)) + ' build, ' + esc(spLabel(e.plan.color)) + ' colours</p></div>';
-        var strip = document.createElement('div'); strip.className = 'strip6';
-        V.STAGE_NAMES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', e.name + ', ' + name);
-          R.paint(c, V.hybridRender(art, { stage: si, frame: 0 })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
-        row.appendChild(strip); hb.appendChild(row); });
+        row.innerHTML = '<div><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (roots.length > 2 ? ' (three-way mix)' : ' (parent A × parent B)') + ' · can hatch with ' + (roots.length > 2 ? 'any of these bodies' : 'either body') + ':</p></div>';
+        (e.builds || [e.plan]).forEach(function (pl) { var art = (window.GenPetCore || PetCore).characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
+          var lab = document.createElement('p'); lab.className = 'small hybbuild'; lab.style.margin = '6px 0 2px'; lab.style.fontWeight = '700';
+          lab.textContent = spLabel(pl.shape) + ' body, ' + spLabel(pl.color) + ' colours' + (pl.featSp ? ', ' + spLabel(pl.featSp) + ' feature' : ''); row.appendChild(lab);
+          var strip = document.createElement('div'); strip.className = 'strip6';
+          V.STAGE_NAMES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', e.name + ', ' + spLabel(pl.shape) + ' body, ' + name);
+            R.paint(c, V.hybridRender(art, { stage: si, frame: 0 })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
+          row.appendChild(strip); });
+        hb.appendChild(row); });
       $('castTiers').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (!b) return; var isH = b === tb;
         Array.prototype.forEach.call($('castTiers').children, function (x) { if (x !== b) x.classList.remove('on'); }); b.classList.add('on');
         hb.style.display = isH ? '' : 'none'; box.style.display = isH ? 'none' : ''; }, true); }
@@ -58,7 +62,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=a710c99631'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=42e9ce9118'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
