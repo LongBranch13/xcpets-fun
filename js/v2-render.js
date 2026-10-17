@@ -411,7 +411,7 @@
     out.push('<b>Bred with:</b> ' + (bred.length ? bred.join(' · ') : 'nobody yet'));
     if (p.carried && p.carried.length) out.push('<b>Carries:</b> ' + p.carried.map(function (c) { return esc(V2 && V2.speciesLabel ? V2.speciesLabel(c.species) : c.species) + ' traits from ' + L(c.from) + ' <span class="muted">(' + esc(String(c.stat).toUpperCase()) + ' ' + c.value + ' floor for its future children)</span>'; }).join(' · '));
     var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
-    out.push('<b>Breedings:</b> ' + (p.breeds || 0) + '/' + (V2 ? V2.BREED_MAX : 3) + cd);
+    out.push('<b>Breedings:</b> ' + (p.breeds || 0) + (V2 && V2.breedCapOn && V2.breedCapOn(tip) ? '/' + V2.BREED_MAX : '') + cd);
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
   /** bredFrom(w, p, jump): '💞 Bred from #A Name × #B Name' chip for any bred pet/egg (p.parents); '' otherwise. jump adds data-jump for in-page jumps. Display only. */
   function bredFrom(w, p, jump) { if (!p || !p.parents || p.parents.length < 2) return ''; var L = function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '"' + (jump ? ' data-jump="' + id + '"' : '') + '>#' + id + (q ? ' ' + esc(q.name) : '') + '</a>'; };
