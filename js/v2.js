@@ -569,7 +569,7 @@
    * crit 5+⌊luck/4⌋ %, dodge ⌊zoom/5⌋ % (defender's zoom), first strike zoom + d10. Breed numbers follow breedChild/breed. No win % is shown. */
   function irqCompare(w, x) { var A = w.byId[x.a], B = w.byId[x.b]; if (!A || !B) return ''; var K = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
     var pw = function (p) { return K.reduce(function (t, k) { return t + (p.stats[k] || 0); }, 0); };
-    var gear = function (p) { return V.wornOf(w, p.id).map(function (g) { var it = V.BY_ID[g.item]; return { slot: g.slot, label: it ? it.label : (g.label || g.item), tier: it ? it.tier : 0 }; }); };
+    var gear = function (p) { return V.wornOf(w, p.id).map(function (g) { var it = (V.GEAR_BY_ID || {})[g.item]; return { slot: g.slot, label: it ? it.label : (g.label || g.item), tier: it ? it.tier : (g.legendary ? 3 : (g.tier || 0)) }; }); };
     var best = function (p) { return K.reduce(function (m, k) { return p.stats[k] > p.stats[m] ? k : m; }, K[0]); };
     var hp = function (p) { return 40 + p.stats.vigor * 2 + p.stats.grit + p.stage * 6; }, gp = function (p) { return gear(p).reduce(function (t, g) { return t + 1 + g.tier * 2; }, 0); };
     function col(p, o, who) { var g = gear(p), grip = g.filter(function (q) { return q.slot === 'hand'; })[0], h = '<div class="irqcol"><div class="small muted">' + who + '</div><canvas width="32" height="32" class="sprite" data-irqp="' + p.id + '"></canvas><div><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span></div><div class="chips">' + tierPill(p.tier) + '<span class="chip">' + esc(spLabel(p.species)) + '</span><span class="chip stg">' + p.stageName + '</span><span class="chip pow">⚡ ' + pw(p) + '</span></div>' +
