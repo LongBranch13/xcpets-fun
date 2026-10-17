@@ -258,15 +258,17 @@
   function starBatchOn(b) { return b != null && b >= ACTIVATE_STAR_BATCH_BLOCK; }
   function view(it) { if (!it) return it; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
     if (shuffleOn(ELIG_B) && SHUFFLE[it.id]) it = Object.assign({}, it, SHUFFLE[it.id]); if (gaOn(ELIG_B) && GA[it.id]) it = Object.assign({}, it, GA[it.id]); return it; }
+  /** moveToSlot(w, g, slot): re-slot an owned gear piece at a rule switch-on block. A worn piece stays worn only if its pet has that slot open and
+   * nothing else already sits in it; otherwise it is taken off (kept owned). Shared by the sig-shuffle and gear-audit sweeps (refactor 2026-10-16). */
+  function moveToSlot(w, g, slot) { var p = g.on != null ? w.byId[g.on] : null;
+    if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === slot; }); if (other || (p.openSlots || []).indexOf(slot) < 0) g.on = null; }
+    g.slot = slot; }
   function gaSweep(w, b) { if (w._gaSwept || !gaOn(b)) return; w._gaSwept = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k], nv = GA[g.item]; if (!nv) return; if (nv.tier != null) g.tier = nv.tier;
-      if (nv.slot && g.slot !== nv.slot) { var p = g.on != null ? w.byId[g.on] : null;
-        if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === nv.slot; }); if (other || (p.openSlots || []).indexOf(nv.slot) < 0) g.on = null; }
-        g.slot = nv.slot; } }); }
+      if (nv.slot && g.slot !== nv.slot) moveToSlot(w, g, nv.slot); }); }
   function shuffleSweep(w, b) { if (w._shufSwept || !shuffleOn(b)) return; w._shufSwept = true;
-    Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!SHUFFLE[g.item]) return; var nv = SHUFFLE[g.item], p = g.on != null ? w.byId[g.on] : null;
-      if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === nv.slot; }); if (other || (p.openSlots || []).indexOf(nv.slot) < 0) g.on = null; }
-      g.slot = nv.slot; g.tier = nv.tier; g.legendary = !!nv.exclusive; }); }
+    Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!SHUFFLE[g.item]) return; var nv = SHUFFLE[g.item];
+      moveToSlot(w, g, nv.slot); g.tier = nv.tier; g.legendary = !!nv.exclusive; }); }
   function eligible(it, species) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false;
     if (lockedOut(it.id, species, ELIG_B)) return false;
     if (isHybrid(species)) { if (!it.exclusive) return true; var par = species.split(':').slice(1); return it.slot !== 'head' && par.indexOf(it.origin) >= 0; } /* hybrids (Jake's locked spec): shared + both parents' signatures EXCEPT their legendary head pieces */

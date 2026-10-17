@@ -247,8 +247,10 @@
   /* founder free rolls (prototype 2026-10-15): pet:fr:ID button + "Free rolls left: N" (minus our unconfirmed pet:fr burns); hidden at 0, non-founders, before activation */
   function frPendingTags() { var T = window.V2Wallet && V2Wallet.tracker ? V2Wallet.tracker.list() : []; return T.filter(function (t) { return !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).map(function (t) { return t.tag; }); }
   /* Mythic discount overflow rolls: one gear roll per full 1,000 care above 21,000; claimed with a 1-sat pet:of:ID burn (same style as the founder Free roll) */
-  function ofBtn(w, p) { var f = V.overflowRolls ? V.overflowRolls(w, p, frPendingTags()) : null; return f && f.on ? '<button class="btn ghost ico-flame" data-a="oroll" title="Mythic discount: a gear roll for a 1-sat burn">Overflow roll</button><span class="small muted frleft">Overflow rolls left: ' + fmt(f.left) + '</span>' : ''; }
-  function frBtn(w) { var f = V.freeRolls(w, ME, frPendingTags()); return f.on ? '<button class="btn ghost ico-flame" data-a="froll" title="Founder reward: a gear roll for a 1-sat burn">Free roll</button><span class="small muted frleft">Free rolls left: ' + fmt(f.left) + '</span>' : ''; }
+  function ofBtn(w, p) { var f = V.overflowRolls ? V.overflowRolls(w, p, frPendingTags()) : null; return f && f.on ? freeRollButton('oroll', 'Mythic discount', 'Overflow roll', f.left) : ''; }
+  /** one free-roll button + its "left" counter (founder Free roll and Mythic-discount Overflow roll share the same markup) */
+  function freeRollButton(action, why, label, left) { return '<button class="btn ghost ico-flame" data-a="' + action + '" title="' + why + ': a gear roll for a 1-sat burn">' + label + '</button><span class="small muted frleft">' + label + 's left: ' + fmt(left) + '</span>'; }
+  function frBtn(w) { var f = V.freeRolls(w, ME, frPendingTags()); return f.on ? freeRollButton('froll', 'Founder reward', 'Free roll', f.left) : ''; }
   $('dClose').onclick = function () { close('detail'); detailId = null; };
 
   // ---------------------------------------------------------------- inventory (live invcards)
