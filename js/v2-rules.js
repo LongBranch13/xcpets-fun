@@ -206,7 +206,7 @@
   /* species locks (same pattern): item -> { sp, from }. KEVIN name tag is KEVIN-only from the sig-shuffle block (owner approved 2026-10-16; hybrids with a
    * KEVIN root allowed). Non-matching wearers keep it owned but it is taken off at the block and never drawn (v2-render). rare-card stays open. */
   var SPECIES_LOCK = { 'lenny-monocle': { sp: 'lenny', from: ACTIVATE_LENNY_MONOCLE_BLOCK }, 'name-tag': { sp: 'kevin', from: 971789 /* = ACTIVATE_SIG_SHUFFLE_BLOCK */ },
-    'stick': { sp: 'doge', from: 971789 /* = ACTIVATE_LOCK_AUDIT_BLOCK (owner add-on 2026-10-16): Fetch Stick Doge-only; hybrids with a Doge root allowed; non-Doge wearers unequipped at the block, kept owned */ } };
+    'stick': { sp: 'doge', from: 971789 /* = ACTIVATE_SIG_SHUFFLE_BLOCK (owner add-on 2026-10-16): Fetch Stick Doge-only; hybrids with a Doge root allowed; non-Doge wearers unequipped at the block, kept owned */ } };
   function lockedOut(id, species, b) { var L = SPECIES_LOCK[id]; return !!(L && b != null && b >= L.from && hybridRoots(species).indexOf(L.sp) < 0); }
   function monoSweep(w, b) { Object.keys(SPECIES_LOCK).forEach(function (id) { var L = SPECIES_LOCK[id], flag = '_lockSwept_' + id; if (w[flag] || b == null || b < L.from) return; w[flag] = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (g.item !== id || g.on == null) return; var p = w.byId[g.on]; if (p && lockedOut(id, p.species, b)) g.on = null; }); }); }
@@ -218,17 +218,7 @@
   var ACTIVATE_SIG_SHUFFLE_BLOCK = 971789; // tip 971,783 + 6
   function shuffleOn(b) { return b != null && b >= ACTIVATE_SIG_SHUFFLE_BLOCK; }
   var SHUFFLE = { 'wow-bandana': { slot: 'body', tier: 1, w: 10, exclusive: false, sig: false } };
-  /* LOCK AUDIT (owner Addendum 3, 2026-10-16). From ACTIVATE_LOCK_AUDIT_BLOCK: Sarutobi's Banana (v2-sarutobi-held) and Smoke-bomb sandals lose their
-   * Legendary species lock and drop to their natural tiers as OPEN pieces (Banana tier 1 Grip, sandals tier 2 Footwear, weight 10); Sarutobi's new ★ held
-   * 'sig-sarutobi-held' (Smoke bomb) and ★ feet 'sig-sarutobi-feet' (Cloud-step tabi) join the pools at the block. Owned copies are kept (and stay worn);
-   * their stored tier/legendary flag is updated at the block, so after it they count as regular gear (gear power, battle stakes). */
-  var ACTIVATE_LOCK_AUDIT_BLOCK = 971789; // tip 971,783 + 6
-  function auditOn(b) { return b != null && b >= ACTIVATE_LOCK_AUDIT_BLOCK; }
-  var AUDIT = { 'v2-sarutobi-held': { tier: 1, w: 10, exclusive: false, sig: false, legendary: false }, 'smoke-sandals': { tier: 2, w: 10, exclusive: false, sig: false, legendary: false } };
-  function view(it) { if (!it) return it; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'lock-audit' && !auditOn(ELIG_B)) return null;
-    if (shuffleOn(ELIG_B) && SHUFFLE[it.id]) it = Object.assign({}, it, SHUFFLE[it.id]); if (auditOn(ELIG_B) && AUDIT[it.id]) it = Object.assign({}, it, AUDIT[it.id]); return it; }
-  function auditSweep(w, b) { if (w._auditSwept || !auditOn(b)) return; w._auditSwept = true;
-    Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k], nv = AUDIT[g.item]; if (!nv) return; g.tier = nv.tier; g.legendary = false; }); }
+  function view(it) { if (!it) return it; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; return shuffleOn(ELIG_B) && SHUFFLE[it.id] ? Object.assign({}, it, SHUFFLE[it.id]) : it; }
   function shuffleSweep(w, b) { if (w._shufSwept || !shuffleOn(b)) return; w._shufSwept = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!SHUFFLE[g.item]) return; var nv = SHUFFLE[g.item], p = g.on != null ? w.byId[g.on] : null;
       if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === nv.slot; }); if (other || (p.openSlots || []).indexOf(nv.slot) < 0) g.on = null; }
@@ -471,7 +461,7 @@
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
   function handle(w, r, t, amt, bh, L) {
-    var b = r.block_index, src = r.source; w._b = b; ELIG_B = b; monoSweep(w, b); shuffleSweep(w, b); auditSweep(w, b);
+    var b = r.block_index, src = r.source; w._b = b; ELIG_B = b; monoSweep(w, b); shuffleSweep(w, b);
     function pet(id) { var p = w.byId[id]; if (p) liveAt(w, p, b); return p; }
     /* roll token (from ACTIVATE_TOKENS_BLOCK): kind 'stageUp' (incl. hatching) or 'meal'; a token becomes one gear item at once, logged on the pet */
     function token(p, kind) { if (b < ACTIVATE_TOKENS_BLOCK || !bh || !p) return;
@@ -842,7 +832,7 @@
     }
   }
   function applyOp(w, o) {
-    if (o.kind !== 'equip') return; ELIG_B = o.block_index; monoSweep(w, o.block_index); shuffleSweep(w, o.block_index); auditSweep(w, o.block_index); var p = w.byId[o.petId]; if (!p || p.owner !== o.owner) return; liveAt(w, p, o.block_index); if (p.dead || p.released) return;
+    if (o.kind !== 'equip') return; ELIG_B = o.block_index; monoSweep(w, o.block_index); shuffleSweep(w, o.block_index); var p = w.byId[o.petId]; if (!p || p.owner !== o.owner) return; liveAt(w, p, o.block_index); if (p.dead || p.released) return;
     if (o.gid == null) { var cur = wornIn(w, p.id, o.slot); if (cur) cur.on = null; return; }
     var g = w.items[o.gid]; if (!g || g.owner !== o.owner) return; wear(w, p, g);
   }
@@ -983,5 +973,5 @@
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
-    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_LOCK_AUDIT_BLOCK: ACTIVATE_LOCK_AUDIT_BLOCK, auditOn: auditOn, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
+    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
 });

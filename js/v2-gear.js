@@ -4,9 +4,7 @@
  * sweater, several recoloured capes/faces; the bonus-gear Clone mirror is excluded from v2's pool. Crowns are a SHARED set (SHARED_CROWNS).
  * SIGNATURE (★) gear (SIG below, 2026-10-14): each species has up to 7 Legendary, species-exclusive pieces (head, face, back, body, weapon, held, feet);
  * Dodo has no face ★ and Nakamoto no head ★ (6 each). Every other piece is open to all species. Sig-gear shuffle (2026-10-16, gated from
- * ACTIVATE_SIG_SHUFFLE_BLOCK in v2-rules.js): Wow bandana leaves Doge's back ★ (open Outfits piece, tier 1); new Doge back ★ 'sig-doge-cape'.
- * Lock audit (2026-10-16, gated from ACTIVATE_LOCK_AUDIT_BLOCK in v2-rules.js): Banana (v2-sarutobi-held) -> open Grip, tier 1; Smoke-bomb sandals -> open
- * Footwear, tier 2; new Sarutobi ★ held 'sig-sarutobi-held' (Smoke bomb) and ★ feet 'sig-sarutobi-feet' (Cloud-step tabi). Every other ★ keeps its lock. */
+ * ACTIVATE_SIG_SHUFFLE_BLOCK in v2-rules.js): Wow bandana leaves Doge's back ★ (open Outfits piece, tier 1); new Doge back ★ 'sig-doge-cape'. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(); else root.V2Gear = factory();
 })(this, function () {
@@ -235,7 +233,7 @@
     dodo: { head: 'v2-dodo-hat', /* face ★ (Black-swan eye mask) REMOVED 2026-10-14 (Jake) */ back: 'sig-dodo-cape', body: 'sig-dodo-body', weapon: 'sig-dodo-weapon', held: 'sig-dodo-held', feet: 'sig-dodo-feet' },
     kevin: { head: 'v2-kevin-hat', face: 'sig-kevin-face', back: 'sig-kevin-cape', body: 'sig-kevin-body', weapon: 'sig-kevin-weapon', held: 'sig-kevin-held', feet: 'sig-kevin-feet' },
     doge: { head: 'v2-doge-hat', face: 'sig-doge-face', back: 'wow-bandana' /* before ACTIVATE_SIG_SHUFFLE_BLOCK only; from it the back ★ is 'sig-doge-cape' (SIG_SHUFFLE) */, body: 'sig-doge-body', weapon: 'sig-doge-weapon', held: 'sig-doge-held', feet: 'sig-doge-feet' },
-    sarutobi: { head: 'v2-sarutobi-hat', face: 'sig-sarutobi-face', back: 'sig-sarutobi-cape', body: 'sig-sarutobi-body', weapon: 'banana-katana', held: 'v2-sarutobi-held', feet: 'smoke-sandals' /* held/feet: before ACTIVATE_LOCK_AUDIT_BLOCK only; from it Banana + Smoke-bomb sandals are open and the ★ pieces are 'sig-sarutobi-held' / 'sig-sarutobi-feet' (SIG_LOCK_AUDIT) */ },
+    sarutobi: { head: 'v2-sarutobi-hat', face: 'sig-sarutobi-face', back: 'sig-sarutobi-cape', body: 'sig-sarutobi-body', weapon: 'banana-katana', held: 'v2-sarutobi-held', feet: 'smoke-sandals' },
     lenny: { head: 'v2-lenny-hat', face: 'sig-lenny-face', back: 'sig-lenny-cape', body: 'sig-lenny-body', weapon: 'sig-lenny-weapon', held: 'sig-lenny-held', feet: 'sig-lenny-feet' },
     peepo: { head: 'v2-peepo-hat', face: 'sig-peepo-face', back: 'sig-peepo-cape', body: 'sig-peepo-body', weapon: 'sig-peepo-weapon', held: 'sig-peepo-held', feet: 'sig-peepo-feet' },
     nakamoto: { /* no head ★ (deleted in the Nakamoto rework) */ face: 'sig-nakamoto-face', back: 'sig-nakamoto-cape', body: 'sig-nakamoto-body', weapon: 'sig-nakamoto-weapon', held: 'sig-nakamoto-held', feet: 'sig-nakamoto-feet' }
@@ -366,14 +364,6 @@
   var SIG_SHUFFLE = { doge: { back: 'sig-doge-cape' } };
   DEFS['sig-doge-cape'] = { slot: 'back', tier: 3, label: 'Much-wow cape', at: 'neck', behind: true, map: ['.OOOOOOOOOOO.', 'OOOOOOOOOOOOO', 'OMOMObbbOKOKO', 'OMMMObObOKKKO', 'OOOOObbbOOOOO', 'OOOOOOOOOOOOO', 'PPPPPPPPPPPPP'], origin: 'doge', exclusive: true, species: 'doge', kind: 'back', sig: true };
   ITEMS.push({ id: 'sig-doge-cape', label: 'Much-wow cape', slot: 'back', tier: 3, origin: 'doge', exclusive: true, legendary: true, kind: 'back', sig: true, w: 5, overlay: true, since: 'sig-shuffle' });
-  /* Lock audit (2026-10-16, owner Addendum 3): the Banana and Smoke-bomb sandals did not earn a Legendary species lock (everyday props; the banana
-   * joke already lives in the Banana katana ★). From ACTIVATE_LOCK_AUDIT_BLOCK they are open (v2-rules AUDIT) and Sarutobi gets two ninja ★ pieces.
-   * Listed from that block only (item.since 'lock-audit'; kept out of every roll pool before it). */
-  var SIG_LOCK_AUDIT = { sarutobi: { held: 'sig-sarutobi-held', feet: 'sig-sarutobi-feet' } };
-  DEFS['sig-sarutobi-held'] = { slot: 'hand', tier: 3, label: 'Smoke bomb', at: 'handR', map: ['...yQ', '..s..', '.ZZZ.', 'ZZsZZ', 'ZZZZZ', 'ZZZZZ', '.ZZZ.'], origin: 'sarutobi', exclusive: true, species: 'sarutobi', kind: 'held', sig: true };
-  ITEMS.push({ id: 'sig-sarutobi-held', label: 'Smoke bomb', slot: 'hand', tier: 3, origin: 'sarutobi', exclusive: true, legendary: true, kind: 'held', sig: true, w: 5, overlay: true, since: 'lock-audit' });
-  DEFS['sig-sarutobi-feet'] = { slot: 'feet', tier: 3, label: 'Cloud-step tabi', at: 'feetBoth', map: ['wcw.', 'jjj.', 'jjjj', 'j.jj'], origin: 'sarutobi', exclusive: true, species: 'sarutobi', kind: 'feet', sig: true };
-  ITEMS.push({ id: 'sig-sarutobi-feet', label: 'Cloud-step tabi', slot: 'feet', tier: 3, origin: 'sarutobi', exclusive: true, legendary: true, kind: 'feet', sig: true, w: 5, overlay: true, since: 'lock-audit' });
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -410,5 +400,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { SIG_LOCK_AUDIT: SIG_LOCK_AUDIT, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
