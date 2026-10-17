@@ -1585,7 +1585,7 @@
       if (gear.band) drawBand(cv, pet, sp, box, a);
       // Mythic only: the smug hand-to-chin thinking pose (drawn over armor/band; weapons stay on the other side)
       if (stage === 5 && sp.pose) cv.spriteKeys(box.x0 + sp.pose.col, box.y0 + sp.pose.row, sp.pose.map, CHARKEY);
-      if (gear.weapon) drawWeapon(cv, pet, box, frame);
+      if (gear.weapon) drawWeapon(cv, pet, box, frame, stage);
     }
 
     var armor = byId(ARMORS, pet.armor) || ARMORS[0], cape = byId(CAPES, pet.cape) || CAPES[0], band = byId(BANDS, pet.band) || BANDS[0];
@@ -2053,6 +2053,10 @@
     // noHeadband (Wojak): nothing is drawn on the head; a rolled headband is worn as a neck scarf (same colour)
     if (b.type === 'headband' && !sp.gear.noHeadband) {
       y = rowY(box, sp.gear.band);
+      /* gear-fit 2026-10-16 (owner approved): on the small Hatchling/Juvenile maps of Sarutobi and Dodo the scaled band row can land on the eyes or an
+       * empty row; move the headband up to the nearest head row (within 4) with >= 3 free head pixels and no eye on it. */
+      if (box.small && (sp.id === 'sarutobi' || sp.id === 'dodo')) { var bandOk = function (yy) { var n = 0, eye = false; for (var xx = 0; xx < N; xx++) { var kk = cv.getKey(xx, yy); if (kk === 'eye' || kk === 'pupil') eye = true; else if (cv.isSil(xx, yy) && !FACE_KEYS[kk]) n++; } return !eye && n >= 3; };
+        if (!bandOk(y)) { for (var dyb = 1; dyb <= 4; dyb++) { if (y - dyb >= 0 && bandOk(y - dyb)) { y -= dyb; break; } } } }
       for (x = 0; x < N; x++) if (cv.isSil(x, y) && !FACE_KEYS[cv.getKey(x, y)]) { cv.key[y * N + x] = 'band'; r = x; }
       if (r >= 0) { cv.setKey(r + 1, y, 'band2'); cv.setKey(r + 2, y + 1, 'band2'); cv.setKey(r + 1, y + 1, 'band'); }
     } else {
@@ -2076,10 +2080,14 @@
     'torch': ['.o.', 'oyo', '.y.', 'ggg', '.W.', '.W.', '.W.', '.W.', '.W.', '.W.', '.W.']
   };
   var WEAPON_KEYS = { L: 'lwood', W: 'wood', s: 'blade', i: 'iron', y: 'goldblade', g: 'gold', r: 'gem', u: 'gemB', o: 'flame' };
-  function drawWeapon(cv, pet, box, frame) {
+  function drawWeapon(cv, pet, box, frame, stage) {
     var map = WEAPON_MAPS[pet.weapon] || WEAPON_MAPS['wooden-sword'];
     if (pet.weapon === 'torch' && frame % 2) map = ['o..', '.oy', '.y.'].concat(map.slice(3));
     var x0 = Math.min(N - 3, box.x0 + box.w - 1), y0 = box.y0 + box.h - map.length;
+    /* gear-fit 2026-10-16 (owner approved): Dodo and Nakamoto at Adult: swords and torch sit right against the body (no 1-px gap) */
+    if (stage === 3 && (pet.species === 'dodo' || pet.species === 'nakamoto') && /sword$|^torch$/.test(pet.weapon || 'wooden-sword')) {
+      var wr = -1; for (var wy = Math.max(0, y0); wy < Math.min(N, y0 + map.length); wy++) for (var wx = 0; wx < N; wx++) if (cv.isSil(wx, wy)) wr = Math.max(wr, wx);
+      if (wr >= 0) x0 = Math.max(0, Math.min(N - 3, wr)); }
     cv.spriteKeys(x0, y0, map, { L: 'lwood', W: 'wood', s: 'blade', i: 'iron', y: 'goldblade', g: 'gold', r: 'gem', u: 'gemB', o: 'flame' });
     if (pet.weapon === 'torch') for (var j = 0; j < 3; j++) for (var i = 0; i < 3; i++) if (map[j].charAt(i) === 'y') cv.setKey(x0 + i, y0 + j, 'flame2');
   }
