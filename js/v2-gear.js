@@ -1,13 +1,10 @@
-/* XCPETS v2: SPECIES GEAR (13 species x 9 pieces minus the removed Rare Pepe beret, Tennis ball, Pincer blade, Energy drink, Pearl and Rose = 111 new items). ADDITIONS ONLY: nothing in bonus-gear.js / pet-core is removed.
- * Every piece is an 8-bit overlay map drawn with the shared BonusGear palette (2-3 colours each) through BonusGear.apply anchors.
- * v2 slots: head (band / hat / crown), face, back (cape), hand (weapon / held), feet, body (NEW: armor).
- * Removed on request: the Rare Pepe beret (v2-pepe-hat). Pepe has 8 pieces; total 116.
- * Also removed on request (2026-10-14): Doge's Tennis ball (v2-doge-held), Snibby's Pincer blade (v2-snibby-weapon), Energy drink (v2-chud-held), Pearl (v2-snibby-held), Rose (v2-lenny-held) -> total 111;
- * and the bonus-gear Clone mirror (clone-mirror, KEVIN) is excluded from v2's pool (bonus-gear.js itself is untouched).
- * 2026-10-14: legendaries are signature HATS, crowns are shared; removed Peepo Hoodie + Pink peeking sweater; Guise polish (shades variants, face redraws).
- * Exactly ONE piece per species is legendary: its signature HAT (SIG_HAT); crowns are a shared set. Also removed: Peepo Hoodie, Pink peeking sweater.
- * 2026-10-14: legendaries are signature HATS, crowns are shared; removed Peepo Hoodie + Pink peeking sweater; Guise polish (shades variants, face redraws).
- * Exactly ONE piece per species is legendary + species-exclusive (exclusive: true); every other piece is open to all species. */
+/* XCPETS v2: SPECIES GEAR. Per-species pieces (LIST) drawn as 8-bit overlay maps with the shared BonusGear palette through BonusGear.apply anchors.
+ * v2 slots (player names): head = Headwear, face = Guise, back = Drip, hand = Grip (weapon + held), body = Outfits, feet = Footwear.
+ * Removed over time (kept resolvable via RETIRED/ALIAS): Rare Pepe beret, Tennis ball, Pincer blade, Energy drink, Pearl, Rose, Peepo Hoodie, Pink peeking
+ * sweater, several recoloured capes/faces; the bonus-gear Clone mirror is excluded from v2's pool. Crowns are a SHARED set (SHARED_CROWNS).
+ * SIGNATURE (★) gear (SIG below, 2026-10-14): each species has up to 7 Legendary, species-exclusive pieces (head, face, back, body, weapon, held, feet);
+ * Dodo has no face ★ and Nakamoto no head ★ (6 each). Every other piece is open to all species. Sig-gear shuffle (2026-10-16, gated from
+ * ACTIVATE_SIG_SHUFFLE_BLOCK in v2-rules.js): Wow bandana leaves Doge's back ★ (open Outfits piece, tier 1); new Doge back ★ 'sig-doge-cape'. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(); else root.V2Gear = factory();
 })(this, function () {
@@ -235,7 +232,7 @@
     snibby: { head: 'shell-helm', face: 'sig-snibby-face', back: 'sig-snibby-cape', body: 'sig-snibby-body', weapon: 'sig-snibby-weapon', held: 'sig-snibby-held', feet: 'sig-snibby-feet' },
     dodo: { head: 'v2-dodo-hat', /* face ★ (Black-swan eye mask) REMOVED 2026-10-14 (Jake) */ back: 'sig-dodo-cape', body: 'sig-dodo-body', weapon: 'sig-dodo-weapon', held: 'sig-dodo-held', feet: 'sig-dodo-feet' },
     kevin: { head: 'v2-kevin-hat', face: 'sig-kevin-face', back: 'sig-kevin-cape', body: 'sig-kevin-body', weapon: 'sig-kevin-weapon', held: 'sig-kevin-held', feet: 'sig-kevin-feet' },
-    doge: { head: 'v2-doge-hat', face: 'sig-doge-face', back: 'wow-bandana' /* Jake 2026-10-14: Shiba-ear beanie = ★ hat, Wow bandana = ★ neckerchief */, body: 'sig-doge-body', weapon: 'sig-doge-weapon', held: 'sig-doge-held', feet: 'sig-doge-feet' },
+    doge: { head: 'v2-doge-hat', face: 'sig-doge-face', back: 'wow-bandana' /* before ACTIVATE_SIG_SHUFFLE_BLOCK only; from it the back ★ is 'sig-doge-cape' (SIG_SHUFFLE) */, body: 'sig-doge-body', weapon: 'sig-doge-weapon', held: 'sig-doge-held', feet: 'sig-doge-feet' },
     sarutobi: { head: 'v2-sarutobi-hat', face: 'sig-sarutobi-face', back: 'sig-sarutobi-cape', body: 'sig-sarutobi-body', weapon: 'banana-katana', held: 'v2-sarutobi-held', feet: 'smoke-sandals' },
     lenny: { head: 'v2-lenny-hat', face: 'sig-lenny-face', back: 'sig-lenny-cape', body: 'sig-lenny-body', weapon: 'sig-lenny-weapon', held: 'sig-lenny-held', feet: 'sig-lenny-feet' },
     peepo: { head: 'v2-peepo-hat', face: 'sig-peepo-face', back: 'sig-peepo-cape', body: 'sig-peepo-body', weapon: 'sig-peepo-weapon', held: 'sig-peepo-held', feet: 'sig-peepo-feet' },
@@ -352,6 +349,7 @@
   JEWELRY.forEach(function (j) { DEFS[j[0]] = { slot: 'face', tier: j[2], label: j[1], at: j[3], map: j[4], origin: null, exclusive: false, kind: j[5] || 'jewelry' };
     ITEMS.push({ id: j[0], label: j[1], slot: 'face', tier: j[2], origin: null, exclusive: false, legendary: false, kind: j[5] || 'jewelry', overlay: true }); });
   // wojak fix 2026-10-14 (v2 only): cigarette for Wojak's hero kit, held in the mouth (anchored at the detected mouth corner via V2Render.facePos 'v2cig'; still a hand-slot piece) (white stick, orange ember, wisp of grey smoke); Wojak-only, regular hand piece
+  /* (comment fix 2026-10-16) the Cigarette is an OPEN piece: any species can roll and wear it (exclusive: false); origin wojak only names its theme. */
   DEFS['v2-wojak-cig'] = { slot: 'hand', tier: 1, label: 'Cigarette', at: 'v2cig', free: true, map: ['.....s', '....s.', '.....s', 'wwwwwO'], origin: 'wojak', exclusive: false, kind: 'held' };
   ITEMS.push({ id: 'v2-wojak-cig', label: 'Cigarette', slot: 'hand', tier: 1, origin: 'wojak', exclusive: false, legendary: false, kind: 'held', overlay: true });
   // polish pass 2026-10-14 (v2 only): readable redraws
@@ -361,6 +359,11 @@
   SIG_MAPS.forEach(function (x) { var sp = x[0].split('-')[1], kind = sigKindOf(sp, x[0]), at = x[3] || SIG_AT[kind], map = x[2] || flag('LENNY', 'a', 'A', 'n');
     DEFS[x[0]] = { slot: SIG_KIND_SLOT[kind], tier: 3, label: x[1], at: at, dy: x[4], behind: kind === 'back' && at === 'neck', map: map, origin: sp, exclusive: true, species: sp, kind: kind, sig: true };
     ITEMS.push({ id: x[0], label: x[1], slot: SIG_KIND_SLOT[kind], tier: 3, origin: sp, exclusive: true, legendary: true, kind: kind === 'back' && at === 'banner' ? 'banner' : kind, sig: true, w: 5, overlay: true }); });
+  /* Sig-gear shuffle (2026-10-16, owner approved): Doge's new back ★ = "Much-wow cape" (shiba-orange fur, cream hem, Comic-Sans "wow" in Doge-meme
+   * colours). Listed from ACTIVATE_SIG_SHUFFLE_BLOCK only (item.since; v2-rules keeps it out of every roll pool before the block). */
+  var SIG_SHUFFLE = { doge: { back: 'sig-doge-cape' } };
+  DEFS['sig-doge-cape'] = { slot: 'back', tier: 3, label: 'Much-wow cape', at: 'neck', behind: true, map: ['.OOOOOOOOOOO.', 'OOOOOOOOOOOOO', 'OMOMObbbOKOKO', 'OMMMObObOKKKO', 'OOOOObbbOOOOO', 'OOOOOOOOOOOOO', 'PPPPPPPPPPPPP'], origin: 'doge', exclusive: true, species: 'doge', kind: 'back', sig: true };
+  ITEMS.push({ id: 'sig-doge-cape', label: 'Much-wow cape', slot: 'back', tier: 3, origin: 'doge', exclusive: true, legendary: true, kind: 'back', sig: true, w: 5, overlay: true, since: 'sig-shuffle' });
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -397,5 +400,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });

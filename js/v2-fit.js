@@ -76,7 +76,7 @@
     feather: function (u, t, x, y, p) { return t > 0.3 && (y + Math.abs(Math.round(u * 6))) % 4 === 0 ? p.hi : null; },
     paper: function (u, t, x, y) { return t > 0.15 && t < 0.92 && y % 3 === 0 && (x * 3 + y) % 7 > 1 ? '#a89a78' : null; },
     crease: function (u, t, x, y) { return ((x - y) % 5 === 0 || (x + y) % 7 === 0) && t > 0.1 ? '#cfc3a3' : null; },
-    hood: null, plain: null, royal: function (u, t, x, y) { return t > 0.85 && x % 2 === 0 ? '#ffffff' : null; }, sun: function (u, t, x, y) { return t > 0.4 && t < 0.6 && Math.abs(u) < 0.15 ? '#fff1a8' : null; }
+    wow: function (u, t, x, y) { return t > 0.2 && t < 0.92 && (x * 7 + y * 5) % 13 === 0 ? ['#ff8fd0', '#5fd35f', '#4f9dff'][(x + y) % 3] : null; }, hood: null, plain: null, royal: function (u, t, x, y) { return t > 0.85 && x % 2 === 0 ? '#ffffff' : null; }, sun: function (u, t, x, y) { return t > 0.4 && t < 0.6 && Math.abs(u) < 0.15 ? '#fff1a8' : null; }
   };
   var CAPES = {
     'v2-pepe-cape': { p: pal('#2f9f5f', '#c9a54a'), d: 'lily', flower: true, hem: 'leaf' },          // Lily-pad cape
@@ -98,6 +98,7 @@
     'sig-kevin-cape': { p: pal('#f4ecd8', '#8a5a2b'), d: 'paper', hem: 'point' },       // Stamp cape: perforated paper, brown frame
     'sig-sarutobi-cape': { p: pal('#f4f4f8', '#9fd8ff'), d: 'plain', hem: 'leaf' },     // Somersault cloud: puffy white cloud cape, sky trim, scalloped hem
     'sig-peepo-cape': { p: pal('#f29ac8', '#ffffff'), d: 'plain', hem: 'flat' },        // Pink blanket-fort cape
+    'sig-doge-cape': { p: pal('#c2a633', '#ffffff'), d: 'wow', hem: 'point' },          // Much-wow cape (sig shuffle 2026-10-16): Dogecoin gold, white trim, Comic-Sans colour flecks
     'sig-nakamoto-cape': { p: pal('#1e1e24', '#f7931a'), d: 'paper', hem: 'flat' }      // Genesis-block cloak: black with bitcoin-orange trim
   };
   function isCape(id) { return !!CAPES[id]; }

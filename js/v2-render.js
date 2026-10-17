@@ -117,6 +117,17 @@
       if (a && ((!d.free && !a.isSil(x, y)) || eye[x + ',' + y])) continue; if (/^v2(septum|nose)$/.test(d.at) && sp.mouth && y >= sp.mouth.y) continue; /* redraw-3: nose rings never paint on/below the mouth row */ /* d.free (the cig): may stick out past the face, still never over an eye */
       var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); painted++; } }); }
     return p; }
+  /* mouth-held pieces (Stick, 2026-10-16, owner approved): the map's longest row lies ON the detected mouth row, centred on the mouth (faceSpots: pink
+   * lips, dark mouth line, or the fallback rows). Dodo: the stick is held in the beak corner (beak bottom row, starting at the beak's face-side edge).
+   * Never paints over the eyes; clipped to the canvas. Replaces BonusGear's fixed 'eye line + 4' spot (bonus-gear.js untouched). */
+  function drawMouthHeld(d, img, sp, a) { var m = d.map, w = m[0].length, C = BonusGear.COLORS, eye = {}, main = 0, best = -1;
+    m.forEach(function (row, j) { var n = row.replace(/\./g, '').length; if (n > best) { best = n; main = j; } });
+    [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
+    var my = sp.mouth ? sp.mouth.y : sp.ey + 4, mx = sp.mouth ? sp.mouth.x : Math.round(sp.ex);
+    if (sp.nose && sp.nose.beak) { my = sp.nose.y1; mx = sp.nose.x0 + Math.floor(w / 2) - 1; }
+    var x0 = Math.max(0, Math.min(32 - w, mx - Math.floor(w / 2) + (d.dx || 0))), y0 = my - main;
+    m.forEach(function (row, j) { for (var i = 0; i < row.length; i++) { var k = row[i]; if (k === '.' || !C[k]) continue; var x = x0 + i, y = y0 + j; if (x < 0 || y < 0 || x > 31 || y > 31 || eye[x + ',' + y]) continue;
+      var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); img.data[q + 3] = 255; } }); }
   /* eye anchors (2026-10-16): stages whose expression closes the eyes (Wojak/Chud Mythic, Mumu Adult...) left eye gear (Beam eyes) with no anchor;
    * if the star-eye pass finds no eye pixels, re-render it with the eyes open (render option openEyes) so the piece knows where the eyes are. */
   function eyeRender(eyes, o) { var r = PetCore.render(eyes, o), d = r.data;
@@ -248,8 +259,9 @@
         d[j] = B[i]; d[j + 1] = B[i + 1]; d[j + 2] = B[i + 2]; d[j + 3] = 255; }
       return Object.assign({}, f, { data: d }); }); }
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
-    itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); /* Lenny-only monocle (2026-10-16): never drawn on a non-Lenny pet (kept owned) */
-    if (art && !(V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species]).some(function (r) { return r === 'lenny'; })) itemIds = itemIds.filter(function (id) { return id !== 'lenny-monocle'; }); /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
+    itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); 
+    if (art) { var roots0 = V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species], LK = V.SPECIES_LOCK || { 'lenny-monocle': { sp: 'lenny' } }; /* species-locked pieces (Lenny monocle; KEVIN name tag) never draw on other species */
+      itemIds = itemIds.filter(function (id) { var L = LK[id]; return !L || roots0.indexOf(L.sp) >= 0 || (L.from != null && V.eligBlock && (V.eligBlock() || 0) < L.from); }); } /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
     var go = Object.assign({}, baseGo || {}), ov = (extraOv || []).slice(); /* baseGo: optional gear override that must actually be drawn */
     (itemIds || []).forEach(function (id) { var it = V.GEAR_BY_ID[id]; if (!it) return; if (it.src === 'core' && !CORE_OVERLAY[id]) go[it.coreSlot] = it.id; else { if (CORE_OVERLAY[id] && !BonusGear.DEFS[id]) BonusGear.DEFS[id] = CORE_OVERLAY[id]; ov.push(it.id); } });
     stage = Math.max(0, stage); var F = window.V2Fit;
@@ -281,7 +293,7 @@
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest') F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); }); }
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest') F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
