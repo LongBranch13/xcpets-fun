@@ -117,7 +117,7 @@
       if (a && ((!d.free && !a.isSil(x, y)) || eye[x + ',' + y])) continue; if (/^v2(septum|nose)$/.test(d.at) && sp.mouth && y >= sp.mouth.y) continue; /* redraw-3: nose rings never paint on/below the mouth row */ /* d.free (the cig): may stick out past the face, still never over an eye */
       var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); painted++; } }); }
     return p; }
-  /* mouth-held pieces (Stick, 2026-10-16, owner approved): the map's longest row lies ON the detected mouth row, centred on the mouth (faceSpots: pink
+  /* mouth-held pieces (Fetch Stick, id 'stick', 2026-10-16, owner approved): the map's longest row lies ON the detected mouth row, centred on the mouth (faceSpots: pink
    * lips, dark mouth line, or the fallback rows). Dodo: the stick is held in the beak corner (beak bottom row, starting at the beak's face-side edge).
    * Never paints over the eyes; clipped to the canvas. Replaces BonusGear's fixed 'eye line + 4' spot (bonus-gear.js untouched). */
   function drawMouthHeld(d, img, sp, a) { var m = d.map, w = m[0].length, C = BonusGear.COLORS, eye = {}, main = 0, best = -1;

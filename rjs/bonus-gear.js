@@ -62,7 +62,7 @@
     'smoke-sandals': { slot: 'feet', tier: 2, species: 'sarutobi', label: 'Smoke-bomb sandals', at: 'feetBoth', map: ['s.s.', 'ssss', '.ss.', 'XXXX'] },
     'wow-bandana': { slot: 'band', tier: 1, species: 'doge', label: '"Wow" bandana', at: 'neck', map: ['QQQQQQQQQ', '.QwQQQwQ.', '..QQwQQ..', '...QQQ...', '....Q....'] },
     'moon-rocket': { slot: 'weapon', tier: 3, species: 'doge', label: 'Moon rocket', at: 'handL', map: ['.w.', 'wQw', 'www', 'wbw', 'www', 'QwQ', 'O.O', 'y.y'] },
-    'stick': { slot: 'weapon', tier: 0, species: 'doge', label: 'Stick', at: 'mouth', dx: -1, map: ['X...........', 'lXXlXXlXXlXl', '..........X.'] },
+    'stick': { slot: 'weapon', tier: 0, species: 'doge', label: 'Fetch Stick', at: 'mouth', dx: -1, map: ['X...........', 'lXXlXXlXXlXl', '..........X.'] },
     'lenny-monocle': { slot: 'face', tier: 2, species: 'lenny', label: 'Lenny-face monocle', at: 'monocle' },
     'smug-cap': { slot: 'crown', tier: 1, species: 'lenny', label: 'Smug cap', at: 'head', dy: 2, map: ['..XXXXXX...', '.XXlXXXXXX.', 'XXXXXXXXXXXX'] }
   };
