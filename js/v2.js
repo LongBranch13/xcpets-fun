@@ -94,6 +94,10 @@
     var T = V.WIZARD_THRESHOLDS, nx = wiz && c.wizardStage < 5 ? T[c.wizardStage + 1] : null, rp = V.returnProgress(c.burned);
     $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(c.burned)) + ' <span class="asset">XCPETS</span> burned' +
       (!wiz && R.communityGearText(w) ? '<div class="small muted">Gear: ' + esc(R.communityGearText(w)) + '</div>' : '');
+    /* home-page community readout on play (same numbers as index: V2Render.communityStats) */
+    if (R.communityStats) { var cs = R.communityStats(w, (V2Mock.state().rows || []).length), F = function (n) { return fmt(n); };
+      $('community').insertAdjacentHTML('beforeend', '<div class="sharedwrap cstats"><div class="stats"><div><span>Stage</span><b id="pcStage">' + esc(cs.stage) + '</b></div><div><span>Fed to the community pet</span><b id="pcFed">' + F(cs.fed) + '</b></div><div><span>Next stage</span><b id="pcNext">' + (cs.next != null ? F(cs.next) + ' to ' + esc(cs.nextName) : 'Mythic reached') + '</b></div></div>' +
+        '<div class="progress"><div id="pcProg" style="width:' + cs.pct.toFixed(1) + '%"></div></div><div class="stats"><div><span>Burns</span><b id="pcBurns">' + F(cs.burns) + '</b></div><div><span>Pets hatched</span><b id="pcPets">' + F(cs.pets) + '</b></div></div></div>'); }
     var crOn = V.crollOn(S.tip); $('crollBtn').textContent = 'Community gear roll (' + fmt(V.COSTS.croll) + ')'; $('crollBtn').disabled = !crOn;
     if (!crOn) $('community').insertAdjacentHTML('beforeend', '<div class="small muted" id="crollNote">Community gear roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + '.</div>');
     $('crollBtn').title = crOn ? 'Burn ' + fmt(V.COSTS.croll) + ' XCPETS: Nakamoto gets one random gear item' : 'Community gear roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK);
