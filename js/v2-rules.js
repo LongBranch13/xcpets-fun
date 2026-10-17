@@ -167,9 +167,36 @@
   function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
   function thresholdsFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
   function mealSizesFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
+  /* MYTHIC DISCOUNT (owner request 2026-10-16). From ACTIVATE_MYTHIC_DISCOUNT_BLOCK, once an owner address has a Mythic pet, the Mythic threshold of ALL
+   * that owner's pets drops from 69,069 (or the species' own Mythic threshold, if lower stays lower) to 21,000. Ownership rule: the address qualifies at the
+   * first block (at/after activation) where it owns a living, non-released, non-community pet at stage 5; it then stays qualified (Mythic pets never starve,
+   * pets never change owner, and release is no longer offered). w.mythicOwners[addr] = that block. At qualification every pet of that owner is re-staged
+   * at once; later care crossing 21,000 goes Mythic via the normal stage logic. Care is never changed. Lower stage thresholds are untouched; a discounted
+   * threshold may sit below Elder/Adult, and stageFor() then jumps straight to Mythic. The community pet (Bitcoin Wizard) is excluded. */
+  var ACTIVATE_MYTHIC_DISCOUNT_BLOCK = 971806; // tip 971800 + 6
+  var MYTHIC_DISCOUNT_CARE = 21000;
+  function mythicDiscountOn(b) { return b != null && b >= ACTIVATE_MYTHIC_DISCOUNT_BLOCK; }
+  /** petThresholds(w, p, b): the stage thresholds that apply to pet p at block b (the discounted copy when its owner qualifies). */
+  function petThresholds(w, p, b) { var th = thresholdsFor(p.species, b); if (!p || p.community || !mythicDiscountOn(b) || !w || !w.mythicOwners) return th;
+    var q = w.mythicOwners[p.owner]; if (q == null || q > b || th[5] <= MYTHIC_DISCOUNT_CARE) return th; th = th.slice(); th[5] = MYTHIC_DISCOUNT_CARE; return th; }
+  /** registers p's owner as discount-qualified at block b if p is a living Mythic, and re-stages all that owner's pets. */
+  function noteMythicOwner(w, p, b) { if (!mythicDiscountOn(b) || !p || p.community || p.released || p.dead || p.stage !== 5 || !p.owner) return;
+    w.mythicOwners = w.mythicOwners || {}; if (w.mythicOwners[p.owner] != null) return; w.mythicOwners[p.owner] = b;
+    (w.pets || []).forEach(function (o) { if (o !== p && o.owner === p.owner && !o.community && !o.released) liveAt(w, o, b); }); }
+  /* OVERFLOW-TO-ROLLS (owner approved 2026-10-16, same block): once a pet's owner has the discount, the pet earns floor((care - 21,000) / 1,000) free gear
+   * rolls (so a first Mythic raised to 69,069 earns 48). Earned minus used (w.overflowUsed[petId], kept on the world, not the pet) = left. Any later care
+   * keeps earning at the same rate. Claimed with a pet:of:ID burn (see case 'oroll'). */
+  function overflowEarned(w, p, b) { var th = petThresholds(w, p, b); return th[5] === MYTHIC_DISCOUNT_CARE && p.care > MYTHIC_DISCOUNT_CARE ? Math.floor((p.care - MYTHIC_DISCOUNT_CARE) / 1000) : 0; }
+  function overflowLeft(w, p, b) { return Math.max(0, overflowEarned(w, p, b) - ((w.overflowUsed && w.overflowUsed[p.id]) || 0)); }
+  /** overflowRolls(w, p, pendingTags): what the pet page may offer (after replay, minus this pet's unconfirmed pet:of burns). */
+  function overflowRolls(w, p, pendingTags) { if (!p || w.tip == null || !mythicDiscountOn(w.tip)) return { on: false, left: 0, pending: 0 };
+    var pend = (pendingTags || []).filter(function (t) { return String(t).toUpperCase() === 'PET:OF:' + p.id; }).length, left = Math.max(0, overflowLeft(w, p, w.tip) - pend);
+    return { on: left > 0 && !p.dead && !p.released, left: left, pending: pend, earned: overflowEarned(w, p, w.tip) }; }
+  function overflowRollPlan(petId) { return { tag: 'pet:of:' + petId, amount: COSTS.froll, petId: petId, label: 'Overflow roll #' + petId }; }
+  function mdSweep(w, b) { if (w._mdSwept || !mythicDiscountOn(b)) return; w._mdSwept = true; (w.pets || []).forEach(function (p) { noteMythicOwner(w, p, b); }); }
   function stageFor(care, th) { var s = 0; for (var k = 1; k < 6; k++) if (care >= th[k]) s = k; return s; }
-  function mealFor(care, species, b) { var th = thresholdsFor(species, b), ms = mealSizesFor(species, b); if (care >= th[5]) return 0; if (care < th[1]) return th[1] - care;
-    var k = Math.min(4, Math.max(1, stageFor(care, th))); return Math.min(ms[k], th[k + 1] - care); }
+  function mealFor(care, species, b, thOverride) { var th = thOverride || thresholdsFor(species, b), ms = mealSizesFor(species, b); if (care >= th[5]) return 0; if (care < th[1]) return th[1] - care;
+    var k = Math.min(4, Math.max(1, stageFor(care, th))); return Math.min(ms[k], Math.min(th[k + 1], th[5]) - care); }
   function mealsToMythic(species) { var c = THRESHOLDS[1], n = 0; while (mealFor(c, species) > 0) { c += mealFor(c, species); n++; } return n; }
   function wizardStage(burned) { return stageFor(burned, WIZARD_THRESHOLDS); }
 
@@ -301,6 +328,7 @@
     if (a === 'FEED' && p.length === 3 && idOk(p[2])) return { action: 'feed', petId: n(2) };
     if (a === 'ROLL' && p.length === 3 && idOk(p[2])) return { action: 'roll', petId: n(2) };
     if (a === 'FR' && p.length === 3 && idOk(p[2])) return { action: 'froll', petId: n(2) };
+    if (a === 'OF' && p.length === 3 && idOk(p[2])) return { action: 'oroll', petId: n(2) }; /* overflow roll (Mythic discount); inert before ACTIVATE_MYTHIC_DISCOUNT_BLOCK */
     if (a === 'FIGHT' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'fight', a: n(2), b: n(3) };
     if (a === 'ACCEPT' && p.length === 3 && idOk(p[2])) return { action: 'accept', fightId: n(2) };
     if (a === 'RUMBLE' && p.length === 3 && idOk(p[2])) return { action: 'rumble', petId: n(2) };
@@ -374,7 +402,7 @@
     function L(e, kind, msg, extra) { var o = Object.assign({ block: e.block_index, tx: e.tx_hash, kind: kind, msg: msg }, extra || {}); w.log.push(o); return o; }
     var resolvedWeeks = {};
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
-    w.freeRolls = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
+    w.freeRolls = {}; w.overflowUsed = {}; w.mythicOwners = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
       grantFounders(w, e.b); relabelTiers(w, e.b); repairGear(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
@@ -399,12 +427,12 @@
     return w;
   }
   function liveAt(w, p, b) { // refresh age/death/neglect at block b
-    var last = p.lastFed != null ? p.lastFed : p.hatchBlock, th = thresholdsFor(p.species, b); if (p.clockFrom != null) last = Math.max(last, p.clockFrom); // live pets: live death-clock anchor
+    var last = p.lastFed != null ? p.lastFed : p.hatchBlock, th = petThresholds(w, p, b); if (p.clockFrom != null) last = Math.max(last, p.clockFrom); // live pets: live death-clock anchor
     p.mythicCare = p.care >= th[5] || !!p.ascended;
     p.deathBlock = p.mythicCare ? null : (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY;
     p.dead = !p.released && p.deathBlock != null && b >= p.deathBlock;
     p.neglected = !p.mythicCare && day(b) - day(last) >= NEGLECTED_AFTER_DAYS;
-    p.stage = p.ascended ? 5 : stageFor(p.care, th); p.stageName = STAGE_NAMES[p.stage];
+    p.stage = p.ascended ? 5 : stageFor(p.care, th); p.stageName = STAGE_NAMES[p.stage]; if (p.stage === 5) noteMythicOwner(w, p, b);
     p.ageDays = day(b) - day(p.hatchBlock); p.fedDays = Object.keys(p.feedDays).length;
     p.capacity = capacity(p.ageDays, p.fedDays); p.openSlots = V2_SLOTS.slice(0, p.capacity);
     if (p.liveSlots) { p.liveSlots.forEach(function (sl) { if (p.openSlots.indexOf(sl) < 0) p.openSlots.push(sl); }); p.openSlots.sort(function (a, b) { return V2_SLOTS.indexOf(a) - V2_SLOTS.indexOf(b); }); p.capacity = p.openSlots.length; } // slots = max(live, v2)
@@ -412,7 +440,7 @@
   function finish(w, p, tip) {
     liveAt(w, p, tip);
     if (p.dead) Object.keys(w.items).forEach(function (k) { if (w.items[k].on === p.id) w.items[k].on = null; });
-    p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species, tip); p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
+    p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species, tip, petThresholds(w, p, tip)); p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
     p.blackEye = p.blackEyeUntil != null && tip < p.blackEyeUntil; p.crowned = p.crownUntil != null && tip < p.crownUntil;
   }
   // ---------------------------------------------------------------- live reader + cutoff import (2026-10-14)
@@ -478,7 +506,7 @@
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
   function handle(w, r, t, amt, bh, L) {
-    var b = r.block_index, src = r.source; w._b = b; ELIG_B = b; monoSweep(w, b); shuffleSweep(w, b); gaSweep(w, b);
+    var b = r.block_index, src = r.source; w._b = b; ELIG_B = b; monoSweep(w, b); shuffleSweep(w, b); gaSweep(w, b); mdSweep(w, b);
     function pet(id) { var p = w.byId[id]; if (p) liveAt(w, p, b); return p; }
     /* roll token (from ACTIVATE_TOKENS_BLOCK): kind 'stageUp' (incl. hatching) or 'meal'; a token becomes one gear item at once, logged on the pet */
     function token(p, kind) { if (b < ACTIVATE_TOKENS_BLOCK || !bh || !p) return;
@@ -508,15 +536,15 @@
         return L(r, 'cfeed', 'fed ' + COMMUNITY_PET + ' ' + amt);
       }
       case 'feed': {
-        var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species, b) === 0 ? 'fully fed' : amt < mealFor(q.care, q.species, b) ? 'below meal ' + mealFor(q.care, q.species, b) : null;
+        var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species, b, petThresholds(w, q, b)) === 0 ? 'fully fed' : amt < mealFor(q.care, q.species, b, petThresholds(w, q, b)) ? 'below meal ' + mealFor(q.care, q.species, b, petThresholds(w, q, b)) : null;
         if (why) return L(r, 'rejected', why);
-        var qs = q.stage; q.care += mealFor(q.care, q.species, b); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
+        var qs = q.stage; q.care += mealFor(q.care, q.species, b, petThresholds(w, q, b)); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
         var fl = L(r, 'feed', 'fed #' + q.id + ' (care ' + q.care + ')', { petId: q.id }); token(q, q.stage > qs ? 'stageUp' : 'meal'); return fl;
       }
       case 'feedm': {  /* pets in ascending id order, each takes its own meal from the burn; a pet that can't be fed (or that the rest of the burn can't pay for) is skipped */
         if (b < ACTIVATE_FEEDM_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var left = amt, fed = [], skip = [], up = {};
-        t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species, b) : 0,
+        t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species, b, petThresholds(w, z, b)) : 0,
             no = !z ? 'no such pet' : z.released ? 'released' : z.owner !== src ? 'owner only' : z.dead ? 'dead (Pet Cemetery)' : z.feedDays[day(b)] ? 'already fed this day' : m === 0 ? 'fully fed' : left + 1e-9 < m ? 'burn too small for meal ' + m : null;
           if (no) { skip.push('#' + id + ' ' + no); return; }
           var zs = z.stage; left -= m; z.care += m; z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); up[z.id] = z.stage > zs; fed.push(z.id); });
@@ -602,6 +630,15 @@
         return L(r, 'croll', 'community roll: Nakamoto got ' + ci.label + ' (' + slotLabel(ci.slot) + ')', { item: ci.id, slot: ci.slot });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
+      case 'oroll': {  /* OVERFLOW ROLL (Mythic discount): pet:of:ID, any amount (1 sat of XCPETS is enough), signed by the owner. Spends one of the pet's overflow rolls
+         * (floor((care - 21,000) / 1,000) once the owner's discount applies, minus rolls used). Same gear roll as pet:roll, seeded from block hash + tx id with its own salt. */
+        if (!mythicDiscountOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        var og = pet(t.petId), ow = !og ? 'no such pet' : og.community ? 'community pet' : og.released ? 'released' : og.owner !== src ? 'owner only' : og.dead ? 'dead' : !(overflowLeft(w, og, b) > 0) ? 'no overflow rolls left' : !bh ? 'block hash pending' : null;
+        if (ow) return L(r, 'rejected', ow);
+        var oh = sha(bh + r.tx_hash + 'XCPETS:v2:overflow-roll'), osl = og.openSlots[parseInt(oh.slice(16, 24), 16) % og.openSlots.length], oit = pickItem(oh, osl, og.species, og.tier, dedupFor(w, b, og.owner));
+        w.overflowUsed[og.id] = (w.overflowUsed[og.id] || 0) + 1; var oni = newItem(w, oit, og.owner, 'oroll'); oni.rolledOn = og.id; wear(w, og, oni);
+        return L(r, 'roll', '#' + og.id + ' overflow roll: ' + oit.label + ' (' + slotLabel(osl) + ') · ' + overflowLeft(w, og, b) + ' overflow rolls left', { petId: og.id, gid: oni.gid, free: true });
+      }
       default: return L(r, 'plain', 'plain burn (community food)');
     }
   }
@@ -990,5 +1027,5 @@
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
-    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_GEAR_AUDIT_BLOCK: ACTIVATE_GEAR_AUDIT_BLOCK, gaOn: gaOn, ACTIVATE_STAR_BATCH_BLOCK: ACTIVATE_STAR_BATCH_BLOCK, starBatchOn: starBatchOn, lockHint: function (id) { var L = SPECIES_LOCK[id]; return L ? '\uD83D\uDD12 ' + speciesLabel(L.sp) + '-only' : ''; }, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
+    hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_GEAR_AUDIT_BLOCK: ACTIVATE_GEAR_AUDIT_BLOCK, gaOn: gaOn, ACTIVATE_STAR_BATCH_BLOCK: ACTIVATE_STAR_BATCH_BLOCK, ACTIVATE_MYTHIC_DISCOUNT_BLOCK: ACTIVATE_MYTHIC_DISCOUNT_BLOCK, MYTHIC_DISCOUNT_CARE: MYTHIC_DISCOUNT_CARE, mythicDiscountOn: mythicDiscountOn, petThresholds: petThresholds, overflowRolls: overflowRolls, overflowRollPlan: overflowRollPlan, overflowEarned: overflowEarned, starBatchOn: starBatchOn, lockHint: function (id) { var L = SPECIES_LOCK[id]; return L ? '\uD83D\uDD12 ' + speciesLabel(L.sp) + '-only' : ''; }, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
 });
