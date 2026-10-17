@@ -76,7 +76,11 @@
     feather: function (u, t, x, y, p) { return t > 0.3 && (y + Math.abs(Math.round(u * 6))) % 4 === 0 ? p.hi : null; },
     paper: function (u, t, x, y) { return t > 0.15 && t < 0.92 && y % 3 === 0 && (x * 3 + y) % 7 > 1 ? '#a89a78' : null; },
     crease: function (u, t, x, y) { return ((x - y) % 5 === 0 || (x + y) % 7 === 0) && t > 0.1 ? '#cfc3a3' : null; },
-    wow: function (u, t, x, y) { return t > 0.2 && t < 0.92 && (x * 7 + y * 5) % 13 === 0 ? ['#ff8fd0', '#5fd35f', '#4f9dff'][(x + y) % 3] : null; }, hood: null, plain: null, royal: function (u, t, x, y) { return t > 0.85 && x % 2 === 0 ? '#ffffff' : null; }, sun: function (u, t, x, y) { return t > 0.4 && t < 0.6 && Math.abs(u) < 0.15 ? '#fff1a8' : null; }
+    wow: function (u, t, x, y) { return t > 0.2 && t < 0.92 && (x * 7 + y * 5) % 13 === 0 ? ['#ff8fd0', '#5fd35f', '#4f9dff'][(x + y) % 3] : null; }, fur: function (u, t, x, y, p) { return t > 0.1 && (x * 5 + y * 3) % 7 === 0 ? p.hi : (x * 3 + y * 7) % 11 === 0 ? p.dark : null; }, /* star batch 2026-10-16: bear-hide tufts */
+    blanket: function (u, t, x, y) { var b = Math.floor(t * 7); return b === 2 || b === 4 ? '#4f9dff' : b === 3 ? '#ffffff' : null; }, /* saddle blanket: woven blue/white bands */
+    net: function (u, t, x, y) { if (t > 0.88 && x % 4 === 1) return '#ff7a1a'; return t > 0.08 && ((x + y) % 3 === 0 || (x - y + 30) % 3 === 0) ? '#d8c89a' : null; }, /* fishing net: rope mesh + orange floats */
+    airmail: function (u, t, x, y) { return t > 0.82 ? ((x + y) % 4 < 2 ? '#da291c' : '#2e5fbf') : null; }, /* airmail chevron hem */
+    hood: null, plain: null, royal: function (u, t, x, y) { return t > 0.85 && x % 2 === 0 ? '#ffffff' : null; }, sun: function (u, t, x, y) { return t > 0.4 && t < 0.6 && Math.abs(u) < 0.15 ? '#fff1a8' : null; }
   };
   var CAPES = {
     'v2-pepe-cape': { p: pal('#2f9f5f', '#c9a54a'), d: 'lily', flower: true, hem: 'leaf' },          // Lily-pad cape
@@ -99,6 +103,11 @@
     'sig-sarutobi-cape': { p: pal('#f4f4f8', '#9fd8ff'), d: 'plain', hem: 'leaf' },     // Somersault cloud: puffy white cloud cape, sky trim, scalloped hem
     'sig-peepo-cape': { p: pal('#f29ac8', '#ffffff'), d: 'plain', hem: 'flat' },        // Pink blanket-fort cape
     'sig-doge-cape': { p: pal('#c2a633', '#ffffff'), d: 'wow', hem: 'point' },          // Much-wow cape (sig shuffle 2026-10-16): Dogecoin gold, white trim, Comic-Sans colour flecks
+    // star gear batch 2026-10-16 (open companion pieces, V2Gear.STAR_BATCH): fitted so they read on every species
+    'v2-bobo-hide': { p: pal('#6b4423', '#c8955a'), d: 'fur', hem: 'torn' },             // Bear-hide cloak: brown fur, tufts, ragged hem
+    'v2-mumu-blanket': { p: pal('#e07a2a', '#ffffff'), d: 'blanket', hem: 'flat', short: true }, // Saddle blanket: orange wool, blue/white woven bands
+    'v2-snibby-net': { p: pal('#2c4a5a', '#d8c89a'), d: 'net', hem: 'torn' },           // Fishing-net cape: rope mesh over sea blue, orange floats
+    'v2-kevin-airmail': { p: pal('#dcecfb', '#2e5fbf'), d: 'airmail', hem: 'flat' },     // Airmail cape: pale-blue envelope paper, red/blue chevron hem
     'sig-nakamoto-cape': { p: pal('#1e1e24', '#f7931a'), d: 'paper', hem: 'flat' }      // Genesis-block cloak: black with bitcoin-orange trim
   };
   function isCape(id) { return !!CAPES[id]; }

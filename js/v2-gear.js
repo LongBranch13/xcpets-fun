@@ -368,6 +368,28 @@
    * ACTIVATE_GEAR_AUDIT_BLOCK (v2-rules GA). Owned chain monocles are kept and stay wearable by Lenny; they just leave the roll pools. */
   DEFS['sig-lenny-teacup'] = { slot: 'hand', tier: 3, label: 'Smug teacup', at: 'handR', map: ['..s.s..', '.s.s...', 'wwwwww.', 'wgwgwwg', 'wwwwwwg', '.wwww..', 'ggggggg'], origin: 'lenny', exclusive: true, species: 'lenny', kind: 'held', sig: true };
   ITEMS.push({ id: 'sig-lenny-teacup', label: 'Smug teacup', slot: 'hand', tier: 3, origin: 'lenny', exclusive: true, legendary: true, kind: 'held', sig: true, w: 5, overlay: true, since: 'gear-audit' });
+  /* STAR GEAR BATCH (2026-10-16, owner request): 12 OPEN (non-★) companion pieces, one per species except Nakamoto, riffing on each species' theme
+   * without copying its ★ pieces. Mostly fill slots where the species had no open piece. Per-species ★ counts are unchanged (7 each, 6 Dodo/Nakamoto).
+   * Listed from ACTIVATE_STAR_BATCH_BLOCK only (item.since 'star-batch'; v2-rules keeps them out of every roll pool before the block).
+   * Appended at the END of ITEMS so every earlier pool keeps its order. [id, label, slot, tier, origin, anchor, dy, map] (literal BonusGear colour keys). */
+  var STAR_BATCH = [
+    ['v2-pepe-buckethat', 'Pond bucket hat', 'head', 1, 'pepe', 'head', 3, ['...mmmmm...', '..mMMMMMm..', '..mMMMKHm..', '..mmmmmmm..', '.mMMMMMMMm.', 'mMMMMMMMMMm']],
+    ['v2-wojak-flannel', 'Doomer flannel', 'body', 1, 'wojak', 'chest', -1, ['ZR...RZ', 'RZRwRZR', 'ZRZwZRZ', 'RZRwRZR', 'ZRZwZRZ', '.RZwZR.']],
+    ['v2-chud-bluelight', 'Blue-light glasses', 'face', 1, 'chud', 'eyes', null, ['nnnn.nnnn', 'nbcn.nbcn', 'nnnnnnnnn']],
+    ['v2-bobo-hide', 'Bear-hide cloak', 'back', 2, 'bobo', 'neck', null, ['.XXXXXXXXXXX.', 'XLLLLLLLLLLLX', 'XLlLLLLLLLlLX', 'XLLLLLLLLLLLX', 'lXlXlXlXlXlXl']],
+    ['v2-mumu-blanket', 'Saddle blanket', 'back', 1, 'mumu', 'neck', null, ['.EEEEEEEEEEE.', 'EbbbbbbbbbbbE', 'EwwwwwwwwwwwE', 'EbbbbbbbbbbbE', 'w.w.w.w.w.w.w']],
+    ['v2-snibby-net', 'Fishing-net cape', 'back', 1, 'snibby', 'neck', null, ['dddddddddd', 'jdjdjdjdjd', 'djdjdjdjdj', 'jdjdjdjdjd', '.O...O...O']],
+    ['v2-dodo-newsboy', 'Storm newsboy cap', 'head', 1, 'dodo', 'head', 3, ['..LLLLLLL..', '.LlLlLlLlL.', 'LlLlLlLlLlL', 'LLLLLLLLLLL', '.......LLLL']],
+    ['v2-kevin-airmail', 'Airmail cape', 'back', 1, 'kevin', 'neck', null, ['WWWWWWWWWW', 'WWWWWWWWWW', 'WWWWWWWWWW', 'RbRbRbRbRb']],
+    ['v2-doge-bowl', 'Dog-bowl helmet', 'head', 1, 'doge', 'head', 3, ['...RRRRR...', '..RpRRRrR..', '.RpRRRRRrR.', 'wwwwwwwwwww', 'sssssssssss']],
+    ['v2-sarutobi-scroll', 'Scroll sash', 'body', 1, 'sarutobi', 'chest', -1, ['PP....X', 'PwP..X.', '.PTPX..', '..XTP..', '.X..TP.', 'X....PP']],
+    ['v2-lenny-smock', 'Paint-splat smock', 'body', 1, 'lenny', 'chest', -1, ['ww...ww', 'wwwwwww', 'wRwwbww', 'wwwMwww', 'wbwwwRw', '.wwwww.']],
+    ['v2-peepo-overalls', 'Denim overalls', 'body', 1, 'peepo', 'chest', -1, ['C.....C', 'C.....C', 'CCCCCCC', 'CCgCgCC', 'CCCCCCC', '.CC.CC.']]
+  ];
+  var STAR_KIND = { head: 'hat', back: 'cape', body: 'body', face: 'face' };
+  STAR_BATCH.forEach(function (x) { var kind = STAR_KIND[x[2]];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[5], dy: x[6] == null ? undefined : x[6], behind: x[5] === 'neck', map: x[7], origin: x[4], exclusive: false, kind: kind };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: x[4], exclusive: false, legendary: false, kind: kind, overlay: true, since: 'star-batch' }); });
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -385,7 +407,7 @@
     'v2-pepe-face': { s: 'glasses', f: 'n', l: ['n', 'Z'] }, 'v2-lenny-face': { s: 'glasses', f: 'Z', l: [null, null], brows: 'X' } /* brows ride 1 row above the frames, eye-anchored per frame (bob with the head) */,
     'sig-wojak-face': { s: 'bags', f: 'd' }, 'sig-doge-face': { s: 'sideeye', f: 'n' }, 'sig-pepe-face': { s: 'brows', f: 'm' }, 'v2-peepo-face': { s: 'blush' }, 'v2-brow-piercing': { s: 'piercing' }, 'v2-nakamoto-face': { s: 'laser' }, 'v2-wojak-face': { s: 'tear' }, 'v2-sarutobi-face': { s: 'ninja', f: 'Z', l: ['j'] },
     'v2-snibby-face': { s: 'glasses', f: 'D', l: ['C', 'C'] }, 'v2-kevin-face': { s: 'visor', f: 'Z', l: ['M', 'M'] }, 'sig-kevin-face': { s: 'visor', f: 'D', l: ['M', 'M'] },
-    'sig-sarutobi-face': { s: 'mask', f: 'Q', l: ['g', 'g'] }, 'lenny-monocle': { s: 'monocle', f: 'g' }, 'sig-lenny-held': { s: 'monocle', f: 'G', side: 'L' } /* Monocle on a chain: worn ON his right eye (viewer-left), dark-gold ring (light gold vanished on Lenny's yellow skin), chain down the cheek (2026-10-14, Jake) */ };
+    'sig-sarutobi-face': { s: 'mask', f: 'Q', l: ['g', 'g'] }, 'v2-chud-bluelight': { s: 'glasses', f: 'n', l: ['c', 'b'] } /* star batch 2026-10-16: Blue-light glasses, traced from each eye */, 'lenny-monocle': { s: 'monocle', f: 'g' }, 'sig-lenny-held': { s: 'monocle', f: 'G', side: 'L' } /* Monocle on a chain: worn ON his right eye (viewer-left), dark-gold ring (light gold vanished on Lenny's yellow skin), chain down the cheek (2026-10-14, Jake) */ };
   var REMOVED = ['v2-pepe-hat', 'v2-doge-held', 'v2-snibby-weapon', 'v2-chud-held', 'v2-snibby-held', 'v2-lenny-held', 'v2-wojak-body',
     'v2-chud-cape', 'v2-bobo-cape', 'v2-mumu-cape', 'v2-snibby-cape', 'v2-kevin-cape', 'v2-doge-cape', 'v2-sarutobi-cape', 'v2-lenny-cape', 'v2-peepo-cape', 'v2-doge-face', 'v2-chud-face', 'clone-mirror', 'xcp-coin', 'v2-peepo-body', 'pink-sweater']; // clone-mirror lives in bonus-gear.js (shared with live): excluded in v2 only, via V2Rules
   // Front-page kits (cast GIF + hero grid, 2026-10-14): varied ★ + regular pieces, one crown in total, exclusivity-checked by the users
@@ -404,5 +426,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
