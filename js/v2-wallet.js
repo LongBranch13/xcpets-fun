@@ -49,7 +49,9 @@
   /* hotfix-compose (2026-10-15): exclusions are only for OUR still-unconfirmed burns. Drop an entry once its burn is confirmed (tracker), after 3 h,
    * and keep at most MAX_EX so the compose URL stays short; chainClear() wipes them after a failed compose. */
   var MAX_EX = 30, CHAIN_CAP = 24;
-  function confirmedTx() { var o = {}; try { tracker.list().forEach(function (x) { if (x.status === 'confirmed') o[x.txid] = 1; }); } catch (e) { } return o; }
+  function confirmedTx() { var o = {}; try { tracker.list().forEach(function (x) { if (x.status === 'confirmed') o[x.txid] = 1; }); } catch (e) { }
+    /* fix (2026-10-17): the tracker is never polled, so also treat any burn already in the confirmed chain rows as confirmed (the pending count used to clear only after 3 h) */
+    try { ((window.V2Mock && V2Mock.state().rows) || []).forEach(function (r) { if (r && r.tx_hash) o[r.tx_hash] = 1; }); } catch (e) { } return o; }
   function live() { var t = Date.now(), c = confirmedTx(); spent = spent.filter(function (x) { return t - x.at < SPENT_MS && !(x.tx && c[x.tx]); }).slice(-MAX_EX);
     if (lastChange && (t - lastChange.at >= SPENT_MS || c[lastChange.u.split(':')[0]])) lastChange = null; return spent.map(function (x) { return x.u; }); }
   function chainClear() { spent = []; lastChange = null; saveSpent(); }
