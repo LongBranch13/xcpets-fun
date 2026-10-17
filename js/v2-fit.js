@@ -35,7 +35,7 @@
     var l = 99, rr = -1; out.forEach(function (q) { l = Math.min(l, q.l); rr = Math.max(rr, q.r); });
     return { top: out.length ? out[0].y : 0, bot: out.length ? out[out.length - 1].y : -1, rows: out, l: l, r: rr };
   }
-  function free(a, x, y) { return a.isSil(x, y) && !(a.isGear && a.isGear(x, y)); }
+  function free(a, x, y) { return a.isSil(x, y) && !(a.isGear && a.isGear(x, y)) && !(a.isFaceSkin && a.isFaceSkin(x, y)); }
   /** outfit(img, a, map, COLORS): scale the map into the torso box, clip to the body, keep base-game gear (weapon, band) in front. */
   function outfit(img, a, map, COLORS) {
     var T = torso(a); if (!T.rows.length) return img; var W = T.r - T.l + 1, Hh = T.rows.length, mh = map.length, mw = map[0].length;

@@ -68,7 +68,11 @@
   function fitAnchors(id, a) { var d = BonusGear.DEFS[id]; if (!d || !d.map || !d.map.length || !a) return a; var h = d.map.length;
     if (d.at === 'handR' || d.at === 'handL') { var r0 = a.row, row = function (r) { var y = r0(r); return r === a.gear.armor[0] ? Math.min(y, 32 - h + Math.floor(h / 2) - 2) : y; };
       // the hand sits at the body's edge on the rows the piece covers (not the widest point of the sprite, e.g. Dodo's beak), so it never floats in the air
-      var hy = row(a.gear.armor[0]) + 2, y0 = hy - Math.floor(h / 2), mx = -1, mn = 99, x, y;
+      var hy = row(a.gear.armor[0]) + 2, y0, mx = -1, mn = 99, x, y;
+      /* gear-fit 2026-10-16 (owner approved): Nakamoto's bust-style body (Hatchling-Adult only) ends above the armour row, so low held pieces hung below it;
+       * keep the held piece's bottom on the body's lowest rows. */
+      if (a.spId === 'nakamoto' && a.stage >= 1 && a.stage <= 3 && hy + Math.ceil(h / 2) > a.maxY) { var hy2 = Math.max(a.minY + h, a.maxY - Math.ceil(h / 2)); row = (function (r1, d1) { return function (r) { return r === a.gear.armor[0] ? r1(r) - d1 : r1(r); }; })(row, hy - hy2); hy = hy2; }
+      y0 = hy - Math.floor(h / 2);
       for (y = Math.max(0, y0); y < Math.min(a.maxY - 1, y0 + h); y++) for (x = 0; x < 32; x++) if (a.isSil(x, y)) { mx = Math.max(mx, x); mn = Math.min(mn, x); }
       var v = Object.assign({}, a, { row: row }); if (mx >= 0 && d.at === 'handR' && mx < a.maxX - 1) v.maxX = mx + 1; if (mn < 99 && d.at === 'handL' && mn > a.minX + 1) v.minX = mn - 1; return v; }
     if (d.at === 'tallR') { var tm = -1, ty; for (ty = 28 - h; ty < Math.min(a.maxY - 1, 28); ty++) for (var tx = 0; tx < 32; tx++) if (a.isSil(tx, ty)) tm = Math.max(tm, tx);
@@ -104,12 +108,20 @@
     var x0 = m.x, x1 = m.x; if (!isM(m.x)) return null; while (isM(x0 - 1) && a.isSil(x0 - 2, y)) x0--; while (isM(x1 + 1) && a.isSil(x1 + 2, y)) x1++; return x1 - x0 >= 2 ? [x0, x1] : null; }
   function drawFace(id, img, sp, a) { var d = typeof id === 'string' ? BonusGear.DEFS[id] : id;
     if (id === 'v2-gold-grill' && a) { var ms = mouthSpan(img, sp, a); if (ms) { var tw = ms[1] - ms[0] + 1, t0 = '', t1 = ''; for (var ti = 0; ti < tw; ti++) { t0 += ti % 2 ? 'G' : 'g'; t1 += 'g'; } d = Object.assign({}, d, { map: [t0, t1] }); sp = Object.assign({}, sp, { mouth: Object.assign({}, sp.mouth, { x: ms[0] + Math.floor(tw / 2) }) }); } }
-    var p = facePos(d.at, d.map, sp), C = BonusGear.COLORS, eye = {};
+    var p = facePos(d.at, d.map, sp), C = BonusGear.COLORS, eye = {}, painted = 0;
     if (a) [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
+    /* stud fallback (2026-10-16): if the stud would paint nothing (e.g. Nakamoto Juvenile: no nose, the spot lands on his glasses/eye row),
+     * put it one row under the eye line, beside the centre of the mouth (the nose spot). Only used when the normal spot paints nothing. */
+    for (var pass = 0; pass < 2; pass++) { if (pass === 1) { if (painted || d.at !== 'v2stud' || !sp.mouth) break; p = [Math.round(sp.mouth.x) + 1, Math.max((sp.ey || 0) + 1, sp.mouth.y - 2)]; }
     d.map.forEach(function (row, j) { for (var i = 0; i < row.length; i++) { var k = row[i]; if (k === '.') continue; var x = p[0] + i, y = p[1] + j; if (x < 0 || y < 0 || x > 31 || y > 31) continue;
       if (a && ((!d.free && !a.isSil(x, y)) || eye[x + ',' + y])) continue; if (/^v2(septum|nose)$/.test(d.at) && sp.mouth && y >= sp.mouth.y) continue; /* redraw-3: nose rings never paint on/below the mouth row */ /* d.free (the cig): may stick out past the face, still never over an eye */
-      var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); } });
+      var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); painted++; } }); }
     return p; }
+  /* eye anchors (2026-10-16): stages whose expression closes the eyes (Wojak/Chud Mythic, Mumu Adult...) left eye gear (Beam eyes) with no anchor;
+   * if the star-eye pass finds no eye pixels, re-render it with the eyes open (render option openEyes) so the piece knows where the eyes are. */
+  function eyeRender(eyes, o) { var r = PetCore.render(eyes, o), d = r.data;
+    for (var i = 0; i < d.length; i += 4) if (d[i] === 255 && (d[i + 1] === 210 && d[i + 2] === 63 || d[i + 1] === 241 && d[i + 2] === 168)) return r;
+    return PetCore.render(eyes, Object.assign({}, o, { openEyes: true })); }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -236,7 +248,8 @@
         d[j] = B[i]; d[j + 1] = B[i + 1]; d[j + 2] = B[i + 2]; d[j + 3] = 255; }
       return Object.assign({}, f, { data: d }); }); }
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
-    itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
+    itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); /* Lenny-only monocle (2026-10-16): never drawn on a non-Lenny pet (kept owned) */
+    if (art && !(V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species]).some(function (r) { return r === 'lenny'; })) itemIds = itemIds.filter(function (id) { return id !== 'lenny-monocle'; }); /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
     var go = Object.assign({}, baseGo || {}), ov = (extraOv || []).slice(); /* baseGo: optional gear override that must actually be drawn */
     (itemIds || []).forEach(function (id) { var it = V.GEAR_BY_ID[id]; if (!it) return; if (it.src === 'core' && !CORE_OVERLAY[id]) go[it.coreSlot] = it.id; else { if (CORE_OVERLAY[id] && !BonusGear.DEFS[id]) BonusGear.DEFS[id] = CORE_OVERLAY[id]; ov.push(it.id); } });
     stage = Math.max(0, stage); var F = window.V2Fit;
@@ -250,13 +263,15 @@
       var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255];
       var order = ['back', 'body', 'feet', 'hand', 'head', 'face']; // z-order: cape (behind) < outfit/armour < feet < held < headwear < face
       ov.sort(function (a, b) { return order.indexOf((V.GEAR_BY_ID[a] || BonusGear.DEFS[a] || {}).slot) - order.indexOf((V.GEAR_BY_ID[b] || BonusGear.DEFS[b] || {}).slot); });
-      var minYTop = Math.min.apply(null, fr.map(function (_, f) { var o = { stage: stage, frame: f, gearOverride: {} }; return BonusGear.anchors(PetCore.render(key, o), PetCore.render(eyes, o), sp).minY; }));
-      fr.forEach(function (img, f) { var o = { stage: stage, frame: f, gearOverride: {} }, bare = PetCore.render(key, o); var a = BonusGear.anchors(bare, PetCore.render(eyes, o), sp); a.minYTop = minYTop; a.spId = art.species;
+      var minYTop = Math.min.apply(null, fr.map(function (_, f) { var o = { stage: stage, frame: f, gearOverride: {} }; return BonusGear.anchors(PetCore.render(key, o), eyeRender(eyes, o), sp).minY; }));
+      fr.forEach(function (img, f) { var o = { stage: stage, frame: f, gearOverride: {} }, bare = PetCore.render(key, o); var a = BonusGear.anchors(bare, eyeRender(eyes, o), sp); a.minYTop = minYTop; a.spId = art.species; a.stage = stage;
         var geared = PetCore.render(key, { stage: stage, frame: f, gearOverride: go, gearCap: cap }), gd = geared.data, bd = bare.data;
         a.isFg = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var i = (y * 32 + x) * 4; return a.isSil(x, y) || Math.abs(gd[i] - KB[0]) + Math.abs(gd[i + 1] - KB[1]) + Math.abs(gd[i + 2] - KB[2]) > 40; };
         var arm = PetCore.render(key, { stage: stage, frame: f, gearOverride: { armor: 'gold' } }).data; // where pet-core puts armour (face-safe torso seed)
         a.armorAt = function (x, y) { var i = (y * 32 + x) * 4; return arm[i] !== bd[i] || arm[i + 1] !== bd[i + 1] || arm[i + 2] !== bd[i + 2]; };
         a.bareAt = function (x, y) { var i = (y * 32 + x) * 4; return bd[i] + ',' + bd[i + 1] + ',' + bd[i + 2]; };
+        var fpr = PetCore.render(key, { stage: stage, frame: f, gearOverride: {}, faceProbe: true }).data; /* marked face skin (Sarutobi small maps, 2026-10-16): armour/outfits never cover it */
+        a.isFaceSkin = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var i = (y * 32 + x) * 4; return fpr[i] === 255 && fpr[i + 1] === 0 && fpr[i + 2] === 254; };
         a.isGear = function (x, y) { var i = (y * 32 + x) * 4; return gd[i] !== bd[i] || gd[i + 1] !== bd[i + 1] || gd[i + 2] !== bd[i + 2]; };
         if (fitCape) F.cape(img, a, fitCape, f);
         if (fitArmor) F.armor(img, a, fitArmor);
@@ -343,7 +358,7 @@
     if (it.src === 'core') { var g2 = Object.assign({}, go); g2[it.coreSlot] = id; with_ = PetCore.render(art, { stage: 5, frame: 0, gearOverride: g2, gearCap: 5 }); }
     else { with_ = { data: new Uint8ClampedArray(base.data) }; var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { bgColor: '#ff00ff' }), eyes = Object.assign({}, key, { eyes: 'star' }), o = { stage: 5, frame: 0, gearOverride: go, gearCap: 5 };
-      try { var kb = PetCore.render(key, o), an = BonusGear.anchors(kb, PetCore.render(eyes, o), sp); an.spId = art.species; if (isV2Face(id)) drawFace(id, with_, faceSpots(kb, an, art.species), an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2snug) drawSnugBeanie(with_, an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2eye && drawEyeGear(with_, an, BonusGear.DEFS[id], BonusGear.DEFS[id].v2eye.s === 'ninja' ? faceSpots(kb, an, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, with_, fitAnchors(id, an), 0); var dd = BonusGear.DEFS[id]; if (dd && dd.v2cig) drawFace(dd.v2cig, with_, faceSpots(kb, an, art.species), an); } catch (e) {} }
+      try { var kb = PetCore.render(key, o), an = BonusGear.anchors(kb, eyeRender(eyes, o), sp); an.spId = art.species; if (isV2Face(id)) drawFace(id, with_, faceSpots(kb, an, art.species), an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2snug) drawSnugBeanie(with_, an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2eye && drawEyeGear(with_, an, BonusGear.DEFS[id], BonusGear.DEFS[id].v2eye.s === 'ninja' ? faceSpots(kb, an, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, with_, fitAnchors(id, an), 0); var dd = BonusGear.DEFS[id]; if (dd && dd.v2cig) drawFace(dd.v2cig, with_, faceSpots(kb, an, art.species), an); } catch (e) {} }
     var x0 = 32, y0 = 32, x1 = -1, y1 = -1, mask = [];
     for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var i = (y * 32 + x) * 4, d = base.data[i] !== with_.data[i] || base.data[i + 1] !== with_.data[i + 1] || base.data[i + 2] !== with_.data[i + 2];
       mask.push(d); if (d) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } }

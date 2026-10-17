@@ -1032,11 +1032,11 @@
         '....bbbbbbbb....',
         '....bbllllbb....',
         '.blblkkllkklblb.',
-        '.llllPPllPPllll.',
-        '.blblPPllPPlblb.',
-        '....lPPllPPl....',
-        '....lllmmlll....',
-        '.....llllll.....',
+        '.lllzPPzzPPzlll.',
+        '.blbzPPzzPPzblb.',
+        '....zPPzzPPz....',
+        '....zzzmmzzz....',
+        '.....zzzzzz.....',
         '.b....bbbb....b.',
         'b.b.bbllllbbbb..',
         '...bbblllllb....',
@@ -1047,13 +1047,13 @@
         '......bbbbbbbb......',
         '.....bbbllllbbb.....',
         '..bb.blkllllklb.bb..',
-        '.bllbllPllllPllbllb.',
-        '.bllllPPPllPPPllllb.',
-        '.bllblPPPllPPPlbllb.',
-        '..bb.lPPPllPPPl.bb..',
-        '.....llPllllPll.....',
-        '.....lllmmmmlll.....',
-        '......bllllllb......',
+        '.bllbzzPzzzzPzzbllb.',
+        '.blllzPPPzzPPPzlllb.',
+        '.bllbzPPPzzPPPzbllb.',
+        '..bb.zPPPzzPPPz.bb..',
+        '.....zzPzzzzPzz.....',
+        '.....zzzmmmmzzz.....',
+        '......bzzzzzzb......',
         '.bb....bbbbbb....bb.',
         'b..b..bblllllbbbbb..',
         'b.b..bbbllllllbb....',
@@ -1067,12 +1067,12 @@
         '...lbb...bllb...',
         '..bblbbbbbllb...',
         '..kkkbbkkbbbbb..',
-        '..EPPbbPPbbbbb..',
-        '..EPPbbEPPbbbb..',
-        '.llllllllllbbbb.',
-        '.ll3lllllllbbb..',
-        '..lmmmllllbbbb..',
-        '..llllllllbbbb..',
+        '..EPPZZPPZZZZZ..',
+        '..EPPZZEPPZZZZ..',
+        '.zzzzzzzzzzZZZZ.',
+        '.zz3zzzzzzzZZZ..',
+        '..zmmmzzzzZZZZ..',
+        '..zzzzzzzzZZZZ..',
         '.blllllllbbbbbb.',
         '.bblllllbbbbbbb.',
         '.bblllllbbbbbbb.',
@@ -1083,13 +1083,13 @@
         '...bllbbbbbbbllb....',
         '...bbllbbbbbbllbb...',
         '..bkkkbbbkkbbbbbb...',
-        '..bEPPbbbPPbbbbbbb..',
-        '..bEPPbbEPPPbbbbbb..',
-        '..lEEPlbEEPPbbbbbb..',
-        '.lllllllllllllbbbb..',
-        '.ll33llllllllbbbbb..',
-        '.lllmmmmlllllbbbbb..',
-        '..llllllllllbbbbb...',
+        '..ZEPPZZZPPZZZZZZZ..',
+        '..ZEPPZZEPPPZZZZZZ..',
+        '..zEEPzZEEPPZZZZZZ..',
+        '.zzzzzzzzzzzzzZZZZ..',
+        '.zz33zzzzzzzzZZZZZ..',
+        '.zzzmmmmzzzzzZZZZZ..',
+        '..zzzzzzzzzzZZZZZ...',
         '...lllllllllbbbbbb..',
         '..bllllllllbbbbbbbb.',
         '..bllllllllbbbbbbbb.',
@@ -1103,29 +1103,29 @@
         '.bbbbbbbbbbbb.',
         '.bbbbbbbbbbbb.',
         'bbBBBBbbBBBBbb',
-        'bbbbPPbbbPPbbb',
-        'bbbbPPbbbPPbbb',
-        'bbbbbbbkbbbbbb',
-        '.bbbbbkkbbbbb.',
-        '.bbbmmmmmmbbb.',
-        '..bbbbbbbbbb..',
+        'ZZZZPPZZZPPZZZ',
+        'ZZZZPPZZZPPZZZ',
+        'ZZZZZZZkZZZZZZ',
+        '.ZZZZZkkZZZZZ.',
+        '.ZZZmmmmmmZZZ.',
+        '..ZZZZZZZZZZ..',
         '....bbbbbb....',
         '..bbbllllbbb..',
         '....bbbbbb....',
         '....aa..aa....'],
       2: [
         '.....bbbbbbb.....',
-        '...bbbbbbbbbbb...',
-        '.bbbbbbbbbbbbbbb.',
+        '...ZZZZZZZZZZZ...',
+        '.bbZZZZZZZZZZZZb.',
         '.bbbBBBbbbbBBBbb.',
-        'bbbBbPPBbbBPPbBbb',
-        'bbbbPPPbbbbPPbbbb',
-        'bbbbPPPbbbbPPPbbb',
-        'bbbbbbbbbkbbbbbbb',
-        'bbbbbbbbkkbbbbbbb',
-        '.bbbbbbbbbbbbbbb.',
-        '..bbbmmmmmmmbbb..',
-        '...bbbbbbbbbbb...',
+        'ZZZBZPPBZZBPPZBZZ',
+        'ZZZZPPPZZZZPPZZZZ',
+        'ZZZZPPPZZZZPPPZZZ',
+        'ZZZZZZZZZkZZZZZZZ',
+        'ZZZZZZZZkkZZZZZZZ',
+        '.ZZZZZZZZZZZZZZZ.',
+        '..ZZZmmmmmmmZZZ..',
+        '...ZZZZZZZZZZZ...',
         '.....bbbbbbb.....',
         '....bbllllbbb....',
         '...b.blllllb.b...',
@@ -1174,7 +1174,7 @@
   SPECIES.forEach(function (sp) { if (SMALL_MAPS[sp.id]) sp.small = SMALL_MAPS[sp.id]; });
   /* SMALL_MAPS:END */
   var COMMUNITY_SPECIES = 'nakamoto';
-  var CHARKEY = { b: 'body', a: 'accent', l: 'belly', k: 'ink', B: 'brow', w: 'white', E: 'eye', P: 'pupil', m: 'mouth',
+  var CHARKEY = { b: 'body', a: 'accent', l: 'belly', k: 'ink', B: 'brow', w: 'white', z: 'muzzle', Z: 'muzzleb', E: 'eye', P: 'pupil', m: 'mouth',
     h: 'horn', g: 'gold', T: 'tear', f: 'ember', F: 'ember2', r: 'spr', v: 'spv', e: 'spe',
     '1': 'sp1', '2': 'sp2', '3': 'sp3', '4': 'sp4', '5': 'sp5', '6': 'sp6', '7': 'sp7', '8': 'sp8', '9': 'sp9' }; // 1-9: per-species fixed/derived colours (SPECIES[].colors)
 
@@ -1378,7 +1378,7 @@
   var RAINBOW = ['#ff5c5c', '#ff9f43', '#ffd93d', '#6bcB77', '#4d96ff', '#9b5de5'].map(hex);
   var NO_SHADE = { tint: 1, hachi: 1, hachish: 1, btc: 1, ink: 1, brow: 1, white: 1, eye: 1, pupil: 1, mouth: 1, galstar: 1, gold: 1, laser: 1, laserlite: 1, tear: 1,
     tongue: 1, eyegold: 1, shade: 1, sgFrame: 1, ember: 1, ember2: 1, blade: 1, gem: 1, gemB: 1, flame: 1, flame2: 1, wood: 1, lwood: 1, iron: 1, capeTrim: 1 };
-  var FACE_KEYS = { eye: 1, pupil: 1, mouth: 1, brow: 1, ink: 1, tear: 1, gold: 1, horn: 1, ember: 1, ember2: 1, frame: 1, lens: 1 };
+  var FACE_KEYS = { muzzle: 1, muzzleb: 1, eye: 1, pupil: 1, mouth: 1, brow: 1, ink: 1, tear: 1, gold: 1, horn: 1, ember: 1, ember2: 1, frame: 1, lens: 1 };
 
   /** The pet's body/accent/belly colours: always its species' canon (Classic) colours (palettes were removed in v3.16). */
   function speciesColors(pet) { return (byId(SPECIES, pet.species) || SPECIES[0]).canon; }
@@ -1564,7 +1564,7 @@
       eyes0 = a.eyes.slice(); // eye boxes before expressions (glasses keep their place when eyes close)
       applyPattern(cv, pet, a, digest, bob);
       if (gear.armor) drawArmor(cv, sp, box, a);
-      applyExpression(cv, sp, a, stage);
+      applyExpression(cv, sp, a, stage, opts && opts.openEyes);
       if (sp.tearDrop && sp.tearDrop[stage]) dropTears(cv, sp.tearDrop[stage]);
       a = anchors(cv, box);
       applyEyeTrait(cv, pet, a);
@@ -1590,7 +1590,7 @@
 
     var armor = byId(ARMORS, pet.armor) || ARMORS[0], cape = byId(CAPES, pet.cape) || CAPES[0], band = byId(BANDS, pet.band) || BANDS[0];
     var colors = {
-      body: hex(pal.body), accent: hex(pal.accent), belly: hex(pal.belly), horn: FIXED.h, gold: FIXED.g,
+      body: hex(pal.body), accent: hex(pal.accent), belly: hex(pal.belly), muzzle: opts.faceProbe ? hex('#ff00fe') : hex(pal.belly), muzzleb: opts.faceProbe ? hex('#ff00fe') : hex(pal.body), /* marked face skin: same colour as belly/body; faceProbe lets the gear fit pass find it */ horn: FIXED.h, gold: FIXED.g,
       ink: INK, brow: INK, white: WHITE, eye: hex((sp && stage > 0 && sp.eyeWhite) || '#f4f1ea'), pupil: (sp && stage > 0 && sp.pupil) ? hex(sp.pupil) : INK, mouth: INK, tear: hex('#7fc8ff'), tongue: FIXED.r,
       laser: FIXED.R, laserlite: hex('#ffb0b0'), eyegold: hex('#fff1a8'), ember: hex('#ff7a1a'), ember2: hex('#ffd23f'),
       gal: hex('#2a1a5e'), galstar: WHITE, hachi: hex('#f4f4f0'), hachish: hex('#c4c4cc'), btc: hex('#f7931a'),
@@ -1623,7 +1623,7 @@
       if (cv.sil[i]) {
         var k = cv.key[i];
         c = colors[k] || colors.body;
-        if (!NO_SHADE[k]) {
+        if (!NO_SHADE[k] && !(opts.faceProbe && (k === 'muzzle' || k === 'muzzleb'))) {
           if (!cv.isSil(x + 1, y) || !cv.isSil(x, y + 1)) c = mix(c, BLACK, 0.18);
           else if (!cv.isSil(x - 1, y) || !cv.isSil(x, y - 1)) c = mix(c, WHITE, 0.22);
         }
@@ -1782,7 +1782,7 @@
     for (var i = 0; i < cand.length; i++) { var k = cand[i]; if (k && !FACE_KEYS[k]) return k; }
     return 'body';
   }
-  function applyExpression(cv, sp, a, stage) {
+  function applyExpression(cv, sp, a, stage, openEyes) { /* openEyes (render option, 2026-10-16): skip the closed/half-lid eye pass; used only for gear eye anchors */
     var ex = sp.arc[stage - 1], eyesOp = ex[1], browOp = ex[2], mouthOp = ex[3], x, y, i;
     // brows
     if (browOp !== 'keep') for (i = 0; i < N * N; i++) if (cv.key[i] === 'brow') cv.key[i] = fillKeyNear(cv, i % N, Math.floor(i / N) - 1) === 'brow' ? 'body' : fillKeyNear(cv, i % N, Math.floor(i / N) - 1);
@@ -1802,6 +1802,7 @@
     }
     // eyes
     a.eyes.forEach(function (b) {
+      if (openEyes) return;
       if (eyesOp === 'halflid') {
         for (x = b.minX; x <= b.maxX; x++) { var k = cv.getKey(x, b.minY); if (k === 'eye' || k === 'pupil') cv.key[b.minY * N + x] = 'ink'; }
       } else if (eyesOp === 'closed') {
@@ -2043,7 +2044,8 @@
     var l = -1, r = -1;
     for (x = 0; x < N; x++) if (cv.getKey(x, y1) === 'metalTrim' || cv.getKey(x, y1) === 'metal') { if (l < 0) l = x; r = x; }
     if (l >= 0) {
-      for (y = y1 - 1; y <= y1; y++) { cv.setKey(l - 1, y, 'metalTrim'); cv.setKey(l, y, 'metalTrim'); cv.setKey(r, y, 'metalTrim'); cv.setKey(r + 1, y, 'metalTrim'); }
+      var pad = function (px, py) { if (cv.getKey(px, py) !== 'muzzle' && cv.getKey(px, py) !== 'muzzleb') cv.setKey(px, py, 'metalTrim'); }; // muzzle (marked face skin, 2026-10-16) is never covered
+      for (y = y1 - 1; y <= y1; y++) { pad(l - 1, y); pad(l, y); pad(r, y); pad(r + 1, y); }
     }
     if (y2 - y1 >= 3) { cv.setKey(15, y1 + 2, 'gem'); cv.setKey(16, y1 + 2, 'gem'); }
   }
@@ -2088,8 +2090,18 @@
     if (stage === 3 && (pet.species === 'dodo' || pet.species === 'nakamoto') && /sword$|^torch$/.test(pet.weapon || 'wooden-sword')) {
       var wr = -1; for (var wy = Math.max(0, y0); wy < Math.min(N, y0 + map.length); wy++) for (var wx = 0; wx < N; wx++) if (cv.isSil(wx, wy)) wr = Math.max(wr, wx);
       if (wr >= 0) x0 = Math.max(0, Math.min(N - 3, wr)); }
+    /* gear-fit 2026-10-16 (owner approved): swords, staff and torch go on the LEFT when the body (pre-outline silhouette) reaches x >= 25, i.e. the outlined sprite reaches x >= 27 and the weapon would hit the right edge
+     * (Pepe/Peepo Adult+Mythic etc.), and always at Mythic for the wide species; gold weapons get a dark outline at Mythic (vs the gold aura). */
+    var wid = pet.weapon || 'wooden-sword', longW = /sword$|^staff$|^torch$/.test(wid), wl = N, wr2 = -1;
+    var bodyR = -1; for (var vy = 0; vy < N; vy++) for (var vx = 0; vx < N; vx++) if (cv.isSil(vx, vy)) { bodyR = Math.max(bodyR, vx); if (vy >= y0 && vy < y0 + map.length) { wl = Math.min(wl, vx); wr2 = Math.max(wr2, vx); } }
+    var wideMyth = stage === 5 && /^(mumu|snibby|peepo|sarutobi|doge)$/.test(pet.species);
+    var flush = stage === 3 && (pet.species === 'dodo' || pet.species === 'nakamoto'); /* their Adult swords/torch stay flush on the right (fix above) */
+    if (longW && wr2 >= 0 && !flush && (bodyR >= 25 || wideMyth)) x0 = Math.max(0, wl - 2);
     cv.spriteKeys(x0, y0, map, { L: 'lwood', W: 'wood', s: 'blade', i: 'iron', y: 'goldblade', g: 'gold', r: 'gem', u: 'gemB', o: 'flame' });
     if (pet.weapon === 'torch') for (var j = 0; j < 3; j++) for (var i = 0; i < 3; i++) if (map[j].charAt(i) === 'y') cv.setKey(x0 + i, y0 + j, 'flame2');
+    if (stage === 5 && (wid === 'golden-sword' || wid === 'torch')) { var wp = {}; for (var oy = 0; oy < map.length; oy++) for (var ox = 0; ox < 3; ox++) if (map[oy].charAt(ox) !== '.') wp[(y0 + oy) * N + x0 + ox] = 1;
+      Object.keys(wp).forEach(function (k5) { var px5 = k5 % N, py5 = Math.floor(k5 / N); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d5) { var nx = px5 + d5[0], ny = py5 + d5[1];
+        if (nx >= 0 && ny >= 0 && nx < N && ny < N && !wp[ny * N + nx] && !cv.isSil(nx, ny)) cv.setKey(nx, ny, 'ink'); }); }); }
   }
 
   var CROWN_MAPS = {
