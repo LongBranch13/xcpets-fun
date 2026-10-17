@@ -62,7 +62,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=bd50ca4603'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=3daf230a63'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -141,7 +141,8 @@
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
-      V2Return.maybeAutoplay(w, opts);
+      /* UX polish 2026-10-16 (owner): no full-screen autoplay for visitors, so new players see the game first; mark it seen (Cold Storage still replays it) */
+      try { var ck = String(c.returnTx || c.returnBlock); if (c.returned && V2Return.seen() !== ck) localStorage.setItem(V2Return.SEEN_KEY, ck); } catch (e) { } if (V2Return.previewRequested()) V2Return.maybeAutoplay(w, opts);
     });
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
     $('crNet').textContent = ' chain'; $('crNote').textContent = 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.';

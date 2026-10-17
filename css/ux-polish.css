@@ -1,0 +1,23 @@
+/* UX polish (2026-10-16, owner approved 12 items; UI only). Keeps the existing look: only spacing, wrapping and small additions. */
+.uxp-card{position:relative;border:2px solid #000;border-radius:10px;padding:10px 40px 10px 12px;margin:10px 0;background:rgba(95,211,95,.08)}
+.uxp-card ol{margin:6px 0 0 18px;padding:0}.uxp-card li{margin:3px 0}
+.uxp-x{position:absolute;top:4px;right:4px;min-width:40px;min-height:40px}
+.uxp-note{margin:6px 0;padding:8px 10px;border:2px dashed #e69500;border-radius:8px}
+.uxp-toast a{color:inherit;text-decoration:underline}
+.uxp-err details{margin-top:4px;opacity:.8}
+.uxp-quick{display:none;gap:6px;flex-wrap:wrap;margin:8px 0}
+.uxp-find{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}.uxp-find input{min-height:40px;padding:0 10px;flex:1 1 180px;min-width:0}
+.uxp-hit{outline:3px solid #ffd23f;outline-offset:2px}
+.uxp-more{margin:8px 0}
+@media (max-width:600px){
+  header.nav nav{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;white-space:nowrap}
+  header.nav nav::-webkit-scrollbar{display:none}
+  header.nav nav a[href="inscriptions.html"]{display:none}
+  header.nav nav a{min-height:40px;display:inline-flex;align-items:center;padding:0 7px;flex:0 0 auto}
+  button,.btn,select,summary,.q{min-height:40px}
+  #community .cstats .stats div{overflow-wrap:normal;word-break:keep-all}
+  #community .cstats .stats b,#community .cstats .stats strong{font-size:.72em;letter-spacing:0;white-space:nowrap}
+  #community .cstats .stats div{min-width:0;overflow:hidden}
+  .uxp-quick{display:flex}
+  .uxp-cdet>summary{cursor:pointer;padding:6px 0}
+}
