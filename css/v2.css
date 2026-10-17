@@ -175,3 +175,4 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 #bReqs>div.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4}
 #community .sharedwrap.cstats{display:block;margin-top:6px}#community .cstats .stats div{min-width:0;overflow-wrap:anywhere}
 #fPending .txrow.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4}
+#inReqBox .box{max-height:92vh;overflow:auto}.irqcmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.irqcol{min-width:0;overflow-wrap:anywhere;border:2px solid #000;border-radius:8px;padding:6px}.irqcol canvas{width:48px;height:48px;image-rendering:pixelated}.irqst td{padding:0 6px 0 0}#inReqBox .box p,#inReqBox .box div{overflow-wrap:anywhere}
