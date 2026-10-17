@@ -8,7 +8,7 @@
   // ---------------------------------------------------------------- chain state (shared with the other pages: js/v2-chain.js, V2Mock interface)
   var M = window.V2Mock, S = M.state();
   function save() { M.save(); } function burn(src, tag, amount) { M.burn(src, tag, amount); } function adv(n) { M.adv(n); }
-  function world() { return M.world(); } function seedWorld() { M.seed(); S = M.state(); }
+  function world() { return M.world(); }
 
   // ---------------------------------------------------------------- rendering (shared with every page: js/v2-render.js)
   var R = window.V2Render, paint = R.paint, petFrames = R.petFrames;
