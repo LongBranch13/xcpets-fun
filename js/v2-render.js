@@ -307,6 +307,9 @@
    * capped at 7. Mythic (deathBlock null), dead and released pets are never touched; a meal moves lastFed, so the look resets. No rule changes. */
   function hungerDays(p, w) { if (!p || p.dead || p.released || p.mythicCare || p.deathBlock == null || !w || w.tip == null) return 0;
     var B = V.BLOCKS_PER_DAY || 144, N = V.NEGLECT_DAYS || 7, d = V.day(w.tip) - (Math.round(p.deathBlock / B) - N - 1); return d > 0 ? Math.min(7, d) : 0; }
+  /* hunger palette (2026-10-16 sprite cleanup): faded colours snap to these; blotches use HP entries too */
+  var HP = [[38, 40, 44], [70, 74, 66], [96, 104, 84], [118, 130, 96], [96, 168, 56], [70, 130, 40], [150, 190, 70], [146, 152, 128], [178, 182, 160], [210, 212, 192], [236, 236, 222], [150, 96, 80], [196, 140, 120]];
+  function snapHP(r, g, b) { var best = HP[0], bd = 1e9; for (var i = 0; i < HP.length; i++) { var c = HP[i], dd = (c[0] - r) * (c[0] - r) + (c[1] - g) * (c[1] - g) + (c[2] - b) * (c[2] - b); if (dd < bd) { bd = dd; best = c; } } return best; }
   function hungerLook(fr, p, w, extra, days) { if (!days) return fr;
     var mp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), mk = petFrames0(mp, w, extra), t = days / 7;
     return fr.map(function (f, fi) { var m = (mk[fi] || mk[0]).data, s = f.data, d = new s.constructor(s), o = Object.assign({}, f, { data: d }), i, x, y, minX = 32, maxX = -1, minY = 32, sil = [];
@@ -317,15 +320,16 @@
         r += (L - r) * de; g += (L - g) * de; b += (L - b) * de;           /* washed out */
         r += (118 - r) * gr; g += (150 - g) * gr; b += (78 - b) * gr;        /* sickly green cast */
         r *= 1 - dim; g *= 1 - dim; b *= 1 - dim;                            /* dull, low energy */
-        d[q] = r; d[q + 1] = g; d[q + 2] = b; });
+        var c = snapHP(r, g, b); d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; }); /* 2026-10-16: snapped to the fixed hunger palette (nothing off-palette) */
       function put(x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var q = (y * 32 + x) * 4; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; d[q + 3] = 255; }
       if (days >= 3 && maxX >= 0) { var sx = Math.min(31, maxX + 1), sy = minY + 3 + (fi % 2), SW = [150, 210, 255], SH = [235, 250, 255]; /* sweat drop, bobbing with the frames */
         put(sx, sy, SH); put(sx, sy + 1, SW); put(sx, sy + 2, SH); put(sx + 1, sy + 2, SW); put(sx, sy + 3, SW); put(sx + 1, sy + 3, SW);
         if (days >= 6) { var lx = Math.max(0, minX - 1); put(lx, sy + 1, SH); put(lx, sy + 2, SW); put(lx, sy + 3, SW); } }
       if (days >= 4) { var n = Math.round(sil.length * (days - 3) * 0.018), h = (p.id * 2654435761) >>> 0, SK = [[96, 168, 56], [70, 130, 40], [150, 190, 70]]; /* sick blotches */
-        for (var k = 0; k < n && sil.length; k++) { h = (h * 1103515245 + 12345) >>> 0; var q = sil[h % sil.length], c = SK[(h >>> 8) % 3]; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; } }
+        var inS = {}; sil.forEach(function (q) { inS[q] = 1; }); n = Math.max(1, Math.round(n / 4)); /* 2x2 blotches, inside the silhouette only */
+        for (var k = 0; k < n && sil.length; k++) { h = (h * 1103515245 + 12345) >>> 0; var q = sil[h % sil.length], c = SK[(h >>> 8) % 3]; [0, 4, 128, 132].forEach(function (o) { if (inS[q + o]) { d[q + o] = c[0]; d[q + o + 1] = c[1]; d[q + o + 2] = c[2]; } }); } }
       if (days >= 6) for (x = minX; x <= maxX; x++) { var top = -1; for (y = 0; y < 32; y++) if (isS((y * 32 + x) * 4)) { top = y; break; } /* droop: the top line sags */
-        if (top >= 0 && (x + fi) % 3 === 0) { var q2 = (top * 32 + x) * 4, q3 = ((top + 1) * 32 + x) * 4; d[q2] = d[q3]; d[q2 + 1] = d[q3 + 1]; d[q2 + 2] = d[q3 + 2]; } }
+        if (top >= 0 && Math.floor((x - minX) / 3 + fi) % 2 === 0) { /* droop in 3px chunks */ var q2 = (top * 32 + x) * 4, q3 = ((top + 1) * 32 + x) * 4; d[q2] = d[q3]; d[q2 + 1] = d[q3 + 1]; d[q2 + 2] = d[q3 + 2]; } }
       return o; }); }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)
   var iconCache = {}, NONE = { band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' };

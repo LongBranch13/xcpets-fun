@@ -248,7 +248,7 @@
       ] },
     { id: 'wojak', label: 'Wojak', w: 12, t: 0, canon: { body: '#f1e4d4', accent: '#5a6a8a', belly: '#dcb8a2' }, outline: '#6e5f5c', colors: { '1': { from: 'body', dark: 0.4 } }, eyeWhite: '#ffffff', eyeLid: true, bellyKey: 'accent', // pattern fix 2026-10-12: Belly patch on the shirt, not the face
       gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, noHeadband: true },
-      pose: { col: 2, row: 17, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
+      pose: { col: 2, row: 12, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
       arc: [['Sad', 'base', 'keep', 'base'], ['Doubtful', 'halflid', 'keep', 'flat'], ['Calm', 'base', 'none', 'flat'],
         ['Hopeful', 'base', 'raised', 'smile'], ['Enlightened', 'closed', 'none', 'smile']],
       tearDrop: { 5: 2 }, // v3.14: at Mythic the tear sits on the cheek, two rows below the closed eye
@@ -280,7 +280,7 @@
       ] },
     { id: 'chud', label: 'Chud', w: 8, t: 0, canon: { body: '#f1e4d4', accent: '#6b7a3a', belly: '#6b4a2b' }, outline: '#6e5f5c', colors: { '1': { from: 'body', dark: 0.4 }, '2': '#5e3f26', '3': '#1d1b22', '4': '#45414f' }, eyeWhite: '#ffffff', glasses: true, bellyKey: 'accent', // pattern fix 2026-10-12: Belly patch on the shirt, not the face
       gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, noHeadband: true },
-      pose: { col: 2, row: 17, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
+      pose: { col: 2, row: 12, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
       arc: [['Stern', 'base', 'keep', 'base'], ['Smirking', 'base', 'keep', 'smirk'], ['Determined', 'halflid', 'angry', 'flat'],
         ['Grinning', 'base', 'keep', 'grin'], ['Proud', 'closed', 'raised', 'cheer']],
       // straight, level gaze (centred pupils, no droopy lid) behind always-on clear eyeglasses (glasses: true)
@@ -405,8 +405,8 @@
         '...a.a.a........a.a.a...',
         '..a.a.a..........a.a.a..'
       ] },
-    { id: 'dodo', label: 'Dodo', w: 10, t: 3, canon: { body: '#2a2a2a', accent: '#b40000', belly: '#4a4a4a' }, sunFrame: '#d63031', // red frame: dark shades vanish on the charcoal head; red matches his beak
-      colors: { '5': '#6b6b6b', '6': '#7a0000', '7': { from: 'accent', light: 0.45 } }, outline: '#111111', eyeWhite: '#ffffff', eyeSplit: 14,
+    { id: 'dodo', label: 'Dodo', w: 10, t: 3, canon: { body: '#4a4a56', accent: '#c41a1a', belly: '#6b6b78' }, sunFrame: '#d63031', // red frame: dark shades vanish on the charcoal head; red matches his beak
+      colors: { '5': '#6b6b6b', '6': '#7a0000', '7': { from: 'accent', light: 0.45 } }, eyeWhite: '#ffffff', eyeSplit: 14,
       gear: { armor: [14, 17, 8], cape: 12, capeHalf: 9, band: 1, scarf: 9, crownCol: 15 },
       pose: { col: 16, row: 8, map: ['.kkkkk.', 'k55555k', 'k55555k', 'kkkk55k', '.k55k..', 'k55k...'] },
       // v3.10: Determined keeps the eyes open (the 2-px eyes are 1 px at Adult scale, so a half lid would erase them) and Serene
@@ -446,7 +446,7 @@
         '........aa...aa...........',
         '.......aaaa.aaaa..........'
       ] },
-    { id: 'kevin', label: 'KEVIN', w: 5, t: 0, tw: [6, 5, 4, 5], canon: { body: '#bd8a75', accent: '#84a1b6', belly: '#b1806c' }, outline: '#010101',
+    { id: 'kevin', label: 'KEVIN', w: 5, t: 0, tw: [6, 5, 4, 5], canon: { body: '#bd8a75', accent: '#84a1b6', belly: '#b1806c' },
       colors: { '1': { from: 'body', dark: 0.07 }, '2': { from: 'body', dark: 0.2 }, '3': '#958a87', '4': '#83746d', '5': '#6b5751', '6': '#894a28' },
       eyeWhite: '#84a1b6', pupil: '#136613',
       egg: { shell: '#dc6e16', spot: '#83746d' },
@@ -489,7 +489,7 @@
     // open mouth with brown lips and a pink tongue. Faces right like the emote. Per-stage maps swap only the mouth/tear rows:
     // Mouth inside ('6') is fixed #d63031, the exact red of Doge's red scarf (BANDS red-scarf), at every stage.
     // Hatchling peepoHappy, Juvenile peepoSad (tears, downturned lip), Adult flat smug lip, Elder content smile, Mythic happy.
-    { id: 'peepo', label: 'Peepo', w: 6, t: 0, tw: [7, 6, 5, 5], canon: { body: '#6ba241', accent: '#0649ff', belly: '#9f4d37' }, outline: '#2d5b18',
+    { id: 'peepo', label: 'Peepo', w: 6, t: 0, tw: [7, 6, 5, 5], canon: { body: '#8cc63f', accent: '#0649ff', belly: '#9f4d37' },
       // Sunglasses: fixed lenses in MAP coords (the auto eye boxes split his two bulging eyes unevenly and merged them into one visor)
       sunLens: { cols: [[7, 11], [15, 20]], rows: [1, 5], bridgeRow: 2 },
       colors: { '1': '#2d5b18', '4': '#9f4d37', '5': '#f1a7c4', '6': '#d63031' }, eyeWhite: '#ffffff', eyeSplit: 13, browOnBody: true,
@@ -549,7 +549,7 @@
     // LENNY ( ͡° ͜ʖ ͡°) (LENNYSTAMP look; ref meme_ref/lenny_face): a big round warm-yellow face with black line features: two
     // long raised arched brows over small ring eyes (half-lidded: the arc sits right on the ring), a sideways hook nose and a
     // shallow smirk; a tiny body with stubby arms and feet so gear and the hand-to-chin pose work.
-    { id: 'lenny', label: 'Lenny', w: 5, t: 0, tw: [6, 5, 5, 5], canon: { body: '#fecc66', accent: '#3a3a44', belly: '#ffe2a6' },
+    { id: 'lenny', label: 'Lenny', w: 5, t: 0, tw: [6, 5, 5, 5], canon: { body: '#f2b98a', accent: '#3a3a44', belly: '#ffdcc0' },
       colors: { '1': { from: 'body', dark: 0.12 } }, eyeWhite: '#ffffff',
       egg: { shell: '#fecc66', spot: '#d99a2b' },
       gear: { armor: [16, 18, 5], band: 2, scarf: 15, cape: 15, crownSink: 1 },
@@ -569,7 +569,7 @@
       patternKeys: ['sp3', 'sp2'], patternBelowFace: true, patternCx: -5, // pattern fix 2026-10-12: patterns on his green neck + shirt (no plain body area)
       // v3.14 signature headwear: a white hachimaki (tied headband) with a small orange Bitcoin disc on the front, worn from
       // Adult up on every Nakamoto (render-only, not a rolled trait; his rolled band slot stays the neck scarf).
-      hachimaki: true, noCheeks: true, // v3.14 stamp look: flat face, no blush
+      hachimaki: false, noCheeks: true, // v3.14 stamp look: flat face, no blush
       // Egg: no hood. A pale grey-green shell with green speckles (spots = the DNA speckles) and a tiny pair of thin black
       // rectangular glasses (1-px white lenses) drawn on the shell as a hint of what hatches; the usual crack at frames 2-3.
       egg: { shell: '#a9b3a0', spot: '#488101', glasses: true },
@@ -720,6 +720,459 @@
         '..22233322222.......'
       ] }
   ];
+  /* SMALL_MAPS:BEGIN (2026-10-16 sprite cleanup) Hatchling (1) and Juvenile (2) maps drawn at native size, one pixel = one canvas pixel,
+   * instead of nearest-neighbour shrinking. Same box size as the old 0.62x / 0.78x scale, so gear anchors (rowY/colX) are unchanged. */
+  var SMALL_MAPS = {
+    pepe: {
+      1: [
+        '.bbbb..bbbbb..',
+        '.kkkkb.bkkkk..',
+        '.EEEPb.bEEPP..',
+        'bbEEEbbbEEEbb.',
+        'bbbbbbbbbbbbbb',
+        'bbbbbbbbbbbbbb',
+        'bmmmmmmmmmmmmb',
+        'bbllllllllllbb',
+        '.bbbbbbbbbbbb.',
+        '..aaaaaaaaaa..',
+        '.aaaaaaaaaaaa.',
+        '.aaaaaaaaaaaa.'],
+      2: [
+        '.bbbbb...bbbbb...',
+        '.bkkkkb..kkkkkb..',
+        '.bEEEPb..EEEPPb..',
+        '.EEEEPbbbEEEPPb..',
+        'bbEEEEbbbbEEEEbb.',
+        'bbbbbbbbbbbbbbbbb',
+        'bbbbbbbbbbbbbbbbb',
+        'blllllllllllllllb',
+        'bmmmmmmmmmmmmmmmb',
+        'bbbbbbbbbbbbbbbbb',
+        '.bbbbbbbbbbbbbbb.',
+        '..aaaaaaaaaaaaa..',
+        '.aaaaaaaaaaaaaaa.',
+        '.aaaaaaaaaaaaaaa.',
+        '.aaaaaaaaaaaaaaa.'],
+    },
+    wojak: {
+      1: [
+        '...bbbbb...',
+        '..bbbbbbb..',
+        '.bbbbbbbbb.',
+        '.bbbbbbbbb.',
+        '.bbkkbkkbb.',
+        '.bbEPbEPbb.',
+        '.bbbbbbbbb.',
+        '.bbbb1bbbb.',
+        '.bbbbbbbbb.',
+        '.bbbbbbbbb.',
+        '..bbmmmbb..',
+        '..bbbbbbb..',
+        '...bbbbb...',
+        'aaaaaaaaaaa'],
+      2: [
+        '....bbbbb.....',
+        '..bbbbbbbbb...',
+        '.bbbbb1111bbb.',
+        '.bbbbbbbbbbbb.',
+        'bbbb1111111bb.',
+        'bbbbbBBbbBBbb.',
+        'bbbbbkkbbkkkb.',
+        'bbbbbPPbbEPPb.',
+        'bbbbbPPbbbPPb.',
+        'bbbbbbbbbkbbb.',
+        '.bbbbbbkbbkbb.',
+        '.bbbbbbbbkbbb.',
+        '..bbbbbbbbbbb.',
+        '...bbbbmmmmb..',
+        '....bbbmbbm...',
+        '..aaaaaaaaaa..',
+        'aaaaaaaaaaaaaa'],
+    },
+    chud: {
+      1: [
+        '..3333333..',
+        '.333333333.',
+        '.333333333.',
+        '3bbbbbbbbb3',
+        '3bkkbbbkkb3',
+        'bbEPbbbEPbb',
+        'bbbbb1bbbbb',
+        '22bbbbbbb22',
+        '222bbbbb222',
+        '2222mmm2222',
+        '.222222222.',
+        '..2222222..',
+        '...22222...',
+        'aaaaaaaaaaa'],
+      2: [
+        '....33333.....',
+        '..334444333...',
+        '.333333333333.',
+        '.333333333333.',
+        '3bbbbbbbbbbb3.',
+        '3bbbbBBbbBBbb.',
+        'bbbbbkkbbkkkb.',
+        'bbbbbPEbbEPEb.',
+        'bbbbbPEbbbPbb.',
+        '2bbbbbbbbkbbb.',
+        '.2bbbbbkbbkb2.',
+        '.22bbbbbbkb22.',
+        '..22222222222.',
+        '...2222mmmm22.',
+        '....222m22m2..',
+        '..aaaaaaaaaa..',
+        'aaaaaaaaaaaaaa'],
+    },
+    bobo: {
+      1: [
+        'bbb........bbb',
+        'blbbbbbbbbbblb',
+        'bbbbbbbbbbbbbb',
+        '.bkkbkbbkkbkb.',
+        '.bEEkPbbEEkPb.',
+        '.bEEEPbbEEEPb.',
+        '.bbE111111Ebb.',
+        '.bb11kkkk11bb.',
+        '.bb11111111bb.',
+        '.bb111mmm11bb.',
+        '.bbbbbbbbbbbb.',
+        '..aaaaaaaaaa..',
+        'aaaaaaaaaaaaaa',
+        'aaaaaaaaaaaaaa'],
+      2: [
+        '.bb...........bb.',
+        'bblb.........blbb',
+        'bbbbbbbbbbbbbbbbb',
+        '.bbbbbbbbbbbbbbb.',
+        '.bkkkkkbbbkkkkkb.',
+        '.bEEEPPbbbEEEPPb.',
+        '.bEEEPPbbbEEEPPb.',
+        '.bbEEEbbbbbEEEbb.',
+        '.bbb11kkkkk11bbb.',
+        '.bbb111kkk111bbb.',
+        '.bbb111111111bbb.',
+        '.bbb111mmmmm1bbb.',
+        '.bbbbbbbbbbbbbbb.',
+        '..bbbbbbbbbbbbb..',
+        '.aaaaaaaaaaaaaaa.',
+        'aaaaaaaaaaaaaaaaa',
+        'aaaaaaaaaaaaaaaaa'],
+    },
+    mumu: {
+      1: [
+        '......444......',
+        '.2..bb444bb..2.',
+        '..bbbbb4bbbbb..',
+        'b5bkkkb4bkkkb5b',
+        '..bEPPb4bEEPb..',
+        '..bbbbb4bbbbb..',
+        '.bblllllllllbb.',
+        '.bbllllllllllb.',
+        '.bbllmmmmmllbb.',
+        '..bbbbbbbbbbb..',
+        '...abbbbbbba...',
+        '.aaaaaaaaaaaaa.',
+        'aaaaaaaaaaaaaaa'],
+      2: [
+        '.2.....4.4.4.....2.',
+        '.23....44444....32.',
+        '..23bbbbb4bbbbb32..',
+        '...bbbbbb4bbbbbb...',
+        'b5bbkkkbb4bbkkkbb5b',
+        '..bbEPPbb4bbEPPbb..',
+        '..bbbbbbb4bbbbbbb..',
+        '..bblllllllllllbb..',
+        '..blllklllllklllb..',
+        '..blllllllllllllb..',
+        '..blllmmmmmmmlllb..',
+        '...bbbbbbbbbbbbb...',
+        '....bbbbbbbbbbb....',
+        '..aaaaaaaaaaaaaaa..',
+        '.aaaaaaaaaaaaaaaaa.',
+        'aaaaaaaaaaaaaaaaaaa'],
+    },
+    snibby: {
+      1: [
+        '...bkb...bkb...',
+        '..bbEb...bEb...',
+        '...bPb...bPb...',
+        '...bbb...bbb...',
+        '.a.bbb...bbb.a.',
+        'a..bbb...bbb..a',
+        'a..bbbbbbbbba.a',
+        '..abbbbbbbbbb..',
+        '..bbammmmmabb..',
+        '.bbbammmmmabbb.',
+        '..bbbaaaaabbb..',
+        '..bbbbbbbbbbb..',
+        '...............'],
+      2: [
+        '....bkb.....bkb....',
+        '...bbEbb...bbEbb...',
+        '...bbEbb...bbEbb...',
+        '...bbPbb...bbPbb...',
+        '....bbbb...bbbb....',
+        '.a..bbb.....bbb..a.',
+        'aaa.bbb.....bbb.aaa',
+        'a...bbbbbbbbbbb...a',
+        'aaabbbbbbbbbbbbbaaa',
+        '..abbbbbbbbbbbbba..',
+        '..bbbammmmmmmabbb..',
+        '..bbaammmmmmmaabb..',
+        '..bbbaaaaaaaaabbb..',
+        '...bbbbbbbbbbbbb...',
+        '...bbbb.....bbbb...',
+        '...a.a.......a.a...'],
+    },
+    dodo: {
+      1: [
+        '......bbbkk.....',
+        '.....bbbbEPEb...',
+        '....bbbbbEPEba77',
+        '....bbbbbaaaaaaa',
+        '.....bbbbbbmmmmm',
+        '.......bbbb666..',
+        '.......bbb......',
+        '.......bb.......',
+        'bbbbbbbbbbbb....',
+        'bbbbbbbbbbbbb...',
+        '.bbbbbllllbbb...',
+        '..bbbbbbbbbbb...',
+        '...bbbbbbbbb....',
+        '.....aa.aa......'],
+      2: [
+        '........bbbbkk......',
+        '.......bbbbbEPEb....',
+        '......bbbbbEEPEbb777',
+        '.....bbbbbbEEPEbaaaa',
+        '......bbbbbbaammmmmm',
+        '.......bbbbbbammmmmm',
+        '........bbbbb66666..',
+        '.........bbbb.......',
+        '.........bbb........',
+        '..b.....bbbb........',
+        'bbbbbbbbbbbbbbb.....',
+        'bbbbbbbbbbbbbbbb....',
+        'bbbbbbbllllllbbbb...',
+        '..bbbbbbllllbbbbb...',
+        '...bbbbbbbbbbbbb....',
+        '......ab..ab........',
+        '......aa.aaa........'],
+    },
+    kevin: {
+      1: [
+        '..44333344..',
+        '.4333333334.',
+        '433bbbbbb334',
+        '43bbbbbbbb34',
+        '43bkkbbkkb34',
+        '43bEPbbPEb34',
+        '43bbb22bbb34',
+        '43bbbbbbbb34',
+        '43bmmmmmmb34',
+        '43bb1111bb34',
+        '.4bbbbbbbb4.',
+        '...bbbbbb...',
+        '.aaaaaaaaaa.',
+        'aaaaaaaaaaaa'],
+      2: [
+        '.....433334.....',
+        '...4333333353...',
+        '..43bbbbbb55334.',
+        '..35bbbbbb65534.',
+        '.435bkbbbkb65344',
+        '.435bPBbbPBb5354',
+        '.435bbb2bbbb5344',
+        '.435bbb2bbbb5344',
+        '.435bbb2bbbb5344',
+        '.435bmmmmmmb5344',
+        '.435bb6666bb5344',
+        '.445bb111bbb5344',
+        '.....bbbbbb.....',
+        '......bbbb......',
+        '......6bb6......',
+        '.aaaaaaaaaaaaaa.',
+        'aaaaaaaaaaaaaaaa'],
+    },
+    peepo: {
+      1: [
+        '....kkkk.kkkkk..',
+        '...bEEEP1EEEEP1.',
+        '..bbEEEP1EEEPP1.',
+        '.bbbbEEEbbEEEEb.',
+        '.bbbbbbbbbbbbbbb',
+        'bbbbbbbbbbbbbbbb',
+        'bbbbbbmmmmmmmmmb',
+        'bbbbbbm6666666mb',
+        'bbbbbbbb44444bb.',
+        'abbbbbbbbbbbbba.',
+        'aaaaaaaaaaaaaaaa',
+        'aaaaaaaaaaaaaaaa'],
+      2: [
+        '.....kkkkk.bkkkkk...',
+        '....bEEEEP11EEEEPPb.',
+        '...bbEEEPPP1EEEPPPb.',
+        '..bbbEEEEE11EEEEEEb.',
+        '.bbbbbEEEEbb1EEEE1b.',
+        '.bbbbbT11bbbb1111Tbb',
+        '.bbbbbbbbbbbbbbbbTbb',
+        '.bbbbbTbbbb1b1bbbTbb',
+        'bbbbbbbbmmmmmmmmmbbb',
+        'bbbbbbbbm6655566mbbb',
+        'bbbbbbbbbb44444bbbbb',
+        'bbbbbbbbbbbbbbbbbbb.',
+        'aaabbbbbbbbbbbbbbaa.',
+        'aaaaaaaaaaaaaaaaaaaa',
+        'aaaaaaaaaaaaaaaaaaaa'],
+    },
+    sarutobi: {
+      1: [
+        '......bbbb......',
+        '....bbbbbbbb....',
+        '....bbllllbb....',
+        '.blblkkllkklblb.',
+        '.llllPPllPPllll.',
+        '.blblPPllPPlblb.',
+        '....lPPllPPl....',
+        '....lllmmlll....',
+        '.....llllll.....',
+        '.b....bbbb....b.',
+        'b.b.bbllllbbbb..',
+        '...bbblllllb....',
+        '.bbb..blllbb....',
+        '.....aab..aa....'],
+      2: [
+        '........bbbb........',
+        '......bbbbbbbb......',
+        '.....bbbllllbbb.....',
+        '..bb.blkllllklb.bb..',
+        '.bllbllPllllPllbllb.',
+        '.bllllPPPllPPPllllb.',
+        '.bllblPPPllPPPlbllb.',
+        '..bb.lPPPllPPPl.bb..',
+        '.....llPllllPll.....',
+        '.....lllmmmmlll.....',
+        '......bllllllb......',
+        '.bb....bbbbbb....bb.',
+        'b..b..bblllllbbbbb..',
+        'b.b..bbbllllllbb....',
+        '.b..bb.bllllllb.....',
+        '.......bbb.lbbb.....',
+        '......aaa...aaa.....'],
+    },
+    doge: {
+      1: [
+        '...bb.....bb....',
+        '...lbb...bllb...',
+        '..bblbbbbbllb...',
+        '..kkkbbkkbbbbb..',
+        '..EPPbbPPbbbbb..',
+        '..EPPbbEPPbbbb..',
+        '.llllllllllbbbb.',
+        '.ll3lllllllbbb..',
+        '..lmmmllllbbbb..',
+        '..llllllllbbbb..',
+        '.blllllllbbbbbb.',
+        '.bblllllbbbbbbb.',
+        '.bblllllbbbbbbb.',
+        '.blllllllllbbb..'],
+      2: [
+        '....bb.......bb.....',
+        '....bb......bbbb....',
+        '...bllbbbbbbbllb....',
+        '...bbllbbbbbbllbb...',
+        '..bkkkbbbkkbbbbbb...',
+        '..bEPPbbbPPbbbbbbb..',
+        '..bEPPbbEPPPbbbbbb..',
+        '..lEEPlbEEPPbbbbbb..',
+        '.lllllllllllllbbbb..',
+        '.ll33llllllllbbbbb..',
+        '.lllmmmmlllllbbbbb..',
+        '..llllllllllbbbbb...',
+        '...lllllllllbbbbbb..',
+        '..bllllllllbbbbbbbb.',
+        '..bllllllllbbbbbbbb.',
+        '.bbbllllllbbbbbbbbb.',
+        '.bbllllllllllbbbbbb.',
+        '.bblllllllllllbbbb..'],
+    },
+    lenny: {
+      1: [
+        '....bbbbbb....',
+        '.bbbbbbbbbbbb.',
+        '.bbbbbbbbbbbb.',
+        'bbBBBBbbBBBBbb',
+        'bbbbPPbbbPPbbb',
+        'bbbbPPbbbPPbbb',
+        'bbbbbbbkbbbbbb',
+        '.bbbbbkkbbbbb.',
+        '.bbbmmmmmmbbb.',
+        '..bbbbbbbbbb..',
+        '....bbbbbb....',
+        '..bbbllllbbb..',
+        '....bbbbbb....',
+        '....aa..aa....'],
+      2: [
+        '.....bbbbbbb.....',
+        '...bbbbbbbbbbb...',
+        '.bbbbbbbbbbbbbbb.',
+        '.bbbBBBbbbbBBBbb.',
+        'bbbBbPPBbbBPPbBbb',
+        'bbbbPPPbbbbPPbbbb',
+        'bbbbPPPbbbbPPPbbb',
+        'bbbbbbbbbkbbbbbbb',
+        'bbbbbbbbkkbbbbbbb',
+        '.bbbbbbbbbbbbbbb.',
+        '..bbbmmmmmmmbbb..',
+        '...bbbbbbbbbbb...',
+        '.....bbbbbbb.....',
+        '....bbllllbbb....',
+        '...b.blllllb.b...',
+        '.....bb...bb.....',
+        '.....aa...aa.....'],
+    },
+    nakamoto: {
+      1: [
+        '............',
+        '....888.....',
+        '..8888888...',
+        '.888888888..',
+        '.8333333388.',
+        '.3333333338.',
+        '.3333333333.',
+        '.kkkk3kkkk3.',
+        '.kPPk3kPPk3.',
+        '.kEEk3kEEk3.',
+        '.3333333333.',
+        '..33mmmm33..',
+        '..33333333..',
+        '...333333...',
+        '..22333322..'],
+      2: [
+        '................',
+        '................',
+        '..8888838888....',
+        '..83344433888...',
+        '.883433343888...',
+        '.8333333338888..',
+        '.83333333388888.',
+        '.kkkkkkkkk88888.',
+        '.kPPkkPPPk8888..',
+        '.kEEk3kEk3833...',
+        '..334333333.....',
+        '..333333433.....',
+        '...mmm33333.....',
+        '...mmm3333......',
+        '...3333333......',
+        '...3333333......',
+        '...3333333......',
+        '...3333322......',
+        '..22333222......'],
+    },
+  };
+  SPECIES.forEach(function (sp) { if (SMALL_MAPS[sp.id]) sp.small = SMALL_MAPS[sp.id]; });
+  /* SMALL_MAPS:END */
   var COMMUNITY_SPECIES = 'nakamoto';
   var CHARKEY = { b: 'body', a: 'accent', l: 'belly', k: 'ink', B: 'brow', w: 'white', E: 'eye', P: 'pupil', m: 'mouth',
     h: 'horn', g: 'gold', T: 'tear', f: 'ember', F: 'ember2', r: 'spr', v: 'spv', e: 'spe',
@@ -1033,7 +1486,9 @@
     var map = stageMap(sp, stage), W = map[0].length, H = map.length, s = STAGE_SCALE[stage];
     var w = Math.max(4, Math.round(W * s)), h = Math.max(4, Math.round(H * s));
     var x0 = 16 - Math.round(w / 2);
-    return { x0: x0, y0: 28 - h + bob, w: w, h: h, W: W, H: H, map: map,
+    var small = sp.small && sp.small[stage] && sp.small[stage].length === h && sp.small[stage][0].length === w ? sp.small[stage] : null;
+    var small = sp.small && sp.small[stage] && sp.small[stage].length === h && sp.small[stage][0].length === w ? sp.small[stage] : null;
+    return { x0: x0, y0: 28 - h + bob, w: w, h: h, W: W, H: H, map: map, small: small, small: small,
       split: sp.eyeSplit != null ? x0 + Math.floor(sp.eyeSplit * w / W) : 16 }; // left/right eye divider (canvas x)
   }
   function rowY(box, row) { return box.y0 + Math.floor(row * box.h / box.H); }
@@ -1042,7 +1497,7 @@
   /** Nearest-neighbour place a species pixel map, scaled for the stage, feet on row 28. */
   function placeSprite(cv, sp, box) {
     for (var dy = 0; dy < box.h; dy++) for (var dx = 0; dx < box.w; dx++) {
-      var ch = (box.map || sp.map)[Math.floor((dy + 0.5) * box.H / box.h)].charAt(Math.floor((dx + 0.5) * box.W / box.w));
+      var sm = box.small, ch = sm ? (sm[dy] || '').charAt(dx) || '.' : (box.map || sp.map)[Math.floor((dy + 0.5) * box.H / box.h)].charAt(Math.floor((dx + 0.5) * box.W / box.w));
       if (ch !== '.') cv.setKey(box.x0 + dx, box.y0 + dy, CHARKEY[ch]);
     }
   }
@@ -1115,8 +1570,8 @@
       applyEyeTrait(cv, pet, a);
       if (sp.eyeLid) {
         // Hatchling (smallest scale): sclera can't survive the downscale, so use solid dark eyes there
-        if (STAGE_SCALE[stage] < 0.7) for (var ei = 0; ei < N * N; ei++) { if (cv.key[ei] === 'eye') cv.key[ei] = 'pupil'; }
-        else drawEyeLids(cv, a);
+        if (STAGE_SCALE[stage] < 0.7 && !box.small) for (var ei = 0; ei < N * N; ei++) { if (cv.key[ei] === 'eye') cv.key[ei] = 'pupil'; }
+        else if (!box.small) drawEyeLids(cv, a);
       }
       // Chud: clear eyeglasses are part of the base look (not a trait) and stay on at every stage, Mythic included
       if (sp.glasses) { drawGlasses(cv, eyes0); levelEyesInGlasses(cv, eyes0); }
@@ -1126,7 +1581,7 @@
       else if (pet.eyes === 'beady') drawShades(cv, { eyes: eyes0.slice().sort(function (p1, p2) { return p1.cx - p2.cx; }), oneEye: true, frame: true });
       else if (sp.shades && hasShades(pet, sp, stage)) drawShades(cv, a);
       if (sp.symLenses) symmetricLenses(cv);
-      if (sp.hachimaki && stage >= 3) drawHachimaki(cv);
+      /* 2026-10-16 sprite cleanup: Nakamoto's hachimaki is removed from the base art at every stage (the Genesis Block headband gear item still draws via band gear) */
       if (gear.band) drawBand(cv, pet, sp, box, a);
       // Mythic only: the smug hand-to-chin thinking pose (drawn over armor/band; weapons stay on the other side)
       if (stage === 5 && sp.pose) cv.spriteKeys(box.x0 + sp.pose.col, box.y0 + sp.pose.row, sp.pose.map, CHARKEY);
@@ -1159,7 +1614,7 @@
       var spec = csp.colors[ck];
       colors['sp' + ck] = typeof spec === 'string' ? hex(spec) : spec.dark ? mix(colors[spec.from], BLACK, spec.dark) : mix(colors[spec.from], WHITE, spec.light || 0);
     }
-    // per-species outline colour (Wojak uses a soft light line); everyone else keeps the ink outline
+    // outline: one ink colour (INK #1a1020, the Wizard PNGs' outline) for every species; the single documented exception is the light-skin line #6e5f5c (Wojak, Chud)
     var outlineC = (stage > 0 && sp && sp.outline) ? hex(sp.outline) : INK;
     var out = new Uint8ClampedArray(N * N * 4), x, y, i;
     for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
@@ -1173,6 +1628,7 @@
           else if (!cv.isSil(x - 1, y) || !cv.isSil(x, y - 1)) c = mix(c, WHITE, 0.22);
         }
       } else if (cv.isSil(x + 1, y) || cv.isSil(x - 1, y) || cv.isSil(x, y + 1) || cv.isSil(x, y - 1)) c = outlineC;
+      else if (stage === 5 && (cv.isSil(x + 2, y) || cv.isSil(x - 2, y) || cv.isSil(x, y + 2) || cv.isSil(x, y - 2) || cv.isSil(x + 1, y + 1) || cv.isSil(x - 1, y - 1) || cv.isSil(x + 1, y - 1) || cv.isSil(x - 1, y + 1)) && y < 29) c = mix(cv.bg[i], hex('#ffd23f'), 0.55); /* Mythic aura rim (all species) */
       else c = cv.bg[i];
       out[i * 4] = c[0]; out[i * 4 + 1] = c[1]; out[i * 4 + 2] = c[2]; out[i * 4 + 3] = 255;
     }
