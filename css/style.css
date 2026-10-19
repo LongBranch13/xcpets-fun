@@ -128,3 +128,5 @@ span.chip.danger { background:#d11; color:#fff; } span.chip.warn { background:#2
   background: linear-gradient(to left, rgba(24,34,27,1) 30%, rgba(24,34,27,0)) right center / 28px 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgba(61,220,132,.55), rgba(61,220,132,0)) right center / 12px 100% no-repeat scroll; }
 .scrollx > table { min-width: 760px; }
 code.addr { cursor: pointer; text-decoration: underline dotted; } code.addr.open { word-break: break-all; text-decoration: none; }
+/* smooth-perf (2026-10-19): anchor targets land below the sticky nav (--navh is measured by js/v2-pages.js and js/v2.js; 72px until then) */
+#cast { scroll-margin-top: calc(var(--navh, 72px) + 8px); }

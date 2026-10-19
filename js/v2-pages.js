@@ -293,4 +293,12 @@
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
+  /* smooth-perf (2026-10-19): in-page anchors (e.g. hybrids.html "Back to the cast" -> index.html#cast) land under the sticky nav, not behind it:
+   * --navh = measured nav height feeds scroll-margin-top (css/style.css). The browser jumps to the anchor before the chain data fills the page, so
+   * once it is drawn, the anchor is re-aligned instantly, unless the visitor already scrolled, tapped or used the keyboard. */
+  (function () { function navH() { var n = document.querySelector('header.nav, .nav'); if (n) document.documentElement.style.setProperty('--navh', Math.ceil(n.getBoundingClientRect().height) + 'px'); }
+    navH(); window.addEventListener('resize', navH);
+    var moved = false, mark = function () { moved = true; }; ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (e) { window.addEventListener(e, mark, { passive: true, once: true }); });
+    var h = location.hash && /^#[A-Za-z][\w-]*$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
+    if (h) setTimeout(function () { if (moved) return; var d = document.documentElement, o = d.style.scrollBehavior; d.style.scrollBehavior = 'auto'; h.scrollIntoView({ block: 'start' }); d.style.scrollBehavior = o; }, 60); })();
 })();

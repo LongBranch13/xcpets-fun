@@ -33,8 +33,12 @@
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
   ];
 
+  /* smooth-perf (2026-10-19): one shared TextEncoder, one reused 64-word schedule and a byte->hex table instead of new ones per call.
+   * Same bytes in, same digest out (checked against Node crypto); only allocations change. */
+  var ENC = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null, WS = typeof Uint32Array !== 'undefined' ? new Uint32Array(64) : new Array(64), HEX = [];
+  for (var hx = 0; hx < 256; hx++) HEX[hx] = (hx < 16 ? '0' : '') + hx.toString(16);
   function utf8Bytes(str) {
-    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
+    if (ENC) return ENC.encode(str);
     var out = [], i, c;
     str = unescape(encodeURIComponent(str));
     for (i = 0; i < str.length; i++) { c = str.charCodeAt(i); out.push(c); }
@@ -51,7 +55,7 @@
     padded[p - 4] = (bitLenLo >>> 24) & 255; padded[p - 3] = (bitLenLo >>> 16) & 255;
     padded[p - 2] = (bitLenLo >>> 8) & 255; padded[p - 1] = bitLenLo & 255;
     var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
-    var W = new Array(64), i, t, a, b, c, d, e, f, g, h, s0, s1, t1, t2;
+    var W = WS, i, t, a, b, c, d, e, f, g, h, s0, s1, t1, t2;
     for (var off = 0; off < p; off += 64) {
       for (t = 0; t < 16; t++) {
         i = off + t * 4;
@@ -79,7 +83,7 @@
     }
     return out;
   }
-  function toHex(bytes) { var s = ''; for (var i = 0; i < bytes.length; i++) s += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16); return s; }
+  function toHex(bytes) { var s = ''; for (var i = 0; i < bytes.length; i++) s += HEX[bytes[i]]; return s; }
   function sha256Hex(str) { return toHex(sha256Bytes(utf8Bytes(String(str)))); }
 
   // --------------------------------------------------------------------- PRNG

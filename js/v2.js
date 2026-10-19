@@ -555,18 +555,25 @@
   // Animation pop-up (2026-10-14): battle / breeding animations play in a centred modal over a dimmed backdrop; the page never scrolls.
   // The arena element is moved into the modal and put back on close (finish, Skip, Esc, backdrop click); scroll position is restored.
   var animM = { el: null, home: null, y: 0, iv: null, onClose: null }, animQ = [];
+  /* keepScroll(y): put the page back where it was after a re-render, instantly (html has scroll-behavior:smooth, which would animate a plain scrollTo) */
+  function keepScroll(y) { if (Math.abs(window.scrollY - y) < 1) return; var h = document.documentElement, old = h.style.scrollBehavior; h.style.scrollBehavior = 'auto'; window.scrollTo(0, y); h.style.scrollBehavior = old; }
   /* result animations (fights, breeds) queue up and play one after another, each once (2026-10-15) */
   function queueAnim(fn) { animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
   function nextAnim() { if (animM.el || !animQ.length) return; animQ.shift()(); }
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
       box.addEventListener('click', function (e) { if (e.target === box) animClose(); }); $('animClose').onclick = function () { animClose(); }; }
-    animM.y = window.scrollY; animM.el = el; animM.home = document.createComment('arena'); el.parentNode.insertBefore(animM.home, el); $('animSlot').appendChild(el); animM.onClose = onClose || null;
-    box.classList.add('on'); window.scrollTo(0, animM.y); }
+    /* smooth-perf scroll fix (owner approved 2026-10-19): the pop-up never moves the page. The arena's spot in the page is held by a placeholder of the
+     * same size while it is in the modal, so nothing below it shifts, and there is no window.scrollTo any more (with html scroll-behavior:smooth those
+     * calls became long animated scrolls that dragged the page back when queued animations opened/closed). The user's scroll position is kept. */
+    animM.y = window.scrollY; animM.el = el; animM.home = document.createElement('div'); animM.home.className = 'animhome'; animM.home.setAttribute('aria-hidden', 'true');
+    var r = el.getBoundingClientRect(), cs = window.getComputedStyle(el); animM.home.style.cssText = 'height:' + r.height + 'px;margin:' + cs.marginTop + ' ' + cs.marginRight + ' ' + cs.marginBottom + ' ' + cs.marginLeft + ';display:' + (cs.display === 'none' ? 'none' : (cs.display === 'inline' ? 'inline-block' : cs.display)) + (r.width ? ';width:' + r.width + 'px;max-width:100%' : '') + ';visibility:hidden;pointer-events:none';
+    el.parentNode.insertBefore(animM.home, el); $('animSlot').appendChild(el); animM.onClose = onClose || null;
+    box.classList.add('on'); }
   function animClose(silent) { var box = $('animBox'); if (!animM.el) return; var y = animM.y, cb = animM.onClose; animM.home.parentNode.insertBefore(animM.el, animM.home); animM.home.remove(); animM.el = null; animM.onClose = null;
-    if (box) box.classList.remove('on'); if (!silent && cb) cb(); window.scrollTo(0, y); if (animQ.length) setTimeout(nextAnim, 500); }
+    if (box) box.classList.remove('on'); if (!silent && cb) cb(); if (animQ.length) setTimeout(nextAnim, 500); }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && animM.el) animClose(); });
-  window.V2AnimClose = animClose; window.V2PlayFight = function (f) { playFight(f); };
+  window.V2AnimClose = animClose; window.V2PlayFight = function (f) { playFight(f); }; window.V2ReplayBreed = function (kidId) { replayBreed(kidId); }; /* smooth-perf: breed replay hook for tests (same as a toast's ▶ Replay) */
   function playFight(f) {
     if (!f || !f.turns) return; var w = world(), c = $('arena'), ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
     var A = w.byId[f.a], B = w.byId[f.b], fa = petFrames(Object.assign({}, A, { blackEye: false, crowned: false }), w), fb = petFrames(Object.assign({}, B, { blackEye: false, crowned: false }), w);
@@ -639,11 +646,11 @@
       out.push('<div>' + petLblT(w, t.a) + ' → ' + petLblT(w, t.b) + ' <span class="muted">⏳ pending confirmation</span>' + tx + '</div>'); });
     return out.join(''); }
   $('bGo').onclick = function () { if (!ME) return confirmPlans('Breed', [{}]); var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();
-    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); window.scrollTo(0, y); playBreed(a, b, n0); var w2 = world(), A2 = w2.byId[a], B2 = w2.byId[b]; toast(A2 && B2 && A2.owner === B2.owner ? '⏳ Breeding #' + a + ' × #' + b + ': your egg appears once this confirms.' : '💞 Breed request sent: #' + a + ' → #' + b + '. The partner\'s owner can accept it once it confirms.', 9000); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), a, b)); };
+    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); keepScroll(y); playBreed(a, b, n0); var w2 = world(), A2 = w2.byId[a], B2 = w2.byId[b]; toast(A2 && B2 && A2.owner === B2.owner ? '⏳ Breeding #' + a + ' × #' + b + ': your egg appears once this confirms.' : '💞 Breed request sent: #' + a + ' → #' + b + '. The partner\'s owner can accept it once it confirms.', 9000); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), a, b)); };
   function petIds() { var o = {}; world().pets.forEach(function (p) { o[p.id + ':' + (p.parents || '')] = 1; }); return o; } // pets before the breed
   /** playBreed: the battle arena's approach for a breed. Both parents hop together, hearts, the egg appears, then the result. Display only. Skippable. */
   /** feedEgg(id): the normal feed flow for a freshly bred egg (existing confirm dialog, default 69). */
-  function feedEgg(id) { if (animM.el) animClose(true); var y = window.scrollY; confirmPlans('Feed #' + id, [{ tag: 'pet:feed:' + id, amount: 69, petId: id, label: 'Feed #' + id }], function () { render(); window.scrollTo(0, y); toast('🍼 Fed egg #' + id); }); }
+  function feedEgg(id) { if (animM.el) animClose(true); var y = window.scrollY; confirmPlans('Feed #' + id, [{ tag: 'pet:feed:' + id, amount: 69, petId: id, label: 'Feed #' + id }], function () { render(); keepScroll(y); toast('🍼 Fed egg #' + id); }); }
   window.V2FeedEgg = feedEgg;
   /* breed review Skip (fix): dismiss the current result (persisted per address), hide the box, then advance: next queued breed/egg animation,
    * else the next open breed request not yet reviewed (scrolled to + flashed), else 'Nothing left to review'. Display only. */
@@ -768,6 +775,11 @@
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
   window.V2UI = { autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight };
-  render(); route(); setInterval(function () { M.refresh(render); }, 60000); /* new confirmed burns (e.g. your roll result) */
+  render(); route();
+  /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
+   * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
+  var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }
+  setInterval(function () { if (document.hidden) return; poll(); }, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastPoll > 60000) poll(); });
   window.__demo = { S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans };
 })();

@@ -298,8 +298,27 @@
   var ACTIVATE_BREEDCARRY_BLOCK = 971650;
   var ACTIVATE_DEDUP_BLOCK = 971588;  // Bitcoin tip 971,585 at 2026-10-15 09:20 CT + 3 (Jake approved)
   var DEDUP_NUM = 9, DEDUP_DEN = 10, DEDUP_SCALE = 1000000;
-  function dampW(w0, c) { var x = w0 * DEDUP_SCALE; for (var i = 0; i < c && x > 1; i++) x = Math.floor(x * DEDUP_NUM / DEDUP_DEN); return Math.max(1, x); }
-  function ownedCounts(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
+  function dampWCalc(w0, c) { var x = w0 * DEDUP_SCALE; for (var i = 0; i < c && x > 1; i++) x = Math.floor(x * DEDUP_NUM / DEDUP_DEN); return Math.max(1, x); }
+  var DAMP_MEMO = {}; /* smooth-perf (2026-10-19): dampW is a pure function of (w0, c); remembering answers gives the same integers without the loop */
+  function dampW(w0, c) { var k = w0 + '|' + c, v = DAMP_MEMO[k]; if (v === undefined) v = DAMP_MEMO[k] = dampWCalc(w0, c); return v; }
+
+  /* GEAR INDEX (smooth-perf, owner approved 2026-10-19; from the load-investigation prototype). wornOf / ownedCounts / repairGear / finish used to scan
+   * every item in w.items on every call (3,600+ items, called per token drop, roll and wear), which made the replay grow quadratically. Every item the
+   * replay creates goes through trk(), which keeps a per-world index: pet id -> worn items (kept in creation order = Object.keys(w.items) order, so
+   * "first match" / "oldest stays" picks are unchanged) and owner -> item counts. g.on / g.owner become accessors that update the index on write.
+   * Same answers, same order, so the replay output is identical (tools/replay-check SAME). A world without the index (built elsewhere) falls back to the scan. */
+  function ixOf(w){ if(!w.__ix) Object.defineProperty(w,'__ix',{value:{on:new Map(),own:new Map(),seq:new Map(),n:0},enumerable:false}); return w.__ix; }
+  function ixAdd(X,k,g){ var a=X.on.get(k); if(!a){a=[];X.on.set(k,a);} var s=X.seq.get(g),i=a.length; while(i>0&&X.seq.get(a[i-1])>s)i--; a.splice(i,0,g); }
+  function ixRem(X,k,g){ var a=X.on.get(k); if(!a)return; var i=a.indexOf(g); if(i>=0)a.splice(i,1); }
+  function ixCnt(X,o,it,d){ var m=X.own.get(o); if(!m){m={};X.own.set(o,m);} m[it]=(m[it]||0)+d; }
+  function trk(w,g){ var X=ixOf(w); X.seq.set(g,X.n++); var on=g.on, ow=g.owner; ixAdd(X,on,g); ixCnt(X,ow,g.item,1);
+    Object.defineProperty(g,'on',{enumerable:true,configurable:true,get:function(){return on},set:function(v){ if(v===on)return; ixRem(X,on,g); on=v; ixAdd(X,on,g); }});
+    Object.defineProperty(g,'owner',{enumerable:true,configurable:true,get:function(){return ow},set:function(v){ if(v===ow)return; ixCnt(X,ow,g.item,-1); ow=v; ixCnt(X,ow,g.item,1); }});
+    return g; }
+  /** reindex(w): build the gear index on a world that has none (e.g. a structured clone restored from the cross-visit cache), in w.items key order. */
+  function reindex(w) { if (!w || w.__ix || !w.items) return w; Object.keys(w.items).forEach(function (k) { trk(w, w.items[k]); }); return w; }
+  function ownedCountsScan(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
+  function ownedCounts(w, owner) { if (!w.__ix) return ownedCountsScan(w, owner); var m = {}, c = w.__ix.own.get(owner) || {}; Object.keys(c).forEach(function (k) { if (c[k] > 0) m[k] = c[k]; }); return m; }
   function communityCounts(w) { var m = {}; (w.community.gearLog || []).forEach(function (g) { m[g.item] = (m[g.item] || 0) + 1; }); return m; }
   function pickItem(hex, slot, species, tierIdx, owned) { var p = pool(slot, species, tierIdx); if (!p.length) return null;
     var tot = p.reduce(function (a, b) { return a + b.w; }, 0), r = parseInt(hex.slice(8, 16), 16) % tot;
@@ -451,7 +470,7 @@
   }
   function finish(w, p, tip) {
     liveAt(w, p, tip);
-    if (p.dead) Object.keys(w.items).forEach(function (k) { if (w.items[k].on === p.id) w.items[k].on = null; });
+    if (p.dead) wornOf(w, p.id).forEach(function (g) { g.on = null; }); /* gear index (smooth-perf): same items taken off, no full scan per dead pet */
     p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species, tip, petThresholds(w, p, tip)); p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
     p.blackEye = p.blackEyeUntil != null && tip < p.blackEyeUntil; p.crowned = p.crownUntil != null && tip < p.crownUntil;
   }
@@ -479,7 +498,7 @@
       w.pets.push(p); w.byId[p.id] = p; liveAt(w, p, cut - 1); });
     w.nextPet = maxId + 1;
     (st.items || []).forEach(function (g) { var it = itemOf(g.item); if (!it) return; var gid = 'L' + g.gid, on = g.on != null && w.byId[g.on] && !w.byId[g.on].dead ? g.on : null;
-      w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: g.owner, on: on, src: 'live', liveGid: g.gid, liveSlot: g.slot, liveItem: g.item, rolledOn: g.rolledOn }; });
+      trk(w, w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: g.owner, on: on, src: 'live', liveGid: g.gid, liveSlot: g.slot, liveItem: g.item, rolledOn: g.rolledOn }); });
     var c = st.community || {}; w.community.burned = c.burned || 0; Object.keys(c.feeders || {}).forEach(function (a) { w.community.feeders[a] = c.feeders[a]; w.community.feeds += c.feeders[a]; });
     w.cutoff = { block: cut /* first v2 block */, lastLiveBlock: cut - 1, pets: all.length, items: (st.items || []).length, burns: c.burns || null };
   }
@@ -496,14 +515,15 @@
   var ACTIVATE_GEAR_CAP_BLOCK = 971720;  // Bitcoin tip 971,714 at 2026-10-16 08:20 CT + 6 (Jake approved)
   function gearCapOn(b) { return b != null && b >= ACTIVATE_GEAR_CAP_BLOCK; }
   function repairGear(w, b) { if (w.gearRepaired || !gearCapOn(b)) return; w.gearRepaired = b; var ks = Object.keys(w.items);
-    w.pets.forEach(function (p) { if (p.community) return; if (p.hatchBlock != null) liveAt(w, p, b); var mine = ks.map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === p.id; }), keep = {}, off = [];
+    w.pets.forEach(function (p) { if (p.community) return; if (p.hatchBlock != null) liveAt(w, p, b); var mine = wornOf(w, p.id), keep = {}, off = [];
       mine.forEach(function (g) { if ((p.openSlots || []).indexOf(g.slot) < 0 || keep[g.slot]) off.push(g); else keep[g.slot] = g; }); /* oldest stays, newer duplicates come off */
       if (!off.length) return; off.forEach(function (g) { g.on = null; });
       p.gearFix = { block: b, items: off.map(function (g) { return g.label || g.item; }) };
       w.log.push({ block: b, tx: null, kind: 'gearfix', petId: p.id, msg: '#' + p.id + ': gear over capacity repaired, back to inventory: ' + p.gearFix.items.join(', ') }); }); }
-  function wornOf(w, pid) { return Object.keys(w.items).map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === pid; }); }
+  function wornOf(w, pid) { if (!w.__ix) return Object.keys(w.items || {}).map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === pid; });
+    var a = w.__ix.on.get(pid); return a ? a.slice() : []; }
   function wornIn(w, pid, slot) { return wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
-  function newItem(w, it, owner, src) { var gid = 'g' + (w.nextItem++); w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: owner, on: null, src: src }; return w.items[gid]; }
+  function newItem(w, it, owner, src) { var gid = 'g' + (w.nextItem++); w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: owner, on: null, src: src }; trk(w, w.items[gid]); return w.items[gid]; }
   function wear(w, p, g) { if (p.openSlots.indexOf(g.slot) < 0) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
   function giveRandomPiece(w, loser, winnerPet, seedHex, why) {
     var take = wornOf(w, loser.id).filter(function (g) { return !g.legendary; }); // legendary species pieces are never takeable
@@ -894,7 +914,7 @@
       var top = [champ.id]; last.forEach(function (m) { if (m.loser) top.push(m.loser); }); semis.forEach(function (m) { if (m.loser) top.push(m.loser); });
       R.top = top;
       top.forEach(function (id, k) { var p = w.byId[id], it = { id: 'rumble-trophy', label: (k === 0 ? 'Gold' : k === 1 ? 'Silver' : 'Bronze') + ' Rumble trophy wk ' + R.week, slot: 'hand', tier: 2 };
-        var g = w.items['g' + w.nextItem] = { gid: 'g' + (w.nextItem++), item: it.id, label: it.label, slot: 'hand', tier: 2, legendary: false, owner: p.owner, on: null, src: 'trophy' }; if (k > 0) p.trophies.push(it.label); });
+        var g = w.items['g' + w.nextItem] = trk(w, { gid: 'g' + (w.nextItem++), item: it.id, label: it.label, slot: 'hand', tier: 2, legendary: false, owner: p.owner, on: null, src: 'trophy' }); if (k > 0) p.trophies.push(it.label); });
       R.highlights.push('FINAL: #' + champ.id + ' is the Royal Rumble champion (crown until block ' + (b + WEEK) + ')');
     }
   }
@@ -1061,7 +1081,7 @@
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
-    autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, myRanks: myRanks, breedPicker: breedPicker,
+    autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, reindex: reindex, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_GEAR_AUDIT_BLOCK: ACTIVATE_GEAR_AUDIT_BLOCK, gaOn: gaOn, ACTIVATE_STAR_BATCH_BLOCK: ACTIVATE_STAR_BATCH_BLOCK, ACTIVATE_MYTHIC_DISCOUNT_BLOCK: ACTIVATE_MYTHIC_DISCOUNT_BLOCK, MYTHIC_DISCOUNT_CARE: MYTHIC_DISCOUNT_CARE, mythicDiscountOn: mythicDiscountOn, petThresholds: petThresholds, overflowRolls: overflowRolls, overflowRollPlan: overflowRollPlan, overflowEarned: overflowEarned, starBatchOn: starBatchOn, lockHint: function (id) { var L = SPECIES_LOCK[id]; return L ? '\uD83D\uDD12 ' + speciesLabel(L.sp) + '-only' : ''; }, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
 });

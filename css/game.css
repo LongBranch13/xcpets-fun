@@ -1,6 +1,11 @@
 /* XCPETS local game build: real-game widgets + XCPETS pixel theme (assets generated from pet-core at build time). */
 :root { --pixline: #2b4a33; }
-body { background-color: #0d1117; background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile.png); background-size: auto, 192px 192px; background-attachment: fixed; image-rendering: pixelated; }
+body { background-color: #0d1117; background-image: none; image-rendering: pixelated; }
+/* smooth-perf (2026-10-19): the tiled page background used background-attachment: fixed, which makes the browser repaint the whole page on every
+ * scroll frame (janky on phones). The same layers now sit on a fixed, viewport-sized layer behind the content, which scrolls on the GPU; same
+ * picture, same place (fixed to the viewport, 192px tiles, .93 dark veil). */
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -1; pointer-events: none;
+  background-color: #0d1117; background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile.png); background-size: auto, 192px 192px; image-rendering: pixelated; }
 .panel { border: 3px solid var(--pixline) !important; border-radius: 4px !important; box-shadow: 4px 4px 0 #000, inset 0 0 0 1px #0a0f0b; }
 .sec::before, h2.sec::before, h1.sec::before { content: ""; display: inline-block; width: 28px; height: 28px; margin-right: 10px; vertical-align: -5px; background: center / contain no-repeat; image-rendering: pixelated; }
 .sec[data-ico="egg"]::before { background-image: url(../img/theme/egg.png); } .sec[data-ico="flame"]::before { background-image: url(../img/theme/flame.png); }
@@ -107,9 +112,9 @@ a.txrow { display:block; padding: 6px 8px; margin: 2px 0; border-radius: 6px; co
 @media (max-width: 520px) { #communityPanel .cgrid { grid-template-columns: 72px 1fr; } #communityPanel .cgrid .commsprite { width: 72px; height: 72px; } }
 .petctl { gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; } .pager { text-align:center; margin:8px 0; } .pager button { margin:0 6px; } .apibanner { border:2px solid #ff9a5a; background:#2a1a12; color:#ffd8c0; padding:10px 14px; border-radius:8px; margin:10px auto; max-width:1100px; } #reviewBox { border-color:#ffc93c; }
 .sharebar { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:6px 0; } .sharebar .act { font: 600 12px system-ui, sans-serif; padding: 4px 10px; min-height: 32px; border-radius: 999px; border: 2px solid #0d1117; background: #33d6ff; color: #0d1117; box-shadow: 2px 2px 0 #000; cursor:pointer; }
-html[data-bg=btc] body { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-btc.png); }
-html[data-bg=xcp] body { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-xcp.png); }
-html[data-bg=mix] body { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-mix.png); }
+html[data-bg=btc] body::before { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-btc.png); }
+html[data-bg=xcp] body::before { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-xcp.png); }
+html[data-bg=mix] body::before { background-image: linear-gradient(rgba(13,17,23,.93), rgba(13,17,23,.93)), url(../img/theme/tile-mix.png); }
 .bgpick { text-align:center; margin: 4px 0 8px; } .bgpick select { font-size: 12px; background:#18221b; color:#e9fbe9; border:1px solid #3ddc84; border-radius:6px; padding:2px 4px; }
 details.traits { margin: 4px auto 0; font: 12px system-ui, sans-serif; text-align: left; max-width: 420px; }
 details.traits summary { cursor: pointer; color: #33d6ff; text-align: center; font-weight: 600; }
