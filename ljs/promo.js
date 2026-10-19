@@ -87,7 +87,7 @@
   }
   function pct(x) { return x * 100 >= 1 ? (x * 100).toFixed(1) + '%' : (x * 100).toFixed(2) + '%'; }
   function renderCast(tierId) {
-    var odds = speciesOdds(), box = $('castRows'), ti = PetCore.TIERS.map(function (t) { return t.id; }).indexOf(tierId); box.innerHTML = '';
+    var odds = speciesOdds(), box = $('castRows'), ti = PetCore.TIERS.map(function (t) { return t.id; }).indexOf(tierId); box.innerHTML = ''; animated = animated.filter(function (a) { return document.body.contains(a.canvas); });
     var list = LIVE ? G.SPECIES.filter(function (sp) { return V.minTierOf(sp.id) <= ti && (sp.id !== 'nakamoto' || ti === 3); }) : PetCore.SPECIES;
     list.forEach(function (sp) {
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', sp.id);
@@ -106,15 +106,35 @@
       row.appendChild(strip); box.appendChild(row);
     });
     if (LIVE) box.insertAdjacentHTML('beforeend', '<p class="muted small">Only species that can hatch at this tier are shown. Odds per egg as on the <a href="pets.html#odds">Pet Guide</a>' + (V.ACTIVATE_LEG_BOOST_BLOCK ? ' (from block ' + Number(V.ACTIVATE_LEG_BOOST_BLOCK).toLocaleString('en-US') + ')' : '') + '. Fresh hatches wear no gear.</p>');
-    Array.prototype.forEach.call($('castTiers').children, function (b) { if (b.getAttribute('data-tier')) b.className = b.getAttribute('data-tier') === tierId ? 'on' : ''; });
+    castOn(tierId);
     window.PromoLiveCast = LIVE;
   }
+  /* Home cast row (homepage-cast, 2026-10-19): one fixed-size card per entry, Common .. Legendary, Mythic, then ONE Hybrids link card.
+   * Only buttons with data-tier toggle; the Hybrids card is a plain link to hybrids.html (hybrids are never listed inline here). */
+  function castOn(id) { Array.prototype.forEach.call($('castTiers').children, function (b) { if (b.getAttribute('data-tier')) b.classList.toggle('on', b.getAttribute('data-tier') === id); }); }
+  function castCard(label, sub) { var b = document.createElement('button'); b.type = 'button'; b.innerHTML = '<span class="ct-l">' + esc(label) + '</span><span class="ct-s">' + esc(sub) + '</span>'; return b; }
+  // Mythic tab: every species at Mythic, the sixth and last stage (a stage, not a hatch tier), at Legendary with no gear, in a wrapping grid
+  function renderMythic() {
+    var box = $('castRows'); box.innerHTML = ''; animated = animated.filter(function (a) { return document.body.contains(a.canvas); });
+    var list = LIVE ? G.SPECIES : PetCore.SPECIES, grid = document.createElement('div'); grid.className = 'mythgrid';
+    list.forEach(function (sp) { var d = document.createElement('div'); d.className = 'mythcard'; d.setAttribute('data-sp', sp.id);
+      var c = canvas32(sp.label + ', Mythic'), pet = (LIVE ? G : PetCore).characterPet(sp.id, { tier: 'legendary' }); d.appendChild(c);
+      d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(sp.label) + '</h3><span class="muted small">' + esc(sp.arc && sp.arc.length ? sp.arc[sp.arc.length - 1][0] : 'Mythic') + '</span>');
+      if (LIVE) showLive(c, pet, 5); else show(c, pet, 5); grid.appendChild(d); });
+    box.appendChild(grid);
+    box.insertAdjacentHTML('beforeend', '<p class="muted small">Mythic is the last of the six stages. Every pet that keeps eating grows into it, whatever its tier. Shown at Legendary with no gear.</p>');
+    castOn('mythic');
+  }
   PetCore.TIERS.forEach(function (t) {
-    var b = document.createElement('button'); b.type = 'button'; b.setAttribute('data-tier', t.id);
-    b.textContent = t.label + ' (' + (t.chance / 100) + '%' + (LIVE ? '' : ', ' + [1, 2, 4, 5][PetCore.TIERS.indexOf(t)] + ' gear') + ')';
+    var b = castCard(t.label, (t.chance / 100) + '% of eggs'); b.setAttribute('data-tier', t.id);
     b.onclick = function () { renderCast(t.id); };
     $('castTiers').appendChild(b);
   });
+  (function () { var b = castCard('Mythic', 'final stage'); b.setAttribute('data-tier', 'mythic'); b.onclick = renderMythic; $('castTiers').appendChild(b);
+    // ONE fixed-size Hybrids card; js/v2-pages.js fills the count (and a sample sprite) from chain state once the burns are replayed
+    var a = document.createElement('a'); a.className = 'hybcard'; a.id = 'castHybCard'; a.href = 'hybrids.html';
+    a.innerHTML = '<span class="ct-l"><canvas class="ct-ico" id="castHybIco" width="32" height="32" aria-hidden="true"></canvas>Hybrids</span><span class="ct-s" id="castHybCount">see all →</span>';
+    a.setAttribute('aria-label', 'Hybrids: browse every hybrid'); $('castTiers').appendChild(a); })();
   renderCast('legendary');
   renderGallery();
   document.body.setAttribute('data-ready', 'yes');
