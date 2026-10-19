@@ -66,8 +66,8 @@
    * no leading zero), joined by '.', strictly ascending, at least 2, whole tag <= 34 bytes. Valued and validated exactly like pet:fm: pets in
    * ascending id order, each takes its own meal from the burn, a pet that can't be fed (or that the rest of the burn can't pay for) is skipped.
    * Inert before FEED_LIST_BLOCK: before it a pet:fl tag replays exactly as today (unknown pet: tag, community food only).
-   * TODO(deploy): set FEED_LIST_BLOCK = Bitcoin chain tip + ~6 at deploy time. The placeholder below keeps the format OFF everywhere (replay + UI). */
-  var FEED_LIST_BLOCK = 999999999;    // PLACEHOLDER - TODO(deploy): chain tip + ~6
+   * Activation block set at deploy (chain tip + 6). */
+  var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
   function x10(a) { return a.map(function (v, i) { return i <= 1 ? v : v * 10; }); }
