@@ -32,6 +32,11 @@
   // A key unlocks the next bonus slot by itself. Tokens/keys still unused at the cutoff resolve at the cutoff, in the order earned.
   // Dust pet:troll / pet:key burns before the cutoff keep counting; after it they are plain burns with a log note.
   var NOBURN_DUST_V1 = 0.00000001; // the old 'free' token-roll/key price (one raw unit), kept only to describe pre-cutoff burns
+  /* GRAVE GEAR (2026-10-19, review branch): same rule as V2Rules (js/v2-rules.js ACTIVATE_GRAVE_GEAR_BLOCK, keep the two equal). pet:grave:ID = the owner opts in: if the pet
+   * dies of neglect it keeps the gear it wears (on stays its id, grave = its id); pet:grave:ID:off cancels. Owner only, living pets only, any amount. Default (no flag):
+   * worn gear goes back to the owner's inventory at death, as before. Before the block pet:grave tags stay unknown (community food), so past burns replay the same.
+   * (In the v2 site this engine only replays burns before the v2 cutoff, so it is kept in step for the real-wallet path rather than for today's live data.) */
+  var GRAVE_GEAR_FROM_BLOCK = 972150; // PLACEHOLDER: = V2Rules.ACTIVATE_GRAVE_GEAR_BLOCK (deploy tip + 6, < first death block 972432)
   var EVOLVE_OFF_FROM_BLOCK = 971052; // = mainnet tip (api.xcp.fun/node/v2) when this was added, 2026-10-12
   var DEATH_FROM_BLOCK = 971280, NEGLECT_DAYS = 7; // tip was 971040 when added; 971280 = first block of day 6745 (~1.7 days ahead)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];           // per meal by current stage Hatchling..Elder (v2)
@@ -83,6 +88,7 @@
         return ids.length ? { action: 'release', ids: ids } : { action: 'invalid', reason: 'empty release mask' }; }
       return { action: 'invalid', reason: 'pet:rel:ID or pet:rel:START:MASK' };
     }
+    if (p[1] === 'GRAVE') { if (p.length === 3 && id(p[2]) !== null) return { action: 'grave', petId: id(p[2]), on: true }; if (p.length === 4 && id(p[2]) !== null && p[3] === 'OFF') return { action: 'grave', petId: id(p[2]), on: false }; return null; }
     if (p[1] === 'KEY') return p.length === 3 && id(p[2]) !== null ? { action: 'key', petId: id(p[2]) } : { action: 'invalid', reason: 'pet:key:ID' };
     if (p[1] === 'C' && p[2] === 'ROLL') {
       if (p.length === 3) return { action: 'croll', slot: null };
@@ -255,6 +261,7 @@
     st.log.forEach(function (e) {
       cutover(e.block_index);
       var r = e, bh = blockHashes[e.block_index], ext = parseExt(e.tag), p = e.petId != null ? byId[e.petId] : null;
+      if (ext && ext.action === 'grave' && e.block_index < GRAVE_GEAR_FROM_BLOCK) ext = null; // inert before the block (unknown tag, as before)
       if (e.kind === 'hatch' && p) { careNow[p.id] = e.pack ? COSTS.hatch : (credit[e.tx_hash] != null ? credit[e.tx_hash] : e.amount); p.reached = GameCore.stageFor(careNow[p.id], THRESHOLDS, false); if (p.reached >= 1) drop(p, e, bh, 'stageUp'); return; }
       if (e.kind === 'feedPet' && p) {
         var before = GameCore.stageFor(careNow[p.id], THRESHOLDS, false); careNow[p.id] += (credit[e.tx_hash] != null ? credit[e.tx_hash] : e.amount);
@@ -289,6 +296,8 @@
       if (p.released) return { ok: false, msg: 'pet was released' };
       if (p.owner !== e.source) return { ok: false, msg: 'owner only' };
       if (isDeadAt(careNow[p.id], p.lastFedBlock || p.hatchBlock, e.block_index)) { e.deadPetId = p.id; return { ok: false, msg: 'pet died of neglect at block ' + deathBlock(careNow[p.id], p.lastFedBlock || p.hatchBlock) + ' (Pet Cemetery): burn ignored' }; }
+      if (x.action === 'grave') { if (x.on) { p.graveGear = e.block_index; p.graveTx = e.tx_hash; } else { delete p.graveGear; delete p.graveTx; }
+        return { ok: true, msg: x.on ? 'worn gear stays on the grave if #' + p.id + ' dies' : 'grave gear cancelled for #' + p.id }; }
       if (!bh || !p.art) return { ok: false, msg: 'block hash unknown (pending)' };
       if (x.action === 'key') {
         if (p.keys < 1) return { ok: false, msg: 'no slot key' };
@@ -316,7 +325,8 @@
       p.deathBlock = deathBlock(p.care, p.lastFedBlock || p.hatchBlock);
       if (opts.tip != null && p.deathBlock != null && opts.tip >= p.deathBlock) {
         p.dead = { block: p.deathBlock, day: day(p.deathBlock), cause: 'neglect' };
-        for (var k in items) if (items[k].on === p.id) items[k].on = null; // worn gear goes back to the owner's inventory
+        var keep = p.graveGear != null && p.graveGear >= GRAVE_GEAR_FROM_BLOCK; // grave gear opt-in: it stays on the dead pet
+        for (var k in items) if (items[k].on === p.id) { if (keep) items[k].grave = p.id; else items[k].on = null; } // default: worn gear goes back to the owner's inventory
       }
       p.daysLeft = p.deathBlock != null && tipDay != null && !p.dead ? day(p.deathBlock) - tipDay : null; // 1 = last day to feed
       p.openSlots = p.art && !p.dead ? openSlots(p) : [];
@@ -405,6 +415,6 @@
   function cemeteryOf(st, address) { return (st.cemetery || []).filter(function (p) { return !address || p.owner === address; }); }
   function petsOf(st, address) { return st.pets.filter(function (p) { return p.owner === address; }); }
 
-  return { NOBURN_DUST_V1: NOBURN_DUST_V1, EVOLVE_OFF_FROM_BLOCK: EVOLVE_OFF_FROM_BLOCK, EVOLVE_COST_V1: EVOLVE_COST_V1, BUMP_SLOTS: BUMP_SLOTS, BUMP_FREE_BONUS: BUMP_FREE_BONUS, BUMP_STATS: BUMP_STATS, MIN_SLOTS: MIN_SLOTS, SLOTS: SLOTS, ASSET: ASSET, MEAL_SIZES: MEAL_SIZES, MEAL_SIZES_V1: MEAL_SIZES_V1, FEEDS_PER_DAY_V1: FEEDS_PER_DAY_V1, FEED_V2_FROM_BLOCK: FEED_V2_FROM_BLOCK, DEATH_FROM_BLOCK: DEATH_FROM_BLOCK, NEGLECT_DAYS: NEGLECT_DAYS, deathBlock: deathBlock, isDeadAt: isDeadAt, cemeteryOf: cemeteryOf, feedsPerDayAt: feedsPerDayAt, THRESHOLDS: THRESHOLDS, COSTS: COSTS, FEEDS_PER_DAY: FEEDS_PER_DAY, DROP: DROP, BLOCKS_PER_DAY: BLOCKS_PER_DAY,
+  return { GRAVE_GEAR_FROM_BLOCK: GRAVE_GEAR_FROM_BLOCK, NOBURN_DUST_V1: NOBURN_DUST_V1, EVOLVE_OFF_FROM_BLOCK: EVOLVE_OFF_FROM_BLOCK, EVOLVE_COST_V1: EVOLVE_COST_V1, BUMP_SLOTS: BUMP_SLOTS, BUMP_FREE_BONUS: BUMP_FREE_BONUS, BUMP_STATS: BUMP_STATS, MIN_SLOTS: MIN_SLOTS, SLOTS: SLOTS, ASSET: ASSET, MEAL_SIZES: MEAL_SIZES, MEAL_SIZES_V1: MEAL_SIZES_V1, FEEDS_PER_DAY_V1: FEEDS_PER_DAY_V1, FEED_V2_FROM_BLOCK: FEED_V2_FROM_BLOCK, DEATH_FROM_BLOCK: DEATH_FROM_BLOCK, NEGLECT_DAYS: NEGLECT_DAYS, deathBlock: deathBlock, isDeadAt: isDeadAt, cemeteryOf: cemeteryOf, feedsPerDayAt: feedsPerDayAt, THRESHOLDS: THRESHOLDS, COSTS: COSTS, FEEDS_PER_DAY: FEEDS_PER_DAY, DROP: DROP, BLOCKS_PER_DAY: BLOCKS_PER_DAY,
     PACKS: PACKS, FREE: FREE, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, SLOTS: SLOTS, BONUS: BONUS, CSLOTS: CSLOTS, RULES: RULES, mealFor: mealFor, day: day, parseExt: parseExt, buildTag: buildTag, replay: replay, petsOf: petsOf, pickItem: pickItem, actionPlan: actionPlan, LABELS: LABELS, releaseTags: releaseTags, releasePlans: releasePlans, applyLoadout: applyLoadout, loadoutSet: loadoutSet };
 });

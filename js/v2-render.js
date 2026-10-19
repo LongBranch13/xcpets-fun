@@ -511,7 +511,7 @@
     if (!w || !p || w.tip == null || p.dead || p.released || p.community || p.mythicCare || !p.neglected || p.deathBlock == null || p.deathBlock <= w.tip) return null;
     var S = V.V2_SLOTS, g = V.wornOf(w, p.id).slice().sort(function (a, b) { return S.indexOf(a.slot) - S.indexOf(b.slot); }); if (!g.length) return null;
     var n = p.deathBlock - w.tip, L = starveLeft(n);
-    return { blocks: n, at: p.deathBlock, left: L.long, short: L.short, unfed: hungerDays(p, w), gear: g }; }
+    return { blocks: n, at: p.deathBlock, left: L.long, short: L.short, unfed: hungerDays(p, w), gear: g, grave: p.graveGear != null, graveBlock: p.graveGear, graveTx: p.graveTx, graveLive: !!(V.graveOn && V.graveOn(w.tip)) }; }
   function fmtN(n) { return Number(n).toLocaleString('en-US'); }
   /** starveHtml(w, p, owner, o): the warning ('' when the pet does not qualify). owner = connected address ('' = none).
    *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
@@ -524,17 +524,29 @@
       '<p class="bcount">💀 #' + p.id + ' dies of hunger in <b>~' + b.left + '</b> <span class="small muted">(' + fmtN(b.blocks) + ' block' + (b.blocks === 1 ? '' : 's') + ', at block ' + fmtN(b.at) + ')</span> unless it is fed.</p>' +
       '<p class="small">Neglected: ' + b.unfed + ' chain day' + (b.unfed === 1 ? '' : 's') + ' without a meal. Feed it to save it.</p>' +
       '<p class="small">It wears ' + pcs + ':</p><ul class="small bgear">' + b.gear.map(function (g) { return '<li>' + esc(V.slotLabel(g.slot)) + ': ' + esc(g.label) + (g.legendary ? ' ★' : '') + '</li>'; }).join('') + '</ul>' +
-      '<p class="small">If it dies, its gear comes back to ' + bag + ' automatically, so no gear is lost.</p>' +
-      '<div class="scta">' + cta + '</div></div>'; }
+      (b.grave ? '<p class="small">If it dies, the gear it wears then stays on its grave (the owner chose this on chain). Pieces taken off before that go to ' + bag + '.</p>'
+        : '<p class="small">If it dies, its gear comes back to ' + bag + ' automatically, so no gear is lost.</p>') +
+      '<div class="scta">' + cta + '</div>' + graveRow(p, b, own, o) + '</div>'; }
+  /* grave gear (2026-10-19, review branch): status for everyone; the owner gets Leave gear on the grave / Cancel, each one pet:grave burn signed in their own wallet
+   * (V2Rules.gravePlan via the existing confirm flow; on pet.html a link to the pet on Play). Hidden before ACTIVATE_GRAVE_GEAR_BLOCK. */
+  function graveRow(p, b, own, o) { if (!b.graveLive) return '';
+    var st = b.grave ? '<b>on</b>: set at block ' + fmtN(b.graveBlock) + (b.graveTx ? ' (tx ' + esc(String(b.graveTx).slice(0, 8)) + '…)' : '') : '<b>off</b> (default: gear back to the bag)';
+    var btn = !own ? '' : o.feedHref ? ' <a class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '" href="' + esc(o.feedHref) + '">' + (b.grave ? 'Cancel on Play' : '🪦 Leave gear on the grave on Play') + '</a>'
+      : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to the bag)' : '🪦 Leave gear on the grave') + '</button>';
+    return '<p class="small sgrave">Grave gear: ' + st + '.' + btn + (own && !o.feedHref ? ' <span class="muted">One tiny burn (0.00000001 XCPETS + network fee) signed in your wallet.</span>' : '') + '</p>'; }
   /** bindStarve(root, w, p, owner, {feed()}): wires the Feed and Connect buttons inside root. */
   function bindStarve(root, w, p, owner, o) { if (!root) return; o = o || {};
     var own = function () { var q = (w && w.byId && w.byId[p.id]) || p; return !!owner && q.owner === owner && !q.released; };
     root.querySelectorAll('[data-starve="' + p.id + '"] button[data-sfeed]').forEach(function (b) { b.onclick = function () { if (!own()) return; if (o.feed) o.feed(); }; });
+    root.querySelectorAll('[data-starve="' + p.id + '"] button[data-sgrave]').forEach(function (b) { b.onclick = function () { if (!own()) return; if (o.grave) o.grave(b.getAttribute('data-sgrave') === 'on'); }; });
     root.querySelectorAll('[data-starve="' + p.id + '"] [data-sconn]').forEach(function (b) { b.onclick = function () { var c = document.getElementById('wconnect'); if (c) { try { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } c.click(); } else location.href = 'play.html'; }; }); }
   /** starveChip(w, p): small My Pets card badge. */
   function starveChip(w, p) { var b = starveInfo(w, p); if (!b) return '';
-    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your bag.">🪦 starves in ' + b.short + '</span>'; }
-  window.V2Render = { careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, esc: esc, TID: TID, familyHtml: familyHtml };
+    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your bag.">🪦 starves in ' + b.short + (b.grave ? ' · grave gear' : '') + '</span>'; }
+  /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
+  function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
+  function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
+  window.V2Render = { careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
