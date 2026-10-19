@@ -62,7 +62,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=8ca1c6d229'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=d2cadf7c67'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -245,7 +245,7 @@
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
-      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, '🔥 streak ' + streak(p, w.tip), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.crowned ? '<span class="chip">👑 Rumble champion</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '');
+      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, '🔥 streak ' + streak(p, w.tip), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '');
       $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. Its gear went back to the owner\'s inventory.</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you) <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>' : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(V.thresholdsFor(p.species)[5]) + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
         (p.owner === ME && !p.dead ? ' <a class="btn" href="play.html#pet-' + p.id + '">Open in the game</a>' : '');
@@ -280,11 +280,7 @@
       fs.innerHTML = '<h2 class="sec" data-ico="egg">Family tree</h2><ul class="tree"><li>#' + p.id + ' ' + esc(p.name) + '</li></ul>' + R.familyHtml(M.world(), M.world().byId[p.id], M.state().tip);
       if (!fs.parentNode) $('bornTraits').parentNode.insertBefore(fs, $('bornTraits').nextSibling); })();
     if (window.V2InscribeEnv && window.V2InscribeUI) { var gs1 = $('gear').closest('section') || $('gear').parentNode, h1 = document.createElement('section'); h1.className = 'panel'; h1.id = 'inscPanel'; gs1.parentNode.insertBefore(h1, gs1.nextSibling); V2InscribeUI.petSection(h1, p, w, p.owner === ME); return; } // TEST LINK only (?inscribe=test)
-    // Inscriptions: COMING SOON (the inscribe flow is not live; no preview/commit is offered)
-    (function () { var gs = $('gear').closest('section') || $('gear').parentNode, host = document.createElement('section'); host.className = 'panel'; host.id = 'inscPanel';
-      host.innerHTML = '<h2 class="sec" data-ico="pet">On-chain art</h2><p><button type="button" class="btn" disabled aria-disabled="true">⛓️ Inscribe: coming soon</button></p><p class="small muted">Inscribing pet art on Bitcoin is not live yet. Art is hosted on this site for now.</p>';
-      gs.parentNode.insertBefore(host, gs.nextSibling); })();
   }
-  function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* else coming soon: static notice only */ }
+  function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive }[page]; if (go) go();
 })();

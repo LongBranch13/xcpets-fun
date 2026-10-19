@@ -50,7 +50,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .bgrid .pet.card b { color:var(--ink); }
 .chip.hyb { background:#3b2a5a; color:#ffc93c; font-weight:700; letter-spacing:1px; font-size:10px; }
 
-/* animation pop-up (battle / rumble / breeding) */
+/* animation pop-up (battle / breeding) */
 .reveal.anim .box { max-width: 460px; text-align: left; } .reveal.anim .arenawrap { display: block !important; } .reveal.anim canvas { width: 100%; max-width: 400px; height: auto; image-rendering: pixelated; display: block; margin: 0 auto 8px; }
 .reveal.anim .logbox { max-height: 160px; overflow: auto; }
 
@@ -101,8 +101,6 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 /* pending challenges (2026-10-15) */
 #fPending { max-height: none; margin: 6px 0 10px; } #fPending .txrow { padding: 6px 8px; margin: 3px 0; border-radius: 6px; background: #17211a; line-height: 1.5; }
 #fPending .pend-out { border-left: 3px solid #33d6ff; } #fPending .pend-in { border-left: 3px solid #ffb02e; } #fPending .txrow a { color: #33d6ff; }
-/* ux-batch: "Coming soon" tag (Rumble) */
-.chip.soon{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;border:2px solid #ffc93c;color:#ffc93c;background:rgba(255,201,60,.08);font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-radius:4px}
 /* ===== ux-batch 2026-10-16 (UI only) ===== */
 .ctlrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.ctlrow .ctlbody{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.ctltoggle{display:none}
 .ctlrow input[type=search]{width:130px}

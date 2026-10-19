@@ -600,7 +600,7 @@
         return L(r, 'fightDone', 'fight ' + F.id + ': #' + win.id + ' beat #' + los.id + (piece ? ' and took ' + piece.label : ' (no takeable gear)'), { fightId: F.id });
       }
       case 'rumble': {
-        if (rumbleOff(b)) return L(r, 'rejected', 'Royal Rumble entries are off (coming soon): plain burn (community food)');
+        if (rumbleOff(b)) return L(r, 'rejected', 'Royal Rumble entries are off (retired): plain burn (community food)');
         var P = pet(t.petId), wk = weekOf(b), R = w.rumbles[wk] || (w.rumbles[wk] = { week: wk, seedBlock: seedBlockOfWeek(wk), entrants: [], done: false });
         var hasGear = P && wornOf(w, P.id).some(function (g) { return !g.legendary; }), need = COSTS.rumble + (hasGear ? 0 : COSTS.rumbleStake);
         var er = !P || P.owner !== src ? 'your pet only' : fightable(P, b) || (b >= R.seedBlock ? 'entries closed (seed block)' : null) || (R.entrants.some(function (x) { return x.id === P.id; }) ? 'already entered' : null) || (amt < need ? 'needs ' + need + (hasGear ? '' : ' (69 entry + 690 stake: no gear to risk)') : null);
