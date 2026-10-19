@@ -6,6 +6,13 @@
   'use strict';
   var N = 32, PAL = { n: '#1a1020', B: '#2f6fe0', b: '#1d48a8', c: '#7fb2ff', R: '#2f6fe0', r: '#1d48a8', h: '#7fb2ff', S: '#f2c48d', s: '#d9975f', p: '#f09a86',
     G: '#a9a9b3', g: '#7c7c88', W: '#e6e6ee', w: '#ffffff', L: '#8a5a2b', l: '#5e3b1a', O: '#f7931a', o: '#c46a00', y: '#ffd23f', k: '#0f1530' };
+  /* COMMUNITY palette variant (2026-10-19, owner): the Bitcoin Wizard is drawn in purples only while he is the COMMUNITY pet (opts.community).
+   * Player-hatched Wizards (after the community pet reaches Mythic, standing new-species rule) keep the normal blue reference palette above,
+   * so the purple robe stays the community pet's badge. Only robe/body/hat tones change; ink, skin, beard, staff and gold stay. */
+  var PAL_COMMUNITY = { B: '#8a4fd8', b: '#5b2ea6', c: '#c49cff', R: '#8a4fd8', r: '#5b2ea6', h: '#c49cff' };
+  /** WIZARD_HAT: the signature Headwear piece as a gear record (display only, NOT in the gear pool / rolled gear state). */
+  var WIZARD_HAT = { slot: 'head', item: 'wizard-hat', label: 'Wizard Hat', tier: 'legendary', legendary: true, signature: true, stats: 'Signature · cosmetic (no stats, like other ★ hats)' };
+  function isHat(x) { return !!(x && x.item === 'wizard-hat'); }
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   /* per stage: hat height, robe height, shoulder half-width, hem flare, beard length / half-width, staff orb radius */
   var DIM = [null, { hat: 6, body: 7, sh: 4, fl: 1, bl: 0, bw: 0, orb: 0 }, { hat: 7, body: 8, sh: 4, fl: 2, bl: 3, bw: 2, orb: 2 }, { hat: 8, body: 10, sh: 5, fl: 2, bl: 5, bw: 3, orb: 2 },
@@ -42,7 +49,7 @@
       for (var y = 0; y < 17; y++) { var hw = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((y - 9) / 9.5, 2))) * (y < 9 ? 7 : 8)); for (var x = 16 - hw; x < 16 + hw; x++) { var e0 = x - 16;
         set(g, x, 12 + y + bob, e0 <= -hw + 1 && y > 2 ? 'c' : e0 >= hw - 2 ? 'b' : 'B'); } }
       [[11, 16], [20, 19], [13, 23]].forEach(function (q) { set(g, q[0], q[1] + bob, 'c'); });
-      hat(g, 16, 4 + bob, 8, 12 + bob, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g);
+      if (isHat(G.head)) hat(g, 16, 4 + bob, 8, 12 + bob, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g);
     }
     var D = DIM[stage], cx = 15, bodyEnd = 27 + bob, faceH = 6, faceY = bodyEnd - faceH - D.body + 2, top = faceY - D.hat, shY = faceY + faceH - 1;
     var fx = cx - 4, fw = 8;                                                                                              // face box (x, width)
@@ -88,12 +95,13 @@
     if (G.body) { var b0 = col('body'), b1 = col('body', 1), bd = shade(b1, 0.85), bl = shade(b0, 1.15); for (var by = 0; by < N; by++) for (var bx = 0; bx < N; bx++) { var q0 = g[by][bx]; if (q0 === 'R') g[by][bx] = b0; else if (q0 === 'r') g[by][bx] = bd; else if (q0 === 'h') g[by][bx] = bl; }
       if (/armor|armour|plate|mail|chest/.test(kind('body'))) { hline(g, cx - half(1), cx + half(1) - 1, shY + 1, b1); set(g, cx - half(2), shY + 2, bl); set(g, cx + half(2) - 1, shY + 2, bl); } }
     // head: hat, or grey hair + Headwear
-    if (!G.head) hat(g, cx, top, D.hat, faceY, stage, 'B', 'b', 'c');
+    /* base sprite is hatless (grey hair); the Wizard Hat is a gear piece drawn here by the gear layer like any other Headwear */
+    if (isHat(G.head)) hat(g, cx, top, D.hat, faceY, stage, 'B', 'b', 'c');
     else { hline(g, fx, fx + fw - 1, faceY - 1, 'G'); hline(g, fx + 1, fx + fw - 2, faceY - 2, 'G'); set(g, fx - 1, faceY, 'G'); set(g, fx - 1, faceY + 1, 'G'); set(g, fx + fw, faceY, 'G'); set(g, fx + fw, faceY + 1, 'G'); set(g, fx + 2, faceY - 2, 'g'); set(g, fx + 5, faceY - 1, 'g'); // hat off: grey wizard hair
-      var hk = kind('head'), hc = col('head'), hd = col('head', 1);
+      if (!G.head) { /* no headwear: just the hair */ } else { var hk = kind('head'), hc = col('head'), hd = col('head', 1);
       if (/crown|tiara/.test(hk)) { hline(g, fx - 1, fx + fw, faceY - 2, hc); for (var ci = fx - 1; ci <= fx + fw; ci += 2) set(g, ci, faceY - 3, hc); set(g, cx, faceY - 2, hd); }
       else if (!/band|hachimaki|halo|visor/.test(hk) && /hat|cap|beanie|helmet|hood|bucket|fedora|beret|bowl|newsboy/.test(hk)) { rect(g, fx - 1, faceY - 3, fw + 2, 2, hc); rect(g, fx, faceY - 5, fw, 2, hc); hline(g, fx - 2, fx + fw + 1, faceY - 1, hd); }
-      else { hline(g, fx - 1, fx + fw, faceY - 1, hc); set(g, cx, faceY - 1, hd); set(g, fx + fw + 1, faceY, hc); } }          // headband-style
+      else { hline(g, fx - 1, fx + fw, faceY - 1, hc); set(g, cx, faceY - 1, hd); set(g, fx + fw + 1, faceY, hc); } } }          // headband-style
     // Grip piece in the left hand
     if (G.hand) { var ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
       if (/mug|cup|coffee|tea|bowl|bucket/.test(ak)) { rect(g, hx - 2, hy - 2, 3, 3, a0); hline(g, hx - 2, hx, hy - 2, a1); set(g, hx - 3, hy - 1, a1); set(g, hx - 1, hy, shade(a0, 0.8)); }
@@ -114,8 +122,8 @@
     return o;
   }
   /** render(stage, frame, bg, gear?) -> { width, height, data: [RGBA...] } */
-  function render(stage, frame, bg, gear) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018');
-    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(PAL[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
-  function frames(stage, bg, gear) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear); }); }
-  return { STAGES: STAGES, PAL: PAL, render: render, frames: frames, draw: draw };
+  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
+  function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
+  return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, WIZARD_HAT: WIZARD_HAT, render: render, frames: frames, draw: draw };
 });

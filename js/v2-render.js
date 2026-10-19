@@ -439,10 +439,13 @@
       out = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; }).slice(0, 2).map(function (k) { return '#' + k.split(',').map(function (v) { return ('0' + Number(v).toString(16)).slice(-2); }).join(''); }); } catch (e) { }
     return (colCache[id] = out); }
   /** wizardGear(w): the community pet's worn community-roll pieces in the WizardSprite gear format ({slot: {label, item, cols}}). */
-  function wizardGear(w) { var g = (w && w.community && w.community.gear) || {}, o = {}; (V.V2_SLOTS || []).forEach(function (sl) { if (g[sl]) { var c = itemCols(g[sl].item).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(g[sl].label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: g[sl].label, item: g[sl].item, cols: c }; } }); return o; }
+  function wizardGear(w) { var g = (w && w.community && w.community.gear) || {}, o = {}; (V.V2_SLOTS || []).forEach(function (sl) { if (g[sl]) { var c = itemCols(g[sl].item).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(g[sl].label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: g[sl].label, item: g[sl].item, cols: c }; } });
+    /* Wizard Hat (2026-10-19): his signature Headwear piece, always worn while the community Headwear slot is empty; a community roll for
+     * Headwear replaces it (newest roll wins). Synthetic, display only: never added to w.community.gear, so replay/gear state is unchanged. */
+    if (!o.head && window.WizardSprite && WizardSprite.WIZARD_HAT) o.head = WizardSprite.WIZARD_HAT; return o; }
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
-  function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : null);
+  function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
     return nakaFrames(w); }
   function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
@@ -452,7 +455,9 @@
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
   /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
-  function communityWearing(w) { var t = communityGearText(w); return 'Wearing: ' + (t || 'no gear yet'); }
+  function communityWearing(w) { var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
+    if (c && c.returned && !g.head && window.WizardSprite) t = 'Headwear: Wizard Hat ★ (signature)' + (t ? ' · ' + t : ''); /* synthetic signature piece, display only */
+    return 'Wearing: ' + (t || 'no gear yet'); }
   /** familyHtml(w, p): the family line for the pet popup AND the public pet page (2026-10-15, Jake). Parents linked ('none (hatched from a mint)' for
    * minted pets), every breeding partner with block and the resulting egg/pet linked, breedings n/max (+ cooldown). Display only. */
   /* family-tree-fix (2026-10-19, display only): dead / released parents, partners and children are marked (🪦 / released); 'Bred with' is grouped by
