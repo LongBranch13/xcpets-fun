@@ -18,28 +18,36 @@
   var lastW = null;
 
   // ================================================================ E. controls row (filters persist in this browser)
-  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all' }, load('filters', {}));
+  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }, load('filters', {}));
   function saveF() { store('filters', F); }
   function isHyb(p) { return !!(p.hybrid || (p.art && p.art.hybrid) || V.isHybrid(p.species)); }
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
-  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || F.flip || F.sort !== 'num'); }
+  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip || F.sort !== 'num'); }
+  /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species (A–Z)' sort; the community Bitcoin Wizard is never listed */
+  var SPF = ['pepe', 'wojak', 'chud', 'mumu', 'doge', 'peepo', 'bobo', 'sarutobi', 'lenny', 'snibby', 'kevin', 'dodo', 'nakamoto'];
+  function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
+  function spName(id) { return id === 'hybrid' ? 'Hybrids' : id === 'kevin' ? 'Kevin' : spL(id); }
+  function paintSpecies(pets) { var sel = $('fSpecies'); if (!sel) return; var c = { all: pets.length };
+    pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
+    var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + SPF.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
+    if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; } sel.value = F.sp || 'all'; }
   window.UXB = {};
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
   UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, '');
-    return { flip: !!F.flip, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false;
+    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false;
       if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
-    $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1';
-    function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; saveF(); U.render(); }
-    ['fSort', 'fTier', 'fMin', 'fOrigin'].forEach(function (id) { $(id).onchange = upd; });
+    $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1'; if ($('fSpecies')) $('fSpecies').value = F.sp || 'all';
+    function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; if ($('fSpecies')) F.sp = $('fSpecies').value; saveF(); U.render(); }
+    ['fSort', 'fTier', 'fMin', 'fOrigin', 'fSpecies'].forEach(function (id) { $(id).onchange = upd; });
     var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); };
     $('fDir').onclick = function () { F.flip = !F.flip; saveF(); U.render(); };
-    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all' }; saveF(); bindControls(); U.render(); };
+    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }; saveF(); bindControls(); U.render(); };
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
   }
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
-    var alive = U.mine(w).filter(function (p) { return !p.dead; }), shown = U.cem() ? null : U.petList(w);
+    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
     $('fShowing').textContent = shown ? 'Showing ' + fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets' : '';
     $('fReset').style.display = filtered() ? '' : 'none';
     $('ctlToggle').textContent = '⚙️ Filter & sort' + (filtered() ? ' •' : '');
