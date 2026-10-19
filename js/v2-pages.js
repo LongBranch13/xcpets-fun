@@ -15,8 +15,8 @@
   /** Cast gating: Nakamoto joins the live Cast (12 species) only once V2Rules.castShowsNakamoto(world) (stage >= NAKAMOTO_CAST_STAGE). */
   function cast(w) {
     var show = V.castShowsNakamoto(w), G = window.GenPetCore || PetCore, box = $('castRows'); if (!box) return show;
-    // rarity no longer caps gear in v2: drop the live "(1/2/4/5 gear)" from the tier tabs
-    Array.prototype.forEach.call($('castTiers').children, function (b) { b.textContent = b.textContent.replace(/, \d gear\)/, ')'); });
+    // rarity no longer caps gear in v2: drop the legacy "(1/2/4/5 gear)" from the tier tabs (only if present: the cast cards carry markup)
+    Array.prototype.forEach.call($('castTiers').children, function (b) { if (/, \d gear\)/.test(b.textContent)) b.textContent = b.textContent.replace(/, \d gear\)/, ')'); });
     function add() { if (!show || window.PromoLiveCast || box.querySelector('[data-sp="nakamoto"]')) return; /* live-rules cast (promo.js) has its own Nakamoto row on the Legendary tab */ var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
       var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', pet = G.characterPet('nakamoto', { tier: tier });
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', 'nakamoto');
@@ -28,25 +28,14 @@
     add(); new MutationObserver(add).observe(box, { childList: true });
     if (show) { var t = function (sel, a, b) { var e = document.querySelector(sel); if (e) e.innerHTML = e.innerHTML.replace(a, b); };
       t('#cast p.muted', 'one of twelve', 'one of thirteen'); t('.hero-copy .lede', 'Twelve pixel meme characters', 'Thirteen pixel meme characters'); t('.hero-copy .lede', 'Doge and Lenny.', 'Doge, Lenny and Nakamoto.'); }
-    // Hybrids tab: appears once any hybrid exists on chain; one Cast entry per hybrid pair (Egg..Mythic of its own look)
-    var hyb = V.castHybrids(w);
-    if (hyb.length && !$('castHybTab')) { var tb = document.createElement('button'); tb.type = 'button'; tb.id = 'castHybTab'; tb.className = ($('castTiers').firstElementChild || {}).className || '';
-      tb.classList.remove('on'); tb.textContent = '🧬 Hybrids (' + hyb.length + ')'; $('castTiers').appendChild(tb);
-      var hb = document.createElement('div'); hb.className = 'cast'; hb.id = 'castHybrids'; hb.style.display = 'none'; box.parentNode.insertBefore(hb, box.nextSibling);
-      hyb.forEach(function (e) { var roots = e.roots || [e.a, e.b];
-        var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-hyb', e.key);
-        row.innerHTML = '<div><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (roots.length > 2 ? ' (three-way mix)' : ' (parent A × parent B)') + ' · can hatch with ' + (roots.length > 2 ? 'any of these bodies' : 'either body') + ':</p></div>';
-        (e.builds || [e.plan]).forEach(function (pl) { var art = (window.GenPetCore || PetCore).characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
-          var lab = document.createElement('p'); lab.className = 'small hybbuild'; lab.style.margin = '6px 0 2px'; lab.style.fontWeight = '700';
-          lab.textContent = spLabel(pl.shape) + ' body, ' + spLabel(pl.color) + ' colours' + (pl.featSp ? ', ' + spLabel(pl.featSp) + ' feature' : ''); row.appendChild(lab);
-          var strip = document.createElement('div'); strip.className = 'strip6';
-          V.STAGE_NAMES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', e.name + ', ' + spLabel(pl.shape) + ' body, ' + name);
-            R.paint(c, V.hybridRender(art, { stage: si, frame: 0 })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
-          row.appendChild(strip); });
-        hb.appendChild(row); });
-      $('castTiers').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (!b) return; var isH = b === tb;
-        Array.prototype.forEach.call($('castTiers').children, function (x) { if (x !== b) x.classList.remove('on'); }); b.classList.add('on');
-        hb.style.display = isH ? '' : 'none'; box.style.display = isH ? 'none' : ''; }, true); }
+    /* Hybrids (homepage-cast, 2026-10-19): ONE fixed-size card in the cast row with the count and a sample sprite, linking to hybrids.html.
+     * Before this, every hybrid pair found on chain (V.castHybrids) was appended inline as its own cast row under a growing tab, so each
+     * new hybrid stretched the home page and its multi-body rows fell out of the cast-row grid. The full list now lives on hybrids.html. */
+    var hyb = V.castHybrids(w), hc = $('castHybCount'), ico = $('castHybIco'), card = $('castHybCard');
+    if (hc) hc.textContent = hyb.length ? fmt(hyb.length) + ' so far →' : 'none yet →';
+    if (card) card.setAttribute('aria-label', 'Hybrids: ' + (hyb.length ? hyb.length + ' so far' : 'none yet') + ', browse them all');
+    if (ico) { if (hyb.length) { var s0 = hyb[0].builds ? hyb[0].builds[0] : hyb[0].plan, art0 = (window.GenPetCore || PetCore).characterPet(s0.shape, { tier: 'legendary' }); art0.hybrid = s0;
+      R.paint(ico, V.hybridRender(art0, { stage: 5, frame: 0 })); ico.title = hyb[0].name; } else ico.style.display = 'none'; }
     document.body.setAttribute('data-cast-hybrids', hyb.length ? 'yes' : 'no');
     document.body.setAttribute('data-cast-nakamoto', show ? 'yes' : 'no');
     return show;
@@ -62,7 +51,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=a3bdfbb73e'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=a8d4e872c8'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -285,6 +274,26 @@
       host.innerHTML = '<h2 class="sec" data-ico="pet">On-chain art</h2><p><button type="button" class="btn" disabled aria-disabled="true">⛓️ Inscribe: coming soon</button></p><p class="small muted">Inscribing pet art on Bitcoin is not live yet. Art is hosted on this site for now.</p>';
       gs.parentNode.insertBefore(host, gs.nextSibling); })();
   }
+  /* Hybrids browser (hybrids.html, homepage-cast 2026-10-19): every hybrid mix that exists on chain (V.castHybrids, the same list the
+   * home cast used to print inline), one fixed card per mix in a wrapping grid, each body it can hatch with shown at the picked stage. */
+  function hybrids() {
+    var w = M.world(), list = V.castHybrids(w), n = {}, G = window.GenPetCore || PetCore, stage = 5, grid = $('hybGrid'), tabs = $('hybStages');
+    (w.pets || []).forEach(function (p) { if (V.isHybrid(p.species) && !p.released) n[p.species] = (n[p.species] || 0) + 1; });
+    var three = list.filter(function (e) { return (e.roots || []).length > 2; }).length;
+    $('hybStatus').textContent = list.length ? fmt(list.length) + ' hybrid mix' + (list.length === 1 ? '' : 'es') + ' so far' + (three ? ' (' + fmt(three) + ' three-way)' : '') + ', replayed from ' + fmt(M.state().rows.length) + ' XCPETS burns.' : 'No hybrids yet. Breed two different species to make the first one.';
+    function draw() {
+      grid.innerHTML = list.map(function (e, i) { var roots = e.roots || [e.a, e.b], k = n[e.key] || 0;
+        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
+          '<p class="muted small">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (k ? ' · ' + fmt(k) + ' pet' + (k === 1 ? '' : 's') : '') + '</p><div class="hybbodies">' +
+          (e.builds || [e.plan]).map(function (pl, j) { return '<figure><canvas width="32" height="32" data-i="' + i + '" data-j="' + j + '" role="img" aria-label="' + esc(e.name + ', ' + spLabel(pl.shape) + ' body, ' + V.STAGE_NAMES[stage]) + '"></canvas><figcaption class="small muted">' + esc(spLabel(pl.shape)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
+      Array.prototype.forEach.call(grid.querySelectorAll('canvas[data-i]'), function (c) { var e = list[+c.getAttribute('data-i')], pl = (e.builds || [e.plan])[+c.getAttribute('data-j')], art = G.characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
+        R.paint(c, V.hybridRender(art, { stage: stage, frame: 0 })); });
+      Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('on', +b.getAttribute('data-st') === stage); });
+    }
+    tabs.innerHTML = V.STAGE_NAMES.map(function (nm, si) { return si ? '<button type="button" data-st="' + si + '">' + esc(nm) + '</button>' : ''; }).join('');
+    tabs.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; stage = +b.getAttribute('data-st'); draw(); };
+    draw(); document.body.setAttribute('data-hyb-ready', String(list.length));
+  }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* else coming soon: static notice only */ }
-  var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive }[page]; if (go) go();
+  var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
 })();

@@ -176,3 +176,34 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 #community .sharedwrap.cstats{display:block;margin-top:6px}#community .cstats .stats div{min-width:0;overflow-wrap:anywhere}
 #fPending .txrow.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4}
 #inReqBox .box{max-height:92vh;overflow:auto}.irqcmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.irqcol{min-width:0;overflow-wrap:anywhere;border:2px solid #000;border-radius:8px;padding:6px}.irqcol canvas{width:48px;height:48px;image-rendering:pixelated}.irqst td{padding:0 6px 0 0}#inReqBox .box p,#inReqBox .box div{overflow-wrap:anywhere}
+/* Home cast row (homepage-cast, 2026-10-19): Common, Uncommon, Rare, Legendary, Mythic + ONE Hybrids link card, all the same size.
+   6 across on desktop, 3 x 2 on phones; minmax(0,1fr) + ellipsis so long labels can never push the row sideways. */
+#castTiers.casttiers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:8px 0 14px}
+#castTiers.casttiers>button,#castTiers.casttiers>a{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;width:100%;height:62px;margin:0;padding:6px 4px;border:1px solid var(--line);border-radius:12px;background:#18221b;color:var(--ink);font:inherit;font-size:13px;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;overflow:hidden}
+#castTiers.casttiers>a:hover,#castTiers.casttiers>button:hover{border-color:var(--green,#3ddc84)}
+#castTiers.casttiers>a:focus-visible,#castTiers.casttiers>button:focus-visible{outline:2px solid var(--green,#3ddc84);outline-offset:2px}
+#castTiers.casttiers .ct-l{display:flex;align-items:center;justify-content:center;gap:4px;max-width:100%;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#castTiers.casttiers .ct-s{max-width:100%;font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#castTiers.casttiers .ct-ico{width:18px;height:18px;flex:none;image-rendering:pixelated}
+@media (max-width:640px){#castTiers.casttiers{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#castTiers.casttiers>button,#castTiers.casttiers>a{font-size:12px}}
+/* Mythic tab: every species at Mythic in a wrapping grid of equal cards */
+.mythgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin:4px 0 10px}
+.mythcard{min-width:0;text-align:center;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.18)}
+.mythcard canvas{display:block;width:100%;max-width:112px;margin:0 auto 6px;aspect-ratio:1;image-rendering:pixelated;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#16121f}
+.mythcard h3.ch{margin:0 0 2px;font-size:1em;overflow-wrap:anywhere}
+@media (max-width:640px){.mythgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.mythcard{padding:6px 4px}}
+/* Hybrids browser (hybrids.html): one fixed card per mix, wrapping grid, no sideways overflow */
+.hybgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:10px;margin:10px 0 16px}
+.hybitem{min-width:0;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.18)}
+.hybitem h3.ch{margin:0 0 2px;font-size:1em;overflow-wrap:anywhere}
+.hybitem p{margin:0 0 8px;overflow-wrap:anywhere}
+.hybbodies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.hybbodies figure{margin:0;min-width:0;text-align:center}
+.hybbodies canvas{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#16121f}
+.hybbodies figcaption{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hybstages{margin:8px 0 4px}
+@media (max-width:640px){.hybgrid{gap:8px}.hybitem{padding:8px}}
+/* cast stage strips: equal columns even on 360px phones (a long "Hatchling" label used to widen its column) */
+.strip6{grid-template-columns:repeat(6,minmax(0,1fr))}.strip6>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:400px){.strip6>div{font-size:10px;letter-spacing:-.2px}}
+.mythcard h3.ch,.hybitem h3.ch{font-family:inherit;color:inherit;letter-spacing:normal;line-height:1.25;font-weight:bold}
