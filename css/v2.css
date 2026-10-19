@@ -240,3 +240,9 @@ body #pets .pet.card{padding-bottom:44px}
 @media (max-width:600px){.tb-bal{min-width:0;max-width:100%}#me{word-break:break-all;overflow-wrap:anywhere}a.rulesLink{overflow-wrap:anywhere}}
 .aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
 .aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
+
+/* login-streak (DRAFT 2026-10-19): 8-bit wallet streak bar + card chip */
+.streakbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:6px 0 10px;padding:8px 12px;background:#1a1030;border:3px solid #ff7a1a;box-shadow:4px 4px 0 #000;border-radius:0;font-family:'Press Start 2P',ui-monospace,monospace;font-size:11px;line-height:1.6;color:#ffd166;image-rendering:pixelated}
+.streakbar .sk-fire{font-size:16px}.streakbar .sk-best{color:#9fe8ff}.streakbar .sk-ok{color:#3ddc84}.streakbar .sk-warn{color:#ff9d9d;font-size:9px}
+.chip.streak{background:#3a1606;border-color:#ff7a1a;color:#ffb347;white-space:nowrap}
+@media (max-width:520px){.streakbar{font-size:9px;padding:6px 8px}.streakbar .sk-warn{flex-basis:100%;font-size:8px}}
