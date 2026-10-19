@@ -209,17 +209,18 @@
     var g = V.wornOf(w, p.id), why = whyNot(p, w);
     return '<button type="button" class="fside t' + p.tier + (why ? ' no' : '') + '" data-side="' + (mine ? 'a' : 'b') + '" aria-label="' + (mine ? 'Change your pet' : 'Change opponent') + '"><span class="fsp" data-fsp="' + p.id + '"></span><span class="fn"><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + '</span><span class="small">' + pill(p.tier) + ' ' + esc(spL(p.species)) + ' · ' + p.stageName + '</span><span class="fpow">⚡ ' + power(p) + ' Power</span>' +
       '<span class="fstats">' + STATS.map(function (k) { var v = (p.stats || {})[k] || 0, o = other ? (other.stats || {})[k] || 0 : 0; return '<span class="fst"><span class="sk">' + k.slice(0, 3).toUpperCase() + '</span><span class="fb"><i class="' + (other && v > o ? 'up' : other && v < o ? 'dn' : '') + '" style="width:' + Math.min(100, 100 * v / 35).toFixed(0) + '%"></i></span><b>' + v + '</b></span>'; }).join('') + '</span>' +
-      '<span class="fgear">' + (g.length ? g.map(function (x) { return '<span class="gi" data-icon="' + esc(x.item) + '" title="' + esc(x.label) + (x.legendary ? ' ★ (safe)' : '') + '"></span>'; }).join('') : '<span class="small muted">no gear worn</span>') + '</span>' + (why ? '<span class="small warn">✋ ' + esc(why) + '</span>' : '') + '</button>'; }
+      '<span class="fgear">' + (g.length ? g.map(function (x) { return '<span class="gi" data-icon="' + esc(x.item) + '" title="' + esc(x.label) + (x.legendary ? ' ★ (safe)' : '') + '"></span>'; }).join('') : '<span class="small muted">no gear worn</span>') + '</span>' + (why ? '<span class="small warn">✋ ' + esc(why) + '</span>' : '') + (mine ? '<span class="fchg">✎ Change</span>' : '') + '</button>'; }
   function paintFace(w) { var box = $('faceoff'); if (!box) return; var mine = U.mine(w).filter(function (p) { return !p.dead; });
     if (FO.a && (!w.byId[FO.a] || w.byId[FO.a].owner !== ME)) FO.a = null; if (FO.b && (!w.byId[FO.b] || w.byId[FO.b].owner === ME)) FO.b = null;
-    if (!FO.a) { var f = U.fighters(w, ME).filter(function (p) { return !whyNot(p, w); })[0]; FO.a = f ? f.id : null; }
+    /* 2026-10-19: no default pet on your side. It used to auto-pick your first eligible fighter (lowest pet number), which hid that the card opens the picker.
+     * Your side now starts empty ('Pick your pet') unless you arrived with a pet on purpose (UXB.battleWith / play.html#battle-ID). */
+    if (FO.want != null) { var wp = w.byId[FO.want]; if (wp && wp.owner === ME && !wp.dead && !wp.released) { FO.a = wp.id; FO.want = null; var bp = $('battlePanel'); if (bp) setTimeout(function () { bp.scrollIntoView(); }, 0); } }
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], okA = A && !whyNot(A, w), okB = B && !whyNot(B, w);
     var inc = (w.fights || []).filter(function (f) { var q = w.byId[f.b]; return f.status === 'open' && q && q.owner === ME && IGN.indexOf(f.id) < 0; });
     var h = '<div class="fcard"><div class="fgrid">' + side(A, w, true, B) + '<div class="vs" aria-hidden="true">VS</div>' + side(B, w, false, A) + '</div>' +
-      '<div class="small fstake">⚖️ Loser gives 1 random worn piece, ★ safe. Loser gets a 🤕 black eye for 72 blocks.</div>' +
-      '<button type="button" class="btn ico-flame fgo" id="foGo"' + (okA && okB ? '' : ' disabled') + '>' + (B ? 'Challenge #' + B.id + ' · burn 690 XCPETS' : 'Pick an opponent to challenge') + '</button>' + (A && B && (!okA || !okB) ? '<div class="small warn">✋ ' + esc(!okA ? 'Your pet: ' + whyNot(A, w) : 'Opponent: ' + whyNot(B, w)) + '</div>' : '') + '</div>';
+      '<button type="button" class="btn ico-flame fgo" id="foGo"' + (okA && okB ? '' : ' disabled') + '>' + (!A ? 'Pick your pet first' : B ? 'Challenge #' + B.id + ' · burn 690 XCPETS' : 'Pick an opponent to challenge') + '</button>' + (A && B && (!okA || !okB) ? '<div class="small warn">✋ ' + esc(!okA ? 'Your pet: ' + whyNot(A, w) : 'Opponent: ' + whyNot(B, w)) + '</div>' : '') + '</div>';
     if (inc.length) h += '<h3 class="sec" data-ico="sword">Incoming challenges (' + inc.length + ')</h3>' + inc.slice(0, 10).map(function (f) { var X = w.byId[f.b], Y = w.byId[f.a];
-      return '<div class="fcard inc"><div class="fgrid">' + side(X, w, true, Y).replace('data-side="a"', 'data-noside="1"') + '<div class="vs">VS</div>' + side(Y, w, false, X).replace('data-side="b"', 'data-noside="1"') + '</div><div class="small fstake">Fight ' + f.id + ' · accept by block ' + fmt(f.expires) + ' · loser gives 1 random worn piece, ★ safe</div><div class="row"><button type="button" class="btn ico-flame" data-facc="' + f.id + '">Accept (690)</button><button type="button" class="q" data-fign="' + f.id + '">Ignore</button></div></div>'; }).join('');
+      return '<div class="fcard inc"><div class="fgrid">' + side(X, w, true, Y).replace('data-side="a"', 'data-noside="1"').replace('<span class="fchg">✎ Change</span>', '') + '<div class="vs">VS</div>' + side(Y, w, false, X).replace('data-side="b"', 'data-noside="1"') + '</div><div class="small fstake">Fight ' + f.id + ' · accept by block ' + fmt(f.expires) + ' · loser gives 1 random worn piece, ★ safe</div><div class="row"><button type="button" class="btn ico-flame" data-facc="' + f.id + '">Accept (690)</button><button type="button" class="q" data-fign="' + f.id + '">Ignore</button></div></div>'; }).join('');
     box.innerHTML = h;
     box.querySelectorAll('[data-fsp]').forEach(function (s) { var p = w.byId[s.getAttribute('data-fsp')]; s.appendChild(canvasFor(p, w, 'sprite big')); });
     box.querySelectorAll('.gi[data-icon]').forEach(function (s) { s.appendChild(R.iconCanvas(s.getAttribute('data-icon'), '')); });
@@ -241,8 +242,13 @@
       $('fpG').querySelectorAll('[data-pk]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('aria-disabled')) return; FO[sideId] = Number(b.dataset.pk); m.remove(); paintFace(U.world()); }; }); }
     $('fpQ').oninput = draw; $('fpS').onchange = draw; $('fpOk').onchange = draw; $('fpX').onclick = function () { m.remove(); }; m.onclick = function (e) { if (e.target === m) m.remove(); }; draw(); $('fpQ').focus(); }
 
+  /* arrived with a pet on purpose (e.g. a future pet-page 'Battle' button linking to play.html#battle-ID): keep that pet on your side */
+  UXB.battleWith = function (id) { FO.want = Number(id); var w = U.world(); if (w) paintFace(w); return true; };
+  function battleRoute() { var m = /^#battle-(\d+)$/.exec(location.hash); if (m) UXB.battleWith(Number(m[1])); }
+  window.addEventListener('hashchange', battleRoute);
+
   // ================================================================ wiring
   UXB.after = function (w) { lastW = w; paintControls(w); UXB.sel(); paintInv(w); paintFace(w); paintCrates(w); };
   bindControls(); bindSel(); bindTokens();
-  U.render();
+  U.render(); battleRoute();
 })();
