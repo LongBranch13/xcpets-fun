@@ -81,10 +81,21 @@
   }
   function hideIds(ids) { discardIds(ids); }
   function closeReveal() { close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); }
+  /* pet total near the hatch buttons (2026-10-19, display only): every pet in the replayed world (w.pets.length, same as the top 'pets hatched'),
+   * incl. dead, released and bred pets. Shows '…' until every burn's block hash is known, so an incomplete replay never shows a wrong number. */
+  var ptLast = null, ptT = null;
+  function petTotal(w) { var el = $('petTotal'); if (!el) return;
+    var miss = (S.rows || []).some(function (r) { return !(S.hashes || {})[r.block_index]; });
+    if (miss) { $('ptN').textContent = '…'; $('ptAlive').textContent = '· syncing'; ptLast = null; return; }
+    var n = w.pets.length, alive = w.pets.filter(function (p) { return !p.dead && !p.released; }).length;
+    $('ptN').textContent = fmt(n); $('ptAlive').textContent = '· ' + fmt(alive) + ' alive';
+    if (ptLast != null && n > ptLast) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); clearTimeout(ptT); ptT = setTimeout(function () { el.classList.remove('bump'); }, 1600); }
+    ptLast = n; }
   function render() {
     var w = world(), c = w.community; notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
     $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
+    petTotal(w);
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
     var wiz = !!c.returned, fr;
     if (wiz) fr = WizardSprite.frames(c.wizardStage, '#2a3a2e');
