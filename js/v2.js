@@ -108,7 +108,7 @@
   /** gear results: where a piece came from, in plain words (no block numbers). Returns { key, long, short }. */
   function winSource(x, w, logBy) { var p = x.rolledOn != null ? w.byId[x.rolledOn] : null, nm = x.rolledOn != null ? '#' + x.rolledOn + (p ? ' ' + p.name : '') : '', g = w.items[x.gid] || {};
     if (x.community) return { key: 'croll', long: 'Your community gear roll', short: 'Community roll' };
-    if (g.wonBy != null) return { key: 'fight', long: 'Won in a battle by #' + g.wonBy, short: 'Battle win' };
+    if (g.wonBy != null) { var vs = g.from != null ? ' vs #' + g.from : ''; return { key: 'fight', long: 'Battle win' + vs + ' (won by #' + g.wonBy + ')', short: 'Battle win' + vs, pet: g.wonBy, vs: g.from }; }
     if (x.src === 'roll') return { key: 'roll', long: 'Gear roll you burned for ' + nm, short: 'Gear roll' };
     if (x.src === 'froll') return { key: 'froll', long: 'Founder free roll for ' + nm, short: 'Free roll' };
     if (x.src === 'oroll') return { key: 'oroll', long: 'Overflow roll for ' + nm, short: 'Overflow roll' };
@@ -137,13 +137,17 @@
     $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) $('packNote').hidden = gear; /* the discard note belongs to the egg review only */
     var logBy = {}, info = '', where = { on: 0, bag: 0, comm: 0 };
     if (gear) { (w.log || []).forEach(function (l) { if (l.gid) logBy[l.gid] = l; });
-      var srcN = {}, order = [], pets = [];
+      var srcN = {}, order = [], pets = [], vsIds = [];
       list.forEach(function (x) { x._src = winSource(x, w, logBy); if (!srcN[x._src.key]) { srcN[x._src.key] = 0; order.push(x._src.key); } srcN[x._src.key]++;
         var g = w.items[x.gid], on = x.community ? 'c' : g ? g.on : x.on; x._on = on; if (on === 'c') where.comm++; else if (on != null) where.on++; else where.bag++;
-        if (x.rolledOn != null && pets.indexOf(x.rolledOn) < 0) pets.push(x.rolledOn); });
-      var n = list.length, lead = (rev.away ? 'While you were away, ' : '') + (n === 1 ? 'a gear roll landed.' : n + ' gear rolls landed.');
-      info = '<div class="grinfo small" role="status"><p class="grlead"><b>' + esc(lead.charAt(0).toUpperCase() + lead.slice(1)) + '</b></p>' +
-        '<p>From: ' + order.map(function (k) { var q = SRC_PLURAL[k] || SRC_PLURAL.other; return srcN[k] + ' ' + q[srcN[k] === 1 ? 0 : 1]; }).map(esc).join(' · ') + '</p>' +
+        x._pet = x._src.key === 'fight' ? x._src.pet : x.rolledOn; /* battle spoils belong to the WINNING pet, not the pet the piece was first rolled for */
+        if (x._src.key === 'fight' && x._src.vs != null && vsIds.indexOf(x._src.vs) < 0) vsIds.push(x._src.vs);
+        if (x._pet != null && pets.indexOf(x._pet) < 0) pets.push(x._pet); });
+      var n = list.length, nf = srcN.fight || 0, nr = n - nf, rollTxt = nr === 1 ? 'a gear roll landed' : nr + ' gear rolls landed', fightTxt = nf === 1 ? 'you won gear in battle' : nf + ' pieces won in battles';
+      var lead = (rev.away ? 'While you were away, ' : '') + (nf && nr ? rollTxt + ' and ' + (nf === 1 ? '1 piece was won in battle' : fightTxt) : nf ? fightTxt : rollTxt) + '.';
+      lead = lead.charAt(0).toUpperCase() + lead.slice(1); if (nf) lead = '⚔️ ' + lead;
+      info = '<div class="grinfo small" role="status"><p class="grlead"><b>' + esc(lead) + '</b></p>' +
+        '<p>From: ' + order.map(function (k) { var q = SRC_PLURAL[k] || SRC_PLURAL.other; return srcN[k] + ' ' + q[srcN[k] === 1 ? 0 : 1] + (k === 'fight' && vsIds.length ? ' vs ' + vsIds.slice(0, 6).map(function (id) { return '#' + id; }).join(', ') + (vsIds.length > 6 ? ' and ' + (vsIds.length - 6) + ' more' : '') : ''); }).map(esc).join(' · ') + '</p>' +
         (pets.length ? '<p>Pets: ' + pets.slice(0, 6).map(function (id) { var q = w.byId[id]; return '#' + id + (q ? ' ' + esc(q.name) : ''); }).join(', ') + (pets.length > 6 ? ' and ' + (pets.length - 6) + ' more' : '') + '</p>' : '') +
         '<p>Where they went: ' + [where.on ? where.on + ' equipped' : '', where.bag ? where.bag + ' in your bag' : '', where.comm ? where.comm + ' equipped on ' + esc(communityName(w)) : ''].filter(Boolean).join(' · ') + '</p>' +
         '<p class="grnext">' + (where.bag ? '👉 New gear is in your bag. Equip it from Inventory (free).' : '👉 See all your gear in Inventory.') + '</p>' +
@@ -156,7 +160,7 @@
     var grid = $('packGrid'); grid.innerHTML = '';
     list.slice(rev.page * REV_PAGE, rev.page * REV_PAGE + REV_PAGE).forEach(function (x) {
       var d = document.createElement('div');
-      if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x.rolledOn != null ? ' · pet #' + x.rolledOn : '') + '</div>' +
+      if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ On the community pet' : x._on != null ? '✓ Equipped on #' + x._on : '🎒 In your bag') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
       d.className = 'egg t' + x.art.tierIndex + (rev.sel[x.id] ? ' discard' : ''); d.innerHTML = '<canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + '</div><div class="muted">' + esc(x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + '<label class="small disc"><input type="checkbox" data-id="' + x.id + '"' + (rev.sel[x.id] ? ' checked' : '') + '> Discard</label>';
