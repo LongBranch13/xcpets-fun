@@ -178,7 +178,7 @@
     if ($('ivPet')) $('ivPet').onchange = function () { IV.pet = Number(this.value); saveIV(); paintInv(U.world()); };
     box.querySelectorAll('[data-bag]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); popover(b, b.dataset.bag); }; });
   }
-  function equipOp(petId, slot, gid, msg) { var S = U.S(); S.ops.push({ kind: 'equip', owner: ME, petId: petId, slot: slot, gid: gid, block_index: S.tip }); U.save(); U.render(); U.toast(esc(msg) + ' (free)'); }
+  function equipOp(petId, slot, gid, msg) { if (U.viewBlock && U.viewBlock()) return; /* address-lookup: view only */ var S = U.S(); S.ops.push({ kind: 'equip', owner: ME, petId: petId, slot: slot, gid: gid, block_index: S.tip }); U.save(); U.render(); U.toast(esc(msg) + ' (free)'); }
   function popover(anchor, itemId) { closePop(); var w = U.world(), it = V.GEAR_BY_ID[itemId] || {}, copies = w.itemList.filter(function (g) { return g.owner === ME && g.item === itemId; }), pets = invPets(w);
     var free = copies.filter(function (g) { return g.on == null; }), p0 = IV.pet != null ? IV.pet : pets[0] && pets[0].id;
     var d = document.createElement('div'); d.className = 'invpop'; d.id = 'invPop'; d.setAttribute('role', 'dialog');

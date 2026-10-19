@@ -51,7 +51,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=93782727d6'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=5088a51b5b'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -136,7 +136,7 @@
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
     $('crNet').textContent = ' chain'; $('crNote').textContent = 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.';
     cast(w);
-    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
+    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; /* address-lookup: a viewed address is not a connection */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
   function ranking() {
     var w = M.world(), score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
@@ -242,8 +242,8 @@
       if (p.dead) g.innerHTML = '<p class="small">No gear: a pet in the Pet Cemetery can\'t wear anything.</p>';
       else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
       else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
-        R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, onEquip: function (op, m) { op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
-          onEquipMany: function (ops, m) { ops.forEach(function (op) { op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); draw('✓ ' + m); } }); }
+        R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, viewOnly: !!(window.V2View && V2View.viewOnly()), onEquip: function (op, m) { if (window.V2View && V2View.viewOnly()) return; op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
+          onEquipMany: function (ops, m) { if (window.V2View && V2View.viewOnly()) return; ops.forEach(function (op) { op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); draw('✓ ' + m); } }); }
       /* history (2026-10-16 fix): chain rows carry hex tags + raw quantity; decode them, match every log entry that names this pet
        * (petId / ids / '#ID' in the message incl. pack ranges and fights), add the hatch row and pre-v2 burns, in chain order. */
       var RW = M.state().rows || [], byTx = {}; RW.forEach(function (r) { byTx[r.tx_hash] = r; });

@@ -128,3 +128,18 @@ span.chip.danger { background:#d11; color:#fff; } span.chip.warn { background:#2
   background: linear-gradient(to left, rgba(24,34,27,1) 30%, rgba(24,34,27,0)) right center / 28px 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgba(61,220,132,.55), rgba(61,220,132,0)) right center / 12px 100% no-repeat scroll; }
 .scrollx > table { min-width: 760px; }
 code.addr { cursor: pointer; text-decoration: underline dotted; } code.addr.open { word-break: break-all; text-decoration: none; }
+/* View pets by address (2026-10-19, address-lookup): play.html top bar + home hero. Press Start 2P label on the 8px grid; 16px input so phones don't zoom */
+.addrview { flex: 1 1 100%; min-width: 0; max-width: 640px; display: flex; flex-direction: column; gap: 6px; margin: 4px 0 0; }
+.hero .addrview { margin: 16px 0 0; max-width: 480px; }
+.addrview .av-lbl { font-family: var(--pixel); font-size: 16px; line-height: 24px; font-synthesis: style; color: var(--green); letter-spacing: 0; }
+.addrview .av-row { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.addrview .av-in { flex: 1 1 auto; min-width: 0; width: 100%; box-sizing: border-box; font: 16px var(--comic); background: #0a0f0b; color: var(--ink); border: 3px solid #000; border-radius: 10px; box-shadow: 4px 4px 0 #000; padding: 8px 10px; }
+.addrview .av-in::placeholder { color: var(--dim); opacity: 1; }
+.addrview .av-in:focus { outline: 2px solid var(--green); outline-offset: 2px; }
+.addrview .av-in[aria-invalid="true"] { border-color: #ff5a5a !important; }
+.addrview .btn { flex: 0 0 auto; padding: 8px 16px; }
+.addrview .av-state, .addrview .av-err, .addrview #avHelp { min-width: 0; overflow-wrap: anywhere; }
+.addrview .av-addr { word-break: break-all; overflow-wrap: anywhere; }
+.addrview .av-state .q { margin-left: 4px; }
+.addrview [hidden] { display: none !important; }
+@media (max-width: 640px) { .addrview .av-lbl { font-size: 8px; line-height: 16px; } .addrview .btn { padding: 8px 12px; } }

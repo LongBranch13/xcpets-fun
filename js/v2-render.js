@@ -398,7 +398,8 @@
     /* Unequip all (2026-10-19): one free local action that takes every worn piece off this pet (same op as "Take off", gid null, per slot); all go to the bag */
     /* unequip-owner-fix (2026-10-19): owner only. Same check as equip/unequip (equipCheck), feed and Release: a wallet is connected, it owns the pet, the pet is not released.
      * The community pet (Bitcoin Wizard, auto-equips) has no owner, so this also hides it there unless it is owner-controlled by the connected wallet. */
-    var ownsP = function () { var q = (o.world && o.world.byId && o.world.byId[p.id]) || p; return !!o.owner && q.owner === o.owner && !q.released; };
+    /* address-lookup (2026-10-19): o.viewOnly (an address viewed without its wallet) shows the gear but never offers equip / take off / Unequip all */
+    var ownsP = function () { var q = (o.world && o.world.byId && o.world.byId[p.id]) || p; return !o.viewOnly && !!o.owner && q.owner === o.owner && !q.released; };
     var wornSlots = Object.keys(worn), canOffAll = wornSlots.length && !p.dead && ownsP(), asking = box.getAttribute('data-offall') === '1' && canOffAll;
     if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your bag (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
       : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your bag.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
@@ -406,6 +407,7 @@
     box.innerHTML = h;
     var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
     var notOwner = function () { box.removeAttribute('data-offall'); say('Only the owner can take gear off #' + p.id + '. Connect the wallet that owns it.', true); };
+    var viewMsg = function () { say('👀 View only: connect the XCP Wallet that owns #' + p.id + ' to change its gear.', true); if (o.onBlocked) o.onBlocked(); };
     if (oa) oa.onclick = function () { if (!ownsP()) return notOwner(); box.setAttribute('data-offall', '1'); gearPicker(box, o); };
     if (on) on.onclick = function () { box.removeAttribute('data-offall'); gearPicker(box, o); };
     if (oy) oy.onclick = function () { if (!ownsP()) return notOwner(); box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your bag';
@@ -415,7 +417,7 @@
     if (open) {
       var pcs = V.pickerPieces(w, o.owner, p.id, open), locked = p.openSlots.indexOf(open) < 0; if (o.compact) pcs = pcs.filter(usable);
       wrap.innerHTML = '<div class="gp-head small"><b>' + V.slotLabel(open) + '</b>' + (o.compact ? '' : ' · ' + pcs.length + ' pieces · ' + pcs.filter(function (x) { return x.owned; }).length + ' owned' + (locked ? ' · <span class="warn">slot locked: capacity ' + p.capacity + '/6 (grows with age + care)</span>' : '')) +
-        (worn[open] && !p.dead ? ' <button type="button" class="q" data-goff="1">Take off ' + esc(worn[open].label) + '</button>' : '') + '</div><div class="gp-grid"></div>';
+        (worn[open] && !p.dead && !o.viewOnly ? ' <button type="button" class="q" data-goff="1">Take off ' + esc(worn[open].label) + '</button>' : '') + '</div><div class="gp-grid"></div>';
       var grid = wrap.querySelector('.gp-grid');
       pcs.forEach(function (x) { var b = document.createElement('button'); b.type = 'button';
         b.className = 'gp-item t' + x.tier + (x.check.worn ? ' worn' : x.check.ok ? ' ok' : ' no');
@@ -423,13 +425,13 @@
         b.setAttribute('aria-label', b.title); b.dataset.gid = x.id;
         b.appendChild(iconCanvas(x.id));
         b.insertAdjacentHTML('beforeend', '<span class="gp-n">' + (x.owned ? '×' + x.owned : '') + '</span>' + (x.legendary ? '<span class="gp-star">★</span>' : '') + (x.check.worn ? '<span class="gp-on">ON</span>' : ''));
-        b.onclick = function () {
+        b.onclick = function () { if (o.viewOnly) return viewMsg();
           var c = V.equipCheck(o.world, o.owner, p.id, x.id);
           if (!c.ok && o.compact) return; if (!c.ok) return say(x.label + ': ' + (c.worn ? 'already worn by #' + p.id : 'can\'t equip — ' + c.why), !c.worn);
           o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: c.gid }, 'Equipped ' + x.label + ' on #' + p.id + (c.from ? ' (moved from #' + c.from + ')' : ''));
         };
         grid.appendChild(b); });
-      var off = wrap.querySelector('[data-goff]'); if (off) off.onclick = function () { o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: null }, 'Took ' + worn[open].label + ' off #' + p.id); };
+      var off = wrap.querySelector('[data-goff]'); if (off) off.onclick = function () { if (o.viewOnly) return viewMsg(); o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: null }, 'Took ' + worn[open].label + ' off #' + p.id); };
     }
     box.querySelectorAll('[data-gslot]').forEach(function (b) { b.onclick = function () { box.setAttribute('data-open', open === b.dataset.gslot ? '' : b.dataset.gslot); gearPicker(box, o); }; });
     if (o.msg) say(o.msg);
