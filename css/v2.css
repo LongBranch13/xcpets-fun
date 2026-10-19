@@ -205,3 +205,7 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 .strip6{grid-template-columns:repeat(6,minmax(0,1fr))}.strip6>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:400px){.strip6>div{font-size:10px;letter-spacing:-.2px}}
 .mythcard h3.ch,.hybitem h3.ch{font-family:inherit;color:inherit;letter-spacing:normal;line-height:1.25;font-weight:bold}
+/* pet total near the hatch buttons (2026-10-19) */
+.pettotal{margin:6px 6px 2px;line-height:1.4;overflow-wrap:anywhere}.pettotal b{color:#fff;font-variant-numeric:tabular-nums;border-radius:4px;padding:0 2px;transition:background-color .6s,color .6s}
+.pettotal.bump b{background:#3ddc8433;color:#3ddc84}
+@media (prefers-reduced-motion:reduce){.pettotal b{transition:none}}
