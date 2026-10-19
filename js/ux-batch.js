@@ -140,7 +140,7 @@
   var COND = [['age', 2, '2 days old'], ['age', 5, '5 days old'], ['age', 10, '10 days old'], ['fed', 0.5, 'fed on 50% of its days'], ['fed', 0.8, 'fed on 80% of its days (min 3 fed days)']];
   function unmet(p) { var age = p.ageDays || 0, fd = p.fedDays || 0, ratio = fd / Math.max(1, age + 1);
     return COND.filter(function (c) { return c[0] === 'age' ? age < c[1] : c[1] === 0.5 ? !(ratio >= 0.5 && fd >= 1) : !(ratio >= 0.8 && fd >= 3); }).map(function (c) { return c[2]; }); }
-  function srcLabel(g) { return { roll: '🎲 gear roll', token: '🎟️ lucky drop', live: '⛓️ v1 game', froll: '🎁 free roll', fight: '⚔️ battle spoils' }[g.src] || (g.src ? esc(g.src) : 'unknown'); }
+  function srcLabel(g) { return { roll: '🎲 gear roll', token: '🎟️ lucky drop', live: '⛓️ v1 game', froll: '🎁 free roll', oroll: '🎁 overflow roll', founder: '🥇 founder kit', trophy: '🏆 trophy', fight: '⚔️ battle spoils' }[g.src] || (g.src ? esc(g.src) : 'unknown'); }
   function invPets(w) { return U.mine(w).filter(function (p) { return !p.dead; }); }
   function paintInv(w) {
     var box = $('inv'); if (!box) return; var items = w.itemList.filter(function (g) { return g.owner === ME; }), pets = invPets(w), S = U.S();
@@ -160,7 +160,7 @@
       var G = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (a, b) { return (b.legendary ? 4 : b.tier) - (a.legendary ? 4 : a.tier) || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || (a.label < b.label ? -1 : 1); });
       h += G.length ? '<div class="baggrid">' + G.map(function (g) { var worn = g.copies.filter(function (c) { return c.on != null; }).length;
         return '<button type="button" class="bagitem t' + (g.legendary ? 3 : g.tier) + '" data-bag="' + esc(g.item) + '" title="' + esc(g.label) + ' · ' + esc(SL(g.slot)) + ' · ' + TL[g.tier] + (window.V2Rules && V2Rules.lockHint && V2Rules.lockHint(g.item) ? ' · ' + esc(V2Rules.lockHint(g.item)) : '') + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span>' + (g.copies.length > 1 ? '<span class="cnt">×' + g.copies.length + '</span>' : '') + (worn ? '<span class="wn">' + worn + ' worn</span>' : '') + '</button>'; }).join('') + '</div>'
-        : '<p class="muted small">' + (items.length ? 'Nothing matches this filter.' : 'No gear yet. Select a pet and Roll gear, or feed it: stage-ups can drop a free roll.') + '</p>';
+        : '<p class="muted small">' + (items.length ? 'Nothing matches this filter.' : 'No gear yet. Select a pet and Roll gear, or feed it: stage-ups and meals can bring a lucky drop.') + '</p>';
     } else {
       var cat = V.catalogBySlot(), own = {}; items.forEach(function (g) { own[g.item] = (own[g.item] || 0) + 1; }); var found = 0, total = 0;
       var body = SLOTS.map(function (sl) { var L = (cat[sl] || []).filter(function (it) { return !it.exclusive || !p || true; }); var f = L.filter(function (it) { return own[it.id]; }).length; found += f; total += L.length;
@@ -223,7 +223,7 @@
     var h = '<div class="fcard"><div class="fgrid">' + side(A, w, true, B) + '<div class="vs" aria-hidden="true">VS</div>' + side(B, w, false, A) + '</div>' +
       '<button type="button" class="btn ico-flame fgo" id="foGo"' + (okA && okB ? '' : ' disabled') + '>' + (!A ? 'Pick your pet first' : B ? 'Challenge #' + B.id + ' · burn 690 XCPETS' : 'Pick an opponent to challenge') + '</button>' + (A && B && (!okA || !okB) ? '<div class="small warn">✋ ' + esc(!okA ? 'Your pet: ' + whyNot(A, w) : 'Opponent: ' + whyNot(B, w)) + '</div>' : '') + '</div>';
     if (inc.length) h += '<h3 class="sec" data-ico="sword">Incoming challenges (' + inc.length + ')</h3>' + inc.slice(0, 10).map(function (f) { var X = w.byId[f.b], Y = w.byId[f.a];
-      return '<div class="fcard inc"><div class="fgrid">' + side(X, w, true, Y).replace('data-side="a"', 'data-noside="1"').replace('<span class="fchg">✎ Change</span>', '') + '<div class="vs">VS</div>' + side(Y, w, false, X).replace('data-side="b"', 'data-noside="1"') + '</div><div class="small fstake">Fight ' + f.id + ' · accept by block ' + fmt(f.expires) + ' · loser gives 1 random worn piece, ★ safe</div><div class="row"><button type="button" class="btn ico-flame" data-facc="' + f.id + '">Accept (690)</button><button type="button" class="q" data-fign="' + f.id + '">Ignore</button></div></div>'; }).join('');
+      return '<div class="fcard inc"><div class="fgrid">' + side(X, w, true, Y).replace('data-side="a"', 'data-noside="1"').replace('<span class="fchg">✎ Change</span>', '') + '<div class="vs">VS</div>' + side(Y, w, false, X).replace('data-side="b"', 'data-noside="1"') + '</div><div class="small fstake">Fight ' + f.id + ' · accept by block ' + fmt(f.expires) + ' · loser gives 1 random worn piece, ★ safe</div><div class="row"><button type="button" class="btn ico-flame" data-facc="' + f.id + '">Accept (' + fmt(V.COSTS.accept) + ')</button><button type="button" class="q" data-fign="' + f.id + '">Ignore</button></div></div>'; }).join('');
     box.innerHTML = h;
     box.querySelectorAll('[data-fsp]').forEach(function (s) { var p = w.byId[s.getAttribute('data-fsp')]; s.appendChild(canvasFor(p, w, 'sprite big')); });
     box.querySelectorAll('.gi[data-icon]').forEach(function (s) { s.appendChild(R.iconCanvas(s.getAttribute('data-icon'), '')); });

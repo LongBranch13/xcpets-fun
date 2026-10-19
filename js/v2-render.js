@@ -392,6 +392,7 @@
     var usable = function (x) { return x.check.worn || (x.check.ok && x.owned > 0); };
     var slots = o.compact ? V.V2_SLOTS.filter(function (sl) { return worn[sl] || (p.openSlots.indexOf(sl) >= 0 && !p.dead && V.pickerPieces(w, o.owner, p.id, sl).some(usable)); }) : V.V2_SLOTS;
     if (o.compact && open && slots.indexOf(open) < 0) open = '';
+    if (p.dead) { box.innerHTML = '<p class="small muted">A pet in the Pet Cemetery can\'t wear gear.</p>'; return; } /* content-fixes 2026-10-19: dead pets (gear already back in the owner's bag) */
     if (o.compact && !slots.length) { box.innerHTML = '<p class="small muted">No gear to wear yet.</p>'; return; }
     var h = '<div class="gp-slots" role="tablist" aria-label="Gear slots">' + slots.map(function (sl) { var locked = p.openSlots.indexOf(sl) < 0, g = worn[sl];
       return '<button type="button" class="gp-slot' + (open === sl ? ' on' : '') + (locked ? ' locked' : '') + '" data-gslot="' + sl + '" role="tab" aria-selected="' + (open === sl) + '"><b>' + V.slotLabel(sl) + '</b><span class="small">' + (locked ? 'locked' : g ? esc(g.label) : 'empty') + '</span></button>'; }).join('') + '</div>';
@@ -415,7 +416,7 @@
     if (open) {
       var pcs = V.pickerPieces(w, o.owner, p.id, open), locked = p.openSlots.indexOf(open) < 0; if (o.compact) pcs = pcs.filter(usable);
       wrap.innerHTML = '<div class="gp-head small"><b>' + V.slotLabel(open) + '</b>' + (o.compact ? '' : ' · ' + pcs.length + ' pieces · ' + pcs.filter(function (x) { return x.owned; }).length + ' owned' + (locked ? ' · <span class="warn">slot locked: capacity ' + p.capacity + '/6 (grows with age + care)</span>' : '')) +
-        (worn[open] && !p.dead ? ' <button type="button" class="q" data-goff="1">Take off ' + esc(worn[open].label) + '</button>' : '') + '</div><div class="gp-grid"></div>';
+        (worn[open] && !p.dead && ownsP() ? ' <button type="button" class="q" data-goff="1">Take off ' + esc(worn[open].label) + '</button>' : '') + '</div><div class="gp-grid"></div>';
       var grid = wrap.querySelector('.gp-grid');
       pcs.forEach(function (x) { var b = document.createElement('button'); b.type = 'button';
         b.className = 'gp-item t' + x.tier + (x.check.worn ? ' worn' : x.check.ok ? ' ok' : ' no');
@@ -429,7 +430,7 @@
           o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: c.gid }, 'Equipped ' + x.label + ' on #' + p.id + (c.from ? ' (moved from #' + c.from + ')' : ''));
         };
         grid.appendChild(b); });
-      var off = wrap.querySelector('[data-goff]'); if (off) off.onclick = function () { o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: null }, 'Took ' + worn[open].label + ' off #' + p.id); };
+      var off = wrap.querySelector('[data-goff]'); if (off) off.onclick = function () { if (!ownsP() || p.dead) return notOwner(); o.onEquip({ kind: 'equip', owner: o.owner, petId: p.id, slot: open, gid: null }, 'Took ' + worn[open].label + ' off #' + p.id); };
     }
     box.querySelectorAll('[data-gslot]').forEach(function (b) { b.onclick = function () { box.setAttribute('data-open', open === b.dataset.gslot ? '' : b.dataset.gslot); gearPicker(box, o); }; });
     if (o.msg) say(o.msg);
@@ -504,8 +505,11 @@
 (function () {
   if (typeof document === 'undefined' || !document.addEventListener) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+  /* content-fixes 2026-10-19: a dead pet is shared with cemetery wording, not a brag */
+  function memorial(p) { var V = window.V2Rules, sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, t = TL[p.tier] || '';
+    return 'Remembering ' + (p.name || ('#' + p.id)) + ' #' + p.id + ', ' + (/^[AEIOU]/.test(t) ? 'an ' : 'a ') + t + ' ' + sp + ', resting in the XCPETS Pet Cemetery.'; }
   function shareUrl(p) { var V = window.V2Rules, base = location.href.replace(/[^\/]*([?#].*)?$/, ''), link = base + 'pet.html?id=' + p.id;
-    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id); return a; }
   function petById(id) { try { return window.V2Mock.world().byId[id]; } catch (e) { return null; } }
@@ -526,11 +530,11 @@
    * + text + pet URL when navigator.canShare({files}) (mobile: pick X / Telegram / ...); else copy PNG to clipboard + download (as before).
    * Post on X = copy PNG (ClipboardItem) then open x.com/intent/post with text + url; no clipboard -> download + toast. Save image = download. */
   function petLink(p) { return location.href.replace(/[^\/]*([?#].*)?$/, '') + 'pet.html?id=' + p.id; }
-  function shortText(p) { return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
+  function shortText(p) { if (p.dead) return memorial(p); return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
   function withBlob(p, fn) { cardCanvas(p).toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; } fn(blob, 'xcpets-' + p.id + '.png'); }, 'image/png'); }
   function download(blob, name) { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000); }
   function copyPng(blob) { return window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]) : Promise.reject(new Error('no clipboard')); }
-  function shareImage(p) { var link = petLink(p), text = shortText(p) + ' 🔥 @XCPets';
+  function shareImage(p) { var link = petLink(p), text = shortText(p) + (p.dead ? ' 🪦 @XCPets' : ' 🔥 @XCPets');
     withBlob(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
       if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
         navigator.share({ files: [file], text: text + ' ' + link, url: link }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }

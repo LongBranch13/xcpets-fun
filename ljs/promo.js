@@ -66,7 +66,7 @@
       if (!LIVE) { var d = PetCore.describe(p, stage); box.appendChild(card(p, stage, p.defaultName, PetCore.STAGES[stage] + ' · ' + esc(d.Species) + ' · ' + esc(d.Expression) + '<br>Gear: ' + esc(d.Gear))); return; }
       var dl = G.describe(p, stage), t = G.TIERS[p.tierIndex], el = document.createElement('div'); el.className = 'card';
       var c = canvas32(p.defaultName + ', ' + G.STAGES[stage]); el.appendChild(c);
-      el.insertAdjacentHTML('beforeend', '<div class="t"><span>' + esc(p.defaultName) + '</span><span class="pill tier tier-' + t.id + '">' + t.label + '</span></div><div class="m">' + G.STAGES[stage] + ' · ' + esc(V.speciesLabel(p.species)) + ' · ' + esc(dl.Expression || '') + '<br>' + esc(dl.Pattern || '') + ' · Eyes: ' + esc(dl.Eyes || '') + '</div>');
+      el.insertAdjacentHTML('beforeend', '<div class="t"><span>' + esc(p.defaultName) + '</span><span class="pill tier tier-' + t.id + '">' + t.label + '</span></div><div class="m">' + G.STAGES[stage] + ' · ' + esc(V.speciesLabel(p.species)) + ' · ' + esc(dl.Expression || '') + '<br>Pattern: ' + esc(dl.Pattern || '') + ' · Eyes: ' + esc(dl.Eyes || '') + '</div><div class="small muted">example, not a real pet</div>');
       showLive(c, p, stage); box.appendChild(el);
     });
   }
@@ -105,7 +105,7 @@
       });
       row.appendChild(strip); box.appendChild(row);
     });
-    if (LIVE) box.insertAdjacentHTML('beforeend', '<p class="muted small">Only species that can hatch at this tier are shown. Odds per egg as on the <a href="pets.html#odds">Pet Guide</a>' + (V.ACTIVATE_LEG_BOOST_BLOCK ? ' (from block ' + Number(V.ACTIVATE_LEG_BOOST_BLOCK).toLocaleString('en-US') + ')' : '') + '. Fresh hatches wear no gear.</p>');
+    if (LIVE) box.insertAdjacentHTML('beforeend', '<p class="muted small">Only species that can hatch at this tier are shown. Odds per egg, as on the <a href="pets.html#odds">Pet Guide</a>. Fresh hatches wear no gear.</p>');
     castOn(tierId);
     window.PromoLiveCast = LIVE;
   }

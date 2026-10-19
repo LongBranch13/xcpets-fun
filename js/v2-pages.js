@@ -20,7 +20,7 @@
     function add() { if (!show || window.PromoLiveCast || box.querySelector('[data-sp="nakamoto"]')) return; /* live-rules cast (promo.js) has its own Nakamoto row on the Legendary tab */ var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
       var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', pet = G.characterPet('nakamoto', { tier: tier });
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', 'nakamoto');
-      row.innerHTML = '<div><h3 class="ch">Nakamoto</h3><p class="muted">Hatchable 13th species (v2) · rare · grows and breeds like the others from block 971,659</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
+      row.innerHTML = '<div><h3 class="ch">Nakamoto</h3><p class="muted">Always Legendary · 1 in 777 eggs</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
       var strip = document.createElement('div'); strip.className = 'strip6';
       G.STAGES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Nakamoto, ' + name);
         R.paint(c, G.render(pet, { stage: si })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -51,7 +51,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=92b3315246'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=162ab0203d'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -125,7 +125,7 @@
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
     if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
-    $('crQuestTxt').textContent = wiz ? '' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
+    $('crQuestTxt').textContent = wiz ? 'Nakamoto\'s finished story' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     withReturn(function () {
@@ -145,16 +145,17 @@
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
     var inWeek = function (b) { return b != null && b > tip - WEEK; };
     var BOARDS = [
-      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Stage first, then feed streak, then care. Best cared for at the top.', pets: true },
-      { id: 'pets', label: 'Most pets', note: 'Living pets owned. This week: pets hatched or bred in the last 1,008 blocks.', players: true, week: true },
+      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Stage first, then feed streak, then care (XCPETS fed). Best cared for at the top.', pets: true },
+      { id: 'pets', label: 'Most pets', note: 'Living pets owned.', players: true, week: true },
       { id: 'power', label: 'Most powerful', note: 'Power = Vigor + Spark + Grit + Zoom + Luck. Players: their single strongest pet.', pets: true, players: true },
-      { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet. This week: pets hatched or bred in the last 1,008 blocks.', players: true, week: true },
-      { id: 'burn', label: 'Top burners', note: 'XCPETS burned with any XCPETS burn (hatch, feed, gear, battles, plain burns). This week: the last 1,008 blocks.', players: true, week: true },
-      { id: 'wins', label: 'Battle wins', note: 'Battles won. This week: battles decided in the last 1,008 blocks.', pets: true, players: true, week: true },
-      { id: 'leg', label: 'Legendary hunters', note: 'Living Legendary pets owned. This week: Legendaries hatched or bred in the last 1,008 blocks.', players: true, week: true },
+      { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet.', players: true, week: true },
+      { id: 'burn', label: 'Top burners', note: 'Total XCPETS burned, all actions.', players: true, week: true },
+      { id: 'wins', label: 'Battle wins', note: 'Battles won. W/L = battle wins/losses.', pets: true, players: true, week: true },
+      { id: 'leg', label: 'Legendary hunters', note: 'Living Legendary pets owned.', players: true, week: true },
       { id: 'old', label: 'Oldest pets', note: 'Living pets by hatch block, oldest first.', pets: true }
     ];
-    var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: 100 };
+    var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100; /* content-fixes 2026-10-19: one Show more button, 25 rows a page on phones */
+    var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: STEP };
     if (!BOARDS.some(function (x) { return x.id === st.board; })) st.board = 'wagmi';
     var burned = {}, burnedWk = {}; (M.state().rows || []).forEach(function (r) { if (r.status != null && String(r.status).toLowerCase() !== 'valid') return; var a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; /* chain rows carry raw quantity (1e8 units), not amount */ burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
     var winsWk = {}; (w.fights || []).forEach(function (f) { if (f.status === 'done' && inWeek(f.acceptBlock)) winsWk[f.winner] = (winsWk[f.winner] || 0) + 1; });
@@ -180,37 +181,46 @@
       return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: fmt(Math.round(m[o] * 1e8) / 1e8) + unit }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
+    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
     function render() {
-      var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', rows = md === 'pets' ? petRows(B, wk) : playerRows(B, wk);
+      var c0 = cur(), B = c0.B, md = c0.md, wk = c0.wk, rows = c0.rows;
       try { var u = new URL(location.href); u.searchParams.set('board', B.id); if (B.pets && B.players) u.searchParams.set('mode', md); else u.searchParams.delete('mode'); if (wk) u.searchParams.set('span', 'week'); else u.searchParams.delete('span'); history.replaceState(null, '', u); } catch (e) { }
       var tabs = '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { return '<button type="button" role="tab" class="tab' + (x.id === B.id ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + (x.id === B.id) + '">' + esc(x.label) + '</button>'; }).join('') + '</div>';
       var ctl = '<div class="row rkctl">' + (B.pets && B.players ? '<span class="seg"><button type="button" class="q' + (md === 'pets' ? ' on' : '') + '" data-mode="pets">Pets</button><button type="button" class="q' + (md === 'players' ? ' on' : '') + '" data-mode="players">Players</button></span>' : '') +
         (B.week ? '<span class="seg"><button type="button" class="q' + (wk ? ' on' : '') + '" data-span="week">This week</button><button type="button" class="q' + (!wk ? ' on' : '') + '" data-span="all">All time</button></span>' : '') +
-        (ME ? '<button type="button" class="q" id="rkFind">📍 Find me</button>' : '') + '</div><p class="small muted rknote">' + esc(B.note) + (wk ? ' (blocks ' + fmt(tip - WEEK + 1) + '–' + fmt(tip) + ')' : '') + '</p>';
-      var show = rows.slice(0, st.n), mineRank = -1; rows.forEach(function (r, i) { if (mineRank < 0 && (r.owner || (r.p && r.p.owner)) === ME) mineRank = i; });
-      var body = show.map(function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
+        (ME ? '<button type="button" class="q" id="rkFind">📍 Find me</button>' : '') + '</div><p class="small muted rknote">' + esc(B.note) + (wk ? ' This week = the last 7 days (1,008 blocks): new pets, burns or wins in that time.' : '') + '</p>';
+      var show = rows.slice(0, st.n), extra = (st.hits || []).filter(function (i) { return i >= st.n && i < rows.length; }), mineRank = -1; rows.forEach(function (r, i) { if (mineRank < 0 && (r.owner || (r.p && r.p.owner)) === ME) mineRank = i; });
+      var rowHtml = function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
         var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
           : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
-        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + '</div>' : '') + '</td></tr>'; }).join('');
+        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + '</div>' : '') + '</td></tr>'; };
+      var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '');
       var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
       $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">Nobody on this board yet.</p>');
-      var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Load more (' + fmt(rows.length - st.n) + ' left)';
+      var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
-      $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = 100; render(); }; });
-      $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = 100; render(); }; });
-      $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = 100; render(); }; });
+      $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = STEP; st.hits = null; render(); }; });
+      $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; render(); }; });
+      $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; render(); }; });
       if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
       $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pets' : ' players') + ' on this board · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
     }
-    $('boardAll').onclick = function () { st.n += 100; render(); };
+    $('boardAll').onclick = function () { st.n += STEP; render(); };
+    /* content-fixes 2026-10-19: Find my pet searches EVERY row of the current board (not only the loaded ones), loads up to the first hit and highlights it.
+     * q = { id: N } | { text: 'name' } | { owner: address }. Returns the number of matches. Used by js/ux-polish.js rankingFind(). */
+    window.V2Ranking = { find: function (q) { var c = cur(), hits = [];
+      c.rows.forEach(function (r, i) { var p = r.p, own = r.owner || (p && p.owner) || '';
+        if (q.id != null ? p && p.id === q.id : q.owner ? own === q.owner : q.text ? (p && String(p.name).toLowerCase().indexOf(String(q.text).toLowerCase()) >= 0) || own.toLowerCase() === String(q.text).toLowerCase() : false) hits.push(i); });
+      st.hits = hits.slice(0, 50); render(); if (!hits.length) return 0;
+      hits.forEach(function (i) { var e = $('rk' + i); if (e) e.classList.add('uxp-hit'); }); var e0 = $('rk' + hits[0]); if (e0) { e0.scrollIntoView({ block: 'center' }); e0.classList.add('flash'); } return hits.length; } };
     /* 'Your pets' summary removed from the rankings page (Jake 2026-10-15); your rows stay highlighted in the board */
     /* closest to dying (Jake 2026-10-15): the 10 living pets with the fewest blocks left, using the engine's own death block
      * (V2Rules liveAt: deathBlock = (day of last feed + 7 + 1) x 144; Mythic-care pets never starve, so they are not listed) */
     if ($('nearDeath')) { var tipB = w.tip, near = w.pets.filter(function (p) { return !p.dead && !p.released && p.deathBlock != null && p.deathBlock > tipB; })
         .sort(function (a, b) { return a.deathBlock - b.deathBlock || a.id - b.id; }).slice(0, 10);
       var left = function (n) { var m = n * 10; return fmt(n) + ' block' + (n === 1 ? '' : 's') + ' (~' + (m < 120 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : (m / 1440).toFixed(1) + ' days') + ')'; };
-      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small muted">Living pets with the least time left before they starve (no feed for 7 full days after the day of their last feed). Feed them to reset the clock.</p>' +
-        (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(p.owner.slice(0, 8)) + (p.owner === ME ? ' (you)' : '…') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
+      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small"><b>NGMI: closest to starving.</b></p><p class="small muted">Living pets with the least time left before they starve (7 full days with no meal). If one is yours, feed it on Play to reset its clock. Mythic pets never starve. A pet that dies goes to the Pet Cemetery and its gear goes back to the owner\'s bag.</p>' +
+        (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner) + '">' + esc(shortAddr(p.owner)) + '</span>' + (p.owner === ME ? ' (you)' : '') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
       $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
     render();
   }
@@ -219,7 +229,7 @@
     $('status').textContent = dead.length + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + M.state().rows.length + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
     $('tombs').innerHTML = dead.length ? dead.map(function (p) {
       return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
-        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted">owner ' + esc(p.owner) + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div></div>'; }).join('')
+        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div></div>'; }).join('')
       : '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>';
     dead.forEach(function (p) { var c = document.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.paint(c, R.framesWith(p.art, p.stage, [])[0]); });
   }
@@ -235,11 +245,11 @@
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
       $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, '🔥 streak ' + streak(p, w.tip), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '');
-      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. Its gear went back to the owner\'s inventory.</p>' : '') +
-        'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you) <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>' : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic discount)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
+      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. Its gear went back to the owner\'s bag.</p>' : '') +
+        'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic discount)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
         (p.owner === ME && !p.dead ? ' <a class="btn" href="play.html#pet-' + p.id + '">Open in the game</a>' : '');
       var g = $('gear');
-      if (p.dead) g.innerHTML = '<p class="small">No gear: a pet in the Pet Cemetery can\'t wear anything.</p>';
+      if (p.dead) g.innerHTML = '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s bag.</p>';
       else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
       else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
         R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, onEquip: function (op, m) { op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },

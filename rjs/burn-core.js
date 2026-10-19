@@ -28,8 +28,7 @@
     { id: 'feed', label: 'pet:feed — feed the community pet (feeder board)', minKey: 'feed', id_: 'none', name: false, help: 'Feeds the community pet and also counts on the community feeder board.' },
     { id: 'hatch', label: 'pet:hatch — hatch your own pet', minKey: 'hatch', id_: 'none', name: false, help: 'Hatches a new pet owned by this address. Its look comes from the block hash your burn lands in plus the tx hash. The whole amount becomes its starting care.' },
     { id: 'feedPet', label: 'pet:feed:ID — feed pet #ID (anyone can)', minKey: 'feedPet', id_: 'required', name: false, help: 'Adds the amount to pet #ID\'s care. Gifting to other players\' pets is allowed.' },
-    { id: 'play', label: 'pet:play / pet:play:ID — play with your newest pet (or #ID)', minKey: 'play', id_: 'optional', name: false, help: 'Adds care and +1 play to your newest pet, or to pet #ID.' },
-    { id: 'evolve', label: 'pet:evolve / pet:evolve:ID — ascend an Elder to Mythic (owner only)', minKey: 'evolve', id_: 'optional', name: false, help: 'Ascends the pet to Mythic if its care (including this burn) reaches 5,000,000. If care is too low the burn is still added as care.' }
+    { id: 'play', label: 'pet:play / pet:play:ID — play with your newest pet (or #ID)', minKey: 'play', id_: 'optional', name: false, help: 'Adds care and +1 play to your newest pet, or to pet #ID.' }
   ];
   function action(id) { for (var i = 0; i < ACTIONS.length; i++) if (ACTIONS[i].id === id) return ACTIONS[i]; return null; }
 
@@ -127,7 +126,6 @@
         '. A smaller burn would only feed the community pet and do nothing else.');
     }
     if (o.balanceRaw != null && cmpRaw(o.raw, o.balanceRaw) > 0) errors.push('Amount is more than this address holds (' + fromRaw(o.balanceRaw) + ' ' + ASSET + ').');
-    if (a && a.id === 'evolve') warnings.push('Evolve only succeeds if the pet\'s care including this burn is at least 5,000,000; otherwise it is just added as care.');
     return { errors: errors, warnings: warnings };
   }
 
