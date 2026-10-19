@@ -396,15 +396,19 @@
     var h = '<div class="gp-slots" role="tablist" aria-label="Gear slots">' + slots.map(function (sl) { var locked = p.openSlots.indexOf(sl) < 0, g = worn[sl];
       return '<button type="button" class="gp-slot' + (open === sl ? ' on' : '') + (locked ? ' locked' : '') + '" data-gslot="' + sl + '" role="tab" aria-selected="' + (open === sl) + '"><b>' + V.slotLabel(sl) + '</b><span class="small">' + (locked ? 'locked' : g ? esc(g.label) : 'empty') + '</span></button>'; }).join('') + '</div>';
     /* Unequip all (2026-10-19): one free local action that takes every worn piece off this pet (same op as "Take off", gid null, per slot); all go to the bag */
-    var wornSlots = Object.keys(worn), asking = box.getAttribute('data-offall') === '1' && wornSlots.length && !p.dead;
-    if (wornSlots.length && !p.dead) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your bag (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
+    /* unequip-owner-fix (2026-10-19): owner only. Same check as equip/unequip (equipCheck), feed and Release: a wallet is connected, it owns the pet, the pet is not released.
+     * The community pet (Bitcoin Wizard, auto-equips) has no owner, so this also hides it there unless it is owner-controlled by the connected wallet. */
+    var ownsP = function () { var q = (o.world && o.world.byId && o.world.byId[p.id]) || p; return !!o.owner && q.owner === o.owner && !q.released; };
+    var wornSlots = Object.keys(worn), canOffAll = wornSlots.length && !p.dead && ownsP(), asking = box.getAttribute('data-offall') === '1' && canOffAll;
+    if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your bag (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
       : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your bag.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
     h += '<div class="gp-grid-wrap" id="gpWrap"></div><div class="small gp-msg" aria-live="polite"></div>';
     box.innerHTML = h;
     var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
-    if (oa) oa.onclick = function () { box.setAttribute('data-offall', '1'); gearPicker(box, o); };
+    var notOwner = function () { box.removeAttribute('data-offall'); say('Only the owner can take gear off #' + p.id + '. Connect the wallet that owns it.', true); };
+    if (oa) oa.onclick = function () { if (!ownsP()) return notOwner(); box.setAttribute('data-offall', '1'); gearPicker(box, o); };
     if (on) on.onclick = function () { box.removeAttribute('data-offall'); gearPicker(box, o); };
-    if (oy) oy.onclick = function () { box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your bag';
+    if (oy) oy.onclick = function () { if (!ownsP()) return notOwner(); box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your bag';
       if (o.onEquipMany) o.onEquipMany(ops, m); else ops.forEach(function (op, i) { o.onEquip(op, i === ops.length - 1 ? m : ''); }); };
     var wrap = box.querySelector('.gp-grid-wrap'), msg = box.querySelector('.gp-msg');
     function say(t, bad) { msg.textContent = t; msg.className = 'small gp-msg' + (bad ? ' warn' : ''); }
