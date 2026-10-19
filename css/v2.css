@@ -1,6 +1,6 @@
 /* v2 additions ONLY (everything else is the live css/style.css + css/game.css). Derived from live tokens/components. */
 .returnbox { margin-top:10px; border-top:2px dashed var(--line); padding-top:8px; }
-.returnbox h3 { margin:4px 0; font-size:16px; } .lb { margin:4px 0 0 18px; padding:0; } .lb li.me { color: var(--acc2); font-weight:800; }
+.returnbox h3 { margin:4px 0; font-size:16px; } .lb { margin:4px 0 0 18px; padding:0; } .lb li.me { color: var(--acc2); font-weight:700; }
 input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .bulkrow { background:#0a0f0b; border:2px solid var(--line); border-radius:6px; padding:6px 8px; }
 .bulkrow .btn { font-size:12px; padding:5px 10px; }
@@ -41,7 +41,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .gp-star { position: absolute; top: -2px; left: 2px; font-size: 10px; color: #ffc93c; } .gp-on { position: absolute; top: 0; right: 1px; font-size: 8px; background: #1d3a24; color: #c8f7d8; border-radius: 4px; padding: 0 2px; }
 .gp-msg { min-height: 1.2em; margin-top: 4px; }
 .gicon { width: 42px; height: 42px; image-rendering: pixelated; }
-.board tr.me td { background: var(--bg2); } .board tr.me td.rk { color: var(--acc2); font-weight:800; }
+.board tr.me td { background: var(--bg2); } .board tr.me td.rk { color: var(--acc2); font-weight:700; }
 .bgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:8px; margin:6px 0 12px; }
 .bgrid .pet.card { padding:6px; text-align:center; font-size:11px; } .bgrid .pet.card canvas { width:64px; height:64px; image-rendering:pixelated; display:block; margin:0 auto 4px; }
 .bgrid .pet.card.sel { border-color:#3ddc84; box-shadow:0 0 0 2px #3ddc84, 3px 3px 0 #000; } .bgrid .pet.card.sel::after { content:'✓ ' attr(data-role); display:block; color:#3ddc84; font-weight:700; }
@@ -62,7 +62,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 .inscthumb { width: 64px; height: 64px; image-rendering: pixelated; } .inscpick { margin: 10px 0; }
 
 /* pet pop-up: prominent 'Open pet page' primary button, right under the name/art (2026-10-14) */
-#detail .openpet { display: block; width: 100%; box-sizing: border-box; text-align: center; font-size: 17px; padding: 12px 18px; margin: 12px 0 14px; background: #3ddc84; color: #06210f; border: 2px solid #0b3d20; box-shadow: 0 4px 0 #0b3d20; border-radius: 10px; font-weight: 800; text-decoration: none; }
+#detail .openpet { display: block; width: 100%; box-sizing: border-box; text-align: center; font-size: 17px; padding: 12px 18px; margin: 12px 0 14px; background: #3ddc84; color: #06210f; border: 2px solid #0b3d20; box-shadow: 0 4px 0 #0b3d20; border-radius: 10px; font-weight: 700; text-decoration: none; }
 #detail .openpet:hover, #detail .openpet:focus-visible { background: #5ff0a0; outline: 3px solid #ffd23f; outline-offset: 2px; }
 /* persistent 'Inscribing' pet header card */
 .inschead { display: flex; gap: 12px; align-items: center; background: #13201a; border: 2px solid #f7931a; border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; }
@@ -82,7 +82,7 @@ input.amt { width:110px; } input.amt.small { width:56px; padding:4px 6px; }
 /* front-page Cold Storage link (Jake 2026-10-14): the whole label + bar links to archive.html, visuals unchanged */
 a.returnlink { display: block; color: inherit; text-decoration: none; cursor: pointer; border-radius: 6px; } a.returnlink:hover { color: inherit; text-decoration: none; } a.returnlink:focus-visible { outline: 2px solid #ffc93c; outline-offset: 3px; }
 /* Cold Storage button (Jake 2026-10-14: must look clickable): game button style, pixel snowflake, arrow; hover lift, active press, focus ring */
-a.returnlink .coldbtn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 3px solid #000; border-radius: 6px; background: #33d6ff; color: #04202a; font-weight: 800; box-shadow: 3px 3px 0 #000; transition: transform .08s, box-shadow .08s, filter .08s; }
+a.returnlink .coldbtn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 3px solid #000; border-radius: 6px; background: #33d6ff; color: #04202a; font-weight: 700; box-shadow: 3px 3px 0 #000; transition: transform .08s, box-shadow .08s, filter .08s; }
 a.returnlink .coldico { image-rendering: pixelated; flex: none; } a.returnlink .coldico path { fill: #04202a; }
 a.returnlink:hover .coldbtn { filter: brightness(1.12); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
 a.returnlink:active .coldbtn { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
@@ -226,7 +226,7 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 #packBox .packgrid::-webkit-scrollbar-thumb:hover,.reveal .box::-webkit-scrollbar-thumb:hover{background:#3ddc84}
 .grinfo{text-align:left;background:#1d3a24;border:2px solid #3ddc84;border-radius:8px;padding:8px 10px;margin:4px 0 8px;color:var(--ink)}
 .grinfo p{margin:2px 0}.grinfo .grnext{color:var(--acc2);font-weight:700}
-.grcap{font-family:var(--meme);font-size:20px;letter-spacing:1px;color:var(--acc2);text-shadow:2px 2px 0 #000;margin:2px 0 6px;line-height:1.1;max-width:100%;overflow-wrap:anywhere;text-transform:uppercase}
+.grcap{font-family:var(--meme);font-synthesis:style;font-size:20px;letter-spacing:1px;color:var(--acc2);text-shadow:2px 2px 0 #000;margin:2px 0 6px;line-height:1.1;max-width:100%;overflow-wrap:anywhere;text-transform:uppercase}
 .grtiers{display:block;margin:2px 0}
 .grhelp{margin:4px 0 0}.grpending{margin:4px 0 0;border:2px dashed #ffc93c;border-radius:6px;padding:4px 8px;color:#ffe39a}
 .grwhat{margin:6px 0 2px}
