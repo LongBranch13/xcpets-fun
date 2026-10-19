@@ -508,9 +508,9 @@
     var s = document.createElement('canvas'); s.width = s.height = 32; try { var w = window.V2Mock.world(); window.V2Render.paint(s, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
     g.imageSmoothingEnabled = false; g.drawImage(s, 152, 40, 896, 896); /* 32px sprite x28 nearest-neighbour */
     var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, F = "'Press Start 2P', monospace"; g.textAlign = 'center'; g.fillStyle = '#ffffff';
-    g.font = '44px ' + F; g.fillText(((p.name || '') + ' #' + p.id).slice(0, 22), W / 2, 1010);
-    g.fillStyle = col; g.font = '30px ' + F; g.fillText((TL[p.tier] || '') + ' ' + sp + ' · ' + (p.stageName || ''), W / 2, 1072);
-    g.fillStyle = '#3ddc84'; g.font = '28px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
+    g.font = '48px ' + F; g.fillText(((p.name || '') + ' #' + p.id).slice(0, 22), W / 2, 1010);
+    g.fillStyle = col; g.font = '32px ' + F; g.fillText((TL[p.tier] || '') + ' ' + sp + ' · ' + (p.stageName || ''), W / 2, 1072);
+    g.fillStyle = '#3ddc84'; g.font = '24px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
   function toast(msg) { var t = document.createElement('div'); t.className = 'shtoast'; t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18221b;color:#fff;border:2px solid #3ddc84;border-radius:10px;padding:10px 16px;z-index:99999;font-size:14px;max-width:90vw;text-align:center';
     document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000); }
   /* Pet share (Jake 2026-10-15): row sits under the stats (pet page #stats, play dialog #dStats). Share image = native share sheet with the PNG file
