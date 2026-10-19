@@ -105,7 +105,7 @@
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')';
-    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); notifyBreeds(w); renderRumble(w); renderBreed(w); renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
+    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); notifyBreeds(w); renderBreed(w); renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
     offerResume();
   }
@@ -437,7 +437,7 @@
   $('fGo').onclick = function () { var a = $('fMine').value, b = $('fTheirs').value; if (!a || !b) return toast('Pick both pets'); confirmPlans('Challenge #' + b, [{ tag: V.buildTag('fight', { a: a, b: b }), amount: 690 }]); };
   $('fNpc').onclick = function () { var w = world(), my = fighters(w, ME), np = fighters(w, ME, true).filter(function (p) { return !p.fightDays[V.day(S.tip)]; });
     if (!my.length || !np.length) return toast('No eligible pets'); var m = my[S.n % my.length], n = np[S.n % np.length]; burn(n.owner, 'pet:fight:' + n.id + ':' + m.id, 690); save(); render(); toast('⚔️ ' + n.owner + ' challenged #' + m.id); };
-  // Animation pop-up (2026-10-14): battle / rumble / breeding animations play in a centred modal over a dimmed backdrop; the page never scrolls.
+  // Animation pop-up (2026-10-14): battle / breeding animations play in a centred modal over a dimmed backdrop; the page never scrolls.
   // The arena element is moved into the modal and put back on close (finish, Skip, Esc, backdrop click); scroll position is restored.
   var animM = { el: null, home: null, y: 0, iv: null, onClose: null }, animQ = [];
   /* result animations (fights, breeds) queue up and play one after another, each once (2026-10-15) */
@@ -470,24 +470,7 @@
       if (done) { msg = 'WINNER #' + f.winner + (sp ? ' +' + sp : ''); if (!playFight.endAt) playFight.endAt = k + 12; if (k >= playFight.endAt) { clearInterval(playFight.iv); playFight.endAt = 0; animClose(); } } }, 220);
     playFight.endAt = 0; animOpen(c.parentNode, playFight.iv, function () { clearInterval(playFight.iv); playFight.endAt = 0; });
   }
-  // ---------------------------------------------------------------- rumble
-  function renderRumble(w) {
-    var wk = V.weekOf(S.tip), R = w.rumbles[wk], sb = V.seedBlockOfWeek(wk);
-    $('rInfo').innerHTML = 'Week <b>' + wk + '</b> · seed block <b>' + fmt(sb) + '</b> (' + (sb - S.tip) + ' blocks left) · entrants <b>' + (R ? R.entrants.length : 0) + '</b>' + (R && R.entrants.length ? ': ' + R.entrants.map(function (e) { return '#' + e.id + (e.stake === 'burn' ? ' (690 stake)' : ''); }).join(', ') : '');
-    $('rPet').innerHTML = fighters(w, ME).map(function (p) { var has = V.wornOf(w, p.id).some(function (g) { return !g.legendary; }); return '<option value="' + p.id + '" data-c="' + (has ? 69 : 759) + '">#' + p.id + ' ' + esc(p.name) + ' — ' + (has ? 'risks 1 gear piece · 69' : 'no gear · 69 + 690') + '</option>'; }).join('');
-    var done = Object.keys(w.rumbles).map(function (k) { return w.rumbles[k]; }).filter(function (r) { return r.done && r.rounds.length; }).pop(), h = '';
-    if (done) { h += '<h3 class="sec" data-ico="trophy">Week ' + done.week + ' bracket</h3><p class="small muted">seed ' + done.seedHash.slice(0, 24) + '…</p><div class="bracket">';
-      done.rounds.forEach(function (ms, ri) { h += '<div class="rcol"><b class="small">' + (ri === done.rounds.length - 1 ? 'Final' : 'Round ' + (ri + 1)) + '</b>' + ms.map(function (m, mi) {
-        return '<div class="chips">' + (m.bye ? '<span class="chip">#' + m.a + ' bye</span>' : '<span class="chip' + (m.winner === m.a ? ' win' : '') + '">#' + m.a + '</span><span class="chip' + (m.winner === m.b ? ' win' : '') + '">#' + m.b + '</span><button class="q" data-rm="' + ri + ':' + mi + '">▶</button>') + '</div>'; }).join('') + '</div>'; });
-      h += '<div class="rcol"><b class="small">Champion</b><span class="pill tier tier-legendary">👑 #' + done.champion + '</span></div></div><h3 class="sec" data-ico="flame">Highlights</h3><div class="logbox small">' + done.highlights.map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('') + '</div>'; }
-    else h = '<p class="muted small">No rumble resolved yet: enter pets, let rivals enter, then advance past the seed block.</p>';
-    $('rBody').innerHTML = h;
-    $('rBody').querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { var q = b.dataset.rm.split(':'), m = done.rounds[q[0]][q[1]]; playFight({ a: m.a, b: m.b, turns: m.turns, maxA: m.maxA, maxB: m.maxB, winner: m.winner, loser: m.loser, spoils: m.spoils }); }; });
-  }
-  $('rGo').onclick = function () { var o = $('rPet').selectedOptions[0]; if (!o) return toast('No eligible pet'); confirmPlans('Royal Rumble entry #' + o.value, [{ tag: 'pet:rumble:' + o.value, amount: Number(o.dataset.c) }]); };
-  $('rNpc').onclick = function () { var w = world(); fighters(w, ME, true).forEach(function (p) { var has = V.wornOf(w, p.id).some(function (g) { return !g.legendary; }); burn(p.owner, 'pet:rumble:' + p.id, has ? 69 : 759); }); save(); render(); };
-  if (M.prod) ['fNpc', 'rNpc', 'rSeed'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* NPC simulation buttons: nothing to simulate on the live chain */
-  $('rSeed').onclick = function () { adv(V.seedBlockOfWeek(V.weekOf(S.tip)) - S.tip + 1); save(); render(); };
+  if (M.prod) ['fNpc'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* NPC simulation buttons: nothing to simulate on the live chain */
   // ---------------------------------------------------------------- breeding
   function renderBreed(w) {
     var a = $('bA').value, b = $('bB').value, L = V.breedPicker(w, ME, S.tip, a);

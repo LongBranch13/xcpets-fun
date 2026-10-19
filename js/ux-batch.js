@@ -137,7 +137,7 @@
   var COND = [['age', 2, '2 days old'], ['age', 5, '5 days old'], ['age', 10, '10 days old'], ['fed', 0.5, 'fed on 50% of its days'], ['fed', 0.8, 'fed on 80% of its days (min 3 fed days)']];
   function unmet(p) { var age = p.ageDays || 0, fd = p.fedDays || 0, ratio = fd / Math.max(1, age + 1);
     return COND.filter(function (c) { return c[0] === 'age' ? age < c[1] : c[1] === 0.5 ? !(ratio >= 0.5 && fd >= 1) : !(ratio >= 0.8 && fd >= 3); }).map(function (c) { return c[2]; }); }
-  function srcLabel(g) { return { roll: '🎲 gear roll', token: '🎟️ lucky drop', live: '⛓️ v1 game', froll: '🎁 free roll', fight: '⚔️ battle spoils', rumble: '🏆 rumble' }[g.src] || (g.src ? esc(g.src) : 'unknown'); }
+  function srcLabel(g) { return { roll: '🎲 gear roll', token: '🎟️ lucky drop', live: '⛓️ v1 game', froll: '🎁 free roll', fight: '⚔️ battle spoils' }[g.src] || (g.src ? esc(g.src) : 'unknown'); }
   function invPets(w) { return U.mine(w).filter(function (p) { return !p.dead; }); }
   function paintInv(w) {
     var box = $('inv'); if (!box) return; var items = w.itemList.filter(function (g) { return g.owner === ME; }), pets = invPets(w), S = U.S();
