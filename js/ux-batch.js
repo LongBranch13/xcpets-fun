@@ -23,8 +23,8 @@
   function isHyb(p) { return !!(p.hybrid || (p.art && p.art.hybrid) || V.isHybrid(p.species)); }
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
   function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip || F.sort !== 'num'); }
-  /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species (A–Z)' sort; the community Bitcoin Wizard is never listed */
-  var SPF = ['pepe', 'wojak', 'chud', 'mumu', 'doge', 'peepo', 'bobo', 'sarutobi', 'lenny', 'snibby', 'kevin', 'dodo', 'nakamoto'];
+  /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species' sort; the community Bitcoin Wizard is never listed */
+  var SPF = ['bobo', 'chud', 'dodo', 'doge', 'kevin', 'lenny', 'mumu', 'nakamoto', 'peepo', 'pepe', 'sarutobi', 'snibby', 'wojak'];
   function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
   function spName(id) { return id === 'hybrid' ? 'Hybrids' : id === 'kevin' ? 'Kevin' : spL(id); }
   function paintSpecies(pets) { var sel = $('fSpecies'); if (!sel) return; var c = { all: pets.length };
