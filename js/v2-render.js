@@ -498,55 +498,43 @@
    * every care target / Mythic line / progress bar uses this so the My Pets card, detail panel and pet page agree. pct = care toward Mythic, capped at 100. */
   function careTarget(w, p, tip) { var V = window.V2Rules, th = V.petThresholds ? V.petThresholds(w, p, tip) : V.thresholdsFor(p.species, tip), base = V.thresholdsFor(p.species, tip);
     return { th: th, mythic: th[5], discount: th[5] < base[5], pct: Math.min(100, 100 * p.care / th[5]) }; }
-  /* burial-choice (2026-10-19): display only, NO rule changes. A living, non-Mythic, non-released, non-community pet that is neglected (3+ chain days unfed,
-   * V2Rules liveAt p.neglected) and wears gear gets a "Burial choice" panel before it starves. Countdown = the engine's own death block
-   * (liveAt: deathBlock = (day(last feed or hatch, or the live clock anchor) + NEGLECT_DAYS + 1) x 144) minus the tip, at ~10 min a block, shown in days + hours
-   * like the ranking NGMI board. (a) Bury with gear = the default, nothing to sign; clicking it only stores a per-pet note in this browser
-   * (localStorage xcpets-burial-<id> = that death block, so a meal that moves the clock clears it) and collapses the panel, with Undo.
-   * (b) Take gear off = the existing owner-only "Unequip all" in gearPicker (same confirm row, same ops); non-owners / no wallet see it read-only.
+  /* starve-warning (2026-10-19, owner option B 7:34 AM CT; replaces the burial-choice draft): display only, NO rule changes.
+   * A living, non-Mythic, non-released, non-community pet that is neglected (3+ chain days unfed, V2Rules liveAt p.neglected) and wears gear gets a
+   * starvation warning: countdown = the engine's own death block (liveAt: deathBlock = (day(last feed or hatch, or the live clock anchor) + NEGLECT_DAYS + 1) x 144)
+   * minus the tip, at ~10 min a block, in days + hours (like the ranking NGMI board), the worn pieces, and the true rule: at death V2Rules finish() takes every
+   * worn piece off and it stays with the owner (back in the bag). Feed = the existing feed flow (owner only); visitors / non-owners see it read-only.
    * The Bitcoin Wizard is not in w.pets and community pets are skipped. */
-  var BURIAL_KEY = 'xcpets-burial-';
-  function burialLeft(n) { var H = Math.round(n * 10 / 60), d = Math.floor(H / 24), h = H % 24;
+  function starveLeft(n) { var H = Math.round(n * 10 / 60), d = Math.floor(H / 24), h = H % 24;
     if (H < 1) return { long: (n * 10) + ' min', short: (n * 10) + 'm' };
-    return { long: (d ? d + ' day' + (d === 1 ? '' : 's') + ' ' : '') + h + ' h', short: (d ? d + 'd ' : '') + h + 'h' }; }
-  function buryChosen(p) { try { return !!p && localStorage.getItem(BURIAL_KEY + p.id) === String(p.deathBlock); } catch (e) { return false; } }
-  function setBury(p, on) { try { if (on) localStorage.setItem(BURIAL_KEY + p.id, String(p.deathBlock)); else localStorage.removeItem(BURIAL_KEY + p.id); } catch (e) { } }
-  function burialInfo(w, p) {
+    return { long: (d ? d + ' day' + (d === 1 ? '' : 's') : '') + (d && h ? ' ' : '') + (h ? h + ' h' : ''), short: (d ? d + 'd' : '') + (d && h ? ' ' : '') + (h ? h + 'h' : '') }; }
+  function starveInfo(w, p) {
     if (!w || !p || w.tip == null || p.dead || p.released || p.community || p.mythicCare || !p.neglected || p.deathBlock == null || p.deathBlock <= w.tip) return null;
     var S = V.V2_SLOTS, g = V.wornOf(w, p.id).slice().sort(function (a, b) { return S.indexOf(a.slot) - S.indexOf(b.slot); }); if (!g.length) return null;
-    var n = p.deathBlock - w.tip, L = burialLeft(n);
-    return { blocks: n, at: p.deathBlock, left: L.long, short: L.short, unfed: hungerDays(p, w), gear: g, chose: buryChosen(p) }; }
+    var n = p.deathBlock - w.tip, L = starveLeft(n);
+    return { blocks: n, at: p.deathBlock, left: L.long, short: L.short, unfed: hungerDays(p, w), gear: g }; }
   function fmtN(n) { return Number(n).toLocaleString('en-US'); }
-  /** burialHtml(w, p, owner): the panel ('' when the pet does not qualify). owner = the connected address ('' when none). */
-  function burialHtml(w, p, owner) {
-    var b = burialInfo(w, p); if (!b) return '';
-    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'),
-      when = '<b>~' + b.left + '</b> <span class="small muted">(' + fmtN(b.blocks) + ' block' + (b.blocks === 1 ? '' : 's') + ', at block ' + fmtN(b.at) + ')</span>';
-    if (b.chose) return '<div class="burial chosen" data-burial="' + p.id + '"><p class="small">🪦 Burial choice: <b>bury with gear</b>. ' + pcs + ' stay on #' + p.id + ' in the Pet Cemetery. Dies in ~' + b.left + ' unless fed. ' +
-      (own ? '<button type="button" class="q" data-bundo="1">Undo</button>' : '') + '</p></div>';
-    return '<div class="burial" data-burial="' + p.id + '" role="region" aria-label="Burial choice for #' + p.id + '"><h3 class="sec" data-ico="skull">Burial choice</h3>' +
-      '<p class="bcount">💀 #' + p.id + ' dies of hunger in ' + when + '</p>' +
-      '<p class="small">Neglected: ' + b.unfed + ' chain day' + (b.unfed === 1 ? '' : 's') + ' without a meal. A meal resets the clock. If it dies, what happens to the ' + pcs + ' it wears?</p>' +
-      '<ul class="small bgear">' + b.gear.map(function (g) { return '<li>' + esc(V.slotLabel(g.slot)) + ': ' + esc(g.label) + (g.legendary ? ' ★' : '') + '</li>'; }).join('') + '</ul>' +
-      '<div class="bopts"><div class="bopt"><button type="button" class="q" data-bbury="1"' + (own ? '' : ' disabled') + '>🪦 Bury with gear</button><p class="small muted">The default: the gear stays on #' + p.id + ' in the Pet Cemetery, locked. Nothing to sign.</p></div>' +
-      '<div class="bopt"><button type="button" class="q" data-boff="1"' + (own ? '' : ' disabled') + '>🎒 Take gear off</button><p class="small muted">' + (own ? 'Free: every piece goes back to your bag (same as Unequip all).' : 'Only the owner\'s wallet can take gear off #' + p.id + '.') + '</p></div></div>' +
-      (!owner ? '<p class="small">Your pet? <button type="button" class="q" data-bconn="1">Connect wallet</button> to choose.</p>' : !own ? '<p class="small muted">The connected wallet does not own #' + p.id + '.</p>' : '') + '</div>'; }
-  /** bindBurial(root, w, p, owner, {takeOff(), redraw()}): wires the panel buttons inside root. */
-  function bindBurial(root, w, p, owner, o) { if (!root) return; o = o || {};
+  /** starveHtml(w, p, owner, o): the warning ('' when the pet does not qualify). owner = connected address ('' = none).
+   *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
+  function starveHtml(w, p, owner, o) {
+    var b = starveInfo(w, p); if (!b) return ''; o = o || {};
+    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your bag' : 'the owner\'s bag';
+    var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
+      : '<span class="small">Only the owner can feed #' + p.id + '.</span>' + (!owner ? ' <span class="small">Your pet? <button type="button" class="q" data-sconn="1">Connect wallet</button> to feed it.</span>' : ' <span class="small muted">The connected wallet does not own #' + p.id + '.</span>');
+    return '<div class="starve" data-starve="' + p.id + '" role="region" aria-label="Starvation warning for #' + p.id + '"><h3 class="sec" data-ico="skull">Starvation warning</h3>' +
+      '<p class="bcount">💀 #' + p.id + ' dies of hunger in <b>~' + b.left + '</b> <span class="small muted">(' + fmtN(b.blocks) + ' block' + (b.blocks === 1 ? '' : 's') + ', at block ' + fmtN(b.at) + ')</span> unless it is fed.</p>' +
+      '<p class="small">Neglected: ' + b.unfed + ' chain day' + (b.unfed === 1 ? '' : 's') + ' without a meal. Feed it to save it.</p>' +
+      '<p class="small">It wears ' + pcs + ':</p><ul class="small bgear">' + b.gear.map(function (g) { return '<li>' + esc(V.slotLabel(g.slot)) + ': ' + esc(g.label) + (g.legendary ? ' ★' : '') + '</li>'; }).join('') + '</ul>' +
+      '<p class="small">If it dies, its gear comes back to ' + bag + ' automatically, so no gear is lost.</p>' +
+      '<div class="scta">' + cta + '</div></div>'; }
+  /** bindStarve(root, w, p, owner, {feed()}): wires the Feed and Connect buttons inside root. */
+  function bindStarve(root, w, p, owner, o) { if (!root) return; o = o || {};
     var own = function () { var q = (w && w.byId && w.byId[p.id]) || p; return !!owner && q.owner === owner && !q.released; };
-    root.querySelectorAll('[data-burial="' + p.id + '"] [data-bbury]').forEach(function (b) { b.onclick = function () { if (!own()) return; setBury(p, true); if (o.redraw) o.redraw(); }; });
-    root.querySelectorAll('[data-burial="' + p.id + '"] [data-bundo]').forEach(function (b) { b.onclick = function () { if (!own()) return; setBury(p, false); if (o.redraw) o.redraw(); }; });
-    root.querySelectorAll('[data-burial="' + p.id + '"] [data-boff]').forEach(function (b) { b.onclick = function () { if (!own()) return; if (o.takeOff) o.takeOff(); }; });
-    root.querySelectorAll('[data-burial="' + p.id + '"] [data-bconn]').forEach(function (b) { b.onclick = function () { var c = document.getElementById('wconnect'); if (c) { try { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } c.click(); } else location.href = 'play.html'; }; }); }
-  /** offAllVia(picker): opens the existing Unequip-all confirm row in a rendered gearPicker and scrolls to it. Returns false when the picker has no Unequip all (not owner). */
-  function offAllVia(picker) { var b = picker && picker.querySelector('[data-offall]'); if (!b) return false; b.click(); var r = picker.querySelector('.gp-offall'); if (r) { try { r.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } } return true; }
-  /** burialChip(w, p): small My Pets card badge. */
-  function burialChip(w, p) { var b = burialInfo(w, p); if (!b) return '';
-    return '<span class="chip warn bchip" title="Neglected with ' + b.gear.length + ' gear worn: dies in ~' + b.left + ' unless fed. Open it to make the burial choice.">🪦 ' + b.short + (b.chose ? ' · bury w/ gear' : ' · ' + b.gear.length + ' gear') + '</span>'; }
-  /** buriedLine(w, p): dead pets that still wear gear. */
-  function buriedCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
-  function buriedLine(w, p) { var n = buriedCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') + ' (locked)' : ''; }
-  window.V2Render = { careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, burialInfo: burialInfo, burialHtml: burialHtml, bindBurial: bindBurial, offAllVia: offAllVia, burialChip: burialChip, buriedCount: buriedCount, buriedLine: buriedLine, esc: esc, TID: TID, familyHtml: familyHtml };
+    root.querySelectorAll('[data-starve="' + p.id + '"] button[data-sfeed]').forEach(function (b) { b.onclick = function () { if (!own()) return; if (o.feed) o.feed(); }; });
+    root.querySelectorAll('[data-starve="' + p.id + '"] [data-sconn]').forEach(function (b) { b.onclick = function () { var c = document.getElementById('wconnect'); if (c) { try { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } c.click(); } else location.href = 'play.html'; }; }); }
+  /** starveChip(w, p): small My Pets card badge. */
+  function starveChip(w, p) { var b = starveInfo(w, p); if (!b) return '';
+    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your bag.">🪦 starves in ' + b.short + '</span>'; }
+  window.V2Render = { careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

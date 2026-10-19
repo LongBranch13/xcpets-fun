@@ -152,14 +152,10 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 /* a11y (2026-10-16): nav tap targets at least 44px tall on phones (spacing only) */
 @media (max-width:640px){nav a{display:inline-flex;align-items:center;min-height:44px;min-width:24px}}
 
-/* burial-choice (2026-10-19): neglected pet with gear worn; 8px grid, inherits the page fonts */
-.burial { border:2px dashed #ff8a8a; border-radius:8px; padding:8px; margin:8px 0 16px; background:#1d1414; overflow-wrap:anywhere; text-align:left; }
-.burial .sec { margin:0 0 8px; } .burial p { margin:0 0 8px; } .burial .bcount b { color:#ff8a8a; }
-.burial .bgear { margin:0 0 8px; padding-left:24px; text-align:left; }
-.burial .bopts { display:grid; grid-template-columns:repeat(auto-fit, minmax(176px, 1fr)); gap:8px; margin-bottom:8px; }
-.burial .bopt { border:2px solid #3a4a3e; border-radius:8px; padding:8px; min-width:0; } .burial .bopt p { margin:8px 0 0; }
-.burial button[disabled] { opacity:.5; cursor:not-allowed; }
-.burial.chosen { border-style:solid; border-color:#777; background:#1d1d1d; } .burial.chosen p { margin:0; }
-.tomb .buried { margin-top:8px; color:#ffd7d7; }
+/* starve-warning (2026-10-19): neglected pet with gear worn; 8px grid, inherits the page fonts */
+.starve { border:2px dashed #ff8a8a; border-radius:8px; padding:8px; margin:8px 0 16px; background:#1d1414; overflow-wrap:anywhere; text-align:left; }
+.starve .sec { margin:0 0 8px; } .starve p { margin:0 0 8px; } .starve .bcount b { color:#ff8a8a; }
+.starve .bgear { margin:0 0 8px; padding-left:24px; text-align:left; }
+.starve .scta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#detail .starve p, #detail #dInfo .starve p:last-child { display:block; margin:0 0 8px; }
 .tomb { min-width:0; overflow-wrap:anywhere; } /* the full owner address overflowed a 390px tomb (seen with a forced dead pet; no pet has died on chain yet) */
-#detail .burial p, #detail #dInfo .burial p:last-child { display:block; margin:0 0 8px; } #detail .burial .bopt p { margin:8px 0 0; } #detail .burial.chosen p { margin:0; }
