@@ -383,7 +383,7 @@
   function iconCanvas(id, cls) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = cls || 'gicon'; paint(c, itemIcon(id)); return c; }
   // ---------------------------------------------------------------- click-to-equip picker
   var TID = ['common', 'uncommon', 'rare', 'legendary'];
-  /** gearPicker(box, {world, owner, pet, onEquip(op), onMsg(text)}): slot-name buttons; clicking one opens a grid of that slot's pieces as
+  /** gearPicker(box, {world, owner, pet, onEquip(op), onEquipMany(ops, msg)?, onMsg(text)}): slot-name buttons; clicking one opens a grid of that slot's pieces as
    * standalone icons. Click an equippable icon to equip on this pet; others say why not. Free: no burn (a local equip op). */
   function gearPicker(box, o) {
     var w = o.world, p = o.pet, open = box.getAttribute('data-open') || '';
@@ -395,8 +395,17 @@
     if (o.compact && !slots.length) { box.innerHTML = '<p class="small muted">No gear to wear yet.</p>'; return; }
     var h = '<div class="gp-slots" role="tablist" aria-label="Gear slots">' + slots.map(function (sl) { var locked = p.openSlots.indexOf(sl) < 0, g = worn[sl];
       return '<button type="button" class="gp-slot' + (open === sl ? ' on' : '') + (locked ? ' locked' : '') + '" data-gslot="' + sl + '" role="tab" aria-selected="' + (open === sl) + '"><b>' + V.slotLabel(sl) + '</b><span class="small">' + (locked ? 'locked' : g ? esc(g.label) : 'empty') + '</span></button>'; }).join('') + '</div>';
+    /* Unequip all (2026-10-19): one free local action that takes every worn piece off this pet (same op as "Take off", gid null, per slot); all go to the bag */
+    var wornSlots = Object.keys(worn), asking = box.getAttribute('data-offall') === '1' && wornSlots.length && !p.dead;
+    if (wornSlots.length && !p.dead) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your bag (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
+      : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your bag.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
     h += '<div class="gp-grid-wrap" id="gpWrap"></div><div class="small gp-msg" aria-live="polite"></div>';
     box.innerHTML = h;
+    var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
+    if (oa) oa.onclick = function () { box.setAttribute('data-offall', '1'); gearPicker(box, o); };
+    if (on) on.onclick = function () { box.removeAttribute('data-offall'); gearPicker(box, o); };
+    if (oy) oy.onclick = function () { box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your bag';
+      if (o.onEquipMany) o.onEquipMany(ops, m); else ops.forEach(function (op, i) { o.onEquip(op, i === ops.length - 1 ? m : ''); }); };
     var wrap = box.querySelector('.gp-grid-wrap'), msg = box.querySelector('.gp-msg');
     function say(t, bad) { msg.textContent = t; msg.className = 'small gp-msg' + (bad ? ' warn' : ''); }
     if (open) {
@@ -422,13 +431,28 @@
     if (o.msg) say(o.msg);
   }
   /** communityFrames(w): the community pet Nakamoto (Mythic) wearing its community-roll gear (newest roll per slot); no gear => the plain sprite as before. */
-  function communityFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
+  /** itemCols(id): the two most common body colours of a gear icon (skips the background and the dark ink outline), for the Wizard overlays. Display only. */
+  var colCache = {};
+  function itemCols(id) { if (colCache[id]) return colCache[id]; var out = [];
+    try { var im = itemIcon(id), d = im.data, n = {}, bg = d[0] + ',' + d[1] + ',' + d[2];
+      for (var i = 0; i < d.length; i += 4) { if (d[i + 3] < 128) continue; var k = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; if (k === bg || d[i] + d[i + 1] + d[i + 2] < 90) continue; n[k] = (n[k] || 0) + 1; }
+      out = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; }).slice(0, 2).map(function (k) { return '#' + k.split(',').map(function (v) { return ('0' + Number(v).toString(16)).slice(-2); }).join(''); }); } catch (e) { }
+    return (colCache[id] = out); }
+  /** wizardGear(w): the community pet's worn community-roll pieces in the WizardSprite gear format ({slot: {label, item, cols}}). */
+  function wizardGear(w) { var g = (w && w.community && w.community.gear) || {}, o = {}; (V.V2_SLOTS || []).forEach(function (sl) { if (g[sl]) { var c = itemCols(g[sl].item).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(g[sl].label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: g[sl].label, item: g[sl].item, cols: c }; } }); return o; }
+  var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
+  /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
+  function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : null);
+    return nakaFrames(w); }
+  function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     var ids = w && V.communityGear ? V.communityGear(w) : [];
     if (!ids.length) return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); });
     window.PetCore = NG; try { return framesWith(nk, 5, ids, [], 6); } finally { window.PetCore = live; } }
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
+  /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
+  function communityWearing(w) { var t = communityGearText(w); return 'Wearing: ' + (t || 'no gear yet'); }
   /** familyHtml(w, p): the family line for the pet popup AND the public pet page (2026-10-15, Jake). Parents linked ('none (hatched from a mint)' for
    * minted pets), every breeding partner with block and the resulting egg/pet linked, breedings n/max (+ cooldown). Display only. */
   /* family-tree-fix (2026-10-19, display only): dead / released parents, partners and children are marked (🪦 / released); 'Bred with' is grouped by
@@ -465,7 +489,7 @@
    * every care target / Mythic line / progress bar uses this so the My Pets card, detail panel and pet page agree. pct = care toward Mythic, capped at 100. */
   function careTarget(w, p, tip) { var V = window.V2Rules, th = V.petThresholds ? V.petThresholds(w, p, tip) : V.thresholdsFor(p.species, tip), base = V.thresholdsFor(p.species, tip);
     return { th: th, mythic: th[5], discount: th[5] < base[5], pct: Math.min(100, 100 * p.care / th[5]) }; }
-  window.V2Render = { careTarget: careTarget, communityStats: communityStats, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

@@ -209,3 +209,34 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 .pettotal{margin:6px 6px 2px;line-height:1.4;overflow-wrap:anywhere}.pettotal b{color:#fff;font-variant-numeric:tabular-nums;border-radius:4px;padding:0 2px;transition:background-color .6s,color .6s}
 .pettotal.bump b{background:#3ddc8433;color:#3ddc84}
 @media (prefers-reduced-motion:reduce){.pettotal b{transition:none}}
+/* gear-roll-flow (2026-10-19): gear results popup fits the window (content scrolls inside, buttons always reachable), wrapping card grid,
+ * dark scrollbars, one batch caption, neutral info box; My Pets card footer (Release / Open / Discard never overlap); Unequip all */
+#packBox.reveal{padding:12px}
+#packBox .box{display:flex;flex-direction:column;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;padding:16px}
+#packBox .box>h2,#packBox .box>#packSummary,#packBox .box>.row,#packBox .box>p{flex:0 0 auto}
+#packBox .packgrid{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;padding:4px}
+#packBox.gearmode #packSummary{max-height:38vh;overflow-y:auto}
+#packBox.gearmode .packgrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+#packBox.gearmode .packgrid .egg{min-width:0;overflow:hidden;overflow-wrap:anywhere;font-size:11px;padding:6px 4px}
+#packBox.gearmode .gwname{line-height:1.25}#packBox.gearmode .gwwhere{margin-top:3px;color:#c8f7d8}
+#packBox .packgrid,#packBox #packSummary,.reveal .box{scrollbar-width:thin;scrollbar-color:#3ddc84 #0a0f0b}
+#packBox .packgrid::-webkit-scrollbar,#packBox #packSummary::-webkit-scrollbar,.reveal .box::-webkit-scrollbar{width:10px;height:10px}
+#packBox .packgrid::-webkit-scrollbar-track,#packBox #packSummary::-webkit-scrollbar-track,.reveal .box::-webkit-scrollbar-track{background:#0a0f0b;border-radius:6px}
+#packBox .packgrid::-webkit-scrollbar-thumb,#packBox #packSummary::-webkit-scrollbar-thumb,.reveal .box::-webkit-scrollbar-thumb{background:#2a3a2e;border:2px solid #0a0f0b;border-radius:6px}
+#packBox .packgrid::-webkit-scrollbar-thumb:hover,.reveal .box::-webkit-scrollbar-thumb:hover{background:#3ddc84}
+.grinfo{text-align:left;background:#1d3a24;border:2px solid #3ddc84;border-radius:8px;padding:8px 10px;margin:4px 0 8px;color:var(--ink)}
+.grinfo p{margin:2px 0}.grinfo .grnext{color:var(--acc2);font-weight:700}
+.grcap{font-family:var(--meme);font-size:20px;letter-spacing:1px;color:var(--acc2);text-shadow:2px 2px 0 #000;margin:2px 0 6px;line-height:1.1;max-width:100%;overflow-wrap:anywhere;text-transform:uppercase}
+.grtiers{display:block;margin:2px 0}
+.grhelp{margin:4px 0 0}.grpending{margin:4px 0 0;border:2px dashed #ffc93c;border-radius:6px;padding:4px 8px;color:#ffe39a}
+.grwhat{margin:6px 0 2px}
+body #pets .pet.card{padding-bottom:44px}
+#pets .pet.card .openbtn,#pets .pet.card .pet-discard,#pets .pet.card .pet-release{position:absolute;bottom:8px;height:28px;min-height:28px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;line-height:1;margin:0}
+#pets .pet.card .pet-discard{right:8px;width:34px;padding:0;font-size:14px;opacity:.85}
+#pets .pet.card .openbtn{right:50px;padding:0 10px;font-size:12px;box-shadow:2px 2px 0 #000}
+#pets .pet.card .pet-release{left:8px;right:auto;padding:0 8px;font-size:11px;max-width:calc(100% - 150px);white-space:nowrap;overflow:hidden}
+@media (max-width:600px){body #pets .pet.card{padding-bottom:56px}#pets .pet.card .openbtn,#pets .pet.card .pet-discard,#pets .pet.card .pet-release{height:40px;min-height:40px}#pets .pet.card .pet-discard{width:44px}#pets .pet.card .openbtn{right:60px}#packBox.gearmode .packgrid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}#packBox .box{padding:12px}}
+.gp-offall{margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+@media (max-width:600px){.tb-bal{min-width:0;max-width:100%}#me{word-break:break-all;overflow-wrap:anywhere}a.rulesLink{overflow-wrap:anywhere}}
+.aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
+.aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
