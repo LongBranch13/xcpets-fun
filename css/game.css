@@ -61,7 +61,7 @@ a.txrow { display:block; padding: 6px 8px; margin: 2px 0; border-radius: 6px; co
 .invcard.na { opacity:.4; filter:grayscale(1); } .hiddenbox { grid-column:1/-1; margin-top:8px; font-size:13px; } .hiddenbox summary { cursor:pointer; color:#33d6ff; }
 .dtop { display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:center; }
 .statbox { flex:1 1 220px; max-width:340px; font: 16px 'Press Start 2P', monospace; font-synthesis: style; }
-.statbox .stat { display:flex; align-items:center; gap:8px; margin:5px 0; } .statbox .sk { width:62px; color:#9fdcb4; } .statbox b { min-width:26px; text-align:right; color:#fff; }
+.statbox .stat { display:flex; align-items:center; gap:8px; margin:5px 0; } .statbox .sk { width:80px; color:#9fdcb4; } .statbox b { min-width:26px; text-align:right; color:#fff; }
 .statbox .sbar { flex:1; height:12px; background:#0d1410; border:2px solid #3ddc84; image-rendering:pixelated; } .statbox .sbar i { display:block; height:100%; background:repeating-linear-gradient(90deg,#3ddc84 0 6px,#2bb36a 6px 8px); }
 .statbox .tot { justify-content:flex-start; border-top:2px dashed #2a3a2e; padding-top:6px; } .statbox .tot .sk { width:auto; }
 
