@@ -21,7 +21,7 @@
   var SKEY = 'xcpets-v2-prod-rows', STTL = 60000;
   function fromSession() { try { var c = JSON.parse(sessionStorage.getItem(SKEY)); if (!c || Date.now() - c.at > STTL || !c.rows) return false;
     var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
-    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; cache = null; return true; } catch (e) { return false; } }
+    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; cache = null; return true; } catch (e) { return false; } }
   function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balance })); } catch (e) {} }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
@@ -37,27 +37,39 @@
     return Promise.all([chain.destructions(E.CFG.asset), chain.tip().catch(function () { return null; }), mp]).then(function (r) { S.mempool = r[2] || [];
       var rows = r[0], tip = r[1], blocks = {}; rows.forEach(function (x) { blocks[x.block_index] = 1; });
       var need = Object.keys(blocks).filter(function (b) { return !hc[b]; }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
-      return chain.blockHashes(Object.keys(blocks), hc, tip).then(function (bh) {
+      return chain.blockHashes(Object.keys(blocks), hc, tip, function (n, miss) { step('Some block-hash servers are busy. Retrying ' + miss.length + ' block' + (miss.length === 1 ? '' : 's') + ' (try ' + (n + 1) + ' of 4)… (step 2 of 3)'); }).then(function (bh) {
         try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
+        /* family-tree-fix (2026-10-19): never replay with a block hash missing. Rules reject hatch/breed/roll burns in a block without its hash
+         * ('block hash pending'), so every later pet would be renumbered and family links would point at the wrong pet. Stop here instead:
+         * S.rows / S.tip keep the last COMPLETE load (empty on first boot), so the world shown (and any burn tag built from it) stays correct. */
+        var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
+        if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
         S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
         if (ME) return chain.balance(ME, E.CFG.asset).then(function (b) { S.balance = Number(b) / 1e8; }, function () {});
       });
-    }).then(function () { cache = null; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); });
+    }).then(function () { cache = null; S.verified = true; S.missingBlocks = []; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
+      function (e) { if (e && e.missingBlocks) S.missingBlocks = e.missingBlocks; throw e; });
   }
   var stepEl = null; function step(t) { var el = stepEl || document.getElementById('v2boot'); if (el && !booted && !el.querySelector('button')) el.textContent = t; }
   /* Boot with a clear failure state (2026-10-16): chain.js fails over quickly (6 s primary / 5 s backups, ~20 s worst case per request). If the read
    * fails, or is still running after BOOT_WATCH_MS, the spinner text becomes a message with a Retry button that re-runs the boot (no full reload;
    * location.reload() if anything throws). A late success still completes the boot. Data and replay are unchanged. */
   var BOOT_WATCH_MS = 30000, booted = false;
-  function bootFail(st, then, why) { if (!st || booted) return; st.textContent = ''; st.className = 'small muted bootfail';
-    var m = document.createElement('p'); m.textContent = "Couldn't reach the chain servers right now. Your pets are safe on chain."; m.style.margin = '6px 0';
+  function fmtN(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  /* missing block hash (family-tree-fix, 2026-10-19): plain "Couldn't verify block N" + Retry; nothing is replayed until every block checks out. */
+  function missText(list) { return "Couldn't verify block " + fmtN(list[0]) + (list.length > 1 ? ' (and ' + (list.length - 1) + ' more)' : '') + '. Pets are not shown until every block checks out, so none are numbered wrong. Your pets are safe on chain.'; }
+  function bootFail(st, then, why, missing) { if (!st || booted) return; st.textContent = ''; st.className = 'small muted bootfail' + (missing ? ' bootverify' : '');
+    var m = document.createElement('p'); m.textContent = missing ? missText(missing) : "Couldn't reach the chain servers right now. Your pets are safe on chain."; m.style.margin = '6px 0'; if (missing) why = 'the block-hash servers are busy; Retry asks them again';
     var d = document.createElement('p'); d.className = 'small muted'; d.textContent = why ? '(' + why + ')' : ''; d.style.margin = '0 0 6px';
     var b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.id = 'v2bootRetry'; b.textContent = 'Retry';
     b.onclick = function () { try { st.textContent = 'Reading XCPETS burns from the chain…'; st.className = 'small muted'; run(st, then); } catch (e) { location.reload(); } };
-    st.appendChild(m); if (why) st.appendChild(d); st.appendChild(b); }
+    st.appendChild(m); if (why) st.appendChild(d); st.appendChild(b);
+    /* the boot line sits at the bottom of the page; a verify failure is moved to the top of <main> as a panel so it can't be missed */
+    if (missing) { try { var mn = document.querySelector('main'); if (mn && st.parentNode !== mn) mn.insertBefore(st, mn.firstChild); st.classList.add('panel'); st.style.textAlign = 'center'; st.style.margin = '12px auto'; st.style.border = '2px solid #ffc93c'; st.setAttribute('role', 'alert'); } catch (e) {} } }
   function run(st, then) { stepEl = st; var done = false, w = setTimeout(function () { if (!done) bootFail(st, then, 'still waiting for the chain servers'); }, BOOT_WATCH_MS);
     load(true).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
-      function (e) { done = true; clearTimeout(w); bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : ''); }); }
+      function (e) { done = true; clearTimeout(w); if (booted) return;
+        bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : '', e && e.missingBlocks); }); }
   function boot(then) { var st = document.getElementById('v2boot');
     if (fromSession()) { booted = true; if (st) st.remove(); then(); return; }
     run(st, then); }

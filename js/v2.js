@@ -222,7 +222,10 @@
 
   // ---------------------------------------------------------------- detail dialog (live #detail)
   function statBars(p) { var MAX = 31, tot = 0; return PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; tot += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / MAX).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + tot + '</b></div>'; }
-  function tree(t) { if (!t) return ''; return '<ul class="tree"><li>#' + t.id + ' ' + esc(t.name) + ' <span class="muted">' + spLabel(t.species) + ' · ' + TL[t.tier] + '</span>' + t.parents.map(tree).join('') + '</li></ul>'; }
+  /* family-tree-fix (2026-10-19): the root also lists its own children (V2Render's chart replaces this ul.tree with ancestors above + children below). */
+  function tree(t, kids) { if (!t) return ''; var w0 = kids && world(), ch = kids && w0 ? (t.children || []).map(function (id) { return w0.byId[id]; }).filter(Boolean) : [];
+    return '<ul class="tree"><li>#' + t.id + ' ' + esc(t.name) + ' <span class="muted">' + spLabel(t.species) + ' · ' + TL[t.tier] + '</span>' + t.parents.map(function (x) { return tree(x); }).join('') +
+      (ch.length ? '<ul class="treekids">' + ch.map(function (c) { return '<li>child #' + c.id + ' ' + esc(c.name) + '</li>'; }).join('') + '</ul>' : '') + '</li></ul>'; }
   function detail(p, w) {
     if (!p) return; w = w || world(); $('dTitle').innerHTML = (p.owner === ME ? keepBtn(p.id) : '') + esc(p.name) + ' <span class="muted">#' + p.id + '</span> ' + tierPill(p.tier);
     var kb = $('dTitle').querySelector('.keepbtn'); if (kb) kb.onclick = function (e) { e.preventDefault(); toggleKeep(p.id); };
@@ -233,7 +236,7 @@
     if (!p.dead) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button><button class="btn ghost ico-flame" data-a="roll">Gear roll (345)</button>' + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Hides it in this browser. Free; restore any time from Show discarded.">🗑️ Discard pet</button></div>';
     h += '<h3 class="sec" data-ico="gear">Gear <span class="small muted gcount">' + V.wornOf(w, p.id).length + '/' + p.capacity + '</span></h3><div class="gpicker" id="gPicker"></div>' + (window.UXB && !p.dead ? UXB.petOdds(p, w) : ''); // pop-up cleanup 2026-10-14: no long capacity/signature/how-to text
     h += '<h3 class="sec" data-ico="egg">Born traits</h3><table class="small borntraits">' + V.bornTraits(p, p.stage).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
-    h += '<h3 class="sec" data-ico="egg">Family tree</h3>' + tree(V.familyTree(w, p.id)) + R.familyHtml(w, p, S.tip) + '';
+    h += '<h3 class="sec" data-ico="egg">Family tree</h3>' + tree(V.familyTree(w, p.id), true) + R.familyHtml(w, p, S.tip) + '';
     var keepOpen = $('gPicker') ? $('gPicker').getAttribute('data-open') : null, keepY = $('detail').querySelector('.box') ? $('detail').querySelector('.box').scrollTop : 0;
     $('dInfo').innerHTML = h;
     $('dInfo').querySelectorAll('.dbred [data-jump]').forEach(function (a) { a.onclick = function (e) { var q = w.byId[a.getAttribute('data-jump')]; if (!q) return; e.preventDefault(); detailId = q.id; detail(q, w); }; });

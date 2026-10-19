@@ -10,7 +10,9 @@
   // From config.js: mainnet = xcp.fun then counterparty.io; testnet4/signet = the official Counterparty node for that network.
   var APIS = CFG.read.slice();
   /* block-hash order (2026-10-16): first read API, then mempool.space (fast, CORS-friendly), then the remaining Counterparty APIs (api.counterparty.io:4000 often times out, which browsers report as a CORS error) */
-  var BLOCK_APIS = CFG.read.slice(0, 1).map(function (b) { return b + '/blocks/'; }).concat(['mempool:' + CFG.mempoolApi + '/block-height/']).concat(CFG.read.slice(1).map(function (b) { return b + '/blocks/'; }));
+  /* 2026-10-19 (family-tree-fix): blockstream.info added as a second plain-text backup on mainnet (CORS *, same answer format as mempool.space). */
+  var BLOCK_APIS = CFG.read.slice(0, 1).map(function (b) { return b + '/blocks/'; }).concat(['mempool:' + CFG.mempoolApi + '/block-height/'])
+    .concat(CFG.network === 'mainnet' ? ['mempool:https://blockstream.info/api/block-height/'] : []).concat(CFG.read.slice(1).map(function (b) { return b + '/blocks/'; }));
   var ASSET = CFG.asset;
   var READ_MS = 8000, FINAL_DEPTH = 6;
   /* Failover (2026-10-16, Jake approved): per-request timeouts PRIMARY_MS (first server) / BACKUP_MS (others); on HTTP 429/5xx, timeout or network
@@ -70,16 +72,28 @@
   Chain.prototype.tip = function () { return this.getJson('/').then(function (j) { return (j.result && (j.result.counterparty_height || j.result.last_block && j.result.last_block.block_index)) || null; }); };
   /** block_index -> block_hash; cache is a plain object (hashes are final once deep enough; see plan §reorgs). */
   /** blockHashes(blockList, cache, tip) -> {hashes, missing}. Only hashes at least FINAL_DEPTH below tip are written to the (persisted) cache. */
-  Chain.prototype.blockHashes = function (blocks, cache, tip) {
-    var self = this, out = {}, missing = [], q = blocks.slice(), k = 0;
-    function one(b) { b = Number(b); var deep = tip != null && b <= tip - FINAL_DEPTH;
-      return self.blockHash(b, deep ? cache : null).then(function (h) { if (h) { out[b] = h; if (deep && cache) cache[b] = h; } else missing.push(b); }); }
-    function worker() { if (k >= q.length) return Promise.resolve(); return one(q[k++]).then(worker); } /* at most BLOCK_CONC lookups in flight (no 429 storm) */
-    var ws = []; for (var j = 0; j < Math.min(BLOCK_CONC, q.length); j++) ws.push(worker());
-    return Promise.all(ws).then(function () { return { hashes: out, missing: missing }; });
+  /* 2026-10-19 (family-tree-fix): a block whose hash lookup failed is no longer given up after one round. Missing blocks are retried in up to
+   * HASH_RETRY_ROUNDS more rounds, waiting HASH_RETRY_WAIT_MS[i] before each (backoff), every round again across ALL block sources (primary node,
+   * mempool.space, blockstream.info, the backup Counterparty nodes). Whatever is still missing is returned in `missing`; the caller
+   * (js/v2-chain.js) must not replay without it. onRetry(round, missingList) is an optional progress callback. Hashes themselves are unchanged. */
+  var HASH_RETRY_ROUNDS = 3, HASH_RETRY_WAIT_MS = [1000, 2500, 5000];
+  Chain.prototype.blockHashes = function (blocks, cache, tip, onRetry) {
+    var self = this, out = {};
+    function round(list) { var missing = [], q = list.slice(), k = 0;
+      function one(b) { b = Number(b); var deep = tip != null && b <= tip - FINAL_DEPTH;
+        return self.blockHash(b, deep ? cache : null).then(function (h) { if (h) { out[b] = h; if (deep && cache) cache[b] = h; } else missing.push(b); }); }
+      function worker() { if (k >= q.length) return Promise.resolve(); return one(q[k++]).then(worker); } /* at most BLOCK_CONC lookups in flight (no 429 storm) */
+      var ws = []; for (var j = 0; j < Math.min(BLOCK_CONC, q.length); j++) ws.push(worker());
+      return Promise.all(ws).then(function () { return missing.sort(function (a, b) { return a - b; }); }); }
+    function again(missing, n) {
+      if (!missing.length || n >= HASH_RETRY_ROUNDS) return Promise.resolve({ hashes: out, missing: missing });
+      if (onRetry) try { onRetry(n + 1, missing); } catch (e) {}
+      return wait(HASH_RETRY_WAIT_MS[n] || 5000).then(function () { return round(missing); }).then(function (m) { return again(m, n + 1); });
+    }
+    return round(blocks).then(function (m) { return again(m, 0); });
   };
   Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; };
-  Chain.TIMEOUTS = { PRIMARY_MS: PRIMARY_MS, BACKUP_MS: BACKUP_MS, DEADLINE_MS: DEADLINE_MS, BACKOFF_MS: BACKOFF_MS, MAX_RETRY_AFTER_MS: MAX_RETRY_AFTER_MS, SICK_MS: SICK_MS, PASSES: PASSES, BLOCK_CONC: BLOCK_CONC };
+  Chain.TIMEOUTS = { HASH_RETRY_ROUNDS: HASH_RETRY_ROUNDS, HASH_RETRY_WAIT_MS: HASH_RETRY_WAIT_MS, PRIMARY_MS: PRIMARY_MS, BACKUP_MS: BACKUP_MS, DEADLINE_MS: DEADLINE_MS, BACKOFF_MS: BACKOFF_MS, MAX_RETRY_AFTER_MS: MAX_RETRY_AFTER_MS, SICK_MS: SICK_MS, PASSES: PASSES, BLOCK_CONC: BLOCK_CONC };
   Chain.prototype.blockHash = function (h, cache) {
     if (cache && cache[h]) return Promise.resolve(cache[h]);
     var bases = BLOCK_APIS.map(function (b) { var mp = b.indexOf('mempool:') === 0, u = mp ? b.slice(8) : b, fn = function (p) { return u + p; }; fn.mp = mp; fn.toString = function () { return u; }; return fn; });

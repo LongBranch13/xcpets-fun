@@ -133,6 +133,10 @@
   }
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
   function send(plan, viewed, onTry) {
+    /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
+     * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
+    var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (VS && VS.prod && !VS.verified) { var ev = new Error("Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
