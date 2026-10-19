@@ -1,14 +1,13 @@
 /* XCPETS Circus Maximus sponsorship (owner approved 2026-10-19 6:19 PM CT; DRAFT on battle-arena, NOT LIVE).
  * Anyone can sponsor (name) the arena by BURNING real XCP: a Counterparty tagged destroy of XCP (asset XCP, tag pet:sponsor:NAME;
  * owner switched from send-to-burn-address 2026-10-19 6:42 PM CT because destroys are listed by GET /v2/assets/XCP/destructions on api.xcp.fun).
- * The burn address 1CounterpartyXXXXXXXXXXXXXXXUWLpVr carved in the back wall is decorative now. Opening bid 0.5 XCP; each next bid >= current x 1.2 rounded UP to 0.1 XCP
+ * The back wall art carries the carved text "All XCP becomes spectacle" (no address). Opening bid 0.5 XCP; each next bid >= current x 1.2 rounded UP to 0.1 XCP
  * (0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 1.8, 2.2 ...). The highest valid bid HOLDS the billboard until outbid (no weekly reset); a new holder shows from
  * the block AFTER the bid's block. NAME: 1-16 chars, letters/numbers/spaces only (no links, no @handles), bad-word filter. Invalid or too-low
- * sends are still burned (we never hold funds) but do not change the billboard.
+ * destroys are still burned (we never hold funds) but do not change the billboard.
  * Separate from V2Rules.replay: pets, items, fights and the replay hashes are untouched. Inert before ACTIVATE_SPONSOR_BLOCK. Pure compute() works in Node. */
 (function (root) {
   'use strict';
-  var BURN_ADDRESS = '1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
   var ACTIVATE_SPONSOR_BLOCK = 972230; // Counterparty tip 972,224 at 2026-10-19 18:20 CT + 6. Re-set to tip+6 at deploy.
   var SAT = 1e8, OPEN_BID = 0.5 * SAT, TENTH = 0.1 * SAT, NAME_MAX = 16;
   /* bad-word filter: matched on the name lower-cased with spaces and digit look-alikes folded (0->o 1->i 3->e 4->a 5->s 7->t) */
@@ -25,11 +24,11 @@
     var f = fold(n); for (var i = 0; i < BAD.length; i++) if (f.indexOf(BAD[i]) >= 0) return { ok: false, why: 'name not allowed' };
     return { ok: true, name: n }; }
   /** parseMemo(memo) -> { ok, name, why } for "pet:sponsor:NAME" (prefix case-insensitive) */
-  function parseMemo(m) { var x = /^pet:sponsor:(.*)$/i.exec(String(m || '')); return x ? checkName(x[1]) : { ok: false, why: 'memo is not pet:sponsor:NAME' }; }
+  function parseMemo(m) { var x = /^pet:sponsor:(.*)$/i.exec(String(m || '')); return x ? checkName(x[1]) : { ok: false, why: 'tag is not pet:sponsor:YOURNAME' }; }
   /** compute(rows, tip) -> { holder, pending, nextMin, bids, rejected }. rows = Counterparty XCP destruction rows (any order) {tx_hash, tx_index, block_index,
    *  source, asset, quantity (sats), tag (text or hex), status}. Deterministic: chain order (block, tx_index). */
-  function compute(sends, tip, opt) { opt = opt || {}; var from = opt.activate != null ? opt.activate : ACTIVATE_SPONSOR_BLOCK, seen = {}, bids = [], rejected = [], cur = null;
-    (sends || []).filter(function (r) { return r && String(r.asset).toUpperCase() === 'XCP' && (r.status == null || String(r.status).toLowerCase() === 'valid') && r.block_index >= from && (tip == null || r.block_index <= tip); })
+  function compute(rows, tip, opt) { opt = opt || {}; var from = opt.activate != null ? opt.activate : ACTIVATE_SPONSOR_BLOCK, seen = {}, bids = [], rejected = [], cur = null;
+    (rows || []).filter(function (r) { return r && String(r.asset).toUpperCase() === 'XCP' && (r.status == null || String(r.status).toLowerCase() === 'valid') && r.block_index >= from && (tip == null || r.block_index <= tip); })
       .sort(function (a, b) { return a.block_index - b.block_index || (a.tx_index || 0) - (b.tx_index || 0); })
       .forEach(function (r) { if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1; var q = Math.round(Number(r.quantity)), memo = memoText(r), p = parseMemo(memo), need = nextMin(cur ? cur.q : null);
         if (!/^pet:sponsor:/i.test(memo)) return; /* other XCP destroys are not bids */
@@ -49,18 +48,20 @@
   /** billboard(st) -> HTML for the top of the arena */
   function billboard(st) { var h = st && st.holder, nm = (st ? st.nextMin : OPEN_BID / SAT).toFixed(1);
     return '<div class="sp-board' + (h ? '' : ' sp-open') + '" role="note"><div class="sp-name">' + (h ? 'Sponsored by <b>' + esc(h.name) + '</b>' : 'Sponsor slot open') + '</div>' +
-      '<div class="sp-how small">' + (h ? 'held with ' + h.xcp.toFixed(1) + ' XCP burned · ' : '') + 'outbid with ≥ <b>' + nm + ' XCP</b>: destroy XCP on Counterparty with tag <code>pet:sponsor:NAME</code> (max 16 letters/numbers/spaces). XCP is burned forever; holds until outbid; shows from the next block.' +
+      '<div class="sp-how small">' + (h ? 'held with ' + h.xcp.toFixed(1) + ' XCP destroyed · ' : '') + 'Bid: destroy at least <b>' + nm + ' XCP</b> with tag <code>pet:sponsor:YOURNAME</code> (max 16 letters, numbers, spaces). The XCP is destroyed forever; the highest bid holds until outbid and shows from the next block. Sending XCP to any address does not count.' +
       (st && st.pending ? ' · next up: ' + esc(st.pending.name) + ' (block ' + st.pending.showsFrom + ')' : '') + (st && !st.active ? ' · opens at block ' + st.activateBlock : '') + (st && st.unavailable ? ' · <span class="muted">couldn’t read sponsor bids right now, retrying on the next refresh</span>' : '') + '</div></div>'; }
-  /* ---- the back wall: a pixel stone wall with the burn address faintly carved in (part of the art, low contrast; legible up close) */
-  var F = { '1': '010110010010111', 'C': '011100100100011', 'o': '000011101101110', 'u': '000101101101011', 'n': '000110101101101', 't': '010111010010011', 'e': '000011111100011', 'r': '000011100100100', 'p': '000110101110100', 'a': '000011101101011', 'y': '000101011001110', 'X': '101101010101101', 'U': '101101101101111', 'W': '101101101111101', 'L': '100100100100111', 'V': '101101101101010', 'r2': '' };
+  /* ---- the back wall: a pixel stone wall with "All XCP becomes spectacle" faintly carved in (owner 6:48 PM CT; part of the art, low contrast; legible up close).
+   * The burn address is NOT on the wall: bids are tagged XCP destroys, nothing is ever sent to an address. */
+  var WALL_TEXT = 'All XCP becomes spectacle';
+  var F = { '1': '010110010010111', 'C': '011100100100011', 'o': '000011101101110', 'u': '000101101101011', 'n': '000110101101101', 't': '010111010010011', 'e': '000011111100011', 'r': '000011100100100', 'p': '000110101110100', 'a': '000011101101011', 'y': '000101011001110', 'X': '101101010101101', 'U': '101101101101111', 'W': '101101101111101', 'L': '100100100100111', 'V': '101101101101010', 'P': '110101110100100', 'b': '100100110101110', 'd': '001001011101011', 'h': '100100110101101', 'A': '010101111101101', 'l': '110010010010111', 'c': '000011100100011', 'm': '000111111101101', 's': '000011110001110' };
   function wall(c, text) { var x = c.getContext && c.getContext('2d'); if (!x) return; var W = c.width, H = c.height; x.imageSmoothingEnabled = false;
     x.fillStyle = '#2a2238'; x.fillRect(0, 0, W, H);
     for (var y = 0, row = 0; y < H; y += 8, row++) for (var bx = (row % 2) * -8; bx < W; bx += 16) { x.fillStyle = (row * 7 + bx) % 3 ? '#30283f' : '#2d2540'; x.fillRect(bx + 1, y + 1, 14, 6); }
     var s = 1, cw = 4 * s, tw = text.length * cw, ox = Math.max(2, Math.round((W - tw) / 2)), oy = H - 9; x.fillStyle = '#3b3250'; /* carved: only a shade lighter than the stone */
     for (var i = 0; i < text.length; i++) { var g = F[text[i]]; if (!g) continue; for (var k = 0; k < 15; k++) if (g[k] === '1') x.fillRect(ox + i * cw + (k % 3) * s, oy + Math.floor(k / 3) * s, s, s); }
     x.fillStyle = '#251e33'; for (i = 0; i < text.length; i++) { g = F[text[i]]; if (!g) continue; for (k = 0; k < 15; k++) if (g[k] === '1' && (k % 3 === 2 || g[k + 1] !== '1')) x.fillRect(ox + i * cw + (k % 3) * s + 1, oy + Math.floor(k / 3) * s + 1, s, s); } }
-  var api = { BURN_ADDRESS: BURN_ADDRESS, ACTIVATE_SPONSOR_BLOCK: ACTIVATE_SPONSOR_BLOCK, OPEN_BID_XCP: OPEN_BID / SAT, NAME_MAX: NAME_MAX, nextMin: function (xcp) { return nextMin(xcp == null ? null : Math.round(xcp * SAT)) / SAT; },
-    checkName: checkName, at: at, parseMemo: parseMemo, compute: compute, line: line, postLine: postLine, billboard: billboard, wall: wall, state: null };
+  var api = { ACTIVATE_SPONSOR_BLOCK: ACTIVATE_SPONSOR_BLOCK, OPEN_BID_XCP: OPEN_BID / SAT, NAME_MAX: NAME_MAX, nextMin: function (xcp) { return nextMin(xcp == null ? null : Math.round(xcp * SAT)) / SAT; },
+    checkName: checkName, at: at, parseMemo: parseMemo, compute: compute, line: line, postLine: postLine, billboard: billboard, wall: wall, WALL_TEXT: WALL_TEXT, state: null };
   /* browser: read every tagged XCP destroy (GET {read base}/assets/XCP/destructions, following next_cursor; read-only, display only).
    * The 'unavailable' note appears ONLY when every read server fails; then the billboard shows the open slot and the next render retries. */
   api.load = function (tip, done) { var cfg = root.XCPETS_CONFIG || {}, net = (cfg.networks && cfg.networks.mainnet) || cfg, bases = (net.read || ['https://api.xcp.fun/node/v2']).slice(0, 3), i = 0;
