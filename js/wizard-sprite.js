@@ -1,7 +1,8 @@
 /* Community pet sprite (v2): 6 hand-drawn 8-bit stages, 32x32, same frame format as PetCore.render ({data: RGBA array}).
  * Reference art (blue robe + pointed hat, grey beard, wooden staff with an orange ₿ orb). Few colours, ink outline, 4-frame bob.
  * Redraw (2026-10-19, owner: "a little too triangular"): a real character instead of one cone: soft hat with a curled tip and a round brim,
- * a proper head (face, ears, eyes, nose, brows), rounded shoulders, sleeves and hands, a rounded beard, a belted robe and shoes. */
+ * a proper head (face, ears, eyes, nose, brows), rounded shoulders, sleeves and hands, a rounded beard, a belted robe and shoes.
+ * Hat redraw (2026-10-19, owner: "make it POINTY like a classic wizard hat"): tall sharp cone with a bent-over tip and a wide brim (see hat()). */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.WizardSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, PAL = { n: '#1a1020', B: '#2f6fe0', b: '#1d48a8', c: '#7fb2ff', R: '#2f6fe0', r: '#1d48a8', h: '#7fb2ff', S: '#f2c48d', s: '#d9975f', p: '#f09a86',
@@ -15,8 +16,8 @@
   function isHat(x) { return !!(x && x.item === 'wizard-hat'); }
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   /* per stage: hat height, robe height, shoulder half-width, hem flare, beard length / half-width, staff orb radius */
-  var DIM = [null, { hat: 6, body: 7, sh: 4, fl: 1, bl: 0, bw: 0, orb: 0 }, { hat: 7, body: 8, sh: 4, fl: 2, bl: 3, bw: 2, orb: 2 }, { hat: 8, body: 10, sh: 5, fl: 2, bl: 5, bw: 3, orb: 2 },
-    { hat: 9, body: 11, sh: 5, fl: 3, bl: 7, bw: 3, orb: 3 }, { hat: 9, body: 11, sh: 5, fl: 3, bl: 8, bw: 3, orb: 3 }];
+  var DIM = [null, { hat: 10, body: 7, sh: 4, fl: 1, bl: 0, bw: 0, orb: 0 }, { hat: 11, body: 8, sh: 4, fl: 2, bl: 3, bw: 2, orb: 2 }, { hat: 11, body: 10, sh: 5, fl: 2, bl: 5, bw: 3, orb: 2 },
+    { hat: 10, body: 11, sh: 5, fl: 3, bl: 7, bw: 3, orb: 3 }, { hat: 10, body: 11, sh: 5, fl: 3, bl: 8, bw: 3, orb: 3 }]; // hat: rows from the tip down to the face top (tip stays on row >= 1 at the bob)
   function grid() { var g = []; for (var i = 0; i < N; i++) g.push(new Array(N).fill(null)); return g; }
   function set(g, x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N) g[y][x] = k; }
   function get(g, x, y) { return x >= 0 && y >= 0 && x < N && y < N ? g[y][x] : null; }
@@ -28,16 +29,18 @@
     set(g, x - r + 1, y - r + 1, 'y'); if (r >= 2) { set(g, x, y - 1, 'w'); set(g, x, y, 'w'); set(g, x, y + 1, 'w'); set(g, x + 1, y - 1, 'o'); set(g, x + 1, y + 1, 'o'); } }
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function shade(c, f) { var v = hexRgb(PAL[c] || c); return '#' + v.map(function (x) { var y = Math.max(0, Math.min(255, Math.round(x * f))); return (y < 16 ? '0' : '') + y.toString(16); }).join(''); }
-  /* soft wizard hat: round brim, a cone with a rounded (convex) profile, gold band, tip curling to one side; star from Adult */
+  /* pointy wizard hat (2026-10-19, owner: "make it POINTY like a classic wizard hat"): a tall straight-sided cone that narrows to a
+   * one-pixel tip, its top leaning over to the right like a classic bent wizard hat, gold band, a wide flat brim sitting low on the brow
+   * (its dark underside covers the face's top row); star from Adult. top = tip row, faceY = first face row. */
   function hat(g, cx, top, H, faceY, stage, k, kd, kh) {
-    var cone = H - 2, base = stage >= 3 ? 4 : 3, curl = stage >= 3 ? 3 : 2;
-    for (var j = 0; j < cone; j++) { var t = (j + 1) / cone, hw = Math.max(0, Math.round(base * Math.pow(t, 0.62))), off = Math.round(curl * Math.pow(1 - t, 2.2));
-      for (var x = cx - hw + off; x <= cx + hw + off - 1 + (hw ? 1 : 0); x++) { var e = x - (cx + off), col = hw && e >= hw - 1 ? kd : hw && e <= -hw ? kh : k; set(g, x, top + j, col); } }
-    set(g, cx + curl + 1, top + 1, kd);                                                                                   // drooping tip
-    hline(g, cx - base, cx + base, faceY - 3, 'y');                                                                      // gold band
-    hline(g, cx - base - 2, cx + base + 1, faceY - 2, k); set(g, cx + base + 1, faceY - 2, kd); set(g, cx - base - 2, faceY - 2, kh); // brim
-    hline(g, cx - base - 1, cx + base, faceY - 1, kd);
-    if (stage >= 3) { var sy = top + Math.round(cone * 0.55), sx = cx - 1; set(g, sx, sy, 'y'); if (stage >= 4) { set(g, sx - 1, sy, 'y'); set(g, sx + 1, sy, 'y'); set(g, sx, sy - 1, 'y'); set(g, sx, sy + 1, 'y'); } }
+    var base = 3, brim = stage >= 3 ? 7 : 6, bandY = faceY - 2, cone = bandY - top, lean = stage >= 3 ? 3 : 2;
+    for (var j = 0; j < cone; j++) { var u = j / Math.max(1, cone - 1), hw = Math.round(base * u), off = Math.round(lean * Math.pow(1 - u, 2));
+      for (var x = cx - hw + off; x <= cx + hw + off; x++) { var e = x - (cx + off), col = !hw ? kd : e >= hw ? kd : e <= -hw ? kh : k; set(g, x, top + j, col); } }
+    set(g, cx + lean + 1, top + 1, kd);                                                                                   // bent-over sharp tip
+    hline(g, cx - base, cx + base, bandY, 'y');                                                                          // gold band
+    hline(g, cx - brim, cx + brim - 1, faceY - 1, k); set(g, cx - brim, faceY - 1, kh); set(g, cx + brim - 1, faceY - 1, kd); // wide brim
+    hline(g, cx - brim + 1, cx + brim - 2, faceY, kd);                                                                   // brim underside
+    if (stage >= 3) { var sy = top + Math.round(cone * 0.62), sx = cx - 1; set(g, sx, sy, 'y'); if (stage >= 4) { set(g, sx - 1, sy, 'y'); set(g, sx + 1, sy, 'y'); set(g, sx, sy - 1, 'y'); set(g, sx, sy + 1, 'y'); } }
   }
   /* gear (optional, display only, 2026-10-19): { head|face|back|hand|body|feet: { label, item, cols: ['#hex', '#hex'] } } = the community pet's worn
    * community-roll pieces. Drawn as simple per-slot overlays; a Headwear piece replaces the wizard hat (grey hair shows under it). */
@@ -49,7 +52,7 @@
       for (var y = 0; y < 17; y++) { var hw = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((y - 9) / 9.5, 2))) * (y < 9 ? 7 : 8)); for (var x = 16 - hw; x < 16 + hw; x++) { var e0 = x - 16;
         set(g, x, 12 + y + bob, e0 <= -hw + 1 && y > 2 ? 'c' : e0 >= hw - 2 ? 'b' : 'B'); } }
       [[11, 16], [20, 19], [13, 23]].forEach(function (q) { set(g, q[0], q[1] + bob, 'c'); });
-      if (isHat(G.head)) hat(g, 16, 4 + bob, 8, 12 + bob, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g);
+      if (isHat(G.head)) hat(g, 16, 2 + bob, 10, 12 + bob, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g);
     }
     var D = DIM[stage], cx = 15, bodyEnd = 27 + bob, faceH = 6, faceY = bodyEnd - faceH - D.body + 2, top = faceY - D.hat, shY = faceY + faceH - 1;
     var fx = cx - 4, fw = 8;                                                                                              // face box (x, width)
