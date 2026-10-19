@@ -60,6 +60,8 @@
    *  - OFF (default): every newly landed piece that replay put on goes to the bag; the pet keeps what it wore before the batch (or that slot is emptied).
    *  - ON: works as before, but never a downgrade: if the pet wore a better piece in that slot before the batch (or an earlier piece of the same batch
    *    is better), that one goes back on and the new one goes to the bag. Rank = tier, ★ legendary highest; ties keep the newest.
+   * Battle spoils (owner, 2026-10-19): a piece your pet wins in a battle or rumble (replay: worn only if that slot was empty) follows the same setting:
+   *    OFF: it goes to the bag; ON: it is worn unless the pet already wears something better in that slot (ties keep the newest). Same free local ops.
    * Community pet (Bitcoin Wizard): not a player item, always wears its newest community roll; no setting. */
   var AEKEY = 'xcpets-v2-autoequip-' + KEY + '-' + ME;
   function autoEquipIsOn() { try { return localStorage.getItem(AEKEY) === 'on'; } catch (e) { return false; } }
@@ -72,12 +74,12 @@
   function autoEquipChoice(w, wins) {
     var by = {}, logB = {}, minB = Infinity, on = autoEquipIsOn();
     (w.log || []).forEach(function (l) { if (l.gid) logB[l.gid] = l.block; });
-    wins.forEach(function (x) { var g = w.items[x.gid]; if (!g || g.owner !== ME || x.rolledOn == null || !/^(roll|token|froll|oroll)$/.test(g.src || '')) return; var b = logB[x.gid]; if (b == null) return;
+    wins.forEach(function (x) { var g = w.items[x.gid]; if (!g || g.owner !== ME || g.wonBy != null || x.rolledOn == null || !/^(roll|token|froll|oroll)$/.test(g.src || '')) return; var b = logB[x.gid]; if (b == null) return;
       var k = x.rolledOn + ':' + g.slot; (by[k] = by[k] || { pet: x.rolledOn, slot: g.slot, wins: [] }).wins.push(g); if (b < minB) minB = b; });
     var keys = Object.keys(by).filter(function (k) { var c = wornInSlot(w, by[k].pet, by[k].slot); return c && by[k].wins.indexOf(c) >= 0; }); /* only slots where replay put a new piece on */
-    if (!keys.length) return 0;
+    var ops = spoilsChoice(w, wins, keys, on);
+    if (!keys.length) return ops.length ? (S.ops = S.ops.concat(ops), save(), ops.length) : 0;
     var E = window.LiveEngine, w0 = V.replay(S.rows.filter(function (r) { return r.block_index < minB; }), S.hashes, (S.ops || []).filter(function (o) { return o.block_index < minB; }), { tip: minB - 1, live: E && E.RealCore });
-    var ops = [];
     keys.forEach(function (k) { var e = by[k], cur = wornInSlot(w, e.pet, e.slot), p0 = wornInSlot(w0, e.pet, e.slot), prev = p0 ? w.items[p0.gid] : null;
       if (prev && (prev.owner !== ME || prev.item !== p0.item || (prev.on != null && prev.on !== e.pet))) prev = null; /* gone, or worn by another pet now: don't move it */
       var want;
@@ -87,6 +89,16 @@
       ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: null, block_index: S.tip });
       if (want) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: want.gid, block_index: S.tip }); });
     if (!ops.length) return 0; S.ops = S.ops.concat(ops); save(); return ops.length; }
+  /* battle spoils: won pieces (g.wonBy = winning pet) per pet+slot; slots already handled by the roll pass above are left alone. Returns ops. */
+  function spoilsChoice(w, wins, skip, on) {
+    var by = {}, ops = [];
+    wins.forEach(function (x) { var g = w.items[x.gid]; if (!g || g.owner !== ME || g.wonBy == null) return; var p = w.byId[g.wonBy]; if (!p || p.owner !== ME || p.dead || p.released) return;
+      var k = g.wonBy + ':' + g.slot; if (skip.indexOf(k) >= 0) return; (by[k] = by[k] || { pet: g.wonBy, slot: g.slot, wins: [] }).wins.push(g); });
+    Object.keys(by).forEach(function (k) { var e = by[k], cur = wornInSlot(w, e.pet, e.slot);
+      if (!on) { if (cur && e.wins.indexOf(cur) >= 0) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: null, block_index: S.tip }); return; } /* OFF: to the bag */
+      var want = cur; e.wins.forEach(function (g) { if (g !== cur && (g.on == null || g.on === e.pet) && gearRank(g) >= gearRank(want)) want = g; }); /* ON: never a downgrade, ties keep the newest */
+      if (want && want !== cur) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: want.gid, block_index: S.tip }); });
+    return ops; }
   /* this player's own community gear rolls since the last look (key = burn tx; first look = silent baseline). Display only. */
   function communityWins(w) { var k = WKEY + '-croll', seen = null; try { seen = JSON.parse(localStorage.getItem(k)); } catch (e) { }
     var first = !seen, s = Object.assign({}, seen || {}), out = [];
