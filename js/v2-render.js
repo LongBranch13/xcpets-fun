@@ -447,7 +447,12 @@
   function communityStats(w, rowsN) { var V = window.V2Rules, c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage;
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     return { stage: N[st], fed: Math.floor(wiz ? c.wizardFed : c.burned), next: hi ? Math.ceil(hi - fed - 1e-6) : null, nextName: hi ? N[st + 1] : null, pct: hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100, burns: rowsN, pets: w.pets.length }; }
-  window.V2Render = { communityStats: communityStats, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
+  /** careTarget(w, p, tip): the care line pet p is actually growing toward, from the SAME per-pet thresholds the rules engine stages it with
+   * (V2Rules.petThresholds: species scale + the owner's Mythic discount; the community pet keeps its own scale). Display only (2026-10-19, build mythic-target-fix):
+   * every care target / Mythic line / progress bar uses this so the My Pets card, detail panel and pet page agree. pct = care toward Mythic, capped at 100. */
+  function careTarget(w, p, tip) { var V = window.V2Rules, th = V.petThresholds ? V.petThresholds(w, p, tip) : V.thresholdsFor(p.species, tip), base = V.thresholdsFor(p.species, tip);
+    return { th: th, mythic: th[5], discount: th[5] < base[5], pct: Math.min(100, 100 * p.care / th[5]) }; }
+  window.V2Render = { careTarget: careTarget, communityStats: communityStats, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
