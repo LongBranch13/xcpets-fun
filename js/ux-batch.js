@@ -104,10 +104,12 @@
       '<div class="tw"><table class="odds small"><tr><th>Slot</th><th class="num">C</th><th class="num">U</th><th class="num">R</th><th class="num">L</th><th class="num">pieces</th></tr>' + rows + '</table></div>' + (locked.length && !compact ? '<div class="small muted">Locked: ' + locked.map(SL).join(', ') + '</div>' : '') + '</div>'; }
   UXB.petOdds = function (p, w) { return '<details class="oddsdet"><summary class="small">🎲 Gear roll odds for #' + p.id + '</summary>' + oddsHtml(p) + '</details>'; };
   UXB.confirmExtra = function (plans, w) { w = w || U.world(); var out = '';
-    var rolls = plans.filter(function (x) { return /^pet:roll:\d+$/.test(x.tag); });
+    var rolls = plans.filter(function (x) { return /^pet:(roll|fr|of):\d+$/.test(x.tag); });
     if (rolls.length) { var ids = []; rolls.forEach(function (x) { var id = Number(x.tag.split(':')[2]); if (ids.indexOf(id) < 0) ids.push(id); });
-      out += '<div class="small"><b>🎲 Your odds</b> (per roll)</div>' + ids.slice(0, 3).map(function (id) { var p = w.byId[id]; return p ? '<div class="small">#' + id + ' ' + esc(p.name) + ' ' + pill(p.tier) + '</div>' + oddsHtml(p, true) : ''; }).join('') + (ids.length > 3 ? '<div class="small muted">… and ' + (ids.length - 3) + ' more pets</div>' : '') +
-        '<div class="small muted">Results show after the burn confirms in a block. A new piece is worn at once; the old one goes to your bag.</div>'; }
+      out += '<div class="small grwhat"><b>🎲 What you get:</b> ' + (rolls.length === 1 ? 'one random gear piece' : rolls.length + ' random gear pieces, one per roll') + ', for the pet named in each burn. ' + (U.autoEquip && U.autoEquip() ? 'Auto-equip is on: a new piece is worn right away unless the pet already wears something better.' : 'New pieces go to your bag (Auto-equip is off); equip them from Inventory (free).') + '</div><div class="small muted">🎁 Your gear arrives once the burn confirms, usually in about 10 minutes.</div>' +
+        '<div class="small"><b>🎲 Your odds</b> (per roll)</div>' + ids.slice(0, 3).map(function (id) { var p = w.byId[id]; return p ? '<div class="small">#' + id + ' ' + esc(p.name) + ' ' + pill(p.tier) + '</div>' + oddsHtml(p, true) : ''; }).join('') + (ids.length > 3 ? '<div class="small muted">… and ' + (ids.length - 3) + ' more pets</div>' : '') +
+        ''; }
+    if (plans.some(function (x) { return /^pet:c:roll/.test(x.tag); })) out += '<div class="small grwhat"><b>🎲 What you get:</b> the community pet gets one random gear piece and wears it right away. A new piece replaces the one in that slot. It shows once the burn confirms, usually in about 10 minutes.</div>';
     var rel = plans.filter(function (x) { return /^pet:rel/.test(x.tag); });
     if (rel.length) { var S = U.S(), names = S.sel.map(function (id) { var p = w.byId[id]; return p ? '#' + id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc(spL(p.species)) + ')' : '#' + id; });
       out += '<div class="relwarn"><b>🔥 Releasing ' + names.length + ' pet' + (names.length === 1 ? '' : 's') + ':</b> ' + names.slice(0, 30).join(', ') + (names.length > 30 ? ' … +' + (names.length - 30) + ' more' : '') + '<br><b>Burns are final.</b> Released pets are gone for good and cannot be restored.</div>'; }
@@ -115,21 +117,22 @@
 
   // pending crates: our unconfirmed pet:roll burns (this browser's tracker + node mempool)
   function pendingRolls() { var S = U.S(), conf = {}, out = [], seen = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
-    function add(tx, tag, at) { if (!tx || seen[tx] || conf[tx] || !/^pet:roll:\d+$/.test(String(tag))) return; seen[tx] = 1; out.push({ tx: tx, id: Number(String(tag).split(':')[2]), at: at }); }
+    function add(tx, tag, at) { var m = /^pet:(roll|fr|of):(\d+)$/.exec(String(tag)), c = /^pet:c:roll/.test(String(tag)); if (!tx || seen[tx] || conf[tx] || !(m || c)) return; seen[tx] = 1; out.push({ tx: tx, id: m ? Number(m[2]) : null, community: c, kind: m ? m[1] : 'croll', at: at }); }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed') add(t.txid, t.tag, t.at); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x.source === ME) add(x.tx_hash, x.tag, x.at); }); return out; }
-  function paintCrates(w) { var box = $('crates'); if (!box) { box = document.createElement('div'); box.id = 'crates'; box.className = 'crates'; var inv = $('invPanel'); inv.insertBefore(box, inv.querySelector('.statline')); }
+  function paintAeRow() { var inv = $('invPanel'); if (!inv || $('aeRow') || !U.aeToggleHtml) return; var d = document.createElement('div'); d.id = 'aeRow'; d.className = 'aerow'; d.innerHTML = U.aeToggleHtml();
+    var h = inv.querySelector('h2'); inv.insertBefore(d, h ? h.nextSibling : inv.firstChild); U.bindAeTogs(d); }
+  function paintCrates(w) { paintAeRow(); var box = $('crates'); if (!box) { box = document.createElement('div'); box.id = 'crates'; box.className = 'crates'; var inv = $('invPanel'); inv.insertBefore(box, inv.querySelector('.statline')); }
     var L = pendingRolls(); box.hidden = !L.length;
-    box.innerHTML = L.length ? '<div class="small"><b>📦 ' + L.length + ' crate' + (L.length === 1 ? '' : 's') + ' on the way</b> · waiting for a block (~10 min). The block hash decides the piece.</div><div class="cratelist">' + L.slice(0, 24).map(function (c) { var p = w.byId[c.id];
-      return '<div class="crate" title="Roll for #' + c.id + ' · tx ' + esc(c.tx.slice(0, 10)) + '…"><span class="box8">📦</span><span class="small">#' + c.id + (p ? ' ' + esc(p.name) : '') + '</span></div>'; }).join('') + '</div>' : ''; }
-  var MEME = [['gm. it\'s something.', 'ser, this is a Common.', 'it\'s honest work.'], ['not bad, anon.', 'a little drip never hurt.', 'up only (slightly).'], ['wen moon? now.', 'rare drip acquired.', 'number go up.'], ['MUCH WOW. VERY RARE.', 'GIGABRAIN DROP.', 'WAGMI. legendary pull.']];
-  UXB.revealCard = function (d, x, w) { var t = x.legendary ? 3 : x.tier || 0; d.classList.add('ux-flash', 'ux-t' + t); if (x.legendary) d.classList.add('ux-fanfare');
-    d.insertAdjacentHTML('beforeend', '<div class="meme small">' + esc(MEME[t][(String(x.gid || x.item).length + t) % 3]) + '</div>' + (x.legendary ? '<div class="stars" aria-hidden="true">★ ★ ★</div>' : '')); };
-  UXB.revealDone = function (list, w) { var notes = [];
-    list.forEach(function (x) { if (x.rolledOn == null) return; var p = w.byId[x.rolledOn]; if (!p) return;
-      var better = w.itemList.filter(function (g) { return g.owner === ME && g.on == null && g.slot === x.slot && (g.tier || 0) > (x.tier || 0) && V.eligible(g.item, p.species); }).sort(function (a, b) { return b.tier - a.tier; })[0];
-      if (better) notes.push('#' + p.id + ': the new ' + esc(x.label) + ' replaced your ' + esc(SL(x.slot)) + '. A better piece is in your bag: <b>' + esc(better.label) + '</b> (' + TL[better.tier] + '). Swap back with Equip (free).'); });
-    if (notes.length) $('packSummary').insertAdjacentHTML('beforeend', '<div class="small warn uxnote">↩️ ' + notes.join('<br>') + '</div>'); };
+    box.innerHTML = L.length ? '<div class="small"><b>🎁 Gear on the way: ' + L.length + ' roll' + (L.length === 1 ? '' : 's') + '</b> · each piece arrives once its burn confirms, usually in about 10 minutes.</div><div class="cratelist">' + L.slice(0, 24).map(function (c) { var p = c.id != null ? w.byId[c.id] : null;
+      return '<div class="crate" title="' + (c.community ? 'Community gear roll' : 'Gear roll for #' + c.id) + ' · tx ' + esc(c.tx.slice(0, 10)) + '…"><span class="box8">📦</span><span class="small">' + (c.community ? 'Community pet' : '#' + c.id + (p ? ' ' + esc(p.name) : '')) + '</span></div>'; }).join('') + '</div>' : ''; }
+  /** pendingFor(petId): this pet's gear rolls still waiting to confirm (for the pet detail's pending line). */
+  UXB.pendingFor = function (petId) { return pendingRolls().filter(function (c) { return c.id === petId; }).length; };
+  /* gear results (2026-10-19): cards only flash/glow by tier; the meme caption is ONE line for the whole batch (v2.js UXB_CAP, best piece),
+   * never per card (per-card captions used the global .meme headline style: 34-64px Bangers with a 4px shadow, so they overlapped the cards). */
+  UXB.revealCard = function (d, x, w) { var t = x.legendary ? 3 : x.tier || 0; d.classList.add('ux-flash', 'ux-t' + t); if (x.legendary) d.classList.add('ux-fanfare'); };
+
+  UXB.revealDone = function () { }; /* the red "replaced your … / better piece in your bag" notice is gone (2026-10-19): the popup says where each piece went instead */
 
   // ================================================================ C. inventory: lucky drops, paper-doll, bag, collection log
   var IV = Object.assign({ view: 'bag', filter: 'all', slot: 'all', pet: null }, load('inv', {}));

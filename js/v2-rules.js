@@ -629,7 +629,7 @@
         if (!ci) return L(r, 'rejected', 'no community gear for ' + slotLabel(cs));
         var cg = { item: ci.id, label: ci.label, slot: ci.slot, tier: ci.tier, legendary: isLegendary(ci), block: b, tx: r.tx_hash, by: src };
         w.community.gear[ci.slot] = cg; w.community.gearLog.push(cg);
-        return L(r, 'croll', 'community roll: Nakamoto got ' + ci.label + ' (' + slotLabel(ci.slot) + ')', { item: ci.id, slot: ci.slot });
+        return L(r, 'croll', 'community roll: the community pet got ' + ci.label + ' (' + slotLabel(ci.slot) + ')', { item: ci.id, slot: ci.slot });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
       case 'oroll': {  /* OVERFLOW ROLL (Mythic discount): pet:of:ID, any amount (1 sat of XCPETS is enough), signed by the owner. Spends one of the pet's overflow rolls
