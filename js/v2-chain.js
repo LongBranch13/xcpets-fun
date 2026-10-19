@@ -7,7 +7,9 @@
   var V = window.V2Rules, E = window.LiveEngine, KEY = 'xcpets-v2-prod', HKEY = 'xcpets-v2-prod-hashes';
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   var ME = q('addr') || (function () { try { return localStorage.getItem('xcpets-v2-me') || ''; } catch (e) { return ''; } })();
-  if (q('addr')) try { localStorage.setItem('xcpets-v2-me', ME); } catch (e) {}
+  /* address-lookup (2026-10-19): a viewed ?addr= is remembered as before, except when a different XCP Wallet is connected in this browser:
+   * then the wallet stays the saved address, so play.html without ?addr= goes back to the wallet's own pets (the wallet wins). */
+  if (q('addr')) try { var wa = localStorage.getItem('xcpets-xcpwallet-address'); if (!wa || wa === ME) localStorage.setItem('xcpets-v2-me', ME); } catch (e) {}
   var loc = (function () { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
   var S = { rows: [], hashes: {}, ops: loc.ops || [], tip: 0, balance: 0, n: 0, sel: loc.sel || [], hide: loc.hide != null ? loc.hide : -1, hidden: loc.hidden || [], prod: true, mempool: [] };
   var cache = null, opsSig = null, cacheSig = null;
