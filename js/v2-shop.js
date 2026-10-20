@@ -1,6 +1,6 @@
 /* XCPETS shop "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers" (owner's final name 8:01 PM CT; Captain Dan is the shopkeeper character, not in the name) (UI-only mockup, owner 7:18 PM CT; branch pet-shop, NOT LIVE). No rule change, no new burns.
  * An 8-bit cartoon-Roman shop floor on top of the existing Pet Shop: Captain Dan (an affectionate 8-bit caricature of the creator of XCP.fun, Bitcorn Crops, bitcorns.com and DigiRare.io)
- * waves from behind the counter; your owned gear sits on the shelves (real item icons). Tap a shelf item -> the existing racks below jump to
+ * waves from behind the counter when approached; your owned gear sits on the shelves (real item icons). Tap a shelf item -> the existing racks below jump to
  * that slot (same gear actions as before: pick a pet, tap a slot, equip/unequip). prefers-reduced-motion: static scene. */
 (function () {
   'use strict';
@@ -12,14 +12,21 @@
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], line: 0 };
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
-  function dan(x, ox, oy, t) { var wave = reduced() ? 0 : Math.floor(t / 300) % 2, blink = !reduced() && Math.floor(t / 2200) % 6 === 0;
+  function dan(x, ox, oy, t) { var blink = !reduced() && Math.floor(t / 2200) % 6 === 0;
     px(x, '#f2f4f7', ox + 4, oy, 14, 3); px(x, '#d7dbe2', ox + 4, oy + 2, 14, 1); px(x, '#ffcb4d', ox + 8, oy, 2, 2); px(x, '#eaac3f', ox + 4, oy + 3, 14, 1); px(x, '#141618', ox + 1, oy + 4, 14, 1); /* white captain cap turned left (CAPTAINDAN token art): anchor left of centre, gold band, black brim jutting left */
     px(x, '#141618', ox + 5, oy + 5, 11, 1); px(x, '#141618', ox + 13, oy + 5, 3, 7); px(x, '#e3a07f', ox + 5, oy + 6, 8, 7); px(x, '#e3a07f', ox + 4, oy + 9, 1, 2); px(x, '#c98466', ox + 14, oy + 8, 1, 2); /* dark hair at the back (right), face 3/4 left, nose + ear */
     px(x, '#a9aeb6', ox + 5, oy + 7, 3, 2); px(x, '#a9aeb6', ox + 9, oy + 7, 3, 2); px(x, '#a9aeb6', ox + 8, oy + 7, 1, 1); px(x, '#a9aeb6', ox + 12, oy + 7, 1, 1); px(x, blink ? '#a9aeb6' : '#e8eef4', ox + 5, oy + 8, 1, 1); px(x, blink ? '#a9aeb6' : '#e8eef4', ox + 9, oy + 8, 1, 1); /* grey glasses, gaze left */
     px(x, '#141618', ox + 5, oy + 11, 5, 1); px(x, '#141618', ox + 12, oy + 9, 1, 4); px(x, '#141618', ox + 6, oy + 13, 7, 1); px(x, '#141618', ox + 6, oy + 12, 2, 1); /* black mustache + right jaw beard */
     px(x, '#1a1c1e', ox + 3, oy + 14, 14, 14); px(x, '#e7eaf1', ox + 8, oy + 14, 4, 3); px(x, '#064884', ox + 9, oy + 15, 2, 6); px(x, '#d79b37', ox + 3, oy + 15, 4, 1); px(x, '#d79b37', ox + 13, oy + 15, 4, 1); px(x, '#d79b37', ox + 7, oy + 22, 1, 1); px(x, '#d79b37', ox + 12, oy + 22, 1, 1); /* black jacket, gold epaulettes, white shirt, blue tie */
     px(x, '#1a1c1e', ox, oy + 17, 3, 6); px(x, '#e3a07f', ox, oy + 23, 3, 2); /* left arm */
-    if (wave) { px(x, '#1a1c1e', ox + 17, oy + 10, 3, 7); px(x, '#e3a07f', ox + 17, oy + 7, 3, 3); } else { px(x, '#1a1c1e', ox + 17, oy + 13, 3, 6); px(x, '#e3a07f', ox + 19, oy + 11, 3, 3); } }
+    var wf = waving(t) ? Math.floor((S.waveUntil - t) / 300) % 2 : -1; /* triggered wave: raise, wave a few times, lower back to rest */
+    if (wf < 0) { px(x, '#1a1c1e', ox + 17, oy + 17, 3, 6); px(x, '#e3a07f', ox + 17, oy + 23, 3, 2); } /* right arm resting at his side, mirrors the left */
+    else if (wf) { px(x, '#1a1c1e', ox + 17, oy + 10, 3, 7); px(x, '#e3a07f', ox + 17, oy + 7, 3, 3); } else { px(x, '#1a1c1e', ox + 17, oy + 13, 3, 6); px(x, '#e3a07f', ox + 19, oy + 11, 3, 3); } }
+  /* Dan waves only when triggered (hover/tap on him, opening the counter, the shop scrolling into view, or V2Shop.wave() when he moves); never with prefers-reduced-motion */
+  var DAN = { x: 150, y: 70, w: 22, h: 28 };
+  function waving(t) { return !reduced() && t < (S.waveUntil || 0); }
+  function waveNow() { if (reduced()) return; var n = performance.now(); if (n < (S.waveUntil || 0) - 300) return; S.waveUntil = n + 1800; }
+  function onDan(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return mx >= DAN.x && mx < DAN.x + DAN.w && my >= DAN.y && my < DAN.y + DAN.h; }
   function bubble(x, s, bx, by) { x.font = '6px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx - w / 2));
     px(x, '#000', bx + 1, by + 1, w, 12); px(x, '#fff8e1', bx, by, w, 12); px(x, '#fff8e1', bx + w / 2 - 2, by + 12, 4, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 9); }
   function draw(t) { var x = S.x; if (!x) return; x.imageSmoothingEnabled = false;
@@ -41,7 +48,7 @@
         if (sel) { px(x, '#fff', ix - 1, iy - lift - 1, 18, 1); px(x, '#fff', ix - 1, iy - lift + 16, 18, 1); }
         S.hits.push({ x: ix, y: iy - 4, w: 16, h: 22, it: it }); } });
     if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Shelves empty: roll gear!', 8, 46); }
-    dan(x, 150, 70, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
+    dan(x, DAN.x, DAN.y, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
     x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText(S.free + ' IN STOCK \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120); x.textAlign = 'left';
     px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
     bubble(x, S.say || LINES[S.line % LINES.length], 160, 52);
@@ -51,10 +58,11 @@
     S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; S.items = items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; })).slice(0, 20);
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stock on the shelves"></canvas><div class="shop-hint small">Tap gear on a shelf · pick a pet · wear it</div>'; c = box.querySelector('canvas');
-      c.addEventListener('mousemove', function (e) { var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
+      if (window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) waveNow(); }); }, { threshold: 0.5 }).observe(c);
+      c.addEventListener('mousemove', function (e) { if (onDan(c, e)) waveNow(); var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
       c.addEventListener('mouseleave', function () { S.hov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
-        var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
+        var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (onDan(c, e)) waveNow(); if (!h) return; waveNow();
         S.sel = h.it; say(h.it); counter(); draw(performance.now()); }); }
     counter(); clearance(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now()); }
@@ -101,5 +109,5 @@
   function bindRoll(el) { var U = window.V2UI, V = window.V2Rules, rb = document.getElementById('scRoll');
     if (rb) rb.onclick = function () { var id = +rb.dataset.pid; U.confirmPlans('Gear roll for #' + id, [{ tag: V.buildTag('roll', { petId: id }), amount: V.COSTS.roll }]); }; }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { rackPick: rackPick, clearance: clearance, render: render, select: function (g) { S.sel = g; say(g); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES };
+  window.V2Shop = { rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES };
 })();
