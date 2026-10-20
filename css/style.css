@@ -168,4 +168,6 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .scard { transition: none; } .scard:hover, .scard:focus-visible { transform: none; } }
 .nav .navlair { display: inline-flex; flex-direction: column; line-height: 1.15; vertical-align: middle; max-width: 15em; white-space: normal; }
 .nav .navlair small { font-family: var(--comic); font-size: 12px; opacity: .9; }
-.nav .navscene { font-family: var(--pixel); font-size: 10px; color: #ffd166; text-shadow: 0 0 6px rgba(255,209,102,.4); }
+.nav .navscene { font-family: var(--pixel); font-size: 8px; line-height: 1.4; color: #ffd166; text-shadow: 0 0 6px rgba(255,209,102,.4); }
+.nav .navscene .navlair { width: 160px; max-width: none; white-space: normal; }
+.nav .navscene .navlair small { font-size: 11px; line-height: 1.1; }
