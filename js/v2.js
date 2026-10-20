@@ -57,18 +57,18 @@
   }
   /* AUTO-EQUIP SETTING (owner, 2026-10-19): a per-device choice, stored next to the player's local equips. No chain rule changes: replay still
    * wears a newly rolled piece (exactly as before), and this layer then adds ordinary free local equip ops (the same ops as tapping Equip / Take off).
-   *  - OFF (default): every newly landed piece that replay put on goes to the bag; the pet keeps what it wore before the batch (or that slot is emptied).
+   *  - OFF (default): every newly landed piece that replay put on goes to your stock; the pet keeps what it wore before the batch (or that slot is emptied).
    *  - ON: works as before, but never a downgrade: if the pet wore a better piece in that slot before the batch (or an earlier piece of the same batch
-   *    is better), that one goes back on and the new one goes to the bag. Rank = tier, ★ legendary highest; ties keep the newest.
+   *    is better), that one goes back on and the new one goes to your stock. Rank = tier, ★ legendary highest; ties keep the newest.
    * Battle spoils (owner, 2026-10-19): a piece your pet wins in a battle or rumble (replay: worn only if that slot was empty) follows the same setting:
-   *    OFF: it goes to the bag; ON: it is worn unless the pet already wears something better in that slot (ties keep the newest). Same free local ops.
+   *    OFF: it goes to your stock; ON: it is worn unless the pet already wears something better in that slot (ties keep the newest). Same free local ops.
    * Community pet (Bitcoin Wizard): not a player item, always wears its newest community roll; no setting. */
   var AEKEY = 'xcpets-v2-autoequip-' + KEY + '-' + ME;
   function autoEquipIsOn() { try { return localStorage.getItem(AEKEY) === 'on'; } catch (e) { return false; } }
   function setAutoEquip(on) { try { localStorage.setItem(AEKEY, on ? 'on' : 'off'); } catch (e) { } document.querySelectorAll('[data-aetog]').forEach(paintAeTog); }
   function paintAeTog(b) { var on = autoEquipIsOn(); b.textContent = on ? 'On' : 'Off'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('on', on); }
-  function aeToggleHtml() { return '<span class="aetog small">Auto-equip new gear: <button type="button" class="q" data-aetog="1" aria-pressed="false">Off</button> <span class="muted">On: a new piece is worn right away, never a downgrade. Off: it goes to your bag.</span></span>'; }
-  function bindAeTogs(root) { (root || document).querySelectorAll('[data-aetog]').forEach(function (b) { paintAeTog(b); b.onclick = function () { setAutoEquip(!autoEquipIsOn()); toast('Auto-equip new gear: ' + (autoEquipIsOn() ? 'On. New pieces are worn right away unless the pet already wears something better.' : 'Off. New pieces go to your bag.') + ' Applies to gear that lands from now on.', 6000); }; }); }
+  function aeToggleHtml() { return '<span class="aetog small">Auto-equip new gear: <button type="button" class="q" data-aetog="1" aria-pressed="false">Off</button> <span class="muted">On: a new piece is worn right away, never a downgrade. Off: it goes to your stock.</span></span>'; }
+  function bindAeTogs(root) { (root || document).querySelectorAll('[data-aetog]').forEach(function (b) { paintAeTog(b); b.onclick = function () { setAutoEquip(!autoEquipIsOn()); toast('Auto-equip new gear: ' + (autoEquipIsOn() ? 'On. New pieces are worn right away unless the pet already wears something better.' : 'Off. New pieces go to your stock.') + ' Applies to gear that lands from now on.', 6000); }; }); }
   function wornInSlot(w, pid, slot) { return V.wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
   function gearRank(g) { return g ? (g.legendary ? 4 : (g.tier || 0)) : -1; }
   function autoEquipChoice(w, wins) { if (viewOnly()) return 0; /* address-lookup: view only never writes equips */
@@ -95,7 +95,7 @@
     wins.forEach(function (x) { var g = w.items[x.gid]; if (!g || g.owner !== ME || g.wonBy == null) return; var p = w.byId[g.wonBy]; if (!p || p.owner !== ME || p.dead || p.released) return;
       var k = g.wonBy + ':' + g.slot; if (skip.indexOf(k) >= 0) return; (by[k] = by[k] || { pet: g.wonBy, slot: g.slot, wins: [] }).wins.push(g); });
     Object.keys(by).forEach(function (k) { var e = by[k], cur = wornInSlot(w, e.pet, e.slot);
-      if (!on) { if (cur && e.wins.indexOf(cur) >= 0) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: null, block_index: S.tip }); return; } /* OFF: to the bag */
+      if (!on) { if (cur && e.wins.indexOf(cur) >= 0) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: null, block_index: S.tip }); return; } /* OFF: to stock */
       var want = cur; e.wins.forEach(function (g) { if (g !== cur && (g.on == null || g.on === e.pet) && gearRank(g) >= gearRank(want)) want = g; }); /* ON: never a downgrade, ties keep the newest */
       if (want && want !== cur) ops.push({ kind: 'equip', owner: ME, petId: e.pet, slot: e.slot, gid: want.gid, block_index: S.tip }); });
     return ops; }
@@ -149,8 +149,8 @@
       info = '<div class="grinfo small" role="status"><p class="grlead"><b>' + esc(lead) + '</b></p>' +
         '<p>From: ' + order.map(function (k) { var q = SRC_PLURAL[k] || SRC_PLURAL.other; return srcN[k] + ' ' + q[srcN[k] === 1 ? 0 : 1] + (k === 'fight' && vsIds.length ? ' vs ' + vsIds.slice(0, 6).map(function (id) { return '#' + id; }).join(', ') + (vsIds.length > 6 ? ' and ' + (vsIds.length - 6) + ' more' : '') : ''); }).map(esc).join(' · ') + '</p>' +
         (pets.length ? '<p>Pets: ' + pets.slice(0, 6).map(function (id) { var q = w.byId[id]; return '#' + id + (q ? ' ' + esc(q.name) : ''); }).join(', ') + (pets.length > 6 ? ' and ' + (pets.length - 6) + ' more' : '') + '</p>' : '') +
-        '<p>Where they went: ' + [where.on ? where.on + ' equipped' : '', where.bag ? where.bag + ' in your bag' : '', where.comm ? where.comm + ' equipped on ' + esc(communityName(w)) : ''].filter(Boolean).join(' · ') + '</p>' +
-        '<p class="grnext">' + (where.bag ? '👉 New gear is in your bag. Equip it from Inventory (free).' : '👉 See all your gear in Inventory.') + '</p>' +
+        '<p>Where they went: ' + [where.on ? where.on + ' equipped' : '', where.bag ? where.bag + ' in your stock' : '', where.comm ? where.comm + ' equipped on ' + esc(communityName(w)) : ''].filter(Boolean).join(' · ') + '</p>' +
+        '<p class="grnext">' + (where.bag ? '👉 New gear is in your stock. Wear it from the Lair (free).' : '👉 See all your stock in the Lair.') + '</p>' +
         '<p class="graemode">' + aeToggleHtml() + '</p></div>' +
         (UXB_CAP(list) ? '<p class="grcap" aria-hidden="true">' + esc(UXB_CAP(list)) + '</p>' : ''); }
     $('packSummary').innerHTML = info + '<span class="grtiers">' + esc(TIERS.map(function (t, i) { return gear && !tiers[i] ? '' : tiers[i] + ' ' + t.label; }).filter(Boolean).join(' · ')) + '</span>' + (gear ? '' : ' · ' + Object.keys(rev.sel).length + ' ticked') +
@@ -161,13 +161,13 @@
     list.slice(rev.page * REV_PAGE, rev.page * REV_PAGE + REV_PAGE).forEach(function (x) {
       var d = document.createElement('div');
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
-          '<div class="gwwhere">' + (x._on === 'c' ? '✓ On the community pet' : x._on != null ? '✓ Equipped on #' + x._on : '🎒 In your bag') + '</div>';
+          '<div class="gwwhere">' + (x._on === 'c' ? '✓ On the community pet' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stock') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
       d.className = 'egg t' + x.art.tierIndex + (rev.sel[x.id] ? ' discard' : ''); d.innerHTML = '<canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + '</div><div class="muted">' + esc(x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + '<label class="small disc"><input type="checkbox" data-id="' + x.id + '"' + (rev.sel[x.id] ? ' checked' : '') + '> Discard</label>';
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.querySelector('input').onchange = function () { if (this.checked) rev.sel[x.id] = 1; else delete rev.sel[x.id]; d.classList.toggle('discard', this.checked); };
     });
-    ['packCommons', 'packDiscard', 'packSkip'].forEach(function (id) { $(id).style.display = gear ? 'none' : ''; }); $('packClose').textContent = gear ? (where.bag ? 'Equip in Inventory →' : 'Go to Inventory →') : 'Keep the rest → My Pets';
+    ['packCommons', 'packDiscard', 'packSkip'].forEach(function (id) { $(id).style.display = gear ? 'none' : ''; }); $('packClose').textContent = gear ? (where.bag ? 'Wear it in the Lair →' : 'Go to the Lair →') : 'Keep the rest → My Pets';
   }
   function hideIds(ids) { discardIds(ids); }
   /* ONE caption per gear batch, for the best piece (the per-card captions overlapped the cards). Lives here, not in ux-batch.js, because the popup can open
@@ -214,7 +214,7 @@
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')';
-    renderPets(w); renderInv(w); renderBattles(w); notifyFights(w); notifyBreeds(w); renderBreed(w); renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
+    renderPets(w); renderInv(w); if (window.V2Shop) { try { V2Shop.render(w); } catch (e) { if (window.console) console.error(e); } } /* pet-shop mockup */ renderBattles(w); notifyFights(w); notifyBreeds(w); renderBreed(w); if (window.V2Motel) { try { V2Motel.render(w); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
     offerResume();
   }
@@ -318,7 +318,7 @@
   $('bAuto').onclick = function () { if (viewBlock()) return; var ops = V.autoEquipOps(world(), ME, sel(), S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip: ' + ops.length + ' pieces (free, no burn)'); render(); };
   if ($('bOutfit')) $('bOutfit').onclick = function () { if (viewBlock()) return;
     if (!S.sel.length) return toast('Select pets first'); var w = world(), inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; });
-    $('outfitBody').innerHTML = '<p class="small">Uses free copies from your bag. Missing copies or closed slots are skipped.</p>' + V.V2_SLOTS.map(function (sl) { var k = {}; inv.filter(function (g) { return g.slot === sl; }).forEach(function (g) { (k[g.item] = k[g.item] || { l: g.label, n: 0 }).n++; });
+    $('outfitBody').innerHTML = '<p class="small">Uses free copies from your stock. Missing copies or closed slots are skipped.</p>' + V.V2_SLOTS.map(function (sl) { var k = {}; inv.filter(function (g) { return g.slot === sl; }).forEach(function (g) { (k[g.item] = k[g.item] || { l: g.label, n: 0 }).n++; });
       return '<div class="row small"><b class="slotname">' + SL(sl) + '</b> <select class="pick" data-o="' + sl + '"><option value="">(leave)</option>' + Object.keys(k).map(function (id) { return '<option value="' + id + '">' + esc(k[id].l) + ' · ' + k[id].n + ' free ' + (k[id].n === 1 ? 'copy' : 'copies') + (k[id].n < S.sel.length ? ' (not enough for ' + S.sel.length + ')' : '') + '</option>'; }).join('') + '</select></div>'; }).join('') + '<p class="small muted">' + S.sel.length + ' pets selected. Each pet needs its own free copy (one item = one pet).</p>';
     $('oGo').style.display = ''; $('oNo').textContent = 'Cancel'; open('outfitBox'); };
   $('oNo').onclick = function () { close('outfitBox'); };
@@ -343,7 +343,7 @@
     var frs = petFrames(p, w); paint($('dCanvas'), frs[0]); R.animate($('dCanvas'), frs);
     $('dStats').innerHTML = statBars(p);
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
-    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic discount)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
+    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'play.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic discount)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
     if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button><button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>' + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Hides it in this browser. Free; restore any time from Show discarded.">🗑️ Discard pet</button></div>' +
       (p.owner === ME ? rollHelp(p) : '');
     h += R.starveHtml ? R.starveHtml(w, p, ME) : ''; /* starve-warning (2026-10-19): neglected + gear worn -> countdown, worn pieces, Feed (display only) */
@@ -369,7 +369,7 @@
   function freeRollButton(action, why, label, left) { return '<button class="btn ghost ico-flame" data-a="' + action + '" title="' + why + ': one random gear piece for this pet. You only burn 1 sat of XCPETS">' + label + '</button><span class="small muted frleft">' + label + 's left: ' + fmt(left) + '</span>'; }
   /** the plain "what a roll gives" line under the pet's roll button, plus a pending line while this pet's roll burns wait to confirm */
   function rollHelp(p) { var n = window.UXB && UXB.pendingFor ? UXB.pendingFor(p.id) : 0, bag = !autoEquipIsOn();
-    return '<p class="small muted grhelp">🎲 Roll for gear: burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random piece for this pet. ' + (bag ? 'It goes to your bag (Auto-equip is off); equip it free.' : 'Auto-equip is on: it is worn right away unless the pet already wears something better.') + '</p>' +
+    return '<p class="small muted grhelp">🎲 Roll for gear: burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random piece for this pet. ' + (bag ? 'It goes to your stock (Auto-equip is off); equip it free.' : 'Auto-equip is on: it is worn right away unless the pet already wears something better.') + '</p>' +
       (n ? '<p class="small grpending" role="status">🎁 Gear on the way' + (n > 1 ? ' (' + n + ' rolls)' : '') + ': it arrives once your burn confirms, usually in about 10 minutes.</p>' : ''); }
   function frBtn(w) { var f = V.freeRolls(w, ME, frPendingTags()); return f.on ? freeRollButton('froll', 'Founder reward', 'Free roll', f.left) : ''; }
   $('dClose').onclick = function () { close('detail'); detailId = null; };
@@ -507,7 +507,7 @@
     w.breedReqs.forEach(function (r) { if (r.used || (tip && tip - r.block > bwin)) return; var A = w.byId[r.a], B = w.byId[r.b], m = bacc[r.a + ':' + r.b], until = 'until block ' + fmt(r.block + bwin);
       if (r.owner === ME) out.push('<div class="txrow pend-out">💞 <b>Breed request sent:</b> ' + petLblT(w, r.a) + ' × ' + petLblT(w, r.b) + ' · ' + (m ? 'partner accepted, pending confirmation' : 'waiting for the owner of #' + r.b + ' to accept') + ' · sent at block ' + fmt(r.block) + ' · ' + until + txa(r.tx) + '</div>');
       else if (B && B.owner === ME) out.push('<div class="txrow pend-in">💞 <b>Breed request:</b> ' + petLblT(w, r.a) + ' asks your ' + petLblT(w, r.b) + ' · from ' + shortAddr(r.owner) + ' at block ' + fmt(r.block) + ' · ' + until + ' · the egg goes to the requester' +
-        (m ? ' · ⏳ your accept is pending confirmation' + txa(m.tx_hash) : ' <button class="btn ico-flame" data-bracc="' + r.b + ':' + r.a + '">Accept breed (' + fmt(V.COSTS.breed) + ')</button>') + '</div>'); });
+        (m ? ' · ⏳ your accept is pending confirmation' + txa(m.tx_hash) : ' <a class="btn ico-flame" href="#no-tail-motel" data-bmotel="' + r.b + ':' + r.a + '">🏨 Answer at the No-Tail Motel desk</a>') + '</div>'); }); /* tonight bundle: breeding happens only at the motel; this heads-up row links to Gooby's desk (same Accept burn there) */
     unconf.forEach(function (u) { if (u.t.action !== 'breed') return; var B = w.byId[u.t.b]; if (!B) return;
       if (u.mine && B.owner === ME) { out.push('<div class="txrow pend-out">⏳ <b>Breeding ' + petLblT(w, u.t.a) + ' × ' + petLblT(w, u.t.b) + ':</b> your egg appears once this confirms' + txa(u.x.tx_hash) + '</div>'); return; }
       if (w.breedReqs.some(function (r) { return !r.used && r.a === u.t.b && r.b === u.t.a; })) return; /* it is an accept, shown above */
@@ -529,7 +529,7 @@
     try { localStorage.setItem(FKEY, JSON.stringify(seen)); } catch (e) { }
     q.forEach(function (f) { var win = w.byId[f.winner], los = w.byId[f.loser], mineWon = win && win.owner === ME;
       toast('⚔️ Fight ' + f.id + ' result: ' + (mineWon ? 'your ' : '') + esc(win ? win.name : '') + ' #' + f.winner + ' beat ' + (!mineWon ? 'your ' : '') + esc(los ? los.name : '') + ' #' + f.loser +
-        (f.spoils ? ' and took ' + esc(f.spoils.label) : ' (no takeable gear)') + ' · #' + f.loser + ' has a black eye until block ' + fmt(f.acceptBlock + V.BLACK_EYE_BLOCKS) + '. <a href="#" data-replay="' + f.id + '">▶ Replay</a>', 15000);
+        (f.spoils ? ' and took ' + esc(f.spoils.label) : ' (no takeable gear)') + ' · #' + f.loser + ' has a black eye until block ' + fmt(f.acceptBlock + V.BLACK_EYE_BLOCKS) + '.' + (window.V2Sponsor && V2Sponsor.state && V2Sponsor.line(V2Sponsor.state, f.acceptBlock) ? ' 🏟️ X Circus Kekimus · ' + esc(V2Sponsor.line(V2Sponsor.state, f.acceptBlock)) + '.' : '') + ' <a href="#" data-replay="' + f.id + '">▶ Replay</a>', 15000);
       var a = $('toasts').lastChild.querySelector('[data-replay]'); if (a) a.onclick = function (e) { e.preventDefault(); playFight(world().fights[f.id - 1]); }; });
     q.forEach(function (f) { queueAnim(function () { playFight(world().fights[f.id - 1]); }); }); }
   /* breed results (2026-10-15, Jake): a breed between two owners resolves when the partner's owner burns the mirrored tag (pet:breed:B:A within
@@ -559,11 +559,13 @@
         (f.status === 'open' && B.owner !== ME ? (M.prod ? ' <span class="muted small">waiting for the owner of #' + f.b + ' to accept</span>' : ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>') : '') + (f.status === 'open' && B.owner === ME ? ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (' + fmt(V.COSTS.accept) + ')</button>' : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
     var pb = ME ? pendingBattles(w) : [];
     $('fPending').innerHTML = '<h3 class="sec" data-ico="sword">Your pending challenges &amp; breed requests</h3>' + (pb.join('') || '<p class="muted small">' + (ME ? 'No pending challenges sent or received.' : 'Connect your wallet to see your challenges.') + '</p>');
+    $('fPending').querySelectorAll('[data-bmotel]').forEach(function (x) { var row = x.closest('.txrow'); if (row) { row.classList.add('pend-tap'); row.onclick = function (e) { if (e.target.closest('a[href^="http"]')) return; e.preventDefault(); if (window.V2MotelReqs) V2MotelReqs.go(x.dataset.bmotel); }; } });
     $('fPending').querySelectorAll('[data-bracc]').forEach(function (x) { x.onclick = function () { var q = x.dataset.bracc.split(':'); confirmPlans('Accept breed: your #' + q[0] + ' × #' + q[1], [{ tag: 'pet:breed:' + q[0] + ':' + q[1], amount: 690 }], function () { toast('💞 Breed accept sent. The egg appears and both owners see the breeding once it confirms.', 9000); render(); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), q[0], q[1])); }; });
     $('fPending').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
     $('fights').querySelectorAll('[data-view]').forEach(function (x) { x.onclick = function () { playFight(world().fights[x.dataset.view - 1]); }; });
     $('fights').querySelectorAll('[data-npc]').forEach(function (x) { x.onclick = function () { var f = world().fights[x.dataset.npc - 1]; adv(3); burn(world().byId[f.b].owner, 'pet:accept:' + f.id, 690); save(); render(); playFight(world().fights[f.id - 1]); }; });
     $('fights').querySelectorAll('[data-acc]').forEach(function (x) { x.onclick = function () { confirmPlans('Accept fight ' + x.dataset.acc, [{ tag: 'pet:accept:' + x.dataset.acc, amount: 690 }], function () { afterAccept(x.dataset.acc); }); }; });
+    if (window.V2Arena) try { V2Arena.render(w); } catch (e) { console.warn('arena', e); } /* battle-arena (DRAFT 2026-10-19, display only) */
   }
   $('fGo').onclick = function () { var a = $('fMine').value, b = $('fTheirs').value; if (!a || !b) return toast('Pick both pets'); confirmPlans('Challenge #' + b, [{ tag: V.buildTag('fight', { a: a, b: b }), amount: 690 }]); };
   $('fNpc').onclick = function () { var w = world(), my = fighters(w, ME), np = fighters(w, ME, true).filter(function (p) { return !p.fightDays[V.day(S.tip)]; });
@@ -591,7 +593,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && animM.el) animClose(); });
   window.V2AnimClose = animClose; window.V2PlayFight = function (f) { playFight(f); }; window.V2ReplayBreed = function (kidId) { replayBreed(kidId); }; /* smooth-perf: breed replay hook for tests (same as a toast's ▶ Replay) */
   function playFight(f) {
-    if (!f || !f.turns) return; var w = world(), c = $('arena'), ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    if (!f || !f.turns) return; if (window.V2ArenaScene && V2ArenaScene.sequence && document.getElementById('arScene')) return V2ArenaScene.sequence(f); /* battle-arena: fights play in the X Circus Kekimus scene, no pop-up */ var w = world(), c = $('arena'), ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
     var A = w.byId[f.a], B = w.byId[f.b], fa = petFrames(Object.assign({}, A, { blackEye: false, crowned: false }), w), fb = petFrames(Object.assign({}, B, { blackEye: false, crowned: false }), w);
     var fl = petFrames(Object.assign({}, f.loser === A.id ? A : B, { blackEye: true }), w), tmp = document.createElement('canvas'); tmp.width = tmp.height = 32;
     var t = 0, k = 0, hpA = f.maxA, hpB = f.maxB, msg = 'FIGHT: #' + A.id + ' vs #' + B.id, sp = f.spoils ? (typeof f.spoils === 'string' ? f.spoils : f.spoils.label) : null;
@@ -662,7 +664,7 @@
       out.push('<div>' + petLblT(w, t.a) + ' → ' + petLblT(w, t.b) + ' <span class="muted">⏳ pending confirmation</span>' + tx + '</div>'); });
     return out.join(''); }
   $('bGo').onclick = function () { if (!ME) return confirmPlans('Breed', [{}]); var a = $('bA').value, b = $('bB').value; if (!a || !b) return toast('Pick parent A and parent B'); var n0 = petIds();
-    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; $('bA').value = ''; $('bB').value = ''; render(); keepScroll(y); playBreed(a, b, n0); var w2 = world(), A2 = w2.byId[a], B2 = w2.byId[b]; toast(A2 && B2 && A2.owner === B2.owner ? '⏳ Breeding #' + a + ' × #' + b + ': your egg appears once this confirms.' : '💞 Breed request sent: #' + a + ' → #' + b + '. The partner\'s owner can accept it once it confirms.', 9000); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), a, b)); };
+    confirmPlans('Breed #' + a + ' × #' + b, [{ tag: V.buildTag('breed', { a: a, b: b }), amount: 690 }], function () { var y = window.scrollY; if (window.V2Motel) V2Motel.checkedIn(a, b); else { $('bA').value = ''; $('bB').value = ''; } /* no-tail-motel: keep the pair so the door can open in place */ render(); keepScroll(y); playBreed(a, b, n0); var w2 = world(), A2 = w2.byId[a], B2 = w2.byId[b]; toast(A2 && B2 && A2.owner === B2.owner ? '⏳ Breeding #' + a + ' × #' + b + ': your egg appears once this confirms.' : '💞 Breed request sent: #' + a + ' → #' + b + '. The partner\'s owner can accept it once it confirms.', 9000); }); if (ME && $('confirmBox').classList.contains('on')) $('cfBody').insertAdjacentHTML('afterbegin', breedSum(world(), a, b)); };
   function petIds() { var o = {}; world().pets.forEach(function (p) { o[p.id + ':' + (p.parents || '')] = 1; }); return o; } // pets before the breed
   /** playBreed: the battle arena's approach for a breed. Both parents hop together, hearts, the egg appears, then the result. Display only. Skippable. */
   /** feedEgg(id): the normal feed flow for a freshly bred egg (existing confirm dialog, default 69). */
@@ -715,11 +717,11 @@
   function irqNext() { if (irqCur || !IRQ.length) return; if (($('confirmBox') && $('confirmBox').classList.contains('on')) || animM.el) return setTimeout(irqNext, 1500);
     var x = irqCur = IRQ.shift(); irqMark(x.k); var box = $('inReqBox');
     if (!box) { box = document.createElement('div'); box.id = 'inReqBox'; box.className = 'reveal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'irqTitle'); document.body.appendChild(box); }
-    var btn = document.querySelector('#fPending ' + x.sel);
+    var btn = (document.querySelector('#motelReqs ' + x.sel) || document.querySelector('#fPending ' + x.sel));
     box.innerHTML = '<div class="box"><h2 id="irqTitle" class="sec" data-ico="sword">' + esc(x.title) + '</h2><p class="small">From ' + shortAddr(x.who) + '</p><p>' + x.pets + '</p><p class="small">Cost to accept: <b>' + fmt(x.cost) + ' <span class="asset">XCPETS</span></b> · expires at block <b>' + fmt(x.until) + '</b>' + (IRQ.length ? ' · ' + IRQ.length + ' more waiting' : '') + '</p>' + irqCompare(world(), x) +
       '<div class="row" style="justify-content:center">' + (btn ? '<button class="btn ico-flame" data-irq="acc">' + esc(x.label) + '</button>' : '') + '<button class="q" data-irq="view">View</button><button class="q" data-irq="later">Later</button></div></div>';
     box.classList.add('on'); box.querySelectorAll('canvas[data-irqp]').forEach(function (c) { var p = world().byId[c.dataset.irqp]; if (p) try { paint(c, petFrames(p, world())[0]); } catch (e) { } });
-    box.querySelectorAll('[data-irq]').forEach(function (b) { b.onclick = function () { var a = b.dataset.irq; box.classList.remove('on'); irqCur = null; var t = document.querySelector('#fPending ' + x.sel);
+    box.querySelectorAll('[data-irq]').forEach(function (b) { b.onclick = function () { var a = b.dataset.irq; box.classList.remove('on'); irqCur = null; var t = (document.querySelector('#motelReqs ' + x.sel) || document.querySelector('#fPending ' + x.sel));
       if (a === 'acc' && t) t.click();
       else if (a === 'view') { var row = t ? t.closest('.txrow') : $('fPending'); if (row) { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.classList.add('flash'); setTimeout(function () { row.classList.remove('flash'); }, 2400); } }
       setTimeout(irqNext, 400); }; }); }
@@ -790,7 +792,7 @@
     var wrap = document.createElement('div'); wrap.className = 'petsticky'; ctl.parentNode.insertBefore(wrap, ctl); wrap.appendChild(ctl); wrap.appendChild(bulk);
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
-  window.V2UI = { viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight };
+  window.V2UI = { viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight };
   render(); route();
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */

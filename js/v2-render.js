@@ -397,14 +397,14 @@
     if (o.compact && !slots.length) { box.innerHTML = '<p class="small muted">No gear to wear yet.</p>'; return; }
     var h = '<div class="gp-slots" role="tablist" aria-label="Gear slots">' + slots.map(function (sl) { var locked = p.openSlots.indexOf(sl) < 0, g = worn[sl];
       return '<button type="button" class="gp-slot' + (open === sl ? ' on' : '') + (locked ? ' locked' : '') + '" data-gslot="' + sl + '" role="tab" aria-selected="' + (open === sl) + '"><b>' + V.slotLabel(sl) + '</b><span class="small">' + (locked ? 'locked' : g ? esc(g.label) : 'empty') + '</span></button>'; }).join('') + '</div>';
-    /* Unequip all (2026-10-19): one free local action that takes every worn piece off this pet (same op as "Take off", gid null, per slot); all go to the bag */
+    /* Unequip all (2026-10-19): one free local action that takes every worn piece off this pet (same op as "Take off", gid null, per slot); all go to your stock */
     /* unequip-owner-fix (2026-10-19): owner only. Same check as equip/unequip (equipCheck), feed and Release: a wallet is connected, it owns the pet, the pet is not released.
      * The community pet (Bitcoin Wizard, auto-equips) has no owner, so this also hides it there unless it is owner-controlled by the connected wallet. */
     /* address-lookup (2026-10-19): o.viewOnly (an address viewed without its wallet) shows the gear but never offers equip / take off / Unequip all */
     var ownsP = function () { var q = (o.world && o.world.byId && o.world.byId[p.id]) || p; return !o.viewOnly && !!o.owner && q.owner === o.owner && !q.released; };
     var wornSlots = Object.keys(worn), canOffAll = wornSlots.length && !p.dead && ownsP(), asking = box.getAttribute('data-offall') === '1' && canOffAll;
-    if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your bag (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
-      : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your bag.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
+    if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your stock (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
+      : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your stock.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
     h += '<div class="gp-grid-wrap" id="gpWrap"></div><div class="small gp-msg" aria-live="polite"></div>';
     box.innerHTML = h;
     var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
@@ -412,7 +412,7 @@
     var viewMsg = function () { say('👀 View only: connect the XCP Wallet that owns #' + p.id + ' to change its gear.', true); if (o.onBlocked) o.onBlocked(); };
     if (oa) oa.onclick = function () { if (!ownsP()) return notOwner(); box.setAttribute('data-offall', '1'); gearPicker(box, o); };
     if (on) on.onclick = function () { box.removeAttribute('data-offall'); gearPicker(box, o); };
-    if (oy) oy.onclick = function () { if (!ownsP()) return notOwner(); box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your bag';
+    if (oy) oy.onclick = function () { if (!ownsP()) return notOwner(); box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your stock';
       if (o.onEquipMany) o.onEquipMany(ops, m); else ops.forEach(function (op, i) { o.onEquip(op, i === ops.length - 1 ? m : ''); }); };
     var wrap = box.querySelector('.gp-grid-wrap'), msg = box.querySelector('.gp-msg');
     function say(t, bad) { msg.textContent = t; msg.className = 'small gp-msg' + (bad ? ' warn' : ''); }
@@ -528,7 +528,7 @@
    *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
   function starveHtml(w, p, owner, o) {
     var b = starveInfo(w, p); if (!b) return ''; o = o || {};
-    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your bag' : 'the owner\'s bag';
+    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stock' : 'the owner\'s bag';
     var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
       : '<span class="small">Only the owner can feed #' + p.id + '.</span>' + (!owner ? ' <span class="small">Your pet? <button type="button" class="q" data-sconn="1">Connect wallet</button> to feed it.</span>' : ' <span class="small muted">The connected wallet does not own #' + p.id + '.</span>');
     return '<div class="starve" data-starve="' + p.id + '" role="region" aria-label="Starvation warning for #' + p.id + '"><h3 class="sec" data-ico="skull">Starvation warning</h3>' +
@@ -544,7 +544,7 @@
     var st = b.grave ? '<b>on</b>: set at block ' + fmtN(b.graveBlock) + (b.graveTx ? ' (tx ' + esc(String(b.graveTx).slice(0, 8)) + '…)' : '') : '<b>off</b> (default: gear back to the bag)';
     var vo = !!(window.V2View && V2View.viewOnly()); /* address-lookup: view only hides the grave buttons too */
     var btn = !own || vo ? '' : o.feedHref ? ' <a class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '" href="' + esc(o.feedHref) + '">' + (b.grave ? 'Cancel on Play' : '🪦 Leave gear on the grave on Play') + '</a>'
-      : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to the bag)' : '🪦 Leave gear on the grave') + '</button>';
+      : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to your stock)' : '🪦 Leave gear on the grave') + '</button>';
     return '<p class="small sgrave">Grave gear: ' + st + '.' + btn + (own && !vo && !o.feedHref ? ' <span class="muted">One tiny burn (0.00000001 XCPETS + network fee) signed in your wallet.</span>' : '') + '</p>'; }
   /** bindStarve(root, w, p, owner, {feed()}): wires the Feed and Connect buttons inside root. */
   function bindStarve(root, w, p, owner, o) { if (!root) return; o = o || {};
@@ -554,7 +554,7 @@
     root.querySelectorAll('[data-starve="' + p.id + '"] [data-sconn]').forEach(function (b) { b.onclick = function () { var c = document.getElementById('wconnect'); if (c) { try { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } c.click(); } else location.href = 'play.html'; }; }); }
   /** starveChip(w, p): small My Pets card badge. */
   function starveChip(w, p) { var b = starveInfo(w, p); if (!b) return '';
-    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your bag.">🪦 starves in ' + b.short + (b.grave ? ' · grave gear' : '') + '</span>'; }
+    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your stock.">🪦 starves in ' + b.short + (b.grave ? ' · grave gear' : '') + '</span>'; }
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
