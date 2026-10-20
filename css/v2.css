@@ -360,3 +360,8 @@ body #pets .pet.card{padding-bottom:44px}
 #invPanel .cr-it button{min-height:40px}
 #invPanel details>summary{padding-top:10px;padding-bottom:10px}
 @media (max-width:520px){.shop8 .shop-hint{font-size:10px}.shop-counter .sc-empty,.cr-h{font-size:11px}.cr-it small{font-size:11px}.cr-tag{font-size:9px}}
+/* phone QA pass 2026-10-19 (no-tail-motel): guestbook tap targets 40px+ without moving the text, 11px min pixel labels on phones; pickers + VACANCY untouched */
+.gb-main a{display:inline-block;padding:12px 4px;margin:-12px -4px}
+.gb-pg .pk-arr{min-width:40px;min-height:40px}
+#breedPanel{scroll-margin-top:110px}
+@media (max-width:520px){.mt-hint,.gb-h{font-size:11px}}

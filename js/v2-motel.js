@@ -44,8 +44,9 @@
       if (sil) { var g = c.getContext('2d'); g.globalCompositeOperation = 'source-in'; g.fillStyle = sil; g.fillRect(0, 0, 32, 32); } out.push(c); }); } catch (e) { out = []; }
     if (Object.keys(SPR).length > 80) SPR = {}; return (SPR[k] = out); }
   function putPet(x, p, cx, by, sz, t, sil, alpha) { var f = spr(p, sil); if (!f.length) return; var c = f[Math.floor(t / 300) % f.length]; x.save(); if (alpha != null) x.globalAlpha = alpha; x.drawImage(c, Math.round(cx - sz / 2), Math.round(by - sz), sz, sz); x.restore(); }
+  function door(x, dx, col) { px(x, '#1a1010', dx - 1, 79, 24, 41); px(x, col, dx, 80, 22, 40); px(x, '#00000033', dx + 3, 84, 16, 14); px(x, '#00000033', dx + 3, 102, 16, 15); px(x, '#ffd166', dx + 17, 100, 2, 2); } /* ONE door size for office + rooms = the red room door (22x40, owner 8:39 PM CT) */
   function lerp(a, b, k) { return a + (b - a) * Math.max(0, Math.min(1, k)); }
-  var OD = 149, WY = 140, SLA = 204, SLB = 234; /* office door x, walkway feet y, room slots */
+  var OD = 151, WY = 140, SLA = 200, SLB = 238; /* office door x, walkway feet y, room slots */
   /* pose(who, t) -> { x, y, a (alpha), key, talk, gooby } from the guest's own timeline */
   function pose(who, t) { var m = S.walk[who]; if (!m) return null; var slot = who === 'A' ? SLA : SLB, e = reduced() ? 1e9 : t - m.t0;
     if (e < 0) return { hide: 1 };
@@ -87,21 +88,20 @@
     px(x, '#d8e6f0', 86, 118, 13, 22); px(x, '#4fe0ff', 87, 120, 11, 6); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#0b2a4a'; x.fillText('ICE', 87, 125); px(x, '#8aa', 88, 130, 9, 1); px(x, '#c8102e', 94, 132, 2, 2); /* ice machine (broke, per Gooby) */
     /* building */ px(x, '#e8a0b4', 104, 58, 216, 62); px(x, '#c47a92', 104, 58, 216, 4); px(x, '#5a3a4a', 100, 54, 220, 5);
     /* string lights */ for (var sx = 102; sx < W; sx += 3) { var sag = 6 * Math.sin(((sx - 102) % 54) / 54 * Math.PI); px(x, '#222', sx, 57 + sag, 3, 1); if ((sx - 102) % 9 === 0) { var on = rm || (Math.floor(t / 500) + sx / 9) % 4 !== 0; px(x, on ? ['#ffd166', '#ff4fd8', '#4fe0ff', '#7dff6a'][(sx / 9 | 0) % 4] : '#333', sx, 58 + sag, 2, 2); } }
-    /* office: Roman columns, Gooby at the desk window, office door */ px(x, '#f2d7a0', 108, 66, 56, 54); [108, 160].forEach(function (cx) { px(x, '#f5efe0', cx, 64, 5, 56); px(x, '#d8cdb0', cx + 2, 66, 1, 52); });
-    px(x, '#1a2b4a', 115, 78, 25, 20); dog(x, 117, 80, t); px(x, '#7a4f2a', 113, 98, 29, 4);
-    px(x, '#3a2414', OD - 7, 96, 14, 24); px(x, '#ffd166', OD - 5, 98, 10, 8); px(x, '#c47a92', OD + 3, 108, 2, 2); px(x, '#1a1a2a', 113, 104, 29, 12); px(x, '#000', 113, 115, 29, 1); neon(x, 'OFFICE', 128, 113, '#ffb347', rm ? true : (Math.floor((t + 1700) / 350) % 7 !== 0), 5); /* neon OFFICE under Gooby's desk (flicker offset from VACANCY) */
-    /* other rooms: real recent pairs in lit windows, one DO NOT DISTURB, one dark */
+    /* office: Roman columns, Gooby at the desk window, office door */ px(x, '#f2d7a0', 108, 66, 60, 54); [108, 163].forEach(function (cx) { px(x, '#f5efe0', cx, 64, 5, 56); px(x, '#d8cdb0', cx + 2, 66, 1, 52); });
+    px(x, '#1a2b4a', 113, 78, 25, 20); dog(x, 115, 80, t); px(x, '#7a4f2a', 112, 98, 26, 4);
+    door(x, OD - 11, '#3a2414'); px(x, '#ffd166', OD - 8, 84, 16, 10); px(x, '#1a1a2a', 112, 104, 26, 12); px(x, '#000', 112, 115, 26, 1); neon(x, 'OFFICE', 125, 112, '#ffb347', rm ? true : (Math.floor((t + 1700) / 350) % 7 !== 0), 4); /* neon OFFICE under Gooby's desk (flicker offset from VACANCY) */
+    /* other rooms (every door = the red door's size, bottom on the walkway): real recent pairs; 101 lit, 103 dark, 104 silhouettes */
     var O = S.w ? others(S.w) : [];
-    [[166, '101', 'lit'], [244, '103', 'dnd'], [282, '104', 'dark']].forEach(function (r, j) { var rx = r[0], pr = O[j === 2 ? 2 : j], wx = rx + 15;
-      px(x, '#1a1010', rx - 1, 85, 13, 35); px(x, '#2e8a8a', rx, 86, 11, 34); px(x, '#ffd166', rx + 8, 104, 2, 2); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.fillText(r[1], rx - 1, 92);
-      px(x, '#1a1010', wx - 1, 89, 22, 17); px(x, r[2] === 'dark' ? '#14122a' : r[2] === 'dnd' ? '#b8507e' : '#ffb3d9', wx, 90, 20, 15);
-      if (pr && r[2] !== 'dark') { var bob = rm ? 0 : Math.round(Math.sin(t / 400 + j)); putPet(x, pr[0], wx + 6, 105 + (r[2] === 'lit' ? bob : 0), 12, t, r[2] === 'lit' ? null : '#3a1030'); putPet(x, pr[1], wx + 14, 105 - (r[2] === 'lit' ? bob : 0), 12, t, r[2] === 'lit' ? null : '#3a1030'); }
-      if (r[2] === 'dark') { x.fillStyle = '#c9c9ff'; x.font = '4px "Press Start 2P", monospace'; var zz = rm ? 0 : Math.floor(t / 500) % 3; x.fillText('z', wx + 12, 99 - zz); }
-      px(x, '#7a3a3a', wx, 90, 4, 15); px(x, '#7a3a3a', wx + 16, 90, 4, 15); px(x, '#1a1010', wx + 9, 90, 1, 15); /* curtains */
-      if (r[2] === 'dnd') { px(x, '#000', rx + 1, 106, 10, 13); px(x, '#c8102e', rx + 2, 107, 8, 11); px(x, '#fff', rx + 4, 107, 4, 1); x.fillStyle = '#fff'; x.font = '3px "Press Start 2P", monospace'; x.fillText('DO', rx + 3, 111); x.fillText('NOT', rx + 2, 114); x.fillText('DIS', rx + 2, 117); }
+    [[170, '101', 'lit', 0], [242, '103', 'dark', 2], [282, '104', 'sil', 1]].forEach(function (r, j) { var rx = r[0], pr = O[r[3]], wx = rx + 24;
+      door(x, rx, '#2e8a8a'); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.fillText(r[1], rx + 5, 77);
+      px(x, '#1a1010', wx - 1, 85, 14, 17); px(x, r[2] === 'dark' ? '#14122a' : r[2] === 'sil' ? '#b8507e' : '#ffb3d9', wx, 86, 12, 15);
+      if (pr && r[2] !== 'dark') { var bob = rm ? 0 : Math.round(Math.sin(t / 400 + j)); putPet(x, pr[0], wx + 3, 101 + (r[2] === 'lit' ? bob : 0), 8, t, r[2] === 'lit' ? null : '#3a1030'); putPet(x, pr[1], wx + 9, 101 - (r[2] === 'lit' ? bob : 0), 8, t, r[2] === 'lit' ? null : '#3a1030'); }
+      if (r[2] === 'dark') { x.fillStyle = '#c9c9ff'; x.font = '4px "Press Start 2P", monospace'; var zz = rm ? 0 : Math.floor(t / 500) % 3; x.fillText('z', wx + 4, 95 - zz); }
+      px(x, '#7a3a3a', wx, 86, 2, 15); px(x, '#7a3a3a', wx + 10, 86, 2, 15); /* curtains */
       S.rooms[j] = pr ? { room: r[1], a: pr[0].id, b: pr[1].id, mode: r[2] } : null; });
     /* THE room door: plate with both IDs, odds sign, open animation */
-    var dx0 = 208, dy0 = 80, dw = 22, dh = 40; px(x, '#1a1010', dx0 - 2, dy0 - 2, dw + 4, dh + 2);
+    var dx0 = 208, dy0 = 80, dw = 22, dh = 40; px(x, '#1a1010', dx0 - 1, dy0 - 1, dw + 2, dh + 1);
     var k = S.state === 'open' ? (rm ? 1 : Math.min(1, (t - S.open) / 1200)) : 0; px(x, '#3a1020', dx0, dy0, dw, dh); if (k > 0) { px(x, '#ffd1e8', dx0 + 2, dy0 + 2, dw - 4, dh - 2); }
     px(x, '#c8102e', dx0 + Math.round(k * (dw - 4)), dy0, dw - Math.round(k * (dw - 4)), dh); px(x, '#ffd166', dx0 + Math.round(k * (dw - 4)) + 2, dy0 + 20, 2, 2);
     x.font = '4px "Press Start 2P", monospace'; px(x, '#ffd166', dx0 - 6, dy0 - 10, dw + 12, 8); x.fillStyle = '#140f24'; x.textAlign = 'center';
