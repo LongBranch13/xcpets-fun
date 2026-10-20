@@ -252,7 +252,7 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-lb{width:100%;border-collapse:collapse;font-size:13px}.ar-lb th{font-family:'Press Start 2P',monospace;font-size:8px;color:#9fe8ff;text-align:left;padding:4px}.ar-lb td{padding:3px 4px;border-bottom:1px dotted #4b3f7a}.ar-lb tr.ar-mine td{color:#3ddc84}
 @media (max-width:640px){.ar-cols{grid-template-columns:1fr}.ar-vs{grid-template-columns:1fr;text-align:center}.ar-x{justify-self:center}.ar-post select{max-width:100%}}
 
-/* X Circus Kekimus sponsorship billboard + carved back wall (DRAFT 2026-10-19) */
+/* X Circus Kekimus presented-by board (fixed sponsors since 2026-10-19 8:53 PM CT) + carved back wall (DRAFT 2026-10-19) */
 .ar-wallwrap{position:relative;margin:-4px 0 10px}.ar-wall{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000}
 .sp-board{margin-top:6px;padding:8px 10px;background:#0f0b1c;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;text-align:center}.sp-board.sp-open{border-style:dashed;border-color:#9fe8ff}
 .sp-name{font-family:'Press Start 2P',ui-monospace,monospace;font-size:12px;color:#ffd166;line-height:1.6}.sp-open .sp-name{color:#9fe8ff}.sp-how{margin-top:4px;opacity:.9}.sp-card{color:#ffd166}
@@ -348,3 +348,9 @@ body #pets .pet.card{padding-bottom:44px}
 @media (prefers-reduced-motion:reduce){.sc-try.poof::before{animation:none;opacity:0}}
 @media (max-width:520px){.sc-try{grid-template-columns:auto auto auto}.sc-big{grid-column:1/-1}.sc-tp canvas{width:60px;height:60px}}
 @media (max-width:520px){.qw-hint{font-size:12px;padding:4px 7px;max-width:62%}}
+/* phone QA pass 2026-10-19 (battle-arena): bigger tap areas without covering more of the scene, min 10-11px text on phones */
+.ar-scene .ar-ann-sand::after{content:'';position:absolute;inset:-7px -4px}
+#arQuick{min-height:40px}
+#arenaPanel details>summary{padding-top:10px;padding-bottom:10px}
+#arenaPanel{scroll-margin-top:110px}
+@media (max-width:520px){.sp-name{font-size:11px}.ar-scene .ar-ann-sand{font-size:11px}.ar-lb th{font-size:9px;padding:6px 4px}}

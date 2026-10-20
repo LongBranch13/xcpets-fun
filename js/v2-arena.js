@@ -42,7 +42,7 @@
   function render(w) { var box = $('arenaBody'), U = window.V2UI; if (!box || !U || !w) return; var ME = U.ME, tip = (U.S && U.S().tip) || w.tip, d = data(w, tip);
     var my = U.fighters(w, ME), th = U.fighters(w, ME, true), selA = $('arA') && $('arA').value, selB = $('arB') && $('arB').value;
     var o = function (p) { return '<option value="' + p.id + '">' + esc(p.name) + ' #' + p.id + ' · ⚡' + pow(p) + '</option>'; };
-    var SP = window.V2Sponsor, st = SP ? SP.state : null; if (SP && !st && !render._spLoading) { render._spLoading = 1; SP.load(tip, function () { render(U.world()); }); }
+    var SP = window.V2Sponsor, st = SP ? SP.state : null; if (SP) { SP.load(tip); st = SP.state; } /* fixed rotating sponsor, no reads */
     
     var CH = window.V2ArenaScene ? V2ArenaScene.champion(w) : null;
     var h = '<div class="ar-scene"><canvas id="arScene" width="320" height="180" role="img" aria-label="X Circus Kekimus arena: crowd in the stands, a tunnel, and ' + (CH ? 'the champion statue of ' + esc(CH.p.name) + ' #' + CH.p.id + ' (' + CH.streak + '-win streak)' : 'an empty plinth awaiting a champion') + '"></canvas><button type="button" class="q ar-ann ar-ann-sand" id="arVoice" aria-pressed="' + (window.V2Announcer && V2Announcer.voiceOn() ? 'true' : 'false') + '">' + (window.V2Announcer && V2Announcer.voiceOn() ? '🔊' : '🔇') + ' Announcer</button></div>' + (SP ? '<div class="ar-wallwrap">' + SP.billboard(st || SP.compute([], tip)) + '</div>' : '') + '<div class="ar-post"><b class="ar-h">⚔️ Post a challenge</b><label class="small">Your fighter <select id="arA" class="pick">' + (my.map(o).join('') || '<option value="">no eligible pet</option>') + '</select></label>' +
@@ -64,7 +64,7 @@
     var RV = window.V2Rivals ? V2Rivals.rivals(w) : {};
     if (window.V2Picker && $('arHist')) V2Picker.mount($('arHist'), { w: w, me: ME, per: 8, sorts: ['newest', 'score', 'power'], records: function () { return d.done.map(function (f) { var A = w.byId[f.a], B = w.byId[f.b], k = f.a < f.b ? f.a + ':' + f.b : f.b + ':' + f.a, r = RV[k];
         return { key: String(f.id), f: f, pets: [A, B].filter(Boolean), newest: f.acceptBlock * 1e4 + f.id, html: function () { var sl = SP && st ? SP.line(st, f.acceptBlock) : '';
-          return '<b>#' + f.a + ' vs #' + f.b + '</b><span>🏆 ' + esc(String((w.byId[f.winner] || {}).name || '#' + f.winner).slice(0, 10)) + '</span><small>' + (r && r.n >= 2 ? '⚔️ rivals · ' : '') + 'blk ' + fmt(f.acceptBlock) + ' · ▶</small>' + (sl ? '<small class="sp-card">' + esc(sl).slice(0, 40) + '</small>' : ''); } }; }); },
+          return '<b>#' + f.a + ' vs #' + f.b + '</b><span>🏆 ' + esc(String((w.byId[f.winner] || {}).name || '#' + f.winner).slice(0, 10)) + '</span><small>' + (r && r.n >= 2 ? '⚔️ rivals · ' : '') + 'blk ' + fmt(f.acceptBlock) + ' · ▶</small>'; } }; }); },
       onPick: function (r) { if (window.V2ArenaScene) V2ArenaScene.sequence(r.f); else U.playFight(r.f); } });
     var rp = /^#replay-(\d+)$/.exec(location.hash || ''); if (rp && !render._rp && w.fights[rp[1] - 1]) { render._rp = 1; setTimeout(function () { if (window.V2ArenaScene) V2ArenaScene.sequence(w.fights[rp[1] - 1]); }, 600); }
     if ($('arVoice')) $('arVoice').onclick = function () { var on = !V2Announcer.voiceOn(); V2Announcer.setVoice(on); this.textContent = (on ? '🔊' : '🔇') + ' Announcer'; this.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) V2Announcer.speak('Announcer on'); };

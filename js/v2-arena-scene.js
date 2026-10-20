@@ -95,7 +95,7 @@
   var TICK = 220; /* same pace as the old pop-up: 4 ticks per turn (lunge on tick 1) */
   function hpBar(x, cx, y, v, max, col) { px(x, '#000', cx - 17, y - 1, 34, 5); px(x, '#2a3a2e', cx - 16, y, 32, 3); px(x, col, cx - 16, y, Math.max(0, Math.round(32 * v / max)), 3); }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
-  function fightFrame(now) { var x = S.x, f = S.f, t = now - S.t0, k = Math.floor(t / TICK), ti = Math.floor(k / 4), ph = k % 4, n = f.turns.length, done = ti >= n;
+  function fightFrame(now) { var x = S.x, f = S.f, t = Math.max(0, now - S.t0) /* rAF time can be a hair before t0: no turn -1 */, k = Math.floor(t / TICK), ti = Math.floor(k / 4), ph = k % 4, n = f.turns.length, done = ti >= n;
     var L = S.actors[0], R = S.actors[1], la = CX - 40, ra = CX + 40, y = 166;
     if (!done) { var cur = f.turns[ti]; if (ph >= 1 && S.fxT !== ti) { S.fxT = ti; S.hp = { a: cur.hpA, b: cur.hpB }; var tgt = cur.by === 'a' ? ra : la;
         S.fx.push({ s: cur.dodge ? 'MISS' : '-' + cur.dmg + (cur.crit ? '!' : ''), c: cur.dodge ? '#9fe8ff' : cur.crit ? '#ffd166' : '#ff5d5d', x: tgt, y: y - 30, t: now });  if (!cur.dodge) { var big = cur.crit || cur.dmg >= topDmg(f); if (window.V2Sfx) V2Sfx.punch(big); if (big && !reduced()) { S.hitT = now; shake(); } } }
