@@ -2,7 +2,7 @@
  * burns or the replay. Everything is rolled from the fight's own seed (accept block hash + tx), so every replay shows the same thing.
  * - Crowd mood meter (😴..🔥): up on big hits / near-K.O. / upsets, down on stalls (misses); the crowd sits, cheers, or does the wave + confetti.
  * - Sand events, ~1 in 8 fights: sandstorm, lion gate, Civic drive-by honk (HONDACIVIC tribute). Gooby cameo: its own 1-in-8 roll, peeks
- *   over the wall holding a No-Tail Motel key. <=1.5 s each; with reduced motion they show as one still frame.
+ *   over the wall holding a Gooby's No-Tail Motel key. <=1.5 s each; with reduced motion they show as one still frame.
  * - Streaks/upsets/belts for the announcer: upset = the lower-ranked pet (Pet Score rank, else lower power) wins; display-only title belt
  *   strapped on at 3 straight wins, back to the case on a loss. */
 (function () {

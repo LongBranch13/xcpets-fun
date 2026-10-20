@@ -1,4 +1,4 @@
-/* XCPETS No-Tail Motel (UI-only mockup, owner 7:12-7:38 PM CT; branch no-tail-motel, NOT LIVE). Replaces the Breeding section's look; breeding
+/* XCPETS Gooby's No-Tail Motel (UI-only mockup, owner 7:12-7:38 PM CT; branch no-tail-motel, NOT LIVE). Replaces the Breeding section's look; breeding
  * rules and burns are UNCHANGED: "Check in" = the existing pet:breed:A:B burn (690); a partner on another wallet "checks in" with the existing
  * mirrored accept (pet:breed:B:A, 690, within 144 blocks). The door shows both room numbers (= pet IDs), opens on the scene when both pets have
  * checked in (the child exists), and the egg appears at the door. Gooby (the "Gooby pls" dog) runs the desk with PG-13 one-liners.
@@ -78,9 +78,9 @@
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* ground: grass, sidewalk path to the office, walkway */ px(x, '#14301f', 0, 140, W, H - 140); for (var g = 0; g < 60; g++) px(x, '#1f4a2c', (g * 37) % W, 146 + (g * 13) % (H - 148), 1, 2);
     px(x, '#8d8a99', OD - 9, 140, 18, H - 140); for (var sy = 146; sy < H; sy += 8) px(x, '#6f6c7d', OD - 9, sy, 18, 1); px(x, '#a9a6b6', 100, 120, 220, 20); px(x, '#7f7c8c', 100, 139, 220, 1);
-    /* No-Tail Motel sign + VACANCY (flicker kept) */ px(x, '#444', 30, 30, 3, 110); px(x, '#1a1a2a', 4, 8, 120, 26); px(x, '#000', 4, 8, 120, 2);
+    /* Gooby's No-Tail Motel sign (3 lines, owner rename 2026-10-19 9:36 PM CT) + VACANCY (flicker kept) */ px(x, '#444', 30, 30, 3, 110); px(x, '#1a1a2a', 4, 2, 120, 35); px(x, '#000', 4, 2, 120, 2); px(x, '#000', 4, 36, 120, 1);
     var fl = rm ? 1 : (Math.floor(t / 90) % 23 !== 0); var tl = rm ? 1 : (Math.floor(t / 130) % 17 > 1);
-    neon(x, 'NO-' + (tl ? 'TAIL' : 'T IL'), 64, 20, '#ff4fd8', fl, 8); neon(x, 'MOTEL', 64, 30, '#4fe0ff', true, 8);
+    neon(x, 'GOOBY\u2019S', 64, 13, '#ffd166', true, 8); neon(x, 'NO-' + (tl ? 'TAIL' : 'T IL'), 64, 24, '#ff4fd8', fl, 8); neon(x, 'MOTEL', 64, 34, '#4fe0ff', true, 8);
     px(x, '#1a1a2a', 34, 40, 62, 12); neon(x, 'VACANCY', 65, 49, '#7dff6a', rm ? true : (Math.floor(t / 400) % 5 !== 0), 6);
     px(x, '#3ddc84', 6, 4, 4, 4); px(x, '#3ddc84', 118, 4, 4, 4); /* tiny laurels */
     /* lamp post */ px(x, '#333', 60, 92, 2, 48); px(x, '#333', 57, 140, 8, 2); px(x, '#555', 56, 88, 10, 4); x.save(); x.globalAlpha = rm ? .16 : .13 + .04 * Math.sin(t / 300); x.fillStyle = '#ffd166'; x.beginPath(); x.moveTo(58, 92); x.lineTo(64, 92); x.lineTo(76, 140); x.lineTo(46, 140); x.fill(); x.restore(); px(x, '#fff2b0', 58, 92, 6, 2);
@@ -130,7 +130,7 @@
     return { A: A, B: B, kid: kid, st: st }; }
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.w = w; S.A = s.A; S.B = s.B; S.kid = s.kid; var now = performance.now(); ['A', 'B'].forEach(function (k) { var p = s[k]; if (!p) { delete S.walk[k]; return; } if (!S.walk[k] || S.walk[k].id !== p.id) S.walk[k] = { id: p.id, t0: k === 'B' && S.walk.A && S.walk.A.id === (s.A && s.A.id) ? Math.max(now, S.walk.A.t0 + 6200) : now }; }); if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') { S.open = performance.now(); if (S.c && window.V2Sfx) V2Sfx.creak(); } }
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now());
     book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var L = V.breedPicker(w, ME, tip, a), okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
     var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
