@@ -129,9 +129,9 @@
       st = kid && S.fresh === pair ? 'open' : req ? 'half' : inc ? 'invite' : 'both'; }
     else if (A || B) st = 'one';
     return { A: A, B: B, kid: kid, st: st }; }
-  /* breed-picker-fix: one chip per pet = #ID name, owner badge (YOURS / OTHER PLAYER bc1q…j6n), species, rarity pill (site .pill.tier colors), ⭐ Pet Score */
+  /* breed-picker-fix: one chip per pet = #ID name, owner badge (My Pets / Other Pets bc1q…j6n), species, rarity pill (site .pill.tier colors), ⭐ Pet Score */
   function shortA(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 4) + '\u2026' + a.slice(-3) : a; }
-  function ownerBadge(p, ME) { return p.owner && p.owner === ME ? '<em class="bk-own me">YOURS</em>' : '<em class="bk-own" title="' + esc(p.owner || '') + '">OTHER PLAYER<br>' + esc(shortA(p.owner)) + '</em>'; }
+  function ownerBadge(p, ME) { return p.owner && p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner || '') + '">Other Pets<br>' + esc(shortA(p.owner)) + '</em>'; }
   function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
     return function (r) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
@@ -141,7 +141,7 @@
     bs.textContent = '.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
       '.bk-sp{font-size:13px;color:#fff;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bk-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;align-items:center}.bk-row .pill.tier{font-size:11px;white-space:nowrap}' +
       '.bk-sc{font-size:12px;color:#ffd166;white-space:nowrap}.bk-own{font-style:normal;font-weight:700;font-size:11px;letter-spacing:.5px;line-height:1.25;padding:2px 4px;border:1px solid #000;background:#4b3f7a;color:#fff;max-width:100%;text-align:center;white-space:nowrap}.bk-own.me{background:#4fd18b;color:#0d1a12}' +
-      '.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
+      '.pk-keys .bk-none{grid-column:1/-1}.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
       '@media (max-width:520px){.pk-breed .pk-keys{grid-template-columns:repeat(2,minmax(0,1fr))}.pk-breed .pk-key .bk-nm{font-size:15px}.bk-sp{font-size:14px}.bk-row .pill.tier{font-size:12px}.bk-sc{font-size:13px}}';
     (document.head || document.documentElement).appendChild(bs); }
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
@@ -162,7 +162,11 @@
     var side = S.pickSide || step; desk.querySelectorAll('[data-side]').forEach(function (bt) { bt.onclick = function () { S.pickSide = bt.dataset.side; S.fresh = null; render(U.world()); }; });
     var bell = document.getElementById('bGo'); if (bell) { bell.textContent = s.st === 'invite' ? 'Accept check-in · 690' : 'Check in · 690'; bell.disabled = !(s.A && s.B) || s.st === 'open'; }
     if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
-      V2Picker.mount(document.getElementById('motelPick'), { cls: 'pk-breed', sorts: ['score', 'rarity', 'power', 'newest'], dir: true, w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: breedChip(w, ME) }; }); },
+      /* breed-empty-fix (2026-10-19 ~11 PM CT): the empty line used to fire only when the UNFILTERED list was empty; a picker filter (My Pets chip in the
+     * partner picker, search, species, rarity) that left nothing fell through to the generic 'No matches' box. Now the filtered-empty case shows the same line. */
+      V2Picker.mount(document.getElementById('motelPick'), { cls: 'pk-breed', noWho: side === 'A', labels: { mine: 'My Pets', others: 'Other Pets', mineFirst: 'My Pets first' },
+        empty: function (st) { var why = st.who === 'mine' && !list.some(function (x) { return x.p.owner === ME; }) ? 'None of my pets can breed right now' + esc(mainWhy()) : st.who === 'others' && !list.some(function (x) { return x.p.owner !== ME; }) ? 'No other pets can breed right now' : 'No breedable pets match these filters';
+          return '<p class="bk-none">' + why + '</p>'; }, sorts: ['score', 'rarity', 'power', 'newest'], dir: true, w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: breedChip(w, ME) }; }); },
         onPick: function (r) { S.fresh = null; document.getElementById(side === 'A' ? 'bA' : 'bB').value = r.key; if (side === 'A') document.getElementById('bB').value = document.getElementById('bB').value === r.key ? '' : document.getElementById('bB').value;
           S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = performance.now(); U.render(); } }); } }
   /* after a check-in burn the existing code clears bA/bB and plays playBreed; we keep the pair so the door can open in place when the egg lands */
