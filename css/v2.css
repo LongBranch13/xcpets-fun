@@ -241,7 +241,7 @@ body #pets .pet.card{padding-bottom:44px}
 .aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
 .aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
 
-/* battle-arena (DRAFT 2026-10-19): Circus Maximus, 8-bit */
+/* battle-arena (DRAFT 2026-10-19): X Circus Kekimus, 8-bit */
 .arena8{background:repeating-linear-gradient(0deg,#1b1530 0 8px,#1e1836 8px 16px);border:3px solid #ffd166;box-shadow:4px 4px 0 #000}
 .arena8 .ar-h{font-family:'Press Start 2P',ui-monospace,monospace;font-size:11px;color:#ffd166;margin:12px 0 6px;display:block}
 .ar-post{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:2px dashed #ff7a1a;background:#140f24}.ar-post .small.muted{flex-basis:100%}
@@ -252,13 +252,13 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-lb{width:100%;border-collapse:collapse;font-size:13px}.ar-lb th{font-family:'Press Start 2P',monospace;font-size:8px;color:#9fe8ff;text-align:left;padding:4px}.ar-lb td{padding:3px 4px;border-bottom:1px dotted #4b3f7a}.ar-lb tr.ar-mine td{color:#3ddc84}
 @media (max-width:640px){.ar-cols{grid-template-columns:1fr}.ar-vs{grid-template-columns:1fr;text-align:center}.ar-x{justify-self:center}.ar-post select{max-width:100%}}
 
-/* Circus Maximus sponsorship billboard + carved back wall (DRAFT 2026-10-19) */
+/* X Circus Kekimus sponsorship billboard + carved back wall (DRAFT 2026-10-19) */
 .ar-wallwrap{position:relative;margin:-4px 0 10px}.ar-wall{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000}
 .sp-board{margin-top:6px;padding:8px 10px;background:#0f0b1c;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;text-align:center}.sp-board.sp-open{border-style:dashed;border-color:#9fe8ff}
 .sp-name{font-family:'Press Start 2P',ui-monospace,monospace;font-size:12px;color:#ffd166;line-height:1.6}.sp-open .sp-name{color:#9fe8ff}.sp-how{margin-top:4px;opacity:.9}.sp-card{color:#ffd166}
 @media (max-width:520px){.sp-name{font-size:10px}}
 
-/* Circus Maximus entrance scene (DRAFT 2026-10-19) */
+/* X Circus Kekimus entrance scene (DRAFT 2026-10-19) */
 .ar-scene{margin:0 0 8px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#120e22;line-height:0}
 .ar-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
 .ar-help summary{cursor:pointer;color:#9fe8ff}

@@ -1,4 +1,4 @@
-/* XCPETS Circus Maximus sponsorship (owner approved 2026-10-19 6:19 PM CT; DRAFT on battle-arena, NOT LIVE).
+/* XCPETS X Circus Kekimus sponsorship (owner approved 2026-10-19 6:19 PM CT; DRAFT on battle-arena, NOT LIVE).
  * Anyone can sponsor (name) the arena by BURNING real XCP: a Counterparty tagged destroy of XCP (asset XCP, tag pet:sponsor:NAME;
  * owner switched from send-to-burn-address 2026-10-19 6:42 PM CT because destroys are listed by GET /v2/assets/XCP/destructions on api.xcp.fun).
  * The back wall art carries the carved text "All XCP becomes spectacle" (no address). Opening bid 0.5 XCP; each next bid >= current x 1.2 rounded UP to 0.1 XCP
@@ -44,7 +44,7 @@
   function line(st, b) { if (b != null) { var h = at(st, b); return h ? 'Sponsored by ' + h.name : ''; }
     return lineNow(st); }
   function lineNow(st) { return st && st.holder ? 'Sponsored by ' + st.holder.name : ''; }
-  function postLine(st) { return '🏟️ Circus Maximus' + (st && st.holder ? ' · Sponsored by ' + st.holder.name : ''); }
+  function postLine(st) { return '🏟️ X Circus Kekimus' + (st && st.holder ? ' · Sponsored by ' + st.holder.name : ''); }
   /** billboard(st) -> HTML for the top of the arena */
   function billboard(st) { var h = st && st.holder, nm = (st ? st.nextMin : OPEN_BID / SAT).toFixed(1);
     return '<div class="sp-board' + (h ? '' : ' sp-open') + '" role="note"><div class="sp-name">' + (h ? 'Sponsored by <b>' + esc(h.name) + '</b>' : 'Sponsor slot open') + '</div>' +

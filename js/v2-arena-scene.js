@@ -1,9 +1,9 @@
-/* XCPETS Circus Maximus entrance spectacle (DRAFT 2026-10-19, owner 7:09/7:10 PM CT; battle-arena branch, NOT LIVE). Pure UI/animation, no rule change.
+/* XCPETS X Circus Kekimus entrance spectacle (DRAFT 2026-10-19, owner 7:09/7:10 PM CT; battle-arena branch, NOT LIVE). Pure UI/animation, no rule change.
  * 8-bit scene: back wall carved "All XCP becomes spectacle", stands with a crowd, sand track, an arched vomitorium tunnel, and in the centre the
  * CHAMPION STATUE: the living pet with the longest current unbeaten win streak (off-chain, from replayed fights; ties -> the pet that reached
  * that streak first; dead/released pets lose it; no wins yet -> empty plinth "Awaiting a champion").
- * sequence(f): both pets march out of the tunnel, then the existing fight pop-up plays (V2UI.playFight), then the winner runs a victory lap.
- * prefers-reduced-motion: static scene, the fight plays directly, no march or lap. */
+ * sequence(f): both pets march out of the tunnel, the fight (same rounds/hits/HP data) plays on the sand, then the winner runs a victory lap.
+ * prefers-reduced-motion: static scene; a fight shows its final result in the scene (no march, fight motion or lap). No pop-up. */
 (function () {
   'use strict';
   var W = 320, H = 180, CX = 160, CY = 128, RX = 132, RY = 36, TUN = { x: 22, y: 74 };
@@ -51,9 +51,11 @@
   function frame(now) { if (!S.x) return; var t = now - S.t0; bg(now);
     if (S.mode === 'walk') { var k = Math.min(1, t / 2600); S.actors.forEach(function (a, i) { var tx = i ? CX + 40 : CX - 40, ty = 166; var e = k < .4 ? k / .4 : 1; a.x = TUN.x + (tx - TUN.x) * (k < .4 ? 0.25 * e : 0.25 + 0.75 * (k - .4) / .6) - (i ? 10 * (1 - k) : 0); a.y = 80 + (ty - 80) * Math.min(1, k * 1.6); a.flip = i === 1 && k > .95; actor(a, now); });
       caption('#' + S.actors[0].p.id + '  VS  #' + S.actors[1].p.id); if (k >= 1 && S.onWalk) { var cb = S.onWalk; S.onWalk = null; setTimeout(cb, 250); } }
+    else if (S.mode === 'fight') fightFrame(now);
+    else if (S.mode === 'result') resultFrame();
     else if (S.mode === 'lap') { var a = S.actors[0], ang = Math.PI / 2 + Math.min(1, t / 4200) * Math.PI * 2; a.x = CX + Math.cos(ang) * (RX - 6); a.y = CY + Math.sin(ang) * RY + 10; a.flip = Math.sin(ang) > 0; actor(a, now);
       caption('VICTORY LAP · #' + a.p.id); if (t > 4200) { S.mode = 'win'; S.t0 = now; } }
-    else if (S.mode === 'win') { a = S.actors[0]; a.x = CX; a.y = 168; actor(a, now); caption('WINNER #' + a.p.id); if (t > 2500) { S.mode = 'idle'; S.actors = []; } }
+    else if (S.mode === 'win') { a = S.actors[0]; a.x = CX; a.y = 168; actor(a, now); caption('WINNER #' + a.p.id); if (t > 2500) { S.mode = 'idle'; S.actors = []; nextQ(); } }
     else caption(S.label);
     if (!reduced() && (S.mode !== 'idle' || isVisible())) S.raf = requestAnimationFrame(frame); else { S.raf = 0; } }
   function isVisible() { if (!S.c || !S.c.getBoundingClientRect) return false; var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 800); }
@@ -62,18 +64,45 @@
   function mount(c, w) { if (!c) return; var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
     S.c = c; S.x = c.getContext('2d'); S.w = w; if (S.key !== key) { S.key = key; S.champ = champ; S.statue = champ ? toCanvas((frames(champ.p, w) || [])[0], true) : null; }
     if (!S.wall && window.V2Sponsor && V2Sponsor.wall) { S.wall = document.createElement('canvas'); S.wall.width = 168; S.wall.height = 24; V2Sponsor.wall(S.wall, V2Sponsor.WALL_TEXT); }
-    S.label = 'CIRCUS MAXIMUS'; if (reduced()) frame(performance.now()); else { if (!mount.io && window.IntersectionObserver) { mount.io = new IntersectionObserver(function () { kick(); }); } if (mount.io && mount.io._c !== c) { mount.io.observe(c); mount.io._c = c; } kick(); } }
-  /** sequence(f): march-out -> existing fight pop-up -> victory lap. Reduced motion: fight only. */
-  function sequence(f) { var U = window.V2UI, w = U && U.world(); if (!f || !w) return; var A = w.byId[f.a], B = w.byId[f.b];
-    if (reduced() || !S.x || !A || !B) return U.playFight(f);
-    if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center' });
-    S.actors = [{ p: A, img: (frames(A, w) || []).map(function (i) { return toCanvas(i); }) }, { p: B, img: (frames(B, w) || []).map(function (i) { return toCanvas(i); }) }];
+    S.label = 'X CIRCUS KEKIMUS'; if (reduced()) frame(performance.now()); else { if (!mount.io && window.IntersectionObserver) { mount.io = new IntersectionObserver(function () { kick(); }); } if (mount.io && mount.io._c !== c) { mount.io.observe(c); mount.io._c = c; } kick(); } }
+  /** sequence(f): march-out -> the fight itself animated on the sand (same f.turns: rounds, hits, dodges, crits, HP) -> victory lap. No pop-up.
+   * Reduced motion: a static result in the scene (both pets, final HP bars, winner, spoils). Busy scene: the next fight waits its turn. */
+  var Q = [];
+  function mk(p, w, be) { var mp = Object.assign({}, p, { blackEye: !!be }); return (frames(mp, w) || []).map(function (i) { return toCanvas(i); }); }
+  function sequence(f) { var U = window.V2UI, w = U && U.world(); if (!f || !f.turns || !w) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!A || !B || !S.x) return;
+    if (S.mode !== 'idle' && S.mode !== 'result') { Q.push(f); return; }
+    if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
+    S.f = f; S.hp = { a: f.maxA, b: f.maxB }; S.fx = [];
+    S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true), side: 'a' }, { p: B, img: mk(B, w), lose: mk(B, w, true), side: 'b' }];
+    if (reduced()) { S.mode = 'result'; S.hp = { a: f.turns.length ? f.turns[f.turns.length - 1].hpA : f.maxA, b: f.turns.length ? f.turns[f.turns.length - 1].hpB : f.maxB }; S.t0 = performance.now(); frame(S.t0); return; }
     S.mode = 'walk'; S.t0 = performance.now(); kick();
-    S.onWalk = function () { U.playFight(f); var started = Date.now(), iv = setInterval(function () { var box = document.getElementById('animBox'), open = box && box.classList.contains('on');
-      if ((!open && Date.now() - started > 800) || Date.now() - started > 120000) { clearInterval(iv); var Wn = w.byId[f.winner]; S.actors = [{ p: Wn, img: (frames(Wn, w) || []).map(function (i) { return toCanvas(i); }) }]; S.mode = 'lap'; S.t0 = performance.now(); if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center' }); kick(); } }, 250); }; }
+    S.onWalk = function () { S.mode = 'fight'; S.t0 = performance.now(); kick(); }; }
+  function nextQ() { var f = Q.shift(); if (f) setTimeout(function () { sequence(f); }, 400); }
+  var TICK = 220; /* same pace as the old pop-up: 4 ticks per turn (lunge on tick 1) */
+  function hpBar(x, cx, y, v, max, col) { px(x, '#000', cx - 17, y - 1, 34, 5); px(x, '#2a3a2e', cx - 16, y, 32, 3); px(x, col, cx - 16, y, Math.max(0, Math.round(32 * v / max)), 3); }
+  function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
+  function fightFrame(now) { var x = S.x, f = S.f, t = now - S.t0, k = Math.floor(t / TICK), ti = Math.floor(k / 4), ph = k % 4, n = f.turns.length, done = ti >= n;
+    var L = S.actors[0], R = S.actors[1], la = CX - 40, ra = CX + 40, y = 166;
+    if (!done) { var cur = f.turns[ti]; if (ph >= 1 && S.fxT !== ti) { S.fxT = ti; S.hp = { a: cur.hpA, b: cur.hpB }; var tgt = cur.by === 'a' ? ra : la;
+        S.fx.push({ s: cur.dodge ? 'MISS' : '-' + cur.dmg + (cur.crit ? '!' : ''), c: cur.dodge ? '#9fe8ff' : cur.crit ? '#ffd166' : '#ff5d5d', x: tgt, y: y - 30, t: now }); }
+      var lun = ph === 1 ? 14 : 0; L.x = la + (cur.by === 'a' ? lun : 0); R.x = ra - (cur.by === 'b' ? lun : 0); }
+    else { L.x = la; R.x = ra; }
+    L.y = R.y = y; L.flip = false; R.flip = true; var loserA = done && f.loser === L.p.id, loserB = done && f.loser === R.p.id;
+    actor(loserA ? { x: L.x, y: L.y, img: L.lose, flip: false } : L, now); actor(loserB ? { x: R.x, y: R.y, img: R.lose, flip: true } : R, now);
+    hpBar(x, la, y - 34, S.hp.a, f.maxA, '#3ddc84'); hpBar(x, ra, y - 34, S.hp.b, f.maxB, '#3ddc84');
+    x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center';
+    S.fx = S.fx.filter(function (e) { var age = now - e.t; if (age > 900) return false; x.fillStyle = '#000'; x.fillText(e.s, e.x + 1, e.y - age / 40 + 1); x.fillStyle = e.c; x.fillText(e.s, e.x, e.y - age / 40); return true; });
+    x.textAlign = 'left';
+    if (!done) caption('ROUND ' + (ti + 1) + '/' + n + ' · #' + (f.turns[ti].by === 'a' ? f.a : f.b) + ' ' + String(f.turns[ti].weapon || '').slice(0, 12).toUpperCase());
+    else { caption('WINNER #' + f.winner + (f.spoils ? ' +' + String(f.spoils.label || f.spoils).slice(0, 14).toUpperCase() : '')); if (t > (n * 4 + 8) * TICK) { var Wn = f.winner === L.p.id ? L : R; S.actors = [{ p: Wn.p, img: Wn.img }]; S.mode = 'lap'; S.t0 = now; } } }
+  function resultFrame() { var f = S.f, L = S.actors[0], R = S.actors[1], y = 166; L.x = CX - 40; R.x = CX + 40; L.y = R.y = y;
+    actor(f.loser === L.p.id ? { x: L.x, y: y, img: L.lose, flip: false } : L, 0); actor(f.loser === R.p.id ? { x: R.x, y: y, img: R.lose, flip: true } : Object.assign(R, { flip: true }), 0);
+    hpBar(S.x, L.x, y - 34, S.hp.a, f.maxA, '#3ddc84'); hpBar(S.x, R.x, y - 34, S.hp.b, f.maxB, '#3ddc84');
+    caption('WINNER #' + f.winner + ' · ' + f.turns.length + ' ROUNDS' + (f.spoils ? ' · +' + String(f.spoils.label || f.spoils).slice(0, 12).toUpperCase() : '')); }
   /* test hooks for previews: force a phase at time t (ms) */
   function _pose(mode, f, t) { var w = S.w, A = w.byId[f.a], B = w.byId[f.b], Wn = w.byId[f.winner]; cancelAnimationFrame(S.raf); S.raf = 0;
     S.actors = mode === 'walk' ? [{ p: A, img: frames(A, w).map(function (i) { return toCanvas(i); }) }, { p: B, img: frames(B, w).map(function (i) { return toCanvas(i); }) }] : mode === 'idle' ? [] : [{ p: Wn, img: frames(Wn, w).map(function (i) { return toCanvas(i); }) }];
+    if (mode === 'fight' || mode === 'result') { S.f = f; S.fx = []; S.fxT = -1; S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true) }, { p: B, img: mk(B, w), lose: mk(B, w, true) }]; var kk = Math.floor(t / TICK), ti2 = Math.min(f.turns.length, Math.floor(kk / 4)) - 1; S.hp = ti2 >= 0 ? { a: f.turns[ti2].hpA, b: f.turns[ti2].hpB } : { a: f.maxA, b: f.maxB }; }
     S.mode = mode; var now = performance.now(); S.t0 = now - t; S.onWalk = null; var keep = window.__arenaReducedMotion; window.__arenaReducedMotion = true; frame(now); window.__arenaReducedMotion = keep; }
   window.V2ArenaScene = { mount: mount, sequence: sequence, champion: champion, _pose: _pose, _state: function () { return S; } };
 })();
