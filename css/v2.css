@@ -240,3 +240,18 @@ body #pets .pet.card{padding-bottom:44px}
 @media (max-width:600px){.tb-bal{min-width:0;max-width:100%}#me{word-break:break-all;overflow-wrap:anywhere}a.rulesLink{overflow-wrap:anywhere}}
 .aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
 .aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
+
+/* Captain Dan's Pet Shop mockup (2026-10-19): shop floor + racks */
+.shop8 .shop-scene{border:3px solid #000;box-shadow:4px 4px 0 #000;background:#2a1d14;margin:6px 0 8px;line-height:0}
+.shop8 .shop-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;cursor:pointer}
+.shop8 .shop-hint{line-height:1.4;padding:6px 8px;background:#140f0a;color:#ffd166;font-family:'Press Start 2P',monospace;font-size:9px}
+.shop8 #inv{background:repeating-linear-gradient(180deg,#3a2a1e 0 46px,#7a4f2a 46px 50px,#5a3a1e 50px 52px);padding:8px;border:3px solid #000}
+.shop-fold summary{cursor:pointer;color:#9fe8ff}
+@media (max-width:520px){.shop8 .shop-hint{font-size:8px}}
+
+.shop-counter{border:3px solid #000;background:#3a2716;padding:8px;margin:0 0 8px;box-shadow:4px 4px 0 #000;font-size:13px}
+.shop-counter .sc-empty{font-family:'Press Start 2P',monospace;font-size:10px;color:#ffd166;padding:4px 0}
+.sc-item{display:flex;gap:8px;align-items:center}.sc-ic canvas{width:40px;height:40px;image-rendering:pixelated;background:#2a1d14;border:2px solid #7a4f2a}
+.sc-tag{font-size:11px;background:#1b1530;padding:1px 6px;border:1px solid #4b3f7a}.sc-eq{font-family:'Press Start 2P',monospace;font-size:8px;background:#ffd166;color:#140f24;padding:2px 4px}
+.sc-pets{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.sc-pet{font-size:12px;padding:3px 7px;border:2px solid #7a4f2a;background:#2a1d14;color:#ffd166;cursor:pointer}.sc-pet.on{background:#ffd166;color:#140f24}
+.sc-delta b.up{color:#3ddc84}.sc-delta b.dn{color:#ff5d5d}.sc-act,.sc-roll{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}.sc-why{color:#ff9d9d;font-size:12px;margin-top:4px}.sc-more{font-size:11px;color:#9fe8ff;align-self:center}
