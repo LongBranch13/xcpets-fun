@@ -405,6 +405,9 @@
   WIZ_BATCH.forEach(function (x) {
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: x[6] === 'neck', map: x[8], origin: 'wizard', exclusive: x[4], species: x[4] ? 'wizard' : undefined, kind: x[5], sig: x[4] };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'wizard', exclusive: x[4], legendary: x[4], kind: x[5], sig: x[4], overlay: true, since: 'wiz-cold' }); });
+  /* LORDKEK Rare Pepe card (branch lord-kek): RENDER-ONLY map for Kek hybrids holding the card (player Keks draw it in KekSprite). NOT in ITEMS,
+   * so it is never in a roll pool; the rules create it only through the gated pet:kekcard claim / 1-in-69 drop (V2Rules ACTIVATE_KEK_CARD_BLOCK). */
+  DEFS['kek-card'] = { slot: 'hand', tier: 3, label: 'LORDKEK Rare Pepe card', at: 'handL', map: ['wwwww', 'wgbgw', 'wMMMw', 'wiiiw', 'wgggw', 'wnnnw', 'wwwww'], origin: 'kek', exclusive: true, species: 'kek', kind: 'held', sig: true };
   /* BITCOIN STAFF (owner, Oct 20 2026): Wizard-only ★ weapon, the meme's long brown staff tilted up-right with a big orange ₿ coin. Worn in its own
    * 'weapon' slot (right hand) so it pairs with the "Join us" sign (Grip, left hand); rolls inside the Grip pool (rollSlot 'hand', weight 5 like other ★).
    * item.since 'wiz-staff' = OFF until V2Rules.ACTIVATE_WIZ_STAFF_BLOCK is set (null now). Appended at the END of ITEMS. No grants. */
