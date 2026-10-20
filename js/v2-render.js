@@ -287,6 +287,7 @@
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    if (art && art.species === 'kek' && window.KekSprite) return kekPetFrames(art, stage, itemIds); /* player Lord Kek (gated, after his Cold Storage) */
     if (art && art.species === 'wizard' && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
@@ -511,6 +512,8 @@
   /** Coming-soon rule (owner, Oct 20 2026; replaces the show-nothing rule): during a communityGap the community spots STAY visible with an 8-bit
    * mystery egg + 'Community pet #N coming soon'. N = COMMUNITY_NEXT_NO (#1 Nakamoto, #2 Bitcoin Wizard, so the next is #3). Feed/gear stay disabled. Display only. */
   var COMMUNITY_NEXT_NO = 3, soonCache = null;
+  /** setNextNo(n): after Lord Kek's Cold Storage (gated) the placeholder reads #4. Display only. */
+  function setNextNo(n) { COMMUNITY_NEXT_NO = n; if (window.V2Render) window.V2Render.COMMUNITY_NEXT_NO = n; }
   function comingSoonText() { return 'Community pet #' + COMMUNITY_NEXT_NO + ' coming soon'; }
   function comingSoonFrames() { if (soonCache) return soonCache;
     var EGG = ['..........XXXXXXXXXXXX..........', '........XXooooooooooooXX........', '.......XooooooooooooooooX.......', '......XooooooooooooooooooX......', '.....XooooooooooooooooooooX.....', '....XooooooooooooooooooooooX....', '....XooooooooooooooooooooooX....', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '....XooooooooooooooooooooooX....', '.....XooooooooooooooooooooX.....', '......XXooooooooooooooooXX......', '........XXXXXXXXXXXXXXXX........'];
@@ -530,7 +533,16 @@
   /** showEl(el, on): hide/show an element completely (display:none beats any panel/grid display rule). */
   function showEl(el, on) { if (el) el.style.display = on ? '' : 'none'; }
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
-  function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
+  /* LORD KEK (community pet #3, gated by V2Rules ACTIVATE_KEK_BLOCK, off by default): c.current === 'kek' only once the gate is reached.
+   * He wears community rolls made from the gate on (the Wizard's old rolls stay in gearLog, unworn); the Nemes of Kek ★ shows while Headwear is empty. */
+  function kekOn(w) { return !!(w && w.community && w.community.current === 'kek' && window.KekSprite); }
+  function kekGear(w) { var V = window.V2Rules, gate = V.kekActivation ? V.kekActivation() : null, g = (w.community && w.community.gear) || {}, o = {};
+    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) { var c = itemCols(x.item).slice(); o[sl] = { label: x.label, item: x.item, cols: c }; } });
+    if (!o.head) o.head = KekSprite.NEMES; return o; }
+  function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); if (!G.head) G.head = KekSprite.NEMES; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
+  /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
+  var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
+  function communityFrames(w) { var c = w && w.community; if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
     return nakaFrames(w); }
   function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
@@ -540,7 +552,8 @@
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
   /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
-  function communityWearing(w) { var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
+  function communityWearing(w) { if (kekOn(w)) { var kg = kekGear(w), kt = Object.keys(kg).map(function (sl) { return kg[sl].label + (kg[sl].signature ? ' ★ (signature)' : ''); }).join(' · '); return 'Wearing: ' + kt; }
+    var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
     if (c && c.returned && !g.head && window.WizardSprite) t = 'Headwear: Wizard Hat ★ (signature)' + (t ? ' · ' + t : ''); /* synthetic signature piece, display only */
     return 'Wearing: ' + (t || 'no gear yet'); }
   /** familyHtml(w, p): the family line for the pet popup AND the public pet page (2026-10-15, Jake). Parents linked ('none (hatched from a mint)' for
@@ -572,6 +585,7 @@
     return '<span class="chip origin bred bredfrom">💞 Bred from ' + L(p.parents[0]) + ' × ' + L(p.parents[1]) + '</span>'; }
   /** communityStats(w, rowsN): the home page community-pet readout numbers (same formulas as v2-pages.js front()), for the play page. Display only. */
   function communityStats(w, rowsN) { var V = window.V2Rules, c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage;
+    if (c.current === 'kek') { T = V.COMMUNITY_THRESHOLDS || T; var kf = c.kekFed || 0, kh = st < 5 ? T[st + 1] : null; return { stage: N[st], fed: Math.floor(kf), next: kh ? Math.ceil(kh - kf - 1e-6) : null, nextName: kh ? N[st + 1] : null, pct: kh ? Math.min(100, 100 * (kf - T[st]) / (kh - T[st])) : 100, burns: rowsN, pets: w.pets.length }; }
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     return { stage: N[st], fed: Math.floor(wiz ? c.wizardFed : c.burned), next: hi ? Math.ceil(hi - fed - 1e-6) : null, nextName: hi ? N[st + 1] : null, pct: hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100, burns: rowsN, pets: w.pets.length }; }
   /** careTarget(w, p, tip): the care line pet p is actually growing toward, from the SAME per-pet thresholds the rules engine stages it with
@@ -628,7 +642,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

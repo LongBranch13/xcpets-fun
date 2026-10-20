@@ -207,6 +207,7 @@
   function hatchArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), spHex = sha(bh + id + 'XCPETS:v2:species');
     if (!naka777(b)) { art.species = pickSpecies(spHex); return art; }
     if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = tierSpeciesOn(b) ? pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex, b) : pickSpecies12(spHex); return art; }
+    if (b >= KEK_POOL_FROM) return kekArt(bh, id, b); /* LORD KEK egg takes the Wizard's 1-in-777 slot after his Cold Storage (gated, see ACTIVATE_KEK_BLOCK) */
     if (noNakaOn(b)) return wizardArt(bh, id, b); /* NO NEW NAKAMOTO (owner Oct 20 2026): the 1-in-777 egg is now a Bitcoin Wizard egg */
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
     LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
@@ -283,6 +284,30 @@
     w.wizardMythic = { block: r.block_index, tx: r.tx_hash, total: over, feeders: all.length, top: all.slice(0, WIZ_TOP_N), by: T.by, claimed: {} };
     WIZ_POOL_FROM = Math.max(ACTIVATE_WIZ_COLD_BLOCK, r.block_index + 1); delete w._wizT;
     w.log.push({ block: r.block_index, tx: r.tx_hash, kind: 'wizcold', msg: 'Bitcoin Wizard reached Mythic (' + Math.floor(over) + ' burned) and went into Cold Storage' }); }
+  /* LORD KEK = COMMUNITY PET #3 (owner Oct 20 2026 ~6:00 PM CT; design/lord-kek-community-pet.md). ALL OFF: ACTIVATE_KEK_BLOCK = null.
+   * With the gate null nothing below runs (no new world fields, no art change), so replay is identical. At launch approval set it to tip + ~6.
+   *   care   = every community burn AFTER the Bitcoin Wizard's Mythic burn (w.wizardMythic, block 972,325), counted back to then (owner Q2);
+   *   growth = COMMUNITY_THRESHOLDS (100x slower: hatch 69,000 ... Mythic 6,906,900), never starves, wears community rolls made from the gate on;
+   *   Mythic = first burn (at/after the gate) with care >= 6,906,900 -> w.kekMythic {block, tx, total, feeders, top, by}: Cold Storage, archive #3;
+   *   egg    = from the block after kekMythic the 1-in-777 hatch/pack slot gives a player Lord Kek (kekArt) instead of a Bitcoin Wizard (owner Q3);
+   *            no buy button / no pet:hatchkek tag;
+   *   breed  = player Lord Keks breed and make hybrids (owner Q5); hybrid art uses the Pepe body (he is a Pepe) with Kek names. */
+  var ACTIVATE_KEK_BLOCK = null;                    // OFF until owner launch approval (then chain tip + ~6)
+  var KEK_FROM_BLOCK = 972325;                      // the Wizard's Mythic block; burns after his Mythic burn count (documented; the replay uses w.wizardMythic)
+  var KEK_CAN_BREED = true;                         // only effective once ACTIVATE_KEK_BLOCK is set and reached
+  var KEK_TOP_N = 5;
+  var KEK_POOL_FROM = Infinity;                     // first block the 1-in-777 slot gives Lord Kek (set per replay: kekMythic.block + 1)
+  function kekOn(b) { return ACTIVATE_KEK_BLOCK != null && b != null && b >= ACTIVATE_KEK_BLOCK; }
+  function kekColdOn(w, b) { return kekOn(b) && !!(w && w.kekMythic) && b > w.kekMythic.block; }
+  function kekTrack(w, r, amt) { if (ACTIVATE_KEK_BLOCK == null || !w.wizardMythic || w.kekMythic || r.tx_hash === w.wizardMythic.tx) return;
+    var K = w.kek || (w.kek = { fed: 0, feeds: 0, by: {} }); K.fed += amt; K.feeds++; if (amt > 0) K.by[r.source] = (K.by[r.source] || 0) + amt;
+    if (r.block_index < ACTIVATE_KEK_BLOCK || K.fed + 1e-9 < COMMUNITY_THRESHOLDS[5]) return;
+    var all = Object.keys(K.by).map(function (a) { return { address: a, amount: K.by[a] }; }).sort(function (x, y) { return y.amount - x.amount || (x.address < y.address ? -1 : 1); });
+    w.kekMythic = { block: r.block_index, tx: r.tx_hash, total: K.fed, feeders: all.length, top: all.slice(0, KEK_TOP_N), by: K.by };
+    KEK_POOL_FROM = r.block_index + 1;
+    w.log.push({ block: r.block_index, tx: r.tx_hash, kind: 'kekcold', msg: 'Lord Kek reached Mythic (' + Math.floor(K.fed) + ' burned) and went into Cold Storage' }); }
+  /** kekArt(bh, id, b): a Lord Kek egg = a normal egg roll (tier, stats, background) with species 'kek' (KekSprite, player palette). */
+  function kekArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'kek'; art.defaultName = 'Kek'; return noBornShades(art); }
   var ACTIVATE_GRAVE_GEAR_BLOCK = 972157; // deploy tip 972151 + 6 (Oct 19 2026 ~8:19 AM CT); must stay < first death block 972432
   function graveOn(b) { return b != null && b >= ACTIVATE_GRAVE_GEAR_BLOCK; }
   function gravePlan(petId, on) { return { tag: 'pet:grave:' + petId + (on === false ? ':off' : ''), amount: COSTS.froll, petId: petId, label: (on === false ? 'Cancel grave gear #' : 'Leave gear on the grave #') + petId }; }
@@ -406,7 +431,7 @@
     Object.defineProperty(g,'owner',{enumerable:true,configurable:true,get:function(){return ow},set:function(v){ if(v===ow)return; ixCnt(X,ow,g.item,-1); ow=v; ixCnt(X,ow,g.item,1); }});
     return g; }
   /** reindex(w): build the gear index on a world that has none (e.g. a structured clone restored from the cross-visit cache), in w.items key order. */
-  function reindex(w) { if (w && w.items) WIZ_POOL_FROM = w.wizardMythic ? Math.max(ACTIVATE_WIZ_COLD_BLOCK, w.wizardMythic.block + 1) : Infinity; /* worker / cached worlds: same pool switch as the replay */
+  function reindex(w) { if (w && w.items) KEK_POOL_FROM = w.kekMythic ? w.kekMythic.block + 1 : Infinity; if (w && w.items) WIZ_POOL_FROM = w.wizardMythic ? Math.max(ACTIVATE_WIZ_COLD_BLOCK, w.wizardMythic.block + 1) : Infinity; /* worker / cached worlds: same pool switch as the replay */
     if (!w || w.__ix || !w.items) return w; Object.keys(w.items).forEach(function (k) { trk(w, w.items[k]); }); return w; }
   function ownedCountsScan(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
   function ownedCounts(w, owner) { if (!w.__ix) return ownedCountsScan(w, owner); var m = {}, c = w.__ix.own.get(owner) || {}; Object.keys(c).forEach(function (k) { if (c[k] > 0) m[k] = c[k]; }); return m; }
@@ -522,7 +547,7 @@
     var ev = rows.map(function (r, i) { return { r: r, i: i, b: r.block_index, o: 0 }; }).concat(ops.map(function (o, i) { return { op: o, i: i, b: o.block_index, o: 1 }; }));
     ev.sort(function (x, y) { return x.b - y.b || x.o - y.o || x.i - y.i; });
     var tip = opts.tip != null ? opts.tip : ev.reduce(function (a, e) { return Math.max(a, e.b); }, 0);
-    WIZ_POOL_FROM = Infinity;
+    WIZ_POOL_FROM = Infinity; KEK_POOL_FROM = Infinity;
     var w = { pets: [], byId: {}, items: {}, nextPet: 1, log: [], community: { burned: 0, feeds: 0, feeders: {}, gear: {}, gearLog: [] }, fights: [], rumbles: {}, breedReqs: [], tip: tip, nextItem: 1, tokens: {} };
     var seen = {};
     if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);
@@ -537,7 +562,7 @@
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
       w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
-      wizTrack(w, r, amt); /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
+      wizTrack(w, r, amt); kekTrack(w, r, amt); /* Lord Kek care + Cold Storage (inert while ACTIVATE_KEK_BLOCK is null) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
@@ -549,6 +574,9 @@
     cm.wizardFed = rp.done ? cm.burned - COMMUNITY_GOAL : 0; cm.current = rp.done ? 'wizard' : 'nakamoto';
     cm.wizardStage = rp.done ? wizardStage(cm.wizardFed, tip) : 0; cm.wizardStageName = STAGE_NAMES[cm.wizardStage];
     cm.petName = rp.done ? COMMUNITY_WIZARD_NAME : 'Nakamoto'; cm.petRole = COMMUNITY_PET; /* display only (2026-10-16): the wizard community pet is named 'Bitcoin Wizard'; internal id stays 'wizard' */ cm.petStage = rp.done ? cm.wizardStage : 5; cm.petStageName = STAGE_NAMES[cm.petStage];
+    if (kekOn(tip) && w.wizardMythic) { var KK = w.kek || { fed: 0, feeds: 0, by: {} }; /* Lord Kek = community pet #3 (gated) */
+      cm.kekFed = KK.fed; cm.kekStage = stageFor(KK.fed, COMMUNITY_THRESHOLDS); cm.current = 'kek'; if (!w.kekMythic) cm.nextPet = 'kek';
+      cm.petName = 'Lord Kek'; cm.petStage = cm.kekStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });
     w.fights.forEach(function (f) { if (f.status === 'open' && tip - f.block > FIGHT_WINDOW) f.status = 'expired'; });
     w.itemList = Object.keys(w.items).map(function (k) { return w.items[k]; });
@@ -631,7 +659,7 @@
     return g;
   }
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
-  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED) return 'Bitcoin Wizard cannot breed (yet)';
+  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
@@ -885,10 +913,13 @@
   var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto'];
   var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka'],
     H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto'];
+  /* Lord Kek hybrid names (gated: only reachable once player Keks exist): Kek first -> 'Kek' + end of the other ('Kekpe'), else start + 'kek' ('Pekek'). */
+  function kekHybridName(r) { var o = r.filter(function (x) { return x !== 'kek'; }), lead = r[0] === 'kek';
+    if (!o.length) return 'Kekkek'; return lead ? 'Kek' + o.map(function (x) { return h3part(H3_S3, x); }).join('') : h3part(H3_S1, o[0]) + o.slice(1).map(function (x) { return h3part(H3_S2, x); }).join('') + 'kek'; }
   function h3part(T, sp) { var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
-  function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
+  function hybridName(sp) { var r = hybridRoots(sp); if (r.indexOf('kek') >= 0) return kekHybridName(r); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
     return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
-  function speciesLabel(sp) { if (sp === 'wizard') return 'Bitcoin Wizard'; if (isHybrid(sp)) return hybridName(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
+  function speciesLabel(sp) { if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (isHybrid(sp)) return hybridName(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
@@ -998,7 +1029,7 @@
   function breed(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
-    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
+    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); if (plan.roots.indexOf('kek') >= 0) { ['shape', 'color', 'featSp'].forEach(function (k) { if (plan[k] === 'kek') plan[k] = 'pepe'; }); plan.kek = true; } art.species = plan.shape; art.hybrid = plan; } /* Lord Kek parent: Pepe body art (gated via breedable) */
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
@@ -1194,7 +1225,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,

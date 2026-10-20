@@ -85,15 +85,36 @@ Archive entry #3 shows the block, tx, total, feeders, and the top 5 feeders, the
 4. Gated `kekMythic` Cold Storage trigger plus the odds-slot swap (Q5). Farewell scene, archive #3, HatchBot copy.
 5. Bump COMMUNITY_NEXT_NO to 4 for the gap after him.
 
-## Open questions for the owner (not guessed)
-1. **Activation gate block:** which block does he arrive at? (Normally tip+6 at deploy. Until then the gate stays null and disabled.)
-2. **Starting care:** does he start at 0, which means 69,000 to hatch? Or do the community burns made during the gap since the Wizard's Mythic (972,325) count toward him? Those burns currently count as community food with no pet.
-3. **Wizard's run:** the Wizard already reached Mythic at block 972,325 and is in Cold Storage. Please confirm nothing else of his run has to finish first, for example the Join-us sign claims or the Wizard egg priority list.
-4. **Card stats 25/38/42, element Eye, Rareness infinity:** are these flavour only, or do they map to anything (base stats, a fight bonus, an "Eye" element)? XCPETS has no element system today. I propose flavour only.
-5. **Odds slot:** when Kek takes over the 1-in-777 slot, Wizard eggs stop coming from the pool, the same way Nakamoto eggs stopped. Is that intended? Or should the slot be shared?
-6. Can the community gear roll replace his nemes (as with the Wizard Hat), or is the nemes locked on the community Kek?
-7. Signature gear: which 4–6 pieces, and are the Wings Mythic-only or claimable by his feeders (like the Join-us sign)?
-8. Player palette: is red/gold nemes OK, or would you prefer another colour? Does the community Kek keep the card's lapis?
-9. Do Anubis, Horus, and the pyramid appear only in the farewell scene, or also as Mythic background?
-10. Is his name final ("Lord Kek"), and should there be a role line ("Ruler of All Pepes")?
-11. Is he a hybrid root for breeding, like 'wizard'?
+## Owner decisions (Oct 20 2026 ~6:00 PM CT)
+1. **Activation gate:** set to tip + ~6 at launch approval. Until then `ACTIVATE_KEK_BLOCK = null` (OFF) in js/v2-rules.js.
+2. **Starting care:** every community burn after the Wizard's Mythic burn (block 972,325) counts toward Kek, counted back to then. (Sim with a fresh tip 972,389: 737,639 XCPETS from 42 burns by 9 wallets, so he would start as a Hatchling.)
+3. **Egg slot:** when Kek goes into Cold Storage, his egg takes the 1-in-777 slot, so Wizard eggs end. There is no buy button and no `pet:hatchkek` tag.
+4. **Card stats** (25/38/42, element Eye, Rareness ∞) are flavour only. They show as a small tap-to-see line ("Lord Kek · Community pet #3 · card") on his community card. They have no game effect.
+5. **Hybrids:** player Lord Keks can breed and make hybrids, like the Wizard.
+
+## Defaults chosen for the smaller questions (owner can change any)
+- **Nemes vs. gear rolls:** a community Headwear roll replaces the Nemes, the same way rolls replace the Wizard Hat. The Nemes shows whenever his Headwear slot is empty.
+- **His gear at the start:** he wears only community rolls made from his gate block on. The Wizard's old rolls stay in gearLog but he doesn't wear them, so he starts in just the Nemes.
+- **Wizard's Mythic burn:** the burn that sent the Wizard to Mythic (and anything left over from it) stays the Wizard's. Kek's count starts with the next burn.
+- **Mythic trigger:** it can only fire at or after his gate block. It records `w.kekMythic` (block, tx, total, feeders, top 5).
+- **Signature gear:** Nemes of Kek ★ (Headwear, cosmetic) is drawn now. The other pieces in the table above stay proposals and are **not** in the roll pool.
+- **Wings:** part of his Mythic sprite. They are not a gear piece and not claimable for now.
+- **Player palette:** red/gold Nemes. The community Kek keeps the card's lapis/gold.
+- **Anubis, Horus and the pyramid:** only in the farewell scene (not built yet). They are not in the 32px sprite.
+- **Name / role:** "Lord Kek" for the community pet, with "Ruler of All Pepes" as the subline. Player pets default to the name "Kek". The species label is "Lord Kek".
+- **Hybrid art:** a Kek parent counts as Pepe for the body, colour and feature (he is a Pepe). Names are "Kek" + the end of the other parent's name (Kekpe) when Kek comes first, or the start of the other's name + "kek" (Pekek).
+- **After his Cold Storage:** the placeholder reads "Community pet #4 coming soon".
+
+## What is built on branch `lord-kek` (all OFF; replay SAME)
+- js/kek-sprite.js (KekSprite: all stages, community lapis / player red, gear layer, Mythic rim). It is loaded on the 8 pages that load wizard-sprite.js, and is unused while the gate is off.
+- js/v2-rules.js:
+  - Gate and settings: `ACTIVATE_KEK_BLOCK` (null), `KEK_FROM_BLOCK` 972325, `KEK_CAN_BREED`.
+  - Tracking and trigger: `kekTrack` (care + Mythic trigger, which does nothing while the gate is null).
+  - Activation: `cm.current/nextPet = 'kek'` once the gate is reached.
+  - Egg slot: `kekArt`, plus the swap in the 1-in-777 slot (`KEK_POOL_FROM`).
+  - Breeding: the breedable gate, Kek hybrid names, and Pepe-body hybrid art.
+- js/v2-render.js / js/v2.js: Kek's community frames, gear and stats, player Kek frames, the card line, and #4 after his Cold Storage.
+- Not built yet: the farewell scene, Archive entry #3, and the HatchBot copy (next step after art approval).
+
+## Open questions for the owner
+None blocking. Please confirm or change the defaults above.
