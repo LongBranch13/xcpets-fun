@@ -92,7 +92,7 @@
     list.forEach(function (sp) {
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', sp.id);
       if (LIVE) { var mt = V.minTierOf(sp.id), lowest = G.TIERS[mt].label;
-        var line = sp.id === 'nakamoto' ? 'Always Legendary · 1 in 777 eggs' : (mt === 3 ? 'Legendary only' : 'Hatches at ' + lowest + (mt < 3 ? ' and rarer' : '')) + ' · about ' + pct(odds[sp.id] || 0) + ' of hatches';
+        var line = sp.id === 'nakamoto' ? 'Always Legendary · no longer hatched, existing ones kept (the 1 in 777 egg is now a Bitcoin Wizard egg)' : (mt === 3 ? 'Legendary only' : 'Hatches at ' + lowest + (mt < 3 ? ' and rarer' : '')) + ' · about ' + pct(odds[sp.id] || 0) + ' of hatches';
         row.innerHTML = '<div><h3 class="ch">' + esc(sp.label) + '</h3><p class="muted">' + line + '</p><p class="muted">' + sp.arc.map(function (a) { return esc(a[0]); }).join(' → ') + '</p></div>';
       } else row.innerHTML = '<div><h3 class="ch">' + esc(sp.label) + '</h3><p class="muted">' + (sp.tw ? 'Found in every tier' : 'Most common in the ' + PetCore.TIERS[sp.t].label + ' tier') + ' · about ' + (odds[sp.id] * 100).toFixed(1) +
         '% of hatches</p><p class="muted">' + sp.arc.map(function (a) { return esc(a[0]); }).join(' → ') + '</p></div>';

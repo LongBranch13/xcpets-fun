@@ -40,7 +40,7 @@
     snibby: ['{X} enters the chat... sideways.', 'Pinch first. Ask later.', 'Walked sideways into Rare.'],
     kevin: ['Hello my name is KEVIN. They are all KEVIN.', 'Name tag: KEVIN only.'],
     dodo: ['The black swan nobody saw coming!', 'Legendary only. One eye.', 'Black eye on the one eye he has!'],
-    nakamoto: ['1 in 777. Do the math.', 'Cold-wallet boots laced up.'],
+    nakamoto: ['No new ones. Ever. Do the math.', 'Cold-wallet boots laced up.'],
     loser: { doge: 'Much ouch. Very right eye.', dodo: 'Black eye on the one eye he has!', bobo: 'Lost a battle? Still smug about it.', snibby: 'Pinch first. Ask later.', wojak: 'Honestly looks about the same.' },
     any: { crit: ['Ban hammer moment!'], win: ['690 to fight, loser pays in gear!', 'Buried in full kit, no regrets... but not tonight.'], lose: ['Somebody is paying in gear!'] } };
   /* FRESH: written in the same voice. {A}/{B} red/blue corner, {X} actor, {Y} target, {D} damage, {S} species, {W}/{L} winner/loser, {R} rounds */
