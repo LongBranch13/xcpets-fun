@@ -247,3 +247,7 @@ body #pets .pet.card{padding-bottom:44px}
 .mt-guests{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mt-guests span{color:#ffd166;font-weight:bold}.mt-g{flex:1 1 130px;padding:6px;border:2px dashed #4fe0ff;background:#140f24;color:#4fe0ff;cursor:pointer;font-size:13px}.mt-g.on{border-style:solid;background:#4fe0ff;color:#140f24}
 .mt-odds{margin-top:6px;padding:6px 8px;background:#ffd166;color:#140f24;border:2px solid #000;font-size:12px;line-height:1.5}.mt-odds b{font-family:'Press Start 2P',monospace;font-size:9px}
 .motel-bell{margin-top:8px}.motel-fold{margin-top:8px}.motel-fold summary{cursor:pointer;color:#9fe8ff}
+
+/* motel guestbook */
+.motel-book .gb{margin-top:8px;padding:8px;background:#f5efe0;color:#2a1530;border:3px solid #000;box-shadow:4px 4px 0 #000;font-size:13px}.gb-top{display:flex;justify-content:space-between;align-items:center}.gb-h{font-family:'Press Start 2P',monospace;font-size:10px;color:#c8102e}.gb-n{font-size:11px}
+.gb-row{border-bottom:1px dashed #b9a98a;padding:4px 0;display:flex;flex-direction:column}.gb-main{font-weight:bold}.gb-main a{color:#2e5aa8}.gb-note{font-style:italic;color:#6a4a5a;font-size:12px}.gb-pg{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:6px}.gb-pg .pk-arr{min-height:28px}
