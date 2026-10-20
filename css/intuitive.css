@@ -1,0 +1,41 @@
+/* intuitive pass (Oct 20 2026): small '?' taps + one bottom sheet. Uses the site's own pixel look (2px black borders, hard shadows). */
+.ip-q{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;padding:0;margin:0 2px;border:2px solid #000;border-radius:50%;background:#ffd23f;color:#000;font:700 11px/1 inherit;font-family:inherit;cursor:pointer;vertical-align:middle;box-shadow:1px 1px 0 #000}
+.ip-q:hover,.ip-q:focus-visible{background:#fff27a;outline:none}
+h2 .ip-q,h3 .ip-q{width:20px;height:20px;font-size:12px}
+@media (max-width:600px){.ip-q{width:22px;height:22px;min-width:22px}}
+.ip-tap{cursor:pointer;text-decoration:underline dotted}
+.ip-next{color:#7fd8ff;white-space:nowrap}
+.ip-hide{display:none!important}
+html.ip-hold #inReqBox.on,html.ip-hold #eggPop{display:none!important}
+.ip-sheet{position:fixed;inset:0;z-index:9500;display:flex;align-items:flex-end;justify-content:center}
+.ip-sheet[hidden]{display:none}
+.ip-sh-bg{position:absolute;inset:0;background:rgba(10,6,20,.6)}
+.ip-sh-box{position:relative;width:100%;max-width:560px;max-height:78vh;overflow:auto;margin:0 8px;padding:14px 14px 18px;background:#1b1430;color:#f4f0ff;border:3px solid #000;border-bottom:0;box-shadow:0 -4px 0 #000;text-align:left;font-size:14px;line-height:1.45}
+@media (min-width:700px){.ip-sheet{align-items:center}.ip-sh-box{border-bottom:3px solid #000;box-shadow:4px 4px 0 #000}}
+.ip-sh-x{float:right}
+.ip-sh-box h3{margin:0 0 8px;font-size:15px;color:#ffd23f}
+.ip-sh-box a{color:#9fe8ff}
+.ip-list{margin:6px 0;padding-left:18px}.ip-list li{margin:3px 0}
+.ip-tbl{border-collapse:collapse;margin:6px 0;font-size:13px}.ip-tbl td,.ip-tbl th{border:1px solid #000;padding:3px 6px;background:#251c40}
+.ip-ladder{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:6px 0}.ip-ladder li{padding:2px 6px;border:2px solid #000;background:#251c40;font-size:12px}.ip-ladder li.done{opacity:.6}.ip-ladder li.on{background:#ffd23f;color:#000}.ip-ladder li.on .muted{color:#333}
+.ip-gloss dt{font-weight:700;color:#ffd23f;margin-top:6px}.ip-gloss dt.on{background:#3a2a10}.ip-gloss dd{margin:0 0 0 10px}
+.ip-rc .logbox,.ip-rc{max-height:none}
+.ip-navq,.ip-rcpt{background:none;border:0;cursor:pointer;font-size:18px;padding:4px 6px;line-height:1;color:inherit;position:relative;min-width:32px;min-height:32px}
+.ip-rcpt{margin-left:4px}
+.ip-cnt{position:absolute;top:-2px;right:-4px;min-width:16px;height:16px;padding:0 3px;border:2px solid #000;border-radius:8px;background:#ff5a5a;color:#fff;font:700 10px/12px sans-serif}
+.ip-urg{margin-left:6px;padding:2px 6px;border:2px solid #000;background:#ff5a5a;color:#fff;font:700 12px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:2px 2px 0 #000}
+.ip-nba{margin:6px 0;padding:4px 8px;border:2px dashed #000;background:rgba(255,210,63,.12)}.ip-nba .ip-x{float:right;padding:0 6px}
+.ip-flash{outline:3px solid #ffd23f;outline-offset:2px}
+.ip-away{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8000;max-width:92vw;padding:8px 12px;border:2px solid #000;background:#ffd23f;color:#000;font:700 13px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:3px 3px 0 #000}
+.ip-away[hidden]{display:none}
+.ip-tour{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:8500;width:min(360px,92vw);padding:10px 12px;border:3px solid #000;background:#1b1430;color:#f4f0ff;box-shadow:4px 4px 0 #000}.ip-tour p{margin:4px 0 8px}
+.ip-tour-on{outline:3px solid #ffd23f;outline-offset:3px}
+#communityPanel.ip-collapsed .ip-cbody{display:none}
+.ip-ctog{margin:2px 0}
+.ip-recent{margin:4px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center}.ip-recent .chip{text-decoration:none}
+.ip-raw summary{cursor:pointer;font-size:11px;opacity:.8}.ip-raw code{font-size:11px;word-break:break-all}
+.ip-acts{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ip-dcare{margin:4px 0}
+.ip-tools{display:inline-flex;align-items:center;gap:2px;margin-left:6px}
+@media (max-width:600px){header.nav .ip-tools{position:absolute;right:8px;top:8px;margin:0}}
+.ip-raw summary{white-space:nowrap}
