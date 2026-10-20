@@ -4,7 +4,7 @@
   'use strict';
   var V = window.V2Rules;
   V2Gear.install(BonusGear);
-  BonusGear.DEFS['v2-black-eye'] = BonusGear.DEFS['v2-black-eye'] || { slot: 'face', tier: 0, label: 'Black eye', at: 'eyes', map: ['VV.......', 'VnV......', '.VV......'] };
+  BonusGear.DEFS['v2-black-eye'] = BonusGear.DEFS['v2-black-eye'] || { slot: 'face', tier: 0, label: 'Black eye', at: 'eyes', map: ['nVVn.....', 'VnnV.....', 'nVVn.....'] };
   /* black eye fit (2026-10-15, Jake: on Dodo it sat on the back of the head): traced on the real eye pixels of this species/stage/frame (drawEyeGear 'shiner'),
    * a bruise ring around the viewer-right eye, like eyewear; the old fixed 'eyes'-anchor map is only the fallback when no eye can be found. */
   BonusGear.DEFS['v2-black-eye'].v2eye = { s: 'shiner' };
@@ -133,6 +133,45 @@
   function eyeRender(eyes, o) { var r = PetCore.render(eyes, o), d = r.data;
     for (var i = 0; i < d.length; i += 4) if (d[i] === 255 && (d[i + 1] === 210 && d[i + 2] === 63 || d[i + 1] === 241 && d[i + 2] === 168)) return r;
     return PetCore.render(eyes, Object.assign({}, o, { openEyes: true })); }
+  /* arena-injury (2026-10-19, display only): battle scars shown while blackEye is on (same blackEyeUntil window). 1) a BOLD shiner: a 2 px bruise
+   * around the viewer-right eye (deep purple inner ring, near-black outer ring on the sides and below, a lilac highlight at the top-left), so it
+   * reads at 1x on a phone; the eye pixels stay. 2) a pixel head BANDAGE: a white forehead wrap (grey lower edge, red stripe, a loose tail at the
+   * viewer-left edge) 2-3 rows above the eyes. It is drawn BEFORE worn headwear (extraOv comes first), so hats sit on top; injureAfter() re-draws it
+   * over the hat brim only when the hat hid almost all of it, so both read. Used by every species / hybrid / stage and the player Bitcoin Wizard. */
+  var INJ = { ring1: [112, 40, 168], ring2: [52, 14, 78], hi: [200, 160, 255], wrap: [244, 244, 236], wrapS: [190, 192, 184], red: [214, 16, 32] };
+  function injure(img, isSil, B, a) { var D = img.data, shin = [], sb = B[B.length - 1], other = B.length > 1 ? B[0] : null, x, y, i, band = [];
+    var inBox = function (b, X, Y) { return b && X >= b.x0 && X <= b.x1 && Y >= b.y0 && Y <= b.y1; };
+    var px = function (X, Y, c, rec) { if (X < 0 || Y < 0 || X > 31 || Y > 31) return; i = (Y * 32 + X) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; D[i + 3] = 255; if (rec) band.push([X, Y, c]); };
+    for (y = sb.y0 - 2; y <= sb.y1 + 2; y++) for (x = sb.x0 - 2; x <= sb.x1 + 2; x++) { if (inBox(sb, x, y) || inBox(other, x, y) || !isSil(x, y)) continue;
+      var dd = Math.max(sb.x0 - x, x - sb.x1, sb.y0 - y, y - sb.y1); if (dd === 2 && y < sb.y0) continue; /* no outer ring on the brow */
+      if (other && dd === 2 && x < sb.x0 && x <= other.x1 + 1) continue; /* keep a gap to the other eye */
+      px(x, y, dd === 1 ? INJ.ring1 : INJ.ring2); shin.push([x, y, dd === 1 ? INJ.ring1 : INJ.ring2]); }
+    if (isSil(sb.x0 - 1, sb.y0 - 1)) px(sb.x0 - 1, sb.y0 - 1, INJ.hi); else if (isSil(sb.x0, sb.y0 - 1)) px(sb.x0, sb.y0 - 1, INJ.hi);
+    /* bandage: forehead rows above the eyes, across the head run that holds the face centre */
+    var eTop = Math.min.apply(null, B.map(function (b) { return b.y0; })), cx = Math.round((B[0].x0 + sb.x1) / 2), rows = [];
+    for (y = eTop - 3; y <= eTop - 2; y++) if (y >= 0 && isSil(cx, y)) rows.push(y);
+    if (!rows.length) for (y = eTop - 4; y >= Math.max(0, eTop - 6); y--) if (isSil(cx, y)) { rows.push(y); break; }
+    if (!rows.length) { /* eyes on stalks with nothing above them (Snibby): wrap the top of the head just under the shiner */
+      var eBot = Math.max.apply(null, B.map(function (b) { return b.y1; }));
+      for (y = eBot + 3; y <= Math.min(31, eBot + 7) && rows.length < 2; y++) { var wd = 0; for (x = B[0].x0 - 2; x <= sb.x1 + 2; x++) if (isSil(x, y)) wd++; if (wd >= 4 && (!rows.length || y === rows[0] + 1)) { rows.push(y); if (!isSil(cx, y)) cx = B[0].x0 + 1; } } }
+    var lim0 = B[0].x0 - 4, lim1 = sb.x1 + 4;
+    rows.forEach(function (Y, n) { var st = cx; for (var dx = 0; dx < 8 && !isSil(st, Y); dx++) st = isSil(cx - dx, Y) ? cx - dx : isSil(cx + dx, Y) ? cx + dx : st; var x0 = st, x1 = st; while (x0 - 1 >= lim0 && isSil(x0 - 1, Y)) x0--; while (x1 + 1 <= lim1 && isSil(x1 + 1, Y)) x1++;
+      if (x0 < x1) { x0++; x1--; } /* keep the ink outline */
+      for (var X = x0; X <= x1; X++) px(X, Y, n === rows.length - 1 && rows.length > 1 ? INJ.wrapS : INJ.wrap, true);
+      var rs = x0 + Math.max(1, Math.round((x1 - x0) * 0.3)); px(rs, Y, INJ.red, true); if (n === 0 && rows.length === 1) px(rs + 1, Y, INJ.red, true);
+      if (n === 0) { var tx = x0 - 2; px(tx, Y, INJ.wrap, true); if (!isSil(tx - 1, Y + 1)) px(tx - 1, Y + 1, INJ.wrap, true); } });
+    if (a) { a._band = band; a._shin = shin; } if (window.__V2INJ) window.__V2INJ.push({ sb: sb, rows: rows, n: band.length }); return band; }
+  function injureAfter(img, a) { var band = a && a._band, D = img.data, vis = 0, sh = (a && a._shin) || [], sv = 0;
+    sh.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; if (D[i] === q[2][0] && D[i + 1] === q[2][1] && D[i + 2] === q[2][2]) sv++; });
+    if (sh.length && sv < Math.ceil(sh.length * 0.7)) sh.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; D[i] = q[2][0]; D[i + 1] = q[2][1]; D[i + 2] = q[2][2]; D[i + 3] = 255; }); /* eyewear hid the bruise: it shows around the lens */
+    if (!band || !band.length) return;
+    band.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; if (D[i] === q[2][0] && D[i + 1] === q[2][1] && D[i + 2] === q[2][2]) vis++; });
+    var redVis = band.some(function (q) { var i = (q[1] * 32 + q[0]) * 4; return q[2] === INJ.red && D[i] === INJ.red[0] && D[i + 1] === INJ.red[1] && D[i + 2] === INJ.red[2]; });
+    if (vis >= Math.min(4, band.length) && !redVis) { /* hat covers the red stripe: move it onto a wrap pixel that still shows */
+      var wv = band.filter(function (q) { var i = (q[1] * 32 + q[0]) * 4; return q[2] === INJ.wrap && D[i] === INJ.wrap[0] && D[i + 1] === INJ.wrap[1] && D[i + 2] === INJ.wrap[2]; });
+      if (wv.length) { var q0 = wv[Math.floor(wv.length / 3)], j = (q0[1] * 32 + q0[0]) * 4; D[j] = INJ.red[0]; D[j + 1] = INJ.red[1]; D[j + 2] = INJ.red[2]; return; } }
+    if (vis >= Math.min(4, band.length) && redVis) return; /* hat hid the wrap: put it back over the brim so both read */
+    band.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; D[i] = q[2][0]; D[i + 1] = q[2][1]; D[i + 2] = q[2][2]; D[i + 3] = 255; }); }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -157,9 +196,7 @@
     function put(x, y, k) { if (!k || x < 0 || y < 0 || x > 31 || y > 31 || !a.isSil(x, y)) return; var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; D[q] = parseInt(c.slice(0, 2), 16); D[q + 1] = parseInt(c.slice(2, 4), 16); D[q + 2] = parseInt(c.slice(4, 6), 16); }
     var B = E.map(function (e) { var b = { x0: 99, x1: -1, y0: 99, y1: -1 }; e[2].forEach(function (q) { b.x0 = Math.min(b.x0, q[0]); b.x1 = Math.max(b.x1, q[0]); b.y0 = Math.min(b.y0, q[1]); b.y1 = Math.max(b.y1, q[1]); }); return b; }).sort(function (p, q) { return p.x0 - q.x0; });
     var x, y, eyeAt = {}; if (a.eyeL || a.eyeR) E.forEach(function (e) { e[2].forEach(function (q) { eyeAt[q[0] + ',' + q[1]] = 1; }); });
-    if (g.s === 'shiner') { var sb = B[B.length - 1]; /* bruise ring hugging the eye box: dark purple, deeper under the eye; the eye pixels themselves stay */
-      for (y = sb.y0 - 1; y <= sb.y1 + 1; y++) for (x = sb.x0 - 1; x <= sb.x1 + 1; x++) { if (eyeAt[x + ',' + y] || (x >= sb.x0 && x <= sb.x1 && y >= sb.y0 && y <= sb.y1)) continue; put(x, y, y === sb.y1 + 1 ? 'n' : 'V'); }
-      for (x = sb.x0; x <= sb.x1; x++) if (!eyeAt[x + ',' + (sb.y1 + 2)]) put(x, sb.y1 + 2, 'V'); return; }
+    if (g.s === 'shiner') { injure(img, a.isSil, B, a); return; }
     if (g.s === 'bags') { B.forEach(function (b) { for (x = b.x0; x <= b.x1; x++) put(x, b.y1 + 1, g.f); }); return; }
     var ecy = Math.round(E.reduce(function (t, e) { return t + e[1]; }, 0) / E.length), top = Math.max(ecy - 1, Math.min.apply(null, B.map(function (b) { return b.y0; }))) - (g.up || 0), bot = Math.min(ecy + 1, Math.max.apply(null, B.map(function (b) { return b.y1; }))) + (g.drop || 0); // lenses stay on the eye line (tall eyes, e.g. Peepo, are not boxed whole)
     if (spid === 'chud' && (g.s === 'glasses' || g.s === 'visor')) { /* Chud's built-in dark-framed glasses: equipped eyewear covers them whole (no double frame) */
@@ -294,7 +331,7 @@
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); }); }
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
@@ -457,7 +494,16 @@
       var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; }
       var c = itemCols(id).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(it.label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: it.label, item: id, cols: c }; });
     return o; }
-  function wizardPetFrames(art, stage, ids, extraOv) { return WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(ids), {}); }
+  function wizardPetFrames(art, stage, ids, extraOv) { var G = wizGearOf(ids), fr = WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {});
+    if ((extraOv || []).indexOf('v2-black-eye') < 0 || !WizardSprite.draw) return fr;
+    /* arena-injury: the player Wizard wears the same shiner + bandage, traced on his 'k' eye cells; his hat stays on top (re-draw only if hidden) */
+    return fr.map(function (f, n) { var g = WizardSprite.draw(stage || 0, n, G), g0 = WizardSprite.draw(stage || 0, n, {}), E = [], img = { width: 32, height: 32, data: new Uint8ClampedArray(f.data) };
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) if (g0[y] && g0[y][x] === 'k' && y < 20) E.push({ x0: x, x1: x, y0: y, y1: y });
+      if (!E.length) return f; E.sort(function (p, q) { return p.x0 - q.x0; }); E = [E[0], E[E.length - 1]];
+      var sil = function (X, Y) { return X >= 0 && Y >= 0 && X < 32 && Y < 32 && !!(g0[Y] && g0[Y][X]); }, a = {}; injure(img, sil, E, a);
+      var hat = function (X, Y) { return g[Y] && g0[Y] && g[Y][X] !== g0[Y][X]; }, keep = new Uint8ClampedArray(f.data);
+      (a._band || []).forEach(function (q) { if (hat(q[0], q[1])) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = keep[i]; img.data[i + 1] = keep[i + 1]; img.data[i + 2] = keep[i + 2]; } });
+      injureAfter(img, a); return Object.assign({}, f, { data: img.data }); }); }
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityGap(w) (owner rule Oct 19 2026): true when the community pet has gone into Cold Storage (the Bitcoin Wizard at Mythic, w.wizardMythic)
    * and no newer community pet exists yet. Every spot that features the community pet then renders NOTHING (no placeholder, no frame, no error). Display only. */

@@ -24,19 +24,30 @@
       .sort(function (a, b) { return b.wins - a.wins || b.rate - a.rate || a.p.id - b.p.id; });
     return { open: open, done: done, lb: lb }; }
   var shown = { res: 8, lb: 10 };
+  /* arena-replay (owner Oct 19 2026 11 PM CT): '▶ Replay' on the sand next to the Announcer. Target = the fight the scene last showed, else the newest finished fight.
+   * When a newer fight lands, the target jumps to it with 'New fight! ▶ Replay #N' (older fights stay in More fights). Unlimited replays: no once-flags; a tap mid-fight restarts. */
+  var RP = { pin: 0, known: 0, fresh: false, LS: 'xcpets-arena-seen' };
+  RP.seen = function () { try { return +localStorage.getItem(RP.LS) || 0; } catch (e) { return 0; } };
+  RP.mark = function (id) { try { if (id > RP.seen()) localStorage.setItem(RP.LS, String(id)); } catch (e) { } };
+  RP.paint = function (done) { var b = $('arReplay'), w = window.V2UI && V2UI.world(); if (!b || !w) return; var top = done[0]; if (!top) { b.hidden = true; return; }
+    if (RP.known && top.id > RP.known) { RP.pin = 0; RP.fresh = true; } else if (!RP.known && top.id > RP.seen() && RP.seen()) RP.fresh = true;
+    RP.known = Math.max(RP.known, top.id); var f = (RP.pin && w.fights[RP.pin - 1]) || top; RP.cur = f.id; var nw = RP.fresh && f.id === top.id;
+    b.hidden = false; b.textContent = (nw ? 'New fight! ' : '') + '▶ Replay #' + f.id; b.classList.toggle('ar-rp-new', nw); b.setAttribute('aria-label', 'Replay fight ' + f.id);
+    b.onclick = function () { var g = V2UI.world().fights[RP.cur - 1]; if (!g || !window.V2ArenaScene) return; RP.fresh = false; RP.mark(RP.known); V2ArenaScene.sequence(g, { restart: true }); }; };
+  RP.onShow = function (f) { if (!f) return; RP.pin = f.id; if (f.id === RP.known) { RP.fresh = false; RP.mark(f.id); } var w = window.V2UI && V2UI.world(); if (w) RP.paint(data(w).done); };
+  window.V2ArenaReplay = RP;
   function render(w) { var box = $('arenaBody'), U = window.V2UI; if (!box || !U || !w) return; var ME = U.ME, tip = (U.S && U.S().tip) || w.tip, d = data(w, tip);
     var my = U.fighters(w, ME), th = U.fighters(w, ME, true);
     var o = function (p) { return '<option value="' + p.id + '">' + esc(p.name) + ' #' + p.id + ' · ⚡' + pow(p) + '</option>'; };
     var SP = window.V2Sponsor, st = SP ? SP.state : null; if (SP) { SP.load(tip); st = SP.state; } /* fixed rotating sponsor, no reads */
     
     var CH = window.V2ArenaScene ? V2ArenaScene.champion(w) : null;
-    var h = '<div class="ar-scene"><canvas id="arScene" width="320" height="180" role="img" aria-label="X Circus Kekimus arena: crowd in the stands, a tunnel, and ' + (CH ? 'the champion statue of ' + esc(CH.p.name) + ' #' + CH.p.id + ' (' + CH.streak + '-win streak)' : 'an empty plinth awaiting a champion') + '"></canvas><button type="button" class="q ar-ann ar-ann-sand" id="arVoice" aria-pressed="' + (window.V2Announcer && V2Announcer.voiceOn() ? 'true' : 'false') + '">' + (window.V2Announcer && V2Announcer.voiceOn() ? '🔊' : '🔇') + ' Announcer</button></div>' + (SP ? '<div class="ar-wallwrap">' + SP.billboard(st || SP.compute([], tip)) + '</div>' : '') + '<div id="arChalSlot"></div><div class="ar-post ar-post-help">' +
+    var h = '<div class="ar-scene"><canvas id="arScene" width="320" height="180" role="img" aria-label="X Circus Kekimus arena: crowd in the stands, a tunnel, and ' + (CH ? 'the champion statue of ' + esc(CH.p.name) + ' #' + CH.p.id + ' (' + CH.streak + '-win streak)' : 'an empty plinth awaiting a champion') + '"></canvas><div class="ar-sandbtns"><button type="button" class="q ar-ann ar-ann-sand ar-rp-sand" id="arReplay" hidden>▶ Replay</button><button type="button" class="q ar-ann ar-ann-sand" id="arVoice" aria-pressed="' + (window.V2Announcer && V2Announcer.voiceOn() ? 'true' : 'false') + '">' + (window.V2Announcer && V2Announcer.voiceOn() ? '🔊' : '🔇') + ' Announcer</button></div></div>' + '<div class="ar-hist"><h3 class="ar-h">📜 More fights <span class="muted small">· tap ▶ Replay</span></h3><div id="arHist"></div></div>' + (SP ? '<div class="ar-wallwrap">' + SP.billboard(st || SP.compute([], tip)) + '</div>' : '') + '<div id="arChalSlot"></div><div class="ar-post ar-post-help">' +
       '<div class="small ar-hint">Juvenile+ pets · 1 battle per pet per day · winner takes a gear piece</div><details class="small muted ar-help"><summary>How fights work</summary>Burns <code>pet:fight:YOURS:THEIRS</code>, ' + fmt(V.COSTS.fight) + ' XCPETS. The owner of the other pet has ' + V.FIGHT_WINDOW + ' blocks to accept (' + fmt(V.COSTS.accept) + '). Loser hands over one gear piece and gets a black eye. You sign in your wallet.</details></div>';
     h += '<h3 class="ar-h">📯 Open challenges (' + d.open.length + ')</h3>' + (d.open.length ? '<div class="ar-list">' + d.open.map(function (x) { var f = x.f, B = w.byId[f.b], mineB = B && B.owner === ME;
       return '<div class="ar-row' + (mineB ? ' ar-mine' : '') + '"><div class="ar-vs">' + card(w, w.byId[f.a], B) + '<span class="ar-x">VS</span>' + card(w, B, w.byId[f.a]) + '</div><div class="ar-meta">fight ' + f.id + ' · ⏳ ' + left(x.left) + ' · accept by block ' + fmt(f.expires) +
         (mineB ? ' <button type="button" class="btn ico-flame" data-aracc="' + f.id + '">Accept · ' + fmt(V.COSTS.accept) + '</button>' : ' <span class="muted small">waiting for #' + f.b + '’s owner</span>') + '</div></div>'; }).join('') + '</div>'
       : '<p class="muted small">No open challenges right now. Post one above.</p>');
-    h += '<div class="ar-hist"><h3 class="ar-h">📜 Fight history <span class="muted small">· tap to replay</span></h3><div id="arHist"></div></div>';
     h += '<div class="ar-cols"><div hidden><h3 class="ar-h">📜 Recent results</h3>' + (d.done.slice(0, shown.res).map(function (f) {
       return '<div class="ar-res">🏆 ' + lbl(w, f.winner) + ' beat ' + lbl(w, f.loser) + (f.spoils ? ' · took ' + esc(f.spoils.label) : '') + ' <span class="muted small">blk ' + fmt(f.acceptBlock) + '</span>' + (function (sl) { return sl ? ' <span class="sp-card small">· ' + esc(sl) + '</span>' : ''; })(SP && st ? SP.line(st, f.acceptBlock) : '') + ' <button type="button" class="q" data-arview="' + f.id + '">▶</button></div>'; }).join('') || '<p class="muted small">No fights yet.</p>') + '</div>';
     h += '<div><h3 class="ar-h">🥇 Arena leaderboard</h3>' + (d.lb.length ? '<table class="ar-lb"><tr><th>#</th><th>Pet</th><th>W</th><th>L</th><th>Win %</th><th title="Pet Score battles points (max 100)">⭐ Btl</th></tr>' + d.lb.slice(0, shown.lb).map(function (x, i) {
@@ -48,12 +59,13 @@
     var RV = window.V2Rivals ? V2Rivals.rivals(w) : {};
     if (window.V2Picker && $('arHist')) V2Picker.mount($('arHist'), { w: w, me: ME, per: 8, sorts: ['newest', 'score', 'power'], records: function () { return d.done.map(function (f) { var A = w.byId[f.a], B = w.byId[f.b], k = f.a < f.b ? f.a + ':' + f.b : f.b + ':' + f.a, r = RV[k];
         return { key: String(f.id), f: f, pets: [A, B].filter(Boolean), newest: f.acceptBlock * 1e4 + f.id, html: function () { var sl = SP && st ? SP.line(st, f.acceptBlock) : '';
-          return '<b>#' + f.a + ' vs #' + f.b + '</b><span>🏆 ' + esc(String((w.byId[f.winner] || {}).name || '#' + f.winner).slice(0, 10)) + '</span><small>' + (r && r.n >= 2 ? '⚔️ rivals · ' : '') + 'blk ' + fmt(f.acceptBlock) + ' · ▶</small>'; } }; }); },
-      onPick: function (r) { if (window.V2ArenaScene) V2ArenaScene.sequence(r.f); else U.playFight(r.f); } });
+          return '<b>#' + f.a + ' vs #' + f.b + '</b><span>🏆 ' + esc(String((w.byId[f.winner] || {}).name || '#' + f.winner).slice(0, 10)) + '</span><small>' + (r && r.n >= 2 ? '⚔️ rivals · ' : '') + 'blk ' + fmt(f.acceptBlock) + '</small><em class="ar-rp-tag">▶ Replay #' + f.id + '</em>'; } }; }); },
+      onPick: function (r) { if (window.V2ArenaScene) V2ArenaScene.sequence(r.f, { restart: true }); else U.playFight(r.f); } });
     var rp = /^#replay-(\d+)$/.exec(location.hash || ''); if (rp && !render._rp && w.fights[rp[1] - 1]) { render._rp = 1; setTimeout(function () { if (window.V2ArenaScene) V2ArenaScene.sequence(w.fights[rp[1] - 1]); }, 600); }
+    RP.paint(d.done);
     if ($('arVoice')) $('arVoice').onclick = function () { var on = !V2Announcer.voiceOn(); V2Announcer.setVoice(on); this.textContent = (on ? '🔊' : '🔇') + ' Announcer'; this.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) V2Announcer.speak('Announcer on'); };
     /* Quick match + Post now live in the Challenge card (js/ux-batch.js paintFace) */
     box.querySelectorAll('[data-aracc]').forEach(function (x) { x.onclick = function () { var id = x.dataset.aracc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: 690 }], function () { U.afterAccept(id); }); }; });
-    box.querySelectorAll('[data-arview]').forEach(function (x) { x.onclick = function () { var fv = w.fights[x.dataset.arview - 1]; if (window.V2ArenaScene) V2ArenaScene.sequence(fv); else U.playFight(fv); }; }); }
+    box.querySelectorAll('[data-arview]').forEach(function (x) { x.onclick = function () { var fv = w.fights[x.dataset.arview - 1]; if (window.V2ArenaScene) V2ArenaScene.sequence(fv, { restart: true }); else U.playFight(fv); }; }); }
   window.V2Arena = { render: render, data: data };
 })();

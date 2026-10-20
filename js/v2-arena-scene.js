@@ -17,9 +17,12 @@
       if (!best || s.n > best.streak || (s.n === best.streak && (s.at < best.block || (s.at === best.block && s.fid < best.fid)))) best = { p: p, streak: s.n, block: s.at, fid: s.fid }; });
     return best; }
   /* sprite without its card background: render on a key colour (same trick as the hunger look) and key it out in toCanvas */
-  function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: !!p.blackEye, art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
+  function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: !!p.blackEye, art: Object.assign({}, p.art, { background: 'keyed', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
+  /* arena-injury: the key is the flat #ff00fe plus pet-core's ground shadow on it (mix(key, black, 0.4) = #990098). The arena frames use the
+   * non-swappable 'keyed' background so V2Bg never repaints the key as a stripe/dot pattern (the magenta stripes around #4409 in fight #6). */
+  function isKey(D, j) { return D[j + 1] === 0 && ((D[j] === 255 && D[j + 2] === 254) || (D[j] === 153 && D[j + 2] === 152)); }
   function toCanvas(img, tint) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!img) return c; var d = new ImageData(new Uint8ClampedArray(img.data), 32, 32);
-    for (var j = 0; j < d.data.length; j += 4) if (d.data[j] === 255 && d.data[j + 1] === 0 && d.data[j + 2] === 254) d.data[j + 3] = 0;
+    for (var j = 0; j < d.data.length; j += 4) if (isKey(d.data, j)) d.data[j + 3] = 0;
     if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2], side = ((i / 4) % 32) < 14 ? 22 : ((i / 4) % 32) > 19 ? -18 : 0, v = Math.max(40, Math.min(235, 62 + g * 0.62 + side));
       /* arena-sharp-text: carved stone (cool grey), lit on the left, shaded on the right, so it reads as a statue and not a live pet */ d.data[i] = v; d.data[i + 1] = v; d.data[i + 2] = Math.min(255, v + 10); }
     c.getContext('2d').putImageData(d, 0, 0); return c; }
@@ -108,14 +111,16 @@
    * Reduced motion: a static result in the scene (both pets, final HP bars, winner, spoils). Busy scene: the next fight waits its turn. */
   var Q = [];
   function mk(p, w, be) { var mp = Object.assign({}, p, { blackEye: !!be }); return (frames(mp, w) || []).map(function (i) { return toCanvas(i); }); }
-  function sequence(f) { var U = window.V2UI, w = U && U.world(); if (!f || !f.turns || !w) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!A || !B || !S.x) return;
+  function sequence(f, o) { var U = window.V2UI, w = U && U.world(); if (!f || !f.turns || !w) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!A || !B || !S.x) return;
+    if (o && o.restart) { Q.length = 0; cancelAnimationFrame(S.raf); S.raf = 0; S.mode = 'idle'; if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) { } } /* arena-replay: manual Replay restarts, never queues */
     if (S.mode !== 'idle' && S.mode !== 'result') { Q.push(f); return; }
+    if (window.V2ArenaReplay) try { V2ArenaReplay.onShow(f); } catch (e) { }
     if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
     S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.mood = null; S.hp = { a: f.maxA, b: f.maxB }; S.fx = []; S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.annSaid = null; S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null;
     S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true), side: 'a' }, { p: B, img: mk(B, w), lose: mk(B, w, true), side: 'b' }];
     if (reduced()) { S.mode = 'result'; S.hp = { a: f.turns.length ? f.turns[f.turns.length - 1].hpA : f.maxA, b: f.turns.length ? f.turns[f.turns.length - 1].hpB : f.maxB }; S.t0 = performance.now(); frame(S.t0); return; }
-    S.mode = 'walk'; S.t0 = performance.now(); kick();
-    S.onWalk = function () { S.mode = 'fight'; S.t0 = performance.now(); kick(); }; }
+    S.mode = 'walk'; S.t0 = performance.now(); kick(); var tok = S.seq = (S.seq || 0) + 1;
+    S.onWalk = function () { if (S.seq !== tok || S.mode !== 'walk') return; S.mode = 'fight'; S.t0 = performance.now(); kick(); }; }
   function nextQ() { var f = Q.shift(); if (f) setTimeout(function () { sequence(f); }, 400); }
   var TICK = 220; /* same pace as the old pop-up: 4 ticks per turn (lunge on tick 1) */
   function hpBar(x, cx, y, v, max, col) { px(x, '#000', cx - 17, y - 1, 34, 5); px(x, '#2a3a2e', cx - 16, y, 32, 3); px(x, col, cx - 16, y, Math.max(0, Math.round(32 * v / max)), 3); }
@@ -135,8 +140,8 @@
     if (!done) caption('ROUND ' + (ti + 1) + '/' + n + ' · #' + (f.turns[ti].by === 'a' ? f.a : f.b) + ' ' + String(f.turns[ti].weapon || '').slice(0, 12).toUpperCase());
     if (S.hitT && now - S.hitT < 90 && !reduced()) { x.fillStyle = 'rgba(255,255,255,.75)'; x.fillRect(0, 0, W, H); } /* white hit flash on big hits */
     if (window.V2ArenaFun) V2ArenaFun.overlay(S, x, now, Math.min(ti, n - 1), done, reduced());
-    if (done) { if (!S.koT) { S.koT = now; if (window.V2Sfx) V2Sfx.roar(); } ko(x, now - S.koT); }
-    else { caption('WINNER #' + f.winner + (f.spoils ? ' +' + String(f.spoils.label || f.spoils).slice(0, 14).toUpperCase() : '')); if (t > (n * 4 + 8) * TICK) { var Wn = f.winner === L.p.id ? L : R; S.actors = [{ p: Wn.p, img: Wn.img }]; S.mode = 'lap'; S.t0 = now; } } }
+    if (done) { if (!S.koT) { S.koT = now; if (window.V2Sfx) V2Sfx.roar(); } ko(x, now - S.koT); /* arena-replay fix: the end-of-fight -> lap step sat in the not-done branch, so a fight never finished and every later replay just queued */
+      caption('WINNER #' + f.winner + (f.spoils ? ' +' + String(f.spoils.label || f.spoils).slice(0, 14).toUpperCase() : '')); if (t > (n * 4 + 8) * TICK) { var Wn = f.winner === L.p.id ? L : R; S.actors = [{ p: Wn.p, img: Wn.img }]; S.mode = 'lap'; S.t0 = now; } } }
   /* quick wins (2026-10-19): big hit = a crit or the fight's top damage -> white flash + screen shake; K.O.! stamp at the end; none of the motion with reduced motion */
   function topDmg(f) { if (f._top == null) f._top = Math.max.apply(null, (f.turns || []).map(function (q) { return q.dodge ? 0 : q.dmg || 0; }).concat([1])); return f._top; }
   function shake() { var c = S.c; if (!c || !c.animate || reduced()) return; c.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-4px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'translate(-3px,-1px)' }, { transform: 'translate(2px,1px)' }, { transform: 'translate(0,0)' }], { duration: 260, easing: 'steps(5)' }); }
