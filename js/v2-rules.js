@@ -301,7 +301,7 @@
    *   egg    = from the block after kekMythic the 1-in-777 hatch/pack slot gives a player Lord Kek (kekArt) instead of a Bitcoin Wizard (owner Q3);
    *            no buy button / no pet:hatchkek tag;
    *   breed  = player Lord Keks breed and make hybrids (owner Q5); hybrid art uses the Pepe body (he is a Pepe) with Kek names. */
-  var ACTIVATE_KEK_BLOCK = null;                    // OFF until owner launch approval (then chain tip + ~6)
+  var ACTIVATE_KEK_BLOCK = 972396;                  // LIVE: chain tip 972,390 + 6 at launch approval (owner, Oct 20 2026 ~6:24 PM CT)
   var KEK_FROM_BLOCK = 972325;                      // the Wizard's Mythic block; burns after his Mythic burn count (documented; the replay uses w.wizardMythic)
   var KEK_CAN_BREED = true;                         // only effective once ACTIVATE_KEK_BLOCK is set and reached
   var KEK_TOP_N = 5;

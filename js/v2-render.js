@@ -509,7 +509,7 @@
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityGap(w) (owner rule Oct 19 2026): true when the community pet has gone into Cold Storage (the Bitcoin Wizard at Mythic, w.wizardMythic)
    * and no newer community pet exists yet. The spots then show the coming-soon placeholder (see comingSoonFrames). Display only. */
-  function communityGap(w) { return !!(w && w.wizardMythic && !(w.community && w.community.nextPet)); }
+  function communityGap(w) { if (w && w.kekMythic && COMMUNITY_NEXT_NO < 4) setNextNo(4); /* after Lord Kek's Cold Storage: 'Community pet #4 coming soon' everywhere */ return !!(w && w.wizardMythic && !(w.community && w.community.nextPet)); }
   /** Coming-soon rule (owner, Oct 20 2026; replaces the show-nothing rule): during a communityGap the community spots STAY visible with an 8-bit
    * mystery egg + 'Community pet #N coming soon'. N = COMMUNITY_NEXT_NO (#1 Nakamoto, #2 Bitcoin Wizard, so the next is #3). Feed/gear stay disabled. Display only. */
   var COMMUNITY_NEXT_NO = 3, soonCache = null;
