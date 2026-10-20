@@ -127,7 +127,9 @@
     var NG = window.GenPetCore || PetCore; if (NG.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0] && V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true });
-    R.animate($('crCanvas'), R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */
+    var gap = R.communityGap && R.communityGap(w); /* no community pet (Cold Storage gap): the card, the feature tile and the nav link are simply absent */
+    R.showEl($('shared'), !gap); R.showEl($('featCommunity'), !gap); document.querySelectorAll('a[href="#shared"]').forEach(function (a) { R.showEl(a, !gap); });
+    if (!gap) R.animate($('crCanvas'), R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */
     if ($('crGearTxt')) $('crGearTxt').textContent = R.communityWearing ? R.communityWearing(w) : ''; $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
     $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
