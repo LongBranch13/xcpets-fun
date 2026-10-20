@@ -252,7 +252,7 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-lb{width:100%;border-collapse:collapse;font-size:13px}.ar-lb th{font-family:'Press Start 2P',monospace;font-size:8px;color:#9fe8ff;text-align:left;padding:4px}.ar-lb td{padding:3px 4px;border-bottom:1px dotted #4b3f7a}.ar-lb tr.ar-mine td{color:#3ddc84}
 @media (max-width:640px){.ar-cols{grid-template-columns:1fr}.ar-vs{grid-template-columns:1fr;text-align:center}.ar-x{justify-self:center}.ar-post select{max-width:100%}}
 
-/* X Circus Kekimus sponsorship billboard + carved back wall (DRAFT 2026-10-19) */
+/* X Circus Kekimus presented-by board (fixed sponsors since 2026-10-19 8:53 PM CT) + carved back wall (DRAFT 2026-10-19) */
 .ar-wallwrap{position:relative;margin:-4px 0 10px}.ar-wall{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000}
 .sp-board{margin-top:6px;padding:8px 10px;background:#0f0b1c;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;text-align:center}.sp-board.sp-open{border-style:dashed;border-color:#9fe8ff}
 .sp-name{font-family:'Press Start 2P',ui-monospace,monospace;font-size:12px;color:#ffd166;line-height:1.6}.sp-open .sp-name{color:#9fe8ff}.sp-how{margin-top:4px;opacity:.9}.sp-card{color:#ffd166}
