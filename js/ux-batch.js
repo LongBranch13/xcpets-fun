@@ -86,7 +86,7 @@
     $('bFeedSel').innerHTML = 'Feed selected <span class="cost">' + (fq.length ? fmt(fq.length) + ' pet' + (fq.length === 1 ? '' : 's') + ' · ' + fmt(sum(fq)) + ' XCPETS' : '') + '</span>'; $('bFeedSel').disabled = !fq.length;
     $('bRoll').innerHTML = 'Roll gear ×' + rn + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : '345 XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq.length; $('bRoll').title = rq.length ? '' : 'Select one or more of your pets, then roll gear (345 XCPETS per roll)';
     var ae = V.autoEquipOps(w, ME, ids, S.tip); $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae.length;
-    var why = []; if (!fq.length) why.push('Feed: none of them is hungry'); if (!rq.length) why.push('Roll: no living pet of yours selected'); if (!ae.length) why.push('Auto-equip: nothing better in your bag');
+    var why = []; if (!fq.length) why.push('Feed: none of them is hungry'); if (!rq.length) why.push('Roll: no living pet of yours selected'); if (!ae.length) why.push('Auto-equip: nothing better in your stock');
     $('selWhy').textContent = why.join(' · ');
   };
   function bindSel() {
@@ -114,7 +114,7 @@
   UXB.confirmExtra = function (plans, w) { w = w || U.world(); var out = '';
     var rolls = plans.filter(function (x) { return /^pet:(roll|fr|of):\d+$/.test(x.tag); });
     if (rolls.length) { var ids = []; rolls.forEach(function (x) { var id = Number(x.tag.split(':')[2]); if (ids.indexOf(id) < 0) ids.push(id); });
-      out += '<div class="small grwhat"><b>🎲 What you get:</b> ' + (rolls.length === 1 ? 'one random gear piece' : rolls.length + ' random gear pieces, one per roll') + ', for the pet named in each burn. ' + (U.autoEquip && U.autoEquip() ? 'Auto-equip is on: a new piece is worn right away unless the pet already wears something better.' : 'New pieces go to your bag (Auto-equip is off); equip them from Inventory (free).') + '</div><div class="small muted">🎁 Your gear arrives once the burn confirms, usually in about 10 minutes.</div>' +
+      out += '<div class="small grwhat"><b>🎲 What you get:</b> ' + (rolls.length === 1 ? 'one random gear piece' : rolls.length + ' random gear pieces, one per roll') + ', for the pet named in each burn. ' + (U.autoEquip && U.autoEquip() ? 'Auto-equip is on: a new piece is worn right away unless the pet already wears something better.' : 'New pieces go to your stock (Auto-equip is off); equip them from the Lair (free).') + '</div><div class="small muted">🎁 Your gear arrives once the burn confirms, usually in about 10 minutes.</div>' +
         '<div class="small"><b>🎲 Your odds</b> (per roll)</div>' + ids.slice(0, 3).map(function (id) { var p = w.byId[id]; return p ? '<div class="small">#' + id + ' ' + esc(p.name) + ' ' + pill(p.tier) + '</div>' + oddsHtml(p, true) : ''; }).join('') + (ids.length > 3 ? '<div class="small muted">… and ' + (ids.length - 3) + ' more pets</div>' : '') +
         ''; }
     if (plans.some(function (x) { return /^pet:c:roll/.test(x.tag); })) out += '<div class="small grwhat"><b>🎲 What you get:</b> the community pet gets one random gear piece and wears it right away. A new piece replaces the one in that slot. It shows once the burn confirms, usually in about 10 minutes.</div>';
@@ -140,7 +140,7 @@
    * never per card (per-card captions used the global .meme headline style: 34-64px Bangers with a 4px shadow, so they overlapped the cards). */
   UXB.revealCard = function (d, x, w) { var t = x.legendary ? 3 : x.tier || 0; d.classList.add('ux-flash', 'ux-t' + t); if (x.legendary) d.classList.add('ux-fanfare'); };
 
-  UXB.revealDone = function () { }; /* the red "replaced your … / better piece in your bag" notice is gone (2026-10-19): the popup says where each piece went instead */
+  UXB.revealDone = function () { }; /* the red "replaced your … / better piece in your stock" notice is gone (2026-10-19): the popup says where each piece went instead */
 
   // ================================================================ C. inventory: lucky drops, paper-doll, bag, collection log
   var IV = Object.assign({ view: 'bag', filter: 'all', slot: 'all', pet: null }, load('inv', {}));
@@ -155,14 +155,14 @@
     $('tokens').textContent = String(V.tokensOf(w, ME));
     if (IV.pet == null || !w.byId[IV.pet] || w.byId[IV.pet].owner !== ME) IV.pet = (S.sel[0] != null && w.byId[S.sel[0]]) ? S.sel[0] : (pets[0] && pets[0].id);
     var p = w.byId[IV.pet], h = '';
-    h += '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (IV.view === 'bag' ? ' on' : '') + '" data-iv="bag">🎒 My gear</button><button type="button" class="tab' + (IV.view === 'log' ? ' on' : '') + '" data-iv="log">📖 Collection log</button></div>';
+    h += '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (IV.view === 'bag' ? ' on' : '') + '" data-iv="bag">📦 My stock</button><button type="button" class="tab' + (IV.view === 'log' ? ' on' : '') + '" data-iv="log">📖 Collection log</button></div>';
     if (IV.view === 'bag') {
       if (p) { var nm = p.capacity < 6 ? unmet(p) : [];
         h += '<div class="doll"><div class="dollhead"><label class="small">Pet <select id="ivPet" class="pick">' + pets.slice(0, 2000).map(function (q) { return '<option value="' + q.id + '"' + (q.id === p.id ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + ' · ' + TL[q.tier] + '</option>'; }).join('') + '</select></label> <span class="small muted">' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots open</span></div><div class="dollrow"><canvas id="ivSprite" width="32" height="32" class="sprite big"></canvas><div class="dollslots">' +
           SLOTS.map(function (sl, i) { var g = V.wornOf(w, p.id).filter(function (x) { return x.slot === sl; })[0], locked = p.openSlots.indexOf(sl) < 0;
             var need = locked ? (i - p.capacity === 0 ? 'Unlocks at ' + (nm.length ? nm.join(' or ') : 'next milestone') : 'Needs ' + (i - p.capacity + 1) + ' more of: ' + nm.join(', ')) : '';
             return '<button type="button" class="dslot' + (locked ? ' locked' : '') + (g ? ' t' + (g.legendary ? 3 : g.tier) : '') + (IV.slot === sl ? ' on' : '') + '" data-dslot="' + sl + '" title="' + esc(locked ? need : g ? g.label : 'empty') + '"><span class="dl">' + esc(SL(sl)) + '</span>' + (g ? '<span class="gi" data-icon="' + esc(g.item) + '"></span><span class="small">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span>' : locked ? '<span class="small muted">🔒 ' + esc(need) + '</span>' : '<span class="small muted">empty</span>') + '</button>'; }).join('') + '</div></div></div>'; }
-      h += '<div class="chips slotfilter">' + [['all', 'All'], ['worn', 'Worn'], ['bag', 'In bag'], ['star', '★']].map(function (f) { return '<button type="button" class="q' + (IV.filter === f[0] ? ' on' : '') + '" data-if="' + f[0] + '">' + f[1] + '</button>'; }).join('') + ' · <button type="button" class="q' + (IV.slot === 'all' ? ' on' : '') + '" data-is="all">All slots</button>' + SLOTS.map(function (sl) { return '<button type="button" class="q' + (IV.slot === sl ? ' on' : '') + '" data-is="' + sl + '">' + esc(SL(sl)) + '</button>'; }).join('') + '</div>';
+      h += '<div class="chips slotfilter">' + [['all', 'All'], ['worn', 'Worn'], ['bag', 'In stock'], ['star', '★']].map(function (f) { return '<button type="button" class="q' + (IV.filter === f[0] ? ' on' : '') + '" data-if="' + f[0] + '">' + f[1] + '</button>'; }).join('') + ' · <button type="button" class="q' + (IV.slot === 'all' ? ' on' : '') + '" data-is="all">All slots</button>' + SLOTS.map(function (sl) { return '<button type="button" class="q' + (IV.slot === sl ? ' on' : '') + '" data-is="' + sl + '">' + esc(SL(sl)) + '</button>'; }).join('') + '</div>';
       var groups = {}; items.forEach(function (g) { if (IV.slot !== 'all' && g.slot !== IV.slot) return; if (IV.filter === 'worn' && g.on == null) return; if (IV.filter === 'bag' && g.on != null) return; if (IV.filter === 'star' && !g.legendary) return;
         var k = g.item; (groups[k] = groups[k] || { item: g.item, label: g.label, slot: g.slot, tier: g.tier || 0, legendary: g.legendary, copies: [] }).copies.push(g); });
       var G = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (a, b) { return (b.legendary ? 4 : b.tier) - (a.legendary ? 4 : a.tier) || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || (a.label < b.label ? -1 : 1); });
@@ -209,7 +209,7 @@
   function bindTokens() { $('tokStat').onclick = function () { var L = $('tokList'), w = U.world(); if (!L.hidden) { L.hidden = true; return; }
     var T = w.itemList.filter(function (g) { return g.owner === ME && g.src === 'token'; });
     L.innerHTML = T.length ? '<div class="small"><b>🎟️ Lucky drops</b> · each one was rolled and worn the moment it dropped:</div><div class="baggrid">' + T.slice(0, 300).map(function (g) { return '<span class="bagitem t' + (g.legendary ? 3 : g.tier || 0) + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span><span class="wn">' + (g.on != null ? 'on #' + g.on : '🎒') + (g.rolledOn != null ? ' · from #' + g.rolledOn : '') + '</span></span>'; }).join('') + '</div>'
-      : '<p class="small muted">' + (V.tokensOf(w, ME) ? 'Your lucky drops came from the v1 game; their pieces are mixed into your bag.' : 'No lucky drops yet. Each stage-up has a 25% chance and each meal 2%.') + '</p>';
+      : '<p class="small muted">' + (V.tokensOf(w, ME) ? 'Your lucky drops came from the v1 game; their pieces are mixed into your stock.' : 'No lucky drops yet. Each stage-up has a 25% chance and each meal 2%.') + '</p>';
     L.querySelectorAll('.gi[data-icon]').forEach(function (s) { s.appendChild(R.iconCanvas(s.getAttribute('data-icon'), '')); }); L.hidden = false; }; }
 
   // ================================================================ A. battle face-off card
