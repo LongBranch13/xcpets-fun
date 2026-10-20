@@ -133,9 +133,9 @@
   function shortA(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 4) + '\u2026' + a.slice(-3) : a; }
   function ownerBadge(p, ME) { return p.owner && p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner || '') + '">Other Pets<br>' + esc(shortA(p.owner)) + '</em>'; }
   function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
-    return function (r) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
+    return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
-        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span><span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–') + '</span></span>' +
+        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc" title="Power = Vigor + Spark + Grit + Zoom + Luck">⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
         ''; }; }
   if (typeof document !== 'undefined' && !document.getElementById('bkCss')) { var bs = document.createElement('style'); bs.id = 'bkCss';
     bs.textContent = '.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
