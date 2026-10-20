@@ -48,7 +48,7 @@
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
     var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
-    $('fShowing').textContent = shown ? 'Showing ' + fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets' : '';
+    $('fShowing').textContent = shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''; /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
     $('ctlToggle').textContent = '⚙️ Filter & sort' + (filtered() ? ' •' : '');
   }
@@ -73,16 +73,17 @@
     lastTap = id; U.save(); U.selUi(); };
   function sum(plans) { return plans.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0); }
   UXB.sel = function () { var w = lastW || U.world(), S = U.S(), alive = U.mine(w).filter(function (p) { return !p.dead; }), shown = U.petList(w).filter(function (p) { return !p.dead; });
-    var n = S.sel.length, onShown = shown.filter(function (p) { return S.sel.indexOf(p.id) >= 0; }).length, cb = $('selAll');
+    var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
-    var hungry = alive.filter(function (p) { return p.hungry; }), hq = V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
-    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS)</span>'; $('bFeedHungry').disabled = !hungry.length;
+    /* bigfix 2026-10-20: the button only needs the total, which is the sum of the hungry pets' meals (no need to build every burn on each tap) */
+    var hungry = alive.filter(function (p) { return p.hungry; }), hqSum = hungry.reduce(function (a, p) { return a + (Number(p.nextMeal) || 0); }, 0);
+    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(hqSum) + ' XCPETS)</span>'; $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
     if (!n) return;
-    var ids = S.sel.slice(), fq = V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
+    var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
     var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
@@ -94,8 +95,8 @@
   };
   function bindSel() {
     $('selAll').onchange = function () { var w = U.world(), S = U.S(), shown = U.petList(w).filter(function (p) { return !p.dead; }).map(function (p) { return p.id; });
-      var all = shown.every(function (id) { return S.sel.indexOf(id) >= 0; });
-      if (all) S.sel = S.sel.filter(function (id) { return shown.indexOf(id) < 0; }); else shown.forEach(function (id) { if (S.sel.indexOf(id) < 0) S.sel.push(id); });
+      var selS = new Set(S.sel), shS = new Set(shown), all = shown.every(function (id) { return selS.has(id); });
+      if (all) S.sel = S.sel.filter(function (id) { return !shS.has(id); }); else shown.forEach(function (id) { if (!selS.has(id)) { selS.add(id); S.sel.push(id); } });
       U.save(); U.selUi(); };
     $('rollN').oninput = function () { UXB.sel(); };
     $('pets').addEventListener('click', function (e) { var a = e.target.closest('[data-jump]'); if (!a) return; e.preventDefault(); e.stopPropagation(); jump(a.getAttribute('data-jump')); }, true);
@@ -231,11 +232,16 @@
   function closePop() { var d = $('invPop'); if (d) d.remove(); }
   document.addEventListener('click', function (e) { var d = $('invPop'); if (d && !d.contains(e.target)) closePop(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePop(); });
-  function bindTokens() { $('tokStat').onclick = function () { var L = $('tokList'), w = U.world(); if (!L.hidden) { L.hidden = true; return; }
-    var T = w.itemList.filter(function (g) { return g.owner === ME && g.src === 'token'; });
-    L.innerHTML = T.length ? '<div class="small"><b>🎟️ Lucky drops</b> · each one was rolled and worn the moment it dropped:</div><div class="baggrid">' + T.slice(0, 300).map(function (g) { return '<span class="bagitem t' + (g.legendary ? 3 : g.tier || 0) + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span><span class="wn">' + (g.on != null ? 'on #' + g.on : '🎒') + (g.rolledOn != null ? ' · from #' + g.rolledOn : '') + '</span></span>'; }).join('') + '</div>'
+  /* bigfix 2026-10-20: Lucky drops show every piece: newest first, 60 at a time with 'Show more (N left)' and a total count */
+  function bindTokens() { var TN = 60; $('tokStat').onclick = function () { var L = $('tokList'), w = U.world(); if (!L.hidden) { L.hidden = true; return; }
+    var T = w.itemList.filter(function (g) { return g.owner === ME && g.src === 'token'; }).reverse(); TN = 60;
+    var card = function (g) { return '<span class="bagitem t' + (g.legendary ? 3 : g.tier || 0) + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span><span class="wn">' + (g.on != null ? 'on #' + g.on : '🎒') + (g.rolledOn != null ? ' · from #' + g.rolledOn : '') + '</span></span>'; };
+    var icons = function (el) { el.querySelectorAll('.gi[data-icon]').forEach(function (s) { if (!s.firstChild) s.appendChild(R.iconCanvas(s.getAttribute('data-icon'), '')); }); };
+    L.innerHTML = T.length ? '<div class="small"><b>🎟️ Lucky drops: ' + fmt(T.length) + '</b> · newest first · each one was rolled and worn the moment it dropped:</div><div class="baggrid">' + T.slice(0, TN).map(card).join('') + '</div>' + (T.length > TN ? '<button type="button" class="q" id="tokMore">Show more (' + fmt(T.length - TN) + ' left)</button>' : '')
       : '<p class="small muted">' + (V.tokensOf(w, ME) ? 'Your lucky drops came from the v1 game; their pieces are mixed into your stash.' : 'No lucky drops yet. Each stage-up has a 25% chance and each meal 2%.') + '</p>';
-    L.querySelectorAll('.gi[data-icon]').forEach(function (s) { s.appendChild(R.iconCanvas(s.getAttribute('data-icon'), '')); }); L.hidden = false; }; }
+    icons(L); L.hidden = false;
+    var mb = $('tokMore'); if (mb) mb.onclick = function (e) { e.stopPropagation(); var g = L.querySelector('.baggrid'), a = TN; TN += 60; g.insertAdjacentHTML('beforeend', T.slice(a, TN).map(card).join('')); icons(g);
+      if (T.length > TN) mb.textContent = 'Show more (' + fmt(T.length - TN) + ' left)'; else mb.remove(); }; }; }
 
   // ================================================================ A. battle face-off card
   var FO = { a: null, b: null }, IGN = load('ignored', []);

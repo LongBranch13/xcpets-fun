@@ -1151,7 +1151,8 @@
   }
   // ---------------------------------------------------------------- bulk planners (pure; UI turns plans into burns)
   function feedQueue(w, owner, ids, nextBlock) { // ids null => all hungry. From ACTIVATE_FEEDM_BLOCK: always bundled, as many pets per burn as the 34-byte tag fits
-    var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!ids || ids.indexOf(p.id) >= 0); });
+    var idSet = ids ? new Set(ids) : null; /* bigfix: Set lookup (same result as ids.indexOf, O(1) instead of O(n) per pet) */
+    var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
     return feedListOn(nb) ? feedPlan(ps) : feedBatches(ps);
@@ -1162,22 +1163,43 @@
   /** feedPlan(pets) (FEED_LIST_BLOCK on): fewest burns. Sorted by id, split into consecutive groups by DP; each group is one pet:feed (1 pet),
    * one pet:fm window (dense run) or one pet:fl list (scattered), whichever fits in 34 bytes. Ties: fewer tag bytes, then fm before fl.
    * amount = the sum of the group's meals (exact, rounded to 8 dp), same as feedBatches. */
-  function feedPlan(ps) {
-    ps = ps.slice().sort(function (a, b) { return a.id - b.id; }); var n = ps.length, best = [{ c: 0, by: 0 }];
-    function enc(i, j) { /* group ps[i..j] -> tag or null */
-      var s = ps[i].id, e = ps[j].id; if (i === j) return 'pet:feed:' + s;
-      var opts = [], fm = 'pet:fm:' + s + ':', nch = Math.floor((e - s) / 5) + 1;
-      if (fm.length + nch <= MAX_TAG_BYTES) { var d = []; for (var k = 0; k < nch; k++) d.push(0); for (k = i; k <= j; k++) { var o = ps[k].id - s; d[Math.floor(o / 5)] |= 1 << (o % 5); }
-        opts.push(fm + d.map(b32).join('')); }
-      var fl = 'pet:fl:' + ps.slice(i, j + 1).map(function (p) { return b32(p.id); }).join('.'); if (fl.length <= MAX_TAG_BYTES) opts.push(fl);
-      return opts.length ? opts.sort(function (a, b) { return a.length - b.length; })[0] : null; }
-    for (var j = 0; j < n; j++) { best[j + 1] = null;
-      for (var i = j; i >= 0; i--) { var t = enc(i, j); if (!t) { if (j - i > 30) break; continue; } var pr = best[i]; if (!pr) continue;
-        var c = { c: pr.c + 1, by: pr.by + t.length, i: i, tag: t }; if (!best[j + 1] || c.c < best[j + 1].c || (c.c === best[j + 1].c && c.by < best[j + 1].by)) best[j + 1] = c; } }
-    var out = [], at = n; while (at > 0) { var x = best[at], grp = ps.slice(x.i, at), amount = Math.round(grp.reduce(function (a, p) { return a + p.nextMeal; }, 0) * 1e8) / 1e8;
+  function feedPlan(ps) { var job = feedPlanJob(ps); job.step(Infinity); return job.result(); }
+  /** feedPlanJob(pets): the feedPlan DP, resumable (bigfix 2026-10-20) so the UI can run it in slices and show progress. Same output as before. */
+  function feedPlanJob(ps) {
+    ps = ps.slice().sort(function (a, b) { return a.id - b.id; }); var n = ps.length, best = [{ c: 0, by: 0 }], j = 0;
+    /* bigfix 2026-10-20: the DP only compares tag lengths, so lengths are worked out in O(1) (prefix sums of the base-32 id lengths)
+     * and the tag text is built only for the groups that are picked. Same choices and same tags as the old enc(). */
+    var bl = [0]; for (var q = 0; q < n; q++) bl.push(bl[q] + b32(ps[q].id).length);
+    function encLen(i, j) { /* -> { len, kind: 'one' | 'fm' | 'fl' } or null; ties: fm before fl (the old stable sort) */
+      var s = ps[i].id, e = ps[j].id; if (i === j) return { len: ('pet:feed:' + s).length, kind: 'one' };
+      var best0 = null, fmLen = ('pet:fm:' + s + ':').length + Math.floor((e - s) / 5) + 1; if (fmLen <= MAX_TAG_BYTES) best0 = { len: fmLen, kind: 'fm' };
+      var flLen = 'pet:fl:'.length + (bl[j + 1] - bl[i]) + (j - i); if (flLen <= MAX_TAG_BYTES && (!best0 || flLen < best0.len)) best0 = { len: flLen, kind: 'fl' };
+      return best0; }
+    function encTag(i, j, kind) { var s = ps[i].id, e = ps[j].id; if (kind === 'one') return 'pet:feed:' + s;
+      if (kind === 'fl') return 'pet:fl:' + ps.slice(i, j + 1).map(function (p) { return b32(p.id); }).join('.');
+      var nch = Math.floor((e - s) / 5) + 1, d = []; for (var k = 0; k < nch; k++) d.push(0); for (k = i; k <= j; k++) { var o = ps[k].id - s; d[Math.floor(o / 5)] |= 1 << (o % 5); }
+      return 'pet:fm:' + s + ':' + d.map(b32).join(''); }
+    function step(maxJ) { var stop = Math.min(n, j + maxJ);
+      for (; j < stop; j++) { best[j + 1] = null;
+        for (var i = j; i >= 0; i--) { var t = encLen(i, j); if (!t) { if (j - i > 30) break; continue; } var pr = best[i]; if (!pr) continue;
+          var c = { c: pr.c + 1, by: pr.by + t.len, i: i, kind: t.kind }; if (!best[j + 1] || c.c < best[j + 1].c || (c.c === best[j + 1].c && c.by < best[j + 1].by)) best[j + 1] = c; } }
+      return j >= n; }
+    function result() {
+    var out = [], at = n; while (at > 0) { var x = best[at]; x.tag = x.tag || encTag(x.i, at - 1, x.kind); var grp = ps.slice(x.i, at), amount = Math.round(grp.reduce(function (a, p) { return a + p.nextMeal; }, 0) * 1e8) / 1e8;
       out.unshift(grp.length === 1 ? { tag: x.tag, amount: amount, petId: grp[0].id, label: 'Feed #' + grp[0].id } : { tag: x.tag, amount: amount, petIds: grp.map(function (p) { return p.id; }), label: 'Feed ' + grp.length + ' pets' }); at = x.i; }
     out.forEach(function (p, k) { if (out.length > 1) p.label += ' (burn ' + (k + 1) + ' of ' + out.length + ')'; });
-    return out;
+    return out; }
+    return { step: step, result: result, total: n, done: function () { return j; } };
+  }
+  /** feedQueueAsync(w, owner, ids, nextBlock, onProgress(done, total)) -> Promise of the same plans as feedQueue, built in ~40 ms slices
+   *  with a yield between them so the page never freezes (bigfix 2026-10-20, UI helper; rules unchanged). */
+  function feedQueueAsync(w, owner, ids, nextBlock, onProgress) {
+    var idSet = ids ? new Set(ids) : null, ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); }), nb = nextBlock != null ? nextBlock : (w.tip || 0);
+    if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2 || !feedListOn(nb)) return Promise.resolve(feedQueue(w, owner, ids, nextBlock));
+    var job = feedPlanJob(ps);
+    return new Promise(function (res, rej) { (function go() { try { var t0 = Date.now(), fin = false, k = 50;
+        while (!fin && Date.now() - t0 < 40) fin = job.step(k);
+        if (onProgress) onProgress(job.done(), job.total); if (fin) return res(job.result()); setTimeout(go, 0); } catch (e) { rej(e); } })(); });
   }
   /** feedBatches(pets) -> pet:fm:START:MASK plans (<= 34 bytes), amount = the sum of those pets' meals (exact, rounded to 8 dp). */
   function feedBatches(ps) {
@@ -1193,7 +1215,7 @@
     out.forEach(function (p, k) { if (out.length > 1) p.label += ' (burn ' + (k + 1) + ' of ' + out.length + ')'; });
     return out;
   }
-  function rollQueue(w, owner, ids, n) { var out = []; w.pets.forEach(function (p) { if (p.owner !== owner || ids.indexOf(p.id) < 0 || p.dead || p.released) return;
+  function rollQueue(w, owner, ids, n) { var out = [], idS = new Set(ids); w.pets.forEach(function (p) { if (p.owner !== owner || !idS.has(p.id) || p.dead || p.released) return;
     for (var i = 0; i < (n || 1); i++) out.push({ tag: 'pet:roll:' + p.id, amount: COSTS.roll, petId: p.id, label: 'Gear roll #' + p.id }); }); return out; }
   /** crollOn(tip): the play page offers the community roll only once the chain tip has reached ACTIVATE_CROLL_BLOCK (unknown tip => off). */
   function crollOn(tip) { return tip != null && Number(tip) >= ACTIVATE_CROLL_BLOCK; }
@@ -1283,7 +1305,7 @@
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, reindex: reindex, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_GEAR_AUDIT_BLOCK: ACTIVATE_GEAR_AUDIT_BLOCK, gaOn: gaOn, ACTIVATE_STAR_BATCH_BLOCK: ACTIVATE_STAR_BATCH_BLOCK, ACTIVATE_MYTHIC_DISCOUNT_BLOCK: ACTIVATE_MYTHIC_DISCOUNT_BLOCK, MYTHIC_DISCOUNT_CARE: MYTHIC_DISCOUNT_CARE, mythicDiscountOn: mythicDiscountOn, petThresholds: petThresholds, overflowRolls: overflowRolls, overflowRollPlan: overflowRollPlan, overflowEarned: overflowEarned, starBatchOn: starBatchOn, lockHint: function (id) { var L = SPECIES_LOCK[id]; return L ? '\uD83D\uDD12 ' + speciesLabel(L.sp) + '-only' : ''; }, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };

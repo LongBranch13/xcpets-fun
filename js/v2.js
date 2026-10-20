@@ -243,12 +243,13 @@
     box.querySelectorAll(':scope > .pet.card[data-pid]').forEach(function (d) { m[d.dataset.pid] = d; });
     if (Object.keys(m).length !== list.length || !list.every(function (p) { return m[p.id]; })) return false;
     var f = document.createDocumentFragment(); list.forEach(function (p) { f.appendChild(m[p.id]); }); box.insertBefore(f, box.firstChild); return true; }
+  var PG = { n: 150, key: '' };
   function renderPets(w) {
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
     var list = petList(alive, dead);
-    S.sel = S.sel.filter(function (id) { return alive.some(function (p) { return p.id === id; }); });
-    $('selAll').checked = list.length > 0 && list.every(function (p) { return S.sel.indexOf(p.id) >= 0; });
+    var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
+    $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
     var box = $('pets'); box.innerHTML = list.length ? '' : '<p class="muted">No pets match this filter.</p>';
@@ -269,11 +270,20 @@
       return d; }
     function put(ps, before) { var f = document.createDocumentFragment(), ds = ps.map(function (p) { var d = mk(p); f.appendChild(d); return [d, p]; }); if (before) box.insertBefore(f, before); else box.appendChild(f);
       ds.forEach(function (x) { R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
-    put(list.slice(0, CH)); box.appendChild(tail);
-    (function more(i) { if (i >= list.length) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, i + CH), tail); more(i + CH); }, 0); })(CH);
+    /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
+     * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
+    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|'); if (PG.key !== key) { PG.key = key; PG.n = CH; }
+    var upto = Math.min(list.length, Math.max(CH, PG.n));
+    put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
+    (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
+    if (list.length > upto) { var mb = document.createElement('div'); mb.className = 'row petmore'; mb.style.cssText = 'justify-content:center;margin:10px 0;width:100%;grid-column:1/-1';
+      mb.innerHTML = '<button type="button" class="q" id="petMore">Show more (' + fmt(list.length - upto) + ' left)</button>';
+      box.appendChild(mb); mb.querySelector('button').onclick = function (e) { e.stopPropagation(); var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();
+        put(list.slice(i0, upto), tail); if (list.length > upto) { mb.querySelector('button').textContent = 'Show more (' + fmt(list.length - upto) + ' left)'; box.insertBefore(mb, tail.nextSibling); } else mb.remove();
+        $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
     var gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hiddenIds().indexOf(p.id) >= 0 && !!p.dead === !!cem; });
     if (gone.length) box.appendChild(discardedBox(gone, w));
-    $('petPager').textContent = list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
+    $('petPager').textContent = list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
   }
   /* Discarded list (build 2, 2026-10-16): small cards (lazy sprite, tier, species, stage, Restore) with sort, tier filter, search and
    * checkboxes for 'Restore selected' / 'Restore all'. Alive tab = discarded living pets, Graveyard tab = discarded dead pets. Browser-only. */
@@ -320,8 +330,23 @@
   /* Feed all hungry / Feed selected NEVER include a discarded pet: filtered by the discard set itself (hiddenIds), not by what is on screen,
    * so 'Show discarded', a stale selection or an active filter can't leak one in. */
   function noDiscarded(plans) { var h = hiddenIds(); return plans.filter(function (q) { return h.indexOf(q.petId) < 0; }); }
-  $('bFeedHungry').onclick = function () { var w = world(), h = hiddenIds(); confirmPlans('Feed all hungry pets', noDiscarded(V.feedQueue(w, ME, w.pets.filter(function (p) { return p.owner === ME && h.indexOf(p.id) < 0; }).map(function (p) { return p.id; })))); };
-  $('bFeedSel').onclick = function () { var h = hiddenIds(); confirmPlans('Feed selected pets', noDiscarded(V.feedQueue(world(), ME, sel().filter(function (id) { return h.indexOf(id) < 0; })))); };
+  /* bigfix 2026-10-20: big feeds are planned in small slices (V.feedQueueAsync) with a progress bar in the confirm box, so the page never freezes.
+   * The overfeed guard runs on the pet list first, so the plan is built once. Same burns as before. */
+  var feedTok = 0;
+  function feedAsync(title, ids) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
+    var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
+    if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(V.feedQueue(w, ME, hungry)));
+    var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return confirmPlans(title, noDiscarded(V.feedQueue(w, ME, hungry)));
+    pendingPlans = null; $('cfTitle').textContent = title;
+    $('cfBody').innerHTML = '<p class="small">🍖 Getting your meals ready for <b>' + fmt(g.ok.length) + '</b> hungry pets…</p><div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt">0 of ' + fmt(g.ok.length) + ' pets</div>';
+    $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
+    var t0 = performance.now();
+    V.feedQueueAsync(w, ME, g.ok, null, function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
+      .then(function (plans) { window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
+  }
+  $('cfNo').addEventListener('click', function () { feedTok++; });
+  $('bFeedHungry').onclick = function () { var w = world(); feedAsync('Feed all hungry pets', w.pets.filter(function (p) { return p.owner === ME; }).map(function (p) { return p.id; })); };
+  $('bFeedSel').onclick = function () { feedAsync('Feed selected pets', sel()); };
   $('bRoll').onclick = function () { confirmPlans('Gear-roll queue', V.rollQueue(world(), ME, sel(), Number($('rollN').value) || 1)); };
   if ($('bRelease')) $('bRelease').onclick = function () { if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
   $('bAuto').onclick = function () { if (viewBlock()) return; var ops = V.autoEquipOps(world(), ME, sel(), S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip: ' + ops.length + ' pieces (free, no burn)'); render(); };
@@ -417,17 +442,17 @@
   function viewBlock() { if (!viewOnly()) return false;
     toast('👀 Viewing ' + esc(V2View.short(ME)) + ': view only. Connect the XCP Wallet that owns these pets to feed, equip, battle, breed or roll. Opening the connect prompt…');
     var wc = $('wconnect'); if (wc) { try { wc.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } wc.click(); } return true; }
-  function confirmPlans(title, plans, after) {
+  function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
     if (!ME) { /* no wallet (2026-10-16): say so and open the connect prompt instead of silently doing nothing */ toast('🔌 Connect XCP Wallet first: every action is a burn signed in your wallet. Opening the connect prompt…'); var wc = $('wconnect'); if (wc) { try { wc.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } wc.click(); } return; }
     var bw = world(), skip = []; plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ' battles: ' + skip.join(' · ')); window.V2LastBlocked = skip; }
-    var fg = feedGuard(bw, plans); plans = fg.plans;
+    var fg = feedGuard(bw, plans); plans = fg.plans; if (pre && pre.skipped.length && !fg.skipped.length) fg = { plans: plans, skipped: pre.skipped, text: pre.text };
     if (!plans.length) { if (fg.skipped.length) toast('🍽️ Feed not sent: ' + fg.text); else if (!skip.length) toast('Nothing to do'); return; }
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's' : '') + ', each signed separately · network fees ~' + fmt(s.feeSats) + ' sats (' + s.feeBtc.toFixed(8) + ' BTC, estimate; XCP Wallet shows the real fee) · balance after ' + fmt(S.balance - s.total) + '</p>' +
-      '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
+      blocksNote(s.burns) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
     $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = false; $('cfNo').disabled = false; open('confirmBox');
@@ -439,12 +464,18 @@
     function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed' && !conf[t.txid]) add(t.tag); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x && x.source === ME && !conf[x.tx_hash]) add(x.tag); }); return o; }
+  /* bigfix 2026-10-20: plain-words heads-up for runs longer than the unconfirmed-burn limit */
+  function blocksNote(burns) { var cap = (window.V2Wallet && V2Wallet.CHAIN_CAP) || 24; if (burns <= cap) return '';
+    var blocks = Math.ceil(burns / cap); return '<p class="small"><b>📦 ' + fmt(burns) + ' burns, about ' + blocks + ' Bitcoin blocks (~' + (blocks * 10) + ' min).</b> Bitcoin lets about ' + cap + ' of your burns wait at once, so you sign ' + cap + ', wait for the next block, then press Continue. Nothing is lost if you stop: Continue picks up where you left off.</p>'; }
+  function guardIds(w, ids) { var pend = pendingFeedIds(), why = {}, ok = ids.filter(function (id) { var p = w.byId[id], r = !p ? 'not found' : p.owner !== ME ? 'not yours' : p.dead ? 'dead' : p.released ? 'released' : (p.mythicCare || p.stage >= 5) ? 'Mythic (never starves)' : p.fedToday ? 'already fed this chain day' : pend[id] ? 'a feed burn is still waiting to confirm' : !(p.nextMeal > 0) || !p.hungry ? 'no meal due' : null;
+      if (r) (why[r] = why[r] || []).push(id); return !r; }), oks = new Set(ok), skipped = ids.filter(function (id) { return !oks.has(id); });
+    return { ok: ok, skipped: skipped, text: Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ') }; }
   function feedGuard(w, plans) { var feedIds = [], other = [], why = {}, pend = null;
     plans.forEach(function (q) { var t = V.parseTag(q.tag); if (t && t.action === 'feed') feedIds.push(t.petId); else if (t && (t.action === 'feedm' || t.action === 'feedl')) feedIds = feedIds.concat(t.ids); else other.push(q); });
     if (!feedIds.length) return { plans: plans, skipped: [], text: '' };
     pend = pendingFeedIds(); var ok = feedIds.filter(function (id) { var p = w.byId[id], r = !p ? 'not found' : p.owner !== ME ? 'not yours' : p.dead ? 'dead' : p.released ? 'released' : (p.mythicCare || p.stage >= 5) ? 'Mythic (never starves)' : p.fedToday ? 'already fed this chain day' : pend[id] ? 'a feed burn is still waiting to confirm' : !(p.nextMeal > 0) || !p.hungry ? 'no meal due' : null;
       if (r) (why[r] = why[r] || []).push(id); return !r; });
-    var skipped = feedIds.filter(function (id) { return ok.indexOf(id) < 0; }); if (!skipped.length) return { plans: plans, skipped: [], text: '' };
+    var okS = new Set(ok), skipped = feedIds.filter(function (id) { return !okS.has(id); }); if (!skipped.length) return { plans: plans, skipped: [], text: '' };
     var text = Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ');
     return { plans: other.concat(ok.length ? V.feedQueue(w, ME, ok) : []), skipped: skipped, text: text }; }
   /* Resume (build 2): the unsent part of a stopped multi-burn run is kept per network + address so a reload offers Continue instead of rebuilding sent burns */
@@ -775,7 +806,11 @@
     var mineTx = {}; S.rows.forEach(function (r) { if (r.source === ME) mineTx[r.tx_hash] = 1; });
     var pend = V2Wallet.tracker.list().filter(function (t) { return !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).reverse().map(function (t) { return '<div class="small">⏳ ' + esc(t.label || t.tag) + ' · ' + fmt(t.amount) + ' XCPETS · <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + t.txid + '">' + t.txid.slice(0, 8) + '…</a> · waiting for a block</div>'; }).join('');
     $('pending').innerHTML = pend + (w.log.filter(function (l) { return mineTx[l.tx]; }).slice(-8).reverse().map(row).join('') || (pend ? '' : 'None yet.'));
-    $('log').innerHTML = w.log.slice(-200).reverse().map(row).join('');
+    /* bigfix 2026-10-20: say how many lines are shown and let players load older ones (200 at a time) */
+    var LN = renderLog.n = renderLog.n || 200, tot = w.log.length, sh = Math.min(LN, tot);
+    $('log').innerHTML = (tot ? '<div class="small muted">Latest ' + fmt(sh) + ' of ' + fmt(tot) + ' burns, newest first</div>' : '') + w.log.slice(-sh).reverse().map(row).join('') +
+      (tot > sh ? '<button type="button" class="q" id="logMore">Show older (' + fmt(tot - sh) + ' left)</button>' : '');
+    if ($('logMore')) $('logMore').onclick = function (e) { e.preventDefault(); renderLog.n = LN + 200; renderLog(world()); };
   }
   // ---------------------------------------------------------------- other controls
   $('dcYes').onclick = function () { var ids = dropKept(mine(world()).filter(function (p) { return p.tier === 0 && !p.dead; }).map(function (p) { return p.id; })); close('delCommonsBox'); if (!ids.length) return toast('No Commons to hide.'); discardIds(ids); };
