@@ -250,6 +250,7 @@
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    if (art && art.species === 'wizard' && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
     var ov2 = extraOv.slice(); ov2.splice(k, 1); var fa = framesWith0(art, stage, itemIds, ov2, cap, baseGo);
@@ -365,7 +366,7 @@
    * crops them and centres them (integer-scaled) on a dark tile. Works for core, bonus and v2 pieces alike. */
   function itemIcon(id) {
     if (iconCache[id]) return iconCache[id];
-    var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
+    var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' && it.origin !== 'wizard' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
     var base = PetCore.render(art, { stage: 5, frame: 0, gearOverride: go, gearCap: 5 });
     if (it.src === 'core') { var g2 = Object.assign({}, go); g2[it.coreSlot] = id; with_ = PetCore.render(art, { stage: 5, frame: 0, gearOverride: g2, gearCap: 5 }); }
     else { with_ = { data: new Uint8ClampedArray(base.data) }; var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
@@ -402,8 +403,8 @@
     /* address-lookup (2026-10-19): o.viewOnly (an address viewed without its wallet) shows the gear but never offers equip / take off / Unequip all */
     var ownsP = function () { var q = (o.world && o.world.byId && o.world.byId[p.id]) || p; return !o.viewOnly && !!o.owner && q.owner === o.owner && !q.released; };
     var wornSlots = Object.keys(worn), canOffAll = wornSlots.length && !p.dead && ownsP(), asking = box.getAttribute('data-offall') === '1' && canOffAll;
-    if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your stock (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
-      : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your stock.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
+    if (canOffAll) h += '<div class="gp-offall">' + (asking ? '<span class="small">' + (wornSlots.length === 1 ? 'Take the 1 piece off #' + p.id + '? It goes' : 'Take all ' + wornSlots.length + ' pieces off #' + p.id + '? They go') + ' back to your stash (free).</span> <button type="button" class="q" data-offyes="1">Yes, take them off</button> <button type="button" class="q" data-offno="1">Cancel</button>'
+      : '<button type="button" class="q" data-offall="1" title="Take every piece off this pet at once. Free; they go back to your stash.">Unequip all (' + wornSlots.length + ')</button>') + '</div>';
     h += '<div class="gp-grid-wrap" id="gpWrap"></div><div class="small gp-msg" aria-live="polite"></div>';
     box.innerHTML = h;
     var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
@@ -450,6 +451,13 @@
     /* Wizard Hat (2026-10-19): his signature Headwear piece, always worn while the community Headwear slot is empty; a community roll for
      * Headwear replaces it (newest roll wins). Synthetic, display only: never added to w.community.gear, so replay/gear state is unchanged. */
     if (!o.head && window.WizardSprite && WizardSprite.WIZARD_HAT) o.head = WizardSprite.WIZARD_HAT; return o; }
+  /** wizardPetFrames: a player-hatched Bitcoin Wizard (species 'wizard', from the Cold Storage block) drawn by WizardSprite in the normal BLUE palette
+   * (purple stays the community pet's), wearing its own worn pieces; the Wizard Hat piece draws the pointy hat. Mythic gets the gold rim like every Mythic. */
+  function wizGearOf(ids) { var o = {}; (ids || []).forEach(function (id) { var it = V.GEAR_BY_ID[id] || (BonusGear.DEFS[id] ? { slot: BonusGear.DEFS[id].slot, label: BonusGear.DEFS[id].label } : null); if (!it) return;
+      var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; }
+      var c = itemCols(id).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(it.label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: it.label, item: id, cols: c }; });
+    return o; }
+  function wizardPetFrames(art, stage, ids, extraOv) { return WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(ids), {}); }
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
   function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
@@ -520,7 +528,7 @@
    *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
   function starveHtml(w, p, owner, o) {
     var b = starveInfo(w, p); if (!b) return ''; o = o || {};
-    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stock' : 'the owner\'s bag';
+    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stash' : 'the owner\'s bag';
     var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
       : '<span class="small">Only the owner can feed #' + p.id + '.</span>' + (!owner ? ' <span class="small">Your pet? <button type="button" class="q" data-sconn="1">Connect wallet</button> to feed it.</span>' : ' <span class="small muted">The connected wallet does not own #' + p.id + '.</span>');
     return '<div class="starve" data-starve="' + p.id + '" role="region" aria-label="Starvation warning for #' + p.id + '"><h3 class="sec" data-ico="skull">Starvation warning</h3>' +
@@ -536,7 +544,7 @@
     var st = b.grave ? '<b>on</b>: set at block ' + fmtN(b.graveBlock) + (b.graveTx ? ' (tx ' + esc(String(b.graveTx).slice(0, 8)) + '…)' : '') : '<b>off</b> (default: gear back to the bag)';
     var vo = !!(window.V2View && V2View.viewOnly()); /* address-lookup: view only hides the grave buttons too */
     var btn = !own || vo ? '' : o.feedHref ? ' <a class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '" href="' + esc(o.feedHref) + '">' + (b.grave ? 'Cancel on Play' : '🪦 Leave gear on the grave on Play') + '</a>'
-      : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to your stock)' : '🪦 Leave gear on the grave') + '</button>';
+      : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to your stash)' : '🪦 Leave gear on the grave') + '</button>';
     return '<p class="small sgrave">Grave gear: ' + st + '.' + btn + (own && !vo && !o.feedHref ? ' <span class="muted">One tiny burn (0.00000001 XCPETS + network fee) signed in your wallet.</span>' : '') + '</p>'; }
   /** bindStarve(root, w, p, owner, {feed()}): wires the Feed and Connect buttons inside root. */
   function bindStarve(root, w, p, owner, o) { if (!root) return; o = o || {};
@@ -546,7 +554,7 @@
     root.querySelectorAll('[data-starve="' + p.id + '"] [data-sconn]').forEach(function (b) { b.onclick = function () { var c = document.getElementById('wconnect'); if (c) { try { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } c.click(); } else location.href = 'play.html'; }; }); }
   /** starveChip(w, p): small My Pets card badge. */
   function starveChip(w, p) { var b = starveInfo(w, p); if (!b) return '';
-    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your stock.">🪦 starves in ' + b.short + (b.grave ? ' · grave gear' : '') + '</span>'; }
+    return '<span class="chip warn schip" title="Neglected: dies of hunger in ~' + b.left + ' unless fed. Its ' + b.gear.length + ' gear piece' + (b.gear.length === 1 ? '' : 's') + ' would come back to your stash.">🪦 starves in ' + b.short + (b.grave ? ' · grave gear' : '') + '</span>'; }
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }

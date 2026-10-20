@@ -83,17 +83,20 @@
         if (it.on != null) { x.font = '5px "Press Start 2P", monospace'; px(x, '#ffd166', ix - 2, iy + 17, 20, 6); x.fillStyle = '#140f24'; x.fillText('EQP', ix + 1, iy + 22); }
         if (sel) { px(x, '#fff', ix - 1, iy - lift - 1, 18, 1); px(x, '#fff', ix - 1, iy - lift + 16, 18, 1); }
         S.hits.push({ x: ix, y: iy - 4, w: 16, h: 22, it: it }); } });
-    if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Shelves empty: roll gear!', 8, 46); }
+    if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Stash empty: roll gear!', 8, 46); }
+    /* owner 9:39 PM CT: the shelves are YOUR stash (not for sale): lock name plates under the top shelves, '+N MORE' when over 20 */
+    [[6, 47], [222, 47]].forEach(function (q) { px(x, '#000', q[0] + 13, q[1], 66, 8); px(x, '#3ddc84', q[0] + 14, q[1] + 1, 64, 6); px(x, '#000', q[0] + 17, q[1] + 3, 4, 3); px(x, '#000', q[0] + 18, q[1] + 1, 2, 2); x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#04140a'; x.fillText('YOUR STASH', q[0] + 23, q[1] + 6); });
+    if (S.more > 0) { x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'right'; x.fillText('+' + S.more + ' MORE', 314, 88); x.textAlign = 'left'; }
     dan(x, DAN.x, DAN.y, t); mood(x, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText(S.free + ' IN STOCK \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120); x.textAlign = 'left';
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText('YOUR STASH: ' + S.free + ' UNWORN \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120, 176); x.textAlign = 'left';
     px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
     bubble(x, S.say || LINES[S.line % LINES.length], 160, 47);
     if (!reduced()) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
-    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; S.items = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))).slice(0, 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
+    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.items = SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stock on the shelves"></canvas><div class="shop-hint small">Tap gear on a shelf · pick a pet · wear it</div>'; c = box.querySelector('canvas');
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stash of gear on the shelves"></canvas><div class="shop-hint small">Tap a piece in your stash · pick a pet · wear it</div>'; c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) waveNow(); }); }, { threshold: 0.5 }).observe(c);
       c.addEventListener('mousemove', function (e) { if (onDan(c, e)) waveNow(); var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
       c.addEventListener('dblclick', function () { var wb = document.getElementById('scWear'); if (wb && !wb.disabled) wb.click(); }); /* quick wins: double-tap a shelf piece to wear it (same free equip op) */
@@ -101,6 +104,7 @@
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (onDan(c, e)) waveNow(); if (!h) return; waveNow();
         S.sel = h.it; say(h.it); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
+    var mo = box.querySelector('.shop-more'); if (S.more > 0) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
     counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now()); }
   /* CLEARANCE RACK (PREVIEW, NOT ACTIVE; owner idea, rules undecided): 4 pieces that rotate once per 144-block chain day, picked from the
@@ -125,7 +129,7 @@
   /* the counter: in place under the shelves (no pop-up). Pick a pet chip -> gear-damage delta vs what it wears in that slot -> Wear / Take off / Roll. */
   function counter() { var U = window.V2UI, V = window.V2Rules, R = window.V2Render, el = document.getElementById('shopCounter'); if (!el || !U) return; var w = U.world(), ME = U.ME, g = S.sel;
     var pets = U.mine(w).filter(function (p) { return !p.dead; });
-    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? hero(w, HP) : '') + '<div class="sc-empty">👆 Tap gear on a shelf</div>' + rollRow(w, pets); if (HP) paintHero(el, w, HP); bindRoll(el); return; }
+    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? hero(w, HP) : '') + '<div class="sc-empty">👆 Tap a piece in your stash</div>' + rollRow(w, pets); if (HP) paintHero(el, w, HP); bindRoll(el); return; }
     g = w.items[g.gid] || g; S.sel = g; var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot;
     var fit = pets.filter(function (p) { return (p.openSlots || []).indexOf(sl) >= 0; }); if (S.pet == null || !fit.some(function (p) { return p.id === S.pet; })) S.pet = g.on != null ? g.on : fit[0] && fit[0].id;
     var P = w.byId[S.pet], cur = P ? V.wornOf(w, P.id).filter(function (x) { return x.slot === sl; })[0] : null, c = P ? V.equipCheck(w, ME, P.id, g.item) : { ok: false, why: 'no pet with a free ' + sl + ' slot' };

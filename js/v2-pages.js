@@ -51,7 +51,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=4cd21bf8c0'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=bd10df08aa'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -60,23 +60,33 @@
     return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }); }
   var ARCHIVE = [
     { id: 'nakamoto', name: 'Nakamoto', done: function (c) { return c.returned; }, block: function (c) { return c.returnBlock; }, tx: function (c) { return c.returnTx; },
-      sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } }
+      sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } },
+    /* #2 Bitcoin Wizard (Oct 19 2026): Mythic at 6,906,900 burned since The Return -> Cold Storage. Chain state = w.wizardMythic (V2Rules.replay, from history). */
+    { id: 'wizard', name: 'Bitcoin Wizard', done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
+      stats: function (w) { var x = w.wizardMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
+      story: ['2013. A forum asked for an ad.', 'Someone drew a wizard in MS Paint.', 'Blue robe. Stars. A staff.', '"Magic Internet Money." "Join us."', 'It ran on Reddit. Bitcoin passed $1,000.', 'The wizard stayed.',
+        '2026. Nakamoto went into Cold Storage. An egg was left behind.', 'Every burn fed it. Nobody owned it. 100× slower than any pet.', '6,906,900 burned. Mythic.', 'Then he put down the sign and walked into Cold Storage, next to Nakamoto.', 'The sign stayed behind. So did an egg. Now anyone can hatch one. Join us.'],
+      sprites: function () { return wizMythicFrames(M.world()); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
   ];
+  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(5, '#2a3a2e', g, { community: true }); }
+  function farewellSprites(w) { var x = w.wizardMythic; return { wizard: wizMythicFrames(w), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=bd10df08aa'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
-    return ARCHIVE.map(function (e) { var done = e.done(c); if (!done && !preview) return null;
-      var blk = done ? e.block(c) : null, tot = {}, sum = 0;
+    return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
+      var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
+      if (e.stats) { var st = e.stats(w); return { e: e, done: done, block: blk, tx: done ? e.tx(c, w) : null, total: done ? st.total : (c.wizardFed || 0), feeders: done ? st.feeders : 0, top: st.top, row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c, w); })[0] : null }; }
       rows.forEach(function (r) { if (blk != null && r.block_index > blk) return; var a = burnAmt(r); sum += a; tot[r.source] = (tot[r.source] || 0) + a; });
       var all = Object.keys(tot).map(function (k) { return { address: k, amount: tot[k] }; }).sort(function (x, y) { return y.amount - x.amount; });
-      return { e: e, done: done, block: blk, tx: done ? e.tx(c) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c); })[0] : null }; }).filter(Boolean); }
+      return { e: e, done: done, block: blk, tx: done ? e.tx(c, w) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c, w); })[0] : null }; }).filter(Boolean); }
   /* Archive layout = Jake's Option C (gallery with featured player); styles in css/archive.css (.archive-*). Spoiler rules: nothing before The Return on chain
    * (neutral empty state); after it, Nakamoto (completed: Return blurb + replay) and the next community pet (in progress: one general line; never its sprite).
    * No placeholder for a next pet. */
   function shortAddr(s) { s = String(s || ''); return s.length > 14 ? s.slice(0, 6) + '…' + s.slice(-4) : s; }
   function archive() {
-    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search), list = archiveEntries(w, preview), box = $('archList');
+    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : false, list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
     var items = list.map(function (x) { return { kind: 'done', x: x, id: x.e.id, name: x.e.name, done: x.done }; });
-    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
+    if (c.returned && !w.wizardMythic) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
     var filt = 'all', sel = items[0].id;
     function sprites(it) { return it.kind === 'live' ? (c.wizardStage > 0 ? (R && R.communityFrames ? R.communityFrames(w) : WizardSprite.frames(c.wizardStage, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true })) : null) : it.x.e.sprites(); }
     function feat(it) {
@@ -85,8 +95,8 @@
         '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div>' + (R && R.communityWearing ? '<p class="small muted">' + esc(R.communityWearing(w)) + '</p>' : '') + '</div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
-        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ Watch the replay</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
-        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>The community cycle came full circle.</p><div class="archive-stats">' +
+        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
+        '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<div class="archive-story small">' + x.e.story.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
         (x.tx ? '<p class="small archive-tx">Triggering tx <code>' + esc(x.tx) + '</code></p>' : '') + '<h3 class="archive-h3">Top feeders</h3><ol class="archive-feed">' + x.top.map(function (t) { return '<li title="' + esc(t.address) + '">' + esc(shortAddr(t.address)) + ' · <span>' + fmt(Math.floor(t.amount)) + '</span></li>'; }).join('') + '</ol></div>'; }
@@ -105,10 +115,10 @@
       if (cur && $('archFeatCv')) R.animate($('archFeatCv'), sprites(cur));
       Array.prototype.forEach.call(box.querySelectorAll('.archive-chip'), function (b) { b.onclick = function () { filt = b.dataset.f; draw(); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.archive-card'), function (b) { b.onclick = function () { sel = b.dataset.id; draw(); }; });
-      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + "'s replay" + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
+      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + (cur.x.e.farewell ? "'s farewell" : "'s replay") + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
       if (cur && cur.x && cur.x.done && !(cur.x.row && cur.x.row.block_time) && window.LiveEngine && LiveEngine.Chain) try { new LiveEngine.Chain().getJson('/blocks/' + cur.x.block).then(function (j) { var bt = j && j.result && j.result.block_time, el = box.querySelector('.archdate'); if (bt && el) el.textContent = new Date(bt * 1000).toISOString().slice(0, 10); }, function () {}); } catch (e) { }
     }
-    draw(); withReturn(function () {});
+    draw(); withReturn(function () {}); if (preview === 'wizard') withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(w), info: 'Bitcoin Wizard farewell (preview)' }); });
   }
   function front() {
     heroGrid();
@@ -128,6 +138,8 @@
     $('crQuestTxt').textContent = wiz ? 'Nakamoto\'s finished story' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
+    var returning = false; try { returning = !!localStorage.getItem('xcpets-v2-return-seen'); } catch (e) { }
+    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); /* farewell: once per browser, returning visitors only */
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
       /* UX polish 2026-10-16 (owner): no full-screen autoplay for visitors, so new players see the game first; mark it seen (Cold Storage still replays it) */
