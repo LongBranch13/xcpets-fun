@@ -84,7 +84,7 @@
       for (var i = 0; i < 5; i++) { var it = S.items[k++], ix = s[0] + 2 + i * 18, iy = s[1]; if (!it) continue; var ic = S.icons[it.item]; var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 4 : 4 + (Math.floor(t / 200) % 2)) : 0;
         if (it.on != null) { var ga = reduced() ? .9 : .55 + .45 * Math.abs(Math.sin(t / 400)); x.strokeStyle = 'rgba(255,209,102,' + ga + ')'; x.lineWidth = 2; x.strokeRect(ix - 1, iy - 1 - lift, 18, 18); }
         if (ic) x.drawImage(ic, ix, iy - lift + (reduced() || lift ? 0 : (Math.floor(t / 400 + i + k) % 7 === 0 ? -1 : 0)), 16, 16);
-        if (it.on != null) { x.font = '5px "Press Start 2P", monospace'; px(x, '#ffd166', ix - 2, iy + 17, 20, 6); x.fillStyle = '#140f24'; x.fillText('EQP', ix + 1, iy + 22); }
+        if (it.on != null) { x.font = '6px "Press Start 2P", monospace'; px(x, '#ffd166', ix - 2, iy + 16, 20, 8); x.fillStyle = '#140f24'; x.textAlign = 'center'; x.fillText('EQP', ix + 8, iy + 23, 19); x.textAlign = 'left'; }
         if (sel) { px(x, '#fff', ix - 1, iy - lift - 1, 18, 1); px(x, '#fff', ix - 1, iy - lift + 16, 18, 1); }
         S.hits.push({ x: ix, y: iy - 4, w: 16, h: 22, it: it }); } });
     if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Stash empty: roll gear!', 8, 46); }
@@ -92,7 +92,7 @@
     [[6, 47], [222, 47]].forEach(function (q) { px(x, '#000', q[0] + 13, q[1], 66, 8); px(x, '#3ddc84', q[0] + 14, q[1] + 1, 64, 6); px(x, '#000', q[0] + 17, q[1] + 3, 4, 3); px(x, '#000', q[0] + 18, q[1] + 1, 2, 2); x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#04140a'; x.fillText('YOUR STASH', q[0] + 23, q[1] + 6); });
     if (S.more > 0) { x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'right'; x.fillText('+' + S.more + ' MORE', 314, 88); x.textAlign = 'left'; }
     dan(x, DAN.x, DAN.y, t); mood(x, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText('YOUR STASH: ' + S.free + ' UNWORN \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120, 176); x.textAlign = 'left';
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText('YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 160, 120, 176); x.textAlign = 'left';
     px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
     bubble(x, S.say || lineAt(S.line), 160, 47);
     if (!reduced()) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
@@ -100,7 +100,7 @@
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
     S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.items = SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stash of gear on the shelves"></canvas><div class="shop-hint small">Tap a piece in your stash · pick a pet · wear it</div>'; c = box.querySelector('canvas');
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stash of gear on the shelves"></canvas><div class="shop-hint small">👇 Your gear is on these shelves · tap an item to equip it</div>'; c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) waveNow(); }); }, { threshold: 0.5 }).observe(c);
       c.addEventListener('mousemove', function (e) { if (onDan(c, e)) waveNow(); var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
       c.addEventListener('dblclick', function () { var wb = document.getElementById('scWear'); if (wb && !wb.disabled) wb.click(); }); /* quick wins: double-tap a shelf piece to wear it (same free equip op) */
@@ -133,9 +133,10 @@
   /* the counter: in place under the shelves (no pop-up). Pick a pet chip -> gear-damage delta vs what it wears in that slot -> Wear / Take off / Roll. */
   function counter() { var U = window.V2UI, V = window.V2Rules, R = window.V2Render, el = document.getElementById('shopCounter'); if (!el || !U) return; var w = U.world(), ME = U.ME, g = S.sel;
     var pets = U.mine(w).filter(function (p) { return !p.dead; });
-    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? hero(w, HP) : '') + '<div class="sc-empty">👆 Tap a piece in your stash</div>' + rollRow(w, pets); if (HP) paintHero(el, w, HP); bindRoll(el); return; }
+    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? stepPet(HP, false) + hero(w, HP) : '') + stepGear(w) + rollRow(w, pets); if (HP) paintHero(el, w, HP); bindRoll(el); return; }
     g = w.items[g.gid] || g; S.sel = g; var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot;
-    var fit = pets.filter(function (p) { return (p.openSlots || []).indexOf(sl) >= 0; }); if (S.pet == null || !fit.some(function (p) { return p.id === S.pet; })) S.pet = g.on != null ? g.on : fit[0] && fit[0].id;
+    var fit = pets.filter(function (p) { return (p.openSlots || []).indexOf(sl) >= 0; }); if (S.pet == null && S.rollPet != null && fit.some(function (p) { return p.id === S.rollPet; })) S.pet = S.rollPet; /* gear-clarity: keep the pet on show */
+    if (S.pet == null || !fit.some(function (p) { return p.id === S.pet; })) S.pet = g.on != null ? g.on : fit[0] && fit[0].id;
     var P = w.byId[S.pet], cur = P ? V.wornOf(w, P.id).filter(function (x) { return x.slot === sl; })[0] : null, c = P ? V.equipCheck(w, ME, P.id, g.item) : { ok: false, why: 'no pet with a free ' + sl + ' slot' };
     var d = dmg(g.item) - (cur ? dmg(cur.item) : 0), wearing = cur && cur.gid === g.gid;
     var tot0 = P ? V.wornOf(w, P.id).reduce(function (s, x) { return s + dmg(x.item); }, 0) : 0, tot1 = tot0 + (wearing ? 0 : d);
@@ -148,7 +149,7 @@
       '<div class="sc-act">' + (P && !wearing ? '<button type="button" class="btn" id="scWear"' + (c.ok ? '' : ' disabled') + '>👕 Wear on #' + P.id + '</button>' : '') + (g.on != null ? '<button type="button" class="q" id="scOff">Take off</button>' : '') + '</div>' +
       (P && !wearing && !c.ok ? '<div class="sc-why">✋ ' + esc(c.worn ? 'Already wearing it' : c.why) + '</div>' : '') + '</div>';
     var scn = document.getElementById('shopScene'), old = scn && scn.querySelector('.sc-sign'); if (old) old.remove(); if (scn) scn.insertAdjacentHTML('beforeend', sign);
-    el.innerHTML = (P ? hero(w, P) : '') + (P ? tryOn(w, P, g, cur, sl, wearing, tot0, tot1) : '') + '<div class="sc-pets" id="scPick"></div><div class="sc-act sc-act-anchor"></div>' + rollRow(w, pets);
+    el.innerHTML = (P ? stepPet(P, true) + hero(w, P) : '') + (P ? tryOn(w, P, g, cur, sl, wearing, tot0, tot1) : '') + '<div class="gc-step gc-sub" id="gcPickH">Change pet: tap one below (pets with a free ' + esc(lword(sl).split(' ')[0]) + ' slot)</div><div class="sc-pets" id="scPick"></div><div class="sc-act sc-act-anchor"></div>' + rollRow(w, pets);
     var sgn = scn && scn.querySelector('.sc-sign');
     if (R && R.iconCanvas && sgn) sgn.querySelector('.sc-ic').appendChild(R.iconCanvas(g.item, ''));
     if (P) { paintTry(el, w, P, g, sl, wearing); paintHero(el, w, P); } bindBest(el, w, P);
@@ -202,6 +203,13 @@
       '<div class="sc-rinfo"><b>' + esc(V.speciesLabel(P.species)) + '</b> → rolls on <b>#' + P.id + '</b> ' + esc(String(P.name || '')) + '<br>Can land in: ' + (sw.length ? sw.map(function (x) { return '<span class="sc-tag">' + esc(x) + '</span>'; }).join(' ') : '—') +
       (lg ? '<br><small>★ ' + esc(V.speciesLabel(P.species)) + ' signature hat: ' + esc(lg.label) + ' (Legendary pets)</small>' : '') + '</div>' +
       '<button type="button" class="btn ico-flame" id="scRoll" data-pid="' + P.id + '">🎲 Roll for ' + esc(V.speciesLabel(P.species)) + ' <span class="cost">345 XCPETS</span></button></div>'; }
+  /* gear-clarity (owner Oct 20 2026: 'which pet am I dressing / where is my gear / where do I click'): step labels, a current-pet chip with a
+   * 'Change pet' link that scrolls to the EXISTING picker, and an empty state. Display only; the pickers themselves are unchanged. */
+  function stepPet(P, itemOn) { return '<div class="gc-step"><b>Step 1: Pick your pet</b> <span class="gc-chip">Dressing #' + P.id + ' ' + esc(String(P.name || '')) + '</span> <a href="#" class="gc-change" data-gc="' + (itemOn ? 'scPick' : 'scSpPick') + '">✎ Change pet ▾</a></div>'; }
+  function stepGear(w) { var ME = window.V2UI.ME, L = (w.itemList || []).filter(function (g) { return g.owner === ME; }), n = L.length, f = L.filter(function (g) { return g.on == null; }).length;
+    return '<div class="gc-step"><b>Step 2: Your gear (' + n + ' piece' + (n === 1 ? '' : 's') + ' · ' + f + ' unworn)</b> ' + (n ? '<span class="gc-cue">⬆ Tap an item on the shelves above to equip it</span>' : '<span class="gc-cue">No gear yet. Roll gear below (🎲 345 XCPETS) and it lands on the shelves.</span>') + '</div>'; }
+  if (typeof document !== 'undefined') { document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('.gc-change'); if (!a) return; e.preventDefault(); var t = document.getElementById(a.dataset.gc) || document.getElementById('scSpPick'); if (!t) return; t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.classList.remove('gc-glow'); void t.offsetWidth; t.classList.add('gc-glow'); });
+    if (!document.getElementById('gcCss')) { var gs = document.createElement('style'); gs.id = 'gcCss'; gs.textContent = '.gc-step{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:8px 0 4px;font-size:12px}.gc-step b{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166}.gc-sub{font-size:11px;color:#9fe8ff}.gc-chip{background:#140f24;border:2px solid #4fd18b;color:#4fd18b;padding:4px 8px;font-weight:700}.gc-change{color:#9fe8ff;font-weight:700;min-height:32px;display:inline-flex;align-items:center}.gc-cue{color:#cfc6e8}.gc-glow{animation:gcG 1.6s ease-out 1}@keyframes gcG{0%,60%{box-shadow:0 0 0 3px #ffd166}100%{box-shadow:none}}@media (prefers-reduced-motion:reduce){.gc-glow{animation:none;outline:3px solid #ffd166}}'; (document.head || document.documentElement).appendChild(gs); } }
   function fmtN(n) { return Number(n).toLocaleString('en-US'); }
   function bindRoll(el) { var U = window.V2UI, V = window.V2Rules, rb = document.getElementById('scRoll');
     if (rb) rb.onclick = function () { var id = +rb.dataset.pid; U.confirmPlans('Gear roll for #' + id, [{ tag: V.buildTag('roll', { petId: id }), amount: V.COSTS.roll }]); };
@@ -211,7 +219,7 @@
       pets.forEach(function (p) { (by[p.species] = by[p.species] || []).push(p); });
       V2Picker.mount(pk, { w: w, me: U.ME, selected: String(S.rollSp), per: 8, sorts: ['score', 'power', 'newest'], records: function () { return Object.keys(by).map(function (sp) { var L = by[sp]; return { key: sp, pets: L, newest: Math.max.apply(null, L.map(function (p) { return p.hatchBlock || 0; })),
         html: function () { var b = rollPick(w, pets, sp); return '<b>' + esc(V.speciesLabel(sp)).slice(0, 14) + '</b><span>' + L.length + ' pet' + (L.length === 1 ? '' : 's') + '</span><small>#' + b.id + ' · ' + (b.openSlots || []).length + ' slot' + ((b.openSlots || []).length === 1 ? '' : 's') + '</small>'; } }; }); },
-        onPick: function (r) { S.rollSp = r.key; var b = rollPick(w, pets, r.key); if (b) S.rollPet = b.id; counter(); } }); } }
+        onPick: function (r) { S.rollSp = r.key; var b = rollPick(w, pets, r.key); if (b) { S.rollPet = b.id; S.pet = b.id; } counter(); } }); } } /* gear-clarity: the species pick also moves the Lair pet (it used to change only the roll target while S.pet kept the old pet in the big panel) */
   function refreshRoll() { counter(); }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); S.poofT = performance.now(); S.moodFor = null; U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
   window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, dmg: dmg, op: op };
