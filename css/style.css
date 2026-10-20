@@ -154,3 +154,16 @@ html.viewonly [data-a], html.viewonly [data-discard], html.viewonly [data-releas
 html.viewonly [data-sfeed], html.viewonly [data-sgrave], html.viewonly [data-goff], html.viewonly [data-offall], html.viewonly [data-offyes], html.viewonly [data-offno],
 html.viewonly .frleft, html.viewonly a[href^="play.html#discard-"] { display: none !important; }
 html.viewonly .gp-item { pointer-events: none; cursor: default; }
+/* front-page-entries (2026-10-19): play.html scene anchors (#kekimus, #drip-den, #gooby-inn) land below the sticky nav */
+.scene-anchor { display: block; height: 0; scroll-margin-top: calc(var(--navh, 72px) + 8px); }
+/* front-page-entries (2026-10-19): home scene cards under the hero buttons */
+.scene-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 6px; }
+.scard { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #120e22; border: 3px solid #000; box-shadow: 4px 4px 0 #000; text-decoration: none; color: #ffd166; transition: transform .12s steps(2); }
+.scard canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; background: #0b0a1f; }
+.scard span { font-family: 'Press Start 2P', ui-monospace, monospace; font-size: 8px; line-height: 1.6; }
+.scard:hover, .scard:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; outline: none; border-color: #ffd166; }
+@media (max-width: 640px) { .scene-cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+  .scard { scroll-snap-align: start; } }
+@media (prefers-reduced-motion: reduce) { .scard { transition: none; } .scard:hover, .scard:focus-visible { transform: none; } }
+.nav .navlair { display: inline-flex; flex-direction: column; line-height: 1.15; vertical-align: middle; max-width: 15em; white-space: normal; }
+.nav .navlair small { font-size: .62em; opacity: .9; }

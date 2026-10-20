@@ -1,4 +1,4 @@
-/* XCPETS No Tail Motel (UI-only mockup, owner 7:12-7:38 PM CT; branch no-tail-motel, NOT LIVE). Replaces the Breeding section's look; breeding
+/* XCPETS No-Tail Motel (UI-only mockup, owner 7:12-7:38 PM CT; branch no-tail-motel, NOT LIVE). Replaces the Breeding section's look; breeding
  * rules and burns are UNCHANGED: "Check in" = the existing pet:breed:A:B burn (690); a partner on another wallet "checks in" with the existing
  * mirrored accept (pet:breed:B:A, 690, within 144 blocks). The door shows both room numbers (= pet IDs), opens on the scene when both pets have
  * checked in (the child exists), and the egg appears at the door. Gooby (the "Gooby pls" dog) runs the desk with PG-13 one-liners.
@@ -39,7 +39,7 @@
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* sign pole + neon */ px(x, '#444', 30, 30, 3, 100); px(x, '#1a1a2a', 4, 8, 120, 26); px(x, '#000', 4, 8, 120, 2);
     var fl = rm ? 1 : (Math.floor(t / 90) % 23 !== 0); var tl = rm ? 1 : (Math.floor(t / 130) % 17 > 1);
-    neon(x, 'NO ' + (tl ? 'TAIL' : 'T IL'), 64, 20, '#ff4fd8', fl, 8); neon(x, 'MOTEL', 64, 30, '#4fe0ff', true, 8);
+    neon(x, 'NO-' + (tl ? 'TAIL' : 'T IL'), 64, 20, '#ff4fd8', fl, 8); neon(x, 'MOTEL', 64, 30, '#4fe0ff', true, 8);
     px(x, '#1a1a2a', 34, 40, 62, 12); neon(x, 'VACANCY', 65, 49, '#7dff6a', rm ? true : (Math.floor(t / 400) % 5 !== 0), 6);
     px(x, '#3ddc84', 6, 4, 4, 4); px(x, '#3ddc84', 118, 4, 4, 4); /* tiny laurels */
     /* building */ px(x, '#e8a0b4', 108, 58, 212, 82); px(x, '#c47a92', 108, 58, 212, 4); px(x, '#5a3a4a', 104, 54, 220, 5); /* roof */
@@ -68,7 +68,7 @@
     return { A: A, B: B, kid: kid, st: st }; }
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.A = s.A; S.B = s.B; S.kid = s.kid; if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') S.open = performance.now(); }
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="No Tail Motel: Gooby at the desk, the room door"></canvas>'; c = box.querySelector('canvas'); }
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="No-Tail Motel: Gooby at the desk, the room door"></canvas>'; c = box.querySelector('canvas'); }
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now());
     book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var L = V.breedPicker(w, ME, tip, a), okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
     var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
@@ -96,5 +96,5 @@
     el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { BK.page += +b.dataset.gb; book(w); }; });
     var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { BK.page = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); book(w); } }; }
   function checkedIn(a, b) { S.fresh = [String(a), String(b)].sort().join(':'); S.bubble = 'Keys out. Door opens when both are in.'; S.lt = performance.now(); }
-  window.V2Motel = { render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, LINES: LINES, _state: function () { return S; } };
+  window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, LINES: LINES, _state: function () { return S; } };
 })();
