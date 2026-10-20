@@ -120,7 +120,7 @@ The owner picks one before `ACTIVATE_KEK_CARD_BLOCK` is set.
 1. **LORDKEK card, built gated off (`ACTIVATE_KEK_CARD_BLOCK = null`):**
    - Every wallet that fed Kek gets one free claim with `pet:kekcard` or `pet:kekcard:ID` (1 sat is enough). The claim opens only once Kek is in Cold Storage AND the card gate is reached. One claim per wallet. The card goes to the wallet's stash, or is worn at once if the tag names your own player Kek with an open Grip slot.
    - After that, 1 in 69 Grip rolls of a player Kek (`pet:roll`) give the card, using the salt `XCPETS:v2:kekcard`.
-   - Only a player Kek can wear it. Hybrids can't, an owner-rule exception to the usual "hybrids wear both parents' signatures" rule.
+   - (superseded in round 4: Kek hybrids can wear it too)
    - The card is a lookup-only item record, so it is never in a roll pool. Before the gate, a `pet:kekcard` burn gets exactly the old unknown-tag rejection.
 2. Kek wears only community gear rolled after his launch (confirmed).
 3. The Wizard's Mythic burn, including any leftover, stays the Wizard's (confirmed).
@@ -132,6 +132,17 @@ The owner picks one before `ACTIVATE_KEK_CARD_BLOCK` is set.
    - Kek as the feature: his nemes top (head) or lappets (side).
    - The earlier "Pepe body only" mapping is removed.
    - Samples: previews/lord-kek-v3/hybrid-samples-both-ways.png.
+
+## Owner decisions, round 4 (Oct 20 2026 ~6:17 PM CT), FINAL
+- **Kek hybrids CAN wear the LORDKEK card** (the normal parents'-signature rule). This replaces the round-3 "player Kek only" rule. `eligible('kek-card', sp)` is true for 'kek' and for any hybrid with a 'kek' root (2-way or 3-way, either order). It stays false for every other species.
+- **Claim:** `pet:kekcard:ID` can name your own player Kek OR a Kek hybrid with an open Grip slot.
+- **Drop:** the same 1-in-69 Grip-roll drop applies to Kek hybrids as to player Keks. That's the same odds rule other parents' signature gear uses for hybrids: a signature piece rolls for a hybrid exactly as for its own species.
+- Everything is still gated off (`ACTIVATE_KEK_CARD_BLOCK = null`, `ACTIVATE_KEK_BLOCK = null`).
+- **Art fix:**
+  - A Kek FEATURE is now a small accent, like other species. `kekAccent()` in js/v2-rules.js drops feature pixels enclosed by the body on the same row and keeps only pixels within 2 px of the body edge, at most 14. This fixes the Wojak-body red/green stripes. Checked on all 13 body species, head and side features: previews/lord-kek-v4/hybrid-kek-feature-fixed-all-bodies.png.
+  - Kek-BODY hybrids now draw worn gear through KekSprite's gear layer (`kekHybFrames` in js/v2-render.js). Before this, gear on a Kek-body hybrid had no PetCore anchors and threw an error.
+  - The card on non-Kek bodies uses a render-only map (`DEFS['kek-card']` in js/v2-gear.js, not in ITEMS, so it's never in any pool).
+  - Card previews: previews/lord-kek-v4/hybrid-wearing-lordkek-card.png.
 
 ## One-way hybrid audit (Oct 20 2026)
 - **main:** all 13 species have names in both orders (156/156, HYBRID_NAMES). The body is picked from either root by hybridPlan (`shape = r[R() % 2]`), and three-way mixes are shuffled. No species is one-way.

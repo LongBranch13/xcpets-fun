@@ -288,6 +288,7 @@
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && art.species === 'kek' && !art.hybrid && window.KekSprite) return kekPetFrames(art, stage, itemIds); /* player Lord Kek (gated, after his Cold Storage) */
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && window.KekSprite) return kekHybFrames(art, stage, itemIds); /* Kek-BODY hybrid: KekSprite gear layer (PetCore has no Kek anchors) */
     if (art && art.species === 'wizard' && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
@@ -540,6 +541,14 @@
   function kekGear(w) { var V = window.V2Rules, gate = V.kekActivation ? V.kekActivation() : null, g = (w.community && w.community.gear) || {}, o = {};
     (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && sl !== 'head' && gate != null && x.block >= gate) { var c = itemCols(x.item).slice(); o[sl] = { label: x.label, item: x.item, cols: c }; } });
     return o; }
+  /** kekHybFrames: a hybrid with the Kek body (gated). Base = V2Rules.hybridFrames (no PetCore gear: no Kek anchors); worn pieces are drawn by
+   * KekSprite's gear layer and pasted where they differ from the bare Kek grid (same pixels a player Kek would show), so gear sits on his body. */
+  function kekHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD;
+    if (!Object.keys(G).length) return fr; var P = KekSprite.PAL;
+    return fr.map(function (f, n) { var a = KekSprite.draw(stage || 0, n, G), z = KekSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
+        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
+      return { width: 32, height: 32, data: d }; }); }
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';

@@ -401,7 +401,7 @@
   function shuffleSweep(w, b) { if (w._shufSwept || !shuffleOn(b)) return; w._shufSwept = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!SHUFFLE[g.item]) return; var nv = SHUFFLE[g.item];
       moveToSlot(w, g, nv.slot); g.tier = nv.tier; g.legendary = !!nv.exclusive; }); }
-  function eligible(it, species) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false; if (it.id === 'kek-card') return species === 'kek'; /* owner: only a player Lord Kek wears the card (not hybrids) */
+  function eligible(it, species) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false; if (it.id === 'kek-card') return species === 'kek' || (isHybrid(species) && hybridRoots(species).indexOf('kek') >= 0); /* owner Oct 20 ~6:17 PM CT: player Keks AND Kek hybrids (normal parents'-signature rule) */
     if (lockedOut(it.id, species, ELIG_B)) return false;
     if (isHybrid(species)) { if (!it.exclusive) return true; var par = species.split(':').slice(1); return it.slot !== 'head' && par.indexOf(it.origin) >= 0; } /* hybrids (Jake's locked spec): shared + both parents' signatures EXCEPT their legendary head pieces */
     return !it.exclusive || it.origin === species; }
@@ -727,7 +727,7 @@
         var g = pet(t.petId), wy = !g ? 'no such pet' : g.released ? 'released' : g.owner !== src ? 'owner only' : g.dead ? 'dead' : amt < COSTS.roll ? 'below roll cost 345' : !bh ? 'block hash pending' : null;
         if (wy) return L(r, 'rejected', wy);
         var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier, dedupFor(w, b, g.owner));
-        if (g.species === 'kek' && slot === 'hand' && kekCardOn(w, b) && parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:kekcard').slice(0, 12), 16) % KEK_CARD_DROP_N === 0) it = BY_ID[KEK_CARD_ITEM]; /* LORDKEK card drop (gated) */
+        if (slot === 'hand' && kekCardOn(w, b) && eligible(KEK_CARD_ITEM, g.species) && parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:kekcard').slice(0, 12), 16) % KEK_CARD_DROP_N === 0) it = BY_ID[KEK_CARD_ITEM]; /* LORDKEK card drop (gated) */
         var ni = newItem(w, it, g.owner, 'roll'); ni.rolledOn = g.id; wear(w, g, ni);
         return L(r, 'roll', '#' + g.id + ' rolled ' + it.label + ' (' + slotLabel(slot) + ')', { petId: g.id, gid: ni.gid });
       }
@@ -821,7 +821,7 @@
         var KM = w.kekMythic; KM.claimed = KM.claimed || {}; var kw = amt + 1e-12 < KEK_CARD_MIN ? 'below claim minimum' : !(KM.by[src] > 0) ? 'only wallets that fed Lord Kek can claim the card' : KM.claimed[src] ? 'card already claimed' : null;
         if (kw) return L(r, 'rejected', kw);
         KM.claimed[src] = b; var kc = newItem(w, BY_ID[KEK_CARD_ITEM], src, 'kekcard'), kp2 = t.petId != null ? pet(t.petId) : null;
-        if (kp2 && kp2.owner === src && !kp2.dead && !kp2.released && kp2.species === 'kek' && (kp2.openSlots || []).indexOf('hand') >= 0) wear(w, kp2, kc);
+        if (kp2 && kp2.owner === src && !kp2.dead && !kp2.released && eligible(KEK_CARD_ITEM, kp2.species) && (kp2.openSlots || []).indexOf('hand') >= 0) wear(w, kp2, kc);
         return L(r, 'kekcard', 'claimed the LORDKEK Rare Pepe card' + (kc.on != null ? ' (worn by #' + kc.on + ')' : ' (in your stash)'), { gid: kc.gid, petId: kc.on });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -990,6 +990,13 @@
   function renderRoot(art, o, pal) { if (art.species !== 'kek' || !kekSprite()) return PetCore.render(art, o); var st = o.stage == null ? 3 : o.stage;
     var r = kekSprite().render(st, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), {}, { pal: pal || null });
     return { width: 32, height: 32, data: new Uint8ClampedArray(r.data) }; }
+  /** kekAccent(px, kS, sil): trims a Kek feature (nemes top / lappets) to a small accent: drops pixels enclosed by the body on the same row
+   * (holes inside the shape), keeps only pixels within 2 px of the body edge, and at most KEK_FEAT_MAX of them (nearest to the body first). */
+  var KEK_FEAT_MAX = 14;
+  function kekAccent(px, kS, sil) { var inS = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && sil(kS, (y * 32 + x) * 4); };
+    var d = function (j) { var x = j & 31, y = j >> 5, m = 9; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) if (inS(x + dx, y + dy)) m = Math.min(m, Math.abs(dx) + Math.abs(dy)); return m; };
+    var enclosed = function (j) { var x = j & 31, y = j >> 5, L = false, R = false; for (var a = 0; a < x; a++) if (inS(a, y)) L = true; for (var c = x + 1; c < 32; c++) if (inS(c, y)) R = true; return L && R; };
+    return px.filter(function (j) { return !enclosed(j) && d(j) <= 2; }).sort(function (a, b) { return d(a) - d(b) || a - b; }).slice(0, KEK_FEAT_MAX); }
   function speciesObj(id) { if (id === 'kek') return KEK_SP; return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame. */
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame.
@@ -1029,6 +1036,7 @@
         while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
         return out.filter(function (j) { return keep[j]; }); };
       var px = pick(h.feature); if (px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
+      if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
       var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
       var left = busy > 2;
