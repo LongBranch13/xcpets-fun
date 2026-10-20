@@ -506,8 +506,27 @@
       injureAfter(img, a); return Object.assign({}, f, { data: img.data }); }); }
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityGap(w) (owner rule Oct 19 2026): true when the community pet has gone into Cold Storage (the Bitcoin Wizard at Mythic, w.wizardMythic)
-   * and no newer community pet exists yet. Every spot that features the community pet then renders NOTHING (no placeholder, no frame, no error). Display only. */
+   * and no newer community pet exists yet. The spots then show the coming-soon placeholder (see comingSoonFrames). Display only. */
   function communityGap(w) { return !!(w && w.wizardMythic && !(w.community && w.community.nextPet)); }
+  /** Coming-soon rule (owner, Oct 20 2026; replaces the show-nothing rule): during a communityGap the community spots STAY visible with an 8-bit
+   * mystery egg + 'Community pet #N coming soon'. N = COMMUNITY_NEXT_NO (#1 Nakamoto, #2 Bitcoin Wizard, so the next is #3). Feed/gear stay disabled. Display only. */
+  var COMMUNITY_NEXT_NO = 3, soonCache = null;
+  function comingSoonText() { return 'Community pet #' + COMMUNITY_NEXT_NO + ' coming soon'; }
+  function comingSoonFrames() { if (soonCache) return soonCache;
+    var EGG = ['..........XXXXXXXXXXXX..........', '........XXooooooooooooXX........', '.......XooooooooooooooooX.......', '......XooooooooooooooooooX......', '.....XooooooooooooooooooooX.....', '....XooooooooooooooooooooooX....', '....XooooooooooooooooooooooX....', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '..XooooooooooooooooooooooooooX..', '...XooooooooooooooooooooooooX...', '...XooooooooooooooooooooooooX...', '....XooooooooooooooooooooooX....', '.....XooooooooooooooooooooX.....', '......XXooooooooooooooooXX......', '........XXXXXXXXXXXXXXXX........'];
+    var Q = ['.QQQQ.', 'QQ..QQ', '....QQ', '...QQ.', '..QQ..', '..QQ..', '......', '..QQ..', '..QQ..'];
+    function fr(dy, qc) { var d = new Uint8ClampedArray(32 * 32 * 4), C = { bg: [42, 58, 46], X: [26, 16, 32], o: [58, 52, 78], h: [84, 76, 110], Q: qc, sh: [30, 42, 34] };
+      function px(x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) px(x, y, C.bg);
+      for (var sx = 9; sx < 23; sx++) px(sx, 29, C.sh); for (var sx2 = 7; sx2 < 25; sx2++) px(sx2, 30, C.sh);
+      var top = 6 + dy; EGG.forEach(function (row, r) { for (var x = 0; x < 32; x++) { var ch = row[x]; if (ch === 'X') px(x, top + r, C.X); else if (ch === 'o') px(x, top + r, (x < 9 && r > 2 && r < 12) ? C.h : C.o); } });
+      Q.forEach(function (row, r) { for (var x = 0; x < 6; x++) if (row[x] === 'Q') px(13 + x, top + 7 + r, C.Q); });
+      return { data: d, width: 32, height: 32 }; }
+    soonCache = [fr(0, [255, 210, 63]), fr(0, [255, 210, 63]), fr(-1, [255, 236, 150]), fr(0, [255, 210, 63])]; return soonCache; }
+  /** wizardTop(w, n): the Bitcoin Wizard's top feeders recorded at Cold Storage (w.wizardMythic.top) as a short html list ('' if none). */
+  function wizardTopHtml(w, esc, fmt) { var t = (w && w.wizardMythic && w.wizardMythic.top) || []; if (!t.length) return '';
+    var sh = function (a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a; };
+    return '<div class="small soon-top"><b>🏆 Bitcoin Wizard top ' + t.length + ' feeders</b><ol class="lb">' + t.map(function (x) { return '<li title="' + esc(x.address) + '">' + esc(sh(x.address)) + ' · ' + fmt(Math.floor(x.amount)) + '</li>'; }).join('') + '</ol></div>'; }
   /** showEl(el, on): hide/show an element completely (display:none beats any panel/grid display rule). */
   function showEl(el, on) { if (el) el.style.display = on ? '' : 'none'; }
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
@@ -609,7 +628,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { communityGap: communityGap, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

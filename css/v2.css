@@ -392,3 +392,6 @@ body #pets .pet.card{padding-bottom:44px}
 @media (prefers-reduced-motion:reduce){.ar-rp-new{animation:none}}
 .ar-hist .ar-rp-tag{display:block;font-style:normal;font-weight:700;color:#ffd166;font-size:11px;margin-top:2px}
 @media (max-width:500px){.ar-sandbtns{right:4px;bottom:auto;top:4px;gap:4px}}
+
+/* community coming soon (Oct 20 2026): disabled feed / gear roll while no community pet */
+#communityPanel .btn:disabled{opacity:.5;filter:grayscale(1);cursor:not-allowed}.soon-top{margin-top:6px}
