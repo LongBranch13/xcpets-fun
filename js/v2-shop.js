@@ -63,9 +63,9 @@
   function waving(t) { return !reduced() && t < (S.waveUntil || 0); }
   function waveNow() { if (reduced()) return; var n = performance.now(); if (n < (S.waveUntil || 0) - 300) return; S.waveUntil = n + 1800; }
   function onDan(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return mx >= DAN.x && mx < DAN.x + DAN.w && my >= DAN.y && my < DAN.y + DAN.h; }
-  function bubble(x, s, bx, by) { x.font = '6px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx - w / 2));
+  function bubble(x, s, bx, by) { x.font = '6px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.round(Math.max(2, Math.min(W - w - 2, bx - w / 2))); by = Math.round(by); /* scene-sharp: integer coords */
     px(x, '#000', bx + 1, by + 1, w, 12); px(x, '#fff8e1', bx, by, w, 12); px(x, '#fff8e1', bx + w / 2 - 2, by + 12, 4, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 9); }
-  function draw(t) { var x = S.x; if (!x) return; x.imageSmoothingEnabled = false;
+  function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */
     px(x, '#2a1d14', 0, 0, W, H); for (var y = 0; y < 96; y += 8) for (var b = (y / 8 % 2) * -8; b < W; b += 16) px(x, (y + b) % 3 ? '#3a2a1e' : '#35261b', b + 1, y + 1, 14, 6); /* brick */
     px(x, '#e9e1cf', 120, 8, 80, 6); for (var a = 0; a < 40; a++) { var hh = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((a - 20) / 20, 2))) * 22); px(x, '#1a2b4a', 120 + a * 2, 36 - hh, 2, hh + 52); } /* arch window */
     for (var st = 0; st < 14; st++) px(x, '#fff', 124 + (st * 37) % 72, 18 + (st * 13) % 40, 1, 1);
@@ -106,7 +106,7 @@
         S.sel = h.it; say(h.it); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
     var mo = box.querySelector('.shop-more'); if (S.more > 0) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
     counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
-    S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now()); }
+    S.c = c; S.x = c.getContext('2d'); if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now()); }
   /* CLEARANCE RACK (PREVIEW, NOT ACTIVE; owner idea, rules undecided): 4 pieces that rotate once per 144-block chain day, picked from the
    * existing gear catalog (no signature/legendary-exclusive or retired pieces) by sha256(first-block-of-the-day hash + ':clearance:' + i).
    * Display only: no price, no button that burns, nothing changes in the replay. */
