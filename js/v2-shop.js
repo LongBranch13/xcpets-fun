@@ -5,19 +5,17 @@
 (function () {
   'use strict';
   var W = 320, H = 150, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
-  /* Captain Dan's lines (owner 7:36/7:37 PM CT): affectionate, farm/Bitcorn/Bitcoin humor; facts used: creator of XCP.fun, Bitcorn Crops, bitcorns.com, DigiRare.io. No other bio. */
-  var LINES = ['gm from the farm!', 'Fresh off the field!', 'Harvest\u2019s in, matey', 'Gear grows like Bitcorn', 'Plant a roll, reap gear', 'Bitcorn Crops taught me well',
-    'XCP.fun built this barn', 'Hand-picked at dawn', 'Every piece, homegrown', 'bitcorns.com sends love', 'DigiRare.com says hi!', 'Rare as a DigiRare', 'Good soil, good drops',
-    'Stash full like silos', 'Tap a crop, kit a pet', 'Ripe for the wearing!', 'Stack sats, stack corn', 'HODL the harvest', 'Ahoy from the cornfield!', 'Fresh harvest, fair deal',
-    /* 28 lines approved by the owner Mon Oct 19 2026 (previews/pet-shop/dan-lines-final.md) */
-    'Ahoy! THIS! IS! BITCORN!', 'Only 100 CROPS. Sail careful, matey', 'BITCORN can\'t be bought. Only farmed!', '21M BITCORN, just like the big coin', 'Harvest #1 hit April Fools 2018. Legit', 'Land ho! A HELIPAD on the farm', 'Docked the boat at YACHTDOCK',
-    'LAMBOGARAGE? I came by ship', 'CORNPARTY on deck, all hands!', 'THESCARECROW guards my stash', 'FARMHAND wanted. Pay: corn', 'CORNCOMBINE: 364 cards to swab', 'Every farm\'s a Bitcoin address', 'Join a coop, me hearties!',
-    'Captain of the Bitcorn fleet, gm', 'Memecoins? Try XCP.fun, sailor', 'XCP.fun: 69 crew to set sail', 'On XCP.fun, no admin key aboard', 'Grails ahoy on DigiRare.com!', 'Card hunting? DigiRare.com, matey', 'Spells of Genesis sailed first',
-    'HOMERPEPE: 1 of 1. Arr!', 'Burn a FAKEASF, speak your fake', 'Rare Pepes, Fake Rares, all Bitcoin', 'Counterparty? I AM the party', 'Not your keys, not your corn', 'Batten the hatches, harvest\'s in!', 'Swab the deck, stack the sats'];
+  /* Captain Dan's lines live in data/dan-lines.json (groups core / dank / cpnews / mined; each line {text, added, expires?}).
+   * Lines show from 'added' and hide automatically from 'expires' (local date, YYYY-MM-DD), so news lines rotate without code changes.
+   * Slot rule (same as before for core + dank): line n = core[n % core.length], unless a slot group claims n (n % every === at) and has active lines. */
+  var POOL = { slots: { dank: { every: 12, at: 11 } }, groups: { core: [{ text: 'gm from the farm!', added: '2026-10-19' }] } }, LINES = [], DANK = [], ACT = {};
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function active(g, day) { return (POOL.groups[g] || []).filter(function (l) { return l && l.text && (!l.added || l.added <= day) && (!l.expires || day < l.expires); }).map(function (l) { return l.text; }); }
+  function setPool(j, day) { if (j && j.groups) POOL = j; day = day || today(); ACT = {}; Object.keys(POOL.groups).forEach(function (g) { ACT[g] = active(g, day); }); LINES = ACT.core || []; DANK = ACT.dank || []; if (window.V2Shop) { V2Shop.LINES = LINES; V2Shop.DANK = DANK; } }
+  setPool(null);
+  try { fetch('data/dan-lines.json?v=' + ((document.currentScript && (document.currentScript.src.split('?v=')[1] || '')) || ''), { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) setPool(j); }).catch(function () {}); } catch (e) {}
+  function lineAt(n) { var sl = POOL.slots || {}, ks = Object.keys(sl); for (var i = 0; i < ks.length; i++) { var k = ks[i], c = sl[k], a = ACT[k]; if (a && a.length && c.every && n % c.every === c.at) return a[Math.floor(n / c.every) % a.length]; } return LINES[n % LINES.length]; }
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], line: 0 };
-  /* Dank Rare Agency lines (owner Oct 19 2026, 10:28 PM CT); facts from dankdirectory.io Series 1 (KEKLUMINATI = Card 1, DANKMEMECASH = Card 2, OCTOKEK, PEEPOHEY). Shown every 12th line only. */
-  var DANK = ['Card 1 of the Danks? KEKLUMINATI', 'KEKLUMINATI sees all, matey', 'dankdirectory.io: dankest danks!', 'DANKMEMECASH, card 2. Arr!', 'PEEPOHEY waves from Series 1', 'OCTOKEK: eight arms, one kek', 'Dank Rare Agency reporting in!'];
-  function lineAt(n) { return n % 12 === 11 ? DANK[Math.floor(n / 12) % DANK.length] : LINES[n % LINES.length]; }
 
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
@@ -214,5 +212,5 @@
         onPick: function (r) { S.rollSp = r.key; var b = rollPick(w, pets, r.key); if (b) S.rollPet = b.id; counter(); } }); } }
   function refreshRoll() { counter(); }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); S.poofT = performance.now(); S.moodFor = null; U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, dmg: dmg, op: op };
+  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, setPool: setPool, active: function (g) { return (ACT[g] || []).slice(); }, dmg: dmg, op: op };
 })();
