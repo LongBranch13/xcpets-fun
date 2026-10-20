@@ -189,6 +189,8 @@
     ptLast = n; }
   /* WIZARD_EGG_ON_SALE (hotfix Oct 19 2026): false hides the play.html Wizard egg buy button (pet:hatchwiz). Set true to restore when the egg is ready. UI only; replay unchanged. */
   var WIZARD_EGG_ON_SALE = false;
+  /* WIZARD_SIGN_CLAIM_ON (hotfix Oct 19 2026): false hides the play.html "Join us" sign claim button (pet:sign). Set true to restore at launch. UI only. */
+  var WIZARD_SIGN_CLAIM_ON = false;
   function render() {
     var w = world(), c = w.community; notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
@@ -196,7 +198,7 @@
     petTotal(w);
     /* Wizard Cold Storage (Oct 19 2026): egg + sign claim buttons appear once the rule is on at the next block (V2Rules.wizColdOn) */
     var wzOn = V.wizColdOn && V.wizColdOn(w, (S.tip || 0) + 1), wm = w.wizardMythic; if ($('wizEggBtn')) { $('wizEggBtn').hidden = !(WIZARD_EGG_ON_SALE && wzOn); $('wizEggBtn').style.display = $('wizEggBtn').hidden ? 'none' : ''; }
-    if ($('wizSignBtn')) $('wizSignBtn').hidden = !(wzOn && ME && wm && wm.by && wm.by[ME] > 0 && !(wm.claimed && wm.claimed[ME]));
+    if ($('wizSignBtn')) { $('wizSignBtn').hidden = !(WIZARD_SIGN_CLAIM_ON && wzOn && ME && wm && wm.by && wm.by[ME] > 0 && !(wm.claimed && wm.claimed[ME])); $('wizSignBtn').style.display = $('wizSignBtn').hidden ? 'none' : ''; }
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
     var wiz = !!c.returned, fr;
     fr = R.communityFrames(w); /* community gear roll: the community pet (Bitcoin Wizard, or Nakamoto before) wears its community-roll gear (display only) */
@@ -462,7 +464,7 @@
   $('dozenBtn').onclick = function () { confirmPlans('Dozen ×12', [{ tag: 'pet:hatch12', amount: 690 }]); };
   $('caseBtn').onclick = function () { confirmPlans('Case ×144', [{ tag: 'pet:hatch144', amount: 6900 }]); };
   if ($('wizEggBtn') && WIZARD_EGG_ON_SALE) { $('wizEggBtn').textContent = '🧙 Bitcoin Wizard egg (' + fmt(V.WIZ_EGG_COST) + ')'; $('wizEggBtn').onclick = function () { confirmPlans('Bitcoin Wizard egg', [{ tag: 'pet:hatchwiz', amount: V.WIZ_EGG_COST }]); }; }
-  if ($('wizSignBtn')) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
+  if ($('wizSignBtn') && WIZARD_SIGN_CLAIM_ON) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
   /* community feed amount (2026-10-15, Jake): three fixed choices 69 / 690 / 6,900 (69 by default) instead of a free amount field; same tag + burn flow */
   document.querySelectorAll('[data-camt]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.camt;
