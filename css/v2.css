@@ -255,3 +255,11 @@ body #pets .pet.card{padding-bottom:44px}
 .sc-tag{font-size:11px;background:#1b1530;padding:1px 6px;border:1px solid #4b3f7a}.sc-eq{font-family:'Press Start 2P',monospace;font-size:8px;background:#ffd166;color:#140f24;padding:2px 4px}
 .sc-pets{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.sc-pet{font-size:12px;padding:3px 7px;border:2px solid #7a4f2a;background:#2a1d14;color:#ffd166;cursor:pointer}.sc-pet.on{background:#ffd166;color:#140f24}
 .sc-delta b.up{color:#3ddc84}.sc-delta b.dn{color:#ff5d5d}.sc-act,.sc-roll{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}.sc-why{color:#ff9d9d;font-size:12px;margin-top:4px}.sc-more{font-size:11px;color:#9fe8ff;align-self:center}
+
+/* Pet Shop clearance rack (PREVIEW, not active) */
+.shop-clear .cr{margin:8px 0;padding:8px;border:3px dashed #c8102e;background:#2a1d14;box-shadow:4px 4px 0 #000}.cr-h{font-family:'Press Start 2P',monospace;font-size:10px;color:#ffd166}.cr-pv{font-size:11px;background:#c8102e;color:#fff;padding:1px 6px;margin-left:4px}
+.cr-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}.cr-it{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;background:#1a120c;border:2px solid #7a4f2a;text-align:center}
+.cr-it img{width:48px;height:48px;image-rendering:pixelated}.cr-it b{font-size:12px;color:#eee}.cr-it small{font-size:10px;color:#9fe8ff}.cr-tag{position:absolute;top:-6px;right:-4px;transform:rotate(8deg);background:#ffd166;color:#140f24;font-family:'Press Start 2P',monospace;font-size:7px;padding:2px 3px;border:1px solid #000}
+.cr-hint{margin-top:4px;color:#ffd166}.cr-none{color:#9fe8ff;font-size:12px}@media (max-width:520px){.cr-row{grid-template-columns:repeat(2,1fr)}}
+
+#invPanel h2.sec{font-size:clamp(15px,3.6vw,28px);line-height:1.25}#invPanel h2.sec small{display:block;margin-top:4px}

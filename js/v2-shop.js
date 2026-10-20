@@ -1,5 +1,5 @@
-/* XCPETS Captain Dan's Pet Shop (UI-only mockup, owner 7:18 PM CT; branch pet-shop, NOT LIVE). No rule change, no new burns.
- * An 8-bit cartoon-Roman shop floor on top of the existing Inventory: Captain Dan (an affectionate 8-bit caricature of the creator of XCP.fun, Bitcorn Crops, bitcorns.com and DigiRare.io)
+/* XCPETS shop "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers" (owner's final name 8:01 PM CT; Captain Dan is the shopkeeper character, not in the name) (UI-only mockup, owner 7:18 PM CT; branch pet-shop, NOT LIVE). No rule change, no new burns.
+ * An 8-bit cartoon-Roman shop floor on top of the existing Pet Shop: Captain Dan (an affectionate 8-bit caricature of the creator of XCP.fun, Bitcorn Crops, bitcorns.com and DigiRare.io)
  * waves from behind the counter; your owned gear sits on the shelves (real item icons). Tap a shelf item -> the existing racks below jump to
  * that slot (same gear actions as before: pick a pet, tap a slot, equip/unequip). prefers-reduced-motion: static scene. */
 (function () {
@@ -27,8 +27,11 @@
     px(x, '#e9e1cf', 120, 8, 80, 6); for (var a = 0; a < 40; a++) { var hh = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((a - 20) / 20, 2))) * 22); px(x, '#1a2b4a', 120 + a * 2, 36 - hh, 2, hh + 52); } /* arch window */
     for (var st = 0; st < 14; st++) px(x, '#fff', 124 + (st * 37) % 72, 18 + (st * 13) % 40, 1, 1);
     [112, 204].forEach(function (cx) { px(x, '#e9e1cf', cx, 10, 6, 84); px(x, '#bfb49c', cx + 2, 12, 1, 80); px(x, '#f5efe0', cx - 2, 8, 10, 3); px(x, '#f5efe0', cx - 2, 92, 10, 3); });
-    x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; px(x, '#c8102e', 96, 0, 128, 11); x.fillStyle = '#ffd166'; x.fillText('CAPTAIN DAN\u2019S', 160, 9); x.textAlign = 'left';
-    px(x, '#3ddc84', 92, 3, 3, 3); px(x, '#3ddc84', 225, 3, 3, 3); /* laurels */
+    /* final name (owner 8:01 PM CT): "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers", stacked on two lines */
+    x.textAlign = 'center'; px(x, '#000', 54, 1, 214, 19); px(x, '#c8102e', 52, 0, 214, 18); px(x, '#ffd166', 52, 0, 214, 1); px(x, '#ffd166', 52, 17, 214, 1);
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('THE XCPETS LAIR OF', 159, 8);
+    x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5); x.textAlign = 'left';
+    px(x, '#3ddc84', 47, 6, 3, 3); px(x, '#3ddc84', 268, 6, 3, 3); /* laurels */
     S.hits = []; var shelves = [[6, 22], [6, 56], [222, 22], [222, 56]], k = 0;
     shelves.forEach(function (s) { px(x, '#7a4f2a', s[0], s[1] + 18, 92, 4); px(x, '#5a3a1e', s[0], s[1] + 22, 92, 2);
       for (var i = 0; i < 5; i++) { var it = S.items[k++], ix = s[0] + 2 + i * 18, iy = s[1]; if (!it) continue; var ic = S.icons[it.item]; var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 4 : 4 + (Math.floor(t / 200) % 2)) : 0;
@@ -39,22 +42,37 @@
         S.hits.push({ x: ix, y: iy - 4, w: 16, h: 22, it: it }); } });
     if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Shelves empty: roll gear!', 8, 46); }
     dan(x, 150, 70, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText(S.total + ' ITEMS IN YOUR BAG', 160, 120); x.textAlign = 'left';
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText(S.free + ' IN STOCK \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120); x.textAlign = 'left';
     px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
     bubble(x, S.say || LINES[S.line % LINES.length], 160, 52);
     if (!reduced()) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
-    S.total = items.length; S.items = items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; })).slice(0, 20);
+    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; S.items = items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; })).slice(0, 20);
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Captain Dan\u2019s pet shop: your gear on the shelves"></canvas><div class="shop-hint small">Tap gear on a shelf · pick a pet · wear it</div>'; c = box.querySelector('canvas');
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stock on the shelves"></canvas><div class="shop-hint small">Tap gear on a shelf · pick a pet · wear it</div>'; c = box.querySelector('canvas');
       c.addEventListener('mousemove', function (e) { var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
       c.addEventListener('mouseleave', function () { S.hov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
         S.sel = h.it; say(h.it); counter(); draw(performance.now()); }); }
-    counter();
+    counter(); clearance(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now()); }
+  /* CLEARANCE RACK (PREVIEW, NOT ACTIVE; owner idea, rules undecided): 4 pieces that rotate once per 144-block chain day, picked from the
+   * existing gear catalog (no signature/legendary-exclusive or retired pieces) by sha256(first-block-of-the-day hash + ':clearance:' + i).
+   * Display only: no price, no button that burns, nothing changes in the replay. */
+  function rackPick(V, G, hash, n) { var pool = (G.ITEMS || []).filter(function (it) { return !it.exclusive && !it.legendary && !(G.RETIRED && G.RETIRED[it.id]) && !(G.REMOVED && G.REMOVED[it.id]) && !it.alias; }), out = [], seen = {};
+    for (var i = 0; out.length < n && i < 64 && pool.length; i++) { var h = V.sha(hash + ':clearance:' + i), it = pool[parseInt(h.slice(0, 8), 16) % pool.length]; if (!seen[it.id]) { seen[it.id] = 1; out.push(it); } } return out; }
+  function clearance(w) { var el = document.getElementById('shopClearance'), U = window.V2UI, V = window.V2Rules, G = window.V2Gear, R = window.V2Render; if (!el || !U || !V || !G) return;
+    var st = U.S ? U.S() : {}, tip = st.tip || w.tip || 0, d = V.day(tip), b0 = d * V.BLOCKS_PER_DAY, H = st.hashes || {}, hb = null;
+    for (var b = b0; b <= tip; b++) if (H[b]) { hb = b; break; }
+    if (hb == null) { el.innerHTML = '<div class="cr"><b class="cr-h">🏷️ CLEARANCE RACK</b> <span class="cr-pv">Preview, not active</span><div class="cr-none">Restocks when block ' + b0 + '’s hash is in</div></div>'; return; }
+    var L = rackPick(V, G, H[hb], 4), T = ['Common', 'Uncommon', 'Rare', 'Legendary'], left = b0 + V.BLOCKS_PER_DAY - tip;
+    el.innerHTML = '<div class="cr"><div class="cr-top"><b class="cr-h">🏷️ CLEARANCE RACK</b> <span class="cr-pv">Preview, not active</span></div>' +
+      '<div class="cr-row">' + L.map(function (it) { var src = ''; try { src = R.iconCanvas(it.id).toDataURL(); } catch (e) { } return '<div class="cr-it t' + it.tier + '"><span class="cr-tag">SALE</span>' + (src ? '<img alt="" src="' + src + '">' : '') + '<b>' + esc(it.label) + '</b><small>' + esc(lword(it.slot) + ' · ' + (T[it.tier] || '')) + '</small><button type="button" class="q" disabled>Price TBD</button></div>'; }).join('') + '</div>' +
+      '<div class="cr-hint small">New rack in ' + left + ' blocks · picked from block ' + hb + '’s hash</div><details class="small muted"><summary>How the rack is picked</summary>Each chain day (144 blocks) the hash of the day’s first block picks 4 pieces from the gear catalog (no signature pieces). Anyone can check it. Buying isn’t wired: prices and rules are still the owner’s call.</details></div>'; }
+  var LW = { Headwear: 'Locks', Grip: 'Leverage', Outfits: 'Layers', Drip: 'Luster', Guise: 'Looks', Footwear: 'Leathers' };
+  function lword(sl) { var V = window.V2Rules, l = V && V.slotLabel ? V.slotLabel(sl) : sl; return LW[l] ? LW[l] + ' \u00b7 ' + l : l; }
   function hitAt(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; }
   function say(g) { S.lt = performance.now(); S.say = g.on != null ? 'On #' + g.on + '. Swap it?' : String(g.label || 'This one').slice(0, 18) + '? Fresh crop!'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -67,7 +85,7 @@
     var fit = pets.filter(function (p) { return (p.openSlots || []).indexOf(sl) >= 0; }); if (S.pet == null || !fit.some(function (p) { return p.id === S.pet; })) S.pet = g.on != null ? g.on : fit[0] && fit[0].id;
     var P = w.byId[S.pet], cur = P ? V.wornOf(w, P.id).filter(function (x) { return x.slot === sl; })[0] : null, c = P ? V.equipCheck(w, ME, P.id, g.item) : { ok: false, why: 'no pet with a free ' + sl + ' slot' };
     var d = dmg(g.item) - (cur ? dmg(cur.item) : 0), wearing = cur && cur.gid === g.gid;
-    el.innerHTML = '<div class="sc-item"><span class="sc-ic"></span><div><b>' + esc(it.label || g.label) + '</b> <span class="sc-tag">' + esc(sl) + '</span>' + (g.on != null ? ' <span class="sc-eq">EQUIPPED #' + g.on + '</span>' : '') + '</div></div>' +
+    el.innerHTML = '<div class="sc-item"><span class="sc-ic"></span><div><b>' + esc(it.label || g.label) + '</b> <span class="sc-tag">' + esc(lword(sl)) + '</span>' + (g.on != null ? ' <span class="sc-eq">EQUIPPED #' + g.on + '</span>' : '') + '</div></div>' +
       '<div class="sc-pets" id="scPick"></div>' +
       (P ? '<div class="sc-delta">' + (wearing ? 'Worn by #' + P.id : 'Gear dmg <b class="' + (d > 0 ? 'up' : d < 0 ? 'dn' : '') + '">' + (d > 0 ? '+' : '') + d + '</b> vs ' + (cur ? esc(cur.label) : 'empty slot')) + '</div>' : '') +
       '<div class="sc-act">' + (P && !wearing ? '<button type="button" class="btn" id="scWear"' + (c.ok ? '' : ' disabled') + '>👕 Wear on #' + P.id + '</button>' : '') + (g.on != null ? '<button type="button" class="q" id="scOff">Take off</button>' : '') + '</div>' +
@@ -83,5 +101,5 @@
   function bindRoll(el) { var U = window.V2UI, V = window.V2Rules, rb = document.getElementById('scRoll');
     if (rb) rb.onclick = function () { var id = +rb.dataset.pid; U.confirmPlans('Gear roll for #' + id, [{ tag: V.buildTag('roll', { petId: id }), amount: V.COSTS.roll }]); }; }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { render: render, select: function (g) { S.sel = g; say(g); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES };
+  window.V2Shop = { rackPick: rackPick, clearance: clearance, render: render, select: function (g) { S.sel = g; say(g); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES };
 })();
