@@ -109,7 +109,12 @@ a.returnlink:focus-visible { outline: none; } a.returnlink:focus-visible .coldbt
 .q.danger{color:#ff6b6b;border-color:#ff6b6b}.q.danger:disabled{opacity:.45}
 .cost{display:block;font-size:10px;opacity:.85;font-weight:normal}
 .selbar{position:sticky;top:var(--navh,56px);z-index:30;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;margin:8px -4px;background:#14182a;border:3px solid #3ddc84;border-radius:6px;box-shadow:0 -4px 0 rgba(0,0,0,.35)}
-.selbar[hidden]{display:none}.selbar .rollgrp{display:inline-flex;gap:4px;align-items:center}.selbar button:disabled{opacity:.45;filter:grayscale(1)}#selWhy{flex-basis:100%}
+.selbar[hidden]{display:none}.selbar button:disabled{opacity:.45;filter:grayscale(1)}#selWhy:empty{display:none}#selWhy{flex-basis:100%;text-align:center}
+/* sticky-feed-bar 2026-10-19: feed-first bar. count | meal | one big Feed button | small Lair link */
+.selbar{justify-content:center;gap:10px 14px}.selbar .sb-count,.selbar .sb-meal{font-size:13px;white-space:nowrap}.selbar .sb-count b{color:#3ddc84;font-size:16px}.selbar .sb-meal b{color:#ffd166}
+.selbar .sb-feed{font-size:17px;padding:10px 26px;min-width:190px;text-align:center}.selbar .sb-feed .cost{font-size:11px}.selbar .sb-lair{font-size:12px;padding:6px 10px;text-decoration:none}
+@media (max-width:520px){.selbar{gap:6px 10px;padding:6px 8px}.selbar .sb-feed{order:3;flex:1 1 100%;font-size:16px;padding:9px 12px}.selbar .sb-lair{order:4;flex:0 0 auto}.selbar .sb-count,.selbar .sb-meal{font-size:12px}}
+.sc-roll .sc-rh{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166;margin:6px 0 4px}.sc-roll .sc-rinfo{font-size:13px;margin:6px 0;line-height:1.6}.sc-roll .cost{font-size:11px}.sc-roll .sc-rn{display:block;margin:4px 0}.sc-roll button:disabled{opacity:.45;filter:grayscale(1)}
 .pet.card .openbtn{position:absolute;right:6px;bottom:6px;padding:2px 6px;font-size:11px}.pet.card{position:relative;cursor:pointer;user-select:none}
 .pet.card.flash,.board tr.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4}
 @keyframes uxblink{50%{outline-color:transparent}}
@@ -360,3 +365,15 @@ body #pets .pet.card{padding-bottom:44px}
 .gb-pg .pk-arr{min-width:40px;min-height:40px}
 #breedPanel{scroll-margin-top:110px}
 @media (max-width:520px){.mt-hint,.gb-h{font-size:11px}}
+
+/* sticky-feed-bar: big Lair pet next to its slots */
+.sc-hero{display:flex;gap:12px;align-items:center;margin:6px 0 8px;padding:8px;background:#1a120c;border:2px solid #7a4f2a}.sc-hp{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto}
+.sc-hp canvas{width:128px;height:128px;image-rendering:pixelated;background:#2a1d14;border:3px solid #000}.sc-hp b{font-size:14px;color:#ffd166}.sc-hp small{font-size:12px;color:#9fe8ff}
+.sc-slots{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:13px;flex:1}.sc-slots li span{font-family:var(--pixel);font-size:8px;color:#ffd166}.sc-slots li.open{color:#9fe8ff}.sc-slots li.lock{opacity:.5}
+@media (max-width:520px){.sc-hero{gap:8px}.sc-hp canvas{width:104px;height:104px}.sc-slots{grid-template-columns:1fr;font-size:12px}}
+/* sticky-feed-bar: piece price-tag sign inside the Lair scene, by Captain Dan's counter */
+.shop8 .shop-scene .sc-sign{position:absolute;right:2%;bottom:14%;width:min(300px,38%);line-height:1.35;background:#f3e2b8;color:#2a1508;border:3px solid #000;box-shadow:4px 4px 0 #000;padding:8px 10px;font-size:13px;z-index:2}
+.shop8 .shop-scene .sc-sign::before{content:'';position:absolute;left:-9px;top:12px;width:10px;height:10px;background:#ffd166;border:3px solid #000;border-radius:50%}
+.sc-sign .sc-item{display:flex;gap:8px;align-items:center}.sc-sign .sc-ic canvas{width:32px;height:32px;image-rendering:pixelated}.sc-sign .sc-tag{font-size:10px;color:#ffd166}.sc-sign .sc-big{font-size:16px;color:#2a1508;text-shadow:none;margin:4px 0}.sc-sign .sc-big.up b,.sc-sign .up{color:#0d7a3a;text-shadow:none}.sc-sign .sc-big.dn b,.sc-sign .dn{color:#b3261e;text-shadow:none}
+.sc-sign .sc-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.sc-sign .sc-why{font-size:12px}
+@media (max-width:640px){.shop8 .shop-scene .sc-sign{position:static;width:auto;margin:0;border-width:3px 0 0;box-shadow:none}.shop8 .shop-scene .sc-sign::before{display:none}}

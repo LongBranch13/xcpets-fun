@@ -80,14 +80,17 @@
     $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS)</span>'; $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
+    if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
     if (!n) return;
     var ids = S.sel.slice(), fq = V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
-    $('selBarCount').innerHTML = '<b>' + n + '</b> selected';
-    $('bFeedSel').innerHTML = 'Feed selected <span class="cost">' + (fq.length ? fmt(fq.length) + ' pet' + (fq.length === 1 ? '' : 's') + ' · ' + fmt(sum(fq)) + ' XCPETS' : '') + '</span>'; $('bFeedSel').disabled = !fq.length;
+    /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
+    var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
+    $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
+    $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' : '😋 all fed today';
+    $('bFeedSel').innerHTML = 'Feed ' + (fq.length ? fmt(fedN) : '') + ' <span class="cost">' + (fq.length ? fmt(sum(fq)) + ' XCPETS' : 'nothing to feed') + '</span>'; $('bFeedSel').disabled = !fq.length;
     $('bRoll').innerHTML = 'Roll gear ×' + rn + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : '345 XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq.length; $('bRoll').title = rq.length ? '' : 'Select one or more of your pets, then roll gear (345 XCPETS per roll)';
     var ae = V.autoEquipOps(w, ME, ids, S.tip); $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae.length;
-    var why = []; if (!fq.length) why.push('Feed: none of them is hungry'); if (!rq.length) why.push('Roll: no living pet of yours selected'); if (!ae.length) why.push('Auto-equip: nothing better in your stock');
-    $('selWhy').textContent = why.join(' · ');
+    $('selWhy').textContent = '';
   };
   function bindSel() {
     $('selAll').onchange = function () { var w = U.world(), S = U.S(), shown = U.petList(w).filter(function (p) { return !p.dead; }).map(function (p) { return p.id; });
