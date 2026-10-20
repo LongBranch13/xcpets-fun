@@ -1,4 +1,4 @@
-/* XCPETS No-Tail Motel desk: incoming breed requests (tonight bundle 2026-10-19, front-page-entries; NOT LIVE).
+/* XCPETS Gooby's No-Tail Motel desk: incoming breed requests (tonight bundle 2026-10-19, front-page-entries; NOT LIVE).
  * Same data and the SAME breed burn as the pending box: Accept = confirmPlans('Accept breed …', [{ tag: 'pet:breed:YOURS:THEIRS', amount: 690 }]).
  * Ignore = hide it on this device only (localStorage, per wallet; nothing on chain; it still expires on its own). Gooby holds up a "💞 N waiting" note.
  * The arena pending box shows the same requests as a heads-up; tapping one comes here (#no-tail-motel). No rule change. */

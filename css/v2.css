@@ -297,7 +297,7 @@ body #pets .pet.card{padding-bottom:44px}
 
 #invPanel h2.sec{font-size:clamp(15px,3.6vw,28px);line-height:1.25}#invPanel h2.sec small{display:block;margin-top:4px}
 
-/* No-Tail Motel mockup (2026-10-19) */
+/* Gooby's No-Tail Motel mockup (2026-10-19) */
 .motel8 .motel-scene{border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0b0a1f;margin:6px 0 8px;line-height:0}.motel8 .motel-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
 .motel-desk{border:3px solid #000;background:#2a1530;padding:8px;box-shadow:4px 4px 0 #000}.mt-hint{font-family:'Press Start 2P',monospace;font-size:10px;color:#ff4fd8;margin-bottom:6px}
 .mt-guests{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mt-guests span{color:#ffd166;font-weight:bold}.mt-g{flex:1 1 130px;padding:6px;border:2px dashed #4fe0ff;background:#140f24;color:#4fe0ff;cursor:pointer;font-size:13px}.mt-g.on{border-style:solid;background:#4fe0ff;color:#140f24}
@@ -326,7 +326,7 @@ body #pets .pet.card{padding-bottom:44px}
 .sp-name{text-shadow:0 0 8px rgba(255,209,102,.6),2px 2px 0 #000}.sp-open .sp-name{text-shadow:0 0 8px rgba(159,232,255,.6),2px 2px 0 #000}
 .ar-qmsg{font-family:var(--comic);font-weight:700;font-size:15px}
 .ar-hint{font-family:var(--comic);font-size:14px}
-/* No-Tail Motel: pink neon pixel title, Bangers desk prompt (the canvas VACANCY sign is untouched) */
+/* Gooby's No-Tail Motel: pink neon pixel title, Bangers desk prompt (the canvas VACANCY sign is untouched) */
 #breedPanel>h2.sec{color:#ff4fd8;text-shadow:0 0 8px rgba(255,79,216,.6),3px 3px 0 #2a0a28}
 .mt-hint{font-family:var(--meme);font-size:22px;letter-spacing:.05em;color:#ff4fd8;text-shadow:2px 2px 0 #000}
 
@@ -381,3 +381,6 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-chal{margin:10px 0}.ch-tabs{display:flex;gap:6px;margin:6px 0 2px;flex-wrap:wrap}.ch-tab{min-height:40px;font:inherit;font-size:13px;font-weight:bold;padding:6px 12px;background:#1b1530;color:#eee;border:2px solid #4b3f7a;cursor:pointer}.ch-tab.on{background:#2a1530;border-color:#ffd166;color:#ffd166}.ch-badge{display:inline-block;min-width:20px;padding:1px 5px;margin-left:4px;background:#39405f;color:#fff;border-radius:10px;font-size:12px;text-align:center}.ch-tab.hot .ch-badge{background:#c8102e;color:#fff6c8}
 .fp-chips{align-items:center}.fp-chips .fp-sp{min-height:32px}.ar-post-help{margin-top:4px}
 @media (max-width:640px){.faceoff .fgrid{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:4px}.faceoff .vs{font-size:16px;align-self:center}.faceoff .fside{padding:5px;min-width:0;min-height:150px}.faceoff .fside .fstats{width:100%}.fp-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.fp-chips .pk-chip,.fp-chips select{flex:none}}
+/* motel-hint-move 2026-10-19 (owner 9:36 PM CT): the motel 'Pick two pets' hint sits UNDER the scene so it never covers the Gooby's No-Tail Motel sign; same button + X dismiss */
+.motel8 .motel-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25}
+.motel8 .motel-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
