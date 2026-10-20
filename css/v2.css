@@ -354,3 +354,9 @@ body #pets .pet.card{padding-bottom:44px}
 #arenaPanel details>summary{padding-top:10px;padding-bottom:10px}
 #arenaPanel{scroll-margin-top:110px}
 @media (max-width:520px){.sp-name{font-size:11px}.ar-scene .ar-ann-sand{font-size:11px}.ar-lb th{font-size:9px;padding:6px 4px}}
+/* phone QA pass 2026-10-19 (pet-shop): readable minimums on phones, rack pill on one line, 40px taps; pickers untouched */
+.cr-pv{white-space:nowrap;display:inline-block}
+#invPanel{scroll-margin-top:110px}
+#invPanel .cr-it button{min-height:40px}
+#invPanel details>summary{padding-top:10px;padding-bottom:10px}
+@media (max-width:520px){.shop8 .shop-hint{font-size:10px}.shop-counter .sc-empty,.cr-h{font-size:11px}.cr-it small{font-size:11px}.cr-tag{font-size:9px}}

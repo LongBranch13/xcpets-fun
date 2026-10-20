@@ -7,8 +7,13 @@
   var W = 320, H = 150, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   /* Captain Dan's lines (owner 7:36/7:37 PM CT): affectionate, farm/Bitcorn/Bitcoin humor; facts used: creator of XCP.fun, Bitcorn Crops, bitcorns.com, DigiRare.io. No other bio. */
   var LINES = ['gm from the farm!', 'Fresh off the field!', 'Harvest\u2019s in, matey', 'Gear grows like Bitcorn', 'Plant a roll, reap gear', 'Bitcorn Crops taught me well',
-    'XCP.fun built this barn', 'Hand-picked at dawn', 'Every piece, homegrown', 'bitcorns.com sends love', 'DigiRare.io says hi!', 'Rare as a DigiRare', 'Good soil, good drops',
-    'Shelves full like silos', 'Tap a crop, kit a pet', 'Ripe for the wearing!', 'Stack sats, stack corn', 'HODL the harvest', 'Ahoy from the cornfield!', 'Fresh harvest, fair deal'];
+    'XCP.fun built this barn', 'Hand-picked at dawn', 'Every piece, homegrown', 'bitcorns.com sends love', 'DigiRare.com says hi!', 'Rare as a DigiRare', 'Good soil, good drops',
+    'Shelves full like silos', 'Tap a crop, kit a pet', 'Ripe for the wearing!', 'Stack sats, stack corn', 'HODL the harvest', 'Ahoy from the cornfield!', 'Fresh harvest, fair deal',
+    /* 28 lines approved by the owner Mon Oct 19 2026 (previews/pet-shop/dan-lines-final.md) */
+    'Ahoy! THIS! IS! BITCORN!', 'Only 100 CROPS. Sail careful, matey', 'BITCORN can\'t be bought. Only farmed!', '21M BITCORN, just like the big coin', 'Harvest #1 hit April Fools 2018. Legit', 'Land ho! A HELIPAD on the farm', 'Docked the boat at YACHTDOCK',
+    'LAMBOGARAGE? I came by ship', 'CORNPARTY on deck, all hands!', 'THESCARECROW guards my shelves', 'FARMHAND wanted. Pay: corn', 'CORNCOMBINE: 364 cards to swab', 'Every farm\'s a Bitcoin address', 'Join a coop, me hearties!',
+    'Captain of the Bitcorn fleet, gm', 'Memecoins? Try XCP.fun, sailor', 'XCP.fun: 69 crew to set sail', 'On XCP.fun, no admin key aboard', 'Grails ahoy on DigiRare.com!', 'Card hunting? DigiRare.com, matey', 'Spells of Genesis sailed first',
+    'HOMERPEPE: 1 of 1. Arr!', 'Burn a FAKEASF, speak your fake', 'Rare Pepes, Fake Rares, all Bitcoin', 'Counterparty? I AM the party', 'Not your keys, not your corn', 'Batten the hatches, harvest\'s in!', 'Swab the deck, stack the sats'];
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], line: 0 };
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
@@ -66,9 +71,9 @@
     for (var st = 0; st < 14; st++) px(x, '#fff', 124 + (st * 37) % 72, 18 + (st * 13) % 40, 1, 1);
     [112, 204].forEach(function (cx) { px(x, '#e9e1cf', cx, 10, 6, 84); px(x, '#bfb49c', cx + 2, 12, 1, 80); px(x, '#f5efe0', cx - 2, 8, 10, 3); px(x, '#f5efe0', cx - 2, 92, 10, 3); });
     /* final name (owner 8:01 PM CT): "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers", stacked on two lines */
-    x.textAlign = 'center'; px(x, '#000', 54, 1, 214, 19); px(x, '#c8102e', 52, 0, 214, 18); px(x, '#ffd166', 52, 0, 214, 1); px(x, '#ffd166', 52, 17, 214, 1);
+    x.textAlign = 'center'; px(x, '#000', 33, 1, 256, 19); px(x, '#c8102e', 31, 0, 256, 18); px(x, '#ffd166', 31, 0, 256, 1); px(x, '#ffd166', 31, 17, 256, 1); /* phone pass: banner widened so the long name sits inside it */
     x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('THE XCPETS LAIR OF', 159, 8);
-    x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5); x.textAlign = 'left';
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5, 250); x.textAlign = 'left';
     px(x, '#3ddc84', 47, 6, 3, 3); px(x, '#3ddc84', 268, 6, 3, 3); /* laurels */
     S.hits = []; var shelves = [[6, 22], [6, 56], [222, 22], [222, 56]], k = 0;
     shelves.forEach(function (s) { px(x, '#7a4f2a', s[0], s[1] + 18, 92, 4); px(x, '#5a3a1e', s[0], s[1] + 22, 92, 2);
