@@ -384,3 +384,11 @@ body #pets .pet.card{padding-bottom:44px}
 /* motel-hint-move 2026-10-19 (owner 9:36 PM CT): the motel 'Pick two pets' hint sits UNDER the scene so it never covers the Gooby's No-Tail Motel sign; same button + X dismiss */
 .motel8 .motel-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25}
 .motel8 .motel-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
+/* arena-replay: ▶ Replay next to the Announcer on the sand + replay labels on fight cards */
+.ar-sandbtns{position:absolute;right:6px;bottom:6px;z-index:4;display:flex;gap:6px;align-items:center;line-height:1.2}
+.ar-sandbtns .ar-ann-sand{position:relative;right:auto;bottom:auto;top:auto}
+.ar-rp-sand[hidden]{display:none}
+.ar-rp-new{background:#ffd166!important;color:#120e22!important;animation:arFl .4s steps(2) 3}
+@media (prefers-reduced-motion:reduce){.ar-rp-new{animation:none}}
+.ar-hist .ar-rp-tag{display:block;font-style:normal;font-weight:700;color:#ffd166;font-size:11px;margin-top:2px}
+@media (max-width:500px){.ar-sandbtns{right:4px;bottom:auto;top:4px;gap:4px}}
