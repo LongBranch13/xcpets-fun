@@ -20,13 +20,24 @@
   function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: false, art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
   function toCanvas(img, tint) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!img) return c; var d = new ImageData(new Uint8ClampedArray(img.data), 32, 32);
     for (var j = 0; j < d.data.length; j += 4) if (d.data[j] === 255 && d.data[j + 1] === 0 && d.data[j + 2] === 254) d.data[j + 3] = 0;
-    if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; d.data[i] = Math.min(255, 70 + g * 0.75); d.data[i + 1] = Math.min(255, 52 + g * 0.55); d.data[i + 2] = Math.min(255, 30 + g * 0.3); }
+    if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2], side = ((i / 4) % 32) < 14 ? 22 : ((i / 4) % 32) > 19 ? -18 : 0, v = Math.max(40, Math.min(235, 62 + g * 0.62 + side));
+      /* arena-sharp-text: carved stone (cool grey), lit on the left, shaded on the right, so it reads as a statue and not a live pet */ d.data[i] = v; d.data[i + 1] = v; d.data[i + 2] = Math.min(255, v + 10); }
     c.getContext('2d').putImageData(d, 0, 0); return c; }
+  /* arena-sharp-text: a black silhouette of the statue for a 1px outline against the sand */
+  function silhouette(src) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'); x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#0a0812'; x.fillRect(0, 0, 32, 32); return c; }
+  /* arena-sharp-text (owner 9:31/9:32 PM CT, everything looked blurry): the 320x180 scene used to be a 320x180 bitmap stretched by CSS to the page width
+   * (996 px at 1280 = 3.11x, 286 px on a 390 phone = 0.89x), so pixels came out uneven and the 4-6 px canvas text smeared. Now the backing store is
+   * 320*k x 180*k with an integer k >= CSS width * devicePixelRatio / 320 and everything draws in the same 320x180 units through setTransform(k): sprites stay
+   * hard-edged (smoothing off), text is rasterised at full device resolution. */
+  function fit() { var c = S.c; if (!c) return; var r = c.getBoundingClientRect ? c.getBoundingClientRect() : { width: W }, d = window.devicePixelRatio || 1, k = Math.max(1, Math.min(8, Math.ceil(((r.width || W) * d) / W - 0.01)));
+    if (c.width !== W * k || c.height !== H * k) { c.width = W * k; c.height = H * k; } S.k = k;
+    /* the backing store is always >= the device pixels, so the browser only scales DOWN: nearest-neighbour is fine once each art pixel is 3+ device px; below that a smooth downscale keeps lines even */
+    c.style.imageRendering = k >= 3 ? 'pixelated' : 'auto'; }
   var S = { c: null, x: null, w: null, champ: null, statue: null, crowd: null, raf: 0, t0: 0, mode: 'idle', actors: [], label: '', wall: null };
   function rnd(i) { var x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
-  function bg(t) { var x = S.x; x.imageSmoothingEnabled = false;
+  function bg(t) { var x = S.x; x.setTransform(S.k || 1, 0, 0, S.k || 1, 0, 0); x.imageSmoothingEnabled = false; S.tNow = t;
     x.fillStyle = '#120e22'; x.fillRect(0, 0, W, H);
-    if (S.wall) x.drawImage(S.wall, 0, 0, W, 26); else { x.fillStyle = '#2a2238'; x.fillRect(0, 0, W, 26); }
+    if (S.wall) x.drawImage(S.wall, 0, 0); /* 1:1 now (was a 168x24 wall stretched to 320x26) */ else { x.fillStyle = '#2a2238'; x.fillRect(0, 0, W, 26); }
     for (var r = 0; r < 4; r++) { var y = 28 + r * 11; x.fillStyle = r % 2 ? '#3a2f55' : '#43376a'; x.fillRect(0, y, W, 11); x.fillStyle = '#2b2346'; x.fillRect(0, y + 9, W, 2);
       for (var k = 0; k < 40; k++) { var cx = k * 8 + (r % 2) * 4 + 2, seed = r * 100 + k, jump = S.mode === 'lap' || S.mode === 'win' ? 2 : 1, cm = S.mode === 'fight' && window.V2ArenaFun ? V2ArenaFun.crowd(S.mood, t, r, k, rnd(seed)) : null, bob = cm != null ? cm : (Math.floor(t / 180 + rnd(seed) * 6) % 4 === 0) ? jump : 0; /* tonight bundle: crowd follows the mood meter */
         if (cx > TUN.x - 14 && cx < TUN.x + 18 && r >= 2) continue;
@@ -41,10 +52,21 @@
     x.fillStyle = '#c9a36b'; for (var yy = 78; yy < H - 2; yy++) { var dy = (yy - CY) / (RY + 12), half = Math.sqrt(Math.max(0, 1 - dy * dy)) * (RX + 14); x.fillRect(Math.round(CX - half), yy, Math.round(half * 2), 1); }
     x.fillStyle = '#7a8a4a'; for (yy = 104; yy < 154; yy++) { dy = (yy - CY) / (RY - 12); half = Math.sqrt(Math.max(0, 1 - dy * dy)) * (RX - 34); if (half > 0) x.fillRect(Math.round(CX - half), yy, Math.round(half * 2), 1); }
     plinth(); }
-  function plinth() { var x = S.x, px = CX - 22, py = 118; x.fillStyle = '#4b4560'; x.fillRect(px, py, 44, 14); x.fillStyle = '#6d6788'; x.fillRect(px, py, 44, 2); x.fillStyle = '#3a3550'; x.fillRect(px - 3, py + 14, 50, 4);
-    x.font = '5px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#ffd166';
-    if (S.champ) { x.drawImage(S.statue, CX - 16, py - 32, 32, 32); x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, py - 23 + (lv === 2 ? -1 : 0), 2, 2); } x.fillStyle = '#ffd166'; x.fillText(String(S.champ.p.name || 'Pet').slice(0, 10) + ' #' + S.champ.p.id, CX, py + 7); x.fillStyle = '#e8f5ec'; x.fillText(S.champ.streak + ' WIN STREAK', CX, py + 13); if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, py - 2); }
-    else { x.fillStyle = '#9fe8ff'; x.fillText('AWAITING', CX, py + 7); x.fillText('A CHAMPION', CX, py + 13); }
+  /* arena-sharp-text (owner 9:31 PM CT): the champion statue reads as a statue: stepped stone pedestal (lit top/left, shaded right), a carved stone pet with
+   * a dark outline, a gold nameplate, and two small torches. Same data as before (champion = longest current streak; belt at 3+ wins; empty plinth otherwise). */
+  function plinth() { var x = S.x, t = S.tNow || 0, fl = reduced() ? 0 : Math.floor(t / 160) % 3, top = 100; /* sits higher than the old plinth so the fighters' HP bars stay clear */
+    function r(c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
+    r('#0a0812', CX - 39, top + 25, 78, 6); r('#0a0812', CX - 35, top - 1, 70, 27); /* outline */
+    r('#8d8aa0', CX - 34, top, 68, 3); r('#6e6a84', CX - 34, top + 3, 68, 18); r('#a9a6bb', CX - 34, top + 3, 2, 18); r('#4d4962', CX + 32, top + 3, 2, 18); r('#57536c', CX - 34, top + 21, 68, 4); /* die */
+    r('#6e6a84', CX - 38, top + 26, 76, 4); r('#a9a6bb', CX - 38, top + 26, 76, 1); r('#3e3a52', CX - 38, top + 29, 76, 1); /* base step */
+    r('#3a2a10', CX - 32, top + 6, 64, 14); r('#ffd166', CX - 31, top + 7, 62, 12); r('#c99a2e', CX - 31, top + 18, 62, 1); /* gold nameplate */
+    [CX - 44, CX + 42].forEach(function (tx, n) { r('#0a0812', tx - 1, top + 6, 4, 25); r('#7a5a2a', tx, top + 8, 2, 22); r('#3a2a10', tx - 1, top + 6, 4, 2); var f2 = (fl + n) % 3; r('rgba(255,170,60,.18)', tx - 4, top - 3, 10, 10); r('#ff7a1a', tx - 1, top + 1 - f2 % 2, 4, 5); r('#ffd166', tx, top + 2, 2, 3 - (f2 === 2 ? 1 : 0)); }); /* torches */
+    x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { x.drawImage(S.statueSil, CX - 16 + o[0], top - 32 + o[1], 32, 32); }); } x.drawImage(S.statue, CX - 16, top - 32, 32, 32);
+      x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, top - 23 + (lv === 2 ? -1 : 0), 2, 2); } /* laurel */
+      x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#3a2a10'; x.fillText(String(S.champ.p.name || 'Pet').slice(0, 8) + ' #' + S.champ.p.id, CX, top + 13);
+      x.fillText(S.champ.streak + ' WIN STREAK', CX, top + 19 - 0); if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
+    else { x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#3a2a10'; x.fillText('AWAITING', CX, top + 13); x.fillText('A CHAMPION', CX, top + 19); }
     x.textAlign = 'left'; if (window.V2ArenaFun) V2ArenaFun.beltCase(x, !(S.champ && S.champ.streak >= 3)); }
   function actor(a, t) { var x = S.x, bob = Math.floor(t / 120) % 2; x.save(); if (a.flip) { x.translate(Math.round(a.x) + 12, 0); x.scale(-1, 1); x.drawImage(a.img[Math.floor(t / 150) % a.img.length], -12, Math.round(a.y) - 24 - bob, 24, 24); } else x.drawImage(a.img[Math.floor(t / 150) % a.img.length], Math.round(a.x) - 12, Math.round(a.y) - 24 - bob, 24, 24); x.restore(); }
   function caption(s) { if (!s) return; var x = S.x; x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(s, CX + 1, 171); x.fillStyle = '#ffd166'; x.fillText(s, CX, 170); x.textAlign = 'left'; }
@@ -70,14 +92,15 @@
     if (S.rv && S.mode !== 'lap' && S.mode !== 'win') { var bw = 132, bx = CX - bw / 2, by = 3; x.fillStyle = '#000'; x.fillRect(bx + 2, by + 2, bw, 13); x.fillStyle = '#c8102e'; x.fillRect(bx, by, bw, 13); x.fillStyle = '#ffd166'; x.fillRect(bx, by, bw, 2); x.fillRect(bx, by + 11, bw, 2);
       x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#fff'; x.fillText('RIVALRY ' + S.rv.wa + '-' + S.rv.wb, CX, by + 10); x.textAlign = 'left'; }
     var ln = annLine(now); if (!ln) return; x.font = '8px "Press Start 2P", monospace'; var L = wrap(x, ln.text.toUpperCase(), 296), y0 = 60;
-    x.textAlign = 'center'; L.forEach(function (s, i) { var y = y0 + i * 11; x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(CX - x.measureText(s).width / 2 - 4, y - 9, x.measureText(s).width + 8, 12); x.fillStyle = '#000'; x.fillText(s, CX + 1, y + 1); x.fillStyle = '#fff6c8'; x.fillText(s, CX, y); }); x.textAlign = 'left';
+    x.textAlign = 'center'; L.forEach(function (s, i) { var y = y0 + i * 11; x.fillStyle = 'rgba(0,0,0,.55)'; var mw = Math.ceil(x.measureText(s).width); x.fillRect(CX - Math.ceil(mw / 2) - 4, y - 9, mw + 8, 12); x.fillStyle = '#000'; x.fillText(s, CX + 1, y + 1); x.fillStyle = '#fff6c8'; x.fillText(s, CX, y); }); x.textAlign = 'left';
     if (S.annSaid !== ln) { S.annSaid = ln; S.annNow = ln.text; if (window.V2Announcer) V2Announcer.speak(ln.text); } }
   function isVisible() { if (!S.c || !S.c.getBoundingClientRect) return false; var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 800); }
   function kick() { if (!S.raf) S.raf = requestAnimationFrame(frame); }
   /** mount(canvas, w): (re)build the scene for world w */
   function mount(c, w) { if (!c) return; var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
-    S.c = c; S.x = c.getContext('2d'); S.w = w; if (S.key !== key) { S.key = key; S.champ = champ; S.statue = champ ? toCanvas((frames(champ.p, w) || [])[0], true) : null; }
-    if (!S.wall && window.V2Sponsor && V2Sponsor.wall) { S.wall = document.createElement('canvas'); S.wall.width = 168; S.wall.height = 24; V2Sponsor.wall(S.wall, V2Sponsor.WALL_TEXT); }
+    S.c = c; S.x = c.getContext('2d'); S.w = w; if (S.key !== key) { S.key = key; S.champ = champ; S.statue = champ ? toCanvas((frames(champ.p, w) || [])[0], true) : null; S.statueSil = S.statue ? silhouette(S.statue) : null; }
+    fit(); if (!mount.rs) { mount.rs = 1; var rz = function () { var k0 = S.k; fit(); if (S.k !== k0) { if (reduced() || !S.raf) frame(performance.now()); } }; window.addEventListener('resize', rz); if (window.matchMedia) { try { window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)').addEventListener('change', rz); } catch (e) { } } }
+    if (!S.wall && window.V2Sponsor && V2Sponsor.wall) { S.wall = document.createElement('canvas'); S.wall.width = W; S.wall.height = 26; V2Sponsor.wall(S.wall, V2Sponsor.WALL_TEXT); }
     S.label = 'X CIRCUS KEKIMUS'; if (reduced()) frame(performance.now()); else { if (!mount.io && window.IntersectionObserver) { mount.io = new IntersectionObserver(function () { kick(); }); } if (mount.io && mount.io._c !== c) { mount.io.observe(c); mount.io._c = c; } kick(); } }
   /** sequence(f): march-out -> the fight itself animated on the sand (same f.turns: rounds, hits, dodges, crits, HP) -> victory lap. No pop-up.
    * Reduced motion: a static result in the scene (both pets, final HP bars, winner, spoils). Busy scene: the next fight waits its turn. */
@@ -105,7 +128,7 @@
     actor(loserA ? { x: L.x, y: L.y, img: L.lose, flip: false } : L, now); actor(loserB ? { x: R.x, y: R.y, img: R.lose, flip: true } : R, now);
     hpBar(x, la, y - 34, S.hp.a, f.maxA, '#3ddc84'); hpBar(x, ra, y - 34, S.hp.b, f.maxB, '#3ddc84');
     x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center';
-    S.fx = S.fx.filter(function (e) { var age = now - e.t; if (age > 900) return false; x.fillStyle = '#000'; x.fillText(e.s, e.x + 1, e.y - age / 40 + 1); x.fillStyle = e.c; x.fillText(e.s, e.x, e.y - age / 40); return true; });
+    S.fx = S.fx.filter(function (e) { var age = now - e.t; if (age > 900) return false; x.fillStyle = '#000'; var ey = Math.round(e.y - age / 40); x.fillText(e.s, e.x + 1, ey + 1); x.fillStyle = e.c; x.fillText(e.s, e.x, ey); return true; });
     x.textAlign = 'left';
     if (!done) caption('ROUND ' + (ti + 1) + '/' + n + ' · #' + (f.turns[ti].by === 'a' ? f.a : f.b) + ' ' + String(f.turns[ti].weapon || '').slice(0, 12).toUpperCase());
     if (S.hitT && now - S.hitT < 90 && !reduced()) { x.fillStyle = 'rgba(255,255,255,.75)'; x.fillRect(0, 0, W, H); } /* white hit flash on big hits */

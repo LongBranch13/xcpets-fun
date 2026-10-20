@@ -56,9 +56,16 @@
   function drawEv(x, ev, k, t) { if (ev === 'storm') storm(x, k, t); else if (ev === 'lion') lion(x, k); else civic(x, k); }
   /** belt(x, cx, y): a gold title belt across a 24px sprite standing at (cx, y) */
   function belt(x, cx, y) { px(x, '#000', cx - 11, y - 11, 22, 5); px(x, '#ffd166', cx - 10, y - 10, 20, 3); px(x, '#000', cx - 4, y - 12, 8, 7); px(x, '#c8102e', cx - 3, y - 11, 6, 5); px(x, '#fff6c8', cx - 1, y - 10, 2, 2); }
-  /** beltCase(x, full): the trophy case beside the plinth (empty when someone holds the belt) */
-  function beltCase(x, full) { var bx = 238, by = 98; px(x, '#000', bx - 1, by - 1, 26, 20); px(x, 'rgba(159,232,255,.25)', bx, by, 24, 16); px(x, '#6d6788', bx, by + 16, 24, 2); px(x, '#e8f5ec', bx + 1, by + 1, 1, 6);
-    if (full) { px(x, '#ffd166', bx + 3, by + 7, 18, 3); px(x, '#c8102e', bx + 9, by + 5, 6, 6); px(x, '#fff6c8', bx + 11, by + 7, 2, 2); }
-    x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#9fe8ff'; x.fillText('BELT', bx + 4, by + 22); }
+  /** beltCase(x, full): the trophy case beside the plinth (empty when someone holds the belt).
+   * arena-sharp-text (owner 9:31 PM CT): was a 24x16 box with a 4px 'BELT' (read as 'Delhi'). Now a framed glass case on a stand with a clear belt
+   * (black strap with gold studs + big gold centre plate with a red gem) and a pixel 'TITLE BELT' plate at 7px. */
+  function beltCase(x, full) { var bx = 228, by = 85, w = 44, h = 26;
+    px(x, '#0a0812', bx - 2, by - 2, w + 4, h + 4); px(x, '#7a5a2a', bx - 1, by - 1, w + 2, h + 2); px(x, '#1b2a3a', bx, by, w, h); px(x, 'rgba(159,232,255,.22)', bx, by, w, h); /* wood frame + glass */
+    px(x, '#e8f5ec', bx + 2, by + 2, 1, 9); px(x, '#e8f5ec', bx + 4, by + 2, 1, 4); px(x, 'rgba(232,245,236,.5)', bx + w - 4, by + h - 8, 1, 6); /* glass glints */
+    px(x, '#0a0812', bx + 6, by + h + 2, 4, 7); px(x, '#0a0812', bx + w - 10, by + h + 2, 4, 7); px(x, '#7a5a2a', bx + 7, by + h + 2, 2, 6); px(x, '#7a5a2a', bx + w - 9, by + h + 2, 2, 6); /* stand legs */
+    if (full) { var cy = by + 10; px(x, '#000', bx + 3, cy - 1, w - 6, 8); px(x, '#2a1a10', bx + 4, cy, w - 8, 6); for (var s = 0; s < 4; s++) { px(x, '#ffd166', bx + 6 + s * 3, cy + 2, 1, 2); px(x, '#ffd166', bx + w - 7 - s * 3, cy + 2, 1, 2); }
+      px(x, '#000', bx + 15, cy - 4, 14, 14); px(x, '#ffd166', bx + 16, cy - 3, 12, 12); px(x, '#fff6c8', bx + 16, cy - 3, 12, 1); px(x, '#c99a2e', bx + 16, cy + 8, 12, 1); px(x, '#c8102e', bx + 19, cy, 6, 6); px(x, '#fff6c8', bx + 20, cy + 1, 2, 2); }
+    var py = by + h + 10; px(x, '#0a0812', bx - 4, py - 1, w + 8, 20); px(x, '#3a2a10', bx - 3, py, w + 6, 18); px(x, '#ffd166', bx - 2, py + 1, w + 4, 16);
+    x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#3a2a10'; x.fillText('TITLE', bx + w / 2, py + 8); x.fillText('BELT', bx + w / 2, py + 16); x.textAlign = 'left'; }
   window.V2ArenaFun = { info: info, mood: mood, crowd: crowd, overlay: overlay, belt: belt, beltCase: beltCase, current: current, streaks: streaks, EVENTS: EVENTS, _h: h32 };
 })();
