@@ -13,13 +13,13 @@
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   function dan(x, ox, oy, t) { var wave = reduced() ? 0 : Math.floor(t / 300) % 2, blink = !reduced() && Math.floor(t / 2200) % 6 === 0;
-    px(x, '#f5f5f0', ox + 4, oy, 12, 4); px(x, '#1b1b1b', ox + 2, oy + 4, 16, 2); px(x, '#ffd166', ox + 9, oy + 1, 2, 2); /* captain hat + gold badge */
-    px(x, '#f2c79b', ox + 5, oy + 6, 10, 7); px(x, blink ? '#f2c79b' : '#111', ox + 5, oy + 8, 4, 2); px(x, blink ? '#f2c79b' : '#111', ox + 11, oy + 8, 4, 2); px(x, '#111', ox + 9, oy + 8, 2, 1); /* shades */
-    if (!blink) px(x, '#9fe8ff', ox + 6, oy + 8, 1, 1);
-    px(x, '#b9b2a6', ox + 4, oy + 11, 12, 5); px(x, '#f2c79b', ox + 7, oy + 12, 6, 1); px(x, '#c8102e', ox + 8, oy + 13, 4, 1); /* grey beard + grin */
-    px(x, '#22305e', ox + 3, oy + 16, 14, 12); px(x, '#ffd166', ox + 9, oy + 18, 2, 1); px(x, '#ffd166', ox + 9, oy + 21, 2, 1); px(x, '#f5f5f0', ox + 8, oy + 16, 4, 2);
-    px(x, '#22305e', ox, oy + 17, 3, 6); px(x, '#f2c79b', ox, oy + 23, 3, 2); /* left arm */
-    if (wave) { px(x, '#22305e', ox + 17, oy + 10, 3, 7); px(x, '#f2c79b', ox + 17, oy + 7, 3, 3); } else { px(x, '#22305e', ox + 17, oy + 13, 3, 6); px(x, '#f2c79b', ox + 19, oy + 11, 3, 3); } }
+    px(x, '#f2f4f7', ox + 3, oy, 14, 3); px(x, '#d7dbe2', ox + 3, oy + 2, 14, 1); px(x, '#ffcb4d', ox + 9, oy, 2, 2); px(x, '#eaac3f', ox + 3, oy + 3, 14, 1); px(x, '#141618', ox + 2, oy + 4, 15, 1); /* white captain cap, gold anchor badge + band, black brim (CAPTAINDAN token art) */
+    px(x, '#141618', ox + 4, oy + 5, 12, 1); px(x, '#141618', ox + 4, oy + 5, 2, 6); px(x, '#141618', ox + 14, oy + 5, 2, 5); px(x, '#e3a07f', ox + 6, oy + 6, 8, 7); /* dark hair + face */
+    px(x, '#a9aeb6', ox + 6, oy + 7, 3, 2); px(x, '#a9aeb6', ox + 11, oy + 7, 3, 2); px(x, '#a9aeb6', ox + 9, oy + 7, 2, 1); px(x, blink ? '#a9aeb6' : '#e8eef4', ox + 7, oy + 8, 1, 1); px(x, blink ? '#a9aeb6' : '#e8eef4', ox + 12, oy + 8, 1, 1); /* grey rectangular glasses */
+    px(x, '#141618', ox + 7, oy + 11, 6, 1); px(x, '#141618', ox + 5, oy + 10, 1, 3); px(x, '#141618', ox + 14, oy + 10, 1, 3); px(x, '#141618', ox + 6, oy + 13, 8, 1); px(x, '#141618', ox + 9, oy + 12, 2, 1); /* black mustache + jaw beard */
+    px(x, '#1a1c1e', ox + 3, oy + 14, 14, 14); px(x, '#e7eaf1', ox + 8, oy + 14, 4, 3); px(x, '#064884', ox + 9, oy + 15, 2, 6); px(x, '#d79b37', ox + 3, oy + 15, 4, 1); px(x, '#d79b37', ox + 13, oy + 15, 4, 1); px(x, '#d79b37', ox + 7, oy + 22, 1, 1); px(x, '#d79b37', ox + 12, oy + 22, 1, 1); /* black jacket, gold epaulettes, white shirt, blue tie */
+    px(x, '#1a1c1e', ox, oy + 17, 3, 6); px(x, '#e3a07f', ox, oy + 23, 3, 2); /* left arm */
+    if (wave) { px(x, '#1a1c1e', ox + 17, oy + 10, 3, 7); px(x, '#e3a07f', ox + 17, oy + 7, 3, 3); } else { px(x, '#1a1c1e', ox + 17, oy + 13, 3, 6); px(x, '#e3a07f', ox + 19, oy + 11, 3, 3); } }
   function bubble(x, s, bx, by) { x.font = '6px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx - w / 2));
     px(x, '#000', bx + 1, by + 1, w, 12); px(x, '#fff8e1', bx, by, w, 12); px(x, '#fff8e1', bx + w / 2 - 2, by + 12, 4, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 9); }
   function draw(t) { var x = S.x; if (!x) return; x.imageSmoothingEnabled = false;
