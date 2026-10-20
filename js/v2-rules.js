@@ -189,6 +189,20 @@
     WIZ_PRIORITY.forEach(function (g) { var rej = w.log.some(function (l) { return l.tx === g[0] && l.kind === 'rejected'; }); if (!rej) return;
       var p = mk(w, g[1], wizardArt(g[3], g[0], g[2]), ACTIVATE_WIZ_PRIORITY_BLOCK, COSTS.hatch, g[0]); p.priorityGrant = { tx: g[0], block: g[2] };
       w.log.push({ block: ACTIVATE_WIZ_PRIORITY_BLOCK, tx: g[0], kind: 'hatch', msg: 'priority Wizard egg: hatched #' + p.id + ' Bitcoin Wizard (honours pet:hatchwiz burn at block ' + g[2] + ')', petId: p.id }); }); }
+  /* TOP-3 BURNER WIZARD GRANT (owner approved Oct 20 2026 4:51 PM CT): one player Bitcoin Wizard each to the top 3 wallets by total XCPETS
+   * destroyed all time, ranked as of cutoff block 972,381 (inclusive; api.xcp.fun destructions, 885 valid burns). Addresses hardcoded (not re-ranked
+   * in replay). Given ONCE at ACTIVATE_TOP3_WIZ_BLOCK, after the priority grant; art = wizardArt(hash of block 972,381, 'XCPETS:top3wiz:'+rank, 972381)
+   * = rolled tier like the priority grant; born at the gate with hatch care; ids in rank order before any other burn at/after the gate. */
+  var ACTIVATE_TOP3_WIZ_BLOCK = 972389;  // Bitcoin tip 972,383 + 6 at build time (Oct 20 2026 ~4:58 PM CT)
+  var TOP3_CUTOFF = [972381, '0000000000000000000121ce41b04ea7a5aee55229f4dfa976a6b1a8da216d8e'];
+  var TOP3_WIZ = [ /* [rank, address, XCPETS burned to cutoff] */
+    [1, 'bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n', 2844920],
+    [2, 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', 1720314],
+    [3, 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', 1202049] ];
+  function grantTop3Wiz(w, b) { if (w.top3WizGranted || b == null || b < ACTIVATE_TOP3_WIZ_BLOCK) return; w.top3WizGranted = ACTIVATE_TOP3_WIZ_BLOCK;
+    TOP3_WIZ.forEach(function (g) { var seed = 'XCPETS:top3wiz:' + g[0];
+      var p = mk(w, g[1], wizardArt(TOP3_CUTOFF[1], seed, TOP3_CUTOFF[0]), ACTIVATE_TOP3_WIZ_BLOCK, COSTS.hatch, seed); p.top3Grant = { rank: g[0], cutoff: TOP3_CUTOFF[0] };
+      w.log.push({ block: ACTIVATE_TOP3_WIZ_BLOCK, tx: seed, kind: 'hatch', msg: 'top-3 burner reward: hatched #' + p.id + ' Bitcoin Wizard (rank ' + g[0] + ' by XCPETS burned to block ' + TOP3_CUTOFF[0] + ')', petId: p.id }); }); }
   /** hatchArt(bh, id, b): the art for one hatched egg (seed id = tx or tx:i), species set. */
   function hatchArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), spHex = sha(bh + id + 'XCPETS:v2:species');
     if (!naka777(b)) { art.species = pickSpecies(spHex); return art; }
@@ -517,7 +531,7 @@
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
     w.freeRolls = {}; w.overflowUsed = {}; w.mythicOwners = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
-      wizHatClear(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); relabelTiers(w, e.b); repairGear(w, e.b); maybeRumbles(e.b);
+      wizHatClear(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); relabelTiers(w, e.b); repairGear(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1;
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
@@ -527,7 +541,7 @@
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
-    wizHatClear(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); relabelTiers(w, tip); repairGear(w, tip); maybeRumbles(tip);
+    wizHatClear(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); relabelTiers(w, tip); repairGear(w, tip); maybeRumbles(tip);
     w.pets.forEach(function (p) { finish(w, p, tip); });
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
