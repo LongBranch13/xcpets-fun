@@ -491,7 +491,7 @@
   /** wizardPetFrames: a player-hatched Bitcoin Wizard (species 'wizard', from the Cold Storage block) drawn by WizardSprite in the normal BLUE palette
    * (purple stays the community pet's), wearing its own worn pieces; the Wizard Hat piece draws the pointy hat. Mythic gets the gold rim like every Mythic. */
   function wizGearOf(ids) { var o = {}; (ids || []).forEach(function (id) { var it = V.GEAR_BY_ID[id] || (BonusGear.DEFS[id] ? { slot: BonusGear.DEFS[id].slot, label: BonusGear.DEFS[id].label } : null); if (!it) return;
-      var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; }
+      var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; } if (id === 'sig-wizard-staff') { o.weapon = { label: it.label, item: id, cols: ['#9a4a12', '#f7931a'] }; return; } /* Bitcoin staff: own weapon slot, right hand */
       var c = itemCols(id).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(it.label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: it.label, item: id, cols: c }; });
     return o; }
   function wizardPetFrames(art, stage, ids, extraOv) { var G = wizGearOf(ids), fr = WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {});

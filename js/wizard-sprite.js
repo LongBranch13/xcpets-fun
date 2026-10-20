@@ -65,7 +65,7 @@
   function flame(g, x, y, big) { set(g, x, y, 'O'); set(g, x + 1, y, 'O'); set(g, x, y - 1, 'y'); set(g, x + 1, y - 1, 'O'); set(g, x, y - 2, 'y'); if (big) { set(g, x - 1, y - 1, 'o'); set(g, x + 1, y - 2, 'y'); set(g, x + 1, y - 3, 'y'); set(g, x - 1, y - 3, 'O'); } }
   /* gear (optional, display only): { head|face|back|hand|body|feet: { label, item, cols: ['#hex', '#hex'] } }. Anchors: head = head top row
    * (faceY) / columns fx..fx+fw-1; face = eye row faceY+3; back = behind the robe; body = robe recolour; hand = the RAISED fist (hx, hy; the
-   * piece replaces the flame); feet = two shoes on the carpet under the hem. */
+   * piece replaces the flame; the sign is held low-left); weapon = the Bitcoin staff in the right hand (own slot); feet = two shoes on the carpet under the hem. */
   function draw(stage, frame, gear) {
     var g = grid(), bob = [0, -1, -1, 0][frame || 0], G = gear || {};
     function kind(sl) { return G[sl] ? String(G[sl].label || G[sl].item || '').toLowerCase() : ''; }
@@ -136,6 +136,8 @@
     for (var q = 0; q < D.sw - 2; q++) if (D.sgh >= 4 ? (q % 4 !== 3) : (q % 2 === 0)) set(g, sx0 + 1 + q, sy0 + 1 + (D.sgh >= 4 ? (q % 2) : 0), 'F');
     if (D.sgh >= 5) { set(g, sx0 + 2, sy0 + 3, 'F'); set(g, sx0 + D.sw - 3, sy0 + 3, 'F'); }
     }
+    // Staff (Wizard-only weapon slot, right hand): the Bitcoin staff; worn together with any Grip piece
+    if (G.weapon) bigStaff();
     // Grip piece in the raised fist (replaces the flame)
     if (G.hand) { var ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
       if (G.hand.item === 'sig-wizard-sign') joinSign();
