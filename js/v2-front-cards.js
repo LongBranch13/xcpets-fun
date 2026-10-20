@@ -16,7 +16,7 @@
     x.textAlign = 'center'; x.font = '9px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('THE XCPETS LAIR OF', 160, 17); x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 160, 26); x.textAlign = 'left';
     [[8, 44], [8, 80], [236, 44], [236, 80]].forEach(function (s, i) { px(x, '#7a4f2a', s[0], s[1] + 18, 76, 4); px(x, '#5a3a1e', s[0], s[1] + 22, 76, 2);
       for (var k = 0; k < 4; k++) px(x, ['#ffd166', '#9fe8ff', '#ff5d5d', '#3ddc84', '#e9e1cf'][(i + k) % 5], s[0] + 6 + k * 18, s[1] + 6, 10, 12); });
-    x.save(); x.scale(3, 3); if (window.V2Shop && V2Shop.drawDan) V2Shop.drawDan(x, 42, 14, reduced() ? 0 : t); x.restore();
+    x.save(); x.scale(2, 2); if (window.V2Shop && V2Shop.drawDan) V2Shop.drawDan(x, 64, 27, reduced() ? 0 : t); x.restore();
     px(x, '#7a4f2a', 70, 118, 180, 12); px(x, '#5a3a1e', 70, 130, 180, 34); px(x, '#ffd166', 70, 118, 180, 2);
     px(x, '#4a3626', 0, 164, W, 16); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 164, 1, 16); }
   function motel(x, t) { x.imageSmoothingEnabled = false; var rm = reduced(), M = window.V2Motel; px(x, '#0b0a1f', 0, 0, W, H);
