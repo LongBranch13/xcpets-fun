@@ -29,10 +29,7 @@
    * (996 px at 1280 = 3.11x, 286 px on a 390 phone = 0.89x), so pixels came out uneven and the 4-6 px canvas text smeared. Now the backing store is
    * 320*k x 180*k with an integer k >= CSS width * devicePixelRatio / 320 and everything draws in the same 320x180 units through setTransform(k): sprites stay
    * hard-edged (smoothing off), text is rasterised at full device resolution. */
-  function fit() { var c = S.c; if (!c) return; var r = c.getBoundingClientRect ? c.getBoundingClientRect() : { width: W }, d = window.devicePixelRatio || 1, k = Math.max(1, Math.min(8, Math.ceil(((r.width || W) * d) / W - 0.01)));
-    if (c.width !== W * k || c.height !== H * k) { c.width = W * k; c.height = H * k; } S.k = k;
-    /* the backing store is always >= the device pixels, so the browser only scales DOWN: nearest-neighbour is fine once each art pixel is 3+ device px; below that a smooth downscale keeps lines even */
-    c.style.imageRendering = k >= 3 ? 'pixelated' : 'auto'; }
+  function fit() { var c = S.c; if (!c) return; S.k = window.V2Sharp.fit(c, W, H); } /* scene-sharp: shared helper js/v2-sharp.js (same math as arena-sharp-text) */
   var S = { c: null, x: null, w: null, champ: null, statue: null, crowd: null, raf: 0, t0: 0, mode: 'idle', actors: [], label: '', wall: null };
   function rnd(i) { var x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
   function bg(t) { var x = S.x; x.setTransform(S.k || 1, 0, 0, S.k || 1, 0, 0); x.imageSmoothingEnabled = false; S.tNow = t;
