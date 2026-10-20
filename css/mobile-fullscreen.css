@@ -1,0 +1,41 @@
+/* mobile-fullscreen (owner 10:10 PM CT 2026-10-19): phones only (<=600px wide, portrait). Desktop/laptop never match these queries,
+ * so they stay pixel-identical. Scenes go edge to edge and fill the viewport height; canvases are sized by js/v2-sharp.js
+ * (largest integer device-pixel scale, scene-coloured letterbox). Pickers, selection chips and the VACANCY sign are NOT touched. */
+@media (max-width:600px) and (orientation:portrait){
+  html,body.mfs-play{overflow-x:clip}
+  body.mfs-play main{padding-left:0;padding-right:0}
+  body.mfs-play main>section.panel,body.mfs-play #app>section.panel{margin-left:0;margin-right:0;border-radius:0 !important;border-left-width:0 !important;border-right-width:0 !important;box-shadow:none;
+    padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  /* the three game scenes: a full screen each */
+  body.mfs-play #arenaPanel,body.mfs-play #invPanel,body.mfs-play #breedPanel{min-height:100vh;min-height:100svh;box-sizing:border-box;
+    padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  body.mfs-play .ar-scene,body.mfs-play .shop8 .shop-scene,body.mfs-play .motel8 .motel-scene{
+    margin-left:calc(-1 * max(12px,env(safe-area-inset-left)));margin-right:calc(-1 * max(12px,env(safe-area-inset-right)));
+    border-left-width:0;border-right-width:0;box-shadow:none;text-align:center}
+  body.mfs-play .ar-scene canvas,body.mfs-play .shop8 .shop-scene canvas,body.mfs-play .motel8 .motel-scene canvas{margin:0 auto;max-width:100%}
+  /* letterbox = the scene's own edge colour */
+  body.mfs-play .ar-scene{background:var(--mfs-ar,#120e22)}
+  body.mfs-play .shop8 .shop-scene{background:var(--mfs-shop,#2a1d14)}
+  body.mfs-play .motel8 .motel-scene{background:var(--mfs-motel,#0b0a1f)}
+  body.mfs-play .shop8 .shop-scene .shop-hint,body.mfs-play .shop8 .shop-scene .sc-sign,body.mfs-play .motel8 .motel-scene .qw-hint{text-align:left}
+  /* tap targets >= 44px (plain buttons/tabs/folds only; selection chips and pickers keep their size) */
+  body.mfs-play :is(#arenaPanel,#invPanel,#breedPanel) :is(button,.btn,summary):not(.lq-chip):not(.mt-g):not([class*="pk-"]):not(.pk *){min-height:44px}
+  body.mfs-play :is(#arenaPanel,#invPanel,#breedPanel) .sfx-tog{min-width:44px}
+  /* arena first-visit hint: under the scene (same as the motel), never over the art */
+  body.mfs-play .ar-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25;text-align:left;min-height:44px}
+  body.mfs-play .ar-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
+  /* sticky feed bar: one compact row. The meal line duplicates the Feed button, so it shows only when there is nothing to feed
+     (then the grey disabled button is hidden and the bar reads '😋 all fed today'). The Lair link becomes a 44px dice icon. */
+  body.mfs-play .selbar{flex-wrap:nowrap;gap:6px;padding:4px 6px;margin:6px 0;justify-content:space-between}
+  body.mfs-play .selbar .sb-count{flex:0 0 auto;font-size:12px}
+  body.mfs-play .selbar .sb-feed{order:0;flex:1 1 auto;min-width:0;min-height:44px;font-size:14px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mfs-play .selbar .sb-feed .cost{font-size:10px}
+  body.mfs-play .selbar:not(:has(.sb-feed:disabled)) .sb-meal{display:none}
+  body.mfs-play .selbar:has(.sb-feed:disabled) .sb-feed{display:none}
+  body.mfs-play .selbar .sb-meal{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  body.mfs-play .selbar .sb-lair{order:0;flex:0 0 44px;width:44px;height:44px;padding:0;font-size:0;display:inline-flex;align-items:center;justify-content:center}
+  body.mfs-play .selbar .sb-lair::before{content:'\1F3B2';font-size:20px}
+  body.mfs-play #selWhy{flex-basis:auto}
+  /* the announcer button stays on the sand (bottom-right of the canvas), not over the hint below it */
+  body.mfs-play .ar-scene .ar-ann-sand{top:calc(var(--mfs-h,180px) - 50px);bottom:auto;min-height:44px}
+}
