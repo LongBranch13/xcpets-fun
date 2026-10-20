@@ -251,3 +251,9 @@ body #pets .pet.card{padding-bottom:44px}
 /* motel guestbook */
 .motel-book .gb{margin-top:8px;padding:8px;background:#f5efe0;color:#2a1530;border:3px solid #000;box-shadow:4px 4px 0 #000;font-size:13px}.gb-top{display:flex;justify-content:space-between;align-items:center}.gb-h{font-family:'Press Start 2P',monospace;font-size:10px;color:#c8102e}.gb-n{font-size:11px}
 .gb-row{border-bottom:1px dashed #b9a98a;padding:4px 0;display:flex;flex-direction:column}.gb-main{font-weight:bold}.gb-main a{color:#2e5aa8}.gb-note{font-style:italic;color:#6a4a5a;font-size:12px}.gb-pg{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:6px}.gb-pg .pk-arr{min-height:28px}
+
+/* phone QA pass 2026-10-19 (no-tail-motel): guestbook tap targets 40px+ without moving the text, 11px min pixel labels on phones; pickers + VACANCY untouched */
+.gb-main a{display:inline-block;padding:12px 4px;margin:-12px -4px}
+.gb-pg .pk-arr{min-width:40px;min-height:40px}
+#breedPanel{scroll-margin-top:110px}
+@media (max-width:520px){.mt-hint,.gb-h{font-size:11px}}
