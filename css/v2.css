@@ -240,3 +240,10 @@ body #pets .pet.card{padding-bottom:44px}
 @media (max-width:600px){.tb-bal{min-width:0;max-width:100%}#me{word-break:break-all;overflow-wrap:anywhere}a.rulesLink{overflow-wrap:anywhere}}
 .aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
 .aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
+
+/* No Tail Motel mockup (2026-10-19) */
+.motel8 .motel-scene{border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0b0a1f;margin:6px 0 8px;line-height:0}.motel8 .motel-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.motel-desk{border:3px solid #000;background:#2a1530;padding:8px;box-shadow:4px 4px 0 #000}.mt-hint{font-family:'Press Start 2P',monospace;font-size:10px;color:#ff4fd8;margin-bottom:6px}
+.mt-guests{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mt-guests span{color:#ffd166;font-weight:bold}.mt-g{flex:1 1 130px;padding:6px;border:2px dashed #4fe0ff;background:#140f24;color:#4fe0ff;cursor:pointer;font-size:13px}.mt-g.on{border-style:solid;background:#4fe0ff;color:#140f24}
+.mt-odds{margin-top:6px;padding:6px 8px;background:#ffd166;color:#140f24;border:2px solid #000;font-size:12px;line-height:1.5}.mt-odds b{font-family:'Press Start 2P',monospace;font-size:9px}
+.motel-bell{margin-top:8px}.motel-fold{margin-top:8px}.motel-fold summary{cursor:pointer;color:#9fe8ff}
