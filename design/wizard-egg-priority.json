@@ -1,0 +1,16 @@
+{
+  "_note": "DOC/DATA ONLY. Not read by the live site. Owner rule (Oct 19 2026): these buyers burned for a Bitcoin Wizard egg before it was ready and must be honored FIRST at launch (count as the first Wizard egg claims, or credit via a manual claim path). Do not deliver yet.",
+  "recorded": "2026-10-19 ~11:00 PM CT, chain replay snapshot tip 972254 (838 rows)",
+  "buyers": [
+    {
+      "order": 1,
+      "tag": "pet:hatchwiz",
+      "amount_xcpets": 690,
+      "tx_hash": "7b82b46bd74b85b4da47f47ce7b7388173e77a92008d24691e01fcff3298dab0",
+      "block": 972251,
+      "address": "bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q",
+      "counterparty_status": "valid",
+      "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false at that block). No Wizard egg/pet created; the 690 counts as community food."
+    }
+  ]
+}
