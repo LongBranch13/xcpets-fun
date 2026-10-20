@@ -17,9 +17,12 @@
       if (!best || s.n > best.streak || (s.n === best.streak && (s.at < best.block || (s.at === best.block && s.fid < best.fid)))) best = { p: p, streak: s.n, block: s.at, fid: s.fid }; });
     return best; }
   /* sprite without its card background: render on a key colour (same trick as the hunger look) and key it out in toCanvas */
-  function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: !!p.blackEye, art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
+  function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: !!p.blackEye, art: Object.assign({}, p.art, { background: 'keyed', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
+  /* arena-injury: the key is the flat #ff00fe plus pet-core's ground shadow on it (mix(key, black, 0.4) = #990098). The arena frames use the
+   * non-swappable 'keyed' background so V2Bg never repaints the key as a stripe/dot pattern (the magenta stripes around #4409 in fight #6). */
+  function isKey(D, j) { return D[j + 1] === 0 && ((D[j] === 255 && D[j + 2] === 254) || (D[j] === 153 && D[j + 2] === 152)); }
   function toCanvas(img, tint) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!img) return c; var d = new ImageData(new Uint8ClampedArray(img.data), 32, 32);
-    for (var j = 0; j < d.data.length; j += 4) if (d.data[j] === 255 && d.data[j + 1] === 0 && d.data[j + 2] === 254) d.data[j + 3] = 0;
+    for (var j = 0; j < d.data.length; j += 4) if (isKey(d.data, j)) d.data[j + 3] = 0;
     if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2], side = ((i / 4) % 32) < 14 ? 22 : ((i / 4) % 32) > 19 ? -18 : 0, v = Math.max(40, Math.min(235, 62 + g * 0.62 + side));
       /* arena-sharp-text: carved stone (cool grey), lit on the left, shaded on the right, so it reads as a statue and not a live pet */ d.data[i] = v; d.data[i + 1] = v; d.data[i + 2] = Math.min(255, v + 10); }
     c.getContext('2d').putImageData(d, 0, 0); return c; }
