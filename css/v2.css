@@ -268,3 +268,6 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-pool-tag{position:absolute;top:-11px;right:8px;background:#ff5d5d;color:#140f24;font-family:'Press Start 2P',monospace;font-size:9px;padding:3px 6px;box-shadow:2px 2px 0 #000}
 .ar-pool-sides{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.ar-pool-side{flex:1 1 140px;border:2px solid #4b3f7a;padding:6px;background:#120e22;cursor:pointer}
 .ar-pool-out{margin:8px 0;color:#ffd166}.ar-pool .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* arena extras 2026-10-19 */
+.ar-qmsg{margin-left:6px;color:#ffd166}.ar-flash{animation:arFl .4s steps(2) 4}@keyframes arFl{50%{filter:brightness(1.6);transform:translateY(-2px)}}@media (prefers-reduced-motion:reduce){.ar-flash{animation:none;outline:3px solid #ffd166}}.ar-hist{margin:10px 0}.ar-hist .pk-key small.sp-card{color:#ffd166;font-size:9px}
