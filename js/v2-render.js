@@ -534,12 +534,13 @@
   function showEl(el, on) { if (el) el.style.display = on ? '' : 'none'; }
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
   /* LORD KEK (community pet #3, gated by V2Rules ACTIVATE_KEK_BLOCK, off by default): c.current === 'kek' only once the gate is reached.
-   * He wears community rolls made from the gate on (the Wizard's old rolls stay in gearLog, unworn); the Nemes of Kek ★ shows while Headwear is empty. */
+   * He wears community rolls made from the gate on (the Wizard's old rolls stay in gearLog, unworn). His nemes is part of him: Headwear rolls are
+   * recorded as usual but never drawn on him (owner Oct 20 ~6:07 PM CT). */
   function kekOn(w) { return !!(w && w.community && w.community.current === 'kek' && window.KekSprite); }
   function kekGear(w) { var V = window.V2Rules, gate = V.kekActivation ? V.kekActivation() : null, g = (w.community && w.community.gear) || {}, o = {};
-    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) { var c = itemCols(x.item).slice(); o[sl] = { label: x.label, item: x.item, cols: c }; } });
-    if (!o.head) o.head = KekSprite.NEMES; return o; }
-  function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); if (!G.head) G.head = KekSprite.NEMES; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
+    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && sl !== 'head' && gate != null && x.block >= gate) { var c = itemCols(x.item).slice(); o[sl] = { label: x.label, item: x.item, cols: c }; } });
+    return o; }
+  function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
   function communityFrames(w) { var c = w && w.community; if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
@@ -552,7 +553,7 @@
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
   /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
-  function communityWearing(w) { if (kekOn(w)) { var kg = kekGear(w), kt = Object.keys(kg).map(function (sl) { return kg[sl].label + (kg[sl].signature ? ' ★ (signature)' : ''); }).join(' · '); return 'Wearing: ' + kt; }
+  function communityWearing(w) { if (kekOn(w)) { var kg = kekGear(w), kt = Object.keys(kg).map(function (sl) { return kg[sl].label + (kg[sl].signature ? ' ★' : ''); }).join(' · '); return 'Wearing: ' + (kt || 'his nemes (part of him)'); }
     var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
     if (c && c.returned && !g.head && window.WizardSprite) t = 'Headwear: Wizard Hat ★ (signature)' + (t ? ' · ' + t : ''); /* synthetic signature piece, display only */
     return 'Wearing: ' + (t || 'no gear yet'); }

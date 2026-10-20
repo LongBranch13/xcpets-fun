@@ -2,16 +2,19 @@
  * Same frame format and API as WizardSprite (32x32, {data: RGBA}, 4-frame bob, ink outline, gold Mythic rim).
  * Reference: design/ref/lord-kek-card.jpg ("Lord Kek, Ruler of All Pepes"): green Pepe on a throne, blue/gold striped nemes,
  * gold Egyptian wings, Eye of Horus. Base sprite is a bare Pepe (Pepe-style heavy-lidded eyes + wide lips, like pet-core 'pepe');
- * the nemes is a signature Headwear gear piece drawn by the gear layer (like the Wizard Hat). Throne from Elder, wings + Eye of Horus at Mythic.
+ * v2 (owner Oct 20 ~6:07 PM CT): the nemes is PART of him (always drawn, never replaced: Headwear gear is ignored on Kek);
+ * signature gear = a held 'LORDKEK Rare Pepe card' (KEK_CARD, Grip, Kek-only, gated off in the rules). Throne from Elder, wings + Eye of Horus at Mythic.
  * Community palette = the card's lapis/gold nemes; player palette (after Cold Storage) = red/gold nemes, so lapis stays the community badge. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.KekSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, PAL = { n: '#14200f', G: '#5aa83c', g: '#3d7a2a', h: '#86cf5e', E: '#f4f4ee', P: '#111111', k: '#2e5e22', m: '#7a3426', l: '#b5533c',
     B: '#c8342c', b: '#8a1f1a', y: '#ffd23f', o: '#c49a1a', T: '#6b3f1f', t: '#4a2a12', A: '#ffc93c', w: '#ffffff', c: '#2bb5c8' };
   var PAL_COMMUNITY = { B: '#2a4fbf', b: '#1a3380' };                       // lapis nemes stripes, as on the card
-  /** NEMES: signature Headwear piece (display only, NOT in the gear pool). */
-  var NEMES = { slot: 'head', item: 'kek-nemes', label: 'Nemes of Kek', tier: 'legendary', legendary: true, signature: true, stats: 'Signature · cosmetic (no stats, like other ★ hats)' };
-  function isNemes(x) { return !!(x && x.item === 'kek-nemes'); }
+  /** NEMES: part of the base sprite (not gear). Kept as a record only for labels. */
+  var NEMES = { slot: 'head', item: 'kek-nemes', label: 'Nemes (part of Lord Kek)', builtIn: true };
+  function isNemes() { return true; }
+  /** KEK_CARD: Kek-only signature Grip piece, a tiny 'LORDKEK Rare Pepe card' held in his hand (display record; NOT in any pool). */
+  var KEK_CARD = { slot: 'hand', item: 'kek-card', label: 'LORDKEK Rare Pepe card', tier: 'legendary', legendary: true, signature: true, exclusive: 'kek' };
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   /* per stage: head half-width / height, body half-width / height */
   var DIM = [null, { hw: 6, hh: 6, bw: 4, bh: 4 }, { hw: 7, hh: 6, bw: 5, bh: 6 }, { hw: 8, hh: 7, bw: 7, bh: 7 }, { hw: 8, hh: 7, bw: 7, bh: 8 }, { hw: 8, hh: 7, bw: 7, bh: 8 }];
@@ -74,13 +77,14 @@
       if (/armor|armour|plate|mail|chest/.test(kind('body'))) { var wa = D.bw - 2; rect(g, cx - wa, bodyTop + 2, wa * 2, 2, b0c); hline(g, cx - wa, cx + wa - 1, bodyTop + 2, b1c); } }
     // head gear
     if (isNemes(Gr.head)) nemes(g, cx, headTop - 1, D.hw - 1, headBot + 2);
-    else if (Gr.head) { var hc = col('head'), hd = col('head', 1), hk = kind('head');
+    else if (false) { var hc = col('head'), hd = col('head', 1), hk = kind('head');
       if (/crown|tiara/.test(hk)) { hline(g, cx - 4, cx + 3, headTop - 2, hc); for (var ci = cx - 4; ci <= cx + 3; ci += 2) set(g, ci, headTop - 3, hc); set(g, cx, headTop - 2, hd); }
       else if (!/band|hachimaki|halo|visor/.test(hk)) { rect(g, cx - 4, headTop - 4, 8, 3, hc); hline(g, cx - 6, cx + 5, headTop - 1, hd); }
       else hline(g, cx - D.hw + 1, cx + D.hw - 2, headTop - 1, hc); }
     // grip piece in the right hand (viewer's left)
     if (Gr.hand) { var ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1), hx = cx - D.bw - 2;
-      if (/crook|flail/.test(ak)) { for (var tc = 0; tc < 8; tc++) set(g, hx, hy - tc, tc % 2 ? 'y' : 'B'); set(g, hx - 1, hy - 8, 'y'); set(g, hx - 2, hy - 7, 'y'); }
+      if (Gr.hand.item === 'kek-card') { var cxl = hx - 3, cyt = hy - 6; rect(g, cxl, cyt, 5, 7, 'w'); rect(g, cxl + 1, cyt + 1, 3, 3, 'y'); set(g, cxl + 2, cyt + 2, 'G'); set(g, cxl + 1, cyt + 1, 'B'); set(g, cxl + 3, cyt + 1, 'B'); hline(g, cxl + 1, cxl + 3, cyt + 4, 'T'); hline(g, cxl + 1, cxl + 2, cyt + 5, 'T'); } /* tiny card: white frame, gold art with a green Kek + lapis nemes, text lines */
+      else if (/crook|flail/.test(ak)) { for (var tc = 0; tc < 8; tc++) set(g, hx, hy - tc, tc % 2 ? 'y' : 'B'); set(g, hx - 1, hy - 8, 'y'); set(g, hx - 2, hy - 7, 'y'); }
       else if (/mug|cup|coffee|tea|bowl/.test(ak)) { rect(g, hx - 2, hy - 2, 3, 3, a0); hline(g, hx - 2, hx, hy - 2, a1); }
       else if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag/.test(ak)) { for (var t = 0; t < 7; t++) set(g, hx, hy - 1 - t, t > 4 ? a1 : a0); }
       else rect(g, hx - 2, hy - 2, 3, 3, a0); }
@@ -99,5 +103,5 @@
   function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear, opts), d = [], Bg = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL;
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : Bg; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
-  return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, NEMES: NEMES, render: render, frames: frames, draw: draw };
+  return { KEK_CARD: KEK_CARD, STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, NEMES: NEMES, render: render, frames: frames, draw: draw };
 });

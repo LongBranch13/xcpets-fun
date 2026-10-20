@@ -13,7 +13,7 @@ _Drafted Tue Oct 20 2026 ~5:55 PM CT on branch `lord-kek`. No art yet, no rule c
 - **His egg slot in the hatch pool after Cold Storage (standing rule, Oct 20 4:44 PM CT):** his egg joins the random hatch pool and **takes the odds slot of the community pet before him, the Bitcoin Wizard**. That is the 1-in-777 hatch/pack roll (`sha(bh+id+'XCPETS:v2:naka777')`), which the Wizard took over from Nakamoto at 972,338. There is no direct-buy egg button. (See Q5 for what happens to Wizard eggs.)
 
 ## Sprite plan per stage (32x32, existing 8-bit style, ink outline, 4-frame bob, same API as WizardSprite)
-The base is a bare Pepe in the pet-core Pepe style: heavy-lidded eyes looking to the side and wide brown lips, seated with his hands on his knees. The nemes is a signature gear piece, the same way the Wizard Hat is.
+The base is a bare Pepe in the pet-core Pepe style: heavy-lidded eyes looking to the side and wide brown lips, seated with his hands on his knees. The nemes is part of him (always drawn, never replaced; owner round 2).
 | Stage | Look |
 |---|---|
 | Egg | Green egg with a gold/blue/gold nemes band and a small Eye of Horus on the front. |
@@ -29,7 +29,8 @@ Not drawn on purpose (too small at 32 px; could go in the farewell scene): Anubi
 - **Player Lord Keks (after Cold Storage):** the same body. The nemes is red and gold, the red crown of Lower Egypt. Normal thresholds, rolled tier, normal hunger, normal growth, and they can breed. (The colour choice is open, see Q8.)
 
 ## Gear anchors (where gear is drawn on him)
-- Headwear: a hat or crown sits on top of the eye bulges. A Headwear roll replaces the nemes, as rolls do with the Wizard Hat.
+- Headwear: none. The nemes is part of him, so Headwear rolls are recorded but not drawn.
+- Grip: the LORDKEK Rare Pepe card (signature) or another rolled Grip piece.
 - Guise: across the eye row (shades and goggles cover both eyes; a tear goes under the left eye).
 - Layers (Outfits): a shendyt kilt or tunic over the lap. Armor adds a chest plate under the collar.
 - Drip (back): a cape behind the body. At Mythic the wings stay behind the cape.
@@ -37,7 +38,7 @@ Not drawn on purpose (too small at 32 px; could go in the farewell scene): Anubi
 - Footwear: his two feet.
 - Mythic: the gold rim goes around the whole outline, wings and throne included.
 
-## Signature gear (proposal, all ★ cosmetic; anything that enters the pool goes behind an ACTIVATE_*_BLOCK)
+## Signature gear: SUPERSEDED (round 2: the only signature piece is the LORDKEK Rare Pepe card; the table below is kept for history only)
 | Piece | Slot | Flavor |
 |---|---|---|
 | Nemes of Kek | Headwear ★ | "Lapis for the community. Red for the rest." |
@@ -92,23 +93,34 @@ Archive entry #3 shows the block, tx, total, feeders, and the top 5 feeders, the
 4. **Card stats** (25/38/42, element Eye, Rareness ∞) are flavour only. They show as a small tap-to-see line ("Lord Kek · Community pet #3 · card") on his community card. They have no game effect.
 5. **Hybrids:** player Lord Keks can breed and make hybrids, like the Wizard.
 
-## Defaults chosen for the smaller questions (owner can change any)
-- **Nemes vs. gear rolls:** a community Headwear roll replaces the Nemes, the same way rolls replace the Wizard Hat. The Nemes shows whenever his Headwear slot is empty.
-- **His gear at the start:** he wears only community rolls made from his gate block on. The Wizard's old rolls stay in gearLog but he doesn't wear them, so he starts in just the Nemes.
-- **Wizard's Mythic burn:** the burn that sent the Wizard to Mythic (and anything left over from it) stays the Wizard's. Kek's count starts with the next burn.
-- **Mythic trigger:** it can only fire at or after his gate block. It records `w.kekMythic` (block, tx, total, feeders, top 5).
-- **Signature gear:** Nemes of Kek ★ (Headwear, cosmetic) is drawn now. The other pieces in the table above stay proposals and are **not** in the roll pool.
-- **Wings:** part of his Mythic sprite. They are not a gear piece and not claimable for now.
-- **Player palette:** red/gold Nemes. The community Kek keeps the card's lapis/gold.
-- **Anubis, Horus and the pyramid:** only in the farewell scene (not built yet). They are not in the 32px sprite.
-- **Name / role:** "Lord Kek" for the community pet, with "Ruler of All Pepes" as the subline. Player pets default to the name "Kek". The species label is "Lord Kek".
-- **Hybrid art:** a Kek parent counts as Pepe for the body, colour and feature (he is a Pepe). Names are "Kek" + the end of the other parent's name (Kekpe) when Kek comes first, or the start of the other's name + "kek" (Pekek).
-- **After his Cold Storage:** the placeholder reads "Community pet #4 coming soon".
+## Owner decisions, round 2 (Oct 20 2026 ~6:07 PM CT), FINAL (they replace the defaults drafted at 6:00 PM)
+- **Headdress:** the nemes is part of him. It is always drawn and is never replaced or removed. Community Headwear rolls are still recorded in gearLog, but are never drawn on Kek. The same applies to player Keks.
+- **Signature gear:** the **LORDKEK Rare Pepe card**. It is a tiny card held in his hand (Grip) showing the card art in miniature: a white frame with gold art, a green Kek and a lapis nemes. It is Kek-only. Item id `kek-card`. The gate is `ACTIVATE_KEK_CARD_BLOCK = null` (OFF), with no tag, no pool entry and no grant yet. The earlier gear proposals (Crook, Usekh, Wings of Ra, etc.) are dropped.
+- **Gold wings:** Mythic-only, part of the Mythic sprite, not claimable.
+- **Palettes:** community = blue/gold, player = red/gold.
+- **Anubis, Horus and the pyramid:** only in the farewell scene.
+- **Name:** "Lord Kek", final, with **no subtitle line**. Player pets default to the name "Kek"; the species label is "Lord Kek".
+- **Growth and trigger:** 100 times slower, with Cold Storage triggering automatically at Mythic (community rules).
+
+## How the LORDKEK card could be obtained (suggestion, not built)
+**Recommended:** at Kek's Cold Storage, each wallet that fed him gets one free claim with a 1-sat `pet:kekcard` burn, the same way the Wizard's "Join us" sign works. It can only be worn by a player Kek. It is a ★ Kek-only cosmetic.
+Afterwards it becomes a rare Kek-only star drop on gear rolls for player Keks. A suggested rate is 1 in 69 rolls of a Kek pet's Grip slot.
+Alternatives:
+- (a) Only the top 5 Kek feeders get it at Cold Storage. This is more exclusive and matches the "top burners" community suggestion.
+- (b) It is a star drop only.
+The owner picks one before `ACTIVATE_KEK_CARD_BLOCK` is set.
+
+## Remaining defaults (owner can change)
+- He only wears community rolls made from his gate block on. The Wizard's old rolls stay in gearLog but he doesn't wear them.
+- The burn that sent the Wizard to Mythic, including any amount left over, stays the Wizard's. Kek's count starts with the next burn.
+- The Mythic trigger fires only at or after his gate block. It records `w.kekMythic`.
+- Hybrid art: a Kek parent counts as Pepe for the body, colour and feature. Names are "Kek" + the end of the other parent's name (Kekpe) when Kek comes first, or the start of the other's name + "kek" (Pekek).
+- After his Cold Storage the placeholder reads "Community pet #4 coming soon".
 
 ## What is built on branch `lord-kek` (all OFF; replay SAME)
-- js/kek-sprite.js (KekSprite: all stages, community lapis / player red, gear layer, Mythic rim). It is loaded on the 8 pages that load wizard-sprite.js, and is unused while the gate is off.
+- js/kek-sprite.js (KekSprite v2: all stages, community blue/gold / player red/gold, built-in nemes, gear layer with Headwear ignored, LORDKEK card, Mythic wings + rim). Previews: previews/lord-kek-v2/ (v1 kept in previews/lord-kek/). It is loaded on the 8 pages that load wizard-sprite.js, and is unused while the gate is off.
 - js/v2-rules.js:
-  - Gate and settings: `ACTIVATE_KEK_BLOCK` (null), `KEK_FROM_BLOCK` 972325, `KEK_CAN_BREED`.
+  - Gate and settings: `ACTIVATE_KEK_BLOCK` (null), `KEK_FROM_BLOCK` 972325, `KEK_CAN_BREED`, `ACTIVATE_KEK_CARD_BLOCK` (null), `KEK_CARD_ITEM`.
   - Tracking and trigger: `kekTrack` (care + Mythic trigger, which does nothing while the gate is null).
   - Activation: `cm.current/nextPet = 'kek'` once the gate is reached.
   - Egg slot: `kekArt`, plus the swap in the 1-in-777 slot (`KEK_POOL_FROM`).
