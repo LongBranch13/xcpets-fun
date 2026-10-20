@@ -92,7 +92,7 @@
   var STAGE_NAMES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var V2_SLOTS = ['head', 'hand', 'body', 'back', 'face', 'feet'];  // unlock order (capacity n => first n slots)
   // display names only (internal keys unchanged; body and back stay separate slots). No emojis.
-  var SLOT_LABELS = { head: 'Headwear', face: 'Guise', back: 'Drip', hand: 'Grip', body: 'Outfits', feet: 'Footwear' };
+  var SLOT_LABELS = { head: 'Headwear', face: 'Guise', back: 'Drip', hand: 'Grip', body: 'Outfits', feet: 'Footwear', weapon: 'Staff' }; /* 'weapon' = Wizard-only staff slot (WIZ_STAFF below), not in V2_SLOTS */
   function slotLabel(sl) { return SLOT_LABELS[sl] || String(sl); }
   /* Slot-name codes for pet:c:roll:SLOT (2026-10-16): from ACTIVATE_SLOTNAME_BLOCK the tag also accepts the player-facing slot names
    * HEADWEAR / GRIP / OUTFITS / DRIP / GUISE / FOOTWEAR (same slots as HEAD / HAND / BODY / BACK / FACE / FEET, which stay valid forever).
@@ -264,6 +264,15 @@
    *   pet:sign / pet:sign:ID = one free "Join us" sign per wallet that burned while the Wizard was the community pet (any amount, 1 sat is enough);
    *   new gear (V2Gear WIZ_BATCH, since 'wiz-cold') joins the roll pools: open Rare Star robe / MS Paint staff / Star-cloak; Wizard-only ★ Join us sign,
    *   Crystal orb and the pointy Wizard Hat. Every number / list below is a one-line owner default. */
+  /* BITCOIN STAFF (owner, Oct 20 2026): Wizard-only ★ weapon 'sig-wizard-staff' drops in the normal Lair gear roll (pet:roll / free / token / overflow rolls)
+   * ONLY for player-owned Wizard pets (species 'wizard'; not hybrids, not the community pet), weight 5 like the other Wizard-only ★ pieces. It rolls
+   * inside the Grip ('hand') pool (item.rollSlot) so the slot odds of every roll are unchanged, but it is worn in its own 'weapon' slot (right hand), so
+   * it can be worn together with the "Join us" sign (Grip, left hand). The weapon slot is open whenever the pet's Grip slot is open. No grants.
+   * Owner approved deploy Oct 20 2026 ~6:20 PM CT: chain tip 972389 + 6 = 972395. */
+  var ACTIVATE_WIZ_STAFF_BLOCK = 972395, WIZ_STAFF_ITEM = 'sig-wizard-staff';
+  function staffOn(b) { return ACTIVATE_WIZ_STAFF_BLOCK != null && b != null && b >= ACTIVATE_WIZ_STAFF_BLOCK; }
+  /** slotOpen(p, sl): the pet has slot sl unlocked; the Wizard-only 'weapon' slot rides on the Grip slot. */
+  function slotOpen(p, sl) { var o = (p && p.openSlots) || []; return o.indexOf(sl) >= 0 || (sl === 'weapon' && o.indexOf('hand') >= 0); }
   var ACTIVATE_WIZ_COLD_BLOCK = 972250;            // Bitcoin tip 972244 + 6 at commit (Oct 19 2026); owner default
   var WIZ_EGG_COST = 690;                           // pet:hatchwiz cost in XCPETS (owner default)
   var WIZ_EGG_TIER = null;                          // null = the egg's tier is rolled like any egg; 0-3 = force that tier (owner default: rolled)
@@ -306,7 +315,7 @@
     Object.keys(CORE_LISTS).forEach(function (sl) { (PetCore[CORE_LISTS[sl]] || []).forEach(function (x) { if (x.id === 'none') return;
       out.push({ id: x.id, label: x.label, slot: CORE_SLOT[sl], coreSlot: sl, tier: x.t || 0, w: x.w || 10, src: 'core', origin: null, exclusive: false }); }); });
     (BonusGear.ITEMS || []).forEach(function (x) { if ((V2Gear.REMOVED || []).indexOf(x.id) >= 0) return; out.push({ id: x.id, label: ((V2Gear.HEAD_REDO || {})[x.id] || {}).label || x.label, slot: V2_SLOT_FIX[x.id] || CORE_SLOT[x.slot], coreSlot: x.slot, tier: x.tier, w: 10, src: 'bonus', origin: x.species || null, exclusive: V2Gear.isSig(x.species, x.id), overlay: true }); if (V2Gear.isSig(x.species, x.id)) { out[out.length - 1].tier = 3; out[out.length - 1].w = 5; out[out.length - 1].sig = true; } });
-    (V2Gear.ITEMS || []).forEach(function (x) { out.push({ id: x.id, label: x.label, slot: x.slot, tier: x.tier, w: x.exclusive ? 5 : 10, src: 'v2', origin: x.origin, exclusive: !!x.exclusive, sig: !!x.exclusive, overlay: true, kind: x.kind, alias: x.alias, since: x.since }); });
+    (V2Gear.ITEMS || []).forEach(function (x) { out.push({ id: x.id, label: x.label, slot: x.slot, tier: x.tier, w: x.exclusive ? 5 : 10, src: 'v2', origin: x.origin, exclusive: !!x.exclusive, sig: !!x.exclusive, overlay: true, kind: x.kind, alias: x.alias, since: x.since, rollSlot: x.rollSlot }); });
     // polish pass 2026-10-14: the two cards are rare Legendaries (tier 3 = the top gear-power band, weight 1 = rarest roll in v2); shared, not species-locked
     out.forEach(function (x) { if (CARD_FIX[x.id]) { x.tier = 3; x.w = 1; x.card = true; } });
     return out;
@@ -352,12 +361,12 @@
    * ACTIVATE_STAR_BATCH_BLOCK. Before it view() hides them, so every earlier roll replays exactly. No existing item changes; owners keep everything. */
   var ACTIVATE_STAR_BATCH_BLOCK = 971803; // tip 971,797 + 6
   function starBatchOn(b) { return b != null && b >= ACTIVATE_STAR_BATCH_BLOCK; }
-  function view(it) { if (!it) return it; if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
+  function view(it) { if (!it) return it; if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'wiz-staff' && !staffOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
     if (shuffleOn(ELIG_B) && SHUFFLE[it.id]) it = Object.assign({}, it, SHUFFLE[it.id]); if (gaOn(ELIG_B) && GA[it.id]) it = Object.assign({}, it, GA[it.id]); return it; }
   /** moveToSlot(w, g, slot): re-slot an owned gear piece at a rule switch-on block. A worn piece stays worn only if its pet has that slot open and
    * nothing else already sits in it; otherwise it is taken off (kept owned). Shared by the sig-shuffle and gear-audit sweeps (refactor 2026-10-16). */
   function moveToSlot(w, g, slot) { var p = g.on != null ? w.byId[g.on] : null;
-    if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === slot; }); if (other || (p.openSlots || []).indexOf(slot) < 0) g.on = null; }
+    if (p) { var other = Object.keys(w.items).some(function (k2) { var o = w.items[k2]; return o !== g && o.on === p.id && o.slot === slot; }); if (other || !slotOpen(p, slot)) g.on = null; }
     g.slot = slot; }
   function gaSweep(w, b) { if (w._gaSwept || !gaOn(b)) return; w._gaSwept = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k], nv = GA[g.item]; if (!nv) return; if (nv.tier != null) g.tier = nv.tier;
@@ -367,11 +376,12 @@
       moveToSlot(w, g, nv.slot); g.tier = nv.tier; g.legendary = !!nv.exclusive; }); }
   function eligible(it, species) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false;
     if (lockedOut(it.id, species, ELIG_B)) return false;
+    if (it.id === WIZ_STAFF_ITEM) return species === 'wizard'; /* player Wizards only (no hybrids) */
     if (isHybrid(species)) { if (!it.exclusive) return true; var par = species.split(':').slice(1); return it.slot !== 'head' && par.indexOf(it.origin) >= 0; } /* hybrids (Jake's locked spec): shared + both parents' signatures EXCEPT their legendary head pieces */
     return !it.exclusive || it.origin === species; }
   function legendaryOf(species) { return ALL.map(view).filter(function (x) { return x && !x.noRoll && x.exclusive && x.origin === species; }).sort(function (a, b) { return (b.slot === 'head') - (a.slot === 'head'); }); } // head signature first, then the 6 other ★ pieces
   function pool(slot, species, tierIdx) {
-    var all = RAW.map(view).filter(function (x) { return x && !x.noRoll && x.slot === slot && eligible(x.alias ? BY_ID[x.alias] : x, species); });
+    var all = RAW.map(view).filter(function (x) { return x && !x.noRoll && (x.rollSlot || x.slot) === slot && eligible(x.alias ? BY_ID[x.alias] : x, species); });
     var p = all.filter(function (x) { return x.tier <= tierIdx; });
     if (!p.length && all.length) { var m = Math.min.apply(null, all.map(function (x) { return x.tier; })); p = all.filter(function (x) { return x.tier === m; }); }
     return p.map(function (x) { return { it: x, w: x.w * (x.tier === tierIdx ? 4 : 1) }; });
@@ -614,7 +624,7 @@
   function gearCapOn(b) { return b != null && b >= ACTIVATE_GEAR_CAP_BLOCK; }
   function repairGear(w, b) { if (w.gearRepaired || !gearCapOn(b)) return; w.gearRepaired = b; var ks = Object.keys(w.items);
     w.pets.forEach(function (p) { if (p.community) return; if (p.hatchBlock != null) liveAt(w, p, b); var mine = wornOf(w, p.id), keep = {}, off = [];
-      mine.forEach(function (g) { if ((p.openSlots || []).indexOf(g.slot) < 0 || keep[g.slot]) off.push(g); else keep[g.slot] = g; }); /* oldest stays, newer duplicates come off */
+      mine.forEach(function (g) { if (!slotOpen(p, g.slot) || keep[g.slot]) off.push(g); else keep[g.slot] = g; }); /* oldest stays, newer duplicates come off */
       if (!off.length) return; off.forEach(function (g) { g.on = null; });
       p.gearFix = { block: b, items: off.map(function (g) { return g.label || g.item; }) };
       w.log.push({ block: b, tx: null, kind: 'gearfix', petId: p.id, msg: '#' + p.id + ': gear over capacity repaired, back to the stash: ' + p.gearFix.items.join(', ') }); }); }
@@ -622,7 +632,7 @@
     var a = w.__ix.on.get(pid); return a ? a.slice() : []; }
   function wornIn(w, pid, slot) { return wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
   function newItem(w, it, owner, src) { var gid = 'g' + (w.nextItem++); w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: owner, on: null, src: src }; trk(w, w.items[gid]); return w.items[gid]; }
-  function wear(w, p, g) { if (p.openSlots.indexOf(g.slot) < 0) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
+  function wear(w, p, g) { if (!slotOpen(p, g.slot)) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
   function giveRandomPiece(w, loser, winnerPet, seedHex, why) {
     var take = wornOf(w, loser.id).filter(function (g) { return !g.legendary; }); // legendary species pieces are never takeable
     if (!take.length) return null;
@@ -1122,7 +1132,7 @@
   function autoEquipOps(w, owner, ids, block) {
     var used = {}, ops = [];
     w.pets.forEach(function (p) { if (p.owner !== owner || ids.indexOf(p.id) < 0 || p.dead) return;
-      p.openSlots.forEach(function (sl) { var cur = wornIn(w, p.id, sl), best = cur;
+      p.openSlots.concat(p.species === 'wizard' && slotOpen(p, 'weapon') ? ['weapon'] : []).forEach(function (sl) { var cur = wornIn(w, p.id, sl), best = cur;
         w.itemList.forEach(function (g) { if (g.owner === owner && g.on == null && !used[g.gid] && g.slot === sl && eligible(g.item, p.species) && (!best || g.tier > best.tier)) best = g; });
         if (best && best !== cur) { used[best.gid] = 1; ops.push({ kind: 'equip', owner: owner, petId: p.id, slot: sl, gid: best.gid, block_index: block }); } }); });
     return ops;
@@ -1137,7 +1147,7 @@
       Object.keys(outfit).forEach(function (sl) {
         if (!p || p.owner !== owner || p.released) return miss(pid, sl, 'not your pet');
         if (p.dead) return miss(pid, sl, 'pet is dead (Pet Cemetery)');
-        if (p.openSlots.indexOf(sl) < 0) return miss(pid, sl, slotLabel(sl) + ' slot not unlocked yet (capacity ' + p.capacity + ')');
+        if (!slotOpen(p, sl)) return miss(pid, sl, slotLabel(sl) + ' slot not unlocked yet (capacity ' + p.capacity + ')');
         if (!eligible(outfit[sl], p.species)) return miss(pid, sl, 'species-only legendary');
         var cur = wornIn(w, pid, sl); if (cur && cur.item === outfit[sl]) { got[sl] = (got[sl] || 0) + 1; return; } // already wearing it
         var g = w.itemList.filter(function (x) { return x.owner === owner && x.on == null && !used[x.gid] && x.item === outfit[sl]; })[0];
@@ -1157,7 +1167,7 @@
     if (!p || p.owner !== owner || p.released) return { ok: false, why: 'not your pet' };
     if (p.dead) return { ok: false, why: 'pet is dead (Pet Cemetery)' };
     if (!it) return { ok: false, why: 'unknown piece' };
-    if (p.openSlots.indexOf(it.slot) < 0) return { ok: false, why: slotLabel(it.slot) + ' slot not unlocked yet (capacity ' + p.capacity + '/6 grows with age + care)' };
+    if (!slotOpen(p, it.slot)) return { ok: false, why: slotLabel(it.slot) + ' slot not unlocked yet (capacity ' + p.capacity + '/6 grows with age + care)' };
     if (!eligible(it, p.species)) return { ok: false, why: (it.origin ? it.origin.charAt(0).toUpperCase() + it.origin.slice(1) : 'species') + '-only legendary' };
     var cur = wornIn(w, p.id, it.slot); if (cur && cur.item === itemId) return { ok: false, worn: true, why: 'already wearing it', gid: cur.gid };
     var mineCopies = (w.itemList || []).filter(function (g) { return g.owner === owner && g.item === itemId; });
@@ -1196,7 +1206,7 @@
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
   return { ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
-    COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
+    ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, releaseBatches: releaseBatches, burnSummary: burnSummary,

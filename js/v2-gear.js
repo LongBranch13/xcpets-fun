@@ -396,7 +396,7 @@
    * [id, label, slot, tier, exclusive, kind, anchor, dy, map] (literal BonusGear colour keys). */
   var WIZ_BATCH = [
     ['wizard-hat', 'Wizard Hat', 'head', 3, true, 'hat', 'head', 1, ['.....v..', '....vv..', '...vvv..', '...vvvv.', '..vvvvv.', '..vvyvv.', '.ggggggg', 'VVVVVVVV']],
-    ['sig-wizard-sign', '"Join us" sign', 'hand', 3, true, 'held', 'handL', null, ['PPPPPPP', 'PnPnnPP', 'PPPPPPP', 'PnnPnPP', 'PPPPPPP', '...X...', '...X...', '...X...']],
+    ['sig-wizard-sign', '"Join us" sign', 'hand', 3, true, 'held', 'handL', null, ['nnnnnnnnn', 'nOOOOOOOn', 'nOnOnOnOn', 'nOnnOnnOn', 'nOOOOOOOn', 'nnnnnnnnn']], /* meme redraw 2026-10-20: orange 'Join us' board held low at the left (ink squiggle letters) */
     ['sig-wizard-orb', 'Crystal orb', 'hand', 3, true, 'held', 'handR', null, ['.ccc.', 'cWccc', 'ccccc', 'cccbc', '.ccc.', '.GGG.']],
     ['wiz-star-robe', 'Star robe', 'body', 2, false, 'body', 'chest', -1, ['b.....b', 'bbybbbb', 'bbbbbyb', 'bybbbbb', 'bbbbybb', '.bbbbb.']],
     ['wiz-paint-staff', 'MS Paint staff', 'hand', 2, false, 'weapon', 'tallR', null, ['.EE..', 'EwEE.', 'EEEe.', '.ee..', '..X..', '.X...', '..X..', '..X..', '.X...', '..X..', '..X..']],
@@ -405,6 +405,12 @@
   WIZ_BATCH.forEach(function (x) {
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: x[6] === 'neck', map: x[8], origin: 'wizard', exclusive: x[4], species: x[4] ? 'wizard' : undefined, kind: x[5], sig: x[4] };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'wizard', exclusive: x[4], legendary: x[4], kind: x[5], sig: x[4], overlay: true, since: 'wiz-cold' }); });
+  /* BITCOIN STAFF (owner, Oct 20 2026): Wizard-only ★ weapon, the meme's long brown staff tilted up-right with a big orange ₿ coin. Worn in its own
+   * 'weapon' slot (right hand) so it pairs with the "Join us" sign (Grip, left hand); rolls inside the Grip pool (rollSlot 'hand', weight 5 like other ★).
+   * item.since 'wiz-staff' = OFF until V2Rules.ACTIVATE_WIZ_STAFF_BLOCK is set (null now). Appended at the END of ITEMS. No grants. */
+  var WIZ_STAFF = ['sig-wizard-staff', 'Bitcoin staff', 'weapon', 3, true, 'weapon', 'tallR', null, ['..OOO', '.OwOO', '.OwwO', '.OOOo', '..oo.', '..L..', '.L...', '.L...', 'L....', 'L....', 'L....']];
+  DEFS[WIZ_STAFF[0]] = { slot: 'weapon', tier: 3, label: WIZ_STAFF[1], at: 'tallR', dy: undefined, behind: false, map: WIZ_STAFF[8], origin: 'wizard', exclusive: true, species: 'wizard', kind: 'weapon', sig: true };
+  ITEMS.push({ id: WIZ_STAFF[0], label: WIZ_STAFF[1], slot: 'weapon', rollSlot: 'hand', tier: 3, origin: 'wizard', exclusive: true, legendary: true, kind: 'weapon', sig: true, overlay: true, since: 'wiz-staff' });
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -441,5 +447,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { WIZ_BATCH: WIZ_BATCH, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
