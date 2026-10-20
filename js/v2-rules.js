@@ -268,8 +268,8 @@
    * ONLY for player-owned Wizard pets (species 'wizard'; not hybrids, not the community pet), weight 5 like the other Wizard-only ★ pieces. It rolls
    * inside the Grip ('hand') pool (item.rollSlot) so the slot odds of every roll are unchanged, but it is worn in its own 'weapon' slot (right hand), so
    * it can be worn together with the "Join us" sign (Grip, left hand). The weapon slot is open whenever the pet's Grip slot is open. No grants.
-   * ACTIVATE_WIZ_STAFF_BLOCK = null -> OFF (never in any pool; replay unchanged). At owner-approved deploy: chain tip + ~6. */
-  var ACTIVATE_WIZ_STAFF_BLOCK = null, WIZ_STAFF_ITEM = 'sig-wizard-staff';
+   * Owner approved deploy Oct 20 2026 ~6:20 PM CT: chain tip 972389 + 6 = 972395. */
+  var ACTIVATE_WIZ_STAFF_BLOCK = 972395, WIZ_STAFF_ITEM = 'sig-wizard-staff';
   function staffOn(b) { return ACTIVATE_WIZ_STAFF_BLOCK != null && b != null && b >= ACTIVATE_WIZ_STAFF_BLOCK; }
   /** slotOpen(p, sl): the pet has slot sl unlocked; the Wizard-only 'weapon' slot rides on the Grip slot. */
   function slotOpen(p, sl) { var o = (p && p.openSlots) || []; return o.indexOf(sl) >= 0 || (sl === 'weapon' && o.indexOf('hand') >= 0); }
