@@ -133,7 +133,7 @@
     return o;
   }
   /** render(stage, frame, bg, gear?) -> { width, height, data: [RGBA...] } */
-  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL;
+  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL; if (opts && opts.pal) P = Object.assign({}, P, opts.pal); /* opts.pal: per-key colour override (Wizard hybrids, wizard-hybrids branch) */
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
   return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, WIZARD_HAT: WIZARD_HAT, render: render, frames: frames, draw: draw };
