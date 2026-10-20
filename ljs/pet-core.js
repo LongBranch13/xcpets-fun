@@ -1156,7 +1156,7 @@
       case 'smile': row(y0, L + 1, R - 1, 'mouth'); cv.setKey(L, y0 - 1, 'mouth'); cv.setKey(R, y0 - 1, 'mouth'); break;
       case 'frown': row(y0, L + 1, R - 1, 'mouth'); cv.setKey(L, y0 + 1, 'mouth'); cv.setKey(R, y0 + 1, 'mouth'); break;
       case 'smirk': row(y0, L, R - 1, 'mouth'); cv.setKey(R, y0 - 1, 'mouth'); break;
-      case 'grin': row(y0, L, R, 'white'); row(y0 + 1, L + 1, R - 1, 'mouth'); cv.setKey(L, y0 - 1, 'mouth'); cv.setKey(R, y0 - 1, 'mouth'); break;
+      case 'grin': /* white-line fix 2026-10-20: teeth fully lip-outlined (was a bare white row) */ row(y0 - 1, L + 1, R - 1, 'mouth'); cv.setKey(L, y0, 'mouth'); row(y0, L + 1, R - 1, 'white'); cv.setKey(R, y0, 'mouth'); row(y0 + 1, L + 1, R - 1, 'mouth'); break;
       case 'open': row(y0, L, R, 'mouth'); row(y0 + 1, L + 1, R - 1, 'tongue'); row(y0 + 2, L + 2, R - 2, 'mouth'); break;
       case 'cheer': cv.setKey(L, y0 - 1, 'mouth'); cv.setKey(R, y0 - 1, 'mouth'); row(y0, L + 1, R - 1, 'mouth'); row(y0 + 1, L + 1, R - 1, 'tongue'); row(y0 + 2, L + 2, R - 2, 'mouth'); break;
     }
