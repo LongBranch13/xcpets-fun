@@ -528,7 +528,7 @@
    *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
   function starveHtml(w, p, owner, o) {
     var b = starveInfo(w, p); if (!b) return ''; o = o || {};
-    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stash' : 'the owner\'s bag';
+    var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stash' : 'the owner\'s stash';
     var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
       : '<span class="small">Only the owner can feed #' + p.id + '.</span>' + (!owner ? ' <span class="small">Your pet? <button type="button" class="q" data-sconn="1">Connect wallet</button> to feed it.</span>' : ' <span class="small muted">The connected wallet does not own #' + p.id + '.</span>');
     return '<div class="starve" data-starve="' + p.id + '" role="region" aria-label="Starvation warning for #' + p.id + '"><h3 class="sec" data-ico="skull">Starvation warning</h3>' +
@@ -541,7 +541,7 @@
   /* grave gear (2026-10-19, review branch): status for everyone; the owner gets Leave gear on the grave / Cancel, each one pet:grave burn signed in their own wallet
    * (V2Rules.gravePlan via the existing confirm flow; on pet.html a link to the pet on Play). Hidden before ACTIVATE_GRAVE_GEAR_BLOCK. */
   function graveRow(p, b, own, o) { if (!b.graveLive) return '';
-    var st = b.grave ? '<b>on</b>: set at block ' + fmtN(b.graveBlock) + (b.graveTx ? ' (tx ' + esc(String(b.graveTx).slice(0, 8)) + '…)' : '') : '<b>off</b> (default: gear back to the bag)';
+    var st = b.grave ? '<b>on</b>: set at block ' + fmtN(b.graveBlock) + (b.graveTx ? ' (tx ' + esc(String(b.graveTx).slice(0, 8)) + '…)' : '') : '<b>off</b> (default: gear back to the stash)';
     var vo = !!(window.V2View && V2View.viewOnly()); /* address-lookup: view only hides the grave buttons too */
     var btn = !own || vo ? '' : o.feedHref ? ' <a class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '" href="' + esc(o.feedHref) + '">' + (b.grave ? 'Cancel on Play' : '🪦 Leave gear on the grave on Play') + '</a>'
       : ' <button type="button" class="q" data-sgrave="' + (b.grave ? 'off' : 'on') + '">' + (b.grave ? 'Cancel (gear back to your stash)' : '🪦 Leave gear on the grave') + '</button>';

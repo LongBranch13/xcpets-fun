@@ -584,7 +584,7 @@
       mine.forEach(function (g) { if ((p.openSlots || []).indexOf(g.slot) < 0 || keep[g.slot]) off.push(g); else keep[g.slot] = g; }); /* oldest stays, newer duplicates come off */
       if (!off.length) return; off.forEach(function (g) { g.on = null; });
       p.gearFix = { block: b, items: off.map(function (g) { return g.label || g.item; }) };
-      w.log.push({ block: b, tx: null, kind: 'gearfix', petId: p.id, msg: '#' + p.id + ': gear over capacity repaired, back to inventory: ' + p.gearFix.items.join(', ') }); }); }
+      w.log.push({ block: b, tx: null, kind: 'gearfix', petId: p.id, msg: '#' + p.id + ': gear over capacity repaired, back to the stash: ' + p.gearFix.items.join(', ') }); }); }
   function wornOf(w, pid) { if (!w.__ix) return Object.keys(w.items || {}).map(function (k) { return w.items[k]; }).filter(function (g) { return g.on === pid; });
     var a = w.__ix.on.get(pid); return a ? a.slice() : []; }
   function wornIn(w, pid, slot) { return wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
@@ -740,7 +740,7 @@
         if (sw) return L(r, 'rejected', sw);
         WM.claimed[src] = b; var sg = newItem(w, BY_ID[WIZ_SIGN_ITEM], src, 'sign'), sp2 = t.petId != null ? pet(t.petId) : null;
         if (sp2 && sp2.owner === src && !sp2.dead && !sp2.released && eligible(WIZ_SIGN_ITEM, sp2.species) && (sp2.openSlots || []).indexOf('hand') >= 0) wear(w, sp2, sg);
-        return L(r, 'sign', 'claimed the "Join us" sign' + (sg.on != null ? ' (worn by #' + sg.on + ')' : ' (in the bag)'), { gid: sg.gid, petId: sg.on });
+        return L(r, 'sign', 'claimed the "Join us" sign' + (sg.on != null ? ' (worn by #' + sg.on + ')' : ' (in your stash)'), { gid: sg.gid, petId: sg.on });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
       case 'grave': {  /* GRAVE GEAR opt-in / cancel (see ACTIVATE_GRAVE_GEAR_BLOCK): owner only, living pet only, any amount */
@@ -748,7 +748,7 @@
         var gq = pet(t.petId), gw = !gq ? 'no such pet' : gq.community ? 'community pet' : gq.released ? 'released' : gq.owner !== src ? 'owner only' : gq.dead ? 'dead (Pet Cemetery): too late to change' : null;
         if (gw) return L(r, 'rejected', gw);
         if (t.on) { gq.graveGear = b; gq.graveTx = r.tx_hash; } else { delete gq.graveGear; delete gq.graveTx; }
-        return L(r, 'grave', t.on ? '#' + gq.id + ': worn gear stays on the grave if it dies' : '#' + gq.id + ': grave gear cancelled (gear goes back to the bag at death)', { petId: gq.id });
+        return L(r, 'grave', t.on ? '#' + gq.id + ': worn gear stays on the grave if it dies' : '#' + gq.id + ': grave gear cancelled (gear goes back to the stash at death)', { petId: gq.id });
       }
       case 'oroll': {  /* OVERFLOW ROLL (Mythic discount): pet:of:ID, any amount (1 sat of XCPETS is enough), signed by the owner. Spends one of the pet's overflow rolls
          * (floor((care - 21,000) / 1,000) once the owner's discount applies, minus rolls used). Same gear roll as pet:roll, seeded from block hash + tx id with its own salt. */
