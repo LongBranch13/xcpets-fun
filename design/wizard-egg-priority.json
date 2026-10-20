@@ -10,7 +10,14 @@
       "block": 972251,
       "address": "bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q",
       "counterparty_status": "valid",
-      "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false at that block). No Wizard egg/pet created; the 690 counts as community food."
+      "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false at that block). No Wizard egg/pet created; the 690 counts as community food.",
+      "granted": {
+        "rule": "js/v2-rules.js grantWizPriority / WIZ_PRIORITY",
+        "gate_block": 972387,
+        "egg": "one player Bitcoin Wizard (wizardArt(hash of 972251, this tx, 972251): rolled tier, sim = Common), born at 972387; pet id = next free id at the gate (16666 if no other pets are created in 972382-972386)",
+        "approved": "owner, Oct 20 2026 ~4:35 PM CT",
+        "build": "1ac3b6a4bf"
+      }
     }
   ],
   "sign_claims": [
@@ -24,5 +31,6 @@
       "counterparty_status": "valid",
       "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false). No sign item granted. Honor as a 'Join us' sign claim at launch (if this wallet fed the Wizard)."
     }
-  ]
+  ],
+  "pet_hatchwiz": "CLOSED from block 972387 (owner Oct 20 2026 ~4:41 PM CT): rejected as unknown tag (community food). Wizard is roll-only (1 in 777). WIZARD_EGG_ON_SALE stays false."
 }
