@@ -119,6 +119,7 @@
       if (q.key && !(S.state === 'open')) keyPx(x, q.x + 6, q.y - 8); if (q.keyFly != null) { var kf = q.keyFly; keyPx(x, Math.round(lerp(128, q.x + 6, kf)), Math.round(lerp(94, q.y - 8, kf) - Math.sin(kf * Math.PI) * 14)); }
       if (q.talk) talk = [q.talk, q.x - 10, q.y - 34]; if (q.gooby) gline = q.gooby; });
     if (talk) bubble(x, talk[0], talk[1], talk[2]); bubble(x, gline || S.bubble || LINES[S.line % LINES.length], 112, 40);
+    if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
     if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 3600) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
     if (A && B) { var pair = [String(A.id), String(B.id)].sort().join(':');
@@ -127,7 +128,7 @@
       st = kid && S.fresh === pair ? 'open' : req ? 'half' : inc ? 'invite' : 'both'; }
     else if (A || B) st = 'one';
     return { A: A, B: B, kid: kid, st: st }; }
-  function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
+  function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.w = w; S.A = s.A; S.B = s.B; S.kid = s.kid; var now = performance.now(); ['A', 'B'].forEach(function (k) { var p = s[k]; if (!p) { delete S.walk[k]; return; } if (!S.walk[k] || S.walk[k].id !== p.id) S.walk[k] = { id: p.id, t0: k === 'B' && S.walk.A && S.walk.A.id === (s.A && s.A.id) ? Math.max(now, S.walk.A.t0 + 6200) : now }; }); if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') { S.open = performance.now(); if (S.c && window.V2Sfx) V2Sfx.creak(); } }
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now());

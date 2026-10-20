@@ -91,7 +91,7 @@
     if (!reduced()) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
-    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; S.items = items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; })).slice(0, 20);
+    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; S.items = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))).slice(0, 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stock on the shelves"></canvas><div class="shop-hint small">Tap gear on a shelf · pick a pet · wear it</div>'; c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) waveNow(); }); }, { threshold: 0.5 }).observe(c);
@@ -100,8 +100,8 @@
       c.addEventListener('mouseleave', function () { S.hov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (onDan(c, e)) waveNow(); if (!h) return; waveNow();
-        S.sel = h.it; say(h.it); counter(); draw(performance.now()); }); }
-    counter(); clearance(w);
+        S.sel = h.it; say(h.it); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
+    counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.raf); draw(performance.now()); }
   /* CLEARANCE RACK (PREVIEW, NOT ACTIVE; owner idea, rules undecided): 4 pieces that rotate once per 144-block chain day, picked from the
    * existing gear catalog (no signature/legendary-exclusive or retired pieces) by sha256(first-block-of-the-day hash + ':clearance:' + i).
@@ -171,5 +171,5 @@
   function bindRoll(el) { var U = window.V2UI, V = window.V2Rules, rb = document.getElementById('scRoll');
     if (rb) rb.onclick = function () { var id = +rb.dataset.pid; U.confirmPlans('Gear roll for #' + id, [{ tag: V.buildTag('roll', { petId: id }), amount: V.COSTS.roll }]); }; }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); S.poofT = performance.now(); S.moodFor = null; U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES };
+  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, LINES: LINES, dmg: dmg, op: op };
 })();

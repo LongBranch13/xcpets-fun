@@ -45,14 +45,21 @@
     any: { crit: ['Ban hammer moment!'], win: ['690 to fight, loser pays in gear!', 'Buried in full kit, no regrets... but not tonight.'], lose: ['Somebody is paying in gear!'] } };
   /* FRESH: written in the same voice. {A}/{B} red/blue corner, {X} actor, {Y} target, {D} damage, {S} species, {W}/{L} winner/loser, {R} rounds */
   var FRESH = {
-    intro: ['In the red corner... {A} the {SA}!', 'And in the blue corner... {B} the {SB}!', 'Welcome to X Circus Kekimus! All XCP becomes spectacle!', 'Ladies, gents and degens: tonight it is {A} vs {B}!', 'Tale of the tape: {PA} power vs {PB} power.', 'The crowd is loud. The sand is hot. The gear is on the line.'],
+    intro: ['In the red corner... weighing in at {PA} power... {A} the {SA}!', 'And in the blue corner... {B} the {SB}! OH YEAH!', 'Welcome, brother, to X CIRCUS KEKIMUS! All XCP becomes spectacle!', 'Ladies, gents and degens... it is TIME... {A} versus {B}!', 'Tale of the tape: {PA} power against {PB} power, and somebody is going DOWN!', 'The crowd is on its feet! The sand is hot! The gear is on the line!'],
     hit: ['{X} lands one for {D}!', 'Clean shot! {D} off {Y}.', '{X} with the jab. {D}!', 'Oof. {Y} felt that.', '{X} cooks {Y} for {D}.', 'That is a {D}-point receipt!', '{Y} is checking the mempool for help.', 'Right on the beak!', '{X} says gm with a {D}!'],
     crit: ['CRITICAL! {X} hits for {D}!', 'BIG ONE! {D} and the crowd goes wild!', 'Crit! {Y} sees block hashes!', 'WOW. {X} found the weak spot. {D}!', 'That one was minted on chain! {D}!'],
     miss: ['Whiff! {Y} dodges!', '{X} swings at air.', 'Missed! {Y} is too zoomy.', 'Nothing! {Y} moonwalks out of it.', 'Air ball from {X}!'],
     comeback: ['{X} is not dead yet! COMEBACK!', 'From the ropes, {X} fights back!', 'Down bad, now up good! {X}!'],
     close: ['Both on fumes! Anyone\u2019s fight!', 'This is a coin flip with fists!'],
-    win: ['{W} WINS in {R} rounds!', 'And the winner... {W}!', '{W} takes it! {L} pays in gear.', 'Lights out! {W} by knockout!', '{W} is up only tonight!'],
-    lose: ['{L} gets the black eye.', '{L} will be back. Probably.', 'Rough night for {L}. NGMI... this time.'],
+    win: ['ONE! TWO! THREE! {W} WINS in {R} rounds!', 'Here is your winner... {W}!', '{W} takes it, brother! {L} pays in gear!', 'LIGHTS OUT! {W} by knockout! What a match!', 'BAH GAWD! {W} is up only tonight!'],
+    lose: ['{L} gets the black eye! Somebody call the medic!', '{L} will be back, folks. Probably.', 'Rough night for {L}. NGMI... this time!'],
+    upset: ['UPSET! UPSET! {W} was not supposed to win this!', 'BAH GAWD, THE UNDERDOG! {W} SHOCKS the Circus!', 'Nobody saw that coming! {W} pulls off the UPSET!'],
+    streak3: ['That is THREE in a row for {W}!', '{W} makes it three straight! The belt comes out of the case!'],
+    streak5: ['FIVE STRAIGHT! {W} is UNSTOPPABLE! Somebody stop this pet!', '{N} IN A ROW! {W} is a WRECKING MACHINE, brother!'],
+    streakN: ['{N} in a row for {W}! The champ rolls on!'],
+    snapped: ['The streak is SNAPPED! {L}\u2019s {N}-win run is OVER!', '{L}\u2019s belt goes BACK TO THE CASE!'],
+    sponsor: ['Tonight\u2019s sand brought to you by {SP}!', 'This bout is presented by {SP}! What a night!', 'Brought to you by our friends at {SP}, brother!'],
+    holder: ['Defending a {N}-win streak... {X}, and the gold is on the line!'],
     filler: ['The crowd chants: KE-KI-MUS!', 'Somebody throws a corn cob into the arena.', 'Popcorn sales are up only.', '{X} looks hungry for gear.', 'Ref checks the replay hash. Legit.', 'Not financial advice. Just fists.'] };
   function rng(seed) { var s = (seed * 2654435761) >>> 0 || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
   function fill(t, v) { return t.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }); }
@@ -63,6 +70,8 @@
     function pick(list, src, v) { var c = list.filter(function (t) { return !used[t]; }); if (!c.length) return null; var t = c[Math.floor(R() * c.length)]; used[t] = 1; return { text: fill(t, Object.assign({}, base, v || {})), src: src }; }
     function meme(p, extra) { var L = (MEME[p.species] || []).filter(function (t) { return !/black eye|lost a battle|ouch|pinch first|looks about the same/i.test(t); }).concat(extra || []); return L.length ? pick(L, 'meme', { X: p.name }) : null; }
     function say(at, x) { if (x) { x.at = at; out.push(x); } }
+    var FUN = window.V2ArenaFun ? V2ArenaFun.info(w, f) : null, spn0 = window.V2Sponsor && V2Sponsor.sponsorAt ? V2Sponsor.sponsorAt(f.acceptBlock || f.block) : null; /* read-only: the fixed pseudo-sponsor of that chain day, read aloud */
+    if (spn0) say('intro', pick(FRESH.sponsor, 'fresh', { SP: spn0 }));
     say('intro', pick([FRESH.intro[0]], 'fresh')); say('intro', meme(A) || pick(FRESH.intro.slice(2), 'fresh')); say('intro', pick([FRESH.intro[1]], 'fresh')); say('intro', meme(B) || pick(FRESH.intro.slice(2), 'fresh'));
     var T = f.turns || [], low = { a: false, b: false }, maxA = f.maxA || 1, maxB = f.maxB || 1, sinceLast = 9;
     T.forEach(function (t, i) { var X = t.by === 'a' ? A : B, Y = t.by === 'a' ? B : A, v = { X: X.name, Y: Y.name, D: t.dmg }, ln = null;
@@ -74,7 +83,10 @@
       else if (sinceLast >= 2 || R() < 0.45) ln = R() < 0.15 ? pick(FRESH.filler, 'fresh', v) : pick(FRESH.hit, 'fresh', v);
       if (ln) { say(i, ln); sinceLast = 0; } else sinceLast++; });
     var Wp = w.byId[f.winner] || A, Lp = w.byId[f.loser] || B;
-    say('end', pick(FRESH.win, 'fresh')); say('end', (R() < 0.5 ? meme(Wp) : null) || pick(MEME.any.win, 'meme')); say('end', (MEME.loser[Lp.species] ? pick([MEME.loser[Lp.species]], 'meme', { X: Lp.name }) : null) || pick(FRESH.lose, 'fresh'));
+    if (FUN && FUN.upset) say('end', pick(FRESH.upset, 'fresh'));
+    say('end', pick(FRESH.win, 'fresh'));
+    if (FUN) { var ns = FUN.winStreak; if (ns >= 5) say('end', pick(FRESH.streak5, 'fresh', { N: ns })); else if (ns === 3) say('end', pick(FRESH.streak3, 'fresh', { N: ns })); else if (ns > 3) say('end', pick(FRESH.streakN, 'fresh', { N: ns }));
+      if (FUN.beltBack) say('end', pick(FRESH.snapped, 'fresh', { N: FUN.lostStreak })); } say('end', (R() < 0.5 ? meme(Wp) : null) || pick(MEME.any.win, 'meme')); say('end', (MEME.loser[Lp.species] ? pick([MEME.loser[Lp.species]], 'meme', { X: Lp.name }) : null) || pick(FRESH.lose, 'fresh'));
     return out; }
   var KEY = 'xcpets-announcer-voice';
   function voiceOn() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
