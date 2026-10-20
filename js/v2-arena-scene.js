@@ -54,19 +54,24 @@
     plinth(); }
   /* arena-sharp-text (owner 9:31 PM CT): the champion statue reads as a statue: stepped stone pedestal (lit top/left, shaded right), a carved stone pet with
    * a dark outline, a gold nameplate, and two small torches. Same data as before (champion = longest current streak; belt at 3+ wins; empty plinth otherwise). */
+  /* arena-case-path (owner 9:47 PM CT): nameplate text fits the 62px gold plate with >= 1px padding: 5px, else 4px (min), else the name is cut with an ellipsis. Integer x/y. */
+  var PLATE_IN = 60;
+  function plateText(x, name, tail, y) { var sz = 5, f = function (n) { x.font = n + 'px "Press Start 2P", monospace'; }, wd = function (t) { return Math.ceil(x.measureText(t).width); };
+    f(sz); if (wd(name + tail) > PLATE_IN) { sz = 4; f(sz); }
+    var t = name + tail; if (wd(t) > PLATE_IN) { var n = name; while (n.length > 1 && wd(n + '…' + tail) > PLATE_IN) n = n.slice(0, -1); t = n + '…' + tail; }
+    x.textAlign = 'left'; x.fillStyle = '#3a2a10'; x.fillText(t, Math.round(CX - wd(t) / 2), y); x.textAlign = 'center'; }
   function plinth() { var x = S.x, t = S.tNow || 0, fl = reduced() ? 0 : Math.floor(t / 160) % 3, top = 100; /* sits higher than the old plinth so the fighters' HP bars stay clear */
     function r(c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
     r('#0a0812', CX - 39, top + 25, 78, 6); r('#0a0812', CX - 35, top - 1, 70, 27); /* outline */
     r('#8d8aa0', CX - 34, top, 68, 3); r('#6e6a84', CX - 34, top + 3, 68, 18); r('#a9a6bb', CX - 34, top + 3, 2, 18); r('#4d4962', CX + 32, top + 3, 2, 18); r('#57536c', CX - 34, top + 21, 68, 4); /* die */
     r('#6e6a84', CX - 38, top + 26, 76, 4); r('#a9a6bb', CX - 38, top + 26, 76, 1); r('#3e3a52', CX - 38, top + 29, 76, 1); /* base step */
-    r('#3a2a10', CX - 32, top + 6, 64, 14); r('#ffd166', CX - 31, top + 7, 62, 12); r('#c99a2e', CX - 31, top + 18, 62, 1); /* gold nameplate */
+    r('#3a2a10', CX - 32, top + 5, 64, 16); r('#ffd166', CX - 31, top + 6, 62, 14); /* gold nameplate */
     [CX - 44, CX + 42].forEach(function (tx, n) { r('#0a0812', tx - 1, top + 6, 4, 25); r('#7a5a2a', tx, top + 8, 2, 22); r('#3a2a10', tx - 1, top + 6, 4, 2); var f2 = (fl + n) % 3; r('rgba(255,170,60,.18)', tx - 4, top - 3, 10, 10); r('#ff7a1a', tx - 1, top + 1 - f2 % 2, 4, 5); r('#ffd166', tx, top + 2, 2, 3 - (f2 === 2 ? 1 : 0)); }); /* torches */
     x.textAlign = 'center'; x.textBaseline = 'alphabetic';
     if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { x.drawImage(S.statueSil, CX - 16 + o[0], top - 32 + o[1], 32, 32); }); } x.drawImage(S.statue, CX - 16, top - 32, 32, 32);
       x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, top - 23 + (lv === 2 ? -1 : 0), 2, 2); } /* laurel */
-      x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#3a2a10'; x.fillText(String(S.champ.p.name || 'Pet').slice(0, 8) + ' #' + S.champ.p.id, CX, top + 13);
-      x.fillText(S.champ.streak + ' WIN STREAK', CX, top + 19 - 0); if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
-    else { x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#3a2a10'; x.fillText('AWAITING', CX, top + 13); x.fillText('A CHAMPION', CX, top + 19); }
+      plateText(x, String(S.champ.p.name || 'Pet'), ' #' + S.champ.p.id, top + 12); plateText(x, S.champ.streak + ' WIN STREAK', '', top + 18); if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
+    else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
     x.textAlign = 'left'; if (window.V2ArenaFun) V2ArenaFun.beltCase(x, !(S.champ && S.champ.streak >= 3)); }
   function actor(a, t) { var x = S.x, bob = Math.floor(t / 120) % 2; x.save(); if (a.flip) { x.translate(Math.round(a.x) + 12, 0); x.scale(-1, 1); x.drawImage(a.img[Math.floor(t / 150) % a.img.length], -12, Math.round(a.y) - 24 - bob, 24, 24); } else x.drawImage(a.img[Math.floor(t / 150) % a.img.length], Math.round(a.x) - 12, Math.round(a.y) - 24 - bob, 24, 24); x.restore(); }
   function caption(s) { if (!s) return; var x = S.x; x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(s, CX + 1, 171); x.fillStyle = '#ffd166'; x.fillText(s, CX, 170); x.textAlign = 'left'; }
