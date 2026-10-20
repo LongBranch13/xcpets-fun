@@ -490,7 +490,7 @@
   function breedReview(w, a, b) { if (!ME || !$('confirmBox').classList.contains('on')) return; var short = function (x) { x = String(x || ''); return x.length > 12 ? x.slice(0, 4) + '\u2026' + x.slice(-3) : x; };
     var card = function (p, lab) { if (!p) return ''; var sc = window.PetScore && PetScore.of(w, p);
       return '<div class="brv-pet"><span class="brv-sp" data-brv="' + p.id + '"></span><div><b>' + lab + '</b><div class="brv-nm">#' + p.id + ' ' + esc(p.name || '') + '</div><div>' + esc(V.speciesLabel(p.species)) + ' ' + tierPill(p.tier) + ' <span class="brv-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
-        (p.owner === ME ? '<em class="bk-own me">YOURS</em>' : '<em class="bk-own" title="' + esc(p.owner) + '">OTHER PLAYER ' + esc(short(p.owner)) + '</em>') + '</div></div>'; };
+        (p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner) + '">Other Pets ' + esc(short(p.owner)) + '</em>') + '</div></div>'; };
     $('cfBody').insertAdjacentHTML('afterbegin', '<div class="brv">' + card(w.byId[a], 'Pet 1') + card(w.byId[b], 'Pet 2') + '</div>');
     $('cfBody').querySelectorAll('[data-brv]').forEach(function (s2) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s2.appendChild(c); R.lazy(c, function () { return R.petFrames(w.byId[s2.getAttribute('data-brv')], w); }, true); });
     $('cfYes').textContent = '💞 Confirm breed · sign in XCP Wallet'; $('cfNo').textContent = '← Back'; }
