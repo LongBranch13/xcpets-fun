@@ -12,5 +12,17 @@
       "counterparty_status": "valid",
       "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false at that block). No Wizard egg/pet created; the 690 counts as community food."
     }
+  ],
+  "sign_claims": [
+    {
+      "order": 1,
+      "tag": "pet:sign",
+      "amount_xcpets": 1e-08,
+      "tx_hash": "10607223c5423fa36f310f62a23d97ccd768b417d76a7aae231c5ed1cf11b144",
+      "block": 972253,
+      "address": "bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4",
+      "counterparty_status": "valid",
+      "replay_outcome_at_972254": "rejected: 'unknown pet: tag (community food)' (wizColdOn false). No sign item granted. Honor as a 'Join us' sign claim at launch (if this wallet fed the Wizard)."
+    }
   ]
 }

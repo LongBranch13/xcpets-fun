@@ -112,3 +112,7 @@ One player burned for a Wizard egg before it was ready (the play.html button was
 2. js/v2.js line 191: `var WIZARD_EGG_ON_SALE = false;` → `true` (gates lines 198 and 464).
 3. play.html line 35: remove `style="display:none"` from `#wizEggBtn` (keep `hidden`; JS shows it once wizColdOn is true). Note `.btn` CSS overrides `hidden`, so JS sets style.display too.
 4. Or simply `git revert` the hotfix commit (see brief) except the doc/data files. Bump build id + ?v=, replay SAME, deploy.
+
+## Sign claim to honor at launch + restore the "Join us" sign button (Oct 19 2026 ~11:05 PM CT)
+- Early sign claim: `pet:sign` (1 sat XCPETS) · tx `10607223c5423fa36f310f62a23d97ccd768b417d76a7aae231c5ed1cf11b144` · block 972,253 · `bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4`. Replay: rejected as community food, no sign granted. Honor at launch (data in design/wizard-egg-priority.json `sign_claims`).
+- Restore: js/v2.js line 193 `var WIZARD_SIGN_CLAIM_ON = false;` → `true` (gates lines 201 and 467); play.html line 35 remove `style="display:none"` from `#wizSignBtn`. Or revert the wizard-sign-hide hotfix commit (keep the design/ files). Bump build id + ?v=, replay SAME, deploy.
