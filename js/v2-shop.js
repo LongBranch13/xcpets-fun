@@ -71,9 +71,9 @@
     for (var st = 0; st < 14; st++) px(x, '#fff', 124 + (st * 37) % 72, 18 + (st * 13) % 40, 1, 1);
     [112, 204].forEach(function (cx) { px(x, '#e9e1cf', cx, 10, 6, 84); px(x, '#bfb49c', cx + 2, 12, 1, 80); px(x, '#f5efe0', cx - 2, 8, 10, 3); px(x, '#f5efe0', cx - 2, 92, 10, 3); });
     /* final name (owner 8:01 PM CT): "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers", stacked on two lines */
-    x.textAlign = 'center'; px(x, '#000', 54, 1, 214, 19); px(x, '#c8102e', 52, 0, 214, 18); px(x, '#ffd166', 52, 0, 214, 1); px(x, '#ffd166', 52, 17, 214, 1);
+    x.textAlign = 'center'; px(x, '#000', 33, 1, 256, 19); px(x, '#c8102e', 31, 0, 256, 18); px(x, '#ffd166', 31, 0, 256, 1); px(x, '#ffd166', 31, 17, 256, 1); /* phone pass: banner widened so the long name sits inside it */
     x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('THE XCPETS LAIR OF', 159, 8);
-    x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5); x.textAlign = 'left';
+    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5, 250); x.textAlign = 'left';
     px(x, '#3ddc84', 47, 6, 3, 3); px(x, '#3ddc84', 268, 6, 3, 3); /* laurels */
     S.hits = []; var shelves = [[6, 22], [6, 56], [222, 22], [222, 56]], k = 0;
     shelves.forEach(function (s) { px(x, '#7a4f2a', s[0], s[1] + 18, 92, 4); px(x, '#5a3a1e', s[0], s[1] + 22, 92, 2);
