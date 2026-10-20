@@ -257,3 +257,8 @@ body #pets .pet.card{padding-bottom:44px}
 .sp-board{margin-top:6px;padding:8px 10px;background:#0f0b1c;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;text-align:center}.sp-board.sp-open{border-style:dashed;border-color:#9fe8ff}
 .sp-name{font-family:'Press Start 2P',ui-monospace,monospace;font-size:12px;color:#ffd166;line-height:1.6}.sp-open .sp-name{color:#9fe8ff}.sp-how{margin-top:4px;opacity:.9}.sp-card{color:#ffd166}
 @media (max-width:520px){.sp-name{font-size:10px}}
+
+/* Circus Maximus entrance scene (DRAFT 2026-10-19) */
+.ar-scene{margin:0 0 8px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#120e22;line-height:0}
+.ar-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.ar-help summary{cursor:pointer;color:#9fe8ff}
