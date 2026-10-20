@@ -240,3 +240,36 @@ body #pets .pet.card{padding-bottom:44px}
 @media (max-width:600px){.tb-bal{min-width:0;max-width:100%}#me{word-break:break-all;overflow-wrap:anywhere}a.rulesLink{overflow-wrap:anywhere}}
 .aetog{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}.aetog [data-aetog]{min-width:54px}.aetog [data-aetog].on{background:#1d3a24;border-color:#000;color:#c8f7d8;box-shadow:inset 0 0 0 2px var(--acc2)}
 .aerow{margin:4px 0 8px}.graemode{margin-top:6px!important;border-top:1px dashed #2a3a2e;padding-top:6px}
+
+/* battle-arena (DRAFT 2026-10-19): X Circus Kekimus, 8-bit */
+.arena8{background:repeating-linear-gradient(0deg,#1b1530 0 8px,#1e1836 8px 16px);border:3px solid #ffd166;box-shadow:4px 4px 0 #000}
+.arena8 .ar-h{font-family:'Press Start 2P',ui-monospace,monospace;font-size:11px;color:#ffd166;margin:12px 0 6px;display:block}
+.ar-post{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:2px dashed #ff7a1a;background:#140f24}.ar-post .small.muted{flex-basis:100%}
+.ar-list{display:grid;gap:8px}.ar-row{border:2px solid #4b3f7a;background:#120e22;padding:8px;box-shadow:3px 3px 0 #000}.ar-row.ar-mine{border-color:#3ddc84}
+.ar-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}.ar-x{font-family:'Press Start 2P',monospace;color:#ff5d5d;font-size:12px}
+.ar-pet{min-width:0}.ar-pet b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ar-sub,.ar-st{font-size:12px;opacity:.9}.ar-meta{margin-top:6px;font-size:13px}
+.ar-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ar-res{padding:4px 0;border-bottom:1px dotted #4b3f7a;font-size:13px}
+.ar-lb{width:100%;border-collapse:collapse;font-size:13px}.ar-lb th{font-family:'Press Start 2P',monospace;font-size:8px;color:#9fe8ff;text-align:left;padding:4px}.ar-lb td{padding:3px 4px;border-bottom:1px dotted #4b3f7a}.ar-lb tr.ar-mine td{color:#3ddc84}
+@media (max-width:640px){.ar-cols{grid-template-columns:1fr}.ar-vs{grid-template-columns:1fr;text-align:center}.ar-x{justify-self:center}.ar-post select{max-width:100%}}
+
+/* X Circus Kekimus sponsorship billboard + carved back wall (DRAFT 2026-10-19) */
+.ar-wallwrap{position:relative;margin:-4px 0 10px}.ar-wall{display:block;width:100%;height:auto;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000}
+.sp-board{margin-top:6px;padding:8px 10px;background:#0f0b1c;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;text-align:center}.sp-board.sp-open{border-style:dashed;border-color:#9fe8ff}
+.sp-name{font-family:'Press Start 2P',ui-monospace,monospace;font-size:12px;color:#ffd166;line-height:1.6}.sp-open .sp-name{color:#9fe8ff}.sp-how{margin-top:4px;opacity:.9}.sp-card{color:#ffd166}
+@media (max-width:520px){.sp-name{font-size:10px}}
+
+/* X Circus Kekimus entrance scene (DRAFT 2026-10-19) */
+.ar-scene{position:relative;margin:0 0 8px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#120e22;line-height:0}
+.ar-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.ar-help summary{cursor:pointer;color:#9fe8ff}
+
+/* betting pool PREVIEW-ONLY mock (2026-10-19) */
+.ar-pool{position:relative;margin-top:14px;padding:10px;border:3px dashed #ff5d5d;background:repeating-linear-gradient(45deg,#1a1030 0 10px,#1d1236 10px 20px);opacity:.95}
+.ar-pool-tag{position:absolute;top:-11px;right:8px;background:#ff5d5d;color:#140f24;font-family:'Press Start 2P',monospace;font-size:9px;padding:3px 6px;box-shadow:2px 2px 0 #000}
+.ar-pool-sides{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.ar-pool-side{flex:1 1 140px;border:2px solid #4b3f7a;padding:6px;background:#120e22;cursor:pointer}
+.ar-pool-out{margin:8px 0;color:#ffd166}.ar-pool .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* arena extras 2026-10-19 */
+.ar-qmsg{margin-left:6px;color:#ffd166}.ar-flash{animation:arFl .4s steps(2) 4}@keyframes arFl{50%{filter:brightness(1.6);transform:translateY(-2px)}}@media (prefers-reduced-motion:reduce){.ar-flash{animation:none;outline:3px solid #ffd166}}.ar-hist{margin:10px 0}.ar-hist .pk-key small.sp-card{color:#ffd166;font-size:9px}
+
+.ar-scene .ar-ann-sand{min-height:32px;position:absolute;right:6px;bottom:6px;z-index:2;line-height:1.2;font-size:11px;padding:3px 7px;background:rgba(18,14,34,.85);color:#ffd166;border:2px solid #000;box-shadow:2px 2px 0 #000}@media (max-width:500px){.ar-scene .ar-ann-sand{font-size:10px;padding:2px 5px;right:4px;bottom:auto;top:4px;min-height:26px}}
