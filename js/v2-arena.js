@@ -12,8 +12,8 @@
   function score(w, p) { var s = window.PetScore && PetScore.of(w, p); return s ? s.score : null; }
   function left(n) { return n <= 0 ? 'expiring' : n >= 12 ? '~' + Math.round(n / 6) + ' h (' + n + ' blk)' : '~' + n * 10 + ' min (' + n + ' blk)'; }
   function lbl(w, id) { var p = w.byId[id]; return (p ? esc(p.name) + ' ' : '') + '<span class="muted">#' + id + '</span>'; }
-  function card(w, p) { if (!p) return '<div class="ar-pet">?</div>'; var s = p.stats || {}, sc = score(w, p);
-    return '<div class="ar-pet"><b>' + lbl(w, p.id) + '</b><div class="ar-sub">' + esc(p.species) + ' · ' + esc(p.stageName || '') + (p.blackEye ? ' · 🤕' : '') + '</div>' +
+  function card(w, p, o) { if (!p) return '<div class="ar-pet">?</div>'; var s = p.stats || {}, sc = score(w, p), FT = window.V2FightTag; /* fight-owner-labels */
+    return '<div class="ar-pet' + (FT && FT.mine(p) ? ' fme' : '') + '">' + (FT ? FT.html(p, o) + '<br>' : '') + '<b>' + lbl(w, p.id) + '</b><div class="ar-sub">' + esc(p.species) + ' · ' + esc(p.stageName || '') + (p.blackEye ? ' · 🤕' : '') + '</div>' +
       '<div class="ar-st">⚡' + pow(p) + ' <span title="Vigor/Spark/Grit/Zoom/Luck">V' + (s.vigor | 0) + ' S' + (s.spark | 0) + ' G' + (s.grit | 0) + ' Z' + (s.zoom | 0) + ' L' + (s.luck | 0) + '</span>' + (sc != null ? ' · ⭐' + sc : '') + '</div></div>'; }
   /** pure data, testable in Node: open challenges, recent results, leaderboard */
   function data(w, tip) { tip = tip || w.tip || 0;
@@ -33,7 +33,7 @@
     var h = '<div class="ar-scene"><canvas id="arScene" width="320" height="180" role="img" aria-label="X Circus Kekimus arena: crowd in the stands, a tunnel, and ' + (CH ? 'the champion statue of ' + esc(CH.p.name) + ' #' + CH.p.id + ' (' + CH.streak + '-win streak)' : 'an empty plinth awaiting a champion') + '"></canvas><button type="button" class="q ar-ann ar-ann-sand" id="arVoice" aria-pressed="' + (window.V2Announcer && V2Announcer.voiceOn() ? 'true' : 'false') + '">' + (window.V2Announcer && V2Announcer.voiceOn() ? '🔊' : '🔇') + ' Announcer</button></div>' + (SP ? '<div class="ar-wallwrap">' + SP.billboard(st || SP.compute([], tip)) + '</div>' : '') + '<div id="arChalSlot"></div><div class="ar-post ar-post-help">' +
       '<div class="small ar-hint">Juvenile+ pets · 1 battle per pet per day · winner takes a gear piece</div><details class="small muted ar-help"><summary>How fights work</summary>Burns <code>pet:fight:YOURS:THEIRS</code>, ' + fmt(V.COSTS.fight) + ' XCPETS. The owner of the other pet has ' + V.FIGHT_WINDOW + ' blocks to accept (' + fmt(V.COSTS.accept) + '). Loser hands over one gear piece and gets a black eye. You sign in your wallet.</details></div>';
     h += '<h3 class="ar-h">📯 Open challenges (' + d.open.length + ')</h3>' + (d.open.length ? '<div class="ar-list">' + d.open.map(function (x) { var f = x.f, B = w.byId[f.b], mineB = B && B.owner === ME;
-      return '<div class="ar-row' + (mineB ? ' ar-mine' : '') + '"><div class="ar-vs">' + card(w, w.byId[f.a]) + '<span class="ar-x">VS</span>' + card(w, B) + '</div><div class="ar-meta">fight ' + f.id + ' · ⏳ ' + left(x.left) + ' · accept by block ' + fmt(f.expires) +
+      return '<div class="ar-row' + (mineB ? ' ar-mine' : '') + '"><div class="ar-vs">' + card(w, w.byId[f.a], B) + '<span class="ar-x">VS</span>' + card(w, B, w.byId[f.a]) + '</div><div class="ar-meta">fight ' + f.id + ' · ⏳ ' + left(x.left) + ' · accept by block ' + fmt(f.expires) +
         (mineB ? ' <button type="button" class="btn ico-flame" data-aracc="' + f.id + '">Accept · ' + fmt(V.COSTS.accept) + '</button>' : ' <span class="muted small">waiting for #' + f.b + '’s owner</span>') + '</div></div>'; }).join('') + '</div>'
       : '<p class="muted small">No open challenges right now. Post one above.</p>');
     h += '<div class="ar-hist"><h3 class="ar-h">📜 Fight history <span class="muted small">· tap to replay</span></h3><div id="arHist"></div></div>';
