@@ -57,6 +57,12 @@
     f(sz); if (wd(name + tail) > PLATE_IN) { sz = 4; f(sz); }
     var t = name + tail; if (wd(t) > PLATE_IN) { var n = name; while (n.length > 1 && wd(n + '…' + tail) > PLATE_IN) n = n.slice(0, -1); t = n + '…' + tail; }
     x.textAlign = 'left'; x.fillStyle = '#3a2a10'; x.fillText(t, Math.round(CX - wd(t) / 2), y); x.textAlign = 'center'; }
+  /* bugpass-fixes 2026-10-19: front-page thumbnail only (mount opt {thumb:true}). When the card shows the 320px scene SMALLER than 1 art px per
+   * device px (desktop DPR 1, ~194 px wide) the 4-5 px plate lines can't be sharp at any integer scale, so the plate shows ONE bigger line
+   * (#ID, or OPEN with no champion). play.html never passes thumb, so the real arena is unchanged. */
+  function small() { if (!S.thumb || !S.c) return false; var r = S.c.getBoundingClientRect(); return r.width > 0 && r.width * (window.devicePixelRatio || 1) < W - 0.5; }
+  function bigPlate(x, t, y) { var sz = 8; x.font = sz + 'px "Press Start 2P", monospace'; while (sz > 5 && x.measureText(t).width > PLATE_IN) { sz--; x.font = sz + 'px "Press Start 2P", monospace'; }
+    x.textAlign = 'left'; x.fillStyle = '#3a2a10'; x.fillText(t, Math.round(CX - Math.ceil(x.measureText(t).width) / 2), y); x.textAlign = 'center'; }
   function plinth() { var x = S.x, t = S.tNow || 0, fl = reduced() ? 0 : Math.floor(t / 160) % 3, top = 100; /* sits higher than the old plinth so the fighters' HP bars stay clear */
     function r(c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
     r('#0a0812', CX - 39, top + 25, 78, 6); r('#0a0812', CX - 35, top - 1, 70, 27); /* outline */
@@ -67,8 +73,8 @@
     x.textAlign = 'center'; x.textBaseline = 'alphabetic';
     if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { x.drawImage(S.statueSil, CX - 16 + o[0], top - 32 + o[1], 32, 32); }); } x.drawImage(S.statue, CX - 16, top - 32, 32, 32);
       x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, top - 23 + (lv === 2 ? -1 : 0), 2, 2); } /* laurel */
-      plateText(x, String(S.champ.p.name || 'Pet'), ' #' + S.champ.p.id, top + 12); plateText(x, S.champ.streak + ' WIN STREAK', '', top + 18); if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
-    else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
+      if (small()) bigPlate(x, '#' + S.champ.p.id, top + 17); else { plateText(x, String(S.champ.p.name || 'Pet'), ' #' + S.champ.p.id, top + 12); plateText(x, S.champ.streak + ' WIN STREAK', '', top + 18); } if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
+    else if (small()) bigPlate(x, 'OPEN', top + 17); else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
     x.textAlign = 'left'; if (window.V2ArenaFun) V2ArenaFun.beltCase(x, !(S.champ && S.champ.streak >= 3)); }
   function actor(a, t) { var x = S.x, bob = Math.floor(t / 120) % 2; x.save(); if (a.flip) { x.translate(Math.round(a.x) + 12, 0); x.scale(-1, 1); x.drawImage(a.img[Math.floor(t / 150) % a.img.length], -12, Math.round(a.y) - 24 - bob, 24, 24); } else x.drawImage(a.img[Math.floor(t / 150) % a.img.length], Math.round(a.x) - 12, Math.round(a.y) - 24 - bob, 24, 24); x.restore(); }
   function caption(s) { if (!s) return; var x = S.x; x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(s, CX + 1, 171); x.fillStyle = '#ffd166'; x.fillText(s, CX, 170); x.textAlign = 'left'; }
@@ -99,7 +105,7 @@
   function isVisible() { if (!S.c || !S.c.getBoundingClientRect) return false; var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 800); }
   function kick() { if (!S.raf) S.raf = requestAnimationFrame(frame); }
   /** mount(canvas, w): (re)build the scene for world w */
-  function mount(c, w) { if (!c) return; var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
+  function mount(c, w, opt) { if (!c) return; S.thumb = !!(opt && opt.thumb); var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
     S.c = c; S.x = c.getContext('2d'); S.w = w; if (S.key !== key) { S.key = key; S.champ = champ; S.statue = champ ? toCanvas((frames(champ.p, w) || [])[0], true) : null; S.statueSil = S.statue ? silhouette(S.statue) : null; }
     fit(); if (!mount.rs) { mount.rs = 1; var rz = function () { var k0 = S.k; fit(); if (S.k !== k0) { if (reduced() || !S.raf) frame(performance.now()); } }; window.addEventListener('resize', rz); if (window.matchMedia) { try { window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)').addEventListener('change', rz); } catch (e) { } } }
     if (!S.wall && window.V2Sponsor && V2Sponsor.wall) { S.wall = document.createElement('canvas'); S.wall.width = W; S.wall.height = 26; V2Sponsor.wall(S.wall, V2Sponsor.WALL_TEXT); }

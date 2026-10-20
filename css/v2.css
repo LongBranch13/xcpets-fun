@@ -384,3 +384,8 @@ body #pets .pet.card{padding-bottom:44px}
 /* motel-hint-move 2026-10-19 (owner 9:36 PM CT): the motel 'Pick two pets' hint sits UNDER the scene so it never covers the Gooby's No-Tail Motel sign; same button + X dismiss */
 .motel8 .motel-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25}
 .motel8 .motel-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
+
+/* bugpass-fixes 2026-10-19: the Lair 'Tap a piece in your stash' hint sits UNDER the scene (same as motel-hint-move) so it never covers the Lair sign; same button + X dismiss */
+.shop8 .shop-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25}
+.shop8 .shop-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
+.shop8 .shop-scene .shop-more{display:block;line-height:1.4;padding:0 8px 6px;background:#140f0a}
