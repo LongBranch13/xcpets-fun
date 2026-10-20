@@ -16,9 +16,11 @@
     Object.keys(st).forEach(function (id) { var s = st[id], p = w.byId[id]; if (!p || p.dead || p.released || p.community || !s.n) return;
       if (!best || s.n > best.streak || (s.n === best.streak && (s.at < best.block || (s.at === best.block && s.fid < best.fid)))) best = { p: p, streak: s.n, block: s.at, fid: s.fid }; });
     return best; }
-  function frames(p, w) { try { return window.V2Render.petFrames(p, w); } catch (e) { return null; } }
+  /* sprite without its card background: render on a key colour (same trick as the hunger look) and key it out in toCanvas */
+  function frames(p, w) { try { var mp = Object.assign({}, p, { blackEye: false, art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }); return window.V2Render.petFrames(mp, w, { noHunger: true }); } catch (e) { return null; } }
   function toCanvas(img, tint) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!img) return c; var d = new ImageData(new Uint8ClampedArray(img.data), 32, 32);
-    if (tint) for (var i = 0; i < d.data.length; i += 4) { var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; d.data[i] = Math.min(255, 70 + g * 0.75); d.data[i + 1] = Math.min(255, 52 + g * 0.55); d.data[i + 2] = Math.min(255, 30 + g * 0.3); }
+    for (var j = 0; j < d.data.length; j += 4) if (d.data[j] === 255 && d.data[j + 1] === 0 && d.data[j + 2] === 254) d.data[j + 3] = 0;
+    if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; d.data[i] = Math.min(255, 70 + g * 0.75); d.data[i + 1] = Math.min(255, 52 + g * 0.55); d.data[i + 2] = Math.min(255, 30 + g * 0.3); }
     c.getContext('2d').putImageData(d, 0, 0); return c; }
   var S = { c: null, x: null, w: null, champ: null, statue: null, crowd: null, raf: 0, t0: 0, mode: 'idle', actors: [], label: '', wall: null };
   function rnd(i) { var x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
@@ -31,13 +33,17 @@
         x.fillStyle = ['#ffd166', '#ff7a1a', '#3ddc84', '#9fe8ff', '#ff5d5d', '#e8f5ec'][Math.floor(rnd(seed + 7) * 6)]; x.fillRect(cx, y + 3 - bob, 4, 5); x.fillStyle = '#f2c79b'; x.fillRect(cx + 1, y + 1 - bob, 2, 2); } }
     x.fillStyle = '#0a0812'; x.fillRect(TUN.x - 12, 50, 28, 28); x.fillRect(TUN.x - 9, 47, 22, 3); x.fillRect(TUN.x - 6, 45, 16, 2); /* vomitorium arch */
     x.fillStyle = '#6b5a8f'; x.fillRect(TUN.x - 14, 46, 2, 32); x.fillRect(TUN.x + 16, 46, 2, 32); x.fillRect(TUN.x - 10, 44, 24, 2);
+    /* cartoon Roman touches: marble columns, red-and-gold pennants that flap, a laurel arch over the tunnel */
+    [6, 70, 250, 314].forEach(function (cx0) { x.fillStyle = '#e9e1cf'; x.fillRect(cx0 - 3, 2, 6, 24); x.fillStyle = '#bfb49c'; x.fillRect(cx0 - 1, 4, 1, 20); x.fillRect(cx0 + 1, 4, 1, 20); x.fillStyle = '#f5efe0'; x.fillRect(cx0 - 5, 0, 10, 3); x.fillRect(cx0 - 5, 24, 10, 2); });
+    for (var pn = 0; pn < 6; pn++) { var px0 = 28 + pn * 52, fl = Math.floor(t / 250 + pn) % 2; x.fillStyle = '#7a5a2a'; x.fillRect(px0, 26, 1, 8); x.fillStyle = pn % 2 ? '#c8102e' : '#ffd166'; x.fillRect(px0 + 1, 26, 7 + fl, 3); x.fillRect(px0 + 1, 29, 4 + fl, 2); }
+    x.fillStyle = '#3ddc84'; for (var lf = 0; lf < 7; lf++) { x.fillRect(TUN.x - 10 + lf * 3, 42 - (lf === 3 ? 1 : 0), 2, 2); }
     x.fillStyle = '#5a4428'; x.fillRect(0, 72, W, H - 72);
     x.fillStyle = '#c9a36b'; for (var yy = 78; yy < H - 2; yy++) { var dy = (yy - CY) / (RY + 12), half = Math.sqrt(Math.max(0, 1 - dy * dy)) * (RX + 14); x.fillRect(Math.round(CX - half), yy, Math.round(half * 2), 1); }
     x.fillStyle = '#7a8a4a'; for (yy = 104; yy < 154; yy++) { dy = (yy - CY) / (RY - 12); half = Math.sqrt(Math.max(0, 1 - dy * dy)) * (RX - 34); if (half > 0) x.fillRect(Math.round(CX - half), yy, Math.round(half * 2), 1); }
     plinth(); }
   function plinth() { var x = S.x, px = CX - 22, py = 118; x.fillStyle = '#4b4560'; x.fillRect(px, py, 44, 14); x.fillStyle = '#6d6788'; x.fillRect(px, py, 44, 2); x.fillStyle = '#3a3550'; x.fillRect(px - 3, py + 14, 50, 4);
     x.font = '5px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#ffd166';
-    if (S.champ) { x.drawImage(S.statue, CX - 16, py - 32, 32, 32); x.fillText(String(S.champ.p.name || 'Pet').slice(0, 10) + ' #' + S.champ.p.id, CX, py + 7); x.fillStyle = '#e8f5ec'; x.fillText(S.champ.streak + ' WIN STREAK', CX, py + 13); }
+    if (S.champ) { x.drawImage(S.statue, CX - 16, py - 32, 32, 32); x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, py - 23 + (lv === 2 ? -1 : 0), 2, 2); } x.fillStyle = '#ffd166'; x.fillText(String(S.champ.p.name || 'Pet').slice(0, 10) + ' #' + S.champ.p.id, CX, py + 7); x.fillStyle = '#e8f5ec'; x.fillText(S.champ.streak + ' WIN STREAK', CX, py + 13); }
     else { x.fillStyle = '#9fe8ff'; x.fillText('AWAITING', CX, py + 7); x.fillText('A CHAMPION', CX, py + 13); }
     x.textAlign = 'left'; }
   function actor(a, t) { var x = S.x, bob = Math.floor(t / 120) % 2; x.save(); if (a.flip) { x.translate(Math.round(a.x) + 12, 0); x.scale(-1, 1); x.drawImage(a.img[Math.floor(t / 150) % a.img.length], -12, Math.round(a.y) - 24 - bob, 24, 24); } else x.drawImage(a.img[Math.floor(t / 150) % a.img.length], Math.round(a.x) - 12, Math.round(a.y) - 24 - bob, 24, 24); x.restore(); }
