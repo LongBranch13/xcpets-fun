@@ -28,7 +28,7 @@
       '<div class="pk-chips">' + (opt.noWho ? '' : chip('who', 'mine', st.who === 'mine', (opt.labels && opt.labels.mine) || 'Mine') + chip('who', 'others', st.who === 'others', (opt.labels && opt.labels.others) || 'Others')) + chip('hyb', '1', st.hyb, '🧬 Hybrid') +
       TIERS.map(function (t, i) { return chip('tier', i, st.tier === i, t); }).join('') + (opt.noWho ? '' : chip('mf', '1', st.mineFirst, '⬆ ' + ((opt.labels && opt.labels.mineFirst) || 'Mine first'))) + '</div>' +
       '<div class="pk-row"><button type="button" class="pk-arr" data-p="-1" aria-label="Previous page"' + (st.page ? '' : ' disabled') + '>◀</button><div class="pk-keys">' +
-      (view.map(function (r) { return '<button type="button" class="pk-key' + (opt.selected === r.key ? ' sel' : '') + '" data-key="' + esc(r.key) + '"' + '>' + r.html(r) + '</button>'; }).join('') || (opt.empty ? opt.empty(st) : '') || '<span class="pk-none">No matches</span>') +
+      (view.map(function (r) { return '<button type="button" class="pk-key' + (opt.selected === r.key ? ' sel' : '') + '" data-key="' + esc(r.key) + '"' + '>' + r.html(r, st.sort) + '</button>'; }).join('') || (opt.empty ? opt.empty(st) : '') || '<span class="pk-none">No matches</span>') +
       '</div><button type="button" class="pk-arr" data-p="1" aria-label="Next page"' + (st.page < pages - 1 ? '' : ' disabled') + '>▶</button></div><div class="pk-pg">' + (st.page + 1) + ' / ' + pages + '</div></div>';
     var re = function () { mount(el, opt); }, q = el.querySelector('.pk-q');
     q.oninput = function () { st.q = q.value; st.page = 0; var pos = q.selectionStart; re(); var q2 = el.querySelector('.pk-q'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) { } };
@@ -40,7 +40,9 @@
     var row = el.querySelector('.pk-keys'), x0 = null; row.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
     row.addEventListener('touchend', function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { st.page = Math.max(0, Math.min(pages - 1, st.page + (dx < 0 ? 1 : -1))); re(); } }, { passive: true });
     return { matches: L.length, pages: pages }; }
-  function petChip(w) { return function (r) { var p = r.pets[0]; return '<b>#' + p.id + '</b><span>' + esc(String(p.name || '').slice(0, 10)) + '</span><small>' + esc(TIERS[p.tier] || '') + ' · ⚡' + pow(p) + '</small>'; }; }
+  /* fix-display-mismatch (Oct 20 2026, display only): the chip number follows the sort (Pet Score / Rarity -> ⭐ score, Power / Newest -> ⚡ power) */
+  function stat(w, p, sort) { return (sort === 'score' || sort === 'rarity') && window.PetScore ? '⭐' + score(w, p) : '⚡' + pow(p); }
+  function petChip(w) { return function (r, sort) { var p = r.pets[0]; return '<b>#' + p.id + '</b><span>' + esc(String(p.name || '').slice(0, 10)) + '</span><small>' + esc(TIERS[p.tier] || '') + ' · ' + stat(w, p, sort) + '</small>'; }; }
   var CSS = '.pk{border:2px solid #4b3f7a;background:#120e22;padding:6px;margin:6px 0}.pk-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pk-q{flex:1 1 140px;min-width:0}.pk-top select{max-width:46%}' +
     '.pk-n{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166}.pk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.pk-chip{font-size:12px;padding:3px 8px;border:2px solid #4b3f7a;background:#1b1530;color:#eee;border-radius:0;cursor:pointer}' +
     '.pk-chip.on{background:#ffd166;color:#140f24;border-color:#000}.pk-row{display:flex;align-items:stretch;gap:4px}.pk-arr{flex:0 0 30px;font-size:14px;background:#2b2350;color:#ffd166;border:2px solid #000;cursor:pointer}.pk-arr[disabled]{opacity:.35}' +
@@ -48,5 +50,5 @@
     '.pk-key b{font-family:"Press Start 2P",monospace;font-size:9px}.pk-key span{font-size:12px;color:#eee;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-key small{font-size:10px;color:#9fe8ff}.pk-key.sel{background:#ffd166;color:#140f24}.pk-key.sel span,.pk-key.sel small{color:#140f24}' +
     '.pk-dir{font-size:12px;padding:3px 8px;border:2px solid #4b3f7a;background:#1b1530;color:#ffd166;border-radius:0;cursor:pointer;white-space:nowrap}.pk-key.no{opacity:.6;cursor:not-allowed}.pk-key.no:hover{transform:none}.pk-none{grid-column:1/-1;text-align:center;color:#9fe8ff;padding:8px}.pk-pg{text-align:center;font-size:11px;color:#9fe8ff;margin-top:2px}@media (max-width:520px){.pk-keys{grid-template-columns:repeat(2,1fr)}}';
   if (typeof document !== 'undefined' && !document.getElementById('pkCss')) { var s = document.createElement('style'); s.id = 'pkCss'; s.textContent = CSS; (document.head || document.documentElement).appendChild(s); }
-  window.V2Picker = { mount: mount, petChip: petChip, pow: pow, isHyb: isHyb };
+  window.V2Picker = { mount: mount, petChip: petChip, stat: stat, pow: pow, isHyb: isHyb };
 })();
