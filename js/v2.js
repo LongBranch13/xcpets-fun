@@ -200,10 +200,11 @@
     var wzOn = V.wizColdOn && V.wizColdOn(w, (S.tip || 0) + 1), wm = w.wizardMythic; if ($('wizEggBtn')) { $('wizEggBtn').hidden = !(WIZARD_EGG_ON_SALE && wzOn); $('wizEggBtn').style.display = $('wizEggBtn').hidden ? 'none' : ''; }
     if ($('wizSignBtn')) { $('wizSignBtn').hidden = !(WIZARD_SIGN_CLAIM_ON && wzOn && ME && wm && wm.by && wm.by[ME] > 0 && !(wm.claimed && wm.claimed[ME])); $('wizSignBtn').style.display = $('wizSignBtn').hidden ? 'none' : ''; }
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total), then the next community pet (same .commsprite slot as live)
-    var wiz = !!c.returned, fr;
-    fr = R.communityFrames(w); /* community gear roll: the community pet (Bitcoin Wizard, or Nakamoto before) wears its community-roll gear (display only) */
+    var wiz = !!c.returned, fr, gap = R.communityGap && R.communityGap(w);
+    R.showEl($('communityPanel'), !gap); /* no community pet (Cold Storage gap, owner rule Oct 19 2026): the whole panel is simply absent */
+    fr = gap ? null : R.communityFrames(w); /* community gear roll: the community pet (Bitcoin Wizard, or Nakamoto before) wears its community-roll gear (display only) */
     if (!commAnim) { var cv = document.createElement('canvas'); cv.width = cv.height = 32; cv.className = 'commsprite'; $('community').parentNode.insertBefore(cv, $('community')); commAnim = { c: cv }; }
-    R.animate(commAnim.c, fr); commAnim.fr = fr;
+    if (fr) R.animate(commAnim.c, fr); commAnim.fr = fr;
     var T = V.WIZARD_THRESHOLDS, nx = wiz && c.wizardStage < 5 ? T[c.wizardStage + 1] : null, rp = V.returnProgress(c.burned);
     $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(c.burned)) + ' <span class="asset">XCPETS</span> burned' +
       '<div class="small muted" id="cWearing">' + esc(R.communityWearing ? R.communityWearing(w) : 'Gear: ' + R.communityGearText(w)) + '</div>';
@@ -786,7 +787,7 @@
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
   $('introSkip').onclick = function () { close('intro'); };
-  $('replayIntro').onclick = function (e) { e.preventDefault(); var fr = commAnim && commAnim.fr ? commAnim.fr : R.communityFrames(world()); R.animate($('introCv'), fr); /* current community pet (Nakamoto before The Return: no Wizard spoiler) */ $('introText').textContent = 'Welcome to XCPETS v2'; open('intro'); setTimeout(function () { close('intro'); }, 2500); };
+  $('replayIntro').onclick = function (e) { e.preventDefault(); var iw = world(), gp = R.communityGap && R.communityGap(iw), fr = gp ? null : commAnim && commAnim.fr ? commAnim.fr : R.communityFrames(iw); R.showEl($('introCv'), !gp); if (fr) R.animate($('introCv'), fr); /* current community pet (Nakamoto before The Return: no Wizard spoiler) */ $('introText').textContent = 'Welcome to XCPETS v2'; open('intro'); setTimeout(function () { close('intro'); }, 2500); };
   $('wdisconnect').onclick = function () { toast('To view any address read-only, use 👀 View pets by address (or open play.html?addr=YOUR_ADDRESS).'); };
   $('gWallet').onclick = function () { var b = $('gWallet'); if (!window.xcpwallet) { toast('XCP Wallet not found. Install the XCP Wallet Chrome extension, then refresh this page to connect.', 9000); return; }
     b.disabled = true; window.xcpwallet.request({ method: 'xcp_requestAccounts' }).then(function (r) { var a = (r && r.accounts && r.accounts[0]) || (Array.isArray(r) ? r[0] : null); b.disabled = false;
