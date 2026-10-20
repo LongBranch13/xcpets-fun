@@ -167,7 +167,7 @@
       (cur ? '<div class="sc-wearing">WEARING NOW: ' + esc(cur.label || '') + '</div>' : '<div class="sc-wearing empty">' + esc(lword(sl)) + ' slot empty</div>') + '</div>'; }
   /* sticky-feed-bar 2026-10-19 (owner 9:27 PM CT 'can't see my pet'): the Lair pet shown big next to its six slots (worn piece / empty / locked). Display only. */
   function hero(w, P) { var V = window.V2Rules, worn = V.wornOf(w, P.id), open = P.openSlots || [];
-    var rows = SLOT_ORDER.map(function (sl) { var x = worn.filter(function (q) { return q.slot === sl; })[0], on = open.indexOf(sl) >= 0;
+    var rows = SLOT_ORDER.concat(P.species === 'wizard' ? ['weapon'] : []).map(function (sl) { var x = worn.filter(function (q) { return q.slot === sl; })[0], on = V.slotOpen ? V.slotOpen(P, sl) : open.indexOf(sl) >= 0; /* + Wizard-only Staff slot (Bitcoin staff), Wizards only */
       return '<li class="' + (x ? 'on' : on ? 'open' : 'lock') + '"><span>' + esc(lword(sl)) + '</span> ' + (x ? esc(x.label || '') : on ? 'empty' : '🔒') + '</li>'; }).join('');
     return '<div class="sc-hero"><div class="sc-hp"><canvas class="sc-hc" width="32" height="32"></canvas><b>#' + P.id + ' ' + esc(String(P.name || '')) + '</b><small>' + esc(V.speciesLabel(P.species)) + '</small></div><ul class="sc-slots">' + rows + '</ul></div>'; }
   function paintHero(el, w, P) { put(el.querySelector('.sc-hc'), framesFor(w, P, window.V2Rules.wornOf(w, P.id).map(function (x) { return x.item; }))); }
