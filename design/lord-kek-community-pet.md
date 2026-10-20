@@ -114,12 +114,36 @@ The owner picks one before `ACTIVATE_KEK_CARD_BLOCK` is set.
 - He only wears community rolls made from his gate block on. The Wizard's old rolls stay in gearLog but he doesn't wear them.
 - The burn that sent the Wizard to Mythic, including any amount left over, stays the Wizard's. Kek's count starts with the next burn.
 - The Mythic trigger fires only at or after his gate block. It records `w.kekMythic`.
-- Hybrid art: a Kek parent counts as Pepe for the body, colour and feature. Names are "Kek" + the end of the other parent's name (Kekpe) when Kek comes first, or the start of the other's name + "kek" (Pekek).
 - After his Cold Storage the placeholder reads "Community pet #4 coming soon".
+
+## Owner decisions, round 3 (Oct 20 2026 ~6:12 PM CT), FINAL
+1. **LORDKEK card, built gated off (`ACTIVATE_KEK_CARD_BLOCK = null`):**
+   - Every wallet that fed Kek gets one free claim with `pet:kekcard` or `pet:kekcard:ID` (1 sat is enough). The claim opens only once Kek is in Cold Storage AND the card gate is reached. One claim per wallet. The card goes to the wallet's stash, or is worn at once if the tag names your own player Kek with an open Grip slot.
+   - After that, 1 in 69 Grip rolls of a player Kek (`pet:roll`) give the card, using the salt `XCPETS:v2:kekcard`.
+   - Only a player Kek can wear it. Hybrids can't, an owner-rule exception to the usual "hybrids wear both parents' signatures" rule.
+   - The card is a lookup-only item record, so it is never in a roll pool. Before the gate, a `pet:kekcard` burn gets exactly the old unknown-tag rejection.
+2. Kek wears only community gear rolled after his launch (confirmed).
+3. The Wizard's Mythic burn, including any leftover, stays the Wizard's (confirmed).
+4. **Hybrids go both ways, the same system as every species.**
+   - 'kek' is a full hybrid root. hybridPlan picks the body from either parent with the same 50/50 draw. The colour and the signature feature come from the other parent. Three-way mixes shuffle all three.
+   - Names exist in both orders for all 13 species plus the Wizard: kek:X = "Kek" + end (Kekpe, Kekge, Kekmoto…), X:kek = start + "kek" (Pekek, Dogkek, Nakek…), wizard:kek = Wikek / kek:wizard = Kekzard. 'kek' is added to the H3 three-way parts as Kek / kek / kek.
+   - Kek as the body: the KekSprite body with its nemes, recoloured from the colour parent (skin from its body, nemes stripes from its accent, gold from its belly).
+   - Kek as the colour: his canon (green / red / gold) recolours the other body.
+   - Kek as the feature: his nemes top (head) or lappets (side).
+   - The earlier "Pepe body only" mapping is removed.
+   - Samples: previews/lord-kek-v3/hybrid-samples-both-ways.png.
+
+## One-way hybrid audit (Oct 20 2026)
+- **main:** all 13 species have names in both orders (156/156, HYBRID_NAMES). The body is picked from either root by hybridPlan (`shape = r[R() % 2]`), and three-way mixes are shuffled. No species is one-way.
+  - Note: the legacy Nakamoto exclusion at js/v2-rules.js `hybridSpecies` (blocks 971,501–971,673) blocked Nakamoto hybrids in both directions. It did not make them one-way, and it has been off since 971,674.
+  - The Wizard cannot breed on main (WIZ_CAN_BREED false), so he has no hybrids at all.
+- **wizard-hybrids branch:** names in both orders for all 14 species (lines 807–808). Same hybridPlan. renderRoot / WIZ_SP draw the Wizard as body or colour. No species is one-way.
+  - Note: the Wizard as a feature always uses his staff (in both directions).
+- **Merge note:** wizard-hybrids and lord-kek both add a `renderRoot` and extend H3_ORDER. They need a hand merge (one renderRoot that handles both 'wizard' and 'kek').
 
 ## What is built on branch `lord-kek` (all OFF; replay SAME)
 - js/kek-sprite.js (KekSprite v2: all stages, community blue/gold / player red/gold, built-in nemes, gear layer with Headwear ignored, LORDKEK card, Mythic wings + rim). Previews: previews/lord-kek-v2/ (v1 kept in previews/lord-kek/). It is loaded on the 8 pages that load wizard-sprite.js, and is unused while the gate is off.
-- js/v2-rules.js:
+- js/v2-rules.js (round 3 adds the card claim/drop and Kek as a full two-way hybrid root):
   - Gate and settings: `ACTIVATE_KEK_BLOCK` (null), `KEK_FROM_BLOCK` 972325, `KEK_CAN_BREED`, `ACTIVATE_KEK_CARD_BLOCK` (null), `KEK_CARD_ITEM`.
   - Tracking and trigger: `kekTrack` (care + Mythic trigger, which does nothing while the gate is null).
   - Activation: `cm.current/nextPet = 'kek'` once the gate is reached.

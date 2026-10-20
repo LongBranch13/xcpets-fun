@@ -100,7 +100,7 @@
     return o;
   }
   /** render(stage, frame, bg, gear?, opts?) -> { width, height, data: [RGBA...] }; opts.community = lapis community palette */
-  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear, opts), d = [], Bg = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL;
+  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear, opts), d = [], Bg = hexRgb(bg || '#142018'), P = Object.assign({}, PAL, opts && opts.community ? PAL_COMMUNITY : {}, (opts && opts.pal) || {});
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : Bg; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
   return { KEK_CARD: KEK_CARD, STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, NEMES: NEMES, render: render, frames: frames, draw: draw };
