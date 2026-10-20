@@ -119,6 +119,7 @@
       if (q.key && !(S.state === 'open')) keyPx(x, q.x + 6, q.y - 8); if (q.keyFly != null) { var kf = q.keyFly; keyPx(x, Math.round(lerp(128, q.x + 6, kf)), Math.round(lerp(94, q.y - 8, kf) - Math.sin(kf * Math.PI) * 14)); }
       if (q.talk) talk = [q.talk, q.x - 10, q.y - 34]; if (q.gooby) gline = q.gooby; });
     if (talk) bubble(x, talk[0], talk[1], talk[2]); bubble(x, gline || S.bubble || LINES[S.line % LINES.length], 112, 40);
+    if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
     if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 3600) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
@@ -128,11 +129,30 @@
       st = kid && S.fresh === pair ? 'open' : req ? 'half' : inc ? 'invite' : 'both'; }
     else if (A || B) st = 'one';
     return { A: A, B: B, kid: kid, st: st }; }
+  /* breed-picker-fix: one chip per pet = #ID name, owner badge (YOURS / OTHER PLAYER bc1q…j6n), species, rarity pill (site .pill.tier colors), ⭐ Pet Score */
+  function shortA(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 4) + '\u2026' + a.slice(-3) : a; }
+  function ownerBadge(p, ME) { return p.owner && p.owner === ME ? '<em class="bk-own me">YOURS</em>' : '<em class="bk-own" title="' + esc(p.owner || '') + '">OTHER PLAYER<br>' + esc(shortA(p.owner)) + '</em>'; }
+  function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
+    return function (r) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
+      return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
+        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span><span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–') + '</span></span>' +
+        ''; }; }
+  if (typeof document !== 'undefined' && !document.getElementById('bkCss')) { var bs = document.createElement('style'); bs.id = 'bkCss';
+    bs.textContent = '.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
+      '.bk-sp{font-size:13px;color:#fff;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bk-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;align-items:center}.bk-row .pill.tier{font-size:11px;white-space:nowrap}' +
+      '.bk-sc{font-size:12px;color:#ffd166;white-space:nowrap}.bk-own{font-style:normal;font-weight:700;font-size:11px;letter-spacing:.5px;line-height:1.25;padding:2px 4px;border:1px solid #000;background:#4b3f7a;color:#fff;max-width:100%;text-align:center;white-space:nowrap}.bk-own.me{background:#4fd18b;color:#0d1a12}' +
+      '.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
+      '@media (max-width:520px){.pk-breed .pk-keys{grid-template-columns:repeat(2,minmax(0,1fr))}.pk-breed .pk-key .bk-nm{font-size:15px}.bk-sp{font-size:14px}.bk-row .pill.tier{font-size:12px}.bk-sc{font-size:13px}}';
+    (document.head || document.documentElement).appendChild(bs); }
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.w = w; S.A = s.A; S.B = s.B; S.kid = s.kid; var now = performance.now(); ['A', 'B'].forEach(function (k) { var p = s[k]; if (!p) { delete S.walk[k]; return; } if (!S.walk[k] || S.walk[k].id !== p.id) S.walk[k] = { id: p.id, t0: k === 'B' && S.walk.A && S.walk.A.id === (s.A && s.A.id) ? Math.max(now, S.walk.A.t0 + 6200) : now }; }); if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') { S.open = performance.now(); if (S.c && window.V2Sfx) V2Sfx.creak(); } }
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
     S.c = c; S.x = c.getContext('2d'); if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now());
     book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var L = V.breedPicker(w, ME, tip, a), okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
+    /* breed-picker-fix (2026-10-19 10:20 PM CT): the picker lists only pets that can breed now (owner 10:23 PM CT: not-eligible pets stay out);
+     * each chip now shows species, rarity, Pet Score and an owner badge. If none can, one short line with the main reason replaces the empty box. */
+    var mainWhy = function () { var c = {}; L.mine.forEach(function (x) { var r = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); if (!r) return; r = /cooldown/.test(r) ? 'on breeding cooldown' : /Adult|young|stage/i.test(r) ? 'too young (Adult+)' : r; c[r] = (c[r] || 0) + 1; });
+      var k = Object.keys(c).sort(function (p, q) { return c[q] - c[p]; })[0]; return k ? ' · mostly ' + k : (L.mine.length ? '' : ' · no live pets at this address'); };
     var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
     var hint = !ME ? 'Connect your wallet to check in' : step === 'A' ? '1 · Pick your guest' : step === 'B' ? '2 · Pick the date (yours or anyone\u2019s)' : s.st === 'half' ? 'Checked in · waiting for #' + s.B.id + '\u2019s owner' : s.st === 'invite' ? '💌 #' + s.B.id + ' already checked in · ring to join' : s.st === 'open' ? '🥚 Door\u2019s open: egg #' + (s.kid && s.kid.id) : '3 · Ring the bell';
     desk.innerHTML = '<div class="mt-hint">' + hint + '</div>' +
@@ -141,8 +161,8 @@
       '<div id="motelPick"></div>';
     var side = S.pickSide || step; desk.querySelectorAll('[data-side]').forEach(function (bt) { bt.onclick = function () { S.pickSide = bt.dataset.side; S.fresh = null; render(U.world()); }; });
     var bell = document.getElementById('bGo'); if (bell) { bell.textContent = s.st === 'invite' ? 'Accept check-in · 690' : 'Check in · 690'; bell.disabled = !(s.A && s.B) || s.st === 'open'; }
-    if (side && window.V2Picker) { var list = side === 'A' ? okA : okB;
-      V2Picker.mount(document.getElementById('motelPick'), { w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: V2Picker.petChip(w) }; }); },
+    if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
+      V2Picker.mount(document.getElementById('motelPick'), { cls: 'pk-breed', sorts: ['score', 'rarity', 'power', 'newest'], dir: true, w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: breedChip(w, ME) }; }); },
         onPick: function (r) { S.fresh = null; document.getElementById(side === 'A' ? 'bA' : 'bB').value = r.key; if (side === 'A') document.getElementById('bB').value = document.getElementById('bB').value === r.key ? '' : document.getElementById('bB').value;
           S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = performance.now(); U.render(); } }); } }
   /* after a check-in burn the existing code clears bA/bB and plays playBreed; we keep the pair so the door can open in place when the egg lands */
@@ -157,6 +177,31 @@
       '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span>' + (BK.page + 1) + ' / ' + pages + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button></div></div>';
     el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { BK.page += +b.dataset.gb; book(w); }; });
     var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { BK.page = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); book(w); } }; }
+  /* breed-picker-fix (owner 10:24 PM CT): breed celebration in two stages. (a) celebrate(tx): right after the breed burn is broadcast, ~2.5 s of 8-bit
+   * hearts + sparkles round Gooby and a wobbling egg at the desk, plus a line 'Breed sent! Your egg appears when the block confirms' + tx link
+   * (reduced motion = the line only). Nothing about the outcome is shown before the block. (b) eggPop(w, kid): called once per new pet by
+   * notifyBreeds (which already stores seen ids in localStorage) when the replay first sees the egg: sprite, #, species, rarity, Pet Score, parents. */
+  function party(x, t) { var e = t - S.party; if (e > 2600) { S.party = 0; return; } var hx = [104, 150, 120, 160, 96, 136], sp = ['#ff4fd8', '#ff9ad5', '#ffd166', '#4fe0ff'];
+    for (var i = 0; i < hx.length; i++) { var yy = Math.round(100 - ((e / 18 + i * 13) % 60)), xx = hx[i] + Math.round(Math.sin(e / 200 + i) * 3); px(x, '#000', xx - 1, yy - 1, 7, 6); px(x, sp[i % 2], xx, yy, 2, 2); px(x, sp[i % 2], xx + 3, yy, 2, 2); px(x, sp[i % 2], xx, yy + 1, 5, 2); px(x, sp[i % 2], xx + 1, yy + 3, 3, 1); px(x, sp[i % 2], xx + 2, yy + 4, 1, 1); }
+    for (var j = 0; j < 8; j++) { if ((Math.floor(e / 120) + j) % 3) continue; var sx = 92 + (j * 37) % 80, sy = 50 + (j * 23) % 50; px(x, sp[2 + j % 2], sx, sy - 2, 1, 5); px(x, sp[2 + j % 2], sx - 2, sy, 5, 1); }
+    var wob = Math.round(Math.sin(e / 90) * 2), ex = 124 + wob, ey = 70; px(x, '#000', ex - 1, ey - 1, 12, 15); px(x, '#fff6e0', ex, ey + 2, 10, 11); px(x, '#fff6e0', ex + 2, ey, 6, 2); px(x, '#ff9ad5', ex + 2, ey + 6, 2, 2); px(x, '#4fe0ff', ex + 6, ey + 9, 2, 2); }
+  function celebrate(tx) { S.party = performance.now(); S.bubble = 'Ooh! Gooby saw nothing. Egg soon.'; S.lt = S.party; if (window.V2Sfx && V2Sfx.creak) V2Sfx.creak();
+    var desk = document.getElementById('motelDesk'), el = document.getElementById('motelSent'); if (desk) { if (!el) { el = document.createElement('p'); el.id = 'motelSent'; el.className = 'bk-sent'; desk.parentNode.insertBefore(el, desk); }
+      el.innerHTML = '💞 Breed sent! Your egg appears when the block confirms.' + (tx ? ' <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + esc(tx) + '">tx ' + esc(String(tx).slice(0, 8)) + '… ↗</a>' : ''); }
+    if (!reduced() && S.c && !S.raf) draw(performance.now()); }
+  function eggPop(w, k) { if (!k || document.getElementById('eggPop')) return; var V = window.V2Rules, R = window.V2Render, TID = ['common', 'uncommon', 'rare', 'legendary'], sc = window.PetScore && PetScore.of(w, k), A = w.byId[k.parents[0]], B = w.byId[k.parents[1]];
+    var nm = function (p, id) { return '#' + id + (p ? ' ' + esc(p.name || '') : ''); }, d = document.createElement('div'); d.id = 'eggPop'; d.className = 'eggpop' + (reduced() ? ' rm' : ''); d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'New egg hatched');
+    d.innerHTML = '<div class="ep-box"><div class="ep-fx" aria-hidden="true">💞 ✨ 🥚 ✨ 💞</div><b class="ep-h">IT\u2019S AN EGG!</b><span class="ep-sp"></span><div class="ep-nm">#' + k.id + ' ' + esc(k.name || '') + '</div>' +
+      '<div>' + esc(V.speciesLabel(k.species)) + ' <span class="pill tier tier-' + (TID[k.tier] || 'common') + '">' + esc((V.TIER_LABELS || [])[k.tier] || '') + '</span> <span class="ep-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
+      '<div class="small">Parents: ' + nm(A, k.parents[0]) + ' × ' + nm(B, k.parents[1]) + '</div><div class="row" style="justify-content:center;margin-top:8px"><a class="btn" href="pet.html?id=' + k.id + '">See #' + k.id + '</a><button type="button" class="q" id="epClose">Close</button></div></div>';
+    document.body.appendChild(d); if (R && R.lazy) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; d.querySelector('.ep-sp').appendChild(c); R.lazy(c, function () { return R.petFrames(k, w); }, true); }
+    var x = function () { d.remove(); }; d.querySelector('#epClose').onclick = x; d.onclick = function (e) { if (e.target === d) x(); }; }
+  if (typeof document !== 'undefined' && !document.getElementById('epCss')) { var es = document.createElement('style'); es.id = 'epCss';
+    es.textContent = '.bk-sent{margin:6px 0;padding:8px;border:2px solid #000;background:#2a1530;color:#ffd1ec;font-size:14px;box-shadow:3px 3px 0 #000;overflow-wrap:anywhere}.bk-sent a{color:#9fe8ff}' +
+      '.eggpop{position:fixed;inset:0;z-index:9000;background:rgba(10,6,20,.72);display:flex;align-items:center;justify-content:center;padding:12px}.ep-box{max-width:340px;width:100%;text-align:center;border:3px solid #000;background:#2a1530;color:#fff;padding:12px;box-shadow:4px 4px 0 #000;font-size:14px}' +
+      '.ep-h{display:block;font-family:"Press Start 2P",monospace;font-size:14px;color:#ff9ad5;margin:4px 0}.ep-sp canvas{width:96px;height:96px;image-rendering:pixelated}.ep-nm{font-weight:700;font-size:16px}.ep-sc{color:#ffd166;white-space:nowrap}.ep-fx{font-size:18px;letter-spacing:4px}' +
+      '.eggpop:not(.rm) .ep-fx{animation:epb .6s steps(3) 4}.eggpop:not(.rm) .ep-sp{display:inline-block;animation:epw .5s steps(2) 5}@keyframes epb{50%{transform:translateY(-6px)}}@keyframes epw{50%{transform:rotate(6deg)}}@media (prefers-reduced-motion:reduce){.eggpop .ep-fx,.eggpop .ep-sp{animation:none!important}}';
+    (document.head || document.documentElement).appendChild(es); }
   function checkedIn(a, b) { S.fresh = [String(a), String(b)].sort().join(':'); if (window.V2Sfx) V2Sfx.creak(); S.bubble = 'Keys out. Door opens when both are in.'; S.lt = performance.now(); }
-  window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, LINES: LINES, _state: function () { return S; } };
+  window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, celebrate: celebrate, eggPop: eggPop, LINES: LINES, _state: function () { return S; } };
 })();
