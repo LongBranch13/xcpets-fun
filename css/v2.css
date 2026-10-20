@@ -395,3 +395,12 @@ body #pets .pet.card{padding-bottom:44px}
 
 /* community coming soon (Oct 20 2026): disabled feed / gear roll while no community pet */
 #communityPanel .btn:disabled{opacity:.5;filter:grayscale(1);cursor:not-allowed}.soon-top{margin-top:6px}
+/* cemetery-scene (branch, Oct 20 2026): same frame as the Lair / arena / motel scenes; hint bar + tap card; list below unchanged */
+.cem8 .cem-scene{position:relative;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0b0a1f;margin:6px 0 8px;line-height:0}
+.cem8 .cem-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.cem8 .cem-hint{line-height:1.4;padding:6px 8px;background:#0e0c1c;color:#cfc9ff;font-family:var(--comic);font-weight:700;font-size:14px;letter-spacing:.02em}
+.cem-card{border:3px solid #000;background:#1d1a2e;color:#e6e6f0;padding:8px 10px;box-shadow:4px 4px 0 #000;margin:0 0 10px;overflow-wrap:anywhere}
+.cem-card .cc-h{font-family:var(--comic);font-size:16px}.cem-card .cc-row{display:flex;gap:10px;align-items:flex-start}.cem-card .cc-sp{width:64px;height:64px;flex:none;image-rendering:pixelated;filter:grayscale(1) brightness(1.15) contrast(.8);opacity:.75;background:#2b2d31;border-radius:8px}
+.cem-card .cc-gear{color:#ffd7d7}.cem-card .cc-act{margin-top:6px;gap:6px;flex-wrap:wrap}.cem-card p{margin:4px 0}
+.cem-fold{margin:4px 0 8px}.cem-fold summary{cursor:pointer;color:#9fe8ff;font-family:var(--meme);font-size:18px;letter-spacing:.05em}
+@media (max-width:520px){.cem8 .cem-hint{font-size:12px}}

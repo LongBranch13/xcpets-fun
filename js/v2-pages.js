@@ -10,6 +10,11 @@
   function small(fr, c) { R.animate(c, fr); }
   function tagText(t) { t = t == null ? '' : String(t); if (/^([0-9a-f]{2})+$/i.test(t)) { try { return decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (e) { } } return t; }
   function burnAmt(r) { return r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; }
+  /* intuitive-pass item 12 (display only): plain-language burn-history rows; the raw tag stays one tap away */
+  function plainRes(res, tag) { var t = String(tag || ''), m = String(res || ''), body = m.replace(/^[a-zA-Z]+: /, ''), k = (/^pet:([a-z0-9]+)/i.exec(t) || [])[1] || '';
+    var L = { feed: 'Fed', fm: 'Fed (bundle)', hatch: 'Hatched', hatch12: 'Hatched (dozen)', hatch144: 'Hatched (case)', roll: 'Gear roll', fight: 'Fight challenge', accept: 'Fight accepted', breed: 'Breed', rumble: 'Royal Rumble (retired)', rel: 'Released', fr: 'Free roll', of: 'Overflow roll', grave: 'Grave gear' }[k.toLowerCase()];
+    if (/^before v2: /.test(m)) return (L ? L : 'Burn') + ' (before v2)'; if (/^born: /.test(m)) return 'Born: ' + m.slice(6); if (/^hatch: /.test(m)) return 'Hatched · ' + body;
+    return L ? L + ' · ' + body : m; }
   var page = document.body.getAttribute('data-v2page');
 
   /** Cast gating: Nakamoto joins the live Cast (12 species) only once V2Rules.castShowsNakamoto(world) (stage >= NAKAMOTO_CAST_STAGE). */
@@ -181,7 +186,7 @@
     function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
     function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
     function petRows(B, wk) { var L = live.slice(), sc;
-      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) }; }); }
+      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
@@ -212,7 +217,7 @@
       var rowHtml = function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
         var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
           : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
-        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + '</div>' : '') + '</td></tr>'; };
+        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + (r.subQ || '') + '</div>' : '') + '</td></tr>'; };
       var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
       var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '') + hmore;
       var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
@@ -245,14 +250,41 @@
       $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
     render();
   }
+  /* cemetery-paging 2026-10-20 (owner approved, list-cap audit finding 5): ~15,000 pets reach their death block within a week.
+   * Graves render a page at a time (Show more, same as Ranking: 100 a page, 25 on phones) and a Find box searches EVERY grave
+   * (#ID, name, species, owner address). Canvases paint lazily. The status count still uses the full dead list. Display only. */
   function cemetery() {
-    var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock; });
-    $('status').textContent = dead.length + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + M.state().rows.length + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
-    $('tombs').innerHTML = dead.length ? dead.map(function (p) {
+    var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock || b.id - a.id; });
+    var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100, st = { n: STEP, q: '', mine: false, list: dead };
+    $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(M.state().rows.length) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
+    var tombs = $('tombs');
+    if (window.V2CemeteryScene) V2CemeteryScene.mount(w, dead); /* cemetery-scene branch: pixel scene over the list (newest 12 graves) */
+    if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>'; return; }
+    var tomb = function (p) { var gc = R.graveCount(w, p);
       return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
-        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (R.graveCount(w, p) ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; }).join('')
-      : '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>';
-    dead.forEach(function (p) { var c = document.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.paint(c, R.framesWith(p.art, p.stage, [])[0]); });
+        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (gc ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; };
+    var bar = document.createElement('div'); bar.className = 'uxp-find cemfind';
+    bar.innerHTML = '<label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '<span class="small muted" id="cemMsg" aria-live="polite"></span>';
+    tombs.parentNode.insertBefore(bar, tombs);
+    var more = document.createElement('button'); more.type = 'button'; more.className = 'q'; more.id = 'tombsMore'; more.style.display = 'none'; tombs.parentNode.insertBefore(more, tombs.nextSibling);
+    function paint(from, to) { var frag = st.list.slice(from, to).map(tomb).join(''); tombs.insertAdjacentHTML('beforeend', frag);
+      st.list.slice(from, to).forEach(function (p) { var c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.lazy(c, function () { return R.framesWith(p.art, p.stage, []); }, true); });
+      more.style.display = st.list.length > to ? '' : 'none'; more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
+    function apply() { var q = st.q.trim().toLowerCase().replace(/^#/, ''), num = /^\d+$/.test(q);
+      st.list = dead.filter(function (p) { if (st.mine && p.owner !== ME) return false; if (!q) return true;
+        return num ? String(p.id) === q || String(p.id).indexOf(q) === 0 : String(p.name).toLowerCase().indexOf(q) >= 0 || String(spLabel(p.species)).toLowerCase().indexOf(q) >= 0 || String(p.owner).toLowerCase() === q || (q.length >= 6 && String(p.owner).toLowerCase().indexOf(q) >= 0); });
+      if (num) st.list.sort(function (a, b) { return (String(b.id) === q) - (String(a.id) === q); });
+      st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
+      $('cemMsg').textContent = (q || st.mine) ? (st.list.length ? fmt(st.list.length) + ' grave' + (st.list.length === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
+      if (!st.list.length) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
+    more.onclick = function () { var a = st.n; st.n += STEP; paint(a, st.n); };
+    var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
+    inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
+    $('cemGo').onclick = function () { clearTimeout(tmr); st.q = inp.value; apply(); };
+    if ($('cemMine')) $('cemMine').onclick = function () { st.mine = !st.mine; this.setAttribute('aria-pressed', st.mine); this.classList.toggle('on', st.mine); this.textContent = st.mine ? 'All graves' : 'My graves'; apply(); };
+    var deep = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id');
+    if (deep && w.byId[deep] && w.byId[deep].dead) { inp.value = '#' + deep; st.q = deep; apply(); var e = $('tomb-' + deep); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } }
+    else paint(0, st.n);
   }
   function pet() {
     $('page').style.display = 'block';
@@ -292,7 +324,7 @@
       if (p.hatchBlock != null && !hist.some(function (h) { return /^hatch/.test(h.res) || (p.hatchTx && h.tx === p.hatchTx); })) hist.push({ block: p.hatchBlock, tx: p.hatchTx, res: p.parents ? 'born: egg from #' + p.parents.join(' x #') : 'hatch: hatched #' + id });
       hist.sort(function (x, y) { return x.block - y.block; });
       $('hist').innerHTML = '<tr><td>block</td><td>from</td><td>XCPETS</td><td>tag</td><td>result</td></tr>' + hist.map(function (e) { var r = byTx[e.tx] || {};
-        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + (e.tx && byTx[e.tx] ? fmt(burnAmt(r)) : '') + '</td><td>' + esc(tagText(r.tag)) + '</td><td>' + esc(e.res) + '</td></tr>'; }).join('');
+        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + (e.tx && byTx[e.tx] ? fmt(burnAmt(r)) : '') + '</td><td>' + (tagText(r.tag) ? '<details class="ip-raw"><summary>tag</summary><code>' + esc(tagText(r.tag)) + '</code></details>' : '') + '</td><td>' + esc(plainRes(e.res, tagText(r.tag))) + '</td></tr>'; }).join('');
     }
     draw();
     // On-chain art (inscriptions): hosted by default, upgrade action + lineage

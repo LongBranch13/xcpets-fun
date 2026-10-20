@@ -76,9 +76,8 @@
     var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
-    /* bigfix 2026-10-20: the button only needs the total, which is the sum of the hungry pets' meals (no need to build every burn on each tap) */
-    var hungry = alive.filter(function (p) { return p.hungry; }), hqSum = hungry.reduce(function (a, p) { return a + (Number(p.nextMeal) || 0); }, 0);
-    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(hqSum) + ' XCPETS)</span>'; $('bFeedHungry').disabled = !hungry.length;
+    var hungry = alive.filter(function (p) { return p.hungry; }), hq = V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
+    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
