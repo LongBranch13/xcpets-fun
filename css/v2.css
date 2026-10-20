@@ -273,3 +273,26 @@ body #pets .pet.card{padding-bottom:44px}
 .ar-qmsg{margin-left:6px;color:#ffd166}.ar-flash{animation:arFl .4s steps(2) 4}@keyframes arFl{50%{filter:brightness(1.6);transform:translateY(-2px)}}@media (prefers-reduced-motion:reduce){.ar-flash{animation:none;outline:3px solid #ffd166}}.ar-hist{margin:10px 0}.ar-hist .pk-key small.sp-card{color:#ffd166;font-size:9px}
 
 .ar-scene .ar-ann-sand{min-height:32px;position:absolute;right:6px;bottom:6px;z-index:2;line-height:1.2;font-size:11px;padding:3px 7px;background:rgba(18,14,34,.85);color:#ffd166;border:2px solid #000;box-shadow:2px 2px 0 #000}@media (max-width:500px){.ar-scene .ar-ann-sand{font-size:10px;padding:2px 5px;right:4px;bottom:auto;top:4px;min-height:26px}}
+
+/* Captain Dan's Pet Shop mockup (2026-10-19): shop floor + racks */
+.shop8 .shop-scene{border:3px solid #000;box-shadow:4px 4px 0 #000;background:#2a1d14;margin:6px 0 8px;line-height:0}
+.shop8 .shop-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;cursor:pointer}
+.shop8 .shop-hint{line-height:1.4;padding:6px 8px;background:#140f0a;color:#ffd166;font-family:'Press Start 2P',monospace;font-size:9px}
+.shop8 #inv{background:repeating-linear-gradient(180deg,#3a2a1e 0 46px,#7a4f2a 46px 50px,#5a3a1e 50px 52px);padding:8px;border:3px solid #000}
+.shop-fold summary{cursor:pointer;color:#9fe8ff}
+@media (max-width:520px){.shop8 .shop-hint{font-size:8px}}
+
+.shop-counter{border:3px solid #000;background:#3a2716;padding:8px;margin:0 0 8px;box-shadow:4px 4px 0 #000;font-size:13px}
+.shop-counter .sc-empty{font-family:'Press Start 2P',monospace;font-size:10px;color:#ffd166;padding:4px 0}
+.sc-item{display:flex;gap:8px;align-items:center}.sc-ic canvas{width:40px;height:40px;image-rendering:pixelated;background:#2a1d14;border:2px solid #7a4f2a}
+.sc-tag{font-size:11px;background:#1b1530;padding:1px 6px;border:1px solid #4b3f7a}.sc-eq{font-family:'Press Start 2P',monospace;font-size:8px;background:#ffd166;color:#140f24;padding:2px 4px}
+.sc-pets{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.sc-pet{font-size:12px;padding:3px 7px;border:2px solid #7a4f2a;background:#2a1d14;color:#ffd166;cursor:pointer}.sc-pet.on{background:#ffd166;color:#140f24}
+.sc-delta b.up{color:#3ddc84}.sc-delta b.dn{color:#ff5d5d}.sc-act,.sc-roll{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}.sc-why{color:#ff9d9d;font-size:12px;margin-top:4px}.sc-more{font-size:11px;color:#9fe8ff;align-self:center}
+
+/* Pet Shop clearance rack (PREVIEW, not active) */
+.shop-clear .cr{margin:8px 0;padding:8px;border:3px dashed #c8102e;background:#2a1d14;box-shadow:4px 4px 0 #000}.cr-h{font-family:'Press Start 2P',monospace;font-size:10px;color:#ffd166}.cr-pv{font-size:11px;background:#c8102e;color:#fff;padding:1px 6px;margin-left:4px}
+.cr-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}.cr-it{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;background:#1a120c;border:2px solid #7a4f2a;text-align:center}
+.cr-it img{width:48px;height:48px;image-rendering:pixelated}.cr-it b{font-size:12px;color:#eee}.cr-it small{font-size:10px;color:#9fe8ff}.cr-tag{position:absolute;top:-6px;right:-4px;transform:rotate(8deg);background:#ffd166;color:#140f24;font-family:'Press Start 2P',monospace;font-size:7px;padding:2px 3px;border:1px solid #000}
+.cr-hint{margin-top:4px;color:#ffd166}.cr-none{color:#9fe8ff;font-size:12px}@media (max-width:520px){.cr-row{grid-template-columns:repeat(2,1fr)}}
+
+#invPanel h2.sec{font-size:clamp(15px,3.6vw,28px);line-height:1.25}#invPanel h2.sec small{display:block;margin-top:4px}
