@@ -15,6 +15,10 @@
     'Captain of the Bitcorn fleet, gm', 'Memecoins? Try XCP.fun, sailor', 'XCP.fun: 69 crew to set sail', 'On XCP.fun, no admin key aboard', 'Grails ahoy on DigiRare.com!', 'Card hunting? DigiRare.com, matey', 'Spells of Genesis sailed first',
     'HOMERPEPE: 1 of 1. Arr!', 'Burn a FAKEASF, speak your fake', 'Rare Pepes, Fake Rares, all Bitcoin', 'Counterparty? I AM the party', 'Not your keys, not your corn', 'Batten the hatches, harvest\'s in!', 'Swab the deck, stack the sats'];
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], line: 0 };
+  /* Dank Rare Agency lines (owner Oct 19 2026, 10:28 PM CT); facts from dankdirectory.io Series 1 (KEKLUMINATI = Card 1, DANKMEMECASH = Card 2, OCTOKEK, PEEPOHEY). Shown every 12th line only. */
+  var DANK = ['Card 1 of the Danks? KEKLUMINATI', 'KEKLUMINATI sees all, matey', 'dankdirectory.io: dankest danks!', 'DANKMEMECASH, card 2. Arr!', 'PEEPOHEY waves from Series 1', 'OCTOKEK: eight arms, one kek', 'Dank Rare Agency reporting in!'];
+  function lineAt(n) { return n % 12 === 11 ? DANK[Math.floor(n / 12) % DANK.length] : LINES[n % LINES.length]; }
+
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   /* Captain Dan, traced from the CAPTAINDAN token art (xcp.fun/full/CAPTAINDAN, 226 px pixel art) downsampled to 32x32 with the token's own colours; '.' = transparent. Faces left like the token. */
@@ -90,7 +94,7 @@
     dan(x, DAN.x, DAN.y, t); mood(x, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
     x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText('YOUR STASH: ' + S.free + ' UNWORN \u00b7 ' + (S.total - S.free) + ' WORN', 160, 120, 176); x.textAlign = 'left';
     px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
-    bubble(x, S.say || LINES[S.line % LINES.length], 160, 47);
+    bubble(x, S.say || lineAt(S.line), 160, 47);
     if (!reduced()) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
@@ -210,5 +214,5 @@
         onPick: function (r) { S.rollSp = r.key; var b = rollPick(w, pets, r.key); if (b) S.rollPet = b.id; counter(); } }); } }
   function refreshRoll() { counter(); }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); S.poofT = performance.now(); S.moodFor = null; U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, dmg: dmg, op: op };
+  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, dmg: dmg, op: op };
 })();
