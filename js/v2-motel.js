@@ -44,8 +44,9 @@
       if (sil) { var g = c.getContext('2d'); g.globalCompositeOperation = 'source-in'; g.fillStyle = sil; g.fillRect(0, 0, 32, 32); } out.push(c); }); } catch (e) { out = []; }
     if (Object.keys(SPR).length > 80) SPR = {}; return (SPR[k] = out); }
   function putPet(x, p, cx, by, sz, t, sil, alpha) { var f = spr(p, sil); if (!f.length) return; var c = f[Math.floor(t / 300) % f.length]; x.save(); if (alpha != null) x.globalAlpha = alpha; x.drawImage(c, Math.round(cx - sz / 2), Math.round(by - sz), sz, sz); x.restore(); }
+  function door(x, dx, col) { px(x, '#1a1010', dx - 1, 89, 18, 31); px(x, col, dx, 90, 16, 30); px(x, '#00000033', dx + 2, 93, 12, 10); px(x, '#00000033', dx + 2, 106, 12, 11); px(x, '#ffd166', dx + 12, 104, 2, 2); } /* ONE door size for office + rooms */
   function lerp(a, b, k) { return a + (b - a) * Math.max(0, Math.min(1, k)); }
-  var OD = 149, WY = 140, SLA = 204, SLB = 234; /* office door x, walkway feet y, room slots */
+  var OD = 149, WY = 140, SLA = 198, SLB = 234; /* office door x, walkway feet y, room slots */
   /* pose(who, t) -> { x, y, a (alpha), key, talk, gooby } from the guest's own timeline */
   function pose(who, t) { var m = S.walk[who]; if (!m) return null; var slot = who === 'A' ? SLA : SLB, e = reduced() ? 1e9 : t - m.t0;
     if (e < 0) return { hide: 1 };
@@ -88,27 +89,29 @@
     /* building */ px(x, '#e8a0b4', 104, 58, 216, 62); px(x, '#c47a92', 104, 58, 216, 4); px(x, '#5a3a4a', 100, 54, 220, 5);
     /* string lights */ for (var sx = 102; sx < W; sx += 3) { var sag = 6 * Math.sin(((sx - 102) % 54) / 54 * Math.PI); px(x, '#222', sx, 57 + sag, 3, 1); if ((sx - 102) % 9 === 0) { var on = rm || (Math.floor(t / 500) + sx / 9) % 4 !== 0; px(x, on ? ['#ffd166', '#ff4fd8', '#4fe0ff', '#7dff6a'][(sx / 9 | 0) % 4] : '#333', sx, 58 + sag, 2, 2); } }
     /* office: Roman columns, Gooby at the desk window, office door */ px(x, '#f2d7a0', 108, 66, 56, 54); [108, 160].forEach(function (cx) { px(x, '#f5efe0', cx, 64, 5, 56); px(x, '#d8cdb0', cx + 2, 66, 1, 52); });
-    px(x, '#1a2b4a', 115, 78, 25, 20); dog(x, 117, 80, t); px(x, '#7a4f2a', 113, 98, 29, 4);
-    px(x, '#3a2414', OD - 7, 96, 14, 24); px(x, '#ffd166', OD - 5, 98, 10, 8); px(x, '#c47a92', OD + 3, 108, 2, 2); px(x, '#1a1a2a', 113, 104, 29, 12); px(x, '#000', 113, 115, 29, 1); neon(x, 'OFFICE', 128, 113, '#ffb347', rm ? true : (Math.floor((t + 1700) / 350) % 7 !== 0), 5); /* neon OFFICE under Gooby's desk (flicker offset from VACANCY) */
-    /* other rooms: real recent pairs in lit windows, one DO NOT DISTURB, one dark */
+    px(x, '#1a2b4a', 115, 78, 25, 20); dog(x, 117, 80, t); px(x, '#7a4f2a', 112, 98, 28, 4);
+    door(x, OD - 8, '#3a2414'); px(x, '#ffd166', OD - 6, 92, 12, 8); px(x, '#1a1a2a', 111, 104, 30, 12); px(x, '#000', 111, 115, 30, 1); neon(x, 'OFFICE', 126, 113, '#ffb347', rm ? true : (Math.floor((t + 1700) / 350) % 7 !== 0), 5); /* neon OFFICE under Gooby's desk (flicker offset from VACANCY) */
+    /* other rooms (all doors share one scale: 16x30 + frame, bottom on the walkway): real recent pairs; 101 lit, 103 dark, 104 DO NOT DISTURB */
     var O = S.w ? others(S.w) : [];
-    [[166, '101', 'lit'], [244, '103', 'dnd'], [282, '104', 'dark']].forEach(function (r, j) { var rx = r[0], pr = O[j === 2 ? 2 : j], wx = rx + 15;
-      px(x, '#1a1010', rx - 1, 85, 13, 35); px(x, '#2e8a8a', rx, 86, 11, 34); px(x, '#ffd166', rx + 8, 104, 2, 2); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.fillText(r[1], rx - 1, 92);
-      px(x, '#1a1010', wx - 1, 89, 22, 17); px(x, r[2] === 'dark' ? '#14122a' : r[2] === 'dnd' ? '#b8507e' : '#ffb3d9', wx, 90, 20, 15);
-      if (pr && r[2] !== 'dark') { var bob = rm ? 0 : Math.round(Math.sin(t / 400 + j)); putPet(x, pr[0], wx + 6, 105 + (r[2] === 'lit' ? bob : 0), 12, t, r[2] === 'lit' ? null : '#3a1030'); putPet(x, pr[1], wx + 14, 105 - (r[2] === 'lit' ? bob : 0), 12, t, r[2] === 'lit' ? null : '#3a1030'); }
-      if (r[2] === 'dark') { x.fillStyle = '#c9c9ff'; x.font = '4px "Press Start 2P", monospace'; var zz = rm ? 0 : Math.floor(t / 500) % 3; x.fillText('z', wx + 12, 99 - zz); }
-      px(x, '#7a3a3a', wx, 90, 4, 15); px(x, '#7a3a3a', wx + 16, 90, 4, 15); px(x, '#1a1010', wx + 9, 90, 1, 15); /* curtains */
-      if (r[2] === 'dnd') { px(x, '#000', rx + 1, 106, 10, 13); px(x, '#c8102e', rx + 2, 107, 8, 11); px(x, '#fff', rx + 4, 107, 4, 1); x.fillStyle = '#fff'; x.font = '3px "Press Start 2P", monospace'; x.fillText('DO', rx + 3, 111); x.fillText('NOT', rx + 2, 114); x.fillText('DIS', rx + 2, 117); }
+    [[166, '101', 'lit', 0], [244, '103', 'dark', 2], [282, '104', 'dnd', 1]].forEach(function (r, j) { var rx = r[0], pr = O[r[3]], wx = rx + 19;
+      door(x, rx, '#2e8a8a'); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.fillText(r[1], rx + 2, 87);
+      px(x, '#1a1010', wx - 1, 91, 18, 17); px(x, r[2] === 'dark' ? '#14122a' : r[2] === 'dnd' ? '#b8507e' : '#ffb3d9', wx, 92, 16, 15);
+      if (pr && r[2] !== 'dark') { var bob = rm ? 0 : Math.round(Math.sin(t / 400 + j)); putPet(x, pr[0], wx + 4, 107 + (r[2] === 'lit' ? bob : 0), 10, t, r[2] === 'lit' ? null : '#3a1030'); putPet(x, pr[1], wx + 12, 107 - (r[2] === 'lit' ? bob : 0), 10, t, r[2] === 'lit' ? null : '#3a1030'); }
+      if (r[2] === 'dark') { x.fillStyle = '#c9c9ff'; x.font = '4px "Press Start 2P", monospace'; var zz = rm ? 0 : Math.floor(t / 500) % 3; x.fillText('z', wx + 9, 101 - zz); }
+      px(x, '#7a3a3a', wx, 92, 3, 15); px(x, '#7a3a3a', wx + 13, 92, 3, 15); /* curtains */
+      if (r[2] === 'dnd') { /* big door hanger on the knob, readable on a 390 px phone: 6 px pixel font, two stacked lines */
+        px(x, '#111', rx + 12, 104, 1, 1); px(x, '#111', rx + 4, 105, 9, 1); px(x, '#111', rx + 20, 105, 9, 1); px(x, '#000', 274, 106, 46, 22); px(x, '#c8102e', 275, 107, 44, 20); px(x, '#ff6b6b', 275, 107, 44, 1);
+        x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#5a0010'; x.fillText('DO NOT', 298, 116); x.fillText('DISTURB', 298, 125); x.fillStyle = '#fff'; x.fillText('DO NOT', 297, 115); x.fillText('DISTURB', 297, 124); x.textAlign = 'left'; }
       S.rooms[j] = pr ? { room: r[1], a: pr[0].id, b: pr[1].id, mode: r[2] } : null; });
     /* THE room door: plate with both IDs, odds sign, open animation */
-    var dx0 = 208, dy0 = 80, dw = 22, dh = 40; px(x, '#1a1010', dx0 - 2, dy0 - 2, dw + 4, dh + 2);
+    var dx0 = 208, dy0 = 90, dw = 16, dh = 30; px(x, '#1a1010', dx0 - 1, dy0 - 1, dw + 2, dh + 1);
     var k = S.state === 'open' ? (rm ? 1 : Math.min(1, (t - S.open) / 1200)) : 0; px(x, '#3a1020', dx0, dy0, dw, dh); if (k > 0) { px(x, '#ffd1e8', dx0 + 2, dy0 + 2, dw - 4, dh - 2); }
     px(x, '#c8102e', dx0 + Math.round(k * (dw - 4)), dy0, dw - Math.round(k * (dw - 4)), dh); px(x, '#ffd166', dx0 + Math.round(k * (dw - 4)) + 2, dy0 + 20, 2, 2);
     x.font = '4px "Press Start 2P", monospace'; px(x, '#ffd166', dx0 - 6, dy0 - 10, dw + 12, 8); x.fillStyle = '#140f24'; x.textAlign = 'center';
     x.fillText((S.A ? '#' + S.A.id : '#?') + ' + ' + (S.B ? '#' + S.B.id : '#?'), dx0 + dw / 2, dy0 - 4); x.textAlign = 'left';
     var lit = S.state === 'half' || S.state === 'invite' || S.state === 'both' || S.state === 'open'; px(x, lit ? '#ffd166' : '#333', dx0 + dw + 3, dy0 + 4, 3, 3); px(x, S.state === 'open' ? '#ffd166' : '#333', dx0 + dw + 3, dy0 + 10, 3, 3); /* check-in lights */
-    if (S.state === 'open') { for (var hz = 0; hz < 4; hz++) { var yy = dy0 - 6 - ((rm ? 10 : (t - S.open) / 30) + hz * 9) % 30; px(x, '#ff4fd8', dx0 + 4 + hz * 5, yy, 2, 2); px(x, '#ff4fd8', dx0 + 6 + hz * 5, yy, 2, 2); px(x, '#ff4fd8', dx0 + 5 + hz * 5, yy + 1, 2, 2); }
-      if (k >= 1 || rm) { px(x, '#f5efe0', dx0 + 7, WY - 9, 8, 9); px(x, '#f5efe0', dx0 + 8, WY - 10, 6, 1); px(x, '#e8c38a', dx0 + 9, WY - 6, 2, 2); } } /* the egg at the door */
+    if (S.state === 'open') { for (var hz = 0; hz < 3; hz++) { var yy = dy0 - 6 - ((rm ? 10 : (t - S.open) / 30) + hz * 9) % 30; px(x, '#ff4fd8', dx0 + 4 + hz * 5, yy, 2, 2); px(x, '#ff4fd8', dx0 + 6 + hz * 5, yy, 2, 2); px(x, '#ff4fd8', dx0 + 5 + hz * 5, yy + 1, 2, 2); }
+      if (k >= 1 || rm) { px(x, '#f5efe0', dx0 + 4, WY - 9, 8, 9); px(x, '#f5efe0', dx0 + 5, WY - 10, 6, 1); px(x, '#e8c38a', dx0 + 6, WY - 6, 2, 2); } } /* the egg at the door */
     /* front: bushes, flower beds, pool, palm */ bush(x, 104, 146, 14); flowers(x, 120, 146, 18); flowers(x, 162, 146, 40); bush(x, 204, 146, 12); flowers(x, 218, 146, 30); bush(x, 300, 146, 16); bush(x, 2, 150, 18); flowers(x, 40, 150, 22);
     px(x, '#d8d4c8', 236, 156, 64, 30); px(x, '#1e90c8', 239, 159, 58, 24); for (var wv = 0; wv < 5; wv++) px(x, '#7fd4ff', 243 + ((wv * 13 + (rm ? 0 : Math.floor(t / 200))) % 50), 163 + (wv * 5) % 18, 4, 1);
     var fy = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy, 10, 6); px(x, '#1e90c8', 261, 170 + fy, 4, 2); px(x, '#fff', 259, 168 + fy, 2, 1); /* floatie */
