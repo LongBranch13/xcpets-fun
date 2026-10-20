@@ -24,11 +24,14 @@
     /* tiers: purebred child 5% hi+1 / 30% hi / 65% lo (RARITY_*_10K); hybrid child 10% hi+1 / 90% hi (HYBRID_RARITY_UP_10K) */
     var up = ph * 0.10 + (1 - ph) * 0.05, h = ph * 0.90 + (1 - ph) * 0.30, l = (1 - ph) * 0.65; if (hi === 3) { h += up; up = 0; } if (hi === lo) { h += l; l = 0; }
     return { hyb: ph * 100, sp: sp, tier: { up: up * 100, hi: h * 100, lo: l * 100 }, hiT: hi, loT: lo }; }
-  function dog(x, ox, oy, t) { var wag = reduced() ? 0 : Math.floor(t / 250) % 2, blink = !reduced() && Math.floor(t / 2600) % 7 === 0;
-    px(x, '#6b4a2b', ox + 2, oy + 6, 16, 12); px(x, '#8a6440', ox + 4, oy + 2, 12, 10); px(x, '#5a3d22', ox + 2, oy, 4, 6); px(x, '#5a3d22', ox + 14, oy, 4, 6); /* head + ears */
-    px(x, '#fff', ox + 6, oy + 5, 3, 3); px(x, '#fff', ox + 11, oy + 5, 3, 3); if (!blink) { px(x, '#111', ox + 7, oy + 6, 2, 2); px(x, '#111', ox + 12, oy + 6, 2, 2); } /* big Gooby eyes */
-    px(x, '#111', ox + 9, oy + 9, 2, 2); px(x, '#e07a7a', ox + 9, oy + 11, 2, 2 + wag); px(x, '#f5f5f0', ox + 6, oy + 14, 8, 3); /* nose, tongue, white tie */
-    px(x, '#c8102e', ox + 9, oy + 15, 2, 3); }
+  function dog(x, ox, oy, t) { var wag = reduced() ? 0 : Math.floor(t / 250) % 2, blink = !reduced() && Math.floor(t / 2600) % 7 === 0; /* Gooby (xcp.fun/GOOBY): green hat, black head, white muzzle, droopy ear, red turtleneck */
+    px(x, '#111', ox + 8, oy - 1, 3, 1); px(x, '#111', ox + 12, oy - 1, 3, 1); px(x, '#6ef04a', ox + 8, oy, 3, 1); px(x, '#6ef04a', ox + 12, oy, 3, 1); px(x, '#6ef04a', ox + 8, oy + 1, 7, 1); /* hat crown, notched top */
+    px(x, '#111', ox + 8, oy + 2, 7, 1); px(x, '#6ef04a', ox + 7, oy + 3, 8, 1); px(x, '#111', ox + 7, oy + 4, 8, 1); /* black band, brim */
+    px(x, '#111', ox + 6, oy + 5, 10, 4); px(x, '#111', ox + 15, oy + 5, 4, 2); px(x, '#111', ox + 17, oy + 7 + wag, 2, 3); /* head + droopy ear (bobs) */
+    px(x, '#f5f5f0', ox + 5, oy + 6, 3, 3); px(x, '#f5f5f0', ox + 9, oy + 6, 3, 3); if (!blink) { px(x, '#111', ox + 6, oy + 7, 1, 1); px(x, '#111', ox + 10, oy + 7, 1, 1); } /* small dot eyes on white */
+    px(x, '#111', ox + 12, oy + 9, 4, 5); px(x, '#f5f5f0', ox + 1, oy + 9, 11, 3); px(x, '#f5f5f0', ox + 3, oy + 12, 7, 1); px(x, '#111', ox + 1, oy + 12, 2, 1); /* neck, long white muzzle */
+    px(x, '#111', ox, oy + 11, 2, 4); px(x, '#f5f5f0', ox + 5, oy + 13, 2, 1); px(x, '#111', ox + 4, oy + 13, 1, 1); px(x, '#111', ox + 7, oy + 13, 1, 1); /* big black nose, buck tooth */
+    px(x, '#e8352a', ox + 9, oy + 14, 10, 4); px(x, '#e8352a', ox + 8, oy + 13, 4, 1); px(x, '#b0221a', ox + 12, oy + 14, 2, 4); px(x, '#111', ox + 16, oy + 16, 1, 2); } /* red turtleneck */
   function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx));
     px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 6, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
   function neon(x, s, cx, y, col, on, size) { x.font = (size || 9) + 'px "Press Start 2P", monospace'; x.textAlign = 'center'; if (on) { x.fillStyle = col; x.globalAlpha = .35; x.fillText(s, cx + 1, y + 1); x.fillText(s, cx - 1, y - 1); x.globalAlpha = 1; x.fillStyle = col; } else x.fillStyle = '#3a2a3a'; x.fillText(s, cx, y); x.textAlign = 'left'; }
