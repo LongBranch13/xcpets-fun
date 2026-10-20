@@ -96,16 +96,17 @@
     // white scribble streaks over the robe (seeded, so every Wizard of a stage looks the same)
     for (var sy = shY + 1; sy <= cy; sy++) for (var sx = 0; sx < N; sx++) if (get(g, sx, sy) === 'R' && hsh(sx * 3 + stage, sy) % 7 === 0) { set(g, sx, sy, 'X'); if (get(g, sx + 1, sy - 1) === 'R') set(g, sx + 1, sy - 1, 'X'); }
     if (stage === 5) { var hh = half(D.body - 1); hline(g, cx - hh, cx + hh - 1, cy, 'y'); }                                // Mythic: gold hem
-    // right hand on the staff; long staff tilted up-right to the big ₿ coin (a short flame wand for the Hatchling)
+    // right hand resting at the robe's side (free: the Bitcoin staff and other weapons go here, see Grip below)
     var rhx = cx + half(4) + 1, rhy = shY + 4; set(g, rhx - 1, rhy, 'r'); set(g, rhx, rhy, 'S'); set(g, rhx, rhy + 1, 's');
-    if (D.coin) { var ox = Math.min(N - 1 - D.coin, cx + 11), oy = Math.max(D.coin, faceY - 1 + (stage === 2 ? 2 : 0)); line(g, cx + 2, cy, ox - 1, oy + D.coin, 'L');
-      line(g, cx + 3, cy, ox, oy + D.coin, 'l'); orb(g, ox, oy, D.coin); set(g, rhx, rhy, 'S'); }
-    else { line(g, rhx + 1, rhy, rhx + 3, rhy - 4, 'L'); orb(g, rhx + 4, rhy - 6, 1); }
+    function bigStaff() { var cr = D.coin || 1, ox = Math.min(N - 1 - cr, cx + 11), oy = Math.max(cr, faceY - 1 + (stage <= 2 ? 2 : 0)); line(g, cx + 2, cy, ox - 1, oy + cr, 'L');
+      line(g, cx + 3, cy, ox, oy + cr, 'l'); orb(g, ox, oy, cr); set(g, rhx, rhy, 'S'); }
+    function rightWeapon(c0, c1) { var top = Math.max(1, rhy - 9); line(g, rhx + 1, rhy + 2, rhx + 4, top + 2, c0); set(g, rhx + 4, top + 1, c1); set(g, rhx + 5, top, c1); set(g, rhx + 3, top + 1, c1); set(g, rhx, rhy, 'S'); }
     // raised left arm (sleeve) up to a black fist (the Grip anchor)
     var hx = Math.max(2, fx - 5), hy = faceY + 2, ax0 = cx - half(1) - 1, ay0 = shY + 1;
     line(g, ax0, ay0, hx, hy + 2, 'h'); line(g, ax0 + 1, ay0, hx + 1, hy + 2, 'R'); line(g, ax0 + 1, ay0 + 1, hx + 2, hy + 2, 'r'); line(g, ax0 + 2, ay0 + 1, hx + 2, hy + 3, 'r');
     set(g, hx, hy, 'F'); set(g, hx + 1, hy, 'f'); set(g, hx, hy + 1, 'F'); set(g, hx + 1, hy + 1, 'F');
-    if (!G.hand) flame(g, hx, hy - 1, stage >= 3);
+    var lowHand = G.hand && /^(sig-wizard-sign|sig-wizard-staff)$/.test(G.hand.item) || (G.hand && /sword|spear|katana|blade|axe|scepter|rapier|baton|hammer|pole/.test(kind('hand')) && G.hand.item !== 'wiz-paint-staff');
+    if (!G.hand || lowHand) flame(g, hx, hy - 1, stage >= 3);
     // oversized square head: loose orange hair at the back, ear, dot eyes, pink nose, smile
     for (var r0 = 0; r0 < D.hh; r0++) hline(g, fx, fe, faceY + r0, 'S');
     set(g, fe, faceY + D.hh - 1, 's'); hline(g, fx, fx + 1, faceY + D.hh - 1, 's');
@@ -119,10 +120,6 @@
     if (D.bl) { var by0 = my + 1; for (var k2 = 0; k2 < D.bl; k2++) { var bw = Math.max(0, Math.round(D.bw * (1 - k2 / D.bl))), bcx = ex + 2 - Math.round(k2 / 4);
         for (var x5 = bcx - bw - 1; x5 <= bcx + bw; x5++) set(g, x5, by0 + k2, x5 >= bcx + bw && bw > 0 ? bs : (k2 === D.bl - 1 || (x5 + k2) % 5 === 0) ? bs : bc); }
       set(g, ex - 1, my, bc); set(g, ex + 4, my, bc); set(g, ex + 5, my, bc); }
-    // 'Join us' sign low at the bottom-left, in front of the robe (orange board, ink squiggle 'letters'; sprites carry no text)
-    var sx0 = cx - D.sw - 1, sy0 = cy - D.sgh + 1; rect(g, sx0, sy0, D.sw, D.sgh, 'O'); hline(g, sx0, sx0 + D.sw - 1, sy0 + D.sgh - 1, 'o');
-    for (var q = 0; q < D.sw - 2; q++) if (D.sgh >= 4 ? (q % 4 !== 3) : (q % 2 === 0)) set(g, sx0 + 1 + q, sy0 + 1 + (D.sgh >= 4 ? (q % 2) : 0), 'F');
-    if (D.sgh >= 5) { set(g, sx0 + 2, sy0 + 3, 'F'); set(g, sx0 + D.sw - 3, sy0 + 3, 'F'); }
     if (G.body && G.body.item === 'wiz-star-robe') { for (var sy1 = shY; sy1 <= cy; sy1++) for (var sx1 = 0; sx1 < N; sx1++) { var q1 = g[sy1][sx1]; if ((q1 === 'R' || q1 === 'r' || q1 === 'h') && (sx1 * 5 + sy1 * 3) % 7 === 0) g[sy1][sx1] = 'y'; } } /* Star robe */
     // Outfits recolour the robe, tail and sleeve (not the hat or carpet); the white streaks become a light tone of the piece
     if (G.body && G.body.item !== 'wiz-star-robe') { var b0 = col('body'), b1 = col('body', 1), bd = shade(b1, 0.85), bl = shade(b0, 1.15); for (var by = 0; by < N; by++) for (var bx = 0; bx < N; bx++) { var q0 = g[by][bx]; if (q0 === 'R') g[by][bx] = b0; else if (q0 === 'r') g[by][bx] = bd; else if (q0 === 'h') g[by][bx] = bl; else if (q0 === 'X' && by >= shY && by <= cy) g[by][bx] = bl; }
@@ -134,16 +131,24 @@
         if (/crown|tiara/.test(hk)) { hline(g, fx, fe, faceY - 2, hc); for (var ci = fx; ci <= fe; ci += 2) set(g, ci, faceY - 3, hc); set(g, fx + Math.floor(fw / 2), faceY - 2, hd); }
         else if (!/band|hachimaki|halo|visor/.test(hk) && /hat|cap|beanie|helmet|hood|bucket|fedora|beret|bowl|newsboy/.test(hk)) { rect(g, fx, faceY - 3, fw, 2, hc); rect(g, fx + 1, faceY - 5, fw - 2, 2, hc); hline(g, fx - 1, fe + 1, faceY - 1, hd); }
         else { hline(g, fx - 1, fe, faceY + 1, hc); set(g, fx + Math.floor(fw / 2), faceY + 1, hd); set(g, fe + 1, faceY + 2, hc); } } }   // headband-style (across the brow)
+    function joinSign() { /* Grip gear 'sig-wizard-sign': the meme's orange 'Join us' board held low at the left, in front of the robe (ink squiggle 'letters'; sprites carry no text) */
+    var sx0 = cx - D.sw - 1, sy0 = cy - D.sgh + 1; rect(g, sx0, sy0, D.sw, D.sgh, 'O'); hline(g, sx0, sx0 + D.sw - 1, sy0 + D.sgh - 1, 'o');
+    for (var q = 0; q < D.sw - 2; q++) if (D.sgh >= 4 ? (q % 4 !== 3) : (q % 2 === 0)) set(g, sx0 + 1 + q, sy0 + 1 + (D.sgh >= 4 ? (q % 2) : 0), 'F');
+    if (D.sgh >= 5) { set(g, sx0 + 2, sy0 + 3, 'F'); set(g, sx0 + D.sw - 3, sy0 + 3, 'F'); }
+    }
     // Grip piece in the raised fist (replaces the flame)
     if (G.hand) { var ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
-      if (G.hand.item === 'wiz-paint-staff') { [[0, 1], [1, 2], [0, 3], [-1, 4], [0, 5], [1, 6]].forEach(function (q) { set(g, hx + q[0], hy - q[1], 'L'); }); set(g, hx - 1, hy - 7, 'w'); set(g, hx, hy - 7, 'w'); set(g, hx + 1, hy - 7, 'w'); set(g, hx, hy - 8, 'w'); set(g, hx, hy - 6, 'c'); }
+      if (G.hand.item === 'sig-wizard-sign') joinSign();
+      else if (G.hand.item === 'sig-wizard-staff') bigStaff();
+      else if (G.hand.item === 'wiz-paint-staff') { [[0, 1], [1, 2], [0, 3], [-1, 4], [0, 5], [1, 6]].forEach(function (q) { set(g, hx + q[0], hy - q[1], 'L'); }); set(g, hx - 1, hy - 7, 'w'); set(g, hx, hy - 7, 'w'); set(g, hx + 1, hy - 7, 'w'); set(g, hx, hy - 8, 'w'); set(g, hx, hy - 6, 'c'); }
+      else if (/sword|spear|katana|blade|axe|scepter|rapier|baton|hammer|pole/.test(ak)) rightWeapon(a0, a1);
       else if (/sign|join/.test(ak)) { rect(g, hx - 2, hy - 5, 6, 4, '#f4ecd8'); hline(g, hx - 1, hx, hy - 4, 'n'); hline(g, hx + 2, hx + 2, hy - 4, 'n'); hline(g, hx - 1, hx + 2, hy - 3, 'n'); set(g, hx, hy - 1, 'L'); }
       else if (/orb|crystal/.test(ak)) { orb(g, hx + 1, hy - 3, 2); set(g, hx, hy - 4, 'w'); }
       else if (/book|spell/.test(ak)) { rect(g, hx - 1, hy - 3, 4, 3, '#5b2a86'); hline(g, hx - 1, hx + 2, hy - 3, '#ffd23f'); set(g, hx, hy - 2, '#ffd23f'); }
       else if (/mug|cup|coffee|tea|bowl|bucket/.test(ak)) { rect(g, hx - 1, hy - 3, 3, 3, a0); hline(g, hx - 1, hx + 1, hy - 3, a1); set(g, hx - 2, hy - 2, a1); set(g, hx, hy - 1, shade(a0, 0.8)); }
       else if (/sword|staff|stick|dagger|wand|quill|torch|rocket|shiv|mallet|pole|spear|candle|bat|banner|flag/.test(ak)) { for (var t = 0; t < 6; t++) set(g, hx, hy - 1 - t, t > 3 ? a1 : a0); }
       else rect(g, hx - 1, hy - 3, 3, 3, a0);
-      set(g, hx, hy, 'F'); set(g, hx + 1, hy, 'F'); }
+      if (!lowHand) { set(g, hx, hy, 'F'); set(g, hx + 1, hy, 'F'); } }
     // Footwear: two shoes on the carpet under the hem
     if (G.feet) { var f0 = col('feet'), f1 = col('feet', 1); [[cx - 4, cx - 2], [cx + 1, cx + 3]].forEach(function (r) { for (var x4 = r[0]; x4 <= r[1]; x4++) { set(g, x4, cy, f0); set(g, x4, cy + 1, x4 === r[0] || x4 === r[1] ? f1 : f0); } }); }
     // Guise (face) piece, on the eye row
