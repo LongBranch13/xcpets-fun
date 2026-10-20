@@ -250,6 +250,7 @@
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    if (art && art.species === 'wizard' && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
     var ov2 = extraOv.slice(); ov2.splice(k, 1); var fa = framesWith0(art, stage, itemIds, ov2, cap, baseGo);
@@ -365,7 +366,7 @@
    * crops them and centres them (integer-scaled) on a dark tile. Works for core, bonus and v2 pieces alike. */
   function itemIcon(id) {
     if (iconCache[id]) return iconCache[id];
-    var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
+    var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' && it.origin !== 'wizard' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
     var base = PetCore.render(art, { stage: 5, frame: 0, gearOverride: go, gearCap: 5 });
     if (it.src === 'core') { var g2 = Object.assign({}, go); g2[it.coreSlot] = id; with_ = PetCore.render(art, { stage: 5, frame: 0, gearOverride: g2, gearCap: 5 }); }
     else { with_ = { data: new Uint8ClampedArray(base.data) }; var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
@@ -450,6 +451,13 @@
     /* Wizard Hat (2026-10-19): his signature Headwear piece, always worn while the community Headwear slot is empty; a community roll for
      * Headwear replaces it (newest roll wins). Synthetic, display only: never added to w.community.gear, so replay/gear state is unchanged. */
     if (!o.head && window.WizardSprite && WizardSprite.WIZARD_HAT) o.head = WizardSprite.WIZARD_HAT; return o; }
+  /** wizardPetFrames: a player-hatched Bitcoin Wizard (species 'wizard', from the Cold Storage block) drawn by WizardSprite in the normal BLUE palette
+   * (purple stays the community pet's), wearing its own worn pieces; the Wizard Hat piece draws the pointy hat. Mythic gets the gold rim like every Mythic. */
+  function wizGearOf(ids) { var o = {}; (ids || []).forEach(function (id) { var it = V.GEAR_BY_ID[id] || (BonusGear.DEFS[id] ? { slot: BonusGear.DEFS[id].slot, label: BonusGear.DEFS[id].label } : null); if (!it) return;
+      var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; }
+      var c = itemCols(id).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(it.label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: it.label, item: id, cols: c }; });
+    return o; }
+  function wizardPetFrames(art, stage, ids, extraOv) { return WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(ids), {}); }
   var WORD_COL = { gold: '#ffd23f', golden: '#ffd23f', silver: '#c9ced8', brown: '#8a5a2b', black: '#2a2630', white: '#f2f2f2', red: '#d8433a', green: '#3ddc84', blue: '#2f6fe0', midnight: '#2a3170', purple: '#8a4fd8', pink: '#ff8fc8', orange: '#f7931a', iron: '#8a8f99', wooden: '#9a6a3a', denim: '#3b5ba8' };
   /** communityFrames(w): the Bitcoin Wizard (after the switch) at its stage wearing its community-roll gear; before it, Nakamoto as below. */
   function communityFrames(w) { var c = w && w.community; if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */

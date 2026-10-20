@@ -75,6 +75,13 @@
   var NAKAMOTO_MEALS = [0, 7, 7, 7, 9];                            // 30 daily meals => Mythic ~ day 30 (~a month)
   var NAKAMOTO_MEAL_SIZES = NAKAMOTO_MEALS.map(function (n, k) { return k ? Math.ceil((NAKAMOTO_THRESHOLDS[k + 1] - NAKAMOTO_THRESHOLDS[k]) / n) : 0; });
   var WIZARD_THRESHOLDS = NAKAMOTO_THRESHOLDS.map(function (v, i) { return i === 1 ? 69000 : v * 10; }); // community pet: 10x Nakamoto => Mythic 6,906,900; hatch 69,000 (Jake 2026-10-15, immediate, no activation block)
+  /* COMMUNITY PETS 100x (owner approved Oct 19 2026 9:19 PM CT): from ACTIVATE_COMMUNITY_100X_BLOCK EVERY community pet (current or future; never a
+   * player's pet, regular player Nakamoto stays normal) grows COMMUNITY_GROWTH_X times slower than a regular pet: stages 2-5 = THRESHOLDS x 100 and hatch
+   * COMMUNITY_HATCH. That is exactly WIZARD_THRESHOLDS (834,900 / 2,214,900 / 4,146,900 / 6,906,900, hatch 69,000), so the Bitcoin Wizard's replay is unchanged. */
+  var ACTIVATE_COMMUNITY_100X_BLOCK = 972250;      // Bitcoin tip 972244 + 6 at commit (Oct 19 2026, owner approved 9:19 PM CT)
+  var COMMUNITY_GROWTH_X = 100, COMMUNITY_HATCH = 69000;
+  var COMMUNITY_THRESHOLDS = THRESHOLDS.map(function (v, i) { return i === 0 ? 0 : i === 1 ? COMMUNITY_HATCH : v * COMMUNITY_GROWTH_X; });
+  function communityThresholds(b) { return b != null && b >= ACTIVATE_COMMUNITY_100X_BLOCK ? COMMUNITY_THRESHOLDS : WIZARD_THRESHOLDS; }
   /* THE RETURN (Jake 2026-10-14, final): ONE constant, COMMUNITY_GOAL = 1,111,111 TOTAL community XCPETS burned (every valid burn, all-time,
    * the same total as the live site), counted from zero: progress = min(burned, 1,111,111) / 1,111,111; The Return fires when burned >= 1,111,111.
    * Until then the community pet is Nakamoto at Mythic; after it a new community pet and grows from the burns AFTER the
@@ -170,6 +177,10 @@
     if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = tierSpeciesOn(b) ? pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex, b) : pickSpecies12(spHex); return art; }
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
     LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
+  /** wizardArt(bh, id, b): a Bitcoin Wizard egg = a normal egg roll (tier, stats, background) with species 'wizard' (drawn by WizardSprite, blue palette). */
+  function wizardArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); if (WIZ_EGG_TIER != null && PetCore.TIERS[WIZ_EGG_TIER]) { var L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[WIZ_EGG_TIER], d = L1.statBonus - L0.statBonus;
+      Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] += d; }); art.tierIndex = WIZ_EGG_TIER; art.tier = L1.id; }
+    art.species = 'wizard'; art.defaultName = 'Wizard'; return noBornShades(art); }
   function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
   function thresholdsFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
   function mealSizesFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
@@ -183,7 +194,7 @@
   var MYTHIC_DISCOUNT_CARE = 21000;
   function mythicDiscountOn(b) { return b != null && b >= ACTIVATE_MYTHIC_DISCOUNT_BLOCK; }
   /** petThresholds(w, p, b): the stage thresholds that apply to pet p at block b (the discounted copy when its owner qualifies). */
-  function petThresholds(w, p, b) { var th = thresholdsFor(p.species, b); if (!p || p.community || !mythicDiscountOn(b) || !w || !w.mythicOwners) return th;
+  function petThresholds(w, p, b) { var th = p && p.community && b != null && b >= ACTIVATE_COMMUNITY_100X_BLOCK ? COMMUNITY_THRESHOLDS : thresholdsFor(p.species, b); if (!p || p.community || !mythicDiscountOn(b) || !w || !w.mythicOwners) return th;
     var q = w.mythicOwners[p.owner]; if (q == null || q > b || th[5] <= MYTHIC_DISCOUNT_CARE) return th; th = th.slice(); th[5] = MYTHIC_DISCOUNT_CARE; return th; }
   /** registers p's owner as discount-qualified at block b if p is a living Mythic, and re-stages all that owner's pets. */
   function noteMythicOwner(w, p, b) { if (!mythicDiscountOn(b) || !p || p.community || p.released || p.dead || p.stage !== 5 || !p.owner) return;
@@ -211,6 +222,34 @@
   function wizHatClear(w, b) { var c = w.community; if (b < ACTIVATE_WIZ_HAT_CLEAR_BLOCK || c.hatClear) return; var g = c.gear.head;
     c.hatClear = { block: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, item: g ? g.item : null }; if (g) delete c.gear.head;
     w.log.push({ block: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, tx: null, kind: 'wizhat', msg: 'community pet Headwear cleared (' + (g ? g.label + ' kept, unworn' : 'already empty') + '): signature Wizard Hat shows' }); }
+  /* WIZARD COLD STORAGE (owner request Oct 19 2026 ~9:15 PM CT; design/bitcoin-wizard-story.md). Mirrors The Return / Nakamoto.
+   * TRIGGER (pure chain history, display only): the first burn after which the community total since The Return (wizardFed = burned - COMMUNITY_GOAL)
+   * reaches the Wizard's Mythic threshold WIZARD_THRESHOLDS[5] = 6,906,900. Recorded in w.wizardMythic = { block, tx, total, feeders, top, by } (NOT part of
+   * w.community, so every earlier replay hash is identical). It fires at the right block whenever the site is deployed (it is found from history).
+   * RULES (gated at ACTIVATE_WIZ_COLD_BLOCK, chain tip + 6 at build time; nothing below it changes), active only once the trigger has happened:
+   *   pet:hatchwiz   = hatch a Bitcoin Wizard egg (species 'wizard', blue player palette, normal pet thresholds), cost WIZ_EGG_COST;
+   *   pet:sign / pet:sign:ID = one free "Join us" sign per wallet that burned while the Wizard was the community pet (any amount, 1 sat is enough);
+   *   new gear (V2Gear WIZ_BATCH, since 'wiz-cold') joins the roll pools: open Rare Star robe / MS Paint staff / Star-cloak; Wizard-only ★ Join us sign,
+   *   Crystal orb and the pointy Wizard Hat. Every number / list below is a one-line owner default. */
+  var ACTIVATE_WIZ_COLD_BLOCK = 972250;            // Bitcoin tip 972244 + 6 at commit (Oct 19 2026); owner default
+  var WIZ_EGG_COST = 690;                           // pet:hatchwiz cost in XCPETS (owner default)
+  var WIZ_EGG_TIER = null;                          // null = the egg's tier is rolled like any egg; 0-3 = force that tier (owner default: rolled)
+  var WIZ_CAN_BREED = false;                        // player Wizards can't breed (no Wizard hybrid art yet) (owner default)
+  var WIZ_SIGN_MIN = 0.00000001;                    // Join us sign claim: any amount, 1 sat of XCPETS is enough
+  var WIZ_SIGN_ITEM = 'sig-wizard-sign';               // the claimable sign gear id
+  var WIZ_FEEDER_FROM_RETURN = true;                // a "feeder" = any wallet that burned after The Return up to and incl. the Mythic burn
+  var WIZ_TOP_N = 5;                                // archive top feeders shown
+  function wizColdOn(w, b) { return b != null && b >= ACTIVATE_WIZ_COLD_BLOCK && !!(w && w.wizardMythic) && b >= w.wizardMythic.block; }
+  var WIZ_POOL_FROM = Infinity;                     // first block the WIZ_BATCH pieces roll (set per replay: max(gate, Mythic block + 1))
+  function wizPoolOn(b) { return b != null && b >= WIZ_POOL_FROM; }
+  /** wizTrack(w, r, amt): after The Return, sum burns per wallet until the Wizard's Mythic burn; record the trigger once. */
+  function wizTrack(w, r, amt) { var c = w.community; if (c.returnBlock == null || w.wizardMythic) return; var T = w._wizT || (w._wizT = { by: {} });
+    var over = c.burned - COMMUNITY_GOAL, part = r.tx_hash === c.returnTx ? Math.max(0, over) : amt; if (part > 0) T.by[r.source] = (T.by[r.source] || 0) + part;
+    if (over + 1e-9 < communityThresholds(r.block_index)[5]) return;
+    var all = Object.keys(T.by).map(function (a) { return { address: a, amount: T.by[a] }; }).sort(function (x, y) { return y.amount - x.amount || (x.address < y.address ? -1 : 1); });
+    w.wizardMythic = { block: r.block_index, tx: r.tx_hash, total: over, feeders: all.length, top: all.slice(0, WIZ_TOP_N), by: T.by, claimed: {} };
+    WIZ_POOL_FROM = Math.max(ACTIVATE_WIZ_COLD_BLOCK, r.block_index + 1); delete w._wizT;
+    w.log.push({ block: r.block_index, tx: r.tx_hash, kind: 'wizcold', msg: 'Bitcoin Wizard reached Mythic (' + Math.floor(over) + ' burned) and went into Cold Storage' }); }
   var ACTIVATE_GRAVE_GEAR_BLOCK = 972157; // deploy tip 972151 + 6 (Oct 19 2026 ~8:19 AM CT); must stay < first death block 972432
   function graveOn(b) { return b != null && b >= ACTIVATE_GRAVE_GEAR_BLOCK; }
   function gravePlan(petId, on) { return { tag: 'pet:grave:' + petId + (on === false ? ':off' : ''), amount: COSTS.froll, petId: petId, label: (on === false ? 'Cancel grave gear #' : 'Leave gear on the grave #') + petId }; }
@@ -222,7 +261,7 @@
   function mealFor(care, species, b, thOverride) { var th = thOverride || thresholdsFor(species, b), ms = mealSizesFor(species, b); if (care >= th[5]) return 0; if (care < th[1]) return th[1] - care;
     var k = Math.min(4, Math.max(1, stageFor(care, th))); return Math.min(ms[k], Math.min(th[k + 1], th[5]) - care); }
   function mealsToMythic(species) { var c = THRESHOLDS[1], n = 0; while (mealFor(c, species) > 0) { c += mealFor(c, species); n++; } return n; }
-  function wizardStage(burned) { return stageFor(burned, WIZARD_THRESHOLDS); }
+  function wizardStage(burned, b) { return stageFor(burned, b == null ? WIZARD_THRESHOLDS : communityThresholds(b)); }
 
   // ---------------------------------------------------------------- universal gear pool
   var CORE_SLOT = { band: 'head', crown: 'head', armor: 'body', cape: 'back', weapon: 'hand', face: 'face', back: 'back', feet: 'feet' };
@@ -280,7 +319,7 @@
    * ACTIVATE_STAR_BATCH_BLOCK. Before it view() hides them, so every earlier roll replays exactly. No existing item changes; owners keep everything. */
   var ACTIVATE_STAR_BATCH_BLOCK = 971803; // tip 971,797 + 6
   function starBatchOn(b) { return b != null && b >= ACTIVATE_STAR_BATCH_BLOCK; }
-  function view(it) { if (!it) return it; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
+  function view(it) { if (!it) return it; if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
     if (shuffleOn(ELIG_B) && SHUFFLE[it.id]) it = Object.assign({}, it, SHUFFLE[it.id]); if (gaOn(ELIG_B) && GA[it.id]) it = Object.assign({}, it, GA[it.id]); return it; }
   /** moveToSlot(w, g, slot): re-slot an owned gear piece at a rule switch-on block. A worn piece stays worn only if its pet has that slot open and
    * nothing else already sits in it; otherwise it is taken off (kept owned). Shared by the sig-shuffle and gear-audit sweeps (refactor 2026-10-16). */
@@ -334,7 +373,8 @@
     Object.defineProperty(g,'owner',{enumerable:true,configurable:true,get:function(){return ow},set:function(v){ if(v===ow)return; ixCnt(X,ow,g.item,-1); ow=v; ixCnt(X,ow,g.item,1); }});
     return g; }
   /** reindex(w): build the gear index on a world that has none (e.g. a structured clone restored from the cross-visit cache), in w.items key order. */
-  function reindex(w) { if (!w || w.__ix || !w.items) return w; Object.keys(w.items).forEach(function (k) { trk(w, w.items[k]); }); return w; }
+  function reindex(w) { if (w && w.items) WIZ_POOL_FROM = w.wizardMythic ? Math.max(ACTIVATE_WIZ_COLD_BLOCK, w.wizardMythic.block + 1) : Infinity; /* worker / cached worlds: same pool switch as the replay */
+    if (!w || w.__ix || !w.items) return w; Object.keys(w.items).forEach(function (k) { trk(w, w.items[k]); }); return w; }
   function ownedCountsScan(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
   function ownedCounts(w, owner) { if (!w.__ix) return ownedCountsScan(w, owner); var m = {}, c = w.__ix.own.get(owner) || {}; Object.keys(c).forEach(function (k) { if (c[k] > 0) m[k] = c[k]; }); return m; }
   function communityCounts(w) { var m = {}; (w.community.gearLog || []).forEach(function (g) { m[g.item] = (m[g.item] || 0) + 1; }); return m; }
@@ -368,6 +408,8 @@
     var t = String(tag || '').trim().toUpperCase(), p = t.split(':'); if (p[0] !== 'PET') return { action: 'plain' };
     var a = p[1], n = function (i) { return parseInt(p[i], 10); };
     if (a === 'HATCH' && p.length === 2) return { action: 'hatch' };
+    if (a === 'HATCHWIZ' && p.length === 2) return { action: 'hatchwiz' }; /* Wizard egg (inert before ACTIVATE_WIZ_COLD_BLOCK + the Wizard's Mythic) */
+    if (a === 'SIGN' && (p.length === 2 || (p.length === 3 && idOk(p[2])))) return { action: 'wsign', petId: p.length === 3 ? n(2) : null }; /* Join us sign claim (inert before) */
     if ((a === 'HATCH12' || a === 'HATCH144') && p.length === 2) return { action: 'pack', n: a === 'HATCH12' ? 12 : 144, cost: a === 'HATCH12' ? 690 : 6900 };
     if (a === 'FEED' && p.length === 2) return { action: 'cfeed' };
     if (a === 'FEED' && p.length === 3 && idOk(p[2])) return { action: 'feed', petId: n(2) };
@@ -447,6 +489,7 @@
     var ev = rows.map(function (r, i) { return { r: r, i: i, b: r.block_index, o: 0 }; }).concat(ops.map(function (o, i) { return { op: o, i: i, b: o.block_index, o: 1 }; }));
     ev.sort(function (x, y) { return x.b - y.b || x.o - y.o || x.i - y.i; });
     var tip = opts.tip != null ? opts.tip : ev.reduce(function (a, e) { return Math.max(a, e.b); }, 0);
+    WIZ_POOL_FROM = Infinity;
     var w = { pets: [], byId: {}, items: {}, nextPet: 1, log: [], community: { burned: 0, feeds: 0, feeders: {}, gear: {}, gearLog: [] }, fights: [], rumbles: {}, breedReqs: [], tip: tip, nextItem: 1, tokens: {} };
     var seen = {};
     if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);
@@ -461,6 +504,7 @@
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
       w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
+      wizTrack(w, r, amt); /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       handle(w, r, t, amt, bh, L);
     });
@@ -470,7 +514,7 @@
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
     cm.returned = rp.done; cm.returnCount = rp.count; cm.goal = COMMUNITY_GOAL; cm.goalPct = rp.pct;
     cm.wizardFed = rp.done ? cm.burned - COMMUNITY_GOAL : 0; cm.current = rp.done ? 'wizard' : 'nakamoto';
-    cm.wizardStage = rp.done ? wizardStage(cm.wizardFed) : 0; cm.wizardStageName = STAGE_NAMES[cm.wizardStage];
+    cm.wizardStage = rp.done ? wizardStage(cm.wizardFed, tip) : 0; cm.wizardStageName = STAGE_NAMES[cm.wizardStage];
     cm.petName = rp.done ? COMMUNITY_WIZARD_NAME : 'Nakamoto'; cm.petRole = COMMUNITY_PET; /* display only (2026-10-16): the wizard community pet is named 'Bitcoin Wizard'; internal id stays 'wizard' */ cm.petStage = rp.done ? cm.wizardStage : 5; cm.petStageName = STAGE_NAMES[cm.petStage];
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });
     w.fights.forEach(function (f) { if (f.status === 'open' && tip - f.block > FIGHT_WINDOW) f.status = 'expired'; });
@@ -554,7 +598,7 @@
     return g;
   }
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
-  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed';
+  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED) return 'Bitcoin Wizard cannot breed (yet)';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
@@ -683,6 +727,21 @@
         w.community.gear[ci.slot] = cg; w.community.gearLog.push(cg);
         return L(r, 'croll', 'community roll: the community pet got ' + ci.label + ' (' + slotLabel(ci.slot) + ')', { item: ci.id, slot: ci.slot });
       }
+      case 'hatchwiz': {  /* WIZARD EGG: anyone, once the Wizard is in Cold Storage (see ACTIVATE_WIZ_COLD_BLOCK) */
+        if (!wizColdOn(w, b)) return L(r, 'rejected', 'unknown pet: tag (community food)'); /* exactly the old 'invalid' outcome */
+        if (amt < WIZ_EGG_COST) return L(r, 'rejected', 'below Wizard egg cost ' + WIZ_EGG_COST);
+        if (!bh) return L(r, 'rejected', 'block hash pending');
+        var wa = wizardArt(bh, r.tx_hash, b), wp = mk(w, src, wa, b, COSTS.hatch, r.tx_hash);
+        var wl = L(r, 'hatch', 'hatched #' + wp.id + ' Bitcoin Wizard', { petId: wp.id }); token(wp, 'stageUp'); return wl;
+      }
+      case 'wsign': {  /* JOIN US SIGN: one free claim per wallet that fed the Wizard (any amount); worn at once if pet:sign:ID names your Wizard with Grip open */
+        if (!wizColdOn(w, b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        var WM = w.wizardMythic, sw = amt + 1e-12 < WIZ_SIGN_MIN ? 'below claim minimum' : !(WM.by[src] > 0) ? 'only wallets that fed the Bitcoin Wizard can claim the sign' : WM.claimed[src] ? 'sign already claimed' : !BY_ID[WIZ_SIGN_ITEM] ? 'no sign item' : null;
+        if (sw) return L(r, 'rejected', sw);
+        WM.claimed[src] = b; var sg = newItem(w, BY_ID[WIZ_SIGN_ITEM], src, 'sign'), sp2 = t.petId != null ? pet(t.petId) : null;
+        if (sp2 && sp2.owner === src && !sp2.dead && !sp2.released && eligible(WIZ_SIGN_ITEM, sp2.species) && (sp2.openSlots || []).indexOf('hand') >= 0) wear(w, sp2, sg);
+        return L(r, 'sign', 'claimed the "Join us" sign' + (sg.on != null ? ' (worn by #' + sg.on + ')' : ' (in the bag)'), { gid: sg.gid, petId: sg.on });
+      }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
       case 'grave': {  /* GRAVE GEAR opt-in / cancel (see ACTIVATE_GRAVE_GEAR_BLOCK): owner only, living pet only, any amount */
         if (!graveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -796,7 +855,7 @@
   function h3part(T, sp) { var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
   function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
     return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
-  function speciesLabel(sp) { if (isHybrid(sp)) return hybridName(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
+  function speciesLabel(sp) { if (sp === 'wizard') return 'Bitcoin Wizard'; if (isHybrid(sp)) return hybridName(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
@@ -1103,7 +1162,7 @@
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
   return { ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
-    THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
+    THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,

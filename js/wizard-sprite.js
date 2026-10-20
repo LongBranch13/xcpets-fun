@@ -6,7 +6,7 @@
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.WizardSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, PAL = { n: '#1a1020', B: '#2f6fe0', b: '#1d48a8', c: '#7fb2ff', R: '#2f6fe0', r: '#1d48a8', h: '#7fb2ff', S: '#f2c48d', s: '#d9975f', p: '#f09a86',
-    G: '#a9a9b3', g: '#7c7c88', W: '#e6e6ee', w: '#ffffff', L: '#8a5a2b', l: '#5e3b1a', O: '#f7931a', o: '#c46a00', y: '#ffd23f', k: '#0f1530' };
+    G: '#a9a9b3', g: '#7c7c88', W: '#e6e6ee', w: '#ffffff', L: '#8a5a2b', l: '#5e3b1a', O: '#f7931a', o: '#c46a00', y: '#ffd23f', k: '#0f1530', A: '#ffc93c' };
   /* COMMUNITY palette variant (2026-10-19, owner): the Bitcoin Wizard is drawn in purples only while he is the COMMUNITY pet (opts.community).
    * Player-hatched Wizards (after the community pet reaches Mythic, standing new-species rule) keep the normal blue reference palette above,
    * so the purple robe stays the community pet's badge. Only robe/body/hat tones change; ink, skin, beard, staff and gold stay. */
@@ -107,7 +107,10 @@
       else { hline(g, fx - 1, fx + fw, faceY - 1, hc); set(g, cx, faceY - 1, hd); set(g, fx + fw + 1, faceY, hc); } } }          // headband-style
     // Grip piece in the left hand
     if (G.hand) { var ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
-      if (/mug|cup|coffee|tea|bowl|bucket/.test(ak)) { rect(g, hx - 2, hy - 2, 3, 3, a0); hline(g, hx - 2, hx, hy - 2, a1); set(g, hx - 3, hy - 1, a1); set(g, hx - 1, hy, shade(a0, 0.8)); }
+      if (/sign|join/.test(ak)) { rect(g, hx - 6, hy - 9, 7, 5, '#f4ecd8'); hline(g, hx - 5, hx - 4, hy - 8, 'n'); hline(g, hx - 2, hx - 1, hy - 8, 'n'); hline(g, hx - 5, hx - 3, hy - 6, 'n'); set(g, hx - 1, hy - 6, 'n'); for (var sj = 0; sj < 4; sj++) set(g, hx - 3, hy - 4 + sj, 'L'); } /* "Join us" sign on a post */
+      else if (/orb|crystal/.test(ak)) { orb(g, hx - 1, hy - 3, 2); set(g, hx - 2, hy - 4, 'w'); hline(g, hx - 2, hx, hy - 1, 'y'); }
+      else if (/book|spell/.test(ak)) { rect(g, hx - 3, hy - 3, 4, 3, '#5b2a86'); hline(g, hx - 3, hx, hy - 3, '#ffd23f'); set(g, hx - 2, hy - 2, '#ffd23f'); }
+      else if (/mug|cup|coffee|tea|bowl|bucket/.test(ak)) { rect(g, hx - 2, hy - 2, 3, 3, a0); hline(g, hx - 2, hx, hy - 2, a1); set(g, hx - 3, hy - 1, a1); set(g, hx - 1, hy, shade(a0, 0.8)); }
       else if (/sword|staff|stick|dagger|wand|quill|torch|rocket|shiv|mallet|pole|spear|candle|bat|banner|flag/.test(ak)) { for (var t = 0; t < 6; t++) set(g, hx, hy - 1 - t, t > 3 ? a1 : a0); }
       else rect(g, hx - 2, hy - 2, 3, 3, a0);
       set(g, hx, hy, 'S'); set(g, hx + 1, hy, 'S'); }
@@ -121,6 +124,8 @@
       else if (/mask|bandana|scarf/.test(gk)) hline(g, fx, fx + fw - 1, faceY + 4, g0);
       else { set(g, cx + 2, faceY + 3, g0); set(g, cx + 3, faceY + 3, g1); } }
     var o = outline(g);
+    if (stage === 5) { /* gold Mythic rim (same treatment as every Mythic pet): one gold pixel ring around the ink outline */ var o2 = o.map(function (r) { return r.slice(); });
+      for (var ry = 0; ry < 29; ry++) for (var rx = 0; rx < N; rx++) if (!o[ry][rx] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = rx + d[0], Y = ry + d[1]; return X >= 0 && Y >= 0 && X < N && Y < N && o[Y][X] === 'n'; })) o2[ry][rx] = 'A'; o = o2; }
     if (stage === 5) [[3, 5], [27, 9], [5, 18], [28, 22], [9, 3]].forEach(function (p, i) { if ((i + (frame || 0)) % 2 === 0) { set(o, p[0], p[1], 'y'); set(o, p[0] + 1, p[1], 'y'); set(o, p[0], p[1] + 1, 'y'); } });
     return o;
   }

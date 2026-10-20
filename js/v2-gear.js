@@ -390,6 +390,21 @@
   STAR_BATCH.forEach(function (x) { var kind = STAR_KIND[x[2]];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[5], dy: x[6] == null ? undefined : x[6], behind: x[5] === 'neck', map: x[7], origin: x[4], exclusive: false, kind: kind };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: x[4], exclusive: false, legendary: false, kind: kind, overlay: true, since: 'star-batch' }); });
+  /* WIZARD GEAR (owner, Oct 19 2026 ~9:11 PM CT; design/bitcoin-wizard-story.md). Join the roll pools only once the Bitcoin Wizard is in Cold Storage
+   * (item.since 'wiz-cold'; v2-rules view() hides them before WIZ_POOL_FROM = max(ACTIVATE_WIZ_COLD_BLOCK, Mythic block + 1), so every earlier roll replays exactly). Appended at the END of ITEMS.
+   * Three ★ Wizard-only pieces (Wizard Hat, "Join us" sign = the feeders' free claim, Crystal orb; weight 5 like other ★) + three OPEN Rare pieces (Star robe, MS Paint staff, Star-cloak). Owner-default list: edit this array.
+   * [id, label, slot, tier, exclusive, kind, anchor, dy, map] (literal BonusGear colour keys). */
+  var WIZ_BATCH = [
+    ['wizard-hat', 'Wizard Hat', 'head', 3, true, 'hat', 'head', 1, ['.....v..', '....vv..', '...vvv..', '...vvvv.', '..vvvvv.', '..vvyvv.', '.ggggggg', 'VVVVVVVV']],
+    ['sig-wizard-sign', '"Join us" sign', 'hand', 3, true, 'held', 'handL', null, ['PPPPPPP', 'PnPnnPP', 'PPPPPPP', 'PnnPnPP', 'PPPPPPP', '...X...', '...X...', '...X...']],
+    ['sig-wizard-orb', 'Crystal orb', 'hand', 3, true, 'held', 'handR', null, ['.ccc.', 'cWccc', 'ccccc', 'cccbc', '.ccc.', '.GGG.']],
+    ['wiz-star-robe', 'Star robe', 'body', 2, false, 'body', 'chest', -1, ['b.....b', 'bbybbbb', 'bbbbbyb', 'bybbbbb', 'bbbbybb', '.bbbbb.']],
+    ['wiz-paint-staff', 'MS Paint staff', 'hand', 2, false, 'weapon', 'tallR', null, ['.EE..', 'EwEE.', 'EEEe.', '.ee..', '..X..', '.X...', '..X..', '..X..', '.X...', '..X..', '..X..']],
+    ['wiz-star-cloak', 'Star-cloak', 'back', 2, false, 'cape', 'neck', null, ['.vvvvvvvvvvv.', 'vvvyvvvvvvyvv', 'vvvvvvyvvvvvv', 'vyvvvvvvvvyvv', 'vvvvyvvvvvvvv', 'VvVvVvVvVvVvV']],
+  ];
+  WIZ_BATCH.forEach(function (x) {
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: x[6] === 'neck', map: x[8], origin: 'wizard', exclusive: x[4], species: x[4] ? 'wizard' : undefined, kind: x[5], sig: x[4] };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'wizard', exclusive: x[4], legendary: x[4], kind: x[5], sig: x[4], overlay: true, since: 'wiz-cold' }); });
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -426,5 +441,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { WIZ_BATCH: WIZ_BATCH, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
