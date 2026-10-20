@@ -157,6 +157,22 @@
     return COND.filter(function (c) { return c[0] === 'age' ? age < c[1] : c[1] === 0.5 ? !(ratio >= 0.5 && fd >= 1) : !(ratio >= 0.8 && fd >= 3); }).map(function (c) { return c[2]; }); }
   function srcLabel(g) { return { roll: '🎲 gear roll', token: '🎟️ lucky drop', live: '⛓️ v1 game', froll: '🎁 free roll', oroll: '🎁 overflow roll', founder: '🥇 founder kit', trophy: '🏆 trophy', fight: '⚔️ battle spoils' }[g.src] || (g.src ? esc(g.src) : 'unknown'); }
   function invPets(w) { return U.mine(w).filter(function (p) { return !p.dead; }); }
+  /* stash pet cap fix (owner, Oct 20 2026): the pet dropdowns listed only the first 2,000 pets, so big owners (5,000+) could not reach new pets.
+   * Now: a small '#ID / name / species' find box filters the dropdown over ALL the owner's pets; the list shows up to PET_OPT_MAX matches
+   * (newest first when not filtering) and always keeps the selected pet. Display only. */
+  var PET_OPT_MAX = 300;
+  function petMatch(q, f) { if (!f) return true; var t = f.replace(/^#/, ''); if (/^\d+$/.test(t)) return String(q.id).indexOf(t) === 0;
+    var k = t.toLowerCase(); return String(q.name || '').toLowerCase().indexOf(k) >= 0 || String(spL(q.species) || q.species || '').toLowerCase().indexOf(k) >= 0; }
+  function petOpts(pets, sel, f, tierTxt) { f = String(f || '').trim(); var L = pets.filter(function (q) { return petMatch(q, f); });
+    if (!f && L.length > PET_OPT_MAX) L = L.slice().sort(function (a, b) { return b.id - a.id; });
+    var out = L.slice(0, PET_OPT_MAX); if (sel != null && !out.some(function (q) { return q.id === sel; })) { var sp = pets.filter(function (q) { return q.id === sel; })[0]; if (sp) out.unshift(sp); }
+    var o = out.map(function (q) { return '<option value="' + q.id + '"' + (q.id === sel ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + (tierTxt ? ' · ' + TL[q.tier] : '') + '</option>'; }).join('');
+    if (L.length > out.length) o += '<option value="" disabled>… ' + (L.length - PET_OPT_MAX).toLocaleString('en-US') + ' more: type #ID, name or species</option>';
+    return o; }
+  function findBox(id, f, n) { return n > PET_OPT_MAX ? ' <input type="search" id="' + id + '" class="pick petfind" placeholder="Find #ID / species" value="' + esc(f || '') + '" style="width:11em;max-width:45%" aria-label="Find a pet by #ID, name or species">' : ''; }
+  function bindFind(inp, selId, pets, getSel, tierTxt, after) { var i = $(inp), sl = $(selId); if (!i || !sl) return; var t = null;
+    i.oninput = function () { clearTimeout(t); var v = i.value; t = setTimeout(function () { var cur = getSel(); sl.innerHTML = petOpts(pets, cur, v, tierTxt);
+      var first = pets.filter(function (q) { return petMatch(q, v.trim()); })[0]; if (v.trim() && first && sl.value !== String(first.id) && /^#?\d+$/.test(v.trim())) { sl.value = String(first.id); if (after) after(first.id, v); } }, 150); }; }
   function paintInv(w) {
     var box = $('inv'); if (!box) return; var items = w.itemList.filter(function (g) { return g.owner === ME; }), pets = invPets(w), S = U.S();
     $('tokens').textContent = String(V.tokensOf(w, ME));
@@ -165,7 +181,7 @@
     h += '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (IV.view === 'bag' ? ' on' : '') + '" data-iv="bag">📦 My stash</button><button type="button" class="tab' + (IV.view === 'log' ? ' on' : '') + '" data-iv="log">📖 Collection log</button></div>';
     if (IV.view === 'bag') {
       if (p) { var nm = p.capacity < 6 ? unmet(p) : [];
-        h += '<div class="doll"><div class="dollhead"><label class="small">Pet <select id="ivPet" class="pick">' + pets.slice(0, 2000).map(function (q) { return '<option value="' + q.id + '"' + (q.id === p.id ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + ' · ' + TL[q.tier] + '</option>'; }).join('') + '</select></label> <span class="small muted">' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots open</span></div><div class="dollrow"><canvas id="ivSprite" width="32" height="32" class="sprite big"></canvas><div class="dollslots">' +
+        h += '<div class="doll"><div class="dollhead"><label class="small">Pet <select id="ivPet" class="pick">' + petOpts(pets, p.id, IV.q, true) + '</select></label>' + findBox('ivFind', IV.q, pets.length) + ' <span class="small muted">' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots open</span></div><div class="dollrow"><canvas id="ivSprite" width="32" height="32" class="sprite big"></canvas><div class="dollslots">' +
           SLOTS.concat(p.species === 'wizard' ? ['weapon'] : []).map(function (sl, i) { var g = V.wornOf(w, p.id).filter(function (x) { return x.slot === sl; })[0], locked = V.slotOpen ? !V.slotOpen(p, sl) : p.openSlots.indexOf(sl) < 0; /* + Wizard-only Staff slot, Wizards only */
             var need = locked && sl === 'weapon' ? 'Opens with the Grip slot' : locked ? (i - p.capacity === 0 ? 'Unlocks at ' + (nm.length ? nm.join(' or ') : 'next milestone') : 'Needs ' + (i - p.capacity + 1) + ' more of: ' + nm.join(', ')) : '';
             return '<button type="button" class="dslot' + (locked ? ' locked' : '') + (g ? ' t' + (g.legendary ? 3 : g.tier) : '') + (IV.slot === sl ? ' on' : '') + '" data-dslot="' + sl + '" title="' + esc(locked ? need : g ? g.label : 'empty') + '"><span class="dl">' + esc(SL(sl)) + '</span>' + (g ? '<span class="gi" data-icon="' + esc(g.item) + '"></span><span class="small">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span>' : locked ? '<span class="small muted">🔒 ' + esc(need) + '</span>' : '<span class="small muted">empty</span>') + '</button>'; }).join('') + '</div></div></div>'; }
@@ -191,6 +207,8 @@
     box.querySelectorAll('[data-is]').forEach(function (b) { b.onclick = function () { IV.slot = b.dataset.is; saveIV(); paintInv(U.world()); }; });
     box.querySelectorAll('[data-dslot]').forEach(function (b) { b.onclick = function () { IV.slot = IV.slot === b.dataset.dslot ? 'all' : b.dataset.dslot; saveIV(); paintInv(U.world()); }; });
     if ($('ivPet')) $('ivPet').onchange = function () { IV.pet = Number(this.value); saveIV(); paintInv(U.world()); };
+    bindFind('ivFind', 'ivPet', invPets(U.world()), function () { return IV.pet; }, true, function (id, v) { IV.pet = id; IV.q = v; saveIV(); paintInv(U.world()); var f = $('ivFind'); if (f) { f.focus(); try { f.setSelectionRange(f.value.length, f.value.length); } catch (e) {} } });
+    if ($('ivFind')) $('ivFind').addEventListener('change', function () { IV.q = this.value; });
     box.querySelectorAll('[data-bag]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); popover(b, b.dataset.bag); }; });
   }
   function equipOp(petId, slot, gid, msg) { var S = U.S(); S.ops.push({ kind: 'equip', owner: ME, petId: petId, slot: slot, gid: gid, block_index: S.tip }); U.save(); U.render(); U.toast(esc(msg) + ' (free)'); }
@@ -199,13 +217,13 @@
     var d = document.createElement('div'); d.className = 'invpop'; d.id = 'invPop'; d.setAttribute('role', 'dialog');
     d.innerHTML = '<button type="button" class="q pclose" aria-label="Close">✕</button><div class="ph"><span class="gi"></span><div><b>' + esc(it.label || itemId) + (it.exclusive ? ' ★' : '') + '</b><div class="small">' + esc(SL(it.slot)) + ' · ' + pill(it.tier || 0) + (it.exclusive ? ' · ' + esc(spL(it.origin)) + '-only signature' : '') + (window.V2Rules && V2Rules.lockHint && V2Rules.lockHint(itemId) ? ' · ' + esc(V2Rules.lockHint(itemId)) : '') + '</div></div></div>' +
       '<div class="small"><b>You own ' + copies.length + '</b>: ' + copies.map(function (g) { return (g.on != null ? 'worn by <a href="#" data-pj="' + g.on + '">#' + g.on + '</a>' : 'in your stash') + ' · ' + srcLabel(g); }).join('<br>') + '</div>' +
-      '<div class="row pact"><label class="small">Equip on <select id="popPet" class="pick">' + pets.slice(0, 2000).map(function (q) { return '<option value="' + q.id + '"' + (q.id === p0 ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + '</option>'; }).join('') + '</select></label><button type="button" class="btn" id="popEq">Equip</button></div><div class="small warn" id="popWhy"></div>' +
+      '<div class="row pact"><label class="small">Equip on <select id="popPet" class="pick">' + petOpts(pets, p0, '', false) + '</select></label>' + findBox('popFind', '', pets.length) + '<button type="button" class="btn" id="popEq">Equip</button></div><div class="small warn" id="popWhy"></div>' +
       (copies.some(function (g) { return g.on != null; }) ? '<div class="row">' + copies.filter(function (g) { return g.on != null; }).slice(0, 6).map(function (g) { return '<button type="button" class="q" data-off="' + g.gid + '" data-pid="' + g.on + '">Take off #' + g.on + '</button>'; }).join('') + '</div>' : '');
     document.body.appendChild(d); d.querySelector('.gi').appendChild(R.iconCanvas(itemId, ''));
     var r = anchor.getBoundingClientRect(); d.style.top = Math.min(window.innerHeight - 20, r.bottom + 6) + window.scrollY + 'px'; d.style.left = Math.max(8, Math.min(window.innerWidth - 330, r.left)) + window.scrollX + 'px';
     function check() { var pid = Number($('popPet').value), c = V.equipCheck(U.world(), ME, pid, itemId), why = c.ok ? (free.length || c.gid ? '' : '') : (c.worn ? 'Already wearing it.' : c.why);
       $('popWhy').textContent = why ? '✋ ' + why : ''; $('popEq').disabled = !c.ok; return c; }
-    $('popPet').onchange = check; check();
+    $('popPet').onchange = check; bindFind('popFind', 'popPet', pets, function () { return Number($('popPet').value); }, false, function () { check(); }); check();
     $('popEq').onclick = function () { var pid = Number($('popPet').value), c = check(); if (!c.ok) return; closePop(); equipOp(pid, it.slot, c.gid, 'Equipped ' + (it.label || itemId) + ' on #' + pid + (c.from ? ' (moved from #' + c.from + ')' : '')); };
     d.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { closePop(); equipOp(Number(b.dataset.pid), it.slot, null, 'Took ' + (it.label || itemId) + ' off #' + b.dataset.pid); }; });
     d.querySelectorAll('[data-pj]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); closePop(); U.detail(Number(a.dataset.pj)); }; });
