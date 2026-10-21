@@ -60,9 +60,12 @@
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
+  /* Cold Storage rule (owner 2026-10-20, display only, general): every community pet in Cold Storage (Nakamoto, the Bitcoin Wizard, Lord Kek and any
+   * future entry) is drawn at its MYTHIC stage art (COLD_STAGE). Nakamoto is bare; the others keep their best-gear loadout. New ARCHIVE entries must use COLD_STAGE. */
+  var COLD_STAGE = 5;
   function nakaFrames() { var NG = window.GenPetCore || PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
-    return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }); }
+    return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: COLD_STAGE, frame: f, gearOverride: {} }); }); }
   var ARCHIVE = [
     { id: 'nakamoto', name: 'Nakamoto', done: function (c) { return c.returned; }, block: function (c) { return c.returnBlock; }, tx: function (c) { return c.returnTx; },
       sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } },
@@ -73,7 +76,7 @@
         '2026. Nakamoto went into Cold Storage. An egg was left behind.', 'Every burn fed it. Nobody owned it. 100× slower than any pet.', '6,906,900 burned. Mythic.', 'Then he put down the sign and walked into Cold Storage, next to Nakamoto.', 'The sign stayed behind. So did an egg. Now anyone can hatch one. Join us.'],
       sprites: function () { return wizMythicFrames(M.world()); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
   ];
-  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(5, '#2a3a2e', g, { community: true }); }
+  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); }
   function farewellSprites(w) { var x = w.wizardMythic; return { wizard: wizMythicFrames(w), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
   function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=b97098f6f8'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
