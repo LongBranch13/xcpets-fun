@@ -70,8 +70,8 @@
     var ov = document.createElement('div'); ov.className = 'reveal on returnov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Lord Kek arrives');
     ov.innerHTML = '<div class="box wide" style="text-align:center"><canvas width="' + W * S + '" height="' + H * S + '" class="returncv" style="width:' + W * S + 'px;max-width:100%;image-rendering:pixelated"></canvas>' +
       '<p class="small muted retinfo">Lord Kek arrives · ' + esc(names()[sp.n]) + '</p><div class="row" style="justify-content:center"><button class="btn retclose" type="button">' + (reduced() ? 'Close' : 'Skip') + '</button></div></div>';
-    document.body.appendChild(ov); var cv = ov.querySelector('canvas'), ctx = cv.getContext('2d'), t = 0, stop = false, last = 0, btn = ov.querySelector('.retclose');
-    function done() { if (stop) return; stop = true; document.removeEventListener('keydown', esc2); ov.remove(); open = null; if (o.onDone) o.onDone(); }
+    document.body.appendChild(ov); document.body.classList.add('kek-arr-open'); var cv = ov.querySelector('canvas'), ctx = cv.getContext('2d'), t = 0, stop = false, last = 0, btn = ov.querySelector('.retclose');
+    function done() { if (stop) return; stop = true; document.removeEventListener('keydown', esc2); ov.remove(); document.body.classList.remove('kek-arr-open'); open = null; if (o.onDone) o.onDone(); }
     function esc2(e) { if (e.key === 'Escape') done(); }
     btn.onclick = done; ov.addEventListener('click', function (e) { if (e.target === ov) done(); }); document.addEventListener('keydown', esc2);
     open = { el: ov, close: done };

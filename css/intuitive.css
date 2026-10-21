@@ -39,3 +39,6 @@ html.ip-hold #inReqBox.on,html.ip-hold #eggPop{display:none!important}
 .ip-tools{display:inline-flex;align-items:center;gap:2px;margin-left:6px}
 @media (max-width:600px){header.nav .ip-tools{position:absolute;right:8px;top:8px;margin:0}}
 .ip-raw summary{white-space:nowrap}
+
+/* hold the new-player tour while the Lord Kek arrival scene is open (phones: it covered the scene) */
+body.kek-arr-open .ip-tour{display:none!important}
