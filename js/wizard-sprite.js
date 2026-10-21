@@ -37,9 +37,9 @@
   function hsh(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return (h ^ (h >>> 16)) >>> 0; }
   /* thick wobbly outline: 1px ink ring, then extra ink on ~1 in 3 ring pixels pushed one more pixel out (seeded by position, so the line
    * "boils" a little between bob frames like a crude hand-drawn line). Gold ('y') sparkles/fringe stay un-outlined. */
-  function outline(g, wob) { var o = grid(); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { o[y][x] = g[y][x]; if (!g[y][x]) {
+  function outline(g, wob, bob) { /* sprite-fixes 2026-10-20: the crude-outline wobble and the robe streaks are seeded relative to the bounce (bob), so the hat, gear and outline move as one piece instead of flickering 1-16px between frames */ var o = grid(); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { o[y][x] = g[y][x]; if (!g[y][x]) {
     var nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X] && g[Y][X] !== 'y'; }); if (nb) o[y][x] = 'n'; } }
-    if (wob) { var o2 = o.map(function (r) { return r.slice(); }); for (var y2 = 0; y2 < N; y2++) for (var x2 = 0; x2 < N; x2++) if (o[y2][x2] === 'n' && !g[y2][x2] && hsh(x2, y2) % 3 === 0)
+    if (wob) { var o2 = o.map(function (r) { return r.slice(); }); for (var y2 = 0; y2 < N; y2++) for (var x2 = 0; x2 < N; x2++) if (o[y2][x2] === 'n' && !g[y2][x2] && hsh(x2, y2 - (bob || 0)) % 3 === 0)
       [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var X = x2 + d[0], Y = y2 + d[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && !o[Y][X] && !(g[y2 - d[1]] && g[y2 - d[1]][x2 - d[0]])) o2[Y][X] = 'n'; }); o = o2; }
     return o; }
   /* big orange ₿ coin: filled disc, darker rim on the lower right, a white ₿ bar, a highlight */
@@ -75,7 +75,7 @@
       for (var y = 0; y < 16; y++) { var hw = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((y - 8.5) / 9, 2))) * (y < 8 ? 7 : 8)); for (var x = 16 - hw; x < 16 + hw; x++) { var e0 = x - 16;
         set(g, x, 12 + y + bob, e0 <= -hw + 1 && y > 2 ? 'c' : e0 >= hw - 2 ? 'b' : 'B'); } }
       [[11, 16], [12, 17], [20, 18], [21, 19], [13, 23], [14, 24], [19, 24]].forEach(function (q) { set(g, q[0], q[1] + bob, 'X'); });
-      if (isHat(G.head)) hat(g, 11, 20, 13 + bob, 8, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g, true);
+      if (isHat(G.head)) hat(g, 11, 20, 13 + bob, 8, 1, 'B', 'b', 'c'); orb(g, 16, 20 + bob, 2); return outline(g, true, bob);
     }
     var D = DIM[stage], cx = 15, cy = 27 + bob, shY = cy - D.body, faceY = shY - D.hh + 1, fw = D.hw, fx = cx - Math.floor(fw / 2), fe = fx + fw - 1;
     var bc = stage >= 4 ? 'W' : 'G', bs = stage >= 4 ? 'G' : 'g';
@@ -94,7 +94,7 @@
       for (var x6 = base; x6 <= base + ext; x6++) set(g, x6, ty, (x6 === base + ext) ? 'r' : ((x6 + ty) % 3 === 0 ? 'r' : 'R')); }
     var zx = cx + half(D.body - 1) + D.tail; set(g, zx + 1, cy, 'r'); set(g, zx + 2, cy - 1, 'R'); set(g, zx + 3, cy, 'r'); if (stage >= 3) { set(g, zx + 2, cy - 2, 'r'); }  // zigzag tip
     // white scribble streaks over the robe (seeded, so every Wizard of a stage looks the same)
-    for (var sy = shY + 1; sy <= cy; sy++) for (var sx = 0; sx < N; sx++) if (get(g, sx, sy) === 'R' && hsh(sx * 3 + stage, sy) % 7 === 0) { set(g, sx, sy, 'X'); if (get(g, sx + 1, sy - 1) === 'R') set(g, sx + 1, sy - 1, 'X'); }
+    for (var sy = shY + 1; sy <= cy; sy++) for (var sx = 0; sx < N; sx++) if (get(g, sx, sy) === 'R' && hsh(sx * 3 + stage, sy - bob) % 7 === 0) { set(g, sx, sy, 'X'); if (get(g, sx + 1, sy - 1) === 'R') set(g, sx + 1, sy - 1, 'X'); }
     if (stage === 5) { var hh = half(D.body - 1); hline(g, cx - hh, cx + hh - 1, cy, 'y'); }                                // Mythic: gold hem
     // right hand resting at the robe's side (free: the Bitcoin staff and other weapons go here, see Grip below)
     var rhx = cx + half(4) + 1, rhy = shY + 4; set(g, rhx - 1, rhy, 'r'); set(g, rhx, rhy, 'S'); set(g, rhx, rhy + 1, 's');
@@ -160,7 +160,7 @@
       else if (/glass|lens|monocle|specs|eye/.test(gk)) { set(g, ex - 1, faceY + 2, g0); set(g, ex + 1, faceY + 2, g0); set(g, ex + 2, faceY + 2, g0); set(g, ex + 4, faceY + 2, g0); }
       else if (/mask|bandana|scarf/.test(gk)) hline(g, fx + 1, fe, my, g0);
       else { set(g, ex + 4, faceY + 3, g0); set(g, ex + 5, faceY + 3, g1); } }
-    var o = outline(g, true);
+    var o = outline(g, true, bob);
     if (stage === 5) { /* gold Mythic rim (same treatment as every Mythic pet): one gold pixel ring around the ink outline */ var o2 = o.map(function (r) { return r.slice(); });
       for (var ry = 0; ry < N; ry++) for (var rx = 0; rx < N; rx++) if (!o[ry][rx] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = rx + d[0], Y = ry + d[1]; return X >= 0 && Y >= 0 && X < N && Y < N && o[Y][X] === 'n'; })) o2[ry][rx] = 'A'; o = o2; }
     if (stage === 5) [[1, 1], [28, 14], [1, 14], [29, 22], [9, 1]].forEach(function (p, i) { if ((i + (frame || 0)) % 2 === 0 && !o[p[1]][p[0]]) { set(o, p[0], p[1], 'y'); if (!o[p[1]][p[0] + 1]) set(o, p[0] + 1, p[1], 'y'); } });
