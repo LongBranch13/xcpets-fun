@@ -29,13 +29,13 @@
   function faceSpots(img, a, species) {
     var d = img.data, px = function (x, y) { var i = (y * 32 + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
     var isC = function (x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31 || !a.isSil(x, y)) return false; var p = px(x, y); return Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1]) + Math.abs(p[2] - c[2]) < 24; };
-    var PINK = [0xe0, 0x40, 0x60], INK = [0x1a, 0x10, 0x20], eL = a.eyeL, eR = a.eyeR, ey, ex, eyePx = {};
+    var PINK = [0xe0, 0x40, 0x60], LIPRED = [0xcd, 0x00, 0x00], INK = [0x1a, 0x10, 0x20], eL = a.eyeL, eR = a.eyeR, ey, ex, eyePx = {};
     [eL, eR].forEach(function (e) { if (e) e[2].forEach(function (q) { eyePx[q[0] + ',' + q[1]] = 1; }); });
     if (eL && eR) { ey = Math.round((eL[1] + eR[1]) / 2); ex = (eL[0] + eR[0]) / 2; }
     else if (eL || eR) { var e1 = eL || eR; ey = e1[1]; ex = e1[0] + (e1[0] < 16 ? 3 : -3); }
     else { ey = a.minY + Math.round((a.maxY - a.minY) * 0.35); ex = (a.minX + a.maxX) / 2; }
     var fb = FACE_FALLBACK[species] || { nose: 3, mouth: 5 }, mouth = null, nose = null, x, y;
-    for (y = ey + 2; y <= Math.min(28, ey + 12) && !mouth; y++) { var xs = []; for (x = Math.round(ex - 7); x <= Math.round(ex + 7); x++) if (isC(x, y, PINK)) xs.push(x);
+    for (y = ey + 2; y <= Math.min(28, ey + 12) && !mouth; y++) { var xs = []; for (x = Math.round(ex - 7); x <= Math.round(ex + 7); x++) if (isC(x, y, PINK) || isC(x, y, LIPRED)) xs.push(x); /* naka-face-card: Nakamoto's card-red lips count as the mouth */
       if (xs.length >= 2) mouth = { x: Math.round(xs.reduce(function (s, v) { return s + v; }, 0) / xs.length), y: y, src: 'pink' }; }
     function noseIn(y0, y1) { var b = null; for (var yy = y0; yy <= y1; yy++) for (var xx = Math.round(ex - 3); xx <= Math.round(ex + 3); xx++) if (isC(xx, yy, INK) && !eyePx[xx + ',' + yy] && a.isSil(xx - 1, yy) && a.isSil(xx + 1, yy) && a.isSil(xx, yy - 1) && a.isSil(xx, yy + 1)) { /* interior dark pixels only (not the outline) */
       b = b || { x0: 99, x1: -1, y0: 99, y1: -1 }; b.x0 = Math.min(b.x0, xx); b.x1 = Math.max(b.x1, xx); b.y0 = Math.min(b.y0, yy); b.y1 = Math.max(b.y1, yy); } return b; }
@@ -71,9 +71,10 @@
       var hy = row(a.gear.armor[0]) + 2, y0, mx = -1, mn = 99, x, y;
       /* gear-fit 2026-10-16 (owner approved): Nakamoto's bust-style body (Hatchling-Adult only) ends above the armour row, so low held pieces hung below it;
        * keep the held piece's bottom on the body's lowest rows. */
-      if (a.spId === 'nakamoto' && a.stage >= 1 && a.stage <= 3 && hy + Math.ceil(h / 2) > a.maxY) { var hy2 = Math.max(a.minY + h, a.maxY - Math.ceil(h / 2)); row = (function (r1, d1) { return function (r) { return r === a.gear.armor[0] ? r1(r) - d1 : r1(r); }; })(row, hy - hy2); hy = hy2; }
+      if (a.spId === 'nakamoto' && a.stage >= 1 && a.stage <= 3 && hy + Math.ceil(h / 2) > a.maxY - 1) { var hy2 = Math.max(a.minY + h, a.maxY - 1 - Math.ceil(h / 2)); /* audit fix 2026-10-20: one row higher, so long blades (Black Swan quill) stay on the body in the up frame */ row = (function (r1, d1) { return function (r) { return r === a.gear.armor[0] ? r1(r) - d1 : r1(r); }; })(row, hy - hy2); hy = hy2; }
       y0 = hy - Math.floor(h / 2);
-      for (y = Math.max(0, y0); y < Math.min(a.maxY - 1, y0 + h); y++) for (x = 0; x < 32; x++) if (a.isSil(x, y)) { mx = Math.max(mx, x); mn = Math.min(mn, x); }
+      var yA = Math.max(0, y0); if (a.spId === 'nakamoto' && a.stage >= 1 && a.stage <= 3) yA = Math.max(yA, y0 + h - 4); /* audit fix 2026-10-20: on his bust body the wide head bobs into the piece's top rows in the up frame; fit the grip to the body rows only */
+      for (y = yA; y < Math.min(a.maxY - 1, y0 + h); y++) for (x = 0; x < 32; x++) if (a.isSil(x, y)) { mx = Math.max(mx, x); mn = Math.min(mn, x); }
       var v = Object.assign({}, a, { row: row }); if (mx >= 0 && d.at === 'handR' && mx < a.maxX - 1) v.maxX = mx + 1; if (mn < 99 && d.at === 'handL' && mn > a.minX + 1) v.minX = mn - 1; return v; }
     if (d.at === 'tallR') { var tm = -1, ty; for (ty = 28 - h; ty < Math.min(a.maxY - 1, 28); ty++) for (var tx = 0; tx < 32; tx++) if (a.isSil(tx, ty)) tm = Math.max(tm, tx);
       if (tm >= 0 && tm < a.maxX - 1) return Object.assign({}, a, { maxX: tm + 1 }); }
@@ -172,6 +173,19 @@
       if (wv.length) { var q0 = wv[Math.floor(wv.length / 3)], j = (q0[1] * 32 + q0[0]) * 4; D[j] = INJ.red[0]; D[j + 1] = INJ.red[1]; D[j + 2] = INJ.red[2]; return; } }
     if (vis >= Math.min(4, band.length) && redVis) return; /* hat hid the wrap: put it back over the brim so both read */
     band.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; D[i] = q[2][0]; D[i + 1] = q[2][1]; D[i + 2] = q[2][2]; D[i + 3] = 255; }); }
+  /* sprite-fixes 2026-10-20: which way each species' face looks (side-view sprites). Headband knots and tails go to the BACK of the head: pet-core and the
+   * band fits put them on the viewer's right, which is the back for front/left-facers but the FRONT for right-facers (Wojak, Chud, Dodo). Rule: on a
+   * right-facer, the band pixels that stick out past the right edge of the head are mirrored to the left edge. (The McDonald's visor facing on left-facers is
+   * handled separately on branch naka-flag-fix; this table can feed it.) */
+  var FACING = { wojak: 'right', chud: 'right', dodo: 'right', doge: 'left', nakamoto: 'left', kevin: 'left' };
+  function isKnotBand(id) { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {}; return !!(d && it.slot === 'head' && (d.at === 'ninja' || (d.kind === 'band' && d.at === 'head'))); }
+  function knotToBack(D, before, a) { var ch = [], p, x, y, L = 99, R = -1; for (p = 0; p < 1024; p++) { var i = p * 4; if (D[i] !== before[i] || D[i + 1] !== before[i + 1] || D[i + 2] !== before[i + 2]) ch.push(p); }
+    if (!ch.length) return; var y0 = 99, y1 = -1; ch.forEach(function (q) { y = (q / 32) | 0; y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+    var cnt = {}, mr = -1; ch.forEach(function (q) { y = (q / 32) | 0; cnt[y] = (cnt[y] || 0) + 1; if (mr < 0 || cnt[y] > cnt[mr]) mr = y; });
+    ch.forEach(function (q) { x = q % 32; y = (q / 32) | 0; if (y === mr && a.isSil(x, y)) { L = Math.min(L, x); R = Math.max(R, x); } }); if (R < 0) return; /* the band's own span across the head (its widest row) */
+    var mv = ch.filter(function (q) { return q % 32 > R; }).map(function (q) { var i = q * 4; return [q, D[i], D[i + 1], D[i + 2], D[i + 3]]; });
+    mv.forEach(function (m) { var i = m[0] * 4; D[i] = before[i]; D[i + 1] = before[i + 1]; D[i + 2] = before[i + 2]; D[i + 3] = before[i + 3]; });
+    mv.forEach(function (m) { var X = L + R - m[0] % 32; if (X < 0) return; var i = (((m[0] / 32) | 0) * 32 + X) * 4; D[i] = m[1]; D[i + 1] = m[2]; D[i + 2] = m[3]; D[i + 3] = m[4]; }); }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -245,7 +259,7 @@
         if (last) for (x = b.x1 + 1; x <= 31; x++) { putAny(x, ly, 'R'); putAny(x, ly + 1, 'R'); } }); return; }
     if (g.s === 'tear') { /* redraw-2: Single tear: one drop under the pet's right eye (viewer-left), light top, deep middle, light tail, on the cheek only */
       var tb = B[0], tx = tb.x0 + Math.floor((tb.x1 - tb.x0) / 2); putF(tx, tb.y1 + 1, 'c'); putF(tx, tb.y1 + 2, 'C'); putF(tx, tb.y1 + 3, 'c'); return; }
-    if (g.s === 'monocle') { var m = g.side === 'L' ? B[0] : B[B.length - 1], cxo = g.side === 'L' ? m.x0 - 1 : m.x1 + 1; /* side 'L' (2026-10-14): the pet's right eye = viewer-left; chain trails from the outer edge down the cheek */
+    if (g.s === 'monocle') { var m = g.side === 'L' ? B[0] : B[B.length - 1]; if (m.x1 - m.x0 < 2) { var mcx = Math.round((m.x0 + m.x1) / 2); m = { x0: mcx - 1, x1: mcx + 1, y0: m.y0, y1: m.y1 }; } /* audit fix 2026-10-20: a 1-2 px eye anchor (Nakamoto Juvenile) gets a full 3 px lens, so the ring sits on the eye, not beside it */ var cxo = g.side === 'L' ? m.x0 - 1 : m.x1 + 1; /* side 'L' (2026-10-14): the pet's right eye = viewer-left; chain trails from the outer edge down the cheek */
       for (x = m.x0 - 1; x <= m.x1 + 1; x++) { put(x, top - 1, g.f); put(x, bot + 1, g.f); } for (y = top; y <= bot; y++) { put(m.x0 - 1, y, g.f); put(m.x1 + 1, y, g.f); }
       for (y = bot + 2; y <= bot + 4; y++) put(cxo, y, g.f); return; }
     if (FIT2) drawEyeGear.last = { sp: spid, lenses: B.map(function (b) { return { x0: b.x0 - (g.wide || 0), x1: b.x1 + (g.wide || 0), w: b.x1 - b.x0 + 1 + 2 * (g.wide || 0) }; }), eyes: E.map(function (e) { var xs = e[2].map(function (q) { return q[0]; }); return (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2; }).sort(function (p, q) { return p - q; }) }; // test hook
@@ -254,7 +268,7 @@
       for (y = top; y <= bot; y++) { put(x0 - 1, y, g.f); put(x1 + 1, y, g.f); }
       for (x = x0 - 1; x <= x1 + 1; x++) put(x, top - 1, g.f); for (x = x0; x <= x1; x++) put(x, bot + 1, g.f); });
     if (B.length > 1) for (x = B[0].x1 + 1 + (g.wide || 0); x <= B[1].x0 - 1 - (g.wide || 0); x++) put(x, top - 1, g.f);
-    var L = B[0].x0 - 2 - (g.wide || 0), R = B[B.length - 1].x1 + 2 + (g.wide || 0); for (x = L; x >= 0 && a.isSil(x, top); x--) put(x, top, g.f); for (x = R; x <= 31 && a.isSil(x, top); x++) put(x, top, g.f);
+    var L = B[0].x0 - 2 - (g.wide || 0), R = B[B.length - 1].x1 + 2 + (g.wide || 0); /* audit fix 2026-10-20: arms stop inside the head outline (the edge pixel stays) and run at most 3 px, so they never poke past the head/hair */ for (x = L; x >= L - 2 && a.isSil(x - 1, top); x--) put(x, top, g.f); for (x = R; x <= R + 2 && a.isSil(x + 1, top); x++) put(x, top, g.f);
     if (g.brows) B.forEach(function (b, n) { var x0 = b.x0 - (g.wide || 0), x1 = b.x1 + (g.wide || 0); if (n) { put(x1, top - 2, g.brows); put(x1 + 1, top - 2, g.brows); } else { put(x0 - 1, top - 2, g.brows); put(x0, top - 2, g.brows); } }); }
   /** wojak fix 2026-10-14 (v2 only): knit beanie traced from the head silhouette, so it hugs every stage/pose: covers the dome down to a rib cuff
    * 4 rows below the crown (never lower than 4 rows above the eyes), 1 px proud of the skull on the cuff, face untouched. */
@@ -298,7 +312,48 @@
         var X = x + off[0], Y = y + off[1]; if (X < 0 || Y < 0 || X > 31 || Y > 31) continue; var j = (Y * 32 + X) * 4;
         d[j] = B[i]; d[j + 1] = B[i + 1]; d[j + 2] = B[i + 2]; d[j + 3] = 255; }
       return Object.assign({}, f, { data: d }); }); }
+  /* naka-flag-fix 2026-10-20 (display only, owner): side-brim caps point the way the species faces. The McDonald's visor's brim is drawn to the right;
+   * species that face LEFT (Nakamoto: bun at the back, on the right; Doge: snout left) wear a mirrored copy. Applies to every pet of that species
+   * (hybrids use their body-shape species); front-facing and right-facing species are unchanged. */
+  var BRIM_SIDE = { 'mcd-visor': 1 };
+  function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (FACING[sp] !== 'left') return id; /* sprite-fixes V2Render.FACING (shared table) */
+    var fid = id + '~faceL', d = BonusGear.DEFS[id]; if (!BonusGear.DEFS[fid] && d && d.map) { BonusGear.DEFS[fid] = Object.assign({}, d, { map: d.map.map(function (r) { return r.split('').reverse().join(''); }) }); if (HAT_SIT[id] != null) HAT_SIT[fid] = HAT_SIT[id]; }
+    return BonusGear.DEFS[fid] ? fid : id; }
+  /* naka-flag-fix 2026-10-20 (display only, owner): a back flag (at:'banner', pole on the left, cloth to its right at the top) was hidden behind wide
+   * heads + headwear (e.g. Nakamoto Adult in a McDonald's visor). General rule for every pet: if any cloth pixel of the flag would be hidden by the pet or
+   * its gear in any frame, slide the pet (body + all other gear, background stays put) right by the smallest step that shows the whole cloth (pole at
+   * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
+    var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard')) return full;
+    var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
+    all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
+    if (!ban) return full;
+    var BN = BonusGear.DEFS[ban].map, W = BN[0].length, y0 = Math.max(0, 28 - BN.length + 1), C = BonusGear.COLORS, cloth = [], r, c;
+    for (r = 0; r < BN.length && BN[r].length > 1; r++) for (c = 1; c < BN[r].length; c++) if (BN[r][c] !== '.') cloth.push([c, y0 + r, BN[r][c]]);
+    var hexc = function (k) { var h = String(C[k] || '#000000').replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+    var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0], key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' });
+    var px0 = Math.max(1, BonusGear.anchors(PetCore.render(key, { stage: stage, frame: 0, gearOverride: {} }), PetCore.render(key, { stage: stage, frame: 0, gearOverride: {} }), sp || PetCore.SPECIES[0]).minX - 2);
+    var hidden0 = 0; full.forEach(function (img) { var n = 0; cloth.forEach(function (q) { var x = px0 + q[0], i = (q[1] * 32 + x) * 4, k = hexc(q[2]); if (x < 32 && (img.data[i] !== k[0] || img.data[i + 1] !== k[1] || img.data[i + 2] !== k[2])) n++; }); hidden0 = Math.max(hidden0, n); });
+    if (!hidden0) return full;
+    var rest = all.filter(function (id) { var it = V.GEAR_BY_ID[id]; return ((it && it.id) || id) !== ban; }), restIds = (itemIds || []).filter(function (id) { return rest.indexOf(V.resolveItem ? V.resolveItem(id) : id) >= 0; }), restOv = (extraOv || []).filter(function (id) { return rest.indexOf(id) >= 0; });
+    var km = framesWithCore(key, stage, restIds, restOv, cap, baseGo), KB = [255, 0, 255];
+    var fg = km.map(function (img) { var m = new Uint8Array(1024), i; for (i = 0; i < 1024; i++) m[i] = Math.abs(img.data[i * 4] - KB[0]) + Math.abs(img.data[i * 4 + 1] - KB[1]) + Math.abs(img.data[i * 4 + 2] - KB[2]) > 40 ? 1 : 0; return m; });
+    var maxX = -1; fg.forEach(function (m) { for (var i = 0; i < 1024; i++) if (m[i]) maxX = Math.max(maxX, i % 32); });
+    var best = null; [1, 0].forEach(function (bx) { for (var dx = 1; dx <= 30 - maxX; dx++) { var n = 0; fg.forEach(function (m) { var h = 0; cloth.forEach(function (q) { var x = bx + q[0] - dx; if (x >= 0 && x < 32 && m[q[1] * 32 + x]) h++; }); n = Math.max(n, h); });
+      if (!best || n < best.n) best = { n: n, dx: dx, bx: bx }; if (!n) break; } });
+    /* naka-combined 2026-10-20 (owner: "do whatever looks best"): wide pets (Doge, hybrids on wide bodies) whose cloth stays over a quarter hidden even after the
+     * best slide get the flag drawn IN FRONT of the pet, unslid (pole at its usual spot). Only in that case; pets whose flag already shows are unchanged. */
+    if ((best ? best.n : hidden0) * 4 > cloth.length) { /* on top of the normal render (flag already behind), so every other piece keeps its place */
+      var cyMax = cloth.reduce(function (m2, q) { return Math.max(m2, q[1]); }, 0);
+      return full.map(function (img, f) { var out = Object.assign({}, img, { data: new Uint8ClampedArray(img.data) }); BonusGear.apply(ban, out, { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: px0, isSil: function (x2, y2) { return y2 > cyMax + 1; } }, f); return out; }); }
+    if (!best || best.n >= hidden0) return full;
+    var real = framesWithCore(art, stage, restIds, restOv, cap, baseGo), dx = best.dx;
+    return real.map(function (img, f) { var bg = PetCore.render(art, { stage: stage, frame: f, bgOnly: true }).data, m = fg[f], d = new Uint8ClampedArray(bg), sm = new Uint8Array(1024), x, y;
+      for (y = 0; y < 32; y++) for (x = dx; x < 32; x++) { var j = y * 32 + x - dx; if (!m[j]) continue; var i = y * 32 + x; sm[i] = 1; d[i * 4] = img.data[j * 4]; d[i * 4 + 1] = img.data[j * 4 + 1]; d[i * 4 + 2] = img.data[j * 4 + 2]; d[i * 4 + 3] = 255; }
+      var out = Object.assign({}, img, { data: d }), a = { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: best.bx, bannerBehind: true, isSil: function (x2, y2) { return x2 >= 0 && y2 >= 0 && x2 < 32 && y2 < 32 && !!sm[y2 * 32 + x2]; } };
+      BonusGear.apply(ban, out, a, f); return out; }); }
+  function framesWithCore(art, stage, itemIds, extraOv, cap, baseGo) {
     itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); 
     if (art) { var roots0 = V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species], LK = V.SPECIES_LOCK || { 'lenny-monocle': { sp: 'lenny' } }; /* species-locked pieces (Lenny monocle; KEVIN name tag) never draw on other species */
       itemIds = itemIds.filter(function (id) { var L = LK[id]; return !L || roots0.indexOf(L.sp) >= 0 || (L.from != null && V.eligBlock && (V.eligBlock() || 0) < L.from); }); } /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
@@ -312,11 +367,22 @@
     if (fitCape) ov = ov.filter(function (id) { return !F.isCape(id); });
     var fr = art.hybrid ? V.hybridFrames(art, { stage: stage, gearOverride: go, gearCap: cap }) : PetCore.renderFrames(art, { stage: stage, gearOverride: go, gearCap: cap }); // hybrids: assembled art + badge
     if ((ov.length || fitCape || fitArmor) && stage > 0) { var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
-      var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255];
+      var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }, art.eyes === 'laser' ? { eyes: 'classic' } : {}), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255]; /* sprite-fixes 2026-10-20: gear anchors are measured on a laser-free key (Laser-eye beams run to the canvas edges and used to stretch the silhouette: headset bar, feet, held pieces, hoodie off the edge); the drawn frames keep their lasers */
       var order = ['back', 'body', 'feet', 'hand', 'head', 'face']; // z-order: cape (behind) < outfit/armour < feet < held < headwear < face
       ov.sort(function (a, b) { return order.indexOf((V.GEAR_BY_ID[a] || BonusGear.DEFS[a] || {}).slot) - order.indexOf((V.GEAR_BY_ID[b] || BonusGear.DEFS[b] || {}).slot); });
       var minYTop = Math.min.apply(null, fr.map(function (_, f) { var o = { stage: stage, frame: f, gearOverride: {} }; return BonusGear.anchors(PetCore.render(key, o), eyeRender(eyes, o), sp).minY; }));
+      /* sprite-fixes 2026-10-20 (rigid bounce): worn pieces on the head, face and body are drawn ONCE on frame 0 and then moved with the body's own bounce
+       * (the shift that maps the bare frame onto frame 0), so they bob with the pet and keep their exact shape on every frame instead of being re-fitted per
+       * frame (Obsidian armour not bobbing / reshaping, face pieces not following the 1px bounce, KEVIN/Lenny Mythic outfits flickering, Mythic tags and bands
+       * stuck in place). Capes (sway), held pieces, footwear (planted) and Beam eyes (intended flicker) keep their per-frame drawing. */
+      var RIGID_SLOT = { head: 1, face: 1, body: 1 }, RIGID_SKIP = { 'beam-eyes': 1 }, rigidD = {}, bare0 = null;
+      function isRigid(id) { if (/^fit:/.test(id)) return true; var s2 = (V.GEAR_BY_ID[id] || BonusGear.DEFS[id] || {}).slot; return !!RIGID_SLOT[s2] && !RIGID_SKIP[id]; }
+      function bounceDy(bd2) { if (!bare0) return null; var best = null; for (var s3 = -2; s3 <= 2; s3++) { var m3 = 0; for (var y3 = 0; y3 < 28; y3++) for (var x3 = 0; x3 < 32; x3++) { var Y3 = y3 - s3, i3 = (y3 * 32 + x3) * 4; if (Y3 < 0 || Y3 > 31) { if (bd2[i3] !== 255 || bd2[i3 + 2] !== 255) m3++; continue; } var j3 = (Y3 * 32 + x3) * 4; if (bd2[i3] !== bare0[j3] || bd2[i3 + 1] !== bare0[j3 + 1] || bd2[i3 + 2] !== bare0[j3 + 2]) m3++; } if (!best || m3 < best[1]) best = [s3, m3]; } return best[1] <= 40 ? best[0] : null; }
+      function grab(before, after) { var out = []; for (var p3 = 0; p3 < 1024; p3++) { var i4 = p3 * 4; if (before[i4] !== after[i4] || before[i4 + 1] !== after[i4 + 1] || before[i4 + 2] !== after[i4 + 2] || before[i4 + 3] !== after[i4 + 3]) out.push(p3, after[i4], after[i4 + 1], after[i4 + 2], after[i4 + 3]); } return out; }
+      function paste(dst, L3, dy3) { for (var q3 = 0; q3 < L3.length; q3 += 5) { var y5 = ((L3[q3] / 32) | 0) + dy3; if (y5 < 0 || y5 > 31) continue; var i5 = (y5 * 32 + L3[q3] % 32) * 4; dst[i5] = L3[q3 + 1]; dst[i5 + 1] = L3[q3 + 2]; dst[i5 + 2] = L3[q3 + 3]; dst[i5 + 3] = L3[q3 + 4]; } }
       fr.forEach(function (img, f) { var o = { stage: stage, frame: f, gearOverride: {} }, bare = PetCore.render(key, o); var a = BonusGear.anchors(bare, eyeRender(eyes, o), sp); a.minYTop = minYTop; a.spId = art.species; a.stage = stage;
+        if (f === 0) bare0 = bare.data; var fdy = f === 0 ? 0 : bounceDy(bare.data);
+        function rigidDraw(id, draw) { if (f > 0 && fdy != null && rigidD[id]) { paste(img.data, rigidD[id], fdy); return; } var kb = isKnotBand(id) && FACING[art.species] === 'right', snap = (f === 0 && isRigid(id)) || kb ? new Uint8ClampedArray(img.data) : null; draw(); if (kb) knotToBack(img.data, snap, a); if (snap && f === 0 && isRigid(id)) rigidD[id] = grab(snap, img.data); }
         var geared = PetCore.render(key, { stage: stage, frame: f, gearOverride: go, gearCap: cap }), gd = geared.data, bd = bare.data;
         a.isFg = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var i = (y * 32 + x) * 4; return a.isSil(x, y) || Math.abs(gd[i] - KB[0]) + Math.abs(gd[i + 1] - KB[1]) + Math.abs(gd[i + 2] - KB[2]) > 40; };
         var arm = PetCore.render(key, { stage: stage, frame: f, gearOverride: { armor: 'gold' } }).data; // where pet-core puts armour (face-safe torso seed)
@@ -326,14 +392,15 @@
         a.isFaceSkin = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var i = (y * 32 + x) * 4; return fpr[i] === 255 && fpr[i + 1] === 0 && fpr[i + 2] === 254; };
         a.isGear = function (x, y) { var i = (y * 32 + x) * 4; return gd[i] !== bd[i] || gd[i + 1] !== bd[i + 1] || gd[i + 2] !== bd[i + 2]; };
         if (fitCape) F.cape(img, a, fitCape, f);
-        if (fitArmor) F.armor(img, a, fitArmor);
+        if (fitArmor) rigidDraw('fit:' + fitArmor.id, function () { F.armor(img, a, fitArmor); });
         // headwear redo (2026-10-14): headwear never hides the eyes. Snapshot before the first head piece, restore the eye pixels after the last one
         // (face pieces such as shades come after and may still cover them).
         var eyePx = [].concat(a.eyeL ? a.eyeL[2] : [], a.eyeR ? a.eyeR[2] : []), headSnap = null, slotOf = function (id) { return (V.GEAR_BY_ID[id] || BonusGear.DEFS[id] || {}).slot; };
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
+          rigidDraw(id, function () {
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art); BonusGear.apply(fid, img, fitAnchors(fid, a), f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
@@ -549,6 +616,13 @@
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
         d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
       return { width: 32, height: 32, data: d }; }); }
+  /** coldFrames(sp, ids, stage) (2026-10-20, owner): a community pet's Cold Storage portrait. Every community pet in Cold Storage shows at Mythic in
+   * its full signature loadout (ARCHIVE entry .loadout in v2-pages.js, data only; Nakamoto is the bare exception). Sprite-sheet species are drawn
+   * by their own sprite module in the community palette; the loadout goes through the same gear mapping as a player pet of that species. */
+  var COLD_SPRITES = { wizard: function () { return window.WizardSprite; }, kek: function () { return window.KekSprite; } };
+  function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
+    if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
+    return S.frames(stage, '#2a3a2e', G, { community: true }); }
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
@@ -652,7 +726,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

@@ -1551,7 +1551,8 @@
     drawBackground(cv, pet, digest, frame, pal);
     var gear = {}, a = null, eggSp = null, eyes0 = [];
     var bob = [0, -1, -1, 0][frame];
-    if (stage === 0) {
+    if (opts.bgOnly) { /* naka-flag-fix 2026-10-20: render-time only, background alone (V2Render uses it to slide a pet clear of its flag); default unchanged */ }
+    else if (stage === 0) {
       drawEgg(cv, pet, digest, frame);
       eggSp = byId(SPECIES, pet.species);
       if (eggSp && eggSp.egg) drawSpeciesEgg(cv, eggSp, frame);
@@ -2101,6 +2102,7 @@
     var wideMyth = stage === 5 && /^(mumu|snibby|peepo|sarutobi|doge)$/.test(pet.species);
     var flush = stage === 3 && (pet.species === 'dodo' || pet.species === 'nakamoto'); /* their Adult swords/torch stay flush on the right (fix above) */
     if (longW && wr2 >= 0 && !flush && (bodyR >= 25 || wideMyth)) x0 = Math.max(0, wl - 2);
+    else if (wr2 >= 0 && x0 > wr2 + 3) x0 = Math.max(0, Math.min(N - 3, wr2)); /* sprite-fixes 2026-10-20: a right-hand weapon never floats past the body on its own rows (Dodo's beak made the box wider than his lower body, so axe/spear hung in the air) */
     cv.spriteKeys(x0, y0, map, { L: 'lwood', W: 'wood', s: 'blade', i: 'iron', y: 'goldblade', g: 'gold', r: 'gem', u: 'gemB', o: 'flame' });
     if (pet.weapon === 'torch') for (var j = 0; j < 3; j++) for (var i = 0; i < 3; i++) if (map[j].charAt(i) === 'y') cv.setKey(x0 + i, y0 + j, 'flame2');
     if (stage === 5 && (wid === 'golden-sword' || wid === 'torch')) { var wp = {}; for (var oy = 0; oy < map.length; oy++) for (var ox = 0; ox < 3; ox++) if (map[oy].charAt(ox) !== '.') wp[(y0 + oy) * N + x0 + ox] = 1;

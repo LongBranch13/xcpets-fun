@@ -18,7 +18,7 @@
   // Only: VR glasses baked into the face (the eye/lens colours become a dark headset visor with an orange glow; the lens shape and
   // frames are pet-core's own, so face gear still layers on top), and the stray white hook (the hachimaki knot tails off the back
   // of the head) is removed in the v2 render. His old signature hat item is deleted (see v2-nakamoto-rework.test.js). generator/pet-core.js is not edited.
-  var NAKA_MAPS = null, NAKA_VR = { eyeWhite: '#1c1c22', pupil: '#f7931a' };
+  var NAKA_LIPS = 1 /* owner 2026-10-20: two lips allowed; at 32 px the single fuller lip reads better (see previews/naka-face/lips-one-vs-two.png) */, NAKA_MAPS = null, NAKA_VR = { eyeWhite: '#ecece4', pupil: '#141018' }; /* naka-face-card 2026-10-20: card eyes (white, dark pupil) replace the dark visor + orange glow */
   function reworkNakamoto(PC) { var sp = PC && PC.SPECIES && PC.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp || sp.v2rework) return;
     sp.v2rework = true; sp.eyeWhite = NAKA_VR.eyeWhite; sp.pupil = NAKA_VR.pupil;
     sp.hachimaki = false; /* 2026-10-16 (Jake): no white headband / Bitcoin disc in Nakamoto's art at any stage (visual only; the Genesis Block headband gear item stays) */
@@ -28,13 +28,49 @@
      * into a 1-2 px dome (hair colour from the row below), only over background, so hats re-anchor to the new head top. The egg is untouched. */
     function nakaFace(r, opts) { var st = opts && opts.stage | 0; if (!r || !r.data || st < 1) return r; var W = r.width || 32, H = r.height || 32, d = r.data, x, y, q;
       var at = function (x2, y2) { var q2 = (y2 * W + x2) * 4; return [d[q2], d[q2 + 1], d[q2 + 2]]; }, put = function (x2, y2, c) { var q2 = (y2 * W + x2) * 4; d[q2] = c[0]; d[q2 + 1] = c[1]; d[q2 + 2] = c[2]; d[q2 + 3] = 255; };
-      var same = function (c, k) { return c[0] === k[0] && c[1] === k[1] && c[2] === k[2]; }, BG = at(0, 0), OL = [0x1a, 0x10, 0x20], PU = [0xf7, 0x93, 0x1a], VI = [0x1c, 0x1c, 0x22];
-      var skin = function (c) { return c[1] > c[0] + 15 && c[1] > c[2] + 15; };
+      var same = function (c, k) { return c[0] === k[0] && c[1] === k[1] && c[2] === k[2]; }, BG = at(0, 0), OL = [0x1a, 0x10, 0x20], PU = [0x14, 0x10, 0x18], VI = [0xec, 0xec, 0xe4];
+      var hx3 = function (h3) { h3 = String(h3 || '#000000'); return [parseInt(h3.slice(1, 3), 16), parseInt(h3.slice(3, 5), 16), parseInt(h3.slice(5, 7), 16)]; }, SKC = hx3(sp.colors && sp.colors['3']), LDC = hx3(sp.colors && sp.colors['4']); /* naka-combined 2026-10-20: the CURRENT skin colours (hybridRender swaps sp.colors), so hybrids on his body get the card face in their own colours */
+      var skin = function (c) { return (c[1] > c[0] + 15 && c[1] > c[2] + 15) || same(c, SKC) || same(c, LDC); };
+      /* naka-face-card 2026-10-20 (owner, from the RAREPEPE Nakamoto Card): red downturned lips in card red #CD0000 (V2Render.faceSpots also keys on it,
+       * so mouth gear still anchors). NAKA_LIPS = 2: upper lip / dark line / fuller lower lip, like the card; 1: one fuller lip shape. Ink corners droop
+       * below the lip ends. Painted on skin only; rows that would touch the glasses are skipped. A drawn interior ink mouth line (Hatchling) is reused. */
+      var LIP = [0xcd, 0x00, 0x00], oneRow = st >= 3; /* owner 2026-10-20: Adult, Elder + Mythic lip is exactly 1 px row of card red */
+      function nakaMouth(cx, my, ey) { var two = NAKA_LIPS === 2, lineY = -1, P = [], add = function (dx, y3, c3) { P.push([dx, y3, c3]); };
+        for (var yl = ey + 2; yl < my; yl++) { var r0 = -1, r1 = -1; for (var xl = cx - 4; xl <= cx + 4; xl++) { var ok = xl > 0 && xl < W - 1 && same(at(xl, yl), OL) && skin(at(xl, yl - 1)) && skin(at(xl, yl + 1)); if (ok) { if (r0 < 0) r0 = xl; r1 = xl; } else if (r0 >= 0 && r1 - r0 < 2) r0 = -1; else if (r0 >= 0) break; }
+          if (r0 >= 0 && r1 - r0 >= 2) { my = yl; lineY = yl; cx = Math.floor((r0 + r1 + 1) / 2); break; } }
+        var top = two ? my - 2 : my - 1, safe = function (y3) { return y3 > ey + 1; };
+        if (two) { if (safe(my - 2)) { add(-1, my - 2, LIP); add(0, my - 2, LIP); } for (var k = -2; k <= 1; k++) add(k, my - 1, safe(my - 1) ? OL : LIP); for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my, OL); add(2, my, OL); }
+        else { if (safe(top) && !oneRow) { add(-1, top, LIP); add(0, top, LIP); } for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my + 1, OL); add(2, my + 1, OL); }
+        P.forEach(function (o) { var xx = cx + o[0], yy = o[1]; if (xx >= 0 && xx < W && yy >= 0 && yy < H && (skin(at(xx, yy)) || same(at(xx, yy), OL) && yy === lineY)) put(xx, yy, o[2]); }); }
+      /* Eyes: white lenses (NAKA_VR.eyeWhite) keep their shape; every pupil pixel becomes white, then ONE dark pupil sits in the bottom row of each lens
+       * (low = droopy); lenses 2+ rows tall get their top row painted as a heavy lid (dark skin). Glasses: frame ink more than 1 px from a lens, inside
+       * the head and not the head outline, becomes skin, so the thick black frame thins to a 1 px wire rim (bridge row kept). Lens pixels never move,
+       * so eye anchors, Beam eyes and eye gear still centre on them. */
+      function nakaEyes() { var L = [], x2, y2; for (y2 = 0; y2 < H; y2++) for (x2 = 0; x2 < W; x2++) { var c2 = at(x2, y2); if (same(c2, PU) || same(c2, VI)) L.push([x2, y2]); }
+        if (L.length < 2) return; var mx = L.reduce(function (s2, q) { return s2 + q[0]; }, 0) / L.length, G = [L.filter(function (q) { return q[0] < mx; }), L.filter(function (q) { return q[0] >= mx; })];
+        var isL = {}; L.forEach(function (q) { isL[q[0] + ',' + q[1]] = 1; }); var LID = LDC, SK = SKC; /* = #41621a / #568023 on a pure Nakamoto */
+        var bb = G.map(function (g) { var b = { x0: 99, x1: -1, y0: 99, y1: -1 }; g.forEach(function (q) { b.x0 = Math.min(b.x0, q[0]); b.x1 = Math.max(b.x1, q[0]); b.y0 = Math.min(b.y0, q[1]); b.y1 = Math.max(b.y1, q[1]); }); return b; });
+        if (bb.some(function (b) { return b.x1 < 0; })) return;
+        var gx0 = Math.min(bb[0].x0, bb[1].x0) - 2, gx1 = Math.max(bb[0].x1, bb[1].x1) + 2, gy0 = Math.min(bb[0].y0, bb[1].y0) - 2, gy1 = Math.max(bb[0].y1, bb[1].y1) + 1, nearL = function (x3, y3) { for (var a2 = -1; a2 <= 1; a2++) for (var b2 = -1; b2 <= 1; b2++) if (isL[(x3 + a2) + ',' + (y3 + b2)]) return true; return false; };
+        var bridgeY = Math.min(bb[0].y0, bb[1].y0), inGap = function (x3) { return x3 > bb[0].x1 && x3 < bb[1].x0; }, thin = [];
+        for (y2 = Math.max(1, gy0); y2 <= Math.min(H - 2, gy1); y2++) for (x2 = Math.max(1, gx0); x2 <= Math.min(W - 2, gx1); x2++) { if (!same(at(x2, y2), OL) || nearL(x2, y2)) continue; if (y2 === bridgeY && inGap(x2)) continue;
+          var nb = [at(x2 - 1, y2), at(x2 + 1, y2), at(x2, y2 - 1), at(x2, y2 + 1)]; if (nb.some(function (c3) { return same(c3, BG); })) continue; /* head outline stays */
+          if (x2 < gx0 + 1 || x2 > gx1 - 1) continue; thin.push([x2, y2]); }
+        /* audit fix 2026-10-20: the side block. Between the head's outer outline pixel and each lens' 1 px rim, the extra frame ink becomes skin (Juvenile 2-3 px block, Adult 1 px) */
+        for (y2 = Math.max(1, gy0); y2 <= Math.min(H - 2, gy1); y2++) { var fx = -1, lx2 = -1; for (x2 = 0; x2 < W; x2++) if (!same(at(x2, y2), BG)) { if (fx < 0) fx = x2; lx2 = x2; } if (fx < 0) continue;
+          for (x2 = fx + 1; x2 <= bb[0].x0; x2++) if (same(at(x2, y2), OL) && !isL[(x2 - 1) + ',' + y2] && !isL[(x2 + 1) + ',' + y2] && !isL[x2 + ',' + (y2 - 1)] && !isL[x2 + ',' + (y2 + 1)] && y2 !== bridgeY - 1) thin.push([x2, y2]); }
+        thin.forEach(function (q) { put(q[0], q[1], SK); });
+        bb.forEach(function (b) { for (var yy = b.y0; yy <= b.y1; yy++) for (var xx = b.x0; xx <= b.x1; xx++) if (isL[xx + ',' + yy]) put(xx, yy, VI);
+          var rowOf = function (y3) { var o = []; for (var x5 = b.x0; x5 <= b.x1; x5++) if (isL[x5 + ',' + y3]) o.push(x5); return o; }, low = rowOf(b.y1), py = b.y1;
+          if (b.y1 > b.y0 && low.length >= 2) { for (xx = b.x0; xx <= b.x1; xx++) if (isL[xx + ',' + b.y0]) put(xx, b.y0, LID); } else if (b.y1 > b.y0) { low = rowOf(b.y0); py = b.y0; } /* tapered lens (Juvenile): no lid, pupil in the wide row */
+          if (low.length) put(low[(low.length - 1) >> 1], py, PU); }); }
       // (1) mouth
       var ey = -1, sx = 0, n = 0, vx = 0, vn = 0; for (y = 0; y < H; y++) for (x = 0; x < W; x++) { var c = at(x, y); if (same(c, PU)) { sx += x; n++; } if (same(c, VI)) { vx += x; vn++; } if ((same(c, PU) || same(c, VI)) && y < H - 6) ey = Math.max(ey, y); }
       if (vn) { sx = vx; n = vn; } // centre on the visor lenses (the headband knot shares the pupil orange)
       if (n && ey >= 0) { var cx = Math.round(sx / n), my = ey + 3, yy0, run; /* sit just above his chin line (first >=4 px ink run under the visor) so the nose zone between stays free */
-        for (yy0 = ey + 3; yy0 <= ey + 7 && yy0 < H; yy0++) { run = 0; for (x = cx - 4; x <= cx + 4; x++) { if (x >= 0 && x < W && same(at(x, yy0), OL)) { if (++run >= 4) break; } else run = 0; } if (run >= 4) { my = yy0 - 1; break; } } [[-2, OL], [-1, [0xe0, 0x40, 0x60]], [0, [0xe0, 0x40, 0x60]], [1, OL]].forEach(function (o) { var xx = cx + o[0]; if (xx >= 0 && xx < W && my < H && skin(at(xx, my))) put(xx, my, o[1]); }); /* ink corners + mouth-pink (#e04060, what faceSpots keys on) */ }
+        for (yy0 = ey + 3; yy0 <= ey + 7 && yy0 < H; yy0++) { run = 0; for (x = cx - 4; x <= cx + 4; x++) { if (x >= 0 && x < W && same(at(x, yy0), OL)) { if (++run >= 4) break; } else run = 0; } if (run >= 4) { my = yy0 - 1; break; } } nakaMouth(cx, my, ey); }
+      // (1b) naka-face-card 2026-10-20: card eyes + thin wire rims (see design/naka-face-redesign.md)
+      nakaEyes();
       // (2) dome
       var top = -1, x0 = 99, x1 = -1; for (y = 0; y < H && top < 0; y++) for (x = 0; x < W; x++) if (!same(at(x, y), BG)) { top = y; break; }
       if (top < 1) return r; for (x = 0; x < W; x++) if (same(at(x, top), OL)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }

@@ -155,8 +155,11 @@
       }
       case 'banner':
         var BN = it.map || BANNER; // items may pass their own banner map; HODL banner unchanged
-        L.sprite(Math.max(1, a.minX - 2), Math.max(0, 28 - BN.length + 1), BN);
-        blit(img, L, function (x2, y2) { return a.isSil(x2, y2) && y2 > 7; }); return img;
+        L.sprite(a.bannerX != null ? a.bannerX : Math.max(1, a.minX - 2), Math.max(0, 28 - BN.length + 1), BN);
+        /* naka-flag-fix 2026-10-20 (display only): the flag's ink OUTLINE never paints over the pet (on bounce-up frames the cloth's bottom outline used to
+         * draw a black line across the top of the head, under any hat); the cloth itself keeps the old rule (may cover the head top, rows 0-7).
+         * a.bannerBehind (set by V2Render when it slides a pet clear of its flag): the whole flag stays behind the pet and its gear. */
+        blit(img, L, function (x2, y2) { return a.isSil(x2, y2) && (a.bannerBehind || y2 > 7 || !L.get(x2, y2)); }); return img;
       case 'sats': L.sprite(Math.min(N - 12, a.maxX - 3), 20, SATS); blit(img, L); return img;
       case 'beam':
         [a.eyeL, a.eyeR].forEach(function (e, n) {
@@ -209,7 +212,15 @@
         for (y = y1 + 1; y < y1 + 7; y++) L.set(x1 + (y % 2), y, 'G');
         blit(img, L); return img; // ink outline so the gold rim reads on yellow faces (Lenny)
       }
-      case 'feetBoth': L.sprite(a.minX + 1, 29 - it.map.length, it.map); L.sprite(a.maxX - 4, 29 - it.map.length, it.map); blit(img, L); return img;
+      case 'feetBoth': { /* sprite-fixes 2026-10-20: each shoe keeps its edge spot when there is a foot under it; otherwise (Dodo's tail/beak make the body wider
+         * than his legs) it moves onto the nearest run of silhouette on the lowest body rows, so shoes never float off the feet */
+        var fw = it.map[0].length, fy = 29 - it.map.length, runs = [], ry, rx, onFoot = function (x0) { for (var yy = a.maxY - 1; yy <= a.maxY; yy++) for (var xx = x0; xx < x0 + fw; xx++) if (a.isSil(xx, yy)) return true; return false; };
+        for (rx = 0; rx < N; rx++) { var on = a.isSil(rx, a.maxY); if (on && (!runs.length || runs[runs.length - 1][1] !== rx - 1)) runs.push([rx, rx]); else if (on) runs[runs.length - 1][1] = rx; }
+        var fl = a.minX + 1, fr = a.maxX - 4, snap = function (r) { return Math.max(0, Math.min(N - fw, Math.round((r[0] + r[1] + 1) / 2 - fw / 2))); };
+        if (runs.length && !onFoot(fl)) fl = snap(runs[0]); if (runs.length && !onFoot(fr)) fr = snap(runs[runs.length - 1]);
+        if (fr - fl < fw && runs.length > 1) { fl = snap(runs[0]); fr = snap(runs[runs.length - 1]); }
+        if (fr > fl && fr - fl <= fw) { var gap = fw + 1 - (fr - fl); fl = Math.max(0, fl - Math.ceil(gap / 2)); fr = Math.min(N - fw, fr + Math.floor(gap / 2)); } /* two shoes on close legs: 1px apart */
+        L.sprite(fl, fy, it.map); if (fr !== fl) L.sprite(fr, fy, it.map); blit(img, L); return img; }
     }
     var p = pos(it.at, it.map, a, it); L.sprite(p[0] + (it.dx || 0), p[1], it.map);
     if (it.extra) { var p2 = pos(it.extra.at, it.extra.map, a, it.extra); L.sprite(p2[0] + (it.extra.dx || 0), p2[1], it.extra.map); }
