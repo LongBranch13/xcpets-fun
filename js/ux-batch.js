@@ -174,7 +174,10 @@
     i.oninput = function () { clearTimeout(t); var v = i.value; t = setTimeout(function () { var cur = getSel(); sl.innerHTML = petOpts(pets, cur, v, tierTxt);
       var first = pets.filter(function (q) { return petMatch(q, v.trim()); })[0]; if (v.trim() && first && sl.value !== String(first.id) && /^#?\d+$/.test(v.trim())) { sl.value = String(first.id); if (after) after(first.id, v); } }, 150); }; }
   function paintInv(w) {
-    var box = $('inv'); if (!box) return; var items = w.itemList.filter(function (g) { return g.owner === ME; }), pets = invPets(w), S = U.S();
+    var box = $('inv'); if (!box) return; var fold = box.closest ? box.closest('details') : null;
+    if (fold && !fold._lp) { fold._lp = 1; fold.addEventListener('toggle', function () { if (fold.open && fold._stale) { fold._stale = 0; paintInv(U.world()); } }); }
+    if (fold && !fold.open) { fold._stale = 1; $('tokens').textContent = String(V.tokensOf(w, ME)); return; } /* lair-perf: a closed stash is painted when it opens */
+    var items = w.itemList.filter(function (g) { return g.owner === ME; }), pets = invPets(w), S = U.S();
     $('tokens').textContent = String(V.tokensOf(w, ME));
     if (IV.pet == null || !w.byId[IV.pet] || w.byId[IV.pet].owner !== ME) IV.pet = (S.sel[0] != null && w.byId[S.sel[0]]) ? S.sel[0] : (pets[0] && pets[0].id);
     var p = w.byId[IV.pet], h = '';
@@ -189,8 +192,9 @@
       var groups = {}; items.forEach(function (g) { if (IV.slot !== 'all' && g.slot !== IV.slot) return; if (IV.filter === 'worn' && g.on == null) return; if (IV.filter === 'bag' && g.on != null) return; if (IV.filter === 'star' && !g.legendary) return;
         var k = g.item; (groups[k] = groups[k] || { item: g.item, label: g.label, slot: g.slot, tier: g.tier || 0, legendary: g.legendary, copies: [] }).copies.push(g); });
       var G = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (a, b) { return (b.legendary ? 4 : b.tier) - (a.legendary ? 4 : a.tier) || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || (a.label < b.label ? -1 : 1); });
+      var keyF = IV.filter + '|' + IV.slot; if (IV.pgKey !== keyF) { IV.pgKey = keyF; IV.pgN = 0; } var PGN = (window.matchMedia && matchMedia('(max-width:520px)').matches) ? 24 : 48, upto = Math.max(PGN, IV.pgN || 0), Gall = G; G = G.slice(0, upto); /* lair-perf: stash paged, filters/sort over ALL pieces first */
       h += G.length ? '<div class="baggrid">' + G.map(function (g) { var worn = g.copies.filter(function (c) { return c.on != null; }).length;
-        return '<button type="button" class="bagitem t' + (g.legendary ? 3 : g.tier) + '" data-bag="' + esc(g.item) + '" title="' + esc(g.label) + ' · ' + esc(SL(g.slot)) + ' · ' + TL[g.tier] + (window.V2Rules && V2Rules.lockHint && V2Rules.lockHint(g.item) ? ' · ' + esc(V2Rules.lockHint(g.item)) : '') + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span>' + (g.copies.length > 1 ? '<span class="cnt">×' + g.copies.length + '</span>' : '') + (worn ? '<span class="wn">' + worn + ' worn</span>' : '') + '</button>'; }).join('') + '</div>'
+        return '<button type="button" class="bagitem t' + (g.legendary ? 3 : g.tier) + '" data-bag="' + esc(g.item) + '" title="' + esc(g.label) + ' · ' + esc(SL(g.slot)) + ' · ' + TL[g.tier] + (window.V2Rules && V2Rules.lockHint && V2Rules.lockHint(g.item) ? ' · ' + esc(V2Rules.lockHint(g.item)) : '') + '"><span class="gi" data-icon="' + esc(g.item) + '"></span><span class="bl">' + esc(g.label) + (g.legendary ? ' ★' : '') + '</span>' + (g.copies.length > 1 ? '<span class="cnt">×' + g.copies.length + '</span>' : '') + (worn ? '<span class="wn">' + worn + ' worn</span>' : '') + '</button>'; }).join('') + '</div>' + (Gall.length > G.length ? '<div class="row petmore" style="justify-content:center;margin:10px 0"><button type="button" class="q" id="ivMore">Show more (' + (Gall.length - G.length).toLocaleString('en-US') + ' left)</button></div>' : '') + (Gall.length > PGN ? '<p class="small muted" id="ivPager">Showing ' + G.length.toLocaleString('en-US') + ' of ' + Gall.length.toLocaleString('en-US') + ' kinds of gear</p>' : '')
         : '<p class="muted small">' + (items.length ? 'Nothing matches this filter.' : 'No gear yet. Select a pet and Roll gear, or feed it: stage-ups and meals can bring a lucky drop.') + '</p>';
     } else {
       var cat = V.catalogBySlot(), own = {}; items.forEach(function (g) { own[g.item] = (own[g.item] || 0) + 1; }); var found = 0, total = 0;
@@ -210,6 +214,7 @@
     bindFind('ivFind', 'ivPet', invPets(U.world()), function () { return IV.pet; }, true, function (id, v) { IV.pet = id; IV.q = v; saveIV(); paintInv(U.world()); var f = $('ivFind'); if (f) { f.focus(); try { f.setSelectionRange(f.value.length, f.value.length); } catch (e) {} } });
     if ($('ivFind')) $('ivFind').addEventListener('change', function () { IV.q = this.value; });
     box.querySelectorAll('[data-bag]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); popover(b, b.dataset.bag); }; });
+    if ($('ivMore')) $('ivMore').onclick = function (e) { e.stopPropagation(); var y = window.scrollY, pg = (window.matchMedia && matchMedia('(max-width:520px)').matches) ? 24 : 48; IV.pgN = Math.max(pg, IV.pgN || 0) + pg; paintInv(U.world()); window.scrollTo(0, y); };
   }
   function equipOp(petId, slot, gid, msg) { var S = U.S(); S.ops.push({ kind: 'equip', owner: ME, petId: petId, slot: slot, gid: gid, block_index: S.tip }); U.save(); U.render(); U.toast(esc(msg) + ' (free)'); }
   function popover(anchor, itemId) { closePop(); var w = U.world(), it = V.GEAR_BY_ID[itemId] || {}, copies = w.itemList.filter(function (g) { return g.owner === ME && g.item === itemId; }), pets = invPets(w);
@@ -304,7 +309,8 @@
   window.addEventListener('hashchange', battleRoute);
 
   // ================================================================ wiring
-  UXB.after = function (w) { lastW = w; paintControls(w); UXB.sel(); paintInv(w); paintFace(w); paintCrates(w); };
+  UXB.after = function (w) { lastW = w; paintControls(w); UXB.sel(); if (!U.lairOn || U.lairOn()) paintInv(w); else { var ib = $('inv'); if (ib && ib.querySelector('.invgrid')) ib.innerHTML = ''; } paintFace(w); paintCrates(w); };
+  UXB.paintInv = function (w) { paintInv(w || U.world()); };
   bindControls(); bindSel(); bindTokens();
   U.render(); battleRoute();
 })();
