@@ -315,7 +315,8 @@
   /* naka-flag-fix 2026-10-20 (display only, owner): side-brim caps point the way the species faces. The McDonald's visor's brim is drawn to the right;
    * species that face LEFT (Nakamoto: bun at the back, on the right; Doge: snout left) wear a mirrored copy. Applies to every pet of that species
    * (hybrids use their body-shape species); front-facing and right-facing species are unchanged. */
-  var BRIM_SIDE = { 'mcd-visor': 1 };
+  /* rarity-sort 2026-10-20 (owner): every side-brim cap follows the same rule (bill / brim drawn to one side): mirrored on left-facers, right-facers unchanged. */
+  var BRIM_SIDE = { 'mcd-visor': 1, 'based-cap': 1, 'smug-cap': 1, 'v2-kevin-hat': 1, 'v2-dodo-newsboy': 1, 'v2-chud-hat': 1 };
   function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (FACING[sp] !== 'left') return id; /* sprite-fixes V2Render.FACING (shared table) */
     var fid = id + '~faceL', d = BonusGear.DEFS[id]; if (!BonusGear.DEFS[fid] && d && d.map) { BonusGear.DEFS[fid] = Object.assign({}, d, { map: d.map.map(function (r) { return r.split('').reverse().join(''); }) }); if (HAT_SIT[id] != null) HAT_SIT[fid] = HAT_SIT[id]; }
     return BonusGear.DEFS[fid] ? fid : id; }
