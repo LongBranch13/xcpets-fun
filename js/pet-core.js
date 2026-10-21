@@ -1551,7 +1551,8 @@
     drawBackground(cv, pet, digest, frame, pal);
     var gear = {}, a = null, eggSp = null, eyes0 = [];
     var bob = [0, -1, -1, 0][frame];
-    if (stage === 0) {
+    if (opts.bgOnly) { /* naka-flag-fix 2026-10-20: render-time only, background alone (V2Render uses it to slide a pet clear of its flag); default unchanged */ }
+    else if (stage === 0) {
       drawEgg(cv, pet, digest, frame);
       eggSp = byId(SPECIES, pet.species);
       if (eggSp && eggSp.egg) drawSpeciesEgg(cv, eggSp, frame);
