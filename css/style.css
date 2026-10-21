@@ -171,3 +171,12 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 .nav .navscene { font-family: var(--pixel); font-size: 8px; line-height: 1.4; color: #ffd166; text-shadow: 0 0 6px rgba(255,209,102,.4); }
 .nav .navscene .navlair { width: 160px; max-width: none; white-space: normal; }
 .nav .navscene .navlair small { font-size: 11px; line-height: 1.1; }
+/* nav-cemetery (Oct 20 2026): one-line nav, short Lair, Cemetery place link, Play CTA button */
+.nav nav { display:flex; align-items:center; flex-wrap:nowrap; white-space:nowrap; }
+.nav nav a { flex:0 0 auto; }
+.nav nav a.navplay { display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 8px; color:#0f1813; background:var(--green); border:2px solid #000; border-radius:4px; box-shadow:2px 2px 0 #000, inset -2px -2px 0 rgba(0,0,0,.25); }
+.nav nav a.navplay:hover, .nav nav a.navplay:focus-visible { color:#0f1813; filter:brightness(1.12); transform:translate(-1px,-1px); box-shadow:3px 3px 0 #000, inset -2px -2px 0 rgba(0,0,0,.25); }
+.nav nav a.navplay .navegg { width:8px; height:10px; background:#fff8e6; border:2px solid #000; border-radius:50% 50% 45% 45% / 60% 60% 40% 40%; box-shadow:inset -2px -1px 0 #ffd166; }
+@media (max-width:1366px) { .nav { padding:10px 14px; gap:10px; } .nav nav a { margin-left:10px; font-size:13px; } .nav nav a.navscene { font-size:7px; } .nav nav a.navico { margin-left:9px; } }
+@media (max-width:1180px) and (min-width:601px) { .nav nav a { margin-left:8px; font-size:12px; } .nav nav a.navplay { padding:4px 7px 4px 6px; } .nav nav a.navscene { white-space:normal; text-align:center; line-height:1.5; } .nav nav a.navscene[href$="#kekimus"] { width:72px; } .nav nav a.navscene[href$="#no-tail-motel"] { width:94px; } .nav .brand { font-size:13px; } }
+@media (max-width:600px) { header.nav nav a.navplay { order:-1; min-height:34px; margin:3px 4px; padding:0 9px 0 7px; } }
