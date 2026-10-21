@@ -298,7 +298,43 @@
         var X = x + off[0], Y = y + off[1]; if (X < 0 || Y < 0 || X > 31 || Y > 31) continue; var j = (Y * 32 + X) * 4;
         d[j] = B[i]; d[j + 1] = B[i + 1]; d[j + 2] = B[i + 2]; d[j + 3] = 255; }
       return Object.assign({}, f, { data: d }); }); }
+  /* naka-flag-fix 2026-10-20 (display only, owner): side-brim caps point the way the species faces. The McDonald's visor's brim is drawn to the right;
+   * species that face LEFT (Nakamoto: bun at the back, on the right; Doge: snout left) wear a mirrored copy. Applies to every pet of that species
+   * (hybrids use their body-shape species); front-facing and right-facing species are unchanged. */
+  var FACES_LEFT = { nakamoto: 1, doge: 1 }, BRIM_SIDE = { 'mcd-visor': 1 };
+  function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (!FACES_LEFT[sp]) return id;
+    var fid = id + '~faceL', d = BonusGear.DEFS[id]; if (!BonusGear.DEFS[fid] && d && d.map) { BonusGear.DEFS[fid] = Object.assign({}, d, { map: d.map.map(function (r) { return r.split('').reverse().join(''); }) }); if (HAT_SIT[id] != null) HAT_SIT[fid] = HAT_SIT[id]; }
+    return BonusGear.DEFS[fid] ? fid : id; }
+  /* naka-flag-fix 2026-10-20 (display only, owner): a back flag (at:'banner', pole on the left, cloth to its right at the top) was hidden behind wide
+   * heads + headwear (e.g. Nakamoto Adult in a McDonald's visor). General rule for every pet: if any cloth pixel of the flag would be hidden by the pet or
+   * its gear in any frame, slide the pet (body + all other gear, background stays put) right by the smallest step that shows the whole cloth (pole at
+   * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
+    var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard')) return full;
+    var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
+    all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
+    if (!ban) return full;
+    var BN = BonusGear.DEFS[ban].map, W = BN[0].length, y0 = Math.max(0, 28 - BN.length + 1), C = BonusGear.COLORS, cloth = [], r, c;
+    for (r = 0; r < BN.length && BN[r].length > 1; r++) for (c = 1; c < BN[r].length; c++) if (BN[r][c] !== '.') cloth.push([c, y0 + r, BN[r][c]]);
+    var hexc = function (k) { var h = String(C[k] || '#000000').replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+    var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0], key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' });
+    var px0 = Math.max(1, BonusGear.anchors(PetCore.render(key, { stage: stage, frame: 0, gearOverride: {} }), PetCore.render(key, { stage: stage, frame: 0, gearOverride: {} }), sp || PetCore.SPECIES[0]).minX - 2);
+    var hidden0 = 0; full.forEach(function (img) { var n = 0; cloth.forEach(function (q) { var x = px0 + q[0], i = (q[1] * 32 + x) * 4, k = hexc(q[2]); if (x < 32 && (img.data[i] !== k[0] || img.data[i + 1] !== k[1] || img.data[i + 2] !== k[2])) n++; }); hidden0 = Math.max(hidden0, n); });
+    if (!hidden0) return full;
+    var rest = all.filter(function (id) { var it = V.GEAR_BY_ID[id]; return ((it && it.id) || id) !== ban; }), restIds = (itemIds || []).filter(function (id) { return rest.indexOf(V.resolveItem ? V.resolveItem(id) : id) >= 0; }), restOv = (extraOv || []).filter(function (id) { return rest.indexOf(id) >= 0; });
+    var km = framesWithCore(key, stage, restIds, restOv, cap, baseGo), KB = [255, 0, 255];
+    var fg = km.map(function (img) { var m = new Uint8Array(1024), i; for (i = 0; i < 1024; i++) m[i] = Math.abs(img.data[i * 4] - KB[0]) + Math.abs(img.data[i * 4 + 1] - KB[1]) + Math.abs(img.data[i * 4 + 2] - KB[2]) > 40 ? 1 : 0; return m; });
+    var maxX = -1; fg.forEach(function (m) { for (var i = 0; i < 1024; i++) if (m[i]) maxX = Math.max(maxX, i % 32); });
+    var best = null; [1, 0].forEach(function (bx) { for (var dx = 1; dx <= 30 - maxX; dx++) { var n = 0; fg.forEach(function (m) { var h = 0; cloth.forEach(function (q) { var x = bx + q[0] - dx; if (x >= 0 && x < 32 && m[q[1] * 32 + x]) h++; }); n = Math.max(n, h); });
+      if (!best || n < best.n) best = { n: n, dx: dx, bx: bx }; if (!n) break; } });
+    if (!best || best.n >= hidden0) return full;
+    var real = framesWithCore(art, stage, restIds, restOv, cap, baseGo), dx = best.dx;
+    return real.map(function (img, f) { var bg = PetCore.render(art, { stage: stage, frame: f, bgOnly: true }).data, m = fg[f], d = new Uint8ClampedArray(bg), sm = new Uint8Array(1024), x, y;
+      for (y = 0; y < 32; y++) for (x = dx; x < 32; x++) { var j = y * 32 + x - dx; if (!m[j]) continue; var i = y * 32 + x; sm[i] = 1; d[i * 4] = img.data[j * 4]; d[i * 4 + 1] = img.data[j * 4 + 1]; d[i * 4 + 2] = img.data[j * 4 + 2]; d[i * 4 + 3] = 255; }
+      var out = Object.assign({}, img, { data: d }), a = { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: best.bx, bannerBehind: true, isSil: function (x2, y2) { return x2 >= 0 && y2 >= 0 && x2 < 32 && y2 < 32 && !!sm[y2 * 32 + x2]; } };
+      BonusGear.apply(ban, out, a, f); return out; }); }
+  function framesWithCore(art, stage, itemIds, extraOv, cap, baseGo) {
     itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); 
     if (art) { var roots0 = V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species], LK = V.SPECIES_LOCK || { 'lenny-monocle': { sp: 'lenny' } }; /* species-locked pieces (Lenny monocle; KEVIN name tag) never draw on other species */
       itemIds = itemIds.filter(function (id) { var L = LK[id]; return !L || roots0.indexOf(L.sp) >= 0 || (L.from != null && V.eligBlock && (V.eligBlock() || 0) < L.from); }); } /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
@@ -333,7 +369,7 @@
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, img, fitAnchors(id, a), f); if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art); BonusGear.apply(fid, img, fitAnchors(fid, a), f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.

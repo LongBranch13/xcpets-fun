@@ -155,8 +155,11 @@
       }
       case 'banner':
         var BN = it.map || BANNER; // items may pass their own banner map; HODL banner unchanged
-        L.sprite(Math.max(1, a.minX - 2), Math.max(0, 28 - BN.length + 1), BN);
-        blit(img, L, function (x2, y2) { return a.isSil(x2, y2) && y2 > 7; }); return img;
+        L.sprite(a.bannerX != null ? a.bannerX : Math.max(1, a.minX - 2), Math.max(0, 28 - BN.length + 1), BN);
+        /* naka-flag-fix 2026-10-20 (display only): the flag's ink OUTLINE never paints over the pet (on bounce-up frames the cloth's bottom outline used to
+         * draw a black line across the top of the head, under any hat); the cloth itself keeps the old rule (may cover the head top, rows 0-7).
+         * a.bannerBehind (set by V2Render when it slides a pet clear of its flag): the whole flag stays behind the pet and its gear. */
+        blit(img, L, function (x2, y2) { return a.isSil(x2, y2) && (a.bannerBehind || y2 > 7 || !L.get(x2, y2)); }); return img;
       case 'sats': L.sprite(Math.min(N - 12, a.maxX - 3), 20, SATS); blit(img, L); return img;
       case 'beam':
         [a.eyeL, a.eyeR].forEach(function (e, n) {
