@@ -315,8 +315,8 @@
   /* naka-flag-fix 2026-10-20 (display only, owner): side-brim caps point the way the species faces. The McDonald's visor's brim is drawn to the right;
    * species that face LEFT (Nakamoto: bun at the back, on the right; Doge: snout left) wear a mirrored copy. Applies to every pet of that species
    * (hybrids use their body-shape species); front-facing and right-facing species are unchanged. */
-  var FACES_LEFT = { nakamoto: 1, doge: 1 }, BRIM_SIDE = { 'mcd-visor': 1 };
-  function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (!FACES_LEFT[sp]) return id;
+  var BRIM_SIDE = { 'mcd-visor': 1 };
+  function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (FACING[sp] !== 'left') return id; /* sprite-fixes V2Render.FACING (shared table) */
     var fid = id + '~faceL', d = BonusGear.DEFS[id]; if (!BonusGear.DEFS[fid] && d && d.map) { BonusGear.DEFS[fid] = Object.assign({}, d, { map: d.map.map(function (r) { return r.split('').reverse().join(''); }) }); if (HAT_SIT[id] != null) HAT_SIT[fid] = HAT_SIT[id]; }
     return BonusGear.DEFS[fid] ? fid : id; }
   /* naka-flag-fix 2026-10-20 (display only, owner): a back flag (at:'banner', pole on the left, cloth to its right at the top) was hidden behind wide
@@ -342,6 +342,11 @@
     var maxX = -1; fg.forEach(function (m) { for (var i = 0; i < 1024; i++) if (m[i]) maxX = Math.max(maxX, i % 32); });
     var best = null; [1, 0].forEach(function (bx) { for (var dx = 1; dx <= 30 - maxX; dx++) { var n = 0; fg.forEach(function (m) { var h = 0; cloth.forEach(function (q) { var x = bx + q[0] - dx; if (x >= 0 && x < 32 && m[q[1] * 32 + x]) h++; }); n = Math.max(n, h); });
       if (!best || n < best.n) best = { n: n, dx: dx, bx: bx }; if (!n) break; } });
+    /* naka-combined 2026-10-20 (owner: "do whatever looks best"): wide pets (Doge, hybrids on wide bodies) whose cloth stays over a quarter hidden even after the
+     * best slide get the flag drawn IN FRONT of the pet, unslid (pole at its usual spot). Only in that case; pets whose flag already shows are unchanged. */
+    if ((best ? best.n : hidden0) * 4 > cloth.length) { /* on top of the normal render (flag already behind), so every other piece keeps its place */
+      var cyMax = cloth.reduce(function (m2, q) { return Math.max(m2, q[1]); }, 0);
+      return full.map(function (img, f) { var out = Object.assign({}, img, { data: new Uint8ClampedArray(img.data) }); BonusGear.apply(ban, out, { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: px0, isSil: function (x2, y2) { return y2 > cyMax + 1; } }, f); return out; }); }
     if (!best || best.n >= hidden0) return full;
     var real = framesWithCore(art, stage, restIds, restOv, cap, baseGo), dx = best.dx;
     return real.map(function (img, f) { var bg = PetCore.render(art, { stage: stage, frame: f, bgOnly: true }).data, m = fg[f], d = new Uint8ClampedArray(bg), sm = new Uint8Array(1024), x, y;

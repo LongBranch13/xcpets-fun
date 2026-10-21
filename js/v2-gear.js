@@ -29,11 +29,12 @@
     function nakaFace(r, opts) { var st = opts && opts.stage | 0; if (!r || !r.data || st < 1) return r; var W = r.width || 32, H = r.height || 32, d = r.data, x, y, q;
       var at = function (x2, y2) { var q2 = (y2 * W + x2) * 4; return [d[q2], d[q2 + 1], d[q2 + 2]]; }, put = function (x2, y2, c) { var q2 = (y2 * W + x2) * 4; d[q2] = c[0]; d[q2 + 1] = c[1]; d[q2 + 2] = c[2]; d[q2 + 3] = 255; };
       var same = function (c, k) { return c[0] === k[0] && c[1] === k[1] && c[2] === k[2]; }, BG = at(0, 0), OL = [0x1a, 0x10, 0x20], PU = [0x14, 0x10, 0x18], VI = [0xec, 0xec, 0xe4];
-      var skin = function (c) { return c[1] > c[0] + 15 && c[1] > c[2] + 15; };
+      var hx3 = function (h3) { h3 = String(h3 || '#000000'); return [parseInt(h3.slice(1, 3), 16), parseInt(h3.slice(3, 5), 16), parseInt(h3.slice(5, 7), 16)]; }, SKC = hx3(sp.colors && sp.colors['3']), LDC = hx3(sp.colors && sp.colors['4']); /* naka-combined 2026-10-20: the CURRENT skin colours (hybridRender swaps sp.colors), so hybrids on his body get the card face in their own colours */
+      var skin = function (c) { return (c[1] > c[0] + 15 && c[1] > c[2] + 15) || same(c, SKC) || same(c, LDC); };
       /* naka-face-card 2026-10-20 (owner, from the RAREPEPE Nakamoto Card): red downturned lips in card red #CD0000 (V2Render.faceSpots also keys on it,
        * so mouth gear still anchors). NAKA_LIPS = 2: upper lip / dark line / fuller lower lip, like the card; 1: one fuller lip shape. Ink corners droop
        * below the lip ends. Painted on skin only; rows that would touch the glasses are skipped. A drawn interior ink mouth line (Hatchling) is reused. */
-      var LIP = [0xcd, 0x00, 0x00], oneRow = st === 3 || st === 4; /* owner 2026-10-20: Adult + Elder lip is exactly 1 px row of card red */
+      var LIP = [0xcd, 0x00, 0x00], oneRow = st >= 3; /* owner 2026-10-20: Adult, Elder + Mythic lip is exactly 1 px row of card red */
       function nakaMouth(cx, my, ey) { var two = NAKA_LIPS === 2, lineY = -1, P = [], add = function (dx, y3, c3) { P.push([dx, y3, c3]); };
         for (var yl = ey + 2; yl < my; yl++) { var r0 = -1, r1 = -1; for (var xl = cx - 4; xl <= cx + 4; xl++) { var ok = xl > 0 && xl < W - 1 && same(at(xl, yl), OL) && skin(at(xl, yl - 1)) && skin(at(xl, yl + 1)); if (ok) { if (r0 < 0) r0 = xl; r1 = xl; } else if (r0 >= 0 && r1 - r0 < 2) r0 = -1; else if (r0 >= 0) break; }
           if (r0 >= 0 && r1 - r0 >= 2) { my = yl; lineY = yl; cx = Math.floor((r0 + r1 + 1) / 2); break; } }
@@ -47,7 +48,7 @@
        * so eye anchors, Beam eyes and eye gear still centre on them. */
       function nakaEyes() { var L = [], x2, y2; for (y2 = 0; y2 < H; y2++) for (x2 = 0; x2 < W; x2++) { var c2 = at(x2, y2); if (same(c2, PU) || same(c2, VI)) L.push([x2, y2]); }
         if (L.length < 2) return; var mx = L.reduce(function (s2, q) { return s2 + q[0]; }, 0) / L.length, G = [L.filter(function (q) { return q[0] < mx; }), L.filter(function (q) { return q[0] >= mx; })];
-        var isL = {}; L.forEach(function (q) { isL[q[0] + ',' + q[1]] = 1; }); var LID = [0x41, 0x62, 0x1a], SK = [0x56, 0x80, 0x23];
+        var isL = {}; L.forEach(function (q) { isL[q[0] + ',' + q[1]] = 1; }); var LID = LDC, SK = SKC; /* = #41621a / #568023 on a pure Nakamoto */
         var bb = G.map(function (g) { var b = { x0: 99, x1: -1, y0: 99, y1: -1 }; g.forEach(function (q) { b.x0 = Math.min(b.x0, q[0]); b.x1 = Math.max(b.x1, q[0]); b.y0 = Math.min(b.y0, q[1]); b.y1 = Math.max(b.y1, q[1]); }); return b; });
         if (bb.some(function (b) { return b.x1 < 0; })) return;
         var gx0 = Math.min(bb[0].x0, bb[1].x0) - 2, gx1 = Math.max(bb[0].x1, bb[1].x1) + 2, gy0 = Math.min(bb[0].y0, bb[1].y0) - 2, gy1 = Math.max(bb[0].y1, bb[1].y1) + 1, nearL = function (x3, y3) { for (var a2 = -1; a2 <= 1; a2++) for (var b2 = -1; b2 <= 1; b2++) if (isL[(x3 + a2) + ',' + (y3 + b2)]) return true; return false; };
