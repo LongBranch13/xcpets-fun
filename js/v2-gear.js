@@ -18,7 +18,7 @@
   // Only: VR glasses baked into the face (the eye/lens colours become a dark headset visor with an orange glow; the lens shape and
   // frames are pet-core's own, so face gear still layers on top), and the stray white hook (the hachimaki knot tails off the back
   // of the head) is removed in the v2 render. His old signature hat item is deleted (see v2-nakamoto-rework.test.js). generator/pet-core.js is not edited.
-  var NAKA_MAPS = null, NAKA_VR = { eyeWhite: '#ecece4', pupil: '#141018' }; /* naka-face-card 2026-10-20: card eyes (white, dark pupil) replace the dark visor + orange glow */
+  var NAKA_LIPS = 1 /* owner 2026-10-20: two lips allowed; at 32 px the single fuller lip reads better (see previews/naka-face/lips-one-vs-two.png) */, NAKA_MAPS = null, NAKA_VR = { eyeWhite: '#ecece4', pupil: '#141018' }; /* naka-face-card 2026-10-20: card eyes (white, dark pupil) replace the dark visor + orange glow */
   function reworkNakamoto(PC) { var sp = PC && PC.SPECIES && PC.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp || sp.v2rework) return;
     sp.v2rework = true; sp.eyeWhite = NAKA_VR.eyeWhite; sp.pupil = NAKA_VR.pupil;
     sp.hachimaki = false; /* 2026-10-16 (Jake): no white headband / Bitcoin disc in Nakamoto's art at any stage (visual only; the Genesis Block headband gear item stays) */
@@ -30,14 +30,17 @@
       var at = function (x2, y2) { var q2 = (y2 * W + x2) * 4; return [d[q2], d[q2 + 1], d[q2 + 2]]; }, put = function (x2, y2, c) { var q2 = (y2 * W + x2) * 4; d[q2] = c[0]; d[q2 + 1] = c[1]; d[q2 + 2] = c[2]; d[q2 + 3] = 255; };
       var same = function (c, k) { return c[0] === k[0] && c[1] === k[1] && c[2] === k[2]; }, BG = at(0, 0), OL = [0x1a, 0x10, 0x20], PU = [0x14, 0x10, 0x18], VI = [0xec, 0xec, 0xe4];
       var skin = function (c) { return c[1] > c[0] + 15 && c[1] > c[2] + 15; };
-      /* naka-face-card 2026-10-20 (owner, from the RAREPEPE Nakamoto Card): ONE red lip shape, downturned. Row my-1: a 2 px top, row my: a fuller
-       * 4 px lower part, ink corners drooping one row below the lip ends. Single tone #da3c56 (red, but within faceSpots' 24-step match of mouth-pink
-       * #e04060, so mouth gear still anchors). Painted on skin only; the top row is skipped when it would touch the glasses. */
-      var LIP = [0xda, 0x3c, 0x56];
-      function nakaMouth(cx, my, ey) { /* a drawn interior ink mouth line (Hatchling) is recoloured in place instead of adding a second mouth below it */
+      /* naka-face-card 2026-10-20 (owner, from the RAREPEPE Nakamoto Card): red downturned lips in card red #CD0000 (V2Render.faceSpots also keys on it,
+       * so mouth gear still anchors). NAKA_LIPS = 2: upper lip / dark line / fuller lower lip, like the card; 1: one fuller lip shape. Ink corners droop
+       * below the lip ends. Painted on skin only; rows that would touch the glasses are skipped. A drawn interior ink mouth line (Hatchling) is reused. */
+      var LIP = [0xcd, 0x00, 0x00];
+      function nakaMouth(cx, my, ey) { var two = NAKA_LIPS === 2, lineY = -1, P = [], add = function (dx, y3, c3) { P.push([dx, y3, c3]); };
         for (var yl = ey + 2; yl < my; yl++) { var r0 = -1, r1 = -1; for (var xl = cx - 4; xl <= cx + 4; xl++) { var ok = xl > 0 && xl < W - 1 && same(at(xl, yl), OL) && skin(at(xl, yl - 1)) && skin(at(xl, yl + 1)); if (ok) { if (r0 < 0) r0 = xl; r1 = xl; } else if (r0 >= 0 && r1 - r0 < 2) r0 = -1; else if (r0 >= 0) break; }
-          if (r0 >= 0 && r1 - r0 >= 2) { for (xl = r0; xl <= r1; xl++) put(xl, yl, LIP); for (xl = r0; xl <= r1; xl++) if (skin(at(xl, yl + 1)) && xl > r0 && xl < r1) put(xl, yl + 1, LIP); if (skin(at(r0, yl + 1))) put(r0, yl + 1, OL); if (skin(at(r1, yl + 1))) put(r1, yl + 1, OL); return; } } var P = [[-1, my, LIP], [0, my, LIP], [-2, my, LIP], [1, my, LIP], [-3, my + 1, OL], [2, my + 1, OL]]; if (my - 1 > ey + 1) P.push([-1, my - 1, LIP], [0, my - 1, LIP]); else { P.push([-3, my, OL], [2, my, OL]); }
-        P.forEach(function (o) { var xx = cx + o[0], yy = o[1]; if (xx >= 0 && xx < W && yy >= 0 && yy < H && skin(at(xx, yy))) put(xx, yy, o[2]); }); }
+          if (r0 >= 0 && r1 - r0 >= 2) { my = yl; lineY = yl; cx = Math.floor((r0 + r1 + 1) / 2); break; } }
+        var top = two ? my - 2 : my - 1, safe = function (y3) { return y3 > ey + 1; };
+        if (two) { if (safe(my - 2)) { add(-1, my - 2, LIP); add(0, my - 2, LIP); } for (var k = -2; k <= 1; k++) add(k, my - 1, safe(my - 1) ? OL : LIP); for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my, OL); add(2, my, OL); }
+        else { if (safe(top)) { add(-1, top, LIP); add(0, top, LIP); } for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my + 1, OL); add(2, my + 1, OL); }
+        P.forEach(function (o) { var xx = cx + o[0], yy = o[1]; if (xx >= 0 && xx < W && yy >= 0 && yy < H && (skin(at(xx, yy)) || same(at(xx, yy), OL) && yy === lineY)) put(xx, yy, o[2]); }); }
       /* Eyes: white lenses (NAKA_VR.eyeWhite) keep their shape; every pupil pixel becomes white, then ONE dark pupil sits in the bottom row of each lens
        * (low = droopy); lenses 2+ rows tall get their top row painted as a heavy lid (dark skin). Glasses: frame ink more than 1 px from a lens, inside
        * the head and not the head outline, becomes skin, so the thick black frame thins to a 1 px wire rim (bridge row kept). Lens pixels never move,
@@ -52,6 +55,9 @@
         for (y2 = Math.max(1, gy0); y2 <= Math.min(H - 2, gy1); y2++) for (x2 = Math.max(1, gx0); x2 <= Math.min(W - 2, gx1); x2++) { if (!same(at(x2, y2), OL) || nearL(x2, y2)) continue; if (y2 === bridgeY && inGap(x2)) continue;
           var nb = [at(x2 - 1, y2), at(x2 + 1, y2), at(x2, y2 - 1), at(x2, y2 + 1)]; if (nb.some(function (c3) { return same(c3, BG); })) continue; /* head outline stays */
           if (x2 < gx0 + 1 || x2 > gx1 - 1) continue; thin.push([x2, y2]); }
+        /* audit fix 2026-10-20: the side block. Between the head's outer outline pixel and each lens' 1 px rim, the extra frame ink becomes skin (Juvenile 2-3 px block, Adult 1 px) */
+        for (y2 = Math.max(1, gy0); y2 <= Math.min(H - 2, gy1); y2++) { var fx = -1, lx2 = -1; for (x2 = 0; x2 < W; x2++) if (!same(at(x2, y2), BG)) { if (fx < 0) fx = x2; lx2 = x2; } if (fx < 0) continue;
+          for (x2 = fx + 1; x2 <= bb[0].x0; x2++) if (same(at(x2, y2), OL) && !isL[(x2 - 1) + ',' + y2] && !isL[(x2 + 1) + ',' + y2] && !isL[x2 + ',' + (y2 - 1)] && !isL[x2 + ',' + (y2 + 1)] && y2 !== bridgeY - 1) thin.push([x2, y2]); }
         thin.forEach(function (q) { put(q[0], q[1], SK); });
         bb.forEach(function (b) { for (var yy = b.y0; yy <= b.y1; yy++) for (var xx = b.x0; xx <= b.x1; xx++) if (isL[xx + ',' + yy]) put(xx, yy, VI);
           var rowOf = function (y3) { var o = []; for (var x5 = b.x0; x5 <= b.x1; x5++) if (isL[x5 + ',' + y3]) o.push(x5); return o; }, low = rowOf(b.y1), py = b.y1;
