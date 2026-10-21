@@ -23,13 +23,15 @@
   function isHyb(p) { return !!(p.hybrid || (p.art && p.art.hybrid) || V.isHybrid(p.species)); }
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
   function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip || F.sort !== 'num'); }
-  /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species' sort; the community Bitcoin Wizard is never listed */
+  /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species' sort; the community Bitcoin Wizard is never listed (he isn't an owned pet); owned player Wizards are (wiz-display-fix) */
   var SPF = ['bobo', 'chud', 'dodo', 'doge', 'kevin', 'lenny', 'mumu', 'nakamoto', 'peepo', 'pepe', 'sarutobi', 'snibby', 'wojak'];
   function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
   function spName(id) { return id === 'hybrid' ? 'Hybrids' : id === 'kevin' ? 'Kevin' : spL(id); }
   function paintSpecies(pets) { var sel = $('fSpecies'); if (!sel) return; var c = { all: pets.length };
     pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
-    var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + SPF.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
+    /* wiz-display-fix (Oct 20 2026, display only): player Bitcoin Wizards / Lord Kek / any other non-hybrid species the list doesn't know get an option when owned */
+    var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; }), list = SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; });
+    var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + list.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
     if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; } sel.value = F.sp || 'all'; }
   window.UXB = {};
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */

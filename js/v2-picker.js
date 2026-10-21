@@ -9,6 +9,8 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pow(p) { var s = p.stats || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; }
   function score(w, p) { var s = window.PetScore && PetScore.of(w, p); return s ? s.score : 0; }
+  /* wiz-display-fix (Oct 20 2026): species options show the player-facing name (Bitcoin Wizard, Lord Kek, KEVIN...), value stays the id */
+  function spLabel(id) { try { return window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(id) : id; } catch (e) { return id; } }
   function isHyb(p) { return !!p.hybrid || /^hyb:/.test(String(p.species)) || !!(p.art && p.art.hybrid); }
   /** mount(el, opt): opt = { id, w, me, records: fn() -> recs, onPick: fn(rec), per: 8, sorts: ['score','power','newest'], title, selected: key } */
   function mount(el, opt) { if (!el) return; var st = el.__pk || (el.__pk = { q: '', sp: '', tier: -1, who: '', hyb: false, sort: (opt.sorts || ['score'])[0], mineFirst: false, page: 0 });
@@ -23,7 +25,7 @@
     var pages = Math.max(1, Math.ceil(L.length / per)); st.page = Math.min(st.page, pages - 1); var view = L.slice(st.page * per, st.page * per + per);
     var chip = function (k, v, on, label) { return '<button type="button" class="pk-chip' + (on ? ' on' : '') + '" data-k="' + k + '" data-v="' + esc(v) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + label + '</button>'; };
     el.innerHTML = '<div class="pk' + (opt.cls ? ' ' + esc(opt.cls) : '') + '"><div class="pk-top"><input type="search" class="pk-q" placeholder="Name or #ID" aria-label="Search by pet name or #ID" value="' + esc(st.q) + '">' +
-      '<select class="pk-sp" aria-label="Species"><option value="">All species</option>' + Object.keys(sp).sort().map(function (s) { return '<option' + (st.sp === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
+      '<select class="pk-sp" aria-label="Species"><option value="">All species</option>' + Object.keys(sp).sort(function (a, b) { return spLabel(a).toLowerCase() < spLabel(b).toLowerCase() ? -1 : 1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (st.sp === s ? ' selected' : '') + '>' + esc(spLabel(s)) + '</option>'; }).join('') + '</select>' +
       '<select class="pk-sort" aria-label="Sort">' + sorts.map(function (s) { return '<option value="' + s + '"' + (st.sort === s ? ' selected' : '') + '>' + { score: '⭐ Pet Score', rarity: '💎 Rarity', power: '⚡ Power', newest: '🆕 Newest' }[s] + '</option>'; }).join('') + '</select>' +
       (opt.dir ? '<button type="button" class="pk-dir" aria-label="Sort direction: ' + (st.asc ? 'low to high' : 'high to low') + '">' + (st.asc ? '↑ Low→High' : '↓ High→Low') + '</button>' : '') + '<span class="pk-n" aria-live="polite">' + L.length + ' match' + (L.length === 1 ? '' : 'es') + '</span></div>' +
       '<div class="pk-chips">' + (opt.noWho ? '' : chip('who', 'mine', st.who === 'mine', (opt.labels && opt.labels.mine) || 'Mine') + chip('who', 'others', st.who === 'others', (opt.labels && opt.labels.others) || 'Others')) + chip('hyb', '1', st.hyb, '🧬 Hybrid') +
