@@ -13,7 +13,7 @@
   function left(n) { return n <= 0 ? 'expiring' : n >= 12 ? '~' + Math.round(n / 6) + ' h (' + n + ' blk)' : '~' + n * 10 + ' min (' + n + ' blk)'; }
   function lbl(w, id) { var p = w.byId[id]; return (p ? esc(p.name) + ' ' : '') + '<span class="muted">#' + id + '</span>'; }
   function card(w, p, o) { if (!p) return '<div class="ar-pet">?</div>'; var s = p.stats || {}, sc = score(w, p), FT = window.V2FightTag; /* fight-owner-labels */
-    return '<div class="ar-pet' + (FT && FT.mine(p) ? ' fme' : '') + '">' + (FT ? FT.html(p, o) + '<br>' : '') + '<b>' + lbl(w, p.id) + '</b><div class="ar-sub">' + esc(p.species) + ' · ' + esc(p.stageName || '') + (p.blackEye ? ' · 🤕' : '') + '</div>' +
+    return '<div class="ar-pet' + (FT && FT.mine(p) ? ' fme' : '') + '">' + (FT ? FT.html(p, o) + '<br>' : '') + '<b>' + lbl(w, p.id) + '</b><div class="ar-sub">' + esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species) + ' · ' + esc(p.stageName || '') + (p.blackEye ? ' · 🤕' : '') + '</div>' +
       '<div class="ar-st">⚡' + pow(p) + ' <span title="Vigor/Spark/Grit/Zoom/Luck">V' + (s.vigor | 0) + ' S' + (s.spark | 0) + ' G' + (s.grit | 0) + ' Z' + (s.zoom | 0) + ' L' + (s.luck | 0) + '</span>' + (sc != null ? ' · ⭐' + sc : '') + '</div></div>'; }
   /** pure data, testable in Node: open challenges, recent results, leaderboard */
   function data(w, tip) { tip = tip || w.tip || 0;
