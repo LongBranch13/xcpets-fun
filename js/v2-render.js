@@ -261,7 +261,16 @@
       var tb = B[0], tx = tb.x0 + Math.floor((tb.x1 - tb.x0) / 2); putF(tx, tb.y1 + 1, 'c'); putF(tx, tb.y1 + 2, 'C'); putF(tx, tb.y1 + 3, 'c'); return; }
     if (g.s === 'monocle') { var m = g.side === 'L' ? B[0] : B[B.length - 1]; if (m.x1 - m.x0 < 2) { var mcx = Math.round((m.x0 + m.x1) / 2); m = { x0: mcx - 1, x1: mcx + 1, y0: m.y0, y1: m.y1 }; } /* audit fix 2026-10-20: a 1-2 px eye anchor (Nakamoto Juvenile) gets a full 3 px lens, so the ring sits on the eye, not beside it */ var cxo = g.side === 'L' ? m.x0 - 1 : m.x1 + 1; /* side 'L' (2026-10-14): the pet's right eye = viewer-left; chain trails from the outer edge down the cheek */
       for (x = m.x0 - 1; x <= m.x1 + 1; x++) { put(x, top - 1, g.f); put(x, bot + 1, g.f); } for (y = top; y <= bot; y++) { put(m.x0 - 1, y, g.f); put(m.x1 + 1, y, g.f); }
-      for (y = bot + 2; y <= bot + 4; y++) put(cxo, y, g.f); return; }
+      if (!g.chain) { for (y = bot + 2; y <= bot + 4; y++) put(cxo, y, g.f); return; }
+      /* sprite-leftovers 2026-10-20 (owner): a monocle ON A CHAIN drapes. The chain leaves the lens's lower outer corner, sags in a curve and clips onto the
+       * chest at the body's centre line (armour row), links alternating light/dark gold; only on the pet (never in the air). Drawn once and moved with the
+       * bounce (rigid, see isRigid). Every species/stage: anchors come from the traced eye and the body rows. */
+      var ax = cxo, ay = bot + 1, sx2 = 0, sn2 = 0, cyc = Math.min(a.maxY - 2, Math.max(bot + 4, a.row(a.gear.armor[0]) + 1));
+      for (x = 0; x < 32; x++) if (a.isSil(x, cyc)) { sx2 += x; sn2++; } var bx2 = sn2 ? Math.round(sx2 / sn2) : 16, by2 = cyc;
+      var kx = ax + (bx2 - ax) * 0.15, ky = by2 + 2, seen = {}, n2 = 0;
+      for (var t2 = 0; t2 <= 1.0001; t2 += 0.02) { var u2 = 1 - t2, px2 = Math.round(u2 * u2 * ax + 2 * u2 * t2 * kx + t2 * t2 * bx2), py2 = Math.round(u2 * u2 * ay + 2 * u2 * t2 * ky + t2 * t2 * by2); if (py2 > a.maxY - 1) py2 = a.maxY - 1;
+        if (seen[px2 + ',' + py2] || (px2 === ax && py2 === ay)) continue; seen[px2 + ',' + py2] = 1; if (eyeAt[px2 + ',' + py2]) continue; put(px2, py2, n2++ % 2 ? g.f : (g.l2 || 'g')); }
+      put(bx2, by2, g.f); return; }
     if (FIT2) drawEyeGear.last = { sp: spid, lenses: B.map(function (b) { return { x0: b.x0 - (g.wide || 0), x1: b.x1 + (g.wide || 0), w: b.x1 - b.x0 + 1 + 2 * (g.wide || 0) }; }), eyes: E.map(function (e) { var xs = e[2].map(function (q) { return q[0]; }); return (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2; }).sort(function (p, q) { return p - q; }) }; // test hook
     B.forEach(function (b) { var x0 = b.x0 - (g.wide || 0), x1 = b.x1 + (g.wide || 0);
       for (y = top; y <= bot; y++) for (x = x0; x <= x1; x++) put(x, y, y === top ? g.l[0] : g.l[1]);
@@ -315,7 +324,8 @@
   /* naka-flag-fix 2026-10-20 (display only, owner): side-brim caps point the way the species faces. The McDonald's visor's brim is drawn to the right;
    * species that face LEFT (Nakamoto: bun at the back, on the right; Doge: snout left) wear a mirrored copy. Applies to every pet of that species
    * (hybrids use their body-shape species); front-facing and right-facing species are unchanged. */
-  var BRIM_SIDE = { 'mcd-visor': 1 };
+  /* rarity-sort 2026-10-20 (owner): every side-brim cap follows the same rule (bill / brim drawn to one side): mirrored on left-facers, right-facers unchanged. */
+  var BRIM_SIDE = { 'mcd-visor': 1, 'based-cap': 1, 'smug-cap': 1, 'v2-kevin-hat': 1, 'v2-dodo-newsboy': 1, 'v2-chud-hat': 1 };
   function facedId(id, art) { if (!BRIM_SIDE[id] || !art) return id; var sp = art.hybrid ? art.hybrid.shape : art.species; if (FACING[sp] !== 'left') return id; /* sprite-fixes V2Render.FACING (shared table) */
     var fid = id + '~faceL', d = BonusGear.DEFS[id]; if (!BonusGear.DEFS[fid] && d && d.map) { BonusGear.DEFS[fid] = Object.assign({}, d, { map: d.map.map(function (r) { return r.split('').reverse().join(''); }) }); if (HAT_SIT[id] != null) HAT_SIT[fid] = HAT_SIT[id]; }
     return BonusGear.DEFS[fid] ? fid : id; }
@@ -353,6 +363,17 @@
       for (y = 0; y < 32; y++) for (x = dx; x < 32; x++) { var j = y * 32 + x - dx; if (!m[j]) continue; var i = y * 32 + x; sm[i] = 1; d[i * 4] = img.data[j * 4]; d[i * 4 + 1] = img.data[j * 4 + 1]; d[i * 4 + 2] = img.data[j * 4 + 2]; d[i * 4 + 3] = 255; }
       var out = Object.assign({}, img, { data: d }), a = { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: best.bx, bannerBehind: true, isSil: function (x2, y2) { return x2 >= 0 && y2 >= 0 && x2 < 32 && y2 < 32 && !!sm[y2 * 32 + x2]; } };
       BonusGear.apply(ban, out, a, f); return out; }); }
+  /* sprite-leftovers 2026-10-20 (owner): held cards and signs (any held piece whose map is a closed rectangle: Rare Pepe card, Satoshi Card, tickets,
+   * Join us sign...) are drawn LAST, after headwear, face pieces and their ink outlines, so nothing of the pet or its other gear covers them. */
+  function isBoard(id) { var d = BonusGear.DEFS[id], m = d && d.map; if (!m || !m.length || !/^hand/.test(d.at || '')) return false; var w = m[0].length, h = m.length;
+    return m[0].indexOf('.') < 0 && m[h - 1].indexOf('.') < 0 && m.every(function (r) { return r.charAt(0) !== '.' && r.charAt(w - 1) !== '.'; }); }
+  /* ...and they sit just outside the body: the board's own edge stops one pixel short of the pet's outline, so its ink frame lands ON the pet's outline
+   * (one shared line) instead of the pet's outline running over the card's edge. Only as far as the canvas allows. */
+  function boardOut(id, fa) { var d = BonusGear.DEFS[id], w = d.map[0].length, k; /* keeps a 1px margin for the board's ink at the canvas edge */
+    if (d.at === 'handL') { k = Math.min(2, fa.minX - w + 2 - 1); return k > 0 ? Object.assign({}, fa, { minX: fa.minX - k }) : fa; }
+    k = Math.min(2, 30 - (fa.maxX - 1 + w - 1)); return k > 0 ? Object.assign({}, fa, { maxX: fa.maxX + k }) : fa; }
+  var Z_ORDER = ['back', 'body', 'feet', 'hand', 'head', 'face'];
+  function zOf(id) { return isBoard(id) ? Z_ORDER.length : Z_ORDER.indexOf((V.GEAR_BY_ID[id] || BonusGear.DEFS[id] || {}).slot); }
   function framesWithCore(art, stage, itemIds, extraOv, cap, baseGo) {
     itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); 
     if (art) { var roots0 = V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species], LK = V.SPECIES_LOCK || { 'lenny-monocle': { sp: 'lenny' } }; /* species-locked pieces (Lenny monocle; KEVIN name tag) never draw on other species */
@@ -369,14 +390,14 @@
     if ((ov.length || fitCape || fitArmor) && stage > 0) { var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }, art.eyes === 'laser' ? { eyes: 'classic' } : {}), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255]; /* sprite-fixes 2026-10-20: gear anchors are measured on a laser-free key (Laser-eye beams run to the canvas edges and used to stretch the silhouette: headset bar, feet, held pieces, hoodie off the edge); the drawn frames keep their lasers */
       var order = ['back', 'body', 'feet', 'hand', 'head', 'face']; // z-order: cape (behind) < outfit/armour < feet < held < headwear < face
-      ov.sort(function (a, b) { return order.indexOf((V.GEAR_BY_ID[a] || BonusGear.DEFS[a] || {}).slot) - order.indexOf((V.GEAR_BY_ID[b] || BonusGear.DEFS[b] || {}).slot); });
+      ov.sort(function (a, b) { return zOf(a) - zOf(b); }); /* sprite-leftovers 2026-10-20 (owner): flat held boards (cards, signs, tickets) go in front of everything */
       var minYTop = Math.min.apply(null, fr.map(function (_, f) { var o = { stage: stage, frame: f, gearOverride: {} }; return BonusGear.anchors(PetCore.render(key, o), eyeRender(eyes, o), sp).minY; }));
       /* sprite-fixes 2026-10-20 (rigid bounce): worn pieces on the head, face and body are drawn ONCE on frame 0 and then moved with the body's own bounce
        * (the shift that maps the bare frame onto frame 0), so they bob with the pet and keep their exact shape on every frame instead of being re-fitted per
        * frame (Obsidian armour not bobbing / reshaping, face pieces not following the 1px bounce, KEVIN/Lenny Mythic outfits flickering, Mythic tags and bands
        * stuck in place). Capes (sway), held pieces, footwear (planted) and Beam eyes (intended flicker) keep their per-frame drawing. */
       var RIGID_SLOT = { head: 1, face: 1, body: 1 }, RIGID_SKIP = { 'beam-eyes': 1 }, rigidD = {}, bare0 = null;
-      function isRigid(id) { if (/^fit:/.test(id)) return true; var s2 = (V.GEAR_BY_ID[id] || BonusGear.DEFS[id] || {}).slot; return !!RIGID_SLOT[s2] && !RIGID_SKIP[id]; }
+      function isRigid(id) { if (/^fit:/.test(id)) return true; var d2 = BonusGear.DEFS[id] || {}, s2 = (V.GEAR_BY_ID[id] || d2).slot; return (!!RIGID_SLOT[s2] || !!d2.v2eye) && !RIGID_SKIP[id]; } /* sprite-leftovers: pieces traced on the eyes (monocle on a chain, a held item) bob with the face too */
       function bounceDy(bd2) { if (!bare0) return null; var best = null; for (var s3 = -2; s3 <= 2; s3++) { var m3 = 0; for (var y3 = 0; y3 < 28; y3++) for (var x3 = 0; x3 < 32; x3++) { var Y3 = y3 - s3, i3 = (y3 * 32 + x3) * 4; if (Y3 < 0 || Y3 > 31) { if (bd2[i3] !== 255 || bd2[i3 + 2] !== 255) m3++; continue; } var j3 = (Y3 * 32 + x3) * 4; if (bd2[i3] !== bare0[j3] || bd2[i3 + 1] !== bare0[j3 + 1] || bd2[i3 + 2] !== bare0[j3 + 2]) m3++; } if (!best || m3 < best[1]) best = [s3, m3]; } return best[1] <= 40 ? best[0] : null; }
       function grab(before, after) { var out = []; for (var p3 = 0; p3 < 1024; p3++) { var i4 = p3 * 4; if (before[i4] !== after[i4] || before[i4 + 1] !== after[i4 + 1] || before[i4 + 2] !== after[i4 + 2] || before[i4 + 3] !== after[i4 + 3]) out.push(p3, after[i4], after[i4 + 1], after[i4 + 2], after[i4 + 3]); } return out; }
       function paste(dst, L3, dy3) { for (var q3 = 0; q3 < L3.length; q3 += 5) { var y5 = ((L3[q3] / 32) | 0) + dy3; if (y5 < 0 || y5 > 31) continue; var i5 = (y5 * 32 + L3[q3] % 32) * 4; dst[i5] = L3[q3 + 1]; dst[i5 + 1] = L3[q3 + 2]; dst[i5 + 2] = L3[q3 + 3]; dst[i5 + 3] = L3[q3 + 4]; } }
@@ -400,7 +421,7 @@
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
           rigidDraw(id, function () {
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art); BonusGear.apply(fid, img, fitAnchors(fid, a), f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa = fitAnchors(fid, a); if (isBoard(fid)) fa = boardOut(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.

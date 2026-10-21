@@ -118,7 +118,10 @@
     var sway = (frame || 0) % 4 >= 2 ? 1 : 0, L = {}, key = function (x, y) { return y * N + x; };
     var hwPrev = half0; for (var y = y0; y <= bot; y++) { var t = (y - y0) / Math.max(1, bot - y0), sy = span(a, y), bh = sy ? Math.ceil((sy[1] - sy[0] + 1) / 2) : hwPrev; hwPrev = Math.max(hwPrev, Math.min(bh, half0 + 6));
       var hw = Math.round(hwPrev + 1 + t * 3), off = t > 0.5 ? sway : 0, cx = 16 + off;
-      for (var x = Math.round(cx - hw); x < Math.round(cx + hw); x++) { var u = (x + 0.5 - cx) / hw, col;
+      /* sprite-leftovers 2026-10-20 (owner, Dodo Elder): a hoodie (C.hood) is worn, so it hugs the body: at most 2 px past the body's own span on each row
+       * and never on the canvas edge columns (wide bodies such as Dodo's Elder/Mythic used to get a full-width band). Other capes unchanged. */
+      var hl = -99, hr = 99; if (C.hood) { var hs = sy || span(a, Math.min(a.maxY - 1, y)) || [cx - hw, cx + hw]; hl = Math.max(1, hs[0] - 2); hr = Math.min(N - 2, hs[1] + 2); }
+      for (var x = Math.max(hl, Math.round(cx - hw)); x < Math.min(hr + 1, Math.round(cx + hw)); x++) { var u = (x + 0.5 - cx) / hw, col;
         if (y === bot) { if (C.hem === 'point' && Math.abs(Math.round(u * 4)) % 2 === 1) continue; if (C.hem === 'leaf' && (x + off) % 3 === 0) continue;
           if (C.hem === 'feather' && (x + off) % 2 === 0) continue; if (C.hem === 'torn' && (x * 7) % 5 < 2) continue; }
         if (y - y0 < 2) col = p.trim; else if (y === bot || (y === bot - 1 && C.hem !== 'torn')) col = y === bot ? p.trim : p.dark;
@@ -126,11 +129,16 @@
           var dd = DETAIL[C.d]; var dc = dd ? dd(u, t, x, y, p) : null; if (dc) col = dc; }
         L[key(x, y)] = col; } }
     if (C.flower) { var fx = 16 + sway + Math.round((half0 + 3) * 0.45), fy = bot - 3; [[0, -1], [-1, 0], [1, 0], [0, 1]].forEach(function (q) { L[key(fx + q[0], fy + q[1])] = '#ff8fd0'; }); L[key(fx, fy)] = '#ffd23f'; }
+    /* sprite-leftovers 2026-10-20: the hood wraps the HEAD only. A row that sticks out more than 3 px past the head top (rows minY+1..minY+5) on a side is a
+     * beak or snout (Dodo, Doge): the hood stops at the head there instead of wrapping it to the canvas edge. */
+    var ht = null; if (C.hood) for (var hy = a.minY + 1; hy <= a.minY + 5; hy++) { var hsp = span(a, hy); if (hsp) ht = ht ? [Math.min(ht[0], hsp[0]), Math.max(ht[1], hsp[1])] : hsp.slice(); }
     if (C.hood) { var ey = eyeY(a); for (var yy = a.minY - 2; yy <= ey + 2; yy++) { var sp = span(a, Math.max(yy, a.minY + 1)); if (!sp) continue; var ex = yy === a.minY - 2 ? -2 : yy === a.minY - 1 ? 0 : 2;
+        if (ht) sp = [sp[0] < ht[0] - 3 ? ht[0] : sp[0], sp[1] > ht[1] + 3 ? ht[1] : sp[1]];
         for (var xx = sp[0] - ex; xx <= sp[1] + ex; xx++) L[key(xx, yy)] = yy <= a.minY - 1 ? p.shade : (xx <= sp[0] - 1 ? p.hi : xx >= sp[1] + 1 ? p.dark : p.base); } }
+    if (C.hood) Object.keys(L).forEach(function (k) { var x = k % N; if (x < 2 || x > N - 3) delete L[k]; }); /* hoodies (and their ink line) keep off the edge columns (sprite-leftovers) */
     var bg = function (x, y) { return x >= 0 && y >= 0 && x < N && y < N && !(a.isFg ? a.isFg(x, y) : a.isSil(x, y)); };
     Object.keys(L).forEach(function (k) { var x = k % N, y = Math.floor(k / N); if (bg(x, y)) put(img, x, y, L[k]); });
-    Object.keys(L).forEach(function (k) { var x = k % N, y = Math.floor(k / N); [[1, 0], [-1, 0], [0, 1]].forEach(function (q) { var nx = x + q[0], ny = y + q[1];
+    Object.keys(L).forEach(function (k) { var x = k % N, y = Math.floor(k / N); if (C.hood && !bg(x, y)) return; /* hoodie: ink only around cloth that shows (no lone ink dots) */ [[1, 0], [-1, 0], [0, 1]].forEach(function (q) { var nx = x + q[0], ny = y + q[1];
       if (L[key(nx, ny)] == null && bg(nx, ny) && ny <= 29 && nx >= 0 && nx < N) put(img, nx, ny, INK); }); });
     return img; }
   return { torso: torso, outfit: outfit, armor: armor, cape: cape, isCape: isCape, CAPES: CAPES, mix: mix };

@@ -251,7 +251,7 @@
         '.aaaaaaaaaaaaaaaaaaaa.'
       ] },
     { id: 'wojak', label: 'Wojak', w: 12, t: 0, canon: { body: '#f1e4d4', accent: '#5a6a8a', belly: '#dcb8a2' }, outline: '#6e5f5c', colors: { '1': { from: 'body', dark: 0.4 } }, eyeWhite: '#ffffff', eyeLid: true, bellyKey: 'accent', // pattern fix 2026-10-12: Belly patch on the shirt, not the face
-      gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, noHeadband: true },
+      gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, knotBack: true }, // sprite-leftovers 2026-10-20 (owner): headbands sit on the forehead (no neck scarf), knot at the back
       pose: { col: 2, row: 12, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
       arc: [['Sad', 'base', 'keep', 'base'], ['Doubtful', 'halflid', 'keep', 'flat'], ['Calm', 'base', 'none', 'flat'],
         ['Hopeful', 'base', 'raised', 'smile'], ['Enlightened', 'closed', 'none', 'smile']],
@@ -283,7 +283,7 @@
         'aaaaaaaaaaaaaaaaaa'
       ] },
     { id: 'chud', label: 'Chud', w: 8, t: 0, canon: { body: '#f1e4d4', accent: '#6b7a3a', belly: '#6b4a2b' }, outline: '#6e5f5c', colors: { '1': { from: 'body', dark: 0.4 }, '2': '#5e3f26', '3': '#1d1b22', '4': '#45414f' }, eyeWhite: '#ffffff', glasses: true, bellyKey: 'accent', // pattern fix 2026-10-12: Belly patch on the shirt, not the face
-      gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, noHeadband: true },
+      gear: { armor: [20, 21, 0], band: 5, scarf: 19, cape: 17, crownSink: 2, knotBack: true }, // sprite-leftovers 2026-10-20 (owner): headbands sit on the forehead (no neck scarf), knot at the back
       pose: { col: 2, row: 12, map: ['.kkkkk.', 'kbbbbbk', 'kbbbbbk', 'kkkkbbk', '.kbbbk.', '.kaak..'] },
       arc: [['Stern', 'base', 'keep', 'base'], ['Smirking', 'base', 'keep', 'smirk'], ['Determined', 'halflid', 'angry', 'flat'],
         ['Grinning', 'base', 'keep', 'grin'], ['Proud', 'closed', 'raised', 'cheer']],
@@ -2065,7 +2065,9 @@
       if (box.small && (sp.id === 'sarutobi' || sp.id === 'dodo')) { var bandOk = function (yy) { var n = 0, eye = false; for (var xx = 0; xx < N; xx++) { var kk = cv.getKey(xx, yy); if (kk === 'eye' || kk === 'pupil') eye = true; else if (cv.isSil(xx, yy) && !FACE_KEYS[kk]) n++; } return !eye && n >= 3; };
         if (!bandOk(y)) { for (var dyb = 1; dyb <= 4; dyb++) { if (y - dyb >= 0 && bandOk(y - dyb)) { y -= dyb; break; } } } }
       for (x = 0; x < N; x++) if (cv.isSil(x, y) && !FACE_KEYS[cv.getKey(x, y)]) { cv.key[y * N + x] = 'band'; r = x; }
-      if (r >= 0) { cv.setKey(r + 1, y, 'band2'); cv.setKey(r + 2, y + 1, 'band2'); cv.setKey(r + 1, y + 1, 'band'); }
+      var lft = -1; if (sp.gear.knotBack) for (x = N - 1; x >= 0; x--) if (cv.getKey(x, y) === 'band') lft = x; /* sprite-leftovers 2026-10-20: right-facing heads (Wojak, Chud) tie the knot at the back (viewer-left) */
+      if (lft >= 0) { cv.setKey(lft - 1, y, 'band2'); cv.setKey(lft - 2, y + 1, 'band2'); cv.setKey(lft - 1, y + 1, 'band'); }
+      else if (r >= 0) { cv.setKey(r + 1, y, 'band2'); cv.setKey(r + 2, y + 1, 'band2'); cv.setKey(r + 1, y + 1, 'band'); }
     } else {
       y = rowY(box, sp.gear.scarf);
       for (var yy = y; yy <= y + 1; yy++) for (x = 0; x < N; x++) {
