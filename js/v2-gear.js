@@ -33,13 +33,13 @@
       /* naka-face-card 2026-10-20 (owner, from the RAREPEPE Nakamoto Card): red downturned lips in card red #CD0000 (V2Render.faceSpots also keys on it,
        * so mouth gear still anchors). NAKA_LIPS = 2: upper lip / dark line / fuller lower lip, like the card; 1: one fuller lip shape. Ink corners droop
        * below the lip ends. Painted on skin only; rows that would touch the glasses are skipped. A drawn interior ink mouth line (Hatchling) is reused. */
-      var LIP = [0xcd, 0x00, 0x00];
+      var LIP = [0xcd, 0x00, 0x00], oneRow = st === 3 || st === 4; /* owner 2026-10-20: Adult + Elder lip is exactly 1 px row of card red */
       function nakaMouth(cx, my, ey) { var two = NAKA_LIPS === 2, lineY = -1, P = [], add = function (dx, y3, c3) { P.push([dx, y3, c3]); };
         for (var yl = ey + 2; yl < my; yl++) { var r0 = -1, r1 = -1; for (var xl = cx - 4; xl <= cx + 4; xl++) { var ok = xl > 0 && xl < W - 1 && same(at(xl, yl), OL) && skin(at(xl, yl - 1)) && skin(at(xl, yl + 1)); if (ok) { if (r0 < 0) r0 = xl; r1 = xl; } else if (r0 >= 0 && r1 - r0 < 2) r0 = -1; else if (r0 >= 0) break; }
           if (r0 >= 0 && r1 - r0 >= 2) { my = yl; lineY = yl; cx = Math.floor((r0 + r1 + 1) / 2); break; } }
         var top = two ? my - 2 : my - 1, safe = function (y3) { return y3 > ey + 1; };
         if (two) { if (safe(my - 2)) { add(-1, my - 2, LIP); add(0, my - 2, LIP); } for (var k = -2; k <= 1; k++) add(k, my - 1, safe(my - 1) ? OL : LIP); for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my, OL); add(2, my, OL); }
-        else { if (safe(top)) { add(-1, top, LIP); add(0, top, LIP); } for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my + 1, OL); add(2, my + 1, OL); }
+        else { if (safe(top) && !oneRow) { add(-1, top, LIP); add(0, top, LIP); } for (k = -2; k <= 1; k++) add(k, my, LIP); add(-3, my + 1, OL); add(2, my + 1, OL); }
         P.forEach(function (o) { var xx = cx + o[0], yy = o[1]; if (xx >= 0 && xx < W && yy >= 0 && yy < H && (skin(at(xx, yy)) || same(at(xx, yy), OL) && yy === lineY)) put(xx, yy, o[2]); }); }
       /* Eyes: white lenses (NAKA_VR.eyeWhite) keep their shape; every pupil pixel becomes white, then ONE dark pupil sits in the bottom row of each lens
        * (low = droopy); lenses 2+ rows tall get their top row painted as a heavy lid (dark skin). Glasses: frame ink more than 1 px from a lens, inside
