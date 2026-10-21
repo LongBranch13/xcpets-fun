@@ -56,7 +56,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=77922eceea'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=43c5a2de31'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -70,15 +70,19 @@
     { id: 'nakamoto', name: 'Nakamoto', done: function (c) { return c.returned; }, block: function (c) { return c.returnBlock; }, tx: function (c) { return c.returnTx; },
       sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } },
     /* #2 Bitcoin Wizard (Oct 19 2026): Mythic at 6,906,900 burned since The Return -> Cold Storage. Chain state = w.wizardMythic (V2Rules.replay, from history). */
-    { id: 'wizard', name: 'Bitcoin Wizard', done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
+    { id: 'wizard', name: 'Bitcoin Wizard', sp: 'wizard', loadout: ['wizard-hat', 'sig-wizard-staff', 'sig-wizard-sign'], /* signature loadout: pointy hat, Bitcoin staff, Join us sign */ done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
       stats: function (w) { var x = w.wizardMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
       story: ['2013. A forum asked for an ad.', 'Someone drew a wizard in MS Paint.', 'Blue robe. Stars. A staff.', '"Magic Internet Money." "Join us."', 'It ran on Reddit. Bitcoin passed $1,000.', 'The wizard stayed.',
         '2026. Nakamoto went into Cold Storage. An egg was left behind.', 'Every burn fed it. Nobody owned it. 100× slower than any pet.', '6,906,900 burned. Mythic.', 'Then he put down the sign and walked into Cold Storage, next to Nakamoto.', 'The sign stayed behind. So did an egg. Now anyone can hatch one. Join us.'],
-      sprites: function () { return wizMythicFrames(M.world()); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
   ];
+  /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
+   * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
+   * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
+  function coldEntryFrames(e) { return (R && R.coldFrames && R.coldFrames(e.sp, e.loadout || [], COLD_STAGE)) || wizMythicFrames(M.world()); }
   function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); }
   function farewellSprites(w) { var x = w.wizardMythic; return { wizard: wizMythicFrames(w), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=77922eceea'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=43c5a2de31'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
