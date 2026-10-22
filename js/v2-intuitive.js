@@ -182,7 +182,7 @@
     /* fight stat letters get their full names on hover / long-press */ d.querySelectorAll('#faceoff .sk:not([title])').forEach(function (k) { var n = { VIG: 'Vigor', SPA: 'Spark', GRI: 'Grit', ZOO: 'Zoom', LUC: 'Luck' }[k.textContent]; if (n) k.title = n; }); }
 
   // ------------------------------------------------------------------ item 13: first-visit tour (no pets, no address)
-  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn 69 XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in the Lair', 'Roll gear (345) and dress your pet here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
+  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn 69 XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in The Rare Room', 'Roll gear (345) and dress your pet here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
   function tour(force) { if (!$('hatchPanel')) return; if (!force && (ls('xcpets-ip-tour') || me())) return; var i = 0, box = d.createElement('div'); box.className = 'ip-tour'; box.setAttribute('role', 'dialog'); d.body.appendChild(box);
     function show() { d.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); var s = STEPS[i], el = $(s[0]); if (el) { el.classList.add('ip-tour-on'); el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
       box.innerHTML = '<b>' + s[1] + '</b><p class="small">' + esc(s[2]) + '</p><div class="row"><button type="button" class="btn" data-t="n">' + (i < 3 ? 'Next ▸' : 'Done') + '</button><button type="button" class="q" data-t="x">Skip</button></div>'; }
@@ -214,7 +214,7 @@
   // ------------------------------------------------------------------ item 26: pet page action row (owner only)
   function petActions() { if (!/pet\.html/.test(location.pathname)) return; var id = +new URLSearchParams(location.search).get('id'), w = window.V2Mock && V2Mock.world ? V2Mock.world() : null, p = w && w.byId ? w.byId[id] : null, m = me(), a = d.querySelector('a.btn[href^="play.html#pet-"]');
     if (!a || $('ipActs') || !m) return; var row = d.createElement('span'); row.id = 'ipActs'; row.className = 'ip-acts';
-    row.innerHTML = ' <a class="btn ghost" href="play.html#pet-' + id + '">🍽️ Feed</a> <a class="btn ghost" href="play.html#lair">🎲 Roll / gear</a> <a class="btn ghost" href="play.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="play.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
+    row.innerHTML = ' <a class="btn ghost" href="play.html#pet-' + id + '">🍽️ Feed</a> <a class="btn ghost" href="play.html#rare-room">🎲 Roll / gear</a> <a class="btn ghost" href="play.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="play.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
 
   // ------------------------------------------------------------------ exports used by page code
   window.IPQ = { q: q, open: open, close: close, careShort: careShort,

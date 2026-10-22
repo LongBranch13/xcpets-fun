@@ -2,7 +2,7 @@
  * Re-aims at the anchor while the layout settles (stops as soon as the player scrolls). UI only. */
 (function () {
   'use strict';
-  var ok = { kekimus: 1, lair: 1, 'no-tail-motel': 1, 'drip-den': 1, 'gooby-inn': 1 }; /* #lair / #no-tail-motel (tonight bundle); the old #drip-den / #gooby-inn keep working */
+  var ok = { kekimus: 1, 'rare-room': 1, lair: 1, 'no-tail-motel': 1, 'drip-den': 1, 'gooby-inn': 1 }; /* #lair / #no-tail-motel (tonight bundle); the old #drip-den / #gooby-inn keep working */
   function go() { var id = (location.hash || '').slice(1); if (!ok[id]) return; var a = document.getElementById(id); if (!a) return;
     var n = 0, user = false, stop = function () { user = true; };
     ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (e) { window.addEventListener(e, stop, { once: true, passive: true }); });
