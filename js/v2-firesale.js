@@ -32,7 +32,7 @@
     var live = !!f.live, left = live ? s.end - f.nextBlock + 1 : s.start - f.nextBlock + 1, key = (live ? 'L' : 'W') + s.arm;
     if (el.dataset.key !== key) { el.dataset.key = key; pets = false; var on = sirenOn();
       el.innerHTML = '<div class="fs-flames" aria-hidden="true">' + new Array(24).join('<i></i>') + '</div><div class="fs-body">' +
-        (live ? '<b class="fs-title">🔥 FIRE SALE 🔥</b><span class="fs-txt">Every burn is 69% off. Meals are half off. <b id="fsLeft"></b></span>' : '<b class="fs-title">🚨 FIRE SALE INCOMING</b><span class="fs-txt">Starts at block ' + fmt(s.start) + '. <b id="fsLeft"></b></span>') +
+        (live ? '<b class="fs-title">🔥 FIRE SALE 🔥</b><span class="fs-txt">Every burn is 69% off, meals and community feeding too. <b id="fsLeft"></b></span>' : '<b class="fs-title">🚨 FIRE SALE INCOMING</b><span class="fs-txt">Starts at block ' + fmt(s.start) + '. <b id="fsLeft"></b></span>') +
         (live ? '<div class="fs-pets" aria-hidden="true"><canvas class="fs-pet" width="32" height="32"></canvas><canvas class="fs-pet" width="32" height="32"></canvas><canvas class="fs-pet" width="32" height="32"></canvas></div>' : '') +
         '<span class="fs-dan"><canvas id="fsDan" class="fs-dancv" width="32" height="45" role="img" aria-label="Captain Dan"></canvas><span class="fs-yell" id="fsYell" aria-live="off"></span></span>' +
         '<button type="button" class="q fs-siren" id="fsSiren" aria-pressed="' + on + '">' + (on ? '🔊 Siren on' : '🔈 Siren off') + '</button></div>'; }

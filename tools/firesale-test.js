@@ -20,14 +20,14 @@ const c = load(), V = c.V2Rules; V._setHalvingActivation(G);
 /* 3. stacking */
 { const a = sched(V, {}), s = a[3], w = { fire: { sales: a } };
   ok(V.costAt(w, 69, s.start) === 21.39 && V.costAt(w, 345, s.start) === 106.95 && V.costAt(w, 690, s.start) === 213.9 && V.costAt(w, 6900, s.start) === 2139, 'era 0 sale: 31% of base');
-  ok(V.costAt(w, 9200, s.start, true) === 4600, 'meals half off');
+  ok(V.costAt(w, 9200, s.start, true) === 2852 && V.costAt(w, 69, s.start, true) === 21.39, 'meals and feeds 69% off too (9,200 -> 2,852; 69 -> 21.39)');
   w.kekMythic = { block: s.start + 4, tx: 'x' }; /* halving lands inside the sale at start + 10 */
   ok(V.costAt(w, 69, s.start + 9) === 21.39 && V.costAt(w, 69, s.start + 10) === 10.695, 'halving inside a sale reprices at once (21.39 -> 10.695)');
-  ok(V.mealCost(w, {}, 9200, s.start + 10) === 2300 && V.mealCost(w, { series: 2 }, 4600, s.start + 10) === 2300, 'old and new series meals 2,300 in era 1 sale');
+  ok(V.mealCost(w, {}, 9200, s.start + 10) === 1426 && V.mealCost(w, { series: 2 }, 4600, s.start + 10) === 1426, 'old and new series meals 1,426 in era 1 sale');
   ok(V.costAt(w, 69, s.end) === 34.5, 'after the sale: halving price only');
   ok(V.below(w, 10.69, 69, s.start + 10) && !V.below(w, 10.695, 69, s.start + 10), 'below() uses the stacked price');
-  { const c0 = V.syncCosts({ fire: { sales: a } }, s.start); ok(c0.feedMin === 34.5 && c0.cquick.join() === '34.5,345,3450', 'era 0 sale: community feed 50% off (min 34.5, 34.5 / 345 / 3,450)'); }
-  { const c1 = V.syncCosts(w, s.start + 10); ok(c1.feedMin === 17.25 && c1.cquick.join() === '17.25,172.5,1725' && V.communityFeedPlan(17.25).ok && !V.communityFeedPlan(17.2).ok, 'era 1 sale: community feed stacks (min 17.25, 17.25 / 172.5 / 1,725)'); V.syncCosts(w, s.end); ok(V.UI_COSTS ? V.UI_COSTS.feedMin === 34.5 : true, 'after the sale: community feed back to the halving price'); } }
+  { const c0 = V.syncCosts({ fire: { sales: a } }, s.start); ok(c0.feedMin === 21.39 && c0.cquick.join() === '21.39,213.9,2139' && V.communityFeedPlan(21.39).ok && !V.communityFeedPlan(21.38).ok, 'era 0 sale: community feed 69% off (min 69 x 0.31 = 21.39; 21.39 / 213.9 / 2,139)'); }
+  { const c1 = V.syncCosts(w, s.start + 10); ok(c1.feedMin === 10.695 && c1.cquick.join() === '10.695,106.95,1069.5' && V.communityFeedPlan(10.695).ok && !V.communityFeedPlan(10.69499999).ok, 'era 1 sale: community feed stacks (min 34.5 x 0.31 = 10.695; 10.695 / 106.95 / 1,069.5)'); V.syncCosts(w, s.end); ok(V.UI_COSTS ? V.UI_COSTS.feedMin === 34.5 : true, 'after the sale: community feed back to the halving price'); } }
 /* 4. Lord Kek blackout */
 { const a0 = sched(V, {}), D = a0[5].arm - 3, w = { kekMythic: { block: D, tx: 'x' } }, a = sched(V, w), h1 = V.halving1Block(w);
   ok(h1 === D + 6, 'halving 1 = defeat + 6'); ok(!a.some(s => s.arm >= D && s.arm < h1 + 144), 'no sale arms from the defeat block to halving 1 + 144');

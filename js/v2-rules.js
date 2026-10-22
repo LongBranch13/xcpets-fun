@@ -448,12 +448,12 @@
   /* ---------------------------------------------------------------- FIRE SALES (owner approved Oct 22 2026; design/halving-schedule.md sections 6-7)
    * From ACTIVATE_FIRESALE_BLOCK, block B ARMS a sale when int(sha256(blockhash(B) + 'XCPETS:v2:fire')[0..12], 16) % 1000 < 3, no sale is armed or live,
    * the last sale ended at least FIRE_COOLDOWN (432 = 3 days) blocks before B, and B is not in the Lord Kek blackout [defeat block, halving 1 + 144).
-   * The sale is LIVE from B + 6 for 36 blocks [B+6, B+42). Price = base / 2^era x 0.31 (69% off), feeds x 0.5. A halving inside a sale reprices at once.
+   * The sale is LIVE from B + 6 for 36 blocks [B+6, B+42). Price = base / 2^era x 0.31 (69% off) for every burn, meals and community feeding included. Amounts rounded to 1e-8 XCPETS (r8). A halving inside a sale reprices at once.
    * Deterministic: needs the hash of EVERY block from the gate (v2-chain fetches them); arms are only decided for blocks < the burn being judged.
    * A valid FULL-price discounted burn during a live sale earns one saved wheel spin: recorded in w.fireSpins[address] + w.fireSpinLog (replayed ledger
    * for the future saved-spins system; nothing is shown to players). */
   var ACTIVATE_FIRESALE_BLOCK = 972629;  // chain tip 972,623 + 6 at build (Oct 22 2026 ~10:10 AM CT). RESET to tip + 6 at deploy.
-  var FIRE_ODDS_1K = 3, FIRE_WARN = 6, FIRE_LEN = 36, FIRE_COOLDOWN = 432, FIRE_KEK_PAUSE = 144, FIRE_PAY = 0.31, FIRE_FEED_PAY = 0.5;
+  var FIRE_ODDS_1K = 3, FIRE_WARN = 6, FIRE_LEN = 36, FIRE_COOLDOWN = 432, FIRE_KEK_PAUSE = 144, FIRE_PAY = 0.31, FIRE_FEED_PAY = 0.31; /* owner Oct 22 2026: every fire-sale discount is 69% off, meals and community feeding included */
   var FIRE_ACTIONS = { hatch: 1, pack: 1, roll: 1, spin: 1, fight: 1, accept: 1, breed: 1, croll: 1, feed: 1, feedm: 1, feedl: 1 };
   var FIRE_HASHES = {};                   // set per replay (the block hashes it was given)
   function fireOn(b) { return ACTIVATE_FIRESALE_BLOCK != null && b != null && b >= ACTIVATE_FIRESALE_BLOCK; }

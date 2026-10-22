@@ -23,3 +23,4 @@
 - HatchBot hook tools/hatchbot-firesale.js: messages() + due() + send() (refuses unless cfg.enabled === true + token + chat). NOT wired, NOT enabled, nothing posted.
 - Tests tools/firesale-test.js 26/26 (determinism, cooldown, stacking, Kek blackout, ledger). Replay SAME vs origin/main. 0 console errors 1280/390. Previews /workspace/xcpets/previews/fire-sales/.
 - **Owner update (~10:11 AM CT): community feeding halves too** (69/690/6,900 + min / 2^era; sale x0.5). On halving-v1, merged forward.
+- Oct 22 2026 ~11:52 AM CT (owner correction): every fire-sale discount is 69% off (x0.31), meals and community feeding included, stacked on the halving. Era 0 sale community min 21.39, era 1 sale 10.695. Amounts r8 (1e-8 XCPETS), valid if >= price - 5e-9.
