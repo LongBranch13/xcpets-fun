@@ -107,7 +107,32 @@
   function mouthSpan(img, sp, a) { var d = img.data, m = sp.mouth, y = m.y, px = function (x) { var i = (y * 32 + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
     var isM = function (x) { if (x < 0 || x > 31 || !a.isSil(x, y)) return false; var c = px(x); return (c[0] > 0xc0 && c[1] < 0x70 && c[2] > 0x40 && c[2] < 0x90) || (c[0] + c[1] + c[2] < 0x70) || (c[0] > 0xa0 && c[1] < 0x50 && c[2] < 0x50); };
     var x0 = m.x, x1 = m.x; if (!isM(m.x)) return null; while (isM(x0 - 1) && a.isSil(x0 - 2, y)) x0--; while (isM(x1 + 1) && a.isSil(x1 + 2, y)) x1++; return x1 - x0 >= 2 ? [x0, x1] : null; }
+  /* CHUD'S BEARD (owner Oct 22 2026): fitted to THIS face. Moustache row over the mouth, the mouth row (mouth pixels stay visible), then the jaw rows
+   * down to a tapered chin, all inside the face outline (1 px outline kept), with sideburns up the cheek edges; never on eye pixels. */
+  function drawBeard(img, sp, a) { var D = img.data, m = sp.mouth, eye = {}, BR = [0x6b, 0x3e, 0x1c], DK = [0x48, 0x28, 0x10], HL = [0x8c, 0x56, 0x2a];
+    [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
+    var px = function (x, y) { var i = (y * 32 + x) * 4; return [D[i], D[i + 1], D[i + 2]]; }, key = function (x, y) { return px(x, y).join(','); };
+    var put = function (x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31 || eye[x + ',' + y] || !a.isSil(x, y)) return; var i = (y * 32 + x) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; };
+    var run = function (y) { var c = Math.round(m.x); if (y < 0 || y > 31 || !a.isSil(c, y)) return null; var l = c, r = c; while (a.isSil(l - 1, y)) l--; while (a.isSil(r + 1, y)) r++; return [l, r]; };
+    var dark = function (c) { return c[0] + c[1] + c[2] < 0x80; }, mouthy = function (c) { return dark(c) || (c[0] > 0xa0 && c[1] < 0x70); };
+    /* the face skin = the commonest non-dark colours on the rows just above the mouth; the beard only replaces skin (never shirt, belly, eyes) */
+    var cnt = {}; for (var ys = m.y - 3; ys <= m.y; ys++) { var rr0 = run(ys); if (!rr0) continue; for (var xs = rr0[0] + 1; xs < rr0[1]; xs++) { var c0 = px(xs, ys); if (!mouthy(c0) && !eye[xs + ',' + ys]) cnt[c0.join(',')] = (cnt[c0.join(',')] || 0) + 1; } }
+    var skinK = Object.keys(cnt).sort(function (p, q) { return cnt[q] - cnt[p]; }).slice(0, 2), skin = {}; skinK.forEach(function (k) { if (cnt[k] >= 3) skin[k] = 1; });
+    if (skinK[0]) { var sc = skinK[0].split(',').map(Number), dist = Math.abs(sc[0] - BR[0]) + Math.abs(sc[1] - BR[1]) + Math.abs(sc[2] - BR[2]); if (dist < 140) { /* brown-on-brown (Bobo, Mumu...): a darker beard; a dark face gets a lighter one */
+      var lum = sc[0] + sc[1] + sc[2], k2 = lum > 300 ? 0.55 : null; if (k2) { BR = BR.map(function (n) { return Math.round(n * k2); }); HL = HL.map(function (n) { return Math.round(n * k2); }); DK = DK.map(function (n) { return Math.round(n * k2); }); }
+      else { BR = [0x2c, 0x18, 0x0c]; HL = [0x4a, 0x2a, 0x14]; DK = [0x1e, 0x10, 0x08]; if (lum < 200) { BR = [0x9a, 0x62, 0x30]; HL = [0xb8, 0x7c, 0x40]; DK = [0x7a, 0x4a, 0x22]; } } } }
+    var isSkin = function (x, y) { return skin[key(x, y)] && a.isSil(x - 1, y) && a.isSil(x + 1, y); };
+    var full = a.spId === 'lenny' ? 1 : 0 /* owner Oct 22: a little fuller on Lenny */, hH = a.maxY - a.minY, depth = Math.max(2, Math.round(hH * 0.18)) + full, y0 = m.y - 1, yEnd = Math.min(31, m.y + depth), lastY = y0;
+    var skinW = function (y) { var r = run(y), n = 0; if (r) for (var x = r[0]; x <= r[1]; x++) if (skin[key(x, y)]) n++; return n; }, w0 = Math.max(skinW(m.y), skinW(m.y - 1)), hwB = Math.max(3, Math.round(w0 / 2) + 1) + full;
+    for (var y = y0; y <= yEnd; y++) { var r = run(y); if (!r) break; var any = false; if (y > m.y && (skinW(y) > w0 * 1.3 + 2 || (sp.chinY != null && y > sp.chinY))) break; /* the face ends: a wider skin row is the chest/belly (Sarutobi, Doge) */
+      for (var x = r[0] + 1; x < r[1]; x++) { if (!isSkin(x, y) || Math.abs(x - m.x) > hwB) continue; if (y === y0 && Math.abs(x - m.x) > 3 + full && x > r[0] + 2 && x < r[1] - 2) continue; /* top row: moustache + sideburns only */
+        put(x, y, (x + 2 * y) % 5 === 0 ? HL : BR); any = true; }
+      if (!any && y > m.y) break; lastY = y; }
+    for (var yb = y0 - 2; yb < y0; yb++) { var rs = run(yb); if (!rs) continue; [rs[0] + 1, rs[1] - 1].forEach(function (x2) { if (isSkin(x2, yb)) put(x2, yb, BR); }); } /* sideburns up the cheeks */
+    var rl = run(lastY); if (rl) for (var x3 = rl[0] + 1; x3 < rl[1]; x3++) { var c3 = px(x3, lastY); if (c3[0] === BR[0] && c3[1] === BR[1] && c3[2] === BR[2] || c3[0] === HL[0] && c3[1] === HL[1]) put(x3, lastY, DK); } /* darker chin edge */
+    return [m.x, m.y]; }
   function drawFace(id, img, sp, a) { var d = typeof id === 'string' ? BonusGear.DEFS[id] : id;
+    if (d && d.beard && a) { var bx = (V && V.BEARD_EXCLUDE) || {}, bsp = String(a.spId || ''), bsh = /^hyb/.test(bsp) ? null : bsp; if (bsh && bx[bsh]) return [0, 0]; return drawBeard(img, sp, a); } /* excluded bodies never show it (the rules also block rolling / wearing) */
     if (id === 'v2-gold-grill' && a) { var ms = mouthSpan(img, sp, a); if (ms) { var tw = ms[1] - ms[0] + 1, t0 = '', t1 = ''; for (var ti = 0; ti < tw; ti++) { t0 += ti % 2 ? 'G' : 'g'; t1 += 'g'; } d = Object.assign({}, d, { map: [t0, t1] }); sp = Object.assign({}, sp, { mouth: Object.assign({}, sp.mouth, { x: ms[0] + Math.floor(tw / 2) }) }); } }
     var p = facePos(d.at, d.map, sp), C = BonusGear.COLORS, eye = {}, painted = 0;
     if (a) [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
