@@ -87,7 +87,7 @@
    * whatever the pet has unlocked. A piece for a LOCKED slot goes into that pet's BAG (g.bag = pet id, w.bags[petId] = [gid]): it is bound to the pet, not usable
    * on other pets, kept out of w.itemList (stash / pickers / Equip Best) and lost with the pet (death / release). When the slot unlocks (liveAt), the oldest bagged
    * piece is worn if that slot is empty (never replaces worn gear) and every bagged piece of that slot becomes normal gear. Before the gate nothing changes. */
-  var ACTIVATE_ANY_SLOT_BLOCK = 972646; /* PLACEHOLDER: tip 972640 + 6 (Oct 22 2026 12:58 PM CT); re-stamp at deploy */
+  var ACTIVATE_ANY_SLOT_BLOCK = 972646; /* DEPLOYED Oct 22 2026 ~1:10 PM CT: tip 972640 + 6 */
   function anySlotOn(b) { return ACTIVATE_ANY_SLOT_BLOCK != null && b != null && b >= ACTIVATE_ANY_SLOT_BLOCK; }
   function rollSlotOf(p, hex, b) { var n = parseInt(hex.slice(16, 24), 16); return anySlotOn(b) ? V2_SLOTS[n % V2_SLOTS.length] : p.openSlots[n % p.openSlots.length]; }
   /* place a freshly rolled piece: wear it (old rule) when its slot is open, else (from the gate) put it in the pet's bag */
