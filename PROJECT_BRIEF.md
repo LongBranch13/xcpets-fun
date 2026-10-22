@@ -22,3 +22,4 @@
 - Tests tools/cross-series-test.js 15/15; halving 23/23. Replay SAME vs origin/main. 0 console errors 1280/390. Previews /workspace/xcpets/previews/cross-series/.
 - NOTE: fire-sales / saved-spins and cross-series-breeding both branch off halving-v1; merge them in order at deploy (conflicts expected only in docs/HTML script tags).
 - **Owner update (~10:11 AM CT): community feeding halves too** (69/690/6,900 + min / 2^era; sale x0.5). On halving-v1, merged forward.
+- Oct 22 2026 ~12:15 PM CT: HatchBot warnings hook tools/hatchbot-warnings.js (OFF: ENABLED=false + caller enabled:true). Halving 1: Kek care 90%/99% + set; halving 2+: set/144/6 blocks; fire: warning + live. Dedupe ids in announce-rate.json, send-guard, <=1000 chars. Meant for the live HatchBot listener's announce tick (~4 min); NOT wired. Launch draft: /workspace/xcpets/telegram/hb-halving-firesale-launch.txt + post-halving-firesale-launch-once.js (not run).
