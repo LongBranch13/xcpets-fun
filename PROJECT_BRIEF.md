@@ -29,3 +29,4 @@
 - Spend: `pet:usespin` / `pet:usespin:N` (N 1–10, 1 sat), each spin = the approved wheel rule seeded with tx + ':' + i; more than the balance is rejected whole; N > 10 is an invalid tag. Unchanged: community rolls, founder kit, grave gear, Join us sign + LORDKEK card keepsakes, paid spins.
 - UI: '🎡 × N' counter + 'Use N' / 'Use 1' buttons on the Pepe Wheel panel (tap → confirm → wallet), '🎡N' badge on the nav Rare Room link (js/v2-spins.js, css/spins.css), rules section 'Saved Pepe Wheel spins'. `?preview=spins` fakes 7.
 - Tests tools/saved-spins-test.js 22/22 (conversion, 10 cap, never expire, lucky drops, closed tags); halving 23/23, fire 26/26. Replay SAME. 0 console errors 1280/390. Previews /workspace/xcpets/previews/saved-spins/.
+- **Owner update (~10:11 AM CT): community feeding halves too** (69/690/6,900 + min / 2^era; sale x0.5). On halving-v1, merged forward.

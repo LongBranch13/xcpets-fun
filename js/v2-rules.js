@@ -432,9 +432,9 @@
   function breedSeries(w, A, B, b) { return seriesOf(A); }     /* hook: cross-series breeding (separate item) */
   /** mealCost(w, p, care, b): XCPETS a meal of `care` for pet p costs at block b (care is counted in p's own series units). */
   function mealCost(w, p, care, b, full) { var e = eraAt(w, b), s = seriesOf(p) - 1, f = full ? 1 : fireFactor(w, b, true); return e === s && f === 1 ? care : r8(care * Math.pow(2, s - e) * f); }
-  function costsAt(w, b) { var o = {}; Object.keys(COSTS).forEach(function (k) { o[k] = COSTS[k] < 1 ? COSTS[k] : costAt(w, COSTS[k], b); }); o.sale = !!saleAt(w, b); o.hatch12 = costAt(w, 690, b); o.hatch144 = costAt(w, 6900, b); o.era = eraAt(w, b); return o; }
+  function costsAt(w, b) { var o = {}; Object.keys(COSTS).forEach(function (k) { o[k] = COSTS[k] < 1 ? COSTS[k] : costAt(w, COSTS[k], b); }); o.feedMin = costAt(w, COSTS.feedMin, b, true); o.cquick = FEED_QUICK.map(function (x) { return costAt(w, x, b, true); }); o.sale = !!saleAt(w, b); o.hatch12 = costAt(w, 690, b); o.hatch144 = costAt(w, 6900, b); o.era = eraAt(w, b); return o; }
   /** syncCosts(w, b): UI only. Updates the exported COSTS copy (UI_COSTS) to the price at block b; the replay always uses the base COSTS. */
-  function syncCosts(w, b) { var c = costsAt(w, b); Object.keys(UI_COSTS).forEach(function (k) { if (c[k] != null) UI_COSTS[k] = c[k]; }); UI_COSTS.era = c.era; UI_COSTS.sale = c.sale; return UI_COSTS; }
+  function syncCosts(w, b) { var c = costsAt(w, b); Object.keys(UI_COSTS).forEach(function (k) { if (c[k] != null) UI_COSTS[k] = c[k]; }); UI_COSTS.cquick = c.cquick; UI_COSTS.hatch12 = c.hatch12; UI_COSTS.hatch144 = c.hatch144; UI_COSTS.era = c.era; UI_COSTS.sale = c.sale; return UI_COSTS; }
   var UI_COSTS = Object.assign({}, COSTS);
   /** planAmount(w, plan, b): UI only (tx builder). A fixed-price plan (hatch / dozen / case / roll / spin / fight / accept / breed / community roll) or a
    * single feed gets the amount at block b; plans are returned unchanged in era 0, and 1-sat / community-feed plans are never touched. */
@@ -949,7 +949,7 @@
         var pl = L(r, 'hatch', 'pack hatched #' + first + '-#' + (w.nextPet - 1)); for (var pi = first; pi < w.nextPet; pi++) token(w.byId[pi], 'stageUp'); return pl;
       }
       case 'cfeed': {
-        if (!validFeedAmount(amt, b)) return L(r, 'rejected', 'community feed min ' + (b < V2_FROM_BLOCK ? COSTS.feedMinV1 : COSTS.feedMin) + ' (burn still feeds the community pet)');
+        if (eraAt(w, b) || saleAt(w, b) ? amt + 5e-9 < costAt(w, COSTS.feedMin, b, true) : !validFeedAmount(amt, b)) return L(r, 'rejected', 'community feed min ' + (eraAt(w, b) || saleAt(w, b) ? costAt(w, COSTS.feedMin, b, true) : b < V2_FROM_BLOCK ? COSTS.feedMinV1 : COSTS.feedMin) + ' (burn still feeds the community pet)'); /* halving: the community feed minimum halves too (owner Oct 22 2026) */
         w.community.feeds += amt; w.community.feeders[src] = (w.community.feeders[src] || 0) + amt;
         return L(r, 'cfeed', 'fed ' + COMMUNITY_PET + ' ' + amt);
       }
@@ -1963,7 +1963,7 @@
   function communityRollPlan(slot, tip) { var code = slot ? String(slot).toUpperCase() : ''; if (code && tip != null && Number(tip) >= ACTIVATE_SLOTNAME_BLOCK) { var nm = (SLOT_LABELS[code.toLowerCase()] || '').toUpperCase(); if (SLOT_NAME_CODES[nm]) code = nm; } var tag = 'pet:c:roll' + (code ? ':' + code : ''); return { tag: tag, amount: COSTS.croll, label: 'Community gear roll' }; }
   /** communityGear(w) -> worn community item ids (newest roll per slot, slot order). */
   function communityGear(w) { var g = (w.community && w.community.gear) || {}; return V2_SLOTS.filter(function (s) { return g[s]; }).map(function (s) { return g[s].item; }); }
-  function communityFeedPlan(amount) { amount = Math.floor(Number(amount)); if (!(amount >= COSTS.feedMin)) return { ok: false, error: 'minimum community feed is ' + COSTS.feedMin }; return { ok: true, tag: 'pet:feed', amount: amount }; }
+  function communityFeedPlan(amount) { var scaled = UI_COSTS.feedMin !== COSTS.feedMin; amount = scaled ? r8(Number(amount)) : Math.floor(Number(amount)); if (!(amount + (scaled ? 5e-9 : 0) >= UI_COSTS.feedMin)) return { ok: false, error: 'minimum community feed is ' + UI_COSTS.feedMin }; /* halving: UI_COSTS = price at the next block */ return { ok: true, tag: 'pet:feed', amount: amount }; }
   /** autoEquipOps: for each selected pet and open slot, wear the best free (inventory) eligible item of the owner. */
   function autoEquipOps(w, owner, ids, block) {
     var used = {}, ops = [];

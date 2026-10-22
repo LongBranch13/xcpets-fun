@@ -14,3 +14,9 @@
 .fs-still *,.fs-still{animation:none!important}
 @media (prefers-reduced-motion:reduce){.firesale *{animation:none!important}}
 @media (max-width:480px){.firesale{margin:8px 6px}.fs-txt{font-size:13px}.fs-pet{width:32px;height:32px}}
+/* Captain Dan yells the Fire Sale */
+.fs-dan{display:inline-flex;align-items:flex-end;gap:4px}
+.fs-dancv{width:48px;height:68px;image-rendering:pixelated;animation:fsPanic .3s steps(2) infinite}
+.fs-yell::before{content:'';position:absolute;left:-8px;bottom:6px;border:5px solid transparent;border-right-color:#1a1020}
+.fs-yell{max-width:260px}
+@media (max-width:480px){.fs-dancv{width:40px;height:56px}.fs-yell{max-width:200px;font-size:12px}}
