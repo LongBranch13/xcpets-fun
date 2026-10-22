@@ -420,6 +420,8 @@ body #pets .pet.card{padding-bottom:44px}
 .dpile .dcard h4{margin:2px 0 4px;font-size:13px}.dpile .dcard .chips{gap:4px;flex-wrap:wrap}.dpile .dp-fed{margin:2px 0 6px}.dpile .dp-star{color:#ffd84a}
 .dpile .dp-acts{justify-content:center;gap:6px;margin-top:auto}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:32px}
 @media (max-width:600px){.dpile .dgrid{grid-template-columns:1fr 1fr;gap:6px}.dpile .dcard{padding:6px}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:40px;flex:1 1 auto}.dpile .dctl select,.dpile .dctl input[type=search]{max-width:100%}}
+/* bugpass 2026-10-21: Rare Room '+N more in your stash' link sits on its own line under the hint (the scene box has line-height:0, so the inline link overlapped the hint at 390) */
+.shop8 .shop-scene .shop-more{display:block;line-height:1.4;padding:2px 8px 6px;background:#170a2b;color:#8fe3ff}
 /* remove-dan 2026-10-21: Captain Dan + the Pepe Wheel now stand on the right of the Rare Room floor, so the desktop price-tag sign sits bottom-left (phones keep the static strip) */
 @media (min-width:641px){.shop8 .shop-scene .sc-sign{right:auto;left:2%}.shop8 .shop-scene .sc-sign::before{left:auto;right:-9px}}
 #pepeWheel{scroll-margin-top:calc(var(--navh,72px) + 8px)}
