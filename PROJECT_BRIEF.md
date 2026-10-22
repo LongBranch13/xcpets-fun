@@ -21,3 +21,4 @@
 - UI: '✦ Series N' chip on pet.html for series 2+ (`?preview=series`), breed toast 'The baby joins Series N' when the parents' series differ; rules copy in 'New eras'.
 - Tests tools/cross-series-test.js 15/15; halving 23/23. Replay SAME vs origin/main. 0 console errors 1280/390. Previews /workspace/xcpets/previews/cross-series/.
 - NOTE: fire-sales / saved-spins and cross-series-breeding both branch off halving-v1; merge them in order at deploy (conflicts expected only in docs/HTML script tags).
+- **Owner update (~10:11 AM CT): community feeding halves too** (69/690/6,900 + min / 2^era; sale x0.5). On halving-v1, merged forward.
