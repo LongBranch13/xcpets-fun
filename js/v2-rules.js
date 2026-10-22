@@ -1137,8 +1137,8 @@
     snibby: [{ id: 'claws', label: 'claws', kind: 'arms' }],
     dodo: [{ id: 'beak', label: 'beak', kind: 'mouth', side: { huge: ['hhhhh..', 'AAAAAAd', 'AAAAAd.', 'nnnnnd.', 'AAAAd..', '.ddd...'], big: ['hhhh..', 'AAAAAd', 'nnnnd.', 'AAAd..'], small: ['hhh.', 'AAAd', 'AAd.'] }, front: { big: ['AAAAAAA', 'hAAAAAh', '.AAAAA.', '..ddd..', '...d...'], small: ['AAAAA', '.AAA.', '..d..'] } }, { id: 'tail', label: 'tail', kind: 'tail', draw: { mode: 'one', anchor: 'tail', big: ['B...B..', 'Bd..Bd.', '.Bd..Bd', '..BdBBd', '...BBdd', '....Bdd'], small: ['B.B.', 'BdBd', '.BBd', '..Bd'] } }],
     kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair', draw: { mode: 'fringe', sides: true } }],
-    sarutobi: [{ id: 'ears', label: 'ears', kind: 'ears' }, { id: 'tail', label: 'tail', kind: 'tail' }],
-    doge: [{ id: 'ears', label: 'ears', kind: 'top', pair: true }],
+    sarutobi: [{ id: 'tail', label: 'tail', kind: 'tail' }], /* ears removed Oct 22 (owner); the tail stays */
+    doge: [{ id: 'ears', label: 'ears', kind: 'top', pair: true, onTop: true }],
     lenny: [{ id: 'eyes', label: 'smug eyes', kind: 'eyes' }],
     nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'eyes' }],
     kek: [{ id: 'nemes', label: 'nemes headdress', kind: 'top', keep: true }],
@@ -1378,7 +1378,13 @@
           if (def.onTop) { /* never over the eyes (Pepe/Peepo eye domes ARE the head top): lift until no piece or seam pixel touches an eye pixel */
             var eyeAt = function (t) { return t >= 0 && t < 1024 && EYE_KEYS[ck.keys[t]]; }, hitsEye = function (L) { return L.some(function (p) { return eyeAt(p.t) || eyeAt(p.t + 32) || ((p.t & 31) > 0 && eyeAt(p.t + 31)) || ((p.t & 31) < 31 && eyeAt(p.t + 33)); }); };
             var mirrorL = function (L) { return L.map(function (p) { var x = p.t & 31; return { t: p.t - x + (AX - x), s: p.s }; }); };
-            while (d2 > mg - hbL.t && hitsEye(left.concat(mirrorL(left)))) { d2--; left = shift(Lp, dxL, d2); } }
+            var d2a = d2; while (d2 > mg - hbL.t && hitsEye(left.concat(mirrorL(left)))) { d2--; left = shift(Lp, dxL, d2); }
+            var hitsEye2 = function (L) { return L.some(function (p) { return eyeAt(p.t); }); }; /* then sink back into the head outline as far as no eye pixel is covered (no double ink line = no floating look) */
+            for (var sk = 0; d2 < d2a && sk < 1 && !hitsEye2(shift(Lp, dxL, d2 + 1).concat(mirrorL(shift(Lp, dxL, d2 + 1)))); sk++) { d2++; left = shift(Lp, dxL, d2); }
+            /* lifted pieces never float: each column grows down (its own bottom colour) until it meets the head, stopping before any eye pixel */
+            var onL0 = {}, botC = {}; left.forEach(function (p) { onL0[p.t] = 1; var x = p.t & 31; if (!botC[x] || p.t > botC[x].t) botC[x] = p; });
+            var stalk = []; Object.keys(botC).forEach(function (x) { var p = botC[x], t = p.t + 32, n = 0, run = []; while (t < 1024 && n < 4 && !M[t] && !onL0[t]) { run.push({ t: t, s: p.s }); t += 32; n++; } if (t < 1024 && M[t] && !EYE_KEYS[ck.keys[t]] && run.length) stalk = stalk.concat(run); });
+            left = left.concat(stalk); }
           var right = left.map(function (p) { var x = p.t & 31; return { t: p.t - x + (AX - x), s: p.s }; }).filter(function (p) { var x = AX - (p.t & 31); return (p.t & 31) >= 0 && x >= 0 && x <= 31; });
           var wasHead = {}; left.concat(right).forEach(function (p) { if (M[p.t]) wasHead[p.t] = 1; });
           paste(D, kF, left); paste(D, kF, right);

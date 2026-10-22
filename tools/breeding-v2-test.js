@@ -55,5 +55,7 @@ if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:nu
  ok(kv.length===0,'KEVIN hair never on Pepe/Peepo bodies');
  ok(chudHair===0&&V.HYBRID_PARTS.chud.length===1&&V.HYBRID_PARTS.chud[0].id==='glasses','Chud black bangs removed; Chud donates eyeglasses');
  ok(V.partsFor('pepe','chud').length===1&&V.partsFor('wojak','peepo').length===1&&V.partsFor('dodo','chud').length===0,'glasses/sad eyes/bulging eyes kept for two-eyed bodies');
+ ok(V.HYBRID_PARTS.sarutobi.map(d=>d.id).join()==='tail','Sarutobi donates only the tail (ears removed)');
+ ok(['bobo','mumu','doge'].every(sp=>V.HYBRID_PARTS[sp][0].onTop),'Bobo ears / Mumu horns / Doge ears use the onTop placement');
  ok(V.ACTIVATE_CHUD_BEARD_BLOCK===null&&!V.beardOn(99999999),'Chud beard gear gate is null (OFF)');}
 console.log(fails?fails+' FAIL':'ALL PASS');
