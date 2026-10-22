@@ -1646,7 +1646,7 @@
     // stage/bounce/pose offsets), derived per frame from the lens pixels rather than the pre-glasses eye boxes.
     if (opts.powered && sp && sp.lasers && stage > 0) drawLasers(cv, sp.symLenses ? lensAnchors(cv, eyes0) : eyes0, frame);
     for (i = 0; i < N * N; i++) if (cv.top[i]) { out[i * 4] = cv.top[i][0]; out[i * 4 + 1] = cv.top[i][1]; out[i * 4 + 2] = cv.top[i][2]; }
-    return { width: N, height: N, data: out };
+    return opts.withKeys ? { width: N, height: N, data: out, keys: cv.key.slice() } : { width: N, height: N, data: out }; /* withKeys (breeding v2, render-time only): semantic pixel keys for body-part trading */
   }
 
   function hexToBytes(h) { var b = new Uint8Array(h.length / 2); for (var i = 0; i < b.length; i++) b[i] = parseInt(h.substr(i * 2, 2), 16); return b; }

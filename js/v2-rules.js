@@ -109,6 +109,19 @@
   var BREED_COOLDOWN = 1008, BREED_MAX = 3, BREED_WINDOW = 144;
   var ACTIVATE_BREED_UNCAPPED_BLOCK = 971789; // RULE (gated, owner approved 2026-10-16): no breeding cap from this block (tip 971,783 + 6); before it, max BREED_MAX breedings as before
   function breedCapOn(b) { return b == null || b < ACTIVATE_BREED_UNCAPPED_BLOCK; }
+  /* ===== BREEDING V2 (owner approved Oct 21 2026 9:31 PM CT) =====================================================================
+   * ACTIVATE_BREEDING_V2_BLOCK is THE GATE for both v2 breeding rules. Chosen at deploy time = chain tip + ~6 (tip 972,555 at build
+   * time, Oct 21 2026 ~9:45 PM CT). If the deploy happens later, RESET THIS CONSTANT to the tip then + 6 before pushing to main.
+   * (1) Lifetime cap: every pet (Nakamoto, hybrids, everyone alike; no special Naka x Naka rule, one normal 1,008-block cooldown) can
+   *     breed BREED_CAP_V2 = 6 times counted from the gate (p.breedsV2, breeds at blocks >= the gate). Cost 690 per side unchanged.
+   * (2) Body-part trading: hybrid children bred at/after the gate also inherit signature body parts (HYBRID_PARTS) from their non-body
+   *     parents, drawn on top of the current hybrid look. Looks only (no stats), drawn from its OWN stream so no other draw moves.
+   * Before the gate nothing changes: same replay for all history. */
+  var ACTIVATE_BREEDING_V2_BLOCK = 972561; // <<< BREEDING V2 GATE (tip 972,555 + 6). Set to chain tip + ~6 at deploy time.
+  var BREED_CAP_V2 = 6;
+  function breedV2On(b) { return b != null && b >= ACTIVATE_BREEDING_V2_BLOCK; }
+  /** breedsLeft(p, b): { used, cap, left } lifetime v2 breeds (display + rules); used counts breeds at/after the gate only. */
+  function breedsLeft(p, b) { var u = (p && p.breedsV2) || 0; return { used: u, cap: BREED_CAP_V2, left: Math.max(0, BREED_CAP_V2 - u), on: breedV2On(b) }; }
   var RARITY_UP_10K = 500, RARITY_HIGH_10K = 3000;                  // 5% one tier above best parent; 30% the higher parent; else the lower
   var TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   var NAKAMOTO_CAST_STAGE = 3;         // Nakamoto joins the front-page Cast once any hatched Nakamoto reaches this stage (3 = Adult; set 5 for Mythic)
@@ -736,6 +749,7 @@
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
   function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED && !wizBreedOn(b)) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
+    if (breedV2On(b) && (p.breedsV2 || 0) >= BREED_CAP_V2) return 'breeding cap reached (' + BREED_CAP_V2 + '/' + BREED_CAP_V2 + ' lifetime breeds used)';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
   /* breed-accept-guard (2026-10-20, display/send guard only; NOT used by replay): would a pet:breed:A:B burn sent now be rejected?
@@ -750,7 +764,7 @@
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;
     var b = (tip || w.tip || 0) + 1, me = o.me, P = function (id) { return w.byId[id]; }, pend = (o.pending || []).map(function (g) { return parseTag(g); }).filter(Boolean), amt = plan && plan.amount;
     if (t.action === 'breed') { var X = P(t.a), Y = P(t.b); if (amt != null && amt < COSTS.breed) return 'below breed cost ' + COSTS.breed; if (!X) return 'no such pet #' + t.a; if (me && X.owner !== me) return 'first pet must be yours'; if (t.a === t.b) return 'two different pets';
-      var why = breedWhy(t.a, breedable(X, b)) || breedWhy(t.b, breedable(Y, b)); if (why) return why;
+      var why = breedWhy(t.a, breedable(X, b)) || breedWhy(t.b, breedable(Y, b)); if (why) return why; if (breedV2On(b) && kinWhy(X, Y)) return '#' + t.a + ' x #' + t.b + ': ' + kinWhy(X, Y) + ' (no inbreeding)';
       var locks = function (q) { var A = P(q.a), B = P(q.b); return A && B && (A.owner === B.owner || w.breedReqs.some(function (r) { return r.a === q.b && r.b === q.a && !r.used && b - r.block <= BREED_WINDOW; })); };
       var pb = pend.filter(function (q) { return q.action === 'breed' && locks(q) && [q.a, q.b].some(function (id) { return id === t.a || id === t.b; }); })[0];
       if (pb) return 'a breed burn with #' + ([pb.a, pb.b].indexOf(t.a) >= 0 ? t.a : t.b) + ' is still waiting to confirm';
@@ -776,7 +790,7 @@
       if (t.action === 'roll' && amt != null && amt < COSTS.roll) return 'below roll cost ' + COSTS.roll; if (t.action === 'oroll' && g.community) return 'community pet'; return null; }
     return null; }
   /** acceptBlock(w, req, tip): reason the owner of req.b can't accept request req (A asked B) right now, else null. Requester's pet checked first (the engine's 'partner' check). */
-  function acceptBlock(w, r, tip) { var b = (tip || w.tip || 0) + 1; return breedWhy(r.a, breedable(w.byId[r.a], b)) || breedWhy(r.b, breedable(w.byId[r.b], b)); }
+  function acceptBlock(w, r, tip) { var b = (tip || w.tip || 0) + 1; return breedWhy(r.a, breedable(w.byId[r.a], b)) || breedWhy(r.b, breedable(w.byId[r.b], b)) || (breedV2On(b) && kinWhy(w.byId[r.a], w.byId[r.b]) ? kinWhy(w.byId[r.a], w.byId[r.b]) + ' (no inbreeding)' : null); }
   /** acceptRejected(w, rows, req): replay-log reason for the newest confirmed accept (pet:breed:B:A) of req that the engine rejected, else null. */
   function tagText(h) { h = String(h || ''); if (!/^[0-9a-f]+$/i.test(h) || h.length % 2) return h; var o = ''; for (var i = 0; i < h.length; i += 2) o += String.fromCharCode(parseInt(h.substr(i, 2), 16)); try { return decodeURIComponent(escape(o)); } catch (e) { return o; } }
   function acceptRejected(w, rows, r) { var want = 'pet:breed:' + r.b + ':' + r.a, tx = {}; (rows || []).forEach(function (x) { if (x.block_index >= r.block && tagText(x.tag) === want) tx[x.tx_hash] = 1; });
@@ -887,15 +901,16 @@
       }
       case 'breed': {
         var X = pet(t.a), Y = pet(t.b), be = amt < COSTS.breed ? 'below breed cost 690' : !X || X.owner !== src ? 'first pet must be yours' : t.a === t.b ? 'two different pets' : breedable(X, b) || (breedable(Y, b) ? 'partner: ' + breedable(Y, b) : null);
+        if (!be && breedV2On(b)) be = kinWhy(X, Y);
         if (be) return L(r, 'rejected', be);
         if (Y.owner !== src) { // two owners: this is a request (or the acceptance of the partner's mirrored request)
           var req = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used && b - q.block <= BREED_WINDOW; })[0];
           if (!req) { w.breedReqs.push({ a: t.a, b: t.b, block: b, tx: r.tx_hash, owner: src }); return L(r, 'breedReq', '#' + t.a + ' asked #' + t.b + ' to breed (partner burns pet:breed:' + t.b + ':' + t.a + ' within ' + BREED_WINDOW + ' blocks)'); }
           req.used = true; if (!bh) return L(r, 'rejected', 'block hash pending');
-          var kid = breed(w, Y, X, bh, r.tx_hash, b, req.owner); return L(r, 'breed', 'bred #' + Y.id + ' x #' + X.id + ' -> Egg #' + kid.id, { petId: kid.id });
+          var kid = breed(w, Y, X, bh, r.tx_hash, b, req.owner); return L(r, 'breed', 'bred #' + Y.id + ' x #' + X.id + ' -> Egg #' + kid.id + (kid.twinOf ? ' + twin Egg #' + kid.twinOf : ''), { petId: kid.id });
         }
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var k2 = breed(w, X, Y, bh, r.tx_hash, b, src); return L(r, 'breed', 'bred #' + X.id + ' x #' + Y.id + ' -> Egg #' + k2.id, { petId: k2.id });
+        var k2 = breed(w, X, Y, bh, r.tx_hash, b, src); return L(r, 'breed', 'bred #' + X.id + ' x #' + Y.id + ' -> Egg #' + k2.id + (k2.twinOf ? ' + twin Egg #' + k2.twinOf : ''), { petId: k2.id });
       }
       case 'croll': {  /* community roll: Nakamoto (Mythic, every slot open) gets one item; the newest roll in a slot is worn */
         if (b < ACTIVATE_CROLL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -1090,11 +1105,286 @@
     return roots[R() % 2]; // hybrid x anything else (incl. a different hybrid pair: parent A's hybrid roots if A is a hybrid): no 3-species hybrids
   }
   /** hybridPlan(hex, key): deterministic art assembly from the breed hash: body/head shape from one parent, colours + eyes + one signature feature from the other. */
-  function hybridPlan(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex);
+  function hybridPlan(hex, key, blk) { var P0 = hybridPlan0(hex, key); if (breedV2On(blk)) P0.parts = hybridParts(hex, P0); return P0; }
+  function hybridPlan0(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex);
     if (r.length === 3) { var o = shuffled(R, r); /* 3-way: body shape, colours and signature feature each from a different parent */
       return { key: key, a: r[0], b: r[1], c: r[2], roots: r.slice(), name: hybridName(key), shape: o[0], color: o[1], featSp: o[2], feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
     var s = R() % 2, shape = r[s], color = r[1 - s]; // 2-way: unchanged
     return { key: key, a: r[0], b: r[1], roots: r.slice(), name: hybridName(key), shape: shape, color: color, feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
+  /* BODY-PART TRADING v2 (breeding v2, from ACTIVATE_BREEDING_V2_BLOCK; owner redo Oct 21 2026 10:05 PM CT: REPLACE, not overlay).
+   * One general rule for every species, no per-pet overrides: every hybrid root that is NOT the body (shape) parent gives the child one of
+   * its signature parts (a second one 50% of the time when it has two), picked from the own stream 'XCPETS:v2:hybrid-parts:' + hash.
+   * The part REPLACES the matching region of the child's body: the child's own region is erased first, then the donor's part (cut from the
+   * donor's sprite at the same stage, by semantic pixel keys) is scaled and anchored to the child's anatomy (found the same way), and the
+   * outline is redrawn round the new silhouette. Region kinds:
+   *   eyes  = eye/pupil/white/brow/frame/lens keys (+ the ink inside that box, + eye domes sticking up over it): eyes, glasses, brows
+   *   mouth = the mouth key grown through the non-skin keys round it: beak, lips          (erased region refilled with the child's skin)
+   *   top   = the forked top of the head (ears, horns, nemes, hat)                         (erased to background)
+   *   hair  = species keys touching the top of the head (hair)                             (child's hair refilled with skin)
+   *   ears  = side bumps in the head band (side ears)  arms = side bumps in the body band (claws, arms)  tail = left bump, low band */
+  var HYBRID_PARTS = {
+    pepe: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
+    peepo: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
+    wojak: [{ id: 'eyes', label: 'sad eyes', kind: 'eyes', draw: { mode: 'pair', anchor: 'center', big: ['...nn', '.nnnn', 'nnwww', 'wwwpp', '.wwpp', 'dddd.'], small: ['..nn', 'nnww', 'wwpp', 'ddd.'] } }],
+    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'eyes' }, { id: 'hair', label: 'black bangs', kind: 'hair', draw: { mode: 'fringe' } }],
+    bobo: [{ id: 'ears', label: 'ears', kind: 'top', pair: true, draw: { mode: 'pair', anchor: 'bottom', big: ['.BBBB.', 'BBddBB', 'BddddB', 'BddddB'], small: ['.BB.', 'BddB', 'BddB'] } }],
+    mumu: [{ id: 'horns', label: 'horns', kind: 'top', pair: true }],
+    snibby: [{ id: 'claws', label: 'claws', kind: 'arms' }],
+    dodo: [{ id: 'beak', label: 'beak', kind: 'mouth', side: { huge: ['hhhhh..', 'AAAAAAd', 'AAAAAd.', 'nnnnnd.', 'AAAAd..', '.ddd...'], big: ['hhhh..', 'AAAAAd', 'nnnnd.', 'AAAd..'], small: ['hhh.', 'AAAd', 'AAd.'] }, front: { big: ['AAAAAAA', 'hAAAAAh', '.AAAAA.', '..ddd..', '...d...'], small: ['AAAAA', '.AAA.', '..d..'] } }, { id: 'tail', label: 'tail', kind: 'tail', draw: { mode: 'one', anchor: 'tail', big: ['B...B..', 'Bd..Bd.', '.Bd..Bd', '..BdBBd', '...BBdd', '....Bdd'], small: ['B.B.', 'BdBd', '.BBd', '..Bd'] } }],
+    kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair', draw: { mode: 'fringe', sides: true } }],
+    sarutobi: [{ id: 'ears', label: 'ears', kind: 'ears' }, { id: 'tail', label: 'tail', kind: 'tail' }],
+    doge: [{ id: 'ears', label: 'ears', kind: 'top', pair: true }],
+    lenny: [{ id: 'eyes', label: 'smug eyes', kind: 'eyes' }],
+    nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'eyes' }],
+    kek: [{ id: 'nemes', label: 'nemes headdress', kind: 'top', keep: true }],
+    wizard: [{ id: 'hat', label: 'hat', kind: 'top', hat: true }]
+  };
+  function hybridParts(hex, plan) { var R = stream('XCPETS:v2:hybrid-parts:' + hex), out = [];
+    plan.roots.filter(function (sp) { return sp !== plan.shape; }).forEach(function (sp) { var L = HYBRID_PARTS[sp] || []; if (!L.length) return;
+      var i = R() % L.length; out.push({ sp: sp, part: L[i].id }); if (L.length > 1 && R() % 2 === 0) out.push({ sp: sp, part: L[1 - i].id }); });
+    return out; }
+  function partDef(sp, id) { return (HYBRID_PARTS[sp] || []).filter(function (d) { return d.id === id; })[0] || null; }
+  function partLabel(q) { var d = partDef(q.sp, q.part); return speciesLabel(q.sp) + '\u2019s ' + (d ? d.label : q.part); }
+  var GROUND_ROW = 29;
+  function silOf(k) { var s = []; for (var j = 0; j < 1024; j++) s[j] = (j >> 5) < GROUND_ROW && !(k.data[j * 4] === 255 && k.data[j * 4 + 1] === 0 && k.data[j * 4 + 2] === 255); return s; }
+  function bbOf(s) { var b = { t: 32, b: -1, l: 32, r: -1 }; for (var j = 0; j < 1024; j++) if (s[j]) { var x = j & 31, y = j >> 5; b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); } b.h = b.b - b.t + 1; b.w = b.r - b.l + 1; return b; }
+  function bbList(L) { var s = []; L.forEach(function (j) { s[j] = true; }); return bbOf(s); }
+  function runsOf(s, y) { var R2 = [], a = -1; for (var x = 0; x <= 32; x++) { var on = x < 32 && s[y * 32 + x]; if (on && a < 0) a = x; if (!on && a >= 0) { R2.push([a, x - 1]); a = -1; } } return R2; }
+  function medianOf(a) { var b = a.slice().sort(function (p, q) { return p - q; }); return b.length ? b[b.length >> 1] : 0; }
+  function edgeAt(s, y, side) { var r = -1; for (var x = 0; x < 32; x++) if (s[y * 32 + x]) { if (side < 0) return x; r = x; } return r; }
+  var EYE_KEYS = { eye: 1, pupil: 1, white: 1, brow: 1, frame: 1, lens: 1 }, SKIN_KEYS = { body: 1, belly: 1 };
+  /** anatomy(keys): regions of a keyed sprite (keys = PetCore.render(..., { withKeys: true }).keys). Returns pixel lists per region kind. */
+  function anatomy(keys) { var s = [], j; for (j = 0; j < 1024; j++) s[j] = !!keys[j] && (j >> 5) < GROUND_ROW; var bb = bbOf(s), A = { s: s, bb: bb, keys: keys }; if (bb.b < 0) return A;
+    var mTop = 99; for (j = 0; j < 1024; j++) if (s[j] && keys[j] === 'mouth') { mTop = j >> 5; break; }
+    var eyeL = []; for (j = 0; j < 1024; j++) if (s[j] && EYE_KEYS[keys[j]] && (j >> 5) < mTop - 1) eyeL.push(j); /* mouth whites/teeth are not eyes */
+    var eb = eyeL.length ? bbList(eyeL) : null; A.eyeBox = eb;
+    /* forked top: rows from the top while split in 2+ runs */
+    var top = [], yTopMax = bb.t + Math.ceil(bb.h * 0.4); if (eb) yTopMax = Math.min(yTopMax, eb.b + 1); for (var y = bb.t; y < yTopMax; y++) { var rr = runsOf(s, y); if (rr.length < 2) break; rr.forEach(function (q) { for (var x = q[0]; x <= q[1]; x++) top.push(y * 32 + x); }); }
+    /* drop forked-top pieces that carry eyes (eye stalks, eye domes): those belong to the eyes */
+    (function () { var on = {}, seen = {}, keep = []; top.forEach(function (q) { on[q] = 1; });
+      top.forEach(function (q0) { if (seen[q0]) return; var comp = [], st = [q0], eyeish = false; seen[q0] = 1;
+        while (st.length) { var c = st.pop(); comp.push(c); if (EYE_KEYS[keys[c]] || (eb && (c >> 5) >= eb.t - 1 && (c & 31) >= eb.l && (c & 31) <= eb.r)) eyeish = true;
+          [c - 1, c + 1, c - 32, c + 32, c + 64].forEach(function (n) { if (n >= 0 && n < 1024 && on[n] && !seen[n] && Math.abs((n & 31) - (c & 31)) <= 1) { seen[n] = 1; st.push(n); } }); }
+        /* a piece is eye-ish if it touches the eye box from above (stalk) */
+        if (eb && comp.some(function (c) { var b2 = c + 32; return b2 < 1024 && EYE_KEYS[keys[b2]]; })) eyeish = true;
+        if (!eyeish) keep = keep.concat(comp); }); A.eyeTop = top.filter(function (q) { return keep.indexOf(q) < 0; }); top = keep; })();
+    A.top = top; var topOn = {}; top.forEach(function (q) { topOn[q] = 1; });
+    if (eb) { var E = []; for (j = 0; j < 1024; j++) { var xj = j & 31, yj = j >> 5; if (!s[j] || xj < eb.l - 1 || xj > eb.r + 1 || yj < eb.t - 2 || yj > eb.b + 1) continue; if (EYE_KEYS[keys[j]] || ((keys[j] === 'ink' || keys[j] === 'tear') && yj <= eb.b + 1)) E.push(j); }
+      var domes = (A.eyeTop || []).filter(function (q) { var xq = q & 31; return xq >= eb.l && xq <= eb.r && eb.t - (q >> 5) <= 3; }); A.eyes = E.concat(domes); A.eyeDomes = domes; } else A.eyes = [];
+    var mk = []; for (j = 0; j < 1024; j++) if (s[j] && keys[j] === 'mouth') mk.push(j); A.mouthKey = mk;
+    if (mk.length) { var mb = bbList(mk), on = {}, q2 = mk.slice(); mk.forEach(function (q) { on[q] = 1; });
+      while (q2.length) { var c = q2.pop(); [c - 1, c + 1, c - 32, c + 32].forEach(function (n) { if (n < 0 || n >= 1024 || on[n] || !s[n] || Math.abs((n & 31) - (c & 31)) > 1) return; var k = keys[n], xn = n & 31, yn = n >> 5;
+          if (k === 'body' || EYE_KEYS[k] || topOn[n] || yn < mb.t - 2 || yn > mb.b + 1 || (yn > mb.b && k !== 'ink') || xn < mb.l - 8 || xn > mb.r + 8) return; on[n] = 1; q2.push(n); }); }
+      A.mouth = Object.keys(on).map(Number); A.mouthBox = mb; } else A.mouth = [];
+    /* hair keys: species keys (not skin/eye/mouth/accent/ink) touching the top two rows */
+    var hk = {}; for (j = 0; j < 1024; j++) { var k2 = keys[j]; if (s[j] && (j >> 5) <= bb.t + 1 && /^sp\d$/.test(k2)) hk[k2] = 1; }
+    A.hair = []; for (j = 0; j < 1024; j++) if (s[j] && hk[keys[j]] && (!eb || (j >> 5) < eb.b + 1 || (j & 31) < eb.l || (j & 31) > eb.r)) A.hair.push(j);
+    /* side bumps: pixels outside the body core (75th/25th percentile row edges) */
+    var Ls = [], Rs = []; for (var y2 = bb.t; y2 <= bb.b; y2++) { var r2 = runsOf(s, y2); if (r2.length) { Ls.push(r2[0][0]); Rs.push(r2[r2.length - 1][1]); } }
+    var qt = function (a, f) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[Math.min(b.length - 1, Math.floor(b.length * f))]; }, cl = qt(Ls, 0.75), cr = qt(Rs, 0.25);
+    A.core = [cl, cr];
+    var band = function (f0, f1, left, right) { var y0 = bb.t + Math.floor(f0 * bb.h), y1 = bb.t + Math.ceil(f1 * bb.h) - 1, out = [];
+      for (var j3 = 0; j3 < 1024; j3++) { var x3 = j3 & 31, y3 = j3 >> 5; if (!s[j3] || topOn[j3] || y3 < y0 || y3 > y1) continue; if (left && x3 < cl - 1) out.push(j3); else if (right && x3 > cr + 1) out.push(j3); } return out; };
+    var headB = eb ? Math.min(0.6, (eb.b + 3 - bb.t) / bb.h) : 0.5;
+    var grow = function (L) { var on = {}; L.forEach(function (q) { on[q] = 1; }); var st = L.slice();
+      while (st.length) { var c = st.pop(); [c - 1, c + 1, c - 32, c + 32].forEach(function (n) { if (n < 0 || n >= 1024 || on[n] || !s[n] || topOn[n] || Math.abs((n & 31) - (c & 31)) > 1 || keys[n] !== keys[c]) return; var xn = n & 31; if (xn >= cl && xn <= cr) return; on[n] = 1; st.push(n); }); }
+      return Object.keys(on).map(Number); };
+    A.ears = band(0.05, headB, true, true); A.arms = grow(band(headB, 0.95, true, true)); A.ears = A.ears.filter(function (q) { return A.arms.indexOf(q) < 0; }); A.tail = band(0.45, 1, true, false).filter(function (q) { return A.arms.indexOf(q) < 0 || (q & 31) < cl - 2; });
+    return A; }
+  function keyedRender(sp, art, o) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
+    if (sp === 'kek') { var r = renderRoot(a, o); var ks = []; for (var j = 0; j < 1024; j++) ks[j] = r.data[j * 4] === 255 && r.data[j * 4 + 1] === 0 && r.data[j * 4 + 2] === 255 ? undefined : 'body'; r.keys = ks;
+      /* the nemes headdress (cap, uraeus and brow band): found by re-rendering with marker colours for the nemes inks, above the brow band, inside the head width */
+      var mk = renderRoot(a, o, { B: '#fe0101', b: '#fe0202', y: '#fe0303', o: '#fe0404' }), isN = function (q) { return mk.data[q * 4] === 254 && mk.data[q * 4 + 1] === mk.data[q * 4 + 2] && mk.data[q * 4 + 1] >= 1 && mk.data[q * 4 + 1] <= 4 && Math.abs((q & 31) - 15.5) < 9.5; };
+      var nem = [], started = false; for (var y = 0; y < GROUND_ROW; y++) { var row = []; for (var x = 0; x < 32; x++) if (isN(y * 32 + x)) row.push(y * 32 + x); if (row.length >= 8) started = true; else if (started) break; nem = nem.concat(row); }
+      r.parts = { top: started ? nem : [], topSkin: true, headBox: started ? bbList(nem.filter(function (q) { return Math.abs((q & 31) - 15.5) < 9; })) : null }; return r; }
+    if (sp === 'wizard' && wizSprite()) { /* the Wizard's hat: the pixels that change when he wears it */ var WS = wizSprite(), w0 = renderWizRoot(a, Object.assign({}, o, { wizGear: {} })), w1 = renderWizRoot(a, Object.assign({}, o, { wizGear: { head: WS.WIZARD_HAT } })), kw = [], hat = [];
+      var bgw = function (d, q) { return d[q * 4] === 255 && d[q * 4 + 1] === 0 && d[q * 4 + 2] === 255; };
+      for (var q = 0; q < 1024; q++) { kw[q] = bgw(w1.data, q) ? undefined : 'body'; if (!bgw(w1.data, q) && (q >> 5) < GROUND_ROW && (bgw(w0.data, q) || [0, 1, 2].some(function (c) { return w0.data[q * 4 + c] !== w1.data[q * 4 + c]; }))) hat.push(q); }
+      w1.keys = kw; w1.parts = { top: hat }; return w1; }
+    return PetCore.render(a, Object.assign({}, o, { gearCap: 0, gearOverride: null, withKeys: true })); }
+  /** scaled(list, k, anchor): nearest-neighbour scale of a pixel list about its bbox anchor ([ax, ay] in 0..1). Returns [{ j: target, s: source }]. */
+  function scaled(list, k, anc) { var b = bbList(list), on = {}; list.forEach(function (q) { on[q] = 1; }); if (Math.abs(k - 1) < 0.08) return list.map(function (q) { return { t: q, s: q }; });
+    var W = Math.max(1, Math.round(b.w * k)), H = Math.max(1, Math.round(b.h * k)), ox = b.l + (b.w - W) * anc[0], oy = b.t + (b.h - H) * anc[1], out = [];
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var sx = b.l + Math.min(b.w - 1, Math.floor(x / k)), sy = b.t + Math.min(b.h - 1, Math.floor(y / k)), sj = sy * 32 + sx; if (on[sj]) out.push({ t: Math.round(oy + y) * 32 + Math.round(ox + x), s: sj }); }
+    return out; }
+  var INK = [26, 16, 32];
+  function shadeRgb(c, k) { return c.map(function (n) { return Math.max(0, Math.min(255, Math.round(n * k))); }); }
+  function topColour(data, list) { var n = {}; list.forEach(function (q) { var c = [data[q * 4], data[q * 4 + 1], data[q * 4 + 2]].join(','); n[c] = (n[c] || 0) + 1; }); var b = Object.keys(n).sort(function (p, q) { return n[q] - n[p]; })[0]; return b ? b.split(',').map(Number) : [128, 128, 128]; }
+  /** drawPart(def, kF, DA, D, small): REDRAWS a donor part from a small drawing in the donor's own palette, at the donor's own part position
+   * (so the normal placement rules apply), for parts whose sprite pixels do not read on their own. Returns { kF, D }. */
+  function drawPart(def, kF, DA, D, small) { var dr = def.draw, data = new Uint8ClampedArray(kF.data), out = [];
+    var bodyL = []; for (var j = 0; j < 1024; j++) if (DA.s[j] && kF.keys[j] === 'body') bodyL.push(j); var B = topColour(kF.data, bodyL);
+    var pal = { B: B, d: shadeRgb(B, 0.55), n: INK, w: [244, 244, 238], p: [26, 16, 32] };
+    var put = function (q, c) { if (q < 0 || q >= 1024) return; data[q * 4] = c[0]; data[q * 4 + 1] = c[1]; data[q * 4 + 2] = c[2]; data[q * 4 + 3] = 255; if (out.indexOf(q) < 0) out.push(q); };
+    var stamp = function (rows, x0, y0) { rows.forEach(function (r, yy) { for (var xx = 0; xx < r.length; xx++) { var ch = r[xx]; if (ch === '.') continue; var x = x0 + xx, y = y0 + yy; if (x < 0 || x > 31 || y < 0 || y >= GROUND_ROW) continue; put(y * 32 + x, pal[ch]); } }); };
+    var mirror = function (rows) { return rows.map(function (r) { return r.split('').reverse().join(''); }); };
+    if (dr.mode === 'fringe') { if (D.length < 2) return { kF: kF, D: D }; var hc = topColour(kF.data, D), hl = shadeRgb(hc, 1.0).map(function (n) { return Math.min(255, n + 70); }), b = bbList(D);
+      var eyT = DA.eyeBox ? DA.eyeBox.t : b.b + 1, cols = {}; D.forEach(function (q) { var y = q >> 5, x = q & 31; if (y >= eyT) { cols[y] = cols[y] || [99, -1]; cols[y][0] = Math.min(cols[y][0], x); cols[y][1] = Math.max(cols[y][1], x); } });
+      if (dr.sides) { /* long hair: a cap down to the eyes, a lighter fringe, then thin strands down the sides so the head shape shows */
+        D.forEach(function (q) { var x = q & 31, y = q >> 5; if (y < eyT - 1) put(q, (x + y) % 4 === 0 ? hl : hc); else if (y === eyT - 1) { if (x % 3 !== 2) put(q, hl); }
+          else { var c = cols[y]; if (!c) return; var side = x - c[0] <= 1 || c[1] - x <= 1; if (side && !(y === b.b && x % 2)) put(q, (y + (x - c[0] <= 1 ? 0 : 1)) % 2 ? hl : hc); } });
+        return { kF: { data: data, keys: kF.keys }, D: out }; }
+      D.forEach(function (q) { var x = q & 31, y = q >> 5; if (y === b.b && x % 2) return; if (y === b.b - 1 && b.h > 3 && x % 4 === 3) return; put(q, (y > b.t && y < b.b && (x + y) % 3 === 0) ? hl : hc); });
+      return { kF: { data: data, keys: kF.keys }, D: out }; }
+    var rows = small ? dr.small : dr.big, w = rows[0].length, hgt = rows.length, bb = DA.bb, cx = (bb.l + bb.r) / 2;
+    if (dr.mode === 'pair') { var sides = [-1, 1].map(function (sd) { var L = D.filter(function (q) { return ((q & 31) < cx ? -1 : 1) === sd; }); return L.length ? bbList(L) : null; });
+      sides.forEach(function (sb, i) { var sd = i ? 1 : -1, eb = DA.eyeBox;
+        if (!sb) sb = dr.anchor === 'bottom' ? { l: sd < 0 ? bb.l + 1 : bb.r - w, r: sd < 0 ? bb.l + w : bb.r - 1, t: bb.t, b: bb.t } : eb ? { l: sd < 0 ? eb.l : (eb.l + eb.r) / 2 + 1, r: sd < 0 ? (eb.l + eb.r) / 2 - 1 : eb.r, t: eb.t, b: eb.b } : { l: cx + sd * 4 - 2, r: cx + sd * 4 + 2, t: bb.t + 4, b: bb.t + 6 };
+        var x0 = Math.round((sb.l + sb.r) / 2 - (w - 1) / 2), y0 = dr.anchor === 'bottom' ? sb.b - hgt + 1 : Math.round((sb.t + sb.b) / 2 - (hgt - 1) / 2);
+        stamp(sd < 0 ? rows : mirror(rows), x0, y0); }); }
+    else { var tb = D.length ? bbList(D) : { l: bb.l, r: bb.l + 2, t: bb.t + Math.round(bb.h * 0.55), b: bb.t + Math.round(bb.h * 0.75) };
+      stamp(rows, tb.r - w + 1, tb.b - hgt + 1); }
+    return { kF: { data: data, keys: kF.keys }, D: out }; }
+  /** applyParts(img, kS, h, o, art, feat): REPLACES the child's regions with the plan's traded parts (h.parts); returns the pixels painted. */
+  var SIDE_FACING = { dodo: 1, doge: -1 }, TOPDBG = null; /* bodies drawn in profile: which way the mouth points */
+  function applyParts(img, kS, h, o, art, feat) { var painted = []; TOPDBG = null;
+    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted; if (ck.parts) Object.assign(CA, ck.parts);
+    var M = CA.s.slice(); (feat || []).forEach(function (q) { M[q] = true; }); var touched = {};
+    var col = function (j) { return [img.data[j * 4], img.data[j * 4 + 1], img.data[j * 4 + 2]]; };
+    var skinCount = {}; for (var j0 = 0; j0 < 1024; j0++) if (CA.s[j0] && ck.keys[j0] === 'body') { var c0 = col(j0).join(','); skinCount[c0] = (skinCount[c0] || 0) + 1; }
+    if (!Object.keys(skinCount).length) for (var j9 = 0; j9 < 1024; j9++) if (CA.s[j9] && ck.keys[j9] !== 'ink' && !EYE_KEYS[ck.keys[j9]] && ck.keys[j9] !== 'mouth') { var c9 = col(j9).join(','); skinCount[c9] = (skinCount[c9] || 0) + 1; } /* no 'body' key (Nakamoto): the commonest face colour */
+    var skin = (Object.keys(skinCount).sort(function (p, q) { return skinCount[q] - skinCount[p]; })[0] || '').split(',').map(Number);
+    var isBgK = function (j) { return kS.data[j * 4] === 255 && kS.data[j * 4 + 1] === 0 && kS.data[j * 4 + 2] === 255; };
+    var set = function (j, c) { img.data[j * 4] = c[0]; img.data[j * 4 + 1] = c[1]; img.data[j * 4 + 2] = c[2]; img.data[j * 4 + 3] = 255; };
+    var orig = new Uint8ClampedArray(img.data);
+    var bgAt = function (j) { if (isBgK(j)) return [orig[j * 4], orig[j * 4 + 1], orig[j * 4 + 2]]; for (var r = 1; r <= 5; r++) for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) { var x = (j & 31) + dx, y = (j >> 5) + dy; if (x < 0 || y < 0 || x > 31 || y > 31) continue; var n = y * 32 + x; if (isBgK(n)) return [orig[n * 4], orig[n * 4 + 1], orig[n * 4 + 2]]; } return [orig[j * 4], orig[j * 4 + 1], orig[j * 4 + 2]]; };
+    var erase = function (list, toBg) { list.forEach(function (q) { touched[q] = 1; if (toBg) M[q] = false; else if (skin.length === 3) set(q, skin); }); };
+    var paste = function (D, kF, pairs) { pairs.forEach(function (p) { var x = p.t & 31, y = p.t >> 5; if (p.t < 0 || p.t >= 1024 || x < 0 || y >= GROUND_ROW) return; M[p.t] = true; touched[p.t] = 1; set(p.t, [kF.data[p.s * 4], kF.data[p.s * 4 + 1], kF.data[p.s * 4 + 2]]); painted.push(p.t); }); };
+    var shift = function (pairs, dx, dy) { return pairs.filter(function (p) { var x = (p.t & 31) + dx; return x >= 0 && x < 32; }).map(function (p) { return { t: p.t + dy * 32 + dx, s: p.s }; }); };
+    var clampK = function (k, lo, hi) { return Math.max(lo, Math.min(hi, k)); };
+    var faceOf = function () { if (!CA.mouthBox) return 0; var mb = CA.mouthBox, tx = (mb.l + mb.r) / 2, rr = runsOf(CA.s, Math.round((mb.t + mb.b) / 2)); if (!rr.length) return 0; var c0 = (rr[0][0] + rr[rr.length - 1][1]) / 2, hw = (rr[rr.length - 1][1] - rr[0][0]) / 2; return Math.abs(tx - c0) < hw * 0.35 ? 0 : tx < c0 ? -1 : 1; }, facing = SIDE_FACING[h.shape] != null ? SIDE_FACING[h.shape] : 0; void faceOf; /* where the child's own mouth is: 0 = front, -1 = left (Doge), 1 = right (Dodo) */
+    var stg = o.stage == null ? 3 : o.stage, mg = stg >= 4 ? 3 : 2; /* frame margin: the part + its ink outline (+ the Elder/Mythic rim) stay inside the frame */
+    /* a head-top or ear part in (nearly) the child's own colour gets contrast: a darker inside and an ink line where it meets the head */
+    var contrastPart = function (L) { if (!L.length || skin.length !== 3) return; var on = {}; L.forEach(function (t) { on[t] = 1; });
+      var near = L.filter(function (t) { return Math.abs(img.data[t * 4] - skin[0]) + Math.abs(img.data[t * 4 + 1] - skin[1]) + Math.abs(img.data[t * 4 + 2] - skin[2]) < 90; }); if (near.length < L.length * 0.25) return;
+      near.forEach(function (t) { var inner = [t - 1, t + 1, t - 32, t + 32].every(function (n) { return n >= 0 && n < 1024 && M[n]; }) ; if (inner) set(t, shadeRgb([img.data[t * 4], img.data[t * 4 + 1], img.data[t * 4 + 2]], 0.62)); });
+      L.forEach(function (t) { var n = t + 32; if (n < 1024 && !on[n] && M[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); };
+    (h.parts || []).forEach(function (q) { var p0 = painted.length, kd0 = (partDef(q.sp, q.part) || {}).kind; placeOne(q); var df0 = partDef(q.sp, q.part) || {}; if ((kd0 === 'top' || kd0 === 'ears') && !df0.draw && !df0.keep) contrastPart(painted.slice(p0)); });
+    /* WIZARD HAT, redrawn to fit THIS head: brim as wide as the head (+1 each side) resting on the top outline, a floppy blue cone, gold band, tip flopping over; never over the eyes */
+    function drawHat(kF, D) { var hat = D.filter(function (q) { var r = kF.data[q * 4], g = kF.data[q * 4 + 1], b = kF.data[q * 4 + 2]; return b > r + 30 && b > g; }), BL = topColour(kF.data, hat.length ? hat : D), GD = [255, 210, 63];
+      var Mh = bbOf(M), eyeL = CA.eyeBox ? CA.eyeBox.t : Mh.t + Math.round(Mh.h * 0.4), colTop = function (x) { for (var y = 0; y < GROUND_ROW; y++) if (M[y * 32 + x]) return y; return -1; };
+      var hl = CA.headBox ? CA.headBox.l : Mh.l, hr = CA.headBox ? CA.headBox.r : Mh.r; if (CA.core) { hl = Math.max(hl, CA.core[0] - 1); hr = Math.min(hr, CA.core[1] + 1); }
+      var hc = Math.round((hl + hr) / 2), tops = []; for (var x = hl; x <= hr; x++) { var t = colTop(x); if (t >= 0) tops.push(t); } tops.sort(function (a, b) { return a - b; });
+      var yH = tops.length ? tops[Math.floor(tops.length * 0.3)] : Mh.t, yb = Math.min(yH + 1, eyeL - 2), minUp = Math.min(6, Math.max(3, Math.round((hr - hl) * 0.4))); if (yb - mg < minUp) yb = Math.min(eyeL - 1, mg + minUp);
+      var rw = runsOf(M, Math.min(GROUND_ROW - 1, yb + 1)), wl = rw.length ? Math.max(hl, rw[0][0]) : hl, wr = rw.length ? Math.min(hr, rw[rw.length - 1][1]) : hr;
+      var bl = Math.max(mg, wl - 1), br = Math.min(31 - mg, wr + 1), W = br - bl + 1, Hc = Math.max(3, Math.min(yb - 1, Math.max(Math.round(W * 0.7), 5))), sd = facing ? -facing : 1, ON = {};
+      var put = function (x, y, c) { if (x < mg || x > 31 - mg || y < 0 || y >= GROUND_ROW) return; var t = y * 32 + x; M[t] = true; touched[t] = 1; set(t, c); painted.push(t); ON[t] = 1; };
+      var dk = shadeRgb(BL, 0.7), lt = shadeRgb(BL, 1.25).map(function (n) { return Math.min(255, n + 25); });
+      for (var x1 = bl; x1 <= br; x1++) put(x1, yb, x1 === bl || x1 === br ? dk : BL); /* brim */
+      var cw0 = Math.max(3, W - 4), tipX = hc;
+      for (var i = 1; i <= Hc; i++) { var f = i / Hc, cw = Math.max(1, Math.round(cw0 * (1 - f * 0.85))), off = Math.round(sd * f * f * W * 0.3), c0 = hc + off - Math.floor(cw / 2);
+        for (var x2 = c0; x2 < c0 + cw; x2++) put(x2, yb - i, i === 1 ? GD : (x2 - c0 >= cw * 0.6 ? dk : (x2 === c0 ? lt : BL))); tipX = hc + off; }
+      put(tipX + sd, yb - Hc + 1, BL); put(tipX + 2 * sd, yb - Hc + 2, dk); /* the floppy tip hangs over */
+      if (Hc >= 5) put(hc + Math.round(sd * 0.2 * W * 0.3) - 1, yb - Math.round(Hc * 0.55), GD); /* a star */
+      TOPDBG = { eyeL: eyeL, hat: true, pieces: [{ l: bl, r: br, t: yb - Hc, b: yb }], head: [wl, wr] }; }
+    function placeOne(q) { var def = partDef(q.sp, q.part); if (!def) return;
+      /* young pets take the donor's ADULT part, scaled to their size, so hatchlings show a readable part too */
+      var kF = keyedRender(q.sp, art, stg <= 2 ? Object.assign({}, o, { stage: 3 }) : o), DA = anatomy(kF.keys); if (DA.bb.b < 0) return; if (kF.parts) Object.assign(DA, kF.parts);
+      var D = DA[def.kind] || [], small = CA.bb.h < 15, kAd = stg <= 2 && !def.draw ? clampK(CA.bb.h / DA.bb.h * 1.1, 0.55, 1) : 1;
+      if (def.draw && def.kind === 'tail' && def.draw.big) { var lx = 32; for (var yq = CA.bb.t + Math.round(CA.bb.h * 0.45); yq <= CA.bb.b; yq++) { var eq = edgeAt(CA.s, yq, -1); if (eq >= 0) lx = Math.min(lx, eq); } }
+      if (def.draw) { var dP = drawPart(def, kF, DA, D, small); kF = dP.kF; D = dP.D; } if (D.length < 2) return;
+      var db = bbList(D), sb = CA.bb, kind = def.kind, pairs, dx, dy;
+      if (kind === 'eyes' || kind === 'mouth' || kind === 'hair') {
+        var C = CA[kind] || [], cb = C.length ? bbList(C) : null;
+        if (kind === 'hair' && CA.headBox) erase(CA.top, false); /* Lord Kek: the nemes comes off, his bare head stays */
+        else if (kind === 'hair') { erase(C.filter(function (q) { return !CA.top.length || CA.top.indexOf(q) < 0; }), false); erase(CA.top, true); }
+        else { erase(C.filter(function (q) { return CA.eyeDomes && CA.eyeDomes.indexOf(q) >= 0; }), kind !== 'eyes'); erase(C.filter(function (q) { return !CA.eyeDomes || CA.eyeDomes.indexOf(q) < 0; }), false); }
+        var headW = function (y) { var r = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, y))); return r.length ? r[r.length - 1][1] - r[0][0] + 1 : sb.w; };
+        var k = kind === 'hair' ? clampK(headW(sb.t + 2) / Math.max(1, headW.call(null, sb.t + 2) && DA.bb.w), 0.7, 1.25) : 1;
+        var hB = CA.headBox || sb; if (kind === 'hair') k = clampK((hB.w) / DA.bb.w, 0.7, 1.25);
+        if (kind === 'mouth' && kAd < 1) k = kAd; if (kind === 'mouth' && facing !== 0 && stg >= 3 && !def.draw) k = 1.35; /* a beak in profile needs some size to read */
+        if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
+        pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
+        if (kind === 'hair') { dx = Math.round((hB.l + hB.r) / 2 - (pb.l + pb.r) / 2); dy = Math.max(mg - pb.t, hB.t - pb.t); }
+        else if (kind === 'mouth') { var dm = bbList(DA.mouthKey), tx = cb ? (CA.mouthBox.l + CA.mouthBox.r) / 2 : (sb.l + sb.r) / 2, ty = cb ? (CA.mouthBox.t + CA.mouthBox.b) / 2 : CA.headBox ? CA.headBox.b + 4 : sb.t + sb.h * 0.55;
+          dx = Math.round(tx - (dm.l + dm.r) / 2); dy = Math.round(ty - (dm.t + dm.b) / 2);
+          /* a mouth part that sticks out of the donor's head (a beak) sticks out of the child's head the same way, from the same side */
+          var my = Math.round((dm.t + dm.b) / 2), hR = -1, hL = 99, Don = {}; D.forEach(function (q) { Don[q] = 1; }); for (var x5 = 0; x5 < 32; x5++) { var j5 = my * 32 + x5; if (DA.s[j5] && !Don[j5]) { hL = Math.min(hL, x5); hR = Math.max(hR, x5); } }
+          var front = facing === 0; /* every body not drawn in profile is front-facing */
+          /* a front-facing pet gets the part right on its own mouth; a side-facing one gets it sticking out of the face edge */
+          if (!front && facing !== 0 && def.side && cb) { /* profile pet: a side-view beak, base on the face edge at its mouth, tip pointing away (Doge: left) */
+            var accS = D.filter(function (q) { return kF.keys[q] === 'accent'; }), AS = topColour(kF.data, accS.length ? accS : D), rowsS = CA.bb.h < 15 ? def.side.small : CA.bb.h >= 21 && def.side.huge ? def.side.huge : def.side.big, swd = rowsS[0].length;
+            if (facing < 0) rowsS = rowsS.map(function (r) { return r.split('').reverse().join(''); });
+            var spal = { A: AS, h: shadeRgb(AS, 1.3).map(function (n) { return Math.min(255, n + 40); }), d: shadeRgb(AS, 0.5), n: INK }, yS = Math.round(ty) - 1, ceS = edgeAt(M, Math.max(sb.t, Math.min(sb.b, Math.round(ty))), facing);
+            var xS = facing > 0 ? ceS : ceS - swd + 1; xS = Math.max(mg, Math.min(31 - mg - swd + 1, xS));
+            rowsS.forEach(function (r, yy) { for (var xx = 0; xx < swd; xx++) { var ch = r[xx]; if (ch === '.') continue; var t = (yS + yy) * 32 + xS + xx; if (t < 0 || t >= 1024) continue; M[t] = true; touched[t] = 1; set(t, spal[ch]); painted.push(t); } }); return; }
+          if (front && def.front) { /* front-facing pet: the beak seen from the front (a drawing in the donor's beak colours), right on its mouth */
+            var accL = D.filter(function (q) { return kF.keys[q] === 'accent'; }), A3 = topColour(kF.data, accL.length ? accL : D), rowsF = CA.bb.h < 15 ? def.front.small : def.front.big, fw = rowsF[0].length, x0 = Math.round(tx - (fw - 1) / 2), y0 = Math.round(ty) - 1, fOn = {}, fL = [];
+            var fpal = { A: A3, h: shadeRgb(A3, 1.3).map(function (n) { return Math.min(255, n + 40); }), d: shadeRgb(A3, 0.6) };
+            rowsF.forEach(function (r, yy) { for (var xx = 0; xx < fw; xx++) { var ch = r[xx]; if (ch === '.') continue; var t = (y0 + yy) * 32 + x0 + xx; if (t < 0 || t >= 1024) continue; fOn[t] = 1; fL.push(t); M[t] = true; touched[t] = 1; set(t, fpal[ch]); painted.push(t); } });
+            fL.forEach(function (t) { [t + 1, t - 1, t + 32, t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !fOn[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); }); return; }
+          if (front) { dx = Math.round(tx - (pb.l + pb.r) / 2); dy = Math.round(ty - (pb.t + pb.b) / 2); }
+          else if (db.r > hR + 1 || db.l < hL - 1) { var dside = db.r - hR >= hL - db.l ? 1 : -1, side = facing || dside, L0 = Math.round((dside > 0 ? db.r - hR : hL - db.l) * k);
+            /* the part points the way the CHILD faces: mirrored when the donor faces the other way (Dodo's beak on Doge points left) */
+            if (side !== dside) pairs = pairs.map(function (p) { var x = p.t & 31; return { t: p.t - x + (pb.l + pb.r - x), s: p.s }; });
+            var cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce + L0 - pb.r : ce - L0 - pb.l; dy = cy0 - Math.round((pb.t + pb.b) / 2);
+              var touches = function () { return pairs.some(function (p) { var t = p.t + dy * 32 + dx; return [t - 1, t + 1, t - 32, t + 32].some(function (n) { return n >= 0 && n < 1024 && M[n]; }) || M[t]; }); };
+              for (var tries = 0; tries < 5 && !touches(); tries++) dx -= side; /* never float off the face */ } } dx = Math.max(mg - pb.l, Math.min(31 - mg - pb.r, dx)); }
+        else { var ex = cb ? (cb.l + cb.r) / 2 : (sb.l + sb.r) / 2, ey = cb ? (cb.b) : sb.t + sb.h * 0.4, eb2 = bbList(pairs.filter(function (p) { return !DA.eyeDomes || DA.eyeDomes.indexOf(p.s) < 0; }).map(function (p) { return p.t; }).concat([pb.l + pb.b * 32]));
+          dx = Math.round(ex - (pb.l + pb.r) / 2); dy = Math.round(ey - eb2.b); }
+        var sh2 = shift(pairs, dx, dy); paste(D, kF, sh2);
+        if (kind === 'mouth') { var on2 = {}; sh2.forEach(function (p) { on2[p.t] = 1; }); sh2.forEach(function (p) { [p.t + 1, p.t - 1, p.t + 32, p.t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !on2[n] && CA.s[n] && M[n]) { set(n, INK); touched[n] = 1; } }); }); } /* a part laid over the face gets its own ink outline */
+        return; }
+      /* bumps: top / ears / arms / tail */
+      if (kind === 'top' && CA.topSkin) { var tw = {}; (CA.top || []).forEach(function (q) { tw[q >> 5] = (tw[q >> 5] || 0) + 1; }); erase((CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }), false); erase((CA.top || []).filter(function (q) { return tw[q >> 5] < 5; }), true);
+        var capT = Math.min.apply(null, (CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }).map(function (q) { return q >> 5; }).concat([99])), stray = []; for (var js0 = 0; js0 < capT * 32; js0++) if (CA.s[js0]) stray.push(js0); erase(stray, true); }
+      else erase(CA[kind] || [], true);
+      if (kind === 'top' && def.hat) { drawHat(kF, D); return; }
+      if (kind === 'top') { var eyeCap = CA.eyeBox ? CA.eyeBox.t - 2 : 99, Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
+        var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = CA.headBox ? [CA.headBox.l, CA.headBox.r] : (function () { var best = null; for (var y = Mb.t + 1; y <= Mb.t + Math.max(2, Math.round(Mb.h * 0.3)); y++) { var w2 = wAt(M, y); if (w2) (best = best || []).push(w2); } if (!best) return null; best.sort(function (a, b) { return (a[1] - a[0]) - (b[1] - b[0]); }); var md = best[best.length >> 1]; return CA.core ? [Math.max(md[0], CA.core[0] - 1), Math.min(md[1], CA.core[1] + 1)] : md; })() || [Mb.l, Mb.r];
+        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; })); var fitT = Math.min(1, Math.max(Mb.t + 2 - mg, eyeCap - 1) / bt.h, (32 - 2 * mg) / bt.w); /* fits between the frame top and just above the eyes */ if (fitT < 1) { kt *= Math.max(0.35, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */
+        if (pt.length > 12) { var onP = {}, seenP = {}, keepP = []; pt.forEach(function (p) { onP[p.t] = p; }); pt.forEach(function (p) { if (seenP[p.t]) return; var comp = [], st = [p.t]; seenP[p.t] = 1; while (st.length) { var c = st.pop(); comp.push(onP[c]); for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) { var nb = c + ddy * 32 + ddx; if (onP[nb] && !seenP[nb] && Math.abs((nb & 31) - (c & 31)) <= 1) { seenP[nb] = 1; st.push(nb); } } } if (comp.length > 2) keepP = keepP.concat(comp); }); pt = keepP; bt = bbList(pt.map(function (p) { return p.t; })); } /* scaling left a stray pixel or two: drop them */
+        var dc = (dRow[0] + dRow[1]) / 2, cc = (cRow[0] + cRow[1]) / 2; dx = Math.round(cc - (dc + ((bt.l + bt.r) / 2 - (db.l + db.r) / 2))); dx = Math.round(cc - dc); dy = Mb.t + 1 - bt.b;
+        dx = Math.max(mg - bt.l, Math.min(31 - mg - bt.r, dx)); dy = Math.max(-bt.t, dy);
+        /* never bury the part inside the child's head (e.g. over Pepe's eye domes): lift it until most of it shows */
+        var hid = function (d) { return pt.filter(function (p) { var t = p.t + d * 32 + dx; return t >= 0 && t < 1024 && M[t]; }).length; }; while (dy > -bt.t && hid(dy) > pt.length * 0.35) dy--;
+        /* a two-piece top (ears, horns): each piece sits on the child's head outline right under it, overlapping it by one row */
+        var ucx = (bt.l + bt.r) / 2, sideOf = function (p) { var x = p.t & 31; return x < ucx - 1.5 ? -1 : x > ucx + 1.5 ? 1 : 0; };
+        var Lp = pt.filter(function (p) { return sideOf(p) < 0; }), Rp = pt.filter(function (p) { return sideOf(p) > 0; }), Cp = pt.filter(function (p) { return sideOf(p) === 0; });
+        /* side pieces (ears, horns) each sit on the child's head outline right under them, overlapping it by one row; a middle piece (tuft, crown) stays on top */
+        var occ = {}; pt.forEach(function (p) { occ[p.t & 31] = 1; }), gapBetween = function (A1, A2) { if (!A1.length || !A2.length) return true; var a1 = Math.max.apply(null, A1.map(function (p) { return p.t & 31; })), a2 = Math.min.apply(null, A2.map(function (p) { return p.t & 31; })); for (var gx2 = a1 + 1; gx2 < a2; gx2++) if (!occ[gx2]) return true; return false; };
+        var topOfL = function (A1) { return Math.min.apply(null, A1.map(function (p) { return p.t >> 5; })); };
+        var lowBridge = Cp.length && Lp.length && Rp.length && topOfL(Cp) >= Math.min(topOfL(Lp), topOfL(Rp)) + 2; /* two ears joined by a strip of head: still two pieces */
+        if (lowBridge) Cp = [];
+        var nComp = (function () { var on = {}, seen = {}, n = 0; pt.forEach(function (p) { on[p.t] = 1; }); pt.forEach(function (p) { if (seen[p.t]) return; n++; var st = [p.t]; seen[p.t] = 1; while (st.length) { var c = st.pop(); for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) { var nb = c + ddy * 32 + ddx; if (on[nb] && !seen[nb] && Math.abs((nb & 31) - (c & 31)) <= 1) { seen[nb] = 1; st.push(nb); } } } }); return n; })();
+        var alike = nComp >= 2 && Lp.length && Rp.length && Math.min(Lp.length, Rp.length) >= 0.5 * Math.max(Lp.length, Rp.length); /* a matching pair, not a hat with a drooping tip */
+        var split = alike && (lowBridge || (Cp.length ? gapBetween(Lp, Cp) && gapBetween(Cp, Rp) : gapBetween(Lp, Rp)));
+        if (def.pair && Lp.length && Rp.length) { split = true; Cp = []; /* the left piece = its biggest connected blob (a tuft between horns is not part of the pair) */
+          var onL = {}, seenL = {}, bigL = []; Lp.forEach(function (p) { onL[p.t] = p; }); Lp.forEach(function (p) { if (seenL[p.t]) return; var comp = [], st = [p.t]; seenL[p.t] = 1; while (st.length) { var c = st.pop(); comp.push(onL[c]); for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) { var nb = c + ddy * 32 + ddx; if (onL[nb] && !seenL[nb] && Math.abs((nb & 31) - (c & 31)) <= 1) { seenL[nb] = 1; st.push(nb); } } } if (comp.length > bigL.length) bigL = comp; }); Lp = bigL; } /* a known pair is always placed as two mirrored pieces */
+        if (split) { var eyeL = CA.eyeBox ? Math.round((CA.eyeBox.t + CA.eyeBox.b) / 2) : Mb.t + Math.round(Mb.h * 0.4), hc = facing && CA.eyeBox ? (CA.eyeBox.l + CA.eyeBox.r) / 2 + facing : cc, sink = 1;
+          var colTop = function (x) { if (x < 0 || x > 31) return -1; for (var y4 = 0; y4 < GROUND_ROW; y4++) if (M[y4 * 32 + x]) return y4; return -1; };
+          var hbL = bbList(Lp.map(function (p) { return p.t; })), hbR = bbList(Rp.map(function (p) { return p.t; })), wL = hbL.r - hbL.l + 1, cxL = (hbL.l + hbL.r) / 2;
+          /* a PAIR (ears, horns): one piece mirrored to the other side about the head centre, both on the UPPER head outline, above the eyes, inside the frame */
+          var e = Math.round(((hbR.l + hbR.r) / 2 - cxL) / 2 * kt / Math.max(kt, 1)), okAt = function (e1) { var xl = Math.round(hc - e1), xr = Math.round(hc + e1), a = colTop(xl), b = colTop(xr); return a >= 0 && b >= 0 && a + sink <= eyeL - 1 && b + sink <= eyeL - 1 && xl - (wL - 1) / 2 >= mg && xr + (wL - 1) / 2 <= 31 - mg; };
+          var hTop = colTop(Math.round(hc)), cRowY = Math.min(GROUND_ROW - 1, hTop + Math.max(2, Math.round((eyeL - hTop) * 0.3))), hRun = hTop >= 0 ? runsOf(M, cRowY).filter(function (r) { return r[0] <= hc + 1 && r[1] >= hc - 1; })[0] : null;
+          if (hRun) { e = Math.max(1, (hRun[1] - hRun[0]) / 2 - 1.5); hc = (hRun[0] + hRun[1]) / 2; } /* each piece centred just inside the head's upper corner */
+          if (2 * e < wL + 1) { var fS = Math.max(0.5, (2 * e - 1) / wL), seenS = {}; Lp = Lp.map(function (p) { var x = p.t & 31, y = p.t >> 5; return { t: Math.round(hbL.b - (hbL.b - y) * fS) * 32 + Math.round(cxL + (x - cxL) * fS), s: p.s }; }).filter(function (p) { if (seenS[p.t]) return false; seenS[p.t] = 1; return true; }); hbL = bbList(Lp.map(function (p) { return p.t; })); wL = hbL.r - hbL.l + 1; cxL = (hbL.l + hbL.r) / 2; } /* narrow head: smaller ears */
+          e = Math.round(Math.max(e, wL / 2 + 0.5)); var e0 = e, eMin = Math.ceil(wL / 2) - 1; while (e > eMin && !okAt(e)) e--; if (!okAt(e)) { var bestE = e0, bestY = 99; for (var e2 = e0; e2 >= eMin; e2--) { var yy2 = Math.max(colTop(Math.round(hc - e2)), colTop(Math.round(hc + e2))); if (colTop(Math.round(hc - e2)) >= 0 && colTop(Math.round(hc + e2)) >= 0 && yy2 < bestY) { bestY = yy2; bestE = e2; } } e = bestE; }
+          var yT = Math.max(colTop(Math.round(hc - e)), colTop(Math.round(hc + e))); if (yT < 0) yT = Mb.t;
+          var d2 = Math.max(mg - hbL.t, yT + sink - hbL.b), dxL = Math.round(hc - e - cxL), AX = Math.round(2 * hc), left = shift(Lp, dxL, d2);
+          var right = left.map(function (p) { var x = p.t & 31; return { t: p.t - x + (AX - x), s: p.s }; }).filter(function (p) { var x = AX - (p.t & 31); return (p.t & 31) >= 0 && x >= 0 && x <= 31; });
+          var wasHead = {}; left.concat(right).forEach(function (p) { if (M[p.t]) wasHead[p.t] = 1; });
+          paste(D, kF, left); paste(D, kF, right);
+          var onLR = {}; left.concat(right).forEach(function (p) { onLR[p.t] = 1; }); left.concat(right).forEach(function (p) { [p.t + 32, p.t - 1, p.t + 1].forEach(function (n) { if (n >= 0 && n < 1024 && !onLR[n] && M[n] && CA.s[n] && (n >> 5) <= (p.t >> 5) + 1 && Math.abs((n & 31) - (p.t & 31)) <= 1) { set(n, INK); touched[n] = 1; } }); }); /* an ink seam where each piece meets the head, so it reads as its own ear / horn */
+          TOPDBG = { eyeL: eyeL, hc: AX / 2, pieces: [left, right].map(function (L) { return bbList(L.map(function (p) { return p.t; })); }) };
+          if (Cp.length) { var cb2 = bbList(Cp.map(function (p) { return p.t; })), yC = -1; for (var y5 = 0; y5 < GROUND_ROW; y5++) if (M[y5 * 32 + Math.round((cb2.l + cb2.r) / 2) + dx]) { yC = y5; break; }
+            var d3 = yC < 0 ? dy : yC + 1 - cb2.b; paste(D, kF, shift(Cp, dx, Math.max(mg - cb2.t, d3))); }
+          return; }
+        dy = Math.max(2 - bt.t, Math.min(dy, eyeCap - bt.b)); TOPDBG = { eyeL: CA.eyeBox ? CA.eyeBox.t : 99, single: true, pieces: [bbList(pt.map(function (p) { return p.t + dy * 32 + dx; }))] }; paste(D, kF, shift(pt, dx, dy)); return; }
+      [-1, 1].forEach(function (sd) { var cx = (DA.bb.l + DA.bb.r) / 2, js = D.filter(function (j) { return ((j & 31) < cx ? -1 : 1) === sd; }); if (!js.length || (kind === 'tail' && sd > 0)) return;
+        var jb = bbList(js);
+        var k2 = def.draw ? 1 : clampK(sb.h / DA.bb.h, kind === 'tail' && stg > 2 ? 1 : 0.55, 1.35), pad = kind === 'tail' ? 2 : 1;
+        var pr = scaled(js, k2, [sd < 0 ? 1 : 0, 0.5]), b2 = bbList(pr.map(function (p) { return p.t; })), ty, se;
+        { var rel = ((jb.t + jb.b) / 2 - DA.bb.t) / DA.bb.h; ty = Math.round(sb.t + (def.draw && kind === 'tail' ? 0.58 : rel) * sb.h); dy = Math.round(ty - (b2.t + b2.b) / 2);
+          var rows = []; for (var yy = b2.t + dy; yy <= b2.b + dy; yy++) if (yy >= sb.t && yy <= sb.b) { var e = edgeAt(M, yy, sd); if (e >= 0) rows.push(e); }
+          se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(Math.max(pad, mg) - b2.l, Math.min(31 - Math.max(pad, mg) - b2.r, dx)); }
+        var sp2 = shift(pr, dx, dy); if (kind === 'tail') { var tOn = {}; sp2.forEach(function (p) { tOn[p.t] = 1; }); var wasBody = sp2.filter(function (p) { return M[p.t]; }).length;
+          paste(js, kF, sp2); if (wasBody) sp2.forEach(function (p) { [p.t + 1, p.t + 32, p.t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !tOn[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); }); return; } /* a tail in front of a wide body gets its own ink outline */
+        paste(js, kF, sp2); }); }
+    /* outline round the new silhouette, only where something changed */
+    var near = {}; Object.keys(touched).forEach(function (t) { t = +t; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var x = (t & 31) + dx, y = (t >> 5) + dy; if (x >= 0 && y >= 0 && x < 32 && y < GROUND_ROW) near[y * 32 + x] = 1; } });
+    Object.keys(near).forEach(function (n) { n = +n; if (M[n]) return; var x = n & 31, adj = [n - 32, n + 32, x > 0 ? n - 1 : -1, x < 31 ? n + 1 : -1].some(function (a) { return a >= 0 && a < 1024 && M[a]; }); set(n, adj ? INK : bgAt(n)); });
+    return painted; }
   /* LORD KEK AS A HYBRID ROOT (same system as every species, both ways): pseudo species KEK_SP (canon = player palette: green body, red nemes
    * accent, gold belly/collar). Kek as SHAPE: the KekSprite body (nemes included, it is part of him) recoloured from the colour parent's canon
    * (skin <- body, nemes stripes <- accent, gold <- belly). Kek as COLOUR: his canon recolours the shape parent. Kek as FEATURE: the nemes top
@@ -1164,10 +1454,12 @@
         out.forEach(function (j) { if (touches(j)) { keep[j] = 1; qq.push(j); } });
         while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
         return out.filter(function (j) { return keep[j]; }); };
-      var px = F.id === 'wizard' && S.id !== 'wizard' ? [] : pick(h.feature); if (px.length < 3 && !(F.id === 'wizard' && S.id !== 'wizard')) px = pick(h.feature === 'head' ? 'side' : 'head');
+      var noFeat = (h.parts && h.parts.length) || (F.id === 'wizard' && S.id !== 'wizard'); /* breeding v2: traded parts replace the old copied feature; a Wizard feature parent gives a staff instead */
+      var px = noFeat ? [] : pick(h.feature); if (!noFeat && px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
       if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
       if (F.id === 'wizard' && S.id !== 'wizard') px = wizStaff(img, kS, sil, o, x0, x1);
+      if (h.parts && h.parts.length) px = px.concat(applyParts(img, kS, h, o, art, px)); /* breeding v2: traded body parts (only plans bred at/after the gate have parts) */
       var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
       var left = busy > 2;
     }
@@ -1211,17 +1503,154 @@
     }
     return { species: species, tier: tier, stats: stats };
   }
-  function breed(w, A, B, bh, tx, b, owner) {
+  /* ===== BREEDING V2 extras (all from ACTIVATE_BREEDING_V2_BLOCK, each on its OWN stream keyed by the breed hash) =====================
+   * TWINS        1 in 50 (2%): stream 'XCPETS:v2:twins:' + hash. One breed burn (690 per side, counts as ONE of the 6 breeds and one cooldown)
+   *              yields a second egg = the next pet id, rolled exactly like a normal child from the hash of (block hash + tx + ':twin').
+   * MUTATION     1 in 100 (1%): stream 'XCPETS:v2:mutation:' + hash. Half 'palette' (hue-shifted colours), half 'glitch' (scanline shift + RGB split).
+   * HIDDEN TRAIT stream 'XCPETS:v2:hidden:' + hash. A child of a carrier parent inherits the trait 50% of the time; it SHOWS only if that parent
+   *              did not show it (so it skips a generation); a child with no carrier parent becomes a fresh, hidden carrier 1 in 20 (5%).
+   *              Traits: frosted tips / shadow socks (star freckles removed Oct 21 2026).
+   * LEGENDARY MIX Legendary x Legendary hybrid child: 1 in 4 (25%) gets a third species' look (feature + one signature part) from stream
+   *              'XCPETS:v2:legmix:' + hash. Looks only; species/name/stats unchanged.
+   * INBREEDING GUARD parent x child and siblings (any shared parent) can't breed (kinWhy).  GENERATION (genOf) + BADGES (breederBadges) are display only. */
+  var TWIN_1_IN = 50, MUTATION_1_IN = 100, HIDDEN_FRESH_1_IN = 20, LEGMIX_1_IN = 4;
+  var HIDDEN_TRAITS = [{ id: 'frost', label: 'Frosted tips' }, { id: 'socks', label: 'Shadow socks' }, { id: 'oddeyes', label: 'Odd eyes' }]; /* Star freckles removed (Oct 21 2026 11:26 PM CT); Odd eyes added as the third (owner Oct 22 2026 12:29 AM CT): fresh carriers a third each */
+  var ODD_EYE_COLOURS = [{ id: 'gold', rgb: [255, 200, 0] }, { id: 'ice', rgb: [90, 210, 255] }, { id: 'toxic', rgb: [80, 255, 40] }, { id: 'magenta', rgb: [255, 40, 200] }];
+  /* ODD_EYE_SPOTS (owner Oct 22 2026 ~12:45 AM CT): hand-placed eyes for the Odd eyes throwback, per species and stage (1 Hatchling .. 5 Mythic).
+   * Each entry is [left eye, right eye] = [x, y, 'rows'] on the bare sprite at frame 0 (32x32): 'o' = odd colour, 'p' = darker pupil, 'g' = white glint, '.' = untouched.
+   * Dodo has one eye (both entries the same). Frames are matched by a vertical shift of the body; if the spot does not sit on eye pixels (e.g. a hybrid face), the automatic finder is used. */
+  var ODD_EYE_SPOTS = {
+    pepe: { 1: [[10, 18, 'ooop/.ooo'], [17, 18, 'oop/ooo']], 2: [[8, 15, '.ooop/oooop/.oooo'], [16, 15, 'ooopp/ooopp/.oooo']], 3: [[8, 14, 'ppppp/.oooo'], [17, 14, 'ppppp/.oooo']], 4: [[7, 13, '.oooo/o....o'], [17, 13, '.oooo/o....o']], 5: [[7, 12, 'oooopp/oooopp/.ooooo'], [17, 12, 'oooopp/oooopp/.ooooo']] },
+    wojak: { 1: [[13, 18, 'oo/go'], [16, 18, 'oo/go']], 2: [[14, 16, 'go/oo/oo/oo'], [18, 16, 'go./ooo/ooo/.oo']], 3: [[13, 15, 'ooo/goo/goo'], [19, 15, 'oo/go/go']], 4: [[13, 14, 'ooo/goo/goo'], [19, 14, 'ooo/goo/goo']], 5: [[13, 12, 'ooo/pp.'], [19, 12, 'oo/pp']] },
+    chud: { 1: [[12, 19, 'gpo/ooo'], [17, 19, 'gpo/ooo']], 2: [[14, 18, 'poo/poo'], [18, 18, 'opo/opo']], 3: [[13, 16, 'ooo/opo'], [19, 16, 'ooo/opo']], 4: [[13, 15, 'opo/opo'], [19, 15, 'opo/opo']], 5: [[13, 15, 'ooo/opo'], [19, 15, 'ooo/opo']] },
+    bobo: { 1: [[11, 18, 'oopp/ooop'], [17, 18, 'oopp/ooop']], 2: [[9, 16, 'ooopp/ooopp/.ooo'], [17, 16, 'ooopp/ooopp/.ooo']], 3: [[9, 14, 'ooopp/ooopp/.ooo'], [18, 14, 'ooopp/ooopp/.ooo']], 4: [[8, 13, 'oooopp/oooopp/.oooo'], [18, 13, 'oooopp/oooopp/.oooo']], 5: [[8, 13, 'oooopp/oooopp/.oooo'], [18, 13, 'oooopp/oooopp/.oooo']] },
+    mumu: { 1: [[11, 18, 'ooo/goo'], [17, 18, 'ooo/goo']], 2: [[10, 16, 'oooo/goo'], [17, 16, 'oooo/.goo']], 3: [[10, 14, 'gooo/ooo'], [18, 14, 'gooo/.ooo']], 4: [[9, 13, 'oooo/oopp'], [19, 13, 'oooo/oopp']], 5: [[9, 13, 'oooo/oopp'], [19, 13, 'oooo/oopp']] },
+    snibby: { 1: [[12, 15, 'p/o/p'], [18, 15, 'p/o/p']], 2: [[11, 13, 'o/o/p'], [19, 13, 'o/o/p']], 3: [[10, 11, 'oo/op/op'], [20, 11, 'o/p/p']], 4: [[10, 10, 'op/op'], [20, 10, 'po/po']], 5: [[10, 9, 'oo/op/op'], [20, 9, 'oo/po/po']] },
+    dodo: { 1: [[17, 15, 'opo/opo'], [17, 15, 'opo/opo']], 2: [[17, 12, '.opo/oopo/oopo'], [17, 12, '.opo/oopo/oopo']], 3: [[17, 10, 'oopo/oopo/oopo'], [17, 10, 'oopo/oopo/oopo']], 4: [[18, 9, 'oopo/oopo'], [18, 9, 'oopo/oopo']], 5: [[18, 8, 'oopo/oopo/oopo'], [18, 8, 'oopo/oopo/oopo']] },
+    kevin: { 1: [[13, 18, 'oo/go'], [17, 18, 'oo/og']], 2: [[13, 15, 'oo/o.'], [16, 15, 'oo/.o']], 3: [[12, 13, 'ooo/ooo'], [17, 13, 'ooo/ooo']], 4: [[12, 13, 'ooo'], [17, 13, 'ooo']], 5: [[12, 12, 'ooo/ooo'], [17, 12, 'ooo/ooo']] },
+    peepo: { 1: [[12, 17, 'ooop/ooop/.ooo'], [17, 17, 'oooo/ooop/.oooo']], 2: [[11, 15, 'ooopp/ooooo/.oooo'], [18, 15, 'ooopp/oooooo/.oooo']], 3: [[10, 13, 'oooopp/oooppp/.oooo'], [18, 13, 'oooopp/oooppp/.oooo']], 4: [[10, 11, 'oooopp/oooppp/oooooo/.oooo'], [18, 11, 'ooooopp/ooooppp/ooooooo/.ooooo']], 5: [[10, 10, 'ooooo/oooopp/oooppp/oooooo/.oooo'], [18, 10, 'oooooo/ooooopp/ooooppp/ooooooo/.ooooo']] },
+    sarutobi: { 1: [[13, 17, 'go/oo/oo'], [17, 17, 'go/oo/oo']], 2: [[12, 14, '.o./.o./goo/ooo/ooo/.o.'], [17, 14, '.o./.o./goo/ooo/ooo/.o.']], 3: [[11, 13, '.oo/goo/ooo/ooo/.oo'], [17, 13, 'oo./goo/ooo/ooo/oo.']], 4: [[11, 12, '.oo/goo/ooo/ooo/.oo'], [18, 12, 'oo./goo/ooo/ooo/oo.']], 5: [[11, 12, '.oo/goo/ooo/ooo/.oo'], [18, 12, 'oo./goo/ooo/ooo/oo.']] },
+    doge: { 1: [[10, 18, 'goo/goo'], [15, 18, 'oo./goo']], 2: [[9, 16, 'goo/ggo'], [14, 16, 'gooo/ggoo']], 3: [[8, 13, 'ooo/ooo/goo'], [14, 13, 'goo/goo/goo']], 4: [[7, 13, 'gooo/ggoo'], [14, 13, 'gooo/ggoo']], 5: [[7, 12, 'gooo/gooo/ggoo'], [14, 12, 'gooo/gooo/ggoo']] },
+    lenny: { 1: [[13, 18, 'go/oo'], [18, 18, 'go/oo']], 2: [[11, 16, 'goo/ooo'], [18, 16, 'go./ooo']], 3: [[11, 13, 'ooo/ogo/ooo'], [19, 13, 'oo./og./.oo']], 4: [[11, 12, 'ooo/ogo/ooo'], [19, 12, 'ooo./ogo./.ooo']], 5: [[11, 12, 'ooo/ogo/ooo'], [19, 12, 'ooo./ogo./.ooo']] },
+    nakamoto: { 1: [[12, 21, 'oo/po'], [17, 21, 'oo/po']], 2: [[9, 17, 'opo/.o.'], [14, 17, 'opo/.o.']], 3: [[8, 16, 'opo'], [14, 16, 'opo']], 4: [[8, 15, 'opo'], [14, 15, 'opo']], 5: [[8, 15, 'opo'], [14, 15, 'opo']] },
+    kek: { 1: [[11, 21, 'oppo/.oo.'], [17, 21, 'oppo/.oo.']], 2: [[10, 19, 'ooppo/.oop'], [17, 19, 'ooppo/.oop']], 3: [[10, 17, 'ooppo/.oop'], [17, 17, 'ooppo/.oop']], 4: [[10, 16, 'ooppo/.oop'], [17, 16, 'ooppo/.oop']], 5: [[10, 16, 'ooppo/.oop'], [17, 16, 'ooppo/.oop']] },
+    wizard: { 1: [[15, 17, 'o/o'], [18, 17, 'o/o']], 2: [[15, 15, 'o/o'], [18, 15, 'o/o']], 3: [[14, 12, 'o/o'], [17, 12, 'o/o']], 4: [[14, 11, 'o/o'], [17, 11, 'o/o']], 5: [[14, 11, 'o/o'], [17, 11, 'o/o']] } };
+  /* PALETTE SETS (owner Oct 21 2026 11:26 PM CT: owner will choose; owner Oct 21 2026 11:40 PM CT: ALL eight used; a palette mutation picks one evenly from its own sub-stream of the parts stream): luminance mapped onto a named 4-colour ramp, dark to light */
+  var PALETTE_SETS = { neon: { label: 'Neon', ramp: ['#1a0033', '#ff00cc', '#00ffea', '#fbff00'] }, pastel: { label: 'Comfy', ramp: ['#6b5b95', '#f7a8c4', '#b8e0f6', '#fff3b0'] },
+    goldrush: { label: 'Bags', ramp: ['#4a2c00', '#b8860b', '#ffd700', '#fff6c2'] }, ice: { label: 'Cold Storage', ramp: ['#0b2545', '#4f9dde', '#a8e6ff', '#f4fdff'] },
+    toxic: { label: 'Radioactive Kek', ramp: ['#1b3300', '#39ff14', '#b4ff00', '#f0ffb0'] }, sunset: { label: 'WAGMI Sunset', ramp: ['#3d0c45', '#e8505b', '#f9a03f', '#ffe29a'] },
+    shadow: { label: 'Burn Ash', ramp: ['#0d0d12', '#2e2a3d', '#5b5470', '#9a90b5'] }, rarepepe: { label: 'Rare Pepe', ramp: ['#0f3d0f', '#3c9a2e', '#7ed957', '#d8ffb0'] } };
+  function twinDraw(hex) { return stream('XCPETS:v2:twins:' + hex)() % TWIN_1_IN === 0; }
+  function breedExtras(A, B, hex, kid) {
+    var Rm = stream('XCPETS:v2:mutation:' + hex); if (Rm() % MUTATION_1_IN === 0) kid.mutation = { kind: Rm() % 2 ? 'glitch' : 'palette', hue: 60 + Rm() % 241, seed: Rm() }; if (kid.mutation && kid.mutation.kind === 'palette') { var PK = Object.keys(PALETTE_SETS); kid.mutation.set = PK[stream('XCPETS:v2:hybrid-parts:' + hex + ':palette')() % PK.length]; } /* looks only */
+    var Rh = stream('XCPETS:v2:hidden:' + hex), car = [A, B].filter(function (p) { return p.hidden; });
+    if (car.length) { var P = car[Rh() % car.length]; if (Rh() % 2 === 0) { kid.hidden = P.hidden; if (P.shows !== P.hidden) kid.shows = P.hidden; } }
+    else if (Rh() % HIDDEN_FRESH_1_IN === 0) kid.hidden = HIDDEN_TRAITS[Rh() % HIDDEN_TRAITS.length].id;
+    if (kid.hidden === 'oddeyes') { var Ro = stream('XCPETS:v2:oddeyes:' + hex); kid.oddEye = { eye: Ro() % 2, col: Ro() % ODD_EYE_COLOURS.length }; } /* which eye + its colour, fixed per pet (own stream) */
+    if (kid.hybrid && A.tier === 3 && B.tier === 3) { var Rl = stream('XCPETS:v2:legmix:' + hex); if (Rl() % LEGMIX_1_IN === 0) {
+      var pool = PetCore.SPECIES.map(function (x) { return x.id; }).filter(function (x) { return kid.hybrid.roots.indexOf(x) < 0; }), third = pool[Rl() % pool.length], L = HYBRID_PARTS[third] || [];
+      kid.hybrid.legMix = third; kid.hybrid.featSp = third; kid.hybrid.parts = (kid.hybrid.parts || []).concat(L.length ? [{ sp: third, part: L[Rl() % L.length].id }] : []); } }
+  }
+  /** kinWhy(A, B): inbreeding guard reason (null = fine). Parent x child and siblings (any shared parent). Enforced for breeds at/after the gate. */
+  function kinWhy(A, B) { if (!A || !B) return null; var pa = A.parents || [], pb = B.parents || [];
+    if (pa.indexOf(B.id) >= 0) return 'That\u2019s its mom'; if (pb.indexOf(A.id) >= 0) return 'That\u2019s its kid';
+    if (pa.some(function (x) { return pb.indexOf(x) >= 0; })) return 'They\u2019re siblings'; return null; }
+  /** genOf(w, p): Gen 0 = hatched; bred child = max(parent gens) + 1 (display only, memoised per world). */
+  var GEN_CACHE = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function genOf(w, p) { if (!p) return 0; var m = GEN_CACHE && w ? GEN_CACHE.get(w) : null; if (GEN_CACHE && w && !m) { m = {}; GEN_CACHE.set(w, m); }
+    var go = function (q, d) { if (!q || !q.parents || q.parents.length < 2 || d > 200) return 0; if (m && m[q.id] != null) return m[q.id];
+      var g = 1 + Math.max(go(w && w.byId[q.parents[0]], d + 1), go(w && w.byId[q.parents[1]], d + 1)); if (m) m[q.id] = g; return g; };
+    return go(p, 0); }
+  function mutationLabel(m) { if (!m) return ''; if (m.kind === 'glitch') return 'Glitch mutation'; var S = m.set && PALETTE_SETS[m.set]; return 'Palette mutation' + (S ? ': ' + S.label : ''); }
+  function hiddenLabel(id) { var t = HIDDEN_TRAITS.filter(function (x) { return x.id === id; })[0]; return t ? t.label : id; }
+  /** breederBadges(w, p): pet-scoped breeding badges (display only): FIRST LITTER, BREEDER (3+), ALL SIX USED (6/6), MAD SCIENTIST (a hybrid child),
+   * SINGLE MOTHER (children with 3+ different partners), TWIN PARENT, plus the child's own MUTANT / TWIN / LEGENDARY MIX. */
+  function breederBadges(w, p) { if (!p) return []; var out = [], kids = (p.children || []).map(function (id) { return w && w.byId[id]; }).filter(Boolean), mates = {};
+    kids.forEach(function (c) { (c.parents || []).forEach(function (x) { if (x !== p.id) mates[x] = 1; }); });
+    if (p.breeds >= 1) out.push({ id: 'first-litter', icon: '\uD83D\uDC23', name: 'FIRST LITTER', tip: 'Bred for the first time' });
+    if (p.breeds >= 3) out.push({ id: 'breeder', icon: '\uD83C\uDFC5', name: 'BREEDER', tip: '3+ breeds' });
+    if ((p.breedsV2 || 0) >= BREED_CAP_V2) out.push({ id: 'all-six', icon: '\uD83C\uDFC6', name: 'ALL SIX', tip: 'Used all ' + BREED_CAP_V2 + ' lifetime breeds' });
+    if (kids.some(function (c) { return isHybrid(c.species); })) out.push({ id: 'mad-scientist', icon: '\uD83E\uDDEA', name: 'MAD SCIENTIST', tip: 'Made a hybrid' });
+    if (Object.keys(mates).length >= 3) out.push({ id: 'single-mother', icon: '\uD83D\uDC5C', name: 'SINGLE MOTHER', tip: 'Children with 3+ different partners' });
+    if (kids.some(function (c) { return c.twinOf; })) out.push({ id: 'twin-parent', icon: '\uD83D\uDC6F', name: 'TWIN PARENT', tip: 'Had twins' });
+    if (p.twinOf) out.push({ id: 'twin', icon: '\u264A', name: 'TWIN', tip: 'Twin of #' + p.twinOf });
+    if (p.mutation) out.push({ id: 'mutant', icon: '\uD83E\uDDEC', name: 'MUTANT', tip: mutationLabel(p.mutation) + ' (1 in ' + MUTATION_1_IN + ')' });
+    if (p.hybrid && p.hybrid.legMix) out.push({ id: 'leg-mix', icon: '\uD83D\uDC51', name: 'LEGENDARY MIX', tip: 'Three-way look with ' + speciesLabel(p.hybrid.legMix) });
+    if (p.shows) out.push({ id: 'throwback', icon: '\uD83E\uDDEC', name: 'THROWBACK', tip: hiddenLabel(p.shows) + ' (skipped a generation)' });
+    return out; }
+  /** oddEyeHand(p, frame, eye, data, sil): pixels [{j, r}] of the hand-placed odd eye for this pet, or null (no spot, or it does not sit on eye pixels here). */
+  function oddEyeHand(p, fi, eye, d, sil) { if (!p || !p.art || p.stage == null || p.stage < 1) return null;
+    var sp = p.art.hybrid ? p.art.hybrid.shape : (p.art.species || p.species), E = ODD_EYE_SPOTS[sp] && ODD_EYE_SPOTS[sp][Math.min(5, p.stage)]; if (!E) return null; E = E[eye ? 1 : 0];
+    var dy = 0; try { var m0 = keyedRender(sp, p.art, { stage: p.stage, frame: 0 }).keys, m1 = fi ? keyedRender(sp, p.art, { stage: p.stage, frame: fi }).keys : m0, best = -1;
+      if (fi) for (var s = -3; s <= 3; s++) { var sc = 0; for (var j = 0; j < 1024; j++) { var y = (j >> 5) + s; if (y < 0 || y > 31 || y >= GROUND_ROW) continue; if (!!m0[j] === !!m1[y * 32 + (j & 31)]) sc++; } if (sc > best || (sc === best && Math.abs(s) < Math.abs(dy))) { best = sc; dy = s; } } } catch (e) { dy = 0; }
+    var out = [], hit = 0, tot = 0; E[2].split('/').forEach(function (row, ry) { for (var rx = 0; rx < row.length; rx++) { var r = row[rx]; if (r === '.') continue; var x = E[0] + rx, y = E[1] + ry + dy; if (x < 0 || x > 31 || y < 0 || y > 31) continue; var j = y * 32 + x; if (!sil[j]) continue; out.push({ j: j, r: r });
+      if (r !== 'g') { tot++; var a = d[j * 4], b = d[j * 4 + 1], c = d[j * 4 + 2], mn = Math.min(a, b, c), mx = Math.max(a, b, c); if (a + b + c < 200 || (mn > 200 && mx - mn < 45) || mx - mn < 30) hit++; } } });
+    var own = !p.art.hybrid || p.art.hybrid.color === p.art.hybrid.shape; /* the species' own face: the spot is right by construction (palette mutations recolour lids, so no colour check) */
+    return out.length && (own || (tot && hit / tot >= 0.5)) ? out : null; }
+  /** lookFx(frames, keyFrames, p): mutation + shown hidden-trait looks on rendered frames (keyFrames = same render on a #ff00fe key). */
+  function lookFx(fr, kf, p) { if (!p || (!p.mutation && !p.shows)) return fr;
+    return fr.map(function (f, fi) { var m = (kf[fi] || kf[0]).data, d = Array.isArray(f.data) ? f.data.slice() : new f.data.constructor(f.data), sil = [], bb = { t: 32, b: -1, l: 32, r: -1 };
+      for (var j = 0; j < 1024; j++) { sil[j] = !(m[j * 4] === 255 && m[j * 4 + 1] === 0 && m[j * 4 + 2] === 254) && (j >> 5) < GROUND_ROW; if (sil[j]) { var x = j & 31, y = j >> 5; bb.t = Math.min(bb.t, y); bb.b = Math.max(bb.b, y); bb.l = Math.min(bb.l, x); bb.r = Math.max(bb.r, x); } }
+      (function () { var seen = [], best = []; for (var j0 = 0; j0 < 1024; j0++) { if (!sil[j0] || seen[j0]) continue; var comp = [], st = [j0]; seen[j0] = 1; while (st.length) { var c0 = st.pop(); comp.push(c0); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (n >= 0 && n < 1024 && sil[n] && !seen[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { seen[n] = 1; st.push(n); } }); } if (comp.length > best.length) best = comp; }
+        if (best.length > 50) { var on = []; best.forEach(function (q) { on[q] = 1; }); bb = { t: 32, b: -1, l: 32, r: -1 }; for (var j1 = 0; j1 < 1024; j1++) { if (sil[j1] && !on[j1]) sil[j1] = false; if (sil[j1]) { var x = j1 & 31, y = j1 >> 5; bb.t = Math.min(bb.t, y); bb.b = Math.max(bb.b, y); bb.l = Math.min(bb.l, x); bb.r = Math.max(bb.r, x); } } } })(); /* the pet only (not the tier gem / sparkles) */
+      var ink = function (j) { return d[j * 4] + d[j * 4 + 1] + d[j * 4 + 2] < 110; }, set = function (j, c) { d[j * 4] = c[0]; d[j * 4 + 1] = c[1]; d[j * 4 + 2] = c[2]; };
+      var M = p.mutation; if (M && M.kind === 'palette' && M.set && PALETTE_SETS[M.set]) { var RP = PALETTE_SETS[M.set].ramp.map(function (hx) { return [1, 3, 5].map(function (i) { return parseInt(hx.slice(i, i + 2), 16); }); });
+        for (var jp = 0; jp < 1024; jp++) if (sil[jp] && !ink(jp) && !(Math.min(d[jp * 4], d[jp * 4 + 1], d[jp * 4 + 2]) > 205 && Math.max(d[jp * 4], d[jp * 4 + 1], d[jp * 4 + 2]) - Math.min(d[jp * 4], d[jp * 4 + 1], d[jp * 4 + 2]) < 40) && d[jp * 4] + d[jp * 4 + 1] + d[jp * 4 + 2] >= 170) { /* eye whites, pupils, outline and dark mouth lines keep their colours */ var lu = (0.3 * d[jp * 4] + 0.59 * d[jp * 4 + 1] + 0.11 * d[jp * 4 + 2]) / 255, u = Math.max(0, Math.min(0.999, (lu - 0.15) / 0.8)) * 3, k0 = Math.floor(u), fz = u - k0;
+          set(jp, [0, 1, 2].map(function (c) { return Math.round(RP[k0][c] + (RP[k0 + 1][c] - RP[k0][c]) * fz); })); } }
+      else if (M && M.kind === 'palette') { var a = (100 + (M.hue - 60) % 160) * Math.PI / 180, /* always a big hue jump */ cs = Math.cos(a), sn = Math.sin(a);
+        var H = [0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928, 0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283, 0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
+        for (var j1 = 0; j1 < 1024; j1++) if (sil[j1] && !ink(j1)) { var r = d[j1 * 4], g = d[j1 * 4 + 1], b = d[j1 * 4 + 2], cl = function (v) { return Math.max(0, Math.min(255, Math.round(v))); };
+          var nr = H[0] * r + H[1] * g + H[2] * b, ng = H[3] * r + H[4] * g + H[5] * b, nb = H[6] * r + H[7] * g + H[8] * b, gy = (nr + ng + nb) / 3; /* and a saturation boost so it reads at a glance */
+          set(j1, [cl(gy + (nr - gy) * 1.8 + 8), cl(gy + (ng - gy) * 1.8 + 8), cl(gy + (nb - gy) * 1.8 + 8)]); } }
+      if (M && M.kind === 'glitch') { var src = d.slice ? d.slice() : new d.constructor(d), R = stream('XCPETS:v2:glitch:' + M.seed + ':' + fi);
+        for (var y1 = bb.t; y1 <= bb.b; y1++) { if ((y1 - bb.t) % 2) { var sh = sh0; } else { var sh0 = R() % 3 === 0 ? (R() % 2 ? 3 : -3) : 0, sh = sh0; } /* 2-row slices, 1 in 3, 3 px */ if (!sh) continue; for (var x1 = 0; x1 < 32; x1++) { var sx = x1 - sh; if (sx < 0 || sx > 31) continue; var t = y1 * 32 + x1, q = y1 * 32 + sx; if (!sil[q] && !sil[t]) continue; for (var c = 0; c < 3; c++) d[t * 4 + c] = src[q * 4 + c]; } }
+        for (var j2 = 0; j2 < 1024; j2++) if (sil[j2] && (j2 & 31) <= bb.l + 1) set(j2, [0, 240, 255]); else if (sil[j2] && (j2 & 31) >= bb.r - 1) set(j2, [255, 40, 200]); }
+      var T = p.shows, h = bb.b - bb.t + 1;
+      var eyeY = 99; if (T === 'frost') { for (var ye = bb.t + 1; ye <= bb.t + Math.round(h * 0.6) && eyeY === 99; ye++) for (var xe = 1; xe < 31; xe++) { var je = ye * 32 + xe; if (!sil[je] || !sil[je - 1] || !sil[je + 1] || !sil[je - 32] || !sil[je + 32]) continue; var mn = Math.min(d[je * 4], d[je * 4 + 1], d[je * 4 + 2]), mx = Math.max(d[je * 4], d[je * 4 + 1], d[je * 4 + 2]); if (mn > 205 && mx - mn < 40) { eyeY = ye; break; } } } /* first row with an eye (pupil / eye white inside the body): frost stops above it */
+      if (T === 'frost') for (var j3 = 0; j3 < 1024; j3++) { if (!sil[j3] || ink(j3) || (j3 >> 5) > Math.min(bb.t + Math.max(2, Math.round(h * 0.18)), Math.max(bb.t, eyeY - 1))) continue; set(j3, [Math.round(d[j3 * 4] * 0.4 + 150), Math.round(d[j3 * 4 + 1] * 0.4 + 160), Math.round(d[j3 * 4 + 2] * 0.4 + 170)]); } /* reverted to the subtler version (owner 11:26 PM CT) */
+      if (T === 'socks') for (var j4 = 0; j4 < 1024; j4++) { if (!sil[j4] || ink(j4) || (j4 >> 5) < bb.b - Math.max(3, Math.round(h * 0.28))) continue; var cuff = (j4 >> 5) === bb.b - Math.max(3, Math.round(h * 0.28)); set(j4, cuff ? [200, 160, 255] : (j4 & 31) % 3 === 0 ? [95, 60, 140] : [Math.round(d[j4 * 4] * 0.12 + 55), Math.round(d[j4 * 4 + 1] * 0.1 + 28), Math.round(d[j4 * 4 + 2] * 0.15 + 95)]); } /* deep purple socks with ribbing and a bright cuff */
+      if (T === 'oddeyes') { var OE = p.oddEye || { eye: (p.id || 0) % 2, col: (p.id || 0) % ODD_EYE_COLOURS.length }, OC = ODD_EYE_COLOURS[OE.col % ODD_EYE_COLOURS.length].rgb, yMax = bb.t + Math.round(h * 0.65);
+        var inner = function (j) { return sil[j] && sil[j - 1] && sil[j + 1] && sil[j - 32] && sil[j + 32]; }, white = function (j) { var a = d[j * 4], b = d[j * 4 + 1], c = d[j * 4 + 2], mn = Math.min(a, b, c); return mn > 200 && Math.max(a, b, c) - mn < 45; };
+        var comps = function (test) { var seen = [], out = []; for (var y = bb.t; y <= yMax; y++) for (var x = 1; x < 31; x++) { var j = y * 32 + x; if (seen[j] || !inner(j) || !test(j)) continue; var L = [], st = [j]; seen[j] = 1; while (st.length) { var c = st.pop(); L.push(c); [c - 1, c + 1, c - 32, c + 32].forEach(function (n) { if (n >= 0 && n < 1024 && !seen[n] && (n >> 5) <= yMax && inner(n) && test(n) && Math.abs((n & 31) - (c & 31)) <= 1) { seen[n] = 1; st.push(n); } }); } out.push(L); } return out; };
+        var pairOf = function (C) { C = C.filter(function (L) { return L.length <= 40; }); var best = null; for (var a = 0; a < C.length; a++) for (var b = a + 1; b < C.length; b++) { var A = bbList(C[a]), B = bbList(C[b]), dy = Math.abs((A.t + A.b) - (B.t + B.b)) / 2, dx = Math.abs((A.l + A.r) - (B.l + B.r)) / 2; if (dy > 2 || dx < 3) continue; var sc = C[a].length + C[b].length - dy * 3 - Math.abs(C[a].length - C[b].length); if (!best || sc > best.sc) best = { sc: sc, L: A.l < B.l ? [C[a], C[b]] : [C[b], C[a]] }; } return best && best.L; };
+        var HS = oddEyeHand(p, fi, OE.eye, d, sil); if (HS) { /* hand-placed spot (ODD_EYE_SPOTS) */
+          var ring = [0, 0, 0, 0], inS = {}; HS.forEach(function (q) { inS[q.j] = 1; }); HS.forEach(function (q) { [q.j - 1, q.j + 1, q.j - 32, q.j + 32].forEach(function (n) { if (n < 0 || n > 1023 || inS[n] || !sil[n] || ink(n) || white(n)) return; ring[0] += d[n * 4]; ring[1] += d[n * 4 + 1]; ring[2] += d[n * 4 + 2]; ring[3]++; }); });
+          var OCh = OC, dist = function (a, b) { return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2)); };
+          if (ring[3]) { var av = [ring[0] / ring[3], ring[1] / ring[3], ring[2] / ring[3]]; if (dist(OC, av) < 110) { var dk = shadeRgb(OC, 0.62), lt = OC.map(function (n) { return Math.round(n + (255 - n) * 0.55); }); OCh = dist(dk, av) >= dist(lt, av) ? dk : lt; } } /* odd colour too close to the fur around the eye (gold on Snibby): darker or lighter, whichever reads */
+          HS.forEach(function (q) { set(q.j, q.r === 'g' ? [255, 255, 255] : q.r === 'p' ? shadeRgb(OCh, 0.45) : OCh); });
+          return Object.assign({}, f, { data: d }); }
+        var EB = null, KRk = null; if (p.art) try { var spK = p.art.hybrid ? p.art.hybrid.shape : (p.art.species || p.species), KR = keyedRender(spK, p.art, { stage: p.stage == null ? 3 : p.stage, frame: fi }), AK = anatomy(KR.keys); KRk = []; for (var jk = 0; jk < 1024; jk++) if (KR.keys[jk] === 'eye' || KR.keys[jk] === 'pupil' || KR.keys[jk] === 'white' || (KR.keys[jk] === 'ink' && AK.eyeBox && (jk >> 5) >= AK.eyeBox.t && (jk >> 5) <= AK.eyeBox.b + 1)) KRk.push(jk); if (AK.eyeBox && AK.eyeBox.w >= 3 && KRk.length) EB = AK.eyeBox; else if (p.stage >= 4) { var KR4 = keyedRender(spK, p.art, { stage: 3, frame: fi }), A4 = anatomy(KR4.keys); if (A4.eyeBox) { var dyE = AK.bb.t - A4.bb.t; KRk = []; for (var j4k = 0; j4k < 1024; j4k++) if (KR4.keys[j4k] === 'eye' || KR4.keys[j4k] === 'pupil' || KR4.keys[j4k] === 'white') { var tq = j4k + dyE * 32; if (tq >= 0 && tq < 1024) KRk.push(tq); } EB = { l: A4.eyeBox.l, r: A4.eyeBox.r, t: A4.eyeBox.t + dyE, b: A4.eyeBox.b + dyE, w: A4.eyeBox.w, h: A4.eyeBox.h }; } } } catch (e) { EB = null; }
+        if (EB) { var mid = (EB.l + EB.r) / 2, REG = {}, KK = KRk || [], RW = [], RK = []; /* the pet's own eye pixels (keyed render), the chosen side, grown by 1 */
+          KK.forEach(function (q) { var x = q & 31; if ((x > mid) !== !!OE.eye) return; for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) { var n = q + oy * 32 + ox; if (n >= 0 && n < 1024 && Math.abs(((n & 31) - x)) <= 1) REG[n] = 1; } });
+          Object.keys(REG).forEach(function (k2) { var q = +k2; if (!inner(q)) return; if (white(q)) RW.push(q); else if (d[q * 4] + d[q * 4 + 1] + d[q * 4 + 2] < 200 && KK.indexOf(q) >= 0) RK.push(q); });
+          var pupK = RK.filter(function (q) { return [q - 1, q + 1, q - 32, q + 32].some(function (n) { return RW.indexOf(n) >= 0; }); });
+          if (RW.length && pupK.length) { pupK.forEach(function (q) { set(q, shadeRgb(OC, 0.45)); }); RW.forEach(function (q) { set(q, OC); }); }
+          else if (RW.length) RW.forEach(function (q) { set(q, OC); }); else if (RK.length) { RK.forEach(function (q) { set(q, OC); }); set(RK[0], [255, 255, 255]); }
+          return Object.assign({}, f, { data: d }); }
+        var W = pairOf(comps(white)), eyeL;
+        if (W) { var E = W[OE.eye], Eb = bbList(E), pup = []; for (var y2 = Eb.t - 1; y2 <= Eb.b + 1; y2++) for (var x2 = Eb.l - 1; x2 <= Eb.r + 1; x2++) { var j2 = y2 * 32 + x2; if (x2 < 0 || x2 > 31 || y2 < 0 || y2 > 31 || !inner(j2) || white(j2)) continue; var nW = [j2 - 1, j2 + 1, j2 - 32, j2 + 32].filter(function (n) { return E.indexOf(n) >= 0; }).length; if (nW && ink(j2) && x2 > Eb.l - 1 && x2 < Eb.r + 1) pup.push(j2); }
+          if (pup.length) { pup.forEach(function (q) { set(q, shadeRgb(OC, 0.45)); }); E.forEach(function (q) { set(q, OC); }); } /* bright iris, tinted white */
+          else E.forEach(function (q) { set(q, OC); }); }
+        else { var K = pairOf(comps(function (j) { return ink(j) && [j - 1, j + 1].every(function (n) { return !ink(n) || true; }); }).filter(function (L) { var B = bbList(L); return L.length <= 6 && [L[0] - 2, L[0] + 2].every(function (n) { return n >= 0 && n < 1024 && sil[n] && !ink(n) && !white(n); }) && B.t > bb.t + 2; })); if (K) { var E2 = K[OE.eye], Eb2 = bbList(E2); E2.forEach(function (q) { set(q, OC); }); [Eb2.t * 32 + Eb2.l].forEach(function (q) { if (sil[q]) set(q, [255, 255, 255]); }); } } } /* no eye whites: the whole dark eye takes the colour, with a glint */
+      return Object.assign({}, f, { data: d }); }); }
+  function breedOne(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
-    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
+    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species, b); art.species = plan.shape; art.hybrid = plan; }
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; if (bonus) kid.breedBonus = bonus; if (capped && capped.length) kid.traitCap = capped; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
-    [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); });
+    return kid;
+  }
+  function breed(w, A, B, bh, tx, b, owner) {
+    var kid = breedOne(w, A, B, bh, tx, b, owner);
+    [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); if (breedV2On(b)) p.breedsV2 = (p.breedsV2 || 0) + 1; });
     if (b >= ACTIVATE_BREEDCARRY_BLOCK && B.owner !== owner && A.owner === owner) { var bk = Object.keys(A.stats).reduce(function (m, k) { return A.stats[k] > A.stats[m] ? k : m; }, Object.keys(A.stats)[0]);
       (B.carried = B.carried || []).push({ from: A.id, species: A.species, stat: bk, value: A.stats[bk], block: b, child: kid.id }); } /* breed carry: parent B (accepting owner, no egg) */
+    if (breedV2On(b)) { breedExtras(A, B, sha(bh + tx), kid); /* breeding v2 (own streams; nothing above moves) */
+      if (twinDraw(sha(bh + tx))) { var tw = breedOne(w, A, B, bh, tx + ':twin', b, owner); [A, B].forEach(function (p) { p.children.push(tw.id); }); /* twins: ONE breed (counts once), second egg = next pet id */
+        tw.twinOf = kid.id; kid.twinOf = tw.id; breedExtras(A, B, sha(bh + tx + ':twin'), tw); } }
     return kid;
   }
   function resolveRumble(w, R, seedHash) {
@@ -1426,7 +1855,7 @@
   function breedPicker(w, owner, tip, selA, pendIds) { /* pendIds (2026-10-20, display only): { id: 1 } pets in my unconfirmed breed burns -> 'breed burn waiting to confirm' */
     var bq = function (p) { return breedable(p, tip) || (pendIds && pendIds[p.id] ? 'breed burn waiting to confirm' : null); };
     var live = w.pets.filter(function (p) { return !p.dead && !p.released && (p.species !== 'nakamoto' || nakaNormal(tip)) && !p.community; });
-    var why = function (p) { var r = bq(p); if (!r && selA != null && String(p.id) === String(selA)) r = 'already parent A'; return r || null; };
+    var PA = selA != null ? w.byId[selA] : null, why = function (p) { var r = bq(p); if (!r && selA != null && String(p.id) === String(selA)) r = 'already parent A'; if (!r && PA && breedV2On((tip || 0) + 1)) r = kinWhy(PA, p); return r || null; };
     return { mine: live.filter(function (p) { return p.owner === owner; }).map(function (p) { return { p: p, why: bq(p) || null }; }),
       partners: live.map(function (p) { return { p: p, why: why(p) }; }) }; }
   function myRanks(ranked, owner) { var n = ranked.length;
@@ -1436,7 +1865,7 @@
   return { ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
-    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
+    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _anatomy: anatomy, _topDbg: function () { return TOPDBG; }, _keyedRender: keyedRender, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, ODD_EYE_COLOURS: ODD_EYE_COLOURS, ODD_EYE_SPOTS: ODD_EYE_SPOTS, _oddEyeHand: oddEyeHand, PALETTE_SETS: PALETTE_SETS, mutationLabel: mutationLabel, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, ACTIVATE_WAGMI_BLOCK: ACTIVATE_WAGMI_BLOCK, wagmiOn: wagmiOn, streakOf: streakOf, _setWagmiActivation: function (b) { ACTIVATE_WAGMI_BLOCK = b; }, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,

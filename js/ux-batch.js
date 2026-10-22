@@ -284,7 +284,7 @@
       if (!Array.prototype.some.call(sa.options, function (o) { return o.value === String(a); }) || !Array.prototype.some.call(sb.options, function (o) { return o.value === String(b); })) return U.toast('That pair can’t fight right now');
       sa.value = String(a); sb.value = String(b); $('fGo').click(); };
     box.querySelectorAll('[data-facc]').forEach(function (b) { b.onclick = function () { var id = b.dataset.facc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: 690 }], function () { U.afterAccept(id); }); }; });
-    box.querySelectorAll('[data-fign]').forEach(function (b) { b.onclick = function () { IGN.push(Number(b.dataset.fign)); store('ignored', IGN); paintFace(U.world()); U.toast('Ignored here. It expires on its own if nobody accepts.'); }; }); }
+    box.querySelectorAll('[data-fign]').forEach(function (b) { b.onclick = function () { IGN.push(Number(b.dataset.fign)); store('ignored', IGN); paintFace(U.world()); U.toast('Ignored here. It expires on its own if nobody accepts.'); }; }); if (window.V2Easy) V2Easy.fight(w); /* easy-flows */ }
   /* P13 (2026-10-21): the fight picker is also the shared pet browser. picker(sideId, o) with o = { title, pets, why(p, w), okLabel, onPick(id) }
    * browses any list with the same search, sort, chips and thumbnails (motel breeding uses it); without o it is exactly the fight picker. */
   function picker(sideId, o) { o = o || null; var w = U.world(), mineSide = sideId === 'a', WN = o && o.why ? o.why : whyNot, L = o && o.pets ? o.pets : w.pets.filter(function (p) { return (mineSide ? p.owner === ME : p.owner !== ME) && !p.dead && !p.released; });
@@ -306,6 +306,11 @@
       $('fpG').querySelectorAll('[data-fsp]').forEach(function (s2) { s2.appendChild(canvasFor(w.byId[s2.getAttribute('data-fsp')], w, 'sprite')); });
       $('fpG').querySelectorAll('[data-pk]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('aria-disabled')) return; m.remove(); if (o && o.onPick) return o.onPick(Number(b.dataset.pk)); FO[sideId] = Number(b.dataset.pk); paintFace(U.world()); }; }); }
     $('fpQ').oninput = draw; $('fpS').onchange = draw; chips(); $('fpX').onclick = function () { m.remove(); }; m.onclick = function (e) { if (e.target === m) m.remove(); }; draw(); $('fpQ').focus(); }
+  /* easy-flows (2026-10-22, display only): the easy battle picker (js/v2-easy-flows.js) shares this face-off state, so deep links, Quick match and
+   * the Challenge burn (#foGo -> #fMine/#fTheirs -> #fGo) stay exactly the same. */
+  UXB.faceoff = function () { return FO; }; UXB.whyNot = whyNot;
+  UXB.setFace = function (a, b) { if (a !== undefined) FO.a = a; if (b !== undefined) FO.b = b; FO.tab = 'new'; paintFace(U.world()); };
+  UXB.fightIgnored = function () { return IGN.slice(); }; UXB.ignoreFight = function (id) { IGN.push(Number(id)); store('ignored', IGN); paintFace(U.world()); };
   window.UXB.browsePets = function (sideId, o) { return picker(sideId, o); }; /* P13: shared pet browser (motel breeding) */
 
   /* arrived with a pet on purpose (e.g. a future pet-page 'Battle' button linking to play.html#battle-ID): keep that pet on your side */
