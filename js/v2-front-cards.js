@@ -9,6 +9,8 @@
   var MOTEL_NAME = 'Gooby\u2019s No-Tail Motel', SIGN = ['GOOBY\u2019S', 'NO-TAIL MOTEL'];
   var W = 320, H = 180, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   function reduced() { return !!RM.matches || !!window.__frontReduced; }
+  /* bugpass-fixes: cards use js/v2-sharp.js (integer-k backing store, logical 320x180 drawing) like the scenes; small() = drawn below 1:1 */
+  function small(c) { var r = c.getBoundingClientRect(); return r.width > 0 && r.width * (window.devicePixelRatio || 1) < W - 0.5; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   /* Rare Room front card (owner Oct 21 2026, palette A 'Royal Vault'): velvet gallery wall, rose window, gilded frames, marble floor, Captain Dan */
   function lair(x, t) { x.imageSmoothingEnabled = false; var G = '#e8b84a', GH = '#fff1a8', V = '#9b1035', i, j; px(x, '#2a0f4a', 0, 0, W, 124);
@@ -32,15 +34,18 @@
     px(x, '#7a4f2a', 160, 146, 80, 6); x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#5a3a1e'; x.fillText('OFFICE', 182, 162);
     px(x, '#2e8a8a', 268, 120, 24, 46); px(x, '#ffd166', 286, 142, 2, 2); px(x, '#2a2a33', 0, 166, W, 14); }
   var cards = [], raf = 0, io = null;
-  function loop(now) { raf = 0; var any = false; cards.forEach(function (c) { if (c.vis) { c.draw(c.x, now); any = true; } }); if (any && !reduced()) raf = requestAnimationFrame(loop); }
+  function paint(o, now) { if (window.V2Sharp) V2Sharp.begin(o.x, o.k); o.draw(o.x, now); }
+  function refit() { cards.forEach(function (o) { if (window.V2Sharp) o.k = V2Sharp.fit(o.c, W, H); paint(o, performance.now()); }); }
+  function loop(now) { raf = 0; var any = false; cards.forEach(function (c) { if (c.vis) { paint(c, now); any = true; } }); if (any && !reduced()) raf = requestAnimationFrame(loop); }
   function kick() { if (!raf) raf = requestAnimationFrame(loop); }
   function mount() { document.querySelectorAll('[data-fp-name="motel"]').forEach(function (e) { e.textContent = MOTEL_NAME; }); var row = document.getElementById('sceneCards'); if (!row) return;
-    [['lair', lair], ['motel', motel]].forEach(function (d) { var c = row.querySelector('canvas[data-scene="' + d[0] + '"]'); if (!c) return; var o = { c: c, x: c.getContext('2d'), draw: d[1], vis: true };
-      cards.push(o); o.draw(o.x, performance.now()); if (window.IntersectionObserver) { io = io || new IntersectionObserver(function (es) { es.forEach(function (e) { cards.forEach(function (k) { if (k.c === e.target) k.vis = e.isIntersecting; }); }); kick(); }); io.observe(c); } });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { cards.forEach(function (o) { o.draw(o.x, performance.now()); }); });
+    [['lair', lair], ['motel', motel]].forEach(function (d) { var c = row.querySelector('canvas[data-scene="' + d[0] + '"]'); if (!c) return; var o = { c: c, x: c.getContext('2d'), draw: d[1], vis: true, k: window.V2Sharp ? V2Sharp.fit(c, W, H) : 1 };
+      cards.push(o); paint(o, performance.now()); if (window.IntersectionObserver) { io = io || new IntersectionObserver(function (es) { es.forEach(function (e) { cards.forEach(function (k) { if (k.c === e.target) k.vis = e.isIntersecting; }); }); kick(); }); io.observe(c); } });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { cards.forEach(function (o) { paint(o, performance.now()); }); });
+    if (window.V2Sharp && cards.length) V2Sharp.watch(refit);
     if (!reduced()) kick();
     var ac = row.querySelector('canvas[data-scene="arena"]'), M = window.V2Mock;
-    if (ac && window.V2ArenaScene && M && M.world) { try { V2ArenaScene.mount(ac, M.world()); } catch (e) { if (window.console) console.error(e); } } }
+    if (ac && window.V2ArenaScene && M && M.world) { try { V2ArenaScene.mount(ac, M.world(), { thumb: true }); } catch (e) { if (window.console) console.error(e); } } }
   window.V2FrontCards = { MOTEL_NAME: MOTEL_NAME, mount: mount, _lair: lair, _motel: motel };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
