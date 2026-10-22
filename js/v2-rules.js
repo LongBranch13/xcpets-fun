@@ -308,7 +308,14 @@
   var ACTIVATE_WIZ_COLD_BLOCK = 972250;            // Bitcoin tip 972244 + 6 at commit (Oct 19 2026); owner default
   var WIZ_EGG_COST = 690;                           // pet:hatchwiz cost in XCPETS (owner default)
   var WIZ_EGG_TIER = null;                          // null = the egg's tier is rolled like any egg; 0-3 = force that tier (owner default: rolled)
-  var WIZ_CAN_BREED = false;                        // player Wizards can't breed (no Wizard hybrid art yet) (owner default)
+  var WIZ_CAN_BREED = false;                        // LEGACY default: player Wizards can't breed before ACTIVATE_WIZ_BREED_BLOCK (kept false; the gate below switches breeding on)
+  /* WIZARD BREEDING (branch wizard-hybrids, Oct 19 2026; NOT approved/deployed). From ACTIVATE_WIZ_BREED_BLOCK player Wizards (species 'wizard', from
+   * pet:hatchwiz) can breed like any pet, with the unchanged breedChild odds: different species -> hybrid 68.4773435% (else 50/50 a parent's species),
+   * Wizard x Wizard -> Wizard + bred-true bonus, hybrid parents follow the three-way rules, Nakamoto children forced Legendary, normal tier rules.
+   * 'wizard' is a hybrid root with all 13 species (Wizard hybrid art: hybridRender below). The community pet never breeds (p.community check).
+   * PLACEHOLDER: null = inert (identical to main). Set to chain tip + ~6 at deploy time, owner approval required. */
+  var ACTIVATE_WIZ_BREED_BLOCK = null;
+  function wizBreedOn(b) { return ACTIVATE_WIZ_BREED_BLOCK != null && b != null && b >= ACTIVATE_WIZ_BREED_BLOCK; }
   var WIZ_SIGN_MIN = 0.00000001;                    // Join us sign claim: any amount, 1 sat of XCPETS is enough
   var WIZ_SIGN_ITEM = 'sig-wizard-sign';               // the claimable sign gear id
   var WIZ_FEEDER_FROM_RETURN = true;                // a "feeder" = any wallet that burned after The Return up to and incl. the Mythic burn
@@ -712,7 +719,7 @@
     return g;
   }
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
-  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)';
+  function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED && !wizBreedOn(b)) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
@@ -965,6 +972,9 @@
     'sarutobi:pepe': 'Sape', 'sarutobi:wojak': 'Sajak', 'sarutobi:chud': 'Sachud', 'sarutobi:bobo': 'Sabo', 'sarutobi:mumu': 'Samu', 'sarutobi:snibby': 'Sabby', 'sarutobi:dodo': 'Sadod', 'sarutobi:kevin': 'Savin', 'sarutobi:peepo': 'Sapeep', 'sarutobi:doge': 'Sadoge', 'sarutobi:lenny': 'Salen', 'sarutobi:nakamoto': 'Samoto',
     'doge:pepe': 'Dogpe', 'doge:wojak': 'Dogjak', 'doge:chud': 'Dogchud', 'doge:bobo': 'Dogbo', 'doge:mumu': 'Dogmu', 'doge:snibby': 'Dogsnib', 'doge:dodo': 'Dogdo', 'doge:kevin': 'Dogvin', 'doge:peepo': 'Dogpeep', 'doge:sarutobi': 'Dogtobi', 'doge:lenny': 'Doglen', 'doge:nakamoto': 'Dogmoto',
     'lenny:pepe': 'Lepe', 'lenny:wojak': 'Lejak', 'lenny:chud': 'Lechud', 'lenny:bobo': 'Lebo', 'lenny:mumu': 'Lemu', 'lenny:snibby': 'Lebby', 'lenny:dodo': 'Ledo', 'lenny:kevin': 'Lekev', 'lenny:peepo': 'Lepo', 'lenny:sarutobi': 'Lebi', 'lenny:doge': 'Lege', 'lenny:nakamoto': 'Leto',
+    /* Wizard hybrids (wizard-hybrids branch, PROVISIONAL names pending owner OK; reachable only from ACTIVATE_WIZ_BREED_BLOCK) */
+    'wizard:pepe': 'Wizpe', 'wizard:wojak': 'Wizjak', 'wizard:chud': 'Wizchud', 'wizard:bobo': 'Wizbo', 'wizard:mumu': 'Wizmu', 'wizard:snibby': 'Wizby', 'wizard:dodo': 'Wizdo', 'wizard:kevin': 'Wizvin', 'wizard:peepo': 'Wizpo', 'wizard:sarutobi': 'Wiztobi', 'wizard:doge': 'Wizdoge', 'wizard:lenny': 'Wizlen', 'wizard:nakamoto': 'Wizmoto',
+    'pepe:wizard': 'Pewiz', 'wojak:wizard': 'Wowiz', 'chud:wizard': 'Chuwiz', 'bobo:wizard': 'Bowiz', 'mumu:wizard': 'Muwiz', 'snibby:wizard': 'Sniwiz', 'dodo:wizard': 'Dowiz', 'kevin:wizard': 'Kewiz', 'peepo:wizard': 'Peewiz', 'sarutobi:wizard': 'Sawiz', 'doge:wizard': 'Dogwiz', 'lenny:wizard': 'Lewiz', 'nakamoto:wizard': 'Nawiz',
     'nakamoto:pepe': 'Napep', 'nakamoto:wojak': 'Najak', 'nakamoto:chud': 'Nachud', 'nakamoto:bobo': 'Nabo', 'nakamoto:mumu': 'Namu', 'nakamoto:snibby': 'Nabby', 'nakamoto:dodo': 'Nadod', 'nakamoto:kevin': 'Navin', 'nakamoto:peepo': 'Napo', 'nakamoto:sarutobi': 'Nabi', 'nakamoto:doge': 'Nage', 'nakamoto:lenny': 'Nalen'
   };
   var HYBRID_CHANCE_10K = 1500;      // LEGACY (blocks 971,501-971,673 only, kept so those breeds replay exactly): old 15% cross-species hybrid rate
@@ -1018,9 +1028,9 @@
   function hybrid3Key(a, b, c) { return 'hyb3:' + a + ':' + b + ':' + c; }
   function hybridRoots(sp) { return isHybrid3(sp) ? sp.slice(5).split(':') : isHybrid(sp) ? sp.slice(4).split(':') : [sp]; }
   /* Three-way names (display-only): first part of A + middle of B + end of C, e.g. hyb3:pepe:dodo:kevin = Pe+do+vin = 'Pedovin'. */
-  var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek'];
-  var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na', 'Kek'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka', 'kek'],
-    H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto', 'kek'];
+  var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek', 'wizard'];
+  var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na', 'Kek', 'Wi'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka', 'kek', 'zi'],
+    H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto', 'kek', 'zard'];
   function h3part(T, sp) { var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
   function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
     return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
@@ -1070,7 +1080,7 @@
   function kekSprite() { return typeof KekSprite !== 'undefined' ? KekSprite : (typeof window !== 'undefined' ? window.KekSprite : null); }
   function kekPal(C, shade) { if (!C || C.id === 'kek') return null; var c = C.canon;
     return { G: c.body, g: shade(c.body, 0.7), h: shade(c.body, 1.3), B: c.accent, b: shade(c.accent, 0.7), y: c.belly, o: shade(c.belly, 0.75) }; }
-  function renderRoot(art, o, pal) { if (art.species !== 'kek' || !kekSprite()) return PetCore.render(art, o); var st = o.stage == null ? 3 : o.stage;
+  function renderRoot(art, o, pal) { if (art.species === 'wizard' && wizSprite()) return renderWizRoot(art, o, pal); if (art.species !== 'kek' || !kekSprite()) return PetCore.render(art, o); var st = o.stage == null ? 3 : o.stage;
     var r = kekSprite().render(st, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), {}, { pal: pal || null });
     return { width: 32, height: 32, data: new Uint8ClampedArray(r.data) }; }
   /** kekAccent(px, kS, sil): trims a Kek feature (nemes top / lappets) to a small accent: drops pixels enclosed by the body on the same row
@@ -1080,7 +1090,20 @@
     var d = function (j) { var x = j & 31, y = j >> 5, m = 9; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) if (inS(x + dx, y + dy)) m = Math.min(m, Math.abs(dx) + Math.abs(dy)); return m; };
     var enclosed = function (j) { var x = j & 31, y = j >> 5, L = false, R = false; for (var a = 0; a < x; a++) if (inS(a, y)) L = true; for (var c = x + 1; c < 32; c++) if (inS(c, y)) R = true; return L && R; };
     return px.filter(function (j) { return !enclosed(j) && d(j) <= 2; }).sort(function (a, b) { return d(a) - d(b) || a - b; }).slice(0, KEK_FEAT_MAX); }
-  function speciesObj(id) { if (id === 'kek') return KEK_SP; return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
+  function speciesObj(id) { if (id === 'kek') return KEK_SP; if (id === 'wizard') return WIZ_SP; return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
+  /* WIZARD AS A HYBRID ROOT (wizard-hybrids branch). The player Wizard is drawn by WizardSprite (not a PetCore map), so hybridRender gets a
+   * pseudo species WIZ_SP (canon = the blue player palette: robe body, gold-star accent, white-beard belly) and renderRoot() draws either kind.
+   * Wizard as SHAPE: the WizardSprite body (hatless, grey hair; the Wizard Hat is never worn by hybrids) with robe/hat tones from the colour
+   * parent's body and beard/hair from its belly. Wizard as COLOUR: its canon recolours the shape parent. Wizard as FEATURE: hair tuft (head) or
+   * the staff + ₿ orb / sleeve (side), picked by the same connected-pixel rule as every hybrid. Same 32x32 frame, 4 frames, ink outline, badge. */
+  var WIZ_SP = { id: 'wizard', label: 'Bitcoin Wizard', canon: { body: '#2f6fe0', accent: '#ffd23f', belly: '#e6e6ee' } };
+  function wizSprite() { return typeof WizardSprite !== 'undefined' ? WizardSprite : (typeof window !== 'undefined' ? window.WizardSprite : null); }
+    function wizPal(C, shade) { var c = C.canon; if (C.id === 'wizard') return {};
+    return { R: c.body, B: c.body, r: shade(c.body, 0.7), b: shade(c.body, 0.7), h: shade(c.body, 1.3), c: shade(c.body, 1.3), G: c.belly, W: c.belly, g: shade(c.belly, 0.72) }; }
+  /** renderRoot(art, o, pal): one root's frame. 'wizard' -> WizardSprite (solid bg = art.bgColor, or #ff00ff for key renders); others PetCore.render. */
+  function renderWizRoot(art, o, pal) { var WS = wizSprite(), st = o.stage == null ? 3 : o.stage;
+    var r = WS.render(st, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), o.wizGear || {}, { pal: pal || {} });
+    return { width: 32, height: 32, data: new Uint8ClampedArray(r.data) }; }
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame. */
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame.
    * 3-way plans take the signature feature from plan.featSp (2-way: from the colour parent). Cleanup 2026-10-16: a Nakamoto body takes the colour
@@ -1092,8 +1115,8 @@
     var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color }), featArt = Object.assign({}, art, { species: F.id });
     var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
     var shade = function (c3, k) { var v = hx(c3); return '#' + v.map(function (n) { var m = Math.max(0, Math.min(255, Math.round(n * k))); return (m < 16 ? '0' : '') + m.toString(16); }).join(''); };
-    var kp = S.id === 'kek' ? kekPal(C, shade) : null;
-    function withColours(fn) { var keep = S.canon, kc = S.colors, cc = C.canon; S.canon = cc;
+    var kp = S.id === 'kek' ? kekPal(C, shade) : S.id === 'wizard' ? wizPal(C, shade) : null; /* Wizard body (wizard-hybrids): recolour by palette key */
+    function withColours(fn) { if (S.id === 'wizard') return fn(); var keep = S.canon, kc = S.colors, cc = C.canon; S.canon = cc;
       if (S.id === 'nakamoto' && kc) S.colors = Object.assign({}, kc, { '3': cc.body, '4': shade(cc.body, 0.78), '1': shade(cc.accent, 0.8), '2': shade(cc.accent, 1.15), '5': cc.accent, '8': shade(cc.accent, 0.65), '9': cc.belly });
       if (S.id === 'mumu' && kc) S.colors = Object.assign({}, kc, { '2': shade(cc.belly, 1.05), '3': cc.belly, '4': shade(cc.belly, 1.15) });
       if (S.id === 'pepe' && C.id !== 'pepe') S.canon = Object.assign({}, cc, { belly: cc.accent });
@@ -1104,7 +1127,7 @@
       var calm = PetCore.EYES[0].id, laser = h.eyes === 'laser';
       shapeArt.eyes = h.eyes; img = withColours(function () { return renderRoot(shapeArt, o, kp); });
       var key = function (a2) { return Object.assign({}, a2, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }); };
-      var kS = withColours(function () { return renderRoot(key(Object.assign({}, shapeArt, { eyes: calm })), o, kp); }), kF = renderRoot(key(Object.assign({}, featArt, { eyes: calm })), o);
+      var kS = withColours(function () { return renderRoot(key(Object.assign({}, shapeArt, { eyes: calm })), o, kp); }), kF = renderRoot(key(Object.assign({}, featArt, { eyes: calm })), Object.assign({}, o, { wizGear: {} }));
       var sil = function (k, i) { return !(k.data[i] === 255 && k.data[i + 1] === 0 && k.data[i + 2] === 255); }, top = 32, x0 = 32, x1 = -1;
       if (laser) { var base = withColours(function () { return renderRoot(Object.assign({}, shapeArt, { eyes: calm }), o, kp); }); // clip beams to the body
         for (var q0 = 0; q0 < 1024; q0++) if (!sil(kS, q0 * 4)) for (var c1 = 0; c1 < 4; c1++) img.data[q0 * 4 + c1] = base.data[q0 * 4 + c1]; }
@@ -1118,9 +1141,10 @@
         out.forEach(function (j) { if (touches(j)) { keep[j] = 1; qq.push(j); } });
         while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
         return out.filter(function (j) { return keep[j]; }); };
-      var px = pick(h.feature); if (px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
+      var px = F.id === 'wizard' && S.id !== 'wizard' ? [] : pick(h.feature); if (px.length < 3 && !(F.id === 'wizard' && S.id !== 'wizard')) px = pick(h.feature === 'head' ? 'side' : 'head');
       if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
+      if (F.id === 'wizard' && S.id !== 'wizard') px = wizStaff(img, kS, sil, o, x0, x1);
       var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
       var left = busy > 2;
     }
@@ -1129,6 +1153,19 @@
     mark.forEach(function (q) { var v = hx(q[2]), qx = left ? q[0] - 27 : q[0], k3 = (q[1] * 32 + qx) * 4; img.data[k3] = v[0]; img.data[k3 + 1] = v[1]; img.data[k3 + 2] = v[2]; img.data[k3 + 3] = 255; });
     return img;
   }
+  /* Wizard signature feature on another body (both 'head' and 'side' plans): his staff + ₿ orb (wand for a Hatchling), lifted from the WizardSprite
+   * grid (cells right of his robe in staff/orb/gold keys) and stood next to the shape's body (right side, or left if the body fills the right edge),
+   * bottom on the same ground row, ink outline added, never over the body. Returns the painted pixel indexes (badge placement uses them). */
+  function wizStaff(img, kS, sil, o, x0, x1) { var WS = wizSprite(); if (!WS || !WS.draw) return []; var st = o.stage == null ? 3 : o.stage, g = WS.draw(st, o.frame || 0, {}), P = WS.PAL, cells = [], mx = 32, MX = -1;
+    var ok = { L: 1, l: 1, O: 1, o: 1, w: 1, y: 1 };
+    for (var y = 0; y < 32; y++) for (var x = 22; x < 32; x++) { var k = g[y] && g[y][x]; if (k && ok[k] && (k !== 'y' || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var q = g[y + d[1]] && g[y + d[1]][x + d[0]]; return q === 'O' || q === 'L' || q === 'l'; }))) { cells.push([x, y, P[k] || k]); mx = Math.min(mx, x); MX = Math.max(MX, x); } }
+    if (!cells.length) return []; var wdt = MX - mx + 1, dx = x1 + 2 + wdt <= 31 || 30 - x1 >= x0 - 1 ? x1 + 2 - mx : x0 - 2 - MX; /* right side unless the left has more room */ var out = [], put = {};
+    cells.forEach(function (c) { var X = c[0] + dx, Y = c[1]; if (X < 0 || X > 31) return; var j = Y * 32 + X; if (sil(kS, j * 4)) return; put[j] = c[2]; });
+    var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
+    Object.keys(put).forEach(function (j) { j = +j; var v = hx(put[j]); img.data[j * 4] = v[0]; img.data[j * 4 + 1] = v[1]; img.data[j * 4 + 2] = v[2]; out.push(j); });
+    Object.keys(put).forEach(function (j) { j = +j; [j - 1, j + 1, j - 32, j + 32].forEach(function (n) { if (n < 0 || n > 1023 || put[n] || Math.abs((n & 31) - (j & 31)) > 1 || sil(kS, n * 4)) return;
+      if ((n >> 5) > 28) return; img.data[n * 4] = 0x1a; img.data[n * 4 + 1] = 0x10; img.data[n * 4 + 2] = 0x20; }); });
+    return out; }
   function hybridFrames(art, opts) { var fr = []; for (var f = 0; f < 4; f++) fr.push(hybridRender(art, Object.assign({}, opts, { frame: f }))); return fr; }
   /** castHybrids(w): one Cast entry per hybrid pair that exists in the state (Cast "Hybrids" tab). */
   function castHybrids(w) { var seen = {}, out = []; (w && w.pets || []).forEach(function (p) { if (!isHybrid(p.species) || seen[p.species]) return; seen[p.species] = 1;
@@ -1373,7 +1410,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
+  return { ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
