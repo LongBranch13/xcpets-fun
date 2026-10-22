@@ -15,3 +15,9 @@
 - UI: js/v2-halving.js + css/halving.css (gold ribbon: countdown after the defeat, 'A new era … Every burn costs half' after; hatch/dozen/case/check-in labels repriced). Rules page section 'New eras: burns cost half'. Previews `?preview=halving`, `?preview=halving-soon`.
 - Live chain at tip 972,623: **Lord Kek NOT Mythic yet** (care 3,888,303 / 6,906,900, Adult), so no halving has happened.
 - Tests: tools/halving-test.js 23/23 (cost math across series, trigger detection, before-launch). Replay SAME vs origin/main at 972623 / 972561 / 972559. 0 console errors 1280/390. Previews /workspace/xcpets/previews/halving-v1/.
+
+## Oct 22 2026 ~11:15 AM CT: cross-series-breeding BUILT + PUSHED (branch only, cut from halving-v1; NOT merged, NOT deployed)
+- Gate **ACTIVATE_CROSS_SERIES_BLOCK = 972,629** (tip 972,623 + 6) — reset to tip + 6 at deploy. `breedSeries(w,A,B,b)` = max(series A, series B) from the gate (old x new -> newer series; old x old -> old series, so a closed series keeps growing by breeding); before it the first parent's series (always 1 live). Baby care steps follow its series. 6-breed cap, hybrids, parts, odd eyes, cooldown, breed cost at the current era unchanged; community pets + Wizards still can't breed.
+- UI: '✦ Series N' chip on pet.html for series 2+ (`?preview=series`), breed toast 'The baby joins Series N' when the parents' series differ; rules copy in 'New eras'.
+- Tests tools/cross-series-test.js 15/15; halving 23/23. Replay SAME vs origin/main. 0 console errors 1280/390. Previews /workspace/xcpets/previews/cross-series/.
+- NOTE: fire-sales / saved-spins and cross-series-breeding both branch off halving-v1; merge them in order at deploy (conflicts expected only in docs/HTML script tags).
