@@ -137,13 +137,14 @@
   var SRC_PLURAL = { roll: ['gear roll you burned', 'gear rolls you burned'], hatch: ['free bonus roll from hatching', 'free bonus rolls from hatching'], stage: ['free bonus roll from growing a stage', 'free bonus rolls from growing a stage'], meal: ['free bonus roll from a meal', 'free bonus rolls from meals'], froll: ['founder free roll', 'founder free rolls'], oroll: ['overflow roll', 'overflow rolls'], croll: ['community gear roll', 'community gear rolls'], fight: ['battle win', 'battle wins'], trophy: ['trophy', 'trophies'], live: ['piece from the first game', 'pieces from the first game'], other: ['new piece', 'new pieces'] };
   function communityName(w) { return w.community && w.community.returned ? 'the Bitcoin Wizard, the community pet' : 'the community pet'; }
   // ---------------------------------------------------------------- hatch popup = live #packBox review (live game.js showPack/drawPack), gear wins use the same box
+  var packY = null, lastHatchN = 0; /* hatch-exit 2026-10-21: scroll spot when the results opened + size of the last hatch (for 🥚 Hatch more) */
   var HKEY = 'xcpets-v2-hatched-' + KEY + '-' + ME, revealQ = [], rev = null, REV_PAGE = 36, TIERS = (window.PetCore && PetCore.TIERS) || [{ label: 'Common' }, { label: 'Uncommon' }, { label: 'Rare' }, { label: 'Legendary' }];
   function notifyHatch(w) {
     var seen = null; try { seen = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
     var r = V.newHatches(w, ME, seen); try { localStorage.setItem(HKEY, JSON.stringify(r.seen)); } catch (e) { }
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
-  function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; rev = revealQ.shift(); rev.page = 0; rev.sel = {}; drawReveal(); open('packBox'); }
+  function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
@@ -190,7 +191,7 @@
   var GEAR_CAPS = [['gm. it\'s something.', 'ser, this is a Common.', 'it\'s honest work.'], ['not bad, anon.', 'a little drip never hurt.', 'up only (slightly).'], ['wen moon? now.', 'rare drip acquired.', 'number go up.'], ['MUCH WOW. VERY RARE.', 'GIGABRAIN DROP.', 'WAGMI. legendary pull.']];
   function UXB_CAP(list) { var best = null; list.forEach(function (x) { var t = x.legendary ? 3 : x.tier || 0; if (!best || t > best.t) best = { t: t, x: x }; });
     return best ? GEAR_CAPS[best.t][(String(best.x.gid || best.x.item).length + best.t) % 3] : ''; }
-  function closeReveal() { var toInv = rev && rev.kind === 'gear'; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+  function closeReveal() { var toInv = rev && rev.kind === 'gear'; if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
     if (toInv && $('invPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('invPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300); }
   /* pet total near the hatch buttons (2026-10-19, display only): every pet in the replayed world (w.pets.length, same as the top 'pets hatched'),
    * incl. dead, released and bred pets. Shows '…' until every burn's block hash is known, so an incomplete replay never shows a wrong number. */
@@ -914,7 +915,15 @@
   $('dcYes').onclick = function () { var ids = dropKept(mine(world()).filter(function (p) { return p.tier === 0 && !p.dead; }).map(function (p) { return p.id; })); close('delCommonsBox'); if (!ids.length) return toast('No Commons to hide.'); discardIds(ids); };
   $('dcNo').onclick = function () { close('delCommonsBox'); };
   $('itemClose').onclick = function () { close('itemBox'); };
-  $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
+  /* hatch-exit (2026-10-21, display only): '🥚 Hatch more' and '✕ Close' under every hatch / gear result. Both keep every pet (same as Later: nothing discarded),
+   * still show any queued result next, and never jump to the inventory. Hatch more scrolls to the hatch buttons and highlights the size you hatched last
+   * (it does NOT open a burn confirm); Close puts you back where you were when the results opened. */
+  function packExit(then) { close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+    setTimeout(function () { if ($('packBox').classList.contains('on')) return; var y = packY; packY = null; then(y); }, 300); }
+  if ($('packX')) $('packX').onclick = function () { packExit(function (y) { if (y != null) window.scrollTo({ top: y, behavior: 'auto' }); }); };
+  if ($('packHatchMore')) $('packHatchMore').onclick = function () { packExit(function () { var hp = $('hatchPanel'); if (!hp) return; try { hp.scrollIntoView({ behavior: 'auto', block: 'start' }); } catch (e) { }
+    var b = $(lastHatchN >= 144 ? 'caseBtn' : lastHatchN >= 12 ? 'dozenBtn' : 'hatchBtn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { } b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 2400); } }); };
+  $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   $('packCommons').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var w = world(), all = rev.eggs.filter(function (id) { return w.byId[id] && w.byId[id].art.tierIndex === 0; }), ids = dropKept(all);
     if (!ids.length) return toast(all.length ? 'All Commons in this hatch are starred as kept.' : 'No Commons in this hatch.');
     if (!window.confirm('Discard ' + ids.length + ' Common pet' + (ids.length > 1 ? 's' : '') + ' from this hatch?' + (all.length > ids.length ? ' (' + (all.length - ids.length) + ' kept pet' + (all.length - ids.length > 1 ? 's are' : ' is') + ' skipped.)' : '') + '\n\nFree, only hidden in this browser, Undo anytime, no burn.')) return; hideIds(ids); rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); if (rev.eggs.length) drawReveal(); else closeReveal(); };
