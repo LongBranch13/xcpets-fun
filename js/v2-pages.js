@@ -356,6 +356,24 @@
     if (deep && w.byId[deep] && w.byId[deep].dead) { inp.value = '#' + deep; st.q = deep; apply(); var e = $('tomb-' + deep); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } }
     else paint(0, st.n);
   }
+  /* pet-view-paperdoll: Equip Best on the pet page = the Lair's Equip Best (js/v2-lair-qol.js bestPlan): every open slot gets the strongest owned free piece
+   * that equipCheck allows (gear damage 1 + 2 x tier), only when it beats what is worn; one Undo tap restores. Same local equip ops, free, no burn. */
+  var PD_UNDO = null;
+  function pdBest(w, p, redraw) { var row = $('pdBestRow'); if (!row) return; var vo = !!(window.V2View && V2View.viewOnly());
+    if (vo && p.owner === ME) { row.innerHTML = '<span class="small muted">👀 View only: connect the XCP Wallet that owns #' + p.id + ' to change its gear.</span>'; return; }
+    if (vo || p.owner !== ME || p.dead || p.released) { row.innerHTML = ''; return; }
+    var D = function (id) { var it = (V.GEAR_BY_ID || {})[id]; return it ? 1 + 2 * (it.tier || 0) : 0; };
+    function plan() { var ww = M.world(), P = ww.byId[p.id], free = (ww.itemList || []).filter(function (x) { return x.owner === ME && x.on == null; }), worn = V.wornOf(ww, P.id), out = [];
+      (P.openSlots || []).forEach(function (sl) { var cur = worn.filter(function (x) { return x.slot === sl; })[0], c0 = cur ? D(cur.item) : 0;
+        var best = free.filter(function (x) { var it = (V.GEAR_BY_ID || {})[x.item]; return it && it.slot === sl && V.equipCheck(ww, ME, P.id, x.item).ok; }).sort(function (a, b) { return D(b.item) - D(a.item); })[0];
+        if (best && D(best.item) > c0) out.push({ sl: sl, gid: V.equipCheck(ww, ME, P.id, best.item).gid, prev: cur ? cur.gid : null }); });
+      return out; }
+    function push(list, key, m) { list.forEach(function (o) { var op = { kind: 'equip', owner: ME, petId: p.id, slot: o.sl, gid: o[key] }; op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); redraw(m); }
+    var undo = PD_UNDO && PD_UNDO.pid === p.id;
+    row.innerHTML = '<button type="button" class="btn pd-best" id="pdBest" title="Fill every open slot with your strongest free piece. Free, saved in this browser.">⚡ Equip Best <span class="cost">free</span></button>' + (undo ? ' <button type="button" class="q pd-undo" id="pdUndo">↩ Undo</button>' : '');
+    $('pdBest').onclick = function () { if (window.V2View && V2View.viewOnly()) return; var L = plan(); if (!L.length) return redraw('#' + p.id + ' already wears its best');
+      PD_UNDO = { pid: p.id, plan: L }; push(L, 'gid', '✓ Equip Best on #' + p.id + ': ' + L.length + ' slot' + (L.length === 1 ? '' : 's') + ' (free)'); };
+    if (undo) $('pdUndo').onclick = function () { var u = PD_UNDO; PD_UNDO = null; push(u.plan, 'prev', '↩ Outfit restored on #' + p.id + ' (free)'); }; }
   function pet() {
     $('page').style.display = 'block';
     var id = Number(new URLSearchParams(location.search).get('id')), w = M.world();
@@ -372,10 +390,22 @@
       $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic discount)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
         (p.owner === ME && !p.dead ? petActs(w, p) : '');
+      /* pet-view-paperdoll (concept A, 2026-10-22, display/UI only): the six slots sit around the big pet (Headwear/Guise/Drip left, Grip/Outfits/Footwear right).
+       * Owner: tap a slot -> the existing gearPicker opens on that slot right under the pet (pick by picture) -> tap a piece = equipped (same local equip op).
+       * Others / ?addr= view-only / dead (grave gear): the slots only show what is worn. No rule, burn or replay change. */
+      (function () { var wornBy = {}; V.wornOf(w, p.id).forEach(function (x) { wornBy[x.slot] = x; });
+        var canEdit = p.owner === ME && !p.dead && !p.released && !(window.V2View && V2View.viewOnly()), openSl = ($('gPicker') && $('gPicker').getAttribute('data-open')) || '';
+        function slotBtn(sl) { var x = wornBy[sl], locked = !p.dead && p.openSlots.indexOf(sl) < 0, st = x ? x.label : locked ? 'locked' : 'empty';
+          return '<button type="button" class="pd-slot' + (x ? ' worn' : '') + (locked ? ' locked' : '') + (canEdit ? '' : ' ro') + (p.dead ? ' grave' : '') + (canEdit && openSl === sl ? ' sel' : '') + '" data-pdslot="' + sl + '" aria-label="' + esc(V.slotLabel(sl) + ': ' + st) + '" title="' + esc(V.slotLabel(sl) + ': ' + st) + '"' + (canEdit ? '' : ' aria-disabled="true"') + '><span class="pd-box">' + (x ? '' : locked ? '🔒' : '+') + '</span><span class="pd-lbl">' + esc(V.slotLabel(sl)) + (x ? '<b>' + esc(x.label) + '</b>' : '') + '</span></button>'; }
+        $('pdL').innerHTML = ['head', 'face', 'back'].map(slotBtn).join(''); $('pdR').innerHTML = ['hand', 'body', 'feet'].map(slotBtn).join('');
+        Array.prototype.forEach.call(document.querySelectorAll('#pdoll [data-pdslot]'), function (b) { var x = wornBy[b.getAttribute('data-pdslot')]; if (x) { try { b.querySelector('.pd-box').appendChild(R.iconCanvas(x.item)); } catch (e) { b.querySelector('.pd-box').textContent = '✓'; } }
+          b.onclick = function () { if (!canEdit) return; var gp = $('gPicker'); if (!gp) return; var sl = b.getAttribute('data-pdslot'); gp.setAttribute('data-open', gp.getAttribute('data-open') === sl ? '' : sl); draw(); var nb = $('gPicker'); if (nb && nb.getAttribute('data-open')) nb.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }; });
+        $('pdCap').textContent = (p.name || '') + ' #' + p.id + ' · ' + (TL[p.tier] || '') + ' · ' + (p.stageName || ''); })();
       var g = $('gear');
       if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s stash.</p>';
       else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
-      else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
+      else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted pd-hint">Tap a slot around the pet, then tap a piece to equip it (free, saved in this browser).</p><div class="pd-bestrow" id="pdBestRow"></div><div class="gpicker" id="gPicker"></div>';
+        pdBest(w, p, draw);
         R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, viewOnly: !!(window.V2View && V2View.viewOnly()), onEquip: function (op, m) { if (window.V2View && V2View.viewOnly()) return; op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
           onEquipMany: function (ops, m) { if (window.V2View && V2View.viewOnly()) return; ops.forEach(function (op) { op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); draw('✓ ' + m); } }); }
 
