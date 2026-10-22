@@ -98,12 +98,18 @@
    * the same stash pieces (S.items, same hits, same tap/hover/double-tap), and the same counter text.
    * Rarity frames keep the site colours (common #9aa3b5, uncommon #4fd18b, rare #4f9dff, legendary #ffc93c); rare + legendary get holo + sparkles. */
   /* RARE-ROOM-LAYOUT (design branch, owner Oct 21 2026 10:50 PM CT 'so much gear that having it on the walls like that doesnt work' + 'also redo the window').
-   * Preview switch only: ?rrl=a|b|c picks a layout, ?rrw=1|2|3 a window (default window follows the layout). No param = the live layout, unchanged.
+   * Three player-toggled views (see rare-room-v2 note below).
    *  A 'Slot walls + binder': 6 big frames (one per slot: best piece + count), full collection in a paged binder under the panel.
    *  B 'Featured + card rack': 8 featured frames (worn on the mirror pet first, then rarest), every piece in a scrollable rack right under the scene.
    *  C 'Drawers': 4 featured frames, a cabinet of 6 slot drawers (count + rarity bar) that open to the cards. Display only. */
   var QS = (function () { try { return new URLSearchParams(location.search); } catch (e) { return { get: function () { return null; } }; } })();
-  var LAY = /^[abc]$/.test(QS.get('rrl') || '') ? QS.get('rrl') : '', WIN = +(QS.get('rrw') || { a: 1, b: 2, c: 3 }[LAY] || 0);
+  /* rare-room-v2 (owner Oct 21 2026 11:33 PM CT): players toggle Binder (a, default) / Rack (b) / Drawers (c); choice in localStorage 'xcpets-v2-rr-view'. ?rrl= is a test override only.
+   * Window by the visitor's local hour: day 08:00-16:59 = stained-glass triptych (1), dawn 06:00-07:59 + dusk 17:00-19:59 = skylight (2), night 20:00-05:59 = night window (3). ?rrw=1|2|3 = test override. */
+  var VKEY = 'xcpets-v2-rr-view'; function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var LAY = /^[abc]$/.test(QS.get('rrl') || '') ? QS.get('rrl') : /^[abc]$/.test(lsGet(VKEY) || '') ? lsGet(VKEY) : 'a', WOV = +(QS.get('rrw') || 0);
+  function winNow() { if (WOV >= 1 && WOV <= 3) return WOV; var h = new Date().getHours(); return h >= 8 && h < 17 ? 1 : (h >= 6 && h < 8) || (h >= 17 && h < 20) ? 2 : 3; }
+  function setView(v) { if (!/^[abc]$/.test(v) || v === LAY) return; LAY = v; try { localStorage.setItem(VKEY, v); } catch (e) { } S.bp = 0; S.dr = null; var b = document.querySelector('#shopScene .rr-rackw'); if (b && v !== 'b') b.remove(); var U = window.V2UI; if (U) render(U.world()); }
+  function viewBar() { return '<div class="rr-views" role="group" aria-label="Gear view">' + [['a', '📒 Binder'], ['b', '🃏 Rack'], ['c', '🗄️ Drawers']].map(function (q) { return '<button type="button" class="q' + (LAY === q[0] ? ' on' : '') + '" data-rrv="' + q[0] + '" aria-pressed="' + (LAY === q[0]) + '">' + q[1] + '</button>'; }).join('') + '</div>'; }
   function slotOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; return sl === 'weapon' ? 'hand' : sl; }
   var SLOT_SHORT = { head: 'HEAD', hand: 'GRIP', body: 'DRIP', back: 'OUTFIT', face: 'GUISE', feet: 'FEET' };
   function featured(n) { var w = window.V2UI && V2UI.world(), pid = S.pet != null ? S.pet : S.rollPet, L = S.all || [], a = L.filter(function (g) { return pid != null && g.on === pid; }), b = L.filter(function (g) { return a.indexOf(g) < 0; }).sort(function (p, q) { return tierOfG(q) - tierOfG(p); }); return a.concat(b).slice(0, n); }
@@ -122,7 +128,7 @@
     px(x, '#000', 0, 0, W, 4); px(x, RR.goldLo, 0, 0, W, 3); px(x, RR.gold, 0, 0, W, 2); px(x, RR.velvet, 0, 3, W, 1); /* gold-leaf cornice */
     [100, 214].forEach(function (cx) { px(x, '#000', cx - 1, 4, 8, 92); px(x, RR.floorA, cx, 4, 6, 92); px(x, RR.vein, cx + 2, 4, 1, 92); px(x, RR.gold, cx - 2, 4, 10, 3); px(x, RR.gold, cx - 2, 90, 10, 3); });
     for (i = 0; i < 6; i++) { px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, i, 4, 1, 70 - i * 4); px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, W - 1 - i, 4, 1, 70 - i * 4); } /* curtains */
-    if (WIN) winDraw(x, t, WIN); else {
+    if (winNow()) winDraw(x, t, winNow()); else {
     /* stained-glass rose window with a Rare Pepe in the roundel */
     var cx = 160, cy = 23, R0 = 18; x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, R0 + 2, 0, 7); x.fill(); x.fillStyle = RR.gold; x.beginPath(); x.arc(cx, cy, R0 + 1, 0, 7); x.fill();
     for (i = 0; i < 12; i++) { x.fillStyle = RR.jewel[i % 5]; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, R0, i * Math.PI / 6, (i + 1) * Math.PI / 6); x.fill(); }
@@ -181,7 +187,7 @@
     var pn = pendAll(); if (pn > (S.pend0 || 0)) spinNow(2400); if (S.tot0 != null && S.total > S.tot0) spinNow(2400); S.pend0 = pn; S.tot0 = S.total;
     var dt = Math.min(100, Math.max(0, t - (S.wt || t))); S.wt = t; if (!reduced()) S.ang += dt * (t < S.spinUntil ? 0.012 : pn ? 0.002 : 0);
     wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, 'PEPE WHEEL \u00b7 TAP TO ROLL', WH.x + 8, 148, 4); drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
-    bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 95);
+    bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
     plate(x, 'YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 104, 149, 5);
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function hang(x, t, it, ix, iy, slot) { var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
@@ -190,9 +196,9 @@
     if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
     S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it, slot: slot }); }
   function wallsLayout(x, t) { var i;
-    if (LAY === 'a') { var by = bySlot(); SLOT_ORDER.forEach(function (sl, n) { var G = by[sl], ix = (n < 3 ? 14 : 228) + (n % 3) * 30, iy = 22; plate(x, SLOT_SHORT[sl], ix + 8, 16, 4);
+    if (LAY === 'a') { var by = bySlot(); SLOT_ORDER.forEach(function (sl, n) { var G = by[sl], ix = (n < 3 ? 12 : 224) + (n % 3) * 32, iy = 22; /* 32 px pitch: the OUTFIT/GUISE labels keep a 4 px gap */ plate(x, SLOT_SHORT[sl], ix + 8, 13, 4);
         if (G.length) { hang(x, t, G[0], ix, iy, sl); plate(x, '\u00d7' + G.length, ix + 8, 52, 5); } else { px(x, '#000', ix - 1, iy - 1, 18, 20); px(x, '#1c0f33', ix, iy, 16, 18); plate(x, '\u00d70', ix + 8, 52, 5); } });
-      plate(x, 'BEST OF EACH SLOT', 53, 72, 4); plate(x, 'FULL SET IN THE BINDER \u25bc', 267, 72, 4); return; }
+      plate(x, 'BEST OF EACH SLOT', 53, 64, 4); plate(x, 'FULL SET: BINDER \u25bc', 267, 64, 4); return; }
     var F = featured(LAY === 'b' ? 8 : 4), pos = LAY === 'b' ? [[12, 18], [34, 18], [56, 18], [78, 18], [226, 18], [248, 18], [270, 18], [292, 18]] : [[26, 26], [62, 26], [240, 26], [276, 26]];
     F.forEach(function (g, n) { hang(x, t, g, pos[n][0], pos[n][1]); });
     plate(x, LAY === 'b' ? 'FEATURED' : 'ON SHOW', 53, 58, 5); plate(x, LAY === 'b' ? 'ALL GEAR: RACK \u25bc' : 'ALL GEAR: DRAWERS \u25bc', 267, 58, 4); }
@@ -213,6 +219,7 @@
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         if (onWheel(c, e)) { openWheel(); return; } var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
         if (h.slot) { S.bs = h.slot; S.bp = 0; } S.sel = h.it; say(h.it); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
+    var vb = box.querySelector('.rr-views'); if (!vb) { box.insertAdjacentHTML('beforeend', '<div class="rr-vw"></div>'); vb = box.querySelector('.rr-vw'); } else vb = vb.parentNode; vb.innerHTML = viewBar(); vb.querySelectorAll('[data-rrv]').forEach(function (b) { b.onclick = function () { setView(b.dataset.rrv); }; });
     if (LAY === 'b') rack(box); var mo = box.querySelector('.shop-more'); if (S.more > 0 && !LAY) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
     mirrorPet(w); ambPets(w); counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.fitRaf); S.fitRaf = requestAnimationFrame(function () { S.fitRaf = 0; fitDraw(c); }); } /* lair-perf: measure + first draw on the next frame, so a render never forces a full-page layout */
@@ -408,6 +415,8 @@
     '@keyframes rrHolo{to{background-position:300% 0}}@media (prefers-reduced-motion:reduce){.rr-card canvas{animation:none!important}}.rr-nm{font-size:10px;font-weight:700;color:#140f24;line-height:1.1;text-align:center;max-width:100%;overflow:hidden}.rr-on{position:absolute;right:4px;bottom:4px;width:10px;height:10px;background:#3ddc84;border:2px solid #000}' +
     '.rr-flash{animation:rrFlash 1.2s ease-out 1}@keyframes rrFlash{0%{box-shadow:0 0 0 2px #000,0 0 0 8px #fff1a8}100%{box-shadow:0 0 0 2px #000,4px 4px 0 2px #000}}@media (prefers-reduced-motion:reduce){.rr-flash{animation:none}}' +
     '.rr-rackw{margin:8px 0 0;padding:8px;background:#1c0f33;border:3px solid #e8b84a;box-shadow:0 0 0 2px #000}.rr-rackh{color:#fff1a8;font-weight:700;margin:0 0 4px}.rr-rack{display:flex;gap:10px;overflow-x:auto;padding:8px 6px 12px;scroll-snap-type:x proximity}.rr-rack .rr-card{flex:0 0 82px;scroll-snap-align:start}.rr-rmore{flex:0 0 auto;align-self:center}' +
+    '.shop8 .shop-scene .sfx-scene{position:relative;right:auto;top:auto;display:block;margin:4px 6px 4px auto;min-width:44px;min-height:44px}' + /* rare-room-v2: sound button under the scene at every width, never over the FEET frame */
+    '.rr-vw{margin:6px 0 0}.rr-views{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rr-views .q{min-height:40px}.rr-views .q.on{background:#e8b84a;color:#140f24}' +
     '.rr-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.rr-tab{min-height:36px}.rr-tab.on{background:#e8b84a;color:#140f24}.rr-page{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px;background:#f6efdc22;border:3px dashed #8a5a12;min-height:240px}.rr-pager{display:flex;justify-content:space-between;align-items:center;margin-top:6px}' +
     '.rr-cab{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rr-drw{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;background:#5a2e12;border:3px solid #000;box-shadow:inset 0 0 0 2px #8a5a12;color:#fff1a8;cursor:pointer;min-height:64px}.rr-drw.on{background:#8a5a12}.rr-drw b{font-size:15px}.rr-knob{width:14px;height:5px;background:#e8b84a;border:1px solid #000}.rr-dl{font-size:11px;font-weight:700}.rr-tb{display:flex;width:90%;height:5px;border:1px solid #000}.rr-tb i{display:block}.rr-tb .t0{background:#9aa3b5}.rr-tb .t1{background:#4fd18b}.rr-tb .t2{background:#4f9dff}.rr-tb .t3{background:#ffc93c}.rr-open{margin-top:8px}' +
     '@media (max-width:520px){.rr-page{grid-template-columns:repeat(3,1fr);gap:8px;padding:6px}.rr-cab{grid-template-columns:repeat(2,1fr)}}' +
