@@ -111,23 +111,31 @@
   function returning() { return !!me(); }
   if (d.getElementById('pets') && (deepLink() || returning())) html.classList.add('ip-hold');
   function holdOn() { return html.classList.contains('ip-hold'); }
-  function chipUi() { var n = held.length + (d.querySelector('#inReqBox.on') ? 1 : 0) + (d.getElementById('eggPop') ? 1 : 0);
-    if (!n) { if (chip) chip.hidden = true; if (Date.now() - t0 > 20000) html.classList.remove('ip-hold'); return; }
-    if (!chip) { chip = d.createElement('button'); chip.type = 'button'; chip.id = 'ipAway'; chip.className = 'ip-away'; d.body.appendChild(chip); chip.onclick = awaySheet; }
-    chip.hidden = false; chip.textContent = n + ' thing' + (n === 1 ? '' : 's') + ' happened while you were away ▸'; }
+  /* flow-fixes (2026-10-22): the backlog is a small chip in the header corner (never over page controls, hidden while a pop-up is open), with ✕ = skip all.
+   * Held hatch/gear results and fight/breed replays (window.V2Held, v2.js) are listed too: one sheet, ▶ Watch all / Skip all. */
+  function heldN() { return window.V2Held ? V2Held.count() : 0; }
+  function chipUi() { var n = held.length + heldN() + (d.querySelector('#inReqBox.on') ? 1 : 0) + (d.getElementById('eggPop') ? 1 : 0), wrap = $('ipAwayWrap');
+    if (!n) { if (wrap) wrap.hidden = true; if (Date.now() - t0 > 20000 && !heldN()) html.classList.remove('ip-hold'); return; }
+    if (!wrap) { wrap = d.createElement('span'); wrap.id = 'ipAwayWrap'; wrap.className = 'ip-awaywrap'; wrap.innerHTML = '<button type="button" id="ipAway" class="ip-away"></button><button type="button" id="ipAwayX" class="ip-awayx" aria-label="Dismiss: skip all" title="Dismiss (skip all)">✕</button>';
+      var tl = tools(); if (tl) tl.insertBefore(wrap, tl.firstChild); else { wrap.classList.add('ip-awayfix'); d.body.appendChild(wrap); } chip = $('ipAway'); chip.onclick = awaySheet; $('ipAwayX').onclick = skipAll; }
+    wrap.hidden = false; chip.textContent = '🔔 ' + n; chip.title = n + ' thing' + (n === 1 ? '' : 's') + ' happened while you were away'; chip.setAttribute('aria-label', chip.title); }
+  window.V2IpChip = function () { setTimeout(chipUi, 0); };
+  function skipAll() { close(); var rq = d.querySelector('#inReqBox.on'); if (rq) { var lb = [].slice.call(rq.querySelectorAll('button')).filter(function (b) { return /later/i.test(b.textContent); })[0]; if (lb) lb.click(); else rq.classList.remove('on'); }
+    var eg = d.getElementById('eggPop'); if (eg) eg.remove(); held = []; if (window.V2Held) V2Held.skip(); html.classList.remove('ip-hold'); chipUi(); }
+  function watchAll() { close(); held = []; html.classList.remove('ip-hold'); if (window.V2Held) V2Held.run(); chipUi(); }
   function awaySheet() { var L = [], rq = d.querySelector('#inReqBox.on'), eg = d.getElementById('eggPop');
     if (rq) L.push('<li>' + esc((rq.querySelector('h2,h3,#irqTitle') || rq).textContent.trim().slice(0, 90)) + '</li>'); if (eg) L.push('<li>🥚 ' + esc(eg.textContent.replace(/\s+/g, ' ').trim().slice(0, 90)) + '</li>');
-    held.forEach(function (h) { L.push('<li>' + h + '</li>'); });
-    var s = open('<h3>While you were away</h3><ul class="ip-list">' + L.join('') + '</ul>' + (rq || eg ? '<p><button type="button" class="btn" id="ipShowPops">Show them one at a time ▸</button></p>' : ''));
-    var b = s.querySelector('#ipShowPops'); if (b) b.onclick = function () { close(); html.classList.remove('ip-hold'); held = []; chipUi(); };
-    if (!rq && !eg) { held = []; html.classList.remove('ip-hold'); setTimeout(chipUi, 0); } }
+    held.forEach(function (h) { L.push('<li>' + h + '</li>'); }); if (window.V2Held) V2Held.list().forEach(function (h) { L.push('<li>' + esc(h) + '</li>'); });
+    var pops = rq || eg || heldN(), s = open('<h3>While you were away</h3><ul class="ip-list">' + L.join('') + '</ul>' + (pops ? '<p class="row"><button type="button" class="btn" id="ipShowPops">▶ Watch all</button> <button type="button" class="q" id="ipSkipAll">Skip all</button></p>' : ''));
+    var b = s.querySelector('#ipShowPops'); if (b) b.onclick = watchAll; var k = s.querySelector('#ipSkipAll'); if (k) k.onclick = skipAll;
+    if (!pops) { held = []; html.classList.remove('ip-hold'); setTimeout(chipUi, 0); } }
   function watchToasts() { var t = $('toasts'); if (!t || t._ip) return; t._ip = 1;
     new MutationObserver(function (ms) { if (!holdOn() || Date.now() - t0 > 20000) return; ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1 || !n.classList.contains('toast') || n.getAttribute('data-calm') || Date.now() - lastTap < 1500) return; held.push(n.innerHTML); n.remove(); chipUi(); }); }); }).observe(t, { childList: true }); }
   var lastTap = 0; d.addEventListener('pointerdown', function () { lastTap = Date.now(); }, true);
   /* deep links win: until the player touches the page, an automatic jump (e.g. the arena replaying a missed fight) is undone,
    * back to the #target they opened (or the top). The scene still plays; it just doesn't move the page. */
   var touched = false; ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(function (ev) { d.addEventListener(ev, function () { touched = true; }, { capture: true, passive: true }); });
-  if (holdOn()) { var pin = function () { if (touched || Date.now() - t0 > 20000) return window.removeEventListener('scroll', pinS); var h = location.hash && d.getElementById(location.hash.slice(1)), y = h ? h.getBoundingClientRect().top + window.scrollY : 0; if (Math.abs(window.scrollY - y) > 200) window.scrollTo(0, y); }, pend = 0, pinS = function () { if (!pend) pend = setTimeout(function () { pend = 0; pin(); }, 120); }; window.addEventListener('scroll', pinS, { passive: true }); }
+  if (holdOn()) { var pin = function () { if (touched || window.__ipNoPin || Date.now() - t0 > 20000) return window.removeEventListener('scroll', pinS); var h = location.hash && d.getElementById(location.hash.slice(1)), y = h ? h.getBoundingClientRect().top + window.scrollY : 0; if (Math.abs(window.scrollY - y) > 200) window.scrollTo(0, y); }, pend = 0, pinS = function () { if (!pend) pend = setTimeout(function () { pend = 0; pin(); }, 120); }; window.addEventListener('scroll', pinS, { passive: true }); }
   function viewOnlyAccept() { var v = viewOnly(); html.classList.toggle('ip-view', v);
     if (!v) return; d.querySelectorAll('#inReqBox button, #motelReqs button, #motelDesk button, #fPending button').forEach(function (b) { if (/accept/i.test(b.textContent) && !b.classList.contains('ip-hide')) b.classList.add('ip-hide'); }); }
 

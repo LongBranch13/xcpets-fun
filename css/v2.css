@@ -433,3 +433,6 @@ body #pets .pet.card{padding-bottom:44px}
 .board td.num .small{white-space:normal;min-width:7em} /* WAGMI board: sub line (best · days · ✓ today) may wrap on phones */
 /* bugpass 2026-10-21: Rare Room '+N more in your stash' link sits on its own line under the hint (the scene box has line-height:0, so the inline link overlapped the hint at 390) */
 .shop8 .shop-scene .shop-more{display:block;line-height:1.4;padding:2px 8px 6px;background:#170a2b;color:#8fe3ff}
+#hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
+#hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
+#shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */
