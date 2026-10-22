@@ -464,7 +464,8 @@
   /* CHUD'S BEARD GEAR (owner Oct 22 2026, breeding-v2 branch): open Guise (face) piece 'v2-chud-beard', tier 1 (Uncommon), any species incl. hybrids;
    * drawn per pet by V2Render.drawBeard on the detected mouth + jaw. Gear pools are consensus: item.since 'chud-beard' keeps it out of every pool until
    * ACTIVATE_CHUD_BEARD_BLOCK is set (null = OFF, so every roll replays exactly). Appended at the END of ITEMS. No grants. */
-  var ACTIVATE_CHUD_BEARD_BLOCK = null, CHUD_BEARD_ITEM = 'v2-chud-beard';
+  var ACTIVATE_CHUD_BEARD_BLOCK = null, CHUD_BEARD_ITEM = 'v2-chud-beard', BEARD_EXCLUDE = { doge: 1, mumu: 1, pepe: 1, nakamoto: 1 }; /* owner Oct 22 1:27-1:29 AM CT: never rolls/wears on these bodies (player pets and hybrids with that body); 'if a cosmetic looks bad on a pet, that pet doesn't get it' */
+  function bodyOf(p) { return p && p.hybrid && p.hybrid.shape ? p.hybrid.shape : p ? p.species : null; }
   function beardOn(b) { return ACTIVATE_CHUD_BEARD_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_BLOCK; }
   function view(it) { if (!it) return it; if (it.since === 'chud-beard' && !beardOn(ELIG_B)) return null; if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'wiz-staff' && !staffOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
     if (shuffleOn(ELIG_B) && SHUFFLE[it.id]) it = Object.assign({}, it, SHUFFLE[it.id]); if (gaOn(ELIG_B) && GA[it.id]) it = Object.assign({}, it, GA[it.id]); return it; }
@@ -479,14 +480,15 @@
   function shuffleSweep(w, b) { if (w._shufSwept || !shuffleOn(b)) return; w._shufSwept = true;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!SHUFFLE[g.item]) return; var nv = SHUFFLE[g.item];
       moveToSlot(w, g, nv.slot); g.tier = nv.tier; g.legendary = !!nv.exclusive; }); }
-  function eligible(it, species) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false; if (it.id === 'kek-card') return species === 'kek' || (isHybrid(species) && hybridRoots(species).indexOf('kek') >= 0); /* owner Oct 20 ~6:17 PM CT: player Keks AND Kek hybrids (normal parents'-signature rule) */
+  function eligible(it, species, body) { it = typeof it === 'string' ? itemOf(it) : it; it = view(it); if (!it) return false; if (it.id === 'kek-card') return species === 'kek' || (isHybrid(species) && hybridRoots(species).indexOf('kek') >= 0); /* owner Oct 20 ~6:17 PM CT: player Keks AND Kek hybrids (normal parents'-signature rule) */
     if (lockedOut(it.id, species, ELIG_B)) return false;
+    if (it.id === CHUD_BEARD_ITEM) { var bd = body || (isHybrid(species) ? null : species); if (bd && BEARD_EXCLUDE[bd]) return false; } /* owner Oct 22: the beard looks bad on these bodies -> they never roll or wear it */
     if (it.id === WIZ_STAFF_ITEM) return species === 'wizard'; /* player Wizards only (no hybrids) */
     if (isHybrid(species)) { if (!it.exclusive) return true; var par = species.split(':').slice(1); return it.slot !== 'head' && par.indexOf(it.origin) >= 0; } /* hybrids (Jake's locked spec): shared + both parents' signatures EXCEPT their legendary head pieces */
     return !it.exclusive || it.origin === species; }
   function legendaryOf(species) { return ALL.map(view).filter(function (x) { return x && !x.noRoll && x.exclusive && x.origin === species; }).sort(function (a, b) { return (b.slot === 'head') - (a.slot === 'head'); }); } // head signature first, then the 6 other ★ pieces
-  function pool(slot, species, tierIdx) {
-    var all = RAW.map(view).filter(function (x) { return x && !x.noRoll && (x.rollSlot || x.slot) === slot && eligible(x.alias ? BY_ID[x.alias] : x, species); });
+  function pool(slot, species, tierIdx, body) {
+    var all = RAW.map(view).filter(function (x) { return x && !x.noRoll && (x.rollSlot || x.slot) === slot && eligible(x.alias ? BY_ID[x.alias] : x, species, body); });
     var p = all.filter(function (x) { return x.tier <= tierIdx; });
     if (!p.length && all.length) { var m = Math.min.apply(null, all.map(function (x) { return x.tier; })); p = all.filter(function (x) { return x.tier === m; }); }
     return p.map(function (x) { return { it: x, w: x.w * (x.tier === tierIdx ? 4 : 1) }; });
@@ -526,7 +528,7 @@
   function ownedCountsScan(w, owner) { var m = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.owner === owner) m[g.item] = (m[g.item] || 0) + 1; }); return m; }
   function ownedCounts(w, owner) { if (!w.__ix) return ownedCountsScan(w, owner); var m = {}, c = w.__ix.own.get(owner) || {}; Object.keys(c).forEach(function (k) { if (c[k] > 0) m[k] = c[k]; }); return m; }
   function communityCounts(w) { var m = {}; (w.community.gearLog || []).forEach(function (g) { m[g.item] = (m[g.item] || 0) + 1; }); return m; }
-  function pickItem(hex, slot, species, tierIdx, owned) { var p = pool(slot, species, tierIdx); if (!p.length) return null;
+  function pickItem(hex, slot, species, tierIdx, owned, body) { var p = pool(slot, species, tierIdx, body); if (!p.length) return null;
     var tot = p.reduce(function (a, b) { return a + b.w; }, 0), r = parseInt(hex.slice(8, 16), 16) % tot;
     var hit = p[p.length - 1].it; for (var i = 0; i < p.length; i++) { if (r < p[i].w) { hit = p[i].it; break; } r -= p[i].w; }
     if (owned) { var rid = function (x) { return x.alias || x.id; }, tier = p.filter(function (e) { return e.it.tier === hit.tier; });
@@ -743,7 +745,7 @@
     var a = w.__ix.on.get(pid); return a ? a.slice() : []; }
   function wornIn(w, pid, slot) { return wornOf(w, pid).filter(function (g) { return g.slot === slot; })[0] || null; }
   function newItem(w, it, owner, src) { var gid = 'g' + (w.nextItem++); w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: owner, on: null, src: src }; trk(w, w.items[gid]); return w.items[gid]; }
-  function wear(w, p, g) { if (!slotOpen(p, g.slot)) return false; if (!eligible(g.item, p.species)) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
+  function wear(w, p, g) { if (!slotOpen(p, g.slot)) return false; if (!eligible(g.item, p.species, bodyOf(p))) return false; var cur = wornIn(w, p.id, g.slot); if (cur) cur.on = null; if (gearCapOn(w._b)) wornOf(w, p.id).forEach(function (x) { if (x.slot === g.slot) x.on = null; }); g.on = p.id; return true; }
   function giveRandomPiece(w, loser, winnerPet, seedHex, why) {
     var take = wornOf(w, loser.id).filter(function (g) { return !g.legendary; }); // legendary species pieces are never takeable
     if (!take.length) return null;
@@ -808,7 +810,7 @@
     function token(p, kind) { if (b < ACTIVATE_TOKENS_BLOCK || !bh || !p) return;
       var d = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-drop'); if (parseInt(d.slice(0, 8), 16) % 10000 >= TOKEN_DROP_10K[kind]) return;
       liveAt(w, p, b); p.tokens = (p.tokens || 0) + 1; w.tokens[p.owner] = (w.tokens[p.owner] || 0) + 1;
-      var h = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-roll'), sl = p.openSlots[parseInt(h.slice(16, 24), 16) % p.openSlots.length], it = pickItem(h, sl, p.species, p.tier, dedupFor(w, b, p.owner));
+      var h = sha(bh + r.tx_hash + ':' + p.id + 'XCPETS:v2:token-roll'), sl = p.openSlots[parseInt(h.slice(16, 24), 16) % p.openSlots.length], it = pickItem(h, sl, p.species, p.tier, dedupFor(w, b, p.owner), bodyOf(p));
       if (!it) return L(r, 'token', '#' + p.id + ' found a roll token (' + (kind === 'meal' ? 'meal' : 'stage-up') + '), no gear for ' + slotLabel(sl), { petId: p.id, token: true });
       var ni = newItem(w, it, p.owner, 'token'); ni.rolledOn = p.id; wear(w, p, ni);
       return L(r, 'token', '#' + p.id + ' found a roll token (' + (kind === 'meal' ? 'meal' : 'stage-up') + '): free roll ' + it.label + ' (' + slotLabel(sl) + ')', { petId: p.id, gid: ni.gid, token: true, wk: 'tok' + p.id }); }
@@ -852,7 +854,7 @@
       case 'roll': {
         var g = pet(t.petId), wy = !g ? 'no such pet' : g.released ? 'released' : g.owner !== src ? 'owner only' : g.dead ? 'dead' : amt < COSTS.roll ? 'below roll cost 345' : !bh ? 'block hash pending' : null;
         if (wy) return L(r, 'rejected', wy);
-        var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier, dedupFor(w, b, g.owner));
+        var h = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), slot = g.openSlots[parseInt(h.slice(16, 24), 16) % g.openSlots.length], it = pickItem(h, slot, g.species, g.tier, dedupFor(w, b, g.owner), bodyOf(g));
         if (slot === 'hand' && kekCardOn(w, b) && eligible(KEK_CARD_ITEM, g.species) && parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:kekcard').slice(0, 12), 16) % KEK_CARD_DROP_N === 0) it = BY_ID[KEK_CARD_ITEM]; /* LORDKEK card drop (gated) */
         var ni = newItem(w, it, g.owner, 'roll'); ni.rolledOn = g.id; wear(w, g, ni);
         return L(r, 'roll', '#' + g.id + ' rolled ' + it.label + ' (' + slotLabel(slot) + ')', { petId: g.id, gid: ni.gid });
@@ -861,7 +863,7 @@
         if (b < ACTIVATE_FOUNDER_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var fg = pet(t.petId), fw = !(w.freeRolls[src] > 0) ? 'no free rolls left' : !fg ? 'no such pet' : fg.released ? 'released' : fg.owner !== src ? 'owner only' : fg.dead ? 'dead' : !bh ? 'block hash pending' : null;
         if (fw) return L(r, 'rejected', fw);
-        var fh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), fsl = fg.openSlots[parseInt(fh.slice(16, 24), 16) % fg.openSlots.length], fit = pickItem(fh, fsl, fg.species, fg.tier, dedupFor(w, b, fg.owner));
+        var fh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), fsl = fg.openSlots[parseInt(fh.slice(16, 24), 16) % fg.openSlots.length], fit = pickItem(fh, fsl, fg.species, fg.tier, dedupFor(w, b, fg.owner), bodyOf(fg));
         w.freeRolls[src]--; var fni = newItem(w, fit, fg.owner, 'froll'); fni.rolledOn = fg.id; wear(w, fg, fni);
         return L(r, 'roll', '#' + fg.id + ' free roll: ' + fit.label + ' (' + slotLabel(fsl) + ') · ' + w.freeRolls[src] + ' free rolls left', { petId: fg.id, gid: fni.gid, free: true });
       }
@@ -970,7 +972,7 @@
         if (!mythicDiscountOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var og = pet(t.petId), ow = !og ? 'no such pet' : og.community ? 'community pet' : og.released ? 'released' : og.owner !== src ? 'owner only' : og.dead ? 'dead' : !(overflowLeft(w, og, b) > 0) ? 'no overflow rolls left' : !bh ? 'block hash pending' : null;
         if (ow) return L(r, 'rejected', ow);
-        var oh = sha(bh + r.tx_hash + 'XCPETS:v2:overflow-roll'), osl = og.openSlots[parseInt(oh.slice(16, 24), 16) % og.openSlots.length], oit = pickItem(oh, osl, og.species, og.tier, dedupFor(w, b, og.owner));
+        var oh = sha(bh + r.tx_hash + 'XCPETS:v2:overflow-roll'), osl = og.openSlots[parseInt(oh.slice(16, 24), 16) % og.openSlots.length], oit = pickItem(oh, osl, og.species, og.tier, dedupFor(w, b, og.owner), bodyOf(og));
         w.overflowUsed[og.id] = (w.overflowUsed[og.id] || 0) + 1; var oni = newItem(w, oit, og.owner, 'oroll'); oni.rolledOn = og.id; wear(w, og, oni);
         return L(r, 'roll', '#' + og.id + ' overflow roll: ' + oit.label + ' (' + slotLabel(osl) + ') · ' + overflowLeft(w, og, b) + ' overflow rolls left', { petId: og.id, gid: oni.gid, free: true });
       }
@@ -1144,11 +1146,10 @@
     kek: [{ id: 'nemes', label: 'nemes headdress', kind: 'top', keep: true }],
     wizard: [{ id: 'hat', label: 'hat', kind: 'top', hat: true }]
   };
-  /* PART ELIGIBILITY (owner rules Oct 22): a one-eyed body (Dodo, drawn in profile) never takes a two-eye part (any kind 'eyes': Pepe/Peepo bulging
-   * eyes, Wojak sad eyes, Chud eyeglasses, Lenny smug eyes, Nakamoto wire glasses); KEVIN's hair never goes on Pepe or Peepo (it covers their eye domes).
+  /* PART ELIGIBILITY (owner rules Oct 22): [one-eye rule for Dodo was added then REMOVED the same night; ONE_EYED is empty]; KEVIN's hair never goes on Pepe or Peepo (it covers their eye domes).
    * Fallback: the donor's list is filtered BEFORE the parts-stream draw, so the stream picks among the donor's remaining parts; if none remain, that
    * donor gives no body part (colour/shape mix only). Same rule for the LEGENDARY MIX third donor. */
-  var ONE_EYED = { dodo: 1 }, PART_EXCLUDE = { 'kevin:hair': { pepe: 1, peepo: 1 } };
+  var EYE_DOME_BODIES = { pepe: 1, peepo: 1 }, ONE_EYED = {} /* one-eye rule REMOVED Oct 22 1:30 AM CT (owner): Dodo takes every eye part again, drawn as before */, PART_EXCLUDE = { 'kevin:hair': { pepe: 1, peepo: 1 } };
   function partOk(body, sp, d) { if (ONE_EYED[body] && d.kind === 'eyes') return false; var ex = PART_EXCLUDE[sp + ':' + d.id]; return !(ex && ex[body]); }
   function partsFor(body, sp) { return (HYBRID_PARTS[sp] || []).filter(function (d) { return partOk(body, sp, d); }); }
   function hybridParts(hex, plan) { var R = stream('XCPETS:v2:hybrid-parts:' + hex), out = [];
@@ -1203,6 +1204,13 @@
       return Object.keys(on).map(Number); };
     A.ears = band(0.05, headB, true, true); A.arms = grow(band(headB, 0.95, true, true)); A.ears = A.ears.filter(function (q) { return A.arms.indexOf(q) < 0; }); A.tail = band(0.45, 1, true, false).filter(function (q) { return A.arms.indexOf(q) < 0 || (q & 31) < cl - 2; });
     return A; }
+  /** eyeMaskOf(sp, art, o): every pixel that is part of the body's EYES = pixels that change when only the eye style changes (classic / beady /
+   * tinted / star / laser) on the bare body. Catches eyes the colour keys miss (Pepe's Elder lids, Peepo's domes). Kek / Wizard: eye keys only. */
+  var EYE_MASK_CACHE = {};
+  function eyeMaskOf(sp, art, o) { var ck0 = sp + '|' + (o.stage == null ? 3 : o.stage) + '|' + (o.frame || 0); if (EYE_MASK_CACHE[ck0]) return EYE_MASK_CACHE[ck0]; var m = EYE_MASK_CACHE[ck0] = {}; if (sp === 'kek' || sp === 'wizard' || !PetCore.EYES) return m;
+    var L = PetCore.EYES.map(function (e) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: e.id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' }); return PetCore.render(a, Object.assign({}, o, { gearCap: 0, gearOverride: null })).data; });
+    for (var j = 0; j < 1024; j++) for (var i = 1; i < L.length; i++) if (L[i][j * 4] !== L[0][j * 4] || L[i][j * 4 + 1] !== L[0][j * 4 + 1] || L[i][j * 4 + 2] !== L[0][j * 4 + 2]) { m[j] = 1; break; }
+    return m; }
   function keyedRender(sp, art, o) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
     if (sp === 'kek') { var r = renderRoot(a, o); var ks = []; for (var j = 0; j < 1024; j++) ks[j] = r.data[j * 4] === 255 && r.data[j * 4 + 1] === 0 && r.data[j * 4 + 2] === 255 ? undefined : 'body'; r.keys = ks;
       /* the nemes headdress (cap, uraeus and brow band): found by re-rendering with marker colours for the nemes inks, above the brow band, inside the head width */
@@ -1271,7 +1279,7 @@
       var near = L.filter(function (t) { return Math.abs(img.data[t * 4] - skin[0]) + Math.abs(img.data[t * 4 + 1] - skin[1]) + Math.abs(img.data[t * 4 + 2] - skin[2]) < 90; }); if (near.length < L.length * 0.25) return;
       near.forEach(function (t) { var inner = [t - 1, t + 1, t - 32, t + 32].every(function (n) { return n >= 0 && n < 1024 && M[n]; }) ; if (inner) set(t, shadeRgb([img.data[t * 4], img.data[t * 4 + 1], img.data[t * 4 + 2]], 0.62)); });
       L.forEach(function (t) { var n = t + 32; if (n < 1024 && !on[n] && M[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); };
-    (h.parts || []).forEach(function (q) { var p0 = painted.length, kd0 = (partDef(q.sp, q.part) || {}).kind; placeOne(q); var df0 = partDef(q.sp, q.part) || {}; if ((kd0 === 'top' || kd0 === 'ears') && !df0.draw && !df0.keep) contrastPart(painted.slice(p0)); });
+    var noRestore = {}; (h.parts || []).forEach(function (q) { var p0 = painted.length, kd0 = (partDef(q.sp, q.part) || {}).kind; placeOne(q); if (kd0 === 'eyes' || kd0 === 'mouth') painted.slice(p0).forEach(function (t) { noRestore[t] = 1; }); var df0 = partDef(q.sp, q.part) || {}; if ((kd0 === 'top' || kd0 === 'ears') && !df0.draw && !df0.keep) contrastPart(painted.slice(p0)); });
     /* WIZARD HAT, redrawn to fit THIS head: brim as wide as the head (+1 each side) resting on the top outline, a floppy blue cone, gold band, tip flopping over; never over the eyes */
     function drawHat(kF, D) { var hat = D.filter(function (q) { var r = kF.data[q * 4], g = kF.data[q * 4 + 1], b = kF.data[q * 4 + 2]; return b > r + 30 && b > g; }), BL = topColour(kF.data, hat.length ? hat : D), GD = [255, 210, 63];
       var Mh = bbOf(M), eyeL = CA.eyeBox ? CA.eyeBox.t : Mh.t + Math.round(Mh.h * 0.4), colTop = function (x) { for (var y = 0; y < GROUND_ROW; y++) if (M[y * 32 + x]) return y; return -1; };
@@ -1340,8 +1348,11 @@
       /* bumps: top / ears / arms / tail */
       if (kind === 'top' && CA.topSkin) { var tw = {}; (CA.top || []).forEach(function (q) { tw[q >> 5] = (tw[q >> 5] || 0) + 1; }); erase((CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }), false); erase((CA.top || []).filter(function (q) { return tw[q >> 5] < 5; }), true);
         var capT = Math.min.apply(null, (CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }).map(function (q) { return q >> 5; }).concat([99])), stray = []; for (var js0 = 0; js0 < capT * 32; js0++) if (CA.s[js0]) stray.push(js0); erase(stray, true); }
+      else if (kind === 'top' && EYE_DOME_BODIES[h.shape]) { /* Pepe / Peepo: the forked 'top' of the head IS the pair of eye domes; erasing it deleted the eyes (owner Oct 22 1:27 AM: 'completely missing eyes'
+        * with Bobo ears / Mumu horns). Nothing is erased: the part sits on top of the domes (onTop lift keeps it off the eye pixels). */ }
       else erase(CA[kind] || [], true);
       if (kind === 'top' && def.hat) { drawHat(kF, D); return; }
+      var onTopX = def.onTop && h.shape !== 'dodo'; /* Dodo bodies keep the pre-Oct-22 placement (owner revert 1:30 AM CT) */
       if (kind === 'top') { var eyeCap = CA.eyeBox ? CA.eyeBox.t - 2 : 99, Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
         var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = CA.headBox ? [CA.headBox.l, CA.headBox.r] : (function () { var best = null; for (var y = Mb.t + 1; y <= Mb.t + Math.max(2, Math.round(Mb.h * 0.3)); y++) { var w2 = wAt(M, y); if (w2) (best = best || []).push(w2); } if (!best) return null; best.sort(function (a, b) { return (a[1] - a[0]) - (b[1] - b[0]); }); var md = best[best.length >> 1]; return CA.core ? [Math.max(md[0], CA.core[0] - 1), Math.min(md[1], CA.core[1] + 1)] : md; })() || [Mb.l, Mb.r];
         var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; })); var fitT = Math.min(1, Math.max(Mb.t + 2 - mg, eyeCap - 1) / bt.h, (32 - 2 * mg) / bt.w); /* fits between the frame top and just above the eyes */ if (fitT < 1) { kt *= Math.max(0.35, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */
@@ -1373,10 +1384,10 @@
           if (2 * e < wL + 1) { var fS = Math.max(0.5, (2 * e - 1) / wL), seenS = {}; Lp = Lp.map(function (p) { var x = p.t & 31, y = p.t >> 5; return { t: Math.round(hbL.b - (hbL.b - y) * fS) * 32 + Math.round(cxL + (x - cxL) * fS), s: p.s }; }).filter(function (p) { if (seenS[p.t]) return false; seenS[p.t] = 1; return true; }); hbL = bbList(Lp.map(function (p) { return p.t; })); wL = hbL.r - hbL.l + 1; cxL = (hbL.l + hbL.r) / 2; } /* narrow head: smaller ears */
           e = Math.round(Math.max(e, wL / 2 + 0.5)); var e0 = e, eMin = Math.ceil(wL / 2) - 1; while (e > eMin && !okAt(e)) e--; if (!okAt(e)) { var bestE = e0, bestY = 99; for (var e2 = e0; e2 >= eMin; e2--) { var yy2 = Math.max(colTop(Math.round(hc - e2)), colTop(Math.round(hc + e2))); if (colTop(Math.round(hc - e2)) >= 0 && colTop(Math.round(hc + e2)) >= 0 && yy2 < bestY) { bestY = yy2; bestE = e2; } } e = bestE; }
           var yT = Math.max(colTop(Math.round(hc - e)), colTop(Math.round(hc + e))); if (yT < 0) yT = Mb.t;
-          if (def.onTop && hRun) { /* ON the top of the head: pieces pulled in from the corners onto the crown */ var hw2 = (hRun[1] - hRun[0]) / 2; e = Math.max(eMin, Math.min(e, Math.round(hw2 * 0.55 + wL * 0.25))); var tL = colTop(Math.round(hc - e)), tR = colTop(Math.round(hc + e)); yT = Math.max(Math.min(tL, tR), 0); if (tL < 0 || tR < 0) yT = Mb.t; }
+          if (onTopX && hRun) { /* ON the top of the head: pieces pulled in from the corners onto the crown */ var hw2 = (hRun[1] - hRun[0]) / 2; e = Math.max(eMin, Math.min(e, Math.round(hw2 * 0.55 + wL * 0.25))); var tL = colTop(Math.round(hc - e)), tR = colTop(Math.round(hc + e)); yT = Math.max(Math.min(tL, tR), 0); if (tL < 0 || tR < 0) yT = Mb.t; }
           var d2 = Math.max(mg - hbL.t, yT + sink - hbL.b), dxL = Math.round(hc - e - cxL), AX = Math.round(2 * hc), left = shift(Lp, dxL, d2);
-          if (def.onTop) { /* never over the eyes (Pepe/Peepo eye domes ARE the head top): lift until no piece or seam pixel touches an eye pixel */
-            var eyeAt = function (t) { return t >= 0 && t < 1024 && EYE_KEYS[ck.keys[t]]; }, hitsEye = function (L) { return L.some(function (p) { return eyeAt(p.t) || eyeAt(p.t + 32) || ((p.t & 31) > 0 && eyeAt(p.t + 31)) || ((p.t & 31) < 31 && eyeAt(p.t + 33)); }); };
+          if (onTopX) { /* never over the eyes (Pepe/Peepo eye domes ARE the head top): lift until no piece or seam pixel touches an eye pixel */
+            var EM0 = eyeMaskOf(h.shape, art, o), eyeAt = function (t) { return t >= 0 && t < 1024 && (EYE_KEYS[ck.keys[t]] || EM0[t]); }, hitsEye = function (L) { return L.some(function (p) { return eyeAt(p.t) || eyeAt(p.t + 32) || ((p.t & 31) > 0 && eyeAt(p.t + 31)) || ((p.t & 31) < 31 && eyeAt(p.t + 33)); }); };
             var mirrorL = function (L) { return L.map(function (p) { var x = p.t & 31; return { t: p.t - x + (AX - x), s: p.s }; }); };
             var d2a = d2; while (d2 > mg - hbL.t && hitsEye(left.concat(mirrorL(left)))) { d2--; left = shift(Lp, dxL, d2); }
             var hitsEye2 = function (L) { return L.some(function (p) { return eyeAt(p.t); }); }; /* then sink back into the head outline as far as no eye pixel is covered (no double ink line = no floating look) */
@@ -1388,7 +1399,7 @@
           var right = left.map(function (p) { var x = p.t & 31; return { t: p.t - x + (AX - x), s: p.s }; }).filter(function (p) { var x = AX - (p.t & 31); return (p.t & 31) >= 0 && x >= 0 && x <= 31; });
           var wasHead = {}; left.concat(right).forEach(function (p) { if (M[p.t]) wasHead[p.t] = 1; });
           paste(D, kF, left); paste(D, kF, right);
-          var onLR = {}; left.concat(right).forEach(function (p) { onLR[p.t] = 1; }); left.concat(right).forEach(function (p) { [p.t + 32, p.t - 1, p.t + 1].forEach(function (n) { if (n >= 0 && n < 1024 && !onLR[n] && M[n] && CA.s[n] && !(def.onTop && EYE_KEYS[ck.keys[n]]) && (n >> 5) <= (p.t >> 5) + 1 && Math.abs((n & 31) - (p.t & 31)) <= 1) { set(n, INK); touched[n] = 1; } }); }); /* an ink seam where each piece meets the head, so it reads as its own ear / horn */
+          var onLR = {}; left.concat(right).forEach(function (p) { onLR[p.t] = 1; }); left.concat(right).forEach(function (p) { [p.t + 32, p.t - 1, p.t + 1].forEach(function (n) { if (n >= 0 && n < 1024 && !onLR[n] && M[n] && CA.s[n] && !(onTopX && EYE_KEYS[ck.keys[n]]) && (n >> 5) <= (p.t >> 5) + 1 && Math.abs((n & 31) - (p.t & 31)) <= 1) { set(n, INK); touched[n] = 1; } }); }); /* an ink seam where each piece meets the head, so it reads as its own ear / horn */
           TOPDBG = { eyeL: eyeL, hc: AX / 2, pieces: [left, right].map(function (L) { return bbList(L.map(function (p) { return p.t; })); }) };
           if (Cp.length) { var cb2 = bbList(Cp.map(function (p) { return p.t; })), yC = -1; for (var y5 = 0; y5 < GROUND_ROW; y5++) if (M[y5 * 32 + Math.round((cb2.l + cb2.r) / 2) + dx]) { yC = y5; break; }
             var d3 = yC < 0 ? dy : yC + 1 - cb2.b; paste(D, kF, shift(Cp, dx, Math.max(mg - cb2.t, d3))); }
@@ -1407,6 +1418,10 @@
     /* outline round the new silhouette, only where something changed */
     var near = {}; Object.keys(touched).forEach(function (t) { t = +t; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var x = (t & 31) + dx, y = (t >> 5) + dy; if (x >= 0 && y >= 0 && x < 32 && y < GROUND_ROW) near[y * 32 + x] = 1; } });
     Object.keys(near).forEach(function (n) { n = +n; if (M[n]) return; var x = n & 31, adj = [n - 32, n + 32, x > 0 ? n - 1 : -1, x < 31 ? n + 1 : -1].some(function (a) { return a >= 0 && a < 1024 && M[a]; }); set(n, adj ? INK : bgAt(n)); });
+    /* EYES ALWAYS SHOW (owner Oct 22 1:27 AM CT, 'completely missing eyes'): a head part (ears, horns, hat, nemes, hair, side ears...) never removes an eye
+     * pixel of the child's own body: every eye pixel (eyeMaskOf) not repainted by a traded EYES/MOUTH part gets its pre-part colour back. Dodo bodies keep
+     * their pre-Oct-22 look (owner revert). */
+    if (h.shape !== 'dodo') { var EM = eyeMaskOf(h.shape, art, o); Object.keys(EM).forEach(function (t) { t = +t; if (noRestore[t]) return; set(t, [orig[t * 4], orig[t * 4 + 1], orig[t * 4 + 2]]); }); }
     return painted; }
   /* LORD KEK AS A HYBRID ROOT (same system as every species, both ways): pseudo species KEK_SP (canon = player palette: green body, red nemes
    * accent, gold belly/collar). Kek as SHAPE: the KekSprite body (nemes included, it is part of him) recoloured from the colour parent's canon
@@ -1477,7 +1492,7 @@
         out.forEach(function (j) { if (touches(j)) { keep[j] = 1; qq.push(j); } });
         while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
         return out.filter(function (j) { return keep[j]; }); };
-      var noFeat = (h.parts && h.parts.length) || (F.id === 'wizard' && S.id !== 'wizard'); /* breeding v2: traded parts replace the old copied feature; a Wizard feature parent gives a staff instead */
+      var noFeat = (h.parts && h.parts.length) || (Array.isArray(h.parts) && h.shape !== 'dodo') || (F.id === 'wizard' && S.id !== 'wizard'); /* Oct 22 (owner, gray leftover): a v2 plan whose donor gave NO part (e.g. KEVIN hair excluded on Pepe/Peepo) gets no old copied feature either (it pasted KEVIN's gray hair crest between Pepe's/Peepo's eye domes) */ /* breeding v2: traded parts replace the old copied feature; a Wizard feature parent gives a staff instead */
       var px = noFeat ? [] : pick(h.feature); if (!noFeat && px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
       if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
@@ -1813,7 +1828,7 @@
     var used = {}, ops = [];
     w.pets.forEach(function (p) { if (p.owner !== owner || ids.indexOf(p.id) < 0 || p.dead) return;
       p.openSlots.concat(p.species === 'wizard' && slotOpen(p, 'weapon') ? ['weapon'] : []).forEach(function (sl) { var cur = wornIn(w, p.id, sl), best = cur;
-        w.itemList.forEach(function (g) { if (g.owner === owner && g.on == null && !used[g.gid] && g.slot === sl && eligible(g.item, p.species) && (!best || g.tier > best.tier)) best = g; });
+        w.itemList.forEach(function (g) { if (g.owner === owner && g.on == null && !used[g.gid] && g.slot === sl && eligible(g.item, p.species, bodyOf(p)) && (!best || g.tier > best.tier)) best = g; });
         if (best && best !== cur) { used[best.gid] = 1; ops.push({ kind: 'equip', owner: owner, petId: p.id, slot: sl, gid: best.gid, block_index: block }); } }); });
     return ops;
   }
@@ -1828,7 +1843,7 @@
         if (!p || p.owner !== owner || p.released) return miss(pid, sl, 'not your pet');
         if (p.dead) return miss(pid, sl, 'pet is dead (Pet Cemetery)');
         if (!slotOpen(p, sl)) return miss(pid, sl, slotLabel(sl) + ' slot not unlocked yet (capacity ' + p.capacity + ')');
-        if (!eligible(outfit[sl], p.species)) return miss(pid, sl, 'species-only legendary');
+        if (!eligible(outfit[sl], p.species, bodyOf(p))) return miss(pid, sl, 'species-only legendary');
         var cur = wornIn(w, pid, sl); if (cur && cur.item === outfit[sl]) { got[sl] = (got[sl] || 0) + 1; return; } // already wearing it
         var g = w.itemList.filter(function (x) { return x.owner === owner && x.on == null && !used[x.gid] && x.item === outfit[sl]; })[0];
         if (!g) return miss(pid, sl, 'no free copy left (each piece is one item; roll more or take one off another pet)');
@@ -1848,7 +1863,7 @@
     if (p.dead) return { ok: false, why: 'pet is dead (Pet Cemetery)' };
     if (!it) return { ok: false, why: 'unknown piece' };
     if (!slotOpen(p, it.slot)) return { ok: false, why: slotLabel(it.slot) + ' slot not unlocked yet (capacity ' + p.capacity + '/6 grows with age + care)' };
-    if (!eligible(it, p.species)) return { ok: false, why: (it.origin ? it.origin.charAt(0).toUpperCase() + it.origin.slice(1) : 'species') + '-only legendary' };
+    if (!eligible(it, p.species, bodyOf(p))) return { ok: false, why: (it.origin ? it.origin.charAt(0).toUpperCase() + it.origin.slice(1) : 'species') + '-only legendary' };
     var cur = wornIn(w, p.id, it.slot); if (cur && cur.item === itemId) return { ok: false, worn: true, why: 'already wearing it', gid: cur.gid };
     var mineCopies = (w.itemList || []).filter(function (g) { return g.owner === owner && g.item === itemId; });
     if (!mineCopies.length) return { ok: false, why: 'you own no copy (gear-roll, win fights or the Rumble to get one)' };
@@ -1887,7 +1902,7 @@
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
   return { ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
-    ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
+    ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, BEARD_EXCLUDE: BEARD_EXCLUDE, bodyOf: bodyOf, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _anatomy: anatomy, _topDbg: function () { return TOPDBG; }, _keyedRender: keyedRender, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, ODD_EYE_COLOURS: ODD_EYE_COLOURS, ODD_EYE_SPOTS: ODD_EYE_SPOTS, _oddEyeHand: oddEyeHand, PALETTE_SETS: PALETTE_SETS, mutationLabel: mutationLabel, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partOk: partOk, partsFor: partsFor, ONE_EYED: ONE_EYED, PART_EXCLUDE: PART_EXCLUDE, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,

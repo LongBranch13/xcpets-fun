@@ -122,17 +122,17 @@
       var lum = sc[0] + sc[1] + sc[2], k2 = lum > 300 ? 0.55 : null; if (k2) { BR = BR.map(function (n) { return Math.round(n * k2); }); HL = HL.map(function (n) { return Math.round(n * k2); }); DK = DK.map(function (n) { return Math.round(n * k2); }); }
       else { BR = [0x2c, 0x18, 0x0c]; HL = [0x4a, 0x2a, 0x14]; DK = [0x1e, 0x10, 0x08]; if (lum < 200) { BR = [0x9a, 0x62, 0x30]; HL = [0xb8, 0x7c, 0x40]; DK = [0x7a, 0x4a, 0x22]; } } } }
     var isSkin = function (x, y) { return skin[key(x, y)] && a.isSil(x - 1, y) && a.isSil(x + 1, y); };
-    var hH = a.maxY - a.minY, depth = Math.max(2, Math.round(hH * 0.18)), y0 = m.y - 1, yEnd = Math.min(31, m.y + depth), lastY = y0;
-    var skinW = function (y) { var r = run(y), n = 0; if (r) for (var x = r[0]; x <= r[1]; x++) if (skin[key(x, y)]) n++; return n; }, w0 = Math.max(skinW(m.y), skinW(m.y - 1)), hwB = Math.max(3, Math.round(w0 / 2) + 1);
+    var full = a.spId === 'lenny' ? 1 : 0 /* owner Oct 22: a little fuller on Lenny */, hH = a.maxY - a.minY, depth = Math.max(2, Math.round(hH * 0.18)) + full, y0 = m.y - 1, yEnd = Math.min(31, m.y + depth), lastY = y0;
+    var skinW = function (y) { var r = run(y), n = 0; if (r) for (var x = r[0]; x <= r[1]; x++) if (skin[key(x, y)]) n++; return n; }, w0 = Math.max(skinW(m.y), skinW(m.y - 1)), hwB = Math.max(3, Math.round(w0 / 2) + 1) + full;
     for (var y = y0; y <= yEnd; y++) { var r = run(y); if (!r) break; var any = false; if (y > m.y && (skinW(y) > w0 * 1.3 + 2 || (sp.chinY != null && y > sp.chinY))) break; /* the face ends: a wider skin row is the chest/belly (Sarutobi, Doge) */
-      for (var x = r[0] + 1; x < r[1]; x++) { if (!isSkin(x, y) || Math.abs(x - m.x) > hwB) continue; if (y === y0 && Math.abs(x - m.x) > 3 && x > r[0] + 2 && x < r[1] - 2) continue; /* top row: moustache + sideburns only */
+      for (var x = r[0] + 1; x < r[1]; x++) { if (!isSkin(x, y) || Math.abs(x - m.x) > hwB) continue; if (y === y0 && Math.abs(x - m.x) > 3 + full && x > r[0] + 2 && x < r[1] - 2) continue; /* top row: moustache + sideburns only */
         put(x, y, (x + 2 * y) % 5 === 0 ? HL : BR); any = true; }
       if (!any && y > m.y) break; lastY = y; }
     for (var yb = y0 - 2; yb < y0; yb++) { var rs = run(yb); if (!rs) continue; [rs[0] + 1, rs[1] - 1].forEach(function (x2) { if (isSkin(x2, yb)) put(x2, yb, BR); }); } /* sideburns up the cheeks */
     var rl = run(lastY); if (rl) for (var x3 = rl[0] + 1; x3 < rl[1]; x3++) { var c3 = px(x3, lastY); if (c3[0] === BR[0] && c3[1] === BR[1] && c3[2] === BR[2] || c3[0] === HL[0] && c3[1] === HL[1]) put(x3, lastY, DK); } /* darker chin edge */
     return [m.x, m.y]; }
   function drawFace(id, img, sp, a) { var d = typeof id === 'string' ? BonusGear.DEFS[id] : id;
-    if (d && d.beard && a) return drawBeard(img, sp, a);
+    if (d && d.beard && a) { var bx = (V && V.BEARD_EXCLUDE) || {}, bsp = String(a.spId || ''), bsh = /^hyb/.test(bsp) ? null : bsp; if (bsh && bx[bsh]) return [0, 0]; return drawBeard(img, sp, a); } /* excluded bodies never show it (the rules also block rolling / wearing) */
     if (id === 'v2-gold-grill' && a) { var ms = mouthSpan(img, sp, a); if (ms) { var tw = ms[1] - ms[0] + 1, t0 = '', t1 = ''; for (var ti = 0; ti < tw; ti++) { t0 += ti % 2 ? 'G' : 'g'; t1 += 'g'; } d = Object.assign({}, d, { map: [t0, t1] }); sp = Object.assign({}, sp, { mouth: Object.assign({}, sp.mouth, { x: ms[0] + Math.floor(tw / 2) }) }); } }
     var p = facePos(d.at, d.map, sp), C = BonusGear.COLORS, eye = {}, painted = 0;
     if (a) [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
@@ -819,7 +819,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=f00352a362'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=53b51788db'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

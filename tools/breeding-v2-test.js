@@ -46,15 +46,15 @@ if(kids.length>=2){const ow=kids[0].owner;const r2=rows.slice();const blk=last-1
 ok(V.breedV2On(G)&&!V.breedV2On(G-1),'gate inert before '+G);
 // Nakamoto same cap
 if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:null}),G)&&/cap reached/.test(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:null,neglected:false,stage:5}),G)),'Nakamoto: same 6 cap');
-// owner rules Oct 22: one-eyed bodies never get a two-eye part; KEVIN hair never on Pepe/Peepo; Chud bangs gone; beard gear gated OFF
+// owner rules Oct 22 (one-eye rule later removed); KEVIN hair never on Pepe/Peepo; Chud bangs gone; beard gear gated OFF
 {const SPS=Object.keys(V.HYBRID_PARTS);let bad=[],kv=[],chudHair=0,dodoN=0;
  for(const body of SPS)for(const sp of SPS){if(sp===body)continue;for(let i=0;i<400;i++){const plan={shape:body,roots:[body,sp]};const ps=V.hybridParts(H('p'+body+sp+i),plan);
   ps.forEach(q=>{const d=V.HYBRID_PARTS[q.sp].find(x=>x.id===q.part);if(V.ONE_EYED[body]&&d.kind==='eyes')bad.push(body+'<'+q.sp+':'+q.part);if(q.sp==='kevin'&&q.part==='hair'&&(body==='pepe'||body==='peepo'))kv.push(body);if(q.sp==='chud'&&q.part==='hair')chudHair++;});if(V.ONE_EYED[body])dodoN+=ps.length;}}
  for(let i=0;i<20000;i++){const k={hybrid:{roots:['dodo','pepe'],shape:'dodo',parts:[]}};V._breedExtras({tier:3},{tier:3},H('lm'+i),k);k.hybrid.parts.forEach(q=>{const d=V.HYBRID_PARTS[q.sp].find(x=>x.id===q.part);if(d&&d.kind==='eyes')bad.push('legmix dodo<'+q.sp+':'+q.part);});}
- ok(bad.length===0,'one-eyed bodies (Dodo) never get a two-eye part ('+(bad.slice(0,3).join(',')||'0 found')+'; '+dodoN+' other parts given to Dodo bodies)');
  ok(kv.length===0,'KEVIN hair never on Pepe/Peepo bodies');
  ok(chudHair===0&&V.HYBRID_PARTS.chud.length===1&&V.HYBRID_PARTS.chud[0].id==='glasses','Chud black bangs removed; Chud donates eyeglasses');
- ok(V.partsFor('pepe','chud').length===1&&V.partsFor('wojak','peepo').length===1&&V.partsFor('dodo','chud').length===0,'glasses/sad eyes/bulging eyes kept for two-eyed bodies');
+ ok(Object.keys(V.ONE_EYED).length===0&&V.partsFor('dodo','chud').length===1&&V.partsFor('dodo','wojak').length===1&&V.partsFor('dodo','peepo').length===1,'one-eye rule removed: Dodo takes every eye part again');
+ ok(['doge','mumu','pepe','nakamoto'].every(b=>!V.eligible(V.GEAR_BY_ID[V.CHUD_BEARD_ITEM]||V.CHUD_BEARD_ITEM,b,b)),'beard never eligible on Doge/Mumu/Pepe/Nakamoto (gate off anyway)');
  ok(V.HYBRID_PARTS.sarutobi.map(d=>d.id).join()==='tail','Sarutobi donates only the tail (ears removed)');
  ok(['bobo','mumu','doge'].every(sp=>V.HYBRID_PARTS[sp][0].onTop),'Bobo ears / Mumu horns / Doge ears use the onTop placement');
  ok(V.ACTIVATE_CHUD_BEARD_BLOCK===null&&!V.beardOn(99999999),'Chud beard gear gate is null (OFF)');}
