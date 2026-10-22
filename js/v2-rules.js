@@ -1078,31 +1078,31 @@
       return { key: key, a: r[0], b: r[1], c: r[2], roots: r.slice(), name: hybridName(key), shape: o[0], color: o[1], featSp: o[2], feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
     var s = R() % 2, shape = r[s], color = r[1 - s]; // 2-way: unchanged
     return { key: key, a: r[0], b: r[1], roots: r.slice(), name: hybridName(key), shape: shape, color: color, feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
-  /* BODY-PART TRADING (breeding v2, from ACTIVATE_BREEDING_V2_BLOCK). One general rule for every species, no per-pet overrides:
-   * every hybrid root that is NOT the body (shape) parent gives the child one of its signature parts (a second one 50% of the time when the
-   * species has two). Picks come from their own stream 'XCPETS:v2:hybrid-parts:' + hash, so every existing draw stays the same.
-   * Part kinds (all cut from the donor's own sprite at the same stage, keeping the donor's pixels/colours, see partPixels):
-   *   top  = the forked top of the head (rows from the top while the row is split in two or more runs): ears, horns, eye domes, eye stalks
-   *   side = pixels sticking out past the donor's head/body core in the given height band, both sides (ears, claws)
-   *   tail = pixels sticking out on the LEFT in the lower half (tails), drawn behind the body, bottom-aligned
-   *   beak = pixels sticking out on the RIGHT in the given band, drawn in FRONT (beaks)
-   *   face = non-skin face pixels in the given height band (glasses, brows, smirk), drawn on the body, centred
-   *   hair = non-skin pixels in the top band (hair), drawn on the body's top rows */
+  /* BODY-PART TRADING v2 (breeding v2, from ACTIVATE_BREEDING_V2_BLOCK; owner redo Oct 21 2026 10:05 PM CT: REPLACE, not overlay).
+   * One general rule for every species, no per-pet overrides: every hybrid root that is NOT the body (shape) parent gives the child one of
+   * its signature parts (a second one 50% of the time when it has two), picked from the own stream 'XCPETS:v2:hybrid-parts:' + hash.
+   * The part REPLACES the matching region of the child's body: the child's own region is erased first, then the donor's part (cut from the
+   * donor's sprite at the same stage, by semantic pixel keys) is scaled and anchored to the child's anatomy (found the same way), and the
+   * outline is redrawn round the new silhouette. Region kinds:
+   *   eyes  = eye/pupil/white/brow/frame/lens keys (+ the ink inside that box, + eye domes sticking up over it): eyes, glasses, brows
+   *   mouth = the mouth key grown through the non-skin keys round it: beak, lips          (erased region refilled with the child's skin)
+   *   top   = the forked top of the head (ears, horns, nemes, hat)                         (erased to background)
+   *   hair  = species keys touching the top of the head (hair)                             (child's hair refilled with skin)
+   *   ears  = side bumps in the head band (side ears)  arms = side bumps in the body band (claws, arms)  tail = left bump, low band */
   var HYBRID_PARTS = {
-    pepe: [{ id: 'eyes', label: 'bulging eyes', kind: 'top' }],
-    peepo: [{ id: 'eyes', label: 'bulging eyes', kind: 'top' }],
-    wojak: [{ id: 'brows', label: 'worried brows', kind: 'face', y: [0.15, 0.5] }],
-    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'face', y: [0.3, 0.52] }, { id: 'hair', label: 'black bangs', kind: 'hair', y: [0, 0.2] }],
+    pepe: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
+    peepo: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
+    wojak: [{ id: 'eyes', label: 'sad eyes', kind: 'eyes' }],
+    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'eyes' }, { id: 'hair', label: 'black bangs', kind: 'hair' }],
     bobo: [{ id: 'ears', label: 'ears', kind: 'top' }],
     mumu: [{ id: 'horns', label: 'horns', kind: 'top' }],
-    snibby: [{ id: 'stalks', label: 'eye stalks', kind: 'top' }, { id: 'claws', label: 'claws', kind: 'side', y: [0.2, 0.8] }],
-    dodo: [{ id: 'beak', label: 'beak', kind: 'beak', y: [0, 0.55] }, { id: 'tail', label: 'tail feathers', kind: 'tail', y: [0.45, 1] }],
-    kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair', y: [0, 0.3] }],
-    sarutobi: [{ id: 'ears', label: 'ears', kind: 'side', y: [0.15, 0.55] }, { id: 'tail', label: 'tail', kind: 'tail', y: [0.55, 1] }],
+    snibby: [{ id: 'claws', label: 'claws', kind: 'arms' }],
+    dodo: [{ id: 'beak', label: 'beak', kind: 'mouth' }, { id: 'tail', label: 'tail', kind: 'tail', top: 0.5 }],
+    kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair' }],
+    sarutobi: [{ id: 'ears', label: 'ears', kind: 'ears' }, { id: 'tail', label: 'tail', kind: 'tail' }],
     doge: [{ id: 'ears', label: 'ears', kind: 'top' }],
-    lenny: [{ id: 'smirk', label: 'smug brows', kind: 'face', y: [0.15, 0.45] }],
-    nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'face', y: [0.4, 0.6] }, { id: 'hair', label: 'grey hair', kind: 'hair', y: [0, 0.22] }],
-    kek: [{ id: 'nemes', label: 'nemes', kind: 'top' }],
+    lenny: [{ id: 'eyes', label: 'smug eyes', kind: 'eyes' }],
+    nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'eyes' }],
     wizard: [{ id: 'hat', label: 'hat', kind: 'top' }]
   };
   function hybridParts(hex, plan) { var R = stream('XCPETS:v2:hybrid-parts:' + hex), out = [];
@@ -1111,51 +1111,117 @@
     return out; }
   function partDef(sp, id) { return (HYBRID_PARTS[sp] || []).filter(function (d) { return d.id === id; })[0] || null; }
   function partLabel(q) { var d = partDef(q.sp, q.part); return speciesLabel(q.sp) + '\u2019s ' + (d ? d.label : q.part); }
-  /** partPixels(kF, def): the donor part pixels on a magenta-keyed donor render. Returns { px: [j], side: {j: -1|1}, body: sil-without-part, bb }. */
   var GROUND_ROW = 29;
   function silOf(k) { var s = []; for (var j = 0; j < 1024; j++) s[j] = (j >> 5) < GROUND_ROW && !(k.data[j * 4] === 255 && k.data[j * 4 + 1] === 0 && k.data[j * 4 + 2] === 255); return s; }
-  function bbOf(s) { var b = { t: 32, b: -1, l: 32, r: -1 }; for (var j = 0; j < 1024; j++) if (s[j]) { var x = j & 31, y = j >> 5; b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); } b.h = b.b - b.t + 1; return b; }
+  function bbOf(s) { var b = { t: 32, b: -1, l: 32, r: -1 }; for (var j = 0; j < 1024; j++) if (s[j]) { var x = j & 31, y = j >> 5; b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); } b.h = b.b - b.t + 1; b.w = b.r - b.l + 1; return b; }
+  function bbList(L) { var s = []; L.forEach(function (j) { s[j] = true; }); return bbOf(s); }
   function runsOf(s, y) { var R2 = [], a = -1; for (var x = 0; x <= 32; x++) { var on = x < 32 && s[y * 32 + x]; if (on && a < 0) a = x; if (!on && a >= 0) { R2.push([a, x - 1]); a = -1; } } return R2; }
   function medianOf(a) { var b = a.slice().sort(function (p, q) { return p - q; }); return b.length ? b[b.length >> 1] : 0; }
   function edgeAt(s, y, side) { var r = -1; for (var x = 0; x < 32; x++) if (s[y * 32 + x]) { if (side < 0) return x; r = x; } return r; }
-  function partPixels(kF, def) { var s = silOf(kF), bb = bbOf(s), px = [], side = {}; if (bb.b < 0) return null;
-    var cx = (bb.l + bb.r) / 2, y0 = bb.t + Math.floor((def.y ? def.y[0] : 0) * bb.h), y1 = bb.t + Math.ceil((def.y ? def.y[1] : 1) * bb.h) - 1;
-    var col = function (j) { return kF.data[j * 4] + ',' + kF.data[j * 4 + 1] + ',' + kF.data[j * 4 + 2]; };
-    var edge = function (j) { var x = j & 31; return [j - 32, j + 32, x > 0 ? j - 1 : -1, x < 31 ? j + 1 : -1].some(function (n) { return n < 0 || n >= 1024 || !s[n]; }); };
-    if (def.kind === 'top') { for (var y = bb.t; y < bb.t + Math.ceil(bb.h * 0.4); y++) { var rr = runsOf(s, y); if (rr.length < 2) break; rr.forEach(function (q) { for (var x = q[0]; x <= q[1]; x++) px.push(y * 32 + x); }); } }
-    else if (def.kind === 'face' || def.kind === 'hair') { var cnt = {}; for (var j0 = 0; j0 < 1024; j0++) if (s[j0] && !edge(j0)) { var c0 = col(j0); cnt[c0] = (cnt[c0] || 0) + 1; }
-      var skin = Object.keys(cnt).sort(function (p, q) { return cnt[q] - cnt[p]; })[0];
-      var lum = function (j) { return 0.3 * kF.data[j * 4] + 0.59 * kF.data[j * 4 + 1] + 0.11 * kF.data[j * 4 + 2]; }, hc = {};
-      for (var j4 = 0; j4 < 1024; j4++) { var y4 = j4 >> 5; if (y4 >= y0 && y4 <= y1 && s[j4] && !edge(j4) && col(j4) !== skin) hc[col(j4)] = (hc[col(j4)] || 0) + 1; }
-      var hair = Object.keys(hc).sort(function (p, q) { return hc[q] - hc[p]; })[0]; /* hair = the main non-skin colour of the top band; face = the dark feature lines */
-      for (var j1 = 0; j1 < 1024; j1++) { var yy = j1 >> 5; if (yy < y0 || yy > y1 || !s[j1] || col(j1) === skin || edge(j1)) continue; if (def.kind === 'face' ? lum(j1) < 70 : col(j1) === hair) px.push(j1); } }
-    else { var L = [], Rr = []; for (var y2 = bb.t; y2 <= bb.b; y2++) { var r2 = runsOf(s, y2); if (r2.length) { L.push(r2[0][0]); Rr.push(r2[r2.length - 1][1]); } }
-      var qt = function (a, k) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[Math.min(b.length - 1, Math.floor(b.length * k))]; }, cl = qt(L, 0.75), cr = qt(Rr, 0.25), wantL = def.kind !== 'beak', wantR = def.kind !== 'tail';
-      for (var j2 = 0; j2 < 1024; j2++) { var x2 = j2 & 31, y3 = j2 >> 5; if (!s[j2] || y3 < y0 || y3 > y1) continue; if (wantL && x2 < cl - 1) px.push(j2); else if (wantR && x2 > cr + 1) px.push(j2); }
-      var stick = {}; px.forEach(function (j) { stick[j] = 1; });
-      if (def.kind === 'beak' && px.length) { var cnt2 = {}; for (var j3 = 0; j3 < 1024; j3++) if (s[j3]) { var c3 = col(j3); cnt2[c3] = (cnt2[c3] || 0) + 1; } var skin2 = Object.keys(cnt2).sort(function (p, q) { return cnt2[q] - cnt2[p]; })[0], ink = '26,16,32';
-        var acc = {}; px.forEach(function (j) { if (col(j) !== ink) acc[col(j)] = 1; }); var qq = px.slice(), seen = Object.assign({}, stick); /* beak: grow from the tip through the tip's own (non-ink) colours */
-        while (qq.length) { var c4 = qq.pop(); [c4 - 1, c4 + 1, c4 - 32, c4 + 32].forEach(function (n) { if (n < 0 || n >= 1024 || seen[n] || !s[n] || Math.abs((n & 31) - (c4 & 31)) > 1) return; var cn = col(n); if (cn === skin2 || !(acc[cn] || cn === ink)) return; seen[n] = 1; px.push(n); if (cn !== ink) qq.push(n); }); } }
-      var stk = stick; }
-    var on = {}; px.forEach(function (j) { on[j] = 1; side[j] = (j & 31) < cx ? -1 : 1; }); var body = s.map(function (v, j) { return v && !on[j]; });
-    return { px: px, side: side, body: body, bb: bb, s: s, stick: typeof stk !== 'undefined' ? stk : null }; }
-  /** applyParts(img, kS, h, o, sil): draws the plan's traded parts (h.parts) onto the hybrid image; returns the pixels it painted. */
-  function applyParts(img, kS, h, o, art) { var painted = [], S0 = silOf(kS), sb = bbOf(S0); if (sb.b < 0) return painted;
-    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return;
-      var kF = renderRoot(Object.assign({}, art, { species: q.sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' }), Object.assign({}, o, { gearCap: 0, gearOverride: null }));
-      var P = partPixels(kF, def); if (!P || P.px.length < 2) return; var fb = bbOf(P.body);
-      var put = function (j, dx, dy, front) { var x = (j & 31) + dx, y = (j >> 5) + dy; if (x < 0 || y < 0 || x > 31 || y >= GROUND_ROW) return; var t = y * 32 + x;
-        if (front === 'on') { if (!S0[t]) return; } else if (!front && S0[t]) return; for (var c = 0; c < 3; c++) img.data[t * 4 + c] = kF.data[j * 4 + c]; img.data[t * 4 + 3] = 255; painted.push(t); };
-      if (def.kind === 'face' || def.kind === 'hair') { var dxc = Math.round((sb.l + sb.r) / 2 - (P.bb.l + P.bb.r) / 2), ty = def.kind === 'hair' ? sb.t - P.bb.t : Math.round(sb.t + (def.y[0] * sb.h)) - (P.bb.t + Math.floor(def.y[0] * P.bb.h));
-        P.px.forEach(function (j) { put(j, dxc, ty, 'on'); }); return; }
-      [-1, 1].forEach(function (sd) { var js = P.px.filter(function (j) { return P.side[j] === sd; }); if (!js.length) return; var dy, ry;
-        if (def.kind === 'top') { dy = sb.t - fb.t; ry = fb.t + 1; }
-        else if (def.kind === 'tail') { dy = sb.b - fb.b; ry = medianOf(js.map(function (j) { return j >> 5; })); }
-        else { var rel = def.kind === 'beak' ? 0.45 : (medianOf(js.map(function (j) { return j >> 5; })) - P.bb.t) / P.bb.h; ry = medianOf(js.map(function (j) { return j >> 5; })); dy = Math.round(sb.t + rel * sb.h) - ry; }
-        var tyy = Math.max(sb.t, Math.min(sb.b, ry + dy)), fe = edgeAt(P.body, Math.max(fb.t, Math.min(fb.b, ry)), sd), se = edgeAt(S0, tyy, sd); if (fe < 0 || se < 0) return;
-        var dx = se - fe; if (def.kind !== 'top' && P.stick) { var sj = js.filter(function (j) { return P.stick[j]; }); if (!sj.length) return; /* side/tail/beak: the sticking-out part starts right at the body's edge */
-          var inner = sd < 0 ? Math.max.apply(null, sj.map(function (j) { return j & 31; })) : Math.min.apply(null, sj.map(function (j) { return j & 31; })); dx = sd < 0 ? se - 1 - inner : se + 1 - inner; }
-        js.forEach(function (j) { put(j, dx, dy, def.kind === 'beak'); }); }); });
+  var EYE_KEYS = { eye: 1, pupil: 1, white: 1, brow: 1, frame: 1, lens: 1 }, SKIN_KEYS = { body: 1, belly: 1 };
+  /** anatomy(keys): regions of a keyed sprite (keys = PetCore.render(..., { withKeys: true }).keys). Returns pixel lists per region kind. */
+  function anatomy(keys) { var s = [], j; for (j = 0; j < 1024; j++) s[j] = !!keys[j] && (j >> 5) < GROUND_ROW; var bb = bbOf(s), A = { s: s, bb: bb, keys: keys }; if (bb.b < 0) return A;
+    var mTop = 99; for (j = 0; j < 1024; j++) if (s[j] && keys[j] === 'mouth') { mTop = j >> 5; break; }
+    var eyeL = []; for (j = 0; j < 1024; j++) if (s[j] && EYE_KEYS[keys[j]] && (j >> 5) < mTop - 1) eyeL.push(j); /* mouth whites/teeth are not eyes */
+    var eb = eyeL.length ? bbList(eyeL) : null; A.eyeBox = eb;
+    /* forked top: rows from the top while split in 2+ runs */
+    var top = [], yTopMax = bb.t + Math.ceil(bb.h * 0.4); if (eb) yTopMax = Math.min(yTopMax, eb.b + 1); for (var y = bb.t; y < yTopMax; y++) { var rr = runsOf(s, y); if (rr.length < 2) break; rr.forEach(function (q) { for (var x = q[0]; x <= q[1]; x++) top.push(y * 32 + x); }); }
+    /* drop forked-top pieces that carry eyes (eye stalks, eye domes): those belong to the eyes */
+    (function () { var on = {}, seen = {}, keep = []; top.forEach(function (q) { on[q] = 1; });
+      top.forEach(function (q0) { if (seen[q0]) return; var comp = [], st = [q0], eyeish = false; seen[q0] = 1;
+        while (st.length) { var c = st.pop(); comp.push(c); if (EYE_KEYS[keys[c]] || (eb && (c >> 5) >= eb.t - 1 && (c & 31) >= eb.l && (c & 31) <= eb.r)) eyeish = true;
+          [c - 1, c + 1, c - 32, c + 32, c + 64].forEach(function (n) { if (n >= 0 && n < 1024 && on[n] && !seen[n] && Math.abs((n & 31) - (c & 31)) <= 1) { seen[n] = 1; st.push(n); } }); }
+        /* a piece is eye-ish if it touches the eye box from above (stalk) */
+        if (eb && comp.some(function (c) { var b2 = c + 32; return b2 < 1024 && EYE_KEYS[keys[b2]]; })) eyeish = true;
+        if (!eyeish) keep = keep.concat(comp); }); A.eyeTop = top.filter(function (q) { return keep.indexOf(q) < 0; }); top = keep; })();
+    A.top = top; var topOn = {}; top.forEach(function (q) { topOn[q] = 1; });
+    if (eb) { var E = []; for (j = 0; j < 1024; j++) { var xj = j & 31, yj = j >> 5; if (!s[j] || xj < eb.l - 1 || xj > eb.r + 1 || yj < eb.t - 2 || yj > eb.b + 1) continue; if (EYE_KEYS[keys[j]] || ((keys[j] === 'ink' || keys[j] === 'tear') && yj <= eb.b + 1)) E.push(j); }
+      var domes = (A.eyeTop || []).filter(function (q) { var xq = q & 31; return xq >= eb.l && xq <= eb.r && eb.t - (q >> 5) <= 3; }); A.eyes = E.concat(domes); A.eyeDomes = domes; } else A.eyes = [];
+    var mk = []; for (j = 0; j < 1024; j++) if (s[j] && keys[j] === 'mouth') mk.push(j); A.mouthKey = mk;
+    if (mk.length) { var mb = bbList(mk), on = {}, q2 = mk.slice(); mk.forEach(function (q) { on[q] = 1; });
+      while (q2.length) { var c = q2.pop(); [c - 1, c + 1, c - 32, c + 32].forEach(function (n) { if (n < 0 || n >= 1024 || on[n] || !s[n] || Math.abs((n & 31) - (c & 31)) > 1) return; var k = keys[n], xn = n & 31, yn = n >> 5;
+          if (k === 'body' || EYE_KEYS[k] || topOn[n] || yn < mb.t - 2 || yn > mb.b + 2 || xn < mb.l - 8 || xn > mb.r + 8) return; on[n] = 1; q2.push(n); }); }
+      A.mouth = Object.keys(on).map(Number); A.mouthBox = mb; } else A.mouth = [];
+    /* hair keys: species keys (not skin/eye/mouth/accent/ink) touching the top two rows */
+    var hk = {}; for (j = 0; j < 1024; j++) { var k2 = keys[j]; if (s[j] && (j >> 5) <= bb.t + 1 && /^sp\d$/.test(k2)) hk[k2] = 1; }
+    A.hair = []; for (j = 0; j < 1024; j++) if (s[j] && hk[keys[j]] && (!eb || (j >> 5) < eb.b + 1 || (j & 31) < eb.l || (j & 31) > eb.r)) A.hair.push(j);
+    /* side bumps: pixels outside the body core (75th/25th percentile row edges) */
+    var Ls = [], Rs = []; for (var y2 = bb.t; y2 <= bb.b; y2++) { var r2 = runsOf(s, y2); if (r2.length) { Ls.push(r2[0][0]); Rs.push(r2[r2.length - 1][1]); } }
+    var qt = function (a, f) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[Math.min(b.length - 1, Math.floor(b.length * f))]; }, cl = qt(Ls, 0.75), cr = qt(Rs, 0.25);
+    A.core = [cl, cr];
+    var band = function (f0, f1, left, right) { var y0 = bb.t + Math.floor(f0 * bb.h), y1 = bb.t + Math.ceil(f1 * bb.h) - 1, out = [];
+      for (var j3 = 0; j3 < 1024; j3++) { var x3 = j3 & 31, y3 = j3 >> 5; if (!s[j3] || topOn[j3] || y3 < y0 || y3 > y1) continue; if (left && x3 < cl - 1) out.push(j3); else if (right && x3 > cr + 1) out.push(j3); } return out; };
+    var headB = eb ? Math.min(0.6, (eb.b + 3 - bb.t) / bb.h) : 0.5;
+    var grow = function (L) { var on = {}; L.forEach(function (q) { on[q] = 1; }); var st = L.slice();
+      while (st.length) { var c = st.pop(); [c - 1, c + 1, c - 32, c + 32].forEach(function (n) { if (n < 0 || n >= 1024 || on[n] || !s[n] || topOn[n] || Math.abs((n & 31) - (c & 31)) > 1 || keys[n] !== keys[c]) return; var xn = n & 31; if (xn >= cl && xn <= cr) return; on[n] = 1; st.push(n); }); }
+      return Object.keys(on).map(Number); };
+    A.ears = band(0.05, headB, true, true); A.arms = grow(band(headB, 0.95, true, true)); A.ears = A.ears.filter(function (q) { return A.arms.indexOf(q) < 0; }); A.tail = band(0.45, 1, true, false).filter(function (q) { return A.arms.indexOf(q) < 0 || (q & 31) < cl - 2; });
+    return A; }
+  function keyedRender(sp, art, o) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
+    if (sp === 'kek') { var r = renderRoot(a, o); var ks = []; for (var j = 0; j < 1024; j++) ks[j] = r.data[j * 4] === 255 && r.data[j * 4 + 1] === 0 && r.data[j * 4 + 2] === 255 ? undefined : 'body'; r.keys = ks; return r; }
+    return PetCore.render(a, Object.assign({}, o, { gearCap: 0, gearOverride: null, withKeys: true })); }
+  /** scaled(list, k, anchor): nearest-neighbour scale of a pixel list about its bbox anchor ([ax, ay] in 0..1). Returns [{ j: target, s: source }]. */
+  function scaled(list, k, anc) { var b = bbList(list), on = {}; list.forEach(function (q) { on[q] = 1; }); if (Math.abs(k - 1) < 0.08) return list.map(function (q) { return { t: q, s: q }; });
+    var W = Math.max(1, Math.round(b.w * k)), H = Math.max(1, Math.round(b.h * k)), ox = b.l + (b.w - W) * anc[0], oy = b.t + (b.h - H) * anc[1], out = [];
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var sx = b.l + Math.min(b.w - 1, Math.floor(x / k)), sy = b.t + Math.min(b.h - 1, Math.floor(y / k)), sj = sy * 32 + sx; if (on[sj]) out.push({ t: Math.round(oy + y) * 32 + Math.round(ox + x), s: sj }); }
+    return out; }
+  var INK = [26, 16, 32];
+  /** applyParts(img, kS, h, o, art, feat): REPLACES the child's regions with the plan's traded parts (h.parts); returns the pixels painted. */
+  function applyParts(img, kS, h, o, art, feat) { var painted = [];
+    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted;
+    var M = CA.s.slice(); (feat || []).forEach(function (q) { M[q] = true; }); var touched = {};
+    var col = function (j) { return [img.data[j * 4], img.data[j * 4 + 1], img.data[j * 4 + 2]]; };
+    var skinCount = {}; for (var j0 = 0; j0 < 1024; j0++) if (CA.s[j0] && ck.keys[j0] === 'body') { var c0 = col(j0).join(','); skinCount[c0] = (skinCount[c0] || 0) + 1; }
+    var skin = (Object.keys(skinCount).sort(function (p, q) { return skinCount[q] - skinCount[p]; })[0] || '').split(',').map(Number);
+    var isBgK = function (j) { return kS.data[j * 4] === 255 && kS.data[j * 4 + 1] === 0 && kS.data[j * 4 + 2] === 255; };
+    var set = function (j, c) { img.data[j * 4] = c[0]; img.data[j * 4 + 1] = c[1]; img.data[j * 4 + 2] = c[2]; img.data[j * 4 + 3] = 255; };
+    var orig = new Uint8ClampedArray(img.data);
+    var bgAt = function (j) { if (isBgK(j)) return [orig[j * 4], orig[j * 4 + 1], orig[j * 4 + 2]]; for (var r = 1; r <= 5; r++) for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) { var x = (j & 31) + dx, y = (j >> 5) + dy; if (x < 0 || y < 0 || x > 31 || y > 31) continue; var n = y * 32 + x; if (isBgK(n)) return [orig[n * 4], orig[n * 4 + 1], orig[n * 4 + 2]]; } return [orig[j * 4], orig[j * 4 + 1], orig[j * 4 + 2]]; };
+    var erase = function (list, toBg) { list.forEach(function (q) { touched[q] = 1; if (toBg) M[q] = false; else if (skin.length === 3) set(q, skin); }); };
+    var paste = function (D, kF, pairs) { pairs.forEach(function (p) { var x = p.t & 31, y = p.t >> 5; if (p.t < 0 || p.t >= 1024 || x < 0 || y >= GROUND_ROW) return; M[p.t] = true; touched[p.t] = 1; set(p.t, [kF.data[p.s * 4], kF.data[p.s * 4 + 1], kF.data[p.s * 4 + 2]]); painted.push(p.t); }); };
+    var shift = function (pairs, dx, dy) { return pairs.filter(function (p) { var x = (p.t & 31) + dx; return x >= 0 && x < 32; }).map(function (p) { return { t: p.t + dy * 32 + dx, s: p.s }; }); };
+    var clampK = function (k, lo, hi) { return Math.max(lo, Math.min(hi, k)); };
+    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return; var kF = keyedRender(q.sp, art, o), DA = anatomy(kF.keys), D = DA[def.kind] || []; if (D.length < 2 || DA.bb.b < 0) return;
+      var db = bbList(D), sb = CA.bb, kind = def.kind, pairs, dx, dy;
+      if (kind === 'eyes' || kind === 'mouth' || kind === 'hair') {
+        var C = CA[kind] || [], cb = C.length ? bbList(C) : null;
+        if (kind === 'hair') { erase(C.filter(function (q) { return !CA.top.length || CA.top.indexOf(q) < 0; }), false); erase(CA.top, true); }
+        else { erase(C.filter(function (q) { return CA.eyeDomes && CA.eyeDomes.indexOf(q) >= 0; }), true); erase(C.filter(function (q) { return !CA.eyeDomes || CA.eyeDomes.indexOf(q) < 0; }), false); }
+        var headW = function (y) { var r = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, y))); return r.length ? r[r.length - 1][1] - r[0][0] + 1 : sb.w; };
+        var k = kind === 'hair' ? clampK(headW(sb.t + 2) / Math.max(1, headW.call(null, sb.t + 2) && DA.bb.w), 0.7, 1.25) : 1;
+        if (kind === 'hair') k = clampK((sb.w) / DA.bb.w, 0.7, 1.25);
+        if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); }
+        pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
+        if (kind === 'hair') { dx = Math.round((sb.l + sb.r) / 2 - (pb.l + pb.r) / 2); dy = sb.t - pb.t; }
+        else if (kind === 'mouth') { var dm = bbList(DA.mouthKey), tx = cb ? (CA.mouthBox.l + CA.mouthBox.r) / 2 : (sb.l + sb.r) / 2, ty = cb ? (CA.mouthBox.t + CA.mouthBox.b) / 2 : sb.t + sb.h * 0.55;
+          dx = Math.round(tx - (dm.l + dm.r) / 2); dy = Math.round(ty - (dm.t + dm.b) / 2);
+          /* a mouth part that sticks out of the donor's head (a beak) sticks out of the child's head the same way, from the same side */
+          var my = Math.round((dm.t + dm.b) / 2), hR = -1, hL = 99, Don = {}; D.forEach(function (q) { Don[q] = 1; }); for (var x5 = 0; x5 < 32; x5++) { var j5 = my * 32 + x5; if (DA.s[j5] && !Don[j5]) { hL = Math.min(hL, x5); hR = Math.max(hR, x5); } }
+          if (db.r > hR + 1 || db.l < hL - 1) { var side = db.r - hR >= hL - db.l ? 1 : -1, cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce - hR : ce - hL; dy = cy0 - my; } } dx = Math.max(1 - db.l, Math.min(30 - db.r, dx)); }
+        else { var ex = cb ? (cb.l + cb.r) / 2 : (sb.l + sb.r) / 2, ey = cb ? (cb.b) : sb.t + sb.h * 0.4, eb2 = bbList(pairs.filter(function (p) { return DA.eyeDomes.indexOf(p.s) < 0; }).map(function (p) { return p.t; }).concat([pb.l + pb.b * 32]));
+          dx = Math.round(ex - (pb.l + pb.r) / 2); dy = Math.round(ey - eb2.b); }
+        paste(D, kF, shift(pairs, dx, dy)); return; }
+      /* bumps: top / ears / arms / tail */
+      erase(CA[kind] || [], true);
+      if (kind === 'top') { var Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
+        var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = wAt(M, Mb.t + 1) || [Mb.l, Mb.r];
+        var kt = clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), 0.6, 1.4), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; }));
+        var dc = (dRow[0] + dRow[1]) / 2, cc = (cRow[0] + cRow[1]) / 2; dx = Math.round(cc - (dc + ((bt.l + bt.r) / 2 - (db.l + db.r) / 2))); dx = Math.round(cc - dc); dy = Mb.t + 1 - bt.b;
+        dx = Math.max(1 - bt.l, Math.min(30 - bt.r, dx)); dy = Math.max(-bt.t, dy);
+        /* never bury the part inside the child's head (e.g. over Pepe's eye domes): lift it until most of it shows */
+        var hid = function (d) { return pt.filter(function (p) { var t = p.t + d * 32 + dx; return t >= 0 && t < 1024 && M[t]; }).length; }; while (dy > -bt.t && hid(dy) > pt.length * 0.35) dy--;
+        paste(D, kF, shift(pt, dx, dy)); return; }
+      [-1, 1].forEach(function (sd) { var cx = (DA.bb.l + DA.bb.r) / 2, js = D.filter(function (j) { return ((j & 31) < cx ? -1 : 1) === sd; }); if (!js.length || (kind === 'tail' && sd > 0)) return;
+        var jb = bbList(js); if (def.top) { var cut = jb.t + Math.max(2, Math.round(jb.h * def.top)); js = js.filter(function (j) { return (j >> 5) < cut; }); jb = bbList(js); }
+        var k2 = clampK(sb.h / DA.bb.h, kind === 'tail' ? 1 : 0.7, 1.35);
+        var pr = scaled(js, k2, [sd < 0 ? 1 : 0, 0.5]), b2 = bbList(pr.map(function (p) { return p.t; })), ty, se;
+        { var rel = ((jb.t + jb.b) / 2 - DA.bb.t) / DA.bb.h; ty = Math.round(sb.t + rel * sb.h); dy = Math.round(ty - (b2.t + b2.b) / 2);
+          var rows = []; for (var yy = b2.t + dy; yy <= b2.b + dy; yy++) if (yy >= sb.t && yy <= sb.b) { var e = edgeAt(M, yy, sd); if (e >= 0) rows.push(e); }
+          se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(1 - b2.l, Math.min(30 - b2.r, dx)); }
+        paste(js, kF, shift(pr, dx, dy)); }); });
+    /* outline round the new silhouette, only where something changed */
+    var near = {}; Object.keys(touched).forEach(function (t) { t = +t; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var x = (t & 31) + dx, y = (t >> 5) + dy; if (x >= 0 && y >= 0 && x < 32 && y < GROUND_ROW) near[y * 32 + x] = 1; } });
+    Object.keys(near).forEach(function (n) { n = +n; if (M[n]) return; var x = n & 31, adj = [n - 32, n + 32, x > 0 ? n - 1 : -1, x < 31 ? n + 1 : -1].some(function (a) { return a >= 0 && a < 1024 && M[a]; }); set(n, adj ? INK : bgAt(n)); });
     return painted; }
   /* LORD KEK AS A HYBRID ROOT (same system as every species, both ways): pseudo species KEK_SP (canon = player palette: green body, red nemes
    * accent, gold belly/collar). Kek as SHAPE: the KekSprite body (nemes included, it is part of him) recoloured from the colour parent's canon
@@ -1213,10 +1279,10 @@
         out.forEach(function (j) { if (touches(j)) { keep[j] = 1; qq.push(j); } });
         while (qq.length) { var c0 = qq.pop(); [c0 - 1, c0 + 1, c0 - 32, c0 + 32].forEach(function (n) { if (on[n] && !keep[n] && Math.abs((n & 31) - (c0 & 31)) <= 1) { keep[n] = 1; qq.push(n); } }); }
         return out.filter(function (j) { return keep[j]; }); };
-      var px = pick(h.feature); if (px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
+      var px = h.parts && h.parts.length ? [] : pick(h.feature); if (!(h.parts && h.parts.length) && px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head'); /* breeding v2: traded parts replace the old copied feature */
       if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
-      if (h.parts && h.parts.length) px = px.concat(applyParts(img, kS, h, o, art)); /* breeding v2: traded body parts (only plans bred at/after the gate have parts) */
+      if (h.parts && h.parts.length) px = px.concat(applyParts(img, kS, h, o, art, px)); /* breeding v2: traded body parts (only plans bred at/after the gate have parts) */
       var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
       var left = busy > 2;
     }
@@ -1545,7 +1611,7 @@
   return { ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
-    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _partPixels: partPixels, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
+    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _anatomy: anatomy, _keyedRender: keyedRender, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
