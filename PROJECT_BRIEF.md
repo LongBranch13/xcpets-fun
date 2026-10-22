@@ -41,3 +41,10 @@
 - v2-badges.js loaded on play.html + pet.html, v2-arena-modes.js on play.html (the branches had added the files but never loaded them).
 - Series mechanics in main are inert until Lord Kek reaches Mythic (eraAt = 0 => hatchSeries 1); SERIES_LAUNCH_BLOCKS = [] so no later halving or HatchBot halving-2 post can fire. Follow-up branch halving-community-trigger removes series entirely.
 - tools/breeding-v2-test.js was already failing on main (V.beardPartOn not exported in its harness) - pre-existing.
+
+## Halving: community-pet trigger, no series (Oct 22 2026 ~12:50 PM CT, branch halving-community-trigger, build fa36e4ca36)
+- Owner: there is NO series concept. Removed p.series, hatchSeries, breedSeries, seriesOf/seriesScale, per-series thresholds and care steps, SERIES_LAUNCH_BLOCKS. Hatching never closes; new pets come only through community pets.
+- Halving 1 = Lord Kek reaches Mythic (w.kekMythic) + 6. Halving 2+ = each new community pet's arrival block + 6 (COMMUNITY_PET_ARRIVAL_BLOCKS, owner sets; empty now). ACTIVATE_COMMUNITY_TRIGGER_BLOCK = 972646 (tip 972,640 + 6); arrivals before it are ignored.
+- A halving only halves burn prices. MEAL FIX (flagged to owner): the care a meal adds stays its base value (e.g. 9,200) and only the cost halves (mealCost = care / 2^halvings x sale factor), so growth pace never changes. Hatch still gives 69 care.
+- Copy: rules "The halving: burns cost half" (no eras/series), ribbon "👑 The halving", HatchBot halving 2+ texts say "a new community pet". Replay SAME (972623, 972561) vs fb35ac1.
+- HatchBot warnings are LIVE in /workspace/xcpets/telegram: announce.js hbWarnTick (after watch, under the queue lock) reads a compact summary from the live page (announce-chain.js `hbw`), runs hb-warnings.js (live copy, ENABLED true; repo tools/hatchbot-warnings.js stays ENABLED false as reference), and queues due steps as normal announce items (send-guard, lock, gap, caps, PAUSE, live flag all apply). Flag: config.json announce.warnings.enabled. Dedupe: hb-warnings-posted.json (never pruned). Halving-1 "set" older than 36 blocks is recorded, never posted. Test: node test-hb-warnings.js (10/10, in-memory, no sends).

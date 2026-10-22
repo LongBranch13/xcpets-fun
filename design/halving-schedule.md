@@ -1,6 +1,8 @@
 # XCPETS burn-cost halving + Fire Sale: DESIGN ONLY
 _Grok Bot, Oct 22 2026 ~1:45 AM CT. Nothing is built, gated or deployed. Sources: js/v2-rules.js @ origin/main feeece0 (Oct 22 00:37 CT), rare-room-v2 branch (wheel), PROJECT_BRIEF.md, memory-facts.txt, telegram/data/chain-facts.json (replay at block 972,581, 1:26 AM CT)._
-Player-facing copy never mentions price, trading or the token's market. Copy talks only about "eras", "the Kek era", and "Fire Sale".
+
+> **Owner update, Oct 22 2026 ~12:18 PM CT (supersedes everything below):** NO series concept. Halving 1 = Lord Kek reaches Mythic + 6; later halvings = each new community pet + 6. A halving only halves every burn price; care thresholds and the care a meal adds stay as today (meal fix). Built on branch halving-community-trigger.
+Player-facing copy never mentions price, trading or the token's market. Copy talks only about "the halving" and "Fire Sale".
 
 ## 1. Where things stand today (from code and data)
 | Action | Tag | Cost (XCPETS) |
@@ -23,29 +25,25 @@ Care thresholds: 0/69/8,349/22,149/41,469/**69,069** Mythic (day ~9). The Mythic
 
 ## 2. Schedule (owner revisions Oct 22 2026 1:47 AM CT)
 The Bitcoin Wizard is **not** a halving point.
-**NO fixed floor (owner confirmed).** Costs halve **only when a new pet series is created**. When the owner stops making new pets, costs stop dropping. The 100M burn goal pace is therefore the owner's call.
+**NO fixed floor (owner confirmed).** Costs halve **only when a new community pet arrives** (owner, Oct 22 2026 12:17 PM CT; there is no series concept). When no new community pet comes, costs stop dropping. The 100M burn goal pace is therefore the owner's call.
 **Halving 1, the story event: STAR LORD KEK defeats Lord Kek. APPROVED: triggered by the burn that pushes Lord Kek's care to Mythic.**
 - **How the defeat is decided:** the defeat burn is the existing replay record `w.kekMythic = {block, tx}`, the first valid community burn at or after ACTIVATE_KEK_BLOCK (972,396) that brings Lord Kek's care to 6,906,900 or more. That is pure chain data. It is shown as STAR LORD KEK's victory, with the 7 sacred artifacts beat, and Lord Kek goes to Cold Storage (archive #3), like Nakamoto's farewell.
 - **Not used (owner chose the kekMythic burn):** the defeat block is the first block after kekMythic where `sha256(blockhash + 'XCPETS:v2:starlordkek') % 7 == 0` (about 7 blocks on average). Still deterministic.
 - **Gate:** `HALVING_1_BLOCK = max(defeat block + 6, ACTIVATE_HALVING_BLOCK)`. ACTIVATE_HALVING_BLOCK is tip + 6 at deploy, so a defeat that happened before the code ships doesn't rewrite history.
-**Halving 2 and on:** one per new series, at that series' launch block + 6, a constant the owner sets per series.
-| Era | Trigger | Hatch / 12 / 144 | Meals | Roll/Spin | Fight/Accept/Breed/c:roll |
+**Halving 2 and on:** one per new community pet, at that pet's arrival block + 6 (`COMMUNITY_PET_ARRIVAL_BLOCKS`, owner sets each; an arrival at or before halving 1 adds nothing).
+| Halvings | Trigger | Hatch / 12 / 144 | Meal cost (care added stays 4,140 / 6,900 / 9,660 / 9,200) | Roll/Spin | Fight/Accept/Breed/c:roll |
 |---|---|---|---|---|---|
-| 0 Series 1 (now) | – | 69 / 690 / 6,900 | 4,140 / 6,900 / 9,660 / 9,200 | 345 | 690 |
-| 1 Series 2 | STAR LORD KEK defeats Lord Kek, + 6 | 34.5 / 345 / 3,450 | 2,070 / 3,450 / 4,830 / 4,600 | 172.5 | 345 |
-| 2 Series 3 | Series 3 launch + 6 | 17.25 / 172.5 / 1,725 | 1,035 / 1,725 / 2,415 / 2,300 | 86.25 | 172.5 |
-| n | the owner adds a series, if and when | base / 2^n | | | |
-Formula: `cost(a,b) = base(a) / 2^era(b)`. There's no floor and no rounding through about era 5 (8 decimals). Series 2 needs its roster ready by the defeat. If it isn't, costs halve at the defeat and the roster opens at a later launch block.
+| 0 (now) | – | 69 / 690 / 6,900 | 4,140 / 6,900 / 9,660 / 9,200 | 345 | 690 |
+| 1 | STAR LORD KEK defeats Lord Kek (kekMythic) + 6 | 34.5 / 345 / 3,450 | 2,070 / 3,450 / 4,830 / 4,600 | 172.5 | 345 |
+| 2 | next new community pet arrives + 6 | 17.25 / 172.5 / 1,725 | 1,035 / 1,725 / 2,415 / 2,300 | 86.25 | 172.5 |
+| n | each later new community pet + 6 | base / 2^n | | | |
+Formula: `cost(a,b) = base(a) / 2^halvings(b)`. There's no floor and no rounding through about 5 halvings (8 decimals).
 
-### Care thresholds: halve them too
-If costs halve but thresholds don't, each meal buys half the care, so feeding takes 2x as many days. If meals halve **and thresholds halve**, growth stays the same speed (still ~day 9 to Mythic, still one meal a day). Recommendation: **new-series pets use thresholds ÷ 2^era** (69,069 becomes 34,534.5), so a meal is still a stage-sized step. **Old-series pets keep their own series' thresholds and meal sizes** (care stored per pet, never rescaled), but their meal *cost* drops to the current era. To do that, add care per meal as "series meal value" instead of "XCPETS burned". This is the one real rules change: care becomes meal-count-equivalent, not raw XCPETS. The simpler alternative is to keep care = XCPETS and have old pets also use halved thresholds. That would instantly re-stage thousands of pets, so it's rejected. The Mythic discount 21,000 scales the same way (10,500 in era 1).
+### Care: unchanged (MEAL FIX, owner Oct 22 2026 12:18 PM CT)
+Thresholds, meal sizes and the care a meal adds never change. A meal still adds its base care (e.g. 9,200) and only its price halves (`mealCost = care / 2^halvings`, x Fire Sale factor). So a halving never slows growth: every pet still reaches Mythic in about 9 meals. Hatching still gives 69 care (paid 34.5 after halving 1). Before halving 1 cost === care, so replay is unchanged.
 
-## 3. New series mechanics
-- At the era gate, **new hatches roll a Series-2 species pool** (new roster, e.g. 12 new 8-bit memes plus a 1-in-777 special). `pet:hatch` from then on only makes Series-2 eggs. Series-1 species can't be hatched anymore. The 1-in-777 slot that Kek holds moves to the new pool's special.
-- Old pets keep living, feeding (at the current era price), fighting, rolling gear and breeding. Neglect and death rules are unchanged.
-- **Breeding:** see section 8.
-- **Art needed:** a new egg sprite per series (egg colour/rune by series), N species x 5 stages x frames, signature hats, odd-eye maps (ODD_EYE_SPOTS), hybrid rules, a Pet Guide page, plus a "Series 1 closed" stamp on the guide.
-- **Rare Room and gear:** all owned gear carries over and stays wearable (eligibility by slot). Species signature items stay tied to their species. Shared crowns and new Series-2 items join the roll pool, and S1 signatures stay in the pool only for S1 pets. The Rare Room shows a series tab. The community pet ladder continues (series boss = community pet).
+## 3. ~~New series mechanics~~ REMOVED (owner, Oct 22 2026 12:18 PM CT)
+There is no series concept: no p.series tag, no Series-2 hatch pool, no hatchSeries roster, Series-1 hatching never closes, no per-series thresholds or care steps, no "Series N" chip, no breed toast, no SERIES_LAUNCH_BLOCKS, no breedSeries. New pets come only through community pets. A halving only halves every burn price.
 
 ## 4. Replay safety
 - One pure function `eraAt(w, b)`: count of milestones whose `block + 6 <= b`. Milestones come only from replay records (w.kekMythic.block, etc.), which are themselves pure chain data. Code constant `ACTIVATE_HALVING_BLOCK = tip + 6` at deploy. Before it, era is always 0, so every earlier burn replays byte-identically. Test "replay SAME" at the current tip plus the usual checkpoints (972118/972124/972222/972232/972581).
@@ -55,7 +53,7 @@ If costs halve but thresholds don't, each meal buys half the care, so feeding ta
 ## 5. Risks
 - **Rounding:** halves of 345 give 172.5 and 86.25. Fine on chain (8 dp), but the UI must display "172.5". If whole numbers are wanted, round **down** (never charge more than half) and document it.
 - **In-flight sends:** a full-price burn confirmed after the gate is **valid, overpaid**. Treat the excess like the current overfeed rule (counts as burned, and as community food). A half-price burn confirmed *before* the gate is **rejected** (underpaid), which is the same as today. The UI should refuse to build a half-price tx until tip ≥ gate − 1 and warn that "price drops at block X".
-- **100M burn goal:** halving cuts XCPETS burned per action, so the goal arrives later unless activity rises. With no automatic floor, how far costs fall is the owner's decision (whether to make new series).
+- **100M burn goal:** halving cuts XCPETS burned per action, so the goal arrives later unless activity rises. With no automatic floor, how far costs fall is the owner's decision (whether to add new community pets).
 - **Fairness to early players:** they paid more. Mitigations: S1 species closing makes S1 pets scarce, an "Era 0 Founder" badge (display only), S1 thresholds unchanged, and their gear carries over.
 - **Gaming the trigger:** the STAR LORD KEK defeat needs ~6.9M burned to Lord Kek, so it can't be cheaply forced, and pushing it means burning a lot, which is fine.
 - Copy guard: HatchBot's send-guard already blocks price wording. Note that "2x"/"½" may trip `\d(x|×)`, so write "half" in words.
@@ -80,7 +78,7 @@ If costs halve but thresholds don't, each meal buys half the care, so feeding ta
 - **UI:** the halving gets its own "A new era" scene and gold ribbon. The Fire Sale keeps flames, panicked pets, Dan yelling and the siren, and both can show at once. Reduced motion shows static banners. Tx builders quote the price at the next block and warn when fewer than 3 blocks are left before a price change.
 - **HatchBot:** separate posts for the defeat, the era start and the Fire Sale. Fire Sale posts are skipped during the pause, and the copy says "half" in words, never price or trading.
 
-## 8. Cross-series breeding: recommendation
+## 8. ~~Cross-series breeding~~ VOID (owner, Oct 22 2026): there is no series concept; the cross-series-breeding branch is not deployed. Kept below for history only.
 **Current rules** (breeding v2, gate 972,561):
 - **Cost and cap:** 690 per side, with a 6-breed lifetime cap per pet (BREED_CAP_V2, counted from the gate). Adult+ only, not neglected.
 - **Hybrids:** different species give a hybrid 68.48% of the time, otherwise a parent's species. Same species gives a bred-true bonus.
@@ -99,13 +97,13 @@ If costs halve but thresholds don't, each meal buys half the care, so feeding ta
 - **Replay:** the series tag is decided at the breed block, `seriesOf(child) = max(seriesOf(A), seriesOf(B))`. All existing pets are series 1, and nothing changes before ACTIVATE_HALVING_BLOCK.
 
 ## 9. Recommendation
-Halving 1 = STAR LORD KEK defeats Lord Kek (the kekMythic burn + 6). After that, one halving per new series, with no floor: costs stop falling when the owner stops making series. Old-series hatching closes. Cross-series and old x old breeding are allowed, the baby joins the newer series, and the 6-cap applies. Gear carries over. The approved Fire Sales (0.3% per block, 36 blocks, 69% off, feeds 50% off, 432-block cooldown, full price earns a free spin) multiply with the era cost and pause around the STAR LORD KEK event.
+Halving 1 = STAR LORD KEK defeats Lord Kek (the kekMythic burn + 6). After that, one halving per new community pet (arrival + 6), with no floor. Care never changes; only prices halve. (Owner, Oct 22 2026; supersedes the series wording.)
 
 ## Open questions: RESOLVED (owner, Oct 22 2026 ~1:54 AM CT)
 1. ~~Defeat trigger~~: the kekMythic burn that pushes Lord Kek to Mythic. **Resolved.** If it's already in the past at deploy, halving 1 = ACTIVATE_HALVING_BLOCK.
-2. Series 2 roster timing: **still open.** If the roster isn't drawn, costs halve at the defeat and the roster opens at a later launch block.
+2. ~~Series 2 roster timing~~: void, there are no series. **Resolved.**
 3. ~~Drama pause~~: no Fire Sales for 1 day after the defeat. **Resolved.**
-4. ~~Old x old breeding~~: allowed, old-series baby. **Resolved.**
+4. ~~Old x old breeding~~: void (no series). **Resolved.**
 5. ~~Full-price-in-sale~~: one saved wheel spin per qualifying burn. **Resolved.**
 6. ~~Floor~~: none, owner confirmed. **Resolved.**
 

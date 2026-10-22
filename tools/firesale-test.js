@@ -23,7 +23,7 @@ const c = load(), V = c.V2Rules; V._setHalvingActivation(G);
   ok(V.costAt(w, 9200, s.start, true) === 2852 && V.costAt(w, 69, s.start, true) === 21.39, 'meals and feeds 69% off too (9,200 -> 2,852; 69 -> 21.39)');
   w.kekMythic = { block: s.start + 4, tx: 'x' }; /* halving lands inside the sale at start + 10 */
   ok(V.costAt(w, 69, s.start + 9) === 21.39 && V.costAt(w, 69, s.start + 10) === 10.695, 'halving inside a sale reprices at once (21.39 -> 10.695)');
-  ok(V.mealCost(w, {}, 9200, s.start + 10) === 1426 && V.mealCost(w, { series: 2 }, 4600, s.start + 10) === 1426, 'old and new series meals 1,426 in era 1 sale');
+  ok(V.mealCost(w, {}, 9200, s.start + 10) === 1426, 'a 9,200-care meal costs 1,426 in a halving-1 sale (care unchanged)');
   ok(V.costAt(w, 69, s.end) === 34.5, 'after the sale: halving price only');
   ok(V.below(w, 10.69, 69, s.start + 10) && !V.below(w, 10.695, 69, s.start + 10), 'below() uses the stacked price');
   { const c0 = V.syncCosts({ fire: { sales: a } }, s.start); ok(c0.feedMin === 21.39 && c0.cquick.join() === '21.39,213.9,2139' && V.communityFeedPlan(21.39).ok && !V.communityFeedPlan(21.38).ok, 'era 0 sale: community feed 69% off (min 69 x 0.31 = 21.39; 21.39 / 213.9 / 2,139)'); }
