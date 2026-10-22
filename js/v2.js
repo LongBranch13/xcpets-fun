@@ -135,7 +135,7 @@
     if (x.src === 'live') return { key: 'live', long: 'From the first version of the game', short: 'First game' };
     return { key: 'other', long: 'New piece', short: 'New piece' }; }
   var SRC_PLURAL = { roll: ['gear roll you burned', 'gear rolls you burned'], hatch: ['free bonus roll from hatching', 'free bonus rolls from hatching'], stage: ['free bonus roll from growing a stage', 'free bonus rolls from growing a stage'], meal: ['free bonus roll from a meal', 'free bonus rolls from meals'], froll: ['founder free roll', 'founder free rolls'], oroll: ['overflow roll', 'overflow rolls'], croll: ['community gear roll', 'community gear rolls'], fight: ['battle win', 'battle wins'], trophy: ['trophy', 'trophies'], live: ['piece from the first game', 'pieces from the first game'], other: ['new piece', 'new pieces'] };
-  function communityName(w) { return w.community && w.community.returned ? 'the Bitcoin Wizard, the community pet' : 'the community pet'; }
+  function communityName(w) { var c = w.community; return c && c.current === 'kek' ? 'Lord Kek, the community pet' : c && c.returned && !w.wizardMythic ? 'the Bitcoin Wizard, the community pet' : 'the community pet'; }
   // ---------------------------------------------------------------- hatch popup = live #packBox review (live game.js showPack/drawPack), gear wins use the same box
   var packY = null, lastHatchN = 0; /* hatch-exit 2026-10-21: scroll spot when the results opened + size of the last hatch (for 🥚 Hatch more) */
   var HKEY = 'xcpets-v2-hatched-' + KEY + '-' + ME, revealQ = [], rev = null, REV_PAGE = 36, TIERS = (window.PetCore && PetCore.TIERS) || [{ label: 'Common' }, { label: 'Uncommon' }, { label: 'Rare' }, { label: 'Legendary' }];

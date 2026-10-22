@@ -56,3 +56,11 @@
 - Arena spoils (giveRandomPiece) only take WORN gear, so bags can't be taken. Not a roll, unchanged.
 - UI: pet page #petBag panel (after #gear), each piece shows a lock icon and V2Rules.slotUnlock(p, slot).text. Rules + How it works copy updated.
 - Tests: tools/any-slot-test.js (gate moved into the past: 6-slot spread with chi², bags, unlock never replaces, saved spins). Previews: /workspace/xcpets/previews/any-slot-rolls/.
+
+## Branch explainer-truth (Oct 22, 2026, NOT merged, NOT deployed; owner review pending)
+- Branch `explainer-truth` off main 5d1fdb4. Explainer copy audited against js/v2-rules.js and fixed: rules.html, how-it-works.html, pets.html, index.html (static community pet name), js/v2.js communityName (Lord Kek when current), data/dan-lines.json ("Series 1" line).
+- Lord Kek is the community pet in the copy everywhere; Wizard eggs only from the 1-in-777 roll until Lord Kek reaches Mythic, then that egg is a Lord Kek egg (no other source). Wizards can't breed; player Keks can.
+- Gear copy: paid rolls are Pepe Wheel spins; any-slot rolls with pet bag; lucky drops and Mythic overflow give saved spins; pet:fr / pet:of closed at 972,641. Halving and Fire Sale notes added to how-it-works §2; rule history entries for 972,396 (Lord Kek) and 972,641 (halving, fire sales, saved spins, arena modes).
+- HatchBot (not in git): telegram/knowledge.json fixed (backup *.bak-explainer-20261022) plus new halving_firesale topic. announce-lib.js unchanged (Wizard stage posts are inert now; hybrid labels keep "A × B" because test-announce expects it).
+- Left as is (UI labels, not explainer copy): "Dozen ×12", "Case ×144", "Roll gear ×N" buttons.
+- Tests: all tools/*-test.js pass except the known breeding-v2-test and wheel-random-test; telegram tests all pass. Screenshots: /workspace/xcpets/previews/explainer-truth/.
