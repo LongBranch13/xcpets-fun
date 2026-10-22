@@ -38,8 +38,11 @@
     vault(ctx, t, open, frost); if (open > 0.6 && sp.nakamoto) sprite(ctx, sp.nakamoto[(t >> 3) % sp.nakamoto.length], 123, 52 + ((t >> 4) % 2), 0.5, 0.55);
     // the sign: at his feet, then planted upright at the left, where it stays
     var signX = t < plant ? 44 : 22, wizX = t < plant ? 20 : t < walk ? 20 + (t - plant) * 0.25 : 42 + (t - walk) * 2.0, wizA = t < flash - 6 ? 1 : 0;
-    if (t < plant) { px(ctx, 40, 72, 16, 4, C.sign); px(ctx, 40, 72, 16, 1, '#1a1020'); } else sign(ctx, signX, 77, 0);
-    if (wizA && wizX < 126 && sp.wizard) sprite(ctx, sp.wizard[(t >> 3) % sp.wizard.length], wizX, 38 + (t >= raise && t < plant ? -((t >> 3) % 2) : 0), 1.25, t > walk + 30 ? Math.max(0, 1 - (t - walk - 30) / 10) : 1);
+    /* wizard-story-short P3: he carries his JOIN US sign in his Cold Storage loadout (sp.wizard) until he puts it down; from then on the planted sign
+     * stands at the left and he wears the loadout without it (sp.wizardDown). Older callers without wizardDown keep the old sign-at-his-feet beat. */
+    var down = t >= plant && sp.wizardDown, wf = down ? sp.wizardDown : sp.wizard;
+    if (t < plant) { if (!sp.wizardDown) { px(ctx, 40, 72, 16, 4, C.sign); px(ctx, 40, 72, 16, 1, '#1a1020'); } } else sign(ctx, signX, 77, 0);
+    if (wizA && wizX < 126 && wf) sprite(ctx, wf[(t >> 3) % wf.length], wizX, 38 + (t >= raise && t < plant ? -((t >> 3) % 2) : 0), 1.25, t > walk + 30 ? Math.max(0, 1 - (t - walk - 30) / 10) : 1);
     if (t >= raise && t < plant + 30) for (var k = 0; k < 7; k++) { var u = ((t - raise) / 40 + k / 7) % 1; if (t - raise < k * 5) continue; var x = 30 + k * 4 + Math.sin(u * 6 + k) * 4, y = 46 - u * 40;
       if (u < 0.5) star(ctx, x, y, C.gold); else coin(ctx, x, y); }                                    // stars pop off the robe and rise as coins
     var cap = t < raise ? 'COMMUNITY PET' : t < plant ? 'Magic Internet Money' : t < walk ? 'Join us.' : t < flash ? 'Into Cold Storage' : t < egg0 ? 'Mythic. Kept cold forever.' : 'A new egg appears…';

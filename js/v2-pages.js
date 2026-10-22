@@ -70,10 +70,11 @@
     { id: 'nakamoto', name: 'Nakamoto', done: function (c) { return c.returned; }, block: function (c) { return c.returnBlock; }, tx: function (c) { return c.returnTx; },
       sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } },
     /* #2 Bitcoin Wizard (Oct 19 2026): Mythic at 6,906,900 burned since The Return -> Cold Storage. Chain state = w.wizardMythic (V2Rules.replay, from history). */
-    { id: 'wizard', name: 'Bitcoin Wizard', sp: 'wizard', loadout: ['wizard-hat', 'sig-wizard-staff', 'sig-wizard-sign'], /* signature loadout: pointy hat, Bitcoin staff, Join us sign */ done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
+    { id: 'wizard', name: 'Bitcoin Wizard', sp: 'wizard', loadout: ['wizard-hat', 'sig-wizard-staff', 'sig-wizard-sign'], /* signature loadout: pointy hat, Bitcoin staff, Join us sign */ putDown: ['sig-wizard-sign'], /* the story beat where he sets the sign down (farewell) */ done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
       stats: function (w) { var x = w.wizardMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
-      story: ['2013. A forum asked for an ad.', 'Someone drew a wizard in MS Paint.', 'Blue robe. Stars. A staff.', '"Magic Internet Money." "Join us."', 'It ran on Reddit. Bitcoin passed $1,000.', 'The wizard stayed.',
-        '2026. Nakamoto went into Cold Storage. An egg was left behind.', 'Every burn fed it. Nobody owned it. 100× slower than any pet.', '6,906,900 burned. Mythic.', 'Then he put down the sign and walked into Cold Storage, next to Nakamoto.', 'The sign stayed behind. So did an egg. Now anyone can hatch one. Join us.'],
+      /* wizard-story-short 2026-10-21 (owner): short story, shown in the Cold Storage story pop-up (#archStory) */
+      story: ['2013. Someone drew a wizard in MS Paint for a forum ad.', '"Magic Internet Money." "Join us."', '2026. Nakamoto went into Cold Storage and left an egg. Every burn fed it.',
+        'At Mythic, the Wizard put down his sign and joined Nakamoto.', 'The sign stayed. So did an egg. Join us.'],
       sprites: function () { return coldEntryFrames(this); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
   ];
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
@@ -81,7 +82,12 @@
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
   function coldEntryFrames(e) { return (R && R.coldFrames && R.coldFrames(e.sp, e.loadout || [], COLD_STAGE)) || wizMythicFrames(M.world()); }
   function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); }
-  function farewellSprites(w) { var x = w.wizardMythic; return { wizard: wizMythicFrames(w), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
+  /* wizard-story-short P3 (owner 2026-10-21): the farewell Wizard wears exactly his Cold Storage look: the entry's Mythic signature loadout via
+   * V2Render.coldFrames (data-driven, no pet ids); after the story beat where he puts the sign down, the same loadout minus e.putDown. */
+  function entryOf(id) { return ARCHIVE.filter(function (e) { return e.id === id; })[0]; }
+  function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
+      noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
+    return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
   function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=9e8c9c0476'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
@@ -94,6 +100,14 @@
    * (neutral empty state); after it, Nakamoto (completed: Return blurb + replay) and the next community pet (in progress: one general line; never its sprite).
    * No placeholder for a next pet. */
   function shortAddr(s) { s = String(s || ''); return s.length > 14 ? s.slice(0, 6) + '…' + s.slice(-4) : s; }
+  /* Cold Storage story pop-up (wizard-story-short 2026-10-21, owner): the entry's story in the site's pixel .reveal dialog; close button stays visible
+   * (sticky), fits a 390 px phone without long scrolling, Esc / backdrop / Close all close it and focus returns to the button. */
+  function storyPop(e, back) { var m = $('archStory'); if (!m) { m = document.createElement('div'); m.className = 'reveal archstory'; m.id = 'archStory'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'archStoryT'); document.body.appendChild(m); }
+    m.innerHTML = '<div class="box"><div class="archstory-top"><h2 id="archStoryT">' + esc(e.name) + '</h2><button type="button" class="q archstory-x" id="archStoryX" aria-label="Close">Close ✕</button></div>' +
+      '<div class="archstory-body">' + e.story.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div></div>';
+    function close() { m.classList.remove('on'); document.removeEventListener('keydown', key); if (back && back.focus) back.focus(); }
+    function key(ev) { if (ev.key === 'Escape') close(); }
+    $('archStoryX').onclick = close; m.onclick = function (ev) { if (ev.target === m) close(); }; document.addEventListener('keydown', key); m.classList.add('on'); $('archStoryX').focus(); }
   function archive() {
     var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : false, list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
@@ -108,7 +122,7 @@
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
         '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
-        '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<div class="archive-story small">' + x.e.story.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
+        '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<p class="archive-story-lead">' + esc(x.e.story[0]) + '</p><p><button type="button" class="q archive-storybtn" id="archStoryBtn" aria-haspopup="dialog">📜 Read the story</button></p>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
         (x.tx ? '<p class="small archive-tx">Triggering tx <code>' + esc(x.tx) + '</code></p>' : '') + '<h3 class="archive-h3">Top feeders</h3><ol class="archive-feed">' + x.top.map(function (t) { return '<li title="' + esc(t.address) + '">' + esc(shortAddr(t.address)) + ' · <span>' + fmt(Math.floor(t.amount)) + '</span></li>'; }).join('') + '</ol></div>'; }
@@ -127,6 +141,7 @@
       if (cur && $('archFeatCv')) R.animate($('archFeatCv'), sprites(cur));
       Array.prototype.forEach.call(box.querySelectorAll('.archive-chip'), function (b) { b.onclick = function () { filt = b.dataset.f; draw(); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.archive-card'), function (b) { b.onclick = function () { sel = b.dataset.id; draw(); }; });
+      var sb = $('archStoryBtn'); if (sb && cur && cur.x) sb.onclick = function () { storyPop(cur.x.e, sb); };
       var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + (cur.x.e.farewell ? "'s farewell" : "'s replay") + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
       if (cur && cur.x && cur.x.done && !(cur.x.row && cur.x.row.block_time) && window.LiveEngine && LiveEngine.Chain) try { new LiveEngine.Chain().getJson('/blocks/' + cur.x.block).then(function (j) { var bt = j && j.result && j.result.block_time, el = box.querySelector('.archdate'); if (bt && el) el.textContent = new Date(bt * 1000).toISOString().slice(0, 10); }, function () {}); } catch (e) { }
     }
