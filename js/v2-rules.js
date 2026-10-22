@@ -1092,17 +1092,18 @@
   var HYBRID_PARTS = {
     pepe: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
     peepo: [{ id: 'eyes', label: 'bulging eyes', kind: 'eyes' }],
-    wojak: [{ id: 'eyes', label: 'sad eyes', kind: 'eyes' }],
-    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'eyes' }, { id: 'hair', label: 'black bangs', kind: 'hair' }],
-    bobo: [{ id: 'ears', label: 'ears', kind: 'top' }],
+    wojak: [{ id: 'eyes', label: 'sad eyes', kind: 'eyes', draw: { mode: 'pair', anchor: 'center', big: ['nnn..', 'nnnnn', 'wwwpp', 'wwwpp', '.ddd.'], small: ['nn..', 'nnnn', 'wwpp', '.dd.'] } }],
+    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'eyes' }, { id: 'hair', label: 'black bangs', kind: 'hair', draw: { mode: 'fringe' } }],
+    bobo: [{ id: 'ears', label: 'ears', kind: 'top', draw: { mode: 'pair', anchor: 'bottom', big: ['.BBBB.', 'BBddBB', 'BddddB', 'BddddB'], small: ['.BB.', 'BddB', 'BddB'] } }],
     mumu: [{ id: 'horns', label: 'horns', kind: 'top' }],
     snibby: [{ id: 'claws', label: 'claws', kind: 'arms' }],
-    dodo: [{ id: 'beak', label: 'beak', kind: 'mouth' }, { id: 'tail', label: 'tail', kind: 'tail', top: 0.5 }],
+    dodo: [{ id: 'beak', label: 'beak', kind: 'mouth' }, { id: 'tail', label: 'tail', kind: 'tail', draw: { mode: 'one', anchor: 'tail', big: ['B.....', 'BB..B.', '.BB.BB', '..BBBd', '...Bdd', '....dd'], small: ['B...', 'BB.B', '.BBd', '..dd'] } }],
     kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair' }],
     sarutobi: [{ id: 'ears', label: 'ears', kind: 'ears' }, { id: 'tail', label: 'tail', kind: 'tail' }],
     doge: [{ id: 'ears', label: 'ears', kind: 'top' }],
     lenny: [{ id: 'eyes', label: 'smug eyes', kind: 'eyes' }],
     nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'eyes' }],
+    kek: [{ id: 'nemes', label: 'nemes headdress', kind: 'top' }],
     wizard: [{ id: 'hat', label: 'hat', kind: 'top' }]
   };
   function hybridParts(hex, plan) { var R = stream('XCPETS:v2:hybrid-parts:' + hex), out = [];
@@ -1158,7 +1159,11 @@
     A.ears = band(0.05, headB, true, true); A.arms = grow(band(headB, 0.95, true, true)); A.ears = A.ears.filter(function (q) { return A.arms.indexOf(q) < 0; }); A.tail = band(0.45, 1, true, false).filter(function (q) { return A.arms.indexOf(q) < 0 || (q & 31) < cl - 2; });
     return A; }
   function keyedRender(sp, art, o) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
-    if (sp === 'kek') { var r = renderRoot(a, o); var ks = []; for (var j = 0; j < 1024; j++) ks[j] = r.data[j * 4] === 255 && r.data[j * 4 + 1] === 0 && r.data[j * 4 + 2] === 255 ? undefined : 'body'; r.keys = ks; return r; }
+    if (sp === 'kek') { var r = renderRoot(a, o); var ks = []; for (var j = 0; j < 1024; j++) ks[j] = r.data[j * 4] === 255 && r.data[j * 4 + 1] === 0 && r.data[j * 4 + 2] === 255 ? undefined : 'body'; r.keys = ks;
+      /* the nemes headdress (cap, uraeus and brow band): found by re-rendering with marker colours for the nemes inks, above the brow band, inside the head width */
+      var mk = renderRoot(a, o, { B: '#fe0101', b: '#fe0202', y: '#fe0303', o: '#fe0404' }), isN = function (q) { return mk.data[q * 4] === 254 && mk.data[q * 4 + 1] === mk.data[q * 4 + 2] && mk.data[q * 4 + 1] >= 1 && mk.data[q * 4 + 1] <= 4 && Math.abs((q & 31) - 15.5) < 9.5; };
+      var nem = [], started = false; for (var y = 0; y < GROUND_ROW; y++) { var row = []; for (var x = 0; x < 32; x++) if (isN(y * 32 + x)) row.push(y * 32 + x); if (row.length >= 8) started = true; else if (started) break; nem = nem.concat(row); }
+      r.parts = { top: started ? nem : [] }; return r; }
     return PetCore.render(a, Object.assign({}, o, { gearCap: 0, gearOverride: null, withKeys: true })); }
   /** scaled(list, k, anchor): nearest-neighbour scale of a pixel list about its bbox anchor ([ax, ay] in 0..1). Returns [{ j: target, s: source }]. */
   function scaled(list, k, anc) { var b = bbList(list), on = {}; list.forEach(function (q) { on[q] = 1; }); if (Math.abs(k - 1) < 0.08) return list.map(function (q) { return { t: q, s: q }; });
@@ -1166,9 +1171,31 @@
     for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var sx = b.l + Math.min(b.w - 1, Math.floor(x / k)), sy = b.t + Math.min(b.h - 1, Math.floor(y / k)), sj = sy * 32 + sx; if (on[sj]) out.push({ t: Math.round(oy + y) * 32 + Math.round(ox + x), s: sj }); }
     return out; }
   var INK = [26, 16, 32];
+  function shadeRgb(c, k) { return c.map(function (n) { return Math.max(0, Math.min(255, Math.round(n * k))); }); }
+  function topColour(data, list) { var n = {}; list.forEach(function (q) { var c = [data[q * 4], data[q * 4 + 1], data[q * 4 + 2]].join(','); n[c] = (n[c] || 0) + 1; }); var b = Object.keys(n).sort(function (p, q) { return n[q] - n[p]; })[0]; return b ? b.split(',').map(Number) : [128, 128, 128]; }
+  /** drawPart(def, kF, DA, D, small): REDRAWS a donor part from a small drawing in the donor's own palette, at the donor's own part position
+   * (so the normal placement rules apply), for parts whose sprite pixels do not read on their own. Returns { kF, D }. */
+  function drawPart(def, kF, DA, D, small) { var dr = def.draw, data = new Uint8ClampedArray(kF.data), out = [];
+    var bodyL = []; for (var j = 0; j < 1024; j++) if (DA.s[j] && kF.keys[j] === 'body') bodyL.push(j); var B = topColour(kF.data, bodyL);
+    var pal = { B: B, d: shadeRgb(B, 0.55), n: INK, w: [244, 244, 238], p: [26, 16, 32] };
+    var put = function (q, c) { if (q < 0 || q >= 1024) return; data[q * 4] = c[0]; data[q * 4 + 1] = c[1]; data[q * 4 + 2] = c[2]; data[q * 4 + 3] = 255; if (out.indexOf(q) < 0) out.push(q); };
+    var stamp = function (rows, x0, y0) { rows.forEach(function (r, yy) { for (var xx = 0; xx < r.length; xx++) { var ch = r[xx]; if (ch === '.') continue; var x = x0 + xx, y = y0 + yy; if (x < 0 || x > 31 || y < 0 || y >= GROUND_ROW) continue; put(y * 32 + x, pal[ch]); } }); };
+    var mirror = function (rows) { return rows.map(function (r) { return r.split('').reverse().join(''); }); };
+    if (dr.mode === 'fringe') { if (D.length < 2) return { kF: kF, D: D }; var hc = topColour(kF.data, D), hl = shadeRgb(hc, 1.0).map(function (n) { return Math.min(255, n + 70); }), b = bbList(D);
+      D.forEach(function (q) { var x = q & 31, y = q >> 5; if (y === b.b && x % 2) return; if (y === b.b - 1 && b.h > 3 && x % 4 === 3) return; put(q, (y > b.t && y < b.b && (x + y) % 3 === 0) ? hl : hc); });
+      return { kF: { data: data, keys: kF.keys }, D: out }; }
+    var rows = small ? dr.small : dr.big, w = rows[0].length, hgt = rows.length, bb = DA.bb, cx = (bb.l + bb.r) / 2;
+    if (dr.mode === 'pair') { var sides = [-1, 1].map(function (sd) { var L = D.filter(function (q) { return ((q & 31) < cx ? -1 : 1) === sd; }); return L.length ? bbList(L) : null; });
+      sides.forEach(function (sb, i) { var sd = i ? 1 : -1, eb = DA.eyeBox;
+        if (!sb) sb = dr.anchor === 'bottom' ? { l: sd < 0 ? bb.l + 1 : bb.r - w, r: sd < 0 ? bb.l + w : bb.r - 1, t: bb.t, b: bb.t } : eb ? { l: sd < 0 ? eb.l : (eb.l + eb.r) / 2 + 1, r: sd < 0 ? (eb.l + eb.r) / 2 - 1 : eb.r, t: eb.t, b: eb.b } : { l: cx + sd * 4 - 2, r: cx + sd * 4 + 2, t: bb.t + 4, b: bb.t + 6 };
+        var x0 = Math.round((sb.l + sb.r) / 2 - (w - 1) / 2), y0 = dr.anchor === 'bottom' ? sb.b - hgt + 1 : Math.round((sb.t + sb.b) / 2 - (hgt - 1) / 2);
+        stamp(sd < 0 ? rows : mirror(rows), x0, y0); }); }
+    else { var tb = D.length ? bbList(D) : { l: bb.l, r: bb.l + 2, t: bb.t + Math.round(bb.h * 0.55), b: bb.t + Math.round(bb.h * 0.75) };
+      stamp(rows, tb.r - w + 1, tb.b - hgt + 1); }
+    return { kF: { data: data, keys: kF.keys }, D: out }; }
   /** applyParts(img, kS, h, o, art, feat): REPLACES the child's regions with the plan's traded parts (h.parts); returns the pixels painted. */
   function applyParts(img, kS, h, o, art, feat) { var painted = [];
-    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted;
+    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted; if (ck.parts) Object.assign(CA, ck.parts);
     var M = CA.s.slice(); (feat || []).forEach(function (q) { M[q] = true; }); var touched = {};
     var col = function (j) { return [img.data[j * 4], img.data[j * 4 + 1], img.data[j * 4 + 2]]; };
     var skinCount = {}; for (var j0 = 0; j0 < 1024; j0++) if (CA.s[j0] && ck.keys[j0] === 'body') { var c0 = col(j0).join(','); skinCount[c0] = (skinCount[c0] || 0) + 1; }
@@ -1181,43 +1208,55 @@
     var paste = function (D, kF, pairs) { pairs.forEach(function (p) { var x = p.t & 31, y = p.t >> 5; if (p.t < 0 || p.t >= 1024 || x < 0 || y >= GROUND_ROW) return; M[p.t] = true; touched[p.t] = 1; set(p.t, [kF.data[p.s * 4], kF.data[p.s * 4 + 1], kF.data[p.s * 4 + 2]]); painted.push(p.t); }); };
     var shift = function (pairs, dx, dy) { return pairs.filter(function (p) { var x = (p.t & 31) + dx; return x >= 0 && x < 32; }).map(function (p) { return { t: p.t + dy * 32 + dx, s: p.s }; }); };
     var clampK = function (k, lo, hi) { return Math.max(lo, Math.min(hi, k)); };
-    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return; var kF = keyedRender(q.sp, art, o), DA = anatomy(kF.keys), D = DA[def.kind] || []; if (D.length < 2 || DA.bb.b < 0) return;
+    var stg = o.stage == null ? 3 : o.stage;
+    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return;
+      /* young pets take the donor's ADULT part, scaled to their size, so hatchlings show a readable part too */
+      var kF = keyedRender(q.sp, art, stg <= 2 ? Object.assign({}, o, { stage: 3 }) : o), DA = anatomy(kF.keys); if (DA.bb.b < 0) return; if (kF.parts) Object.assign(DA, kF.parts);
+      var D = DA[def.kind] || [], small = CA.bb.h < 15, kAd = stg <= 2 && !def.draw ? clampK(CA.bb.h / DA.bb.h * 1.1, 0.55, 1) : 1;
+      if (def.draw && def.kind === 'tail' && def.draw.big) { var lx = 32; for (var yq = CA.bb.t + Math.round(CA.bb.h * 0.45); yq <= CA.bb.b; yq++) { var eq = edgeAt(CA.s, yq, -1); if (eq >= 0) lx = Math.min(lx, eq); } if (lx - 2 < def.draw.big[0].length - 1) small = true; }
+      if (def.draw) { var dP = drawPart(def, kF, DA, D, small); kF = dP.kF; D = dP.D; } if (D.length < 2) return;
       var db = bbList(D), sb = CA.bb, kind = def.kind, pairs, dx, dy;
       if (kind === 'eyes' || kind === 'mouth' || kind === 'hair') {
         var C = CA[kind] || [], cb = C.length ? bbList(C) : null;
         if (kind === 'hair') { erase(C.filter(function (q) { return !CA.top.length || CA.top.indexOf(q) < 0; }), false); erase(CA.top, true); }
-        else { erase(C.filter(function (q) { return CA.eyeDomes && CA.eyeDomes.indexOf(q) >= 0; }), true); erase(C.filter(function (q) { return !CA.eyeDomes || CA.eyeDomes.indexOf(q) < 0; }), false); }
+        else { erase(C.filter(function (q) { return CA.eyeDomes && CA.eyeDomes.indexOf(q) >= 0; }), kind !== 'eyes'); erase(C.filter(function (q) { return !CA.eyeDomes || CA.eyeDomes.indexOf(q) < 0; }), false); }
         var headW = function (y) { var r = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, y))); return r.length ? r[r.length - 1][1] - r[0][0] + 1 : sb.w; };
         var k = kind === 'hair' ? clampK(headW(sb.t + 2) / Math.max(1, headW.call(null, sb.t + 2) && DA.bb.w), 0.7, 1.25) : 1;
         if (kind === 'hair') k = clampK((sb.w) / DA.bb.w, 0.7, 1.25);
-        if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); }
+        if (kind === 'mouth' && kAd < 1) k = kAd;
+        if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
         pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
         if (kind === 'hair') { dx = Math.round((sb.l + sb.r) / 2 - (pb.l + pb.r) / 2); dy = sb.t - pb.t; }
         else if (kind === 'mouth') { var dm = bbList(DA.mouthKey), tx = cb ? (CA.mouthBox.l + CA.mouthBox.r) / 2 : (sb.l + sb.r) / 2, ty = cb ? (CA.mouthBox.t + CA.mouthBox.b) / 2 : sb.t + sb.h * 0.55;
           dx = Math.round(tx - (dm.l + dm.r) / 2); dy = Math.round(ty - (dm.t + dm.b) / 2);
           /* a mouth part that sticks out of the donor's head (a beak) sticks out of the child's head the same way, from the same side */
           var my = Math.round((dm.t + dm.b) / 2), hR = -1, hL = 99, Don = {}; D.forEach(function (q) { Don[q] = 1; }); for (var x5 = 0; x5 < 32; x5++) { var j5 = my * 32 + x5; if (DA.s[j5] && !Don[j5]) { hL = Math.min(hL, x5); hR = Math.max(hR, x5); } }
-          if (db.r > hR + 1 || db.l < hL - 1) { var side = db.r - hR >= hL - db.l ? 1 : -1, cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce - hR : ce - hL; dy = cy0 - my; } } dx = Math.max(1 - db.l, Math.min(30 - db.r, dx)); }
-        else { var ex = cb ? (cb.l + cb.r) / 2 : (sb.l + sb.r) / 2, ey = cb ? (cb.b) : sb.t + sb.h * 0.4, eb2 = bbList(pairs.filter(function (p) { return DA.eyeDomes.indexOf(p.s) < 0; }).map(function (p) { return p.t; }).concat([pb.l + pb.b * 32]));
+          if (db.r > hR + 1 || db.l < hL - 1) { var side = db.r - hR >= hL - db.l ? 1 : -1, cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce + Math.round((db.r - hR) * k) - pb.r : ce - Math.round((hL - db.l) * k) - pb.l; dy = cy0 - Math.round((pb.t + pb.b) / 2); } } dx = Math.max(1 - pb.l, Math.min(30 - pb.r, dx)); }
+        else { var ex = cb ? (cb.l + cb.r) / 2 : (sb.l + sb.r) / 2, ey = cb ? (cb.b) : sb.t + sb.h * 0.4, eb2 = bbList(pairs.filter(function (p) { return !DA.eyeDomes || DA.eyeDomes.indexOf(p.s) < 0; }).map(function (p) { return p.t; }).concat([pb.l + pb.b * 32]));
           dx = Math.round(ex - (pb.l + pb.r) / 2); dy = Math.round(ey - eb2.b); }
         paste(D, kF, shift(pairs, dx, dy)); return; }
       /* bumps: top / ears / arms / tail */
       erase(CA[kind] || [], true);
       if (kind === 'top') { var Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
-        var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = wAt(M, Mb.t + 1) || [Mb.l, Mb.r];
-        var kt = clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), 0.6, 1.4), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; }));
+        var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = (function () { var best = null; for (var y = Mb.t + 1; y <= Mb.t + Math.max(2, Math.round(Mb.h * 0.3)); y++) { var w2 = wAt(M, y); if (w2 && (!best || w2[1] - w2[0] > best[1] - best[0])) best = w2; } return best; })() || [Mb.l, Mb.r];
+        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), 0.6, 1.4), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; }));
         var dc = (dRow[0] + dRow[1]) / 2, cc = (cRow[0] + cRow[1]) / 2; dx = Math.round(cc - (dc + ((bt.l + bt.r) / 2 - (db.l + db.r) / 2))); dx = Math.round(cc - dc); dy = Mb.t + 1 - bt.b;
         dx = Math.max(1 - bt.l, Math.min(30 - bt.r, dx)); dy = Math.max(-bt.t, dy);
         /* never bury the part inside the child's head (e.g. over Pepe's eye domes): lift it until most of it shows */
         var hid = function (d) { return pt.filter(function (p) { var t = p.t + d * 32 + dx; return t >= 0 && t < 1024 && M[t]; }).length; }; while (dy > -bt.t && hid(dy) > pt.length * 0.35) dy--;
+        /* a two-piece top (ears, horns): each piece sits on the child's head outline right under it, overlapping it by one row */
+        var ucx = (bt.l + bt.r) / 2, halves = [-1, 1].map(function (sd) { return pt.filter(function (p) { return ((p.t & 31) < ucx ? -1 : 1) === sd; }); }), gap = true;
+        for (var gx = Math.floor(ucx) - 0; gx <= Math.ceil(ucx); gx++) if (pt.some(function (p) { return (p.t & 31) === gx; })) gap = false;
+        if (gap && halves[0].length && halves[1].length) { halves.forEach(function (hf) { var hb = bbList(hf.map(function (p) { return p.t; })), col = Math.round((hb.l + hb.r) / 2) + dx, yT = -1;
+            for (var y4 = 0; y4 < GROUND_ROW; y4++) if (M[y4 * 32 + col]) { yT = y4; break; } var d2 = yT < 0 ? dy : yT + 1 - hb.b; d2 = Math.max(-hb.t, d2); paste(D, kF, shift(hf, dx, d2)); }); return; }
         paste(D, kF, shift(pt, dx, dy)); return; }
       [-1, 1].forEach(function (sd) { var cx = (DA.bb.l + DA.bb.r) / 2, js = D.filter(function (j) { return ((j & 31) < cx ? -1 : 1) === sd; }); if (!js.length || (kind === 'tail' && sd > 0)) return;
-        var jb = bbList(js); if (def.top) { var cut = jb.t + Math.max(2, Math.round(jb.h * def.top)); js = js.filter(function (j) { return (j >> 5) < cut; }); jb = bbList(js); }
-        var k2 = clampK(sb.h / DA.bb.h, kind === 'tail' ? 1 : 0.7, 1.35);
+        var jb = bbList(js);
+        var k2 = def.draw ? 1 : clampK(sb.h / DA.bb.h, kind === 'tail' && stg > 2 ? 1 : 0.55, 1.35), pad = kind === 'tail' ? 2 : 1;
         var pr = scaled(js, k2, [sd < 0 ? 1 : 0, 0.5]), b2 = bbList(pr.map(function (p) { return p.t; })), ty, se;
         { var rel = ((jb.t + jb.b) / 2 - DA.bb.t) / DA.bb.h; ty = Math.round(sb.t + rel * sb.h); dy = Math.round(ty - (b2.t + b2.b) / 2);
           var rows = []; for (var yy = b2.t + dy; yy <= b2.b + dy; yy++) if (yy >= sb.t && yy <= sb.b) { var e = edgeAt(M, yy, sd); if (e >= 0) rows.push(e); }
-          se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(1 - b2.l, Math.min(30 - b2.r, dx)); }
+          se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(pad - b2.l, Math.min(31 - pad - b2.r, dx)); }
         paste(js, kF, shift(pr, dx, dy)); }); });
     /* outline round the new silhouette, only where something changed */
     var near = {}; Object.keys(touched).forEach(function (t) { t = +t; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var x = (t & 31) + dx, y = (t >> 5) + dy; if (x >= 0 && y >= 0 && x < 32 && y < GROUND_ROW) near[y * 32 + x] = 1; } });
