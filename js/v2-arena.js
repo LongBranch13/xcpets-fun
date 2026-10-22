@@ -65,7 +65,7 @@
     RP.paint(d.done);
     if ($('arVoice')) $('arVoice').onclick = function () { var on = !V2Announcer.voiceOn(); V2Announcer.setVoice(on); this.textContent = (on ? '🔊' : '🔇') + ' Announcer'; this.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) V2Announcer.speak('Announcer on'); };
     /* Quick match + Post now live in the Challenge card (js/ux-batch.js paintFace) */
-    box.querySelectorAll('[data-aracc]').forEach(function (x) { x.onclick = function () { var id = x.dataset.aracc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: 690 }], function () { U.afterAccept(id); }); }; });
+    box.querySelectorAll('[data-aracc]').forEach(function (x) { x.onclick = function () { var id = x.dataset.aracc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: (V2Rules.acceptCost ? V2Rules.acceptCost(V2Mock.world(), +(id)) : 690) }], function () { U.afterAccept(id); }); }; });
     box.querySelectorAll('[data-arview]').forEach(function (x) { x.onclick = function () { var fv = w.fights[x.dataset.arview - 1]; if (window.V2ArenaScene) V2ArenaScene.sequence(fv, { restart: true }); else U.playFight(fv); }; }); }
   window.V2Arena = { render: render, data: data };
 })();

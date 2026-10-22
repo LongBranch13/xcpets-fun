@@ -12,10 +12,16 @@
   var cache = typeof WeakMap !== 'undefined' ? new WeakMap() : null, sCache = { w: null, m: null };
   function pw(p) { var s = (p && p.stats) || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; }
   /** streaks(w): per fight id -> { wBefore, lBefore } from all finished fights in chain order */
-  function streaks(w) { if (sCache.w === w && sCache.n === (w.fights || []).length) return sCache.m; var st = {}, m = {};
+  /* arena modes (Oct 22 2026): streaks and belts are PER MODE (classic / sd / tt). Classic is computed exactly as before (Classic fights only).
+   * Tag Team: every pet on the winning team gets the win, every pet on the losing team the loss. */
+  function streaks(w) { if (sCache.w === w && sCache.n === (w.fights || []).length) return sCache.m; var ST = { classic: {}, sd: {}, tt: {} }, m = {};
     (w.fights || []).filter(function (f) { return f.status === 'done'; }).sort(function (a, b) { return a.acceptBlock - b.acceptBlock || a.id - b.id; }).forEach(function (f) {
-      var wb = st[f.winner] || 0, lb = st[f.loser] || 0; m[f.id] = { wBefore: wb, lBefore: lb }; st[f.winner] = wb + 1; st[f.loser] = 0; });
-    sCache = { w: w, n: (w.fights || []).length, m: m, cur: st }; return m; }
+      var st = ST[f.mode || 'classic'] || (ST[f.mode] = {}), W = f.winners || [f.winner], L = f.losers || [f.loser], wb = st[f.winner] || 0, lb = st[f.loser] || 0;
+      m[f.id] = { wBefore: wb, lBefore: lb, mode: f.mode || 'classic' }; W.forEach(function (id) { st[id] = (st[id] || 0) + 1; }); L.forEach(function (id) { st[id] = 0; }); });
+    sCache = { w: w, n: (w.fights || []).length, m: m, cur: ST.classic, modes: ST }; return m; }
+  function currentMode(w, mode) { streaks(w); return sCache.modes[mode || 'classic'] || {}; }
+  /** belts(w) -> { classic, sd, tt }: the holder (longest current streak >= 3, living pet) per mode, ties to the lowest id */
+  function belts(w) { var out = {}; ['classic', 'sd', 'tt'].forEach(function (k) { var st = currentMode(w, k), best = null; Object.keys(st).forEach(function (id) { var n = st[id], p = w.byId[id]; if (n < 3 || !p || p.dead || p.released) return; if (!best || n > best.n || (n === best.n && +id < best.id)) best = { id: +id, n: n, p: p }; }); out[k] = best; }); return out; }
   /** current unbeaten streak per pet id (belt holders = 3+) */
   function current(w) { streaks(w); return sCache.cur; }
   function rankOf(w, p) { var s = p && window.PetScore && PetScore.of ? PetScore.of(w, p) : null; return s ? s.rank : null; }
@@ -68,5 +74,5 @@
     px(x, '#0a0812', bx + 4, by + 13, 3, 2); px(x, '#0a0812', bx + 17, by + 13, 3, 2); /* stand legs */
     px(x, '#0a0812', bx, by + 15, 24, 15); px(x, '#ffd166', bx + 1, by + 16, 22, 13); /* gold plate, 1px dark border */
     pxText(x, 'TITLE', bx + 2, by + 17, '#3a2a10'); pxText(x, 'BELT', bx + 4, by + 23, '#3a2a10'); }
-  window.V2ArenaFun = { info: info, mood: mood, crowd: crowd, overlay: overlay, belt: belt, beltCase: beltCase, current: current, streaks: streaks, EVENTS: EVENTS, _h: h32 };
+  window.V2ArenaFun = { info: info, mood: mood, crowd: crowd, overlay: overlay, belt: belt, beltCase: beltCase, current: current, currentMode: currentMode, belts: belts, streaks: streaks, EVENTS: EVENTS, _h: h32 };
 })();
