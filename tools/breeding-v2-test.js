@@ -18,15 +18,16 @@ ok(Math.abs(inh/20000-0.5)<0.02&&sh===inh,`carrier (not showing) -> child inheri
 let sh2=0;for(let i=0;i<5000;i++){const k={};V._breedExtras({tier:0,hidden:'frost',shows:'frost'},{tier:0},H('s'+i),k);if(k.shows)sh2++}ok(sh2===0,'showing parent -> child carries hidden (skips a generation)');
 let lm=0;for(let i=0;i<20000;i++){const k={hybrid:{roots:['pepe','dodo'],parts:[]}};V._breedExtras({tier:3},{tier:3},H('l'+i),k);if(k.hybrid.legMix)lm++}ok(Math.abs(lm/20000-0.25)<0.015,`Legendary x Legendary hybrid -> legendary mix ${(lm/200).toFixed(1)}%`);
 // 2) synthetic replay after the gate
-const tip=snap.tip,G=V.ACTIVATE_BREEDING_V2_BLOCK;ok(G>tip,'gate '+G+' is after snapshot tip '+tip);
+const tip=snap.tip,G=V.ACTIVATE_BREEDING_V2_BLOCK;const POST=G<=tip,GB=POST?tip+1:G; /* post-gate mode (gate mined): synthetic burns start right after the snapshot tip */
+ok(POST||G>tip,POST?'post-gate mode: gate '+G+' mined (snapshot tip '+tip+'); synthetic burns from '+GB:'gate '+G+' is after snapshot tip '+tip);
 const base=V.replay(snap.rows,Object.assign({},ctx.XCPETS_BLOCK_HASHES||{},snap.hashes),[],{tip,live:E&&E.RealCore});
-const myth=base.pets.filter(p=>p.stage===5&&!p.dead&&!p.released&&!p.community&&p.species!=='nakamoto'&&V.breedable(p,G+2000)==null);
+const myth=base.pets.filter(p=>p.stage===5&&!p.dead&&!p.released&&!p.community&&p.species!=='nakamoto'&&V.breedable(p,GB+2000)==null);
 const naka=base.pets.filter(p=>p.species==='nakamoto'&&!p.dead&&!p.released&&!p.community&&p.stage>=3);
 console.log('Mythic breedable test pets',myth.length,'Nakamotos',naka.length);
 const byOwner={};myth.forEach(p=>(byOwner[p.owner]=byOwner[p.owner]||[]).push(p));const own=Object.keys(byOwner).sort((a,b)=>byOwner[b].length-byOwner[a].length)[0],M=byOwner[own];
 const rows=snap.rows.slice(),hashes=Object.assign({},snap.hashes);let n=0;
 const burn=(b,src,tag)=>{const tx=H('fake'+(n++));rows.push({tx_index:9e9+n,tx_hash:tx,block_index:b,source:src,asset:'XCPETS',quantity:69000000000,tag:hex(tag),status:'valid'});hashes[b]=hashes[b]||H('blk'+b);return tx};
-const P1=M[0].id,P2=M[1].id,P3=M[2]&&M[2].id;let b=G;
+const P1=M[0].id,P2=M[1].id,P3=M[2]&&M[2].id;let b=GB;
 for(let k=0;k<7;k++){burn(b,own,'pet:breed:'+P1+':'+P2);b+=1009}
 burn(b-1009+1,own,'pet:breed:'+P1+':'+P2); // inside cooldown
 const last=b+5000;
@@ -52,10 +53,26 @@ if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:nu
   ps.forEach(q=>{const d=V.HYBRID_PARTS[q.sp].find(x=>x.id===q.part);if(V.ONE_EYED[body]&&d.kind==='eyes')bad.push(body+'<'+q.sp+':'+q.part);if(q.sp==='kevin'&&q.part==='hair'&&(body==='pepe'||body==='peepo'))kv.push(body);if(q.sp==='chud'&&q.part==='hair')chudHair++;});if(V.ONE_EYED[body])dodoN+=ps.length;}}
  for(let i=0;i<20000;i++){const k={hybrid:{roots:['dodo','pepe'],shape:'dodo',parts:[]}};V._breedExtras({tier:3},{tier:3},H('lm'+i),k);k.hybrid.parts.forEach(q=>{const d=V.HYBRID_PARTS[q.sp].find(x=>x.id===q.part);if(d&&d.kind==='eyes')bad.push('legmix dodo<'+q.sp+':'+q.part);});}
  ok(kv.length===0,'KEVIN hair never on Pepe/Peepo bodies');
- ok(chudHair===0&&V.HYBRID_PARTS.chud.length===1&&V.HYBRID_PARTS.chud[0].id==='glasses','Chud black bangs removed; Chud donates eyeglasses');
- ok(Object.keys(V.ONE_EYED).length===0&&V.partsFor('dodo','chud').length===1&&V.partsFor('dodo','wojak').length===1&&V.partsFor('dodo','peepo').length===1,'one-eye rule removed: Dodo takes every eye part again');
+ ok(chudHair===0&&V.partsFor('pepe','chud',V.ACTIVATE_CHUD_BEARD_PART_BLOCK==null?1e9:V.ACTIVATE_CHUD_BEARD_PART_BLOCK-1).length===1&&V.HYBRID_PARTS.chud.length===1&&V.HYBRID_PARTS.chud[0].id==='glasses','Chud black bangs removed; Chud donates eyeglasses');
+ ok(Object.keys(V.ONE_EYED).length===0&&V.partsFor('dodo','chud',0).length===1&&V.partsFor('dodo','wojak').length===1&&V.partsFor('dodo','peepo').length===1,'one-eye rule removed: Dodo takes every eye part again');
  ok(['doge','mumu','pepe','nakamoto'].every(b=>!V.eligible(V.GEAR_BY_ID[V.CHUD_BEARD_ITEM]||V.CHUD_BEARD_ITEM,b,b)),'beard never eligible on Doge/Mumu/Pepe/Nakamoto (gate off anyway)');
  ok(V.HYBRID_PARTS.sarutobi.map(d=>d.id).join()==='tail','Sarutobi donates only the tail (ears removed)');
  ok(['bobo','mumu','doge'].every(sp=>V.HYBRID_PARTS[sp][0].onTop),'Bobo ears / Mumu horns / Doge ears use the onTop placement');
  ok(V.ACTIVATE_CHUD_BEARD_BLOCK===V.ACTIVATE_BREEDING_V2_BLOCK&&!V.beardOn(V.ACTIVATE_CHUD_BEARD_BLOCK-1)&&V.beardOn(V.ACTIVATE_CHUD_BEARD_BLOCK),'Chud beard gate = breeding-v2 gate ('+V.ACTIVATE_CHUD_BEARD_BLOCK+'), off before it');}
+// Chud's beard = HYBRID PART (owner correction Oct 22 ~7:40 AM CT). Branch gate is null; test with a local value, then restore.
+{const real=V.ACTIVATE_CHUD_BEARD_PART_BLOCK,TG=1e7;ok(real==null||real>tip,'beard-part gate '+real+' is null or after the snapshot tip (replay unchanged)');
+ ok(!V.beardPartOn(tip),'beard part off at the snapshot tip');
+ V._setChudBeardPartActivation(TG);
+ const EX=['doge','mumu','pepe','nakamoto','dodo','snibby','sarutobi','kek','wizard'],bodies=Object.keys(V.HYBRID_PARTS).filter(b=>b!=='chud');
+ ok(V.partsFor('bobo','chud',TG-1).map(d=>d.id).join()==='glasses','before the gate: Chud donates glasses only');
+ ok(V.partsFor('bobo','chud',TG).map(d=>d.id).join()==='glasses,beard'&&V.partDef('chud','beard').kind==='face','from the gate: Chud donates glasses + beard (kind face)');
+ ok(EX.every(b=>!V.partsFor(b,'chud',TG).some(d=>d.id==='beard')),'beard part never on Doge/Mumu/Pepe/Nakamoto/Dodo/Snibby/Sarutobi/Kek/Wizard bodies');
+ let got={};for(const body of bodies)for(let i=0;i<300;i++){V.hybridParts(H('bp'+body+i),{shape:body,roots:[body,'chud']},TG).forEach(q=>{if(q.part==='beard')got[body]=(got[body]||0)+1;});}
+ ok(EX.every(b=>!got[b])&&bodies.filter(b=>!EX.includes(b)).every(b=>got[b]>0),'hybridParts: beard drawn on '+Object.keys(got).join('/')+'; none on excluded');
+ ok(V.hybridParts(H('bpx'),{shape:'bobo',roots:['bobo','chud']},TG-1).every(q=>q.part!=='beard'),'no beard part before the gate');
+ const inPool=b=>{V._setEligB(b);const r=V._pool('face','bobo',3,'bobo').some(x=>x.it.id===V.CHUD_BEARD_ITEM);V._setEligB(null);return r;};
+ ok(V.ALL_GEAR.some(x=>x.id===V.CHUD_BEARD_ITEM),'v2-chud-beard kept in the item list');
+ ok(inPool(TG-1)&&!inPool(TG),'gear v2-chud-beard rolls before the part gate, out of every roll pool from it');
+ V._setEligB(TG);ok(V.eligible(V.CHUD_BEARD_ITEM,'bobo','bobo'),'owned v2-chud-beard still wearable after the gate');V._setEligB(null);
+ V._setChudBeardPartActivation(real);}
 console.log(fails?fails+' FAIL':'ALL PASS');
