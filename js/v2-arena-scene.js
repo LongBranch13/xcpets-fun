@@ -88,7 +88,7 @@
     else if (S.mode === 'result') resultFrame();
     else if (S.mode === 'lap') { var a = S.actors[0], ang = Math.PI / 2 + Math.min(1, t / 4200) * Math.PI * 2; a.x = CX + Math.cos(ang) * (RX - 6); a.y = CY + Math.sin(ang) * RY + 10; a.flip = Math.sin(ang) > 0; actor(a, now); if (S.f && window.V2ArenaFun && V2ArenaFun.info(S.w, S.f).beltOn) V2ArenaFun.belt(S.x, Math.round(a.x), Math.round(a.y));
       caption('VICTORY LAP · #' + a.p.id); if (t > 4200) { S.mode = 'win'; S.t0 = now; } }
-    else if (S.mode === 'win') { a = S.actors[0]; a.x = CX; a.y = 168; actor(a, now); if (S.f && window.V2ArenaFun && V2ArenaFun.info(S.w, S.f).beltOn) V2ArenaFun.belt(S.x, CX, 168); caption('WINNER #' + a.p.id); if (t > 2500) { S.mode = 'idle'; S.actors = []; nextQ(); } }
+    else if (S.mode === 'win') { a = S.actors[0]; a.x = CX; a.y = 168; actor(a, now); if (S.f && window.V2ArenaFun && V2ArenaFun.info(S.w, S.f).beltOn) V2ArenaFun.belt(S.x, CX, 168); caption('WINNER #' + a.p.id); if (t > 2500) { S.mode = 'idle'; S.actors = []; var more = Q.length; nextQ(); if (!more) done(); } }
     else caption(S.label);
     annFrame(now);
     if (!reduced() && (S.mode !== 'idle' || isVisible())) S.raf = requestAnimationFrame(frame); else { S.raf = 0; } }
@@ -124,12 +124,19 @@
     if (o && o.restart) { Q.length = 0; cancelAnimationFrame(S.raf); S.raf = 0; S.mode = 'idle'; if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) { } } /* arena-replay: manual Replay restarts, never queues */
     if (S.mode !== 'idle' && S.mode !== 'result') { Q.push(f); return; }
     if (window.V2ArenaReplay) try { V2ArenaReplay.onShow(f); } catch (e) { }
-    if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
+    if (o && o.auto) watchToast(f); else showMe(); /* flow-fixes (2026-10-22): automatic replays never move the page; a toast offers ▶ Watch */
     S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.mood = null; S.hp = { a: f.maxA, b: f.maxB }; S.fx = []; S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.annSaid = null; S.annSpoken = {}; S.endT0 = 0; if (window.V2Announcer && V2Announcer.reset) V2Announcer.reset(); S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null;
     S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true), side: 'a' }, { p: B, img: mk(B, w), lose: mk(B, w, true), side: 'b' }];
-    if (reduced()) { S.mode = 'result'; S.hp = { a: f.turns.length ? f.turns[f.turns.length - 1].hpA : f.maxA, b: f.turns.length ? f.turns[f.turns.length - 1].hpB : f.maxB }; S.t0 = performance.now(); frame(S.t0); return; }
+    if (reduced()) { S.mode = 'result'; S.hp = { a: f.turns.length ? f.turns[f.turns.length - 1].hpA : f.maxA, b: f.turns.length ? f.turns[f.turns.length - 1].hpB : f.maxB }; S.t0 = performance.now(); frame(S.t0); setTimeout(done, 2500); return; }
     S.mode = 'walk'; S.t0 = performance.now(); kick(); var tok = S.seq = (S.seq || 0) + 1;
     S.onWalk = function () { if (S.seq !== tok || S.mode !== 'walk') return; S.mode = 'fight'; S.t0 = performance.now(); kick(); }; }
+  function inView() { var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; }
+  function showMe() { var y0 = window.scrollY; if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); setTimeout(function () { var U = window.V2UI; if (U && U.toast && Math.abs(window.scrollY - y0) > 600) U.toast('<a href="#" data-arback="' + Math.round(y0) + '">↩ Back to where I was</a>', 15000); }, 1200); }
+  function watchToast(f) { var U = window.V2UI; if (!U || !U.toast || inView()) return; U.toast('⚔️ Fight ' + f.id + ' is playing in X Circus Kekimus · <a href="#" data-arwatch="' + f.id + '">▶ Watch</a>', 15000); }
+  if (typeof document !== 'undefined') document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-arwatch],[data-arback]'); if (!a) return; e.preventDefault(); var t = a.closest('.toast');
+    if (a.hasAttribute('data-arback')) { window.scrollTo({ top: +a.getAttribute('data-arback'), behavior: 'instant' }); if (t) t.remove(); return; }
+    var U = window.V2UI, w = U && U.world(), f = w && w.fights[a.getAttribute('data-arwatch') - 1]; if (t) t.remove(); if (!f) return; if (S.f && S.f.id === f.id && S.mode !== 'idle' && S.mode !== 'result') showMe(); else sequence(f, { restart: true }); });
+  function done() { if (!Q.length && window.V2AnimDone) window.V2AnimDone(); }
   function nextQ() { var f = Q.shift(); if (f) setTimeout(function () { sequence(f); }, 400); }
   var TICK = 260; /* announcer-fix: 220 -> 260 ms (display pacing only; turns, hits and winner come from f.turns unchanged), so a round lasts ~1.0 s, about one short announcer line at the faster voice. 4 ticks per turn (lunge on tick 1) */
   function hpBar(x, cx, y, v, max, col) { px(x, '#000', cx - 17, y - 1, 34, 5); px(x, '#2a3a2e', cx - 16, y, 32, 3); px(x, col, cx - 16, y, Math.max(0, Math.round(32 * v / max)), 3); }

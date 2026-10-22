@@ -42,3 +42,10 @@ html.ip-hold #inReqBox.on,html.ip-hold #eggPop{display:none!important}
 
 /* hold the new-player tour while the Lord Kek arrival scene is open (phones: it covered the scene) */
 body.kek-arr-open .ip-tour{display:none!important}
+
+/* flow-fixes 2026-10-22: backlog chip lives in the header corner (never over page controls); hidden while any pop-up is open */
+.ip-awaywrap{display:inline-flex;align-items:center;gap:0;margin-right:4px}.ip-awaywrap[hidden]{display:none}
+.ip-awaywrap .ip-away{position:static;left:auto;bottom:auto;transform:none;max-width:none;padding:3px 7px;font-size:12px;min-height:28px;box-shadow:2px 2px 0 #000}
+.ip-awayx{background:#000;color:#ffd23f;border:2px solid #000;font:700 11px/1 inherit;font-family:inherit;min-height:28px;min-width:24px;cursor:pointer;padding:0 5px}
+.ip-awayfix{position:fixed;right:10px;bottom:10px;z-index:8000}
+body:has(.reveal.on) .ip-awaywrap{visibility:hidden}
