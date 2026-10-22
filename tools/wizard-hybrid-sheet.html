@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Wizard hybrids contact sheet</title>
+<style>body{background:#111;color:#ddd;font:12px monospace;margin:8px}h2{margin:14px 0 4px;color:#ffd23f}.row{display:flex;align-items:center;gap:6px;margin:2px 0}.lab{width:230px}canvas{image-rendering:pixelated;background:#000}.g{display:inline-flex;gap:2px;padding:2px;border:1px solid #333}.hd{color:#888}</style>
+<script>window.ERRS=[];window.addEventListener('error',function(e){ERRS.push(String(e.message))});</script>
+</head><body>
+<div id="out"></div>
+<script src="../rjs/config.js"></script><script src="../rjs/pet-core.js"></script><script src="../rjs/game-core.js"></script><script src="../rjs/bonus-gear.js"></script>
+<script src="../js/pet-core.js"></script><script src="../js/bonus-gear.js"></script><script src="../js/v2-gear.js"></script><script src="../js/v2-fit.js"></script><script src="../js/v2-rules.js"></script><script src="../js/wizard-sprite.js"></script><script src="../js/v2-bg.js"></script><script src="../js/v2-render.js"></script>
+<script>
+(function(){ try {
+var V=V2Rules,R=V2Render,SC=3,out=document.getElementById('out'),mode=(location.search.match(/mode=(\w+)/)||[])[1]||'two';
+var SP=['pepe','wojak','chud','bobo','mumu','snibby','dodo','kevin','peepo','sarutobi','doge','lenny','nakamoto'];
+var heads=V.GEAR?null:null, HAT=null; (V.ALL_ITEMS||[]).length;
+var all=Object.keys(V.GEAR_BY_ID||{}).map(function(k){return V.GEAR_BY_ID[k];});
+HAT=(all.filter(function(it){return it.slot==='head'&&!it.exclusive&&/beanie|cap\b|hat/i.test(it.label||'');})[0]||all.filter(function(it){return it.slot==='head'&&!it.exclusive;})[0]).id;
+function cv(img){var c=document.createElement('canvas');c.width=32*SC;c.height=32*SC;var x=c.getContext('2d'),d=x.createImageData(32,32);d.data.set(img.data);var t=document.createElement('canvas');t.width=32;t.height=32;t.getContext('2d').putImageData(d,0,0);x.imageSmoothingEnabled=false;x.drawImage(t,0,0,32*SC,32*SC);return c;}
+function grp(imgs){var g=document.createElement('span');g.className='g';imgs.forEach(function(i){g.appendChild(cv(i));});return g;}
+function artFor(plan,n){var a=PetCore.generate({blockHash:'00000000000000000001f0c1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5',petId:'sheet:'+n,blockHeight:972300});a.species=plan.shape;a.hybrid=plan;a.background='solid';a.bgColor='#2a3a2e';a.pattern='none';a.eyes=plan.eyes;return a;}
+function row(label,art){var r=document.createElement('div');r.className='row';var l=document.createElement('span');l.className='lab';l.textContent=label;r.appendChild(l);
+  r.appendChild(grp(R.framesWith(art,3,[],[])));r.appendChild(grp(R.framesWith(art,3,[],['v2-black-eye'])));r.appendChild(grp(R.framesWith(art,3,[HAT,'wizard-hat'].slice(0,1),[])));
+  r.appendChild(grp([0,1,2,4,5].map(function(s){return R.framesWith(art,s,[],[])[0];})));out.appendChild(r);}
+var hd=document.createElement('div');hd.className='hd';hd.textContent='Adult x4 frames | Adult black eye x4 | Adult wearing '+(V.GEAR_BY_ID[HAT]||{}).label+' (Wizard Hat never on hybrids) x4 | Egg, Hatchling, Juvenile, Elder, Mythic';out.appendChild(hd);
+var n=0;
+if(mode==='two'){ SP.forEach(function(x){ var key='hyb:wizard:'+x, plan=V.hybridPlan(V.sha?V.sha('sheet:'+key):'ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12',key);
+  var h=document.createElement('h2');h.textContent=V.hybridName(key)+' / '+V.hybridName('hyb:'+x+':wizard')+'  (wizard x '+x+')';out.appendChild(h);
+  [['wizard',x],[x,'wizard']].forEach(function(b){ var p=Object.assign({},plan,{shape:b[0],color:b[1],featSp:undefined});
+    ['head','side'].forEach(function(f){ var q=Object.assign({},p,{feature:f}); row('body '+b[0]+' · colour+'+f+' feature '+b[1],artFor(q,n++)); }); }); }); }
+else { var trios=SP.map(function(x,i){return ['wizard',x,SP[(i+5)%13]];});
+  trios.forEach(function(t){ var key='hyb3:'+t.join(':'), plan=V.hybridPlan('cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12cd34',key);
+    var h=document.createElement('h2');h.textContent=V.hybridName(key)+'  (3-way '+t.join(' + ')+')';out.appendChild(h);
+    t.forEach(function(sh,i){ var rest=t.filter(function(_,j){return j!==i;}); row('body '+sh+' · colour '+rest[0]+' · feature '+rest[1],artFor(Object.assign({},plan,{shape:sh,color:rest[0],featSp:rest[1]}),n++)); }); }); }
+window.DONE=n;
+} catch(e){ ERRS.push('THROW '+e.message+' '+e.stack); window.DONE=-1; } })();
+</script></body></html>

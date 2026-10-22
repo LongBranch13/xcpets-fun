@@ -28,3 +28,13 @@ ol.archive-feed { margin: 4px 0 0; padding-left: 22px; font: 13px ui-monospace, 
 /* phone: the watch button goes BELOW the sprite (it overlapped the sprite in the mockup) */
 @media (max-width: 520px) { .archive-player { aspect-ratio: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 10px 12px; }
   .archive-play { position: static; width: 100%; } .archive-play .btn { width: 100%; justify-content: center; } .archive-fsprite { width: 160px; height: 160px; } }
+
+/* wizard-story-short 2026-10-21: Cold Storage story pop-up (pixel .reveal box, same fonts) */
+.archive-story-lead { margin: 8px 0 4px; }
+.reveal.archstory .box { max-width: 440px; text-align: left; padding: 0; max-height: 88vh; }
+.archstory-top { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px 10px; background: var(--panel, #18221b); border-bottom: 3px solid #3ddc84; }
+.archstory-top h2 { margin: 0; font-size: 20px; }
+.archstory-x { flex: none; min-height: 40px; }
+.archstory-body { padding: 14px 20px 18px; line-height: 1.5; }
+.archstory-body p { margin: 0 0 12px; } .archstory-body p:last-child { margin-bottom: 0; }
+@media (max-width: 480px) { .reveal.archstory { padding: 12px; } .archstory-top { padding: 12px 14px 8px; } .archstory-body { padding: 12px 14px 14px; font-size: 14px; } }

@@ -160,3 +160,5 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 #detail .starve p, #detail #dInfo .starve p:last-child { display:block; margin:0 0 8px; }
 .starve .sgrave { margin:8px 0 0; } .tomb .buried { margin-top:8px; color:#ffd7d7; }
 .tomb { min-width:0; overflow-wrap:anywhere; } /* the full owner address overflowed a 390px tomb (seen with a forced dead pet; no pet has died on chain yet) */
+/* cemetery-paging 2026-10-20: find box + Show more under the graves */
+.tomb.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} #tombsMore{margin-top:12px} .cemfind .btn.on{outline:2px solid #ffc93c}

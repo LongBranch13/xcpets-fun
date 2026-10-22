@@ -1,10 +1,10 @@
 /* Per-pet discard (2026-10-14, v2). A small 🗑️ button in the bottom-right of each living pet card on play.html.
- * Click -> confirm -> the SAME free local Discard as 'Delete all Commons' (hidden in this browser, Undo toast, restorable). No burn, nothing signed.
+ * Click -> confirm -> the SAME free local Discard as 'Discard all Commons' (hidden in this browser, Undo toast, restorable). No burn, nothing signed.
  * One capture-phase listener on #pets (event delegation, fine for 2,000 pets); it stops propagation so the card's selection/detail never toggles.
  * Buttons are added to cards as they are rendered (chunked) by one MutationObserver on #pets. */
 (function () {
   'use strict';
-  var CLS = 'pet-discard', DW = 'Discard: free, only hidden in this browser, Undo anytime, no burn.', RW = 'Release: on-chain burn, permanent, you sign it in your wallet.', RC = 'pet-release', RT = 'Release: on-chain burn, permanent, signed in your wallet';
+  var CLS = 'pet-discard', DW = 'Discard: free, only hidden in this browser, Undo anytime, no burn. Starred pets are never discarded.', RW = 'Release: on-chain burn, permanent, you sign it in your wallet.', RC = 'pet-release', RT = 'Release: on-chain burn, permanent, signed in your wallet';
   function addBtn(d) {
     if (!d || !d.classList || !d.classList.contains('card') || !d.dataset || !d.dataset.pid || d.classList.contains('dead') || d.querySelector('.' + CLS)) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = CLS; b.dataset.discard = d.dataset.pid; b.title = DW;
@@ -18,7 +18,8 @@
     var b = t && t.closest ? t.closest('.' + CLS) : null; if (!b) return;
     e.stopPropagation(); e.preventDefault();
     var id = Number(b.dataset.discard); if (!id) return;
-    if (!window.confirm((D.isKept && D.isKept(id) ? '#' + id + ' is starred as kept.\n' : '') + 'Discard pet #' + id + '?\n\n' + DW)) return;
+    if (D.isKept && D.isKept(id)) { D.discardIds([id]); return; } /* starred: discardIds skips it and says why (never discarded) */
+    if (!window.confirm('Discard pet #' + id + '?\n\nIt moves to the Discard pile at the bottom of My Pets.\n' + DW)) return;
     D.discardIds([id]);
   }
   function init() {
@@ -32,7 +33,8 @@
       var hn = document.getElementById('relHint'); rel.parentNode.insertBefore(ds, (hn || rel).nextSibling);
       var upd = function () { var n = D.S().sel.length; ds.disabled = !n; ds.textContent = '🗑️ Discard selected' + (n ? ' (' + n + ')' : ''); };
       ds.onclick = function () { var ids = D.S().sel.slice(); if (!ids.length) return; var n = ids.length;
-        var kk = D.isKept ? ids.filter(D.isKept) : []; if (!window.confirm('Discard ' + n + ' pet' + (n > 1 ? 's' : '') + '?' + (kk.length ? ' ' + kk.length + ' of them ' + (kk.length > 1 ? 'are' : 'is') + ' starred as kept (' + D.idList(kk) + ').' : '') + ' Free, only hidden in this browser, Undo anytime, no burn.')) return;
+        var kk = D.isKept ? ids.filter(D.isKept) : [], go = n - kk.length; if (!go) { D.discardIds(ids); return; }
+        if (!window.confirm('Discard ' + go + ' selected pet' + (go > 1 ? 's' : '') + '?' + (kk.length ? '\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + D.idList(kk) + '): starred pets are never discarded.' : '') + '\n\nThey move to the Discard pile at the bottom of My Pets. Free, only hidden in this browser, Undo anytime, no burn.')) return;
         D.discardIds(ids); var S = D.S(); S.sel = []; D.selUi(); upd(); };
       var sc = document.getElementById('selCount'); if (sc && window.MutationObserver) new MutationObserver(upd).observe(sc, { childList: true, characterData: true, subtree: true }); upd();
       window.V2PetDiscard && (window.V2PetDiscard.updDiscSel = upd); }

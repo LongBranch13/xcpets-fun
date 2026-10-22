@@ -10,6 +10,11 @@
   function small(fr, c) { R.animate(c, fr); }
   function tagText(t) { t = t == null ? '' : String(t); if (/^([0-9a-f]{2})+$/i.test(t)) { try { return decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (e) { } } return t; }
   function burnAmt(r) { return r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; }
+  /* intuitive-pass item 12 (display only): plain-language burn-history rows; the raw tag stays one tap away */
+  function plainRes(res, tag) { var t = String(tag || ''), m = String(res || ''), body = m.replace(/^[a-zA-Z]+: /, ''), k = (/^pet:([a-z0-9]+)/i.exec(t) || [])[1] || '';
+    var L = { feed: 'Fed', fm: 'Fed (bundle)', hatch: 'Hatched', hatch12: 'Hatched (dozen)', hatch144: 'Hatched (case)', roll: 'Gear roll', fight: 'Fight challenge', accept: 'Fight accepted', breed: 'Breed', rumble: 'Royal Rumble (retired)', rel: 'Released', fr: 'Free roll', of: 'Overflow roll', grave: 'Grave gear' }[k.toLowerCase()];
+    if (/^before v2: /.test(m)) return (L ? L : 'Burn') + ' (before v2)'; if (/^born: /.test(m)) return 'Born: ' + m.slice(6); if (/^hatch: /.test(m)) return 'Hatched · ' + body;
+    return L ? L + ' · ' + body : m; }
   var page = document.body.getAttribute('data-v2page');
 
   /** Cast gating: Nakamoto joins the live Cast (12 species) only once V2Rules.castShowsNakamoto(world) (stage >= NAKAMOTO_CAST_STAGE). */
@@ -20,7 +25,7 @@
     function add() { if (!show || window.PromoLiveCast || box.querySelector('[data-sp="nakamoto"]')) return; /* live-rules cast (promo.js) has its own Nakamoto row on the Legendary tab */ var sp = G.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0]; if (!sp) return;
       var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', pet = G.characterPet('nakamoto', { tier: tier });
       var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', 'nakamoto');
-      row.innerHTML = '<div><h3 class="ch">Nakamoto</h3><p class="muted">Always Legendary · 1 in 777 eggs</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
+      row.innerHTML = '<div><h3 class="ch">Nakamoto</h3><p class="muted">Always Legendary · no longer hatched, existing ones kept</p><p class="muted">' + sp.arc.map(function (x) { return esc(x[0]); }).join(' → ') + '</p></div>';
       var strip = document.createElement('div'); strip.className = 'strip6';
       G.STAGES.forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Nakamoto, ' + name);
         R.paint(c, G.render(pet, { stage: si })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -44,6 +49,35 @@
   // live all-crowns legendary kit. The live promo.js grid is replaced by a fresh node so its timer paints nothing visible.
   // Elder or Mythic only: Wojak shows at Elder, where pet-core gives him the classic open sad eyes (his Mythic arc closes them into a ^^ smile)
   var HERO_STAGE = { wojak: 4 };
+  /* Cast parade (P15, owner 2026-10-21 chose the parade): the cast section's GIF (img/xcpets-cast.gif, drawn with old sprites) is replaced by a live
+   * canvas where every species marches across in its front-page kit at Mythic (Wojak Elder), drawn by the CURRENT renderer (V2Render.framesWith +
+   * V2Gear.CAST_KITS), plus the Bitcoin Wizard in his Cold Storage loadout. 320x56 logical px, pixelated; ~8 fps; pauses off screen and when the tab is
+   * hidden; prefers-reduced-motion = one still lineup. The <picture> stays as the no-JS fallback (it is only swapped out when this runs). */
+  function castParade() { var pic = document.querySelector('#cast picture'), img = pic && pic.querySelector('img.cast-gif'); if (!pic || !img || !R || !R.framesWith || !V2Gear.CAST_KITS) return;
+    var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [];
+    live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
+      window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
+      if (fr && fr.length) list.push({ id: id, fr: fr }); });
+    var wiz = ARCHIVE.filter(function (e) { return e.id === 'wizard'; })[0], wf = wiz && R.coldFrames ? R.coldFrames(wiz.sp, wiz.loadout || [], COLD_STAGE) : null; if (wf && wf.length) list.push({ id: 'wizard', fr: wf });
+    if (!list.length) return;
+    /* key out the backdrop (the render's own background colour, read from the top-left pixel of each frame) so pets walk on the scene */
+    function cut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), d = new Uint8ClampedArray(f.data), r = d[0], g = d[1], b = d[2];
+      for (var i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) + Math.abs(d[i + 1] - g) + Math.abs(d[i + 2] - b) < 24) d[i + 3] = 0; x.putImageData(new ImageData(d, 32, 32), 0, 0); return c; }
+    list.forEach(function (q) { q.c = q.fr.map(cut); });
+    var cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.className = 'cast-parade'; cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', 'The XCPETS cast marching by in signature gear: ' + list.map(function (q) { return q.id === 'wizard' ? 'Bitcoin Wizard' : V.speciesLabel(q.id); }).join(', '));
+    cv.style.cssText = 'display:block;width:100%;max-width:600px;height:auto;margin:6px auto 14px;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0e0b16';
+    pic.parentNode.replaceChild(cv, pic); var x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+    var GAP = 40, LOOP = list.length * GAP, t = 0, vis = true, raf = 0, last = 0, still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function scene() { x.fillStyle = '#0e0b16'; x.fillRect(0, 0, LW, LH); x.fillStyle = '#2b1d3f'; for (var s2 = 0; s2 < 26; s2++) x.fillRect((s2 * 53 + 7) % LW, (s2 * 17 + 3) % 30, 1, 1);
+      x.fillStyle = '#2b1d3f'; x.fillRect(0, 46, LW, 10); x.fillStyle = '#ff7a1a'; x.fillRect(0, 45, LW, 1); x.fillStyle = '#161122'; for (var k = 0; k < LW; k += 8) x.fillRect((k - Math.floor(t / 2)) % LW < 0 ? (k - Math.floor(t / 2)) % LW + LW : (k - Math.floor(t / 2)) % LW, 50, 4, 1); }
+    function frame() { scene(); list.forEach(function (q, i) { var px = still ? 4 + i * Math.floor((LW - 36) / Math.max(1, list.length - 1)) : ((i * GAP - t * 2) % LOOP + LOOP) % LOOP - 32, f = still ? 0 : (Math.floor(t / 3) + i) % q.c.length, hop = still ? 0 : ((Math.floor(t / 3) + i) % 2);
+      if (px > -32 && px < LW) x.drawImage(q.c[f], Math.round(px), 14 - hop); }); }
+    function loop(ts) { raf = 0; if (!vis || document.hidden) return; if (ts - last >= 120) { last = ts; t += 1; frame(); } raf = requestAnimationFrame(loop); }
+    frame(); if (still) return;
+    if (window.IntersectionObserver) new IntersectionObserver(function (es) { vis = es[es.length - 1].isIntersecting; if (vis && !raf) raf = requestAnimationFrame(loop); }).observe(cv);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && vis && !raf) raf = requestAnimationFrame(loop); });
+    raf = requestAnimationFrame(loop); }
   function heroGrid() { var old = $('heroPets'); if (!old || !V2Gear.CAST_KITS) return; var box = old.cloneNode(false); old.parentNode.replaceChild(box, old);
     var G = window.GenPetCore || PetCore, live = window.PetCore, ids = live.SPECIES.map(function (s) { return s.id; }), cache = {}, k = 0, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' };
     function frames(id) { if (cache[id]) return cache[id]; var kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); });
@@ -51,32 +85,78 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=1c4effa031'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=KEEPID'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
+  /* Cold Storage rule (owner 2026-10-20, display only, general): every community pet in Cold Storage (Nakamoto, the Bitcoin Wizard, Lord Kek and any
+   * future entry) is drawn at its MYTHIC stage art (COLD_STAGE). Nakamoto is bare; the others keep their best-gear loadout. New ARCHIVE entries must use COLD_STAGE. */
+  var COLD_STAGE = 5;
   function nakaFrames() { var NG = window.GenPetCore || PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
-    return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }); }
+    return [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: COLD_STAGE, frame: f, gearOverride: {} }); }); }
   var ARCHIVE = [
     { id: 'nakamoto', name: 'Nakamoto', done: function (c) { return c.returned; }, block: function (c) { return c.returnBlock; }, tx: function (c) { return c.returnTx; },
-      sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } }
+      sprites: nakaFrames, play: function (info) { V2Return.play({ sprites: { nakamoto: nakaFrames(), egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true }) }, info: info }); } },
+    /* #2 Bitcoin Wizard (Oct 19 2026): Mythic at 6,906,900 burned since The Return -> Cold Storage. Chain state = w.wizardMythic (V2Rules.replay, from history). */
+    { id: 'wizard', name: 'Bitcoin Wizard', sp: 'wizard', loadout: ['wizard-hat', 'sig-wizard-staff', 'sig-wizard-sign'], /* signature loadout: pointy hat, Bitcoin staff, Join us sign */ putDown: ['sig-wizard-sign'], /* the story beat where he sets the sign down (farewell) */ done: function (c, w) { return !!(w && w.wizardMythic); }, block: function (c, w) { return w.wizardMythic.block; }, tx: function (c, w) { return w.wizardMythic.tx; },
+      stats: function (w) { var x = w.wizardMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
+      /* wizard-story-short 2026-10-21 (owner): short story, shown in the Cold Storage story pop-up (#archStory) */
+      story: ['2013. Someone drew a wizard in MS Paint for a forum ad.', '"Magic Internet Money." "Join us."', '2026. Nakamoto went into Cold Storage and left an egg. Every burn fed it.',
+        'At Mythic, the Wizard put down his sign and joined Nakamoto.', 'The sign stayed. So did an egg. Join us.'],
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
   ];
+  /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
+   * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
+   * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
+  function coldEntryFrames(e) { return (R && R.coldFrames && R.coldFrames(e.sp, e.loadout || [], COLD_STAGE)) || wizMythicFrames(M.world()); }
+  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); }
+  /* wizard-story-short P3 (owner 2026-10-21): the farewell Wizard wears exactly his Cold Storage look: the entry's Mythic signature loadout via
+   * V2Render.coldFrames (data-driven, no pet ids); after the story beat where he puts the sign down, the same loadout minus e.putDown. */
+  function entryOf(id) { return ARCHIVE.filter(function (e) { return e.id === id; })[0]; }
+  function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
+      noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
+    return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=KEEPID'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
-    return ARCHIVE.map(function (e) { var done = e.done(c); if (!done && !preview) return null;
-      var blk = done ? e.block(c) : null, tot = {}, sum = 0;
+    return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
+      var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
+      if (e.stats) { var st = e.stats(w); return { e: e, done: done, block: blk, tx: done ? e.tx(c, w) : null, total: done ? st.total : (c.wizardFed || 0), feeders: done ? st.feeders : 0, top: st.top, row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c, w); })[0] : null }; }
       rows.forEach(function (r) { if (blk != null && r.block_index > blk) return; var a = burnAmt(r); sum += a; tot[r.source] = (tot[r.source] || 0) + a; });
       var all = Object.keys(tot).map(function (k) { return { address: k, amount: tot[k] }; }).sort(function (x, y) { return y.amount - x.amount; });
-      return { e: e, done: done, block: blk, tx: done ? e.tx(c) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c); })[0] : null }; }).filter(Boolean); }
+      return { e: e, done: done, block: blk, tx: done ? e.tx(c, w) : null, total: sum, feeders: all.length, top: all.slice(0, 5), row: done ? rows.filter(function (r) { return r.tx_hash === e.tx(c, w); })[0] : null }; }).filter(Boolean); }
   /* Archive layout = Jake's Option C (gallery with featured player); styles in css/archive.css (.archive-*). Spoiler rules: nothing before The Return on chain
    * (neutral empty state); after it, Nakamoto (completed: Return blurb + replay) and the next community pet (in progress: one general line; never its sprite).
    * No placeholder for a next pet. */
   function shortAddr(s) { s = String(s || ''); return s.length > 14 ? s.slice(0, 6) + '…' + s.slice(-4) : s; }
+  /* Cold Storage story pop-up (wizard-story-short 2026-10-21, owner): the entry's story in the site's pixel .reveal dialog; close button stays visible
+   * (sticky), fits a 390 px phone without long scrolling, Esc / backdrop / Close all close it and focus returns to the button. */
+  function storyPop(e, back) { var m = $('archStory'); if (!m) { m = document.createElement('div'); m.className = 'reveal archstory'; m.id = 'archStory'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'archStoryT'); document.body.appendChild(m); }
+    m.innerHTML = '<div class="box"><div class="archstory-top"><h2 id="archStoryT">' + esc(e.name) + '</h2><button type="button" class="q archstory-x" id="archStoryX" aria-label="Close">Close ✕</button></div>' +
+      '<div class="archstory-body">' + e.story.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div></div>';
+    function close() { m.classList.remove('on'); document.removeEventListener('keydown', key); if (back && back.focus) back.focus(); }
+    function key(ev) { if (ev.key === 'Escape') close(); }
+    $('archStoryX').onclick = close; m.onclick = function (ev) { if (ev.target === m) close(); }; document.addEventListener('keydown', key); m.classList.add('on'); $('archStoryX').focus(); }
+  /* P10/P11 (owner 2026-10-21): the owner's actions on the pet page. Burns (Feed, Roll for gear, Free roll, Overflow roll) open the game's own confirm +
+   * wasted-burn guard via play.html#act-<a>-ID; ⭐ Keep toggles the same localStorage list as My Pets; 'More in the game' opens the full pet panel.
+   * P11: a Mythic pet shows no Feed (Mythics are never fed) and, while MYTHIC_ROLL_OFF is on, no Roll for gear (gear rolling stays in the Lair:
+   * 'Roll gear · pick pet'; a future Captain Dan gear place will take it over). */
+  var MYTHIC_ROLL_OFF = true;
+  function keepKey() { var N = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo'); return 'xcpets-keep-' + N + '-' + (ME || ''); }
+  function kept(id) { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').indexOf(Number(id)) >= 0; } catch (e) { return false; } }
+  function toggleKept(id) { var l = []; try { l = JSON.parse(localStorage.getItem(keepKey()) || '[]'); } catch (e) { } var i = l.indexOf(Number(id)); if (i >= 0) l.splice(i, 1); else l.push(Number(id)); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } return i < 0; }
+  function petActs(w, p) { var myth = !!p.mythicCare || p.stage >= 5, a = function (k, label, title, cls) { return '<a class="btn ' + (cls || '') + ' ico-flame" href="play.html#act-' + k + '-' + p.id + '" title="' + esc(title) + '">' + label + '</a> '; },
+      fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
+    return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
+      (myth && MYTHIC_ROLL_OFF ? '' : a('roll', '🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')', 'Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet', 'ghost')) +
+      (fr && fr.on ? a('froll', 'Free roll', 'Founder reward: one random gear piece for this pet', 'ghost') : '') + (of && of.on ? a('oroll', 'Overflow roll', 'Mythic discount: one random gear piece for this pet', 'ghost') : '') +
+      '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
+  document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });
   function archive() {
-    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search), list = archiveEntries(w, preview), box = $('archList');
+    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : false, list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
     var items = list.map(function (x) { return { kind: 'done', x: x, id: x.e.id, name: x.e.name, done: x.done }; });
-    if (c.returned) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
+    if (c.returned && !w.wizardMythic) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
     var filt = 'all', sel = items[0].id;
     function sprites(it) { return it.kind === 'live' ? (c.wizardStage > 0 ? (R && R.communityFrames ? R.communityFrames(w) : WizardSprite.frames(c.wizardStage, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true })) : null) : it.x.e.sprites(); }
     function feat(it) {
@@ -85,8 +165,8 @@
         '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div>' + (R && R.communityWearing ? '<p class="small muted">' + esc(R.communityWearing(w)) + '</p>' : '') + '</div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
-        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ Watch the replay</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
-        '<h2 class="archive-name">' + esc(x.e.name) + '</h2><p>The community cycle came full circle.</p><div class="archive-stats">' +
+        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
+        '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<p class="archive-story-lead">' + esc(x.e.story[0]) + '</p><p><button type="button" class="q archive-storybtn" id="archStoryBtn" aria-haspopup="dialog">📜 Read the story</button></p>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
         (x.tx ? '<p class="small archive-tx">Triggering tx <code>' + esc(x.tx) + '</code></p>' : '') + '<h3 class="archive-h3">Top feeders</h3><ol class="archive-feed">' + x.top.map(function (t) { return '<li title="' + esc(t.address) + '">' + esc(shortAddr(t.address)) + ' · <span>' + fmt(Math.floor(t.amount)) + '</span></li>'; }).join('') + '</ol></div>'; }
@@ -105,29 +185,39 @@
       if (cur && $('archFeatCv')) R.animate($('archFeatCv'), sprites(cur));
       Array.prototype.forEach.call(box.querySelectorAll('.archive-chip'), function (b) { b.onclick = function () { filt = b.dataset.f; draw(); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.archive-card'), function (b) { b.onclick = function () { sel = b.dataset.id; draw(); }; });
-      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + "'s replay" + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
+      var sb = $('archStoryBtn'); if (sb && cur && cur.x) sb.onclick = function () { storyPop(cur.x.e, sb); };
+      var pb = box.querySelector('.archplay'); if (pb && cur && cur.x) pb.onclick = function () { withReturn(function () { cur.x.e.play(cur.x.e.name + (cur.x.e.farewell ? "'s farewell" : "'s replay") + (cur.x.done ? ' · block ' + fmt(cur.x.block) : ' (preview)')); }); };
       if (cur && cur.x && cur.x.done && !(cur.x.row && cur.x.row.block_time) && window.LiveEngine && LiveEngine.Chain) try { new LiveEngine.Chain().getJson('/blocks/' + cur.x.block).then(function (j) { var bt = j && j.result && j.result.block_time, el = box.querySelector('.archdate'); if (bt && el) el.textContent = new Date(bt * 1000).toISOString().slice(0, 10); }, function () {}); } catch (e) { }
     }
-    draw(); withReturn(function () {});
+    draw(); withReturn(function () {}); if (preview === 'wizard') withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(w), info: 'Bitcoin Wizard farewell (preview)' }); });
   }
   function front() {
-    heroGrid();
+    heroGrid(); try { castParade(); } catch (e) { if (window.console) console.warn('cast parade', e); }
     var w = M.world(), c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage, rp = V.returnProgress(c.burned);
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total); then the next community pet, grown by later burns
     var NG = window.GenPetCore || PetCore; if (NG.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0] && V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true });
-    R.animate($('crCanvas'), R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */
-    if ($('crGearTxt')) $('crGearTxt').textContent = R.communityWearing ? R.communityWearing(w) : ''; $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
+    var gap = R.communityGap && R.communityGap(w); /* no community pet (Cold Storage gap): the card, feature tile and nav link STAY, with a coming-soon mystery egg (owner rule Oct 20 2026) */
+    R.animate($('crCanvas'), gap ? R.comingSoonFrames() : R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */
+    if ($('crGearTxt')) $('crGearTxt').textContent = R.communityWearing ? R.communityWearing(w) : ''; if (R.kekOn && R.kekOn(w) && window.V2KekArrival && $('crGearTxt')) { var kr = $('kekReplayRow'); if (!kr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</p>'); kr = $('kekReplayRow'); } V2KekArrival.bindReplay(kr, M.world); V2KekArrival.watch($('crCanvas'), M.world); } /* Lord Kek arrival scene (display only) */ $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
     $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
+    if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, M.state().rows.length); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
+      $('crFed').textContent = fmt(ks.fed); $('crNext').textContent = ks.next != null ? fmt(ks.next) + ' to ' + ks.nextName : 'Mythic reached'; $('crProg').style.width = ks.pct.toFixed(1) + '%'; }
     if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('crQuestTxt').textContent = wiz ? 'Nakamoto\'s finished story' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
+    if (gap) { var soon = R.comingSoonText(), nn = '#' + R.COMMUNITY_NEXT_NO; $('crName').textContent = nn + ' coming soon'; $('crCanvas').setAttribute('aria-label', soon);
+      $('crStage').textContent = 'Coming soon'; $('crFed').textContent = '–'; $('crNext').textContent = 'Opens when pet ' + nn + ' arrives'; $('crProg').style.width = '0%';
+      if ($('crGearTxt')) $('crGearTxt').innerHTML = '<b>' + esc(soon) + '</b>. The Bitcoin Wizard reached Mythic and is in Cold Storage. Community feeding opens when pet ' + nn + ' arrives.' + R.wizardTopHtml(w, esc, fmt);
+      var ft = $('featCommunity') && $('featCommunity').querySelector('span'); if (ft) ft.textContent = soon + '. The Bitcoin Wizard reached Mythic and is in Cold Storage; everyone grows the next shared pet together.'; }
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
+    var returning = false; try { returning = !!localStorage.getItem('xcpets-v2-return-seen'); } catch (e) { }
+    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); /* farewell: once per browser, returning visitors only */
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
       /* UX polish 2026-10-16 (owner): no full-screen autoplay for visitors, so new players see the game first; mark it seen (Cold Storage still replays it) */
@@ -162,7 +252,7 @@
     function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
     function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
     function petRows(B, wk) { var L = live.slice(), sc;
-      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) }; }); }
+      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
@@ -193,45 +283,74 @@
       var rowHtml = function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
         var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
           : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
-        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + '</div>' : '') + '</td></tr>'; };
-      var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '');
+        return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + (r.subQ || '') + '</div>' : '') + '</td></tr>'; };
+      var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
+      var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '') + hmore;
       var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
       $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">Nobody on this board yet.</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
-      $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = STEP; st.hits = null; render(); }; });
-      $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; render(); }; });
-      $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; render(); }; });
+      $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = STEP; st.hits = null; st.all = null; render(); }; });
+      $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; st.all = null; render(); }; });
+      $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
       $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pets' : ' players') + ' on this board · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
     }
-    $('boardAll').onclick = function () { st.n += STEP; render(); };
+    $('boardAll').onclick = function () { st.n += STEP; render(); mark(); };
     /* content-fixes 2026-10-19: Find my pet searches EVERY row of the current board (not only the loaded ones), loads up to the first hit and highlights it.
      * q = { id: N } | { text: 'name' } | { owner: address }. Returns the number of matches. Used by js/ux-polish.js rankingFind(). */
+    /* bigfix 2026-10-20: every match is highlighted; matches beyond the first 50 load with 'Show more matches (N left)' */
+    function mark() { (st.hits || []).forEach(function (i) { var e = $('rk' + i); if (e) e.classList.add('uxp-hit'); }); var b = $('rkMoreHits'); if (b) b.onclick = function () { st.hits = st.all.slice(0, st.hits.length + 50); render(); mark(); }; }
     window.V2Ranking = { find: function (q) { var c = cur(), hits = [];
       c.rows.forEach(function (r, i) { var p = r.p, own = r.owner || (p && p.owner) || '';
         if (q.id != null ? p && p.id === q.id : q.owner ? own === q.owner : q.text ? (p && String(p.name).toLowerCase().indexOf(String(q.text).toLowerCase()) >= 0) || own.toLowerCase() === String(q.text).toLowerCase() : false) hits.push(i); });
-      st.hits = hits.slice(0, 50); render(); if (!hits.length) return 0;
-      hits.forEach(function (i) { var e = $('rk' + i); if (e) e.classList.add('uxp-hit'); }); var e0 = $('rk' + hits[0]); if (e0) { e0.scrollIntoView({ block: 'center' }); e0.classList.add('flash'); } return hits.length; } };
+      st.all = hits; st.hits = hits.slice(0, 50); render(); if (!hits.length) return 0; mark(); var e0 = $('rk' + hits[0]); if (e0) { e0.scrollIntoView({ block: 'center' }); e0.classList.add('flash'); } return hits.length; } };
     /* 'Your pets' summary removed from the rankings page (Jake 2026-10-15); your rows stay highlighted in the board */
     /* closest to dying (Jake 2026-10-15): the 10 living pets with the fewest blocks left, using the engine's own death block
      * (V2Rules liveAt: deathBlock = (day of last feed + 7 + 1) x 144; Mythic-care pets never starve, so they are not listed) */
     if ($('nearDeath')) { var tipB = w.tip, near = w.pets.filter(function (p) { return !p.dead && !p.released && p.deathBlock != null && p.deathBlock > tipB; })
         .sort(function (a, b) { return a.deathBlock - b.deathBlock || a.id - b.id; }).slice(0, 10);
       var left = function (n) { var m = n * 10; return fmt(n) + ' block' + (n === 1 ? '' : 's') + ' (~' + (m < 120 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : (m / 1440).toFixed(1) + ' days') + ')'; };
-      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small"><b>NGMI: closest to starving.</b></p><p class="small muted">Living pets with the least time left before they starve (7 full days with no meal). If one is yours, feed it on Play to reset its clock. Mythic pets never starve. A pet that dies goes to the Pet Cemetery and its gear goes back to the owner\'s bag.</p>' +
+      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small"><b>NGMI: closest to starving.</b></p><p class="small muted">Living pets with the least time left before they starve (7 full days with no meal). If one is yours, feed it on Play to reset its clock. Mythic pets never starve. A pet that dies goes to the Pet Cemetery and its gear goes back to the owner\'s stash.</p>' +
         (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner) + '">' + esc(shortAddr(p.owner)) + '</span>' + (p.owner === ME ? ' (you)' : '') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
       $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
     render();
   }
+  /* cemetery-paging 2026-10-20 (owner approved, list-cap audit finding 5): ~15,000 pets reach their death block within a week.
+   * Graves render a page at a time (Show more, same as Ranking: 100 a page, 25 on phones) and a Find box searches EVERY grave
+   * (#ID, name, species, owner address). Canvases paint lazily. The status count still uses the full dead list. Display only. */
   function cemetery() {
-    var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock; });
-    $('status').textContent = dead.length + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + M.state().rows.length + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
-    $('tombs').innerHTML = dead.length ? dead.map(function (p) {
+    var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock || b.id - a.id; });
+    var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100, st = { n: STEP, q: '', mine: false, list: dead };
+    $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(M.state().rows.length) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
+    var tombs = $('tombs');
+    if (window.V2CemeteryScene) V2CemeteryScene.mount(w, dead); /* cemetery-scene branch: pixel scene over the list (newest 12 graves) */
+    if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>'; return; }
+    var tomb = function (p) { var gc = R.graveCount(w, p);
       return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
-        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (R.graveCount(w, p) ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; }).join('')
-      : '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>';
-    dead.forEach(function (p) { var c = document.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.paint(c, R.framesWith(p.art, p.stage, [])[0]); });
+        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (gc ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; };
+    var bar = document.createElement('div'); bar.className = 'uxp-find cemfind';
+    bar.innerHTML = '<label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '<span class="small muted" id="cemMsg" aria-live="polite"></span>';
+    tombs.parentNode.insertBefore(bar, tombs);
+    var more = document.createElement('button'); more.type = 'button'; more.className = 'q'; more.id = 'tombsMore'; more.style.display = 'none'; tombs.parentNode.insertBefore(more, tombs.nextSibling);
+    function paint(from, to) { var frag = st.list.slice(from, to).map(tomb).join(''); tombs.insertAdjacentHTML('beforeend', frag);
+      st.list.slice(from, to).forEach(function (p) { var c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.lazy(c, function () { return R.framesWith(p.art, p.stage, []); }, true); });
+      more.style.display = st.list.length > to ? '' : 'none'; more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
+    function apply() { var q = st.q.trim().toLowerCase().replace(/^#/, ''), num = /^\d+$/.test(q);
+      st.list = dead.filter(function (p) { if (st.mine && p.owner !== ME) return false; if (!q) return true;
+        return num ? String(p.id) === q || String(p.id).indexOf(q) === 0 : String(p.name).toLowerCase().indexOf(q) >= 0 || String(spLabel(p.species)).toLowerCase().indexOf(q) >= 0 || String(p.owner).toLowerCase() === q || (q.length >= 6 && String(p.owner).toLowerCase().indexOf(q) >= 0); });
+      if (num) st.list.sort(function (a, b) { return (String(b.id) === q) - (String(a.id) === q); });
+      st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
+      $('cemMsg').textContent = (q || st.mine) ? (st.list.length ? fmt(st.list.length) + ' grave' + (st.list.length === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
+      if (!st.list.length) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
+    more.onclick = function () { var a = st.n; st.n += STEP; paint(a, st.n); };
+    var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
+    inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
+    $('cemGo').onclick = function () { clearTimeout(tmr); st.q = inp.value; apply(); };
+    if ($('cemMine')) $('cemMine').onclick = function () { st.mine = !st.mine; this.setAttribute('aria-pressed', st.mine); this.classList.toggle('on', st.mine); this.textContent = st.mine ? 'All graves' : 'My graves'; apply(); };
+    var deep = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id');
+    if (deep && w.byId[deep] && w.byId[deep].dead) { inp.value = '#' + deep; st.q = deep; apply(); var e = $('tomb-' + deep); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } }
+    else paint(0, st.n);
   }
   function pet() {
     $('page').style.display = 'block';
@@ -244,12 +363,13 @@
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
-      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, (V.streakOf ? (function (st) { return '🔥 ' + st.current + '-day streak (owner, best ' + st.best + ')'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip)), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '');
-      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s bag.') + '</p>' : '') +
+      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, (V.streakOf ? (function (st) { return '🔥 ' + st.current + '-day streak (owner, best ' + st.best + ')'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip)), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
+      if (window.V2Rivals) { var rvEl = $('rivals'); if (!rvEl) { rvEl = document.createElement('div'); rvEl.id = 'rivals'; $('chips').parentNode.insertBefore(rvEl, $('chips').nextSibling); } rvEl.innerHTML = V2Rivals.strip(w, p.id, function (fid) { return 'play.html#replay-' + fid; }); } /* rivals strip (battle-arena DRAFT, off-chain) */
+      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic discount)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
-        (p.owner === ME && !p.dead ? ' <a class="btn" href="play.html#pet-' + p.id + '">Open in the game</a>' : '');
+        (p.owner === ME && !p.dead ? petActs(w, p) : '');
       var g = $('gear');
-      if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s bag.</p>';
+      if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s stash.</p>';
       else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
       else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
         R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, viewOnly: !!(window.V2View && V2View.viewOnly()), onEquip: function (op, m) { if (window.V2View && V2View.viewOnly()) return; op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
@@ -270,7 +390,7 @@
       if (p.hatchBlock != null && !hist.some(function (h) { return /^hatch/.test(h.res) || (p.hatchTx && h.tx === p.hatchTx); })) hist.push({ block: p.hatchBlock, tx: p.hatchTx, res: p.parents ? 'born: egg from #' + p.parents.join(' x #') : 'hatch: hatched #' + id });
       hist.sort(function (x, y) { return x.block - y.block; });
       $('hist').innerHTML = '<tr><td>block</td><td>from</td><td>XCPETS</td><td>tag</td><td>result</td></tr>' + hist.map(function (e) { var r = byTx[e.tx] || {};
-        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + (e.tx && byTx[e.tx] ? fmt(burnAmt(r)) : '') + '</td><td>' + esc(tagText(r.tag)) + '</td><td>' + esc(e.res) + '</td></tr>'; }).join('');
+        return '<tr><td>' + e.block + '</td><td>' + esc(String(r.source || '').slice(0, 12)) + '</td><td>' + (e.tx && byTx[e.tx] ? fmt(burnAmt(r)) : '') + '</td><td>' + (tagText(r.tag) ? '<details class="ip-raw"><summary>tag</summary><code>' + esc(tagText(r.tag)) + '</code></details>' : '') + '</td><td>' + esc(plainRes(e.res, tagText(r.tag))) + '</td></tr>'; }).join('');
     }
     draw();
     // On-chain art (inscriptions): hosted by default, upgrade action + lineage

@@ -1,0 +1,708 @@
+[
+ {
+  "fight": 5,
+  "turns": 12,
+  "speaks": 14,
+  "dupes": [
+   [
+    "Buried in full kit, no regrets... but not tonight.",
+    2
+   ],
+   [
+    "Black eye on the one eye he has!",
+    2
+   ]
+  ],
+  "lastSpeechEndMs": 34399,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "speak",
+    "t": 36,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!",
+    "rate": 1.12
+   },
+   {
+    "ev": "start",
+    "t": 36,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1530,
+    "text": "In the red corner... weighing in at 110 power... Bowa the Dodo!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 2896,
+    "text": "Clean shot! 15 off Zoribo.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 3471,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 3471,
+    "text": "In the red corner... weighing in at 110 power... Bowa the Dodo!"
+   },
+   {
+    "ev": "speak",
+    "t": 5529,
+    "text": "Bowa is checking the mempool for help.",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 6412,
+    "text": "Crit! Zoribo sees block hashes!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 7591,
+    "text": "In the red corner... weighing in at 110 power... Bowa the Dodo!"
+   },
+   {
+    "ev": "start",
+    "t": 7591,
+    "text": "Clean shot! 15 off Zoribo."
+   },
+   {
+    "ev": "speak",
+    "t": 9046,
+    "text": "Zoribo cooks Bowa for 20.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 9308,
+    "text": "Clean shot! 15 off Zoribo."
+   },
+   {
+    "ev": "start",
+    "t": 9308,
+    "text": "Bowa is checking the mempool for help."
+   },
+   {
+    "ev": "speak",
+    "t": 9930,
+    "text": "Both on fumes! Anyone’s fight!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 11695,
+    "text": "This is a coin flip with fists!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 11715,
+    "text": "Bowa is checking the mempool for help."
+   },
+   {
+    "ev": "start",
+    "t": 11715,
+    "text": "Crit! Zoribo sees block hashes!"
+   },
+   {
+    "ev": "speak",
+    "t": 12579,
+    "text": "Ban hammer moment!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 13432,
+    "text": "Crit! Zoribo sees block hashes!"
+   },
+   {
+    "ev": "start",
+    "t": 13432,
+    "text": "Zoribo cooks Bowa for 20."
+   },
+   {
+    "ev": "speak",
+    "t": 13451,
+    "text": "BAH GAWD! Zoribo is up only tonight!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 15149,
+    "text": "Zoribo cooks Bowa for 20."
+   },
+   {
+    "ev": "start",
+    "t": 15149,
+    "text": "Both on fumes! Anyone’s fight!"
+   },
+   {
+    "ev": "speak",
+    "t": 15212,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 16875,
+    "text": "Both on fumes! Anyone’s fight!"
+   },
+   {
+    "ev": "start",
+    "t": 16875,
+    "text": "This is a coin flip with fists!"
+   },
+   {
+    "ev": "speak",
+    "t": 16929,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 19281,
+    "text": "This is a coin flip with fists!"
+   },
+   {
+    "ev": "start",
+    "t": 19281,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "speak",
+    "t": 19428,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 20314,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "start",
+    "t": 20314,
+    "text": "BAH GAWD! Zoribo is up only tonight!"
+   },
+   {
+    "ev": "speak",
+    "t": 21128,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 22717,
+    "text": "BAH GAWD! Zoribo is up only tonight!"
+   },
+   {
+    "ev": "start",
+    "t": 22717,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "end",
+    "t": 25807,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 25807,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 28554,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "start",
+    "t": 28554,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "end",
+    "t": 31648,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 31648,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 34399,
+    "text": "Black eye on the one eye he has!"
+   }
+  ]
+ },
+ {
+  "fight": 6,
+  "turns": 9,
+  "speaks": 13,
+  "dupes": [
+   [
+    "Buried in full kit, no regrets... but not tonight.",
+    2
+   ],
+   [
+    "Lufuri gets the black eye! Somebody call the medic!",
+    2
+   ]
+  ],
+  "lastSpeechEndMs": 33727,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "speak",
+    "t": 58,
+    "text": "Brought to you by our friends at SaruTobi, brother!",
+    "rate": 1.12
+   },
+   {
+    "ev": "start",
+    "t": 58,
+    "text": "Brought to you by our friends at SaruTobi, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1558,
+    "text": "In the red corner... weighing in at 131 power... Sabo the Lenny!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 2911,
+    "text": "Cold-wallet boots laced up.",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 2926,
+    "text": "Popcorn sales are up only.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 3148,
+    "text": "Brought to you by our friends at SaruTobi, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 3148,
+    "text": "In the red corner... weighing in at 131 power... Sabo the Lenny!"
+   },
+   {
+    "ev": "speak",
+    "t": 5558,
+    "text": "That is a 11-point receipt!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 7268,
+    "text": "In the red corner... weighing in at 131 power... Sabo the Lenny!"
+   },
+   {
+    "ev": "start",
+    "t": 7268,
+    "text": "Cold-wallet boots laced up."
+   },
+   {
+    "ev": "speak",
+    "t": 7325,
+    "text": "Lufuri cooks Sabo for 15.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 8644,
+    "text": "Cold-wallet boots laced up."
+   },
+   {
+    "ev": "start",
+    "t": 8644,
+    "text": "Popcorn sales are up only."
+   },
+   {
+    "ev": "speak",
+    "t": 9074,
+    "text": "Sabo is checking the mempool for help.",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 9958,
+    "text": "The crowd chants: KE-KI-MUS!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 10361,
+    "text": "Popcorn sales are up only."
+   },
+   {
+    "ev": "start",
+    "t": 10361,
+    "text": "That is a 11-point receipt!"
+   },
+   {
+    "ev": "speak",
+    "t": 10842,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 12079,
+    "text": "That is a 11-point receipt!"
+   },
+   {
+    "ev": "start",
+    "t": 12079,
+    "text": "Lufuri cooks Sabo for 15."
+   },
+   {
+    "ev": "speak",
+    "t": 12591,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 13796,
+    "text": "Lufuri cooks Sabo for 15."
+   },
+   {
+    "ev": "start",
+    "t": 13796,
+    "text": "Sabo is checking the mempool for help."
+   },
+   {
+    "ev": "speak",
+    "t": 14291,
+    "text": "Lufuri gets the black eye! Somebody call the medic!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 17223,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 17243,
+    "text": "Sabo is checking the mempool for help."
+   },
+   {
+    "ev": "start",
+    "t": 17243,
+    "text": "The crowd chants: KE-KI-MUS!"
+   },
+   {
+    "ev": "end",
+    "t": 18617,
+    "text": "The crowd chants: KE-KI-MUS!"
+   },
+   {
+    "ev": "start",
+    "t": 18617,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!"
+   },
+   {
+    "ev": "speak",
+    "t": 18675,
+    "text": "Lufuri gets the black eye! Somebody call the medic!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 21364,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!"
+   },
+   {
+    "ev": "start",
+    "t": 21364,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "end",
+    "t": 24454,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 24454,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   },
+   {
+    "ev": "end",
+    "t": 27546,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   },
+   {
+    "ev": "start",
+    "t": 27546,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "end",
+    "t": 30636,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 30636,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   },
+   {
+    "ev": "end",
+    "t": 33727,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   }
+  ]
+ },
+ {
+  "fight": 7,
+  "turns": 12,
+  "speaks": 13,
+  "dupes": [
+   [
+    "690 to fight, loser pays in gear!",
+    2
+   ],
+   [
+    "Black eye on the one eye he has!",
+    2
+   ]
+  ],
+  "lastSpeechEndMs": 29236,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "speak",
+    "t": 46,
+    "text": "Brought to you by our friends at XCP.fun, brother!",
+    "rate": 1.12
+   },
+   {
+    "ev": "start",
+    "t": 46,
+    "text": "Brought to you by our friends at XCP.fun, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1543,
+    "text": "In the red corner... weighing in at 126 power... Nuru the Dodo!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 2909,
+    "text": "Popcorn sales are up only.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 3136,
+    "text": "Brought to you by our friends at XCP.fun, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 3136,
+    "text": "In the red corner... weighing in at 126 power... Nuru the Dodo!"
+   },
+   {
+    "ev": "speak",
+    "t": 3792,
+    "text": "Clean shot! 22 off Nuru.",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 5542,
+    "text": "Oof. Nuru felt that.",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 7257,
+    "text": "In the red corner... weighing in at 126 power... Nuru the Dodo!"
+   },
+   {
+    "ev": "start",
+    "t": 7257,
+    "text": "Popcorn sales are up only."
+   },
+   {
+    "ev": "speak",
+    "t": 8192,
+    "text": "Nuru with the jab. 15!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 8974,
+    "text": "Popcorn sales are up only."
+   },
+   {
+    "ev": "start",
+    "t": 8974,
+    "text": "Clean shot! 22 off Nuru."
+   },
+   {
+    "ev": "end",
+    "t": 10694,
+    "text": "Clean shot! 22 off Nuru."
+   },
+   {
+    "ev": "start",
+    "t": 10694,
+    "text": "Oof. Nuru felt that."
+   },
+   {
+    "ev": "speak",
+    "t": 10825,
+    "text": "Nupoto lands one for 17!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 11709,
+    "text": "Ban hammer moment!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 12067,
+    "text": "Oof. Nuru felt that."
+   },
+   {
+    "ev": "start",
+    "t": 12067,
+    "text": "Nuru with the jab. 15!"
+   },
+   {
+    "ev": "speak",
+    "t": 13461,
+    "text": "BAH GAWD! Nupoto is up only tonight!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 13784,
+    "text": "Nuru with the jab. 15!"
+   },
+   {
+    "ev": "start",
+    "t": 13784,
+    "text": "Nupoto lands one for 17!"
+   },
+   {
+    "ev": "speak",
+    "t": 15225,
+    "text": "690 to fight, loser pays in gear!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 15502,
+    "text": "Nupoto lands one for 17!"
+   },
+   {
+    "ev": "start",
+    "t": 15502,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "end",
+    "t": 16532,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "start",
+    "t": 16532,
+    "text": "BAH GAWD! Nupoto is up only tonight!"
+   },
+   {
+    "ev": "speak",
+    "t": 16942,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 18935,
+    "text": "BAH GAWD! Nupoto is up only tonight!"
+   },
+   {
+    "ev": "start",
+    "t": 18935,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "speak",
+    "t": 19442,
+    "text": "690 to fight, loser pays in gear!",
+    "rate": 1.12
+   },
+   {
+    "ev": "speak",
+    "t": 21158,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.12
+   },
+   {
+    "ev": "end",
+    "t": 21338,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "start",
+    "t": 21338,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 24085,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "start",
+    "t": 24085,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "end",
+    "t": 26489,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "start",
+    "t": 26489,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 29236,
+    "text": "Black eye on the one eye he has!"
+   }
+  ]
+ }
+]
