@@ -52,5 +52,5 @@
     '.lq-tgt .lq-chip{font-size:8px}.lq-best .cost{font-size:10px}.lq-best:disabled{opacity:.45;filter:grayscale(1)}.lq-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 6px}.lq-rv{display:inline-flex;align-items:center;gap:4px}.lq-rvh{font-family:"Press Start 2P",monospace;font-size:8px;color:#9fe8ff}.lq-rvi{width:34px;height:34px;padding:3px;background:#140f24;border:2px solid #000;cursor:pointer}.lq-rvi img{image-rendering:pixelated;display:block}' +
     'html.viewonly #lqBest,html.viewonly #lqUndo,html.viewonly #lqAuto{display:none!important}@media (max-width:520px){.lq-strip{flex-wrap:nowrap}.lq-chip{font-size:9px}}';
   if (typeof document !== 'undefined' && !document.getElementById('lqCss')) { var s = document.createElement('style'); s.id = 'lqCss'; s.textContent = CSS; (document.head || document.documentElement).appendChild(s); }
-  window.V2LairQoL = { hasUndo: function () { return !!UNDO; }, apply: apply, viewed: viewed, mount: mount, bestPlan: bestPlan, equipBest: equipBest, undo: undo, target: target };
+  window.V2LairQoL = { hasUndo: function () { return !!UNDO; }, remember: function (pid, plan) { UNDO = { pid: pid, plan: plan }; }, apply: apply, viewed: viewed, mount: mount, bestPlan: bestPlan, equipBest: equipBest, undo: undo, target: target };
 })();
