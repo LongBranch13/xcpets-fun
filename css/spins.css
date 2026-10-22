@@ -1,0 +1,6 @@
+/* saved spins (saved-spins branch) */
+.spin-badge{display:inline-block;margin-left:4px;padding:0 5px;border:2px solid #1a1020;background:#f2c14e;color:#1a1020;font-size:11px;line-height:16px;border-radius:9px;vertical-align:middle}
+.wh-saved{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:8px 0;padding:8px 10px;border:3px solid #1a1020;background:#2a0f4a;box-shadow:0 3px 0 #1a1020}
+.wh-count{font-size:20px;font-weight:700;color:#f2c14e;text-shadow:2px 2px 0 #1a1020}
+.wh-saved small{flex:1 1 140px;opacity:.85}.wh-use{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:480px){.wh-use{width:100%}.wh-use .btn{flex:1;min-height:44px}}
