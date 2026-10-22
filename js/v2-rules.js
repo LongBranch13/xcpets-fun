@@ -71,7 +71,7 @@
    * (floor(block/144), the same day as feeding) with the 1-sat burn pet:wagmi (the owner-approved 1-sat check-in, tag renamed while still ungated).
    * Only pet:wagmi counts: feeding and other game burns do NOT. Before ACTIVATE_WAGMI_BLOCK the tag replays exactly as today (unknown pet: tag,
    * community food). Wallet-level record w.wagmi[addr][day] = 1; display + leaderboard only, no pet, item or fight changes. */
-  var ACTIVATE_WAGMI_BLOCK = 999999999; // PLACEHOLDER (not active): set to chain tip + ~6 at deploy
+  var ACTIVATE_WAGMI_BLOCK = 972570; // set at deploy Oct 21 2026: chain tip 972,564 + 6
   function wagmiOn(b) { return b != null && b >= ACTIVATE_WAGMI_BLOCK; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
