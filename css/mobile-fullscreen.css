@@ -39,4 +39,6 @@
   body.mfs-play #selWhy{flex-basis:auto}
   /* the announcer button stays on the sand (bottom-right of the canvas), not over the hint below it */
   body.mfs-play .ar-scene .ar-ann-sand{top:calc(var(--mfs-h,180px) - 50px);bottom:auto;min-height:44px}
+  /* sound button (Rare Room + motel): tucked under the scene on the right, never over the art ('+N MORE' sign, motel corner); same 44px tap size */
+  body.mfs-play :is(.shop-scene,.motel-scene) .sfx-scene{position:relative;right:auto;top:auto;display:block;margin:4px 6px 4px auto;min-width:44px;min-height:44px}
 }

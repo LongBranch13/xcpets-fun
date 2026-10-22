@@ -1,0 +1,2 @@
+
+- 2026-10-21 ~11:15 PM CT breeding-v2 polish: side beaks follow mouth facing (Doge mouth left, beak points left); front beak template on front pets; same-colour top/ears get contrast seam; tops kept above eyes (eyeCap) and split parts dropped on head outline; hatchlings use stage-3 parts scaled; Nakamoto skin fallback (Lenny eyes visible); mutation/throwback looks bolder (palette sat x1.8, glitch 2-row slices, frost top 34%, socks 28% with cuff, 5 star freckles) - odds unchanged. Merged origin/main 7233fac (WAGMI) - chips combined.

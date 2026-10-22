@@ -188,7 +188,7 @@
     if (P) { paintTry(el, w, P, g, sl, wearing); paintHero(el, w, P); } bindBest(el, w, P);
     if (window.V2Picker) V2Picker.mount(document.getElementById('scPick'), { w: w, me: ME, selected: String(S.pet), per: 8, sorts: ['score', 'power', 'newest'], records: function () { return fit.map(function (p) { return { key: String(p.id), pets: [p], newest: p.hatchBlock, html: V2Picker.petChip(w) }; }); },
       onPick: function (r) { S.pet = +r.key; S.rollPet = S.pet; counter(); } });
-    var wb = document.getElementById('scWear'); if (wb) wb.onclick = function () { if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); var c2 = V.equipCheck(U.world(), ME, P.id, g.item); if (!c2.ok) return; op(P.id, sl, c2.gid, 'Equipped ' + (it.label || '') + ' on #' + P.id); };
+    var wb = document.getElementById('scWear'); if (wb) wb.onclick = function () { if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); var c2 = V.equipCheck(U.world(), ME, P.id, g.item); if (!c2.ok) return; if (window.V2LairQoL && V2LairQoL.remember) V2LairQoL.remember(P.id, [{ sl: sl, gid: c2.gid, prev: cur ? cur.gid : null }]); /* Undo also after a single Wear */ op(P.id, sl, c2.gid, 'Equipped ' + (it.label || '') + ' on #' + P.id); };
     var ob = document.getElementById('scOff'); if (ob) ob.onclick = function () { if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); op(g.on, sl, null, 'Took ' + (it.label || '') + ' off #' + g.on); };
     bindRoll(el); rrBind(el); }
   function rrBind(el) { bindDoor(el); bindGallery(el); bindBar(el); }
