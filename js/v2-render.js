@@ -707,6 +707,7 @@
   function breedExtrasHtml(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.breederBadges) return ''; var out = [];
     if (p.hybrid && p.hybrid.parts && p.hybrid.parts.length) out.push('<b>Traded parts:</b> ' + p.hybrid.parts.map(function (q) { return esc(V2.partLabel(q)); }).join(', '));
     if (p.mutation && V2.mutationLabel) { var ml = V2.mutationLabel(p.mutation).split(': '); out.push('<b>' + esc(ml[0]) + (ml[1] ? ':</b> ' + esc(ml[1]) : '</b>')); }
+    if (p.shows && V2.hiddenLabel) out.push('<b>Throwback:</b> ' + esc(V2.hiddenLabel(p.shows)) + (p.shows === 'oddeyes' && p.oddEye && V2.ODD_EYE_COLOURS ? ' (' + esc(V2.ODD_EYE_COLOURS[p.oddEye.col % V2.ODD_EYE_COLOURS.length].id) + ')' : ''));
     var bd = V2.breederBadges(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
     return out.join('</div><div>'); }
   /** genChip(w, p): 'Gen N' chip (Gen 0 = hatched) plus 'n/6 breeds' for cards. Display only. */
