@@ -66,9 +66,15 @@
       lastChange = ch >= 0 && txid ? { u: txid + ':' + ch, at: t } : null; } catch (e) { /* undecodable: keep going, node view only */ } saveSpent();
   }
   function setMe(a) { try { store.setItem(ME_KEY, a); store.setItem(ADDR_KEY, a); } catch (e) { } }
+  /* wallet-one-window (2026-10-22): XCP Wallet opens a NEW extension window (chrome.windows.create) for every connect/sign request the page makes;
+   * the page cannot name, focus or reuse that window. So never have two wallet requests open at once: concurrent connects share one promise,
+   * and a second burn while one is waiting for approval is refused with a hint instead of opening another window. */
+  var connecting = null, signing = false;
+  function busyErr() { var e = new Error('An XCP Wallet window is already open and waiting for you (it may be behind this window). Approve or close it, then try again.'); e.walletBusy = true; return e; }
   function getWallet() {
     if (wallet) return Promise.resolve(wallet);
-    return waitForXcp(2000).then(function (p) {
+    if (connecting) return connecting;
+    return (connecting = waitForXcp(2000).then(function (p) {
       if (!p) throw NotFound();
       var x = new Wallet.Wallet({ kind: 'xcpwallet', label: 'XCP Wallet', p: p });
       return x.connect().then(function (r) {
@@ -80,7 +86,7 @@
           return x;
         });
       });
-    });
+    }).then(function (x) { connecting = null; return x; }, function (e) { connecting = null; throw e; }));
   }
   function feeRate() {
     return F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); })
@@ -137,6 +143,9 @@
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (VS && VS.prod && !VS.verified) { var ev = new Error("Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
+    if (signing) return Promise.reject(busyErr());
+    signing = true;
+    function done(x) { signing = false; return x; }
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
@@ -146,7 +155,7 @@
           return { txid: r.txid, composed: res };
         });
       });
-    });
+    }).then(done, function (e) { signing = false; throw e; });
   }
   function connect() { return getWallet().then(function (w) { return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
