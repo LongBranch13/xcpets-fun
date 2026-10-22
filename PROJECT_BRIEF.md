@@ -57,6 +57,13 @@
 - UI: pet page #petBag panel (after #gear), each piece shows a lock icon and V2Rules.slotUnlock(p, slot).text. Rules + How it works copy updated.
 - Tests: tools/any-slot-test.js (gate moved into the past: 6-slot spread with chi², bags, unlock never replaces, saved spins). Previews: /workspace/xcpets/previews/any-slot-rolls/.
 
+## Mythic slots (Oct 22 2026 ~7:15 PM CT, branch mythic-slots, build 10725140cd, gate ACTIVATE_MYTHIC_SLOTS_BLOCK = 972680 = tip 972674 + 6, est. ~7:55 PM CT)
+- Cause: Mythic pets can't be fed (feed rejected 'fully fed'), so fedDays froze and the 50% / 80% feeding slots decayed; 235 of 237 Mythics were stuck under 6 slots (Guise / Footwear locked forever), and any-slot rolls would bag their pieces forever.
+- From the gate (liveAt): (a) Mythic pets (stage 5 or mythicCare) get capacity 6, all slots open; (b) every pet's capacity = max reached since the gate (p.maxCap), so slots never close. Bagged pieces release via the existing unbag path. Below the gate replay SAME.
+- slotUnlock: open Mythic slot = 'Unlocked · Mythic pets have all 6 slots'; Mythics never get the 'if fed daily' hint.
+- Copy: rules.html (gear slots + changelog 972,679), how-it-works, pets.html, v2-intuitive lock help: 'Mythic pets have all 6 slots. Slots never close once open.' HatchBot knowledge.json gear_slots updated.
+- Test: tools/mythic-slots-test.js (replay SAME below gate, 6 slots after, bags release, never close). Previews: /workspace/xcpets/previews/mythic-slots/.
+
 ## Branch explainer-truth (Oct 22, 2026, NOT merged, NOT deployed; owner review pending)
 - Branch `explainer-truth` off main 5d1fdb4. Explainer copy audited against js/v2-rules.js and fixed: rules.html, how-it-works.html, pets.html, index.html (static community pet name), js/v2.js communityName (Lord Kek when current), data/dan-lines.json ("Series 1" line).
 - Lord Kek is the community pet in the copy everywhere; Wizard eggs only from the 1-in-777 roll until Lord Kek reaches Mythic, then that egg is a Lord Kek egg (no other source). Wizards can't breed; player Keks can.
