@@ -1,0 +1,17 @@
+{
+ "_about": "Captain Dan's Fire Sale lines (same schema as data/dan-lines.json: {text, added (YYYY-MM-DD, shown from that day), expires? (hidden from that day)}). Player-facing: no price or trading talk, say 'burns cost less'. Shown in order, one per banner tick, only while a Fire Sale is live or warned.",
+ "groups": {
+  "core": [
+   { "text": "FIRE! FIRE! Everything in the barn must burn!", "added": "2026-10-22" },
+   { "text": "Burns cost less! Hatch 'em, spin 'em, feed 'em, GO!", "added": "2026-10-22" },
+   { "text": "Who left the lantern by the hay?!", "added": "2026-10-22" },
+   { "text": "Meals are 69% off too! Feed the herd before it's out!", "added": "2026-10-22" },
+   { "text": "Stay calm! I am NOT calm! Burns cost less!", "added": "2026-10-22" },
+   { "text": "Thirty-six blocks, folks! Then it's back to normal!", "added": "2026-10-22" }
+  ],
+  "warn": [
+   { "text": "I smell smoke... Fire Sale in a few blocks!", "added": "2026-10-22" },
+   { "text": "Grab your buckets! Burns cost less real soon!", "added": "2026-10-22" }
+  ]
+ }
+}

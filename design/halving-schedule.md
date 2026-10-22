@@ -119,3 +119,13 @@ Yes. STARLORDKEK ("THE REAL AND ONLY LORD") is the villain who defeats Lord Kek.
 
 ## Owner answer: community feeding (Oct 22, 2026 ~10:11 AM CT)
 Community pet feeding halves with every halving, the same as every other burn: the 69 / 690 / 6,900 quick choices and the community feed minimum (69) are divided by 2 for each halving so far (era 1: 34.5 / 345 / 3,450, min 34.5). Fire Sales stack on top the same way, and community feeding counts as feeding, so it is 50% off during a sale (era 1 sale: min 17.25). Built on halving-v1 (cfeed check + quick-choice relabel), merged forward into fire-sales, saved-spins and cross-series-breeding.
+
+## Owner correction: every fire-sale discount is 69% off (Oct 22, 2026 ~11:52 AM CT)
+Supersedes "meals half off" and "community feeding 50% off". During a Fire Sale EVERY burn pays x0.31 (69% off), meals and community feeding included, stacked on the halving: price = base / 2^era x 0.31.
+Precision: XCPETS has 8 decimals. Every derived price is rounded to the nearest 0.00000001 (r8); a burn is valid if amount >= price - 0.000000005. Era 0 outside a sale keeps the old whole-number rules exactly.
+| | era 0 | era 0 sale | era 1 | era 1 sale |
+|---|---|---|---|---|
+| hatch / community feed min | 69 | 21.39 | 34.5 | 10.695 |
+| community choices | 69 / 690 / 6,900 | 21.39 / 213.9 / 2,139 | 34.5 / 345 / 3,450 | 10.695 / 106.95 / 1,069.5 |
+| dozen 690 / case 6,900 | 690 / 6,900 | 213.9 / 2,139 | 345 / 3,450 | 106.95 / 1,069.5 |
+| a 9,200 meal | 9,200 | 2,852 | 4,600 | 1,426 |
