@@ -136,9 +136,9 @@
     return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
         '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc" title="Power = Vigor + Spark + Grit + Zoom + Luck">⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
-        ''; }; }
+        (V.breedsLeft ? '<span class="bk-br" title="Lifetime breeds used">💞 ' + V.breedsLeft(p, w.tip).used + '/' + V.BREED_CAP_V2 + '</span>' : '') + ''; }; }
   if (typeof document !== 'undefined' && !document.getElementById('bkCss')) { var bs = document.createElement('style'); bs.id = 'bkCss';
-    bs.textContent = '.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
+    bs.textContent = '.bk-br{font-size:12px;color:#ff9ad5;white-space:nowrap}.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
       '.bk-sp{font-size:13px;color:#fff;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bk-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;align-items:center}.bk-row .pill.tier{font-size:11px;white-space:nowrap}' +
       '.bk-sc{font-size:12px;color:#ffd166;white-space:nowrap}.bk-own{font-style:normal;font-weight:700;font-size:11px;letter-spacing:.5px;line-height:1.25;padding:2px 4px;border:1px solid #000;background:#4b3f7a;color:#fff;max-width:100%;text-align:center;white-space:nowrap}.bk-own.me{background:#4fd18b;color:#0d1a12}' +
       '.pk-keys .bk-none{grid-column:1/-1}.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +

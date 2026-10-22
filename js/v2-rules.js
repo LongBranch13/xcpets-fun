@@ -103,6 +103,19 @@
   var BREED_COOLDOWN = 1008, BREED_MAX = 3, BREED_WINDOW = 144;
   var ACTIVATE_BREED_UNCAPPED_BLOCK = 971789; // RULE (gated, owner approved 2026-10-16): no breeding cap from this block (tip 971,783 + 6); before it, max BREED_MAX breedings as before
   function breedCapOn(b) { return b == null || b < ACTIVATE_BREED_UNCAPPED_BLOCK; }
+  /* ===== BREEDING V2 (owner approved Oct 21 2026 9:31 PM CT) =====================================================================
+   * ACTIVATE_BREEDING_V2_BLOCK is THE GATE for both v2 breeding rules. Chosen at deploy time = chain tip + ~6 (tip 972,555 at build
+   * time, Oct 21 2026 ~9:45 PM CT). If the deploy happens later, RESET THIS CONSTANT to the tip then + 6 before pushing to main.
+   * (1) Lifetime cap: every pet (Nakamoto, hybrids, everyone alike; no special Naka x Naka rule, one normal 1,008-block cooldown) can
+   *     breed BREED_CAP_V2 = 6 times counted from the gate (p.breedsV2, breeds at blocks >= the gate). Cost 690 per side unchanged.
+   * (2) Body-part trading: hybrid children bred at/after the gate also inherit signature body parts (HYBRID_PARTS) from their non-body
+   *     parents, drawn on top of the current hybrid look. Looks only (no stats), drawn from its OWN stream so no other draw moves.
+   * Before the gate nothing changes: same replay for all history. */
+  var ACTIVATE_BREEDING_V2_BLOCK = 972561; // <<< BREEDING V2 GATE (tip 972,555 + 6). Set to chain tip + ~6 at deploy time.
+  var BREED_CAP_V2 = 6;
+  function breedV2On(b) { return b != null && b >= ACTIVATE_BREEDING_V2_BLOCK; }
+  /** breedsLeft(p, b): { used, cap, left } lifetime v2 breeds (display + rules); used counts breeds at/after the gate only. */
+  function breedsLeft(p, b) { var u = (p && p.breedsV2) || 0; return { used: u, cap: BREED_CAP_V2, left: Math.max(0, BREED_CAP_V2 - u), on: breedV2On(b) }; }
   var RARITY_UP_10K = 500, RARITY_HIGH_10K = 3000;                  // 5% one tier above best parent; 30% the higher parent; else the lower
   var TIER_LABELS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   var NAKAMOTO_CAST_STAGE = 3;         // Nakamoto joins the front-page Cast once any hatched Nakamoto reaches this stage (3 = Adult; set 5 for Mythic)
@@ -714,6 +727,7 @@
   function fightable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.stage < 2) return 'Egg/Hatchling pets cannot fight'; if (p.neglected) return 'neglected pets cannot fight'; return null; }
   function breedable(p, b) { if (!p) return 'no such pet'; if (p.released) return 'released'; if (p.dead) return 'dead'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)';
     if (p.community) return 'community pet cannot breed'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
+    if (breedV2On(b) && (p.breedsV2 || 0) >= BREED_CAP_V2) return 'breeding cap reached (' + BREED_CAP_V2 + '/' + BREED_CAP_V2 + ' lifetime breeds used)';
     if (p.lastBreed != null && b - p.lastBreed < BREED_COOLDOWN) return 'breeding cooldown (' + (BREED_COOLDOWN - (b - p.lastBreed)) + ' blocks left)'; return null; }
 
   /* breed-accept-guard (2026-10-20, display/send guard only; NOT used by replay): would a pet:breed:A:B burn sent now be rejected?
@@ -728,7 +742,7 @@
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;
     var b = (tip || w.tip || 0) + 1, me = o.me, P = function (id) { return w.byId[id]; }, pend = (o.pending || []).map(function (g) { return parseTag(g); }).filter(Boolean), amt = plan && plan.amount;
     if (t.action === 'breed') { var X = P(t.a), Y = P(t.b); if (amt != null && amt < COSTS.breed) return 'below breed cost ' + COSTS.breed; if (!X) return 'no such pet #' + t.a; if (me && X.owner !== me) return 'first pet must be yours'; if (t.a === t.b) return 'two different pets';
-      var why = breedWhy(t.a, breedable(X, b)) || breedWhy(t.b, breedable(Y, b)); if (why) return why;
+      var why = breedWhy(t.a, breedable(X, b)) || breedWhy(t.b, breedable(Y, b)); if (why) return why; if (breedV2On(b) && kinWhy(X, Y)) return '#' + t.a + ' x #' + t.b + ': ' + kinWhy(X, Y) + ' (no inbreeding)';
       var locks = function (q) { var A = P(q.a), B = P(q.b); return A && B && (A.owner === B.owner || w.breedReqs.some(function (r) { return r.a === q.b && r.b === q.a && !r.used && b - r.block <= BREED_WINDOW; })); };
       var pb = pend.filter(function (q) { return q.action === 'breed' && locks(q) && [q.a, q.b].some(function (id) { return id === t.a || id === t.b; }); })[0];
       if (pb) return 'a breed burn with #' + ([pb.a, pb.b].indexOf(t.a) >= 0 ? t.a : t.b) + ' is still waiting to confirm';
@@ -752,7 +766,7 @@
       if (t.action === 'roll' && amt != null && amt < COSTS.roll) return 'below roll cost ' + COSTS.roll; if (t.action === 'oroll' && g.community) return 'community pet'; return null; }
     return null; }
   /** acceptBlock(w, req, tip): reason the owner of req.b can't accept request req (A asked B) right now, else null. Requester's pet checked first (the engine's 'partner' check). */
-  function acceptBlock(w, r, tip) { var b = (tip || w.tip || 0) + 1; return breedWhy(r.a, breedable(w.byId[r.a], b)) || breedWhy(r.b, breedable(w.byId[r.b], b)); }
+  function acceptBlock(w, r, tip) { var b = (tip || w.tip || 0) + 1; return breedWhy(r.a, breedable(w.byId[r.a], b)) || breedWhy(r.b, breedable(w.byId[r.b], b)) || (breedV2On(b) && kinWhy(w.byId[r.a], w.byId[r.b]) ? kinWhy(w.byId[r.a], w.byId[r.b]) + ' (no inbreeding)' : null); }
   /** acceptRejected(w, rows, req): replay-log reason for the newest confirmed accept (pet:breed:B:A) of req that the engine rejected, else null. */
   function tagText(h) { h = String(h || ''); if (!/^[0-9a-f]+$/i.test(h) || h.length % 2) return h; var o = ''; for (var i = 0; i < h.length; i += 2) o += String.fromCharCode(parseInt(h.substr(i, 2), 16)); try { return decodeURIComponent(escape(o)); } catch (e) { return o; } }
   function acceptRejected(w, rows, r) { var want = 'pet:breed:' + r.b + ':' + r.a, tx = {}; (rows || []).forEach(function (x) { if (x.block_index >= r.block && tagText(x.tag) === want) tx[x.tx_hash] = 1; });
@@ -863,15 +877,16 @@
       }
       case 'breed': {
         var X = pet(t.a), Y = pet(t.b), be = amt < COSTS.breed ? 'below breed cost 690' : !X || X.owner !== src ? 'first pet must be yours' : t.a === t.b ? 'two different pets' : breedable(X, b) || (breedable(Y, b) ? 'partner: ' + breedable(Y, b) : null);
+        if (!be && breedV2On(b)) be = kinWhy(X, Y);
         if (be) return L(r, 'rejected', be);
         if (Y.owner !== src) { // two owners: this is a request (or the acceptance of the partner's mirrored request)
           var req = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used && b - q.block <= BREED_WINDOW; })[0];
           if (!req) { w.breedReqs.push({ a: t.a, b: t.b, block: b, tx: r.tx_hash, owner: src }); return L(r, 'breedReq', '#' + t.a + ' asked #' + t.b + ' to breed (partner burns pet:breed:' + t.b + ':' + t.a + ' within ' + BREED_WINDOW + ' blocks)'); }
           req.used = true; if (!bh) return L(r, 'rejected', 'block hash pending');
-          var kid = breed(w, Y, X, bh, r.tx_hash, b, req.owner); return L(r, 'breed', 'bred #' + Y.id + ' x #' + X.id + ' -> Egg #' + kid.id, { petId: kid.id });
+          var kid = breed(w, Y, X, bh, r.tx_hash, b, req.owner); return L(r, 'breed', 'bred #' + Y.id + ' x #' + X.id + ' -> Egg #' + kid.id + (kid.twinOf ? ' + twin Egg #' + kid.twinOf : ''), { petId: kid.id });
         }
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var k2 = breed(w, X, Y, bh, r.tx_hash, b, src); return L(r, 'breed', 'bred #' + X.id + ' x #' + Y.id + ' -> Egg #' + k2.id, { petId: k2.id });
+        var k2 = breed(w, X, Y, bh, r.tx_hash, b, src); return L(r, 'breed', 'bred #' + X.id + ' x #' + Y.id + ' -> Egg #' + k2.id + (k2.twinOf ? ' + twin Egg #' + k2.twinOf : ''), { petId: k2.id });
       }
       case 'croll': {  /* community roll: Nakamoto (Mythic, every slot open) gets one item; the newest roll in a slot is worn */
         if (b < ACTIVATE_CROLL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -1057,11 +1072,91 @@
     return roots[R() % 2]; // hybrid x anything else (incl. a different hybrid pair: parent A's hybrid roots if A is a hybrid): no 3-species hybrids
   }
   /** hybridPlan(hex, key): deterministic art assembly from the breed hash: body/head shape from one parent, colours + eyes + one signature feature from the other. */
-  function hybridPlan(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex);
+  function hybridPlan(hex, key, blk) { var P0 = hybridPlan0(hex, key); if (breedV2On(blk)) P0.parts = hybridParts(hex, P0); return P0; }
+  function hybridPlan0(hex, key) { var r = hybridRoots(key), R = stream('XCPETS:v2:hybrid-art:' + hex);
     if (r.length === 3) { var o = shuffled(R, r); /* 3-way: body shape, colours and signature feature each from a different parent */
       return { key: key, a: r[0], b: r[1], c: r[2], roots: r.slice(), name: hybridName(key), shape: o[0], color: o[1], featSp: o[2], feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
     var s = R() % 2, shape = r[s], color = r[1 - s]; // 2-way: unchanged
     return { key: key, a: r[0], b: r[1], roots: r.slice(), name: hybridName(key), shape: shape, color: color, feature: ['head', 'side'][R() % 2], eyes: PetCore.EYES[R() % PetCore.EYES.length].id }; }
+  /* BODY-PART TRADING (breeding v2, from ACTIVATE_BREEDING_V2_BLOCK). One general rule for every species, no per-pet overrides:
+   * every hybrid root that is NOT the body (shape) parent gives the child one of its signature parts (a second one 50% of the time when the
+   * species has two). Picks come from their own stream 'XCPETS:v2:hybrid-parts:' + hash, so every existing draw stays the same.
+   * Part kinds (all cut from the donor's own sprite at the same stage, keeping the donor's pixels/colours, see partPixels):
+   *   top  = the forked top of the head (rows from the top while the row is split in two or more runs): ears, horns, eye domes, eye stalks
+   *   side = pixels sticking out past the donor's head/body core in the given height band, both sides (ears, claws)
+   *   tail = pixels sticking out on the LEFT in the lower half (tails), drawn behind the body, bottom-aligned
+   *   beak = pixels sticking out on the RIGHT in the given band, drawn in FRONT (beaks)
+   *   face = non-skin face pixels in the given height band (glasses, brows, smirk), drawn on the body, centred
+   *   hair = non-skin pixels in the top band (hair), drawn on the body's top rows */
+  var HYBRID_PARTS = {
+    pepe: [{ id: 'eyes', label: 'bulging eyes', kind: 'top' }],
+    peepo: [{ id: 'eyes', label: 'bulging eyes', kind: 'top' }],
+    wojak: [{ id: 'brows', label: 'worried brows', kind: 'face', y: [0.15, 0.5] }],
+    chud: [{ id: 'glasses', label: 'eyeglasses', kind: 'face', y: [0.3, 0.52] }, { id: 'hair', label: 'black bangs', kind: 'hair', y: [0, 0.2] }],
+    bobo: [{ id: 'ears', label: 'ears', kind: 'top' }],
+    mumu: [{ id: 'horns', label: 'horns', kind: 'top' }],
+    snibby: [{ id: 'stalks', label: 'eye stalks', kind: 'top' }, { id: 'claws', label: 'claws', kind: 'side', y: [0.2, 0.8] }],
+    dodo: [{ id: 'beak', label: 'beak', kind: 'beak', y: [0, 0.55] }, { id: 'tail', label: 'tail feathers', kind: 'tail', y: [0.45, 1] }],
+    kevin: [{ id: 'hair', label: 'grey hair', kind: 'hair', y: [0, 0.3] }],
+    sarutobi: [{ id: 'ears', label: 'ears', kind: 'side', y: [0.15, 0.55] }, { id: 'tail', label: 'tail', kind: 'tail', y: [0.55, 1] }],
+    doge: [{ id: 'ears', label: 'ears', kind: 'top' }],
+    lenny: [{ id: 'smirk', label: 'smug brows', kind: 'face', y: [0.15, 0.45] }],
+    nakamoto: [{ id: 'glasses', label: 'wire glasses', kind: 'face', y: [0.4, 0.6] }, { id: 'hair', label: 'grey hair', kind: 'hair', y: [0, 0.22] }],
+    kek: [{ id: 'nemes', label: 'nemes', kind: 'top' }],
+    wizard: [{ id: 'hat', label: 'hat', kind: 'top' }]
+  };
+  function hybridParts(hex, plan) { var R = stream('XCPETS:v2:hybrid-parts:' + hex), out = [];
+    plan.roots.filter(function (sp) { return sp !== plan.shape; }).forEach(function (sp) { var L = HYBRID_PARTS[sp] || []; if (!L.length) return;
+      var i = R() % L.length; out.push({ sp: sp, part: L[i].id }); if (L.length > 1 && R() % 2 === 0) out.push({ sp: sp, part: L[1 - i].id }); });
+    return out; }
+  function partDef(sp, id) { return (HYBRID_PARTS[sp] || []).filter(function (d) { return d.id === id; })[0] || null; }
+  function partLabel(q) { var d = partDef(q.sp, q.part); return speciesLabel(q.sp) + '\u2019s ' + (d ? d.label : q.part); }
+  /** partPixels(kF, def): the donor part pixels on a magenta-keyed donor render. Returns { px: [j], side: {j: -1|1}, body: sil-without-part, bb }. */
+  var GROUND_ROW = 29;
+  function silOf(k) { var s = []; for (var j = 0; j < 1024; j++) s[j] = (j >> 5) < GROUND_ROW && !(k.data[j * 4] === 255 && k.data[j * 4 + 1] === 0 && k.data[j * 4 + 2] === 255); return s; }
+  function bbOf(s) { var b = { t: 32, b: -1, l: 32, r: -1 }; for (var j = 0; j < 1024; j++) if (s[j]) { var x = j & 31, y = j >> 5; b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); } b.h = b.b - b.t + 1; return b; }
+  function runsOf(s, y) { var R2 = [], a = -1; for (var x = 0; x <= 32; x++) { var on = x < 32 && s[y * 32 + x]; if (on && a < 0) a = x; if (!on && a >= 0) { R2.push([a, x - 1]); a = -1; } } return R2; }
+  function medianOf(a) { var b = a.slice().sort(function (p, q) { return p - q; }); return b.length ? b[b.length >> 1] : 0; }
+  function edgeAt(s, y, side) { var r = -1; for (var x = 0; x < 32; x++) if (s[y * 32 + x]) { if (side < 0) return x; r = x; } return r; }
+  function partPixels(kF, def) { var s = silOf(kF), bb = bbOf(s), px = [], side = {}; if (bb.b < 0) return null;
+    var cx = (bb.l + bb.r) / 2, y0 = bb.t + Math.floor((def.y ? def.y[0] : 0) * bb.h), y1 = bb.t + Math.ceil((def.y ? def.y[1] : 1) * bb.h) - 1;
+    var col = function (j) { return kF.data[j * 4] + ',' + kF.data[j * 4 + 1] + ',' + kF.data[j * 4 + 2]; };
+    var edge = function (j) { var x = j & 31; return [j - 32, j + 32, x > 0 ? j - 1 : -1, x < 31 ? j + 1 : -1].some(function (n) { return n < 0 || n >= 1024 || !s[n]; }); };
+    if (def.kind === 'top') { for (var y = bb.t; y < bb.t + Math.ceil(bb.h * 0.4); y++) { var rr = runsOf(s, y); if (rr.length < 2) break; rr.forEach(function (q) { for (var x = q[0]; x <= q[1]; x++) px.push(y * 32 + x); }); } }
+    else if (def.kind === 'face' || def.kind === 'hair') { var cnt = {}; for (var j0 = 0; j0 < 1024; j0++) if (s[j0] && !edge(j0)) { var c0 = col(j0); cnt[c0] = (cnt[c0] || 0) + 1; }
+      var skin = Object.keys(cnt).sort(function (p, q) { return cnt[q] - cnt[p]; })[0];
+      var lum = function (j) { return 0.3 * kF.data[j * 4] + 0.59 * kF.data[j * 4 + 1] + 0.11 * kF.data[j * 4 + 2]; }, hc = {};
+      for (var j4 = 0; j4 < 1024; j4++) { var y4 = j4 >> 5; if (y4 >= y0 && y4 <= y1 && s[j4] && !edge(j4) && col(j4) !== skin) hc[col(j4)] = (hc[col(j4)] || 0) + 1; }
+      var hair = Object.keys(hc).sort(function (p, q) { return hc[q] - hc[p]; })[0]; /* hair = the main non-skin colour of the top band; face = the dark feature lines */
+      for (var j1 = 0; j1 < 1024; j1++) { var yy = j1 >> 5; if (yy < y0 || yy > y1 || !s[j1] || col(j1) === skin || edge(j1)) continue; if (def.kind === 'face' ? lum(j1) < 70 : col(j1) === hair) px.push(j1); } }
+    else { var L = [], Rr = []; for (var y2 = bb.t; y2 <= bb.b; y2++) { var r2 = runsOf(s, y2); if (r2.length) { L.push(r2[0][0]); Rr.push(r2[r2.length - 1][1]); } }
+      var qt = function (a, k) { var b = a.slice().sort(function (p, q) { return p - q; }); return b[Math.min(b.length - 1, Math.floor(b.length * k))]; }, cl = qt(L, 0.75), cr = qt(Rr, 0.25), wantL = def.kind !== 'beak', wantR = def.kind !== 'tail';
+      for (var j2 = 0; j2 < 1024; j2++) { var x2 = j2 & 31, y3 = j2 >> 5; if (!s[j2] || y3 < y0 || y3 > y1) continue; if (wantL && x2 < cl - 1) px.push(j2); else if (wantR && x2 > cr + 1) px.push(j2); }
+      var stick = {}; px.forEach(function (j) { stick[j] = 1; });
+      if (def.kind === 'beak' && px.length) { var cnt2 = {}; for (var j3 = 0; j3 < 1024; j3++) if (s[j3]) { var c3 = col(j3); cnt2[c3] = (cnt2[c3] || 0) + 1; } var skin2 = Object.keys(cnt2).sort(function (p, q) { return cnt2[q] - cnt2[p]; })[0], ink = '26,16,32';
+        var acc = {}; px.forEach(function (j) { if (col(j) !== ink) acc[col(j)] = 1; }); var qq = px.slice(), seen = Object.assign({}, stick); /* beak: grow from the tip through the tip's own (non-ink) colours */
+        while (qq.length) { var c4 = qq.pop(); [c4 - 1, c4 + 1, c4 - 32, c4 + 32].forEach(function (n) { if (n < 0 || n >= 1024 || seen[n] || !s[n] || Math.abs((n & 31) - (c4 & 31)) > 1) return; var cn = col(n); if (cn === skin2 || !(acc[cn] || cn === ink)) return; seen[n] = 1; px.push(n); if (cn !== ink) qq.push(n); }); } }
+      var stk = stick; }
+    var on = {}; px.forEach(function (j) { on[j] = 1; side[j] = (j & 31) < cx ? -1 : 1; }); var body = s.map(function (v, j) { return v && !on[j]; });
+    return { px: px, side: side, body: body, bb: bb, s: s, stick: typeof stk !== 'undefined' ? stk : null }; }
+  /** applyParts(img, kS, h, o, sil): draws the plan's traded parts (h.parts) onto the hybrid image; returns the pixels it painted. */
+  function applyParts(img, kS, h, o, art) { var painted = [], S0 = silOf(kS), sb = bbOf(S0); if (sb.b < 0) return painted;
+    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return;
+      var kF = renderRoot(Object.assign({}, art, { species: q.sp, hybrid: null, eyes: PetCore.EYES[0].id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' }), Object.assign({}, o, { gearCap: 0, gearOverride: null }));
+      var P = partPixels(kF, def); if (!P || P.px.length < 2) return; var fb = bbOf(P.body);
+      var put = function (j, dx, dy, front) { var x = (j & 31) + dx, y = (j >> 5) + dy; if (x < 0 || y < 0 || x > 31 || y >= GROUND_ROW) return; var t = y * 32 + x;
+        if (front === 'on') { if (!S0[t]) return; } else if (!front && S0[t]) return; for (var c = 0; c < 3; c++) img.data[t * 4 + c] = kF.data[j * 4 + c]; img.data[t * 4 + 3] = 255; painted.push(t); };
+      if (def.kind === 'face' || def.kind === 'hair') { var dxc = Math.round((sb.l + sb.r) / 2 - (P.bb.l + P.bb.r) / 2), ty = def.kind === 'hair' ? sb.t - P.bb.t : Math.round(sb.t + (def.y[0] * sb.h)) - (P.bb.t + Math.floor(def.y[0] * P.bb.h));
+        P.px.forEach(function (j) { put(j, dxc, ty, 'on'); }); return; }
+      [-1, 1].forEach(function (sd) { var js = P.px.filter(function (j) { return P.side[j] === sd; }); if (!js.length) return; var dy, ry;
+        if (def.kind === 'top') { dy = sb.t - fb.t; ry = fb.t + 1; }
+        else if (def.kind === 'tail') { dy = sb.b - fb.b; ry = medianOf(js.map(function (j) { return j >> 5; })); }
+        else { var rel = def.kind === 'beak' ? 0.45 : (medianOf(js.map(function (j) { return j >> 5; })) - P.bb.t) / P.bb.h; ry = medianOf(js.map(function (j) { return j >> 5; })); dy = Math.round(sb.t + rel * sb.h) - ry; }
+        var tyy = Math.max(sb.t, Math.min(sb.b, ry + dy)), fe = edgeAt(P.body, Math.max(fb.t, Math.min(fb.b, ry)), sd), se = edgeAt(S0, tyy, sd); if (fe < 0 || se < 0) return;
+        var dx = se - fe; if (def.kind !== 'top' && P.stick) { var sj = js.filter(function (j) { return P.stick[j]; }); if (!sj.length) return; /* side/tail/beak: the sticking-out part starts right at the body's edge */
+          var inner = sd < 0 ? Math.max.apply(null, sj.map(function (j) { return j & 31; })) : Math.min.apply(null, sj.map(function (j) { return j & 31; })); dx = sd < 0 ? se - 1 - inner : se + 1 - inner; }
+        js.forEach(function (j) { put(j, dx, dy, def.kind === 'beak'); }); }); });
+    return painted; }
   /* LORD KEK AS A HYBRID ROOT (same system as every species, both ways): pseudo species KEK_SP (canon = player palette: green body, red nemes
    * accent, gold belly/collar). Kek as SHAPE: the KekSprite body (nemes included, it is part of him) recoloured from the colour parent's canon
    * (skin <- body, nemes stripes <- accent, gold <- belly). Kek as COLOUR: his canon recolours the shape parent. Kek as FEATURE: the nemes top
@@ -1121,6 +1216,7 @@
       var px = pick(h.feature); if (px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
       if (F.id === 'kek') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
+      if (h.parts && h.parts.length) px = px.concat(applyParts(img, kS, h, o, art)); /* breeding v2: traded body parts (only plans bred at/after the gate have parts) */
       var busy = 0; for (var by = 0; by < 6; by++) for (var bx = 26; bx < 32; bx++) { var bj = by * 32 + bx; if (sil(kS, bj * 4) || px.indexOf(bj) >= 0) busy++; }
       var left = busy > 2;
     }
@@ -1151,17 +1247,90 @@
     }
     return { species: species, tier: tier, stats: stats };
   }
-  function breed(w, A, B, bh, tx, b, owner) {
+  /* ===== BREEDING V2 extras (all from ACTIVATE_BREEDING_V2_BLOCK, each on its OWN stream keyed by the breed hash) =====================
+   * TWINS        1 in 50 (2%): stream 'XCPETS:v2:twins:' + hash. One breed burn (690 per side, counts as ONE of the 6 breeds and one cooldown)
+   *              yields a second egg = the next pet id, rolled exactly like a normal child from the hash of (block hash + tx + ':twin').
+   * MUTATION     1 in 100 (1%): stream 'XCPETS:v2:mutation:' + hash. Half 'palette' (hue-shifted colours), half 'glitch' (scanline shift + RGB split).
+   * HIDDEN TRAIT stream 'XCPETS:v2:hidden:' + hash. A child of a carrier parent inherits the trait 50% of the time; it SHOWS only if that parent
+   *              did not show it (so it skips a generation); a child with no carrier parent becomes a fresh, hidden carrier 1 in 20 (5%).
+   *              Traits: star freckles / frosted tips / shadow socks.
+   * LEGENDARY MIX Legendary x Legendary hybrid child: 1 in 4 (25%) gets a third species' look (feature + one signature part) from stream
+   *              'XCPETS:v2:legmix:' + hash. Looks only; species/name/stats unchanged.
+   * INBREEDING GUARD parent x child and siblings (any shared parent) can't breed (kinWhy).  GENERATION (genOf) + BADGES (breederBadges) are display only. */
+  var TWIN_1_IN = 50, MUTATION_1_IN = 100, HIDDEN_FRESH_1_IN = 20, LEGMIX_1_IN = 4;
+  var HIDDEN_TRAITS = [{ id: 'freckles', label: 'Star freckles' }, { id: 'frost', label: 'Frosted tips' }, { id: 'socks', label: 'Shadow socks' }];
+  function twinDraw(hex) { return stream('XCPETS:v2:twins:' + hex)() % TWIN_1_IN === 0; }
+  function breedExtras(A, B, hex, kid) {
+    var Rm = stream('XCPETS:v2:mutation:' + hex); if (Rm() % MUTATION_1_IN === 0) kid.mutation = { kind: Rm() % 2 ? 'glitch' : 'palette', hue: 60 + Rm() % 241, seed: Rm() };
+    var Rh = stream('XCPETS:v2:hidden:' + hex), car = [A, B].filter(function (p) { return p.hidden; });
+    if (car.length) { var P = car[Rh() % car.length]; if (Rh() % 2 === 0) { kid.hidden = P.hidden; if (P.shows !== P.hidden) kid.shows = P.hidden; } }
+    else if (Rh() % HIDDEN_FRESH_1_IN === 0) kid.hidden = HIDDEN_TRAITS[Rh() % HIDDEN_TRAITS.length].id;
+    if (kid.hybrid && A.tier === 3 && B.tier === 3) { var Rl = stream('XCPETS:v2:legmix:' + hex); if (Rl() % LEGMIX_1_IN === 0) {
+      var pool = PetCore.SPECIES.map(function (x) { return x.id; }).filter(function (x) { return kid.hybrid.roots.indexOf(x) < 0; }), third = pool[Rl() % pool.length], L = HYBRID_PARTS[third] || [];
+      kid.hybrid.legMix = third; kid.hybrid.featSp = third; kid.hybrid.parts = (kid.hybrid.parts || []).concat(L.length ? [{ sp: third, part: L[Rl() % L.length].id }] : []); } }
+  }
+  /** kinWhy(A, B): inbreeding guard reason (null = fine). Parent x child and siblings (any shared parent). Enforced for breeds at/after the gate. */
+  function kinWhy(A, B) { if (!A || !B) return null; var pa = A.parents || [], pb = B.parents || [];
+    if (pa.indexOf(B.id) >= 0) return 'That\u2019s its mom'; if (pb.indexOf(A.id) >= 0) return 'That\u2019s its kid';
+    if (pa.some(function (x) { return pb.indexOf(x) >= 0; })) return 'They\u2019re siblings'; return null; }
+  /** genOf(w, p): Gen 0 = hatched; bred child = max(parent gens) + 1 (display only, memoised per world). */
+  var GEN_CACHE = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function genOf(w, p) { if (!p) return 0; var m = GEN_CACHE && w ? GEN_CACHE.get(w) : null; if (GEN_CACHE && w && !m) { m = {}; GEN_CACHE.set(w, m); }
+    var go = function (q, d) { if (!q || !q.parents || q.parents.length < 2 || d > 200) return 0; if (m && m[q.id] != null) return m[q.id];
+      var g = 1 + Math.max(go(w && w.byId[q.parents[0]], d + 1), go(w && w.byId[q.parents[1]], d + 1)); if (m) m[q.id] = g; return g; };
+    return go(p, 0); }
+  function hiddenLabel(id) { var t = HIDDEN_TRAITS.filter(function (x) { return x.id === id; })[0]; return t ? t.label : id; }
+  /** breederBadges(w, p): pet-scoped breeding badges (display only): FIRST LITTER, BREEDER (3+), ALL SIX USED (6/6), MAD SCIENTIST (a hybrid child),
+   * SINGLE MOTHER (children with 3+ different partners), TWIN PARENT, plus the child's own MUTANT / TWIN / LEGENDARY MIX. */
+  function breederBadges(w, p) { if (!p) return []; var out = [], kids = (p.children || []).map(function (id) { return w && w.byId[id]; }).filter(Boolean), mates = {};
+    kids.forEach(function (c) { (c.parents || []).forEach(function (x) { if (x !== p.id) mates[x] = 1; }); });
+    if (p.breeds >= 1) out.push({ id: 'first-litter', icon: '\uD83D\uDC23', name: 'FIRST LITTER', tip: 'Bred for the first time' });
+    if (p.breeds >= 3) out.push({ id: 'breeder', icon: '\uD83C\uDFC5', name: 'BREEDER', tip: '3+ breeds' });
+    if ((p.breedsV2 || 0) >= BREED_CAP_V2) out.push({ id: 'all-six', icon: '\uD83C\uDFC6', name: 'ALL SIX', tip: 'Used all ' + BREED_CAP_V2 + ' lifetime breeds' });
+    if (kids.some(function (c) { return isHybrid(c.species); })) out.push({ id: 'mad-scientist', icon: '\uD83E\uDDEA', name: 'MAD SCIENTIST', tip: 'Made a hybrid' });
+    if (Object.keys(mates).length >= 3) out.push({ id: 'single-mother', icon: '\uD83D\uDC5C', name: 'SINGLE MOTHER', tip: 'Children with 3+ different partners' });
+    if (kids.some(function (c) { return c.twinOf; })) out.push({ id: 'twin-parent', icon: '\uD83D\uDC6F', name: 'TWIN PARENT', tip: 'Had twins' });
+    if (p.twinOf) out.push({ id: 'twin', icon: '\u264A', name: 'TWIN', tip: 'Twin of #' + p.twinOf });
+    if (p.mutation) out.push({ id: 'mutant', icon: '\uD83E\uDDEC', name: 'MUTANT', tip: (p.mutation.kind === 'glitch' ? 'Glitch' : 'Odd palette') + ' mutation (1 in ' + MUTATION_1_IN + ')' });
+    if (p.hybrid && p.hybrid.legMix) out.push({ id: 'leg-mix', icon: '\uD83D\uDC51', name: 'LEGENDARY MIX', tip: 'Three-way look with ' + speciesLabel(p.hybrid.legMix) });
+    if (p.shows) out.push({ id: 'throwback', icon: '\uD83E\uDDEC', name: 'THROWBACK', tip: hiddenLabel(p.shows) + ' (skipped a generation)' });
+    return out; }
+  /** lookFx(frames, keyFrames, p): mutation + shown hidden-trait looks on rendered frames (keyFrames = same render on a #ff00fe key). */
+  function lookFx(fr, kf, p) { if (!p || (!p.mutation && !p.shows)) return fr;
+    return fr.map(function (f, fi) { var m = (kf[fi] || kf[0]).data, d = Array.isArray(f.data) ? f.data.slice() : new f.data.constructor(f.data), sil = [], bb = { t: 32, b: -1, l: 32, r: -1 };
+      for (var j = 0; j < 1024; j++) { sil[j] = !(m[j * 4] === 255 && m[j * 4 + 1] === 0 && m[j * 4 + 2] === 254) && (j >> 5) < GROUND_ROW; if (sil[j]) { var x = j & 31, y = j >> 5; bb.t = Math.min(bb.t, y); bb.b = Math.max(bb.b, y); bb.l = Math.min(bb.l, x); bb.r = Math.max(bb.r, x); } }
+      var ink = function (j) { return d[j * 4] + d[j * 4 + 1] + d[j * 4 + 2] < 110; }, set = function (j, c) { d[j * 4] = c[0]; d[j * 4 + 1] = c[1]; d[j * 4 + 2] = c[2]; };
+      var M = p.mutation; if (M && M.kind === 'palette') { var a = M.hue * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+        var H = [0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928, 0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283, 0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
+        for (var j1 = 0; j1 < 1024; j1++) if (sil[j1] && !ink(j1)) { var r = d[j1 * 4], g = d[j1 * 4 + 1], b = d[j1 * 4 + 2], cl = function (v) { return Math.max(0, Math.min(255, Math.round(v))); };
+          set(j1, [cl(H[0] * r + H[1] * g + H[2] * b), cl(H[3] * r + H[4] * g + H[5] * b), cl(H[6] * r + H[7] * g + H[8] * b)]); } }
+      if (M && M.kind === 'glitch') { var src = d.slice ? d.slice() : new d.constructor(d), R = stream('XCPETS:v2:glitch:' + M.seed + ':' + fi);
+        for (var y1 = bb.t; y1 <= bb.b; y1++) { var sh = R() % 5 === 0 ? (R() % 2 ? 2 : -2) : 0; if (!sh) continue; for (var x1 = 0; x1 < 32; x1++) { var sx = x1 - sh; if (sx < 0 || sx > 31) continue; var t = y1 * 32 + x1, q = y1 * 32 + sx; if (!sil[q] && !sil[t]) continue; for (var c = 0; c < 3; c++) d[t * 4 + c] = src[q * 4 + c]; } }
+        for (var j2 = 0; j2 < 1024; j2++) if (sil[j2] && (j2 & 31) === bb.l) set(j2, [0, 240, 255]); else if (sil[j2] && (j2 & 31) === bb.r) set(j2, [255, 40, 200]); }
+      var T = p.shows, h = bb.b - bb.t + 1;
+      if (T === 'frost') for (var j3 = 0; j3 < 1024; j3++) { if (!sil[j3] || ink(j3) || (j3 >> 5) > bb.t + Math.max(2, Math.round(h * 0.18))) continue; set(j3, [Math.round(d[j3 * 4] * 0.4 + 150), Math.round(d[j3 * 4 + 1] * 0.4 + 160), Math.round(d[j3 * 4 + 2] * 0.4 + 170)]); }
+      if (T === 'socks') for (var j4 = 0; j4 < 1024; j4++) { if (!sil[j4] || ink(j4) || (j4 >> 5) < bb.b - Math.max(2, Math.round(h * 0.15))) continue; set(j4, [Math.round(d[j4 * 4] * 0.35), Math.round(d[j4 * 4 + 1] * 0.3), Math.round(d[j4 * 4 + 2] * 0.45)]); }
+      if (T === 'freckles') { var fy = bb.t + Math.round(h * 0.55), cx = Math.round((bb.l + bb.r) / 2), w2 = Math.round((bb.r - bb.l) * 0.28);
+        [[cx - w2, fy], [cx - w2 + 2, fy + 1], [cx - w2 - 1, fy + 1], [cx + w2, fy], [cx + w2 - 2, fy + 1], [cx + w2 + 1, fy + 1]].forEach(function (q) { var jj = q[1] * 32 + q[0]; if (q[0] >= 0 && q[0] < 32 && sil[jj] && !ink(jj)) set(jj, [255, 214, 90]); }); }
+      return Object.assign({}, f, { data: d }); }); }
+  function breedOne(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats;
-    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species); art.species = plan.shape; art.hybrid = plan; }
+    if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species, b); art.species = plan.shape; art.hybrid = plan; }
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; if (bonus) kid.breedBonus = bonus; if (capped && capped.length) kid.traitCap = capped; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
-    [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); });
+    return kid;
+  }
+  function breed(w, A, B, bh, tx, b, owner) {
+    var kid = breedOne(w, A, B, bh, tx, b, owner);
+    [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); if (breedV2On(b)) p.breedsV2 = (p.breedsV2 || 0) + 1; });
     if (b >= ACTIVATE_BREEDCARRY_BLOCK && B.owner !== owner && A.owner === owner) { var bk = Object.keys(A.stats).reduce(function (m, k) { return A.stats[k] > A.stats[m] ? k : m; }, Object.keys(A.stats)[0]);
       (B.carried = B.carried || []).push({ from: A.id, species: A.species, stat: bk, value: A.stats[bk], block: b, child: kid.id }); } /* breed carry: parent B (accepting owner, no egg) */
+    if (breedV2On(b)) { breedExtras(A, B, sha(bh + tx), kid); /* breeding v2 (own streams; nothing above moves) */
+      if (twinDraw(sha(bh + tx))) { var tw = breedOne(w, A, B, bh, tx + ':twin', b, owner); [A, B].forEach(function (p) { p.children.push(tw.id); }); /* twins: ONE breed (counts once), second egg = next pet id */
+        tw.twinOf = kid.id; kid.twinOf = tw.id; breedExtras(A, B, sha(bh + tx + ':twin'), tw); } }
     return kid;
   }
   function resolveRumble(w, R, seedHash) {
@@ -1366,7 +1535,7 @@
   function breedPicker(w, owner, tip, selA, pendIds) { /* pendIds (2026-10-20, display only): { id: 1 } pets in my unconfirmed breed burns -> 'breed burn waiting to confirm' */
     var bq = function (p) { return breedable(p, tip) || (pendIds && pendIds[p.id] ? 'breed burn waiting to confirm' : null); };
     var live = w.pets.filter(function (p) { return !p.dead && !p.released && (p.species !== 'nakamoto' || nakaNormal(tip)) && !p.community; });
-    var why = function (p) { var r = bq(p); if (!r && selA != null && String(p.id) === String(selA)) r = 'already parent A'; return r || null; };
+    var PA = selA != null ? w.byId[selA] : null, why = function (p) { var r = bq(p); if (!r && selA != null && String(p.id) === String(selA)) r = 'already parent A'; if (!r && PA && breedV2On((tip || 0) + 1)) r = kinWhy(PA, p); return r || null; };
     return { mine: live.filter(function (p) { return p.owner === owner; }).map(function (p) { return { p: p, why: bq(p) || null }; }),
       partners: live.map(function (p) { return { p: p, why: why(p) }; }) }; }
   function myRanks(ranked, owner) { var n = ranked.length;
@@ -1376,7 +1545,7 @@
   return { ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: COSTS, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
-    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
+    BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _partPixels: partPixels, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,
     validFeedAmount: validFeedAmount, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
