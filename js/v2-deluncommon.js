@@ -25,7 +25,7 @@
     var ids = [], prevSel = null, R = window.V2Render;
     b.onclick = function () { var L = unfed(D); ids = L.map(function (p) { return p.id; }); if (!ids.length) return toast('No never-fed pets to discard.');
       var S = D.S(); prevSel = S.sel.slice(); S.sel = ids.slice(); D.selUi();
-      $('duBody').innerHTML = '<p><b>Discard ' + ids.length + ' never-fed pet' + (ids.length > 1 ? 's' : '') + '?</b></p>' +
+      $('duBody').innerHTML = '<p><b>Discard ' + ids.length.toLocaleString('en-US') + ' never-fed pet' + (ids.length > 1 ? 's' : '') + '?</b></p>' +
         '<div class="du-list">' + L.map(function (p) { return '<span class="du-pet" title="' + esc(p.name) + '"><canvas width="32" height="32" data-du="' + p.id + '"></canvas>#' + p.id + '</span>'; }).join('') + '</div>' +
         '<p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from <i>Show discarded</i>.' + (D.keptIds && D.keptIds().length ? ' Starred pets are kept.' : '') + '</p>';
       box.classList.add('on'); var w = D.world();
