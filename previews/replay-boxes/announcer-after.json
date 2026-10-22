@@ -1,0 +1,581 @@
+[
+ {
+  "fight": 5,
+  "turns": 12,
+  "speaks": 12,
+  "dupes": [],
+  "lastSpeechEndMs": 22984,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "cancel",
+    "t": 3
+   },
+   {
+    "ev": "speak",
+    "t": 32,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 32,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1532,
+    "text": "In the red corner... weighing in at 110 power... Bowa the Dodo!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 2885,
+    "text": "Brought to you by our friends at Bitcorn Crops, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 2885,
+    "text": "In the red corner... weighing in at 110 power... Bowa the Dodo!"
+   },
+   {
+    "ev": "speak",
+    "t": 2899,
+    "text": "Clean shot! 15 off Zoribo.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "cancel",
+    "t": 6015
+   },
+   {
+    "ev": "speak",
+    "t": 6015,
+    "text": "Bowa is checking the mempool for help.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 6015,
+    "text": "Bowa is checking the mempool for help."
+   },
+   {
+    "ev": "speak",
+    "t": 7048,
+    "text": "Crit! Zoribo sees block hashes!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 8009,
+    "text": "Bowa is checking the mempool for help."
+   },
+   {
+    "ev": "start",
+    "t": 8009,
+    "text": "Crit! Zoribo sees block hashes!"
+   },
+   {
+    "ev": "end",
+    "t": 9434,
+    "text": "Crit! Zoribo sees block hashes!"
+   },
+   {
+    "ev": "speak",
+    "t": 10182,
+    "text": "Zoribo cooks Bowa for 20.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 10182,
+    "text": "Zoribo cooks Bowa for 20."
+   },
+   {
+    "ev": "speak",
+    "t": 11215,
+    "text": "Both on fumes! Anyone’s fight!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 11606,
+    "text": "Zoribo cooks Bowa for 20."
+   },
+   {
+    "ev": "start",
+    "t": 11606,
+    "text": "Both on fumes! Anyone’s fight!"
+   },
+   {
+    "ev": "end",
+    "t": 13034,
+    "text": "Both on fumes! Anyone’s fight!"
+   },
+   {
+    "ev": "speak",
+    "t": 13298,
+    "text": "This is a coin flip with fists!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 13298,
+    "text": "This is a coin flip with fists!"
+   },
+   {
+    "ev": "speak",
+    "t": 14331,
+    "text": "Ban hammer moment!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 15292,
+    "text": "This is a coin flip with fists!"
+   },
+   {
+    "ev": "start",
+    "t": 15292,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "speak",
+    "t": 15387,
+    "text": "BAH GAWD! Zoribo is up only tonight!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 16146,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "start",
+    "t": 16147,
+    "text": "BAH GAWD! Zoribo is up only tonight!"
+   },
+   {
+    "ev": "speak",
+    "t": 17448,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 18141,
+    "text": "BAH GAWD! Zoribo is up only tonight!"
+   },
+   {
+    "ev": "start",
+    "t": 18141,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "speak",
+    "t": 19148,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 20705,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 20705,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 22984,
+    "text": "Black eye on the one eye he has!"
+   }
+  ]
+ },
+ {
+  "fight": 6,
+  "turns": 9,
+  "speaks": 10,
+  "dupes": [],
+  "lastSpeechEndMs": 20750,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "cancel",
+    "t": 4
+   },
+   {
+    "ev": "speak",
+    "t": 49,
+    "text": "Brought to you by our friends at SaruTobi, brother!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 49,
+    "text": "Brought to you by our friends at SaruTobi, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1548,
+    "text": "In the red corner... weighing in at 131 power... Sabo the Lenny!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 2613,
+    "text": "Brought to you by our friends at SaruTobi, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 2613,
+    "text": "In the red corner... weighing in at 131 power... Sabo the Lenny!"
+   },
+   {
+    "ev": "speak",
+    "t": 2915,
+    "text": "Popcorn sales are up only.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "cancel",
+    "t": 6031
+   },
+   {
+    "ev": "speak",
+    "t": 6031,
+    "text": "That is a 11-point receipt!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 6031,
+    "text": "That is a 11-point receipt!"
+   },
+   {
+    "ev": "end",
+    "t": 7456,
+    "text": "That is a 11-point receipt!"
+   },
+   {
+    "ev": "speak",
+    "t": 8115,
+    "text": "Lufuri cooks Sabo for 15.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 8115,
+    "text": "Lufuri cooks Sabo for 15."
+   },
+   {
+    "ev": "end",
+    "t": 9539,
+    "text": "Lufuri cooks Sabo for 15."
+   },
+   {
+    "ev": "speak",
+    "t": 10198,
+    "text": "Sabo is checking the mempool for help.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 10198,
+    "text": "Sabo is checking the mempool for help."
+   },
+   {
+    "ev": "speak",
+    "t": 11232,
+    "text": "The crowd chants: KE-KI-MUS!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 12192,
+    "text": "Sabo is checking the mempool for help."
+   },
+   {
+    "ev": "start",
+    "t": 12192,
+    "text": "The crowd chants: KE-KI-MUS!"
+   },
+   {
+    "ev": "speak",
+    "t": 12266,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 13334,
+    "text": "The crowd chants: KE-KI-MUS!"
+   },
+   {
+    "ev": "start",
+    "t": 13334,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!"
+   },
+   {
+    "ev": "speak",
+    "t": 14349,
+    "text": "Buried in full kit, no regrets... but not tonight.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 15617,
+    "text": "Sabo takes it, brother! Lufuri pays in gear!"
+   },
+   {
+    "ev": "start",
+    "t": 15617,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "speak",
+    "t": 16064,
+    "text": "Lufuri gets the black eye! Somebody call the medic!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 18183,
+    "text": "Buried in full kit, no regrets... but not tonight."
+   },
+   {
+    "ev": "start",
+    "t": 18183,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   },
+   {
+    "ev": "end",
+    "t": 20750,
+    "text": "Lufuri gets the black eye! Somebody call the medic!"
+   }
+  ]
+ },
+ {
+  "fight": 7,
+  "turns": 12,
+  "speaks": 11,
+  "dupes": [],
+  "lastSpeechEndMs": 21760,
+  "log": [
+   {
+    "ev": "cancel",
+    "t": 0
+   },
+   {
+    "ev": "cancel",
+    "t": 3
+   },
+   {
+    "ev": "speak",
+    "t": 53,
+    "text": "Brought to you by our friends at XCP.fun, brother!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 53,
+    "text": "Brought to you by our friends at XCP.fun, brother!"
+   },
+   {
+    "ev": "speak",
+    "t": 1553,
+    "text": "In the red corner... weighing in at 126 power... Nuru the Dodo!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 2617,
+    "text": "Brought to you by our friends at XCP.fun, brother!"
+   },
+   {
+    "ev": "start",
+    "t": 2617,
+    "text": "In the red corner... weighing in at 126 power... Nuru the Dodo!"
+   },
+   {
+    "ev": "speak",
+    "t": 2920,
+    "text": "Popcorn sales are up only.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "cancel",
+    "t": 3954
+   },
+   {
+    "ev": "speak",
+    "t": 3954,
+    "text": "Clean shot! 22 off Nuru.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 3954,
+    "text": "Clean shot! 22 off Nuru."
+   },
+   {
+    "ev": "end",
+    "t": 5378,
+    "text": "Clean shot! 22 off Nuru."
+   },
+   {
+    "ev": "speak",
+    "t": 6037,
+    "text": "Oof. Nuru felt that.",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 6037,
+    "text": "Oof. Nuru felt that."
+   },
+   {
+    "ev": "end",
+    "t": 7176,
+    "text": "Oof. Nuru felt that."
+   },
+   {
+    "ev": "speak",
+    "t": 9154,
+    "text": "Nuru with the jab. 15!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 9154,
+    "text": "Nuru with the jab. 15!"
+   },
+   {
+    "ev": "end",
+    "t": 10578,
+    "text": "Nuru with the jab. 15!"
+   },
+   {
+    "ev": "speak",
+    "t": 12286,
+    "text": "Nupoto lands one for 17!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 12286,
+    "text": "Nupoto lands one for 17!"
+   },
+   {
+    "ev": "speak",
+    "t": 13320,
+    "text": "Ban hammer moment!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 13710,
+    "text": "Nupoto lands one for 17!"
+   },
+   {
+    "ev": "start",
+    "t": 13710,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "end",
+    "t": 14565,
+    "text": "Ban hammer moment!"
+   },
+   {
+    "ev": "speak",
+    "t": 15405,
+    "text": "BAH GAWD! Nupoto is up only tonight!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 15405,
+    "text": "BAH GAWD! Nupoto is up only tonight!"
+   },
+   {
+    "ev": "end",
+    "t": 17399,
+    "text": "BAH GAWD! Nupoto is up only tonight!"
+   },
+   {
+    "ev": "speak",
+    "t": 17486,
+    "text": "690 to fight, loser pays in gear!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "start",
+    "t": 17486,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "speak",
+    "t": 19204,
+    "text": "Black eye on the one eye he has!",
+    "rate": 1.35,
+    "voice": "Microsoft Guy Online (Natural)"
+   },
+   {
+    "ev": "end",
+    "t": 19481,
+    "text": "690 to fight, loser pays in gear!"
+   },
+   {
+    "ev": "start",
+    "t": 19481,
+    "text": "Black eye on the one eye he has!"
+   },
+   {
+    "ev": "end",
+    "t": 21760,
+    "text": "Black eye on the one eye he has!"
+   }
+  ]
+ }
+]
