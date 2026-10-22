@@ -312,7 +312,8 @@
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && art.species === 'kek' && !art.hybrid && window.KekSprite) return kekPetFrames(art, stage, itemIds); /* player Lord Kek (gated, after his Cold Storage) */
     if (art && art.hybrid && art.hybrid.shape === 'kek' && window.KekSprite) return kekHybFrames(art, stage, itemIds); /* Kek-BODY hybrid: KekSprite gear layer (PetCore has no Kek anchors) */
-    if (art && art.species === 'wizard' && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
+    if (art && art.hybrid && art.hybrid.shape === 'wizard' && window.WizardSprite) return wizardHybridFrames(art, stage, itemIds, extraOv); /* Wizard-bodied hybrid (wizard-hybrids branch) */
+    if (art && art.species === 'wizard' && !art.hybrid && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
     var ov2 = extraOv.slice(); ov2.splice(k, 1); var fa = framesWith0(art, stage, itemIds, ov2, cap, baseGo);
@@ -377,6 +378,7 @@
   function framesWithCore(art, stage, itemIds, extraOv, cap, baseGo) {
     itemIds = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }); 
     if (art) { var roots0 = V.hybridRoots ? V.hybridRoots(art.hybrid ? art.hybrid.key : art.species) : [art.species], LK = V.SPECIES_LOCK || { 'lenny-monocle': { sp: 'lenny' } }; /* species-locked pieces (Lenny monocle; KEVIN name tag) never draw on other species */
+      if (art.hybrid) itemIds = itemIds.filter(function (id) { return id !== 'wizard-hat'; }); /* hat rule: hybrids wear parents' ★ pieces except the hat (Wizard Hat included) */
       itemIds = itemIds.filter(function (id) { var L = LK[id]; return !L || roots0.indexOf(L.sp) >= 0 || (L.from != null && V.eligBlock && (V.eligBlock() || 0) < L.from); }); } /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
     var go = Object.assign({}, baseGo || {}), ov = (extraOv || []).slice(); /* baseGo: optional gear override that must actually be drawn */
     (itemIds || []).forEach(function (id) { var it = V.GEAR_BY_ID[id]; if (!it) return; if (it.src === 'core' && !CORE_OVERLAY[id]) go[it.coreSlot] = it.id; else { if (CORE_OVERLAY[id] && !BonusGear.DEFS[id]) BonusGear.DEFS[id] = CORE_OVERLAY[id]; ov.push(it.id); } });
@@ -590,7 +592,15 @@
       var sl = it.slot === 'weapon' ? 'hand' : it.slot; if (id === 'wizard-hat') { o.head = WizardSprite.WIZARD_HAT; return; } if (id === 'sig-wizard-staff') { o.weapon = { label: it.label, item: id, cols: ['#9a4a12', '#f7931a'] }; return; } /* Bitcoin staff: own weapon slot, right hand */
       var c = itemCols(id).slice(), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(it.label || ''); if (m) c.unshift(WORD_COL[m[1].toLowerCase()]); o[sl] = { label: it.label, item: id, cols: c }; });
     return o; }
+  /** wizardHybridFrames: a hybrid whose body shape is the Wizard. Assembled by V2Rules.hybridRender (colours/feature from the other roots) with the
+   * pet's worn pieces drawn by WizardSprite's gear layer (same anchors as a player Wizard). Hat rule: hybrids may wear their parents' ★ pieces EXCEPT
+   * the hat, so the Wizard Hat is never drawn on a hybrid. Black eye + bandage traced on the Wizard eye cells, exactly like wizardPetFrames. */
+  function wizardHybridFrames(art, stage, ids, extraOv) { var G = wizGearOf((ids || []).filter(function (id) { return id !== 'wizard-hat'; }));
+    var fr = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art, { stage: stage || 0, frame: f, wizGear: G }); });
+    return wizardShiner(fr, stage, G, extraOv); }
   function wizardPetFrames(art, stage, ids, extraOv) { var G = wizGearOf(ids), fr = WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {});
+    return wizardShiner(fr, stage, G, extraOv); }
+  function wizardShiner(fr, stage, G, extraOv) {
     if ((extraOv || []).indexOf('v2-black-eye') < 0 || !WizardSprite.draw) return fr;
     /* arena-injury: the player Wizard wears the same shiner + bandage, traced on his 'k' eye cells; his hat stays on top (re-draw only if hidden) */
     return fr.map(function (f, n) { var g = WizardSprite.draw(stage || 0, n, G), g0 = WizardSprite.draw(stage || 0, n, {}), E = [], img = { width: 32, height: 32, data: new Uint8ClampedArray(f.data) };
@@ -782,7 +792,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=9290f17ef0'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=00003e85aa'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

@@ -24,16 +24,18 @@
     /* tiers: purebred child 5% hi+1 / 30% hi / 65% lo (RARITY_*_10K); hybrid child 10% hi+1 / 90% hi (HYBRID_RARITY_UP_10K) */
     var up = ph * 0.10 + (1 - ph) * 0.05, h = ph * 0.90 + (1 - ph) * 0.30, l = (1 - ph) * 0.65; if (hi === 3) { h += up; up = 0; } if (hi === lo) { h += l; l = 0; }
     return { hyb: ph * 100, sp: sp, tier: { up: up * 100, hi: h * 100, lo: l * 100 }, hiT: hi, loT: lo }; }
-  function dog(x, ox, oy, t) { var wag = reduced() ? 0 : Math.floor(t / 250) % 2, blink = !reduced() && Math.floor(t / 2600) % 7 === 0; /* Gooby (xcp.fun/GOOBY): green hat, black head, white muzzle, droopy ear, red turtleneck */
+  function dog(x, ox, oy, t, o) { o = o || {}; var wag = reduced() ? 0 : Math.floor(t / (o.sleep ? 900 : o.excited ? 120 : 250)) % 2, blink = o.sleep || (!reduced() && Math.floor(t / 2600) % 7 === 0); /* gooby-guestbook: o = { sleep, talk, excited } (desk only; arena/front card pass none) */ /* Gooby (xcp.fun/GOOBY): green hat, black head, white muzzle, droopy ear, red turtleneck */
     px(x, '#111', ox + 8, oy - 1, 3, 1); px(x, '#111', ox + 12, oy - 1, 3, 1); px(x, '#6ef04a', ox + 8, oy, 3, 1); px(x, '#6ef04a', ox + 12, oy, 3, 1); px(x, '#6ef04a', ox + 8, oy + 1, 7, 1); /* hat crown, notched top */
     px(x, '#111', ox + 8, oy + 2, 7, 1); px(x, '#6ef04a', ox + 7, oy + 3, 8, 1); px(x, '#111', ox + 7, oy + 4, 8, 1); /* black band, brim */
     px(x, '#111', ox + 6, oy + 5, 10, 4); px(x, '#111', ox + 15, oy + 5, 4, 2); px(x, '#111', ox + 17, oy + 7 + wag, 2, 3); /* head + droopy ear (bobs) */
     px(x, '#f5f5f0', ox + 5, oy + 6, 3, 3); px(x, '#f5f5f0', ox + 9, oy + 6, 3, 3); if (!blink) { px(x, '#111', ox + 6, oy + 7, 1, 1); px(x, '#111', ox + 10, oy + 7, 1, 1); } /* small dot eyes on white */
     px(x, '#111', ox + 12, oy + 9, 4, 5); px(x, '#f5f5f0', ox + 1, oy + 9, 11, 3); px(x, '#f5f5f0', ox + 3, oy + 12, 7, 1); px(x, '#111', ox + 1, oy + 12, 2, 1); /* neck, long white muzzle */
-    px(x, '#111', ox, oy + 11, 2, 4); px(x, '#f5f5f0', ox + 5, oy + 13, 2, 1); px(x, '#111', ox + 4, oy + 13, 1, 1); px(x, '#111', ox + 7, oy + 13, 1, 1); /* big black nose, buck tooth */
+    px(x, '#111', ox, oy + 11, 2, 4); if (o.talk && !reduced() && Math.floor(t / 140) % 2) { px(x, '#5a1010', ox + 3, oy + 12, 6, 2); px(x, '#f5f5f0', ox + 5, oy + 12, 2, 1); } else { px(x, '#f5f5f0', ox + 5, oy + 13, 2, 1); px(x, '#111', ox + 4, oy + 13, 1, 1); px(x, '#111', ox + 7, oy + 13, 1, 1); } /* big black nose, buck tooth (mouth flaps while he talks) */
     px(x, '#e8352a', ox + 9, oy + 14, 10, 4); px(x, '#e8352a', ox + 8, oy + 13, 4, 1); px(x, '#b0221a', ox + 12, oy + 14, 2, 4); px(x, '#111', ox + 16, oy + 16, 1, 2); } /* red turtleneck */
-  function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx));
-    px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 6, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
+  function bubble(x, s, bx, by, maxW, tailX) { x.font = '5px "Press Start 2P", monospace'; var lines = [s];
+    if (maxW && x.measureText(s).width > maxW - 8) { var wd = s.split(' '), a = ''; lines = []; wd.forEach(function (q) { var t2 = a ? a + ' ' + q : q; if (a && x.measureText(t2).width > maxW - 8) { lines.push(a); a = q; } else a = t2; }); if (a) lines.push(a); lines = lines.slice(0, 2); }
+    var w = Math.ceil(Math.max.apply(null, lines.map(function (l) { return x.measureText(l).width; }))) + 8, h = 4 + lines.length * 7; bx = Math.max(2, Math.min(W - w - 2, bx)); if (lines.length > 1) by -= 7;
+    px(x, '#000', bx + 1, by + 1, w, h); px(x, '#fff8e1', bx, by, w, h); var tx = tailX == null ? bx + 6 : Math.max(bx + 2, Math.min(bx + w - 5, tailX)); px(x, '#fff8e1', tx, by + h, 3, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, i) { x.fillText(l, bx + 4, by + 8 + i * 7); }); }
   function neon(x, s, cx, y, col, on, size) { x.font = (size || 9) + 'px "Press Start 2P", monospace'; x.textAlign = 'center'; if (on) { x.fillStyle = col; x.globalAlpha = .35; x.fillText(s, cx + 1, y + 1); x.fillText(s, cx - 1, y - 1); x.globalAlpha = 1; x.fillStyle = col; } else x.fillStyle = '#3a2a3a'; x.fillText(s, cx, y); x.textAlign = 'left'; }
   /* REDESIGN (owner 8:23 PM CT): no road/car; landscaping; guests WALK in. Real pet sprites from V2Render.petFrames (32x32), drawn 16x16. */
   var PETL = ['gm. Room for two?', 'One key pls.', 'Cash. No receipt.', 'Just a nap. Swear.'];
@@ -74,6 +76,42 @@
     (w.breedReqs || []).slice().sort(function (p, q) { return q.block - p.block; }).forEach(function (r) { if (!r.used) add(r.a, r.b); });
     w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (p, q) { return (q.hatchBlock || 0) - (p.hatchBlock || 0) || q.id - p.id; }).slice(0, 12).forEach(function (c) { add(c.parents[0], c.parents[1]); });
     return out; }
+  /* gooby-guestbook (2026-10-21, owner 10:07 PM CT): Gooby reacts to real motel activity and to the player. Display only, nothing on chain.
+   * - Lines alternate: a FACT read from the replayed chain (newest egg, eggs today, guests waiting, busy rooms, total stays) then a JOKE (LINES).
+   * - Moods: talks (mouth flaps) while his line is new; leans out when you pick guests; excited ear wag on days with eggs; dozes (Zzz) after
+   *   40 s with no taps, no picks and no eggs in the last 144 blocks; any tap/pick wakes him.
+   * - Taps on the scene: Gooby (hop + '!' + a reply), the can machine (a can drops, Gooby sells it), a room window (who's in there), the door.
+   * - His current line is mirrored in plain text under the scene (#motelGooby) so it reads at phone size. */
+    var TAPL = ['Gooby pls. I\u2019m working.', 'No tails, no tales.', 'Ring the bell, not Gooby.', 'Gooby pls. Pick two guests.', 'Hat stays on. House rule.', 'Boop accepted. Room fee not.'];
+  var CANS = [['GOOBY Cola. Tastes like regret.', '#6ef04a'], ['Diet Pls. Zero calories, zero questions.', '#ff4fd8'], ['Cherry Fizz. Warm, like the pool.', '#e8352a'], ['Last can. Again. Gooby restocks never.', '#4fe0ff']];
+  var G = { it: 0, tap: 0, can: 0, canCol: '#6ef04a', cans: 0, said: '', saidAt: 0, f: [], fi: 0, ft: null,
+    nm: function (p) { return '#' + p.id + (p.name ? ' ' + p.name : ''); },
+    facts: function () { var w = S.w; if (!w) return []; if (G.ft === w) return G.f; var V = window.V2Rules || {}, tip = w.tip || 0, out = [];
+      var kids = w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
+      var today = kids.filter(function (k) { return tip && tip - (k.hatchBlock || 0) <= 144; }).length, live = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); });
+      if (kids[0]) { var k = kids[0], hy = V.isHybrid && V.isHybrid(k.species); out.push('Newest egg: ' + G.nm(k) + ', ' + (V.speciesLabel ? V.speciesLabel(k.species) : k.species) + (hy ? ' hybrid!' : '.')); }
+      out.push(today ? today + (today === 1 ? ' egg' : ' eggs') + ' checked out today.' : 'No eggs today. Slow night, pls.');
+      if (live.length) out.push(live.length + (live.length === 1 ? ' guest is' : ' guests are') + ' waiting on a date.');
+      var O = others(w); if (O[0]) out.push('Room 101: ' + G.nm(O[0][0]) + ' + ' + G.nm(O[0][1]) + '.');
+      out.push(kids.length + ' eggs born here. Gooby kept count.');
+      G.today = today; G.ft = w; return (G.f = out); },
+    line: function () { if (G.mode(performance.now()).sleep) return 'Zzz\u2026 (tap Gooby)'; var f = G.facts(); return S.line % 2 === 0 && f.length ? f[(S.line / 2) % f.length] : LINES[((S.line - 1) / 2 | 0) % LINES.length]; },
+    mode: function (t, rm) { var idle = performance.now() - G.it, picked = !!(S.A || S.B), hop = G.tap && t - G.tap < 500 ? (t - G.tap) / 500 : 0;
+      var sleep = !picked && !S.party && !G.today && idle > 40000 && !hop; return { sleep: sleep, talk: !sleep && t - G.saidAt < 1600, excited: !sleep && (!!G.today || !!S.party), lean: picked && !sleep, hop: hop }; },
+    say: function (l) { if (l === G.said) return; G.said = l; G.saidAt = performance.now(); var el = document.getElementById('motelGooby');
+      if (!el) { var sc = document.getElementById('motelScene'); if (!sc || !sc.parentNode) return; el = document.createElement('p'); el.id = 'motelGooby'; el.className = 'mg-cap'; sc.parentNode.insertBefore(el, sc.nextSibling); }
+      var tip = ''; try { tip = localStorage.getItem('xcpets-gooby-tapped') ? '' : '<span class="mg-tip">Tap Gooby, a room window or the can machine</span>'; } catch (e) { }
+      el.innerHTML = '<b class="mg-who">GOOBY</b><span class="mg-line">' + esc(l) + '</span>' + tip; },
+    wake: function (l) { var n = performance.now(); G.it = n; S.bubble = l; S.lt = n; try { localStorage.setItem('xcpets-gooby-tapped', '1'); } catch (e) { } G.said = ''; if (!S.raf && S.c) draw(n); },
+    hit: function (lx, ly) { if (lx >= 112 && lx <= 139 && ly >= 70 && ly <= 100) return 'gooby'; if (lx >= 70 && lx <= 86 && ly >= 108 && ly <= 141) return 'can';
+      var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; return null; },
+    click: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(), lx = (e.clientX - r.left) / r.width * W, ly = (e.clientY - r.top) / r.height * H, h = G.hit(lx, ly), n = performance.now(); if (!h) return;
+      if (h === 'gooby') { var wasAsleep = G.mode(n).sleep; G.tap = n; G.wake(wasAsleep ? 'Huh? Gooby\u2019s up. Gooby\u2019s up.' : (G.taps = (G.taps || 0) + 1) % 2 ? TAPL[(G.taps >> 1) % TAPL.length] : (G.facts()[(G.taps >> 1) % Math.max(1, G.facts().length)] || TAPL[0])); }
+      else if (h === 'can') { var cn = CANS[G.cans++ % CANS.length]; G.can = n; G.canCol = cn[1]; G.wake(cn[0]); }
+      else if (h === 'door') G.wake(S.A && S.B ? 'Room #' + S.A.id + ' + #' + S.B.id + '. Ring the bell below.' : 'Pick two guests below. Gooby has keys.');
+      else { var rm0 = S.rooms[+h.slice(4)]; G.wake(!rm0 ? 'Empty room. Clean sheets. Probably.' : 'Room ' + rm0.room + ': #' + rm0.a + ' + #' + rm0.b + (rm0.mode === 'sil' ? '. DND sign up.' : '. Real guests, real burns.')); } },
+    move: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(); c.style.cursor = G.hit((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H) ? 'pointer' : ''; } };
+  G.it = typeof performance !== 'undefined' ? performance.now() : 0;
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* ground: grass, sidewalk path to the office, walkway */ px(x, '#14301f', 0, 140, W, H - 140); for (var g = 0; g < 60; g++) px(x, '#1f4a2c', (g * 37) % W, 146 + (g * 13) % (H - 148), 1, 2);
@@ -85,11 +123,14 @@
     px(x, '#3ddc84', 6, 4, 4, 4); px(x, '#3ddc84', 118, 4, 4, 4); /* tiny laurels */
     /* lamp post */ px(x, '#333', 60, 92, 2, 48); px(x, '#333', 57, 140, 8, 2); px(x, '#555', 56, 88, 10, 4); x.save(); x.globalAlpha = rm ? .16 : .13 + .04 * Math.sin(t / 300); x.fillStyle = '#ffd166'; x.beginPath(); x.moveTo(58, 92); x.lineTo(64, 92); x.lineTo(76, 140); x.lineTo(46, 140); x.fill(); x.restore(); px(x, '#fff2b0', 58, 92, 6, 2);
     /* vending + ice machines */ px(x, '#c8102e', 72, 110, 12, 30); px(x, '#9fe8ff', 74, 113, 8, 12); for (var v = 0; v < 3; v++) px(x, ['#ffd166', '#7dff6a', '#ff4fd8'][v], 75 + v * 2, 116 + v * 3, 2, 2); px(x, '#000', 75, 130, 6, 3);
+    if (G.can) { var ce = rm ? 1 : Math.min(1, (t - G.can) / 500), cy = Math.round(lerp(126, 134, ce)); px(x, '#000', 75, cy - 1, 6, 7); px(x, G.canCol, 76, cy, 4, 5); px(x, '#c0c0c0', 76, cy, 4, 1); if (t - G.can > 4000) G.can = 0; } /* gooby-guestbook: tapped can drops into the slot */
     px(x, '#d8e6f0', 86, 118, 13, 22); px(x, '#4fe0ff', 87, 120, 11, 6); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#0b2a4a'; x.fillText('ICE', 87, 125); px(x, '#8aa', 88, 130, 9, 1); px(x, '#c8102e', 94, 132, 2, 2); /* ice machine (broke, per Gooby) */
     /* building */ px(x, '#e8a0b4', 104, 58, 216, 62); px(x, '#c47a92', 104, 58, 216, 4); px(x, '#5a3a4a', 100, 54, 220, 5);
     /* string lights */ for (var sx = 102; sx < W; sx += 3) { var sag = 6 * Math.sin(((sx - 102) % 54) / 54 * Math.PI); px(x, '#222', sx, 57 + sag, 3, 1); if ((sx - 102) % 9 === 0) { var on = rm || (Math.floor(t / 500) + sx / 9) % 4 !== 0; px(x, on ? ['#ffd166', '#ff4fd8', '#4fe0ff', '#7dff6a'][(sx / 9 | 0) % 4] : '#333', sx, 58 + sag, 2, 2); } }
     /* office: Roman columns, Gooby at the desk window, office door */ px(x, '#f2d7a0', 108, 66, 60, 54); [108, 163].forEach(function (cx) { px(x, '#f5efe0', cx, 64, 5, 56); px(x, '#d8cdb0', cx + 2, 66, 1, 52); });
-    px(x, '#1a2b4a', 113, 78, 25, 20); dog(x, 115, 80, t); px(x, '#7a4f2a', 112, 98, 26, 4);
+    px(x, '#1a2b4a', 113, 78, 25, 20); var gm = G.mode(t, rm), hop = gm.hop ? -Math.round(3 * Math.sin(Math.PI * gm.hop)) : 0; x.save(); x.beginPath(); x.rect(113, 72, 25, 26); x.clip(); dog(x, 115, 80 + hop + (gm.lean ? -1 : 0), t, gm); x.restore(); px(x, '#7a4f2a', 112, 98, 26, 4);
+    if (gm.sleep) { x.fillStyle = '#c9c9ff'; x.font = '4px "Press Start 2P", monospace'; var zq = rm ? 0 : Math.floor(t / 600) % 3; for (var zi = 0; zi <= zq; zi++) x.fillText('z', 133 + zi * 3, 80 - zi * 4); }
+    if (gm.hop && !rm) { px(x, '#ffd166', 113, 72, 2, 4); px(x, '#ffd166', 113, 77, 2, 1); } /* '!' when tapped */
     door(x, OD - 11, '#3a2414'); px(x, '#ffd166', OD - 8, 84, 16, 10); px(x, '#1a1a2a', 112, 104, 26, 12); px(x, '#000', 112, 115, 26, 1); neon(x, 'OFFICE', 125, 112, '#ffb347', rm ? true : (Math.floor((t + 1700) / 350) % 7 !== 0), 4); /* neon OFFICE under Gooby's desk (flicker offset from VACANCY) */
     /* other rooms (every door = the red door's size, bottom on the walkway): real recent pairs; 101 lit, 103 dark, 104 silhouettes */
     var O = S.w ? others(S.w) : [];
@@ -118,10 +159,10 @@
       if (q.a !== 0) putPet(x, p, q.x, q.y - (q.bob ? 1 : 0), 18, t, null, q.a == null ? null : Math.max(0, q.a));
       if (q.key && !(S.state === 'open')) keyPx(x, q.x + 6, q.y - 8); if (q.keyFly != null) { var kf = q.keyFly; keyPx(x, Math.round(lerp(128, q.x + 6, kf)), Math.round(lerp(94, q.y - 8, kf) - Math.sin(kf * Math.PI) * 14)); }
       if (q.talk) talk = [q.talk, q.x - 10, q.y - 34]; if (q.gooby) gline = q.gooby; });
-    if (talk) bubble(x, talk[0], talk[1], talk[2]); bubble(x, gline || S.bubble || LINES[S.line % LINES.length], 112, 40);
+    if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
-    if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 3600) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
+    if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
     if (A && B) { var pair = [String(A.id), String(B.id)].sort().join(':');
       kid = w.pets.filter(function (p) { return p.parents && p.parents.map(String).sort().join(':') === pair; }).sort(function (x, y) { return y.hatchBlock - x.hatchBlock; })[0] || null;
@@ -147,7 +188,7 @@
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.w = w; S.A = s.A; S.B = s.B; S.kid = s.kid; var now = performance.now(); ['A', 'B'].forEach(function (k) { var p = s[k]; if (!p) { delete S.walk[k]; return; } if (!S.walk[k] || S.walk[k].id !== p.id) S.walk[k] = { id: p.id, t0: k === 'B' && S.walk.A && S.walk.A.id === (s.A && s.A.id) ? Math.max(now, S.walk.A.t0 + 6200) : now }; }); if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') { S.open = performance.now(); if (S.c && window.V2Sfx) V2Sfx.creak(); } }
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
-    S.c = c; S.x = c.getContext('2d'); if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now());
+    S.c = c; S.x = c.getContext('2d'); if (!c.dataset.gb) { c.dataset.gb = '1'; c.addEventListener('click', G.click); c.addEventListener('mousemove', G.move); } if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now());
     book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var L = V.breedPicker(w, ME, tip, a, window.V2UI && V2UI.pendingBreedIds ? V2UI.pendingBreedIds() : null), okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
     /* breed-picker-fix (2026-10-19 10:20 PM CT): the picker lists only pets that can breed now (owner 10:23 PM CT: not-eligible pets stay out);
      * each chip now shows species, rarity, Pet Score and an owner badge. If none can, one short line with the main reason replaces the empty box. */
@@ -168,7 +209,7 @@
       src.forEach(function (x) { why[x.p.id] = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); });
       UXB.browsePets('br' + sd, { title: sd === 'A' ? 'Pick Guest 1 (your pet)' : 'Pick Guest 2 (the date)', okLabel: '✅ Can breed now', pets: src.map(function (x) { return x.p; }), why: function (p) { return why[p.id] || null; },
         onPick: function (id) { var k = String(id); S.fresh = null; document.getElementById(sd === 'A' ? 'bA' : 'bB').value = k; if (sd === 'A' && document.getElementById('bB').value === k) document.getElementById('bB').value = '';
-          S.pickSide = sd === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + k + '? Gooby pls.'; S.lt = performance.now(); U.render(); } }); };
+          S.pickSide = sd === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + k + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); };
     var bell = document.getElementById('bGo'); if (bell) { bell.textContent = s.st === 'invite' ? 'Accept check-in · 690' : 'Check in · 690'; bell.disabled = !(s.A && s.B) || s.st === 'open'; }
     if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
       /* breed-empty-fix (2026-10-19 ~11 PM CT): the empty line used to fire only when the UNFILTERED list was empty; a picker filter (My Pets chip in the
@@ -177,18 +218,44 @@
         empty: function (st) { var why = st.who === 'mine' && !list.some(function (x) { return x.p.owner === ME; }) ? 'None of my pets can breed right now' + esc(mainWhy()) : st.who === 'others' && !list.some(function (x) { return x.p.owner !== ME; }) ? 'No other pets can breed right now' : 'No breedable pets match these filters';
           return '<p class="bk-none">' + why + '</p>'; }, sorts: ['score', 'rarity', 'power', 'newest'], dir: true, w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: breedChip(w, ME) }; }); },
         onPick: function (r) { S.fresh = null; document.getElementById(side === 'A' ? 'bA' : 'bB').value = r.key; if (side === 'A') document.getElementById('bB').value = document.getElementById('bB').value === r.key ? '' : document.getElementById('bB').value;
-          S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = performance.now(); U.render(); } }); } }
+          S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); } }
   /* after a check-in burn the existing code clears bA/bB and plays playBreed; we keep the pair so the door can open in place when the egg lands */
   /* GUESTBOOK (owner 7:58 PM CT): past breeding results from the replayed world, one short PG-13 note per egg, newest first, paged on the desk. */
   var NOTES = ['Left the DND sign up all night.', 'Room service: one egg.', 'Gooby heard nothing. Gooby pls.', 'Five stars. Would nest again.', 'Ice bucket never got used.', 'Checked out early. Glowing.',
     'Towels: missing. Egg: present.', 'Asked for late checkout. Got an egg.', 'The walls are thin. Congrats.', 'Paid cash. Left a hatchling.', 'Mint on the pillow, egg on the bed.', 'Swore it was "just a nap".'];
-  var BK = { page: 0 };
-  function book(w) { var el = document.getElementById('motelBook'); if (!el) return; var L = w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
-    var per = 6, pages = Math.max(1, Math.ceil(L.length / per)); BK.page = Math.min(BK.page, pages - 1); var V = L.slice(BK.page * per, BK.page * per + per);
-    el.innerHTML = '<div class="gb"><div class="gb-top"><b class="gb-h">📒 GUESTBOOK</b><span class="gb-n">' + L.length + ' eggs</span></div>' + (V.length ? V.map(function (c) { var hy = window.V2Rules && V2Rules.isHybrid(c.species);
-        return '<div class="gb-row"><span class="gb-main">#' + c.parents[0] + ' x #' + c.parents[1] + ' checked in, <a href="pet.html?id=' + c.id + '">#' + c.id + '</a> checked out' + (hy ? ' 🧬' : '') + '</span><span class="gb-note">' + NOTES[c.id % NOTES.length] + '</span></div>'; }).join('') : '<div class="gb-row">No guests yet. Be the first.</div>') +
+  /* GUESTBOOK v2 (gooby-guestbook 2026-10-21): every row is a real breed from the replayed chain. Top: guests checked in and waiting for their date
+   * (live unused breed requests). Then check-outs, newest first: both parents' sprites + names -> the egg's sprite, #, name, species, rarity pill,
+   * hybrid badge, block and rough age. Gooby's PG-13 note is labelled as his note (a joke, not news). Filter: All stays / My pets. Paged (arrows + swipe). */
+  var BK = { page: 0, mine: false };
+  function ago(tip, b) { if (!tip || !b) return ''; var m = Math.max(0, tip - b) * 10; return m < 60 ? 'just now' : m < 1440 ? '~' + Math.round(m / 60) + ' h ago' : '~' + Math.round(m / 1440) + ' d ago'; }
+  function gbSpr(p) { return p ? '<canvas class="gb-spr" width="32" height="32" data-gbp="' + p.id + '" title="#' + p.id + ' ' + esc(p.name || '') + '"></canvas>' : '<span class="gb-spr gb-q">?</span>'; }
+  function gbName(w, id) { var p = w.byId[id]; return '<a href="pet.html?id=' + id + '">#' + id + '</a>' + (p && p.name ? ' ' + esc(p.name) : ''); }
+  function book(w) { var el = document.getElementById('motelBook'); if (!el) return; var V = window.V2Rules || {}, ME = window.V2UI && V2UI.ME, tip = w.tip || 0, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
+    var mineP = function (id) { var p = w.byId[id]; return !!(p && ME && p.owner === ME); };
+    var all = w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
+    var L = BK.mine ? all.filter(function (c) { return mineP(c.id) || mineP(c.parents[0]) || mineP(c.parents[1]); }) : all;
+    var wait = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)) && (!BK.mine || mineP(r.a) || mineP(r.b)); }).sort(function (p, q) { return q.block - p.block; });
+    var today = all.filter(function (c) { return tip && tip - (c.hatchBlock || 0) <= 144; }).length, hyb = all.filter(function (c) { return V.isHybrid && V.isHybrid(c.species); }).length;
+    var gk = [tip, all.length, (w.breedReqs || []).length, wait.length, BK.page, BK.mine, ME].join('|'); if (el._gk === gk && el.firstChild) return; el._gk = gk; /* re-renders often: keep the sprite canvases unless something changed */
+    var per = 6, pages = Math.max(1, Math.ceil(L.length / per)); BK.page = Math.min(BK.page, pages - 1); var P = L.slice(BK.page * per, BK.page * per + per);
+    var h = '<div class="gb"><div class="gb-top"><b class="gb-h">📒 GUESTBOOK</b><span class="gb-sub">Every stay is a real breed burn on Bitcoin</span></div>' +
+      '<div class="gb-stats"><span>🥚 <b>' + all.length + '</b> eggs</span><span>🌙 <b>' + today + '</b> today</span><span>🧬 <b>' + hyb + '</b> hybrids</span><span>🛎️ <b>' + (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); }).length + '</b> waiting</span></div>' +
+      (ME ? '<div class="gb-tabs" role="tablist"><button type="button" class="q' + (BK.mine ? '' : ' on') + '" data-gbf="0" aria-pressed="' + !BK.mine + '">All stays</button><button type="button" class="q' + (BK.mine ? ' on' : '') + '" data-gbf="1" aria-pressed="' + BK.mine + '">My pets</button></div>' : '');
+    if (BK.page === 0 && wait.length) h += '<div class="gb-sec">🛎️ Checked in, waiting for a date</div>' + wait.slice(0, 3).map(function (r) {
+      var left = tip ? Math.max(0, (V.BREED_WINDOW || 144) - (tip - r.block)) : null;
+      return '<div class="gb-row gb-wait"><div class="gb-pics">' + gbSpr(w.byId[r.a]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[r.b]) + '</div><div class="gb-txt"><span class="gb-main">' + gbName(w, r.a) + ' is waiting for ' + gbName(w, r.b) + '</span>' +
+        '<span class="gb-meta">checked in at block ' + Number(r.block).toLocaleString('en-US') + (left != null ? ' · key expires in ' + left + ' blocks' : '') + '</span></div></div>'; }).join('');
+    h += '<div class="gb-sec">🥚 Checked out with an egg</div>' + (P.length ? P.map(function (c) { var hy = V.isHybrid && V.isHybrid(c.species), sp = V.speciesLabel ? V.speciesLabel(c.species) : c.species;
+        return '<div class="gb-row"><div class="gb-pics">' + gbSpr(w.byId[c.parents[0]]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[c.parents[1]]) + '<span class="gb-op">→</span>' + gbSpr(c) + '</div>' +
+          '<div class="gb-txt"><span class="gb-main">' + gbName(w, c.parents[0]) + ' × ' + gbName(w, c.parents[1]) + '</span>' +
+          '<span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (TID[c.tier] || 'common') + '">' + esc(TL[c.tier] || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
+          '<span class="gb-meta">block ' + Number(c.hatchBlock || 0).toLocaleString('en-US') + (ago(tip, c.hatchBlock) ? ' · ' + ago(tip, c.hatchBlock) : '') + '</span>' +
+          '<span class="gb-note">Gooby\u2019s note: \u201c' + NOTES[c.id % NOTES.length] + '\u201d</span></div></div>'; }).join('') : '<div class="gb-row gb-empty">' + (BK.mine ? 'None of my pets have stayed here yet. Pick two guests above.' : 'No guests yet. Be the first.') + '</div>') +
       '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span>' + (BK.page + 1) + ' / ' + pages + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button></div></div>';
+    el.innerHTML = h;
+    var R = window.V2Render; el.querySelectorAll('canvas[data-gbp]').forEach(function (cv) { var p = w.byId[cv.dataset.gbp]; if (!p || !R) return; var mk = function () { return R.petFrames(p, w); }; if (R.lazy) R.lazy(cv, mk, true); else try { R.paint(cv, mk()[0]); } catch (e) { } });
     el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { BK.page += +b.dataset.gb; book(w); }; });
+    el.querySelectorAll('[data-gbf]').forEach(function (b) { b.onclick = function () { BK.mine = b.dataset.gbf === '1'; BK.page = 0; book(w); }; });
     var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { BK.page = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); book(w); } }; }
   /* breed-picker-fix (owner 10:24 PM CT): breed celebration in two stages. (a) celebrate(tx): right after the breed burn is broadcast, ~2.5 s of 8-bit
    * hearts + sparkles round Gooby and a wobbling egg at the desk, plus a line 'Breed sent! Your egg appears when the block confirms' + tx link
@@ -209,6 +276,15 @@
       '<div class="small">Parents: ' + nm(A, k.parents[0]) + ' × ' + nm(B, k.parents[1]) + '</div><div class="row" style="justify-content:center;margin-top:8px"><a class="btn" href="pet.html?id=' + k.id + '">See #' + k.id + '</a><button type="button" class="q" id="epClose">Close</button></div></div>';
     document.body.appendChild(d); if (R && R.lazy) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; d.querySelector('.ep-sp').appendChild(c); R.lazy(c, function () { return R.petFrames(k, w); }, true); }
     var x = function () { d.remove(); }; d.querySelector('#epClose').onclick = x; d.onclick = function (e) { if (e.target === d) x(); }; }
+  if (typeof document !== 'undefined' && !document.getElementById('gbCss')) { var gs = document.createElement('style'); gs.id = 'gbCss'; /* gooby-guestbook */
+    gs.textContent = '.mg-cap{margin:-2px 0 8px;padding:6px 8px;border:3px solid #000;background:#fff8e1;color:#1b1b1b;box-shadow:4px 4px 0 #000;font-size:14px;line-height:1.35;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;overflow-wrap:anywhere}' +
+      '.mg-who{font-family:"Press Start 2P",monospace;font-size:9px;color:#fff;background:#111;padding:3px 5px;border-bottom:2px solid #6ef04a}.mg-line{flex:1 1 180px;font-weight:700}.mg-tip{flex-basis:100%;font-size:12px;color:#6a4a5a}' +
+      '.gb-top{flex-wrap:wrap;gap:2px 8px}.gb-sub{font-size:12px;color:#6a4a5a}.gb-stats{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0;font-size:13px}.gb-tabs{display:flex;gap:6px;margin:4px 0 6px}.gb-tabs .q{min-height:40px;padding:4px 12px;background:#f5efe0;color:#2a1530;border:2px solid #000;box-shadow:2px 2px 0 #000}.gb-tabs .q.on{background:#4fd18b;color:#0d1a12}.gb-kid a,.gb-main a{color:#2e5aa8}' +
+      '.gb-sec{margin:8px 0 2px;font-weight:700;color:#2a1530;border-bottom:2px solid #2a1530}.motel-book .gb-row{flex-direction:row;gap:8px;align-items:center}.gb-wait{background:#ffe9f4}' +
+      '.gb-pics{display:flex;align-items:center;gap:2px;flex:0 0 auto}.gb-spr{width:32px;height:32px;image-rendering:pixelated;border:2px solid #000;background:#1a2b4a;display:inline-block}.gb-q{color:#fff;text-align:center;line-height:28px}.gb-op{font-weight:700;color:#c8102e;font-size:12px}' +
+      '.gb-txt{display:flex;flex-direction:column;min-width:0;flex:1}.gb-kid{font-size:13px}.gb-kid .pill.tier{font-size:11px}.gb-hyb{font-size:12px;font-weight:700;color:#7a2a8a;white-space:nowrap}.gb-meta{font-size:12px;color:#6a6a6a}.gb-empty{font-style:italic}' +
+      '@media (max-width:520px){.gb-spr{width:28px;height:28px}.motel-book .gb-row{flex-direction:column;align-items:flex-start;gap:3px}.mg-cap{font-size:13px}}';
+    (document.head || document.documentElement).appendChild(gs); }
   if (typeof document !== 'undefined' && !document.getElementById('epCss')) { var es = document.createElement('style'); es.id = 'epCss';
     es.textContent = '.bk-sent{margin:6px 0;padding:8px;border:2px solid #000;background:#2a1530;color:#ffd1ec;font-size:14px;box-shadow:3px 3px 0 #000;overflow-wrap:anywhere}.bk-sent a{color:#9fe8ff}' +
       '.eggpop{position:fixed;inset:0;z-index:9000;background:rgba(10,6,20,.72);display:flex;align-items:center;justify-content:center;padding:12px}.ep-box{max-width:340px;width:100%;text-align:center;border:3px solid #000;background:#2a1530;color:#fff;padding:12px;box-shadow:4px 4px 0 #000;font-size:14px}' +

@@ -13,7 +13,7 @@
   function isToast(n) { return n.nodeType === 1 && n.classList && n.classList.contains('toast'); }
   function tick() { var b = busy(); html.classList.toggle('lair-calm', b); if (!b && Q.length) flush(); }
   function flush() { var t = d.getElementById('toasts'); if (!t) return; var L = Q.splice(0, Q.length), show = L.slice(-3);
-    if (L.length > 3) show.unshift('+' + (L.length - 3) + ' more updates while you were in the Lair');
+    if (L.length > 3) show.unshift('+' + (L.length - 3) + ' more updates while you were in The Rare Room');
     show.forEach(function (h, i) { var x = d.createElement('div'); x.className = 'toast'; x.innerHTML = h; x.setAttribute('data-calm', '1'); setTimeout(function () { t.appendChild(x); setTimeout(function () { x.remove(); }, 5000); }, i * 400); }); }
   function watchToasts() { var t = d.getElementById('toasts'); if (!t || t._calm) return; t._calm = 1;
     new MutationObserver(function (ms) { if (!busy()) return; ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (!isToast(n) || n.getAttribute('data-calm') || Date.now() - lastAct < 1500) return; Q.push(n.innerHTML); n.remove(); }); }); }).observe(t, { childList: true }); }

@@ -5,19 +5,17 @@
 (function () {
   'use strict';
   var W = 320, H = 150, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
-  /* Captain Dan's lines (owner 7:36/7:37 PM CT): affectionate, farm/Bitcorn/Bitcoin humor; facts used: creator of XCP.fun, Bitcorn Crops, bitcorns.com, DigiRare.io. No other bio. */
-  var LINES = ['gm from the farm!', 'Fresh off the field!', 'Harvest\u2019s in, matey', 'Gear grows like Bitcorn', 'Plant a roll, reap gear', 'Bitcorn Crops taught me well',
-    'XCP.fun built this barn', 'Hand-picked at dawn', 'Every piece, homegrown', 'bitcorns.com sends love', 'DigiRare.com says hi!', 'Rare as a DigiRare', 'Good soil, good drops',
-    'Stash full like silos', 'Tap a crop, kit a pet', 'Ripe for the wearing!', 'Stack sats, stack corn', 'HODL the harvest', 'Ahoy from the cornfield!', 'Fresh harvest, fair deal',
-    /* 28 lines approved by the owner Mon Oct 19 2026 (previews/pet-shop/dan-lines-final.md) */
-    'Ahoy! THIS! IS! BITCORN!', 'Only 100 CROPS. Sail careful, matey', 'BITCORN can\'t be bought. Only farmed!', '21M BITCORN, just like the big coin', 'Harvest #1 hit April Fools 2018. Legit', 'Land ho! A HELIPAD on the farm', 'Docked the boat at YACHTDOCK',
-    'LAMBOGARAGE? I came by ship', 'CORNPARTY on deck, all hands!', 'THESCARECROW guards my stash', 'FARMHAND wanted. Pay: corn', 'CORNCOMBINE: 364 cards to swab', 'Every farm\'s a Bitcoin address', 'Join a coop, me hearties!',
-    'Captain of the Bitcorn fleet, gm', 'Memecoins? Try XCP.fun, sailor', 'XCP.fun: 69 crew to set sail', 'On XCP.fun, no admin key aboard', 'Grails ahoy on DigiRare.com!', 'Card hunting? DigiRare.com, matey', 'Spells of Genesis sailed first',
-    'HOMERPEPE: 1 of 1. Arr!', 'Burn a FAKEASF, speak your fake', 'Rare Pepes, Fake Rares, all Bitcoin', 'Counterparty? I AM the party', 'Not your keys, not your corn', 'Batten the hatches, harvest\'s in!', 'Swab the deck, stack the sats'];
+  /* Captain Dan's lines live in data/dan-lines.json (groups core / dank / cpnews / mined; each line {text, added, expires?}).
+   * Lines show from 'added' and hide automatically from 'expires' (local date, YYYY-MM-DD), so news lines rotate without code changes.
+   * Slot rule (same as before for core + dank): line n = core[n % core.length], unless a slot group claims n (n % every === at) and has active lines. */
+  var POOL = { slots: { dank: { every: 12, at: 11 } }, groups: { core: [{ text: 'gm from the farm!', added: '2026-10-19' }] } }, LINES = [], DANK = [], ACT = {};
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function active(g, day) { return (POOL.groups[g] || []).filter(function (l) { return l && l.text && (!l.added || l.added <= day) && (!l.expires || day < l.expires); }).map(function (l) { return l.text; }); }
+  function setPool(j, day) { if (j && j.groups) POOL = j; day = day || today(); ACT = {}; Object.keys(POOL.groups).forEach(function (g) { ACT[g] = active(g, day); }); LINES = ACT.core || []; DANK = ACT.dank || []; if (window.V2Shop) { V2Shop.LINES = LINES; V2Shop.DANK = DANK; } }
+  setPool(null);
+  try { fetch('data/dan-lines.json?v=' + ((document.currentScript && (document.currentScript.src.split('?v=')[1] || '')) || ''), { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j) setPool(j); }).catch(function () {}); } catch (e) {}
+  function lineAt(n) { var sl = POOL.slots || {}, ks = Object.keys(sl); for (var i = 0; i < ks.length; i++) { var k = ks[i], c = sl[k], a = ACT[k]; if (a && a.length && c.every && n % c.every === c.at) return a[Math.floor(n / c.every) % a.length]; } return LINES[n % LINES.length]; }
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], line: 0 };
-  /* Dank Rare Agency lines (owner Oct 19 2026, 10:28 PM CT); facts from dankdirectory.io Series 1 (KEKLUMINATI = Card 1, DANKMEMECASH = Card 2, OCTOKEK, PEEPOHEY). Shown every 12th line only. */
-  var DANK = ['Card 1 of the Danks? KEKLUMINATI', 'KEKLUMINATI sees all, matey', 'dankdirectory.io: dankest danks!', 'DANKMEMECASH, card 2. Arr!', 'PEEPOHEY waves from Series 1', 'OCTOKEK: eight arms, one kek', 'Dank Rare Agency reporting in!'];
-  function lineAt(n) { return n % 12 === 11 ? DANK[Math.floor(n / 12) % DANK.length] : LINES[n % LINES.length]; }
 
   function reduced() { return !!RM.matches || !!window.__shopReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
@@ -63,44 +61,69 @@
     if (wf < 0) px(x, '#c6846f', ox + 28, oy + 30, 2, 2); /* right hand resting at his side, mirrors the left */
     else if (wf) { px(x, '#141618', ox + 29, oy + 18, 3, 10); px(x, '#c6846f', ox + 29, oy + 15, 3, 3); } else { px(x, '#141618', ox + 29, oy + 21, 3, 7); px(x, '#c6846f', ox + 31, oy + 18, 3, 3); } }
   /* Dan waves only when triggered (hover/tap on him, opening the counter, the shop scrolling into view, or V2Shop.wave() when he moves); never with prefers-reduced-motion */
-  var DAN = { x: 144, y: 64, w: 34, h: 32 };
+  var DAN = { x: 236, y: 106, w: 34, h: 32 }; /* Rare Room: Dan stands by his door */
   function waving(t) { return !reduced() && t < (S.waveUntil || 0); }
   function waveNow() { if (reduced()) return; var n = performance.now(); if (n < (S.waveUntil || 0) - 300) return; S.waveUntil = n + 1800; }
   function onDan(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return mx >= DAN.x && mx < DAN.x + DAN.w && my >= DAN.y && my < DAN.y + DAN.h; }
   function bubble(x, s, bx, by) { x.font = '6px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.round(Math.max(2, Math.min(W - w - 2, bx - w / 2))); by = Math.round(by); /* scene-sharp: integer coords */
     px(x, '#000', bx + 1, by + 1, w, 12); px(x, '#fff8e1', bx, by, w, 12); px(x, '#fff8e1', bx + w / 2 - 2, by + 12, 4, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 9); }
+  /* THE RARE ROOM (owner Oct 21 2026, palette A 'Royal Vault'; design/rare-room.md): the gear place is a legendary vault-gallery. Display only:
+   * the same stash pieces (S.items, same hits, same tap/hover/double-tap), the same Captain Dan (lines, wave, mood) and the same counter text.
+   * Rarity frames keep the site colours (common #9aa3b5, uncommon #4fd18b, rare #4f9dff, legendary #ffc93c); rare + legendary get holo + sparkles. */
+  var RR = { wall: '#2a0f4a', wall2: '#3b1766', velvet: '#9b1035', velvetHi: '#d0284f', velvetLo: '#5a0820', gold: '#e8b84a', goldHi: '#fff1a8', goldLo: '#8a5a12', teal: '#1fb5a5', emerald: '#0f6b55', floorA: '#efe8f6', floorB: '#1c0f33', vein: '#c9b8e0', sky: '#8fe3ff', jewel: ['#d0284f', '#1fb5a5', '#e8b84a', '#7b3fe4', '#2f6fe0'] };
+  var TIER_COL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
+  function tierOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item]; return g.tier != null ? g.tier : it ? it.tier || 0 : 0; }
+  function gild(x, a, b, w, h) { px(x, '#000', a - 2, b - 2, w + 4, h + 4); px(x, RR.goldLo, a - 1, b - 1, w + 2, h + 2); px(x, RR.gold, a - 1, b - 1, w + 1, h + 1); px(x, RR.goldHi, a - 1, b - 1, w + 1, 1); }
+  function frameCard(x, it, ix, iy, lift, t) { var tr = tierOfG(it), tc = TIER_COL[tr] || TIER_COL[0], y = iy - lift; gild(x, ix - 1, y - 1, 18, 20); px(x, tc, ix - 1, y - 1, 18, 20); px(x, '#1c0f33', ix, y, 16, 16); px(x, tc, ix, y + 16, 16, 2);
+    if (tr >= 2) { var ph = reduced() ? 0 : Math.floor(t / 120) % 24; for (var i = 0; i < 3; i++) { var hx = ((ph + i * 8) % 24) - 4; if (hx >= 0 && hx < 16) px(x, tr === 3 ? 'rgba(255,241,168,.30)' : 'rgba(191,227,255,.28)', ix + hx, y, 2, 16); } }
+    var ic = S.icons[it.item]; if (ic) x.drawImage(ic, ix, y, 16, 16);
+    if (tr >= 2 && (reduced() || Math.floor(t / 500 + ix) % 3 !== 0)) { var sc = tr === 3 ? RR.goldHi : '#ffffff'; px(x, sc, ix + 14, y - 3, 1, 3); px(x, sc, ix + 13, y - 2, 3, 1); } }
+  function plate(x, s, cx, y, sz) { x.font = sz + 'px "Press Start 2P", monospace'; var tw = Math.ceil(x.measureText(s).width); px(x, '#000', Math.round(cx - tw / 2) - 2, y - sz - 1, tw + 4, sz + 3); px(x, RR.velvetLo, Math.round(cx - tw / 2) - 1, y - sz, tw + 2, sz + 1); x.textAlign = 'center'; x.fillStyle = RR.goldHi; x.fillText(s, cx, y); x.textAlign = 'left'; }
+  function roomBg(x, t) { var i, j;
+    px(x, RR.wall, 0, 0, W, 96); for (i = 0; i < W; i += 12) for (j = 12; j < 90; j += 14) { px(x, RR.wall2, i + 5, j, 2, 6); px(x, RR.wall2, i + 3, j + 2, 6, 2); }
+    px(x, '#000', 0, 0, W, 4); px(x, RR.goldLo, 0, 0, W, 3); px(x, RR.gold, 0, 0, W, 2); px(x, RR.velvet, 0, 3, W, 1); /* gold-leaf cornice */
+    [100, 214].forEach(function (cx) { px(x, '#000', cx - 1, 4, 8, 92); px(x, RR.floorA, cx, 4, 6, 92); px(x, RR.vein, cx + 2, 4, 1, 92); px(x, RR.gold, cx - 2, 4, 10, 3); px(x, RR.gold, cx - 2, 90, 10, 3); });
+    for (i = 0; i < 6; i++) { px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, i, 4, 1, 70 - i * 4); px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, W - 1 - i, 4, 1, 70 - i * 4); } /* curtains */
+    /* stained-glass rose window with a Rare Pepe in the roundel */
+    var cx = 160, cy = 23, R0 = 18; x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, R0 + 2, 0, 7); x.fill(); x.fillStyle = RR.gold; x.beginPath(); x.arc(cx, cy, R0 + 1, 0, 7); x.fill();
+    for (i = 0; i < 12; i++) { x.fillStyle = RR.jewel[i % 5]; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, R0, i * Math.PI / 6, (i + 1) * Math.PI / 6); x.fill(); }
+    x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, 11, 0, 7); x.fill(); x.fillStyle = '#bfe9d6'; x.beginPath(); x.arc(cx, cy, 10, 0, 7); x.fill(); if (S.pepe) x.drawImage(S.pepe, cx - 10, cy - 11, 20, 20);
+    x.fillStyle = 'rgba(255,240,180,.08)'; x.beginPath(); x.moveTo(cx - 14, cy + 14); x.lineTo(cx - 36, 96); x.lineTo(cx + 36, 96); x.lineTo(cx + 14, cy + 14); x.fill();
+    px(x, '#000', 118, 43, 84, 11); px(x, RR.velvet, 119, 44, 82, 9); px(x, RR.velvetHi, 119, 44, 82, 1); x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = RR.goldHi; x.fillText('THE RARE ROOM', 160, 51); x.textAlign = 'left';
+    px(x, '#000', 0, 92, W, 5); px(x, RR.velvetLo, 0, 93, W, 3); px(x, RR.gold, 0, 92, W, 1); /* wainscot */
+    for (j = 96, i = 0; j < H; j += 8, i++) for (var k2 = 0; k2 < W; k2 += 16) px(x, ((k2 / 16 + i) % 2) ? RR.floorA : RR.floorB, k2, j, 16, 8); /* marble checkerboard */
+    px(x, 'rgba(0,0,0,.25)', 0, 96, W, 3);
+    /* try-on mirror on a dais, showing the pet you are dressing */
+    px(x, '#000', 138, 98, 44, 7); px(x, RR.floorA, 139, 99, 42, 5); px(x, RR.gold, 139, 98, 42, 1);
+    gild(x, 147, 59, 26, 38); px(x, RR.sky, 147, 59, 26, 38); px(x, '#d8f6ff', 149, 61, 2, 26); if (S.mirror) x.drawImage(S.mirror, 144, 64, 32, 32);
+    /* SOON objects (design only, nothing to buy): Can-o-Rare + Gear-o-Matic vending machines and Dan's sale rack */
+    [[8, RR.velvet, 'CAN-O-RARE'], [38, RR.emerald, 'GEAR-O-MATIC']].forEach(function (m) { var a = m[0], b = 102; px(x, '#000', a - 1, b - 1, 24, 34); px(x, m[1], a, b, 22, 32); px(x, RR.gold, a, b, 22, 2); px(x, '#bfe9ff', a + 3, b + 5, 11, 16); px(x, '#4fd18b', a + 5, b + 7, 7, 3); px(x, '#4f9dff', a + 5, b + 12, 7, 3); px(x, '#ffc93c', a + 5, b + 17, 7, 3); px(x, RR.goldHi, a + 16, b + 7, 3, 10); px(x, '#111', a + 3, b + 25, 16, 4); });
+    plate(x, 'SOON', 19, 100, 4); plate(x, 'SOON', 49, 100, 4);
+    px(x, RR.gold, 196, 106, 30, 2); px(x, RR.gold, 197, 106, 2, 24); px(x, RR.gold, 223, 106, 2, 24); px(x, RR.velvet, 201, 118, 20, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText('SALE', 211, 124); x.textAlign = 'left'; plate(x, 'SOON', 211, 138, 4);
+    /* Dan's Door (arched velvet door behind Captain Dan) */
+    px(x, '#000', 270, 60, 40, 37); x.fillStyle = '#000'; x.beginPath(); x.arc(290, 61, 20, Math.PI, 0); x.fill(); x.fillStyle = RR.gold; x.beginPath(); x.arc(290, 61, 19, Math.PI, 0); x.fill(); x.fillStyle = RR.velvetLo; x.beginPath(); x.arc(290, 61, 16, Math.PI, 0); x.fill();
+    px(x, RR.gold, 271, 61, 38, 36); px(x, RR.velvetLo, 274, 61, 32, 36); px(x, RR.velvet, 276, 62, 13, 34); px(x, RR.velvet, 291, 62, 13, 34); px(x, RR.goldHi, 287, 78, 2, 3); px(x, RR.goldHi, 291, 78, 2, 3); plate(x, "DAN'S DOOR", 290, 58, 4);
+    [[60, 8], [250, 10], [128, 40], [192, 38]].forEach(function (q, n) { if (!reduced() && Math.floor(t / 700 + n) % 3 === 0) return; px(x, RR.goldHi, q[0], q[1] - 1, 1, 3); px(x, RR.goldHi, q[0] - 1, q[1], 3, 1); }); }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */
-    px(x, '#2a1d14', 0, 0, W, H); for (var y = 0; y < 96; y += 8) for (var b = (y / 8 % 2) * -8; b < W; b += 16) px(x, (y + b) % 3 ? '#3a2a1e' : '#35261b', b + 1, y + 1, 14, 6); /* brick */
-    px(x, '#e9e1cf', 120, 8, 80, 6); for (var a = 0; a < 40; a++) { var hh = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((a - 20) / 20, 2))) * 22); px(x, '#1a2b4a', 120 + a * 2, 36 - hh, 2, hh + 52); } /* arch window */
-    for (var st = 0; st < 14; st++) px(x, '#fff', 124 + (st * 37) % 72, 18 + (st * 13) % 40, 1, 1);
-    [112, 204].forEach(function (cx) { px(x, '#e9e1cf', cx, 10, 6, 84); px(x, '#bfb49c', cx + 2, 12, 1, 80); px(x, '#f5efe0', cx - 2, 8, 10, 3); px(x, '#f5efe0', cx - 2, 92, 10, 3); });
-    /* final name (owner 8:01 PM CT): "The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers", stacked on two lines */
-    x.textAlign = 'center'; px(x, '#000', 33, 1, 256, 19); px(x, '#c8102e', 31, 0, 256, 18); px(x, '#ffd166', 31, 0, 256, 1); px(x, '#ffd166', 31, 17, 256, 1); /* phone pass: banner widened so the long name sits inside it */
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('THE XCPETS LAIR OF', 159, 8);
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#fff6c8'; x.fillText('LOCKS\u00b7LEVERAGE\u00b7LAYERS\u00b7LUSTER\u00b7LOOKS & LEATHERS', 159, 15.5, 250); x.textAlign = 'left';
-    px(x, '#3ddc84', 47, 6, 3, 3); px(x, '#3ddc84', 268, 6, 3, 3); /* laurels */
-    S.hits = []; var shelves = [[6, 22], [6, 56], [222, 22], [222, 56]], k = 0;
-    shelves.forEach(function (s) { px(x, '#7a4f2a', s[0], s[1] + 18, 92, 4); px(x, '#5a3a1e', s[0], s[1] + 22, 92, 2);
-      for (var i = 0; i < 5; i++) { var it = S.items[k++], ix = s[0] + 2 + i * 18, iy = s[1]; if (!it) continue; var ic = S.icons[it.item]; var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 4 : 4 + (Math.floor(t / 200) % 2)) : 0;
-        if (it.on != null) { var ga = reduced() ? .9 : .55 + .45 * Math.abs(Math.sin(t / 400)); x.strokeStyle = 'rgba(255,209,102,' + ga + ')'; x.lineWidth = 2; x.strokeRect(ix - 1, iy - 1 - lift, 18, 18); }
-        if (ic) x.drawImage(ic, ix, iy - lift + (reduced() || lift ? 0 : (Math.floor(t / 400 + i + k) % 7 === 0 ? -1 : 0)), 16, 16);
-        if (it.on != null) { x.font = '6px "Press Start 2P", monospace'; px(x, '#ffd166', ix - 1, iy + 16, 17, 8); x.fillStyle = '#140f24'; x.textAlign = 'center'; x.fillText('EQP', ix + 7.5, iy + 23, 15); x.textAlign = 'left'; }
-        if (sel) { px(x, '#fff', ix - 1, iy - lift - 1, 18, 1); px(x, '#fff', ix - 1, iy - lift + 16, 18, 1); }
-        S.hits.push({ x: ix, y: iy - 4, w: 16, h: 22, it: it }); } });
-    if (!S.items.length) { x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.fillText('Stash empty: roll gear!', 8, 46); }
-    /* owner 9:39 PM CT: the shelves are YOUR stash (not for sale): lock name plates under the top shelves, '+N MORE' when over 20 */
-    [[6, 47], [222, 47]].forEach(function (q) { px(x, '#000', q[0] + 13, q[1], 66, 8); px(x, '#3ddc84', q[0] + 14, q[1] + 1, 64, 6); px(x, '#000', q[0] + 17, q[1] + 3, 4, 3); px(x, '#000', q[0] + 18, q[1] + 1, 2, 2); x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#04140a'; x.fillText('YOUR STASH', q[0] + 23, q[1] + 6); });
-    if (S.more > 0) { x.font = '5px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'right'; x.fillText('+' + S.more + ' MORE', 314, 88); x.textAlign = 'left'; }
-    dan(x, DAN.x, DAN.y, t); mood(x, t); px(x, '#7a4f2a', 70, 96, 180, 10); px(x, '#5a3a1e', 70, 106, 180, 30); px(x, '#ffd166', 70, 96, 180, 1); /* counter */
-    x.font = '6px "Press Start 2P", monospace'; x.fillStyle = '#ffd166'; x.textAlign = 'center'; x.fillText('YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 160, 120, 176); x.textAlign = 'left';
-    px(x, '#4a3626', 0, 136, W, 14); for (var f = 0; f < W; f += 20) px(x, '#3c2b1e', f, 136, 1, 14); /* floor */
-    bubble(x, S.say || lineAt(S.line), 160, 47);
+    roomBg(x, t);
+    S.hits = []; var walls = [[8, 14], [8, 52], [222, 14], [222, 52]], k = 0; /* 4 gallery walls x 5 framed cards = the same 20 stash pieces as the old shelves */
+    walls.forEach(function (s) { for (var i = 0; i < 5; i++) { var it = S.items[k++], ix = s[0] + 2 + i * 18, iy = s[1]; if (!it) continue; var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
+        if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); } /* spotlight */
+        frameCard(x, it, ix, iy, lift, t);
+        if (it.on != null) { px(x, '#000', ix + 11, iy + 12 - lift, 6, 6); px(x, '#3ddc84', ix + 12, iy + 13 - lift, 4, 4); } /* worn = green dot (the old EQP tag) */
+        if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
+        S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it }); } });
+    if (!S.items.length) plate(x, 'EMPTY WALLS: ROLL AT DAN\u2019S DOOR', 160, 76, 5);
+    if (S.more > 0) plate(x, '+' + S.more + ' MORE', 290, 46, 5);
+    dan(x, DAN.x, DAN.y, t); mood(x, t);
+    plate(x, 'YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 128, 149, 5);
+    bubble(x, S.say || lineAt(S.line), 253, 88);
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
     S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.items = SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
     S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Lair of Locks, Leverage, Layers, Luster, Looks, and Leathers: Captain Dan behind the counter, your stash of gear on the shelves"></canvas><div class="shop-hint small">👇 Your gear is on these shelves · tap an item to equip it</div>'; c = box.querySelector('canvas');
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at his door"></canvas><div class="shop-hint small">👇 Your gear hangs on these walls · tap a card to try it on</div>'; c = box.querySelector('canvas');
       if (window.IntersectionObserver) { new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) waveNow(); }); }, { threshold: 0.5 }).observe(c);
         new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off && !S.raf) draw(performance.now()); else if (off) { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c); } /* lair speed (owner Oct 20 2026): no redraw loop while the scene is off screen */
       c.addEventListener('mousemove', function (e) { if (onDan(c, e)) waveNow(); var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
@@ -108,10 +131,18 @@
       c.addEventListener('mouseleave', function () { S.hov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (onDan(c, e)) waveNow(); if (!h) return; waveNow();
-        S.sel = h.it; say(h.it); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
+        S.sel = h.it; say(h.it); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
     var mo = box.querySelector('.shop-more'); if (S.more > 0) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
-    counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
+    mirrorPet(w); counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.fitRaf); S.fitRaf = requestAnimationFrame(function () { S.fitRaf = 0; fitDraw(c); }); } /* lair-perf: measure + first draw on the next frame, so a render never forces a full-page layout */
+  /* Rare Room mirror: the pet you are dressing (S.pet / roll pet / first living pet), wearing the tapped piece as a live try-on (same framesWith as the Wear panel) */
+  function toCv(fr) { if (!fr || !fr[0]) return null; var c = document.createElement('canvas'); c.width = 32; c.height = 32; try { c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data), 32, 32), 0, 0); } catch (e) { return null; } return c; }
+  function mirrorPet(w) { var U = window.V2UI, V = window.V2Rules, R = window.V2Render; if (!U || !V || !R) return; var pets = U.mine(w).filter(function (p) { return !p.dead && !p.released; }), P = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0];
+    if (!S.pepe) { var pp = (w.pets || []).filter(function (q) { return q.species === 'pepe' && q.stage >= 3; })[0]; if (pp) try { S.pepe = toCv(R.framesWith(Object.assign({}, pp.art, { background: 'solid', bgColor: '#bfe9d6', pattern: 'none' }), pp.stage, [], [])); } catch (e) { } }
+    if (!P) { S.mirror = null; return; } var worn = V.wornOf(w, P.id), ids = worn.map(function (x) { return x.item; }), g = S.sel;
+    if (g && g.item) { var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot; if ((P.openSlots || []).indexOf(sl) >= 0 || (V.slotOpen && V.slotOpen(P, sl))) ids = worn.filter(function (x) { return x.slot !== sl; }).map(function (x) { return x.item; }).concat([g.item]); }
+    var key = P.id + ':' + ids.join(','); if (S.mirrorKey === key) return; S.mirrorKey = key;
+    try { S.mirror = toCv(R.framesWith(Object.assign({}, P.art, { background: 'solid', bgColor: RR.sky, pattern: 'none' }), P.stage, ids, P.blackEye ? ['v2-black-eye'] : [])); } catch (e) { S.mirror = null; } }
   function fitDraw(c) { if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now()); }
   /* CLEARANCE RACK (PREVIEW, NOT ACTIVE; owner idea, rules undecided): 4 pieces that rotate once per 144-block chain day, picked from the
    * existing gear catalog (no signature/legendary-exclusive or retired pieces) by sha256(first-block-of-the-day hash + ':clearance:' + i).
@@ -133,9 +164,9 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function dmg(itemId) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[itemId]; return it ? 1 + 2 * (it.tier || 0) : 0; }
   /* the counter: in place under the shelves (no pop-up). Pick a pet chip -> gear-damage delta vs what it wears in that slot -> Wear / Take off / Roll. */
-  function counter() { var U = window.V2UI, V = window.V2Rules, R = window.V2Render, el = document.getElementById('shopCounter'); if (!el || !U) return; var w = U.world(), ME = U.ME, g = S.sel;
+  function counter() { var U = window.V2UI, V = window.V2Rules, R = window.V2Render, el = document.getElementById('shopCounter'); if (!el || !U) return; var w = U.world(), ME = U.ME, g = S.sel; mirrorPet(w);
     var pets = U.mine(w).filter(function (p) { return !p.dead; });
-    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? stepPet(HP, false) + '<div class="sc-pets" id="scPetPick"></div>' + hero(w, HP) : '') + stepGear(w) + rollRow(w, pets); if (HP) paintHero(el, w, HP); petPick(HP); bindRoll(el); return; }
+    if (!g) { var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove(); var HP = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0]; el.innerHTML = (HP ? stepPet(HP, false) + '<div class="sc-pets" id="scPetPick"></div>' + hero(w, HP) + bestBar() : '') + stepGear(w) + rollRow(w, pets) + gallery(w); if (HP) paintHero(el, w, HP); petPick(HP); bindRoll(el); rrBind(el); return; }
     g = w.items[g.gid] || g; S.sel = g; var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot;
     var fit = pets.filter(function (p) { return (p.openSlots || []).indexOf(sl) >= 0; }); if (S.pet == null && S.rollPet != null && fit.some(function (p) { return p.id === S.rollPet; })) S.pet = S.rollPet; /* gear-clarity: keep the pet on show */
     if (S.pet == null || !fit.some(function (p) { return p.id === S.pet; })) S.pet = g.on != null ? g.on : fit[0] && fit[0].id;
@@ -151,7 +182,7 @@
       '<div class="sc-act">' + (P && !wearing ? '<button type="button" class="btn" id="scWear"' + (c.ok ? '' : ' disabled') + '>👕 Wear on #' + P.id + '</button>' : '') + (g.on != null ? '<button type="button" class="q" id="scOff">Take off</button>' : '') + '</div>' +
       (P && !wearing && !c.ok ? '<div class="sc-why">✋ ' + esc(c.worn ? 'Already wearing it' : c.why) + '</div>' : '') + '</div>';
     var scn = document.getElementById('shopScene'), old = scn && scn.querySelector('.sc-sign'); if (old) old.remove(); if (scn) scn.insertAdjacentHTML('beforeend', sign);
-    el.innerHTML = (P ? stepPet(P, true) + hero(w, P) : '') + (P ? tryOn(w, P, g, cur, sl, wearing, tot0, tot1) : '') + '<div class="gc-step gc-sub" id="gcPickH">Change pet: tap one below (pets with a free ' + esc(lword(sl).split(' ')[0]) + ' slot)</div><div class="sc-pets" id="scPick"></div><div class="sc-act sc-act-anchor"></div>' + rollRow(w, pets);
+    el.innerHTML = (P ? stepPet(P, true) + hero(w, P) : '') + (P ? tryOn(w, P, g, cur, sl, wearing, tot0, tot1) : '') + bestBar() + '<div class="gc-step gc-sub" id="gcPickH">Change pet: tap one below (pets with a free ' + esc(lword(sl).split(' ')[0]) + ' slot)</div><div class="sc-pets" id="scPick"></div><div class="sc-act sc-act-anchor"></div>' + rollRow(w, pets) + gallery(w);
     var sgn = scn && scn.querySelector('.sc-sign');
     if (R && R.iconCanvas && sgn) sgn.querySelector('.sc-ic').appendChild(R.iconCanvas(g.item, ''));
     if (P) { paintTry(el, w, P, g, sl, wearing); paintHero(el, w, P); } bindBest(el, w, P);
@@ -159,7 +190,8 @@
       onPick: function (r) { S.pet = +r.key; S.rollPet = S.pet; counter(); } });
     var wb = document.getElementById('scWear'); if (wb) wb.onclick = function () { if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); var c2 = V.equipCheck(U.world(), ME, P.id, g.item); if (!c2.ok) return; op(P.id, sl, c2.gid, 'Equipped ' + (it.label || '') + ' on #' + P.id); };
     var ob = document.getElementById('scOff'); if (ob) ob.onclick = function () { if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); op(g.on, sl, null, 'Took ' + (it.label || '') + ' off #' + g.on); };
-    bindRoll(el); }
+    bindRoll(el); rrBind(el); }
+  function rrBind(el) { bindDoor(el); bindGallery(el); bindBar(el); }
   /* LAIR UX (quick wins 2026-10-19, display + the same free local equip op; no rule change): live try-on (the chosen pet now -> wearing the piece),
    * a big gear-damage readout (⚔ 12 -> 15 +3), WEARING NOW tag on what it has on, 'Wear best' per slot, double-tap to wear, a poof when gear changes,
    * Dan thumbs-up on an upgrade / shrug on a downgrade. */
@@ -201,15 +233,49 @@
       return '<div class="sc-roll"><div class="sc-rh">🎲 Roll gear · your ' + nSel + ' selected pet' + (nSel === 1 ? '' : 's') + '</div><label class="small sc-rn">Rolls per pet <input class="amt small" id="scRollN" type="number" min="1" max="10" value="' + rn + '" aria-label="Rolls per pet"></label>' +
         '<button type="button" class="btn ico-flame" id="scRollSel"' + (rq.length ? '' : ' disabled') + '>🎲 Roll ' + rq.length + ' time' + (rq.length === 1 ? '' : 's') + ' <span class="cost">' + fmtN(rq.length * V.COSTS.roll) + ' XCPETS</span></button>' + (rq.length ? '' : '<div class="sc-why">✋ No living pet of yours selected</div>') + '</div>'; }
     S.rollPet = P.id; var lg = (V.legendaryOf && V.legendaryOf(P.species) || [])[0] || null, sw = slotWords(P);
-    return '<div class="sc-roll"><div class="sc-rh">🎲 Roll gear · pick pet / species</div><div class="sc-pets" id="scSpPick"></div>' +
+    var species = '<details class="rr-fold"><summary>🎲 Roll by species (the old picker)</summary><div class="sc-roll"><div class="sc-pets" id="scSpPick"></div>' +
       '<div class="sc-rinfo"><b>' + esc(V.speciesLabel(P.species)) + '</b> → rolls on <b>#' + P.id + '</b> ' + esc(String(P.name || '')) + '<br>Can land in: ' + (sw.length ? sw.map(function (x) { return '<span class="sc-tag">' + esc(x) + '</span>'; }).join(' ') : '—') +
       (lg ? '<br><small>★ ' + esc(V.speciesLabel(P.species)) + ' signature hat: ' + esc(lg.label) + ' (Legendary pets)</small>' : '') + '</div>' +
-      '<button type="button" class="btn ico-flame" id="scRoll" data-pid="' + P.id + '">🎲 Roll for ' + esc(V.speciesLabel(P.species)) + ' <span class="cost">345 XCPETS</span></button></div>'; }
+      '<button type="button" class="btn ico-flame" id="scRoll" data-pid="' + P.id + '">🎲 Roll for ' + esc(V.speciesLabel(P.species)) + ' <span class="cost">345 XCPETS</span></button></div></details>';
+    return danDoor(w, pets) + species; }
+  /* DAN'S DOOR (Rare Room, owner Oct 21 2026): roll gear pet-first. The crew list shows every living pet's six slots (open / locked) and the real odds
+   * (the rule picks one of the pet's OPEN slots from block hash + tx, so each open slot is 1 in N). 'Roll my best pet' = most open slots, ties to the
+   * lowest #. Every button builds the SAME pet:roll:ID tag at the SAME 345 XCPETS through the same confirm + wasted-burn guard. No rule change. */
+  var CREW_N = 8;
+  function crewSort(pets) { return pets.filter(function (p) { return !p.released && (p.openSlots || []).length; }).sort(function (a, b) { return (b.openSlots || []).length - (a.openSlots || []).length || a.id - b.id; }); }
+  function danDoor(w, pets) { var V = window.V2Rules, L = crewSort(pets), best = L[0], pend = window.UXB && UXB.pendingFor ? UXB.pendingFor : null, n = S.crewN || CREW_N;
+    if (!L.length) return '<div class="rr-door"><div class="rr-dh">🚪 Dan\u2019s Door · Roll for gear</div><p class="small">No living pet with an open slot yet. Slots open as pets grow (age and days fed).</p></div>';
+    var row = function (p) { var os = p.openSlots || [], k = os.length, pn = pend ? pend(p.id) : 0;
+      return '<div class="rr-crew"><canvas class="rr-cc" width="32" height="32" data-cpid="' + p.id + '"></canvas><div class="rr-cm"><b>#' + p.id + ' ' + esc(String(p.name || '')).slice(0, 16) + '</b> <small>' + esc(V.speciesLabel(p.species)) + '</small><div class="rr-chips">' +
+        SLOT_ORDER.map(function (sl) { var op = os.indexOf(sl) >= 0; return '<span class="rr-chip' + (op ? ' op' : '') + '" title="' + (op ? 'open' : 'locked') + '">' + esc(lword(sl).split(' \u00b7 ')[1] || lword(sl)) + (op ? '' : ' 🔒') + '</span>'; }).join('') +
+        '</div><small class="rr-odds">Each open slot: 1 in ' + k + ' (' + Math.round(100 / k) + '%)' + (pn ? ' · 🎁 ' + pn + ' on the way' : '') + '</small></div><button type="button" class="btn ico-flame rr-roll" data-rpid="' + p.id + '">🎲 345</button></div>'; };
+    return '<div class="rr-door" id="danDoor"><div class="rr-dh">🚪 Dan\u2019s Door · Roll for gear</div><p class="small rr-dsub">One roll = 345 XCPETS = one random piece in a random <b>open</b> slot of the pet you pick. Same burn as always.</p>' +
+      '<button type="button" class="btn ico-flame rr-best" data-rpid="' + best.id + '">🎲 Roll my best pet · 345 <span class="cost">#' + best.id + ' ' + esc(String(best.name || '')).slice(0, 14) + ' has the most open slots (' + best.openSlots.length + ')</span></button>' +
+      '<div class="rr-ch">Or pick from your crew</div>' + L.slice(0, n).map(row).join('') + (L.length > n ? '<button type="button" class="q rr-more" id="rrMore">Show ' + Math.min(CREW_N, L.length - n) + ' more (' + (L.length - n) + ' left)</button>' : '') + '</div>'; }
+  function bindDoor(el) { var U = window.V2UI, V = window.V2Rules, w = U.world(); el.querySelectorAll('[data-rpid]').forEach(function (b) { b.onclick = function () { var id = +b.dataset.rpid; U.confirmPlans('Gear roll for #' + id, [{ tag: V.buildTag('roll', { petId: id }), amount: V.COSTS.roll }]); }; });
+    var m = el.querySelector('#rrMore'); if (m) m.onclick = function () { S.crewN = (S.crewN || CREW_N) + CREW_N; counter(); };
+    el.querySelectorAll('canvas[data-cpid]').forEach(function (c) { var P = w.byId[+c.dataset.cpid]; if (P) put(c, framesFor(w, P, V.wornOf(w, P.id).map(function (x) { return x.item; }))); }); }
+  /* RARE ROOM GALLERY: your gear as framed cards grouped by the six slots (rarest first, 12 per slot; the full list stays in 'Your stash · all your gear').
+   * Tap a card = the same select/try-on as tapping it on the wall. */
+  var GAL_N = 12;
+  function gallery(w) { var V = window.V2Rules, ME = window.V2UI.ME, L = (w.itemList || []).filter(function (g) { return g.owner === ME; }); if (!L.length) return '';
+    var by = {}; L.forEach(function (g) { var it = (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; if (sl === 'weapon') sl = 'hand'; (by[sl] = by[sl] || []).push(g); });
+    var h = '<div class="rr-gal" id="rrGallery"><div class="rr-dh">🖼️ Your Gallery · ' + L.length + ' piece' + (L.length === 1 ? '' : 's') + '</div><div class="rr-leg small"><i class="t0"></i>Common <i class="t1"></i>Uncommon <i class="t2"></i>Rare <i class="t3"></i>Legendary · green dot = worn</div>';
+    SLOT_ORDER.forEach(function (sl) { var G = (by[sl] || []).sort(function (a, b) { return tierOfG(b) - tierOfG(a) || (a.on == null ? -1 : 1); });
+      h += '<div class="rr-row"><div class="rr-rh">' + esc(lword(sl)) + ' · ' + G.length + (G.length > GAL_N ? ' <a href="#" class="rr-all" data-all="1">See all ▸</a>' : '') + '</div><div class="rr-cards">' +
+        (G.length ? G.slice(0, GAL_N).map(function (g) { var t = tierOfG(g); return '<button type="button" class="rr-card t' + t + (S.sel && S.sel.gid === g.gid ? ' sel' : '') + '" data-ggid="' + esc(g.gid) + '" title="' + esc(g.label || g.item) + '"><span class="rr-nm">' + esc(String(g.label || g.item)).slice(0, 14) + '</span><canvas width="16" height="16" data-gic="' + esc(g.item) + '"></canvas>' + (g.on != null ? '<i class="rr-on"></i>' : '') + '</button>'; }).join('') : '<span class="small muted">Empty wall. Dan can fix that: 🎲</span>') + '</div></div>'; });
+    return h + '</div>'; }
+  function bindGallery(el) { var U = window.V2UI, R = window.V2Render, w = U.world(); el.querySelectorAll('canvas[data-gic]').forEach(function (c) { var ic = S.icons[c.dataset.gic]; if (!ic) try { ic = S.icons[c.dataset.gic] = R.iconCanvas(c.dataset.gic); } catch (e) { } if (ic) c.getContext('2d').drawImage(ic, 0, 0, 16, 16); });
+    el.querySelectorAll('[data-ggid]').forEach(function (b) { b.onclick = function () { var g = w.items[b.dataset.ggid]; if (!g) return; S.sel = g; say(g); waveNow(); if (window.V2LairQoL) V2LairQoL.viewed(g); mirrorPet(w); counter(); draw(performance.now()); var sc = document.getElementById('shopScene'); if (sc && sc.scrollIntoView) sc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
+    el.querySelectorAll('[data-all]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; }); }
+  /* Equip Best + one-tap Undo right under the mirror (the same V2LairQoL.equipBest / undo as the More fold) */
+  function bestBar() { var Q = window.V2LairQoL; if (!Q || !Q.equipBest) return ''; return '<div class="rr-bar"><button type="button" class="btn ico-flame" id="rrBest">⚡ Equip Best <span class="cost">free · your best pieces</span></button>' + (Q.hasUndo && Q.hasUndo() ? '<button type="button" class="q" id="rrUndo">↩ Undo</button>' : '') + '</div>'; }
+  function bindBar(el) { var Q = window.V2LairQoL, b = el.querySelector('#rrBest'); if (b) b.onclick = function () { Q.equipBest(); counter(); }; b = el.querySelector('#rrUndo'); if (b) b.onclick = function () { Q.undo(); counter(); }; }
   /* gear-clarity (owner Oct 20 2026: 'which pet am I dressing / where is my gear / where do I click'): step labels, a current-pet chip with a
    * 'Change pet' link that scrolls to the EXISTING picker, and an empty state. Display only; the pickers themselves are unchanged. */
   function stepPet(P, itemOn) { return '<div class="gc-step"><b>Step 1: Pick your pet</b> <span class="gc-chip">Dressing #' + P.id + ' ' + esc(String(P.name || '')) + '</span> <a href="#" class="gc-change" data-gc="' + (itemOn ? 'scPick' : 'scPetPick') + '">✎ Change pet ▾</a></div>'; }
   function stepGear(w) { var ME = window.V2UI.ME, L = (w.itemList || []).filter(function (g) { return g.owner === ME; }), n = L.length, f = L.filter(function (g) { return g.on == null; }).length;
-    return '<div class="gc-step"><b>Step 2: Your gear (' + n + ' piece' + (n === 1 ? '' : 's') + ' · ' + f + ' unworn)</b> ' + (n ? '<span class="gc-cue">⬆ Tap an item on the shelves above to equip it</span>' : '<span class="gc-cue">No gear yet. Roll gear below (🎲 345 XCPETS) and it lands on the shelves.</span>') + '</div>'; }
+    return '<div class="gc-step"><b>Step 2: Your gear (' + n + ' piece' + (n === 1 ? '' : 's') + ' · ' + f + ' unworn)</b> ' + (n ? '<span class="gc-cue">⬆ Tap an item on the walls above to equip it</span>' : '<span class="gc-cue">No gear yet. Roll gear below (🎲 345 XCPETS) and it lands on the walls.</span>') + '</div>'; }
   if (typeof document !== 'undefined') { document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('.gc-change'); if (!a) return; e.preventDefault(); var t = document.getElementById(a.dataset.gc) || document.getElementById('scSpPick'); if (!t) return; t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.classList.remove('gc-glow'); void t.offsetWidth; t.classList.add('gc-glow'); });
     if (!document.getElementById('gcCss')) { var gs = document.createElement('style'); gs.id = 'gcCss'; gs.textContent = '.gc-step{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:8px 0 4px;font-size:12px}.gc-step b{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166}.gc-sub{font-size:11px;color:#9fe8ff}.gc-chip{background:#140f24;border:2px solid #4fd18b;color:#4fd18b;padding:4px 8px;font-weight:700}.gc-change{color:#9fe8ff;font-weight:700;min-height:32px;display:inline-flex;align-items:center}.gc-cue{color:#cfc6e8}#shopCounter .pk-key.sel{position:relative;outline:3px solid #ffd166;outline-offset:1px}#shopCounter .pk-key.sel::before{content:\'▼\';position:absolute;top:-13px;left:50%;transform:translateX(-50%);color:#ffd166;font-size:11px;line-height:1;text-shadow:1px 1px 0 #000}.lair-more>summary{min-height:40px;display:flex;align-items:center;cursor:pointer}.gc-glow{animation:gcG 1.6s ease-out 1}@keyframes gcG{0%,60%{box-shadow:0 0 0 3px #ffd166}100%{box-shadow:none}}@media (prefers-reduced-motion:reduce){.gc-glow{animation:none;outline:3px solid #ffd166}}'; (document.head || document.documentElement).appendChild(gs); } }
   /* lair batch 2 (owner Oct 20 2026): direct pet picker (same V2Picker + petChip as the Wear picker) to choose exactly which pet you dress */
@@ -228,5 +294,25 @@
         onPick: function (r) { S.rollSp = r.key; var b = rollPick(w, pets, r.key); if (b) { S.rollPet = b.id; S.pet = b.id; } counter(); } }); } } /* gear-clarity: the species pick also moves the Lair pet (it used to change only the roll target while S.pet kept the old pet in the big panel) */
   function refreshRoll() { counter(); }
   function op(pid, slot, gid, msg) { var U = window.V2UI, St = U.S(); St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: slot, gid: gid, block_index: St.tip }); U.save(); S.poofT = performance.now(); S.moodFor = null; U.render(); S.say = 'Lookin\u2019 sharp!'; S.lt = performance.now(); U.toast(esc(msg) + ' (free)'); }
-  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, dmg: dmg, op: op };
+
+  /* Rare Room theme (palette A 'Royal Vault'). Only the gear-place panels; pickers (.sc-pets / V2Picker), selection boxes and site fonts untouched. */
+  if (typeof document !== 'undefined' && !document.getElementById('rrCss')) { var rs = document.createElement('style'); rs.id = 'rrCss'; rs.textContent =
+    '.shop8{background:linear-gradient(180deg,#22103d,#170a2b);border-color:#e8b84a!important;box-shadow:0 0 0 3px #000,0 0 0 5px #8a5a12,6px 6px 0 5px #000}' +
+    '.shop8 .shop-scene{background:#2a0f4a;border:3px solid #e8b84a;box-shadow:0 0 0 3px #000,4px 4px 0 3px #000}.shop8 .shop-hint{background:#170a2b;color:#fff1a8}' +
+    '.shop8 .lair-h{color:#fff1a8}.shop8 .sc-hero{background:#1c0f33;border:3px solid #e8b84a;box-shadow:3px 3px 0 #000}.shop8 .sc-hp canvas{background:#8fe3ff;border:3px solid #e8b84a;box-shadow:0 0 0 2px #000}' +
+    '.shop8 .sc-slots li.on{color:#fff1a8}.shop8 .sc-slots li.open{color:#4fd18b}.rr-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 10px}' +
+    '.rr-door,.rr-gal{margin:12px 0;padding:10px;background:#1c0f33;border:3px solid #e8b84a;box-shadow:0 0 0 2px #000,4px 4px 0 2px #000}.rr-dh{font-family:"Press Start 2P",monospace;font-size:10px;color:#fff1a8;margin-bottom:6px;line-height:1.5}' +
+    '.rr-dsub{color:#cdbbe8;margin:0 0 8px}.rr-best{display:flex;flex-direction:column;align-items:center;width:100%;min-height:52px}.rr-best .cost{font-size:12px}.rr-ch{font-family:"Press Start 2P",monospace;font-size:8px;color:#8fe3ff;margin:10px 0 4px}' +
+    '.rr-crew{display:flex;gap:8px;align-items:center;padding:6px;margin:4px 0;background:#22103d;border:2px solid #000}.rr-cc{width:48px;height:48px;image-rendering:pixelated;flex:0 0 auto;background:#2a0f4a}.rr-cm{flex:1;min-width:0}.rr-cm b{color:#f6eeff}.rr-cm small{color:#cdbbe8}' +
+    '.rr-chips{display:flex;flex-wrap:wrap;gap:3px;margin:3px 0}.rr-chip{font-size:11px;font-weight:700;padding:1px 5px;background:#3a3450;color:#8a84a0;border:1px solid #000}.rr-chip.op{background:#4fd18b;color:#140f24}.rr-odds{color:#e8b84a!important;font-weight:700}' +
+    '.rr-roll{flex:0 0 auto;min-height:40px}.rr-more{margin-top:6px}.rr-fold{margin:6px 0}.rr-fold>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:#8fe3ff;font-weight:700}' +
+    '.rr-leg i{display:inline-block;width:10px;height:10px;border:1px solid #000;margin:0 3px 0 8px;vertical-align:middle}.rr-leg .t0{background:#9aa3b5}.rr-leg .t1{background:#4fd18b}.rr-leg .t2{background:#4f9dff}.rr-leg .t3{background:#ffc93c}' +
+    '.rr-row{margin:8px 0}.rr-rh{font-family:"Press Start 2P",monospace;font-size:8px;color:#e8b84a;background:#2a0f4a;padding:5px 6px;margin-bottom:6px}.rr-all{color:#8fe3ff;margin-left:8px}' +
+    '.rr-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px}.rr-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 4px 6px;background:#f6efdc;border:4px solid #9aa3b5;outline:3px solid #e8b84a;box-shadow:0 0 0 5px #000,4px 4px 0 5px #000;cursor:pointer;min-height:96px;margin:4px}' +
+    '.rr-card.t1{border-color:#4fd18b}.rr-card.t2{border-color:#4f9dff}.rr-card.t3{border-color:#ffc93c}.rr-card canvas{width:48px;height:48px;image-rendering:pixelated;background:#2a0f4a}.rr-card.sel{outline-color:#fff1a8;outline-style:dashed}' +
+    '.rr-card.t2 canvas,.rr-card.t3 canvas{background:linear-gradient(115deg,#2a0f4a 20%,#7b3fe4 40%,#1fb5a5 55%,#2a0f4a 75%);background-size:300% 100%;animation:rrHolo 3s linear infinite}.rr-card.t3::after{content:"\\2726";position:absolute;top:-8px;right:-4px;color:#fff1a8;text-shadow:1px 1px 0 #000;font-size:14px}' +
+    '@keyframes rrHolo{to{background-position:300% 0}}@media (prefers-reduced-motion:reduce){.rr-card canvas{animation:none!important}}.rr-nm{font-size:10px;font-weight:700;color:#140f24;line-height:1.1;text-align:center;max-width:100%;overflow:hidden}.rr-on{position:absolute;right:4px;bottom:4px;width:10px;height:10px;background:#3ddc84;border:2px solid #000}' +
+    '@media (max-width:520px){.rr-cards{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}.rr-chip{font-size:10px}.rr-crew{flex-wrap:wrap}.rr-roll{width:100%}}';
+    (document.head || document.documentElement).appendChild(rs); }
+  window.V2Shop = { drawDan: dan, rackPick: rackPick, clearance: clearance, render: render, wave: waveNow, select: function (g) { S.sel = g; say(g); waveNow(); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, LINES: LINES, DANK: DANK, lineAt: lineAt, setPool: setPool, active: function (g) { return (ACT[g] || []).slice(); }, dmg: dmg, op: op };
 })();
