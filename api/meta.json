@@ -1,0 +1,18 @@
+{
+  "blockHeight": 972575,
+  "generatedAt": "2026-10-22T05:37:01Z",
+  "asset": "XCPETS",
+  "totalPets": 20870,
+  "alive": 17195,
+  "dead": 3674,
+  "released": 1,
+  "burns": 1033,
+  "burnedXCPETS": 10917865.00000034,
+  "supplyXCPETS": 89082134.99999966,
+  "owners": 14,
+  "files": {
+    "pets": "https://xcpets.fun/api/pets.json",
+    "meta": "https://xcpets.fun/api/meta.json",
+    "docs": "https://xcpets.fun/api/README.md"
+  }
+}

@@ -436,3 +436,6 @@ body #pets .pet.card{padding-bottom:44px}
 /* remove-dan 2026-10-21: Captain Dan + the Pepe Wheel now stand on the right of the Rare Room floor, so the desktop price-tag sign sits bottom-left (phones keep the static strip) */
 @media (min-width:641px){.shop8 .shop-scene .sc-sign{right:auto;left:2%}.shop8 .shop-scene .sc-sign::before{left:auto;right:-9px}}
 #pepeWheel{scroll-margin-top:calc(var(--navh,72px) + 8px)}
+#hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
+#hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
+#shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */
