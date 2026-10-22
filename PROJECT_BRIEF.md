@@ -57,7 +57,7 @@
 - UI: pet page #petBag panel (after #gear), each piece shows a lock icon and V2Rules.slotUnlock(p, slot).text. Rules + How it works copy updated.
 - Tests: tools/any-slot-test.js (gate moved into the past: 6-slot spread with chi², bags, unlock never replaces, saved spins). Previews: /workspace/xcpets/previews/any-slot-rolls/.
 
-## Mythic slots (Oct 22 2026 ~7:10 PM CT, branch mythic-slots, build 10725140cd, gate ACTIVATE_MYTHIC_SLOTS_BLOCK = 972679 = tip 972673 + 6, est. ~7:45 PM CT)
+## Mythic slots (Oct 22 2026 ~7:15 PM CT, branch mythic-slots, build 10725140cd, gate ACTIVATE_MYTHIC_SLOTS_BLOCK = 972680 = tip 972674 + 6, est. ~7:55 PM CT)
 - Cause: Mythic pets can't be fed (feed rejected 'fully fed'), so fedDays froze and the 50% / 80% feeding slots decayed; 235 of 237 Mythics were stuck under 6 slots (Guise / Footwear locked forever), and any-slot rolls would bag their pieces forever.
 - From the gate (liveAt): (a) Mythic pets (stage 5 or mythicCare) get capacity 6, all slots open; (b) every pet's capacity = max reached since the gate (p.maxCap), so slots never close. Bagged pieces release via the existing unbag path. Below the gate replay SAME.
 - slotUnlock: open Mythic slot = 'Unlocked · Mythic pets have all 6 slots'; Mythics never get the 'if fed daily' hint.

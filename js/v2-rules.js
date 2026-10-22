@@ -91,7 +91,7 @@
   /* MYTHIC SLOTS (owner approved Oct 22 2026 ~6:49 PM CT, branch mythic-slots). From ACTIVATE_MYTHIC_SLOTS_BLOCK: (a) Mythic pets (stage 5 or mythicCare)
    * have capacity 6 = all slots open (they can't be fed, so the feeding slots used to decay); (b) every pet's open slots never close again: capacity = max
    * reached since the gate. Bagged pieces free up through the normal unbag path in liveAt. Below the gate nothing changes (replay SAME). */
-  var ACTIVATE_MYTHIC_SLOTS_BLOCK = 972679; /* DEPLOYED Oct 22 2026 ~7:10 PM CT: tip 972673 + 6 */
+  var ACTIVATE_MYTHIC_SLOTS_BLOCK = 972680; /* DEPLOYED Oct 22 2026 ~7:15 PM CT: tip 972674 + 6 */
   function mythicSlotsOn(b) { return ACTIVATE_MYTHIC_SLOTS_BLOCK != null && b != null && b >= ACTIVATE_MYTHIC_SLOTS_BLOCK; }
   function anySlotOn(b) { return ACTIVATE_ANY_SLOT_BLOCK != null && b != null && b >= ACTIVATE_ANY_SLOT_BLOCK; }
   function rollSlotOf(p, hex, b) { var n = parseInt(hex.slice(16, 24), 16); return anySlotOn(b) ? V2_SLOTS[n % V2_SLOTS.length] : p.openSlots[n % p.openSlots.length]; }
