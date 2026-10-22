@@ -91,7 +91,19 @@
   var KEY = 'xcpets-announcer-voice';
   function voiceOn() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
   function setVoice(on) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) { } if (!on && window.speechSynthesis) speechSynthesis.cancel(); }
-  function speak(text) { if (!voiceOn() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return; try { var u = new SpeechSynthesisUtterance(text); u.rate = 1.12; u.pitch = 0.85; speechSynthesis.speak(u); } catch (e) { } }
+  /* announcer-fix (Oct 21 2026): faster voice, a better voice when the browser has one, and no backlog. Before: rate 1.12 with every line queued, so the
+   * voice fell further behind the fight each round. Now rate 1.35; if a line is still waiting in the browser queue when a new one arrives, the stale
+   * one is dropped (cancel) so the voice stays on the current moment; end lines (winner calls) are queued, never dropped for each other. */
+  var VOICE_PREF = [/natural/i, /^Google US English$/i, /^Google UK English Male$/i, /Microsoft (Guy|Davis|Andrew|Christopher|Eric)/i, /^(Daniel|Alex|Aaron|Fred)\b/i, /Google/i, /Microsoft/i];
+  var voicePick = null;
+  function chooseVoice() { if (voicePick) return voicePick; var L = []; try { L = (speechSynthesis.getVoices() || []).filter(function (v) { return /^en(-|_|$)/i.test(v.lang || ''); }); } catch (e) { }
+    for (var i = 0; i < VOICE_PREF.length && !voicePick; i++) voicePick = L.filter(function (v) { return VOICE_PREF[i].test(v.name); })[0] || null; return voicePick || L[0] || null; }
+  if (typeof window !== 'undefined' && window.speechSynthesis && speechSynthesis.addEventListener) try { speechSynthesis.addEventListener('voiceschanged', function () { voicePick = null; }); } catch (e) { }
+  var RATE = 1.35, PITCH = 0.85, inEnd = false;
+  function reset() { inEnd = false; if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) { } }
+  function speak(text, o) { if (!voiceOn() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return; o = o || {};
+    try { if (!(o.end && inEnd) && speechSynthesis.pending) speechSynthesis.cancel(); if (o.end) inEnd = true;
+      var u = new SpeechSynthesisUtterance(text), v = chooseVoice(); if (v) { u.voice = v; u.lang = v.lang; } u.rate = RATE; u.pitch = PITCH; speechSynthesis.speak(u); } catch (e) { } }
 
   /* ---- quick match ---- */
   /** quickMatch(w, mine, others, tip) -> { a, b } | null: power closest to yours, random among the 3 closest; never your own, never a pet that battled today */
@@ -108,6 +120,6 @@
   if (typeof document !== 'undefined') document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-rvrp]'); if (!a || !window.V2ArenaScene || !document.getElementById('arScene') || !window.V2UI) return;
     var f = V2UI.world().fights[a.dataset.rvrp - 1]; if (!f) return; e.preventDefault(); var dc = document.getElementById('dClose'); if (dc && document.getElementById('detail') && document.getElementById('detail').classList.contains('on')) dc.click(); V2ArenaScene.sequence(f); });
   window.V2Rivals = { rivals: rivals, rivalsOf: rivalsOf, rivalryFor: rivalryFor, strip: strip, streakText: streakText };
-  window.V2Announcer = { script: script, voiceOn: voiceOn, setVoice: setVoice, speak: speak, MEME: MEME, FRESH: FRESH };
+  window.V2Announcer = { script: script, voiceOn: voiceOn, setVoice: setVoice, speak: speak, reset: reset, chooseVoice: chooseVoice, MEME: MEME, FRESH: FRESH };
   window.V2QuickMatch = quickMatch;
 })();

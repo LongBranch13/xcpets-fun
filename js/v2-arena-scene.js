@@ -90,7 +90,9 @@
   function annLine(now) { var A = S.ann || [], t = now - S.t0, m = S.mode, by = function (k) { return A.filter(function (x) { return x.at === k; }); };
     if (m === 'walk') { var I = by('intro'); return I.length ? I[Math.min(I.length - 1, Math.floor(t / 1500))] : null; }
     if (m === 'fight') { var ti = Math.floor(Math.floor(t / TICK) / 4), c = A.filter(function (x) { return typeof x.at === 'number' && x.at <= ti; }); if (S.f && ti >= S.f.turns.length) return by('end')[0] || c[c.length - 1]; return c[c.length - 1] || by('intro').slice(-1)[0]; }
-    if (m === 'lap' || m === 'win') { var E = by('end'); return E.length ? E[Math.min(E.length - 1, 1 + Math.floor(t / 1700))] : null; }
+    /* announcer-fix: lap and win share one clock (S.endT0, set when the lap starts) so the end lines keep counting forward. Before, the win step reset
+     * S.t0 and the index restarted at end line 1, re-showing (and re-speaking) the last lines 2-4 times. */
+    if (m === 'lap' || m === 'win') { var E = by('end'), te = now - (S.endT0 || S.t0); return E.length ? E[Math.min(E.length - 1, 1 + Math.floor(te / 1700))] : null; }
     if (m === 'result') return by('end')[0]; return null; }
   function wrap(x, s, max) { var w = s.split(' '), L = [], cur = ''; w.forEach(function (q) { var t = cur ? cur + ' ' + q : q; if (x.measureText(t).width > max && cur) { L.push(cur); cur = q; } else cur = t; }); if (cur) L.push(cur); return L.slice(0, 2); }
   function annFrame(now) { var x = S.x; if (!x || S.mode === 'idle') return;
@@ -98,7 +100,8 @@
       x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#fff'; x.fillText('RIVALRY ' + S.rv.wa + '-' + S.rv.wb, CX, by + 10); x.textAlign = 'left'; }
     var ln = annLine(now); if (!ln) return; x.font = '8px "Press Start 2P", monospace'; var L = wrap(x, ln.text.toUpperCase(), 296), y0 = 60;
     x.textAlign = 'center'; L.forEach(function (s, i) { var y = y0 + i * 11; x.fillStyle = 'rgba(0,0,0,.55)'; var mw = Math.ceil(x.measureText(s).width); x.fillRect(CX - Math.ceil(mw / 2) - 4, y - 9, mw + 8, 12); x.fillStyle = '#000'; x.fillText(s, CX + 1, y + 1); x.fillStyle = '#fff6c8'; x.fillText(s, CX, y); }); x.textAlign = 'left';
-    if (S.annSaid !== ln) { S.annSaid = ln; S.annNow = ln.text; if (window.V2Announcer) V2Announcer.speak(ln.text); } }
+    /* announcer-fix: each script line is spoken at most once per playback (S.annSpoken), even when the caption comes back to it. */
+    if (S.annSaid !== ln) { S.annSaid = ln; S.annNow = ln.text; var li = (S.ann || []).indexOf(ln); if (!S.annSpoken) S.annSpoken = {}; if (li < 0 || !S.annSpoken[li]) { S.annSpoken[li] = 1; if (window.V2Announcer) V2Announcer.speak(ln.text, { end: ln.at === 'end' }); } } }
   function isVisible() { if (!S.c || !S.c.getBoundingClientRect) return false; var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 800); }
   function kick() { if (!S.raf) S.raf = requestAnimationFrame(frame); }
   /** mount(canvas, w): (re)build the scene for world w */
@@ -116,13 +119,13 @@
     if (S.mode !== 'idle' && S.mode !== 'result') { Q.push(f); return; }
     if (window.V2ArenaReplay) try { V2ArenaReplay.onShow(f); } catch (e) { }
     if (S.c.scrollIntoView) S.c.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
-    S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.mood = null; S.hp = { a: f.maxA, b: f.maxB }; S.fx = []; S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.annSaid = null; S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null;
+    S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.mood = null; S.hp = { a: f.maxA, b: f.maxB }; S.fx = []; S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.annSaid = null; S.annSpoken = {}; S.endT0 = 0; if (window.V2Announcer && V2Announcer.reset) V2Announcer.reset(); S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null;
     S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true), side: 'a' }, { p: B, img: mk(B, w), lose: mk(B, w, true), side: 'b' }];
     if (reduced()) { S.mode = 'result'; S.hp = { a: f.turns.length ? f.turns[f.turns.length - 1].hpA : f.maxA, b: f.turns.length ? f.turns[f.turns.length - 1].hpB : f.maxB }; S.t0 = performance.now(); frame(S.t0); return; }
     S.mode = 'walk'; S.t0 = performance.now(); kick(); var tok = S.seq = (S.seq || 0) + 1;
     S.onWalk = function () { if (S.seq !== tok || S.mode !== 'walk') return; S.mode = 'fight'; S.t0 = performance.now(); kick(); }; }
   function nextQ() { var f = Q.shift(); if (f) setTimeout(function () { sequence(f); }, 400); }
-  var TICK = 220; /* same pace as the old pop-up: 4 ticks per turn (lunge on tick 1) */
+  var TICK = 260; /* announcer-fix: 220 -> 260 ms (display pacing only; turns, hits and winner come from f.turns unchanged), so a round lasts ~1.0 s, about one short announcer line at the faster voice. 4 ticks per turn (lunge on tick 1) */
   function hpBar(x, cx, y, v, max, col) { px(x, '#000', cx - 17, y - 1, 34, 5); px(x, '#2a3a2e', cx - 16, y, 32, 3); px(x, col, cx - 16, y, Math.max(0, Math.round(32 * v / max)), 3); }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   function fightFrame(now) { var x = S.x, f = S.f, t = Math.max(0, now - S.t0) /* rAF time can be a hair before t0: no turn -1 */, k = Math.floor(t / TICK), ti = Math.floor(k / 4), ph = k % 4, n = f.turns.length, done = ti >= n;
@@ -141,7 +144,7 @@
     if (S.hitT && now - S.hitT < 90 && !reduced()) { x.fillStyle = 'rgba(255,255,255,.75)'; x.fillRect(0, 0, W, H); } /* white hit flash on big hits */
     if (window.V2ArenaFun) V2ArenaFun.overlay(S, x, now, Math.min(ti, n - 1), done, reduced());
     if (done) { if (!S.koT) { S.koT = now; if (window.V2Sfx) V2Sfx.roar(); } ko(x, now - S.koT); /* arena-replay fix: the end-of-fight -> lap step sat in the not-done branch, so a fight never finished and every later replay just queued */
-      caption('WINNER #' + f.winner + (f.spoils ? ' +' + String(f.spoils.label || f.spoils).slice(0, 14).toUpperCase() : '')); if (t > (n * 4 + 8) * TICK) { var Wn = f.winner === L.p.id ? L : R; S.actors = [{ p: Wn.p, img: Wn.img }]; S.mode = 'lap'; S.t0 = now; } } }
+      caption('WINNER #' + f.winner + (f.spoils ? ' +' + String(f.spoils.label || f.spoils).slice(0, 14).toUpperCase() : '')); if (t > (n * 4 + 8) * TICK) { var Wn = f.winner === L.p.id ? L : R; S.actors = [{ p: Wn.p, img: Wn.img }]; S.mode = 'lap'; S.t0 = now; S.endT0 = now; } } }
   /* quick wins (2026-10-19): big hit = a crit or the fight's top damage -> white flash + screen shake; K.O.! stamp at the end; none of the motion with reduced motion */
   function topDmg(f) { if (f._top == null) f._top = Math.max.apply(null, (f.turns || []).map(function (q) { return q.dodge ? 0 : q.dmg || 0; }).concat([1])); return f._top; }
   function shake() { var c = S.c; if (!c || !c.animate || reduced()) return; c.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-4px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'translate(-3px,-1px)' }, { transform: 'translate(2px,1px)' }, { transform: 'translate(0,0)' }], { duration: 260, easing: 'steps(5)' }); }
