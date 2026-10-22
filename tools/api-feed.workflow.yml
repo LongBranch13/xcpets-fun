@@ -1,0 +1,25 @@
+# NOT ACTIVE. To go live, copy to .github/workflows/api-feed.yml (owner approval needed: it commits to main).
+# Rebuilds api/pets.json + api/meta.json from chain every 15 min with tools/api-feed.js (Node only, public read APIs, no secrets).
+# It commits only when the pets or totals changed (generatedAt alone never triggers a commit).
+name: api-feed
+on:
+  schedule: [{ cron: '*/15 * * * *' }]
+  workflow_dispatch: {}
+permissions: { contents: write }
+concurrency: { group: api-feed, cancel-in-progress: false }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node tools/api-feed.js --out api
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- api/pets.json && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
+          git config user.name "xcpets-api-bot"; git config user.email "actions@users.noreply.github.com"
+          git add api/pets.json api/meta.json
+          git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"
+          git pull --no-rebase --no-edit origin main && git push origin HEAD:main
