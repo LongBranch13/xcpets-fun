@@ -407,7 +407,7 @@
       itemIds = itemIds.filter(function (id) { var L = LK[id]; return !L || roots0.indexOf(L.sp) >= 0 || (L.from != null && V.eligBlock && (V.eligBlock() || 0) < L.from); }); } /* retired ids (Heart crown, swan mask, Laser eyes) render as their current item */
     var go = Object.assign({}, baseGo || {}), ov = (extraOv || []).slice(); /* baseGo: optional gear override that must actually be drawn */
     /* Chud's beard as a HYBRID PART (Oct 22 2026): a hybrid with part {sp:'chud', part:'beard'} gets the fitted beard drawn on its own face (same drawBeard as the old gear) */
-    if (art && art.hybrid && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'chud' && q.part === 'beard'; }) && !((V.BEARD_EXCLUDE || {})[art.hybrid.shape]) && ov.indexOf('v2-chud-beard') < 0 && (itemIds || []).indexOf('v2-chud-beard') < 0) ov.push('v2-chud-beard');
+    if (art && art.hybrid && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'chud' && q.part === 'beard'; }) && !((V.BEARD_EXCLUDE || {})[art.hybrid.shape]) && !((V.BEARD_PART_EXCLUDE || {})[art.hybrid.shape]) && ov.indexOf('v2-chud-beard') < 0 && (itemIds || []).indexOf('v2-chud-beard') < 0) ov.push('v2-chud-beard');
     (itemIds || []).forEach(function (id) { var it = V.GEAR_BY_ID[id]; if (!it) return; if (it.src === 'core' && !CORE_OVERLAY[id]) go[it.coreSlot] = it.id; else { if (CORE_OVERLAY[id] && !BonusGear.DEFS[id]) BonusGear.DEFS[id] = CORE_OVERLAY[id]; ov.push(it.id); } });
     stage = Math.max(0, stage); var F = window.V2Fit;
     // Fit pass (2026-10-14): base-game capes + armour are drawn by V2Fit (flowing capes behind the body; armour in the torso box), not pet-core

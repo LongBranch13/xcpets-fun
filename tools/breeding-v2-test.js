@@ -63,10 +63,10 @@ if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:nu
 {const real=V.ACTIVATE_CHUD_BEARD_PART_BLOCK,TG=1e7;ok(real==null||real>tip,'beard-part gate '+real+' is null or after the snapshot tip (replay unchanged)');
  ok(!V.beardPartOn(tip),'beard part off at the snapshot tip');
  V._setChudBeardPartActivation(TG);
- const EX=['doge','mumu','pepe','nakamoto'],bodies=Object.keys(V.HYBRID_PARTS).filter(b=>b!=='chud');
+ const EX=['doge','mumu','pepe','nakamoto','dodo','snibby','sarutobi','kek','wizard'],bodies=Object.keys(V.HYBRID_PARTS).filter(b=>b!=='chud');
  ok(V.partsFor('bobo','chud',TG-1).map(d=>d.id).join()==='glasses','before the gate: Chud donates glasses only');
  ok(V.partsFor('bobo','chud',TG).map(d=>d.id).join()==='glasses,beard'&&V.partDef('chud','beard').kind==='face','from the gate: Chud donates glasses + beard (kind face)');
- ok(EX.every(b=>!V.partsFor(b,'chud',TG).some(d=>d.id==='beard')),'beard part never on Doge/Mumu/Pepe/Nakamoto bodies');
+ ok(EX.every(b=>!V.partsFor(b,'chud',TG).some(d=>d.id==='beard')),'beard part never on Doge/Mumu/Pepe/Nakamoto/Dodo/Snibby/Sarutobi/Kek/Wizard bodies');
  let got={};for(const body of bodies)for(let i=0;i<300;i++){V.hybridParts(H('bp'+body+i),{shape:body,roots:[body,'chud']},TG).forEach(q=>{if(q.part==='beard')got[body]=(got[body]||0)+1;});}
  ok(EX.every(b=>!got[b])&&bodies.filter(b=>!EX.includes(b)).every(b=>got[b]>0),'hybridParts: beard drawn on '+Object.keys(got).join('/')+'; none on excluded');
  ok(V.hybridParts(H('bpx'),{shape:'bobo',roots:['bobo','chud']},TG-1).every(q=>q.part!=='beard'),'no beard part before the gate');
