@@ -20,14 +20,14 @@
     var b = document.createElement('button'); b.className = 'q'; b.id = 'bDiscUnfed'; b.type = 'button'; b.textContent = '🗑️ Discard unfed';
     b.title = 'Discard every pet you have never fed. Free, only hidden in this browser, Undo anytime, no burn.'; rel.parentNode.insertBefore(b, rel.nextSibling);
     var box = document.createElement('div'); box.className = 'reveal'; box.id = 'discUnfedBox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'duTitle');
-    box.innerHTML = '<div class="box"><h2 id="duTitle" class="sec">Discard unfed</h2><div id="duBody"></div><div class="row" style="justify-content:center"><button class="btn" id="duYes">Discard</button><button class="q" id="duNo">Cancel</button></div></div>';
+    box.innerHTML = '<div class="box"><h2 id="duTitle" class="sec">Discard unfed</h2><div id="duBody"></div><div class="row" style="justify-content:center"><button class="btn" id="duYes">🗑️ Discard these pets</button><button class="q" id="duNo">Cancel</button></div></div>';
     document.body.appendChild(box);
     var ids = [], prevSel = null, R = window.V2Render;
     b.onclick = function () { var L = unfed(D); ids = L.map(function (p) { return p.id; }); if (!ids.length) return toast('No never-fed pets to discard.');
       var S = D.S(); prevSel = S.sel.slice(); S.sel = ids.slice(); D.selUi();
       $('duBody').innerHTML = '<p><b>Discard ' + ids.length.toLocaleString('en-US') + ' never-fed pet' + (ids.length > 1 ? 's' : '') + '?</b></p>' +
         '<div class="du-list">' + L.map(function (p) { return '<span class="du-pet" title="' + esc(p.name) + '"><canvas width="32" height="32" data-du="' + p.id + '"></canvas>#' + p.id + '</span>'; }).join('') + '</div>' +
-        '<p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from <i>Show discarded</i>.' + (D.keptIds && D.keptIds().length ? ' Starred pets are kept.' : '') + '</p>';
+        '<p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from the <i>🗑️ Discard pile</i> at the bottom of My Pets.' + (D.keptIds && D.keptIds().length ? ' Starred pets are never discarded.' : '') + '</p>';
       box.classList.add('on'); var w = D.world();
       if (R) box.querySelectorAll('[data-du]').forEach(function (c) { var p = w.byId[c.getAttribute('data-du')]; if (p) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); };
     $('duNo').onclick = function () { box.classList.remove('on'); if (prevSel) { D.S().sel = prevSel; prevSel = null; D.selUi(); } };

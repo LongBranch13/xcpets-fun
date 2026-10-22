@@ -404,3 +404,12 @@ body #pets .pet.card{padding-bottom:44px}
 .cem-card .cc-gear{color:#ffd7d7}.cem-card .cc-act{margin-top:6px;gap:6px;flex-wrap:wrap}.cem-card p{margin:4px 0}
 .cem-fold{margin:4px 0 8px}.cem-fold summary{cursor:pointer;color:#9fe8ff;font-family:var(--meme);font-size:18px;letter-spacing:.05em}
 @media (max-width:520px){.cem8 .cem-hint{font-size:12px}}
+/* discard-pile 2026-10-21: the Discard pile uses the My Pets card look (pixel border, drop shadow, chips, gold star); checkbox untouched */
+.hiddenbox.dpile{margin-top:14px}.dpile summary{font-size:14px;padding:6px 0}.dpile summary .dp-title{font-family:inherit;font-weight:700;color:#33d6ff}.dpile summary .chip{vertical-align:middle}
+.dpile .dsel{margin-top:6px}.dpile .dsel .dp-n{font-weight:700}
+.dpile .dgrid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.dpile .dcard canvas{width:72px;height:72px}.dpile .dcard{background:var(--bg2);border:3px solid var(--pixline);box-shadow:3px 3px 0 #000;padding:8px;min-width:0;overflow-wrap:anywhere;display:flex;flex-direction:column}
+.dpile .dcard.selected{border-color:var(--acc2);box-shadow:4px 4px 0 #000,0 0 0 3px var(--acc2) inset}.dpile .dcard.dead{opacity:.85}
+.dpile .dcard h4{margin:2px 0 4px;font-size:13px}.dpile .dcard .chips{gap:4px;flex-wrap:wrap}.dpile .dp-fed{margin:2px 0 6px}.dpile .dp-star{color:#ffd84a}
+.dpile .dp-acts{justify-content:center;gap:6px;margin-top:auto}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:32px}
+@media (max-width:600px){.dpile .dgrid{grid-template-columns:1fr 1fr;gap:6px}.dpile .dcard{padding:6px}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:40px;flex:1 1 auto}.dpile .dctl select,.dpile .dctl input[type=search]{max-width:100%}}
