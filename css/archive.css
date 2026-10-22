@@ -38,3 +38,14 @@ ol.archive-feed { margin: 4px 0 0; padding-left: 22px; font: 13px ui-monospace, 
 .archstory-body { padding: 14px 20px 18px; line-height: 1.5; }
 .archstory-body p { margin: 0 0 12px; } .archstory-body p:last-child { margin-bottom: 0; }
 @media (max-width: 480px) { .reveal.archstory { padding: 12px; } .archstory-top { padding: 12px 14px 8px; } .archstory-body { padding: 12px 14px 14px; font-size: 14px; } }
+/* Lord Kek farewell (halving-v1): same .reveal dialog as the Cold Storage story */
+.kekbye .box{max-width:460px}
+.kb-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0;min-height:200px}
+.kb-kek{width:128px;height:128px;image-rendering:pixelated;animation:kbFade 1.2s ease-in 3.4s forwards}
+.kb-arts{display:flex;gap:8px;justify-content:center}
+.kb-art{width:12px;height:12px;background:#f2c14e;box-shadow:0 0 0 2px #1a1020,0 0 10px #ffd86b;opacity:.15;animation:kbGlow .4s steps(2) forwards;animation-delay:calc(var(--i) * .4s)}
+.kb-card{width:200px;height:auto;max-width:70vw;border:3px solid #1a1020;box-shadow:0 0 18px #c0262688;opacity:0;transform:translateY(16px);animation:kbRise 1s ease-out 4.2s forwards;image-rendering:auto}
+.kb-line{text-align:center;margin:6px 0}.kb-l2{opacity:0;animation:kbRise .8s ease-out 4.8s forwards}
+.kb-still .kb-kek{animation:none;opacity:.35}.kb-still .kb-art{animation:none;opacity:1}.kb-still .kb-card,.kekbye .kb-still~.kb-l2{animation:none;opacity:1;transform:none}
+@keyframes kbGlow{to{opacity:1}}@keyframes kbFade{to{opacity:.25;filter:grayscale(1)}}@keyframes kbRise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.kb-kek,.kb-art,.kb-card,.kb-l2{animation:none!important;opacity:1!important;transform:none!important}}

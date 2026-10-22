@@ -59,4 +59,15 @@ ok(filled > 0, 'unlocked bag pieces wear into empty slots (' + filled + ' slots 
 ok(Object.values(w.items).filter(g => g.bag == null && pets.some(p => p.id === g.rolledOn)).every(g => g.on != null || w.itemList.indexOf(g) >= 0), 'unbagged pieces not worn are back in the stash (wearable)');
 const dead = Object.values(w.items).filter(g => g.bag != null && w.byId[g.bag] && w.byId[g.bag].dead);
 console.log('  bagged pieces on dead pets (lost):', dead.length);
+/* saved spins (pet:usespin, merged from main): with both gates live, each spin's piece follows the any-slot rule too */
+{ const L = require('./lib/load-rules'), S2 = { tip: snap.tip, rows: snap.rows, hashes: snap.hashes }, G2 = snap.tip + 6;
+  const mk = any => { const c = L.load(), V2 = c.V2Rules; V2._setSpinsActivation(G2); if (V2._setFiresaleActivation) V2._setFiresaleActivation(null); V2._setAnySlotActivation(any ? G2 : null);
+    const w0 = L.run(c, S2, [], snap.tip), F = Object.keys(w0.freeRolls || {}).filter(a => w0.freeRolls[a] > 0)[0]; return { c, V2, F }; };
+  const on = mk(true), off = mk(false), F = on.F;
+  if (!F) console.log('  (no founder with free rolls in this snapshot: saved-spin check skipped)');
+  else { const rows = [L.row(G2 + 1, F, 0.00000001, 'pet:usespin:10')], wa = L.run(on.c, S2, rows, G2 + 50), wb = L.run(off.c, S2, rows, G2 + 50);
+    const ea = wa.log.find(l => l.spins && l.saved), eb = wb.log.find(l => l.spins && l.saved);
+    ok(ea && eb && ea.spins.length === eb.spins.length && ea.spins.every((x, i) => x.petId === eb.spins[i].petId), 'saved spins: same pets picked with any-slot on/off (' + (ea ? ea.spins.length : 0) + ' spins)');
+    const gs = ea ? ea.spins.map(x => wa.items[x.gid]) : [];
+    ok(gs.length && gs.every(g => { const p = wa.byId[g.rolledOn]; return g.bag != null ? (g.bag === p.id && p.openSlots.indexOf(g.slot) < 0 && g.on == null && wa.itemList.indexOf(g) < 0) : p.openSlots.indexOf(g.slot) >= 0; }), 'saved spins: locked-slot pieces bagged, open-slot pieces normal (' + gs.filter(g => g.bag != null).length + '/' + gs.length + ' bagged)'); } }
 console.log(fail ? fail + ' FAILED' : 'ALL PASS'); process.exit(fail ? 1 : 0);

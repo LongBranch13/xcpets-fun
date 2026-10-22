@@ -285,7 +285,7 @@
     if ($('foGo')) $('foGo').onclick = function () { var a = FO.a, b = FO.b; if (!a || !b) return; var sa = $('fMine'), sb = $('fTheirs');
       if (!Array.prototype.some.call(sa.options, function (o) { return o.value === String(a); }) || !Array.prototype.some.call(sb.options, function (o) { return o.value === String(b); })) return U.toast('That pair can’t fight right now');
       sa.value = String(a); sb.value = String(b); $('fGo').click(); };
-    box.querySelectorAll('[data-facc]').forEach(function (b) { b.onclick = function () { var id = b.dataset.facc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: 690 }], function () { U.afterAccept(id); }); }; });
+    box.querySelectorAll('[data-facc]').forEach(function (b) { b.onclick = function () { var id = b.dataset.facc; U.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: (V2Rules.acceptCost ? V2Rules.acceptCost(V2Mock.world(), +(id)) : 690) }], function () { U.afterAccept(id); }); }; });
     box.querySelectorAll('[data-fign]').forEach(function (b) { b.onclick = function () { IGN.push(Number(b.dataset.fign)); store('ignored', IGN); paintFace(U.world()); U.toast('Ignored here. It expires on its own if nobody accepts.'); }; }); if (window.V2Easy) V2Easy.fight(w); /* easy-flows */ }
   /* P13 (2026-10-21): the fight picker is also the shared pet browser. picker(sideId, o) with o = { title, pets, why(p, w), okLabel, onPick(id) }
    * browses any list with the same search, sort, chips and thumbnails (motel breeding uses it); without o it is exactly the fight picker. */
