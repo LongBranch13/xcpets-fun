@@ -278,7 +278,7 @@ body #pets .pet.card{padding-bottom:44px}
 
 .ar-scene .ar-ann-sand{min-height:32px;position:absolute;right:6px;bottom:6px;z-index:2;line-height:1.2;font-size:11px;padding:3px 7px;background:rgba(18,14,34,.85);color:#ffd166;border:2px solid #000;box-shadow:2px 2px 0 #000}@media (max-width:500px){.ar-scene .ar-ann-sand{font-size:10px;padding:2px 5px;right:4px;bottom:auto;top:4px;min-height:26px}}
 
-/* Captain Dan's Pet Shop mockup (2026-10-19): shop floor + racks */
+/* Pet Shop mockup (2026-10-19): shop floor + racks */
 .shop8 .shop-scene{border:3px solid #000;box-shadow:4px 4px 0 #000;background:#2a1d14;margin:6px 0 8px;line-height:0}
 .shop8 .shop-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;cursor:pointer}
 .shop8 .shop-hint{line-height:1.4;padding:6px 8px;background:#140f0a;color:#ffd166;font-family:'Press Start 2P',monospace;font-size:9px}
@@ -375,7 +375,7 @@ body #pets .pet.card{padding-bottom:44px}
 .sc-hp canvas{width:128px;height:128px;image-rendering:pixelated;background:#2a1d14;border:3px solid #000}.sc-hp b{font-size:14px;color:#ffd166}.sc-hp small{font-size:12px;color:#9fe8ff}
 .sc-slots{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:13px;flex:1}.sc-slots li span{font-family:var(--pixel);font-size:8px;color:#ffd166}.sc-slots li.open{color:#9fe8ff}.sc-slots li.lock{opacity:.5}
 @media (max-width:520px){.sc-hero{gap:8px}.sc-hp canvas{width:104px;height:104px}.sc-slots{grid-template-columns:1fr;font-size:12px}}
-/* sticky-feed-bar: piece price-tag sign inside the Lair scene, by Captain Dan's counter */
+/* sticky-feed-bar: piece price-tag sign inside the Lair scene, */
 .shop8 .shop-scene .sc-sign{position:absolute;right:2%;bottom:14%;width:min(300px,38%);line-height:1.35;background:#f3e2b8;color:#2a1508;border:3px solid #000;box-shadow:4px 4px 0 #000;padding:8px 10px;font-size:13px;z-index:2}
 .shop8 .shop-scene .sc-sign::before{content:'';position:absolute;left:-9px;top:12px;width:10px;height:10px;background:#ffd166;border:3px solid #000;border-radius:50%}
 .sc-sign .sc-item{display:flex;gap:8px;align-items:center}.sc-sign .sc-ic canvas{width:32px;height:32px;image-rendering:pixelated}.sc-sign .sc-tag{font-size:10px;color:#ffd166}.sc-sign .sc-big{font-size:16px;color:#2a1508;text-shadow:none;margin:4px 0}.sc-sign .sc-big.up b,.sc-sign .up{color:#0d7a3a;text-shadow:none}.sc-sign .sc-big.dn b,.sc-sign .dn{color:#b3261e;text-shadow:none}
@@ -388,7 +388,7 @@ body #pets .pet.card{padding-bottom:44px}
 /* motel-hint-move 2026-10-19 (owner 9:36 PM CT): the motel 'Pick two pets' hint sits UNDER the scene so it never covers the Gooby's No-Tail Motel sign; same button + X dismiss */
 .motel8 .motel-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25}
 .motel8 .motel-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#000}
-/* rare-room 2026-10-21: first-visit tip sits in a strip under the scene (covers nothing: rose window, mirror, Dan's Door stay clear at 1280 and 390) */
+/* rare-room 2026-10-21: first-visit tip sits in a strip under the scene (covers nothing: rose window, mirror, Pepe Wheel stay clear at 1280 and 390) */
 .shop8 .shop-scene .qw-hint{position:relative;left:auto;top:auto;z-index:auto;display:block;width:100%;max-width:none;margin:0;border-width:3px 0 0;box-shadow:none;line-height:1.25;background:#170a2b;color:#fff1a8;border-color:#e8b84a}
 .shop8 .shop-scene .qw-hint::after{bottom:auto;top:-15px;border-top-color:transparent;border-bottom-color:#e8b84a}
 /* arena-replay: ▶ Replay next to the Announcer on the sand + replay labels on fight cards */
@@ -433,6 +433,9 @@ body #pets .pet.card{padding-bottom:44px}
 .board td.num .small{white-space:normal;min-width:7em} /* WAGMI board: sub line (best · days · ✓ today) may wrap on phones */
 /* bugpass 2026-10-21: Rare Room '+N more in your stash' link sits on its own line under the hint (the scene box has line-height:0, so the inline link overlapped the hint at 390) */
 .shop8 .shop-scene .shop-more{display:block;line-height:1.4;padding:2px 8px 6px;background:#170a2b;color:#8fe3ff}
+/* remove-dan 2026-10-21: Captain Dan + the Pepe Wheel now stand on the right of the Rare Room floor, so the desktop price-tag sign sits bottom-left (phones keep the static strip) */
+@media (min-width:641px){.shop8 .shop-scene .sc-sign{right:auto;left:2%}.shop8 .shop-scene .sc-sign::before{left:auto;right:-9px}}
+#pepeWheel{scroll-margin-top:calc(var(--navh,72px) + 8px)}
 #hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
 #hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
 #shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */

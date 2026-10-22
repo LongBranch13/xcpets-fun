@@ -107,7 +107,7 @@
 
   // ------------------------------------------------------------------ item 1: one pop-up at a time, deep links win, backlog chip
   var t0 = Date.now(), held = [], chip;
-  function deepLink() { return /^#(lair|drip-den|kekimus|no-tail-motel|gooby-inn|pet-\d+|battle-\d+|hatchPanel|petsPanel)/.test(location.hash); }
+  function deepLink() { return /^#(lair|dressing-room|drip-den|kekimus|no-tail-motel|gooby-inn|pet-\d+|battle-\d+|hatchPanel|petsPanel)/.test(location.hash); }
   function returning() { return !!me(); }
   if (d.getElementById('pets') && (deepLink() || returning())) html.classList.add('ip-hold');
   function holdOn() { return html.classList.contains('ip-hold'); }

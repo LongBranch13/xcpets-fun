@@ -140,7 +140,7 @@
   /* P10/P11 (owner 2026-10-21): the owner's actions on the pet page. Burns (Feed, Roll for gear, Free roll, Overflow roll) open the game's own confirm +
    * wasted-burn guard via play.html#act-<a>-ID; ⭐ Keep toggles the same localStorage list as My Pets; 'More in the game' opens the full pet panel.
    * P11: a Mythic pet shows no Feed (Mythics are never fed) and, while MYTHIC_ROLL_OFF is on, no Roll for gear (gear rolling stays in the Lair:
-   * 'Roll gear · pick pet'; a future Captain Dan gear place will take it over). */
+   * 'Roll gear · pick pet'; the Rare Room took it over). */
   var MYTHIC_ROLL_OFF = true;
   function keepKey() { var N = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo'); return 'xcpets-keep-' + N + '-' + (ME || ''); }
   function kept(id) { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').indexOf(Number(id)) >= 0; } catch (e) { return false; } }
@@ -148,7 +148,7 @@
   function petActs(w, p) { var myth = !!p.mythicCare || p.stage >= 5, a = function (k, label, title, cls) { return '<a class="btn ' + (cls || '') + ' ico-flame" href="play.html#act-' + k + '-' + p.id + '" title="' + esc(title) + '">' + label + '</a> '; },
       fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
     return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
-      (myth && MYTHIC_ROLL_OFF ? '' : a('roll', '🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')', 'Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet', 'ghost')) +
+      (V.wheelOn && V.wheelOn((w.tip || 0) + 1) ? '<a class="btn ghost" href="play.html#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a> ' : myth && MYTHIC_ROLL_OFF ? '' : a('roll', '🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')', 'Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet', 'ghost')) +
       (fr && fr.on ? a('froll', 'Free roll', 'Founder reward: one random gear piece for this pet', 'ghost') : '') + (of && of.on ? a('oroll', 'Overflow roll', 'Mythic discount: one random gear piece for this pet', 'ghost') : '') +
       '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });

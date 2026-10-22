@@ -1,6 +1,6 @@
 /* front-page-entries (2026-10-19, DRAFT, not live): three small 8-bit scene cards under the home hero buttons.
  * Arena = the real X Circus Kekimus scene (V2ArenaScene.mount: sand + today's champion statue, longest current unbeaten streak from the replayed
- * fights, "AWAITING A CHAMPION" if none). Lair = Captain Dan (V2Shop.drawDan, faces left, rest pose) behind his counter. Gooby's No-Tail Motel = neon
+ * fights, "AWAITING A CHAMPION" if none). Rare Room = the Pepe Wheel (V2Shop.drawWheel) on the marble floor. Gooby's No-Tail Motel = neon
  * (V2Motel.neon) with a flickering VACANCY and Gooby (V2Motel.drawGooby, GOOBY-token look) at the desk. Each card is a plain link to its scene.
  * prefers-reduced-motion: static frames. Display only. */
 (function () {
@@ -12,7 +12,7 @@
   /* bugpass-fixes: cards use js/v2-sharp.js (integer-k backing store, logical 320x180 drawing) like the scenes; small() = drawn below 1:1 */
   function small(c) { var r = c.getBoundingClientRect(); return r.width > 0 && r.width * (window.devicePixelRatio || 1) < W - 0.5; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
-  /* Rare Room front card (owner Oct 21 2026, palette A 'Royal Vault'): velvet gallery wall, rose window, gilded frames, marble floor, Captain Dan */
+  /* Rare Room front card (owner Oct 21 2026, palette A 'Royal Vault'): velvet gallery wall, rose window, gilded frames, marble floor, the Pepe Wheel */
   function lair(x, t) { x.imageSmoothingEnabled = false; var G = '#e8b84a', GH = '#fff1a8', V = '#9b1035', i, j; px(x, '#2a0f4a', 0, 0, W, 124);
     for (i = 0; i < W; i += 12) for (j = 12; j < 120; j += 14) { px(x, '#3b1766', i + 5, j, 2, 6); px(x, '#3b1766', i + 3, j + 2, 6, 2); }
     px(x, '#000', 0, 0, W, 5); px(x, G, 0, 0, W, 3); px(x, V, 0, 4, W, 1);
@@ -21,7 +21,7 @@
     px(x, '#000', 92, 58, 136, 18); px(x, V, 93, 59, 134, 16); px(x, G, 93, 59, 134, 2); px(x, G, 93, 73, 134, 2); x.textAlign = 'center'; x.font = '9px "Press Start 2P", monospace'; x.fillStyle = GH; x.fillText('THE RARE ROOM', 160, 71); x.textAlign = 'left';
     var T = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c']; [[10, 18], [10, 64], [244, 18], [244, 64]].forEach(function (s, n) { for (var k = 0; k < 3; k++) { var a = s[0] + k * 22, b = s[1]; px(x, '#000', a - 2, b - 2, 20, 28); px(x, G, a - 1, b - 1, 18, 26); px(x, T[(n + k) % 4], a, b, 16, 24); px(x, '#1c0f33', a + 2, b + 3, 12, 14); px(x, J[(n * 3 + k) % 5], a + 5, b + 7, 6, 6); } });
     for (j = 124, i = 0; j < H; j += 8, i++) for (var k2 = 0; k2 < W; k2 += 16) px(x, ((k2 / 16 + i) % 2) ? '#efe8f6' : '#1c0f33', k2, j, 16, 8); px(x, '#000', 0, 122, W, 3); px(x, G, 0, 122, W, 1);
-    x.save(); x.scale(2, 2); if (window.V2Shop && V2Shop.drawDan) V2Shop.drawDan(x, 64, 46, reduced() ? 0 : t); x.restore(); }
+    x.save(); x.scale(2, 2); if (window.V2Shop && V2Shop.drawWheel) V2Shop.drawWheel(x, 80, 60, 15, reduced() ? 0 : t / 900, null); x.restore(); }
   function motel(x, t) { x.imageSmoothingEnabled = false; var rm = reduced(), M = window.V2Motel; px(x, '#0b0a1f', 0, 0, W, H);
     for (var i = 0; i < 40; i++) px(x, '#c9c9ff', (i * 53) % W, (i * 29) % 70, 1, 1); px(x, '#f5efc0', 290, 10, 12, 12); px(x, '#0b0a1f', 295, 9, 9, 11);
     px(x, '#444', 66, 70, 4, 100); px(x, '#1a1a2a', 6, 8, 184, 46); px(x, '#000', 6, 8, 184, 3);
