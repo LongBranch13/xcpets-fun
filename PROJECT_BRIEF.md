@@ -16,3 +16,4 @@
 - Live chain at tip 972,623: **Lord Kek NOT Mythic yet** (care 3,888,303 / 6,906,900, Adult), so no halving has happened.
 - Tests: tools/halving-test.js 23/23 (cost math across series, trigger detection, before-launch). Replay SAME vs origin/main at 972623 / 972561 / 972559. 0 console errors 1280/390. Previews /workspace/xcpets/previews/halving-v1/.
 - **Owner update (~10:11 AM CT): community feeding halves too** (69/690/6,900 + min / 2^era; sale x0.5). On halving-v1, merged forward.
+- Oct 22 2026 ~12:15 PM CT: HatchBot warnings hook tools/hatchbot-warnings.js (OFF: ENABLED=false + caller enabled:true). Halving 1: Kek care 90%/99% + set; halving 2+: set/144/6 blocks; fire: warning + live. Dedupe ids in announce-rate.json, send-guard, <=1000 chars. Meant for the live HatchBot listener's announce tick (~4 min); NOT wired. Launch draft: /workspace/xcpets/telegram/hb-halving-firesale-launch.txt + post-halving-firesale-launch-once.js (not run).
