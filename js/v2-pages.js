@@ -85,7 +85,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=218f1fbaa5'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=7b4d875793'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -117,7 +117,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=218f1fbaa5'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=7b4d875793'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -378,6 +378,15 @@
       else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
         R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, viewOnly: !!(window.V2View && V2View.viewOnly()), onEquip: function (op, m) { if (window.V2View && V2View.viewOnly()) return; op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
           onEquipMany: function (ops, m) { if (window.V2View && V2View.viewOnly()) return; ops.forEach(function (op) { op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); draw('✓ ' + m); } }); }
+      /* ANY-SLOT ROLLS (branch any-slot-rolls): the pet's BAG = pieces rolled for a slot this pet hasn't unlocked yet. Bound to this pet (lost with it);
+       * each shows a lock + what opens the slot; once the slot opens the piece is worn (if the slot is empty) or goes to the stash. Shown to every viewer. */
+      (function () { var bag = V.bagOf ? V.bagOf(w, p.id) : [], el = $('petBag'); if (!bag.length) { if (el) el.remove(); return; }
+        if (!el) { el = document.createElement('div'); el.id = 'petBag'; g.parentNode.insertBefore(el, g.nextSibling); }
+        el.innerHTML = '<h3 class="pb-h">🎒 Bag · ' + bag.length + ' locked piece' + (bag.length === 1 ? '' : 's') + '</h3><p class="small muted">' + (p.dead || p.released ? 'This pet is gone, so its bag is lost with it.' : 'Rolled for a slot this pet hasn\'t unlocked yet. Only this pet can use them: each one is worn (or goes to the stash) as soon as its slot opens.') + '</p>' +
+          '<div class="pb-grid">' + bag.map(function (x) { var u = V.slotUnlock(p, x.slot), t = x.legendary ? 3 : x.tier || 0;
+            return '<div class="pb-it t' + t + '" title="' + esc(x.label + ' · ' + V.slotLabel(x.slot) + ' · ' + u.text) + '"><span class="pb-ic gi" data-icon="' + esc(x.item) + '"></span><span class="pb-lk" aria-label="locked">🔒</span>' +
+              '<span class="pb-tx"><b>' + esc(x.label) + (x.legendary ? ' ★' : '') + '</b><small>' + esc(V.slotLabel(x.slot)) + ' · ' + esc((V.TIER_LABELS || [])[t] || '') + '</small><small class="pb-req">' + esc(u.text) + '</small></span></div>'; }).join('') + '</div>';
+        el.querySelectorAll('.gi[data-icon]').forEach(function (s2) { if (!s2.firstChild && R.iconCanvas) s2.appendChild(R.iconCanvas(s2.getAttribute('data-icon'), '')); }); })();
 
       if ($('starveWarn')) { $('starveWarn').innerHTML = R.starveHtml(w, p, ME, { feedHref: 'play.html#pet-' + p.id }); R.bindStarve($('starveWarn'), w, p, ME, {}); }
       /* history (2026-10-16 fix): chain rows carry hex tags + raw quantity; decode them, match every log entry that names this pet
