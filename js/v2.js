@@ -139,12 +139,12 @@
   // ---------------------------------------------------------------- hatch popup = live #packBox review (live game.js showPack/drawPack), gear wins use the same box
   var packY = null, lastHatchN = 0; /* hatch-exit 2026-10-21: scroll spot when the results opened + size of the last hatch (for 🥚 Hatch more) */
   var HKEY = 'xcpets-v2-hatched-' + KEY + '-' + ME, revealQ = [], rev = null, REV_PAGE = 36, TIERS = (window.PetCore && PetCore.TIERS) || [{ label: 'Common' }, { label: 'Uncommon' }, { label: 'Rare' }, { label: 'Legendary' }];
-  function notifyHatch(w) {
+  function notifyHatch(w) { dataSeen();
     var seen = null; try { seen = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
     var r = V.newHatches(w, ME, seen); try { localStorage.setItem(HKEY, JSON.stringify(r.seen)); } catch (e) { }
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
-  function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
+  function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
@@ -437,12 +437,24 @@
   function tree(t, kids) { if (!t) return ''; var w0 = kids && world(), ch = kids && w0 ? (t.children || []).map(function (id) { return w0.byId[id]; }).filter(Boolean) : [];
     return '<ul class="tree"><li>#' + t.id + ' ' + esc(t.name) + ' <span class="muted">' + spLabel(t.species) + ' · ' + TL[t.tier] + '</span>' + t.parents.map(function (x) { return tree(x); }).join('') +
       (ch.length ? '<ul class="treekids">' + ch.map(function (c) { return '<li>child #' + c.id + ' ' + esc(c.name) + '</li>'; }).join('') + '</ul>' : '') + '</li></ul>'; }
-  function goPet(id, e) { var u = 'pet.html?id=' + id; if (e && (e.ctrlKey || e.metaKey || e.button === 1)) window.open(u, '_blank'); else location.href = u; }
+  function goPet(id, e) { var u = 'pet.html?id=' + id; if (e && (e.ctrlKey || e.metaKey || e.button === 1)) window.open(u, '_blank'); else { try { sessionStorage.setItem('xcpets-v2-petret', JSON.stringify({ y: Math.round(window.scrollY), id: id, at: Date.now(), path: location.pathname + location.search })); } catch (x) { } location.href = u; } }
+  /* flow-fixes (2026-10-22): coming back from a pet page (Back, or its back link) puts My Pets where you left it and flashes that card. UI only. */
+  function petReturn() { var r = null; try { r = JSON.parse(sessionStorage.getItem('xcpets-v2-petret')); } catch (e) { } if (!r || Date.now() - r.at > 1800000 || r.path !== location.pathname + location.search) return;
+    var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {}; if (nav.type !== 'back_forward' && !/pet\.html/.test(document.referrer)) return;
+    try { sessionStorage.removeItem('xcpets-v2-petret'); } catch (e) { } window.__ipNoPin = true; var n = 0, user = false; ['wheel', 'touchstart', 'keydown'].forEach(function (ev) { window.addEventListener(ev, function () { user = true; }, { once: true, passive: true }); });
+    (function aim() { if (user) return; var c = document.querySelector('#pets .pet.card[data-pid="' + r.id + '"]');
+      if (c) { c.scrollIntoView({ block: 'center', behavior: 'instant' }); c.classList.add('flash'); setTimeout(function () { c.classList.remove('flash'); if (!user) c.scrollIntoView({ block: 'center', behavior: 'instant' }); }, 2400); return; }
+      window.scrollTo({ top: r.y, behavior: 'instant' }); if (++n < 75) setTimeout(aim, 400); })(); }
+  petReturn();
   /* P10: pet-page actions that need this page's burn flow (confirmPlans + wasted-burn guard) arrive as play.html#act-<feed|roll|froll|oroll>-ID;
    * the pet detail pop-up stays reachable as play.html#pet-ID ('More in the game' on the pet page) so nothing is lost. */
+  function actBack(p) { setTimeout(function () { var cb = $('confirmBox'); if (!cb || !cb.classList.contains('on')) return; var link = '<a href="pet.html?id=' + p.id + '">← Back to #' + p.id + ' ' + esc(p.name || '') + '</a>';
+      $('cfBody').insertAdjacentHTML('afterbegin', '<p class="small cf-back">' + link + '</p>');
+      var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
   function actRoute() { var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
     history.replaceState(null, '', location.pathname + location.search); if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
+    actBack(p);
     if (a === 'feed') { if (p.mythicCare || !p.hungry) { toast('#' + p.id + (p.mythicCare ? ' is Mythic: no meals needed.' : ' is not hungry right now.')); return true; } confirmPlans('Feed #' + p.id, V.feedQueue(w, ME, [p.id])); }
     else if (a === 'froll') confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); else if (a === 'oroll') confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]);
     else confirmPlans('Gear roll #' + p.id, V.rollQueue(w, ME, [p.id], 1)); return true; }
@@ -523,13 +535,21 @@
   /* address-lookup (2026-10-19): view only = this page shows an address that is not this browser's XCP Wallet (play.html?addr= or the
    * View pets by address box). Everything stays viewable; wallet actions (burns, equip / unequip, auto-equip, outfits) show the same
    * connect prompt as the not-connected case instead. Nothing is signed or sent. */
+  /* flow-fixes (2026-10-22): no wallet / view-only burn tap -> small sheet: Connect XCP Wallet · View by address · Cancel. Nothing moves until you pick. */
+  function nwSheet(msg) { var b = $('nwBox'); if (!b) { b = document.createElement('div'); b.className = 'reveal'; b.id = 'nwBox'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-modal', 'true');
+      b.innerHTML = '<div class="box"><h2 class="sec" data-ico="flame">Connect to burn</h2><p class="small" id="nwMsg"></p><div class="row" style="justify-content:center"><button type="button" class="btn" id="nwConnect">🔌 Connect XCP Wallet</button><button type="button" class="btn ghost" id="nwView">👀 View by address</button><button type="button" class="q" id="nwCancel">Cancel</button></div></div>';
+      document.body.appendChild(b); b.addEventListener('click', function (e) { if (e.target === b) close('nwBox'); });
+      $('nwCancel').onclick = function () { close('nwBox'); };
+      $('nwConnect').onclick = function () { close('nwBox'); var wc = $('wconnect'); if (wc) wc.click(); };
+      $('nwView').onclick = function () { close('nwBox'); var av = $('addrView'), inp = $('avAddr'); if (av) { av.hidden = false; try { av.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (e) { } } if (inp) try { inp.focus({ preventScroll: true }); } catch (e) { } }; }
+    $('nwMsg').innerHTML = msg; open('nwBox'); }
   function viewOnly() { return !!(ME && window.V2View && window.V2View.viewOnly()); }
   function viewBlock() { if (!viewOnly()) return false;
-    toast('👀 Viewing ' + esc(V2View.short(ME)) + ': view only. Connect the XCP Wallet that owns these pets to feed, equip, battle, breed or roll. Opening the connect prompt…');
-    var wc = $('wconnect'); if (wc) { try { wc.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } wc.click(); } return true; }
+    nwSheet('👀 Viewing ' + esc(V2View.short(ME)) + ': view only. Connect the XCP Wallet that owns these pets to feed, equip, battle, breed or roll.');
+    return true; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
-    if (!ME) { /* no wallet (2026-10-16): say so and open the connect prompt instead of silently doing nothing */ toast('🔌 Connect XCP Wallet first: every action is a burn signed in your wallet. Opening the connect prompt…'); var wc = $('wconnect'); if (wc) { try { wc.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } wc.click(); } return; }
+    if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own XCP Wallet (desktop Chrome extension). Connect it to play, or look up any address to view its pets.'); return; }
     var bw = world(), skip = []; plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     var sp = myPendingTags(); plans = plans.filter(function (p) { var m = V.sendBlock ? V.sendBlock(bw, p, S.tip, { me: ME, pending: sp }) : null; if (m) skip.push('🚫 Not sent (' + p.tag + '): ' + m); else sp.push(p.tag); return !m; }); /* wasted-burn guard (2026-10-20): one shared check mirroring the engine (breed, accept, fight, rolls); never ask the wallet to sign a burn the replay would reject */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ': ' + skip.join(' · ')); window.V2LastBlocked = skip; }
@@ -672,7 +692,7 @@
   var FKEY = 'xcpets-v2-fights-seen-' + KEY + '-' + ME;
   function fightSeen() { try { return JSON.parse(localStorage.getItem(FKEY)); } catch (e) { return null; } }
   function seenFight(id) { var s = fightSeen() || {}; s[id] = 1; try { localStorage.setItem(FKEY, JSON.stringify(s)); } catch (e) { } }
-  function notifyFights(w) { if (!ME) return; var seen = fightSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
+  function notifyFights(w) { if (!ME) return; dataSeen(); var seen = fightSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
     w.fights.forEach(function (f) { if (f.status !== 'done' || seen[f.id]) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!(A && A.owner === ME) && !(B && B.owner === ME) && f.challenger !== ME) return;
       seen[f.id] = 1; if (first && tip - f.acceptBlock > V.FIGHT_WINDOW) return; q.push(f); }); /* first visit: only fights resolved in the last day play */
     try { localStorage.setItem(FKEY, JSON.stringify(seen)); } catch (e) { }
@@ -680,7 +700,7 @@
       toast('⚔️ Fight ' + f.id + ' result: ' + (mineWon ? 'your ' : '') + esc(win ? win.name : '') + ' #' + f.winner + ' beat ' + (!mineWon ? 'your ' : '') + esc(los ? los.name : '') + ' #' + f.loser +
         (f.spoils ? ' and took ' + esc(f.spoils.label) : ' (no takeable gear)') + ' · #' + f.loser + ' has a black eye until block ' + fmt(f.acceptBlock + V.BLACK_EYE_BLOCKS) + '.' + (window.V2Sponsor && V2Sponsor.state && V2Sponsor.line(V2Sponsor.state, f.acceptBlock) ? ' 🏟️ X Circus Kekimus · ' + esc(V2Sponsor.line(V2Sponsor.state, f.acceptBlock)) + '.' : '') + ' <a href="#" data-replay="' + f.id + '">▶ Replay</a>', 15000);
       var a = $('toasts').lastChild.querySelector('[data-replay]'); if (a) a.onclick = function (e) { e.preventDefault(); playFight(world().fights[f.id - 1]); }; });
-    q.forEach(function (f) { queueAnim(function () { playFight(world().fights[f.id - 1]); }); }); }
+    q.forEach(function (f) { queueAnim(function () { playFight(world().fights[f.id - 1], { auto: true }); }, '⚔️ Fight ' + f.id + ' replay'); }); }
   /* breed results (2026-10-15, Jake): a breed between two owners resolves when the partner's owner burns the mirrored tag (pet:breed:B:A within
    * BREED_WINDOW blocks; the egg goes to the requester). Only the sender used to see the animation, right after sending. Now: when an egg whose parent
    * (or the egg itself) is one of your pets appears in the replayed world, BOTH owners get the breeding animation once per browser + a message with Replay.
@@ -689,7 +709,7 @@
   function breedSeen() { try { return JSON.parse(localStorage.getItem(BKEY)); } catch (e) { return null; } }
   function seenBreed(id) { var s = breedSeen() || {}; s[id] = 1; try { localStorage.setItem(BKEY, JSON.stringify(s)); } catch (e) { } }
   function replayBreed(kidId) { var w = world(), kid = w.byId[kidId]; if (!kid || !kid.parents) return; var n0 = petIds(); delete n0[kid.id + ':' + (kid.parents || '')]; playBreed(kid.parents[0], kid.parents[1], n0); }
-  function notifyBreeds(w) { if (!ME) return; var seen = breedSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
+  function notifyBreeds(w) { if (!ME) return; dataSeen(); var seen = breedSeen(), first = !seen, tip = S.tip || w.tip || 0; seen = seen || {}; var q = [];
     w.pets.forEach(function (k) { if (!k.parents || seen[k.id]) return; var A = w.byId[k.parents[0]], B = w.byId[k.parents[1]];
       if (k.owner !== ME && !(A && A.owner === ME) && !(B && B.owner === ME)) return; seen[k.id] = 1; if (first && tip - k.hatchBlock > V.BREED_WINDOW) return; q.push(k); });
     try { localStorage.setItem(BKEY, JSON.stringify(seen)); } catch (e) { }
@@ -697,7 +717,7 @@
       toast('🥚 Breed: ' + nm(A, k.parents[0]) + ' × ' + nm(B, k.parents[1]) + ' → ' + (k.owner === ME ? 'your ' : '') + 'egg ' + esc(k.name) + ' #' + k.id + (k.hybrid ? ' (hybrid ' + esc(k.hybrid.name) + ')' : '') +
         (k.owner === ME ? '' : ' (owner ' + esc(String(k.owner).slice(0, 8)) + '…)') + ' at block ' + fmt(k.hatchBlock) + '. <a href="#" data-breplay="' + k.id + '">▶ Replay</a>', 15000);
       var a = $('toasts').lastChild.querySelector('[data-breplay]'); if (a) a.onclick = function (e) { e.preventDefault(); replayBreed(k.id); }; });
-    q.forEach(function (k) { queueAnim(function () { replayBreed(k.id); }); }); if (q.length && window.V2Motel && V2Motel.eggPop) V2Motel.eggPop(w, q[q.length - 1]); /* breed-picker-fix: one-time egg pop (notifyBreeds' seen ids keep it once per pet) */ }
+    q.forEach(function (k) { queueAnim(function () { replayBreed(k.id); }, '🥚 Breed replay: egg #' + k.id); }); if (q.length && window.V2Motel && V2Motel.eggPop) V2Motel.eggPop(w, q[q.length - 1]); /* breed-picker-fix: one-time egg pop (notifyBreeds' seen ids keep it once per pet) */ }
   function renderBattles(w) {
     var a = $('fMine').value, b = $('fTheirs').value;
     $('fMine').innerHTML = fighters(w, ME).map(opt).join('') || '<option value="">no eligible pet</option>'; $('fTheirs').innerHTML = fighters(w, ME, true).map(opt).join('');
@@ -725,8 +745,20 @@
   /* keepScroll(y): put the page back where it was after a re-render, instantly (html has scroll-behavior:smooth, which would animate a plain scrollTo) */
   function keepScroll(y) { if (Math.abs(window.scrollY - y) < 1) return; var h = document.documentElement, old = h.style.scrollBehavior; h.style.scrollBehavior = 'auto'; window.scrollTo(0, y); h.style.scrollBehavior = old; }
   /* result animations (fights, breeds) queue up and play one after another, each once (2026-10-15) */
-  function queueAnim(fn) { animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
-  function nextAnim() { if (animM.el || !animQ.length) return; animQ.shift()(); }
+  /* flow-fixes (2026-10-22): results that arrive with the first chain load are HELD for the 'While you were away' sheet (Watch all / Skip all) instead of
+   * popping one after another; results that land later play as before. The arena calls V2AnimDone when a fight ends so the queue moves on (it never opens
+   * the pop-up, so animClose never advanced it). A queued animation waits while the hatch/gear results are open. */
+  var heldA = [], heldR = false, released = false, firstDataT = 0;
+  function dataSeen() { if (!firstDataT) firstDataT = Date.now(); }
+  function holding() { return !released && document.documentElement.classList.contains('ip-hold') && firstDataT && Date.now() - firstDataT < 8000; }
+  function awayPing() { if (window.V2IpChip) try { V2IpChip(); } catch (e) { } }
+  window.V2Held = { count: function () { return heldA.length + (heldR ? revealQ.length : 0); },
+    list: function () { return (heldR ? revealQ.map(function (r) { return r.kind === 'gear' ? '🎁 ' + r.wins.length + ' new gear piece' + (r.wins.length > 1 ? 's' : '') : '🥚 ' + r.eggs.length + ' egg' + (r.eggs.length > 1 ? 's' : '') + ' hatched'; }) : []).concat(heldA.map(function (a) { return a.label; })); },
+    run: function () { released = true; heldR = false; var a = heldA; heldA = []; a.forEach(function (x) { queueAnim(x.fn); }); nextReveal(); awayPing(); },
+    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); } };
+  function queueAnim(fn, label) { if (holding()) { heldA.push({ fn: fn, label: label || '▶ Replay' }); awayPing(); return; } animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
+  function nextAnim() { if (animM.el || !animQ.length) return; if ($('packBox').classList.contains('on')) return setTimeout(nextAnim, 1000); animQ.shift()(); }
+  window.V2AnimDone = function () { if (!animM.el && animQ.length) setTimeout(nextAnim, 500); };
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
       box.addEventListener('click', function (e) { if (e.target === box) animClose(); }); $('animClose').onclick = function () { animClose(); }; }
@@ -740,9 +772,9 @@
   function animClose(silent) { var box = $('animBox'); if (!animM.el) return; var y = animM.y, cb = animM.onClose; animM.home.parentNode.insertBefore(animM.el, animM.home); animM.home.remove(); animM.el = null; animM.onClose = null;
     if (box) box.classList.remove('on'); if (!silent && cb) cb(); if (animQ.length) setTimeout(nextAnim, 500); }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && animM.el) animClose(); });
-  window.V2AnimClose = animClose; window.V2PlayFight = function (f) { playFight(f); }; window.V2ReplayBreed = function (kidId) { replayBreed(kidId); }; /* smooth-perf: breed replay hook for tests (same as a toast's ▶ Replay) */
-  function playFight(f) {
-    if (!f || !f.turns) return; if (window.V2ArenaScene && V2ArenaScene.sequence && document.getElementById('arScene')) return V2ArenaScene.sequence(f); /* battle-arena: fights play in the X Circus Kekimus scene, no pop-up */ var w = world(), c = $('arena'), ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  window.V2AnimClose = animClose; window.V2PlayFight = function (f, o) { playFight(f, o); }; window.V2ReplayBreed = function (kidId) { replayBreed(kidId); }; /* smooth-perf: breed replay hook for tests (same as a toast's ▶ Replay) */
+  function playFight(f, o) {
+    if (!f || !f.turns) return; if (window.V2ArenaScene && V2ArenaScene.sequence && document.getElementById('arScene')) return V2ArenaScene.sequence(f, o); /* battle-arena: fights play in the X Circus Kekimus scene, no pop-up */ var w = world(), c = $('arena'), ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false;
     var A = w.byId[f.a], B = w.byId[f.b], fa = petFrames(Object.assign({}, A, { blackEye: false, crowned: false }), w), fb = petFrames(Object.assign({}, B, { blackEye: false, crowned: false }), w);
     var fl = petFrames(Object.assign({}, f.loser === A.id ? A : B, { blackEye: true }), w), tmp = document.createElement('canvas'); tmp.width = tmp.height = 32;
     var t = 0, k = 0, hpA = f.maxA, hpB = f.maxB, msg = 'FIGHT: #' + A.id + ' vs #' + B.id, sp = f.spoils ? (typeof f.spoils === 'string' ? f.spoils : f.spoils.label) : null;
@@ -960,5 +992,5 @@
   var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }
   setInterval(function () { if (document.hidden) return; poll(); }, 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastPoll > 60000) poll(); });
-  window.__demo = { S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans };
+  window.__demo = { queueAnim: queueAnim, S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans };
 })();

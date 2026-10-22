@@ -435,3 +435,4 @@ body #pets .pet.card{padding-bottom:44px}
 .shop8 .shop-scene .shop-more{display:block;line-height:1.4;padding:2px 8px 6px;background:#170a2b;color:#8fe3ff}
 #hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
 #hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
+#shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */
