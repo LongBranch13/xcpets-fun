@@ -486,7 +486,7 @@
    * to breeding-v2 hybrids (drawn by V2Render.drawBeard; never on BEARD_EXCLUDE bodies), and the gear piece v2-chud-beard leaves every roll pool
    * (noRoll). Pieces already owned stay owned and wearable. Before the gate nothing changes (Chud = glasses only), so replay is unchanged.
    * null on the branch: set to tip + 6 at deploy. */
-  var ACTIVATE_CHUD_BEARD_PART_BLOCK = null;
+  var ACTIVATE_CHUD_BEARD_PART_BLOCK = 972629; /* deploy Oct 22 2026 ~9:40 AM CT: tip 972623 + 6 */
   function beardPartOn(b) { return ACTIVATE_CHUD_BEARD_PART_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_PART_BLOCK; }
   function beardOn(b) { return ACTIVATE_CHUD_BEARD_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_BLOCK; }
   function view(it) { if (!it) return it; if (it.since === 'chud-beard' && !beardOn(ELIG_B)) return null; if (it.id === CHUD_BEARD_ITEM && beardPartOn(ELIG_B)) it = Object.assign({}, it, { noRoll: true }); /* beard is a hybrid part now: out of every roll pool, owned pieces still wearable */ if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'wiz-staff' && !staffOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
