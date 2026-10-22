@@ -97,6 +97,17 @@
   /* THE RARE ROOM (owner Oct 21 2026, palette A 'Royal Vault'; design/rare-room.md): the gear place is a legendary vault-gallery. Display only:
    * the same stash pieces (S.items, same hits, same tap/hover/double-tap), and the same counter text.
    * Rarity frames keep the site colours (common #9aa3b5, uncommon #4fd18b, rare #4f9dff, legendary #ffc93c); rare + legendary get holo + sparkles. */
+  /* RARE-ROOM-LAYOUT (design branch, owner Oct 21 2026 10:50 PM CT 'so much gear that having it on the walls like that doesnt work' + 'also redo the window').
+   * Preview switch only: ?rrl=a|b|c picks a layout, ?rrw=1|2|3 a window (default window follows the layout). No param = the live layout, unchanged.
+   *  A 'Slot walls + binder': 6 big frames (one per slot: best piece + count), full collection in a paged binder under the panel.
+   *  B 'Featured + card rack': 8 featured frames (worn on the mirror pet first, then rarest), every piece in a scrollable rack right under the scene.
+   *  C 'Drawers': 4 featured frames, a cabinet of 6 slot drawers (count + rarity bar) that open to the cards. Display only. */
+  var QS = (function () { try { return new URLSearchParams(location.search); } catch (e) { return { get: function () { return null; } }; } })();
+  var LAY = /^[abc]$/.test(QS.get('rrl') || '') ? QS.get('rrl') : '', WIN = +(QS.get('rrw') || { a: 1, b: 2, c: 3 }[LAY] || 0);
+  function slotOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; return sl === 'weapon' ? 'hand' : sl; }
+  var SLOT_SHORT = { head: 'HEAD', hand: 'GRIP', body: 'DRIP', back: 'OUTFIT', face: 'GUISE', feet: 'FEET' };
+  function featured(n) { var w = window.V2UI && V2UI.world(), pid = S.pet != null ? S.pet : S.rollPet, L = S.all || [], a = L.filter(function (g) { return pid != null && g.on === pid; }), b = L.filter(function (g) { return a.indexOf(g) < 0; }).sort(function (p, q) { return tierOfG(q) - tierOfG(p); }); return a.concat(b).slice(0, n); }
+  function bySlot() { var by = {}; (S.all || []).forEach(function (g) { var sl = slotOfG(g); (by[sl] = by[sl] || []).push(g); }); SLOT_ORDER.forEach(function (sl) { (by[sl] = by[sl] || []).sort(function (a, b) { return tierOfG(b) - tierOfG(a) || (a.on == null ? 1 : -1); }); }); return by; }
   var RR = { wall: '#2a0f4a', wall2: '#3b1766', velvet: '#9b1035', velvetHi: '#d0284f', velvetLo: '#5a0820', gold: '#e8b84a', goldHi: '#fff1a8', goldLo: '#8a5a12', teal: '#1fb5a5', emerald: '#0f6b55', floorA: '#efe8f6', floorB: '#1c0f33', vein: '#c9b8e0', sky: '#8fe3ff', jewel: ['#d0284f', '#1fb5a5', '#e8b84a', '#7b3fe4', '#2f6fe0'] };
   var TIER_COL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
   function tierOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item]; return g.tier != null ? g.tier : it ? it.tier || 0 : 0; }
@@ -111,11 +122,13 @@
     px(x, '#000', 0, 0, W, 4); px(x, RR.goldLo, 0, 0, W, 3); px(x, RR.gold, 0, 0, W, 2); px(x, RR.velvet, 0, 3, W, 1); /* gold-leaf cornice */
     [100, 214].forEach(function (cx) { px(x, '#000', cx - 1, 4, 8, 92); px(x, RR.floorA, cx, 4, 6, 92); px(x, RR.vein, cx + 2, 4, 1, 92); px(x, RR.gold, cx - 2, 4, 10, 3); px(x, RR.gold, cx - 2, 90, 10, 3); });
     for (i = 0; i < 6; i++) { px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, i, 4, 1, 70 - i * 4); px(x, i % 3 < 2 ? RR.velvet : RR.velvetHi, W - 1 - i, 4, 1, 70 - i * 4); } /* curtains */
+    if (WIN) winDraw(x, t, WIN); else {
     /* stained-glass rose window with a Rare Pepe in the roundel */
     var cx = 160, cy = 23, R0 = 18; x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, R0 + 2, 0, 7); x.fill(); x.fillStyle = RR.gold; x.beginPath(); x.arc(cx, cy, R0 + 1, 0, 7); x.fill();
     for (i = 0; i < 12; i++) { x.fillStyle = RR.jewel[i % 5]; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, R0, i * Math.PI / 6, (i + 1) * Math.PI / 6); x.fill(); }
     x.fillStyle = '#000'; x.beginPath(); x.arc(cx, cy, 11, 0, 7); x.fill(); x.fillStyle = '#bfe9d6'; x.beginPath(); x.arc(cx, cy, 10, 0, 7); x.fill(); if (S.pepe) x.drawImage(S.pepe, cx - 10, cy - 11, 20, 20);
     x.fillStyle = 'rgba(255,240,180,.08)'; x.beginPath(); x.moveTo(cx - 14, cy + 14); x.lineTo(cx - 36, 96); x.lineTo(cx + 36, 96); x.lineTo(cx + 14, cy + 14); x.fill();
+    }
     px(x, '#000', 118, 43, 84, 11); px(x, RR.velvet, 119, 44, 82, 9); px(x, RR.velvetHi, 119, 44, 82, 1); x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = RR.goldHi; x.fillText('THE RARE ROOM', 160, 51); x.textAlign = 'left';
     px(x, '#000', 0, 92, W, 5); px(x, RR.velvetLo, 0, 93, W, 3); px(x, RR.gold, 0, 92, W, 1); /* wainscot */
     for (j = 96, i = 0; j < H; j += 8, i++) for (var k2 = 0; k2 < W; k2 += 16) px(x, ((k2 / 16 + i) % 2) ? RR.floorA : RR.floorB, k2, j, 16, 8); /* marble checkerboard */
@@ -128,27 +141,70 @@
     plate(x, 'SOON', 19, 100, 4); plate(x, 'SOON', 49, 100, 4);
     px(x, RR.gold, 196, 106, 30, 2); px(x, RR.gold, 197, 106, 2, 24); px(x, RR.gold, 223, 106, 2, 24); px(x, RR.velvet, 201, 118, 20, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText('SALE', 211, 124); x.textAlign = 'left'; plate(x, 'SOON', 211, 138, 4);
     [[60, 8], [250, 10], [128, 40], [192, 38]].forEach(function (q, n) { if (!reduced() && Math.floor(t / 700 + n) % 3 === 0) return; px(x, RR.goldHi, q[0], q[1] - 1, 1, 3); px(x, RR.goldHi, q[0] - 1, q[1], 3, 1); }); }
+  /* three window concepts (no radial wedges, no hub: they must read as windows, not as a second wheel). Area x 118-202, y 4-42. */
+  function lead(x, a, b, w, h) { px(x, '#000', a, b, w, h); }
+  function winDraw(x, t, n) { var i, j, tw = !reduced() && Math.floor(t / 900) % 2;
+    if (n === 1) { /* arched lancet stained-glass triptych: three pointed-arch lights, leaded rectangular panes, Rare Pepe in the tall middle light */
+      [[126, 14, 16], [146, 6, 28], [178, 14, 16]].forEach(function (L, k) { var a = L[0], b = L[1], w = L[2], h = 40 - b;
+        px(x, '#000', a - 2, b - 1, w + 4, h + 3); px(x, RR.gold, a - 1, b, w + 2, h + 1);
+        for (j = 0; j < h; j += 6) for (i = 0; i < w; i += (k === 1 ? 7 : 8)) px(x, RR.jewel[(i / 7 + j / 6 + k) % 5 | 0], a + i, b + j, k === 1 ? 7 : 8, 6);
+        for (j = 0; j < h; j += 6) lead(x, a, b + j, w, 1); for (i = 0; i <= w; i += (k === 1 ? 7 : 8)) lead(x, a + i, b, 1, h);
+        for (i = 0; i < w / 2; i++) { var cut = Math.max(0, Math.round(w / 2 - 1 - i - (w / 2) * 0.0)); px(x, RR.wall, a + i, b - 1, 1, Math.max(0, Math.round((w / 2 - i) * 0.6))); px(x, RR.wall, a + w - 1 - i, b - 1, 1, Math.max(0, Math.round((w / 2 - i) * 0.6))); }
+        px(x, RR.goldHi, a, b + h, w, 1); });
+      px(x, '#000', 150, 15, 20, 20); px(x, '#bfe9d6', 151, 16, 18, 18); if (S.pepe) x.drawImage(S.pepe, 150, 15, 20, 20);
+      x.fillStyle = 'rgba(255,240,180,.07)'; x.beginPath(); x.moveTo(140, 41); x.lineTo(118, 96); x.lineTo(202, 96); x.lineTo(180, 41); x.fill(); return; }
+    if (n === 2) { /* tall gallery skylight: square-paned roof light, daylight sky + drifting cloud, gold sash bars, light shaft */
+      px(x, '#000', 128, 4, 64, 38); px(x, RR.gold, 129, 4, 62, 37); px(x, RR.sky, 131, 5, 58, 34); px(x, '#c9f2ff', 131, 5, 58, 8);
+      var cx2 = reduced() ? 150 : 131 + Math.floor(t / 300) % 70; px(x, '#ffffff', cx2, 15, 12, 3); px(x, '#ffffff', cx2 + 3, 13, 6, 2);
+      for (i = 131; i < 189; i += 14) px(x, RR.goldLo, i + 13, 5, 2, 34); px(x, RR.goldLo, 131, 21, 58, 2);
+      px(x, RR.goldHi, 129, 4, 62, 1); px(x, 'rgba(255,255,255,.35)', 133, 7, 2, 10); px(x, 'rgba(255,255,255,.35)', 147, 7, 2, 10);
+      x.fillStyle = 'rgba(220,245,255,.09)'; x.beginPath(); x.moveTo(131, 41); x.lineTo(112, 96); x.lineTo(208, 96); x.lineTo(189, 41); x.fill(); return; }
+    /* 3: paned night window: four sashes, moon, stars, pixel skyline with a lit orange B tower, velvet tie-backs */
+    px(x, '#000', 126, 5, 68, 37); px(x, RR.gold, 127, 6, 66, 35); px(x, '#0d0b2a', 129, 7, 62, 32); px(x, '#1d1850', 129, 25, 62, 14);
+    px(x, '#fff1a8', 176, 10, 7, 7); px(x, '#0d0b2a', 179, 10, 4, 5);
+    [[134, 11], [146, 9], [162, 13], [140, 19], [170, 20], [154, 17]].forEach(function (q, k) { if (tw && k % 2) return; px(x, '#ffffff', q[0], q[1], 1, 1); });
+    [[129, 30, 8], [137, 27, 6], [143, 32, 9], [152, 22, 7], [159, 29, 8], [167, 26, 6], [173, 31, 9], [182, 28, 9]].forEach(function (b, k) { px(x, k === 3 ? '#3a2a10' : '#05040f', b[0], b[1], b[2], 39 - b[1]); for (j = b[1] + 2; j < 38; j += 3) if ((j + k) % 2) px(x, k === 3 ? '#f7931a' : '#ffd36a', b[0] + 2, j, 1, 1); });
+    px(x, '#f7931a', 154, 19, 3, 3);
+    px(x, RR.gold, 159, 7, 2, 32); px(x, RR.gold, 129, 22, 62, 2); px(x, RR.goldHi, 127, 6, 66, 1); px(x, RR.goldLo, 125, 41, 70, 2);
+    px(x, RR.velvet, 122, 5, 5, 34); px(x, RR.velvet, 193, 5, 5, 34); px(x, RR.velvetHi, 123, 5, 1, 34); px(x, RR.gold, 121, 26, 7, 2); px(x, RR.gold, 192, 26, 7, 2); }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */
     roomBg(x, t);
-    S.hits = []; var walls = [[8, 14], [8, 52], [222, 14], [222, 52]], k = 0; /* 4 gallery walls x 5 framed cards = the same 20 stash pieces as the old shelves */
+    S.hits = []; if (LAY) wallsLayout(x, t); else { var walls = [[8, 14], [8, 52], [222, 14], [222, 52]], k = 0; /* 4 gallery walls x 5 framed cards = the same 20 stash pieces as the old shelves */
     walls.forEach(function (s) { for (var i = 0; i < 5; i++) { var it = S.items[k++], ix = s[0] + 2 + i * 18, iy = s[1]; if (!it) continue; var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
         if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); } /* spotlight */
         frameCard(x, it, ix, iy, lift, t);
         if (it.on != null) { px(x, '#000', ix + 11, iy + 12 - lift, 6, 6); px(x, '#3ddc84', ix + 12, iy + 13 - lift, 4, 4); } /* worn = green dot (the old EQP tag) */
         if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
-        S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it }); } });
-    if (!S.items.length) plate(x, 'EMPTY WALLS: SPIN THE PEPE WHEEL', 160, 76, 5);
-    if (S.more > 0) plate(x, '+' + S.more + ' MORE', 290, 46, 5);
+        S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it }); } }); }
+    if (!(LAY ? (S.all || []) : S.items).length) plate(x, 'EMPTY WALLS: SPIN THE PEPE WHEEL', 160, 76, 5);
+    if (S.more > 0 && !LAY) plate(x, '+' + S.more + ' MORE', 290, 46, 5);
     var pn = pendAll(); if (pn > (S.pend0 || 0)) spinNow(2400); if (S.tot0 != null && S.total > S.tot0) spinNow(2400); S.pend0 = pn; S.tot0 = S.total;
     var dt = Math.min(100, Math.max(0, t - (S.wt || t))); S.wt = t; if (!reduced()) S.ang += dt * (t < S.spinUntil ? 0.012 : pn ? 0.002 : 0);
     wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, 'PEPE WHEEL \u00b7 TAP TO ROLL', WH.x + 8, 148, 4); drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
     bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 95);
     plate(x, 'YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 104, 149, 5);
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
+  function hang(x, t, it, ix, iy, slot) { var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
+    if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); }
+    frameCard(x, it, ix, iy, lift, t); if (it.on != null) { px(x, '#000', ix + 11, iy + 12 - lift, 6, 6); px(x, '#3ddc84', ix + 12, iy + 13 - lift, 4, 4); }
+    if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
+    S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it, slot: slot }); }
+  function wallsLayout(x, t) { var i;
+    if (LAY === 'a') { var by = bySlot(); SLOT_ORDER.forEach(function (sl, n) { var G = by[sl], ix = (n < 3 ? 14 : 228) + (n % 3) * 30, iy = 22; plate(x, SLOT_SHORT[sl], ix + 8, 16, 4);
+        if (G.length) { hang(x, t, G[0], ix, iy, sl); plate(x, '\u00d7' + G.length, ix + 8, 52, 5); } else { px(x, '#000', ix - 1, iy - 1, 18, 20); px(x, '#1c0f33', ix, iy, 16, 18); plate(x, '\u00d70', ix + 8, 52, 5); } });
+      plate(x, 'BEST OF EACH SLOT', 53, 72, 4); plate(x, 'FULL SET IN THE BINDER \u25bc', 267, 72, 4); return; }
+    var F = featured(LAY === 'b' ? 8 : 4), pos = LAY === 'b' ? [[12, 18], [34, 18], [56, 18], [78, 18], [226, 18], [248, 18], [270, 18], [292, 18]] : [[26, 26], [62, 26], [240, 26], [276, 26]];
+    F.forEach(function (g, n) { hang(x, t, g, pos[n][0], pos[n][1]); });
+    plate(x, LAY === 'b' ? 'FEATURED' : 'ON SHOW', 53, 58, 5); plate(x, LAY === 'b' ? 'ALL GEAR: RACK \u25bc' : 'ALL GEAR: DRAWERS \u25bc', 267, 58, 4); }
+  function cardBtn(g) { var t = tierOfG(g); return '<button type="button" class="rr-card t' + t + (S.sel && S.sel.gid === g.gid ? ' sel' : '') + '" data-ggid="' + esc(g.gid) + '" title="' + esc(g.label || g.item) + '"><span class="rr-nm">' + esc(String(g.label || g.item)).slice(0, 14) + '</span><canvas width="16" height="16" data-gic="' + esc(g.item) + '"></canvas>' + (g.on != null ? '<i class="rr-on"></i>' : '') + '</button>'; }
+  function rackHtml() { var L = S.all || [], n = Math.min(L.length, S.rn || 60); if (!L.length) return '';
+    return '<div class="rr-rackh small">🃏 Card rack · ' + L.length + ' piece' + (L.length === 1 ? '' : 's') + ' · swipe ▸ (filters above narrow it)</div><div class="rr-rack" id="rrRack">' + L.slice(0, n).map(cardBtn).join('') + (n < L.length ? '<button type="button" class="q rr-rmore" id="rrRmore">+' + (L.length - n) + ' more ▸</button>' : '') + '</div>'; }
+  function rack(box) { var el = box.querySelector('.rr-rackw'); if (!el) { box.insertAdjacentHTML('beforeend', '<div class="rr-rackw"></div>'); el = box.querySelector('.rr-rackw'); } var sx = el.querySelector('.rr-rack'); sx = sx ? sx.scrollLeft : 0; el.innerHTML = rackHtml(); var r = el.querySelector('.rr-rack'); if (r) r.scrollLeft = sx; bindGallery(el);
+    var m = el.querySelector('#rrRmore'); if (m) m.onclick = function () { S.rn = (S.rn || 60) + 120; rack(box); }; }
   function render(w) { var U = window.V2UI, R = window.V2Render, box = document.getElementById('shopScene'); if (!box || !U || !R || !w) return;
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
-    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.items = SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
-    S.items.forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
+    S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.all = SL; S.items = LAY ? [] : SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
+    (LAY ? (LAY === 'a' ? SLOT_ORDER.map(function (sl) { return bySlot()[sl][0]; }).filter(Boolean) : featured(8)) : S.items).forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)"></canvas><div class="shop-hint small">👇 Your gear hangs on these walls · tap a card to try it on</div>'; c = box.querySelector('canvas');
       if (window.IntersectionObserver) { new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off && !S.raf) draw(performance.now()); else if (off) { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c); } /* lair speed (owner Oct 20 2026): no redraw loop while the scene is off screen */
       c.addEventListener('mousemove', function (e) { c.style.cursor = onWheel(c, e) || hitAt(c, e) ? 'pointer' : 'default'; var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
@@ -156,8 +212,8 @@
       c.addEventListener('mouseleave', function () { S.hov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
         if (onWheel(c, e)) { openWheel(); return; } var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
-        S.sel = h.it; say(h.it); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
-    var mo = box.querySelector('.shop-more'); if (S.more > 0) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
+        if (h.slot) { S.bs = h.slot; S.bp = 0; } S.sel = h.it; say(h.it); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
+    if (LAY === 'b') rack(box); var mo = box.querySelector('.shop-more'); if (S.more > 0 && !LAY) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
     mirrorPet(w); ambPets(w); counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.fitRaf); S.fitRaf = requestAnimationFrame(function () { S.fitRaf = 0; fitDraw(c); }); } /* lair-perf: measure + first draw on the next frame, so a render never forces a full-page layout */
   /* Rare Room mirror: the pet you are dressing (S.pet / roll pet / first living pet), wearing the tapped piece as a live try-on (same framesWith as the Wear panel) */
@@ -282,7 +338,17 @@
   /* RARE ROOM GALLERY: your gear as framed cards grouped by the six slots (rarest first, 12 per slot; the full list stays in 'Your stash · all your gear').
    * Tap a card = the same select/try-on as tapping it on the wall. */
   var GAL_N = 12;
-  function gallery(w) { var V = window.V2Rules, ME = window.V2UI.ME, L = (w.itemList || []).filter(function (g) { return g.owner === ME; }); if (!L.length) return '';
+  function gallery(w) { if (LAY === 'a') return binder(); if (LAY === 'c') return drawers(); if (LAY === 'b') return ''; return gallery0(w); }
+  function legend() { return '<div class="rr-leg small"><i class="t0"></i>Common <i class="t1"></i>Uncommon <i class="t2"></i>Rare <i class="t3"></i>Legendary · green dot = worn</div>'; }
+  function binder() { var by = bySlot(), L = S.all || []; if (!L.length) return ''; var sl = S.bs || SLOT_ORDER.filter(function (q) { return by[q].length; })[0], G = by[sl] || [], per = window.innerWidth < 500 ? 9 : 12, pages = Math.max(1, Math.ceil(G.length / per)), pg = Math.min(S.bp || 0, pages - 1);
+    return '<div class="rr-gal rr-binder" id="rrGallery"><div class="rr-dh">📒 Your Binder · ' + L.length + ' pieces</div>' + legend() + '<div class="rr-tabs">' + SLOT_ORDER.map(function (q) { return '<button type="button" class="q rr-tab' + (q === sl ? ' on' : '') + '" data-bslot="' + q + '">' + esc(lword(q).split(' · ').pop()) + ' <b>' + by[q].length + '</b></button>'; }).join('') + '</div>' +
+      '<div class="rr-page">' + (G.length ? G.slice(pg * per, pg * per + per).map(cardBtn).join('') : '<span class="small muted">Empty page. Spin the Pepe Wheel: 🎲</span>') + '</div>' +
+      '<div class="rr-pager"><button type="button" class="q" data-bpg="-1"' + (pg ? '' : ' disabled') + '>◀ Flip</button><span class="small">Page ' + (pg + 1) + ' of ' + pages + '</span><button type="button" class="q" data-bpg="1"' + (pg < pages - 1 ? '' : ' disabled') + '>Flip ▶</button></div></div>'; }
+  function drawers() { var by = bySlot(), L = S.all || []; if (!L.length) return ''; var h = '<div class="rr-gal rr-drawers" id="rrGallery"><div class="rr-dh">🗄️ Gear cabinet · ' + L.length + ' pieces</div>' + legend() + '<div class="rr-cab">';
+    SLOT_ORDER.forEach(function (q) { var G = by[q], tc = [0, 0, 0, 0]; G.forEach(function (g) { tc[tierOfG(g)]++; }); h += '<button type="button" class="rr-drw' + (S.dr === q ? ' on' : '') + '" data-drw="' + q + '"><span class="rr-knob"></span><span class="rr-dl">' + esc(lword(q).split(' · ').pop()) + '</span><b>' + G.length + '</b><span class="rr-tb">' + tc.map(function (c, k) { return c ? '<i class="t' + k + '" style="flex:' + c + '"></i>' : ''; }).join('') + '</span></button>'; });
+    h += '</div>'; if (S.dr) { var G = by[S.dr], n = S.dn || 24; h += '<div class="rr-open"><div class="rr-rh">' + esc(lword(S.dr)) + ' · ' + G.length + ' · drawer open</div><div class="rr-cards">' + (G.length ? G.slice(0, n).map(cardBtn).join('') : '<span class="small muted">Empty drawer. Spin the Pepe Wheel: 🎲</span>') + '</div>' + (n < G.length ? '<button type="button" class="q" data-drmore="1">Show more (' + (G.length - n) + ' left)</button>' : '') + '</div>'; }
+    return h + '</div>'; }
+  function gallery0(w) { var V = window.V2Rules, ME = window.V2UI.ME, L = (w.itemList || []).filter(function (g) { return g.owner === ME; }); if (!L.length) return '';
     var by = {}; L.forEach(function (g) { var it = (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; if (sl === 'weapon') sl = 'hand'; (by[sl] = by[sl] || []).push(g); });
     var h = '<div class="rr-gal" id="rrGallery"><div class="rr-dh">🖼️ Your Gallery · ' + L.length + ' piece' + (L.length === 1 ? '' : 's') + '</div><div class="rr-leg small"><i class="t0"></i>Common <i class="t1"></i>Uncommon <i class="t2"></i>Rare <i class="t3"></i>Legendary · green dot = worn</div>';
     SLOT_ORDER.forEach(function (sl) { var G = (by[sl] || []).sort(function (a, b) { return tierOfG(b) - tierOfG(a) || (a.on == null ? -1 : 1); });
@@ -291,6 +357,10 @@
     return h + '</div>'; }
   function bindGallery(el) { var U = window.V2UI, R = window.V2Render, w = U.world(); el.querySelectorAll('canvas[data-gic]').forEach(function (c) { var ic = S.icons[c.dataset.gic]; if (!ic) try { ic = S.icons[c.dataset.gic] = R.iconCanvas(c.dataset.gic); } catch (e) { } if (ic) c.getContext('2d').drawImage(ic, 0, 0, 16, 16); });
     el.querySelectorAll('[data-ggid]').forEach(function (b) { b.onclick = function () { var g = w.items[b.dataset.ggid]; if (!g) return; S.sel = g; say(g); if (window.V2LairQoL) V2LairQoL.viewed(g); mirrorPet(w); counter(); draw(performance.now()); var sc = document.getElementById('shopScene'); if (sc && sc.scrollIntoView) sc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
+    el.querySelectorAll('[data-bslot]').forEach(function (b) { b.onclick = function () { S.bs = b.dataset.bslot; S.bp = 0; counter(); }; });
+    el.querySelectorAll('[data-bpg]').forEach(function (b) { b.onclick = function () { S.bp = Math.max(0, (S.bp || 0) + +b.dataset.bpg); counter(); }; });
+    el.querySelectorAll('[data-drw]').forEach(function (b) { b.onclick = function () { S.dr = S.dr === b.dataset.drw ? null : b.dataset.drw; S.dn = 24; counter(); }; });
+    el.querySelectorAll('[data-drmore]').forEach(function (b) { b.onclick = function () { S.dn = (S.dn || 24) + 48; counter(); }; });
     el.querySelectorAll('[data-all]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; }); }
   /* Equip Best + one-tap Undo right under the mirror (the same V2LairQoL.equipBest / undo as the More fold) */
   function bestBar() { var Q = window.V2LairQoL; if (!Q || !Q.equipBest) return ''; return '<div class="rr-bar"><button type="button" class="btn ico-flame" id="rrBest">⚡ Equip Best <span class="cost">free · your best pieces</span></button>' + (Q.hasUndo && Q.hasUndo() ? '<button type="button" class="q" id="rrUndo">↩ Undo</button>' : '') + '</div>'; }
@@ -337,6 +407,10 @@
     '.rr-card.t2 canvas,.rr-card.t3 canvas{background:linear-gradient(115deg,#2a0f4a 20%,#7b3fe4 40%,#1fb5a5 55%,#2a0f4a 75%);background-size:300% 100%;animation:rrHolo 3s linear infinite}.rr-card.t3::after{content:"\\2726";position:absolute;top:-8px;right:-4px;color:#fff1a8;text-shadow:1px 1px 0 #000;font-size:14px}' +
     '@keyframes rrHolo{to{background-position:300% 0}}@media (prefers-reduced-motion:reduce){.rr-card canvas{animation:none!important}}.rr-nm{font-size:10px;font-weight:700;color:#140f24;line-height:1.1;text-align:center;max-width:100%;overflow:hidden}.rr-on{position:absolute;right:4px;bottom:4px;width:10px;height:10px;background:#3ddc84;border:2px solid #000}' +
     '.rr-flash{animation:rrFlash 1.2s ease-out 1}@keyframes rrFlash{0%{box-shadow:0 0 0 2px #000,0 0 0 8px #fff1a8}100%{box-shadow:0 0 0 2px #000,4px 4px 0 2px #000}}@media (prefers-reduced-motion:reduce){.rr-flash{animation:none}}' +
+    '.rr-rackw{margin:8px 0 0;padding:8px;background:#1c0f33;border:3px solid #e8b84a;box-shadow:0 0 0 2px #000}.rr-rackh{color:#fff1a8;font-weight:700;margin:0 0 4px}.rr-rack{display:flex;gap:10px;overflow-x:auto;padding:8px 6px 12px;scroll-snap-type:x proximity}.rr-rack .rr-card{flex:0 0 82px;scroll-snap-align:start}.rr-rmore{flex:0 0 auto;align-self:center}' +
+    '.rr-tabs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.rr-tab{min-height:36px}.rr-tab.on{background:#e8b84a;color:#140f24}.rr-page{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px;background:#f6efdc22;border:3px dashed #8a5a12;min-height:240px}.rr-pager{display:flex;justify-content:space-between;align-items:center;margin-top:6px}' +
+    '.rr-cab{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rr-drw{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;background:#5a2e12;border:3px solid #000;box-shadow:inset 0 0 0 2px #8a5a12;color:#fff1a8;cursor:pointer;min-height:64px}.rr-drw.on{background:#8a5a12}.rr-drw b{font-size:15px}.rr-knob{width:14px;height:5px;background:#e8b84a;border:1px solid #000}.rr-dl{font-size:11px;font-weight:700}.rr-tb{display:flex;width:90%;height:5px;border:1px solid #000}.rr-tb i{display:block}.rr-tb .t0{background:#9aa3b5}.rr-tb .t1{background:#4fd18b}.rr-tb .t2{background:#4f9dff}.rr-tb .t3{background:#ffc93c}.rr-open{margin-top:8px}' +
+    '@media (max-width:520px){.rr-page{grid-template-columns:repeat(3,1fr);gap:8px;padding:6px}.rr-cab{grid-template-columns:repeat(2,1fr)}}' +
     '@media (max-width:520px){.rr-cards{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}.rr-chip{font-size:10px}.rr-crew{flex-wrap:wrap}.rr-roll{width:100%}}';
     (document.head || document.documentElement).appendChild(rs); }
   window.V2Shop = { drawWheel: wheel, LINES: LINES, DANK: DANK, lineAt: lineAt, setPool: setPool, active: function (g) { return (ACT[g] || []).slice(); }, spin: spinNow, openWheel: openWheel, rackPick: rackPick, clearance: clearance, render: render, select: function (g) { S.sel = g; say(g); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, dmg: dmg, op: op };
