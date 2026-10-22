@@ -22,9 +22,14 @@
   function wall(c, text) { var x = c.getContext && c.getContext('2d'); if (!x) return; var W = c.width, H = c.height; x.imageSmoothingEnabled = false;
     x.fillStyle = '#2a2238'; x.fillRect(0, 0, W, H);
     for (var y = 0, row = 0; y < H; y += 8, row++) for (var bx = (row % 2) * -8; bx < W; bx += 16) { x.fillStyle = (row * 7 + bx) % 3 ? '#30283f' : '#2d2540'; x.fillRect(bx + 1, y + 1, 14, 6); }
-    var s = 1, cw = 4 * s, tw = text.length * cw, ox = Math.max(2, Math.round((W - tw) / 2)), oy = H - 9; x.fillStyle = '#3b3250'; /* carved: only a shade lighter than the stone */
-    for (var i = 0; i < text.length; i++) { var g = F[text[i]]; if (!g) continue; for (var k = 0; k < 15; k++) if (g[k] === '1') x.fillRect(ox + i * cw + (k % 3) * s, oy + Math.floor(k / 3) * s, s, s); }
-    x.fillStyle = '#251e33'; for (i = 0; i < text.length; i++) { g = F[text[i]]; if (!g) continue; for (k = 0; k < 15; k++) if (g[k] === '1' && (k % 3 === 2 || g[k + 1] !== '1')) x.fillRect(ox + i * cw + (k % 3) * s + 1, oy + Math.floor(k / 3) * s + 1, s, s); } }
+    /* P12 (owner 2026-10-21): the carving was too faint to read. Same pixel font and stone, now 2x pixels when it fits, a lit carved face with a dark
+     * recess shadow (down-right) and one more px between letters, so it reads at 1280 and 390 and still looks cut into the wall. */
+    var s = H >= 14 ? 2 : 1, adv = function (ch) { return ch === ' ' ? 2 * s : 3 * s + 1; }, xs = [], tw = 0; for (var q = 0; q < text.length; q++) { xs.push(tw); tw += adv(text[q]); } tw -= 1;
+    if (s > 1 && tw > W - 156) { s = 1; xs = []; tw = 0; for (q = 0; q < text.length; q++) { xs.push(tw); tw += adv(text[q]); } tw -= 1; } /* stays between the arena's inner columns (x 76..244) */
+    var ox = Math.max(2, Math.round((W - tw) / 2)), oy = Math.max(1, Math.round((H - 5 * s) / 2) - 1);
+    function glyphs(dx, dy, col) { x.fillStyle = col; for (var i = 0; i < text.length; i++) { var g = F[text[i]]; if (!g) continue; for (var k = 0; k < 15; k++) if (g[k] === '1') x.fillRect(ox + xs[i] + (k % 3) * s + dx, oy + Math.floor(k / 3) * s + dy, s, s); } }
+    x.fillStyle = 'rgba(15,10,24,.55)'; x.fillRect(ox - 4, oy - 2, tw + 8, 5 * s + 4); /* a darker carved band behind the words */
+    glyphs(1, 1, '#120d1c'); glyphs(-1, 0, '#4a3f66'); glyphs(0, 0, '#cbbcf0'); }
   var api = { SPONSORS: SPONSORS.slice(), sponsorAt: sponsorAt, line: line, at: function (st, b) { return { name: sponsorAt(b) }; }, postLine: postLine, billboard: billboard, wall: wall, WALL_TEXT: WALL_TEXT, state: null };
   /** load(tip): no network; just records the tip the strip rotates by */
   api.load = function (tip, done) { api.state = { tip: tip }; if (done) done(api.state); };

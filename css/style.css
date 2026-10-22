@@ -180,3 +180,4 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 @media (max-width:1366px) { .nav { padding:10px 14px; gap:10px; } .nav nav a { margin-left:10px; font-size:13px; } .nav nav a.navscene { font-size:7px; } .nav nav a.navico { margin-left:9px; } }
 @media (max-width:1180px) and (min-width:601px) { .nav nav a { margin-left:8px; font-size:12px; } .nav nav a.navplay { padding:4px 7px 4px 6px; } .nav nav a.navscene { white-space:normal; text-align:center; line-height:1.5; } .nav nav a.navscene[href$="#kekimus"] { width:72px; } .nav nav a.navscene[href$="#no-tail-motel"] { width:94px; } .nav .brand { font-size:13px; } }
 @media (max-width:600px) { header.nav nav a.navplay { order:-1; min-height:34px; margin:3px 4px; padding:0 9px 0 7px; } }
+.petacts a.btn.disabled{opacity:.55;pointer-events:none;filter:grayscale(.4)} /* wizard-story-short P10 */

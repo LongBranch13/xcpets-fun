@@ -763,7 +763,20 @@
   function shareUrl(p) { var V = window.V2Rules, base = location.href.replace(/[^\/]*([?#].*)?$/, ''), link = base + 'pet.html?id=' + p.id;
     var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
-  function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id); return a; }
+  /* P9 (wizard-story-short 2026-10-21): 'Share to Telegram' sends the pet's dancing GIF to the XCPets group, client-side only (no bot token in the site):
+   * phones with file sharing -> the share sheet with the GIF (the player picks the XCPets group); otherwise the GIF downloads and t.me/xcpets opens
+   * so it can be dropped into the group. The old t.me/share link stays as the href (no-JS fallback). */
+  var TG_GROUP = 'https://t.me/xcpets';
+  function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
+    a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
+  function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=1997194bf6'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+  function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
+    if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
+    withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
+      if (file && phone && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], text: shortText(p) + ' 🔥 @XCPets ' + petLink(p) }).then(function () { toast('Pick the XCPets group to send it'); }, function (e) { if (!e || e.name !== 'AbortError') desk(); }); return; }
+      desk(); function desk() { download(blob, name); if (popup && !popup.closed) popup.location.href = TG_GROUP; else window.open(TG_GROUP, '_blank', 'noopener'); toast('GIF saved: drop it into the XCPets group'); } }); }
+  function saveGif(p) { withGif(p, function (blob, name) { download(blob, name); toast('GIF saved'); }); }
   function petById(id) { try { return window.V2Mock.world().byId[id]; } catch (e) { return null; } }
   /* Share image (Jake 2026-10-15, UI only): renders the pet card to a PNG (crisp nearest-neighbour sprite + name/#id/tier/species/stage) and shares the FILE
    * via navigator.share({files}) when canShare allows; otherwise copies the PNG to the clipboard (ClipboardItem) and downloads it. Toast says which happened. */
@@ -798,11 +811,11 @@
     withBlob(p, function (blob) { copyPng(blob).then(function () { toast('Image copied: paste it into your post (Ctrl/Cmd+V)'); }, function () { toast('Tip: use 💾 Save image to attach the pet card to your post'); }); }); }
   function saveImage(p) { withBlob(p, function (blob, name) { download(blob, name); toast('Image saved'); }); }
   function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
-  function imgButton(p) { return btn('imgshare', '🖼️ Share image', 'Share the pet card image', shareImage, p); }
+  function imgButton(p) { return btn('imgshare savegif', '🎞️ Save GIF', 'Download the pet\'s dancing GIF', saveGif, p); } /* P7: was 'Share image' (share sheet / file save); now a direct GIF download */
   function shareRow(p) { var d = document.createElement('p'); d.className = 'petshare'; d.setAttribute('data-pet', p.id);
     [imgButton(p), btn('xshare', '𝕏 Post on X', 'Post on X with the pet card image', postX, p), button(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
     return d; }
-  window.XCPShare = { cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
+  window.XCPShare = { saveGif: saveGif, shareTelegram: shareTelegram, cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];
   /* family-tree-fix (2026-10-19, display only). Chart layout: ancestors ABOVE the pet (parents, grandparents; the ancestor block is drawn as the old
    * top-down tree flipped with scaleY(-1), nodes flipped back), the pet, then its own children as a row UNDER it (so a parent with no parents of its own,
