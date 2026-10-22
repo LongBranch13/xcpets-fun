@@ -57,5 +57,5 @@ if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:nu
  ok(['doge','mumu','pepe','nakamoto'].every(b=>!V.eligible(V.GEAR_BY_ID[V.CHUD_BEARD_ITEM]||V.CHUD_BEARD_ITEM,b,b)),'beard never eligible on Doge/Mumu/Pepe/Nakamoto (gate off anyway)');
  ok(V.HYBRID_PARTS.sarutobi.map(d=>d.id).join()==='tail','Sarutobi donates only the tail (ears removed)');
  ok(['bobo','mumu','doge'].every(sp=>V.HYBRID_PARTS[sp][0].onTop),'Bobo ears / Mumu horns / Doge ears use the onTop placement');
- ok(V.ACTIVATE_CHUD_BEARD_BLOCK===null&&!V.beardOn(99999999),'Chud beard gear gate is null (OFF)');}
+ ok(V.ACTIVATE_CHUD_BEARD_BLOCK===V.ACTIVATE_BREEDING_V2_BLOCK&&!V.beardOn(V.ACTIVATE_CHUD_BEARD_BLOCK-1)&&V.beardOn(V.ACTIVATE_CHUD_BEARD_BLOCK),'Chud beard gate = breeding-v2 gate ('+V.ACTIVATE_CHUD_BEARD_BLOCK+'), off before it');}
 console.log(fails?fails+' FAIL':'ALL PASS');

@@ -17,7 +17,7 @@ function run(gate, rows) { const ctx = load(), V = ctx.V2Rules; if (gate != null
   return { V, w: V.replay(rows, hashes, [], { tip: snap.tip, live: ctx.LiveEngine && ctx.LiveEngine.RealCore }) }; }
 const rollRows = snap.rows.filter(r => /^pet:roll:/i.test(unhex(r.tag || ''))).sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
 console.log('snapshot tip', snap.tip, '· pet:roll rows', rollRows.length, '· blocks', rollRows[0] && rollRows[0].block_index, '..', rollRows.length && rollRows[rollRows.length - 1].block_index);
-const base = run(null, snap.rows); ok(base.V.ACTIVATE_WHEEL_RANDOM_BLOCK === null && !base.V.wheelOn(99999999), 'gate is null and inert by default');
+const base = run(null, snap.rows); ok(base.V.ACTIVATE_WHEEL_RANDOM_BLOCK > snap.tip && !base.V.wheelOn(snap.tip) && !base.V.wheelOn(base.V.ACTIVATE_WHEEL_RANDOM_BLOCK - 1), 'gate ' + base.V.ACTIVATE_WHEEL_RANDOM_BLOCK + ' is after the snapshot tip and inert before it');
 const G = rollRows[Math.floor(rollRows.length * 0.8)].block_index;
 // synthetic pet:spin rows: copies of the last 6 roll rows with a new tx hash, tag pet:spin
 const syn = rollRows.slice(-6).map((r, i) => Object.assign({}, r, { tx_hash: require('crypto').createHash('sha256').update('spin-test-' + i).digest('hex'), tx_index: r.tx_index + 0.5, tag: hex('pet:spin') }));

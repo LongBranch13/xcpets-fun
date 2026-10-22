@@ -81,7 +81,7 @@
    * FALLBACK: no pet with an open slot -> the same weighted pick over the burner's living pets; slot = V2_SLOTS[int(gear-roll hash[16..24], 16) mod 6]; piece rolled for
    *     that pet's species/tier and put in the gear bag (unworn). No living pet at all -> rejected (the site never sends it).
    * Before the gate pet:roll:ID replays exactly as before and pet:spin is an unknown tag. pet:fr:ID (founder credits) and pet:of:ID (Mythic overflow) stay per-pet. null = off. */
-  var ACTIVATE_WHEEL_RANDOM_BLOCK = null, WHEEL_W = [1, 2, 4, 8];
+  var ACTIVATE_WHEEL_RANDOM_BLOCK = 972589, /* deploy Oct 22 2026: tip 972583 + 6 */ WHEEL_W = [1, 2, 4, 8];
   function wheelOn(b) { return ACTIVATE_WHEEL_RANDOM_BLOCK != null && b != null && b >= ACTIVATE_WHEEL_RANDOM_BLOCK; }
   function wheelPets(w, owner, b, refresh) { return (w.pets || []).filter(function (p) { if (p.owner !== owner || p.community || p.released) return false; if (refresh && b != null) liveAt(w, p, b); return !p.dead; }).sort(function (a, c) { return a.id - c.id; }); }
   function wheelWt(p) { return WHEEL_W[Math.max(0, Math.min(3, p.tier || 0))]; }
@@ -133,7 +133,7 @@
    * (2) Body-part trading: hybrid children bred at/after the gate also inherit signature body parts (HYBRID_PARTS) from their non-body
    *     parents, drawn on top of the current hybrid look. Looks only (no stats), drawn from its OWN stream so no other draw moves.
    * Before the gate nothing changes: same replay for all history. */
-  var ACTIVATE_BREEDING_V2_BLOCK = 972561; // <<< BREEDING V2 GATE (tip 972,555 + 6). Set to chain tip + ~6 at deploy time.
+  var ACTIVATE_BREEDING_V2_BLOCK = 972589; // <<< BREEDING V2 GATE: deploy Oct 22 2026, chain tip 972583 + 6 (owner approved 1:32 AM CT)
   var BREED_CAP_V2 = 6;
   function breedV2On(b) { return b != null && b >= ACTIVATE_BREEDING_V2_BLOCK; }
   /** breedsLeft(p, b): { used, cap, left } lifetime v2 breeds (display + rules); used counts breeds at/after the gate only. */
@@ -480,7 +480,7 @@
   /* CHUD'S BEARD GEAR (owner Oct 22 2026, breeding-v2 branch): open Guise (face) piece 'v2-chud-beard', tier 1 (Uncommon), any species incl. hybrids;
    * drawn per pet by V2Render.drawBeard on the detected mouth + jaw. Gear pools are consensus: item.since 'chud-beard' keeps it out of every pool until
    * ACTIVATE_CHUD_BEARD_BLOCK is set (null = OFF, so every roll replays exactly). Appended at the END of ITEMS. No grants. */
-  var ACTIVATE_CHUD_BEARD_BLOCK = null, CHUD_BEARD_ITEM = 'v2-chud-beard', BEARD_EXCLUDE = { doge: 1, mumu: 1, pepe: 1, nakamoto: 1 }; /* owner Oct 22 1:27-1:29 AM CT: never rolls/wears on these bodies (player pets and hybrids with that body); 'if a cosmetic looks bad on a pet, that pet doesn't get it' */
+  var ACTIVATE_CHUD_BEARD_BLOCK = 972589 /* deploy Oct 22 2026: tip 972583 + 6 */, CHUD_BEARD_ITEM = 'v2-chud-beard', BEARD_EXCLUDE = { doge: 1, mumu: 1, pepe: 1, nakamoto: 1 }; /* owner Oct 22 1:27-1:29 AM CT: never rolls/wears on these bodies (player pets and hybrids with that body); 'if a cosmetic looks bad on a pet, that pet doesn't get it' */
   function bodyOf(p) { return p && p.hybrid && p.hybrid.shape ? p.hybrid.shape : p ? p.species : null; }
   function beardOn(b) { return ACTIVATE_CHUD_BEARD_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_BLOCK; }
   function view(it) { if (!it) return it; if (it.since === 'chud-beard' && !beardOn(ELIG_B)) return null; if (it.since === 'wiz-cold' && !wizPoolOn(ELIG_B)) return null; if (it.since === 'wiz-staff' && !staffOn(ELIG_B)) return null; if (it.since === 'star-batch' && !starBatchOn(ELIG_B)) return null; if (it.since === 'sig-shuffle' && !shuffleOn(ELIG_B)) return null; if (it.since === 'gear-audit' && !gaOn(ELIG_B)) return null;
