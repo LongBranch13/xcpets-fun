@@ -104,8 +104,28 @@
       /* wizard-story-short 2026-10-21 (owner): short story, shown in the Cold Storage story pop-up (#archStory) */
       story: ['2013. Someone drew a wizard in MS Paint for a forum ad.', '"Magic Internet Money." "Join us."', '2026. Nakamoto went into Cold Storage and left an egg. Every burn fed it.',
         'At Mythic, the Wizard put down his sign and joined Nakamoto.', 'The sign stayed. So did an egg. Join us.'],
-      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(M.world()), info: info }); }); } },
+    /* #3 Lord Kek (halving-v1, owner Oct 22 2026): Mythic at 6,906,900 -> STAR LORD KEK defeats him -> Cold Storage. Chain state = w.kekMythic (pure replay record).
+     * Same Cold Storage pattern as the Wizard: Mythic portrait in his signature loadout, story pop-up, farewell. Farewell = the 7 sacred artifacts beat + the STARLORDKEK card. */
+    { id: 'kek', name: 'Lord Kek', sp: 'kek', loadout: ['kek-card'], done: function (c, w) { return !!(w && w.kekMythic); }, block: function (c, w) { return w.kekMythic.block; }, tx: function (c, w) { return w.kekMythic.tx; },
+      stats: function (w) { var x = w.kekMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
+      story: ['Lord Kek, Ruler of All Pepes. All Pepes worshipped him as the most powerful Pepe in existence.', 'The Bitcoin Wizard went into Cold Storage and left an egg. Every burn fed it, and Lord Kek rose.',
+        'At Mythic, a sacrifice of 7 sacred artifacts was made, and Lord Kek was defeated.', 'After the great victory, the real and only ruler is STAR LORD KEK.', 'Lord Kek rests in Cold Storage. A new era begins: burns cost half.'],
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { kekFarewell(info); } }
   ];
+  /* Lord Kek farewell (halving-v1): the site's .reveal dialog. Lord Kek at Mythic, 7 glowing artifacts light up one by one, he fades, the STARLORDKEK card
+   * ('THE REAL AND ONLY LORD') rises. Reduced motion: every beat shown at once. Esc / Close / backdrop close it. Display only. */
+  function kekFarewell(info) { var m = $('kekBye'); if (!m) { m = document.createElement('div'); m.className = 'reveal kekbye'; m.id = 'kekBye'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'kekByeT'); document.body.appendChild(m); }
+    var rm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, arts = ''; for (var i = 0; i < 7; i++) arts += '<span class="kb-art" style="--i:' + i + '"></span>';
+    m.innerHTML = '<div class="box"><div class="archstory-top"><h2 id="kekByeT">Lord Kek has been defeated</h2><button type="button" class="q archstory-x" id="kekByeX" aria-label="Close">Close ✕</button></div>' +
+      '<div class="kb-stage' + (rm ? ' kb-still' : '') + '"><canvas class="kb-kek" width="32" height="32" id="kekByeCv"></canvas><div class="kb-arts" aria-hidden="true">' + arts + '</div>' +
+      '<img class="kb-card" src="img/starlordkek-card.gif" alt="STARLORDKEK, the real and only lord" width="200" height="280"></div>' +
+      '<p class="kb-line">A sacrifice of 7 sacred artifacts has been made, and Lord Kek has been defeated.</p><p class="kb-line kb-l2"><b>STAR LORD KEK</b>: THE REAL AND ONLY LORD.</p>' +
+      '<p class="small muted">' + esc(info || 'Lord Kek · now in Cold Storage') + '</p></div>';
+    var fr = coldEntryFrames(entryOf('kek')), cv = $('kekByeCv'); if (fr && cv && R && R.animate) R.animate(cv, fr);
+    function close() { m.classList.remove('on'); document.removeEventListener('keydown', key); }
+    function key(ev) { if (ev.key === 'Escape') close(); }
+    $('kekByeX').onclick = close; m.onclick = function (ev) { if (ev.target === m) close(); }; document.addEventListener('keydown', key); m.classList.add('on'); $('kekByeX').focus(); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -153,7 +173,7 @@
       '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });
   function archive() {
-    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : false, list = archiveEntries(w, preview), box = $('archList');
+    var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : /preview=kek/.test(location.search) ? 'kek' : false, list = archiveEntries(w, preview), box = $('archList');
     if (!list.length) { box.innerHTML = '<p class="muted archive-empty">No community pets in the archive yet.</p>'; return; }
     var items = list.map(function (x) { return { kind: 'done', x: x, id: x.e.id, name: x.e.name, done: x.done }; });
     if (c.returned && !w.wizardMythic) items.push({ kind: 'live', id: 'wizard', name: 'Bitcoin Wizard · community pet', done: false });
