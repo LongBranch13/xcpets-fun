@@ -49,6 +49,35 @@
   // live all-crowns legendary kit. The live promo.js grid is replaced by a fresh node so its timer paints nothing visible.
   // Elder or Mythic only: Wojak shows at Elder, where pet-core gives him the classic open sad eyes (his Mythic arc closes them into a ^^ smile)
   var HERO_STAGE = { wojak: 4 };
+  /* Cast parade (P15, owner 2026-10-21 chose the parade): the cast section's GIF (img/xcpets-cast.gif, drawn with old sprites) is replaced by a live
+   * canvas where every species marches across in its front-page kit at Mythic (Wojak Elder), drawn by the CURRENT renderer (V2Render.framesWith +
+   * V2Gear.CAST_KITS), plus the Bitcoin Wizard in his Cold Storage loadout. 320x56 logical px, pixelated; ~8 fps; pauses off screen and when the tab is
+   * hidden; prefers-reduced-motion = one still lineup. The <picture> stays as the no-JS fallback (it is only swapped out when this runs). */
+  function castParade() { var pic = document.querySelector('#cast picture'), img = pic && pic.querySelector('img.cast-gif'); if (!pic || !img || !R || !R.framesWith || !V2Gear.CAST_KITS) return;
+    var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [];
+    live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
+      window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
+      if (fr && fr.length) list.push({ id: id, fr: fr }); });
+    var wiz = ARCHIVE.filter(function (e) { return e.id === 'wizard'; })[0], wf = wiz && R.coldFrames ? R.coldFrames(wiz.sp, wiz.loadout || [], COLD_STAGE) : null; if (wf && wf.length) list.push({ id: 'wizard', fr: wf });
+    if (!list.length) return;
+    /* key out the backdrop (the render's own background colour, read from the top-left pixel of each frame) so pets walk on the scene */
+    function cut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), d = new Uint8ClampedArray(f.data), r = d[0], g = d[1], b = d[2];
+      for (var i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) + Math.abs(d[i + 1] - g) + Math.abs(d[i + 2] - b) < 24) d[i + 3] = 0; x.putImageData(new ImageData(d, 32, 32), 0, 0); return c; }
+    list.forEach(function (q) { q.c = q.fr.map(cut); });
+    var cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.className = 'cast-parade'; cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', 'The XCPETS cast marching by in signature gear: ' + list.map(function (q) { return q.id === 'wizard' ? 'Bitcoin Wizard' : V.speciesLabel(q.id); }).join(', '));
+    cv.style.cssText = 'display:block;width:100%;max-width:600px;height:auto;margin:6px auto 14px;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0e0b16';
+    pic.parentNode.replaceChild(cv, pic); var x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+    var GAP = 40, LOOP = list.length * GAP, t = 0, vis = true, raf = 0, last = 0, still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function scene() { x.fillStyle = '#0e0b16'; x.fillRect(0, 0, LW, LH); x.fillStyle = '#2b1d3f'; for (var s2 = 0; s2 < 26; s2++) x.fillRect((s2 * 53 + 7) % LW, (s2 * 17 + 3) % 30, 1, 1);
+      x.fillStyle = '#2b1d3f'; x.fillRect(0, 46, LW, 10); x.fillStyle = '#ff7a1a'; x.fillRect(0, 45, LW, 1); x.fillStyle = '#161122'; for (var k = 0; k < LW; k += 8) x.fillRect((k - Math.floor(t / 2)) % LW < 0 ? (k - Math.floor(t / 2)) % LW + LW : (k - Math.floor(t / 2)) % LW, 50, 4, 1); }
+    function frame() { scene(); list.forEach(function (q, i) { var px = still ? 4 + i * Math.floor((LW - 36) / Math.max(1, list.length - 1)) : ((i * GAP - t * 2) % LOOP + LOOP) % LOOP - 32, f = still ? 0 : (Math.floor(t / 3) + i) % q.c.length, hop = still ? 0 : ((Math.floor(t / 3) + i) % 2);
+      if (px > -32 && px < LW) x.drawImage(q.c[f], Math.round(px), 14 - hop); }); }
+    function loop(ts) { raf = 0; if (!vis || document.hidden) return; if (ts - last >= 120) { last = ts; t += 1; frame(); } raf = requestAnimationFrame(loop); }
+    frame(); if (still) return;
+    if (window.IntersectionObserver) new IntersectionObserver(function (es) { vis = es[es.length - 1].isIntersecting; if (vis && !raf) raf = requestAnimationFrame(loop); }).observe(cv);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && vis && !raf) raf = requestAnimationFrame(loop); });
+    raf = requestAnimationFrame(loop); }
   function heroGrid() { var old = $('heroPets'); if (!old || !V2Gear.CAST_KITS) return; var box = old.cloneNode(false); old.parentNode.replaceChild(box, old);
     var G = window.GenPetCore || PetCore, live = window.PetCore, ids = live.SPECIES.map(function (s) { return s.id; }), cache = {}, k = 0, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' };
     function frames(id) { if (cache[id]) return cache[id]; var kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); });
@@ -56,7 +85,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=1997194bf6'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=070ffa05ae'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -88,7 +117,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=1997194bf6'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=070ffa05ae'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -163,7 +192,7 @@
     draw(); withReturn(function () {}); if (preview === 'wizard') withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(w), info: 'Bitcoin Wizard farewell (preview)' }); });
   }
   function front() {
-    heroGrid();
+    heroGrid(); try { castParade(); } catch (e) { if (window.console) console.warn('cast parade', e); }
     var w = M.world(), c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage, rp = V.returnProgress(c.burned);
     // community pet (Jake 2026-10-14): Nakamoto at Mythic until The Return (1,111,111 burned in total); then the next community pet, grown by later burns
     var NG = window.GenPetCore || PetCore; if (NG.SPECIES.filter(function (x) { return x.id === 'nakamoto'; })[0] && V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);

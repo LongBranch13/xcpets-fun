@@ -158,8 +158,17 @@
     desk.innerHTML = '<div class="mt-hint">' + hint + '</div>' +
       '<div class="mt-guests"><button type="button" class="mt-g' + (step === 'A' || S.pickSide === 'A' ? ' on' : '') + '" data-side="A">' + (s.A ? 'Room #' + s.A.id + ' · ' + esc(s.A.name) : 'Guest 1 ?') + '</button><span>+</span><button type="button" class="mt-g' + (step === 'B' || S.pickSide === 'B' ? ' on' : '') + '" data-side="B">' + (s.B ? 'Room #' + s.B.id + ' · ' + esc(s.B.name) : 'Guest 2 ?') + '</button></div>' +
       (od ? '<div class="mt-odds" aria-label="Odds"><b>ODDS</b> ' + od.sp.map(function (q) { return esc(q[0]) + ' ' + q[1].toFixed(q[1] === 100 ? 0 : 1) + '%'; }).join(' · ') + '<br>' + (od.tier.up ? '⬆ ' + T[Math.min(3, od.hiT + 1)] + ' ' + od.tier.up.toFixed(1) + '% · ' : '') + T[od.hiT] + ' ' + od.tier.hi.toFixed(1) + '%' + (od.tier.lo ? ' · ' + T[od.loT] + ' ' + od.tier.lo.toFixed(1) + '%' : '') + '</div>' : '') +
+      (ME && window.UXB && UXB.browsePets && s.st !== 'open' ? '<div class="mt-browse" style="text-align:center;margin:6px 0"><button type="button" class="q" id="mtBrowse" title="Browse all your pets (or partners) with search, sort, filters and thumbnails">📋 Browse pets</button></div>' : '') +
       '<div id="motelPick"></div>';
     var side = S.pickSide || step; desk.querySelectorAll('[data-side]').forEach(function (bt) { bt.onclick = function () { S.pickSide = bt.dataset.side; S.fresh = null; render(U.world()); }; });
+    /* P13 (2026-10-21): 'Browse pets' opens the fight picker's pet browser (UXB.browsePets) for the current guest slot: every pet in the breed list
+     * (mine for Guest 1, partners for Guest 2), not-eligible ones disabled with the reason (breedPicker why / needs Adult+). Picking sets bA/bB the
+     * same way the chips do; the walk-in animation and the room chips are untouched. */
+    var mb = document.getElementById('mtBrowse'); if (mb) mb.onclick = function () { var sd = S.pickSide || step || 'A', src = sd === 'A' ? L.mine : L.partners, why = {};
+      src.forEach(function (x) { why[x.p.id] = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); });
+      UXB.browsePets('br' + sd, { title: sd === 'A' ? 'Pick Guest 1 (your pet)' : 'Pick Guest 2 (the date)', okLabel: '✅ Can breed now', pets: src.map(function (x) { return x.p; }), why: function (p) { return why[p.id] || null; },
+        onPick: function (id) { var k = String(id); S.fresh = null; document.getElementById(sd === 'A' ? 'bA' : 'bB').value = k; if (sd === 'A' && document.getElementById('bB').value === k) document.getElementById('bB').value = '';
+          S.pickSide = sd === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + k + '? Gooby pls.'; S.lt = performance.now(); U.render(); } }); };
     var bell = document.getElementById('bGo'); if (bell) { bell.textContent = s.st === 'invite' ? 'Accept check-in · 690' : 'Check in · 690'; bell.disabled = !(s.A && s.B) || s.st === 'open'; }
     if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
       /* breed-empty-fix (2026-10-19 ~11 PM CT): the empty line used to fire only when the UNFILTERED list was empty; a picker filter (My Pets chip in the
