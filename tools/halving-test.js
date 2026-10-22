@@ -35,6 +35,13 @@ function world(gate, defeatAt, extra, tip) { const c = load(); const V = c.V2Rul
   ok(mine[0].nextMeal === 2070, 'series-2 hatchling meal = 2,070 (half of 4,140): ' + mine[0].nextMeal);
   const old = w.pets.find(p => !p.series && !p.dead && !p.community && p.nextMeal > 0); ok(!old || (old.nextCare > 0 && Math.abs(old.nextMeal - old.nextCare / 2) < 1e-8), 'old pet pays half, gets full care');
   ok(w.log.some(l => l.kind === 'rejected' && /below hatch cost 34.5/.test(l.msg) === false && l.block === D + 5), 'pre-gate half hatch rejected'); }
+/* 2b. community feed halves too (owner Oct 22 2026) */
+{ const D = T0 + 20, G = T0 + 6, CF = 'bc1qcommunityfeedtest0000000000000000000'; const { V, w, rows } = world(G, D, () => [row(D + 5, CF, 34.5, 'pet:feed'), row(D + 6, CF, 34.5, 'pet:feed'), row(D + 6, CF, 34.4, 'pet:feed'), row(D + 7, CF, 345, 'pet:feed')]);
+  const lg = tx => w.log.find(l => l.tx === tx), x = rows.slice(-4);
+  ok(lg(x[0].tx_hash).kind === 'rejected' && lg(x[1].tx_hash).kind === 'cfeed' && lg(x[2].tx_hash).kind === 'rejected' && lg(x[3].tx_hash).kind === 'cfeed', 'community feed min 69 -> 34.5 at the halving (34.4 rejected, before the gate 34.5 rejected)');
+  const c = V.syncCosts(w, D + 10); ok(c.cquick.join() === '34.5,345,3450' && c.feedMin === 34.5, 'community quick choices 34.5 / 345 / 3,450');
+  ok(V.communityFeedPlan(34.5).ok && V.communityFeedPlan(34.5).amount === 34.5 && !V.communityFeedPlan(34.4).ok, 'community feed plan keeps decimals and the halved minimum');
+  V.syncCosts(w, D); ok(V.communityFeedPlan(68.9).ok === false && V.communityFeedPlan(69.7).amount === 69, 'era 0: community feed plan exactly as before (whole XCPETS, min 69)'); }
 /* 3. before-launch case: defeat already happened when the code ships -> halving 1 = ACTIVATE_HALVING_BLOCK */
 { const D = T0 + 10, G = T0 + 50; const { V, w } = world(G, D);
   ok(V.halving1Block(w) === G, 'defeat before launch -> halving 1 at the launch block');
