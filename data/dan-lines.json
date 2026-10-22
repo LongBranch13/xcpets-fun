@@ -1,0 +1,245 @@
+{
+ "_about": "Captain Dan Lair lines. Each line {text, added (YYYY-MM-DD, shown from that day), expires? (YYYY-MM-DD, hidden from that day)}. Slots: every line n uses core[n % core.length] unless a slot group claims it (n % every === at) and has active lines. Empty or fully expired groups fall back to core.",
+ "slots": {
+  "dank": {
+   "every": 12,
+   "at": 11
+  },
+  "cpnews": {
+   "every": 12,
+   "at": 5
+  },
+  "mined": {
+   "every": 12,
+   "at": 8
+  }
+ },
+ "groups": {
+  "core": [
+   {
+    "text": "gm from the farm!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Fresh off the field!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Harvest’s in, matey",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Gear grows like Bitcorn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Plant a roll, reap gear",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Bitcorn Crops taught me well",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "XCP.fun built this barn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Hand-picked at dawn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Every piece, homegrown",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "bitcorns.com sends love",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "DigiRare.com says hi!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Rare as a DigiRare",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Good soil, good drops",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Stash full like silos",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Tap a crop, kit a pet",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Ripe for the wearing!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Stack sats, stack corn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "HODL the harvest",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Ahoy from the cornfield!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Fresh harvest, fair deal",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Ahoy! THIS! IS! BITCORN!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Only 100 CROPS. Sail careful, matey",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "BITCORN can't be bought. Only farmed!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "21M BITCORN, just like the big coin",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Harvest #1 hit April Fools 2018. Legit",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Land ho! A HELIPAD on the farm",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Docked the boat at YACHTDOCK",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "LAMBOGARAGE? I came by ship",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "CORNPARTY on deck, all hands!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "THESCARECROW guards my stash",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "FARMHAND wanted. Pay: corn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "CORNCOMBINE: 364 cards to swab",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Every farm's a Bitcoin address",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Join a coop, me hearties!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Captain of the Bitcorn fleet, gm",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Memecoins? Try XCP.fun, sailor",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "XCP.fun: 69 crew to set sail",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "On XCP.fun, no admin key aboard",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Grails ahoy on DigiRare.com!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Card hunting? DigiRare.com, matey",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Spells of Genesis sailed first",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "HOMERPEPE: 1 of 1. Arr!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Burn a FAKEASF, speak your fake",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Rare Pepes, Fake Rares, all Bitcoin",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Counterparty? I AM the party",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Not your keys, not your corn",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Batten the hatches, harvest's in!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Swab the deck, stack the sats",
+    "added": "2026-10-19"
+   }
+  ],
+  "dank": [
+   {
+    "text": "Card 1 of the Danks? KEKLUMINATI",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "KEKLUMINATI sees all, matey",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "dankdirectory.io: dankest danks!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "DANKMEMECASH, card 2. Arr!",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "PEEPOHEY waves from Series 1",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "OCTOKEK: eight arms, one kek",
+    "added": "2026-10-19"
+   },
+   {
+    "text": "Dank Rare Agency reporting in!",
+    "added": "2026-10-19"
+   }
+  ],
+  "cpnews": [],
+  "mined": []
+ }
+}
