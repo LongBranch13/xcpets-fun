@@ -33,3 +33,11 @@
 - Oct 22 2026 ~11:52 AM CT (owner correction): every fire-sale discount is 69% off (x0.31), meals and community feeding included, stacked on the halving. Era 0 sale community min 21.39, era 1 sale 10.695. Amounts r8 (1e-8 XCPETS), valid if >= price - 5e-9.
 - Oct 22 2026 ~12:15 PM CT: HatchBot warnings hook tools/hatchbot-warnings.js (OFF: ENABLED=false + caller enabled:true). Halving 1: Kek care 90%/99% + set; halving 2+: set/144/6 blocks; fire: warning + live. Dedupe ids in announce-rate.json, send-guard, <=1000 chars. Meant for the live HatchBot listener's announce tick (~4 min); NOT wired. Launch draft: /workspace/xcpets/telegram/hb-halving-firesale-launch.txt + post-halving-firesale-launch-once.js (not run).
 - Oct 22 2026 ~12:40 PM CT: site on fire (js/v2-onfire.js + css/onfire.css, fire-sales): <html data-fire=live|warn> from v2-firesale.js; pixel flames + ember glow on scene cards, nav buildings, arena, shop (Lair/Rare Room), motel, breed arena; smolder only in warning; pointer-events none; reduced motion static. Previews previews/fire-sales/site-on-fire/.
+
+## Deploy Oct 22 2026 ~12:30 PM CT (build e1a45c6050): halving + fire sales + saved spins + badges + arena modes
+- Merged into main (merge commits): halving-v1, fire-sales, saved-spins, badges-v1, arena-modes. cross-series-breeding NOT deployed; series-2 roster dropped (owner: no series; new pets only via community pets).
+- All new gates = 972641 (tip 972,635 + 6): ACTIVATE_HALVING_BLOCK, ACTIVATE_FIRESALE_BLOCK, ACTIVATE_SPINS_BLOCK, ACTIVATE_ARENA_MODES_BLOCK, V2Badges ACTIVATE_BADGES_BLOCK (display gate added at deploy; ?preview=badges shows early).
+- Arena-mode burns (pet:sd / pet:tt / pet:join / Tag Team accept) now use the halving + fire-sale price (below/costAt + planAmount), like every other burn.
+- v2-badges.js loaded on play.html + pet.html, v2-arena-modes.js on play.html (the branches had added the files but never loaded them).
+- Series mechanics in main are inert until Lord Kek reaches Mythic (eraAt = 0 => hatchSeries 1); SERIES_LAUNCH_BLOCKS = [] so no later halving or HatchBot halving-2 post can fire. Follow-up branch halving-community-trigger removes series entirely.
+- tools/breeding-v2-test.js was already failing on main (V.beardPartOn not exported in its harness) - pre-existing.

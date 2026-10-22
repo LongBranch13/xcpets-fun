@@ -64,7 +64,7 @@
   function rng(seed) { var s = (seed * 2654435761) >>> 0 || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
   function fill(t, v) { return t.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }); }
   /** script(f, w) -> [{ at: 'intro'|turnIndex|'end', text, src: 'meme'|'fresh' }] (deterministic per fight id) */
-  function script(f, w) { var A = w.byId[f.a] || { name: '#' + f.a, species: '' }, B = w.byId[f.b] || { name: '#' + f.b, species: '' }, R = rng(f.id || 1), used = {}, out = [];
+  function script(f, w) { var A = w.byId[f.showA || f.a] || { name: '#' + f.a, species: '' }, B = w.byId[f.showB || f.b] || { name: '#' + f.b, species: '' }, R = rng(f.id || 1), used = {}, out = [];
     var spn = function (p) { return SP[p.species] || (/^hyb/.test(p.species) && window.V2Rules ? V2Rules.hybridName(p.species) : 'pet'); }, pw = function (p) { var s = p.stats || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; };
     var base = { A: A.name, B: B.name, SA: spn(A), SB: spn(B), PA: pw(A), PB: pw(B), W: (w.byId[f.winner] || {}).name || '#' + f.winner, L: (w.byId[f.loser] || {}).name || '#' + f.loser, R: (f.turns || []).length };
     function pick(list, src, v) { var c = list.filter(function (t) { return !used[t]; }); if (!c.length) return null; var t = c[Math.floor(R() * c.length)]; used[t] = 1; return { text: fill(t, Object.assign({}, base, v || {})), src: src }; }
@@ -72,6 +72,13 @@
     function say(at, x) { if (x) { x.at = at; out.push(x); } }
     var FUN = window.V2ArenaFun ? V2ArenaFun.info(w, f) : null, spn0 = window.V2Sponsor && V2Sponsor.sponsorAt ? V2Sponsor.sponsorAt(f.acceptBlock || f.block) : null; /* read-only: the fixed pseudo-sponsor of that chain day, read aloud */
     if (spn0) say('intro', pick(FRESH.sponsor, 'fresh', { SP: spn0 }));
+    /* arena modes (Oct 22 2026): mode intros + calls, same wrestling-caller voice */
+    var nm = function (id) { return (w.byId[id] || {}).name || '#' + id; };
+    if (f.mode === 'sd') { say('intro', pick(['SUDDEN DEATH! ONE HIT. THAT\u2019S ALL IT TAKES!', 'No health bars tonight, folks. One clean shot and it\u2019s OVER!'], 'fresh')); if (f.coin) say('end', pick(['Nobody lands a thing! THE CROWD DECIDES!'], 'fresh')); else say('end', pick(['ONE BLOW! {W} ends it in ONE BLOW!', 'Blink and you missed it! {W} WINS!'], 'fresh')); }
+    if (f.mode === 'tt') { say('intro', pick(['TAG TEAM ACTION! ' + nm(f.a) + ' and ' + nm(f.a2) + ' versus ' + nm(f.b) + ' and ' + nm(f.b2) + '!'], 'fresh'));
+      (f.bouts || []).slice(0, -1).forEach(function (bt, i) { var nx = f.bouts[i + 1], inn = nx.a === bt.winner ? nx.b : nx.a; say('intro', pick(['TAG! ' + nm(inn) + ' is IN!', nm(bt.loser) + ' is DOWN! ' + nm(inn) + ' tags in!'], 'fresh')); });
+      var lb = (f.bouts || [])[f.bouts.length - 1]; if (lb && (lb.a === f.bouts[0].winner || lb.b === f.bouts[0].winner) && f.bouts.length > 1) say('intro', pick(['{W} is running on fumes!'.replace('{W}', nm(f.bouts[0].winner))], 'fresh'));
+      say('end', pick(['LAST PET STANDING! ' + nm(f.winners[0]) + ' and ' + nm(f.winners[1]) + ' take it!'], 'fresh')); }
     say('intro', pick([FRESH.intro[0]], 'fresh')); say('intro', meme(A) || pick(FRESH.intro.slice(2), 'fresh')); say('intro', pick([FRESH.intro[1]], 'fresh')); say('intro', meme(B) || pick(FRESH.intro.slice(2), 'fresh'));
     var T = f.turns || [], low = { a: false, b: false }, maxA = f.maxA || 1, maxB = f.maxB || 1, sinceLast = 9;
     T.forEach(function (t, i) { var X = t.by === 'a' ? A : B, Y = t.by === 'a' ? B : A, v = { X: X.name, Y: Y.name, D: t.dmg }, ln = null;

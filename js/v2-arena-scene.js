@@ -11,7 +11,7 @@
   function reduced() { return !!RM.matches || !!window.__arenaReducedMotion; }
   /** champion(w) -> { p, streak, block } | null. Current unbeaten streak = consecutive wins since the pet's last loss (fights in chain order). */
   function champion(w) { var st = {}, best = null;
-    (w.fights || []).filter(function (f) { return f.status === 'done'; }).sort(function (a, b) { return a.acceptBlock - b.acceptBlock || a.id - b.id; }).forEach(function (f) {
+    (w.fights || []).filter(function (f) { return f.status === 'done' && !f.mode; /* Classic statue; modes have their own belts */ }).sort(function (a, b) { return a.acceptBlock - b.acceptBlock || a.id - b.id; }).forEach(function (f) {
       var a = st[f.winner] = st[f.winner] || { n: 0, at: null }, l = st[f.loser] = st[f.loser] || { n: 0, at: null }; a.n++; a.at = f.acceptBlock; a.fid = f.id; l.n = 0; l.at = null; });
     Object.keys(st).forEach(function (id) { var s = st[id], p = w.byId[id]; if (!p || p.dead || p.released || p.community || !s.n) return;
       if (!best || s.n > best.streak || (s.n === best.streak && (s.at < best.block || (s.at === best.block && s.fid < best.fid)))) best = { p: p, streak: s.n, block: s.at, fid: s.fid }; });
@@ -120,7 +120,7 @@
    * Reduced motion: a static result in the scene (both pets, final HP bars, winner, spoils). Busy scene: the next fight waits its turn. */
   var Q = [];
   function mk(p, w, be) { var mp = Object.assign({}, p, { blackEye: !!be }); return (frames(mp, w) || []).map(function (i) { return toCanvas(i); }); }
-  function sequence(f, o) { var U = window.V2UI, w = U && U.world(); if (!f || !f.turns || !w) return; var A = w.byId[f.a], B = w.byId[f.b]; if (!A || !B || !S.x) return;
+  function sequence(f, o) { var U = window.V2UI, w = U && U.world(); if (!f || !f.turns || !w) return; var A = w.byId[f.showA || f.a], B = w.byId[f.showB || f.b]; if (!A || !B || !S.x) return; /* Tag Team: the final bout's pets */
     if (o && o.restart) { Q.length = 0; cancelAnimationFrame(S.raf); S.raf = 0; S.mode = 'idle'; if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) { } } /* arena-replay: manual Replay restarts, never queues */
     if (S.mode !== 'idle' && S.mode !== 'result') { Q.push(f); return; }
     if (window.V2ArenaReplay) try { V2ArenaReplay.onShow(f); } catch (e) { }
@@ -153,7 +153,7 @@
     x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center';
     S.fx = S.fx.filter(function (e) { var age = now - e.t; if (age > 900) return false; x.fillStyle = '#000'; var ey = Math.round(e.y - age / 40); x.fillText(e.s, e.x + 1, ey + 1); x.fillStyle = e.c; x.fillText(e.s, e.x, ey); return true; });
     x.textAlign = 'left';
-    if (!done) caption('ROUND ' + (ti + 1) + '/' + n + ' · #' + (f.turns[ti].by === 'a' ? f.a : f.b) + ' ' + String(f.turns[ti].weapon || '').slice(0, 12).toUpperCase());
+    if (!done) caption('ROUND ' + (ti + 1) + '/' + n + ' · #' + (f.turns[ti].by === 'a' ? (f.showA || f.a) : (f.showB || f.b)) + ' ' + String(f.turns[ti].weapon || '').slice(0, 12).toUpperCase());
     if (S.hitT && now - S.hitT < 90 && !reduced()) { x.fillStyle = 'rgba(255,255,255,.75)'; x.fillRect(0, 0, W, H); } /* white hit flash on big hits */
     if (window.V2ArenaFun) V2ArenaFun.overlay(S, x, now, Math.min(ti, n - 1), done, reduced());
     if (done) { if (!S.koT) { S.koT = now; if (window.V2Sfx) V2Sfx.roar(); } ko(x, now - S.koT); /* arena-replay fix: the end-of-fight -> lap step sat in the not-done branch, so a fight never finished and every later replay just queued */
@@ -170,7 +170,7 @@
     ko(S.x, 9999);
     caption('WINNER #' + f.winner + ' · ' + f.turns.length + ' ROUNDS' + (f.spoils ? ' · +' + String(f.spoils.label || f.spoils).slice(0, 12).toUpperCase() : '')); }
   /* test hooks for previews: force a phase at time t (ms) */
-  function _pose(mode, f, t) { var w = S.w, A = w.byId[f.a], B = w.byId[f.b], Wn = w.byId[f.winner]; cancelAnimationFrame(S.raf); S.raf = 0;
+  function _pose(mode, f, t) { var w = S.w, A = w.byId[f.showA || f.a], B = w.byId[f.showB || f.b], Wn = w.byId[f.winner]; cancelAnimationFrame(S.raf); S.raf = 0;
     S.actors = mode === 'walk' ? [{ p: A, img: frames(A, w).map(function (i) { return toCanvas(i); }) }, { p: B, img: frames(B, w).map(function (i) { return toCanvas(i); }) }] : mode === 'idle' ? [] : [{ p: Wn, img: frames(Wn, w).map(function (i) { return toCanvas(i); }) }];
     if (mode === 'fight' || mode === 'result') { S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.fx = []; S.fxT = -1; S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true) }, { p: B, img: mk(B, w), lose: mk(B, w, true) }]; var kk = Math.floor(t / TICK), ti2 = Math.min(f.turns.length, Math.floor(kk / 4)) - 1; S.hp = ti2 >= 0 ? { a: f.turns[ti2].hpA, b: f.turns[ti2].hpB } : { a: f.maxA, b: f.maxB }; }
     S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null; S.mode = mode; var now = performance.now(); S.t0 = now - t; S.onWalk = null; var keep = window.__arenaReducedMotion; window.__arenaReducedMotion = true; frame(now); window.__arenaReducedMotion = keep; }

@@ -93,7 +93,7 @@
     el.querySelectorAll('[data-eztab]').forEach(function (b) { b.onclick = function () { s.tab = b.dataset.eztab; s.inc = null; s.msg = ''; fight(U().world()); }; });
     bindQ(el, 'ezFqA', function (v) { s.qa = v; }, function () { fight(U().world()); }); bindQ(el, 'ezFqB', function (v) { s.qb = v; }, function () { fight(U().world()); });
     var go = $('ezFGo'); if (go) go.onclick = function () {
-      if (s.tab === 'inc' && s.inc) { var id = String(s.inc); return UI.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: 690 }], function () { UI.afterAccept(id); }); }
+      if (s.tab === 'inc' && s.inc) { var id = String(s.inc); return UI.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: (V2Rules.acceptCost ? V2Rules.acceptCost(V2Mock.world(), +(id)) : 690) }], function () { UI.afterAccept(id); }); }
       var g = $('foGo'); if (g && !g.disabled) g.click(); };
     var qm = $('ezFQm'); if (qm) qm.onclick = function () { var q = $('arQuick'); if (!q) return; if (s.tab === 'inc') s.tab = 'sug'; q.click(); var m = $('arQmsg'); s.msg = m ? m.textContent : ''; fight(U().world()); };
     var ig = $('ezFIgn'); if (ig) ig.onclick = function () { var id = s.inc; s.inc = null; UXB.ignoreFight(id); UI.toast('Ignored here. It expires on its own if nobody accepts.'); }; }

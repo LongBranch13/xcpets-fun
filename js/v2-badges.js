@@ -4,6 +4,7 @@
  * hybrids don't count for the dex; no community-pet badges; joke badges are public; no gameplay effect. */
 (function (root) {
   'use strict';
+  var ACTIVATE_BADGES_BLOCK = 972641; /* display gate: deploy Oct 22 2026 ~12:20 PM CT, tip 972,635 + 6 (owner approved) */
   var WEEK = 1008, WEEK_ANCHOR = 971501 /* = V2_FROM_BLOCK, first v2 block */;
   var DEX = ['pepe', 'wojak', 'chud', 'peepo', 'doge', 'bobo', 'mumu', 'sarutobi', 'lenny', 'snibby', 'kevin', 'dodo', 'nakamoto'];
   var TIER_NAMES = ['bronze', 'silver', 'gold'], TIER_RAR = ['uncommon', 'rare', 'legendary'], RAR_SCORE = { common: 1, uncommon: 3, rare: 10, legendary: 33 };
@@ -107,7 +108,7 @@
   /** recapLine(res) -> one line for the daily recap data (HatchBot does NOT post badges) */
   function recapLine(res, sinceBlock) { var tot = 0, wallets = 0, fresh = 0; Object.keys(res.byAddr).forEach(function (a) { var L = res.byAddr[a]; if (L.length) wallets++; tot += L.length; L.forEach(function (b) { if (sinceBlock != null && b.block > sinceBlock) fresh++; }); });
     return 'Badges: ' + tot + ' held by ' + wallets + ' wallets' + (sinceBlock != null ? ' (' + fresh + ' new since block ' + sinceBlock + ')' : ''); }
-  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, TIER_NAMES: TIER_NAMES };
+  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, TIER_NAMES: TIER_NAMES, ACTIVATE_BADGES_BLOCK: ACTIVATE_BADGES_BLOCK };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   root.V2Badges = API;
   if (typeof document === 'undefined' || !document.getElementById) return;
@@ -124,7 +125,7 @@
     el.querySelectorAll('.bdg').forEach(function (bt) { bt.onclick = function () { var D = el.querySelector('.bdg-detail'), i = +bt.getAttribute('data-i'); if (!D.hidden && D.getAttribute('data-i') == i) { D.hidden = true; return; } D.setAttribute('data-i', i); D.innerHTML = detailHtml(list[i]); D.hidden = false; }; });
     var m = el.querySelector('.bdg-more'); if (m) m.onclick = function () { el.setAttribute('data-all', m.getAttribute('data-less') ? '0' : '1'); strip(el, list, title); }; }
   var last = null;
-  function paint() { var r = get(); if (!r || r === last) return; last = r; var page = document.body && document.body.getAttribute('data-v2page');
+  function paint() { var M0 = root.V2Mock, tip0 = M0 && M0.state && (M0.state() || {}).tip; if (!(tip0 + 1 >= ACTIVATE_BADGES_BLOCK) && !/[?&]preview=badges\b/.test(location.search)) return; var r = get(); if (!r || r === last) return; last = r; var page = document.body && document.body.getAttribute('data-v2page');
     if (page === 'pet') { var id = +(new URLSearchParams(location.search).get('id') || 0), st = document.getElementById('stats'); if (!id || !st) return;
       var el = document.getElementById('petBadges'); if (!el) { el = document.createElement('div'); el.id = 'petBadges'; el.className = 'bdg-strip'; st.parentNode.insertBefore(el, st.nextSibling); } strip(el, r.byPet[id] || [], 'Badges'); return; }
     var panel = document.getElementById('petsPanel'), me = root.V2Mock && root.V2Mock.ME; if (!panel || !me) return;
