@@ -28,7 +28,7 @@
   function drawPets(w) { if (pets || !R() || !R().animate || !R().petFrames) return; var cvs = el.querySelectorAll('.fs-pet'); if (!cvs.length) return; pets = true;
     var list = (w.pets || []).filter(function (p) { return !p.dead && !p.released && !p.community && p.stage >= 1; }).slice(-40);
     [].forEach.call(cvs, function (cv, i) { var p = list[(i * 13) % Math.max(1, list.length)]; if (!p) return; try { R().animate(cv, R().petFrames(p, w)); } catch (e) { } }); }
-  function render(f) { var s = f.live || f.warning; if (!s) { if (el) { el.remove(); el = null; pets = false; siren(false); } return; } if (!el) build();
+  function render(f) { var s = f.live || f.warning, H = document.documentElement; if (s) H.setAttribute('data-fire', f.live ? 'live' : 'warn'); else H.removeAttribute('data-fire'); if (!s) { if (el) { el.remove(); el = null; pets = false; siren(false); } return; } if (!el) build();
     var live = !!f.live, left = live ? s.end - f.nextBlock + 1 : s.start - f.nextBlock + 1, key = (live ? 'L' : 'W') + s.arm;
     if (el.dataset.key !== key) { el.dataset.key = key; pets = false; var on = sirenOn();
       el.innerHTML = '<div class="fs-flames" aria-hidden="true">' + new Array(24).join('<i></i>') + '</div><div class="fs-body">' +

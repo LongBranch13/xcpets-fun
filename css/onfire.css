@@ -1,0 +1,20 @@
+/* Site on fire during a Fire Sale (js/v2-onfire.js). Overlays only: pointer-events none, nothing moves. */
+.fs-host{position:relative}
+.fs-burn{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;z-index:2}
+.fs-burn i{position:absolute;left:0;right:0;bottom:0;display:block;pointer-events:none}
+.fs-burn .fs-glow{top:0;background:radial-gradient(120% 60% at 50% 105%,rgba(255,120,30,.38),rgba(200,40,10,.12) 55%,transparent 75%);mix-blend-mode:screen}
+.fs-burn .fs-flames{height:24px;background:var(--fs-flame-a) repeat-x left bottom/32px 24px;image-rendering:pixelated;animation:fsFlick .5s steps(1) infinite}
+.fs-burn .fs-smoke{bottom:18px;height:16px;background:var(--fs-smoke) repeat-x 8px 0/48px 24px;image-rendering:pixelated;opacity:.6;animation:fsSmoke 3s steps(6) infinite}
+@keyframes fsFlick{0%{background-image:var(--fs-flame-a)}50%{background-image:var(--fs-flame-b)}}
+@keyframes fsSmoke{0%{transform:translateY(0);opacity:.6}100%{transform:translateY(-12px);opacity:0}}
+.navscene .fs-flames{height:12px;background-size:16px 12px}.navscene .fs-smoke,.navscene .fs-glow{display:none}
+html[data-fire="warn"] .fs-flames{display:none}
+html[data-fire="warn"] .fs-glow{background:radial-gradient(120% 40% at 50% 110%,rgba(255,110,30,.18),transparent 70%)}
+html[data-fire="warn"] .fs-smoke{bottom:0;opacity:.45}
+html[data-fire="warn"] .navscene .fs-burn{display:none}
+.fs-edge{position:fixed;left:0;right:0;bottom:0;height:90px;pointer-events:none;z-index:1;background:linear-gradient(to top,rgba(255,90,20,.22),rgba(255,60,10,.06) 60%,transparent)}
+html[data-fire="warn"] .fs-edge{height:50px;background:linear-gradient(to top,rgba(150,130,120,.18),transparent)}
+html:not([data-fire]) .fs-burn,html:not([data-fire]) .fs-edge{display:none}
+@media (max-width:600px){.fs-flames{height:16px;background-size:21px 16px}.fs-smoke{display:none}.fs-edge{height:60px}}
+@media (prefers-reduced-motion:reduce){.fs-flames,.fs-smoke{animation:none}}
+.scard .fs-burn .fs-flames{height:12px;background-size:16px 12px}.scard .fs-burn .fs-smoke{display:none}
