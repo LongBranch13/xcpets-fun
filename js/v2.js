@@ -375,8 +375,9 @@
   function goPet(id, e) { var u = 'pet.html?id=' + id; if (e && (e.ctrlKey || e.metaKey || e.button === 1)) window.open(u, '_blank'); else location.href = u; }
   /* P10: pet-page actions that need this page's burn flow (confirmPlans + wasted-burn guard) arrive as play.html#act-<feed|roll|froll|oroll>-ID;
    * the pet detail pop-up stays reachable as play.html#pet-ID ('More in the game' on the pet page) so nothing is lost. */
-  function actRoute() { var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false; history.replaceState(null, '', location.pathname + location.search);
-    var w = world(), p = w.byId[m[2]], a = m[1]; if (!p) return true; if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
+  function actRoute() { var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false;
+    var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
+    history.replaceState(null, '', location.pathname + location.search); if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
     if (a === 'feed') { if (p.mythicCare || !p.hungry) { toast('#' + p.id + (p.mythicCare ? ' is Mythic: no meals needed.' : ' is not hungry right now.')); return true; } confirmPlans('Feed #' + p.id, V.feedQueue(w, ME, [p.id])); }
     else if (a === 'froll') confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); else if (a === 'oroll') confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]);
     else confirmPlans('Gear roll #' + p.id, V.rollQueue(w, ME, [p.id], 1)); return true; }
