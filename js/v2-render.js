@@ -471,7 +471,7 @@
   function snapHP(r, g, b) { var best = HP[0], bd = 1e9; for (var i = 0; i < HP.length; i++) { var c = HP[i], dd = (c[0] - r) * (c[0] - r) + (c[1] - g) * (c[1] - g) + (c[2] - b) * (c[2] - b); if (dd < bd) { bd = dd; best = c; } } return best; }
   function hungerLook(fr, p, w, extra, days) { if (!days) return fr;
     var mp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), mk = petFrames0(mp, w, extra), t = days / 7;
-    return fr.map(function (f, fi) { var m = (mk[fi] || mk[0]).data, s = f.data, d = new Uint8ClampedArray(s), /* wiz-black-fix 2026-10-21: always a 4,096-byte typed copy (WizardSprite/KekSprite frames are plain arrays; new Array(arr) gave a 1-item array) */ o = Object.assign({}, f, { data: d }), i, x, y, minX = 32, maxX = -1, minY = 32, sil = [];
+    return fr.map(function (f, fi) { var m = (mk[fi] || mk[0]).data, s = f.data, d = Array.isArray(s) ? s.slice() : new s.constructor(s) /* wiz-show-fix 2026-10-21: WizardSprite/KekSprite frames carry a plain Array; new Array(arr) made a 1-element array (blank sprite + ImageData error on hungry Wizards) */, o = Object.assign({}, f, { data: d }), i, x, y, minX = 32, maxX = -1, minY = 32, sil = [];
       var isS = function (q) { return !(m[q] === 255 && m[q + 1] === 0 && m[q + 2] === 254); };
       for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { i = (y * 32 + x) * 4; if (!isS(i)) continue; sil.push(i); if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; }
       var de = Math.min(0.8, 0.12 + t * 0.7), gr = Math.max(0, t - 0.15) * 0.45, dim = days >= 5 ? (days - 4) * 0.07 : 0;
