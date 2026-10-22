@@ -19,7 +19,12 @@
       ? '<b>👑 A new era</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half' + (h.era > 1 ? ' again' : '') + '.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'
       : '<b>⚔️ Lord Kek has been defeated</b> <span>From block ' + fmt(h.next) + ' (' + left + ' block' + (left === 1 ? '' : 's') + ' away) every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'; }
   function labels() { if (!V.COSTS || !V.COSTS.era) return; var C = V.COSTS, set = function (id, t) { var b = document.getElementById(id); if (b && b.textContent !== t) b.textContent = t; };
-    set('hatchBtn', 'Hatch (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Dozen ×12 (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Case ×144 (' + fmt(C.hatch144) + ')'); set('bGo', '🛎️ Check in · ' + fmt(C.breed)); }
+    set('hatchBtn', 'Hatch (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Dozen ×12 (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Case ×144 (' + fmt(C.hatch144) + ')'); set('bGo', '🛎️ Check in · ' + fmt(C.breed));
+    /* community feed choices halve too (owner Oct 22 2026): relabel the 69 / 690 / 6,900 buttons and keep the chosen amount in step */
+    var q = C.cquick || [], bs = document.querySelectorAll('[data-camt]'), ca = document.getElementById('cAmt'), on = null;
+    [].forEach.call(bs, function (b, i) { if (!b.dataset.cbase) b.dataset.cbase = b.dataset.camt; var j = [69, 690, 6900].indexOf(+b.dataset.cbase); if (j < 0 || q[j] == null) return; var v = String(q[j]); if (b.dataset.camt !== v) { b.dataset.camt = v; b.textContent = fmt(q[j]); } if (b.classList.contains('on')) on = v; });
+    if (ca && on != null && ca.value !== on) ca.value = on; var cf = document.getElementById('cfeedBtn'); if (cf && ca && /\(/.test(cf.textContent)) set('cfeedBtn', 'Feed community (' + fmt(ca.value) + ')');
+    var cr = document.getElementById('crollBtn'); if (cr && /\(/.test(cr.textContent)) set('crollBtn', 'Community gear roll (' + fmt(C.croll) + ')'); }
   function tick() { if (document.getElementById('v2boot') || !(M.state().rows || []).length) return; /* wait for the page's own boot; never trigger a replay */ try { var h = info(); ribbon(h); labels(); } catch (e) { } }
   function start() { tick(); setInterval(tick, 3000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
