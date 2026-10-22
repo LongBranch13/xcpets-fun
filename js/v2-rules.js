@@ -1218,6 +1218,7 @@
     var M = CA.s.slice(); (feat || []).forEach(function (q) { M[q] = true; }); var touched = {};
     var col = function (j) { return [img.data[j * 4], img.data[j * 4 + 1], img.data[j * 4 + 2]]; };
     var skinCount = {}; for (var j0 = 0; j0 < 1024; j0++) if (CA.s[j0] && ck.keys[j0] === 'body') { var c0 = col(j0).join(','); skinCount[c0] = (skinCount[c0] || 0) + 1; }
+    if (!Object.keys(skinCount).length) for (var j9 = 0; j9 < 1024; j9++) if (CA.s[j9] && ck.keys[j9] !== 'ink' && !EYE_KEYS[ck.keys[j9]] && ck.keys[j9] !== 'mouth') { var c9 = col(j9).join(','); skinCount[c9] = (skinCount[c9] || 0) + 1; } /* no 'body' key (Nakamoto): the commonest face colour */
     var skin = (Object.keys(skinCount).sort(function (p, q) { return skinCount[q] - skinCount[p]; })[0] || '').split(',').map(Number);
     var isBgK = function (j) { return kS.data[j * 4] === 255 && kS.data[j * 4 + 1] === 0 && kS.data[j * 4 + 2] === 255; };
     var set = function (j, c) { img.data[j * 4] = c[0]; img.data[j * 4 + 1] = c[1]; img.data[j * 4 + 2] = c[2]; img.data[j * 4 + 3] = 255; };
@@ -1227,8 +1228,15 @@
     var paste = function (D, kF, pairs) { pairs.forEach(function (p) { var x = p.t & 31, y = p.t >> 5; if (p.t < 0 || p.t >= 1024 || x < 0 || y >= GROUND_ROW) return; M[p.t] = true; touched[p.t] = 1; set(p.t, [kF.data[p.s * 4], kF.data[p.s * 4 + 1], kF.data[p.s * 4 + 2]]); painted.push(p.t); }); };
     var shift = function (pairs, dx, dy) { return pairs.filter(function (p) { var x = (p.t & 31) + dx; return x >= 0 && x < 32; }).map(function (p) { return { t: p.t + dy * 32 + dx, s: p.s }; }); };
     var clampK = function (k, lo, hi) { return Math.max(lo, Math.min(hi, k)); };
+    var faceOf = function () { if (!CA.mouthBox) return 0; var mb = CA.mouthBox, tx = (mb.l + mb.r) / 2, rr = runsOf(CA.s, Math.round((mb.t + mb.b) / 2)); if (!rr.length) return 0; var c0 = (rr[0][0] + rr[rr.length - 1][1]) / 2, hw = (rr[rr.length - 1][1] - rr[0][0]) / 2; return Math.abs(tx - c0) < hw * 0.35 ? 0 : tx < c0 ? -1 : 1; }, facing = faceOf(); /* where the child's own mouth is: 0 = front, -1 = left (Doge), 1 = right (Dodo) */
     var stg = o.stage == null ? 3 : o.stage, mg = stg >= 4 ? 3 : 2; /* frame margin: the part + its ink outline (+ the Elder/Mythic rim) stay inside the frame */
-    (h.parts || []).forEach(function (q) { var def = partDef(q.sp, q.part); if (!def) return;
+    /* a head-top or ear part in (nearly) the child's own colour gets contrast: a darker inside and an ink line where it meets the head */
+    var contrastPart = function (L) { if (!L.length || skin.length !== 3) return; var on = {}; L.forEach(function (t) { on[t] = 1; });
+      var near = L.filter(function (t) { return Math.abs(img.data[t * 4] - skin[0]) + Math.abs(img.data[t * 4 + 1] - skin[1]) + Math.abs(img.data[t * 4 + 2] - skin[2]) < 90; }); if (near.length < L.length * 0.25) return;
+      near.forEach(function (t) { var inner = [t - 1, t + 1, t - 32, t + 32].every(function (n) { return n >= 0 && n < 1024 && M[n]; }) ; if (inner) set(t, shadeRgb([img.data[t * 4], img.data[t * 4 + 1], img.data[t * 4 + 2]], 0.62)); });
+      L.forEach(function (t) { var n = t + 32; if (n < 1024 && !on[n] && M[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); };
+    (h.parts || []).forEach(function (q) { var p0 = painted.length, kd0 = (partDef(q.sp, q.part) || {}).kind; placeOne(q); var df0 = partDef(q.sp, q.part) || {}; if ((kd0 === 'top' || kd0 === 'ears') && !df0.draw && !df0.keep) contrastPart(painted.slice(p0)); });
+    function placeOne(q) { var def = partDef(q.sp, q.part); if (!def) return;
       /* young pets take the donor's ADULT part, scaled to their size, so hatchlings show a readable part too */
       var kF = keyedRender(q.sp, art, stg <= 2 ? Object.assign({}, o, { stage: 3 }) : o), DA = anatomy(kF.keys); if (DA.bb.b < 0) return; if (kF.parts) Object.assign(DA, kF.parts);
       var D = DA[def.kind] || [], small = CA.bb.h < 15, kAd = stg <= 2 && !def.draw ? clampK(CA.bb.h / DA.bb.h * 1.1, 0.55, 1) : 1;
@@ -1243,7 +1251,7 @@
         var headW = function (y) { var r = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, y))); return r.length ? r[r.length - 1][1] - r[0][0] + 1 : sb.w; };
         var k = kind === 'hair' ? clampK(headW(sb.t + 2) / Math.max(1, headW.call(null, sb.t + 2) && DA.bb.w), 0.7, 1.25) : 1;
         var hB = CA.headBox || sb; if (kind === 'hair') k = clampK((hB.w) / DA.bb.w, 0.7, 1.25);
-        if (kind === 'mouth' && kAd < 1) k = kAd;
+        if (kind === 'mouth' && kAd < 1) k = kAd; if (kind === 'mouth' && facing !== 0 && stg >= 3 && !def.draw) k = 1.35; /* a beak in profile needs some size to read */
         if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
         pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
         if (kind === 'hair') { dx = Math.round((hB.l + hB.r) / 2 - (pb.l + pb.r) / 2); dy = Math.max(mg - pb.t, hB.t - pb.t); }
@@ -1251,7 +1259,7 @@
           dx = Math.round(tx - (dm.l + dm.r) / 2); dy = Math.round(ty - (dm.t + dm.b) / 2);
           /* a mouth part that sticks out of the donor's head (a beak) sticks out of the child's head the same way, from the same side */
           var my = Math.round((dm.t + dm.b) / 2), hR = -1, hL = 99, Don = {}; D.forEach(function (q) { Don[q] = 1; }); for (var x5 = 0; x5 < 32; x5++) { var j5 = my * 32 + x5; if (DA.s[j5] && !Don[j5]) { hL = Math.min(hL, x5); hR = Math.max(hR, x5); } }
-          var front = !!cb && (function () { var rr = runsOf(CA.s, Math.round(ty)); if (!rr.length) return false; var c0 = (rr[0][0] + rr[rr.length - 1][1]) / 2, hw = (rr[rr.length - 1][1] - rr[0][0]) / 2; return Math.abs(tx - c0) < hw * 0.35; })();
+          var front = facing === 0 && !!cb && (function () { var rr = runsOf(CA.s, Math.round(ty)); if (!rr.length) return false; var c0 = (rr[0][0] + rr[rr.length - 1][1]) / 2, hw = (rr[rr.length - 1][1] - rr[0][0]) / 2; return Math.abs(tx - c0) < hw * 0.35; })();
           /* a front-facing pet gets the part right on its own mouth; a side-facing one gets it sticking out of the face edge */
           if (front && def.front) { /* front-facing pet: the beak seen from the front (a drawing in the donor's beak colours), right on its mouth */
             var accL = D.filter(function (q) { return kF.keys[q] === 'accent'; }), A3 = topColour(kF.data, accL.length ? accL : D), rowsF = CA.bb.h < 15 ? def.front.small : def.front.big, fw = rowsF[0].length, x0 = Math.round(tx - (fw - 1) / 2), y0 = Math.round(ty) - 1, fOn = {}, fL = [];
@@ -1259,7 +1267,12 @@
             rowsF.forEach(function (r, yy) { for (var xx = 0; xx < fw; xx++) { var ch = r[xx]; if (ch === '.') continue; var t = (y0 + yy) * 32 + x0 + xx; if (t < 0 || t >= 1024) continue; fOn[t] = 1; fL.push(t); M[t] = true; touched[t] = 1; set(t, fpal[ch]); painted.push(t); } });
             fL.forEach(function (t) { [t + 1, t - 1, t + 32, t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !fOn[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); }); return; }
           if (front) { dx = Math.round(tx - (pb.l + pb.r) / 2); dy = Math.round(ty - (pb.t + pb.b) / 2); }
-          else if (db.r > hR + 1 || db.l < hL - 1) { var side = db.r - hR >= hL - db.l ? 1 : -1, cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce + Math.round((db.r - hR) * k) - pb.r : ce - Math.round((hL - db.l) * k) - pb.l; dy = cy0 - Math.round((pb.t + pb.b) / 2); } } dx = Math.max(mg - pb.l, Math.min(31 - mg - pb.r, dx)); }
+          else if (db.r > hR + 1 || db.l < hL - 1) { var dside = db.r - hR >= hL - db.l ? 1 : -1, side = facing || dside, L0 = Math.round((dside > 0 ? db.r - hR : hL - db.l) * k);
+            /* the part points the way the CHILD faces: mirrored when the donor faces the other way (Dodo's beak on Doge points left) */
+            if (side !== dside) pairs = pairs.map(function (p) { var x = p.t & 31; return { t: p.t - x + (pb.l + pb.r - x), s: p.s }; });
+            var cy0 = Math.round(ty), ce = edgeAt(CA.s, Math.max(sb.t, Math.min(sb.b, cy0)), side); if (ce >= 0) { dx = side > 0 ? ce + L0 - pb.r : ce - L0 - pb.l; dy = cy0 - Math.round((pb.t + pb.b) / 2);
+              var touches = function () { return pairs.some(function (p) { var t = p.t + dy * 32 + dx; return [t - 1, t + 1, t - 32, t + 32].some(function (n) { return n >= 0 && n < 1024 && M[n]; }) || M[t]; }); };
+              for (var tries = 0; tries < 5 && !touches(); tries++) dx -= side; /* never float off the face */ } } dx = Math.max(mg - pb.l, Math.min(31 - mg - pb.r, dx)); }
         else { var ex = cb ? (cb.l + cb.r) / 2 : (sb.l + sb.r) / 2, ey = cb ? (cb.b) : sb.t + sb.h * 0.4, eb2 = bbList(pairs.filter(function (p) { return !DA.eyeDomes || DA.eyeDomes.indexOf(p.s) < 0; }).map(function (p) { return p.t; }).concat([pb.l + pb.b * 32]));
           dx = Math.round(ex - (pb.l + pb.r) / 2); dy = Math.round(ey - eb2.b); }
         var sh2 = shift(pairs, dx, dy); paste(D, kF, sh2);
@@ -1269,9 +1282,10 @@
       if (kind === 'top' && CA.topSkin) { var tw = {}; (CA.top || []).forEach(function (q) { tw[q >> 5] = (tw[q >> 5] || 0) + 1; }); erase((CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }), false); erase((CA.top || []).filter(function (q) { return tw[q >> 5] < 5; }), true);
         var capT = Math.min.apply(null, (CA.top || []).filter(function (q) { return tw[q >> 5] >= 5; }).map(function (q) { return q >> 5; }).concat([99])), stray = []; for (var js0 = 0; js0 < capT * 32; js0++) if (CA.s[js0]) stray.push(js0); erase(stray, true); }
       else erase(CA[kind] || [], true);
-      if (kind === 'top') { var Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
+      if (kind === 'top') { var eyeCap = CA.eyeBox ? CA.eyeBox.t - 2 : 99, Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
         var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = CA.headBox ? [CA.headBox.l, CA.headBox.r] : (function () { var best = null; for (var y = Mb.t + 1; y <= Mb.t + Math.max(2, Math.round(Mb.h * 0.3)); y++) { var w2 = wAt(M, y); if (w2) (best = best || []).push(w2); } if (!best) return null; best.sort(function (a, b) { return (a[1] - a[0]) - (b[1] - b[0]); }); var md = best[best.length >> 1]; return CA.core ? [Math.max(md[0], CA.core[0] - 1), Math.min(md[1], CA.core[1] + 1)] : md; })() || [Mb.l, Mb.r];
-        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; var fitT = Math.min(1, (Mb.t + 2 - mg) / bt.h, (32 - 2 * mg) / bt.w); if (fitT < 1) { kt *= Math.max(0.45, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */ }));
+        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; var fitT = Math.min(1, Math.max(Mb.t + 2 - mg, eyeCap - 1) / bt.h, (32 - 2 * mg) / bt.w); /* fits between the frame top and just above the eyes */ if (fitT < 1) { kt *= Math.max(0.35, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */
+        if (pt.length > 12) { var onP = {}, seenP = {}, keepP = []; pt.forEach(function (p) { onP[p.t] = p; }); pt.forEach(function (p) { if (seenP[p.t]) return; var comp = [], st = [p.t]; seenP[p.t] = 1; while (st.length) { var c = st.pop(); comp.push(onP[c]); for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) { var nb = c + ddy * 32 + ddx; if (onP[nb] && !seenP[nb] && Math.abs((nb & 31) - (c & 31)) <= 1) { seenP[nb] = 1; st.push(nb); } } } if (comp.length > 2) keepP = keepP.concat(comp); }); pt = keepP; bt = bbList(pt.map(function (p) { return p.t; })); } /* scaling left a stray pixel or two: drop them */ }));
         var dc = (dRow[0] + dRow[1]) / 2, cc = (cRow[0] + cRow[1]) / 2; dx = Math.round(cc - (dc + ((bt.l + bt.r) / 2 - (db.l + db.r) / 2))); dx = Math.round(cc - dc); dy = Mb.t + 1 - bt.b;
         dx = Math.max(mg - bt.l, Math.min(31 - mg - bt.r, dx)); dy = Math.max(-bt.t, dy);
         /* never bury the part inside the child's head (e.g. over Pepe's eye domes): lift it until most of it shows */
@@ -1294,7 +1308,7 @@
           if (Cp.length) { var cb2 = bbList(Cp.map(function (p) { return p.t; })), yC = -1; for (var y5 = 0; y5 < GROUND_ROW; y5++) if (M[y5 * 32 + Math.round((cb2.l + cb2.r) / 2) + dx]) { yC = y5; break; }
             var d3 = yC < 0 ? dy : yC + 1 - cb2.b; paste(D, kF, shift(Cp, dx, Math.max(mg - cb2.t, d3))); }
           return; }
-        dy = Math.max(mg - bt.t, dy); paste(D, kF, shift(pt, dx, dy)); return; }
+        dy = Math.max(2 - bt.t, Math.min(dy, eyeCap - bt.b)); paste(D, kF, shift(pt, dx, dy)); return; }
       [-1, 1].forEach(function (sd) { var cx = (DA.bb.l + DA.bb.r) / 2, js = D.filter(function (j) { return ((j & 31) < cx ? -1 : 1) === sd; }); if (!js.length || (kind === 'tail' && sd > 0)) return;
         var jb = bbList(js);
         var k2 = def.draw ? 1 : clampK(sb.h / DA.bb.h, kind === 'tail' && stg > 2 ? 1 : 0.55, 1.35), pad = kind === 'tail' ? 2 : 1;
@@ -1304,7 +1318,7 @@
           se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(Math.max(pad, mg) - b2.l, Math.min(31 - Math.max(pad, mg) - b2.r, dx)); }
         var sp2 = shift(pr, dx, dy); if (kind === 'tail') { var tOn = {}; sp2.forEach(function (p) { tOn[p.t] = 1; }); var wasBody = sp2.filter(function (p) { return M[p.t]; }).length;
           paste(js, kF, sp2); if (wasBody) sp2.forEach(function (p) { [p.t + 1, p.t + 32, p.t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !tOn[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); }); return; } /* a tail in front of a wide body gets its own ink outline */
-        paste(js, kF, sp2); }); });
+        paste(js, kF, sp2); }); }
     /* outline round the new silhouette, only where something changed */
     var near = {}; Object.keys(touched).forEach(function (t) { t = +t; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var x = (t & 31) + dx, y = (t >> 5) + dy; if (x >= 0 && y >= 0 && x < 32 && y < GROUND_ROW) near[y * 32 + x] = 1; } });
     Object.keys(near).forEach(function (n) { n = +n; if (M[n]) return; var x = n & 31, adj = [n - 32, n + 32, x > 0 ? n - 1 : -1, x < 31 ? n + 1 : -1].some(function (a) { return a >= 0 && a < 1024 && M[a]; }); set(n, adj ? INK : bgAt(n)); });
@@ -1480,18 +1494,20 @@
     return fr.map(function (f, fi) { var m = (kf[fi] || kf[0]).data, d = Array.isArray(f.data) ? f.data.slice() : new f.data.constructor(f.data), sil = [], bb = { t: 32, b: -1, l: 32, r: -1 };
       for (var j = 0; j < 1024; j++) { sil[j] = !(m[j * 4] === 255 && m[j * 4 + 1] === 0 && m[j * 4 + 2] === 254) && (j >> 5) < GROUND_ROW; if (sil[j]) { var x = j & 31, y = j >> 5; bb.t = Math.min(bb.t, y); bb.b = Math.max(bb.b, y); bb.l = Math.min(bb.l, x); bb.r = Math.max(bb.r, x); } }
       var ink = function (j) { return d[j * 4] + d[j * 4 + 1] + d[j * 4 + 2] < 110; }, set = function (j, c) { d[j * 4] = c[0]; d[j * 4 + 1] = c[1]; d[j * 4 + 2] = c[2]; };
-      var M = p.mutation; if (M && M.kind === 'palette') { var a = M.hue * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+      var M = p.mutation; if (M && M.kind === 'palette') { var a = (100 + (M.hue - 60) % 160) * Math.PI / 180, /* always a big hue jump */ cs = Math.cos(a), sn = Math.sin(a);
         var H = [0.213 + cs * 0.787 - sn * 0.213, 0.715 - cs * 0.715 - sn * 0.715, 0.072 - cs * 0.072 + sn * 0.928, 0.213 - cs * 0.213 + sn * 0.143, 0.715 + cs * 0.285 + sn * 0.140, 0.072 - cs * 0.072 - sn * 0.283, 0.213 - cs * 0.213 - sn * 0.787, 0.715 - cs * 0.715 + sn * 0.715, 0.072 + cs * 0.928 + sn * 0.072];
         for (var j1 = 0; j1 < 1024; j1++) if (sil[j1] && !ink(j1)) { var r = d[j1 * 4], g = d[j1 * 4 + 1], b = d[j1 * 4 + 2], cl = function (v) { return Math.max(0, Math.min(255, Math.round(v))); };
-          set(j1, [cl(H[0] * r + H[1] * g + H[2] * b), cl(H[3] * r + H[4] * g + H[5] * b), cl(H[6] * r + H[7] * g + H[8] * b)]); } }
+          var nr = H[0] * r + H[1] * g + H[2] * b, ng = H[3] * r + H[4] * g + H[5] * b, nb = H[6] * r + H[7] * g + H[8] * b, gy = (nr + ng + nb) / 3; /* and a saturation boost so it reads at a glance */
+          set(j1, [cl(gy + (nr - gy) * 1.8 + 8), cl(gy + (ng - gy) * 1.8 + 8), cl(gy + (nb - gy) * 1.8 + 8)]); } }
       if (M && M.kind === 'glitch') { var src = d.slice ? d.slice() : new d.constructor(d), R = stream('XCPETS:v2:glitch:' + M.seed + ':' + fi);
-        for (var y1 = bb.t; y1 <= bb.b; y1++) { var sh = R() % 5 === 0 ? (R() % 2 ? 2 : -2) : 0; if (!sh) continue; for (var x1 = 0; x1 < 32; x1++) { var sx = x1 - sh; if (sx < 0 || sx > 31) continue; var t = y1 * 32 + x1, q = y1 * 32 + sx; if (!sil[q] && !sil[t]) continue; for (var c = 0; c < 3; c++) d[t * 4 + c] = src[q * 4 + c]; } }
-        for (var j2 = 0; j2 < 1024; j2++) if (sil[j2] && (j2 & 31) === bb.l) set(j2, [0, 240, 255]); else if (sil[j2] && (j2 & 31) === bb.r) set(j2, [255, 40, 200]); }
+        for (var y1 = bb.t; y1 <= bb.b; y1++) { if ((y1 - bb.t) % 2) { var sh = sh0; } else { var sh0 = R() % 3 === 0 ? (R() % 2 ? 3 : -3) : 0, sh = sh0; } /* 2-row slices, 1 in 3, 3 px */ if (!sh) continue; for (var x1 = 0; x1 < 32; x1++) { var sx = x1 - sh; if (sx < 0 || sx > 31) continue; var t = y1 * 32 + x1, q = y1 * 32 + sx; if (!sil[q] && !sil[t]) continue; for (var c = 0; c < 3; c++) d[t * 4 + c] = src[q * 4 + c]; } }
+        for (var j2 = 0; j2 < 1024; j2++) if (sil[j2] && (j2 & 31) <= bb.l + 1) set(j2, [0, 240, 255]); else if (sil[j2] && (j2 & 31) >= bb.r - 1) set(j2, [255, 40, 200]); }
       var T = p.shows, h = bb.b - bb.t + 1;
-      if (T === 'frost') for (var j3 = 0; j3 < 1024; j3++) { if (!sil[j3] || ink(j3) || (j3 >> 5) > bb.t + Math.max(2, Math.round(h * 0.18))) continue; set(j3, [Math.round(d[j3 * 4] * 0.4 + 150), Math.round(d[j3 * 4 + 1] * 0.4 + 160), Math.round(d[j3 * 4 + 2] * 0.4 + 170)]); }
-      if (T === 'socks') for (var j4 = 0; j4 < 1024; j4++) { if (!sil[j4] || ink(j4) || (j4 >> 5) < bb.b - Math.max(2, Math.round(h * 0.15))) continue; set(j4, [Math.round(d[j4 * 4] * 0.35), Math.round(d[j4 * 4 + 1] * 0.3), Math.round(d[j4 * 4 + 2] * 0.45)]); }
-      if (T === 'freckles') { var fy = bb.t + Math.round(h * 0.55), cx = Math.round((bb.l + bb.r) / 2), w2 = Math.round((bb.r - bb.l) * 0.28);
-        [[cx - w2, fy], [cx - w2 + 2, fy + 1], [cx - w2 - 1, fy + 1], [cx + w2, fy], [cx + w2 - 2, fy + 1], [cx + w2 + 1, fy + 1]].forEach(function (q) { var jj = q[1] * 32 + q[0]; if (q[0] >= 0 && q[0] < 32 && sil[jj] && !ink(jj)) set(jj, [255, 214, 90]); }); }
+      if (T === 'frost') for (var j3 = 0; j3 < 1024; j3++) { if (!sil[j3] || ink(j3) || (j3 >> 5) > bb.t + Math.max(3, Math.round(h * 0.34))) continue; var tip = (j3 >> 5) <= bb.t + Math.max(1, Math.round(h * 0.12)); set(j3, tip ? [235, 248, 255] : [Math.round(d[j3 * 4] * 0.25 + 175), Math.round(d[j3 * 4 + 1] * 0.25 + 195), Math.round(d[j3 * 4 + 2] * 0.25 + 215)]); }
+      if (T === 'socks') for (var j4 = 0; j4 < 1024; j4++) { if (!sil[j4] || ink(j4) || (j4 >> 5) < bb.b - Math.max(3, Math.round(h * 0.28))) continue; var cuff = (j4 >> 5) === bb.b - Math.max(3, Math.round(h * 0.28)); set(j4, cuff ? [200, 160, 255] : (j4 & 31) % 3 === 0 ? [95, 60, 140] : [Math.round(d[j4 * 4] * 0.12 + 55), Math.round(d[j4 * 4 + 1] * 0.1 + 28), Math.round(d[j4 * 4 + 2] * 0.15 + 95)]); } /* deep purple socks with ribbing and a bright cuff */
+      if (T === 'freckles') { var fy = bb.t + Math.round(h * 0.5), cx = Math.round((bb.l + bb.r) / 2), w2 = Math.round((bb.r - bb.l) * 0.28);
+        /* bright 4-point stars: two on each cheek and one on the belly */
+        [[cx - w2, fy], [cx - w2 + 3, fy + 3], [cx + w2, fy], [cx + w2 - 3, fy + 3], [cx, fy + Math.round(h * 0.25)]].forEach(function (c0) { [[0, 0, 1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]].forEach(function (o2) { var x = c0[0] + o2[0], y = c0[1] + o2[1], jj = y * 32 + x; if (x >= 0 && x < 32 && y >= 0 && y < 32 && sil[jj] && !ink(jj)) set(jj, o2[2] ? [255, 255, 220] : [255, 205, 40]); }); }); }
       return Object.assign({}, f, { data: d }); }); }
   function breedOne(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
