@@ -85,7 +85,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=96d56a018c'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=4e867c8700'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -117,7 +117,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=96d56a018c'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=4e867c8700'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -140,7 +140,7 @@
   /* P10/P11 (owner 2026-10-21): the owner's actions on the pet page. Burns (Feed, Roll for gear, Free roll, Overflow roll) open the game's own confirm +
    * wasted-burn guard via play.html#act-<a>-ID; ⭐ Keep toggles the same localStorage list as My Pets; 'More in the game' opens the full pet panel.
    * P11: a Mythic pet shows no Feed (Mythics are never fed) and, while MYTHIC_ROLL_OFF is on, no Roll for gear (gear rolling stays in the Lair:
-   * 'Roll gear · pick pet'; a future Captain Dan gear place will take it over). */
+   * 'Roll gear · pick pet'; the Rare Room took it over). */
   var MYTHIC_ROLL_OFF = true;
   function keepKey() { var N = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo'); return 'xcpets-keep-' + N + '-' + (ME || ''); }
   function kept(id) { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').indexOf(Number(id)) >= 0; } catch (e) { return false; } }
