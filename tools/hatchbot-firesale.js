@@ -8,8 +8,8 @@
 const DEFAULT = { enabled: false, token: null, chat: null };
 function messages(sale, tip) { if (!sale) return null; const n = x => Number(x).toLocaleString('en-US');
   return {
-    warning: { key: 'firesale-warn-' + sale.arm, at: sale.arm, text: '🚨 FIRE SALE INCOMING 🚨\nStarts at block ' + n(sale.start) + ' (about an hour). For 36 blocks every burn is 69% off and meals are half off: hatch, spin, feed, fight, breed.\nxcpets.fun/play.html' },
-    start: { key: 'firesale-start-' + sale.arm, at: sale.start, text: '🔥🔥 FIRE SALE IS ON 🔥🔥\nEVERYTHING MUST BURN! Every burn is 69% off and meals are half off until block ' + n(sale.end) + '.\nxcpets.fun/play.html' } }; }
+    warning: { key: 'firesale-warn-' + sale.arm, at: sale.arm, text: '🚨 FIRE SALE INCOMING 🚨\nStarts at block ' + n(sale.start) + ' (about an hour). For 36 blocks every burn is 69% off: hatch, spin, meals, community feeding, fight, breed.\nxcpets.fun/play.html' },
+    start: { key: 'firesale-start-' + sale.arm, at: sale.start, text: '🔥🔥 FIRE SALE IS ON 🔥🔥\nEVERYTHING MUST BURN! Every burn is 69% off (meals and community feeding too) until block ' + n(sale.end) + '.\nxcpets.fun/play.html' } }; }
 /** due(fireInfo, posted) -> the messages whose block has come and that weren't posted yet (posted = set of keys). */
 function due(fi, posted, tip) { const out = []; (fi.sales || []).slice(-2).forEach(s => { const m = messages(s); [m.warning, m.start].forEach(x => { if (tip >= x.at && tip < s.end && !(posted && posted.has(x.key))) out.push(x); }); }); return out; }
 async function send(text, cfg) { cfg = Object.assign({}, DEFAULT, cfg || {}); if (cfg.enabled !== true || !cfg.token || !cfg.chat) return { sent: false, reason: 'disabled' };
