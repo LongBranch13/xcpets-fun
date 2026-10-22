@@ -85,7 +85,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=KEEPID'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=5aa5f3efb0'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -117,7 +117,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=KEEPID'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=5aa5f3efb0'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -235,7 +235,7 @@
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
     var inWeek = function (b) { return b != null && b > tip - WEEK; };
     var BOARDS = [
-      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Stage first, then feed streak, then care (XCPETS fed). Best cared for at the top.', pets: true },
+      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Daily WAGMI check-in streaks: say WAGMI once a chain day (pet:wagmi, 1 sat; feeding does not count). Longest live streak at the top, then best ever. Missed a whole chain day? NGMI, see you at the bottom.', players: true },
       { id: 'pets', label: 'Most pets', note: 'Living pets owned.', players: true, week: true },
       { id: 'power', label: 'Most powerful', note: 'Power = Vigor + Spark + Grit + Zoom + Luck. Players: their single strongest pet.', pets: true, players: true },
       { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet.', players: true, week: true },
@@ -259,6 +259,10 @@
       return L.map(function (r) { return { p: r.p, score: fmt(r.v) + (B.id === 'power' ? ' power' : ' win' + (r.v === 1 ? '' : 's')), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : '' }; }); }
     function playerRows(B, wk) { var m = {}, best = {};
       function add(o, v, p) { m[o] = (m[o] || 0) + v; if (p && (!best[o] || p.tier > best[o].tier || (p.tier === best[o].tier && p.stage > best[o].stage))) best[o] = p; }
+      if (B.id === 'wagmi') { var WA = (w.wagmi || {}), ow = Object.keys(WA).map(function (o) { return { o: o, s: V.streakOf(w, o, tip) }; }).filter(function (x) { return x.s.days > 0; });
+        live.forEach(function (p) { if (!best[p.owner] || p.tier > best[p.owner].tier || (p.tier === best[p.owner].tier && p.stage > best[p.owner].stage)) best[p.owner] = p; });
+        ow.sort(function (a, b) { return b.s.current - a.s.current || b.s.best - a.s.best || b.s.days - a.s.days || (a.o < b.o ? -1 : 1); });
+        return ow.map(function (x) { return { owner: x.o, p: best[x.o] || null, score: x.s.current ? '🔥 ' + x.s.current + '-day WAGMI' : '<span class="badge bad">💀 NGMI</span>', sub: 'best ' + x.s.best + ' · ' + x.s.days + ' day' + (x.s.days === 1 ? '' : 's') + ' said' + (x.s.today ? ' · ✓ today' : '') }; }); }
       if (B.id === 'burn') Object.keys(wk ? burnedWk : burned).forEach(function (o) { add(o, (wk ? burnedWk : burned)[o]); });
       live.forEach(function (p) { var fresh = !wk || inWeek(p.hatchBlock);
         if (B.id === 'pets' && fresh) add(p.owner, 1, p);
@@ -287,7 +291,7 @@
       var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
       var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '') + hmore;
       var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
-      $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">Nobody on this board yet.</p>');
+      $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.') + '</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
       $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = STEP; st.hits = null; st.all = null; render(); }; });
@@ -363,7 +367,7 @@
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
-      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, (V.streakOf ? (function (st) { return '🔥 ' + st.current + '-day streak (owner, best ' + st.best + ')'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip)), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
+      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName, (V.streakOf ? (function (st) { return st.state === 'wagmi' ? '🚀 owner WAGMI ' + st.current + '-day streak' : st.state === 'ngmi' ? '💀 owner NGMI (best ' + st.best + ')' : '🚀 owner: no WAGMI yet'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip)), '🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)].map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
       if (window.V2Rivals) { var rvEl = $('rivals'); if (!rvEl) { rvEl = document.createElement('div'); rvEl.id = 'rivals'; $('chips').parentNode.insertBefore(rvEl, $('chips').nextSibling); } rvEl.innerHTML = V2Rivals.strip(w, p.id, function (fid) { return 'play.html#replay-' + fid; }); } /* rivals strip (battle-arena DRAFT, off-chain) */
       $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic discount)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +

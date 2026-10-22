@@ -1,7 +1,6 @@
 /* XCPETS Pet Score (owner approved 2026-10-19 5:52 PM CT). Display only: a deterministic 0-1000 score computed off-chain from the replayed
  * world. No rule change, nothing on chain, separate from the hatch tier. Pure function of the world: PetScore.compute(w) ->
  * { tip, n, byId: { id: { score, rank, percentile, top, dead, breakdown } } }. The community pet (Bitcoin Wizard) and released pets are not ranked.
- * Growth = 85% feeding progress toward Mythic + 15% owner wallet check-in streak (cap 7 days).
  * Weights: Stats 30, Looks 20, Growth 15, Gear 15, Battles 10, Scarcity 10. Works in the browser (window.PetScore) and in Node (module.exports). */
 (function (root) {
   'use strict';
@@ -17,10 +16,7 @@
   function pctMap(vals) { var n = vals.length, idx = vals.map(function (v, i) { return i; }).sort(function (a, b) { return vals[a] - vals[b]; }), out = new Array(n), i = 0;
     while (i < n) { var j = i; while (j + 1 < n && vals[idx[j + 1]] === vals[idx[i]]) j++; var pc = n === 1 ? 0.5 : ((i + j) / 2) / (n - 1); for (var k = i; k <= j; k++) out[idx[k]] = pc; i = j + 1; }
     return out; }
-  /* Growth streak (DRAFT 2026-10-19, login-streak branch): the OWNER WALLET's current daily check-in streak (any valid game burn that chain day,
-   * or the 1-sat pet:checkin), capped at 7, replaces the old per-pet feed streak. Same 144-block chain day as feeding. */
-  function streak(w, p, tip, V) { if (V && V.streakOf && w.checkins) return V.streakOf(w, p.owner, tip).current;
-    var fd = p.feedDays || {}, d = Math.floor(tip / BPD); if (!fd[d]) d--; var n = 0; while (fd[d]) { n++; d--; } return n; }
+  function streak(p, tip) { var fd = p.feedDays || {}, d = Math.floor(tip / BPD); if (!fd[d]) d--; var n = 0; while (fd[d]) { n++; d--; } return n; }
   function compute(w, opt) {
     opt = opt || {}; var V = opt.rules || root.V2Rules, tip = w.tip || 0;
     var pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }), N = pets.length, byId = {};
@@ -45,7 +41,7 @@
     var minC = Math.min.apply(null, Object.keys(sc).map(function (k) { return sc[k]; })), maxL = Math.log(N / minC) || 1;
     var res = pets.map(function (p, i) {
       var th = null; try { th = V && V.petThresholds ? V.petThresholds(w, p, tip) : null; } catch (e) { th = null; }
-      var my = th && th[5] ? th[5] : 69069, prog = p.ascended || p.mythicCare ? 1 : Math.min(1, (p.care || 0) / my), st = streak(w, p, tip, V);
+      var my = th && th[5] ? th[5] : 69069, prog = p.ascended || p.mythicCare ? 1 : Math.min(1, (p.care || 0) / my), st = streak(p, tip);
       var growth = Math.min(1, 0.85 * prog + 0.15 * Math.min(st, 7) / 7);
       var gear = 1 - Math.exp(-(gv[p.id] || 0) / 12);
       var f = (p.wins || 0) + (p.losses || 0), battles = f < 3 ? 0.5 : 0.6 * (p.wins || 0) / f + 0.4 * Math.min(1, (p.wins || 0) / 10);

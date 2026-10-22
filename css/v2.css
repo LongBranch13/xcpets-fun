@@ -425,3 +425,9 @@ body #pets .pet.card{padding-bottom:44px}
 .streakbar .sk-fire{font-size:16px}.streakbar .sk-best{color:#9fe8ff}.streakbar .sk-ok{color:#3ddc84}.streakbar .sk-warn{color:#ff9d9d;font-size:9px}
 .chip.streak{background:#3a1606;border-color:#ff7a1a;color:#ffb347;white-space:nowrap}
 @media (max-width:520px){.streakbar{font-size:9px;padding:6px 8px}.streakbar .sk-warn{flex-basis:100%;font-size:8px}}
+/* WAGMI / NGMI bar (login-streak rework Oct 21 2026): same 🔥 bar spot on My Pets, WAGMI/NGMI themed */
+.streakbar{justify-content:space-between}.streakbar .sk-msg{flex:1 1 260px;min-width:0}.streakbar .sk-tag{display:inline-block;padding:2px 6px;margin-right:4px;border:2px solid #000;box-shadow:2px 2px 0 #000;font-size:10px}
+.streakbar .sk-w{background:#3ddc84;color:#0e1a12}.streakbar .sk-n{background:#ff5d5d;color:#1a0b0b}.streakbar .sk-joke{font-family:var(--comic);font-weight:700;font-size:13px;color:#ffe9c2;letter-spacing:.01em}
+.streakbar .sk-btn{flex:0 0 auto;min-height:40px;font-size:13px}.streakbar .sk-btn .cost{font-size:10px;opacity:.85}
+@media (max-width:520px){.streakbar .sk-btn{width:100%}.streakbar .sk-joke{font-size:12px}}
+.board td.num .small{white-space:normal;min-width:7em} /* WAGMI board: sub line (best · days · ✓ today) may wrap on phones */

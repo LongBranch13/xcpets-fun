@@ -18,7 +18,7 @@
   var V2_FROM_BLOCK = CUTOFF_BLOCK + 1; // first v2 block: v2 tags (fight/accept/rumble/breed, 69-min community feed) count from here
   var LIVE_DEATH_FROM_BLOCK = 971280, LIVE_UNIT = 1e8; // live real-core.js: death clock anchor; GameCore.UNIT (raw quantity per XCPETS)
   var BLOCKS_PER_DAY = 144, WEEK = 1008, NEGLECT_DAYS = 7, NEGLECTED_AFTER_DAYS = 3;
-  var COSTS = { hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, checkin: 0.00000001, croll: 690, froll: 0.00000001 };
+  var COSTS = { hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, wagmi: 0.00000001, croll: 690, froll: 0.00000001 };
   var FEED_QUICK = [69, 690, 6900];
   var FEE_SATS = 1500;                 // fallback BTC miner fee estimate per burn tx (sats)
   var MAX_RELEASE_PER_BURN = 120, MAX_TAG_BYTES = 34;
@@ -67,11 +67,12 @@
    * ascending id order, each takes its own meal from the burn, a pet that can't be fed (or that the rest of the burn can't pay for) is skipped.
    * Inert before FEED_LIST_BLOCK: before it a pet:fl tag replays exactly as today (unknown pet: tag, community food only).
    * Activation block set at deploy (chain tip + 6). */
-  /* DAILY CHECK-IN (DRAFT 2026-10-19, owner approved the 1-sat burn 6:10 PM CT; NOT LIVE). A wallet checks in on a chain day (floor(block/144), the
-   * same day the feeding rules use) when it makes at least one valid game burn that day (any tag, feeding included). pet:checkin (1 sat) is the
-   * optional fallback for days with no other game burn; it only exists from ACTIVATE_CHECKIN_BLOCK. Before it the tag replays exactly as today
-   * (unknown pet: tag, community food). Check-ins are wallet-level (w.checkins), off-chain display/score only; no pet, item or fight changes. */
-  var ACTIVATE_CHECKIN_BLOCK = 999999999; // PLACEHOLDER (not active): set to chain tip + 6 at deploy
+  /* WAGMI DAILY CHECK-IN (rework Oct 21 2026, owner: must NOT depend on feeding; NOT LIVE). A wallet says WAGMI once per chain day
+   * (floor(block/144), the same day as feeding) with the 1-sat burn pet:wagmi (the owner-approved 1-sat check-in, tag renamed while still ungated).
+   * Only pet:wagmi counts: feeding and other game burns do NOT. Before ACTIVATE_WAGMI_BLOCK the tag replays exactly as today (unknown pet: tag,
+   * community food). Wallet-level record w.wagmi[addr][day] = 1; display + leaderboard only, no pet, item or fight changes. */
+  var ACTIVATE_WAGMI_BLOCK = 999999999; // PLACEHOLDER (not active): set to chain tip + ~6 at deploy
+  function wagmiOn(b) { return b != null && b >= ACTIVATE_WAGMI_BLOCK; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
@@ -118,12 +119,13 @@
   function sha(s) { return PetCore.sha256Hex(String(s)); }
   function stream(seed) { var n = 0, buf = '', i = 0; return function () { if (i + 8 > buf.length) { buf = sha(seed + ':' + (n++)); i = 0; } var v = parseInt(buf.slice(i, i + 8), 16); i += 8; return v; }; }
   function day(b) { return Math.floor(b / BLOCKS_PER_DAY); }
-  /** streakOf(w, addr, tip) -> { current, best, today, days }. Current = consecutive checked-in chain days ending today (or yesterday if today is not
-   * checked in yet: the streak is still alive until a FULL chain day is missed). Missing a day resets to 1 on the next check-in. */
-  function streakOf(w, addr, tip) { var c = (w && w.checkins && w.checkins[addr]) || {}, ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
+  /** streakOf(w, addr, tip) -> { current, best, today, days, last, state }. current = consecutive WAGMI chain days ending today (or yesterday while
+   * today is still open: the streak lives until a FULL chain day is missed). state: 'wagmi' (streak alive), 'ngmi' (said WAGMI before, then missed
+   * a whole chain day: streak reset to 0), 'new' (never said WAGMI). */
+  function streakOf(w, addr, tip) { var c = (w && w.wagmi && w.wagmi[addr]) || {}, ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
     ds.forEach(function (d) { run = prev != null && d === prev + 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
     var t = day(tip != null ? tip : w.tip), d = c[t] ? t : t - 1, cur = 0; while (c[d]) { cur++; d--; }
-    return { current: cur, best: best, today: !!c[t], days: ds.length }; }
+    return { current: cur, best: best, today: !!c[t], days: ds.length, last: prev, state: cur ? 'wagmi' : ds.length ? 'ngmi' : 'new' }; }
   /* Rumble off (Jake 2026-10-16): from ACTIVATE_RUMBLE_OFF_BLOCK a pet:rumble burn is not an entry (it still burns and feeds the community pet like
    * any stray burn). A rumble whose entries were made before the block still resolves normally at its seed block. Before the block: unchanged. */
   var ACTIVATE_RUMBLE_OFF_BLOCK = 971771; // tip 971,765 + 6 at push time (Jake approved 2026-10-16)
@@ -547,7 +549,7 @@
     if (a === 'GRAVE' && p.length === 3 && idOk(p[2])) return { action: 'grave', petId: n(2), on: true }; /* grave gear opt-in; inert before ACTIVATE_GRAVE_GEAR_BLOCK */
     if (a === 'GRAVE' && p.length === 4 && idOk(p[2]) && p[3] === 'OFF') return { action: 'grave', petId: n(2), on: false };
     if (a === 'OF' && p.length === 3 && idOk(p[2])) return { action: 'oroll', petId: n(2) }; /* overflow roll (Mythic discount); inert before ACTIVATE_MYTHIC_DISCOUNT_BLOCK */
-    if (a === 'CHECKIN' && p.length === 2) return { action: 'checkin' }; /* inert before ACTIVATE_CHECKIN_BLOCK */
+    if (a === 'WAGMI' && p.length === 2) return { action: 'wagmi' }; /* inert before ACTIVATE_WAGMI_BLOCK */
     if (a === 'FIGHT' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'fight', a: n(2), b: n(3) };
     if (a === 'ACCEPT' && p.length === 3 && idOk(p[2])) return { action: 'accept', fightId: n(2) };
     if (a === 'RUMBLE' && p.length === 3 && idOk(p[2])) return { action: 'rumble', petId: n(2) };
@@ -623,8 +625,7 @@
     var w = { pets: [], byId: {}, items: {}, nextPet: 1, log: [], community: { burned: 0, feeds: 0, feeders: {}, gear: {}, gearLog: [] }, fights: [], rumbles: {}, breedReqs: [], tip: tip, nextItem: 1, tokens: {} };
     var seen = {};
     if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);
-    w.checkins = {}; function checkIn(src, b) { if (!src) return; (w.checkins[src] = w.checkins[src] || {})[day(b)] = 1; }
-    preRows.forEach(function (r) { var a = parseTag(r.tag).action; if (a !== 'plain' && a !== 'invalid' && a !== 'checkin') checkIn(r.source, r.block_index); }); /* live era: any pet: game tag */
+    w.wagmi = {};
     function L(e, kind, msg, extra) { var o = Object.assign({ block: e.block_index, tx: e.tx_hash, kind: kind, msg: msg }, extra || {}); w.log.push(o); return o; }
     var resolvedWeeks = {};
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
@@ -638,8 +639,7 @@
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
       wizTrack(w, r, amt); kekTrack(w, r, amt); /* Lord Kek care + Cold Storage (inert while ACTIVATE_KEK_BLOCK is null) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
-      var nl = w.log.length; handle(w, r, t, amt, bh, L);
-      for (var ci = nl; ci < w.log.length; ci++) if (w.log[ci].tx === r.tx_hash && w.log[ci].kind !== 'rejected' && w.log[ci].kind !== 'plain') { checkIn(r.source, r.block_index); break; }
+      handle(w, r, t, amt, bh, L);
     });
     wizHatClear(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); relabelTiers(w, tip); wizTierRelabel(w, tip); wizTier2Relabel(w, tip); repairGear(w, tip); maybeRumbles(tip);
     w.pets.forEach(function (p) { finish(w, p, tip); });
@@ -770,6 +770,8 @@
       var f1 = fightable(A, b); if (f1) return '#' + t.a + ': ' + f1; var f2 = fightable(B, b); if (f2) return 'opponent #' + t.b + ': ' + f2;
       if (w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && b - f.block <= FIGHT_WINDOW; }) || pend.some(function (q) { return q.action === 'fight' && (q.a === t.a || q.b === t.a); })) return '#' + t.a + ' already has an open challenge';
       return battleBlock(w, tag, tip); }
+    if (t.action === 'wagmi') { if (!wagmiOn(b)) return 'WAGMI check-ins open at block ' + ACTIVATE_WAGMI_BLOCK; if (me && streakOf(w, me, tip).today) return 'you already said WAGMI today (once per chain day)';
+      if (pend.some(function (q) { return q.action === 'wagmi'; })) return 'your WAGMI is still waiting to confirm'; return null; }
     if (t.action === 'roll' || t.action === 'froll' || t.action === 'oroll') { var g = P(t.petId); if (!g) return 'no such pet #' + t.petId; if (g.released) return '#' + g.id + ' was released'; if (me && g.owner !== me) return '#' + g.id + ' is not yours'; if (g.dead) return '#' + g.id + ' is dead';
       if (t.action === 'roll' && amt != null && amt < COSTS.roll) return 'below roll cost ' + COSTS.roll; if (t.action === 'oroll' && g.community) return 'community pet'; return null; }
     return null; }
@@ -930,10 +932,11 @@
         return L(r, 'kekcard', 'claimed the LORDKEK Rare Pepe card' + (kc.on != null ? ' (worn by #' + kc.on + ')' : ' (in your stash)'), { gid: kc.gid, petId: kc.on });
       }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
-      case 'checkin': {
-        if (b < ACTIVATE_CHECKIN_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
-        if (!(amt >= COSTS.checkin)) return L(r, 'rejected', 'below check-in cost 1 sat');
-        return L(r, 'checkin', src + ' checked in for chain day ' + day(b));
+      case 'wagmi': {
+        if (b < ACTIVATE_WAGMI_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        if (!(amt >= COSTS.wagmi)) return L(r, 'rejected', 'below WAGMI cost 1 sat');
+        var wd = (w.wagmi[src] = w.wagmi[src] || {}); if (wd[day(b)]) return L(r, 'wagmi', src + ' already said WAGMI on chain day ' + day(b) + ' (counts once)');
+        wd[day(b)] = 1; return L(r, 'wagmi', src + ' said WAGMI for chain day ' + day(b));
       }
       case 'grave': {  /* GRAVE GEAR opt-in / cancel (see ACTIVATE_GRAVE_GEAR_BLOCK): owner only, living pet only, any amount */
         if (!graveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -1436,7 +1439,7 @@
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
     sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,
-    validFeedAmount: validFeedAmount, ACTIVATE_CHECKIN_BLOCK: ACTIVATE_CHECKIN_BLOCK, checkinOn: function (b) { return b != null && b >= ACTIVATE_CHECKIN_BLOCK; }, streakOf: streakOf, _setCheckinActivation: function (b) { ACTIVATE_CHECKIN_BLOCK = b; }, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
+    validFeedAmount: validFeedAmount, ACTIVATE_WAGMI_BLOCK: ACTIVATE_WAGMI_BLOCK, wagmiOn: wagmiOn, streakOf: streakOf, _setWagmiActivation: function (b) { ACTIVATE_WAGMI_BLOCK = b; }, simulateFight: simulateFight, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, reindex: reindex, myRanks: myRanks, breedPicker: breedPicker,
     HYBRID_NAMES: HYBRID_NAMES, HYBRID_CHANCE_10K: HYBRID_CHANCE_10K, HYBRID_RARITY_UP_10K: HYBRID_RARITY_UP_10K, HYBRID_TRUE_10K: HYBRID_TRUE_10K, isHybrid: isHybrid, hybridKey: hybridKey, hybridRoots: hybridRoots,
     hybridName: hybridName, speciesLabel: speciesLabel, samePairHybridRule: samePairHybridRule, hybridSpecies: hybridSpecies, hybridPlan: hybridPlan, hybridRender: hybridRender, hybridFrames: hybridFrames, castHybrids: castHybrids, ACTIVATE_SIG_SHUFFLE_BLOCK: ACTIVATE_SIG_SHUFFLE_BLOCK, shuffleOn: shuffleOn, ACTIVATE_GEAR_AUDIT_BLOCK: ACTIVATE_GEAR_AUDIT_BLOCK, gaOn: gaOn, ACTIVATE_STAR_BATCH_BLOCK: ACTIVATE_STAR_BATCH_BLOCK, ACTIVATE_MYTHIC_DISCOUNT_BLOCK: ACTIVATE_MYTHIC_DISCOUNT_BLOCK, MYTHIC_DISCOUNT_CARE: MYTHIC_DISCOUNT_CARE, mythicDiscountOn: mythicDiscountOn, petThresholds: petThresholds, overflowRolls: overflowRolls, overflowRollPlan: overflowRollPlan, overflowEarned: overflowEarned, starBatchOn: starBatchOn, lockHint: function (id) { var L = SPECIES_LOCK[id]; return L ? '\uD83D\uDD12 ' + speciesLabel(L.sp) + '-only' : ''; }, itemView: function (id) { return view(itemOf(id)); }, ACTIVATE_LENNY_MONOCLE_BLOCK: ACTIVATE_LENNY_MONOCLE_BLOCK, monocleLennyOn: monocleLennyOn, eligBlock: function () { return ELIG_B; }, SPECIES_LOCK: SPECIES_LOCK, isHybrid3: isHybrid3, hybrid3Key: hybrid3Key, ACTIVATE_HYBRID3_BLOCK: ACTIVATE_HYBRID3_BLOCK, hybrid3On: hybrid3On, hybrid3Species: hybrid3Species, _setHybrid3Activation: function (b) { ACTIVATE_HYBRID3_BLOCK = b; } };
