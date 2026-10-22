@@ -1,0 +1,16 @@
+/* Fire Sale (fire-sales): site palette, inherits page fonts */
+.firesale{position:relative;max-width:1100px;margin:10px auto;border:3px solid #1a1020;background:#3a0d0d;color:#ffe9c2;box-shadow:0 3px 0 #1a1020;overflow:hidden}
+.fs-flames{display:flex;justify-content:space-between;height:14px;background:#1a1020}
+.fs-flames i{width:10px;height:14px;background:linear-gradient(#ffd86b,#ff7a1a 55%,#c0262d);clip-path:polygon(50% 0,100% 100%,0 100%);animation:fsFlick .35s steps(2) infinite alternate}
+.fs-flames i:nth-child(2n){animation-delay:.17s}.fs-flames i:nth-child(3n){height:10px;align-self:flex-end}
+.fs-body{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;padding:8px 10px;text-align:center}
+.fs-title{color:#ffd86b;font-size:16px;letter-spacing:1px;text-shadow:2px 2px 0 #1a1020;animation:fsPulse .7s steps(2) infinite}
+.fs-txt{font-size:14px}.fs-pets{display:flex;gap:6px}
+.fs-pet{width:40px;height:40px;image-rendering:pixelated;animation:fsPanic .25s steps(2) infinite}.fs-pet:nth-child(2){animation-delay:.12s}
+.fs-yell{background:#fff;color:#1a1020;border:2px solid #1a1020;padding:2px 8px;font-weight:700;font-size:13px;position:relative}
+.fs-siren{font-size:12px}
+.firesale[data-live=""] .fs-title{animation:none}
+@keyframes fsFlick{to{transform:scaleY(.7)}}@keyframes fsPulse{to{color:#fff}}@keyframes fsPanic{0%{transform:translate(-2px,0) rotate(-6deg)}100%{transform:translate(2px,-2px) rotate(6deg)}}
+.fs-still *,.fs-still{animation:none!important}
+@media (prefers-reduced-motion:reduce){.firesale *{animation:none!important}}
+@media (max-width:480px){.firesale{margin:8px 6px}.fs-txt{font-size:13px}.fs-pet{width:32px;height:32px}}
