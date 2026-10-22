@@ -2,7 +2,7 @@
  * and the shared 🔇/🔊 sound toggle in the Lair and the motel (same setting as the X Circus Kekimus announcer button). Display only. */
 (function () {
   'use strict';
-  var HINTS = { lair: ['shopScene', 'Tap a piece in your stash to try it on'], motel: ['motelScene', 'Pick two pets to check in'], arena: ['arScene', 'Pick a rival or hit Quick match'] };
+  var HINTS = { lair: ['shopScene', 'Tap a framed card to try it on in the mirror'], motel: ['motelScene', 'Pick two pets to check in'], arena: ['arScene', 'Pick a rival or hit Quick match'] };
   var SH = {}, io = window.IntersectionObserver ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && e.intersectionRatio > 0.6) { var k = e.target.dataset.hint; if (!SH[k]) { SH[k] = 1; mark(k); } } }); }, { threshold: [0.6] }) : null;
   function seen(k) { try { return localStorage.getItem('xcpets-hint-' + k) === '1'; } catch (e) { return true; } }
   function mark(k) { try { localStorage.setItem('xcpets-hint-' + k, '1'); } catch (e) { } }
