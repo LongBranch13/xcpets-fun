@@ -7,7 +7,7 @@ Free, read-only, static JSON. No key, no rate limit beyond GitHub Pages' own. Se
 | `https://xcpets.fun/api/pets.json` | Every pet (one object per pet, sorted by `id`) |
 | `https://xcpets.fun/api/meta.json` | Block height, generated time, totals |
 
-The data comes from replaying every XCPETS burn on Counterparty with the game's own rules, the same replay that xcpets.fun runs in your browser. It is rebuilt every ~15 minutes, so it can trail the site by a block or two. Check `blockHeight` in `meta.json`. The burns on chain are the source of truth.
+The data comes from replaying every XCPETS burn on Counterparty with the game's own rules, the same replay that xcpets.fun runs in your browser. It is rebuilt every hour, so it can trail the site by a block or two. Check `blockHeight` in `meta.json`. The burns on chain are the source of truth.
 
 ## meta.json
 

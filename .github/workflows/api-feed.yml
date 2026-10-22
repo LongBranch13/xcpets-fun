@@ -1,0 +1,32 @@
+# Live (owner approved Oct 22, 2026). Rebuilds api/pets.json + api/meta.json from chain every hour with tools/api-feed.js (Node only, public read APIs, no secrets).
+# It commits only when the pets or totals changed (generatedAt alone never triggers a commit). It only ever stages api/pets.json + api/meta.json,
+# and merges (never rebases or force-pushes) the latest origin/main before pushing, so it can't clobber normal deploys.
+name: api-feed
+on:
+  schedule: [{ cron: '17 * * * *' }]
+  workflow_dispatch: {}
+permissions: { contents: write }
+concurrency: { group: api-feed, cancel-in-progress: false }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node tools/api-feed.js --out api
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- api/pets.json && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
+          git config user.name "xcpets-api-bot"; git config user.email "actions@users.noreply.github.com"
+          git add api/pets.json api/meta.json
+          git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")" -- api/pets.json api/meta.json
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git merge --no-edit --no-ff origin/main || { echo "merge conflict, giving up this run"; git merge --abort; exit 1; }
+            if git push origin HEAD:main; then echo "pushed"; exit 0; fi
+            sleep $((i * 10))
+          done
+          echo "push failed after retries"; exit 1
