@@ -417,4 +417,3 @@ body #pets .pet.card{padding-bottom:44px}
 .dpile .dcard h4{margin:2px 0 4px;font-size:13px}.dpile .dcard .chips{gap:4px;flex-wrap:wrap}.dpile .dp-fed{margin:2px 0 6px}.dpile .dp-star{color:#ffd84a}
 .dpile .dp-acts{justify-content:center;gap:6px;margin-top:auto}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:32px}
 @media (max-width:600px){.dpile .dgrid{grid-template-columns:1fr 1fr;gap:6px}.dpile .dcard{padding:6px}.dpile .dp-acts .btn,.dpile .dp-acts .q{min-height:40px;flex:1 1 auto}.dpile .dctl select,.dpile .dctl input[type=search]{max-width:100%}}
-.dpile .dcard.kept::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-top:22px solid #ffcf2e;border-left:22px solid transparent;border-top-right-radius:3px;pointer-events:none;z-index:1} /* same starred corner ribbon as My Pets */
