@@ -69,7 +69,8 @@ function build(ctx, input, nowIso) {
     owners: new Set(pets.map(p => p.owner)).size, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
   return { pets, meta };
 }
-(async () => {
+module.exports = { context, liveInput, build, SCRIPTS, SITE };
+if (require.main === module) (async () => {
   const ctx = context();
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await liveInput(ctx);
   if (opt('--snap')) input.tip = +(opt('--tip') || input.tip);
