@@ -3,7 +3,7 @@
 #breedPanel.rm-on>*:not(.rm-tabs):not(#rugMe):not(h2):not(.scene-anchor){display:none!important}
 .rug-me{max-width:440px;margin:0 auto}
 .rm-as{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.rm-as label{flex:1 1 220px}.rm-as select{width:100%;max-width:100%}
-.rm-dtb{display:inline-block;font-family:var(--pixel);font-size:9px;line-height:1;padding:4px 5px;color:#1a0d1f;background:#ff6fb5;border:2px solid #fff;box-shadow:2px 2px 0 #000;image-rendering:pixelated;letter-spacing:.06em}
+.rm-mark{display:inline-block;font-family:var(--pixel);font-size:9px;line-height:1;padding:4px 5px;color:#1a0d1f;background:#ff6fb5;border:2px solid #fff;box-shadow:2px 2px 0 #000;image-rendering:pixelated;letter-spacing:.06em}
 .rm-stack{position:relative;min-height:470px;touch-action:pan-y;user-select:none}
 .rm-card{position:absolute;inset:0;background:#141022;border:3px solid #ff6fb5;border-radius:10px;box-shadow:4px 4px 0 #000;padding:10px 12px;cursor:grab;will-change:transform;overflow:hidden}
 .rm-card:focus{outline:2px solid var(--legendary,#ffc93c)}
@@ -29,5 +29,5 @@
 .rm-post .rm-chip{color:#e8ffe8;background:#16241c;border:2px solid #4a6a55;padding:4px 9px;font-size:12px;border-radius:12px;box-shadow:none}
 .rm-post .rm-chip.on{color:#fff}
 .rm-btns .btn:disabled{opacity:.45;cursor:default}
-.rm-dtblink{padding:3px 9px!important;font-size:12px!important;vertical-align:middle}
+.rm-postlink{padding:3px 9px!important;font-size:12px!important;vertical-align:middle}
 .rm-adrow .btn{margin-left:6px}

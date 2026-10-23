@@ -1,4 +1,4 @@
-# Breed Board ("Swipe Right" / DTB board) — design only
+# Rug Me breed board (was "Swipe Right") — design + build notes
 
 _Draft Oct 22, 2026 (CT). Design only. No game code changed, nothing merged, deployed or posted. Based on origin/main `js/v2-rules.js` (worktree /workspace/wt-recap-main, head f3f3223) and the Gooby's No-Tail Motel breeding UI in play.html._
 
@@ -17,7 +17,7 @@ A dating app for 8-bit pets. Your pet posts a profile with impossible standards 
 | Tag | Who | Cost | Effect |
 |---|---|---|---|
 | `pet:ad:A:REQ` | owner of pet A | **690** (A's breed half, prepaid) | Opens Ad #N (N = the ad's sequence number in replay order, like the fight `accept:N`). |
-| `pet:dtb:B:N` | owner of pet B, a different owner | **690** | Accepts Ad #N. If B meets REQ and both pets are breedable, it **breeds right then** (the child comes from the normal `breed(w, A, B, ...)` path) and closes the ad. |
+| `pet:rug:B:N` | owner of pet B, a different owner | **690** | Accepts Ad #N. If B meets REQ and both pets are breedable, it **breeds right then** (the child comes from the normal `breed(w, A, B, ...)` path) and closes the ad. |
 | `pet:unad:N` | ad owner | 1 dander (0.00000001 XCPETS, like `rel`/`wagmi`) | Cancels Ad #N. The 690 is not refunded (it was burned; see 2.4). |
 
 - One accept burn does the breed. The poster prepaid their 690 when posting, so the accepter doesn't wait for anyone, and there's no second step.
@@ -27,7 +27,7 @@ A dating app for 8-bit pets. Your pet posts a profile with impossible standards 
 
 ### 2.2 Gate and replay SAME
 - `ACTIVATE_BREED_BOARD_BLOCK = tip + ~6` at deploy time, set like the breeding v2 gate.
-- `ad`, `dtb` and `unad` are unknown tags today, so every earlier burn with those words already replays as "unknown pet: tag (community food)". The handler must return **that same rejection string** for `b < gate` (the `croll` pattern). parseTag can learn the tags; handle() decides by block.
+- `ad`, `rug` and `unad` are unknown tags today, so every earlier burn with those words already replays as "unknown pet: tag (community food)". The handler must return **that same rejection string** for `b < gate` (the `croll` pattern). parseTag can learn the tags; handle() decides by block.
 - No RNG stream is added or moved. The breed uses the accept tx's block hash plus tx hash, exactly as a mirrored `breed` accept does today.
 - Check: run `tools/replay-check.js` at the current tip before and after. Overall, pets and gear hashes must be SAME.
 
@@ -113,7 +113,7 @@ The 2 cards behind it peek out as a stack.
 - There's an "↩ Undo" chip for the last skip.
 
 **Swipe right = accept (RUG ME)**
-- The card tilts right with a pixel **RUG ME** stamp, then the **normal single XCP Wallet burn confirm** opens. It's one wallet window (the one-request-at-a-time rule) for `pet:dtb:MYPET:N` · 690, and the summary reads "#B 💘 #A · breeds at once · egg goes to …".
+- The card tilts right with a pixel **RUG ME** stamp, then the **normal single XCP Wallet burn confirm** opens. It's one wallet window (the one-request-at-a-time rule) for `pet:rug:MYPET:N` · 690, and the summary reads "#B 💘 #A · breeds at once · egg goes to …".
 - It **never auto-burns**. If I cancel the confirm or the wallet window, the card snaps back to the top.
 - The send guard (tip + 1) runs before the wallet opens. If it fails, the card shows the reason and doesn't open the wallet.
 - After the burn is sent, the card shows "Pending… someone may still beat you to it". On confirm it shows the existing breed scene and an "It's a match! 💞 Egg #N" banner.
@@ -135,7 +135,7 @@ Once the ad is confirmed, **my pet's card joins the stack** for every qualifying
 ## 5. Meme copy
 
 ### Names for the ad and the board (replacing "breed wanted")
-1. ⭐ **DTB (Down To Breed)** : the ad is a "DTB post", and the accept button says "I'm DTB".
+1. (dropped by the owner, Oct 22 8:37 PM: no special label; a posted pet is just a Rug Me card)
 2. ⭐ **Swipe Right**: the board is "Swipe Right", and the accept is "Swipe right · 690".
 3. ⭐ **Wen Breed?**: the ad headline is "#228: wen breed?", and the board is "Wen Breed Board".
 4. **Simp Signal**: the post button is "Light the Simp Signal".
@@ -146,8 +146,8 @@ Once the ad is confirmed, **my pet's card joins the stack** for every qualifying
 9. **The Mating Mempool**: "your ad is in the mempool".
 10. **NGMI Without You**: a preset bio.
 
-**Top 3 picks:** **Swipe Right** for the board name, **DTB** for the ad name and accept button, and **Wen Breed?** for the headline.
-Combined: _"💘 Swipe Right: Gooby's DTB board · wen breed?"_
+**Top picks (superseded):** **Swipe Right** for the board name and **Wen Breed?** for the headline.
+Final: _"💘 Rug Me"_ (owner pick).
 
 ### Preset bio lines (picked from the ad tx hash; all about the pet)
 - "Only Legendaries. No broke pets."
@@ -180,19 +180,19 @@ Rejected-for-you badge: "❌ Too broke: needs Legendary" / "❌ Needs a Crown" /
 - **Q4** Pricing model A (prepaid 690/690, recommended), B (69 post / 1,311 accept), or C (bounty)? Should cancel or expiry give any consolation?
 - **Q5/Q6** Should a dead poster pet auto-close its ad? One ad per pet?
 - **Q7** Which threshold codes go in v1 (suggested: tier, stage, species/not-species, owns gear, any ★, Power, days fed)?
-- **Q8** Final names: Swipe Right / DTB / Wen Breed? And is "Looking for Daddy (Legendary)" OK as a preset bio?
+- **Q8** Final names: Swipe Right / (dropped label) / Wen Breed? And is "Looking for Daddy (Legendary)" OK as a preset bio?
 - **Q9** Should HatchBot (Telegram) announce new ads and matches? It would be a separate approval.
 
 
 ## Owner decision (Oct 22, 2026 7:59 PM CT)
-Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "Swipe Right" as the board name. Ad and accept wording (DTB) and the headline are still open.
+Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "Swipe Right" as the board name. Ad and accept wording ((dropped label)) and the headline are still open.
 
 ## New open questions (Oct 22, 2026 ~8:05 PM CT, swipe stack)
 - **Q10** Should skips reset every chain day (144 blocks), as specified, or should a skip last for the life of the ad?
 - **Q11** Should skips be stored per selected pet (proposed) or per wallet across all my pets?
 - **Q12** Order of the stack: newest first (proposed), soonest-expiring first, or rarest first?
 - **Q13** If my selected pet qualifies but my other pets would too, should the card hint "your #742 also qualifies"?
-- **Q14** Should the accept button keep the "I'm DTB" wording, or say "Rug me · 690" to match the board?
+- **Q14** Should the accept button keep the "I'm (dropped label)" wording, or say "Rug me · 690" to match the board?
 
 ## Owner decisions (Oct 22, 2026 ~8:01 PM CT): DECIDED
 - **Q1 DECIDED:** the egg goes to the **poster** of the ad (matches today's `req.owner` behavior).
@@ -222,48 +222,42 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 
 ## Owner direction (Oct 22, 2026 8:03 PM CT)
 - Rug Me runs ALONGSIDE the existing breeding select as its own tab/app on the Breed page; it does not replace the picker.
-- Top toggle: **My pets** (swipe through pairings among the wallet's own pets, no ad needed, normal own-pair breed burn) / **Other pets** (swipe other owners' open DTB ads).
+- Top toggle: **My pets** (swipe through pairings among the wallet's own pets, no ad needed, normal own-pair breed burn) / **Other pets** (swipe other owners' open (dropped label) ads).
 - Pending owner OK on proposed defaults: 690 post + 690 accept; one ad per pet; ad closes if poster pet dies; skips reset each chain day, per pet; newest first; hint when another owned pet qualifies; button "Rug me · 690".
 
 ## Owner direction (Oct 22, 2026 8:05 PM CT), supersedes the 8:03 toggle
-- NO My pets / Other pets toggle. Rug Me never shows your own pets as cards. You pick one of your pets to swipe WITH ("Swiping as"), and the stack shows only other owners' open DTB ads. Pairing your own pets stays in the existing breeding select.
+- NO My pets / Other pets toggle. Rug Me never shows your own pets as cards. You pick one of your pets to swipe WITH ("Swiping as"), and the stack shows only other owners' open (dropped label) ads. Pairing your own pets stays in the existing breeding select.
 - Left swipe is free and local-only; the other owner never sees it. Only a confirmed right swipe (burn) is visible, as a match.
 
 
 ---
 
-## Build notes (branch `rug-me`, preview, 2026-10-22)
+## Build notes (branch `rug-me`, preview, updated 2026-10-22 ~8:40 PM CT)
 
-**Naming:** 1 sat of XCPETS is a **dander** in all player copy (the DTB label is "a 1-dander burn"). BTC network fees stay in sats.
+**Owner, 8:37 PM:** no special label. A posted pet just shows as a Rug Me card; its pet page and pop-up show a small **💘 On Rug Me** marker. The accept tag is **`pet:rug`**. Buttons: **Rug me · 690** (accept) and **Post on Rug Me**.
 
-**Gate:** `ACTIVATE_RUGME_BLOCK` in js/v2-rules.js is `null` (placeholder). At deploy, set it to tip + 6. Below the gate, `pet:ad`, `pet:dtb`, `pet:unad`, `pet:dtbon` and `pet:dtboff` replay exactly as today (unknown tag, community food). The send guard also refuses them with "Rug Me is not open yet".
+**Naming:** 1 sat of XCPETS is a **dander** in all player copy (cancel is "a 1-dander burn"). BTC network fees stay in sats.
 
-**Tags:**
-- `pet:ad:ID:REQ` (690): REQ is up to 4 codes joined by `.`: `T1-3` tier+, `S3-5` stage+, `P<species|HYB>`, `G<item>` (owns: worn or in the bag), `W<n>` power+, or `ANY`.
-- `pet:dtb:MY:N` (690): breeds at once, and the egg goes to the poster.
-- `pet:unad:N` (1 dander).
-- `pet:dtbon:ID` / `pet:dtboff:ID` (1 dander each): the DTB label. It auto-clears on death, release or the 6-breed cap.
+**Gate:** `ACTIVATE_RUGME_BLOCK` in js/v2-rules.js is `null` (placeholder). At deploy, set it to tip + 6. Below the gate, `pet:ad`, `pet:rug` and `pet:unad` replay exactly as today ("unknown pet: tag (community food)"); `tools/replay-check.js` stays SAME.
 
-**DTB boost rule:** paid ads come first, and within the ads, posters with the DTB label lead, then newest first. After the ads come DTB-labelled pets with no ad (no thresholds), newest label first. Right swipe on one of those sends the normal `pet:breed` cross-owner request, so its owner still confirms. That egg follows the existing request rules, NOT the poster rule.
+**Tags (from the gate):**
+- `pet:ad:IDS:REQ[:Bn]` (**69 per pet**, owner 8:42 PM; a Rug Me breed totals 759 = 69 + 690): IDS is one pet id or several joined by dots (`pet:ad:12.34.56:T2.S4`), each its own ad, open 1,008 blocks, one open ad per pet. REQ = `ANY` or up to 4 dot-joined codes (T tier+, S stage+, P species/HYB, G owns gear = worn or in the bag, W power+). `Bn` = optional preset bio number (0-12); without it the bio is picked from the ad tx hash. The whole tag must fit 34 bytes. Every pet in the tag must pass (yours, alive, Adult+, no open ad, under the cap) or the whole burn is rejected with a reason. A pet resting after a breed may still post.
+- `pet:rug:MY:N` (690): accept ad N with my pet: breeds at once through breed(); the **egg goes to the poster** (poster pet = parent A). Both pets count the breed.
+- `pet:unad:N` (1 dander): the poster cancels (no refund).
+- Prices follow the halving / fire sale through `costAt` (replay `below()`, UI `planAmount`), so after a halving posting shows and burns as 34.5 per pet and Rug me as 345 everywhere. Button: **Post on Rug Me · 69** (times the pet count when several are ticked).
+- Malformed standards (bad chars, empty code, ANY mixed in, a code twice, more than 4, too long) are rejected in the rules with the reason; the UI shows the same reason before you sign.
+- Removed in this pass: the old label tags and the no-ad cards / breed-request path. The normal `pet:breed` request rules are untouched.
 
-**Cards:** pixel tier pill, a DTB badge, an animated sprite, the full stat block (Vigor, Spark, Grit, Zoom, Luck, plus Power) with the same effective values and bars as the pet card, a preset bio and the Wants line with blocks left.
+**Swipe stack:** only posted pets (other owners' open ads your "Swiping as" pet qualifies for), newest first. Left = local skip per pet per chain day with Undo; right = the single XCP Wallet confirm for `pet:rug`.
 
-**Swiping:**
-- Left (✖ NGMI / ← / drag) skips locally per pet per chain day, with Undo.
-- Right (💘 / → / drag) opens the one XCP Wallet confirm. Nothing is ever auto-burned.
+**Posting (multi-pet):** the 📌 form lets you tick one or many of your eligible pets (All/None), with **same standards + bio for all** or **per pet** (pick the pet to edit). It groups pets by settings and packs each group into as few <=34-byte `pet:ad` tags as fit; the summary shows pets, burns, each tag and the **total cost** before the confirm. Several burns go through the existing queue: one XCP Wallet window per burn, with progress, Stop, and Continue after a reload.
 
-**Tests:**
-- tools/rug-me-test.js (34 checks).
-- replay-check against origin/main gives SAME.
+**Cards:** pixel tier pill, ad number, animated sprite, the full stat block (Vigor, Spark, Grit, Zoom, Luck plus Power), traits, bio, wants, blocks left.
 
-**Screens:** previews/rug-me/*.png (made with shoot.js and sample.json; the gate is lowered only in that browser).
+**Owner shortcut:** the pet pop-up and the pet page show **📌 Post on Rug Me** to the owner only (not in view-only), opening the post form with that pet ticked (`play.html#rugpost-ID`; nothing is signed on the pet page).
 
-**Owner questions:**
-1. May a poster on cooldown post? (The build allows it; the ad just waits.)
-2. Do ad and dtb burns earn fire-sale spin credit? (Not yet.)
-3. Gear: should "owns" mean worn or in the bag? (Both count today.)
-4. The gate block at deploy.
-5. The DTB-only request egg goes by request rules, not to the poster. OK?
-6. Tags are capped at 34 bytes, so long standards are blocked in the UI.
-7. After a halving, the UI shows 690. Should it show the halved price?
-8. The pet page shows Mark DTB to everyone. It links to the game page, where a non-owner is refused.
+**HatchBot:** `tools/hatchbot-rugme.js` writes "NEW RUG ME AD" (one per ad, key `rugme-ad-<tx>-<ad>`) and "IT'S A MATCH". DISABLED, not wired, never runs on the live HatchBot.
+
+**Tests:** `node tools/rug-me-test.js` (gate off / below gate SAME, post / accept / cancel / expiry, egg to poster, multi-pet ads, bio, 34-byte limit, malformed reasons, halving, newest-first order, no old label naming).
+
+**Still open for the owner:** 1) gate block at deploy; 2) fire-sale spin credit for ad / rug burns (not now); 3) the bio list wording.
