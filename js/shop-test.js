@@ -8,7 +8,7 @@
   var READ = (CFG.read || [])[0] || 'https://api.xcp.fun/node/v2', DEED_MIN = '95428956661682177', DEED_MAX = '18446744073709551615', B36 = '0123456789abcdefghijklmnopqrstuvwxyz';
   var me = null, composed = null, plan = null, pet = null, orders = [], verified = null;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function errOut(el, e) { $(el).innerHTML = '<div class="dt-err">' + esc((e && e.message) || e) + '</div>'; }
+  function errOut(el, e) { $(el).innerHTML = '<div class="dt-err">' + (e && typeof e === 'object' ? W.errHtml(e) : esc(e)) + '</div>'; }
   function getJ(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + u); return r.json(); }); }
   function numCmp(a, z) { return a.length - z.length || (a < z ? -1 : a > z ? 1 : 0); }
   function deedOk(a) { var m = /^A([1-9][0-9]{16,19})$/.exec(a || ''); return !!m && numCmp(m[1], DEED_MIN) >= 0 && numCmp(m[1], DEED_MAX) <= 0; }
