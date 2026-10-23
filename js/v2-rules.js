@@ -119,7 +119,7 @@
   /* WAGMI TOP-FIVE PRIZE (owner, Oct 22 2026): from ACTIVATE_WAGMI_PRIZE_BLOCK the first WAGMI_PRIZE_N distinct wallets to say WAGMI in a chain day
    * (floor(block/144); chain order = block, then tx position) each earn +1 saved Pepe Wheel spin. Only a wallet's first WAGMI of the day counts.
    * Record: w.wagmiFirst[day] = [addr, ...]. Below the gate nothing changes (replay SAME). */
-  var ACTIVATE_WAGMI_PRIZE_BLOCK = 999999999; // placeholder: set to chain tip + 6 at deploy
+  var ACTIVATE_WAGMI_PRIZE_BLOCK = 972681; // chain tip 972675 + 6 at deploy (Oct 22 2026)
   var WAGMI_PRIZE_N = 5;
   function wagmiPrizeOn(b) { return ACTIVATE_WAGMI_PRIZE_BLOCK != null && b != null && b >= ACTIVATE_WAGMI_PRIZE_BLOCK; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
