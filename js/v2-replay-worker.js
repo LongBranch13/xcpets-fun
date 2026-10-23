@@ -19,7 +19,7 @@ self.onmessage = function (ev) {
   var m = ev.data || {};
   try {
     if (!loaded) { shim(); importScripts.apply(self, m.scripts); self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG }; loaded = true; }
-    var t0 = Date.now(), w = self.V2Rules.replay(m.rows, m.hashes, m.ops, { tip: m.tip, live: self.LiveEngine.RealCore }), ms = Date.now() - t0;
+    var t0 = Date.now(), w = self.V2Rules.replay(m.rows, m.hashes, m.ops, { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex }), ms = Date.now() - t0;
     self.postMessage({ id: m.id, ok: true, world: w, ms: ms });
     if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w);
   } catch (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); }

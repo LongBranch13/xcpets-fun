@@ -9,7 +9,7 @@
   /* OLD MONEY (owner Oct 22 2026 9:27 PM): a pet bred before ACTIVATE_BREED_135_BLOCK (breeding cost 690), any breed path (own pets, two-owner motel,
    * Rug Me at 690). Permanent, display only. The name lives ONLY here, so a rename is one line. */
   var OLD_MONEY_NAME = 'Old Money \ud83d\udcb0', OLD_MONEY_RULE = 'Bred when breeding cost 690 (rarer: bred when breeding cost 690)';
-  function oldMoney(p, V) { V = V || root.V2Rules; if (!p || !p.parents || p.parents.length !== 2 || (p.art && p.art.community)) return false;
+  function oldMoney(p, V) { V = V || root.V2Rules; if (V && V.oldMoney) return V.oldMoney(p); /* one check: V2Rules.oldMoney */ if (!p || !p.parents || p.parents.length !== 2 || (p.art && p.art.community)) return false;
     var g = V && V.breed135Gate ? V.breed135Gate() : null; return g == null || (p.hatchBlock != null && p.hatchBlock < g); }
   function oldMoneyMark(p) { return oldMoney(p) ? '<span class="om-mark" title="' + OLD_MONEY_NAME + ': rarer: bred when breeding cost 690">' + OLD_MONEY_NAME + '</span>' : ''; }
   var DEX = ['pepe', 'wojak', 'chud', 'peepo', 'doge', 'bobo', 'mumu', 'sarutobi', 'lenny', 'snibby', 'kevin', 'dodo', 'nakamoto'];
