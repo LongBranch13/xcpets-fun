@@ -181,3 +181,7 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 @media (max-width:1180px) and (min-width:601px) { .nav nav a { margin-left:8px; font-size:12px; } .nav nav a.navplay { padding:4px 7px 4px 6px; } .nav nav a.navscene { white-space:normal; text-align:center; line-height:1.5; } .nav nav a.navscene[href$="#kekimus"] { width:72px; } .nav nav a.navscene[href$="#no-tail-motel"] { width:94px; } .nav .brand { font-size:13px; } }
 @media (max-width:600px) { header.nav nav a.navplay { order:-1; min-height:34px; margin:3px 4px; padding:0 9px 0 7px; } }
 .petacts a.btn.disabled{opacity:.55;pointer-events:none;filter:grayscale(.4)} /* wizard-story-short P10 */
+/* wagmi-daily: Today's first five strip on the WAGMI board */
+.wf5{margin:8px 0 10px;padding:8px 10px;background:#181327;border:2px solid #ffc93c;border-radius:10px}.wf5>b{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffc93c}
+.wf5 ol{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 0;padding-left:22px}.wf5 li{min-width:120px}.wf5 li.me b{color:#4fd18b}
+@media (max-width:600px){.wf5 ol{display:block}}

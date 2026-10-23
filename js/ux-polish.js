@@ -51,7 +51,7 @@
     new MutationObserver(function () { if (more && !more.isConnected) more = null; if (limited !== null) { more && more.remove(); more = null; limit(); } }).observe(b, { childList: true, subtree: true }); setTimeout(limit, 1500); }
   // 11. empty cemetery -> closest to dying
   function cemetery() { var t = d.getElementById('tombs'), s = d.getElementById('status'); var tick = setInterval(function () { if (!s || !/\b0 pets\b/.test(s.textContent) || d.getElementById('uxpCem')) return; if (t && /No pets? ha(s|ve) died yet/.test(t.textContent)) { clearInterval(tick); return; } /* intuitive-pass item 17: the page already says it */ clearInterval(tick);
-    var p = d.createElement('p'); p.id = 'uxpCem'; p.className = 'small'; p.innerHTML = 'No pet has died yet. See which pets are <a href="ranking.html#nearDeath">closest to dying</a> on the Ranking page.'; (t || s).parentNode.insertBefore(p, (t || s).nextSibling); }, 700); setTimeout(function () { clearInterval(tick); }, 60000); }
+    var p = d.createElement('p'); p.id = 'uxpCem'; p.className = 'small'; p.innerHTML = 'No pet has died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.'; (t || s).parentNode.insertBefore(p, (t || s).nextSibling); }, 700); setTimeout(function () { clearInterval(tick); }, 60000); }
   function init() {
     altFix(d); new MutationObserver(function (m) { m.forEach(function (r) { r.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.tagName === 'IMG' && !n.hasAttribute('alt')) altFix(n.parentNode); else altFix(n); } }); }); }).observe(d.body, { childList: true, subtree: true });
     hookWallet(); var hw = setInterval(hookWallet, 1000); setTimeout(function () { clearInterval(hw); }, 30000);

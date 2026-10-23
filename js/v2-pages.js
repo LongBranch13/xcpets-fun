@@ -255,7 +255,7 @@
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
     var inWeek = function (b) { return b != null && b > tip - WEEK; };
     var BOARDS = [
-      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Daily WAGMI check-in streaks: say WAGMI once a chain day (pet:wagmi, 1 sat; feeding does not count). Longest live streak at the top, then best ever. Missed a whole chain day? NGMI, see you at the bottom.', players: true },
+      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Daily WAGMI check-in streaks: say WAGMI once a chain day (pet:wagmi, 1 sat; feeding does not count). The first 5 wallets each chain day are Day One Degens (+1 saved Pepe Wheel spin). Longest live streak at the top, then best ever. Missed a whole chain day? NGMI, see you at the bottom.', players: true },
       { id: 'pets', label: 'Most pets', note: 'Living pets owned.', players: true, week: true },
       { id: 'power', label: 'Most powerful', note: 'Power = Vigor + Spark + Grit + Zoom + Luck. Players: their single strongest pet.', pets: true, players: true },
       { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet.', players: true, week: true },
@@ -311,7 +311,10 @@
       var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
       var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '') + hmore;
       var head = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">🚀 WAGMI</td></tr>' : '', foot = B.id === 'wagmi' ? '<tr class="end"><td colspan="4">💀 NGMI</td></tr>' : '';
-      $('board').innerHTML = tabs + ctl + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.') + '</p>');
+      var f5 = ''; if (B.id === 'wagmi') { var fd = Math.floor(tip / 144), F5 = V.wagmiFirst ? V.wagmiFirst(w, fd) : [], pOn = V.wagmiPrizeOn && V.wagmiPrizeOn(tip + 1); /* wagmi-daily: Today's first five (replay w.wagmiFirst) */
+        f5 = '<div class="wf5" id="wagmiFirst5"><b>🌅 Today\'s first five</b> <span class="small muted">' + (pOn ? 'Day One Degen: the first 5 wallets to say WAGMI each chain day get +1 saved Pepe Wheel spin.' : 'Day One Degen prizes start at block ' + fmt(V.ACTIVATE_WAGMI_PRIZE_BLOCK) + '.') + '</span><ol>' +
+          [0, 1, 2, 3, 4].map(function (i) { var a = F5[i]; return '<li' + (a && a === ME ? ' class="me"' : '') + '>' + (a ? '<b title="' + esc(a) + '">' + esc(short(a)) + '</b>' + (a === ME ? ' (you)' : '') : '<span class="muted">open</span>') + '</li>'; }).join('') + '</ol></div>'; }
+      $('board').innerHTML = tabs + ctl + f5 + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.') + '</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
       $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; st.n = STEP; st.hits = null; st.all = null; render(); }; });
@@ -330,14 +333,19 @@
         if (q.id != null ? p && p.id === q.id : q.owner ? own === q.owner : q.text ? (p && String(p.name).toLowerCase().indexOf(String(q.text).toLowerCase()) >= 0) || own.toLowerCase() === String(q.text).toLowerCase() : false) hits.push(i); });
       st.all = hits; st.hits = hits.slice(0, 50); render(); if (!hits.length) return 0; mark(); var e0 = $('rk' + hits[0]); if (e0) { e0.scrollIntoView({ block: 'center' }); e0.classList.add('flash'); } return hits.length; } };
     /* 'Your pets' summary removed from the rankings page (Jake 2026-10-15); your rows stay highlighted in the board */
-    /* closest to dying (Jake 2026-10-15): the 10 living pets with the fewest blocks left, using the engine's own death block
-     * (V2Rules liveAt: deathBlock = (day of last feed + 7 + 1) x 144; Mythic-care pets never starve, so they are not listed) */
-    if ($('nearDeath')) { var tipB = w.tip, near = w.pets.filter(function (p) { return !p.dead && !p.released && p.deathBlock != null && p.deathBlock > tipB; })
-        .sort(function (a, b) { return a.deathBlock - b.deathBlock || a.id - b.id; }).slice(0, 10);
-      var left = function (n) { var m = n * 10; return fmt(n) + ' block' + (n === 1 ? '' : 's') + ' (~' + (m < 120 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : (m / 1440).toFixed(1) + ' days') + ')'; };
-      $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small"><b>NGMI: closest to starving.</b></p><p class="small muted">Living pets with the least time left before they starve (7 full days with no meal). If one is yours, feed it on Play to reset its clock. Mythic pets never starve. A pet that dies goes to the Pet Cemetery and its gear goes back to the owner\'s stash.</p>' +
-        (near.length ? '<div class="tw"><table class="board">' + near.map(function (p, i) { return '<tr' + (p.owner === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated"></canvas></td><td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner) + '">' + esc(shortAddr(p.owner)) + '</span>' + (p.owner === ME ? ' (you)' : '') + '</div></td><td>💀 dies in ' + left(p.deathBlock - tipB) + '<div class="small muted">at block ' + fmt(p.deathBlock) + '</div></td></tr>'; }).join('') + '</table></div>' : '<p class="muted small">No living pet is on a death clock.</p>');
-      $('nearDeath').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
+    /* wagmi-daily (owner, Oct 22 2026): the NGMI panel (#nearDeath) used to list the 10 living pets closest to starving. It now lists wallets that own
+     * living pets but have NOT said WAGMI in the current chain day ("didn't make it today"). Display only, from the replay (w.wagmi via streakOf).
+     * Order: biggest live streak at risk first, then best streak ever, then most pets, then address. Starve warnings stay on Play and pet pages. */
+    if ($('nearDeath')) { var tipB = w.tip, npets = {}; w.pets.forEach(function (p) { if (!p.dead && !p.released && !p.community && p.owner) npets[p.owner] = (npets[p.owner] || 0) + 1; });
+      var miss = Object.keys(npets).map(function (o) { return { o: o, n: npets[o], s: V.streakOf(w, o, tipB) }; }).filter(function (x) { return !x.s.today; })
+        .sort(function (a, b) { return b.s.current - a.s.current || b.s.best - a.s.best || b.n - a.n || (a.o < b.o ? -1 : 1); });
+      var NG = { n: STEP }, ngRow = function (x, i) { var s = x.s, risk = s.current ? '🔥 ' + s.current + '-day streak ends if no WAGMI today' : s.days ? '💀 NGMI · best ' + s.best + '-day streak' : '💤 never said WAGMI';
+        return '<tr' + (x.o === ME ? ' class="me"' : '') + '><td class="rk">' + (i + 1) + '</td><td><b title="' + esc(x.o) + '">' + esc(shortAddr(x.o)) + '</b>' + (x.o === ME ? ' <span class="chip">you</span>' : '') + '<div class="small muted">' + fmt(x.n) + ' living pet' + (x.n === 1 ? '' : 's') + '</div></td><td>' + risk + '</td></tr>'; };
+      var ngPaint = function () { var more = miss.length - NG.n;
+        $('nearDeath').innerHTML = '<h2 class="sec" data-ico="skull">NGMI</h2><p class="small muted">Wallets with living pets that have not said WAGMI yet this chain day (chain day ' + fmt(Math.floor(tipB / 144)) + ', ends in ~' + Math.max(1, Math.round((144 - tipB % 144) * 10 / 60)) + ' h). Say WAGMI on <a href="play.html#petsPanel">My Pets</a> to get off this list. Biggest streak at risk first.</p>' +
+          (miss.length ? '<div class="tw"><table class="board">' + miss.slice(0, NG.n).map(ngRow).join('') + '</table></div>' + (more > 0 ? '<p><button type="button" class="btn ghost" id="ngMore">Show more (' + fmt(more) + ' left)</button></p>' : '') : '<p class="muted small">🚀 Every wallet with living pets has said WAGMI today. WAGMI!</p>');
+        var nb = $('ngMore'); if (nb) nb.onclick = function () { NG.n += STEP; ngPaint(); }; };
+      ngPaint(); }
     render();
   }
   /* cemetery-paging 2026-10-20 (owner approved, list-cap audit finding 5): ~15,000 pets reach their death block within a week.
@@ -349,7 +357,7 @@
     $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(M.state().rows.length) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
     var tombs = $('tombs');
     if (window.V2CemeteryScene) V2CemeteryScene.mount(w, dead); /* cemetery-scene branch: pixel scene over the list (newest 12 graves) */
-    if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. See which pets are <a href="ranking.html">close to starving</a> on the ranking page.</p>'; return; }
+    if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; }
     var tomb = function (p) { var gc = R.graveCount(w, p);
       return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
         '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (gc ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; };

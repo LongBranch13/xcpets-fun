@@ -33,6 +33,7 @@ I={
 }
 I['nest']=["................","................","....kkk.........","...kzzzk..kkk...","..kzwzzzkkzzzk..","..kzzzzzkzwzzk..","..kzzzzzkzzzzk..","...kzzzk.kzzk...","kkkkkkkkkkkkkkkk","kNnNnNnNnNnNnNnk",".kNnNnNnNnNnNnk.","..kNnNnNnNnNnk..","...kkkkkkkkkk...","................","................","................"]
 I['pram']=["................","..kkkkk.........",".kmmmmmk........","kmmmmmmmk.......","kmmmkkkkkkkkkk..","kmmk.kwwwwwwwk..","kmmkkwtttttwwk..","kkkkkkkkkkkkkk..","..kmmmmmmmmmk...","...kkkkkkkkk....","...k.......k....","..kSk.....kSk...","..kSk.....kSk...","...k.......k....","................","................"]
+I['bird']=["................","......kkkk......",".....kyyyyk.....","....kyykyyyk....","...kooyyyyyk....","....kkyyyyyk....",".....kyyyyyykk..","....kyyzzyyyyyk.","....kyzzzyyyyk..","....kyyzzyyyk...",".....kyyyyykk...","......kkkkk.....",".......o..o.....","kkkkkkkkkkkkkkkk","onnnnnnnnnnnnnnn","................"]
 TXT_FONT='/usr/share/fonts/truetype/sand-box/google/Press Start 2P/PressStart2P-Regular.ttf'
 def badge(icon, rimkey, pip=None, fill='#181327'):
     im=Image.new('RGBA',(32,32),(0,0,0,0)); d=ImageDraw.Draw(im)
@@ -61,7 +62,7 @@ B=[('burn-chain','CHAIN GANG','chain','tiered'),('daily-burn','NUMBER GO UP','up
 ('first-hybrid','MAD SCIENTIST','egg2','uncommon'),('bred-true','PURE BLOOD','dna','uncommon'),
 ('dex','GOTTA BURN EM ALL','dex','tiered'),('legendary','SHINY HUNTER','star','rare'),('nakamoto','SATOSHI SAW YOU','btc','legendary'),
 ('breeder','BREEDER','nest','tiered'),('single-mother','SINGLE MOTHER','pram','uncommon'),
-('black-eye','RIGHT IN THE EYE','eye','common'),('ngmi','NGMI','wojak','uncommon'),('rip','PRESS F','grave','common')]
+('black-eye','RIGHT IN THE EYE','eye','common'),('ngmi','NGMI','wojak','uncommon'),('rip','PRESS F','grave','common'),('day-one-degen','DAY ONE DEGEN','bird','uncommon')]
 files=[]
 for bid,name,icon,r in B:
     if r=='tiered':
