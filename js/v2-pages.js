@@ -255,7 +255,7 @@
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
     var inWeek = function (b) { return b != null && b > tip - WEEK; };
     var BOARDS = [
-      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Daily WAGMI check-in streaks: say WAGMI once a chain day (pet:wagmi, 1 sat; feeding does not count). The first 5 wallets each chain day are Day One Degens (+1 saved Pepe Wheel spin). Longest live streak at the top, then best ever. Missed a whole chain day? NGMI, see you at the bottom.', players: true },
+      { id: 'wagmi', label: 'WAGMI → NGMI', note: 'Daily WAGMI check-in streaks: say WAGMI once a chain day (pet:wagmi, 1 dander; feeding does not count). The first 5 wallets each chain day are Day One Degens (+1 saved Pepe Wheel spin). Longest live streak at the top, then best ever. Missed a whole chain day? NGMI, see you at the bottom.', players: true },
       { id: 'pets', label: 'Most pets', note: 'Living pets owned.', players: true, week: true },
       { id: 'power', label: 'Most powerful', note: 'Power = Vigor + Spark + Grit + Zoom + Luck. Players: their single strongest pet.', pets: true, players: true },
       { id: 'rare', label: 'Rarest collection', note: 'Common 1 · Uncommon 3 · Rare 10 · Legendary 33 points per living pet.', players: true, week: true },
