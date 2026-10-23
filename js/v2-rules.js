@@ -18,7 +18,7 @@
   var V2_FROM_BLOCK = CUTOFF_BLOCK + 1; // first v2 block: v2 tags (fight/accept/rumble/breed, 69-min community feed) count from here
   var LIVE_DEATH_FROM_BLOCK = 971280, LIVE_UNIT = 1e8; // live real-core.js: death clock anchor; GameCore.UNIT (raw quantity per XCPETS)
   var BLOCKS_PER_DAY = 144, WEEK = 1008, NEGLECT_DAYS = 7, NEGLECTED_AFTER_DAYS = 3;
-  var COSTS = { sd: 690, tt: 1380, join: 690, hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, wagmi: 0.00000001, croll: 690, froll: 0.00000001 };
+  var COSTS = { sd: 690, tt: 1380, join: 690, hatch: 69, roll: 345, feedMin: 69, feedMinV1: 7, fight: 690, accept: 690, rumble: 69, rumbleStake: 690, breed: 690, release: 0.00000001, wagmi: 0.00000001, give: 0.00000001, hi: 0.00000001, croll: 690, froll: 0.00000001 };
   var FEED_QUICK = [69, 690, 6900];
   var FEE_SATS = 1500;                 // fallback BTC miner fee estimate per burn tx (sats)
   var MAX_RELEASE_PER_BURN = 120, MAX_TAG_BYTES = 34;
@@ -27,6 +27,19 @@
   /* Community roll (2026-10-15, Jake approved): pet:c:roll[:SLOT] (SLOT = a v2 slot id: HEAD HAND BODY BACK FACE FEET) burns 690 and gives the
    * community pet Nakamoto one gear item right away (seed: block hash + tx, like a token roll). Inert until ACTIVATE_CROLL_BLOCK: before it the tag
    * replays exactly as before (unknown pet: tag, community food only). The 7 old 25,000 pet:c:roll burns are pre-cutoff (frozen live engine). */
+  /* PET GIFTING (pet-gift preview, Phase 1, design/pet-market.md §1). pet:give:ID:P (P = recipient player # in base 32, 0-9A-V) moves a pet to
+   * player P for a 1-dander burn (1 sat of XCPETS); pet:hi (1 dander) is a hello burn so a new wallet gets a player #. Player # = order of an
+   * address's first XCPETS burn in history (block, then tx order), starting at 1; any burn counts, so it is derived from history alone.
+   * Worn gear and the pet's bag move with the pet; the stash, saved spins, tokens, badges and rolls stay with the giver.
+   * Locks: open fight, pending breed request, open ad / active listing (when those exist), dead / released / community pets.
+   * A received pet waits GIVE_SETTLE blocks before it can be gifted again (also = one gift per pet per block). No randomness.
+   * Inert until ACTIVATE_GIVE_BLOCK: before it pet:give / pet:hi replay exactly as today (unknown pet: tag, community food).
+   * PLACEHOLDER: null = off. Set to Bitcoin tip + 6 at deploy. */
+  var ACTIVATE_GIVE_BLOCK = null, GIVE_SETTLE = 6, SWAP_WINDOW = 1008;
+  /* PET-FOR-PET SWAPS (same gate): pet:swap:MINE:THEIRS opens offer N (1, 2, ... in chain order); the owner of THEIRS burns pet:swapok:N to swap the owners
+   * at that burn, only if the offer is open and within SWAP_WINDOW blocks, both pets still belong to the two players, are alive and pass the gift locks.
+   * pet:swapno:N closes it (offerer = cancel, other owner = decline). Gear moves with each pet like a gift. 1 dander each, no randomness. */
+  function giveOn(b) { return ACTIVATE_GIVE_BLOCK != null && b != null && Number(b) >= ACTIVATE_GIVE_BLOCK; }
   var ACTIVATE_CROLL_BLOCK = 971519;  // Bitcoin tip 971,516 at 2026-10-15 00:40 CT + 3 (Jake approved)
   /* Roll tokens (2026-10-15, Jake approved): from ACTIVATE_TOKENS_BLOCK a pet that moves up a stage (hatching counts: single hatch and packs)
    * has a 25% chance of a roll token, and a pet that eats without a stage-up 2% (each pet of a bundled pet:fm feed rolls on its own); at most
@@ -781,6 +794,54 @@
     if (t.action === 'fight') ids = [t.a, t.b]; else { var F = w.fights && w.fights[t.fightId - 1]; if (!F) return null; ids = [F.b].concat(day(F.block) !== d ? [F.a] : []); }
     for (var i = 0; i < ids.length; i++) { var p = w.byId[ids[i]]; if (p && p.fightDays && p.fightDays[d]) return 'This pet already battled today: #' + p.id + (p.name ? ' ' + p.name : '') + ' (one battle per pet per 144-block day)'; }
     return null; }
+  /* ---- gifting helpers (pure) */
+  function playerSeen(w, a) { if (!a) return; if (!w.players) { w.players = {}; w.playerList = []; } if (w.players[a] == null) { w.playerList.push(a); w.players[a] = w.playerList.length; } }
+  function playerNo(w, a) { return w && w.players && w.players[a] != null ? w.players[a] : null; }
+  function playerAddr(w, n) { n = Number(n); return w && w.playerList && n >= 1 ? w.playerList[n - 1] || null : null; }
+  function playerCode(n) { return n == null ? '' : Number(n).toString(32).toUpperCase(); }
+  function parsePlayer(s) { s = String(s || '').trim().toUpperCase().replace(/^P?#?/, ''); return /^[1-9A-V][0-9A-V]{0,6}$/.test(s) ? parseInt(s, 32) : null; }
+  /** giveLocks(w, p, b) -> reason string or null: the locks a gift checks (shared by the replay and the UI). */
+  function giveLocks(w, p, b, exceptSwap) {
+    if (p.lastGot != null && b < p.lastGot + GIVE_SETTLE) return 'just changed hands: can be gifted again from block ' + (p.lastGot + GIVE_SETTLE);
+    if ((w.fights || []).some(function (f) { return f.status === 'open' && b - f.block <= FIGHT_WINDOW && fightPets(f).indexOf(p.id) >= 0; })) return 'pet has an open fight';
+    if ((w.breedReqs || []).some(function (q) { return !q.used && b - q.block <= BREED_WINDOW && (q.a === p.id || q.b === p.id); })) return 'pet has a pending breed request';
+    if (w.ads && Object.keys(w.ads).some(function (k) { var d = w.ads[k]; return d && d.petId === p.id && d.open; })) return 'pet has an open ad';
+    if (w.listings && Object.keys(w.listings).some(function (k) { var d = w.listings[k]; return d && d.petId === p.id && d.active; })) return 'pet has an active listing';
+    if ((w.swaps || []).some(function (X) { return X !== exceptSwap && swapOpen(w, X, b) && X.mine === p.id; })) return 'pet is offered in an open swap';
+    return null; }
+  /** giveWhy(w, t, src, b) -> rejection reason or null for {petId, to}. */
+  function giveWhy(w, t, src, b, amt) { var p = w.byId[t.petId], to = playerAddr(w, t.to);
+    if (amt != null && !(amt >= COSTS.give)) return 'below gift cost 1 dander';
+    return !p ? 'no such pet' : p.community ? 'community pet' : p.released ? 'released' : p.owner !== src ? 'owner only' : p.dead ? 'dead (Pet Cemetery)' :
+      !to ? 'no such player #' + playerCode(t.to) : to === src ? 'that is your own player #' : giveLocks(w, p, b); }
+  /** giftMoves(w, p) -> { worn: [items], bag: [items] }: the gear that moves with a gifted pet. */
+  function giftMoves(w, p) { var bag = ((w.bags || {})[p.id] || []).map(function (g) { return w.items[g]; }).filter(function (g) { return g && g.bag === p.id; });
+    return { worn: wornOf(w, p.id), bag: bag }; }
+  function givePlan(id, n) { return { tag: 'pet:give:' + id + ':' + playerCode(n), amount: COSTS.give, label: 'Gift #' + id + ' to player #' + playerCode(n) }; }
+  /** giveBatches(ids, n) -> burn plans (each 1 dander, <= 34-byte tag) gifting every id to player n; picks the denser of the list / mask form per burn. */
+  function giveBatches(ids, n) { var P = playerCode(n), out = [], i = 0;
+    ids = ids.map(Number).filter(function (x, k, a) { return x >= 1 && a.indexOf(x) === k; }).sort(function (a, b) { return a - b; });
+    while (i < ids.length) { var pre = 'pet:gives:' + P + ':', L = [], tl = pre; /* list form */
+      for (var j = i; j < ids.length; j++) { var c = (L.length ? '.' : '') + ids[j].toString(32).toUpperCase(); if ((tl + c).length > MAX_TAG_BYTES) break; tl += c; L.push(ids[j]); }
+      var st = ids[i], mp = pre + st + ':', cap = Math.min(24, MAX_TAG_BYTES - mp.length), M = []; /* mask form */
+      for (var k = i; k < ids.length && ids[k] <= st + 5 * cap - 1; k++) M.push(ids[k]);
+      var useM = M.length > L.length, inB = useM ? M : L, tag;
+      if (inB.length === 1) tag = 'pet:give:' + inB[0] + ':' + P;
+      else if (useM) { var d = []; M.forEach(function (x) { var o = x - st, q = Math.floor(o / 5); while (d.length <= q) d.push(0); d[q] |= 1 << (o % 5); }); tag = mp + d.map(function (v) { return v.toString(32).toUpperCase(); }).join(''); }
+      else tag = tl;
+      out.push({ tag: tag, ids: inB, amount: COSTS.give, label: 'Gift ' + inB.length + ' pet' + (inB.length > 1 ? 's' : '') + ' to player #' + P }); i += inB.length; }
+    out.forEach(function (p, k) { if (out.length > 1) p.label += ' (burn ' + (k + 1) + ' of ' + out.length + ')'; }); return out; }
+  function giftsTo(w, a) { return (w.giftLog || []).filter(function (g) { return g.to === a; }); }
+  function swapOpen(w, X, b) { return X && X.status === 'open' && b - X.block <= SWAP_WINDOW; }
+  /** swapWhy(w, X, src, b) -> why the accept fails (null = ok). */
+  function swapWhy(w, X, src, b) { if (!X) return 'no such swap offer'; if (X.status !== 'open') return 'offer is ' + X.status; if (b - X.block > SWAP_WINDOW) return 'offer expired at block ' + (X.block + SWAP_WINDOW);
+    var A = w.byId[X.mine], B = w.byId[X.theirs]; if (!A || !B) return 'no such pet'; if (B.owner !== src) return 'only the owner of #' + X.theirs + ' can accept'; if (A.owner !== X.from) return '#' + X.mine + ' changed hands';
+    var e = function (p) { return p.community ? 'community pet' : p.released ? 'released' : p.dead ? 'dead (Pet Cemetery)' : giveLocks(w, p, b, X); };
+    return e(A) ? '#' + A.id + ': ' + e(A) : e(B) ? '#' + B.id + ': ' + e(B) : null; }
+  function swapsFor(w, a, b) { return (w.swaps || []).filter(function (X) { var B = w.byId[X.theirs]; return swapOpen(w, X, b) && (X.from === a || (B && B.owner === a)); }); }
+  function swapPlan(mine, theirs) { return { tag: 'pet:swap:' + mine + ':' + theirs, amount: COSTS.give, label: 'Offer #' + mine + ' for #' + theirs }; }
+  function swapOkPlan(n) { return { tag: 'pet:swapok:' + n, amount: COSTS.give, label: 'Accept swap ' + n }; }
+  function swapNoPlan(n) { return { tag: 'pet:swapno:' + n, amount: COSTS.give, label: 'Close swap ' + n }; }
   function parseTag(tag) {
     var t = String(tag || '').trim().toUpperCase(), p = t.split(':'); if (p[0] !== 'PET') return { action: 'plain' };
     var a = p[1], n = function (i) { return parseInt(p[i], 10); };
@@ -798,6 +859,17 @@
     if (a === 'OF' && p.length === 3 && idOk(p[2])) return { action: 'oroll', petId: n(2) }; /* overflow roll (Mythic discount); inert before ACTIVATE_MYTHIC_DISCOUNT_BLOCK */
     if (a === 'USESPIN' && (p.length === 2 || (p.length === 3 && /^(10|[1-9])$/.test(p[2])))) return { action: 'usespin', n: p.length === 3 ? n(2) : 1 }; /* saved spins; inert before ACTIVATE_SPINS_BLOCK; N > 10 is invalid */
     if (a === 'SPIN' && p.length === 2) return { action: 'spin' }; /* Pepe Wheel spin (random pet); inert before ACTIVATE_WHEEL_RANDOM_BLOCK */
+    if (a === 'GIVE' && p.length === 4 && idOk(p[2]) && /^[1-9A-V][0-9A-V]{0,6}$/.test(p[3])) return { action: 'give', petId: n(2), to: parseInt(p[3], 32) }; /* gifting; inert before ACTIVATE_GIVE_BLOCK */
+    if (a === 'GIVES' && (p.length === 4 || p.length === 5) && /^[1-9A-V][0-9A-V]{0,6}$/.test(p[2])) { /* batch gift; inert before ACTIVATE_GIVE_BLOCK */
+      var gto = parseInt(p[2], 32), gids = [];
+      if (p.length === 4 && /^[1-9A-V][0-9A-V]{0,5}(\.[1-9A-V][0-9A-V]{0,5})*$/.test(p[3])) { gids = p[3].split('.').map(function (x) { return parseInt(x, 32); }); /* list form: base-32 ids, ascending */
+        for (var gi = 1; gi < gids.length; gi++) if (!(gids[gi] > gids[gi - 1])) return { action: 'invalid' }; return { action: 'gives', to: gto, ids: gids }; }
+      if (p.length === 5 && idOk(p[3]) && /^[0-9A-V]{1,24}$/.test(p[4])) { for (var gj = 0; gj < p[4].length; gj++) { var gv = parseInt(p[4][gj], 32); for (var gb = 0; gb < 5; gb++) if (gv & (1 << gb)) gids.push(n(3) + 5 * gj + gb); } /* mask form: START + base-32 bit mask, like pet:rel */
+        return gids.length ? { action: 'gives', to: gto, ids: gids } : { action: 'invalid' }; }
+      return { action: 'invalid' }; }
+    if (a === 'SWAP' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'swap', mine: n(2), theirs: n(3) }; /* swaps; inert before ACTIVATE_GIVE_BLOCK */
+    if ((a === 'SWAPOK' || a === 'SWAPNO') && p.length === 3 && idOk(p[2])) return { action: a === 'SWAPOK' ? 'swapok' : 'swapno', n: n(2) };
+    if (a === 'HI' && p.length === 2) return { action: 'hi' }; /* hello burn (player #); inert before ACTIVATE_GIVE_BLOCK */
     if (a === 'WAGMI' && p.length === 2) return { action: 'wagmi' }; /* inert before ACTIVATE_WAGMI_BLOCK */
     if (a === 'FIGHT' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'fight', a: n(2), b: n(3) };
     if (a === 'ACCEPT' && p.length === 3 && idOk(p[2])) return { action: 'accept', fightId: n(2) };
@@ -915,7 +987,8 @@
     var w = { pets: [], byId: {}, items: {}, nextPet: 1, log: [], community: { burned: 0, feeds: 0, feeders: {}, gear: {}, gearLog: [] }, fights: [], rumbles: {}, breedReqs: [], tip: tip, nextItem: 1, tokens: {} };
     var seen = {};
     if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);
-    w.wagmi = {}; w.wagmiFirst = {};
+    w.wagmi = {}; w.wagmiFirst = {}; w.swaps = []; w.players = {}; w.playerList = []; w.giftLog = [];
+    preRows.forEach(function (r) { playerSeen(w, (r.raw || r).source); });
     function L(e, kind, msg, extra) { var o = Object.assign({ block: e.block_index, tx: e.tx_hash, kind: kind, msg: msg }, extra || {}); w.log.push(o); return o; }
     var resolvedWeeks = {};
     function maybeRumbles(b) { Object.keys(w.rumbles).forEach(function (wk) { var R = w.rumbles[wk]; if (!R.done && b >= R.seedBlock && blockHashes[R.seedBlock]) resolveRumble(w, R, blockHashes[R.seedBlock]); }); }
@@ -923,7 +996,7 @@
     ev.forEach(function (e) {
       spinsGate(w, e.b); wizHatClear(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); relabelTiers(w, e.b); wizTierRelabel(w, e.b); wizTier2Relabel(w, e.b); repairGear(w, e.b); maybeRumbles(e.b);
       if (e.op) { applyOp(w, e.op); return; }
-      var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1;
+      var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1; playerSeen(w, r.source);
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
       w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
@@ -1052,6 +1125,12 @@
   var SEND_MARGIN = 3; /* blocks: an accept sent with fewer blocks left than this may confirm after the window */
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;
     var b = (tip || w.tip || 0) + 1, me = o.me, P = function (id) { return w.byId[id]; }, pend = (o.pending || []).map(function (g) { return parseTag(g); }).filter(Boolean), amt = plan && plan.amount;
+    if (t.action === 'swap' || t.action === 'swapok' || t.action === 'swapno') { if (!giveOn(b)) return 'swaps open at a later block';
+      if (t.action === 'swapok') return swapWhy(w, w.swaps && w.swaps[t.n - 1], me || '', b);
+      if (t.action === 'swap') { var sa = P(t.mine), sb = P(t.theirs); return !sa || !sb ? 'no such pet' : me && sa.owner !== me ? 'offer a pet of yours' : sb.owner === sa.owner ? 'both pets are yours' : sa.dead || sb.dead ? 'dead (Pet Cemetery)' : sa.community || sb.community ? 'community pet' : giveLocks(w, sa, b); }
+      return swapOpen(w, w.swaps && w.swaps[t.n - 1], b) ? null : 'offer is not open'; }
+    if (t.action === 'gives') { if (!giveOn(b)) return 'gifting opens at a later block'; var gok = t.ids.filter(function (id) { return !giveWhy(w, { petId: id, to: t.to }, me || (w.byId[id] || {}).owner, b, amt); }); return gok.length ? null : 'no pet in this batch can be gifted'; }
+    if (t.action === 'give') { if (!giveOn(b)) return 'gifting opens at a later block'; var gpd = pend.some(function (q) { return q.action === 'give' && q.petId === t.petId; }); return gpd ? 'a gift of this pet is already pending' : giveWhy(w, t, me || (w.byId[t.petId] || {}).owner, b, amt); }
     if (t.action === 'usespin') { if (!spinsOn(b)) return 'saved spins open at block ' + ACTIVATE_SPINS_BLOCK; var sl = me ? spinsLeft(w, me, b, o.pending) : null; return sl != null && sl < t.n ? 'only ' + sl + ' saved spin' + (sl === 1 ? '' : 's') + ' left' : null; }
     if (/^(ad|rug|unad)$/.test(t.action)) { if (!rugOn(b)) return 'Rug Me is not open yet' + (ACTIVATE_RUGME_BLOCK != null ? ' (block ' + ACTIVATE_RUGME_BLOCK + ')' : ''); var dup = pend.some(function (q) { return q.action === t.action && String(q.ids || q.petId) === String(t.ids || t.petId) && q.adId === t.adId; }); if (dup) return 'that Rug Me burn is still waiting to confirm'; return me ? rugCheck(w, t, me, b, amt, P) : null; }
     if (t.action === 'breed') { var X = P(t.a), Y = P(t.b); if (amt != null && below(w, amt, COSTS.breed, b)) return 'below breed cost ' + costAt(w, COSTS.breed, b); if (!X) return 'no such pet #' + t.a; if (me && X.owner !== me) return 'first pet must be yours'; if (t.a === t.b) return 'two different pets';
@@ -1348,6 +1427,47 @@
         var rk = breed(w, TA, TB, bh, r.tx_hash, b, ta.owner); ta.taken.kid = rk.id;
         return L(r, 'breed', 'Rug Me match (ad ' + ta.id + '): #' + TB.id + ' rugged #' + TA.id + ' -> Egg #' + rk.id + ' (' + (rk.tier != null ? TIER_LABELS[rk.tier] + ' ' : '') + speciesLabel(rk.species) + ') to the poster', { petId: rk.id, adId: ta.id }); }
       case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
+      case 'hi': {
+        if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        return L(r, 'hi', src + ' said hi: player #' + playerCode(playerNo(w, src)), { player: playerNo(w, src) }); }
+      case 'give': {  /* PET GIFTING (see ACTIVATE_GIVE_BLOCK) */
+        if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        var gvp = pet(t.petId), gvw = giveWhy(w, t, src, b, amt); if (gvw) return L(r, 'rejected', 'gift: ' + gvw);
+        var gto = playerAddr(w, t.to), mv = giftMoves(w, gvp); gvp.owner = gto; gvp.lastGot = b;
+        mv.worn.concat(mv.bag).forEach(function (g) { g.owner = gto; });
+        var grec = { block: b, tx: r.tx_hash, petId: gvp.id, from: src, to: gto, toNo: t.to, tier: gvp.tier, gear: mv.worn.length + mv.bag.length };
+        (gvp.gifts = gvp.gifts || []).push(grec); w.giftLog.push(grec);
+        return L(r, 'gift', '#' + gvp.id + ' was gifted to player #' + playerCode(t.to) + (grec.gear ? ' with ' + grec.gear + ' gear' : ''), { petId: gvp.id, to: gto, gift: true }); }
+      case 'swap': case 'swapok': case 'swapno': {  /* PET-FOR-PET SWAPS (see SWAP_WINDOW) */
+        if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        if (!(amt >= COSTS.give)) return L(r, 'rejected', 'below swap cost 1 dander');
+        if (t.action === 'swap') { var sA = pet(t.mine), sB = pet(t.theirs);
+          var sw = !sA || !sB ? 'no such pet' : t.mine === t.theirs ? 'same pet' : sA.owner !== src ? 'offer a pet of yours' : sB.owner === src ? 'both pets are yours' :
+            sA.community || sB.community ? 'community pet' : sA.released || sB.released ? 'released' : sA.dead || sB.dead ? 'dead (Pet Cemetery)' : giveLocks(w, sA, b);
+          if (sw) return L(r, 'rejected', 'swap: ' + sw);
+          var SX = { n: w.swaps.length + 1, mine: t.mine, theirs: t.theirs, from: src, to: sB.owner, block: b, tx: r.tx_hash, status: 'open', expires: b + SWAP_WINDOW };
+          w.swaps.push(SX); return L(r, 'swapOffer', 'swap offer ' + SX.n + ': #' + t.mine + ' for #' + t.theirs + ' (accept by block ' + SX.expires + ')', { swap: SX.n, petId: t.theirs }); }
+        var X = w.swaps[t.n - 1];
+        if (t.action === 'swapno') { if (!swapOpen(w, X, b)) return L(r, 'rejected', 'swap: ' + (X ? 'offer is ' + (X.status === 'open' ? 'expired' : X.status) : 'no such swap offer'));
+          var xo = w.byId[X.theirs]; if (src !== X.from && !(xo && xo.owner === src)) return L(r, 'rejected', 'swap: not your offer');
+          X.status = src === X.from ? 'cancelled' : 'declined'; X.closeBlock = b; return L(r, 'swapClose', 'swap offer ' + X.n + ' ' + X.status, { swap: X.n }); }
+        if (X) { pet(X.mine); pet(X.theirs); } var sk = swapWhy(w, X, src, b); if (sk) return L(r, 'rejected', 'swap: ' + sk);
+        var PA = w.byId[X.mine], PB = w.byId[X.theirs], mA = giftMoves(w, PA), mB = giftMoves(w, PB), oA = PA.owner, oB = PB.owner;
+        PA.owner = oB; PB.owner = oA; PA.lastGot = b; PB.lastGot = b;
+        mA.worn.concat(mA.bag).forEach(function (g) { g.owner = oB; }); mB.worn.concat(mB.bag).forEach(function (g) { g.owner = oA; });
+        Object.assign(X, { status: 'done', doneBlock: b, doneTx: r.tx_hash, gearA: mA.worn.length + mA.bag.length, gearB: mB.worn.length + mB.bag.length, tierA: PA.tier, tierB: PB.tier });
+        [[PA, oA, oB], [PB, oB, oA]].forEach(function (z) { var gr = { block: b, tx: r.tx_hash, petId: z[0].id, from: z[1], to: z[2], toNo: playerNo(w, z[2]), tier: z[0].tier, swap: X.n }; (z[0].gifts = z[0].gifts || []).push(gr); w.giftLog.push(gr); });
+        return L(r, 'swap', 'swap ' + X.n + ': #' + PA.id + ' and #' + PB.id + ' changed owners', { swap: X.n, petIds: [PA.id, PB.id], petId: PB.id }); }
+      case 'gives': {  /* BATCH GIFT: every pet is checked on its own; a locked pet is skipped with a reason, the rest move */
+        if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        if (!(amt >= COSTS.give)) return L(r, 'rejected', 'below gift cost 1 dander');
+        var bto = playerAddr(w, t.to), bdone = [], bskip = [];
+        t.ids.forEach(function (id) { pet(id); var why = giveWhy(w, { petId: id, to: t.to }, src, b); if (why) { bskip.push('#' + id + ' ' + why); return; }
+          var bp = w.byId[id], bm = giftMoves(w, bp); bp.owner = bto; bp.lastGot = b; bm.worn.concat(bm.bag).forEach(function (g) { g.owner = bto; });
+          var br = { block: b, tx: r.tx_hash, petId: id, from: src, to: bto, toNo: t.to, tier: bp.tier, gear: bm.worn.length + bm.bag.length, batch: true };
+          (bp.gifts = bp.gifts || []).push(br); w.giftLog.push(br); bdone.push(id); });
+        if (!bdone.length) return L(r, 'rejected', 'gift: nothing moved: ' + bskip.join(', '));
+        return L(r, 'gift', 'gifted ' + bdone.length + ' pet' + (bdone.length > 1 ? 's' : '') + ' #' + bdone.join(', #') + ' to player #' + playerCode(t.to) + (bskip.length ? ' · skipped ' + bskip.join(', ') : ''), { petIds: bdone, petId: bdone[0], to: bto, gift: true, skipped: bskip }); }
       case 'wagmi': {
         if (b < ACTIVATE_WAGMI_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (!(amt >= COSTS.wagmi)) return L(r, 'rejected', 'below WAGMI cost 1 sat');
@@ -2300,7 +2420,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
+  return { ACTIVATE_GIVE_BLOCK: ACTIVATE_GIVE_BLOCK, GIVE_SETTLE: GIVE_SETTLE, giveOn: giveOn, _setGiveActivation: function (b) { ACTIVATE_GIVE_BLOCK = b; }, giveWhy: giveWhy, giveLocks: giveLocks, giftMoves: giftMoves, givePlan: givePlan, giveBatches: giveBatches, SWAP_WINDOW: SWAP_WINDOW, swapWhy: swapWhy, swapOpen: swapOpen, swapsFor: swapsFor, swapPlan: swapPlan, swapOkPlan: swapOkPlan, swapNoPlan: swapNoPlan, giftsTo: giftsTo, playerNo: playerNo, playerAddr: playerAddr, playerCode: playerCode, parsePlayer: parsePlayer, hiPlan: { tag: 'pet:hi', amount: 0.00000001 },   ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
     ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: UI_COSTS, BASE_COSTS: COSTS, ACTIVATE_HALVING_BLOCK: ACTIVATE_HALVING_BLOCK, HALVING_DELAY: HALVING_DELAY, COMMUNITY_PET_ARRIVAL_BLOCKS: COMMUNITY_PET_ARRIVAL_BLOCKS, ACTIVATE_COMMUNITY_TRIGGER_BLOCK: ACTIVATE_COMMUNITY_TRIGGER_BLOCK, _setCommunityTriggerActivation: function (b) { ACTIVATE_COMMUNITY_TRIGGER_BLOCK = b; }, halvingOn: halvingOn, halving1Block: halving1Block, halvingBlocks: halvingBlocks, eraAt: eraAt, costAt: costAt, costsAt: costsAt, syncCosts: syncCosts, planAmount: planAmount, ACTIVATE_SPINS_BLOCK: ACTIVATE_SPINS_BLOCK, SPINS_MAX_PER_BURN: SPINS_MAX_PER_BURN, spinsOn: spinsOn, spinsLeft: spinsLeft, useSpinPlan: useSpinPlan, overflowSpins: overflowSpins, _setSpinsActivation: function (b) { ACTIVATE_SPINS_BLOCK = b; }, ACTIVATE_FIRESALE_BLOCK: ACTIVATE_FIRESALE_BLOCK, FIRE: { ODDS_1K: FIRE_ODDS_1K, WARN: FIRE_WARN, LEN: FIRE_LEN, COOLDOWN: FIRE_COOLDOWN, KEK_PAUSE: FIRE_KEK_PAUSE, PAY: FIRE_PAY, FEED_PAY: FIRE_FEED_PAY }, fireOn: fireOn, fireRoll: fireRoll, fireExtend: fireExtend, fireBlackout: fireBlackout, saleAt: saleAt, fireFactor: fireFactor, fireInfo: fireInfo, fullAt: fullAt, fireSpinsOf: function (w, a) { return (w && w.fireSpins && w.fireSpins[a]) || 0; }, _setFiresaleActivation: function (b) { ACTIVATE_FIRESALE_BLOCK = b; }, _setFireHashes: function (h) { FIRE_HASHES = h || {}; }, below: below, mealCost: mealCost, halvingInfo: halvingInfo, petThresholds0: petThresholds, _setHalvingActivation: function (b) { ACTIVATE_HALVING_BLOCK = b; }, _setCommunityPetArrivals: function (a) { COMMUNITY_PET_ARRIVAL_BLOCKS.length = 0; (a || []).forEach(function (x) { COMMUNITY_PET_ARRIVAL_BLOCKS.push(x); }); }, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, ACTIVATE_CHUD_BEARD_PART_BLOCK: ACTIVATE_CHUD_BEARD_PART_BLOCK, beardPartOn: beardPartOn, CHUD_BEARD_PART: CHUD_BEARD_PART, BEARD_PART_EXCLUDE: BEARD_PART_EXCLUDE, _setChudBeardPartActivation: function (b) { ACTIVATE_CHUD_BEARD_PART_BLOCK = b; }, _pool: pool, _setEligB: function (b) { ELIG_B = b; }, partDef: partDef, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, BEARD_EXCLUDE: BEARD_EXCLUDE, bodyOf: bodyOf, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,
