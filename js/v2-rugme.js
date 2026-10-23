@@ -20,7 +20,7 @@
   function U() { return window.V2UI; }
   function tip() { var u = U(); return (u && u.S && u.S().tip) || 0; }
   function postCost() { var u = U(); try { return V.costAt(u.world(), V.RUG_AD_COST || 69, tip() + 1); } catch (e) { return 69; } } /* posting: 69 per pet (halving-aware) */
-  function cost() { var u = U(); try { return V.costAt(u.world(), 690, tip() + 1); } catch (e) { return 690; } } /* halving / fire sale: the price at the next block, same costAt the replay checks */
+  function cost() { var u = U(); try { var b = tip() + 1; return V.costAt(u.world(), V.rugCost ? V.rugCost(b) : 690, b); } catch (e) { return V.rugCost ? V.rugCost(tip() + 1) : 690; } } /* halving / fire sale: the price at the next block, same costAt the replay checks */
   function NET() { return (window.XCPETS_CONFIG && XCPETS_CONFIG.network) || 'main'; }
   var st = { as: null, i: 0, tab: 'motel', post: {}, per: {}, perMode: false, edit: null, sel: {}, lastSkip: [] };
   function bioOf(ad) { return pick(BIOS, ad.tx + ':' + ad.pet); } /* always random: deterministic from ad tx hash + pet (owner 8:47 PM) */
@@ -47,7 +47,7 @@
   function traits(p) { var a = p.art || {}, o = []; if (a.pattern) o.push(a.pattern); if (a.eyes) o.push(a.eyes + ' eyes'); if (p.hidden && p.shows) o.push(p.shows); return o; }
   function cardHtml(c, w) { var p = c.pet, b = tip() + 1, left = c.ad.block + V.AD_WINDOW - b;
     return '<div class="rm-top"><span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
-      '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span></div>' +
+      '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' +
       '<div class="rm-sub">' + esc(V.speciesLabel(p.species)) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
       '<div class="rm-bio">“' + esc(c.bio) + '”</div>' +
       '<div class="rm-wants">Wants: <b>' + esc(V.reqText(c.ad.req)) + '</b> · ' + fmt(Math.max(0, left)) + ' blocks left</div>' +

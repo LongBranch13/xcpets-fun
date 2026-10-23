@@ -140,10 +140,12 @@ const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'js
 ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing path (shared XCPETS/XCP pair) is gone');
 // ---- Old Money badge + shared pet filter (display only)
 { const fs = require('fs'), pm = (id, o) => Object.assign({ id, species: 'pepe', tier: 1, stage: 2, owner: 'bc1qx', stats: { vigor: 10, spark: 10, grit: 10, zoom: 10, luck: 10 }, hatchBlock: 900000, parents: null, breedsV2: 0 }, o);
-  const a = pm(1, { parents: [8, 9], hatchBlock: 950000 }), g = pm(2, { species: 'kek', tier: 3, stage: 4, hatchBlock: 960000, stats: { vigor: 50, spark: 50, grit: 50, zoom: 50, luck: 50 } }), h = pm(3, { parents: [8, 9], hatchBlock: 980000, tier: 0, stage: 1 });
-  ok(V.OLD_MONEY_LABEL === 'Old Money 💰' && V.oldMoneyBefore() === null, 'old money: label constant, gate null');
-  ok(V.oldMoney(a) && V.oldMoney(h) && !V.oldMoney(g) && !V.oldMoney(null), 'old money: gate null = every bred pet, hatched (genesis) pets never');
-  V._setOldMoneyBefore(970000); ok(V.oldMoney(a) && !V.oldMoney(h), 'old money: only pets bred before the 135-cost block'); V._setOldMoneyBefore(null);
+  const a = pm(1, { parents: [8, 9], hatchBlock: 950000 }), g = pm(2, { species: 'kek', tier: 3, stage: 4, hatchBlock: 960000, stats: { vigor: 50, spark: 50, grit: 50, zoom: 50, luck: 50 } }), h = pm(3, { parents: [8, 9], hatchBlock: 971000, tier: 0, stage: 1 });
+  ok(V.OLD_MONEY_LABEL === 'Old Money 💰' && V.oldMoneyBefore() === 972703 && V.oldMoneyBefore() === V.breed135Gate(), 'old money: label constant, uses main\'s ACTIVATE_BREED_135_BLOCK (972703)');
+  ok(V.oldMoney(a) && V.oldMoney(h) && !V.oldMoney(g) && !V.oldMoney(null), 'old money: bred before 972703 qualify, hatched (genesis) pets never');
+  ok(!V.oldMoney(pm(4, { parents: [8, 9], hatchBlock: 972703 })), 'old money: bred at/after the 135 gate does not');
+  { const G = V.breed135Gate(); V._setBreed135Activation(970000); ok(V.oldMoney(a) && !V.oldMoney(h), 'old money: follows the breed-135 gate'); V._setBreed135Activation(G); }
+  { const Bd = require('../js/v2-badges.js'); ok(typeof Bd.oldMoney === 'function' && [a, g, h].every(p => Bd.oldMoney(p, V) === V.oldMoney(p)), 'old money: ONE check (V2Badges delegates to V2Rules.oldMoney)'); }
   const w = { byId: { 1: a, 2: g, 3: h }, pets: [a, g, h], listings: [], items: { x: { id: 'x', on: 2 } } };
   const S = (n, id, asset, price, o) => Object.assign({ n, petId: id, seller: 'bc1qx', asset, price, expire: 10000, status: 'open' }, o);
   const xs = [{ p: a, S: S(1, 1, 'XCPETS', 500e8, {}), buy: true }, { p: g, S: S(2, 2, 'XCP', 3000, {}), buy: false }, { p: h, S: S(3, 3, 'XCPETS', 100e8, { status: 'sold' }), buy: true }];
