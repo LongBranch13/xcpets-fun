@@ -61,13 +61,26 @@
     var mk = ok.filter(function (p) { var d = V.deedOf(w, p); return !(d && d.ok && d.holder === ME); });
     modal('<h2>🎁 Gift ' + (ok.length === 1 ? 'a pet' : ok.length + ' pets') + '</h2><div class="gf-pets">' + rows + '</div>' +
       '<label for="gfTo">Recipient Bitcoin address</label><input type="text" id="gfTo" autocomplete="off" spellcheck="false" placeholder="bc1… / 1… / 3…" value="' + esc(pre || '') + '"><p class="small warn" id="gfErr" role="alert"></p>' +
-      '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + (mk.length ? mk.length + ' pet' + (mk.length === 1 ? ' gets its' : 's get their') + ' token made and tied first (1 block wait). ' : '') + 'No undo.</p>' +
+      '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + (mk.length ? mk.length + ' pet' + (mk.length === 1 ? ' gets its' : 's get their') + ' token made and tied first (1 block wait). ' : '') + (V.isBurnAddr ? 'Sending to a burn address is allowed: the pet goes out of play. ' : '') + 'No undo.</p>' +
       '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Send</button></div>');
     $('gfX').onclick = close; $('gfTo').focus();
     $('gfGo').onclick = function () { var to = $('gfTo').value.trim();
       if (!validAddr(to)) { $('gfErr').textContent = 'Enter a Bitcoin address that starts with bc1, 1 or 3.'; return; }
       if (to === ME) { $('gfErr').textContent = 'That is your own address.'; return; }
-      run({ to: to, ids: ok.map(function (p) { return p.id; }), mint: {}, tied: {} }); }; }
+      var job = { to: to, ids: ok.map(function (p) { return p.id; }), mint: {}, tied: {} };
+      /* Spam City rules (owner, Oct 23 2026): a burn address is allowed (warn, never block); a pet whose token already moves in an unconfirmed tx is warned
+       * (only the first move of a pet in a block counts). */
+      var burnTo = V.isBurnAddr && V.isBurnAddr(to), $go = $('gfGo'); $go.disabled = true; $('gfErr').textContent = 'Checking for unconfirmed moves…';
+      pendingMoves(ok.map(function (p) { var d = V.deedOf(w, p); return d && d.asset; }).filter(Boolean)).then(function (busy) { $go.disabled = false; $('gfErr').textContent = '';
+        var warn = (burnTo ? '<p class="warn">🔥 <b>' + esc(to) + '</b> is a burn address. Nobody can use pets sent there: ' + (ok.length === 1 ? 'the pet goes' : 'the pets go') + ' out of play for good and the site shows ' + (ok.length === 1 ? 'it' : 'them') + ' as sent to a burn address.</p>' : '') +
+          (busy.length ? '<p class="warn">⏳ ' + busy.map(function (A) { var p = ok.filter(function (q) { var d = V.deedOf(w, q); return d && d.asset === A; })[0]; return p ? '#' + p.id : A; }).join(', ') + ' already ' + (busy.length === 1 ? 'has' : 'have') + ' an unconfirmed token move. Only the first move of a pet in a block counts: a second one in the same block is ignored. Wait for the next block to be safe.</p>' : '');
+        if (!warn) return run(job);
+        modal('<h2>🎁 Check before sending</h2>' + warn + '<div class="gf-bar"><button class="q" id="gfBack">Back</button><button class="btn" id="gfAny">' + (busy.length ? 'Send anyway' : 'Yes, send to the burn address') + '</button></div>');
+        $('gfBack').onclick = function () { giftFlow(ids, to); }; $('gfAny').onclick = function () { run(job); }; }); }; }
+  /** pendingMoves(assets) -> the assets with an unconfirmed debit (send, MPMA, order) in the node mempool; [] when the mempool can't be read. */
+  function pendingMoves(assets) { if (!assets.length) return Promise.resolve([]);
+    return fetch(API + '/mempool/events/DEBIT?limit=1000').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var seen = {};
+      ((j && j.result) || []).forEach(function (e) { var x = e.params || {}; if (assets.indexOf(x.asset) >= 0) seen[x.asset] = 1; }); return Object.keys(seen); }, function () { return []; }); }
   /* run(job): resumable; job.mint[id] = asset (window sent), job.tied[id] = 1 */
   function run(job) { var w = W(), Wl = window.V2Wallet; if (!w || !Wl) return; gpend(job);
     var need = job.ids.filter(function (id) { var p = w.byId[id], d = V.deedOf(w, p); return p && !(d && d.ok && d.holder === ME) && !job.tied[id]; });
@@ -79,6 +92,7 @@
     if (need.length) { var waitIds = need.filter(function (id) { return job.mint[id]; });
       return Promise.all(waitIds.map(function (id) { return issued(job.mint[id]); })).then(function (h) {
         if (h.some(function (x) { return x !== ME; })) { msg('<p>Token' + (waitIds.length === 1 ? '' : 's') + ' sent. Waiting for 1 block to confirm… this window continues by itself (keep it open).</p>'); var t = setTimeout(function () { run(job); }, 30000); $('gfX').onclick = function () { clearTimeout(t); close(); }; return; }
+        if (V.rulesOn && V.rulesOn(tip() + 1)) { waitIds.forEach(function (id) { job.tied[id] = 1; }); gpend(job); return run(job); } /* rule 3: the confirmed mint is the tie */
         var id2 = waitIds[0], plan = V.deedPlan(id2, job.mint[id2]); msg('<p>Tying the token to #' + id2 + '…</p>');
         return Wl.send(plan, ME).then(function () { job.tied[id2] = 1; run(job); }); }).catch(fail); }
     /* all tokens held: send them, BUNDLE per transaction */

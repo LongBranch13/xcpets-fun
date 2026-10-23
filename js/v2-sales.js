@@ -48,8 +48,22 @@
     if (t && t.action === 'deed' && !seen[t.asset]) { seen[t.asset] = 1; out.push(t.asset); } }); return out.sort(); }
   /** loadDex(rows) -> {issuances, orders, matches} for every pet token (token/XCPETS and token/XCP), sorted so the replay input is the same
    *  whatever page order the API used. Only the first valid issuance of each token is kept (that one decides the binding). */
+  /** mintAssets(rows) -> pet-token assets issued from ACTIVATE_SPAM_RULES_BLOCK on (rule 3: mint = tie, no burn announces them). Reads the full nodes'
+   *  global /issuances list (newest first) back to the gate; [] while the rules gate is null or not reached. Every node failing (or the page cap
+   *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
+  function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
+    var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)'));
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2';
+      function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
+        var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
+        if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); if (++k >= 50) throw new Error('too many issuances to scan'); return go(j.next_cursor); }); }
+      return go(null).catch(function () { return on(i + 1); }); }
+    return on(0); }
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null);
-    var as = deedAssets(rows), key = as.join(',');
+    return mintAssets(rows).then(function (ma) { return loadDex2(rows, ma); }); }
+  function loadDex2(rows, ma) {
+    var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
     var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.slice();
     function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
@@ -200,10 +214,13 @@
     var tok = step === 'list' ? '<p class="sh-ok">🎟 You hold the pet token ' + esc(d.asset) + '. Listing is one wallet window.</p>'
       : d && !d.ok ? '<p class="sh-warn">The token ' + esc(short(d.asset)) + ' for #' + p.id + ' is held by another address, so it can\'t list. Make a new token: it replaces the old one.</p>'
       : '<p class="sh-hint">#' + p.id + ' has no pet token yet. Make one first (free: no XCP fee, only the Bitcoin network fee).</p>';
-    var steps = step === 'list' ? '<ol class="sh-steps"><li><b>One window:</b> a DEX order: give the token, get ' + esc(V.saleAmountText(asset, f.ask)) + '. It lasts ' + V.SALE_EXPIRY + ' blocks.</li></ol>'
+    var one = V.rulesOn && V.rulesOn(TIP + 1); /* Spam City rule 3: the owner's mint ties the token, no tie burn */
+    var steps = step !== 'list' && one ? '<ol class="sh-steps"><li><b>Window 1 of 2:</b> make the token ' + (pd ? esc(short(pd.asset)) : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). It is tied to #' + p.id + ' as soon as it confirms (no tie burn).</li><li>Wait 1 block.</li><li><b>Window 2 of 2:</b> the DEX order (open List again: it is one window then).</li></ol>'
+      : step === 'list' ? '<ol class="sh-steps"><li><b>One window:</b> a DEX order: give the token, get ' + esc(V.saleAmountText(asset, f.ask)) + '. It lasts ' + V.SALE_EXPIRY + ' blocks.</li></ol>'
       : '<ol class="sh-steps"><li><b>Window 1 of 3:</b> make the token ' + (pd ? esc(short(pd.asset)) : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”).</li><li>Wait 1 block for it to confirm.</li>' +
         '<li><b>Window 2 of 3:</b> a 1-dander burn that ties the token to #' + p.id + '.</li><li><b>Window 3 of 3:</b> the DEX order (send it right after window 2).</li></ol>';
-    var btn = step === 'list' ? '<button class="sh-btn" id="shGo"' + (f.low ? ' disabled' : '') + '>Open wallet window</button>'
+    var btn = step !== 'list' && one ? (pd && TIP - (Number(pd.at) || 0) < 6 ? '<p class="sh-hint">Token ' + esc(short(pd.asset)) + ' sent. Waiting for 1 block: then #' + p.id + ' lists in one window.</p>' : '<button class="sh-btn" id="shMint">Open window 1 of 2</button>')
+      : step === 'list' ? '<button class="sh-btn" id="shGo"' + (f.low ? ' disabled' : '') + '>Open wallet window</button>'
       : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
     modal('<h3>List #' + p.id + '</h3><div class="sh-sellrow">' + card(p, { asset: asset, price: f.ask }) + '<div class="sh-form">' + tok + f.html + omLine(p) +
       '<p class="sh-hint">The token travels with the pet: the buyer gets both and can relist in one window. A partial fill is no sale.</p>' + steps + btn + ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint" id="shMsg"></p></div></div>');
