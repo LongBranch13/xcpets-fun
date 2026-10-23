@@ -1,6 +1,6 @@
 /* pet-shop-sales (branch, 2026-10-22): the Spam City Games shop (shop.html). Paid pet listings settled by the Counterparty DEX, PET TOKENS ONLY.
  *  Each pet sells through its own pet token: a free numeric Counterparty asset (A + 17-20 digits), quantity 1, indivisible, locked,
- *  description 'xcpets pet #ID'. The token's pair (token/XCPETS or token/XCP) is that pet's own order book, so no listing shares a book.
+ *  description 'https://xcpets.fun/t/ID.json' (metadata JSON + sprite PNG built by tools/token-meta.js). The token's pair (token/XCPETS or token/XCP) is that pet's own order book, so no listing shares a book.
  *  First listing = window 1: make the token (issuance, no XCP fee for numeric assets) -> wait 1 block -> window 2: the 1-dander burn
  *          pet:deed:ID:<asset number base36> that ties the token to the pet -> window 3: the DEX order (give the token, ask the price).
  *  Relist = one window (the order) while the owner still holds the pet's token (the token travels to the buyer with the pet).

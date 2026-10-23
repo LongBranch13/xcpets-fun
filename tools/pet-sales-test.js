@@ -32,7 +32,7 @@ ok(V.b36ToDec(V.decTo36('18446744073709551615')) === '18446744073709551615' && V
 const pt = V.parseTag(V.deedTag(123, DA)); ok(pt.action === 'deed' && pt.petId === 123 && pt.asset === DA, 'pet:deed parses to the asset');
 ok(V.parseTag('pet:deed:5:zz').action !== 'deed' && V.parseTag('pet:sell:5:abcdef01').action !== 'sell', 'out-of-range token rejected by parser; pet:sell retired (unknown tag)');
 ok(V.parseTag(V.unsellTag('ABCDEF0123')).action === 'unsell' && V.parseTag('pet:unsell:abc').action !== 'unsell', 'pet:unsell:HEX8 parses');
-const mp = V.mintPlan(77, DA); ok(mp.kind === 'issuance' && mp.quantity === 1 && mp.divisible === false && mp.lock === true && mp.description === 'xcpets pet #77', 'mint plan: qty 1, indivisible, locked, description');
+const mp = V.mintPlan(77, DA); ok(mp.kind === 'issuance' && mp.quantity === 1 && mp.divisible === false && mp.lock === true && mp.description === 'https://xcpets.fun/t/77.json', 'mint plan: qty 1, indivisible, locked, description');
 /* 1. below the gate: pet:deed / pet:unsell are unknown tags, dex data ignored */
 const dA0 = V.randomDeed(bytes('pre')), iA0 = iss(O, T + 1, dA0, 'xcpets pet #' + withGear.id), o1 = order(O, T + 2, dA0, 1, 'XCP', 250000017, 288);
 const pre = [row(T + 2, O, D, V.deedTag(withGear.id, dA0)), row(T + 3, O, D, V.unsellTag(o1.tx_hash)), row(T + 3, O, D, 'pet:sell:' + P[0].id + ':0badc0de')];
@@ -45,7 +45,7 @@ ok(wa.listings === undefined && wa.deeds === undefined && wa.byId[withGear.id].o
 /* 2. above the gate: mint -> wait 1 block -> tie + list */
 V._setSalesActivation(G);
 const b0 = G + 2, A = withGear, mv = V.giftMoves(base, base.byId[A.id]), gids = mv.worn.concat(mv.bag).map(g => g.gid);
-const dA = V.randomDeed(bytes('A')), iA = iss(O, b0, dA, 'xcpets pet #' + A.id), tieA = row(b0 + 1, O, D, V.deedTag(A.id, dA));
+const dA = V.randomDeed(bytes('A')), iA = iss(O, b0, dA, V.deedDesc(A.id)), tieA = row(b0 + 1, O, D, V.deedTag(A.id, dA));
 const lp = V.listPlan(A.id, dA, 'XCP', 250000000), oA = order(O, b0 + 1, dA, 1, 'XCP', 250000000, V.SALE_EXPIRY);
 ok(lp.give_asset === dA && lp.give_quantity === 1 && lp.get_asset === 'XCP' && lp.get_quantity === 250000000 && lp.expiration === 288, 'list plan: give the 1 token, get the exact price, 288 blocks');
 const dex = { issuances: [iA], orders: [oA], matches: [] }, rows = [tieA];
@@ -67,6 +67,11 @@ ok(/quantity 1/.test(tie(0, iss(O, b0, rd(3), 'xcpets pet #' + P[0].id, { quanti
 ok(/after the burn/.test(tie(0, iss(O, b0 + 2, rd(6), 'xcpets pet #' + P[0].id))), 'issuance confirmed after the tie burn: rejected');
 ok(/below token cost/.test(tie(0, iss(O, b0, rd(7), 'xcpets pet #' + P[0].id), { amt: 0 })), 'below 1 dander: rejected');
 { const r = row(b0 + 1, BUYER, D, V.deedTag(P[0].id, rd(8))); ok(/owner only/.test(L(run([r], b0 + 2, { issuances: [iss(BUYER, b0, rd(8), 'xcpets pet #' + P[0].id)], orders: [], matches: [] }), r).msg), 'non-owner tie: rejected'); }
+const tok = (m) => !/rejected|must|another|after|below|owner only|unknown|already/.test(m) ? 'OK' : m;
+ok(tok(tie(0, iss(O, b0, rd('url0'), V.deedDesc(P[0].id)))) === 'OK', 'URL description: binds');
+ok(tok(tie(0, iss(O, b0, rd('leg0'), 'xcpets pet #' + P[0].id))) === 'OK', 'legacy plain description: still binds');
+ok(/description/.test(tie(0, iss(O, b0, rd('url1'), V.deedDesc(P[1].id)))), 'URL of another pet: rejected');
+ok(/another address/.test(tie(0, iss(BUYER, b0, rd('fake1'), V.deedDesc(P[0].id)))), 'anti-fake: same URL description minted by a third party: rejected');
 /* wrong orders on a bound token are not listings */
 { const d3 = rd('w'), i3 = iss(O, b0, d3, 'xcpets pet #' + P[2].id), t3 = row(b0 + 1, O, D, V.deedTag(P[2].id, d3));
   const bad = [order(O, b0 + 2, d3, 1, 'PEPECASH', 5e8, 288), order(O, b0 + 3, d3, 1, 'XCP', 999, 288), order(O, b0 + 4, d3, 1, 'XCP', 5000, 2000), order(BUYER, b0 + 5, d3, 1, 'XCP', 5000, 288)];
@@ -165,7 +170,7 @@ ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing pat
 { /* wallet: pet token issuance compose + echo check */
   const Wm = require('../js/v2-wallet.js')({ win: {}, fetch: () => Promise.reject(new Error('no net')), storage: { getItem: () => null, setItem() {} }, CFG: { network: 'mainnet' }, BurnCore: {}, Wallet: { Tracker: function () { return { add() {}, list: () => [] }; } } });
   const plan = V.mintPlan(4107, 'A123456789012345678'), u = Wm._dexUrl('https://node.example/v2', 'bc1qme', plan, 3);
-  ok(/\/compose\/issuance\?/.test(u) && /asset=A123456789012345678/.test(u) && /quantity=1&/.test(u) && /divisible=false/.test(u) && /lock=true/.test(u) && /description=xcpets%20pet%20%234107/.test(u), 'wallet: issuance compose url');
+  ok(/\/compose\/issuance\?/.test(u) && /asset=A123456789012345678/.test(u) && /quantity=1&/.test(u) && /divisible=false/.test(u) && /lock=true/.test(u) && /description=https%3A%2F%2Fxcpets.fun%2Ft%2F4107.json/.test(u), 'wallet: issuance compose url');
   const good = { rawtransaction: 'ab', name: 'issuance', params: { source: 'bc1qme', asset: plan.asset, quantity: 1, divisible: false, lock: true, description: plan.description } };
   ok(Wm._dexCheck(good, 'bc1qme', plan).length === 0, 'wallet: issuance echo ok');
   ok(Wm._dexCheck(Object.assign({}, good, { params: Object.assign({}, good.params, { quantity: 2 }) }), 'bc1qme', plan).length > 0, 'wallet: issuance qty 2 rejected');
@@ -174,4 +179,10 @@ ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing pat
   const sales = require('fs').readFileSync(require('path').join(__dirname, '..', 'js/v2-sales.js'), 'utf8');
   ok(!/Paid in|uniqueAsk|smallest free extra/.test(sales) && /loadDex\(rows\)|function loadDex\(rows\)/.test(sales) && /crypto\.getRandomValues/.test(sales), 'shop UI: no shared-pair choice; token discovery from burns; random token'); }
 V._setSalesActivation(null);
+/* token metadata URL (token-meta) */
+ok(V.deedDesc(2) === 'https://xcpets.fun/t/2.json' && Buffer.byteLength(V.deedDesc(1844674407)) <= 52, 'deedDesc = metadata URL, fits 52 bytes');
+ok(V.deedDescOk('https://xcpets.fun/t/2.json', 2) && V.deedDescOk('xcpets pet #2', 2) && V.deedDescOk('xcpets.fun/t/2.json', 2) && !V.deedDescOk('https://xcpets.fun/t/3.json', 2) && !V.deedDescOk('https://evil.example/t/2.json', 2) && !V.deedDescOk('https://xcpets.fun/t/22.json', 2), 'deedDescOk: URL with the right id only (+ legacy)');
+{ const TM = require('./token-meta.js'), j = TM.meta({ id: 2, name: 'X', tier: 'Common', speciesLabel: 'Pepe', species: 'pepe', stageName: 'Adult', status: 'alive', generation: 0, rarityScore: 1 }, 'A1');
+  ok(j.asset === 'A1' && j.image === 'https://xcpets.fun/t/2.png' && j.pet.id === 2 && j.name && j.images[0].data === j.image, 'token JSON: asset, name, image, pet id');
+  const pg = TM.png(new Uint8ClampedArray(4096).fill(200), 32, 32, 4); ok(pg.slice(1, 4).toString() === 'PNG' && pg.readUInt32BE(16) === 128, 'sprite PNG 128x128'); }
 console.log('pet-sales-test: ' + pass + ' passed, ' + fail + ' failed (snapshot tip ' + T + ')'); process.exit(fail ? 1 : 0);
