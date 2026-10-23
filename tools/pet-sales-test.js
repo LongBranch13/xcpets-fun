@@ -182,7 +182,19 @@ V._setSalesActivation(null);
 /* token metadata URL (token-meta) */
 ok(V.deedDesc(2) === 'https://xcpets.fun/t/2.json' && Buffer.byteLength(V.deedDesc(1844674407)) <= 52, 'deedDesc = metadata URL, fits 52 bytes');
 ok(V.deedDescOk('https://xcpets.fun/t/2.json', 2) && V.deedDescOk('xcpets pet #2', 2) && V.deedDescOk('xcpets.fun/t/2.json', 2) && !V.deedDescOk('https://xcpets.fun/t/3.json', 2) && !V.deedDescOk('https://evil.example/t/2.json', 2) && !V.deedDescOk('https://xcpets.fun/t/22.json', 2), 'deedDescOk: URL with the right id only (+ legacy)');
-{ const TM = require('./token-meta.js'), j = TM.meta({ id: 2, name: 'X', tier: 'Common', speciesLabel: 'Pepe', species: 'pepe', stageName: 'Adult', status: 'alive', generation: 0, rarityScore: 1 }, 'A1');
+{ const TM = require('./token-meta.js'), j = TM.meta({ id: 2, name: 'X', tier: 'Common', speciesLabel: 'Pepe', species: 'pepe', stageName: 'Adult', status: 'alive', generation: 0, rarityScore: 1 }, { asset: 'A1', block: 5, tx: 't', by: 'o' }), j0 = TM.meta({ id: 2, name: 'X', speciesLabel: 'Pepe', stageName: 'Adult' }, null);
+  ok(j0.verified === 'not tied yet' && !j0.asset && j.verified.asset === 'A1', 'token JSON: verified asset once tied, else not tied yet');
   ok(j.asset === 'A1' && j.image === 'https://xcpets.fun/t/2.png' && j.pet.id === 2 && j.name && j.images[0].data === j.image, 'token JSON: asset, name, image, pet id');
   const pg = TM.png(new Uint8ClampedArray(4096).fill(200), 32, 32, 4); ok(pg.slice(1, 4).toString() === 'PNG' && pg.readUInt32BE(16) === 128, 'sprite PNG 128x128'); }
+/* anti-fake: V2Rules.deedScan (read-only) */
+{ const p0 = P[0], f = rd('scan-fake'), g = rd('scan-own1'), h = rd('scan-own2'), B = b0 + 50;
+  const dx = { issuances: [iss(BUYER, B, f, V.deedDesc(p0.id)), iss(O, B, g, V.deedDesc(p0.id)), iss(O, B + 3, h, V.deedDesc(p0.id))], orders: [], matches: [] };
+  const sc = rr => V.deedScan(w, rr, dx), own = w.byId[p0.id].owner === O;
+  ok(own && !sc([row(B + 1, BUYER, D, V.deedTag(p0.id, f))])[p0.id], 'anti-fake: third party mints same URL description and ties it: not verified');
+  ok(!sc([row(B + 1, O, D, V.deedTag(p0.id, f))])[p0.id], 'anti-fake: owner ties a token issued by someone else: not verified');
+  ok(!sc([row(B + 1, BUYER, D, V.deedTag(p0.id, g))])[p0.id], 'anti-fake: non-owner ties the owner token: not verified');
+  ok(!sc([])[p0.id], 'untied token (no deed burn): not verified');
+  const two = sc([row(B + 1, O, D, V.deedTag(p0.id, g)), row(B + 4, O, D, V.deedTag(p0.id, h))]);
+  ok(two[p0.id] && two[p0.id].asset === h, 'owner second tie replaces the first (newest wins)');
+  ok(sc([row(B + 1, O, D, V.deedTag(p0.id, g))])[p0.id].asset === g, 'owner tie: verified'); }
 console.log('pet-sales-test: ' + pass + ' passed, ' + fail + ' failed (snapshot tip ' + T + ')'); process.exit(fail ? 1 : 0);
