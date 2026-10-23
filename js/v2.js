@@ -266,10 +266,10 @@
   var NGMI_JOKES = ['Your streak took a nap. One WAGMI wakes it up.', 'Streak got rugged (by a good night\u2019s sleep). Day 1 is one tap away.', 'Just a vibe check. Say WAGMI and you\u2019re so back.', 'Even Satoshi took days off. Probably. Tap WAGMI to restart.', 'Ser, the streak fell in the mempool. Fish it out with a WAGMI.'];
   function wagmiBar(stk, w) { var tip = w.tip || S.tip || 0, left = 144 - (tip % 144), hrs = left * 10 / 60, lt = hrs >= 1 ? '~' + Math.round(hrs) + 'h' : '~' + Math.max(1, Math.round(left * 10)) + ' min';
     var on = V.wagmiOn && V.wagmiOn(tip + 1), ro = viewOnly() || !ME, why = !on ? 'WAGMI check-ins open soon' : stk.today ? 'Already said WAGMI today' : ro ? 'View only: connect your wallet to say WAGMI' : '';
-    var btn = '<button type="button" class="btn sk-btn" id="wagmiBtn"' + (why ? ' disabled title="' + esc(why) + '"' : ' title="Burns 1 sat of XCPETS with the tag pet:wagmi"') + '>' + (stk.today ? '✓ WAGMI\u2019d today' : '🚀 Say WAGMI') + ' <span class="cost">' + (on ? '1 sat' : 'soon') + '</span></button>';
+    var btn = '<button type="button" class="btn sk-btn" id="wagmiBtn"' + (why ? ' disabled title="' + esc(why) + '"' : ' title="Burns 1 dander of XCPETS with the tag pet:wagmi"') + '>' + (stk.today ? '✓ WAGMI\u2019d today' : '🚀 Say WAGMI') + ' <span class="cost">' + (on ? '1 dander' : 'soon') + '</span></button>';
     var msg = stk.state === 'wagmi' ? '<span class="sk-tag sk-w">WAGMI</span> <b>🔥 ' + stk.current + '-day streak</b> <span class="sk-best">best ' + stk.best + '</span> ' + (stk.today ? '<span class="sk-ok">see you next chain day</span>' : '<span class="sk-warn">say WAGMI in the next ' + lt + ' to make it ' + (stk.current + 1) + '</span>')
       : stk.state === 'ngmi' ? '<span class="sk-tag sk-n">NGMI</span> <b>💀 streak reset</b> <span class="sk-joke">' + esc(NGMI_JOKES[Math.floor(tip / 144) % NGMI_JOKES.length]) + '</span> <span class="sk-best">best ' + stk.best + '</span>'
-      : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 sat, no feeding needed.</span>';
+      : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 dander, no feeding needed.</span>';
     setTimeout(function () { var b = $('wagmiBtn'); if (b && !b.disabled) b.onclick = function () { confirmPlans('WAGMI check-in', [{ tag: 'pet:wagmi', amount: 0.00000001 }]); }; }, 0);
     return '<span class="sk-msg">' + msg + '</span>' + btn; }
   /* wagmi-daily (owner, Oct 22 2026): right after V2Wallet.connect, offer WAGMI once per wallet per chain day if it can be sent (gate open, not said
@@ -283,7 +283,7 @@
     ls.setItem(k, String(d)); ss.removeItem('xcpets-wagmi-connect');
     var first = V.wagmiFirst ? V.wagmiFirst(w, d).length : 5, prize = V.wagmiPrizeOn && V.wagmiPrizeOn(w.tip + 1) && first < (V.WAGMI_PRIZE_N || 5);
     var el = document.createElement('div'); el.id = 'wagmiOffer'; el.className = 'wagmi-offer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Say WAGMI today');
-    el.innerHTML = '<b>🚀 gm! Say WAGMI for today?</b><span>One tap keeps your 🔥 streak going (1 sat, plus the network fee).' + (prize ? ' Only ' + first + ' of 5 Day One Degen spots taken today: the first five wallets each get +1 saved Pepe Wheel spin.' : '') + '</span>' +
+    el.innerHTML = '<b>🚀 gm! Say WAGMI for today?</b><span>One tap keeps your 🔥 streak going (1 dander, plus the network fee).' + (prize ? ' Only ' + first + ' of 5 Day One Degen spots taken today: the first five wallets each get +1 saved Pepe Wheel spin.' : '') + '</span>' +
       '<div class="wo-btns"><button type="button" class="btn" id="wagmiOfferGo">🚀 Say WAGMI</button><button type="button" class="btn ghost" id="wagmiOfferNo">Not today</button></div>';
     document.body.appendChild(el);
     $('wagmiOfferGo').onclick = function () { el.remove(); confirmPlans('WAGMI check-in', [WAGMI_PLAN]); };
@@ -524,7 +524,7 @@
   /* Mythic discount overflow rolls: one gear roll per full 1,000 care above 21,000; claimed with a 1-sat pet:of:ID burn (same style as the founder Free roll) */
   function ofBtn(w, p) { var f = V.overflowRolls ? V.overflowRolls(w, p, frPendingTags()) : null; return f && f.on ? freeRollButton('oroll', 'Mythic discount', 'Overflow roll', f.left) : ''; }
   /** one free-roll button + its "left" counter (founder Free roll and Mythic-discount Overflow roll share the same markup) */
-  function freeRollButton(action, why, label, left) { return '<button class="btn ghost ico-flame" data-a="' + action + '" title="' + why + ': one random gear piece for this pet. You only burn 1 sat of XCPETS">' + label + '</button><span class="small muted frleft">' + label + 's left: ' + fmt(left) + '</span>'; }
+  function freeRollButton(action, why, label, left) { return '<button class="btn ghost ico-flame" data-a="' + action + '" title="' + why + ': one random gear piece for this pet. You only burn 1 dander of XCPETS">' + label + '</button><span class="small muted frleft">' + label + 's left: ' + fmt(left) + '</span>'; }
   /** the plain "what a roll gives" line under the pet's roll button, plus a pending line while this pet's roll burns wait to confirm */
   function rollHelp(p) { var n = window.UXB && UXB.pendingFor ? UXB.pendingFor(p.id) : 0, bag = !autoEquipIsOn();
     return '<p class="small muted grhelp">🎲 Roll for gear: burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random piece for this pet. ' + (bag ? 'It goes to your stash (Auto-equip is off); equip it free.' : 'Auto-equip is on: it is worn right away unless the pet already wears something better.') + '</p>' +
