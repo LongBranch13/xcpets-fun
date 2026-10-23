@@ -52,7 +52,7 @@
    *  3) mint = tie: the FIRST issuance of a valid pet token (free numeric, qty 1, indivisible, locked, description = the pet's t/ID.json URL) by the pet's
    *     CURRENT owner ties it at once (no pet:deed burn needed) if the pet has no token. Third-party issuances are ignored (deedWhy: owner only).
    *  At the gate, every pre-sales-gate pet:deed tie that is still valid (owner unchanged, owner still holds the token) is honoured once (grandfather). */
-  var ACTIVATE_SPAM_RULES_BLOCK = null;
+  var ACTIVATE_SPAM_RULES_BLOCK = 972783;
   function rulesOn(b) { return ACTIVATE_SPAM_RULES_BLOCK != null && b != null && Number(b) >= ACTIVATE_SPAM_RULES_BLOCK; }
   /** isBurnAddr(a): a well-known provably unspendable address (Counterparty burn, Bitcoin Eater, 1111… and vanity XXXX… addresses). */
   var BURN_ADDRS = { '1CounterpartyXXXXXXXXXXXXXXXUWLpVr': 1, '1BitcoinEaterAddressDontSendf59kuE': 1, '1111111111111111111114oLvT2': 1, 'bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqquuu8': 0 };

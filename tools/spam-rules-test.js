@@ -21,7 +21,7 @@ const base = run([], T, null), owners = {};
 base.pets.forEach(p => { if (!p.dead && !p.released && !p.community && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 const O = Object.keys(owners).sort((a, b) => owners[b].length - owners[a].length)[0], mine = owners[O].filter(p => !V.giveLocks(base, p, G + 10));
 const A = mine[0], B = mine[1], C2 = mine[2];
-ok(V.rulesGate() === null, 'shipped: ACTIVATE_SPAM_RULES_BLOCK is null');
+ok(V.rulesGate() === 972783, 'shipped: ACTIVATE_SPAM_RULES_BLOCK is 972783 (deployed Oct 23 2026)');
 ok(V.isBurnAddr(BURN) && V.isBurnAddr('1BitcoinEaterAddressDontSendf59kuE') && V.isBurnAddr('1111111111111111111114oLvT2') && !V.isBurnAddr(O) && !V.isBurnAddr(F1) && !V.isBurnAddr(''), 'isBurnAddr: known burn addresses yes, players no');
 ok(V.mintId(V.deedDesc(42)) === 42 && V.mintId('xcpets pet #7') === 7 && V.mintId('https://evil.example/t/2.json') === null && V.mintId('xcpets.fun/t/2.json?x') === null, 'mintId parses only the pet metadata URL forms');
 V._setSalesActivation(G); V._setGiveActivation(G);
