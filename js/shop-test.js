@@ -17,6 +17,18 @@
   function randomDeed() { var b = new Uint8Array(8); crypto.getRandomValues(b); var n = 0n; for (var i = 0; i < 8; i++) n = n * 256n + BigInt(b[i]); if (n < BigInt(DEED_MIN)) n += BigInt(DEED_MIN); return 'A' + n; }
   function freeDeed(k) { k = k || 0; var A = randomDeed(); return fetch(READ + '/assets/' + A).then(function (r) { if (r.status === 404) return A; if (k >= 5) throw new Error('no free token name'); return freeDeed(k + 1); }); }
   function id() { return +$('stId').value; }
+  /* minted token memory: localStorage 'xcpets.shopTest.mint.<pid>.<owner>' = {asset, state:'built'|'broadcast', txid, at}; only 'broadcast' counts as minted */
+  function mkey(pid, a) { return 'xcpets.shopTest.mint.' + pid + '.' + a; }
+  function mget(pid, a) { try { return JSON.parse(localStorage.getItem(mkey(pid, a)) || 'null'); } catch (e) { return null; } }
+  function mset(pid, a, o) { try { localStorage.setItem(mkey(pid, a), JSON.stringify(o)); } catch (e) { } }
+  /* owner's own newest issuance whose description is this pet's URL (xcp.fun node lacks per-address issuances, so try the public nodes too) */
+  function ownMint(pid, a) { var bases = [READ, 'https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'];
+    function go(i) { if (i >= bases.length) return Promise.resolve(null); var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 10000);
+      return fetch(bases[i] + '/addresses/' + encodeURIComponent(a) + '/issuances?verbose=true&limit=1000', { signal: ac.signal }).then(function (r) { clearTimeout(t); return r.json(); }).then(function (j) {
+        if (!j || !Array.isArray(j.result)) throw new Error('no data');
+        var m = j.result.filter(function (x) { return (!x.status || x.status === 'valid') && x.description === url(pid) && (x.source || x.issuer) === a && deedOk(x.asset); }).sort(function (x, y) { return y.tx_index - x.tx_index; })[0];
+        return m ? m.asset : null; }).catch(function () { clearTimeout(t); return go(i + 1); }); }
+    return go(0); }
   function url(id) { return 'https://xcpets.fun/t/' + id + '.json'; }
   function descOk(d, id) { return d === url(id) || d === 'xcpets pet #' + id || d === 'xcpets.fun/t/' + id + '.json' || d === 'http://xcpets.fun/t/' + id + '.json'; }
   function unhex(t) { if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { return decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (e) { } } return t; }
@@ -35,11 +47,15 @@
   function refresh() { var pid = id(); $('stStatus').textContent = 'Loading…';
     return getJ('api/pets.json').then(function (j) { pet = j.pets.filter(function (p) { return p.id === pid; })[0];
       if (!pet) throw new Error('pet #' + pid + ' not in the hourly feed');
-      return findTie(pid, pet.owner); }).then(function (r) { verified = r.v; var A = $('stAsset').value.trim() || (verified && verified.asset) || '';
+      return findTie(pid, pet.owner); }).then(function (r) { verified = r.v; var saved = mget(pid, pet.owner);
+      if (!$('stAsset').value.trim() && !verified && saved && saved.state === 'broadcast') $('stAsset').value = saved.asset;
+      if ($('stAsset').value.trim() || verified) return r;
+      return ownMint(pid, pet.owner).then(function (A) { if (A && !$('stAsset').value.trim()) { $('stAsset').value = A; mset(pid, pet.owner, { asset: A, state: 'broadcast', at: Date.now(), from: 'api' }); } return r; }); }).then(function (r) { var A = $('stAsset').value.trim() || (verified && verified.asset) || '';
       if (!$('stAsset').value && A) $('stAsset').value = A;
       var h = '<p>Pet #' + pid + ' <b>' + esc(pet.name) + '</b>, owner <code>' + esc(pet.owner) + '</code>' + (me && me !== pet.owner ? ' <span class="st-bad">(not your connected address)</span>' : '') + '</p>';
       h += verified ? '<p class="st-ok">✔ Verified token: <code>' + esc(verified.asset) + '</code> (tied in block ' + verified.block + ')</p>' : '<p class="st-bad">Not tied yet: no valid owner tie found.</p>';
       if (A && verified && A !== verified.asset) h += '<p class="st-bad">⚠ ' + esc(A) + ' is NOT the real token of pet #' + pid + '.</p>';
+      var sv = mget(pid, pet.owner); if (sv && sv.state === 'built' && sv.asset !== A) h += '<p class="small muted">Built but not signed: ' + esc(sv.asset) + ' (not minted).</p>';
       if (r.other.length) h += '<p class="small muted">Ignored ties (not owner / bad token / replaced): ' + r.other.map(function (t) { return esc(t.asset) + ' by ' + esc(t.by.slice(0, 10)) + '…'; }).join(', ') + '</p>';
       $('stStatus').innerHTML = h + '<p class="small muted">The game does not count this yet (shop off).</p>';
       return A ? book(A) : null; }).catch(function (e) { errOut('stStatus', e); }); }
@@ -78,6 +94,7 @@
     var fee; $('stTx').scrollIntoView({ behavior: 'smooth' });
     Promise.resolve().then(function () { return STEPS[b.dataset.step](); }).then(function (p) { plan = p; return W.feeRate(); }).then(function (f) { fee = f; return compose(plan, fee); }).then(function (res) {
       composed = res; var btc = Number(res.btc_fee);
+      if (plan.asset) { $('stAsset').value = plan.asset; var old = mget(id(), me); if (!old || old.state !== 'broadcast') mset(id(), me, { asset: plan.asset, state: 'built', at: Date.now() }); }
       $('stTxStatus').textContent = 'Built. Nothing has been signed. The game does not count this yet.';
       $('stSum').innerHTML = '<table class="dt-sum">' + [['Step', esc(plan.label)], ['Type', 'compose/' + plan.route]].concat(Object.keys(plan.q).map(function (k) { return [k, '<code>' + esc(plan.q[k]) + '</code>']; }))
         .concat([['BTC miner fee', isFinite(btc) ? btc.toLocaleString() + ' sats (' + (btc / 1e8).toFixed(8) + ' BTC)' : 'not reported'], ['Fee rate', fee + ' sat/vB'], ['Tx size', res.rawtransaction.length / 2 + ' bytes unsigned'], ['From', '<code>' + esc(me) + '</code>'], ['Node', '<code>' + esc(res._url.replace(/\?.*/, '')) + '</code>']])
@@ -85,7 +102,7 @@
       $('stSign').disabled = false; }).catch(function (e) { errOut('stTxStatus', e); }); }; });
   $('stSign').onclick = function () { if (!composed) return; $('stSign').disabled = true; $('stOut').innerHTML = '<p class="small">XCP Wallet window opened. Approve or reject there.</p>';
     W.getWallet().then(function (w) { if (w.address !== me) throw new Error('Connected wallet differs from the address used to build.'); return w.signAndBroadcast(composed); }).then(function (r) {
-      if (plan.asset) $('stAsset').value = plan.asset;
+      if (plan.asset) { $('stAsset').value = plan.asset; mset(id(), me, { asset: plan.asset, state: 'broadcast', txid: r.txid, at: Date.now() }); }
       $('stOut').innerHTML = '<p class="dt-ok">Broadcast. txid: ' + esc(r.txid) + '</p><p><a target="_blank" rel="noopener" href="https://mempool.space/tx/' + encodeURIComponent(r.txid) + '">mempool.space ↗</a> · wait for 1 confirmation, then Refresh status.</p>';
       composed = null; }, function (e) { errOut('stOut', e); $('stSign').disabled = false; }); };
   $('stConnect').onclick = function () { $('stConnect').disabled = true; W.getWallet().then(function (w) { me = w.address; $('stMe').textContent = me; $('stConnect').textContent = '✓ Connected'; refresh(); }, function (e) { $('stConnect').disabled = false; errOut('stStatus', e); }); };
