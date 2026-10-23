@@ -480,7 +480,7 @@
    * Wizard x Wizard -> Wizard + bred-true bonus, hybrid parents follow the three-way rules, Nakamoto children forced Legendary, normal tier rules.
    * 'wizard' is a hybrid root with all 13 species (Wizard hybrid art: hybridRender below). The community pet never breeds (p.community check).
    * PLACEHOLDER: null = inert (identical to main). Set to chain tip + ~6 at deploy time, owner approval required. */
-  var ACTIVATE_WIZ_BREED_BLOCK = null;
+  var ACTIVATE_WIZ_BREED_BLOCK = 972716;
   function wizBreedOn(b) { return ACTIVATE_WIZ_BREED_BLOCK != null && b != null && b >= ACTIVATE_WIZ_BREED_BLOCK; }
   var WIZ_SIGN_MIN = 0.00000001;                    // Join us sign claim: any amount, 1 sat of XCPETS is enough
   var WIZ_SIGN_ITEM = 'sig-wizard-sign';               // the claimable sign gear id

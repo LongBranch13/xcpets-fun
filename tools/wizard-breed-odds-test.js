@@ -12,7 +12,7 @@ const st = { vigor: 10, spark: 10, grit: 10, zoom: 10, luck: 10 };
 const pet = (id, sp, tier, extra) => Object.assign({ id, species: sp, tier, stats: Object.assign({}, st), stage: 3, breeds: 0, children: [], owner: 'bc1qtest', lastBreed: null }, extra || {});
 const B = 972400;
 // 1) gate inert by default
-ok(V.ACTIVATE_WIZ_BREED_BLOCK === null, 'ACTIVATE_WIZ_BREED_BLOCK is null (inert placeholder)');
+ok(V.ACTIVATE_WIZ_BREED_BLOCK === 972716, 'ACTIVATE_WIZ_BREED_BLOCK is 972716 (deployed gate)');
 ok(V.wizBreedOn(B) === false && V.wizBreedOn(99999999) === false, 'wizBreedOn false at every block while null');
 ok(/cannot breed/.test(V.breedable(pet(1, 'wizard', 1), B) || ''), 'gate inert: player Wizard cannot breed: "' + V.breedable(pet(1, 'wizard', 1), B) + '"');
 // 2) simulate gate ON
