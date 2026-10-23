@@ -47,4 +47,12 @@ for (let i = 0; i < 4000; i++) { const k = V.breed(w, pet(100000 + i * 2, 'wizar
 ok(nk > 0 && nk === nkL, 'Wizard x Nakamoto: every Nakamoto child is Legendary (' + nkL + '/' + nk + ')');
 for (let i = 0; i < 500; i++) { const k = V.breed(w, pet(300000 + i * 2, 'wizard', 1), pet(300001 + i * 2, 'wizard', 1), V.sha('wb' + i), V.sha('wt' + i), B, 'bc1qtest'); if (k.breedBonus) bt++; }
 ok(bt === 500, 'Wizard x Wizard gets the bred-true bonus (' + bt + '/500)');
+// 5) wizard-breed-on: final names, breed cost (breed 135 rules), community never breeds in a real world, copy placeholder guard
+const WP = V.wizHybridPairs(); ok(WP.length === 13 && WP.every(e => e.nameA && e.nameB && V.hybridName(e.a) === e.nameA && V.hybridName(e.b) === e.nameB), '13 Wizard pairs, both orders named (' + WP.map(e => e.nameA + '/' + e.nameB).join(', ') + ')');
+ok(new Set(WP.map(e => e.nameA).concat(WP.map(e => e.nameB))).size === 26, '26 distinct Wizard hybrid names');
+ok(V.breed135Gate() === 972703 && V.breedCost(Math.max(B, 972703)) === 135 && V.breedCost(972702) === 690, 'Wizard breeds use breedCost (species-agnostic): 135 from 972703');
+{ const pw = V.replay([], {}, [], { tip: 972710 }); ok(V.planAmount(pw, { tag: 'pet:breed:16822:1', amount: 690 }, 972710).amount === 135, 'pet:breed with a Wizard parent plans 135 after 972703'); }
+ok(!!V.breedable(pet(1, 'wizard', 3, { community: true, stage: 5 }), 99999999), 'community Bitcoin Wizard (Mythic) never breeds, any block');
+{ const html = ['pets.html', 'rules.html', 'how-it-works.html'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join(''); const ph = (html.match(/__WIZ_BREED_BLOCK__/g) || []).length;
+  ok(V.ACTIVATE_WIZ_BREED_BLOCK === null || ph === 0, 'copy placeholder __WIZ_BREED_BLOCK__ (' + ph + ' left) must be replaced once the gate is set'); }
 console.log(fail ? `${fail} FAILED` : 'ALL PASS'); process.exit(fail ? 1 : 0);

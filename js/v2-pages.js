@@ -464,6 +464,17 @@
     tabs.innerHTML = V.STAGE_NAMES.map(function (nm, si) { return si ? '<button type="button" data-st="' + si + '">' + esc(nm) + '</button>' : ''; }).join('');
     tabs.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; stage = +b.getAttribute('data-st'); draw(); };
     draw(); document.body.setAttribute('data-hyb-ready', String(list.length));
+    /* Wizard mixes (branch wizard-breed-on): once ACTIVATE_WIZ_BREED_BLOCK is reached, list all 13 Bitcoin Wizard mixes (both name orders) so players
+     * can see what a Wizard can make, marked bred / not bred yet. Hidden while the gate is null or not reached. Community Bitcoin Wizard never breeds. */
+    var wz = $('hybWiz'), wg = $('hybWizGrid'), tip = M.state().tip;
+    if (wz && wg && V.wizBreedOn && V.wizBreedOn(tip) && V.wizHybridPairs) { var pairs = V.wizHybridPairs();
+      wg.innerHTML = pairs.map(function (e, i) { var k = (n[e.a] || 0) + (n[e.b] || 0);
+        return '<div class="hybitem" data-wizhyb="' + esc(e.other) + '"><h3 class="ch">' + esc(e.nameA) + ' / ' + esc(e.nameB) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted small">Bitcoin Wizard × ' + esc(spLabel(e.other)) + ' · ' + (k ? fmt(k) + ' bred' : 'not bred yet') + '</p><div class="hybbodies">' +
+          ['wizard', e.other].map(function (sh, j) { return '<figure><canvas width="32" height="32" data-wi="' + i + '" data-wj="' + j + '" role="img" aria-label="' + esc((j ? e.nameB : e.nameA) + ', ' + spLabel(sh) + ' body') + '"></canvas><figcaption class="small muted">' + esc(spLabel(sh)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
+      Array.prototype.forEach.call(wg.querySelectorAll('canvas[data-wi]'), function (c) { var e = pairs[+c.getAttribute('data-wi')], j = +c.getAttribute('data-wj'), sh = j ? e.other : 'wizard', col = j ? 'wizard' : e.other,
+        pl = Object.assign({}, V.hybridPlan(V.sha('cast:' + e.a), e.a), { shape: sh, color: col }), art = G.characterPet(sh, { tier: 'legendary' }); art.hybrid = pl;
+        try { R.paint(c, V.hybridRender(art, { stage: 5, frame: 0 })); } catch (er) {} });
+      var bb = wz.querySelector('.wizBreedBlk'); if (bb) bb.textContent = fmt(V.ACTIVATE_WIZ_BREED_BLOCK); wz.hidden = false; }
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
