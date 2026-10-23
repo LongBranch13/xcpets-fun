@@ -19,9 +19,9 @@ def egg(frame):
         g.rect(x+tilt,y,2,2,'3' if i%2 else '4')
     g.set(cx-8+tilt,cy-13,'5');g.set(cx+2+tilt,cy-10,'2')
     g.outline();return g
-def stage(s,frame):
+def stage(s,frame,look='suit'):
     if s==0:return egg(frame)
-    g=D.funtrump_v5(s,'rare',frame)
+    g=D.funtrump_v5(s,'rare' if look=='suit' else 'legendary',frame)
     if frame==2:  # blink: close the pale eye areas for one frame
         for y in range(32):
             for x in range(32):
@@ -32,9 +32,11 @@ BG='#2a1f4a'
 MULTI={'A2':'!','o2':'~','e1':'@','e2':'%'}
 if __name__=='__main__':
     os.makedirs(OUT,exist_ok=True);os.makedirs(PREV,exist_ok=True)
-    frames={};big=[]
+    frames={};big=[];hood={}
+    enc=lambda g:[''.join(k if k and len(k)==1 else ('.' if not k else MULTI[k]) for k in row) for row in g.g]
+    for s in range(6):hood[s]=[enc(stage(s,f,'hoodie')) for f in range(4)]
     for s in range(6):
-        fr=[stage(s,f) for f in range(4)];frames[s]=[[''.join(k if k and len(k)==1 else ('.' if not k else MULTI[k]) for k in row) for row in g.g] for g in fr]
+        fr=[stage(s,f) for f in range(4)];frames[s]=[enc(g) for g in fr]
         n=f'{OUT}/funtrump-{NAMES[s]}';fr[0].img(BG).save(n+'.png')
         st=Image.new('RGB',(128,32));[st.paste(x.img(BG),(i*32,0)) for i,x in enumerate(fr)];st.save(n+'-4frames.png')
         b=[x.img(BG,8) for x in fr];b[0].save(n+'-bob.gif',save_all=True,append_images=b[1:],duration=180,loop=0);big.append(b)
@@ -49,5 +51,5 @@ if __name__=='__main__':
     json.dump({'pal':pal,'frames':frames},open(f'{OUT}/frames.json','w'))
     js=os.path.join(REPO,'js/funtrump-sprite.js')
     t=open(os.path.join(os.path.dirname(__file__),'funtrump-sprite.tmpl.js')).read()
-    open(js,'w').write(t.replace('/*PAL*/',json.dumps(pal,sort_keys=True)).replace('/*FRAMES*/',json.dumps([frames[s] for s in range(6)])))
+    open(js,'w').write(t.replace('/*PAL*/',json.dumps(pal,sort_keys=True)).replace('/*FRAMES*/',json.dumps([frames[s] for s in range(6)])).replace('/*HOODIE*/',json.dumps([hood[s] for s in range(6)])))
     print('ok')

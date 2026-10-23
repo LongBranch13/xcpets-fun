@@ -29,7 +29,9 @@ function load() { const st = {}, ls = { getItem: k => st[k] || null, setItem: (k
 const { c: ctx, loaded } = load(), P = ctx.PetCore, V = ctx.V2Rules, R = ctx.V2Render;
 const SPECIES = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto'];
 const PETS = { nakamoto: { sprite: null }, wizard: { sprite: 'WizardSprite' }, kek: { sprite: 'KekSprite', designSkip: { head: 'nemes is part of him (Headwear never drawn)' }, sig: 'kek-card' },
-  funtrump: { sprite: 'FuntrumpSprite', sig: 'ft-hairspray' } };
+  funtrump: { sprite: 'FuntrumpSprite', look: 'suit', tier: 2 }, /* SUIT = Rare look (also the community pet's look) */
+  'funtrump-hoodie': { sp: 'funtrump', sprite: 'FuntrumpSprite', look: 'hoodie', tier: 3, hybrids: false } /* HOODIE = Legendary look; hybrids are covered by 'funtrump' (hybrid bodies wear the suit) */ };
+if (V && V._setFuntrumpActivation) { V._setFuntrumpActivation(0); V._setEligB(0); } /* check-only: FUNTRUMP gate ON inside this vm so his gear is eligible/drawable; every other gate stays at its pre-launch state */
 const STAGES = has('--quick') ? [0, 3, 5] : [0, 1, 2, 3, 4, 5];
 function check(img, bg) { if (!img || !img.data) return 'no image'; const d = img.data; if ((img.width || 32) !== 32 || d.length !== 4096) return 'size ' + d.length;
   let n = 0; for (let j = 0; j < 1024; j++) { const r = d[j * 4], g = d[j * 4 + 1], b = d[j * 4 + 2]; if ([r, g, b].some(v => typeof v !== 'number' || isNaN(v))) return 'NaN pixel';
@@ -42,21 +44,21 @@ function planFor(key, want) { for (let i = 0; i < 400; i++) { const hx = require
   if (Object.keys(want).every(k => p[k] === want[k])) return p; } return null; }
 const out = { repo: ROOT, loaded, pets: {} }; let fails = 0;
 const only = opt('--pet'), roots = SPECIES.concat(['wizard', 'kek', 'funtrump']);
-for (const pet of Object.keys(PETS).filter(p => !only || p === only)) {
-  const cfg = PETS[pet], res = out.pets[pet] = { sprite: { ok: 0, fail: [] }, hybrids: { ok: 0, fail: [] }, hybrid3: { ok: 0, fail: [] }, gear: { ok: 0, fail: [], byDesign: 0 } };
+for (const pet of Object.keys(PETS).filter(p => !only || p === only || PETS[p].sp === only)) {
+  const cfg = PETS[pet], sp = cfg.sp || pet, res = out.pets[pet] = { sprite: { ok: 0, fail: [] }, hybrids: { ok: 0, fail: [] }, hybrid3: { ok: 0, fail: [] }, gear: { ok: 0, fail: [], byDesign: 0 } };
   const S = cfg.sprite && ctx[cfg.sprite]; if (cfg.sprite && !S) { res.sprite.fail.push(cfg.sprite + ' not loaded'); fails++; continue; }
   /* 1. sprite */
-  for (const st of [0, 1, 2, 3, 4, 5]) for (let f = 0; f < 4; f++) { let e; try { const img = S ? S.render(st, f, '#2a3a2e', {}, {}) : P.render(baseArt(pet), { stage: st, frame: f, gearOverride: {} }); e = check(img, bgOf(img)); } catch (x) { e = 'throw ' + x.message; }
+  for (const st of [0, 1, 2, 3, 4, 5]) for (let f = 0; f < 4; f++) { let e; try { const img = S ? S.render(st, f, '#2a3a2e', {}, { look: cfg.look }) : P.render(baseArt(pet), { stage: st, frame: f, gearOverride: {} }); e = check(img, bgOf(img)); } catch (x) { e = 'throw ' + x.message; }
     if (e) { res.sprite.fail.push('stage ' + st + ' f' + f + ': ' + e); fails++; } else res.sprite.ok++; }
   /* 2. hybrids: pet as shape, as colour (+ feature), head and side */
-  for (const o of roots.filter(r => r !== pet)) for (const dir of ['shape', 'color']) for (const feat of ['head', 'side']) {
+  for (const o of (cfg.hybrids === false ? [] : roots.filter(r => r !== pet))) for (const dir of ['shape', 'color']) for (const feat of ['head', 'side']) {
     const key = 'hyb:' + pet + ':' + o, want = dir === 'shape' ? { shape: pet, color: o, feature: feat } : { shape: o, color: pet, feature: feat }, plan = planFor(key, want);
     const tag = (dir === 'shape' ? pet + ' body x ' + o : o + ' body x ' + pet) + ' (' + feat + ')'; if (!plan) { res.hybrids.fail.push(tag + ': no plan'); fails++; continue; }
     const art = Object.assign(baseArt(plan.shape), { species: plan.shape, hybrid: plan, background: 'solid', bgColor: '#2a3a2e' });
     for (const st of STAGES) { let e; try { const fr = V.hybridFrames(art, { stage: st }); for (let f = 0; f < 4 && !e; f++) { const m = check(fr[f], [0x2a, 0x3a, 0x2e]); if (m) e = 'f' + f + ' ' + m; } } catch (x) { e = 'throw ' + x.message; }
       if (e) { res.hybrids.fail.push(tag + ' stage ' + st + ': ' + e); fails++; } else res.hybrids.ok++; } }
   /* 3-way: pet + two other roots (rotating pairs), every role order */
-  const others = roots.filter(r => r !== pet);
+  const others = cfg.hybrids === false ? [] : roots.filter(r => r !== pet);
   for (let i = 0; i < others.length; i++) { const tri = [pet, others[i], others[(i + 5) % others.length]], key = 'hyb3:' + tri.join(':');
     for (const ord of [[0, 1, 2], [1, 0, 2], [2, 1, 0]]) { const want = { shape: tri[ord[0]], color: tri[ord[1]], featSp: tri[ord[2]] }, plan = planFor(key, want), tag = key + ' ' + want.shape + '/' + want.color + '/' + want.featSp;
       if (!plan) { res.hybrid3.fail.push(tag + ': no plan'); fails++; continue; } const art = Object.assign(baseArt(plan.shape), { species: plan.shape, hybrid: plan, background: 'solid', bgColor: '#2a3a2e' });
@@ -64,15 +66,24 @@ for (const pet of Object.keys(PETS).filter(p => !only || p === only)) {
         if (e) { res.hybrid3.fail.push(tag + ' stage ' + st + ': ' + e); fails++; } else res.hybrid3.ok++; } } }
   /* 3. gear x stages (player pet, V2Render.framesWith = the same path cards use) */
   if (!R || !R.framesWith) { res.gear.fail.push('V2Render.framesWith not loaded'); fails++; continue; }
-  const ids = Object.keys(V.GEAR_BY_ID).concat(cfg.sig && !V.GEAR_BY_ID[cfg.sig] ? [cfg.sig] : []), art = baseArt(pet);
+  const ids = Object.keys(V.GEAR_BY_ID).concat(cfg.sig && !V.GEAR_BY_ID[cfg.sig] ? [cfg.sig] : []), art = Object.assign(baseArt(sp), cfg.look ? { ftLook: cfg.look, tierIndex: cfg.tier } : {});
   for (const id of ids) { const it = V.GEAR_BY_ID[id] || { slot: 'hand' }; for (const st of [1, 2, 3, 4, 5]) { let e, diff = 0;
     try { const a = R.framesWith(art, st, []), b = R.framesWith(art, st, [id]); for (let f = 0; f < 4 && !e; f++) { const m = check(b[f], bgOf(b[f])); if (m) { e = 'f' + f + ' ' + m; break; }
         for (let j = 0; j < 4096; j += 4) if (a[f].data[j] !== b[f].data[j] || a[f].data[j + 1] !== b[f].data[j + 1] || a[f].data[j + 2] !== b[f].data[j + 2]) diff++; } } catch (x) { e = 'throw ' + x.message; }
-    if (!e && diff === 0) { if ((cfg.designSkip && cfg.designSkip[it.slot]) || (V.eligible && V.GEAR_BY_ID[id] && !V.eligible(id, pet))) { res.gear.byDesign++; continue; } e = 'not drawn (no pixel change)'; }
+    if (!e && diff === 0) { if ((cfg.designSkip && cfg.designSkip[it.slot]) || (V.eligible && V.GEAR_BY_ID[id] && !V.eligible(id, sp, sp, cfg.tier))) { res.gear.byDesign++; continue; } e = 'not drawn (no pixel change)'; }
     if (e) { res.gear.fail.push(id + ' [' + it.slot + '] stage ' + st + ': ' + e); fails++; } else res.gear.ok++; } }
 }
+/* 4. FUNTRUMP gear on EVERY species where allowed (V2Gear.FT_BATCH): eligible -> must draw on stages 1/3/5; not eligible -> by design */
+const ftg = out.ftGear = { ok: 0, fail: [], byDesign: 0 }, FTB = (ctx.V2Gear && ctx.V2Gear.FT_BATCH) || [];
+if (!only && R && R.framesWith) { const hy = ['hyb:funtrump:pepe', 'hyb:doge:funtrump', 'hyb:kek:wojak'];
+  const bodies = roots.filter(r => r !== 'funtrump').map(r => ({ sp: r, art: baseArt(r) })).concat([{ sp: 'funtrump', look: 'suit', tier: 2 }, { sp: 'funtrump', look: 'hoodie', tier: 3 }].map(o => Object.assign(o, { art: Object.assign(baseArt('funtrump'), { ftLook: o.look, tierIndex: o.tier }) })))
+    .concat(hy.map(k => { const p = planFor(k, {}); return { sp: k, art: Object.assign(baseArt(p.shape), { species: p.shape, hybrid: p, background: 'solid', bgColor: '#2a3a2e' }) }; }));
+  for (const x of FTB) for (const b of bodies) { const id = x[0], ok = V.eligible(id, b.sp, b.sp, b.tier) && !(b.sp === 'kek' && x[2] === 'head'); if (!ok) { ftg.byDesign++; continue; }
+    for (const st of [1, 3, 5]) { let e, diff = 0; try { const a = R.framesWith(b.art, st, []), c = R.framesWith(b.art, st, [id]); for (let f = 0; f < 4 && !e; f++) { const m = check(c[f], bgOf(c[f])); if (m) { e = 'f' + f + ' ' + m; break; } for (let j = 0; j < 4096; j += 4) if (a[f].data[j] !== c[f].data[j] || a[f].data[j + 1] !== c[f].data[j + 1] || a[f].data[j + 2] !== c[f].data[j + 2]) diff++; } } catch (z) { e = 'throw ' + z.message; }
+      if (!e && !diff) e = 'not drawn'; if (e) { ftg.fail.push(id + ' on ' + b.sp + (b.look ? '/' + b.look : '') + ' stage ' + st + ': ' + e); fails++; } else ftg.ok++; } } }
 const W = (k, r) => k + ' ok ' + r.ok + (r.byDesign ? ' · by design ' + r.byDesign : '') + ' · FAIL ' + r.fail.length;
 for (const p of Object.keys(out.pets)) { const r = out.pets[p]; console.log(p.padEnd(9), [W('sprite', r.sprite), W('hybrids', r.hybrids), W('3-way', r.hybrid3), W('gear', r.gear)].join(' | '));
   for (const k of ['sprite', 'hybrids', 'hybrid3', 'gear']) { const f = r[k].fail; f.slice(0, 8).forEach(x => console.log('   ✗ ' + k + ': ' + x)); if (f.length > 8) console.log('   … ' + (f.length - 8) + ' more ' + k + ' failures (see --json)'); } }
+if (!only) { console.log('FUNTRUMP gear on all species: ok ' + ftg.ok + ' · not allowed (by design) ' + ftg.byDesign + ' · FAIL ' + ftg.fail.length); ftg.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x)); }
 if (opt('--json')) fs.writeFileSync(opt('--json'), JSON.stringify(out, null, 1));
 console.log(fails ? 'FAIL (' + fails + ')' : 'PASS'); process.exit(fails ? 1 : 0);

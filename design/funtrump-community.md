@@ -58,3 +58,27 @@ Kek eggs keep dropping until FUNTRUMP's Mythic. After that, the 1-in-777 hatch a
 - Can FUNTRUMP be bred?
 - Community palette (currently body #ff8a2a, accent #c8342c, belly #e6bd85).
 - Should headwear be drawn over his hair or hidden?
+
+## Phase 2 (Oct 22 2026, owner 10:34 PM CT): two looks + FUNTRUMP gear (PREVIEW, inert)
+- **Looks by tier (mirrors Wizard):** SUIT = Rare, HOODIE = Legendary. Both have all stages, 4 frames each (`FuntrumpSprite.LOOKS`, `render(..., {look})`).
+- **Player egg odds (QUESTION):** these copy the Wizard rule, Rare:Legendary = 1000:300, so about 23% hoodie. They use `V2Rules.ftRollTier` (sha mod 1300 < 300 gives Legendary, salt `XCPETS:v2:fttier`) and `ftLookOfTier`.
+- **Community pet look (QUESTION):** SUIT (`COMMUNITY_LOOK`). Hybrids with a FUNTRUMP body also use the suit (QUESTION).
+- **Gear** (V2Gear.FT_BATCH, `since:'funtrump'`, hidden until the FUNTRUMP gate is set):
+
+| id | slot | rarity | exclusivity |
+|---|---|---|---|
+| ft-samurai-sword | weapon (rides hand) | ★★★ | SUIT FUNTRUMP only |
+| ft-skateboard | feet | ★★★ | HOODIE FUNTRUMP only |
+| ft-hairspray | hand | ★★★ | FUNTRUMP (both looks, plus FUNTRUMP hybrids) |
+| ft-fun-cap | head | ★★ | open (not drawn on Lord Kek: his nemes replaces headwear) |
+| ft-gold-phone | hand | ★★ | open |
+| ft-aviators | face | ★ | open |
+
+- There is no tie piece (owner, 10:37 PM: he already wears one). All art is original pixel art, with no real logos or brand text.
+- **Checks:** `tools/community-pet-check.js` covers funtrump (suit) and funtrump-hoodie, plus FT gear on all 15 roots, both looks and hybrids.
+- **Open QUESTIONS:**
+  - the 1000:300 odds
+  - the community look
+  - look-locked pieces on hybrids (currently not allowed)
+  - the FUN cap text
+  - breeding once in Cold Storage

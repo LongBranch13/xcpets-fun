@@ -689,10 +689,13 @@
    * the gate is reached AND Lord Kek is in Cold Storage. His hair is part of him (Headwear sits on top of the fringe). Every slot is drawn by
    * FuntrumpSprite's gear layer (anchors measured on his own frames). Player FUNTRUMPs / FUNTRUMP-body hybrids use the same mapping (ftGearOf). */
   function ftOn(w) { return !!(w && w.community && w.community.current === 'funtrump' && window.FuntrumpSprite); }
-  function ftGearOf(ids) { var G = wizGearOf(ids); if ((ids || []).indexOf('ft-hairspray') >= 0 && window.FuntrumpSprite) G.hand = FuntrumpSprite.FT_SPRAY; return G; }
+  function ftGearOf(ids) { ids = ids || []; var G = wizGearOf(ids.filter(function (id) { return id !== 'ft-samurai-sword'; }));
+    if (ids.indexOf('ft-hairspray') >= 0 && window.FuntrumpSprite) G.hand = FuntrumpSprite.FT_SPRAY; /* FUNTRUMP gear pieces: drawn by FuntrumpSprite by item id */
+    if (ids.indexOf('ft-samurai-sword') >= 0) G.weapon = { label: 'Samurai sword', item: 'ft-samurai-sword', cols: ['#c8d0da', '#ffd23f'] }; return G; }
+  function ftLookOf(art) { return (art && art.ftLook) || (art && art.tierIndex >= 3 ? 'hoodie' : 'suit'); }
   function ftGear(w) { var V = window.V2Rules, gate = V.ACTIVATE_FUNTRUMP_BLOCK, g = (w.community && w.community.gear) || {}, o = {};
     (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; }); return o; }
-  function ftPetFrames(art, stage, ids) { return FuntrumpSprite.frames(stage || 0, (art && art.bgColor) || '#1f2a44', ftGearOf(ids), {}); }
+  function ftPetFrames(art, stage, ids) { return FuntrumpSprite.frames(stage || 0, (art && art.bgColor) || '#1f2a44', ftGearOf(ids), { look: ftLookOf(art) }); } /* Rare = suit, Legendary = hoodie */
   function ftHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = ftGearOf(ids); if (!Object.keys(G).length) return fr; var P = FuntrumpSprite.PAL;
     return fr.map(function (f, n) { var a = FuntrumpSprite.draw(stage || 0, n, G), z = FuntrumpSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
