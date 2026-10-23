@@ -81,9 +81,36 @@ if (!only && R && R.framesWith) { const hy = ['hyb:funtrump:pepe', 'hyb:doge:fun
   for (const x of FTB) for (const b of bodies) { const id = x[0], ok = V.eligible(id, b.sp, b.sp, b.tier) && !(b.sp === 'kek' && x[2] === 'head'); if (!ok) { ftg.byDesign++; continue; }
     for (const st of [1, 3, 5]) { let e, diff = 0; try { const a = R.framesWith(b.art, st, []), c = R.framesWith(b.art, st, [id]); for (let f = 0; f < 4 && !e; f++) { const m = check(c[f], bgOf(c[f])); if (m) { e = 'f' + f + ' ' + m; break; } for (let j = 0; j < 4096; j += 4) if (a[f].data[j] !== c[f].data[j] || a[f].data[j + 1] !== c[f].data[j + 1] || a[f].data[j + 2] !== c[f].data[j + 2]) diff++; } } catch (z) { e = 'throw ' + z.message; }
       if (!e && !diff) e = 'not drawn'; if (e) { ftg.fail.push(id + ' on ' + b.sp + (b.look ? '/' + b.look : '') + ' stage ' + st + ': ' + e); fails++; } else ftg.ok++; } } }
+/* 4b. Golden Hairspray MUST be allowed + drawn on FUNTRUMP hybrids (FUNTRUMP as body AND as colours), and stay off non-FUNTRUMP hybrids */
+const fth = out.ftHybSpray = { ok: 0, fail: [] };
+if (!only && R && R.framesWith) for (const o of roots.filter(r => r !== 'funtrump')) for (const dir of ['shape', 'color']) { const key = 'hyb:funtrump:' + o, p = planFor(key, dir === 'shape' ? { shape: 'funtrump', color: o } : { shape: o, color: 'funtrump' });
+  if (!p) { fth.fail.push(key + ' ' + dir + ': no plan'); fails++; continue; } const art = Object.assign(baseArt(p.shape), { species: p.shape, hybrid: p, background: 'solid', bgColor: '#2a3a2e' });
+  if (!V.eligible('ft-hairspray', key, p.shape)) { fth.fail.push(key + ' (' + p.shape + ' body): hairspray not eligible'); fails++; continue; }
+  let e; try { const a = R.framesWith(art, 4, []), c = R.framesWith(art, 4, ['ft-hairspray']); if (a.every((f, n) => f.data.every((v, j) => v === c[n].data[j]))) e = 'not drawn'; } catch (z) { e = 'throw ' + z.message; }
+  if (e) { fth.fail.push(key + ' (' + p.shape + ' body): ' + e); fails++; } else fth.ok++; }
+if (!only && V.eligible('ft-hairspray', 'hyb:pepe:doge', 'pepe')) { fth.fail.push('hairspray allowed on a non-FUNTRUMP hybrid'); fails++; }
+/* 5. FUNTRUMP BREEDING (owner YES Oct 22 10:47 PM CT): gated by ACTIVATE_FT_BREED_BLOCK AND Cold Storage; children, names, art */
+const ftb = out.ftBreed = { ok: 0, fail: [] }; const bf = m => { ftb.fail.push(m); fails++; };
+if (!only && V._setFtBreedActivation && V.breedOne) { const pet = (sp, tier) => ({ id: 1, species: sp, tier, stage: 3, breeds: 0, children: [], stats: { hp: 20, atk: 20, def: 20, spd: 20, luck: 20 } });
+  const A = pet('funtrump', 2), H = pet('funtrump', 3);
+  if (!/Cold Storage/.test(V.breedable(A, 973000) || '')) bf('breedable before gate should refuse'); V._setFtBreedActivation(972900);
+  if (!V.breedable(A, 973000)) bf('breedable before Cold Storage should refuse'); V._setFtPoolFrom(972950);
+  if (V.breedable(A, 972940)) {} else bf('breedable before Cold Storage block should refuse'); if (V.breedable(A, 973000)) bf('FUNTRUMP should breed after Cold Storage: ' + V.breedable(A, 973000));
+  if (!V.breedable(Object.assign(pet('funtrump', 2), { community: true }), 973000)) bf('community FUNTRUMP must never breed');
+  const w = { pets: [], byId: {}, nextPet: 1, log: [], items: {}, community: {} }, seen = { ft: 0, hyb: 0, other: 0, hoodie: 0 }, hx = i => require('crypto').createHash('sha256').update('ftb' + i).digest('hex');
+  for (let i = 0; i < 120; i++) { const B = i % 3 === 0 ? H : pet(roots[i % roots.length] === 'funtrump' ? 'pepe' : roots[i % roots.length], 1 + (i % 3)); let k;
+    try { k = V.breedOne(w, A, B, hx(i), 'tx' + i, 973000 + i, 'bc1qcheck'); } catch (z) { bf('breedOne throw ' + z.message); break; }
+    if (k.species === 'funtrump') { seen.ft++; if (k.tier < 2) bf('FUNTRUMP child below Rare'); if (k.art.ftLook !== (k.tier >= 3 ? 'hoodie' : 'suit')) bf('child look/tier mismatch'); if (k.tier >= 3) seen.hoodie++; }
+    else if (k.hybrid) { seen.hyb++; const nm = V.hybridName(k.species); if (!nm || /undefined/.test(nm)) bf('no hybrid name for ' + k.species); }
+    else seen.other++;
+    let e; try { const fr = R.framesWith(k.art, 4, []); for (const f of fr) { const m = check(f, bgOf(f)); if (m) { e = m; break; } } } catch (z) { e = 'throw ' + z.message; } if (e) bf('child ' + k.species + ' render: ' + e); else ftb.ok++; }
+  ftb.seen = seen; if (!seen.ft || !seen.hyb) bf('expected both FUNTRUMP and hybrid children, got ' + JSON.stringify(seen));
+  V._setFtBreedActivation(null); V._setFtPoolFrom(Infinity); }
 const W = (k, r) => k + ' ok ' + r.ok + (r.byDesign ? ' · by design ' + r.byDesign : '') + ' · FAIL ' + r.fail.length;
 for (const p of Object.keys(out.pets)) { const r = out.pets[p]; console.log(p.padEnd(9), [W('sprite', r.sprite), W('hybrids', r.hybrids), W('3-way', r.hybrid3), W('gear', r.gear)].join(' | '));
   for (const k of ['sprite', 'hybrids', 'hybrid3', 'gear']) { const f = r[k].fail; f.slice(0, 8).forEach(x => console.log('   ✗ ' + k + ': ' + x)); if (f.length > 8) console.log('   … ' + (f.length - 8) + ' more ' + k + ' failures (see --json)'); } }
-if (!only) { console.log('FUNTRUMP gear on all species: ok ' + ftg.ok + ' · not allowed (by design) ' + ftg.byDesign + ' · FAIL ' + ftg.fail.length); ftg.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x)); }
+if (!only) { console.log('FUNTRUMP gear on all species: ok ' + ftg.ok + ' · not allowed (by design) ' + ftg.byDesign + ' · FAIL ' + ftg.fail.length); ftg.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x));
+  console.log('Golden Hairspray on FUNTRUMP hybrids: ok ' + fth.ok + ' · FAIL ' + fth.fail.length); fth.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x));
+  console.log('FUNTRUMP breeding: children rendered ok ' + ftb.ok + ' ' + JSON.stringify(ftb.seen || {}) + ' · FAIL ' + ftb.fail.length); ftb.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x)); }
 if (opt('--json')) fs.writeFileSync(opt('--json'), JSON.stringify(out, null, 1));
 console.log(fails ? 'FAIL (' + fails + ')' : 'PASS'); process.exit(fails ? 1 : 0);

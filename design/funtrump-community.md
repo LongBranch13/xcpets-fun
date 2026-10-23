@@ -82,3 +82,16 @@ Kek eggs keep dropping until FUNTRUMP's Mythic. After that, the 1-in-777 hatch a
   - look-locked pieces on hybrids (currently not allowed)
   - the FUN cap text
   - breeding once in Cold Storage
+
+## Phase 3 (owner, Oct 22 2026 10:47 PM CT): defaults approved + FUNTRUMP breeding (PREVIEW, inert)
+- **Approved:** Rare:Legendary odds 1000:300; the community pet wears the suit; hybrids wear the suit; the sword and skateboard are not allowed on hybrids; the cap reads "FUN".
+- **Breeding:** gated by `ACTIVATE_FT_BREED_BLOCK = null` (inert) and `ftBreedOn(b)`, which also requires that FUNTRUMP has reached Cold Storage (`b >= FT_POOL_FROM`, the block after `funtrumpMythic`). It mirrors `ACTIVATE_WIZ_BREED_BLOCK`:
+  - Breeding uses the unchanged `breedChild` odds. Different species give a hybrid, FUNTRUMP x FUNTRUMP gives a FUNTRUMP plus the bred-true bonus, and the three-way rules apply.
+  - A pure FUNTRUMP child is at least Rare (suit, via the stat-bonus difference). A Legendary child gets the hoodie (`art.ftLook`).
+  - The community FUNTRUMP never breeds.
+  - Hybrid names (Fun<X> and <x>trump) are the existing FUNTRUMP entries in HYBRID_NAMES.
+  - The refusal message is "FUNTRUMP can breed once he reaches Cold Storage".
+- **Draft copy, not on the live pages yet** (to add at deploy along with the Cast entry):
+  - Cast: "FUNTRUMP: community pet #4. Two looks, the Suit (Rare) and the Hoodie (Legendary). Once he reaches Cold Storage, player FUNTRUMPs can breed and make Fun-hybrids."
+  - Rules: "FUNTRUMP breeds like any pet once the community FUNTRUMP has reached Mythic and gone into Cold Storage."
+- **Checks:** `community-pet-check.js` now asserts Golden Hairspray is allowed and drawn on every FUNTRUMP hybrid (30 cases, as body and as colours) and refused on non-FUNTRUMP hybrids. It also runs a breeding pass: the gate refuses before activation and before Cold Storage, and the community pet always refuses. The pass makes 120 children (FUNTRUMP, hybrid and other), checks their names, and checks that each look matches its tier and renders.
