@@ -1,5 +1,5 @@
 /* XCPETS Gooby's No-Tail Motel (UI-only mockup, owner 7:12-7:38 PM CT; branch no-tail-motel, NOT LIVE). Replaces the Breeding section's look; breeding
- * rules and burns are UNCHANGED: "Check in" = the existing pet:breed:A:B burn (690); a partner on another wallet "checks in" with the existing
+ * rules and burns are UNCHANGED: "Check in" = the existing pet:breed:A:B burn (690, 135 from ACTIVATE_BREED_135_BLOCK); a partner on another wallet "checks in" with the existing
  * mirrored accept (pet:breed:B:A, 690, within 144 blocks). The door shows both room numbers (= pet IDs), opens on the scene when both pets have
  * checked in (the child exists), and the egg appears at the door. Gooby (the "Gooby pls" dog) runs the desk with PG-13 one-liners.
  * Odds peek on the door: computed from the engine's own constants (v2-rules.js: RARITY_UP_10K 500 / RARITY_HIGH_10K 3000, HYBRID_RATE_1E9
@@ -210,7 +210,7 @@
       UXB.browsePets('br' + sd, { title: sd === 'A' ? 'Pick Guest 1 (your pet)' : 'Pick Guest 2 (the date)', okLabel: '✅ Can breed now', pets: src.map(function (x) { return x.p; }), why: function (p) { return why[p.id] || null; },
         onPick: function (id) { var k = String(id); S.fresh = null; document.getElementById(sd === 'A' ? 'bA' : 'bB').value = k; if (sd === 'A' && document.getElementById('bB').value === k) document.getElementById('bB').value = '';
           S.pickSide = sd === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + k + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); };
-    var bell = document.getElementById('bGo'); if (bell) { bell.textContent = s.st === 'invite' ? 'Accept check-in · 690' : 'Check in · 690'; bell.disabled = !(s.A && s.B) || s.st === 'open'; }
+    var bell = document.getElementById('bGo'); if (bell) { bell.textContent = (s.st === 'invite' ? 'Accept check-in · ' : 'Check in · ') + (window.V2Rules && V2Rules.uiBreedFeeStr ? V2Rules.uiBreedFeeStr() : '690'); bell.disabled = !(s.A && s.B) || s.st === 'open'; }
     if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
       /* breed-empty-fix (2026-10-19 ~11 PM CT): the empty line used to fire only when the UNFILTERED list was empty; a picker filter (My Pets chip in the
      * partner picker, search, species, rarity) that left nothing fell through to the generic 'No matches' box. Now the filtered-empty case shows the same line. */

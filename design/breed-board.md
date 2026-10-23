@@ -241,7 +241,7 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 **Gate:** `ACTIVATE_RUGME_BLOCK` in js/v2-rules.js is `null` (placeholder). At deploy, set it to tip + 6. Below the gate, `pet:ad`, `pet:rug` and `pet:unad` replay exactly as today ("unknown pet: tag (community food)"); `tools/replay-check.js` stays SAME.
 
 **Tags (from the gate):**
-- `pet:ad:IDS:REQ` (**69 per pet**, owner 8:42 PM; a Rug Me breed totals 759 = 69 + 690): IDS is one pet id or several joined by dots (`pet:ad:12.34.56:T2.S4`), each its own ad, open 1,008 blocks, one open ad per pet. REQ = `ANY` or up to 4 dot-joined codes (T tier+, S stage+, P species/HYB, G owns gear = worn or in the bag, W power+). **Bios are always random** (owner, 8:47 PM): the bio is picked deterministically from the ad tx hash + pet id out of the 13 presets; there is no picker. New tags never carry a bio field. An old-format trailing `:Bn` (B + 1-2 digits) is **accepted and ignored** (safer than rejecting a paid burn); any other 5th field is rejected as "too many fields". The whole tag must fit 34 bytes. Every pet in the tag must pass (yours, alive, Adult+, no open ad, under the cap) or the whole burn is rejected with a reason. A pet resting after a breed may still post.
+- `pet:ad:IDS:REQ` (**69 per pet**, owner 8:42 PM; a Rug Me breed totals 759 = 69 + 690 before `ACTIVATE_BREED_135_BLOCK`, **204 = 69 + 135** from it): IDS is one pet id or several joined by dots (`pet:ad:12.34.56:T2.S4`), each its own ad, open 1,008 blocks, one open ad per pet. REQ = `ANY` or up to 4 dot-joined codes (T tier+, S stage+, P species/HYB, G owns gear = worn or in the bag, W power+). **Bios are always random** (owner, 8:47 PM): the bio is picked deterministically from the ad tx hash + pet id out of the 13 presets; there is no picker. New tags never carry a bio field. An old-format trailing `:Bn` (B + 1-2 digits) is **accepted and ignored** (safer than rejecting a paid burn); any other 5th field is rejected as "too many fields". The whole tag must fit 34 bytes. Every pet in the tag must pass (yours, alive, Adult+, no open ad, under the cap) or the whole burn is rejected with a reason. A pet resting after a breed may still post.
 - `pet:rug:MY:N` (690): accept ad N with my pet: breeds at once through breed(); the **egg goes to the poster** (poster pet = parent A). Both pets count the breed.
 - `pet:unad:N` (1 dander): the poster cancels (no refund).
 - Prices follow the halving / fire sale through `costAt` (replay `below()`, UI `planAmount`), so after a halving posting shows and burns as 34.5 per pet and Rug me as 345 everywhere. Button: **Post on Rug Me · 69** (times the pet count when several are ticked).
@@ -263,3 +263,14 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 **Fire Sale spin credit (owner, 8:47 PM):** from `ACTIVATE_RUGME_BLOCK`, a valid `pet:ad` burn (full = 69 per pet at the era price) and a valid `pet:rug` burn (full = 690 at the era price) that pays at least the full price during a live Fire Sale earns one saved spin, like the other burns (`fireCredit`). Sale-price or rejected burns earn none. Below the gate these tags are unknown and earn nothing (replay SAME).
 
 **Still open for the owner:** 1) gate block at deploy; 2) the bio list wording.
+
+
+## Breed 135 (owner, Oct 22 2026 9:23 PM + 9:25 PM)
+
+- From one new gate, `ACTIVATE_BREED_135_BLOCK` (null placeholder until deploy, then tip + 6), **every breed burn costs 135** instead of 690 (`breedCost(b)` in js/v2-rules.js):
+  - own-pet `pet:breed:A:B`: 135;
+  - two-owner motel `pet:breed` request 135 + partner accept 135 = 270;
+  - Rug Me `pet:rug:MY:N` accept: 135. The post stays 69 per pet, so a Rug Me breed totals **204**. The egg still goes to the poster.
+- Plain hatch stays 69. The halving halves all of these (135 to 67.5); fire sale uses the same base.
+- Fire-sale spin credit: a breed / rug burn counts as full when it pays the era cost of 135 from the gate.
+- Burns before the gate keep the 690 rules exactly (`below(.., 690)`), so replay of anything already on chain is SAME. The UI reads `V2Rules.uiBreedFee()` (button labels such as 'Rug me · 135' and 'Check in · 135') and `planAmount` lowers 690 plans to 135 from the gate.
