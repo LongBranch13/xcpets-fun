@@ -135,7 +135,7 @@
     /* 3 · one button (the motel bell / the desk Accept, unchanged) */
     var label, ok = false, hint = '', P1 = A, P2 = Bp;
     if (s.tab === 'asks' && s.req) { var q = s.req.split(':'), acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'), no = document.querySelector('#motelReqs [data-mrk="' + s.req + '"] .mr-no');
-      P1 = w.byId[q[0]]; P2 = w.byId[q[1]]; ok = !!acc; label = acc ? '💞 Accept request · burn 690 XCPETS' : '🚫 ' + (no ? no.textContent.replace(/^🚫\s*/, '') : 'Can\u2019t accept this request right now'); hint = 'The egg goes to the requester.'; }
+      P1 = w.byId[q[0]]; P2 = w.byId[q[1]]; ok = !!acc; label = acc ? '💞 Accept request · burn ' + (window.V2Rules && V2Rules.uiBreedFeeStr ? V2Rules.uiBreedFeeStr() : '690') + ' XCPETS' : '🚫 ' + (no ? no.textContent.replace(/^🚫\s*/, '') : 'Can\u2019t accept this request right now'); hint = 'The egg goes to the requester.'; }
     else if (s.tab === 'asks') label = reqs.length ? 'Tap a request above' : 'Pick 🏠 My other pets or 🌍 Other wallets';
     else if (!A) label = 'Pick Parent 1 (1)';
     else if (!Bp) label = 'Pick a mate (2)';

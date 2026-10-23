@@ -27,7 +27,7 @@
   function row(k, v, cls) { return '<div class="hc-r' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + v + '</b></div>'; }
   function head(p) { var hy = V().isHybrid && V().isHybrid(p.species);
     return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc(TL[p.tier] || '') + '</span></div>' +
-      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc(p.stageName || '') + '</div>'; }
+      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc(p.stageName || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
   /** breeding facts, straight from V2Rules.breedable / breedsLeft / breedChild */
   function breedHtml(w, p) { var R = V(), b = (w.tip || 0) + 1, why = R.breedable ? R.breedable(p, b) : null, h = head(p);
     if (p.species === 'wizard' && why) h += '<div class="hc-no">🧙 Wizards can\u2019t breed</div>';

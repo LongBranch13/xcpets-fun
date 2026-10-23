@@ -6,6 +6,12 @@
   'use strict';
   var ACTIVATE_BADGES_BLOCK = 972641; /* display gate: deploy Oct 22 2026 ~12:20 PM CT, tip 972,635 + 6 (owner approved) */
   var WEEK = 1008, WEEK_ANCHOR = 971501 /* = V2_FROM_BLOCK, first v2 block */;
+  /* OLD MONEY (owner Oct 22 2026 9:27 PM): a pet bred before ACTIVATE_BREED_135_BLOCK (breeding cost 690), any breed path (own pets, two-owner motel,
+   * Rug Me at 690). Permanent, display only. The name lives ONLY here, so a rename is one line. */
+  var OLD_MONEY_NAME = 'Old Money \ud83d\udcb0', OLD_MONEY_RULE = 'Bred when breeding cost 690 (rarer: bred when breeding cost 690)';
+  function oldMoney(p, V) { V = V || root.V2Rules; if (!p || !p.parents || p.parents.length !== 2 || (p.art && p.art.community)) return false;
+    var g = V && V.breed135Gate ? V.breed135Gate() : null; return g == null || (p.hatchBlock != null && p.hatchBlock < g); }
+  function oldMoneyMark(p) { return oldMoney(p) ? '<span class="om-mark" title="' + OLD_MONEY_NAME + ': rarer: bred when breeding cost 690">' + OLD_MONEY_NAME + '</span>' : ''; }
   var DEX = ['pepe', 'wojak', 'chud', 'peepo', 'doge', 'bobo', 'mumu', 'sarutobi', 'lenny', 'snibby', 'kevin', 'dodo', 'nakamoto'];
   var TIER_NAMES = ['bronze', 'silver', 'gold'], TIER_RAR = ['uncommon', 'rare', 'legendary'], RAR_SCORE = { common: 1, uncommon: 3, rare: 10, legendary: 33 };
   /* id, name, flavour, rule, rarity or tier thresholds, pet-scoped? */
@@ -33,6 +39,7 @@
     ['black-eye', 'RIGHT IN THE EYE', 'Somebody call the medic!', 'A pet loses a fight', 'common', 1],
     ['ngmi', 'NGMI', 'WAGMI \u2192 NGMI, speedrun.', 'A pet loses 5 fights in a row', 'uncommon', 1],
     ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1],
+    ['old-money', OLD_MONEY_NAME, 'Paid full freight. Rarer: bred when breeding cost 690.', OLD_MONEY_RULE, 'rare', 1],
     ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon']
   ];
   var DEF = {}; DEFS.forEach(function (d, i) { DEF[d[0]] = { id: d[0], name: d[1], flavour: d[2], rule: d[3], kind: d[4], pet: !!d[5], order: i }; });
@@ -87,6 +94,7 @@
         if (p.hybrid || /^hyb/.test(sp)) petBadge(p, 'first-hybrid', { block: p.hatchBlock });
         else if (pa && pb && pa.species === sp && pb.species === sp) petBadge(p, 'bred-true', { block: p.hatchBlock });
         if (pa && pb && pa.owner !== pb.owner) petBadge(p, 'single-mother', { block: p.hatchBlock });
+        if (oldMoney(p, V)) petBadge(p, 'old-money', { block: p.hatchBlock });
         if (!(p.twinOf && p.twinOf < p.id)) [pa, pb].forEach(function (q, i) { if (owned(q) && !(i === 1 && pa && pa.owner === q.owner)) breeds[q.owner] = (breeds[q.owner] || 0) + 1; }); }
       if (!p.dead || p.deathBlock) { var hd = dayOf(p.hatchBlock || 0) + 1, dd = p.dead && p.deathBlock ? dayOf(p.deathBlock) - 1 : dayOf(tip) - 1; /* full days the pet was alive */
         if (p.stage < 5 && dd >= hd) (alive[o] = alive[o] || []).push({ from: hd, to: dd, fed: p.feedDays || {} }); } });
@@ -112,7 +120,7 @@
   /** recapLine(res) -> one line for the daily recap data (HatchBot does NOT post badges) */
   function recapLine(res, sinceBlock) { var tot = 0, wallets = 0, fresh = 0; Object.keys(res.byAddr).forEach(function (a) { var L = res.byAddr[a]; if (L.length) wallets++; tot += L.length; L.forEach(function (b) { if (sinceBlock != null && b.block > sinceBlock) fresh++; }); });
     return 'Badges: ' + tot + ' held by ' + wallets + ' wallets' + (sinceBlock != null ? ' (' + fresh + ' new since block ' + sinceBlock + ')' : ''); }
-  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, TIER_NAMES: TIER_NAMES, ACTIVATE_BADGES_BLOCK: ACTIVATE_BADGES_BLOCK };
+  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, OLD_MONEY_NAME: OLD_MONEY_NAME, oldMoney: oldMoney, oldMoneyMark: oldMoneyMark, TIER_NAMES: TIER_NAMES, ACTIVATE_BADGES_BLOCK: ACTIVATE_BADGES_BLOCK };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   root.V2Badges = API;
   if (typeof document === 'undefined' || !document.getElementById) return;
@@ -141,5 +149,11 @@
     '.bdg-detail[hidden]{display:none}.bdg-detail img{image-rendering:pixelated;flex:none}.bdg-detail b{display:block;font-family:"Press Start 2P",monospace;font-size:10px;color:#ffc93c}.bdg-detail i{display:block;margin:4px 0}.bdg-detail span{font-size:12px;opacity:.85;overflow-wrap:anywhere}' +
     '@media (max-width:600px){.bdg img{width:32px;height:32px}.bdg-row{gap:4px}}';
   document.head.appendChild(css);
+  /* Old Money marker on pet cards (My Pets grid + pickers) and the pet page chips: display only */
+  function markCards() { var M = root.V2Mock, w = M && M.world && M.world(); if (!w || !w.byId) return;
+    document.querySelectorAll('.pet.card[data-pid]').forEach(function (d) { if (d.querySelector('.om-mark')) return; var p = w.byId[+d.dataset.pid]; if (oldMoney(p)) d.insertAdjacentHTML('beforeend', oldMoneyMark(p)); });
+    if (document.body && document.body.getAttribute('data-v2page') === 'pet') { var ch = document.getElementById('chips'), id = +(new URLSearchParams(location.search).get('id') || 0); if (ch && id && !ch.querySelector('.om-mark') && oldMoney(w.byId[id])) ch.insertAdjacentHTML('beforeend', ' ' + oldMoneyMark(w.byId[id])); } }
+  css.textContent += '.om-mark{display:inline-block;font-size:11px;line-height:1.2;padding:2px 6px;margin:2px;border-radius:8px;background:#2a2410;color:#ffd75e;border:1px solid #b8932e;white-space:nowrap}.pet.card .om-mark{position:relative;font-size:10px}';
+  setInterval(markCards, 1500); setTimeout(markCards, 500);
   setInterval(paint, 2000); setTimeout(paint, 300);
 })(typeof window !== 'undefined' ? window : this);

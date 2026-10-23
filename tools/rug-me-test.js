@@ -114,4 +114,19 @@ ok(V.RUG_AD_COST + 690 === 759, 'a Rug Me breed totals 759 (69 post + 690 accept
     const FS = wf.fireSpins || {}; ok(FS[O1] === 1 && FS[O2] === 1 && (wf.fireSpinLog || []).map(x => x.action).sort().join() === 'ad,rug', 'fire sale: full-price pet:ad (69) and pet:rug (690) each earn 1 saved spin; a rejected multi-ad earns none [' + Lf.join(' | ') + ']');
     ok(/^rugAd/.test(Lf[3]) && !FS[O3], 'fire sale: a sale-price ad is valid but earns no spin'); }
   const F2 = fr(g => g + 2990); if (F2) ok(!(F2.wf.fireSpins || {})[O1] && !(F2.wf.fireSpins || {})[O2] && msgs(F2.wf, F2.rows).every(x => x === 'rejected: unknown pet: tag (community food)'), 'below ACTIVATE_RUGME_BLOCK: ad / rug burns earn no fire-sale spin (unknown tag, as today)'); }
+// 135 right swipe (owner 9:23 PM): from ACTIVATE_BREED_135_BLOCK pet:rug costs 135 (total 204); before it the 690 rules stay exactly
+ok(V.breed135Gate() === 972703 && V.rugCost(972702) === 690, 'ACTIVATE_BREED_135_BLOCK = 972703 (690 before it)');
+ok(V.RUG_AD_COST + V.RUG_ACCEPT_COST === 204, 'a Rug Me breed totals 204 after the gate (69 post + 135 accept)');
+{ const c6 = load(), V6 = c6.V2Rules, G1 = B0 + 5, G2 = G1 + 4; V6._setRugActivation(G1); V6._setBreed135Activation(G2);
+  ok(V6.rugCost(G2 - 1) === 690 && V6.rugCost(G2) === 135, 'rugCost: 690 before the 135 gate, 135 from it');
+  const R6 = [row(G1 + 1, O1, 69, 'pet:ad:' + A.id + ':ANY'), row(G1 + 1, O1, 69, 'pet:ad:' + A2.id + ':ANY'),
+    row(G1 + 2, O2, 135, 'pet:rug:' + Bp.id + ':1'), row(G2 + 1, O2, 134, 'pet:rug:' + Bp.id + ':1'), row(G2 + 1, O2, 135, 'pet:rug:' + Bp.id + ':1'), row(G2 + 2, O3, 690, 'pet:rug:' + C.id + ':2')];
+  const w6 = run(c6, s, R6, G2 + 20), M6 = msgs(w6, R6);
+  ok(/below Rug Me cost 690/.test(M6[2]), '135 before the 135 gate is rejected (690 rules) [' + M6[2] + ']');
+  ok(/below Rug Me cost 135/.test(M6[3]), '134 after the gate is rejected (below 135) [' + M6[3] + ']');
+  ok(!/^rejected/.test(M6[4]) && !/^rejected/.test(M6[5]), '135 accepts after the gate; overpaying 690 still accepts [' + M6[4] + ' | ' + M6[5] + ']');
+  const egg = w6.pets.filter(p => p.born >= G2 || p.block >= G2).pop(); ok(!egg || egg.owner === O1, 'egg still goes to the poster');
+  const c7 = load(), V7 = c7.V2Rules; V7._setHalvingActivation(100); V7._setCommunityTriggerActivation && V7._setCommunityTriggerActivation(0); V7._setRugActivation(150); V7._setBreed135Activation(150); const fw = { kekMythic: { block: 200, tx: 'x' }, byId: {}, ads: [] };
+  ok(V7.planAmount(fw, { tag: 'pet:rug:5:1', amount: 135 }, 206).amount === 67.5 && /below Rug Me cost 67.5/.test(V7.rugCheck(fw, { action: 'rug', petId: 5, adId: 1 }, 'z', 206, 67, () => null) || ''), 'halving 1: rug 135 halves to 67.5 (UI plan + replay)');
+  const ui = require('fs').readFileSync('js/v2-rugme.js', 'utf8'); ok(/V\.rugCost\(b\)/.test(ui) && /Rug me · ' \+ fmt\(cost\(\)\)/.test(ui), 'UI accept button uses rugCost (Rug me · 135 after the gate)'); }
 console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
