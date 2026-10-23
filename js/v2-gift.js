@@ -44,24 +44,53 @@
   function petRow(w, p, why) { return '<div class="gf-pet' + (why ? ' gf-skip' : '') + '">' + sprite(p) + '<div><b>' + esc(p.name || spL(p)) + '</b> <span class="muted">#' + p.id + '</span> ' + pill(p) +
     '<small>' + esc(spL(p)) + ' · ' + esc(V.STAGE_NAMES ? V.STAGE_NAMES[p.stage] : 'stage ' + p.stage) + '</small><small>Moves with it: ' + movesHtml(w, p) + '</small>' + (why ? '<small class="warn">Skipped: ' + esc(why) + '</small>' : '') + '</div></div>'; }
   var STAYS = 'Stays with you: your gear stash, saved spins, tokens, badges, dander balance and history.';
-  function meLine(w) { var n = ME && V.playerNo(w, ME); return '<p class="gf-me">Your player #: <b>' + (n ? V.playerCode(n) : 'none yet') + '</b></p>'; }
-  /* ---- gift flow (1 pet or many) */
-  function giftFlow(ids, pre) { var w = W(); if (!w || !ME) return;
-    modal('<h2>🎁 Gift ' + (ids.length === 1 ? 'a pet' : ids.length + ' pets') + '</h2>' + meLine(w) + '<label for="gfTo">Recipient: player # or full address</label><input type="text" id="gfTo" autocomplete="off" spellcheck="false" placeholder="e.g. 1A or bc1q…" value="' + esc(pre || '') + '">' +
-      '<p class="small muted">Gifting is free: each burn is 1 dander (1 sat of XCPETS) plus the Bitcoin fee. Pets move for good: there is no undo.</p><p class="small muted">🎀 The Gift Wrap counter opens with the pet shop; for now gifts start here.</p>' +
-      '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfNext">Next →</button></div>');
-    $('gfX').onclick = close; $('gfTo').focus(); $('gfNext').onclick = function () { var r = resolve(w, $('gfTo').value); if (!r || r.err) { $('gfTo').setCustomValidity(''); toast2(r ? r.err : 'Enter a player # or address.'); return; } if (r.a === ME) { toast2('That is your own player #.'); return; } summary(ids, r); }; }
+  function meLine(w) { if (V.tokenOnly && V.tokenOnly()) return ''; var n = ME && V.playerNo(w, ME); return '<p class="gf-me">Your player #: <b>' + (n ? V.playerCode(n) : 'none yet') + '</b></p>'; }
+  /* ---- gift flow (Spam City, token is the pet): pick pet(s) -> one field "Recipient Bitcoin address" -> Send.
+   * Pets with a token you hold: one Counterparty send (several = one MPMA send, up to BUNDLE tokens per transaction).
+   * Pets without a token: made automatically first (window per token), then after 1 block the tie burn(s) and the send. Nothing signs here:
+   * every window is XCP Wallet (js/v2-wallet.js sendDex / send), one at a time, after the press. */
+  var BUNDLE = 10, API = 'https://api.xcp.fun/node/v2', GPK = 'xcpets-gift-pending';
+  function validAddr(a) { var Wl = window.V2Wallet; return Wl && Wl.validAddr ? Wl.validAddr(a) : /^(bc1[qp][02-9ac-hj-np-z]{38,58}|[13][1-9A-HJ-NP-Za-km-z]{25,34})$/.test(String(a || '')); }
+  function gpend(v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(GPK) || 'null'); if (v) localStorage.setItem(GPK, JSON.stringify(v)); else localStorage.removeItem(GPK); } catch (e) { } return null; }
+  function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
+    return fetch(API + '/assets/' + A).then(function (r) { if (r.status === 404) return A; if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }); }
+  function issued(A) { return fetch(API + '/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address : null; }, function () { return null; }); }
+  function giftWhy(w, p, b) { if (!p || p.owner !== ME || p.dead || p.released || p.community) return 'not your pet'; return V.giveLocks(w, p, b); }
+  function giftFlow(ids, pre) { var w = W(); if (!w || !ME) return; var b = tip() + 1, rows = '', ok = [];
+    ids.forEach(function (id) { var p = w.byId[id]; if (!p) return; var why = giftWhy(w, p, b); if (!why) ok.push(p); rows += petRow(w, p, why); });
+    var mk = ok.filter(function (p) { var d = V.deedOf(w, p); return !(d && d.ok && d.holder === ME); });
+    modal('<h2>🎁 Gift ' + (ok.length === 1 ? 'a pet' : ok.length + ' pets') + '</h2><div class="gf-pets">' + rows + '</div>' +
+      '<label for="gfTo">Recipient Bitcoin address</label><input type="text" id="gfTo" autocomplete="off" spellcheck="false" placeholder="bc1… / 1… / 3…" value="' + esc(pre || '') + '"><p class="small warn" id="gfErr" role="alert"></p>' +
+      '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + (mk.length ? mk.length + ' pet' + (mk.length === 1 ? ' gets its' : 's get their') + ' token made and tied first (1 block wait). ' : '') + 'No undo.</p>' +
+      '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Send</button></div>');
+    $('gfX').onclick = close; $('gfTo').focus();
+    $('gfGo').onclick = function () { var to = $('gfTo').value.trim();
+      if (!validAddr(to)) { $('gfErr').textContent = 'Enter a Bitcoin address that starts with bc1, 1 or 3.'; return; }
+      if (to === ME) { $('gfErr').textContent = 'That is your own address.'; return; }
+      run({ to: to, ids: ok.map(function (p) { return p.id; }), mint: {}, tied: {} }); }; }
+  /* run(job): resumable; job.mint[id] = asset (window sent), job.tied[id] = 1 */
+  function run(job) { var w = W(), Wl = window.V2Wallet; if (!w || !Wl) return; gpend(job);
+    var need = job.ids.filter(function (id) { var p = w.byId[id], d = V.deedOf(w, p); return p && !(d && d.ok && d.holder === ME) && !job.tied[id]; });
+    var noTok = need.filter(function (id) { return !job.mint[id]; });
+    function msg(h) { modal('<h2>🎁 Gift</h2>' + h + '<div class="gf-bar"><button class="q" id="gfX">Close</button></div>'); $('gfX').onclick = close; }
+    function fail(e) { msg('<p class="warn">Not sent: ' + esc(e && e.message || e) + '</p><p><button class="btn" id="gfRe">Try again</button></p>'); $('gfRe').onclick = function () { run(job); }; }
+    if (noTok.length) { var id = noTok[0]; msg('<p>Making the token for #' + id + ' (' + (Object.keys(job.mint).length + 1) + ' of ' + (Object.keys(job.mint).length + noTok.length) + ')…</p>');
+      return freeDeed().then(function (A) { return Wl.sendDex(V.mintPlan(id, A), ME).then(function () { job.mint[id] = A; run(job); }); }).catch(fail); }
+    if (need.length) { var waitIds = need.filter(function (id) { return job.mint[id]; });
+      return Promise.all(waitIds.map(function (id) { return issued(job.mint[id]); })).then(function (h) {
+        if (h.some(function (x) { return x !== ME; })) { msg('<p>Token' + (waitIds.length === 1 ? '' : 's') + ' sent. Waiting for 1 block to confirm… this window continues by itself (keep it open).</p>'); var t = setTimeout(function () { run(job); }, 30000); $('gfX').onclick = function () { clearTimeout(t); close(); }; return; }
+        var id2 = waitIds[0], plan = V.deedPlan(id2, job.mint[id2]); msg('<p>Tying the token to #' + id2 + '…</p>');
+        return Wl.send(plan, ME).then(function () { job.tied[id2] = 1; run(job); }); }).catch(fail); }
+    /* all tokens held: send them, BUNDLE per transaction */
+    var assets = job.ids.map(function (id) { var d = V.deedOf(w, w.byId[id]); return job.mint[id] || (d && d.asset); }).filter(Boolean), done = job.sent || 0;
+    if (done >= assets.length) { gpend(null); msg('<p>🎁 Sent! The pet' + (assets.length === 1 ? '' : 's') + ' move' + (assets.length === 1 ? 's' : '') + ' to ' + esc(job.to.slice(0, 12)) + '… when the send confirms.</p>'); return; }
+    var chunk = assets.slice(done, done + BUNDLE), plan = chunk.length === 1 ? { kind: 'send', asset: chunk[0], destination: job.to, label: 'Gift token ' + chunk[0] } : { kind: 'mpma', assets: chunk, destination: job.to, label: 'Gift ' + chunk.length + ' pet tokens' };
+    msg('<p>Sending ' + (chunk.length === 1 ? 'the pet token' : chunk.length + ' pet tokens in one send') + (assets.length > BUNDLE ? ' (' + (done + chunk.length) + ' of ' + assets.length + ')' : '') + '…</p>');
+    return Wl.sendDex(plan, ME).then(function () { job.sent = done + chunk.length; run(job); }).catch(fail); }
+  function resume() { var j = gpend(); if (!j || !j.to || !ME) return; modal('<h2>🎁 Unfinished gift</h2><p>' + j.ids.length + ' pet' + (j.ids.length === 1 ? '' : 's') + ' to ' + esc(j.to) + '.</p><div class="gf-bar"><button class="q" id="gfDrop">Forget it</button><button class="btn" id="gfCont">Continue</button></div>');
+    $('gfDrop').onclick = function () { gpend(null); close(); }; $('gfCont').onclick = function () { run(j); }; }
   function toast2(h) { var t = $('toasts'); if (!t) { alert(h.replace(/<[^>]+>/g, '')); return; } var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
-  function summary(ids, r) { var w = W(), b = tip() + 1, ok = [], rows = '', kept = keptIds();
-    ids.forEach(function (id) { var p = w.byId[id]; if (!p) return; var why = V.giveWhy(w, { petId: id, to: r.n }, ME, b); if (!why) ok.push(p); rows += petRow(w, p, why); });
-    var special = ok.filter(function (p) { return myth(p) || kept.indexOf(p.id) >= 0; }), burns = V.giveBatches(ok.map(function (p) { return p.id; }), r.n);
-    modal('<h2>🎁 Check the gift</h2><p>To player <b>#' + V.playerCode(r.n) + '</b></p><div class="addr">' + esc(r.a) + '</div>' + '<div class="gf-pets">' + rows + '</div><p class="small muted">' + STAYS + '</p>' +
-      '<p class="small">' + ok.length + ' pet' + (ok.length === 1 ? '' : 's') + ' in ' + burns.length + ' burn' + (burns.length === 1 ? '' : 's') + ' of 1 dander each. XCP Wallet opens once per burn, one window at a time; you can stop and resume.</p>' +
-      (special.length ? '<p class="warn"><label><input type="checkbox" id="gfSure"> Yes, I really want to give away ' + special.map(function (p) { return '#' + p.id + (myth(p) ? ' (Mythic)' : ' (starred)'); }).join(', ') + '</label></p>' : '') +
-      '<div class="gf-bar"><button class="q" id="gfBack">← Back</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Gift in XCP Wallet</button></div>');
-    $('gfBack').onclick = function () { giftFlow(ids, String(V.playerCode(r.n))); };
-    $('gfGo').onclick = function () { if (special.length && !$('gfSure').checked) { toast2('Tick the box to confirm the Mythic / starred pets.'); return; } close(); var h = 'gift-' + ok.map(function (p) { return p.id; }).join('.') + '-' + V.playerCode(r.n);
-      if (PAGE === 'play' && window.V2GiftConfirm) window.V2GiftConfirm(ok.map(function (p) { return p.id; }), r.n); else location.href = 'play.html#' + h; }; }
+  var TOK = !!(V.tokenOnly && V.tokenOnly());
   /* ---- batch picker (play.html My Pets) */
   function picker() { var w = W(); if (!w || !ME) return; var b = tip() + 1, mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = PF ? PF.load('gift') : {};
     function opts(list, cur) { return '<option value="">All</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
@@ -79,7 +108,7 @@
       $('gfNext').onclick = function () { giftFlow(Object.keys(sel).map(Number)); }; }
     draw(); }
   /* ---- swap offer (pet.html, someone else's pet) */
-  function swapFlow(theirId) { var w = W(), T = w && w.byId[theirId]; if (!T || !ME) return; var b = tip() + 1, kept = keptIds();
+  function swapFlow(theirId) { if (TOK) { modal('<h2>🔁 Swap pets</h2><p>Pets are their tokens now. Two ways to swap #' + esc(theirId) + ':</p><ol><li>Each of you gifts your pet to the other (two token sends, 🎁 Gift).</li><li>Or a DEX order that gives your pet token and gets theirs (token for token, settles on its own).</li></ol><div class="gf-bar"><button class="q" id="gfX">Close</button></div>'); $('gfX').onclick = close; return; } var w = W(), T = w && w.byId[theirId]; if (!T || !ME) return; var b = tip() + 1, kept = keptIds();
     var all = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.giveLocks(w, p, b); }), f = PF ? PF.load('swap') : {}, pick = null, mine;
     function draw() { mine = V.petFilter(w, all.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; });
     modal('<h2>🔁 Offer a swap</h2><p class="small">Pick one of your pets to offer for <b>#' + T.id + '</b>. The owner has ' + V.SWAP_WINDOW + ' blocks (about a week) to accept; you can cancel any time before.</p>' +
@@ -95,12 +124,12 @@
   function seenKey() { return 'xcpets-v2-giftSeen-' + NET + '-' + ME; }
   function inbox() { var w = W(); if (!w || !ME || !on()) return; var host = $('cPets'); if (!host) return; css(); var box = $('gfInbox'); if (!box) { box = document.createElement('div'); box.id = 'gfInbox'; box.className = 'gf'; host.parentNode.insertBefore(box, host); }
     var seen = {}; try { seen = JSON.parse(localStorage.getItem(seenKey()) || '{}'); } catch (e) { } var first = !localStorage.getItem(seenKey());
-    var got = V.giftsTo(w, ME).filter(function (g) { return !seen[g.tx + ':' + g.petId] && w.byId[g.petId] && w.byId[g.petId].owner === ME; }), b = tip() + 1, h = meLine(w) + (V.playerNo(w, ME) ? '' : '<p><button class="q" id="gfHi">👋 Get my player # (1 dander)</button></p>');
+    var got = V.giftsTo(w, ME).filter(function (g) { return !seen[g.tx + ':' + g.petId] && w.byId[g.petId] && w.byId[g.petId].owner === ME; }), b = tip() + 1, h = meLine(w) + ((TOK || V.playerNo(w, ME)) ? '' : '<p><button class="q" id="gfHi">👋 Get my player # (1 dander)</button></p>');
     if (got.length) { var kl = keptIds(); got.forEach(function (g) { if (kl.indexOf(g.petId) < 0) kl.push(g.petId); }); try { localStorage.setItem(keepKey(), JSON.stringify(kl)); } catch (e) { } /* one-time auto-star of each received pet */
       h += '<div class="gf-inbox"><b>🎁 You got ' + (got.length === 1 ? 'a pet' : got.length + ' pets') + '!</b><div class="gf-pets">' + got.map(function (g) { return '<div>' + petRow(w, w.byId[g.petId]) + '<small class="muted">' + (g.swap ? 'swap ' + g.swap : 'gift') + ' from player #' + V.playerCode(V.playerNo(w, g.from)) + ' · starred ★ for you</small></div>'; }).join('') + '</div><button class="q" id="gfOk">Got it</button></div>';
       if (!first) toast2('🎁 ' + (got.length === 1 ? 'A pet was' : got.length + ' pets were') + ' gifted to you! See My Pets.'); }
     if (first) { var all = {}; V.giftsTo(w, ME).forEach(function (g) { all[g.tx + ':' + g.petId] = 1; }); try { localStorage.setItem(seenKey(), JSON.stringify(all)); } catch (e) { } }
-    var sw = V.swapsFor(w, ME, b); if (sw.length) h += '<div class="gf-inbox"><b>🔁 Swap offers</b>' + sw.map(function (X) { var A = w.byId[X.mine], B = w.byId[X.theirs], mineOffer = X.from === ME;
+    var sw = TOK ? [] : V.swapsFor(w, ME, b); if (sw.length) h += '<div class="gf-inbox"><b>🔁 Swap offers</b>' + sw.map(function (X) { var A = w.byId[X.mine], B = w.byId[X.theirs], mineOffer = X.from === ME;
       return sideBySide(w, mineOffer ? A : B, mineOffer ? B : A, 'You give', 'You get') + '<p class="small muted">Offer ' + X.n + ' · open until block ' + X.expires + '</p>' + (mineOffer ? '<button class="q" data-gfsw="swapno-' + X.n + '">Cancel offer</button>' :
         (V.swapWhy(w, X, ME, b) ? '<p class="warn small">' + esc(V.swapWhy(w, X, ME, b)) + '</p>' : '<button class="btn" data-gfsw="swapok-' + X.n + '" data-gfsure="' + ((myth(B) || keptIds().indexOf(B.id) >= 0) ? 1 : '') + '">✓ Accept</button>') + '<button class="q" data-gfsw="swapno-' + X.n + '">Decline</button>'); }).join('') + '</div>';
     h += '<p><button class="q" id="gfMany">🎁 Gift several pets</button></p>'; if (box._h === h) { paint(box); return; } box._h = h; box.innerHTML = h; paint(box);
@@ -112,9 +141,9 @@
   function petButtons() { var w = W(), m = /id=(\d+)/.exec(location.search), p = w && m && w.byId[m[1]], acts = $('petActs'); if (!p || !on() || $('gfPetBtns')) return; css();
     var host = acts || ($('petMain') || document.querySelector('main')); if (!host) return; var d = document.createElement('span'); d.id = 'gfPetBtns';
     if (ME && p.owner === ME && !p.dead && !p.released && !p.community) { var why = V.giveLocks(w, p, tip() + 1); d.innerHTML = '<button type="button" class="btn ghost" id="gfGift"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎁 Gift</button> '; }
-    else if (ME && p.owner && p.owner !== ME && !p.dead && !p.released && !p.community) d.innerHTML = '<button type="button" class="btn ghost" id="gfSwap">🔁 Offer swap</button> ';
+    else if (!TOK && ME && p.owner && p.owner !== ME && !p.dead && !p.released && !p.community) d.innerHTML = '<button type="button" class="btn ghost" id="gfSwap">🔁 Offer swap</button> ';
     if (!d.innerHTML) return; if (acts) acts.insertBefore(d, acts.firstChild); else host.appendChild(d);
     if ($('gfGift')) $('gfGift').onclick = function () { giftFlow([p.id]); }; if ($('gfSwap')) $('gfSwap').onclick = function () { swapFlow(p.id); }; }
-  window.V2Gift = { gift: giftFlow, picker: picker, swap: swapFlow, inbox: inbox };
-  var n = 0; (function tick() { n++; if (W() && W().pets && W().pets.length) { if (PAGE === 'pet') petButtons(); else inbox(); } if (n < 600) setTimeout(tick, PAGE === 'pet' && $('gfPetBtns') ? 5000 : 1500); })();
+  window.V2Gift = { gift: giftFlow, picker: picker, swap: swapFlow, inbox: inbox, resume: resume, _run: run, _validAddr: validAddr };
+  var n = 0; setTimeout(function () { if (on()) resume(); }, 4000); (function tick() { n++; if (W() && W().pets && W().pets.length) { if (PAGE === 'pet') petButtons(); else inbox(); } if (n < 600) setTimeout(tick, PAGE === 'pet' && $('gfPetBtns') ? 5000 : 1500); })();
 })();

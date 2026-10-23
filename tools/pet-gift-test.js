@@ -5,7 +5,7 @@
 const { load, row, snap, run } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const S = snap(process.argv[2]), T = S.tip, G = T + 6, D = 0.00000001;
-const c = load(), V = c.V2Rules, NEW = 'bc1qgifttestnewwallet000000000000000000000', NEW2 = 'bc1qgifttestnewwallet000000000000000000002';
+const c = load(), V = c.V2Rules; V._setTokenOnly(false); const NEW = 'bc1qgifttestnewwallet000000000000000000000', NEW2 = 'bc1qgifttestnewwallet000000000000000000002';
 const canon = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, kk) => (o[kk] = x[kk], o), {}) : x);
 /* 1. below the gate: same as an unknown tag */
 const base = run(c, S, [], T);

@@ -21,9 +21,9 @@ const base = run([], T, null), owners = {};
 base.pets.forEach(p => { if (!p.dead && !p.released && !p.community && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 const O = Object.keys(owners).sort((a, b) => owners[b].length - owners[a].length)[0], mine = owners[O].filter(p => !V.giveLocks(base, p, G + 10));
 const withGear = mine.find(p => V.giftMoves(base, p).worn.length) || mine[0], P = mine.filter(p => p !== withGear).slice(0, 8);
-ok(V.salesGate() === null, 'shipped gate: ACTIVATE_SALES_BLOCK is null');
-ok(V.spamCityGate() === null && V.giveGate() === V.salesGate() && /ACTIVATE_GIVE_BLOCK = ACTIVATE_SPAM_CITY_BLOCK/.test(require('fs').readFileSync(__dirname + '/../js/v2-rules.js', 'utf8')) && /ACTIVATE_SALES_BLOCK = ACTIVATE_SPAM_CITY_BLOCK/.test(require('fs').readFileSync(__dirname + '/../js/v2-rules.js', 'utf8')), 'one launch gate: gifts/swaps and sales follow ACTIVATE_SPAM_CITY_BLOCK');
-{ V._setSpamCityActivation(5); ok(V.giveOn(5) && V.salesOn(5) && !V.giveOn(4) && !V.salesOn(4), 'one launch gate switches both'); V._setSpamCityActivation(null); }
+ok(V.salesGate() === 972729, 'shipped gate: ACTIVATE_SALES_BLOCK is 972729 (launch)');
+ok(V.spamCityGate() === 972729 && V.giveGate() === V.salesGate() && /ACTIVATE_GIVE_BLOCK = ACTIVATE_SPAM_CITY_BLOCK/.test(require('fs').readFileSync(__dirname + '/../js/v2-rules.js', 'utf8')) && /ACTIVATE_SALES_BLOCK = ACTIVATE_SPAM_CITY_BLOCK/.test(require('fs').readFileSync(__dirname + '/../js/v2-rules.js', 'utf8')), 'one launch gate: gifts/swaps and sales follow ACTIVATE_SPAM_CITY_BLOCK');
+{ V._setSpamCityActivation(5); ok(V.giveOn(5) && V.salesOn(5) && !V.giveOn(4) && !V.salesOn(4), 'one launch gate switches both'); V._setSpamCityActivation(972729); }
 /* token names + tags */
 const DA = 'A' + '12345678901234567890'.slice(0, 19), bytes = n => Array.from(crypto.createHash('sha256').update('r' + n).digest()).slice(0, 8);
 ok(V.deedOk('A95428956661682177') && V.deedOk('A18446744073709551615') && !V.deedOk('A95428956661682176') && !V.deedOk('A18446744073709551616') && !V.deedOk('XCPETS') && !V.deedOk('A0123'), 'numeric range: 26^12+1 .. 2^64-1');

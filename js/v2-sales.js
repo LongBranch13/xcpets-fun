@@ -11,7 +11,7 @@
  * This file never signs: the wallet windows come from js/v2-wallet.js (send / sendDex), one at a time, after the user presses the button. */
 (function () {
   var V = window.V2Rules; if (!V || !V.salesGate) return;
-  var PREVIEW = /[?&]salesPreview=1/.test(location.search), API = 'https://api.xcp.fun/node/v2', TTL = 60e3, CKEY = 'xcpets-dex-cache';
+  var PREVIEW = /[?&]salesPreview=1/.test(location.search), API = 'https://api.xcp.fun/node/v2', TTL = 60e3, CKEY = 'xcpets-dex-cache-2';
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
@@ -32,6 +32,17 @@
   var slimM = function (m) { return { id: m.id, tx0_hash: m.tx0_hash, tx1_hash: m.tx1_hash, tx0_address: m.tx0_address, tx1_address: m.tx1_address, forward_asset: m.forward_asset, forward_quantity: m.forward_quantity,
     backward_asset: m.backward_asset, backward_quantity: m.backward_quantity, block_index: m.block_index, tx1_index: m.tx1_index, status: m.status }; };
   var slimI = function (i) { return { tx_hash: i.tx_hash, tx_index: i.tx_index, block_index: i.block_index, asset: i.asset, source: i.source, issuer: i.issuer, quantity: i.quantity, divisible: i.divisible, locked: i.locked, description: i.description, status: i.status }; };
+  /* token is the pet: every credit of a pet token (sends, MPMA, DEX fills, dispenses, ...). api.xcp.fun has no /credits route, so read the
+   * full Counterparty nodes (CFG.composeList, read-only GETs). Any failure rejects loadDex -> the world stays unverified (never a silent guess). */
+  var slimC = function (c) { return { asset: c.asset, address: c.address || null, utxo: c.utxo || null, utxo_address: c.utxo_address || null, quantity: c.quantity, block_index: c.block_index, tx_index: c.tx_index, calling_function: c.calling_function, event: c.event }; };
+  var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
+  function credits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('pet token transfers could not be read (every Counterparty node failed)'));
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2';
+      function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
+        out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
+      return go(null).catch(function () { return on(i + 1); }); }
+    return on(0); }
   /** deedAssets(rows) -> the pet-token assets named by pet:deed burns (the API has no asset search, so the burn announces the token). */
   function deedAssets(rows) { var seen = {}, out = []; (V.readBurns ? V.readBurns(rows || []) : rows || []).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; }
     if (t && t.action === 'deed' && !seen[t.asset]) { seen[t.asset] = 1; out.push(t.asset); } }); return out.sort(); }
@@ -40,14 +51,17 @@
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null);
     var as = deedAssets(rows), key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
-    var d = { issuances: [], orders: [], matches: [] }, q = as.slice();
+    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.slice();
     function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
-        pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
+        pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true'), credits(A), pages('/assets/' + A + '/destructions?verbose=true')]).then(function (r) {
+      d.credits = d.credits.concat(r[5].map(slimC)); d.destructions = d.destructions.concat(r[6].filter(function (x) { return x.status == null || x.status === 'valid'; }).map(slimX));
       var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }).sort(function (a, b) { return a.tx_index - b.tx_index; })[0]; if (iss) d.issuances.push(slimI(iss));
       d.orders = d.orders.concat(r[1], r[2]); d.matches = d.matches.concat(r[3], r[4]); }); }
     function next() { return q.length ? one(q.shift()).then(next) : null; } /* one token at a time: kind to the API */
     return Promise.all([next(), next()]).then(function () { var seenO = {}, seenM = {};
       d.issuances.sort(function (a, b) { return a.tx_index - b.tx_index; });
+      d.credits.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index || (a.asset < b.asset ? -1 : a.asset > b.asset ? 1 : 0); });
+      d.destructions.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; });
       d.orders = d.orders.filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; });
       d.matches = d.matches.filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); });
       try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
@@ -122,14 +136,11 @@
   function orderOf(S) { return (BOOK || []).filter(function (o) { return o.tx_hash === S.order; })[0] || null; }
   var TAB = (/^#(buy|sell|trade|gift)$/.exec(location.hash) || [0, 'buy'])[1];
   function playerLine() { var n = V.playerNo && V.playerNo(W, ME); return '<p class="sh-hint">Your player #: <b>' + (n ? esc(V.playerCode(n)) : 'none yet (play.html: “Get my player #”)') + '</b>. Friends gift to this number.</p>'; }
-  function tradeHtml(b) { var sw = V.swapsFor ? V.swapsFor(W, ME, b) : [], G = !!window.V2Gift;
-    return '<div class="sh-bar"><label class="sh-hint">Offer a swap for pet # <input id="shSwapId" type="number" min="1" step="1" style="width:7em"></label> <button class="sh-btn" id="shSwapGo"' + (G ? '' : ' disabled') + '>🔁 Pick my pet to offer</button></div>' +
-      '<p class="sh-hint">Pet for pet, no money: you offer one of yours, the owner has ' + (V.SWAP_WINDOW || 1008) + ' blocks to accept. Gear moves with each pet. Tip: “🔁 Offer swap” is also on every pet page.</p>' +
-      '<h2 class="sec">Swap offers</h2><div class="sh-mine">' + (sw.map(function (X) { var mineOffer = X.from === ME, A = W.byId[mineOffer ? X.mine : X.theirs], B = W.byId[mineOffer ? X.theirs : X.mine], why = !mineOffer && V.swapWhy ? V.swapWhy(W, X, ME, b) : null;
-        return '<div class="sh-row sh-swap">' + card(A) + '<b class="sh-swapx" aria-hidden="true">⇄</b>' + card(B) + '<div class="sh-rinfo"><span class="sh-state sh-s-open">' + (mineOffer ? 'You offered' : 'Offer to you') + '</span> Offer ' + X.n + '<br>You give #' + A.id + ', you get #' + B.id + '.<br>Open until block ' + blk(X.expires) + '.<br>' +
-          (mineOffer ? '<button class="sh-btn" data-swapgo="swapno-' + X.n + '">Cancel offer</button>' : why ? '<span class="sh-warn">' + esc(why) + '</span><br><button class="sh-btn" data-swapgo="swapno-' + X.n + '">Decline</button>' : '<button class="sh-btn" data-swapgo="swapok-' + X.n + '">Accept</button> <button class="sh-btn sh-ghost" data-swapgo="swapno-' + X.n + '">Decline</button>') + '</div></div>'; }).join('') || '<p class="sh-hint">No open swap offers.</p>') + '</div>'; }
+  function tradeHtml(b) { /* token is the pet: no swap burns. Swap = two token sends (🎁 Gift each way) or one token-for-token DEX order. */
+    return '<h2 class="sec">Swap pets</h2><p class="sh-hint">Every tied pet is its token, so a swap is just two token moves:</p><ol class="sh-steps"><li><b>Two gifts:</b> you gift your pet to them, they gift theirs to you (🎁 Gift tab, only the Bitcoin fee each).</li>' +
+      '<li><b>Or one DEX order:</b> give your pet token, get theirs (token for token on the Counterparty DEX). It settles on its own when they place the opposite order; nobody has to trust the other.</li></ol><p class="sh-hint">pet:swap burns do nothing from block ' + blk(V.spamCityGate()) + '.</p>'; }
   function giftHtml(b) { var mine = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), G = !!window.V2Gift, got = V.giftsTo ? V.giftsTo(W, ME).slice(-6).reverse() : [];
-    return '<div class="sh-bar"><button class="sh-btn" id="shGiftMany"' + (G ? '' : ' disabled') + '>🎁 Gift several pets</button><span class="sh-hint">Free: 1 dander per burn plus the Bitcoin fee. Pets move for good, with their worn and bag gear.</span></div>' + playerLine() +
+    return '<div class="sh-bar"><button class="sh-btn" id="shGiftMany"' + (G ? '' : ' disabled') + '>🎁 Gift several pets</button><span class="sh-hint">A gift is a pet token send: only the Bitcoin fee (a pet without a token gets one made and tied first: 1 dander + fees). Pets move for good, with their worn and bag gear.</span></div>' +
       (got.length ? '<h2 class="sec">Gifts you got</h2><div class="sh-grid">' + got.filter(function (g) { return W.byId[g.petId]; }).map(function (g) { return card(W.byId[g.petId]); }).join('') + '</div>' : '') +
       '<h2 class="sec">Gift one pet</h2><div class="sh-grid">' + (mine.slice(0, 24).map(function (p) { var why = V.giveLocks ? V.giveLocks(W, p, b) : null;
         return card(p, null, '<button class="sh-btn sh-buy' + (why ? ' sh-later' : '') + '" data-gift="' + p.id + '"' + (why ? ' title="' + esc(why) + '" disabled' : '') + '>🎁 Gift</button>'); }).join('') || '<p class="sh-hint">You have no pets to gift.</p>') + '</div>' +

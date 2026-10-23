@@ -476,13 +476,14 @@
       var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
   /* pet-gift: pet.html / the batch picker arrive as play.html#gift-<id.id.id>-<player# base 32>; the confirm then signs each 1-dander burn in turn
    * (same confirmPlans queue: one XCP Wallet window at a time, Stop + Resume). Locked pets are dropped here and skipped by the engine anyway. */
-  function swapRoute() { var m = /^#(swap)-(\d+)-(\d+)$|^#(swapok|swapno)-(\d+)$/.exec(location.hash); if (!m || !V.swapPlan) return false;
+  function swapRoute() { var m = /^#(swap)-(\d+)-(\d+)$|^#(swapok|swapno)-(\d+)$/.exec(location.hash); if (!m || !V.swapPlan) return false; if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🔁 Swap burns are off: swap by gifting each other the pet tokens, or a token-for-token DEX order.', 9000); return true; }
     if (!world() || !ME || !S.rows || !S.rows.length) { swapRoute.n = (swapRoute.n || 0) + 1; if (swapRoute.n < 90) setTimeout(swapRoute, 2000); return true; }
     history.replaceState(null, '', location.pathname + location.search);
     if (m[1]) confirmPlans('🔁 Offer #' + m[2] + ' for #' + m[3], [V.swapPlan(Number(m[2]), Number(m[3]))]); else if (m[4] === 'swapok') confirmPlans('🔁 Accept swap ' + m[5], [V.swapOkPlan(Number(m[5]))]); else confirmPlans('Close swap offer ' + m[5], [V.swapNoPlan(Number(m[5]))]); return true; }
   window.V2HiGo = function () { confirmPlans('👋 Get my player #', [V.hiPlan]); };
   window.V2SwapGo = function (h) { location.hash = h; swapRoute(); };
   function giftRoute() { if (swapRoute()) return true; var m = /^#gift-([0-9.]+)-([0-9A-Va-v]+)$/.exec(location.hash); if (!m || !V.giveBatches) return false;
+    if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🎁 Gifts are pet token sends now: use 🎁 Gift (pick pets, paste the address, Send).', 9000); return true; }
     var w = world(); if (!w || !ME || !S.rows || !S.rows.length) { giftRoute.n = (giftRoute.n || 0) + 1; if (giftRoute.n < 90) setTimeout(giftRoute, 2000); return true; }
     history.replaceState(null, '', location.pathname + location.search); var n = parseInt(m[2], 32), b = (S.tip || 0) + 1, ok = [], no = [];
     m[1].split('.').map(Number).forEach(function (id) { var why = V.giveWhy(w, { petId: id, to: n }, ME, b); if (why) no.push('#' + id + ' ' + why); else ok.push(id); });
