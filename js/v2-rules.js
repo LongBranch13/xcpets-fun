@@ -172,15 +172,17 @@
   /** breedsLeft(p, b): { used, cap, left } lifetime v2 breeds (display + rules); used counts breeds at/after the gate only. */
   function breedsLeft(p, b) { var u = (p && p.breedsV2) || 0; return { used: u, cap: BREED_CAP_V2, left: Math.max(0, BREED_CAP_V2 - u), on: breedV2On(b) }; }
   /* RUG ME (branch rug-me, Oct 22 2026; owner-approved design in design/breed-board.md; PREVIEW, NOT LIVE). A swipe board for breeding.
-   *   pet:ad:IDS:REQ[:Bn]  69 per pet   post Rug Me ads: IDS = one pet id or several dot-joined (12.34.56, each its own ad), REQ = ANY or up
+   *   pet:ad:IDS:REQ   69 per pet  post Rug Me ads: IDS = one pet id or several dot-joined (12.34.56, each its own ad), REQ = ANY or up
    *                          to 4 dot-joined codes (T1-3 tier+, S3-5 stage+, P<species|HYB>, G<gear id the pet owns, worn or in the bag>,
-   *                          W<n> power+), optional Bn = preset bio number (0..RUG_BIO_COUNT-1). The whole tag must fit MAX_TAG_BYTES (34);
-   *                          a malformed / overlong tag is rejected WITH a reason. One open ad per pet, open AD_WINDOW = 1,008 blocks.
-   *                          A pet on breeding cooldown may post (the ad just waits). Every pet in the tag must pass, or the burn is rejected.
+   *                          W<n> power+). The bio is always random (picked in the UI from ad tx hash + pet); an old-format trailing :Bn field
+   *                          is accepted and ignored. The whole tag must fit MAX_TAG_BYTES (34); a malformed / overlong tag is rejected WITH a
+   *                          reason. One open ad per pet, open AD_WINDOW = 1,008 blocks. A pet on breeding cooldown may post (the ad just waits).
+   *                          Every pet in the tag must pass, or the burn is rejected.
    *   pet:rug:ID:N     690   accept ad N with my pet ID: breeds AT ONCE through breed(); the EGG GOES TO THE POSTER (the poster pet is parent A).
    *                          The accepter's pet counts a breed too (cooldown + cap).
    *   pet:unad:N       1 dander  the poster cancels ad N (no refund).
-   *   Prices follow the halving / fire sale through costAt (replay: below(); UI: planAmount), like breed.
+   *   Prices follow the halving / fire sale through costAt (replay: below(); UI: planAmount), like breed. From the gate, a valid pet:ad / pet:rug
+   *   burn that pays the full (era) price during a live Fire Sale earns one saved spin, like the other burns (fireCredit).
    * An ad closes if the poster pet dies or is released or changes owner. Before ACTIVATE_RUGME_BLOCK every one of these tags replays exactly
    * as today ('unknown pet: tag (community food)'). No randomness: nothing here draws from a block hash except breed() itself.
    * World state is created LAZILY (w.ads) only when a post-gate tag succeeds, so replays before the gate hash the same. */
@@ -190,7 +192,7 @@
   /** parseReq('T2.S4.PPEPE.GJEWELED-CROWN.W60' | 'ANY') -> { tier, stage, species, gear, power } (only the codes given) or null if malformed. */
   function Buffer_len(x) { try { return unescape(encodeURIComponent(x)).length; } catch (e) { return String(x).length; } }
   /** reqWhy(code, petId): null when the standards are valid AND pet:ad:ID:REQ fits MAX_TAG_BYTES, else the reason (rules + UI share it). */
-  function reqWhy(code, petId, bio) { var raw = String(code == null ? '' : code), c = raw.toUpperCase(), tag = adTag(petId, raw, bio), n = Buffer_len(tag);
+  function reqWhy(code, petId) { var raw = String(code == null ? '' : code), c = raw.toUpperCase(), tag = adTag(petId, raw), n = Buffer_len(tag);
     if (n > MAX_TAG_BYTES) return 'Rug Me: tag too long (' + n + ' bytes, max ' + MAX_TAG_BYTES + ')';
     if (!/^[A-Z0-9.-]+$/.test(c)) return 'Rug Me: standards may only use letters, digits, . and - (' + raw + ')';
     if (c === 'ANY') return null; var parts = c.split('.'); if (parts.length > RUG_MAX_CODES) return 'Rug Me: at most ' + RUG_MAX_CODES + ' standards (' + parts.length + ' given)';
@@ -223,11 +225,10 @@
   /** adState(w, ad, b): 'open' | 'taken' | 'cancelled' | 'expired' | 'closed' (poster pet dead, released or no longer the poster's). */
   function adState(w, ad, b) { if (ad.state !== 'open') return ad.state; var P = w.byId[ad.pet]; if (!P || P.dead || P.released || P.owner !== ad.owner) return 'closed'; return b - ad.block >= AD_WINDOW ? 'expired' : 'open'; }
   var RUG_AD_COST = 69; /* owner, Oct 22 8:42 PM: posting costs 69 per pet; accepting (pet:rug) stays COSTS.breed 690, so a Rug Me breed totals 759 */
-  var RUG_BIO_COUNT = 13; /* preset bios in js/v2-rugme.js (index = Bn); the UI list must keep this length */
   /** onRug(w, p, b): p has an open Rug Me ad (shown as a card, and 'On Rug Me' on its pet page). */
   function onRug(w, p, b) { return !!(p && (w.ads || []).some(function (a) { return a.pet === p.id && adState(w, a, b) === 'open'; })); }
-  /** adTag(ids, req, bio): the pet:ad tag text (bio optional). */
-  function adTag(ids, req, bio) { return 'pet:ad:' + [].concat(ids).join('.') + ':' + (req || 'ANY') + (bio != null ? ':B' + bio : ''); }
+  /** adTag(ids, req): the pet:ad tag text (no bio field: bios are picked from tx hash + pet). */
+  function adTag(ids, req) { return 'pet:ad:' + [].concat(ids).join('.') + ':' + (req || 'ANY'); }
   /** adWhy(p, b): can p post an ad? breedable() minus the cooldown (a resting pet may post; the accept still needs both breedable). */
   function adWhy(p, b) { var why = breedable(p, b); return why && /^breeding cooldown/.test(why) ? null : why; }
   /** rugCheck(w, t, src, b, amt, P): shared by replay (handle) and the send guard. Returns null or the rejection reason. P(id) -> pet. */
@@ -235,7 +236,7 @@
     if (t.action === 'ad') { var ids = t.ids || [t.petId], n = ids.length;
       if (t.bad) return 'Rug Me: ' + t.bad;
       if (t.len != null && t.len > MAX_TAG_BYTES) return 'Rug Me: tag too long (' + t.len + ' bytes, max ' + MAX_TAG_BYTES + ')';
-      why = reqWhy(t.req, ids, t.bio); if (why) return why;
+      why = reqWhy(t.req, ids); if (why) return why;
       if (amt != null && below(w, amt, RUG_AD_COST * n, b)) return 'below Rug Me ad cost ' + costAt(w, RUG_AD_COST * n, b) + (n > 1 ? ' (' + n + ' pets, ' + costAt(w, RUG_AD_COST, b) + ' each)' : '');
       for (var k = 0; k < n; k++) { A = P(ids[k]); if (!A || A.owner !== src) return 'Rug Me: #' + ids[k] + ' is not yours'; why = adWhy(A, b); if (why) return 'Rug Me: #' + A.id + ' ' + why;
         if (onRug(w, A, b)) return 'Rug Me: #' + A.id + ' already has an open ad'; }
@@ -805,10 +806,10 @@
     if (a === 'JOIN' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'join', fightId: n(2), petId: n(3) };
     if (a === 'RUMBLE' && p.length === 3 && idOk(p[2])) return { action: 'rumble', petId: n(2) };
     if (a === 'AD' && p.length >= 4) { /* Rug Me (inert before ACTIVATE_RUGME_BLOCK): any pet:ad:... parses; rugCheck gives the reason for a bad one */
-      var aids = String(p[2]).split('.'), bad = aids.every(idOk) ? null : 'bad pet id list ' + p[2], bio = null; aids = aids.map(function (x) { return parseInt(x, 10); });
+      var aids = String(p[2]).split('.'), bad = aids.every(idOk) ? null : 'bad pet id list ' + p[2]; aids = aids.map(function (x) { return parseInt(x, 10); });
       if (!bad && aids.some(function (x, i) { return aids.indexOf(x) !== i; })) bad = 'a pet is listed twice';
-      if (p.length > 5) bad = bad || 'too many fields'; else if (p.length === 5) { if (/^B\d{1,2}$/.test(p[4]) && +p[4].slice(1) < RUG_BIO_COUNT) bio = +p[4].slice(1); else bad = bad || 'bad bio code ' + p[4]; }
-      return { action: 'ad', ids: aids, petId: aids[0], req: p[3], bio: bio, bad: bad, len: Buffer_len(t) }; }
+      if (p.length > 5 || (p.length === 5 && !/^B\d{1,2}$/.test(p[4]))) bad = bad || 'too many fields'; /* owner 8:47 PM: bios are always random; an old-format :Bn field is accepted and IGNORED */
+      return { action: 'ad', ids: aids, petId: aids[0], req: p[3], bad: bad, len: Buffer_len(t) }; }
     if (a === 'RUG' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'rug', petId: n(2), adId: n(3) };
     if (a === 'UNAD' && p.length === 3 && idOk(p[2])) return { action: 'unad', adId: n(2) };
     if (a === 'BREED' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'breed', a: n(2), b: n(3) };
@@ -948,8 +949,9 @@
     return w;
   }
   /** fireCredit: a valid discounted-action burn in a live sale that paid at least the full (era) price -> one saved wheel spin (ledger only). */
-  function fireCredit(w, r, t, amt, res) { var b = r.block_index; if (!res || res.kind === 'rejected' || !FIRE_ACTIONS[t.action] || !saleAt(w, b)) return;
-    var full = t.action === 'hatch' ? fullAt(w, COSTS.hatch, b) : t.action === 'pack' ? fullAt(w, t.cost, b) : t.action === 'spin' ? fullAt(w, COSTS.roll, b) : COSTS[t.action] != null ? fullAt(w, COSTS[t.action], b) : w._fireFull;
+  function fireCredit(w, r, t, amt, res) { var b = r.block_index; var rugF = (t.action === 'ad' || t.action === 'rug') && rugOn(b); /* Rug Me burns earn credit only from ACTIVATE_RUGME_BLOCK (below it they are rejected anyway) */
+    if (!res || res.kind === 'rejected' || !(FIRE_ACTIONS[t.action] || rugF) || !saleAt(w, b)) return;
+    var full = rugF ? fullAt(w, t.action === 'ad' ? RUG_AD_COST * ((t.ids && t.ids.length) || 1) : COSTS.breed, b) : t.action === 'hatch' ? fullAt(w, COSTS.hatch, b) : t.action === 'pack' ? fullAt(w, t.cost, b) : t.action === 'spin' ? fullAt(w, COSTS.roll, b) : COSTS[t.action] != null ? fullAt(w, COSTS[t.action], b) : w._fireFull;
     w._fireFull = null; if (full == null || amt + 5e-9 < full) return;
     w.fireSpins = w.fireSpins || {}; w.fireSpinLog = w.fireSpinLog || []; w.fireSpins[r.source] = (w.fireSpins[r.source] || 0) + 1;
     w.fireSpinLog.push({ block: b, tx: r.tx_hash, owner: r.source, action: t.action, paid: amt, full: full, sale: saleAt(w, b).arm }); }
@@ -1338,7 +1340,7 @@
       }
       case 'ad': case 'unad': case 'rug': { /* Rug Me (only reached at/after ACTIVATE_RUGME_BLOCK) */
         var rw = rugCheck(w, t, src, b, amt, pet); if (rw) return L(r, 'rejected', rw); var ads = w.ads || [];
-        if (t.action === 'ad') { if (!w.ads) w.ads = ads; var made = t.ids.map(function (id) { var ad = { id: ads.length + 1, pet: id, owner: src, req: parseReq(t.req), block: b, tx: r.tx_hash, state: 'open' }; if (t.bio != null) ad.bio = t.bio; ads.push(ad); return ad; });
+        if (t.action === 'ad') { if (!w.ads) w.ads = ads; var made = t.ids.map(function (id) { var ad = { id: ads.length + 1, pet: id, owner: src, req: parseReq(t.req), block: b, tx: r.tx_hash, state: 'open' }; ads.push(ad); return ad; });
           return L(r, 'rugAd', made.map(function (a) { return '#' + a.pet; }).join(', ') + ' posted Rug Me ad' + (made.length > 1 ? 's ' + made[0].id + '-' + made[made.length - 1].id : ' ' + made[0].id) + ' (' + reqText(made[0].req) + '), open until block ' + (b + AD_WINDOW - 1), { petId: made[0].pet, adId: made[0].id }); }
         if (t.action === 'unad') { var ua = ads[t.adId - 1]; ua.state = 'cancelled'; ua.closed = b; return L(r, 'rugUnad', 'Rug Me ad ' + ua.id + ' cancelled', { petId: ua.pet, adId: ua.id }); }
         if (!bh) return L(r, 'rejected', 'block hash not yet available (retry when confirmed)');
@@ -2298,7 +2300,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_BIO_COUNT: RUG_BIO_COUNT, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
+  return { ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
     ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: UI_COSTS, BASE_COSTS: COSTS, ACTIVATE_HALVING_BLOCK: ACTIVATE_HALVING_BLOCK, HALVING_DELAY: HALVING_DELAY, COMMUNITY_PET_ARRIVAL_BLOCKS: COMMUNITY_PET_ARRIVAL_BLOCKS, ACTIVATE_COMMUNITY_TRIGGER_BLOCK: ACTIVATE_COMMUNITY_TRIGGER_BLOCK, _setCommunityTriggerActivation: function (b) { ACTIVATE_COMMUNITY_TRIGGER_BLOCK = b; }, halvingOn: halvingOn, halving1Block: halving1Block, halvingBlocks: halvingBlocks, eraAt: eraAt, costAt: costAt, costsAt: costsAt, syncCosts: syncCosts, planAmount: planAmount, ACTIVATE_SPINS_BLOCK: ACTIVATE_SPINS_BLOCK, SPINS_MAX_PER_BURN: SPINS_MAX_PER_BURN, spinsOn: spinsOn, spinsLeft: spinsLeft, useSpinPlan: useSpinPlan, overflowSpins: overflowSpins, _setSpinsActivation: function (b) { ACTIVATE_SPINS_BLOCK = b; }, ACTIVATE_FIRESALE_BLOCK: ACTIVATE_FIRESALE_BLOCK, FIRE: { ODDS_1K: FIRE_ODDS_1K, WARN: FIRE_WARN, LEN: FIRE_LEN, COOLDOWN: FIRE_COOLDOWN, KEK_PAUSE: FIRE_KEK_PAUSE, PAY: FIRE_PAY, FEED_PAY: FIRE_FEED_PAY }, fireOn: fireOn, fireRoll: fireRoll, fireExtend: fireExtend, fireBlackout: fireBlackout, saleAt: saleAt, fireFactor: fireFactor, fireInfo: fireInfo, fullAt: fullAt, fireSpinsOf: function (w, a) { return (w && w.fireSpins && w.fireSpins[a]) || 0; }, _setFiresaleActivation: function (b) { ACTIVATE_FIRESALE_BLOCK = b; }, _setFireHashes: function (h) { FIRE_HASHES = h || {}; }, below: below, mealCost: mealCost, halvingInfo: halvingInfo, petThresholds0: petThresholds, _setHalvingActivation: function (b) { ACTIVATE_HALVING_BLOCK = b; }, _setCommunityPetArrivals: function (a) { COMMUNITY_PET_ARRIVAL_BLOCKS.length = 0; (a || []).forEach(function (x) { COMMUNITY_PET_ARRIVAL_BLOCKS.push(x); }); }, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, ACTIVATE_CHUD_BEARD_PART_BLOCK: ACTIVATE_CHUD_BEARD_PART_BLOCK, beardPartOn: beardPartOn, CHUD_BEARD_PART: CHUD_BEARD_PART, BEARD_PART_EXCLUDE: BEARD_PART_EXCLUDE, _setChudBeardPartActivation: function (b) { ACTIVATE_CHUD_BEARD_PART_BLOCK = b; }, _pool: pool, _setEligB: function (b) { ELIG_B = b; }, partDef: partDef, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, BEARD_EXCLUDE: BEARD_EXCLUDE, bodyOf: bodyOf, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,

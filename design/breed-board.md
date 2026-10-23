@@ -241,7 +241,7 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 **Gate:** `ACTIVATE_RUGME_BLOCK` in js/v2-rules.js is `null` (placeholder). At deploy, set it to tip + 6. Below the gate, `pet:ad`, `pet:rug` and `pet:unad` replay exactly as today ("unknown pet: tag (community food)"); `tools/replay-check.js` stays SAME.
 
 **Tags (from the gate):**
-- `pet:ad:IDS:REQ[:Bn]` (**69 per pet**, owner 8:42 PM; a Rug Me breed totals 759 = 69 + 690): IDS is one pet id or several joined by dots (`pet:ad:12.34.56:T2.S4`), each its own ad, open 1,008 blocks, one open ad per pet. REQ = `ANY` or up to 4 dot-joined codes (T tier+, S stage+, P species/HYB, G owns gear = worn or in the bag, W power+). `Bn` = optional preset bio number (0-12); without it the bio is picked from the ad tx hash. The whole tag must fit 34 bytes. Every pet in the tag must pass (yours, alive, Adult+, no open ad, under the cap) or the whole burn is rejected with a reason. A pet resting after a breed may still post.
+- `pet:ad:IDS:REQ` (**69 per pet**, owner 8:42 PM; a Rug Me breed totals 759 = 69 + 690): IDS is one pet id or several joined by dots (`pet:ad:12.34.56:T2.S4`), each its own ad, open 1,008 blocks, one open ad per pet. REQ = `ANY` or up to 4 dot-joined codes (T tier+, S stage+, P species/HYB, G owns gear = worn or in the bag, W power+). **Bios are always random** (owner, 8:47 PM): the bio is picked deterministically from the ad tx hash + pet id out of the 13 presets; there is no picker. New tags never carry a bio field. An old-format trailing `:Bn` (B + 1-2 digits) is **accepted and ignored** (safer than rejecting a paid burn); any other 5th field is rejected as "too many fields". The whole tag must fit 34 bytes. Every pet in the tag must pass (yours, alive, Adult+, no open ad, under the cap) or the whole burn is rejected with a reason. A pet resting after a breed may still post.
 - `pet:rug:MY:N` (690): accept ad N with my pet: breeds at once through breed(); the **egg goes to the poster** (poster pet = parent A). Both pets count the breed.
 - `pet:unad:N` (1 dander): the poster cancels (no refund).
 - Prices follow the halving / fire sale through `costAt` (replay `below()`, UI `planAmount`), so after a halving posting shows and burns as 34.5 per pet and Rug me as 345 everywhere. Button: **Post on Rug Me · 69** (times the pet count when several are ticked).
@@ -250,7 +250,7 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 
 **Swipe stack:** only posted pets (other owners' open ads your "Swiping as" pet qualifies for), newest first. Left = local skip per pet per chain day with Undo; right = the single XCP Wallet confirm for `pet:rug`.
 
-**Posting (multi-pet):** the 📌 form lets you tick one or many of your eligible pets (All/None), with **same standards + bio for all** or **per pet** (pick the pet to edit). It groups pets by settings and packs each group into as few <=34-byte `pet:ad` tags as fit; the summary shows pets, burns, each tag and the **total cost** before the confirm. Several burns go through the existing queue: one XCP Wallet window per burn, with progress, Stop, and Continue after a reload.
+**Posting (multi-pet):** the 📌 form lets you tick one or many of your eligible pets (All/None), with **same standards for all** or **per pet** (bio is always random) (pick the pet to edit). It groups pets by settings and packs each group into as few <=34-byte `pet:ad` tags as fit; the summary shows pets, burns, each tag and the **total cost** before the confirm. Several burns go through the existing queue: one XCP Wallet window per burn, with progress, Stop, and Continue after a reload.
 
 **Cards:** pixel tier pill, ad number, animated sprite, the full stat block (Vigor, Spark, Grit, Zoom, Luck plus Power), traits, bio, wants, blocks left.
 
@@ -258,6 +258,8 @@ Board name: **Rug Me** (owner pick, shortened from "Rug Me Gently"). Replaces "S
 
 **HatchBot:** `tools/hatchbot-rugme.js` writes "NEW RUG ME AD" (one per ad, key `rugme-ad-<tx>-<ad>`) and "IT'S A MATCH". DISABLED, not wired, never runs on the live HatchBot.
 
-**Tests:** `node tools/rug-me-test.js` (gate off / below gate SAME, post / accept / cancel / expiry, egg to poster, multi-pet ads, bio, 34-byte limit, malformed reasons, halving, newest-first order, no old label naming).
+**Tests:** `node tools/rug-me-test.js` (gate off / below gate SAME, post / accept / cancel / expiry, egg to poster, multi-pet ads, ignored old :Bn field, random bio, fire-sale credit for ad / rug, 34-byte limit, malformed reasons, halving, newest-first order, no old label naming).
 
-**Still open for the owner:** 1) gate block at deploy; 2) fire-sale spin credit for ad / rug burns (not now); 3) the bio list wording.
+**Fire Sale spin credit (owner, 8:47 PM):** from `ACTIVATE_RUGME_BLOCK`, a valid `pet:ad` burn (full = 69 per pet at the era price) and a valid `pet:rug` burn (full = 690 at the era price) that pays at least the full price during a live Fire Sale earns one saved spin, like the other burns (`fireCredit`). Sale-price or rejected burns earn none. Below the gate these tags are unknown and earn nothing (replay SAME).
+
+**Still open for the owner:** 1) gate block at deploy; 2) the bio list wording.

@@ -89,16 +89,28 @@ ok(w.pets.length === n0 + 1 + (kid && kid.twinOf ? 1 : 0), 'exactly one egg (or 
 // multi-pet posting: one tag, several pets, one ad each; all-or-nothing; optional preset bio
 { const M = by[O1].filter(p => p !== A && p !== A2).slice(0, 3); if (M.length >= 2) { const [M1, M2] = M, ids = M1.id + '.' + M2.id;
   const Rm = [row(G, O1, 69, 'pet:ad:' + ids + ':ANY:B3'), row(G, O1, 138, 'pet:ad:' + ids + ':ANY:B3'), row(G + 1, O1, 138, 'pet:ad:' + ids + ':ANY'), row(G + 1, O1, 138, 'pet:ad:' + M1.id + '.' + M1.id + ':ANY'),
-    row(G + 1, O1, 69, 'pet:ad:' + (M[2] || A).id + ':ANY:B99'), row(G + 1, O1, 138, 'pet:ad:' + (M[2] || A).id + '.' + Bp.id + ':ANY'), row(G + 2, O2, 690, 'pet:rug:' + Bp.id + ':2')];
+    row(G + 1, O1, 69, 'pet:ad:' + (M[2] || A).id + ':ANY:XYZ'), row(G + 1, O1, 138, 'pet:ad:' + (M[2] || A).id + '.' + Bp.id + ':ANY'), row(G + 2, O2, 690, 'pet:rug:' + Bp.id + ':2')];
   const wm = run(c, s, Rm, G + 20), Lm = Rm.map(r => msgs(wm, [r])[0]);
   ok(/below Rug Me ad cost 138 \(2 pets, 69 each\)/.test(Lm[0]), 'multi ad: 69 per pet [' + Lm[0] + ']');
-  ok(/^rugAd: #\d+, #\d+ posted Rug Me ads 1-2/.test(Lm[1]) && wm.ads.length === 2 && wm.ads.every(a => a.bio === 3 && a.owner === O1), 'multi ad: one burn -> ads 1-2, bio B3 [' + Lm[1] + ']');
-  ok(/already has an open ad/.test(Lm[2]) && /listed twice/.test(Lm[3]) && /bad bio/.test(Lm[4]) && /not yours/.test(Lm[5]) && wm.ads.length === 2, 'multi ad: dup / twice / bad bio / one foreign pet -> whole tag rejected with reasons');
+  ok(/^rugAd: #\d+, #\d+ posted Rug Me ads 1-2/.test(Lm[1]) && wm.ads.length === 2 && wm.ads.every(a => a.bio === undefined && a.owner === O1), 'multi ad: one burn -> ads 1-2; an old-format :B3 field is ignored (no bio stored) [' + Lm[1] + ']');
+  ok(/already has an open ad/.test(Lm[2]) && /listed twice/.test(Lm[3]) && /too many fields/.test(Lm[4]) && /not yours/.test(Lm[5]) && wm.ads.length === 2, 'multi ad: dup / twice / extra field / one foreign pet -> whole tag rejected with reasons');
   const ka = wm.ads[1].taken && wm.byId[wm.ads[1].taken.kid]; ok(ka && ka.owner === O1 && ka.parents[0] === M2.id, 'accept one ad of a multi post: egg to the poster');
   ok(V.onRug(wm, wm.byId[M1.id], G + 3) && !V.onRug(wm, wm.byId[M2.id], G + 3), 'onRug marker: open ad yes, taken ad no');
-  ok(V.adTag([1234, 5678, 9012], 'T2.S4', 3) === 'pet:ad:1234.5678.9012:T2.S4:B3' && /too long/.test(V.reqWhy('T2.S4.W60', [12345, 12346, 12347, 12348]) || ''), 'adTag + 34-byte packing limit'); } }
+  ok(V.adTag([1234, 5678, 9012], 'T2.S4') === 'pet:ad:1234.5678.9012:T2.S4' && /too long/.test(V.reqWhy('T2.S4.W60', [12345, 12346, 12347, 12348]) || ''), 'adTag + 34-byte packing limit'); } }
 // no DTB naming anywhere in Rug Me UI / HatchBot / rules
 { const fs = require('fs'), bad = ['js/v2-rugme.js', 'tools/hatchbot-rugme.js', 'js/v2-rules.js', 'css/rugme.css', 'design/breed-board.md'].filter(f => fs.existsSync(f) && /\bDTB\b|down to breed|dtbon|dtboff/i.test(fs.readFileSync(f, 'utf8')));
   ok(!bad.length, 'no DTB / Down to Breed naming left' + (bad.length ? ' in ' + bad.join(', ') : '')); }
 ok(V.RUG_AD_COST + 690 === 759, 'a Rug Me breed totals 759 (69 post + 690 accept)');
+// bios always random: UI has no picker, bio = BIOS[hash(tx + pet)] (13 presets)
+{ const ui = require('fs').readFileSync('js/v2-rugme.js', 'utf8'); ok(!/rmBio|ad\.bio/.test(ui) && (ui.match(/^\s+'[^\n]*'[,\]]/gm) || []).length >= 0 && /pick\(BIOS, ad\.tx \+ ':' \+ ad\.pet\)/.test(ui), 'no bio picker; bio picked from tx hash + pet'); }
+// fire-sale spin credit: pet:ad + pet:rug full-price burns in a live sale earn a saved spin, only from the Rug Me gate
+{ const { fakeHash } = require('./lib/load-rules.js'), GG = tip + 6, HH = {}; for (let b = GG; b < GG + 3000; b++) HH[b] = fakeHash('fs' + b);
+  const fr = (gate) => { const c5 = load(), V5 = c5.V2Rules; V5._setHalvingActivation(GG); V5._setFiresaleActivation(GG); V5._setFireHashes(HH); V5._setRugActivation(gate(GG));
+    const w0 = {}; V5.fireExtend(w0, GG + 2990); const sl = w0.fire.sales[0]; if (!sl) return null; const g2 = gate(GG) > sl.start ? null : 1;
+    const rows = [row(sl.start, O1, 69, 'pet:ad:' + A.id + ':ANY'), row(sl.start, O1, 138, 'pet:ad:' + A2.id + '.' + C.id + ':ANY'), row(sl.start + 1, O2, 690, 'pet:rug:' + Bp.id + ':1'), row(sl.start + 1, O3, V5.costAt(w0, 69, sl.start + 1), 'pet:ad:' + C.id + ':ANY')];
+    const wf = run(c5, s, rows, sl.end + 5, HH); return { V5, wf, sl, rows, g2 }; };
+  const F = fr(g => g); if (!F) ok(false, 'found a fire sale for the test'); else { const { V5, wf, rows } = F, Lf = rows.map(r => msgs(wf, [r])[0]);
+    const FS = wf.fireSpins || {}; ok(FS[O1] === 1 && FS[O2] === 1 && (wf.fireSpinLog || []).map(x => x.action).sort().join() === 'ad,rug', 'fire sale: full-price pet:ad (69) and pet:rug (690) each earn 1 saved spin; a rejected multi-ad earns none [' + Lf.join(' | ') + ']');
+    ok(/^rugAd/.test(Lf[3]) && !FS[O3], 'fire sale: a sale-price ad is valid but earns no spin'); }
+  const F2 = fr(g => g + 2990); if (F2) ok(!(F2.wf.fireSpins || {})[O1] && !(F2.wf.fireSpins || {})[O2] && msgs(F2.wf, F2.rows).every(x => x === 'rejected: unknown pet: tag (community food)'), 'below ACTIVATE_RUGME_BLOCK: ad / rug burns earn no fire-sale spin (unknown tag, as today)'); }
 console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

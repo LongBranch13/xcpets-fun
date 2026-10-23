@@ -22,8 +22,8 @@
   function postCost() { var u = U(); try { return V.costAt(u.world(), V.RUG_AD_COST || 69, tip() + 1); } catch (e) { return 69; } } /* posting: 69 per pet (halving-aware) */
   function cost() { var u = U(); try { return V.costAt(u.world(), 690, tip() + 1); } catch (e) { return 690; } } /* halving / fire sale: the price at the next block, same costAt the replay checks */
   function NET() { return (window.XCPETS_CONFIG && XCPETS_CONFIG.network) || 'main'; }
-  var st = { as: null, i: 0, tab: 'motel', post: {}, bio: null, per: {}, perMode: false, edit: null, sel: {}, lastSkip: [] };
-  function bioOf(ad) { return ad.bio != null && BIOS[ad.bio] ? BIOS[ad.bio] : pick(BIOS, ad.tx + ':' + ad.pet); }
+  var st = { as: null, i: 0, tab: 'motel', post: {}, per: {}, perMode: false, edit: null, sel: {}, lastSkip: [] };
+  function bioOf(ad) { return pick(BIOS, ad.tx + ':' + ad.pet); } /* always random: deterministic from ad tx hash + pet (owner 8:47 PM) */
   var MARK = '💘 On Rug Me'; /* the one place the posted-pet marker is named */
   /* ---------- skips: local only ---------- */
   function skipKey(petId) { return 'xcpets-v2-rugskip-' + NET() + '-' + (U().ME || '') + '-' + petId + '-' + V.day(tip() + 1); }
@@ -96,20 +96,20 @@
     $('rmNo').onclick = function () { if (c) fling(-1, c); }; $('rmYes').onclick = function () { if (c) rugRight(c); }; $('rmUndo').onclick = undo;
     box.querySelectorAll('[data-unad]').forEach(function (x) { x.onclick = function () { var plan = { tag: 'pet:unad:' + x.getAttribute('data-unad'), amount: 0.00000001 }, why = u.sendWhy(plan); if (why) return u.toast('⚠️ ' + esc(why)); u.confirmPlans('Cancel Rug Me ad ' + x.getAttribute('data-unad') + ' · a 1-dander burn' + ' (no refund)', [plan], function () { u.render(); }); }; });
     bindPost(w, mine); if (c) drag($('rmCard'), c); }
-  /* ---------- post ads (one or several pets; same standards + bio for all, or per pet) ---------- */
-  function setFor(id) { return st.perMode && st.per[id] ? st.per[id] : { q: st.post, bio: st.bio }; }
-  /** packPlans(w, ids): group pets by (standards, bio), pack each group into as few pet:ad tags as fit MAX 34 bytes. One plan per tag, 69 per pet (halving via planAmount). */
+  /* ---------- post ads (one or several pets; same standards for all, or per pet; bio always random) ---------- */
+  function setFor(id) { return st.perMode && st.per[id] ? st.per[id] : { q: st.post }; }
+  /** packPlans(w, ids): group pets by standards, pack each group into as few pet:ad tags as fit MAX 34 bytes. One plan per tag, 69 per pet (halving via planAmount). */
   function packPlans(w, ids) { var groups = {}, order = [], plans = [];
-    ids.forEach(function (id) { var s = setFor(id), k = V.reqTag(s.q) + '|' + (s.bio == null ? '' : s.bio); if (!groups[k]) { groups[k] = { req: V.reqTag(s.q), bio: s.bio, ids: [] }; order.push(k); } groups[k].ids.push(id); });
+    ids.forEach(function (id) { var s = setFor(id), k = V.reqTag(s.q); if (!groups[k]) { groups[k] = { req: k, ids: [] }; order.push(k); } groups[k].ids.push(id); });
     order.forEach(function (k) { var g = groups[k], cur = [];
-      g.ids.forEach(function (id) { var t = cur.concat([id]); if (cur.length && V.reqWhy(g.req, t, g.bio)) { plans.push(cur); cur = [id]; } else cur = t; }); if (cur.length) plans.push(cur);
-      plans = plans.map(function (x) { return x.req ? x : { req: g.req, bio: g.bio, ids: x }; }); });
-    return plans.map(function (x) { return { tag: V.adTag(x.ids, x.req, x.bio), amount: postCost() * x.ids.length, ids: x.ids, why: V.reqWhy(x.req, x.ids, x.bio) }; }); }
+      g.ids.forEach(function (id) { var t = cur.concat([id]); if (cur.length && V.reqWhy(g.req, t)) { plans.push(cur); cur = [id]; } else cur = t; }); if (cur.length) plans.push(cur);
+      plans = plans.map(function (x) { return x.req ? x : { req: g.req, ids: x }; }); });
+    return plans.map(function (x) { return { tag: V.adTag(x.ids, x.req), amount: postCost() * x.ids.length, ids: x.ids, why: V.reqWhy(x.req, x.ids) }; }); }
   function postForm(w, mine) { var b = tip() + 1, ok = mine.filter(function (p) { return !V.adWhy(p, b) && !V.onRug(w, p, b); });
     Object.keys(st.sel).forEach(function (id) { if (!ok.some(function (p) { return p.id === +id; })) delete st.sel[id]; });
     var sel = ok.filter(function (p) { return st.sel[p.id]; }).map(function (p) { return p.id; });
     if (st.perMode && (!st.edit || sel.indexOf(st.edit) < 0)) st.edit = sel[0] || null;
-    var ed = st.perMode && st.edit ? (st.per[st.edit] = st.per[st.edit] || { q: Object.assign({}, st.post), bio: st.bio }) : { q: st.post, bio: st.bio }, q = ed.q, E = st.edit ? w.byId[st.edit] : (sel[0] ? w.byId[sel[0]] : mine[0]);
+    var ed = st.perMode && st.edit ? (st.per[st.edit] = st.per[st.edit] || { q: Object.assign({}, st.post) }) : { q: st.post }, q = ed.q, E = st.edit ? w.byId[st.edit] : (sel[0] ? w.byId[sel[0]] : mine[0]);
     var owned = Object.keys(w.items || {}).map(function (k) { return w.items[k]; }).filter(function (g) { return E && g.owner === E.owner && (g.on === E.id || g.bag === E.id); });
     var chip = function (k, v, label) { return '<button class="chip rm-chip' + (q[k] === v ? ' on' : '') + '" data-rk="' + k + '" data-rv="' + v + '">' + esc(label) + '</button>'; };
     var plans = sel.length ? packPlans(w, sel) : [], total = plans.reduce(function (a, p) { return a + p.amount; }, 0), bad = plans.filter(function (p) { return p.why; })[0];
@@ -117,7 +117,7 @@
       '<div class="chips rm-pets">' + ok.map(function (p) { return '<label class="chip rm-chip rm-pk' + (st.sel[p.id] ? ' on' : '') + '"><input type="checkbox" data-rsel="' + p.id + '"' + (st.sel[p.id] ? ' checked' : '') + '> #' + p.id + ' ' + esc(p.name) + '</label>'; }).join('') +
         (ok.length > 1 ? '<button class="chip rm-chip" data-rall="1">' + (sel.length === ok.length ? 'None' : 'All') + '</button>' : '') + '</div>' +
       (mine.length > ok.length ? '<div class="small muted">' + (mine.length - ok.length) + ' pet(s) hidden: already on Rug Me or can\u2019t breed.</div>' : '') +
-      (sel.length > 1 ? '<div class="small rm-mode"><label><input type="radio" name="rmMode" data-rmode="same"' + (st.perMode ? '' : ' checked') + '> Same standards + bio for all</label> <label><input type="radio" name="rmMode" data-rmode="per"' + (st.perMode ? ' checked' : '') + '> Per pet</label>' +
+      (sel.length > 1 ? '<div class="small rm-mode"><label><input type="radio" name="rmMode" data-rmode="same"' + (st.perMode ? '' : ' checked') + '> Same standards for all</label> <label><input type="radio" name="rmMode" data-rmode="per"' + (st.perMode ? ' checked' : '') + '> Per pet</label>' +
         (st.perMode ? ' · editing <select id="rmEdit">' + sel.map(function (id) { return '<option value="' + id + '"' + (id === st.edit ? ' selected' : '') + '>#' + id + ' ' + esc(w.byId[id].name) + '</option>'; }).join('') + '</select>' : '') + '</div>' : '') +
       '<div class="small">Standards (max 4):</div>' +
       '<div class="chips">' + chip('tier', 1, 'Uncommon+') + chip('tier', 2, 'Rare+') + chip('tier', 3, 'Legendary') + '</div>' +
@@ -125,8 +125,7 @@
       '<div class="chips">' + chip('species', E && E.species && E.species.indexOf('hyb') !== 0 ? E.species : 'pepe', 'Same species' + (E ? ' (' + V.speciesLabel(E.species) + ')' : '')) + chip('species', 'hyb', 'Hybrid') + '</div>' +
       '<div class="chips">' + chip('power', 50, 'Power 50+') + chip('power', 60, 'Power 60+') + chip('power', 80, 'Power 80+') + '</div>' +
       '<div class="chips">' + ['jeweled-crown', 'goldcape'].concat(owned.slice(0, 3).map(function (g) { return V.resolveItem(g.item); })).filter(function (x, i, a) { return a.indexOf(x) === i && V.itemOf(x); }).slice(0, 4).map(function (id) { return chip('gear', id, 'Owns ' + V.itemOf(id).label); }).join('') + '</div>' +
-      '<label class="small">Bio <select id="rmBio"><option value="">🎲 Random preset</option>' + BIOS.map(function (t, i) { return '<option value="' + i + '"' + (ed.bio === i ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></label>' +
-      '<div class="small muted">Wants: ' + esc(V.reqText(q)) + ' · ' + fmt(postCost()) + ' per pet · open 1,008 blocks (~7 days) · one ad per pet · a pet resting after a breed can still post (the ad waits) · the egg comes to you</div>' +
+      '<div class="small muted">Wants: ' + esc(V.reqText(q)) + ' · ' + fmt(postCost()) + ' per pet · open 1,008 blocks (~7 days) · one ad per pet · a pet resting after a breed can still post (the ad waits) · bio: a random preset · the egg comes to you</div>' +
       (sel.length ? '<div class="small rm-sum"><b>' + sel.length + ' pet' + (sel.length > 1 ? 's' : '') + ' · ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' · total ' + fmt(total) + ' XCPETS</b>' + (plans.length > 1 ? ' (one XCP Wallet window per burn, with progress; you can stop and resume)' : '') + '<br><span class="muted">' + plans.map(function (p) { return '<code>' + esc(p.tag) + '</code>'; }).join(' · ') + '</span></div>' : '') +
       (bad ? '<div class="small warn">' + esc(bad.why) + '. Drop a standard.</div>' : '') +
       '<button class="btn" id="rmPost"' + (!sel.length || bad ? ' disabled' : '') + '>📌 Post on Rug Me · ' + fmt(total || postCost()) + '</button></div>'; }
@@ -136,7 +135,6 @@
     var all = box.querySelector('[data-rall]'); if (all) all.onclick = function () { var b = tip() + 1, ok = mine.filter(function (p) { return !V.adWhy(p, b) && !V.onRug(w, p, b); }), on = ok.every(function (p) { return st.sel[p.id]; }); st.sel = {}; if (!on) ok.forEach(function (p) { st.sel[p.id] = 1; }); paint(); };
     box.querySelectorAll('[data-rmode]').forEach(function (x) { x.onchange = function () { st.perMode = x.getAttribute('data-rmode') === 'per'; paint(); }; });
     if ($('rmEdit')) $('rmEdit').onchange = function () { st.edit = +this.value; paint(); };
-    $('rmBio').onchange = function () { var v = this.value === '' ? null : +this.value; if (st.perMode && st.edit && st.per[st.edit]) st.per[st.edit].bio = v; else st.bio = v; paint(); };
     var bp = $('rmPost'); if (bp) bp.onclick = function () { var u = U(), ids = Object.keys(st.sel).map(Number), plans = packPlans(w, ids).map(function (p) { return { tag: p.tag, amount: p.amount }; });
       for (var i = 0; i < plans.length; i++) { var why = u.sendWhy(plans[i]); if (why) return u.toast('⚠️ ' + esc(why)); }
       u.confirmPlans('Post on Rug Me: ' + ids.map(function (id) { return '#' + id; }).join(', ') + ' (' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ')', plans, function () { st.sel = {}; st.per = {}; u.toast('📌 Posted. Your pets show in other players\u2019 stacks once it confirms.'); u.render(); }); };
