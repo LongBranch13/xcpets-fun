@@ -1,0 +1,33 @@
+/* RUG ME (branch rug-me, preview): swipe stack inside Gooby's No-Tail Motel. Mobile first; site fonts and tier colours. */
+.rm-tabs{display:flex;gap:6px;margin:6px 0 10px}.rm-tabs .btn{flex:1;font-family:var(--pixel);font-size:11px;padding:10px 6px;opacity:.7}.rm-tabs .btn.on{opacity:1;outline:2px solid var(--legendary,#ffc93c)}
+#breedPanel.rm-on>*:not(.rm-tabs):not(#rugMe):not(h2):not(.scene-anchor){display:none!important}
+.rug-me{max-width:440px;margin:0 auto}
+.rm-as{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.rm-as label{flex:1 1 220px}.rm-as select{width:100%;max-width:100%}
+.rm-dtb{display:inline-block;font-family:var(--pixel);font-size:9px;line-height:1;padding:4px 5px;color:#1a0d1f;background:#ff6fb5;border:2px solid #fff;box-shadow:2px 2px 0 #000;image-rendering:pixelated;letter-spacing:.06em}
+.rm-stack{position:relative;min-height:470px;touch-action:pan-y;user-select:none}
+.rm-card{position:absolute;inset:0;background:#141022;border:3px solid #ff6fb5;border-radius:10px;box-shadow:4px 4px 0 #000;padding:10px 12px;cursor:grab;will-change:transform;overflow:hidden}
+.rm-card:focus{outline:2px solid var(--legendary,#ffc93c)}
+.rm-under{transform:scale(.95) translateY(10px);opacity:.55;border-color:#5a3d6e;cursor:default}
+.rm-top{display:flex;gap:6px;align-items:center}.rm-n{margin-left:auto;font-family:var(--pixel);font-size:9px;color:#9aa3b5}
+.rm-art{display:flex;justify-content:center;margin:4px 0}.rm-sprite{width:128px;height:128px;image-rendering:pixelated;background:#0d0a16;border:2px solid #2b2140}
+.rm-name{font-family:var(--meme);font-size:26px;letter-spacing:.03em;text-align:center;line-height:1.1}.rm-sub{text-align:center;font-size:13px;color:#cfc6e6;margin-bottom:4px}
+.rm-stats.statbox .stat{margin:1px 0;gap:6px}.rm-stats.statbox .sk{width:64px;font-family:var(--pixel);font-size:8px}.rm-stats.statbox .sbar{height:7px;border-width:1px}.rm-stats.statbox b{font-size:12px}
+.rm-stats .stat.tot .sk{color:var(--legendary,#ffc93c);width:auto;flex:1}
+.rm-bio{font-family:var(--comic);font-style:italic;text-align:center;margin:6px 0 4px;font-size:14px}
+.rm-wants{font-size:12px;text-align:center;color:#cfc6e6}
+.rm-stamp{position:absolute;top:22px;font-family:var(--pixel);font-size:20px;padding:6px 8px;border:4px solid;transform:rotate(-14deg);opacity:0;pointer-events:none}
+.rm-stamp.yes{left:12px;color:#4fd18b;border-color:#4fd18b}.rm-stamp.no{right:12px;color:#ff5a5a;border-color:#ff5a5a;transform:rotate(14deg)}
+.rm-card.go-yes .rm-stamp.yes,.rm-card.go-no .rm-stamp.no{opacity:1}
+.rm-empty{padding:60px 14px;text-align:center;border:3px dashed #5a3d6e;border-radius:10px}
+.rm-btns{display:flex;gap:8px;margin-top:10px}.rm-btns .btn{flex:1;font-size:13px;padding:12px 6px}.rm-btns .rm-yes{flex:1.6;background:#ff6fb5;color:#1a0d1f;font-weight:700}.rm-btns .rm-no{background:#2b2140}
+.rm-hint{margin:6px 0 0}.rm-note{margin:6px 0}
+.rm-mine summary{cursor:pointer;font-family:var(--pixel);font-size:11px;padding:8px 0}.rm-adrow{font-size:13px;margin:4px 0}.rm-adrow .btn{padding:3px 8px;font-size:11px}
+.rm-post .chips{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0}.rm-chip{cursor:pointer}.rm-chip.on{outline:2px solid #ff6fb5;background:#3a1f3a}
+.rm-drow{display:flex;gap:8px;align-items:center;margin:4px 0 8px}
+@media (min-width:760px){.rug-me{max-width:460px}.rm-stack{min-height:500px}.rm-sprite{width:160px;height:160px}}
+/* shot-review fixes */
+.rm-post .rm-chip{color:#e8ffe8;background:#16241c;border:2px solid #4a6a55;padding:4px 9px;font-size:12px;border-radius:12px;box-shadow:none}
+.rm-post .rm-chip.on{color:#fff}
+.rm-btns .btn:disabled{opacity:.45;cursor:default}
+.rm-dtblink{padding:3px 9px!important;font-size:12px!important;vertical-align:middle}
+.rm-adrow .btn{margin-left:6px}
