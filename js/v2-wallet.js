@@ -29,7 +29,9 @@
   function NotFound() { var e = new Error('XCP Wallet not found.'); e.html = 'XCP Wallet not found. Install the <a href="' + STORE + '" target="_blank" rel="noopener">XCP Wallet Chrome extension</a>, then refresh.'; return e; }
   /* hotfix-chain (2026-10-14): keep the wallet's real reason. Wallet.errMsg maps -32603 to a bare 'Wallet error.' and drops e.message
    * (e.g. 'txn-mempool-conflict' / 'bad-txns-inputs-missingorspent'); show both. */
-  function errText(e) { if (!e) return 'Wallet request failed.'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
+  /* wallet-unlock (2026-10-22): XCP Wallet answers 4100 when it is locked (or this site is not connected). Say plainly what to do. */
+  var UNLOCK = 'Unlock XCP Wallet to continue. It is locked (or this site is not connected): click again and unlock it in the XCP Wallet window that opens (it may be behind this window).';
+  function errText(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return UNLOCK + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
     return m + (raw && m.indexOf(raw) < 0 ? ' (wallet said: ' + raw + ')' : '') + ' [code ' + e.code + ']'; }
   function errHtml(e) { return e.html || esc(errText(e)); }
   /* hotfix-chain: chained burns. The compose node does not see our own just-broadcast (unconfirmed) burns, so burn 3 could be built on an
@@ -71,8 +73,28 @@
    * and a second burn while one is waiting for approval is refused with a hint instead of opening another window. */
   var connecting = null, signing = 0, LOCK_MS = 10 * 60e3; /* signing = start time of the pending burn; the lock self-clears after 10 min (XCP Wallet's own sign-request TTL) */
   function busyErr() { var e = new Error('An XCP Wallet window is already open and waiting for you (it may be behind this window). Finish or close the open XCP Wallet windows, then try again.'); e.walletBusy = true; return e; }
+  /* wallet-unlock (2026-10-22): the wallet object used to be cached forever, so after XCP Wallet locked itself every action failed with 4100.
+   * XCP Wallet's xcp_requestAccounts opens its own unlock window when locked (waits up to 5 min), so: when the wallet reported a lock
+   * (accountsChanged []) re-run connect before handing the wallet out, and if a sign request still answers 4100, unlock via connect and retry once.
+   * Same address required; a different account reloads the page as before. One wallet window at a time (shares `connecting`). */
+  var locked = false;
+  function unlock() {
+    if (connecting) return connecting;
+    var x = wallet, was = x.address;
+    return (connecting = x.connect().then(function (r) {
+      if (!r.address) { var e = new Error(UNLOCK); e.code = 4100; throw e; }
+      if (r.address !== was) { x.address = was; setMe(r.address); if (win.location) win.location.reload(); throw new Error('XCP Wallet switched to another address (' + r.address + '). Reloading for that address.'); }
+      locked = false; return x;
+    })).then(function (x) { connecting = null; return x; }, function (e) { connecting = null;
+      if (e && e.code === 4001) { var u = new Error(UNLOCK); u.code = 4100; u.cause = e; throw u; } throw e; }); /* closed the unlock window: still locked, say so */
+  }
+  function guard(x) {
+    var sb = x.signAndBroadcast, sm = x.signMessage;
+    function retry(f) { return function () { var self = this, a = arguments; return f.apply(self, a).catch(function (e) { if (!e || e.code !== 4100) throw e; return unlock().then(function () { return f.apply(self, a); }); }); }; }
+    x.signAndBroadcast = retry(sb); x.signMessage = retry(sm); return x;
+  }
   function getWallet() {
-    if (wallet) return Promise.resolve(wallet);
+    if (wallet) return locked ? unlock() : Promise.resolve(wallet);
     if (connecting) return connecting;
     return (connecting = waitForXcp(2000).then(function (p) {
       if (!p) throw NotFound();
@@ -81,8 +103,9 @@
         if (!r.address) throw new Error('XCP Wallet returned no address');
         return x.network().then(function (n) {
           if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) throw new Error('XCP Wallet is on ' + n + ' but this page is on ' + NET + '. Switch one of them.');
-          wallet = x; setMe(x.address); loadSpent(x.address);
-          if (p.on) p.on('accountsChanged', function (a) { if (a && a[0]) { wallet.address = a[0]; setMe(a[0]); if (win.location) win.location.reload(); } });
+          wallet = guard(x); locked = false; setMe(x.address); loadSpent(x.address);
+          if (p.on) p.on('accountsChanged', function (a) { if (!a || !a[0]) { locked = true; return; } if (a[0] === wallet.address) { locked = false; return; } /* same address re-emitted on unlock: no reload */
+            wallet.address = a[0]; setMe(a[0]); if (win.location) win.location.reload(); });
           return x;
         });
       });
@@ -205,5 +228,5 @@
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
   return { _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
-    reset: function () { wallet = null; }, current: function () { return wallet && wallet.address; } };
+    reset: function () { wallet = null; locked = false; }, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });

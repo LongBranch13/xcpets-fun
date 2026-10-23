@@ -7,7 +7,7 @@
   var READ = (CFG.read || [])[0] || 'https://api.xcp.fun/node/v2', DEED_MIN = '95428956661682177', DEED_MAX = '18446744073709551615';
   var qs = new URLSearchParams(location.search), viewOnly = qs.get('addr') || null, me = null, composed = null, plan = null, pets = [];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function errOut(el, e) { $(el).innerHTML = '<div class="dt-err">' + (e && e.html ? e.html : esc((e && e.message) || e)) + '</div>'; }
+  function errOut(el, e) { $(el).innerHTML = '<div class="dt-err">' + (e && typeof e === 'object' ? W.errHtml(e) : esc(e)) + '</div>'; }
   function numCmp(a, z) { return a.length - z.length || (a < z ? -1 : a > z ? 1 : 0); }
   function mulDec(a, k) { var r = '', c = 0; for (var i = a.length - 1; i >= 0; i--) { var x = +a[i] * k + c; r = (x % 10) + r; c = Math.floor(x / 10); } while (c) { r = (c % 10) + r; c = Math.floor(c / 10); } return r.replace(/^0+(?=\d)/, ''); }
   function addDec(a, z) { var r = '', c = 0, i = a.length - 1, j = z.length - 1; while (i >= 0 || j >= 0 || c) { var s = (i >= 0 ? +a[i--] : 0) + (j >= 0 ? +z[j--] : 0) + c; r = (s % 10) + r; c = s >= 10 ? 1 : 0; } return r.replace(/^0+(?=\d)/, ''); }
