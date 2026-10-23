@@ -85,7 +85,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=6f1daa6b86'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=8bb7f9cbed'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -137,7 +137,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=6f1daa6b86'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=8bb7f9cbed'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -464,6 +464,17 @@
     tabs.innerHTML = V.STAGE_NAMES.map(function (nm, si) { return si ? '<button type="button" data-st="' + si + '">' + esc(nm) + '</button>' : ''; }).join('');
     tabs.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; stage = +b.getAttribute('data-st'); draw(); };
     draw(); document.body.setAttribute('data-hyb-ready', String(list.length));
+    /* Wizard mixes (branch wizard-breed-on): once ACTIVATE_WIZ_BREED_BLOCK is reached, list all 13 Bitcoin Wizard mixes (both name orders) so players
+     * can see what a Wizard can make, marked bred / not bred yet. Hidden while the gate is null or not reached. Community Bitcoin Wizard never breeds. */
+    var wz = $('hybWiz'), wg = $('hybWizGrid'), tip = M.state().tip;
+    if (wz && wg && V.wizBreedOn && V.wizBreedOn(tip) && V.wizHybridPairs) { var pairs = V.wizHybridPairs();
+      wg.innerHTML = pairs.map(function (e, i) { var k = (n[e.a] || 0) + (n[e.b] || 0);
+        return '<div class="hybitem" data-wizhyb="' + esc(e.other) + '"><h3 class="ch">' + esc(e.nameA) + ' / ' + esc(e.nameB) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted small">Bitcoin Wizard × ' + esc(spLabel(e.other)) + ' · ' + (k ? fmt(k) + ' bred' : 'not bred yet') + '</p><div class="hybbodies">' +
+          ['wizard', e.other].map(function (sh, j) { return '<figure><canvas width="32" height="32" data-wi="' + i + '" data-wj="' + j + '" role="img" aria-label="' + esc((j ? e.nameB : e.nameA) + ', ' + spLabel(sh) + ' body') + '"></canvas><figcaption class="small muted">' + esc(spLabel(sh)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
+      Array.prototype.forEach.call(wg.querySelectorAll('canvas[data-wi]'), function (c) { var e = pairs[+c.getAttribute('data-wi')], j = +c.getAttribute('data-wj'), sh = j ? e.other : 'wizard', col = j ? 'wizard' : e.other,
+        pl = Object.assign({}, V.hybridPlan(V.sha('cast:' + e.a), e.a), { shape: sh, color: col }), art = G.characterPet(sh, { tier: 'legendary' }); art.hybrid = pl;
+        try { R.paint(c, V.hybridRender(art, { stage: 5, frame: 0 })); } catch (er) {} });
+      var bb = wz.querySelector('.wizBreedBlk'); if (bb) bb.textContent = fmt(V.ACTIVATE_WIZ_BREED_BLOCK); wz.hidden = false; }
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
