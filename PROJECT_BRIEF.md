@@ -72,7 +72,7 @@
 - Left as is (UI labels, not explainer copy): "Dozen ×12", "Case ×144", "Roll gear ×N" buttons.
 - Tests: all tools/*-test.js pass except the known breeding-v2-test and wheel-random-test; telegram tests all pass. Screenshots: /workspace/xcpets/previews/explainer-truth/.
 
-## Branch hover-cards (Oct 22, 2026 ~8 PM CT, build 0aa7242e25, NOT merged, NOT deployed; owner review pending)
+## Branch hover-cards (Oct 22, 2026 ~7:25 PM CT, build 0aa7242e25, NOT merged, NOT deployed; owner review pending)
 - New js/v2-hovercard.js (display only, loaded last in play.html). Hover a pet (desktop, 250 ms) or long-press it (phone, 450 ms; the tap that follows is eaten so it does not pick) in a pick flow: compact 8-bit tooltip. Esc / tap elsewhere / ✕ closes; keyboard focus shows it, `i` opens the card.
 - Breeding flow (#ezBreed cards, motel .pk-breed picker, 'Browse pets' guest picker): species + tier + stage, can-breed-now or the exact V2Rules.breedable reason ('Wizards can't breed' for Bitcoin Wizards), cooldown blocks left (BREED_COOLDOWN 1008), breeds left (breedsLeft x/6), kin warning vs the picked Guest 1 (kinWhy), what passes down (species 50/50 or hybrid, tier lower/higher/+1, stats avg ±2 with the pet's stats, hybrid keeps best stat, pattern + eyes capped at baby tier). No sex line: the rules have no sex.
 - Arena flow (#ezFight cards, fight picker #fPick): can-fight-today or UXB.whyNot reason, power + Pet Score (rank), stats, HP / hit range / crit / dodge from the simulateFight formulas, worn gear + its per-hit bonus (1 + 2×tier each, = gearPower), record W-L, current streak, belts held (V2ArenaFun.belts per mode), black eye.
