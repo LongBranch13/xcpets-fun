@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>XCPETS: pet shop test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="css/style.css?v=960ba30b1d"><link rel="stylesheet" href="css/game.css?v=960ba30b1d"><link rel="stylesheet" href="css/v2.css?v=960ba30b1d"><link rel="stylesheet" href="css/shop-test.css?v=960ba30b1d"></head>
+<body data-v2page="shop-test"><main class="panel dt">
+<h1>Pet shop test (pet #2)</h1>
+<div class="dt-note"><b>⚠️ The game does NOT count any of this yet.</b> The pet shop is switched off (<code>ACTIVATE_SPAM_CITY_BLOCK = null</code>). Tokens, ties, listings, cancels and unsells made here are real Counterparty transactions, but the game ignores them until the shop is switched on. Pets do not move. Each step builds the unsigned transaction and shows the fee first; nothing is signed until you approve it in XCP Wallet.</div>
+<section><h2>Wallet + pet</h2><button id="stConnect" class="btn">Connect XCP Wallet</button> <span id="stMe" class="muted small">not connected</span><br>
+<label>Pet ID <input id="stId" type="number" min="1" value="2" style="width:6em"></label> <label>Token <input id="stAsset" placeholder="A… (filled after step 1)" style="width:16em"></label> <button id="stCheck" class="btn">Refresh status</button><div id="stStatus" class="small"></div></section>
+<section><h2>1. Mint the pet token</h2><p class="small muted">Free numeric asset, qty 1, indivisible, locked, description <code>https://xcpets.fun/t/ID.json</code>.</p><button class="btn" data-step="mint">Build</button></section>
+<section><h2>2. Tie it to the pet (pet:deed burn)</h2><p class="small muted">Burns 1 dander (0.00000001 XCPETS) with tag <code>pet:deed:ID:&lt;token&gt;</code>. Wait until step 1 is confirmed.</p><button class="btn" data-step="tie">Build</button></section>
+<section><h2>3. List (DEX sell order)</h2><label>Price <input id="stPrice" type="number" min="0.00000001" step="any" value="1" style="width:9em"></label> <select id="stGet"><option>XCPETS</option><option>XCP</option></select> <span class="small muted">gives 1 token, expires after 288 blocks</span><br><button class="btn" data-step="list">Build</button></section>
+<section><h2>4. Cancel the listing</h2><label>Order <select id="stOrder"><option value="">refresh status first</option></select></label> <button class="btn" data-step="cancel">Build cancel</button> <button class="btn" data-step="unsell">Build unsell burn</button><p class="small muted">Cancel = Counterparty order cancel. Unsell = 1-dander burn with tag <code>pet:unsell:&lt;8 hex of order&gt;</code> (the game-side cancel).</p></section>
+<section><h2>5. Order book</h2><div id="stBook" class="small muted">refresh status</div></section>
+<section><h2>6. Buy screen (read only)</h2><div id="stBuy" class="small muted">refresh status</div></section>
+<section id="stTx"><h2>Transaction</h2><div id="stTxStatus" class="small muted">pick a step</div><div id="stSum"></div><button id="stSign" class="btn" disabled>Sign in XCP Wallet</button> <span class="small muted">Closing the wallet window sends nothing.</span><div id="stOut"></div></section>
+</main>
+<script src="rjs/config.js?v=960ba30b1d"></script><script src="rjs/wallet.js?v=960ba30b1d"></script><script src="rjs/burn-core.js?v=960ba30b1d"></script>
+<script src="js/v2-wallet.js?v=960ba30b1d"></script><script src="js/shop-test.js?v=960ba30b1d"></script>
+</body></html>

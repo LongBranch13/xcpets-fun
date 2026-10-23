@@ -1,5 +1,5 @@
 /* deed-test.html: hidden live fee test for ONE pet token (owner asked Oct 22 2026). Composes the numeric-asset issuance exactly as pet-shop-sales does
- * (A + random digits, 404-checked, qty 1, indivisible, locked, 'xcpets pet #ID') on the site's compose nodes. Signing happens ONLY in XCP Wallet after a click.
+ * (A + random digits, 404-checked, qty 1, indivisible, locked, description 'https://xcpets.fun/t/ID.json' = the pet's metadata JSON so explorers show its picture) on the site's compose nodes. Signing happens ONLY in XCP Wallet after a click.
  * No game rule, no replay input, no pet:deed burn. Minimal copies of the pet-shop-sales helpers below (randomDeed / dexUrl / dexCheck for issuance). */
 (function () {
   'use strict';
@@ -45,7 +45,7 @@
     if (!me) return errOut('dtStatus', 'Connect XCP Wallet first.'); if (!(id > 0)) return errOut('dtStatus', 'Pick a pet or type a pet ID.');
     var p = pets.filter(function (x) { return x.id === id; })[0]; if (pets.length && !p) $('dtStatus').textContent = 'Note: #' + id + ' is not in your pet list (fine for this test).';
     $('dtCompose').disabled = true; $('dtStatus').textContent = 'Finding a free token name…'; var fee;
-    Promise.all([freeDeed(), W.feeRate()]).then(function (r) { fee = r[1]; plan = { asset: r[0], description: 'xcpets pet #' + id, petId: id, fee: fee }; return compose(me, plan, fee); }).then(function (res) {
+    Promise.all([freeDeed(), W.feeRate()]).then(function (r) { fee = r[1]; plan = { asset: r[0], description: 'https://xcpets.fun/t/' + id + '.json', petId: id, fee: fee }; return compose(me, plan, fee); }).then(function (res) {
       composed = res; var pr = res.params || {}, bytes = res.rawtransaction.length / 2, btc = Number(res.btc_fee), vs = btc > 0 ? Math.round(btc / fee) : null;
       $('dtStatus').textContent = 'Built. Nothing has been signed.';
       $('dtSum').innerHTML = '<table class="dt-sum">' + [
