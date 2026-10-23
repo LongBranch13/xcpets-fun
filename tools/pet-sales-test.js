@@ -109,5 +109,27 @@ ok(canon(w1.pets) === canon(w2.pets) && canon(w1.listings) === canon(w2.listings
 const s1 = V.dexSimulate([order('a', 1, 'XCPETS', 1, 'XCP', 500, 10), order('b', 1, 'XCPETS', 1, 'XCP', 300, 10)], { give_asset: 'XCP', give_quantity: 500, get_asset: 'XCPETS', get_quantity: 1 }, 2);
 ok(s1.length === 1 && s1[0].backward === 300 && s1[0].source === 'b', 'simulator: the cheaper listing fills first (intercept case)');
 ok(V.saleAmountText('XCPETS', 123400000017) === '1,234 XCPETS + 17 dander' && V.saleAmountText('XCP', 250000001) === '250,000,001 sats', 'amount text: XCPETS + dander, XCP in sats');
+
+// ---- Old Money badge + shared pet filter (display only)
+{ const fs = require('fs'), pm = (id, o) => Object.assign({ id, species: 'pepe', tier: 1, stage: 2, owner: 'bc1qx', stats: { vigor: 10, spark: 10, grit: 10, zoom: 10, luck: 10 }, hatchBlock: 900000, parents: null, breedsV2: 0 }, o);
+  const a = pm(1, { parents: [8, 9], hatchBlock: 950000 }), g = pm(2, { species: 'kek', tier: 3, stage: 4, hatchBlock: 960000, stats: { vigor: 50, spark: 50, grit: 50, zoom: 50, luck: 50 } }), h = pm(3, { parents: [8, 9], hatchBlock: 980000, tier: 0, stage: 1 });
+  ok(V.OLD_MONEY_LABEL === 'Old Money 💰' && V.oldMoneyBefore() === null, 'old money: label constant, gate null');
+  ok(V.oldMoney(a) && V.oldMoney(h) && !V.oldMoney(g) && !V.oldMoney(null), 'old money: gate null = every bred pet, hatched (genesis) pets never');
+  V._setOldMoneyBefore(970000); ok(V.oldMoney(a) && !V.oldMoney(h), 'old money: only pets bred before the 135-cost block'); V._setOldMoneyBefore(null);
+  const w = { byId: { 1: a, 2: g, 3: h }, pets: [a, g, h], listings: [], items: { x: { id: 'x', on: 2 } } };
+  const S = (n, id, asset, price, o) => Object.assign({ n, petId: id, seller: 'bc1qx', asset, price, expire: 10000, status: 'open' }, o);
+  const xs = [{ p: a, S: S(1, 1, 'XCPETS', 500e8, {}), buy: true }, { p: g, S: S(2, 2, 'XCP', 3000, {}), buy: false }, { p: h, S: S(3, 3, 'XCPETS', 100e8, { status: 'sold' }), buy: true }];
+  const F = f => V.petFilter(w, xs, f, 100).map(x => x.p.id).join(',');
+  ok(F({}) === '1,2,3', 'filter: empty filter keeps all');
+  ok(F({ sp: 'kek' }) === '2' && F({ tier: '3' }) === '2' && F({ st: '1' }) === '3', 'filter: species / tier / stage');
+  ok(F({ badge: 'om' }) === '1,3', 'filter: Old Money only');
+  ok(F({ cur: 'XCP' }) === '2' && F({ cur: 'XCPETS', min: '200' }) === '1' && F({ cur: 'XCP', max: '2999' }) === '', 'filter: currency + cost range (XCPETS whole, XCP sats)');
+  ok(F({ pw: '200' }) === '2' && F({ gear: '1' }) === '2' && F({ buy: '1' }) === '1,3', 'filter: power min / gear worn / buyable now');
+  ok(F({ state: 'sold' }) === '3' && F({ state: 'open' }) === '1,2', 'filter: listing status');
+  ok(F({ sort: 'power' }).startsWith('2') && F({ sort: 'new' }) === '3,2,1' && F({ sort: 'rarity' }).startsWith('2'), 'sort: power / newest / rarity');
+  ok(F({ sort: 'cost', cur: 'XCPETS' }) === '3,1' && F({ sort: '-cost', cur: 'XCPETS' }) === '1,3', 'sort: cost low/high');
+  const rep = ['js/v2-replay-worker.js', 'js/v2-chain.js'].map(f => { try { return fs.readFileSync(require('path').join(__dirname, '..', f), 'utf8'); } catch (e) { return ''; } }).join('');
+  const rules = fs.readFileSync(require('path').join(__dirname, '..', 'js/v2-rules.js'), 'utf8').replace(/function oldMoney[\s\S]*?\n/, '').replace(/oldMoney: oldMoney[^,]*,/, '');
+  ok(!/oldMoney|OLD_MONEY/.test(rep) && (rules.match(/oldMoney\(/g) || []).filter(Boolean).length <= 2, 'old money: display only, replay never reads it'); }
 V._setSalesActivation(null);
 console.log('pet-sales-test: ' + pass + ' passed, ' + fail + ' failed (snapshot tip ' + T + ')'); process.exit(fail ? 1 : 0);

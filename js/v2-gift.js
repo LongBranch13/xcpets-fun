@@ -17,7 +17,10 @@
   function keptIds() { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]'); } catch (e) { return []; } }
   function myth(p) { return !!p.mythicCare || p.stage >= 5; }
   function tierName(p) { return myth(p) ? 'Mythic' : TL[p.tier] || ''; }
-  function pill(p) { return '<span class="pill tier tier-' + (myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>'; }
+  function pill(p) { return '<span class="pill tier tier-' + (myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>' + omB(p); }
+  /* pet-shop-sales: Old Money collector badge (display only) + the shared filter drawer (js/v2-pet-filter.js) replace the old inline species/tier/stage selects */
+  var PF = window.V2PetFilter; function omB(p) { return PF ? ' ' + PF.badge(p) : ''; }
+  var GF_FIELDS = ['sp', 'tier', 'st', 'badge'];
   function spL(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
   function sprite(p) { return '<span class="gf-sp" data-gfsp="' + p.id + '"></span>'; }
   function paint(root) { var R = window.V2Render, w = W(); if (!R || !R.petFrames || !w) return; root.querySelectorAll('[data-gfsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-gfsp')]; if (!p) return;
@@ -60,31 +63,33 @@
     $('gfGo').onclick = function () { if (special.length && !$('gfSure').checked) { toast2('Tick the box to confirm the Mythic / starred pets.'); return; } close(); var h = 'gift-' + ok.map(function (p) { return p.id; }).join('.') + '-' + V.playerCode(r.n);
       if (PAGE === 'play' && window.V2GiftConfirm) window.V2GiftConfirm(ok.map(function (p) { return p.id; }), r.n); else location.href = 'play.html#' + h; }; }
   /* ---- batch picker (play.html My Pets) */
-  function picker() { var w = W(); if (!w || !ME) return; var b = tip() + 1, mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = { sp: '', tier: '', st: '' };
+  function picker() { var w = W(); if (!w || !ME) return; var b = tip() + 1, mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = PF ? PF.load('gift') : {};
     function opts(list, cur) { return '<option value="">All</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
     var sps = {}; mine.forEach(function (p) { sps[p.species] = spL(p); });
-    function shown() { return mine.filter(function (p) { return (!f.sp || p.species === f.sp) && (f.tier === '' || (f.tier === 'M' ? myth(p) : !myth(p) && String(p.tier) === f.tier)) && (f.st === '' || String(p.stage) === f.st); }); }
+    function shown() { return V.petFilter(w, mine.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; }); }
     function draw() { var S = shown(), n = Object.keys(sel).length;
-      modal('<h2>🎁 Gift several pets</h2>' + meLine(w) + '<div class="gf-filters"><label>Species <select id="gfSp">' + opts(Object.keys(sps).sort().map(function (k) { return [k, sps[k]]; }), f.sp) + '</select></label>' +
-        '<label>Tier <select id="gfTi">' + opts(TL.map(function (t, i) { return [String(i), t]; }).concat([['M', 'Mythic']]), f.tier) + '</select></label><label>Stage <select id="gfSt">' + opts((V.STAGE_NAMES || []).map(function (t, i) { return [String(i), t]; }), f.st) + '</select></label></div>' +
+      modal('<h2>🎁 Gift several pets</h2>' + meLine(w) + (PF ? PF.html(f, GF_FIELDS, { species: PF.species(mine), count: S.length, total: mine.length }) : '') +
         '<p><button class="q" id="gfAll">Select all shown (' + S.length + ')</button> <button class="q" id="gfNone">Clear</button> <b>' + n + ' selected</b></p><div class="gf-pets">' +
         S.slice(0, 300).map(function (p) { var why = V.giveLocks(w, p, b); return '<label class="gf-pet' + (why ? ' gf-skip' : '') + '"><input type="checkbox" data-gfid="' + p.id + '"' + (sel[p.id] ? ' checked' : '') + (why ? ' disabled' : '') + '>' + sprite(p) +
           '<div><b>' + esc(p.name || spL(p)) + '</b> <span class="muted">#' + p.id + '</span> ' + pill(p) + '<small>' + esc(spL(p)) + (why ? ' · <span class="warn">' + esc(why) + '</span>' : '') + '</small></div></label>'; }).join('') + (S.length > 300 ? '<p class="small muted">Showing 300 of ' + S.length + ': narrow the filters.</p>' : '') + '</div>' +
         '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfNext"' + (n ? '' : ' disabled') + '>Next: recipient →</button></div>');
-      $('gfSp').onchange = function () { f.sp = this.value; draw(); }; $('gfTi').onchange = function () { f.tier = this.value; draw(); }; $('gfSt').onchange = function () { f.st = this.value; draw(); };
+      if (PF) PF.bind($('gfBox'), f, 'gift', draw);
       $('gfAll').onclick = function () { S.forEach(function (p) { if (!V.giveLocks(w, p, b)) sel[p.id] = 1; }); draw(); }; $('gfNone').onclick = function () { sel = {}; draw(); }; $('gfX').onclick = close;
       $('gfBox').querySelectorAll('[data-gfid]').forEach(function (c) { c.onchange = function () { if (c.checked) sel[c.getAttribute('data-gfid')] = 1; else delete sel[c.getAttribute('data-gfid')]; draw(); }; });
       $('gfNext').onclick = function () { giftFlow(Object.keys(sel).map(Number)); }; }
     draw(); }
   /* ---- swap offer (pet.html, someone else's pet) */
   function swapFlow(theirId) { var w = W(), T = w && w.byId[theirId]; if (!T || !ME) return; var b = tip() + 1, kept = keptIds();
-    var mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.giveLocks(w, p, b); });
+    var all = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.giveLocks(w, p, b); }), f = PF ? PF.load('swap') : {}, pick = null, mine;
+    function draw() { mine = V.petFilter(w, all.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; });
     modal('<h2>🔁 Offer a swap</h2><p class="small">Pick one of your pets to offer for <b>#' + T.id + '</b>. The owner has ' + V.SWAP_WINDOW + ' blocks (about a week) to accept; you can cancel any time before.</p>' +
-      '<label for="gfMine">Your pet</label> <select id="gfMine">' + mine.map(function (p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name || spL(p)) + ' · ' + esc(tierName(p)) + '</option>'; }).join('') + '</select><div id="gfTwo"></div>' +
+      (PF ? PF.html(f, GF_FIELDS, { species: PF.species(all), count: mine.length, total: all.length }) : '') +
+      '<label for="gfMine">Your pet</label> <select id="gfMine">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (pick === p.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name || spL(p)) + ' · ' + esc(tierName(p)) + (V.oldMoney && V.oldMoney(p) ? ' · ' + esc(V.OLD_MONEY_LABEL) : '') + '</option>'; }).join('') + '</select><div id="gfTwo"></div>' +
       '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (mine.length ? '' : ' disabled') + '>🔁 Offer in XCP Wallet</button></div>');
     function two() { var A = w.byId[$('gfMine').value]; $('gfTwo').innerHTML = A ? sideBySide(w, A, T, 'You give', 'You get') + ((myth(A) || kept.indexOf(A.id) >= 0) ? '<p class="warn"><label><input type="checkbox" id="gfSure"> Yes, I really want to offer #' + A.id + (myth(A) ? ' (Mythic)' : ' (starred)') + '</label></p>' : '') : '<p>You have no pet that can be offered right now.</p>'; paint($('gfTwo')); }
-    $('gfMine').onchange = two; two(); $('gfX').onclick = close;
+    $('gfMine').onchange = function () { pick = Number(this.value); two(); }; two(); $('gfX').onclick = close; if (PF) PF.bind($('gfBox'), f, 'swap', draw);
     $('gfGo').onclick = function () { var A = w.byId[$('gfMine').value]; if (!A) return; if ($('gfSure') && !$('gfSure').checked) { toast2('Tick the box to confirm.'); return; } location.href = 'play.html#swap-' + A.id + '-' + T.id; }; }
+    draw(); }
   function sideBySide(w, A, B, la, lb) { return '<div class="gf-two"><div><small>' + la + '</small>' + petRow(w, A) + '</div><b aria-hidden="true">⇄</b><div><small>' + lb + '</small>' + petRow(w, B) + '</div></div><p class="small muted">Worn gear and bag pieces move with each pet. 1 dander per burn.</p>'; }
   /* ---- inbox (play.html): received gifts + swap offers */
   function seenKey() { return 'xcpets-v2-giftSeen-' + NET + '-' + ME; }
