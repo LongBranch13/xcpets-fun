@@ -259,7 +259,7 @@
     var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { var np = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); if (np !== BK.page) turn(w, dx < 0 ? 1 : -1, np); } }; }
   /* guestbook-pageturn (owner voice call, Oct 22 2026): ◀ / ▶ and swipe flip the page like a real guest book. The old page is copied (sprites too)
    * into a leaf over the book, the new page renders underneath at once (links work right away), and the leaf curls away in 8 hard steps:
-   * older (▶ / swipe left) lifts off to the left, newer (◀ / swipe right) to the right. Transform + opacity only (smooth on phones).
+   * older (▶ / swipe left) lifts off to the left, newer (◀ / swipe right) to the right. Transform + opacity only (smooth on phones). guestbook-stretch-fix: the leaf folds flat with a 2D scaleX toward the spine (transform-origin on the spine edge, height locked, no perspective/rotateY, which ballooned the near edge on wide desktop pages); pixel sprites stay image-rendering:pixelated.
    * prefers-reduced-motion: no animation, the page just changes. Display only. */
   function turn(w, dir, np) { var el = document.getElementById('motelBook'), old = el && el.querySelector('.gb');
     if (!old || reduced() || !el.animate) { BK.page = np; book(w); return; }
@@ -273,8 +273,8 @@
     var back = document.createElement('div'); back.className = 'gb-backface'; var shade = document.createElement('div'); shade.className = 'gb-shade';
     front.style.margin = '0'; front.style.height = '100%'; front.style.overflow = 'hidden'; leaf.appendChild(front); leaf.appendChild(back); front.appendChild(shade);
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.appendChild(leaf);
-    var sg = dir > 0 ? -1 : 1, E = 'steps(8, end)', T = 560;
-    var an = leaf.animate([{ transform: 'perspective(1400px) rotateY(0deg)' }, { transform: 'perspective(1400px) rotateY(' + (sg * 180) + 'deg)' }], { duration: T, easing: E, fill: 'forwards' });
+    var E = 'steps(8, end)', T = 560;
+    var an = leaf.animate([{ transform: 'scale(1, 1)' }, { transform: 'scale(0, 1)' }], { duration: T, easing: E, fill: 'forwards' });
     shade.animate([{ opacity: 0 }, { opacity: .55 }], { duration: T / 2, easing: 'steps(4, end)', fill: 'forwards' });
     var done = function () { if (leaf.parentNode) leaf.remove(); }; an.onfinish = done; an.oncancel = done; }
   /* breed-picker-fix (owner 10:24 PM CT): breed celebration in two stages. (a) celebrate(tx): right after the breed burn is broadcast, ~2.5 s of 8-bit
@@ -299,7 +299,7 @@
   if (typeof document !== 'undefined' && !document.getElementById('gbCss')) { var gs = document.createElement('style'); gs.id = 'gbCss'; /* gooby-guestbook */
     gs.textContent = '.mg-cap{margin:-2px 0 8px;padding:6px 8px;border:3px solid #000;background:#fff8e1;color:#1b1b1b;box-shadow:4px 4px 0 #000;font-size:14px;line-height:1.35;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;overflow-wrap:anywhere}' +
       '.mg-who{font-family:"Press Start 2P",monospace;font-size:9px;color:#fff;background:#111;padding:3px 5px;border-bottom:2px solid #6ef04a}.mg-line{flex:1 1 180px;font-weight:700}.mg-tip{flex-basis:100%;font-size:12px;color:#6a4a5a}' +
-      '.gb-leaf{position:absolute;z-index:3;pointer-events:none;transform-style:preserve-3d;will-change:transform}.gb-fwd{transform-origin:0 50%}.gb-back{transform-origin:100% 50%}' +
+      '.gb-leaf{position:absolute;z-index:3;pointer-events:none;will-change:transform}.gb-fwd{transform-origin:0 50%}.gb-back{transform-origin:100% 50%}' +
       '.gb-leaf>.gb-front,.gb-backface{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}.gb-leaf>.gb-front{box-shadow:none}' +
       '.gb-backface{transform:rotateY(180deg);border:3px solid #000;background:#e9dfc6 repeating-linear-gradient(#e9dfc6 0 15px,#c9b996 15px 17px);box-shadow:inset 6px 0 0 #d6c7a6}' +
       '.gb-shade{position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(90deg,rgba(0,0,0,0) 0 50%,rgba(42,21,48,.12) 50% 75%,rgba(42,21,48,.28) 75% 100%)}.gb-back .gb-shade{transform:scaleX(-1)}' +
