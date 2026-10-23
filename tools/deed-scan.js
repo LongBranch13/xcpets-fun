@@ -45,4 +45,20 @@ async function findMints(pets, api, cache) { const owner = {}; pets.forEach(p =>
     const o = out[id], newer = !o || (x.mempool && !o.mempool) || (!x.mempool && !o.mempool && Number(x.tx_index) > Number(o.tx_index || 0)); if (o && o.asset === x.asset && !x.mempool) { out[id] = Object.assign({}, o, { block: x.block_index, mempool: false }); continue; }
     if (newer) out[id] = { asset: x.asset, block: x.block_index, tx: x.tx_hash, by: x.source || x.issuer, mempool: !!x.mempool, tx_index: x.tx_index }; }
   return out; }
-module.exports = { deedScan, findMints, parseDeed, issueWhy, deedOk, deedDescOk, b36ToDec };
+
+/** recentMints(pets, api, nodes, minBlock) -> same shape as findMints, but reads the full nodes' global /issuances list (newest first) back to
+ * minBlock instead of every owner's balances (one or a few requests per run, so the hourly CI job stays light). Plus api.xcp.fun mempool. */
+async function recentMints(pets, api, nodes, minBlock) { const owner = {}; pets.forEach(p => { if (p.status !== 'dead' && !p.community && p.owner) owner[p.id] = p.owner; });
+  const cand = [];
+  try { const j = await getJ(api + '/mempool/events/ASSET_ISSUANCE?limit=1000'); (j.result || []).forEach(e => { const x = e.params || {}; cand.push(Object.assign({}, x, { tx_hash: e.tx_hash || x.tx_hash, block_index: null, mempool: true })); }); } catch (e) { console.error('mempool:', e.message); }
+  let got = false;
+  for (const node of nodes || []) { try { let cur = null, n = 0; do { const j = await getJ(node + '/issuances?limit=1000&verbose=true' + (cur ? '&cursor=' + cur : ''), 30000); const r = j.result || [];
+        r.forEach(x => { if (descId(x.description) != null) cand.push(x); }); cur = j.next_cursor; if (!r.length || Math.min(...r.map(x => Number(x.block_index))) < minBlock) break; } while (cur && ++n < 10);
+      got = true; break; } catch (e) { console.error('issuances', node, e.message); } }
+  if (!got) console.error('recentMints: no full node reachable; only mempool mints seen');
+  const out = {};
+  for (const x of cand) { const id = descId(x.description); if (id == null || !owner[id]) continue; if (x.status && x.status !== 'valid') continue;
+    if (issueWhy(Object.assign({}, x, { block_index: x.block_index == null ? 0 : x.block_index }), id, owner[id], Infinity)) continue;
+    const o = out[id]; if (!o || (x.mempool && !o.mempool) || (!x.mempool && !o.mempool && Number(x.tx_index) > Number(o.tx_index || 0))) out[id] = { asset: x.asset, block: x.block_index, tx: x.tx_hash, by: x.source || x.issuer, mempool: !!x.mempool, tx_index: x.tx_index }; }
+  return { mints: out, ok: got }; }
+module.exports = { recentMints, deedScan, findMints, parseDeed, issueWhy, deedOk, deedDescOk, b36ToDec };
