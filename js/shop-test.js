@@ -28,7 +28,10 @@
         if (!j || !Array.isArray(j.result)) throw new Error('no data');
         var m = j.result.filter(function (x) { return (!x.status || x.status === 'valid') && x.description === url(pid) && (x.source || x.issuer) === a && deedOk(x.asset); }).sort(function (x, y) { return y.tx_index - x.tx_index; })[0];
         return m ? m.asset : null; }).catch(function () { clearTimeout(t); return go(i + 1); }); }
-    return go(0); }
+    /* unconfirmed first: the owner's mempool ASSET_ISSUANCE with this pet's URL (still needs 1 confirmation before the tie step) */
+    return getJ(READ + '/addresses/mempool?addresses=' + encodeURIComponent(a)).then(function (j) {
+      var m = (j.result || []).filter(function (e) { var q = e.params || {}; return e.event === 'ASSET_ISSUANCE' && q.description === url(pid) && (q.source || q.issuer) === a && deedOk(q.asset); }).sort(function (x, y) { return (y.timestamp || 0) - (x.timestamp || 0); })[0];
+      return m ? m.params.asset : null; }, function () { return null; }).then(function (A) { return A || go(0); }); }
   function url(id) { return 'https://xcpets.fun/t/' + id + '.json'; }
   function descOk(d, id) { return d === url(id) || d === 'xcpets pet #' + id || d === 'xcpets.fun/t/' + id + '.json' || d === 'http://xcpets.fun/t/' + id + '.json'; }
   function unhex(t) { if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { return decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (e) { } } return t; }
