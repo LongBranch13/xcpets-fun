@@ -18,7 +18,7 @@
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
   function fnv(s, h) { h = h == null ? 0x811c9dc5 : h; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function inSig() { var hk = Object.keys(S.hashes || {}).sort(function (a, b) { return a - b; }), hh = 0x811c9dc5; hk.forEach(function (k) { hh = fnv(k + ':' + S.hashes[k] + ';', hh); });
-    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16); }
+    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.orders, S.dex.matches])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
   function keepOrDrop() { if (cache && cacheSig !== inSig()) cache = null; }
   /* Cross-visit cache (smooth-perf): the last replayed world is kept in IndexedDB under ONE entry, keyed by build id + inSig() + opsSig. A page whose
    * inputs match (same build, burns, tip, hashes and local ops) reuses it instead of replaying; anything else replays as before. The stored value is
@@ -46,13 +46,13 @@
       try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }; }
         wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; } else if (!m.ok) wkOff = true; fin(); };
         t = setTimeout(function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }, WORKER_MS);
-        wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, idbKey: key });
+        wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
       } catch (e) { wkOff = true; fin(); } }); }
   function fromIdb() { if (cache) return Promise.resolve(); return idbGet().then(function (v) { if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () {}); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
-  function world() { if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; } if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return cache; }
+  function world() { if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore, dex: S.dex || undefined }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; } if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return cache; }
   function burn() { var m = 'Burns from the v2 pages are not wired to a wallet in this build. Nothing was burned.'; try { var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = m; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } else alert(m); } catch (e) {} }
   /* hotfix 3: a short-TTL (60 s) sessionStorage copy of the burns + tip, so moving between pages doesn't re-read the whole chain;
    * refresh() always goes to the network. Block hashes were already cached in localStorage (HKEY). */
@@ -85,7 +85,9 @@
         var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
         S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
-        if (bal) return bal.then(function (b) { if (b != null) S.balance = b; });
+        /* pet-shop-sales: XCPETS/XCP orders + matches are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
+        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex().then(function (d) { S.dex = d; }) : null;
+        return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
       });
     }).then(function () { keepOrDrop(); S.verified = true; S.missingBlocks = []; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
       function (e) { if (e && e.missingBlocks) S.missingBlocks = e.missingBlocks; throw e; });

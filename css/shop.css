@@ -1,0 +1,36 @@
+/* Spam City Games (pet-shop-sales branch): palette from the shop mockups (red #D62028, cream #FAFAF5, ink #100E14, gold #E8B33A, glass #8FD3E8) */
+.sh-wrap{max-width:1100px;margin:0 auto;padding:12px}
+.sh-scene{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:10px;background:repeating-linear-gradient(90deg,transparent 0 156px,#2B2730 156px 160px),#3D3640;border:4px solid #E8B33A;box-shadow:0 0 0 3px #100E14;border-bottom:8px solid #D62028}
+.sh-sign{max-width:58%;image-rendering:pixelated;height:auto}
+.sh-counter{display:flex;align-items:flex-end;gap:8px;flex:1;justify-content:flex-end}
+.sh-keeper{width:120px;height:120px;image-rendering:pixelated}
+.sh-bubble{order:-1;max-width:300px;margin:0 0 50px;background:#FAFAF5;color:#100E14;font:11px/1.6 'Press Start 2P',monospace;padding:10px;border:4px solid #D62028;box-shadow:0 0 0 3px #100E14}
+.sh-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.sh-btn{font:10px 'Press Start 2P',monospace;background:#D62028;color:#FAFAF5;padding:8px 12px;border:3px solid #FAFAF5;box-shadow:0 0 0 3px #100E14;cursor:pointer}
+.sh-btn[disabled]{opacity:.45;cursor:not-allowed}.sh-ghost{background:#100E14}
+.sh-hint{font-size:12px;opacity:.85}.sh-warn{color:#ffd166}.sh-ok{color:#5effb0}.sh-note{background:#2B2730;padding:6px}
+.sh-binder{position:relative;background:#100E14;border:6px solid #D62028;box-shadow:0 0 0 2px #FAFAF5;padding:16px 14px 12px 34px}
+.sh-rings{position:absolute;left:10px;top:14px;bottom:14px;width:12px;background:repeating-linear-gradient(#5A5A5A 0 12px,transparent 12px 34px)}
+.sh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 14px}
+.sh-card{position:relative;background:#1b1b26;border:5px solid #9a9a9a;border-radius:6px;box-shadow:0 0 0 2px #000;font:8px/1.6 'Press Start 2P',monospace;color:#cfe;padding-bottom:6px;min-height:150px}
+.sh-t1{border-color:#4fd18b}.sh-t2{border-color:#4aa3ff;box-shadow:0 0 10px #4aa3ff}.sh-t3,.sh-t4{border-image:linear-gradient(45deg,#ff5ec7,#ffd84a,#5effb0,#5ec2ff,#c45eff) 1;box-shadow:0 0 14px #ffd84a}
+.sh-back{background:repeating-linear-gradient(45deg,#D62028 0 10px,#8F141A 10px 20px);min-height:180px}
+.sh-hd{display:flex;justify-content:space-between;gap:4px;padding:4px;background:#000a;color:#fff}.sh-hd i{font-style:normal;color:#f2c14e}.sh-hd b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-art{height:90px;margin:3px;background:radial-gradient(#3a3a5a,#15151f);display:flex;align-items:center;justify-content:center}
+.sh-art img,.sh-art canvas{height:80px;width:80px;image-rendering:pixelated}
+.sh-st{padding:2px 5px}
+.sh-tag{position:absolute;top:22px;right:-10px;background:#f7e7b0;color:#111;border:3px solid #000;padding:4px 5px;font-size:8px;transform:rotate(-5deg);max-width:95%}
+.sh-buy{display:block;margin:6px auto 0}
+.sh-pager{text-align:center;margin-top:14px;font:10px 'Press Start 2P',monospace;color:#FAFAF5}
+.sh-mine{display:flex;flex-direction:column;gap:12px}.sh-row{display:flex;gap:16px;align-items:flex-start}.sh-row .sh-card{width:180px;flex:0 0 180px}.sh-rinfo{font-size:13px;line-height:1.8}
+.sh-modal{position:fixed;inset:0;background:#000c;z-index:80;align-items:center;justify-content:center}
+.sh-modal .box{background:#100E14;border:6px solid #D62028;box-shadow:0 0 0 3px #FAFAF5;padding:16px;max-width:760px;width:calc(100% - 24px);max-height:calc(100% - 24px);overflow:auto;color:#FAFAF5}
+.sh-modal h3{font:14px 'Press Start 2P',monospace;color:#E8B33A}
+.sh-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:10px 0}.sh-pk{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.sh-sellrow{display:flex;gap:18px;align-items:flex-start}.sh-sellrow>.sh-card{flex:0 0 180px}.sh-form label{display:block;margin:6px 0}.sh-form input,.sh-form select{font:inherit;padding:4px;margin-left:6px}
+.sh-exact{font-size:15px}.sh-steps{padding-left:18px;font-size:13px}
+.sh-soon{text-align:center;margin:20px}
+.toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:90}.toasts .toast{background:#100E14;border:3px solid #E8B33A;padding:8px 12px;margin-top:6px}
+@media (max-width:640px){.sh-scene{flex-direction:column;align-items:center}.sh-sign{max-width:100%}.sh-bubble{margin:0 0 20px;font-size:9px}.sh-keeper{width:84px;height:84px}
+ .sh-grid{gap:16px 8px}.sh-binder{padding:12px 6px 10px 22px}.sh-rings{left:5px;width:9px}.sh-card{font-size:6px}.sh-art{height:56px}.sh-art img,.sh-art canvas{width:50px;height:50px}.sh-tag{position:static;transform:none;margin:4px 3px 0;font-size:6px}
+ .sh-buy{font-size:8px;padding:6px 8px}.sh-sellrow,.sh-row{flex-direction:column;align-items:stretch}.sh-sellrow>.sh-card,.sh-row .sh-card{flex:none;width:170px}}

@@ -158,6 +158,32 @@
       });
     }).then(done, function (e) { release(); if (e && e.code === -32005) { var b = busyErr(); b.raw = e.message; throw b; } throw e; });
   }
+  /* pet-shop-sales: Counterparty DEX order / cancel for the shop (window 1 of a listing, Buy, Cancel). Same nodes, fee rate, wallet lock and
+   * XCP Wallet signing as send(); the composed tx is checked against the plan before the wallet window opens. Never called below ACTIVATE_SALES_BLOCK. */
+  function dexUrl(base, me, plan, fee) { base = String(base).trim().replace(/\/+$/, ''); if (!/\/v2$/.test(base)) base += '/v2';
+    if (/broadcast|sign/i.test(base)) throw new Error('refusing an API base that mentions broadcast/sign');
+    var q = plan.kind === 'cancel' ? ['offer_hash=' + encodeURIComponent(plan.offer_hash)] : ['give_asset=' + encodeURIComponent(plan.give_asset), 'give_quantity=' + Math.round(plan.give_quantity), 'get_asset=' + encodeURIComponent(plan.get_asset), 'get_quantity=' + Math.round(plan.get_quantity), 'expiration=' + Math.round(plan.expiration), 'fee_required=0'];
+    q.push('encoding=opreturn', 'verbose=true', 'validate=true', 'exclude_utxos_with_balances=true', 'sat_per_vbyte=' + fee);
+    return base + '/addresses/' + encodeURIComponent(me) + '/compose/' + (plan.kind === 'cancel' ? 'cancel' : 'order') + '?' + q.join('&'); }
+  function dexCheck(r, me, plan) { var pr = (r && r.params) || {}, bad = []; if (!r || !/^[0-9a-f]+$/i.test(r.rawtransaction || '')) bad.push('no raw transaction hex'); if (!r || !r.params) bad.push('node did not echo params');
+    if (r && r.name && r.name !== plan.kind) bad.push('composed a ' + r.name); if (pr.source && pr.source !== me) bad.push('source differs');
+    if (plan.kind === 'cancel') { if (pr.offer_hash && pr.offer_hash !== plan.offer_hash) bad.push('offer differs'); }
+    else ['give_asset', 'give_quantity', 'get_asset', 'get_quantity', 'expiration'].forEach(function (k) { if (pr[k] != null && String(pr[k]) !== String(plan[k])) bad.push(k + ' differs'); });
+    return bad; }
+  function sendDex(plan, viewed) {
+    var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (VS && VS.prod && !VS.verified) return Promise.reject(new Error("Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
+    if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
+    var mine = signing = Date.now(); function release() { if (signing === mine) signing = 0; }
+    return getWallet().then(function (w) {
+      if (viewed && viewed !== w.address) throw new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + ').');
+      return feeRate().then(function (fee) { var urls = composeNodes(), errs = [];
+        function go(i) { if (i >= urls.length) throw new Error('Could not build the order: every Counterparty node failed. ' + errs.join(' · '));
+          return F(dexUrl(urls[i], w.address, plan, fee)).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
+            var bad = dexCheck(j.result, w.address, plan); if (bad.length) throw new Error('compose mismatch: ' + bad.join(', ')); return j.result; })
+            .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
+        return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.kind, amount: 0, label: plan.label || plan.kind, at: Date.now(), status: 'sent' }); return { txid: r.txid, composed: res }; }); });
+    }).then(function (x) { release(); return x; }, function (e) { release(); throw e; }); }
   /* wagmi-daily (2026-10-22): a successful connect marks this tab so play.html can offer WAGMI once (survives the reload to the connected address). */
   var OFFER_KEY = 'xcpets-wagmi-connect';
   function connect() { return getWallet().then(function (w) { try { win.sessionStorage.setItem(OFFER_KEY, w.address); } catch (e) { }
@@ -170,6 +196,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { _signLock: function () { return signing; }, send: send, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
+  return { _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; }, current: function () { return wallet && wallet.address; } };
 });
