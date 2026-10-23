@@ -254,9 +254,29 @@
       '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span>' + (BK.page + 1) + ' / ' + pages + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button></div></div>';
     el.innerHTML = h;
     var R = window.V2Render; el.querySelectorAll('canvas[data-gbp]').forEach(function (cv) { var p = w.byId[cv.dataset.gbp]; if (!p || !R) return; var mk = function () { return R.petFrames(p, w); }; if (R.lazy) R.lazy(cv, mk, true); else try { R.paint(cv, mk()[0]); } catch (e) { } });
-    el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { BK.page += +b.dataset.gb; book(w); }; });
+    el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { turn(w, +b.dataset.gb, BK.page + +b.dataset.gb); }; });
     el.querySelectorAll('[data-gbf]').forEach(function (b) { b.onclick = function () { BK.mine = b.dataset.gbf === '1'; BK.page = 0; book(w); }; });
-    var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { BK.page = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); book(w); } }; }
+    var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { var np = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); if (np !== BK.page) turn(w, dx < 0 ? 1 : -1, np); } }; }
+  /* guestbook-pageturn (owner voice call, Oct 22 2026): ◀ / ▶ and swipe flip the page like a real guest book. The old page is copied (sprites too)
+   * into a leaf over the book, the new page renders underneath at once (links work right away), and the leaf curls away in 8 hard steps:
+   * older (▶ / swipe left) lifts off to the left, newer (◀ / swipe right) to the right. Transform + opacity only (smooth on phones).
+   * prefers-reduced-motion: no animation, the page just changes. Display only. */
+  function turn(w, dir, np) { var el = document.getElementById('motelBook'), old = el && el.querySelector('.gb');
+    if (!old || reduced() || !el.animate) { BK.page = np; book(w); return; }
+    var prev = el.querySelector('.gb-leaf'); if (prev) prev.remove();
+    var r = old.getBoundingClientRect(), er = el.getBoundingClientRect(), front = old.cloneNode(true), cs = old.querySelectorAll('canvas'), cc = front.querySelectorAll('canvas');
+    cc.forEach(function (c, i) { try { c.getContext('2d').drawImage(cs[i], 0, 0); } catch (e) { } c.removeAttribute('data-gbp'); });
+    front.classList.add('gb-front'); front.querySelectorAll('[id]').forEach(function (n) { n.removeAttribute('id'); });
+    BK.page = np; book(w);
+    var leaf = document.createElement('div'); leaf.className = 'gb-leaf ' + (dir > 0 ? 'gb-fwd' : 'gb-back'); leaf.setAttribute('aria-hidden', 'true');
+    leaf.style.cssText = 'left:' + (r.left - er.left) + 'px;top:' + (r.top - er.top) + 'px;width:' + r.width + 'px;height:' + r.height + 'px';
+    var back = document.createElement('div'); back.className = 'gb-backface'; var shade = document.createElement('div'); shade.className = 'gb-shade';
+    front.style.margin = '0'; front.style.height = '100%'; front.style.overflow = 'hidden'; leaf.appendChild(front); leaf.appendChild(back); front.appendChild(shade);
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative'; el.appendChild(leaf);
+    var sg = dir > 0 ? -1 : 1, E = 'steps(8, end)', T = 560;
+    var an = leaf.animate([{ transform: 'perspective(1400px) rotateY(0deg)' }, { transform: 'perspective(1400px) rotateY(' + (sg * 180) + 'deg)' }], { duration: T, easing: E, fill: 'forwards' });
+    shade.animate([{ opacity: 0 }, { opacity: .55 }], { duration: T / 2, easing: 'steps(4, end)', fill: 'forwards' });
+    var done = function () { if (leaf.parentNode) leaf.remove(); }; an.onfinish = done; an.oncancel = done; }
   /* breed-picker-fix (owner 10:24 PM CT): breed celebration in two stages. (a) celebrate(tx): right after the breed burn is broadcast, ~2.5 s of 8-bit
    * hearts + sparkles round Gooby and a wobbling egg at the desk, plus a line 'Breed sent! Your egg appears when the block confirms' + tx link
    * (reduced motion = the line only). Nothing about the outcome is shown before the block. (b) eggPop(w, kid): called once per new pet by
@@ -279,6 +299,10 @@
   if (typeof document !== 'undefined' && !document.getElementById('gbCss')) { var gs = document.createElement('style'); gs.id = 'gbCss'; /* gooby-guestbook */
     gs.textContent = '.mg-cap{margin:-2px 0 8px;padding:6px 8px;border:3px solid #000;background:#fff8e1;color:#1b1b1b;box-shadow:4px 4px 0 #000;font-size:14px;line-height:1.35;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;overflow-wrap:anywhere}' +
       '.mg-who{font-family:"Press Start 2P",monospace;font-size:9px;color:#fff;background:#111;padding:3px 5px;border-bottom:2px solid #6ef04a}.mg-line{flex:1 1 180px;font-weight:700}.mg-tip{flex-basis:100%;font-size:12px;color:#6a4a5a}' +
+      '.gb-leaf{position:absolute;z-index:3;pointer-events:none;transform-style:preserve-3d;will-change:transform}.gb-fwd{transform-origin:0 50%}.gb-back{transform-origin:100% 50%}' +
+      '.gb-leaf>.gb-front,.gb-backface{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}.gb-leaf>.gb-front{box-shadow:none}' +
+      '.gb-backface{transform:rotateY(180deg);border:3px solid #000;background:#e9dfc6 repeating-linear-gradient(#e9dfc6 0 15px,#c9b996 15px 17px);box-shadow:inset 6px 0 0 #d6c7a6}' +
+      '.gb-shade{position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(90deg,rgba(0,0,0,0) 0 50%,rgba(42,21,48,.12) 50% 75%,rgba(42,21,48,.28) 75% 100%)}.gb-back .gb-shade{transform:scaleX(-1)}' +
       '.gb-top{flex-wrap:wrap;gap:2px 8px}.gb-sub{font-size:12px;color:#6a4a5a}.gb-stats{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0;font-size:13px}.gb-tabs{display:flex;gap:6px;margin:4px 0 6px}.gb-tabs .q{min-height:40px;padding:4px 12px;background:#f5efe0;color:#2a1530;border:2px solid #000;box-shadow:2px 2px 0 #000}.gb-tabs .q.on{background:#4fd18b;color:#0d1a12}.gb-kid a,.gb-main a{color:#2e5aa8}' +
       '.gb-sec{margin:8px 0 2px;font-weight:700;color:#2a1530;border-bottom:2px solid #2a1530}.motel-book .gb-row{flex-direction:row;gap:8px;align-items:center}.gb-wait{background:#ffe9f4}' +
       '.gb-pics{display:flex;align-items:center;gap:2px;flex:0 0 auto}.gb-spr{width:32px;height:32px;image-rendering:pixelated;border:2px solid #000;background:#1a2b4a;display:inline-block}.gb-q{color:#fff;text-align:center;line-height:28px}.gb-op{font-weight:700;color:#c8102e;font-size:12px}' +

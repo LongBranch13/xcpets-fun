@@ -71,3 +71,8 @@
 - HatchBot (not in git): telegram/knowledge.json fixed (backup *.bak-explainer-20261022) plus new halving_firesale topic. announce-lib.js unchanged (Wizard stage posts are inert now; hybrid labels keep "A × B" because test-announce expects it).
 - Left as is (UI labels, not explainer copy): "Dozen ×12", "Case ×144", "Roll gear ×N" buttons.
 - Tests: all tools/*-test.js pass except the known breeding-v2-test and wheel-random-test; telegram tests all pass. Screenshots: /workspace/xcpets/previews/explainer-truth/.
+
+## Preview branch `guestbook-pageturn` (2026-10-22, ~7:35 PM CT) — NOT merged/deployed, owner review pending
+- Guestbook (js/v2-motel.js) ◀/▶ arrows and swipe now run an 8-bit page flip: old page cloned into a `.gb-leaf` overlay (canvases copied), new page rendered underneath, leaf rotates 180° with `steps(8)` over 560 ms (older→lifts left, newer→right), ruled-paper backface + stepped shade.
+- prefers-reduced-motion (or no Web Animations API): instant page swap, no leaf. Leaf removed on finish/cancel; links/content unchanged (18 links on page 2 verified).
+- Build f46f626930 (preview only). Replay SAME vs origin/main on both snapshots. Previews: /workspace/xcpets/previews/guestbook-pageturn/.
