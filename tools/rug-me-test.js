@@ -13,7 +13,8 @@ const msgs = (w, rows) => rows.map(r => { const e = w.log.filter(x => x.tx === r
 const req = 'T' + Math.max(1, Bp.tier) + '.S3';
 const tags = (b0) => [row(b0, O1, 690, 'pet:ad:' + A.id + ':ANY'), row(b0, O1, 138, 'pet:ad:' + A.id + '.' + A2.id + ':ANY:B3'), row(b0, O2, 690, 'pet:rug:' + Bp.id + ':1'), row(b0, O1, 1e-8, 'pet:unad:1')];
 // 1) gate OFF (placeholder null): every new tag = exactly today's outcome, world unchanged
-ok(V.rugGate() === null && !V.rugOn(B0 + 5), 'ACTIVATE_RUGME_BLOCK is the null placeholder (off)');
+const LIVE_GATE = V.rugGate(); ok(LIVE_GATE === null || (Number.isInteger(LIVE_GATE) && LIVE_GATE > tip), 'ACTIVATE_RUGME_BLOCK is null or above the snapshot tip (' + LIVE_GATE + ')');
+V._setRugActivation(null); ok(!V.rugOn(B0 + 5), 'gate off -> Rug Me off');
 let rs = tags(B0 + 2), w = run(c, s, rs, B0 + 10), m = msgs(w, rs);
 ok(m.every(x => x === 'rejected: unknown pet: tag (community food)'), 'pre-gate: all 4 tags (incl. a multi-pet ad) -> "unknown pet: tag (community food)" [' + m[0] + ']');
 ok(!w.ads, 'pre-gate: no w.ads (lazy state)');

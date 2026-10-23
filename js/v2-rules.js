@@ -186,7 +186,7 @@
    * An ad closes if the poster pet dies or is released or changes owner. Before ACTIVATE_RUGME_BLOCK every one of these tags replays exactly
    * as today ('unknown pet: tag (community food)'). No randomness: nothing here draws from a block hash except breed() itself.
    * World state is created LAZILY (w.ads) only when a post-gate tag succeeds, so replays before the gate hash the same. */
-  var ACTIVATE_RUGME_BLOCK = null; // <<< RUG ME GATE: PLACEHOLDER (null = off). Set to chain tip + 6 at deploy.
+  var ACTIVATE_RUGME_BLOCK = 972696; // <<< RUG ME GATE: live at deploy Oct 22 2026 (tip 972690 + 6).
   var AD_WINDOW = 1008, RUG_MAX_CODES = 4;
   function rugOn(b) { return ACTIVATE_RUGME_BLOCK != null && b != null && b >= ACTIVATE_RUGME_BLOCK; }
   /** parseReq('T2.S4.PPEPE.GJEWELED-CROWN.W60' | 'ANY') -> { tier, stage, species, gear, power } (only the codes given) or null if malformed. */
