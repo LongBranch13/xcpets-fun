@@ -192,7 +192,7 @@
   /* BREED 135 (owner Oct 22 2026 9:23 + 9:25 PM): from ACTIVATE_BREED_135_BLOCK EVERY breed burn costs BREED_135 = 135 instead of 690:
    * own-pet pet:breed 135; two-owner pet:breed request 135 + accept 135 = 270; Rug Me pet:rug 135 (post stays 69 per pet, so a Rug Me breed totals 204).
    * Halving halves it (67.5), fire sale / fire-sale credit use it as the full cost. Burns before the gate keep the 690 rules exactly (replay SAME). */
-  var ACTIVATE_BREED_135_BLOCK = null; // <<< BREED 135 GATE: PLACEHOLDER (null = off). Set to chain tip + 6 at deploy.
+  var ACTIVATE_BREED_135_BLOCK = 972703; // <<< BREED 135 GATE: live at deploy Oct 22 2026 (tip 972697 + 6).
   var BREED_135 = 135, RUG_ACCEPT_COST = BREED_135;
   function breed135On(b) { return ACTIVATE_BREED_135_BLOCK != null && b != null && b >= ACTIVATE_BREED_135_BLOCK; }
   function breedCost(b) { return breed135On(b) ? BREED_135 : COSTS.breed; } /* base before halving / fire sale */

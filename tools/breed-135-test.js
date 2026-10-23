@@ -4,7 +4,7 @@ const { load, row, snap, run } = require('./lib/load-rules.js');
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const s = snap(process.argv[2]), tip = s.tip, B0 = tip + 1;
 const c0 = load(), V0 = c0.V2Rules, base = run(c0, s, [], tip);
-ok(V0.breed135Gate() === null && V0.breedCost(B0) === 690 && V0.COSTS.breed === 690, 'ACTIVATE_BREED_135_BLOCK is the null placeholder (690 until set)');
+ok(V0.breed135Gate() === 972703 && V0.breedCost(972702) === 690 && V0.breedCost(972703) === 135 && V0.COSTS.breed === 690, 'ACTIVATE_BREED_135_BLOCK = 972703 (690 before, 135 from it)');
 const good = base.pets.filter(p => !p.community && !p.dead && !p.released && p.stage >= 3 && !p.neglected && V0.breedable(p, B0 + 20) == null && (p.breedsV2 || 0) <= 3);
 const by = {}; good.forEach(p => (by[p.owner] = by[p.owner] || []).push(p)); const own = Object.keys(by).sort((a, b) => by[b].length - by[a].length);
 const O1 = own[0], O2 = own[1]; const A = by[O1][0], A2 = by[O1].find(q => q !== A && !V0.kinWhy(A, q)), Bp = by[O2].find(q => !V0.kinWhy(A, q));

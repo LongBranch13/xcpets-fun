@@ -115,7 +115,7 @@ ok(V.RUG_AD_COST + 690 === 759, 'a Rug Me breed totals 759 (69 post + 690 accept
     ok(/^rugAd/.test(Lf[3]) && !FS[O3], 'fire sale: a sale-price ad is valid but earns no spin'); }
   const F2 = fr(g => g + 2990); if (F2) ok(!(F2.wf.fireSpins || {})[O1] && !(F2.wf.fireSpins || {})[O2] && msgs(F2.wf, F2.rows).every(x => x === 'rejected: unknown pet: tag (community food)'), 'below ACTIVATE_RUGME_BLOCK: ad / rug burns earn no fire-sale spin (unknown tag, as today)'); }
 // 135 right swipe (owner 9:23 PM): from ACTIVATE_BREED_135_BLOCK pet:rug costs 135 (total 204); before it the 690 rules stay exactly
-ok(V.breed135Gate() === null && V.rugCost(B0 + 5) === 690, 'ACTIVATE_BREED_135_BLOCK is the null placeholder (690 until set)');
+ok(V.breed135Gate() === 972703 && V.rugCost(972702) === 690, 'ACTIVATE_BREED_135_BLOCK = 972703 (690 before it)');
 ok(V.RUG_AD_COST + V.RUG_ACCEPT_COST === 204, 'a Rug Me breed totals 204 after the gate (69 post + 135 accept)');
 { const c6 = load(), V6 = c6.V2Rules, G1 = B0 + 5, G2 = G1 + 4; V6._setRugActivation(G1); V6._setBreed135Activation(G2);
   ok(V6.rugCost(G2 - 1) === 690 && V6.rugCost(G2) === 135, 'rugCost: 690 before the 135 gate, 135 from it');
