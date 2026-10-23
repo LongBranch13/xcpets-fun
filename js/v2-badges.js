@@ -32,7 +32,8 @@
     ['nakamoto', 'SATOSHI SAW YOU', '1 in 777. Touch grass never.', 'Hatch a Nakamoto', 'legendary', 1],
     ['black-eye', 'RIGHT IN THE EYE', 'Somebody call the medic!', 'A pet loses a fight', 'common', 1],
     ['ngmi', 'NGMI', 'WAGMI \u2192 NGMI, speedrun.', 'A pet loses 5 fights in a row', 'uncommon', 1],
-    ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1]
+    ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1],
+    ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon']
   ];
   var DEF = {}; DEFS.forEach(function (d, i) { DEF[d[0]] = { id: d[0], name: d[1], flavour: d[2], rule: d[3], kind: d[4], pet: !!d[5], order: i }; });
   function bestRun(nums) { nums = nums.slice().sort(function (a, b) { return a - b; }); var best = 0, run = 0, prev = null, at = null, bestAt = null;
@@ -96,6 +97,9 @@
     Object.keys(alive).forEach(function (o) { var P = alive[o]; if (P.length < 3) return; var lo = Infinity, hi = -1; P.forEach(function (x) { lo = Math.min(lo, x.from); hi = Math.max(hi, x.to); });
       var run = 0; for (var d = lo; d <= hi; d++) { var n = 0, ok = true; for (var i = 0; i < P.length && ok; i++) { var x = P[i]; if (d < x.from || d > x.to) continue; n++; if (!x.fed[d]) ok = false; }
         run = ok && n >= 3 ? run + 1 : 0; if (run >= 30) { add(out, o, 'perfect-month', { block: (d + 1) * 144 }); break; } } });
+    /* DAY ONE DEGEN (WAGMI top five): from the replayed record w.wagmiFirst[chain day] (only filled from ACTIVATE_WAGMI_PRIZE_BLOCK); count = days in the first five */
+    Object.keys(w.wagmiFirst || {}).map(Number).sort(function (a, b) { return a - b; }).forEach(function (d) { (w.wagmiFirst[d] || []).forEach(function (a, i) {
+      var L = out[a] || (out[a] = {}), c = L['day-one-degen']; if (c) { c.count++; c.days.push(d); } else L['day-one-degen'] = { id: 'day-one-degen', rarity: 'uncommon', block: d * 144, count: 1, days: [d] }; }); });
     var byAddr = {}; Object.keys(out).forEach(function (a) { byAddr[a] = sortList(Object.keys(out[a]).map(function (k) { return out[a][k]; })); });
     var bp = {}; Object.keys(byPet).forEach(function (id) { bp[id] = sortList(Object.keys(byPet[id]).map(function (k) { return byPet[id][k]; })); });
     return { byAddr: byAddr, byPet: bp, tip: tip };

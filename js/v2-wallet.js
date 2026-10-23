@@ -158,7 +158,10 @@
       });
     }).then(done, function (e) { release(); if (e && e.code === -32005) { var b = busyErr(); b.raw = e.message; throw b; } throw e; });
   }
-  function connect() { return getWallet().then(function (w) { return w.address; }); }
+  /* wagmi-daily (2026-10-22): a successful connect marks this tab so play.html can offer WAGMI once (survives the reload to the connected address). */
+  var OFFER_KEY = 'xcpets-wagmi-connect';
+  function connect() { return getWallet().then(function (w) { try { win.sessionStorage.setItem(OFFER_KEY, w.address); } catch (e) { }
+    try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:connected', { detail: { address: w.address } })); } catch (e) { } return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
   function paint(ME, $) {
     var c = $('wconnect'); if (!c) return;
