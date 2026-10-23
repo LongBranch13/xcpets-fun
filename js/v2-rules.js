@@ -35,7 +35,10 @@
    * A received pet waits GIVE_SETTLE blocks before it can be gifted again (also = one gift per pet per block). No randomness.
    * Inert until ACTIVATE_GIVE_BLOCK: before it pet:give / pet:hi replay exactly as today (unknown pet: tag, community food).
    * PLACEHOLDER: null = off. Set to Bitcoin tip + 6 at deploy. */
-  var ACTIVATE_GIVE_BLOCK = null, GIVE_SETTLE = 6, SWAP_WINDOW = 1008;
+  /* SPAM CITY LAUNCH (owner, Oct 22 2026 10:07 PM CT): buying, selling (pet tokens) and gifting / batch gifting / swaps switch on TOGETHER.
+   * Set ONLY this one block; ACTIVATE_GIVE_BLOCK and ACTIVATE_SALES_BLOCK both follow it. */
+  var ACTIVATE_SPAM_CITY_BLOCK = null;
+  var ACTIVATE_GIVE_BLOCK = ACTIVATE_SPAM_CITY_BLOCK, GIVE_SETTLE = 6, SWAP_WINDOW = 1008;
   /* PET-FOR-PET SWAPS (same gate): pet:swap:MINE:THEIRS opens offer N (1, 2, ... in chain order); the owner of THEIRS burns pet:swapok:N to swap the owners
    * at that burn, only if the offer is open and within SWAP_WINDOW blocks, both pets still belong to the two players, are alive and pass the gift locks.
    * pet:swapno:N closes it (offerer = cancel, other owner = decline). Gear moves with each pet like a gift. 1 dander each, no randomness. */
@@ -842,79 +845,121 @@
   function swapPlan(mine, theirs) { return { tag: 'pet:swap:' + mine + ':' + theirs, amount: COSTS.give, label: 'Offer #' + mine + ' for #' + theirs }; }
   function swapOkPlan(n) { return { tag: 'pet:swapok:' + n, amount: COSTS.give, label: 'Accept swap ' + n }; }
   function swapNoPlan(n) { return { tag: 'pet:swapno:' + n, amount: COSTS.give, label: 'Close swap ' + n }; }
-  /* ---- PET SHOP SALES (Counterparty DEX listings). OFF while ACTIVATE_SALES_BLOCK is null: before the gate pet:sell is an unknown tag
-   * (community food) and nothing below runs, so the replay is unchanged. Design: design/pet-market.md "Phase 2b build notes".
-   *  - A listing = (1) a DEX order on the XCPETS/XCP pair that GIVES exactly 1 smallest unit (1 dander or 1 sat of XCP) and GETS the price,
-   *    + (2) a 1-dander burn pet:sell:ID:<first 8 hex of the order tx hash> from the same address, at most SALE_ORDER_LAG blocks after the order.
-   *  - The replay reads the DEX through opts.dex ({orders:[...], matches:[...]} from api.xcp.fun, cached). Before every burn block it settles
-   *    completed matches of earlier blocks: an exact, completed match of a listed order (seller gives 1 unit, gets exactly the price) moves the
-   *    pet + worn + bag gear to the address that filled it. Anything else (other amounts, self-fill, pet dead/moved) = no sale.
-   *  - Giving 1 unit makes a partial fill impossible; any match with other amounts counts as no sale anyway.
-   *  - A listing locks the pet (no gift, swap, fight, breed, Rug Me ad, release, rumble) until it sells, voids or the order's expire_index passes.
-   *    A Counterparty cancel ends the sale at once on the DEX, but the replay can't read a cancel's block, so the lock ends at expire_index. */
-  var ACTIVATE_SALES_BLOCK = null, SALE_EXPIRY = 288, SALE_MAX_EXPIRY = 1008, SALE_ORDER_LAG = 6, SALE_OFFSET_MAX = 9999;
-  var SALE_MIN = { XCPETS: 100000000, XCP: 1000 }; /* smallest sticker: 1 XCPETS, or 1,000 sats of XCP */
+  /* ---- PET SHOP SALES: PET TOKENS (owner approved Oct 22 2026: pet tokens only). OFF while ACTIVATE_SALES_BLOCK is null: before the gate
+   * pet:deed / pet:unsell are unknown tags (community food), opts.dex is never read and the replay is unchanged. Design: design/pet-deeds.md.
+   *  - PET TOKEN ("deed"): a free Counterparty NUMERIC asset (A + 26^12+1 .. 2^64-1, 0 XCP fee), quantity 1, indivisible, locked, description
+   *    exactly 'xcpets pet #ID', first issuance by the pet's owner. It is BOUND by a 1-dander burn pet:deed:ID:<asset number in base 36> from
+   *    the same address once the issuance has confirmed (issuance block <= burn block). The newest valid binding is the pet's current token.
+   *    (The burn is how every visitor finds the token: the API has no asset search.)
+   *  - LISTING: a DEX order on the token's own pair: give 1 token, get the price in XCPETS or XCP, expiration <= SALE_MAX_EXPIRY, from the pet's
+   *    owner, price >= SALE_MIN. No pet:sell burn: the order itself is the listing (orders up to SALE_ORDER_LAG blocks before the binding count
+   *    from the binding block). Supply 1 + own pair = no other seller, no AMM pool, no cheapest-first problem.
+   *  - SALE: a completed match of the listing order (1 token for exactly the price) moves the pet + worn + bag gear to the buyer; the binding
+   *    travels too (the buyer now holds the token and can relist with one order).
+   *  - INVALID: an order from anyone but the pet's owner is not a listing (gifted pet = the old token is held elsewhere: remint + bind).
+   *  - ENDS: sold, expire_index passed, pet moved/died (void), or an optional 1-dander pet:unsell:<first 8 hex of the order> burn by the seller:
+   *    the listing ends SALE_UNSELL_SETTLE blocks later (matches before that still sell). A DEX cancel alone ends trading at once but the
+   *    replay can't see its block, so without pet:unsell the pet lock lasts until expire_index.
+   *  - Order: DEX events (bindings' issuances are read, orders, matches) apply in block / tx order, before the burns of later blocks. */
+  var ACTIVATE_SALES_BLOCK = ACTIVATE_SPAM_CITY_BLOCK, SALE_EXPIRY = 288, SALE_MAX_EXPIRY = 1008, SALE_ORDER_LAG = 6, SALE_UNSELL_SETTLE = 6;
+  var SALE_MIN = { XCPETS: 100000000, XCP: 1000 }; /* smallest price: 1 XCPETS, or 1,000 sats of XCP */
+  var DEED_MIN = '95428956661682177', DEED_MAX = '18446744073709551615'; /* 26^12 + 1 .. 2^64 - 1 */
   function salesOn(b) { return ACTIVATE_SALES_BLOCK != null && b != null && b >= ACTIVATE_SALES_BLOCK; }
-  function saleOther(a) { return a === 'XCPETS' ? 'XCP' : a === 'XCP' ? 'XCPETS' : null; }
-  /** dexIndex(dex) -> {orders: {hash: order}, list: [orders], matches: {orderHash: [matches, block order]}} or null. */
-  function dexIndex(d) { if (!d) return null; var sig = (d.orders || []).length + ':' + (d.matches || []).length; if (d._ix && d._ix.sig === sig) return d._ix; var o = {}, m = {}, list = [];
-    (d.orders || []).forEach(function (x) { if (x && x.tx_hash && !o[x.tx_hash]) { o[x.tx_hash] = x; list.push(x); } });
-    var seenM = {}; (d.matches || []).forEach(function (x) { if (!x || seenM[x.id || (x.tx0_hash + '_' + x.tx1_hash)]) return; seenM[x.id || (x.tx0_hash + '_' + x.tx1_hash)] = 1; [x.tx0_hash, x.tx1_hash].forEach(function (h) { (m[h] = m[h] || []).push(x); }); });
-    Object.keys(m).forEach(function (h) { m[h].sort(function (a, b) { return a.block_index - b.block_index || (a.tx1_index || 0) - (b.tx1_index || 0); }); });
-    var ix = { orders: o, list: list, matches: m, sig: sig }; try { Object.defineProperty(d, '_ix', { value: ix, enumerable: false, writable: true, configurable: true }); } catch (e) { } return ix; }
+  function saleQuote(a) { return a === 'XCPETS' || a === 'XCP'; }
+  function numCmp(a, z) { return a.length - z.length || (a < z ? -1 : a > z ? 1 : 0); }
+  /** deedOk(asset): a free numeric asset name A<26^12+1 .. 2^64-1>. */
+  function deedOk(a) { var m = /^A([1-9][0-9]{16,19})$/.exec(String(a || '')); return !!m && numCmp(m[1], DEED_MIN) >= 0 && numCmp(m[1], DEED_MAX) <= 0; }
+  function deedDesc(id) { return 'xcpets pet #' + id; }
+  var B36 = '0123456789abcdefghijklmnopqrstuvwxyz';
+  function decTo36(s) { var d = String(s).split('').map(Number), out = ''; while (d.length && !(d.length === 1 && d[0] === 0)) { var r = 0, q = [];
+      d.forEach(function (x) { var v = r * 10 + x; q.push(Math.floor(v / 36)); r = v % 36; }); out = B36[r] + out; while (q.length > 1 && q[0] === 0) q.shift(); d = q; } return out || '0'; }
+  function b36ToDec(s) { var d = [0]; String(s).toLowerCase().split('').forEach(function (c) { var v = B36.indexOf(c), carry = v; for (var i = d.length - 1; i >= 0; i--) { var x = d[i] * 36 + carry; d[i] = x % 10; carry = Math.floor(x / 10); }
+      while (carry) { d.unshift(carry % 10); carry = Math.floor(carry / 10); } }); while (d.length > 1 && d[0] === 0) d.shift(); return d.join(''); }
+  function deedTag(id, asset) { return 'pet:deed:' + id + ':' + decTo36(String(asset).slice(1)); }
+  /** dexIndex(dex) -> { deeds: {asset: first issuance}, orders: {hash: order}, byGive: {asset: [orders]}, matches: {orderHash: [m]}, ev: [sorted order/match events] }.
+   * dex = { issuances: [...], orders: [...], matches: [...] } (api.xcp.fun rows; see V2Sales.loadDex). */
+  function dexIndex(d) { if (!d) return null; var sig = (d.issuances || []).length + ':' + (d.orders || []).length + ':' + (d.matches || []).length; if (d._ix && d._ix.sig === sig) return d._ix;
+    var deeds = {}, o = {}, byGive = {}, m = {}, ev = [];
+    (d.issuances || []).forEach(function (x) { if (!x || !x.asset || x.status && x.status !== 'valid') return; var c = deeds[x.asset]; if (!c || Number(x.tx_index) < Number(c.tx_index)) deeds[x.asset] = x; });
+    (d.orders || []).forEach(function (x) { if (x && x.tx_hash && !o[x.tx_hash]) { o[x.tx_hash] = x; (byGive[x.give_asset] = byGive[x.give_asset] || []).push(x); ev.push({ b: Number(x.block_index), i: Number(x.tx_index) || 0, k: 0, o: x }); } });
+    var seenM = {}; (d.matches || []).forEach(function (x) { var id = x && (x.id || (x.tx0_hash + '_' + x.tx1_hash)); if (!x || seenM[id]) return; seenM[id] = 1;
+      [x.tx0_hash, x.tx1_hash].forEach(function (h) { (m[h] = m[h] || []).push(x); }); ev.push({ b: Number(x.block_index), i: Number(x.tx1_index) || 0, k: 1, m: x }); });
+    ev.sort(function (a, z) { return a.b - z.b || a.i - z.i || a.k - z.k; });
+    var ix = { deeds: deeds, orders: o, byGive: byGive, matches: m, ev: ev, sig: sig }; try { Object.defineProperty(d, '_ix', { value: ix, enumerable: false, writable: true, configurable: true }); } catch (e) { } return ix; }
   function saleExpire(o) { return o.expire_index != null ? Number(o.expire_index) : Number(o.block_index) + Number(o.expiration) - 1; }
-  /** saleState(w, S, b): 'open' | 'sold' | 'void' | 'expired'. 'open' = the pet is locked and the listed order can still sell it. */
-  function saleState(w, S, b) { if (S.status !== 'open') return S.status; if (b > S.expire) return 'expired';
-    var P = w.byId[S.petId]; return !P || P.dead || P.released || P.owner !== S.seller ? 'void' : 'open'; }
+  /** saleState(w, S, b): 'open' | 'sold' | 'void' | 'expired' | 'ended' (pet:unsell). 'open' = the pet is locked and the order can still sell it. */
+  function saleState(w, S, b) { if (S.status !== 'open') return S.status; if (S.endBlock != null && b >= S.endBlock) return 'ended'; if (b > S.expire) return 'expired';
+    var P = w.byId[S.petId]; return !P || P.dead || P.released || P.owner !== S.seller || P.deed !== S.give ? 'void' : 'open'; }
   function saleListing(w, id, b) { return (w.listings || []).filter(function (S) { return S.petId === id && saleState(w, S, b) === 'open'; })[0] || null; }
   function openListings(w, b) { return (w.listings || []).filter(function (S) { return saleState(w, S, b) === 'open'; }); }
-  /** saleOrderWhy(w, o, src, b) -> why this DEX order can't back a listing at block b (null = ok). */
-  function saleOrderWhy(w, o, src, b, ix) {
-    if (o.source !== src) return 'order is from another address';
-    if (!/^(open|filled|expired|cancelled)$/.test(String(o.status || 'open'))) return 'order is ' + o.status;
-    if (Number(o.block_index) > b) return 'order confirmed after the listing burn';
-    if (b - Number(o.block_index) > SALE_ORDER_LAG) return 'order is more than ' + SALE_ORDER_LAG + ' blocks older than the listing burn';
-    if (!saleOther(o.give_asset) || saleOther(o.give_asset) !== o.get_asset) return 'order is not on the XCPETS/XCP pair';
-    if (Number(o.give_quantity) !== 1) return 'order must give exactly 1 smallest unit (1 dander or 1 sat)';
-    if (Number(o.expiration) > SALE_MAX_EXPIRY) return 'order expiry over ' + SALE_MAX_EXPIRY + ' blocks';
-    if (saleExpire(o) < b) return 'order already expired';
-    var q = Number(o.get_quantity); if (!(q >= SALE_MIN[o.get_asset]) || q !== Math.floor(q)) return 'price below ' + (o.get_asset === 'XCP' ? SALE_MIN.XCP + ' sats' : '1 XCPETS');
-    if (((ix && ix.matches[o.tx_hash]) || []).some(function (m) { return m.block_index < b; })) return 'order already filled before the listing';
-    var clash = openListings(w, b).filter(function (S) { return S.asset === o.get_asset && S.price === q; })[0];
-    if (clash) return 'same exact price as listing ' + clash.n + ' (every listing needs its own exact amount)';
+  function petFree(w, p, src, b) { return !p ? 'no such pet' : p.community ? 'community pet' : p.released ? 'released' : p.owner !== src ? 'owner only' : p.dead ? 'dead (Pet Cemetery)' : p.cold ? 'in Cold Storage' : null; }
+  /** deedIssueWhy(iss, id, src, b) -> why this issuance can't be pet #id's token for src at block b (null = ok). */
+  function deedIssueWhy(iss, id, src, b) { if (!iss) return 'token issuance not found (not confirmed yet, or data not loaded: retry)';
+    if (!deedOk(iss.asset)) return 'not a free numeric asset (A + 17-20 digits)';
+    if (iss.source !== src && iss.issuer !== src) return 'token was issued by another address';
+    if (Number(iss.block_index) > b) return 'token issuance confirmed after the burn';
+    if (Number(iss.quantity) !== 1 || iss.divisible === true || iss.divisible === 1 || !(iss.locked === true || iss.locked === 1)) return 'token must be quantity 1, indivisible and locked';
+    if (String(iss.description) !== deedDesc(id)) return "token description must be exactly '" + deedDesc(id) + "'";
     return null; }
-  /** saleWhy(w, t {petId, ord}, src, b, amt, dex) -> rejection reason or null. dex omitted = pet checks only (UI before the order exists). */
-  function saleWhy(w, t, src, b, amt, dex) { var p = w.byId[t.petId];
-    if (amt != null && !(amt >= COSTS.give)) return 'below listing cost 1 dander';
-    var e = !p ? 'no such pet' : p.community ? 'community pet' : p.released ? 'released' : p.owner !== src ? 'owner only' : p.dead ? 'dead (Pet Cemetery)' : giveLocks(w, p, b);
-    if (e || dex === undefined) return e || null;
-    var ix = dexIndex(dex); if (!ix) return 'order data not loaded yet (retry)';
-    var hits = ix.list.filter(function (o) { return o.source === src && String(o.tx_hash).slice(0, 8) === t.ord; });
-    if (!hits.length) return 'no DEX order ' + t.ord + '… from this address'; if (hits.length > 1) return 'order prefix ' + t.ord + ' matches ' + hits.length + ' orders';
-    return saleOrderWhy(w, hits[0], src, b, ix); }
-  /** saleFill(S, m) -> {ok, buyer, why}: is match m an exact, completed fill of listing S? */
+  /** deedWhy(w, t {petId, asset}, src, b, amt, ix) -> rejection reason for a pet:deed burn (null = ok). ix undefined = pet checks only (UI). */
+  function deedWhy(w, t, src, b, amt, ix) { var p = w.byId[t.petId];
+    if (amt != null && !(amt >= COSTS.give)) return 'below token cost 1 dander';
+    var e = petFree(w, p, src, b); if (e) return e; if (saleListing(w, p.id, b)) return 'pet #' + p.id + ' is listed in the shop';
+    if (ix === undefined) return null; if (!ix) return 'token data not loaded yet (retry)';
+    if (w.deeds && w.deeds[t.asset]) return 'token ' + t.asset + ' is already bound to pet #' + w.deeds[t.asset].petId;
+    return deedIssueWhy(ix.deeds[t.asset], p.id, src, b); }
+  /** listWhy(w, o, b) -> why DEX order o can't be a listing at block b (null = ok). */
+  function listWhy(w, o, b) { var D = w.deeds && w.deeds[o.give_asset]; if (!D) return 'not a pet token';
+    var p = w.byId[D.petId]; if (!p || p.deed !== o.give_asset) return 'old token of #' + D.petId + ' (a newer token is bound)';
+    var e = petFree(w, p, o.source, b); if (e) return e === 'owner only' ? 'token holder is not the pet owner (remint the token)' : e;
+    if (Number(o.give_quantity) !== 1) return 'order must give the 1 token';
+    if (!saleQuote(o.get_asset)) return 'price must be in XCPETS or XCP';
+    if (!(Number(o.expiration) >= 1) || Number(o.expiration) > SALE_MAX_EXPIRY) return 'order expiry over ' + SALE_MAX_EXPIRY + ' blocks';
+    var q = Number(o.get_quantity); if (!(q >= SALE_MIN[o.get_asset]) || q !== Math.floor(q)) return 'price below ' + (o.get_asset === 'XCP' ? SALE_MIN.XCP + ' sats' : '1 XCPETS');
+    if (saleExpire(o) < b) return 'order already expired';
+    if (saleListing(w, p.id, b)) return 'pet #' + p.id + ' is already listed';
+    var lk = giveLocks(w, p, b); if (lk) return lk;
+    return null; }
+  function addListing(w, o, b) { var why = listWhy(w, o, b); if (why) { (w.shopSkips = w.shopSkips || []).push({ block: b, order: o.tx_hash, why: why }); return null; }
+    var D = w.deeds[o.give_asset], S = { n: w.listings.length + 1, petId: D.petId, seller: o.source, block: b, tx: o.tx_hash, order: o.tx_hash, orderBlock: Number(o.block_index), give: o.give_asset, asset: o.get_asset, price: Number(o.get_quantity), expire: saleExpire(o), status: 'open' };
+    w.listings.push(S); w.log.push({ block: b, tx: o.tx_hash, kind: 'listing', petId: D.petId, listing: S.n, msg: '#' + D.petId + ' is in the shop (listing ' + S.n + ', until block ' + S.expire + ')' }); return S; }
+  /** bindDeed(w, t, src, b, tx, ix): a valid pet:deed burn. Orders up to SALE_ORDER_LAG blocks old that are still unmatched become a listing from b. */
+  function bindDeed(w, p, asset, src, b, tx, ix) { var old = p.deed; p.deed = asset; w.deeds[asset] = { petId: p.id, block: b, tx: tx, issuer: src, holder: src, prev: old || null };
+    var c = (ix.byGive[asset] || []).filter(function (o) { var ob = Number(o.block_index); return ob < b && b - ob <= SALE_ORDER_LAG && o.source === src && !(ix.matches[o.tx_hash] || []).some(function (m) { return m.block_index < b; }); })
+      .sort(function (a, z) { return (Number(z.tx_index) || 0) - (Number(a.tx_index) || 0); });
+    if (c[0]) addListing(w, c[0], b); }
+  /** saleFill(S, m) -> {ok, buyer, why}: is match m an exact, completed fill of listing S (1 token for exactly the price)? */
   function saleFill(S, m) { var mine0 = m.tx0_hash === S.order;
     var gaveA = mine0 ? m.forward_asset : m.backward_asset, gaveQ = Number(mine0 ? m.forward_quantity : m.backward_quantity),
       gotA = mine0 ? m.backward_asset : m.forward_asset, gotQ = Number(mine0 ? m.backward_quantity : m.forward_quantity), buyer = mine0 ? m.tx1_address : m.tx0_address;
     if (m.status !== 'completed') return { ok: false, why: 'match is ' + m.status };
-    if (gaveA !== S.give || gaveQ !== 1) return { ok: false, why: 'seller side was ' + gaveQ + ' ' + gaveA + ' (partial or other fill: no sale)' };
+    if (gaveA !== S.give || gaveQ !== 1) return { ok: false, why: 'seller side was ' + gaveQ + ' ' + gaveA + ' (no sale)' };
     if (gotA !== S.asset || gotQ !== S.price) return { ok: false, why: 'paid ' + gotQ + ' ' + gotA + ', listing asks ' + S.price + ' ' + S.asset + ' (no sale)' };
     if (!buyer || buyer === S.seller) return { ok: false, why: 'filled by the seller (no sale)' };
     return { ok: true, buyer: buyer }; }
-  /** settleSales(w, upto, ix): apply matches of open listings with block_index < upto (block_index <= upto when inclusive). */
-  function settleSales(w, upto, ix, inclusive) { if (!ix || !w.listings || !w.listings.length) return;
-    w.listings.forEach(function (S) { if (S.status !== 'open') return;
-      var ms = (ix.matches[S.order] || []).filter(function (m) { return m.block_index >= S.block && m.block_index <= S.expire && (inclusive ? m.block_index <= upto : m.block_index < upto); });
-      if (!ms.length) return; var m = ms[0], P = w.byId[S.petId], f = saleFill(S, m), mb = m.block_index;
-      if (P) liveAt(w, P, mb);
-      if (f.ok && (!P || P.dead || P.released || P.owner !== S.seller)) f = { ok: false, why: 'pet was ' + (!P ? 'gone' : P.dead ? 'dead' : P.released ? 'released' : 'no longer the seller\'s') + ' (no sale)' };
-      var lg = { block: mb, tx: m.tx1_hash, kind: f.ok ? 'sale' : 'saleVoid', petId: S.petId, listing: S.n };
-      if (!f.ok) { S.status = 'void'; S.voidBlock = mb; S.voidWhy = f.why; S.matchId = m.id; lg.msg = 'listing ' + S.n + ' (#' + S.petId + '): ' + f.why; w.log.push(lg); return; }
-      var mv = giftMoves(w, P); P.owner = f.buyer; P.lastGot = mb; mv.worn.concat(mv.bag).forEach(function (g) { g.owner = f.buyer; });
-      Object.assign(S, { status: 'sold', buyer: f.buyer, soldBlock: mb, matchId: m.id, gear: mv.worn.length + mv.bag.length });
-      var gr = { block: mb, tx: m.tx1_hash, petId: P.id, from: S.seller, to: f.buyer, toNo: playerNo(w, f.buyer), tier: P.tier, sale: S.n, gear: S.gear };
-      (P.gifts = P.gifts || []).push(gr); (w.giftLog = w.giftLog || []).push(gr);
-      lg.msg = '#' + P.id + ' found a new home through the shop (listing ' + S.n + ')' + (S.gear ? ' with ' + S.gear + ' gear' : ''); w.log.push(lg); }); }
+  function applyMatch(w, m) { var S = (w.listings || []).filter(function (x) { return x.status === 'open' && (x.order === m.tx0_hash || x.order === m.tx1_hash); })[0]; if (!S) return;
+    var mb = Number(m.block_index), P = w.byId[S.petId]; if (P) liveAt(w, P, mb);
+    var st = saleState(w, S, mb); if (st !== 'open') { if (st !== 'void') return; }
+    var f = saleFill(S, m);
+    if (f.ok && st === 'void') f = { ok: false, why: 'pet was ' + (!P ? 'gone' : P.dead ? 'dead' : P.released ? 'released' : P.deed !== S.give ? 'given a new token' : 'no longer the seller\'s') + ' (no sale)' };
+    var lg = { block: mb, tx: m.tx1_hash, kind: f.ok ? 'sale' : 'saleVoid', petId: S.petId, listing: S.n };
+    if (!f.ok) { S.status = 'void'; S.voidBlock = mb; S.voidWhy = f.why; S.matchId = m.id; lg.msg = 'listing ' + S.n + ' (#' + S.petId + '): ' + f.why; w.log.push(lg); return; }
+    var mv = giftMoves(w, P); P.owner = f.buyer; P.lastGot = mb; mv.worn.concat(mv.bag).forEach(function (g) { g.owner = f.buyer; }); w.deeds[S.give].holder = f.buyer;
+    Object.assign(S, { status: 'sold', buyer: f.buyer, soldBlock: mb, matchId: m.id, gear: mv.worn.length + mv.bag.length });
+    var gr = { block: mb, tx: m.tx1_hash, petId: P.id, from: S.seller, to: f.buyer, toNo: playerNo(w, f.buyer), tier: P.tier, sale: S.n, gear: S.gear };
+    (P.gifts = P.gifts || []).push(gr); (w.giftLog = w.giftLog || []).push(gr);
+    lg.msg = '#' + P.id + ' found a new home through the shop (listing ' + S.n + ')' + (S.gear ? ' with ' + S.gear + ' gear' : ''); w.log.push(lg); }
+  /** settleSales(w, upto, ix, inclusive): apply DEX events (new orders on bound tokens, matches) with block < upto (<= upto when inclusive). */
+  function settleSales(w, upto, ix, inclusive) { if (!ix || !w.listings) return; var k = w._dexPos || 0;
+    for (; k < ix.ev.length; k++) { var e = ix.ev[k]; if (e.b < ACTIVATE_SALES_BLOCK) continue; if (inclusive ? e.b > upto : e.b >= upto) break;
+      if (e.o) { if (w.deeds[e.o.give_asset]) addListing(w, e.o, e.b); } else applyMatch(w, e.m); }
+    try { Object.defineProperty(w, '_dexPos', { value: k, enumerable: false, writable: true, configurable: true }); } catch (x) { } }
+  /** unsellWhy(w, t {ord}, src, b, amt) -> [reason, listing]. */
+  function unsellWhy(w, t, src, b, amt) { if (amt != null && !(amt >= COSTS.give)) return ['below cost 1 dander'];
+    var S = (w.listings || []).filter(function (x) { return x.seller === src && String(x.order).slice(0, 8) === t.ord && saleState(w, x, b) === 'open'; })[0];
+    if (!S) return ['no open listing ' + t.ord + '… from this address']; if (S.endBlock != null) return ['listing ' + S.n + ' already ends at block ' + S.endBlock]; return [null, S]; }
+  /** deedOf(w, p) -> { asset, holder, ok } | null: the pet's current token; ok = the pet's owner holds it (known to the replay). */
+  function deedOf(w, p) { if (!p || !p.deed || !w.deeds || !w.deeds[p.deed]) return null; var D = w.deeds[p.deed]; return { asset: p.deed, holder: D.holder, ok: D.holder === p.owner, block: D.block }; }
   /** saleBusy(w, t, src, b) -> reason when a burn would use a pet that is listed (null = fine). */
   function saleBusy(w, t, src, b) { var ids = [];
     if (t.action === 'fight' || t.action === 'sd') ids = [t.a, t.b]; else if (t.action === 'tt') ids = [].concat(t.a, t.b);
@@ -923,7 +968,6 @@
     else if (t.action === 'accept') { var F = w.fights && w.fights[t.fightId - 1]; if (F) ids = fightPets(F); }
     for (var i = 0; i < ids.length; i++) { var p = w.byId[ids[i]]; if (p && p.owner === src && saleListing(w, p.id, b)) return 'pet #' + p.id + ' is listed in the shop (it unlocks when it sells or the listing ends)'; }
     return null; }
-  /* ---- sales: pure UI helpers (never sign; the page hands these to js/v2-wallet.js) */
   /* OLD MONEY (owner Oct 22 2026 ~9:27 PM): pets bred while a breed cost 690 (before ACTIVATE_BREED_135_BLOCK) carry a DISPLAY-ONLY collector badge.
    * TODO(dedupe at merge with rug-me): rug-me (wt-rugme) adds ACTIVATE_BREED_135_BLOCK but no badge helper yet; at merge set OLD_MONEY_BEFORE to that gate
    * (or replace this with its helper). null = gate not set = every breed so far was a 690 breed. Never read by replay. */
@@ -953,32 +997,30 @@
     var fn = sort === '-cost' ? function (a, z) { return -c.cost(a, z); } : c[sort]; if (!fn) return list.slice();
     return list.map(function (x, i) { return [x, i]; }).sort(function (a, z) { return fn(a[0], z[0]) || ((a[0].S && z[0].S) ? (a[0].S.asset < z[0].S.asset ? -1 : a[0].S.asset > z[0].S.asset ? 1 : 0) : 0) || a[0].p.id - z[0].p.id || a[1] - z[1]; }).map(function (a) { return a[0]; }); }
   function petFilter(w, list, f, b) { return petFilterSort(list.filter(function (x) { return petFilterMatch(w, x, f, b); }), f && f.sort); }
-  function saleTag(id, orderHash) { return 'pet:sell:' + id + ':' + String(orderHash).slice(0, 8).toLowerCase(); }
-  /** uniqueAsk(w, asset, sticker, b, taken) -> sticker + the smallest offset (1, 2, ...) in smallest units no open listing (or `taken`) uses. */
-  function uniqueAsk(w, asset, sticker, b, taken) { var used = {}; openListings(w, b).forEach(function (S) { if (S.asset === asset) used[S.price] = 1; }); (taken || []).forEach(function (q) { used[q] = 1; });
-    sticker = Math.round(Number(sticker)); for (var k = 1; k <= SALE_OFFSET_MAX; k++) if (!used[sticker + k]) return sticker + k; return null; }
-  /** sellOrderPlan(id, asset, ask) -> the DEX order of a listing (window 1 of 2). */
-  function sellOrderPlan(id, asset, ask) { return { kind: 'order', give_asset: saleOther(asset), give_quantity: 1, get_asset: asset, get_quantity: ask, expiration: SALE_EXPIRY, fee_required: 0, petId: id, label: 'Shop listing for #' + id + ' (window 1 of 2)' }; }
-  function sellBurnPlan(id, orderHash) { return { tag: saleTag(id, orderHash), amount: COSTS.give, label: 'Shop tag for #' + id + ' (window 2 of 2)' }; }
-  /** buyPlan(S) -> the matching order: gives exactly the price, gets the 1 unit, expires after 1 block (does not rest on the book). */
+  /* ---- sales: pure UI helpers (never sign; the page hands these to js/v2-wallet.js) */
+  /** randomDeed(bytes8) -> a free numeric asset name 'A' + 17-20 digits from 8 random bytes (uniform enough; the page 404-checks it). */
+  function randomDeed(bytes) { var n = '0'; for (var i = 0; i < 8; i++) n = addDec(mulDec(n, 256), String((bytes[i] || 0) & 255));
+    if (numCmp(n, DEED_MIN) < 0) n = addDec(n, DEED_MIN); /* 0 .. 2^64-1 -> DEED_MIN .. 2^64-1 (n + DEED_MIN stays below 2^64) */
+    return 'A' + n; }
+  function mulDec(a, k) { var r = '', c = 0; for (var i = a.length - 1; i >= 0; i--) { var x = +a[i] * k + c; r = (x % 10) + r; c = Math.floor(x / 10); } while (c) { r = (c % 10) + r; c = Math.floor(c / 10); } return r.replace(/^0+(?=\d)/, ''); }
+  function addDec(a, z) { var r = '', c = 0, i = a.length - 1, j = z.length - 1; while (i >= 0 || j >= 0 || c) { var s = (i >= 0 ? +a[i--] : 0) + (j >= 0 ? +z[j--] : 0) + c; r = (s % 10) + r; c = s >= 10 ? 1 : 0; } return r.replace(/^0+(?=\d)/, ''); }
+  /** mintPlan(id, asset) -> the free issuance (window 1 of 3, first listing only). */
+  function mintPlan(id, asset) { return { kind: 'issuance', asset: asset, quantity: 1, divisible: false, lock: true, description: deedDesc(id), petId: id, label: 'Make the token for #' + id }; }
+  function deedPlan(id, asset) { return { tag: deedTag(id, asset), amount: COSTS.give, petId: id, label: 'Tie token ' + asset + ' to #' + id }; }
+  /** listPlan(id, deed, asset, price) -> the listing order: give the 1 token, get exactly the price. */
+  function listPlan(id, deed, asset, price) { return { kind: 'order', give_asset: deed, give_quantity: 1, get_asset: asset, get_quantity: Math.round(Number(price)), expiration: SALE_EXPIRY, fee_required: 0, petId: id, label: 'List #' + id }; }
+  /** buyPlan(S) -> gives exactly the price, gets the 1 token, expires after 1 block. */
   function buyPlan(S) { return { kind: 'order', give_asset: S.asset, give_quantity: S.price, get_asset: S.give, get_quantity: 1, expiration: 1, fee_required: 0, petId: S.petId, listing: S.n, label: 'Buy #' + S.petId + ' (listing ' + S.n + ')' }; }
   function cancelPlan(S) { return { kind: 'cancel', offer_hash: S.order, petId: S.petId, listing: S.n, label: 'Cancel listing ' + S.n + ' (#' + S.petId + ')' }; }
-  /** dexSimulate(book, o, b) -> fills [{hash, forward, backward}] as Counterparty would match a new order o (give_asset/give_quantity/get_asset/
-   * get_quantity) against the open orders in book at block b: best tx0 price first (then oldest), forward = min(give_remaining,
-   * floor(left / price)), backward = round(forward * price). Used before Buy so the site only offers a buy that fills the listing first and fully. */
-  function dexSimulate(book, o, b) { var left = Number(o.give_quantity), want = Number(o.get_quantity), inv = left / want, fills = [];
-    var c = (book || []).filter(function (x) { return x.status === 'open' && x.give_asset === o.get_asset && x.get_asset === o.give_asset && Number(x.give_remaining) > 0 && (b == null || saleExpire(x) >= b); })
-      .map(function (x) { return { x: x, pr: Number(x.get_quantity) / Number(x.give_quantity) }; }).sort(function (a, z) { return a.pr - z.pr || (a.x.tx_index || 0) - (z.x.tx_index || 0); });
-    for (var i = 0; i < c.length && left > 0; i++) { var pr = c[i].pr; if (pr > inv * (1 + 1e-12)) break;
-      var fw = Math.min(Number(c[i].x.give_remaining), Math.floor(left / pr + 1e-9)); if (fw <= 0) continue; var bw = Math.round(fw * pr); if (bw <= 0) continue;
-      fills.push({ hash: c[i].x.tx_hash, source: c[i].x.source, forward: fw, backward: bw }); left -= bw; }
-    return fills; }
-  /** buyGuard(w, S, book, b, me) -> null (Buy is safe) or the reason Buy is switched off. */
+  function unsellTag(orderHash) { return 'pet:unsell:' + String(orderHash).slice(0, 8).toLowerCase(); }
+  function unsellPlan(S) { return { tag: unsellTag(S.order), amount: COSTS.give, petId: S.petId, listing: S.n, label: 'Unlock #' + S.petId + ' early' }; }
+  /** buyGuard(w, S, book, b, me) -> null (Buy is safe) or the reason Buy is off. book = the token pair's orders (api rows). */
   function buyGuard(w, S, book, b, me) { if (!S || saleState(w, S, b) !== 'open') return 'this listing has ended';
     if (me && me === S.seller) return 'this is your own listing';
     var o = (book || []).filter(function (x) { return x.tx_hash === S.order; })[0]; if (!o || o.status !== 'open' || Number(o.give_remaining) !== 1) return 'the listing order is not open on the DEX (' + (o ? o.status : 'not found') + ')';
-    var f = dexSimulate(book, buyPlan(S), b); if (!f.length || f[0].hash !== S.order || f[0].forward !== 1 || f[0].backward !== S.price) return 'another order on the book would fill first, so Buy is off for now';
     return null; }
+  /** sellStep(w, p, me, b) -> 'mint' (no usable token: make + tie one) | 'list' (token held by the owner: one order). */
+  function sellStep(w, p, me) { var d = deedOf(w, p); return d && d.ok && d.holder === me ? 'list' : 'mint'; }
   /** saleAmountText(asset, q): XCPETS as whole XCPETS + dander, XCP in sats. */
   function saleAmountText(asset, q) { q = Number(q); if (asset === 'XCP') return q.toLocaleString('en-US') + ' sats';
     var whole = Math.floor(q / 1e8), d = q - whole * 1e8; return whole.toLocaleString('en-US') + ' XCPETS' + (d ? ' + ' + d + ' dander' : ''); }
@@ -1007,7 +1049,8 @@
       if (p.length === 5 && idOk(p[3]) && /^[0-9A-V]{1,24}$/.test(p[4])) { for (var gj = 0; gj < p[4].length; gj++) { var gv = parseInt(p[4][gj], 32); for (var gb = 0; gb < 5; gb++) if (gv & (1 << gb)) gids.push(n(3) + 5 * gj + gb); } /* mask form: START + base-32 bit mask, like pet:rel */
         return gids.length ? { action: 'gives', to: gto, ids: gids } : { action: 'invalid' }; }
       return { action: 'invalid' }; }
-    if (a === 'SELL' && p.length === 4 && idOk(p[2]) && /^[0-9A-F]{8}$/.test(p[3])) return { action: 'sell', petId: n(2), ord: p[3].toLowerCase() }; /* shop listing; inert before ACTIVATE_SALES_BLOCK */
+    if (a === 'DEED' && p.length === 4 && idOk(p[2]) && /^[1-9A-Z][0-9A-Z]{0,12}$/.test(p[3])) { var dA = 'A' + b36ToDec(p[3]); if (deedOk(dA)) return { action: 'deed', petId: n(2), asset: dA }; } /* pet token binding; inert before ACTIVATE_SALES_BLOCK */
+    if (a === 'UNSELL' && p.length === 3 && /^[0-9A-F]{8}$/.test(p[2])) return { action: 'unsell', ord: p[2].toLowerCase() }; /* end a shop listing early; inert before ACTIVATE_SALES_BLOCK */
     if (a === 'SWAP' && p.length === 4 && idOk(p[2]) && idOk(p[3])) return { action: 'swap', mine: n(2), theirs: n(3) }; /* swaps; inert before ACTIVATE_GIVE_BLOCK */
     if ((a === 'SWAPOK' || a === 'SWAPNO') && p.length === 3 && idOk(p[2])) return { action: a === 'SWAPOK' ? 'swapok' : 'swapno', n: n(2) };
     if (a === 'HI' && p.length === 2) return { action: 'hi' }; /* hello burn (player #); inert before ACTIVATE_GIVE_BLOCK */
@@ -1130,7 +1173,7 @@
     var seen = {};
     if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);
     w.wagmi = {}; w.wagmiFirst = {}; w.swaps = []; w.players = {}; w.playerList = []; w.giftLog = [];
-    SALE_DEX = opts.dex || null; var saleIx = salesOn(tip) ? dexIndex(SALE_DEX) : null; if (ACTIVATE_SALES_BLOCK != null) w.listings = [];
+    SALE_DEX = opts.dex || null; var saleIx = salesOn(tip) ? dexIndex(SALE_DEX) : null; if (ACTIVATE_SALES_BLOCK != null) { w.listings = []; w.deeds = {}; }
     preRows.forEach(function (r) { playerSeen(w, (r.raw || r).source); });
     function L(e, kind, msg, extra) { var o = Object.assign({ block: e.block_index, tx: e.tx_hash, kind: kind, msg: msg }, extra || {}); w.log.push(o); return o; }
     var resolvedWeeks = {};
@@ -1576,12 +1619,16 @@
       case 'hi': {
         if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
         return L(r, 'hi', src + ' said hi: player #' + playerCode(playerNo(w, src)), { player: playerNo(w, src) }); }
-      case 'sell': {  /* PET SHOP LISTING (see ACTIVATE_SALES_BLOCK) */
+      case 'deed': {  /* PET TOKEN BINDING (see ACTIVATE_SALES_BLOCK) */
         if (!salesOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
-        var slp = pet(t.petId), sly = saleWhy(w, t, src, b, amt, SALE_DEX || null); if (sly) return L(r, 'rejected', 'shop: ' + sly);
-        var sox = dexIndex(SALE_DEX).list.filter(function (o) { return o.source === src && String(o.tx_hash).slice(0, 8) === t.ord; })[0];
-        var SL = { n: w.listings.length + 1, petId: slp.id, seller: src, block: b, tx: r.tx_hash, order: sox.tx_hash, orderBlock: Number(sox.block_index), give: sox.give_asset, asset: sox.get_asset, price: Number(sox.get_quantity), expire: saleExpire(sox), status: 'open' };
-        w.listings.push(SL); return L(r, 'listing', '#' + slp.id + ' is in the shop (listing ' + SL.n + ', until block ' + SL.expire + ')', { petId: slp.id, listing: SL.n }); }
+        var dlp = pet(t.petId), dly = deedWhy(w, t, src, b, amt, SALE_DEX ? dexIndex(SALE_DEX) : null); if (dly) return L(r, 'rejected', 'shop token: ' + dly);
+        bindDeed(w, dlp, t.asset, src, b, r.tx_hash, dexIndex(SALE_DEX));
+        return L(r, 'deed', '#' + dlp.id + ' has a pet token: ' + t.asset, { petId: dlp.id, asset: t.asset }); }
+      case 'unsell': {  /* END A SHOP LISTING EARLY (see ACTIVATE_SALES_BLOCK) */
+        if (!salesOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
+        var uns = unsellWhy(w, t, src, b, amt); if (uns[0]) return L(r, 'rejected', 'shop: ' + uns[0]);
+        uns[1].endBlock = b + SALE_UNSELL_SETTLE; uns[1].unsellTx = r.tx_hash;
+        return L(r, 'unsell', 'listing ' + uns[1].n + ' (#' + uns[1].petId + ') ends at block ' + uns[1].endBlock, { petId: uns[1].petId, listing: uns[1].n }); }
       case 'give': {  /* PET GIFTING (see ACTIVATE_GIVE_BLOCK) */
         if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var gvp = pet(t.petId), gvw = giveWhy(w, t, src, b, amt); if (gvw) return L(r, 'rejected', 'gift: ' + gvw);
@@ -2572,7 +2619,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { petFilter: petFilter, petFilterMatch: petFilterMatch, petFilterSort: petFilterSort, OLD_MONEY_LABEL: OLD_MONEY_LABEL, oldMoney: oldMoney, oldMoneyBefore: function () { return OLD_MONEY_BEFORE; }, _setOldMoneyBefore: function (b) { OLD_MONEY_BEFORE = b; }, ACTIVATE_SALES_BLOCK: ACTIVATE_SALES_BLOCK, salesGate: function () { return ACTIVATE_SALES_BLOCK; }, salesOn: salesOn, _setSalesActivation: function (b) { ACTIVATE_SALES_BLOCK = b; }, SALE_EXPIRY: SALE_EXPIRY, SALE_MAX_EXPIRY: SALE_MAX_EXPIRY, SALE_ORDER_LAG: SALE_ORDER_LAG, SALE_MIN: SALE_MIN, saleWhy: saleWhy, saleState: saleState, saleListing: saleListing, openListings: openListings, saleFill: saleFill, saleTag: saleTag, uniqueAsk: uniqueAsk, sellOrderPlan: sellOrderPlan, sellBurnPlan: sellBurnPlan, buyPlan: buyPlan, cancelPlan: cancelPlan, dexSimulate: dexSimulate, buyGuard: buyGuard, saleAmountText: saleAmountText, saleExpire: saleExpire, ACTIVATE_GIVE_BLOCK: ACTIVATE_GIVE_BLOCK, GIVE_SETTLE: GIVE_SETTLE, giveOn: giveOn, _setGiveActivation: function (b) { ACTIVATE_GIVE_BLOCK = b; }, giveWhy: giveWhy, giveLocks: giveLocks, giftMoves: giftMoves, givePlan: givePlan, giveBatches: giveBatches, SWAP_WINDOW: SWAP_WINDOW, swapWhy: swapWhy, swapOpen: swapOpen, swapsFor: swapsFor, swapPlan: swapPlan, swapOkPlan: swapOkPlan, swapNoPlan: swapNoPlan, giftsTo: giftsTo, playerNo: playerNo, playerAddr: playerAddr, playerCode: playerCode, parsePlayer: parsePlayer, hiPlan: { tag: 'pet:hi', amount: 0.00000001 },   ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
+  return { petFilter: petFilter, petFilterMatch: petFilterMatch, petFilterSort: petFilterSort, OLD_MONEY_LABEL: OLD_MONEY_LABEL, oldMoney: oldMoney, oldMoneyBefore: function () { return OLD_MONEY_BEFORE; }, _setOldMoneyBefore: function (b) { OLD_MONEY_BEFORE = b; }, ACTIVATE_SALES_BLOCK: ACTIVATE_SALES_BLOCK, salesGate: function () { return ACTIVATE_SALES_BLOCK; }, salesOn: salesOn, _setSalesActivation: function (b) { ACTIVATE_SALES_BLOCK = b; }, SALE_EXPIRY: SALE_EXPIRY, SALE_MAX_EXPIRY: SALE_MAX_EXPIRY, SALE_ORDER_LAG: SALE_ORDER_LAG, SALE_UNSELL_SETTLE: SALE_UNSELL_SETTLE, SALE_MIN: SALE_MIN, DEED_MIN: DEED_MIN, DEED_MAX: DEED_MAX, deedOk: deedOk, deedDesc: deedDesc, deedTag: deedTag, decTo36: decTo36, b36ToDec: b36ToDec, randomDeed: randomDeed, deedWhy: deedWhy, deedIssueWhy: deedIssueWhy, listWhy: listWhy, unsellWhy: unsellWhy, deedOf: deedOf, sellStep: sellStep, dexIndex: dexIndex, petFree: petFree, saleState: saleState, saleListing: saleListing, openListings: openListings, saleFill: saleFill, mintPlan: mintPlan, deedPlan: deedPlan, listPlan: listPlan, buyPlan: buyPlan, cancelPlan: cancelPlan, unsellTag: unsellTag, unsellPlan: unsellPlan, buyGuard: buyGuard, saleAmountText: saleAmountText, saleExpire: saleExpire, ACTIVATE_GIVE_BLOCK: ACTIVATE_GIVE_BLOCK, GIVE_SETTLE: GIVE_SETTLE, giveOn: giveOn, _setGiveActivation: function (b) { ACTIVATE_GIVE_BLOCK = b; }, spamCityGate: function () { return ACTIVATE_SPAM_CITY_BLOCK; }, giveGate: function () { return ACTIVATE_GIVE_BLOCK; }, _setSpamCityActivation: function (b) { ACTIVATE_SPAM_CITY_BLOCK = ACTIVATE_GIVE_BLOCK = ACTIVATE_SALES_BLOCK = b; }, giveWhy: giveWhy, giveLocks: giveLocks, giftMoves: giftMoves, givePlan: givePlan, giveBatches: giveBatches, SWAP_WINDOW: SWAP_WINDOW, swapWhy: swapWhy, swapOpen: swapOpen, swapsFor: swapsFor, swapPlan: swapPlan, swapOkPlan: swapOkPlan, swapNoPlan: swapNoPlan, giftsTo: giftsTo, playerNo: playerNo, playerAddr: playerAddr, playerCode: playerCode, parsePlayer: parsePlayer, hiPlan: { tag: 'pet:hi', amount: 0.00000001 },   ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
     ACTIVATE_WIZ_BREED_BLOCK: ACTIVATE_WIZ_BREED_BLOCK, wizBreedOn: wizBreedOn, _setWizBreedActivation: function (b) { ACTIVATE_WIZ_BREED_BLOCK = b; }, WIZ_SP: WIZ_SP, ACTIVATE_WIZ_TIER2_BLOCK: ACTIVATE_WIZ_TIER2_BLOCK, wizTier2On: wizTier2On, wizRollTier: wizRollTier, _setWizTier2Activation: function (b) { ACTIVATE_WIZ_TIER2_BLOCK = b; }, ACTIVATE_WIZ_TIER_BLOCK: ACTIVATE_WIZ_TIER_BLOCK, WIZ_FIXED_TIER: WIZ_FIXED_TIER, wizTierOn: wizTierOn, _setWizTierActivation: function (b) { ACTIVATE_WIZ_TIER_BLOCK = b; }, ACTIVATE_KEK_BLOCK: ACTIVATE_KEK_BLOCK, ACTIVATE_KEK_CARD_BLOCK: ACTIVATE_KEK_CARD_BLOCK, kekCardOn: kekCardOn, KEK_CARD_DROP_N: KEK_CARD_DROP_N, KEK_CARD_ITEM: KEK_CARD_ITEM, KEK_FROM_BLOCK: KEK_FROM_BLOCK, _setKekActivation: function (b) { ACTIVATE_KEK_BLOCK = b; }, kekOn: kekOn, kekColdOn: kekColdOn, kekArt: kekArt, kekActivation: function () { return ACTIVATE_KEK_BLOCK; }, ACTIVATE_WIZ_PRIORITY_BLOCK: ACTIVATE_WIZ_PRIORITY_BLOCK, WIZ_PRIORITY: WIZ_PRIORITY, _setWizPriorityActivation: function (b) { ACTIVATE_WIZ_PRIORITY_BLOCK = b; }, ACTIVATE_NO_NAKA_BLOCK: ACTIVATE_NO_NAKA_BLOCK, noNakaOn: noNakaOn, _setNoNakaActivation: function (b) { ACTIVATE_NO_NAKA_BLOCK = b; }, ACTIVATE_BREED_FIX_BLOCK: ACTIVATE_BREED_FIX_BLOCK, breedFixOn: breedFixOn, capTraits: capTraits, breed: breed, _setBreedFixActivation: function (b) { ACTIVATE_BREED_FIX_BLOCK = b; }, ACTIVATE_RUMBLE_OFF_BLOCK: ACTIVATE_RUMBLE_OFF_BLOCK, rumbleOff: rumbleOff, _setRumbleOffActivation: function (b) { ACTIVATE_RUMBLE_OFF_BLOCK = b; }, ACTIVATE_LEG_BOOST_BLOCK: ACTIVATE_LEG_BOOST_BLOCK, LEG_SCALE: LEG_SCALE, LEG_BOOST_W: LEG_BOOST_W, legBoostOn: legBoostOn, _setLegBoostActivation: function (b) { ACTIVATE_LEG_BOOST_BLOCK = b; }, ACTIVATE_GEAR_CAP_BLOCK: ACTIVATE_GEAR_CAP_BLOCK, gearCapOn: gearCapOn, repairGear: repairGear, _setGearCapActivation: function (b) { ACTIVATE_GEAR_CAP_BLOCK = b; }, ACTIVATE_HYBRID_RATE_BLOCK: ACTIVATE_HYBRID_RATE_BLOCK, HYBRID_RATE_1E9: HYBRID_RATE_1E9, hybridRateOn: hybridRateOn, draw1e9: draw1e9, bredTrueBonus: bredTrueBonus, BRED_TRUE_POOL: BRED_TRUE_POOL, BRED_TRUE_STAT: BRED_TRUE_STAT, _setHybridRateActivation: function (b) { ACTIVATE_HYBRID_RATE_BLOCK = b; }, ACTIVATE_TIER_SPECIES_BLOCK: ACTIVATE_TIER_SPECIES_BLOCK, TIER_UNLOCK: TIER_UNLOCK, tierSpeciesOn: tierSpeciesOn, tierPool: tierPool, pickTierSpecies: pickTierSpecies, minTierOf: minTierOf, relabelTiers: relabelTiers, _setTierSpeciesActivation: function (b) { ACTIVATE_TIER_SPECIES_BLOCK = b; }, CUTOFF_BLOCK: CUTOFF_BLOCK, ACTIVATE_NAKA_777_BLOCK: ACTIVATE_NAKA_777_BLOCK, naka777: naka777, hatchArt: hatchArt, SPECIES12: SPECIES12, ACTIVATE_NAKA_NORMAL_BLOCK: ACTIVATE_NAKA_NORMAL_BLOCK, nakaNormal: nakaNormal, LIVE_DEATH_FROM_BLOCK: LIVE_DEATH_FROM_BLOCK, RETIRED: RETIRED, resolveItem: resolveItem, itemOf: itemOf, readBurns: readBurns, importLive: importLive, migrateLoadout: migrateLoadout, setLiveEngine: setLiveEngine, V2_FROM_BLOCK: V2_FROM_BLOCK, BLOCKS_PER_DAY: BLOCKS_PER_DAY, WEEK: WEEK, COSTS: UI_COSTS, BASE_COSTS: COSTS, ACTIVATE_HALVING_BLOCK: ACTIVATE_HALVING_BLOCK, HALVING_DELAY: HALVING_DELAY, COMMUNITY_PET_ARRIVAL_BLOCKS: COMMUNITY_PET_ARRIVAL_BLOCKS, ACTIVATE_COMMUNITY_TRIGGER_BLOCK: ACTIVATE_COMMUNITY_TRIGGER_BLOCK, _setCommunityTriggerActivation: function (b) { ACTIVATE_COMMUNITY_TRIGGER_BLOCK = b; }, halvingOn: halvingOn, halving1Block: halving1Block, halvingBlocks: halvingBlocks, eraAt: eraAt, costAt: costAt, costsAt: costsAt, syncCosts: syncCosts, planAmount: planAmount, ACTIVATE_SPINS_BLOCK: ACTIVATE_SPINS_BLOCK, SPINS_MAX_PER_BURN: SPINS_MAX_PER_BURN, spinsOn: spinsOn, spinsLeft: spinsLeft, useSpinPlan: useSpinPlan, overflowSpins: overflowSpins, _setSpinsActivation: function (b) { ACTIVATE_SPINS_BLOCK = b; }, ACTIVATE_FIRESALE_BLOCK: ACTIVATE_FIRESALE_BLOCK, FIRE: { ODDS_1K: FIRE_ODDS_1K, WARN: FIRE_WARN, LEN: FIRE_LEN, COOLDOWN: FIRE_COOLDOWN, KEK_PAUSE: FIRE_KEK_PAUSE, PAY: FIRE_PAY, FEED_PAY: FIRE_FEED_PAY }, fireOn: fireOn, fireRoll: fireRoll, fireExtend: fireExtend, fireBlackout: fireBlackout, saleAt: saleAt, fireFactor: fireFactor, fireInfo: fireInfo, fullAt: fullAt, fireSpinsOf: function (w, a) { return (w && w.fireSpins && w.fireSpins[a]) || 0; }, _setFiresaleActivation: function (b) { ACTIVATE_FIRESALE_BLOCK = b; }, _setFireHashes: function (h) { FIRE_HASHES = h || {}; }, below: below, mealCost: mealCost, halvingInfo: halvingInfo, petThresholds0: petThresholds, _setHalvingActivation: function (b) { ACTIVATE_HALVING_BLOCK = b; }, _setCommunityPetArrivals: function (a) { COMMUNITY_PET_ARRIVAL_BLOCKS.length = 0; (a || []).forEach(function (x) { COMMUNITY_PET_ARRIVAL_BLOCKS.push(x); }); }, FEED_QUICK: FEED_QUICK, FEE_SATS: FEE_SATS, MAX_RELEASE_PER_BURN: MAX_RELEASE_PER_BURN,
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, ACTIVATE_CHUD_BEARD_PART_BLOCK: ACTIVATE_CHUD_BEARD_PART_BLOCK, beardPartOn: beardPartOn, CHUD_BEARD_PART: CHUD_BEARD_PART, BEARD_PART_EXCLUDE: BEARD_PART_EXCLUDE, _setChudBeardPartActivation: function (b) { ACTIVATE_CHUD_BEARD_PART_BLOCK = b; }, _pool: pool, _setEligB: function (b) { ELIG_B = b; }, partDef: partDef, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, BEARD_EXCLUDE: BEARD_EXCLUDE, bodyOf: bodyOf, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW,

@@ -162,12 +162,20 @@
    * XCP Wallet signing as send(); the composed tx is checked against the plan before the wallet window opens. Never called below ACTIVATE_SALES_BLOCK. */
   function dexUrl(base, me, plan, fee) { base = String(base).trim().replace(/\/+$/, ''); if (!/\/v2$/.test(base)) base += '/v2';
     if (/broadcast|sign/i.test(base)) throw new Error('refusing an API base that mentions broadcast/sign');
-    var q = plan.kind === 'cancel' ? ['offer_hash=' + encodeURIComponent(plan.offer_hash)] : ['give_asset=' + encodeURIComponent(plan.give_asset), 'give_quantity=' + Math.round(plan.give_quantity), 'get_asset=' + encodeURIComponent(plan.get_asset), 'get_quantity=' + Math.round(plan.get_quantity), 'expiration=' + Math.round(plan.expiration), 'fee_required=0'];
+    var q = plan.kind === 'cancel' ? ['offer_hash=' + encodeURIComponent(plan.offer_hash)]
+      : plan.kind === 'issuance' ? ['asset=' + encodeURIComponent(plan.asset), 'quantity=' + Math.round(plan.quantity), 'divisible=' + (plan.divisible ? 'true' : 'false'), 'lock=' + (plan.lock ? 'true' : 'false'), 'description=' + encodeURIComponent(plan.description)]
+      : ['give_asset=' + encodeURIComponent(plan.give_asset), 'give_quantity=' + Math.round(plan.give_quantity), 'get_asset=' + encodeURIComponent(plan.get_asset), 'get_quantity=' + Math.round(plan.get_quantity), 'expiration=' + Math.round(plan.expiration), 'fee_required=0'];
     q.push('encoding=opreturn', 'verbose=true', 'validate=true', 'exclude_utxos_with_balances=true', 'sat_per_vbyte=' + fee);
-    return base + '/addresses/' + encodeURIComponent(me) + '/compose/' + (plan.kind === 'cancel' ? 'cancel' : 'order') + '?' + q.join('&'); }
+    return base + '/addresses/' + encodeURIComponent(me) + '/compose/' + (plan.kind === 'cancel' ? 'cancel' : plan.kind === 'issuance' ? 'issuance' : 'order') + '?' + q.join('&'); }
   function dexCheck(r, me, plan) { var pr = (r && r.params) || {}, bad = []; if (!r || !/^[0-9a-f]+$/i.test(r.rawtransaction || '')) bad.push('no raw transaction hex'); if (!r || !r.params) bad.push('node did not echo params');
     if (r && r.name && r.name !== plan.kind) bad.push('composed a ' + r.name); if (pr.source && pr.source !== me) bad.push('source differs');
     if (plan.kind === 'cancel') { if (pr.offer_hash && pr.offer_hash !== plan.offer_hash) bad.push('offer differs'); }
+    else if (plan.kind === 'issuance') { /* pet token: free numeric asset, 1 unit, indivisible, locked, exact description; never a transfer or a named asset */
+      if (!/^A[1-9][0-9]{16,19}$/.test(plan.asset)) bad.push('not a numeric asset');
+      if (pr.asset != null && pr.asset !== plan.asset) bad.push('asset differs'); if (pr.quantity != null && Number(pr.quantity) !== 1) bad.push('quantity differs');
+      if (pr.divisible != null && !!pr.divisible !== false) bad.push('divisible differs'); if (pr.lock != null && !!pr.lock !== true) bad.push('lock differs');
+      if (pr.description != null && pr.description !== plan.description) bad.push('description differs'); if (pr.transfer_destination) bad.push('has a transfer');
+      if (pr.fee != null && Number(pr.fee) !== 0) bad.push('asset fee is not 0 (' + pr.fee + ')'); }
     else ['give_asset', 'give_quantity', 'get_asset', 'get_quantity', 'expiration'].forEach(function (k) { if (pr[k] != null && String(pr[k]) !== String(plan[k])) bad.push(k + ' differs'); });
     return bad; }
   function sendDex(plan, viewed) {

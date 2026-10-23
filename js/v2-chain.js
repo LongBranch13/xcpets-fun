@@ -18,7 +18,7 @@
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
   function fnv(s, h) { h = h == null ? 0x811c9dc5 : h; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function inSig() { var hk = Object.keys(S.hashes || {}).sort(function (a, b) { return a - b; }), hh = 0x811c9dc5; hk.forEach(function (k) { hh = fnv(k + ':' + S.hashes[k] + ';', hh); });
-    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.orders, S.dex.matches])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
+    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.issuances, S.dex.orders, S.dex.matches])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
   function keepOrDrop() { if (cache && cacheSig !== inSig()) cache = null; }
   /* Cross-visit cache (smooth-perf): the last replayed world is kept in IndexedDB under ONE entry, keyed by build id + inSig() + opsSig. A page whose
    * inputs match (same build, burns, tip, hashes and local ops) reuses it instead of replaying; anything else replays as before. The stored value is
@@ -85,8 +85,8 @@
         var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
         S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
-        /* pet-shop-sales: XCPETS/XCP orders + matches are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
-        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex().then(function (d) { S.dex = d; }) : null;
+        /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
+        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { S.dex = d; }) : null;
         return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
       });
     }).then(function () { keepOrDrop(); S.verified = true; S.missingBlocks = []; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },

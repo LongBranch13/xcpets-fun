@@ -36,7 +36,15 @@
  .sh-buy{font-size:8px;padding:6px 8px}.sh-sellrow,.sh-row{flex-direction:column;align-items:stretch}.sh-sellrow>.sh-card,.sh-row .sh-card{flex:none;width:170px}}
 /* Old Money badge + filter states (display only) */
 .sh-om{display:inline-block;margin:4px 0 2px;background:#1d3b1f;color:#ffe08a;border:2px solid #E8B33A;padding:2px 6px;font:9px "Press Start 2P",monospace;box-shadow:2px 2px 0 #000}
+.sh-deed{display:inline-block;margin:4px 0 2px 4px;background:#14324a;color:#bfe6ff;border:2px solid #5fb3e8;padding:2px 6px;font:9px "Press Start 2P",monospace;box-shadow:2px 2px 0 #000}
+.sh-deed-bad{background:#4a1414;color:#ffc0c0;border-color:#e85f5f}
 .sh-omline{margin:0 0 8px;font-size:13px}
 .sh-later{opacity:.6}
 .sh-state{display:inline-block;padding:1px 6px;border:2px solid #000;font-weight:700;font-size:12px}
 .sh-s-open{background:#8fe38f}.sh-s-sold{background:#E8B33A}.sh-s-expired,.sh-s-void{background:#bbb}
+/* Spam City counters: Buy / Sell / Trade / Gift (one launch) */
+.sh-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px}
+.sh-tab{font:10px "Press Start 2P",monospace;padding:9px 12px;background:#2a1d10;color:#ffe08a;border:3px solid #E8B33A;box-shadow:3px 3px 0 #000;cursor:pointer}
+.sh-tab.on{background:#E8B33A;color:#1d1206}
+.sh-cnt{display:inline-block;margin-left:4px;padding:1px 5px;background:#c0392b;color:#fff;border:2px solid #000;font-size:8px}
+.sh-swap{align-items:center}.sh-swapx{font-size:24px;color:#ffe08a;padding:0 4px}
