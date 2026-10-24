@@ -144,7 +144,11 @@
     var r = V.newHatches(w, ME, seen); try { localStorage.setItem(HKEY, JSON.stringify(r.seen)); } catch (e) { }
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
-  function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
+  var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
+  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
+    var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
+    if (ws) { wspinOn = true; var r0 = rev; WA.reveal(ws, function () { wspinOn = false; if (rev !== r0) return; drawReveal(); open('packBox'); }); return; }
+    drawReveal(); open('packBox'); }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
