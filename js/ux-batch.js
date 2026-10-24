@@ -35,8 +35,9 @@
     if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; } sel.value = F.sp || 'all'; }
   window.UXB = {};
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
-  UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, '');
+  UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && q ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search (js/v2-pet-search.js) */
     return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false;
+      if (SM) return SM(p);
       if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
     $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1'; if ($('fSpecies')) $('fSpecies').value = F.sp || 'all';
@@ -265,7 +266,9 @@
     if (FO.a && (!w.byId[FO.a] || w.byId[FO.a].owner !== ME)) FO.a = null; if (FO.b && (!w.byId[FO.b] || w.byId[FO.b].owner === ME)) FO.b = null;
     /* 2026-10-19: no default pet on your side. It used to auto-pick your first eligible fighter (lowest pet number), which hid that the card opens the picker.
      * Your side now starts empty ('Pick your pet') unless you arrived with a pet on purpose (UXB.battleWith / play.html#battle-ID). */
-    if (FO.want != null) { var wp = w.byId[FO.want]; if (wp && wp.owner === ME && !wp.dead && !wp.released) { FO.a = wp.id; FO.want = null; var bp = $('battlePanel'); if (bp) setTimeout(function () { bp.scrollIntoView(); }, 0); } }
+    if (FO.want != null) { var wp = w.byId[FO.want]; if (wp && wp.owner === ME && !wp.dead && !wp.released) { FO.a = wp.id; FO.want = null; var bp = $('battlePanel'); if (bp) setTimeout(function () { bp.scrollIntoView(); }, 0); }
+      /* fight-preselect (owner Oct 24 2026): fight.html#battle-ID for someone else's living pet puts it on the opponent side (you still pick yours) */
+      else if (wp && ME && wp.owner !== ME && !wp.dead && !wp.released) { FO.b = wp.id; FO.want = null; } }
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], okA = A && !whyNot(A, w), okB = B && !whyNot(B, w), sw = okA && okB && window.V2UI && V2UI.sendWhy ? V2UI.sendWhy({ tag: 'pet:fight:' + A.id + ':' + B.id }) : null; if (sw) okA = false; /* wasted-burn guard: engine rules (open challenge, etc.) */
     var TIP = (window.V2UI && V2UI.S().tip) || w.tip || 0, inc = (w.fights || []).filter(function (f) { var q = w.byId[f.b]; return f.status === 'open' && TIP + 1 - f.block <= V.FIGHT_WINDOW && q && q.owner === ME && IGN.indexOf(f.id) < 0; }); /* wasted-burn guard: expired challenges drop out */
     /* arena-sharp-text (owner 9:34 PM CT): one Challenge area with two tabs; the Incoming tab carries a count badge so incoming fights show at a glance */

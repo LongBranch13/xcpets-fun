@@ -123,8 +123,8 @@
     '.rv{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:13px}.rv-chip{padding:2px 6px;background:#ffd166;color:#140f24;border:2px solid #000;text-decoration:none;font-weight:bold}.rv-wl{font-family:"Press Start 2P",monospace;font-size:10px;color:#3ddc84}.rv-st{color:#9fe8ff}' +
     '.ar-ann{display:inline-flex;align-items:center;gap:4px}.ar-qm{margin-left:4px}';
   if (typeof document !== 'undefined' && !document.getElementById('rvCss')) { var s = document.createElement('style'); s.id = 'rvCss'; s.textContent = CSS; (document.head || document.documentElement).appendChild(s); }
-  /* rival replay links: on play.html play in the arena sand (closing the pet detail first); elsewhere they go to play.html#replay-N */
-  if (typeof document !== 'undefined') document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-rvrp]'); if (!a || !window.V2ArenaScene || !document.getElementById('arScene') || !window.V2UI) return;
+  /* rival replay links: on play.html play in the arena sand (closing the pet detail first); elsewhere they go to fight.html#replay-N */
+  if (typeof document !== 'undefined') document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-rvrp]'); if (!a || !window.V2ArenaScene || !document.getElementById('arScene') || !document.getElementById('arScene').getClientRects().length || !window.V2UI) return; /* species-ranks-split: arena hidden on play.html -> the link goes to fight.html */
     var f = V2UI.world().fights[a.dataset.rvrp - 1]; if (!f) return; e.preventDefault(); var dc = document.getElementById('dClose'); if (dc && document.getElementById('detail') && document.getElementById('detail').classList.contains('on')) dc.click(); V2ArenaScene.sequence(f); });
   window.V2Rivals = { rivals: rivals, rivalsOf: rivalsOf, rivalryFor: rivalryFor, strip: strip, streakText: streakText };
   window.V2Announcer = { script: script, voiceOn: voiceOn, setVoice: setVoice, speak: speak, reset: reset, chooseVoice: chooseVoice, MEME: MEME, FRESH: FRESH };
