@@ -16,7 +16,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- DEX reads: cached for TTL, paginated by next_cursor, 429 honours Retry-After (seconds or HTTP date), 4 tries */
-  var mem = {}, REQ_MS = 9000, LKEY = 'xcpets-dex-last-1', DEAD = {}; /* full-node bases that timed out or failed this page view: skipped after that */
+  var mem = {}, REQ_MS = 9000, LKEY = 'xcpets-dex-last-1', DEAD = (function () { try { var d = JSON.parse(sessionStorage.getItem('xcpets-dead-nodes')) || {}; return d.at && Date.now() - d.at < 6e5 ? d.n || {} : {}; } catch (e) { return {}; } })(); /* site-fast-hotfix: a dead node stays skipped for 10 min this session; full-node bases that timed out or failed this page view: skipped after that */
   /* Mint ties (rule 3) only happened from ACTIVATE_SPAM_RULES_BLOCK to ACTIVATE_ONE_TIE_PATH_BLOCK (972896); that window is closed, so its tokens are a fixed list
    * (CI api-feed scan of the full nodes at 972909). Used only when every full node fails. */
   var MINT_WINDOW = ['A11407417926526760582', 'A175164024751316932', 'A9059073792275355799'];
@@ -33,7 +33,7 @@
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
     return inflight[url]; }
   function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
-    var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, REQ_MS) : 0; /* sales-net-fallback: one slow server can't hold the page */
+    var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page */ : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
       if (r.status === 429 || r.status === 503) { if (n >= 6) throw new Error('DEX API busy (' + r.status + ')'); var ra = r.headers.get('Retry-After'), s = Number(ra);
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 60e3)); return wait(Math.min(ms || 1000, 60e3)).then(function () { return getJ0(url, n + 1); }); }
@@ -57,7 +57,7 @@
       var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
-      return go(null).catch(function (e) { if (!e || e.status !== 404) DEAD[base] = 1; return on(i + 1); }); }
+      return go(null).catch(function (e) { if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
     return on(0); }
   /* xcpfun-backup: api.xcp.fun has no /assets/A/credits, so rebuild that list from per-address credits/debits of every address that can have touched
    * the token (issuer, current holders, order sources, match parties), then PROVE it is complete or reject: every send-type debit/credit must pair by
@@ -112,7 +112,7 @@
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
         if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); if (++k >= 50) throw new Error('too many issuances to scan'); return go(j.next_cursor); }); }
-      return go(null).catch(function (e) { if (!e || e.status !== 404) DEAD[base] = 1; return on(i + 1); }); }
+      return go(null).catch(function (e) { if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
     return on(0); }
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null);
     return mintAssets(rows).then(function (ma) { return loadDex2(rows, ma).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: lkey(rows, ma), d: d })); } catch (e) { } return d; }, function (err) {

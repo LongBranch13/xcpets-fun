@@ -93,6 +93,9 @@ if (require.main === module) (async () => {
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
+  /* site-fast: first-visit boot copy for js/v2-chain.js fromStatic() (only the hashes the rows need; the page re-reads the chain right after) */
+  { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; });
+    fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null })); }
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
   console.log('tip', meta.blockHeight, 'pets', pets.length, 'burns', meta.burns, '->', OUT);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
