@@ -82,5 +82,13 @@ if (require.main === module) (async () => {
     else np += put(path.join(OUT, p.id + '.png'), png(fr[0].data, 32, 32, SCALE)); }
   if (!only) put(path.join(OUT, 'index.json'), Buffer.from(JSON.stringify({ blockHeight: input.tip, count: pets.length, url: SITE + '/t/<id>.json' }) + '\n'));
   if (A.includes('--tokened') && mintsOk) put(STATE, Buffer.from(JSON.stringify({ lastBlock: input.tip }) + '\n'));
+  /* api/ties.json (Oct 24 2026): every verified tie in one small file (HatchBot tie announcements read this instead of polling t/<id>.json).
+   * lastBlock = api/token-meta-state.json lastBlock (same value). kind: 'deed' = a pet:deed burn tx, 'mint' = pre-gate mint-only tie (rule 3). */
+  if (A.includes('--tokened') || A.includes('--ties')) { let lb = input.tip; try { lb = Number(JSON.parse(fs.readFileSync(STATE, 'utf8')).lastBlock) || lb; } catch (e) { }
+    const burnTx = new Set(rows.map(r => r.tx_hash)), pById = new Map(pets.map(p => [p.id, p]));
+    const ties = Object.keys(assetOf).map(Number).map(id => { const v = assetOf[id], p = pById.get(id) || {};
+      return { id, asset: v.asset, tiedBlock: v.block, tiedTx: v.tx, kind: burnTx.has(v.tx) ? 'deed' : 'mint', name: p.name || '', species: p.species || '', speciesLabel: p.speciesLabel || '', rarity: p.tier || '', stage: p.stageName || '' }; })
+      .sort((a, b) => a.tiedBlock - b.tiedBlock || a.id - b.id);
+    put(path.join(ROOT, 'api', 'ties.json'), Buffer.from(JSON.stringify({ lastBlock: lb, count: ties.length, url: SITE + '/t/<id>.json', ties }, null, 1) + '\n')); console.log('ties.json', ties.length, 'lastBlock', lb); }
   console.log('tip', input.tip, 'pets', pets.length, 'json written', nj, 'png written', np, 'no sprite', bad, '->', OUT);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
