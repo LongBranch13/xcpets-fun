@@ -36,5 +36,5 @@ ok(same === 3000, 'hatchArt identical with the electric gate on vs off');
 const evE = E.map(e => e * 1000), eggsN = 100000 / 6900 * 144, evN = Nn.map(e => e * eggsN);
 console.log('SIM N=' + N + ' electric: ' + tc.map((x, k) => nm[k] + ' ' + (x / N * 100).toFixed(2) + '%').join(', '));
 console.log('EV one Electric case (1,000 eggs): ' + evE.map((x, k) => nm[k] + ' ' + x.toFixed(1)).join(', '));
-console.log('EV same XCPETS on Croak Crates (' + eggsN.toFixed(0) + ' eggs): ' + evN.map((x, k) => nm[k] + ' ' + x.toFixed(1)).join(', '));
+console.log('EV same XCPETS on Yolk Booster Boxes (' + eggsN.toFixed(0) + ' eggs): ' + evN.map((x, k) => nm[k] + ' ' + x.toFixed(1)).join(', '));
 console.log((fail ? 'FAILED ' : 'OK ') + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

@@ -19,8 +19,8 @@
       ? '<b>👑 The halving</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half' + (h.era > 1 ? ' again' : '') + '.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'
       : '<b>⚔️ Lord Kek has been defeated</b> <span>From block ' + fmt(h.next) + ' (' + left + ' block' + (left === 1 ? '' : 's') + ' away) every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'; }
   function labels() { if (!V.COSTS || !V.COSTS.era) return; var C = V.COSTS, set = function (id, t) { var b = document.getElementById(id); if (b && b.textContent !== t) b.textContent = t; };
-    set('hatchBtn', 'Crack 1 egg (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Swamp Dozen · 12 times (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Croak Crate · 144 times (' + fmt(C.hatch144) + ')');
-    if (C.hatchzap != null) { var zt = document.querySelector('#zapBtn .zap-t'), zs = '⚡ Electric Crate · 1,000 times (' + fmt(C.hatchzap) + ')'; if (zt && zt.textContent !== zs) zt.textContent = zs; } set('bGo', '🛎️ Check in · ' + fmt(C.breed));
+    set('hatchBtn', 'Rip a Single (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Crack Pack · 12 times (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Yolk Booster Box · 144 times (' + fmt(C.hatch144) + ')');
+    if (C.hatchzap != null) { var zt = document.querySelector('#zapBtn .zap-t'), zs = '⚡ Shell Shock Box · 1,000 times (' + fmt(C.hatchzap) + ')'; if (zt && zt.textContent !== zs) zt.textContent = zs; } set('bGo', '🛎️ Check in · ' + fmt(C.breed));
     /* community feed choices halve too (owner Oct 22 2026): relabel the 69 / 690 / 6,900 buttons and keep the chosen amount in step */
     var q = C.cquick || [], bs = document.querySelectorAll('[data-camt]'), ca = document.getElementById('cAmt'), on = null;
     [].forEach.call(bs, function (b, i) { if (!b.dataset.cbase) b.dataset.cbase = b.dataset.camt; var j = [69, 690, 6900].indexOf(+b.dataset.cbase); if (j < 0 || q[j] == null) return; var v = String(q[j]); if (b.dataset.camt !== v) { b.dataset.camt = v; b.textContent = fmt(q[j]); } if (b.classList.contains('on')) on = v; });

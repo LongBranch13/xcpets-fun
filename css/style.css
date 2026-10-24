@@ -208,3 +208,11 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 @keyframes zapSpark{0%{opacity:1}30%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.zap-btn,.zap-egg,.zap-btn .spk{animation:none}}
 .zap-odds{margin:.5em 0 0;color:#ffe94a}
+/* EGG RIPS (preview): foil-pack wrapper on the hatch buttons, a pixel jagged tear line along the top edge */
+#hatchBtn, #dozenBtn, #caseBtn, #zapBtn { position: relative; }
+#hatchBtn::after, #dozenBtn::after, #caseBtn::after, #zapBtn::after { content: ""; position: absolute; left: 10px; right: 10px; top: 3px; height: 4px; pointer-events: none; image-rendering: pixelated;
+  background: linear-gradient(135deg, rgba(255,255,255,.6) 25%, transparent 25%) 0 0 / 8px 4px repeat-x, linear-gradient(225deg, rgba(255,255,255,.6) 25%, transparent 25%) 0 0 / 8px 4px repeat-x; }
+#zapBtn::after { background: linear-gradient(135deg, #ffe94a 25%, transparent 25%) 0 0 / 8px 4px repeat-x, linear-gradient(225deg, #ffe94a 25%, transparent 25%) 0 0 / 8px 4px repeat-x; }
+/* rules.html#electric lands below the sticky nav (two rows on phones) */
+#electric, #electric-row { scroll-margin-top: calc(var(--navh, 72px) + 12px); }
+@media (max-width: 640px) { #electric, #electric-row { scroll-margin-top: calc(var(--navh, 120px) + 16px); } }

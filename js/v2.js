@@ -663,12 +663,12 @@
         keptToast(starred); starred = 0; saveResume(title, plans.slice(k - 1)); $('pgt').innerHTML = '<span class="warn">Stopped at burn ' + k + ' of ' + plans.length + ' (' + (k - 1) + ' sent): ' + eh + (raw && !e.waitConfirm && !e.walletBusy ? ' <span class="muted">· wallet/node said: <code>' + esc(raw) + '</code></span>' : '') + '</span>'; $('cfNo').disabled = false; pendingPlans = plans.slice(k - 1); if (!e.reload) { $('cfYes').textContent = 'Continue from burn ' + k; $('cfYes').disabled = false; } }); })(); };
 
   // ---------------------------------------------------------------- hatch + community (live buttons)
-  $('hatchBtn').textContent = 'Crack 1 egg (69)'; $('hatchBtn').onclick = function () { confirmPlans('Crack 1 egg', [{ tag: 'pet:hatch', amount: 69 }]); };
-  $('dozenBtn').onclick = function () { confirmPlans('Swamp Dozen, 12 times', [{ tag: 'pet:hatch12', amount: 690 }]); };
-  $('caseBtn').onclick = function () { confirmPlans('Croak Crate, 144 times', [{ tag: 'pet:hatch144', amount: 6900 }]); };
+  $('hatchBtn').textContent = 'Rip a Single (69)'; $('hatchBtn').onclick = function () { confirmPlans('Rip a Single', [{ tag: 'pet:hatch', amount: 69 }]); };
+  $('dozenBtn').onclick = function () { confirmPlans('Crack Pack · 12 times', [{ tag: 'pet:hatch12', amount: 690 }]); };
+  $('caseBtn').onclick = function () { confirmPlans('Yolk Booster Box · 144 times', [{ tag: 'pet:hatch144', amount: 6900 }]); };
   /* ELECTRIC EGGS (preview): one pet:hatchzap burn = 1,000 eggs with boosted tier odds. The button stays locked until the chain tip reaches the gate block. */
   if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g); };
-    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Crate, 1,000 times', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
+    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Shell Shock Box · 1,000 times', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
   if ($('wizEggBtn') && WIZARD_EGG_ON_SALE) { $('wizEggBtn').textContent = '🧙 Bitcoin Wizard egg (' + fmt(V.WIZ_EGG_COST) + ')'; $('wizEggBtn').onclick = function () { confirmPlans('Bitcoin Wizard egg', [{ tag: 'pet:hatchwiz', amount: V.WIZ_EGG_COST }]); }; }
   if ($('wizSignBtn') && WIZARD_SIGN_CLAIM_ON) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
