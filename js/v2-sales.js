@@ -106,7 +106,7 @@
     var prices = [['XCPETS', 2500e8], ['XCP', 250000000], ['XCPETS', 400e8], ['XCPETS', 120e8], ['XCP', 90000000], ['XCPETS', 300e8], ['XCP', 1500000000], ['XCPETS', 50e8], ['XCPETS', 180e8], ['XCPETS', 777e8]];
     var L = prices.map(function (x, i) { var p = pets[i], h = (('a' + i) + '0f3c9e7d2b81').slice(0, 8) + 'deadbeef' + i; return { n: i + 1, petId: p.id, seller: p.owner, block: T - 20 - i, tx: 'b' + i, order: h, orderBlock: T - 21 - i, give: p.deed, asset: x[0], price: x[1], expire: T + 200 - i * 9, status: 'open' }; });
     L.push({ n: 11, petId: 4202, seller: s, block: T - 400, tx: 'b11', order: 'c0ffee11aa', orderBlock: T - 401, give: pets[11].deed, asset: 'XCPETS', price: 333e8, expire: T - 113, status: 'sold', buyer: me, soldBlock: T - 300 });
-    L.push({ n: 12, petId: 4200, seller: me, block: T - 900, tx: 'b12', order: 'c0ffee12bb', orderBlock: T - 901, give: pets[9].deed, asset: 'XCP', price: 50000000, expire: T - 613, status: 'open' });
+    L.push({ n: 12, petId: 4200, seller: me, block: T - 900, tx: 'b12', order: 'c0ffee12bb', orderBlock: T - 901, give: pets[9].deed, asset: 'XCP', price: 50000000, expire: T + 150, status: 'open' });
     var items = { g1: { id: 'g1', on: 2231 }, g2: { id: 'g2', on: 4012 }, g3: { id: 'g3', on: 4200 } };
     var book = L.map(function (S) { return { tx_hash: S.order, tx_index: S.n, block_index: S.orderBlock, source: S.seller, give_asset: S.give, give_quantity: 1, give_remaining: S.status === 'open' ? 1 : 0, get_asset: S.asset, get_quantity: S.price, expiration: 288, expire_index: S.expire, status: S.status === 'open' ? 'open' : 'filled' }; });
     book[9].status = 'cancelled'; /* listing 10: cancelled on the DEX, shows the optional early unlock */
