@@ -439,13 +439,30 @@ body #pets .pet.card{padding-bottom:44px}
 #hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
 #hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
 #shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */
-/* species-ranks-split: Fighting / Breeding pages (js/v2-page-split.js) */
-body[data-split="play"] #arenaPanel,body[data-split="play"] #breedPanel{display:none!important}
-body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep),body[data-split="fight"] #app>section:not(#arenaPanel):not(.split-keep),body[data-split="fight"] #breedPanel{display:none!important}
-body[data-split="breed"] main>section:not(#topBar):not(#gate):not(.split-keep),body[data-split="breed"] #app>section:not(#breedPanel):not(.split-keep),body[data-split="breed"] #arenaPanel{display:none!important}
-body[data-split="fight"] #app>p.split-play,body[data-split="breed"] #app>p.split-play{display:none!important}
+/* species-ranks-split: X Circus Kekimus (fight.html), The Rare Room (rare-room.html), Gooby's No-Tail Motel (breed.html) pages, built from templates/game.html; each keeps only its .split-main panel */
+body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):not(.split-main),body[data-split="fight"] #app>section:not(.split-main):not(.split-keep),body[data-split="fight"] #app>p.split-play,body[data-split="rare"] main>section:not(#topBar):not(#gate):not(.split-keep):not(.split-main),body[data-split="rare"] #app>section:not(.split-main):not(.split-keep),body[data-split="rare"] #app>p.split-play,body[data-split="breed"] main>section:not(#topBar):not(#gate):not(.split-keep):not(.split-main),body[data-split="breed"] #app>section:not(.split-main):not(.split-keep),body[data-split="breed"] #app>p.split-play{display:none!important}
 .split-go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .split-go a.btn{font-size:15px}
 /* species-ranks-split: free-text pet search always visible (phone too) */
 .ctlrow .psearch{display:flex;align-items:center;gap:4px;flex:1 1 260px;max-width:420px}.ctlrow .psearch input[type=search]{width:100%}
 @media (max-width:640px){.ctlrow .psearch{flex-basis:100%;max-width:none}}
+/* all-places (owner Oct 24 2026): one "🗺️ Places" header menu on every page + the "🏘️ Town › Place" bar on every place page */
+.nav nav details.navplaces{position:relative;display:inline-block;margin-left:14px;flex:0 0 auto}
+.nav nav details.navplaces>summary{list-style:none;cursor:pointer;font-family:var(--pixel);font-size:9px;line-height:1.4;color:#ffd166;text-shadow:0 0 6px rgba(255,209,102,.4);padding:6px 8px;border:2px solid #000;border-radius:4px;background:#1d1530;box-shadow:2px 2px 0 #000;min-height:32px;display:inline-flex;align-items:center;gap:4px}
+.nav nav details.navplaces>summary::-webkit-details-marker{display:none}
+.nav nav details.navplaces>summary::after{content:"▾";font-size:10px}
+.nav nav details.navplaces[open]>summary::after{content:"▴"}
+.nav nav details.navplaces>summary.np-on{color:#4fd18b}
+.nav nav .np-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:250px;display:flex;flex-direction:column;background:#100E14;border:3px solid #000;outline:2px solid #E8B33A;box-shadow:4px 4px 0 #000;padding:6px}
+.nav nav .np-menu a{margin:0;padding:10px 10px;min-height:40px;display:flex;align-items:center;gap:8px;color:#FAFAF5;font-family:var(--pixel);font-size:9px;line-height:1.5;text-decoration:none;border-bottom:1px dashed #2a2340}
+.nav nav .np-menu a:last-child{border-bottom:0}
+.nav nav .np-menu a:hover,.nav nav .np-menu a:focus{background:#2b1f4d;color:#ffd166}
+.nav nav .np-menu a[aria-current="page"]{color:#4fd18b}
+@media (max-width:600px){.nav nav details.navplaces{order:-1;margin-left:0;position:static}.nav nav .np-menu{position:fixed;left:8px;right:8px;top:auto;min-width:0;max-height:70vh;overflow:auto}.nav nav .np-menu a{font-size:10px;min-height:44px}}
+.townbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 12px;padding:8px 10px;background:#100E14;border:2px solid #000;box-shadow:3px 3px 0 #000;font-family:var(--pixel);font-size:9px;line-height:1.6;color:#FAFAF5}
+.townbar a{color:#ffd166;text-decoration:none}.townbar a:hover{text-decoration:underline}
+.townbar .tb-st{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.townbar .tb-st a{padding:6px 8px;border:2px solid #000;background:#2b1f4d;box-shadow:2px 2px 0 #000;min-height:32px;display:inline-flex;align-items:center}
+@media (max-width:600px){.townbar .tb-st{margin-left:0;width:100%}.townbar .tb-st a{min-height:44px}}
+.scene-anchor{display:block;position:relative;top:-80px;visibility:hidden}
+.split-off{display:none!important}

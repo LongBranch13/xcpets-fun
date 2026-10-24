@@ -20,7 +20,8 @@
   function acts(p, mine) {
     if (p.dead || p.released || p.burnedTo) return '<p class="small muted pc-none">' + (p.dead ? '🪦 Resting in the Pet Cemetery.' : 'Out of play.') + '</p>';
     var own = mine && !viewOnly(), q = function (h) { return own ? h + '-' + p.id : h; };
-    var b = function (href, ico, label, sub, cls) { return '<a class="pc-act ' + cls + '" href="play.html#' + href + '"><span class="pc-ico" aria-hidden="true">' + ico + '</span><b>' + label + '</b><small>' + sub + '</small></a>'; };
+    var PAGE = function (h) { return /^(battle|kekimus)/.test(h) ? 'fight.html' : /^(breed|gooby|no-tail)/.test(h) ? 'breed.html' : /^rare-room/.test(h) ? 'rare-room.html' : 'play.html'; }; /* species-ranks-split: straight to the place's own page */
+    var b = function (href, ico, label, sub, cls) { return '<a class="pc-act ' + cls + '" href="' + PAGE(href) + '#' + href + '"><span class="pc-ico" aria-hidden="true">' + ico + '</span><b>' + label + '</b><small>' + sub + '</small></a>'; };
     return '<div class="pc-actrow">' + b(q('rare-room'), '💎', 'Rare Room', own ? 'Gear for #' + p.id : 'Gear & spins', 'pc-rr') +
       b(own ? 'breed-' + p.id : 'gooby-inn', '🏨', 'Breed', "Gooby's Hotel", 'pc-br') + b(own ? 'battle-' + p.id : 'kekimus', '⚔️', 'Battle', 'The arena', 'pc-bt') + '</div>' +
       (own ? '' : '<p class="small muted pc-note">' + (mine ? 'View only: connect the owner wallet on Play to act.' : 'Opens the place on Play. Only the owner can pick this pet there.') + '</p>');
