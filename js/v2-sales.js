@@ -20,11 +20,23 @@
   /* Mint ties (rule 3) only happened from ACTIVATE_SPAM_RULES_BLOCK to ACTIVATE_ONE_TIE_PATH_BLOCK (972896); that window is closed, so its tokens are a fixed list
    * (CI api-feed scan of the full nodes at 972909). Used only when every full node fails. */
   var MINT_WINDOW = ['A11407417926526760582', 'A175164024751316932', 'A9059073792275355799'];
-  function getJ(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
+  /* xcpfun-backup: api.xcp.fun rate-limits bursts (429 + long Retry-After), so its reads share one in-flight copy per URL and run at most XC_MAX at a time */
+  var XC_MAX = 1, xcBusy = 0, xcQ = [], inflight = {};
+  var XC_GAP = 400, xcLast = 0, xcUntil = 0; /* xcUntil: a 429 Retry-After pauses the whole api.xcp.fun queue, not just one read */ /* api.xcp.fun allows roughly 10 new reads per few seconds; pace starts so the first burst doesn't earn a 30 s Retry-After */
+  function xcSlot(fn) { return new Promise(function (ok, no) { xcQ.push(function () { xcBusy++; var d = Math.max(0, xcLast + XC_GAP - Date.now(), xcUntil - Date.now()); xcLast = Date.now() + d;
+      wait(d).then(fn).then(ok, no).then(function () { xcBusy--; if (xcQ.length) xcQ.shift()(); }); }); if (xcBusy < XC_MAX) xcQ.shift()(); }); }
+  var XKEY = 'xcpets-xcf-', XTTL = 10 * 60e3; /* xcpfun-backup: api.xcp.fun address credit/debit scans (the heavy reads) kept 10 min in localStorage so page-to-page moves and reloads don't re-spend its rate limit */
+  function xcGet(url) { if (url.indexOf('/addresses/') < 0) return null; try { var c = JSON.parse(localStorage.getItem(XKEY + url)); if (c && Date.now() - c.at < XTTL) return c.j; } catch (e) {} return null; }
+  function xcPut(url, j) { if (url.indexOf('/addresses/') < 0) return; try { localStorage.setItem(XKEY + url, JSON.stringify({ at: Date.now(), j: j })); } catch (e) { try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf(XKEY) === 0) localStorage.removeItem(k); }); } catch (e2) {} } }
+  function getJ(url, n) { if (n || url.indexOf(API) !== 0) return getJ0(url, n); var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
+    var lc = xcGet(url); if (lc) { mem[url] = { at: Date.now(), j: lc }; return Promise.resolve(lc); }
+    if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
+    return inflight[url]; }
+  function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, REQ_MS) : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
-      if (r.status === 429 || r.status === 503) { if (n >= 3) throw new Error('DEX API busy (' + r.status + ')'); var ra = r.headers.get('Retry-After'), s = Number(ra);
-        var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); return wait(Math.min(ms || 1000, 60e3)).then(function () { return getJ(url, n + 1); }); }
+      if (r.status === 429 || r.status === 503) { if (n >= 6) throw new Error('DEX API busy (' + r.status + ')'); var ra = r.headers.get('Retry-After'), s = Number(ra);
+        var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 60e3)); return wait(Math.min(ms || 1000, 60e3)).then(function () { return getJ0(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
       if (!r.ok) throw new Error('DEX API ' + r.status); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
   function pages(path, cap) { var out = [], k = 0; cap = cap || 50;
@@ -40,13 +52,51 @@
    * full Counterparty nodes (CFG.composeList, read-only GETs). Any failure rejects loadDex -> the world stays unverified (never a silent guess). */
   var slimC = function (c) { return { asset: c.asset, address: c.address || null, utxo: c.utxo || null, utxo_address: c.utxo_address || null, quantity: c.quantity, block_index: c.block_index, tx_index: c.tx_index, calling_function: c.calling_function, event: c.event }; };
   var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
-  function credits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
-    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('pet token transfers could not be read (every Counterparty node failed)'));
+  function nodeCredits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('every Counterparty node failed'));
       var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
       return go(null).catch(function (e) { if (!e || e.status !== 404) DEAD[base] = 1; return on(i + 1); }); }
     return on(0); }
+  /* xcpfun-backup: api.xcp.fun has no /assets/A/credits, so rebuild that list from per-address credits/debits of every address that can have touched
+   * the token (issuer, current holders, order sources, match parties), then PROVE it is complete or reject: every send-type debit/credit must pair by
+   * event, every address's credits - debits must equal its current balance, unknown actions or utxo-held balances reject. Same rows as the full node. */
+  var XC_PAIR = { 'send': 1, 'mpma send': 1 }, XC_CR_OK = { 'issuance': 1, 'order match': 1, 'cancel order': 1, 'order cancelled': 1, 'order expired': 1, 'filled': 1, 'send': 1, 'mpma send': 1 },
+    XC_DB_OK = { 'open order': 1, 'destroy': 1, 'send': 1, 'mpma send': 1 };
+  function addrRows(X, kind, A, b0) { var out = [], k = 0;
+    function go(cur) { return getJ(API + '/addresses/' + X + '/' + kind + '?limit=1000' + (cur ? '&cursor=' + cur : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad ' + kind + ' reply');
+      var lo = Infinity; j.result.forEach(function (c) { lo = Math.min(lo, Number(c.block_index)); if (c.asset === A) out.push(c); });
+      if (!j.result.length || lo < b0 || !j.next_cursor) return out; if (++k >= 200) throw new Error('too many ' + kind + ' for ' + X); return go(j.next_cursor); }); }
+    return go(null); }
+  function xcpCredits(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/assets/' + A + '/balances'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'),
+      pages('/orders/' + A + '/XCP?status=all&verbose=true'), pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
+    var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }); if (!iss.length) return [];
+    var b0 = Math.min.apply(null, iss.map(function (i) { return Number(i.block_index); })), bal = {}, cand = {};
+    r[1].forEach(function (b) { if (b.utxo) throw new Error('token held on a utxo'); if (Number(b.quantity)) bal[b.address] = Number(b.quantity); cand[b.address] = 1; });
+    iss.forEach(function (i) { cand[i.issuer || i.source] = 1; cand[i.source] = 1; }); r[2].concat(r[3]).forEach(function (o) { cand[o.source] = 1; });
+    r[4].concat(r[5]).forEach(function (m) { cand[m.tx0_address] = 1; cand[m.tx1_address] = 1; }); var xs = Object.keys(cand).filter(Boolean).sort();
+    var rr = []; return xs.reduce(function (p, X) { return p.then(function () { return addrRows(X, 'credits', A, b0).then(function (c) { return addrRows(X, 'debits', A, b0).then(function (d) { rr.push([c, d]); }); }); }); }, Promise.resolve()).then(function () { /* one address at a time: api.xcp.fun rate-limits (429) bursts */
+      var cr = [], db = [], ev = {}; rr.forEach(function (p, n) { var X = xs[n], net = 0;
+        p[0].forEach(function (c) { if (!XC_CR_OK[c.calling_function] || c.utxo) throw new Error('unknown credit ' + c.calling_function); net += Number(c.quantity); cr.push(c); });
+        p[1].forEach(function (d) { if (!XC_DB_OK[d.action] || d.utxo) throw new Error('unknown debit ' + d.action); net -= Number(d.quantity); db.push(d); });
+        if (net !== (bal[X] || 0)) throw new Error('balance check failed for ' + X); });
+      db.forEach(function (d) { if (XC_PAIR[d.action]) ev[d.event] = (ev[d.event] || 0) + Number(d.quantity); });
+      cr.forEach(function (c) { if (XC_PAIR[c.calling_function]) { if (!ev[c.event]) throw new Error('send credit without a known sender'); ev[c.event] -= Number(c.quantity); } });
+      Object.keys(ev).forEach(function (e) { if (ev[e] !== 0) throw new Error('send debit without a known receiver'); });
+      return cr.sort(function (a, b) { return a.block_index - b.block_index || (a.credit_index || 0) - (b.credit_index || 0); }); /* full-node order: credit_index */ }); }); }
+  /* xcpfun-backup race: the full node gets a RACE_MS head start; if it has not answered by then (or fails) the api.xcp.fun source runs too and the
+   * first complete answer wins. Both give identical rows (checked field for field against the CI full-node capture), so who wins can't change the replay. */
+  var RACE_MS = 2500;
+  function race(a, b) { return new Promise(function (ok, no) { var left = 2, errs = [], started = false, done = false;
+    function win(v) { if (!done) { done = true; ok(v); } } function lose(e) { errs.push(e && e.message || String(e)); if (--left === 0 && !done) no(new Error(errs.join('; '))); }
+    function startB() { if (started || done) return; started = true; b().then(win, lose); }
+    var t = setTimeout(startB, RACE_MS); a().then(function (v) { clearTimeout(t); if (!started) left--; win(v); }, function (e) { lose(e); startB(); }); }); }
+  function credits(A) { return race(function () { return nodeCredits(A); }, function () { return xcpCredits(A); }).catch(function (e) { throw new Error('pet token transfers could not be read (' + e.message + ')'); }); }
+  /* mint-tie window is closed (ACTIVATE_ONE_TIE_PATH_BLOCK passed): its token list is fixed, so it can stand in for a slow full-node scan. */
+  function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, OG = V.oneTieGate ? V.oneTieGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0);
+    if (G == null || OG == null || G >= OG || top < OG) return nodeMintAssets(rows);
+    return race(function () { return nodeMintAssets(rows); }, function () { return Promise.resolve(MINT_WINDOW.slice()); }); }
   /** deedAssets(rows) -> the pet-token assets named by pet:deed burns (the API has no asset search, so the burn announces the token). */
   function deedAssets(rows) { var seen = {}, out = []; (V.readBurns ? V.readBurns(rows || []) : rows || []).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; }
     if (t && t.action === 'deed' && !seen[t.asset]) { seen[t.asset] = 1; out.push(t.asset); } }); return out.sort(); }
@@ -55,7 +105,7 @@
   /** mintAssets(rows) -> pet-token assets issued from ACTIVATE_SPAM_RULES_BLOCK on (rule 3: mint = tie, no burn announces them; ends at ACTIVATE_ONE_TIE_PATH_BLOCK, earlier mint ties stay). Reads the full nodes'
    *  global /issuances list (newest first) back to the gate; [] while the rules gate is null or not reached. Every node failing (or the page cap
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
-  function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
+  function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
     var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
     function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
       var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
@@ -99,7 +149,7 @@
   /* a token made in window 1 waits here (per pet) until it confirms; shared with the pet card's Tokenize button (js/v2-pet-card.js) */
   var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
   function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
-  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend } };
+  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
