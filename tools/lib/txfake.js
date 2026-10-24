@@ -20,8 +20,11 @@ function build(o) {
 /* destroy body: asset id (8) + quantity (8) + tag bytes */
 function destroyBody(asset, qty, tag) { return BC.assetHex(asset) + le(qty, 8).reverse().toString('hex') + Buffer.from(String(tag)).toString('hex'); }
 function sendBody(asset, qty) { return BC.assetHex(asset) + le(qty, 8).reverse().toString('hex') + '00'.repeat(21); }
+/* issuance v2 (type 22) body: CBOR [asset_id, quantity, divisible=false, lock, reset=false, mime, description] */
+function cborText(t) { const b = Buffer.from(String(t)); return (b.length < 24 ? Buffer.from([0x60 + b.length]) : Buffer.from([0x78, b.length])).toString('hex') + b.toString('hex'); }
+function issuanceBody(asset, qty, lock, desc) { return '87' + '1b' + BC.assetHex(asset) + '1b' + le(qty, 8).reverse().toString('hex') + 'f4' + (lock ? 'f5' : 'f4') + 'f4' + cborText('text/plain') + cborText(desc); }
 /* convenience: a node-shaped compose result for a destroy/send/mpma/issuance with only change back to `me` */
 function result(name, me, params, cp, o) { o = o || {}; const change = o.change == null ? 5000 : o.change, fee = o.fee == null ? 300 : o.fee;
   const outs = [{ value: 0, cp }].concat(change ? [{ value: change, script: BC.addressScript(me) }] : []).concat(o.extraOuts || []);
   const raw = build({ ins: o.ins, outs }); return { name, rawtransaction: raw, params: Object.assign({ source: me }, params), btc_in: outs.reduce((a, x) => a + x.value, 0) + fee, btc_fee: fee }; }
-module.exports = { build, cpScript, destroyBody, sendBody, result };
+module.exports = { build, cpScript, destroyBody, sendBody, issuanceBody, result };

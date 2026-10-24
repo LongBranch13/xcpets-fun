@@ -1,0 +1,26 @@
+# Runs the whole test suite (tools/run-tests) on a fresh checkout. Read-only: no secrets, no deploy, nothing signed or broadcast.
+name: tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: playwright-core for the browser tests (uses the runner's Google Chrome)
+        run: npm install --no-save --no-package-lock playwright-core@1
+      - name: run-tests (replay must stay SAME against the base)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then BASE="origin/${{ github.base_ref }}"; else BASE="${{ github.event.before }}"; fi
+          git rev-parse --verify -q "$BASE^{commit}" >/dev/null || BASE=origin/main
+          node tools/run-tests --replay-base "$BASE"
