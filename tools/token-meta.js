@@ -38,7 +38,9 @@ function put(f, buf) { try { if (fs.readFileSync(f).equals(buf)) return 0; } cat
 module.exports = { png, meta, crc32 };
 if (require.main === module) (async () => {
   const ctx = F.context(); ctx.setInterval = () => 0; ctx.clearInterval = () => {}; ctx.document.head = { appendChild() {} }; ctx.document.addEventListener = undefined; for (const f of EXTRA) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
-  const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await F.liveInput(ctx);
+  /* token-proof: --input FILE = the api-feed run's own chain read (live, dex included); else a live read with 429 back-off (3 tries). */
+  const liveRetry = async () => { for (let i = 0; ; i++) { try { return await F.liveInput(ctx); } catch (e) { if (i >= 2 || !/429|busy/i.test(String(e && e.message || e))) throw e; console.log('token-meta: chain busy, retry in', 20 * (i + 1), 's'); await new Promise(r => setTimeout(r, 20000 * (i + 1))); } } };
+  const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : opt('--input') && fs.existsSync(opt('--input')) ? JSON.parse(fs.readFileSync(opt('--input'), 'utf8')) : await liveRetry();
   const V = ctx.V2Rules, E = ctx.LiveEngine, rows = input.rows.filter(r => r.block_index <= input.tip), hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, input.hashes);
   const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore }); w.tip = w.tip || input.tip;
   const { pets } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));

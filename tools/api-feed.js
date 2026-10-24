@@ -89,6 +89,9 @@ if (require.main === module) (async () => {
   if (opt('--snap')) input.tip = +(opt('--tip') || input.tip);
   if (opt('--snap') && A.includes('--no-dex')) input.noDex = true; /* offline replays of old snapshots only; live mode never skips sales */
   if (opt('--dex')) input.dex = JSON.parse(fs.readFileSync(opt('--dex'), 'utf8'));
+  /* token-proof: --save-input FILE hands this run's chain read (rows, tip, hashes, dex) to tools/token-meta.js --input, so the token step
+   * never re-reads the DEX (its second read was hitting 429 and every t/<id>.json + Proof of Pet PNG refresh was skipped). */
+  if (opt('--save-input')) fs.writeFileSync(opt('--save-input'), JSON.stringify(input));
   if (opt('--save-dex') && input.dex) { fs.mkdirSync(path.dirname(path.resolve(opt('--save-dex'))), { recursive: true }); } if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });

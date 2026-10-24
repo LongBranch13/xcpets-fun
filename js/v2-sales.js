@@ -149,7 +149,15 @@
   /* a token made in window 1 waits here (per pet) until it confirms; shared with the pet card's Tokenize button (js/v2-pet-card.js) */
   var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
   function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
-  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend } };
+  /** mintCheck(id, A, tip) -> Promise<plan>: the ONE pre-mint gate for every mint path (js/token-proof.js). Rejects with a clear reason when
+   *  the Proof of Pet link or picture can't be built, so no wallet window opens for a token that would carry no proof. */
+  function mintCheck(id, A, tip) { var TP = window.TokenProof, plan = V.mintPlan(id, A);
+    if (!TP) return Promise.reject(new Error('the Proof of Pet check did not load, reload the page'));
+    var why = TP.planWhy(id, plan, V); if (why) return Promise.reject(new Error(why));
+    if (PREVIEW) return Promise.resolve(plan);
+    return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
+      .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
+  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
@@ -311,7 +319,7 @@
     $('shAsset').onchange = re; $('shSticker').onchange = re;
     if ($('shGo')) $('shGo').onclick = function () { confirmList(p, asset, f.ask, function () { walletDex(V.listPlan(p.id, d.asset, asset, f.ask), close); }); };
     if ($('shMint')) $('shMint').onclick = function () { $('shMsg').textContent = 'Finding a free token name…';
-      freeDeed().then(function (A) { walletDex(V.mintPlan(p.id, A), function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); sellPrice(p, asset, sticker); }); }, function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
+      freeDeed().then(function (A) { return mintCheck(p.id, A, TIP).then(function (plan) { walletDex(plan, function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); sellPrice(p, asset, sticker); }); }); }).catch(function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
     if ($('shTie')) $('shTie').onclick = function () { tieAndList(p, pd, asset, f.ask); }; }
   function tieAndList(p, pd, asset, ask) { var go = function () { var plan = V.deedPlan(p.id, pd.asset);
       modal('<h3>Window 2 of 3</h3><p>The token ' + esc(pd.asset) + ' is confirmed.</p><p>Now burn 1 dander with the tag<br><code>' + esc(plan.tag) + '</code></p><p class="sh-hint">Window 3 (the DEX order) opens right after.</p><button class="sh-btn" id="shGo2">Open window 2 of 3</button> <button class="sh-btn sh-ghost" data-close>Later</button>');
@@ -341,7 +349,7 @@
       ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint">No listing here: once tied, gift it at the 🎁 Gift Wrap counter or list it at the register (one wallet window).</p><p class="sh-hint" id="shMsg"></p></div></div>');
     if (window.V2PressAnim) V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p, { onload: function () { V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p); } });
     if ($('tpMint')) $('tpMint').onclick = function () { $('shMsg').textContent = 'Finding a free token name…';
-      freeDeed().then(function (A) { walletDex(V.mintPlan(p.id, A), function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); press(p); }); }, function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
+      freeDeed().then(function (A) { return mintCheck(p.id, A, TIP).then(function (plan) { walletDex(plan, function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); press(p); }); }); }).catch(function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
     if ($('tpTie')) $('tpTie').onclick = function () { var go = function () { walletBurn(V.deedPlan(p.id, pd.asset), function () { pend(p.id, null); pressDone(p, pd.asset); }); };
       if (PREVIEW) return go();
       tokenAt(pd.asset).then(function (t) { if (!t.issued) { $('shMsg').textContent = 'The token is not confirmed yet. Wait for the next block and try again.'; return; }

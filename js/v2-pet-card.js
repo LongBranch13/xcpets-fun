@@ -83,7 +83,7 @@
   function tokBind(w, p) { var T = tokTools(), V = window.V2Rules, a = $('pcTokMint'), b = $('pcTokTie');
     if (a) a.onclick = function () { if (a.disabled) return; if (tpv) { tpv = 'made'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
       tokSay('Finding a free token name…'); a.disabled = true;
-      T.freeDeed().then(function (A) { return window.V2Wallet.sendDex(V.mintPlan(p.id, A), me()).then(function (r) { T.pend(p.id, { petId: p.id, asset: A, mintTx: r && r.txid, at: tip() }); tokSay('Step 1 sent! Your token is being made.'); tokPaint(true); }); })
+      T.freeDeed().then(function (A) { tokSay('Checking the Proof of Pet…'); return (T.mintCheck ? T.mintCheck(p.id, A, tip()) : Promise.reject(new Error('the Proof of Pet check did not load, reload the page'))).then(function (plan) { return window.V2Wallet.sendDex(plan, me()); }).then(function (r) { T.pend(p.id, { petId: p.id, asset: A, mintTx: r && r.txid, at: tip() }); tokSay('Step 1 sent! Your token is being made.'); tokPaint(true); }); })
         .catch(function (e) { a.disabled = false; tokSay('Not sent: ' + (e && e.message || e)); }); };
     if (b) b.onclick = function () { if (b.disabled) return; if (tpv) { tpv = 'tied'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
       var pd = T.pend(p.id); if (!pd) return tokPaint(true); b.disabled = true; tokSay('Checking the token…');
