@@ -462,14 +462,14 @@
     if (noNakaOn(b)) return wizardArt(bh, id, b); /* NO NEW NAKAMOTO (owner Oct 20 2026): the 1-in-777 egg is now a Bitcoin Wizard egg */
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
     LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
-  /* ELECTRIC EGGS (owner request Oct 24 2026 5:58 PM CT, PREVIEW branch electric-eggs, not live): pet:hatchzap = ONE burn hatches ELECTRIC_N = 1,000
+  /* ELECTRIC EGGS (owner request Oct 24 2026 5:58 PM CT, live from ACTIVATE_ELECTRIC_BLOCK): pet:hatchzap = ONE burn hatches ELECTRIC_N = 1,000
    * Electric Eggs for ELECTRIC_COST = 100,000 base (halving / Fire Sale apply like every hatch: era 1 = 50,000). Each egg i (0-999) is seeded with
    * '<tx>:i' like a pack egg, then its tier is RE-ROLLED on the boosted ladder sha(bh + id + 'XCPETS:v2:electric') first 12 hex mod 10,000:
    * Legendary 800 / Rare 2,200 / Uncommon 4,000 / Common 3,000 (normal eggs: 300 / 1,000 / 2,700 / 6,000). Stats get the tier bonus difference
    * (setArtTier), looks kept; the species is then picked from that tier's pool exactly like a normal egg (species odds inside a tier unchanged),
    * and the 1-in-777 special-egg slot is unchanged. Mythic is a growth STAGE (feeding), not a hatch tier, so no egg hatches Mythic.
    * Below ACTIVATE_ELECTRIC_BLOCK (and while null) pet:hatchzap replays exactly as today: an unknown pet: tag = plain burn (community food). */
-  var ACTIVATE_ELECTRIC_BLOCK = 972991; // PREVIEW: tip 972,985 (mempool.space + blockstream, Oct 24 2026 ~6:05 PM CT) + 6
+  var ACTIVATE_ELECTRIC_BLOCK = 972992; // tip 972,986 (mempool.space, Oct 24 2026 ~6:30 PM CT, owner approved deploy 6:23 PM CT) + 6
   var ELECTRIC_N = 1000, ELECTRIC_COST = 100000, ELECTRIC_TIER_10K = [3000, 4000, 2200, 800]; /* Common, Uncommon, Rare, Legendary out of 10,000 */
   function electricOn(b) { return ACTIVATE_ELECTRIC_BLOCK != null && b != null && b >= ACTIVATE_ELECTRIC_BLOCK; }
   function electricTier(bh, id) { var r = parseInt(sha(bh + id + 'XCPETS:v2:electric').slice(0, 12), 16) % 10000, T = ELECTRIC_TIER_10K;

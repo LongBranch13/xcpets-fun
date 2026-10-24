@@ -216,3 +216,11 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 /* rules.html#electric lands below the sticky nav (two rows on phones) */
 #electric, #electric-row { scroll-margin-top: calc(var(--navh, 72px) + 12px); }
 @media (max-width: 640px) { #electric, #electric-row { scroll-margin-top: calc(var(--navh, 120px) + 16px); } }
+/* ELECTRIC SHOCK BOX fence: canvas around the button (js/v2-zap.js); pixel-crisp, clicks go through */
+.zap-fence { position: relative; display: inline-block; padding: 14px 10px; margin: 2px 0; }
+.zap-cv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; z-index: 1; }
+.zap-fence .zap-btn { z-index: 0; }
+/* tear lines easier to see on the green / cyan packs: dark pixel zigzag + white highlight */
+#hatchBtn::after, #dozenBtn::after, #caseBtn::after { top: 2px; height: 6px;
+  background: linear-gradient(135deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x, linear-gradient(225deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x,
+  linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)) 0 5px / 100% 1px no-repeat; }

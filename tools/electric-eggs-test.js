@@ -8,7 +8,7 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
 const N = +process.argv[2] || 40000;
 const H = i => crypto.createHash('sha256').update('zap-block-' + i).digest('hex'), ID = i => crypto.createHash('sha256').update('zap-tx-' + i).digest('hex');
 const c = load(), V = c.V2Rules, G = V.electricGate(), B = G + 10;
-ok(G === null || G >= 972985, 'gate null or a future block (' + G + ')');
+ok(G === null || G >= 972992, 'gate null or a future block (' + G + ')');
 ok(V.ELECTRIC_N === 1000 && V.ELECTRIC_COST === 100000, '1,000 eggs for 100,000 base');
 ok(V.ELECTRIC_TIER_10K.reduce((a, b) => a + b, 0) === 10000, 'electric odds sum to 10,000');
 /* 1. parse: distinct tag, n and cost */
