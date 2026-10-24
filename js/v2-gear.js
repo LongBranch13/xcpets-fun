@@ -455,6 +455,22 @@
    * (Chud jaw beard, Chud-only) is unchanged. item.since 'chud-beard' = OFF until V2Rules.ACTIVATE_CHUD_BEARD_BLOCK is set (null now). */
   DEFS['v2-chud-beard'] = { slot: 'face', tier: 1, label: 'Chud\u2019s beard', at: 'v2mouth', beard: true, map: ['h.....h', 'hh...hh', 'hhhhhhh', '.hhzhh.', '..hhh..'], origin: 'chud', exclusive: false, kind: 'beard' };
   ITEMS.push({ id: 'v2-chud-beard', label: 'Chud\u2019s beard', slot: 'face', tier: 1, origin: 'chud', exclusive: false, legendary: false, kind: 'beard', overlay: true, since: 'chud-beard' });
+  /* FUNTRUMP GEAR (owner Oct 22 2026 10:34 PM CT, branch funtrump-community, PREVIEW + INERT): parody joke pieces, original pixel art, no real logos/brands.
+   * item.since 'funtrump' = OFF (never in any roll pool, never wearable) until V2Rules.ACTIVATE_FUNTRUMP_BLOCK is set (null now) -> replay SAME.
+   * look: FUNTRUMP has two looks by tier: 'suit' = Rare, 'hoodie' = Legendary. ★ pieces are FUNTRUMP-only; look-locked ★ need that look.
+   * No tie piece (owner: he already wears one in his sprite). [id, label, slot, tier, exclusive, kind, anchor, dy, map, look, rollSlot] */
+  var FT_BATCH = [
+    ['ft-samurai-sword', 'Samurai sword', 'weapon', 3, true, 'weapon', 'tallR', null, ['....d', '...wd', '...w.', '..wd.', '..w..', '.wd..', '.w...', 'ggg..', '.Z...', '.i...', '.Z...'], 'suit', 'hand'],
+    ['ft-skateboard', 'Skateboard', 'feet', 3, true, 'feet', 'feetBoth', null, ['i..........i', 'iiiyiiiyiiii', '.ZZ......ZZ.'], 'hoodie', null],
+    ['ft-hairspray', 'Golden Hairspray', 'hand', 3, true, 'held', 'handR', null, ['w.w.', '.w..', '.nn.', 'gggG', 'giiG', 'gggG', 'gggG'], null, null],
+    ['ft-fun-cap', 'FUN cap', 'head', 2, false, 'hat', 'head', 2, ['..iiiiiiiii..', '.iwwwiwiwiwwi', '.iwwiiwiwiwiw', '.iwiiiwwwiwiw', 'rrrrrrrrrrrrrrr'], null, null],
+    ['ft-gold-phone', 'Gold phone', 'hand', 2, false, 'held', 'handR', null, ['ggg', 'gjg', 'gcg', 'gjg', 'ggG'], null, null],
+    ['ft-aviators', 'Fun aviator shades', 'face', 1, false, 'face', 'eyes', null, ['ggggggggg', 'gZZg.gZZg', '.gg...gg.'], null, null]
+  ];
+  FT_BATCH.forEach(function (x) { var ex = x[4];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'funtrump', exclusive: ex, species: ex ? 'funtrump' : undefined, kind: x[5], sig: ex, look: x[9] || undefined };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], rollSlot: x[10] || undefined, tier: x[3], origin: 'funtrump', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'funtrump', look: x[9] || undefined }); });
+  EYE_GEAR_FT = { 'ft-aviators': { s: 'glasses', f: 'g', l: ['Z', 'Z'], drop: 1, up: 1, wide: 1 } };
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
     if (BG && BG.DEFS && BG.DEFS['pink-sweater'] && !BG.DEFS['pink-sweater'].sweaterOnly) BG.DEFS['pink-sweater'] = Object.assign({}, BG.DEFS['pink-sweater'], { sweaterOnly: true }); // Pink peeking sweater: no hood in v2 (owner request)
@@ -466,6 +482,7 @@
     if (BG && BG.DEFS && BG.DEFS['v2-mumu-face'] && !BG.DEFS['v2-mumu-face'].v2silver) BG.DEFS['v2-mumu-face'] = Object.assign({}, BG.DEFS['v2-mumu-face'], { at: 'v2septum', map: ['s...s', 's...s', '.sWs.'], v2silver: true }); /* redraw-2 2026-10-14: Silver nose ring hangs from the detected nose (was the generic 'nose' slot); open silver hoop + bright bead, never gold */
     if (BG && BG.DEFS) Object.keys(EYE_GEAR).forEach(function (k) { if (BG.DEFS[k] && !BG.DEFS[k].v2eye) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { v2eye: EYE_GEAR[k] }); });
     return BG; }
+  var EYE_GEAR_FT;
   var EYE_GEAR = { // style, frame key, lens keys (top row, rest), extra lens rows
     'v2-gold-aviators': { s: 'glasses', f: 'g', l: ['E', 'e'], drop: 1, up: 1, wide: 1 } /* 2026-10-14: lenses 1 px wider each side + 1 row taller so each fully covers its eye */, 'v2-red-shades': { s: 'glasses', f: 'Q', l: ['r', 'r'] },
     'v2-big-shades': { s: 'glasses', f: 'n', l: ['Z', 'Z'], drop: 1, up: 1, wide: 2 } /* 2026-10-14: noticeably bigger: 2 px past each eye (was 1), 1 row taller upward; frame stays within 3 rows of the eye line */, 'v2-bobo-face': { s: 'glasses', f: 'n', l: ['Z', 'Z'] },
@@ -473,6 +490,7 @@
     'sig-wojak-face': { s: 'bags', f: 'd' }, 'sig-doge-face': { s: 'sideeye', f: 'n' }, 'sig-pepe-face': { s: 'brows', f: 'm' }, 'v2-peepo-face': { s: 'blush' }, 'v2-brow-piercing': { s: 'piercing' }, 'v2-nakamoto-face': { s: 'laser' }, 'v2-wojak-face': { s: 'tear' }, 'v2-sarutobi-face': { s: 'ninja', f: 'Z', l: ['j'] },
     'v2-snibby-face': { s: 'glasses', f: 'D', l: ['C', 'C'] }, 'v2-kevin-face': { s: 'visor', f: 'Z', l: ['M', 'M'] }, 'sig-kevin-face': { s: 'visor', f: 'D', l: ['M', 'M'] },
     'sig-sarutobi-face': { s: 'mask', f: 'Q', l: ['g', 'g'] }, 'v2-chud-bluelight': { s: 'glasses', f: 'n', l: ['c', 'b'] } /* star batch 2026-10-16: Blue-light glasses, traced from each eye */, 'lenny-monocle': { s: 'monocle', f: 'g' }, 'sig-lenny-held': { s: 'monocle', f: 'G', side: 'L', chain: 1 } /* Monocle on a chain: worn ON his right eye (viewer-left), dark-gold ring (light gold vanished on Lenny's yellow skin), chain down the cheek (2026-10-14, Jake) */ };
+  Object.keys(EYE_GEAR_FT || {}).forEach(function (k) { EYE_GEAR[k] = EYE_GEAR_FT[k]; });
   var REMOVED = ['v2-pepe-hat', 'v2-doge-held', 'v2-snibby-weapon', 'v2-chud-held', 'v2-snibby-held', 'v2-lenny-held', 'v2-wojak-body',
     'v2-chud-cape', 'v2-bobo-cape', 'v2-mumu-cape', 'v2-snibby-cape', 'v2-kevin-cape', 'v2-doge-cape', 'v2-sarutobi-cape', 'v2-lenny-cape', 'v2-peepo-cape', 'v2-doge-face', 'v2-chud-face', 'clone-mirror', 'xcp-coin', 'v2-peepo-body', 'pink-sweater']; // clone-mirror lives in bonus-gear.js (shared with live): excluded in v2 only, via V2Rules
   // Front-page kits (cast GIF + hero grid, 2026-10-14): varied ★ + regular pieces, one crown in total, exclusivity-checked by the users
@@ -491,5 +509,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { FT_BATCH: FT_BATCH, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
