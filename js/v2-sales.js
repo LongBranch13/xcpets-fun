@@ -33,7 +33,7 @@
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
     return inflight[url]; }
   function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
-    var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page */ : 0; /* sales-net-fallback: one slow server can't hold the page */
+    var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=|\/issuances\?/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page (site-fast-reread: not the global /issuances scan, ~10 MB per page, which a phone can't download in 3 s) */ : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
       if (r.status === 429 || r.status === 503) { if (n >= 6) throw new Error('DEX API busy (' + r.status + ')'); var ra = r.headers.get('Retry-After'), s = Number(ra);
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 60e3)); return wait(Math.min(ms || 1000, 60e3)).then(function () { return getJ0(url, n + 1); }); }

@@ -102,12 +102,13 @@
          * S.rows / S.tip keep the last COMPLETE load (empty on first boot), so the world shown (and any burn tag built from it) stays correct. */
         var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
-        S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
+        var nHashes = Object.assign({}, hc, bh.hashes), nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
         /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
-        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; },
+        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; S.rows = rows; S.hashes = nHashes; S.tip = nTip; },
           function (e) { throw new Error('pet sales and token transfers could not be read, so pet owners could be out of date (' + String(e && e.message || e).slice(0, 90) + ')'); }) : null;
         /* sale-owner-fix (2026-10-24): gate set but V2Sales missing = no sale data -> fail like any other read (Couldn't reach + Retry), never replay without it */
         if (!dx && V.salesGate && V.salesGate() != null) throw new Error('pet sale reader did not load, so pet owners could be out of date');
+        if (!dx) { S.rows = rows; S.hashes = nHashes; S.tip = nTip; } /* site-fast-reread: rows + hashes + tip + sale data change as ONE set, so a failed sale read never mixes new burns with old sales */
         return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
       });
     }).then(function () { keepOrDrop(); S.verified = true; S.stale = false; S.missingBlocks = []; toSession(); toLast(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
@@ -133,15 +134,29 @@
     load(true).then(fromIdb).then(workerReplay).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
       function (e) { done = true; clearTimeout(w); if (booted) return;
         bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : '', e && e.missingBlocks); }); }
+  /* site-fast-reread (2026-10-24): the status bar is a slim strip at the top of the page (in the flow, never fixed), so it can't cover buttons
+   * at the bottom of a phone screen. The background re-read retries on its own (RETRY_MS) before it shows Retry. */
   function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
-      b.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9999;background:#1d1b2e;color:#fff;border:2px solid #ffc93c;padding:6px 10px;font-size:12px;max-width:92vw;text-align:center'; document.body.appendChild(b); }
-      b.textContent = t + ' '; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.marginLeft = '6px';
-      k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
+      b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; document.body.insertBefore(b, document.body.firstChild); }
+      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
+      k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
-  function revalidate() { var was = sigOf(); return load(true).then(function () { var b = document.getElementById('v2stale'); if (b) b.remove();
+  var RETRY_MS = [5000, 15000, 30000], reval = null;
+  function revalidate(n) { if (reval) return reval; n = n || 0; var was = sigOf();
+    reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
       if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
-    function (e) { staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); }); }
-  function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(revalidate, 50); }); }
+    function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
+      if (n < RETRY_MS.length) { setTimeout(function () { revalidate(n + 1); }, RETRY_MS[n]); return; }
+      staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); });
+    return reval; }
+  /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
+   * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
+  function whenFresh() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
+    staleBar('Checking the latest chain data before your burn. This can take a minute…', 'none');
+    function wait(left) { var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
+      return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was }; if (left > 0 && reval) return wait(left - 1); return { ok: false, same: false }; }); }
+    return wait(4); }
+  function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
     if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
     if (/[?&]fresh=1/.test(location.search)) return run(st, then);
@@ -149,5 +164,5 @@
     fromStatic().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   function refresh(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, seed: function () {}, boot: boot, refresh: refresh };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
 })();
