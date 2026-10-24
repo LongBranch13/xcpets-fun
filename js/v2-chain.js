@@ -138,7 +138,7 @@
    * at the bottom of a phone screen. The background re-read retries on its own (RETRY_MS) before it shows Retry. */
   function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
       b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; document.body.insertBefore(b, document.body.firstChild); }
-      b.textContent = t + ' '; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
+      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
   var RETRY_MS = [5000, 15000, 30000], reval = null;
@@ -152,7 +152,7 @@
   /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
    * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
   function whenFresh() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
-    try { var b = document.getElementById('v2stale'); if (!b) staleBar('Checking the latest chain data before your burn. This can take a minute…', false); else b.firstChild.textContent = 'Checking the latest chain data before your burn. This can take a minute… '; } catch (e) {}
+    staleBar('Checking the latest chain data before your burn. This can take a minute…', 'none');
     function wait(left) { var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
       return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was }; if (left > 0 && reval) return wait(left - 1); return { ok: false, same: false }; }); }
     return wait(4); }
