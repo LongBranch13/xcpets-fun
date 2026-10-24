@@ -109,7 +109,7 @@
     var prices = [['XCPETS', 2500e8], ['XCP', 250000000], ['XCPETS', 400e8], ['XCPETS', 120e8], ['XCP', 90000000], ['XCPETS', 300e8], ['XCP', 1500000000], ['XCPETS', 50e8], ['XCPETS', 180e8], ['XCPETS', 777e8]];
     var L = prices.map(function (x, i) { var p = pets[i], h = (('a' + i) + '0f3c9e7d2b81').slice(0, 8) + 'deadbeef' + i; return { n: i + 1, petId: p.id, seller: p.owner, block: T - 20 - i, tx: 'b' + i, order: h, orderBlock: T - 21 - i, give: p.deed, asset: x[0], price: x[1], expire: T + 200 - i * 9, status: 'open' }; });
     L.push({ n: 11, petId: 4202, seller: s, block: T - 400, tx: 'b11', order: 'c0ffee11aa', orderBlock: T - 401, give: pets[11].deed, asset: 'XCPETS', price: 333e8, expire: T - 113, status: 'sold', buyer: me, soldBlock: T - 300 });
-    L.push({ n: 12, petId: 4200, seller: me, block: T - 900, tx: 'b12', order: 'c0ffee12bb', orderBlock: T - 901, give: pets[9].deed, asset: 'XCP', price: 50000000, expire: T - 613, status: 'open' });
+    L.push({ n: 12, petId: 4200, seller: me, block: T - 900, tx: 'b12', order: 'c0ffee12bb', orderBlock: T - 901, give: pets[9].deed, asset: 'XCP', price: 50000000, expire: T + 150, status: 'open' });
     var items = { g1: { id: 'g1', on: 2231 }, g2: { id: 'g2', on: 4012 }, g3: { id: 'g3', on: 4200 } };
     var book = L.map(function (S) { return { tx_hash: S.order, tx_index: S.n, block_index: S.orderBlock, source: S.seller, give_asset: S.give, give_quantity: 1, give_remaining: S.status === 'open' ? 1 : 0, get_asset: S.asset, get_quantity: S.price, expiration: 288, expire_index: S.expire, status: S.status === 'open' ? 'open' : 'filled' }; });
     book[9].status = 'cancelled'; /* listing 10: cancelled on the DEX, shows the optional early unlock */
@@ -170,6 +170,11 @@
       return x + '<br><button class="sh-btn" data-cancel="' + S.n + '">Cancel listing</button>'; }
     return stt === 'sold' ? '<br>Sold' + (S.soldBlock ? ' at block ' + blk(S.soldBlock) : '') + (S.buyer === ME ? ' to you' : '') : stt === 'expired' ? '<br>Ended after block ' + blk(S.expire) + '. Nothing to cancel.'
       : stt === 'ended' ? '<br>Unlocked by the burn at block ' + blk(S.endBlock) + '.' : '<br>The pet or its token moved, so this listing ended.'; }
+  /* shop-safety: "You have N open listings" for the connected wallet, on every tab (amount, coin, expiry, the existing cancel action). */
+  function openBanner(b) { if (!ME) return ''; var L = V.openListings(W, b).filter(function (S) { return S.seller === ME; }); if (!L.length) return '';
+    return '<div class="sh-openbar" id="shOpenBar"><b>📋 You have ' + L.length + ' open listing' + (L.length === 1 ? '' : 's') + '</b><ul>' + L.map(function (S) { var p = W.byId[S.petId] || { id: S.petId }, o = orderOf(S);
+      return '<li>#' + S.petId + ' ' + esc(p.name || '') + ' for <b class="sh-coin">' + esc(V.saleAmountText(S.asset, S.price)) + '</b> · ends after block ' + blk(S.expire) + ' (' + Math.max(0, S.expire - TIP) + ' blocks left) ' +
+        (o && o.status === 'cancelled' ? '<span class="sh-hint">order cancelled</span>' : '<button class="sh-btn sh-ghost" data-cancel="' + S.n + '">Cancel</button>') + '</li>'; }).join('') + '</ul></div>'; }
   function render() { var root = $('shop'); if (!on()) { root.innerHTML = '<p class="sh-soon">The shop opens soon. Until then the cases hold card backs.</p><div class="sh-grid">' + '<div class="sh-card sh-back"></div>'.repeat(6) + '</div>'; return; }
     var b = TIP + 1, all = V.openListings(W, b).filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }),
       fB = PF.load('binder'), fM = PF.load('mine'), xs = V.petFilter(W, all, fB, b), others = xs.map(function (x) { return x.S; }),
@@ -179,8 +184,8 @@
     var nSell = mineAll.filter(function (x) { return x.S.seller === ME && V.saleState(W, x.S, b) === 'open'; }).length, nTrade = V.swapsFor ? V.swapsFor(W, ME, b).length : 0;
     var tabs = '<nav class="sh-tabs" role="tablist">' + [['buy', '🛒 Buy', all.length], ['sell', '🎟 Sell', nSell], ['trade', '🔁 Trade', nTrade], ['gift', '🎁 Gift', null]].map(function (t) {
       return '<button class="sh-tab' + (TAB === t[0] ? ' on' : '') + '" role="tab" aria-selected="' + (TAB === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + (t[2] ? ' <b class="sh-cnt">' + t[2] + '</b>' : '') + '</button>'; }).join('') + '</nav>';
-    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = tabs + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
-    root.innerHTML = tabs + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : '<div class="sh-bar"><span class="sh-hint">' + others.length + ' of ' + all.length + ' pet' + (all.length === 1 ? '' : 's') + ' in the binder · every pet sells with its own 🎟 pet token</span></div>' +
+    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = openBanner(b) + tabs + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
+    root.innerHTML = openBanner(b) + tabs + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : '<div class="sh-bar"><span class="sh-hint">' + others.length + ' of ' + all.length + ' pet' + (all.length === 1 ? '' : 's') + ' in the binder · every pet sells with its own 🎟 pet token</span></div>' +
       '<div id="shBinF">' + PF.html(fB, BINDER_F, { species: PF.species(all.map(function (x) { return x.p; })), count: others.length, total: all.length }) + '</div>' +
       '<div class="sh-binder"><div class="sh-rings"></div><div class="sh-grid">' + (pg.map(function (x) { return card(x.p, x.S, '<button class="sh-btn sh-buy' + (x.buy ? '' : ' sh-later') + '" data-buy="' + x.S.n + '">' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>'); }).join('') || '<p class="sh-hint">' + (all.length ? 'No pets match these filters.' : 'The binder is empty.') + '</p>') + '</div>' +
       '<div class="sh-pager"><button class="sh-btn" id="shPrev"' + (PAGE ? '' : ' disabled') + '>◀</button> page ' + (PAGE + 1) + ' of ' + pgs + ' <button class="sh-btn" id="shNext"' + (PAGE < pgs - 1 ? '' : ' disabled') + '>▶</button></div></div>') +
@@ -205,12 +210,31 @@
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
       (mine.map(function (p) { return '<button class="sh-pk" data-pick="' + p.id + '">' + card(p) + '</button>'; }).join('') || '<p>No free pets right now.</p>') + '</div><button class="sh-btn" data-close>Close</button>');
-    document.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { sellPrice(W.byId[b.getAttribute('data-pick')], 'XCPETS', 100); }; });
+    document.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { sellPrice(W.byId[b.getAttribute('data-pick')], 'XCPETS', '100'); }; });
     PF.bind($('shModal'), fS, 'sell', sellPick); }
-  function priceForm(p, asset, sticker) { var unit = asset === 'XCP' ? 1 : 1e8, ask = Math.round(sticker * unit), low = !(ask >= V.SALE_MIN[asset]);
-    return { ask: ask, low: low, html: '<label>Price in <select id="shAsset"><option' + (asset === 'XCPETS' ? ' selected' : '') + '>XCPETS</option><option' + (asset === 'XCP' ? ' selected' : '') + '>XCP</option></select></label>' +
-      '<label>Price (' + (asset === 'XCP' ? 'sats' : 'XCPETS') + ') <input id="shSticker" type="number" min="1" step="1" value="' + sticker + '"></label>' +
-      '<p class="sh-exact">Buyers pay: <b>' + esc(V.saleAmountText(asset, ask)) + '</b></p>' + (low ? '<p class="sh-warn">Minimum is 1 XCPETS or 1,000 sats.</p>' : '') }; }
+  /* shop-safety (owner 5:22 AM CT Oct 24): amounts are typed in whole coins for BOTH XCPETS and XCP (decimals up to 8 places), converted
+   * exactly to base units (1 coin = 100,000,000). SALE_MIN is unchanged in base units. LOW_FLOOR = the "are you sure" floor: under 10 XCPETS or
+   * 0.01 XCP the listing needs an extra tap. Display/UI only: no rule change. */
+  var LOW_FLOOR = { XCPETS: 10e8, XCP: 1e6 };
+  function toBase(str) { str = String(str == null ? '' : str).trim(); var m = /^(\d{1,12})(?:\.(\d{0,8}))?$/.exec(str) || /^()\.(\d{1,8})$/.exec(str); if (!m) return NaN;
+    return Number(m[1] || 0) * 1e8 + Number(((m[2] || '') + '00000000').slice(0, 8)); }
+  function coinLine(p, asset, ask) { var other = asset === 'XCP' ? 'XCPETS' : 'XCP';
+    return '<p class="sh-confirm">You\'re selling #' + p.id + ' ' + esc(p.name || spName(p)) + ' for <b class="sh-coin">' + esc(V.saleAmountText(asset, ask)) + '</b> (not ' + other + ').</p>'; }
+  function isLow(asset, ask) { return ask >= V.SALE_MIN[asset] && ask < LOW_FLOOR[asset]; }
+  function lowWarn(asset) { return '<p class="sh-warn">⚠️ That is under ' + (asset === 'XCP' ? '0.01 XCP' : '10 XCPETS') + '. Low amounts sell fast and a filled order can\'t be undone.</p>'; }
+  /** confirmList(p, asset, ask, go): the last screen before the wallet opens on a listing (coin in bold next to the amount; under the floor needs an extra tap). */
+  function confirmList(p, asset, ask, go) { var low = isLow(asset, ask);
+    modal('<h3>Check before you list</h3>' + coinLine(p, asset, ask) + '<p class="sh-hint">The DEX order gives the 🎟 token and gets exactly this amount. It lasts ' + V.SALE_EXPIRY + ' blocks unless you cancel it.</p>' +
+      (low ? lowWarn(asset) + '<label class="sh-lowok"><input type="checkbox" id="shLowOk"> Yes, list #' + p.id + ' for ' + esc(V.saleAmountText(asset, ask)) + '</label><br>' : '') +
+      '<button class="sh-btn" id="shConfirmGo"' + (low ? ' disabled' : '') + '>Open wallet window</button> <button class="sh-btn sh-ghost" data-close>Back</button>');
+    if ($('shLowOk')) $('shLowOk').onchange = function () { $('shConfirmGo').disabled = !this.checked; };
+    $('shConfirmGo').onclick = function () { if (low && !($('shLowOk') && $('shLowOk').checked)) return; go(); }; }
+  function priceForm(p, asset, sticker) { var ask = toBase(sticker), bad = !(ask === ask), low = bad || !(ask >= V.SALE_MIN[asset]);
+    if (bad) ask = 0;
+    return { ask: ask, low: low, html: '<label>Coin <select id="shAsset"><option' + (asset === 'XCPETS' ? ' selected' : '') + '>XCPETS</option><option' + (asset === 'XCP' ? ' selected' : '') + '>XCP</option></select></label>' +
+      '<label class="sh-amt">Amount <input id="shSticker" type="text" inputmode="decimal" autocomplete="off" value="' + esc(sticker) + '"> <b class="sh-coin">' + esc(asset) + '</b></label>' +
+      (bad ? '<p class="sh-warn">Type a number of ' + esc(asset) + ', up to 8 decimal places.</p>' : coinLine(p, asset, ask)) +
+      (!bad && low ? '<p class="sh-warn">Minimum is 1 XCPETS or 0.00001 XCP.</p>' : !bad && isLow(asset, ask) ? lowWarn(asset) : '') }; }
   function sellPrice(p, asset, sticker) { var step = V.sellStep(W, p, ME), d = V.deedOf(W, p), pd = pend(p.id), f = priceForm(p, asset, sticker);
     var tok = step === 'list' ? '<p class="sh-ok">🎟 You hold the pet token ' + esc(d.asset) + '. Listing is one wallet window.</p>'
       : d && !d.ok ? '<p class="sh-warn">The token ' + esc(short(d.asset)) + ' for #' + p.id + ' is held by another address, so it can\'t list. Make a new token: it replaces the old one.</p>'
@@ -225,9 +249,9 @@
       : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
     modal('<h3>List #' + p.id + '</h3><div class="sh-sellrow">' + card(p, { asset: asset, price: f.ask }) + '<div class="sh-form">' + tok + f.html + omLine(p) +
       '<p class="sh-hint">The token travels with the pet: the buyer gets both and can relist in one window. A partial fill is no sale.</p>' + steps + btn + ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint" id="shMsg"></p></div></div>');
-    var re = function () { sellPrice(p, $('shAsset').value, Number($('shSticker').value) || 0); };
+    var re = function () { sellPrice(p, $('shAsset').value, $('shSticker').value); };
     $('shAsset').onchange = re; $('shSticker').onchange = re;
-    if ($('shGo')) $('shGo').onclick = function () { walletDex(V.listPlan(p.id, d.asset, asset, f.ask), close); };
+    if ($('shGo')) $('shGo').onclick = function () { confirmList(p, asset, f.ask, function () { walletDex(V.listPlan(p.id, d.asset, asset, f.ask), close); }); };
     if ($('shMint')) $('shMint').onclick = function () { $('shMsg').textContent = 'Finding a free token name…';
       freeDeed().then(function (A) { walletDex(V.mintPlan(p.id, A), function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); sellPrice(p, asset, sticker); }); }, function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
     if ($('shTie')) $('shTie').onclick = function () { tieAndList(p, pd, asset, f.ask); }; }
@@ -235,7 +259,7 @@
       modal('<h3>Window 2 of 3</h3><p>The token ' + esc(pd.asset) + ' is confirmed.</p><p>Now burn 1 dander with the tag<br><code>' + esc(plan.tag) + '</code></p><p class="sh-hint">Window 3 (the DEX order) opens right after.</p><button class="sh-btn" id="shGo2">Open window 2 of 3</button> <button class="sh-btn sh-ghost" data-close>Later</button>');
       $('shGo2').onclick = function () { walletBurn(plan, function () {
         modal('<h3>Window 3 of 3</h3><p>The tie burn was sent. Last step: the DEX order that gives the token ' + esc(short(pd.asset)) + ' and gets exactly <b>' + esc(V.saleAmountText(asset, ask)) + '</b>.</p><p class="sh-hint">Send it now or within ' + V.SALE_ORDER_LAG + ' blocks. The pet is listed once both confirm.</p><button class="sh-btn" id="shGo3">Open window 3 of 3</button> <button class="sh-btn sh-ghost" data-close>Later</button>');
-        $('shGo3').onclick = function () { walletDex(V.listPlan(p.id, pd.asset, asset, ask), function () { pend(p.id, null); close(); }); }; }); }; };
+        $('shGo3').onclick = function () { confirmList(p, asset, ask, function () { walletDex(V.listPlan(p.id, pd.asset, asset, ask), function () { pend(p.id, null); close(); }); }); }; }); }; };
     if (PREVIEW) return go();
     tokenAt(pd.asset).then(function (t) { if (!t.issued) { $('shMsg').textContent = 'The token is not confirmed yet. Wait for the next block and try again.'; return; }
       if (t.holder && t.holder !== ME) { $('shMsg').textContent = 'The token is held by another address. Make a new one.'; pend(p.id, null); return; } go(); }); }
