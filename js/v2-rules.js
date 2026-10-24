@@ -1599,7 +1599,7 @@
    *  - the quest ends len blocks later; Homecoming rolls sha256(return block hash + quest tx + pet id + 'quest'); the result goes to whoever holds the pet then.
    *  - Legendary Haul / Solid Loot / Came Home Empty in basis points; favoured stats above the Mythic average add 0.25 pt each (cap +8), matching-slot
    *    gear +1 (★ +2, cap +4), all taken from Empty. Haul: double reward, double finish progress, +1 favoured stat (cap +3 per pet).
-   *  - FUNTRUMP Ambush 1 in 69 (own hex window): bonus Jackpot Egg + FUNTRUMP badge. Nakamoto badge once all five quests were finished.
+   *  - FUNTRUMP Ambush 1 in 69 (own hex window): bonus Jackpot Egg + FUNTRUMP badge; none while a FUNTRUMP pet is away; FUNTRUMP's own quests: badge always, egg 2 in 69. Nakamoto badge once all five quests were finished.
    *  - Nap Time = half the quest length after Homecoming. While away: no battle, breed, feed, gift, sale, swap, listing (Finders Keepers on token moves).
    *  - One move per pet per block: only the first quest / aura / fight / breed action of a pet in a block counts.
    *  - Proof of Burn: every pet existing at the gate; tier from the owner wallet's total burns (live); lost for good when the pet changes hands.
@@ -1650,6 +1650,11 @@
     st = Math.min(QUEST_STAT_MAX, Math.floor(st));
     wornOf(w, p.id).forEach(function (g) { if (g.slot === Q.slot) gr += g.legendary ? 200 : 100; }); gr = Math.min(QUEST_GEAR_MAX, gr);
     var sh = Math.min(st + gr, Q.odds[2]); return { haul: Q.odds[0] + sh, loot: Q.odds[1], empty: Q.odds[2] - sh, shift: sh, statPts: st, gearPts: gr }; }
+  /* Former community pets (owner 2026-10-24): community pets are never w.pets entries (they live in w.community / w.kek / w.funtrump trackers);
+   * a FUNTRUMP / Lord Kek / Wizard / Nakamoto / Spam City pet a player holds is an ordinary pet with an owner, so it quests like any Mythic with the
+   * normal checks (questWhy). FUNTRUMP = a pure species 'funtrump' pet: while one is Gone Questing the Ambush can't trigger on anyone else's quest;
+   * his own quests always earn the FUNTRUMP badge and roll the Ambush egg at 2 in 69. */
+  function isFuntrumpPet(p) { return !!p && p.species === 'funtrump' && !p.community; }
   function questHex(bh, tx, id) { return sha(bh + tx + id + 'quest'); }
   function questPickGear(w, p, h, Q, b) { var sl = rollSlotOf(p, h, b), body = bodyOf(p), tierIdx = Q.code === 'spam' ? 0 : 3;
     var filt = Q.code === 'kek' ? function (x) { return x.tier >= 2; } : Q.code === 'mine' ? function (x) { return x.tier >= 2 && /gold/i.test((x.label || '') + ' ' + x.id); } : null;
@@ -1688,8 +1693,10 @@
       else if (q.code === 'wiz') { earnSpin(w, owner, b, q.tx, 'quest', n * 3); got.push({ kind: 'spins', n: n * 3 }); }
       else if (q.code === 'cold') { if (tier === 'haul') { var e = jackpotEgg(w, P, bh, q.tx, b, owner, 'jackpot'); got.push({ kind: 'egg', petId: e.id, twin: e.twinOf || null }); }
         else { earnSpin(w, owner, b, q.tx, 'quest', 1); got.push({ kind: 'spins', n: 1 }); } } }
-    if (parseInt(h.slice(8, 16), 16) % AMBUSH_1_IN === 0) { var ae = jackpotEgg(w, P, bh, q.tx, b, owner, 'ambush'); rec.ambush = true; got.push({ kind: 'egg', petId: ae.id, twin: ae.twinOf || null, ambush: true });
-      P.questBadges.funtrump = (P.questBadges.funtrump || 0) + 1; }
+    var isFT = isFuntrumpPet(P), ftOut = !isFT && w.pets.some(function (x) { return x !== P && isFuntrumpPet(x) && !x.dead && !x.released && questAway(x, b); });
+    if (isFT) { P.questBadges.funtrump = (P.questBadges.funtrump || 0) + 1; rec.ftOwn = true; } /* FUNTRUMP's own quests always earn his badge */
+    if (!ftOut && parseInt(h.slice(8, 16), 16) % AMBUSH_1_IN < (isFT ? 2 : 1)) { var ae = jackpotEgg(w, P, bh, q.tx, b, owner, 'ambush'); rec.ambush = true; got.push({ kind: 'egg', petId: ae.id, twin: ae.twinOf || null, ambush: true });
+      if (!isFT) P.questBadges.funtrump = (P.questBadges.funtrump || 0) + 1; }
     if (tier === 'haul' && (P.questBoost || 0) < QUEST_STAT_CAP) { var k = Q.fav[parseInt(h.slice(16, 18), 16) % 2]; P.stats[k] = (P.stats[k] || 0) + 1; P.questBoost = (P.questBoost || 0) + 1; rec.boost = k; got.push({ kind: 'stat', stat: k }); }
     P.questBadges[q.code] = (P.questBadges[q.code] || 0) + 1;
     if (!P.questBadges.nakamoto && QUEST_CODES.every(function (c) { return P.questBadges[c]; })) { P.questBadges.nakamoto = 1; rec.nakamoto = true; }

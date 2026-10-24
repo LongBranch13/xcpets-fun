@@ -11,11 +11,11 @@ const SNAP = JSON.parse(fs.readFileSync(path.resolve(opt('--snap') || path.join(
 const GATE = +(opt('--gate') || 972500), TIP = SNAP.tip;
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/block-hashes.js'];
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
-function load() { const store = {}; const ls = { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+function load(patch) { const store = {}; const ls = { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout: () => 0, clearTimeout() {}, URLSearchParams, URL, TextEncoder, TextDecoder, fetch: () => Promise.reject(new Error('offline')) };
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
   win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win; const ctx = vm.createContext(win);
-  for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext("window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};", ctx); continue; } const p = path.join(ROOT, f); if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, { filename: f }); }
+  for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext("window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};", ctx); continue; } const p = path.join(ROOT, f); if (fs.existsSync(p)) { let src = fs.readFileSync(p, 'utf8'); if (patch && f === 'js/v2-rules.js') src = patch(src); vm.runInContext(src, ctx, { filename: f }); } }
   return ctx; }
 const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine;
 const baseHashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, SNAP.hashes);
@@ -72,5 +72,15 @@ const egg = B1.questHist[0].rewards.find(r => r.kind === 'egg'); const EP = egg 
 check(V.questInfo(w, w.byId[c.id], TIP).away, 'kek pet still away');
 check(String(V.questBusyWhy(w.byId[c.id], TIP) || '').length > 0, 'away pet busy reason');
 const badRow = (w.log || []).find(l => l.tx === bad1.tx_hash); check(!badRow || badRow.invalid || badRow.kind !== 'quest', 'double send rejected');
+{ const ex = w.pets.find(p => ['nakamoto', 'wizard', 'kek', 'funtrump'].includes(p.species) && !p.dead && !p.released && V.isMythic(p) && !V.questBusyWhy(p, TIP));
+  check(!ex || V.questWhy(w, ex, ex.owner, 'spam', 9999, TIP) === null, 'player-held former community species Mythic can quest' + (ex ? ' (#' + ex.id + ' ' + ex.species + ')' : '')); }
+/* FUNTRUMP rules (2026-10-24): a second rules copy where pet f counts as a player-held FUNTRUMP (no real one exists yet in the snapshot) */
+if (f) { const c2 = load(src => src.replace("function isFuntrumpPet(p) { return !!p && p.species === 'funtrump' && !p.community; }", "function isFuntrumpPet(p) { return !!p && p.id === " + f.id + "; }")), V2 = c2.V2Rules;
+  V2._setQuestActivation(GATE); const hs = Object.assign({}, baseHashes, simH); const rows = SNAP.rows.concat(sim).sort((x, y) => x.block_index - y.block_index || x.tx_index - y.tx_index);
+  const w2 = V2.replay(rows, hs, [], { tip: TIP, live: c2.LiveEngine && c2.LiveEngine.RealCore });
+  const a2 = w2.byId[a.id], f2 = w2.byId[f.id];
+  check(!a2.questHist[0].ambush && !(a2.questBadges.funtrump), 'no Ambush on others while FUNTRUMP is Gone Questing');
+  check(f2.questHist[0].ftOwn && f2.questBadges.funtrump >= 1, "FUNTRUMP's own quest always earns the FUNTRUMP badge");
+  check(/% AMBUSH_1_IN < \(isFT \? 2 : 1\)/.test(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'), 'utf8')), 'FUNTRUMP ambush odds 2 in 69'); }
 fs.writeFileSync(opt('--out') || '/workspace/tmp/quest-sim.json', JSON.stringify({ gate: GATE, tip: TIP, rows: sim, simHashes: simH, plan, picked: P.map(p => p.id), tied }));
 console.log('\nchecks ok', ok, 'failed', bad); process.exitCode = bad ? 1 : 0;

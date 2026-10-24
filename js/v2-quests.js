@@ -23,8 +23,9 @@
     silver: ['    o       ', '   oro      ', '  orryo     ', '  oryyo     ', '   ooo      ', '  ssssss    ', ' sweeeews   ', ' seswwses   ', ' sweeeews   ', '  ssssss    ', '            ', '            '],
     gold: ['    o       ', '   oro      ', '  orryo     ', '  oryyo     ', '   ooo      ', '  yyyyyy    ', ' yoooooy    ', ' yoyyyyoy   ', ' yoooooy    ', '  yyyyyy    ', '            ', '            ']
   };
-  function badgeImg(kind, scale) { var a = ART[kind]; if (!a) return ''; var c = document.createElement('canvas'); c.width = 12; c.height = 12; var x = c.getContext('2d');
-    a.forEach(function (row, y) { for (var i = 0; i < 12; i++) { var ch = row[i]; if (ch && ch !== ' ' && PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, y, 1, 1); } } });
+  function badgeCanvas(kind) { var a = ART[kind]; if (!a) return null; var c = document.createElement('canvas'); c.width = 12; c.height = 12; var x = c.getContext('2d');
+    a.forEach(function (row, y) { for (var i = 0; i < 12; i++) { var ch = row[i]; if (ch && ch !== ' ' && PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, y, 1, 1); } } }); return c; }
+  function badgeImg(kind, scale) { var c = badgeCanvas(kind); if (!c) return '';
     var s = (scale || 3) * 12; return '<img class="qb-ico" alt="" width="' + s + '" height="' + s + '" src="' + c.toDataURL() + '">'; }
   var BADGE = { spam: 'Spam City badge', cold: 'Vault badge', kek: 'Kek badge', wiz: 'Wizard badge', mine: 'Mines badge', funtrump: 'FUNTRUMP badge', nakamoto: 'Nakamoto badge' };
   var TIER_ICO = { haul: '🏆', loot: '🎒', empty: '🕳️' };
@@ -42,7 +43,7 @@
     '.qs-pob{display:flex;gap:12px;align-items:center;border:3px solid #1a0d1f;background:#2b1928;color:#fff4d6;padding:10px;box-shadow:4px 4px 0 #1a0d1f;margin:10px 0}.qs-pob b{font-family:"Press Start 2P",monospace;font-size:12px}' +
     '.qs-flame{border:3px dashed #ff8a1e;padding:10px;margin:10px 0}.qs-why{color:#b0303a;font-size:12px}.qs-modal{position:fixed;inset:0;background:rgba(26,13,31,.7);display:flex;align-items:center;justify-content:center;z-index:9999;padding:12px}' +
     '.qs-modal>div{background:#fff4d6;color:#2b1928;border:4px solid #1a0d1f;box-shadow:6px 6px 0 #1a0d1f;max-width:460px;width:100%;padding:16px}.qs-modal h3{color:#2b1928;font-family:"Press Start 2P",monospace;font-size:13px;line-height:1.5;margin:0 0 10px}.qs-modal code{word-break:break-all;background:#1a0d1f;color:#ffc93c;padding:2px 4px}' +
-    '.qs-modal .muted{color:#6b5560}.pp-qb{margin-top:8px}.pet.card.quest-away{filter:grayscale(.75);opacity:.7}.chip.quest-chip{background:#331a4d;color:#ffc93c}' +
+    '.qs-home h3{color:#2b1928}.qs-modal .muted{color:#6b5560}.pp-qb{margin-top:8px}.pet.card.quest-away{filter:grayscale(.75);opacity:.7}.chip.quest-chip{background:#331a4d;color:#ffc93c}' +
     '@media (max-width:520px){#questCard .qs-grid{grid-template-columns:1fr}.qs-away h3,.qs-home h3{font-size:12px}}';
     document.head.appendChild(s); }
   function world() { var M = window.V2Mock; if (!M || !M.world) return null; try { return M.world(); } catch (e) { return null; } }
@@ -57,8 +58,16 @@
       '<p class="small muted">The game reads this burn from the chain. If a check fails when it confirms, the burn becomes community food.</p><p><button class="q" data-x>Cancel</button> <button class="btn" data-go>' + esc(what.go) + '</button></p>');
     m.querySelector('[data-x]').onclick = function () { m.remove(); };
     m.querySelector('[data-go]').onclick = function () { m.remove(); if (!window.V2Wallet || !ME) { toast('Connect the owner wallet first.'); return; }
-      window.V2Wallet.send(plan, ME).then(function () { toast('Sent: ' + plan.label); }, function (e) { toast('Not sent: ' + (e && e.message || e)); }); };
+      window.V2Wallet.send(plan, ME).then(function () { toast('Sent: ' + plan.label); if (what.onSent) try { what.onSent(); } catch (e) {} }, function (e) { toast('Not sent: ' + (e && e.message || e)); }); };
     return m; }
+  /* 8-bit quest animations (js/v2-quest-anim.js), each shown once per quest and remembered as seen in localStorage */
+  function seen(k) { try { if (localStorage.getItem(k)) return true; localStorage.setItem(k, '1'); } catch (e) { return true; } return false; }
+  function anim(w, p, I, lastH, b) { var A = window.V2QuestAnim; if (!A || document.querySelector('.qa-ov')) return;
+    var flip = function (sel) { return function () { var x = document.querySelector(sel); if (x) { x.classList.remove('qa-flip'); void x.offsetWidth; x.classList.add('qa-flip'); } }; };
+    if (I.away && !seen('xcpets-qa-out:' + p.id + ':' + I.away.start)) { var t = 0; try { t = +localStorage.getItem('xcpets-qa-sent:' + p.id) || 0; } catch (e) {}
+      if (Date.now() - t > 3 * 3600e3) A.out({ code: I.away.code, pet: p, w: w, done: flip('#qsAway') }); else flip('#qsAway')(); return; }
+    if (lastH && $('qsHome') && !seen('xcpets-qa-in:' + p.id + ':' + lastH.end)) A.home({ code: lastH.code, pet: p, w: w, tier: lastH.tier, ambush: !!lastH.ambush,
+      egg: lastH.rewards.some(function (r) { return r.kind === 'egg'; }), done: flip('#qsHome') }); }
   var last = '';
   function paint() { var V = window.V2Rules, w = world(); if (!V || !V.questInfo || !w || !w.byId) return; var b = tipNow() + 1; if (!V.questOn(b)) { var o = $('questCard'); if (o) o.remove(); return; }
     var id = Number(new URLSearchParams(location.search).get('id')), p = w.byId[id], anchor = $('starveWarn') || $('facts'); if (!p || !anchor) return;
@@ -72,7 +81,7 @@
     var lastH = I.hist[I.hist.length - 1];
     if (lastH && !I.away && b - lastH.end <= 144) { var TN = V.QUEST_TIERS[lastH.tier];
       h += '<div class="qs-home' + (lastH.tier === 'empty' ? ' empty' : '') + '" id="qsHome"><h3>' + TIER_ICO[lastH.tier] + ' Homecoming: ' + esc(TN) + '</h3><p>Back from <b>' + esc(V.QUESTS[lastH.code].name) + '</b> at block ' + fmt(lastH.end) + '.</p>' +
-        (lastH.ambush ? '<div class="qs-amb">' + badgeImg('funtrump', 2) + ' FUNTRUMP Ambush! A bonus Jackpot Egg and the FUNTRUMP badge.</div>' : '') +
+        (lastH.ftOwn ? '<div class="qs-amb">' + badgeImg('funtrump', 2) + ' FUNTRUMP\'s own quest: the FUNTRUMP badge, always.</div>' : '') + (lastH.ambush ? '<div class="qs-amb">' + badgeImg('funtrump', 2) + ' FUNTRUMP Ambush! A bonus Jackpot Egg and the FUNTRUMP badge.</div>' : '') +
         (lastH.rewards.length ? '<ul>' + lastH.rewards.map(function (r) { return '<li>' + rewardText(r, w) + '</li>'; }).join('') + '</ul>' : '<p>Nothing this time. The quest badge and look progress still count.</p>') +
         (lastH.look ? '<p><b>✨ New look unlocked: ' + esc(lastH.look) + '</b></p>' : '') + (I.napUntil ? '<p class="small">💤 Nap Time until block ' + fmt(I.napUntil) + ' (' + hrs(I.napUntil - b) + ').</p>' : '') + '</div>'; }
     else if (I.napUntil) h += '<p>💤 Nap Time until block ' + fmt(I.napUntil) + ' (' + hrs(I.napUntil - b) + '). It can fight, breed and eat meanwhile.</p>';
@@ -96,12 +105,13 @@
     if (I.pob) h += '<div class="qs-pob" id="qsPob">' + badgeImg(I.pob.id, 4) + '<div><b>Proof of Burn: ' + esc(I.pob.name) + '</b><div class="small">This pet was here at launch. Its owner wallet has burned ' + fmt(Math.floor(I.pob.burned)) + ' XCPETS in total (Bronze under 100,000 · Silver 100,000 to 1,000,000 · Gold 1,000,000 and up). Lost if the pet is sold or gifted.</div></div></div>';
     h += '<div class="qs-scroll" id="qsScroll"><b>📜 Quest Scroll</b>' + (I.hist.length ? '<ol>' + I.hist.slice().reverse().map(function (q) { return '<li><b>' + esc(V.QUESTS[q.code].name) + '</b>: ' + TIER_ICO[q.tier] + ' ' + esc(V.QUEST_TIERS[q.tier]) + (q.ambush ? ' + FUNTRUMP Ambush' : '') + ' <span class="muted small">(blocks ' + fmt(q.start) + ' to ' + fmt(q.end) + (q.free ? ', free' : '') + ')</span>' + (q.rewards.length ? '<br><span class="small">' + q.rewards.map(function (r) { return rewardText(r, w); }).join(' · ') + '</span>' : '') + '</li>'; }).join('') + '</ol>' : '<p class="small">No quests yet.</p>') + '</div>';
     el.innerHTML = h;
+    anim(w, p, I, lastH, b);
     el.querySelectorAll('[data-qs]').forEach(function (x) { x.onclick = function () { var c = x.getAttribute('data-qs'), Q = V.QUESTS[c], pl = V.questPlan(p.id, c, w, b);
-      confirmSend(pl, { title: 'Send #' + p.id + ' on ' + Q.name + '?', go: 'Send in XCP Wallet', body: '<p>' + badgeImg(c, 3) + '</p><p>#' + p.id + ' ' + esc(p.name) + ' will be away for ' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + '): no battles, breeding, feeding, gifts or sales until Homecoming. After it, Nap Time for ' + fmt(Q.len / 2) + ' blocks.</p>' }); }; });
+      confirmSend(pl, { title: 'Send #' + p.id + ' on ' + Q.name + '?', go: 'Send in XCP Wallet', body: '<p>' + badgeImg(c, 3) + '</p><p>#' + p.id + ' ' + esc(p.name) + ' will be away for ' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + '): no battles, breeding, feeding, gifts or sales until Homecoming. After it, Nap Time for ' + fmt(Q.len / 2) + ' blocks.</p>', onSent: function () { try { localStorage.setItem('xcpets-qa-sent:' + p.id, String(Date.now())); } catch (e) {} if (window.V2QuestAnim) V2QuestAnim.out({ code: c, pet: p, w: w }); } }); }; });
     el.querySelectorAll('[data-aura]').forEach(function (x) { x.onclick = function () { var on = x.getAttribute('data-aura') === 'on'; confirmSend(V.auraPlan(p.id, on), { title: on ? 'Lights On for #' + p.id + '?' : 'Lights Out for #' + p.id + '?', go: 'Send in XCP Wallet', body: '<p>' + (on ? 'Puts your flame looks on this pet (one of each type; a look already on another pet stays there if you are at your limit).' : 'Takes the flame looks off this pet so you can place them on another.') + '</p>' }); }; });
     ppStrip(I); }
   function ppStrip(I) { var bd = I.badges || {}, all5 = window.V2Rules.QUEST_CODES.every(function (c) { return bd[c]; }), pp = $('petPapers'); if (pp) { var q = pp.querySelector('.pp-qb'); if (!q) { q = document.createElement('div'); q.className = 'pp-qb'; pp.appendChild(q); }
       var any = Object.keys(bd).some(function (k) { return bd[k]; }); q.innerHTML = any ? '<p class="small"><b>Quest badges on this Proof of Pet</b> (they travel with the token):</p><div class="qs-badges">' + Object.keys(BADGE).filter(function (k) { return k === 'nakamoto' ? all5 : bd[k]; }).map(function (k) { return '<span class="qs-badge">' + badgeImg(k, 2) + esc(BADGE[k]) + (bd[k] > 1 ? ' · ' + bd[k] + ' times' : '') + '</span>'; }).join('') + '</div>' : ''; } }
   css(); if (document.body && document.body.getAttribute('data-v2page') === 'pet') { setInterval(paint, 2000); setTimeout(paint, 400); }
-  window.V2Quests = { paint: paint, badgeImg: badgeImg };
+  window.V2Quests = { paint: paint, badgeImg: badgeImg, badgeCanvas: badgeCanvas };
 })();
