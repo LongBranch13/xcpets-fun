@@ -24,10 +24,10 @@ function png(data, w, h, s) { s = s || 1; const W = w * s, H = h * s, raw = Buff
   const ih = Buffer.alloc(13); ih.writeUInt32BE(W, 0); ih.writeUInt32BE(H, 4); ih[8] = 8; ih[9] = 6;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ih), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]); }
 /** meta(pet row from api-feed build, asset|null) -> the token JSON object (CIP25 + XChain TIS compatible keys). */
-function meta(p, v, m) { const img = SITE + '/t/' + p.id + '.png', o = {}, asset = (v && v.asset) || (m && m.asset) || null; /* m = owner's fresh mint, not tied yet: asset only (explorers match it), verified stays 'not tied yet' */
+function meta(p, v, m, mintTie) { /* mintTie: verified tie with no pet:deed burn (pre-gate mint-only tie, ties.json kind 'mint') */ const img = SITE + '/t/' + p.id + '.png', o = {}, asset = (v && v.asset) || (m && m.asset) || null; /* m = owner's fresh mint, not tied yet: asset only (explorers match it), verified stays 'not tied yet' */
   if (asset) o.asset = asset;
   Object.assign(o, { name: 'XCPETS #' + p.id + ' ' + p.name,
-    description: p.name + ', a ' + (p.tier || '') + ' ' + p.speciesLabel + ' (' + p.stageName + ') on xcpets.fun. This token is pet #' + p.id + "'s token: once it is tied to the pet by an on-chain pet:deed burn, whoever holds it owns the pet in the xcpets.fun game (from Bitcoin block 972,729) and can sell, buy or gift it in Spam City Games.",
+    description: p.name + ', a ' + (p.tier || '') + ' ' + p.speciesLabel + ' (' + p.stageName + ') on xcpets.fun. This token is pet #' + p.id + (mintTie ? "'s token: it was tied to the pet right when it was minted on-chain, so whoever holds it owns the pet in the xcpets.fun game (from Bitcoin block 972,729) and can sell, buy or gift it in Spam City Games." : "'s token: once it is tied to the pet by an on-chain pet:deed burn, whoever holds it owns the pet in the xcpets.fun game (from Bitcoin block 972,729) and can sell, buy or gift it in Spam City Games."),
     website: SITE + '/pet.html?id=' + p.id, image: img,
     images: [{ type: 'large', size: '128x128', data: img }], categories: [{ type: 'main', data: 'NFT' }, { type: 'sub', data: 'xcpets pet' }],
     verified: v && v.asset ? { asset: v.asset, tiedBlock: v.block, tiedTx: v.tx, tiedBy: v.by } : 'not tied yet',
@@ -70,9 +70,10 @@ if (require.main === module) (async () => {
   if (A.includes('--tokened')) { only = new Set(Object.keys(assetOf).concat(Object.keys(mints)).map(Number));
     try { for (const f of fs.readdirSync(OUT)) { const m = /^([0-9]+)\.json$/.exec(f); if (!m) continue; try { const j = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')); if (j.asset) only.add(Number(m[1])); } catch (e) { } } } catch (e) { }
     console.log('tokened: tied', Object.keys(assetOf).length, 'fresh mints', Object.keys(mints).length, 'files to check', only.size); }
+  const BURN_TX = new Set(rows.map(r => r.tx_hash)); /* same test as ties.json kind: deed = burn tx, else mint */
   fs.mkdirSync(OUT, { recursive: true }); let nj = 0, np = 0, bad = 0;
   for (const p of pets) { if (only && !only.has(p.id)) continue;
-    nj += put(path.join(OUT, p.id + '.json'), Buffer.from(JSON.stringify(meta(p, assetOf[p.id] || null, assetOf[p.id] ? null : mints[p.id])) + '\n'));
+    nj += put(path.join(OUT, p.id + '.json'), Buffer.from(JSON.stringify(meta(p, assetOf[p.id] || null, assetOf[p.id] ? null : mints[p.id], !!(assetOf[p.id] && !BURN_TX.has(assetOf[p.id].tx)))) + '\n'));
     let fr = null; try { fr = ctx.V2Render.petFramesRaw(byId.get(p.id), w, { noHunger: true }); } catch (e) { fr = null; }
     if (!(fr && fr[0] && fr[0].data && fr[0].data.length === 4096)) { bad++; continue; }
     /* Proof of Pet (branch pet-papers): a pet with a verified tied token gets the 128x128 Proof of Pet badge (js/v2-papers.js, same pixels as the
