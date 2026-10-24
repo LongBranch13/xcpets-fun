@@ -111,21 +111,17 @@
       stats: function (w) { var x = w.kekMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
       story: ['Lord Kek, Ruler of All Pepes. All Pepes worshipped him as the most powerful Pepe in existence.', 'The Bitcoin Wizard went into Cold Storage and left an egg. Every burn fed it, and Lord Kek rose.',
         'At Mythic, a sacrifice of 7 sacred artifacts was made, and Lord Kek was defeated.', 'After the great victory, the real and only ruler is STAR LORD KEK.', 'Lord Kek rests in Cold Storage. A new era begins: burns cost half.'],
-      sprites: function () { return coldEntryFrames(this); }, play: function (info) { kekFarewell(info); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(M.world()), info: info }); }); } }
   ];
-  /* Lord Kek farewell (halving-v1): the site's .reveal dialog. Lord Kek at Mythic, 7 glowing artifacts light up one by one, he fades, the STARLORDKEK card
-   * ('THE REAL AND ONLY LORD') rises. Reduced motion: every beat shown at once. Esc / Close / backdrop close it. Display only. */
-  function kekFarewell(info) { var m = $('kekBye'); if (!m) { m = document.createElement('div'); m.className = 'reveal kekbye'; m.id = 'kekBye'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'kekByeT'); document.body.appendChild(m); }
-    var rm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, arts = ''; for (var i = 0; i < 7; i++) arts += '<span class="kb-art" style="--i:' + i + '"></span>';
-    m.innerHTML = '<div class="box"><div class="archstory-top"><h2 id="kekByeT">Lord Kek has been defeated</h2><button type="button" class="q archstory-x" id="kekByeX" aria-label="Close">Close ✕</button></div>' +
-      '<div class="kb-stage' + (rm ? ' kb-still' : '') + '"><canvas class="kb-kek" width="32" height="32" id="kekByeCv"></canvas><div class="kb-arts" aria-hidden="true">' + arts + '</div>' +
-      '<img class="kb-card" src="img/starlordkek-card.gif" alt="STARLORDKEK, the real and only lord" width="200" height="280"></div>' +
-      '<p class="kb-line">A sacrifice of 7 sacred artifacts has been made, and Lord Kek has been defeated.</p><p class="kb-line kb-l2"><b>STAR LORD KEK</b>: THE REAL AND ONLY LORD.</p>' +
-      '<p class="small muted">' + esc(info || 'Lord Kek · now in Cold Storage') + '</p></div>';
-    var fr = coldEntryFrames(entryOf('kek')), cv = $('kekByeCv'); if (fr && cv && R && R.animate) R.animate(cv, fr);
-    function close() { m.classList.remove('on'); document.removeEventListener('keydown', key); }
-    function key(ev) { if (ev.key === 'Escape') close(); }
-    $('kekByeX').onclick = close; m.onclick = function (ev) { if (ev.target === m) close(); }; document.addEventListener('keydown', key); m.classList.add('on'); $('kekByeX').focus(); }
+  /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style
+   * (js/v2-kek-farewell.js, lazy-loaded like the Wizard's). Replaces the halving-v1 .kekbye pop-up. The last sub-line hands off to FUNTRUMP, read from
+   * V.ACTIVATE_FUNTRUMP_BLOCK (972880): 'FUNTRUMP is the new community pet' once reached, else 'Next: FUNTRUMP · community pet #4 · from block N'. Display only. */
+  function kekNextLine(w) { var g = V.ACTIVATE_FUNTRUMP_BLOCK, tip = (w && w.tip) || 0;
+    if (g == null) return 'Lord Kek rests in Cold Storage'; return tip >= g ? 'FUNTRUMP is the new community pet' : 'Next: FUNTRUMP · community pet #4 · from block ' + fmt(g); }
+  function kekFarewellSprites(w) { var x = w.kekMythic, T = V.COMMUNITY_THRESHOLDS || [];
+    return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null,
+      total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=39584f47e7'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -210,6 +206,7 @@
       if (cur && cur.x && cur.x.done && !(cur.x.row && cur.x.row.block_time) && window.LiveEngine && LiveEngine.Chain) try { new LiveEngine.Chain().getJson('/blocks/' + cur.x.block).then(function (j) { var bt = j && j.result && j.result.block_time, el = box.querySelector('.archdate'); if (bt && el) el.textContent = new Date(bt * 1000).toISOString().slice(0, 10); }, function () {}); } catch (e) { }
     }
     draw(); withReturn(function () {}); if (preview === 'wizard') withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(w), info: 'Bitcoin Wizard farewell (preview)' }); });
+    if (preview === 'kek') withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(w), info: w.kekMythic ? 'Lord Kek · Mythic at block ' + fmt(w.kekMythic.block) + ' · now in Cold Storage' : 'Lord Kek farewell (preview)' }); });
   }
   function front() {
     heroGrid(); try { castParade(); } catch (e) { if (window.console) console.warn('cast parade', e); }
@@ -239,7 +236,8 @@
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     var returning = false; try { returning = !!localStorage.getItem('xcpets-v2-return-seen'); } catch (e) { }
-    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); /* farewell: once per browser, returning visitors only */
+    function kekAuto() { if (w.kekMythic || /preview=kek/.test(location.search)) withKekFarewell(function () { V2KekFarewell.maybeAutoplay(w, { sprites: kekFarewellSprites(w), info: w.kekMythic ? 'Lord Kek · Mythic at block ' + fmt(w.kekMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); } /* Lord Kek farewell: once per browser, returning visitors only, after the Wizard's if both are unseen */
+    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { if (!V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), onDone: kekAuto, info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning)) kekAuto(); }); else kekAuto(); /* farewell: once per browser, returning visitors only */
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
       /* UX polish 2026-10-16 (owner): no full-screen autoplay for visitors, so new players see the game first; mark it seen (Cold Storage still replays it) */
