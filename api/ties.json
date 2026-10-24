@@ -1,6 +1,6 @@
 {
- "lastBlock": 972916,
- "count": 5,
+ "lastBlock": 972935,
+ "count": 9,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -60,6 +60,54 @@
    "name": "Tobo",
    "species": "mumu",
    "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 10461,
+   "asset": "A1452226495223318893",
+   "tiedBlock": 972924,
+   "tiedTx": "6ccd021152e56fb6c2397c0766df6ee7980a835b569011d78e893209443b7ccc",
+   "kind": "deed",
+   "name": "Chimiru",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1623,
+   "asset": "A2405310733814186928",
+   "tiedBlock": 972927,
+   "tiedTx": "5784de2d6fae3dd5baa4d5004da48beec72c0c94e9dd4b8bda6c8d34c625fcfc",
+   "kind": "deed",
+   "name": "Kayo",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 15004,
+   "asset": "A2951797818516036758",
+   "tiedBlock": 972929,
+   "tiedTx": "7e568b5e1eeb7fd15be66fd4e87b7508cef5433d4e7be4547e80cc9487bca170",
+   "kind": "deed",
+   "name": "Miwa",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1632,
+   "asset": "A16419748957225301206",
+   "tiedBlock": 972933,
+   "tiedTx": "bc946620937b6dc628b3a1cd68f4be4fd6747e129ba1c98fc18f706714aa0907",
+   "kind": "deed",
+   "name": "Yori",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
