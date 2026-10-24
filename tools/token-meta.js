@@ -50,12 +50,24 @@ if (require.main === module) (async () => {
     /* mint-only ties (before ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: also check each asset already named in t/<id>.json (deedScan verifies it) */
     try { for (const f of fs.readdirSync(OUT)) { if (!/^[0-9]+\.json$/.test(f)) continue; let a = null; try { a = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')).asset; } catch (e) { } if (typeof a !== 'string' || seen[a]) continue; seen[a] = 1;
       const j = await (await fetch(API + '/assets/' + a + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } } catch (e) { } }
+  /* --tokened (hourly CI): find owners' fresh mints BEFORE deedScan, so a pre-gate mint-only tie is verified on the first run (Nusa #1111 fix).
+   * Lookback = last processed block (api/token-meta-state.json) minus 12, never a fixed window, so an outage or a throttled cron misses nothing.
+   * --since BLOCK overrides. --assets A1,A2 force-checks named assets (manual repair). */
+  let mints = {}; const STATE = path.join(ROOT, 'api', 'token-meta-state.json'); let since = Number(opt('--since')) || 0;
+  if (!since) { try { since = Number(JSON.parse(fs.readFileSync(STATE, 'utf8')).lastBlock) - 12; } catch (e) { } }
+  if (!since || !(since > 0)) since = input.tip - 36; since = Math.min(since, input.tip - 36);
+  const fetchIss = async a => { if (!dex || dex.issuances.some(x => x.asset === a)) return; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.xcp.fun/node/v2';
+    for (const u of [API + '/assets/' + a + '/issuances?verbose=true', 'https://tokenscan.io/api/issuances/' + a]) { try { const j = await (await fetch(u)).json(); const L = (j.result || j.data || []).filter(x => !x.status || x.status === 'valid').sort((x, y) => x.tx_index - y.tx_index); if (L[0]) { dex.issuances.push(L[0]); return; } } catch (e) { } } };
+  let mintsOk = true;
+  if (A.includes('--tokened')) { const DS = require('./deed-scan.js'), CF = ctx.XCPETS_CONFIG, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2';
+    const r = await DS.recentMints(pets, API, CF.composeList || [], since); mints = r.mints; mintsOk = r.ok; console.log('tokened: mint lookback from block', since, 'nodes ok', r.ok);
+    for (const id of Object.keys(mints)) if (!mints[id].mempool) await fetchIss(mints[id].asset); }
+  for (const a of (opt('--assets') || '').split(',').filter(Boolean)) await fetchIss(a);
   const assetOf = V.deedScan ? V.deedScan(w, rows, dex || {}) : {}; /* main has no deedScan until the shop ships: everything is 'not tied yet' */
-  let only = opt('--ids') ? new Set(opt('--ids').split(',').map(Number)) : null, mints = {};
+  let only = opt('--ids') ? new Set(opt('--ids').split(',').map(Number)) : null;
   /* --tokened (hourly CI): only pets with a tied token, an owner's fresh mint (recent full-node issuances + mempool), or an existing t/<id>.json that
    * names a token (so a re-tie / untie refreshes it). Never touches the other ~22k pets. */
-  if (A.includes('--tokened')) { const DS = require('./deed-scan.js'), CF = ctx.XCPETS_CONFIG, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2';
-    const r = await DS.recentMints(pets, API, CF.composeList || [], input.tip - 36); mints = r.mints; only = new Set(Object.keys(assetOf).concat(Object.keys(mints)).map(Number));
+  if (A.includes('--tokened')) { only = new Set(Object.keys(assetOf).concat(Object.keys(mints)).map(Number));
     try { for (const f of fs.readdirSync(OUT)) { const m = /^([0-9]+)\.json$/.exec(f); if (!m) continue; try { const j = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')); if (j.asset) only.add(Number(m[1])); } catch (e) { } } } catch (e) { }
     console.log('tokened: tied', Object.keys(assetOf).length, 'fresh mints', Object.keys(mints).length, 'files to check', only.size); }
   fs.mkdirSync(OUT, { recursive: true }); let nj = 0, np = 0, bad = 0;
@@ -69,5 +81,6 @@ if (require.main === module) (async () => {
     if (tie && q && !q.community && !(q.art && q.art.community)) { const r = PAPERS.render({ id: p.id, name: p.name, tier: p.tier || '', speciesLabel: p.speciesLabel }, fr[0].data, 'token'); np += put(path.join(OUT, p.id + '.png'), png(r.data, r.w, r.h, 1)); }
     else np += put(path.join(OUT, p.id + '.png'), png(fr[0].data, 32, 32, SCALE)); }
   if (!only) put(path.join(OUT, 'index.json'), Buffer.from(JSON.stringify({ blockHeight: input.tip, count: pets.length, url: SITE + '/t/<id>.json' }) + '\n'));
+  if (A.includes('--tokened') && mintsOk) put(STATE, Buffer.from(JSON.stringify({ lastBlock: input.tip }) + '\n'));
   console.log('tip', input.tip, 'pets', pets.length, 'json written', nj, 'png written', np, 'no sprite', bad, '->', OUT);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
