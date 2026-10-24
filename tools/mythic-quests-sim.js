@@ -83,4 +83,8 @@ if (f) { const c2 = load(src => src.replace("function isFuntrumpPet(p) { return 
   check(f2.questHist[0].ftOwn && f2.questBadges.funtrump >= 1, "FUNTRUMP's own quest always earns the FUNTRUMP badge");
   check(/% AMBUSH_1_IN < \(isFT \? 2 : 1\)/.test(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'), 'utf8')), 'FUNTRUMP ambush odds 2 in 69'); }
 fs.writeFileSync(opt('--out') || '/workspace/tmp/quest-sim.json', JSON.stringify({ gate: GATE, tip: TIP, rows: sim, simHashes: simH, plan, picked: P.map(p => p.id), tied }));
+/* who may quest (2026-10-24 go-live): community trackers never; player pets only when Mythic */
+{ const cm = w.pets.find(p => p.community && !p.dead) || Object.assign({}, a, { community: true }); check(!!cm && V.questWhy(w, cm, cm.owner, 'spam', 9999, TIP) !== null, 'community pet cannot quest' + (cm ? ' (#' + cm.id + ')' : ''));
+  const nm = w.pets.find(p => !p.community && !p.dead && !p.released && !V.isMythic(p)); check(!!nm && V.questWhy(w, nm, nm.owner, 'spam', 9999, TIP) !== null, 'non-Mythic player pet cannot quest (#' + (nm && nm.id) + ')');
+  const bRow = (w.log || []).find(l => l.tx === below.tx_hash); check(!w.byId[a.id].questHist.some(h => h.start < GATE), 'burn below the gate did not start a quest'); }
 console.log('\nchecks ok', ok, 'failed', bad); process.exitCode = bad ? 1 : 0;
