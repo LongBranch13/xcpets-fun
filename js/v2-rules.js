@@ -450,7 +450,7 @@
   /* SPECIAL EGG NAMES (owner Oct 24 2026 1:19 AM CT): from this block, Bitcoin Wizard, Lord Kek and FUNTRUMP eggs (and FUNTRUMP bred children) keep the normal random
    * PetCore name instead of 'Wizard' / 'Kek' / 'FUNTRUMP'. Nakamoto eggs already got random names. Pets hatched before the gate keep their names, and the very first
    * Lord Kek egg ever hatched is named 'Kek' by mk() (none hatched as of snapshot 972,883). Names are in the replay pets hash, hence the gate. OFF while null. */
-  var ACTIVATE_SPECIAL_NAMES_BLOCK = null;
+  var ACTIVATE_SPECIAL_NAMES_BLOCK = 972897; // LIVE: tip 972,891 + 6 (owner approved deploy Oct 24 2026 1:24 AM CT)
   function specialNamesOn(b) { return ACTIVATE_SPECIAL_NAMES_BLOCK != null && b >= ACTIVATE_SPECIAL_NAMES_BLOCK; }
   /** wizardArt(bh, id, b): a Bitcoin Wizard egg = a normal egg roll (tier, stats, background) with species 'wizard' (drawn by WizardSprite, blue palette). */
   function wizardArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), FT = wizTier2On(b) ? wizRollTier(id, b) : wizTierOn(b) ? WIZ_FIXED_TIER : WIZ_EGG_TIER; if (FT != null && PetCore.TIERS[FT]) { var L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[FT], d = L1.statBonus - L0.statBonus;
