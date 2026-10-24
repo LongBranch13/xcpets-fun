@@ -1146,7 +1146,7 @@
    * x = { p: pet, S: listing (optional), buy: bool (optional) }. */
   function pfMyth(p) { return !!p.mythicCare || p.stage >= 5; }
   function pfRank(p) { return pfMyth(p) ? 4 : p.tier || 0; }
-  function pfUnits(S) { return S.asset === 'XCP' ? S.price : S.price / 1e8; }
+  function pfUnits(S) { return S.price / 1e8; } /* shop-safety: XCP and XCPETS both in whole coins (was XCP in sats) */
   function petFilterMatch(w, x, f, b) { var p = x.p, S = x.S; f = f || {};
     if (f.sp && p.species !== f.sp) return false;
     if (f.tier !== undefined && f.tier !== '' && (f.tier === 'M' ? !pfMyth(p) : pfMyth(p) || String(p.tier) !== String(f.tier))) return false;
@@ -1188,8 +1188,8 @@
     return null; }
   /** sellStep(w, p, me, b) -> 'mint' (no usable token: make + tie one) | 'list' (token held by the owner: one order). */
   function sellStep(w, p, me) { var d = deedOf(w, p); return d && d.ok && d.holder === me ? 'list' : 'mint'; }
-  /** saleAmountText(asset, q): XCPETS as whole XCPETS + dander, XCP in sats. */
-  function saleAmountText(asset, q) { q = Number(q); if (asset === 'XCP') return q.toLocaleString('en-US') + ' sats';
+  /** saleAmountText(asset, q): XCPETS as whole XCPETS + dander, XCP as whole XCP with up to 8 decimals (shop-safety: was sats; display only). */
+  function saleAmountText(asset, q) { q = Number(q); if (asset === 'XCP') { var wx = Math.floor(q / 1e8), fx = String(q - wx * 1e8); fx = ('00000000' + fx).slice(-8).replace(/0+$/, ''); return wx.toLocaleString('en-US') + (fx ? '.' + fx : '') + ' XCP'; }
     var whole = Math.floor(q / 1e8), d = q - whole * 1e8; return whole.toLocaleString('en-US') + ' XCPETS' + (d ? ' + ' + d + ' dander' : ''); }
   function parseTag(tag) {
     var t = String(tag || '').trim().toUpperCase(), p = t.split(':'); if (p[0] !== 'PET') return { action: 'plain' };
