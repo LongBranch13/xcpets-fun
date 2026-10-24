@@ -46,7 +46,10 @@ if (require.main === module) (async () => {
   let dex = opt('--dex') ? JSON.parse(fs.readFileSync(opt('--dex'), 'utf8')) : null;
   if (!dex && !opt('--snap')) { dex = { issuances: [], orders: [], matches: [] }; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.xcp.fun/node/v2', seen = {};
     for (const r of V.readBurns(rows)) { let t = null; try { t = V.parseTag(r.tag); } catch (e) { } if (!t || t.action !== 'deed' || seen[t.asset]) continue; seen[t.asset] = 1;
-      const j = await (await fetch(API + '/assets/' + t.asset + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } }
+      const j = await (await fetch(API + '/assets/' + t.asset + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } 
+    /* mint-only ties (before ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: also check each asset already named in t/<id>.json (deedScan verifies it) */
+    try { for (const f of fs.readdirSync(OUT)) { if (!/^[0-9]+\.json$/.test(f)) continue; let a = null; try { a = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')).asset; } catch (e) { } if (typeof a !== 'string' || seen[a]) continue; seen[a] = 1;
+      const j = await (await fetch(API + '/assets/' + a + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } } catch (e) { } }
   const assetOf = V.deedScan ? V.deedScan(w, rows, dex || {}) : {}; /* main has no deedScan until the shop ships: everything is 'not tied yet' */
   let only = opt('--ids') ? new Set(opt('--ids').split(',').map(Number)) : null, mints = {};
   /* --tokened (hourly CI): only pets with a tied token, an owner's fresh mint (recent full-node issuances + mempool), or an existing t/<id>.json that

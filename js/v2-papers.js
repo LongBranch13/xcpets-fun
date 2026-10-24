@@ -117,11 +117,14 @@
     if (p.dead || p.released || p.community || (p.art && p.art.community) || !V.deedScan || !V.readBurns || !V.parseTag) return null;
     var S = M.state ? M.state() : {}, rows = S.rows || [], k = p.id + '@' + w.tip + '/' + rows.length, c = scan[k]; if (c && c !== 'busy') return c.t; if (c === 'busy') return null;
     var mine = [], all = {}; V.readBurns(rows).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; } if (t && t.action === 'deed') { if (t.petId === p.id) mine.push(t.asset); (all[t.asset] = 1); } });
-    if (!mine.length) { scan[k] = { t: null }; return null; }
-    var CF = root.XCPETS_CONFIG || {}, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2', assets = mine.filter(function (a, i) { return mine.indexOf(a) === i; }); scan[k] = 'busy';
+    /* mint-only ties (pre ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: the asset named in /t/<id>.json is a HINT only; deedScan verifies its first issuance */
+    var CF = root.XCPETS_CONFIG || {}, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2'; scan[k] = 'busy';
+    var hint = fetch('t/' + p.id + '.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { return j && typeof j.asset === 'string' ? [j.asset] : []; }, function () { return []; });
+    hint.then(function (h) { var assets = mine.concat(h.filter(function (a) { return !all[a]; })).filter(function (a, i, L) { return L.indexOf(a) === i; });
+    if (!assets.length) { scan[k] = { t: null }; return; }
     Promise.all(assets.map(function (a) { return fetch(API + '/assets/' + a + '/issuances?verbose=true').then(function (r) { if (!r.ok) throw new Error('issuances ' + r.status); return r.json(); }).then(function (j) { return j.result || []; }); }))
       .then(function (L) { var iss = [].concat.apply([], L).filter(function (x) { return !x.status || x.status === 'valid'; }), o = V.deedScan(w, rows, { issuances: iss })[p.id] || null;
-        scan[k] = { t: o && o.asset ? { asset: o.asset, block: o.block, tx: o.tx, by: o.by } : null }; paint(true); }, function () { scan[k] = { t: null }; });
+        scan[k] = { t: o && o.asset ? { asset: o.asset, block: o.block, tx: o.tx, by: o.by } : null }; paint(true); }, function () { scan[k] = { t: null }; }); });
     return null; }
   function paint(force) { var M = root.V2Mock, V = root.V2Rules; if (!M || !M.world || !V || !root.V2Render) return; var w; try { w = M.world(); } catch (e) { return; } if (!w || !w.byId) return;
     var id = Number(new URLSearchParams(location.search).get('id')), p = w.byId[id], facts = document.getElementById('facts'), el = document.getElementById('petPapers');
