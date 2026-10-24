@@ -12,7 +12,7 @@
   function burnAmt(r) { return r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; }
   /* intuitive-pass item 12 (display only): plain-language burn-history rows; the raw tag stays one tap away */
   function plainRes(res, tag) { var t = String(tag || ''), m = String(res || ''), body = m.replace(/^[a-zA-Z]+: /, ''), k = (/^pet:([a-z0-9]+)/i.exec(t) || [])[1] || '';
-    var L = { feed: 'Fed', fm: 'Fed (bundle)', hatch: 'Hatched', hatch12: 'Hatched (dozen)', hatch144: 'Hatched (case)', roll: 'Gear roll', fight: 'Fight challenge', accept: 'Fight accepted', breed: 'Breed', rumble: 'Royal Rumble (retired)', rel: 'Released', fr: 'Free roll', of: 'Overflow roll', grave: 'Grave gear' }[k.toLowerCase()];
+    var L = { feed: 'Fed', fm: 'Fed (bundle)', hatch: 'Hatched', hatch12: 'Hatched (Swamp Dozen)', hatch144: 'Hatched (Croak Crate)', hatchzap: 'Hatched (Electric Crate)', roll: 'Gear roll', fight: 'Fight challenge', accept: 'Fight accepted', breed: 'Breed', rumble: 'Royal Rumble (retired)', rel: 'Released', fr: 'Free roll', of: 'Overflow roll', grave: 'Grave gear' }[k.toLowerCase()];
     if (/^before v2: /.test(m)) return (L ? L : 'Burn') + ' (before v2)'; if (/^born: /.test(m)) return 'Born: ' + m.slice(6); if (/^hatch: /.test(m)) return 'Hatched · ' + body;
     return L ? L + ' · ' + body : m; }
   var page = document.body.getAttribute('data-v2page');
