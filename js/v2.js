@@ -145,8 +145,22 @@
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
   function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
+  /* egg-review-sort 2026-10-24: hatch review sorts. Rarity = the hatch tier (PetCore TIERS order Common < Uncommon < Rare < Legendary), ties by Pet Score;
+   * Power = PetScore (js/pet-score.js, same number as the Pet Score chip); Species = A to Z by species name, a hybrid grouped under its primary
+   * (first) parent species, right after the purebreds of that species, then by hybrid name. Ties keep hatch order. */
+  var EGG_SORTS = [['', 'Hatch order'], ['rar', 'Rarity: high to low'], ['rar-', 'Rarity: low to high'], ['pow', 'Power: high to low'], ['pow-', 'Power: low to high'], ['sp', 'Species: A to Z']];
+  function eggPow(w, p) { var s = window.PetScore && PetScore.of ? PetScore.of(w, p) : null; return s ? s.score : -1; }
+  function eggSp(p) { var sp = String(p.species), h = V.isHybrid ? V.isHybrid(sp) : /^hyb3?:/.test(sp), lab = function (x) { return String(V.speciesLabel ? V.speciesLabel(x) : x).toLowerCase(); };
+    return h ? [lab(sp.split(':')[1]), 1, lab(sp)] : [lab(sp), 0, '']; }
+  function sortEggs(w, list, k) { if (!k) return list; var ix = {}, dir; list.forEach(function (p, i) { ix[p.id] = i; }); dir = k.slice(-1) === '-' ? -1 : 1;
+    var key = {}; list.forEach(function (p) { key[p.id] = k === 'sp' ? eggSp(p) : [p.art.tierIndex, eggPow(w, p)]; });
+    return list.slice().sort(function (a, b) { var A = key[a.id], B = key[b.id];
+      if (k === 'sp') return (A[0] < B[0] ? -1 : A[0] > B[0] ? 1 : 0) || A[1] - B[1] || (A[2] < B[2] ? -1 : A[2] > B[2] ? 1 : 0) || ix[a.id] - ix[b.id];
+      if (k.indexOf('pow') === 0) return dir * (B[1] - A[1]) || ix[a.id] - ix[b.id];
+      return dir * (B[0] - A[0] || B[1] - A[1]) || ix[a.id] - ix[b.id]; }); }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
+    if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
     list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
     $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : list.length + ' egg' + (list.length > 1 ? 's' : '') + ' to review';
@@ -170,8 +184,10 @@
         '<p class="graemode">' + aeToggleHtml() + '</p></div>' +
         (UXB_CAP(list) ? '<p class="grcap" aria-hidden="true">' + esc(UXB_CAP(list)) + '</p>' : ''); }
     $('packSummary').innerHTML = info + '<span class="grtiers">' + esc(TIERS.map(function (t, i) { return gear && !tiers[i] ? '' : tiers[i] + ' ' + t.label; }).filter(Boolean).join(' · ')) + '</span>' + (gear ? '' : ' · ' + Object.keys(rev.sel).length + ' ticked') +
+      (gear ? '' : ' <label class="pksort">Sort <select id="pkSort" aria-label="Sort the eggs">' + EGG_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((rev.sort || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>') +
       (pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '');
     bindAeTogs($('packSummary'));
+    if ($('pkSort')) $('pkSort').onchange = function () { rev.sort = this.value; rev.page = 0; drawReveal(); };
     if ($('pkPrev')) { $('pkPrev').onclick = function () { rev.page--; drawReveal(); }; $('pkNext').onclick = function () { rev.page++; drawReveal(); }; }
     var grid = $('packGrid'); grid.innerHTML = '';
     list.slice(rev.page * REV_PAGE, rev.page * REV_PAGE + REV_PAGE).forEach(function (x) {
@@ -183,7 +199,7 @@
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.querySelector('input').onchange = function () { if (this.checked) rev.sel[x.id] = 1; else delete rev.sel[x.id]; d.classList.toggle('discard', this.checked); };
     });
-    ['packCommons', 'packDiscard', 'packSkip'].forEach(function (id) { $(id).style.display = gear ? 'none' : ''; }); $('packClose').textContent = gear ? (where.bag ? 'Wear it in The Rare Room →' : 'Go to The Rare Room →') : 'Keep the rest → My Pets';
+    ['packDiscard', 'packSkip'].forEach(function (id) { $(id).style.display = gear ? 'none' : ''; }); $('packClose').textContent = gear ? (where.bag ? 'Wear it in The Rare Room →' : 'Go to The Rare Room →') : 'Keep the rest → My Pets';
   }
   function hideIds(ids) { discardIds(ids); }
   /* ONE caption per gear batch, for the best piece (the per-card captions overlapped the cards). Lives here, not in ux-batch.js, because the popup can open
@@ -995,9 +1011,7 @@
   if ($('packHatchMore')) $('packHatchMore').onclick = function () { packExit(function () { var hp = $('hatchPanel'); if (!hp) return; try { hp.scrollIntoView({ behavior: 'auto', block: 'start' }); } catch (e) { }
     var b = $(lastHatchN >= 144 ? 'caseBtn' : lastHatchN >= 12 ? 'dozenBtn' : 'hatchBtn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { } b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 2400); } }); };
   $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
-  $('packCommons').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var w = world(), all = rev.eggs.filter(function (id) { return w.byId[id] && w.byId[id].art.tierIndex === 0; }), ids = dropKept(all);
-    if (!ids.length) return toast(all.length ? 'All Commons in this hatch are starred as kept.' : 'No Commons in this hatch.');
-    if (!window.confirm('Discard ' + ids.length + ' Common pet' + (ids.length > 1 ? 's' : '') + ' from this hatch?' + (all.length > ids.length ? ' (' + (all.length - ids.length) + ' kept pet' + (all.length - ids.length > 1 ? 's are' : ' is') + ' skipped.)' : '') + '\n\nFree, only hidden in this browser, Undo anytime, no burn.')) return; hideIds(ids); rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); if (rev.eggs.length) drawReveal(); else closeReveal(); };
+  /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tick Discard on at least one pet first.');
     var kk = ids.filter(isKept); if (kk.length && !window.confirm('Discard ' + (ids.length - kk.length) + ' of the ' + ids.length + ' ticked pets?\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + idList(kk) + '): starred pets are never discarded.\n\nFree, only hidden in this browser, Undo anytime, no burn.')) return;
     hideIds(ids); rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); rev.sel = {}; if (rev.eggs.length) drawReveal(); else closeReveal(); };
