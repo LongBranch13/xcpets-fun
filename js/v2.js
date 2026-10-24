@@ -145,19 +145,8 @@
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
   function nextReveal() { if ($('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length; drawReveal(); open('packBox'); }
-  /* egg-review-sort 2026-10-24: hatch review sorts. Rarity = the hatch tier (PetCore TIERS order Common < Uncommon < Rare < Legendary), ties by Pet Score;
-   * Power = PetScore (js/pet-score.js, same number as the Pet Score chip); Species = A to Z by species name, a hybrid grouped under its primary
-   * (first) parent species, right after the purebreds of that species, then by hybrid name. Ties keep hatch order. */
-  var EGG_SORTS = [['', 'Hatch order'], ['rar', 'Rarity: high to low'], ['rar-', 'Rarity: low to high'], ['pow', 'Power: high to low'], ['pow-', 'Power: low to high'], ['sp', 'Species: A to Z']];
-  function eggPow(w, p) { var s = window.PetScore && PetScore.of ? PetScore.of(w, p) : null; return s ? s.score : -1; }
-  function eggSp(p) { var sp = String(p.species), h = V.isHybrid ? V.isHybrid(sp) : /^hyb3?:/.test(sp), lab = function (x) { return String(V.speciesLabel ? V.speciesLabel(x) : x).toLowerCase(); };
-    return h ? [lab(sp.split(':')[1]), 1, lab(sp)] : [lab(sp), 0, '']; }
-  function sortEggs(w, list, k) { if (!k) return list; var ix = {}, dir; list.forEach(function (p, i) { ix[p.id] = i; }); dir = k.slice(-1) === '-' ? -1 : 1;
-    var key = {}; list.forEach(function (p) { key[p.id] = k === 'sp' ? eggSp(p) : [p.art.tierIndex, eggPow(w, p)]; });
-    return list.slice().sort(function (a, b) { var A = key[a.id], B = key[b.id];
-      if (k === 'sp') return (A[0] < B[0] ? -1 : A[0] > B[0] ? 1 : 0) || A[1] - B[1] || (A[2] < B[2] ? -1 : A[2] > B[2] ? 1 : 0) || ix[a.id] - ix[b.id];
-      if (k.indexOf('pow') === 0) return dir * (B[1] - A[1]) || ix[a.id] - ix[b.id];
-      return dir * (B[0] - A[0] || B[1] - A[1]) || ix[a.id] - ix[b.id]; }); }
+  /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
+  function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
@@ -184,7 +173,7 @@
         '<p class="graemode">' + aeToggleHtml() + '</p></div>' +
         (UXB_CAP(list) ? '<p class="grcap" aria-hidden="true">' + esc(UXB_CAP(list)) + '</p>' : ''); }
     $('packSummary').innerHTML = info + '<span class="grtiers">' + esc(TIERS.map(function (t, i) { return gear && !tiers[i] ? '' : tiers[i] + ' ' + t.label; }).filter(Boolean).join(' · ')) + '</span>' + (gear ? '' : ' · ' + Object.keys(rev.sel).length + ' ticked') +
-      (gear ? '' : ' <label class="pksort">Sort <select id="pkSort" aria-label="Sort the eggs">' + EGG_SORTS.map(function (o) { return '<option value="' + o[0] + '"' + ((rev.sort || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>') +
+      (gear ? '' : ' <label class="pksort">Sort <select id="pkSort" aria-label="Sort the eggs">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</select></label>') +
       (pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '');
     bindAeTogs($('packSummary'));
     if ($('pkSort')) $('pkSort').onchange = function () { rev.sort = this.value; rev.page = 0; drawReveal(); };

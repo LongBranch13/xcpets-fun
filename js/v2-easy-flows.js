@@ -18,7 +18,12 @@
   function short(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '\u2026' + a.slice(-4) : a; }
   function tip(w) { return (U().S && U().S().tip) || w.tip || 0; }
   function match(p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0) || spL(p.species).toLowerCase().indexOf(q) === 0; }
-  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null } };
+  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'pow' } };
+  /* hotel-mate-sort 2026-10-24: Sort dropdown on both breed lists, same options + logic as the egg review (js/pet-sort.js PetSort). Default stays
+   * Power: high to low (= the old Pet Score order). Base order = hatch order (hatch block, then #id), so 'Hatch order' and every tie keep it. */
+  function hatchOrd(arr, pet) { return arr.slice().sort(function (x, y) { var a = pet(x), b = pet(y); return (a.hatchBlock || 0) - (b.hatchBlock || 0) || a.id - b.id; }); }
+  function psort(w, arr, k, pet) { var h = hatchOrd(arr, pet); return window.PetSort ? PetSort.sort(w, h, k, pet) : h; }
+  function sortSel(id, k, title) { return window.PetSort ? '<label class="ez-so">Sort <select id="' + id + '" aria-label="Sort ' + esc(title) + '">' + PetSort.options(k) + '</select></label>' : ''; }
 
   /* one portrait card: sprite + name + tier + a few key facts; .on = picked (gold outline + ▼), .no = can't (reason shown) */
   function card(w, p, o) { o = o || {};
@@ -29,11 +34,11 @@
   function sprites(root, w) { var R = window.V2Render; if (!R) return; root.querySelectorAll('[data-ezsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-ezsp')]; if (!p) return; var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c);
     if (R.lazy && R.petFrames) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
   function strip(items, more, empty) { return '<div class="ez-strip" role="listbox">' + (items.join('') || '<p class="ez-empty">' + empty + '</p>') + (more > 0 ? '<span class="ez-more">+' + fmt(more) + ' more · search to find them</span>' : '') + '</div>'; }
-  function head(n, title, qid, q, extra) { return '<div class="ez-hd"><span class="ez-n">' + n + '</span><b>' + title + '</b><input type="search" class="ez-q" id="' + qid + '" value="' + esc(q) + '" placeholder="# name species" aria-label="Search ' + esc(title) + '">' + (extra || '') + '</div>'; }
+  function head(n, title, qid, q, extra, sort) { return '<div class="ez-hd"><span class="ez-n">' + n + '</span><b>' + title + '</b><input type="search" class="ez-q" id="' + qid + '" value="' + esc(q) + '" placeholder="# name species" aria-label="Search ' + esc(title) + '">' + (sort || '') + (extra || '') + '</div>'; }
   function tabs(list, cur) { return '<div class="ez-tabs" role="tablist">' + list.map(function (t) { return '<button type="button" role="tab" class="ez-tab' + (t[0] === cur ? ' on' : '') + (t[2] ? ' hot' : '') + '" data-eztab="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '</button>'; }).join('') + '</div>'; }
   /* keep the panel where it is: a repaint must never move the page (no scroll jumps) */
-  function keep(el, fn) { var y = window.scrollY, top = el ? el.getBoundingClientRect().top : 0, sx = {}; if (el) el.querySelectorAll('.ez-strip').forEach(function (s, i) { sx[i] = s.scrollLeft; }); fn();
-    if (el) { el.querySelectorAll('.ez-strip').forEach(function (s, i) { if (sx[i]) s.scrollLeft = sx[i]; }); var d = el.getBoundingClientRect().top - top; if (Math.abs(d) > 1) window.scrollTo(window.scrollX, y + d); } }
+  function keep(el, fn) { var y = window.scrollY, top = el ? el.getBoundingClientRect().top : 0, sx = {}; if (el) el.querySelectorAll('.ez-strip').forEach(function (s, i) { sx[i] = [s.scrollLeft, s.scrollTop]; }); fn();
+    if (el) { el.querySelectorAll('.ez-strip').forEach(function (s, i) { if (sx[i]) { s.scrollLeft = sx[i][0]; s.scrollTop = sx[i][1]; } }); /* hotel-mate-sort: also keeps the vertical list position */ var d = el.getBoundingClientRect().top - top; if (Math.abs(d) > 1) window.scrollTo(window.scrollX, y + d); } }
   function bindQ(el, id, set, redraw) { var i = $(id); if (!i) return; i.oninput = function () { set(i.value); var p = i.selectionStart; redraw(); var j = $(id); if (j) { j.focus(); try { j.setSelectionRange(p, p); } catch (e) { } } }; }
 
   // ================================================================ BATTLE
@@ -117,21 +122,22 @@
     if (!s.tab) s.tab = reqs.length ? 'asks' : 'mine';
     var h = '<div class="ez-box">';
     /* 1 · parent 1 */
-    var mq = okA.filter(function (x) { return match(x.p, s.qa); }).sort(function (x, y) { return score(w, y.p) - score(w, x.p) || x.p.id - y.p.id; });
+    var px = function (x) { return x.p; }, mq = psort(w, okA.filter(function (x) { return match(x.p, s.qa); }), s.sa, px);
     if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; }) && A.owner === ME) mq = [{ p: A }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
-    h += head('1', 'Parent 1 · your pet', 'ezBqA', s.qa, '<span class="ez-cnt">' + fmt(okA.length) + ' of ' + fmt(L.mine.length) + ' can breed now</span>') +
-      strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id && !s.req, lines: info(x.p) }); }), mq.length - MAX, L.mine.length ? (okA.length ? 'No pet matches.' : 'None of your pets can breed right now (Adult+, fed, off cooldown).') : 'No living pets at this address yet.');
+    h += '<div class="ez-cols"><div class="ez-col">' + head('1', 'Parent 1 · your pet', 'ezBqA', s.qa, '<span class="ez-cnt">' + fmt(okA.length) + ' of ' + fmt(L.mine.length) + ' can breed now</span>', sortSel('ezBsA', s.sa, 'Parent 1')) +
+      strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id && !s.req, lines: info(x.p) }); }), mq.length - MAX, L.mine.length ? (okA.length ? 'No pet matches.' : 'None of your pets can breed right now (Adult+, fed, off cooldown).') : 'No living pets at this address yet.') + '</div><div class="ez-col">';
     /* 2 · mate */
     var tl = [['mine', '🏠 My other pets'], ['asks', '💌 Asking you (' + reqs.length + ')', reqs.length], ['other', '🌍 Other wallets']];
-    h += head('2', s.tab === 'asks' ? 'Breed requests for you' : 'Mate', 'ezBqB', s.qb, '') + tabs(tl, s.tab);
-    if (s.tab === 'asks') { var rr = reqs.filter(function (r) { return match(w.byId[r.a], s.qb) || match(w.byId[r.b], s.qb); });
+    h += head('2', s.tab === 'asks' ? 'Breed requests for you' : 'Mate', 'ezBqB', s.qb, '', sortSel('ezBsB', s.sb, 'Mate')) + tabs(tl, s.tab);
+    if (s.tab === 'asks') { var rr = reqs.filter(function (r) { return match(w.byId[r.a], s.qb) || match(w.byId[r.b], s.qb); }); if (s.sb) rr = PetSort.sort(w, rr, s.sb, function (r) { return w.byId[r.a]; }); /* '' keeps newest request first */
       h += strip(rr.slice(0, MAX).map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null;
         return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
     else { var pool = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3 && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME) && match(x.p, s.qb); })
-        .sort(function (x, y) { return (!!kin(x.p) - !!kin(y.p)) || score(w, y.p) - score(w, x.p) || x.p.id - y.p.id; });
+        ; pool = psort(w, pool, s.sb, px); pool = pool.filter(function (x) { return !kin(x.p); }).concat(pool.filter(function (x) { return kin(x.p); })); /* greyed (kin) pets stay last, as before */
       if (Bp && !s.req && !pool.slice(0, MAX).some(function (x) { return x.p.id === Bp.id; }) && (s.tab === 'mine') === (Bp.owner === ME)) pool = [{ p: Bp }].concat(pool.filter(function (x) { return x.p.id !== Bp.id; }));
       h += strip(pool.slice(0, MAX).map(function (x) { var k = kin(x.p); return card(w, x.p, { on: Bp && Bp.id === x.p.id && !s.req, why: k ? k + ' (no inbreeding)' : null, lines: info(x.p).concat(x.p.owner !== ME ? ['👤 ' + esc(short(x.p.owner))] : []) }); }), pool.length - MAX,
         s.tab === 'mine' ? 'No other pet of yours can breed right now.' : 'No pet matches. Search by #, name, species or the start of a wallet address.'); }
+    h += '</div></div>';
     /* 3 · one button (the motel bell / the desk Accept, unchanged) */
     var label, ok = false, hint = '', P1 = A, P2 = Bp;
     if (s.tab === 'asks' && s.req) { var q = s.req.split(':'), acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'), no = document.querySelector('#motelReqs [data-mrk="' + s.req + '"] .mr-no');
@@ -152,6 +158,7 @@
       s.req = null; var first = bt.closest('.ez-strip') === el.querySelectorAll('.ez-strip')[0];
       if (first) pick('A', $('bA').value === k ? '' : k); else pick('B', $('bB').value === k ? '' : k); }; });
     el.querySelectorAll('[data-eztab]').forEach(function (bt) { bt.onclick = function () { s.tab = bt.dataset.eztab; s.req = null; breed(U().world()); }; });
+    ['A', 'B'].forEach(function (k) { var so = $('ezBs' + k); if (so) so.onchange = function () { s['s' + k.toLowerCase()] = this.value; breed(U().world()); var st2 = el.querySelectorAll('.ez-strip')[k === 'A' ? 0 : 1]; if (st2) { st2.scrollLeft = 0; st2.scrollTop = 0; } var s2 = $('ezBs' + k); if (s2) try { s2.focus({ preventScroll: true }); } catch (e) { } }; });
     bindQ(el, 'ezBqA', function (v) { s.qa = v; }, function () { breed(U().world()); }); bindQ(el, 'ezBqB', function (v) { s.qb = v; }, function () { breed(U().world()); });
     $('ezBGo').onclick = function () { if (s.tab === 'asks' && s.req) { var acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'); if (acc) acc.click(); return; } var bell = $('bGo'); if (bell && !bell.disabled) bell.click(); }; }
 
@@ -173,6 +180,13 @@
       '.ez-foot{border-top:2px dashed #4b3f7a;margin-top:4px;padding-top:6px}.ez-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ez-go{flex:1 1 260px;min-height:52px;font-size:17px}.ez-go[disabled]{opacity:.6;cursor:default}' +
       '.ez-hint{font-size:12px;color:#c9c0e6;margin-top:4px;overflow-wrap:anywhere}.ez-odds{font-size:13px;background:#ffd166;color:#1b1b1b;border:2px solid #000;padding:4px 6px;margin-bottom:6px;overflow-wrap:anywhere}' +
       '.ez-cmp{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13px;margin-bottom:6px;color:#fff}.ez-vs{color:#ff5a7a;font-weight:700}.ez-st{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.ez-st i{font-style:normal;font-size:11px;padding:1px 4px;background:#2a2342}.ez-st i.up{color:#4fd18b}.ez-st i.dn{color:#ff8080}' +
+      '.ez-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}.ez-col{min-width:0;border:2px solid #4b3f7a;background:#1b1530;padding:4px 6px}.ez-col .ez-q{max-width:none}' +
+      /* owner 4:26 AM CT: each slot list scrolls up and down (fixed-height column, touch scroll) instead of sideways */
+      '.ez-col .ez-strip{display:flex;flex-wrap:wrap;align-content:flex-start;align-items:stretch;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:none;height:440px;padding:6px 4px 6px 2px;border-top:2px dashed #4b3f7a}.ez-col .ez-c{min-width:0;height:auto;flex:1 1 112px;max-width:180px}.ez-col .ez-more,.ez-col .ez-empty{flex:1 1 100%;text-align:center}' +
+      '.ez-so{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#9fe8ff;white-space:nowrap;min-width:0}.ez-so select{font:inherit;font-size:12px;min-height:36px;max-width:100%;min-width:0;background:#14122b;color:#fff;border:2px solid #000;padding:2px 4px}' +
+      /* hotel-mate-sort: side by side down to phones; at <=520 the cards and controls go compact; only under 340px (a column would drop under one readable 72px card + controls) they stack */
+      '@media (max-width:520px){.ez-cols{gap:4px}.ez-col{padding:3px}.ez-col .ez-hd{gap:4px}.ez-col .ez-hd b{font-size:12px;flex:1 1 auto;min-width:0}.ez-col .ez-q,.ez-col .ez-so{flex:1 1 100%}.ez-col .ez-so select{flex:1}.ez-col .ez-cnt{font-size:11px}.ez-col .ez-strip{gap:4px;height:400px}.ez-col .ez-c{flex:1 1 68px;max-width:none;font-size:11px;padding:4px 2px}.ez-col .ez-l{font-size:10px}.ez-col .ez-sp canvas{width:40px;height:40px}.ez-col .ez-nm{font-size:12px}.ez-col .ez-c .pill.tier{font-size:10px}.ez-col .ez-tab{font-size:11px;padding:3px 6px}}' +
+      '@media (max-width:339px){.ez-cols{grid-template-columns:minmax(0,1fr)}}' +
       '@media (max-width:520px){.ez-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.ez-tab{flex:0 0 auto;white-space:nowrap;font-size:12px;padding:4px 8px}.ez-c{flex-basis:100px}.ez-sp canvas{width:48px;height:48px}.ez-go{font-size:15px;flex-basis:100%}.ez-q{max-width:none}}';
     (document.head || document.documentElement).appendChild(cs); }
   var w0 = window.V2UI && V2UI.world && V2UI.world(); if (w0) { if (window.UXB && UXB.setFace) { V2Easy.fight(w0); } V2Easy.breed(w0); }
