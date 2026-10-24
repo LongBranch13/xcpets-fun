@@ -164,7 +164,7 @@
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (VS && VS.prod && !VS.verified) { var ev = new Error("Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
+    if (VS && VS.prod && !VS.verified) { var ev = new Error(VS.stale ? 'Still checking the latest chain data, so pet numbers could be out of date. Nothing was burned. Try again in a moment.' : "Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now();
     function release() { if (signing === mine) signing = 0; }
@@ -213,7 +213,7 @@
     return bad; }
   function sendDex(plan, viewed) {
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (VS && VS.prod && !VS.verified) return Promise.reject(new Error("Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
+    if (VS && VS.prod && !VS.verified) return Promise.reject(new Error(VS.stale ? 'Still checking the latest chain data. Nothing was sent. Try again in a moment.' : "Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now(); function release() { if (signing === mine) signing = 0; }
     return getWallet().then(function (w) {
