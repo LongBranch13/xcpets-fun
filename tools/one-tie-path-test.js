@@ -23,14 +23,14 @@ const base = run([], T, null), owners = {};
 base.pets.forEach(p => { if (!p.dead && !p.released && !p.community && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 const O = Object.keys(owners).sort((a, b) => owners[b].length - owners[a].length)[0], mine = owners[O].filter(p => !V.giveLocks(base, p, G + 10));
 const A = mine[0], B = mine[1], C2 = mine[2];
-ok(V.oneTieGate() === null, 'shipped placeholder: ACTIVATE_ONE_TIE_PATH_BLOCK is null');
+ok(V.oneTieGate() === 972896, 'shipped: ACTIVATE_ONE_TIE_PATH_BLOCK is 972896 (deployed Oct 24 2026)');
 V._setSalesActivation(G); V._setGiveActivation(G); V._setRulesActivation(G);
 const b0 = G + 2, dA = V.randomDeed(bytes('A')), dB = V.randomDeed(bytes('B')), dC = V.randomDeed(bytes('C'));
 const DX = () => ({ issuances: [iss(O, b0, dA, A.id), iss(O, b0 + 4, dB, B.id), iss(O, b0 + 4, dC, C2.id)], orders: [], matches: [], destructions: [],
   credits: [cr(dA, O, b0, 'issuance'), cr(dB, O, b0 + 4, 'issuance'), cr(dC, O, b0 + 4, 'issuance')] });
 const DEX = DX(), dex = () => DEX;
 const rows = [row(b0 + 6, O, D, V.deedTag(C2.id, dC))], tipX = b0 + 10;   /* C2: mint after the gate + tie burn */
-const w0 = run(rows, tipX, dex());
+V._setOneTieActivation(null); const w0 = run(rows, tipX, dex());
 ok(w0.byId[A.id].deed === dA && w0.byId[B.id].deed === dB && w0.byId[C2.id].deed === dC, 'gate null: mint = tie as today (A, B, C2 tied)');
 V._setOneTieActivation(tipX + 5); const w1 = run(rows, tipX, dex());
 ok(canon(w1.pets) === canon(w0.pets) && canon(w1.log) === canon(w0.log) && canon(w1.deeds) === canon(w0.deeds) && canon(w1.itemList) === canon(w0.itemList), 'gate after the tip: world SAME as gate null');

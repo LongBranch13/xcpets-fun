@@ -55,8 +55,8 @@
   var ACTIVATE_SPAM_RULES_BLOCK = 972783;
   /* ONE TIE PATH (owner, Oct 24 2026 12:50 AM CT): there is ONE way to tokenize a pet: mint the token, then a separate pet:deed tie burn.
    * From ACTIVATE_ONE_TIE_PATH_BLOCK rule 3 (mint = tie) is off: a mint alone ties nothing. Pets already tied by a mint before it stay tied.
-   * PLACEHOLDER: null = off (mint = tie still applies). Set to Bitcoin tip + 6 at deploy. */
-  var ACTIVATE_ONE_TIE_PATH_BLOCK = null;
+   * DEPLOYED Oct 24 2026 ~1:10 AM CT at tip 972890 + 6. null = off (mint = tie still applies). */
+  var ACTIVATE_ONE_TIE_PATH_BLOCK = 972896;
   function oneTieOn(b) { return ACTIVATE_ONE_TIE_PATH_BLOCK != null && b != null && Number(b) >= ACTIVATE_ONE_TIE_PATH_BLOCK; }
   /** mintTiesOn(b): rule 3 (mint = tie) applies at block b. */
   function mintTiesOn(b) { return rulesOn(b) && !oneTieOn(b); }
