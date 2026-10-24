@@ -61,7 +61,7 @@
    * whose current token its owner still holds; the old token then stays in the wallet as a stale token that no longer moves the pet, and could be
    * passed off to a buyer outside the shop. From the gate that rebind is refused: destroy the current token first (a new tie is still allowed when
    * the current token is out of sync, held by someone other than the pet's owner, or destroyed). null = off (old rule). */
-  var ACTIVATE_DEED_REBIND_BLOCK = 972995; /* tip 972989 (mempool.space, Oct 24 2026 6:35 PM CT) + 6; preview, re-set at merge */
+  var ACTIVATE_DEED_REBIND_BLOCK = 973000; /* tip 972994 (mempool.space, Oct 24 2026 6:59 PM CT) + 6 */
   function rebindGuardOn(b) { return ACTIVATE_DEED_REBIND_BLOCK != null && b != null && Number(b) >= ACTIVATE_DEED_REBIND_BLOCK; }
   function oneTieOn(b) { return ACTIVATE_ONE_TIE_PATH_BLOCK != null && b != null && Number(b) >= ACTIVATE_ONE_TIE_PATH_BLOCK; }
   /** mintTiesOn(b): rule 3 (mint = tie) applies at block b. */
@@ -1306,7 +1306,7 @@
    * chain events alone (auto-wear on rolls, won pieces, sweeps), as if no local equip op existed. replay() gets that by running
    * the same rows once without ops and recording, per fight, the gear each pet wore there (chainGear below). Local equips still
    * show on the pet; they just do not count in fights. Before the block nothing changes. */
-  var ACTIVATE_FIGHT_GEAR_BLOCK = 972995; /* tip 972989 + 6; preview, re-set at merge */
+  var ACTIVATE_FIGHT_GEAR_BLOCK = 973000; /* tip 972994 + 6 */
   function fightGearOn(b) { return b >= ACTIVATE_FIGHT_GEAR_BLOCK; }
   /* chainGear(w, kind, id): gear gids for a fight read. Recording world (no ops): record wornOf. Main world: read the record. */
   function chainGear(w, kind, id, list) {
