@@ -1,0 +1,43 @@
+{
+ "lastBlock": 972892,
+ "count": 3,
+ "url": "https://xcpets.fun/t/<id>.json",
+ "ties": [
+  {
+   "id": 2,
+   "asset": "A11825070992356920202",
+   "tiedBlock": 972714,
+   "tiedTx": "49922dbfbfdbb6cb44f0479dbd529725a1cb85c20abd3a6cd92cb8cdda0f7a4a",
+   "kind": "deed",
+   "name": "Nezu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 3150,
+   "asset": "A175164024751316932",
+   "tiedBlock": 972817,
+   "tiedTx": "9d315381be71192cb67adf7a6a2d96323edb1105294d7d6a36ccaa3e84c67c54",
+   "kind": "mint",
+   "name": "Sazu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1111,
+   "asset": "A9059073792275355799",
+   "tiedBlock": 972891,
+   "tiedTx": "c8fadd14e5b1c853dcc64d267f498c25b4f731030d927e4a0d3f8b35bd259e75",
+   "kind": "mint",
+   "name": "Nusa",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  }
+ ]
+}
