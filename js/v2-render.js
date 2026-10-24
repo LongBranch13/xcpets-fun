@@ -482,13 +482,68 @@
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
   /* wiz-black-fix 2026-10-21 (display only): a frame is drawable only if it is a full 32x32 RGBA buffer. */
   function okFrames(fr) { return !!(fr && fr.length && fr.every(function (f) { return f && f.data && f.data.length === 4096; })); }
+  /* mythic-look (2026-10-24, owner 'make them look more mythic as they stand now', DESIGN OPTIONS, display only, not deployed): an extra animated layer
+   * over every Mythic pet sprite (player pets at stage 5 incl. hybrids + Wizard/Kek/FUNTRUMP sprite pets, and Cold Storage portraits), with all gear.
+   * Option switch ?mythic=a|b|c|d (remembered per device in localStorage xcpets-mythic-look; ?mythic=off clears). Default OFF = today's look.
+   * a = holo shimmer band, b = pixel halo + sparkles, c = glow outline + orbiting stars, d = gold laurel + glint. The sprite mask comes from two keyed renders
+   * (magenta / green background: pixels equal in both = pet + gear), so it works for every sprite path. 12 fx frames on the shared 300 ms tick (no new timers);
+   * prefers-reduced-motion => one static version of the effect, base frame count unchanged. No rule, replay or burn change. */
+  var MYTH_MODE = (function () { try { var q = /[?&]mythic=([a-z]+)/.exec((window.location && window.location.search) || ''), ls = window.localStorage, K = 'xcpets-mythic-look';
+    if (q) { if (/^[abcd]$/.test(q[1])) ls.setItem(K, q[1]); else ls.removeItem(K); } var m = ls.getItem(K); return /^[abcd]$/.test(m || '') ? m : null; } catch (e) { return null; } })();
+  var MYTH_STILL = (function () { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
+  function mythHsv(h) { h = ((h % 360) + 360) % 360; var f = h / 60, i = Math.floor(f), r = f - i, q = 1 - r, c = [[1, r, 0], [q, 1, 0], [0, 1, r], [0, q, 1], [r, 0, 1], [1, 0, q]][i % 6]; return [Math.round(255 * c[0]), Math.round(255 * c[1]), Math.round(255 * c[2])]; }
+  var MG = [255, 210, 63], MW = [255, 250, 220], MD = [184, 120, 20];
+  function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !okFrames(fr) || typeof keyed !== 'function') return fr;
+    var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
+    var masks = fr.map(function (f, n) { var a = (A[n] || A[0]).data, b = (B[n] || B[0]).data, m = new Uint8Array(1024), bb = { x0: 32, x1: -1, y0: 32, y1: -1 };
+      for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x; if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y; } }
+      return { m: m, bb: bb }; });
+    if (masks[0].bb.x1 < 0) return fr;
+    var nB = fr.length, N = MYTH_STILL ? nB : nB * Math.max(1, Math.round(12 / nB)), out = [], seed = 0;
+    for (var s = 0; s < 1024; s += 7) seed = (seed * 31 + masks[0].m[s] + s) % 9973;
+    for (var k = 0; k < N; k++) { var f = fr[k % nB], d = new Uint8ClampedArray(f.data); MYTH_FX[mode](d, masks[k % nB], MYTH_STILL ? -1 : k, N, seed); out.push({ width: 32, height: 32, data: d }); }
+    return out; }
+  function mPut(d, x, y, c, t) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; t = t == null ? 1 : t; d[i] = Math.round(d[i] + (c[0] - d[i]) * t); d[i + 1] = Math.round(d[i + 1] + (c[1] - d[i + 1]) * t); d[i + 2] = Math.round(d[i + 2] + (c[2] - d[i + 2]) * t); d[i + 3] = 255; }
+  function mIn(M, x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && M.m[y * 32 + x] === 1; }
+  function mStar(d, M, x, y, sz, behind) { var P = sz > 1 ? [[0, 0, MW], [1, 0, MG], [-1, 0, MG], [0, 1, MG], [0, -1, MG]] : sz > 0 ? [[0, 0, MW]] : [[0, 0, MG]];
+    P.forEach(function (q) { var X = x + q[0], Y = y + q[1]; if (behind && mIn(M, X, Y)) return; mPut(d, X, Y, q[2], sz > 1 || q[0] || q[1] ? 1 : 0.9); }); }
+  var MYTH_FX = {
+    a: function (d, M, k, N) { /* holo shimmer: a rainbow foil band sweeps diagonally over pet + gear; faint holo tint everywhere */
+      var c = k < 0 ? 26 : -8 + (k / N) * 80;
+      for (var p = 0; p < 1024; p++) { if (!M.m[p]) continue; var x = p & 31, y = p >> 5, s = x + y, dd = Math.abs(s - c), hue = s * 9 + (k < 0 ? 0 : k * 24);
+        mPut(d, x, y, mythHsv(hue), 0.10); if (dd < 4) mPut(d, x, y, dd < 1 ? MW : mythHsv(hue + 40), (k < 0 ? 0.32 : 0.55) * (1 - dd / 4)); } },
+    b: function (d, M, k, N, seed) { /* pixel halo with a travelling glint + rising twinkle sparkles */
+      var bb = M.bb, cx = Math.round((bb.x0 + bb.x1) / 2), hw = Math.max(3, Math.min(5, Math.round((bb.x1 - bb.x0) / 4))), y0 = Math.max(0, bb.y0 - 3), bob = k >= 0 && (k >> 1) % 2 ? 1 : 0, ring = [];
+      for (var x = cx - hw + 1; x <= cx + hw - 1; x++) ring.push([x, y0 + bob]); ring.push([cx + hw, y0 + 1 + bob]); for (x = cx + hw - 1; x >= cx - hw + 1; x--) ring.push([x, y0 + 2 + bob]); ring.push([cx - hw, y0 + 1 + bob]);
+      var g = k < 0 ? 0 : Math.floor(k * ring.length / N);
+      ring.forEach(function (q, n) { var back = n > hw * 2 - 2 && n < ring.length - 1; mPut(d, q[0], q[1], n === g || n === (g + 1) % ring.length ? MW : back ? MD : MG, 1); });
+      for (var i = 0; i < 4; i++) { var r = (seed * (i + 3) * 37) % 97, side = i % 2 ? 1 : -1, sx = side < 0 ? bb.x0 - 1 - (r % 3) : bb.x1 + 1 + (r % 3), sy0 = bb.y0 + 4 + ((r * 7) % Math.max(4, bb.y1 - bb.y0 - 6));
+        if (k < 0) { if (i < 2) mStar(d, M, Math.max(1, Math.min(30, sx)), sy0, 2, true); continue; }
+        var life = (k + i * 3) % 6, sz = [0, 1, 2, 2, 1, -1][life]; if (sz < 0) continue; mStar(d, M, Math.max(1, Math.min(30, sx)), sy0 - (life >> 1), sz, true); } },
+    c: function (d, M, k, N) { /* glow outline pulsing gold -> pink -> cyan + two tiny stars orbiting the pet */
+      var t = k < 0 ? 0.5 : 0.38 + 0.3 * Math.sin(k / N * Math.PI * 4), col = k < 0 ? MG : mythHsv(45 + 300 * (0.5 - 0.5 * Math.cos(k / N * Math.PI * 2)));
+      for (var p = 0; p < 1024; p++) { if (M.m[p]) continue; var x = p & 31, y = p >> 5;
+        if (mIn(M, x + 1, y) || mIn(M, x - 1, y) || mIn(M, x, y + 1) || mIn(M, x, y - 1)) mPut(d, x, y, col, t); else if (mIn(M, x + 1, y + 1) || mIn(M, x - 1, y - 1) || mIn(M, x + 1, y - 1) || mIn(M, x - 1, y + 1)) mPut(d, x, y, col, t * 0.5); }
+      var bb = M.bb, cx = (bb.x0 + bb.x1) / 2, cy = bb.y0 + (bb.y1 - bb.y0) * 0.45, rx = Math.min(15, (bb.x1 - bb.x0) / 2 + 3), ry = 3;
+      for (var i = 0; i < 2; i++) { var an = (k < 0 ? 0.3 : k / N) * Math.PI * 2 + i * Math.PI, sx = Math.round(cx + rx * Math.cos(an)), sy = Math.round(cy + ry * Math.sin(an)), behind = Math.sin(an) < 0;
+        mStar(d, M, Math.max(1, Math.min(30, sx)), Math.max(1, Math.min(30, sy)), behind ? 1 : 2, behind); } },
+    d: function (d, M, k, N) { /* gold laurel sprigs curling up both sides + a glint running up the leaves + a blinking star above */
+      var bb = M.bb, L = [], h = Math.min(12, bb.y1 - bb.y0);
+      for (var j = 0; j <= h; j++) { var off = Math.round(2 - 2 * Math.sin(j / h * Math.PI * 0.9)), y = bb.y1 - j; L.push([bb.x0 - off, y, bb.x1 + off, y, j]); }
+      var g = k < 0 ? -9 : Math.floor(k * (h + 4) / N);
+      L.forEach(function (q) { var j = q[4], leaf = j % 3 === 1, tip = j === h, glint = Math.abs(j - g) < 1;
+        [[q[0], -1], [q[2], 1]].forEach(function (e) { var x = Math.max(0, Math.min(31, e[0])), y = q[1];
+          if (!mIn(M, x, y)) mPut(d, x, y, glint ? MW : MD, 1); if (leaf || tip) { var ox = Math.max(0, Math.min(31, x + e[1])), ix = Math.max(0, Math.min(31, x - e[1])); mPut(d, ox, y - 1, glint ? MW : MG, 1); if (!mIn(M, ix, y - 1)) mPut(d, ix, y - 1, glint ? MW : MG, 1); } }); });
+      if (k < 0 || (k % 4) < 3) mStar(d, M, Math.round((bb.x0 + bb.x1) / 2), Math.max(1, bb.y0 - 2), k < 0 ? 2 : [1, 2, 1][k % 4], true); } };
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
     try { if (hd) fr = hungerLook(fr, p, w, extra, hd);
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
-    return okFrames(fr) ? fr : bare; }
+    fr = okFrames(fr) ? fr : bare;
+    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }); /* mythic-look options */
+    return fr; }
   function petFrames0(p, w, extra) {
     var ids = worn(w, p.id).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
@@ -705,7 +760,7 @@
   function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
-    return S.frames(stage, '#2a3a2e', G, { community: true }); }
+    var fr = S.frames(stage, '#2a3a2e', G, { community: true }); return stage === 5 ? mythFx(fr, function (bg) { return S.frames(stage, bg, G, { community: true }); }) : fr; }
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
@@ -822,7 +877,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
