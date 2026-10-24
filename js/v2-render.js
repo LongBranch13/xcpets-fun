@@ -15,7 +15,7 @@
    * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
   var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
-  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); } /* wiz-black-fix: never throw on a bad frame */
+  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (a) a.vis = e.isIntersecting; }); }) : null;
   setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
     animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
@@ -482,59 +482,117 @@
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
   /* wiz-black-fix 2026-10-21 (display only): a frame is drawable only if it is a full 32x32 RGBA buffer. */
   function okFrames(fr) { return !!(fr && fr.length && fr.every(function (f) { return f && f.data && f.data.length === 4096; })); }
-  /* mythic-look (2026-10-24, owner 'make them look more mythic as they stand now', DESIGN OPTIONS, display only, not deployed): an extra animated layer
-   * over every Mythic pet sprite (player pets at stage 5 incl. hybrids + Wizard/Kek/FUNTRUMP sprite pets, and Cold Storage portraits), with all gear.
-   * Option switch ?mythic=a|b|c|d (remembered per device in localStorage xcpets-mythic-look; ?mythic=off clears). Default OFF = today's look.
-   * a = holo shimmer band, b = pixel halo + sparkles, c = glow outline + orbiting stars, d = gold laurel + glint. The sprite mask comes from two keyed renders
-   * (magenta / green background: pixels equal in both = pet + gear), so it works for every sprite path. 12 fx frames on the shared 300 ms tick (no new timers);
-   * prefers-reduced-motion => one static version of the effect, base frame count unchanged. No rule, replay or burn change. */
+  /* mythic-look HOLO pass (2026-10-24, owner: 'no i mean the holo art etc not be pixel but a real looking holo' + 'real shine'; DESIGN OPTIONS, display only,
+   * default OFF, not deployed). The pet sprite stays crisp pixel art: its pixels are NOT changed. A Mythic pet's frames are tagged (MYTH_INFO) with the
+   * option + the pet/gear silhouette (two keyed renders, magenta / green: pixels equal in both = pet + gear), and paint() lays a smooth DOM/CSS effect
+   * over the canvas: real holo foil (gradients + color-dodge/overlay/screen blends + foil texture), a glossy specular glare streak that follows the
+   * pointer (or phone tilt) and sweeps on its own otherwise, and twinkling glitter. Works for every sprite path that paints through V2Render
+   * (player pets incl. hybrids + all gear, Wizard/Kek/FUNTRUMP sprite pets, Cold Storage portraits). Only transform/opacity animate (GPU, phones);
+   * off-screen overlays pause; prefers-reduced-motion => static shine. Switch ?mythic=a|b|c|d (localStorage xcpets-mythic-look; ?mythic=off clears).
+   * a = iridescent holo foil, b = glowing halo + light sparkles, c = iridescent aura + orbiting light stars, d = metallic gold-foil laurels. No rule/replay change. */
   var MYTH_MODE = (function () { try { var q = /[?&]mythic=([a-z]+)/.exec((window.location && window.location.search) || ''), ls = window.localStorage, K = 'xcpets-mythic-look';
     if (q) { if (/^[abcd]$/.test(q[1])) ls.setItem(K, q[1]); else ls.removeItem(K); } var m = ls.getItem(K); return /^[abcd]$/.test(m || '') ? m : null; } catch (e) { return null; } })();
   var MYTH_STILL = (function () { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
-  function mythHsv(h) { h = ((h % 360) + 360) % 360; var f = h / 60, i = Math.floor(f), r = f - i, q = 1 - r, c = [[1, r, 0], [q, 1, 0], [0, 1, r], [0, q, 1], [r, 0, 1], [1, 0, q]][i % 6]; return [Math.round(255 * c[0]), Math.round(255 * c[1]), Math.round(255 * c[2])]; }
-  var MG = [255, 210, 63], MW = [255, 250, 220], MD = [184, 120, 20];
-  function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !okFrames(fr) || typeof keyed !== 'function') return fr;
+  var MYTH_INFO = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
     var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
-    var masks = fr.map(function (f, n) { var a = (A[n] || A[0]).data, b = (B[n] || B[0]).data, m = new Uint8Array(1024), bb = { x0: 32, x1: -1, y0: 32, y1: -1 };
-      for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x; if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y; } }
-      return { m: m, bb: bb }; });
-    if (masks[0].bb.x1 < 0) return fr;
-    var nB = fr.length, N = MYTH_STILL ? nB : nB * Math.max(1, Math.round(12 / nB)), out = [], seed = 0;
-    for (var s = 0; s < 1024; s += 7) seed = (seed * 31 + masks[0].m[s] + s) % 9973;
-    for (var k = 0; k < N; k++) { var f = fr[k % nB], d = new Uint8ClampedArray(f.data); MYTH_FX[mode](d, masks[k % nB], MYTH_STILL ? -1 : k, N, seed); out.push({ width: 32, height: 32, data: d }); }
-    return out; }
-  function mPut(d, x, y, c, t) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; t = t == null ? 1 : t; d[i] = Math.round(d[i] + (c[0] - d[i]) * t); d[i + 1] = Math.round(d[i + 1] + (c[1] - d[i + 1]) * t); d[i + 2] = Math.round(d[i + 2] + (c[2] - d[i + 2]) * t); d[i + 3] = 255; }
-  function mIn(M, x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && M.m[y * 32 + x] === 1; }
-  function mStar(d, M, x, y, sz, behind) { var P = sz > 1 ? [[0, 0, MW], [1, 0, MG], [-1, 0, MG], [0, 1, MG], [0, -1, MG]] : sz > 0 ? [[0, 0, MW]] : [[0, 0, MG]];
-    P.forEach(function (q) { var X = x + q[0], Y = y + q[1]; if (behind && mIn(M, X, Y)) return; mPut(d, X, Y, q[2], sz > 1 || q[0] || q[1] ? 1 : 0.9); }); }
-  var MYTH_FX = {
-    a: function (d, M, k, N) { /* holo shimmer: a rainbow foil band sweeps diagonally over pet + gear; faint holo tint everywhere */
-      var c = k < 0 ? 26 : -8 + (k / N) * 80;
-      for (var p = 0; p < 1024; p++) { if (!M.m[p]) continue; var x = p & 31, y = p >> 5, s = x + y, dd = Math.abs(s - c), hue = s * 9 + (k < 0 ? 0 : k * 24);
-        mPut(d, x, y, mythHsv(hue), 0.10); if (dd < 4) mPut(d, x, y, dd < 1 ? MW : mythHsv(hue + 40), (k < 0 ? 0.32 : 0.55) * (1 - dd / 4)); } },
-    b: function (d, M, k, N, seed) { /* pixel halo with a travelling glint + rising twinkle sparkles */
-      var bb = M.bb, cx = Math.round((bb.x0 + bb.x1) / 2), hw = Math.max(3, Math.min(5, Math.round((bb.x1 - bb.x0) / 4))), y0 = Math.max(0, bb.y0 - 3), bob = k >= 0 && (k >> 1) % 2 ? 1 : 0, ring = [];
-      for (var x = cx - hw + 1; x <= cx + hw - 1; x++) ring.push([x, y0 + bob]); ring.push([cx + hw, y0 + 1 + bob]); for (x = cx + hw - 1; x >= cx - hw + 1; x--) ring.push([x, y0 + 2 + bob]); ring.push([cx - hw, y0 + 1 + bob]);
-      var g = k < 0 ? 0 : Math.floor(k * ring.length / N);
-      ring.forEach(function (q, n) { var back = n > hw * 2 - 2 && n < ring.length - 1; mPut(d, q[0], q[1], n === g || n === (g + 1) % ring.length ? MW : back ? MD : MG, 1); });
-      for (var i = 0; i < 4; i++) { var r = (seed * (i + 3) * 37) % 97, side = i % 2 ? 1 : -1, sx = side < 0 ? bb.x0 - 1 - (r % 3) : bb.x1 + 1 + (r % 3), sy0 = bb.y0 + 4 + ((r * 7) % Math.max(4, bb.y1 - bb.y0 - 6));
-        if (k < 0) { if (i < 2) mStar(d, M, Math.max(1, Math.min(30, sx)), sy0, 2, true); continue; }
-        var life = (k + i * 3) % 6, sz = [0, 1, 2, 2, 1, -1][life]; if (sz < 0) continue; mStar(d, M, Math.max(1, Math.min(30, sx)), sy0 - (life >> 1), sz, true); } },
-    c: function (d, M, k, N) { /* glow outline pulsing gold -> pink -> cyan + two tiny stars orbiting the pet */
-      var t = k < 0 ? 0.5 : 0.38 + 0.3 * Math.sin(k / N * Math.PI * 4), col = k < 0 ? MG : mythHsv(45 + 300 * (0.5 - 0.5 * Math.cos(k / N * Math.PI * 2)));
-      for (var p = 0; p < 1024; p++) { if (M.m[p]) continue; var x = p & 31, y = p >> 5;
-        if (mIn(M, x + 1, y) || mIn(M, x - 1, y) || mIn(M, x, y + 1) || mIn(M, x, y - 1)) mPut(d, x, y, col, t); else if (mIn(M, x + 1, y + 1) || mIn(M, x - 1, y - 1) || mIn(M, x + 1, y - 1) || mIn(M, x - 1, y + 1)) mPut(d, x, y, col, t * 0.5); }
-      var bb = M.bb, cx = (bb.x0 + bb.x1) / 2, cy = bb.y0 + (bb.y1 - bb.y0) * 0.45, rx = Math.min(15, (bb.x1 - bb.x0) / 2 + 3), ry = 3;
-      for (var i = 0; i < 2; i++) { var an = (k < 0 ? 0.3 : k / N) * Math.PI * 2 + i * Math.PI, sx = Math.round(cx + rx * Math.cos(an)), sy = Math.round(cy + ry * Math.sin(an)), behind = Math.sin(an) < 0;
-        mStar(d, M, Math.max(1, Math.min(30, sx)), Math.max(1, Math.min(30, sy)), behind ? 1 : 2, behind); } },
-    d: function (d, M, k, N) { /* gold laurel sprigs curling up both sides + a glint running up the leaves + a blinking star above */
-      var bb = M.bb, L = [], h = Math.min(12, bb.y1 - bb.y0);
-      for (var j = 0; j <= h; j++) { var off = Math.round(2 - 2 * Math.sin(j / h * Math.PI * 0.9)), y = bb.y1 - j; L.push([bb.x0 - off, y, bb.x1 + off, y, j]); }
-      var g = k < 0 ? -9 : Math.floor(k * (h + 4) / N);
-      L.forEach(function (q) { var j = q[4], leaf = j % 3 === 1, tip = j === h, glint = Math.abs(j - g) < 1;
-        [[q[0], -1], [q[2], 1]].forEach(function (e) { var x = Math.max(0, Math.min(31, e[0])), y = q[1];
-          if (!mIn(M, x, y)) mPut(d, x, y, glint ? MW : MD, 1); if (leaf || tip) { var ox = Math.max(0, Math.min(31, x + e[1])), ix = Math.max(0, Math.min(31, x - e[1])); mPut(d, ox, y - 1, glint ? MW : MG, 1); if (!mIn(M, ix, y - 1)) mPut(d, ix, y - 1, glint ? MW : MG, 1); } }); });
-      if (k < 0 || (k % 4) < 3) mStar(d, M, Math.round((bb.x0 + bb.x1) / 2), Math.max(1, bb.y0 - 2), k < 0 ? 2 : [1, 2, 1][k % 4], true); } };
+    var a = A[0].data, b = B[0].data, m = new Uint8Array(1024), bb = { x0: 32, x1: -1, y0: 32, y1: -1 }, key = mode;
+    for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x; if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y; } }
+    if (bb.x1 < 0) return fr;
+    bb.yh = bb.y0; for (var yy = bb.y0; yy <= bb.y1; yy++) { var cnt = 0; for (var xx = 0; xx < 32; xx++) cnt += m[yy * 32 + xx]; if (cnt >= 4) { bb.yh = yy; break; } } /* head top (skips a lone badge/gear pixel) */
+    for (p = 0; p < 1024; p += 32) { var row = 0; for (var q = 0; q < 32; q++) row = row * 2 + m[p + q] >>> 0; key += '.' + row.toString(36); }
+    var info = { mode: mode, m: m, bb: bb, key: key };
+    return fr.map(function (f) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, info); return g; }); }
+  var mythCss = false, mythLive = typeof Set !== 'undefined' ? new Set() : null, mythMasks = {}, mythUid = 0, mythPtr = null, mythTilt = null, mythRaf = 0;
+  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); }); }) : null;
+  function mythStyle() { if (mythCss || !document.head) return; mythCss = true; var s = document.createElement('style'); s.id = 'mfx-css';
+    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:visible}.mfx>*{position:absolute;pointer-events:none}' +
+      '.mfx .pm{inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;overflow:hidden}' +
+      '.mfx .holo{inset:0;background:linear-gradient(115deg,#ff3a6e,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8,#ff3a6e,#ffb13a,#fff36a,#4dff9a);background-size:400% 400%;mix-blend-mode:color-dodge;opacity:.38}' +
+      '.mfx .holo2{inset:0;background:repeating-linear-gradient(65deg,rgba(255,255,255,.0) 0 2px,rgba(160,255,255,.35) 3px,rgba(255,160,255,.0) 5px),repeating-linear-gradient(-25deg,rgba(255,255,255,0) 0 3px,rgba(255,255,200,.22) 4px,rgba(255,255,255,0) 6px);mix-blend-mode:overlay;opacity:.8}' +
+      '.mfx .glit{inset:0;background-size:24px 24px;mix-blend-mode:color-dodge;opacity:.9}' +
+      '.mfx .gw{mix-blend-mode:overlay}.mfx .gw2{mix-blend-mode:screen;opacity:.4}.mfx .glare{top:-60%;bottom:-60%;width:46%;left:0;background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.05) 28%,rgba(255,255,255,.55) 44%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.55) 56%,rgba(255,255,255,.05) 72%,rgba(255,255,255,0) 100%);transform:translateX(-120%) rotate(12deg);will-change:transform}' +
+      '.mfx .gloss{inset:0;background:radial-gradient(120% 70% at 30% 0%,rgba(255,255,255,.32),rgba(255,255,255,0) 60%);mix-blend-mode:screen}' +
+      '.mfx .halo{border-radius:50%;border:2px solid rgba(255,244,190,.95);box-shadow:0 0 6px 2px rgba(255,214,80,.9),0 0 16px 6px rgba(255,190,40,.45),inset 0 0 5px 1px rgba(255,255,230,.8);background:radial-gradient(closest-side,rgba(255,230,120,0) 55%,rgba(255,230,120,.35) 80%,rgba(255,230,120,0));will-change:transform,opacity}' +
+      '.mfx .hglow{border-radius:50%;background:radial-gradient(closest-side,rgba(255,236,150,.55),rgba(255,200,60,.18) 55%,rgba(255,200,60,0));mix-blend-mode:screen}' +
+      '.mfx .spk{width:16%;aspect-ratio:1;margin:-8% 0 0 -8%;background:radial-gradient(closest-side,#fff 0,rgba(255,255,255,.95) 12%,rgba(255,230,140,.6) 30%,rgba(255,200,80,0) 70%);clip-path:polygon(50% 0,58% 42%,100% 50%,58% 58%,50% 100%,42% 58%,0 50%,42% 42%);filter:drop-shadow(0 0 2px #ffe680);opacity:0;transform:scale(.2);will-change:transform,opacity}' +
+      '.mfx .aura{inset:-12%;-webkit-mask-size:100% 100%;mask-size:100% 100%;background:conic-gradient(from 0deg,#ff5ad8,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8);mix-blend-mode:screen;will-change:transform}' +
+      '.mfx .auraw{inset:-12%;-webkit-mask-size:100% 100%;mask-size:100% 100%;overflow:hidden}.mfx .auraw>i{position:absolute;inset:-40%;background:conic-gradient(from 0deg,#ff5ad8,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8);will-change:transform}' +
+      '.mfx .orbit{width:0;height:0}.mfx .orbit>b{position:absolute;left:0;top:0;animation:mfxOx 3.2s ease-in-out infinite alternate;will-change:transform}' +
+      '.mfx .orbit>b>i{position:absolute;left:0;top:0;animation:mfxOy 3.2s ease-in-out infinite alternate;will-change:transform,opacity;width:var(--s);height:var(--s);margin:calc(var(--s)/-2) 0 0 calc(var(--s)/-2);border-radius:50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.9) 25%,rgba(150,240,255,.5) 50%,rgba(150,240,255,0));box-shadow:0 0 6px 2px rgba(180,240,255,.7)}' +
+      '.mfx .laurel{overflow:visible}' +
+      '@keyframes mfxSweep{0%{transform:translateX(-140%) rotate(12deg)}55%,100%{transform:translateX(330%) rotate(12deg)}}' +
+      '@keyframes mfxHolo{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}' +
+      '@keyframes mfxGlit{0%{opacity:.25;background-position:0 0}20%{opacity:.95}40%{opacity:.4;background-position:7px 3px}60%{opacity:1}80%{opacity:.3;background-position:3px 9px}100%{opacity:.25;background-position:0 0}}' +
+      '@keyframes mfxSpk{0%,100%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1) rotate(45deg)}70%{opacity:.7;transform:scale(.6) rotate(70deg)}}' +
+      '@keyframes mfxHalo{0%,100%{transform:translateY(0);opacity:.9}50%{transform:translateY(-6%);opacity:1}}' +
+      '@keyframes mfxSpin{to{transform:rotate(360deg)}}@keyframes mfxPulse{0%,100%{opacity:.55}50%{opacity:.95}}' +
+      '.mfx .glare{animation:mfxSweep 3.6s cubic-bezier(.45,.05,.35,1) infinite}.mfx .holo{animation:mfxHolo 6s ease-in-out infinite}.mfx .glit{animation:mfxGlit 1.7s linear infinite}.mfx .glit.g2{animation-duration:2.3s;animation-delay:-.8s;background-size:31px 31px}' +
+      '.mfx .spk{animation:mfxSpk 2.4s ease-in-out infinite}.mfx .halo,.mfx .hglow{animation:mfxHalo 3s ease-in-out infinite}.mfx .auraw>i{animation:mfxSpin 5s linear infinite}.mfx .auraw{animation:mfxPulse 2.4s ease-in-out infinite}' +
+      '@keyframes mfxOx{from{transform:translateX(calc(var(--rx)*-1))}to{transform:translateX(var(--rx))}}@keyframes mfxOy{from{transform:translateY(calc(var(--ry)*-1)) scale(.55);opacity:.55}to{transform:translateY(var(--ry)) scale(1.15);opacity:1}}' +
+      '.mfx.ptr .glare{animation:none}.mfx.ptr .holo{animation:none}.mfx.mfx-off *{animation-play-state:paused!important}' +
+      '@media (prefers-reduced-motion:reduce){.mfx *{animation:none!important}.mfx .glare{transform:translateX(70%) rotate(12deg)}.mfx .spk{opacity:.9;transform:scale(.8)}.mfx .glit{opacity:.6}}';
+    document.head.appendChild(s); }
+  function mythGlitUrl() { if (mythMasks._g) return mythMasks._g; var c = document.createElement('canvas'); c.width = c.height = 48; var g = c.getContext('2d'), r = 7;
+    for (var i = 0; i < 70; i++) { r = (r * 9301 + 49297) % 233280; var x = r / 233280 * 48; r = (r * 9301 + 49297) % 233280; var y = r / 233280 * 48; r = (r * 9301 + 49297) % 233280; var t = r / 233280;
+      var gr = g.createRadialGradient(x, y, 0, x, y, 0.6 + t * 1.6); gr.addColorStop(0, 'rgba(255,255,255,' + (0.5 + t / 2) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x - 3, y - 3, 6, 6); }
+    return (mythMasks._g = c.toDataURL()); }
+  function mythMaskUrls(info) { var k = info.key; if (mythMasks[k]) return mythMasks[k]; var c = document.createElement('canvas'); c.width = c.height = 32; var g = c.getContext('2d'), id = g.createImageData(32, 32);
+    for (var p = 0; p < 1024; p++) if (info.m[p]) { id.data[p * 4] = id.data[p * 4 + 1] = id.data[p * 4 + 2] = 255; id.data[p * 4 + 3] = 255; } g.putImageData(id, 0, 0);
+    var pet = c.toDataURL(), R = document.createElement('canvas'), S = 160, o = Math.round(S * 0.12 / 1.24); R.width = R.height = S; var h = R.getContext('2d'), sc = (S - 2 * o) / 32; h.imageSmoothingEnabled = false;
+    h.shadowColor = '#fff'; h.shadowBlur = 9; for (var n = 0; n < 3; n++) h.drawImage(c, o, o, 32 * sc, 32 * sc); h.shadowBlur = 0; h.globalCompositeOperation = 'destination-out'; h.drawImage(c, o, o, 32 * sc, 32 * sc);
+    var out = { pet: pet, ring: R.toDataURL() }; var ks = Object.keys(mythMasks); if (ks.length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
+  function el(tag, cls, st) { var e = document.createElement(tag); if (cls) e.className = cls; if (st) e.setAttribute('style', st); return e; }
+  function mythLaurel(side, uid) { var NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg'); s.setAttribute('viewBox', '0 0 20 60'); s.setAttribute('class', 'laurel');
+    var gid = 'mfxg' + uid + side, wid = 'mfxw' + uid + side, leaves = '', i;
+    for (i = 0; i < 7; i++) { var y = 54 - i * 7.2, x = 13 - Math.sin(i / 6 * 2.6) * 6; leaves += '<ellipse cx="' + (x - 3.2).toFixed(1) + '" cy="' + (y - 2).toFixed(1) + '" rx="3.6" ry="1.5" transform="rotate(-38 ' + (x - 3.2).toFixed(1) + ' ' + (y - 2).toFixed(1) + ')"/>' +
+      '<ellipse cx="' + (x + 2.6).toFixed(1) + '" cy="' + (y - 3).toFixed(1) + '" rx="3.4" ry="1.4" transform="rotate(-62 ' + (x + 2.6).toFixed(1) + ' ' + (y - 3).toFixed(1) + ')"/>'; }
+    var anim = MYTH_STILL ? '' : '<animateTransform attributeName="gradientTransform" type="translate" values="0 70;0 -70;0 -70" keyTimes="0;0.6;1" dur="3.2s" repeatCount="indefinite"/>';
+    s.innerHTML = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4a08"/><stop offset=".3" stop-color="#e8b23a"/><stop offset=".48" stop-color="#fff2b0"/><stop offset=".62" stop-color="#d79a22"/><stop offset="1" stop-color="#6a3e06"/></linearGradient>' +
+      '<linearGradient id="' + wid + '" gradientUnits="userSpaceOnUse" x1="0" y1="20" x2="0" y2="34"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>' + anim + '</linearGradient></defs>' +
+      '<g style="filter:drop-shadow(0 0 1.2px rgba(255,210,80,.9))"><path d="M14 58 C 4 44, 4 22, 13 4" fill="none" stroke="url(#' + gid + ')" stroke-width="1.6" stroke-linecap="round"/><g fill="url(#' + gid + ')" stroke="#5a3404" stroke-width=".35">' + leaves + '</g>' +
+      '<g fill="url(#' + wid + ')" style="mix-blend-mode:screen"><path d="M14 58 C 4 44, 4 22, 13 4" fill="none" stroke="url(#' + wid + ')" stroke-width="1.6"/>' + leaves + '</g></g>';
+    if (side === 'r') s.style.transform = 'scaleX(-1)'; return s; }
+  function mythBuild(info) { var o = el('div', 'mfx mfx-' + info.mode), bb = info.bb, U = mythMaskUrls(info), P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, uid = ++mythUid, mode = info.mode;
+    var mk = function (cls, st) { var e = el('div', 'pm ' + cls, st); e.style.webkitMaskImage = e.style.maskImage = 'url(' + U.pet + ')'; return e; }, pm = [];
+    var glit = 'background-image:url(' + mythGlitUrl() + ')';
+    if (mode === 'a') { pm.push(mk('holo'), mk('holo2'), mk('glit', glit), mk('glit g2', glit)); } else pm.push(mk('glit', glit + ';opacity:.7'));
+    pm.push(mk('gloss')); var gw = mk('gw'), gw2 = mk('gw2'); gw.appendChild(el('div', 'glare')); gw2.appendChild(el('div', 'glare')); pm.push(gw, gw2);
+    var cx = (bb.x0 + bb.x1 + 1) / 2, w = bb.x1 - bb.x0 + 1, hgt = bb.y1 - bb.y0 + 1;
+    if (mode === 'c') { var aw = el('div', 'auraw'); aw.style.webkitMaskImage = aw.style.maskImage = 'url(' + U.ring + ')'; aw.appendChild(el('i')); o.appendChild(aw); }
+    pm.forEach(function (e) { o.appendChild(e); });
+    if (mode === 'b') { var hw = Math.max(8, Math.min(16, w * 0.6)), hy = Math.max(0.4, bb.yh - 1.6);
+      o.appendChild(el('div', 'hglow', 'left:' + P(cx - hw * 0.8) + ';width:' + P(hw * 1.6) + ';top:' + P(hy - 3) + ';height:' + P(8)));
+      o.appendChild(el('div', 'halo', 'left:' + P(cx - hw / 2) + ';width:' + P(hw) + ';top:' + P(hy) + ';height:' + P(2.6)));
+      [[bb.x0 - 2, bb.y0 + hgt * 0.3, 0], [bb.x1 + 2, bb.y0 + hgt * 0.15, 0.6], [bb.x1 + 1.5, bb.y0 + hgt * 0.65, 1.2], [bb.x0 - 1.5, bb.y0 + hgt * 0.75, 1.8], [cx + 3, bb.y0 + 2, 0.9], [cx - 5, bb.y0 + hgt * 0.5, 1.5]].forEach(function (q) {
+        o.appendChild(el('div', 'spk', 'left:' + P(Math.max(1, Math.min(31, q[0]))) + ';top:' + P(Math.max(1, Math.min(31, q[1]))) + ';animation-delay:-' + q[2] + 's')); }); }
+    if (mode === 'c') { var ob = el('div', 'orbit', 'left:' + P(cx) + ';top:' + P(bb.y0 + hgt * 0.45) + ';--rx:' + (Math.min(15, w / 2 + 3) / 32 * 100).toFixed(1) + 'cqw;--ry:' + (3.2 / 32 * 100).toFixed(1) + 'cqw;--s:9cqw');
+        [0, -3.2].forEach(function (dl) { var b = el('b', '', 'animation-delay:' + dl + 's'), i = el('i', '', 'animation-delay:' + (dl - 1.6) + 's'); b.appendChild(i); ob.appendChild(b); }); o.appendChild(ob); }
+    if (mode === 'd') { var lh = Math.min(16, hgt + 2); [['l', bb.x0 - 4.6], ['r', bb.x1 + 1.6]].forEach(function (q) { var s = mythLaurel(q[0], uid); s.setAttribute('style', (s.getAttribute('style') || '') + ';position:absolute;left:' + P(q[1]) + ';top:' + P(bb.y1 + 1 - lh) + ';width:' + P(lh / 3) + ';height:' + P(lh) + (q[0] === 'r' ? ';transform:scaleX(-1)' : '')); o.appendChild(s); }); }
+    return o; }
+  function mythPlace(c) { var o = c._mfx; if (!o) return; var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
+    o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size';
+    var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } }
+  var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
+  function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
+  function mythAttach(c, img) { if (!MYTH_INFO || !c || c.nodeType !== 1) return; var info = MYTH_INFO.get(img);
+    if (!info) { if (c._mfx) mythDetach(c); return; } if (c._mfxKey === info.key && c._mfx && c._mfx.parentNode === c.parentNode && c._mfx.isConnected) return;
+    if (!c.parentNode || typeof document === 'undefined') return; try { mythStyle(); if (c._mfx) mythDetach(c); var o = mythBuild(info); c._mfx = o; c._mfxKey = info.key; o._c = c;
+      c.parentNode.insertBefore(o, c.nextSibling); var ps = window.getComputedStyle ? getComputedStyle(c.offsetParent || c.parentNode) : null; mythPlace(c);
+      if (mythRO) mythRO.observe(c); if (mythVis) mythVis.observe(c); if (mythLive) mythLive.add(c); mythListen(); } catch (e) { if (window.console) console.warn('mythic look failed', e); } }
+  function mythTick() { mythRaf = 0; if (!mythLive) return; mythLive.forEach(function (c) { var o = c._mfx; if (!o || !c.isConnected) { mythDetach(c); return; } if (o.classList.contains('mfx-off')) return;
+      var r = c.getBoundingClientRect(), fx = null; if (!r.width) return;
+      if (mythPtr) { var px = (mythPtr[0] - r.left) / r.width, py = (mythPtr[1] - r.top) / r.height; if (px > -0.25 && px < 1.25 && py > -0.25 && py < 1.25) fx = [px, py]; }
+      if (!fx && mythTilt) fx = mythTilt;
+      var gl = o.querySelector('.glare'), ho = o.querySelector('.holo');
+      if (fx) { o.classList.add('ptr'); var X = Math.max(-0.2, Math.min(1.2, fx[0])); if (gl) gl.style.transform = 'translateX(' + ((X * 2.6 - 1.15) * 100).toFixed(0) + '%) rotate(12deg)'; if (ho) ho.style.backgroundPosition = (X * 100).toFixed(0) + '% ' + (Math.max(0, Math.min(1, fx[1])) * 100).toFixed(0) + '%'; }
+      else if (o.classList.contains('ptr')) { o.classList.remove('ptr'); if (gl) gl.style.transform = ''; if (ho) ho.style.backgroundPosition = ''; } }); }
+  var mythListening = false;
+  function mythListen() { if (mythListening || MYTH_STILL || typeof window.addEventListener !== 'function') return; mythListening = true; var q = function () { if (!mythRaf) mythRaf = (window.requestAnimationFrame || setTimeout)(mythTick); };
+    window.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; mythPtr = [e.clientX, e.clientY]; q(); }, { passive: true });
+    document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
+    window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
+    window.addEventListener('scroll', q, { passive: true }); }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
