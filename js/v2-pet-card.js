@@ -32,7 +32,10 @@
     var h = '<h3 class="pc-qh">🗺️ Quests</h3>';
     if (!questsOn()) return h + '<p class="pc-soon">Quests open soon. Mythic pets will go on quests to Spam City, Cold Storage, Lord Kek\'s Swamp, the Wizard\'s Tower and the Burning Mines.</p>';
     var V = window.V2Rules, b = tip() + 1, I = V.questInfo(w, p, b) || {};
-    if (I.away) return h + '<div class="pc-away" id="pcAway"><b>🗺️ Gone Questing: ' + esc(I.away.name) + '</b><span>Back at block <b>' + fmt(I.away.end) + '</b> (in ' + fmt(I.away.left) + ' blocks, ' + hrs(I.away.left) + ').</span></div>';
+    if (I.away) { var A = I.away, Q = V.QUESTS[A.code] || {}, done = Math.max(0, Math.min(1, (b - A.start) / ((A.end - A.start) || 1)));
+      return h + '<div class="pc-away" id="pcAway"><b>🗺️ Gone Questing: ' + esc(A.name) + '</b><span>Set off at block ' + fmt(A.start) + (A.free ? ' (free first quest)' : '') + '. Homecoming at block <b>' + fmt(A.end) + '</b>, in ' + fmt(A.left) + ' blocks (' + hrs(A.left) + ').</span>' +
+        '<span class="pc-bar" role="progressbar" aria-valuenow="' + Math.round(done * 100) + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + (done * 100).toFixed(1) + '%"></i></span>' +
+        '<span class="small">While away: no battles, breeding, feeding, gifts, sales or swaps.' + (Q.reward ? ' Looking for: ' + esc(Q.reward) + '.' : '') + '</span></div>'; }
     var why = null;
     if (p.dead) why = 'it rests in the Pet Cemetery';
     else if (p.community) why = 'community pets never quest';
