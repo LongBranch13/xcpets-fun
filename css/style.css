@@ -185,3 +185,6 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 .wf5{margin:8px 0 10px;padding:8px 10px;background:#181327;border:2px solid #ffc93c;border-radius:10px}.wf5>b{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffc93c}
 .wf5 ol{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 0;padding-left:22px}.wf5 li{min-width:120px}.wf5 li.me b{color:#4fd18b}
 @media (max-width:600px){.wf5 ol{display:block}}
+/* nav-shop: Shop link (visible early in the nav; highlighted on shop.html) */
+.nav nav a.navshop[aria-current="page"] { color:var(--green); text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:2px; }
+@media (max-width:600px) { header.nav nav a.navshop { order:-1; } }
