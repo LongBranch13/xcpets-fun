@@ -65,7 +65,7 @@
   function anim(w, p, I, lastH, b) { var A = window.V2QuestAnim; if (!A || document.querySelector('.qa-ov')) return;
     var flip = function (sel) { return function () { var x = document.querySelector(sel); if (x) { x.classList.remove('qa-flip'); void x.offsetWidth; x.classList.add('qa-flip'); } }; };
     if (I.away && !seen('xcpets-qa-out:' + p.id + ':' + I.away.start)) { var t = 0; try { t = +localStorage.getItem('xcpets-qa-sent:' + p.id) || 0; } catch (e) {}
-      if (Date.now() - t > 3 * 3600e3) A.out({ code: I.away.code, pet: p, w: w, done: flip('#qsAway') }); else flip('#qsAway')(); return; }
+      if (Date.now() - t > 3 * 3600e3) A.out({ code: I.away.code, pet: p, w: w, done: flip('#pcAway, #qsAway') }); else flip('#pcAway, #qsAway')(); return; }
     if (lastH && $('qsHome') && !seen('xcpets-qa-in:' + p.id + ':' + lastH.end)) A.home({ code: lastH.code, pet: p, w: w, tier: lastH.tier, ambush: !!lastH.ambush,
       egg: lastH.rewards.some(function (r) { return r.kind === 'egg'; }), done: flip('#qsHome') }); }
   var last = '';
@@ -73,11 +73,8 @@
     var id = Number(new URLSearchParams(location.search).get('id')), p = w.byId[id], anchor = $('starveWarn') || $('facts'); if (!p || !anchor) return;
     var I = V.questInfo(w, p, b), ME = window.V2Mock && V2Mock.ME, mine = !!ME && ME === p.owner, key = [w.tip, id, ME, JSON.stringify(I.hist.length), I.away && I.away.end, I.napUntil, (I.flameLooks || []).join()].join('|'); if (key === last && $('questCard')) { ppStrip(I); return; } last = key; css();
     var el = $('questCard'); if (!el) { el = document.createElement('section'); el.id = 'questCard'; el.setAttribute('aria-label', 'Mythic quests'); anchor.parentNode.insertBefore(el, anchor.nextSibling); }
-    var h = '<h2 class="sec" data-ico="crown">Mythic quests</h2>';
-    if (I.away) { var A = I.away, Q = V.QUESTS[A.code], done = Math.max(0, Math.min(1, (b - A.start) / (A.end - A.start)));
-      h += '<div class="qs-away" id="qsAway">' + badgeImg(A.code, 4) + '<h3>🗺️ Gone Questing: ' + esc(A.name) + '</h3><p>#' + p.id + ' ' + esc(p.name) + ' set off at block ' + fmt(A.start) + (A.free ? ' (free first quest)' : '') + '. Homecoming at block <b>' + fmt(A.end) + '</b>, in ' + fmt(A.left) + ' blocks (' + hrs(A.left) + ').</p>' +
-        '<div class="qs-bar" role="progressbar" aria-valuenow="' + Math.round(done * 100) + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + (done * 100).toFixed(1) + '%"></i></div>' +
-        '<p class="small">While away: no battles, breeding, feeding, gifts, sales or swaps. Looking for: ' + esc(Q.reward) + '.</p></div>'; }
+    var h = '<h2 class="sec" data-ico="crown">Quest log</h2>';
+    /* mythic-quests-card: Gone Questing (#pcAway) and the Start buttons live on the pet card (js/v2-pet-card.js -> V2Quests.start); not repeated here */
     var lastH = I.hist[I.hist.length - 1];
     if (lastH && !I.away && b - lastH.end <= 144) { var TN = V.QUEST_TIERS[lastH.tier];
       h += '<div class="qs-home' + (lastH.tier === 'empty' ? ' empty' : '') + '" id="qsHome"><h3>' + TIER_ICO[lastH.tier] + ' Homecoming: ' + esc(TN) + '</h3><p>Back from <b>' + esc(V.QUESTS[lastH.code].name) + '</b> at block ' + fmt(lastH.end) + '.</p>' +
@@ -85,14 +82,6 @@
         (lastH.rewards.length ? '<ul>' + lastH.rewards.map(function (r) { return '<li>' + rewardText(r, w) + '</li>'; }).join('') + '</ul>' : '<p>Nothing this time. The quest badge and look progress still count.</p>') +
         (lastH.look ? '<p><b>✨ New look unlocked: ' + esc(lastH.look) + '</b></p>' : '') + (I.napUntil ? '<p class="small">💤 Nap Time until block ' + fmt(I.napUntil) + ' (' + hrs(I.napUntil - b) + ').</p>' : '') + '</div>'; }
     else if (I.napUntil) h += '<p>💤 Nap Time until block ' + fmt(I.napUntil) + ' (' + hrs(I.napUntil - b) + '). It can fight, breed and eat meanwhile.</p>';
-    if (I.mythic && !p.dead) { var why = V.questWhy ? V.questWhy(w, p, ME || p.owner, 'spam', 1e12, b) : null;
-      h += '<h3 class="small">Send #' + p.id + ' on a quest</h3>' + (I.freeQuest ? '<p class="small"><b>🎟️ Free first quest:</b> this Mythic was alive at launch, so its first quest costs only 0.00000001 XCPETS.</p>' : '') + '<div class="qs-grid">' +
-        V.QUEST_CODES.map(function (c) { var Q = V.QUESTS[c], od = V.questOdds(w, p, c, b), pl = V.questPlan(p.id, c, w, b), dis = !mine || !!why;
-          return '<div class="qs-q" aria-disabled="' + dis + '">' + badgeImg(c, 2) + '<h4>' + esc(Q.name) + '</h4><div class="small">' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + ') · ' + (I.freeQuest ? '<s>' + fmt(V.questCost(w, c, b)) + '</s> free' : fmt(pl.amount) + ' XCPETS') + '</div>' +
-            '<div class="small">🏆 ' + pct(od.haul) + ' · 🎒 ' + pct(od.loot) + ' · 🕳️ ' + pct(od.empty) + (od.shift ? ' <span class="muted">(+' + pct(od.shift) + ' from stats/gear)</span>' : '') + '</div><div class="small muted">' + esc(Q.reward) + '</div>' +
-            '<button class="btn" data-qs="' + c + '"' + (dis ? ' disabled title="' + esc(!mine ? 'Only the owner wallet can send this pet' : why) + '"' : '') + '>Send on ' + esc(Q.name) + '</button></div>'; }).join('') + '</div>' +
-        (why ? '<p class="qs-why">Can\'t start a quest: ' + esc(why) + '</p>' : !mine ? '<p class="small muted">Only the owner wallet can send this pet.</p>' : ''); }
-    else if (!p.dead) h += '<p class="small muted">Quests are for Mythics. This pet can go once it reaches Mythic.</p>';
     var bd = I.badges || {}, all5 = V.QUEST_CODES.every(function (c) { return bd[c]; });
     h += '<h3 class="small">Quest badges</h3><div class="qs-badges" id="qsBadges">' + ['spam', 'cold', 'kek', 'wiz', 'mine', 'funtrump', 'nakamoto'].map(function (k) { var n = k === 'nakamoto' ? (all5 ? 1 : 0) : bd[k] || 0;
       return '<span class="qs-badge' + (n ? '' : ' off') + '" title="' + esc(BADGE[k]) + '">' + badgeImg(k, 2) + esc(BADGE[k]) + (n > 1 ? ' · ' + n + ' times' : '') + '</span>'; }).join('') + '</div>';
@@ -106,12 +95,16 @@
     h += '<div class="qs-scroll" id="qsScroll"><b>📜 Quest Scroll</b>' + (I.hist.length ? '<ol>' + I.hist.slice().reverse().map(function (q) { return '<li><b>' + esc(V.QUESTS[q.code].name) + '</b>: ' + TIER_ICO[q.tier] + ' ' + esc(V.QUEST_TIERS[q.tier]) + (q.ambush ? ' + FUNTRUMP Ambush' : '') + ' <span class="muted small">(blocks ' + fmt(q.start) + ' to ' + fmt(q.end) + (q.free ? ', free' : '') + ')</span>' + (q.rewards.length ? '<br><span class="small">' + q.rewards.map(function (r) { return rewardText(r, w); }).join(' · ') + '</span>' : '') + '</li>'; }).join('') + '</ol>' : '<p class="small">No quests yet.</p>') + '</div>';
     el.innerHTML = h;
     anim(w, p, I, lastH, b);
-    el.querySelectorAll('[data-qs]').forEach(function (x) { x.onclick = function () { var c = x.getAttribute('data-qs'), Q = V.QUESTS[c], pl = V.questPlan(p.id, c, w, b);
-      confirmSend(pl, { title: 'Send #' + p.id + ' on ' + Q.name + '?', go: 'Send in XCP Wallet', body: '<p>' + badgeImg(c, 3) + '</p><p>#' + p.id + ' ' + esc(p.name) + ' will be away for ' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + '): no battles, breeding, feeding, gifts or sales until Homecoming. After it, Nap Time for ' + fmt(Q.len / 2) + ' blocks.</p>', onSent: function () { try { localStorage.setItem('xcpets-qa-sent:' + p.id, String(Date.now())); } catch (e) {} if (window.V2QuestAnim) V2QuestAnim.out({ code: c, pet: p, w: w }); } }); }; });
     el.querySelectorAll('[data-aura]').forEach(function (x) { x.onclick = function () { var on = x.getAttribute('data-aura') === 'on'; confirmSend(V.auraPlan(p.id, on), { title: on ? 'Lights On for #' + p.id + '?' : 'Lights Out for #' + p.id + '?', go: 'Send in XCP Wallet', body: '<p>' + (on ? 'Puts your flame looks on this pet (one of each type; a look already on another pet stays there if you are at your limit).' : 'Takes the flame looks off this pet so you can place them on another.') + '</p>' }); }; });
     ppStrip(I); }
   function ppStrip(I) { var bd = I.badges || {}, all5 = window.V2Rules.QUEST_CODES.every(function (c) { return bd[c]; }), pp = $('petPapers'); if (pp) { var q = pp.querySelector('.pp-qb'); if (!q) { q = document.createElement('div'); q.className = 'pp-qb'; pp.appendChild(q); }
       var any = Object.keys(bd).some(function (k) { return bd[k]; }); q.innerHTML = any ? '<p class="small"><b>Quest badges on this Proof of Pet</b> (they travel with the token):</p><div class="qs-badges">' + Object.keys(BADGE).filter(function (k) { return k === 'nakamoto' ? all5 : bd[k]; }).map(function (k) { return '<span class="qs-badge">' + badgeImg(k, 2) + esc(BADGE[k]) + (bd[k] > 1 ? ' · ' + bd[k] + ' times' : '') + '</span>'; }).join('') + '</div>' : ''; } }
   css(); if (document.body && document.body.getAttribute('data-v2page') === 'pet') { setInterval(paint, 2000); setTimeout(paint, 400); }
-  window.V2Quests = { paint: paint, badgeImg: badgeImg, badgeCanvas: badgeCanvas };
+  /* mythic-quests-card: send pet ID on quest CODE from the pet card. Same checks, plan, confirm box and wallet send as the old in-page grid. */
+  function start(id, c) { var V = window.V2Rules, w = world(); if (!V || !V.questPlan || !w || !w.byId) return false; var b = tipNow() + 1, p = w.byId[id], Q = V.QUESTS[c], ME = window.V2Mock && V2Mock.ME;
+    if (!p || !Q || !V.questOn(b) || !ME || p.owner !== ME) return false; var why = V.questWhy ? V.questWhy(w, p, ME, c, 1e12, b) : null; if (why) { toast('Can\'t start a quest: ' + why); return false; }
+    var pl = V.questPlan(p.id, c, w, b);
+    confirmSend(pl, { title: 'Send #' + p.id + ' on ' + Q.name + '?', go: 'Send in XCP Wallet', body: '<p>' + badgeImg(c, 3) + '</p><p>#' + p.id + ' ' + esc(p.name) + ' will be away for ' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + '): no battles, breeding, feeding, gifts or sales until Homecoming. After it, Nap Time for ' + fmt(Q.len / 2) + ' blocks.</p>', onSent: function () { try { localStorage.setItem('xcpets-qa-sent:' + p.id, String(Date.now())); } catch (e) {} if (window.V2QuestAnim) V2QuestAnim.out({ code: c, pet: p, w: w }); } });
+    return true; }
+  window.V2Quests = { start: start, paint: paint, badgeImg: badgeImg, badgeCanvas: badgeCanvas };
 })();

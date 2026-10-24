@@ -162,3 +162,4 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 .tomb { min-width:0; overflow-wrap:anywhere; } /* the full owner address overflowed a 390px tomb (seen with a forced dead pet; no pet has died on chain yet) */
 /* cemetery-paging 2026-10-20: find box + Show more under the graves */
 .tomb.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} #tombsMore{margin-top:12px} .cemfind .btn.on{outline:2px solid #ffc93c}
+.pksort { white-space:nowrap; } .pksort select { font:inherit; font-size:12px; max-width:100%; background:#14122b; color:inherit; border:2px solid var(--line); border-radius:6px; padding:2px 4px; } /* egg-review-sort 2026-10-24 */
