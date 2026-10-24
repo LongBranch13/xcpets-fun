@@ -31,6 +31,25 @@
         R.paint(c, G.render(pet, { stage: si })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
       row.appendChild(strip); box.appendChild(row); }
     add(); new MutationObserver(add).observe(box, { childList: true });
+    /* cast-cold-storage (owner 2026-10-24): every community pet in Cold Storage joins the cast automatically, read from the replay (V2Community.state):
+     * a row on the Legendary tab (6-stage strip in its Cold Storage loadout) and a card on the Mythic tab. A new cold pet needs no edit here. */
+    function coldPets() { var C = window.V2Community, st = C && C.state(w); return st ? st.cold.filter(function (x) { return x.no >= 2; }).map(function (x) {
+      var p = C.byId(x.id), a = ARCHIVE.filter(function (e) { return e.id === x.id; })[0]; return { x: x, p: p, sp: (a && a.sp) || p.sp, lo: (a && a.loadout) || p.loadout || [] }; }) : []; }
+    function coldFr(k, stage) { try { var f = R.coldFrames(k.sp, stage >= 3 ? k.lo : [], stage); return f && f.length ? f : null; } catch (e) { return null; } }
+    function addCold() { if (!R || !R.coldFrames) return; var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', grid = box.querySelector('.mythgrid');
+      coldPets().forEach(function (k) { var id = k.x.id, nm = k.p.name, sel = '[data-cold="' + id + '"]';
+        if (grid) { if (grid.querySelector(sel)) return; var f = coldFr(k, 5); if (!f) return; var d = document.createElement('div'); d.className = 'mythcard'; d.setAttribute('data-sp', id); d.setAttribute('data-cold', id);
+          var c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', Mythic'); d.appendChild(c);
+          d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(nm) + '</h3><span class="muted small">Cold Storage</span>'); R.animate(c, f); grid.appendChild(d); return; }
+        if (tier !== 'legendary' || box.querySelector(sel)) return;
+        var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', id); row.setAttribute('data-cold', id);
+        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatches from the 1 in 777 egg, any tier' : 'Kept in Cold Storage') + '</p></div>';
+        var strip = document.createElement('div'); strip.className = 'strip6';
+        (G.STAGES || V.STAGE_NAMES).forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', ' + name);
+          var f = coldFr(k, si); if (f) R.paint(c, f[0]); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
+        row.appendChild(strip); box.appendChild(row); }); }
+    try { addCold(); } catch (e) { if (window.console) console.warn('cast cold', e); } new MutationObserver(function () { try { addCold(); } catch (e) {} }).observe(box, { childList: true, subtree: false });
+    if (window.V2Community) window.V2Community.fromWorld(w);
     if (show) { var t = function (sel, a, b) { var e = document.querySelector(sel); if (e) e.innerHTML = e.innerHTML.replace(a, b); };
       t('#cast p.muted', 'one of twelve', 'one of thirteen'); t('.hero-copy .lede', 'Twelve pixel meme characters', 'Thirteen pixel meme characters'); t('.hero-copy .lede', 'Doge and Lenny.', 'Doge, Lenny and Nakamoto.'); }
     /* Hybrids (homepage-cast, 2026-10-19): ONE fixed-size card in the cast row with the count and a sample sprite, linking to hybrids.html.
@@ -58,7 +77,11 @@
     live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
       window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
       if (fr && fr.length) list.push({ id: id, fr: fr }); });
-    var wiz = ARCHIVE.filter(function (e) { return e.id === 'wizard'; })[0], wf = wiz && R.coldFrames ? R.coldFrames(wiz.sp, wiz.loadout || [], COLD_STAGE) : null; if (wf && wf.length) list.push({ id: 'wizard', fr: wf });
+    /* cast-cold-storage: every pet in Cold Storage (from the replay) marches too, not just the Wizard */
+    var CC = window.V2Community, cst = null; try { cst = CC && CC.state(M.world()); } catch (e) { cst = null; }
+    var coldIds = cst ? cst.cold.filter(function (x) { return x.no >= 2; }).map(function (x) { return x.id; }) : ['wizard'];
+    coldIds.forEach(function (cid) { var a = ARCHIVE.filter(function (e) { return e.id === cid; })[0], p = CC && CC.byId(cid), sp = (a && a.sp) || (p && p.sp), lo = (a && a.loadout) || (p && p.loadout) || [], wf = null;
+      try { wf = sp && R.coldFrames ? R.coldFrames(sp, lo, COLD_STAGE) : null; } catch (e) { wf = null; } if (wf && wf.length) list.push({ id: cid, fr: wf }); });
     if (!list.length) return;
     /* key out the backdrop (the render's own background colour, read from the top-left pixel of each frame) so pets walk on the scene */
     function cut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), d = new Uint8ClampedArray(f.data), r = d[0], g = d[1], b = d[2];
@@ -85,7 +108,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=205b1bb2d5'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=36fcc3d230'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -122,7 +145,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=205b1bb2d5'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=36fcc3d230'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -134,7 +157,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=205b1bb2d5'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=36fcc3d230'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
