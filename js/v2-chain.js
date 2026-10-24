@@ -137,7 +137,7 @@
       b.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9999;background:#1d1b2e;color:#fff;border:2px solid #ffc93c;padding:6px 10px;font-size:12px;max-width:92vw;text-align:center'; document.body.appendChild(b); }
       b.textContent = t + ' '; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.marginLeft = '6px';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
-  function sigOf() { return S.tip + '|' + S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
+  function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
   function revalidate() { var was = sigOf(); return load(true).then(function () { var b = document.getElementById('v2stale'); if (b) b.remove();
       if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
     function (e) { staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); }); }
