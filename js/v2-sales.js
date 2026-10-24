@@ -114,16 +114,43 @@
         if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); if (++k >= 50) throw new Error('too many issuances to scan'); return go(j.next_cursor); }); }
       return go(null).catch(function (e) { if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
     return on(0); }
-  function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null);
-    return mintAssets(rows).then(function (ma) { return loadDex2(rows, ma).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: lkey(rows, ma), d: d })); } catch (e) { } return d; }, function (err) {
+  /* sale-cache: a verified BASE copy of the sale data (CI's api/boot.json, or this browser's last verified read) is stamped {tip, hash, assets}.
+   * It is used only when (1) the fresh chain read has the SAME block hash at base.tip (no reorg), and (2) a full node's per-block event list
+   * for EVERY block base.tip+1 .. tip was read. Tokens touched by any of those events (by asset name, or by one of their order / match hashes),
+   * and tokens not in the base, are re-read in full exactly as before; untouched tokens keep their base rows. Anything missing -> full read. */
+  var BASES = [];
+  function setBase(b) { if (b && b.dex && b.dexTip && b.dexHash && b.dexAssets) BASES.push({ tip: +b.dexTip, hash: b.dexHash, assets: b.dexAssets, d: b.dex, from: 'boot' }); }
+  function slice(d, A) { return { issuances: d.issuances.filter(function (x) { return x.asset === A; }), orders: d.orders.filter(function (o) { return o.give_asset === A || o.get_asset === A; }),
+    matches: d.matches.filter(function (m) { return m.forward_asset === A || m.backward_asset === A; }), credits: d.credits.filter(function (c) { return c.asset === A; }),
+    destructions: d.destructions.filter(function (x) { return x.asset === A; }) }; }
+  function blockEvents(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0;
+      function go(cur) { return getJ0(base + '/blocks/' + n + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad events');
+        out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }); }
+      return go(null).catch(function () { return on(i + 1); }); }
+    return on(0); }
+  function touched(base, tip, as) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > 60) return Promise.reject(new Error('base too old'));
+    var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
+    return Promise.all(n.map(blockEvents)).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
+      as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
+  function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
+    var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, from: 'local' });
+    all = all.filter(function (b) { return b.tip <= cx.tip && cx.hashes[b.tip] && cx.hashes[b.tip] === b.hash; }).sort(function (a, b) { return b.tip - a.tip; }); return all[0] || null; }
+  function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null); var cx = arguments[1];
+    return mintAssets(rows).then(function (ma) { var key = lkey(rows, ma), as = key ? key.split(',') : [], base = pickBase(cx); loadDex.lastAssets = as;
+      var pre = base ? touched(base, cx.tip, as).then(function (need) { var p = {}; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
+        loadDex.last = { base: base.from, baseTip: base.tip, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
+      if (!base) loadDex.last = { base: 'none' };
+      return pre.then(function (p) { return loadDex2(rows, ma, p); }).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; }, function (err) {
       /* sales-net-fallback: the full nodes failed. Use the last complete sale data this browser read for the SAME set of pet tokens (flagged stale), else fail as before. */
-      try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === lkey(rows, ma) && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
+      try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }
   function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
-  function loadDex2(rows, ma) {
+  function loadDex2(rows, ma, pre) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
-    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.slice();
+    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); });
+    if (pre) Object.keys(pre).forEach(function (A) { var p = pre[A]; d.issuances = d.issuances.concat(p.issuances); d.orders = d.orders.concat(p.orders); d.matches = d.matches.concat(p.matches); d.credits = d.credits.concat(p.credits); d.destructions = d.destructions.concat(p.destructions); });
     function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
         pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true'), credits(A), pages('/assets/' + A + '/destructions?verbose=true')]).then(function (r) {
       d.credits = d.credits.concat(r[5].map(slimC)); d.destructions = d.destructions.concat(r[6].filter(function (x) { return x.status == null || x.status === 'valid'; }).map(slimX));
@@ -157,7 +184,7 @@
     if (PREVIEW) return Promise.resolve(plan);
     return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
-  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
+  window.V2Sales = { loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
