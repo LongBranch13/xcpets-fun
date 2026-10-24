@@ -61,6 +61,23 @@
     var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
     S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* sale-owner-fix: no sale data in the copy -> full load (never replay owners without sales) */ S.dex = c.dex || undefined; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
   function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balance, dex: S.dex || null })); } catch (e) {} }
+  /* site-fast (2026-10-24): stale-while-revalidate. The last COMPLETE load (verified rows + tip + sale data) is kept in localStorage (LAST) and a
+   * CI-built copy ships as api/boot.json. A page with no 60 s session copy renders AT ONCE from one of these (S.verified stays false and S.stale
+   * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
+   * the same replay out (rules unchanged); when the fresh read differs, a small bar offers a refresh. */
+  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5;
+  function toLast() { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), build: BUILD, rows: S.rows, tip: S.tip, dex: S.dex || null })); } catch (e) {} }
+  function applyStale(c, hashes) { if (!c || !Array.isArray(c.rows) || !c.rows.length || !c.tip) return false;
+    if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* never replay owners without sales */
+    var hc = (function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } })(), seed = window.XCPETS_BLOCK_HASHES || {};
+    Object.keys(seed).forEach(function (k) { if (!hc[k]) hc[k] = seed[k]; }); if (hashes) Object.keys(hashes).forEach(function (k) { if (!hc[k]) hc[k] = hashes[k]; });
+    if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false; /* family-tree-fix: never replay with a hash missing */
+    if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
+    S.rows = c.rows; S.tip = c.tip; S.mempool = []; S.hashes = hc; S.dex = c.dex || undefined; S.verified = false; S.stale = true; S.staleTip = c.tip; keepOrDrop(); return true; }
+  function fromLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); if (!c || Date.now() - c.at > LAST_MAX) return false; return applyStale(c, null); } catch (e) { return false; } }
+  function fromStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
+    return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; })
+      .then(function (j) { return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
     var chain = new E.Chain();
@@ -93,7 +110,7 @@
         if (!dx && V.salesGate && V.salesGate() != null) throw new Error('pet sale reader did not load, so pet owners could be out of date');
         return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
       });
-    }).then(function () { keepOrDrop(); S.verified = true; S.missingBlocks = []; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
+    }).then(function () { keepOrDrop(); S.verified = true; S.stale = false; S.missingBlocks = []; toSession(); toLast(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
       function (e) { if (e && e.missingBlocks) S.missingBlocks = e.missingBlocks; throw e; });
   }
   var stepEl = null; function step(t) { var el = stepEl || document.getElementById('v2boot'); if (el && !booted && !el.querySelector('button')) el.textContent = t; }
@@ -112,13 +129,24 @@
     st.appendChild(m); if (why) st.appendChild(d); st.appendChild(b);
     /* the boot line sits at the bottom of the page; a verify failure is moved to the top of <main> as a panel so it can't be missed */
     if (missing) { try { var mn = document.querySelector('main'); if (mn && st.parentNode !== mn) mn.insertBefore(st, mn.firstChild); st.classList.add('panel'); st.style.textAlign = 'center'; st.style.margin = '12px auto'; st.style.border = '2px solid #ffc93c'; st.setAttribute('role', 'alert'); } catch (e) {} } }
-  function run(st, then) { stepEl = st; var done = false, w = setTimeout(function () { if (!done) bootFail(st, then, 'still waiting for the chain servers'); }, BOOT_WATCH_MS);
+  function run(st, then) { stepEl = st; var done = false, w = setTimeout(function () { if (!done && st && !booted) { st.textContent = 'Using backup source, this can take a minute…'; st.className = 'small muted'; } }, BOOT_WATCH_MS); /* site-fast: calm note, the read keeps going (a real failure still shows Retry) */
     load(true).then(fromIdb).then(workerReplay).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
       function (e) { done = true; clearTimeout(w); if (booted) return;
         bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : '', e && e.missingBlocks); }); }
+  function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
+      b.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9999;background:#1d1b2e;color:#fff;border:2px solid #ffc93c;padding:6px 10px;font-size:12px;max-width:92vw;text-align:center'; document.body.appendChild(b); }
+      b.textContent = t + ' '; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.marginLeft = '6px';
+      k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
+  function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
+  function revalidate() { var was = sigOf(); return load(true).then(function () { var b = document.getElementById('v2stale'); if (b) b.remove();
+      if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
+    function (e) { staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); }); }
+  function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(revalidate, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
     if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
-    run(st, then); }
+    if (/[?&]fresh=1/.test(location.search)) return run(st, then);
+    if (fromLast()) return bootStale(st, then);
+    fromStatic().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   function refresh(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, seed: function () {}, boot: boot, refresh: refresh };
