@@ -12,15 +12,12 @@
     { id: 'motel', ico: '🏨', name: 'Gooby\u2019s No-Tail Motel', url: 'breed.html', line: 'check in, egg out', pages: ['breed.html'] },
     { id: 'spam', ico: '🛒', name: 'Spam City Games', url: 'shop.html', line: 'buy, sell, trade pets', pages: ['shop.html'],
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
-    { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
-    { id: 'hof', ico: '🏛️', name: 'Hall of Fame', url: 'hall-of-fame.html', line: 'the best of every species', pages: ['hall-of-fame.html'] },
-    { id: 'ranking', ico: '🏆', name: 'WAGMI \u2192 NGMI Ranking', url: 'ranking.html', line: 'who is winning today', pages: ['ranking.html'] },
-    { id: 'cold', ico: '❄️', name: 'Cold Storage', url: 'index.html#shared', line: 'the community pets, kept on ice', pages: [] }
+    { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] }
   ];
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /** header menu markup (tools/build-places.js writes it between <!--places--> and <!--/places--> on every page) */
   function menu() { return '<details class="navplaces"><summary>🗺️ Places</summary><div class="np-menu" role="menu">' +
-    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details>'; }
+    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- the site\'s existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a>'; }
   var api = { PLACES: PLACES, menu: menu };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
@@ -36,13 +33,13 @@
     if (here && !document.getElementById('townBar')) { var m = document.querySelector('main') || document.body, bar = document.createElement('nav');
       bar.id = 'townBar'; bar.className = 'townbar'; bar.setAttribute('aria-label', 'Where you are');
       bar.innerHTML = '<a class="tb-town" href="index.html#places">🏘️ Town</a><span aria-hidden="true">›</span><b>' + here.ico + ' ' + esc(here.name) + '</b>' +
-        (here.stations ? '<span class="tb-st">' + here.stations.map(function (s) { return '<a href="' + s[2] + '">' + s[0] + ' ' + esc(s[1]) + '</a>'; }).join('') + '</span>' : '');
+        (here.stations ? '<span class="tb-st">' + here.stations.map(function (s) { var on = s[2].indexOf('#') < 0 && s[2] === file; return '<a href="' + s[2] + '"' + (on ? ' aria-current="page"' : '') + '>' + s[0] + ' ' + esc(s[1]) + '</a>'; }).join('') + '</span>' : '');
       m.insertBefore(bar, m.firstChild); }
     /* Spam City stations: tabs are read once at load, so a station link on the same page reloads into that station */
     if (file === 'shop.html') root.addEventListener('hashchange', function () { if (/^#(buy|sell|trade|gift|press)$/.test(location.hash)) location.reload(); });
     /* front page: one card per place, same .scard look; places without a scene canvas get a pixel sign */
     var row = document.getElementById('sceneCards'); if (row) { if (!document.getElementById('places')) { var an = document.createElement('a'); an.id = 'places'; an.className = 'scene-anchor'; row.parentNode.insertBefore(an, row); }
-      PLACES.forEach(function (p) { if (row.querySelector('a[href^="' + p.url.split('#')[0] + '"]') && p.id !== 'cold') return; if (row.querySelector('[data-place="' + p.id + '"]')) return;
+      PLACES.forEach(function (p) { if (p.pages.some(function (f) { return row.querySelector('a[href^="' + f + '"]'); })) return; if (row.querySelector('[data-place="' + p.id + '"]')) return;
         var a = document.createElement('a'); a.className = 'scard'; a.href = p.url; a.setAttribute('data-place', p.id);
         a.innerHTML = '<canvas width="320" height="180" role="img" aria-label="' + esc(p.name) + ' sign"></canvas><span class="sc-t">' + esc(p.name) + '</span><span class="sc-d">' + esc(p.line) + '</span>';
         row.appendChild(a); sign(a.querySelector('canvas'), p); });

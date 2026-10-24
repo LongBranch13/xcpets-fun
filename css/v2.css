@@ -466,3 +466,5 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 @media (max-width:600px){.townbar .tb-st{margin-left:0;width:100%}.townbar .tb-st a{min-height:44px}}
 .scene-anchor{display:block;position:relative;top:-80px;visibility:hidden}
 .split-off{display:none!important}
+.townbar .tb-st a[aria-current="page"]{background:#E8B33A;color:#100E14}
+.nav nav a.navrank[aria-current="page"]{color:var(--green)}
