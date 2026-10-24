@@ -25,9 +25,9 @@
   var XC_GAP = 400, xcLast = 0; /* api.xcp.fun allows roughly 10 new reads per few seconds; pace starts so the first burst doesn't earn a 30 s Retry-After */
   function xcSlot(fn) { return new Promise(function (ok, no) { xcQ.push(function () { xcBusy++; var d = Math.max(0, xcLast + XC_GAP - Date.now(), xcUntil - Date.now()); xcLast = Date.now() + d;
       wait(d).then(fn).then(ok, no).then(function () { xcBusy--; if (xcQ.length) xcQ.shift()(); }); }); if (xcBusy < XC_MAX) xcQ.shift()(); }); }
-  var XKEY = 'xcpets-xcf-', XTTL = 10 * 60e3; /* xcpfun-backup: api.xcp.fun replies kept 10 min in localStorage so page-to-page moves and reloads don't re-spend its rate limit */
-  function xcGet(url) { try { var c = JSON.parse(localStorage.getItem(XKEY + url)); if (c && Date.now() - c.at < XTTL) return c.j; } catch (e) {} return null; }
-  function xcPut(url, j) { try { localStorage.setItem(XKEY + url, JSON.stringify({ at: Date.now(), j: j })); } catch (e) { try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf(XKEY) === 0) localStorage.removeItem(k); }); } catch (e2) {} } }
+  var XKEY = 'xcpets-xcf-', XTTL = 10 * 60e3; /* xcpfun-backup: api.xcp.fun address credit/debit scans (the heavy reads) kept 10 min in localStorage so page-to-page moves and reloads don't re-spend its rate limit */
+  function xcGet(url) { if (url.indexOf('/addresses/') < 0) return null; try { var c = JSON.parse(localStorage.getItem(XKEY + url)); if (c && Date.now() - c.at < XTTL) return c.j; } catch (e) {} return null; }
+  function xcPut(url, j) { if (url.indexOf('/addresses/') < 0) return; try { localStorage.setItem(XKEY + url, JSON.stringify({ at: Date.now(), j: j })); } catch (e) { try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf(XKEY) === 0) localStorage.removeItem(k); }); } catch (e2) {} } }
   function getJ(url, n) { if (n || url.indexOf(API) !== 0) return getJ0(url, n); var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
     var lc = xcGet(url); if (lc) { mem[url] = { at: Date.now(), j: lc }; return Promise.resolve(lc); }
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
