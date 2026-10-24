@@ -3,7 +3,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), H = require('./hatchbot-warnings'), { load, snap, run } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
-const GP = '/workspace/xcpets/telegram/send-guard.js', guard = fs.existsSync(GP) ? require(GP) : { announceViolations: t => (/price|wagmi/i.test(t) ? ['banned'] : []) };
+const GP = process.env.XCPETS_SEND_GUARD || '/workspace/xcpets/telegram/send-guard.js' /* optional: HatchBot's guard lives outside the repo; the fallback below runs on a fresh checkout */, guard = fs.existsSync(GP) ? require(GP) : { announceViolations: t => (/price|wagmi/i.test(t) ? ['banned'] : []) };
 const c = load(), V = c.V2Rules, S = snap(), live = run(c, S, [], S.tip);
 const mk = () => { let st = { posts: [] }; return { load: () => JSON.parse(JSON.stringify(st)), save: o => { st = JSON.parse(JSON.stringify(o)); }, get: () => st }; };
 const fake = () => { const sent = []; return { sent, send: async t => { sent.push(t); return { message_id: sent.length }; } }; };
