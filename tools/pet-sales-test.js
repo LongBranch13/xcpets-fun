@@ -140,7 +140,7 @@ if (dp) { const blk = G + 2, d = rd('dead'), o = order(O, blk + 1, d, 1, 'XCP', 
 /* determinism */
 const w1 = run(rows, b0 + 10, dex), w2 = run(rows, b0 + 10, { issuances: dex.issuances.slice().reverse(), orders: dex.orders.slice().reverse(), matches: dex.matches.slice().reverse() });
 ok(canon(w1.pets) === canon(w2.pets) && canon(w1.listings) === canon(w2.listings), 'deterministic: DEX array order does not matter');
-ok(V.saleAmountText('XCPETS', 123400000017) === '1,234 XCPETS + 17 dander' && V.saleAmountText('XCP', 250000001) === '250,000,001 sats', 'amount text: XCPETS + dander, XCP in sats');
+ok(V.saleAmountText('XCPETS', 123400000017) === '1,234 XCPETS + 17 dander' && V.saleAmountText('XCP', 250000001) === '2.50000001 XCP' && V.saleAmountText('XCP', 1e8) === '1 XCP' && V.saleAmountText('XCP', 1000) === '0.00001 XCP', 'amount text: XCPETS + dander, XCP in whole XCP');
 const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'js/v2-sales.js'), 'utf8') + require('fs').readFileSync(require('path').join(__dirname, '..', 'js/v2-rules.js'), 'utf8');
 ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing path (shared XCPETS/XCP pair) is gone');
 // ---- Old Money badge + shared pet filter (display only)
@@ -158,7 +158,7 @@ ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing pat
   ok(F({}) === '1,2,3', 'filter: empty filter keeps all');
   ok(F({ sp: 'kek' }) === '2' && F({ tier: '3' }) === '2' && F({ st: '1' }) === '3', 'filter: species / tier / stage');
   ok(F({ badge: 'om' }) === '1,3', 'filter: Old Money only');
-  ok(F({ cur: 'XCP' }) === '2' && F({ cur: 'XCPETS', min: '200' }) === '1' && F({ cur: 'XCP', max: '2999' }) === '', 'filter: currency + cost range (XCPETS whole, XCP sats)');
+  ok(F({ cur: 'XCP' }) === '2' && F({ cur: 'XCPETS', min: '200' }) === '1' && F({ cur: 'XCP', max: '0.00002999' }) === '' && F({ cur: 'XCP', max: '0.00003' }) === '2', 'filter: currency + cost range (XCPETS and XCP whole coins)');
   ok(F({ pw: '200' }) === '2' && F({ gear: '1' }) === '2' && F({ buy: '1' }) === '1,3', 'filter: power min / gear worn / buyable now');
   ok(F({ state: 'sold' }) === '3' && F({ state: 'open' }) === '1,2', 'filter: listing status');
   ok(F({ sort: 'power' }).startsWith('2') && F({ sort: 'new' }) === '3,2,1' && F({ sort: 'rarity' }).startsWith('2'), 'sort: power / newest / rarity');
