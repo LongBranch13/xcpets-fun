@@ -11,7 +11,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 const ROOT = path.resolve(__dirname, '..'), OUT = path.resolve(ROOT, opt('--out') || 'api');
 const SITE = 'https://xcpets.fun';
-const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/pet-score.js', 'js/block-hashes.js'];
+const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/pet-score.js', 'js/block-hashes.js', 'js/v2-community.js'];
 function context() {
   const store = {}; const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const q = { log() {}, warn() {}, error() {}, info() {} };
@@ -66,7 +66,7 @@ function build(ctx, input, nowIso) {
   const meta = { blockHeight: input.tip, generatedAt: nowIso, asset: 'XCPETS', totalPets: pets.length,
     alive: pets.filter(p => p.status === 'alive').length, dead: pets.filter(p => p.status === 'dead').length, released: pets.filter(p => p.status === 'released').length,
     burns: rows.length, burnedXCPETS: burned, supplyXCPETS: input.supply == null ? null : Math.round(input.supply * 1e8) / 1e8,
-    owners: new Set(pets.map(p => p.owner)).size, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
+    owners: new Set(pets.map(p => p.owner)).size, community: ctx.V2Community ? ctx.V2Community.state(w) : null, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
   return { pets, meta };
 }
 module.exports = { context, liveInput, build, SCRIPTS, SITE };
