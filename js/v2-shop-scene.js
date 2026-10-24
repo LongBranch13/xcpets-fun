@@ -96,7 +96,7 @@
     px(x, '#FAFAF5', 139, 136, 9, 2); px(x, '#FAFAF5', 146, 134, 2, 2); px(x, '#FAFAF5', 139, 140, 9, 2); px(x, '#FAFAF5', 139, 142, 2, 2); txt(x, 'TRADE', 126, 162, '#100E14');
     /* token press (token-press, owner Oct 24 2026): an 8-bit stamping machine; it thumps when tapped, idles with blinking lights */
     var pr = ST.press > 0 ? 1 - ST.press / 800 : 0, ram = pr > 0 ? Math.round(Math.sin(Math.min(1, pr * 1.6) * Math.PI) * 12) : 0, mj = ram > 9 ? 1 : 0;
-    px(x, '#100E14', 193, 129, 52, 22); px(x, '#D62028', 194, 130, 50, 20); px(x, '#8F141A', 194, 145, 50, 5); px(x, '#E8B33A', 197, 132, 44, 7); txt(x, 'PRESS', 209, 133, '#100E14');
+    px(x, '#100E14', 193, 129, 52, 22); px(x, '#D62028', 194, 130, 50, 20); px(x, '#8F141A', 194, 145, 50, 5); px(x, '#E8B33A', 196, 132, 46, 7); txt(x, 'TOKEN PRESS', 198, 133, '#100E14');
     for (i = 0; i < 4; i++) px(x, (Math.floor(t / 300) + i) % 4 === 0 || pr > 0 ? RAINBOW[i] : '#4a2a2a', 200 + i * 11, 141, 4, 3);
     px(x, '#100E14', 196, 151, 5, 22); px(x, '#5A5A5A', 197, 151, 3, 22); px(x, '#100E14', 237, 151, 5, 22); px(x, '#5A5A5A', 238, 151, 3, 22);
     px(x, '#cfcfcf', 217, 151, 4, 3 + ram); px(x, '#100E14', 207, 154 + ram, 24, 4); px(x, '#E8B33A', 208, 154 + ram, 22, 3);

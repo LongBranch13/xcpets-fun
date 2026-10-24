@@ -27,7 +27,7 @@
     px(x, '#100E14', 4, 74, 104, 10); px(x, '#5A5A5A', 5, 75, 102, 8); var belt = Math.floor(t / 83) % 6; for (i = 0; i < 102; i += 6) px(x, '#2a2a2a', 5 + ((i + belt) % 102), 76, 2, 6);
     for (i = 0; i < 5; i++) { px(x, '#100E14', 10 + i * 22, 82, 6, 6); px(x, '#cfcfcf', 12 + i * 22, 84, 2, 2); }
     /* machine body */
-    var mx = 40 + shake, my = 8; px(x, '#100E14', mx - 1, my - 1, 52, 30); px(x, '#D62028', mx, my, 50, 28); px(x, '#8F141A', mx, my + 22, 50, 6); px(x, '#E8B33A', mx + 4, my + 4, 42, 9); txt(x, 'TOKEN', mx + 6, my + 6, '#100E14'); txt(x, 'PRESS', mx + 26, my + 6, '#100E14');
+    var mx = 40 + shake, my = 8; px(x, '#100E14', mx - 1, my - 1, 52, 30); px(x, '#D62028', mx, my, 50, 28); px(x, '#8F141A', mx, my + 22, 50, 6); px(x, '#E8B33A', mx + 3, my + 4, 45, 9); txt(x, 'TOKEN PRESS', mx + 4, my + 6, '#100E14');
     /* lights */ for (i = 0; i < 4; i++) px(x, (Math.floor(t / 250) + i) % 4 === 0 || (down > 0 && down < 1) ? SPARK[i] : '#4a2a2a', mx + 8 + i * 10, my + 16, 4, 3);
     /* gears */ var gr = Math.floor(t / 125) % 2; px(x, '#cfcfcf', mx + 52, my + 8, 8, 8); px(x, '#5A5A5A', mx + 54, my + 10, 4, 4); px(x, '#cfcfcf', mx + 51 + gr * 9, my + 11, 1, 2); px(x, '#cfcfcf', mx + 55, my + 7 + gr * 9, 2, 1);
     /* legs */ px(x, '#100E14', mx + 2, my + 28, 6, 46); px(x, '#5A5A5A', mx + 3, my + 28, 4, 46); px(x, '#100E14', mx + 42, my + 28, 6, 46); px(x, '#5A5A5A', mx + 43, my + 28, 4, 46);
