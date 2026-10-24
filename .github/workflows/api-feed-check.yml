@@ -1,0 +1,19 @@
+# sale-owner-fix (2026-10-24): dry run of tools/api-feed.js on a pushed branch (never main). Builds the feed into /tmp (no commit, no push)
+# and uploads pets.json + meta.json + the pet-token sale data it replayed with, so a branch can be checked against live chain data
+# from a runner that reaches the full Counterparty nodes (api.counterparty.io:4000 / api.unspendablelabs.com:4000).
+name: api-feed-check
+on:
+  push: { branches-ignore: [main] , paths: ['tools/api-feed.js', 'js/v2-rules.js', 'js/v2-sales.js', '.github/workflows/api-feed-check.yml'] }
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node tools/api-feed.js --out /tmp/api --save-dex /tmp/api/dex.json
+      - run: node -e "const j=require('/tmp/api/pets.json');const p=j.pets.find(x=>x.id===2);console.log('tip',j.blockHeight,'pet 2',p.name,'owner',p.owner)"
+      - uses: actions/upload-artifact@v4
+        with: { name: api-feed-check, path: /tmp/api }
