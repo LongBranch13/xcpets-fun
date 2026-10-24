@@ -160,7 +160,13 @@
     return go(0);
   }
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
-  function send(plan, viewed, onTry) {
+  /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
+   * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
+  function send(plan, viewed, onTry) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
+    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+      return send0(plan, viewed, onTry); }); }
+  function send0(plan, viewed, onTry) {
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
@@ -213,7 +219,13 @@
     else ['give_asset', 'give_quantity', 'get_asset', 'get_quantity', 'expiration'].forEach(function (k) { if (pr[k] == null || String(pr[k]) !== String(plan[k])) bad.push(k + (pr[k] == null ? ' missing' : ' differs')); });
     bad = bad.concat(BurnCore.checkDexTx(r, me, plan, fee));
     return bad; }
-  function sendDex(plan, viewed) {
+  /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
+   * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
+  function sendDex(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
+    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+      return sendDex0(plan, viewed); }); }
+  function sendDex0(plan, viewed) {
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (VS && VS.prod && !VS.verified) return Promise.reject(new Error(VS.stale ? 'Still checking the latest chain data. Nothing was sent. Try again in a moment.' : "Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());

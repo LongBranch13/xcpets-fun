@@ -147,7 +147,7 @@ code.addr { cursor: pointer; text-decoration: underline dotted; } code.addr.open
 @media (max-width: 640px) { .addrview .av-lbl { font-size: 8px; line-height: 16px; } .addrview .btn { padding: 8px 12px; } }
 
 /* view only (address-lookup, owner 2026-10-19): a viewed address hides every owner, burn and equip control; display stays */
-html.viewonly #hatchBtn, html.viewonly #dozenBtn, html.viewonly #caseBtn, html.viewonly #cfeedBtn, html.viewonly #crollBtn, html.viewonly [data-camt],
+html.viewonly #hatchBtn, html.viewonly #dozenBtn, html.viewonly #caseBtn, html.viewonly #zapBtn, html.viewonly #cfeedBtn, html.viewonly #crollBtn, html.viewonly [data-camt],
 html.viewonly #bFeedHungry, html.viewonly #bDiscSel, html.viewonly #bDelCom, html.viewonly #bDelUnc, html.viewonly #selMode, html.viewonly #selNone,
 html.viewonly #bGo, html.viewonly #bSkip, html.viewonly #foGo, html.viewonly #dDiscard, html.viewonly #bAuto, html.viewonly #bOutfit, html.viewonly #oGo, html.viewonly #aeRow,
 html.viewonly [data-a], html.viewonly [data-discard], html.viewonly [data-release], html.viewonly [data-keep], html.viewonly [data-aetog],
@@ -190,3 +190,37 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 @media (max-width:600px) { header.nav nav a.navshop { order:-1; } }
 /* nav-shop: 5 place cards must not widen the hero on phones (swipe row stays inside the column) */
 .hero-copy, .hero-pets { min-width:0; } @media (max-width: 640px) { .scene-cards { max-width:100%; } }
+
+/* ELECTRIC EGGS (preview): 8-bit electric crate button + pixel egg with a bolt, steps() only so it stays pixel-crisp */
+.zap-btn{position:relative;overflow:visible;background:#1a1440;color:#ffe94a;border:3px solid #ffe94a;box-shadow:0 0 0 3px #1a1440,4px 4px 0 3px #000;padding-left:38px;image-rendering:pixelated;animation:zapGlow 1.2s steps(2) infinite}
+.zap-btn:disabled{opacity:.55;animation:none;cursor:not-allowed}
+.zap-btn:not(:disabled):hover{background:#2a1f66}
+.zap-egg{position:absolute;left:10px;top:50%;width:2px;height:2px;margin-top:-9px;background:transparent;
+ box-shadow:4px 0 #fff,6px 0 #fff,8px 0 #fff,2px 2px #fff,4px 2px #fff,6px 2px #ffe94a,8px 2px #fff,10px 2px #fff,0 4px #fff,2px 4px #fff,4px 4px #ffe94a,6px 4px #ffe94a,8px 4px #fff,10px 4px #fff,12px 4px #fff,
+ 0 6px #fff,2px 6px #fff,4px 6px #fff,6px 6px #ffe94a,8px 6px #ffe94a,10px 6px #fff,12px 6px #fff,0 8px #fff,2px 8px #fff,4px 8px #fff,6px 8px #ffe94a,8px 8px #fff,10px 8px #fff,12px 8px #fff,
+ 0 10px #fff,2px 10px #fff,4px 10px #ffe94a,6px 10px #fff,8px 10px #fff,10px 10px #fff,12px 10px #fff,2px 12px #fff,4px 12px #fff,6px 12px #fff,8px 12px #fff,10px 12px #fff,4px 14px #fff,6px 14px #fff,8px 14px #fff;
+ animation:zapEgg .6s steps(2) infinite}
+.zap-btn .spk{position:absolute;width:4px;height:4px;background:#ffe94a;box-shadow:4px -4px #fff,-4px 4px #7df9ff;opacity:0;animation:zapSpark 1.1s steps(1) infinite}
+.zap-btn .s1{top:-8px;left:20%}.zap-btn .s2{top:-6px;right:12%;animation-delay:.35s}.zap-btn .s3{bottom:-8px;left:55%;animation-delay:.7s}
+.zap-btn:disabled .spk{display:none}
+@keyframes zapGlow{50%{box-shadow:0 0 0 3px #7df9ff,4px 4px 0 3px #000}}
+@keyframes zapEgg{50%{transform:translate(1px,-1px);filter:drop-shadow(0 0 2px #7df9ff)}}
+@keyframes zapSpark{0%{opacity:1}30%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.zap-btn,.zap-egg,.zap-btn .spk{animation:none}}
+.zap-odds{margin:.5em 0 0;color:#ffe94a}
+/* EGG RIPS (preview): foil-pack wrapper on the hatch buttons, a pixel jagged tear line along the top edge */
+#hatchBtn, #dozenBtn, #caseBtn, #zapBtn { position: relative; }
+#hatchBtn::after, #dozenBtn::after, #caseBtn::after, #zapBtn::after { content: ""; position: absolute; left: 10px; right: 10px; top: 3px; height: 4px; pointer-events: none; image-rendering: pixelated;
+  background: linear-gradient(135deg, rgba(255,255,255,.6) 25%, transparent 25%) 0 0 / 8px 4px repeat-x, linear-gradient(225deg, rgba(255,255,255,.6) 25%, transparent 25%) 0 0 / 8px 4px repeat-x; }
+#zapBtn::after { background: linear-gradient(135deg, #ffe94a 25%, transparent 25%) 0 0 / 8px 4px repeat-x, linear-gradient(225deg, #ffe94a 25%, transparent 25%) 0 0 / 8px 4px repeat-x; }
+/* rules.html#electric lands below the sticky nav (two rows on phones) */
+#electric, #electric-row { scroll-margin-top: calc(var(--navh, 72px) + 12px); }
+@media (max-width: 640px) { #electric, #electric-row { scroll-margin-top: calc(var(--navh, 120px) + 16px); } }
+/* ELECTRIC SHOCK BOX fence: canvas around the button (js/v2-zap.js); pixel-crisp, clicks go through */
+.zap-fence { position: relative; display: inline-block; padding: 14px 10px; margin: 2px 0; }
+.zap-cv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; z-index: 1; }
+.zap-fence .zap-btn { z-index: 0; }
+/* tear lines easier to see on the green / cyan packs: dark pixel zigzag + white highlight */
+#hatchBtn::after, #dozenBtn::after, #caseBtn::after { top: 2px; height: 6px;
+  background: linear-gradient(135deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x, linear-gradient(225deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x,
+  linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)) 0 5px / 100% 1px no-repeat; }
