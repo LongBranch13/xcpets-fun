@@ -5,6 +5,9 @@
   'use strict';
   var d = document, html = d.documentElement;
   function $(id) { return d.getElementById(id); }
+  /* cast-cold-storage: help text names come from V2Community (replay state) when it is loaded; else the original line */
+  function cpNo() { var C = window.V2Community, st = C && C.current(); return '#' + (st ? st.nextNo : 3); }
+  function cpT(k, d) { var C = window.V2Community, st = C && C.current(), t = null; try { t = st && C.text[k] ? C.text[k](st) : null; } catch (e) { t = null; } return esc(t == null ? d : t); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -51,7 +54,7 @@
     mythicRank: function () { return '<h3>Why is this Mythic\'s care lower?</h3><p>' + TIPS.mythic() + '</p>' + more('feed', 'Stages'); },
     hatch: function () { var T = (window.PetCore && PetCore.TIERS) || [], rows = T.slice(0, 4).map(function (t) { return '<tr><td>' + esc(t.name) + '</td><td>' + (t.chance / 100) + '%</td><td>+' + (t.statBonus || 0) + ' stats</td></tr>'; }).join('');
       return '<h3>🥚 Hatch odds and upkeep</h3><table class="ip-tbl"><tr><th>Tier</th><th>Chance</th><th>Bonus</th></tr>' + rows + '</table>' +
-        '<ul class="ip-list"><li>Pepe, Wojak, Chud, Peepo, Doge: any tier. Bobo, Mumu, Sarutobi, Lenny: Uncommon+. Snibby, KEVIN: Rare+. Dodo: Legendary only.</li><li>1 in 777 eggs is a Bitcoin Wizard.</li>' +
+        '<ul class="ip-list"><li>Pepe, Wojak, Chud, Peepo, Doge: any tier. Bobo, Mumu, Sarutobi, Lenny: Uncommon+. Snibby, KEVIN: Rare+. Dodo: Legendary only.</li><li>' + cpT('help-egg', '1 in 777 eggs is a Bitcoin Wizard.') + '</li>' +
         '<li><b>Upkeep:</b> every egg needs one meal per chain day. Hatch 69 = 1 pet · Dozen 690 = 12 pets · <b>Case 6,900 = 144 mouths to feed</b>.</li></ul>' + more('hatch', 'Tiers and species'); },
     roll: function () { var w = W(), S = window.V2UI && V2UI.S ? V2UI.S() : null, p = S && pet(S.pet || S.rollPet), Vr = V(), L = (Vr && Vr.SLOT_LABELS) || {}, SL = (Vr && Vr.V2_SLOTS) || [];
       var h = '<h3>🎲 Gear roll (345)</h3><ul class="ip-list"><li>One roll = one random piece into a random <b>open</b> slot of that pet.</li><li>Open slots (1–6) grow with age (days 2, 5, 10) and how often it was fed (50% and 80% of days).</li><li>Each copy you already own makes that piece 10% less likely (×0.9 per copy).</li><li>★ signature pieces only roll on Legendary pets.</li><li>Lucky drops: growing a stage (25%) or a meal (2%) gives a free auto-roll.</li></ul>';
@@ -71,8 +74,8 @@
       if (a && b) h += '<p><b>Picked:</b> #' + a.id + ' ' + esc(a.name) + ' × #' + b.id + ' ' + esc(b.name) + (a.owner !== b.owner ? ' · two owners: needs an accept' : ' · same owner: the egg comes when the burn confirms') + '.</p>';
       if (a && b && window.V2UI && V2UI.breedSum) { try { var s = V2UI.breedSum(a, b, w); if (typeof s === 'string') h += '<div class="small ip-bsum">' + s + '</div>'; } catch (e) { } }
       return h + more('breed', 'Breeding rules'); },
-    cold: function () { return '<h3>🧊 What happens in Cold Storage?</h3><p>Community pets stay community pets until they reach Mythic. Then they go into Cold Storage and become real pets anyone can hatch and breed. This goes for the Bitcoin Wizard and every community pet after him.</p><p class="small">Nakamoto (#1) is no longer hatched. The Bitcoin Wizard (#2) now comes from the 1 in 777 hatch roll.</p>' + more('community', 'Community pets'); },
-    community: function () { return '<h3>🔔 Community pet #3</h3><p>Feeding and gear rolls open when pet #3 arrives. There\'s no date yet.</p><p>Get told first: the XCPETS Telegram announces it.</p><p><a class="btn" href="https://t.me/xcpets" target="_blank" rel="noopener">🔔 Join t.me/xcpets</a></p>' + more('community', 'Community pets'); },
+    cold: function () { return '<h3>🧊 What happens in Cold Storage?</h3><p>Community pets stay community pets until they reach Mythic. Then they go into Cold Storage and become real pets anyone can hatch and breed. This goes for the Bitcoin Wizard and every community pet after him.</p><p class="small">' + cpT('help-cold', 'Nakamoto (#1) is no longer hatched. The Bitcoin Wizard (#2) now comes from the 1 in 777 hatch roll.') + '</p>' + more('community', 'Community pets'); },
+    community: function () { return '<h3>🔔 Community pet ' + cpNo() + '</h3><p>Feeding and gear rolls open when pet ' + cpNo() + ' arrives. There\'s no date yet.</p><p>Get told first: the XCPETS Telegram announces it.</p><p><a class="btn" href="https://t.me/xcpets" target="_blank" rel="noopener">🔔 Join t.me/xcpets</a></p>' + more('community', 'Community pets'); },
     glossary: function (k) { return glossary(k); },
     bundle: function () { return '<h3>🍽️ Feeding many pets</h3><p>"Feed all hungry" packs up to ~110 pets into one burn (pet:fm). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
   };

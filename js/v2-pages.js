@@ -31,6 +31,25 @@
         R.paint(c, G.render(pet, { stage: si })); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
       row.appendChild(strip); box.appendChild(row); }
     add(); new MutationObserver(add).observe(box, { childList: true });
+    /* cast-cold-storage (owner 2026-10-24): every community pet in Cold Storage joins the cast automatically, read from the replay (V2Community.state):
+     * a row on the Legendary tab (6-stage strip in its Cold Storage loadout) and a card on the Mythic tab. A new cold pet needs no edit here. */
+    function coldPets() { var C = window.V2Community, st = C && C.state(w); return st ? st.cold.filter(function (x) { return x.no >= 2; }).map(function (x) {
+      var p = C.byId(x.id), a = ARCHIVE.filter(function (e) { return e.id === x.id; })[0]; return { x: x, p: p, sp: (a && a.sp) || p.sp, lo: (a && a.loadout) || p.loadout || [] }; }) : []; }
+    function coldFr(k, stage) { try { var f = R.coldFrames(k.sp, stage >= 3 ? k.lo : [], stage); return f && f.length ? f : null; } catch (e) { return null; } }
+    function addCold() { if (!R || !R.coldFrames) return; var on = $('castTiers').querySelector('.on'), tier = on ? on.getAttribute('data-tier') : 'legendary', grid = box.querySelector('.mythgrid');
+      coldPets().forEach(function (k) { var id = k.x.id, nm = k.p.name, sel = '[data-cold="' + id + '"]';
+        if (grid) { if (grid.querySelector(sel)) return; var f = coldFr(k, 5); if (!f) return; var d = document.createElement('div'); d.className = 'mythcard'; d.setAttribute('data-sp', id); d.setAttribute('data-cold', id);
+          var c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', Mythic'); d.appendChild(c);
+          d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(nm) + '</h3><span class="muted small">Cold Storage</span>'); R.animate(c, f); grid.appendChild(d); return; }
+        if (tier !== 'legendary' || box.querySelector(sel)) return;
+        var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', id); row.setAttribute('data-cold', id);
+        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatches from the 1 in 777 egg, any tier' : 'Kept in Cold Storage') + '</p></div>';
+        var strip = document.createElement('div'); strip.className = 'strip6';
+        (G.STAGES || V.STAGE_NAMES).forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', ' + name);
+          var f = coldFr(k, si); if (f) R.paint(c, f[0]); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
+        row.appendChild(strip); box.appendChild(row); }); }
+    try { addCold(); } catch (e) { if (window.console) console.warn('cast cold', e); } new MutationObserver(function () { try { addCold(); } catch (e) {} }).observe(box, { childList: true, subtree: false });
+    if (window.V2Community) window.V2Community.fromWorld(w);
     if (show) { var t = function (sel, a, b) { var e = document.querySelector(sel); if (e) e.innerHTML = e.innerHTML.replace(a, b); };
       t('#cast p.muted', 'one of twelve', 'one of thirteen'); t('.hero-copy .lede', 'Twelve pixel meme characters', 'Thirteen pixel meme characters'); t('.hero-copy .lede', 'Doge and Lenny.', 'Doge, Lenny and Nakamoto.'); }
     /* Hybrids (homepage-cast, 2026-10-19): ONE fixed-size card in the cast row with the count and a sample sprite, linking to hybrids.html.
@@ -58,7 +77,11 @@
     live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
       window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
       if (fr && fr.length) list.push({ id: id, fr: fr }); });
-    var wiz = ARCHIVE.filter(function (e) { return e.id === 'wizard'; })[0], wf = wiz && R.coldFrames ? R.coldFrames(wiz.sp, wiz.loadout || [], COLD_STAGE) : null; if (wf && wf.length) list.push({ id: 'wizard', fr: wf });
+    /* cast-cold-storage: every pet in Cold Storage (from the replay) marches too, not just the Wizard */
+    var CC = window.V2Community, cst = null; try { cst = CC && CC.state(M.world()); } catch (e) { cst = null; }
+    var coldIds = cst ? cst.cold.filter(function (x) { return x.no >= 2; }).map(function (x) { return x.id; }) : ['wizard'];
+    coldIds.forEach(function (cid) { var a = ARCHIVE.filter(function (e) { return e.id === cid; })[0], p = CC && CC.byId(cid), sp = (a && a.sp) || (p && p.sp), lo = (a && a.loadout) || (p && p.loadout) || [], wf = null;
+      try { wf = sp && R.coldFrames ? R.coldFrames(sp, lo, COLD_STAGE) : null; } catch (e) { wf = null; } if (wf && wf.length) list.push({ id: cid, fr: wf }); });
     if (!list.length) return;
     /* key out the backdrop (the render's own background colour, read from the top-left pixel of each frame) so pets walk on the scene */
     function cut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), d = new Uint8ClampedArray(f.data), r = d[0], g = d[1], b = d[2];
