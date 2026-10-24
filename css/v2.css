@@ -439,3 +439,13 @@ body #pets .pet.card{padding-bottom:44px}
 #hatchPanel .btn.flash{outline:3px solid #ffc93c;animation:uxblink .4s steps(2) 4} /* hatch-exit: 🥚 Hatch more points at the size you hatched */
 #hatchPanel{scroll-margin-top:130px} /* hatch-exit: clear the sticky header when 🥚 Hatch more jumps here */
 #shopScene,details.shop-all{scroll-margin-top:110px} /* flow-fixes: Rare Room jumps clear the sticky header */
+/* species-ranks-split: Fighting / Breeding pages (js/v2-page-split.js) */
+body[data-split="play"] #arenaPanel,body[data-split="play"] #breedPanel{display:none!important}
+body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep),body[data-split="fight"] #app>section:not(#arenaPanel):not(.split-keep),body[data-split="fight"] #breedPanel{display:none!important}
+body[data-split="breed"] main>section:not(#topBar):not(#gate):not(.split-keep),body[data-split="breed"] #app>section:not(#breedPanel):not(.split-keep),body[data-split="breed"] #arenaPanel{display:none!important}
+body[data-split="fight"] #app>p.split-play,body[data-split="breed"] #app>p.split-play{display:none!important}
+.split-go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.split-go a.btn{font-size:15px}
+/* species-ranks-split: free-text pet search always visible (phone too) */
+.ctlrow .psearch{display:flex;align-items:center;gap:4px;flex:1 1 260px;max-width:420px}.ctlrow .psearch input[type=search]{width:100%}
+@media (max-width:640px){.ctlrow .psearch{flex-basis:100%;max-width:none}}

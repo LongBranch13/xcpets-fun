@@ -497,7 +497,47 @@
       var bb = wz.querySelector('.wizBreedBlk'); if (bb) bb.textContent = fmt(V.ACTIVATE_WIZ_BREED_BLOCK); wz.hidden = false; }
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
-  var go = { front: front, ranking: ranking, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
+  /* species-ranks (owner Oct 24 2026, display only): Hall of Fame, the best pets within each species.
+   * Order inside a species: tier first (Mythic > Legendary > Rare > Uncommon > Common; Mythic = a pet at the Mythic stage, whatever its hatch tier),
+   * then gear (worn pieces, then the tier sum of those pieces), then battle wins, then the lowest pet number. Living, non-community pets only.
+   * Gear = replayed items with .on === pet id (the same list api/pets.json shows). Hybrids get their own tab. Nothing is written or burned. */
+  var HOF_TIER = ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythic'];
+  function hofTier(p) { return p.stage >= 5 ? 4 : (p.tier | 0); }
+  function hofRank(w) { var worn = {};
+    Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g || g.on == null) return; var o = worn[g.on] || (worn[g.on] = { n: 0, t: 0 }); o.n++; o.t += g.legendary ? 3 : (g.tier | 0); });
+    var groups = {};
+    (w.pets || []).forEach(function (p) { if (p.dead || p.released || p.community) return; var k = V.isHybrid(p.species) ? 'hybrid' : p.species, g = worn[p.id] || { n: 0, t: 0 };
+      (groups[k] = groups[k] || []).push({ p: p, t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
+    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return b.t - a.t || b.g - a.g || b.gt - a.gt || b.w - a.w || a.p.id - b.p.id; }); });
+    return groups; }
+  function hallOfFame() {
+    var w = M.world(), groups = hofRank(w), order = (PetCore.SPECIES || []).map(function (s) { return s.id; }).filter(function (id) { return groups[id]; });
+    Object.keys(groups).forEach(function (k) { if (k !== 'hybrid' && order.indexOf(k) < 0) order.push(k); }); if (groups.hybrid) order.push('hybrid');
+    var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 50, MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c', '#ff8be0'];
+    var q = new URLSearchParams(location.search), st = { sp: (q.get('species') || location.hash.slice(1) || '').toLowerCase(), n: STEP };
+    if (order.indexOf(st.sp) < 0) st.sp = order[0];
+    function lbl(k) { return k === 'hybrid' ? '🧬 Hybrids' : spLabel(k); }
+    function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
+    function render() {
+      try { var u = new URL(location.href); u.searchParams.set('species', st.sp); u.hash = ''; history.replaceState(null, '', u); } catch (e) { }
+      var rows = groups[st.sp] || [], show = rows.slice(0, st.n);
+      var tabs = '<div class="pettabs rktabs hoftabs" role="tablist" aria-label="Species">' + order.map(function (k) { return '<button type="button" role="tab" class="tab' + (k === st.sp ? ' on' : '') + '" data-sp="' + esc(k) + '" aria-selected="' + (k === st.sp) + '">' + esc(lbl(k)) + ' <span class="muted small">' + fmt(groups[k].length) + '</span></button>'; }).join('') + '</div>';
+      var body = show.map(function (r, i) { var p = r.p, me = !!ME && p.owner === ME, col = TCOL[r.t];
+        return '<tr id="hf' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td>' +
+          '<td><a href="pet.html?id=' + p.id + '" aria-label="' + esc(p.name) + ' #' + p.id + ' pet card"><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas></a></td>' +
+          '<td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + (st.sp === 'hybrid' ? ' · ' + esc(spLabel(p.species)) : '') + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner || '') + '">' + esc(short(p.owner)) + '</span>' + (me ? ' (you)' : '') + '</div></td>' +
+          '<td class="num"><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
+      $('board').innerHTML = tabs + '<h2 class="sec hof-h" data-ico="trophy">' + esc(lbl(st.sp)) + ' Hall of Fame</h2>' + (rows.length ? '<div class="tw"><table class="board">' + body + '</table></div>' : '<p class="muted small">No living pets here yet.</p>');
+      var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
+      $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      $('board').querySelectorAll('[data-sp]').forEach(function (x) { x.onclick = function () { st.sp = x.dataset.sp; st.n = STEP; render(); }; });
+      $('status').textContent = fmt(rows.length) + ' living ' + lbl(st.sp).replace('🧬 ', '') + ' pets · ' + fmt(order.length) + ' species boards · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
+    }
+    $('boardAll').onclick = function () { st.n += STEP; render(); };
+    window.V2HallOfFame = { rank: hofRank };
+    render();
+  }
+  var go = { front: front, ranking: ranking, halloffame: hallOfFame, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
   /* smooth-perf (2026-10-19): in-page anchors (e.g. hybrids.html "Back to the cast" -> index.html#cast) land under the sticky nav, not behind it:
    * --navh = measured nav height feeds scroll-margin-top (css/style.css). The browser jumps to the anchor before the chain data fills the page, so
    * once it is drawn, the anchor is re-aligned instantly, unless the visitor already scrolled, tapped or used the keyboard. */
