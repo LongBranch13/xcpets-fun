@@ -618,7 +618,7 @@
    * pure replay data, no hand-set block. A new pet's ARRIVAL adds nothing. Bitcoin Wizard's Cold Storage was before the halving system and never counts.
    * Gate: from ACTIVATE_AUTO_HALVING_BLOCK, and a halving never starts before the gate (max with the gate, like halving 1), so history is never
    * rewritten. null = OFF: the old COMMUNITY_PET_ARRIVAL_BLOCKS path (empty) is used, identical to main. */
-  var ACTIVATE_AUTO_HALVING_BLOCK = null;
+  var ACTIVATE_AUTO_HALVING_BLOCK = 972889;
   function autoHalvingOn() { return ACTIVATE_AUTO_HALVING_BLOCK != null; }
   function coldStorageAfterKek(w) { return [w && w.funtrumpMythic].filter(function (x) { return x && x.block != null; }).map(function (x) { return x.block; }); } /* add each later community pet's Mythic record here */
   function halvingBlocks(w) { var h1 = halving1Block(w); if (h1 == null) return []; var out = [h1];
