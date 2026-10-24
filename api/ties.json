@@ -1,6 +1,6 @@
 {
- "lastBlock": 972935,
- "count": 9,
+ "lastBlock": 972980,
+ "count": 23,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -110,6 +110,174 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 1643,
+   "asset": "A16220480534474716542",
+   "tiedBlock": 972936,
+   "tiedTx": "8d4602e0eaaea8c70e9031e5fe7b8534b314c8a0d1bb46de9f4be114904cdcfc",
+   "kind": "deed",
+   "name": "Zolu",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1705,
+   "asset": "A8439650716367847585",
+   "tiedBlock": 972940,
+   "tiedTx": "864a09f1d2994deb8f9e72b1b4a2be2aa0c033cdd6b1f23b92a6678a6fb80330",
+   "kind": "deed",
+   "name": "Girilu",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 17545,
+   "asset": "A7269909750430236930",
+   "tiedBlock": 972944,
+   "tiedTx": "5d25c7be0b2844e256c3e675abceb62e6539c7fc9e2b406ee6f3ec7450b53689",
+   "kind": "deed",
+   "name": "Wizard",
+   "species": "wizard",
+   "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 24859,
+   "asset": "A13541968853977211883",
+   "tiedBlock": 972946,
+   "tiedTx": "80063dee7bc6cd4bdaed2ef4176a368a17c8e3418e1c96b02f5adb71743365d3",
+   "kind": "deed",
+   "name": "Pipwa",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 24976,
+   "asset": "A4941672931496087332",
+   "tiedBlock": 972946,
+   "tiedTx": "3a04a18e263c00af144fb0676dcaf7cdc4875d6ee4670462c192d24a48b5abbd",
+   "kind": "deed",
+   "name": "Bopip",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25979,
+   "asset": "A14526528503892960129",
+   "tiedBlock": 972956,
+   "tiedTx": "4d54384054c75f3ed7b020d78f87060aa174f8674aca88b8513c5de66a9c8ceb",
+   "kind": "deed",
+   "name": "Posa",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 26277,
+   "asset": "A1472395561173778156",
+   "tiedBlock": 972970,
+   "tiedTx": "2ca430c9519a8e924bf53e37c8433dc746b1090de92fec9694d9322b9fa79e4b",
+   "kind": "deed",
+   "name": "Pippip",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 23693,
+   "asset": "A692276061879479390",
+   "tiedBlock": 972971,
+   "tiedTx": "8159be0cc214675d920efc84ac505a3c513d23e0cc19dbe2c126eba1e920b17d",
+   "kind": "deed",
+   "name": "Sayope",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25532,
+   "asset": "A6557442364697651224",
+   "tiedBlock": 972971,
+   "tiedTx": "35418d1ee67d22ebd1f8e804d90e6129c61e4d68fc85a350adb3f54228664d6a",
+   "kind": "deed",
+   "name": "Mobo",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 24209,
+   "asset": "A14872061489127349384",
+   "tiedBlock": 972973,
+   "tiedTx": "ee02f6803554067ad24fc5805125d8c7b897c5e715015162d883d83e3be55505",
+   "kind": "deed",
+   "name": "Bosa",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25005,
+   "asset": "A10299277298789902547",
+   "tiedBlock": 972973,
+   "tiedTx": "1a077c0373b245247ce87ed5206af1cf40ded0101f80a1db548041cd9a50d6c1",
+   "kind": "deed",
+   "name": "Warutik",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25252,
+   "asset": "A15702755386806169131",
+   "tiedBlock": 972973,
+   "tiedTx": "96aedb22ae5908495ce0e76d324df312c00107ae01bebff8fb14374472ddb5ec",
+   "kind": "deed",
+   "name": "Rizuchi",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25678,
+   "asset": "A10228273515347579266",
+   "tiedBlock": 972973,
+   "tiedTx": "1d57be18a2ed143dc80d4f103f8531a81a513082750c425a889123d8125ec9a2",
+   "kind": "deed",
+   "name": "Mito",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25784,
+   "asset": "A699888857608790830",
+   "tiedBlock": 972973,
+   "tiedTx": "6779e118a93a5ecac84959b394252c34ae3315dd19b3702e9566127c0e8c4dc8",
+   "kind": "deed",
+   "name": "Pipne",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
