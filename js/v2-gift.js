@@ -55,13 +55,17 @@
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
     return fetch(API + '/assets/' + A).then(function (r) { if (r.status === 404) return A; if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }); }
   function issued(A) { return fetch(API + '/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address : null; }, function () { return null; }); }
-  function giftWhy(w, p, b) { if (!p || p.owner !== ME || p.dead || p.released || p.community) return 'not your pet'; return V.giveLocks(w, p, b); }
+  /* token-press (owner Oct 24 2026): only tokenized (tied) pets can be gifted; the gift never makes tokens. Untied pets go to the Token Press (shop.html). */
+  var NOTOK = 'no token yet: make one at the Token Press (shop.html)';
+  function tied(w, p) { var d = V.deedOf(w, p); return !!(d && d.ok && d.holder === ME); }
+  function lockOf(w, p, b) { return V.giveLocks(w, p, b) || (tied(w, p) ? null : NOTOK); }
+  function pressNote() { return '<p class="small">🏭 None of your pets has a token yet. Take one to the <a href="shop.html#press">Token Press</a> in Spam City first: making the token is free (only the Bitcoin fee) and the tie is 1 dander.</p>'; }
+  function giftWhy(w, p, b) { if (!p || p.owner !== ME || p.dead || p.released || p.community) return 'not your pet'; return lockOf(w, p, b); }
   function giftFlow(ids, pre) { var w = W(); if (!w || !ME) return; var b = tip() + 1, rows = '', ok = [];
     ids.forEach(function (id) { var p = w.byId[id]; if (!p) return; var why = giftWhy(w, p, b); if (!why) ok.push(p); rows += petRow(w, p, why); });
-    var mk = ok.filter(function (p) { var d = V.deedOf(w, p); return !(d && d.ok && d.holder === ME); });
     modal('<h2>🎁 Gift ' + (ok.length === 1 ? 'a pet' : ok.length + ' pets') + '</h2><div class="gf-pets">' + rows + '</div>' +
       '<label for="gfTo">Recipient Bitcoin address</label><input type="text" id="gfTo" autocomplete="off" spellcheck="false" placeholder="bc1… / 1… / 3…" value="' + esc(pre || '') + '"><p class="small warn" id="gfErr" role="alert"></p>' +
-      '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + (mk.length ? mk.length + ' pet' + (mk.length === 1 ? ' gets its' : 's get their') + ' token made and tied first (1 block wait). ' : '') + (V.isBurnAddr ? 'Sending to a burn address is allowed: the pet goes out of play. ' : '') + 'No undo.</p>' +
+      '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + '' + (V.isBurnAddr ? 'Sending to a burn address is allowed: the pet goes out of play. ' : '') + 'No undo.</p>' +
       '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Send</button></div>');
     $('gfX').onclick = close; $('gfTo').focus();
     $('gfGo').onclick = function () { var to = $('gfTo').value.trim();
@@ -87,8 +91,7 @@
     var noTok = need.filter(function (id) { return !job.mint[id]; });
     function msg(h) { modal('<h2>🎁 Gift</h2>' + h + '<div class="gf-bar"><button class="q" id="gfX">Close</button></div>'); $('gfX').onclick = close; }
     function fail(e) { msg('<p class="warn">Not sent: ' + esc(e && e.message || e) + '</p><p><button class="btn" id="gfRe">Try again</button></p>'); $('gfRe').onclick = function () { run(job); }; }
-    if (noTok.length) { var id = noTok[0]; msg('<p>Making the token for #' + id + ' (' + (Object.keys(job.mint).length + 1) + ' of ' + (Object.keys(job.mint).length + noTok.length) + ')…</p>');
-      return freeDeed().then(function (A) { return Wl.sendDex(V.mintPlan(id, A), ME).then(function () { job.mint[id] = A; run(job); }); }).catch(fail); }
+    if (noTok.length) { gpend(null); msg('<p class="warn">#' + noTok.join(', #') + (noTok.length === 1 ? ' has' : ' have') + ' no token yet, so nothing was sent.</p><p>Gifts only send pets that already have their token. Take ' + (noTok.length === 1 ? 'it' : 'them') + ' to the <a href="shop.html#press">Token Press</a> first.</p>'); return; } /* token-press: no automatic minting (an unfinished gift that already made its tokens still continues below) */
     if (need.length) { var waitIds = need.filter(function (id) { return job.mint[id]; });
       return Promise.all(waitIds.map(function (id) { return issued(job.mint[id]); })).then(function (h) {
         if (h.some(function (x) { return x !== ME; })) { msg('<p>Token' + (waitIds.length === 1 ? '' : 's') + ' sent. Waiting for 1 block to confirm… this window continues by itself (keep it open).</p>'); var t = setTimeout(function () { run(job); }, 30000); $('gfX').onclick = function () { clearTimeout(t); close(); }; return; }
@@ -112,12 +115,12 @@
     function shown() { return V.petFilter(w, mine.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; }); }
     function draw() { var S = shown(), n = Object.keys(sel).length;
       modal('<h2>🎁 Gift several pets</h2>' + meLine(w) + (PF ? PF.html(f, GF_FIELDS, { species: PF.species(mine), count: S.length, total: mine.length }) : '') +
-        '<p><button class="q" id="gfAll">Select all shown (' + S.length + ')</button> <button class="q" id="gfNone">Clear</button> <b>' + n + ' selected</b></p><div class="gf-pets">' +
-        S.slice(0, 300).map(function (p) { var why = V.giveLocks(w, p, b); return '<label class="gf-pet' + (why ? ' gf-skip' : '') + '"><input type="checkbox" data-gfid="' + p.id + '"' + (sel[p.id] ? ' checked' : '') + (why ? ' disabled' : '') + '>' + sprite(p) +
+        (mine.some(function (p) { return tied(w, p); }) ? '' : pressNote()) + '<p><button class="q" id="gfAll">Select all shown (' + S.length + ')</button> <button class="q" id="gfNone">Clear</button> <b>' + n + ' selected</b></p><div class="gf-pets">' +
+        S.slice(0, 300).map(function (p) { var why = lockOf(w, p, b); return '<label class="gf-pet' + (why ? ' gf-skip' : '') + '"><input type="checkbox" data-gfid="' + p.id + '"' + (sel[p.id] ? ' checked' : '') + (why ? ' disabled' : '') + '>' + sprite(p) +
           '<div><b>' + esc(p.name || spL(p)) + '</b> <span class="muted">#' + p.id + '</span> ' + pill(p) + '<small>' + esc(spL(p)) + (why ? ' · <span class="warn">' + esc(why) + '</span>' : '') + '</small></div></label>'; }).join('') + (S.length > 300 ? '<p class="small muted">Showing 300 of ' + S.length + ': narrow the filters.</p>' : '') + '</div>' +
         '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfNext"' + (n ? '' : ' disabled') + '>Next: recipient →</button></div>');
       if (PF) PF.bind($('gfBox'), f, 'gift', draw);
-      $('gfAll').onclick = function () { S.forEach(function (p) { if (!V.giveLocks(w, p, b)) sel[p.id] = 1; }); draw(); }; $('gfNone').onclick = function () { sel = {}; draw(); }; $('gfX').onclick = close;
+      $('gfAll').onclick = function () { S.forEach(function (p) { if (!lockOf(w, p, b)) sel[p.id] = 1; }); draw(); }; $('gfNone').onclick = function () { sel = {}; draw(); }; $('gfX').onclick = close;
       $('gfBox').querySelectorAll('[data-gfid]').forEach(function (c) { c.onchange = function () { if (c.checked) sel[c.getAttribute('data-gfid')] = 1; else delete sel[c.getAttribute('data-gfid')]; draw(); }; });
       $('gfNext').onclick = function () { giftFlow(Object.keys(sel).map(Number)); }; }
     draw(); }

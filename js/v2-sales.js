@@ -153,11 +153,11 @@
   function tradeHtml(b) { /* token is the pet: no swap burns. Swap = two token sends (🎁 Gift each way) or one token-for-token DEX order. */
     return '<h2 class="sec">Swap pets</h2><p class="sh-hint">Every tied pet is its token, so a swap is just two token moves:</p><ol class="sh-steps"><li><b>Two gifts:</b> you gift your pet to them, they gift theirs to you (🎁 Gift tab, only the Bitcoin fee each).</li>' +
       '<li><b>Or one DEX order:</b> give your pet token, get theirs (token for token on the Counterparty DEX). It settles on its own when they place the opposite order; nobody has to trust the other.</li></ol><p class="sh-hint">pet:swap burns do nothing from block ' + blk(V.spamCityGate()) + '.</p>'; }
-  function giftHtml(b) { var mine = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), G = !!window.V2Gift, got = V.giftsTo ? V.giftsTo(W, ME).slice(-6).reverse() : [];
-    return '<div class="sh-bar"><button class="sh-btn" id="shGiftMany"' + (G ? '' : ' disabled') + '>🎁 Gift several pets</button><span class="sh-hint">A gift is a pet token send: only the Bitcoin fee (a pet without a token gets one made and tied first: 1 dander + fees). Pets move for good, with their worn and bag gear.</span></div>' +
+  function giftHtml(b) { var all = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), mine = all.filter(function (p) { return V.sellStep(W, p, ME) === 'list'; }), untied = all.length - mine.length, G = !!window.V2Gift, got = V.giftsTo ? V.giftsTo(W, ME).slice(-6).reverse() : [];
+    return '<div class="sh-bar"><button class="sh-btn" id="shGiftMany"' + (G ? '' : ' disabled') + '>🎁 Gift several pets</button><span class="sh-hint">A gift is a pet token send: only the Bitcoin fee. Only tokenized (tied) pets can be gifted. Pets move for good, with their worn and bag gear.</span></div>' + (untied ? '<p class="sh-note">🏭 ' + (mine.length ? untied + ' of your pets ' + (untied === 1 ? 'has' : 'have') + ' no token yet.' : 'None of your pets has a token yet, so there is nothing to wrap.') + ' Take ' + (untied === 1 ? 'it' : 'them') + ' to the <button class="sh-link" data-tpopen>Token Press</button> first: making the token is free (only the Bitcoin fee) and the tie is 1 dander.</p>' : '') +
       (got.length ? '<h2 class="sec">Gifts you got</h2><div class="sh-grid">' + got.filter(function (g) { return W.byId[g.petId]; }).map(function (g) { return card(W.byId[g.petId]); }).join('') + '</div>' : '') +
       '<h2 class="sec">Gift one pet</h2><div class="sh-grid">' + (mine.slice(0, 24).map(function (p) { var why = V.giveLocks ? V.giveLocks(W, p, b) : null;
-        return card(p, null, '<button class="sh-btn sh-buy' + (why ? ' sh-later' : '') + '" data-gift="' + p.id + '"' + (why ? ' title="' + esc(why) + '" disabled' : '') + '>🎁 Gift</button>'); }).join('') || '<p class="sh-hint">You have no pets to gift.</p>') + '</div>' +
+        return card(p, null, '<button class="sh-btn sh-buy' + (why ? ' sh-later' : '') + '" data-gift="' + p.id + '"' + (why ? ' title="' + esc(why) + '" disabled' : '') + '>🎁 Gift</button>'); }).join('') || '<p class="sh-hint">' + (untied ? 'No tokenized pets to gift yet.' : 'You have no pets to gift.') + '</p>') + '</div>' +
       (mine.length > 24 ? '<p class="sh-hint">Showing 24 of ' + mine.length + '. Use “Gift several pets” to filter and pick from all of them.</p>' : ''); }
   var PAGE = 0, PER = 9, ST = { open: 'Active', expired: 'Expired', sold: 'Sold', 'void': 'Ended', ended: 'Ended' };
   function mineInfo(S, p, stt) { var o = orderOf(S);
@@ -213,7 +213,7 @@
   function sellPrice(p, asset, sticker) { var step = V.sellStep(W, p, ME), d = V.deedOf(W, p), pd = pend(p.id), f = priceForm(p, asset, sticker);
     var tok = step === 'list' ? '<p class="sh-ok">🎟 You hold the pet token ' + esc(d.asset) + '. Listing is one wallet window.</p>'
       : d && !d.ok ? '<p class="sh-warn">The token ' + esc(short(d.asset)) + ' for #' + p.id + ' is held by another address, so it can\'t list. Make a new token: it replaces the old one.</p>'
-      : '<p class="sh-hint">#' + p.id + ' has no pet token yet. Make one first (free: no XCP fee, only the Bitcoin network fee).</p>';
+      : '<p class="sh-hint">#' + p.id + ' has no pet token yet. Make one first (free: no XCP fee, only the Bitcoin network fee), here or at the 🏭 Token Press.</p>';
     var one = V.mintTiesOn ? V.mintTiesOn(TIP + 1) : V.rulesOn && V.rulesOn(TIP + 1); /* Spam City rule 3: the owner's mint ties the token, no tie burn */
     var steps = step !== 'list' && one ? '<ol class="sh-steps"><li><b>Window 1 of 2:</b> make the token ' + (pd ? esc(short(pd.asset)) : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). It is tied to #' + p.id + ' as soon as it confirms (no tie burn).</li><li>Wait 1 block.</li><li><b>Window 2 of 2:</b> the DEX order (open List again: it is one window then).</li></ol>'
       : step === 'list' ? '<ol class="sh-steps"><li><b>One window:</b> a DEX order: give the token, get ' + esc(V.saleAmountText(asset, f.ask)) + '. It lasts ' + V.SALE_EXPIRY + ' blocks.</li></ol>'
@@ -238,6 +238,33 @@
     if (PREVIEW) return go();
     tokenAt(pd.asset).then(function (t) { if (!t.issued) { $('shMsg').textContent = 'The token is not confirmed yet. Wait for the next block and try again.'; return; }
       if (t.holder && t.holder !== ME) { $('shMsg').textContent = 'The token is held by another address. Make a new one.'; pend(p.id, null); return; } go(); }); }
+  /* ---- Token Press (owner Oct 24 2026, 5:30 AM CT): make + tie a pet token, no listing. Step 1 = the free token (only the Bitcoin fee),
+   * wait 1 block, Step 2 = the 1-dander pet:deed tie burn. Reuses freeDeed / V.mintPlan / V.deedPlan / tokenAt / pend (same pending key as Sell). */
+  function pressable(p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) !== 'list' && !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
+  function pressPick() { var free = W.pets.filter(pressable), fS = PF.load('press'), mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
+    var tied = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) === 'list'; }).length;
+    modal('<h3>🏭 Token Press</h3><p class="sh-hint">Pick a pet without a token. The press makes its 🎟 pet token and ties it to the pet: then the pet can be gifted or listed in one wallet window. ' + (tied ? 'You already have ' + tied + ' tokenized pet' + (tied === 1 ? '' : 's') + '.' : '') + ' Pets in a fight, a breed request, a Rug Me ad, a listing or a pending gift/swap are locked and are not shown.</p>' +
+      PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
+      (mine.map(function (p) { var pd = pend(p.id); return '<button class="sh-pk" data-press="' + p.id + '">' + card(p, null, pd ? '<span class="sh-hint">Step 1 sent</span>' : '') + '</button>'; }).join('') || '<p>' + (free.length ? 'No pets match these filters.' : 'Every pet you own already has its token (or is locked right now).') + '</p>') + '</div><button class="sh-btn" data-close>Close</button>');
+    PF.bind($('shModal'), fS, 'press', pressPick);
+    document.querySelectorAll('[data-press]').forEach(function (b) { b.onclick = function () { press(W.byId[b.getAttribute('data-press')]); }; }); }
+  function press(p) { var pd = pend(p.id), one = V.mintTiesOn ? V.mintTiesOn(TIP + 1) : false, waitB = pd ? 1 - (TIP - (Number(pd.at) || 0)) : 1;
+    var steps = one ? '<ol class="sh-steps"><li><b>Step 1:</b> make the token (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). Free: only the Bitcoin network fee. It is tied as soon as it confirms.</li></ol>'
+      : '<ol class="sh-steps"><li' + (pd ? ' class="sh-done"' : '') + '><b>Step 1:</b> make the token' + (pd ? ' ' + esc(short(pd.asset)) + ' ✔ sent' : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). Free: only the Bitcoin network fee.</li><li>Wait 1 block for it to confirm.</li><li><b>Step 2:</b> burn 1 dander with the tag <code>pet:deed:' + p.id + ':…</code> to tie the token to #' + p.id + '.</li></ol>';
+    var btn = !pd ? '<button class="sh-btn" id="tpMint">Step 1: make the token</button>'
+      : one ? '<p class="sh-hint">Token ' + esc(short(pd.asset)) + ' sent. It is tied once it confirms.</p>'
+      : '<button class="sh-btn" id="tpTie">Step 2: tie it (1 dander)</button>' + (waitB > 0 && !PREVIEW ? '<p class="sh-hint">Step 1 was sent at block ' + blk(pd.at) + '. Step 2 works once the token has confirmed (1 block).</p>' : '');
+    modal('<h3>🏭 Token Press · #' + p.id + '</h3><div class="sh-sellrow">' + card(p) + '<div class="sh-form"><canvas class="tp-anim" id="tpAnim" width="160" height="112" aria-label="The Token Press"></canvas>' + steps + btn +
+      ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint">No listing here: once tied, gift it at the 🎁 Gift Wrap counter or list it at the register (one wallet window).</p><p class="sh-hint" id="shMsg"></p></div></div>');
+    if (window.V2PressAnim) V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p, { onload: function () { V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p); } });
+    if ($('tpMint')) $('tpMint').onclick = function () { $('shMsg').textContent = 'Finding a free token name…';
+      freeDeed().then(function (A) { walletDex(V.mintPlan(p.id, A), function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); press(p); }); }, function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
+    if ($('tpTie')) $('tpTie').onclick = function () { var go = function () { walletBurn(V.deedPlan(p.id, pd.asset), function () { pend(p.id, null); pressDone(p, pd.asset); }); };
+      if (PREVIEW) return go();
+      tokenAt(pd.asset).then(function (t) { if (!t.issued) { $('shMsg').textContent = 'The token is not confirmed yet. Wait for the next block and try again.'; return; }
+        if (t.holder && t.holder !== ME) { $('shMsg').textContent = 'The token is held by another address. Make a new one.'; pend(p.id, null); return; } go(); }); }; }
+  function pressDone(p, A) { modal('<h3>🏭 Pressed!</h3><canvas class="tp-anim tp-big" id="tpAnim" width="160" height="112" aria-label="The Token Press pressing #' + p.id + ' into a token card"></canvas><p class="sh-ok">The tie burn for #' + p.id + ' was sent. Token ' + esc(A) + ' is tied once the burn confirms.</p><p class="sh-hint">Then gift it at the 🎁 Gift Wrap counter or list it at the register in one wallet window.</p><button class="sh-btn" data-close>Done</button>');
+    if (window.V2PressAnim) V2PressAnim.play($('tpAnim'), p, { asset: A }); }
   function buy(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0], p = W.byId[S.petId], why = V.buyGuard(W, S, BOOK, TIP + 1, ME), gear = (p.gear || []).length;
     modal('<h3>Buy #' + p.id + '?</h3><div class="sh-sellrow">' + card(p, S) + '<div class="sh-form">' + omLine(p) + '<p>You pay exactly <b>' + esc(V.saleAmountText(S.asset, S.price)) + '</b> and get #' + p.id + (gear ? ' with its ' + gear + ' worn and bag gear' : ' and any worn and bag gear') + ', plus its 🎟 pet token ' + esc(short(S.give)) + '.</p>' +
       '<p class="sh-hint">One wallet window: a DEX order that gives this amount and gets the token. It expires after 1 block. The pet moves to you when the match completes on chain. Keep the token to relist the pet in one window.</p>' +
@@ -257,6 +284,7 @@
     if (t.id === 'shGiftMany' && window.V2Gift) { window.V2Gift.picker(); return; } if (t.closest('[data-gift]') && window.V2Gift) { window.V2Gift.gift([Number(t.closest('[data-gift]').getAttribute('data-gift'))]); return; }
     if (t.id === 'shSwapGo' && window.V2Gift) { var sid = Number($('shSwapId').value), sp = W.byId[sid]; if (!sp || sp.owner === ME || sp.dead || sp.released || sp.community) { toast('Enter the # of a living pet someone else owns.'); return; } window.V2Gift.swap(sid); return; }
     if (t.closest('[data-swapgo]')) { window.V2SwapGo(t.closest('[data-swapgo]').getAttribute('data-swapgo')); return; }
+    if (t.closest('[data-tpopen]')) { close(); pressPick(); return; }
     if (t.id === 'shSell') sellPick(); else if (t.id === 'shPrev') { PAGE--; render(); } else if (t.id === 'shNext') { PAGE++; render(); }
     else if (t.closest('[data-buy]')) buy(Number(t.closest('[data-buy]').getAttribute('data-buy'))); else if (t.closest('[data-cancel]')) cancel(Number(t.closest('[data-cancel]').getAttribute('data-cancel')));
     else if (t.closest('[data-unsell]')) unsell(Number(t.closest('[data-unsell]').getAttribute('data-unsell'))); });
@@ -264,9 +292,9 @@
   window.V2Sales.scene = { ready: false, data: function () { var b = TIP + 1, open = on() && W ? V.openListings(W, b) : [];
       return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }),
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
-    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, sell: function (id) { if (W && W.byId[id]) sellPrice(W.byId[id], 'XCPETS', 100); },
+    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { if (W && W.byId[id]) press(W.byId[id]); }, pressable: function (p) { return pressable(p); }, sell: function (id) { if (W && W.byId[id]) sellPrice(W.byId[id], 'XCPETS', 100); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
   function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
-  window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
+  window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();
 })();
