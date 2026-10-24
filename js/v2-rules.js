@@ -1020,6 +1020,11 @@
       var p = w.byId[t.petId], b = Number(r.block_index); if (!p || p.dead || p.released || p.community || p.owner !== r.source || !(r.amount >= COSTS.give)) return;
       if (used[t.asset] != null && used[t.asset] !== p.id) return; if (deedIssueWhy(ix.deeds[t.asset], p.id, r.source, b)) return;
       used[t.asset] = p.id; out[p.id] = { asset: t.asset, block: b, tx: r.tx_hash, by: r.source }; });
+    /* mint-only ties (rule 3, same as replay applyMint): a token minted with the pet's URL BEFORE ACTIVATE_ONE_TIE_PATH_BLOCK is tied by the mint itself
+     * (no pet:deed burn needed); a mint at/after the gate ties nothing. A burn tie wins over a mint tie (it is always the newer, deliberate step). */
+    Object.keys(ix.deeds || {}).forEach(function (a) { var x = ix.deeds[a], id = mintId(x.description), p = id != null && w.byId[id], b = Number(x.block_index), src = x.source || x.issuer;
+      if (!p || out[p.id] || used[a] != null || !mintTiesOn(b) || p.dead || p.released || p.community || (p.art && p.art.community) || p.owner !== src) return;
+      if (deedIssueWhy(x, p.id, src, b)) return; used[a] = p.id; out[p.id] = { asset: a, block: b, tx: x.tx_hash, by: src, mint: true }; });
     return out; }
   /** listWhy(w, o, b) -> why DEX order o can't be a listing at block b (null = ok). */
   function listWhy(w, o, b) { var D = w.deeds && w.deeds[o.give_asset]; if (!D) return 'not a pet token';
