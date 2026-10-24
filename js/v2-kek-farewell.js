@@ -63,7 +63,7 @@
       ctx.globalAlpha = 0.72; ctx.fillStyle = '#05080a'; ctx.fillRect(Math.round(cx - wd / 2 - 8), y0 - 4, Math.round(wd + 16), fs + 10); ctx.globalAlpha = 1;
       ctx.lineWidth = 4; ctx.strokeStyle = '#000'; ctx.strokeText(q[0], cx, y0); ctx.fillStyle = q[3]; ctx.fillText(q[0], cx, y0); }); Q = []; }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
-  /** draw(ctx, t, sp): sp = { kek: [Mythic Lord Kek frames, LORDKEK card in hand], egg: [Lord Kek egg frames], nakamoto: [frames], wizard: [frames], funtrump: [FUNTRUMP community frames], total, next: 'FUNTRUMP …' } */
+  /** draw(ctx, t, sp): sp = { kek: [Mythic Lord Kek frames, LORDKEK card in hand], egg: [FUNTRUMP egg frames (throne)], nakamoto: [frames], wizard: [frames], funtrump: [FUNTRUMP community frames], total, next: 'FUNTRUMP …' } */
   function draw(ctx, t, sp) { Q = []; sp = sp || {}; ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = false;
     var raise = 50, god = 170, walk = 260, flash = 300, slk = 330, hand = 378, ftb = 420, total = sp.total || GOAL;
     px(ctx, 0, 0, W, H, C.bg); for (var s = 0; s < 22; s++) { var sx = (s * 37 + 11) % W, sy = (s * 23 + 5) % 52; if ((s + (t >> 3)) % 3) px(ctx, sx, sy, 1, 1, C.dim); }
@@ -88,7 +88,7 @@
       for (var n = 0; n < 7; n++) { var on = god + 8 + n * 9, ang2 = Math.PI * (1.05 + n * 0.15), ax = 86 + Math.cos(ang2) * 26, ay = 50 + Math.sin(ang2) * 26;
         if (t < god + n * 3) continue; var lit = t < on ? 0 : 1, fl = t >= on && t < on + 10 ? 1 - (t - on) / 10 : 0; artifact(ctx, ax, ay + (t >> 4) % 2 * (n % 2), ART[n], lit * fa, fl * fa);
         if (t >= god + 72 && t < god + 90) { ctx.globalAlpha = 0.6 * fa; px(ctx, Math.min(ax, 36), Math.min(ay, 44), Math.abs(ax - 36), 1, ART[n]); ctx.globalAlpha = fa; } } ctx.globalAlpha = 1; }
-    // STARLORDKEK rises in the red glow; a Lord Kek egg drops onto the empty throne
+    // STARLORDKEK rises in the red glow; a FUNTRUMP egg drops onto the empty throne
     if (t >= slk) { var sa = Math.min(1, (t - slk) / 24); if (t >= ftb) sa *= Math.max(0, 1 - (t - ftb) / 24); if (sa > 0) starlord(ctx, 67, 21 + Math.round((1 - sa) * 8), 1.25, sa);
       var ea = Math.min(1, Math.max(0, (t - slk - 20) / 24)), ef = sp.egg ? sp.egg[(t >> 3) % sp.egg.length] : null; if (ea > 0) sprite(ctx, ef, 20, 37 - Math.round((1 - ea) * 14), 1.0, ea); }
     // FUNTRUMP (owner Oct 24 12:19 AM CT 'show fun trump as well'): the community pet sprite from FuntrumpSprite (community suit look) walks in from the right
