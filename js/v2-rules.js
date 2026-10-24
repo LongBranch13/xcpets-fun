@@ -440,10 +440,15 @@
     if (noNakaOn(b)) return wizardArt(bh, id, b); /* NO NEW NAKAMOTO (owner Oct 20 2026): the 1-in-777 egg is now a Bitcoin Wizard egg */
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
     LEG_KEYS.forEach(function (k) { art[k] = L[k]; }); if (!art.bgV2) art.background = L.background; art.species = 'nakamoto'; return art; }
+  /* SPECIAL EGG NAMES (owner Oct 24 2026 1:19 AM CT): from this block, Bitcoin Wizard, Lord Kek and FUNTRUMP eggs (and FUNTRUMP bred children) keep the normal random
+   * PetCore name instead of 'Wizard' / 'Kek' / 'FUNTRUMP'. Nakamoto eggs already got random names. Pets hatched before the gate keep their names, and the very first
+   * Lord Kek egg ever hatched is named 'Kek' by mk() (none hatched as of snapshot 972,883). Names are in the replay pets hash, hence the gate. OFF while null. */
+  var ACTIVATE_SPECIAL_NAMES_BLOCK = null;
+  function specialNamesOn(b) { return ACTIVATE_SPECIAL_NAMES_BLOCK != null && b >= ACTIVATE_SPECIAL_NAMES_BLOCK; }
   /** wizardArt(bh, id, b): a Bitcoin Wizard egg = a normal egg roll (tier, stats, background) with species 'wizard' (drawn by WizardSprite, blue palette). */
   function wizardArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), FT = wizTier2On(b) ? wizRollTier(id, b) : wizTierOn(b) ? WIZ_FIXED_TIER : WIZ_EGG_TIER; if (FT != null && PetCore.TIERS[FT]) { var L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[FT], d = L1.statBonus - L0.statBonus;
       Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = wizTierOn(b) ? Math.max(1, art.baseStats[k] + d) : art.baseStats[k] + d; }); art.tierIndex = FT; art.tier = L1.id; }
-    art.species = 'wizard'; art.defaultName = 'Wizard'; return noBornShades(art); }
+    art.species = 'wizard'; if (!specialNamesOn(b)) art.defaultName = 'Wizard'; return noBornShades(art); }
   function nakaNormal(b) { return b != null && b >= ACTIVATE_NAKA_NORMAL_BLOCK; }
   function thresholdsFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_THRESHOLDS : THRESHOLDS; }
   function mealSizesFor(species, b) { return species === 'nakamoto' && !nakaNormal(b) ? NAKAMOTO_MEAL_SIZES : MEAL_SIZES; }
@@ -594,11 +599,11 @@
   var FT_RARE_W = 1000, FT_LEG_W = 300;
   function ftRollTier(id, b) { return parseInt(sha(String(id) + ':' + b + 'XCPETS:v2:fttier').slice(0, 12), 16) % (FT_RARE_W + FT_LEG_W) < FT_LEG_W ? 3 : 2; }
   function ftLookOfTier(t) { return t >= 3 ? 'hoodie' : 'suit'; }
-  function ftArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), FT = ftRollTier(id, b); art.species = 'funtrump'; art.defaultName = 'FUNTRUMP';
+  function ftArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), FT = ftRollTier(id, b); art.species = 'funtrump'; if (!specialNamesOn(b)) art.defaultName = 'FUNTRUMP';
     if (PetCore.TIERS[FT]) { var L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[FT], d = L1.statBonus - L0.statBonus; Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = Math.max(1, art.baseStats[k] + d); }); art.tierIndex = FT; art.tier = L1.id; }
     art.ftLook = ftLookOfTier(art.tierIndex); return noBornShades(art); }
   /** kekArt(bh, id, b): a Lord Kek egg = a normal egg roll (tier, stats, background) with species 'kek' (KekSprite, player palette). */
-  function kekArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'kek'; art.defaultName = 'Kek'; return noBornShades(art); }
+  function kekArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'kek'; if (!specialNamesOn(b)) art.defaultName = 'Kek'; return noBornShades(art); }
   /* ---------------------------------------------------------------- HALVING (owner approved Oct 22 2026; design/halving-schedule.md)
    * Halving 1 = STAR LORD KEK defeats Lord Kek: the burn that takes Lord Kek's care to Mythic (w.kekMythic, pure chain data) + HALVING_DELAY blocks,
    * never before ACTIVATE_HALVING_BLOCK (so a defeat that happened before this code shipped starts halving 1 at the launch block, never rewriting history).
@@ -1851,6 +1856,7 @@
   function mk(w, owner, art, b, care, tx) {
     var p = { id: w.nextPet++, owner: owner, art: art, species: art.species, tier: art.tierIndex, stats: Object.assign({}, art.baseStats), name: art.defaultName, care: care, hatchBlock: b, hatchTx: tx,
       lastFed: null, feedDays: {}, fightDays: {}, breeds: 0, lastBreed: null, parents: null, children: [], wins: 0, losses: 0, trophies: [] };
+    if (p.species === 'kek' && specialNamesOn(b) && !w.pets.some(function (q) { return q.species === 'kek' && !q.parents && !q.hybrid; })) p.name = 'Kek'; /* SPECIAL EGG NAMES: the very first Lord Kek egg ever hatched keeps the name 'Kek' */
     w.pets.push(p); w.byId[p.id] = p; liveAt(w, p, b); return p;
   }
   // ---------------------------------------------------------------- HYBRIDS (v2, 2026-10-14)
@@ -2563,7 +2569,7 @@
       return Object.assign({}, f, { data: d }); }); }
   function breedOne(w, A, B, bh, tx, b, owner) {
     var c = breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
-    if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); if (c.species === 'funtrump' && !c.hybrid && c.tier < 2) setWizTier(c, 'stats', 2); /* FUNTRUMP child: Rare (suit) at least; inert (no FUNTRUMP parent before ACTIVATE_FT_BREED_BLOCK) */ art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats; if (c.species === 'funtrump' && !c.hybrid) { art.ftLook = ftLookOfTier(c.tier); art.defaultName = 'FUNTRUMP'; }
+    if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); if (c.species === 'funtrump' && !c.hybrid && c.tier < 2) setWizTier(c, 'stats', 2); /* FUNTRUMP child: Rare (suit) at least; inert (no FUNTRUMP parent before ACTIVATE_FT_BREED_BLOCK) */ art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats; if (c.species === 'funtrump' && !c.hybrid) { art.ftLook = ftLookOfTier(c.tier); if (!specialNamesOn(b)) art.defaultName = 'FUNTRUMP'; }
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species, b); art.species = plan.shape; art.hybrid = plan; }
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
