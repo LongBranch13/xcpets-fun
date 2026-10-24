@@ -188,3 +188,5 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 /* nav-shop: Shop link (visible early in the nav; highlighted on shop.html) */
 .nav nav a.navshop[aria-current="page"] { color:var(--green); text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:2px; }
 @media (max-width:600px) { header.nav nav a.navshop { order:-1; } }
+/* nav-shop: 5 place cards must not widen the hero on phones (swipe row stays inside the column) */
+.hero-copy, .hero-pets { min-width:0; } @media (max-width: 640px) { .scene-cards { max-width:100%; } }
