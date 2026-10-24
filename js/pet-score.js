@@ -50,7 +50,7 @@
       var parts = { stats: sStats[i], looks: sLooks[i], growth: growth, gear: gear, battles: battles, scarcity: scarcity }, s = 0, bd = {};
       Object.keys(W).forEach(function (k) { var v = Math.max(0, Math.min(1, parts[k])); s += W[k] * v; bd[k] = { value: Math.round(v * 1000) / 1000, weight: W[k], points: Math.round(W[k] * v * 1000) }; });
       bd.stats.total = total(p); bd.looks.sameCombo = cf[ck[i]]; bd.growth.streak = st; bd.growth.mythicPct = Math.round(prog * 100); bd.gear.won = gv[p.id] || 0; bd.battles.fights = f; bd.battles.wins = p.wins || 0;
-      return { id: p.id, score: Math.round(s * 1000), dead: !!p.dead, breakdown: bd, rarityBits: rBits[i], rarityOneIn: Math.pow(2, rBits[i]) }; });
+      return { id: p.id, score: Math.round(s * 1000), dead: !!p.dead, breakdown: bd, rarityBits: rBits[i], rarityOneIn: Math.pow(2, rBits[i]), traitOneIn: rk[i].map(function (k) { return N / RF[k]; }) }; });
     res.sort(function (a, b) { return b.score - a.score || a.id - b.id; });
     res.forEach(function (r, i) { r.rank = i > 0 && res[i - 1].score === r.score ? res[i - 1].rank : i + 1; r.percentile = Math.round(1000 * (1 - (r.rank - 1) / N)) / 10;
       r.top = Math.max(1, Math.ceil(100 * r.rank / N)); byId[r.id] = r; });
@@ -78,11 +78,29 @@
     '.psbd{display:none;position:absolute;z-index:80;left:0;top:100%;margin-top:4px;min-width:190px;max-width:min(260px,86vw);background:#14122b;color:#eee;border:2px solid #ffd166;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.5);white-space:normal}' +
     '.psbd table{width:100%;border-collapse:collapse;margin:4px 0}.psbd td{padding:1px 4px}.psbd td:nth-child(n+2){text-align:right}.psbd .muted{font-size:11px}' +
     '@media (hover:hover){.psw:hover .psbd{display:block}}.psw:focus .psbd,.psw.open .psbd{display:block}.psw.open,.psw:hover,.psw:focus{z-index:90}*:has(> .chips .psw.open),*:has(> .chips .psw:hover),*:has(> .chips .psw:focus),#chips:has(.psw.open){position:relative;z-index:60}';
-  function install(doc) { if (!doc || doc.getElementById('psCss')) return; var s = doc.createElement('style'); s.id = 'psCss'; s.textContent = CSS; (doc.head || doc.documentElement).appendChild(s);
+
+  /* player-qol 2026-10-24 (display only): everything a player needs to decide Keep or Discard, inline on the egg review / Discard pile card,
+   * so no clicking in and out. Traits = species, eyes, pattern, background, cheeks, each with its own '1 in N' across every pet; the
+   * 💎 Rarity score is the same trait-rarity bits as the rarity chip/sort (sum of -log2(freq/N) of those five traits); ⭐ Pet Score; ⚡ Power. */
+  var TR = ['Species', 'Eyes', 'Pattern', 'Bg', 'Cheeks'], SK = [['vigor', 'VIG'], ['spark', 'SPK'], ['grit', 'GRT'], ['zoom', 'ZM'], ['luck', 'LCK']];
+  function cap(s) { s = String(s == null ? '' : s).replace(/[-_]/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); }
+  function discardInfo(w, p, spName) { if (!p || isComm(p)) return ''; var s = of(w, p), a = p.art || {}, st = p.stats || {};
+    var val = [spName || cap(isHyb(p) ? 'hybrid' : p.species), cap(a.eyes || '-'), cap(a.pattern || '-'), cap(a.background || '-'), cap(cheekKey(a.cheeks))];
+    var rows = TR.map(function (t, i) { var o = s && s.traitOneIn ? s.traitOneIn[i] : 0; return '<li><span class="dit">' + t + '</span> <b>' + esc(val[i]) + '</b>' + (o ? ' <span class="dio">1/' + fmtN(o) + '</span>' : '') + '</li>'; }).join('');
+    var pw = total(p), stl = SK.map(function (k) { return k[1] + ' ' + (+st[k[0]] || 0); }).join(' · ');
+    return '<div class="dinfo">' + (s ? '<div class="dihead"><span class="dirar" title="Rarity score: trait rarity of species, eyes, pattern, background and cheeks across every pet (display only, not the hatch tier)">💎 ' + s.rarityBits.toFixed(1) + ' <span class="dio">1 in ' + fmtN(s.rarityOneIn) + '</span></span> <span class="disc2" title="Pet Score (display only)">⭐ ' + s.score + '</span> <span class="dipw" title="Power = Vigor + Spark + Grit + Zoom + Luck">⚡ ' + pw + '</span></div>' : '<div class="dihead"><span class="dipw">⚡ ' + pw + '</span></div>') +
+      '<ul class="ditr">' + rows + '</ul><div class="dist">' + stl + '</div></div>'; }
+  var DCSS = '.dinfo{text-align:left;font-size:11px;line-height:1.3;margin-top:3px}.dinfo .dihead{display:flex;flex-wrap:wrap;gap:3px 6px;justify-content:center;margin-bottom:2px}' +
+    '.dinfo .dirar{color:#bfe9ff;font-weight:bold}.dinfo .disc2{color:#ffd166}.dinfo .dipw{color:#9fe8b5}.dinfo .dio{color:#9aa4b8;font-weight:normal;font-size:10px}' +
+    '.dinfo .ditr{list-style:none;margin:0;padding:0}.dinfo .ditr li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dinfo .dit{color:#9aa4b8;display:inline-block;min-width:46px}.dinfo .dist{color:#cfd6e4;font-size:10px;margin-top:2px}' +
+    '#packBox:not(.gearmode) .packgrid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}#packBox:not(.gearmode) .packgrid .egg{min-width:0;font-size:11px}' +
+    '@media (max-width:600px){#packBox:not(.gearmode) .packgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.dinfo .dit{min-width:40px}}' +
+    '.dcard .dinfo{margin:4px 0}';
+  function install(doc) { if (!doc || doc.getElementById('psCss')) return; var s = doc.createElement('style'); s.id = 'psCss'; s.textContent = CSS + DCSS; (doc.head || doc.documentElement).appendChild(s);
     doc.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.psw') : null;
       doc.querySelectorAll('.psw.open').forEach(function (x) { if (x !== t) x.classList.remove('open'); });
       if (t) { e.stopPropagation(); e.preventDefault(); t.classList.toggle('open'); } }, true); }
-  var api = { rarityChip: rarityChip, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
+  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
 })(typeof window !== 'undefined' ? window : globalThis);
