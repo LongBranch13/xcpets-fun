@@ -1,15 +1,88 @@
 {
-  "blockHeight": 972877,
-  "generatedAt": "2026-10-24T04:46:12Z",
+  "blockHeight": 972892,
+  "generatedAt": "2026-10-24T06:50:13Z",
   "asset": "XCPETS",
-  "totalPets": 22191,
-  "alive": 15262,
+  "totalPets": 23202,
+  "alive": 16273,
   "dead": 6928,
   "released": 1,
-  "burns": 1211,
-  "burnedXCPETS": 16253710.50000049,
-  "supplyXCPETS": 83746289.49999951,
+  "burns": 1244,
+  "burnedXCPETS": 16840239.0000005,
+  "supplyXCPETS": 83159760.9999995,
   "owners": 14,
+  "community": {
+    "tip": 972892,
+    "current": {
+      "id": "funtrump",
+      "no": 4,
+      "name": "FUNTRUMP",
+      "short": "FUNTRUMP",
+      "plural": "FUNTRUMPs",
+      "the": ""
+    },
+    "nextNo": 4,
+    "cold": [
+      {
+        "id": "nakamoto",
+        "no": 1,
+        "name": "Nakamoto",
+        "short": "Nakamoto",
+        "plural": "Nakamotos",
+        "the": "",
+        "block": 971632
+      },
+      {
+        "id": "wizard",
+        "no": 2,
+        "name": "Bitcoin Wizard",
+        "short": "Wizard",
+        "plural": "Bitcoin Wizards",
+        "the": "the ",
+        "block": 972325
+      },
+      {
+        "id": "kek",
+        "no": 3,
+        "name": "Lord Kek",
+        "short": "Lord Kek",
+        "plural": "Lord Keks",
+        "the": "",
+        "block": 972869
+      }
+    ],
+    "egg": {
+      "id": "kek",
+      "no": 3,
+      "name": "Lord Kek",
+      "short": "Lord Kek",
+      "plural": "Lord Keks",
+      "the": "",
+      "block": 972869
+    },
+    "prevEgg": {
+      "id": "wizard",
+      "no": 2,
+      "name": "Bitcoin Wizard",
+      "short": "Wizard",
+      "plural": "Bitcoin Wizards",
+      "the": "the ",
+      "block": 972325
+    },
+    "last": {
+      "id": "kek",
+      "no": 3,
+      "name": "Lord Kek",
+      "short": "Lord Kek",
+      "plural": "Lord Keks",
+      "the": "",
+      "block": 972869
+    },
+    "halvings": [
+      972875
+    ],
+    "halvingsDone": 1,
+    "nextHalving": null
+  },
   "files": {
     "pets": "https://xcpets.fun/api/pets.json",
     "meta": "https://xcpets.fun/api/meta.json",

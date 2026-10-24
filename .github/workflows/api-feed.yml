@@ -4,7 +4,7 @@
 # and merges (never rebases or force-pushes) the latest origin/main before pushing, so it can't clobber normal deploys.
 name: api-feed
 on:
-  schedule: [{ cron: '17 * * * *' }]
+  schedule: [{ cron: '*/10 * * * *' }]  # GitHub throttles schedules (runs were landing every 3-6 h); 10-min ticks so new pet tokens get t/ files fast. Commits only on change.
   workflow_dispatch: {}
 permissions: { contents: write }
 concurrency: { group: api-feed, cancel-in-progress: false }
@@ -19,12 +19,15 @@ jobs:
         with: { node-version: '20' }
       - run: node tools/api-feed.js --out api
       # Pet token metadata (Oct 23, 2026): refresh t/<id>.json + t/<id>.png only for tokened pets (tied, freshly minted, or already named). Never fails the feed.
+      # Mint lookback starts at api/token-meta-state.json lastBlock (only advanced when the full-node scan succeeded), not a fixed 36 blocks.
       - run: node tools/token-meta.js --tokened || echo "token-meta failed, skipping this run"
       - name: Commit if changed
         run: |
-          if git diff --quiet -- api/pets.json t && [ -z "$(git ls-files --others --exclude-standard t)" ] && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
+          if git diff --quiet -- api/pets.json api/ties.json t && [ -z "$(git ls-files --others --exclude-standard api/ties.json)" ] && [ -z "$(git ls-files --others --exclude-standard t)" ] && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
           git config user.name "xcpets-api-bot"; git config user.email "actions@users.noreply.github.com"
           git add api/pets.json api/meta.json t
+          git add api/token-meta-state.json 2>/dev/null || true
+          git add api/ties.json 2>/dev/null || true
           git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"
           for i in 1 2 3 4 5; do
             git fetch origin main

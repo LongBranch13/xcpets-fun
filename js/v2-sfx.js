@@ -18,6 +18,12 @@
     punch: function (big) { if (!on()) return; tone('square', big ? 140 : 180, 50, big ? 0.16 : 0.1, big ? 0.3 : 0.2); noise(big ? 0.12 : 0.07, big ? 0.35 : 0.2, 900); },
     creak: function () { if (!on()) return; tone('sawtooth', 220, 330, 0.25, 0.06); tone('sawtooth', 300, 180, 0.35, 0.06, 0.22); },
     roar: function () { if (!on()) return; noise(1.4, 0.28, 1800, 0, true); tone('square', 523, 0, 0.12, 0.08, 0.1); tone('square', 659, 0, 0.12, 0.08, 0.22); tone('square', 784, 0, 0.3, 0.08, 0.34); },
+    /* card-shop-scene: shop bell, cat meow, binder page flip, gift wrap rustle, a small click blip */
+    bell: function () { if (!on()) return; tone('triangle', 1568, 0, 0.5, 0.1); tone('triangle', 2093, 0, 0.6, 0.07, 0.12); },
+    meow: function () { if (!on()) return; tone('square', 700, 1100, 0.12, 0.05); tone('square', 1100, 520, 0.22, 0.05, 0.12); },
+    flip: function () { if (!on()) return; noise(0.12, 0.12, 3000); },
+    wrap: function () { if (!on()) return; noise(0.35, 0.1, 2400, 0, true); tone('square', 784, 0, 0.08, 0.06, 0.32); tone('square', 1046, 0, 0.14, 0.06, 0.4); },
+    blip: function () { if (!on()) return; tone('square', 660, 0, 0.05, 0.06); },
     on: on,
     set: function (v) { if (window.V2Announcer) V2Announcer.setVoice(v); else try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) { } paint(); },
     /** toggle(): a small speaker button for the Lair / motel, same saved setting as the arena announcer button */
