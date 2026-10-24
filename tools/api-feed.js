@@ -89,7 +89,7 @@ if (require.main === module) (async () => {
   if (opt('--snap')) input.tip = +(opt('--tip') || input.tip);
   if (opt('--snap') && A.includes('--no-dex')) input.noDex = true; /* offline replays of old snapshots only; live mode never skips sales */
   if (opt('--dex')) input.dex = JSON.parse(fs.readFileSync(opt('--dex'), 'utf8'));
-  if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
+  if (opt('--save-dex') && input.dex) { fs.mkdirSync(path.dirname(path.resolve(opt('--save-dex'))), { recursive: true }); } if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
