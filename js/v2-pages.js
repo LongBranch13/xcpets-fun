@@ -108,7 +108,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=6d0a5a396a'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=dc1098b458'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -145,7 +145,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=6d0a5a396a'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=dc1098b458'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -157,7 +157,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=6d0a5a396a'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=dc1098b458'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -188,8 +188,7 @@
   function petActs(w, p) { var myth = !!p.mythicCare || p.stage >= 5, a = function (k, label, title, cls) { return '<a class="btn ' + (cls || '') + ' ico-flame" href="play.html#act-' + k + '-' + p.id + '" title="' + esc(title) + '">' + label + '</a> '; },
       fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
     return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
-      (V.wheelOn && V.wheelOn((w.tip || 0) + 1) ? '<a class="btn ghost" href="play.html#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a> ' : myth && MYTHIC_ROLL_OFF ? '' : a('roll', '🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')', 'Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet', 'ghost')) +
-      (fr && fr.on ? a('froll', 'Free roll', 'Founder reward: one random gear piece for this pet', 'ghost') : '') + (of && of.on ? a('oroll', 'Overflow roll', 'Mythic discount: one random gear piece for this pet', 'ghost') : '') +
+      /* pet-card-page (owner 2026-10-24 5:08 AM CT): no Pepe Wheel spin / gear roll links here any more; the card's Rare Room / Breed / Battle buttons (js/v2-pet-card.js) go to play.html */
       '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });
   function archive() {
@@ -427,10 +426,7 @@
         (p.owner === ME && !p.dead ? petActs(w, p) : '');
       var g = $('gear');
       if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s stash.</p>';
-      else if (p.owner !== ME) g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">Only the owner can change this pet\'s gear.</p>';
-      else { if (!g.querySelector('.gpicker')) g.innerHTML = '<p class="small muted">Click a slot, then click a piece to equip it (free, saved in this browser).</p><div class="gpicker" id="gPicker"></div>';
-        R.gearPicker($('gPicker'), { world: w, owner: ME, pet: p, msg: msg, viewOnly: !!(window.V2View && V2View.viewOnly()), onEquip: function (op, m) { if (window.V2View && V2View.viewOnly()) return; op.block_index = M.state().tip; M.state().ops.push(op); M.save(); draw('✓ ' + m); },
-          onEquipMany: function (ops, m) { if (window.V2View && V2View.viewOnly()) return; ops.forEach(function (op) { op.block_index = M.state().tip; M.state().ops.push(op); }); M.save(); draw('✓ ' + m); } }); }
+      else /* pet-card-page: gear is read-only on the pet page for everyone (equip / change it in the Rare Room on play.html) */ g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">' + (p.owner === ME ? 'Change this pet\'s gear in the <a href="play.html#rare-room-' + p.id + '">Rare Room</a>.' : 'Only the owner can change this pet\'s gear.') + '</p>';
       /* ANY-SLOT ROLLS (branch any-slot-rolls): the pet's BAG = pieces rolled for a slot this pet hasn't unlocked yet. Bound to this pet (lost with it);
        * each shows a lock + what opens the slot; once the slot opens the piece is worn (if the slot is empty) or goes to the stash. Shown to every viewer. */
       (function () { var bag = V.bagOf ? V.bagOf(w, p.id) : [], el = $('petBag'); if (!bag.length) { if (el) el.remove(); return; }

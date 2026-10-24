@@ -17,8 +17,8 @@
       if (k === 'sp') in_ = sel(k, c, o.species || []); else if (k === 'tier') in_ = sel(k, c, TL.map(function (t, i) { return [String(i), t]; }).concat([['M', 'Mythic']]));
       else if (k === 'st') in_ = sel(k, c, (V.STAGE_NAMES || []).map(function (t, i) { return [String(i), t]; }));
       else if (k === 'badge') in_ = sel(k, c, [['om', (V.OLD_MONEY_LABEL || 'Old Money') + ' only'], ['hyb', 'Hybrids only']], 'Any');
-      else if (k === 'cur') in_ = sel(k, c, [['XCPETS', 'XCPETS'], ['XCP', 'XCP (sats)']], 'Both');
-      else if (k === 'min' || k === 'max') in_ = num(k, c, f.cur === 'XCP' ? 'sats' : f.cur === 'XCPETS' ? 'XCPETS' : 'XCPETS or sats');
+      else if (k === 'cur') in_ = sel(k, c, [['XCPETS', 'XCPETS'], ['XCP', 'XCP']], 'Both');
+      else if (k === 'min' || k === 'max') in_ = num(k, c, f.cur === 'XCP' ? 'XCP' : f.cur === 'XCPETS' ? 'XCPETS' : 'XCPETS or XCP');
       else if (k === 'pw' || k === 'bl') in_ = num(k, c, 'any');
       else if (k === 'gear') in_ = sel(k, c, [['1', 'Wears gear']], 'Any');
       else if (k === 'buy') in_ = sel(k, c, [['1', 'Buyable now (fills first)']], 'Any');
