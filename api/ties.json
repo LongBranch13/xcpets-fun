@@ -1,6 +1,6 @@
 {
- "lastBlock": 972892,
- "count": 3,
+ "lastBlock": 972916,
+ "count": 5,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -13,7 +13,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Rare",
-   "stage": "Mythic"
+   "stage": "Adult"
   },
   {
    "id": 3150,
@@ -37,6 +37,30 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 14749,
+   "asset": "A11407417926526760582",
+   "tiedBlock": 972895,
+   "tiedTx": "ee8dd0ade915186f333fb53465032fa919fca38dca53ab638ab48f7dc4a56af8",
+   "kind": "mint",
+   "name": "Yozowa",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1747,
+   "asset": "A5383141486213088342",
+   "tiedBlock": 972909,
+   "tiedTx": "45f006f7ed420361ece83b66980f719aa9af7190745807a6509753e3627f25db",
+   "kind": "deed",
+   "name": "Tobo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
