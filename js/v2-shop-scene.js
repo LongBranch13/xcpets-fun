@@ -37,7 +37,8 @@
     { id: 'register', x: 216, y: 80, w: 32, h: 30, l: '🏷️ List my pet', big: 1 },
     { id: 'cat', x: 292, y: 86, w: 26, h: 22, l: 'The shop cat' },
     { id: 'gift', x: 6, y: 124, w: 96, h: 52, l: '🎁 Gift Wrap Counter', big: 1 },
-    { id: 'trade', x: 110, y: 130, w: 70, h: 44, l: '🔁 Trade table', big: 1 }];
+    { id: 'trade', x: 110, y: 130, w: 70, h: 44, l: '🔁 Trade table', big: 1 },
+    { id: 'press', x: 190, y: 122, w: 70, h: 54, l: '🏭 Token Press', big: 1 }];
 
   function featured(d) { if (!d) return []; var L = d.listings.slice(); L.sort(function (a, b) { return (myth(b.p) - myth(a.p)) || ((b.p.tier || 0) - (a.p.tier || 0)) || ((b.S.orderBlock || 0) - (a.S.orderBlock || 0)); }); return L.slice(0, 5); }
   function cages(d) { return d && d.mine ? d.mine.slice(0, 4) : []; }
@@ -93,11 +94,20 @@
     px(x, '#100E14', 111, 141, 68, 14); px(x, '#7a4b2a', 112, 142, 66, 6); px(x, '#5a3420', 112, 148, 66, 6); px(x, '#5a3420', 116, 154, 4, 18); px(x, '#5a3420', 170, 154, 4, 18);
     var sh = reduced() ? 0 : Math.floor(t / 900) % 2; px(x, '#4aa3ff', 124 + sh * 3, 132, 12, 15); px(x, '#1b1b26', 126 + sh * 3, 134, 8, 11); px(x, '#4fd18b', 152 - sh * 3, 132, 12, 15); px(x, '#1b1b26', 154 - sh * 3, 134, 8, 11);
     px(x, '#FAFAF5', 139, 136, 9, 2); px(x, '#FAFAF5', 146, 134, 2, 2); px(x, '#FAFAF5', 139, 140, 9, 2); px(x, '#FAFAF5', 139, 142, 2, 2); txt(x, 'TRADE', 126, 162, '#100E14');
+    /* token press (token-press, owner Oct 24 2026): an 8-bit stamping machine; it thumps when tapped, idles with blinking lights */
+    var pr = ST.press > 0 ? 1 - ST.press / 800 : 0, ram = pr > 0 ? Math.round(Math.sin(Math.min(1, pr * 1.6) * Math.PI) * 12) : 0, mj = ram > 9 ? 1 : 0;
+    px(x, '#100E14', 193, 129, 52, 22); px(x, '#D62028', 194, 130, 50, 20); px(x, '#8F141A', 194, 145, 50, 5); px(x, '#E8B33A', 196, 132, 46, 7); txt(x, 'TOKEN PRESS', 198, 133, '#100E14');
+    for (i = 0; i < 4; i++) px(x, (Math.floor(t / 300) + i) % 4 === 0 || pr > 0 ? RAINBOW[i] : '#4a2a2a', 200 + i * 11, 141, 4, 3);
+    px(x, '#100E14', 196, 151, 5, 22); px(x, '#5A5A5A', 197, 151, 3, 22); px(x, '#100E14', 237, 151, 5, 22); px(x, '#5A5A5A', 238, 151, 3, 22);
+    px(x, '#cfcfcf', 217, 151, 4, 3 + ram); px(x, '#100E14', 207, 154 + ram, 24, 4); px(x, '#E8B33A', 208, 154 + ram, 22, 3);
+    px(x, '#100E14', 200, 170, 54, 5); px(x, '#5A5A5A', 201, 171, 52, 3); var gq = Math.floor(t / 200) % 2; px(x, '#cfcfcf', 246 + gq, 134, 6, 6); px(x, '#5A5A5A', 248 + gq, 136, 2, 2);
+    var cd = pr > 0.5 ? Math.min(1, (pr - 0.5) * 2) : 0; if (cd > 0) { px(x, '#000', 236 + Math.round(cd * 14), 158 - Math.round(cd * 6), 12, 16); px(x, '#E8B33A', 237 + Math.round(cd * 14), 159 - Math.round(cd * 6), 10, 14); px(x, '#FAFAF5', 238 + Math.round(cd * 14), 160 - Math.round(cd * 6), 8, 7); }
+    else { px(x, '#4fd18b', 214, 164 - mj, 10, 6); px(x, '#100E14', 216, 165 - mj, 1, 1); px(x, '#100E14', 221, 165 - mj, 1, 1); }
     /* hover glow on the canvas */
     var hv = ST.hover && HOT.filter(function (h) { return h.id === ST.hover; })[0]; if (hv) { x.globalAlpha = 0.9; x.strokeStyle = '#ffd84a'; x.lineWidth = 1; x.strokeRect(hv.x + 0.5, hv.y + 0.5, hv.w - 1, hv.h - 1); x.globalAlpha = 1; } }
 
   /* ---- loop: pauses off screen / hidden tab; reduced motion = still frame */
-  var last = 0; function frame(n) { ST.raf = 0; var dt = last ? Math.min(100, n - last) : 16; last = n; ST.t += dt; ['luke', 'cat', 'bell', 'wrap', 'catSay'].forEach(function (k) { if (ST[k] > 0) ST[k] = Math.max(0, ST[k] - dt); });
+  var last = 0; function frame(n) { ST.raf = 0; var dt = last ? Math.min(100, n - last) : 16; last = n; ST.t += dt; ['luke', 'cat', 'bell', 'wrap', 'catSay', 'press'].forEach(function (k) { if (ST[k] > 0) ST[k] = Math.max(0, ST[k] - dt); });
     draw(); if (ST.vis && !document.hidden && !reduced()) ST.raf = requestAnimationFrame(frame); }
   function kick() { if (reduced()) { draw(); return; } if (!ST.raf && ST.vis && !document.hidden) { last = 0; ST.raf = requestAnimationFrame(frame); } }
   if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { ST.vis = es[0].isIntersecting; if (ST.vis) kick(); }).observe(cv);
@@ -155,6 +165,7 @@
     if ((m = t.closest('[data-csbuy]'))) { e.stopPropagation(); document.querySelectorAll('.cs-ov.on').forEach(shut); sfx('coin'); SC().buy(Number(m.getAttribute('data-csbuy'))); return; }
     if (t.closest('[data-cslist]')) { document.querySelectorAll('.cs-ov.on').forEach(shut); SC().sellPick(); return; }
     if ((m = t.closest('[data-cssell]'))) { shut($('csPick')); SC().sell(Number(m.getAttribute('data-cssell'))); return; }
+    if ((m = t.closest('[data-cspress]'))) { shut($('csPick')); SC().press(Number(m.getAttribute('data-cspress'))); return; }
     if ((m = t.closest('[data-csgift]'))) { shut($('csPick')); giftGo([Number(m.getAttribute('data-csgift'))]); return; }
     if (t.closest('a')) return;
     if ((m = t.closest('.cs-sleeve[data-csn]'))) { m.classList.toggle('flipped'); sfx('blip'); } });
@@ -162,10 +173,10 @@
   /* ---- station actions: each one opens an existing flow */
   function giftGo(ids) { var G = window.V2Gift, go = function () { if (G && G.gift && ids) G.gift(ids); else if (G && G.picker) G.picker(); else SC().tab('gift'); };
     sfx('wrap'); if (reduced()) return go(); ST.wrap = 900; kick(); setTimeout(go, 750); }
-  function cagePick(p) { var d = D(), ok = d.sellable ? d.sellable(p) : true, m = ov('csPick', 'cs-pov'), G = !!window.V2Gift;
+  function cagePick(p) { var d = D(), ok = d.sellable ? d.sellable(p) : true, m = ov('csPick', 'cs-pov'), V = window.V2Rules, tk = !!(V && V.sellStep && d.W && V.sellStep(d.W, p, d.ME) === 'list'), G = !!window.V2Gift && tk, pz = !tk && SC().pressable && SC().pressable(p);
     m.innerHTML = '<div class="box cs-pick"><h3>' + esc(p.name || 'Pet') + ' #' + p.id + '</h3><div class="cs-pickrow">' + SC().card(p) + '<div><p class="sh-hint">What should ' + esc(p.name || 'this pet') + ' do?</p>' +
       '<button type="button" class="sh-btn" data-cssell="' + p.id + '"' + (ok ? '' : ' disabled title="Locked right now (fight, breed, Rug Me ad or a pending gift)"') + '>🏷️ List it</button> ' +
-      '<button type="button" class="sh-btn" data-csgift="' + p.id + '"' + (G ? '' : ' disabled') + '>🎁 Gift it</button> <button type="button" class="sh-btn sh-ghost" data-csclose>Back</button>' + (ok ? '' : '<p class="sh-warn">This pet is locked right now, so it can’t list.</p>') + '</div></div></div>';
+      '<button type="button" class="sh-btn" data-csgift="' + p.id + '"' + (G ? '' : ' disabled') + (tk ? '' : ' title="No token yet: press one first"') + '>🎁 Gift it</button> ' + (pz ? '<button type="button" class="sh-btn" data-cspress="' + p.id + '">🏭 Press its token</button> ' : '') + '<button type="button" class="sh-btn sh-ghost" data-csclose>Back</button>' + (ok ? '' : '<p class="sh-warn">This pet is locked right now, so it can’t list.</p>') + '</div></div></div>';
     m.classList.add('on'); }
   function act(id) { var d = D(), m;
     if (id === 'bell') { ST.bell = 900; sfx('bell'); say(['Ding! Welcome to Spam City Games.', 'Yes, yes, I heard the bell.', 'Ding ding. The cat hates that one.'][Math.floor(Math.random() * 3)]); return kick(); }
@@ -176,11 +187,12 @@
     if (id === 'register') { sfx('coin'); return SC().sellPick(); }
     if (id === 'trade') { sfx('blip'); return SC().tab('trade'); }
     if (id === 'gift') return giftGo(null);
+    if (id === 'press') { sfx('coin'); if (!reduced()) { ST.press = 800; kick(); } return setTimeout(function () { SC().pressPick(); }, reduced() ? 0 : 500); }
     if ((m = /^case(\d)$/.exec(id))) { var f = featured(d)[+m[1]]; if (!f) { sfx('blip'); toast('Coming soon: list a pet and it can show up in the glass case.'); return; } return openBinder(f.S.n); }
     if ((m = /^cage(\d)$/.exec(id))) { var p = cages(d)[+m[1]]; sfx('blip'); if (!p) { toast(d.ME ? 'An empty cage. Hatch or adopt more pets on Play.' : 'Your own pets nap here. Connect your wallet on Play, or open the shop with ?addr=your address.'); return; } return cagePick(p); } }
   root.addEventListener('click', function (e) { var b = e.target.closest('[data-cs]'); if (b) act(b.getAttribute('data-cs')); });
 
-  document.addEventListener('v2sales:ready', function () { label(); draw(); kick(); });
+  document.addEventListener('v2sales:ready', function () { label(); draw(); kick(); if (location.hash === '#press') setTimeout(function () { act('press'); }, 300); });
   var sx = $('csSfx'); if (sx && window.V2Sfx && V2Sfx.toggle) sx.innerHTML = V2Sfx.toggle('cs-sfx');
   root.classList.add('cs-on'); draw(); kick();
   window.V2ShopScene = { act: act, openBinder: openBinder, _st: ST };

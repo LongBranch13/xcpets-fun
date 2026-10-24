@@ -59,8 +59,8 @@
   var SKEY = 'xcpets-v2-prod-rows', STTL = 60000;
   function fromSession() { try { var c = JSON.parse(sessionStorage.getItem(SKEY)); if (!c || Date.now() - c.at > STTL || !c.rows) return false;
     var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
-    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
-  function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balance })); } catch (e) {} }
+    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* sale-owner-fix: no sale data in the copy -> full load (never replay owners without sales) */ S.dex = c.dex || undefined; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
+  function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balance, dex: S.dex || null })); } catch (e) {} }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
     var chain = new E.Chain();
@@ -87,7 +87,10 @@
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
         S.rows = rows; S.hashes = Object.assign({}, hc, bh.hashes); S.tip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0);
         /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
-        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { S.dex = d; }) : null;
+        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; },
+          function (e) { throw new Error('pet sales and token transfers could not be read, so pet owners could be out of date (' + String(e && e.message || e).slice(0, 90) + ')'); }) : null;
+        /* sale-owner-fix (2026-10-24): gate set but V2Sales missing = no sale data -> fail like any other read (Couldn't reach + Retry), never replay without it */
+        if (!dx && V.salesGate && V.salesGate() != null) throw new Error('pet sale reader did not load, so pet owners could be out of date');
         return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
       });
     }).then(function () { keepOrDrop(); S.verified = true; S.missingBlocks = []; toSession(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },

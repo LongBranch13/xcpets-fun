@@ -100,3 +100,11 @@
 @media (max-width:640px){.cs-sleeves{grid-template-columns:repeat(2,1fr)}.cs-binder{padding-left:22px}.cs-spine{left:5px;width:8px}.cs-pickrow{flex-direction:column}.cs-on .cs-bar{font-size:7px}}
 @media (prefers-reduced-motion:reduce){.cs-binder,.cs-flip,.cs-out-r,.cs-in-r,.cs-out-l,.cs-in-l,.cs-bubble.cs-pop{animation:none;transition:none}}
 .cs-on .cs-stage:has(canvas[data-mfs]){width:fit-content;margin:0 auto}
+/* token-press (Oct 24 2026): the press animation canvas stays pixel art */
+.tp-anim{display:block;width:100%;max-width:320px;aspect-ratio:160/112;image-rendering:pixelated;image-rendering:crisp-edges;border:3px solid #E8B33A;box-shadow:0 0 0 2px #100E14;background:#3D3640;margin:0 0 8px}
+.tp-big{max-width:480px;margin:8px auto}
+.sh-steps li.sh-done{opacity:.7}
+.sh-link{background:none;border:0;padding:0;color:#ffd84a;text-decoration:underline;font:inherit;cursor:pointer}
+/* shop-safety */
+.sh-coin{color:#ffd166;white-space:nowrap}.sh-confirm{font-size:14px;margin:6px 0}.sh-amt input{width:9em}.sh-lowok{display:inline-block;margin:6px 0;font-size:13px}
+.sh-openbar{background:#2B2730;border:2px solid #ffd166;padding:8px 10px;margin:0 0 10px;font-size:13px}.sh-openbar ul{margin:6px 0 0;padding-left:18px}.sh-openbar li{margin:4px 0}
