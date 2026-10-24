@@ -1620,7 +1620,7 @@
    *  - Proof of Burn: every pet existing at the gate; tier from the owner wallet's total burns (live); lost for good when the pet changes hands.
    *  - Flame looks (Kindling 10k / Wildfire 250k / Satoshi Sun 1M wallet burns, all burns count), placed with pet:aura:ID:on (off hides). Layers DRAW in a
    *    second gate (not built here): the looks are state + chips only. */
-  var ACTIVATE_QUEST_BLOCK = null;
+  var ACTIVATE_QUEST_BLOCK = 972952; /* tip 972946 (api.xcp.fun, Oct 24 2026 11:16 AM CT) + 6; owner approved 11:15 AM CT */
   function questOn(b) { return ACTIVATE_QUEST_BLOCK != null && b != null && b >= ACTIVATE_QUEST_BLOCK; }
   var QUEST_FREE_MIN = 0.00000001;
   var QUESTS = {
