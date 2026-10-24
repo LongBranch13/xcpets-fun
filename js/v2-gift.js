@@ -92,7 +92,7 @@
     if (need.length) { var waitIds = need.filter(function (id) { return job.mint[id]; });
       return Promise.all(waitIds.map(function (id) { return issued(job.mint[id]); })).then(function (h) {
         if (h.some(function (x) { return x !== ME; })) { msg('<p>Token' + (waitIds.length === 1 ? '' : 's') + ' sent. Waiting for 1 block to confirm… this window continues by itself (keep it open).</p>'); var t = setTimeout(function () { run(job); }, 30000); $('gfX').onclick = function () { clearTimeout(t); close(); }; return; }
-        if (V.rulesOn && V.rulesOn(tip() + 1)) { waitIds.forEach(function (id) { job.tied[id] = 1; }); gpend(job); return run(job); } /* rule 3: the confirmed mint is the tie */
+        if (V.mintTiesOn ? V.mintTiesOn(tip() + 1) : V.rulesOn && V.rulesOn(tip() + 1)) { waitIds.forEach(function (id) { job.tied[id] = 1; }); gpend(job); return run(job); } /* rule 3: the confirmed mint is the tie */
         var id2 = waitIds[0], plan = V.deedPlan(id2, job.mint[id2]); msg('<p>Tying the token to #' + id2 + '…</p>');
         return Wl.send(plan, ME).then(function () { job.tied[id2] = 1; run(job); }); }).catch(fail); }
     /* all tokens held: send them, BUNDLE per transaction */
