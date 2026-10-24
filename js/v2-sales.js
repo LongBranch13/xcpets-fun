@@ -303,3 +303,15 @@
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();
 })();
+
+/* stale-data note: shown when sale data comes from the last saved copy */
+(function(){ if (typeof window === 'undefined') return;
+  window.addEventListener('xcpets-dex-stale', function(ev){
+    if (document.getElementById('dexStaleNote')) return;
+    var t = ev && ev.detail && ev.detail.at ? new Date(ev.detail.at).toLocaleString() : 'earlier';
+    var n = document.createElement('div'); n.id = 'dexStaleNote';
+    n.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;max-width:520px;margin:0 auto;padding:6px 10px;border-radius:8px;background:#3a2a00;color:#ffd166;font:12px/1.35 sans-serif;text-align:center;box-sizing:border-box';
+    n.textContent = 'Chain servers are slow right now, so sale data may be stale (saved ' + t + ').';
+    (document.body || document.documentElement).appendChild(n);
+  });
+})();
