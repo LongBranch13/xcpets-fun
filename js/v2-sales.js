@@ -16,9 +16,13 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- DEX reads: cached for TTL, paginated by next_cursor, 429 honours Retry-After (seconds or HTTP date), 4 tries */
-  var mem = {};
+  var mem = {}, REQ_MS = 9000, LKEY = 'xcpets-dex-last-1', DEAD = {}; /* full-node bases that timed out or failed this page view: skipped after that */
+  /* Mint ties (rule 3) only happened from ACTIVATE_SPAM_RULES_BLOCK to ACTIVATE_ONE_TIE_PATH_BLOCK (972896); that window is closed, so its tokens are a fixed list
+   * (CI api-feed scan of the full nodes at 972909). Used only when every full node fails. */
+  var MINT_WINDOW = ['A11407417926526760582', 'A175164024751316932', 'A9059073792275355799'];
   function getJ(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
-    return fetch(url).then(function (r) {
+    var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, REQ_MS) : 0; /* sales-net-fallback: one slow server can't hold the page */
+    return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
       if (r.status === 429 || r.status === 503) { if (n >= 3) throw new Error('DEX API busy (' + r.status + ')'); var ra = r.headers.get('Retry-After'), s = Number(ra);
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); return wait(Math.min(ms || 1000, 60e3)).then(function () { return getJ(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
@@ -38,10 +42,10 @@
   var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
   function credits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('pet token transfers could not be read (every Counterparty node failed)'));
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2';
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
-      return go(null).catch(function () { return on(i + 1); }); }
+      return go(null).catch(function (e) { if (!e || e.status !== 404) DEAD[base] = 1; return on(i + 1); }); }
     return on(0); }
   /** deedAssets(rows) -> the pet-token assets named by pet:deed burns (the API has no asset search, so the burn announces the token). */
   function deedAssets(rows) { var seen = {}, out = []; (V.readBurns ? V.readBurns(rows || []) : rows || []).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; }
@@ -53,15 +57,19 @@
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
   function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
     var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
-    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)'));
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2';
+    function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
         if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); if (++k >= 50) throw new Error('too many issuances to scan'); return go(j.next_cursor); }); }
-      return go(null).catch(function () { return on(i + 1); }); }
+      return go(null).catch(function (e) { if (!e || e.status !== 404) DEAD[base] = 1; return on(i + 1); }); }
     return on(0); }
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null);
-    return mintAssets(rows).then(function (ma) { return loadDex2(rows, ma); }); }
+    return mintAssets(rows).then(function (ma) { return loadDex2(rows, ma).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: lkey(rows, ma), d: d })); } catch (e) { } return d; }, function (err) {
+      /* sales-net-fallback: the full nodes failed. Use the last complete sale data this browser read for the SAME set of pet tokens (flagged stale), else fail as before. */
+      try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === lkey(rows, ma) && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
+      throw err; }); }); }
+  function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
   function loadDex2(rows, ma) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
