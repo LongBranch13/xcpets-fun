@@ -878,7 +878,7 @@
   /** coldFrames(sp, ids, stage) (2026-10-20, owner): a community pet's Cold Storage portrait. Every community pet in Cold Storage shows at Mythic in
    * its full signature loadout (ARCHIVE entry .loadout in v2-pages.js, data only; Nakamoto is the bare exception). Sprite-sheet species are drawn
    * by their own sprite module in the community palette; the loadout goes through the same gear mapping as a player pet of that species. */
-  /* FUNTRUMP (community pet #4, branch funtrump-community, PREVIEW; gated by V2Rules ACTIVATE_FUNTRUMP_BLOCK = null): c.current === 'funtrump' only once
+  /* FUNTRUMP (community pet #4; LIVE from V2Rules ACTIVATE_FUNTRUMP_BLOCK = 972,880): c.current === 'funtrump' only once
    * the gate is reached AND Lord Kek is in Cold Storage. His hair is part of him (Headwear sits on top of the fringe). Every slot is drawn by
    * FuntrumpSprite's gear layer (anchors measured on his own frames). Player FUNTRUMPs / FUNTRUMP-body hybrids use the same mapping (ftGearOf). */
   function ftOn(w) { return !!(w && w.community && w.community.current === 'funtrump' && window.FuntrumpSprite); }

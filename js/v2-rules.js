@@ -46,7 +46,7 @@
   /* PET-FOR-PET SWAPS (same gate): pet:swap:MINE:THEIRS opens offer N (1, 2, ... in chain order); the owner of THEIRS burns pet:swapok:N to swap the owners
    * at that burn, only if the offer is open and within SWAP_WINDOW blocks, both pets still belong to the two players, are alive and pass the gift locks.
    * pet:swapno:N closes it (offerer = cancel, other owner = decline). Gear moves with each pet like a gift. 1 dander each, no randomness. */
-  /* SPAM CITY RULES (owner, Oct 23 2026 6:59 AM CT), inert while null (set to tip + 6 only on deploy):
+  /* SPAM CITY RULES (owner, Oct 23 2026 6:59 AM CT), LIVE from ACTIVATE_SPAM_RULES_BLOCK = 972,783 (null would turn them off = old behaviour):
    *  1) a pet token sent to a burn address: the pet belongs to that address (out of play: nobody can sign for it), shown as "sent to a burn address".
    *  2) one move per pet per block: only the FIRST move of a pet in a block counts (block order = tx_index); later moves of it in that block are ignored.
    *  3) mint = tie: the FIRST issuance of a valid pet token (free numeric, qty 1, indivisible, locked, description = the pet's t/ID.json URL) by the pet's
@@ -457,7 +457,7 @@
   function hatchArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }), spHex = sha(bh + id + 'XCPETS:v2:species');
     if (!naka777(b)) { art.species = pickSpecies(spHex); return art; }
     if (parseInt(sha(bh + id + 'XCPETS:v2:naka777').slice(0, 12), 16) % 777 !== 0) { art.species = tierSpeciesOn(b) ? pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex, b) : pickSpecies12(spHex); return art; }
-    if (b >= FT_POOL_FROM) return ftArt(bh, id, b); /* FUNTRUMP egg takes Lord Kek's 1-in-777 slot after FUNTRUMP's own Cold Storage (inert: FT_POOL_FROM stays Infinity while ACTIVATE_FUNTRUMP_BLOCK is null) */
+    if (b >= FT_POOL_FROM) return ftArt(bh, id, b); /* FUNTRUMP egg takes Lord Kek's 1-in-777 slot after FUNTRUMP's own Cold Storage (FT_POOL_FROM is Infinity until FUNTRUMP's Cold Storage) */
     if (b >= KEK_POOL_FROM) return kekArt(bh, id, b); /* LORD KEK egg takes the Wizard's 1-in-777 slot after his Cold Storage (gated, see ACTIVATE_KEK_BLOCK) */
     if (noNakaOn(b)) return wizardArt(bh, id, b); /* NO NEW NAKAMOTO (owner Oct 20 2026): the 1-in-777 egg is now a Bitcoin Wizard egg */
     var L = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b, community: true }); /* same seed, tier forced 3 */
@@ -538,7 +538,7 @@
    * pet:hatchwiz) can breed like any pet, with the unchanged breedChild odds: different species -> hybrid 68.4773435% (else 50/50 a parent's species),
    * Wizard x Wizard -> Wizard + bred-true bonus, hybrid parents follow the three-way rules, Nakamoto children forced Legendary, normal tier rules.
    * 'wizard' is a hybrid root with all 13 species (Wizard hybrid art: hybridRender below). The community pet never breeds (p.community check).
-   * PLACEHOLDER: null = inert (identical to main). Set to chain tip + ~6 at deploy time, owner approval required. */
+   * LIVE from 972,716 (null would make it inert, identical to the old rules). */
   var ACTIVATE_WIZ_BREED_BLOCK = 972716;
   function wizBreedOn(b) { return ACTIVATE_WIZ_BREED_BLOCK != null && b != null && b >= ACTIVATE_WIZ_BREED_BLOCK; }
   var WIZ_SIGN_MIN = 0.00000001;                    // Join us sign claim: any amount, 1 sat of XCPETS is enough
@@ -556,7 +556,7 @@
     w.wizardMythic = { block: r.block_index, tx: r.tx_hash, total: over, feeders: all.length, top: all.slice(0, WIZ_TOP_N), by: T.by, claimed: {} };
     WIZ_POOL_FROM = Math.max(ACTIVATE_WIZ_COLD_BLOCK, r.block_index + 1); delete w._wizT;
     w.log.push({ block: r.block_index, tx: r.tx_hash, kind: 'wizcold', msg: 'Bitcoin Wizard reached Mythic (' + Math.floor(over) + ' burned) and went into Cold Storage' }); }
-  /* LORD KEK = COMMUNITY PET #3 (owner Oct 20 2026 ~6:00 PM CT; design/lord-kek-community-pet.md). ALL OFF: ACTIVATE_KEK_BLOCK = null.
+  /* LORD KEK = COMMUNITY PET #3 (owner Oct 20 2026 ~6:00 PM CT; design/lord-kek-community-pet.md). LIVE from ACTIVATE_KEK_BLOCK = 972,396 (null = all off).
    * With the gate null nothing below runs (no new world fields, no art change), so replay is identical. At launch approval set it to tip + ~6.
    *   care   = every community burn AFTER the Bitcoin Wizard's Mythic burn (w.wizardMythic, block 972,325), counted back to then (owner Q2);
    *   growth = COMMUNITY_THRESHOLDS (100x slower: hatch 69,000 ... Mythic 6,906,900), never starves, wears community rolls made from the gate on;
@@ -594,14 +594,14 @@
    *   Mythic = w.funtrumpMythic = { block, tx, total, feeders, top, by } and he goes to Cold Storage (log 'funtrumpcold');
    *   egg    = from the block after funtrumpMythic the 1-in-777 slot gives a player FUNTRUMP (ftArt) instead of Lord Kek;
    *   hybrid = 'funtrump' is a hybrid root with all 13 species + Kek/Wizard (FT_SP / ftPal / keyedRender below).
-   * FULLY INERT: ACTIVATE_FUNTRUMP_BLOCK = null -> ftTrack returns at once, no state is written, FT_POOL_FROM stays Infinity. */
+   * LIVE from 972,880. If ACTIVATE_FUNTRUMP_BLOCK were null: ftTrack returns at once, no state is written, FT_POOL_FROM stays Infinity. */
   var ACTIVATE_FUNTRUMP_BLOCK = 972880;  // LIVE: FUNTRUMP takes over (owner approved Oct 23 2026 11:36 PM CT; gate = tip + 3, owner 11:38 PM CT)
   var FUNTRUMP_CAN_BREED = true;                    // only effective once ACTIVATE_FUNTRUMP_BLOCK is set and reached
   var FT_POOL_FROM = Infinity;
   /* FUNTRUMP BREEDING (owner YES Oct 22 2026 10:47 PM CT; mirrors ACTIVATE_WIZ_BREED_BLOCK): from ACTIVATE_FT_BREED_BLOCK, and only once FUNTRUMP has reached
    * Cold Storage (Mythic, b >= FT_POOL_FROM), player FUNTRUMPs breed like any pet with the unchanged breedChild odds (different species -> hybrid 68.4773435%,
    * FUNTRUMP x FUNTRUMP -> FUNTRUMP + bred-true bonus, three-way rules for hybrid parents). A pure FUNTRUMP child is at least Rare (suit); Legendary = hoodie.
-   * The community FUNTRUMP never breeds (p.community check). PLACEHOLDER: null = inert (identical to main). Owner sets it at deploy time. */
+   * The community FUNTRUMP never breeds (p.community check). LIVE from 972,880 (null would make it inert). */
   var ACTIVATE_FT_BREED_BLOCK = 972880;  // = takeover gate; ftBreedOn still waits for FUNTRUMP's own Cold Storage (b >= FT_POOL_FROM), so breeding opens automatically then
   function ftBreedOn(b) { return ACTIVATE_FT_BREED_BLOCK != null && b != null && b >= ACTIVATE_FT_BREED_BLOCK && b >= FT_POOL_FROM; }
   function ftOn(b) { return ACTIVATE_FUNTRUMP_BLOCK != null && b != null && b >= ACTIVATE_FUNTRUMP_BLOCK; }
@@ -639,7 +639,7 @@
   var ACTIVATE_COMMUNITY_TRIGGER_BLOCK = 972646; // deploy Oct 22 2026 ~12:50 PM CT: tip 972,640 + 6 (owner approved). Arrivals before it are ignored; no-series rules are inert before halving 1 anyway
   function halvingOn(b) { return ACTIVATE_HALVING_BLOCK != null && b != null && b >= ACTIVATE_HALVING_BLOCK; }
   function halving1Block(w) { return ACTIVATE_HALVING_BLOCK == null || !w || !w.kekMythic ? null : Math.max(w.kekMythic.block + HALVING_DELAY, ACTIVATE_HALVING_BLOCK); }
-  /* AUTO HALVING (owner rule Oct 24 2026 12:02 AM CT; branch auto-halving, NOT deployed): every time a community pet goes to Cold Storage the next pet
+  /* AUTO HALVING (owner rule Oct 24 2026 12:02 AM CT; LIVE from ACTIVATE_AUTO_HALVING_BLOCK = 972,889): every time a community pet goes to Cold Storage the next pet
    * takes its place and there is exactly ONE halving, 6 blocks after that Cold Storage block. Halving 1 = Lord Kek (unchanged, halving1Block: Cold
    * Storage 972,869 -> 972,875). Halving N (N >= 2) = Cold Storage block of community pet N (after Lord Kek: FUNTRUMP = w.funtrumpMythic, ...) + 6,
    * pure replay data, no hand-set block. A new pet's ARRIVAL adds nothing. Bitcoin Wizard's Cold Storage was before the halving system and never counts.
@@ -1385,7 +1385,7 @@
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
       w.burnedBy[r.source] = (w.burnedBy[r.source] || 0) + amt; w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
-      wizTrack(w, r, amt); kekTrack(w, r, amt); ftTrack(w, r, amt); /* FUNTRUMP care (inert while ACTIVATE_FUNTRUMP_BLOCK is null) */ /* Lord Kek care + Cold Storage (inert while ACTIVATE_KEK_BLOCK is null) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
+      wizTrack(w, r, amt); kekTrack(w, r, amt); ftTrack(w, r, amt); /* FUNTRUMP care (live from 972,880) */ /* Lord Kek care + Cold Storage (live from 972,396) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       if (fireOn(r.block_index)) fireExtend(w, r.block_index - 1); /* fire sale arms are decided for blocks before this burn */
       var res = handle(w, r, t, amt, bh, L); if (fireOn(r.block_index)) fireCredit(w, r, t, amt, res);
@@ -1402,7 +1402,7 @@
     if (kekOn(tip) && w.wizardMythic) { var KK = w.kek || { fed: 0, feeds: 0, by: {} }; /* Lord Kek = community pet #3 (gated) */
       cm.kekFed = KK.fed; cm.kekStage = stageFor(KK.fed, COMMUNITY_THRESHOLDS); cm.current = 'kek'; if (!w.kekMythic) cm.nextPet = 'kek';
       cm.petName = 'Lord Kek'; cm.petStage = cm.kekStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
-    if (ftOn(tip) && w.kekMythic) { var FT = w.funtrump || { fed: 0, feeds: 0, by: {} }; /* FUNTRUMP = community pet #4 (gated, inert) */
+    if (ftOn(tip) && w.kekMythic) { var FT = w.funtrump || { fed: 0, feeds: 0, by: {} }; /* FUNTRUMP = community pet #4 (live from 972,880) */
       cm.funtrumpFed = FT.fed; cm.funtrumpStage = stageFor(FT.fed, COMMUNITY_THRESHOLDS); cm.current = 'funtrump'; cm.nextPet = w.funtrumpMythic ? null : 'funtrump';
       cm.petName = 'FUNTRUMP'; cm.petStage = cm.funtrumpStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });
@@ -1634,8 +1634,8 @@
       turns: last.turns, maxA: last.maxA, maxB: last.maxB, spoils: spoilsList[0] ? { gid: spoilsList[0].gid, label: spoilsList[0].label } : null, spoilsList: spoilsList });
     return L(r, 'fightDone', 'Tag Team fight ' + F.id + ': #' + winners.join(' & #') + ' beat #' + losers.join(' & #') + (spoilsList.length ? ', took ' + spoilsList.map(function (g) { return g.label; }).join(' + ') : ''), { fightId: F.id, mode: 'tt' });
   }
-  /* ===== MYTHIC QUESTS (owner "lets roll out", Oct 24 2026; rules = Page "XCPETS Mythic Quests: draft rules"; branch mythic-quests, NOT deployed) =====
-   * Gate ACTIVATE_QUEST_BLOCK = null: below the gate (and while null) every pet:quest / pet:aura burn is an unknown tag (invalid -> community food)
+  /* ===== MYTHIC QUESTS (owner "lets roll out", Oct 24 2026; rules = Page "XCPETS Mythic Quests: draft rules"; LIVE from ACTIVATE_QUEST_BLOCK = 972,952) =====
+   * Below the gate (or if it were set back to null) every pet:quest / pet:aura burn is an unknown tag (invalid -> community food)
    * exactly as before, and nothing else moves. From the gate:
    *  - pet:quest:ID:Q (Q = spam | cold | kek | wiz | mine): a living Mythic held by the burner, not questing, not on Nap Time, not in an open sale or swap,
    *    burn >= costAt(base) (halvings + Fire Sale like every burn). First quest of a Mythic alive at the gate is free ("First Quest's on Nakamoto": any burn).
@@ -2103,7 +2103,7 @@
     'pepe:wizard': 'Pewiz', 'wojak:wizard': 'Wowiz', 'chud:wizard': 'Chuwiz', 'bobo:wizard': 'Bowiz', 'mumu:wizard': 'Muwiz', 'snibby:wizard': 'Sniwiz', 'dodo:wizard': 'Dowiz', 'kevin:wizard': 'Kevwiz', 'peepo:wizard': 'Peewiz', 'sarutobi:wizard': 'Sawiz', 'doge:wizard': 'Dogwiz', 'lenny:wizard': 'Lewiz', 'nakamoto:wizard': 'Nawiz',
     'nakamoto:pepe': 'Napep', 'nakamoto:wojak': 'Najak', 'nakamoto:chud': 'Nachud', 'nakamoto:bobo': 'Nabo', 'nakamoto:mumu': 'Namu', 'nakamoto:snibby': 'Nabby', 'nakamoto:dodo': 'Nadod', 'nakamoto:kevin': 'Navin', 'nakamoto:peepo': 'Napo', 'nakamoto:sarutobi': 'Nabi', 'nakamoto:doge': 'Nage', 'nakamoto:lenny': 'Nalen'
   };
-  /* FUNTRUMP 2-way names (branch funtrump-community, PREVIEW; inert: no FUNTRUMP pet exists until ACTIVATE_FUNTRUMP_BLOCK is set and his egg rolls):
+  /* FUNTRUMP 2-way names (LIVE from ACTIVATE_FUNTRUMP_BLOCK = 972,880; used once a FUNTRUMP egg rolls):
    * shape species first: <species>trump (Pepetrump) / Fun<species> (Funjak). Never overrides an existing name. */
   ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek', 'wizard'].forEach(function (sp, i) {
     var A = ['Pepe', 'Wo', 'Chud', 'Bo', 'Mu', 'Snib', 'Do', 'Kev', 'Peep', 'Saru', 'Doge', 'Len', 'Naka', 'Kek', 'Wiz'][i], B = ['pepe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto', 'kek', 'zard'][i];
