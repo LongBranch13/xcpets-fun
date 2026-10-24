@@ -150,7 +150,7 @@
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
   function coldEntryFrames(e) { return (R && R.coldFrames && R.coldFrames(e.sp, e.loadout || [], COLD_STAGE)) || wizMythicFrames(M.world()); }
-  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; return WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); }
+  function wizMythicFrames(w) { var g = R && R.wizardGear ? R.wizardGear(w) : { head: WizardSprite.WIZARD_HAT }; var fr = WizardSprite.frames(COLD_STAGE, '#2a3a2e', g, { community: true }); return R && R.mythFx && R.MYTH_PREVIEW ? R.mythFx(fr, function (bg) { return WizardSprite.frames(COLD_STAGE, bg, g, { community: true }); }, R.MYTH_PREVIEW) : fr; } /* mythic-look options */
   /* wizard-story-short P3 (owner 2026-10-21): the farewell Wizard wears exactly his Cold Storage look: the entry's Mythic signature loadout via
    * V2Render.coldFrames (data-driven, no pet ids); after the story beat where he puts the sign down, the same loadout minus e.putDown. */
   function entryOf(id) { return ARCHIVE.filter(function (e) { return e.id === id; })[0]; }

@@ -15,7 +15,7 @@
    * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
   var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
-  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); } /* wiz-black-fix: never throw on a bad frame */
+  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (a) a.vis = e.isIntersecting; }); }) : null;
   setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
     animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
@@ -482,13 +482,206 @@
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
   /* wiz-black-fix 2026-10-21 (display only): a frame is drawable only if it is a full 32x32 RGBA buffer. */
   function okFrames(fr) { return !!(fr && fr.length && fr.every(function (f) { return f && f.data && f.data.length === 4096; })); }
+  /* mythic-look HOLO pass (2026-10-24, owner: 'no i mean the holo art etc not be pixel but a real looking holo' + 'real shine'; DESIGN OPTIONS, display only,
+   * default OFF, not deployed). The pet sprite stays crisp pixel art: its pixels are NOT changed. A Mythic pet's frames are tagged (MYTH_INFO) with the
+   * option + the pet/gear silhouette (two keyed renders, magenta / green: pixels equal in both = pet + gear), and paint() lays a smooth DOM/CSS effect
+   * over the canvas: real holo foil (gradients + color-dodge/overlay/screen blends + foil texture), a glossy specular glare streak that follows the
+   * pointer (or phone tilt) and sweeps on its own otherwise, and twinkling glitter. Works for every sprite path that paints through V2Render
+   * (player pets incl. hybrids + all gear, Wizard/Kek/FUNTRUMP sprite pets, Cold Storage portraits). Only transform/opacity animate (GPU, phones);
+   * off-screen overlays pause; prefers-reduced-motion => static shine. Switch ?mythic=a|b|c|d|aura1|aura2|aura3|aura4|aura5 (localStorage xcpets-mythic-look; ?mythic=off clears).
+   * a = iridescent holo foil, b = glowing halo + light sparkles, c = iridescent aura + orbiting light stars, d = metallic gold-foil laurels; aura1-3 (TRACE pass, owner 2:20 AM CT 'i want it to trace the pet like it does now') = today's look where only the MATERIAL of today's Mythic rim line changes: the overlay is masked to exactly the rim pixels (same path/thickness/position, per frame) with holo colour, a white core thread, glints running along it and glitter; no halo (at most a tight drop-shadow): 1 subtle, 2 strong, 3 prism chrome; aura4 (rare holo card pull) = aura2's exact traced line with a brighter saturated shifting rainbow, a bold white light sweep running round the outline every 3.6 s, star glints sitting on rim pixels and a one-time sparkle burst when the card first shows (very tight glow, no halo); aura5 (owner: 'too much rainbow should be electricity maybe') = the same exact traced line as electricity: blue-white/cyan core with a tight glow, flickering crackle, small jagged lightning arcs jumping to random rim pixels, an occasional bright zap sweep round the outline and an electric flash + spark burst on first show (reduced motion: static bright electric line, no arcs/animation). No rule/replay change. */
+  /* mythic-aura5-live 2026-10-24 (owner 'love it, send it'): the electric aura5 is the DEFAULT live look for every player Mythic (replaces the gold rim line, same trace).
+   * ?mythic=off = opt-out for that page view; ?mythic=a|b|c|d|aura1-5 = preview for that page view only. Nothing is stored any more: the old
+   * xcpets-mythic-look localStorage key from preview days is removed so it can never force another look. Community / Cold Storage pets keep today's look
+   * (no aura overlay) unless a preview value is in the URL. */
+  var MYTH_URL = (function () { try { var q = /[?&]mythic=([a-z0-9]+)/.exec((window.location && window.location.search) || ''); try { window.localStorage.removeItem('xcpets-mythic-look'); } catch (e) {} return q ? q[1] : null; } catch (e) { return null; } })();
+  var MYTH_PREVIEW = /^([abcd]|aura[12345])$/.test(MYTH_URL || '') ? MYTH_URL : null;
+  var MYTH_MODE = MYTH_URL === 'off' ? null : (MYTH_PREVIEW || 'aura5');
+  var MYTH_STILL = (function () { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
+  var MYTH_INFO = typeof WeakMap !== 'undefined' ? new WeakMap() : null, MYTH_FI = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  /* mythRimOf(a, b): today's live Mythic aura rim, pixel for pixel, from the two keyed renders. pet-core draws it as mix(bg, #ffd23f, .55) one ring
+   * outside the ink outline (so it reads (255,116,149) on the magenta key and (140,230,35) on the green key); the Wizard / Lord Kek / FUNTRUMP sprites
+   * draw it as the opaque palette gold #ffc93c ring around their ink outline (found by growing in from the background). Nothing else is touched. */
+  function mythRimOf(a, b) { var r = new Uint8Array(1024), p, i, near = function (d, i, R, G, B) { return Math.abs(d[i] - R) <= 2 && Math.abs(d[i + 1] - G) <= 2 && Math.abs(d[i + 2] - B) <= 2; };
+    for (p = 0; p < 1024; p++) { i = p * 4; if (near(a, i, 255, 116, 149) && near(b, i, 140, 230, 35)) r[p] = 1; }
+    var bg = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return true; var j = (y * 32 + x) * 4; return (a[j] !== b[j] || a[j + 1] !== b[j + 1] || a[j + 2] !== b[j + 2]) || r[y * 32 + x]; };
+    for (var it = 0, ch = true; ch && it < 40; it++) { ch = false; for (p = 0; p < 1024; p++) { if (r[p]) continue; i = p * 4; if (a[i] !== 255 || a[i + 1] !== 201 || a[i + 2] !== 60 || b[i] !== 255 || b[i + 1] !== 201 || b[i + 2] !== 60) continue;
+      var x = p & 31, y = p >> 5; if (bg(x + 1, y) || bg(x - 1, y) || bg(x, y + 1) || bg(x, y - 1)) { r[p] = 1; ch = true; } } }
+    return r; }
+  /* mythRimUrls(r): crisp hi-res masks of that same rim: line = every rim pixel as a full square (same path / thickness / position as today),
+   * core = a thin centre thread joining neighbouring rim pixels (the white hot highlight inside the line). */
+  function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, mk = function () { var c = document.createElement('canvas'); c.width = c.height = W; return c; };
+    var L = mk(), lg = L.getContext('2d'), C = mk(), cg = C.getContext('2d'), on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
+    lg.fillStyle = '#fff'; cg.strokeStyle = cg.fillStyle = '#fff'; cg.lineWidth = S * 0.2; cg.lineCap = 'round';
+    for (var p = 0; p < 1024; p++) if (r[p]) { var x = p & 31, y = p >> 5, cx = (x + 0.5) * S, cy = (y + 0.5) * S; lg.fillRect(x * S, y * S, S, S);
+      cg.beginPath(); cg.arc(cx, cy, S * 0.1, 0, 7); cg.fill();
+      [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(function (d) { if (!on(x + d[0], y + d[1])) return; if (d[0] && d[1] && (on(x + d[0], y) || on(x, y + d[1]))) return;
+        cg.beginPath(); cg.moveTo(cx, cy); cg.lineTo(cx + d[0] * S, cy + d[1] * S); cg.stroke(); }); }
+    var out = { line: L.toDataURL(), core: C.toDataURL() }; if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
+  function mythFrame(c, img, info) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (c._mfxR === r.k) return; c._mfxR = r.k;
+    var U = mythRimUrls(r); o.style.setProperty('--rl', 'url(' + U.line + ')'); o.style.setProperty('--rc', 'url(' + U.core + ')'); }
+  function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
+    var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
+    var a = A[0].data, b = B[0].data, m = new Uint8Array(1024), bb = { x0: 32, x1: -1, y0: 32, y1: -1 }, key = mode;
+    for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x; if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y; } }
+    if (bb.x1 < 0) return fr;
+    if (/^aura/.test(mode) && MYTH_FI) { /* aura1-3 TRACE pass: the line is exactly today's Mythic rim pixels, found per frame (it bobs with the pet) */
+      var rims = [], rk = mode, any = false;
+      for (var f = 0; f < fr.length; f++) { var Af = (A[f] || A[0]).data, Bf = (B[f] || B[0]).data, r = mythRimOf(Af, Bf), s2 = '';
+        for (p = 0; p < 1024; p += 32) { var rw = 0; for (var q2 = 0; q2 < 32; q2++) { rw = rw * 2 + r[p + q2] >>> 0; if (r[p + q2]) any = true; } s2 += '.' + rw.toString(36); }
+        r.k = s2; rims.push(r); rk += '|' + s2; }
+      if (!any) return fr; var ainfo = { mode: mode, m: m, bb: bb, key: rk, rims: rims };
+      return fr.map(function (f, i) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, ainfo); MYTH_FI.set(g, i); return g; }); }
+    bb.yh = bb.y0; for (var yy = bb.y0; yy <= bb.y1; yy++) { var cnt = 0; for (var xx = 0; xx < 32; xx++) cnt += m[yy * 32 + xx]; if (cnt >= 4) { bb.yh = yy; break; } } /* head top (skips a lone badge/gear pixel) */
+    for (p = 0; p < 1024; p += 32) { var row = 0; for (var q = 0; q < 32; q++) row = row * 2 + m[p + q] >>> 0; key += '.' + row.toString(36); }
+    var info = { mode: mode, m: m, bb: bb, key: key };
+    return fr.map(function (f) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, info); return g; }); }
+  var mythCss = false, mythLive = typeof Set !== 'undefined' ? new Set() : null, mythMasks = {}, mythUid = 0, mythPtr = null, mythTilt = null, mythRaf = 0;
+  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); }); }) : null;
+  function mythStyle() { if (mythCss || !document.head) return; mythCss = true; var s = document.createElement('style'); s.id = 'mfx-css';
+    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:visible}.mfx>*{position:absolute;pointer-events:none}' +
+      '.mfx .pm{inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;overflow:hidden}' +
+      '.mfx .holo{inset:0;background:linear-gradient(115deg,#ff3a6e,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8,#ff3a6e,#ffb13a,#fff36a,#4dff9a);background-size:400% 400%;mix-blend-mode:color-dodge;opacity:.38}' +
+      '.mfx .holo2{inset:0;background:repeating-linear-gradient(65deg,rgba(255,255,255,.0) 0 2px,rgba(160,255,255,.35) 3px,rgba(255,160,255,.0) 5px),repeating-linear-gradient(-25deg,rgba(255,255,255,0) 0 3px,rgba(255,255,200,.22) 4px,rgba(255,255,255,0) 6px);mix-blend-mode:overlay;opacity:.8}' +
+      '.mfx .glit{inset:0;background-size:24px 24px;mix-blend-mode:color-dodge;opacity:.9}' +
+      '.mfx .gw{mix-blend-mode:overlay}.mfx .gw2{mix-blend-mode:screen;opacity:.4}.mfx .glare{top:-60%;bottom:-60%;width:46%;left:0;background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.05) 28%,rgba(255,255,255,.55) 44%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.55) 56%,rgba(255,255,255,.05) 72%,rgba(255,255,255,0) 100%);transform:translateX(-120%) rotate(12deg);will-change:transform}' +
+      '.mfx .gloss{inset:0;background:radial-gradient(120% 70% at 30% 0%,rgba(255,255,255,.32),rgba(255,255,255,0) 60%);mix-blend-mode:screen}' +
+      '.mfx .halo{border-radius:50%;border:2px solid rgba(255,244,190,.95);box-shadow:0 0 6px 2px rgba(255,214,80,.9),0 0 16px 6px rgba(255,190,40,.45),inset 0 0 5px 1px rgba(255,255,230,.8);background:radial-gradient(closest-side,rgba(255,230,120,0) 55%,rgba(255,230,120,.35) 80%,rgba(255,230,120,0));will-change:transform,opacity}' +
+      '.mfx .hglow{border-radius:50%;background:radial-gradient(closest-side,rgba(255,236,150,.55),rgba(255,200,60,.18) 55%,rgba(255,200,60,0));mix-blend-mode:screen}' +
+      '.mfx .spk{width:16%;aspect-ratio:1;margin:-8% 0 0 -8%;background:radial-gradient(closest-side,#fff 0,rgba(255,255,255,.95) 12%,rgba(255,230,140,.6) 30%,rgba(255,200,80,0) 70%);clip-path:polygon(50% 0,58% 42%,100% 50%,58% 58%,50% 100%,42% 58%,0 50%,42% 42%);filter:drop-shadow(0 0 2px #ffe680);opacity:0;transform:scale(.2);will-change:transform,opacity}' +
+      '.mfx .aura{inset:-12%;-webkit-mask-size:100% 100%;mask-size:100% 100%;background:conic-gradient(from 0deg,#ff5ad8,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8);mix-blend-mode:screen;will-change:transform}' +
+      '.mfx .auraw{inset:-12%;-webkit-mask-size:100% 100%;mask-size:100% 100%;overflow:hidden}.mfx .auraw>i{position:absolute;inset:-40%;background:conic-gradient(from 0deg,#ff5ad8,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8);will-change:transform}' +
+      '.mfx .orbit{width:0;height:0}.mfx .orbit>b{position:absolute;left:0;top:0;animation:mfxOx 3.2s ease-in-out infinite alternate;will-change:transform}' +
+      '.mfx .orbit>b>i{position:absolute;left:0;top:0;animation:mfxOy 3.2s ease-in-out infinite alternate;will-change:transform,opacity;width:var(--s);height:var(--s);margin:calc(var(--s)/-2) 0 0 calc(var(--s)/-2);border-radius:50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.9) 25%,rgba(150,240,255,.5) 50%,rgba(150,240,255,0));box-shadow:0 0 6px 2px rgba(180,240,255,.7)}' +
+      '.mfx .laurel{overflow:visible}' +
+      '.mfx .al{inset:0}.mfx .ln{position:absolute;inset:0;-webkit-mask-image:var(--rl);mask-image:var(--rl);-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;overflow:hidden}' +
+      '.mfx .ln.core{-webkit-mask-image:var(--rc);mask-image:var(--rc);background:#fff;opacity:.7}.mfx .ln>i{position:absolute;inset:-45%;will-change:transform}' +
+      '.mfx .ln.holo>i{background:conic-gradient(from 0deg,#ff4fd8,#ff9a3c,#fff46a,#5dffa8,#3cdcff,#8a6bff,#ff4fd8,#ff9a3c,#fff46a,#5dffa8,#3cdcff,#8a6bff,#ff4fd8);animation:mfxSpin 7s linear infinite}' +
+      '.mfx .ln.sheen{background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.75) 45%,rgba(190,255,255,.35) 50%,rgba(255,255,255,0) 62%);background-size:300% 300%;mix-blend-mode:screen;animation:mfxHolo 3.2s ease-in-out infinite}' +
+      '.mfx .ln.glint>i{background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,0) 322deg,rgba(255,255,255,.75) 342deg,#fff 352deg,rgba(255,255,255,0) 360deg);animation:mfxSpin 2.6s linear infinite}' +
+      '.mfx .ln.glint2>i{background:conic-gradient(from 180deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,0) 330deg,rgba(255,250,215,.95) 350deg,rgba(255,255,255,0) 360deg);animation:mfxSpin 3.7s linear infinite reverse}' +
+      '.mfx .ln.glit{background-size:9cqw 9cqw;mix-blend-mode:screen;animation:mfxGlit 1.5s linear infinite}' +
+      '.mfx-aura1 .ln.holo>i{background:conic-gradient(from 0deg,#ffe08a,#ffc6e8,#c9f3ff,#d8ffc9,#fff1a8,#e6d2ff,#ffe08a);animation-duration:9s}.mfx-aura1 .ln.core{opacity:.45}.mfx-aura1 .ln.sheen{opacity:.6}.mfx-aura1 .ln.glit{opacity:.35}.mfx-aura1 .ln.glint{opacity:.8}' +
+      '.mfx-aura2 .ln.holo{filter:saturate(1.35) brightness(1.1)}.mfx-aura2 .ln.core{opacity:.55}.mfx-aura2 .al{filter:drop-shadow(0 0 .45cqw rgba(255,255,255,.6))}' +
+      '.mfx-aura4 .ln.holo{filter:saturate(2.2) contrast(1.15)}.mfx-aura4 .ln.holo>i{background:conic-gradient(from 0deg,#ff2bd6,#ff7a1a,#ffe600,#29ff7a,#00e5ff,#3d7bff,#b44dff,#ff2bd6,#ff7a1a,#ffe600,#29ff7a,#00e5ff,#3d7bff,#b44dff,#ff2bd6,#ff7a1a,#ffe600,#29ff7a,#00e5ff,#3d7bff,#b44dff,#ff2bd6);animation-duration:4s}'+'.mfx-aura4 .ln.hue{background:linear-gradient(90deg,#ff2bd6,#ffe600,#29ff7a,#00e5ff,#b44dff,#ff2bd6,#ffe600,#29ff7a);background-size:300% 100%;mix-blend-mode:hue;opacity:.5;animation:mfxHue 2.4s linear infinite}'+'.mfx-aura4 .ln.core{opacity:.32}.mfx-aura4 .ln.sheen{opacity:.5}.mfx-aura4 .ln.glint{opacity:.7}.mfx-aura4 .ln.glit{opacity:.8}.mfx-aura4 .al{filter:drop-shadow(0 0 .22cqw rgba(255,255,255,.55)) saturate(1.2)}'+'.mfx-aura4 .ln.sweep>i{inset:-60%;background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,0) 290deg,rgba(255,255,255,.6) 325deg,#fff 345deg,#fff 357deg,rgba(255,255,255,0) 360deg);opacity:0;animation:mfxSweep4 3.6s cubic-bezier(.5,0,.5,1) infinite}'+'.mfx-aura4 .ln.flash{background:#fff;opacity:0;animation:mfxFlash4 1.1s ease-out 1 both}'+'.mfx-aura4 .sg{width:9cqw;height:9cqw;margin:-4.5cqw 0 0 -4.5cqw;filter:drop-shadow(0 0 .3cqw #fff);background:radial-gradient(closest-side,#fff 0,#fff 18%,rgba(255,255,255,.7) 34%,rgba(255,255,255,0) 72%);clip-path:polygon(50% 0,57% 43%,100% 50%,57% 57%,50% 100%,43% 57%,0 50%,43% 43%);opacity:0;animation:mfxTw4 2.8s ease-in-out infinite}'+'.mfx-aura4 .bs{width:8cqw;height:8cqw;margin:-4cqw 0 0 -4cqw;background:radial-gradient(closest-side,#fff 0,#fff 20%,var(--bc) 45%,rgba(255,255,255,0) 75%);clip-path:polygon(50% 0,58% 42%,100% 50%,58% 58%,50% 100%,42% 58%,0 50%,42% 42%);opacity:0;animation:mfxBurst4 1.5s cubic-bezier(.2,.7,.3,1) 1 both}'+'@keyframes mfxSweep4{0%{transform:rotate(0deg);opacity:0}5%{opacity:1}55%{opacity:1}60%{transform:rotate(360deg);opacity:0}100%{transform:rotate(360deg);opacity:0}}'+'@keyframes mfxHue{to{background-position:300% 0}}@keyframes mfxFlash4{0%{opacity:0}18%{opacity:.95}100%{opacity:0}}'+'@keyframes mfxTw4{0%,100%{opacity:0;transform:scale(.3) rotate(0deg)}45%{opacity:0;transform:scale(.3)}60%{opacity:1;transform:scale(1.15) rotate(45deg)}75%{opacity:0;transform:scale(.4) rotate(90deg)}}'+'@keyframes mfxBurst4{0%{opacity:0;transform:translate(0,0) scale(.2)}15%{opacity:1;transform:translate(calc(var(--dx)*.3),calc(var(--dy)*.3)) scale(1.4) rotate(20deg)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3) rotate(120deg)}}'+'@media (prefers-reduced-motion:reduce){.mfx-aura4 .ln.sweep,.mfx-aura4 .ln.flash,.mfx-aura4 .bs{display:none}.mfx-aura4 .sg{opacity:.95;transform:scale(.8)}.mfx-aura4 .sg:nth-of-type(even){opacity:0}}'+
+      '.mfx-aura5 .ln.e5{background:linear-gradient(135deg,#7fe8ff,#e8fbff 30%,#3fc8ff 55%,#c8f4ff 80%,#5ad6ff)}'+'.mfx-aura5 .ln.core{opacity:.85;background:#fff}'+'.mfx-aura5 .ln.e5f{background:#dff8ff;opacity:0;mix-blend-mode:screen;animation:mfxFlk5 .9s steps(1,end) infinite}'+'.mfx-aura5 .ln.e5n>i{inset:-60%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,0) 9deg,rgba(255,255,255,.95) 11deg,rgba(255,255,255,0) 13deg,rgba(255,255,255,0) 23deg);mix-blend-mode:screen;animation:mfxCrk5 .45s steps(3,end) infinite}'+'.mfx-aura5 .al{filter:drop-shadow(0 0 .35cqw rgba(140,230,255,.95)) drop-shadow(0 0 .9cqw rgba(60,170,255,.55))}'+'.mfx-aura5 .ln.sweep>i{inset:-60%;background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,0) 300deg,rgba(150,235,255,.7) 335deg,#fff 350deg,#fff 357deg,rgba(255,255,255,0) 360deg);opacity:0;animation:mfxZap5 5.3s cubic-bezier(.6,0,.4,1) infinite}'+'.mfx-aura5 .ln.flash{background:#fff;opacity:0;animation:mfxFlash5 .9s steps(6,end) 1 both}'+'.mfx-aura5 .e5a{position:absolute;width:22cqw;height:22cqw;margin:-11cqw 0 0 -11cqw;overflow:visible;pointer-events:none;opacity:0;filter:drop-shadow(0 0 .4cqw #9feaff) drop-shadow(0 0 .9cqw rgba(70,180,255,.8));animation:mfxArc5 var(--d) steps(1,end) infinite;animation-delay:var(--w)}'+'.mfx-aura5 .e5s{position:absolute;width:2.2cqw;height:2.2cqw;margin:-1.1cqw 0 0 -1.1cqw;background:#fff;box-shadow:0 0 .8cqw .3cqw #7fe2ff;opacity:0;animation:mfxSpk5 .8s cubic-bezier(.2,.7,.3,1) 1 both}'+'@keyframes mfxFlk5{0%{opacity:0}12%{opacity:.55}16%{opacity:0}41%{opacity:.3}44%{opacity:0}70%{opacity:.7}73%{opacity:.1}76%{opacity:0}}'+'@keyframes mfxCrk5{0%{transform:rotate(0deg);opacity:.5}33%{transform:rotate(127deg);opacity:.9}66%{transform:rotate(251deg);opacity:.35}100%{transform:rotate(360deg);opacity:.5}}'+'@keyframes mfxZap5{0%{transform:rotate(0deg);opacity:0}3%{opacity:1}22%{opacity:1}25%{transform:rotate(360deg);opacity:0}100%{transform:rotate(360deg);opacity:0}}'+'@keyframes mfxFlash5{0%{opacity:0}15%{opacity:1}30%{opacity:.2}45%{opacity:.9}100%{opacity:0}}'+'@keyframes mfxArc5{0%{opacity:1}8%{opacity:.3}12%{opacity:1}24%{opacity:.6}28%{opacity:0}100%{opacity:0}}'+'@keyframes mfxSpk5{0%{opacity:0;transform:translate(0,0) scale(.5)}10%{opacity:1;transform:translate(calc(var(--dx)*.2),calc(var(--dy)*.2)) scale(1.3)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}'+'@media (prefers-reduced-motion:reduce){.mfx-aura5 .ln.e5f,.mfx-aura5 .ln.e5n,.mfx-aura5 .ln.sweep,.mfx-aura5 .ln.flash,.mfx-aura5 .e5a,.mfx-aura5 .e5s{display:none}}'+
+      '.mfx-aura3 .ln.holo>i{background:conic-gradient(from 0deg,#ffffff,#8fa3b8,#e9f9ff,#9ff0ff,#5b6b80,#f4e8ff,#c8a2ff,#ffffff,#7d8da2,#d6fff2,#ffd6f4,#ffffff);animation-duration:3.4s}.mfx-aura3 .ln.sheen{opacity:1}.mfx-aura3 .ln.core{opacity:.85}.mfx-aura3 .al{filter:drop-shadow(0 0 .45cqw rgba(190,240,255,.65))}' +
+      '@keyframes mfxSweep{0%{transform:translateX(-140%) rotate(12deg)}55%,100%{transform:translateX(330%) rotate(12deg)}}' +
+      '@keyframes mfxHolo{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}' +
+      '@keyframes mfxGlit{0%{opacity:.25;background-position:0 0}20%{opacity:.95}40%{opacity:.4;background-position:7px 3px}60%{opacity:1}80%{opacity:.3;background-position:3px 9px}100%{opacity:.25;background-position:0 0}}' +
+      '@keyframes mfxSpk{0%,100%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1) rotate(45deg)}70%{opacity:.7;transform:scale(.6) rotate(70deg)}}' +
+      '@keyframes mfxHalo{0%,100%{transform:translateY(0);opacity:.9}50%{transform:translateY(-6%);opacity:1}}' +
+      '@keyframes mfxSpin{to{transform:rotate(360deg)}}@keyframes mfxPulse{0%,100%{opacity:.55}50%{opacity:.95}}' +
+      '.mfx .glare{animation:mfxSweep 3.6s cubic-bezier(.45,.05,.35,1) infinite}.mfx .holo{animation:mfxHolo 6s ease-in-out infinite}.mfx .glit{animation:mfxGlit 1.7s linear infinite}.mfx .glit.g2{animation-duration:2.3s;animation-delay:-.8s;background-size:31px 31px}' +
+      '.mfx .spk{animation:mfxSpk 2.4s ease-in-out infinite}.mfx .halo,.mfx .hglow{animation:mfxHalo 3s ease-in-out infinite}.mfx .auraw>i{animation:mfxSpin 5s linear infinite}.mfx .auraw{animation:mfxPulse 2.4s ease-in-out infinite}' +
+      '@keyframes mfxOx{from{transform:translateX(calc(var(--rx)*-1))}to{transform:translateX(var(--rx))}}@keyframes mfxOy{from{transform:translateY(calc(var(--ry)*-1)) scale(.55);opacity:.55}to{transform:translateY(var(--ry)) scale(1.15);opacity:1}}' +
+      '.mfx.ptr .glare{animation:none}.mfx.ptr .holo{animation:none}.mfx.mfx-off *{animation-play-state:paused!important}' +
+      '@media (prefers-reduced-motion:reduce){.mfx *{animation:none!important}.mfx .ln.glint>i{transform:rotate(40deg)}.mfx .ln.glint2>i{transform:rotate(200deg)}.mfx .ln.sheen{background-position:50% 50%}.mfx .ln.glit{opacity:.5}.mfx .glare{transform:translateX(70%) rotate(12deg)}.mfx .spk{opacity:.9;transform:scale(.8)}.mfx .glit{opacity:.6}}';
+    document.head.appendChild(s); }
+  function mythGlitUrl() { if (mythMasks._g) return mythMasks._g; var c = document.createElement('canvas'); c.width = c.height = 48; var g = c.getContext('2d'), r = 7;
+    for (var i = 0; i < 70; i++) { r = (r * 9301 + 49297) % 233280; var x = r / 233280 * 48; r = (r * 9301 + 49297) % 233280; var y = r / 233280 * 48; r = (r * 9301 + 49297) % 233280; var t = r / 233280;
+      var gr = g.createRadialGradient(x, y, 0, x, y, 0.6 + t * 1.6); gr.addColorStop(0, 'rgba(255,255,255,' + (0.5 + t / 2) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x - 3, y - 3, 6, 6); }
+    return (mythMasks._g = c.toDataURL()); }
+  function mythMaskUrls(info) { var k = info.key; if (mythMasks[k]) return mythMasks[k]; var c = document.createElement('canvas'); c.width = c.height = 32; var g = c.getContext('2d'), id = g.createImageData(32, 32);
+    for (var p = 0; p < 1024; p++) if (info.m[p]) { id.data[p * 4] = id.data[p * 4 + 1] = id.data[p * 4 + 2] = 255; id.data[p * 4 + 3] = 255; } g.putImageData(id, 0, 0);
+    var pet = c.toDataURL(), R = document.createElement('canvas'), S = 160, o = Math.round(S * 0.12 / 1.24); R.width = R.height = S; var h = R.getContext('2d'), sc = (S - 2 * o) / 32; h.imageSmoothingEnabled = false;
+    h.shadowColor = '#fff'; h.shadowBlur = 9; for (var n = 0; n < 3; n++) h.drawImage(c, o, o, 32 * sc, 32 * sc); h.shadowBlur = 0; h.globalCompositeOperation = 'destination-out'; h.drawImage(c, o, o, 32 * sc, 32 * sc);
+    var band = function (rad, soft) { var E = document.createElement('canvas'); E.width = E.height = S; var e = E.getContext('2d'); e.imageSmoothingEnabled = false; if (soft) { e.shadowColor = '#fff'; e.shadowBlur = soft; }
+      for (var a = 0; a < 16; a++) e.drawImage(c, o + Math.cos(a / 8 * Math.PI) * rad * sc, o + Math.sin(a / 8 * Math.PI) * rad * sc, 32 * sc, 32 * sc);
+      e.shadowBlur = 0; e.globalCompositeOperation = 'destination-out'; e.drawImage(c, o, o, 32 * sc, 32 * sc); return E.toDataURL(); };
+    var out = { pet: pet, ring: R.toDataURL() }; var ks = Object.keys(mythMasks); if (ks.length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
+  function el(tag, cls, st) { var e = document.createElement(tag); if (cls) e.className = cls; if (st) e.setAttribute('style', st); return e; }
+  function mythLaurel(side, uid) { var NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg'); s.setAttribute('viewBox', '0 0 20 60'); s.setAttribute('class', 'laurel');
+    var gid = 'mfxg' + uid + side, wid = 'mfxw' + uid + side, leaves = '', i;
+    for (i = 0; i < 7; i++) { var y = 54 - i * 7.2, x = 13 - Math.sin(i / 6 * 2.6) * 6; leaves += '<ellipse cx="' + (x - 3.2).toFixed(1) + '" cy="' + (y - 2).toFixed(1) + '" rx="3.6" ry="1.5" transform="rotate(-38 ' + (x - 3.2).toFixed(1) + ' ' + (y - 2).toFixed(1) + ')"/>' +
+      '<ellipse cx="' + (x + 2.6).toFixed(1) + '" cy="' + (y - 3).toFixed(1) + '" rx="3.4" ry="1.4" transform="rotate(-62 ' + (x + 2.6).toFixed(1) + ' ' + (y - 3).toFixed(1) + ')"/>'; }
+    var anim = MYTH_STILL ? '' : '<animateTransform attributeName="gradientTransform" type="translate" values="0 70;0 -70;0 -70" keyTimes="0;0.6;1" dur="3.2s" repeatCount="indefinite"/>';
+    s.innerHTML = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4a08"/><stop offset=".3" stop-color="#e8b23a"/><stop offset=".48" stop-color="#fff2b0"/><stop offset=".62" stop-color="#d79a22"/><stop offset="1" stop-color="#6a3e06"/></linearGradient>' +
+      '<linearGradient id="' + wid + '" gradientUnits="userSpaceOnUse" x1="0" y1="20" x2="0" y2="34"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>' + anim + '</linearGradient></defs>' +
+      '<g style="filter:drop-shadow(0 0 1.2px rgba(255,210,80,.9))"><path d="M14 58 C 4 44, 4 22, 13 4" fill="none" stroke="url(#' + gid + ')" stroke-width="1.6" stroke-linecap="round"/><g fill="url(#' + gid + ')" stroke="#5a3404" stroke-width=".35">' + leaves + '</g>' +
+      '<g fill="url(#' + wid + ')" style="mix-blend-mode:screen"><path d="M14 58 C 4 44, 4 22, 13 4" fill="none" stroke="url(#' + wid + ')" stroke-width="1.6"/>' + leaves + '</g></g>';
+    if (side === 'r') s.style.transform = 'scaleX(-1)'; return s; }
+  /* aura4 extras: rainbow hue drift + white sweep + one-time flash on the traced line, star glints and the burst placed ON rim pixels (frame 0) */
+  function mythAura4(o, al, info) { var r = (info.rims && info.rims[0]) || [], pts = [], P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, cx = (info.bb.x0 + info.bb.x1 + 1) / 2, cy = (info.bb.y0 + info.bb.y1 + 1) / 2;
+    [['ln hue', 0], ['ln sweep', 1], ['ln flash', 0]].forEach(function (q) { var e = el('div', q[0]); if (q[1]) e.appendChild(el('i')); al.appendChild(e); });
+    for (var p = 0; p < 1024; p++) if (r[p]) pts.push([(p & 31) + 0.5, (p >> 5) + 0.5]); if (!pts.length) return;
+    pts.sort(function (a, b) { return Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx); });
+    var G = 7; for (var k = 0; k < G; k++) { var g = pts[Math.floor((k + 0.37) / G * pts.length)]; o.appendChild(el('div', 'sg', 'left:' + P(g[0]) + ';top:' + P(g[1]) + ';animation-delay:-' + (k * 0.83 % 2.8).toFixed(2) + 's')); }
+    if (MYTH_STILL) return; var C = ['#ff4fd8', '#ffe600', '#29ff7a', '#00e5ff', '#b44dff', '#ff9a3c'], N = 18;
+    for (k = 0; k < N; k++) { var b = pts[Math.floor(k / N * pts.length)], dx = b[0] - cx, dy = b[1] - cy, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      o.appendChild(el('div', 'bs', 'left:' + P(b[0]) + ';top:' + P(b[1]) + ';--bc:' + C[k % 6] + ';--dx:' + (dx / d * 5 / 32 * 100).toFixed(2) + 'cqw;--dy:' + (dy / d * 5 / 32 * 100).toFixed(2) + 'cqw;animation-delay:' + (0.15 + (k % 5) * 0.06).toFixed(2) + 's')); } }
+  /* aura5 (electric): blue-white line + flicker/crackle + zap sweep + one-time flash, jagged arcs that hop to random rim pixels each cycle, spark burst */
+  function mythAura5(o, al, info) { var r = (info.rims && info.rims[0]) || [], pts = [], P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, cx = (info.bb.x0 + info.bb.x1 + 1) / 2, cy = (info.bb.y0 + info.bb.y1 + 1) / 2;
+    for (var p = 0; p < 1024; p++) if (r[p]) pts.push([(p & 31) + 0.5, (p >> 5) + 0.5]); if (!pts.length || MYTH_STILL) return;
+    [['ln e5f', 0], ['ln e5n', 1], ['ln sweep', 1], ['ln flash', 0]].forEach(function (q) { var e = el('div', q[0]); if (q[1]) e.appendChild(el('i')); al.appendChild(e); });
+    var NS = 'http://www.w3.org/2000/svg', bolt = function (s) { var a = Math.random() * 6.283, L = 5 + Math.random() * 2.5, n = 4 + (Math.random() * 3 | 0), d = '', k, x, y, ox = 5 - Math.cos(a) * L / 2, oy = 5 - Math.sin(a) * L / 2;
+        for (k = 0; k <= n; k++) { x = ox + Math.cos(a) * L * k / n + (k && k < n ? (Math.random() - 0.5) * 2.4 : 0); y = oy + Math.sin(a) * L * k / n + (k && k < n ? (Math.random() - 0.5) * 2.4 : 0); d += (k ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2); }
+        s.innerHTML = '<path d="' + d + '" fill="none" stroke="#7fdcff" stroke-width=".85" stroke-linejoin="bevel"/><path d="' + d + '" fill="none" stroke="#fff" stroke-width=".4" stroke-linejoin="bevel"/>'; },
+      hop = function (s) { var g = pts[Math.random() * pts.length | 0]; s.style.left = P(g[0]); s.style.top = P(g[1]); bolt(s); };
+    for (var k = 0; k < 5; k++) { var s = document.createElementNS(NS, 'svg'); s.setAttribute('class', 'e5a'); s.setAttribute('viewBox', '0 0 10 10');
+      s.style.setProperty('--d', (0.9 + Math.random() * 1.4).toFixed(2) + 's'); s.style.setProperty('--w', (Math.random() * 1.2).toFixed(2) + 's'); hop(s);
+      s.addEventListener('animationiteration', function (e) { hop(e.currentTarget); }); o.appendChild(s); }
+    var N = 16; for (k = 0; k < N; k++) { var b = pts[Math.floor((k + Math.random() * 0.6) / N * pts.length) % pts.length], dx = b[0] - cx, dy = b[1] - cy, dd = Math.sqrt(dx * dx + dy * dy) || 1, f = 4 + Math.random() * 4;
+      o.appendChild(el('div', 'e5s', 'left:' + P(b[0]) + ';top:' + P(b[1]) + ';--dx:' + (dx / dd * f / 32 * 100).toFixed(2) + 'cqw;--dy:' + (dy / dd * f / 32 * 100).toFixed(2) + 'cqw;animation-delay:' + (0.05 + Math.random() * 0.25).toFixed(2) + 's')); } }
+  function mythBuild(info) { var o = el('div', 'mfx mfx-' + info.mode), bb = info.bb, U = mythMaskUrls(info), P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, uid = ++mythUid, mode = info.mode;
+    var mk = function (cls, st) { var e = el('div', 'pm ' + cls, st); e.style.webkitMaskImage = e.style.maskImage = 'url(' + U.pet + ')'; return e; }, pm = [];
+    var glit = 'background-image:url(' + mythGlitUrl() + ')';
+    if (mode === 'aura5') { var al5 = el('div', 'al'); [['ln e5', 0], ['ln core', 0]].forEach(function (q) { al5.appendChild(el('div', q[0])); }); mythAura5(o, al5, info); o.appendChild(al5); return o; }
+    if (/^aura/.test(mode)) { var al = el('div', 'al'); [['ln holo', 1], ['ln sheen', 0], ['ln core', 0], ['ln glint', 1], ['ln glint2', 1], ['ln glit', 0]].forEach(function (q) {
+        if (mode === 'aura1' && /glint2/.test(q[0])) return; var e = el('div', q[0], /glit/.test(q[0]) ? glit : ''); if (q[1]) e.appendChild(el('i')); al.appendChild(e); });
+      if (mode === 'aura4') mythAura4(o, al, info); o.appendChild(al); return o; }
+    if (mode === 'a') { pm.push(mk('holo'), mk('holo2'), mk('glit', glit), mk('glit g2', glit)); } else pm.push(mk('glit', glit + ';opacity:.7'));
+    pm.push(mk('gloss')); var gw = mk('gw'), gw2 = mk('gw2'); gw.appendChild(el('div', 'glare')); gw2.appendChild(el('div', 'glare')); pm.push(gw, gw2);
+    var cx = (bb.x0 + bb.x1 + 1) / 2, w = bb.x1 - bb.x0 + 1, hgt = bb.y1 - bb.y0 + 1;
+    if (mode === 'c') { var aw = el('div', 'auraw'); aw.style.webkitMaskImage = aw.style.maskImage = 'url(' + U.ring + ')'; aw.appendChild(el('i')); o.appendChild(aw); }
+    pm.forEach(function (e) { o.appendChild(e); });
+    if (mode === 'b') { var hw = Math.max(8, Math.min(16, w * 0.6)), hy = Math.max(0.4, bb.yh - 1.6);
+      o.appendChild(el('div', 'hglow', 'left:' + P(cx - hw * 0.8) + ';width:' + P(hw * 1.6) + ';top:' + P(hy - 3) + ';height:' + P(8)));
+      o.appendChild(el('div', 'halo', 'left:' + P(cx - hw / 2) + ';width:' + P(hw) + ';top:' + P(hy) + ';height:' + P(2.6)));
+      [[bb.x0 - 2, bb.y0 + hgt * 0.3, 0], [bb.x1 + 2, bb.y0 + hgt * 0.15, 0.6], [bb.x1 + 1.5, bb.y0 + hgt * 0.65, 1.2], [bb.x0 - 1.5, bb.y0 + hgt * 0.75, 1.8], [cx + 3, bb.y0 + 2, 0.9], [cx - 5, bb.y0 + hgt * 0.5, 1.5]].forEach(function (q) {
+        o.appendChild(el('div', 'spk', 'left:' + P(Math.max(1, Math.min(31, q[0]))) + ';top:' + P(Math.max(1, Math.min(31, q[1]))) + ';animation-delay:-' + q[2] + 's')); }); }
+    if (mode === 'c') { var ob = el('div', 'orbit', 'left:' + P(cx) + ';top:' + P(bb.y0 + hgt * 0.45) + ';--rx:' + (Math.min(15, w / 2 + 3) / 32 * 100).toFixed(1) + 'cqw;--ry:' + (3.2 / 32 * 100).toFixed(1) + 'cqw;--s:9cqw');
+        [0, -3.2].forEach(function (dl) { var b = el('b', '', 'animation-delay:' + dl + 's'), i = el('i', '', 'animation-delay:' + (dl - 1.6) + 's'); b.appendChild(i); ob.appendChild(b); }); o.appendChild(ob); }
+    if (mode === 'd') { var lh = Math.min(16, hgt + 2); [['l', bb.x0 - 4.6], ['r', bb.x1 + 1.6]].forEach(function (q) { var s = mythLaurel(q[0], uid); s.setAttribute('style', (s.getAttribute('style') || '') + ';position:absolute;left:' + P(q[1]) + ';top:' + P(bb.y1 + 1 - lh) + ';width:' + P(lh / 3) + ';height:' + P(lh) + (q[0] === 'r' ? ';transform:scaleX(-1)' : '')); o.appendChild(s); }); }
+    return o; }
+  function mythPlace(c) { var o = c._mfx; if (!o) return; var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
+    o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size'; o._pos = c.offsetLeft + ',' + c.offsetTop + ',' + w + ',' + h; try { var cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(), dx = cr.left - orr.left, dy = cr.top - orr.top; /* sub-pixel exact: the line must sit on the rim pixels */ if (Math.abs(dx) > 0.01) o.style.left = (c.offsetLeft + dx) + 'px'; if (Math.abs(dy) > 0.01) o.style.top = (c.offsetTop + dy) + 'px'; } catch (e) {}
+    var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } 
+    mythFit(); }
+  /* decorations (aura ring, orbit stars, laurels) may poke past the screen edge on phones: never let them create a sideways scroll */
+  var mythFitRaf = 0; function mythFit() { if (mythFitRaf || typeof requestAnimationFrame === 'undefined') return; mythFitRaf = requestAnimationFrame(function () { mythFitRaf = 0; var W = document.documentElement.clientWidth; if (!W) return;
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', function () { mythFit(); });
+    document.querySelectorAll('.mfx').forEach(function (o) { var r = o.getBoundingClientRect(); if (!r.width) return; var room = Math.floor(Math.min(r.left + scrollX, W - r.right - scrollX) - 2);
+      if (room < r.width * 0.3) { o.style.overflow = 'clip'; o.style.overflowClipMargin = Math.max(0, room) + 'px'; } else { o.style.overflow = ''; o.style.overflowClipMargin = ''; } }); }); }
+  var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
+  function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; c._mfxR = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
+  function mythAttach(c, img) { if (!MYTH_INFO || !c || c.nodeType !== 1) return; var info = MYTH_INFO.get(img);
+    if (!info) { if (c._mfx) mythDetach(c); return; } if (c._mfxKey === info.key && c._mfx && c._mfx.parentNode === c.parentNode && c._mfx.isConnected) { var o0 = c._mfx; if (o0._pos !== c.offsetLeft + ',' + c.offsetTop + ',' + c.offsetWidth + ',' + c.offsetHeight) mythPlace(c); /* follow layout shifts */ mythFrame(c, img, info); return; }
+    if (!c.parentNode || typeof document === 'undefined') return; try { mythStyle(); if (c._mfx) mythDetach(c); var o = mythBuild(info); c._mfx = o; c._mfxKey = info.key; o._c = c;
+      c._mfxR = null; c.parentNode.insertBefore(o, c.nextSibling); mythFrame(c, img, info); var ps = window.getComputedStyle ? getComputedStyle(c.offsetParent || c.parentNode) : null; mythPlace(c);
+      if (mythRO) mythRO.observe(c); if (mythVis) mythVis.observe(c); if (mythLive) mythLive.add(c); mythListen(); } catch (e) { if (window.console) console.warn('mythic look failed', e); } }
+  function mythTick() { mythRaf = 0; if (!mythLive) return; mythLive.forEach(function (c) { var o = c._mfx; if (!o || !c.isConnected) { mythDetach(c); return; } if (o.classList.contains('mfx-off')) return;
+      var r = c.getBoundingClientRect(), fx = null; if (!r.width) return;
+      if (mythPtr) { var px = (mythPtr[0] - r.left) / r.width, py = (mythPtr[1] - r.top) / r.height; if (px > -0.25 && px < 1.25 && py > -0.25 && py < 1.25) fx = [px, py]; }
+      if (!fx && mythTilt) fx = mythTilt;
+      var gl = o.querySelector('.glare'), ho = o.querySelector('.holo');
+      if (fx) { o.classList.add('ptr'); var X = Math.max(-0.2, Math.min(1.2, fx[0])); if (gl) gl.style.transform = 'translateX(' + ((X * 2.6 - 1.15) * 100).toFixed(0) + '%) rotate(12deg)'; if (ho) ho.style.backgroundPosition = (X * 100).toFixed(0) + '% ' + (Math.max(0, Math.min(1, fx[1])) * 100).toFixed(0) + '%'; }
+      else if (o.classList.contains('ptr')) { o.classList.remove('ptr'); if (gl) gl.style.transform = ''; if (ho) ho.style.backgroundPosition = ''; } }); }
+  var mythListening = false;
+  function mythListen() { if (mythListening || MYTH_STILL || typeof window.addEventListener !== 'function') return; mythListening = true; var q = function () { if (!mythRaf) mythRaf = (window.requestAnimationFrame || setTimeout)(mythTick); };
+    window.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; mythPtr = [e.clientX, e.clientY]; q(); }, { passive: true });
+    document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
+    window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
+    window.addEventListener('scroll', q, { passive: true }); }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
     try { if (hd) fr = hungerLook(fr, p, w, extra, hd);
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
-    return okFrames(fr) ? fr : bare; }
+    fr = okFrames(fr) ? fr : bare;
+    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }); /* mythic-look options */
+    return fr; }
   function petFrames0(p, w, extra) {
     var ids = worn(w, p.id).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
@@ -705,7 +898,7 @@
   function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
-    return S.frames(stage, '#2a3a2e', G, { community: true }); }
+    var fr = S.frames(stage, '#2a3a2e', G, { community: true }); return stage === 5 && MYTH_PREVIEW ? mythFx(fr, function (bg) { return S.frames(stage, bg, G, { community: true }); }, MYTH_PREVIEW) : fr; }
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
@@ -822,7 +1015,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
