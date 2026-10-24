@@ -491,12 +491,8 @@
   var MYTH_MODE = (function () { try { var q = /[?&]mythic=([a-z]+)/.exec((window.location && window.location.search) || ''), ls = window.localStorage, K = 'xcpets-mythic-look';
     if (q) { if (/^[abcd]$/.test(q[1])) ls.setItem(K, q[1]); else ls.removeItem(K); } var m = ls.getItem(K); return /^[abcd]$/.test(m || '') ? m : null; } catch (e) { return null; } })();
   var MYTH_STILL = (function () { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })();
-  /* mythic-look 8-bit pass (owner 'can these ideas not be 8 bit?' + 'real shine'): every effect writes whole opaque pixels on the 32x32 sprite grid,
-   * only from the site palette (MP), no blending/alpha/gradients; motion is frame-by-frame on the shared 300 ms tick (stepped, no tweens).
-   * Every option gets the same 8-bit "real shine": a hard-edged 2-px white/cream glare streak that steps diagonally across pet + gear,
-   * plus foil glitter (single-pixel twinkles on lit pet pixels). Ink/dark pixels are never painted, so faces stay readable. */
-  var MP = { ink: [26, 16, 32], w: [255, 250, 220], g: [255, 210, 63], d: [184, 120, 20], o: [255, 122, 26], r: [255, 90, 90], gr: [61, 220, 132], c: [51, 214, 255], b: [79, 157, 255], p: [255, 122, 214] };
-  var MG = MP.g, MW = MP.w, MD = MP.d, HOLO = [MP.r, MP.o, MP.g, MP.gr, MP.c, MP.b, MP.p], CYC = [MP.g, MP.o, MP.p, MP.c, MP.gr, MP.w];
+  function mythHsv(h) { h = ((h % 360) + 360) % 360; var f = h / 60, i = Math.floor(f), r = f - i, q = 1 - r, c = [[1, r, 0], [q, 1, 0], [0, 1, r], [0, q, 1], [r, 0, 1], [1, 0, q]][i % 6]; return [Math.round(255 * c[0]), Math.round(255 * c[1]), Math.round(255 * c[2])]; }
+  var MG = [255, 210, 63], MW = [255, 250, 220], MD = [184, 120, 20];
   function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !okFrames(fr) || typeof keyed !== 'function') return fr;
     var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
     var masks = fr.map(function (f, n) { var a = (A[n] || A[0]).data, b = (B[n] || B[0]).data, m = new Uint8Array(1024), bb = { x0: 32, x1: -1, y0: 32, y1: -1 };
@@ -505,47 +501,40 @@
     if (masks[0].bb.x1 < 0) return fr;
     var nB = fr.length, N = MYTH_STILL ? nB : nB * Math.max(1, Math.round(12 / nB)), out = [], seed = 0;
     for (var s = 0; s < 1024; s += 7) seed = (seed * 31 + masks[0].m[s] + s) % 9973;
-    for (var k = 0; k < N; k++) { var f = fr[k % nB], d = new Uint8ClampedArray(f.data), M = masks[k % nB], kk = MYTH_STILL ? -1 : k;
-      MYTH_FX[mode](d, M, kk, N, seed); mShine(d, M, kk, N, seed); out.push({ width: 32, height: 32, data: d }); }
+    for (var k = 0; k < N; k++) { var f = fr[k % nB], d = new Uint8ClampedArray(f.data); MYTH_FX[mode](d, masks[k % nB], MYTH_STILL ? -1 : k, N, seed); out.push({ width: 32, height: 32, data: d }); }
     return out; }
-  function mPut(d, x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  function mPut(d, x, y, c, t) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; t = t == null ? 1 : t; d[i] = Math.round(d[i] + (c[0] - d[i]) * t); d[i + 1] = Math.round(d[i + 1] + (c[1] - d[i + 1]) * t); d[i + 2] = Math.round(d[i + 2] + (c[2] - d[i + 2]) * t); d[i + 3] = 255; }
   function mIn(M, x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && M.m[y * 32 + x] === 1; }
-  function mLit(d, x, y) { var i = (y * 32 + x) * 4; return d[i] + d[i + 1] + d[i + 2] > 180; } /* skip ink / dark pixels */
-  /* pixel sprites: 0 dot, 1 plus, 2 big 4-point star */
-  var SPR = [[[0, 0, 'w']], [[0, 0, 'w'], [1, 0, 'g'], [-1, 0, 'g'], [0, 1, 'g'], [0, -1, 'g']], [[0, 0, 'w'], [1, 0, 'w'], [-1, 0, 'w'], [0, 1, 'w'], [0, -1, 'w'], [2, 0, 'g'], [-2, 0, 'g'], [0, 2, 'g'], [0, -2, 'g']]];
-  function mStar(d, M, x, y, sz, behind) { if (sz < 0) return; (SPR[Math.min(2, sz)]).forEach(function (q) { var X = x + q[0], Y = y + q[1]; if (behind && mIn(M, X, Y)) return; mPut(d, X, Y, MP[q[2]]); }); }
-  function mShine(d, M, k, N, seed) { /* hard 2-px glare streak (white core, cream edge) stepping 3 px per frame + foil glitter */
-    var c = k < 0 ? 22 : -6 + Math.floor(k * 76 / N);
-    for (var p = 0; p < 1024; p++) { if (!M.m[p]) continue; var x = p & 31, y = p >> 5, s = x + y; if (!mLit(d, x, y)) continue;
-      if (s === c || s === c + 1) mPut(d, x, y, MW); else if (s === c + 4) mPut(d, x, y, MG);
-      else if (((x * 7 + y * 13 + seed) % 37) === (k < 0 ? 0 : (k * 5) % 37) || ((x * 11 + y * 5 + seed) % 41) === (k < 0 ? 3 : (k * 7 + 3) % 41)) mPut(d, x, y, MW); } }
+  function mStar(d, M, x, y, sz, behind) { var P = sz > 1 ? [[0, 0, MW], [1, 0, MG], [-1, 0, MG], [0, 1, MG], [0, -1, MG]] : sz > 0 ? [[0, 0, MW]] : [[0, 0, MG]];
+    P.forEach(function (q) { var X = x + q[0], Y = y + q[1]; if (behind && mIn(M, X, Y)) return; mPut(d, X, Y, q[2], sz > 1 || q[0] || q[1] ? 1 : 0.9); }); }
   var MYTH_FX = {
-    a: function (d, M, k, N) { /* holo foil: stepped rainbow diagonal stripes (one palette colour per 2-px stripe) on a checkerboard, scrolling 1 stripe per frame */
-      var sh = k < 0 ? 0 : k;
-      for (var p = 0; p < 1024; p++) { if (!M.m[p]) continue; var x = p & 31, y = p >> 5; if ((x + y) % 2 || !mLit(d, x, y)) continue;
-        if (((x - y + 64) >> 2) % 3) continue; mPut(d, x, y, HOLO[((((x + y) >> 1) + sh) % HOLO.length)]); } },
-    b: function (d, M, k, N, seed) { /* pixel-art halo (gold front, dark-gold back, ink rim) with a stepping glint + pixel sparkle sprites */
-      var bb = M.bb, cx = Math.round((bb.x0 + bb.x1) / 2), hw = Math.max(3, Math.min(5, Math.round((bb.x1 - bb.x0) / 4))), y0 = Math.max(1, bb.y0 - 4), bob = k >= 0 && (k >> 1) % 2 ? 1 : 0, ring = [];
+    a: function (d, M, k, N) { /* holo shimmer: a rainbow foil band sweeps diagonally over pet + gear; faint holo tint everywhere */
+      var c = k < 0 ? 26 : -8 + (k / N) * 80;
+      for (var p = 0; p < 1024; p++) { if (!M.m[p]) continue; var x = p & 31, y = p >> 5, s = x + y, dd = Math.abs(s - c), hue = s * 9 + (k < 0 ? 0 : k * 24);
+        mPut(d, x, y, mythHsv(hue), 0.10); if (dd < 4) mPut(d, x, y, dd < 1 ? MW : mythHsv(hue + 40), (k < 0 ? 0.32 : 0.55) * (1 - dd / 4)); } },
+    b: function (d, M, k, N, seed) { /* pixel halo with a travelling glint + rising twinkle sparkles */
+      var bb = M.bb, cx = Math.round((bb.x0 + bb.x1) / 2), hw = Math.max(3, Math.min(5, Math.round((bb.x1 - bb.x0) / 4))), y0 = Math.max(0, bb.y0 - 3), bob = k >= 0 && (k >> 1) % 2 ? 1 : 0, ring = [];
       for (var x = cx - hw + 1; x <= cx + hw - 1; x++) ring.push([x, y0 + bob]); ring.push([cx + hw, y0 + 1 + bob]); for (x = cx + hw - 1; x >= cx - hw + 1; x--) ring.push([x, y0 + 2 + bob]); ring.push([cx - hw, y0 + 1 + bob]);
       var g = k < 0 ? 0 : Math.floor(k * ring.length / N);
-      ring.forEach(function (q, n) { var back = n > hw * 2 - 2 && n < ring.length - 1; if (back && mIn(M, q[0], q[1])) return; mPut(d, q[0], q[1], n === g || n === (g + 1) % ring.length ? MW : back ? MD : MG); });
-      for (var i = 0; i < 4; i++) { var r = (seed * (i + 3) * 37) % 97, side = i % 2 ? 1 : -1, sx = side < 0 ? bb.x0 - 2 - (r % 2) : bb.x1 + 2 + (r % 2), sy0 = bb.y0 + 4 + ((r * 7) % Math.max(4, bb.y1 - bb.y0 - 6));
-        if (k < 0) { if (i < 2) mStar(d, M, Math.max(2, Math.min(29, sx)), sy0, 2, true); continue; }
-        var life = (k + i * 3) % 6; mStar(d, M, Math.max(2, Math.min(29, sx)), sy0 - (life >> 1), [0, 1, 2, 2, 1, -1][life], true); } },
-    c: function (d, M, k, N) { /* 1-px outline (4-neighbour, no diagonals) that steps through palette colours + 2 pixel stars on a stepped orbit */
-      var col = k < 0 ? MG : CYC[(k >> 1) % CYC.length];
-      for (var p = 0; p < 1024; p++) { if (M.m[p]) continue; var x = p & 31, y = p >> 5; if (mIn(M, x + 1, y) || mIn(M, x - 1, y) || mIn(M, x, y + 1) || mIn(M, x, y - 1)) mPut(d, x, y, col); }
-      var bb = M.bb, cx = Math.round((bb.x0 + bb.x1) / 2), cy = Math.round(bb.y0 + (bb.y1 - bb.y0) * 0.45), rx = Math.min(14, Math.round((bb.x1 - bb.x0) / 2) + 3);
-      var ORB = [[1, 0], [0.7, 0.67], [0, 1], [-0.7, 0.67], [-1, 0], [-0.7, -0.67], [0, -1], [0.7, -0.67]];
-      for (var i = 0; i < 2; i++) { var o = ORB[((k < 0 ? 1 : k) + i * 4) % 8], sx = cx + Math.round(rx * o[0]), sy = cy + Math.round(3 * o[1]), behind = o[1] < 0;
-        mStar(d, M, Math.max(2, Math.min(29, sx)), Math.max(2, Math.min(29, sy)), behind ? 0 : 1, behind); } },
-    d: function (d, M, k, N) { /* pixel-art gold laurels: dark-gold stem, gold leaf pairs every 2 rows, white glint stepping up the leaves + blinking pixel star */
-      var bb = M.bb, h = Math.min(12, bb.y1 - bb.y0), OFF = [0, 0, 1, 1, 1, 2, 2, 2, 2, 1, 1, 0, 0], g = k < 0 ? -9 : Math.floor(k * (h + 4) / N);
-      for (var j = 0; j <= h; j++) { var y = bb.y1 - j, off = 2 - OFF[j], leaf = j % 2 === 1, glint = j === g;
-        [[bb.x0 - 1 - off, -1], [bb.x1 + 1 + off, 1]].forEach(function (e) { var x = Math.max(0, Math.min(31, e[0]));
-          if (!mIn(M, x, y)) mPut(d, x, y, MD);
-          if (leaf) { mPut(d, x + e[1], y - 1, glint ? MW : MG); if (!mIn(M, x - e[1], y - 1)) mPut(d, x - e[1], y - 1, glint ? MW : MG); } }); }
-      if (k < 0 || (k % 4) < 3) mStar(d, M, Math.round((bb.x0 + bb.x1) / 2), Math.max(2, bb.y0 - 3), k < 0 ? 2 : [1, 2, 1][k % 4], true); } };
+      ring.forEach(function (q, n) { var back = n > hw * 2 - 2 && n < ring.length - 1; mPut(d, q[0], q[1], n === g || n === (g + 1) % ring.length ? MW : back ? MD : MG, 1); });
+      for (var i = 0; i < 4; i++) { var r = (seed * (i + 3) * 37) % 97, side = i % 2 ? 1 : -1, sx = side < 0 ? bb.x0 - 1 - (r % 3) : bb.x1 + 1 + (r % 3), sy0 = bb.y0 + 4 + ((r * 7) % Math.max(4, bb.y1 - bb.y0 - 6));
+        if (k < 0) { if (i < 2) mStar(d, M, Math.max(1, Math.min(30, sx)), sy0, 2, true); continue; }
+        var life = (k + i * 3) % 6, sz = [0, 1, 2, 2, 1, -1][life]; if (sz < 0) continue; mStar(d, M, Math.max(1, Math.min(30, sx)), sy0 - (life >> 1), sz, true); } },
+    c: function (d, M, k, N) { /* glow outline pulsing gold -> pink -> cyan + two tiny stars orbiting the pet */
+      var t = k < 0 ? 0.5 : 0.38 + 0.3 * Math.sin(k / N * Math.PI * 4), col = k < 0 ? MG : mythHsv(45 + 300 * (0.5 - 0.5 * Math.cos(k / N * Math.PI * 2)));
+      for (var p = 0; p < 1024; p++) { if (M.m[p]) continue; var x = p & 31, y = p >> 5;
+        if (mIn(M, x + 1, y) || mIn(M, x - 1, y) || mIn(M, x, y + 1) || mIn(M, x, y - 1)) mPut(d, x, y, col, t); else if (mIn(M, x + 1, y + 1) || mIn(M, x - 1, y - 1) || mIn(M, x + 1, y - 1) || mIn(M, x - 1, y + 1)) mPut(d, x, y, col, t * 0.5); }
+      var bb = M.bb, cx = (bb.x0 + bb.x1) / 2, cy = bb.y0 + (bb.y1 - bb.y0) * 0.45, rx = Math.min(15, (bb.x1 - bb.x0) / 2 + 3), ry = 3;
+      for (var i = 0; i < 2; i++) { var an = (k < 0 ? 0.3 : k / N) * Math.PI * 2 + i * Math.PI, sx = Math.round(cx + rx * Math.cos(an)), sy = Math.round(cy + ry * Math.sin(an)), behind = Math.sin(an) < 0;
+        mStar(d, M, Math.max(1, Math.min(30, sx)), Math.max(1, Math.min(30, sy)), behind ? 1 : 2, behind); } },
+    d: function (d, M, k, N) { /* gold laurel sprigs curling up both sides + a glint running up the leaves + a blinking star above */
+      var bb = M.bb, L = [], h = Math.min(12, bb.y1 - bb.y0);
+      for (var j = 0; j <= h; j++) { var off = Math.round(2 - 2 * Math.sin(j / h * Math.PI * 0.9)), y = bb.y1 - j; L.push([bb.x0 - off, y, bb.x1 + off, y, j]); }
+      var g = k < 0 ? -9 : Math.floor(k * (h + 4) / N);
+      L.forEach(function (q) { var j = q[4], leaf = j % 3 === 1, tip = j === h, glint = Math.abs(j - g) < 1;
+        [[q[0], -1], [q[2], 1]].forEach(function (e) { var x = Math.max(0, Math.min(31, e[0])), y = q[1];
+          if (!mIn(M, x, y)) mPut(d, x, y, glint ? MW : MD, 1); if (leaf || tip) { var ox = Math.max(0, Math.min(31, x + e[1])), ix = Math.max(0, Math.min(31, x - e[1])); mPut(d, ox, y - 1, glint ? MW : MG, 1); if (!mIn(M, ix, y - 1)) mPut(d, ix, y - 1, glint ? MW : MG, 1); } }); });
+      if (k < 0 || (k % 4) < 3) mStar(d, M, Math.round((bb.x0 + bb.x1) / 2), Math.max(1, bb.y0 - 2), k < 0 ? 2 : [1, 2, 1][k % 4], true); } };
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
