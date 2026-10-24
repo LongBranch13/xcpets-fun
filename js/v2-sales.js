@@ -88,7 +88,10 @@
       getJ(API + '/assets/' + A + '/balances').then(function (j) { return j.result || []; }, function () { return []; })]).then(function (r) {
       var i = r[0].filter(function (x) { return x.status == null || x.status === 'valid'; })[0], h = r[1].filter(function (x) { return Number(x.quantity) > 0; })[0];
       return { issued: !!i, block: i ? i.block_index : null, holder: h ? h.address : null }; }); }
-  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ };
+  /* a token made in window 1 waits here (per pet) until it confirms; shared with the pet card's Tokenize button (js/v2-pet-card.js) */
+  var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
+  function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
+  window.V2Sales = { loadDex: loadDex, deedAssets: deedAssets, _getJ: getJ, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
@@ -200,9 +203,7 @@
     window.V2Wallet.sendDex(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
   function walletBurn(plan, then) { if (PREVIEW) { toast('Preview: no wallet window, nothing was sent.'); return then && then({}); }
     window.V2Wallet.send(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
-  /* a token made in window 1 waits here (per pet) until it confirms */
-  var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
-  function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
+  /* pend(): the pending-token store, defined above (shared with the pet card) */
 
   function sellable(p) { return !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
   function sellPick() { var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
