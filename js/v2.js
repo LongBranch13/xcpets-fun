@@ -320,6 +320,7 @@
         d.onclick = function (e) { if (e.target.closest('a')) return; /* build fix: card opens detail again; shift-click or Select mode selects */ if (!e.target.closest('.openbtn') && (e.shiftKey || document.body.classList.contains('selmode'))) return UXB.cardTap(p.id, e); goPet(p.id, e); }; }
       else d.onclick = function (e) { goPet(p.id, e); }; /* P10 (owner 2026-10-21): a card opens the pet page directly (Ctrl/Cmd-click: new tab) */
       return d; }
+    renderPets.mk = mk; /* mypets-swipe: the One at a time view reuses the exact grid card (display only) */
     function put(ps, before) { var f = document.createDocumentFragment(), ds = ps.map(function (p) { var d = mk(p); f.appendChild(d); return [d, p]; }); if (before) box.insertBefore(f, before); else box.appendChild(f);
       ds.forEach(function (x) { R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
@@ -473,7 +474,23 @@
   function actBack(p) { setTimeout(function () { var cb = $('confirmBox'); if (!cb || !cb.classList.contains('on')) return; var link = '<a href="pet.html?id=' + p.id + '">← Back to #' + p.id + ' ' + esc(p.name || '') + '</a>';
       $('cfBody').insertAdjacentHTML('afterbegin', '<p class="small cf-back">' + link + '</p>');
       var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
-  function actRoute() { var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false;
+  /* pet-gift: pet.html / the batch picker arrive as play.html#gift-<id.id.id>-<player# base 32>; the confirm then signs each 1-dander burn in turn
+   * (same confirmPlans queue: one XCP Wallet window at a time, Stop + Resume). Locked pets are dropped here and skipped by the engine anyway. */
+  function swapRoute() { var m = /^#(swap)-(\d+)-(\d+)$|^#(swapok|swapno)-(\d+)$/.exec(location.hash); if (!m || !V.swapPlan) return false; if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🔁 Swap burns are off: swap by gifting each other the pet tokens, or a token-for-token DEX order.', 9000); return true; }
+    if (!world() || !ME || !S.rows || !S.rows.length) { swapRoute.n = (swapRoute.n || 0) + 1; if (swapRoute.n < 90) setTimeout(swapRoute, 2000); return true; }
+    history.replaceState(null, '', location.pathname + location.search);
+    if (m[1]) confirmPlans('🔁 Offer #' + m[2] + ' for #' + m[3], [V.swapPlan(Number(m[2]), Number(m[3]))]); else if (m[4] === 'swapok') confirmPlans('🔁 Accept swap ' + m[5], [V.swapOkPlan(Number(m[5]))]); else confirmPlans('Close swap offer ' + m[5], [V.swapNoPlan(Number(m[5]))]); return true; }
+  window.V2HiGo = function () { confirmPlans('👋 Get my player #', [V.hiPlan]); };
+  window.V2SwapGo = function (h) { location.hash = h; swapRoute(); };
+  function giftRoute() { if (swapRoute()) return true; var m = /^#gift-([0-9.]+)-([0-9A-Va-v]+)$/.exec(location.hash); if (!m || !V.giveBatches) return false;
+    if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🎁 Gifts are pet token sends now: use 🎁 Gift (pick pets, paste the address, Send).', 9000); return true; }
+    var w = world(); if (!w || !ME || !S.rows || !S.rows.length) { giftRoute.n = (giftRoute.n || 0) + 1; if (giftRoute.n < 90) setTimeout(giftRoute, 2000); return true; }
+    history.replaceState(null, '', location.pathname + location.search); var n = parseInt(m[2], 32), b = (S.tip || 0) + 1, ok = [], no = [];
+    m[1].split('.').map(Number).forEach(function (id) { var why = V.giveWhy(w, { petId: id, to: n }, ME, b); if (why) no.push('#' + id + ' ' + why); else ok.push(id); });
+    if (no.length) toast('🎁 Not in the gift: ' + esc(no.join(' · ')), 9000); if (!ok.length) return true;
+    confirmPlans('🎁 Gift ' + ok.length + ' pet' + (ok.length > 1 ? 's' : '') + ' to player #' + V.playerCode(n), V.giveBatches(ok, n)); return true; }
+  window.V2GiftConfirm = function (ids, n) { location.hash = 'gift-' + ids.join('.') + '-' + V.playerCode(n); giftRoute(); };
+  function actRoute() { if (giftRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
     history.replaceState(null, '', location.pathname + location.search); if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
     actBack(p);
@@ -1007,7 +1024,7 @@
     var wrap = document.createElement('div'); wrap.className = 'petsticky'; ctl.parentNode.insertBefore(wrap, ctl); wrap.appendChild(ctl); wrap.appendChild(bulk);
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
-  window.V2UI = { lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight };
+  window.V2UI = { lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
   render(); route();
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
