@@ -4,7 +4,7 @@
  * Built Oct 22 2026 ~12:10 PM CT (owner request). Every post: fires once (dedupe id in announce-rate.json), goes through send-guard
  * announceViolations, max 1,000 characters, "times" never "x", no price/trading talk, only link xcpets.fun.
  *   Halving 1: Lord Kek care crosses ~90% and ~99% of Mythic (6,906,900), then "halving set" when Mythic is reached (burns cost half in 6 blocks).
- *   Halving 2+: started by each new community pet arrival + 6 (COMMUNITY_PET_ARRIVAL_BLOCKS, not care), so: "set" once its block is known, "about a day" at 144 blocks to go,
+ *   Halving 2+: started 6 blocks after each later community pet goes to Cold Storage (auto-halving; old path: COMMUNITY_PET_ARRIVAL_BLOCKS), so: "set" once its block is known, "about a day" at 144 blocks to go,
  *   and "next block-ish" at 6 blocks to go.
  *   Fire Sales: warning phase starts (sale in N blocks) and sale goes live (fire-sales branch, via tools/hatchbot-firesale.js).
  * A watcher that comes back late posts only the newest step of each kind (older ones are recorded as 'skipped', never posted late).
@@ -18,7 +18,7 @@ function halvingTexts() { return {
   care90: (c) => '⭐🐸 HALVING WATCH 🐸⭐\nLord Kek is about 90% of the way to Mythic (' + n(Math.floor(c)) + ' of ' + n(MYTHIC) + ' care). When STAR LORD KEK takes him all the way, every burn costs half, 6 blocks later.\nxcpets.fun',
   care99: (c) => '⭐🐸 HALVING VERY CLOSE 🐸⭐\nLord Kek is 99% of the way to Mythic (' + n(Math.floor(c)) + ' of ' + n(MYTHIC) + ' care). The next big feed could set the halving: every burn costs half 6 blocks after he reaches Mythic.\nxcpets.fun',
   set1: (b, h) => '⭐🐸 THE HALVING IS SET 🐸⭐\nSTAR LORD KEK defeated Lord Kek at block ' + n(b) + '. Lord Kek is in Cold Storage. From block ' + n(h) + ' (6 blocks, about an hour) every burn costs half: hatching, meals, gear spins, fights, breeding, community rolls and community feeding.\nxcpets.fun',
-  setN: (k, h) => '⭐ HALVING ' + k + ' IS SET ⭐\nA new community pet is coming. From block ' + n(h) + ' every burn costs half again (the ' + ord(k) + ' halving).\nxcpets.fun',
+  setN: (k, h) => '⭐ HALVING ' + k + ' IS SET ⭐\nA community pet went to Cold Storage. From block ' + n(h) + ' every burn costs half again (the ' + ord(k) + ' halving).\nxcpets.fun',
   dayN: (k, h) => '⭐ HALVING ' + k + ' IN ABOUT A DAY ⭐\nAt block ' + n(h) + ' every burn costs half again, for the new community pet.\nxcpets.fun',
   soonN: (k, h) => '⭐ HALVING ' + k + ' IN 6 BLOCKS ⭐\nAbout an hour to go: from block ' + n(h) + ' every burn costs half again.\nxcpets.fun' }; }
 /** events(w, tip, V): every warning step that is due at tip, oldest first, as { id, kind, text }. Pure, no I/O. */
