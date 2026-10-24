@@ -27,7 +27,8 @@ t('gate on: the same fight with or without local equip ops is identical (gear, t
 t('gate on: gate on or off gives the same fight when nobody has local ops (no change for chain-only viewers)', () => {
   assert.strictEqual(pick(run(ex, [], B - 3).fights[F0]), pick(run(ex, [], OFF).fights[F0])); });
 t('gate on: local equips still show on the pet (only fights ignore them)', () => {
-  const w = run(ex, ops, B - 3); assert.strictEqual(worn(w, A.id).length, 0); });
+  const w = run(ex, ops, B - 3), won = (w.fights[F0].spoils || {}).gid; /* a piece won in this fight may go straight on the winner */
+  assert.strictEqual(worn(w, A.id).filter(g => g.gid !== won).length, 0); });
 t('gate on: spoils go to the same owner in every viewer', () => {
   const a = run(ex, [], B - 3), b = run(ex, ops, B - 3), s = a.fights[F0].spoils;
   if (s) { const own = w => (w.items[s.gid] || w.itemList.find(g => g.gid === s.gid)).owner; assert.strictEqual(own(b), own(a)); } });
