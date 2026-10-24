@@ -120,6 +120,7 @@
     if (g == null) return 'Lord Kek rests in Cold Storage'; return tip >= g ? 'FUNTRUMP is the new community pet' : 'Next: FUNTRUMP · community pet #4 · from block ' + fmt(g); }
   function kekFarewellSprites(w) { var x = w.kekMythic, T = V.COMMUNITY_THRESHOLDS || [];
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null,
+      funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
   function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=39584f47e7'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's

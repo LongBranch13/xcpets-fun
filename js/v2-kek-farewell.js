@@ -2,14 +2,14 @@
  * Same frame as the Bitcoin Wizard farewell (js/v2-wizard-farewell.js): 160x90 pixel canvas x4, 420 frames at 30 fps (~14 s), one caption at a time,
  * burn counter, frost vault, white flash, egg drop, footer. 6 beats: COMMUNITY PET (Mythic Lord Kek on his throne) -> ~Godhead~ (Eye of Horus,
  * pyramid, rising coins) -> 7 sacred artifacts flare, LORDKEK defeated -> Into Cold Storage (Nakamoto + Wizard silhouettes inside) -> flash,
- * 'Mythic. Kept cold forever.' -> STARLORDKEK (the one who defeated him) 'the real and only LORD' + a Lord Kek egg; the last sub-line hands off to
+ * 'Mythic. Kept cold forever.' -> STARLORDKEK (the one who defeated him) 'the real and only LORD' + a Lord Kek egg; then FUNTRUMP (FuntrumpSprite community suit look) walks in center stage as the new community pet (540 frames, ~18 s); the last sub-line hands off to
  * the NEXT community pet (FUNTRUMP, read by the caller from V2Rules.ACTIVATE_FUNTRUMP_BLOCK), never to Starlord Kek.
  * Triggered by CHAIN STATE (w.kekMythic), autoplays once per browser (seen-flag keyed by the trigger tx) for returning visitors only,
  * 'Watch the farewell' in Cold Storage replays it, ?preview=kek previews it. Reduced motion: one static frame. DISPLAY ONLY (no rule reads it).
  * window.V2KekFarewell = { draw, play, maybeAutoplay, FRAMES, SEEN_KEY, seen, previewRequested } */
 (function (root) {
   'use strict';
-  var W = 160, H = 90, S = 4, FRAMES = 420, GOAL = 6906900, SEEN_KEY = 'xcpets-v2-kek-farewell-seen';
+  var W = 160, H = 90, S = 4, FRAMES = 540, GOAL = 6906900, SEEN_KEY = 'xcpets-v2-kek-farewell-seen';
   var C = { bg: '#141a2e', bg2: '#1b2240', ink: '#e8f0ff', dim: '#6f7fa8', gold: '#ffc93c', gold2: '#c98a12', gold3: '#7a4f0a', lapis: '#2a4fbf', lapis2: '#1a3380',
     ice: '#9fe8ff', ice2: '#33d6ff', ice3: '#e9fbff', stone: '#4b5563', stone2: '#2f3742', cyan: '#33d6ff', red: '#ff2a2a', red2: '#a3121a' };
   var ART = ['#ff5a5a', '#ffb13c', '#ffe45a', '#6dff7a', '#3cd6ff', '#7a8cff', '#e27aff'];
@@ -63,12 +63,12 @@
       ctx.globalAlpha = 0.72; ctx.fillStyle = '#05080a'; ctx.fillRect(Math.round(cx - wd / 2 - 8), y0 - 4, Math.round(wd + 16), fs + 10); ctx.globalAlpha = 1;
       ctx.lineWidth = 4; ctx.strokeStyle = '#000'; ctx.strokeText(q[0], cx, y0); ctx.fillStyle = q[3]; ctx.fillText(q[0], cx, y0); }); Q = []; }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
-  /** draw(ctx, t, sp): sp = { kek: [Mythic Lord Kek frames, LORDKEK card in hand], egg: [Lord Kek egg frames], nakamoto: [frames], wizard: [frames], total, next: 'FUNTRUMP …' } */
+  /** draw(ctx, t, sp): sp = { kek: [Mythic Lord Kek frames, LORDKEK card in hand], egg: [Lord Kek egg frames], nakamoto: [frames], wizard: [frames], funtrump: [FUNTRUMP community frames], total, next: 'FUNTRUMP …' } */
   function draw(ctx, t, sp) { Q = []; sp = sp || {}; ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = false;
-    var raise = 50, god = 170, walk = 260, flash = 300, slk = 330, hand = 378, total = sp.total || GOAL;
+    var raise = 50, god = 170, walk = 260, flash = 300, slk = 330, hand = 378, ftb = 420, total = sp.total || GOAL;
     px(ctx, 0, 0, W, H, C.bg); for (var s = 0; s < 22; s++) { var sx = (s * 37 + 11) % W, sy = (s * 23 + 5) % 52; if ((s + (t >> 3)) % 3) px(ctx, sx, sy, 1, 1, C.dim); }
     px(ctx, 0, 77, W, 13, C.bg2);
-    if (t >= slk) { var ga = Math.min(1, (t - slk) / 30); for (var r = 6; r > 0; r--) { ctx.globalAlpha = ga * 0.09 * (7 - r) / 2; ctx.fillStyle = r % 2 ? C.red2 : C.red; ctx.beginPath(); ctx.arc(86, 48, r * 7, 0, 7); ctx.fill(); }
+    if (t >= slk) { var ga = Math.min(1, (t - slk) / 30) * (t >= ftb ? Math.max(0.25, 1 - (t - ftb) / 30) : 1); for (var r = 6; r > 0; r--) { ctx.globalAlpha = ga * 0.09 * (7 - r) / 2; ctx.fillStyle = r % 2 ? C.red2 : C.red; ctx.beginPath(); ctx.arc(86, 48, r * 7, 0, 7); ctx.fill(); }
       ctx.globalAlpha = 1; for (var ry = 0; ry < 12; ry++) { var ang = ry / 12 * 6.283 + t / 60; ctx.globalAlpha = ga * 0.35; px(ctx, 86 + Math.cos(ang) * 36, 48 + Math.sin(ang) * 30, 2, 2, C.red); } ctx.globalAlpha = 1; }
     var open = t < walk ? 0 : t < flash ? Math.min(1, (t - walk) / 14) : Math.max(0, 1 - (t - flash) / 8), frost = t >= flash ? Math.min(0.55, (t - flash) / 30) : 0;
     vault(ctx, t, open, frost);
@@ -89,15 +89,21 @@
         if (t < god + n * 3) continue; var lit = t < on ? 0 : 1, fl = t >= on && t < on + 10 ? 1 - (t - on) / 10 : 0; artifact(ctx, ax, ay + (t >> 4) % 2 * (n % 2), ART[n], lit * fa, fl * fa);
         if (t >= god + 72 && t < god + 90) { ctx.globalAlpha = 0.6 * fa; px(ctx, Math.min(ax, 36), Math.min(ay, 44), Math.abs(ax - 36), 1, ART[n]); ctx.globalAlpha = fa; } } ctx.globalAlpha = 1; }
     // STARLORDKEK rises in the red glow; a Lord Kek egg drops onto the empty throne
-    if (t >= slk) { var sa = Math.min(1, (t - slk) / 24); starlord(ctx, 67, 21 + Math.round((1 - sa) * 8), 1.25, sa);
+    if (t >= slk) { var sa = Math.min(1, (t - slk) / 24); if (t >= ftb) sa *= Math.max(0, 1 - (t - ftb) / 24); if (sa > 0) starlord(ctx, 67, 21 + Math.round((1 - sa) * 8), 1.25, sa);
       var ea = Math.min(1, Math.max(0, (t - slk - 20) / 24)), ef = sp.egg ? sp.egg[(t >> 3) % sp.egg.length] : null; if (ea > 0) sprite(ctx, ef, 20, 37 - Math.round((1 - ea) * 14), 1.0, ea); }
-    var cap = t < raise ? 'COMMUNITY PET' : t < god ? '~Godhead~' : t < walk ? 'A sacrifice of 7 sacred artifacts has been made' : t < flash ? 'Into Cold Storage' : t < slk ? 'Mythic. Kept cold forever.' : 'the real and only LORD';
-    text(cap, 80, 4, C.gold, t < raise ? 9 : 5);
+    // FUNTRUMP (owner Oct 24 12:19 AM CT 'show fun trump as well'): the community pet sprite from FuntrumpSprite (community suit look) walks in from the right
+    // in a gold glow and stands center stage as the new community pet; Starlord Kek fades back
+    if (t >= ftb && sp.funtrump) { var fu = Math.min(1, (t - ftb) / 50), fx = 160 - fu * 98, fs = 1.5, fy = 76 - 32 * fs + ((t >> 2) % 2 && fu < 1 ? -1 : 0) + (fu >= 1 ? (t >> 4) % 2 : 0);
+      if (fu >= 1) { var gg = Math.min(1, (t - ftb - 50) / 20); for (var r2 = 5; r2 > 0; r2--) { ctx.globalAlpha = gg * 0.08 * (6 - r2) / 2; ctx.fillStyle = r2 % 2 ? C.gold2 : C.gold; ctx.beginPath(); ctx.arc(fx + 24, 50, r2 * 7, 0, 7); ctx.fill(); } ctx.globalAlpha = 1;
+        for (var k2 = 0; k2 < 6; k2++) { var v2 = ((t - ftb) / 40 + k2 / 6) % 1; star(ctx, fx + 4 + k2 * 8, 70 - v2 * 50, C.gold); } }
+      sprite(ctx, sp.funtrump[(t >> 3) % sp.funtrump.length], Math.round(fx), fy, fs, 1); }
+    var cap = t < raise ? 'COMMUNITY PET' : t < god ? '~Godhead~' : t < walk ? 'A sacrifice of 7 sacred artifacts has been made' : t < flash ? 'Into Cold Storage' : t < slk ? 'Mythic. Kept cold forever.' : t < ftb + 50 ? 'the real and only LORD' : 'FUNTRUMP';
+    text(cap, 80, 4, C.gold, t < raise || cap === 'FUNTRUMP' ? 9 : 5);
     if (t < raise) text('₿ ' + fmt(total) + ' burned', 80, 15, '#ffffff', 7);
     else if (t < god) text('All Pepes worship Lord Kek', 80, 13, '#ffffff', 5);
     else if (t < walk) { if (t >= god + 64) text('and LORDKEK has been defeated.', 80, 13, '#ffffff', 5); }
     else if (t < slk) text('₿ ' + fmt(total) + ' burned', 80, 13, '#ffffff', 5);
-    else text(t < hand || !sp.next ? 'After the great victory over LORDKEK' : sp.next, 80, 13, t < hand || !sp.next ? '#ffffff' : C.ice2, 5);
+    else if (t < ftb + 50 || !sp.next) text('After the great victory over LORDKEK', 80, 13, '#ffffff', 5); else text(sp.next, 80, 15, C.ice2, 5);
     if (t >= flash && t < flash + 14) { ctx.setTransform(S, 0, 0, S, 0, 0); ctx.globalAlpha = 1 - (t - flash) / 14; px(ctx, 0, 0, W, H, '#ffffff'); ctx.globalAlpha = 1; }
     text('Every XCPETS burn counted', 80, 80, C.cyan, 4);
     flushText(ctx); }
@@ -111,7 +117,7 @@
     function esc(e) { if (e.key === 'Escape') done(); }
     function done() { if (stop) return; stop = true; document.removeEventListener('keydown', esc); ov.remove(); if (o.onDone) o.onDone(); }
     ov.querySelector('.retclose').onclick = done; ov.addEventListener('click', function (e) { if (e.target === ov) done(); }); document.addEventListener('keydown', esc); ov.querySelector('.retclose').focus();
-    if (reduced()) { draw(ctx, 400, o.sprites); return { el: ov, close: done }; }
+    if (reduced()) { draw(ctx, 520, o.sprites); return { el: ov, close: done }; }
     (function step(ts) { if (stop) return; if (!last || ts - last >= 33) { last = ts || 0; draw(ctx, Math.min(t, FRAMES - 1), o.sprites); t++; } if (t < FRAMES + 60) requestAnimationFrame(step); else setTimeout(function () { if (!stop) done(); }, 4000); })();
     return { el: ov, close: done }; }
   /** maybeAutoplay(w, o, returning): ?preview=kek plays; else once per browser after w.kekMythic, only for a returning visitor (else just mark seen). */
