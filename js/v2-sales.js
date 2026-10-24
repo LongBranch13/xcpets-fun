@@ -22,7 +22,7 @@
   var MINT_WINDOW = ['A11407417926526760582', 'A175164024751316932', 'A9059073792275355799'];
   /* xcpfun-backup: api.xcp.fun rate-limits bursts (429 + long Retry-After), so its reads share one in-flight copy per URL and run at most XC_MAX at a time */
   var XC_MAX = 1, xcBusy = 0, xcQ = [], inflight = {};
-  var XC_GAP = 400, xcLast = 0; /* api.xcp.fun allows roughly 10 new reads per few seconds; pace starts so the first burst doesn't earn a 30 s Retry-After */
+  var XC_GAP = 400, xcLast = 0, xcUntil = 0; /* xcUntil: a 429 Retry-After pauses the whole api.xcp.fun queue, not just one read */ /* api.xcp.fun allows roughly 10 new reads per few seconds; pace starts so the first burst doesn't earn a 30 s Retry-After */
   function xcSlot(fn) { return new Promise(function (ok, no) { xcQ.push(function () { xcBusy++; var d = Math.max(0, xcLast + XC_GAP - Date.now(), xcUntil - Date.now()); xcLast = Date.now() + d;
       wait(d).then(fn).then(ok, no).then(function () { xcBusy--; if (xcQ.length) xcQ.shift()(); }); }); if (xcBusy < XC_MAX) xcQ.shift()(); }); }
   var XKEY = 'xcpets-xcf-', XTTL = 10 * 60e3; /* xcpfun-backup: api.xcp.fun address credit/debit scans (the heavy reads) kept 10 min in localStorage so page-to-page moves and reloads don't re-spend its rate limit */
