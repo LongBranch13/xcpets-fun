@@ -51,6 +51,48 @@
     return h;
   }
 
+
+  /* Tokenize (owner 2026-10-24 5:26 AM CT): the Spam City Sell flow's token steps, minus the DEX order. Same code paths as shop.html:
+   * V2Sales.tok.freeDeed + V2Rules.mintPlan -> V2Wallet.sendDex (step 1, free token, Bitcoin fee only), V2Sales.tok.pend (same
+   * 'xcpets-deed-pending' store as the shop), wait 1 block, V2Sales.tok.tokenAt check + V2Rules.deedPlan -> V2Wallet.send (step 2, 1 dander pet:deed).
+   * Tied = V2Rules.deedOf(w, p).ok (the replay). ?tokPreview=none|made|ready|tied shows a state without any wallet window (screenshots). */
+  var TPV = (/[?&]tokPreview=(none|made|ready|tied)\b/.exec(location.search) || [])[1] || null, tpv = TPV, tokMsg = '', tokLast = '';
+  function tokTools() { return window.V2Sales && V2Sales.tok && window.V2Rules && V2Rules.mintPlan && V2Rules.deedPlan ? V2Sales.tok : null; }
+  function tokState(w, p) { var V = window.V2Rules, T = tokTools();
+    if (tpv) return { s: tpv, pd: tpv === 'none' ? null : { asset: 'A12345678901234567890', at: tip() - (tpv === 'made' ? 0 : 2) }, d: tpv === 'tied' ? { asset: 'A12345678901234567890', ok: true } : null };
+    var d = V && V.deedOf ? V.deedOf(w, p) : null; if (d && d.ok) { if (T && T.pend(p.id)) T.pend(p.id, null); return { s: 'tied', d: d }; }
+    var pd = T ? T.pend(p.id) : null; if (!pd) return { s: 'none', d: d };
+    return { s: tip() >= (Number(pd.at) || 0) + 1 ? 'ready' : 'made', pd: pd, d: d }; }
+  function shortA(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
+  function tokHtml(w, p, mine) {
+    if (p.dead || p.released || p.burnedTo || p.community) return '';
+    var S = tokState(w, p), own = (!!mine && !viewOnly()) || !!tpv, V = window.V2Rules;
+    if (S.s === 'tied') return '<div class="pc-tok pc-tok-tied"><b>🎟 Tied!</b> <span>#' + p.id + ' has its own pet token ' + esc(shortA(S.d.asset)) + '. Whoever holds the token holds the pet.</span></div>';
+    var why = !own ? (mine ? 'connect the owner wallet on Play to tokenize' : 'only the owner can tokenize this pet') : !tpv && !tokTools() ? 'the token tools did not load' : !tpv && V.deedWhy ? V.deedWhy(w, { petId: p.id }, me(), tip() + 1) : null;
+    var dots = ['none', 'made', 'ready'].map(function (k, i) { var at = ['none', 'made', 'ready'].indexOf(S.s); return '<li class="' + (i < at ? 'done' : i === at ? 'now' : '') + '">' + ['Not tokenized', 'Token made', 'Tie ready'][i] + '</li>'; }).join('') + '<li>Tied</li>';
+    var body;
+    if (S.s === 'none') body = '<p>Give #' + p.id + ' its very own 🎟 pet token! Step 1 makes it for free (you only pay the tiny Bitcoin fee).' + (S.d && !S.d.ok ? ' The old token ' + esc(shortA(S.d.asset)) + ' sits in another wallet, so a fresh one replaces it.' : '') + '</p>' +
+      '<button type="button" class="btn pc-tokgo" id="pcTokMint"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎟 Tokenize: step 1 of 2</button>';
+    else if (S.s === 'made') body = '<p>⏳ Token ' + esc(shortA(S.pd.asset)) + ' is on its way! Wait 1 block (about 10 minutes) for it to confirm, then come back for step 2.</p>';
+    else body = (S.pd.tieTx ? '<p>💌 Tie burn sent! #' + p.id + ' shows as tied once it confirms.</p>' : '<p>✨ Token ' + esc(shortA(S.pd.asset)) + ' is ready. Step 2 ties it to #' + p.id + ' with a 1-dander burn (<code>pet:deed</code>).</p>') +
+      '<button type="button" class="btn pc-tokgo" id="pcTokTie"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (S.pd.tieTx ? '🔗 Send the tie again' : '🔗 Tie it: step 2 of 2') + '</button>';
+    return '<div class="pc-tok"><h3 class="pc-qh">🎟 Pet token</h3><ol class="pc-tsteps">' + dots + '</ol>' + body +
+      (why && S.s !== 'made' ? '<p class="small muted">Can\'t tokenize right now: ' + esc(why) + '.</p>' : '') + '<p class="small pc-tokmsg" id="pcTokMsg">' + esc(tokMsg) + '</p></div>'; }
+  function tokSay(t) { tokMsg = t; var m = $('pcTokMsg'); if (m) m.textContent = t; }
+  function tokBind(w, p) { var T = tokTools(), V = window.V2Rules, a = $('pcTokMint'), b = $('pcTokTie');
+    if (a) a.onclick = function () { if (a.disabled) return; if (tpv) { tpv = 'made'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
+      tokSay('Finding a free token name…'); a.disabled = true;
+      T.freeDeed().then(function (A) { return window.V2Wallet.sendDex(V.mintPlan(p.id, A), me()).then(function (r) { T.pend(p.id, { petId: p.id, asset: A, mintTx: r && r.txid, at: tip() }); tokSay('Step 1 sent! Your token is being made.'); tokPaint(true); }); })
+        .catch(function (e) { a.disabled = false; tokSay('Not sent: ' + (e && e.message || e)); }); };
+    if (b) b.onclick = function () { if (b.disabled) return; if (tpv) { tpv = 'tied'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
+      var pd = T.pend(p.id); if (!pd) return tokPaint(true); b.disabled = true; tokSay('Checking the token…');
+      T.tokenAt(pd.asset).then(function (t) {
+        if (!t.issued) { b.disabled = false; tokSay('The token has not confirmed yet. Give it one more block and try again.'); return; }
+        if (t.holder && t.holder !== me()) { T.pend(p.id, null); tokSay('That token sits in another wallet. Make a fresh one.'); tokPaint(true); return; }
+        return window.V2Wallet.send(V.deedPlan(p.id, pd.asset), me()).then(function (r) { pd.tieTx = (r && r.txid) || 'sent'; T.pend(p.id, pd); tokSay('Step 2 sent! Almost there.'); tokPaint(true); });
+      }).catch(function (e) { b.disabled = false; tokSay('Not sent: ' + (e && e.message || e)); }); }; }
+  function tokPaint(force) { var w = world(), id = +(new URLSearchParams(location.search).get('id') || 0), box = $('pcTok'); if (!w || !w.byId || !box) return;
+    var p = w.byId[id]; if (!p) return; var ME = me(), h = tokHtml(w, p, !!ME && p.owner === ME); if (!force && h === tokLast) return; tokLast = h; box.innerHTML = h; box.hidden = !h; tokBind(w, p); }
   var last = '';
   function paint() {
     var w = world(), id = +(new URLSearchParams(location.search).get('id') || 0), card = $('petCard'); if (!w || !w.byId || !card) return;
@@ -64,10 +106,11 @@
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';
     $('pcActs').innerHTML = acts(p, mine);
     $('pcQuests').innerHTML = quests(w, p, mine);
+    if (!$('pcTok')) { var tb = document.createElement('div'); tb.id = 'pcTok'; tb.className = 'pc-tokbox'; $('pcQuests').parentNode.insertBefore(tb, $('pcQuests')); }
     $('pcQuests').querySelectorAll('[data-pcq]').forEach(function (x) { x.onclick = function () { if (x.disabled || !window.V2Quests || !V2Quests.start) return; V2Quests.start(p.id, x.getAttribute('data-pcq')); }; });
   }
   function flip(on) { var f = $('pcFront'), bk = $('pcBack'), c = $('petCard'); if (!f || !bk) return; c.classList.toggle('pc-flipped', on); bk.hidden = !on; f.style.visibility = on ? 'hidden' : ''; $('pcFlip').setAttribute('aria-pressed', String(on)); }
   document.addEventListener('click', function (e) { var t = e.target && e.target.closest; if (!t) return; if (e.target.closest('#pcFlip')) flip(true); else if (e.target.closest('#pcFlip2')) flip(false); });
-  var n = 0; (function tick() { n++; try { paint(); } catch (e) { } setTimeout(tick, n < 60 ? 500 : 3000); })();
-  window.V2PetCard = { paint: function () { last = ''; paint(); } };
+  var n = 0; (function tick() { n++; try { paint(); tokPaint(); } catch (e) { } setTimeout(tick, n < 60 ? 500 : 3000); })();
+  window.V2PetCard = { paint: function () { last = ''; paint(); tokPaint(true); } };
 })();
