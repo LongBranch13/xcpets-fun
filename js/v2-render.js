@@ -572,7 +572,13 @@
     return o; }
   function mythPlace(c) { var o = c._mfx; if (!o) return; var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
     o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size';
-    var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } }
+    var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } 
+    mythFit(); }
+  /* decorations (aura ring, orbit stars, laurels) may poke past the screen edge on phones: never let them create a sideways scroll */
+  var mythFitRaf = 0; function mythFit() { if (mythFitRaf || typeof requestAnimationFrame === 'undefined') return; mythFitRaf = requestAnimationFrame(function () { mythFitRaf = 0; var W = document.documentElement.clientWidth; if (!W) return;
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', function () { mythFit(); });
+    document.querySelectorAll('.mfx').forEach(function (o) { var r = o.getBoundingClientRect(); if (!r.width) return; var room = Math.floor(Math.min(r.left + scrollX, W - r.right - scrollX) - 2);
+      if (room < r.width * 0.3) { o.style.overflow = 'clip'; o.style.overflowClipMargin = Math.max(0, room) + 'px'; } else { o.style.overflow = ''; o.style.overflowClipMargin = ''; } }); }); }
   var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
   function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
   function mythAttach(c, img) { if (!MYTH_INFO || !c || c.nodeType !== 1) return; var info = MYTH_INFO.get(img);
