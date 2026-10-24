@@ -137,8 +137,8 @@
   /* token badge: green = the pet owner holds the token (sellable); grey = no token yet; red = token is held elsewhere (remint to sell) */
   function deedBadge(p) { var d = V.deedOf(W, p); if (!d) return '';
     return '<div class="sh-deed' + (d.ok ? '' : ' sh-deed-bad') + '" title="Pet token ' + esc(d.asset) + (d.ok ? '' : ' (held by another address)') + '">🎟 ' + esc(short(d.asset)) + '</div>'; }
-  function card(p, S, back) { var t = p.stage >= 5 ? 4 : p.tier || 0;
-    return '<div class="sh-card sh-t' + t + '" data-n="' + (S ? S.n : '') + '"><div class="sh-hd"><b>' + esc(p.name || spName(p)) + '</b><i>#' + p.id + '</i></div><div class="sh-art">' + art(p) + '</div>' +
+  function card(p, S, back) { var t = p.stage >= 5 ? 4 : p.tier || 0; /* card-shop-scene (owner 1:12 AM CT Oct 24): holo foil is for Mythic-stage pets only (sh-myth); others = plain card, tier-coloured border */
+    return '<div class="sh-card sh-t' + t + (p.stage >= 5 || p.mythicCare ? ' sh-myth' : '') + '" data-n="' + (S ? S.n : '') + '"><div class="sh-hd"><b>' + esc(p.name || spName(p)) + '</b><i>#' + p.id + '</i></div><div class="sh-art">' + art(p) + '</div>' +
       '<div class="sh-st">' + esc(tierName(p)) + ' · ' + esc(spName(p)) + '<br>PWR ' + power(p) + ' &nbsp;V' + st(p, 'vigor') + ' S' + st(p, 'spark') + ' G' + st(p, 'grit') + ' Z' + st(p, 'zoom') + ' L' + st(p, 'luck') + '</div>' +
       (V.oldMoney(p) ? '<div class="sh-om">' + esc(V.OLD_MONEY_LABEL) + '</div>' : '') + deedBadge(p) +
       (S && S.price != null ? '<div class="sh-tag">' + esc(V.saleAmountText(S.asset, S.price)) + '</div>' : '') + (back || '') + '</div>'; }
@@ -260,7 +260,13 @@
     if (t.id === 'shSell') sellPick(); else if (t.id === 'shPrev') { PAGE--; render(); } else if (t.id === 'shNext') { PAGE++; render(); }
     else if (t.closest('[data-buy]')) buy(Number(t.closest('[data-buy]').getAttribute('data-buy'))); else if (t.closest('[data-cancel]')) cancel(Number(t.closest('[data-cancel]').getAttribute('data-cancel')));
     else if (t.closest('[data-unsell]')) unsell(Number(t.closest('[data-unsell]').getAttribute('data-unsell'))); });
-  function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
+  /* card-shop-scene: read-only hooks for js/v2-shop-scene.js. The scene only opens these existing flows; it never composes or signs. */
+  window.V2Sales.scene = { ready: false, data: function () { var b = TIP + 1, open = on() && W ? V.openListings(W, b) : [];
+      return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }),
+        mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
+    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, sell: function (id) { if (W && W.byId[id]) sellPrice(W.byId[id], 'XCPETS', 100); },
+    tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
+  function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();
 })();
