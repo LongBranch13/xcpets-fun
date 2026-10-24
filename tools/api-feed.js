@@ -4,6 +4,9 @@
  * in a Node vm (same approach as tools/replay-check.js). Read-only: it only GETs public Counterparty / block-hash APIs. No secrets.
  *   node tools/api-feed.js                 live: read burns + tip + block hashes from the same APIs the site uses (rjs/chain.js), then replay
  *   node tools/api-feed.js --snap FILE     offline: replay a tools/snapshots/snap-N.json
+ *   --dex FILE  (with --snap) pet-token sale data {issuances,orders,matches,credits,destructions} saved from V2Sales.loadDex
+ *   --no-dex    (with --snap) replay a snapshot without sale data (old behaviour, for comparisons only)
+ *   Live mode refuses to write anything if the sale data can't be read (ownership would be wrong after any sale/tie).
  *   --out DIR (default api)   --now ISO (fixed generated time, for reproducible output)
  * Output is deterministic for a given (burns, tip): pets sorted by id, fixed key order, no timestamps in pets.json. */
 'use strict';
@@ -11,7 +14,9 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 const ROOT = path.resolve(__dirname, '..'), OUT = path.resolve(ROOT, opt('--out') || 'api');
 const SITE = 'https://xcpets.fun';
-const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/pet-score.js', 'js/block-hashes.js', 'js/v2-community.js'];
+const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/pet-score.js', 'js/block-hashes.js', 'js/v2-community.js', 'js/v2-sales.js'];
+/* sale-owner-fix (2026-10-24): js/v2-sales.js is loaded only for V2Sales.loadDex (its page code returns early: no #shop element in the vm),
+ * so the feed reads pet-token issuances/orders/matches/credits/destructions exactly like the site and replays WITH them. */
 function context() {
   const store = {}; const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const q = { log() {}, warn() {}, error() {}, info() {} };
@@ -32,14 +37,22 @@ async function liveInput(ctx) {
   const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index))];
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
+  /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */
+  let dex = null; const V = ctx.V2Rules;
+  if (V.salesGate && V.salesGate() != null) {
+    if (!ctx.V2Sales || !ctx.V2Sales.loadDex) throw new Error('V2Sales.loadDex missing');
+    try { dex = await ctx.V2Sales.loadDex(rows); } catch (e) { throw new Error('pet sale data could not be read, not publishing (owners would be wrong): ' + (e && e.message || e)); }
+    if (!dex) throw new Error('pet sale data empty while the sales gate is set, not publishing');
+  }
   let supply = null; try { const j = await chain.getJson('/assets/' + E.CFG.asset); supply = j && j.result ? Number(j.result.supply) / 1e8 : null; } catch (e) {}
-  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply };
+  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex };
 }
 const STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
 function build(ctx, input, nowIso) {
   const V = ctx.V2Rules, E = ctx.LiveEngine;
   const rows = input.rows.filter(r => r.block_index <= input.tip), hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, input.hashes);
-  const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore });
+  if (V.salesGate && V.salesGate() != null && input.tip >= V.salesGate() && !input.dex && !input.noDex) throw new Error('no pet sale data (dex) for a tip past the sales gate: refusing to build owners without it');
+  const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore, dex: input.dex || undefined }); /* same opts as js/v2-chain.js world() */
   w.tip = w.tip || input.tip;
   const PS = ctx.PetScore, sc = PS && PS.compute ? PS.compute(w, { rules: V }) : { byId: {} };
   const byId = new Map(w.pets.map(p => [p.id, p])), gen = new Map();
@@ -74,6 +87,9 @@ if (require.main === module) (async () => {
   const ctx = context();
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await liveInput(ctx);
   if (opt('--snap')) input.tip = +(opt('--tip') || input.tip);
+  if (opt('--snap') && A.includes('--no-dex')) input.noDex = true; /* offline replays of old snapshots only; live mode never skips sales */
+  if (opt('--dex')) input.dex = JSON.parse(fs.readFileSync(opt('--dex'), 'utf8'));
+  if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
