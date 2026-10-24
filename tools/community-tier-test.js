@@ -9,7 +9,7 @@ const N = +process.argv[2] || 20000, G = 972950, B = G + 10;
 const H = i => crypto.createHash('sha256').update('sim-block-' + i).digest('hex'), ID = i => crypto.createHash('sha256').update('sim-tx-' + i).digest('hex');
 const old = (salt, id, b) => parseInt(crypto.createHash('sha256').update(String(id) + ':' + b + salt).digest('hex').slice(0, 12), 16) % 1300 < 300 ? 3 : 2;
 const c = load(), V = c.V2Rules;
-ok(V.ACTIVATE_SPECIAL_TIER_BLOCK === null, 'gate ships as null');
+const G0 = V.ACTIVATE_SPECIAL_TIER_BLOCK; ok(G0 === null || G0 >= 972906, 'gate null or a future block (972,912 live)'); V._setSpecialTierActivation(null);
 /* 1. Wizard / FUNTRUMP salts unchanged */
 let same = 0; for (let i = 0; i < 2000; i++) { const id = ID(i); if (V.wizRollTier(id, B) === old('XCPETS:v2:wiztier', id, B) && V.ftRollTier(id, B) === old('XCPETS:v2:fttier', id, B)) same++; }
 ok(same === 2000, 'wizRollTier/ftRollTier identical to the old formulas');

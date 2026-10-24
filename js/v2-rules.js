@@ -410,7 +410,7 @@
    * mod (SPECIAL_RARE_W + SPECIAL_LEG_W) < SPECIAL_LEG_W -> Legendary (23.08%), else Rare (76.92%). Wizard and FUNTRUMP keep their exact old salts,
    * so their outcomes are unchanged. Nakamoto stays fixed Legendary (no new Nakamotos hatch). From ACTIVATE_SPECIAL_TIER_BLOCK: Lord Kek eggs use
    * the roll (kekArt) and a pure bred Lord Kek child is floored at Rare (breedOne). Existing pets keep their tier (no relabel). OFF while null. */
-  var ACTIVATE_SPECIAL_TIER_BLOCK = null; // set at deploy to tip + 6
+  var ACTIVATE_SPECIAL_TIER_BLOCK = 972912; // LIVE: tip 972906 + 6 (owner approved deploy Oct 24 2026 4:16 AM CT)
   var SPECIAL_RARE_W = 1000, SPECIAL_LEG_W = 300;
   var SPECIAL_TIER = { nakamoto: { fixed: 3 }, wizard: { salt: 'XCPETS:v2:wiztier' }, funtrump: { salt: 'XCPETS:v2:fttier' }, kek: { salt: 'XCPETS:v2:kektier' } };
   function specialTierOn(b) { return ACTIVATE_SPECIAL_TIER_BLOCK != null && b != null && b >= ACTIVATE_SPECIAL_TIER_BLOCK; }
