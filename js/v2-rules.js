@@ -568,14 +568,14 @@
    *   egg    = from the block after funtrumpMythic the 1-in-777 slot gives a player FUNTRUMP (ftArt) instead of Lord Kek;
    *   hybrid = 'funtrump' is a hybrid root with all 13 species + Kek/Wizard (FT_SP / ftPal / keyedRender below).
    * FULLY INERT: ACTIVATE_FUNTRUMP_BLOCK = null -> ftTrack returns at once, no state is written, FT_POOL_FROM stays Infinity. */
-  var ACTIVATE_FUNTRUMP_BLOCK = null;               // OFF (owner sets it; must be >= launch tip, never rewrites history)
+  var ACTIVATE_FUNTRUMP_BLOCK = 972880;  // LIVE: FUNTRUMP takes over (owner approved Oct 23 2026 11:36 PM CT; gate = tip + 3, owner 11:38 PM CT)
   var FUNTRUMP_CAN_BREED = true;                    // only effective once ACTIVATE_FUNTRUMP_BLOCK is set and reached
   var FT_POOL_FROM = Infinity;
   /* FUNTRUMP BREEDING (owner YES Oct 22 2026 10:47 PM CT; mirrors ACTIVATE_WIZ_BREED_BLOCK): from ACTIVATE_FT_BREED_BLOCK, and only once FUNTRUMP has reached
    * Cold Storage (Mythic, b >= FT_POOL_FROM), player FUNTRUMPs breed like any pet with the unchanged breedChild odds (different species -> hybrid 68.4773435%,
    * FUNTRUMP x FUNTRUMP -> FUNTRUMP + bred-true bonus, three-way rules for hybrid parents). A pure FUNTRUMP child is at least Rare (suit); Legendary = hoodie.
    * The community FUNTRUMP never breeds (p.community check). PLACEHOLDER: null = inert (identical to main). Owner sets it at deploy time. */
-  var ACTIVATE_FT_BREED_BLOCK = null;
+  var ACTIVATE_FT_BREED_BLOCK = 972880;  // = takeover gate; ftBreedOn still waits for FUNTRUMP's own Cold Storage (b >= FT_POOL_FROM), so breeding opens automatically then
   function ftBreedOn(b) { return ACTIVATE_FT_BREED_BLOCK != null && b != null && b >= ACTIVATE_FT_BREED_BLOCK && b >= FT_POOL_FROM; }
   function ftOn(b) { return ACTIVATE_FUNTRUMP_BLOCK != null && b != null && b >= ACTIVATE_FUNTRUMP_BLOCK; }
   function ftColdOn(w, b) { return ftOn(b) && !!(w && w.funtrumpMythic) && b > w.funtrumpMythic.block; }
