@@ -352,8 +352,9 @@
   var FRAMES = [[30, 'gold', '🥇 Gold streak frame'], [7, 'silver', '🥈 Silver streak frame'], [3, 'bronze', '🥉 Bronze streak frame']];
   function graduated() { var d = jget(DONE); return CH.every(function (x) { return d[x.id]; }); }
   function frameOf(best) { for (var i = 0; i < FRAMES.length; i++) if (best >= FRAMES[i][0]) return FRAMES[i]; return null; }
-  function gradCard(on) { var g = el('div', 'tut-grad' + (on ? ' on' : ''), on ? '<b>🎓 Big Beautiful Graduate</b><span>Every chapter done! Your gold frame and title now show in Keeper Quests on the Play page.</span>'
-      : '<b>🎓 Big Beautiful Graduate</b><span>Finish all ' + CH.length + ' chapters to earn the gold graduate frame and title.</span>'); return g; }
+  function gradCard(on) { var g = el('div', 'tut-grad' + (on ? ' on' : ''), on ? '<b>🎓 Big Beautiful Graduate</b><span>Every chapter done! Your gold frame and title now show in Keeper Quests on the Play page.</span>' + (window.V2FtGrad ? '<button type="button" class="btn ftg-replay">▶ Watch FUNTRUMP present it</button>' : '')
+      : '<b>🎓 Big Beautiful Graduate</b><span>Finish all ' + CH.length + ' chapters to earn the gold graduate frame and title.</span>'); var rb = g.querySelector('.ftg-replay'); if (rb) rb.onclick = function () { V2FtGrad.play(); };
+      if (on && window.V2FtGrad) setTimeout(function () { V2FtGrad.playOnce(); }, 400); return g; }
   function rewardsHtml(s) {
     var R = window.V2Rules || {}, gate = R.ACTIVATE_STREAK_SPIN_BLOCK, open = gate != null && gate < 999999999 && (s.tip || 0) + 1 >= gate, sp = s.spin || null, need = R.STREAK_SPIN_DAYS || 7;
     var spinTxt = sp && sp.done != null ? '✅ Earned! It is waiting in your saved Pepe Wheel spins.' : !open ? 'Coming soon: feed your pets ' + need + ' chain days in a row to earn 1 saved Pepe Wheel spin (once per wallet).'
