@@ -28,8 +28,8 @@
       var ms = Math.max(2, bits), d = lzw(a, ms); B.push(ms); for (var o = 0; o < d.length; o += 255) { var ch = d.slice(o, o + 255); B.push(ch.length); for (var q = 0; q < ch.length; q++) B.push(ch[q]); } B.push(0); });
     B.push(0x3b); return new Uint8Array(B); }
   /* looks-draw: a pet wearing looks gets the same js/v2-looks.js composite the live page draws (idle sweep, no pointer), 3 s loop at 10 fps, 256 px */
-  function looksGif(fr, L, info, N) { var out = [], n = 30; for (var k = 0; k < n; k++) { var t = k / 10, o = new Uint8ClampedArray(N * N * 4); L.render(fr[Math.floor(t / 0.3) % fr.length], info, N, t, null, o); out.push(o); } return encode(out, N, N, 10); }
-  function petGif(p, w, scale) { var R = root.V2Render, S = scale || 8, fr = R.petFrames(p, w), N = 32 * S, L = root.V2Looks, li = L && fr[0] && L.info(fr[0]);
+  function looksGif(fr, L, info, N) { var out = [], n = 30; for (var k = 0; k < n; k++) { var t = k / 10, o = new Uint8ClampedArray(N * N * 4); L.compose(fr[Math.floor(t / 0.3) % fr.length], N, t, null, o); out.push(o); } return encode(out, N, N, 10); }
+  function petGif(p, w, scale) { var R = root.V2Render, S = scale || 8, fr = R.petFrames(p, w), N = 32 * S, L = root.V2Looks, li = L && L.hasFx && fr[0] && L.hasFx(fr[0]);
     if (li) return new Blob([looksGif(fr, L, li, N)], { type: 'image/gif' });
     var big = fr.map(function (f) { var d = f.data, o = new Uint8Array(N * N * 4); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var si = (((y / S) | 0) * 32 + ((x / S) | 0)) * 4, di = (y * N + x) * 4; o[di] = d[si]; o[di + 1] = d[si + 1]; o[di + 2] = d[si + 2]; o[di + 3] = 255; } return o; });
     return new Blob([encode(big, N, N, 30)], { type: 'image/gif' }); }

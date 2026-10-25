@@ -655,6 +655,8 @@
       if (room < r.width * 0.3) { o.style.overflow = 'clip'; o.style.overflowClipMargin = Math.max(0, room) + 'px'; } else { o.style.overflow = ''; o.style.overflowClipMargin = ''; } }); }); }
   var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
   function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; c._mfxR = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
+  /* bakes (papers / GIF / token papers) read the same per-frame rim the live electric outline traces */
+  if (window.V2Looks && MYTH_INFO) window.V2Looks.myth = function (img) { var i = img && MYTH_INFO.get(img); if (!i || i.mode !== 'aura5' || !i.rims) return null; return { rim: i.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || i.rims[0], seed: (img.pid || 0) }; };
   function mythAttach(c, img) { if (!MYTH_INFO || !c || c.nodeType !== 1) return; var info = MYTH_INFO.get(img);
     if (!info) { if (c._mfx) mythDetach(c); return; } if (c._mfxKey === info.key && c._mfx && c._mfx.parentNode === c.parentNode && c._mfx.isConnected) { var o0 = c._mfx; if (o0._pos !== c.offsetLeft + ',' + c.offsetTop + ',' + c.offsetWidth + ',' + c.offsetHeight) mythPlace(c); /* follow layout shifts */ mythFrame(c, img, info); return; }
     if (!c.parentNode || typeof document === 'undefined') return; try { mythStyle(); if (c._mfx) mythDetach(c); var o = mythBuild(info); c._mfx = o; c._mfxKey = info.key; o._c = c;

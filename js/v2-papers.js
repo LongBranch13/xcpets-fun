@@ -95,7 +95,7 @@
   function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d, spr: im.spr || null }; }
   /* looks-draw: paste the realistic looks (js/v2-looks.js, the same renderer as the live pet) over the sprite box at output resolution.
    * look = the pet's frame 0 from V2Render (carries the look info); still frame = V2Looks.bake defaults (t 1.3, fixed shine). */
-  function withLooks(r, k, look, Lx) { var L = Lx || root.V2Looks; if (!look || !L || !r.spr || !L.info(look)) return r; var b = r.spr, N = b.n * b.s * k, img = L.bake(look, N); if (!img) return r;
+  function withLooks(r, k, look, Lx) { var L = Lx || root.V2Looks; if (!look || !L || !r.spr || !L.hasFx(look)) return r; var b = r.spr, N = b.n * b.s * k, img = L.bakeAll(look, N); if (!img) return r;
     var d = new Uint8ClampedArray(r.data), ox = b.x * k, oy = b.y * k; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var X = ox + x, Y = oy + y; if (X < 0 || Y < 0 || X >= r.w || Y >= r.h) continue; var si = (y * N + x) * 4, di = (Y * r.w + X) * 4, a = img[si + 3] / 255; if (!a) continue;
       d[di] = d[di] * (1 - a) + img[si] * a; d[di + 1] = d[di + 1] * (1 - a) + img[si + 1] * a; d[di + 2] = d[di + 2] * (1 - a) + img[si + 2] * a; d[di + 3] = 255; } return { w: r.w, h: r.h, data: d, spr: r.spr }; }
   function scaleUp(r, s, look) { if (look) return withLooks(scaleUp(r, s), s, look); var W = r.w * s, H = r.h * s, d = new Uint8ClampedArray(W * H * 4); for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var si = (((y / s) | 0) * r.w + ((x / s) | 0)) * 4, di = (y * W + x) * 4; d[di] = r.data[si]; d[di + 1] = r.data[si + 1]; d[di + 2] = r.data[si + 2]; d[di + 3] = 255; } return { w: W, h: H, data: d, spr: r.spr }; }
@@ -137,7 +137,7 @@
     var t = liveTie(w, p, V, M); if (!t || !facts) { if (el) el.remove(); lastKey = ''; return; }
     var lay = phoneMode() ? 'phone' : 'desktop', worn = (V.wornOf ? V.wornOf(w, id) : []).map(function (g) { return g.item; }).join(',');
     var key = [w.tip, id, t.asset, t.block, p.name, p.stage, JSON.stringify(p.stats), worn, lay, (p.flameLooks || []).join('+'), (p.questLooks || []).join('+')].join('|'); if (!force && key === lastKey && el) return; lastKey = key;
-    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), fr0 = frameOf(p, w), spr = fr0 ? fr0.data : null, r = render(I, spr, lay), hasLk = !!(fr0 && root.V2Looks && root.V2Looks.info(fr0));
+    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), fr0 = frameOf(p, w), spr = fr0 ? fr0.data : null, r = render(I, spr, lay), hasLk = !!(fr0 && root.V2Looks && root.V2Looks.hasFx && root.V2Looks.hasFx(fr0));
     if (!el) { el = document.createElement('section'); el.id = 'petPapers'; el.setAttribute('aria-label', 'Proof of Pet');
       el.innerHTML = '<h2 class="sec" data-ico="star">Proof of Pet</h2><canvas class="pp-cv" role="img"></canvas><div class="pp-row"><button type="button" class="btn" id="ppDl">⬇ Download Proof of Pet (PNG)</button></div>' +
         '<p class="small muted pp-note">Drawn live from the chain replay for this pet\'s verified token. Whoever holds this token owns this pet.</p>';
