@@ -59,10 +59,12 @@
    * Tied = V2Rules.deedOf(w, p).ok (the replay). ?tokPreview=none|made|ready|tied shows a state without any wallet window (screenshots). */
   var TPV = (/[?&]tokPreview=(none|made|ready|tied)\b/.exec(location.search) || [])[1] || null, tpv = TPV, tokMsg = '', tokLast = '';
   function tokTools() { return window.V2Sales && V2Sales.tok && window.V2Rules && V2Rules.mintPlan && V2Rules.deedPlan ? V2Sales.tok : null; }
+  var chk = {}; /* spam-city-tokenized-fix: one chain look-up per pet per page load (V2Sales.tok.chainPend) */
   function tokState(w, p) { var V = window.V2Rules, T = tokTools();
     if (tpv) return { s: tpv, pd: tpv === 'none' ? null : { asset: 'A12345678901234567890', at: tip() - (tpv === 'made' ? 0 : 2) }, d: tpv === 'tied' ? { asset: 'A12345678901234567890', ok: true } : null };
     var d = V && V.deedOf ? V.deedOf(w, p) : null; if (d && d.ok) { if (T && T.pend(p.id)) T.pend(p.id, null); return { s: 'tied', d: d }; }
-    var pd = T ? T.pend(p.id) : null; if (!pd) return { s: 'none', d: d };
+    var pd = T ? T.pend(p.id) : null; if (T && T.chainPend && !tpv && me() && p.owner === me() && !chk[p.id] && (!pd || !pd.tieTx)) { chk[p.id] = 1; T.chainPend(p.id, me(), w).then(function (x) { if (x) tokPaint(true); }); }
+    if (!pd) return { s: 'none', d: d };
     return { s: tip() >= (Number(pd.at) || 0) + 1 ? 'ready' : 'made', pd: pd, d: d }; }
   function shortA(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
   function tokHtml(w, p, mine) {
@@ -75,7 +77,7 @@
     if (S.s === 'none') body = '<p>Give #' + p.id + ' its very own 🎟 pet token! Step 1 makes it for free (you only pay the tiny Bitcoin fee).' + (S.d && !S.d.ok ? ' The old token ' + esc(shortA(S.d.asset)) + ' sits in another wallet, so a fresh one replaces it.' : '') + '</p>' +
       '<button type="button" class="btn pc-tokgo" id="pcTokMint"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎟 Tokenize: step 1 of 2</button>';
     else if (S.s === 'made') body = '<p>⏳ Token ' + esc(shortA(S.pd.asset)) + ' is on its way! Wait 1 block (about 10 minutes) for it to confirm, then come back for step 2.</p>';
-    else body = (S.pd.tieTx ? '<p>💌 Tie burn sent! #' + p.id + ' shows as tied once it confirms.</p>' : '<p>✨ Token ' + esc(shortA(S.pd.asset)) + ' is ready. Step 2 ties it to #' + p.id + ' with a 1-dander burn (<code>pet:deed</code>).</p>') +
+    else body = (S.pd.tieTx ? '<p>💌 Tie burn sent' + (S.pd.tieBlock ? ' and confirmed in block ' + S.pd.tieBlock.toLocaleString('en-US') : '') + '! #' + p.id + ' shows as tied (here and in Spam City) once the game data reaches it. No need to send anything again.</p>' : '<p>✨ Token ' + esc(shortA(S.pd.asset)) + ' is ready. Step 2 ties it to #' + p.id + ' with a 1-dander burn (<code>pet:deed</code>).</p>') +
       '<button type="button" class="btn pc-tokgo" id="pcTokTie"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>' + (S.pd.tieTx ? '🔗 Send the tie again' : '🔗 Tie it: step 2 of 2') + '</button>';
     return '<div class="pc-tok"><h3 class="pc-qh">🎟 Pet token</h3><ol class="pc-tsteps">' + dots + '</ol>' + body +
       (why && S.s !== 'made' ? '<p class="small muted">Can\'t tokenize right now: ' + esc(why) + '.</p>' : '') + '<p class="small pc-tokmsg" id="pcTokMsg">' + esc(tokMsg) + '</p></div>'; }
