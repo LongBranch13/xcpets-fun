@@ -22,4 +22,14 @@ eq('no Nakamoto or Wizard art', /sprite\('(nakamoto|wizard)/.test(src), false);
 eq('every chapter has steps', T.CH.every(ch => ch.steps.length > 0), true);
 const s = T.stats({ tip: 144 * 10 + 5, pets: [{ owner: 'a', feedDays: { 8: 1, 9: 1, 10: 1 }, stage: 3, wins: 1, losses: 0, breeds: 0 }, { owner: 'b', feedDays: { 1: 1 }, stage: 5 }] }, 'a');
 eq('streak + quests from history', [s.pets, s.best, s.cur, s.stage, s.fights], [1, 3, 3, 3, 1]);
+// Coach skip flow: steps 0 connect (hidden once connected), 1 crack, 2 pets, 3 feed, 4 quests. Skipped set persists like localStorage.
+const sk = {}, ok = k => k !== 0 && !sk[k], P2 = T.pickStep;
+let ci = P2(-1, 1, 5, ok); eq('coach starts on crack step', ci, 1);
+sk[ci] = 1; ci = P2(ci, 1, 5, ok); eq('Skip on crack advances (no action needed)', ci, 2);
+eq('Back from pets never returns to skipped crack or hidden connect', P2(ci, -1, 5, ok), 2);
+eq('re-entering the tour skips the remembered crack step', P2(-1, 1, 5, ok), 2);
+eq('Next past last step ends the tour', P2(4, 1, 5, ok), 5);
+eq('skip key name', T.CSKIP, 'xcpets-tut-coach-skip');
+eq('mythic line 21,000 + Mythic 69,069 from v2-rules.js', [N.mythicLine, N.thresholds[5]], [K('MYTHIC_DISCOUNT_CARE'), pick('THRESHOLDS')[5]]);
+eq('raised-only wording (no "own a living Mythic")', /\bown(s)? a (living )?Mythic/i.test(src + fs.readFileSync(path.join(ROOT, 'js/v2-intuitive.js'), 'utf8')), false);
 console.log(fail ? fail + ' FAILED' : 'tutorial: all checks pass'); process.exit(fail ? 1 : 0);
