@@ -226,6 +226,7 @@
       var nDone = CH.filter(function (x) { return done[x.id]; }).length;
       c.appendChild(el('div', 'tut-meter', '<i style="width:' + Math.round(nDone / CH.length * 100) + '%"></i>'));
       c.appendChild(el('p', 'tut-body small', nDone + ' of ' + CH.length + ' chapters done'));
+      c.appendChild(gradCard(nDone === CH.length));
       var m = el('div', 'tut-menu');
       CH.forEach(function (ch, i) {
         var b = el('button', 'tut-ch' + (ch.deep ? ' deep' : ''), '<span class="ok">' + (done[ch.id] ? '✅' : '') + '</span>' + ch.ico + ' ' + (i + 1) + '<span class="t">' + esc(ch.t) + '</span><span class="s">' + esc(ch.s) + '</span>');
@@ -328,6 +329,7 @@
     ['breed', '🏨', 'Breed a baby', function (s) { return s.breeds >= 1; }],
     ['pack', '📦', 'Own 12 pets', function (s) { return s.pets >= 12; }],
     ['streak7', '🌋', 'Feed 7 days in a row', function (s) { return s.best >= 7; }],
+    ['streak30', '🏅', 'Feed 30 days in a row', function (s) { return s.best >= 30; }],
     ['mythic', '✨', 'Reach Mythic', function (s) { return s.stage >= 5; }]
   ];
   function stats(w, me) {
@@ -343,14 +345,34 @@
     var today = Math.floor((w.tip || 0) / N.blocksPerDay); s.cur = prev !== null && prev >= today - 1 ? run : 0; s.today = !!days[today];
     return s;
   }
+  /* ---------- rewards (owner pick Oct 25 2026) ----------
+   * 1) Big Beautiful Graduate frame + title: all chapters done, saved in this browser (honor-based, display only).
+   * 2) Streak frames: bronze / silver / gold at 3 / 7 / 30 chain days in a row, from the replayed world (display only).
+   * 3) 7-day streak spin: +1 saved Pepe Wheel spin once per wallet, a rule in js/v2-rules.js (streakFeed) behind ACTIVATE_STREAK_SPIN_BLOCK. */
+  var FRAMES = [[30, 'gold', '🥇 Gold streak frame'], [7, 'silver', '🥈 Silver streak frame'], [3, 'bronze', '🥉 Bronze streak frame']];
+  function graduated() { var d = jget(DONE); return CH.every(function (x) { return d[x.id]; }); }
+  function frameOf(best) { for (var i = 0; i < FRAMES.length; i++) if (best >= FRAMES[i][0]) return FRAMES[i]; return null; }
+  function gradCard(on) { var g = el('div', 'tut-grad' + (on ? ' on' : ''), on ? '<b>🎓 Big Beautiful Graduate</b><span>Every chapter done! Your gold frame and title now show in Keeper Quests on the Play page.</span>'
+      : '<b>🎓 Big Beautiful Graduate</b><span>Finish all ' + CH.length + ' chapters to earn the gold graduate frame and title.</span>'); return g; }
+  function rewardsHtml(s) {
+    var R = window.V2Rules || {}, gate = R.ACTIVATE_STREAK_SPIN_BLOCK, open = gate != null && gate < 999999999 && (s.tip || 0) + 1 >= gate, sp = s.spin || null, need = R.STREAK_SPIN_DAYS || 7;
+    var spinTxt = sp && sp.done != null ? '✅ Earned! It is waiting in your saved Pepe Wheel spins.' : !open ? 'Coming soon: feed your pets ' + need + ' chain days in a row to earn 1 saved Pepe Wheel spin (once per wallet).'
+      : (sp && sp.len ? sp.len + ' of ' + need + ' days so far. ' : '') + 'Feed your own pets ' + need + ' chain days in a row for 1 saved Pepe Wheel spin (once per wallet). Pets hatched during the streak do not count.';
+    var cells = [[s.grad, 'tut-fr gold', '🎓 Big Beautiful Graduate', s.grad ? 'Gold frame + title' : 'Finish The Big Beautiful Tutorial']]
+      .concat(FRAMES.slice().reverse().map(function (f) { return [s.best >= f[0], 'tut-fr ' + f[1], f[2], f[0] + ' days in a row']; }))
+      .concat([[sp && sp.done != null, 'tut-fr spin', '🎡 7-day streak spin', spinTxt]]);
+    return '<div class="tut-rw">' + cells.map(function (c) { return '<div class="tut-q tut-rwc' + (c[0] ? ' done' : '') + '"><span class="' + c[1] + '"></span><span><b>' + (c[0] ? '✅ ' : '') + esc(c[2]) + '</b><br><small>' + esc(c[3]) + '</small></span></div>'; }).join('') + '</div>';
+  }
+  function keeperCard(s) { var f = frameOf(s.best), cls = s.grad ? 'gold' : f ? f[1] : 'none', title = s.grad ? 'Big Beautiful Graduate' : f ? (f[1] === 'gold' ? 'Golden Keeper' : f[1] === 'silver' ? 'Silver Keeper' : 'Bronze Keeper') : 'Keeper';
+    return '<div class="tut-kc fr-' + cls + '"><span class="tut-kc-ico">' + (s.grad ? '🎓' : f ? '🔥' : '🐸') + '</span><span><b>' + esc(title) + '</b><br><small>' + (s.me ? esc(s.me.slice(0, 8) + '…' + s.me.slice(-4)) : 'your wallet') + (s.best ? ' · best streak ' + s.best + ' day' + (s.best === 1 ? '' : 's') : '') + '</small></span></div>'; }
   function questsPanel(s) {
     var p = document.getElementById('tutQuests');
     if (!p) { var host = document.getElementById('petsPanel'); if (!host) return; p = el('details', 'panel tut-quests'); p.id = 'tutQuests'; host.parentNode.insertBefore(p, host); }
     var open = p.open, n = QUESTS.filter(function (q) { return q[3](s); }).length;
     p.innerHTML = '<summary>🎯 Keeper Quests ' + n + '/' + QUESTS.length + ' <span class="tut-flame" title="Chain days in a row with at least one meal">' + (s.cur ? '🔥 ' + s.cur + '-day streak' + (s.today ? '' : ' (feed today to keep it)') : '') + '</span></summary>' +
-      '<div class="tut-meter"><i style="width:' + Math.round(n / QUESTS.length * 100) + '%"></i></div><div class="tut-qlist">' +
+      keeperCard(s) + '<div class="tut-meter"><i style="width:' + Math.round(n / QUESTS.length * 100) + '%"></i></div><div class="tut-qlist">' +
       QUESTS.map(function (q) { var ok = q[3](s); return '<div class="tut-q' + (ok ? ' done' : '') + '"><span class="b">' + q[1] + '</span><span>' + (ok ? '✅ ' : '') + esc(q[2]) + '</span></div>'; }).join('') +
-      '</div><p class="small muted">Badges are just for fun: they come from your real history and give nothing in the game. <a href="tutorial.html">🎓 The Big Beautiful Tutorial</a></p>';
+      '</div><h4 class="tut-rwh">🎁 Rewards</h4>' + rewardsHtml(s) + '<p class="small muted">Badges and frames come from your real history and are just for show. The one reward with game value is the 7-day streak spin. <a href="tutorial.html">🎓 The Big Beautiful Tutorial</a></p>';
     p.open = open;
   }
   var TIPLIST = [
@@ -363,7 +385,7 @@
   var lastKey = '', tipOpen = false;
   function playTick() {
     if (!window.V2UI || !V2UI.world) return; var w; try { w = V2UI.world(); } catch (e) { return; } if (!w || !w.pets) return;
-    var me = V2UI.ME || null; if (!me) return; var s = stats(w, me), key = JSON.stringify(s); if (key === lastKey) return; lastKey = key;
+    var me = V2UI.ME || null; if (!me) return; var s = stats(w, me); s.me = me; s.tip = w.tip || 0; s.grad = graduated(); s.spin = (w.streakSpin && w.streakSpin[me]) || null; var key = JSON.stringify(s); if (key === lastKey) return; lastKey = key;
     questsPanel(s);
     if (tipOpen || document.querySelector('.tut-spot')) return; var seen = jget(TIPS);
     for (var i = 0; i < TIPLIST.length; i++) if (!seen[TIPLIST[i][0]] && TIPLIST[i][1](s)) { tipOpen = true; tip(TIPLIST[i][2], [['Got it', function () { tipOpen = false; }, 'btn']], TIPLIST[i][0]); break; }
@@ -377,6 +399,7 @@
     var onPlay = !!document.getElementById('hatchPanel') && /(^|\/)(play\.html)?$/.test(location.pathname);
     /* the older 4-step tour (v2-intuitive) stays replayable from its help button; Coach Peepo takes the first visit */
     if (onPlay && (qs.has('coach') || !ls(SEEN))) { ls('xcpets-ip-tour', '1'); setTimeout(function () { var o = document.querySelector('.ip-tour'); if (o) { o.remove(); document.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); } }, 2600); }
+    if (onPlay && qs.get('preview') === 'rewards') { setTimeout(function () { questsPanel({ pets: 14, feeds: 90, best: 30, cur: 12, today: true, stage: 5, fights: 9, wins: 5, breeds: 2, me: 'bc1qpreview000000000000000000000000rwds', grad: true, tip: 0, spin: { len: 7, done: 1 } }); var q = document.getElementById('tutQuests'); if (q) { q.open = true; q.scrollIntoView({ block: 'start' }); } }, 2500); return; }
     if (onPlay) { setInterval(playTick, 4000); setTimeout(playTick, 1500); }
     if (onPlay && qs.has('coach')) { ls(SEEN, '1'); setTimeout(coach, 1200); return; }
     if (!ls(SEEN)) setTimeout(function () { welcome(onPlay); }, 900);
