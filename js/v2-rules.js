@@ -781,19 +781,19 @@
   function halvingBlocks(w) { var h1 = halving1Block(w); if (h1 == null) return []; var out = [h1];
     if (autoHalvingOn()) { coldStorageAfterKek(w).forEach(function (cs) { out.push(Math.max(cs + HALVING_DELAY, ACTIVATE_AUTO_HALVING_BLOCK, out[out.length - 1] + 1)); }); return out; }
     COMMUNITY_PET_ARRIVAL_BLOCKS.forEach(function (L) { if (L >= ACTIVATE_COMMUNITY_TRIGGER_BLOCK && L + HALVING_DELAY > h1) out.push(Math.max(L + HALVING_DELAY, out[out.length - 1] + 1)); }); return out; }
-  /* ERA CAP (owner Oct 25 2026, PREVIEW community-target-halving): costs stop halving after MAX_ERA halvings. 69 / 2^12 = 0.0168457 XCPETS is then the
+  /* ERA CAP (owner Oct 25 2026, PREVIEW community-target-halving): costs stop halving after MAX_ERA halvings. 69 / 2^8 = 0.26953125 XCPETS is then the (v3: cap 8, so feeds keep burning a steady amount; was 12)
    * lowest community feed (fire sale 0.0052222), so no cost ever rounds toward the 8-dp limit. Halvings past the cap still happen (and still count), they just
    * stop cutting costs. Eras before the gate are 0-2, so the cap changes no replay. */
-  var MAX_ERA = 12;
+  var MAX_ERA = 8;
   function eraAt(w, b) { if (!halvingOn(b)) return 0; var n = 0; halvingBlocks(w).forEach(function (g) { if (b >= g) n++; }); return Math.min(n, MAX_ERA); }
   function r8(x) { return Math.round(x * 1e8) / 1e8; }
   /* ---------------------------------------------------------------- GENTLE COMMUNITY TARGETS (owner Oct 25 2026 v2; PREVIEW branch community-target-halving, not deployed)
    * Only community pets that START at or after ACTIVATE_CP_TARGET_HALVING_BLOCK (pet #5 onward). The current pet (FUNTRUMP, started at Lord Kek's
    * Cold Storage) keeps 6,906,900 and his normal path: no instant Cold Storage at the gate. A new pet's targets = COMMUNITY_THRESHOLDS times
-   * CP_TARGET_FACTOR^(era - era at the gate), r8, era = eraAt (capped at MAX_ERA). Costs halve each era while the target shrinks by only 0.75, so each
-   * halving takes 1.5 times the feeds of the one before (strict halving: the same; no change: 2 times). Before the gate: unchanged, replay SAME.
+   * CP_TARGET_FACTOR^(era - era at the gate), r8, era = eraAt (capped at MAX_ERA). v3 (owner Oct 25 2026): factor 0.5, so the target halves with costs and
+   * every pet takes the same number of feeds (200,200 minimum feeds to Mythic); cap 8 keeps the burn per feed meaningful. Before the gate: unchanged, replay SAME.
    * PREVIEW gate = chain tip 973,130 (mempool.space + blockstream agree, Oct 25 2026) + 6. Reset to tip + 6 at deploy. */
-  var ACTIVATE_CP_TARGET_HALVING_BLOCK = 973136, CP_TARGET_FACTOR = 0.75;
+  var ACTIVATE_CP_TARGET_HALVING_BLOCK = 973136, CP_TARGET_FACTOR = 0.5;
   function cpTargetOn(b) { return ACTIVATE_CP_TARGET_HALVING_BLOCK != null && b != null && b >= ACTIVATE_CP_TARGET_HALVING_BLOCK; }
   function cpScaled(k) { if (!(k > 0)) return COMMUNITY_THRESHOLDS; var f = Math.pow(CP_TARGET_FACTOR, k); return COMMUNITY_THRESHOLDS.map(function (v) { return r8(v * f); }); }
   /** cpThresholds(w, b, start): thresholds at block b for a community pet that started at block `start` (no start / before the gate = base). */
