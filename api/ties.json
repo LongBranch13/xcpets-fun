@@ -1,6 +1,6 @@
 {
- "lastBlock": 973128,
- "count": 93,
+ "lastBlock": 973131,
+ "count": 94,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1118,6 +1118,18 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 891,
+   "asset": "A17354511562208255366",
+   "tiedBlock": 973131,
+   "tiedTx": "aaebf8ce6f57cefb96fc4b9492272d2a3e584a1a5ba2e6bc951ee1f7e1a56381",
+   "kind": "deed",
+   "name": "Zoribo",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
