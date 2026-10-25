@@ -22,14 +22,15 @@
     var tip = (M && M.state && M.state().tip) || (w && w.tip) || feed.lastBlock || 0, listed = {};
     if (w && V.openListings) try { V.openListings(w, tip + 1).forEach(function (S) { listed[S.petId] = S; }); } catch (e) {}
     var by = {}, out = [];
-    (feed.ties || []).forEach(function (t) { by[t.id] = { id: t.id, asset: t.asset, block: t.tiedBlock, tx: t.tiedTx, kind: t.kind, name: t.name, rarity: t.rarity, species: t.speciesLabel, stage: t.stage }; });
+    (feed.ties || []).forEach(function (t, i) { by[t.id] = { idx: i, id: t.id, asset: t.asset, block: t.tiedBlock, tx: t.tiedTx, kind: t.kind, name: t.name, rarity: t.rarity, species: t.speciesLabel, stage: t.stage }; });
     /* ties newer than the feed (replayed live): same fields from the world */
     if (w && w.deeds) Object.keys(w.deeds).forEach(function (a) { var D = w.deeds[a], p = D && w.byId[D.petId]; if (!p || p.deed !== a || D.destroyed || by[p.id]) return;
-      by[p.id] = { id: p.id, asset: a, block: D.block, tx: D.tx, kind: 'deed', name: p.name, rarity: RAR[p.tier], species: p.species, stage: p.stageName }; });
+      by[p.id] = { idx: Infinity, id: p.id, asset: a, block: D.block, tx: D.tx, kind: 'deed', name: p.name, rarity: RAR[p.tier], species: p.species, stage: p.stageName }; });
     Object.keys(by).forEach(function (k) { var e = by[k], p = w && w.byId && w.byId[e.id];
       if (p) { e.owner = p.owner; e.name = p.name || e.name; e.stage = p.stageName || e.stage; e.pet = p; if (p.deed && p.deed !== e.asset) e.asset = p.deed; }
       e.listed = !!listed[e.id]; out.push(e); });
-    out.sort(function (a, b) { return a.block - b.block || String(a.tx).localeCompare(String(b.tx)) || a.id - b.id; });
+    /* same block: api/ties.json order (its index); ties replayed past the feed come after, by tx then id */
+    out.sort(function (a, b) { return a.block - b.block || (a.idx === b.idx ? 0 : a.idx === Infinity ? 1 : b.idx === Infinity ? -1 : a.idx - b.idx) || String(a.tx).localeCompare(String(b.tx)) || a.id - b.id; });
     out.forEach(function (e, i) { e.no = i + 1; });
     return out;
   }
