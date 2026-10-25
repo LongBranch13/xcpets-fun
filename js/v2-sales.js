@@ -118,7 +118,7 @@
   function credits(A) { /* direct-counterparty-api: the proxy rebuild (xcpCredits) only when every Core node is network-blocked */ return nodeCredits(A).catch(function (e) { if (coreBlocked()) return xcpCredits(A); throw e; }).catch(function (e) { throw new Error('pet token transfers could not be read (' + e.message + ')'); }); }
   /* mint-tie window is closed (ACTIVATE_ONE_TIE_PATH_BLOCK passed): its token list is fixed, so it can stand in for a slow full-node scan. */
   function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, OG = V.oneTieGate ? V.oneTieGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0);
-    if (G == null || OG == null || G >= OG || top < OG) return nodeMintAssets(rows);
+    if (G == null || OG == null || G >= OG || top < OG || window.XCPETS_MINT_SCAN) return nodeMintAssets(rows); /* feed-rate-limit: the CI feed always waits for the full scan (behind its rate gate the 2.5 s race would hand it the 3-token window list) */
     return race(function () { return nodeMintAssets(rows); }, function () { return Promise.resolve(MINT_WINDOW.slice()); }); }
   /** deedAssets(rows) -> the pet-token assets named by pet:deed burns (the API has no asset search, so the burn announces the token). */
   function deedAssets(rows) { var seen = {}, out = []; (V.readBurns ? V.readBurns(rows || []) : rows || []).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; }
@@ -130,7 +130,7 @@
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
   function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
     var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); }); nodes = nodes.filter(function (u) { return !netDead(String(u).replace(/\/+$/, '')); }).concat(nodes.filter(function (u) { return netDead(String(u).replace(/\/+$/, '')); }));
-    function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
+    function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG && !window.XCPETS_MINT_SCAN) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
       var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
@@ -160,7 +160,7 @@
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }); }
       if (DEAD[base]) return on(i + 1); return go(null).catch(function () { DEAD[base] = 1; return on(i + 1); }); }
     return on(0); }
-  function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > 60) return Promise.reject(new Error('base too old'));
+  function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > (window.XCPETS_TOUCH_MAX || 60)) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
     blockEvents.src = {}; return Promise.all(n.map(function (b) { return blockEvents(b, hs); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
       as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
