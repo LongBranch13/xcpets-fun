@@ -675,7 +675,7 @@
     document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
     window.addEventListener('scroll', q, { passive: true }); }
-  /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 3 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
+  /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 5 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
    * a flickering fire aura on the pet's outline, a small flame crown with a gold band on top of the head, and a gold frame with n of 3 edition pips.
    * Silhouette per frame from two key renders (same trick as mythFx). Display only. */
   var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]], BL_GOLD = [255, 210, 63], BL_GOLD2 = [176, 120, 20], BL_INK = [20, 12, 6];

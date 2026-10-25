@@ -459,8 +459,8 @@
     TOP3_WIZ.forEach(function (g) { var seed = 'XCPETS:top3wiz:' + g[0];
       var p = mk(w, g[1], wizardArt(TOP3_CUTOFF[1], seed, TOP3_CUTOFF[0]), ACTIVATE_TOP3_WIZ_BLOCK, COSTS.hatch, seed); p.top3Grant = { rank: g[0], cutoff: TOP3_CUTOFF[0] };
       w.log.push({ block: ACTIVATE_TOP3_WIZ_BLOCK, tx: seed, kind: 'hatch', msg: 'top-3 burner reward: hatched #' + p.id + ' Bitcoin Wizard (rank ' + g[0] + ' by XCPETS burned to block ' + TOP3_CUTOFF[0] + ')', petId: p.id }); }); }
-  /* BURN LORDS (owner decision Oct 24 2026, PREVIEW branch burn-lords): ONE-TIME grant. Each of the top 3 all-time burner wallets gets ONE free
-   * Legendary Lord Kek + Bitcoin Wizard hybrid, a 'Burn Lord edition' (1 of 3, 2 of 3, 3 of 3) that breeding can never make.
+  /* BURN LORDS (owner decision Oct 24 2026, PREVIEW branch burn-lords): ONE-TIME grant. Each of the top 5 all-time burner wallets gets ONE free
+   * Legendary Lord Kek + Bitcoin Wizard hybrid, a 'Burn Lord edition' (1 of 5 through 5 of 5) that breeding can never make.
    *   Ranking: w.burnedBy (the same totals the Rankings 'Top burners' board and walletBurned use: every valid burn, all actions) frozen at the END
    *     of BURN_LORDS_SNAPSHOT_BLOCK = 973,300 (owner, Oct 24 2026 ~6:55 PM CT; tip was 972,992): burns in 973,300 count, later ones never do.
    *   Grant: at the first processed block >= 973,301 (the first burn row after the snapshot, or the tip once it passes 973,300).
@@ -469,9 +469,9 @@
    *   Pet: G = that grant block, gh = its block hash (waits until the hash is known; ranking already frozen). Body: always the blue Wikek
    *     (see BURN LORD LOOK below); plan from hybridPlan0(sha(gh + 'XCPETS:burnlords:' + rank), key),
    *     art seed = same hash; tier forced to Legendary (3) with the tier stat bonus difference; born at G with hatch care; ids in rank order.
-   *   p.burnLord = { n, of: 3, rank, total, gate: snapshot block }: permanent edition flag, drawn as the exclusive fiery crown + gold frame (V2Render)
-   *     and the 'Burn Lord' badge; breedOne never copies it, so offspring never get it. w.burnLordsGranted makes it fire once: exactly 3 pets ever. */
-  var BURN_LORDS_SNAPSHOT_BLOCK = 973300, BURN_LORDS_N = 3;
+   *   p.burnLord = { n, of: 5, rank, total, gate: snapshot block }: permanent edition flag, drawn as the exclusive fiery crown + gold frame (V2Render)
+   *     and the 'Burn Lord' badge; breedOne never copies it, so offspring never get it. w.burnLordsGranted makes it fire once: exactly 5 pets ever. */
+  var BURN_LORDS_SNAPSHOT_BLOCK = 973300, BURN_LORDS_N = 5; /* owner Oct 24 2026 10:15 PM CT: top 5 (was 3; tip 973008, before the snapshot, so replay unchanged) */
   function burnLordsRank(w) { var keys = Object.keys(w.burnedBy || {}), ix = {}; keys.forEach(function (a, i) { ix[a] = i; });
     return keys.filter(function (a) { return w.burnedBy[a] > 0; }).sort(function (a, b) { return (w.burnedBy[b] - w.burnedBy[a]) || (ix[a] - ix[b]) || (a < b ? -1 : a > b ? 1 : 0); })
       .slice(0, BURN_LORDS_N).map(function (a, i) { return { rank: i + 1, address: a, total: w.burnedBy[a] }; }); }
