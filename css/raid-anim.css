@@ -1,0 +1,102 @@
+/* XCPETS raid animations (raid.html). Pixel art: steps() timing, transform/opacity only. Driven by js/v2-raid-anim.js. */
+#raidBox .ra-wrap{position:relative;overflow:visible;gap:0}
+#raidBox .ra-wrap img{animation:none;filter:drop-shadow(0 8px 0 rgba(0,0,0,.45))}
+#raidBox .ra-bossbox{position:relative;display:inline-block;transform-origin:50% 100%}
+#raidBox .ra-body{position:relative;display:inline-block;transform-origin:50% 100%}
+#raidBox .ra-bimg{display:block;max-width:100%;max-height:340px;image-rendering:pixelated}
+#raidBox .ra-bimg.rd-dead{filter:grayscale(1) brightness(.6);transform:rotate(-8deg) translateY(10px)}
+/* idle loops */
+#raidBox .ra-st-live .ra-i-breathe .ra-body{animation:raBreathe 2.4s steps(4) infinite}
+#raidBox .ra-st-live .ra-i-heave .ra-body{animation:raHeave 3.2s steps(5) infinite}
+#raidBox .ra-st-live .ra-i-float .ra-body{animation:raFloat 3s steps(6) infinite}
+#raidBox .ra-st-live .ra-i-sway .ra-body{animation:raSway 3s steps(6) infinite}
+#raidBox .ra-st-live .ra-i-jitter .ra-body{animation:raJit 1.6s steps(1) infinite}
+@keyframes raBreathe{50%{transform:translateY(-4px) scale(1.02,1.035)}}
+@keyframes raHeave{40%{transform:scale(1.035,1.05)}}
+@keyframes raFloat{50%{transform:translateY(-12px)}}
+@keyframes raSway{25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}
+@keyframes raJit{0%,70%{transform:none}75%{transform:translate(2px,-1px)}82%{transform:translate(-2px,1px)}90%{transform:translate(1px,0)}}
+/* glowing eyes / furnace / fists */
+#raidBox .ra-eye{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;background:var(--eye);box-shadow:0 0 8px 4px var(--eye);opacity:.5;animation:raEye 1.6s steps(3) infinite;pointer-events:none;mix-blend-mode:screen}
+#raidBox .ra-core{position:absolute;width:60px;height:60px;margin:-30px 0 0 -30px;background:radial-gradient(circle,#ffd04a 0,#ff6a1a 35%,transparent 70%);opacity:.45;animation:raCore 1.2s steps(4) infinite;mix-blend-mode:screen;pointer-events:none}
+#raidBox .ra-fist{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;background:radial-gradient(circle,#ffb030 0,transparent 65%);opacity:.3;animation:raCore 1.7s steps(4) infinite;mix-blend-mode:screen;pointer-events:none}
+#raidBox .ra-st-won .ra-eye,#raidBox .ra-st-won .ra-core,#raidBox .ra-st-won .ra-fist,#raidBox .ra-st-won .ra-parts{display:none}
+@keyframes raEye{50%{opacity:1;transform:scale(1.3)}}
+@keyframes raCore{50%{opacity:.85;transform:scale(1.25)}}
+#raidBox .ra-rays{position:absolute;left:50%;top:40%;width:420px;height:420px;margin:-210px;background:repeating-conic-gradient(rgba(255,214,90,.22) 0 10deg,transparent 10deg 30deg);animation:raSpin 12s steps(24) infinite;pointer-events:none;border-radius:50%}
+@keyframes raSpin{to{transform:rotate(360deg)}}
+/* particles */
+#raidBox .ra-parts{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#raidBox .ra-pt{position:absolute;bottom:0;width:6px;height:6px;animation:raRise 3s steps(10) infinite}
+#raidBox .ra-pt.ra-s2{width:8px;height:8px}
+#raidBox .ra-pt-fire{background:#ffb030;box-shadow:0 0 6px #ff4a1a}
+#raidBox .ra-pt-gold,#raidBox .ra-pt-spark{background:#ffe680;box-shadow:0 0 6px #ffc93c}
+#raidBox .ra-pt-spark{background:#bfefff;box-shadow:0 0 6px #6ad8ff}
+#raidBox .ra-pt-necro{background:#7dff5a;box-shadow:0 0 8px #3aff3a;border-radius:50%}
+#raidBox .ra-pt-mist,#raidBox .ra-pt-steam{background:rgba(220,255,240,.35);width:18px;height:18px;border-radius:50%}
+#raidBox .ra-pt-steam{background:rgba(255,255,255,.3)}
+#raidBox .ra-pt-shadow{background:#ff2030;box-shadow:0 0 6px #ff0010}
+#raidBox .ra-pt-frost,#raidBox .ra-pt-coins{top:0;bottom:auto;animation-name:raFall}
+#raidBox .ra-pt-frost{background:#fff;box-shadow:0 0 4px #9fefff}
+#raidBox .ra-pt-coins{background:#ffc93c;border:2px solid #a8660c;width:8px;height:8px}
+@keyframes raRise{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-260px) translateX(12px);opacity:0}}
+@keyframes raFall{0%{transform:translateY(-10px);opacity:0}15%{opacity:1}100%{transform:translateY(320px) translateX(-14px);opacity:0}}
+/* Lord Kek champion */
+#raidBox .ra-duel{justify-content:space-between;gap:6px}
+#raidBox .ra-champ{position:relative;flex:0 0 38%;align-self:flex-end;z-index:2}
+#raidBox .ra-cimg{display:block;width:100%;max-height:240px;object-fit:contain;image-rendering:pixelated;animation:raBreathe 2s steps(4) infinite;transform-origin:50% 100%}
+#raidBox .ra-duel .ra-bossbox{flex:0 1 60%}
+#raidBox .ra-cglow{position:absolute;left:20%;top:5%;width:30px;height:30px;background:radial-gradient(circle,#fff7b0,#ffc93c 40%,transparent 70%);animation:raCore 1.4s steps(4) infinite;mix-blend-mode:screen}
+#raidBox .ra-bolt{position:absolute;left:60%;top:28%;width:0;height:8px;background:repeating-linear-gradient(90deg,#fff7b0 0 6px,#ffc93c 6px 12px);box-shadow:0 0 10px #ffc93c;opacity:0}
+#raidBox .ra-strike{animation:raLunge .8s steps(6)}
+#raidBox .ra-strike-big{animation:raLunge .8s steps(6)}
+#raidBox .ra-strike .ra-bolt,#raidBox .ra-strike-big .ra-bolt{animation:raBolt .6s steps(5) .2s}
+#raidBox .ra-strike-big .ra-bolt{height:16px;background:repeating-linear-gradient(90deg,#fff 0 6px,#ffe14a 6px 12px)}
+@keyframes raLunge{30%{transform:translateX(26px) rotate(4deg) scale(1.06)}60%{transform:translateX(18px)}}
+@keyframes raBolt{0%{width:0;opacity:1}60%{width:160%;opacity:1}100%{width:160%;opacity:0}}
+/* hit flash + shake */
+#raidBox .ra-flash{position:absolute;left:-10%;top:-10%;width:120%;height:120%;background:radial-gradient(circle,rgba(255,240,150,.9) 0,rgba(255,200,60,.4) 35%,transparent 65%)!important;opacity:0;pointer-events:none;mix-blend-mode:screen}
+#raidBox .ra-hit .ra-body,#raidBox .ra-hit-big .ra-body{animation:raShake .45s steps(6)}
+#raidBox .ra-hit .ra-bimg,#raidBox .ra-hit-big .ra-bimg{animation:raWhite .45s steps(3)}
+#raidBox .ra-hit-big .ra-body{animation-duration:.7s}
+@keyframes raShake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+@keyframes raWhite{0%,60%{filter:brightness(3) saturate(0)}100%{filter:none}}
+#raidBox .ra-slash{position:absolute;left:10%;top:20%;width:80%;height:8px;background:#fff;box-shadow:0 0 10px #ffc93c;transform:rotate(-30deg) scaleX(0);opacity:0}
+#raidBox .ra-slashing .ra-slash{animation:raSlash .4s steps(4)}
+@keyframes raSlash{0%{opacity:1;transform:rotate(-30deg) scaleX(0)}60%{opacity:1;transform:rotate(-30deg) scaleX(1)}100%{opacity:0;transform:rotate(-30deg) scaleX(1)}}
+/* damage numbers + crit bursts */
+#raidBox .ra-fx{position:absolute;inset:0;pointer-events:none;z-index:5}
+#raidBox .ra-num{position:absolute;top:30%;font-family:"Press Start 2P",monospace;font-size:14px;color:#fff;text-shadow:2px 2px 0 #1a0d1f,-2px -2px 0 #1a0d1f;white-space:pre;text-align:center;line-height:1.5;animation:raNum 1.6s steps(12) forwards;transform:translateX(-50%)}
+#raidBox .ra-n2{font-size:18px;color:#ffc93c}
+#raidBox .ra-n3{font-size:22px;color:#ff5a4a;animation-name:raNumBig}
+@keyframes raNum{0%{transform:translate(-50%,10px);opacity:0}15%{opacity:1}100%{transform:translate(-50%,-90px);opacity:0}}
+@keyframes raNumBig{0%{transform:translate(-50%,10px) scale(.6);opacity:0}15%{transform:translate(-50%,0) scale(1.4);opacity:1}30%{transform:translate(-50%,-10px) scale(1)}100%{transform:translate(-50%,-100px);opacity:0}}
+#raidBox .ra-spark{position:absolute;left:62%;top:42%;width:8px;height:8px;background:#ffe14a;box-shadow:0 0 6px #ffc93c;animation:raSpark .85s steps(8) forwards}
+#raidBox .ra-sp3{background:#fff;box-shadow:0 0 10px #ff5a4a;width:10px;height:10px}
+#raidBox .ra-wrap:not(.ra-duel) .ra-spark{left:50%}
+@keyframes raSpark{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+#raidBox .rd-stage.ra-quake2,#raidBox .ra-quake2{animation:raQuake .5s steps(6)}
+#raidBox .ra-quake3{animation:raQuake .65s steps(8)}
+#raidBox .ra-quake3 .ra-flash{animation:raGold .5s steps(3)}
+@keyframes raQuake{20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-1px)}}
+@keyframes raGold{0%{opacity:1}100%{opacity:0}}
+/* HP bar: smooth drain with lagging white chunk */
+#raidBox .rd-hp i{position:relative;z-index:1;transition:width .9s cubic-bezier(.2,.7,.3,1)}
+#raidBox .rd-hp b.ra-lag{position:absolute;left:0;top:0;height:100%;background:#fff4d6;transition:width .8s ease-in}
+#raidBox .rd-hp span{z-index:2}
+/* entrance, defeat, escape */
+#raidBox .ra-enter .ra-bossbox{animation:raEnter .9s steps(6)}
+@keyframes raEnter{0%{transform:translateY(40px) scale(.7);opacity:0}70%{transform:translateY(-8px) scale(1.05);opacity:1}}
+#raidBox .ra-defeat .ra-body{animation:raDie 2.4s steps(16) forwards}
+@keyframes raDie{0%{filter:brightness(3)}10%{filter:none;transform:translateX(-8px)}20%{filter:brightness(3);transform:translateX(8px)}30%{filter:none;transform:translateX(-6px)}40%{filter:brightness(2.5);transform:translateX(6px)}60%{filter:grayscale(.5);transform:rotate(-4deg) translateY(4px)}100%{filter:grayscale(1) brightness(.6);transform:rotate(-8deg) translateY(10px)}}
+#raidBox .ra-escape .ra-body{animation:raFlee 2.2s steps(14) forwards}
+@keyframes raFlee{0%{transform:none}15%{transform:translateY(6px) scale(1.05,.95)}100%{transform:translateY(-300px) scale(.3);opacity:0}}
+#raidBox .ra-gone .ra-body{opacity:.15;filter:grayscale(1)}
+#raidBox .ra-smoke{position:absolute;bottom:10%;width:30px;height:30px;border-radius:50%;background:rgba(200,190,210,.6);animation:raSmoke 1.8s steps(9) forwards}
+@keyframes raSmoke{0%{transform:scale(.4);opacity:0}20%{opacity:1}100%{transform:translateY(-120px) scale(2.2);opacity:0}}
+#raidBox .ra-banner{position:absolute;left:50%;top:8%;transform:translateX(-50%);font-family:"Press Start 2P",monospace;font-size:16px;color:#ffc93c;text-shadow:3px 3px 0 #1a0d1f;white-space:nowrap;opacity:0;z-index:6;pointer-events:none}
+#raidBox .ra-banner.ra-esc{color:#cfc4ff}
+#raidBox .ra-banner.ra-show{animation:raBanner 2.6s steps(10) forwards}
+@keyframes raBanner{0%{opacity:0;transform:translateX(-50%) scale(.5)}15%{opacity:1;transform:translateX(-50%) scale(1.2)}25%,80%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0}}
+@media (max-width:640px){#raidBox .ra-bimg{max-height:220px}#raidBox .ra-cimg{max-height:170px}#raidBox .ra-num{font-size:11px}#raidBox .ra-n2{font-size:14px}#raidBox .ra-n3{font-size:16px}#raidBox .ra-banner{font-size:12px}#raidBox .ra-rays{width:280px;height:280px;margin:-140px}}
+@media (prefers-reduced-motion:reduce){#raidBox .ra-wrap *,#raidBox .ra-wrap,#raidBox .rd-stage{animation:none!important;transition:none!important}#raidBox .ra-parts,#raidBox .ra-fx,#raidBox .ra-banner,#raidBox .ra-bolt,#raidBox .ra-slash{display:none!important}#raidBox .rd-hp i,#raidBox .rd-hp b{transition:none!important}}

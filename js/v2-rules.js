@@ -1893,20 +1893,21 @@
   var ACTIVATE_RAID_BLOCK = 973003; /* tip 972997 (mempool.space, Oct 24 2026 7:57 PM CT) + 6. PREVIEW: re-set to tip + 6 at deploy */
   var RAID_EVERY = 1008, RAID_LEN = 432, RAID_CONFIRM = 6, RAID_MIN = 69, RAID_RELIC_SPINS = 3, RAID_EVENT_END = 2140;
   var RAID_STAGE_BONUS = [0, 0, 10, 20, 30, 40], RAID_TIER_BONUS = [0, 3, 6, 10];
+  /* boss display names live ONLY here (name fields); ids, art keys and HP are what the rules use */
   var RAID_BOSSES = [
     { id: 'burnschild', name: 'Baron Von Burnschild', art: 'ROTHSCHILDS', hp: 690000 },
-    { id: 'moloch', name: 'Moloch the Furnace King', art: 'KEKVSMOLOCH', hp: 900000 },
-    { id: 'nightking', name: 'The Frost Night King', art: 'NIGHTKINGPEP', hp: 600000 },
-    { id: 'kekdragon', name: 'Kekdragon Ancient', art: 'DRAGONKEK', hp: 800000 },
-    { id: 'harvester', name: 'The Pale Harvester', art: 'REAPERPEPE', hp: 666000 },
+    { id: 'moloch', name: 'Moloch', art: 'KEKVSMOLOCH', hp: 900000, champion: 'LORDKEK' },
+    { id: 'nightking', name: 'Night King', art: 'NIGHTKINGPEP', hp: 600000 },
+    { id: 'kekdragon', name: 'Dragonkek', art: 'DRAGONKEK', hp: 800000 },
+    { id: 'harvester', name: 'Grim Reaper', art: 'REAPERPEPE', hp: 666000 },
     { id: 'frogfather', name: 'Infernal Frogfather', art: 'PEPEFROMHELL', hp: 777000 },
-    { id: 'mash', name: 'The Monster Mash Nine', art: 'MONSTERPEPE', hp: 999000 },
-    { id: 'titan', name: 'Wall-Breaker Titan', art: 'PEPETITAN', hp: 1000000 },
+    { id: 'mash', name: 'The Tower of Terrors', art: 'MONSTERPEPE', hp: 999000 },
+    { id: 'titan', name: 'Titan', art: 'PEPETITAN', hp: 1000000 },
     { id: 'colossus', name: 'The Grinning Colossus', art: 'PEPEGIANT', hp: 750000 },
-    { id: 'bailiff', name: 'The Bankrupt Bailiff', art: 'BANKRUPTPEPE', hp: 420000 },
-    { id: 'pyramid', name: 'Grand Eye of the Pyramid', art: 'ILLUMINATIPE', hp: 690000 },
+    { id: 'bailiff', name: 'The Night Shift Grinner', art: 'NIGHTSATPEPE', hp: 420000 },
+    { id: 'pyramid', name: 'The All-Seeing Kek', art: 'ILLUMINATIPE', hp: 690000 },
     { id: 'necrofrog', name: 'Necrofrog the Undying', art: 'NECROPEPE', hp: 690000 },
-    { id: 'vader', name: 'Dank Vader, Helmlord', art: 'DANKVADER', hp: 840000 }];
+    { id: 'vader', name: 'Dark Pepe the Endless Coil', art: 'PEPEDARK', hp: 840000 }];
   var RAID_EVENT_BOSS = { id: 'blockschild', name: 'Lord Blockschild', art: 'DELOREANPEPE', hp: 2140000, event: true };
   function raidOn(b) { return ACTIVATE_RAID_BLOCK != null && b != null && b >= ACTIVATE_RAID_BLOCK; }
   function raidBossById(id) { return id === RAID_EVENT_BOSS.id ? RAID_EVENT_BOSS : RAID_BOSSES.filter(function (x) { return x.id === id; })[0] || null; }

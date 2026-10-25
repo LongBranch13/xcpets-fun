@@ -66,6 +66,12 @@ const wA = run(c, s, rowsK, G + 20, HH), wB = run(c, s, rowsK, G + 20, HH); ok(J
 /* raid 2 opens 1,008 blocks later */
 w = run(c, s, [], G + 1008, HH); ok(w.raids.length === 2 && w.raids[1].open === G + 1008, 'raid 2 opens 1,008 blocks later');
 const info = V.raidInfo(wA, G + 20); ok(info.raid && info.raid.board[0].petId === d4.id && info.raid.result === 'won' && info.nextOpen === G + 1008, 'raidInfo leaderboard + next raid');
+// boss table (owner Oct 24 2026): 14 bosses, art on disk, HP per id unchanged, no Star Wars boss, Bailiff slot = NIGHTSATPEPE, Vader slot = PEPEDARK
+{ const fs = require('fs'), path = require('path'), all = V.RAID_BOSSES.concat([V.RAID_EVENT_BOSS]), HPS = { burnschild: 690000, moloch: 900000, nightking: 600000, kekdragon: 800000, harvester: 666000, frogfather: 777000, mash: 999000, titan: 1000000, colossus: 750000, bailiff: 420000, pyramid: 690000, necrofrog: 690000, vader: 840000, blockschild: 2140000 };
+  ok(all.length === 14 && all.every(x => HPS[x.id] === x.hp), 'boss ids + HP unchanged (14)');
+  ok(all.every(x => x.name && fs.existsSync(path.join(__dirname, '..', 'img', 'raids', x.art + '.png'))), 'every boss has a name and art file');
+  ok(!all.some(x => /vader|dank|helm|sith|jedi/i.test(x.name + x.art)), 'no Star Wars boss');
+  ok(V.raidBossById('bailiff').art === 'NIGHTSATPEPE' && V.raidBossById('vader').art === 'PEPEDARK' && V.raidBossById('moloch').name === 'Moloch' && V.raidBossById('moloch').champion === 'LORDKEK', 'new boss art + Lord Kek vs Moloch'); }
 V._setRaidActivation(G0);
 console.log((fail ? 'FAILED ' : 'ALL PASS ') + pass + ' pass, ' + fail + ' fail');
 process.exitCode = fail ? 1 : 0;
