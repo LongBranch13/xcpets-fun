@@ -32,11 +32,13 @@
     var lc = xcGet(url); if (lc) { mem[url] = { at: Date.now(), j: lc }; return Promise.resolve(lc); }
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
     return inflight[url]; }
+  /* feed-429-fix: the hourly feed (tools/api-feed.js sets XCPETS_PATIENT) keeps the old patient 429 backoff (6 tries, honor Retry-After up to 60 s); pages keep the short 2-retry cap */
+  var PATIENT = typeof window !== 'undefined' && !!window.XCPETS_PATIENT;
   function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=|\/issuances\?/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page (site-fast-reread: not the global /issuances scan, ~10 MB per page, which a phone can't download in 3 s) */ : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
-      if (r.status === 429 || r.status === 503) { if (n >= 2) { var eb = new Error('DEX API busy (' + r.status + ')'); eb.busy = true; throw eb; } /* direct-counterparty-api: at most 2 short retries, then the next Core node (was 6 tries x up to 60 s each) */ var ra = r.headers.get('Retry-After'), s = Number(ra);
-        var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 4000)); return wait(Math.min(ms || 1000 * (n + 1), 4000)).then(function () { return getJ0(url, n + 1); }); }
+      if (r.status === 429 || r.status === 503) { if (n >= (PATIENT ? 6 : 2)) { var eb = new Error('DEX API busy (' + r.status + ')'); eb.busy = true; throw eb; } /* direct-counterparty-api: at most 2 short retries, then the next Core node (was 6 tries x up to 60 s each) */ var ra = r.headers.get('Retry-After'), s = Number(ra);
+        var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 4000)); return wait(Math.min(ms || 1000 * (n + 1), PATIENT ? 60e3 : 4000)).then(function () { return getJ0(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
       if (!r.ok) throw new Error('DEX API ' + r.status); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
   /* direct-counterparty-api (2026-10-25): every DEX/token read goes to the Counterparty Core nodes directly (COUNTERPARTY_CORE, then CORE_BACKUP),

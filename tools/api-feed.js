@@ -23,7 +23,7 @@ function context() {
   const win = { console: q, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: SITE + '/' }, navigator: { userAgent: 'node' },
     setTimeout, clearTimeout, URLSearchParams, URL, TextEncoder, TextDecoder, AbortController, fetch: (u, o) => fetch(u, Object.assign({}, o, { headers: { 'user-agent': 'xcpets-api-feed' } })) };
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
-  win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win;
+  win.XCPETS_PATIENT = 1; /* feed-429-fix */ win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win;
   const ctx = vm.createContext(win);
   for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); continue; }
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
