@@ -1,6 +1,6 @@
 {
- "lastBlock": 973099,
- "count": 74,
+ "lastBlock": 973121,
+ "count": 84,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -888,6 +888,126 @@
    "name": "Pijipazy",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 36032,
+   "asset": "A3693372141652311185",
+   "tiedBlock": 973103,
+   "tiedTx": "15cd33324c60b78fb8ccd74a7cc9dcac982253b1e2b73548a0689744690c192e",
+   "kind": "deed",
+   "name": "Dawonatot",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 20149,
+   "asset": "A16771857479702094920",
+   "tiedBlock": 973109,
+   "tiedTx": "9af992bbfe1e2d736ec700a4e50e088a95e70bad7b346fc6eae10cc5c9c748c5",
+   "kind": "deed",
+   "name": "Gisa",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 35416,
+   "asset": "A17356772535433181943",
+   "tiedBlock": 973111,
+   "tiedTx": "3ba8d3a18d849da1c89059098ed763925dd8c371683f90ff38450f02b490b006",
+   "kind": "deed",
+   "name": "Dameb",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 22043,
+   "asset": "A10761218659644667750",
+   "tiedBlock": 973118,
+   "tiedTx": "2cd8cd50c5e0c5c7e2a1582f307dca006f8b80db364566d3cfda088eaccf935d",
+   "kind": "deed",
+   "name": "Pochi",
+   "species": "hyb:lenny:pepe",
+   "speciesLabel": "Lepe (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 22045,
+   "asset": "A5109984808817555289",
+   "tiedBlock": 973118,
+   "tiedTx": "ca542873e2f2d80390e58387d1116de23bef10b89acee44c3f6f200812c4c6f6",
+   "kind": "deed",
+   "name": "Chiru",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 35041,
+   "asset": "A8634607082497296056",
+   "tiedBlock": 973118,
+   "tiedTx": "cbe18ca0fb2dad63f69f3a0d2de6fdcaffcb993c9ba4e1edf1f0efb76aea41e3",
+   "kind": "deed",
+   "name": "Nineyeki",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 35042,
+   "asset": "A10164783536822789077",
+   "tiedBlock": 973118,
+   "tiedTx": "57ef374d0d33c0fa2fc67204d9559ab75d6f8d48ab4ef52eb723d1971a6947a6",
+   "kind": "deed",
+   "name": "Yevubit",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 35043,
+   "asset": "A8060785761162798924",
+   "tiedBlock": 973118,
+   "tiedTx": "1800d34e19823be2cfa706418ca9c463bf3a6104c6364e10b7749f6c75a418e4",
+   "kind": "deed",
+   "name": "Deluruli",
+   "species": "hyb:snibby:dodo",
+   "speciesLabel": "Snido (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Egg"
+  },
+  {
+   "id": 11905,
+   "asset": "A9069274084192706686",
+   "tiedBlock": 973121,
+   "tiedTx": "14b42ae839227fda775204f1a04d3f24644a3345ede6e8e2145cb05d12a3bbf7",
+   "kind": "deed",
+   "name": "Bolunu",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 35865,
+   "asset": "A16530475007892076567",
+   "tiedBlock": 973121,
+   "tiedTx": "10f5454bd410b2b7a6913216e40dec12698e1aab4ad0bfd5b25bd69160a71bba",
+   "kind": "deed",
+   "name": "Pejami",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
