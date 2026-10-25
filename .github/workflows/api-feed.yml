@@ -2,16 +2,20 @@
 # It also refreshes pet token metadata t/<id>.json + .png for tokened pets (tools/token-meta.js --tokened).
 # It commits only when the pets, totals or token files changed (generatedAt alone never triggers a commit). It only ever stages api/pets.json + api/meta.json + api/boot.json (site-fast first-visit copy),
 # and merges (never rebases or force-pushes) the latest origin/main before pushing, so it can't clobber normal deploys.
+# sale-cache-feed (Oct 24, 2026): it also commits api/boot.json + api/recent-events.json (per-block event lists of the last 60 blocks, tools/recent-events.js)
+# whenever the chain tip moved FRESH_BLOCKS or more since the committed boot.json, even with no pet change, so the shipped sale copy stays a few blocks old.
+# It also runs after every push to main (a deploy) that touched site files; its own pushes use GITHUB_TOKEN, which never re-trigger workflows.
 name: api-feed
 on:
   schedule: [{ cron: '*/10 * * * *' }]  # GitHub throttles schedules (runs were landing every 3-6 h); 10-min ticks so new pet tokens get t/ files fast. Commits only on change.
   workflow_dispatch: {}
+  push: { branches: [main], paths-ignore: ['api/**', 't/**'] }  # after each deploy
 permissions: { contents: write }
 concurrency: { group: api-feed, cancel-in-progress: false }
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with: { ref: main, fetch-depth: 0 }
@@ -22,11 +26,18 @@ jobs:
       # token-proof: --input reuses the feed step's chain read (no second DEX read, so no 429 skip; Proof of Pet files follow every tie).
       # Mint lookback starts at api/token-meta-state.json lastBlock (only advanced when the full-node scan succeeded), not a fixed 36 blocks.
       - run: node tools/token-meta.js --tokened --input /tmp/feed-input.json || echo "token-meta failed, skipping this run"
+      # sale-cache-feed: optional, never fails the feed (a failed read leaves the old file; the browser then checks blocks on a :4000 node or reads in full)
+      - run: node tools/recent-events.js --out api --blocks 60 || echo "recent-events failed, skipping"
       - name: Commit if changed
+        env: { FRESH_BLOCKS: '2' }
         run: |
-          if git diff --quiet -- api/pets.json api/ties.json t && [ -z "$(git ls-files --others --exclude-standard api/ties.json)" ] && [ -z "$(git ls-files --others --exclude-standard t)" ] && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
+          OLD=$(git show HEAD:api/boot.json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).tip||0)}catch(e){console.log(0)}})")
+          NEW=$(node -p "require('./api/boot.json').tip||0")
+          if [ $((NEW - OLD)) -ge "$FRESH_BLOCKS" ]; then echo "tip $OLD -> $NEW: refreshing boot copy"; FRESH=1; else FRESH=; fi
+          if [ -z "$FRESH" ] && git diff --quiet -- api/pets.json api/ties.json t && [ -z "$(git ls-files --others --exclude-standard api/ties.json)" ] && [ -z "$(git ls-files --others --exclude-standard t)" ] && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
           git config user.name "xcpets-api-bot"; git config user.email "actions@users.noreply.github.com"
           git add api/pets.json api/meta.json api/boot.json t
+          git add api/recent-events.json 2>/dev/null || true
           git add api/token-meta-state.json 2>/dev/null || true
           git add api/ties.json 2>/dev/null || true
           git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"

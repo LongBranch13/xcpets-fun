@@ -17,7 +17,7 @@
   Img.prototype.line = function (pts, c) { for (var k = 0; k + 1 < pts.length; k++) { var x0 = pts[k][0], y0 = pts[k][1], x1 = pts[k + 1][0], y1 = pts[k + 1][1], dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, e = dx + dy;
     for (;;) { this.pt(x0, y0, c); if (x0 === x1 && y0 === y1) break; var e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } } } };
   /* paste a w x h RGBA sprite scaled by s (nearest), alpha-blended like PIL paste(im, xy, mask=im) */
-  Img.prototype.sprite = function (spr, sw, sh, s, ox, oy) { for (var y = 0; y < sh * s; y++) for (var x = 0; x < sw * s; x++) { var si = (((y / s) | 0) * sw + ((x / s) | 0)) * 4, a = spr[si + 3] == null ? 255 : spr[si + 3]; if (!a) continue;
+  Img.prototype.sprite = function (spr, sw, sh, s, ox, oy) { this.spr = { x: ox, y: oy, s: s, n: sw }; for (var y = 0; y < sh * s; y++) for (var x = 0; x < sw * s; x++) { var si = (((y / s) | 0) * sw + ((x / s) | 0)) * 4, a = spr[si + 3] == null ? 255 : spr[si + 3]; if (!a) continue;
     var X = ox + x, Y = oy + y; if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) continue; var di = (Y * this.w + X) * 4;
     for (var ch = 0; ch < 3; ch++) this.d[di + ch] = Math.round((spr[si + ch] * a + this.d[di + ch] * (255 - a)) / 255); } };
   /* ---- text: 1-bit glyphs, anchors 'la' (left, ascender) and 'mt' (middle, top of ink) like PIL ---- */
@@ -92,9 +92,14 @@
     ftext(im, W / 2, 100, ('#' + I.id + ' ' + I.name).toUpperCase(), [8, 6], 106, INK, 'mt'); ftext(im, W / 2, 110, (I.tier + ' ' + I.speciesLabel).toUpperCase(), [6], 106, MUT, 'mt');
     seal(im, 104, 84, 10); if (I.asset) ftext(im, W / 2, 118, 'TOKEN ' + I.asset, [6], 120, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset, so a copycat whose description points here shows the real number */ return im; }
   /** render(info, spriteRGBA32x32|null, 'desktop'|'phone'|'token') -> {w, h, data: RGBA} at 1 pixel per art pixel */
-  function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d }; }
-  function scaleUp(r, s) { var W = r.w * s, H = r.h * s, d = new Uint8ClampedArray(W * H * 4); for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var si = (((y / s) | 0) * r.w + ((x / s) | 0)) * 4, di = (y * W + x) * 4; d[di] = r.data[si]; d[di + 1] = r.data[si + 1]; d[di + 2] = r.data[si + 2]; d[di + 3] = 255; } return { w: W, h: H, data: d }; }
-  var API = { info: info, tieOf: tieOf, render: render, scaleUp: scaleUp, LAYOUTS: LAYOUTS, genOf: genOf };
+  function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d, spr: im.spr || null }; }
+  /* looks-draw: paste the realistic looks (js/v2-looks.js, the same renderer as the live pet) over the sprite box at output resolution.
+   * look = the pet's frame 0 from V2Render (carries the look info); still frame = V2Looks.bake defaults (t 1.3, fixed shine). */
+  function withLooks(r, k, look, Lx) { var L = Lx || root.V2Looks; if (!look || !L || !r.spr || !L.hasFx(look)) return r; var b = r.spr, N = b.n * b.s * k, img = L.bakeAll(look, N); if (!img) return r;
+    var d = new Uint8ClampedArray(r.data), ox = b.x * k, oy = b.y * k; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var X = ox + x, Y = oy + y; if (X < 0 || Y < 0 || X >= r.w || Y >= r.h) continue; var si = (y * N + x) * 4, di = (Y * r.w + X) * 4, a = img[si + 3] / 255; if (!a) continue;
+      d[di] = d[di] * (1 - a) + img[si] * a; d[di + 1] = d[di + 1] * (1 - a) + img[si + 1] * a; d[di + 2] = d[di + 2] * (1 - a) + img[si + 2] * a; d[di + 3] = 255; } return { w: r.w, h: r.h, data: d, spr: r.spr }; }
+  function scaleUp(r, s, look) { if (look) return withLooks(scaleUp(r, s), s, look); var W = r.w * s, H = r.h * s, d = new Uint8ClampedArray(W * H * 4); for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var si = (((y / s) | 0) * r.w + ((x / s) | 0)) * 4, di = (y * W + x) * 4; d[di] = r.data[si]; d[di + 1] = r.data[si + 1]; d[di + 2] = r.data[si + 2]; d[di + 3] = 255; } return { w: W, h: H, data: d, spr: r.spr }; }
+  var API = { withLooks: withLooks, info: info, tieOf: tieOf, render: render, scaleUp: scaleUp, LAYOUTS: LAYOUTS, genOf: genOf };
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   root.V2Papers = API;
   /* ---- pet.html card ---- */
@@ -105,7 +110,8 @@
   document.head.appendChild(css);
   var lastKey = '', scoreW = null, scoreR = null;
   function phoneMode() { return !!(root.matchMedia && root.matchMedia('(max-width:600px)').matches); }
-  function spriteOf(p, w) { var R = root.V2Render; if (!R) return null; try { var fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); var f = fr && fr[0]; return f && f.data && f.data.length === 4096 ? f.data : null; } catch (e) { return null; } }
+  function frameOf(p, w) { var R = root.V2Render; if (!R) return null; try { var fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); var f = fr && fr[0]; return f && f.data && f.data.length === 4096 ? f : null; } catch (e) { return null; } }
+  function spriteOf(p, w) { var f = frameOf(p, w); return f ? f.data : null; }
   function scoreOf(w, id) { if (!root.PetScore) return null; if (scoreW !== w) { try { scoreR = root.PetScore.compute(w); } catch (e) { scoreR = null; } scoreW = w; } return scoreR && scoreR.byId ? scoreR.byId[id] || null : null; }
   function toCanvas(r, c) { c.width = r.w; c.height = r.h; var x = c.getContext('2d'); x.putImageData(new ImageData(r.data, r.w, r.h), 0, 0); return c; }
   function cssSize(c, r, wrapW) { var k = Math.max(1, Math.min(r.w === 400 ? 2 : 3, Math.floor(wrapW / r.w))); c.style.width = (r.w * k) + 'px'; }
@@ -130,15 +136,15 @@
     var id = Number(new URLSearchParams(location.search).get('id')), p = w.byId[id], facts = document.getElementById('facts'), el = document.getElementById('petPapers');
     var t = liveTie(w, p, V, M); if (!t || !facts) { if (el) el.remove(); lastKey = ''; return; }
     var lay = phoneMode() ? 'phone' : 'desktop', worn = (V.wornOf ? V.wornOf(w, id) : []).map(function (g) { return g.item; }).join(',');
-    var key = [w.tip, id, t.asset, t.block, p.name, p.stage, JSON.stringify(p.stats), worn, lay].join('|'); if (!force && key === lastKey && el) return; lastKey = key;
-    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), spr = spriteOf(p, w), r = render(I, spr, lay);
+    var key = [w.tip, id, t.asset, t.block, p.name, p.stage, JSON.stringify(p.stats), worn, lay, (p.flameLooks || []).join('+'), (p.questLooks || []).join('+')].join('|'); if (!force && key === lastKey && el) return; lastKey = key;
+    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), fr0 = frameOf(p, w), spr = fr0 ? fr0.data : null, r = render(I, spr, lay), hasLk = !!(fr0 && root.V2Looks && root.V2Looks.hasFx && root.V2Looks.hasFx(fr0));
     if (!el) { el = document.createElement('section'); el.id = 'petPapers'; el.setAttribute('aria-label', 'Proof of Pet');
       el.innerHTML = '<h2 class="sec" data-ico="star">Proof of Pet</h2><canvas class="pp-cv" role="img"></canvas><div class="pp-row"><button type="button" class="btn" id="ppDl">⬇ Download Proof of Pet (PNG)</button></div>' +
         '<p class="small muted pp-note">Drawn live from the chain replay for this pet\'s verified token. Whoever holds this token owns this pet.</p>';
       var anchor = document.getElementById('starveWarn') || facts; anchor.parentNode.insertBefore(el, anchor.nextSibling);
-      el.querySelector('#ppDl').onclick = function () { var cur = el._pp; if (!cur) return; var big = scaleUp(cur.r, LAYOUTS[cur.lay].out), c = toCanvas(big, document.createElement('canvas'));
+      el.querySelector('#ppDl').onclick = function () { var cur = el._pp; if (!cur) return; var big = scaleUp(cur.r, LAYOUTS[cur.lay].out, cur.look), c = toCanvas(big, document.createElement('canvas'));
         c.toBlob(function (b) { if (!b) return; var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'xcpets-' + cur.id + '-proof-of-pet-' + cur.lay + '.png'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }, 'image/png'); }; }
-    el._pp = { r: r, lay: lay, id: id }; var c = el.querySelector('canvas'); toCanvas(r, c); c.setAttribute('aria-label', 'Proof of Pet of #' + id + ' ' + p.name + ', token ' + t.asset); cssSize(c, r, el.clientWidth || 360); }
+    el._pp = { r: r, lay: lay, id: id, look: hasLk ? fr0 : null }; var c = el.querySelector('canvas'); toCanvas(hasLk ? scaleUp(r, LAYOUTS[lay].out, fr0) : r, c); if (hasLk) { c.style.imageRendering = 'auto'; c._lk = LAYOUTS[lay].out; } c.setAttribute('aria-label', 'Proof of Pet of #' + id + ' ' + p.name + ', token ' + t.asset); cssSize(c, r, el.clientWidth || 360); }
   setInterval(paint, 2000); setTimeout(paint, 300);
   var rt; root.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { paint(); }, 150); });
 })(typeof window !== 'undefined' ? window : this);
