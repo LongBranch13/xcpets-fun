@@ -25,7 +25,7 @@ const canon = v => JSON.stringify(v, (k, x) => (k === 'children' || k === 'lookC
 const shown = (V, w) => JSON.stringify(w.pets.map(p => V.shownLooks(w, p).map(x => x.id + '/' + x.type)));
 /* 1 */
 const A = run({});
-ok(A.V.lookPickGate() === 973003, 'gate is 973003 (tip 972997 + 6)');
+ok(A.V.lookPickGate() === 973007, 'gate is 973007 (tip 973001 + 6)');
 ok(!A.w.lookCopies, 'real gate past fixture tip ' + TIP + ': no look copies');
 const pt = A.V.parseTag; if (pt) { ok(pt('pet:look:12:KL:on').action === 'look' && pt('pet:look:12:KL:on:QN:off').ops.length === 2, 'parse pet:look:ID:CODE:on[:CODE:off]');
   ok(pt('pet:look:12:ZZ:on').action === 'invalid' && pt('pet:look:12:KL').action !== 'look' && pt('pet:look:1' + ':KL:on'.repeat(7)).action !== 'look', 'bad code / no on|off / more than 6 pairs: not a look memo'); }
@@ -79,4 +79,20 @@ ok(V.shownLooks(w, sp).some(x => x.id === cp.id && x.from === cp.kind), 'copy pl
 sp.owner = 'bc1qbuyerxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 ok(!V.shownLooks(w, sp).some(x => x.id === cp.id && x.from === cp.kind) && V.ownedLooks(w, was).some(o => o.id === cp.id && o.kind === cp.kind && !o.on.length) && !V.ownedLooks(w, sp.owner).some(o => o.kind !== 'flame'), 'pet changes hands: the copy comes off it and stays with the seller, buyer gets none');
 sp.owner = was; void own;
+/* 4: moving looks between pets (memo sequence, in replay): copy goes src -> tgt -> back to src, one copy, never two places */
+{ const sim2 = [], bb = LG + 20, t2 = B1.w.pets.filter(q => q.owner === cp.holder && q.id !== cp.src && live(q) && !q.cold)[0];
+  sim2.push(row(bb, cp.holder, 'pet:look:' + t2.id + ':' + code + ':on')); sim2.push(row(bb + 1, cp.holder, 'pet:look:' + cp.src + ':' + code + ':on'));
+  const R1 = run({ q: QG, e: QG, l: LG }, sim2.slice(0, 1)), R2 = run({ q: QG, e: QG, l: LG }, sim2), on = (R, id) => R.V.shownLooks(R.w, R.w.byId[id]).some(x => x.id === cp.id && x.from === cp.kind);
+  ok(on(R1, t2.id) && !on(R1, cp.src) && R1.w.lookCopies[cp.key].at === t2.id, 'move: copy on #' + t2.id + ' and off #' + cp.src + ' after one memo');
+  ok(on(R2, cp.src) && !on(R2, t2.id) && R2.w.lookCopies[cp.key].at === cp.src, 'move back: copy on #' + cp.src + ' and off #' + t2.id);
+  const R3 = run({ q: QG, e: QG, l: LG }, sim2); ok(JSON.stringify(R3.w.lookCopies) === JSON.stringify(R2.w.lookCopies), 'same memos replay to the same result (deterministic)'); }
+/* 5: sale: all looks come off the sold pet and stay with the seller (lookSweep on the next block, as in replay) */
+{ const M = run({ q: QG, e: QG, l: LG }), mw = M.w, MV = M.V, P = mw.byId[cp.src], seller = P.owner, buyer = 'bc1qbuyerxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+  mw.lookCopies[cp.key].at = P.id; P.flameLooks = ['laurels']; MV._lookSweep(mw, TIP);
+  ok(MV.shownLooks(mw, P).length >= 2, 'before the sale #' + P.id + ' shows the flame look and the copy');
+  P.owner = buyer; MV._lookSweep(mw, TIP + 1);
+  ok(!MV.shownLooks(mw, P).length && !(P.flameLooks || []).length, 'after the sale #' + P.id + ' shows no looks (flame and copies off)');
+  ok(MV.ownedLooks(mw, seller).some(o => o.kind === cp.kind && o.id === cp.id && !o.on.length), 'seller still holds the copy, on no pet, ready to place');
+  ok(!MV.ownedLooks(mw, buyer).length, 'buyer gets no looks');
+  ok(mw.lookCopies[cp.key].holder === seller, 'copy holder stays the seller'); }
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

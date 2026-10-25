@@ -19,7 +19,7 @@
       '.lp-card canvas{width:96px;height:96px;image-rendering:pixelated;background:#0b0816}.lp-card b{color:#ffd166}.lp-card small{color:#9fe8ff}.lp-card.on{border-color:#ffd166}.lp-card.chg{outline:2px dashed #7CFF6B;outline-offset:1px}.lp-card.no{opacity:.55}' +
       '.lp-tg{font-size:12px;padding:4px 10px;border:2px solid #000;background:#2b2350;color:#ffd166;cursor:pointer}.lp-card.on .lp-tg{background:#ffd166;color:#140f24}.lp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}' +
       '.lp-list{margin:6px 0 0;padding:0;list-style:none}.lp-list li{position:relative;display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #2b2350;font-size:13px}.lp-list canvas{width:40px;height:40px;image-rendering:pixelated;background:#0b0816;flex:0 0 40px}' +
-      '.lp-note{font-size:12px;color:#9fe8ff;margin:6px 0}@media (max-width:520px){.lp-grid{grid-template-columns:repeat(2,1fr)}.lp-card canvas{width:80px;height:80px}}';
+      '.lp-mv{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:3px}.lp-mv select{max-width:170px;font-size:12px;background:#1b1530;color:#eee;border:2px solid #4b3f7a}.lp-tg[disabled]{opacity:.5;cursor:not-allowed}.lp-note{font-size:12px;color:#9fe8ff;margin:6px 0}@media (max-width:520px){.lp-grid{grid-template-columns:repeat(2,1fr)}.lp-card canvas{width:80px;height:80px}}';
     document.head.appendChild(s); }
   /* realistic preview: the pet's own sprite with just this look drawn by js/v2-looks.js */
   /* one card per look code: several earned copies of the same look are counted together */
@@ -56,12 +56,20 @@
     var r = el.querySelector('[data-reset]'); if (r) r.onclick = function () { st.want = {}; panel(el, w, p, ME, opt); };
     el.querySelector('[data-send]').onclick = function () { send(p.id, ops, function (ok) { if (ok) { st.want = {}; } }); };
     return { owned: owned.length, ops: ops }; }
+  /* one-tap move row for My Looks: a pet menu (pets this look is not on) + Move, and Off when it is on a pet */
+  function moveRow(w, ME, L, i) { var V = window.V2Rules, open = V.lookPickOn(tip(w) + 1), pets = w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released && !q.community && L.on.indexOf(q.id) < 0; }).sort(function (a, b) { return a.id - b.id; });
+    if (!pets.length && !L.on.length) return '';
+    var full = L.kind === 'flame' && L.cap > 1 && L.on.length >= L.cap;
+    return '<span class="lp-mv">' + (pets.length ? '<select data-mvs="' + i + '" aria-label="Move ' + esc(L.name) + ' to">' + pets.slice(0, 300).map(function (q) { return '<option value="' + q.id + '">#' + q.id + (q.name ? ' ' + esc(q.name) : '') + '</option>'; }).join('') + '</select> <button type="button" class="lp-tg" data-mv="' + i + '"' + (open && !full ? '' : ' disabled') + '>' + (L.on.length ? 'Move' : 'Put on') + '</button>' : '') +
+      (L.on.length ? ' <button type="button" class="lp-tg" data-off="' + i + '"' + (open ? '' : ' disabled') + '>Off</button>' : '') + (full ? ' <small class="muted">on ' + L.cap + ' pets: take it off one first</small>' : '') + '</span>'; }
   /* My Looks list: each owned look and where it is now */
   function myLooks(el, w, ME) { var V = window.V2Rules; css(); var owned = grouped(V, w, ME);
     el.innerHTML = '<details class="lp shop-fold" open><summary><b>✨ My Looks (' + owned.length + ')</b> · where each look is now</summary>' + (gateText(w) ? '<p class="lp-note">' + esc(gateText(w)) + '</p>' : '') +
       (owned.length ? '<ul class="lp-list">' + owned.map(function (L, i) { return '<li><canvas width="32" height="32" data-i="' + i + '"></canvas><span><b style="color:#ffd166">' + esc(L.name) + '</b> <small class="muted">' + KIND[L.kind] + copies(L) + '</small><br>' +
-        (L.on.length ? 'On ' + L.on.slice(0, 6).map(function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '#looks">#' + id + (q && q.name ? ' ' + esc(q.name) : '') + '</a>'; }).join(', ') + (L.on.length > 6 ? ' and ' + (L.on.length - 6) + ' more' : '') : '<span class="muted">Not on a pet</span>') + (L.kind === 'flame' && L.cap ? ' <small class="muted">(up to ' + L.cap + ' pets)</small>' : '') + '</span></li>'; }).join('') + '</ul>' +
-        '<p class="lp-note">To place or move a look, open a pet and use its Looks panel, or the Looks station in The Rare Room.</p>' : '<p class="lp-note">No looks yet.</p>') + '</details>';
+        (L.on.length ? 'On ' + L.on.slice(0, 6).map(function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '#looks">#' + id + (q && q.name ? ' ' + esc(q.name) : '') + '</a>'; }).join(', ') + (L.on.length > 6 ? ' and ' + (L.on.length - 6) + ' more' : '') : '<span class="muted">Not on a pet</span>') + (L.kind === 'flame' && L.cap ? ' <small class="muted">(up to ' + L.cap + ' pets)</small>' : '') + '<br>' + moveRow(w, ME, L, i) + '</span></li>'; }).join('') + '</ul>' +
+        '<p class="lp-note">Move: pick a pet and tap Move (one burn). Off takes it off every pet. For several changes at once use a pet\'s Looks panel or the Looks station in The Rare Room.</p>' : '<p class="lp-note">No looks yet.</p>') + '</details>';
+    el.querySelectorAll('[data-mv]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.mv], sel = el.querySelector('select[data-mvs="' + b.dataset.mv + '"]'), to = sel && +sel.value; if (!to) return; send(to, [{ code: L.code, on: true }]); }; });
+    el.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.off]; L.on.forEach(function (pid) { send(pid, [{ code: L.code, on: false }]); }); }; });
     el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]; if (p) preview(c, w, p, lookFx(L)); }); }
   /* Rare Room Looks station: pick one of your pets (shared picker + sort menu), then the panel for it */
   function station(el, w, ME) { css(); if (!el.__st) el.__st = { pid: 0 }; var S = el.__st, live = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; });
