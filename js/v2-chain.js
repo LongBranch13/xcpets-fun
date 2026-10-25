@@ -94,6 +94,7 @@
     return Promise.all([chain.destructions(E.CFG.asset), chain.tip().catch(function () { return null; }), mp]).then(function (r) { S.mempool = r[2] || [];
       var rows = r[0], tip = r[1], blocks = {}; rows.forEach(function (x) { blocks[x.block_index] = 1; }); var FG = V.ACTIVATE_FIRESALE_BLOCK; if (FG != null && tip >= FG) for (var fb = FG; fb <= tip; fb++) blocks[fb] = 1; /* fire sales: every block's hash from the gate decides the schedule */
       var QG = V.questGate ? V.questGate() : null; if (QG != null && tip >= QG) for (var qb = QG; qb <= tip; qb++) blocks[qb] = 1; /* Mythic quests (2026-10-24): every block from the quest gate on, so each Homecoming block's hash is there even with no burn in it; inert while the gate is null */
+      var RG = V.raidGate ? V.raidGate() : null; if (RG != null && tip >= RG) for (var rb = RG; rb <= tip; rb++) blocks[rb] = 1; /* raids: every block from the raid gate on (raid opening + kill block hashes); inert while the gate is null */
       var need = Object.keys(blocks).filter(function (b) { return !hc[b]; }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
       return chain.blockHashes(Object.keys(blocks), hc, tip, function (n, miss) { step('Some block-hash servers are busy. Retrying ' + miss.length + ' block' + (miss.length === 1 ? '' : 's') + ' (try ' + (n + 1) + ' of 4)… (step 2 of 3)'); }).then(function (bh) {
         try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}

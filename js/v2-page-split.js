@@ -9,7 +9,7 @@
  * js/scene-hash.js run there exactly as before). Loaded before js/v2-preselect.js. */
 (function () {
   'use strict';
-  var R = [['fight', 'fight.html', /^#(kekimus|battle-\d+|replay-\d+)$/], ['rare', 'rare-room.html', /^#(rare-room|rare-room-\d+|lair|drip-den|dressing-room)$/],
+  var R = [['fight', 'fight.html', /^#(kekimus|battle-\d+|replay-\d+)$/], ['raid', 'raid.html', /^#(raids?|raid-boss)$/], ['rare', 'rare-room.html', /^#(rare-room|rare-room-\d+|lair|drip-den|dressing-room)$/],
     ['breed', 'breed.html', /^#(no-tail-motel|gooby-inn|breed-\d+)$/]];
   function mode() { return (document.body && document.body.getAttribute('data-split')) || 'play'; }
   function want(h) { for (var i = 0; i < R.length; i++) if (R[i][2].test(h)) return R[i]; return null; }
