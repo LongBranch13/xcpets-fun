@@ -45,21 +45,22 @@
   /* NETDEAD = Core nodes that failed with a timeout / network error, shared with rjs/chain.js through sessionStorage (same key, {base: until}),
    * so a network that blocks port 4000 pays the short timeout once per session, not on every read or page. */
   var NET_KEY = 'xcpets-api-netsick', NETDEAD = (function () { var r = {}; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}, t = Date.now(); Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = 1; }); } catch (e) { } return r; })();
+  function netDead(b) { if (NETDEAD[b]) return true; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; return o[b] > Date.now(); } catch (e) { return false; } }
   function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
   function coreBases() { var CFG = window.XCPETS_CONFIG || {}; return (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'])
     .filter(function (u) { return !/xcp\.fun/.test(u); }).map(function (u) { u = String(u).replace(/\/+$/, ''); return /\/v2$/.test(u) ? u : u + '/v2'; }); }
   function isNet(e) { return !!e && !e.busy && e.status == null && !/DEX API \d/.test(e.message || '') && (e.name === 'AbortError' || /abort|fetch|network|timed out|load failed/i.test(e.message || String(e))); }
-  function coreBlocked() { var b = coreBases(); return b.length > 0 && b.every(function (u) { return NETDEAD[u]; }); }
+  function coreBlocked() { var b = coreBases(); return b.length > 0 && b.every(function (u) { return netDead(u); }); }
   function pagesAt(base, path, cap) { var out = [], k = 0;
     function go(cur) { return getJ(base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) {
       out = out.concat(j.result || []); if (j.next_cursor && ++k < cap) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
     return go(null); }
-  function pages(path, cap) { cap = cap || 50; var bs = coreBases().filter(function (u) { return !DEAD[u] && !NETDEAD[u]; }), errs = [];
+  function pages(path, cap) { cap = cap || 50; var bs = coreBases().filter(function (u) { return !DEAD[u] && !netDead(u); }), errs = [];
     function on(i) { if (i >= bs.length) { if (coreBlocked()) return pagesAt(API, path, cap); return Promise.reject(new Error('every Counterparty node failed (' + errs.join('; ') + ')')); }
       return pagesAt(bs[i], path, cap).catch(function (e) { errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
   /** coreJ(path): one non-paginated read, same order and fallback rule as pages() */
-  function coreJ(path) { var bs = coreBases().filter(function (u) { return !NETDEAD[u]; }), errs = [];
+  function coreJ(path) { var bs = coreBases().filter(function (u) { return !netDead(u); }), errs = [];
     function on(i) { if (i >= bs.length) { if (coreBlocked()) return getJ(API + path); return Promise.reject(new Error('every Counterparty node failed (' + errs.join('; ') + ')')); }
       return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
@@ -74,7 +75,7 @@
   var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
   function nodeCredits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('every Counterparty node failed'));
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base] || netDead(base)) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
       return go(null).catch(function (e) { if (isNet(e)) markNet(base); if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
@@ -126,7 +127,7 @@
    *  global /issuances list (newest first) back to the gate; [] while the rules gate is null or not reached. Every node failing (or the page cap
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
   function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
-    var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+    var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); }); nodes = nodes.filter(function (u) { return !netDead(String(u).replace(/\/+$/, '')); }).concat(nodes.filter(function (u) { return netDead(String(u).replace(/\/+$/, '')); }));
     function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
       var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');

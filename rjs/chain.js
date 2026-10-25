@@ -28,7 +28,7 @@
    * for SICK_MS in sessionStorage too, so the next page in this tab starts with a healthy one. Only the order/timing of GETs changes: the JSON returned
    * on success is the same, so data and replays are identical. (Not done, owner decision: falling back to the last known chain height when the tip
    * read fails; tip is a replay input.) */
-  var PRIMARY_MS = 5000, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
+  var PRIMARY_MS = 4000, PRE_MS = 3000, HEDGE_MS = 2500 /* direct-counterparty-api: a blocked :4000 trips in 3 s, then is remembered for the session */, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
   var SICK_KEY = 'xcpets-api-sick', sick = (function () { try { var o = JSON.parse(sessionStorage.getItem(SICK_KEY)) || {}, t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
   /* direct-counterparty-api (2026-10-25): CFG.coreFallback (api.xcp.fun/node, an unpublished proxy of Core) is only asked once EVERY direct Core
    * node failed with a timeout / network error in the last SICK_MS (port 4000 blocked on this network). A 429 or 5xx from a Core node never
@@ -62,8 +62,13 @@
         healthy = usable.filter(function (b) { return !(sick[String(b)] > t); }), list = healthy.length ? healthy : usable.slice(), left = deadline - t;
       if (left < 500) return Promise.reject(new Error('all APIs failed (deadline): ' + errs.join('; ')));
       /* the primary (first configured server) is tried alone while it is healthy; otherwise every healthy server is asked at once */
-      var step = list[0] === bases[0] ? attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).catch(function () {
-          var rest = list.slice(1), l2 = deadline - now(); if (!rest.length || l2 < 500) throw new Error('pass failed'); return race(rest, Math.min(l2, opts.backupMs || BACKUP_MS)); })
+      /* direct-counterparty-api: hedge. If the primary has not answered after HEDGE_MS (a blocked port 4000 just hangs), the backups start too
+       * instead of waiting out the whole primary timeout; a healthy primary answers well before that, so the healthy path makes no extra calls. */
+      var step = list[0] === bases[0] ? new Promise(function (res, rej) { var rest = list.slice(1), done = false, out = 0, started = false, hedge = null;
+          function fin(ok, v) { if (done) return; if (ok) { done = true; clearTimeout(hedge); res(v); } else if (--out <= 0 && (started || !rest.length)) { done = true; clearTimeout(hedge); rej(new Error('pass failed')); } }
+          function go2() { if (started || done) return; started = true; var l2 = deadline - now(); if (!rest.length || l2 < 500) { if (out <= 0) fin(false); return; } out++; race(rest, Math.min(l2, opts.backupMs || BACKUP_MS)).then(function (v) { fin(true, v); }, function () { fin(false); }); }
+          out++; attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).then(function (v) { fin(true, v); }, function () { go2(); fin(false); });
+          if (rest.length) hedge = setTimeout(go2, opts.hedgeMs || HEDGE_MS); })
         : race(list, Math.min(left, opts.backupMs || BACKUP_MS));
       return step.catch(function () { if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
         var bo = Math.min(backoff, Math.max(0, deadline - now() - 500)); return wait(bo).then(function () { return pass(n + 1); }); });
@@ -83,7 +88,7 @@
   Chain.prototype.getJson = function (path) {
     var self = this, base = this.apis[0], pre = typeof base === 'string' ? takePre(base + path) : null, go = function () { return failover(self.f, self.apis, path, function (r) { return r.json(); }); };
     if (!pre) return go();
-    return Promise.race([pre, wait(PRIMARY_MS).then(function () { return null; })]).then(function (r) {
+    var t0 = (typeof window !== 'undefined' && window.__xcpPreT0) || now(); return Promise.race([pre, wait(Math.max(0, PRE_MS - (now() - t0))).then(function () { return null; })]).then(function (r) {
       if (r && r.ok) return r.json().then(function (j) { clearSick(base); return j; }, go);
       /* direct-counterparty-api: no answer (port 4000 blocked on this network, timeout) or 429/5xx -> this server is sick, so the failover goes
        * straight to the backups instead of spending another PRIMARY_MS on it */
