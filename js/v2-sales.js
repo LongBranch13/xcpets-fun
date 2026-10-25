@@ -288,7 +288,7 @@
     return '<div class="sh-deed' + (d.ok ? '' : ' sh-deed-bad') + '" title="Pet token ' + esc(d.asset) + (d.ok ? '' : ' (held by another address)') + '">🎟 ' + esc(short(d.asset)) + '</div>'; }
   function card(p, S, back) { var t = p.stage >= 5 ? 4 : p.tier || 0; /* card-shop-scene (owner 1:12 AM CT Oct 24): holo foil is for Mythic-stage pets only (sh-myth); others = plain card, tier-coloured border */
     return '<div class="sh-card sh-t' + t + (p.stage >= 5 || p.mythicCare ? ' sh-myth' : '') + '" data-n="' + (S ? S.n : '') + '"><div class="sh-hd"><b>' + esc(p.name || spName(p)) + '</b><i>#' + p.id + '</i></div><div class="sh-art">' + art(p) + '</div>' +
-      '<div class="sh-st">' + esc(tierName(p)) + ' · ' + esc(spName(p)) + '<br>PWR ' + power(p) + ' &nbsp;V' + st(p, 'vigor') + ' S' + st(p, 'spark') + ' G' + st(p, 'grit') + ' Z' + st(p, 'zoom') + ' L' + st(p, 'luck') + '</div>' +
+      '<div class="sh-st">' + esc(tierName(p)) + ' · ' + esc(spName(p)) + '<br><span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : '') + '>PWR ' + power(p) + '</span> &nbsp;V' + st(p, 'vigor') + ' S' + st(p, 'spark') + ' G' + st(p, 'grit') + ' Z' + st(p, 'zoom') + ' L' + st(p, 'luck') + '</div>' +
       (V.oldMoney(p) ? '<div class="sh-om">' + esc(V.OLD_MONEY_LABEL) + '</div>' : '') + deedBadge(p) +
       (S && S.price != null ? '<div class="sh-tag">' + esc(V.saleAmountText(S.asset, S.price)) + '</div>' : '') + (back || '') + '</div>'; }
 

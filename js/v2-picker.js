@@ -5,6 +5,8 @@
  * Pure UI: reads the replayed world only, changes nothing. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var TIERS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function pow(p) { var s = p.stats || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; }
@@ -47,7 +49,7 @@
     row.addEventListener('touchend', function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { st.page = Math.max(0, Math.min(pages - 1, st.page + (dx < 0 ? 1 : -1))); re(); } }, { passive: true });
     return { matches: L.length, pages: pages }; }
   /* fix-display-mismatch (Oct 20 2026, display only): the chip number follows the sort (Pet Score / Rarity -> ⭐ score, Power / Newest -> ⚡ power) */
-  function stat(w, p, sort) { return (sort === 'score' || sort === 'rarity') && window.PetScore ? '⭐' + score(w, p) : '⚡' + pow(p); }
+  function stat(w, p, sort) { return (sort === 'score' || sort === 'rarity') && window.PetScore ? '⭐' + score(w, p) : '<span' + ptA(p) + '>⚡' + pow(p) + '</span>'; }
   function petChip(w) { return function (r, sort) { var p = r.pets[0]; return '<b>#' + p.id + '</b><span>' + esc(String(p.name || '').slice(0, 10)) + '</span><small>' + esc(TIERS[p.tier] || '') + ' · ' + stat(w, p, sort) + '</small>'; }; }
   var CSS = '.pk{border:2px solid #4b3f7a;background:#120e22;padding:6px;margin:6px 0}.pk-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pk-q{flex:1 1 140px;min-width:0}.pk-top select{max-width:46%}' +
     '.pk-n{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166}.pk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.pk-chip{font-size:12px;padding:3px 8px;border:2px solid #4b3f7a;background:#1b1530;color:#eee;border-radius:0;cursor:pointer}' +

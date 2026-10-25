@@ -8,6 +8,8 @@
  * No new tags, amounts, rules or gates. The site never signs; the confirm pop-up and the wallet are unchanged. No <select> in these panels. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var $ = function (id) { return document.getElementById(id); }, U = function () { return window.V2UI; }, V = function () { return window.V2Rules; };
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'], MAX = 48;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -88,7 +90,7 @@
     if (s.inc && !inc.some(function (f) { return f.id === s.inc; })) s.inc = null;
     if (!s.tab) s.tab = inc.length ? 'inc' : 'sug';
     var rec = function (p) { return '🏆 ' + (p.wins || 0) + '-' + (p.losses || 0); };
-    var lines = function (p) { return ['⚡ ' + pow(p) + ' · ⭐ ' + score(w, p), rec(p) + ' · ' + esc(spL(p.species))]; };
+    var lines = function (p) { return ['<span' + ptA(p) + '>⚡ ' + pow(p) + '</span> · ⭐ ' + score(w, p), rec(p) + ' · ' + esc(spL(p.species))]; };
     var h = '';
     if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your XCP Wallet to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect XCP Wallet</button></div>';
       $('ezFGo').onclick = function () { UI.confirmPlans('Challenge', [{}]); }; return; }
@@ -123,7 +125,7 @@
       hint = 'Their owner has ' + V().FIGHT_WINDOW + ' blocks to accept. Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
     var cmp = ''; var CA = s.tab === 'inc' && s.inc ? w.byId[(w.fights[s.inc - 1] || {}).b] : A, CB = s.tab === 'inc' && s.inc ? w.byId[(w.fights[s.inc - 1] || {}).a] : B;
     if (CA && CB && (s.tab !== 'inc' || s.inc)) { var K = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
-      cmp = '<div class="ez-cmp"><b>' + esc(CA.name) + ' ⚡' + pow(CA) + '</b><span class="ez-vs">VS</span><b>' + esc(CB.name) + ' ⚡' + pow(CB) + '</b><span class="ez-st">' + K.map(function (k) { var a = (CA.stats || {})[k] || 0, b = (CB.stats || {})[k] || 0; return '<i class="' + (a > b ? 'up' : a < b ? 'dn' : '') + '" title="' + k + '">' + k.slice(0, 3).toUpperCase() + ' ' + a + '/' + b + '</i>'; }).join('') + '</span></div>'; }
+      cmp = '<div class="ez-cmp"><b>' + esc(CA.name) + ' <span' + ptA(CA) + '>⚡' + pow(CA) + '</span></b><span class="ez-vs">VS</span><b>' + esc(CB.name) + ' <span' + ptA(CB) + '>⚡' + pow(CB) + '</span></b><span class="ez-st">' + K.map(function (k) { var a = (CA.stats || {})[k] || 0, b = (CB.stats || {})[k] || 0; return '<i class="' + (a > b ? 'up' : a < b ? 'dn' : '') + '" title="' + k + '">' + k.slice(0, 3).toUpperCase() + ' ' + a + '/' + b + '</i>'; }).join('') + '</span></div>'; }
     h += '<div class="ez-foot">' + cmp + '<div class="ez-acts"><button type="button" class="btn ico-flame ez-go" id="ezFGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button>' +
       (s.tab === 'inc' && s.inc ? '<button type="button" class="q" id="ezFIgn">Ignore</button>' : '<button type="button" class="q ez-qm" id="ezFQm">🎲 Quick match</button>') + '</div>' +
       '<div class="ez-hint">' + esc(s.msg || hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn.' : '') + '</div></div></div>';
@@ -153,7 +155,7 @@
     var badges = function (p) { var x = Vr.breederBadges ? Vr.breederBadges(w, p) : []; return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
     var sortK = s.sa, info = function (p, k) { if (k !== undefined) sortK = k; var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p);
       var PS = window.PetSort, pw = PS && PS.power ? PS.power(p) : null, gn = PS && PS.gain ? PS.gain(p) : 0, sl = PS && PS.line ? PS.line(w, p, sortK, T + 1) : null;
-      return [(pw != null ? '⚡ ' + pw + (gn ? ' <small class="hs-g">+' + gn + '</small>' : '') + ' · ' : '') + '⭐ ' + score(w, p) + ' · ' + esc(spL(p.species))].concat(sl ? [esc(sl)] : []).concat([ (bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' left' : '💞 bred ' + (p.breeds || 0) + '×') + ' · Gen ' + g + (bd ? ' ' + bd : '')]); };
+      return [(pw != null ? '<span' + ptA(p) + '>⚡ ' + pw + '</span>' + (gn ? ' <small class="hs-g">+' + gn + '</small>' : '') + ' · ' : '') + '⭐ ' + score(w, p) + ' · ' + esc(spL(p.species))].concat(sl ? [esc(sl)] : []).concat([ (bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' left' : '💞 bred ' + (p.breeds || 0) + '×') + ' · Gen ' + g + (bd ? ' ' + bd : '')]); };
     var kin = function (p) { return v2 && A && Vr.kinWhy ? Vr.kinWhy(A, p) : null; };
     var okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), shA = L.mine.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && fok(s, x.p); }), reqs = incoming(w, ME, T);
     if (s.req && !reqs.some(function (r) { return r.b + ':' + r.a === s.req; })) s.req = null;

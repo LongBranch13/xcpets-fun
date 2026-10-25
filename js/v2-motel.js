@@ -6,6 +6,8 @@
  * 684773435, HYBRID_RARITY_UP_10K 1000, hybrid-parent breeds always hybrid). In place, no pop-ups; reduced motion = static. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var W = 320, H = 196, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   var LINES = ['Gooby pls. One room, two guests.', 'No questions. No tails.', 'Ice machine\u2019s broke. Romance ain\u2019t.', 'Checkout? When the egg says so.',
     'We don\u2019t ask, you don\u2019t tell.', 'Do Not Disturb signs: free.', 'Rooms by the hour. Eggs by the block.', 'Two keys, one door, zero shame.', 'Gooby sees nothing. Gooby pls.',
@@ -178,7 +180,7 @@
   function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
     return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
-        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc" title="Power = Vigor + Spark + Grit + Zoom + Luck">⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
+        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc"' + ptA(p) + '>⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
         (V.breedsLeft ? '<span class="bk-br" title="Lifetime breeds used">💞 ' + V.breedsLeft(p, w.tip).used + '/' + V.BREED_CAP_V2 + '</span>' : '') + ''; }; }
   if (typeof document !== 'undefined' && !document.getElementById('bkCss')) { var bs = document.createElement('style'); bs.id = 'bkCss';
     bs.textContent = '.bk-br{font-size:12px;color:#ff9ad5;white-space:nowrap}.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
