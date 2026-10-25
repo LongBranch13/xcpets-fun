@@ -76,7 +76,7 @@ ok(V.openAds(fakeW, 40).map(a => a.id).join() === '2,3,1', 'openAds order: newes
 ok(V.sendBlock(w, { tag: 'pet:rug:' + Bp.id + ':1', amount: 690 }, G + 50, { me: O2 }) != null, 'send guard blocks a taken ad');
 // determinism + no randomness: same input twice -> identical pets
 const w2 = run(c, s, R, G + 1100); ok(JSON.stringify(w.pets.map(p => [p.id, p.species, p.tier, p.owner])) === JSON.stringify(w2.pets.map(p => [p.id, p.species, p.tier, p.owner])), 'deterministic replay');
-ok(w.pets.length === n0 + 1 + (kid && kid.twinOf ? 1 : 0), 'exactly one egg (or twins) from the match');
+ok(w.pets.filter(p => !p.burnLord).length === n0 + 1 + (kid && kid.twinOf ? 1 : 0), 'exactly one egg (or twins) from the match');
 
 // follow-up: tag length + malformed standards rejected with reasons; halving prices
 { const long = 'pet:ad:' + A2.id + ':T2.S4.PHYB.GGOLDEN-CAPE-X', why = V.reqWhy('T2.S4.PHYB.GGOLDEN-CAPE-X', A2.id);

@@ -77,7 +77,7 @@
   function fromLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); if (!c || Date.now() - c.at > LAST_MAX) return false; return applyStale(c, null); } catch (e) { return false; } }
   function fromStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
     return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; })
-      .then(function (j) { return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
+      .then(function (j) { try { if (j && window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
     var chain = new E.Chain();
@@ -104,7 +104,7 @@
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
         var nHashes = Object.assign({}, hc, bh.hashes), nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
         /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
-        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; S.rows = rows; S.hashes = nHashes; S.tip = nTip; },
+        var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows, { tip: nTip, hashes: nHashes }).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; S.rows = rows; S.hashes = nHashes; S.tip = nTip; },
           function (e) { throw new Error('pet sales and token transfers could not be read, so pet owners could be out of date (' + String(e && e.message || e).slice(0, 90) + ')'); }) : null;
         /* sale-owner-fix (2026-10-24): gate set but V2Sales missing = no sale data -> fail like any other read (Couldn't reach + Retry), never replay without it */
         if (!dx && V.salesGate && V.salesGate() != null) throw new Error('pet sale reader did not load, so pet owners could be out of date');

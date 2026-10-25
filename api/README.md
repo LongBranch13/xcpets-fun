@@ -58,3 +58,9 @@ Pets are on one line each, so you can stream the file line by line. It is ~11 MB
 const { pets } = await (await fetch('https://xcpets.fun/api/pets.json')).json();
 const mine = pets.filter(p => p.owner === 'bc1q...');
 ```
+
+## recent-events.json (sale-cache-feed, preview)
+Written by `tools/recent-events.js` in the api-feed workflow: `{v:1, tip, hash, from, blocks: {N: {hash, complete, total, events}}}` for the last 60 blocks,
+read from a Counterparty full node (:4000). `events` keeps only events that name a numeric pet token plus every order / match / cancel / expiry event
+(`total` = the block's full event count). js/v2-sales.js uses a block's list only when its `hash` equals the page's own fresh chain read; otherwise
+that block is checked on a :4000 node, and any doubt means the full sale-data read. Burns stay locked until that read is verified.

@@ -673,6 +673,27 @@
     document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
     window.addEventListener('scroll', q, { passive: true }); }
+  /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 3 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
+   * a flickering fire aura on the pet's outline, a small flame crown with a gold band on top of the head, and a gold frame with n of 3 edition pips.
+   * Silhouette per frame from two key renders (same trick as mythFx). Display only. */
+  var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]], BL_GOLD = [255, 210, 63], BL_GOLD2 = [176, 120, 20], BL_INK = [20, 12, 6];
+  function burnLordFx(fr, keyed, bl) { if (!okFrames(fr) || !bl) return fr; var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
+    return fr.map(function (f, fi) { var a = (A[fi] || A[0]).data, b = (B[fi] || B[0]).data, d = new Uint8ClampedArray(f.data), m = new Uint8Array(1024), y0 = 32, x0 = 32, x1 = -1;
+      for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (y < y0) y0 = y; if (x < x0) x0 = x; if (x > x1) x1 = x; } }
+      var set = function (x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var j = (y * 32 + x) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; };
+      if (x1 >= 0) { /* fire aura: background pixels touching the silhouette, flicker by frame */
+        for (var q = 0; q < 1024; q++) { if (m[q]) continue; var qx = q & 31, qy = q >> 5; if (qy > 28) continue; var nb = [q - 32, q + 32, qx > 0 ? q - 1 : -1, qx < 31 ? q + 1 : -1].some(function (n) { return n >= 0 && n < 1024 && m[n]; }); if (!nb) continue;
+          var h = (qx * 7 + qy * 13 + fi * 5) % 6; if (h < 3) set(qx, qy, BL_FIRE[(h + (qy < 16 ? 0 : 1)) % 3]); }
+        /* flame crown: gold band one row above the head, three flames rising 3 px (middle one taller, tips flicker) */
+        var cx = Math.round((x0 + x1) / 2), top = Math.max(5, y0 - 1);
+        for (var dx = -3; dx <= 3; dx++) { set(cx + dx, top, BL_GOLD); set(cx + dx, top + 1, BL_GOLD2); }
+        [-3, 0, 3].forEach(function (o, k) { var hgt = o === 0 ? 4 : 3, fl = (fi + k) % 2; for (var s = 1; s <= hgt; s++) set(cx + o, top - s, BL_FIRE[s === hgt ? 0 : s === 1 ? 2 : 1]); if (fl) set(cx + o + (k === 1 ? 1 : 0), top - hgt - 1, BL_FIRE[0]); set(cx + o - 1, top - 1, BL_FIRE[2]); set(cx + o + 1, top - 1, BL_FIRE[2]); }); }
+      /* gold frame (outer gold, inner dark line) + n gold pips bottom right */
+      for (var t = 0; t < 32; t++) { set(t, 0, BL_GOLD); set(t, 31, BL_GOLD); set(0, t, BL_GOLD); set(31, t, BL_GOLD); }
+      for (var u = 1; u < 31; u++) { set(u, 1, BL_GOLD2); set(u, 30, BL_GOLD2); set(1, u, BL_GOLD2); set(30, u, BL_GOLD2); }
+      [0, 0, 31, 31].forEach(function (cx2, k) { set(cx2, k % 2 ? 31 : 0, BL_INK); });
+      for (var e = 0; e < bl.of; e++) set(28 - e * 2, 30, e < bl.n ? BL_FIRE[0] : BL_INK);
+      return Object.assign({}, f, { data: d }); }); }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
@@ -681,6 +702,7 @@
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
+    if (p && p.burnLord && !p.dead) fr = burnLordFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }, p.burnLord); /* Burn Lord edition look */
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
     if (lk.length) try { var lkKey = function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01'); window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
@@ -952,6 +974,7 @@
     if (p.hybrid && p.hybrid.parts && p.hybrid.parts.length) out.push('<b>Traded parts:</b> ' + p.hybrid.parts.map(function (q) { return esc(V2.partLabel(q)); }).join(', '));
     if (p.mutation && V2.mutationLabel) { var ml = V2.mutationLabel(p.mutation).split(': '); out.push('<b>' + esc(ml[0]) + (ml[1] ? ':</b> ' + esc(ml[1]) : '</b>')); }
     if (p.shows && V2.hiddenLabel) out.push('<b>Throwback:</b> ' + esc(V2.hiddenLabel(p.shows)) + (p.shows === 'oddeyes' && p.oddEye && V2.ODD_EYE_COLOURS ? ' (' + esc(V2.ODD_EYE_COLOURS[p.oddEye.col % V2.ODD_EYE_COLOURS.length].id) + ')' : ''));
+    if (p.burnLord) out.push('<b>Burn Lord edition:</b> <span class="chip brbadge">\uD83D\uDD25 ' + p.burnLord.n + ' of ' + p.burnLord.of + '</span> <span class="muted">one-time grant to the top ' + p.burnLord.of + ' burners (rank ' + p.burnLord.rank + ', ' + Math.round(p.burnLord.total).toLocaleString('en-US') + ' XCPETS burned to the end of block ' + Number(p.burnLord.gate).toLocaleString('en-US') + '). Never bred, never inherited.</span>');
     var bd = V2.breederBadges(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
     return out.join('</div><div>'); }
   /** genChip(w, p): 'Gen N' chip (Gen 0 = hatched) plus 'n/6 breeds' for cards. Display only. */
@@ -1020,7 +1043,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
@@ -1039,7 +1062,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=551d1f2ebb'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=c397bcb07c'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
