@@ -31,7 +31,7 @@ function meta(p, v, m, mintTie) { /* mintTie: verified tie with no pet:deed burn
     website: SITE + '/pet.html?id=' + p.id, image: img,
     images: [{ type: 'large', size: '128x128', data: img }], categories: [{ type: 'main', data: 'NFT' }, { type: 'sub', data: 'xcpets pet' }],
     verified: v && v.asset ? { asset: v.asset, tiedBlock: v.block, tiedTx: v.tx, tiedBy: v.by } : 'not tied yet',
-    anti_fake: 'Only the asset in verified.asset is the real token of pet #' + p.id + '. Any other asset whose description points here is NOT the real token and moves nothing.',
+    anti_fake: (v && v.asset ? 'Only ' + v.asset + ' is the real token of pet #' + p.id + ' (printed on its badge).' : 'Pet #' + p.id + ' has no verified token yet: any asset pointing here is NOT a real tied token.') + ' Only the asset in verified.asset is the real token of pet #' + p.id + '. Any other asset whose description points here is NOT the real token and moves nothing.',
     pet: { id: p.id, name: p.name, species: p.species, speciesLabel: p.speciesLabel, rarity: p.tier, rarityScore: p.rarityScore, stage: p.stageName, status: p.status, generation: p.generation } });
   return o; }
 function put(f, buf) { try { if (fs.readFileSync(f).equals(buf)) return 0; } catch (e) { } fs.writeFileSync(f, buf); return 1; }
@@ -81,7 +81,7 @@ if (require.main === module) (async () => {
     /* Proof of Pet (branch pet-papers): a pet with a verified tied token gets the 128x128 Proof of Pet badge (js/v2-papers.js, same pixels as the
      * pet.html card); every other pet (no token, a fresh untied mint, community) keeps the plain 32x32 x4 sprite. */
     const tie = assetOf[p.id], q = byId.get(p.id);
-    if (tie && q && !q.community && !(q.art && q.art.community)) { const r = PAPERS.render({ id: p.id, name: p.name, tier: p.tier || '', speciesLabel: p.speciesLabel }, fr[0].data, 'token'); np += put(path.join(OUT, p.id + '.png'), png(r.data, r.w, r.h, 1)); }
+    if (tie && q && !q.community && !(q.art && q.art.community)) { const r = PAPERS.render({ id: p.id, name: p.name, tier: p.tier || '', speciesLabel: p.speciesLabel, asset: tie.asset }, fr[0].data, 'token'); np += put(path.join(OUT, p.id + '.png'), png(r.data, r.w, r.h, 1)); }
     else np += put(path.join(OUT, p.id + '.png'), png(fr[0].data, 32, 32, SCALE)); }
   if (!only) put(path.join(OUT, 'index.json'), Buffer.from(JSON.stringify({ blockHeight: input.tip, count: pets.length, url: SITE + '/t/<id>.json' }) + '\n'));
   if (A.includes('--tokened') && mintsOk) put(STATE, Buffer.from(JSON.stringify({ lastBlock: input.tip }) + '\n'));

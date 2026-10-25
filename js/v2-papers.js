@@ -90,7 +90,7 @@
   function token(I, spr) { var W = 128, H = 128, im = new Img(W, H); border(im);
     text(im, W / 2, 13, 'OFFICIAL XCPETS', 6, DRED, 'mt'); text(im, W / 2, 21, 'PROOF OF PET', 8, INK, 'mt'); if (spr) im.sprite(spr, 32, 32, 2, 32, 32);
     ftext(im, W / 2, 100, ('#' + I.id + ' ' + I.name).toUpperCase(), [8, 6], 106, INK, 'mt'); ftext(im, W / 2, 110, (I.tier + ' ' + I.speciesLabel).toUpperCase(), [6], 106, MUT, 'mt');
-    seal(im, 104, 84, 10); return im; }
+    seal(im, 104, 84, 10); if (I.asset) ftext(im, W / 2, 118, 'TOKEN ' + I.asset, [6], 120, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset, so a copycat whose description points here shows the real number */ return im; }
   /** render(info, spriteRGBA32x32|null, 'desktop'|'phone'|'token') -> {w, h, data: RGBA} at 1 pixel per art pixel */
   function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d }; }
   function scaleUp(r, s) { var W = r.w * s, H = r.h * s, d = new Uint8ClampedArray(W * H * 4); for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var si = (((y / s) | 0) * r.w + ((x / s) | 0)) * 4, di = (y * W + x) * 4; d[di] = r.data[si]; d[di + 1] = r.data[si + 1]; d[di + 2] = r.data[si + 2]; d[di + 3] = 255; } return { w: W, h: H, data: d }; }
