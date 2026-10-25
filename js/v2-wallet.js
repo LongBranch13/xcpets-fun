@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function (d) {
   'use strict';
   var Wallet = d.Wallet, BurnCore = d.BurnCore, CFG = d.CFG, win = d.win, F = d.fetch, store = d.storage;
-  var NET = CFG.network, ME_KEY = 'xcpets-v2-me', ADDR_KEY = 'xcpets-xcpwallet-address', COMPOSE_MS = 12000, BACKOFF = d.backoffMs != null ? d.backoffMs : 1500, wallet = null;
+  var NET = CFG.network, ME_KEY = 'xcpets-v2-me', ADDR_KEY = 'xcpets-xcpwallet-address', COMPOSE_MS = d.composeMs != null ? d.composeMs : 12000, BACKOFF = d.backoffMs != null ? d.backoffMs : 1500, wallet = null;
   var tracker = new Wallet.Tracker(store, 'xcpets-v2-pending-' + NET);
   var STORE = 'https://chromewebstore.google.com/detail/xcp-wallet/nicpjdbehgcjbjfjkobcidnfmfpijohg';
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -110,8 +110,13 @@
       });
     }).then(function (x) { connecting = null; return x; }, function (e) { connecting = null; throw e; }));
   }
+  /* burn-compose-fix (2026-10-24): every network step before the XCP Wallet window has a deadline, so a stalled server can never leave the
+   * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
+  function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
+    .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 120000;
   function feeRate() {
-    return F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); })
+    return withTimeout(F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); }), FEE_MS, 'fee rate timed out')
       .then(function (f) { var x = Math.ceil(Number(f.hourFee)); return x >= 1 ? x : 1; }).catch(function () { return 2; });
   }
   function composeNodes() { return (CFG.composeList && CFG.composeList.length ? CFG.composeList : [CFG.compose]).filter(function (u) { return !/xcp\.fun/.test(u); }); }
@@ -126,11 +131,14 @@
     function call(i, mode, tries) {
       tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode);
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
-      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status); e5.retryable = true; e5.backoff = true; throw e5; } return r.json(); }, function (e) {
+      var done = false, bodyT = null; /* burn-compose-fix: the abort timer also covers reading the body (a stalled body used to hang forever) */
+      var body = function (r) { return new Promise(function (res, rej) { bodyT = setTimeout(function () { var e6 = new Error('timed out after ' + COMPOSE_MS / 1000 + ' s reading the reply'); e6.retryable = true; e6.backoff = true; rej(e6); }, COMPOSE_MS); Promise.resolve(r.json()).then(res, function (e) { var e7 = new Error('unreadable reply (' + ((e && e.message) || 'bad JSON') + ')'); e7.retryable = true; e7.backoff = true; rej(e7); }); }).then(function (x) { clearTimeout(bodyT); return x; }, function (e) { clearTimeout(bodyT); throw e; }); };
+      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status + (r.status === 429 ? ' (rate limited)' : '')); e5.retryable = true; e5.backoff = true; throw e5; } return body(r); }, function (e) {
         if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; e2.backoff = true; throw e2; })
         .then(function (j) {
+          if (!j || typeof j !== 'object') { var e8 = new Error('empty reply'); e8.retryable = true; throw e8; }
           if (j.error) { var e3 = new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); e3.retryable = /unsupported node operation|not ready|unavailable/i.test(e3.message); throw e3; }
-          var chk = BurnCore.checkComposeResult(j.result, exp); if (!chk.ok) { var e4 = new Error('Safety check stopped this burn before signing (nothing was signed or sent): ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
+          if (onTry) onTry(i + 1, urls.length, 'check'); var chk; try { chk = BurnCore.checkComposeResult(j.result, exp); } catch (ce) { chk = { ok: false, problems: ['safety check error: ' + ((ce && ce.message) || ce)] }; } if (!chk.ok) { var e4 = new Error('Safety check stopped this burn before signing (nothing was signed or sent): ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
           j.result._url = url; return j.result;
         }).catch(function (e) { if (e.backoff && tries < 3) return sleep(BACKOFF * Math.pow(2, tries)).then(function () { return call(i, mode, tries + 1); }); throw e; });
     }
@@ -157,14 +165,15 @@
         throw friendly(e);
       });
     }
-    return go(0);
+    return withTimeout(go(0), COMPOSE_TOTAL_MS, 'Could not build your burn within ' + Math.round(COMPOSE_TOTAL_MS / 1000) + ' s: the Counterparty nodes are slow or rate-limiting right now. Nothing was signed or sent. Wait a minute, then press Continue.' + (errs.length ? ' (' + errs.join(' · ') + ')' : ''), 'composeTimeout');
   }
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
   function send(plan, viewed, onTry) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
-    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+    if (onTry) onTry(0, 0, 'fresh');
+    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
       return send0(plan, viewed, onTry); }); }
   function send0(plan, viewed, onTry) {
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
@@ -178,7 +187,9 @@
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
+      if (onTry) onTry(0, 0, 'fee');
       return feeRate().then(function (fee) { return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
+        if (onTry) onTry(0, 0, 'sign');
         return w.signAndBroadcast(res).then(function (r) {
           noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.tag, amount: plan.amount, label: plan.label || plan.tag, at: Date.now(), status: 'sent' });
           return { txid: r.txid, composed: res };
