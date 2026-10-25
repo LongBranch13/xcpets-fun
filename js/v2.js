@@ -157,7 +157,7 @@
   function dudPow(p) { return window.UXB && UXB.power ? UXB.power(p) : (function (s) { return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); })(p.stats || {}); }
   function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
     var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
-  function dudBar(list) { var pw = rev.pw != null ? rev.pw : 20;
+  function dudBar(list) { var pw = rev.pw != null ? rev.pw : 50;
     return '<div class="dudbar small" role="group" aria-label="Dud Duster quick picks"><b>🧹 Dud Duster</b> <span class="muted">tick the duds fast:</span> ' +
       '<button type="button" class="q" data-dud="common">Tick Commons</button> <button type="button" class="q" data-dud="uncommon">Tick Commons + Uncommons</button> ' +
       '<span class="dudpw">Power below <input type="number" id="dudPw" min="1" max="999" value="' + pw + '" aria-label="Power cutoff"> <button type="button" class="q" data-dud="pow">Tick</button></span> ' +
