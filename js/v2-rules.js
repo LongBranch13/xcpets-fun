@@ -490,12 +490,12 @@
    * Same edition numbering (Burn Lord n of 5). Granted eggs are unbreedable (breedable(): p.burnLord / p.supreme). Nothing fires before block 973,301, so
    * replay of all history is unchanged.
    * SUPREME EGGS (1 of 1 each, same block, same mechanism):
-   *   Lord Kekamoto -> #1 all-time burner (rank 1 of burnLordsRank): the blue Lord Kek wizard (Kek body, Wizard colours, Wizard hat) + Nakamoto glasses.
+   *   Lord Kekamozard -> #1 all-time burner (rank 1 of burnLordsRank): the blue Lord Kek wizard (Kek body, Wizard colours, Wizard hat) + Nakamoto glasses.
    *   Don Kekamoto -> top XCPETS holder at block 973,300: FunTrump body in Kek colours with Nakamoto glasses. Holdings are Counterparty balances (not in
    *   replay), so the address is a constant like TOP3_WIZ: DON_KEKAMOTO_TO. CONFIRM it from the holder list at block 973,300 before merging. */
   var DON_KEKAMOTO_TO = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q'; /* G Money; confirm at the snapshot */
   var SUPREME = {
-    archmage: { key: 'hyb3:nakamoto:wizard:kek', name: 'Lord Kekamoto', title: 'Burn Lord Supreme', shape: 'kek', color: 'wizard', featSp: 'nakamoto', parts: [{ sp: 'wizard', part: 'hat' }, { sp: 'nakamoto', part: 'glasses' }] },
+    archmage: { key: 'hyb3:nakamoto:wizard:kek', name: 'Lord Kekamozard', title: 'Burn Lord Supreme', shape: 'kek', color: 'wizard', featSp: 'nakamoto', parts: [{ sp: 'wizard', part: 'hat' }, { sp: 'nakamoto', part: 'glasses' }] },
     don: { key: 'hyb3:nakamoto:kek:funtrump', name: 'Don Kekamoto', title: 'Top Holder', shape: 'funtrump', color: 'kek', featSp: 'nakamoto', parts: [{ sp: 'nakamoto', part: 'glasses' }] } };
   function supremeArt(gh, id, gate) { var D = SUPREME[id], seed = 'XCPETS:supreme:' + id, hex = sha(gh + seed);
     var art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: gate }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;

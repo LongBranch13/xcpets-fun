@@ -37,10 +37,10 @@ const bd = V.breederBadges(w, BL[0]); ok(bd.some(b => b.name === 'Burn Lord' && 
 BL.forEach(p => { ok(p.care === 0 && p.stage === 0 && p.burnLord.egg === true, '#' + p.id + ' granted as an egg (stage 0)'); ok(/cannot breed/.test(V.breedable(p, tip) || ''), '#' + p.id + ' unbreedable'); });
 const SU = w.pets.filter(p => p.supreme); ok(SU.length === 2, 'two supreme eggs (' + SU.length + ')');
 const AM = SU.find(p => p.supreme.id === 'archmage'), DK = SU.find(p => p.supreme.id === 'don');
-ok(AM && AM.owner === BL[0].owner && AM.name === 'Lord Kekamoto' && AM.species === 'hyb3:nakamoto:wizard:kek' && AM.hybrid.shape === 'kek' && AM.hybrid.color === 'wizard' && JSON.stringify(AM.hybrid.parts) === JSON.stringify([{ sp: 'wizard', part: 'hat' }, { sp: 'nakamoto', part: 'glasses' }]), 'Lord Kekamoto egg -> #1 burner, blue Lord Kek wizard + Nakamoto glasses');
+ok(AM && AM.owner === BL[0].owner && AM.name === 'Lord Kekamozard' && AM.species === 'hyb3:nakamoto:wizard:kek' && AM.hybrid.shape === 'kek' && AM.hybrid.color === 'wizard' && JSON.stringify(AM.hybrid.parts) === JSON.stringify([{ sp: 'wizard', part: 'hat' }, { sp: 'nakamoto', part: 'glasses' }]), 'Lord Kekamozard egg -> #1 burner, blue Lord Kek wizard + Nakamoto glasses');
 ok(DK && DK.owner === V.DON_KEKAMOTO_TO && DK.name === 'Don Kekamoto' && DK.species === 'hyb3:nakamoto:kek:funtrump' && DK.hybrid.shape === 'funtrump' && DK.hybrid.color === 'kek', 'Don Kekamoto egg -> top holder, FunTrump body in Kek colours');
 SU.forEach(p => { ok(p.care === 0 && p.stage === 0 && p.tier === 3 && p.supreme.of === 1, p.name + ' Legendary 1 of 1 egg'); ok(/cannot breed/.test(V.breedable(p, tip) || ''), p.name + ' unbreedable'); });
-ok(V.breederBadges(w, AM).some(b => b.name === 'Burn Lord Supreme'), 'Lord Kekamoto badge');
+ok(V.breederBadges(w, AM).some(b => b.name === 'Burn Lord Supreme'), 'Lord Kekamozard badge');
 V._setBurnLordsSnapshot(973300);
 const J = process.argv.indexOf('--json'); if (J > 0) fs.writeFileSync(process.argv[J + 1], JSON.stringify({ tip, snapshot: sm, top: BL.map(p => ({ id: p.id, owner: p.owner, total: p.burnLord.total, species: p.species, name: p.name, label: V.speciesLabel(p.species), edition: p.burnLord })), pets: BL }, null, 1));
 console.log((fail ? 'FAILED ' : 'ALL PASS ') + pass + ' pass, ' + fail + ' fail');
