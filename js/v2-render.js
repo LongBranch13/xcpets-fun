@@ -883,7 +883,7 @@
   /** coldFrames(sp, ids, stage) (2026-10-20, owner): a community pet's Cold Storage portrait. Every community pet in Cold Storage shows at Mythic in
    * its full signature loadout (ARCHIVE entry .loadout in v2-pages.js, data only; Nakamoto is the bare exception). Sprite-sheet species are drawn
    * by their own sprite module in the community palette; the loadout goes through the same gear mapping as a player pet of that species. */
-  /* FUNTRUMP (community pet #4, branch funtrump-community, PREVIEW; gated by V2Rules ACTIVATE_FUNTRUMP_BLOCK = null): c.current === 'funtrump' only once
+  /* FUNTRUMP (community pet #4; LIVE from V2Rules ACTIVATE_FUNTRUMP_BLOCK = 972,880): c.current === 'funtrump' only once
    * the gate is reached AND Lord Kek is in Cold Storage. His hair is part of him (Headwear sits on top of the fringe). Every slot is drawn by
    * FuntrumpSprite's gear layer (anchors measured on his own frames). Player FUNTRUMPs / FUNTRUMP-body hybrids use the same mapping (ftGearOf). */
   function ftOn(w) { return !!(w && w.community && w.community.current === 'funtrump' && window.FuntrumpSprite); }
@@ -1039,7 +1039,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=9927ef1620'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=5530362264'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

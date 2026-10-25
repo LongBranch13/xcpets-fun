@@ -29,7 +29,7 @@
     function go(i) { if (i >= urls.length) return Promise.reject(new Error('Every compose node failed:\n' + errs.join('\n')));
       $('dtStatus').textContent = 'Asking compose node ' + (i + 1) + ' of ' + urls.length + '…'; var url = dexUrl(urls[i], addr, p, fee), ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, 20000);
       return fetch(url, { signal: ac.signal }).then(function (r) { clearTimeout(t); return r.json(); }).then(function (j) {
-        if (j.error) throw new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); var bad = dexCheck(j.result, addr, p); if (bad.length) throw new Error('compose mismatch: ' + bad.join(', '));
+        if (j.error) throw new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); var bad = dexCheck(j.result, addr, p).concat(W._dexCheck(j.result, addr, { kind: 'issuance', asset: p.asset, description: p.description }, fee)); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', '));
         j.result._url = url; return j.result; }).catch(function (e) { clearTimeout(t); errs.push(urls[i].replace(/^https?:\/\//, '').replace(/\/.*/, '') + ': ' + (e.name === 'AbortError' ? 'timed out after 20 s' : e.message)); return go(i + 1); }); }
     return go(0); }
   function loadPets(addr) { $('dtPick').innerHTML = '<option value="">loading your pets…</option>';

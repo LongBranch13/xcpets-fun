@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+/* One command for the whole suite from a fresh checkout:  node tools/run-tests   (or ./tools/run-tests)
+ *   --replay-base <git-ref>  also run tools/replay-check.js --compare <ref> on the fixture snapshots and require SAME
+ *   --jobs N                 tests in parallel (default: CPU count)
+ * 1) rebuilds the burn snapshots from tools/fixtures (tools/lib/fixtures.js), 2) runs every tools/*-test.js,
+ * 3) a test fails on a non-zero exit or on any FAIL line that is not in tools/fixtures/known-failures.txt.
+ * known-failures.txt = FAIL lines that already failed on main on 2026-10-24 (the frozen fixture predates later gates).
+ * A known failure that now passes is reported so the list can shrink. Exit 0 only when nothing new fails. */
+'use strict';
+const fs = require('fs'), path = require('path'), os = require('os'), { spawn, execFileSync } = require('child_process');
+const T = __dirname, ROOT = path.resolve(T, '..'), A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
+const made = require('./lib/fixtures').ensure(); if (made.length) console.log('fixtures: built ' + made.join(', '));
+const KNOWN = new Set(fs.readFileSync(path.join(T, 'fixtures', 'known-failures.txt'), 'utf8').split('\n').filter(l => l && !l.startsWith('#')));
+const tests = fs.readdirSync(T).filter(f => /-test\.js$/.test(f)).sort(), jobs = +(opt('--jobs') || os.cpus().length || 2);
+const failLine = l => /^\s*(FAIL|not ok)\b/.test(l) || /\b[1-9]\d* (FAILED|failed)\b/.test(l) || /^\s*(AssertionError|Error:|TypeError|ReferenceError)/.test(l);
+function runOne(f) { return new Promise(res => { const t0 = Date.now(), p = spawn(process.execPath, [path.join(T, f)], { cwd: ROOT, env: Object.assign({}, process.env, { XCPETS_TEST: '1' }) });
+  let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
+  const kill = setTimeout(() => { out += '\nFAIL timeout after 600 s'; p.kill('SIGKILL'); }, 600000);
+  p.on('close', code => { clearTimeout(kill); res({ f, code, out, ms: Date.now() - t0 }); }); }); }
+(async () => {
+  const q = tests.slice(), results = []; await Promise.all(Array.from({ length: Math.min(jobs, q.length) }, async () => { while (q.length) results.push(await runOne(q.shift())); }));
+  results.sort((a, b) => a.f < b.f ? -1 : 1); let bad = 0; const seenKnown = new Set();
+  for (const r of results) {
+    const fails = r.out.split('\n').map(l => l.replace(/\s+$/, '').replace(/\d+(\.\d+)?\s?ms\b/g, '')).filter(failLine).map(l => r.f + ' | ' + l.trim());
+    const fresh = fails.filter(l => !KNOWN.has(l)); fails.filter(l => KNOWN.has(l)).forEach(l => seenKnown.add(l));
+    const exitBad = r.code !== 0 && !fails.length;
+    const ok = !fresh.length && !exitBad; if (!ok) bad++;
+    console.log((ok ? 'ok   ' : 'FAIL ') + r.f + ' (' + (r.ms / 1000).toFixed(1) + ' s' + (fails.length ? ', ' + (fails.length - fresh.length) + ' known failure line(s)' : '') + ')');
+    fresh.forEach(l => console.log('       new: ' + l)); if (exitBad) console.log('       exit code ' + r.code + '\n' + r.out.split('\n').slice(-15).join('\n'));
+  }
+  const gone = [...KNOWN].filter(l => !seenKnown.has(l)); if (gone.length) console.log('\nknown failures that no longer show (remove from tools/fixtures/known-failures.txt):\n  ' + gone.join('\n  '));
+  const base = opt('--replay-base');
+  if (base) for (const s of ['snap-971786.json', 'snap-972883.json', 'snap-972901.json']) {
+    let o = ''; try { o = execFileSync(process.execPath, [path.join(T, 'replay-check.js'), '--compare', base, '--snap', path.join(T, 'snapshots', s)], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26 }); } catch (e) { o = String(e.stdout || '') + String(e.stderr || '') + '\nERROR ' + e.message; }
+    const same = /\bSAME\b/.test(o) && !/\bDIFF/i.test(o); if (!same) bad++;
+    console.log((same ? 'ok   ' : 'FAIL ') + 'replay ' + s + ' vs ' + base + ': ' + (same ? 'SAME' : 'DIFFERENT\n' + o.split('\n').slice(-20).join('\n')));
+  }
+  console.log('\n' + (bad ? bad + ' problem(s)' : 'all ' + results.length + ' test files pass' + (base ? ', replay SAME' : '')));
+  process.exit(bad ? 1 : 0);
+})();

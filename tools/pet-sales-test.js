@@ -168,14 +168,15 @@ ok(!/uniqueAsk|dexSimulate|sellBurnPlan|saleTag\(/.test(src), 'quick listing pat
   ok(!/oldMoney|OLD_MONEY/.test(rep) && (rules.match(/oldMoney\(/g) || []).filter(Boolean).length <= 2, 'old money: display only, replay never reads it'); }
 
 { /* wallet: pet token issuance compose + echo check */
-  const Wm = require('../js/v2-wallet.js')({ win: {}, fetch: () => Promise.reject(new Error('no net')), storage: { getItem: () => null, setItem() {} }, CFG: { network: 'mainnet' }, BurnCore: {}, Wallet: { Tracker: function () { return { add() {}, list: () => [] }; } } });
+  const Wm = require('../js/v2-wallet.js')({ win: {}, fetch: () => Promise.reject(new Error('no net')), storage: { getItem: () => null, setItem() {} }, CFG: { network: 'mainnet' }, BurnCore: require('../rjs/burn-core.js'), Wallet: { Tracker: function () { return { add() {}, list: () => [] }; } } });
   const plan = V.mintPlan(4107, 'A123456789012345678'), u = Wm._dexUrl('https://node.example/v2', 'bc1qme', plan, 3);
   ok(/\/compose\/issuance\?/.test(u) && /asset=A123456789012345678/.test(u) && /quantity=1&/.test(u) && /divisible=false/.test(u) && /lock=true/.test(u) && /description=https%3A%2F%2Fxcpets.fun%2Ft%2F4107.json/.test(u), 'wallet: issuance compose url');
-  const good = { rawtransaction: 'ab', name: 'issuance', params: { source: 'bc1qme', asset: plan.asset, quantity: 1, divisible: false, lock: true, description: plan.description } };
-  ok(Wm._dexCheck(good, 'bc1qme', plan).length === 0, 'wallet: issuance echo ok');
-  ok(Wm._dexCheck(Object.assign({}, good, { params: Object.assign({}, good.params, { quantity: 2 }) }), 'bc1qme', plan).length > 0, 'wallet: issuance qty 2 rejected');
-  ok(Wm._dexCheck(Object.assign({}, good, { params: Object.assign({}, good.params, { description: 'x' }) }), 'bc1qme', plan).length > 0, 'wallet: issuance wrong description rejected');
-  ok(Wm._dexCheck(good, 'bc1qme', V.mintPlan(4107, 'PEPECASH')).length > 0, 'wallet: named asset rejected');
+  const ME_ = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', TXF = require('./lib/txfake.js'); /* real-structured issuance: the wallet decodes the raw tx */
+  const good = TXF.result('issuance', ME_, { asset: plan.asset, quantity: 1, divisible: false, lock: true, description: plan.description }, { type: 22, bodyHex: TXF.issuanceBody(plan.asset, 1, true, plan.description) });
+  ok(Wm._dexCheck(good, ME_, plan).length === 0, 'wallet: issuance echo ok');
+  ok(Wm._dexCheck(Object.assign({}, good, { params: Object.assign({}, good.params, { quantity: 2 }) }), ME_, plan).length > 0, 'wallet: issuance qty 2 rejected');
+  ok(Wm._dexCheck(Object.assign({}, good, { params: Object.assign({}, good.params, { description: 'x' }) }), ME_, plan).length > 0, 'wallet: issuance wrong description rejected');
+  ok(Wm._dexCheck(good, ME_, V.mintPlan(4107, 'PEPECASH')).length > 0, 'wallet: named asset rejected');
   const sales = require('fs').readFileSync(require('path').join(__dirname, '..', 'js/v2-sales.js'), 'utf8');
   ok(!/Paid in|uniqueAsk|smallest free extra/.test(sales) && /loadDex\(rows\)|function loadDex\(rows\)/.test(sales) && /crypto\.getRandomValues/.test(sales), 'shop UI: no shared-pair choice; token discovery from burns; random token'); }
 V._setSalesActivation(null);
