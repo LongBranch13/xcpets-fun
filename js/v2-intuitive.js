@@ -92,7 +92,7 @@
     ['power', 'Power', 'Vigor + Spark + Grit + Zoom + Luck.'],
     ['tag', 'Burn tag', 'The short text on a burn, like pet:feed:891. The game reads every tag from Bitcoin to rebuild all pets.'],
     ['burn', 'Burn', 'Destroying XCPETS on Counterparty. Every action is one, signed in your own XCP Wallet. Burns are final.'],
-    ['mythicdisc', 'Mythic shortcut', 'Own a Mythic and all your pets reach Mythic at 21,000 care.'],
+    ['mythicdisc', 'Mythic shortcut', 'Raise a Mythic yourself (hatched, bred or granted and never left you, or more than half its care fed by you) and all your pets reach Mythic at 21,000 care. Gifted or bought Mythics don\'t count.'],
     ['stash', 'Stash', 'All your gear, worn and unworn.'],
     ['cold', 'Cold Storage', 'Where community pets go at Mythic. After that anyone can hatch and breed them.']];
   function glossary(k) { return '<h3>📖 Glossary</h3><dl class="ip-gloss">' + GLOSS.map(function (g) { return '<dt id="ipg-' + g[0] + '"' + (g[0] === k ? ' class="on"' : '') + '>' + g[1] + '</dt><dd>' + esc(g[2]) + '</dd>'; }).join('') + '</dl>' +
