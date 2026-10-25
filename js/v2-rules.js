@@ -1806,7 +1806,7 @@
    *  - Flame aura (aura): 69,000 XCPETS burned on that pet's own actions from the gate (milestones 6,900 / 69,000 / 690,000 are recorded; the look comes at 69,000).
    *  (No Gold holo / 1-of-1 award here: owner Oct 24 2026 7:30 PM CT, raids designed separately later.)
    * Earned looks stay with the pet for good (also when it changes hands). Wallet flame tiers (FLAME_TIERS) and quest looks are unchanged and kept. */
-  var ACTIVATE_EARN_BLOCK = 973002; /* tip 972996 (mempool.space, re-checked Oct 24 2026 7:31 PM CT) + 6; PREVIEW ONLY, not deployed */
+  var ACTIVATE_EARN_BLOCK = 973002; /* tip 972996 (mempool.space, re-checked Oct 24 2026 7:41 PM CT) + 6 */
   function earnOn(b) { return ACTIVATE_EARN_BLOCK != null && b != null && b >= ACTIVATE_EARN_BLOCK; }
   var EARN = { laurelsMythicWins: 10, laurelsStreak: 5, haloQuests: 10, crownDays: 7, wingsBlocks: 4032, flameBurn: 69000, flameMilestones: [6900, 69000, 690000] };
   var EARN_LOOKS = { laurels: { id: 'laurels', name: 'Laurels', type: 'top' }, halo: { id: 'halo', name: 'Halo', type: 'top' }, 'holo-foil': { id: 'holo-foil', name: 'Holo foil', type: 'foil' },
