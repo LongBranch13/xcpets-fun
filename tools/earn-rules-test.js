@@ -32,4 +32,5 @@ ok(B.w.pets.every(p => !p.earn || new Set(p.earn.looks).size === p.earn.looks.le
 const fl = A.w.pets.filter(p => (p.flameLooks || []).length || (p.questLooks || []).length).length, flB = B.w.pets.filter(p => (p.flameLooks || []).length || (p.questLooks || []).length).length;
 ok(fl === flB, 'wallet flame looks + quest looks kept (' + fl + ' pets)');
 const sh = B.w.pets.find(p => p.earn && p.earn.looks.length); if (sh) { const L = B.V.shownLooks(B.w, sh); ok(new Set(L.map(x => x.type)).size === L.length, 'shownLooks one per type (#' + sh.id + ': ' + L.map(x => x.id).join(', ') + ')'); }
+ok(!('gold-holo' in B.V.EARN_LOOKS) && !B.V.earnGold && !B.w.pets.some(p => p.earn && p.earn.looks.includes('gold-holo')), 'no Gold holo earn award (removed, raids later)');
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);
