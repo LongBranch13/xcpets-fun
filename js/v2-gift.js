@@ -49,12 +49,12 @@
    * Pets with a token you hold: one Counterparty send (several = one MPMA send, up to BUNDLE tokens per transaction).
    * Pets without a token: made automatically first (window per token), then after 1 block the tie burn(s) and the send. Nothing signs here:
    * every window is XCP Wallet (js/v2-wallet.js sendDex / send), one at a time, after the press. */
-  var BUNDLE = 10, API = 'https://api.xcp.fun/node/v2', GPK = 'xcpets-gift-pending';
+  var BUNDLE = 10, CF = window.XCPETS_CONFIG, core = function (p) { return CF.coreFetch(p); } /* direct-counterparty-api: Counterparty Core direct (config.js coreFetch) */, GPK = 'xcpets-gift-pending';
   function validAddr(a) { var Wl = window.V2Wallet; return Wl && Wl.validAddr ? Wl.validAddr(a) : /^(bc1[qp][02-9ac-hj-np-z]{38,58}|[13][1-9A-HJ-NP-Za-km-z]{25,34})$/.test(String(a || '')); }
   function gpend(v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(GPK) || 'null'); if (v) localStorage.setItem(GPK, JSON.stringify(v)); else localStorage.removeItem(GPK); } catch (e) { } return null; }
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
-    return fetch(API + '/assets/' + A).then(function (r) { if (r.status === 404) return A; if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }); }
-  function issued(A) { return fetch(API + '/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address : null; }, function () { return null; }); }
+    return core('/assets/' + A).then(function (r) { if (r.status === 404) return A; if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }); }
+  function issued(A) { return core('/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address : null; }, function () { return null; }); }
   /* token-press (owner Oct 24 2026): only tokenized (tied) pets can be gifted; the gift never makes tokens. Untied pets go to the Token Press (shop.html). */
   var NOTOK = 'no token yet: make one at the Token Press (shop.html)';
   function tied(w, p) { var d = V.deedOf(w, p); return !!(d && d.ok && d.holder === ME); }
@@ -83,7 +83,7 @@
         $('gfBack').onclick = function () { giftFlow(ids, to); }; $('gfAny').onclick = function () { run(job); }; }); }; }
   /** pendingMoves(assets) -> the assets with an unconfirmed debit (send, MPMA, order) in the node mempool; [] when the mempool can't be read. */
   function pendingMoves(assets) { if (!assets.length) return Promise.resolve([]);
-    return fetch(API + '/mempool/events/DEBIT?limit=1000').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var seen = {};
+    return core('/mempool/events/DEBIT?limit=1000').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var seen = {};
       ((j && j.result) || []).forEach(function (e) { var x = e.params || {}; if (assets.indexOf(x.asset) >= 0) seen[x.asset] = 1; }); return Object.keys(seen); }, function () { return []; }); }
   /* run(job): resumable; job.mint[id] = asset (window sent), job.tied[id] = 1 */
   function run(job) { var w = W(), Wl = window.V2Wallet; if (!w || !Wl) return; gpend(job);

@@ -47,7 +47,7 @@ async function findMints(pets, api, cache) { const owner = {}; pets.forEach(p =>
   return out; }
 
 /** recentMints(pets, api, nodes, minBlock) -> same shape as findMints, but reads the full nodes' global /issuances list (newest first) back to
- * minBlock instead of every owner's balances (one or a few requests per run, so the hourly CI job stays light). Plus api.xcp.fun mempool. */
+ * minBlock instead of every owner's balances (one or a few requests per run, so the hourly CI job stays light). Plus the Core node mempool (CFG.read[0], Counterparty Core direct). */
 async function recentMints(pets, api, nodes, minBlock) { const owner = {}; pets.forEach(p => { if (p.status !== 'dead' && !p.community && p.owner) owner[p.id] = p.owner; });
   const cand = [];
   try { const j = await getJ(api + '/mempool/events/ASSET_ISSUANCE?limit=1000'); (j.result || []).forEach(e => { const x = e.params || {}; cand.push(Object.assign({}, x, { tx_hash: e.tx_hash || x.tx_hash, block_index: null, mempool: true })); }); } catch (e) { console.error('mempool:', e.message); }

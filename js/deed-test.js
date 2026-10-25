@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   var CFG = window.XCPETS_CONFIG, W = window.V2Wallet, $ = function (i) { return document.getElementById(i); };
-  var READ = (CFG.read || [])[0] || 'https://api.xcp.fun/node/v2', DEED_MIN = '95428956661682177', DEED_MAX = '18446744073709551615';
+  var READ = (CFG.read || [])[0] || 'https://api.counterparty.io:4000/v2', DEED_MIN = '95428956661682177', DEED_MAX = '18446744073709551615';
   var qs = new URLSearchParams(location.search), viewOnly = qs.get('addr') || null, me = null, composed = null, plan = null, pets = [];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function errOut(el, e) { $(el).innerHTML = '<div class="dt-err">' + (e && typeof e === 'object' ? W.errHtml(e) : esc(e)) + '</div>'; }

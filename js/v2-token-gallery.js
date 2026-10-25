@@ -1,6 +1,6 @@
 /* token-gallery (owner 1:17 AM CT Oct 25, 2026, pt1589u): tokens.html "Proof Parade", every tokenized pet in tokenize order.
  * Display only: reads api/ties.json, t/<id>.png and the replayed world (V2Mock.world()) for the current holder and open Spam City
- * listings. Never signs, no rule change, replay untouched. Tokenize dates come from the block time (api.xcp.fun), cached per session. */
+ * listings. Never signs, no rule change, replay untouched. Tokenize dates come from the block time (Counterparty Core /blocks, direct), cached per session. */
 (function () {
   'use strict';
   var M = window.V2Mock, V = window.V2Rules || {}, R = window.V2Render || {};
@@ -38,7 +38,7 @@
   function fetchTimes(list) {
     var need = list.map(function (e) { return e.block; }).filter(function (b, i, a) { return b && !times[b] && a.indexOf(b) === i; });
     if (!need.length) return;
-    Promise.all(need.map(function (b) { return fetch('https://api.xcp.fun/node/v2/blocks/' + b).then(function (r) { return r.json(); }).then(function (j) { if (j && j.result && j.result.block_time) times[b] = j.result.block_time; }).catch(function () {}); }))
+    Promise.all(need.map(function (b) { return window.XCPETS_CONFIG.coreFetch('/blocks/' + b).then /* direct-counterparty-api: Counterparty Core direct */(function (r) { return r.json(); }).then(function (j) { if (j && j.result && j.result.block_time) times[b] = j.result.block_time; }).catch(function () {}); }))
       .then(function () { try { sessionStorage.setItem(TKEY, JSON.stringify(times)); } catch (e) {} render(); });
   }
   function tile(e) {
