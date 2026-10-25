@@ -50,7 +50,7 @@
       return '<h3>📈 #' + p.id + ' care: ' + fmt(p.care) + '</h3>' + stageLadder(w, p) +
         (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ~' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, ' + fmt(p.nextMeal) + ' each) · earliest ~block ' + fmt(n.earliest) : '') + '.</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
         (ct.discount ? '<p class="small">' + TIPS.mythic() + '</p>' : '') + more('feed', 'Stages and meals'); },
-    mythic: function () { var c = V() && V().MYTHIC_DISCOUNT_CARE; return '<b>Mythic discount:</b> once an address owns a Mythic pet, every pet it owns reaches Mythic at ' + fmt(c || 21000) + ' care instead of 69,069. That\'s why a Mythic can show less care than a pet still growing.'; },
+    mythic: function () { var c = V() && V().MYTHIC_DISCOUNT_CARE; return '<b>Mythic shortcut:</b> once an address owns a Mythic pet, every pet it owns reaches Mythic at ' + fmt(c || 21000) + ' care instead of 69,069. That\'s why a Mythic can show less care than a pet still growing.'; },
     mythicRank: function () { return '<h3>Why is this Mythic\'s care lower?</h3><p>' + TIPS.mythic() + '</p>' + more('feed', 'Stages'); },
     hatch: function () { var T = (window.PetCore && PetCore.TIERS) || [], rows = T.slice(0, 4).map(function (t) { return '<tr><td>' + esc(t.name) + '</td><td>' + (t.chance / 100) + '%</td><td>+' + (t.statBonus || 0) + ' stats</td></tr>'; }).join('');
       return '<h3>🥚 Hatch odds and upkeep</h3><table class="ip-tbl"><tr><th>Tier</th><th>Chance</th><th>Bonus</th></tr>' + rows + '</table>' +
@@ -92,7 +92,7 @@
     ['power', 'Power', 'Vigor + Spark + Grit + Zoom + Luck.'],
     ['tag', 'Burn tag', 'The short text on a burn, like pet:feed:891. The game reads every tag from Bitcoin to rebuild all pets.'],
     ['burn', 'Burn', 'Destroying XCPETS on Counterparty. Every action is one, signed in your own XCP Wallet. Burns are final.'],
-    ['mythicdisc', 'Mythic discount', 'Own a Mythic and all your pets reach Mythic at 21,000 care.'],
+    ['mythicdisc', 'Mythic shortcut', 'Own a Mythic and all your pets reach Mythic at 21,000 care.'],
     ['stash', 'Stash', 'All your gear, worn and unworn.'],
     ['cold', 'Cold Storage', 'Where community pets go at Mythic. After that anyone can hatch and breed them.']];
   function glossary(k) { return '<h3>📖 Glossary</h3><dl class="ip-gloss">' + GLOSS.map(function (g) { return '<dt id="ipg-' + g[0] + '"' + (g[0] === k ? ' class="on"' : '') + '>' + g[1] + '</dt><dd>' + esc(g[2]) + '</dd>'; }).join('') + '</dl>' +
