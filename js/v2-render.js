@@ -335,6 +335,7 @@
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'funtrump' && !art.hybrid && window.FuntrumpSprite) return ftPetFrames(art, stage, itemIds); /* player FUNTRUMP (branch funtrump-community, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'funtrump' && window.FuntrumpSprite) return ftHybFrames(art, stage, itemIds); /* FUNTRUMP-body hybrid: FuntrumpSprite gear layer */
     if (art && art.species === 'kek' && !art.hybrid && window.KekSprite) return kekPetFrames(art, stage, itemIds); /* player Lord Kek (gated, after his Cold Storage) */
@@ -704,7 +705,7 @@
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
-    if (p && (p.burnLord || p.supreme) && !p.dead) fr = burnLordFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }, p.burnLord || p.supreme); /* Burn Lord edition look (also the 1 of 1 supreme eggs) */
+    if (p && (p.burnLord || p.supreme || p.contest) && !p.dead) fr = burnLordFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }, p.burnLord || p.supreme || p.contest); /* Burn Lord edition look (also the 1 of 1 supreme eggs) */
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
     if (lk.length) try { var lkKey = function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01'); window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
@@ -929,6 +930,7 @@
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
     var fr = S.frames(stage, '#2a3a2e', G, { community: true }); return stage === 5 && MYTH_PREVIEW ? mythFx(fr, function (bg) { return S.frames(stage, bg, G, { community: true }); }, MYTH_PREVIEW) : fr; }
+  function contestFrames(art, stage, ids) { var G = wizGearOf(ids); return ContestSprite.frames(art.species, stage || 0, (art && art.bgColor) || '#14101e', G); } /* contest pets: worn gear drawn by ContestSprite.gearLayer */
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
@@ -977,7 +979,8 @@
     if (p.hybrid && p.hybrid.parts && p.hybrid.parts.length) out.push('<b>Traded parts:</b> ' + p.hybrid.parts.map(function (q) { return esc(V2.partLabel(q)); }).join(', '));
     if (p.mutation && V2.mutationLabel) { var ml = V2.mutationLabel(p.mutation).split(': '); out.push('<b>' + esc(ml[0]) + (ml[1] ? ':</b> ' + esc(ml[1]) : '</b>')); }
     if (p.shows && V2.hiddenLabel) out.push('<b>Throwback:</b> ' + esc(V2.hiddenLabel(p.shows)) + (p.shows === 'oddeyes' && p.oddEye && V2.ODD_EYE_COLOURS ? ' (' + esc(V2.ODD_EYE_COLOURS[p.oddEye.col % V2.ODD_EYE_COLOURS.length].id) + ')' : ''));
-    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder') + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage, its look is fixed and it can\'t breed.</span>');
+    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder') + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage and its look is fixed' + (V2.grantBreedOn && V2.grantBreedOn((w && w.tip || 0) + 1) ? '; it can breed, fight and wear gear like any pet.' : ' and it can\'t breed.') + '</span>');
+    if (p.contest) out.push('<b>' + esc(p.contest.title) + ':</b> <span class="chip brbadge">\uD83C\uDFC6 1 of 1</span> <span class="muted">one-time prize egg granted at block ' + Number(p.contest.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage, breeds, fights and wears gear. Its babies are normal pets.</span>');
     if (p.burnLord) out.push('<b>Burn Lord edition:</b> <span class="chip brbadge">\uD83D\uDD25 ' + p.burnLord.n + ' of ' + p.burnLord.of + '</span> <span class="muted">one-time grant to the top ' + p.burnLord.of + ' burners (rank ' + p.burnLord.rank + ', ' + Math.round(p.burnLord.total).toLocaleString('en-US') + ' XCPETS burned to the end of block ' + Number(p.burnLord.gate).toLocaleString('en-US') + '). Granted as an egg: feed it to hatch; it grows through every stage, its look is fixed and it can\'t breed.</span>');
     var bd = V2.breederBadges(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
     return out.join('</div><div>'); }
