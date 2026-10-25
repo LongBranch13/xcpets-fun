@@ -26,7 +26,7 @@
     var last = cold[cold.length - 1] || null, nextNo = cur ? cur.no : (last ? last.no + 1 : 1);
     var hs = []; try { hs = (V && V.halvingBlocks ? V.halvingBlocks(w) : []) || []; } catch (e) { hs = []; }
     var done = hs.filter(function (b) { return b <= tip + 1; }).length, next = hs.filter(function (b) { return b > tip + 1; })[0] || null;
-    /* gentle community targets (Oct 25 2026 v2): pets that start at or after V2Rules.ACTIVATE_CP_TARGET_HALVING_BLOCK (pet #5 on) get base halved per halving since the gate (v3 factor 0.5, cap 8) */
+    /* gentle community targets (Oct 25 2026 v2): pets that start at or after V2Rules.ACTIVATE_CP_TARGET_HALVING_BLOCK (pet #5 on) get base halved per halving since the gate (v4 factor 0.9, cap 8) */
     var base = V && V.COMMUNITY_THRESHOLDS ? V.COMMUNITY_THRESHOLDS : null, gate = V ? V.ACTIVATE_CP_TARGET_HALVING_BLOCK : null, tgt = null;
     try { if (base && gate != null && V.cpScaled) { var eg = V.eraAt(w, gate), cap = V.MAX_ERA || 12, nextEra = Math.min(cap, done + (cur ? 1 : 0)), curK = cur && c.target ? 1 : 0;
       tgt = { gate: gate, factor: V.CP_TARGET_FACTOR, cap: cap, base: base[5], mythic: c.target ? c.target[5] : base[5], adjusted: !!c.target, nextNo: cur ? cur.no + 1 : nextNo, nextMythic: V.cpScaled(nextEra - eg)[5], steps: Math.max(0, nextEra - eg) }; } } catch (e) { tgt = null; }
@@ -57,8 +57,8 @@
       return 'Halvings so far: ' + s.halvingsDone + (s.nextHalving ? '. Next halving at block ' + fmt(s.nextHalving) + '.' : s.current ? '. The next one comes 6 blocks after ' + s.current.name + ' goes to Cold Storage.' : '.'); },
     'cp-target': function (s) { var t = s.target; if (!t) return null; var n = t.steps, pet = 'Community pet #' + t.nextNo;
       var who = s.current && !t.adjusted ? s.current.name + ' keeps his Mythic target of ' + fmt(t.base) + '. ' : '';
-      return who + 'From ' + pet + ' on (pets that start at or after block ' + fmt(t.gate) + '), each new community pet\'s targets halve with each halving since that block, just like burn costs, so every pet takes the same number of feeds. ' +
-        pet + ': Mythic at ' + fmt(t.nextMythic) + (n === 1 ? ' (halved once)' : n > 1 ? ' (halved ' + n + ' times)' : '') + '. Costs and targets stop halving after ' + t.cap + ' halvings, so every feed still burns real XCPETS.'; },
+      return who + 'From ' + pet + ' on (pets that start at or after block ' + fmt(t.gate) + '), each new community pet\'s targets are ' + fmt(t.base) + ' times 0.9 for each halving since that block. Burn costs halve, so each pet takes a bit more feeding than the last and halvings spread out over months. ' +
+        pet + ': Mythic at ' + fmt(t.nextMythic) + (n === 1 ? ' (0.9 once)' : n > 1 ? ' (0.9, ' + n + ' times)' : '') + '. Costs and targets stop changing after ' + t.cap + ' halvings, so every feed still burns real XCPETS.'; },
     'help-egg': function (s) { return s.egg ? '1 in 777 eggs is ' + (s.egg.the ? 'a ' : 'a ') + s.egg.name + '.' : null; },
     'help-cold': function (s) { if (!s.egg) return null; var old = s.cold.filter(function (x) { return x.no >= 2 && x.id !== s.egg.id; });
       return 'Nakamoto (#1) is no longer hatched. ' + old.map(function (x) { return x.short + ' (#' + x.no + ') eggs stopped. '; }).join('') + up(s.egg.the) + s.egg.name + ' (#' + s.egg.no + ') now comes from the 1 in 777 hatch roll.'; }
