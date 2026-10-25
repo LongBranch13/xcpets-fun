@@ -3,8 +3,12 @@
 'use strict';
 const C = require('../js/contest-sprite.js'), K = require('../js/kek-sprite.js'), fs = require('fs');
 const out = { strips: {}, gear: {}, hybrids: [], ref: [] }, bg = '#14101e';
+/* before/after for the Star-Lord v2 redesign: the old art is read from git commit 7067b53 */
+try { const src = require('child_process').execSync('git show 7067b53:js/contest-sprite.js', { cwd: __dirname + '/..' }).toString(), m = { exports: {} }; new Function('module', 'exports', src)(m, m.exports);
+  out.slOld = [0, 1, 2, 3, 4, 5].map(s => m.exports.render('starlordkek', s, 0, bg).data); } catch (e) { out.slOld = null; }
 C.SPECIES.forEach(sp => { out.strips[sp] = [0, 1, 2, 3, 4, 5].map(s => C.frames(sp, s, bg).map(f => f.data));
   const G = { head: { label: 'Party crown', cols: ['#ffd23f', '#c49a1a'] }, hand: { label: 'Torch', cols: ['#8a5a2a', '#ff8a2a'] }, back: { label: 'Cape', cols: ['#2bb5c8'] }, feet: { label: 'Boots', cols: ['#6b3f1f', '#4a2a12'] } };
+  if (sp === 'starlordkek') out.slNew = [0, 1, 2, 3, 4, 5].map(s => C.render(sp, s, 0, bg).data);
   out.gear[sp] = [3, 5].map(s => C.render(sp, s, 0, bg, G).data); });
 /* BABIES (owner Oct 25 2026): no signature parts. contest x normal = the partner's species; contest x contest = one normal random species.
  * Drawn with the normal in-game pet renderer (PetCore), same as any bred egg. */

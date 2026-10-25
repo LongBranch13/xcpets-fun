@@ -23,3 +23,6 @@ sheet([('%s + %s = normal %s%s' % (NM(h['a']), NM(h['b']), NM(h['sp']), ' (rando
 sheet([(NAMES[sp] + ' wearing crown, torch, cape, boots', g) for sp, g in J['gear'].items()], 'HOLDS THINGS: gear on the contest pets', ['Adult', 'Mythic'], f'{OUT}/gear-check.png')
 allrows = [(NAMES[sp], [f[0] for f in st]) for sp, st in J['strips'].items()] + [('reference: in-game Lord Kek sprite (same 32x32 size and stages)', J['ref'])]
 sheet(allrows, 'ALL THREE CONTEST PETS next to a normal in-game sprite', STAGES, f'{OUT}/all-stages.png')
+
+if J.get('slOld'):
+    sheet([('BEFORE (old art)', J['slOld']), ('AFTER (v2, more wow)', J['slNew'])], 'STAR-LORD KEK: before / after (32x32 shown 8 times size)', ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'], f'{OUT}/starlordkek-before-after.png')
