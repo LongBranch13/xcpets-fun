@@ -1258,7 +1258,7 @@
   var BG_COLORS = ['#1d2b53', '#2b1d3f', '#1f3b2f', '#3b2a1f', '#14213d', '#2d1b2e', '#203040', '#3a1f2b'];
   // Unique names (owner 2026-10-24 10:59 PM CT): pets hatched at or after ACTIVATE_UNIQUE_NAME_BLOCK get a name from a much bigger scheme,
   // drawn from a SEPARATE hash (sha256('XCPETS:name:v2:' + seed)), never the main rng stream, so no trait, stat or older name changes.
-  var ACTIVATE_UNIQUE_NAME_BLOCK = 973018; // mainnet tip 973012 (mempool.space, Oct 24 2026 11:00 PM CT) + 6
+  var ACTIVATE_UNIQUE_NAME_BLOCK = 973020; // mainnet tip 973014 (mempool.space, Oct 24 2026 11:06 PM CT, at deploy) + 6
   var NAME_ONSETS = ['b', 'ch', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'w', 'y', 'z', 'sh'];
   var NAME_VOWELS = ['a', 'e', 'i', 'o', 'u', 'oo'];
   var NAME_ENDS = ['', 'n', 'p', 'k', 'b', 'li', 'bo', 'mi', 'ki', 'po', 'ru', 'zy', 'bit', 'pop', 'bun', 'tot', 'boo', 'kin', 'pip', 'lu', 'ni'];
