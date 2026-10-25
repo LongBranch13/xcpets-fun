@@ -46,7 +46,7 @@ if (require.main === module) (async () => {
   const { pets } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));
   /* verified tokens: V2Rules.deedScan over the burns + each deed asset's first issuance (live: fetched; --snap: --dex FILE or none) */
   let dex = opt('--dex') ? JSON.parse(fs.readFileSync(opt('--dex'), 'utf8')) : null;
-  if (!dex && !opt('--snap')) { dex = { issuances: [], orders: [], matches: [] }; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.xcp.fun/node/v2', seen = {};
+  if (!dex && !opt('--snap')) { dex = { issuances: [], orders: [], matches: [] }; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.counterparty.io:4000/v2', seen = {};
     for (const r of V.readBurns(rows)) { let t = null; try { t = V.parseTag(r.tag); } catch (e) { } if (!t || t.action !== 'deed' || seen[t.asset]) continue; seen[t.asset] = 1;
       const j = await (await fetch(API + '/assets/' + t.asset + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } 
     /* mint-only ties (before ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: also check each asset already named in t/<id>.json (deedScan verifies it) */
@@ -58,10 +58,10 @@ if (require.main === module) (async () => {
   let mints = {}; const STATE = path.join(ROOT, 'api', 'token-meta-state.json'); let since = Number(opt('--since')) || 0;
   if (!since) { try { since = Number(JSON.parse(fs.readFileSync(STATE, 'utf8')).lastBlock) - 12; } catch (e) { } }
   if (!since || !(since > 0)) since = input.tip - 36; since = Math.min(since, input.tip - 36);
-  const fetchIss = async a => { if (!dex || dex.issuances.some(x => x.asset === a)) return; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.xcp.fun/node/v2';
+  const fetchIss = async a => { if (!dex || dex.issuances.some(x => x.asset === a)) return; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.counterparty.io:4000/v2';
     for (const u of [API + '/assets/' + a + '/issuances?verbose=true', 'https://tokenscan.io/api/issuances/' + a]) { try { const j = await (await fetch(u)).json(); const L = (j.result || j.data || []).filter(x => !x.status || x.status === 'valid').sort((x, y) => x.tx_index - y.tx_index); if (L[0]) { dex.issuances.push(L[0]); return; } } catch (e) { } } };
   let mintsOk = true;
-  if (A.includes('--tokened')) { const DS = require('./deed-scan.js'), CF = ctx.XCPETS_CONFIG, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2';
+  if (A.includes('--tokened')) { const DS = require('./deed-scan.js'), CF = ctx.XCPETS_CONFIG, API = (CF.read || [])[0] || 'https://api.counterparty.io:4000/v2';
     const r = await DS.recentMints(pets, API, CF.composeList || [], since); mints = r.mints; mintsOk = r.ok; console.log('tokened: mint lookback from block', since, 'nodes ok', r.ok);
     for (const id of Object.keys(mints)) if (!mints[id].mempool) await fetchIss(mints[id].asset); }
   for (const a of (opt('--assets') || '').split(',').filter(Boolean)) await fetchIss(a);

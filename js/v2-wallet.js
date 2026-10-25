@@ -114,7 +114,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 120000;
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 45000; /* direct-counterparty-api: was 120 s of spinner */
   function feeRate() {
     return withTimeout(F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); }), FEE_MS, 'fee rate timed out')
       .then(function (f) { var x = Math.ceil(Number(f.hourFee)); return x >= 1 ? x : 1; }).catch(function () { return 2; });
@@ -178,7 +178,8 @@
   function send(plan, viewed, onTry, recheck) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
-    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) {
+    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.').then(function (r) {
+      if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
       return send0(plan, viewed, onTry); }); }
   function send0(plan, viewed, onTry) {

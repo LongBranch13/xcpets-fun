@@ -17,8 +17,8 @@
   var DECIMALS = 8;                  // divisible assets: 1 token = 1e8 raw units
   var MAX_INT = '9223372036854775807'; // counterparty-core config.MAX_INT
   var DEFAULT_COMPOSE_API = CFG ? CFG.compose : 'https://api.counterparty.io:4000/v2';
-  var READ_API = CFG ? CFG.read[0] : 'https://api.xcp.fun/node/v2';
-  var LAUNCH_API = CFG ? CFG.launch : 'https://api.xcp.fun/v2'; // null on testnets (xcp.fun is mainnet-only)
+  var READ_API = CFG ? CFG.read[0] : 'https://api.counterparty.io:4000/v2';
+  var LAUNCH_API = CFG ? CFG.launch : 'https://api.xcp.fun/v2'; // XCPFUN_API (xcp.fun's own launch/sale record, not a Counterparty Core endpoint); null on testnets (xcp.fun is mainnet-only)
   var ESCROW_ADDRESS = CFG ? CFG.burnAddr : '1CounterpartyXXXXXXXXXXXXXXXUWLpVr';
   var NETWORK = CFG ? CFG.network : 'mainnet';
 

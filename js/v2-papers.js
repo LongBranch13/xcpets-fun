@@ -132,7 +132,7 @@
     var S = M.state ? M.state() : {}, rows = S.rows || [], k = p.id + '@' + w.tip + '/' + rows.length, c = scan[k]; if (c && c !== 'busy') return c.t; if (c === 'busy') return null;
     var mine = [], all = {}; V.readBurns(rows).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; } if (t && t.action === 'deed') { if (t.petId === p.id) mine.push(t.asset); (all[t.asset] = 1); } });
     /* mint-only ties (pre ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: the asset named in /t/<id>.json is a HINT only; deedScan verifies its first issuance */
-    var CF = root.XCPETS_CONFIG || {}, API = (CF.read || [])[0] || 'https://api.xcp.fun/node/v2'; scan[k] = 'busy';
+    var CF = root.XCPETS_CONFIG || {}, API = (CF.read || [])[0] || 'https://api.counterparty.io:4000/v2'; scan[k] = 'busy';
     var hint = fetch('t/' + p.id + '.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { return j && typeof j.asset === 'string' ? [j.asset] : []; }, function () { return []; });
     hint.then(function (h) { var assets = mine.concat(h.filter(function (a) { return !all[a]; })).filter(function (a, i, L) { return L.indexOf(a) === i; });
     if (!assets.length) { scan[k] = { t: null }; return; }
