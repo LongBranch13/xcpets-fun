@@ -335,6 +335,7 @@
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+    if (art && window.ContestSprite && (art.contestHyb || ContestSprite.SPECIES.indexOf(art.species) >= 0)) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'funtrump' && !art.hybrid && window.FuntrumpSprite) return ftPetFrames(art, stage, itemIds); /* player FUNTRUMP (branch funtrump-community, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'funtrump' && window.FuntrumpSprite) return ftHybFrames(art, stage, itemIds); /* FUNTRUMP-body hybrid: FuntrumpSprite gear layer */
     if (art && art.species === 'kek' && !art.hybrid && window.KekSprite) return kekPetFrames(art, stage, itemIds); /* player Lord Kek (gated, after his Cold Storage) */
@@ -929,6 +930,8 @@
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
     var fr = S.frames(stage, '#2a3a2e', G, { community: true }); return stage === 5 && MYTH_PREVIEW ? mythFx(fr, function (bg) { return S.frames(stage, bg, G, { community: true }); }, MYTH_PREVIEW) : fr; }
+  function contestFrames(art, stage, ids) { var bg = (art && art.bgColor) || '#14101e', H = art.contestHyb; if (!H) return ContestSprite.frames(art.species, stage || 0, bg, wizGearOf(ids));
+    return [0, 1, 2, 3].map(function (f) { var r = ContestSprite.hybrid(H.body, H.donor, stage || 0, f, bg, H.colorFrom); return { width: 32, height: 32, data: new Uint8ClampedArray(r.data) }; }); }
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
