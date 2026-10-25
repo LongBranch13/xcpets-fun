@@ -1853,7 +1853,8 @@
   function lookSweep(w, b) { if (!lookPickOn(b)) return; var C = w.lookCopies || (w.lookCopies = {});
     w.pets.forEach(function (p) { if (p.community || p.released) return; var S = lookSrcIds(p);
       ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; if (!C[key]) C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id, since: b }; }); }); }); }
-  function copyList(w) { var C = w.lookCopies || {}; return Object.keys(C).sort(function (a, z) { var A = C[a], Z = C[z]; return A.kind !== Z.kind ? (A.kind === 'quest' ? -1 : 1) : A.src !== Z.src ? A.src - Z.src : A.id < Z.id ? -1 : 1; }).map(function (k) { return C[k]; }); }
+  function copyList(w) { var C = w.lookCopies; if (!C) { C = {}; w.pets.forEach(function (p) { if (p.community || p.released) return; var S = lookSrcIds(p); /* before the gate (display only): each look sits on its own pet */
+      ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id }; }); }); }); } return Object.keys(C).sort(function (a, z) { var A = C[a], Z = C[z]; return A.kind !== Z.kind ? (A.kind === 'quest' ? -1 : 1) : A.src !== Z.src ? A.src - Z.src : A.id < Z.id ? -1 : 1; }).map(function (k) { return C[k]; }); }
   function copyOnPet(w, c) { var q = c.at ? w.byId[c.at] : null; return !!(q && q.owner === c.holder && !q.dead && !q.released); }
   /** shownLooksPick(w, p): picker-era shownLooks: flame looks first, then wallet copies placed on this pet (holder still owns it), one per kind. */
   function shownLooksPick(w, p) { var types = {}, out = [];
