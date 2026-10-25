@@ -150,8 +150,8 @@
    * kept only where they can matter here (events naming a numeric pet token, plus every order / match / cancel / expiry event). A block's list
    * is used ONLY when its stamped block hash equals the hash from this page's fresh chain read (cx.hashes); otherwise that block falls to a
    * :4000 node, then (any doubt) to the full read. Same-origin, so it works where the :4000 nodes are blocked. */
-  var REC = null;
-  function recent() { if (!REC) REC = (typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? getJ0('api/recent-events.json?t=' + Math.floor(Date.now() / 60000)).then(function (j) { return j && j.v === 1 && j.blocks ? j : null; }, function () { return null; }) : Promise.resolve(null)); return REC; }
+  var REC = null, FEED = {}; /* data-lag-banner: tip + time of the feed file already read here (no extra fetch) */
+  function recent() { if (!REC) REC = (typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? getJ0('api/recent-events.json?t=' + Math.floor(Date.now() / 60000)).then(function (j) { try { if (j && j.tip) FEED.tip = +j.tip; if (j && j.generatedAt) FEED.at = Date.parse(j.generatedAt) || null; } catch (e) {} return j && j.v === 1 && j.blocks ? j : null; }, function () { return null; }) : Promise.resolve(null)); return REC; }
   function blockEvents(n, hx) { return recent().then(function (R) { var e = R && R.blocks[n]; if (e && e.complete === true && Array.isArray(e.events) && hx && hx[n] && e.hash === hx[n]) { blockEvents.src[n] = 'file'; return e.events; } blockEvents.src[n] = 'node'; return blockEvents0(n); }); }
   blockEvents.src = {};
   function blockEvents0(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
@@ -215,7 +215,7 @@
     if (PREVIEW) return Promise.resolve(plan);
     return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
-  window.V2Sales = { loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
+  window.V2Sales = { feed: FEED, loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
