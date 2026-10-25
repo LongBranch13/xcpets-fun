@@ -8,10 +8,9 @@
  *                patches, long white muzzle, black nose, buck tooth, droopy ear, red turtleneck. Room key from Elder, neon glow at Mythic.
  *   lukespam     'Luke Spam Junior' (3rd): from img/shop/luke-spam-jr-240.png (the Spam City card shop clerk): red cap with brim to the right,
  *                brown sideburns, ginger goatee, navy shirt. Spam can from Elder, holo Mythic card at Mythic.
- * Never the old Nakamoto or Wizard art. Palette keys are shared so a hybrid can recolour by key (skin G/g/h, accent B/b, belly y/o).
+ * Never the old Nakamoto or Wizard art.
  * API: draw(sp, stage, frame, gear) -> key grid; render(sp, stage, frame, bg, gear, opts) -> {width,height,data}; frames(sp, stage, bg, gear, opts);
- * anchors(sp, stage, frame) -> head/eye/body boxes (gear and traded parts land on these); PARTS[sp] = each pet's signature part (for hybrids);
- * hybrid(bodySp, donorSp, stage, frame, bg, colorPal) = a contest body wearing another contest pet's signature part, fitted to the body. */
+ * anchors(sp, stage, frame) -> head/eye/body boxes (gear lands on these). Babies never carry these pets' special parts (no part swap). */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.ContestSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
@@ -24,8 +23,6 @@
   var NAMES = { starlordkek: 'Star-Lord Kek', gooby: 'Gooby', lukespam: 'Luke Spam Junior' };
   /* the same stage sizes as KekSprite (head half-width / height, body half-width / height) */
   var DIM = [null, { hw: 6, hh: 6, bw: 4, bh: 4 }, { hw: 7, hh: 6, bw: 5, bh: 6 }, { hw: 8, hh: 7, bw: 7, bh: 7 }, { hw: 8, hh: 7, bw: 7, bh: 8 }, { hw: 8, hh: 7, bw: 7, bh: 8 }];
-  /* signature parts, traded by breeding (one general rule, like HYBRID_PARTS): the part REPLACES the matching region and is anchored to the body */
-  var PARTS = { starlordkek: { id: 'mask', label: 'star mask', kind: 'eyes' }, gooby: { id: 'tophat', label: 'green top hat', kind: 'top', hat: true }, lukespam: { id: 'cap', label: 'red cap', kind: 'top', hat: true } };
   function grid() { var g = []; for (var i = 0; i < N; i++) g.push(new Array(N).fill(null)); return g; }
   function set(g, x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N) g[y][x] = k; }
   function rect(g, x0, y0, w, h, k) { for (var y = y0; y < y0 + h; y++) for (var x = x0; x < x0 + w; x++) set(g, x, y, k); }
@@ -91,7 +88,7 @@
     if (sp === 'gooby') { rect(g, 11, 15 + bob, 10, 2, 'H'); hline(g, 10, 21, 17 + bob, 'I'); rect(g, 10, 22 + bob, 12, 2, 'B'); set(g, 13, 20 + bob, 'W'); set(g, 17, 20 + bob, 'W'); }
     if (sp === 'lukespam') { rect(g, 10, 14 + bob, 12, 3, 'R'); hline(g, 18, 23, 17 + bob, 'r'); rect(g, 13, 20 + bob, 5, 6, 'C'); hline(g, 13, 17, 22 + bob, 'c'); }
     return outline(g); }
-  /** anchors(sp, stage, frame): where gear and traded parts land on this pet */
+  /** anchors(sp, stage, frame): where gear lands on this pet */
   function anchors(sp, stage, frame) { var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
   /* ---------- gear layer: every slot (head, face, hand, body, back, feet, weapon) from the anchors, like KekSprite ---------- */
   function gearLayer(g, sp, st, A, Gr) { function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
@@ -122,20 +119,5 @@
   function toImg(g, P, bg) { var B = hexRgb(bg || '#14101e'), d = []; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function render(sp, stage, frame, bg, gear, opts) { return toImg(draw(sp, stage, frame, gear), Object.assign({}, PAL[sp], (opts && opts.pal) || {}), bg); }
   function frames(sp, stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(sp, stage, f, bg, gear, opts); }); }
-  /** part(g, donor, A, st, P): paint donor's signature part onto a body grid g at anchors A, after erasing the region it replaces (REPLACE, not overlay). */
-  function partOn(g, donor, A, st) { var cx = A.cx, hw = A.hw, base = Math.min(A.headTop, A.eyeY - 3); /* hats sit ABOVE the body's eyes (Star-Lord Kek's eye domes rise over his head) */
-    if (donor === 'gooby') { var hb = base - 1, hl = cx - hw + 2, hr = cx + hw - 2, hh = st === 1 ? 3 : st === 2 ? 4 : 5; for (var y0 = 0; y0 < base; y0++) for (var x0 = 0; x0 < N; x0++) if (g[y0][x0] && g[y0][x0] !== 'S' && Math.abs(x0 - cx) < hw + 3) g[y0][x0] = null; /* erase the top (ears, spikes, cap) */
-      hline(g, hl - 1, hr + 1, hb, 'I'); for (var y = hb - hh; y < hb; y++) hline(g, hl + 1, hr - 1, y, 'H'); hline(g, hl + 1, hr - 1, hb - 2, 'n'); set(g, Math.round((hl + hr) / 2), hb - hh, null); }
-    if (donor === 'lukespam') { var t = base; for (var y1 = 0; y1 < t; y1++) for (var x1 = 0; x1 < N; x1++) if (g[y1][x1] && Math.abs(x1 - cx) < hw + 3) g[y1][x1] = null;
-      for (var y2 = t - 3; y2 <= t; y2++) hline(g, cx - hw + (y2 === t - 3 ? 2 : 0), cx + hw - 1 - (y2 === t - 3 ? 2 : 0), y2, y2 === t ? 'r' : 'R'); hline(g, cx + hw - 2, cx + hw + 2, t, 'R'); hline(g, cx + hw - 1, cx + hw + 3, t + 1, 'r'); }
-    if (donor === 'starlordkek') { var ey = A.eyeY; for (var y3 = ey; y3 <= ey + 1; y3++) for (var x3 = cx - hw + 1; x3 < cx + hw - 1; x3++) set(g, x3, y3, y3 === ey ? 'K' : (x3 === cx - 3 || x3 === cx + 2 ? 'R' : 'K')); set(g, cx - 4, ey + 1, 'R'); set(g, cx + 3, ey + 1, 'R'); } }
-  /** hybrid(bodySp, donorSp, stage, frame, bg, colorFrom): DRAFT preview of a contest x contest baby: bodySp's body, donorSp's signature part fitted
-   * to bodySp's anchors, skin recoloured from colorFrom's palette (G/g/h) when given. Egg stage = the body parent's egg. */
-  function hybrid(bodySp, donorSp, stage, frame, bg, colorFrom) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (s === 0) return toImg(eggArt(g, bodySp, f), PAL[bodySp], bg);
-    var A = geom(s, f); DRAW[bodySp](g, s, A, f); var an = anchors(bodySp, s, f); partOn(g, donorSp, an, s); var o = outline(g); if (s === 5) { o = mythicRim(o); aura(o, bodySp, f); }
-    var P = Object.assign({}, PAL[bodySp]), D = PAL[donorSp]; ['H', 'I', 'R', 'r', 'K', 'k'].forEach(function (k) { if (D[k]) P[k] = D[k]; });
-    if (donorSp === 'lukespam') { P.R = PAL.lukespam.R; P.r = PAL.lukespam.r; } if (donorSp === 'starlordkek') { P.K = PAL.starlordkek.K; P.R = PAL.starlordkek.R; }
-    if (colorFrom && PAL[colorFrom] && colorFrom !== bodySp) { var C = PAL[colorFrom]; P.B = C.B; P.b = C.b; }
-    return toImg(o, P, bg); }
-  return { STAGES: STAGES, NAMES: NAMES, PAL: PAL, PARTS: PARTS, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, partOn: partOn, hybrid: hybrid, SPECIES: Object.keys(NAMES) };
+  return { STAGES: STAGES, NAMES: NAMES, PAL: PAL, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, SPECIES: Object.keys(NAMES) };
 });

@@ -522,7 +522,7 @@
    * Sat Oct 31 2026 midnight CT. Granted at ACTIVATE_CONTEST_EGGS_BLOCK as EGGS (care 0) to the winners in CONTEST_TO; winners feed them to hatch
    * through the normal hatch flow. Outcome is fixed (species, name, Legendary tier); stats from the gate hash like supremeArt. Drawn by
    * ContestSprite (js/contest-sprite.js), same 32x32 frame / stages / idle as the in-game sprites. Never the old Nakamoto or Wizard sprites. */
-  var ACTIVATE_CONTEST_EGGS_BLOCK = null; /* DRAFT go-live: contest species + ContestSprite + grant-pet breeding. null = inert, replay SAME */
+  var ACTIVATE_CONTEST_EGGS_BLOCK = 973091; /* LIVE Oct 25 2026 (tip 973085 tokenscan.io + 6): contest species + ContestSprite + grant-pet breeding */
   /* GRANT LATER (owner Oct 25 2026): winners are known only after the contest ends (end of Sat Oct 31 2026 = 12:00 AM CT Sun Nov 1), so the
    * eggs' rules go live first and the grant is a SECOND, later block: a small follow-up deploy sets CONTEST_TO (the 3 addresses) and
    * CONTEST_GRANT_BLOCK (>= that deploy's tip + 6). Grant fires once at CONTEST_GRANT_BLOCK (never before ACTIVATE_CONTEST_EGGS_BLOCK). */
