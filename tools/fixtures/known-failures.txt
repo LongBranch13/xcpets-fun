@@ -7,7 +7,6 @@ breed-135-test.js | FAIL own-pet breed: 134 after the gate rejected [breed: bred
 breed-135-test.js | FAIL own-pet breed: 135 after the gate breeds [rejected: breeding cooldown (1008 blocks left)]
 breed-135-test.js | FAIL own-pet breed: 135 before the gate rejected [rejected: below breed cost 345]
 breeding-v2-test.js | FAIL hybridParts: beard drawn on peepo/wojak/bobo/kevin/lenny; none on excluded
-firesale-test.js | FAIL full + sale hatch + sale dozen valid; underpaid sale hatch and post-sale sale-price hatch rejected (15)
 halving-test.js | FAIL community feed min 69 -> 34.5 at the halving (34.4 rejected, before the gate 34.5 rejected)
 halving-test.js | FAIL each new community pet + 6 halves again (no floor)
 halving-test.js | FAIL era 0: community feed plan exactly as before (whole XCPETS, min 69)

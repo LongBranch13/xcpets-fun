@@ -149,14 +149,25 @@
       var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
         loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
       if (!base) loadDex.last = { base: 'none' };
-      return pre.then(function (p) { return loadDex2(rows, ma, p); }).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; }, function (err) {
+      /* refresh-fix (2026-10-25): when the gap blocks' events can't be read (full nodes on :4000 unreachable), loadDex2 falls back to a serial
+       * re-read of every pet token through the rate-limited api.xcp.fun, which can take many minutes with no end, so the background re-read never
+       * settled. Race it against DEX_DEADLINE_MS: on timeout use the newest verified copy for the SAME token set (flagged stale, as sales-net-fallback);
+       * the full re-read keeps running and saves its result for the next load. Replay inputs/rules unchanged. */
+      var full = pre.then(function (p) { return loadDex2(rows, ma, p); }).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; });
+      full.catch(function () { });
+      var dl = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('sale read deadline')); }, DEX_DEADLINE_MS); });
+      return Promise.race([full, dl]).then(function (d) { return d; }, function (err) {
+      if (base && base.d && as.length && as.every(function (A) { return base.assets.indexOf(A) >= 0; })) { var bp = {}; as.forEach(function (A) { bp[A] = slice(base.d, A); });
+        return loadDex2(rows, ma, bp, true).then(function (bd) { bd = JSON.parse(JSON.stringify(bd)); bd.stale = Date.now(); loadDex.last = Object.assign({}, loadDex.last, { fallback: base.from + '@' + base.tip }); window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: bd.stale, tip: base.tip } })); return bd; }); }
+      return Promise.reject(err); }).then(function (d) { return d; }, function (err) {
       /* sales-net-fallback: the full nodes failed. Use the last complete sale data this browser read for the SAME set of pet tokens (flagged stale), else fail as before. */
       try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }
+  var DEX_DEADLINE_MS = 45000;
   function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
-  function loadDex2(rows, ma, pre) {
+  function loadDex2(rows, ma, pre, noCache) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
-    try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
+    if (!noCache) try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
     var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); });
     if (pre) Object.keys(pre).forEach(function (A) { var p = pre[A]; d.issuances = d.issuances.concat(p.issuances); d.orders = d.orders.concat(p.orders); d.matches = d.matches.concat(p.matches); d.credits = d.credits.concat(p.credits); d.destructions = d.destructions.concat(p.destructions); });
     function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
@@ -171,7 +182,7 @@
       d.destructions.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; });
       d.orders = d.orders.filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; });
       d.matches = d.matches.filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); });
-      try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
+      if (!noCache) try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
   /** freeDeed() -> a random numeric asset nobody has issued (404 on /assets/{A}); 6 tries. */
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
     if (PREVIEW) return Promise.resolve(A);
