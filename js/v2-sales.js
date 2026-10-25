@@ -212,15 +212,19 @@
    *  XCPETS destructions = step 2 sent (tieTx). Read-only, display only, never signs. The result is saved in the same store. */
   function hex2s(h) { try { return /^[0-9a-f]+$/i.test(h || '') && h.length % 2 === 0 ? decodeURIComponent(h.replace(/(..)/g, '%$1')) : String(h || ''); } catch (e) { return String(h || ''); } }
   function chainTie(id, A, me) { var tag = V.deedPlan(id, A).tag;
-    return getJ(API + '/assets/XCPETS/destructions?limit=1000').then(function (j) { var r = (j.result || []).filter(function (x) { return x.source === me && (x.status == null || x.status === 'valid') && hex2s(x.tag) === tag; })[0];
+    return coreJ('/assets/XCPETS/destructions?limit=1000').then(function (j) { var r = (j.result || []).filter(function (x) { return x.source === me && (x.status == null || x.status === 'valid') && hex2s(x.tag) === tag; })[0];
       return r ? { tieTx: r.tx_hash, tieBlock: Number(r.block_index) } : null; }, function () { return null; }); }
-  function chainPend(id, me, w) { var have = pend(id), bound = (w && w.deeds) || {};
+  /* spam-city-tokenized-fix: Core first (coreJ: COUNTERPARTY_CORE, then backup, proxy only when :4000 is blocked); one look per pet+wallet per 5 min */
+  var cpMemo = {};
+  function chainPend(id, me, w) { var mk = id + '|' + me, m = cpMemo[mk]; if (m && Date.now() - m.at < 300e3 && !pend(id)) return m.p.then(function (pd) { if (pd && !pend(id)) pend(id, pd); return pd; });
+    var p = chainPend0(id, me, w); cpMemo[mk] = { at: Date.now(), p: p }; return p; }
+  function chainPend0(id, me, w) { var have = pend(id), bound = (w && w.deeds) || {};
     if (PREVIEW || !me) return Promise.resolve(have);
     var withTie = function (pd) { if (!pd || pd.tieTx) return pd; return chainTie(id, pd.asset, me).then(function (t) { if (t) { pd.tieTx = t.tieTx; pd.tieBlock = t.tieBlock; pend(id, pd); } return pd; }); };
     if (have) return withTie(have);
-    return getJ(API + '/addresses/' + me + '/balances?limit=1000').then(function (j) {
-      var as = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }).map(function (b) { return b.asset; });
-      return Promise.all(as.map(function (A) { return getJ(API + '/assets/' + A + '/issuances?verbose=true').then(function (k) { var i = (k.result || []).filter(function (x) { return x.status == null || x.status === 'valid'; })[0];
+    return coreJ('/addresses/' + me + '/balances?limit=1000').then(function (j) {
+      var as = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }).slice(0, 4).map(function (b) { return b.asset; });
+      return Promise.all(as.map(function (A) { return coreJ('/assets/' + A + '/issuances?verbose=true').then(function (k) { var i = (k.result || []).filter(function (x) { return x.status == null || x.status === 'valid'; })[0];
         return i && !V.deedIssueWhy(i, id, me, 1e12) ? { petId: id, asset: A, mintTx: i.tx_hash, at: Number(i.block_index), fromChain: true } : null; }, function () { return null; }); }))
         .then(function (r) { var pd = r.filter(Boolean).sort(function (a, b) { return b.at - a.at; })[0] || null; if (!pd) return null; pend(id, pd); return withTie(pd); }); }, function () { return null; }); }
   /** mintCheck(id, A, tip) -> Promise<plan>: the ONE pre-mint gate for every mint path (js/token-proof.js). Rejects with a clear reason when
@@ -388,9 +392,12 @@
       : step === 'list' ? '<ol class="sh-steps"><li><b>One window:</b> a DEX order: give the token, get ' + esc(V.saleAmountText(asset, f.ask)) + '. It lasts ' + V.SALE_EXPIRY + ' blocks.</li></ol>'
       : '<ol class="sh-steps"><li><b>Window 1 of 3:</b> make the token ' + (pd ? esc(short(pd.asset)) : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”).</li><li>Wait 1 block for it to confirm.</li>' +
         '<li><b>Window 2 of 3:</b> a 1-dander burn that ties the token to #' + p.id + '.</li><li><b>Window 3 of 3:</b> the DEX order (send it right after window 2).</li></ol>';
+    /* spam-city-tokenized-fix: a token already made (here, on the pet page or in another browser) is never asked for again */
+    if (step !== 'list' && !(d && !d.ok) && pd) tok = pd.tieTx ? tieWait(p, pd) : '<p class="sh-ok">🎟 Token ' + esc(short(pd.asset)) + ' for #' + p.id + ' is already made' + (pd.at ? ' (block ' + blk(pd.at) + ')' : '') + '. Next is window 2: the tie burn. Do not make another token.</p>';
+    if (step !== 'list' && !one && pd && pd.tieTx) steps = '<ol class="sh-steps"><li>✅ <b>Window 1 of 3:</b> token ' + esc(short(pd.asset)) + ' made' + (pd.at ? ' (block ' + blk(pd.at) + ')' : '') + '.</li><li>✅ <b>Window 2 of 3:</b> tie burn sent' + (pd.tieBlock ? ' (block ' + blk(pd.tieBlock) + ')' : '') + '.</li><li><b>Window 3 of 3:</b> the DEX order. It opens here as one window once the game data reaches block ' + blk(pd.tieBlock || TIP + 1) + '.</li></ol>';
     var btn = step !== 'list' && one ? (pd && TIP - (Number(pd.at) || 0) < 6 ? '<p class="sh-hint">Token ' + esc(short(pd.asset)) + ' sent. Waiting for 1 block: then #' + p.id + ' lists in one window.</p>' : '<button class="sh-btn" id="shMint">Open window 1 of 2</button>')
       : step === 'list' ? '<button class="sh-btn" id="shGo"' + (f.low ? ' disabled' : '') + '>Open wallet window</button>'
-      : pd && pd.tieTx ? tieWait(p, pd) : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
+      : pd && pd.tieTx ? '' : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
     modal('<h3>List #' + p.id + '</h3><div class="sh-sellrow">' + card(p, { asset: asset, price: f.ask }) + '<div class="sh-form">' + tok + f.html + omLine(p) +
       '<p class="sh-hint">The token travels with the pet: the buyer gets both and can relist in one window. A partial fill is no sale.</p>' + steps + btn + ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint" id="shMsg"></p></div></div>');
     var re = function () { sellPrice(p, $('shAsset').value, $('shSticker').value); };

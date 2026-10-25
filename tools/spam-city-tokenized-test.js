@@ -44,6 +44,10 @@ ok(tag === 'pet:deed:36032:s26f5mi0zkwh', 'tie tag matches the one on chain (' +
     ok((await T.chainPend(ID, ME, { deeds: {} })) === null, 'a token issued by another address is ignored'); }
   { const { T } = sandbox(api); ok((await T.chainPend(20149, ME, { deeds: {} })) === null, 'no token for another pet = none (window 1 is right)'); }
   { const { T } = sandbox(api); T.pend(ID, { petId: ID, asset: A, at: 973087, tieTx: 'abc' }); const pd = await T.chainPend(ID, ME, {}); ok(pd.tieTx === 'abc', 'local record kept as is'); }
+  { const { T, calls } = sandbox(api); await T.chainPend(ID, ME, { deeds: {} });
+    ok(calls.length && calls.every(u => /^https:\/\/api\.counterparty\.io:4000\/v2\//.test(u)), 'chain reads go to Core :4000 first, not the proxy: ' + calls.join(' '));
+    ok(calls.length <= 4, 'few reads (' + calls.length + ')');
+    const n = calls.length; T.pend(ID, null); await T.chainPend(ID, ME, { deeds: {} }); ok(calls.length === n, 'second look within 5 min is cached'); }
   const src = fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8');
   ok(!/walletBurn\(V\.deedPlan\(p\.id, pd\.asset\), function \(\) \{ pend\(p\.id, null\)/.test(src), 'Token Press no longer forgets the token right after the tie burn');
   ok(/viaChain\(p, function \(\) \{ press\(p\)/.test(src) && /viaChain\(p, function \(\) \{ sellPrice\(p/.test(src), 'Press + Sell screens check the chain first');
