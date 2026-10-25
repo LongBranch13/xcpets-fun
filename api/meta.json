@@ -1,6 +1,6 @@
 {
   "blockHeight": 973093,
-  "generatedAt": "2026-10-25T16:19:36Z",
+  "generatedAt": "2026-10-25T16:28:25Z",
   "asset": "XCPETS",
   "totalPets": 42045,
   "alive": 32693,
@@ -8,7 +8,7 @@
   "released": 1,
   "burns": 1572,
   "burnedXCPETS": 20817812.00000133,
-  "supplyXCPETS": 79182187.99999867,
+  "supplyXCPETS": 79182187.99999863,
   "owners": 16,
   "community": {
     "tip": 973093,
