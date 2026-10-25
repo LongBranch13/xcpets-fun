@@ -14,7 +14,8 @@
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
     { id: 'raid', ico: '🐉', name: 'Raid Boss', url: 'raid.html', line: 'hit it together', pages: ['raid.html'] },
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
-    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] }
+    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
+    { id: 'academy', ico: '🎓', name: 'The Big Beautiful Tutorial', url: 'tutorial.html', line: 'learn by playing', pages: ['tutorial.html'] }
   ];
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /** header menu markup (tools/build-places.js writes it between <!--places--> and <!--/places--> on every page) */
