@@ -16,7 +16,7 @@
   var N = 32, STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var BASE = { n: '#120e18', A: '#ffc93c', E: '#f4f4ee', P: '#111111', y: '#ffd23f', o: '#c49a1a', S: '#c8d0da', s: '#fff6b0', w: '#ffffff' };
   var PAL = {
-    starlordkek: Object.assign({}, BASE, { G: '#5aa83c', g: '#3d7a2a', h: '#86cf5e', R: '#ff3030', r: '#ffb0a0', K: '#1c1c24', k: '#3a3a48', B: '#2a1650', b: '#170b30', U: '#8a6cff', u: '#4fd8ff', W: '#f0f0ea', V: '#bdbdb4', M: '#8f96a3' }),
+    starlordkek: Object.assign({}, BASE, { G: '#5aa83c', g: '#3d7a2a', h: '#86cf5e', R: '#ff3030', r: '#ffd08a', K: '#1c1c24', k: '#3a3a48', B: '#2a1650', b: '#170b30', U: '#8a6cff', u: '#4fd8ff', m: '#2f4fd0', q: '#3fb8e8', X: '#ff7a3c', x: '#ffe08a', W: '#f0f0ea', V: '#bdbdb4', M: '#8f96a3' }),
     gooby: Object.assign({}, BASE, { G: '#18181c', g: '#0c0c0e', h: '#34343e', W: '#f5f5f0', V: '#cfcfc6', H: '#6ef04a', I: '#3fae2a', B: '#e8352a', b: '#b0221a', N: '#000000', U: '#ff5ad1', u: '#7af7ff' }),
     lukespam: Object.assign({}, BASE, { G: '#f2c29a', g: '#d99c76', h: '#ffdcbc', T: '#7a4a22', O: '#d8662a', Q: '#a8461a', R: '#d8262e', r: '#9a1a20', B: '#1f2f5c', b: '#16213f', C: '#2b6cd6', c: '#ffd23f', U: '#ff7ae0', u: '#7affd8' })
   };
@@ -41,21 +41,47 @@
     hline(g, A.cx - A.bw, A.cx - 2, A.bodyEnd + 1, mid); hline(g, A.cx + 1, A.cx + A.bw - 1, A.bodyEnd + 1, dark); }
   function egg(g, bob, k0, k1, k2) { for (var y = 0; y < 18; y++) { var hw = Math.round(Math.sqrt(Math.max(0, 1 - Math.pow((y - 9.5) / 9.5, 2))) * (y < 9 ? 7 : 8)); for (var x = 16 - hw; x < 16 + hw; x++) { var e = x - 16; set(g, x, 11 + y + bob, e <= -hw + 1 && y > 2 ? k2 : e >= hw - 2 ? k1 : k0); } } }
   /* ---------- the three characters ---------- */
-  function starlord(g, st, A, f) { var blink = f === 2, cx = A.cx;
-    if (st >= 3) { [-1, 1].forEach(function (sd) { var bx = sd < 0 ? cx - A.hw - 1 : cx + A.hw; for (var i = 0; i < 4 + (st >= 4 ? 1 : 0); i++) set(g, bx, A.headTop + 3 - i, i === 0 ? 'M' : 'S'); set(g, bx + (sd < 0 ? 2 : -2), A.headTop - 2, 'S'); set(g, bx + (sd < 0 ? 2 : -2), A.headTop - 3, 'S'); }); }
-    /* cosmic cloak: wide, starfield, longer from Elder */
-    var cw = A.bw + (st >= 3 ? 1 : 0); for (var j = 0; j < A.D.bh + 1; j++) { var w = Math.min(cw, cw - 2 + j); for (var x = cx - w; x < cx + w; x++) set(g, x, A.bodyTop + j, x === cx - w ? 'B' : x >= cx + w - 2 ? 'b' : 'B'); }
-    var stars = [[-3, 2], [2, 3], [-1, 5], [4, 6], [-5, 6], [1, 7], [-2, 1]]; stars.forEach(function (p, i) { if (i < st + 2 && A.bodyTop + p[1] <= A.bodyEnd) set(g, cx + p[0], A.bodyTop + p[1], (i + f) % 4 === 0 ? 'u' : 's'); });
-    if (st >= 2) { for (var fx = cx - cw - 1; fx < cx; fx++) set(g, fx, A.bodyTop + (fx < cx - cw + 2 ? 1 : 0), fx % 2 ? 'W' : 'V'); set(g, cx - cw - 1, A.bodyTop + 2, 'W'); set(g, cx - cw, A.bodyTop + 2, 'V'); } /* white fur stole */
+  /* STAR-LORD KEK v2 ("more wow", owner Oct 25 2026): every stage grander than the last.
+   * 1 Hatchling: green Pepe head, glowing visor (red eyes behind a hot band), black mask, galaxy body (nebula swirl + twinkling stars).
+   * 2 Juvenile: + white fur stole, more stars.   3 Adult: + spiked helm, gold star pauldrons, cosmic cape (galaxy inside, magenta lining).
+   * 4 Elder: + glowing sword, chest star emblem, longer cape.   5 Mythic: + star crown with a holo gem, holo shimmer on the gold rim,
+   * one sparse animated star ring, a subtle comet (toned down Oct 25 10:09). Back gear replaces the cape so worn capes still show. */
+  var SL_GEAR = null;
+  function galaxy(g, x0, x1, y0, y1, f, dens) { for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) { if (!g[y] || g[y][x] !== 'B') continue;
+      var v = (x * 7 + y * 13) % 23, sw = Math.sin((x - 16) * 0.55 + (y - y0) * 0.8) ;
+      if (sw > 0.85) g[y][x] = 'm'; else if (sw > 0.55) g[y][x] = 'U'; else if (sw < -0.3) g[y][x] = 'b';
+      if (v < dens) g[y][x] = ((x + y + f) % 4 === 0) ? 'w' : (v % 2 ? 's' : 'u'); } }
+  function starlord(g, st, A, f) { var blink = f === 2, cx = A.cx, cape = st >= 3 && !(SL_GEAR && SL_GEAR.back);
+    var cw = A.bw + (st >= 3 ? 1 : 0);
+    if (cape) { var ext = st >= 4 ? 3 : 2; for (var yc = A.bodyTop; yc <= A.bodyEnd + 1; yc++) { var fl = Math.min(ext, 1 + Math.floor((yc - A.bodyTop) / 2)); for (var d = 1; d <= fl; d++) { set(g, cx - cw - d, yc, d === fl ? 'q' : 'B'); set(g, cx + cw - 1 + d, yc, d === fl ? 'q' : 'B'); } }
+      if (st >= 4) { set(g, cx - cw - ext - 1, A.bodyEnd + 1, 'q'); set(g, cx + cw + ext, A.bodyEnd + 1, 'q'); } } /* cosmic cape, magenta lining */
+    if (st >= 3) { [-1, 1].forEach(function (sd) { var bx = sd < 0 ? cx - A.hw - 1 : cx + A.hw; for (var i = 0; i < 4 + (st >= 4 ? 2 : 0); i++) set(g, bx, A.headTop + 3 - i, i === 0 ? 'M' : i >= 3 ? 'w' : 'S'); set(g, bx + (sd < 0 ? 2 : -2), A.headTop - 2, 'S'); set(g, bx + (sd < 0 ? 2 : -2), A.headTop - 3, st >= 4 ? 'w' : 'S'); }); } /* spiked helm */
+    for (var j = 0; j < A.D.bh + 1; j++) { var w = Math.min(cw, cw - 2 + j); for (var x = cx - w; x < cx + w; x++) set(g, x, A.bodyTop + j, 'B'); }
+    galaxy(g, 0, 31, A.bodyTop, A.bodyEnd + 1, f, 1 + (st >> 1));
+    if (st >= 3) { [cx - cw - 1, cx + cw - 2].forEach(function (px) { hline(g, px, px + 2, A.bodyTop, 'y'); hline(g, px, px + 2, A.bodyTop + 1, 'o'); set(g, px + 1, A.bodyTop, f % 2 ? 'w' : 's'); }); } /* gold star pauldrons */
+    if (st >= 4) { var ey0 = A.bodyTop + 3; set(g, cx - 1, ey0, 'y'); set(g, cx, ey0, 'y'); set(g, cx - 2, ey0 + 1, 'y'); set(g, cx - 1, ey0 + 1, 'w'); set(g, cx, ey0 + 1, 'w'); set(g, cx + 1, ey0 + 1, 'y'); set(g, cx - 1, ey0 + 2, 'y'); set(g, cx, ey0 + 2, 'y'); set(g, cx - 2, ey0 + 3, 'o'); set(g, cx + 1, ey0 + 3, 'o'); } /* chest star emblem */
+    if (st >= 2 && st < 3) { for (var fx = cx - cw - 1; fx < cx; fx++) set(g, fx, A.bodyTop + (fx < cx - cw + 2 ? 1 : 0), fx % 2 ? 'W' : 'V'); set(g, cx - cw - 1, A.bodyTop + 2, 'W'); } /* white fur stole */
+    if (st >= 3) for (var fx2 = cx - cw + 2; fx2 < cx + cw - 2; fx2++) set(g, fx2, A.bodyTop, fx2 % 2 ? 'W' : 'V'); /* fur collar between the pauldrons */
     head(g, A, 'h', 'G', 'g');
-    var ew = st === 1 ? 4 : 5, ex = [cx - ew - 1, cx + 1];
-    ex.forEach(function (x0) { hline(g, x0 + 1, x0 + ew - 2, A.headTop - 1, 'G'); hline(g, x0, x0 + ew - 1, A.headTop, 'g'); hline(g, x0, x0 + ew - 1, A.headTop + 1, blink ? 'g' : 'R'); if (!blink) { hline(g, x0 + 1, x0 + ew - 2, A.headTop + 2, 'R'); set(g, x0 + ew - 2, A.headTop + 1, 'r'); } });
+    var ew = st === 1 ? 4 : 5, ex = [cx - ew - 1, cx + 1], glow = ['u', 'w', 'u', 'U'][f];
+    ex.forEach(function (x0) { hline(g, x0 + 1, x0 + ew - 2, A.headTop - 1, 'G'); hline(g, x0, x0 + ew - 1, A.headTop, 'g'); hline(g, x0, x0 + ew - 1, A.headTop + 1, blink ? 'g' : 'R'); if (!blink) { hline(g, x0 + 1, x0 + ew - 2, A.headTop + 2, 'R'); set(g, x0 + ew - 2, A.headTop + 1, 'w'); } });
+    hline(g, cx - A.hw + 1, cx + A.hw - 2, A.headTop + 3, glow); set(g, cx - A.hw + 2 + (f * 3) % (2 * A.hw - 4), A.headTop + 3, 'w'); /* glowing cyan visor band (pulses, a glint sweeps across) */
+    if (!blink) { set(g, ex[0] + 1, A.headTop + 1, 'x'); set(g, ex[1] + 1, A.headTop + 1, 'x'); }
     var my0 = A.headTop + 4, my1 = A.headBot; for (var y = my0; y <= my1; y++) hline(g, cx - A.hw + 1, cx + A.hw - 2, y, y === my0 ? 'k' : 'K'); /* black face mask */
     if (st >= 2) for (var xm = cx - A.hw + 3; xm < cx + A.hw - 3; xm += 2) set(g, xm, my0 + 1, 'k');
     set(g, cx - 1, my0 + 1, 'P'); set(g, cx, my0 + 1, 'P');
-    if (st >= 4) { var sx = cx + A.bw + 2; vline(g, sx, A.bodyTop - 4, A.bodyEnd, 'S'); vline(g, sx + 1, A.bodyTop - 3, A.bodyEnd - 1, 'M'); hline(g, sx - 2, sx + 3, A.bodyTop + 2, 'y'); set(g, sx, A.bodyTop + 3, 'o'); set(g, sx, A.bodyTop - 5, st === 5 ? 'u' : 'S'); } /* the card's sword */
-    if (st === 5) { hline(g, cx - 3, cx + 2, A.headTop - 3, 'y'); set(g, cx - 3, A.headTop - 4, 'y'); set(g, cx, A.headTop - 5, 'u'); set(g, cx - 1, A.headTop - 4, 'y'); set(g, cx, A.headTop - 4, 'y'); set(g, cx + 2, A.headTop - 4, 'y'); } /* star crown */
+    if (st >= 4) { var sx = cx + A.bw + 3 + (cape ? 1 : 0); sx = Math.min(sx, 29); var bl = st === 5 ? ['u', 'w', 's', 'w'][f] : ['u', 'w'][f % 2];
+      vline(g, sx, A.bodyTop - 6, A.bodyEnd - 1, 'S'); vline(g, sx + 1, A.bodyTop - 5, A.bodyEnd - 2, bl); set(g, sx, A.bodyTop - 7, 'w'); hline(g, sx - 2, sx + 2, A.bodyEnd - 1, 'y'); vline(g, sx, A.bodyEnd, A.bodyEnd + 1, 'o'); set(g, sx - 2, A.bodyEnd - 2, 'o'); set(g, sx + 2, A.bodyEnd - 2, 'o'); } /* glowing star sword */
+    if (st === 5 && !(SL_GEAR && SL_GEAR.head)) { var ct = A.headTop - 3; hline(g, cx - 4, cx + 3, ct, 'y'); hline(g, cx - 4, cx + 3, ct + 1, 'o'); [cx - 4, cx - 1, cx, cx + 3].forEach(function (x2) { set(g, x2, ct - 1, 'y'); }); set(g, cx - 4, ct - 2, 'y'); set(g, cx + 3, ct - 2, 'y'); vline(g, cx - 1, ct - 3, ct - 1, 'y'); vline(g, cx, ct - 3, ct - 1, 'y');
+      set(g, cx - 1, ct, ['U', 'u', 'm', 'w'][f]); set(g, cx, ct, ['u', 'm', 'w', 'U'][f]); set(g, cx - 1, ct - 4, 'w'); set(g, cx, ct - 4, 'w'); } /* star crown + holo gem */
   }
+  /* Star-Lord Kek post-outline fx: Adult+ sparkles, Mythic holo rim + two-ring orbit with a comet tail */
+  function slFx(o, st, f) { function em(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && !o[y][x]) o[y][x] = k; }
+    if (st >= 3) { var sp = [[3, 6], [28, 9], [5, 20], [27, 22], [2, 13], [29, 15]]; sp.slice(0, st === 3 ? 2 : 4).forEach(function (p, i) { if ((i + f) % 2 === 0) { em(p[0], p[1], 'w'); em(p[0] - 1, p[1], 's'); em(p[0] + 1, p[1], 's'); em(p[0], p[1] - 1, 's'); em(p[0], p[1] + 1, 's'); } else em(p[0], p[1], 'u'); }); }
+    if (st !== 5) return;
+    var H = ['U', 'u', 'm', 'w']; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (o[y][x] === 'A' && (x + y + f * 3) % 11 === 0) o[y][x] = H[(x + f) % 3 === 0 ? 3 : 1]; /* soft holo glint travelling round the gold rim */
+    for (var a = 0; a < 8; a++) { var t = a / 8 * Math.PI * 2 + f * 0.4, X = Math.round(15.5 + Math.cos(t) * 15), Y = Math.round(16 + Math.sin(t) * 14.5); em(X, Y, a % 4 === 0 ? 'w' : 'u'); } /* one sparse star ring */
+    for (var c = 0; c < 2; c++) { var tc = f * Math.PI / 2 - c * 0.18, cX = Math.round(15.5 + Math.cos(tc) * 13), cY = Math.round(15 + Math.sin(tc) * 12.5); em(cX, cY, c === 0 ? 's' : 'o'); } } /* subtle comet */
   function gooby(g, st, A, f) { var blink = f === 2, cx = A.cx;
     body(g, A, 'B', 'B', 'b'); hline(g, cx - A.bw + 2, cx + A.bw - 3, A.bodyTop, 'b'); hline(g, cx - A.bw + 2, cx + A.bw - 3, A.bodyTop + 1, 'B'); /* red turtleneck roll */
     vline(g, cx + 2, A.bodyTop + 2, A.bodyEnd, 'b');
@@ -84,7 +110,12 @@
   var DRAW = { starlordkek: starlord, gooby: gooby, lukespam: luke };
   var EGG = { starlordkek: ['B', 'b', 'U'], gooby: ['G', 'g', 'h'], lukespam: ['B', 'b', 'C'] };
   function eggArt(g, sp, f) { var bob = [0, -1, -1, 0][f || 0], k = EGG[sp]; egg(g, bob, k[0], k[1], k[2]);
-    if (sp === 'starlordkek') { [[12, 15], [18, 14], [15, 19], [20, 22], [11, 23], [16, 25]].forEach(function (p, i) { set(g, p[0], p[1] + bob, (i + f) % 3 ? 's' : 'u'); }); hline(g, 12, 19, 18 + bob, 'R'); }
+    if (sp === 'starlordkek') { for (var y = 11; y < 30; y++) for (var x = 8; x < 24; x++) { if (!g[y][x]) continue; var sw = Math.sin((x - 16) * 0.5 + (y - bob) * 0.45 + 1.2) + Math.cos((y - bob) * 0.3 - x * 0.2);
+        if (sw > 1.25) g[y][x] = 'm'; else if (sw > 0.7) g[y][x] = 'U'; else if (sw < -1.2) g[y][x] = 'b'; } /* nebula swirl */
+      [[12, 15], [18, 14], [15, 19], [20, 22], [11, 23], [16, 25], [14, 13], [19, 18], [13, 27]].forEach(function (p, i) { set(g, p[0], p[1] + bob, (i + f) % 3 === 0 ? 'w' : (i + f) % 3 === 1 ? 's' : 'u'); });
+      var sy = 20 + bob; set(g, 15, sy - 1, 'y'); set(g, 16, sy - 1, 'y'); hline(g, 14, 17, sy, 'y'); set(g, 15, sy, 'w'); set(g, 16, sy, 'w'); set(g, 15, sy + 1, 'y'); set(g, 16, sy + 1, 'y'); set(g, 14, sy + 2, 'o'); set(g, 17, sy + 2, 'o'); /* gold star at the heart */
+      var o = outline(g); [[7, 13], [24, 16], [6, 24], [25, 26], [10, 9], [21, 9]].forEach(function (p, i) { var X = p[0], Y = p[1] + bob; if (o[Y] && !o[Y][X]) o[Y][X] = (i + f) % 2 ? 'u' : 'w'; if ((i + f) % 2 === 0) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { if (o[Y + d[1]] && !o[Y + d[1]][X + d[0]]) o[Y + d[1]][X + d[0]] = 's'; }); });
+      return o; } /* NEBULA EGG: twinkling stars inside and around */
     if (sp === 'gooby') { rect(g, 11, 15 + bob, 10, 2, 'H'); hline(g, 10, 21, 17 + bob, 'I'); rect(g, 10, 22 + bob, 12, 2, 'B'); set(g, 13, 20 + bob, 'W'); set(g, 17, 20 + bob, 'W'); }
     if (sp === 'lukespam') { rect(g, 10, 14 + bob, 12, 3, 'R'); hline(g, 18, 23, 17 + bob, 'r'); rect(g, 13, 20 + bob, 5, 6, 'C'); hline(g, 13, 17, 22 + bob, 'c'); }
     return outline(g); }
@@ -110,8 +141,8 @@
     return put; }
   function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
     if (s === 0) return eggArt(g, sp, f);
-    var A = geom(s, f); DRAW[sp](g, s, A, f); if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
-    var o = outline(g); if (s === 5) { o = mythicRim(o); aura(o, sp, f); } return o; }
+    var A = geom(s, f); SL_GEAR = gear || null; try { DRAW[sp](g, s, A, f); } finally { SL_GEAR = null; } if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
+    var o = outline(g); if (s === 5) { o = mythicRim(o); if (sp !== 'starlordkek') aura(o, sp, f); } if (sp === 'starlordkek') slFx(o, s, f); return o; }
   /* Mythic aura: orbiting stars drawn AFTER the outline + gold rim, only on empty cells (so they never get rimmed or cover the pet) */
   var AURA = { starlordkek: ['s', 'u', 'U'], gooby: ['U', 'u'], lukespam: ['U', 'u', 's'] };
   function aura(o, sp, f) { var K = AURA[sp], n = sp === 'starlordkek' ? 14 : 10; for (var a = 0; a < n; a++) { var t = a / n * Math.PI * 2 + f * 0.22, x = Math.round(15.5 + Math.cos(t) * 14.5), y = Math.round(16 + Math.sin(t) * 14.5);
