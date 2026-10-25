@@ -15,7 +15,7 @@
    * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
   var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
-  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); } /* wiz-black-fix: never throw on a bad frame */
+  function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } c.getContext('2d').putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (a) a.vis = e.isIntersecting; }); }) : null;
   setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
     animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
@@ -680,10 +680,10 @@
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
-    var nl = fr.length, lk = looksOf(p, w, extra); /* looks-draw (display only): Flame + quest looks drawn on the pixels, see js/v2-looks.js */
-    if (lk.length) try { var lkKey = function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); };
-      var lf = window.V2Looks.apply(fr, lkKey('#ff00fe'), lkKey('#00ff01'), lk, p.id); if (okFrames(lf)) fr = lf; } catch (e) { if (window.console) console.warn('looks draw failed #' + (p && p.id), e); }
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
+    var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
+    if (lk.length) try { var lkKey = function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
+      var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01'); window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
     return fr; }
   function looksOf(p, w, extra) { if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks)) return [];
     try { return V.shownLooks(w, p) || []; } catch (e) { return []; } }
