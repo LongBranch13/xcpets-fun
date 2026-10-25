@@ -26,3 +26,9 @@ sheet(allrows, 'ALL THREE CONTEST PETS next to a normal in-game sprite', STAGES,
 
 if J.get('slOld'):
     sheet([('BEFORE (old art)', J['slOld']), ('AFTER (v2, more wow)', J['slNew'])], 'STAR-LORD KEK: before / after (32x32 shown 8 times size)', ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'], f'{OUT}/starlordkek-before-after.png')
+
+# Mythic at real game size (1 times and 2 times), all 4 idle frames, on the game background
+st = J['strips']['starlordkek'][5]; im = Image.new('RGB', (4 * 72 + 8, 120), '#0b0912')
+def raw(d, k): t = Image.new('RGBA', (32, 32)); t.putdata([tuple(d[i:i + 4]) for i in range(0, len(d), 4)]); return t.resize((32 * k, 32 * k), Image.NEAREST)
+for i, f in enumerate(st): im.paste(raw(f, 1), (8 + i * 72, 8)); im.paste(raw(f, 2), (8 + i * 72, 48))
+im.save(f'{OUT}/mythic-1x2x.png'); print(f'{OUT}/mythic-1x2x.png')

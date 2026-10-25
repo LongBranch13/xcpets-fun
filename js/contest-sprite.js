@@ -17,7 +17,7 @@
   var N = 32, STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var BASE = { n: '#120e18', A: '#ffc93c', E: '#f4f4ee', P: '#111111', y: '#ffd23f', o: '#c49a1a', S: '#c8d0da', s: '#fff6b0', w: '#ffffff' };
   var PAL = {
-    starlordkek: Object.assign({}, BASE, { G: '#5aa83c', g: '#3d7a2a', h: '#86cf5e', R: '#ff3030', r: '#ffb0a0', K: '#1c1c24', k: '#3a3a48', B: '#2a1650', b: '#170b30', U: '#8a6cff', u: '#4fd8ff', m: '#e04fd0', q: '#ff5ad1', X: '#ff7a3c', x: '#ffe08a', W: '#f0f0ea', V: '#bdbdb4', M: '#8f96a3' }),
+    starlordkek: Object.assign({}, BASE, { G: '#5aa83c', g: '#3d7a2a', h: '#86cf5e', R: '#ff3030', r: '#ffd08a', K: '#1c1c24', k: '#3a3a48', B: '#2a1650', b: '#170b30', U: '#8a6cff', u: '#4fd8ff', m: '#2f4fd0', q: '#3fb8e8', X: '#ff7a3c', x: '#ffe08a', W: '#f0f0ea', V: '#bdbdb4', M: '#8f96a3' }),
     gooby: Object.assign({}, BASE, { G: '#18181c', g: '#0c0c0e', h: '#34343e', W: '#f5f5f0', V: '#cfcfc6', H: '#6ef04a', I: '#3fae2a', B: '#e8352a', b: '#b0221a', N: '#000000', U: '#ff5ad1', u: '#7af7ff' }),
     lukespam: Object.assign({}, BASE, { G: '#f2c29a', g: '#d99c76', h: '#ffdcbc', T: '#7a4a22', O: '#d8662a', Q: '#a8461a', R: '#d8262e', r: '#9a1a20', B: '#1f2f5c', b: '#16213f', C: '#2b6cd6', c: '#ffd23f', U: '#ff7ae0', u: '#7affd8' })
   };
@@ -48,7 +48,7 @@
    * 1 Hatchling: green Pepe head, glowing visor (red eyes behind a hot band), black mask, galaxy body (nebula swirl + twinkling stars).
    * 2 Juvenile: + white fur stole, more stars.   3 Adult: + spiked helm, gold star pauldrons, cosmic cape (galaxy inside, magenta lining).
    * 4 Elder: + glowing sword, chest star emblem, longer cape.   5 Mythic: + star crown with a holo gem, holo shimmer on the gold rim,
-   * two-ring animated star orbit with a comet. Back gear replaces the cape so worn capes still show. */
+   * one sparse animated star ring, a subtle comet (toned down Oct 25 10:09). Back gear replaces the cape so worn capes still show. */
   var SL_GEAR = null;
   function galaxy(g, x0, x1, y0, y1, f, dens) { for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) { if (!g[y] || g[y][x] !== 'B') continue;
       var v = (x * 7 + y * 13) % 23, sw = Math.sin((x - 16) * 0.55 + (y - y0) * 0.8) ;
@@ -82,9 +82,9 @@
   function slFx(o, st, f) { function em(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && !o[y][x]) o[y][x] = k; }
     if (st >= 3) { var sp = [[3, 6], [28, 9], [5, 20], [27, 22], [2, 13], [29, 15]]; sp.slice(0, st === 3 ? 2 : 4).forEach(function (p, i) { if ((i + f) % 2 === 0) { em(p[0], p[1], 'w'); em(p[0] - 1, p[1], 's'); em(p[0] + 1, p[1], 's'); em(p[0], p[1] - 1, 's'); em(p[0], p[1] + 1, 's'); } else em(p[0], p[1], 'u'); }); }
     if (st !== 5) return;
-    var H = ['U', 'u', 'm', 'w', 'y', 'u']; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (o[y][x] === 'A' && (x + y + f * 2) % 6 < 2) o[y][x] = H[(x + f) % H.length]; /* holo shimmer on the gold rim */
-    for (var a = 0; a < 16; a++) { var t = a / 16 * Math.PI * 2 + f * 0.4, X = Math.round(15.5 + Math.cos(t) * 15), Y = Math.round(16 + Math.sin(t) * 14.5); em(X, Y, a % 4 === 0 ? 'w' : a % 2 ? 'u' : 'U'); }
-    for (var c = 0; c < 4; c++) { var tc = f * Math.PI / 2 - c * 0.18, cX = Math.round(15.5 + Math.cos(tc) * 13), cY = Math.round(15 + Math.sin(tc) * 12.5); em(cX, cY, c === 0 ? 'w' : c === 1 ? 's' : c === 2 ? 'y' : 'o'); } } /* comet */
+    var H = ['U', 'u', 'm', 'w']; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (o[y][x] === 'A' && (x + y + f * 3) % 11 === 0) o[y][x] = H[(x + f) % 3 === 0 ? 3 : 1]; /* soft holo glint travelling round the gold rim */
+    for (var a = 0; a < 8; a++) { var t = a / 8 * Math.PI * 2 + f * 0.4, X = Math.round(15.5 + Math.cos(t) * 15), Y = Math.round(16 + Math.sin(t) * 14.5); em(X, Y, a % 4 === 0 ? 'w' : 'u'); } /* one sparse star ring */
+    for (var c = 0; c < 2; c++) { var tc = f * Math.PI / 2 - c * 0.18, cX = Math.round(15.5 + Math.cos(tc) * 13), cY = Math.round(15 + Math.sin(tc) * 12.5); em(cX, cY, c === 0 ? 's' : 'o'); } } /* subtle comet */
   function gooby(g, st, A, f) { var blink = f === 2, cx = A.cx;
     body(g, A, 'B', 'B', 'b'); hline(g, cx - A.bw + 2, cx + A.bw - 3, A.bodyTop, 'b'); hline(g, cx - A.bw + 2, cx + A.bw - 3, A.bodyTop + 1, 'B'); /* red turtleneck roll */
     vline(g, cx + 2, A.bodyTop + 2, A.bodyEnd, 'b');
