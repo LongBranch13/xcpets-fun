@@ -16,7 +16,7 @@ const sm = s.rows.filter(r => r.block_index < tip).reduce((m, r) => Math.max(m, 
 ok(BL.length === 3, 'exactly 3 Burn Lord pets (' + BL.length + ')');
 const top = Object.keys(wpre.burnedBy).filter(a => wpre.burnedBy[a] > 0).sort((a, b) => wpre.burnedBy[b] - wpre.burnedBy[a]).slice(0, 3);
 ok(BL.map(p => p.owner).join() === top.join(), 'owners = top 3 by burnedBy, rank order');
-BL.forEach((p, i) => { ok(p.tier === 3, '#' + p.id + ' Legendary'); ok(['hyb:kek:wizard', 'hyb:wizard:kek'].includes(p.species), '#' + p.id + ' Kek x Wizard hybrid ' + p.species);
+BL.forEach((p, i) => { ok(p.tier === 3, '#' + p.id + ' Legendary'); ok(p.species === 'hyb:kek:wizard' && p.hybrid.shape === 'kek' && p.hybrid.color === 'kek' && p.hybrid.kekBlue === true && p.art.species === 'kek', '#' + p.id + ' body = blue Lord Kek (Kekzard) ' + p.species);
   ok(p.burnLord.n === i + 1 && p.burnLord.of === 3 && p.burnLord.gate === sm, '#' + p.id + ' edition ' + (i + 1) + ' of 3'); ok(p.hatchBlock === tip, 'born at the first block after the snapshot'); });
 ok(new Set(BL.map(p => p.id)).size === 3 && BL[1].id === BL[0].id + 1 && BL[2].id === BL[1].id + 1, 'ids consecutive in rank order');
 /* one time: later burns at/after the gate never re-grant or re-rank */
@@ -27,11 +27,12 @@ ok(w3.pets.filter(p => p.burnLord)[0].owner === 'bc1qburnlordtestyyyyyyyyyyyyyyy
 /* tie-break: equal totals -> earlier first burn, then address */
 const tw = { burnedBy: { zz: 5, aa: 5, mm: 7, bb: 5 } }; ok(V.burnLordsRank(tw).map(x => x.address).join() === 'mm,zz,aa', 'tie: earlier first burn wins (zz before aa)');
 /* both ways: across many gate hashes both orders appear, always Legendary */
-const keys = {}; for (let i = 0; i < 64; i++) { const a = V.burnLordArt(require('crypto').createHash('sha256').update('g' + i).digest('hex'), 1 + i % 3, 990000); keys[a.key] = 1; ok(a.art.tierIndex === 3, 'art Legendary'); }
-ok(keys['hyb:kek:wizard'] && keys['hyb:wizard:kek'], 'both ways: Kekzard and Wikek both reachable');
+const keys = {}; for (let i = 0; i < 64; i++) { const a = V.burnLordArt(require('crypto').createHash('sha256').update('g' + i).digest('hex'), 1 + i % 3, 990000); keys[a.key] = 1; ok(a.art.tierIndex === 3 && a.art.hybrid.shape === 'kek' && a.art.hybrid.kekBlue, 'art Legendary blue Kek body'); }
+ok(Object.keys(keys).join() === 'hyb:kek:wizard', 'never the Wikek flip: always hyb:kek:wizard');
 /* not inherited: breedOne builds kids without burnLord */
 const src = fs.readFileSync(require('path').join(__dirname, '..', 'js', 'v2-rules.js'), 'utf8'); const bo = src.slice(src.indexOf('function breedOne('), src.indexOf('function breed(w,'));
 ok(bo.length > 100 && !/burnLord/.test(bo), 'breedOne never copies burnLord (offspring never get the edition)');
+ok(!/kekBlue/.test(bo), 'breeding never sets kekBlue');
 const bd = V.breederBadges(w, BL[0]); ok(bd.some(b => b.name === 'Burn Lord' && /1 of 3/.test(b.tip)), 'Burn Lord badge with edition');
 V._setBurnLordsSnapshot(973300);
 const J = process.argv.indexOf('--json'); if (J > 0) fs.writeFileSync(process.argv[J + 1], JSON.stringify({ tip, snapshot: sm, top: BL.map(p => ({ id: p.id, owner: p.owner, total: p.burnLord.total, species: p.species, name: p.name, label: V.speciesLabel(p.species), edition: p.burnLord })), pets: BL }, null, 1));

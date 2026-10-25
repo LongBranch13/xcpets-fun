@@ -1,6 +1,6 @@
 // breeding-v2 tests (offline, fake future burns; nothing broadcast). node tools/breeding-v2-test.js [repo] [snap]
 const fs=require('fs'),path=require('path'),vm=require('vm'),crypto=require('crypto');
-const REPO=process.argv[2]||'/workspace/wt-breeding-v2',SNAP=process.argv[3]||REPO+'/tools/snapshots/snap-fresh-v2.json';
+const REPO=process.argv[2]||path.resolve(__dirname,'..'),SNAP=process.argv[3]||(require('./lib/fixtures').ensure(),path.join(__dirname,'snapshots','snap-fresh-v2.json'));
 const SCRIPTS=['rjs/config.js','rjs/pet-core.js','rjs/game-core.js','rjs/bonus-gear.js','rjs/real-core.js','rjs/chain.js','@LIVE','js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/kek-sprite.js','js/wizard-sprite.js','js/v2-rules.js','js/block-hashes.js'];
 function load(){const st={};const ls={getItem:k=>st[k]||null,setItem:(k,v)=>{st[k]=String(v)},removeItem:k=>{delete st[k]}};const win={console:{log(){},warn(){},error(){},info(){}},localStorage:ls,sessionStorage:ls,location:{search:'',hostname:'xcpets.fun',href:'https://xcpets.fun/'},navigator:{userAgent:'node'},setTimeout:()=>0,clearTimeout(){},URLSearchParams,URL,TextEncoder,TextDecoder,fetch:()=>Promise.reject(new Error('offline'))};
  win.document={getElementById:()=>null,querySelector:()=>null,querySelectorAll:()=>[],createElement:()=>({getContext:()=>null,style:{}}),addEventListener(){},body:null,documentElement:{style:{}}};win.addEventListener=()=>{};win.window=win;win.self=win;win.globalThis=win;const ctx=vm.createContext(win);
