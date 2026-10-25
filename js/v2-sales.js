@@ -301,7 +301,11 @@
   function close() { $('shModal').style.display = 'none'; }
   function toast(h) { var t = $('toasts'); var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
   function walletDex(plan, then) { if (PREVIEW) { toast('Preview: no wallet window, nothing was sent.'); return then && then({ txid: 'f00dbabe' + 'preview'.repeat(4) }); }
-    window.V2Wallet.sendDex(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
+    window.V2Wallet.sendDex(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); if (/^Buy /.test(plan.label || '')) waitNote(plan, r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
+  /* buy-fix: after a Buy is signed and sent, a plain 'Waiting to confirm' note (it can sit a while when earlier bitcoin is still settling) */
+  function waitNote(plan, r) { modal('<h3>⏳ Waiting to confirm</h3><p class="sh-ok">Your order for #' + esc(plan.petId) + ' was sent. The pet moves to you once the next block confirms it.</p>' +
+    '<p class="sh-hint">This can take a while if earlier bitcoin from this wallet is still settling. If the order drops without filling, nothing is lost: your XCPETS stay in your wallet and you can press Buy again.</p>' +
+    (r && r.txid ? '<p class="sh-hint">Transaction ' + esc(String(r.txid).slice(0, 12)) + '…</p>' : '') + '<button class="sh-btn" data-close>OK</button>'); }
   function walletBurn(plan, then) { if (PREVIEW) { toast('Preview: no wallet window, nothing was sent.'); return then && then({}); }
     window.V2Wallet.send(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
   /* pend(): the pending-token store, defined above (shared with the pet card) */
