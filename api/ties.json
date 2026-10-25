@@ -1,6 +1,6 @@
 {
- "lastBlock": 973075,
- "count": 63,
+ "lastBlock": 973078,
+ "count": 70,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -758,6 +758,90 @@
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 25140,
+   "asset": "A2561876340111792334",
+   "tiedBlock": 973077,
+   "tiedTx": "4143f79e5e223f207fc0ed17b7bd62723b0df05e23e11fa3fb8149ecac50e38a",
+   "kind": "deed",
+   "name": "Pipwape",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25236,
+   "asset": "A2367298928798906597",
+   "tiedBlock": 973077,
+   "tiedTx": "30b6d004b3281ee362f95521eb4a5d44b8f27becbbdd25f58314d57554117adf",
+   "kind": "deed",
+   "name": "Samifu",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 25257,
+   "asset": "A16768375440296030745",
+   "tiedBlock": 973077,
+   "tiedTx": "7f28fe3d38f731a85bd3ccabfef757a14379d23ae271d7098043b4989dce0ebc",
+   "kind": "deed",
+   "name": "Pekapo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 26137,
+   "asset": "A1966982838903563158",
+   "tiedBlock": 973077,
+   "tiedTx": "b61eff890676b0b50dac600d6eb8003285c69865413d58f8cdeb05cde18b9cd5",
+   "kind": "deed",
+   "name": "Nechi",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 26148,
+   "asset": "A6530777929531903404",
+   "tiedBlock": 973077,
+   "tiedTx": "42cb5041b54b27d124abd5412040eebcef1a15f62eb0c97fff1bbfdea1baa575",
+   "kind": "deed",
+   "name": "Toba",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 26265,
+   "asset": "A5347149362513194258",
+   "tiedBlock": 973077,
+   "tiedTx": "90dafd09402f22b9fe0a475ab608b8459cd3fd61c8c02e26f4a589fc47e55ecb",
+   "kind": "deed",
+   "name": "Ribawa",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 4344,
+   "asset": "A13200341500411625076",
+   "tiedBlock": 973078,
+   "tiedTx": "4978eb1e40e1521ac01ac960c2b37740ebb1a4813864aa454edf33cb74a66983",
+   "kind": "deed",
+   "name": "Gibo",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
