@@ -248,7 +248,7 @@
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
     if (c.current === 'funtrump' && R.communityStats) { var fs2 = R.communityStats(w, M.state().rows.length); /* FUNTRUMP (community pet #4, gated, inert): care = burns since Lord Kek's Mythic */
-      $('crFed').textContent = fmt(fs2.fed); $('crNext').textContent = fs2.next != null ? fmt(fs2.next) + ' to ' + fs2.nextName : 'Mythic reached'; $('crProg').style.width = fs2.pct.toFixed(1) + '%'; }
+      $('crFed').textContent = fmt(fs2.fed); $('crNext').textContent = fs2.next != null ? fmt(fs2.next) + ' to ' + fs2.nextName + (fs2.mythic ? ' (Mythic at ' + fmt(fs2.mythic) + ')' : '') : 'Mythic reached'; /* Mythic target: era-adjusted from the target-halving gate */ $('crProg').style.width = fs2.pct.toFixed(1) + '%'; }
     if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, M.state().rows.length); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
       $('crFed').textContent = fmt(ks.fed); $('crNext').textContent = ks.next != null ? fmt(ks.next) + ' to ' + ks.nextName : 'Mythic reached'; $('crProg').style.width = ks.pct.toFixed(1) + '%'; }
     if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);

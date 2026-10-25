@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /* Halving tests (dev only): cost math across halvings (community-pet trigger), STAR LORD KEK trigger detection (w.kekMythic), before-launch case. node tools/halving-test.js */
 'use strict';
-const { load, row, snap, run } = require('./lib/load-rules');
+const { load: load0, row, snap, run } = require('./lib/load-rules');
+/* these checks are about era-1 costs; the community target-halving gate (973,136) would end FUNTRUMP and start halving 2 inside their synthetic blocks, so it stays off here (covered by cp-target-halving-test.js) */
+const load = x => { const c = load0(x); c.V2Rules._setCpTargetActivation(null); return c; };
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const S = snap(process.argv[2]), ME = 'bc1qtestplayer000000000000000000000000000', T0 = S.tip;
 function world(gate, defeatAt, extra, tip) { const c = load(); const V = c.V2Rules; V._setHalvingActivation(gate); const w0 = run(c, S, [], T0);

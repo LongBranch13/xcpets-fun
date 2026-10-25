@@ -1,6 +1,8 @@
 // Breed 135 + Old Money tests (offline: fake future burns on a real snapshot; nothing is signed or broadcast). node tools/breed-135-test.js [snap-file]
 'use strict';
-const { load, row, snap, run } = require('./lib/load-rules.js');
+const { load: load0, row, snap, run } = require('./lib/load-rules.js');
+/* these checks are about era-1 costs; the community target-halving gate (973,136) would end FUNTRUMP and start halving 2 inside their synthetic blocks, so it stays off here (covered by cp-target-halving-test.js) */
+const load = x => { const c = load0(x); c.V2Rules._setCpTargetActivation(null); return c; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const s = snap(process.argv[2]), tip = s.tip, B0 = tip + 1;
 const c0 = load(), V0 = c0.V2Rules, base = run(c0, s, [], tip);

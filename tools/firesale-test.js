@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /* Fire Sale tests (dev only): scheduling determinism, cooldown, stacking with halvings, Lord Kek blackout, saved-spin ledger. node tools/firesale-test.js */
 'use strict';
-const { load, row, snap, run, fakeHash } = require('./lib/load-rules');
+const { load: load0, row, snap, run, fakeHash } = require('./lib/load-rules');
+/* these checks are about era-1 costs; the community target-halving gate (973,136) would end FUNTRUMP and start halving 2 inside their synthetic blocks, so it stays off here (covered by cp-target-halving-test.js) */
+const load = x => { const c = load0(x); c.V2Rules._setCpTargetActivation(null); return c; };
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const G = 1000000, N = 60000; const H = {}; for (let b = G - 10; b < G + N; b++) H[b] = fakeHash(b);
 function sched(V, w, steps) { V._setFireHashes(H); V._setFiresaleActivation(G); w.fire = null; (steps || [G + N - 1]).forEach(s => V.fireExtend(w, s)); return w.fire.sales; }
