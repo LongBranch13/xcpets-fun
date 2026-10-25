@@ -16,7 +16,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- DEX reads: cached for TTL, paginated by next_cursor, 429 honours Retry-After (seconds or HTTP date), 4 tries */
-  var mem = {}, REQ_MS = 9000, LKEY = 'xcpets-dex-last-1', DEAD = (function () { try { var d = JSON.parse(sessionStorage.getItem('xcpets-dead-nodes')) || {}; return d.at && Date.now() - d.at < 6e5 ? d.n || {} : {}; } catch (e) { return {}; } })(); /* site-fast-hotfix: a dead node stays skipped for 10 min this session; full-node bases that timed out or failed this page view: skipped after that */
+  var DEX_MS = (typeof window !== 'undefined' && window.XCPETS_DEX_MS) || 45000; var mem = {}, REQ_MS = 9000, LKEY = 'xcpets-dex-last-1', DEAD = (function () { try { var d = JSON.parse(sessionStorage.getItem('xcpets-dead-nodes')) || {}; return d.at && Date.now() - d.at < 6e5 ? d.n || {} : {}; } catch (e) { return {}; } })(); /* site-fast-hotfix: a dead node stays skipped for 10 min this session; full-node bases that timed out or failed this page view: skipped after that */
   /* Mint ties (rule 3) only happened from ACTIVATE_SPAM_RULES_BLOCK to ACTIVATE_ONE_TIE_PATH_BLOCK (972896); that window is closed, so its tokens are a fixed list
    * (CI api-feed scan of the full nodes at 972909). Used only when every full node fails. */
   var MINT_WINDOW = ['A11407417926526760582', 'A175164024751316932', 'A9059073792275355799'];
@@ -121,7 +121,8 @@
   /* mint-tie window is closed (ACTIVATE_ONE_TIE_PATH_BLOCK passed): its token list is fixed, so it can stand in for a slow full-node scan. */
   function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, OG = V.oneTieGate ? V.oneTieGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0);
     if (G == null || OG == null || G >= OG || top < OG || window.XCPETS_MINT_SCAN) return nodeMintAssets(rows); /* feed-rate-limit: the CI feed always waits for the full scan (behind its rate gate the 2.5 s race would hand it the 3-token window list) */
-    return race(function () { return nodeMintAssets(rows); }, function () { return Promise.resolve(MINT_WINDOW.slice()); }); }
+    /* api-reduction (2.5 s scan-race check): the race could hand back either the node scan (which also lists mint-style tokens issued AFTER the window, which tie nothing) or this list, so the token set depended on node speed. Window closed = the list is final: use it, no race, no /issuances scan. */
+    return Promise.resolve(MINT_WINDOW.slice()); }
   /** deedAssets(rows) -> the pet-token assets named by pet:deed burns (the API has no asset search, so the burn announces the token). */
   function deedAssets(rows) { var seen = {}, out = []; (V.readBurns ? V.readBurns(rows || []) : rows || []).forEach(function (r) { var t; try { t = V.parseTag(r.tag); } catch (e) { t = null; }
     if (t && t.action === 'deed' && !seen[t.asset]) { seen[t.asset] = 1; out.push(t.asset); } }); return out.sort(); }
@@ -164,17 +165,24 @@
     return on(0); }
   function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > (window.XCPETS_TOUCH_MAX || 60)) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
-    blockEvents.src = {}; return Promise.all(n.map(function (b) { return blockEvents(b, hs); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
+    blockEvents.src = {}; touched.miss = []; /* api-reduction: a block whose events no source gave keeps the saved slices (flagged stale) instead of dropping the base and re-reading every token */
+    return Promise.all(n.map(function (b) { return blockEvents(b, hs).catch(function () { touched.miss.push(b); blockEvents.src[b] = 'miss'; return []; }); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
       as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
   function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
-    var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, from: 'local' });
+    var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, at: c.at, from: 'local' });
     all = all.filter(function (b) { return b.tip <= cx.tip && cx.hashes[b.tip] && cx.hashes[b.tip] === b.hash; }).sort(function (a, b) { return b.tip - a.tip; }); return all[0] || null; }
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null); var cx = arguments[1];
     return mintAssets(rows).then(function (ma) { var key = lkey(rows, ma), as = key ? key.split(',') : [], base = pickBase(cx); loadDex.lastAssets = as;
-      var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
-        loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
+      var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length, ms = touched.miss.length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
+        loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs - ms, unread: ms, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
       if (!base) loadDex.last = { base: 'none' };
-      return pre.then(function (p) { return loadDex2(rows, ma, p); }).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; }, function (err) {
+      /* api-reduction time limit: the sale read gets DEX_MS; past that, a known base answers now (sliced to these tokens, flagged stale) and the read keeps going in the background to save its result */
+      var full = pre.then(function (p) { var d0 = loadDex2(rows, ma, p); return d0.then(function (d) { if (p && touched.miss && touched.miss.length) { d = Object.assign({}, d, { stale: base && base.at || Date.now() }); } return d; }); });
+      var timed = base && as.every(function (A) { return base.assets.indexOf(A) >= 0; }) ? Promise.race([full, wait(DEX_MS).then(function () { return null; })]).then(function (d) { if (d) return d; loadDex.last = Object.assign({}, loadDex.last, { timeout: DEX_MS });
+        full.then(function (d2) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d2, tip: cx.tip, hash: cx.hashes[cx.tip], assets: as })); } catch (e) { } }, function () { });
+        var o = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }; as.forEach(function (A) { var sl = slice(base.d, A); Object.keys(o).forEach(function (k) { o[k] = o[k].concat(sl[k] || []); }); }); o.stale = base.at || Date.now(); window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: o.stale } })); throw { early: o }; }) : full;
+      return timed.then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; }, function (err) {
+      if (err && err.early) return err.early;
       /* sales-net-fallback: the full nodes failed. Use the last complete sale data this browser read for the SAME set of pet tokens (flagged stale), else fail as before. */
       try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }

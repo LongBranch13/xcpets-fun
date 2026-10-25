@@ -78,6 +78,10 @@
   function fromStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
     return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; })
       .then(function (j) { try { if (j && window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
+  /* api-reduction: the mempool read, shared by load() and the quick poll */
+  function readMempool(chain) { return chain.getJson('/mempool/events/ASSET_DESTRUCTION?limit=1000').then(function (j) { return ((j && j.result) || []).map(function (e) { var x = e.params || {}, t = x.tag;
+      if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { t = decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (er) { } }
+      return x.asset === E.CFG.asset && String(x.status || 'valid') === 'valid' ? { tx_hash: x.tx_hash || e.tx_hash, source: x.source, tag: t, amount: Number(x.quantity) / 1e8, at: e.timestamp ? e.timestamp * 1000 : null } : null; }).filter(Boolean); }, function () { return []; }); }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
     var chain = new E.Chain();
@@ -88,9 +92,7 @@
     step('Reading XCPETS burns from the chain… (step 1 of 3)');
     /* pending battles (2026-10-15): unconfirmed XCPETS destroys from the node mempool, for the battles box ONLY ('pending confirmation').
      * Never passed to V.replay, so no replay result can change. A failed read just means an empty list. */
-    var mp = chain.getJson('/mempool/events/ASSET_DESTRUCTION?limit=1000').then(function (j) { return ((j && j.result) || []).map(function (e) { var x = e.params || {}, t = x.tag;
-      if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { t = decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (er) { } }
-      return x.asset === E.CFG.asset && String(x.status || 'valid') === 'valid' ? { tx_hash: x.tx_hash || e.tx_hash, source: x.source, tag: t, amount: Number(x.quantity) / 1e8, at: e.timestamp ? e.timestamp * 1000 : null } : null; }).filter(Boolean); }, function () { return []; });
+    var mp = readMempool(chain);
     var tp = chain.tip().then(function (t) { if (t > (S.chainTip || 0)) S.chainTip = t; return t; }).catch(function () { return null; }); /* data-lag-banner: keep the tip even if the burn read fails (same call, no extra read) */
     return Promise.all([chain.destructions(E.CFG.asset), tp, mp]).then(function (r) { S.mempool = r[2] || [];
       var rows = r[0], tip = r[1], blocks = {}; rows.forEach(function (x) { blocks[x.block_index] = 1; }); var FG = V.ACTIVATE_FIRESALE_BLOCK; if (FG != null && tip >= FG) for (var fb = FG; fb <= tip; fb++) blocks[fb] = 1; /* fire sales: every block's hash from the gate decides the schedule */
@@ -170,6 +172,14 @@
     if (fromLast()) return bootStale(st, then);
     fromStatic().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
-  function refresh(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
+  /* api-reduction (preview): the 60 s poll reads the tip first (1 call). Same tip as the shown data -> only the mempool is re-read (1 call) and
+   * the burns, sales and block reads are skipped; a full re-read happens when the tip moves, or at least every 10 minutes. Never a replay input change:
+   * a new block always moves the tip and takes the full path. */
+  var lastFull = Date.now();
+  function refresh(cb) { if (!S.verified || !S.tip || Date.now() - lastFull > 600e3) { lastFull = Date.now(); return refreshFull(cb); }
+    var chain = new E.Chain(), m0 = (S.mempool || []).map(function (x) { return x.tx_hash; }).join();
+    return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
+      return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
+  function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
 })();
