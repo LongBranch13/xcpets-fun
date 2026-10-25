@@ -844,7 +844,7 @@
   /* player-tutorial reward (owner pick Oct 25 2026): 7-DAY STREAK SPIN. From ACTIVATE_STREAK_SPIN_BLOCK an owner who feeds at least one of their
    * own pets on 7 chain days in a row earns +1 saved Pepe Wheel spin, once per wallet. A feed only counts if that pet hatched before the streak's
    * first chain day began and the feed burn is at or after the gate. Community pets never count. Replayed history only. */
-  var ACTIVATE_STREAK_SPIN_BLOCK = 999999999; // PLACEHOLDER: set to tip + 6 at deploy
+  var ACTIVATE_STREAK_SPIN_BLOCK = 973100; // tip 973094 + 6 (Oct 25 2026)
   var STREAK_SPIN_DAYS = 7;
   function streakSpinOn(b) { return ACTIVATE_STREAK_SPIN_BLOCK != null && b != null && b >= ACTIVATE_STREAK_SPIN_BLOCK && spinsOn(b); }
   function streakFeed(w, a, q, b, tx) { if (!streakSpinOn(b) || !a || !q || q.community || (q.art && q.art.community)) return;
