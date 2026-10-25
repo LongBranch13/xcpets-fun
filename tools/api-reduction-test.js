@@ -9,3 +9,10 @@ assert(/touched\.miss/.test(sales) && /XCPETS_DEX_MS/.test(sales), 'missed block
 assert(/Promise\.resolve\(MINT_WINDOW\.slice\(\)\)/.test(sales), 'closed mint window: fixed token list, no 2.5 s scan race');
 [re, tm].forEach(s => assert(/core-limiter\.js'\)\.makeFetch\(/.test(s), 'feed tools use the shared limiter'));
 console.log('api-reduction-test ok');
+/* feed-fallback: blocked :4000 -> game feed as live source, fast fail remembered across visits, no api.xcp.fun core reads */
+{ const ch = R('rjs/chain.js');
+  assert(/localStorage\.setItem\(NET_KEY/.test(ch) && /allNetSick\(bases\)/.test(ch) && /PROBE_MS = 1500/.test(ch), 'blocked :4000 remembered and probed once');
+  assert(/api\/boot\.json\?t=' \+ Math\.floor\(Date\.now\(\) \/ 60e3\)/.test(chain) && /Date\.now\(\) - feedAt < 60e3/.test(chain), 'feed re-fetch cache-busted, once a minute');
+  assert(/from the game feed, block /.test(chain), 'feed label');
+  assert(!/api\.xcp\.fun/.test(cfg.split('mainnet:')[1].split('\n')[0].replace(/\/\*.*$/, '')), 'no api.xcp.fun core read'); }
+console.log('feed-fallback checks ok');
