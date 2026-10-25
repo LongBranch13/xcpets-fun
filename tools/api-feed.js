@@ -34,7 +34,7 @@ async function liveInput(ctx) {
   const E = ctx.LiveEngine, chain = new E.Chain();
   const [rows, tip] = await Promise.all([chain.destructions(E.CFG.asset), chain.tip()]);
   if (!tip) throw new Error('tip read failed');
-  const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index))];
+  const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip]))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */
@@ -45,7 +45,7 @@ async function liveInput(ctx) {
     if (!dex) throw new Error('pet sale data empty while the sales gate is set, not publishing');
   }
   let supply = null; try { const j = await chain.getJson('/assets/' + E.CFG.asset); supply = j && j.result ? Number(j.result.supply) / 1e8 : null; } catch (e) {}
-  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex };
+  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex, dexAssets: dex && ctx.V2Sales.loadDex.lastAssets ? ctx.V2Sales.loadDex.lastAssets.slice() : undefined };
 }
 const STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
 function build(ctx, input, nowIso) {
@@ -98,7 +98,9 @@ if (require.main === module) (async () => {
   fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
   /* site-fast: first-visit boot copy for js/v2-chain.js fromStatic() (only the hashes the rows need; the page re-reads the chain right after) */
   { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; });
-    fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null })); }
+    fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null,
+      /* sale-cache: stamp the sale copy with the tip it was read after + that block's hash, so pages can re-read only tokens touched since (js/v2-sales.js pickBase) */
+      dexTip: input.dex && !input.dex.stale && input.dexAssets && input.hashes && input.hashes[input.tip] ? input.tip : undefined, dexHash: input.dex && input.hashes ? input.hashes[input.tip] : undefined, dexAssets: input.dexAssets || undefined })); }
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
   console.log('tip', meta.blockHeight, 'pets', pets.length, 'burns', meta.burns, '->', OUT);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
