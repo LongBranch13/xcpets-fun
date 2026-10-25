@@ -17,18 +17,26 @@ const SITE = 'https://xcpets.fun';
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/pet-score.js', 'js/block-hashes.js', 'js/v2-community.js', 'js/v2-sales.js'];
 /* sale-owner-fix (2026-10-24): js/v2-sales.js is loaded only for V2Sales.loadDex (its page code returns early: no #shop element in the vm),
  * so the feed reads pet-token issuances/orders/matches/credits/destructions exactly like the site and replays WITH them. */
+/* feed-rate-limit (2026-10-25): every Counterparty read the feed makes (both :4000 nodes, api.xcp.fun) goes through one gate:
+ * 1 request in flight per host, <= 2 starts/s, a 429/503 pauses that whole host for its Retry-After (else 2 s doubling, max 30 s) plus jitter,
+ * then the same request is sent again (4 times) before the refusal reaches v2-sales.js's own retry logic. See tools/lib/core-limiter.js.
+ * FEED_CONC / FEED_RPS env override the pace; FEED_NO_LIMIT=1 restores the old unthrottled fetch. */
+const LIM = require('./lib/core-limiter.js');
+const RAW = (u, o) => fetch(u, Object.assign({}, o, { headers: { 'user-agent': 'xcpets-api-feed' } }));
+const LIMITED = process.env.FEED_NO_LIMIT ? RAW : LIM.makeFetch(RAW, { conc: +process.env.FEED_CONC || 1, rps: +process.env.FEED_RPS || 2 });
 function context() {
   const store = {}; const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const q = { log() {}, warn() {}, error() {}, info() {} };
   const win = { console: q, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: SITE + '/' }, navigator: { userAgent: 'node' },
-    setTimeout, clearTimeout, URLSearchParams, URL, TextEncoder, TextDecoder, AbortController, fetch: (u, o) => fetch(u, Object.assign({}, o, { headers: { 'user-agent': 'xcpets-api-feed' } })) };
+    setTimeout, clearTimeout, URLSearchParams, URL, TextEncoder, TextDecoder, AbortController, fetch: LIMITED };
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
-  win.XCPETS_PATIENT = 1; /* feed-429-fix */ win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win;
+  win.XCPETS_PATIENT = 1; /* feed-429-fix */ win.XCPETS_TOUCH_MAX = 400; win.XCPETS_MINT_SCAN = 1; /* feed-rate-limit: incremental sale reads over up to 400 blocks; never trade the full mint-token scan for the race's fallback list */ win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win;
   const ctx = vm.createContext(win);
   for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); continue; }
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
   return ctx;
 }
+function prevBoot() { try { const j = JSON.parse(fs.readFileSync(process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), 'utf8')); return j && j.dex && !j.dex.stale && j.dexTip && j.dexHash && j.dexAssets ? j : null; } catch (e) { return null; } }
 /* firesale-hashes: reuse the last boot copy's FINAL hashes (>= 6 deep at its tip) as a cache, so each run only fetches the newest blocks (BOOT_CACHE env or <out>/boot.json) */
 function prevBootHashes() { try { const f = process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), j = JSON.parse(fs.readFileSync(f, 'utf8')), o = {}; Object.keys(j.hashes || {}).forEach(k => { if (+k <= j.tip - 6 && /^[0-9a-f]{64}$/.test(j.hashes[k])) o[k] = j.hashes[k]; }); return o; } catch (e) { return {}; } }
 /* firesale-hashes (Oct 25 2026): every block from each every-block gate (fire sales, Mythic quests, raids) to the tip, the same list js/v2-chain.js load() asks for */
@@ -38,16 +46,20 @@ async function liveInput(ctx) {
   const E = ctx.LiveEngine, chain = new E.Chain();
   const [rows, tip] = await Promise.all([chain.destructions(E.CFG.asset), chain.tip()]);
   if (!tip) throw new Error('tip read failed');
-  const hc = Object.assign({}, prevBootHashes(), ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip], gateBlocks(ctx.V2Rules, tip)))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
+  /* feed-rate-limit: the last published boot.json is the incremental base: its sale data was complete at dexTip, so only pet tokens named in the
+   * blocks since then (plus new tokens) are re-read. Its dexTip hash is fetched FRESH below and must match (a reorg there -> full re-read). --full skips it. */
+  const prev = A.includes('--full') ? null : prevBoot(); if (prev && ctx.V2Sales && ctx.V2Sales.setBase) ctx.V2Sales.setBase(prev);
+  const hc = Object.assign({}, prevBootHashes(), ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip], gateBlocks(ctx.V2Rules, tip), prev && prev.dexTip && +prev.dexTip <= tip ? [+prev.dexTip] : []))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */
   let dex = null; const V = ctx.V2Rules;
   if (V.salesGate && V.salesGate() != null) {
     if (!ctx.V2Sales || !ctx.V2Sales.loadDex) throw new Error('V2Sales.loadDex missing');
-    try { dex = await ctx.V2Sales.loadDex(rows); } catch (e) { throw new Error('pet sale data could not be read, not publishing (owners would be wrong): ' + (e && e.message || e)); }
+    try { dex = await ctx.V2Sales.loadDex(rows, prev ? { tip, hashes: Object.assign({}, hc, bh.hashes) } : undefined); } catch (e) { throw new Error('pet sale data could not be read, not publishing (owners would be wrong): ' + (e && e.message || e)); }
     if (!dex) throw new Error('pet sale data empty while the sales gate is set, not publishing');
   }
+  console.error('feed: sale read ' + JSON.stringify(ctx.V2Sales && ctx.V2Sales.loadDex && ctx.V2Sales.loadDex.last || null));
   let supply = null; try { const j = await chain.getJson('/assets/' + E.CFG.asset); supply = j && j.result ? Number(j.result.supply) / 1e8 : null; } catch (e) {}
   return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex, dexAssets: dex && ctx.V2Sales.loadDex.lastAssets ? ctx.V2Sales.loadDex.lastAssets.slice() : undefined };
 }
@@ -86,7 +98,7 @@ function build(ctx, input, nowIso) {
     owners: new Set(pets.map(p => p.owner)).size, community: ctx.V2Community ? ctx.V2Community.state(w) : null, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
   return { pets, meta };
 }
-module.exports = { context, liveInput, build, SCRIPTS, SITE };
+module.exports = { context, liveInput, build, SCRIPTS, SITE, LIMITED };
 if (require.main === module) (async () => {
   const ctx = context();
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await liveInput(ctx);
@@ -95,6 +107,7 @@ if (require.main === module) (async () => {
   if (opt('--dex')) input.dex = JSON.parse(fs.readFileSync(opt('--dex'), 'utf8'));
   /* token-proof: --save-input FILE hands this run's chain read (rows, tip, hashes, dex) to tools/token-meta.js --input, so the token step
    * never re-reads the DEX (its second read was hitting 429 and every t/<id>.json + Proof of Pet PNG refresh was skipped). */
+  if (!opt('--snap') && LIMITED.stats) console.error('feed: requests ' + JSON.stringify(LIMITED.stats));
   if (opt('--save-input')) fs.writeFileSync(opt('--save-input'), JSON.stringify(input));
   if (opt('--save-dex') && input.dex) { fs.mkdirSync(path.dirname(path.resolve(opt('--save-dex'))), { recursive: true }); } if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
