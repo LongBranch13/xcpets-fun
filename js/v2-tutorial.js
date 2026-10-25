@@ -1,4 +1,4 @@
-/* player-tutorial (PREVIEW, owner ask Oct 25 2026): the Keeper Academy (tutorial.html), first-visit welcome, ?tutorial deep link,
+/* player-tutorial (PREVIEW, owner ask Oct 25 2026): the The Big Beautiful Tutorial (tutorial.html), first-visit welcome, ?tutorial deep link,
  * Play page coach marks (spotlight + pointing hand), Keeper Quests + day streak flame, and first-time tips.
  * DISPLAY ONLY: reads the replayed world, never burns, never changes a rule, gives nothing with in-game value.
  * Numbers: N below mirrors js/v2-rules.js + js/pet-core.js; tools/tests/tutorial.test.js checks every one against the real rules. */
@@ -147,8 +147,7 @@
     }
   };
 
-  /* ---------- the Keeper Academy chapters ---------- */
-  var H = function (n) { return fmt(n) + ' (' + half(n) + ' since the halving)'; };
+  /* ---------- the The Big Beautiful Tutorial chapters ---------- */
   var CH = [
     { id: 'welcome', ico: '🐸', t: 'What is XCPETS', s: 'Pixel pets on Bitcoin', steps: [
       ['Welcome, keeper!', 'XCPETS is a pixel pet game on Bitcoin. You hatch pets, feed them, grow them, battle and breed them.'],
@@ -160,13 +159,13 @@
       ['Connect', 'On the Play page press <b>Connect wallet</b>. Your pets show up under My Pets.']],
       quiz: [['What else do you need besides XCPETS?', ['A little BTC for fees', 'An email account', 'Nothing'], 0]] },
     { id: 'hatch', ico: '🥚', t: 'Hatching', s: 'Crack eggs, roll rarity', demo: 'hatch', steps: [
-      ['Crack an egg', 'One egg burns ' + H(N.hatch) + '. A Crack Pack is 12 eggs for ' + fmt(N.hatch12) + ', a Yolk Booster Box is 144 eggs for ' + fmt(N.hatch144) + '. The Play page always shows today\'s amount.'],
+      ['Crack an egg', 'Each egg is a small XCPETS burn. You can crack one egg, a Crack Pack of 12 or a Yolk Booster Box of 144. The Play page shows the live amount for each.'],
       ['Rarity tiers', 'Common 60%, Uncommon 27%, Rare 10%, Legendary 3%. Higher tiers get bonus stats and unlock rarer species, like Snibby and KEVIN (Rare) and Dodo (Legendary only).', 'hatch'],
       ['1 in 777', 'About 1 in 777 eggs is a special community-pet egg. It is always Rare or Legendary.']],
       quiz: [['How often is an egg Legendary?', ['3%', '27%', '50%'], 0], ['Which species is Legendary only?', ['Dodo', 'Pepe', 'Doge'], 0]] },
     { id: 'feed', ico: '🍖', t: 'Feeding', s: 'Deep dive: meals, days, neglect', deep: 1, steps: [
       ['Once per chain day', 'A chain day is ' + N.blocksPerDay + ' Bitcoin blocks (about a day). Feed each pet <b>once per chain day</b>. A pet that has not eaten today is hungry.'],
-      ['Meal sizes', 'A meal gives care that depends on the stage: Hatchling ' + fmt(N.meals[0]) + ', Juvenile ' + fmt(N.meals[1]) + ', Adult ' + fmt(N.meals[2]) + ', Elder ' + fmt(N.meals[3]) + '. Since the halving a meal costs half but gives the same care.', 'feed'],
+      ['Meal sizes', 'A meal gives care that depends on the stage: Hatchling ' + fmt(N.meals[0]) + ', Juvenile ' + fmt(N.meals[1]) + ', Adult ' + fmt(N.meals[2]) + ', Elder ' + fmt(N.meals[3]) + '. The Play page shows what a meal burns right now.', 'feed'],
       ['Feed them all at once', '<b>Feed all hungry</b> on the Play page bundles your hungry pets into one burn, so a big herd is one signature.'],
       ['Neglect and death', 'After <b>' + N.neglectedAfter + ' days</b> without food a pet is neglected: no battles, no breeding. After <b>' + N.deathAfter + ' days</b> it dies and goes to the Pet Cemetery. Mythic pets never starve.']],
       quiz: [['How often can you feed a pet?', ['Once per chain day', 'Once per block', 'Once a week'], 0], ['What happens after 7 days with no meal?', ['It dies and goes to the Cemetery', 'Nothing', 'It turns Mythic'], 0], ['Can a neglected pet battle?', ['No', 'Yes'], 0]] },
@@ -177,7 +176,7 @@
       ['Lucky drops', 'Each stage-up has a 25% chance and each meal a 2% chance to drop a saved gear spin.']],
       quiz: [['At which stage can a pet first battle?', ['Juvenile', 'Hatchling', 'Mythic'], 0], ['Own a living Mythic and your other pets reach Mythic at...', [fmt(N.mythicLine) + ' care', fmt(N.thresholds[5]) + ' care', 'never'], 0]] },
     { id: 'battle', ico: '⚔️', t: 'Battles', s: 'Deep dive: HP, Power, gear', deep: 1, demo: 'battle', steps: [
-      ['Who can fight', 'Juvenile or older, not neglected, once per pet per chain day. A challenge burns ' + H(N.fight) + '; the other side accepts.'],
+      ['Who can fight', 'Juvenile or older, not neglected, once per pet per chain day. A challenge is a small burn (the Play page shows the live amount); the other side accepts.'],
       ['HP by stage', 'HP = 40 + vigor times 2 + grit + stage times 6, so older pets are tougher. Power is all five stats added up.'],
       ['How a turn works', 'Zoom picks who swings first. Spark and gear power raise damage, grit blocks some of it, luck gives crits (double damage) and zoom gives dodges. ' + N.turns + ' turns.', 'battle'],
       ['Gear power', 'Every worn piece adds power: Common 1, Uncommon 3, Rare 5, Legendary 7.'],
@@ -185,14 +184,14 @@
       quiz: [['Which stat decides who goes first?', ['Zoom', 'Grit', 'Luck'], 0], ['What does the loser lose?', ['A worn gear piece', 'The pet', 'Nothing'], 0]] },
     { id: 'breed', ico: '🏨', t: 'Breeding', s: 'Deep dive: babies and hybrids', deep: 1, demo: 'breed', steps: [
       ['Who can breed', 'Two Adults or older, alive, not neglected and not away on a quest. Not with a parent, child or sibling. Community pets can\'t breed. Check in at Gooby\'s No-Tail Motel.'],
-      ['Limits', 'One breed per ' + fmt(N.breedCooldown) + ' blocks (about a week) and ' + N.breedCap + ' in a lifetime. A breed burns ' + H(N.breed) + '. With someone else\'s pet, they accept within a day.'],
+      ['Limits', 'One breed per ' + fmt(N.breedCooldown) + ' blocks (about a week) and ' + N.breedCap + ' in a lifetime. A breed is a small burn: the Play page shows the live amount. With someone else\'s pet, they accept within a day.'],
       ['What the baby gets', 'Stats and looks come from both parents. Same species can breed true: +3 stats, a rarer pattern or rarer eyes.'],
       ['Hybrids', 'Different species make a hybrid about 68.5% of the time. Its tier is the higher parent\'s, with a 10% chance of one tier up.', 'breed'],
       ['Rare surprises', 'Twins 1 in 50, mutations 1 in 100, and hidden traits like Odd eyes (gold, ice, toxic or magenta).']],
       quiz: [['What stage must both parents be?', ['Adult or older', 'Hatchling', 'Any'], 0], ['How often are twins?', ['1 in 50', '1 in 2', 'Never'], 0]] },
     { id: 'gear', ico: '🎡', t: 'Gear & spins', s: 'Drip, slots, the Pepe Wheel', steps: [
       ['Six slots', 'Headwear, Guise, Drip, Grip, Outfits and Footwear. Slots open with age and good feeding; Mythic pets have all 6.'],
-      ['The Pepe Wheel', 'Spin for gear in The Rare Room. A spin burns ' + H(N.roll) + '. Saved spins from lucky drops cost only the Bitcoin fee. Each copy you own makes that item a bit less likely, so duplicates are rarer.']],
+      ['The Pepe Wheel', 'Spin for gear in The Rare Room. Each spin is a small burn: the Play page shows the live amount. Saved spins from lucky drops cost only the Bitcoin fee. Each copy you own makes that item a bit less likely, so duplicates are rarer.']],
       quiz: [['How many gear slots does a Mythic have?', ['6', '2', '1'], 0]] },
     { id: 'shop', ico: '🛒', t: 'Shop & gifting', s: 'Spam City Games', steps: [
       ['Pet tokens', 'Every pet can become a token. Gift a pet by sending its token, up to 10 in one send.'],
@@ -216,14 +215,14 @@
       ['Your turn, keeper!', 'You know the basics. Head to the Play page and crack your first egg. Coach Peepo will point the way.']], quiz: [], cta: 1 }
   ];
 
-  /* ---------- Academy page ---------- */
+  /* ---------- Tutorial page ---------- */
   function academy(root) {
     ls(SEEN, '1'); var done = jget(DONE);
     function save() { ls(DONE, JSON.stringify(done)); }
     function menu() {
       root.innerHTML = ''; var c = el('div', 'tut-card');
       c.appendChild(guide('Hi, I\'m <b>Coach Peepo</b>! Pick a chapter, or start from the top. The gold ones are the deep dives.'));
-      c.appendChild(el('h1', 'tut-big', 'Keeper Academy'));
+      c.appendChild(el('h1', 'tut-big', 'The Big Beautiful Tutorial'));
       var nDone = CH.filter(function (x) { return done[x.id]; }).length;
       c.appendChild(el('div', 'tut-meter', '<i style="width:' + Math.round(nDone / CH.length * 100) + '%"></i>'));
       c.appendChild(el('p', 'tut-body small', nDone + ' of ' + CH.length + ' chapters done'));
@@ -285,7 +284,7 @@
   function welcome(onPlay) {
     ls(SEEN, '1');
     tip('<b>New here, keeper?</b> I\'m Coach Peepo. Want a quick tour? It takes about 2 minutes.', [
-      ['No thanks', null, 'q'], ['📚 Keeper Academy', null, 'q', 'tutorial.html'],
+      ['No thanks', null, 'q'], ['🎓 The Big Beautiful Tutorial', null, 'q', 'tutorial.html'],
       onPlay ? ['▶ Show me around', coach, 'btn'] : ['▶ Start the tour', null, 'btn', 'play.html?coach=1']]);
   }
 
@@ -351,7 +350,7 @@
     p.innerHTML = '<summary>🎯 Keeper Quests ' + n + '/' + QUESTS.length + ' <span class="tut-flame" title="Chain days in a row with at least one meal">' + (s.cur ? '🔥 ' + s.cur + '-day streak' + (s.today ? '' : ' (feed today to keep it)') : '') + '</span></summary>' +
       '<div class="tut-meter"><i style="width:' + Math.round(n / QUESTS.length * 100) + '%"></i></div><div class="tut-qlist">' +
       QUESTS.map(function (q) { var ok = q[3](s); return '<div class="tut-q' + (ok ? ' done' : '') + '"><span class="b">' + q[1] + '</span><span>' + (ok ? '✅ ' : '') + esc(q[2]) + '</span></div>'; }).join('') +
-      '</div><p class="small muted">Badges are just for fun: they come from your real history and give nothing in the game. <a href="tutorial.html">📚 Keeper Academy</a></p>';
+      '</div><p class="small muted">Badges are just for fun: they come from your real history and give nothing in the game. <a href="tutorial.html">🎓 The Big Beautiful Tutorial</a></p>';
     p.open = open;
   }
   var TIPLIST = [

@@ -235,6 +235,6 @@
   // ------------------------------------------------------------------ loop (cheap; everything is idempotent)
   function tick() { var w = W(); glossBtn(); reloadTip(); recent(); watchToasts(); chipUi(); viewOnlyAccept(); receipt(); why(); heads(); notify(); coldQ(); cemeteryLink(); rankingMine(); petActions(); sortParam();
     if (w) { badge(w); nba(w); decorateCards(w); decorateDetail(w); community(w); } }
-  function boot() { tick(); setInterval(tick, 1200); setTimeout(function () { tour(false); }, 2500); }
+  function boot() { tick(); setInterval(tick, 1200); /* the old 4-step tour is replay-only now (help button, data-iptour) */ }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot); else boot();
 })();
