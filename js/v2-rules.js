@@ -2650,6 +2650,8 @@
     else if (sp === 'kek' && kekSprite() && kekSprite().draw) { g = kekSprite().draw(st, fr, {}); var mT = 99; for (y = 0; y < 32 && mT === 99; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === 'm') { mT = y; break; }
       for (y = 0; y < Math.min(mT, GROUND_ROW); y++) for (x = 0; x < 32; x++) { var k1 = g[y] && g[y][x]; if (k1 === 'E' || k1 === 'P') L.push(y * 32 + x); } }
     else if (sp === 'wizard' && wizSprite() && wizSprite().draw) { g = wizSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === 'k') L.push(y * 32 + x); }
+    if (L.length) { var rc = {}; L.forEach(function (q) { rc[q >> 5] = (rc[q >> 5] || 0) + 1; }); var my = +Object.keys(rc).sort(function (p, q) { return rc[q] - rc[p] || p - q; })[0];
+      L = L.filter(function (q) { return Math.abs((q >> 5) - my) <= 3; }); } /* hybrid fit: Mythic sprites reuse the eye keys in the halo/rim; the eyes are the densest band */
     return L.length ? { list: L, box: bbList(L) } : null; }
   var SIDE_FACING = { dodo: 1, doge: -1 }, TOPDBG = null; /* bodies drawn in profile: which way the mouth points */
   function applyParts(img, kS, h, o, art, feat) { var painted = []; TOPDBG = null;
@@ -2680,7 +2682,8 @@
       var Mh = bbOf(M), eyeL = CA.eyeBox ? CA.eyeBox.t : Mh.t + Math.round(Mh.h * 0.4), colTop = function (x) { for (var y = 0; y < GROUND_ROW; y++) if (M[y * 32 + x]) return y; return -1; };
       var hl = CA.headBox ? CA.headBox.l : Mh.l, hr = CA.headBox ? CA.headBox.r : Mh.r; if (CA.core) { hl = Math.max(hl, CA.core[0] - 1); hr = Math.min(hr, CA.core[1] + 1); }
       var hc = Math.round((hl + hr) / 2), tops = []; for (var x = hl; x <= hr; x++) { var t = colTop(x); if (t >= 0) tops.push(t); } tops.sort(function (a, b) { return a - b; });
-      var yH = tops.length ? tops[Math.floor(tops.length * 0.3)] : Mh.t, yb = Math.min(yH + 1, eyeL - 2), minUp = Math.min(6, Math.max(3, Math.round((hr - hl) * 0.4))); if (yb - mg < minUp) yb = Math.min(eyeL - 1, mg + minUp);
+      var yH = tops.length ? tops[Math.floor(tops.length * 0.3)] : Mh.t; if (eyeL <= yH + 1) eyeL = yH + Math.max(4, Math.round((Mh.b - yH) * 0.4)); /* hat fix: an eye box above the head top (Mythic Kek's halo) is not the eyes; never park the hat off the frame */
+      var yb = Math.min(yH + 1, eyeL - 2), minUp = Math.min(6, Math.max(3, Math.round((hr - hl) * 0.4))); if (yb - mg < minUp) yb = Math.min(eyeL - 1, mg + minUp);
       var rw = runsOf(M, Math.min(GROUND_ROW - 1, yb + 1)), wl = rw.length ? Math.max(hl, rw[0][0]) : hl, wr = rw.length ? Math.min(hr, rw[rw.length - 1][1]) : hr;
       var bl = Math.max(mg, wl - 1), br = Math.min(31 - mg, wr + 1), W = br - bl + 1, Hc = Math.max(3, Math.min(yb - 1, Math.max(Math.round(W * 0.7), 5))), sd = facing ? -facing : 1, ON = {};
       var put = function (x, y, c) { if (x < mg || x > 31 - mg || y < 0 || y >= GROUND_ROW) return; var t = y * 32 + x; M[t] = true; touched[t] = 1; set(t, c); painted.push(t); ON[t] = 1; };
@@ -2694,7 +2697,7 @@
       TOPDBG = { eyeL: eyeL, hat: true, pieces: [{ l: bl, r: br, t: yb - Hc, b: yb }], head: [wl, wr] }; }
     function placeOne(q) { var def = partDef(q.sp, q.part); if (!def || !partOk(h.shape, q.sp, def)) return; if (q.sp === 'kevin' && q.part === 'hair' && (h.parts || []).some(function (p2) { return p2 !== q && (partDef(p2.sp, p2.part) || {}).kind === 'eyes'; })) return; /* Kevin's eyes stand in for the retired grey hair; a pet that already trades eyes keeps those */ if (def.kind === 'face') return; /* Chud beard part: drawn by V2Render.drawBeard on the finished face */
       /* young pets take the donor's ADULT part, scaled to their size, so hatchlings show a readable part too */
-      var kF = keyedRender(q.sp, art, stg <= 2 ? Object.assign({}, o, { stage: 3 }) : o), DA = anatomy(kF.keys); if (DA.bb.b < 0) return; if (kF.parts) Object.assign(DA, kF.parts);
+      var kF = keyedRender(q.sp, art, stg <= 2 || (def.kind === 'eyes' && stg >= 4) ? Object.assign({}, o, { stage: 3 }) : o), DA = anatomy(kF.keys); if (DA.bb.b < 0) return; if (kF.parts) Object.assign(DA, kF.parts);
       var D = DA[def.kind] || [], small = CA.bb.h < 15, kAd = stg <= 2 && !def.draw ? clampK(CA.bb.h / DA.bb.h * 1.1, 0.55, 1) : 1;
       if (def.draw && def.kind === 'tail' && def.draw.big) { var lx = 32; for (var yq = CA.bb.t + Math.round(CA.bb.h * 0.45); yq <= CA.bb.b; yq++) { var eq = edgeAt(CA.s, yq, -1); if (eq >= 0) lx = Math.min(lx, eq); } }
       if (def.draw) { var dP = drawPart(def, kF, DA, D, small); kF = dP.kF; D = dP.D; } if (D.length < 2) return;
@@ -2713,7 +2716,7 @@
         if (kind === 'hair') k = clampK((hB.w) / DA.bb.w, 0.7, 1.25);
         if (kind === 'mouth' && kAd < 1) k = kAd; if (kind === 'mouth' && facing !== 0 && stg >= 3 && !def.draw) k = 1.35; /* a beak in profile needs some size to read */
         if (kind === 'eyes') { var eyY = cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35), room = headW(eyY) - 2;
-          if (cb) { var eR = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, eyY))).filter(function (r) { return r[0] <= cb.r && r[1] >= cb.l; }); if (eR.length) { var eCx = (cb.l + cb.r) / 2; room = Math.min(room, Math.floor(2 * Math.min(eCx - eR[0][0], eR[eR.length - 1][1] - eCx)) + 1 - 2); } } /* hybrid fit: the room is the face run under the eyes, not the whole row (Wizard's hair, staff hand) */ k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
+          if (cb) { var eR = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, eyY))).filter(function (r) { return r[0] <= cb.r && r[1] >= cb.l; }); if (eR.length) { var eCx = (cb.l + cb.r) / 2; room = Math.min(room, Math.floor(2 * Math.min(eCx - eR[0][0], eR[eR.length - 1][1] - eCx)) + 1 - 2); } } /* hybrid fit: the room is the face run under the eyes, not the whole row (Wizard's hair, staff hand) */ k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (h.shape === 'wizard' && EYE_DOME_BODIES[q.sp]) k = Math.max(k, 0.85); /* hybrid fit: Pepe/Peepo eyes on the small Wizard face keep their whites (0.55 lost them) */ if (q.sp === 'nakamoto' && cb && db.h > 0 && cb.h > db.h * 1.4 && db.w <= room) k = Math.max(k, clampK(Math.min(room / db.w, cb.h / db.h), 1, 1.6)); /* hybrid fit: Nakamoto's 2-row glasses on a tall-eyed face (Kek) read as slits; grow them toward the eye height, within the face */ if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
         pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
         if (kind === 'hair') { dx = Math.round((hB.l + hB.r) / 2 - (pb.l + pb.r) / 2); dy = Math.max(mg - pb.t, hB.t - pb.t); }
         else if (kind === 'mouth') { var dm = bbList(DA.mouthKey), tx = cb ? (CA.mouthBox.l + CA.mouthBox.r) / 2 : (sb.l + sb.r) / 2, ty = cb ? (CA.mouthBox.t + CA.mouthBox.b) / 2 : CA.headBox ? CA.headBox.b + 4 : sb.t + sb.h * 0.55;

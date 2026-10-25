@@ -41,6 +41,11 @@ ok(AM && AM.owner === BL[0].owner && AM.name === 'Lord Kekamozard' && AM.species
 ok(DK && DK.owner === V.DON_KEKAMOTO_TO && DK.name === 'Don Kekamoto' && DK.species === 'hyb3:nakamoto:kek:funtrump' && DK.hybrid.shape === 'funtrump' && DK.hybrid.color === 'kek', 'Don Kekamoto egg -> top holder, FunTrump body in Kek colours');
 SU.forEach(p => { ok(p.care === 0 && p.stage === 0 && p.tier === 3 && p.supreme.of === 1, p.name + ' Legendary 1 of 1 egg'); ok(/cannot breed/.test(V.breedable(p, tip) || ''), p.name + ' unbreedable'); });
 ok(V.breederBadges(w, AM).some(b => b.name === 'Burn Lord Supreme'), 'Lord Kekamozard badge');
+/* REAL HATCH: a normal PET:FEED from the owner, through the normal rules, hatches each grant egg; art/edition unchanged */
+[BL[0], AM, DK].forEach(e => { const fr = row(tip + 1, e.owner, 1e6, 'PET:FEED:' + e.id), wf = run(c, s, [fr], tip + 3), h = wf.pets.find(p => p.id === e.id);
+  ok(h && h.stage >= 1 && h.care > 0, e.name + ' #' + e.id + ' hatched by a real feed (stage ' + (h && h.stage) + ', care ' + (h && h.care) + ')');
+  ok(h && h.species === e.species && JSON.stringify(h.hybrid) === JSON.stringify(e.hybrid) && h.tier === e.tier && h.owner === e.owner && JSON.stringify(h.supreme || h.burnLord) === JSON.stringify(e.supreme || e.burnLord), e.name + ' keeps its fixed art/edition after hatching');
+  ok(/cannot breed/.test(V.breedable(h, tip + 3) || ''), e.name + ' still unbreedable after hatching'); });
 V._setBurnLordsSnapshot(973300);
 const J = process.argv.indexOf('--json'); if (J > 0) fs.writeFileSync(process.argv[J + 1], JSON.stringify({ tip, snapshot: sm, top: BL.map(p => ({ id: p.id, owner: p.owner, total: p.burnLord.total, species: p.species, name: p.name, label: V.speciesLabel(p.species), edition: p.burnLord })), pets: BL }, null, 1));
 console.log((fail ? 'FAILED ' : 'ALL PASS ') + pass + ' pass, ' + fail + ' fail');
