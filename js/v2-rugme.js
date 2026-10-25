@@ -6,6 +6,8 @@
  * Never my own pets. Posting: one or several of my pets, packed into as few <=34-byte pet:ad tags as fit, queued one wallet window each. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, $ = function (id) { return document.getElementById(id); };
   if (!V || !V.openAds) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'], ST = ['Egg', 'Baby', 'Teen', 'Adult', 'Elder', 'Mythic'];
@@ -43,7 +45,7 @@
   function statBlock(p) { var MAX = 31, s = p.stats || {}, tot = 0;
     return '<div class="statbox rm-stats">' + ((window.PetCore && PetCore.STAT_KEYS) || ['vigor', 'spark', 'grit', 'zoom', 'luck']).map(function (k) { var v = s[k] || 0; tot += v;
       return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / MAX).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') +
-      '<div class="stat tot"><span class="sk">⚡ POWER</span><b>' + tot + '</b></div></div>'; }
+      '<div class="stat tot"' + ptA(p) + '><span class="sk">⚡ POWER</span><b>' + tot + '</b></div></div>'; }
   function traits(p) { var a = p.art || {}, o = []; if (a.pattern) o.push(a.pattern); if (a.eyes) o.push(a.eyes + ' eyes'); if (p.hidden && p.shows) o.push(p.shows); return o; }
   function cardHtml(c, w) { var p = c.pet, b = tip() + 1, left = c.ad.block + V.AD_WINDOW - b;
     return '<div class="rm-top"><span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +

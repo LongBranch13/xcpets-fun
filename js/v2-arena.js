@@ -5,6 +5,8 @@
  * the wallet does. Random pairing is a documented later idea (PROJECT_BRIEF), not built. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
@@ -14,7 +16,7 @@
   function lbl(w, id) { var p = w.byId[id]; return (p ? esc(p.name) + ' ' : '') + '<span class="muted">#' + id + '</span>'; }
   function card(w, p, o) { if (!p) return '<div class="ar-pet">?</div>'; var s = p.stats || {}, sc = score(w, p), FT = window.V2FightTag; /* fight-owner-labels */
     return '<div class="ar-pet' + (FT && FT.mine(p) ? ' fme' : '') + '">' + (FT ? FT.html(p, o) + '<br>' : '') + '<b>' + lbl(w, p.id) + '</b><div class="ar-sub">' + esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species) + ' · ' + esc(p.stageName || '') + (p.blackEye ? ' · 🤕' : '') + '</div>' +
-      '<div class="ar-st">⚡' + pow(p) + ' <span title="Vigor/Spark/Grit/Zoom/Luck">V' + (s.vigor | 0) + ' S' + (s.spark | 0) + ' G' + (s.grit | 0) + ' Z' + (s.zoom | 0) + ' L' + (s.luck | 0) + '</span>' + (sc != null ? ' · ⭐' + sc : '') + '</div></div>'; }
+      '<div class="ar-st"><span' + ptA(p) + '>⚡' + pow(p) + '</span> <span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.stats(p)) : ' title="Vigor/Spark/Grit/Zoom/Luck"') + '>V' + (s.vigor | 0) + ' S' + (s.spark | 0) + ' G' + (s.grit | 0) + ' Z' + (s.zoom | 0) + ' L' + (s.luck | 0) + '</span>' + (sc != null ? ' · ⭐' + sc : '') + '</div></div>'; }
   /** pure data, testable in Node: open challenges, recent results, leaderboard */
   function data(w, tip) { tip = tip || w.tip || 0;
     var open = w.fights.filter(function (f) { return f.status === 'open' && tip - f.block <= V.FIGHT_WINDOW; }).map(function (f) { return { f: f, left: f.expires - tip }; }).sort(function (a, b) { return a.left - b.left; });

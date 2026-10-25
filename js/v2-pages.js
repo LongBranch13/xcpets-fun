@@ -2,6 +2,8 @@
  * Data comes from real XCPETS burns read from the Counterparty API. Nothing is signed here. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
   var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'];
@@ -301,7 +303,7 @@
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
-      return L.map(function (r) { return { p: r.p, score: fmt(r.v) + (B.id === 'power' ? ' power' : ' win' + (r.v === 1 ? '' : 's')), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : '' }; }); }
+      return L.map(function (r) { return { p: r.p, score: B.id === 'power' ? '<span' + ptA(r.p) + '>' + fmt(r.v) + ' power</span>' : fmt(r.v) + ' win' + (r.v === 1 ? '' : 's'), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : '' }; }); }
     function playerRows(B, wk) { var m = {}, best = {};
       function add(o, v, p) { m[o] = (m[o] || 0) + v; if (p && (!best[o] || p.tier > best[o].tier || (p.tier === best[o].tier && p.stage > best[o].stage))) best[o] = p; }
       if (B.id === 'wagmi') { var WA = (w.wagmi || {}), ow = Object.keys(WA).map(function (o) { return { o: o, s: V.streakOf(w, o, tip) }; }).filter(function (x) { return x.s.days > 0; });
@@ -317,7 +319,7 @@
         if (B.id === 'power') { var v = power(p); if (!m[p.owner] || v > m[p.owner]) { m[p.owner] = v; best[p.owner] = p; } }
         if (B.id === 'burn' && m[p.owner] && (!best[p.owner] || p.tier > best[p.owner].tier)) best[p.owner] = p; });
       var unit = { pets: ' pets', rare: ' pts', leg: ' Legendary', wins: ' wins', power: ' power', burn: ' XCPETS' }[B.id];
-      return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: fmt(Math.round(m[o] * 1e8) / 1e8) + unit }; }); }
+      return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
     function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
@@ -423,7 +425,7 @@
       w = M.world(); p = w.byId[id];
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
-      var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + T + '</b></div>';
+      var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"' + ptA(p) + '><span class="sk">TOTAL</span><b>' + T + '</b></div>';
       $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName].concat(p.dead ? [] : [(V.streakOf ? (function (st) { return st.state === 'wagmi' ? '🚀 owner WAGMI ' + st.current + '-day streak' : st.state === 'ngmi' ? '💀 owner NGMI (best ' + st.best + ')' : '🚀 owner: no WAGMI yet'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip))]).concat(['🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)]).map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.burnedTo ? '<span class="chip" title="Its token went to a burn address in block ' + p.burnedTo.block + '. Nobody can use it.">🔥 sent to a burn address (out of play)</span>' : '') + (R.genChip ? R.genChip(w, p) : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
       /* Rug Me (branch rug-me): a small 'On Rug Me' marker when the pet has an open ad; owner-only 'Post on Rug Me' link to the game page (one wallet confirm there; nothing is signed here) */ if (V.onRug && V.rugOn && V.rugOn((w.tip || 0) + 1) && !p.dead && !p.released) { var rmOn = V.onRug(w, p, (w.tip || 0) + 1); $('chips').insertAdjacentHTML('beforeend', (rmOn ? ' <span class="rm-mark" title="This pet has an open Rug Me ad">💘 On Rug Me</span>' : '') + (!rmOn && ME && p.owner === ME && p.stage >= 3 && !(window.V2View && V2View.viewOnly()) ? ' <a class="btn ghost rm-postlink" href="play.html#rugpost-' + p.id + '" title="Owner only: opens the Rug Me post form on the game page">📌 Post on Rug Me</a>' : '')); }
       if (window.V2Rivals) { var rvEl = $('rivals'); if (!rvEl) { rvEl = document.createElement('div'); rvEl.id = 'rivals'; $('chips').parentNode.insertBefore(rvEl, $('chips').nextSibling); } rvEl.innerHTML = V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }); } /* rivals strip (battle-arena DRAFT, off-chain) */

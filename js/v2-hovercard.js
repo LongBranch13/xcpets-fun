@@ -7,6 +7,8 @@
  *   exactly as before. Closing the card puts the page / picker scroll and focus back; selections are untouched (the flow is never re-rendered). */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   if (typeof document === 'undefined') return;
   var STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'], TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -51,11 +53,11 @@
   function fightHtml(w, p) { var R = V(), s = p.stats || {}, h = head(p), why = window.UXB && UXB.whyNot ? UXB.whyNot(p, w) : (R.fightable ? R.fightable(p, (w.tip || 0) + 1) : null);
     h += why ? '<div class="hc-no">✋ ' + esc(why) + '</div>' : '<div class="hc-ok">✅ Can fight today</div>';
     var pow = STATS.reduce(function (a, k) { return a + (s[k] || 0); }, 0), sc = window.PetScore && PetScore.of ? PetScore.of(w, p) : null;
-    h += row('⚡ Power', pow + (sc ? ' · ⭐ ' + sc.score + (sc.rank ? ' (#' + sc.rank + ')' : '') : ''));
+    h += row('⚡ Power', '<span' + ptA(p) + '>' + pow + '</span>' + (sc ? ' · ⭐ ' + sc.score + (sc.rank ? ' (#' + sc.rank + ')' : '') : ''));
     h += row('Stats', STATS.map(function (k) { return k.slice(0, 3) + ' ' + (s[k] || 0); }).join(' · '));
     var worn = R.wornOf ? R.wornOf(w, p.id) : [], gb = worn.reduce(function (a, g) { var it = R.itemOf && R.itemOf(g.item); return a + 1 + (it ? it.tier || 0 : 0) * 2; }, 0);
-    h += row('❤️ HP', 40 + (s.vigor || 0) * 2 + (s.grit || 0) + (p.stage || 0) * 6) + row('🗡 Hit', (4 + Math.floor((s.spark || 0) / 3) + gb) + '–' + (11 + Math.floor((s.spark || 0) / 3) + gb) + ' · crit ' + (5 + Math.floor((s.luck || 0) / 4)) + '% · dodge ' + Math.floor((s.zoom || 0) / 5) + '%');
-    h += row('🛡 Gear', worn.length ? '+' + gb + ' per hit · ' + esc(worn.map(function (g) { var it = R.itemOf && R.itemOf(g.item); return it ? it.label : g.item; }).slice(0, 4).join(', ')) + (worn.length > 4 ? ' +' + (worn.length - 4) : '') : 'none worn');
+    h += row('❤️ HP', '<span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.hp(p)) : '') + '>' + (40 + (s.vigor || 0) * 2 + (s.grit || 0) + (p.stage || 0) * 6) + '</span>') + row('🗡 Hit', (4 + Math.floor((s.spark || 0) / 3) + gb) + '–' + (11 + Math.floor((s.spark || 0) / 3) + gb) + ' · crit ' + (5 + Math.floor((s.luck || 0) / 4)) + '% · dodge ' + Math.floor((s.zoom || 0) / 5) + '%');
+    h += row('🛡 Gear', worn.length ? '<span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.gear(worn.map(function (g) { var it = R.itemOf && R.itemOf(g.item); return { label: it ? it.label : g.item, tier: it ? it.tier || 0 : 0 }; }))) : '') + '>+' + gb + ' per hit</span> · ' + esc(worn.map(function (g) { var it = R.itemOf && R.itemOf(g.item); return it ? it.label : g.item; }).slice(0, 4).join(', ')) + (worn.length > 4 ? ' +' + (worn.length - 4) : '') : 'none worn');
     var F = window.V2ArenaFun, cur = 0, belts = [];
     try { cur = (F && F.current ? F.current(w) : {})[p.id] || 0; var B = F && F.belts ? F.belts(w) : {}; ({ classic: 'Classic', sd: 'Sudden Death', tt: 'Tag Team' }); Object.keys(B).forEach(function (k) { if (B[k] && B[k].id === p.id) belts.push({ classic: 'Classic', sd: 'Sudden Death', tt: 'Tag Team' }[k] || k); }); } catch (e) { }
     h += row('🏆 Record', (p.wins || 0) + 'W · ' + (p.losses || 0) + 'L' + (cur ? ' · 🔥 ' + cur + ' streak' : ''));

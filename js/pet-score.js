@@ -4,6 +4,8 @@
  * Weights: Stats 30, Looks 20, Growth 15, Gear 15, Battles 10, Scarcity 10. Works in the browser (window.PetScore) and in Node (module.exports). */
 (function (root) {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var W = { stats: 0.30, looks: 0.20, growth: 0.15, gear: 0.15, battles: 0.10, scarcity: 0.10 };
   var LABEL = { stats: 'Stats', looks: 'Looks', growth: 'Growth', gear: 'Gear', battles: 'Battles', scarcity: 'Scarcity' };
   var BPD = 144;
@@ -88,7 +90,7 @@
     var val = [spName || cap(isHyb(p) ? 'hybrid' : p.species), cap(a.eyes || '-'), cap(a.pattern || '-'), cap(a.background || '-'), cap(cheekKey(a.cheeks))];
     var rows = TR.map(function (t, i) { var o = s && s.traitOneIn ? s.traitOneIn[i] : 0; return '<li><span class="dit">' + t + '</span> <b>' + esc(val[i]) + '</b>' + (o ? ' <span class="dio">1/' + fmtN(o) + '</span>' : '') + '</li>'; }).join('');
     var pw = total(p), stl = SK.map(function (k) { return k[1] + ' ' + (+st[k[0]] || 0); }).join(' · ');
-    return '<div class="dinfo">' + (s ? '<div class="dihead"><span class="dirar" title="Rarity score: trait rarity of species, eyes, pattern, background and cheeks across every pet (display only, not the hatch tier)">💎 Rarity ' + s.rarityBits.toFixed(1) + ' <span class="dio">1 in ' + fmtN(s.rarityOneIn) + '</span></span> <span class="disc2" title="Pet Score (display only)">⭐ ' + s.score + '</span> <span class="dipw" title="Power = Vigor + Spark + Grit + Zoom + Luck">⚡ Power ' + pw + '</span></div>' : '<div class="dihead"><span class="dipw">⚡ Power ' + pw + '</span></div>') +
+    return '<div class="dinfo">' + (s ? '<div class="dihead"><span class="dirar" title="Rarity score: trait rarity of species, eyes, pattern, background and cheeks across every pet (display only, not the hatch tier)">💎 Rarity ' + s.rarityBits.toFixed(1) + ' <span class="dio">1 in ' + fmtN(s.rarityOneIn) + '</span></span> <span class="disc2" title="Pet Score (display only)">⭐ ' + s.score + '</span> <span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>' : '<div class="dihead"><span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>') +
       '<ul class="ditr">' + rows + '</ul><div class="dist">' + stl + '</div></div>'; }
   var DCSS = '.dinfo{text-align:left;font-size:11px;line-height:1.3;margin-top:3px}.dinfo .dihead{display:flex;flex-wrap:wrap;gap:3px 6px;justify-content:center;margin-bottom:2px}' +
     '.dinfo .dirar{color:#bfe9ff;font-weight:bold}.dinfo .disc2{color:#ffd166}.dinfo .dipw{color:#9fe8b5}.dinfo .dio{color:#9aa4b8;font-weight:normal;font-size:10px}' +

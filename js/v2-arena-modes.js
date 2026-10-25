@@ -5,6 +5,8 @@
  * off the button shows the send guard reason ("coming soon"), so no burn can be wasted. No pop-ups; display + composer only. */
 (function () {
   'use strict';
+  /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var $ = function (id) { return document.getElementById(id); }, V = function () { return window.V2Rules; };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
@@ -15,7 +17,7 @@
   function ok(p, w, b) { return p && !p.dead && !p.released && !p.neglected && p.stage >= 2 && !p.community && !(p.fightDays || {})[V().day(b)] && !V().inOpenFight(w, p.id, b); }
   function tip(w) { return (U() && U().S && U().S().tip) || w.tip || 0; }
   function card(w, p, on, tag) { return '<button type="button" class="ez-c t' + p.tier + (on ? ' on' : '') + '" data-am="' + p.id + '" aria-pressed="' + !!on + '" title="#' + p.id + ' ' + esc(p.name) + '">' + (tag ? '<span class="ez-tag">' + esc(tag) + '</span>' : '') +
-    '<span class="ez-sp" data-amsp="' + p.id + '"></span><b class="ez-nm">' + esc(p.name || '') + '</b><span class="ez-id">#' + p.id + ' · ⚡' + pow(p) + '</span></button>'; }
+    '<span class="ez-sp" data-amsp="' + p.id + '"></span><b class="ez-nm">' + esc(p.name || '') + '</b><span class="ez-id">#' + p.id + ' · <span' + ptA(p) + '>⚡' + pow(p) + '</span></span></button>'; }
   function sprites(root, w) { var R = window.V2Render; if (!R) return; root.querySelectorAll('[data-amsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-amsp')]; if (!p) return; var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c);
     if (R.lazy && R.petFrames) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
   function stablemates(w, p, b, not) { return w.pets.filter(function (q) { return q.owner === p.owner && q.id !== p.id && not.indexOf(q.id) < 0 && ok(q, w, b); }).sort(function (a, c) { return pow(c) - pow(a) || a.id - c.id; }); }
