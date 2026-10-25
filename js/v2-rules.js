@@ -1839,7 +1839,7 @@
    *    (putting it on another pet moves it) or taken off. If a pet changes hands, copies the seller holds come off it and stay with the seller
    *    (off until placed again); the buyer gets nothing new. Copies are never lost.
    *  - One look of each kind per pet: putting a look on turns off any other look of the same kind on that pet (it stays owned). */
-  var ACTIVATE_LOOK_PICK_BLOCK = 973007; /* tip 973001 (mempool.space, Oct 24 2026 8:55 PM CT) + 6; re-set at deploy */
+  var ACTIVATE_LOOK_PICK_BLOCK = 973013; /* tip 973007 (mempool.space, Oct 24 2026 9:54 PM CT, at deploy) + 6 */
   function lookPickOn(b) { return ACTIVATE_LOOK_PICK_BLOCK != null && b != null && b >= ACTIVATE_LOOK_PICK_BLOCK; }
   var LOOK_CODES = { KL: ['flame', 'laurels'], KA: ['flame', 'flame-aura'], WH: ['flame', 'halo'], WR: ['flame', 'rainbow-holo'], WL: ['flame', 'lightning-aura'],
     SC: ['flame', 'gold-crown'], SW: ['flame', 'holo-wings'], SG: ['flame', 'galaxy-skin'],

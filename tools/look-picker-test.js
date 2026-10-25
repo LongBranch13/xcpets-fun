@@ -25,7 +25,7 @@ const canon = v => JSON.stringify(v, (k, x) => (k === 'children' || k === 'lookC
 const shown = (V, w) => JSON.stringify(w.pets.map(p => V.shownLooks(w, p).map(x => x.id + '/' + x.type)));
 /* 1 */
 const A = run({});
-ok(A.V.lookPickGate() === 973007, 'gate is 973007 (tip 973001 + 6)');
+ok(A.V.lookPickGate() === 973013, 'gate is 973013 (tip 973007 + 6)');
 ok(!A.w.lookCopies, 'real gate past fixture tip ' + TIP + ': no look copies');
 const pt = A.V.parseTag; if (pt) { ok(pt('pet:look:12:KL:on').action === 'look' && pt('pet:look:12:KL:on:QN:off').ops.length === 2, 'parse pet:look:ID:CODE:on[:CODE:off]');
   ok(pt('pet:look:12:ZZ:on').action === 'invalid' && pt('pet:look:12:KL').action !== 'look' && pt('pet:look:1' + ':KL:on'.repeat(7)).action !== 'look', 'bad code / no on|off / more than 6 pairs: not a look memo'); }
