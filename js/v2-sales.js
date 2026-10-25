@@ -52,18 +52,20 @@
   function coreBases() { var CFG = window.XCPETS_CONFIG || {}; return (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'])
     .filter(function (u) { return !/xcp\.fun/.test(u); }).map(function (u) { u = String(u).replace(/\/+$/, ''); return /\/v2$/.test(u) ? u : u + '/v2'; }); }
   function isNet(e) { return !!e && !e.busy && e.status == null && !/DEX API \d/.test(e.message || '') && (e.name === 'AbortError' || /abort|fetch|network|timed out|load failed/i.test(e.message || String(e))); }
+  /* core-no-proxy: no api.xcp.fun fallback for Core reads. Both Core nodes failed -> one clear error; a network that blocks :4000 gets the Retry text */
+  function coreErr(errs) { var e = new Error((coreBlocked() ? 'Could not reach the Counterparty servers (port 4000 may be blocked on this network). Press Retry, or try another network. ' : 'every Counterparty node failed ') + '(' + errs.join('; ') + ')'); e.retry = true; e.unverified = true; return e; }
   function coreBlocked() { var b = coreBases(); return b.length > 0 && b.every(function (u) { return netDead(u); }); }
   function pagesAt(base, path, cap) { var out = [], k = 0;
     function go(cur) { return getJ(base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) {
       out = out.concat(j.result || []); if (j.next_cursor && ++k < cap) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
     return go(null); }
   function pages(path, cap) { cap = cap || 50; var bs = coreBases().filter(function (u) { return !DEAD[u] && !netDead(u); }), errs = [];
-    function on(i) { if (i >= bs.length) { if (coreBlocked()) return pagesAt(API, path, cap); return Promise.reject(new Error('every Counterparty node failed (' + errs.join('; ') + ')')); }
+    function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
       return pagesAt(bs[i], path, cap).catch(function (e) { errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
   /** coreJ(path): one non-paginated read, same order and fallback rule as pages() */
   function coreJ(path) { var bs = coreBases().filter(function (u) { return !netDead(u); }), errs = [];
-    function on(i) { if (i >= bs.length) { if (coreBlocked()) return getJ(API + path); return Promise.reject(new Error('every Counterparty node failed (' + errs.join('; ') + ')')); }
+    function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
       return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
   var slim = function (o) { return { tx_hash: o.tx_hash, tx_index: o.tx_index, block_index: o.block_index, source: o.source, give_asset: o.give_asset, give_quantity: o.give_quantity, give_remaining: o.give_remaining,
@@ -115,7 +117,7 @@
     function win(v) { if (!done) { done = true; ok(v); } } function lose(e) { errs.push(e && e.message || String(e)); if (--left === 0 && !done) no(new Error(errs.join('; '))); }
     function startB() { if (started || done) return; started = true; b().then(win, lose); }
     var t = setTimeout(startB, RACE_MS); a().then(function (v) { clearTimeout(t); if (!started) left--; win(v); }, function (e) { lose(e); startB(); }); }); }
-  function credits(A) { /* direct-counterparty-api: the proxy rebuild (xcpCredits) only when every Core node is network-blocked */ return nodeCredits(A).catch(function (e) { if (coreBlocked()) return xcpCredits(A); throw e; }).catch(function (e) { throw new Error('pet token transfers could not be read (' + e.message + ')'); }); }
+  function credits(A) { /* direct-counterparty-api: the proxy rebuild (xcpCredits) only when every Core node is network-blocked */ return nodeCredits(A).catch(function (e) { throw new Error('pet token transfers could not be read (' + e.message + ')'); }); }
   /* mint-tie window is closed (ACTIVATE_ONE_TIE_PATH_BLOCK passed): its token list is fixed, so it can stand in for a slow full-node scan. */
   function mintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, OG = V.oneTieGate ? V.oneTieGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0);
     if (G == null || OG == null || G >= OG || top < OG) return nodeMintAssets(rows);
