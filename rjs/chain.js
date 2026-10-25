@@ -14,7 +14,7 @@
   /* smooth-perf (2026-10-19): mempool.space first, then the primary read API. Block hashes are the same 64-hex values from every source; this only keeps
    * hash lookups off api.xcp.fun, which rate-limits us (429). */
   var BLOCK_APIS = ['mempool:' + CFG.mempoolApi + '/block-height/'].concat(CFG.read.slice(0, 1).map(function (b) { return b + '/blocks/'; }))
-    .concat(CFG.network === 'mainnet' ? ['mempool:https://blockstream.info/api/block-height/'] : []).concat(CFG.read.slice(1).map(function (b) { return b + '/blocks/'; }));
+    .concat(CFG.network === 'mainnet' ? ['mempool:https://blockstream.info/api/block-height/'] : []).concat(CFG.read.slice(1).filter(function (b) { return b !== CFG.coreFallback; }).map(function (b) { return b + '/blocks/'; })); /* direct-counterparty-api: hashes never from the api.xcp.fun proxy (mempool.space + blockstream.info + Core nodes) */
   var ASSET = CFG.asset;
   var READ_MS = 8000, FINAL_DEPTH = 6;
   /* Failover (2026-10-16, Jake approved): per-request timeouts PRIMARY_MS (first server) / BACKUP_MS (others); on HTTP 429/5xx, timeout or network
@@ -28,8 +28,15 @@
    * for SICK_MS in sessionStorage too, so the next page in this tab starts with a healthy one. Only the order/timing of GETs changes: the JSON returned
    * on success is the same, so data and replays are identical. (Not done, owner decision: falling back to the last known chain height when the tip
    * read fails; tip is a replay input.) */
-  var PRIMARY_MS = 5000, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
+  var PRIMARY_MS = 4000, PRE_MS = 3000, HEDGE_MS = 2500 /* direct-counterparty-api: a blocked :4000 trips in 3 s, then is remembered for the session */, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
   var SICK_KEY = 'xcpets-api-sick', sick = (function () { try { var o = JSON.parse(sessionStorage.getItem(SICK_KEY)) || {}, t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
+  /* direct-counterparty-api (2026-10-25): CFG.coreFallback (api.xcp.fun/node, an unpublished proxy of Core) is only asked once EVERY direct Core
+   * node failed with a timeout / network error in the last SICK_MS (port 4000 blocked on this network). A 429 or 5xx from a Core node never
+   * opens it: busy is not blocked, and the proxy rate-limits harder. netSick = bases whose last failure was a timeout / network error. */
+  var FALLBACK = CFG.coreFallback || null, NET_KEY = 'xcpets-api-netsick', netSick = (function () { try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}, t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
+  function setNetSick(b) { netSick[String(b)] = now() + 10 * 60e3; /* remembered 10 min per session: a network that blocks :4000 pays the timeout once */ try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} }
+  function clearNetSick(b) { if (netSick[String(b)]) { delete netSick[String(b)]; try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} } }
+  function fallbackOk(bases) { var t = now(), core = bases.filter(function (b) { return b !== FALLBACK && typeof b === 'string'; }); return core.length > 0 && core.every(function (b) { return netSick[String(b)] > t; }); }
   function saveSick() { try { sessionStorage.setItem(SICK_KEY, JSON.stringify(sick)); } catch (e) {} }
   function setSick(b) { sick[String(b)] = now() + SICK_MS; saveSick(); }
   function clearSick(b) { if (sick[String(b)]) { delete sick[String(b)]; saveSick(); } }
@@ -43,7 +50,7 @@
       var url = typeof base === 'function' ? base(path) : base + path;
       return fetchT(f, url, ms, ac).then(function (r) {
         if (!r.ok) { var ra = retryAfterMs(r); if (ra != null) backoff = Math.max(backoff, ra); if (r.status === 429 || r.status >= 500) setSick(base); throw new Error(String(base).split('/v2')[0] + ' HTTP ' + r.status); }
-        return parse(r, base); }).then(function (v) { clearSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (/timed out|fetch|network/i.test(m)) setSick(base); } throw e; });
+        return parse(r, base); }).then(function (v) { clearSick(base); clearNetSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (/timed out|fetch|network/i.test(m) && !/HTTP \d/.test(m)) { setSick(base); setNetSick(base); } } throw e; });
     }
     function race(list, ms) { /* every server in `list` at once; first good answer wins, the rest are aborted */
       return new Promise(function (res, rej) { var left = list.length, done = false, acs = [];
@@ -51,11 +58,17 @@
           attempt(base, ms, ac).then(function (v) { if (done) return; done = true; acs.forEach(function (a) { if (a && a !== ac) { a.won = true; try { a.abort(); } catch (e) {} } }); res(v); },
             function () { if (--left === 0 && !done) { done = true; rej(new Error('pass failed')); } }); }); }); }
     function pass(n) {
-      var t = now(), healthy = bases.filter(function (b) { return !(sick[String(b)] > t); }), list = healthy.length ? healthy : bases.slice(), left = deadline - t;
+      var t = now(), fb = FALLBACK && bases.indexOf(FALLBACK) >= 0 && !fallbackOk(bases), usable = fb ? bases.filter(function (b) { return b !== FALLBACK; }) : bases, /* proxy fallback closed unless every Core node is network-blocked */
+        healthy = usable.filter(function (b) { return !(sick[String(b)] > t); }), list = healthy.length ? healthy : usable.slice(), left = deadline - t;
       if (left < 500) return Promise.reject(new Error('all APIs failed (deadline): ' + errs.join('; ')));
       /* the primary (first configured server) is tried alone while it is healthy; otherwise every healthy server is asked at once */
-      var step = list[0] === bases[0] ? attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).catch(function () {
-          var rest = list.slice(1), l2 = deadline - now(); if (!rest.length || l2 < 500) throw new Error('pass failed'); return race(rest, Math.min(l2, opts.backupMs || BACKUP_MS)); })
+      /* direct-counterparty-api: hedge. If the primary has not answered after HEDGE_MS (a blocked port 4000 just hangs), the backups start too
+       * instead of waiting out the whole primary timeout; a healthy primary answers well before that, so the healthy path makes no extra calls. */
+      var step = list[0] === bases[0] ? new Promise(function (res, rej) { var rest = list.slice(1), done = false, out = 0, started = false, hedge = null;
+          function fin(ok, v) { if (done) return; if (ok) { done = true; clearTimeout(hedge); res(v); } else if (--out <= 0 && (started || !rest.length)) { done = true; clearTimeout(hedge); rej(new Error('pass failed')); } }
+          function go2() { if (started || done) return; started = true; var l2 = deadline - now(); if (!rest.length || l2 < 500) { if (out <= 0) fin(false); return; } out++; race(rest, Math.min(l2, opts.backupMs || BACKUP_MS)).then(function (v) { fin(true, v); }, function () { fin(false); }); }
+          out++; attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).then(function (v) { fin(true, v); }, function () { go2(); fin(false); });
+          if (rest.length) hedge = setTimeout(go2, opts.hedgeMs || HEDGE_MS); })
         : race(list, Math.min(left, opts.backupMs || BACKUP_MS));
       return step.catch(function () { if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
         var bo = Math.min(backoff, Math.max(0, deadline - now() - 500)); return wait(bo).then(function () { return pass(n + 1); }); });
@@ -75,9 +88,11 @@
   Chain.prototype.getJson = function (path) {
     var self = this, base = this.apis[0], pre = typeof base === 'string' ? takePre(base + path) : null, go = function () { return failover(self.f, self.apis, path, function (r) { return r.json(); }); };
     if (!pre) return go();
-    return Promise.race([pre, wait(PRIMARY_MS).then(function () { return null; })]).then(function (r) {
+    var t0 = (typeof window !== 'undefined' && window.__xcpPreT0) || now(); return Promise.race([pre, wait(Math.max(0, PRE_MS - (now() - t0))).then(function () { return null; })]).then(function (r) {
       if (r && r.ok) return r.json().then(function (j) { clearSick(base); return j; }, go);
-      if (r && (r.status === 429 || r.status >= 500)) setSick(base);
+      /* direct-counterparty-api: no answer (port 4000 blocked on this network, timeout) or 429/5xx -> this server is sick, so the failover goes
+       * straight to the backups instead of spending another PRIMARY_MS on it */
+      if (!r) { setSick(base); setNetSick(base); } else if (r.status === 429 || r.status >= 500) setSick(base);
       return go(); }, go);
   };
   /** All XCPETS destructions, following next_cursor. */

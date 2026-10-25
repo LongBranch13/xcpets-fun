@@ -4,10 +4,12 @@
  * section hidden (supply row and chart hide independently). */
 (function(){
   var box=document.getElementById("tokenLive"); if(!box||!window.fetch) return;
-  var NODES=["https://api.xcp.fun/node/v2","https://api.counterparty.io:4000/v2"];
+  /* direct-counterparty-api: Core reads go direct (config.js coreFetch: COUNTERPARTY_CORE, CORE_BACKUP, proxy only if both are network-blocked);
+   * the candle chart is an xcp.fun feature (XCPFUN_API), not a Core endpoint. */
+  var CF=window.XCPETS_CONFIG||{}, XCPFUN_API=CF.xcpfunApi||"https://api.xcp.fun/v2";
   function j(u,ms){var c=window.AbortController?new AbortController():null,t=setTimeout(function(){c&&c.abort()},ms||9000);
     return fetch(u,c?{signal:c.signal}:{}).then(function(r){clearTimeout(t);if(!r.ok)throw r.status;return r.json()});}
-  function node(p){var i=0;function n(){return j(NODES[i]+p).catch(function(e){if(++i<NODES.length)return n();throw e})}return n();}
+  function node(p){return CF.coreFetch(p,9000).then(function(r){if(!r.ok)throw r.status;return r.json()});}
   function fmt(q){return Math.round(q/1e8).toLocaleString("en-US");}
   function px(v){return v>=0.001?v.toFixed(6):v>=0.00001?v.toFixed(8):v.toExponential(2);}
   var stats=document.getElementById("tokSupply"),burnEl=document.getElementById("tokBurned"),chartWrap=document.getElementById("tokChartWrap");
@@ -21,7 +23,7 @@
       (r.result||[]).forEach(function(x){tot+=+x.quantity||0}); if(r.next_cursor&&++pg<20) return page(r.next_cursor);});}
     return page().then(function(){ if(tot>0){burnEl.textContent=fmt(tot);burnEl.parentNode.hidden=false;} }).catch(function(){});
   }).catch(function(){});
-  j("https://api.xcp.fun/v2/candles/XCPETS").then(function(d){
+  j(XCPFUN_API+"/candles/XCPETS").then(function(d){
     var c=(d&&d.result)||[]; if(!c.length) throw 0;
     var last=c[c.length-1].bucket_start; c=c.filter(function(x){return last-x.bucket_start<30*86400});
     c=c.map(function(x){return{t:x.bucket_start,o:x.open/1e8,h:x.high/1e8,l:x.low/1e8,c:x.close/1e8,v:+x.volume_xcp/1e8}});

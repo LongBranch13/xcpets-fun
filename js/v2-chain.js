@@ -1,5 +1,5 @@
 /* XCPETS v2 PRODUCTION chain adapter (same V2Mock interface as the old v2-mock.js so every v2 page runs unchanged).
- * READ-ONLY: real XCPETS destroys from the Counterparty API the live site uses (rjs/config.js -> api.xcp.fun/node/v2, then counterparty.io),
+ * READ-ONLY: real XCPETS destroys from the Counterparty API the live site uses (rjs/config.js -> Counterparty Core direct: api.counterparty.io:4000, api.unspendablelabs.com:4000),
  * replayed by V2Rules with the FROZEN live engine (window.LiveEngine.RealCore) for every burn at or before CUTOFF_BLOCK (971,500).
  * Burns go through js/v2-wallet.js (live compose + XCP Wallet signing); this file only reads. Local equips are saved per device. */
 (function () {
@@ -142,21 +142,26 @@
       b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
-  var RETRY_MS = [5000, 15000, 30000], reval = null;
-  function revalidate(n) { if (reval) return reval; n = n || 0; var was = sigOf();
+  /* direct-counterparty-api (2026-10-25): ONE re-read chain at a time. Before, a failed try queued a timer retry AND whenFresh (Sign & Burn) started
+   * its own revalidate right away, and every press started another, so the same destructions/sale reads ran 2-3 times in parallel against a
+   * rate-limited server (the repeated 429 loop). Now a pending timer retry is pulled forward instead of doubled, and presses share it. */
+  var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null;
+  function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var was = sigOf();
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
       if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
-      if (n < RETRY_MS.length) { setTimeout(function () { revalidate(n + 1); }, RETRY_MS[n]); return; }
+      if (n < RETRY_MS.length) { retryT = setTimeout(function () { retryT = null; revalidate(n + 1); }, RETRY_MS[n]); return; }
       staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); });
     return reval; }
   /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
    * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
   function whenFresh() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
-    staleBar('Checking the latest chain data before your burn. This can take a minute…', 'none');
-    function wait(left) { var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
-      return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was }; if (left > 0 && reval) return wait(left - 1); return { ok: false, same: false }; }); }
-    return wait(4); }
+    staleBar('Checking the latest chain data before your burn…', 'none');
+    /* one try: join the running re-read, or run one now (a pending timer retry is pulled forward, not doubled). A failed read resolves
+     * {ok:false} right away, so the button shows Retry instead of spinning; the background timer retries stay as they were. */
+    var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
+    return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was };
+      staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
   function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
     if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
