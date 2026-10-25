@@ -1,0 +1,16 @@
+{
+  "_draft": "Add to telegram/knowledge.json topics ONLY when unique-names is deployed. Not deployed.",
+  "topic": {
+    "id": "unique_names",
+    "kw": {
+      "name": 2,
+      "names": 2,
+      "same name": 3,
+      "duplicate name": 3,
+      "unique name": 3,
+      "rename": 1,
+      "pet name": 2
+    },
+    "answer": "From block 973,018, newly hatched pets get names from a much bigger name maker: 2 or 3 cute syllables plus an optional short ending (like Povin, Kinifaboo, Yushabit). There are about 36.6 million possible new names, and none of them can match an old-style name. In 10,000 new hatches we expect only about 40 to 60 repeats. Pets hatched before block 973,018 keep their names exactly as they are, and no pet's looks, tier, gear or stats change. Names are picked from the pet's egg, so the same egg always gets the same name."
+  }
+}

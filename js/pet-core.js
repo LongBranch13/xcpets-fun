@@ -1256,6 +1256,27 @@
   function cheeksId(pet) { var c = pet && pet.cheeks; return c === true ? 'blush' : (!c ? 'none' : String(c)); }
   var BG_V2 = [{ id: 'btc', label: 'Bitcoin' }, { id: 'xcp', label: 'XCP mark' }, { id: 'bxmix', label: 'Bitcoin + XCP' }];
   var BG_COLORS = ['#1d2b53', '#2b1d3f', '#1f3b2f', '#3b2a1f', '#14213d', '#2d1b2e', '#203040', '#3a1f2b'];
+  // Unique names (owner 2026-10-24 10:59 PM CT): pets hatched at or after ACTIVATE_UNIQUE_NAME_BLOCK get a name from a much bigger scheme,
+  // drawn from a SEPARATE hash (sha256('XCPETS:name:v2:' + seed)), never the main rng stream, so no trait, stat or older name changes.
+  var ACTIVATE_UNIQUE_NAME_BLOCK = 973018; // mainnet tip 973012 (mempool.space, Oct 24 2026 11:00 PM CT) + 6
+  var NAME_ONSETS = ['b', 'ch', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'w', 'y', 'z', 'sh'];
+  var NAME_VOWELS = ['a', 'e', 'i', 'o', 'u', 'oo'];
+  var NAME_ENDS = ['', 'n', 'p', 'k', 'b', 'li', 'bo', 'mi', 'ki', 'po', 'ru', 'zy', 'bit', 'pop', 'bun', 'tot', 'boo', 'kin', 'pip', 'lu', 'ni'];
+  var NAME_BLOCK = ['poo', 'pee', 'fuk', 'fuc', 'shit', 'sex', 'dik', 'dic', 'kok', 'cum', 'tit', 'nig', 'neg', 'fag', 'gay', 'jew', 'kill', 'dum', 'die',
+    'ded', 'fat', 'hoe', 'ho', 'wee', 'rap', 'nazi', 'kkk', 'butt', 'bum', 'pis', 'puss', 'cock', 'coc', 'jiz', 'jis', 'vag', 'gun', 'god', 'hel', 'damn', 'suk', 'suc'];
+  function nameBlocked(n) { for (var i = 0; i < NAME_BLOCK.length; i++) if (n.indexOf(NAME_BLOCK[i]) >= 0) return true; return false; }
+  // oldStyle: true when n could be an old-scheme name (2 or 3 of the 24 SYLLABLES), so a new name never equals any old name.
+  function oldStyle(n, k) { k = k || 0; if (!n) return k >= 2; if (k >= 3) return false;
+    for (var i = 0; i < SYLLABLES.length; i++) if (n.indexOf(SYLLABLES[i]) === 0 && oldStyle(n.slice(SYLLABLES[i].length), k + 1)) return true; return false; }
+  function uniqueName(seed) {
+    for (var t = 0; t < 32; t++) {
+      var h = sha256Bytes(utf8Bytes('XCPETS:name:v2:' + seed + (t ? ':' + t : ''))), n = '', ns = 2 + (h[0] % 2);
+      for (var i = 0; i < ns; i++) n += NAME_ONSETS[h[1 + i * 2] % NAME_ONSETS.length] + NAME_VOWELS[h[2 + i * 2] % NAME_VOWELS.length];
+      n += NAME_ENDS[h[8] % NAME_ENDS.length];
+      if (!nameBlocked(n) && !oldStyle(n)) return n.charAt(0).toUpperCase() + n.slice(1);
+    }
+    return 'Pip' + toHex(h).slice(0, 2); // never reached in practice
+  }
   var SYLLABLES = ['mo', 'chi', 'pip', 'zu', 'ka', 'ri', 'po', 'lu', 'bo', 'ne', 'tik', 'fu', 'yo', 'mi', 'to', 'ba', 'zo', 'ki', 'pe', 'ru', 'sa', 'nu', 'gi', 'wa'];
   var STAT_KEYS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
 
@@ -1315,6 +1336,7 @@
     var nsyl = 2 + (rng.int(3) === 0 ? 1 : 0), name = '';
     for (i = 0; i < nsyl; i++) name += SYLLABLES[rng.int(SYLLABLES.length)];
     name = name.charAt(0).toUpperCase() + name.slice(1);
+    if (input.blockHeight != null && Number(input.blockHeight) >= ACTIVATE_UNIQUE_NAME_BLOCK && !input.community) name = uniqueName(seed); // old draws above still run, so nothing shifts
 
     var pet = {
       version: VERSION, seed: seed, dna: toHex(digest),
@@ -2202,7 +2224,7 @@
   return {
     VERSION: VERSION, SIZE: N, TIERS: TIERS, STAGES: STAGES, STAGE_MULT: STAGE_MULT, STAT_KEYS: STAT_KEYS, GEAR_RANKS: GEAR_RANKS,
     SPECIES: SPECIES, COMMUNITY_SPECIES: COMMUNITY_SPECIES, PATTERNS: PATTERNS, EYES: EYES,
-    BANDS: BANDS, ARMORS: ARMORS, CAPES: CAPES, WEAPONS: WEAPONS, CROWNS: CROWNS, BACKGROUNDS: BACKGROUNDS, BG_V2: BG_V2, BG_V2_FROM_BLOCK: BG_V2_FROM_BLOCK, CHEEKS: CHEEKS, CHEEKS_V2_FROM_BLOCK: CHEEKS_V2_FROM_BLOCK, cheeksId: cheeksId, sunFrameColor: function (sp, body) { var c = sunFrameColor(sp, hex(body)); return '#' + c.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }, CHARKEY: CHARKEY,
+    BANDS: BANDS, ARMORS: ARMORS, CAPES: CAPES, WEAPONS: WEAPONS, CROWNS: CROWNS, BACKGROUNDS: BACKGROUNDS, BG_V2: BG_V2, BG_V2_FROM_BLOCK: BG_V2_FROM_BLOCK, CHEEKS: CHEEKS, CHEEKS_V2_FROM_BLOCK: CHEEKS_V2_FROM_BLOCK, ACTIVATE_UNIQUE_NAME_BLOCK: ACTIVATE_UNIQUE_NAME_BLOCK, uniqueName: uniqueName, nameBlocked: nameBlocked, oldStyle: oldStyle, cheeksId: cheeksId, sunFrameColor: function (sp, body) { var c = sunFrameColor(sp, hex(body)); return '#' + c.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }, CHARKEY: CHARKEY,
     sha256Hex: sha256Hex, sha256Bytes: sha256Bytes, utf8Bytes: utf8Bytes, sfc32: sfc32,
     seedString: seedString, generate: generate, gearFor: gearFor, expressionFor: expressionFor, stats: stats,
     render: render, stageMap: stageMap, renderFrames: renderFrames, describe: describe, characterPet: characterPet, pixelHash: pixelHash
