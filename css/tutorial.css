@@ -82,3 +82,7 @@
 .tut-grad{display:flex;flex-direction:column;gap:4px;margin:8px 0 12px;padding:10px 12px;border:3px solid #6b5a2a;border-radius:12px;background:#1b1233;font-family:'Comic Neue',cursive;opacity:.75}
 .tut-grad b{font-family:'Press Start 2P',monospace;font-size:11px;color:#ffd24a}
 .tut-grad.on{opacity:1;border-color:#f5c542;box-shadow:0 0 0 3px #000,0 0 14px rgba(245,197,66,.5)}
+/* Big Beautiful Tutorial entry (Home + Play top) */
+.tut-entry-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px auto 6px;max-width:1100px;padding:0 12px}
+.tut-entry-row .tut-entry{text-decoration:none}
+.tut-entry-row.grad{justify-content:flex-end}

@@ -172,9 +172,9 @@
     { id: 'grow', ico: '🌱', t: 'Growing', s: 'Deep dive: stages and Mythic', deep: 1, demo: 'grow', steps: [
       ['The stage line', 'Care moves a pet up: Hatchling ' + fmt(N.thresholds[1]) + ', Juvenile ' + fmt(N.thresholds[2]) + ', Adult ' + fmt(N.thresholds[3]) + ', Elder ' + fmt(N.thresholds[4]) + ', Mythic ' + fmt(N.thresholds[5]) + ' care.', 'grow'],
       ['What each stage unlocks', 'Juvenile: battles. Adult: breeding. Mythic: a gold aura, every gear slot, and no more hunger. Fed daily, a pet reaches Mythic in about 9 days.'],
-      ['The Mythic fast lane', 'Once you own a living Mythic, your other pets reach Mythic at just <b>' + fmt(N.mythicLine) + ' care</b>. Care past ' + fmt(N.mythicLine) + ' earns saved Pepe Wheel spins (1 per 1,000 care).'],
+      ['The Mythic fast lane', 'Once you raise a living Mythic, your other pets reach Mythic at just <b>' + fmt(N.mythicLine) + ' care</b>. Care past ' + fmt(N.mythicLine) + ' earns saved Pepe Wheel spins (1 per 1,000 care).'],
       ['Lucky drops', 'Each stage-up has a 25% chance and each meal a 2% chance to drop a saved gear spin.']],
-      quiz: [['At which stage can a pet first battle?', ['Juvenile', 'Hatchling', 'Mythic'], 0], ['Own a living Mythic and your other pets reach Mythic at...', [fmt(N.mythicLine) + ' care', fmt(N.thresholds[5]) + ' care', 'never'], 0]] },
+      quiz: [['At which stage can a pet first battle?', ['Juvenile', 'Hatchling', 'Mythic'], 0], ['Raise a living Mythic and your other pets reach Mythic at...', [fmt(N.mythicLine) + ' care', fmt(N.thresholds[5]) + ' care', 'never'], 0]] },
     { id: 'battle', ico: '⚔️', t: 'Battles', s: 'Deep dive: HP, Power, gear', deep: 1, demo: 'battle', steps: [
       ['Who can fight', 'Juvenile or older, not neglected, once per pet per chain day. A challenge is a small burn (the Play page shows the live amount); the other side accepts.'],
       ['HP by stage', 'HP = 40 + vigor times 2 + grit + stage times 6, so older pets are tougher. Power is all five stats added up.'],
@@ -298,21 +298,24 @@
     ['#bFeedHungry', '<b>Feed all hungry</b> once each chain day. Skip 3 days and a pet is neglected; 7 and it dies.'],
     ['#tutQuests', 'Keeper Quests track your progress from your real history. Have fun!']
   ];
+  var CSKIP = 'xcpets-tut-coach-skip', CAT = 'xcpets-tut-coach-at'; /* CAT (sessionStorage): the step to resume at, so tapping a pet (which opens pet.html) and coming back keeps the tour going */
+  /* Next usable coach step from i going d (+1/-1). Going Back past the first usable step stays put instead of landing on a hidden one. */
+  function pickStep(i, d, n, ok) { var j = i + d; while (j >= 0 && j < n && !ok(j)) j += d; if (j < 0) { j = i; while (j < n && (j < 0 || !ok(j))) j++; } return j; }
   function visible(e) { if (!e) return false; var r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; }
-  function coach() {
-    var i = -1, spot = el('div', 'tut-spot'), hand = el('div', 'tut-hand', '👉'), card = null, tgt = null;
+  function coach(from) {
+    var i = (from | 0) - 1, spot = el('div', 'tut-spot'), hand = el('div', 'tut-hand', '👉'), card = null, tgt = null, onTgt = null;
     spot.setAttribute('aria-hidden', 'true'); hand.setAttribute('aria-hidden', 'true'); document.body.appendChild(spot); document.body.appendChild(hand);
     function place() { if (!tgt) return; var r = tgt.getBoundingClientRect(); spot.style.left = r.left - 6 + 'px'; spot.style.top = r.top - 6 + 'px'; spot.style.width = r.width + 12 + 'px'; spot.style.height = r.height + 12 + 'px'; hand.style.left = Math.max(0, r.left - 44) + 'px'; hand.style.top = r.top + r.height / 2 - 30 + 'px'; }
-    function end() { spot.remove(); hand.remove(); if (card) card.remove(); removeEventListener('scroll', place, true); removeEventListener('resize', place); ls(SEEN, '1'); }
+    function end() { spot.remove(); hand.remove(); if (card) card.remove(); removeEventListener('scroll', place, true); removeEventListener('resize', place); ls(SEEN, '1'); try { sessionStorage.removeItem(CAT); } catch (e) { } }
     function step(d) {
-      if (card) card.remove(); i += d;
-      while (i >= 0 && i < COACH.length && (!visible(document.querySelector(COACH[i][0])) || (COACH[i][2] && !COACH[i][2]()))) i += d || 1;
-      if (i < 0) i = 0; if (i >= COACH.length) { end(); cheer(); return; }
+      if (card) card.remove(); if (tgt && onTgt) tgt.removeEventListener('click', onTgt); onTgt = null;
+      var sk = jget(CSKIP); i = pickStep(i, d, COACH.length, function (k) { return !sk[COACH[k][0]] && visible(document.querySelector(COACH[k][0])) && !(COACH[k][2] && !COACH[k][2]()); });
+      if (i >= COACH.length) { end(); cheer(); return; }
       tgt = document.querySelector(COACH[i][0]); tgt.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' }); setTimeout(place, 350); place();
       var pips = ''; for (var p = 0; p < COACH.length; p++) pips += '<span class="tut-pip' + (p === i ? ' on' : p < i ? ' done' : '') + '"></span>';
-      card = tip(COACH[i][1] + '<div class="tut-pips">' + pips + '</div>', [['Skip', end, 'q'], ['← Back', function () { step(-1); }, 'q'], [i === COACH.length - 1 ? 'Done ✓' : 'Next →', function () { sfx('blip'); if (i < COACH.length - 1) burst(innerWidth / 2, innerHeight - 140, 14); step(1); }, 'btn']]);
+      card = tip(COACH[i][1] + '<div class="tut-pips">' + pips + '</div>', [['Skip', function () { var s = jget(CSKIP); s[COACH[i][0]] = 1; ls(CSKIP, JSON.stringify(s)); step(1); }, 'q'], ['← Back', function () { step(-1); }, 'q'], [i === COACH.length - 1 ? 'Done ✓' : 'Next →', function () { sfx('blip'); if (i < COACH.length - 1) burst(innerWidth / 2, innerHeight - 140, 14); step(1); }, 'btn']]);
       var bt = card.querySelectorAll('button'); if (i === 0 && bt[1]) bt[1].disabled = true;
-      tgt.addEventListener('click', function once() { tgt.removeEventListener('click', once); setTimeout(function () { if (card && card.isConnected) { cheer(tgt); } }, 50); });
+      var me = i; try { sessionStorage.setItem(CAT, JSON.stringify({ i: i, at: Date.now() })); } catch (e) { } onTgt = function () { try { sessionStorage.setItem(CAT, JSON.stringify({ i: me + 1, at: Date.now() })); } catch (e) { } tgt.removeEventListener('click', onTgt); onTgt = null; setTimeout(function () { if (card && card.isConnected && i === me) { cheer(tgt); step(1); } }, 50); }; tgt.addEventListener('click', onTgt);
     }
     addEventListener('scroll', place, true); addEventListener('resize', place); step(1);
   }
@@ -350,6 +353,12 @@
    * 2) Streak frames: bronze / silver / gold at 3 / 7 / 30 chain days in a row, from the replayed world (display only).
    * 3) 7-day streak spin: +1 saved Pepe Wheel spin once per wallet, a rule in js/v2-rules.js (streakFeed) behind ACTIVATE_STREAK_SPIN_BLOCK. */
   var FRAMES = [[30, 'gold', '🥇 Gold streak frame'], [7, 'silver', '🥈 Silver streak frame'], [3, 'bronze', '🥉 Bronze streak frame']];
+  /* Direct way in to The Big Beautiful Tutorial at the top of Home and Play (a small chip once graduated). Display only. */
+  function entry() {
+    var m = document.querySelector('main'); if (!m || document.getElementById('tutEntry') || !/(^|\/)(index\.html|play\.html)?$/.test(location.pathname)) return;
+    var g = graduated(), a = el('a', g ? 'q tut-entry small' : 'btn tut-entry', g ? '🎓 Tutorial' : '🎓 Big Beautiful Tutorial'); a.id = 'tutEntry'; a.href = 'tutorial.html';
+    var w = el('div', 'tut-entry-row' + (g ? ' grad' : '')); w.appendChild(a); if (!g) w.appendChild(el('span', 'muted small', 'New here? Learn the game in a few minutes.')); m.insertBefore(w, m.firstChild);
+  }
   function graduated() { var d = jget(DONE); return CH.every(function (x) { return d[x.id]; }); }
   function frameOf(best) { for (var i = 0; i < FRAMES.length; i++) if (best >= FRAMES[i][0]) return FRAMES[i]; return null; }
   function gradCard(on) { var g = el('div', 'tut-grad' + (on ? ' on' : ''), on ? '<b>🎓 Big Beautiful Graduate</b><span>Every chapter done! Your gold frame and title now show in Keeper Quests on the Play page.</span>'
@@ -396,15 +405,18 @@
     var root = document.getElementById('academy'), qs = new URLSearchParams(location.search);
     if (root) return academy(root);
     if (qs.has('tutorial')) { location.replace('tutorial.html' + (qs.get('tutorial') ? '#' + qs.get('tutorial') : '')); return; }
+    entry();
     var onPlay = !!document.getElementById('hatchPanel') && /(^|\/)(play\.html)?$/.test(location.pathname);
     /* the older 4-step tour (v2-intuitive) stays replayable from its help button; Coach Peepo takes the first visit */
     if (onPlay && (qs.has('coach') || !ls(SEEN))) { ls('xcpets-ip-tour', '1'); setTimeout(function () { var o = document.querySelector('.ip-tour'); if (o) { o.remove(); document.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); } }, 2600); }
     if (onPlay && qs.get('preview') === 'rewards') { setTimeout(function () { questsPanel({ pets: 14, feeds: 90, best: 30, cur: 12, today: true, stage: 5, fights: 9, wins: 5, breeds: 2, me: 'bc1qpreview000000000000000000000000rwds', grad: true, tip: 0, spin: { len: 7, done: 1 } }); var q = document.getElementById('tutQuests'); if (q) { q.open = true; q.scrollIntoView({ block: 'start' }); } }, 2500); return; }
     if (onPlay) { setInterval(playTick, 4000); setTimeout(playTick, 1500); }
+    var resume = null; try { resume = JSON.parse(sessionStorage.getItem(CAT) || 'null'); } catch (e) { }
+    if (onPlay && resume && Date.now() - resume.at < 30 * 60000) { setTimeout(function () { coach(resume.i); }, 1200); return; }
     if (onPlay && qs.has('coach')) { ls(SEEN, '1'); setTimeout(coach, 1200); return; }
     if (!ls(SEEN)) setTimeout(function () { welcome(onPlay); }, 900);
   }
-  window.V2Tutorial = { N: N, CH: CH, QUESTS: QUESTS, stats: stats, coach: coach, open: function () { location.href = 'tutorial.html'; } };
+  window.V2Tutorial = { N: N, CH: CH, QUESTS: QUESTS, stats: stats, coach: coach, pickStep: pickStep, CSKIP: CSKIP, open: function () { location.href = 'tutorial.html'; } };
   if (typeof module !== 'undefined') module.exports = window.V2Tutorial;
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
