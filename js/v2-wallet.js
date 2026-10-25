@@ -170,10 +170,16 @@
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
-  function send(plan, viewed, onTry) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+  /* burn-stale-fix (2026-10-24): the old check stopped on ANY new burn by anyone (row count changed), so the first press after a page load
+   * from the saved copy almost always stopped. Now, when new activity came in, recheck(snap) (from the page) re-judges THIS burn against the
+   * fresh, verified replay: the same pets, owner, costs and balance -> go on; something that matters changed -> stop with what changed.
+   * No recheck given -> the old strict stop. send0's verified gate still runs after this. */
+  function staleErr(why) { var e = new Error(why ? 'New chain activity just came in: ' + why + '. Nothing was sent. Check it and press again.' : 'New chain activity just came in, so we double-checked. Nothing was sent. Press again.'); e.stale = true; return e; }
+  function send(plan, viewed, onTry, recheck) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
-    if (onTry) onTry(0, 0, 'fresh');
-    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+    if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
+    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) {
+      if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
       return send0(plan, viewed, onTry); }); }
   function send0(plan, viewed, onTry) {
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
@@ -234,7 +240,7 @@
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
   function sendDex(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
-    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
       return sendDex0(plan, viewed); }); }
   function sendDex0(plan, viewed) {
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
