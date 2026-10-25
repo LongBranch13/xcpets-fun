@@ -466,8 +466,8 @@
    *   Grant: at the first processed block >= 973,301 (the first burn row after the snapshot, or the tip once it passes 973,300).
    *   Tie-break (deterministic): higher total first; equal totals -> the wallet whose FIRST burn came earlier in chain order (burnedBy key
    *     insertion order = first valid burn row); still equal -> address string ascending.
-   *   Pet: G = that grant block, gh = its block hash (waits until the hash is known; ranking already frozen). Body: always the blue Lord Kek
-   *     (Kekzard, see BLUE LORD KEK below); plan from hybridPlan0(sha(gh + 'XCPETS:burnlords:' + rank), key),
+   *   Pet: G = that grant block, gh = its block hash (waits until the hash is known; ranking already frozen). Body: always the blue Wikek
+   *     (see BURN LORD LOOK below); plan from hybridPlan0(sha(gh + 'XCPETS:burnlords:' + rank), key),
    *     art seed = same hash; tier forced to Legendary (3) with the tier stat bonus difference; born at G with hatch care; ids in rank order.
    *   p.burnLord = { n, of: 3, rank, total, gate: snapshot block }: permanent edition flag, drawn as the exclusive fiery crown + gold frame (V2Render)
    *     and the 'Burn Lord' badge; breedOne never copies it, so offspring never get it. w.burnLordsGranted makes it fire once: exactly 3 pets ever. */
@@ -475,15 +475,15 @@
   function burnLordsRank(w) { var keys = Object.keys(w.burnedBy || {}), ix = {}; keys.forEach(function (a, i) { ix[a] = i; });
     return keys.filter(function (a) { return w.burnedBy[a] > 0; }).sort(function (a, b) { return (w.burnedBy[b] - w.burnedBy[a]) || (ix[a] - ix[b]) || (a < b ? -1 : a > b ? 1 : 0); })
       .slice(0, BURN_LORDS_N).map(function (a, i) { return { rank: i + 1, address: a, total: w.burnedBy[a] }; }); }
-  /* BLUE LORD KEK (owner Oct 24 2026 7:02 PM CT, 'all should be the blue lord kek version'): every Burn Lord is hyb:kek:wizard (Kekzard) with the
-   * Lord Kek body (shape forced to 'kek', no hash-picked flip) in Lord Kek's own documented blue colorway = KekSprite.PAL_COMMUNITY, the lapis/gold
-   * nemes from the LORDKEK card (B #2a4fbf, b #1a3380; green Pepe skin, gold kept). The Wizard side shows as the traded feature/parts. Names and stat
-   * rolls still come from the block hash. plan.kekBlue makes hybridRender use the lapis nemes; no bred hybrid ever has it. */
-  var BURN_LORD_KEY = 'hyb:kek:wizard';
+  /* BURN LORD LOOK (owner Oct 24 2026 7:08 PM CT: 'the FIRST preview', 7e0386b): every Burn Lord is Wikek (hyb:wizard:kek) in exactly the blue look of
+   * Burn Lord 1 of 3 in that preview: Kek-shaped base recoloured with the Bitcoin Wizard colours (blue #2f6fe0 robe/body, gold accent) wearing the traded
+   * Wizard hat (parts = [wizard hat], which replaces the nemes), so it reads as a blue Wizard body. No hash-picked flip; no lapis recolour. Eyes and the
+   * feature slot, names and stat rolls still come from the block hash. */
+  var BURN_LORD_KEY = 'hyb:wizard:kek';
   function burnLordArt(gh, rank, gate) { var seed = 'XCPETS:burnlords:' + rank, hex = sha(gh + seed), key = BURN_LORD_KEY;
     var art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: gate }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
     Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = Math.max(1, art.baseStats[k] + d); }); art.tierIndex = 3; art.tier = L1.id;
-    var plan = hybridPlan0(hex, key); plan.shape = 'kek'; plan.color = 'kek'; plan.featSp = 'wizard'; plan.kekBlue = true; if (breedV2On(gate)) plan.parts = hybridParts(hex, plan, gate);
+    var plan = hybridPlan0(hex, key); plan.shape = 'kek'; plan.color = 'wizard'; plan.parts = [{ sp: 'wizard', part: 'hat' }];
     art.species = plan.shape; art.hybrid = plan; return { art: noBornShades(art), key: key, seed: seed }; }
   function grantBurnLords(w, b, hashes) { var S = BURN_LORDS_SNAPSHOT_BLOCK; if (S == null || w.burnLordsGranted || b == null || b <= S) return;
     if (!w.burnLordsSnap) w.burnLordsSnap = burnLordsRank(w); var G = b, gh = hashes && hashes[G]; if (!gh) return; w.burnLordsGranted = G;
@@ -2634,7 +2634,7 @@
     var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color }), featArt = Object.assign({}, art, { species: F.id });
     var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
     var shade = function (c3, k) { var v = hx(c3); return '#' + v.map(function (n) { var m = Math.max(0, Math.min(255, Math.round(n * k))); return (m < 16 ? '0' : '') + m.toString(16); }).join(''); };
-    var kp = S.id === 'kek' && h.kekBlue ? { B: '#2a4fbf', b: '#1a3380' } /* Burn Lords: blue Lord Kek (KekSprite.PAL_COMMUNITY lapis nemes) */ : S.id === 'funtrump' ? ftPal(C, shade) : S.id === 'kek' ? kekPal(C, shade) : S.id === 'wizard' ? wizPal(C, shade) : null; /* Wizard body (wizard-hybrids): recolour by palette key */
+    var kp = S.id === 'funtrump' ? ftPal(C, shade) : S.id === 'kek' ? kekPal(C, shade) : S.id === 'wizard' ? wizPal(C, shade) : null; /* Wizard body (wizard-hybrids): recolour by palette key */
     function withColours(fn) { if (S.id === 'wizard') return fn(); var keep = S.canon, kc = S.colors, cc = C.canon; S.canon = cc;
       if (S.id === 'nakamoto' && kc) S.colors = Object.assign({}, kc, { '3': cc.body, '4': shade(cc.body, 0.78), '1': shade(cc.accent, 0.8), '2': shade(cc.accent, 1.15), '5': cc.accent, '8': shade(cc.accent, 0.65), '9': cc.belly });
       if (S.id === 'mumu' && kc) S.colors = Object.assign({}, kc, { '2': shade(cc.belly, 1.05), '3': cc.belly, '4': shade(cc.belly, 1.15) });
