@@ -2614,9 +2614,25 @@
       stamp(rows, tb.r - w + 1, tb.b - hgt + 1); }
     return { kF: { data: data, keys: kF.keys }, D: out }; }
   /** applyParts(img, kS, h, o, art, feat): REPLACES the child's regions with the plan's traded parts (h.parts); returns the pixels painted. */
+  /* HYBRID FIT (branch hybrid-fit, owner Oct 25 2026 12:10 AM CT: 'everything in all hybrids needs to fit, Trump's hair is backwards on Nakamoto'). Display only:
+   * no plan, part pick, name, stat or replay value changes. Per-species anchor data measured on the real sprites:
+   *   HEAD_FACING = which way the head looks (face side): -1 left, 0 front, 1 right. Nakamoto's hood sits behind him on the right (he looks left);
+   *     FUNTRUMP's face sits right of his hair (he looks right; the windblown back of his hair hangs on the left). A one-sided head part (FUNTRUMP hair)
+   *     is mirrored when donor and body look opposite ways, so the swept back of the hair always sits at the back of the child's head.
+   *   spriteEyes(sp) = the eye line of the sprite-drawn bodies (Lord Kek E/P keys, FUNTRUMP anchors(), Bitcoin Wizard k keys): their keyed render has no
+   *     eye keys, so glasses/eyes parts used to land on the forehead and head parts did not know where the eyes were. */
+  var HEAD_FACING = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1 };
+  function headFacing(sp) { return HEAD_FACING[sp] || 0; }
+  function spriteEyes(sp, o) { var st = o.stage == null ? 3 : o.stage, fr = o.frame || 0, L = [], g, y, x;
+    if (sp === 'funtrump' && ftSprite() && ftSprite().anchors && ftSprite().draw) { var a = ftSprite().anchors(st, fr); if (!a || a.ey < 0) return null; g = ftSprite().draw(st, fr, {});
+      for (y = a.ey; y <= (a.ey1 != null ? a.ey1 : a.ey); y++) for (x = a.ex0; x <= a.ex1; x++) { var k0 = g[y] && g[y][x]; if (k0 && k0 !== 'n' && k0 !== 't' && k0 !== 'z') L.push(y * 32 + x); } }
+    else if (sp === 'kek' && kekSprite() && kekSprite().draw) { g = kekSprite().draw(st, fr, {}); var mT = 99; for (y = 0; y < 32 && mT === 99; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === 'm') { mT = y; break; }
+      for (y = 0; y < Math.min(mT, GROUND_ROW); y++) for (x = 0; x < 32; x++) { var k1 = g[y] && g[y][x]; if (k1 === 'E' || k1 === 'P') L.push(y * 32 + x); } }
+    else if (sp === 'wizard' && wizSprite() && wizSprite().draw) { g = wizSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === 'k') L.push(y * 32 + x); }
+    return L.length ? { list: L, box: bbList(L) } : null; }
   var SIDE_FACING = { dodo: 1, doge: -1 }, TOPDBG = null; /* bodies drawn in profile: which way the mouth points */
   function applyParts(img, kS, h, o, art, feat) { var painted = []; TOPDBG = null;
-    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted; if (ck.parts) Object.assign(CA, ck.parts);
+    var ck = h.shape === 'kek' ? keyedRender('kek', art, o) : keyedRender(h.shape, art, o), CA = anatomy(ck.keys); if (CA.bb.b < 0) return painted; if (ck.parts) Object.assign(CA, ck.parts); if (!CA.eyeBox) { var SE = spriteEyes(h.shape, o); if (SE) { CA.eyeBox = SE.box; CA.eyes = SE.list; } } /* hybrid fit: sprite bodies know their eye line */
     var M = CA.s.slice(); (feat || []).forEach(function (q) { M[q] = true; }); var touched = {};
     var col = function (j) { return [img.data[j * 4], img.data[j * 4 + 1], img.data[j * 4 + 2]]; };
     var skinCount = {}; for (var j0 = 0; j0 < 1024; j0++) if (CA.s[j0] && ck.keys[j0] === 'body') { var c0 = col(j0).join(','); skinCount[c0] = (skinCount[c0] || 0) + 1; }
@@ -2665,11 +2681,15 @@
       if (kind === 'eyes' || kind === 'mouth' || kind === 'hair') {
         var C = CA[kind] || [], cb = C.length ? bbList(C) : null;
         if (kind === 'hair' && CA.headBox) erase(CA.top, false); /* Lord Kek: the nemes comes off, his bare head stays */
-        else if (kind === 'hair') { erase(C.filter(function (q) { return !CA.top.length || CA.top.indexOf(q) < 0; }), false); erase(CA.top, true); }
+        else if (kind === 'hair') { erase(C.filter(function (q) { return !CA.top.length || CA.top.indexOf(q) < 0; }), false); if (h.shape !== 'wizard') erase(CA.top, true) /* hybrid fit: Wizard is drawn hatless, his keyed hat is not on the art */; }
         else { erase(C.filter(function (q) { return CA.eyeDomes && CA.eyeDomes.indexOf(q) >= 0; }), kind !== 'eyes'); erase(C.filter(function (q) { return !CA.eyeDomes || CA.eyeDomes.indexOf(q) < 0; }), false); }
         var headW = function (y) { var r = runsOf(CA.s, Math.max(sb.t, Math.min(sb.b, y))); return r.length ? r[r.length - 1][1] - r[0][0] + 1 : sb.w; };
         var k = kind === 'hair' ? clampK(headW(sb.t + 2) / Math.max(1, headW.call(null, sb.t + 2) && DA.bb.w), 0.7, 1.25) : 1;
-        var hB = CA.headBox || sb; if (kind === 'hair') k = clampK((hB.w) / DA.bb.w, 0.7, 1.25);
+        var hB = CA.headBox || sb;
+        if (kind === 'hair' && !CA.headBox && CA.eyeBox) { /* hybrid fit: the head = the run through the eye line (not the whole sprite: Wizard's staff, Dodo's body) */
+          var ecx = (CA.eyeBox.l + CA.eyeBox.r) / 2, hr0 = runsOf(CA.s, CA.eyeBox.t).filter(function (r) { return r[0] <= ecx && r[1] >= ecx; })[0];
+          if (hr0) { var ht = 32; for (var hx0 = hr0[0]; hx0 <= hr0[1]; hx0++) for (var hy0 = 0; hy0 < CA.eyeBox.t; hy0++) if (CA.s[hy0 * 32 + hx0] && !(h.shape === 'wizard' && (CA.top || []).indexOf(hy0 * 32 + hx0) >= 0)) { ht = Math.min(ht, hy0); break; } hB = { l: hr0[0], r: hr0[1], t: Math.min(ht, CA.eyeBox.t), w: hr0[1] - hr0[0] + 1 }; } }
+        if (kind === 'hair') k = clampK((hB.w) / DA.bb.w, 0.7, 1.25);
         if (kind === 'mouth' && kAd < 1) k = kAd; if (kind === 'mouth' && facing !== 0 && stg >= 3 && !def.draw) k = 1.35; /* a beak in profile needs some size to read */
         if (kind === 'eyes') { var room = headW(cb ? Math.round((cb.t + cb.b) / 2) : sb.t + Math.round(sb.h * 0.35)) - 2; k = db.w > room ? clampK(room / db.w, 0.55, 1) : (cb ? clampK(Math.min(cb.w / db.w, room / db.w), 1, 1.6) : 1); if (kAd < 1) k = Math.min(k, kAd); if (def.draw) k = Math.min(k, 1); }
         pairs = scaled(D, k, [0.5, kind === 'hair' ? 0 : 0.5]); var pb = bbList(pairs.map(function (p) { return p.t; }));
@@ -2713,8 +2733,9 @@
       var onTopX = def.onTop && h.shape !== 'dodo'; /* Dodo bodies keep the pre-Oct-22 placement (owner revert 1:30 AM CT) */
       if (kind === 'top') { var eyeCap = CA.eyeBox ? CA.eyeBox.t - 2 : 99, Mb = bbOf(M.map(function (v, i3) { return v && (CA.s[i3] || painted.indexOf(i3) >= 0); })), wAt = function (S2, y) { var r = runsOf(S2, y); return r.length ? [r[0][0], r[r.length - 1][1]] : null; };
         var Dbody = DA.s.map(function (v, i2) { return v && D.indexOf(i2) < 0; }), dRow = wAt(Dbody, db.b + 1) || [DA.bb.l, DA.bb.r], cRow = CA.headBox ? [CA.headBox.l, CA.headBox.r] : (function () { var best = null; for (var y = Mb.t + 1; y <= Mb.t + Math.max(2, Math.round(Mb.h * 0.3)); y++) { var w2 = wAt(M, y); if (w2) (best = best || []).push(w2); } if (!best) return null; best.sort(function (a, b) { return (a[1] - a[0]) - (b[1] - b[0]); }); var md = best[best.length >> 1]; return CA.core ? [Math.max(md[0], CA.core[0] - 1), Math.min(md[1], CA.core[1] + 1)] : md; })() || [Mb.l, Mb.r];
-        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; })); var fitT = Math.min(1, Math.max(Mb.t + 2 - mg, eyeCap - 1) / bt.h, (32 - 2 * mg) / bt.w); /* fits between the frame top and just above the eyes */ if (fitT < 1) { kt *= Math.max(0.35, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */
+        var kt = def.draw ? 1 : clampK((cRow[1] - cRow[0] + 1) / (dRow[1] - dRow[0] + 1), def.keep ? 1 : 0.85, def.keep && q.sp === 'funtrump' ? 1 : 1.25), pt = scaled(D, kt, [0.5, 1]), bt = bbList(pt.map(function (p) { return p.t; })); var fitT = Math.min(1, Math.max(Mb.t + 2 - mg, eyeCap - 1) / bt.h, (32 - 2 * mg) / bt.w); /* fits between the frame top and just above the eyes */ if (fitT < 1) { kt *= Math.max(0.35, fitT); pt = scaled(D, kt, [0.5, 1]); bt = bbList(pt.map(function (p) { return p.t; })); } /* too tall or wide for this body: shrink it to fit */
         if (pt.length > 12) { var onP = {}, seenP = {}, keepP = []; pt.forEach(function (p) { onP[p.t] = p; }); pt.forEach(function (p) { if (seenP[p.t]) return; var comp = [], st = [p.t]; seenP[p.t] = 1; while (st.length) { var c = st.pop(); comp.push(onP[c]); for (var ddy = -1; ddy <= 1; ddy++) for (var ddx = -1; ddx <= 1; ddx++) { var nb = c + ddy * 32 + ddx; if (onP[nb] && !seenP[nb] && Math.abs((nb & 31) - (c & 31)) <= 1) { seenP[nb] = 1; st.push(nb); } } } if (comp.length > 2) keepP = keepP.concat(comp); }); pt = keepP; bt = bbList(pt.map(function (p) { return p.t; })); } /* scaling left a stray pixel or two: drop them */
+        if (headFacing(q.sp) * headFacing(h.shape) < 0) { var mx2 = bt.l + bt.r; pt = pt.map(function (p) { var x = p.t & 31; return { t: p.t - x + (mx2 - x), s: p.s }; }); } /* hybrid fit: a one-sided head part faces the child's way */
         var dc = (dRow[0] + dRow[1]) / 2, cc = (cRow[0] + cRow[1]) / 2; dx = Math.round(cc - (dc + ((bt.l + bt.r) / 2 - (db.l + db.r) / 2))); dx = Math.round(cc - dc); dy = Mb.t + 1 - bt.b;
         dx = Math.max(mg - bt.l, Math.min(31 - mg - bt.r, dx)); dy = Math.max(-bt.t, dy);
         /* never bury the part inside the child's head (e.g. over Pepe's eye domes): lift it until most of it shows */
@@ -2762,7 +2783,13 @@
           if (Cp.length) { var cb2 = bbList(Cp.map(function (p) { return p.t; })), yC = -1; for (var y5 = 0; y5 < GROUND_ROW; y5++) if (M[y5 * 32 + Math.round((cb2.l + cb2.r) / 2) + dx]) { yC = y5; break; }
             var d3 = yC < 0 ? dy : yC + 1 - cb2.b; paste(D, kF, shift(Cp, dx, Math.max(mg - cb2.t, d3))); }
           return; }
-        dy = Math.max(2 - bt.t, Math.min(dy, eyeCap - bt.b)); TOPDBG = { eyeL: CA.eyeBox ? CA.eyeBox.t : 99, single: true, pieces: [bbList(pt.map(function (p) { return p.t + dy * 32 + dx; }))] }; paste(D, kF, shift(pt, dx, dy)); return; }
+        var dEye = def.keep ? (DA.eyeBox || (spriteEyes(q.sp, stg <= 2 ? Object.assign({}, o, { stage: 3 }) : o) || {}).box) : null;
+        if (dEye && CA.eyeBox) { /* hybrid fit: a worn head piece (FUNTRUMP hair, Lord Kek nemes) keeps its own height over the eyes, so it sits ON the head (hood/hair covered)
+          * instead of floating above the head top: the donor's eye line (scaled with the part) goes on the child's eye line; never over an eye pixel */
+          var eyeS = db.b - (db.b - dEye.t) * kt; dy = Math.round(CA.eyeBox.t - eyeS); var EMk = eyeMaskOf(h.shape, art, o), onEye = {}; (CA.eyes || []).forEach(function (t) { onEye[t] = 1; }); Object.keys(EMk).forEach(function (t) { onEye[t] = 1; });
+          var offE = function (t) { return onEye[t] || ((t & 31) > 0 && onEye[t - 1]) || ((t & 31) < 31 && onEye[t + 1]); }; pt = pt.filter(function (p) { return !offE(p.t + dy * 32 + dx); }); /* the part never covers an eye: pixels over an eye (and the one next to it) are left out */
+          dy = Math.max(Math.max(2, mg) - bt.t, dy); }
+        else dy = Math.max(2 - bt.t, Math.min(dy, eyeCap - bt.b)); TOPDBG = { eyeL: CA.eyeBox ? CA.eyeBox.t : 99, single: true, pieces: [bbList(pt.map(function (p) { return p.t + dy * 32 + dx; }))] }; paste(D, kF, shift(pt, dx, dy)); return; }
       [-1, 1].forEach(function (sd) { var cx = (DA.bb.l + DA.bb.r) / 2, js = D.filter(function (j) { return ((j & 31) < cx ? -1 : 1) === sd; }); if (!js.length || (kind === 'tail' && sd > 0)) return;
         var jb = bbList(js);
         var k2 = def.draw ? 1 : clampK(sb.h / DA.bb.h, kind === 'tail' && stg > 2 ? 1 : 0.55, 1.35), pad = kind === 'tail' ? 2 : 1;
