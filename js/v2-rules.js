@@ -556,21 +556,24 @@
    * at once; later care crossing 21,000 goes Mythic via the normal stage logic. Care is never changed. Lower stage thresholds are untouched; a discounted
    * threshold may sit below Elder/Adult, and stageFor() then jumps straight to Mythic. The community pet (Bitcoin Wizard) is excluded.
    * RAISED-ONLY (owner decision 2026-10-25 10:18 AM CT): from ACTIVATE_MYTHIC_RAISED_ONLY_BLOCK an address qualifies only through a Mythic it RAISED:
-   * the pet was NOT already Mythic when that address got it (never moved = hatched/bred/granted to it, or it arrived below Mythic and reached stage 5
-   * while this address owned it). A pet that arrives already Mythic (gift, swap, shop sale, token send) never qualifies its new owner.
-   * w.mythicGot[petId] = { owner, mythic } is written on every ownership change (side table, not part of the pet; no rule reads it before the gate).
+   * (a) the address hatched, bred or was granted the pet and it never left them (no ownership change ever: no w.mythicGot entry), OR
+   * (b) the address itself added MORE THAN HALF of the pet's total care (2 * own > care; exactly half does not count).
+   * Owner decision 2026-10-25 (closes "buy at 68,000 care, feed once"). w.mythicGot[petId] = { owner, own } is written on every ownership change
+   * (gift, gives, swap, shop sale, token send) with own = 0; every owner feed (feed / feedm / feedl) adds its meal to own while that owner holds it.
+   * Side table, not part of the pet; no rule reads it before the gate. A pet that comes back to an earlier owner starts again at own = 0 (it left them).
    * Addresses that qualified before the gate keep their discount (owner to decide; none stripped). finish() at the tip never registers a new
    * qualification from the gate on, so the screen shows exactly what history has. */
   var ACTIVATE_MYTHIC_DISCOUNT_BLOCK = 971806; // tip 971800 + 6
   var MYTHIC_DISCOUNT_CARE = 21000;
-  function mythicDiscountOn(b) { return b != null && b >= b != null && b >= ACTIVATE_MYTHIC_DISCOUNT_BLOCK; }
+  function mythicDiscountOn(b) { return b != null && b >= ACTIVATE_MYTHIC_DISCOUNT_BLOCK; }
   var ACTIVATE_MYTHIC_RAISED_ONLY_BLOCK = 999999999; /* PLACEHOLDER (OFF): set to chain tip + 6 at deploy */
   function mythicRaisedOnlyOn(b) { return b != null && b >= ACTIVATE_MYTHIC_RAISED_ONLY_BLOCK; }
   /** noteGot(w, P, to): record an ownership change (call BEFORE P.owner is set). mythic = P was already Mythic for its old owner, or past the natural Mythic line. */
-  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; var nat = thresholdsFor(P.species, w._b); w.mythicGot = w.mythicGot || {};
-    w.mythicGot[P.id] = { owner: to, mythic: !!(P.ascended || P.stage === 5 || P.care >= nat[5]) }; }
-  /** raisedBy(w, p): true when p's current owner raised it (p did not arrive already Mythic). */
-  function raisedBy(w, p) { var g = w.mythicGot && w.mythicGot[p.id]; return !(g && g.owner === p.owner && g.mythic); }
+  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
+  /** noteOwnCare(w, P, m): the owner fed P m care (feeds are owner-only); counted only for a pet that has changed owner (never-moved pets qualify by (a)). */
+  function noteOwnCare(w, P, m) { var g = w.mythicGot && w.mythicGot[P.id]; if (g && g.owner === P.owner) g.own += m; }
+  /** raisedBy(w, p): true when p's current owner raised it: never moved (a), or the owner added more than half of its care (b). */
+  function raisedBy(w, p) { var g = w.mythicGot && w.mythicGot[p.id]; if (!g) return true; return g.owner === p.owner && 2 * g.own > p.care; }
   /** petThresholds(w, p, b): the stage thresholds that apply to pet p at block b (the discounted copy when its owner qualifies). */
   function petThresholds(w, p, b) { var th = p && p.community && b != null && b >= ACTIVATE_COMMUNITY_100X_BLOCK ? COMMUNITY_THRESHOLDS : thresholdsFor(p.species, b); if (!p || p.community || !mythicDiscountOn(b) || !w || !w.mythicOwners) return th;
     var q = w.mythicOwners[p.owner]; if (q == null || q > b || th[5] <= MYTHIC_DISCOUNT_CARE) return th; th = th.slice(); th[5] = MYTHIC_DISCOUNT_CARE; return th; }
@@ -2129,7 +2132,7 @@
       case 'feed': {
         var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species, b, petThresholds(w, q, b)) === 0 ? 'fully fed' : (function (mc) { return eraAt(w, b) || saleAt(w, b) ? amt + 5e-9 < mc : amt < mc; })(mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b)) ? 'below meal ' + mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b) : null;
         if (why) return L(r, 'rejected', why);
-        w._fireFull = mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b, true); var qs = q.stage; q.care += mealFor(q.care, q.species, b, petThresholds(w, q, b)); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
+        w._fireFull = mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b, true); var qs = q.stage, qm = mealFor(q.care, q.species, b, petThresholds(w, q, b)); q.care += qm; noteOwnCare(w, q, qm); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b);
         var fl = L(r, 'feed', 'fed #' + q.id + ' (care ' + q.care + ')', { petId: q.id }); token(q, q.stage > qs ? 'stageUp' : 'meal'); return fl;
       }
       case 'feedl': if (b < FEED_LIST_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)'); /* falls through: same valuation/validation as feedm */
@@ -2139,7 +2142,7 @@
         t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species, b, petThresholds(w, z, b)) : 0,
             no = !z ? 'no such pet' : z.released ? 'released' : z.owner !== src ? 'owner only' : z.dead ? 'dead (Pet Cemetery)' : z.feedDays[day(b)] ? 'already fed this day' : m === 0 ? 'fully fed' : left + 1e-9 < mealCost(w, z, m, b) ? 'burn too small for meal ' + mealCost(w, z, m, b) : null;
           if (no) { skip.push('#' + id + ' ' + no); return; }
-          var zs = z.stage; left -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); z.care += m; z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); up[z.id] = z.stage > zs; fed.push(z.id); });
+          var zs = z.stage; left -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); z.care += m; noteOwnCare(w, z, m); z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); up[z.id] = z.stage > zs; fed.push(z.id); });
         w._fireFull = w._fireFullM || null; w._fireFullM = 0; if (!fed.length) return L(r, 'rejected', 'multi-feed fed nobody: ' + skip.join(', '));
         var ml = L(r, 'feed', 'fed ' + fed.length + ' pets #' + fed.join(', #') + (skip.length ? ' · skipped ' + skip.join(', ') : ''), { petIds: fed, petId: fed[0] });
         fed.forEach(function (id) { token(w.byId[id], up[id] ? 'stageUp' : 'meal'); }); return ml;
