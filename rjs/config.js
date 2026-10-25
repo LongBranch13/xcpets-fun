@@ -22,7 +22,7 @@
      *  XCPFUN_API: xcp.fun's own features that are NOT Counterparty Core (the launch/sale record and the XCPETS candles). The only xcp.fun dependency.
      *  XCPFUN_NODE_FALLBACK: api.xcp.fun/node/v2 is an unpublished proxy of Core (same JSON). Used ONLY when both :4000 nodes fail with a
      *    timeout / network error (port 4000 is blocked on some networks), never because a node answered 429. Remove when Core is on 443. */
-    mainnet: { read: [COUNTERPARTY_CORE, CORE_BACKUP, XCPFUN_NODE_FALLBACK], compose: COUNTERPARTY_CORE, coreFallback: XCPFUN_NODE_FALLBACK,
+    mainnet: { read: [COUNTERPARTY_CORE, CORE_BACKUP], compose: COUNTERPARTY_CORE, coreFallback: null, /* core-no-proxy (2026-10-25, XCP Wallet dev): api.xcp.fun/node is just api.counterparty.io behind a rate-limit helper, never a Core fallback. Core is not on 443 (checked: 443 times out on both nodes), so the fallback is CORE_BACKUP, then a Retry message. */
       composeList: [COUNTERPARTY_CORE, CORE_BACKUP], // both verified 2026-10-11: compose destroy 200 + ACAO *; api.xcp.fun/node is read-only
       launch: XCPFUN_API, xcpfunApi: XCPFUN_API, siteBase: 'https://xcpets.fun', funSite: 'https://xcp.fun', art: 'https://xcp.fun/art/', mempool: 'https://mempool.space', mempoolApi: 'https://mempool.space/api',
       asset: 'XCPETS', burnAddr: '1CounterpartyXXXXXXXXXXXXXXXUWLpVr', hrp: 'bc', b58: '[13]', label: 'Bitcoin mainnet' },
