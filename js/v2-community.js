@@ -26,10 +26,10 @@
     var last = cold[cold.length - 1] || null, nextNo = cur ? cur.no : (last ? last.no + 1 : 1);
     var hs = []; try { hs = (V && V.halvingBlocks ? V.halvingBlocks(w) : []) || []; } catch (e) { hs = []; }
     var done = hs.filter(function (b) { return b <= tip + 1; }).length, next = hs.filter(function (b) { return b > tip + 1; })[0] || null;
-    /* community target halving (Oct 25 2026): the current pet's targets = base / 2^era from V2Rules.ACTIVATE_CP_TARGET_HALVING_BLOCK */
-    var base = V && V.COMMUNITY_THRESHOLDS ? V.COMMUNITY_THRESHOLDS : null, gate = V ? V.ACTIVATE_CP_TARGET_HALVING_BLOCK : null, th = null, nth = null;
-    try { th = V && V.cpThresholds ? V.cpThresholds(w, tip + 1) : base; nth = gate != null && V.cpThresholds ? V.cpThresholds(w, Math.max(tip + 1, gate)) : th; } catch (e) { th = base; nth = base; }
-    var tgt = base && th ? { gate: gate, on: gate != null && tip + 1 >= gate, era: done, base: base[5], hatch: th[1], mythic: th[5], nextHatch: nth ? nth[1] : null, nextMythic: nth ? nth[5] : null } : null;
+    /* gentle community targets (Oct 25 2026 v2): pets that start at or after V2Rules.ACTIVATE_CP_TARGET_HALVING_BLOCK (pet #5 on) get base times 0.75 per halving since the gate */
+    var base = V && V.COMMUNITY_THRESHOLDS ? V.COMMUNITY_THRESHOLDS : null, gate = V ? V.ACTIVATE_CP_TARGET_HALVING_BLOCK : null, tgt = null;
+    try { if (base && gate != null && V.cpScaled) { var eg = V.eraAt(w, gate), cap = V.MAX_ERA || 12, nextEra = Math.min(cap, done + (cur ? 1 : 0)), curK = cur && c.target ? 1 : 0;
+      tgt = { gate: gate, factor: V.CP_TARGET_FACTOR, cap: cap, base: base[5], mythic: c.target ? c.target[5] : base[5], adjusted: !!c.target, nextNo: cur ? cur.no + 1 : nextNo, nextMythic: V.cpScaled(nextEra - eg)[5], steps: Math.max(0, nextEra - eg) }; } } catch (e) { tgt = null; }
     return { tip: tip, current: pub(cur), nextNo: nextNo, cold: cold, egg: egg, prevEgg: prevEgg, last: last, halvings: hs, halvingsDone: done, nextHalving: next, target: tgt };
   }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
@@ -55,10 +55,10 @@
       return t + (s.current ? '; ' + s.current.name + ' took ' + (l.length > 1 ? 'that' : 'his') + ' place and is the community pet now.' : '. Community pet #' + s.nextNo + ' is coming soon.'); },
     'halving-count': function (s) { if (!s.halvings.length) return null;
       return 'Halvings so far: ' + s.halvingsDone + (s.nextHalving ? '. Next halving at block ' + fmt(s.nextHalving) + '.' : s.current ? '. The next one comes 6 blocks after ' + s.current.name + ' goes to Cold Storage.' : '.'); },
-    'cp-target': function (s) { var t = s.target; if (!t) return null; var h = function (n) { return n === 0 ? '' : n === 1 ? ' (' + fmt(t.base) + ' halved once)' : ' (' + fmt(t.base) + ' halved ' + n + ' times)'; };
-      var rule = 'Every halving also halves the community pet\'s targets, so each halving takes the same number of community feeds.';
-      if (!t.on) return rule.replace('Every halving', 'From block ' + fmt(t.gate) + ', every halving') + ' ' + (s.current ? s.current.name + '\'s Mythic target then becomes ' + fmt(t.nextMythic) + h(t.era) + '.' : '');
-      return rule + ' ' + (s.current ? s.current.name + ' turns Mythic at ' + fmt(t.mythic) + h(t.era) + '.' : 'Community pet #' + s.nextNo + ' hatches at ' + fmt(t.hatch) + ' and turns Mythic at ' + fmt(t.mythic) + h(t.era) + '.'); },
+    'cp-target': function (s) { var t = s.target; if (!t) return null; var n = t.steps, pet = 'Community pet #' + t.nextNo;
+      var who = s.current && !t.adjusted ? s.current.name + ' keeps his Mythic target of ' + fmt(t.base) + '. ' : '';
+      return who + 'From ' + pet + ' on (pets that start at or after block ' + fmt(t.gate) + '), each new community pet\'s targets are ' + fmt(t.base) + ' times 0.75 for each halving since that block, so each halving takes a bit more feeding than the last, but far less than before. ' +
+        pet + ': Mythic at ' + fmt(t.nextMythic) + (n === 1 ? ' (0.75 once)' : n > 1 ? ' (0.75, ' + n + ' times)' : '') + '. Costs stop halving after ' + t.cap + ' halvings.'; },
     'help-egg': function (s) { return s.egg ? '1 in 777 eggs is ' + (s.egg.the ? 'a ' : 'a ') + s.egg.name + '.' : null; },
     'help-cold': function (s) { if (!s.egg) return null; var old = s.cold.filter(function (x) { return x.no >= 2 && x.id !== s.egg.id; });
       return 'Nakamoto (#1) is no longer hatched. ' + old.map(function (x) { return x.short + ' (#' + x.no + ') eggs stopped. '; }).join('') + up(s.egg.the) + s.egg.name + ' (#' + s.egg.no + ') now comes from the 1 in 777 hatch roll.'; }
