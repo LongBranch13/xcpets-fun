@@ -1,12 +1,12 @@
 const { chromium } = require('playwright-core');
-const ADDR='bc1qtestaddressxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const ADDR='bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', TXF=require('./lib/txfake.js'); /* real-structured destroy: the wallet decodes the raw tx before signing */
 (async () => {
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args:['--no-sandbox'] });
   const pg = await b.newPage(); const res=[]; const ok=(n,c,x)=>{res.push((c?'PASS ':'FAIL ')+n+(x?' — '+x:''));};
   pg.on('pageerror', e=>res.push('PAGEERROR '+e.message));
   await pg.route(/^https?:\/\/(?!localhost)/, async r => { const u=r.request().url();
     if (/fees\/recommended/.test(u)) return r.fulfill({json:{hourFee:2}});
-    if (/compose\/destroy/.test(u)) { const q=new URL(u).searchParams; return r.fulfill({json:{result:{name:'destroy',rawtransaction:'02000000000000000000',params:{source:ADDR,asset:'XCPETS',quantity:q.get('quantity'),tag:q.get('tag')},btc_change:0}}}); }
+    if (/compose\/destroy/.test(u)) { const q=new URL(u).searchParams; const res0=TXF.result('destroy',ADDR,{asset:'XCPETS',quantity:q.get('quantity'),tag:q.get('tag')},{type:110,bodyHex:TXF.destroyBody('XCPETS',q.get('quantity'),q.get('tag'))}); return r.fulfill({json:{result:res0}}); }
     return r.fulfill({status:404,body:''}); });
   await pg.addInitScript(ADDR => { const W = window.__W = { calls: [], pend: [] };
     window.xcpwallet = { on(){}, request(a){ W.calls.push(a.method + (a.params && a.method==='xcp_signTransaction' ? '' : ''));

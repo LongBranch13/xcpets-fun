@@ -3,3 +3,6 @@
 /memory-facts.txt
 /PROJECT_BRIEF.md.bak*
 /memory-facts.txt.bak*
+
+# local burn snapshots (tests rebuild them from tools/fixtures with: node tools/lib/fixtures.js)
+/tools/snapshots/

@@ -1,0 +1,68 @@
+# FAIL lines that already failed on origin/main b0090a8 (2026-10-24) with the frozen fixture; format: <test file> | <line>
+breed-135-test.js | 6 FAILED
+breed-135-test.js | FAIL Old Money badge on byPet for owned bred pets
+breed-135-test.js | FAIL Old Money: all 50 bred pets qualify, hatched pets do not
+breed-135-test.js | FAIL gate null: 690 rules exactly (690 breeds, 135 rejected)
+breed-135-test.js | FAIL own-pet breed: 134 after the gate rejected [breed: bred #891 x #2489 -> Egg #23525]
+breed-135-test.js | FAIL own-pet breed: 135 after the gate breeds [rejected: breeding cooldown (1008 blocks left)]
+breed-135-test.js | FAIL own-pet breed: 135 before the gate rejected [rejected: below breed cost 345]
+breeding-v2-test.js | FAIL hybridParts: beard drawn on peepo/wojak/bobo/kevin/lenny; none on excluded
+firesale-test.js | FAIL full + sale hatch + sale dozen valid; underpaid sale hatch and post-sale sale-price hatch rejected (15)
+halving-test.js | FAIL community feed min 69 -> 34.5 at the halving (34.4 rejected, before the gate 34.5 rejected)
+halving-test.js | FAIL each new community pet + 6 halves again (no floor)
+halving-test.js | FAIL era 0: community feed plan exactly as before (whole XCPETS, min 69)
+halving-test.js | FAIL era 3 breed = 86.25
+halving-test.js | FAIL half-price hatch before the gate rejected, at the gate accepted (+ dozen): 14
+halving-test.js | FAIL halving 1 = defeat + 6 when defeat is after launch
+halving-test.js | FAIL halving 2: 2,300; before halving 1 cost === care
+halving-test.js | FAIL kekMythic = the burn that takes Lord Kek to 6,906,900 (block 972869)
+halving-test.js | FAIL live chain: no defeat yet, era 0
+halving-test.js | FAIL pre-gate half hatch rejected
+hatchbot-warnings-test.js | FAIL live chain now (care 6942174, not 90%): no warnings due
+pet-gift-test.js | FAIL accept only once
+pet-gift-test.js | FAIL accept swaps the owners
+pet-gift-test.js | FAIL below gate: logged as unknown pet: tag (community food)
+pet-gift-test.js | FAIL below gate: pets/gear/community identical to unknown tags
+pet-gift-test.js | FAIL offer expires after 1008 blocks
+pet-gift-test.js | FAIL offered pet cannot be gifted meanwhile
+pet-gift-test.js | FAIL offerer can cancel; cancelled offer cannot be accepted
+pet-gift-test.js | FAIL re-gift allowed after the settle wait
+pet-gift-test.js | FAIL re-gift within 6 blocks rejected
+pet-gift-test.js | FAIL stranger cannot accept
+pet-gift-test.js | FAIL swap offer opens
+pet-gift-test.js | FAIL worn gear stays worn
+pet-gift-test.js | pet-gift-test: 21 passed, 12 failed
+pet-sales-test.js | FAIL below gate: logged as unknown pet: tag (community food)
+pet-sales-test.js | FAIL below gate: no tokens, no listings, no move
+pet-sales-test.js | FAIL below gate: pets/gear/community identical to unknown tags (even with DEX data)
+pet-sales-test.js | FAIL buyer relists with one order (no new burn)
+pet-sales-test.js | FAIL relisted pet sells again; binding travels again
+pet-sales-test.js | pet-sales-test: 86 passed, 5 failed (snapshot tip 972901)
+pet-token-test.js | FAIL below gate: identical to unknown tags even with token credits
+pet-token-test.js | FAIL re-send: new holder can pass it on, no retie needed
+pet-token-test.js | pet-token-test: 13 passed, 2 failed (snapshot tip 972901)
+rug-me-test.js | 11 FAILED
+rug-me-test.js | FAIL 134 after the gate is rejected (below 135) [breed: Rug Me match (ad 1): #1955 rugged #891 -> Egg #23525 (Legendary Snibby) to the poster]
+rug-me-test.js | FAIL 135 accepts after the gate; overpaying 690 still accepts [rejected: Rug Me: ad 1 is taken | breed: Rug Me match (ad 2): #1 rugged #2489 -> Egg #23526 (Uncommon Lenny) to the poster]
+rug-me-test.js | FAIL 135 before the 135 gate is rejected (690 rules) [rejected: below Rug Me cost 345]
+rug-me-test.js | FAIL ACTIVATE_RUGME_BLOCK is null or above the snapshot tip (972696)
+rug-me-test.js | FAIL accept below 690 rejected
+rug-me-test.js | FAIL accept breeds at once: rejected: Rug Me: ad 1 is taken
+rug-me-test.js | FAIL ad below 69 rejected (posting = 69 per pet)
+rug-me-test.js | FAIL ad posted: rejected: Rug Me: #891 already has an open ad
+rug-me-test.js | FAIL both parents count the breed (cooldown)
+rug-me-test.js | FAIL multi ad: 69 per pet [rugAd: #4100, #4105 posted Rug Me ads 1-2 (Anyone), open until block 973914]
+rug-me-test.js | FAIL multi ad: one burn -> ads 1-2; an old-format :B3 field is ignored (no bio stored) [rejected: Rug Me: #4100 already has an open ad]
+saved-spins-test.js | FAIL balance after one 10-spin burn: 407 (start 415)
+saved-spins-test.js | FAIL live tip: no spins ledger yet
+spam-rules-test.js | FAIL burn send then another send same block: pet stays with the burn address
+spam-rules-test.js | FAIL rule 1: logged as sent to a burn address
+spam-rules-test.js | FAIL rule 1: the old owner can no longer use it
+spam-rules-test.js | FAIL rule 1: token to a burn address: the pet belongs to it, marked burnedTo
+spam-rules-test.js | FAIL rule 2: the real holder moving it next block moves the pet
+spam-rules-test.js | FAIL rule 3: logged as made and tied in one step
+spam-rules-test.js | FAIL rule 3: mint then send: the holder owns the pet
+spam-rules-test.js | FAIL rule 3: owner mint with the right description ties at once (no burn)
+spam-rules-test.js | FAIL rules gate after the tip: world identical to rules off
+spam-rules-test.js | FAIL rules off: last move in a block wins (old behaviour)
+spam-rules-test.js | spam-rules-test: 17 passed, 10 failed (snapshot tip 972901)

@@ -16,8 +16,8 @@ const hex = s => Buffer.from(s, 'utf8').toString('hex');
 const fakeHash = b => crypto.createHash('sha256').update('fake-block-' + b).digest('hex');
 let n = 0;
 function row(block, source, amount, tag) { n++; return { tx_index: 9e9 + n, tx_hash: crypto.createHash('sha256').update('tx' + n + ':' + tag + ':' + block).digest('hex'), block_index: block, source, asset: 'XCPETS', quantity: Math.round(amount * 1e8), tag: hex(tag), status: 'valid' }; }
-/* snap(): newest tools/snapshots/snap-*.json (untracked; make one with: node tools/replay-check.js --fetch) */
-function snap(name) { const d = path.join(ROOT, 'tools', 'snapshots'); if (!name || !fs.existsSync(path.join(d, name))) name = fs.readdirSync(d).filter(f => /^snap-\d+\.json$/.test(f)).sort().pop(); return JSON.parse(fs.readFileSync(path.join(d, name), 'utf8')); }
+/* snap(): newest tools/snapshots/snap-*.json (untracked; built from tools/fixtures on a fresh checkout, or make a newer one with: node tools/replay-check.js --fetch) */
+function snap(name) { const d = path.join(ROOT, 'tools', 'snapshots'); require('./fixtures').ensure(); /* fresh checkout: rebuild the snapshots from tools/fixtures */ if (!name || !fs.existsSync(path.join(d, name))) name = fs.readdirSync(d).filter(f => /^snap-\d+\.json$/.test(f)).sort().pop(); return JSON.parse(fs.readFileSync(path.join(d, name), 'utf8')); }
 function run(c, s, extraRows, tip, hashes) { const H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s.hashes, hashes || {}); (extraRows || []).forEach(r => { if (!H[r.block_index]) H[r.block_index] = fakeHash(r.block_index); });
   return c.V2Rules.replay(s.rows.concat(extraRows || []), H, [], { tip, live: c.LiveEngine.RealCore }); }
 module.exports = { load, row, snap, run, fakeHash, ROOT };

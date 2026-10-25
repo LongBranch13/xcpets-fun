@@ -122,7 +122,7 @@
     return (ex.length ? '&exclude_utxos=' + encodeURIComponent(ex.join(',')) : '') + (mode === 'unconf' ? '&allow_unconfirmed_inputs=true' : ''); }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function composeAt(me, plan, fee, onTry) {
-    var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag }, urls = composeNodes(), errs = [];
+    var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag, satPerVbyte: fee }, urls = composeNodes(), errs = [];
     function call(i, mode, tries) {
       tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode);
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
@@ -130,7 +130,7 @@
         if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; e2.backoff = true; throw e2; })
         .then(function (j) {
           if (j.error) { var e3 = new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); e3.retryable = /unsupported node operation|not ready|unavailable/i.test(e3.message); throw e3; }
-          var chk = BurnCore.checkComposeResult(j.result, exp); if (!chk.ok) { var e4 = new Error('compose mismatch: ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
+          var chk = BurnCore.checkComposeResult(j.result, exp); if (!chk.ok) { var e4 = new Error('Safety check stopped this burn before signing (nothing was signed or sent): ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
           j.result._url = url; return j.result;
         }).catch(function (e) { if (e.backoff && tries < 3) return sleep(BACKOFF * Math.pow(2, tries)).then(function () { return call(i, mode, tries + 1); }); throw e; });
     }
@@ -199,23 +199,25 @@
     return base + '/addresses/' + encodeURIComponent(me) + '/compose/' + (plan.kind === 'send' ? 'send' : plan.kind === 'mpma' ? 'mpma' : plan.kind === 'cancel' ? 'cancel' : plan.kind === 'issuance' ? 'issuance' : 'order') + '?' + q.join('&'); }
   /** validAddr(a): mainnet bc1 (bech32/bech32m, lowercase), 1... or 3... (base58) */
   function validAddr(a) { a = String(a || ''); return /^bc1[qp][02-9ac-hj-np-z]{38,58}$/.test(a) || /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(a); }
-  function dexCheck(r, me, plan) { var pr = (r && r.params) || {}, bad = []; if (!r || !/^[0-9a-f]+$/i.test(r.rawtransaction || '')) bad.push('no raw transaction hex'); if (!r || !r.params) bad.push('node did not echo params');
-    if (r && r.name && r.name !== plan.kind) bad.push('composed a ' + r.name); if (pr.source && pr.source !== me) bad.push('source differs');
+  function dexCheck(r, me, plan, fee) { var pr = (r && r.params) || {}, bad = []; if (!r || !/^[0-9a-f]+$/i.test(r.rawtransaction || '')) bad.push('no raw transaction hex'); if (!r || !r.params) bad.push('node did not echo params');
+    if (r && r.name !== (plan.kind === 'send' || plan.kind === 'mpma' || plan.kind === 'cancel' || plan.kind === 'issuance' ? plan.kind : 'order')) bad.push(r && r.name ? 'composed a ' + r.name : 'node did not say what it composed'); if (pr.source !== me) bad.push(pr.source == null ? 'source missing' : 'source differs');
     if (plan.kind === 'send' || plan.kind === 'mpma') { /* pet-token gift: only pet tokens, quantity 1 each, one recipient; never XCP/XCPETS */
       var as = plan.kind === 'send' ? [plan.asset] : plan.assets || [], seen = {};
       if (!as.length || as.some(function (a) { return !/^A[1-9][0-9]{16,19}$/.test(a) || seen[a] || !(seen[a] = 1); })) bad.push('not distinct pet tokens');
       if (!validAddr(plan.destination) || plan.destination === me) bad.push('bad recipient');
-      if (plan.kind === 'send') { if (pr.asset != null && pr.asset !== plan.asset) bad.push('asset differs'); if (pr.quantity != null && Number(pr.quantity) !== 1) bad.push('quantity differs'); if (pr.destination != null && pr.destination !== plan.destination) bad.push('destination differs'); }
-      else { var L = pr.asset_dest_quant_list; if (L && (L.length !== as.length || L.some(function (x, i) { return x[0] !== as[i] || x[1] !== plan.destination || Number(x[2]) !== 1; }))) bad.push('bundle differs');
+      if (plan.kind === 'send') { if (pr.asset !== plan.asset) bad.push('asset differs'); if (pr.quantity == null || Number(pr.quantity) !== 1) bad.push('quantity differs'); if (pr.destination !== plan.destination) bad.push('destination differs'); }
+      else { var L = pr.asset_dest_quant_list; if (!Array.isArray(L) || (L.length !== as.length || L.some(function (x, i) { return x[0] !== as[i] || x[1] !== plan.destination || Number(x[2]) !== 1; }))) bad.push('bundle differs');
         if (pr.assets != null) { var pa = String(pr.assets).split(','); if (pa.join(',') !== as.join(',')) bad.push('assets differ'); } } }
-    else if (plan.kind === 'cancel') { if (pr.offer_hash && pr.offer_hash !== plan.offer_hash) bad.push('offer differs'); }
+    else if (plan.kind === 'cancel') { if (pr.offer_hash !== plan.offer_hash) bad.push('offer differs'); }
     else if (plan.kind === 'issuance') { /* pet token: free numeric asset, 1 unit, indivisible, locked, exact description; never a transfer or a named asset */
       if (!/^A[1-9][0-9]{16,19}$/.test(plan.asset)) bad.push('not a numeric asset');
-      if (pr.asset != null && pr.asset !== plan.asset) bad.push('asset differs'); if (pr.quantity != null && Number(pr.quantity) !== 1) bad.push('quantity differs');
-      if (pr.divisible != null && !!pr.divisible !== false) bad.push('divisible differs'); if (pr.lock != null && !!pr.lock !== true) bad.push('lock differs');
-      if (pr.description != null && pr.description !== plan.description) bad.push('description differs'); if (pr.transfer_destination) bad.push('has a transfer');
+      var wantQ = plan.quantity != null ? plan.quantity : 1, wantL = plan.lock != null ? !!plan.lock : true; /* 1 + locked for a new token; the token-proof fix plan says 0 + unlocked */
+      if (pr.asset !== plan.asset) bad.push('asset differs'); if (pr.quantity == null || Number(pr.quantity) !== wantQ) bad.push('quantity differs');
+      if (pr.divisible == null || !!pr.divisible !== false) bad.push('divisible differs'); if (pr.lock == null || !!pr.lock !== wantL) bad.push('lock differs');
+      if (pr.description !== plan.description) bad.push('description differs'); if (pr.transfer_destination) bad.push('has a transfer');
       if (pr.fee != null && Number(pr.fee) !== 0) bad.push('asset fee is not 0 (' + pr.fee + ')'); }
-    else ['give_asset', 'give_quantity', 'get_asset', 'get_quantity', 'expiration'].forEach(function (k) { if (pr[k] != null && String(pr[k]) !== String(plan[k])) bad.push(k + ' differs'); });
+    else ['give_asset', 'give_quantity', 'get_asset', 'get_quantity', 'expiration'].forEach(function (k) { if (pr[k] == null || String(pr[k]) !== String(plan[k])) bad.push(k + (pr[k] == null ? ' missing' : ' differs')); });
+    bad = bad.concat(BurnCore.checkDexTx(r, me, plan, fee));
     return bad; }
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
@@ -233,7 +235,7 @@
       return feeRate().then(function (fee) { var urls = composeNodes(), errs = [];
         function go(i) { if (i >= urls.length) throw new Error('Could not build the order: every Counterparty node failed. ' + errs.join(' · '));
           return F(dexUrl(urls[i], w.address, plan, fee)).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
-            var bad = dexCheck(j.result, w.address, plan); if (bad.length) throw new Error('compose mismatch: ' + bad.join(', ')); return j.result; })
+            var bad = dexCheck(j.result, w.address, plan, fee); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', ')); return j.result; })
             .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
         return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.kind, amount: 0, label: plan.label || plan.kind, at: Date.now(), status: 'sent' }); return { txid: r.txid, composed: res }; }); });
     }).then(function (x) { release(); return x; }, function (e) { release(); throw e; }); }
