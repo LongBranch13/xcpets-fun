@@ -34,7 +34,7 @@ async function liveInput(ctx) {
   const E = ctx.LiveEngine, chain = new E.Chain();
   const [rows, tip] = await Promise.all([chain.destructions(E.CFG.asset), chain.tip()]);
   if (!tip) throw new Error('tip read failed');
-  const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index))];
+  const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip]))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */

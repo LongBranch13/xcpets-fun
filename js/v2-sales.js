@@ -123,23 +123,31 @@
   function slice(d, A) { return { issuances: d.issuances.filter(function (x) { return x.asset === A; }), orders: d.orders.filter(function (o) { return o.give_asset === A || o.get_asset === A; }),
     matches: d.matches.filter(function (m) { return m.forward_asset === A || m.backward_asset === A; }), credits: d.credits.filter(function (c) { return c.asset === A; }),
     destructions: d.destructions.filter(function (x) { return x.asset === A; }) }; }
-  function blockEvents(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+  /* sale-cache-feed (2026-10-24): CI also publishes api/recent-events.json, the per-block event lists (last ~60 blocks) it read from a full node,
+   * kept only where they can matter here (events naming a numeric pet token, plus every order / match / cancel / expiry event). A block's list
+   * is used ONLY when its stamped block hash equals the hash from this page's fresh chain read (cx.hashes); otherwise that block falls to a
+   * :4000 node, then (any doubt) to the full read. Same-origin, so it works where the :4000 nodes are blocked. */
+  var REC = null;
+  function recent() { if (!REC) REC = (typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? getJ0('api/recent-events.json?t=' + Math.floor(Date.now() / 60000)).then(function (j) { return j && j.v === 1 && j.blocks ? j : null; }, function () { return null; }) : Promise.resolve(null)); return REC; }
+  function blockEvents(n, hx) { return recent().then(function (R) { var e = R && R.blocks[n]; if (e && e.complete === true && Array.isArray(e.events) && hx && hx[n] && e.hash === hx[n]) { blockEvents.src[n] = 'file'; return e.events; } blockEvents.src[n] = 'node'; return blockEvents0(n); }); }
+  blockEvents.src = {};
+  function blockEvents0(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0;
       function go(cur) { return getJ0(base + '/blocks/' + n + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad events');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }); }
-      return go(null).catch(function () { return on(i + 1); }); }
+      if (DEAD[base]) return on(i + 1); return go(null).catch(function () { DEAD[base] = 1; return on(i + 1); }); }
     return on(0); }
-  function touched(base, tip, as) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > 60) return Promise.reject(new Error('base too old'));
+  function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > 60) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
-    return Promise.all(n.map(blockEvents)).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
+    blockEvents.src = {}; return Promise.all(n.map(function (b) { return blockEvents(b, hs); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
       as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
   function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
     var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, from: 'local' });
     all = all.filter(function (b) { return b.tip <= cx.tip && cx.hashes[b.tip] && cx.hashes[b.tip] === b.hash; }).sort(function (a, b) { return b.tip - a.tip; }); return all[0] || null; }
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null); var cx = arguments[1];
     return mintAssets(rows).then(function (ma) { var key = lkey(rows, ma), as = key ? key.split(',') : [], base = pickBase(cx); loadDex.lastAssets = as;
-      var pre = base ? touched(base, cx.tip, as).then(function (need) { var p = {}; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
-        loadDex.last = { base: base.from, baseTip: base.tip, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
+      var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
+        loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
       if (!base) loadDex.last = { base: 'none' };
       return pre.then(function (p) { return loadDex2(rows, ma, p); }).then(function (d) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d, tip: cx && cx.tip, hash: cx && cx.hashes && cx.hashes[cx.tip], assets: as })); } catch (e) { } return d; }, function (err) {
       /* sales-net-fallback: the full nodes failed. Use the last complete sale data this browser read for the SAME set of pet tokens (flagged stale), else fail as before. */
