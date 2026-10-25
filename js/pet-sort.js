@@ -71,8 +71,8 @@
       steps.push('🗺️ Quests: a Legendary Haul adds +1 to one of the quest\'s stats, up to ' + QCAP + ' times per pet (' + g + ' left). ' + qs.join(' · '));
       if (my) steps.push('🛡️ Gear in the quest\'s slot raises the Haul chance (+1%, ★ +2%, up to +4%), and favoured stats above the Mythic average add a little more.'); }
     else if (live) steps.push('🗺️ All ' + QCAP + ' quest stat boosts are used. This pet\'s Power is set.');
-    if (live && (p.stage || 0) >= 3) steps.push('💞 Breeding makes a stronger egg, not a stronger parent: each egg stat is the parents\' average ±2, a hybrid egg keeps each parent\'s best stat, and same-species eggs can roll a bred-true +' + (R.BRED_TRUE_STAT || 3) + ' on one stat.');
-    return { power: tot, parts: parts, steps: steps, gain: g, edge: 'Gear, looks and stage do not change Power. In fights, worn gear adds hit damage and each stage adds HP.' }; }
+    if (live && (p.stage || 0) >= 3) steps.push('💞 Breeding: pair high-Power pets to pass strong stats down, and each generation can build higher. Each egg stat is the parents\' average ±2, a hybrid egg keeps each parent\'s best stat, a same-species egg can come out bred true (+' + (R.BRED_TRUE_STAT || 3) + ' on one stat, or a rarer pattern or eyes), and a hidden trait passes from a carrier parent half the time.');
+    return { power: tot, parts: parts, steps: steps, gain: g, edge: 'Gear, looks and stage only help in fights: worn gear adds hit damage and each stage adds HP. They do not change Power.' }; }
   var API = window.PetSort = { OPTS: OPTS, KEYS: KEYS, STATS: STATS, sort: sort, options: options, hotelOptions: hotelOptions, line: line, power: power, gain: gain, free: free, ways: ways };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();
