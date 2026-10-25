@@ -1,6 +1,6 @@
 {
- "lastBlock": 972980,
- "count": 23,
+ "lastBlock": 972992,
+ "count": 24,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -278,6 +278,18 @@
    "speciesLabel": "Chud",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 371,
+   "asset": "A9842997602380399713",
+   "tiedBlock": 972988,
+   "tiedTx": "ee0965f6e9c91c7e5c11cca9d71b78dd7d15122d016d92e4b8bcbd63ed28cc37",
+   "kind": "deed",
+   "name": "Kakilu",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Elder"
   }
  ]
 }

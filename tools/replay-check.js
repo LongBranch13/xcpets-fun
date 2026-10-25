@@ -41,6 +41,7 @@ async function fetchSnap() { const p = require('puppeteer-core'); const b = awai
   fs.writeFileSync(out, JSON.stringify({ tip: c.tip, rows: c.rows, hashes: c.hashes })); console.log('saved', out, 'tip', c.tip, 'rows', c.rows.length); }
 (async () => {
   if (has('--fetch')) return fetchSnap();
+  if (!fs.existsSync(SNAP)) require('./lib/fixtures').ensure(); /* fresh checkout: rebuild snapshots from tools/fixtures */
   const snap = JSON.parse(fs.readFileSync(SNAP, 'utf8')), tip = +(opt('--tip') || snap.tip);
   const ref = opt('--compare');
   if (!ref) { show('working tree', replay(path.resolve(opt('--repo') || ROOT), snap, tip)); return; }
