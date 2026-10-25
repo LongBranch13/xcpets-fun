@@ -1,6 +1,6 @@
 {
- "lastBlock": 973093,
- "count": 70,
+ "lastBlock": 973096,
+ "count": 74,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -842,6 +842,54 @@
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 38158,
+   "asset": "A17573624158614644300",
+   "tiedBlock": 973094,
+   "tiedTx": "c8921a08fddc167d7e0238cc44e5593ebc51fee0a96af3746559fc12d65aabc7",
+   "kind": "deed",
+   "name": "Giluk",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38517,
+   "asset": "A1093138597910336799",
+   "tiedBlock": 973094,
+   "tiedTx": "0a2f1e6c7cb11e6c228920d9161b1a53a34357ead344dde021dcee59c10a1866",
+   "kind": "deed",
+   "name": "Miloo",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38556,
+   "asset": "A11696847970846583080",
+   "tiedBlock": 973094,
+   "tiedTx": "7d7ef17afd0a013875c9ad6adede9389e7d302cc7f6302fd3da885ab226391b4",
+   "kind": "deed",
+   "name": "Loozubun",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38661,
+   "asset": "A8602589354336639210",
+   "tiedBlock": 973094,
+   "tiedTx": "c3a9ee8e039482389a346c763df3c3e98b8c8c16cfbb9abfe848fcdfdfa69e51",
+   "kind": "deed",
+   "name": "Pijipazy",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
