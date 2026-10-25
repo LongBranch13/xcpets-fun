@@ -87,10 +87,18 @@
     im.rect(12, H - 46, W - 13, H - 14, BAND); ftext(im, W / 2, H - 43, I.asset, [7, 6], 152, INK, 'mt');
     text(im, W / 2, H - 33, 'WHOEVER HOLDS THIS TOKEN', 6, DRED, 'mt'); text(im, W / 2, H - 24, 'OWNS THIS PET', 6, DRED, 'mt');
     return im; }
-  function token(I, spr) { var W = 128, H = 128, im = new Img(W, H); border(im);
-    text(im, W / 2, 13, 'OFFICIAL XCPETS', 6, DRED, 'mt'); text(im, W / 2, 21, 'PROOF OF PET', 8, INK, 'mt'); if (spr) im.sprite(spr, 32, 32, 2, 32, 32);
-    ftext(im, W / 2, 100, ('#' + I.id + ' ' + I.name).toUpperCase(), [8, 6], 106, INK, 'mt'); ftext(im, W / 2, 110, (I.tier + ' ' + I.speciesLabel).toUpperCase(), [6], 106, MUT, 'mt');
-    seal(im, 104, 84, 10); if (I.asset) ftext(im, W / 2, 118, 'TOKEN ' + I.asset, [6], 120, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset, so a copycat whose description points here shows the real number */ return im; }
+  /* token badge layout (owner Oct 24 2026 11:15 PM CT "Check mark covers name"): the seal sits top-right beside the art, never on text; the name line
+   * shrinks 8 -> 7 -> 6 px and, if still too long (unique names up to ~16 letters), moves '#ID' down to the rarity line; the token line always fits
+   * inside the frame (full asset when it fits, else A1622...6542 style). Text area: x 12..115 (token line 16..111, clear of the corner squares), last ink row 116 (frame dots start at 118). */
+  function fits(s, sizes, maxW) { for (var i = 0; i < sizes.length; i++) if (textW(s, sizes[i]) <= maxW) return sizes[i]; return 0; }
+  function tokenLine(a, maxW) { var s = 'TOKEN ' + a; if (textW(s, 6) <= maxW) return s; if (textW(a, 6) <= maxW) return a; for (var k = 9; k >= 3; k--) { s = short(a, k, 5); if (textW(s, 6) <= maxW) return s; } return short(a, 3, 4); }
+  function token(I, spr) { var W = 128, H = 128, im = new Img(W, H), TW = 104, KW = 96; border(im); /* name/rarity lines may use 104 px; the token line sits between the bottom corner squares, so 96 */
+    text(im, W / 2, 13, 'OFFICIAL XCPETS', 6, DRED, 'mt'); text(im, W / 2, 21, 'PROOF OF PET', 8, INK, 'mt'); if (spr) im.sprite(spr, 32, 32, 2, 24, 29);
+    seal(im, 106, 48, 9);
+    var nm = ('#' + I.id + ' ' + I.name).toUpperCase(), sub = (I.tier + ' ' + I.speciesLabel).toUpperCase(), z = fits(nm, [8, 7, 6], TW);
+    if (!z) { nm = String(I.name).toUpperCase(); sub = '#' + I.id + ' ' + sub; z = fits(nm, [8, 7, 6], TW); }
+    ftext(im, W / 2, 95, nm, z ? [z] : [6], TW, INK, 'mt'); ftext(im, W / 2, 104, sub, [6], TW, MUT, 'mt');
+    if (I.asset) text(im, W / 2, 111, tokenLine(I.asset, KW), 6, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset (shortened only when it cannot fit; the full number is in t/<id>.json) */ return im; }
   /** render(info, spriteRGBA32x32|null, 'desktop'|'phone'|'token') -> {w, h, data: RGBA} at 1 pixel per art pixel */
   function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d, spr: im.spr || null }; }
   /* looks-draw: paste the realistic looks (js/v2-looks.js, the same renderer as the live pet) over the sprite box at output resolution.
