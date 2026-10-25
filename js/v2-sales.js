@@ -184,6 +184,24 @@
   /* a token made in window 1 waits here (per pet) until it confirms; shared with the pet card's Tokenize button (js/v2-pet-card.js) */
   var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
   function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
+  /** chainPend(id, me, w) -> Promise<pending record|null> (spam-city-tokenized-fix, Oct 25 2026). The pending store is only this browser's
+   *  localStorage, so a token made somewhere else (another page, browser or device), or a store cleared by an earlier step, used to send the
+   *  player back to window 1 to mint a SECOND token. This reads the chain instead: a numeric token the owner holds whose first issuance is a valid
+   *  pet token for #id (V.deedIssueWhy) and that no pet is bound to yet = step 1 done; a pet:deed:id:<b36> burn from the owner in the recent
+   *  XCPETS destructions = step 2 sent (tieTx). Read-only, display only, never signs. The result is saved in the same store. */
+  function hex2s(h) { try { return /^[0-9a-f]+$/i.test(h || '') && h.length % 2 === 0 ? decodeURIComponent(h.replace(/(..)/g, '%$1')) : String(h || ''); } catch (e) { return String(h || ''); } }
+  function chainTie(id, A, me) { var tag = V.deedPlan(id, A).tag;
+    return getJ(API + '/assets/XCPETS/destructions?limit=1000').then(function (j) { var r = (j.result || []).filter(function (x) { return x.source === me && (x.status == null || x.status === 'valid') && hex2s(x.tag) === tag; })[0];
+      return r ? { tieTx: r.tx_hash, tieBlock: Number(r.block_index) } : null; }, function () { return null; }); }
+  function chainPend(id, me, w) { var have = pend(id), bound = (w && w.deeds) || {};
+    if (PREVIEW || !me) return Promise.resolve(have);
+    var withTie = function (pd) { if (!pd || pd.tieTx) return pd; return chainTie(id, pd.asset, me).then(function (t) { if (t) { pd.tieTx = t.tieTx; pd.tieBlock = t.tieBlock; pend(id, pd); } return pd; }); };
+    if (have) return withTie(have);
+    return getJ(API + '/addresses/' + me + '/balances?limit=1000').then(function (j) {
+      var as = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }).map(function (b) { return b.asset; });
+      return Promise.all(as.map(function (A) { return getJ(API + '/assets/' + A + '/issuances?verbose=true').then(function (k) { var i = (k.result || []).filter(function (x) { return x.status == null || x.status === 'valid'; })[0];
+        return i && !V.deedIssueWhy(i, id, me, 1e12) ? { petId: id, asset: A, mintTx: i.tx_hash, at: Number(i.block_index), fromChain: true } : null; }, function () { return null; }); }))
+        .then(function (r) { var pd = r.filter(Boolean).sort(function (a, b) { return b.at - a.at; })[0] || null; if (!pd) return null; pend(id, pd); return withTie(pd); }); }, function () { return null; }); }
   /** mintCheck(id, A, tip) -> Promise<plan>: the ONE pre-mint gate for every mint path (js/token-proof.js). Rejects with a clear reason when
    *  the Proof of Pet link or picture can't be built, so no wallet window opens for a token that would carry no proof. */
   function mintCheck(id, A, tip) { var TP = window.TokenProof, plan = V.mintPlan(id, A);
@@ -192,7 +210,7 @@
     if (PREVIEW) return Promise.resolve(plan);
     return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
-  window.V2Sales = { loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck } };
+  window.V2Sales = { loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck, chainPend: chainPend, chainTie: chainTie } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
@@ -315,7 +333,7 @@
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
       (mine.map(function (p) { return '<button class="sh-pk" data-pick="' + p.id + '">' + card(p) + '</button>'; }).join('') || '<p>No free pets right now.</p>') + '</div><button class="sh-btn" data-close>Close</button>');
-    document.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { sellPrice(W.byId[b.getAttribute('data-pick')], 'XCPETS', '100'); }; });
+    document.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-pick')]; viaChain(p, function () { sellPrice(p, 'XCPETS', '100'); }); }; });
     PF.bind($('shModal'), fS, 'sell', sellPick); }
   /* shop-safety (owner 5:22 AM CT Oct 24): amounts are typed in whole coins for BOTH XCPETS and XCP (decimals up to 8 places), converted
    * exactly to base units (1 coin = 100,000,000). SALE_MIN is unchanged in base units. LOW_FLOOR = the "are you sure" floor: under 10 XCPETS or
@@ -351,7 +369,7 @@
         '<li><b>Window 2 of 3:</b> a 1-dander burn that ties the token to #' + p.id + '.</li><li><b>Window 3 of 3:</b> the DEX order (send it right after window 2).</li></ol>';
     var btn = step !== 'list' && one ? (pd && TIP - (Number(pd.at) || 0) < 6 ? '<p class="sh-hint">Token ' + esc(short(pd.asset)) + ' sent. Waiting for 1 block: then #' + p.id + ' lists in one window.</p>' : '<button class="sh-btn" id="shMint">Open window 1 of 2</button>')
       : step === 'list' ? '<button class="sh-btn" id="shGo"' + (f.low ? ' disabled' : '') + '>Open wallet window</button>'
-      : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
+      : pd && pd.tieTx ? tieWait(p, pd) : pd ? '<button class="sh-btn" id="shTie"' + (f.low ? ' disabled' : '') + '>Token sent: open window 2 of 3</button>' : '<button class="sh-btn" id="shMint">Open window 1 of 3</button>';
     modal('<h3>List #' + p.id + '</h3><div class="sh-sellrow">' + card(p, { asset: asset, price: f.ask }) + '<div class="sh-form">' + tok + f.html + omLine(p) +
       '<p class="sh-hint">The token travels with the pet: the buyer gets both and can relist in one window. A partial fill is no sale.</p>' + steps + btn + ' <button class="sh-btn sh-ghost" data-close>Back</button><p class="sh-hint" id="shMsg"></p></div></div>');
     var re = function () { sellPrice(p, $('shAsset').value, $('shSticker').value); };
@@ -362,7 +380,7 @@
     if ($('shTie')) $('shTie').onclick = function () { tieAndList(p, pd, asset, f.ask); }; }
   function tieAndList(p, pd, asset, ask) { var go = function () { var plan = V.deedPlan(p.id, pd.asset);
       modal('<h3>Window 2 of 3</h3><p>The token ' + esc(pd.asset) + ' is confirmed.</p><p>Now burn 1 dander with the tag<br><code>' + esc(plan.tag) + '</code></p><p class="sh-hint">Window 3 (the DEX order) opens right after.</p><button class="sh-btn" id="shGo2">Open window 2 of 3</button> <button class="sh-btn sh-ghost" data-close>Later</button>');
-      $('shGo2').onclick = function () { walletBurn(plan, function () {
+      $('shGo2').onclick = function () { walletBurn(plan, function (r) { pd.tieTx = (r && r.txid) || 'sent'; pend(p.id, pd);
         modal('<h3>Window 3 of 3</h3><p>The tie burn was sent. Last step: the DEX order that gives the token ' + esc(short(pd.asset)) + ' and gets exactly <b>' + esc(V.saleAmountText(asset, ask)) + '</b>.</p><p class="sh-hint">Send it now or within ' + V.SALE_ORDER_LAG + ' blocks. The pet is listed once both confirm.</p><button class="sh-btn" id="shGo3">Open window 3 of 3</button> <button class="sh-btn sh-ghost" data-close>Later</button>');
         $('shGo3').onclick = function () { confirmList(p, asset, ask, function () { walletDex(V.listPlan(p.id, pd.asset, asset, ask), function () { pend(p.id, null); close(); }); }); }; }); }; };
     if (PREVIEW) return go();
@@ -377,11 +395,18 @@
       PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
       (mine.map(function (p) { var pd = pend(p.id); return '<button class="sh-pk" data-press="' + p.id + '">' + card(p, null, pd ? '<span class="sh-hint">Step 1 sent</span>' : '') + '</button>'; }).join('') || '<p>' + (free.length ? 'No pets match these filters.' : 'Every pet you own already has its token (or is locked right now).') + '</p>') + '</div><button class="sh-btn" data-close>Close</button>');
     PF.bind($('shModal'), fS, 'press', pressPick);
-    document.querySelectorAll('[data-press]').forEach(function (b) { b.onclick = function () { press(W.byId[b.getAttribute('data-press')]); }; }); }
+    document.querySelectorAll('[data-press]').forEach(function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-press')]; viaChain(p, function () { press(p); }); }; }); }
+  /* spam-city-tokenized-fix: before a pet's Token Press / List screen is drawn, a tied pet drops its pending record, and a pet with no local
+   * record gets one from the chain (chainPend), so a token made on the pet page or in another browser is never asked for again (window 1). */
+  function viaChain(p, draw) { var d = V.deedOf(W, p); if (d && d.ok) { pend(p.id, null); return draw(); }
+    var pd = pend(p.id); if (pd && pd.tieTx) return draw(); if (PREVIEW) return draw();
+    modal('<h3>#' + p.id + '</h3><p class="sh-hint">Checking the chain for a token you already made…</p>');
+    chainPend(p.id, ME, W).then(draw, draw); }
+  function tieWait(p, pd) { return '<p class="sh-ok">💌 The tie burn for #' + p.id + ' (token ' + esc(short(pd.asset)) + ') was sent' + (pd.tieBlock ? ' and confirmed in block ' + blk(pd.tieBlock) : '') + '. Nothing else to send: #' + p.id + ' shows as tied once the game data reaches that block' + (TIP ? ' (it is at block ' + blk(TIP) + ' now)' : '') + '.</p>'; }
   function press(p) { var pd = pend(p.id), one = V.mintTiesOn ? V.mintTiesOn(TIP + 1) : false, waitB = pd ? 1 - (TIP - (Number(pd.at) || 0)) : 1;
     var steps = one ? '<ol class="sh-steps"><li><b>Step 1:</b> make the token (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). Free: only the Bitcoin network fee. It is tied as soon as it confirms.</li></ol>'
       : '<ol class="sh-steps"><li' + (pd ? ' class="sh-done"' : '') + '><b>Step 1:</b> make the token' + (pd ? ' ' + esc(short(pd.asset)) + ' ✔ sent' : '') + ' (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). Free: only the Bitcoin network fee.</li><li>Wait 1 block for it to confirm.</li><li><b>Step 2:</b> burn 1 dander with the tag <code>pet:deed:' + p.id + ':…</code> to tie the token to #' + p.id + '.</li></ol>';
-    var btn = !pd ? '<button class="sh-btn" id="tpMint">Step 1: make the token</button>'
+    var btn = pd && pd.tieTx ? tieWait(p, pd) : !pd ? '<button class="sh-btn" id="tpMint">Step 1: make the token</button>'
       : one ? '<p class="sh-hint">Token ' + esc(short(pd.asset)) + ' sent. It is tied once it confirms.</p>'
       : '<button class="sh-btn" id="tpTie">Step 2: tie it (1 dander)</button>' + (waitB > 0 && !PREVIEW ? '<p class="sh-hint">Step 1 was sent at block ' + blk(pd.at) + '. Step 2 works once the token has confirmed (1 block).</p>' : '');
     modal('<h3>🏭 Token Press · #' + p.id + '</h3><div class="sh-sellrow">' + card(p) + '<div class="sh-form"><canvas class="tp-anim" id="tpAnim" width="160" height="112" aria-label="The Token Press"></canvas>' + steps + btn +
@@ -389,7 +414,7 @@
     if (window.V2PressAnim) V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p, { onload: function () { V2PressAnim.frameAt($('tpAnim'), pd ? 1900 : 0, p); } });
     if ($('tpMint')) $('tpMint').onclick = function () { $('shMsg').textContent = 'Finding a free token name…';
       freeDeed().then(function (A) { return mintCheck(p.id, A, TIP).then(function (plan) { walletDex(plan, function (r) { pend(p.id, { petId: p.id, asset: A, mintTx: r.txid, at: TIP }); press(p); }); }); }).catch(function (e) { $('shMsg').textContent = 'Not sent: ' + (e.message || e); }); };
-    if ($('tpTie')) $('tpTie').onclick = function () { var go = function () { walletBurn(V.deedPlan(p.id, pd.asset), function () { pend(p.id, null); pressDone(p, pd.asset); }); };
+    if ($('tpTie')) $('tpTie').onclick = function () { var go = function () { walletBurn(V.deedPlan(p.id, pd.asset), function (r) { pd.tieTx = (r && r.txid) || 'sent'; pend(p.id, pd); pressDone(p, pd.asset); }); };
       if (PREVIEW) return go();
       tokenAt(pd.asset).then(function (t) { if (!t.issued) { $('shMsg').textContent = 'The token is not confirmed yet. Wait for the next block and try again.'; return; }
         if (t.holder && t.holder !== ME) { $('shMsg').textContent = 'The token is held by another address. Make a new one.'; pend(p.id, null); return; } go(); }); }; }
@@ -422,7 +447,7 @@
   window.V2Sales.scene = { ready: false, data: function () { var b = TIP + 1, open = on() && W ? V.openListings(W, b) : [];
       return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }),
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
-    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { if (W && W.byId[id]) press(W.byId[id]); }, pressable: function (p) { return pressable(p); }, sell: function (id) { if (W && W.byId[id]) sellPrice(W.byId[id], 'XCPETS', 100); },
+    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
   function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
