@@ -6,11 +6,12 @@
  *   node tools/build-game-pages.js --check  exit 1 if any page differs from the template (used by tools/game-pages-test.js) */
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..');
-const PANELS = { fight: 'arenaPanel', rare: 'invPanel', breed: 'breedPanel' };
+const PANELS = { fight: 'arenaPanel', rare: 'invPanel', breed: 'breedPanel', raid: 'raidPanel' };
 const PAGES = {
   play: { file: 'play.html', nav: null, title: 'XCPETS: Play', desc: null },
   fight: { file: 'fight.html', nav: 'navfight', title: 'XCPETS: X Circus Kekimus', desc: 'Battle your 8-bit XCPETS pets on the sand of X Circus Kekimus. Every fight is a Counterparty burn.' },
   rare: { file: 'rare-room.html', nav: 'navrare', title: 'XCPETS: The Rare Room', desc: 'The Rare Room: your gear, framed. Try on the drip, equip your pets and spin the Pepe Wheel to roll new gear.' },
+  raid: { file: 'raid.html', nav: 'navraid', title: 'XCPETS: Raid Boss', desc: 'Raid the boss with your XCPETS pets. Every attack is a Counterparty burn; if the boss falls, every attacker is rewarded.' },
   breed: { file: 'breed.html', nav: 'navbreed', title: 'XCPETS: Gooby\u2019s No-Tail Motel', desc: 'Check in two XCPETS pets at Gooby\u2019s No-Tail Motel and breed an egg. Every stay is a Counterparty burn.' }
 };
 /* park <section id=ID> on a page that is not its place: kept in the DOM (v2.js wires its buttons at load, so removing it
@@ -37,5 +38,5 @@ const check = process.argv.includes('--check'); let bad = 0;
 Object.keys(PAGES).forEach(m => { const f = path.join(ROOT, PAGES[m].file), out = build(m);
   if (check) { const cur = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : ''; if (cur !== out) { bad++; console.log('OUT OF DATE: ' + PAGES[m].file + ' (run node tools/build-game-pages.js)'); } }
   else { fs.writeFileSync(f, out); console.log('wrote ' + PAGES[m].file); } });
-if (check) { console.log(bad ? 'game pages: ' + bad + ' out of date' : 'game pages: all 4 match templates/game.html'); process.exit(bad ? 1 : 0); }
+if (check) { console.log(bad ? 'game pages: ' + bad + ' out of date' : 'game pages: all ' + Object.keys(PAGES).length + ' match templates/game.html'); process.exit(bad ? 1 : 0); }
 module.exports = { build, PAGES };

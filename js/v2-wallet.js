@@ -170,10 +170,16 @@
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
-  function send(plan, viewed, onTry) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+  /* burn-stale-fix (2026-10-24): the old check stopped on ANY new burn by anyone (row count changed), so the first press after a page load
+   * from the saved copy almost always stopped. Now, when new activity came in, recheck(snap) (from the page) re-judges THIS burn against the
+   * fresh, verified replay: the same pets, owner, costs and balance -> go on; something that matters changed -> stop with what changed.
+   * No recheck given -> the old strict stop. send0's verified gate still runs after this. */
+  function staleErr(why) { var e = new Error(why ? 'New chain activity just came in: ' + why + '. Nothing was sent. Check it and press again.' : 'New chain activity just came in, so we double-checked. Nothing was sent. Press again.'); e.stale = true; return e; }
+  function send(plan, viewed, onTry, recheck) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
-    if (onTry) onTry(0, 0, 'fresh');
-    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+    if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
+    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The chain servers did not answer in time, so pet numbers could not be checked. Nothing was signed or sent. Reload and press Continue.').then(function (r) {
+      if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
       return send0(plan, viewed, onTry); }); }
   function send0(plan, viewed, onTry) {
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
@@ -234,7 +240,7 @@
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
   function sendDex(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
-    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw new Error('New chain activity just came in, so this pet may have changed. Nothing was sent. Check it and press again.');
+    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
       return sendDex0(plan, viewed); }); }
   function sendDex0(plan, viewed) {
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
@@ -243,9 +249,16 @@
     var mine = signing = Date.now(); function release() { if (signing === mine) signing = 0; }
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) throw new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + ').');
-      return feeRate().then(function (fee) { var urls = composeNodes(), errs = [];
-        function go(i) { if (i >= urls.length) throw new Error('Could not build the order: every Counterparty node failed. ' + errs.join(' · '));
-          return F(dexUrl(urls[i], w.address, plan, fee)).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
+      return feeRate().then(function (fee) { var urls = composeNodes(), errs = [], extra = '', tried = false;
+        /* buy-fix 2026-10-24: a node says "No UTXOs found" when the wallet's only bitcoin is unconfirmed change (e.g. from a burn/order still in the
+         * mempool). Like the burn flow, read the address's UTXOs from mempool.space and retry once with inputs_set + allow_unconfirmed_inputs. */
+        function noUtxo() { return errs.length && errs.every(function (e) { return /no utxos/i.test(e); }); }
+        function retryUtxos() { tried = true; return F('https://mempool.space/api/address/' + encodeURIComponent(w.address) + '/utxo').then(function (r) { return r.json(); }).then(function (u) {
+            u = (Array.isArray(u) ? u : []).filter(function (x) { return x && /^[0-9a-f]{64}$/.test(x.txid) && x.value > 1000; });
+            if (!u.length) throw new Error('This wallet has no bitcoin to pay the network fee. Add a little BTC to ' + w.address + ' and try again. Nothing was sent.');
+            extra = '&inputs_set=' + encodeURIComponent(u.map(function (x) { return x.txid + ':' + x.vout; }).join(',')) + '&allow_unconfirmed_inputs=true'; errs = []; return go(0); }); }
+        function go(i) { if (i >= urls.length) { if (!tried && noUtxo()) return retryUtxos(); var E = new Error(/safety check/i.test(errs.join(' ')) ? 'The safety check stopped this order before signing. Nothing was sent. Reload the page and try again.' : /insufficient|balance/i.test(errs.join(' ')) ? 'This wallet does not hold enough to pay for this. Nothing was sent.' : 'The Counterparty servers could not build this order right now. Nothing was sent. Try again in a minute.'); E.raw = errs.join(' · '); try { console.warn('[xcpets] order compose failed:', E.raw); } catch (x) {} throw E; }
+          return F(dexUrl(urls[i], w.address, plan, fee) + extra).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
             var bad = dexCheck(j.result, w.address, plan, fee); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', ')); return j.result; })
             .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
         return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.kind, amount: 0, label: plan.label || plan.kind, at: Date.now(), status: 'sent' }); return { txid: r.txid, composed: res }; }); });

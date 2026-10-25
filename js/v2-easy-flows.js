@@ -18,12 +18,30 @@
   function short(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '\u2026' + a.slice(-4) : a; }
   function tip(w) { return (U().S && U().S().tip) || w.tip || 0; }
   function match(p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0) || spL(p.species).toLowerCase().indexOf(q) === 0; }
-  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'pow' } };
+  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'pow', fsp: '', fst: '', frar: '', fall: false, fslot: false, ways: true } };
   /* hotel-mate-sort 2026-10-24: Sort dropdown on both breed lists, same options + logic as the egg review (js/pet-sort.js PetSort). Default stays
    * Power: high to low (= the old Pet Score order). Base order = hatch order (hatch block, then #id), so 'Hatch order' and every tie keep it. */
   function hatchOrd(arr, pet) { return arr.slice().sort(function (x, y) { var a = pet(x), b = pet(y); return (a.hatchBlock || 0) - (b.hatchBlock || 0) || a.id - b.id; }); }
-  function psort(w, arr, k, pet) { var h = hatchOrd(arr, pet); return window.PetSort ? PetSort.sort(w, h, k, pet) : h; }
-  function sortSel(id, k, title) { return window.PetSort ? '<label class="ez-so">Sort <select id="' + id + '" aria-label="Sort ' + esc(title) + '">' + PetSort.options(k) + '</select></label>' : ''; }
+  function psort(w, arr, k, pet, b) { var h = hatchOrd(arr, pet); return window.PetSort ? PetSort.sort(w, h, k, pet, b) : h; }
+  function sortSel(id, k, title) { return window.PetSort ? '<label class="ez-so">Sort <select id="' + id + '" aria-label="Sort ' + esc(title) + '">' + (PetSort.hotelOptions ? PetSort.hotelOptions(k) : PetSort.options(k)) + '</select></label>' : ''; }
+  /* hotel quick filters (hotel-power-sort): species, stage, rarity, all hatched pets (not only the ones that can breed now), free gear slot */
+  function fbar(w, s, pets) { var sps = {}, o = function (v, l, cur) { return '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(l) + '</option>'; };
+    pets.forEach(function (p) { sps[p.species] = spL(p.species); }); var spk = Object.keys(sps).sort(function (a, b) { return sps[a] < sps[b] ? -1 : sps[a] > sps[b] ? 1 : 0; });
+    var SN = (V().STAGE_NAMES || ['Egg', 'Baby', 'Kid', 'Adult', 'Elder', 'Mythic']), n = (s.fsp ? 1 : 0) + (s.fst !== '' ? 1 : 0) + (s.frar !== '' ? 1 : 0) + (s.fall ? 1 : 0) + (s.fslot ? 1 : 0);
+    return '<div class="ez-fb" role="group" aria-label="Filters"><span class="ez-fbl">🔎 Filter</span>' +
+      '<label class="ez-so"><select id="ezFsp" aria-label="Species">' + o('', 'All species', s.fsp) + spk.map(function (k) { return o(k, sps[k], s.fsp); }).join('') + '</select></label>' +
+      '<label class="ez-so"><select id="ezFst" aria-label="Stage">' + o('', 'All stages', s.fst) + SN.map(function (l, i) { return i ? o(i, l, s.fst) : ''; }).join('') + '</select></label>' +
+      '<label class="ez-so"><select id="ezFrar" aria-label="Rarity">' + o('', 'All rarities', s.frar) + TL.map(function (l, i) { return o(i, l, s.frar); }).join('') + '</select></label>' +
+      '<button type="button" class="ez-tab ez-chip' + (s.fall ? ' on' : '') + '" id="ezFall" aria-pressed="' + !!s.fall + '" title="Show every hatched, living pet, not only the ones that can breed now">🐣 All hatched</button>' +
+      '<button type="button" class="ez-tab ez-chip' + (s.fslot ? ' on' : '') + '" id="ezFslot" aria-pressed="' + !!s.fslot + '">🛡️ Free gear slot</button>' +
+      (n ? '<button type="button" class="ez-tab ez-chip" id="ezFclr">✖ Clear ' + n + '</button>' : '') + '</div>'; }
+  function fok(s, p) { return (!s.fsp || p.species === s.fsp) && (s.fst === '' || String(p.stage) === String(s.fst)) && (s.frar === '' || String(p.tier) === String(s.frar)) && (!s.fslot || (window.PetSort && PetSort.free ? PetSort.free(p) : 0) > 0); }
+  /* Ways to more power: PetSort.ways (real rules only) for the picked pets */
+  function waysBox(w, p, T) { if (!p || !window.PetSort || !PetSort.ways) return ''; var x = PetSort.ways(w, p, T + 1), st = p.stats || {};
+    return '<div class="hs-ways"><div class="hs-wh"><b>⚡ ' + x.power + ' Power</b> · ' + esc(p.name || '') + ' #' + p.id + (x.gain ? ' · <span class="hs-up">up to +' + x.gain + ' to gain</span>' : '') + '</div>' +
+      '<div class="hs-st">' + PetSort.STATS.map(function (k) { return '<span>' + k.slice(0, 1).toUpperCase() + k.slice(1) + ' <b>' + (st[k] || 0) + '</b></span>'; }).join('') + '</div>' +
+      '<ul class="hs-pt">' + x.parts.map(function (r) { return '<li><span>' + esc(r[0]) + '</span><b>' + (r[1] >= 0 ? '+' : '') + r[1] + '</b></li>'; }).join('') + '</ul>' +
+      (x.steps.length ? '<b class="hs-nx">Next steps</b><ul class="hs-sx">' + x.steps.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '') + '<p class="hs-ed">ℹ️ ' + esc(x.edge) + '</p></div>'; }
 
   /* one portrait card: sprite + name + tier + a few key facts; .on = picked (gold outline + ▼), .no = can't (reason shown) */
   function card(w, p, o) { o = o || {};
@@ -114,30 +132,32 @@
       $('ezBGo').onclick = function () { $('bGo').click(); }; return; }
     var A = a && w.byId[a], Bp = b && w.byId[b], gen = function (p) { return Vr.genOf ? Vr.genOf(w, p) : 0; };
     var badges = function (p) { var x = Vr.breederBadges ? Vr.breederBadges(w, p) : []; return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
-    var info = function (p) { var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p);
-      return ['⭐ ' + score(w, p) + ' · ' + esc(spL(p.species)), (bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' left' : '💞 bred ' + (p.breeds || 0) + '×') + ' · Gen ' + g + (bd ? ' ' + bd : '')]; };
+    var sortK = s.sa, info = function (p, k) { if (k !== undefined) sortK = k; var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p);
+      var PS = window.PetSort, pw = PS && PS.power ? PS.power(p) : null, gn = PS && PS.gain ? PS.gain(p) : 0, sl = PS && PS.line ? PS.line(w, p, sortK, T + 1) : null;
+      return [(pw != null ? '⚡ ' + pw + (gn ? ' <small class="hs-g">+' + gn + '</small>' : '') + ' · ' : '') + '⭐ ' + score(w, p) + ' · ' + esc(spL(p.species))].concat(sl ? [esc(sl)] : []).concat([ (bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' left' : '💞 bred ' + (p.breeds || 0) + '×') + ' · Gen ' + g + (bd ? ' ' + bd : '')]); };
     var kin = function (p) { return v2 && A && Vr.kinWhy ? Vr.kinWhy(A, p) : null; };
-    var okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), reqs = incoming(w, ME, T);
+    var okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), shA = L.mine.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && fok(s, x.p); }), reqs = incoming(w, ME, T);
     if (s.req && !reqs.some(function (r) { return r.b + ':' + r.a === s.req; })) s.req = null;
     if (!s.tab) s.tab = reqs.length ? 'asks' : 'mine';
-    var h = '<div class="ez-box">';
+    var h = '<div class="ez-box">' + fbar(w, s, L.mine.map(function (x) { return x.p; }).concat(L.partners.map(function (x) { return x.p; })));
     /* 1 · parent 1 */
-    var px = function (x) { return x.p; }, mq = psort(w, okA.filter(function (x) { return match(x.p, s.qa); }), s.sa, px);
+    var px = function (x) { return x.p; }, mq = psort(w, shA.filter(function (x) { return match(x.p, s.qa); }), s.sa, px, T + 1);
     if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; }) && A.owner === ME) mq = [{ p: A }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
     h += '<div class="ez-cols"><div class="ez-col">' + head('1', 'Parent 1 · your pet', 'ezBqA', s.qa, '<span class="ez-cnt">' + fmt(okA.length) + ' of ' + fmt(L.mine.length) + ' can breed now</span>', sortSel('ezBsA', s.sa, 'Parent 1')) +
-      strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id && !s.req, lines: info(x.p) }); }), mq.length - MAX, L.mine.length ? (okA.length ? 'No pet matches.' : 'None of your pets can breed right now (Adult+, fed, off cooldown).') : 'No living pets at this address yet.') + '</div><div class="ez-col">';
+      strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id && !s.req, why: x.why && x.p.id !== (A && A.id) ? x.why : null, lines: info(x.p, s.sa) }); }), mq.length - MAX, L.mine.length ? (shA.length || okA.length ? 'No pet matches.' : 'None of your pets can breed right now (Adult+, fed, off cooldown).') : 'No living pets at this address yet.') + '</div><div class="ez-col">';
     /* 2 · mate */
     var tl = [['mine', '🏠 My other pets'], ['asks', '💌 Asking you (' + reqs.length + ')', reqs.length], ['other', '🌍 Other wallets']];
     h += head('2', s.tab === 'asks' ? 'Breed requests for you' : 'Mate', 'ezBqB', s.qb, '', sortSel('ezBsB', s.sb, 'Mate')) + tabs(tl, s.tab);
-    if (s.tab === 'asks') { var rr = reqs.filter(function (r) { return match(w.byId[r.a], s.qb) || match(w.byId[r.b], s.qb); }); if (s.sb) rr = PetSort.sort(w, rr, s.sb, function (r) { return w.byId[r.a]; }); /* '' keeps newest request first */
+    if (s.tab === 'asks') { var rr = reqs.filter(function (r) { return match(w.byId[r.a], s.qb) || match(w.byId[r.b], s.qb); }); if (s.sb) rr = PetSort.sort(w, rr, s.sb, function (r) { return w.byId[r.a]; }, T + 1); /* '' keeps newest request first */
       h += strip(rr.slice(0, MAX).map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null;
-        return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
-    else { var pool = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3 && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME) && match(x.p, s.qb); })
-        ; pool = psort(w, pool, s.sb, px); pool = pool.filter(function (x) { return !kin(x.p); }).concat(pool.filter(function (x) { return kin(x.p); })); /* greyed (kin) pets stay last, as before */
+        return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y, s.sb).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
+    else { var pool = L.partners.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && fok(s, x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME) && match(x.p, s.qb); })
+        ; pool = psort(w, pool, s.sb, px, T + 1); pool = pool.filter(function (x) { return !kin(x.p); }).concat(pool.filter(function (x) { return kin(x.p); })); /* greyed (kin) pets stay last, as before */
       if (Bp && !s.req && !pool.slice(0, MAX).some(function (x) { return x.p.id === Bp.id; }) && (s.tab === 'mine') === (Bp.owner === ME)) pool = [{ p: Bp }].concat(pool.filter(function (x) { return x.p.id !== Bp.id; }));
-      h += strip(pool.slice(0, MAX).map(function (x) { var k = kin(x.p); return card(w, x.p, { on: Bp && Bp.id === x.p.id && !s.req, why: k ? k + ' (no inbreeding)' : null, lines: info(x.p).concat(x.p.owner !== ME ? ['👤 ' + esc(short(x.p.owner))] : []) }); }), pool.length - MAX,
+      h += strip(pool.slice(0, MAX).map(function (x) { var k = kin(x.p); return card(w, x.p, { on: Bp && Bp.id === x.p.id && !s.req, why: k ? k + ' (no inbreeding)' : x.why || null, lines: info(x.p, s.sb).concat(x.p.owner !== ME ? ['👤 ' + esc(short(x.p.owner))] : []) }); }), pool.length - MAX,
         s.tab === 'mine' ? 'No other pet of yours can breed right now.' : 'No pet matches. Search by #, name, species or the start of a wallet address.'); }
     h += '</div></div>';
+    if (A || Bp) h += '<details class="hs-wb"' + (s.ways ? ' open' : '') + ' id="ezWays"><summary>⚡ Ways to more power</summary><div class="hs-wg">' + waysBox(w, A, T) + (Bp && (!A || Bp.id !== A.id) ? waysBox(w, Bp, T) : '') + '</div></details>';
     /* 3 · one button (the motel bell / the desk Accept, unchanged) */
     var label, ok = false, hint = '', P1 = A, P2 = Bp;
     if (s.tab === 'asks' && s.req) { var q = s.req.split(':'), acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'), no = document.querySelector('#motelReqs [data-mrk="' + s.req + '"] .mr-no');
@@ -159,6 +179,10 @@
       if (first) pick('A', $('bA').value === k ? '' : k); else pick('B', $('bB').value === k ? '' : k); }; });
     el.querySelectorAll('[data-eztab]').forEach(function (bt) { bt.onclick = function () { s.tab = bt.dataset.eztab; s.req = null; breed(U().world()); }; });
     ['A', 'B'].forEach(function (k) { var so = $('ezBs' + k); if (so) so.onchange = function () { s['s' + k.toLowerCase()] = this.value; breed(U().world()); var st2 = el.querySelectorAll('.ez-strip')[k === 'A' ? 0 : 1]; if (st2) { st2.scrollLeft = 0; st2.scrollTop = 0; } var s2 = $('ezBs' + k); if (s2) try { s2.focus({ preventScroll: true }); } catch (e) { } }; });
+    [['ezFsp', 'fsp'], ['ezFst', 'fst'], ['ezFrar', 'frar']].forEach(function (f) { var se = $(f[0]); if (se) se.onchange = function () { s[f[1]] = this.value; breed(U().world()); }; });
+    [['ezFall', 'fall'], ['ezFslot', 'fslot']].forEach(function (f) { var bt = $(f[0]); if (bt) bt.onclick = function () { s[f[1]] = !s[f[1]]; breed(U().world()); }; });
+    if ($('ezFclr')) $('ezFclr').onclick = function () { s.fsp = ''; s.fst = ''; s.frar = ''; s.fall = false; s.fslot = false; breed(U().world()); };
+    if ($('ezWays')) $('ezWays').ontoggle = function () { s.ways = this.open; };
     bindQ(el, 'ezBqA', function (v) { s.qa = v; }, function () { breed(U().world()); }); bindQ(el, 'ezBqB', function (v) { s.qb = v; }, function () { breed(U().world()); });
     $('ezBGo').onclick = function () { if (s.tab === 'asks' && s.req) { var acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'); if (acc) acc.click(); return; } var bell = $('bGo'); if (bell && !bell.disabled) bell.click(); }; }
 
@@ -187,7 +211,13 @@
       /* hotel-mate-sort: side by side down to phones; at <=520 the cards and controls go compact; only under 340px (a column would drop under one readable 72px card + controls) they stack */
       '@media (max-width:520px){.ez-cols{gap:4px}.ez-col{padding:3px}.ez-col .ez-hd{gap:4px}.ez-col .ez-hd b{font-size:12px;flex:1 1 auto;min-width:0}.ez-col .ez-q,.ez-col .ez-so{flex:1 1 100%}.ez-col .ez-so select{flex:1}.ez-col .ez-cnt{font-size:11px}.ez-col .ez-strip{gap:4px;height:400px}.ez-col .ez-c{flex:0 0 auto;width:100%;max-width:none;font-size:11px;padding:4px 2px}.ez-col .ez-l{font-size:10px}.ez-col .ez-sp canvas{width:40px;height:40px}.ez-col .ez-nm{font-size:12px}.ez-col .ez-c .pill.tier{font-size:10px}.ez-col .ez-tab{font-size:11px;padding:3px 6px}}' +
       '@media (max-width:339px){.ez-cols{grid-template-columns:minmax(0,1fr)}}' +
-      '@media (max-width:520px){.ez-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.ez-tab{flex:0 0 auto;white-space:nowrap;font-size:12px;padding:4px 8px}.ez-c{flex-basis:100px}.ez-sp canvas{width:48px;height:48px}.ez-go{font-size:15px;flex-basis:100%}.ez-q{max-width:none}}';
+      '@media (max-width:520px){.ez-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.ez-tab{flex:0 0 auto;white-space:nowrap;font-size:12px;padding:4px 8px}.ez-c{flex-basis:100px}.ez-sp canvas{width:48px;height:48px}.ez-go{font-size:15px;flex-basis:100%}.ez-q{max-width:none}}' +
+      '.ez-fb{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 6px}.ez-fbl{font-size:12px;opacity:.85}.ez-fb .ez-so select{max-width:150px}.ez-chip{font-size:12px;padding:3px 8px}' +
+      '.hs-g{color:#7dffb0;font-size:10px}.hs-wb{margin:6px 0;border:2px solid #4b3f7a;background:#120e22}.hs-wb>summary{cursor:pointer;padding:6px 8px;font-weight:bold;color:#ffd84d;list-style-position:inside}' +
+      '.hs-wg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px;padding:0 6px 6px}.hs-ways{border:2px dashed #4b3f7a;padding:6px 8px;font-size:12px;line-height:1.35}' +
+      '.hs-wh{margin-bottom:4px}.hs-up{color:#7dffb0}.hs-st{display:flex;flex-wrap:wrap;gap:4px 10px;margin-bottom:4px;opacity:.9}.hs-pt,.hs-sx{margin:2px 0 4px;padding-left:16px}' +
+      '.hs-pt li span{margin-right:6px}.hs-pt li b{color:#ffd84d}.hs-sx li{margin:2px 0}.hs-nx{display:block;margin-top:4px}.hs-ed{margin:4px 0 0;opacity:.75;font-size:11px}' +
+      '@media (max-width:520px){.ez-fb{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px}.ez-fb>*{flex:0 0 auto}.ez-fb .ez-so select{max-width:120px}.hs-wg{grid-template-columns:1fr}.hs-ways{font-size:11.5px}}';
     (document.head || document.documentElement).appendChild(cs); }
   var w0 = window.V2UI && V2UI.world && V2UI.world(); if (w0) { if (window.UXB && UXB.setFace) { V2Easy.fight(w0); } V2Easy.breed(w0); }
 })();
