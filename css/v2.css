@@ -486,3 +486,11 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 /* pet-sort (Oct 24 2026, display only): sort dropdown right next to the My Pets search */
 .ctlrow .psort{display:flex;align-items:center;gap:4px;flex:0 1 auto}.ctlrow .psort select{max-width:200px}
 @media (max-width:640px){.ctlrow .psort{flex:1 1 auto}.ctlrow .psort select{flex:1;max-width:none}}
+/* Dud Duster (easy-discard 2026-10-24) */
+#packBox .dudbar{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;justify-content:center;margin:0 0 8px;padding:6px;border:1px dashed var(--line);border-radius:6px}
+#packBox .dudbar .q{padding:3px 7px;font-size:11px}#packBox .dudpw input{width:52px;font:inherit;padding:2px 4px}
+#packBox .dudsafe{flex-basis:100%;text-align:center;font-size:10px}
+#packBox .packgrid .egg{position:relative}#packBox .dudone{padding:1px 5px;font-size:12px;line-height:1.2;margin-left:4px;min-width:0}
+#packBox .dudg{color:#ffc93c;font-size:9px}
+#packBox .packgrid .disc{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 6px;cursor:pointer}#packBox .packgrid .disc input{width:20px;height:20px}
+#packBox .dudone{min-height:32px;min-width:32px}#packBox .dudbar .q{min-height:32px}

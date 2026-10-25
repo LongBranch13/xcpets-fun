@@ -151,6 +151,26 @@
     drawReveal(); open('packBox'); }
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
+  /* Dud Duster (easy-discard 2026-10-24, owner 10:28 PM CT 'make it easier to discard unwanted pets when cracking eggs'). UI only: uses the SAME free local
+   * Discard (hidden in this browser, Undo, restorable from the Discard pile). No burn, no wallet, no chain rule touched, replay unchanged.
+   * Guarded pets (Legendary, Mythic, wearing gear, starred) are never ticked by the quick picks and need an extra confirm to tick by hand. */
+  function dudPow(p) { return window.UXB && UXB.power ? UXB.power(p) : (function (s) { return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); })(p.stats || {}); }
+  function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
+    var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
+  function dudBar(list) { var pw = rev.pw != null ? rev.pw : 20;
+    return '<div class="dudbar small" role="group" aria-label="Dud Duster quick picks"><b>🧹 Dud Duster</b> <span class="muted">tick the duds fast:</span> ' +
+      '<button type="button" class="q" data-dud="common">Tick Commons</button> <button type="button" class="q" data-dud="uncommon">Tick Commons + Uncommons</button> ' +
+      '<span class="dudpw">Power below <input type="number" id="dudPw" min="1" max="999" value="' + pw + '" aria-label="Power cutoff"> <button type="button" class="q" data-dud="pow">Tick</button></span> ' +
+      '<button type="button" class="q" data-dud="all">Tick all</button> <button type="button" class="q" data-dud="none">Clear ticks</button>' +
+      '<span class="muted dudsafe"> 🛡️ Legendary, Mythic, starred and gear-wearing pets are never auto-ticked.</span></div>'; }
+  function dudPick(w, list, k) { var pw = Number(($('dudPw') || {}).value) || 0; rev.pw = pw; var n = 0, safe = 0;
+    if (k === 'none') { rev.sel = {}; drawReveal(); return; }
+    list.forEach(function (p) { var hit = k === 'all' || (k === 'common' && p.art.tierIndex === 0) || (k === 'uncommon' && p.art.tierIndex <= 1) || (k === 'pow' && dudPow(p) < pw); if (!hit) return;
+      if (dudGuard(w, p).length) { safe++; return; } if (!rev.sel[p.id]) n++; rev.sel[p.id] = 1; });
+    drawReveal(); toast('🧹 Ticked ' + n + ' more pet' + (n === 1 ? '' : 's') + ' (' + Object.keys(rev.sel).length + ' ticked in all).' + (safe ? ' 🛡️ ' + safe + ' guarded pet' + (safe > 1 ? 's' : '') + ' left alone.' : ''), 5000); }
+  function dudOne(w, p) { var g = dudGuard(w, p); if (isKept(p.id)) return discardIds([p.id]);
+    if (g.length && !window.confirm('Discard #' + p.id + '? It is ' + g.join(', ') + '.\n\nIt moves to the Discard pile at the bottom of My Pets. Free, only hidden in this browser, Undo anytime, no burn.' + (g.join().indexOf('gear') >= 0 ? '\nIts gear stays on it on chain.' : ''))) return;
+    hideIds([p.id]); delete rev.sel[p.id]; rev.eggs = rev.eggs.filter(function (x) { return x !== p.id; }); if (rev.eggs.length) drawReveal(); else closeReveal(); }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
@@ -176,10 +196,11 @@
         '<p class="grnext">' + (where.bag ? '👉 New gear is in your stash. Wear it in The Rare Room (free).' : '👉 See your whole stash in The Rare Room.') + '</p>' +
         '<p class="graemode">' + aeToggleHtml() + '</p></div>' +
         (UXB_CAP(list) ? '<p class="grcap" aria-hidden="true">' + esc(UXB_CAP(list)) + '</p>' : ''); }
-    $('packSummary').innerHTML = info + '<span class="grtiers">' + esc(TIERS.map(function (t, i) { return gear && !tiers[i] ? '' : tiers[i] + ' ' + t.label; }).filter(Boolean).join(' · ')) + '</span>' + (gear ? '' : ' · ' + Object.keys(rev.sel).length + ' ticked') +
+    $('packSummary').innerHTML = (gear ? '' : dudBar(list)) + info + '<span class="grtiers">' + esc(TIERS.map(function (t, i) { return gear && !tiers[i] ? '' : tiers[i] + ' ' + t.label; }).filter(Boolean).join(' · ')) + '</span>' + (gear ? '' : ' · ' + Object.keys(rev.sel).length + ' ticked') +
       (gear ? '' : ' <label class="pksort">Sort <select id="pkSort" aria-label="Sort the eggs">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</select></label>') +
       (pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '');
     bindAeTogs($('packSummary'));
+    if (!gear) $('packSummary').querySelectorAll('[data-dud]').forEach(function (b) { b.onclick = function () { dudPick(w, list, b.dataset.dud); }; });
     if ($('pkSort')) $('pkSort').onchange = function () { rev.sort = this.value; rev.page = 0; drawReveal(); };
     if ($('pkPrev')) { $('pkPrev').onclick = function () { rev.page--; drawReveal(); }; $('pkNext').onclick = function () { rev.page++; drawReveal(); }; }
     var grid = $('packGrid'); grid.innerHTML = '';
@@ -188,9 +209,10 @@
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ On the community pet' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
-      d.className = 'egg t' + x.art.tierIndex + (rev.sel[x.id] ? ' discard' : ''); d.innerHTML = '<canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + '<label class="small disc"><input type="checkbox" data-id="' + x.id + '"' + (rev.sel[x.id] ? ' checked' : '') + '> Discard</label>';
+      d.className = 'egg t' + x.art.tierIndex + (rev.sel[x.id] ? ' discard' : ''); d.innerHTML = '<canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + '<label class="small disc"><input type="checkbox" data-id="' + x.id + '"' + (rev.sel[x.id] ? ' checked' : '') + '> Discard</label><button type="button" class="q dudone" title="Discard this one now (free, Undo anytime)" aria-label="Discard #' + x.id + ' now">🗑️</button>' + (dudGuard(w, x).length ? '<div class="small dudg" title="Guarded: never auto-ticked">🛡️ ' + esc(dudGuard(w, x).join(', ')) + '</div>' : '');
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
-      d.querySelector('input').onchange = function () { if (this.checked) rev.sel[x.id] = 1; else delete rev.sel[x.id]; d.classList.toggle('discard', this.checked); };
+      d.querySelector('.dudone').onclick = function () { dudOne(w, x); };
+      d.querySelector('input').onchange = function () { var gg = dudGuard(w, x); if (this.checked && gg.length && !isKept(x.id) && !window.confirm('Tick #' + x.id + ' for discard? It is ' + gg.join(', ') + '.')) { this.checked = false; return; } if (this.checked) rev.sel[x.id] = 1; else delete rev.sel[x.id]; d.classList.toggle('discard', this.checked); };
     });
     ['packDiscard', 'packSkip'].forEach(function (id) { $(id).style.display = gear ? 'none' : ''; }); $('packClose').textContent = gear ? (where.bag ? 'Wear it in The Rare Room →' : 'Go to The Rare Room →') : 'Keep the rest → My Pets';
   }
@@ -682,11 +704,11 @@
 
   // ---------------------------------------------------------------- hatch + community (live buttons)
   $('hatchBtn').textContent = 'Crack One Open (69)'; $('hatchBtn').onclick = function () { confirmPlans('Crack One Open', [{ tag: 'pet:hatch', amount: 69 }]); };
-  $('dozenBtn').onclick = function () { confirmPlans('Crack Pack · 12 times', [{ tag: 'pet:hatch12', amount: 690 }]); };
-  $('caseBtn').onclick = function () { confirmPlans('Yolk Booster Box · 144 times', [{ tag: 'pet:hatch144', amount: 6900 }]); };
+  $('dozenBtn').onclick = function () { confirmPlans('Crack Pack · 12 eggs', [{ tag: 'pet:hatch12', amount: 690 }]); };
+  $('caseBtn').onclick = function () { confirmPlans('Yolk Booster Box · 144 eggs', [{ tag: 'pet:hatch144', amount: 6900 }]); };
   /* ELECTRIC EGGS (preview): one pet:hatchzap burn = 1,000 eggs with boosted tier odds. The button stays locked until the chain tip reaches the gate block. */
   if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g); };
-    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Shock Box · 1,000 times', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
+    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Shock Box · 1,000 eggs', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
   if ($('wizEggBtn') && WIZARD_EGG_ON_SALE) { $('wizEggBtn').textContent = '🧙 Bitcoin Wizard egg (' + fmt(V.WIZ_EGG_COST) + ')'; $('wizEggBtn').onclick = function () { confirmPlans('Bitcoin Wizard egg', [{ tag: 'pet:hatchwiz', amount: V.WIZ_EGG_COST }]); }; }
   if ($('wizSignBtn') && WIZARD_SIGN_CLAIM_ON) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
@@ -1028,7 +1050,9 @@
   $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tick Discard on at least one pet first.');
-    var kk = ids.filter(isKept); if (kk.length && !window.confirm('Discard ' + (ids.length - kk.length) + ' of the ' + ids.length + ' ticked pets?\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + idList(kk) + '): starred pets are never discarded.\n\nFree, only hidden in this browser, Undo anytime, no burn.')) return;
+    var kk = ids.filter(isKept), dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; }), go = ids.length - kk.length;
+    if (!kk.length && go && !window.confirm('🧹 Dud Duster: discard ' + go + ' ticked pet' + (go > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' guarded (Legendary, Mythic or wearing gear): ' + idList(gd) + '.' : '') + '\n\nThey move to the Discard pile at the bottom of My Pets. Free, only hidden in this browser, Undo anytime, no burn, no wallet.')) return;
+    if (kk.length && !window.confirm('Discard ' + (ids.length - kk.length) + ' of the ' + ids.length + ' ticked pets?\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + idList(kk) + '): starred pets are never discarded.\n\nFree, only hidden in this browser, Undo anytime, no burn.')) return;
     hideIds(ids); rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); rev.sel = {}; if (rev.eggs.length) drawReveal(); else closeReveal(); };
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
