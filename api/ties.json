@@ -1,20 +1,8 @@
 {
- "lastBlock": 973097,
- "count": 74,
+ "lastBlock": 973099,
+ "count": 71,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
-  {
-   "id": 2,
-   "asset": "A11825070992356920202",
-   "tiedBlock": 972714,
-   "tiedTx": "49922dbfbfdbb6cb44f0479dbd529725a1cb85c20abd3a6cd92cb8cdda0f7a4a",
-   "kind": "deed",
-   "name": "Nezu",
-   "species": "wojak",
-   "speciesLabel": "Wojak",
-   "rarity": "Rare",
-   "stage": "Adult"
-  },
   {
    "id": 3150,
    "asset": "A175164024751316932",
@@ -664,18 +652,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 24940,
-   "asset": "A13718899866767621248",
-   "tiedBlock": 973074,
-   "tiedTx": "9ad3567432fe214a0b2c6c2821290998a0e3e6685daa47045bb965f091fa2f46",
-   "kind": "deed",
-   "name": "Ruka",
-   "species": "wojak",
-   "speciesLabel": "Wojak",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 24944,
    "asset": "A16440487162825740698",
    "tiedBlock": 973074,
@@ -708,18 +684,6 @@
    "name": "Luki",
    "species": "dodo",
    "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 25593,
-   "asset": "A13128877029899665096",
-   "tiedBlock": 973074,
-   "tiedTx": "d9996450252bb9fc4551a2c4cb2f21f48baabed7afac6f13179f0923de15b428",
-   "kind": "deed",
-   "name": "Botonu",
-   "species": "pepe",
-   "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Hatchling"
   },
