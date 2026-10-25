@@ -108,3 +108,8 @@
 /* shop-safety */
 .sh-coin{color:#ffd166;white-space:nowrap}.sh-confirm{font-size:14px;margin:6px 0}.sh-amt input{width:9em}.sh-lowok{display:inline-block;margin:6px 0;font-size:13px}
 .sh-openbar{background:#2B2730;border:2px solid #ffd166;padding:8px 10px;margin:0 0 10px;font-size:13px}.sh-openbar ul{margin:6px 0 0;padding-left:18px}.sh-openbar li{margin:4px 0}
+
+/* buy-card-art: in confirm modals the amount tag sits under the art instead of over it, and the sprite fills the art box */
+#shModal .sh-card .sh-tag{position:static;transform:none;margin:4px 3px 0;max-width:none;text-align:center}
+#shModal .sh-art{position:relative;z-index:4}
+.sh-sp{display:flex;align-items:center;justify-content:center}
