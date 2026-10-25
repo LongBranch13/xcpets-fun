@@ -238,6 +238,18 @@
     return bad; }
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
    * burns + sale data are unchanged; otherwise stop with nothing sent so the player looks again. The verified gate inside is unchanged. */
+  /* post-buy-fixes: pending-list entry for a DEX order / cancel / send / token issue. Orders log what they really give (whole XCPETS when the
+   * give asset is XCPETS); everything else logs no amount and an action word, so the list never says "0 XCPETS". */
+  function dexEntry(plan, txid) { var give = null, act = { order: 'order', cancel: 'cancel', issuance: 'token', send: 'send', mpma: 'send' }[plan.kind] || plan.kind;
+    if (plan.give_asset && plan.give_quantity != null) give = { asset: plan.give_asset, qty: plan.give_quantity / (plan.give_asset === 'XCPETS' || plan.give_asset === 'XCP' ? 1e8 : 1) };
+    return { txid: txid, tag: plan.kind, kind: 'dex', act: act, amount: give && give.asset === 'XCPETS' ? give.qty : null, give: give, label: plan.label || plan.kind, at: Date.now(), status: 'sent' }; }
+  /* post-buy-fixes: orders and token issues never show up in the burn rows, so their pending lines used to wait forever. Ask mempool.space
+   * whether each unconfirmed tracked tx has a block (at most once a minute); confirmed lines drop off the pending list. Read only. */
+  var pollAt = 0, pollP = null;
+  function pollPending() { if (pollP || Date.now() - pollAt < 60000) return pollP || Promise.resolve(0); pollAt = Date.now();
+    pollP = tracker.poll(function (txid) { return F('https://mempool.space/api/tx/' + encodeURIComponent(txid) + '/status').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return j ? { confirmed: !!j.confirmed, block: j.block_height, seen: true } : null; }, function () { return null; }); })
+      .then(function (n) { pollP = null; return n; }, function () { pollP = null; return 0; }); return pollP; }
   function sendDex(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
     return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
@@ -261,7 +273,7 @@
           return F(dexUrl(urls[i], w.address, plan, fee) + extra).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
             var bad = dexCheck(j.result, w.address, plan, fee); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', ')); return j.result; })
             .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
-        return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.kind, amount: 0, label: plan.label || plan.kind, at: Date.now(), status: 'sent' }); return { txid: r.txid, composed: res }; }); });
+        return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add(dexEntry(plan, r.txid)); return { txid: r.txid, composed: res }; }); });
     }).then(function (x) { release(); return x; }, function (e) { release(); throw e; }); }
   /* player-qol 2026-10-24 (owner relaying a player: "my page will often disconnect from wallet, I'm always checking/reconnecting").
    * Root cause: the connected wallet lived only in this page's memory (var wallet). XCPETS is a multi-page site, so every page load, reload
@@ -329,6 +341,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
+  return { pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });

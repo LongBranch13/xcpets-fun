@@ -3127,6 +3127,7 @@
     var first = !seen, s = Object.assign({}, seen || {}), g = {}, order = [], pos = {};
     w.pets.forEach(function (p) { if (p.owner !== owner || p.community) return; var tx = String(p.hatchTx || ('id' + p.id)).replace(/:\d+$/, ''); pos[tx] = (pos[tx] || 0) + 1; var k = tx + ':' + pos[tx];
       if (s[k]) return; s[k] = 1; if (first) return;
+      if (p.lastGot != null) return; /* post-buy-fixes: bought, gifted or swapped pets are not hatches (marked seen, never shown) */
       if (!g[tx]) { g[tx] = []; order.push(tx); } g[tx].push(p); });
     return { groups: order.map(function (tx) { return { tx: tx, eggs: g[tx], n: g[tx].length }; }), seen: s, first: first };
   }
