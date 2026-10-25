@@ -1,8 +1,20 @@
 {
- "lastBlock": 973033,
- "count": 23,
+ "lastBlock": 973034,
+ "count": 24,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
+  {
+   "id": 2,
+   "asset": "A11825070992356920202",
+   "tiedBlock": 972714,
+   "tiedTx": "49922dbfbfdbb6cb44f0479dbd529725a1cb85c20abd3a6cd92cb8cdda0f7a4a",
+   "kind": "deed",
+   "name": "Nezu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Rare",
+   "stage": "Adult"
+  },
   {
    "id": 3150,
    "asset": "A175164024751316932",
