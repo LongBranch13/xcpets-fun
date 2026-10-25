@@ -99,4 +99,90 @@
 #raidBox .ra-banner.ra-show{animation:raBanner 2.6s steps(10) forwards}
 @keyframes raBanner{0%{opacity:0;transform:translateX(-50%) scale(.5)}15%{opacity:1;transform:translateX(-50%) scale(1.2)}25%,80%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0}}
 @media (max-width:640px){#raidBox .ra-bimg{max-height:220px}#raidBox .ra-cimg{max-height:170px}#raidBox .ra-num{font-size:11px}#raidBox .ra-n2{font-size:14px}#raidBox .ra-n3{font-size:16px}#raidBox .ra-banner{font-size:12px}#raidBox .ra-rays{width:280px;height:280px;margin:-140px}}
+
+/* ===== raid-meter (Oct 24 2026, owner-approved raid-only fonts + arcade hit meter) =====
+ * Fonts (self-hosted, SIL Open Font License 1.1, see fonts/raid/OFL-*.txt): Silkscreen (boss names, HP, damage numbers, callouts)
+ * and Pixelify Sans (readable pixel body text). Scoped to the raid page only (body[data-split=raid]); other pages never use them. */
+@font-face{font-family:"XcpRaid Silkscreen";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/raid/silkscreen-400.woff2) format("woff2")}
+@font-face{font-family:"XcpRaid Silkscreen";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/raid/silkscreen-700.woff2) format("woff2")}
+@font-face{font-family:"XcpRaid Pixelify";font-style:normal;font-weight:400 700;font-display:swap;src:url(../fonts/raid/pixelify-sans.woff2) format("woff2")}
+body[data-split="raid"] #raidPanel{--xr-d:"XcpRaid Silkscreen","Press Start 2P",monospace;--xr-b:"XcpRaid Pixelify",system-ui,sans-serif;font-family:var(--xr-b);font-size:17px;line-height:1.45}
+body[data-split="raid"] #raidPanel h2.sec{font-family:var(--xr-d);font-weight:700;font-size:30px;letter-spacing:1px;text-shadow:3px 3px 0 rgba(26,13,31,.35)}
+body[data-split="raid"] #raidPanel .rd-tag{font-family:var(--xr-d);font-size:13px;letter-spacing:1px}
+body[data-split="raid"] #raidPanel .rd-info h3{font-family:var(--xr-d);font-weight:700;font-size:26px;line-height:1.1;color:#fff4d6;text-shadow:3px 3px 0 #1a0d1f,0 0 14px rgba(255,90,74,.45)}
+body[data-split="raid"] #raidPanel .rd-h,body[data-split="raid"] #raidPanel .rd-wait h3{font-family:var(--xr-d);font-weight:700;font-size:20px}
+body[data-split="raid"] #raidPanel .small,body[data-split="raid"] #raidPanel .rd-board,body[data-split="raid"] #raidPanel .rd-pet,body[data-split="raid"] #raidPanel .rd-log,body[data-split="raid"] #raidPanel .rd-how,body[data-split="raid"] #raidPanel .rd-past,body[data-split="raid"] #raidPanel button,body[data-split="raid"] #raidPanel input{font-family:var(--xr-b)}
+body[data-split="raid"] #raidPanel .small{font-size:15px}
+body[data-split="raid"] #raidPanel .rd-board th{font-family:var(--xr-d);font-size:13px}
+body[data-split="raid"] #raidPanel .ra-num,body[data-split="raid"] #raidPanel .ra-banner{font-family:var(--xr-d);font-weight:700}
+/* the meter */
+body[data-split="raid"] #raidPanel .rd-meter{--hp:#3ddc5a;--hp2:#9bff6a;--glow:rgba(61,220,90,.55);margin:10px 0 6px}
+body[data-split="raid"] #raidPanel .rm-z-y{--hp:#f2c81e;--hp2:#fff07a;--glow:rgba(242,200,30,.55)}
+body[data-split="raid"] #raidPanel .rm-z-r{--hp:#ff3b2f;--hp2:#ff8a5a;--glow:rgba(255,59,47,.6)}
+body[data-split="raid"] #raidPanel .rm-z-d{--hp:#ff1a3a;--hp2:#ffe14a;--glow:rgba(255,26,58,.8)}
+body[data-split="raid"] #raidPanel .rm-z-k{--hp:#6a5a78;--hp2:#8a7a98;--glow:transparent}
+body[data-split="raid"] #raidPanel .rm-top{display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--xr-d);font-weight:700;font-size:15px;color:var(--hp2);text-shadow:2px 2px 0 #1a0d1f}
+body[data-split="raid"] #raidPanel .rm-pct{font-size:20px}
+body[data-split="raid"] #raidPanel .rd-meter .rd-hp{height:34px;margin:4px 0 0;border:4px solid #1a0d1f;background:#2a1030;box-shadow:0 0 0 2px #fff4d6,0 0 18px var(--glow),inset 0 4px 0 rgba(0,0,0,.5);overflow:hidden}
+body[data-split="raid"] #raidPanel .rd-meter .rd-hp i{position:absolute;left:0;top:0;height:100%;background:linear-gradient(180deg,var(--hp2) 0 25%,var(--hp) 25% 75%,rgba(0,0,0,.25) 75%) ,var(--hp);background-blend-mode:normal;transition:width .35s steps(6),background .3s;z-index:1}
+body[data-split="raid"] #raidPanel .rd-meter .rd-hp b.ra-lag{background:#fff4d6;box-shadow:inset -4px 0 0 #ffb0a0;transition:width .9s steps(12)}
+body[data-split="raid"] #raidPanel .rm-seg{position:absolute;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 3px),#1a0d1f calc(5% - 3px) 5%)}
+body[data-split="raid"] #raidPanel .rd-meter .rd-hp span{z-index:3;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);padding:1px 8px;background:rgba(26,13,31,.62);white-space:nowrap;font-family:var(--xr-d);font-weight:700;font-size:14px;color:#fff;text-shadow:2px 2px 0 #1a0d1f,-2px -2px 0 #1a0d1f,2px -2px 0 #1a0d1f,-2px 2px 0 #1a0d1f}
+body[data-split="raid"] #raidPanel .rm-z-d .rd-hp{animation:rmDanger .5s steps(2) infinite}
+body[data-split="raid"] #raidPanel .rm-z-d .rm-lbl{color:#ff4a5a;animation:rmBlink .5s steps(2) infinite}
+@keyframes rmDanger{50%{box-shadow:0 0 0 2px #ff1a3a,0 0 26px #ff1a3a,inset 0 4px 0 rgba(0,0,0,.5)}}
+@keyframes rmBlink{50%{color:#ffe14a}}
+body[data-split="raid"] #raidPanel .rm-jolt{animation:rmJolt .35s steps(4)}
+body[data-split="raid"] #raidPanel .rm-jolt-big{animation:rmJolt .55s steps(6)}
+body[data-split="raid"] #raidPanel .rm-jolt .rd-hp,body[data-split="raid"] #raidPanel .rm-jolt-big .rd-hp{filter:brightness(1.8)}
+@keyframes rmJolt{25%{transform:translate(-5px,2px)}50%{transform:translate(5px,-2px)}75%{transform:translate(-3px,1px)}}
+/* combo */
+body[data-split="raid"] #raidPanel .rm-combo{min-height:26px;margin:6px 0 0;font-family:var(--xr-d);font-weight:700;font-size:16px;color:#ffe14a;text-shadow:2px 2px 0 #1a0d1f;opacity:0}
+body[data-split="raid"] #raidPanel .rm-combo b{font-size:24px;color:#fff}
+body[data-split="raid"] #raidPanel .rm-combo.rm-on{opacity:1}
+body[data-split="raid"] #raidPanel .rm-combo.rm-hot{color:#ff8a3a}body[data-split="raid"] #raidPanel .rm-combo.rm-hot b{color:#ffe14a}
+body[data-split="raid"] #raidPanel .rm-combo.rm-pop{transform-origin:0 50%;animation:rmPop .4s steps(4)}
+body[data-split="raid"] #raidPanel .rm-combo.rm-out{opacity:0;transition:opacity .4s steps(3)}
+@keyframes rmPop{0%{transform:scale(.5)}50%{transform:scale(1.35) rotate(-3deg)}100%{transform:none}}
+/* last hits ticker */
+body[data-split="raid"] #raidPanel .rm-tick{margin-top:4px;border:3px solid #1a0d1f;background:rgba(20,10,28,.7);padding:4px 8px}
+body[data-split="raid"] #raidPanel .rm-th{margin:0;font-family:var(--xr-d);font-weight:700;font-size:12px;color:#ffc93c}
+body[data-split="raid"] #raidPanel .rm-tick ol{list-style:none;margin:0;padding:0}
+body[data-split="raid"] #raidPanel .rm-tick li{display:flex;justify-content:space-between;gap:8px;font-size:15px;line-height:1.5;color:#fff4d6;border-top:1px dashed rgba(255,244,214,.18)}
+body[data-split="raid"] #raidPanel .rm-tick li:first-child{border-top:0}
+body[data-split="raid"] #raidPanel .rm-who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+body[data-split="raid"] #raidPanel .rm-dmg{white-space:nowrap;font-family:var(--xr-d);font-weight:700;font-size:14px;color:#ff8a7a}
+body[data-split="raid"] #raidPanel .rm-c2,body[data-split="raid"] #raidPanel .rm-c3,body[data-split="raid"] #raidPanel .rm-kb{font-size:11px;padding:0 3px;border:2px solid #1a0d1f;color:#1a0d1f;background:#ffc93c}
+body[data-split="raid"] #raidPanel .rm-c3{background:#ff5a4a;color:#fff}body[data-split="raid"] #raidPanel .rm-kb{background:#fff4d6}
+body[data-split="raid"] #raidPanel .rm-tick li.rm-new{animation:rmIn .5s steps(4)}
+@keyframes rmIn{0%{transform:translateX(30px);opacity:0;background:#ffc93c}60%{opacity:1;background:rgba(255,201,60,.4)}100%{background:none}}
+/* big punchy damage numbers: pop, then fly on an arc */
+body[data-split="raid"] #raidPanel .ra-num{top:34%;font-size:30px;color:#fff;-webkit-text-stroke:0;text-shadow:3px 3px 0 #1a0d1f,-3px -3px 0 #1a0d1f,3px -3px 0 #1a0d1f,-3px 3px 0 #1a0d1f,0 6px 0 #1a0d1f;animation:rmNum 1.4s steps(14) forwards}
+body[data-split="raid"] #raidPanel .ra-n2,body[data-split="raid"] #raidPanel .ra-n3{top:50%}body[data-split="raid"] #raidPanel .ra-n2{font-size:40px;color:#ffe14a}
+body[data-split="raid"] #raidPanel .ra-n3{font-size:50px;color:#ff5a4a;animation-name:rmNum}
+@keyframes rmNum{0%{transform:translate(-50%,0) scale(.3);opacity:0}12%{transform:translate(-50%,-14px) scale(1.5);opacity:1}24%{transform:translate(-50%,-20px) scale(1)}70%{opacity:1}100%{transform:translate(calc(-50% + var(--fx,0px)),-130px) scale(.85);opacity:0}}
+/* crit callout + pixel starburst */
+body[data-split="raid"] #raidPanel .ra-call{position:absolute;left:50%;top:6%;transform:translateX(-50%);text-align:center;z-index:7;animation:rmCall 1.25s steps(10) forwards}
+body[data-split="raid"] #raidPanel .ra-duel .ra-call{left:66%}
+body[data-split="raid"] #raidPanel .ra-call b{position:relative;display:block;font-family:var(--xr-d);font-weight:700;font-size:34px;line-height:1;color:#1a0d1f;background:#ffc93c;padding:6px 10px;border:4px solid #1a0d1f;box-shadow:4px 4px 0 #1a0d1f;white-space:nowrap}
+body[data-split="raid"] #raidPanel .ra-call small{position:relative;display:block;margin-top:4px;font-family:var(--xr-d);font-weight:700;font-size:14px;color:#fff;text-shadow:2px 2px 0 #1a0d1f}
+body[data-split="raid"] #raidPanel .ra-call3 b{background:#ff3b2f;color:#fff;font-size:40px}
+body[data-split="raid"] #raidPanel .ra-star{position:absolute;left:50%;top:50%;width:200px;height:200px;margin:-100px;background:repeating-conic-gradient(#fff7b0 0 12deg,transparent 12deg 30deg);-webkit-mask:radial-gradient(circle,#000 0 30%,transparent 62%);mask:radial-gradient(circle,#000 0 30%,transparent 62%);animation:raSpin 1.2s steps(6) infinite}
+body[data-split="raid"] #raidPanel .ra-call3 .ra-star{width:260px;height:260px;margin:-130px;background:repeating-conic-gradient(#ffe14a 0 10deg,#ff5a4a 10deg 14deg,transparent 14deg 26deg)}
+@keyframes rmCall{0%{transform:translateX(-50%) scale(.2) rotate(-12deg);opacity:0}15%{transform:translateX(-50%) scale(1.3) rotate(4deg);opacity:1}28%{transform:translateX(-50%) scale(1) rotate(-2deg)}80%{opacity:1}100%{transform:translateX(-50%) translateY(-16px);opacity:0}}
+/* final blow: hit-stop + white-out */
+body[data-split="raid"] #raidPanel .ra-stop .ra-body,body[data-split="raid"] #raidPanel .ra-stop .ra-champ{animation-play-state:paused!important;filter:brightness(4) saturate(0)}
+body[data-split="raid"] #raidPanel .rd-stage.ra-white{animation:rmWhite .6s steps(4)}
+@keyframes rmWhite{0%{box-shadow:0 0 0 2000px rgba(255,255,255,.9) inset}100%{box-shadow:6px 6px 0 #1a0d1f}}
+body[data-split="raid"] #raidPanel .ra-banner{font-size:34px;top:6%;text-shadow:4px 4px 0 #1a0d1f,-2px -2px 0 #1a0d1f}
+body[data-split="raid"] #raidPanel .ra-banner.ra-fb{color:#fff;background:#ff3b2f;padding:6px 12px;border:4px solid #1a0d1f;box-shadow:4px 4px 0 #1a0d1f;font-size:36px}
+body[data-split="raid"] #raidPanel .ra-banner.ra-fb.ra-show{animation:rmCall 1.2s steps(10) forwards}
+/* per-player damage meter in the leaderboard */
+body[data-split="raid"] #raidPanel .rm-pd{position:relative}
+body[data-split="raid"] #raidPanel .rm-pd i{position:absolute;right:6px;bottom:3px;height:4px;width:calc(var(--w,0) * 1.3px);background:linear-gradient(90deg,#ffc93c,#ff5a4a);opacity:.75;max-width:calc(100% - 12px)}
+body[data-split="raid"] #raidPanel .rm-pd span{position:relative;font-family:var(--xr-d);font-weight:700;font-size:14px}
+@media (max-width:640px){body[data-split="raid"] #raidPanel h2.sec{font-size:24px}body[data-split="raid"] #raidPanel .rd-info h3{font-size:21px}body[data-split="raid"] #raidPanel .rd-meter .rd-hp{height:30px}body[data-split="raid"] #raidPanel .rd-meter .rd-hp span{font-size:12px}body[data-split="raid"] #raidPanel .ra-num{font-size:20px;max-width:none}body[data-split="raid"] #raidPanel .ra-n2{font-size:24px}body[data-split="raid"] #raidPanel .ra-n3{font-size:26px}
+ body[data-split="raid"] #raidPanel .ra-call b{font-size:24px}body[data-split="raid"] #raidPanel .ra-call3 b{font-size:28px}body[data-split="raid"] #raidPanel .ra-star{width:150px;height:150px;margin:-75px}body[data-split="raid"] #raidPanel .ra-call3 .ra-star{width:190px;height:190px;margin:-95px}body[data-split="raid"] #raidPanel .ra-banner,body[data-split="raid"] #raidPanel .ra-banner.ra-fb{font-size:22px}body[data-split="raid"] #raidPanel .rm-tick li{font-size:14px}body[data-split="raid"] #raidPanel .rd-board td,body[data-split="raid"] #raidPanel .rd-board th{font-size:14px}}
+@media (max-width:370px){body[data-split="raid"] #raidPanel h2.sec{font-size:21px}body[data-split="raid"] #raidPanel .rd-info h3{font-size:19px}body[data-split="raid"] #raidPanel .ra-call b{font-size:21px}body[data-split="raid"] #raidPanel .ra-call3 b{font-size:24px}body[data-split="raid"] #raidPanel .ra-banner,body[data-split="raid"] #raidPanel .ra-banner.ra-fb{font-size:19px}body[data-split="raid"] #raidPanel .ra-n3{font-size:23px}body[data-split="raid"] #raidPanel .ra-n2{font-size:21px}}
+@media (prefers-reduced-motion:reduce){body[data-split="raid"] #raidPanel .rd-meter *,body[data-split="raid"] #raidPanel .rd-meter,body[data-split="raid"] #raidPanel .ra-call{animation:none!important;transition:none!important}body[data-split="raid"] #raidPanel .ra-call{display:none!important}body[data-split="raid"] #raidPanel .rm-z-d .rd-hp{box-shadow:0 0 0 3px #ff1a3a,0 0 18px #ff1a3a}}
 @media (prefers-reduced-motion:reduce){#raidBox .ra-wrap *,#raidBox .ra-wrap,#raidBox .rd-stage{animation:none!important;transition:none!important}#raidBox .ra-parts,#raidBox .ra-fx,#raidBox .ra-banner,#raidBox .ra-bolt,#raidBox .ra-slash{display:none!important}#raidBox .rd-hp i,#raidBox .rd-hp b{transition:none!important}}
