@@ -476,7 +476,7 @@
     if (!ix) { ix = {}; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g.on != null) (ix[g.on] = ix[g.on] || []).push(g); }); wornIx.set(w, ix); }
     return (ix[id] || []).slice(); }
   var frCache = new Map(), FR_MAX = 6000;
-  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)); }
+  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(','); }
   function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
   var lazyQ = new Map(), lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting) return; var j = lazyQ.get(e.target); if (!j) return; lazyQ.delete(e.target); lazyObs.unobserve(e.target); j(); }); }, { rootMargin: '300px' }) : null;
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
@@ -680,8 +680,13 @@
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
-    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }); /* mythic-look options */
+    var nl = fr.length, lk = looksOf(p, w, extra); /* looks-draw (display only): Flame + quest looks drawn on the pixels, see js/v2-looks.js */
+    if (lk.length) try { var lkKey = function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); };
+      var lf = window.V2Looks.apply(fr, lkKey('#ff00fe'), lkKey('#00ff01'), lk, p.id); if (okFrames(lf)) fr = lf; } catch (e) { if (window.console) console.warn('looks draw failed #' + (p && p.id), e); }
+    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
     return fr; }
+  function looksOf(p, w, extra) { if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks)) return [];
+    try { return V.shownLooks(w, p) || []; } catch (e) { return []; } }
   function petFrames0(p, w, extra) {
     var ids = worn(w, p.id).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
