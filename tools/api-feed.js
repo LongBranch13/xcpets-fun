@@ -29,12 +29,16 @@ function context() {
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
   return ctx;
 }
+/* firesale-hashes: reuse the last boot copy's FINAL hashes (>= 6 deep at its tip) as a cache, so each run only fetches the newest blocks (BOOT_CACHE env or <out>/boot.json) */
+function prevBootHashes() { try { const f = process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), j = JSON.parse(fs.readFileSync(f, 'utf8')), o = {}; Object.keys(j.hashes || {}).forEach(k => { if (+k <= j.tip - 6 && /^[0-9a-f]{64}$/.test(j.hashes[k])) o[k] = j.hashes[k]; }); return o; } catch (e) { return {}; } }
+/* firesale-hashes (Oct 25 2026): every block from each every-block gate (fire sales, Mythic quests, raids) to the tip, the same list js/v2-chain.js load() asks for */
+function gateBlocks(V, tip) { const out = []; [V.ACTIVATE_FIRESALE_BLOCK, V.questGate ? V.questGate() : null, V.raidGate ? V.raidGate() : null].forEach(g => { if (g != null && tip >= g) for (let b = g; b <= tip; b++) out.push(b); }); return out; }
 /* same reads as js/v2-chain.js load(): destructions, tip, block hashes (shipped seed first); refuses to build with any hash missing */
 async function liveInput(ctx) {
   const E = ctx.LiveEngine, chain = new E.Chain();
   const [rows, tip] = await Promise.all([chain.destructions(E.CFG.asset), chain.tip()]);
   if (!tip) throw new Error('tip read failed');
-  const hc = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip]))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
+  const hc = Object.assign({}, prevBootHashes(), ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip], gateBlocks(ctx.V2Rules, tip)))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */
@@ -97,7 +101,7 @@ if (require.main === module) (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
   /* site-fast: first-visit boot copy for js/v2-chain.js fromStatic() (only the hashes the rows need; the page re-reads the chain right after) */
-  { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; });
+  { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); gateBlocks(ctx.V2Rules, input.tip).forEach(k => { if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); /* firesale-hashes: every gate block's hash ships in the boot copy, so a first visit never stops at fire.missing */
     fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null,
       /* sale-cache: stamp the sale copy with the tip it was read after + that block's hash, so pages can re-read only tokens touched since (js/v2-sales.js pickBase) */
       dexTip: input.dex && !input.dex.stale && input.dexAssets && input.hashes && input.hashes[input.tip] ? input.tip : undefined, dexHash: input.dex && input.hashes ? input.hashes[input.tip] : undefined, dexAssets: input.dexAssets || undefined })); }
