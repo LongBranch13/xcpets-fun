@@ -6,7 +6,12 @@ const out = { strips: {}, gear: {}, hybrids: [], ref: [] }, bg = '#14101e';
 C.SPECIES.forEach(sp => { out.strips[sp] = [0, 1, 2, 3, 4, 5].map(s => C.frames(sp, s, bg).map(f => f.data));
   const G = { head: { label: 'Party crown', cols: ['#ffd23f', '#c49a1a'] }, hand: { label: 'Torch', cols: ['#8a5a2a', '#ff8a2a'] }, back: { label: 'Cape', cols: ['#2bb5c8'] }, feet: { label: 'Boots', cols: ['#6b3f1f', '#4a2a12'] } };
   out.gear[sp] = [3, 5].map(s => C.render(sp, s, 0, bg, G).data); });
-[['starlordkek', 'gooby'], ['gooby', 'starlordkek'], ['lukespam', 'starlordkek'], ['starlordkek', 'lukespam'], ['gooby', 'lukespam'], ['lukespam', 'gooby']].forEach(([b, d]) =>
-  out.hybrids.push({ body: b, donor: d, frames: [0, 1, 3, 5].map(s => C.hybrid(b, d, s, 0, bg, d).data) }));
+/* BABIES (owner Oct 25 2026): no signature parts. contest x normal = the partner's species; contest x contest = one normal random species.
+ * Drawn with the normal in-game pet renderer (PetCore), same as any bred egg. */
+const L = require('./lib/load-rules'), ctx = L.load(), PC = ctx.PetCore, V = ctx.V2Rules, h = i => require('crypto').createHash('sha256').update('contest-baby-' + i).digest('hex');
+const babyFr = (sp, i) => [0, 1, 3, 5].map(st => { const a = PC.generate({ blockHash: h(i), petId: 'baby' + i, blockHeight: 973500 }); a.species = sp; return Array.from(PC.render(a, { stage: st, frame: 0 }).data); });
+[['starlordkek', 'pepe'], ['gooby', 'doge'], ['lukespam', 'wojak'], ['starlordkek', 'gooby'], ['gooby', 'lukespam'], ['lukespam', 'starlordkek']].forEach(([a, b], i) => {
+  const both = V.isContestSp(a) && V.isContestSp(b), sp = both ? V.pickSpecies12(h(i)) : (V.isContestSp(a) ? b : a);
+  out.hybrids.push({ a, b, sp, both, frames: babyFr(sp, i) }); });
 out.ref = [0, 1, 2, 3, 4, 5].map(s => K.render(s, 0, '#2a3a2e').data);
 fs.writeFileSync(process.argv[2] || '/tmp/contest-frames.json', JSON.stringify(out));
