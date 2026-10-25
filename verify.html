@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XCPETS: is this pet token real?</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="css/style.css?v=f75d66e40d"><link rel="stylesheet" href="css/game.css?v=f75d66e40d"><link rel="stylesheet" href="css/v2.css?v=f75d66e40d"></head>
+<body data-v2page="verify"><main class="panel">
+<h1>Is this pet token real?</h1>
+<p>A pet token is real only if xcpets.fun lists it as <b>tied</b> to its pet. A copy can use the same picture and the same <code>xcpets.fun/t/…json</code> description, but it is a different asset number and moves nothing.</p>
+<form id="vf"><label>Asset (A…) or pet ID <input id="vq" placeholder="A11825070992356920202 or 2" style="width:20em"></label> <button class="btn">Check</button></form>
+<div id="vout" style="margin:1em 0;font-size:1.1em"></div>
+<h2>All genuine pet tokens</h2><div id="vlist" class="small">loading…</div>
+<p class="small muted">Data: api/ties.json, rebuilt from the chain by the same rules the game uses.</p>
+</main><script src="js/verify.js?v=f75d66e40d"></script></body></html>
