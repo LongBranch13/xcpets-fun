@@ -33,7 +33,21 @@
   var UNLOCK = 'Unlock XCP Wallet to continue. It is locked (or this site is not connected): click again and unlock it in the XCP Wallet window that opens (it may be behind this window).';
   function errText(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return UNLOCK + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
     return m + (raw && m.indexOf(raw) < 0 ? ' (wallet said: ' + raw + ')' : '') + ' [code ' + e.code + ']'; }
-  function errHtml(e) { return e.html || esc(errText(e)); }
+  /* burn-wait-confirm (2026-10-26, PREVIEW): the only usable coin is the unconfirmed change of the player's last burn. XCP Wallet's input check
+   * often can't verify such a coin ("Couldn't verify asset status"), so we no longer fall back to it silently: we show this note instead.
+   * Continue re-checks for confirmed coins; 'Try anyway' (V2Wallet.allowUnconfirmedOnce) runs the old inputs_set + allow_unconfirmed_inputs path once. */
+  var CONFIRM_NOTE = 'Your last burn is still confirming. Wait about one block (~10 min) and press Continue. Tip: keep a few separate small BTC coins to burn several times per block.';
+  function confirmErr(raw) { var e = new Error(CONFIRM_NOTE); e.waitConfirm = true; e.confirmNote = true; e.retry = false; if (raw) e.raw = raw; return e; }
+  function noteHtml(buttons) { injectNoteCss(); return '<div class="bwc-note" role="status"><div class="bwc-h">\u23f3 STILL CONFIRMING</div><div class="bwc-t">Your last burn is still confirming. Wait about one block (~10 min) and press Continue.</div><div class="bwc-tip">Tip: keep a few separate small BTC coins to burn several times per block.</div>' + (buttons ? '<div class="bwc-b"><button type="button" class="bwc-go">Continue</button> <a href="#" class="bwc-try">Try anyway</a></div>' : '') + '</div>'; }
+  function injectNoteCss() { var doc = win && win.document; if (!doc || !doc.head || doc.getElementById('bwc-css')) return; var st = doc.createElement('style'); st.id = 'bwc-css';
+    st.textContent = '.bwc-note{display:block;margin:8px 0;padding:10px 12px;background:#141a2e;border:3px solid #ffd166;box-shadow:4px 4px 0 #000;color:#f4f4f4;text-align:left;image-rendering:pixelated;max-width:100%;box-sizing:border-box}'
+      + '.bwc-h{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffd166;margin-bottom:8px;letter-spacing:1px}.bwc-t{font-size:14px;line-height:1.5}.bwc-tip{font-size:12px;line-height:1.5;opacity:.8;margin-top:6px}'
+      + '.bwc-b{margin-top:10px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}.bwc-go{font-family:"Press Start 2P",monospace;font-size:10px;padding:9px 14px;background:#4fd18b;color:#08130c;border:3px solid #000;box-shadow:3px 3px 0 #000;cursor:pointer}'
+      + '.bwc-go:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}.bwc-try{font-size:11px;color:#9fb3d9;text-decoration:underline}';
+    doc.head.appendChild(st); }
+  var tryOnce = false;
+  function allowUnconfirmedOnce() { tryOnce = true; }
+  function errHtml(e) { return e && e.confirmNote ? noteHtml(false) : e.html || esc(errText(e)); }
   /* hotfix-chain: chained burns. The compose node does not see our own just-broadcast (unconfirmed) burns, so burn 3 could be built on an
    * input that burn 1 or 2 already spent -> the wallet's broadcast is rejected as a double-spend ('Wallet error.'). We remember every input we
    * spent this session and pass exclude_utxos; if that leaves no confirmed input, we spend the previous burn's change with inputs_set. */
@@ -129,7 +143,7 @@
   function composeAt(me, plan, fee, onTry) {
     var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag, satPerVbyte: fee }, urls = composeNodes(), errs = [];
     function call(i, mode, tries) {
-      tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode);
+      tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode), unconf = mode === 'change' || mode === 'unconf';
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
       var done = false, bodyT = null; /* burn-compose-fix: the abort timer also covers reading the body (a stalled body used to hang forever) */
       var body = function (r) { return new Promise(function (res, rej) { bodyT = setTimeout(function () { var e6 = new Error('timed out after ' + COMPOSE_MS / 1000 + ' s reading the reply'); e6.retryable = true; e6.backoff = true; rej(e6); }, COMPOSE_MS); Promise.resolve(r.json()).then(res, function (e) { var e7 = new Error('unreadable reply (' + ((e && e.message) || 'bad JSON') + ')'); e7.retryable = true; e7.backoff = true; rej(e7); }); }).then(function (x) { clearTimeout(bodyT); return x; }, function (e) { clearTimeout(bodyT); throw e; }); };
@@ -139,7 +153,7 @@
           if (!j || typeof j !== 'object') { var e8 = new Error('empty reply'); e8.retryable = true; throw e8; }
           if (j.error) { var e3 = new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); e3.retryable = /unsupported node operation|not ready|unavailable/i.test(e3.message); throw e3; }
           if (onTry) onTry(i + 1, urls.length, 'check'); var chk; try { chk = BurnCore.checkComposeResult(j.result, exp); } catch (ce) { chk = { ok: false, problems: ['safety check error: ' + ((ce && ce.message) || ce)] }; } if (!chk.ok) { var e4 = new Error('Safety check stopped this burn before signing (nothing was signed or sent): ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
-          j.result._url = url; return j.result;
+          j.result._url = url; if (unconf) j.result._unconf = true; return j.result;
         }).catch(function (e) { if (e.backoff && tries < 3) return sleep(BACKOFF * Math.pow(2, tries)).then(function () { return call(i, mode, tries + 1); }); throw e; });
     }
     function friendly(e) {
@@ -151,7 +165,7 @@
     /* build 2: our earlier burns are still unconfirmed -> stop instead of clearing exclusions (that would double-spend their inputs) */
     function waitErr() { var e = new Error('Burn N is waiting to confirm. Wait about one block, then press Continue.'); e.waitConfirm = true; return e; }
     function host(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
-    var chained = !!(live().length || lastChange), plainRetry = false;
+    var chained = !!(live().length || lastChange), plainRetry = false, allowUnconf = tryOnce; tryOnce = false;
     function go(i) {
       if (i >= urls.length) {
         if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry (never while our own burns are unconfirmed) */
@@ -159,6 +173,10 @@
       }
       if (onTry) onTry(i + 1, urls.length);
       return call(i, false).catch(function (e) {
+        if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message) && !allowUnconf) {
+          /* burn-wait-confirm: no confirmed coin left. Stop with the wait note (nothing composed on unconfirmed change) unless 'Try anyway'. */
+          if (chained && !plainRetry) { if (pendingChain() > 0) throw confirmErr(); plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { if (!e3.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e3.message)) throw confirmErr(); throw friendly(e3); }); }
+          throw confirmErr(); }
         if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message)) return (lastChange ? call(i, 'change').catch(function () { return call(i, 'unconf'); }) : call(i, 'unconf')).catch(function (e2) {
           if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { throw friendly(e3); }); } throw friendly(e2); });
         if (e.retryable) { errs.push(host(urls[i]) + ': ' + e.message); return go(i + 1); }
@@ -198,7 +216,10 @@
       if (onTry) onTry(0, 0, 'fee');
       return feeRate().then(function (fee) { return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
         if (onTry) onTry(0, 0, 'sign');
-        return w.signAndBroadcast(res).then(function (r) {
+        return w.signAndBroadcast(res).catch(function (we) {
+          /* burn-wait-confirm: XCP Wallet refused/failed a burn built on unconfirmed change -> same wait note (a plain user Cancel stays a cancel) */
+          if (res && res._unconf && !(we && (we.code === 4001 || we.code === -32005 || we.code === 4100))) throw confirmErr(we && (we.message || String(we)));
+          throw we; }).then(function (r) {
           noteSent(res, r.txid); tracker.add({ txid: r.txid, tag: plan.tag, amount: plan.amount, label: plan.label || plan.tag, at: Date.now(), status: 'sent' });
           return { txid: r.txid, composed: res };
         });
@@ -343,6 +364,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
+  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
