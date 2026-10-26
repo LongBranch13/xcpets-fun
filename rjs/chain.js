@@ -154,7 +154,7 @@
     if (cache && cache[h]) return Promise.resolve(cache[h]);
     var bases = BLOCK_APIS.map(function (b) { var mp = b.indexOf('mempool:') === 0, u = mp ? b.slice(8) : b, fn = function (p) { return u + p; }; fn.mp = mp; fn.toString = function () { return u; }; return fn; });
     return failover(this.f, bases, String(h), function (r, base) { return (base.mp ? r.text() : r.json()).then(function (j) {
-        var x = base.mp ? String(j).trim() : j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(x || '')) throw new Error('bad block hash'); if (cache) cache[h] = x; return x; }); }, { deadline: 12000 })
+        var x = base.mp ? String(j).trim() : j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(x || '')) throw new Error('bad block hash'); if (cache) cache[h] = x; return x; }); }, { deadline: 12000, hedgeMs: 1000 }) /* burn-check-fast: a slow mempool.space no longer holds a hash for seconds; same hash from every source */
       .catch(function () { return null; });
   };
   /** txStatus(txid) -> {confirmed, block, seen}: confirmed = the Counterparty node has parsed it in a block (so replay includes it). */
