@@ -1,6 +1,6 @@
 {
-  "blockHeight": 973261,
-  "generatedAt": "2026-10-26T17:01:03Z",
+  "blockHeight": 973262,
+  "generatedAt": "2026-10-26T17:32:50Z",
   "asset": "XCPETS",
   "totalPets": 45063,
   "alive": 32005,
@@ -11,7 +11,7 @@
   "supplyXCPETS": 78709854.99999717,
   "owners": 17,
   "community": {
-    "tip": 973261,
+    "tip": 973262,
     "current": {
       "id": "funtrump",
       "no": 4,
