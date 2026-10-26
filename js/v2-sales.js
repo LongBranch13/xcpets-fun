@@ -161,12 +161,14 @@
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0;
       function go(cur) { return getJ0(base + '/blocks/' + n + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad events');
         out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }); }
-      if (DEAD[base]) return on(i + 1); return go(null).catch(function () { DEAD[base] = 1; return on(i + 1); }); }
+      if (DEAD[base]) return on(i + 1); return go(null).catch(function (e) { if (e && e.status != null) DEAD[base] = 1; /* ratelimit-calm: a CORS-less 429 looks like a network error; do not write the node off for the whole page */ return on(i + 1); }); }
     return on(0); }
   function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > (window.XCPETS_TOUCH_MAX || 60)) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
     blockEvents.src = {}; touched.miss = []; /* api-reduction: a block whose events no source gave keeps the saved slices (flagged stale) instead of dropping the base and re-reading every token */
-    return Promise.all(n.map(function (b) { return blockEvents(b, hs).catch(function () { touched.miss.push(b); blockEvents.src[b] = 'miss'; return []; }); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
+    /* ratelimit-calm (2026-10-26): at most 3 block reads in flight (was every gap block at once: 26 parallel reads tripped the nodes' per-IP 429, which arrives without CORS as 'Failed to fetch') */
+    var q = n.slice(), L = [], runOne = function () { if (!q.length) return null; var b = q.shift(), i = n.indexOf(b); return blockEvents(b, hs).catch(function () { touched.miss.push(b); blockEvents.src[b] = 'miss'; return []; }).then(function (r) { L[i] = r; return runOne(); }); };
+    return Promise.all([runOne(), runOne(), runOne()]).then(function () { return L; }).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
       as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
   function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
     var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, at: c.at, from: 'local' });
