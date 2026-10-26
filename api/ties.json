@@ -1,6 +1,6 @@
 {
- "lastBlock": 973291,
- "count": 175,
+ "lastBlock": 973296,
+ "count": 174,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1168,18 +1168,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 14798,
-   "asset": "A2724116458909824598",
-   "tiedBlock": 973141,
-   "tiedTx": "2419af969884bb3b3b46848446228736e845568151510781bd683a081df07129",
-   "kind": "deed",
-   "name": "Rigi",
-   "species": "peepo",
-   "speciesLabel": "Peepo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 27570,
    "asset": "A7570957476267206389",
    "tiedBlock": 973141,
@@ -1272,18 +1260,6 @@
    "name": "Guwazook",
    "species": "peepo",
    "speciesLabel": "Peepo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 14124,
-   "asset": "A15447491508377149827",
-   "tiedBlock": 973148,
-   "tiedTx": "c8a1f642952efe3751eec5cb6fcba0d0c812e3d3ffa5e88a546f1ed930463a83",
-   "kind": "deed",
-   "name": "Rine",
-   "species": "mumu",
-   "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Hatchling"
   },
@@ -1876,18 +1852,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 15124,
-   "asset": "A773383089848391156",
-   "tiedBlock": 973249,
-   "tiedTx": "ddb5b9f52b3ca5fd94ac7040bada283ced7497cb4b0e8d42fe89d2b62627a6ae",
-   "kind": "deed",
-   "name": "Popo",
-   "species": "snibby",
-   "speciesLabel": "Snibby",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 28080,
    "asset": "A14728787237959712322",
    "tiedBlock": 973249,
@@ -2098,6 +2062,30 @@
    "tiedTx": "518e8651d45a5870b01fdbc97ef5d04ae6abfec69d36da5e8b8a08c91512648a",
    "kind": "deed",
    "name": "Hayoorupip",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38623,
+   "asset": "A12598343081763552390",
+   "tiedBlock": 973295,
+   "tiedTx": "1de3877251abaeba24b29a1af2adf1cf099f164268688653bfc3bdc2868b112f",
+   "kind": "deed",
+   "name": "Gomo",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38756,
+   "asset": "A15769419614950560148",
+   "tiedBlock": 973296,
+   "tiedTx": "63c07e8baacbe9e0872feaa318861c4698fd0868b3a4e931683d0d7dc02f4a70",
+   "kind": "deed",
+   "name": "Haluru",
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
