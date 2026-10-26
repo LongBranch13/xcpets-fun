@@ -162,10 +162,10 @@
   /* direct-counterparty-api (2026-10-25): ONE re-read chain at a time. Before, a failed try queued a timer retry AND whenFresh (Sign & Burn) started
    * its own revalidate right away, and every press started another, so the same destructions/sale reads ran 2-3 times in parallel against a
    * rate-limited server (the repeated 429 loop). Now a pending timer retry is pulled forward instead of doubled, and presses share it. */
-  var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null;
+  var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null, checking = 0;
   function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var was = sigOf();
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
-      if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
+      if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ if (checking && !cache) { var wb = wkBusy; wkBusy = 0; try { world(); } catch (e) {} wkBusy = wb; } } return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
       if (blocked()) { toFeed(); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
       if (n < RETRY_MS.length) { retryT = setTimeout(function () { retryT = null; revalidate(n + 1); }, RETRY_MS[n]); return; }
@@ -191,8 +191,8 @@
     function tryRead(k) { try { if (E.Chain.forgetBlocked) E.Chain.forgetBlocked(); } catch (e) {} if (S.feed) S.feed = false;
       return readDone(reval || (S.verified ? null : revalidate(RETRY_MS.length))).then(function () {
         if (S.verified || k >= GAPS.length) return; return waitP(GAPS[k]).then(function () { return tryRead(k + 1); }); }); }
-    var p = tryRead(0);
-    return Promise.resolve(p).then(function () { clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
+    checking++; var p = tryRead(0);
+    return Promise.resolve(p).then(function () { checking--; clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
   function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
