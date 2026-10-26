@@ -1,6 +1,6 @@
 {
- "lastBlock": 973302,
- "count": 177,
+ "lastBlock": 973306,
+ "count": 183,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2124,6 +2124,78 @@
    "name": "Kitinilu",
    "species": "lenny",
    "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38270,
+   "asset": "A15465864635518939613",
+   "tiedBlock": 973303,
+   "tiedTx": "161fc880cdd30399bc5ff20a954632b9c3cfeed29fbd204378aa6845b13e1726",
+   "kind": "deed",
+   "name": "Pazevoobun",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38304,
+   "asset": "A7338024862927583070",
+   "tiedBlock": 973304,
+   "tiedTx": "16b699da7995fe3fc5bc10f15131e320ef9623d34c6c58e1a42342c033ef6391",
+   "kind": "deed",
+   "name": "Tachepo",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38405,
+   "asset": "A11905974745128956570",
+   "tiedBlock": 973304,
+   "tiedTx": "1dd87fef08b53588daf3bec8246c24e2179790b087f99ffa46cfff621f4bce0d",
+   "kind": "deed",
+   "name": "Joogub",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40504,
+   "asset": "A16307632523500202526",
+   "tiedBlock": 973304,
+   "tiedTx": "e5001deba962f4e048d61eb0b74e9bf74861a1b5fa1055e4fb7af3fa3956cfdf",
+   "kind": "deed",
+   "name": "Humimi",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40515,
+   "asset": "A12907153972819079910",
+   "tiedBlock": 973306,
+   "tiedTx": "848c89b3613637d0d338b193f09666a062a34dbe88192baff1312e205c808977",
+   "kind": "deed",
+   "name": "Zudivani",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Rare",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 46068,
+   "asset": "A1673289172511296123",
+   "tiedBlock": 973306,
+   "tiedTx": "72ebca64ce328790bcc16e97f7dc170dc332139d82e391a0df9a31016bb1dfa6",
+   "kind": "deed",
+   "name": "Yazoolomi",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
