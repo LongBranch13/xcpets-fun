@@ -114,7 +114,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 45000; /* direct-counterparty-api: was 120 s of spinner */
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 90000; /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
   function feeRate() {
     return withTimeout(F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); }), FEE_MS, 'fee rate timed out')
       .then(function (f) { var x = Math.ceil(Number(f.hourFee)); return x >= 1 ? x : 1; }).catch(function () { return 2; });

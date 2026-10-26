@@ -167,11 +167,18 @@
      * 10 min and failed every press at once) and tries patiently: up to 3 full reads (both Core nodes, failover to api.unspendablelabs.com),
      * 2 s then 5 s apart. Never api.xcp.fun. */
     var waitP = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }, GAPS = [2000, 5000];
+    /* burn-check-fast (2026-10-25): profiled on the laptop, the reads take ~2 s; the rest (20-50 s) was the full pet rebuild after the read.
+     * When the fresh burns + sale data are the SAME as the copy the burn was built from (sigOf unchanged), that rebuild cannot change the pet
+     * numbers, so the check answers as soon as the verified read lands and the rebuild finishes in the background (same rule as the old
+     * same:true path). Changed data still waits for the rebuild, because the recheck judges the burn against it. */
+    function readDone(p) { return new Promise(function (res) { var iv = setInterval(function () { if (S.verified && sigOf() === was) { clearInterval(iv); res(); } }, 100);
+      Promise.resolve(p).then(function () { clearInterval(iv); res(); }, function () { clearInterval(iv); res(); }); }); }
+    var slowT = setTimeout(function () { if (!S.verified) staleBar('Still checking the latest chain data… the Counterparty servers are slow right now. Nothing is signed until this finishes.', 'none'); }, 15000);
     function tryRead(k) { try { if (E.Chain.forgetBlocked) E.Chain.forgetBlocked(); } catch (e) {} if (S.feed) S.feed = false;
-      return Promise.resolve(reval || (S.verified ? null : revalidate(RETRY_MS.length))).then(function () {
+      return readDone(reval || (S.verified ? null : revalidate(RETRY_MS.length))).then(function () {
         if (S.verified || k >= GAPS.length) return; return waitP(GAPS[k]).then(function () { return tryRead(k + 1); }); }); }
     var p = tryRead(0);
-    return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was };
+    return Promise.resolve(p).then(function () { clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
   function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
