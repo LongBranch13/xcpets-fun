@@ -12,7 +12,7 @@
   if (q('addr')) try { var wa = localStorage.getItem('xcpets-xcpwallet-address'); if (!wa || wa === ME) localStorage.setItem('xcpets-v2-me', ME); } catch (e) {}
   var loc = (function () { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
   var S = { rows: [], hashes: {}, ops: loc.ops || [], tip: 0, balance: 0, n: 0, sel: loc.sel || [], hide: loc.hide != null ? loc.hide : -1, hidden: loc.hidden || [], prod: true, mempool: [] };
-  var cache = null, opsSig = null, cacheSig = null;
+  var cache = null, opsSig = null, cacheSig = null, wkBusy = 0;
   /* smooth-perf (owner approved 2026-10-19): the replay is rebuilt ONLY when its inputs changed. inSig() = tip + an FNV-1a hash of the burn rows +
    * a hash of every block hash, i.e. everything V.replay reads besides the local ops (opsSig). load() used to drop the cache on every read, so the 60 s
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
@@ -41,8 +41,8 @@
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
-    return new Promise(function (res) { var id = ++wkId, sig = inSig(), ops = S.ops || [], oj = JSON.stringify(ops), key = idbKey(), done = false, t;
-      function fin() { if (done) return; done = true; clearTimeout(t); res(); }
+    wkBusy++; return new Promise(function (res) { var id = ++wkId, sig = inSig(), ops = S.ops || [], oj = JSON.stringify(ops), key = idbKey(), done = false, t;
+      function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); res(); }
       try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }; }
         wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; } else if (!m.ok) wkOff = true; fin(); };
         t = setTimeout(function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }, WORKER_MS);
@@ -52,7 +52,21 @@
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
-  function world() { if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore, dex: S.dex || undefined }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; } if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return cache; }
+  /* page-load-freeze (2026-10-25): about 20 UI pollers (gift, quests, badges, Old Money marks, ...) call world() every 1-3 s. While the replay
+   * worker was still building the world there was no cache, so the first poller to tick ran the whole replay (~12 s) on the main thread,
+   * about twice per page load, which froze the page and the burn check's timers. Now, while the worker is busy and nothing is cached,
+   * world() hands back the last finished world (only if the local ops are unchanged), or before the first world a small placeholder
+   * (w.pending = true, no pets) that pollers skip; they repaint when the real world lands (a new object). If the worker is off,
+   * fails or is rejected, wkBusy is 0 and world() replays on the main thread exactly as before. Game results are unchanged. */
+  var lastW = null, lastOps = null, emptyW = null;
+  function peek() { return (cache || !wkBusy) ? world() : null; }
+  function keep(w) { lastW = w; lastOps = opsSig; return w; }
+  function world() {
+    if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
+      if (lastW && lastOps === oj) { if (V.syncCosts) V.syncCosts(lastW, (S.tip || 0) + 1); return lastW; }
+      if (!emptyW) { emptyW = V.replay([], {}, [], { tip: S.tip, live: E.RealCore }); emptyW.pending = true; } return emptyW; }
+    if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore, dex: S.dex || undefined }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; }
+    if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return keep(cache); }
   function burn() { var m = 'Burns from the v2 pages are not wired to a wallet in this build. Nothing was burned.'; try { var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = m; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } else alert(m); } catch (e) {} }
   /* hotfix 3: a short-TTL (60 s) sessionStorage copy of the burns + tip, so moving between pages doesn't re-read the whole chain;
    * refresh() always goes to the network. Block hashes were already cached in localStorage (HKEY). */
@@ -209,5 +223,5 @@
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
 })();
