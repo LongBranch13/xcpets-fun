@@ -1,6 +1,6 @@
 {
- "lastBlock": 973306,
- "count": 183,
+ "lastBlock": 973307,
+ "count": 187,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2196,6 +2196,54 @@
    "name": "Yazoolomi",
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38413,
+   "asset": "A3887710971509473206",
+   "tiedBlock": 973307,
+   "tiedTx": "ab08d2e6a16046210c33d397c0b9c58d98f2239589edd6953ef3768edc9f8460",
+   "kind": "deed",
+   "name": "Tahitoru",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38574,
+   "asset": "A2331029866833757899",
+   "tiedBlock": 973307,
+   "tiedTx": "d5d8af9e5c1b2b08bd0a1fd2b895005299f52e6687126f263b810c5d1ce0b9ea",
+   "kind": "deed",
+   "name": "Roonebun",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40596,
+   "asset": "A7651915412679546554",
+   "tiedBlock": 973307,
+   "tiedTx": "c13f4682441dc0f6a6ebcdfc5d741a414b94493a47a7651b2464d1365d20da25",
+   "kind": "deed",
+   "name": "Voonuru",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40726,
+   "asset": "A11748440851067200816",
+   "tiedBlock": 973307,
+   "tiedTx": "f7b09bb107dd137b428a745e6579bfded2d167dc5f6980fedabe8f478e7c5f0a",
+   "kind": "deed",
+   "name": "Kumepip",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
