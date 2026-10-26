@@ -180,7 +180,7 @@
     /* burn-check-fix (2026-10-25): the burn safety read forgets the remembered 'port 4000 blocked' state (a single slow moment set it for
      * 10 min and failed every press at once) and tries patiently: up to 3 full reads (both Core nodes, failover to api.unspendablelabs.com),
      * 2 s then 5 s apart. Never api.xcp.fun. */
-    var waitP = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }, GAPS = [2000, 5000];
+    var waitP = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }, GAPS = [4000, 10000, 20000]; /* ratelimit-calm (2026-10-26): the nodes' 429 cool-down is ~10-60 s; 2 s/5 s retries failed inside it */
     /* burn-check-fast (2026-10-25): profiled on the laptop, the reads take ~2 s; the rest (20-50 s) was the full pet rebuild after the read.
      * When the fresh burns + sale data are the SAME as the copy the burn was built from (sigOf unchanged), that rebuild cannot change the pet
      * numbers, so the check answers as soon as the verified read lands and the rebuild finishes in the background (same rule as the old
