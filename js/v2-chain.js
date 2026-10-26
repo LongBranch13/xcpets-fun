@@ -163,7 +163,14 @@
     staleBar('Checking the latest chain data before your burn…', 'none');
     /* one try: join the running re-read, or run one now (a pending timer retry is pulled forward, not doubled). A failed read resolves
      * {ok:false} right away, so the button shows Retry instead of spinning; the background timer retries stay as they were. */
-    var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
+    /* burn-check-fix (2026-10-25): the burn safety read forgets the remembered 'port 4000 blocked' state (a single slow moment set it for
+     * 10 min and failed every press at once) and tries patiently: up to 3 full reads (both Core nodes, failover to api.unspendablelabs.com),
+     * 2 s then 5 s apart. Never api.xcp.fun. */
+    var waitP = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }, GAPS = [2000, 5000];
+    function tryRead(k) { try { if (E.Chain.forgetBlocked) E.Chain.forgetBlocked(); } catch (e) {} if (S.feed) S.feed = false;
+      return Promise.resolve(reval || (S.verified ? null : revalidate(RETRY_MS.length))).then(function () {
+        if (S.verified || k >= GAPS.length) return; return waitP(GAPS[k]).then(function () { return tryRead(k + 1); }); }); }
+    var p = tryRead(0);
     return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was };
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
   function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }

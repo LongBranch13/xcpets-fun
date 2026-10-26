@@ -48,7 +48,7 @@
    * so a network that blocks port 4000 pays the short timeout once per session, not on every read or page. */
   var NET_KEY = 'xcpets-api-netsick', NETDEAD = (function () { var r = {}; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}, t = Date.now(); Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = 1; }); } catch (e) { } return r; })();
   function netDead(b) { if (NETDEAD[b]) return true; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; return o[b] > Date.now(); } catch (e) { return false; } }
-  function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
+  function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; /* session only */ sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
   function coreBases() { var CFG = window.XCPETS_CONFIG || {}; return (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'])
     .filter(function (u) { return !/xcp\.fun/.test(u); }).map(function (u) { u = String(u).replace(/\/+$/, ''); return /\/v2$/.test(u) ? u : u + '/v2'; }); }
   function isNet(e) { return !!e && !e.busy && e.status == null && !/DEX API \d/.test(e.message || '') && (e.name === 'AbortError' || /abort|fetch|network|timed out|load failed/i.test(e.message || String(e))); }
