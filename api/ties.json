@@ -1,6 +1,6 @@
 {
- "lastBlock": 973152,
- "count": 115,
+ "lastBlock": 973156,
+ "count": 125,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1380,6 +1380,126 @@
    "name": "Ruwotep",
    "species": "mumu",
    "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 27927,
+   "asset": "A13342980225652622049",
+   "tiedBlock": 973153,
+   "tiedTx": "65dc3b2f5ed21d8bb4093f3057fca00b852ea8bc3d040c040ba318412f1dd7d6",
+   "kind": "deed",
+   "name": "Babami",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 28171,
+   "asset": "A8454500964415864017",
+   "tiedBlock": 973153,
+   "tiedTx": "bd3ad1ce7b3b3bf2dc277164bd132215bb52d88b7a6aea60e0cfc43b1c3dfa2f",
+   "kind": "deed",
+   "name": "Sato",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 29495,
+   "asset": "A14815271782673716548",
+   "tiedBlock": 973153,
+   "tiedTx": "96d97fbd951451dade8a0839251faf8da692464953d2d0f33d4fece10701a5e8",
+   "kind": "deed",
+   "name": "Kazu",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 30350,
+   "asset": "A8390767217658622964",
+   "tiedBlock": 973153,
+   "tiedTx": "43bfb76f72cb0a8f50ed7ab32e315fe3094ea6d722edd16dcc698a7d559cf0a6",
+   "kind": "deed",
+   "name": "Tikpo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35135,
+   "asset": "A11422420962069730484",
+   "tiedBlock": 973153,
+   "tiedTx": "5a899a1fe52aee77613584e395df55c374f67eef014e016fbba3b96cefb81a33",
+   "kind": "deed",
+   "name": "Yegok",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35484,
+   "asset": "A12380812943318656307",
+   "tiedBlock": 973153,
+   "tiedTx": "651ef7217613afa7d1e384f9dc682773d8fae6dd2f7607b4086722b0e38223dd",
+   "kind": "deed",
+   "name": "Winubit",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35804,
+   "asset": "A12161063380712341559",
+   "tiedBlock": 973153,
+   "tiedTx": "78d354ce31311e808f5989799194faecef7d23620c2ee0a1120852f96004351c",
+   "kind": "deed",
+   "name": "Chudogili",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35890,
+   "asset": "A16362391524709089010",
+   "tiedBlock": 973153,
+   "tiedTx": "bd7fd66e277d37627681f53cb36b8e0d96744bd0293c2ea569c8cda56cfcb205",
+   "kind": "deed",
+   "name": "Yegelu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35891,
+   "asset": "A3229970373460140293",
+   "tiedBlock": 973153,
+   "tiedTx": "a923ddc57b8259494a9d58ecf9d3026e53531a0375f577f7cc6aa7f74627aed3",
+   "kind": "deed",
+   "name": "Shiyikoolu",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 43046,
+   "asset": "A7137406390875557436",
+   "tiedBlock": 973155,
+   "tiedTx": "2fdad93a631aa8d9d0f2cb31cbde642fff7acfba3618904cb6486bcfabee74be",
+   "kind": "deed",
+   "name": "Chubezibun",
+   "species": "hyb:sarutobi:doge",
+   "speciesLabel": "Sadoge (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
