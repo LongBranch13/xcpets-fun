@@ -367,7 +367,7 @@
     window.V2Wallet.send(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
   /* pend(): the pending-token store, defined above (shared with the pet card) */
 
-  function sellable(p) { return !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
+  function sellable(p) { return (V.sellStep(W, p, ME) === 'list' ? !V.petFree(W, p, ME, TIP + 1) && !V.saleListing(W, p.id, TIP + 1) : !V.deedWhy(W, { petId: p.id }, ME, TIP + 1)) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
   function sellPick() { var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
