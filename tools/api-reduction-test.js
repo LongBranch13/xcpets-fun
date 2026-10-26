@@ -12,7 +12,7 @@ console.log('api-reduction-test ok');
 /* feed-fallback: blocked :4000 -> game feed as live source, fast fail remembered across visits, no api.xcp.fun core reads */
 { const ch = R('rjs/chain.js');
   assert(!/localStorage\.setItem\(NET_KEY/.test(ch) && /allNetSick\(bases\)/.test(ch) && /PROBE_MS = 4000/.test(ch) && /prs\.forEach/.test(ch), 'burn-check-fix: blocked :4000 remembered per session only, probe asks every Core node');
-  assert(/Chain\.forgetBlocked/.test(ch) && /forgetBlocked\(\)/.test(chain) && /GAPS = \[2000, 5000\]/.test(chain), 'burn-check-fix: burn safety read forgets the blocked memory and retries patiently');
+  assert(/Chain\.forgetBlocked/.test(ch) && /forgetBlocked\(\)/.test(chain) && /GAPS = \[4000, 10000, 20000\]/.test(chain), 'burn-check-fix: burn safety read forgets the blocked memory and retries patiently');
   assert(/api\/boot\.json\?t=' \+ Math\.floor\(Date\.now\(\) \/ 60e3\)/.test(chain) && /Date\.now\(\) - feedAt < 60e3/.test(chain), 'feed re-fetch cache-busted, once a minute');
   assert(/from the game feed, block /.test(chain), 'feed label');
   assert(!/api\.xcp\.fun/.test(cfg.split('mainnet:')[1].split('\n')[0].replace(/\/\*.*$/, '')), 'no api.xcp.fun core read'); }
