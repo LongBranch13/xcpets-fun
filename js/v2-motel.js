@@ -20,9 +20,9 @@
   function odds(V, A, B) { var hy = V.isHybrid, hi = Math.max(A.tier, B.tier), lo = Math.min(A.tier, B.tier), lab = function (s) { return V.speciesLabel(s); };
     var roots = function (s) { return hy(s) ? s.replace(/^hyb3?:/, '').split(':') : [s]; }, ph, sp;
     if (hy(A.species) || hy(B.species)) { var U = roots(A.species); roots(B.species).forEach(function (r) { if (U.indexOf(r) < 0) U.push(r); }); ph = 1; /* hybrid3Species: always a hybrid */
-      sp = U.length === 2 ? [[V.hybridName(hy(A.species) ? A.species : B.species), 100]] : [['3-way hybrid', 50], ['2-way hybrid', 50]]; }
+      sp = U.length === 2 ? [[(V.hybridLabel || V.hybridName)(hy(A.species) ? A.species : B.species), 100]] : [['3-way hybrid', 50], ['2-way hybrid', 50]]; }
     else if (A.species === B.species) { ph = 0; sp = [[lab(A.species), 100]]; }
-    else { ph = V.HYBRID_RATE_1E9 / 1e9; var pu = (1 - ph) / 2; sp = [[V.hybridName('hyb:' + A.species + ':' + B.species), ph * 100], [lab(A.species), pu * 100], [lab(B.species), pu * 100]]; }
+    else { ph = V.HYBRID_RATE_1E9 / 1e9; var pu = (1 - ph) / 2; sp = [[(V.hybridLabel || V.hybridName)('hyb:' + A.species + ':' + B.species), ph * 100], [lab(A.species), pu * 100], [lab(B.species), pu * 100]]; }
     /* tiers: purebred child 5% hi+1 / 30% hi / 65% lo (RARITY_*_10K); hybrid child 10% hi+1 / 90% hi (HYBRID_RARITY_UP_10K) */
     var up = ph * 0.10 + (1 - ph) * 0.05, h = ph * 0.90 + (1 - ph) * 0.30, l = (1 - ph) * 0.65; if (hi === 3) { h += up; up = 0; } if (hi === lo) { h += l; l = 0; }
     return { hyb: ph * 100, sp: sp, tier: { up: up * 100, hi: h * 100, lo: l * 100 }, hiT: hi, loT: lo }; }
