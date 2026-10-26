@@ -1,5 +1,5 @@
 /* player-qol 2026-10-24: wallet stays connected across page loads / tab focus (silent xcp_accounts, no popup), tracks lock/unlock/disconnect,
- * status pill with one-tap reconnect, and stores only the provider kind + public address. Run: python3 -m http.server 8099 in the repo root. */
+ * status pill with one-tap reconnect, and stores only the provider kind + public address. Files are served from the checkout by tools/lib/serve-repo.js (no server needed). */
 const { chromium } = require('playwright-core');
 const ADDR = 'bc1qtestaddressxxxxxxxxxxxxxxxxxxxxxxxxxx';
 const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>';
@@ -7,7 +7,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   const pg = await b.newPage(); const res = []; const ok = (n, c, x) => res.push((c ? 'PASS ' : 'FAIL ') + n + (x ? ' — ' + x : ''));
   pg.on('pageerror', e => res.push('FAIL pageerror ' + e.message));
-  await pg.route('http://localhost:8099/zz-wallet-persist.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
+  await require('./lib/serve-repo.js')(pg, { '/zz-wallet-persist.html': HARNESS });
   await pg.route(/^https?:\/\/(?!localhost)/, r => r.fulfill({ status: 404, body: '' }));
   await pg.addInitScript(ADDR => { const W = window.__W = { calls: [], acc: [ADDR], h: {} };
     window.xcpwallet = { on(e, f) { (W.h[e] = W.h[e] || []).push(f); }, request(a) { W.calls.push(a.method);

@@ -15,6 +15,7 @@ const ADDR='bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', TXF
       if (a.method==='xcp_signTransaction') return new Promise((r,j)=>W.pend.push({m:a.method,res:()=>r({hex:'02aa'}),rej:(c,msg)=>{const e=new Error(msg);e.code=c;j(e);}}));
       if (a.method==='xcp_broadcastTransaction') { W.n=(W.n||0)+1; return Promise.resolve({txid:String(W.n).padStart(64,'a')}); }
       return Promise.resolve(null); } }; }, ADDR);
+  await require('./lib/serve-repo.js')(pg, { '/zz-harness.html': '<!doctype html><html><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>' }); /* was an untracked file on a separate :8099 server */
   await pg.goto('http://localhost:8099/zz-harness.html');
   const ev = (f,...a)=>pg.evaluate(f,...a);
   const settle = (key, fn) => ev(([key, fn]) => { window[key]={state:'pending'}; eval(fn).then(v=>window[key]={state:'ok',v}, e=>window[key]={state:'err',msg:e.message,busy:!!e.walletBusy,code:e.code}); }, [key, fn]);
