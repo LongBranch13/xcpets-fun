@@ -1,6 +1,6 @@
 {
- "lastBlock": 973146,
- "count": 108,
+ "lastBlock": 973152,
+ "count": 115,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1012,30 +1012,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 11502,
-   "asset": "A4379737357878285322",
-   "tiedBlock": 973126,
-   "tiedTx": "e0ff91d4951a7b996f6843f19d0f2f09ee08a36f90af6e622fa5fcab9b72f261",
-   "kind": "deed",
-   "name": "Rine",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 12047,
-   "asset": "A13252960989016711884",
-   "tiedBlock": 973126,
-   "tiedTx": "5568292b8b98e2b0dae2204ccfe2429165fd36f0391c807344ea92ead7f4f2e9",
-   "kind": "deed",
-   "name": "Pene",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 15486,
    "asset": "A3064074768850229857",
    "tiedBlock": 973126,
@@ -1296,6 +1272,114 @@
    "name": "Guwazook",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 14124,
+   "asset": "A15447491508377149827",
+   "tiedBlock": 973148,
+   "tiedTx": "c8a1f642952efe3751eec5cb6fcba0d0c812e3d3ffa5e88a546f1ed930463a83",
+   "kind": "deed",
+   "name": "Rine",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 28352,
+   "asset": "A8592754796707165834",
+   "tiedBlock": 973148,
+   "tiedTx": "9c94b36e0efb467209c52fa822468e1f02c80d9eb2916dd0f5527b6a187081f9",
+   "kind": "deed",
+   "name": "Michi",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 29465,
+   "asset": "A11960655677761150360",
+   "tiedBlock": 973148,
+   "tiedTx": "a93a79ff534f5f333941e6d4d983b72f05aa55a194da7b08fb9fc301509befbd",
+   "kind": "deed",
+   "name": "Tofunu",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35091,
+   "asset": "A994197714742610147",
+   "tiedBlock": 973148,
+   "tiedTx": "ea4bf010e49beb3a0752232bf888a471fb279591bd2cd14a16497569d4408dfd",
+   "kind": "deed",
+   "name": "Nufoomi",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35156,
+   "asset": "A3887615407886578772",
+   "tiedBlock": 973148,
+   "tiedTx": "c7e05caeadc4e34bf4a1d3e88912b1b9ca05fcf16cbc29a0ecf015a437ef0ca2",
+   "kind": "deed",
+   "name": "Suzeru",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35488,
+   "asset": "A2144896206696406372",
+   "tiedBlock": 973148,
+   "tiedTx": "a71ddf64477dbd68a2fb2b774f663272a14163bfae4b769b0dbb43277718872d",
+   "kind": "deed",
+   "name": "Tichidup",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35588,
+   "asset": "A11086361213065334430",
+   "tiedBlock": 973148,
+   "tiedTx": "b91d406904c89dfd562e6a0e7418a0f702243b98581278be1f4684f69b2f4c41",
+   "kind": "deed",
+   "name": "Guchani",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35842,
+   "asset": "A4057008991887901149",
+   "tiedBlock": 973148,
+   "tiedTx": "e750412c454f044a1844af7839bc95b12ba9765bb243705a32eedbd7b223a9c0",
+   "kind": "deed",
+   "name": "Tihugiki",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 35964,
+   "asset": "A7181140785358405656",
+   "tiedBlock": 973148,
+   "tiedTx": "4ef9948cc6c7535cea3f1f77d3c5ba28ad09a0b00cdcbb6e0b124326a8e75e3b",
+   "kind": "deed",
+   "name": "Ruwotep",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
