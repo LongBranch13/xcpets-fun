@@ -1,6 +1,6 @@
 {
- "lastBlock": 973257,
- "count": 172,
+ "lastBlock": 973261,
+ "count": 173,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2066,6 +2066,18 @@
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 45063,
+   "asset": "A9727395758701490812",
+   "tiedBlock": 973259,
+   "tiedTx": "691377c5d2d34134a4ef283b0cad758723b104cb56ab56d42fca5c62c562efb8",
+   "kind": "deed",
+   "name": "Mokoop",
+   "species": "hyb:dodo:wojak",
+   "speciesLabel": "Dojak (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Egg"
   }
  ]
 }
