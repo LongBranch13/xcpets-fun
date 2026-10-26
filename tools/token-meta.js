@@ -10,6 +10,8 @@
  *   node tools/token-meta.js --snap FILE     offline snapshot      --out DIR (default t)   --ids 1,2,3 (subset)   --dex dex.json ({issuances:[...]} for offline verified tokens)
  * Generic fallback for a pet not generated yet: t/pet.png (the logo) is what the site links; the binding itself never depends on the file. */
 'use strict';
+/* api-reduction (2026-10-25): every Counterparty read here goes through the same gate as tools/api-feed.js (tools/lib/core-limiter.js: 1 in flight, 2/s per host, shared 429 cooldown). FEED_NO_LIMIT=1 turns it off. */
+if (!process.env.FEED_NO_LIMIT && typeof globalThis.fetch === 'function' && !globalThis.fetch.__xcpLimited) { const RAWF = globalThis.fetch.bind(globalThis), LF = require('./lib/core-limiter.js').makeFetch(RAWF, { conc: 1, rps: 2 }); LF.__xcpLimited = true; globalThis.fetch = LF; }
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const F = require('./api-feed.js'); const PAPERS = require('../js/v2-papers.js');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
