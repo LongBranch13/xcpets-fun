@@ -1,6 +1,6 @@
 {
- "lastBlock": 973296,
- "count": 174,
+ "lastBlock": 973302,
+ "count": 177,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2086,6 +2086,42 @@
    "tiedTx": "63c07e8baacbe9e0872feaa318861c4698fd0868b3a4e931683d0d7dc02f4a70",
    "kind": "deed",
    "name": "Haluru",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38769,
+   "asset": "A3220050001931296308",
+   "tiedBlock": 973298,
+   "tiedTx": "06d10a21badb07ecd40cd7e23e0eba1e7a2638d9f325946ac5c9e702652ae2c8",
+   "kind": "deed",
+   "name": "Palooveboo",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38899,
+   "asset": "A10304704741281564093",
+   "tiedBlock": 973298,
+   "tiedTx": "7e0eebc2aa32759863fd736d006d1846819b113d70a4301f8aff56530e1d7c82",
+   "kind": "deed",
+   "name": "Losomoobun",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40708,
+   "asset": "A380598427488263867",
+   "tiedBlock": 973298,
+   "tiedTx": "5e238733e0a456837e108fc4c581708fdf677d304a5f44f292b462be2501ca7c",
+   "kind": "deed",
+   "name": "Kitinilu",
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
