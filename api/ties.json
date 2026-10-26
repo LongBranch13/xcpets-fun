@@ -1,6 +1,6 @@
 {
- "lastBlock": 973285,
- "count": 173,
+ "lastBlock": 973291,
+ "count": 175,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2078,6 +2078,30 @@
    "speciesLabel": "Dojak (hybrid)",
    "rarity": "Legendary",
    "stage": "Egg"
+  },
+  {
+   "id": 38281,
+   "asset": "A1543272295485085939",
+   "tiedBlock": 973290,
+   "tiedTx": "c066a665099b34b6abe58b1132398280385615c7e4c029414bb068ce8b60cca9",
+   "kind": "deed",
+   "name": "Dache",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38399,
+   "asset": "A6743790381959847189",
+   "tiedBlock": 973290,
+   "tiedTx": "518e8651d45a5870b01fdbc97ef5d04ae6abfec69d36da5e8b8a08c91512648a",
+   "kind": "deed",
+   "name": "Hayoorupip",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
