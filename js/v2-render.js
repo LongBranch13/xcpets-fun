@@ -334,7 +334,47 @@
    * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+  /* BO BABY MARK (branch bo-1of1): a child of Bo Jackson, and every later generation of his line (art.boMark), wears Bo's eye black. Looks only.
+   * v2 placement (owner Oct 26 2026: 'pepe wojack nakamoto and other don't have the black in the correct spot under eyes'): the eyes are the REAL eye pixels
+   * of this body/stage/frame: the keyed render's eye keys (eye, pupil, white, lens...) for PetCore species and hybrid shapes, or V2Rules._spriteEyes for the
+   * sprite-drawn bodies. The eye pixels are split into the two eyes at the widest x gap; under each eye a dark stripe exactly as wide as that eye is painted
+   * on the first row below the eye's lowest pixel whose pixels are face skin (glasses rims, ink lines, brows, the mouth and tears are skipped, so on
+   * Nakamoto it lands under his wire-rims). Painted only inside the pet's own silhouette. */
+  var BO_EYE_KEYS = { eye: 1, pupil: 1, white: 1, lens: 1, iris: 1, sclera: 1, shine: 1 }, BO_SKIP_KEYS = { ink: 1, mouth: 1, brow: 1, frame: 1, tear: 1, eye: 1, pupil: 1, white: 1, lens: 1, iris: 1, sclera: 1, shine: 1, glasses: 1 };
+  function boEyeGroups(eyes) { var xs = eyes.map(function (j) { return j & 31; }).filter(function (x, i, A) { return A.indexOf(x) === i; }).sort(function (p, q) { return p - q; }), cut = null, gap = 1;
+    for (var i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] > gap) { gap = xs[i] - xs[i - 1]; cut = xs[i]; }
+    if (cut == null) return [eyes]; return [eyes.filter(function (j) { return (j & 31) < cut; }), eyes.filter(function (j) { return (j & 31) >= cut; })]; }
+  /* PLACEMENT (owner Oct 26 2026 ~10:32 PM CT): per eye, exactly ONE skin row between the eye's lowest pixel (by) and the stripe (row by + 2),
+   * the stripe as wide as that eye. Pixels that are not skin on the stripe row (outline, mouth, off the face) are left alone. */
+  function boSkin(k, q) { return !!k[q] && !BO_SKIP_KEYS[k[q]]; }
+  function boMarkPlan(k, eyes) { var isEye = {}; eyes.forEach(function (j) { isEye[j] = 1; });
+    var EDGE = { ink: 1, frame: 1, lens: 1, tear: 1 }; /* the eye's own rim: outline ring (Nakamoto), glasses frame (Chud), tear (Wojak) directly below an eye pixel */
+    return boEyeGroups(eyes).filter(function (L) { return L.length; }).map(function (L) { var lx = 32, rx = -1, by = -1; L.forEach(function (j) { lx = Math.min(lx, j & 31); rx = Math.max(rx, j & 31); });
+      var mine = {}; L.forEach(function (j) { mine[j] = 1; }); for (var it = 0, grew = true; grew && it < 3; it++) { grew = false; Object.keys(mine).forEach(function (j) { var n = +j + 32; if (n < 32 * 32 && !mine[n] && EDGE[k[n]]) { mine[n] = 1; isEye[n] = 1; grew = true; } }); }
+      Object.keys(mine).forEach(function (j) { by = Math.max(by, j >> 5); });
+      var y = by + 2, row = [], gap = [], x; for (x = lx; x <= rx; x++) { var q = y * 32 + x, g = (by + 1) * 32 + x; if (y < 32 && boSkin(k, q) && !isEye[q]) row.push(q); if (by + 1 < 32) gap.push(boSkin(k, g) && !isEye[g] ? 1 : 0); }
+      return { lx: lx, rx: rx, by: by, y: y, row: row, gapSkin: gap.reduce(function (a, v) { return a + v; }, 0), w: rx - lx + 1, keys: row.map(function (q) { return k[q]; }) }; }); }
+  function boMarkSpots(k, eyes) { var out = []; boMarkPlan(k, eyes).forEach(function (E) { out = out.concat(E.row); }); return out; }
+  function boStyleEyes(sh, art, o0, k) { var ka = Object.assign({}, art, { species: sh, background: 'solid', bgColor: '#ff00ff', pattern: 'none', crown: 'none', band: 'none', armor: 'none', cape: 'none', weapon: 'none' }), L, M = [], j, real = [];
+    try { L = ['classic', 'beady', 'tinted', 'star', 'laser'].map(function (e) { return PetCore.render(Object.assign({}, ka, { eyes: e }), o0).data; }); } catch (e) { return []; }
+    for (j = 0; j < 29 * 32; j++) if (L.some(function (D) { return D[j * 4] !== L[0][j * 4] || D[j * 4 + 1] !== L[0][j * 4 + 1] || D[j * 4 + 2] !== L[0][j * 4 + 2]; })) M.push(j);
+    M.forEach(function (q) { if (k[q] === 'ink' || BO_EYE_KEYS[k[q]]) real.push(q); }); if (!real.length) return M;
+    var on = {}; real.forEach(function (q) { on[q] = 1; }); real.slice().forEach(function (q) { var x = q & 31, y = q >> 5; [[-1, 1], [0, 1], [1, 1]].forEach(function (dd) { var n = (y + dd[1]) * 32 + x + dd[0]; if (x + dd[0] >= 0 && x + dd[0] < 32 && !on[n] && k[n] === 'ink' && M.indexOf(n) < 0) { on[n] = 1; real.push(n); } }); }); /* the ink tail of a drawn eye just below the style area (Wojak Mythic ^ ^) */
+    return real; }
+  function boMarkFrames(fr, art, stage) { if (!fr || !art || !art.boMark || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species, INK = [0x12, 0x10, 0x16];
+    return fr.map(function (img, f) { var k, o0 = { stage: stage, frame: f, gearOverride: {} }; try { k = V._keyedRender(sh, art, o0).keys; } catch (e) { return img; } if (!k) return img;
+      var eyes = [], j, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null;
+      var mT = 29; for (j = 0; j < 29 * 32; j++) if (k[j] === 'mouth') { mT = j >> 5; break; } /* eye keys at or below the mouth's top row are teeth (Chud's 'white'), not eyes */
+      for (j = 0; j < mT * 32; j++) if (BO_EYE_KEYS[k[j]]) eyes.push(j);
+      if (!eyes.length && SE) eyes = SE.list.filter(function (q) { return (q >> 5) < 29; });
+      if (!eyes.length) eyes = boStyleEyes(sh, art, o0, k); /* closed / drawn-line eyes (Pepe Elder lids, Wojak Mythic): the pixels that change with the eye style alone */
+      if (!eyes.length) return img; if (V._boMarkLog) V._boMarkLog.push({ sh: sh, stage: stage, frame: f, plan: boMarkPlan(k, eyes) });
+      var spots = boMarkSpots(k, eyes); if (!spots.length) return img; var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (j = 0; j < d.length; j++) d[j] = img.data[j];
+      spots.forEach(function (q) { d[q * 4] = INK[0]; d[q * 4 + 1] = INK[1]; d[q * 4 + 2] = INK[2]; d[q * 4 + 3] = 255; });
+      return Object.assign({}, img, { data: d }); }); }
+  if (V) { V._boMarkSpots = boMarkSpots; V._boMarkPlan = boMarkPlan; }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { if (art && art.boMark) return boMarkFrames(framesWithB(art, stage, itemIds, extraOv, cap, baseGo), art, stage); return framesWithB(art, stage, itemIds, extraOv, cap, baseGo); }
+  function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'homer' && window.HomerSprite) return hpHybFrames(art, stage, itemIds); /* HOMER-body hybrid: HomerSprite gear layer */
@@ -984,7 +1024,7 @@
     if (p.hybrid && p.hybrid.parts && p.hybrid.parts.length) out.push('<b>Traded parts:</b> ' + p.hybrid.parts.map(function (q) { return esc(V2.partLabel(q)); }).join(', '));
     if (p.mutation && V2.mutationLabel) { var ml = V2.mutationLabel(p.mutation).split(': '); out.push('<b>' + esc(ml[0]) + (ml[1] ? ':</b> ' + esc(ml[1]) : '</b>')); }
     if (p.shows && V2.hiddenLabel) out.push('<b>Throwback:</b> ' + esc(V2.hiddenLabel(p.shows)) + (p.shows === 'oddeyes' && p.oddEye && V2.ODD_EYE_COLOURS ? ' (' + esc(V2.ODD_EYE_COLOURS[p.oddEye.col % V2.ODD_EYE_COLOURS.length].id) + ')' : ''));
-    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder') + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage and its look is fixed' + (V2.grantBreedOn && V2.grantBreedOn((w && w.tip || 0) + 1) ? '; it can breed, fight and wear gear like any pet.' : ' and it can\'t breed.') + '</span>');
+    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">' + (p.supreme.id === 'bo' ? 'Bo Jackson, granted once as an egg' : 'one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder')) + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage and its look is fixed' + (V2.grantBreedOn && V2.grantBreedOn((w && w.tip || 0) + 1) ? '; it can breed, fight and wear gear like any pet.' : ' and it can\'t breed.') + '</span>');
     if (p.contest) out.push('<b>' + esc(p.contest.title) + ':</b> <span class="chip brbadge">\uD83C\uDFC6 1 of 1</span> <span class="muted">one-time prize egg granted at block ' + Number(p.contest.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage, breeds, fights and wears gear. Its babies are normal pets.</span>');
     if (p.burnLord) out.push('<b>Burn Lord edition:</b> <span class="chip brbadge">\uD83D\uDD25 ' + p.burnLord.n + ' of ' + p.burnLord.of + '</span> <span class="muted">one-time grant to the top ' + p.burnLord.of + ' burners (rank ' + p.burnLord.rank + ', ' + Math.round(p.burnLord.total).toLocaleString('en-US') + ' XCPETS burned to the end of block ' + Number(p.burnLord.gate).toLocaleString('en-US') + '). Granted as an egg: feed it to hatch; it grows through every stage, its look is fixed and it can\'t breed.</span>');
     var bd = V2.breederBadges(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
