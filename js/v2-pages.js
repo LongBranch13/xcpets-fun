@@ -269,7 +269,7 @@
       try { var ck = String(c.returnTx || c.returnBlock); if (c.returned && V2Return.seen() !== ck) localStorage.setItem(V2Return.SEEN_KEY, ck); } catch (e) { } if (V2Return.previewRequested()) V2Return.maybeAutoplay(w, opts);
     });
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
-    $('crNet').textContent = ' chain'; $('crNote').textContent = 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.';
+    $('crNet').textContent = ' chain'; $('crNote').textContent = window.V2DataLag && V2DataLag.note ? V2DataLag.note(M.state().rows.length, { dataTip: M.state().tip, chainTip: M.state().chainTip, feedTip: M.state().feedTip }) : 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.'; /* stale-copy-fix: blocks behind */
     cast(w);
     var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; /* address-lookup: a viewed address is not a connection */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
