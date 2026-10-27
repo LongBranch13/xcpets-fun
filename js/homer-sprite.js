@@ -29,7 +29,7 @@
   function rim(x, y, cx, cy, rx, ry) { var q = 0.95 / HK; return el(x, y, cx, cy, rx - q, ry - q) >= 1; } /* one-pixel ink ring */
   function fwd(x, y) { return [HX2 + (x - HX) * HK, HY2 + (y - HY) * HK]; }
   var NOSE_DX = 1 / HK, LEX = 11.9; /* v9: left eye = mirror of the right eye's shape (2.6 x 3.0), sharing its outline */
-  var NOSE = [18.4 + NOSE_DX, 15.5, 2.0, 1.7]; /* v9: nose centre moved out one sprite pixel */
+  var NOSE = [18.4 + NOSE_DX - 1 / HK, 15.5 - 1 / HK, 2.0, 1.7]; /* v10: up + left one px */ /* v9: nose centre moved out one sprite pixel */
   function inNose(x, y) { return el(x, y, NOSE[0], NOSE[1], NOSE[2], NOSE[3]) < 1; }
   function keyAt(X, Y, stage, blink) { var k = null, d, c, x = HX + (X - HX2) / HK, y = HY + (Y - HY2) / HK;   // x,y = point in the traced (v5) head space
     if (Y >= 24.5 && el(X, Y, 14.5, 31, 7, 7) < 1) k = (X > 19 ? 'C' : 'w');                                         // shirt (short, v3)
@@ -62,6 +62,10 @@
     else { var t = SCALE[s], dy = f === 1 ? -1 : 0; g = []; nm = [];
       for (var y = 0; y < N; y++) { g.push([]); nm.push([]); for (var x = 0; x < N; x++) { var sx = 15 + (x + 0.5 - 15) / t, sy = 28.5 + (y - dy + 0.5 - 28.5) / t; g[y].push(y - dy > 29 ? null : keyAt(sx, sy, s, f === 2)); nm[y].push(y - dy <= 29 && !head(HX + (sx - HX2) / HK, HY + (sy - HY2) / HK) && inNose(HX + (sx - HX2) / HK, HY + (sy - HY2) / HK)); } }
     }
+    if (s > 0) { var EY = { E: 1, P: 1 }, g0 = g.map(function (r) { return r.slice(); }); /* v10: seal eye outlines (no white/pupil pixel touches skin) */
+      for (var ey = 0; ey < N; ey++) for (var ex = 0; ex < N; ex++) if (EY[g0[ey][ex]]) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (q) { var Y = ey + q[1], X = ex + q[0], v = (g0[Y] || [])[X]; if (v && !EY[v] && v !== 'n') g[Y][X] = 'n'; }); }
+    if (s > 0) for (var by = 0; by < N; by++) { var row = g[by], ei = []; for (var bx = 0; bx < N; bx++) if (row[bx] === 'E' || row[bx] === 'P') ei.push(bx); /* v10: eyes touch, close the skin gap between the two eye outlines */
+      for (var bx2 = 1; bx2 < N - 1; bx2++) if (row[bx2] && row[bx2] !== 'n' && row[bx2] !== 'E' && row[bx2] !== 'P' && row[bx2 - 1] === 'n' && row[bx2 + 1] === 'n' && ei.some(function (v) { return v < bx2; }) && ei.some(function (v) { return v > bx2; })) row[bx2] = 'n'; }
     var o = outline(g, nm); if (s > 0) curls(o, SCALE[s], f === 1 ? -1 : 0);
     if (s === 5) { var o2 = o.map(function (r) { return r.slice(); }); /* shared Mythic gold rim */
       for (var ry = 0; ry < 30; ry++) for (var rx = 0; rx < N; rx++) if (!o[ry][rx] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var X = rx + q[0], Y = ry + q[1]; return X >= 0 && Y >= 0 && X < N && Y < N && o[Y][X] === 'n'; })) o2[ry][rx] = 'A';
