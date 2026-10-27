@@ -173,7 +173,7 @@
    * Each eligible pet (owned, alive, not released, not fed this day, not fully fed, not away on a quest) takes its own meal from the burn in id
    * order; a pet the rest of the burn can't pay for is skipped. No pet limit: one burn can feed every pet of the wallet.
    * Inert before FEED_ALL_BLOCK: before it pet:fa / pet:fx replay exactly as today (unknown pet: tag, community food only). */
-  var FEED_ALL_BLOCK = 973397;     // chain tip 973391 (mempool.space, 2026-10-27 7:05 AM CT) + 6; RE-SET to tip + 6 at deploy
+  var FEED_ALL_BLOCK = 973398;     // chain tip 973392 (mempool.space, 2026-10-27 7:25 AM CT) + 6; RE-SET to tip + 6 at deploy
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
