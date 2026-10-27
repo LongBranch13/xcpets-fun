@@ -679,7 +679,7 @@
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
     window.addEventListener('scroll', q, { passive: true }); }
   /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 5 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
-   * a flickering fire aura on the pet's outline, a small flame crown with a gold band on top of the head, and a gold frame with n of 3 edition pips.
+   * a flickering fire aura on the pet's outline and a gold frame (the flame crown on the head was removed Oct 26, 2026: owner rejected it, do not add it back) with n of 3 edition pips.
    * Silhouette per frame from two key renders (same trick as mythFx). Display only. */
   var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]], BL_GOLD = [255, 210, 63], BL_GOLD2 = [176, 120, 20], BL_INK = [20, 12, 6];
   function burnLordFx(fr, keyed, bl) { if (!okFrames(fr) || !bl) return fr; var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
@@ -689,10 +689,7 @@
       if (x1 >= 0) { /* fire aura: background pixels touching the silhouette, flicker by frame */
         for (var q = 0; q < 1024; q++) { if (m[q]) continue; var qx = q & 31, qy = q >> 5; if (qy > 28) continue; var nb = [q - 32, q + 32, qx > 0 ? q - 1 : -1, qx < 31 ? q + 1 : -1].some(function (n) { return n >= 0 && n < 1024 && m[n]; }); if (!nb) continue;
           var h = (qx * 7 + qy * 13 + fi * 5) % 6; if (h < 3) set(qx, qy, BL_FIRE[(h + (qy < 16 ? 0 : 1)) % 3]); }
-        /* flame crown: gold band one row above the head, three flames rising 3 px (middle one taller, tips flicker) */
-        var cx = Math.round((x0 + x1) / 2), top = Math.max(5, y0 - 1);
-        for (var dx = -3; dx <= 3; dx++) { set(cx + dx, top, BL_GOLD); set(cx + dx, top + 1, BL_GOLD2); }
-        [-3, 0, 3].forEach(function (o, k) { var hgt = o === 0 ? 4 : 3, fl = (fi + k) % 2; for (var s = 1; s <= hgt; s++) set(cx + o, top - s, BL_FIRE[s === hgt ? 0 : s === 1 ? 2 : 1]); if (fl) set(cx + o + (k === 1 ? 1 : 0), top - hgt - 1, BL_FIRE[0]); set(cx + o - 1, top - 1, BL_FIRE[2]); set(cx + o + 1, top - 1, BL_FIRE[2]); }); }
+      }
       /* gold frame (outer gold, inner dark line) + n gold pips bottom right */
       for (var t = 0; t < 32; t++) { set(t, 0, BL_GOLD); set(t, 31, BL_GOLD); set(0, t, BL_GOLD); set(31, t, BL_GOLD); }
       for (var u = 1; u < 31; u++) { set(u, 1, BL_GOLD2); set(u, 30, BL_GOLD2); set(1, u, BL_GOLD2); set(30, u, BL_GOLD2); }
@@ -1082,7 +1079,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=54b3c826be'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=6560d20525'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

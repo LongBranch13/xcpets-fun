@@ -65,7 +65,7 @@
   function fill(t, v) { return t.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }); }
   /** script(f, w) -> [{ at: 'intro'|turnIndex|'end', text, src: 'meme'|'fresh' }] (deterministic per fight id) */
   function script(f, w) { var A = w.byId[f.showA || f.a] || { name: '#' + f.a, species: '' }, B = w.byId[f.showB || f.b] || { name: '#' + f.b, species: '' }, R = rng(f.id || 1), used = {}, out = [];
-    var spn = function (p) { return SP[p.species] || (/^hyb/.test(p.species) && window.V2Rules ? V2Rules.hybridName(p.species) : 'pet'); }, pw = function (p) { var s = p.stats || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; };
+    var spn = function (p) { return SP[p.species] || (/^hyb/.test(p.species) && window.V2Rules ? (V2Rules.hybridLabel || V2Rules.hybridName)(p.species) : 'pet'); }, pw = function (p) { var s = p.stats || {}, t = 0; for (var k in s) t += +s[k] || 0; return t; };
     var base = { A: A.name, B: B.name, SA: spn(A), SB: spn(B), PA: pw(A), PB: pw(B), W: (w.byId[f.winner] || {}).name || '#' + f.winner, L: (w.byId[f.loser] || {}).name || '#' + f.loser, R: (f.turns || []).length };
     function pick(list, src, v) { var c = list.filter(function (t) { return !used[t]; }); if (!c.length) return null; var t = c[Math.floor(R() * c.length)]; used[t] = 1; return { text: fill(t, Object.assign({}, base, v || {})), src: src }; }
     function meme(p, extra) { var L = (MEME[p.species] || []).filter(function (t) { return !/black eye|lost a battle|ouch|pinch first|looks about the same/i.test(t); }).concat(extra || []); return L.length ? pick(L, 'meme', { X: p.name }) : null; }

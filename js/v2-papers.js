@@ -97,6 +97,7 @@
     seal(im, 106, 48, 9);
     var nm = ('#' + I.id + ' ' + I.name).toUpperCase(), sub = (I.tier + ' ' + I.speciesLabel).toUpperCase(), z = fits(nm, [8, 7, 6], TW);
     if (!z) { nm = String(I.name).toUpperCase(); sub = '#' + I.id + ' ' + sub; z = fits(nm, [8, 7, 6], TW); }
+    if (!fits(sub, [6], TW)) { var s2 = sub.replace(/ \(HYBRID\)$/, ''); sub = fits(s2, [6], TW) ? s2 : sub.slice(0, sub.indexOf(I.tier.toUpperCase()) + I.tier.length); } /* a long species never cuts the tier ('#46073 LEGENDA...'): drop ' (HYBRID)', then the species */
     ftext(im, W / 2, 95, nm, z ? [z] : [6], TW, INK, 'mt'); ftext(im, W / 2, 104, sub, [6], TW, MUT, 'mt');
     if (I.asset) text(im, W / 2, 111, tokenLine(I.asset, KW), 6, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset (shortened only when it cannot fit; the full number is in t/<id>.json) */ return im; }
   /** render(info, spriteRGBA32x32|null, 'desktop'|'phone'|'token') -> {w, h, data: RGBA} at 1 pixel per art pixel */
