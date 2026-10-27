@@ -64,7 +64,7 @@
   }
   /* hotfix-compose (2026-10-15): exclusions are only for OUR still-unconfirmed burns. Drop an entry once its burn is confirmed (tracker), after 3 h,
    * and keep at most MAX_EX so the compose URL stays short; chainClear() wipes them after a failed compose. */
-  var MAX_EX = 30, CHAIN_CAP = 24;
+  var MAX_EX = 30, CHAIN_CAP = 20; /* feed-chain (2026-10-27): our own burns may chain on their unconfirmed change up to 20 in a row (Bitcoin's ancestor limit is 25) */
   function confirmedTx() { var o = {}; try { tracker.list().forEach(function (x) { if (x.status === 'confirmed') o[x.txid] = 1; }); } catch (e) { }
     /* fix (2026-10-17): the tracker is never polled, so also treat any burn already in the confirmed chain rows as confirmed (the pending count used to clear only after 3 h) */
     try { ((window.V2Mock && V2Mock.state().rows) || []).forEach(function (r) { if (r && r.tx_hash) o[r.tx_hash] = 1; }); } catch (e) { } return o; }
@@ -165,7 +165,7 @@
     /* build 2: our earlier burns are still unconfirmed -> stop instead of clearing exclusions (that would double-spend their inputs) */
     function waitErr() { var e = new Error('Burn N is waiting to confirm. Wait about one block, then press Continue.'); e.waitConfirm = true; return e; }
     function host(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
-    var chained = !!(live().length || lastChange), plainRetry = false, allowUnconf = tryOnce; tryOnce = false;
+    var chained = !!(live().length || lastChange), plainRetry = false, allowUnconf = tryOnce || !!(lastChange && pendingChain() < CHAIN_CAP); tryOnce = false; /* feed-chain: build on our own last burn's change */
     function go(i) {
       if (i >= urls.length) {
         if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry (never while our own burns are unconfirmed) */
