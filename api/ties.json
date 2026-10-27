@@ -1,6 +1,6 @@
 {
- "lastBlock": 973400,
- "count": 190,
+ "lastBlock": 973403,
+ "count": 191,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2278,6 +2278,18 @@
    "tiedTx": "ce222597a0567850a1a5306aa5c49ffae0cdde5ea2685c2bbfe2660fecafa5e3",
    "kind": "deed",
    "name": "Ladukin",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40089,
+   "asset": "A10027062460098252923",
+   "tiedBlock": 973403,
+   "tiedTx": "bdff4f3189959d031f3c9d740bb6f1866a1daad079c5d88cb512fbd2a257e181",
+   "kind": "deed",
+   "name": "Kidiyetot",
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
