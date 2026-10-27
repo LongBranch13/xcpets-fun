@@ -470,6 +470,19 @@
   FT_BATCH.forEach(function (x) { var ex = x[4];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'funtrump', exclusive: ex, species: ex ? 'funtrump' : undefined, kind: x[5], sig: ex, look: x[9] || undefined };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], rollSlot: x[10] || undefined, tier: x[3], origin: 'funtrump', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'funtrump', look: x[9] || undefined }); });
+  /* HOMER PEPE GEAR (owner Oct 26 2026, branch homerpepe-community, PREVIEW + INERT): from the homer-gear-v11 drawings, original pixel art, no logos/text.
+   * item.since 'homer' = OFF (never in any roll pool, never wearable) until V2Rules.ACTIVATE_HOMER_BLOCK is set (null now) -> replay SAME.
+   * Pink sprinkle donut = his SIGNATURE Grip (★ tier 3, Homer + Homer hybrids only, like ft-hairspray / kek-card). Headwear reuses the existing OPEN
+   * 'hard-hat' (no new hat piece). [id, label, slot, tier, exclusive, kind, anchor, dy, map] */
+  var HP_BATCH = [
+    ['hp-donut', 'Pink sprinkle donut', 'hand', 3, true, 'held', 'handR', null, ['.KcKw.', 'KKllKy', 'Kl..lK', 'yl..lK', '.KwKc.']],
+    ['hp-fuel-rod', 'Glowing fuel rod', 'hand', 2, false, 'held', 'handR', null, ['DD', 'MM', 'Mm', 'MM', 'Mm', 'MM', 'Mm', 'DD']],
+    ['hp-rad-suit', 'Radiation suit', 'body', 2, false, 'body', 'chest', -1, ['V.....V', 'aaaVaaa', 'aaaAaaa', 'aAaaaAa', 'aaaAaaa', '.aaaaa.']],
+    ['hp-slippers', 'Comfy slippers', 'feet', 1, false, 'feet', 'feetBoth', null, ['vvvP..Pvvv', 'VVVV..VVVV']]
+  ];
+  HP_BATCH.forEach(function (x) { var ex = x[4];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'homer', exclusive: ex, species: ex ? 'homer' : undefined, kind: x[5], sig: ex };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'homer', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'homer' }); });
   EYE_GEAR_FT = { 'ft-aviators': { s: 'glasses', f: 'g', l: ['Z', 'Z'], drop: 1, up: 1, wide: 1 } };
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
