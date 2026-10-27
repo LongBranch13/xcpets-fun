@@ -33,4 +33,12 @@ ok(!f3 || f3.kind !== 'feed', 'before FEED_ALL_BLOCK pet:fa is not a feed (' + (
 // short burn: pets in id order, the rest skipped
 const r4 = L.row(T, ME, amt / 2, 'pet:fa'), e = world(T - 1, [r4], T + 1), f4 = (e.w.log || []).find(l => l.tx === r4.tx_hash && (l.kind === 'feed' || l.kind === 'rejected'));
 ok(f4 && f4.kind === 'feed' && f4.petIds.length > 0 && f4.petIds.length < hungry.length, 'half-paid pet:fa feeds a prefix and skips the rest (' + (f4 && f4.petIds.length) + ')');
+// skip discarded: the UI passes only non-discarded hungry pets; discarded hungry pets go in the pet:fx exclusion list, else explicit-list burns
+{ const disc = hungry.slice(10, 13).map(p => p.id), keep = hungry.filter(p => disc.indexOf(p.id) < 0), q = V.feedQueue(a.w, ME, keep.map(p => p.id), T);
+  ok(q.length === 1 && V.parseTag(q[0].tag).ex.join() === disc.slice().sort((x, y) => x - y).join(), 'feed all minus 3 discarded -> ONE pet:fx excluding them (' + q[0].tag + ')');
+  const r = L.row(T, ME, q[0].amount, q[0].tag), z = world(T - 1, [r], T + 1), f = z.w.log.find(l => l.tx === r.tx_hash && (l.kind === 'feed' || l.kind === 'rejected'));
+  ok(f && f.petIds.length === keep.length && !f.petIds.some(id => disc.indexOf(id) >= 0), 'no discarded pet fed (' + keep.length + ' fed)');
+  const many = hungry.filter((p, i) => i % 2), q2 = V.feedQueue(a.w, ME, many.map(p => p.id), T), fedIds = [].concat(...q2.map(x => x.petIds || [x.petId]));
+  ok(q2.length > 1 && fedIds.length === many.length && fedIds.every(id => many.some(p => p.id === id)) && q2.every(x => !/^pet:f[ax]/.test(x.tag)), 'many discarded -> explicit-list burns only (' + q2.length + '), never pet:fa/fx');
+  ok(Math.abs(q2.reduce((x, y) => x + y.amount, 0) - many.reduce((x, p) => x + p.nextMeal, 0)) < 1e-6, 'totals count only the non-discarded pets'); }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
