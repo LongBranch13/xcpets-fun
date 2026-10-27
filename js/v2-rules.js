@@ -2515,9 +2515,9 @@
   function h3part(T, sp) { var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
   function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
     return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
-  /* DISPLAY-ONLY hybrid names (owner Oct 26 2026 'Should say Nakatrump'). hybridName() is unchanged because it feeds p.hybrid.name and replay log text;
+  /* DISPLAY-ONLY hybrid names (owner Oct 26 2026 'Should say Nakatrump', renamed Oct 26 2026 ~6:46 PM CT to 'Trukekamoto'). hybridName() is unchanged because it feeds p.hybrid.name and replay log text;
    * only labels shown to players use hybridLabel(). */
-  var HYBRID_DISPLAY = { 'hyb3:nakamoto:kek:funtrump': 'Nakatrump' };
+  var HYBRID_DISPLAY = { 'hyb3:nakamoto:kek:funtrump': 'Trukekamoto' };
   function hybridLabel(sp) { return HYBRID_DISPLAY[sp] || hybridName(sp); }
   function speciesLabel(sp) { if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
