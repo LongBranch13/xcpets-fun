@@ -373,7 +373,28 @@
       spots.forEach(function (q) { d[q * 4] = INK[0]; d[q * 4 + 1] = INK[1]; d[q * 4 + 2] = INK[2]; d[q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
   if (V) { V._boMarkSpots = boMarkSpots; V._boMarkPlan = boMarkPlan; }
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { if (art && art.boMark) return boMarkFrames(framesWithB(art, stage, itemIds, extraOv, cap, baseGo), art, stage); return framesWithB(art, stage, itemIds, extraOv, cap, baseGo); }
+  /* RAREPIGEON BABY MARK (branch rarepigeon-1of1): a child of Rarepigeon, and every later generation of its line (art.rpMark), wears a small teal neck sheen
+   * (Rarepigeon's neck band). Looks only. Placement: eyes found the same way as Bo's mark; the sheen is two rows starting 2 rows below the lower of the
+   * eyes' lowest pixel and the mouth's lowest pixel, at most 7 px wide centred between the eyes, painted only on skin pixels inside the pet's silhouette. */
+  var RP_SHEEN = [[0x2e, 0xc4, 0xb6], [0x1f, 0x8a, 0x80]];
+  function rpMarkSpots(k, eyes) { if (!eyes.length) return []; var lx = 32, rx = -1, by = -1, mb = -1, j; eyes.forEach(function (q) { lx = Math.min(lx, q & 31); rx = Math.max(rx, q & 31); by = Math.max(by, q >> 5); });
+    for (j = 0; j < 29 * 32; j++) if (k[j] === 'mouth' && (j >> 5) <= by + 6) mb = Math.max(mb, j >> 5);
+    var cx = Math.round((lx + rx) / 2), y0 = Math.max(by, mb) + 2, out = [];
+    for (var r = 0; r < 2; r++) { var y = y0 + r; if (y >= 29) break; for (var x = cx - 3; x <= cx + 3; x++) { var q = y * 32 + x; if (x >= 0 && x < 32 && boSkin(k, q)) out.push({ q: q, r: r }); } }
+    return out; }
+  function rpMarkFrames(fr, art, stage) { if (!fr || !art || !art.rpMark || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
+    return fr.map(function (img, f) { var k, o0 = { stage: stage, frame: f, gearOverride: {} }; try { k = V._keyedRender(sh, art, o0).keys; } catch (e) { return img; } if (!k) return img;
+      var eyes = [], j, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null, mT = 29;
+      for (j = 0; j < 29 * 32; j++) if (k[j] === 'mouth') { mT = j >> 5; break; }
+      for (j = 0; j < mT * 32; j++) if (BO_EYE_KEYS[k[j]]) eyes.push(j);
+      if (!eyes.length && SE) eyes = SE.list.filter(function (q) { return (q >> 5) < 29; });
+      if (!eyes.length) eyes = boStyleEyes(sh, art, o0, k);
+      var spots = rpMarkSpots(k, eyes); if (V._rpMarkLog) V._rpMarkLog.push({ sh: sh, stage: stage, frame: f, n: spots.length }); if (!spots.length) return img;
+      var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (j = 0; j < d.length; j++) d[j] = img.data[j];
+      spots.forEach(function (S) { var c = RP_SHEEN[S.r], q = S.q; d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255; });
+      return Object.assign({}, img, { data: d }); }); }
+  if (V) V._rpMarkSpots = rpMarkSpots;
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
@@ -1024,7 +1045,7 @@
     if (p.hybrid && p.hybrid.parts && p.hybrid.parts.length) out.push('<b>Traded parts:</b> ' + p.hybrid.parts.map(function (q) { return esc(V2.partLabel(q)); }).join(', '));
     if (p.mutation && V2.mutationLabel) { var ml = V2.mutationLabel(p.mutation).split(': '); out.push('<b>' + esc(ml[0]) + (ml[1] ? ':</b> ' + esc(ml[1]) : '</b>')); }
     if (p.shows && V2.hiddenLabel) out.push('<b>Throwback:</b> ' + esc(V2.hiddenLabel(p.shows)) + (p.shows === 'oddeyes' && p.oddEye && V2.ODD_EYE_COLOURS ? ' (' + esc(V2.ODD_EYE_COLOURS[p.oddEye.col % V2.ODD_EYE_COLOURS.length].id) + ')' : ''));
-    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">' + (p.supreme.id === 'bo' ? 'Bo Jackson, granted once as an egg' : 'one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder')) + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage and its look is fixed' + (V2.grantBreedOn && V2.grantBreedOn((w && w.tip || 0) + 1) ? '; it can breed, fight and wear gear like any pet.' : ' and it can\'t breed.') + '</span>');
+    if (p.supreme) out.push('<b>' + p.supreme.title + ':</b> <span class="chip brbadge">\uD83D\uDC51 1 of 1</span> <span class="muted">' + (p.supreme.id === 'bo' ? 'Bo Jackson, granted once as an egg' : p.supreme.id === 'rarepigeon' ? 'Rarepigeon, the first rare pigeon, granted once as an egg with its bread, scroll, leg tube and courier cap' : 'one-time egg for the ' + (p.supreme.id === 'archmage' ? '#1 all-time XCPETS burner' : 'top XCPETS holder')) + ' at block ' + Number(p.supreme.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage and its look is fixed' + (V2.grantBreedOn && V2.grantBreedOn((w && w.tip || 0) + 1) ? '; it can breed, fight and wear gear like any pet.' : ' and it can\'t breed.') + '</span>');
     if (p.contest) out.push('<b>' + esc(p.contest.title) + ':</b> <span class="chip brbadge">\uD83C\uDFC6 1 of 1</span> <span class="muted">one-time prize egg granted at block ' + Number(p.contest.gate).toLocaleString('en-US') + '. Feed it to hatch; it grows through every stage, breeds, fights and wears gear. Its babies are normal pets.</span>');
     if (p.burnLord) out.push('<b>Burn Lord edition:</b> <span class="chip brbadge">\uD83D\uDD25 ' + p.burnLord.n + ' of ' + p.burnLord.of + '</span> <span class="muted">one-time grant to the top ' + p.burnLord.of + ' burners (rank ' + p.burnLord.rank + ', ' + Math.round(p.burnLord.total).toLocaleString('en-US') + ' XCPETS burned to the end of block ' + Number(p.burnLord.gate).toLocaleString('en-US') + '). Granted as an egg: feed it to hatch; it grows through every stage, its look is fixed and it can\'t breed.</span>');
     var bd = V2.breederBadges(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
