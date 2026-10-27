@@ -1,6 +1,6 @@
 {
- "lastBlock": 973309,
- "count": 187,
+ "lastBlock": 973314,
+ "count": 188,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2244,6 +2244,18 @@
    "name": "Kumepip",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 46073,
+   "asset": "A16042364221284534676",
+   "tiedBlock": 973310,
+   "tiedTx": "44532d5feacc260ab487c57e86dba78accaa23d3d9c0f6c686c216414588182b",
+   "kind": "deed",
+   "name": "Don Kekamoto",
+   "species": "hyb3:nakamoto:kek:funtrump",
+   "speciesLabel": "Nakektrump (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
