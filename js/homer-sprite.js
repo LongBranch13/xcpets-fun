@@ -13,8 +13,9 @@
     w: '#f4f4ee', W: '#ffffff', C: '#b9bcc4', A: '#ffc93c', y: '#ffd23f', o: '#c49a1a', B: '#e0582e', '#': '#ffffff' };
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var SKIN = { G: 1, g: 1, h: 1 }, SUIT = { w: 1, W: 1, C: 1 };
-  /** HOMER_DONUT: signature Grip IDEA only (open design question; display record, NOT in any gear pool or BY_ID). */
-  var HOMER_DONUT = { slot: 'hand', item: 'homer-donut', label: 'Pink-frosted donut (idea)', tier: 'legendary', legendary: true, signature: true, exclusive: 'homer', idea: true };
+  /** HP_DONUT: his SIGNATURE Grip (gear id 'hp-donut', ★ tier 3, Homer + Homer hybrids; gated by ACTIVATE_HOMER_BLOCK in V2Rules). Display record. */
+  var HP_DONUT = { slot: 'hand', item: 'hp-donut', label: 'Pink sprinkle donut', tier: 'legendary', legendary: true, signature: true, exclusive: 'homer' };
+  var HPC = { K: '#ff7fbf', k: '#d94fa0', D: '#c8955a', d: '#8a5a2b', s1: '#7fd0ff', s2: '#ffffff', s3: '#ffe14f', R: '#9ef01a', r: '#5cc000', Rg: '#d8f8a0', M: '#8d96a8', S: '#e8d23c', s: '#b39a1e', Q: '#55306a', V: '#7a4a8c', T: '#f0e6d8', H: '#ffc93c', h: '#c49a1a' };
   var SCALE = [0.62, 0.64, 0.78, 0.9, 0.96, 1.0];
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function el(x, y, cx, cy, rx, ry) { var a = (x - cx) / rx, b = (y - cy) / ry; return a * a + b * b; }
@@ -90,22 +91,28 @@
     var fw = A.fx1 - A.fx0 + 1, cx = Math.round((A.fx0 + A.fx1) / 2);
     if (Gr.back) { var c0 = col('back'), c1 = col('back', 1); for (var yb = A.by0; yb <= Math.min(29, A.by1); yb++) { var fl = Math.round((yb - A.by0) / 3);
       for (var d = 1; d <= 2 + fl; d++) { under(A.bx0 - d, yb, d === 2 + fl ? c1 : c0); under(A.bx1 + d, yb, d === 2 + fl ? c1 : c0); } } }
-    if (Gr.body) { var b0 = col('body'), b1 = col('body', 1), arm = /armor|armour|plate|mail|chest/.test(kind('body'));
+    function iid(sl) { return Gr[sl] && Gr[sl].item; }
+    if (iid('body') === 'hp-rad-suit') { for (var ys = A.by0; ys <= A.by1; ys++) for (var xs = A.bx0; xs <= A.bx1; xs++) if (SUIT[g[ys][xs]]) set(xs, ys, ys === A.by0 ? HPC.Q : ((xs - A.bx0) % 4 === 1 ? HPC.s : HPC.S)); }
+    else if (Gr.body) { var b0 = col('body'), b1 = col('body', 1), arm = /armor|armour|plate|mail|chest/.test(kind('body'));
       for (var y2 = A.by0; y2 <= A.by1; y2++) for (var x2 = A.bx0; x2 <= A.bx1; x2++) if (SUIT[g[y2][x2]]) set(x2, y2, arm ? ((y2 - A.by0) % 3 === 0 ? b1 : b0) : ((x2 - A.bx0) % 3 === 0 ? b1 : b0)); }
-    if (Gr.feet) { var f0 = col('feet'), f1 = col('feet', 1), gy = Math.min(30, A.by1 + 1); for (var xf = A.bx0; xf <= A.bx1; xf++) { if (Math.abs(xf - (A.bx0 + A.bx1) / 2) < 1) continue; set(xf, gy, xf < (A.bx0 + A.bx1) / 2 ? f0 : f1); } }
+    if (iid('feet') === 'hp-slippers') { var sy = Math.min(30, A.by1 + 1); [[A.bx0 - 1, 1], [A.bx1 - 4, -1]].forEach(function (q) { for (var xl = 0; xl < 6; xl++) { var X = q[0] + xl, toe = q[1] > 0 ? xl === 0 : xl === 5; set(X, sy, toe ? HPC.T : HPC.V); if (xl > 0 && xl < 5) set(X, sy - 1, xl === (q[1] > 0 ? 1 : 4) ? HPC.T : HPC.V); set(X, sy + 1, HPC.Q); } }); }
+    else if (Gr.feet) { var f0 = col('feet'), f1 = col('feet', 1), gy = Math.min(30, A.by1 + 1); for (var xf = A.bx0; xf <= A.bx1; xf++) { if (Math.abs(xf - (A.bx0 + A.bx1) / 2) < 1) continue; set(xf, gy, xf < (A.bx0 + A.bx1) / 2 ? f0 : f1); } }
     if (Gr.face) { var gk = kind('face'), g0 = col('face'), g1 = col('face', 1);
       if (/shade|sunglass|goggle|visor|laser|beam|glass|monocle|mask/.test(gk)) { for (var xe = A.ex0; xe <= A.ex1; xe++) for (var yy = A.ey + 1; yy <= Math.min(A.ey1 - 1, A.ey + 3); yy++) set(xe, yy, yy === A.ey + 1 ? g0 : (xe % 2 ? g0 : g1)); }
       else if (/tear/.test(gk)) set(A.ex0 + 1, A.ey1 + 1, g0);
       else if (/cig|pipe|cigar|joint|straw|lolli/.test(gk)) { var my = Math.min(29, A.ey1 + 4); set(A.fx1 - 1, my, g0); set(A.fx1, my, g0); set(A.fx1 + 1, my, g1); }
       else { set(A.ex0 - 1, A.ey1 + 1, g0); set(A.ex1 + 1, A.ey1 + 1, g0); } }
-    if (Gr.head) { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = A.fy0;
+    if (iid('head') === 'hard-hat') { var tt = A.fy0, l0 = A.fx0, r0 = A.fx1 - 3; for (var yt = tt - 3; yt <= tt + 1; yt++) for (var xt = l0 + (yt <= tt - 2 ? 2 : 0) + (yt === tt - 3 ? 1 : 0); xt <= r0 - (yt <= tt - 2 ? 2 : 0) - (yt === tt - 3 ? 1 : 0); xt++) set(xt, yt, xt === Math.round((l0 + r0) / 2) ? HPC.h : HPC.H); for (var xr = l0 - 1; xr <= r0 + 1; xr++) set(xr, tt + 2, HPC.h); }
+    else if (Gr.head) { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = A.fy0;
       if (/crown|tiara/.test(hk)) { for (var xc = A.fx0 + 2; xc <= A.fx1 - 4; xc++) { set(xc, ht - 1, h0); if ((xc - A.fx0) % 2) set(xc, ht - 2, h0); } set(cx - 1, ht - 1, h1); }
       else if (/band|hachimaki|halo|bandana|headband/.test(hk)) { for (var xh = A.fx0; xh <= A.fx1 - 3; xh++) set(xh, /halo/.test(hk) ? Math.max(0, A.top - 1) : ht + 2, h0); }
       else { var hh = fw > 9 ? 3 : 2; for (var yh = ht - hh + 1; yh <= ht + 1; yh++) for (var xk = A.fx0 + 1; xk <= A.fx1 - 4; xk++) set(xk, yh, (yh === ht - hh + 1 && (xk === A.fx0 + 1 || xk === A.fx1 - 4)) ? null : h0);
         for (var xb = A.fx0 - 1; xb <= A.fx1 - 3 + (/cap|visor/.test(hk) ? 3 : 0); xb++) set(xb, ht + 2, h1); } }
     if (Gr.weapon) { var wx = Math.min(29, A.bx1 + 3), wy = Math.min(28, A.by1 - 1); set(wx, wy, 'o'); set(wx, wy - 1, 'n'); set(wx - 1, wy - 2, 'y'); set(wx, wy - 2, 'y'); set(wx + 1, wy - 2, 'y'); for (var tb = 3; tb < 12; tb++) set(wx, wy - tb, tb === 11 ? 'W' : (tb % 3 ? '#c8d0da' : 'W')); }
     if (Gr.hand) { var hx = Gr.weapon ? Math.max(1, A.bx0 - 4) : Math.min(29, A.bx1 + 2), hy = Math.min(28, A.by1 - 1), ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
-      if (/mug|cup|coffee|tea|bowl|beer|drink/.test(ak)) { for (var xm = hx; xm <= hx + 2; xm++) for (var ym = hy - 2; ym <= hy; ym++) set(xm, ym, a0); set(hx + 1, hy - 2, a1); set(hx + 2, hy - 2, a1); }
+      if (iid('hand') === 'hp-donut') { var DN = ['.KsKs.', 'KKDDKK', 'KD..DK', 'sD..DK', '.KkKk.']; for (var yd = 0; yd < 5; yd++) for (var xd = 0; xd < 6; xd++) { var q = DN[yd][xd]; if (q === '.') continue; set(hx - 1 + xd, hy - 4 + yd, q === 's' ? [HPC.s1, HPC.s2, HPC.s3][(xd + yd) % 3] : HPC[q]); } }
+      else if (iid('hand') === 'hp-fuel-rod') { for (var yr = 0; yr < 8; yr++) { var cap = yr === 0 || yr === 7; set(hx, hy - yr, cap ? HPC.M : HPC.R); set(hx + 1, hy - yr, cap ? HPC.M : (yr % 2 ? HPC.r : HPC.Rg)); } }
+      else if (/mug|cup|coffee|tea|bowl|beer|drink/.test(ak)) { for (var xm = hx; xm <= hx + 2; xm++) for (var ym = hy - 2; ym <= hy; ym++) set(xm, ym, a0); set(hx + 1, hy - 2, a1); set(hx + 2, hy - 2, a1); }
       else if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod|lance|scepter|sceptre/.test(ak)) { for (var t = 0; t < 8; t++) set(hx, hy - t, t > 5 ? a1 : a0); }
       else { for (var xq = hx; xq <= hx + 2; xq++) for (var yq = hy - 2; yq <= hy; yq++) set(xq, yq, a0); set(hx + 1, hy - 1, a1); } }
     Object.keys(put).forEach(function (j) { j = +j; var x = j % N, y = (j / N) | 0; if (!g[y][x]) return; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (q) { var X = x + q[0], Y = y + q[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && !g[Y][X] && !orig[Y][X]) g[Y][X] = 'n'; }); });
@@ -113,5 +120,5 @@
   function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), P = Object.assign({}, PAL, (opts && opts.pal) || {}), B = hexRgb(bg || '#142018'), d = [];
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
-  return { HOMER_DONUT: HOMER_DONUT, STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: {}, SKIN: SKIN, SUIT: SUIT, render: render, frames: frames, draw: draw, anchors: anchors };
+  return { HP_DONUT: HP_DONUT, STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: {}, SKIN: SKIN, SUIT: SUIT, render: render, frames: frames, draw: draw, anchors: anchors };
 });
