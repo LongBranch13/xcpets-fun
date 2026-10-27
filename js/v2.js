@@ -295,7 +295,7 @@
     box.querySelectorAll(':scope > .pet.card[data-pid]').forEach(function (d) { m[d.dataset.pid] = d; });
     if (Object.keys(m).length !== list.length || !list.every(function (p) { return m[p.id]; })) return false;
     var f = document.createDocumentFragment(); list.forEach(function (p) { f.appendChild(m[p.id]); }); box.insertBefore(f, box.firstChild); return true; }
-  var PG = { n: 150, key: '' };
+  var PG = { n: 150, key: '' }, NF = {}; /* habits-ux: never-fed group open state per tab (a = alive, c = cemetery), this visit only */
   /* WAGMI bar: streak alive = WAGMI + day count; a missed chain day = NGMI with a joke (never shaming); 'new' = how to start. Only pet:wagmi counts (not feeding). */
   var NGMI_JOKES = ['Your streak took a nap. One WAGMI wakes it up.', 'Streak got rugged (by a good night\u2019s sleep). Day 1 is one tap away.', 'Just a vibe check. Say WAGMI and you\u2019re so back.', 'Even Satoshi took days off. Probably. Tap WAGMI to restart.', 'Ser, the streak fell in the mempool. Fish it out with a WAGMI.'];
   function wagmiBar(stk, w) { var tip = w.tip || S.tip || 0, left = 144 - (tip % 144), hrs = left * 10 / 60, lt = hrs >= 1 ? '~' + Math.round(hrs) + 'h' : '~' + Math.max(1, Math.round(left * 10)) + ' min';
@@ -334,11 +334,18 @@
       $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
     var list = petList(alive, dead);
+    /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Starred and selected pets stay listed; discarded
+     * pets are already out (mine). A wallet whose few pets are all never fed sees them open. One O(n) pass, so 9k-pet wallets stay fast. */
+    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, new Set(keptIds()), new Set(S.sel)), nfN = nfs.nf.length;
+    var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.shown.concat(nfs.nf) : nfs.shown;
     var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
     $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
-    var box = $('pets'); box.innerHTML = list.length ? '' : '<p class="muted">No pets match this filter.</p>';
+    var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">No pets match this filter.</p>';
+    if (nfN) { var nfg = document.createElement('details'); nfg.className = 'hiddenbox nfgroup'; nfg.id = 'nfGroup'; nfg.open = nfOpen;
+      nfg.innerHTML = '<summary>' + (cem ? '🪦' : '🥚') + ' Never fed <span class="chip">' + fmt(nfN) + '</span> <span class="muted">' + (cem ? 'died without a single meal' : 'pets that have never had a meal') + (nfOpen ? ' · listed below, tap to fold' : ' · tap to show') + '</span></summary>';
+      nfg.addEventListener('toggle', function () { if (NF[nfK] === nfg.open) return; NF[nfK] = nfg.open; render(); }); box.appendChild(nfg); }
     /* hotfix 3: cards are built in chunks of 150 with a yield between them, so a 2,000-pet wallet never blocks the page for seconds */
     var tok = renderPets.tok = (renderPets.tok || 0) + 1, CH = 150, tail = document.createComment('pets-more');
     function mk(p) {
@@ -359,7 +366,7 @@
       ds.forEach(function (x) { R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
      * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
-    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
+    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
     var upto = Math.min(list.length, Math.max(CH, PG.n));
     put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
     (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
@@ -460,7 +467,7 @@
   function feedAsync(title, ids) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
     var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
     if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(V.feedQueue(w, ME, hungry)));
-    var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return confirmPlans(title, noDiscarded(V.feedQueue(w, ME, hungry)));
+    var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
     pendingPlans = null; $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<p class="small">🍖 Getting your meals ready for <b>' + fmt(g.ok.length) + '</b> hungry pets…</p><div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt">0 of ' + fmt(g.ok.length) + ' pets</div>';
     $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
@@ -628,7 +635,7 @@
     var sp = myPendingTags(); plans = plans.filter(function (p) { var m = V.sendBlock ? V.sendBlock(bw, p, S.tip, { me: ME, pending: sp }) : null; if (m) skip.push('🚫 Not sent (' + p.tag + '): ' + m); else sp.push(p.tag); return !m; }); /* wasted-burn guard (2026-10-20): one shared check mirroring the engine (breed, accept, fight, rolls); never ask the wallet to sign a burn the replay would reject */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ': ' + skip.join(' · ')); window.V2LastBlocked = skip; }
     var fg = feedGuard(bw, plans); plans = fg.plans; if (pre && pre.skipped.length && !fg.skipped.length) fg = { plans: plans, skipped: pre.skipped, text: pre.text };
-    if (!plans.length) { if (fg.skipped.length) toast('🍽️ Feed not sent: ' + fg.text); else if (!skip.length) toast('Nothing to do'); return; }
+    if (!plans.length) { if (fg.skipped.length || fg.blocked) feedBlocked(title, fg.text); else if (!skip.length) toast('Nothing to do'); return; }
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's' : '') + ', each signed separately · network fees ~' + fmt(s.feeSats) + ' sats (' + s.feeBtc.toFixed(8) + ' BTC, estimate; XCP Wallet shows the real fee) · balance after ' + fmt(S.balance - s.total) + '</p>' +
@@ -668,17 +675,16 @@
   /* bigfix 2026-10-20: plain-words heads-up for runs longer than the unconfirmed-burn limit */
   function blocksNote(burns) { var cap = (window.V2Wallet && V2Wallet.CHAIN_CAP) || 24; if (burns <= cap) return '';
     var blocks = Math.ceil(burns / cap); return '<p class="small"><b>📦 ' + fmt(burns) + ' burns, about ' + blocks + ' Bitcoin blocks (~' + (blocks * 10) + ' min).</b> Bitcoin lets about ' + cap + ' of your burns wait at once, so you sign ' + cap + ', wait for the next block, then press Continue. Nothing is lost if you stop: Continue picks up where you left off.</p>'; }
-  function guardIds(w, ids) { var pend = pendingFeedIds(), why = {}, ok = ids.filter(function (id) { var p = w.byId[id], r = !p ? 'not found' : p.owner !== ME ? 'not yours' : p.dead ? 'dead' : p.released ? 'released' : (p.mythicCare || p.stage >= 5) ? 'Mythic (never starves)' : p.fedToday ? 'already fed this chain day' : pend[id] ? 'a feed burn is still waiting to confirm' : !(p.nextMeal > 0) || !p.hungry ? 'no meal due' : null;
+  function guardIds(w, ids) { var pend = pendingFeedIds(), why = {}, ok = ids.filter(function (id) { var r = V2Habits.feedWhy(w, w.byId[id], ME, pend, (S.tip || 0) + 1, V); /* habits-ux: + away on a quest */
       if (r) (why[r] = why[r] || []).push(id); return !r; }), oks = new Set(ok), skipped = ids.filter(function (id) { return !oks.has(id); });
     return { ok: ok, skipped: skipped, text: Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ') }; }
-  function feedGuard(w, plans) { var feedIds = [], other = [], why = {}, pend = null;
-    plans.forEach(function (q) { var t = V.parseTag(q.tag); if (t && t.action === 'feed') feedIds.push(t.petId); else if (t && (t.action === 'feedm' || t.action === 'feedl')) feedIds = feedIds.concat(t.ids); else if (t && t.action === 'feeda') feedIds = feedIds.concat(q.petIds || []); else other.push(q); });
-    if (!feedIds.length) return { plans: plans, skipped: [], text: '' };
-    pend = pendingFeedIds(); var ok = feedIds.filter(function (id) { var p = w.byId[id], r = !p ? 'not found' : p.owner !== ME ? 'not yours' : p.dead ? 'dead' : p.released ? 'released' : (p.mythicCare || p.stage >= 5) ? 'Mythic (never starves)' : p.fedToday ? 'already fed this chain day' : pend[id] ? 'a feed burn is still waiting to confirm' : !(p.nextMeal > 0) || !p.hungry ? 'no meal due' : null;
-      if (r) (why[r] = why[r] || []).push(id); return !r; });
-    var okS = new Set(ok), skipped = feedIds.filter(function (id) { return !okS.has(id); }); if (!skipped.length) return { plans: plans, skipped: [], text: '' };
-    var text = Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ');
-    return { plans: other.concat(ok.length ? V.feedQueue(w, ME, ok) : []), skipped: skipped, text: text }; }
+  /* habits-ux (Oct 27 2026): check feeds before signing, for pet:feed/fm/fl and feed-all (fa/fx/fy + sk/su). Pets already fed this chain day, dead,
+   * away on a quest (and the older checks) are dropped; blocked = no pet left, so no feed burn (and no lone skip-list burn) is composed. */
+  function feedGuard(w, plans) { return V2Habits.feedGuardPlans(w, plans, { me: ME, pend: pendingFeedIds(), nb: (S.tip || 0) + 1, V: V, idList: idList, queue: function (ok) { return V.feedQueue(w, ME, ok); } }); }
+  function feedBlocked(title, text) { pendingPlans = null; $('cfTitle').textContent = title || 'Feed';
+    $('cfBody').innerHTML = '<p class="warn"><b>🍽️ Nothing to feed, so no burn was made.</b></p><p class="small">' + esc(text || 'no pet left to feed') + '</p><p class="small muted">Nothing was signed and no XCPETS were burned.</p>';
+    $('cfYes').disabled = true; $('cfYes').style.display = 'none'; $('cfNo').textContent = 'Close'; $('cfNo').disabled = false; open('confirmBox'); window.V2LastBlocked = [text];
+    var cb = $('confirmBox'), y = $('cfYes'), mo = new MutationObserver(function () { if (!cb.classList.contains('on')) { y.style.display = ''; mo.disconnect(); } }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }
   /* Resume (build 2): the unsent part of a stopped multi-burn run is kept per network + address so a reload offers Continue instead of rebuilding sent burns */
   function resumeKey() { return 'xcpets-v2-resume-' + NET + '-' + (ME || ''); }
   function saveResume(title, rest) { try { if (rest && rest.length) localStorage.setItem(resumeKey(), JSON.stringify({ title: title, plans: rest, at: Date.now() })); else localStorage.removeItem(resumeKey()); } catch (e) { } }
@@ -695,13 +701,16 @@
      * feed burns are rebuilt for the new day (same feedGuard), so no meal is sized or skipped for the old day. Other burns are untouched. */
     function redayFeeds() { var d = V.day(S.tip || 0); if (d === day0) return; day0 = d; var rest = plans.slice(i); if (!rest.some(function (q) { var t = V.parseTag(q.tag); return t && /^feed/.test(t.action); })) return;
       var g = feedGuard(world(), rest); plans = plans.slice(0, i).concat(g.plans); if (g.skipped.length) toast('🍽️ New chain day: rebuilt the remaining meals · ' + esc(g.text)); else toast('🍽️ New chain day: rebuilt the remaining meals for the new day.'); }
+    /* habits-ux: right before each feed burn is composed (wallet chaining too), drop it if none of its pets can still eat */
+    function feedDrop() { var q = plans[i], t = q && V.parseTag(q.tag); if (!t || !/^feed/.test(t.action)) return false; var g = feedGuard(world(), [q]); if (!g.blocked) return false;
+      plans.splice(i, 1); toast('🍽️ Skipped ' + esc(q.tag) + ' before signing: ' + esc(g.text)); return true; }
     function sendOnce(p, k, n) { /* wallet-one-window: no auto-retry on -32005 (each retry rebuilt the burn and opened another XCP Wallet window); V2Wallet.send turns it into a finish-or-close message */
       /* burn-compose-fix: show which step the burn is on (chain check / fee / node i of n / safety check / XCP Wallet) instead of one static line */
       var pre = 'Burn ' + k + ' of ' + n + ': ';
       return V2Wallet.send(p, ME, function (a, b, ph) { var m = ph === 'fresh' ? 'checking the latest chain data…' : ph === 'fee' ? 'getting the network fee rate…' : ph === 'check' ? 'safety-checking ' + p.tag + ' (node ' + a + ' of ' + b + ')…' : ph === 'sign' ? 'approve ' + p.tag + ' in XCP Wallet now. If no window opened, click the XCP Wallet icon in your browser toolbar.' : 'building ' + p.tag + ' on Counterparty node ' + a + ' of ' + b + '…'; $('pgt').textContent = pre + m; }, staleCheck(p)); }
     var starred = 0;
     (function step() { if (i >= plans.length) { keptToast(starred); starred = 0; save(); saveResume(null, null); if (plans.some(function (p) { return p.tag === 'pet:hatchzap'; })) try { window.dispatchEvent(new Event('xcpets:zap')); } catch (e) { } $('pgt').textContent = '✓ ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' sent from XCP Wallet. They appear here once confirmed in a block.'; var nr = plans.filter(function (q) { return /^pet:(roll|fr|of):/.test(q.tag); }).length; if (nr) toast('🎁 Gear on the way' + (nr > 1 ? ' (' + nr + ' rolls)' : '') + '. Your piece' + (nr > 1 ? 's show' : ' shows') + ' up here once the burn confirms, usually in about 10 minutes.', 9000); setTimeout(function () { close('confirmBox'); var a = pendingAfter; pendingPlans = null; render(); if (a) a(); }, 400); return; }
-      redayFeeds(); if (i >= plans.length) return step(); var p = plans[i++], k = i; $('pgt').textContent = 'Burn ' + k + ' of ' + plans.length + ': building ' + p.tag + ', then approve it in XCP Wallet…'; sendOnce(p, k, plans.length).then(function (r) { S.lastTx = r && r.txid; starred += keepFed(p.tag); saveResume(title, plans.slice(k)); $('pg').style.width = (100 * k / plans.length) + '%'; $('pgt').textContent = 'Burn ' + k + ' of ' + plans.length + ' sent: ' + p.tag + ' · tx ' + r.txid.slice(0, 10) + '…'; if (plans.length <= 3) toast('⏳ Broadcast: ' + esc(p.label || p.tag) + ' · <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + r.txid + '">' + r.txid.slice(0, 6) + '… mempool ↗</a>' + (/^pet:hatch/.test(p.tag) ? ' · 🥚 your egg' + (p.tag === 'pet:hatch' ? '' : 's') + ' hatch when this confirms (the hatch popup opens then)' : ' · result when confirmed'), 9000); renderLog(world()); if (i < plans.length) setTimeout(step, 1500); else step(); }, function (e) { var raw = e ? (e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || String(e)) : '', eh = e && e.confirmNote ? V2Wallet.confirmNoteHtml(true) : e && e.waitConfirm ? esc(k > 1 ? 'Burn ' + (k - 1) + ' is waiting to confirm. Wait about one block, then press Continue.' : 'An earlier burn of yours is waiting to confirm. Wait about one block, then press Continue.') : V2Wallet.errHtml(e);
+      redayFeeds(); if (i >= plans.length) return step(); if (feedDrop()) return step(); var p = plans[i++], k = i; $('pgt').textContent = 'Burn ' + k + ' of ' + plans.length + ': building ' + p.tag + ', then approve it in XCP Wallet…'; sendOnce(p, k, plans.length).then(function (r) { S.lastTx = r && r.txid; starred += keepFed(p.tag); saveResume(title, plans.slice(k)); $('pg').style.width = (100 * k / plans.length) + '%'; $('pgt').textContent = 'Burn ' + k + ' of ' + plans.length + ' sent: ' + p.tag + ' · tx ' + r.txid.slice(0, 10) + '…'; if (plans.length <= 3) toast('⏳ Broadcast: ' + esc(p.label || p.tag) + ' · <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + r.txid + '">' + r.txid.slice(0, 6) + '… mempool ↗</a>' + (/^pet:hatch/.test(p.tag) ? ' · 🥚 your egg' + (p.tag === 'pet:hatch' ? '' : 's') + ' hatch when this confirms (the hatch popup opens then)' : ' · result when confirmed'), 9000); renderLog(world()); if (i < plans.length) setTimeout(step, 1500); else step(); }, function (e) { var raw = e ? (e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || String(e)) : '', eh = e && e.confirmNote ? V2Wallet.confirmNoteHtml(true) : e && e.waitConfirm ? esc(k > 1 ? 'Burn ' + (k - 1) + ' is waiting to confirm. Wait about one block, then press Continue.' : 'An earlier burn of yours is waiting to confirm. Wait about one block, then press Continue.') : V2Wallet.errHtml(e);
         keptToast(starred); starred = 0; saveResume(title, plans.slice(k - 1)); $('pgt').innerHTML = '<span class="warn">Stopped at burn ' + k + ' of ' + plans.length + ' (' + (k - 1) + ' sent): ' + eh + (raw && !e.waitConfirm && !e.walletBusy && !e.stale && String(eh).replace(/<[^>]*>/g, '').indexOf(raw) < 0 ? ' <span class="muted">· wallet/node said: <code>' + esc(raw) + '</code></span>' : '') + '</span>'; $('cfNo').disabled = false; pendingPlans = plans.slice(k - 1); if (!e.reload) { $('cfYes').textContent = e.retry ? (k > 1 ? 'Retry from burn ' + k : 'Retry') : 'Continue from burn ' + k; $('cfYes').disabled = false; }
         /* burn-wait-confirm: the note's Continue = re-check for confirmed coins from this burn; 'Try anyway' = one compose on the unconfirmed change */
         if (e && e.confirmNote) { var nb = $('pgt').querySelector('.bwc-go'), nt = $('pgt').querySelector('.bwc-try');

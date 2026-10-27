@@ -397,17 +397,24 @@
     var bar = document.createElement('div'); bar.className = 'uxp-find cemfind';
     bar.innerHTML = '<label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '<span class="small muted" id="cemMsg" aria-live="polite"></span>';
     tombs.parentNode.insertBefore(bar, tombs);
+    /* habits-ux (Oct 27 2026): graves of pets that were never fed fold into one collapsed group with its count (display only).
+     * Fed pets that died stay listed one by one. A search (Find a grave) still looks through every grave. */
+    var nfg = document.createElement('details'); nfg.className = 'hiddenbox nfgroup'; nfg.id = 'nfGroup'; nfg.style.display = 'none'; tombs.parentNode.insertBefore(nfg, tombs); st.nfOpen = false;
+    nfg.addEventListener('toggle', function () { if (st.nfOpen === nfg.open) return; st.nfOpen = nfg.open; apply(); });
+    function fold(list) { if (!window.V2Habits || st.q.trim()) { nfg.style.display = 'none'; return list; } var sp = V2Habits.splitNeverFed(list), n = sp.nf.length; nfg.style.display = n ? '' : 'none';
+      if (n) { nfg.innerHTML = '<summary>🪦 Never fed <span class="chip">' + fmt(n) + '</span> <span class="muted">grave' + (n === 1 ? '' : 's') + ' of pets that died without a single meal' + (st.nfOpen ? ' · listed after the others, tap to fold' : ' · tap to show') + '</span></summary>'; nfg.open = st.nfOpen; }
+      return st.nfOpen ? sp.shown.concat(sp.nf) : sp.shown; }
     var more = document.createElement('button'); more.type = 'button'; more.className = 'q'; more.id = 'tombsMore'; more.style.display = 'none'; tombs.parentNode.insertBefore(more, tombs.nextSibling);
     function paint(from, to) { var frag = st.list.slice(from, to).map(tomb).join(''); tombs.insertAdjacentHTML('beforeend', frag);
       st.list.slice(from, to).forEach(function (p) { var c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.lazy(c, function () { return R.framesWith(p.art, p.stage, []); }, true); });
-      more.style.display = st.list.length > to ? '' : 'none'; more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
+      more.style.display = st.list.length > to ? '' : 'none'; if (st.list.length > to) more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
     function apply() { var q = st.q.trim().toLowerCase().replace(/^#/, ''), num = /^\d+$/.test(q);
       st.list = dead.filter(function (p) { if (st.mine && p.owner !== ME) return false; if (!q) return true;
         return num ? String(p.id) === q || String(p.id).indexOf(q) === 0 : String(p.name).toLowerCase().indexOf(q) >= 0 || String(spLabel(p.species)).toLowerCase().indexOf(q) >= 0 || String(p.owner).toLowerCase() === q || (q.length >= 6 && String(p.owner).toLowerCase().indexOf(q) >= 0); });
       if (num) st.list.sort(function (a, b) { return (String(b.id) === q) - (String(a.id) === q); });
-      st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
-      $('cemMsg').textContent = (q || st.mine) ? (st.list.length ? fmt(st.list.length) + ' grave' + (st.list.length === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
-      if (!st.list.length) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
+      var found = st.list.length; st.list = fold(st.list); st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
+      $('cemMsg').textContent = (q || st.mine) ? (found ? fmt(found) + ' grave' + (found === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
+      if (!found) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
     more.onclick = function () { var a = st.n; st.n += STEP; paint(a, st.n); };
     var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
     inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
@@ -415,7 +422,7 @@
     if ($('cemMine')) $('cemMine').onclick = function () { st.mine = !st.mine; this.setAttribute('aria-pressed', st.mine); this.classList.toggle('on', st.mine); this.textContent = st.mine ? 'All graves' : 'My graves'; apply(); };
     var deep = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id');
     if (deep && w.byId[deep] && w.byId[deep].dead) { inp.value = '#' + deep; st.q = deep; apply(); var e = $('tomb-' + deep); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } }
-    else paint(0, st.n);
+    else { st.list = fold(dead); paint(0, st.n); }
   }
   function pet() {
     $('page').style.display = 'block';
