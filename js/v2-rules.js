@@ -3454,10 +3454,13 @@
     var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
-    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; return fp && fp.length === 1 && fa.length > 1 ? fp : fa; } }
+    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; /* feed-burns-fix: the skip-list sync (pet:sk/su) is one-time and saves (fp-1) burns on each later feed. Use it only if it pays for itself within
+       * SYNC_PAYBACK_FEEDS feeds; otherwise feed directly with fp (e.g. 18 pets: 4 burns, not 51 setup + 1). */
+      if (!fp || fa.length <= fp.length) return fa; if (fp.length === 1) return fp; return (fa.length - fp.length) / (fp.length - 1) <= SYNC_PAYBACK_FEEDS ? fa : fp; } }
     return feedListOn(nb) ? feedPlan(ps) : feedBatches(ps);
   }
   /** feedListOn(tip): the UI offers pet:fl bundles only once the chain tip has reached FEED_LIST_BLOCK. */
+  var SYNC_PAYBACK_FEEDS = 3;
   function feedAllOn(tip) { return tip != null && Number(tip) >= FEED_ALL_BLOCK; }
   /** feedAllPlan(w, owner, ps, nb) -> plans feeding exactly ps (the chosen hungry pets) with ONE feed burn.
    * The owner's on-chain feed-skip set (p.skipBy === owner) is what pet:fa leaves out. add = hungry pets not chosen and not yet skipped,
