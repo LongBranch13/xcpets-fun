@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* COMMUNITY PET CHECK (owner standing rule, Oct 22 2026 10:15 PM CT: "community pets must ALWAYS work for hybrids and gear").
- * Dev tooling only, not loaded by any page. For every community pet (nakamoto, wizard, kek, funtrump) it checks, in a Node vm with the repo's scripts:
+ * Dev tooling only, not loaded by any page. For every community pet (nakamoto, wizard, kek, funtrump, homer) it checks, in a Node vm with the repo's scripts:
  *   1. SPRITE   stages 0..5 x 4 idle frames render (32x32, no NaN, no magenta key pixels, not blank).
  *   2. HYBRIDS  the pet as SHAPE and as COLOUR/FEATURE with every other root (13 species + the other community pets), head and side feature,
  *               stages 0..5 x 4 frames: no throw, no blank frame (>= 30 non-background pixels), no broken pixels; plus 3-way hybrids
@@ -16,7 +16,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; }, has = k => A.includes(k);
 const ROOT = path.resolve(opt('--repo') || path.join(__dirname, '..'));
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js',
-  'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/v2-rules.js', 'js/block-hashes.js', 'js/v2-render.js'];
+  'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/v2-rules.js', 'js/block-hashes.js', 'js/v2-render.js'];
 function load() { const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
   const el = () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, classList: { add() {}, remove() {}, toggle() {} } });
   const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/', pathname: '/' }, navigator: { userAgent: 'node' },
@@ -30,8 +30,9 @@ const { c: ctx, loaded } = load(), P = ctx.PetCore, V = ctx.V2Rules, R = ctx.V2R
 const SPECIES = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto'];
 const PETS = { nakamoto: { sprite: null }, wizard: { sprite: 'WizardSprite' }, kek: { sprite: 'KekSprite', designSkip: { head: 'nemes is part of him (Headwear never drawn)' }, sig: 'kek-card' },
   funtrump: { sprite: 'FuntrumpSprite', look: 'suit', tier: 2 }, /* SUIT = Rare look (also the community pet's look) */
-  'funtrump-hoodie': { sp: 'funtrump', sprite: 'FuntrumpSprite', look: 'hoodie', tier: 3, hybrids: false } /* HOODIE = Legendary look; hybrids are covered by 'funtrump' (hybrid bodies wear the suit) */ };
-if (V && V._setFuntrumpActivation) { V._setFuntrumpActivation(0); V._setEligB(0); } /* check-only: FUNTRUMP gate ON inside this vm so his gear is eligible/drawable; every other gate stays at its pre-launch state */
+  'funtrump-hoodie': { sp: 'funtrump', sprite: 'FuntrumpSprite', look: 'hoodie', tier: 3, hybrids: false }, /* HOODIE = Legendary look; hybrids are covered by 'funtrump' (hybrid bodies wear the suit) */
+  homer: { sprite: 'HomerSprite', tier: 2 } /* HOMER PEPE (community pet #5 PREVIEW): one look, Rare or Legendary */ };
+if (V && V._setFuntrumpActivation) { V._setFuntrumpActivation(0); V._setEligB(0); } if (V && V._setHomerActivation) V._setHomerActivation(0); /* check-only: HOMER PEPE gate ON in this vm */ /* check-only: FUNTRUMP gate ON inside this vm so his gear is eligible/drawable; every other gate stays at its pre-launch state */
 const STAGES = has('--quick') ? [0, 3, 5] : [0, 1, 2, 3, 4, 5];
 function check(img, bg) { if (!img || !img.data) return 'no image'; const d = img.data; if ((img.width || 32) !== 32 || d.length !== 4096) return 'size ' + d.length;
   let n = 0; for (let j = 0; j < 1024; j++) { const r = d[j * 4], g = d[j * 4 + 1], b = d[j * 4 + 2]; if ([r, g, b].some(v => typeof v !== 'number' || isNaN(v))) return 'NaN pixel';
@@ -43,7 +44,7 @@ function baseArt(sp) { const a = sp === 'nakamoto' ? P.characterPet('nakamoto', 
 function planFor(key, want) { for (let i = 0; i < 400; i++) { const hx = require('crypto').createHash('sha256').update(key + ':' + i).digest('hex'), p = V.hybridPlan(hx, key, 972700);
   if (Object.keys(want).every(k => p[k] === want[k])) return p; } return null; }
 const out = { repo: ROOT, loaded, pets: {} }; let fails = 0;
-const only = opt('--pet'), roots = SPECIES.concat(['wizard', 'kek', 'funtrump']);
+const only = opt('--pet'), roots = SPECIES.concat(['wizard', 'kek', 'funtrump', 'homer']);
 for (const pet of Object.keys(PETS).filter(p => !only || p === only || PETS[p].sp === only)) {
   const cfg = PETS[pet], sp = cfg.sp || pet, res = out.pets[pet] = { sprite: { ok: 0, fail: [] }, hybrids: { ok: 0, fail: [] }, hybrid3: { ok: 0, fail: [] }, gear: { ok: 0, fail: [], byDesign: 0 } };
   const S = cfg.sprite && ctx[cfg.sprite]; if (cfg.sprite && !S) { res.sprite.fail.push(cfg.sprite + ' not loaded'); fails++; continue; }
