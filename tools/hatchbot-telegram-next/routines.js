@@ -18,13 +18,24 @@ const ctParts = d => { const o = {}; new Intl.DateTimeFormat('en-US', { timeZone
 function cfgFor(config, name) { return Object.assign({}, DEFAULTS[name], ((config || {}).routines || {})[name] || {}); }
 const sp = s => /^hyb3?:/.test(s) ? s.replace(/^hyb3?:/, '').split(':').join(' × ') + ' hybrid' : s;
 const name = p => (p.name || 'Pet') + ' #' + p.id;
+// Parent wording for motel_alert. Bred eggs have 2 parents; Mythic quest jackpot / ambush eggs (v2-rules jackpotEgg) have ONE parent
+// (parents = [P.id], crossed with a wild Legendary that is not a pet); anything else with a missing id is never printed as 'undefined'.
+const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+const okId = x => x != null && x !== '' && x !== 'undefined' && !Number.isNaN(+x);
+function motelFrom(c) {
+  const ps = (Array.isArray(c.parents) ? c.parents : []).filter(okId), nm = c.parentNames || {};
+  const who = id => (nm[id] ? nm[id] + ' ' : '') + '#' + id;
+  if (ps.length >= 2) return ', from ' + who(ps[0]) + ' × ' + who(ps[1]);
+  if (ps.length === 1) return c.jackpot ? ', a Mythic quest jackpot egg from ' + who(ps[0]) + (c.jackpot.wild ? ' and a wild ' + cap(c.jackpot.wild) : '') : ', from ' + who(ps[0]);
+  return '';
+}
 const CAPTIONS = {
   pet_of_day: f => { const p = f.top[0]; return p && { key: 'potd:' + f.day, pet: p.id, render: ['pet', p.id], text: '🌟 Pet of the Day: ' + name(p) + ', a ' + sp(p.species) + ' with a Pet Score of ' + p.score + '. Give it a wave!' }; },
   fight_night: f => { const fs24 = f.fights.filter(x => x.block > f.tip - 144); if (!fs24.length) return null; const last = fs24[fs24.length - 1];
     return { key: 'fn:' + f.day, render: ['fight', last.id], text: '🥊 Fight Night at X Circus Kekimus: ' + fs24.length + ' fight' + (fs24.length > 1 ? 's' : '') + ' today.\n' + fs24.map(x => '#' + x.winner + ' beat #' + x.loser + (x.spoils ? ' and took ' + x.spoils : '') + (x.streak >= 3 ? ' 🏆 title belt (' + x.streak + ' wins)' : '')).join('\n') + '\nLosers wear a black eye for 72 blocks.' }; },
   fight_photo: f => { const x = f.fights[f.fights.length - 1]; return x && { key: 'fp:' + x.id, render: ['fight', x.id], text: '🥊 #' + x.winner + ' wins in X Circus Kekimus! #' + x.loser + ' gets the black eye.' }; },
   motel_alert: f => { const b = f.bred.filter(p => p.block > f.tip - 36); if (!b.length) return null; const c = b[0];
-    return { key: 'motel:' + c.id, render: ['breed', c.id], text: '🥚 New arrival at the No-Tail Motel: ' + name(c) + ' (' + c.species + '), from #' + c.parents[0] + ' × #' + c.parents[1] + (b.length > 1 ? '. Plus ' + (b.length - 1) + ' more eggs checked out.' : '.') }; },
+    return { key: 'motel:' + c.id, render: ['breed', c.id], text: '🥚 New arrival at the No-Tail Motel: ' + name(c) + ' (' + c.species + ')' + motelFrom(c) + (b.length > 1 ? '. Plus ' + (b.length - 1) + ' more egg' + (b.length > 2 ? 's' : '') + ' checked out.' : '.') }; },
   leaderboard: f => f.top.length && { key: 'lb:' + f.day, render: ['pet', f.top[0].id], text: '🏅 Weekly Pet Score top 5:\n' + f.top.slice(0, 5).map((p, i) => (i + 1) + '. ' + name(p) + ' ' + p.score).join('\n') },
   graveyard: f => (f.graves || []).length ? { key: 'gy:' + f.day, text: '🪦 Graveyard notice: ' + f.graves.map(name).join(', ') + ' passed on. Feed your pets, friends.' } : null,
   wizard_countdown: f => f.wizard && f.wizard.left > 0 ? { key: 'wiz:' + f.day, text: '🧙 Wizard watch: ' + f.wizard.left.toLocaleString('en-US') + ' care points to Mythic.' } : null
@@ -68,4 +79,4 @@ async function sendOne(item, state, deps) {
   rate.posts = (rate.posts || []).concat([{ t: deps.now(), kind: 'routine:' + item.routine }]).slice(-200); fs.writeFileSync(rf, JSON.stringify(rate));
   return { status: 'POSTED', photo: !!file, message_id: res && res.message_id };
 }
-module.exports = { checkMedia, mediaName, RENDER_MODES, DEFAULTS, CAPTIONS, due, sendOne, cfgFor, ctParts };
+module.exports = { motelFrom, checkMedia, mediaName, RENDER_MODES, DEFAULTS, CAPTIONS, due, sendOne, cfgFor, ctParts };
