@@ -677,9 +677,9 @@
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
     window.addEventListener('scroll', q, { passive: true }); }
   /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 5 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
-   * a flickering fire aura on the pet's outline and a gold frame (the flame crown on the head was removed Oct 26, 2026: owner rejected it, do not add it back) with n of 3 edition pips.
+   * a flickering fire aura on the pet's outline only (the flame crown and the gold frame + edition pips were removed Oct 26, 2026 by owner decision: do not add them back).
    * Silhouette per frame from two key renders (same trick as mythFx). Display only. */
-  var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]], BL_GOLD = [255, 210, 63], BL_GOLD2 = [176, 120, 20], BL_INK = [20, 12, 6];
+  var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]];
   function burnLordFx(fr, keyed, bl) { if (!okFrames(fr) || !bl) return fr; var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
     return fr.map(function (f, fi) { var a = (A[fi] || A[0]).data, b = (B[fi] || B[0]).data, d = new Uint8ClampedArray(f.data), m = new Uint8Array(1024), y0 = 32, x0 = 32, x1 = -1;
       for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (y < y0) y0 = y; if (x < x0) x0 = x; if (x > x1) x1 = x; } }
@@ -688,11 +688,7 @@
         for (var q = 0; q < 1024; q++) { if (m[q]) continue; var qx = q & 31, qy = q >> 5; if (qy > 28) continue; var nb = [q - 32, q + 32, qx > 0 ? q - 1 : -1, qx < 31 ? q + 1 : -1].some(function (n) { return n >= 0 && n < 1024 && m[n]; }); if (!nb) continue;
           var h = (qx * 7 + qy * 13 + fi * 5) % 6; if (h < 3) set(qx, qy, BL_FIRE[(h + (qy < 16 ? 0 : 1)) % 3]); }
       }
-      /* gold frame (outer gold, inner dark line) + n gold pips bottom right */
-      for (var t = 0; t < 32; t++) { set(t, 0, BL_GOLD); set(t, 31, BL_GOLD); set(0, t, BL_GOLD); set(31, t, BL_GOLD); }
-      for (var u = 1; u < 31; u++) { set(u, 1, BL_GOLD2); set(u, 30, BL_GOLD2); set(1, u, BL_GOLD2); set(30, u, BL_GOLD2); }
-      [0, 0, 31, 31].forEach(function (cx2, k) { set(cx2, k % 2 ? 31 : 0, BL_INK); });
-      for (var e = 0; e < bl.of; e++) set(28 - e * 2, 30, e < bl.n ? BL_FIRE[0] : BL_INK);
+      /* gold frame + edition pips REMOVED Oct 26, 2026 (owner decision): no frame around edition pets. The pips sat on the frame's inner line and had no clean spot without it, so they were dropped too; the edition number still shows in the Burn Lord chip/badge text. Do not add the frame or the flame crown back. */
       return Object.assign({}, f, { data: d }); }); }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
