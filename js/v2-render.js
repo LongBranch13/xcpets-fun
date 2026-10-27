@@ -739,20 +739,9 @@
     document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
     window.addEventListener('scroll', q, { passive: true }); }
-  /* BURN LORD EDITION LOOK (branch burn-lords): exclusive to the 5 Burn Lords grant pets (p.burnLord; never bred, never inherited). On every frame:
-   * a flickering fire aura on the pet's outline only (the flame crown and the gold frame + edition pips were removed Oct 26, 2026 by owner decision: do not add them back).
-   * Silhouette per frame from two key renders (same trick as mythFx). Display only. */
-  var BL_FIRE = [[255, 214, 64], [255, 140, 26], [222, 56, 28]];
-  function burnLordFx(fr, keyed, bl) { if (!okFrames(fr) || !bl) return fr; var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
-    return fr.map(function (f, fi) { var a = (A[fi] || A[0]).data, b = (B[fi] || B[0]).data, d = new Uint8ClampedArray(f.data), m = new Uint8Array(1024), y0 = 32, x0 = 32, x1 = -1;
-      for (var p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) { m[p] = 1; var x = p & 31, y = p >> 5; if (y < y0) y0 = y; if (x < x0) x0 = x; if (x > x1) x1 = x; } }
-      var set = function (x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var j = (y * 32 + x) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; };
-      if (x1 >= 0) { /* fire aura: background pixels touching the silhouette, flicker by frame */
-        for (var q = 0; q < 1024; q++) { if (m[q]) continue; var qx = q & 31, qy = q >> 5; if (qy > 28) continue; var nb = [q - 32, q + 32, qx > 0 ? q - 1 : -1, qx < 31 ? q + 1 : -1].some(function (n) { return n >= 0 && n < 1024 && m[n]; }); if (!nb) continue;
-          var h = (qx * 7 + qy * 13 + fi * 5) % 6; if (h < 3) set(qx, qy, BL_FIRE[(h + (qy < 16 ? 0 : 1)) % 3]); }
-      }
-      /* gold frame + edition pips REMOVED Oct 26, 2026 (owner decision): no frame around edition pets. The pips sat on the frame's inner line and had no clean spot without it, so they were dropped too; the edition number still shows in the Burn Lord chip/badge text. Do not add the frame or the flame crown back. */
-      return Object.assign({}, f, { data: d }); }); }
+  /* BURN LORD / 1 OF 1 / CONTEST FIRE AURA REMOVED Oct 27, 2026 (owner: 'Just take it off'). Edition pets (p.burnLord, p.supreme, p.contest) now draw the
+   * plain sprite like any pet; their chips/badges/info lines stay. burnLordFx is kept as a no-op so old callers still work. Do not add the aura, crown or frame back. */
+  function burnLordFx(fr) { return fr; }
   function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
@@ -761,7 +750,6 @@
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
-    if (p && (p.burnLord || p.supreme || p.contest) && !p.dead) fr = burnLordFx(fr, function (bg) { return petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); }, p.burnLord || p.supreme || p.contest); /* Burn Lord edition look (also the 1 of 1 supreme eggs) */
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
     if (lk.length) try { var lkKey = function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01'); window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
@@ -1136,7 +1124,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=05d4475ed4'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=2e0942e675'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
