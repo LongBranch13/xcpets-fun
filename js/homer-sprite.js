@@ -25,11 +25,11 @@
     if (y >= 21 && y <= 24.2) { var ax = Math.abs(x - 15.5); if (ax >= 0.9 && ax <= 1.2 + (24.2 - y) * 1.7) k = (ax >= 1.2 + (24.2 - y) * 1.7 - 0.8 ? 'C' : 'W'); } // collar points
     if (y >= 4.4 && el(x, y, 14.4, 12, 6.8, 8.6) < 1) k = (el(x, y, 12.2, 6.6, 2.4, 2) < 1 ? 'h' : (x < 9.6 || y > 16.5 ? 'g' : 'G')); // tall dome, flat-ish top
     if (el(x, y, 20.2, 17.6, 6.6, 3.9) < 1) k = (y > 18.6 ? 'g' : 'G');                                                // jowly muzzle pushed forward (stubble shade)
-    if (el(x, y, 9.6, 14.4, 1.9, 2.3) < 1) k = (el(x, y, 9.9, 14.5, 0.8, 1.1) < 1 ? 'g' : 'G');                         // ear
+    if ((d = el(x, y, 7.9, 14.6, 2.1, 2.5)) < 1) k = (d > 0.5 && x > 8.6 ? 'n' : (el(x, y, 7.9, 14.6, 0.9, 1.2) < 1 ? 'g' : 'G'));                         // ear
     var f = 17.2 - 0.018 * (x - 22) * (x - 22);                                                                          // wide flat Pepe smile
     if (x >= 14.6 && x <= 26.4) { if (Math.abs(y - f) <= 0.6) k = 'L'; else if (y > f + 0.6 && y <= f + 1.4 && x >= 15.6 && x <= 25.6) k = 'l'; }
     [[17.3, 10.2], [23.5, 10.5]].forEach(function (e) { d = el(x, y, e[0], e[1], 3.5, 3.7); if (d < 1) { k = d > 0.7 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
-        else if (k === 'E' && el(x, y, e[0] + 0.9, e[1] + 0.5, 0.85, 0.85) < 1) k = 'P'; } });                           // big bulging eyes, small pupils, close together
+        else if (k === 'E' && el(x, y, e[0] + 0.5, e[1] + 0.5, 1.05, 1.05) < 1) k = 'P'; } });                           // big bulging eyes, small pupils, close together
     return k; }
   function curls(g, t, dy) { /* TWO M-shaped hair curls on top + zigzag side hair over the ear (ink), placed in adult space then scaled */
     var pts = [[10.5, 3.5], [10.5, 2.5], [11.5, 1.5], [12.5, 1.5], [13.5, 2.5], [12.5, 3.5],
