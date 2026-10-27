@@ -19,26 +19,29 @@
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function el(x, y, cx, cy, rx, ry) { var a = (x - cx) / rx, b = (y - cy) / ry; return a * a + b * b; }
   /* key at an ADULT-space point (ground 28.5); later rules overwrite earlier ones */
-  function keyAt(x, y, stage, blink) { var k = null, d;
-    if (y >= 24.5 && el(x, y, 14.5, 31, 7, 7) < 1) k = (x > 19 ? 'C' : 'w');                                         // shirt
-    if (y < 24.5) { var q = tilt(x, y, -1); x = q[0]; y = q[1]; }                                                     // v4: head tilted back (muzzle up), shirt stays level
-    if (x >= 9.5 && x <= 17.5 && y >= 15 && y <= 25) k = (x < 11 ? 'g' : 'G');                                          // back of the head down to the neck
-    if (y >= 24 && y <= 26.2) { var ax = Math.abs(x - 15.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - y) * 1.3) k = (ax >= 1.0 + (26.2 - y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
-    if (y >= 2.4 && el(x, y, 14.4, 11.6, 6.6, 9.4) < 1) k = (el(x, y, 12.2, 5.4, 2.3, 2.2) < 1 ? 'h' : (x < 9.6 || y > 18.5 ? 'g' : 'G')); // tall dome, flat-ish top
-    if (el(x, y, 20.2, 19.4, 6.0, 3.6) < 1) k = (y > 20.4 ? 'g' : 'G');                                                // jowly muzzle pushed forward (stubble shade)
-    if ((d = el(x, y, 7.9, 16, 2.1, 2.5)) < 1) k = (d > 0.5 && x > 8.6 ? 'n' : (el(x, y, 7.9, 16, 0.9, 1.2) < 1 ? 'g' : 'G'));                         // ear
-    var f = 19.2 - 0.02 * (x - 19) * (x - 19);                                                                          // wide flat Pepe smile
-    if (x >= 14.4 && x <= 22.6) { if (Math.abs(y - f) <= 0.55) k = 'L'; else if (y > f + 0.55 && y <= f + 1.2 && x >= 15.4 && x <= 21.6) k = 'l'; }
-    [[15.0, 11.9], [21.3, 11.9]].forEach(function (e) { d = el(x, y, e[0], e[1], 2.7, 3.0); if (d < 1) { k = d > 0.62 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
-        else if (k === 'E' && el(x, y, e[0] + 0.4, e[1] + 0.4, 0.85, 0.85) < 1) k = 'P'; } });                           // big bulging eyes, small pupils, close together
+  /* HEAD: silhouette traced from design/ref/homer-pepe-card.jpg (v5, Oct 26 2026): card crop (95,75)-(235,250), 6.25 card px per sprite unit,
+   * sampled at half-unit cells. '#' head skin, 'h' light muzzle, 'L' lip area, '.' empty. Origin (HX, HY) in adult space. The card pose already has
+   * Homer's head tilted back (muzzle up, skull sloping down behind), which is the approved v4 tilt. */
+  var HX = 4.5, HY = 3.0, HEAD = [".......########.................", ".....#############..............", "....################............", "...##################...........", "...###################..........", "..####################..........", ".######################.........", ".#######################........", ".#######################........", "########################........", "#########################.......", "#########################.......", "##########################......", "##########################......", ".#########################......", ".##########################.....", "..##########################....", "..###########################...", "..###########################...", "..###########################...", "..##########################....", "...#########################....", "....#########################...", "....#########################...", ".....########################...", ".....#####################h#....", ".....#############hhhhhhhhh#....", "....############hhhhhhhhhhhh#...", "....##########hhhhhhhhhhhhhhh...", "....#########hhhhhhhhhhhhhhhh#..", "....#########hhhhhhhhhhhhhhhh#..", ".....#######hhhhhhhhhhhhhhhhhh..", ".....######hhhhhhhhhhhhhhhhh##..", ".....######hhhh##hhhhhhhhhh#L...", ".....######hhh#LLLLLLLLLLLLLL...", ".....######hhhh#LLLLLLLLLL......", ".....######hhhhh##LLLLLLLL......", "....########hhhhhhhhhhhh#.......", ".....########hhhhhhhhhhh#.......", ".....########hhhhhhhhhh#........", "......#########hhhhhhh#.........", "........#########hhh###.........", "..........#############.........", "..............#########.........", ".................######.........", "..................#####.........", "..................#####.........", "...................####.........", "................................", "................................", "................................", "................................"];
+  function head(x, y) { var i = Math.floor((x - HX) * 2), j = Math.floor((y - HY) * 2); if (j < 0 || j >= HEAD.length || i < 0 || i >= HEAD[j].length) return null; var c = HEAD[j][i]; return c === '.' ? null : c; }
+  /* key at an ADULT-space point (ground 28.5); later rules overwrite earlier ones */
+  function keyAt(x, y, stage, blink) { var k = null, d, c;
+    if (y >= 24.5 && el(x, y, 14.5, 31, 7, 7) < 1) k = (x > 19 ? 'C' : 'w');                                         // shirt (short, v3)
+    if (y < 25.2 && (c = head(x, y))) k = c === '#' ? (x < 7.4 || (y > 21 && x < 10) ? 'g' : 'G') : (y > 22 ? 'g' : 'h'); // traced head; muzzle lighter, stubble shade under the lip
+    if (y >= 24 && y <= 26.2) { var ax = Math.abs(x - 14.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - y) * 1.3) k = (ax >= 1.0 + (26.2 - y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
+    if (el(x, y, 12.0, 5.6, 2.2, 1.8) < 1 && head(x, y) === '#') k = 'h';                                              // dome shine
+    if ((d = el(x, y, 6.6, 16.6, 1.4, 1.9)) < 1) k = (d > 0.45 && x > 6.6 ? 'n' : 'g');                                // ear (card: low on the back of the head)
+    if ((d = el(x, y, 18.9, 15.1, 1.9, 1.4)) < 1) k = (d > 0.5 && (y > 15.1 || x > 19.6) ? 'n' : (d < 0.25 && y < 15 ? 'h' : 'G'));  // rounded Homer nose under/between the eyes, ink on its lower/front edge
+    var f = 20.1 - 0.09 * (x - 12.8);                                                                                // lip: small, narrow, rising toward the front (card)
+    if (x >= 12.8 && x <= 18.6) { if (Math.abs(y - f) <= 0.5) k = 'L'; else if (y > f + 0.5 && y <= f + 1.1 && x >= 13.4 && x <= 18.2) k = 'l'; }
+    [[11.3, 11.0, 2.9, 2.9], [16.6, 10.7, 2.6, 2.9]].forEach(function (e) { d = el(x, y, e[0], e[1], e[2], e[3]); if (d < 1) { k = d > 0.62 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
+        else if (k === 'E' && el(x, y, e[0] + 0.3, e[1] + 0.5, 0.85, 0.85) < 1) k = 'P'; } });                           // bulging eyes that touch: the front eye is drawn last and overlaps, so they share ONE outline
     return k; }
-  var TILT = -0.16, PX = 13.5, PY = 23; /* head-back tilt (radians) about the neck */
-  function tilt(x, y, s) { var a = TILT * s, c = Math.cos(a), n = Math.sin(a), u = x - PX, v = y - PY; return [PX + u * c - v * n, PY + u * n + v * c]; }
   function curls(g, t, dy) { /* TWO M-shaped hair curls on top + zigzag side hair over the ear (ink), placed in adult space then scaled */
-    var pts = [[10.5, 2.5], [10.5, 1.5], [11.5, 0.5], [12.5, 0.5], [13.5, 1.5], [12.5, 2.5],
-               [14.5, 2.5], [14.5, 1.5], [15.5, 0.5], [16.5, 0.5], [17.5, 1.5], [16.5, 2.5],
-               [8.5, 13.5], [9.5, 12.5], [10.5, 13.5], [11.5, 12.5], [12.5, 13.5]];
-    pts.forEach(function (p) { p = tilt(p[0], p[1], 1); var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (t === 1 && Y < 1) Y = 1; if (X >= 0 && Y >= 0 && X < N && Y < N && (!g[Y][X] || g[Y][X] === 'n' || p[1] > 4)) g[Y][X] = 'n'; }); }
+    var pts = [[7.5, 3.5], [7.5, 2.5], [8.5, 1.5], [9.5, 1.5], [10.5, 2.5], [9.5, 3.5],
+               [11.5, 2.5], [11.5, 1.5], [12.5, 0.5], [13.5, 0.5], [14.5, 1.5], [13.5, 2.5],
+               [5.5, 14.5], [6.5, 13.5], [7.5, 14.5], [8.5, 13.5]];
+    pts.forEach(function (p) { var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (t === 1 && Y < 1) Y = 1; if (X >= 0 && Y >= 0 && X < N && Y < N && (!g[Y][X] || g[Y][X] === 'n' || p[1] > 5)) g[Y][X] = 'n'; }); }
   function egg(f) { var g = [], dy = f === 1 ? -1 : 0; for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var yy = y - dy + 0.5, xx = x + 0.5, k = null;
         if (el(xx, yy, 16, 19.5, 7, 9) < 1) { k = 'G'; if (el(xx, yy, 13.5, 15, 2.2, 3) < 1) k = 'h'; if (el(xx, yy, 18.5, 22.5, 1.6, 1.4) < 1 || el(xx, yy, 12.5, 23.5, 1.2, 1.1) < 1 || el(xx, yy, 19.5, 16, 1.1, 1.1) < 1) k = 'g';
           if (yy > 24.2 && yy < 25.6) k = 'W'; }
