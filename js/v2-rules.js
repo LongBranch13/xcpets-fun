@@ -545,7 +545,7 @@
    * Bo is excluded from the grant power sweep; his gate-hash stats are scaled once at the grant (same grantPowerScale, cap 30) to hit 134.
    * Nothing fires before the gate, so replay of history is unchanged. GEAR (owner ~10:30 PM CT, just give to player): one of each Bo piece (V2Gear.BO_GEAR) goes into BO_TO's inventory at the grant, unworn
    * (Bo's power stays 134). Lookup-only items: never in a roll pool, never dropped, never granted to anyone else. */
-  var ACTIVATE_BO_BLOCK = 973333; /* tip 973327 (mempool.space, Oct 26 2026 9:45 PM CT) + 6 */
+  var ACTIVATE_BO_BLOCK = 973343; /* tip 973337 (mempool.space, Oct 26 2026 10:48 PM CT) + 6; was 973333 (passed before deploy) */
   var BO_TO = 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', BO_POWER = 134;
   function boStats(st, target) { var K = PetCore.STAT_KEYS, cur = 0; K.forEach(function (k) { cur += st[k]; });
     if (cur < target) return grantPowerScale(st, target, 30);

@@ -7,7 +7,7 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
 const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
 const V2S = ['head', 'face', 'back', 'hand', 'body', 'feet', 'weapon'];
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
-ok(V.ACTIVATE_BO_BLOCK === 973333, 'gate 973333'); ok(V.BO_POWER === 134, 'power 134');
+ok(V.ACTIVATE_BO_BLOCK === 973343, 'gate 973343'); ok(V.BO_POWER === 134, 'power 134');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
 const w0 = run(c, s, [], tip); ok(!w0.pets.some(p => p.species === 'bojackson'), 'no Bo before the gate');
 V._setBo(tip); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'bojackson');
