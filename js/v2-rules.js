@@ -543,7 +543,8 @@
    * (mk egg, care 0, Legendary, p.supreme 1 of 1, fixed look, info line 'Bo Knows'). Own species 'bojackson' drawn by ContestSprite from js/bo-sprite.js
    * (v3 art); babies are normal pets like contest babies. POWER (owner 9:44 PM CT): exactly BO_POWER = 134 total, NOT the 155-160 supreme band:
    * Bo is excluded from the grant power sweep; his gate-hash stats are scaled once at the grant (same grantPowerScale, cap 30) to hit 134.
-   * Nothing fires before the gate, so replay of history is unchanged. Gear: design-only (helmet, cap, bats, high-tops are NOT droppable items). */
+   * Nothing fires before the gate, so replay of history is unchanged. GEAR (owner ~10:30 PM CT, just give to player): one of each Bo piece (V2Gear.BO_GEAR) goes into BO_TO's inventory at the grant, unworn
+   * (Bo's power stays 134). Lookup-only items: never in a roll pool, never dropped, never granted to anyone else. */
   var ACTIVATE_BO_BLOCK = 973333; /* tip 973327 (mempool.space, Oct 26 2026 9:45 PM CT) + 6 */
   var BO_TO = 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', BO_POWER = 134;
   function boStats(st, target) { var K = PetCore.STAT_KEYS, cur = 0; K.forEach(function (k) { cur += st[k]; });
@@ -555,6 +556,7 @@
     art = noBornShades(art); var p = mk(w, BO_TO, art, G, 0, seed); p.species = 'bojackson'; p.name = 'Bo Jackson';
     var n = boStats(p.stats, BO_POWER); if (n) PetCore.STAT_KEYS.forEach(function (k) { p.stats[k] = n[k]; });
     p.supreme = { id: 'bo', title: 'Bo Knows', n: 1, of: 1, gate: G, egg: true };
+    (V2Gear.BO_GEAR || []).forEach(function (x) { if (BY_ID[x[0]]) newItem(w, BY_ID[x[0]], BO_TO, 'bo'); });
     w.log.push({ block: G, tx: seed, kind: 'hatch', msg: 'Bo Knows: egg #' + p.id + ' Bo Jackson (1 of 1), feed it to hatch', petId: p.id }); }
   /* ===== GIVEAWAY EGG RULE (owner, Oct 25 2026, applies to EVERY grant / edition / giveaway egg now and in the future):
    * every giveaway pet must GROW (all stages Egg -> Mythic through the normal feed/care flow), BREED, FIGHT and HOLD THINGS (equip and carry
@@ -939,6 +941,8 @@
   var BY_ID = {}; ALL.forEach(function (x) { BY_ID[x.id] = x; });
   /* LORDKEK Rare Pepe card: lookup-only record (NOT in RAW/ALL, so never in any roll pool or list); only ever created by the gated claim/drop below. */
   BY_ID['kek-card'] = { id: 'kek-card', label: 'LORDKEK Rare Pepe card', slot: 'hand', tier: 3, origin: 'kek', exclusive: true, legendary: true, sig: true, noRoll: true, w: 0 };
+  /* BO JACKSON GEAR: lookup-only records (NOT in RAW/ALL -> never in any roll pool, list or drop); created only by grantBo for BO_TO. */
+  (V2Gear.BO_GEAR || []).forEach(function (x) { BY_ID[x[0]] = { id: x[0], label: x[1], slot: x[2], tier: 3, origin: null, exclusive: false, legendary: true, noRoll: true, bo: true, kind: x[5], overlay: true, w: 0 }; });
   // retired + alias ids resolve to a current item (append-only pool: an old id never vanishes and is never re-rolled)
   var RETIRED = {}; (V2Gear.RETIRED || []).forEach(function (r) { RETIRED[r[0]] = r[1]; }); RAW.forEach(function (x) { if (x.alias && !RETIRED[x.id]) RETIRED[x.id] = x.alias; });
   function resolveItem(id) { var n = 0; while (id != null && !BY_ID[id] && RETIRED[id] && n++ < 8) id = RETIRED[id]; return id; }

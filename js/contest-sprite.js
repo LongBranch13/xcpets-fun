@@ -27,6 +27,9 @@
   var BO_A = { D: { hh: 10, bh: 9 }, cx: 16, headTop: 2, headBot: 11, hw: 5, eyeY: 6, bodyTop: 13, bodyEnd: 21, bw: 6 };
   function boDraw(stage, f, gear) { var S = BOS.STAGES[stage], g = grid(), dy = stage === 0 ? [0, -1, -1, 0][f] : [0, -1, -1, 0][f];
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
+    if (stage > 0 && gear && BOS.GEAR) { var rest = {}; ['feet', 'hand', 'head', 'body', 'face', 'back', 'weapon'].forEach(function (sl) { var it = gear[sl], id = it && (it.item || it.id), O = id && BOS.GEAR[id] && BOS.GEAR[id][stage];
+        if (O) { for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = O[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); } } /* Bo's own kit: baked from the v3 design */
+        else if (id === 'bo-towel') { /* already part of Bo's art */ } else if (it) rest[sl] = it; }); gear = rest; }
     if (stage > 0 && gear && Object.keys(gear).length) { var A = Object.assign({}, BO_A, { headTop: BO_A.headTop + dy, headBot: BO_A.headBot + dy, eyeY: BO_A.eyeY + dy, bodyTop: BO_A.bodyTop + dy, bodyEnd: BO_A.bodyEnd + dy }); gearLayer(g, 'bojackson', stage, A, gear); }
     return g; }
   /* the same stage sizes as KekSprite (head half-width / height, body half-width / height) */

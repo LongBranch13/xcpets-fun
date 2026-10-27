@@ -5,6 +5,7 @@
 const { load, row, snap, run, fakeHash } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
+const V2S = ['head', 'face', 'back', 'hand', 'body', 'feet', 'weapon'];
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
 ok(V.ACTIVATE_BO_BLOCK === 973333, 'gate 973333'); ok(V.BO_POWER === 134, 'power 134');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
@@ -17,6 +18,13 @@ ok(b.stage === 0 && b.care === 0, 'granted as an egg'); ok(pw(b) === 134, 'power
 ok(K.every(k => b.stats[k] >= 1 && b.stats[k] <= 30), 'stats 1..30');
 const w2 = run(c, s, [], tip); ok(w2.pets.filter(p => p.species === 'bojackson').length === 1, 'once');
 ok(V.breedable(Object.assign({}, b, { stage: 3 }), 973400) === null, 'can breed');
+/* BO GEAR (owner: just give to player): one of each Bo piece in 3gqd's inventory, unworn; nobody else has any; never in a roll pool; renders */
+{ const BG = (c.V2Gear.BO_GEAR || []).map(x => x[0]); ok(BG.length === 6, 'six Bo gear pieces');
+  BG.forEach(id => { const mine = Object.values(w.items).filter(g => g.item === id); ok(mine.length === 1 && mine[0].owner === b.owner && !mine[0].on, id + ': one, owned by 3gqd, unworn');
+    ok(!Object.values(w0.items).some(g => g.item === id), id + ': none before the gate'); ok(V.itemOf(id) && V.itemOf(id).noRoll, id + ': noRoll');
+    ok(!V.ALL_GEAR.some(x => x.id === id), id + ': not in the gear list'); ok(!(c.V2Gear.ITEMS || []).some(x => x.id === id), id + ': not in ITEMS');
+    ['pepe', 'wojak', 'kek', 'nakamoto'].forEach(sp => [0, 1, 2, 3].forEach(ti => V2S.forEach(sl => { const P = V.pool(sl, sp, ti); ok(!(P || []).some(x => x && (x.id === id || x.item === id)), id + ' not in ' + sl + ' pool ' + sp + ' t' + ti); }))); });
+  ok(pw(b) === 134, 'Bo power 134 with gear granted'); }
 console.log('Bo #' + b.id + ' stats ' + JSON.stringify(b.stats) + ' power ' + pw(b));
 
 /* BREEDING: Bo breeds like the contest 1 of 1s (Bo counts as a copy of the partner's species; normal odds, tier, stats, cap, cooldown) and every
@@ -40,6 +48,9 @@ gids.forEach(id => { try { R.framesWith(gk.art, 4, [id], []); gOk++; } catch (e)
 { const ww = clone(), P2 = partners.pepe || partners[Object.keys(partners)[0]]; let par = V.breedOne(ww, ww.byId[bo.id], ww.byId[P2.id], fakeHash(END + 901), 'test:g1', END, bo.owner);
   for (let g = 2; g <= 4; g++) { par.stage = 3; par.care = 999; const mate = live.find(p => p.species === par.species && p.id !== par.id && p.id !== P2.id) || P2;
     const kid = V.breedOne(ww, ww.byId[par.id] || par, ww.byId[mate.id], fakeHash(END + 901 + g), 'test:g' + g, END + g, bo.owner); ok(kid.art.boMark === 1, 'generation ' + g + ' keeps eye black (' + kid.species + ')'); par = kid; } }
+/* Bo gear renders on a Bo baby and on Bo himself */
+(c.V2Gear.BO_GEAR || []).forEach(x => { try { const a = R.framesWith(gk.art, 4, [x[0]], [])[0].data, z = R.framesWith(gk.art, 4, [], [])[0].data; let d = 0; for (let q = 0; q < a.length; q += 4) if (a[q] !== z[q] || a[q + 1] !== z[q + 1] || a[q + 2] !== z[q + 2]) d++; ok(d > 0, x[0] + ' drawn on baby (' + d + 'px)'); } catch (e) { ok(false, x[0] + ' baby ' + e.message); }
+  try { const f = R.framesWith(Object.assign({}, b.art, { species: 'bojackson' }), 4, [x[0]], []); ok(f && f.length >= 1, x[0] + ' on Bo'); } catch (e) { ok(false, x[0] + ' on Bo ' + e.message); } });
 /* before the Bo gate: no mark (replay SAME) */ { const ww = clone(), P2 = partners[Object.keys(partners)[0]], kid = V.breedOne(ww, ww.byId[P2.id], ww.byId[live.find(p => p.species === P2.species && p.id !== P2.id).id], fakeHash(END), 'test:nb', END, P2.owner); ok(!kid.art.boMark, 'non-Bo babies unmarked'); }
 console.log('Bo babies bred: ' + nb + ' partners ' + Object.keys(partners).join(','));
 if (process.env.BO_SHEET) require('fs').writeFileSync(process.env.BO_SHEET, JSON.stringify(shown.map(x => ({ k: x.k, sp: x.kid.species, name: V.hybridName && V.isHybrid(x.kid.species) ? V.hybridName(x.kid.species) : x.kid.species,
