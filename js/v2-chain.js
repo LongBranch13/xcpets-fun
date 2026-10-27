@@ -79,7 +79,7 @@
    * CI-built copy ships as api/boot.json. A page with no 60 s session copy renders AT ONCE from one of these (S.verified stays false and S.stale
    * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
    * the same replay out (rules unchanged); when the fresh read differs, a small bar offers a refresh. */
-  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5;
+  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5, LAST_FRESH = 30 * 60e3; /* stale-copy-fix: older than 30 min = only used when api/boot.json can't load */
   function toLast() { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), build: BUILD, rows: S.rows, tip: S.tip, dex: S.dex || null })); } catch (e) {} }
   function applyStale(c, hashes) { if (!c || !Array.isArray(c.rows) || !c.rows.length || !c.tip) return false;
     if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* never replay owners without sales */
@@ -88,10 +88,21 @@
     if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false; /* family-tree-fix: never replay with a hash missing */
     if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
     S.rows = c.rows; S.tip = c.tip; S.mempool = []; S.hashes = hc; S.dex = c.dex || undefined; S.verified = false; S.stale = true; S.staleTip = c.tip; S.dataAt = Date.parse(c.generatedAt || '') || c.at || null; /* data-lag-banner: age of the shown copy */ keepOrDrop(); return true; }
-  function fromLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); if (!c || Date.now() - c.at > LAST_MAX) return false; return applyStale(c, null); } catch (e) { return false; } }
-  function fromStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
-    return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; })
-      .then(function (j) { try { if (j && window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
+  function readLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); return c && c.tip && Date.now() - c.at <= LAST_MAX ? c : null; } catch (e) { return null; } }
+  function fetchStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
+    return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; }, function () { return null; })
+      .then(function (j) { if (j && j.tip) { S.feedTip = Math.max(S.feedTip || 0, j.tip); try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} } return j && j.tip ? j : null; }, function () { return null; }); }
+  /* stale-copy-fix (2026-10-26): a phone showed its own 9-hour-old saved copy (block 973,246) while api/boot.json was at 973,306, because the saved
+   * copy always won and boot.json was never read. pickCopy: the saved copy only when it is under 30 min old AND its tip is >= boot.json's;
+   * otherwise boot.json; an older saved copy (up to 7 days) only when boot.json can't load. Pure, for tools/stale-copy-test.js. */
+  function pickCopy(last, feed, now) { var fresh = last && now - last.at <= LAST_FRESH;
+    if (feed && (!fresh || feed.tip > last.tip)) return 'feed'; if (last && (fresh || !feed)) return 'last'; return null; }
+  function fromBest() { var last = readLast(); return fetchStatic().then(function (j) { var k = pickCopy(last, j, Date.now());
+    if (k === 'feed' && applyStale(j, j.hashes)) return true; if (k === 'last' && applyStale(last, null)) return true;
+    if (k === 'feed' && last && applyStale(last, null)) return true; if (k === 'last' && j && applyStale(j, j.hashes)) return true; return false; }); }
+  /* stale-copy-fix: the chain tip from mempool.space (not a Counterparty node), so 'N blocks behind' can be shown even while the Core nodes say 429 */
+  var tipAt = 0; function refTip() { if (Date.now() - tipAt < 60e3 || typeof fetch !== 'function') return Promise.resolve(); tipAt = Date.now(); var base = (E.CFG && E.CFG.mempoolApi) || 'https://mempool.space/api';
+    return fetch(base + '/blocks/tip/height', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; }).then(function (t) { var n = parseInt(t, 10); if (n > (S.chainTip || 0)) S.chainTip = n; }, function () {}); }
   /* api-reduction: the mempool read, shared by load() and the quick poll */
   function readMempool(chain) { return chain.getJson('/mempool/events/ASSET_DESTRUCTION?limit=1000').then(function (j) { return ((j && j.result) || []).map(function (e) { var x = e.params || {}, t = x.tag;
       if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { t = decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (er) { } }
@@ -167,9 +178,12 @@
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
       if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ if (checking && !cache) { var wb = wkBusy; wkBusy = 0; try { world(); } catch (e) {} wkBusy = wb; } } return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
-      if (blocked()) { toFeed(); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
+      if (blocked()) { toFeed(); feedPoll(feedCb); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
+      /* stale-copy-fix: a 429 / 5xx is not 'blocked', but the feed may still be newer than the copy shown: check it after EVERY failed read
+       * (burns still wait for a Core read: S.verified stays false). The timer retries against the Core nodes keep going as before. */
+      S.feed = true; feedPoll(feedCb);
       if (n < RETRY_MS.length) { retryT = setTimeout(function () { retryT = null; revalidate(n + 1); }, RETRY_MS[n]); return; }
-      staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); });
+      staleBar('Showing pets from block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. The chain servers are slow right now, so burns wait until they answer.', true); });
     return reval; }
   /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
    * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
@@ -198,8 +212,7 @@
   function boot(then) { var st = document.getElementById('v2boot');
     if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
     if (/[?&]fresh=1/.test(location.search)) return run(st, then);
-    if (fromLast()) return bootStale(st, then);
-    fromStatic().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
+    refTip(); fromBest().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   /* api-reduction (preview): the 60 s poll reads the tip first (1 call). Same tip as the shown data -> only the mempool is re-read (1 call) and
    * the burns, sales and block reads are skipped; a full re-read happens when the tip moves, or at least every 10 minutes. Never a replay input change:
@@ -209,19 +222,23 @@
    * once a minute, visible tab only: the poll itself is skipped while hidden) and shown as 'from the game feed, block N'. Burns still wait for
    * a Core node (S.verified stays false), so nothing is signed from feed data. api.xcp.fun is never used for Core reads. */
   function blocked() { try { return !!(E.Chain.coreBlocked && E.Chain.coreBlocked()); } catch (e) { return false; } }
-  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + '. The Counterparty servers can\'t be reached from this network (port 4000), so burns wait until they answer.', true); }
+  function behindTxt() { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? ' (' + fmtN(b) + ' block' + (b === 1 ? '' : 's') + ' behind the tip)' : ''; }
+  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. ' + (blocked() ? 'The Counterparty servers can\'t be reached from this network (port 4000)' : 'The Counterparty servers are busy right now') + ', so burns wait until they answer.', true); }
+  /* stale-copy-fix: pages without their own poll (index, pet, ranking...) get the newer feed copy via a Refresh bar; play/fight/breed pass render */
+  var lastCb = null; function feedCb() { if (lastCb) return lastCb(); staleBar('Newer game data is ready (block ' + fmtN(S.tip) + ').', false); }
   function toFeed() { S.feed = true; feedBar(); }
   var feedAt = 0;
   function feedPoll(cb) { if (Date.now() - feedAt < 60e3) return Promise.resolve(); feedAt = Date.now(); var t0 = S.tip;
     return fetch('api/boot.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      if (!j || !(j.tip > t0)) return; try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {}
+      if (j && j.tip) S.feedTip = Math.max(S.feedTip || 0, j.tip); if (!j || !(j.tip > t0)) return; try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {}
       if (applyStale(j, j.hashes)) return fromIdb().then(workerReplay).then(function () { feedBar(); cb(); }); }, function () {}); }
   var lastFull = Date.now();
-  function refresh(cb) { if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
+  if (typeof setInterval === 'function' && typeof document !== 'undefined') setInterval(function () { if (!booted || document.hidden || S.verified || lastCb) return; refTip(); if (S.feed) feedPoll(feedCb); }, 60e3); /* stale-copy-fix: no-poll pages */
+  function refresh(cb) { if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
     if (!S.verified || !S.tip || Date.now() - lastFull > 600e3) { lastFull = Date.now(); return refreshFull(cb); }
     var chain = new E.Chain(), m0 = (S.mempool || []).map(function (x) { return x.tx_hash; }).join();
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();
