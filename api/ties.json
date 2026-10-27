@@ -1,5 +1,5 @@
 {
- "lastBlock": 973318,
+ "lastBlock": 973320,
  "count": 188,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2255,7 +2255,7 @@
    "kind": "deed",
    "name": "Don Kekamoto",
    "species": "hyb3:nakamoto:kek:funtrump",
-   "speciesLabel": "Nakektrump (hybrid)",
+   "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
