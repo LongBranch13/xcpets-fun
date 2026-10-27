@@ -45,7 +45,7 @@
           d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(nm) + '</h3><span class="muted small">Cold Storage</span>'); R.animate(c, f); grid.appendChild(d); return; }
         if (tier !== 'legendary' || box.querySelector(sel)) return;
         var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', id); row.setAttribute('data-cold', id);
-        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatched from the 1 in 777 egg (Rare or Legendary from block 972,912)' : 'Kept in Cold Storage') + '</p></div>';
+        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? (window.V2Community && V2Community.state(w).egg && V2Community.state(w).egg.id === id ? 'Hatches from the 1 in 777 egg now (Rare or Legendary)' : 'Hatched from the 1 in 777 egg until the next community pet reached Mythic') : 'Kept in Cold Storage') + '</p></div>';
         var strip = document.createElement('div'); strip.className = 'strip6';
         (G.STAGES || V.STAGE_NAMES).forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', ' + name);
           var f = coldFr(k, si); if (f) R.paint(c, f[0]); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -136,7 +136,13 @@
       stats: function (w) { var x = w.kekMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
       story: ['Lord Kek, Ruler of All Pepes. All Pepes worshipped him as the most powerful Pepe in existence.', 'The Bitcoin Wizard went into Cold Storage and left an egg. Every burn fed it, and Lord Kek rose.',
         'At Mythic, a sacrifice of 7 sacred artifacts was made, and Lord Kek was defeated.', 'After the great victory, the real and only ruler is STAR LORD KEK.', 'Lord Kek rests in Cold Storage. A new era begins: burns cost half.'],
-      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(M.world()), info: info }); }); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(M.world()), info: info }); }); } },
+    /* #4 FUNTRUMP (site-audit 2026-10-27): Mythic -> Cold Storage at block 973,365 (w.funtrumpMythic, pure replay record). Same Cold Storage pattern as Lord Kek,
+     * existing FUNTRUMP sprite at its Mythic stage; no farewell scene exists, so no replay button. */
+    { id: 'funtrump', name: 'FUNTRUMP', sp: 'funtrump', loadout: [], done: function (c, w) { return !!(w && w.funtrumpMythic); }, block: function (c, w) { return w.funtrumpMythic.block; }, tx: function (c, w) { return w.funtrumpMythic.tx; },
+      stats: function (w) { var x = w.funtrumpMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
+      story: ['Lord Kek went into Cold Storage and left an egg. Every burn fed it, and FUNTRUMP rose.', 'At Mythic, FUNTRUMP went into Cold Storage and Homer Pepe became the community pet.', 'Six blocks later came the second halving: every burn costs a quarter of the base amount.'],
+      sprites: function () { return coldEntryFrames(this); } }
   ];
   /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style
    * (js/v2-kek-farewell.js, lazy-loaded like the Wizard's). Replaces the halving-v1 .kekbye pop-up. The last sub-line hands off to FUNTRUMP, read from
@@ -206,7 +212,7 @@
         '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div>' + (R && R.communityWearing ? '<p class="small muted">' + esc(R.communityWearing(w)) + '</p>' : '') + '</div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
-        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
+        (x.e.play ? '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div>' : '') + '</div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
         '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<p class="archive-story-lead">' + esc(x.e.story[0]) + '</p><p><button type="button" class="q archive-storybtn" id="archStoryBtn" aria-haspopup="dialog">📜 Read the story</button></p>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +

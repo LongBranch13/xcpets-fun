@@ -4,7 +4,7 @@
  *   node tools/build-places.js            write      node tools/build-places.js --check   exit 1 if any page is out of date */
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..'), P = require('../js/v2-places.js');
-const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html', 'deed-test.html', 'shop-test.html'];
+const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html'];
 const TAG = '<script src="js/v2-places.js?v=131cd8cf32" defer></script>';
 function fix(s) { const M = '<!--places-->' + P.menu() + '<!--/places-->';
   s = /<!--places-->[\s\S]*?<!--\/places-->/.test(s) ? s.replace(/<!--places-->[\s\S]*?<!--\/places-->/, M) : s.replace(/(<a class="navplay"[^>]*>[\s\S]*?<\/a>|<nav>)/, '$1' + M);
