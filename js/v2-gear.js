@@ -444,6 +444,17 @@
   /* LORDKEK Rare Pepe card (branch lord-kek): RENDER-ONLY map for Kek hybrids holding the card (player Keks draw it in KekSprite). NOT in ITEMS,
    * so it is never in a roll pool; the rules create it only through the gated pet:kekcard claim / 1-in-69 drop (V2Rules ACTIVATE_KEK_CARD_BLOCK). */
   DEFS['kek-card'] = { slot: 'hand', tier: 3, label: 'LORDKEK Rare Pepe card', at: 'handL', map: ['wwwww', 'wgbgw', 'wMMMw', 'wiiiw', 'wgggw', 'wnnnw', 'wwwww'], origin: 'kek', exclusive: true, species: 'kek', kind: 'held', sig: true };
+  /* BO JACKSON GEAR (owner Oct 26 2026 ~10:30 PM CT, branch bo-1of1): Bo's kit as real items, RENDER-ONLY maps here. NOT in ITEMS, so never in
+   * any roll pool or drop; V2Rules grants one of each ONLY to Bo's owner (BO_TO, ...3gqd) at ACTIVATE_BO_BLOCK. Wearable by any of that player's pets. */
+  var BO_GEAR = [
+    ['bo-helmet', 'Bo silver helmet', 'head', 'head', 1, 'hat', ['..sssss..', '.sdddsss.', 'sddsssssD', 'sssss.DsD', 'sss...DDD']],
+    ['bo-cap', 'Bo royal cap (34)', 'head', 'head', 2, 'hat', ['..CCCCC..', '.CCCgCCC.', '.CCgCgCC.', 'CCCCCCCCCCC']],
+    ['bo-bat', 'Bo bat', 'hand', 'tallR', null, 'weapon', ['.l.', 'lLl', 'lLl', 'lLl', '.L.', '.L.', '.L.', '.X.', '.X.', 'XXX']],
+    ['bo-bat-snapped', 'Bo snapped bat', 'hand', 'tallR', null, 'weapon', ['l.l', '.lL', 'LLL', '.L.', '.L.', '.X.', '.X.', 'XXX']],
+    ['bo-hightops', 'Bo cross-trainer high-tops', 'feet', 'feetBoth', null, 'feet', ['wwww', 'wRcw', 'ZZZZ']],
+    ['bo-towel', 'Bo towel', 'body', 'chest', 2, 'body', ['.......', '.......', '....ww.', '....wd.', '....wd.', '....ww.']]
+  ];
+  BO_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: 3, label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], bo: true }; });
   /* BITCOIN STAFF (owner, Oct 20 2026): Wizard-only ★ weapon, the meme's long brown staff tilted up-right with a big orange ₿ coin. Worn in its own
    * 'weapon' slot (right hand) so it pairs with the "Join us" sign (Grip, left hand); rolls inside the Grip pool (rollSlot 'hand', weight 5 like other ★).
    * item.since 'wiz-staff' = OFF until V2Rules.ACTIVATE_WIZ_STAFF_BLOCK is set (null now). Appended at the END of ITEMS. No grants. */
@@ -483,6 +494,18 @@
   HP_BATCH.forEach(function (x) { var ex = x[4];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'homer', exclusive: ex, species: ex ? 'homer' : undefined, kind: x[5], sig: ex };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'homer', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'homer' }); });
+  /* FUNTRUMP FLAGS (owner Oct 26 2026, branch funtrump-flags, PREVIEW): two OPEN held Grip pieces, original pixel art. item.since 'ft-flags' = OFF
+   * (no roll pool, not wearable) until V2Rules.ACTIVATE_FT_FLAGS_BLOCK is set (null now) -> replay SAME. From the gate the American flag takes the Gold
+   * phone's tier 2 spot (the phone leaves every roll pool; owned phones stay owned + wearable) and the Kekistan flag is a new tier 1 piece; every address
+   * holding a living pet at the gate is granted one Kekistan flag (V2Rules grantKekFlags). Appended at the END of ITEMS (append-only pools).
+   * Map keys = BonusGear COLORS: X pole, y finial, b blue, w white, Q red, m green, n black. Pole on the left = the hand side. */
+  var FT_FLAGS = [
+    ['ft-us-flag', 'American flag', 'hand', 2, ['y.......', 'XbwbwQQQ', 'Xbbbbwww', 'XbwbwQQQ', 'Xwwwwwww', 'XQQQQQQQ', 'Xwwwwwww', 'XQQQQQQQ', 'X.......', 'X.......']],
+    ['ft-kek-flag', 'Kekistan flag', 'hand', 1, ['y.......', 'Xmwnwmwn', 'Xmwnwmnw', 'Xwwnwwww', 'Xnnnnnnn', 'Xwwnwwww', 'Xmwnwmmm', 'Xmwnwmmm', 'X.......', 'X.......']]
+  ];
+  FT_FLAGS.forEach(function (x) {
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: 'handR', behind: false, map: x[4], origin: 'funtrump', exclusive: false, kind: 'held', sig: false };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'funtrump', exclusive: false, legendary: false, kind: 'held', sig: false, overlay: true, since: 'ft-flags' }); });
   EYE_GEAR_FT = { 'ft-aviators': { s: 'glasses', f: 'g', l: ['Z', 'Z'], drop: 1, up: 1, wide: 1 } };
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
@@ -522,5 +545,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { FT_BATCH: FT_BATCH, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { BO_GEAR: BO_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });

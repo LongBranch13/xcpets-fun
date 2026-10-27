@@ -20,7 +20,18 @@
     gooby: Object.assign({}, BASE, { G: '#18181c', g: '#0c0c0e', h: '#34343e', W: '#f5f5f0', V: '#cfcfc6', H: '#6ef04a', I: '#3fae2a', B: '#e8352a', b: '#b0221a', N: '#000000', U: '#ff5ad1', u: '#7af7ff' }),
     lukespam: Object.assign({}, BASE, { G: '#f2c29a', g: '#d99c76', h: '#ffdcbc', T: '#7a4a22', O: '#d8662a', Q: '#a8461a', R: '#d8262e', r: '#9a1a20', B: '#1f2f5c', b: '#16213f', C: '#2b6cd6', c: '#ffd23f', U: '#ff7ae0', u: '#7affd8' })
   };
-  var NAMES = { starlordkek: 'Star-Lord Kek', gooby: 'Gooby', lukespam: 'Luke Spam Junior' };
+  var NAMES = { starlordkek: 'Star-Lord Kek', gooby: 'Gooby', lukespam: 'Luke Spam Junior', bojackson: 'Bo Jackson' };
+  /* BO JACKSON 1 of 1 (owner Oct 26 2026): baked v3 art (js/bo-sprite.js, BoSprite) per stage; the idle bob moves the whole grid, gear lands on BO_A. */
+  var BOS = (typeof BoSprite !== 'undefined') ? BoSprite : (typeof require === 'function' ? require('./bo-sprite.js') : null);
+  if (BOS) PAL.bojackson = Object.assign({}, BOS.PAL);
+  var BO_A = { D: { hh: 10, bh: 9 }, cx: 16, headTop: 2, headBot: 11, hw: 5, eyeY: 6, bodyTop: 13, bodyEnd: 21, bw: 6 };
+  function boDraw(stage, f, gear) { var S = BOS.STAGES[stage], g = grid(), dy = stage === 0 ? [0, -1, -1, 0][f] : [0, -1, -1, 0][f];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
+    if (stage > 0 && gear && BOS.GEAR) { var rest = {}; ['feet', 'hand', 'head', 'body', 'face', 'back', 'weapon'].forEach(function (sl) { var it = gear[sl], id = it && (it.item || it.id), O = id && BOS.GEAR[id] && BOS.GEAR[id][stage];
+        if (O) { for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = O[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); } } /* Bo's own kit: baked from the v3 design */
+        else if (id === 'bo-towel') { /* already part of Bo's art */ } else if (it) rest[sl] = it; }); gear = rest; }
+    if (stage > 0 && gear && Object.keys(gear).length) { var A = Object.assign({}, BO_A, { headTop: BO_A.headTop + dy, headBot: BO_A.headBot + dy, eyeY: BO_A.eyeY + dy, bodyTop: BO_A.bodyTop + dy, bodyEnd: BO_A.bodyEnd + dy }); gearLayer(g, 'bojackson', stage, A, gear); }
+    return g; }
   /* the same stage sizes as KekSprite (head half-width / height, body half-width / height) */
   var DIM = [null, { hw: 6, hh: 6, bw: 4, bh: 4 }, { hw: 7, hh: 6, bw: 5, bh: 6 }, { hw: 8, hh: 7, bw: 7, bh: 7 }, { hw: 8, hh: 7, bw: 7, bh: 8 }, { hw: 8, hh: 7, bw: 7, bh: 8 }];
   function grid() { var g = []; for (var i = 0; i < N; i++) g.push(new Array(N).fill(null)); return g; }
@@ -120,7 +131,7 @@
     if (sp === 'lukespam') { rect(g, 10, 14 + bob, 12, 3, 'R'); hline(g, 18, 23, 17 + bob, 'r'); rect(g, 13, 20 + bob, 5, 6, 'C'); hline(g, 13, 17, 22 + bob, 'c'); }
     return outline(g); }
   /** anchors(sp, stage, frame): where gear lands on this pet */
-  function anchors(sp, stage, frame) { var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
+  function anchors(sp, stage, frame) { if (sp === 'bojackson') { var d = [0, -1, -1, 0][frame || 0]; return { cx: 16, headTop: 2 + d, headBot: 11 + d, hw: 5, eyeY: 6 + d, bodyTop: 13 + d, bodyEnd: 21 + d, bw: 6 }; } var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
   /* ---------- gear layer: every slot (head, face, hand, body, back, feet, weapon) from the anchors, like KekSprite ---------- */
   function gearLayer(g, sp, st, A, Gr) { function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
     function col(sl, i) { var x = Gr[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); } var cx = A.cx, put = [];
@@ -139,7 +150,7 @@
       if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod/.test(ak)) { for (var t = 0; t < 8; t++) p(hx, hy - t, t > 5 ? a1 : a0); } else { rect(g, hx - 1, hy - 2, 3, 3, a0); set(g, hx, hy - 1, a1); } }
     if (Gr.weapon) { var wx = cx + A.bw + 4; for (var tw = 0; tw < 9; tw++) set(g, wx, A.bodyEnd - tw, tw > 6 ? col('weapon', 1) : col('weapon')); }
     return put; }
-  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
+  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
     if (s === 0) return eggArt(g, sp, f);
     var A = geom(s, f); SL_GEAR = gear || null; try { DRAW[sp](g, s, A, f); } finally { SL_GEAR = null; } if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
     var o = outline(g); if (s === 5) { o = mythicRim(o); if (sp !== 'starlordkek') aura(o, sp, f); } if (sp === 'starlordkek') slFx(o, s, f); return o; }
