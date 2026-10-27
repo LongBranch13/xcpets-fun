@@ -15,25 +15,27 @@
   var SKIN = { G: 1, g: 1, h: 1 }, SUIT = { w: 1, W: 1, C: 1 };
   /** HOMER_DONUT: signature Grip IDEA only (open design question; display record, NOT in any gear pool or BY_ID). */
   var HOMER_DONUT = { slot: 'hand', item: 'homer-donut', label: 'Pink-frosted donut (idea)', tier: 'legendary', legendary: true, signature: true, exclusive: 'homer', idea: true };
-  var SCALE = [0.62, 0.6, 0.74, 0.88, 0.95, 1.0];
+  var SCALE = [0.62, 0.64, 0.78, 0.9, 0.96, 1.0];
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function el(x, y, cx, cy, rx, ry) { var a = (x - cx) / rx, b = (y - cy) / ry; return a * a + b * b; }
   /* key at an ADULT-space point (ground 28.5); later rules overwrite earlier ones */
   function keyAt(x, y, stage, blink) { var k = null, d;
-    if (y >= 21 && el(x, y, 15, 28.6, 7.6, 7.6) < 1) k = (x > 19.5 ? 'C' : 'w');                                   // shirt
-    if (x >= 12 && x <= 18.3 && y >= 17 && y <= 22) k = 'g';                                                           // neck
-    if (y >= 20.6 && y <= 23.8) { var ax = Math.abs(x - 15.2); if (ax >= 1.2 && ax <= 1.4 + (23.8 - y) * 1.5) k = (ax >= 1.4 + (23.8 - y) * 1.5 - 0.7 ? 'C' : 'W'); } // collar points
-    if (el(x, y, 14, 11.5, 6.8, 8) < 1) k = (el(x, y, 11.6, 7.4, 2.6, 2.4) < 1 ? 'h' : 'G');                            // dome
-    if (el(x, y, 9.2, 13.2, 1.7, 1.9) < 1) k = (el(x, y, 9.4, 13.2, 0.8, 0.9) < 1 ? 'g' : 'G');                         // ear
-    if (el(x, y, 17.6, 16.6, 5.9, 3.4) < 1) k = (stage >= 4 && y > 17.6 ? 'g' : 'G');                                  // muzzle (Elder+: stubble)
-    var f = 16.3 + 0.045 * (x - 17.5) * (x - 17.5);                                                                     // Pepe lips, ends turned down
-    if (x >= 12.4 && x <= 23.2) { if (Math.abs(y - f) <= 0.62) k = 'L'; else if (y > f + 0.62 && y <= f + 1.3 && x >= 13.5 && x <= 22.2) k = 'l'; }
-    [[15.3, 9.4], [20.7, 9.4]].forEach(function (e) { d = el(x, y, e[0], e[1], 2.65, 2.65); if (d < 1) { k = 'E'; if (blink) k = Math.abs(y - e[1]) < 0.55 ? 'n' : 'G';
-        else if (el(x, y, e[0] + 0.5, e[1] + 0.8, 1.05, 1.05) < 1) k = 'P'; } });
+    if (y >= 21.5 && el(x, y, 14.5, 29.5, 8, 8) < 1) k = (x > 19 ? 'C' : 'w');                                         // shirt
+    if (x >= 9.5 && x <= 17.5 && y >= 15 && y <= 23) k = (x < 11 ? 'g' : 'G');                                          // back of the head down to the neck
+    if (y >= 21 && y <= 24.2) { var ax = Math.abs(x - 15.5); if (ax >= 0.9 && ax <= 1.2 + (24.2 - y) * 1.7) k = (ax >= 1.2 + (24.2 - y) * 1.7 - 0.8 ? 'C' : 'W'); } // collar points
+    if (y >= 4.4 && el(x, y, 14.4, 12, 6.8, 8.6) < 1) k = (el(x, y, 12.2, 6.6, 2.4, 2) < 1 ? 'h' : (x < 9.6 || y > 16.5 ? 'g' : 'G')); // tall dome, flat-ish top
+    if (el(x, y, 20.2, 17.6, 6.6, 3.9) < 1) k = (y > 18.6 ? 'g' : 'G');                                                // jowly muzzle pushed forward (stubble shade)
+    if (el(x, y, 9.6, 14.4, 1.9, 2.3) < 1) k = (el(x, y, 9.9, 14.5, 0.8, 1.1) < 1 ? 'g' : 'G');                         // ear
+    var f = 17.2 - 0.018 * (x - 22) * (x - 22);                                                                          // wide flat Pepe smile
+    if (x >= 14.6 && x <= 26.4) { if (Math.abs(y - f) <= 0.6) k = 'L'; else if (y > f + 0.6 && y <= f + 1.4 && x >= 15.6 && x <= 25.6) k = 'l'; }
+    [[17.3, 10.2], [23.5, 10.5]].forEach(function (e) { d = el(x, y, e[0], e[1], 3.5, 3.7); if (d < 1) { k = d > 0.7 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
+        else if (k === 'E' && el(x, y, e[0] + 0.9, e[1] + 0.5, 0.85, 0.85) < 1) k = 'P'; } });                           // big bulging eyes, small pupils, close together
     return k; }
-  function curls(g, t, dy) { /* two hair curls on top of the dome (ink), placed from the scaled dome top */
-    var pts = [[11.6, 3.0], [12.4, 2.2], [13.2, 2.6], [13.2, 3.4], [14.6, 2.6], [15.4, 1.8], [16.2, 2.2], [16.2, 3.0]];
-    pts.forEach(function (p) { var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (X >= 0 && Y >= 0 && X < N && Y < N && !g[Y][X]) g[Y][X] = 'n'; }); }
+  function curls(g, t, dy) { /* TWO M-shaped hair curls on top + zigzag side hair over the ear (ink), placed in adult space then scaled */
+    var pts = [[10.5, 3.5], [10.5, 2.5], [11.5, 1.5], [12.5, 1.5], [13.5, 2.5], [12.5, 3.5],
+               [14.5, 3.5], [14.5, 2.5], [15.5, 1.5], [16.5, 1.5], [17.5, 2.5], [16.5, 3.5],
+               [8.5, 12.5], [9.5, 11.5], [10.5, 12.5], [11.5, 11.5], [12.5, 12.5]];
+    pts.forEach(function (p) { var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (X >= 0 && Y >= 0 && X < N && Y < N && (!g[Y][X] || g[Y][X] === 'n' || p[1] > 5)) g[Y][X] = 'n'; }); }
   function egg(f) { var g = [], dy = f === 1 ? -1 : 0; for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var yy = y - dy + 0.5, xx = x + 0.5, k = null;
         if (el(xx, yy, 16, 19.5, 7, 9) < 1) { k = 'G'; if (el(xx, yy, 13.5, 15, 2.2, 3) < 1) k = 'h'; if (el(xx, yy, 18.5, 22.5, 1.6, 1.4) < 1 || el(xx, yy, 12.5, 23.5, 1.2, 1.1) < 1 || el(xx, yy, 19.5, 16, 1.1, 1.1) < 1) k = 'g';
           if (yy > 24.2 && yy < 25.6) k = 'W'; }
@@ -47,8 +49,8 @@
     if (s === 0) g = egg(f);
     else { var t = SCALE[s], dy = f === 1 ? -1 : 0; g = [];
       for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var sx = 15 + (x + 0.5 - 15) / t, sy = 28.5 + (y - dy + 0.5 - 28.5) / t; g[y].push(y - dy > 29 ? null : keyAt(sx, sy, s, f === 2)); } }
-      curls(g, t, dy); }
-    var o = outline(g);
+    }
+    var o = outline(g); if (s > 0) curls(o, SCALE[s], f === 1 ? -1 : 0);
     if (s === 5) { var o2 = o.map(function (r) { return r.slice(); }); /* shared Mythic gold rim */
       for (var ry = 0; ry < 30; ry++) for (var rx = 0; rx < N; rx++) if (!o[ry][rx] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var X = rx + q[0], Y = ry + q[1]; return X >= 0 && Y >= 0 && X < N && Y < N && o[Y][X] === 'n'; })) o2[ry][rx] = 'A';
       o = o2; }
