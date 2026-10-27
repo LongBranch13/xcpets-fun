@@ -21,21 +21,24 @@
   /* key at an ADULT-space point (ground 28.5); later rules overwrite earlier ones */
   function keyAt(x, y, stage, blink) { var k = null, d;
     if (y >= 24.5 && el(x, y, 14.5, 31, 7, 7) < 1) k = (x > 19 ? 'C' : 'w');                                         // shirt
+    if (y < 24.5) { var q = tilt(x, y, -1); x = q[0]; y = q[1]; }                                                     // v4: head tilted back (muzzle up), shirt stays level
     if (x >= 9.5 && x <= 17.5 && y >= 15 && y <= 25) k = (x < 11 ? 'g' : 'G');                                          // back of the head down to the neck
     if (y >= 24 && y <= 26.2) { var ax = Math.abs(x - 15.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - y) * 1.3) k = (ax >= 1.0 + (26.2 - y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
     if (y >= 2.4 && el(x, y, 14.4, 11.6, 6.6, 9.4) < 1) k = (el(x, y, 12.2, 5.4, 2.3, 2.2) < 1 ? 'h' : (x < 9.6 || y > 18.5 ? 'g' : 'G')); // tall dome, flat-ish top
     if (el(x, y, 20.2, 19.4, 6.0, 3.6) < 1) k = (y > 20.4 ? 'g' : 'G');                                                // jowly muzzle pushed forward (stubble shade)
     if ((d = el(x, y, 7.9, 16, 2.1, 2.5)) < 1) k = (d > 0.5 && x > 8.6 ? 'n' : (el(x, y, 7.9, 16, 0.9, 1.2) < 1 ? 'g' : 'G'));                         // ear
-    var f = 19.2 - 0.02 * (x - 21) * (x - 21);                                                                          // wide flat Pepe smile
-    if (x >= 16.4 && x <= 24.6) { if (Math.abs(y - f) <= 0.55) k = 'L'; else if (y > f + 0.55 && y <= f + 1.2 && x >= 17.4 && x <= 23.6) k = 'l'; }
-    [[17.6, 11.8], [22.9, 12.0]].forEach(function (e) { d = el(x, y, e[0], e[1], 2.8, 3.0); if (d < 1) { k = d > 0.62 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
+    var f = 19.2 - 0.02 * (x - 19) * (x - 19);                                                                          // wide flat Pepe smile
+    if (x >= 14.4 && x <= 22.6) { if (Math.abs(y - f) <= 0.55) k = 'L'; else if (y > f + 0.55 && y <= f + 1.2 && x >= 15.4 && x <= 21.6) k = 'l'; }
+    [[15.0, 11.9], [21.3, 11.9]].forEach(function (e) { d = el(x, y, e[0], e[1], 2.7, 3.0); if (d < 1) { k = d > 0.62 ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
         else if (k === 'E' && el(x, y, e[0] + 0.4, e[1] + 0.4, 0.85, 0.85) < 1) k = 'P'; } });                           // big bulging eyes, small pupils, close together
     return k; }
+  var TILT = -0.16, PX = 13.5, PY = 23; /* head-back tilt (radians) about the neck */
+  function tilt(x, y, s) { var a = TILT * s, c = Math.cos(a), n = Math.sin(a), u = x - PX, v = y - PY; return [PX + u * c - v * n, PY + u * n + v * c]; }
   function curls(g, t, dy) { /* TWO M-shaped hair curls on top + zigzag side hair over the ear (ink), placed in adult space then scaled */
     var pts = [[10.5, 2.5], [10.5, 1.5], [11.5, 0.5], [12.5, 0.5], [13.5, 1.5], [12.5, 2.5],
                [14.5, 2.5], [14.5, 1.5], [15.5, 0.5], [16.5, 0.5], [17.5, 1.5], [16.5, 2.5],
                [8.5, 13.5], [9.5, 12.5], [10.5, 13.5], [11.5, 12.5], [12.5, 13.5]];
-    pts.forEach(function (p) { var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (X >= 0 && Y >= 0 && X < N && Y < N && (!g[Y][X] || g[Y][X] === 'n' || p[1] > 4)) g[Y][X] = 'n'; }); }
+    pts.forEach(function (p) { p = tilt(p[0], p[1], 1); var X = Math.round(15 + (p[0] - 15) * t - 0.5), Y = Math.round(28.5 + (p[1] - 28.5) * t - 0.5) + dy; if (t === 1 && Y < 1) Y = 1; if (X >= 0 && Y >= 0 && X < N && Y < N && (!g[Y][X] || g[Y][X] === 'n' || p[1] > 4)) g[Y][X] = 'n'; }); }
   function egg(f) { var g = [], dy = f === 1 ? -1 : 0; for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var yy = y - dy + 0.5, xx = x + 0.5, k = null;
         if (el(xx, yy, 16, 19.5, 7, 9) < 1) { k = 'G'; if (el(xx, yy, 13.5, 15, 2.2, 3) < 1) k = 'h'; if (el(xx, yy, 18.5, 22.5, 1.6, 1.4) < 1 || el(xx, yy, 12.5, 23.5, 1.2, 1.1) < 1 || el(xx, yy, 19.5, 16, 1.1, 1.1) < 1) k = 'g';
           if (yy > 24.2 && yy < 25.6) k = 'W'; }
