@@ -36,6 +36,10 @@ Object.keys(partners).forEach((k, i) => { const P2 = partners[k]; for (let r = 0
 /* GEAR on a Bo baby: every eligible item renders */
 const gk = shown[0].kid, gids = [].concat((c.V2Gear.ITEMS || []).map(x => x.id)).filter(id => V.itemOf(id) && V.eligible(V.itemOf(id), gk.species, null, gk.tier)); let gOk = 0;
 gids.forEach(id => { try { R.framesWith(gk.art, 4, [id], []); gOk++; } catch (e) { ok(false, 'gear ' + id + ' ' + e.message); } }); ok(gOk === gids.length && gOk > 0, 'gear on Bo baby ' + gOk);
+/* LINEAGE: the mark passes to grandchildren and every later generation (a marked parent marks the baby) */
+{ const ww = clone(), P2 = partners.pepe || partners[Object.keys(partners)[0]]; let par = V.breedOne(ww, ww.byId[bo.id], ww.byId[P2.id], fakeHash(END + 901), 'test:g1', END, bo.owner);
+  for (let g = 2; g <= 4; g++) { par.stage = 3; par.care = 999; const mate = live.find(p => p.species === par.species && p.id !== par.id && p.id !== P2.id) || P2;
+    const kid = V.breedOne(ww, ww.byId[par.id] || par, ww.byId[mate.id], fakeHash(END + 901 + g), 'test:g' + g, END + g, bo.owner); ok(kid.art.boMark === 1, 'generation ' + g + ' keeps eye black (' + kid.species + ')'); par = kid; } }
 /* before the Bo gate: no mark (replay SAME) */ { const ww = clone(), P2 = partners[Object.keys(partners)[0]], kid = V.breedOne(ww, ww.byId[P2.id], ww.byId[live.find(p => p.species === P2.species && p.id !== P2.id).id], fakeHash(END), 'test:nb', END, P2.owner); ok(!kid.art.boMark, 'non-Bo babies unmarked'); }
 console.log('Bo babies bred: ' + nb + ' partners ' + Object.keys(partners).join(','));
 if (process.env.BO_SHEET) require('fs').writeFileSync(process.env.BO_SHEET, JSON.stringify(shown.map(x => ({ k: x.k, sp: x.kid.species, name: V.hybridName && V.isHybrid(x.kid.species) ? V.hybridName(x.kid.species) : x.kid.species,

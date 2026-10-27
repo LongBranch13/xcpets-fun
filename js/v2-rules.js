@@ -3264,7 +3264,7 @@
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
-    if (b >= ACTIVATE_BO_BLOCK && (A.species === 'bojackson' || B.species === 'bojackson')) { art.boMark = 1; } /* BO BABY (gated): looks only, Bo's eye black under the eyes; no stats, no draws, never a 1 of 1 */
+    if (b >= ACTIVATE_BO_BLOCK && [A, B].some(function (P) { return P.species === 'bojackson' || (P.art && P.art.boMark); })) { art.boMark = 1; } /* BO LINE (gated): looks only, Bo's eye black under the eyes on Bo's babies AND every later generation (a parent carrying the mark passes it on); no stats, no draws, never a 1 of 1 */
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; if (bonus) kid.breedBonus = bonus; if (capped && capped.length) kid.traitCap = capped; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
     return kid;
   }
