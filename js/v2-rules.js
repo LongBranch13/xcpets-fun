@@ -1011,12 +1011,12 @@
   function inOpenFight(w, id, b, except) { return w.fights.some(function (f) { return f !== except && f.status === 'open' && b - f.block <= FIGHT_WINDOW && fightPets(f).indexOf(id) >= 0; }); }
   function beardPartOn(b) { return ACTIVATE_CHUD_BEARD_PART_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_PART_BLOCK; }
   function beardOn(b) { return ACTIVATE_CHUD_BEARD_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_BLOCK; }
-  /* FUNTRUMP FLAGS (owner Oct 26 2026, branch funtrump-flags, PREVIEW): from ACTIVATE_FT_FLAGS_BLOCK (null = OFF -> replay SAME; set tip + ~6 at deploy)
+  /* FUNTRUMP FLAGS (owner Oct 26 2026, branch funtrump-flags, PREVIEW): from ACTIVATE_FT_FLAGS_BLOCK (LIVE Oct 26 2026 10:45 PM CT: 973343 = tip 973337 + 6)
    * (1) the American flag (ft-us-flag, open Grip tier 2) and the Kekistan flag (ft-kek-flag, open Grip tier 1) join the roll pools (item.since 'ft-flags');
    * (2) the Gold phone (ft-gold-phone) leaves every roll pool (noRoll): owned phones stay owned and wearable; (3) ONE-TIME grant (grantKekFlags): every
    * address that owns at least one living (not dead / released / community) pet at the gate gets exactly one Kekistan flag in its stash, in address
    * order, before any burn at/after the gate. Before the gate nothing here runs. */
-  var ACTIVATE_FT_FLAGS_BLOCK = null, FT_FLAG_GRANT_ITEM = 'ft-kek-flag';
+  var ACTIVATE_FT_FLAGS_BLOCK = 973343, FT_FLAG_GRANT_ITEM = 'ft-kek-flag';
   function ftFlagsOn(b) { return ACTIVATE_FT_FLAGS_BLOCK != null && b != null && b >= ACTIVATE_FT_FLAGS_BLOCK; }
   function kekFlagHolders(w, b) { var seen = {}; (w.pets || []).forEach(function (p) { if (!p || p.community || !p.owner) return; liveAt(w, p, b); if (p.dead || p.released) return; seen[p.owner] = 1; }); return Object.keys(seen).sort(); }
   function grantKekFlags(w, b) { if (w.kekFlagsGranted || !ftFlagsOn(b)) return; var G = ACTIVATE_FT_FLAGS_BLOCK; w.kekFlagsGranted = G; var it = BY_ID[FT_FLAG_GRANT_ITEM]; if (!it) return;
