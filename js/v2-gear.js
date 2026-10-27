@@ -470,6 +470,19 @@
   FT_BATCH.forEach(function (x) { var ex = x[4];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'funtrump', exclusive: ex, species: ex ? 'funtrump' : undefined, kind: x[5], sig: ex, look: x[9] || undefined };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], rollSlot: x[10] || undefined, tier: x[3], origin: 'funtrump', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'funtrump', look: x[9] || undefined }); });
+  /* HOMER PEPE GEAR (owner Oct 26 2026, branch homerpepe-community, PREVIEW + INERT): from the homer-gear-v11 drawings, original pixel art, no logos/text.
+   * item.since 'homer' = OFF (never in any roll pool, never wearable) until V2Rules.ACTIVATE_HOMER_BLOCK is set (null now) -> replay SAME.
+   * Pink sprinkle donut = his SIGNATURE Grip (★ tier 3, Homer + Homer hybrids only, like ft-hairspray / kek-card). Headwear reuses the existing OPEN
+   * 'hard-hat' (no new hat piece). [id, label, slot, tier, exclusive, kind, anchor, dy, map] */
+  var HP_BATCH = [
+    ['hp-donut', 'Pink sprinkle donut', 'hand', 3, true, 'held', 'handR', null, ['.KcKw.', 'KKllKy', 'Kl..lK', 'yl..lK', '.KwKc.']],
+    ['hp-fuel-rod', 'Glowing fuel rod', 'hand', 2, false, 'held', 'handR', null, ['DD', 'MM', 'Mm', 'MM', 'Mm', 'MM', 'Mm', 'DD']],
+    ['hp-rad-suit', 'Radiation suit', 'body', 2, false, 'body', 'chest', -1, ['V.....V', 'aaaVaaa', 'aaaAaaa', 'aAaaaAa', 'aaaAaaa', '.aaaaa.']],
+    ['hp-slippers', 'Comfy slippers', 'feet', 1, false, 'feet', 'feetBoth', null, ['vvvP..Pvvv', 'VVVV..VVVV']]
+  ];
+  HP_BATCH.forEach(function (x) { var ex = x[4];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'homer', exclusive: ex, species: ex ? 'homer' : undefined, kind: x[5], sig: ex };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'homer', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'homer' }); });
   /* FUNTRUMP FLAGS (owner Oct 26 2026, branch funtrump-flags, PREVIEW): two OPEN held Grip pieces, original pixel art. item.since 'ft-flags' = OFF
    * (no roll pool, not wearable) until V2Rules.ACTIVATE_FT_FLAGS_BLOCK is set (null now) -> replay SAME. From the gate the American flag takes the Gold
    * phone's tier 2 spot (the phone leaves every roll pool; owned phones stay owned + wearable) and the Kekistan flag is a new tier 1 piece; every address
