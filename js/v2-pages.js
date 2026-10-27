@@ -482,7 +482,7 @@
     $('hybStatus').textContent = list.length ? fmt(list.length) + ' hybrid mix' + (list.length === 1 ? '' : 'es') + ' so far' + (three ? ' (' + fmt(three) + ' three-way)' : '') + ', replayed from ' + fmt(M.state().rows.length) + ' XCPETS burns.' : 'No hybrids yet. Breed two different species to make the first one.';
     function draw() {
       grid.innerHTML = list.map(function (e, i) { var roots = e.roots || [e.a, e.b], k = n[e.key] || 0;
-        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
+        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc((V.hybridLabel || V.hybridName)(e.key)) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
           '<p class="muted small">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (k ? ' · ' + fmt(k) + ' pet' + (k === 1 ? '' : 's') : '') + '</p><div class="hybbodies">' +
           (e.builds || [e.plan]).map(function (pl, j) { return '<figure><canvas width="32" height="32" data-i="' + i + '" data-j="' + j + '" role="img" aria-label="' + esc(e.name + ', ' + spLabel(pl.shape) + ' body, ' + V.STAGE_NAMES[stage]) + '"></canvas><figcaption class="small muted">' + esc(spLabel(pl.shape)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
       Array.prototype.forEach.call(grid.querySelectorAll('canvas[data-i]'), function (c) { var e = list[+c.getAttribute('data-i')], pl = (e.builds || [e.plan])[+c.getAttribute('data-j')], art = G.characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
