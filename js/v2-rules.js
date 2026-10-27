@@ -759,19 +759,29 @@
    *   egg    = from the block after homerMythic the 1-in-777 slot gives HOMER PEPE (hpArt) instead of FUNTRUMP; tier Rare or Legendary (SPECIAL_TIER.homer);
    *   breed  = breedable after his Cold Storage once ACTIVATE_HP_BREED_BLOCK is set; hybrid root with every species (HP_SP below).
    * ALL GATES NULL: homerTrack returns at once, nothing is written, HP_POOL_FROM stays Infinity -> replay unchanged. */
-  var ACTIVATE_HOMER_BLOCK = null;     // PREVIEW: owner sets this at launch (deploy tip + 6, house rule; FUNTRUMP used tip + 3 by owner call)
+  var ACTIVATE_HOMER_BLOCK = null;     // RULE gate only: set to deploy tip + ~6 (before FUNTRUMP's Mythic); Homer then lands the exact block FUNTRUMP enters Cold Storage (COMMUNITY_HANDOFF)
   var ACTIVATE_HP_BREED_BLOCK = null;  // PREVIEW: set = ACTIVATE_HOMER_BLOCK at launch (FUNTRUMP precedent); hpBreedOn still waits for his own Cold Storage (b >= HP_POOL_FROM)
   var HP_POOL_FROM = Infinity;
   function hpOn(b) { return ACTIVATE_HOMER_BLOCK != null && b != null && b >= ACTIVATE_HOMER_BLOCK; }
   function hpBreedOn(b) { return ACTIVATE_HP_BREED_BLOCK != null && b != null && b >= ACTIVATE_HP_BREED_BLOCK && b >= HP_POOL_FROM; }
   function hpColdOn(w, b) { return hpOn(b) && !!(w && w.homerMythic) && b > w.homerMythic.block; }
-  function homerTrack(w, r, amt) { if (ACTIVATE_HOMER_BLOCK == null || !w.funtrumpMythic || w.homerMythic || r.tx_hash === w.funtrumpMythic.tx) return;
-    var K = w.homer || (w.homer = { fed: 0, feeds: 0, by: {} }); K.fed += amt; K.feeds++; if (amt > 0) K.by[r.source] = (K.by[r.source] || 0) + amt;
-    if (r.block_index < ACTIVATE_HOMER_BLOCK || K.fed + 1e-9 < COMMUNITY_THRESHOLDS[5]) return;
+  /* COMMUNITY HAND-OFF (standing owner rule, Oct 26 2026): each new community pet lands the SAME moment the previous one enters Cold Storage.
+   * Generic for pet #5 onward (Lord Kek / FUNTRUMP keep their live code unchanged): a pet's care counts every burn after the previous pet's Mythic
+   * burn (that burn itself excluded); it shows as the community pet from that point once its rule gate (deploy tip + ~6, set BEFORE the previous pet's
+   * Mythic) is reached. Target = the STANDARD community target COMMUNITY_THRESHOLDS[5]; it never halves (only costs halve). Add pet #6 as a new entry. */
+  var COMMUNITY_HANDOFF = [
+    { id: 'homer', name: 'HOMER PEPE', after: 'funtrumpMythic', key: 'homer', rec: 'homerMythic', log: 'homercold', gate: function () { return ACTIVATE_HOMER_BLOCK; }, onCold: function (b) { HP_POOL_FROM = b + 1; } }
+  ];
+  function handoffOf(id) { return COMMUNITY_HANDOFF.filter(function (H) { return H.id === id; })[0] || null; }
+  function handoffPrev(w, id) { var H = handoffOf(id); return H && w ? w[H.after] || null : null; } /* previous pet's Cold Storage record = this pet's start */
+  function handoffTrack(w, r, amt, H) { var P = w[H.after]; if (H.gate() == null || !P || w[H.rec] || r.tx_hash === P.tx) return;
+    var K = w[H.key] || (w[H.key] = { fed: 0, feeds: 0, by: {} }); K.fed += amt; K.feeds++; if (amt > 0) K.by[r.source] = (K.by[r.source] || 0) + amt;
+    if (r.block_index < H.gate() || K.fed + 1e-9 < COMMUNITY_THRESHOLDS[5]) return;
     var all = Object.keys(K.by).map(function (a) { return { address: a, amount: K.by[a] }; }).sort(function (x, y) { return y.amount - x.amount || (x.address < y.address ? -1 : 1); });
-    w.homerMythic = { block: r.block_index, tx: r.tx_hash, total: K.fed, feeders: all.length, top: all.slice(0, KEK_TOP_N), by: K.by };
-    HP_POOL_FROM = r.block_index + 1;
-    w.log.push({ block: r.block_index, tx: r.tx_hash, kind: 'homercold', msg: 'HOMER PEPE reached Mythic (' + Math.floor(K.fed) + ' burned) and went into Cold Storage' }); }
+    w[H.rec] = { block: r.block_index, tx: r.tx_hash, total: K.fed, feeders: all.length, top: all.slice(0, KEK_TOP_N), by: K.by };
+    H.onCold(r.block_index);
+    w.log.push({ block: r.block_index, tx: r.tx_hash, kind: H.log, msg: H.name + ' reached Mythic (' + Math.floor(K.fed) + ' burned) and went into Cold Storage' }); }
+  function homerTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[0]); }
   function hpArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'homer'; if (!specialNamesOn(b)) art.defaultName = 'Homer Pepe'; setArtTier(art, specialRollTier('homer', id, b)); /* Rare or Legendary */ return noBornShades(art); }
   /** kekArt(bh, id, b): a Lord Kek egg = a normal egg roll (tier, stats, background) with species 'kek' (KekSprite, player palette). */
   function kekArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'kek'; if (!specialNamesOn(b)) art.defaultName = 'Kek'; if (specialTierOn(b)) setArtTier(art, specialRollTier('kek', id, b)); /* COMMUNITY-SPECIES TIER: Rare or Legendary */ return noBornShades(art); }
@@ -1570,7 +1580,7 @@
     if (ftOn(tip) && w.kekMythic) { var FT = w.funtrump || { fed: 0, feeds: 0, by: {} }; /* FUNTRUMP = community pet #4 (live from 972,880) */
       cm.funtrumpFed = FT.fed; cm.funtrumpStage = stageFor(FT.fed, COMMUNITY_THRESHOLDS); cm.current = 'funtrump'; cm.nextPet = w.funtrumpMythic ? null : 'funtrump';
       cm.petName = 'FUNTRUMP'; cm.petStage = cm.funtrumpStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
-    if (hpOn(tip) && w.funtrumpMythic) { var HPc = w.homer || { fed: 0, feeds: 0, by: {} }; /* HOMER PEPE = community pet #5 (PREVIEW, inert: ACTIVATE_HOMER_BLOCK null) */
+    if (hpOn(tip) && handoffPrev(w, 'homer')) { var HPc = w.homer || { fed: 0, feeds: 0, by: {} }; /* HOMER PEPE = community pet #5 (PREVIEW, inert: ACTIVATE_HOMER_BLOCK null) */
       cm.homerFed = HPc.fed; cm.homerStage = stageFor(HPc.fed, COMMUNITY_THRESHOLDS); cm.current = 'homer'; cm.nextPet = w.homerMythic ? null : 'homer';
       cm.petName = 'Homer Pepe'; cm.petStage = cm.homerStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });

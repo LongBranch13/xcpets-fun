@@ -11,3 +11,5 @@ Successor to FUNTRUMP (#4). Shows up as the community pet only after FUNTRUMP re
 - Farewell: `js/v2-homer-farewell.js` (not loaded by any page yet). `v2-community.js` PETS entry no. 5.
 
 Open questions: signature gear (donut Grip idea `HOMER_DONUT`, not in any pool); Rare and Legendary share one look; farewell lines need sign-off.
+
+See design/community-pet-checklist.md: Homer lands the moment FUNTRUMP enters Cold Storage (COMMUNITY_HANDOFF); standard target, only costs halve.
