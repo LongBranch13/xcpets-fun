@@ -494,3 +494,7 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 #packBox .dudg{color:#ffc93c;font-size:9px}
 #packBox .packgrid .disc{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 6px;cursor:pointer}#packBox .packgrid .disc input{width:20px;height:20px}
 #packBox .dudone{min-height:32px;min-width:32px}#packBox .dudbar .q{min-height:32px}
+
+/* pet-flow-smoother: post-hatch summary order (tier counts, Keep Rare+, then Dud Duster) */
+#packBox .pktiers{font-size:14px;margin:0 0 8px}#packBox .pkkeep{margin:0 0 8px;text-align:center}#packBox .pkkeep .btn{margin:0 auto 4px}
+body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip that is already up hides while the hatch review is open */
