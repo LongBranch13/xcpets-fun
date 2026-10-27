@@ -1,5 +1,5 @@
 {
- "lastBlock": 973385,
+ "lastBlock": 973387,
  "count": 189,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -193,7 +193,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Egg"
+   "stage": "Hatchling"
   },
   {
    "id": 23693,
