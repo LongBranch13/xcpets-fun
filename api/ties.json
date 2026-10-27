@@ -1,6 +1,6 @@
 {
- "lastBlock": 973349,
- "count": 188,
+ "lastBlock": 973351,
+ "count": 189,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2258,6 +2258,18 @@
    "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 2133,
+   "asset": "A15011604127499339779",
+   "tiedBlock": 973350,
+   "tiedTx": "eff3752cd5ae1eef3d3d75d4c68228b28dfd5648fd509c9238ae2f5d86a20fa2",
+   "kind": "deed",
+   "name": "Gigi",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
