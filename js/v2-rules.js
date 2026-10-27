@@ -512,14 +512,14 @@
       p.supreme = { id: id, title: SUPREME[id].title, n: 1, of: 1, gate: S, egg: true }; if (id === 'archmage') p.supreme.total = Math.round(top.total * 100) / 100;
       w.log.push({ block: G, tx: a.seed, kind: 'hatch', msg: SUPREME[id].title + ': egg #' + p.id + ' ' + SUPREME[id].name + ' (1 of 1), feed it to hatch', petId: p.id }); }); }
   /* GRANT POWER BOOST (owner Oct 26 2026 ~7 PM CT): the 1-of-1 supreme prizes (Lord Kekamozard to the #1 burner, Don Kekamoto to the top holder)
-   * get VERY VERY high power (total 150-160, above every other pet: live Legendary max was 141); every Burn Lord (1-5 of 5) gets VERY high power
-   * (total 132-140, below the supremes). RULE, not a one-off: from ACTIVATE_GRANT_POWER_BLOCK every pet with p.supreme / p.burnLord (the existing 7
+   * get VERY VERY high power (total 155-160, above every other pet: live Legendary max was 141); every Burn Lord (1-5 of 5) gets VERY high power
+   * (total 142-149, above every ordinary pet (141 at tip 973318) and below the supremes). RULE, not a one-off: from ACTIVATE_GRANT_POWER_BLOCK every pet with p.supreme / p.burnLord (the existing 7
    * and any later grant of the same kind) is raised once to its target. Target = lo + sha('XCPETS:grantpower:' + id + ':' + hatchTx) mod span.
    * The stats are scaled by ONE common ratio (each pet keeps its own shape), with a per-stat cap: Burn Lords keep the normal Legendary max of 30;
    * supremes ONLY get a raised cap of 34 (150-160 cannot fit under 30 x 5 = 150). A stat that would pass the cap is pinned there and the rest re-scaled.
    * Stats never go down. Rarity, art, names, ids and all other pets are untouched. Flag: p.grantPower = { block, from, to }. OFF while null. */
   var ACTIVATE_GRANT_POWER_BLOCK = null; // PREVIEW: OFF. Set to tip + ~6 at deploy (owner approval needed)
-  var GRANT_POWER = { supreme: { lo: 150, hi: 160, cap: 34 }, burnLord: { lo: 132, hi: 140, cap: 30 } };
+  var GRANT_POWER = { supreme: { lo: 155, hi: 160, cap: 34 }, burnLord: { lo: 142, hi: 149, cap: 30 } }; /* owner Oct 26 2026 8:08 PM CT: Burn Lords above the best ordinary pet (141 at tip 973318) */
   function grantPowerOn(b) { return ACTIVATE_GRANT_POWER_BLOCK != null && b != null && b >= ACTIVATE_GRANT_POWER_BLOCK; }
   function grantPowerKind(p) { return p.supreme ? 'supreme' : p.burnLord ? 'burnLord' : null; }
   function grantPowerTarget(p) { var G = GRANT_POWER[grantPowerKind(p)]; return G.lo + parseInt(sha('XCPETS:grantpower:' + p.id + ':' + p.hatchTx).slice(0, 8), 16) % (G.hi - G.lo + 1); }
