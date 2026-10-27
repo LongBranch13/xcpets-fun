@@ -344,11 +344,17 @@
   function boEyeGroups(eyes) { var xs = eyes.map(function (j) { return j & 31; }).filter(function (x, i, A) { return A.indexOf(x) === i; }).sort(function (p, q) { return p - q; }), cut = null, gap = 1;
     for (var i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] > gap) { gap = xs[i] - xs[i - 1]; cut = xs[i]; }
     if (cut == null) return [eyes]; return [eyes.filter(function (j) { return (j & 31) < cut; }), eyes.filter(function (j) { return (j & 31) >= cut; })]; }
-  function boMarkSpots(k, eyes) { var out = [], isEye = {}; eyes.forEach(function (j) { isEye[j] = 1; });
-    boEyeGroups(eyes).forEach(function (L) { if (!L.length) return; var lx = 32, rx = -1, by = -1; L.forEach(function (j) { lx = Math.min(lx, j & 31); rx = Math.max(rx, j & 31); by = Math.max(by, j >> 5); });
-      for (var y = by + 1; y <= by + 4 && y < 29; y++) { var row = []; for (var x = lx; x <= rx; x++) { var q = y * 32 + x; if (!k[q] || isEye[q] || BO_SKIP_KEYS[k[q]]) continue; row.push(q); }
-        if (row.length * 2 >= rx - lx + 1) { out = out.concat(row); break; } } });
-    return out; }
+  /* PLACEMENT (owner Oct 26 2026 ~10:32 PM CT): per eye, exactly ONE skin row between the eye's lowest pixel (by) and the stripe (row by + 2),
+   * the stripe as wide as that eye. Pixels that are not skin on the stripe row (outline, mouth, off the face) are left alone. */
+  function boSkin(k, q) { return !!k[q] && !BO_SKIP_KEYS[k[q]]; }
+  function boMarkPlan(k, eyes) { var isEye = {}; eyes.forEach(function (j) { isEye[j] = 1; });
+    var EDGE = { ink: 1, frame: 1, lens: 1, tear: 1 }; /* the eye's own rim: outline ring (Nakamoto), glasses frame (Chud), tear (Wojak) directly below an eye pixel */
+    return boEyeGroups(eyes).filter(function (L) { return L.length; }).map(function (L) { var lx = 32, rx = -1, by = -1; L.forEach(function (j) { lx = Math.min(lx, j & 31); rx = Math.max(rx, j & 31); });
+      var mine = {}; L.forEach(function (j) { mine[j] = 1; }); for (var it = 0, grew = true; grew && it < 3; it++) { grew = false; Object.keys(mine).forEach(function (j) { var n = +j + 32; if (n < 32 * 32 && !mine[n] && EDGE[k[n]]) { mine[n] = 1; isEye[n] = 1; grew = true; } }); }
+      Object.keys(mine).forEach(function (j) { by = Math.max(by, j >> 5); });
+      var y = by + 2, row = [], gap = [], x; for (x = lx; x <= rx; x++) { var q = y * 32 + x, g = (by + 1) * 32 + x; if (y < 32 && boSkin(k, q) && !isEye[q]) row.push(q); if (by + 1 < 32) gap.push(boSkin(k, g) && !isEye[g] ? 1 : 0); }
+      return { lx: lx, rx: rx, by: by, y: y, row: row, gapSkin: gap.reduce(function (a, v) { return a + v; }, 0), w: rx - lx + 1, keys: row.map(function (q) { return k[q]; }) }; }); }
+  function boMarkSpots(k, eyes) { var out = []; boMarkPlan(k, eyes).forEach(function (E) { out = out.concat(E.row); }); return out; }
   function boStyleEyes(sh, art, o0, k) { var ka = Object.assign({}, art, { species: sh, background: 'solid', bgColor: '#ff00ff', pattern: 'none', crown: 'none', band: 'none', armor: 'none', cape: 'none', weapon: 'none' }), L, M = [], j, real = [];
     try { L = ['classic', 'beady', 'tinted', 'star', 'laser'].map(function (e) { return PetCore.render(Object.assign({}, ka, { eyes: e }), o0).data; }); } catch (e) { return []; }
     for (j = 0; j < 29 * 32; j++) if (L.some(function (D) { return D[j * 4] !== L[0][j * 4] || D[j * 4 + 1] !== L[0][j * 4 + 1] || D[j * 4 + 2] !== L[0][j * 4 + 2]; })) M.push(j);
@@ -362,11 +368,11 @@
       for (j = 0; j < mT * 32; j++) if (BO_EYE_KEYS[k[j]]) eyes.push(j);
       if (!eyes.length && SE) eyes = SE.list.filter(function (q) { return (q >> 5) < 29; });
       if (!eyes.length) eyes = boStyleEyes(sh, art, o0, k); /* closed / drawn-line eyes (Pepe Elder lids, Wojak Mythic): the pixels that change with the eye style alone */
-      if (!eyes.length) return img;
+      if (!eyes.length) return img; if (V._boMarkLog) V._boMarkLog.push({ sh: sh, stage: stage, frame: f, plan: boMarkPlan(k, eyes) });
       var spots = boMarkSpots(k, eyes); if (!spots.length) return img; var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (j = 0; j < d.length; j++) d[j] = img.data[j];
       spots.forEach(function (q) { d[q * 4] = INK[0]; d[q * 4 + 1] = INK[1]; d[q * 4 + 2] = INK[2]; d[q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
-  if (V) V._boMarkSpots = boMarkSpots;
+  if (V) { V._boMarkSpots = boMarkSpots; V._boMarkPlan = boMarkPlan; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { if (art && art.boMark) return boMarkFrames(framesWithB(art, stage, itemIds, extraOv, cap, baseGo), art, stage); return framesWithB(art, stage, itemIds, extraOv, cap, baseGo); }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */

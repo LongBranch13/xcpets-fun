@@ -56,4 +56,17 @@ console.log('Bo babies bred: ' + nb + ' partners ' + Object.keys(partners).join(
 if (process.env.BO_SHEET) require('fs').writeFileSync(process.env.BO_SHEET, JSON.stringify(shown.map(x => ({ k: x.k, sp: x.kid.species, name: V.hybridName && V.isHybrid(x.kid.species) ? V.hybridName(x.kid.species) : x.kid.species,
   frames: [3, 4, 5].map(st => Array.from(R.framesWith(x.kid.art, st, [], [])[0].data)) }))));
 const CS = require('../js/contest-sprite.js'); for (let st = 0; st <= 5; st++) { const f = CS.frames('bojackson', st, '#14101e', st ? { hand: { item: 'stick', cols: ['#8a5a2b', '#c8955a'] } } : null); ok(f.length === 4 && f[0].data.length === 4096, 'sprite stage ' + st); }
+/* EYE BLACK PLACEMENT (owner Oct 26 ~10:32 PM CT): every species + Kek + Wizard body, every stage, every frame, each eye on its own: the stripe's top
+ * row is exactly 2 rows below the eye's lowest pixel (ONE skin row between), no mark pixel in that gap row or above, and the painted pixels are the plan. */
+{ const PC = c.PetCore, BODIES = PC.SPECIES.map(x => x.id).concat(['kek', 'wizard']), EMPTY_OK = { 'nakamoto:2:0': 1 }; let nEyes = 0;
+  BODIES.forEach(sp => { for (let st = 1; st <= 5; st++) { const a = Object.assign({}, PC.characterPet(sp, { tier: 'legendary' }), { background: 'solid', bgColor: '#d8d8e0', pattern: 'none', band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
+    V._boMarkLog = []; const on = R.framesWith(Object.assign({}, a, { boMark: 1 }), st, [], []), off = R.framesWith(a, st, [], []), LOG = V._boMarkLog; V._boMarkLog = null;
+    ok(LOG.length === on.length, sp + ' st' + st + ': eyes found on every frame');
+    LOG.forEach(L => { const f = L.frame, A = on[f].data, B = off[f].data, painted = []; for (let q = 0; q < 1024; q++) if (A[q * 4] !== B[q * 4] || A[q * 4 + 1] !== B[q * 4 + 1] || A[q * 4 + 2] !== B[q * 4 + 2]) painted.push(q);
+      const want = [].concat(...L.plan.map(E => E.row)).sort((x, y) => x - y); ok(JSON.stringify(painted) === JSON.stringify(want), sp + ' st' + st + ' f' + f + ': painted = plan');
+      L.plan.forEach((E, i) => { nEyes++; ok(E.y === E.by + 2, sp + ' st' + st + ' f' + f + ' eye' + i + ': stripe 2 rows below eye bottom');
+        ok(E.row.every(q => (q >> 5) === E.by + 2), sp + ' st' + st + ' eye' + i + ': stripe on one row');
+        ok(!painted.some(q => (q >> 5) <= E.by + 1 && (q & 31) >= E.lx && (q & 31) <= E.rx), sp + ' st' + st + ' f' + f + ' eye' + i + ': 1-row skin gap kept clear');
+        ok(E.row.length > 0 || EMPTY_OK[sp + ':' + st + ':' + i], sp + ' st' + st + ' f' + f + ' eye' + i + ': stripe drawn'); }); }); } });
+  ok(nEyes > 500, 'eyes checked ' + nEyes); }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
