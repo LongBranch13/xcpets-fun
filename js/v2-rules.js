@@ -477,7 +477,7 @@
    *   Pet: G = that grant block, gh = its block hash (waits until the hash is known; ranking already frozen). Body: always the blue Wikek
    *     (see BURN LORD LOOK below); plan from hybridPlan0(sha(gh + 'XCPETS:burnlords:' + rank), key),
    *     art seed = same hash; tier forced to Legendary (3) with the tier stat bonus difference; born at G with hatch care; ids in rank order.
-   *   p.burnLord = { n, of: 5, rank, total, gate: snapshot block }: permanent edition flag, drawn as the fire aura only (no crown, no gold frame: owner removed both Oct 26, 2026) (V2Render)
+   *   p.burnLord = { n, of: 5, rank, total, gate: snapshot block }: permanent edition flag, no sprite effect (fire aura removed Oct 27, 2026; crown + gold frame removed Oct 26, 2026); shown by chips/badges only
    *     and the 'Burn Lord' badge; breedOne never copies it, so offspring never get it. w.burnLordsGranted makes it fire once: exactly 5 pets ever. */
   var BURN_LORDS_SNAPSHOT_BLOCK = 973300, BURN_LORDS_N = 5; /* owner Oct 24 2026 10:15 PM CT: top 5 (was 3; tip 973008, before the snapshot, so replay unchanged) */
   function burnLordsRank(w) { var keys = Object.keys(w.burnedBy || {}), ix = {}; keys.forEach(function (a, i) { ix[a] = i; });
