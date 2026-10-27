@@ -759,8 +759,8 @@
    *   egg    = from the block after homerMythic the 1-in-777 slot gives HOMER PEPE (hpArt) instead of FUNTRUMP; tier Rare or Legendary (SPECIAL_TIER.homer);
    *   breed  = breedable after his Cold Storage once ACTIVATE_HP_BREED_BLOCK is set; hybrid root with every species (HP_SP below).
    * ALL GATES NULL: homerTrack returns at once, nothing is written, HP_POOL_FROM stays Infinity -> replay unchanged. */
-  var ACTIVATE_HOMER_BLOCK = null;     // PREVIEW: owner sets this (tip + 3) to launch
-  var ACTIVATE_HP_BREED_BLOCK = null;  // PREVIEW: breeding after his Cold Storage
+  var ACTIVATE_HOMER_BLOCK = null;     // PREVIEW: owner sets this at launch (deploy tip + 6, house rule; FUNTRUMP used tip + 3 by owner call)
+  var ACTIVATE_HP_BREED_BLOCK = null;  // PREVIEW: set = ACTIVATE_HOMER_BLOCK at launch (FUNTRUMP precedent); hpBreedOn still waits for his own Cold Storage (b >= HP_POOL_FROM)
   var HP_POOL_FROM = Infinity;
   function hpOn(b) { return ACTIVATE_HOMER_BLOCK != null && b != null && b >= ACTIVATE_HOMER_BLOCK; }
   function hpBreedOn(b) { return ACTIVATE_HP_BREED_BLOCK != null && b != null && b >= ACTIVATE_HP_BREED_BLOCK && b >= HP_POOL_FROM; }
