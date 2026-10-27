@@ -518,7 +518,7 @@
    * The stats are scaled by ONE common ratio (each pet keeps its own shape), with a per-stat cap: Burn Lords keep the normal Legendary max of 30;
    * supremes ONLY get a raised cap of 34 (150-160 cannot fit under 30 x 5 = 150). A stat that would pass the cap is pinned there and the rest re-scaled.
    * Stats never go down. Rarity, art, names, ids and all other pets are untouched. Flag: p.grantPower = { block, from, to }. OFF while null. */
-  var ACTIVATE_GRANT_POWER_BLOCK = null; // PREVIEW: OFF. Set to tip + ~6 at deploy (owner approval needed)
+  var ACTIVATE_GRANT_POWER_BLOCK = 973326; // chain tip 973320 (mempool.space; feed 973318) + 6, owner approved 8:22 PM CT Oct 26
   var GRANT_POWER = { supreme: { lo: 155, hi: 160, cap: 34 }, burnLord: { lo: 142, hi: 149, cap: 30 } }; /* owner Oct 26 2026 8:08 PM CT: Burn Lords above the best ordinary pet (141 at tip 973318) */
   function grantPowerOn(b) { return ACTIVATE_GRANT_POWER_BLOCK != null && b != null && b >= ACTIVATE_GRANT_POWER_BLOCK; }
   function grantPowerKind(p) { return p.supreme ? 'supreme' : p.burnLord ? 'burnLord' : null; }

@@ -6,7 +6,7 @@ const { load, row, snap, run } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const c = load(), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
-ok(V.ACTIVATE_GRANT_POWER_BLOCK === null, 'preview: gate null (set to tip + 6 at deploy)');
+ok(V.ACTIVATE_GRANT_POWER_BLOCK === 973326, 'gate set at deploy: 973326');
 /* pure scaler */
 const sc = V.grantPowerScale({ vigor: 14, spark: 21, grit: 24, zoom: 23, luck: 17 }, 155, 34); ok(sc && K.reduce((a, k) => a + sc[k], 0) === 155 && K.every(k => sc[k] <= 34), 'scale hits target under cap');
 ok(sc.grit >= sc.zoom && sc.zoom >= sc.spark && sc.spark >= sc.luck && sc.luck >= sc.vigor, 'scale keeps stat order');
