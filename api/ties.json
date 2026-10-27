@@ -1,6 +1,6 @@
 {
- "lastBlock": 973439,
- "count": 209,
+ "lastBlock": 973442,
+ "count": 207,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1006,30 +1006,6 @@
    "tiedTx": "10f5454bd410b2b7a6913216e40dec12698e1aab4ad0bfd5b25bd69160a71bba",
    "kind": "deed",
    "name": "Pejami",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 15486,
-   "asset": "A3064074768850229857",
-   "tiedBlock": 973126,
-   "tiedTx": "4558f39dae70aa3df76e1efc14e2bcbb91ce0c38033481ef4c2b0a73400a0cd2",
-   "kind": "deed",
-   "name": "Sapip",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 17608,
-   "asset": "A13125981466180702270",
-   "tiedBlock": 973126,
-   "tiedTx": "dc347b64d4cd34918446bd09d07610ff3f66e0e683f6f8ebe6738d471581da02",
-   "kind": "deed",
-   "name": "Zogi",
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
