@@ -1,5 +1,5 @@
 {
- "lastBlock": 973461,
+ "lastBlock": 973464,
  "count": 226,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -289,7 +289,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 24018,
