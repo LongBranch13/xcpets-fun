@@ -1,26 +1,26 @@
 {
-  "blockHeight": 973362,
-  "generatedAt": "2026-10-27T07:10:11Z",
+  "blockHeight": 973366,
+  "generatedAt": "2026-10-27T07:33:59Z",
   "asset": "XCPETS",
   "totalPets": 49076,
   "alive": 34165,
   "dead": 14910,
   "released": 1,
-  "burns": 1848,
-  "burnedXCPETS": 21857259.00000312,
-  "supplyXCPETS": 78142740.99999689,
+  "burns": 1850,
+  "burnedXCPETS": 21905559.00000312,
+  "supplyXCPETS": 78094440.99999689,
   "owners": 18,
   "community": {
-    "tip": 973362,
+    "tip": 973366,
     "current": {
-      "id": "funtrump",
-      "no": 4,
-      "name": "FUNTRUMP",
-      "short": "FUNTRUMP",
-      "plural": "FUNTRUMPs",
+      "id": "homer",
+      "no": 5,
+      "name": "Homer Pepe",
+      "short": "Homer Pepe",
+      "plural": "Homer Pepes",
       "the": ""
     },
-    "nextNo": 4,
+    "nextNo": 5,
     "cold": [
       {
         "id": "nakamoto",
@@ -48,27 +48,27 @@
         "plural": "Lord Keks",
         "the": "",
         "block": 972869
+      },
+      {
+        "id": "funtrump",
+        "no": 4,
+        "name": "FUNTRUMP",
+        "short": "FUNTRUMP",
+        "plural": "FUNTRUMPs",
+        "the": "",
+        "block": 973365
       }
     ],
     "egg": {
-      "id": "kek",
-      "no": 3,
-      "name": "Lord Kek",
-      "short": "Lord Kek",
-      "plural": "Lord Keks",
+      "id": "funtrump",
+      "no": 4,
+      "name": "FUNTRUMP",
+      "short": "FUNTRUMP",
+      "plural": "FUNTRUMPs",
       "the": "",
-      "block": 972869
+      "block": 973365
     },
     "prevEgg": {
-      "id": "wizard",
-      "no": 2,
-      "name": "Bitcoin Wizard",
-      "short": "Wizard",
-      "plural": "Bitcoin Wizards",
-      "the": "the ",
-      "block": 972325
-    },
-    "last": {
       "id": "kek",
       "no": 3,
       "name": "Lord Kek",
@@ -77,11 +77,21 @@
       "the": "",
       "block": 972869
     },
+    "last": {
+      "id": "funtrump",
+      "no": 4,
+      "name": "FUNTRUMP",
+      "short": "FUNTRUMP",
+      "plural": "FUNTRUMPs",
+      "the": "",
+      "block": 973365
+    },
     "halvings": [
-      972875
+      972875,
+      973371
     ],
     "halvingsDone": 1,
-    "nextHalving": null
+    "nextHalving": 973371
   },
   "files": {
     "pets": "https://xcpets.fun/api/pets.json",
