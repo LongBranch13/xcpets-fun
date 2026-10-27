@@ -77,7 +77,7 @@
     cold: function () { return '<h3>🧊 What happens in Cold Storage?</h3><p>Community pets stay community pets until they reach Mythic. Then they go into Cold Storage and become real pets anyone can hatch and breed. This goes for the Bitcoin Wizard and every community pet after him.</p><p class="small">' + cpT('help-cold', 'Nakamoto (#1) is no longer hatched. The Bitcoin Wizard (#2) now comes from the 1 in 777 hatch roll.') + '</p>' + more('community', 'Community pets'); },
     community: function () { return '<h3>🔔 Community pet ' + cpNo() + '</h3><p>Feeding and gear rolls open when pet ' + cpNo() + ' arrives. There\'s no date yet.</p><p>Get told first: the XCPETS Telegram announces it.</p><p><a class="btn" href="https://t.me/xcpets" target="_blank" rel="noopener">🔔 Join t.me/xcpets</a></p>' + more('community', 'Community pets'); },
     glossary: function (k) { return glossary(k); },
-    bundle: function () { return '<h3>🍽️ Feeding many pets</h3><p>"Feed all hungry" packs up to ~110 pets into one burn (pet:fm). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
+    bundle: function () { return '<h3>🍽️ Feeding many pets</h3><p>"Feed all hungry" feeds every hungry pet in ONE burn (pet:fa). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
   };
 
   // ------------------------------------------------------------------ item 11: glossary

@@ -662,7 +662,7 @@
   function sendWhy(plan) { return V.sendBlock ? V.sendBlock(world(), plan, S.tip, { me: ME, pending: myPendingTags() }) : null; }
   function pendingBreedIds() { var o = {}; myPendingTags().forEach(function (g) { var t = V.parseTag(g); if (t && t.action === 'breed') { o[t.a] = 1; var A = world().byId[t.a], B = world().byId[t.b]; if (A && B && A.owner === B.owner) o[t.b] = 1; } }); return o; }
   function pendingFeedIds() { var o = {}, conf = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
-    function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); }
+    function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); if (t.action === 'feeda') { var ex = new Set(t.ex); world().pets.forEach(function (p) { if (p.owner === ME && (t.un ? (ex.has(p.id) || p.skipBy !== ME) : (!ex.has(p.id) && p.skipBy !== ME))) o[p.id] = 1; }); } }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed' && !conf[t.txid]) add(t.tag); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x && x.source === ME && !conf[x.tx_hash]) add(x.tag); }); return o; }
   /* bigfix 2026-10-20: plain-words heads-up for runs longer than the unconfirmed-burn limit */
@@ -672,7 +672,7 @@
       if (r) (why[r] = why[r] || []).push(id); return !r; }), oks = new Set(ok), skipped = ids.filter(function (id) { return !oks.has(id); });
     return { ok: ok, skipped: skipped, text: Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ') }; }
   function feedGuard(w, plans) { var feedIds = [], other = [], why = {}, pend = null;
-    plans.forEach(function (q) { var t = V.parseTag(q.tag); if (t && t.action === 'feed') feedIds.push(t.petId); else if (t && (t.action === 'feedm' || t.action === 'feedl')) feedIds = feedIds.concat(t.ids); else other.push(q); });
+    plans.forEach(function (q) { var t = V.parseTag(q.tag); if (t && t.action === 'feed') feedIds.push(t.petId); else if (t && (t.action === 'feedm' || t.action === 'feedl')) feedIds = feedIds.concat(t.ids); else if (t && t.action === 'feeda') feedIds = feedIds.concat(q.petIds || []); else other.push(q); });
     if (!feedIds.length) return { plans: plans, skipped: [], text: '' };
     pend = pendingFeedIds(); var ok = feedIds.filter(function (id) { var p = w.byId[id], r = !p ? 'not found' : p.owner !== ME ? 'not yours' : p.dead ? 'dead' : p.released ? 'released' : (p.mythicCare || p.stage >= 5) ? 'Mythic (never starves)' : p.fedToday ? 'already fed this chain day' : pend[id] ? 'a feed burn is still waiting to confirm' : !(p.nextMeal > 0) || !p.hungry ? 'no meal due' : null;
       if (r) (why[r] = why[r] || []).push(id); return !r; });
