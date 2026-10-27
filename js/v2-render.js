@@ -334,7 +334,24 @@
    * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
   var DOGE_SHINER = {}; /* 2026-10-15: retired, the eye-traced shiner lands on Doge's real eye */ /* 2026-10-14: his RIGHT eye as seen by the viewer */
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) {
+  /* BO BABY MARK (branch bo-1of1): a child of Bo Jackson (art.boMark) wears Bo's eye black: a dark 1-row stripe under each eye, found on the body's
+   * keyed sprite (V2Rules._keyedRender of the body / hybrid shape) per frame, painted only on the pet's own silhouette, never over the eyes. Looks only. */
+  function boMarkFrames(fr, art, stage) { if (!fr || !art || !art.boMark || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species, EK = { eye: 1, pupil: 1, white: 1, brow: 1, frame: 1, lens: 1 }, INK = [0x12, 0x10, 0x16];
+    return fr.map(function (img, f) { var k; try { k = V._keyedRender(sh, art, { stage: stage, frame: f, gearOverride: {} }).keys; } catch (e) { return img; } if (!k) return img;
+      var o0 = { stage: stage, frame: f, gearOverride: {} }, eyes = [], j, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null;
+      if (SE) eyes = SE.list; else { var ka = Object.assign({}, art, { species: sh, hybrid: null, background: 'solid', bgColor: '#ff00ff', pattern: 'none', crown: 'none', band: 'none', armor: 'none', cape: 'none', weapon: 'none' }), e1, e2;
+        try { e1 = PetCore.render(Object.assign({}, ka, { eyes: 'classic' }), o0).data; e2 = PetCore.render(Object.assign({}, ka, { eyes: 'star' }), o0).data; } catch (e) { return img; }
+        for (j = 0; j < 1024; j++) if ((j >> 5) < 29 && (e1[j * 4] !== e2[j * 4] || e1[j * 4 + 1] !== e2[j * 4 + 1] || e1[j * 4 + 2] !== e2[j * 4 + 2])) eyes.push(j); }
+      if (!SE && !eyes.length) { try { var spd = PetCore.SPECIES.filter(function (q) { return q.id === sh; })[0], an = BonusGear.anchors(PetCore.render(ka, o0), eyeRender(Object.assign({}, ka, { eyes: 'star' }), o0), spd);
+        [an.eyeL, an.eyeR].forEach(function (e) { if (e && e[2]) e[2].forEach(function (q) { eyes.push(q[1] * 32 + q[0]); }); }); } catch (e) { } }
+      if (!eyes.length) return img;
+      var xs = eyes.map(function (j) { return j & 31; }), mid = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, d = new Uint8ClampedArray(img.data), isEye = {}; eyes.forEach(function (j) { isEye[j] = 1; });
+      [eyes.filter(function (j) { return (j & 31) < mid; }), eyes.filter(function (j) { return (j & 31) >= mid; })].forEach(function (L) { if (!L.length) return; var lx = 32, rx = -1, by = -1;
+        L.forEach(function (j) { lx = Math.min(lx, j & 31); rx = Math.max(rx, j & 31); by = Math.max(by, j >> 5); }); if (rx - lx > 3) { var c = (lx + rx) >> 1; lx = c - 1; rx = c + 1; }
+        for (var y = by + 1; y <= by + 3; y++) { var n = 0; for (var x = lx; x <= rx; x++) { var q = y * 32 + x; if (y > 28 || !k[q] || isEye[q] || k[q] === 'mouth') continue; d[q * 4] = INK[0]; d[q * 4 + 1] = INK[1]; d[q * 4 + 2] = INK[2]; n++; } if (n) break; } });
+      return Object.assign({}, img, { data: d }); }); }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { if (art && art.boMark) return boMarkFrames(framesWithB(art, stage, itemIds, extraOv, cap, baseGo), art, stage); return framesWithB(art, stage, itemIds, extraOv, cap, baseGo); }
+  function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'funtrump' && !art.hybrid && window.FuntrumpSprite) return ftPetFrames(art, stage, itemIds); /* player FUNTRUMP (branch funtrump-community, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'funtrump' && window.FuntrumpSprite) return ftHybFrames(art, stage, itemIds); /* FUNTRUMP-body hybrid: FuntrumpSprite gear layer */

@@ -2,9 +2,9 @@
 /* BO JACKSON 1 of 1 tests: gated grant to the 3gqd address, egg, Legendary, power exactly 134, not boosted by the supreme sweep, grows/breeds/fights/gear,
  * sprite renders every stage. node tools/bo-1of1-test.js */
 'use strict';
-const { load, row, snap, run } = require('./lib/load-rules');
+const { load, row, snap, run, fakeHash } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
-const c = load(), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
+const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
 ok(V.ACTIVATE_BO_BLOCK === 973333, 'gate 973333'); ok(V.BO_POWER === 134, 'power 134');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
@@ -18,5 +18,27 @@ ok(K.every(k => b.stats[k] >= 1 && b.stats[k] <= 30), 'stats 1..30');
 const w2 = run(c, s, [], tip); ok(w2.pets.filter(p => p.species === 'bojackson').length === 1, 'once');
 ok(V.breedable(Object.assign({}, b, { stage: 3 }), 973400) === null, 'can breed');
 console.log('Bo #' + b.id + ' stats ' + JSON.stringify(b.stats) + ' power ' + pw(b));
+
+/* BREEDING: Bo breeds like the contest 1 of 1s (Bo counts as a copy of the partner's species; normal odds, tier, stats, cap, cooldown) and every
+ * Bo baby gets Bo's eye black (art.boMark, looks only). Never a Bo, never a 1 of 1. Hybrid partner -> hybrid baby; 3-way partner -> 3-way baby. */
+const R = c.V2Render; const END = 973500; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
+const wb = JSON.parse(JSON.stringify(w)); wb.byId = {}; wb.pets.forEach(p => { wb.byId[p.id] = p; }); const bo = wb.byId[b.id]; bo.stage = 3; bo.care = 999;
+const clone = () => { const ww = JSON.parse(JSON.stringify(wb)); ww.byId = {}; ww.pets.forEach(p => { ww.byId[p.id] = p; }); return ww; };
+const live = wb.pets.filter(p => !p.dead && !p.released && !p.community && !p.supreme && !p.burnLord && !p.contest && p.species !== 'bojackson');
+const partners = {}; live.forEach(p => { const sp = p.species, k = /^hyb3:/.test(sp) ? '3way' : /^hyb/.test(sp) ? 'hybrid' : sp; if (!partners[k]) partners[k] = p; });
+const shown = []; let nb = 0;
+Object.keys(partners).forEach((k, i) => { const P2 = partners[k]; for (let r = 0; r < 3; r++) { const ww = clone(), kid = V.breedOne(ww, ww.byId[bo.id], ww.byId[P2.id], fakeHash(END + i * 7 + r), 'test:bo' + k + r, END, bo.owner); nb++;
+  ok(kid.art.boMark === 1, k + ': Bo eye black'); ok(kid.species !== 'bojackson' && !kid.supreme && !kid.contest, k + ': not a Bo / not 1 of 1');
+  if (k === 'hybrid' || k === '3way') ok(V.isHybrid(kid.species), k + ' partner gives a hybrid baby (' + kid.species + ')'); else ok(kid.species === P2.species, k + ': partner species');
+  for (let st = 0; st <= 5; st++) { let fr; try { fr = R.framesWith(kid.art, st, [], []); } catch (e) { ok(false, k + ' render st' + st + ' ' + e.message); continue; } ok(fr && fr.length >= 1, k + ' frames st' + st);
+    if (st >= 1) { const bare = R.framesWith(Object.assign({}, kid.art, { boMark: 0 }), st, [], [])[0].data; let diff = 0; for (let q = 0; q < bare.length; q += 4) if (bare[q] !== fr[0].data[q] || bare[q + 1] !== fr[0].data[q + 1]) diff++; ok(diff > 0 && diff < 20, k + ' eye black drawn st' + st + ' (' + diff + 'px)'); } }
+  if (r === 0) shown.push({ k, kid }); } });
+/* GEAR on a Bo baby: every eligible item renders */
+const gk = shown[0].kid, gids = [].concat((c.V2Gear.ITEMS || []).map(x => x.id)).filter(id => V.itemOf(id) && V.eligible(V.itemOf(id), gk.species, null, gk.tier)); let gOk = 0;
+gids.forEach(id => { try { R.framesWith(gk.art, 4, [id], []); gOk++; } catch (e) { ok(false, 'gear ' + id + ' ' + e.message); } }); ok(gOk === gids.length && gOk > 0, 'gear on Bo baby ' + gOk);
+/* before the Bo gate: no mark (replay SAME) */ { const ww = clone(), P2 = partners[Object.keys(partners)[0]], kid = V.breedOne(ww, ww.byId[P2.id], ww.byId[live.find(p => p.species === P2.species && p.id !== P2.id).id], fakeHash(END), 'test:nb', END, P2.owner); ok(!kid.art.boMark, 'non-Bo babies unmarked'); }
+console.log('Bo babies bred: ' + nb + ' partners ' + Object.keys(partners).join(','));
+if (process.env.BO_SHEET) require('fs').writeFileSync(process.env.BO_SHEET, JSON.stringify(shown.map(x => ({ k: x.k, sp: x.kid.species, name: V.hybridName && V.isHybrid(x.kid.species) ? V.hybridName(x.kid.species) : x.kid.species,
+  frames: [3, 4, 5].map(st => Array.from(R.framesWith(x.kid.art, st, [], [])[0].data)) }))));
 const CS = require('../js/contest-sprite.js'); for (let st = 0; st <= 5; st++) { const f = CS.frames('bojackson', st, '#14101e', st ? { hand: { item: 'stick', cols: ['#8a5a2b', '#c8955a'] } } : null); ok(f.length === 4 && f[0].data.length === 4096, 'sprite stage ' + st); }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
