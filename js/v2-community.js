@@ -12,7 +12,8 @@
     { id: 'nakamoto', no: 1, name: 'Nakamoto', short: 'Nakamoto', plural: 'Nakamotos', rec: null, egg: false },
     { id: 'wizard', no: 2, name: 'Bitcoin Wizard', short: 'Wizard', plural: 'Bitcoin Wizards', the: 'the ', rec: 'wizardMythic', sp: 'wizard', loadout: ['wizard-hat', 'sig-wizard-staff', 'sig-wizard-sign'], egg: true },
     { id: 'kek', no: 3, name: 'Lord Kek', short: 'Lord Kek', plural: 'Lord Keks', rec: 'kekMythic', sp: 'kek', loadout: ['kek-card'], egg: true },
-    { id: 'funtrump', no: 4, name: 'FUNTRUMP', short: 'FUNTRUMP', plural: 'FUNTRUMPs', rec: 'funtrumpMythic', sp: 'funtrump', loadout: [], egg: true }
+    { id: 'funtrump', no: 4, name: 'FUNTRUMP', short: 'FUNTRUMP', plural: 'FUNTRUMPs', rec: 'funtrumpMythic', sp: 'funtrump', loadout: [], egg: true },
+    { id: 'homer', no: 5, name: 'Homer Pepe', short: 'Homer Pepe', plural: 'Homer Pepes', rec: 'homerMythic', sp: 'homer', loadout: [], egg: true } /* PREVIEW (homerpepe-community): inert until V2Rules.ACTIVATE_HOMER_BLOCK; signature Grip = open question */
   ];
   function byId(id) { return PETS.filter(function (p) { return p.id === id; })[0] || null; }
   function pub(p, extra) { return p ? Object.assign({ id: p.id, no: p.no, name: p.name, short: p.short, plural: p.plural, the: p.the || '' }, extra || {}) : null; }
