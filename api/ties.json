@@ -1,6 +1,6 @@
 {
- "lastBlock": 973449,
- "count": 207,
+ "lastBlock": 973456,
+ "count": 209,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2484,6 +2484,30 @@
    "name": "Duyubeni",
    "species": "mumu",
    "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 46070,
+   "asset": "A6658824845801727060",
+   "tiedBlock": 973456,
+   "tiedTx": "9a57ef841b2daf8dd26b5970dbb08d7c5e6173f85afb8e9d0946cc5b63214d08",
+   "kind": "deed",
+   "name": "Sirozuk",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 49075,
+   "asset": "A10221145323872042621",
+   "tiedBlock": 973456,
+   "tiedTx": "efbd5dcedda6948800707c5359aa45998bfef22b7d99573cb45e2039544e0881",
+   "kind": "deed",
+   "name": "Bo Jackson",
+   "species": "bojackson",
+   "speciesLabel": "Bo Jackson",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
