@@ -497,3 +497,4 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 
 /* pet-flow-smoother: post-hatch summary order (tier counts, Keep Rare+, then Dud Duster) */
 #packBox .pktiers{font-size:14px;margin:0 0 8px}#packBox .pkkeep{margin:0 0 8px;text-align:center}#packBox .pkkeep .btn{margin:0 auto 4px}
+body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip that is already up hides while the hatch review is open */

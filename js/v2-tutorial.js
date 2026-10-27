@@ -394,6 +394,8 @@
   ];
   var lastKey = '', tipOpen = false;
   function playTick() {
+    /* pet-flow-smoother: no coach tips while the hatch review (#packBox) is open; they wait until it closes (lastKey is not touched, so the next tick retries) */
+    var pk = document.getElementById('packBox'); if (pk && pk.classList.contains('on')) return;
     if (!window.V2UI || !V2UI.world) return; var w; try { w = V2UI.world(); } catch (e) { return; } if (!w || !w.pets) return;
     var me = V2UI.ME || null; if (!me) return; var s = stats(w, me); s.me = me; s.tip = w.tip || 0; s.grad = graduated(); s.spin = (w.streakSpin && w.streakSpin[me]) || null; var key = JSON.stringify(s); if (key === lastKey) return; lastKey = key;
     questsPanel(s);
