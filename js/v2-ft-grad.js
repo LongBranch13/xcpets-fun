@@ -40,7 +40,7 @@
     if (open) close(); if (!window.FuntrumpSprite) return false; ls(KEY, '1');
     var still = reduced(), o = document.createElement('div'); o.className = 'ftg-ov'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'FUNTRUMP presents your Big Beautiful Graduate card');
     o.innerHTML = '<div class="ftg-box"><button type="button" class="ftg-x" aria-label="Skip">Skip ✕</button><canvas class="ftg-cv tut-px" width="' + W + '" height="' + H + '"></canvas>' +
-      '<div class="ftg-cap"><b>🎓 Big Beautiful Graduate</b><span>FUNTRUMP, community pet #4, presents your gold frame. Every chapter done!</span></div><button type="button" class="btn ftg-ok">Close</button></div>';
+      '<div class="ftg-cap"><b>🎓 Big Beautiful Graduate</b><span>FUNTRUMP, community pet #4, presents your graduate frame. Every chapter done!</span></div><button type="button" class="btn ftg-ok">Close</button></div>';
     document.body.appendChild(o); var cv = o.querySelector('canvas'), c = cv.getContext('2d'), t0 = performance.now(), x = o.querySelector('.ftg-x');
     c.imageSmoothingEnabled = false; open = { el: o, raf: 0, focus: document.activeElement, key: function (e) { if (e.key === 'Escape') close(); } };
     document.addEventListener('keydown', open.key); o.addEventListener('click', function (e) { if (e.target === o) close(); });

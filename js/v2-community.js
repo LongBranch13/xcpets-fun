@@ -29,6 +29,7 @@
     var done = hs.filter(function (b) { return b <= tip + 1; }).length, next = hs.filter(function (b) { return b > tip + 1; })[0] || null;
     return { tip: tip, current: pub(cur), nextNo: nextNo, cold: cold, egg: egg, prevEgg: prevEgg, last: last, halvings: hs, halvingsDone: done, nextHalving: next };
   }
+  function costText(base, done) { if (!(base > 0)) return null; var v = Math.round(base / Math.pow(2, done) * 1e8) / 1e8; return v.toLocaleString('en-US', { maximumFractionDigits: 8 }); }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
   function up(t) { return t ? t[0].toUpperCase() + t.slice(1) : ''; }
   function poss(n) { return n + "'s"; }
@@ -41,6 +42,7 @@
     'took-place': function (s) { var l = s.last; if (!s.current || !l || l.id === 'nakamoto') return null;
       return 'He took ' + l.the + poss(l.name) + ' place when ' + l.the + l.short + ' reached Mythic and went to Cold Storage.'; },
     'took-place-short': function (s) { var l = s.last; if (!s.current || !l || l.id === 'nakamoto') return null; return 'He took ' + l.the + poss(l.name) + ' place when ' + l.the + l.short + ' reached Mythic.'; },
+    'egg-name': function (s) { return s.egg ? s.egg.name : null; },
     'egg-now': function (s) { return s.egg ? 'The 1 in 777 egg is now a ' + s.egg.name + ' egg.' : null; },
     'egg-next': function (s) { if (!s.egg) return null; var n = s.current;
       return n ? 'When ' + n.name + ' reaches Mythic and goes to Cold Storage, ' + s.egg.short + ' eggs stop and that 1 in 777 egg becomes a ' + n.name + ' egg.'
@@ -50,6 +52,7 @@
     'cold-who': function (s) { var l = s.cold.filter(function (x) { return x.no >= 2; }); if (!l.length) return null;
       var t = l.map(function (x) { return up(x.the) + x.name + ' reached Mythic at block ' + fmt(x.block); }).join('; ');
       return t + (s.current ? '; ' + s.current.name + ' took ' + (l.length > 1 ? 'that' : 'his') + ' place and is the community pet now.' : '. Community pet #' + s.nextNo + ' is coming soon.'); },
+    'cost-now': function (s) { var d = s.halvingsDone || 0; return d ? 'Amounts are what a burn costs now: the base amount divided by ' + Math.pow(2, d) + ' after ' + d + ' halving' + (d === 1 ? '' : 's') + '. A Fire Sale cuts them further.' : 'Amounts are what a burn costs now (no halving yet). A Fire Sale cuts them further.'; },
     'halving-count': function (s) { if (!s.halvings.length) return null;
       return 'Halvings so far: ' + s.halvingsDone + (s.nextHalving ? '. Next halving at block ' + fmt(s.nextHalving) + '.' : s.current ? '. The next one comes 6 blocks after ' + s.current.name + ' goes to Cold Storage.' : '.'); },
     'help-egg': function (s) { return s.egg ? '1 in 777 eggs is ' + (s.egg.the ? 'a ' : 'a ') + s.egg.name + '.' : null; },
@@ -58,20 +61,22 @@
   };
   /* per-pet status lines on the Pet Guide (data-cp="pet:<id>") */
   function petLine(s, id) { var p = byId(id); if (!p || !s) return null; var cold = s.cold.filter(function (x) { return x.id === id; })[0];
-    if (s.egg && s.egg.id === id) return 'In Cold Storage since block ' + fmt(cold.block) + '. The 1 in 777 egg is now a ' + p.name + ' egg that anyone can hatch, at any tier. There is no other way to get one.';
+    if (s.egg && s.egg.id === id) return 'In Cold Storage since block ' + fmt(cold.block) + '. The 1 in 777 egg is now a ' + p.name + ' egg that anyone can hatch (Rare or Legendary). There is no other way to get one.';
     if (cold && p.egg) return 'In Cold Storage since block ' + fmt(cold.block) + '. ' + p.short + ' eggs stopped when ' + (PETS[p.no] ? PETS[p.no].name : 'the next pet') + ' reached Mythic.';
-    if (s.current && s.current.id === id) return 'The community pet now' + (s.last && s.last.no >= 2 ? ', in ' + s.last.the + poss(s.last.name) + ' place' : '') + '. Not hatched yet. When he reaches Mythic and goes to Cold Storage, the 1 in 777 egg becomes a ' + p.name + ' egg that anyone can hatch, at any tier. There is no other way to get one.';
+    if (s.current && s.current.id === id) return 'The community pet now' + (s.last && s.last.no >= 2 ? ', in ' + s.last.the + poss(s.last.name) + ' place' : '') + '. Not hatched yet. When he reaches Mythic and goes to Cold Storage, the 1 in 777 egg becomes a ' + p.name + ' egg that anyone can hatch (Rare or Legendary). There is no other way to get one.';
     return null; }
   function apply(s, root) { if (!s) return; (root || document).querySelectorAll('[data-cp]').forEach(function (el) { var k = el.getAttribute('data-cp'), t = null;
       try { t = /^pet:/.test(k) ? petLine(s, k.slice(4)) : T[k] ? T[k](s) : null; } catch (e) { t = null; }
       if (t != null && el.textContent !== t) el.textContent = t; });
+    /* site-audit 2026-10-27: [data-cost="BASE"] shows the current amount = base / 2^halvingsDone (same rule as V2Rules.costAt without a Fire Sale) */
+    (root || document).querySelectorAll('[data-cost]').forEach(function (el) { var t = costText(+el.getAttribute('data-cost'), s.halvingsDone || 0); if (t != null && el.textContent !== t) el.textContent = t; });
     if (document.body) document.body.setAttribute('data-cp-current', s.current ? s.current.id : 'none'); }
   var last = null;
   function set(s) { last = s; apply(s); }
   function fromWorld(w) { var s = state(w); set(s); return s; }
   /* no replay on this page: read the hourly feed (same replay); quiet on failure, the HTML text stays */
   function fromFeed() { if (!window.fetch || window.V2Mock) return; fetch('api/meta.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) { if (m && m.community && !last) set(m.community); }).catch(function () { }); }
-  window.V2Community = { PETS: PETS, byId: byId, state: state, apply: apply, set: set, fromWorld: fromWorld, current: function () { return last; }, text: T, petLine: petLine };
+  window.V2Community = { PETS: PETS, byId: byId, state: state, apply: apply, set: set, fromWorld: fromWorld, current: function () { return last; }, text: T, petLine: petLine, costText: costText };
   if (typeof document !== 'undefined' && document.addEventListener && document.querySelector) { var go = function () { if (!document.body || document.body.getAttribute('data-v2page')) return; fromFeed(); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 })();

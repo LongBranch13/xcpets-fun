@@ -16,7 +16,7 @@
       var host = document.querySelector('main') || document.body, nav = document.querySelector('nav, .nav, header'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
     var left = h.next ? Math.max(0, h.next - h.tip) : 0;
     el.innerHTML = h.era > 0
-      ? '<b>👑 The halving</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half' + (h.era > 1 ? ' again' : '') + '.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'
+      ? (h.era > 1 ? '<b>👑 The halving</b> <span>Halving ' + h.era + ' is live: every burn costs 1/' + Math.pow(2, h.era) + ' of the base amount.</span> <a href="archive.html">Cold Storage</a>' : '<b>👑 The halving</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>')
       : '<b>⚔️ Lord Kek has been defeated</b> <span>From block ' + fmt(h.next) + ' (' + left + ' block' + (left === 1 ? '' : 's') + ' away) every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'; }
   function labels() { if (!V.COSTS || !V.COSTS.era) return; var C = V.COSTS, set = function (id, t) { var b = document.getElementById(id); if (b && b.textContent !== t) b.textContent = t; };
     set('hatchBtn', 'Crack One Open (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Crack Pack · 12 eggs (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Yolk Booster Box · 144 eggs (' + fmt(C.hatch144) + ')');
