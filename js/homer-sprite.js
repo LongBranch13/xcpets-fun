@@ -30,15 +30,17 @@
   function fwd(x, y) { return [HX2 + (x - HX) * HK, HY2 + (y - HY) * HK]; }
   function keyAt(X, Y, stage, blink) { var k = null, d, c, x = HX + (X - HX2) / HK, y = HY + (Y - HY2) / HK;   // x,y = point in the traced (v5) head space
     if (Y >= 24.5 && el(X, Y, 14.5, 31, 7, 7) < 1) k = (X > 19 ? 'C' : 'w');                                         // shirt (short, v3)
-    if (Y < 25.6 && (c = head(x, y))) k = c === '#' ? (x < 7.4 || (y > 21 && x < 10) ? 'g' : 'G') : (y > 21.6 ? 'g' : 'h'); // traced head; light muzzle like the card, stubble shade on the chin
-    if (Y >= 24 && Y <= 26.2) { var ax = Math.abs(X - 14.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - Y) * 1.3) k = (ax >= 1.0 + (26.2 - Y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
+    var hc = Y < 26.4 && head(x, y), up = Y < 27.4 && head(x, y - 1 / HK);                                            // v8: chin keeps clear of the shirt
+    if (hc) k = hc === '#' ? (x < 7.4 || (y > 21 && x < 10) ? 'g' : 'G') : (y > 21.6 ? 'g' : 'h'); // traced head; light muzzle like the card, stubble shade on the chin
+    else if (up && k) k = 'n';                                                                                                // ink line under the chin, shirt starts below it
+    if (!hc && !up && Y >= 24 && Y <= 26.2) { var ax = Math.abs(X - 14.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - Y) * 1.3) k = (ax >= 1.0 + (26.2 - Y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
     if (el(x, y, 12.0, 5.6, 2.2, 1.8) < 1 && head(x, y) === '#') k = 'h';                                              // dome shine
     if ((d = el(x, y, 6.6, 17.0, 1.35, 1.8)) < 1) k = (rim(x, y, 6.6, 17.0, 1.35, 1.8) ? 'n' : (Math.abs(x - 6.8) < 0.3 && Math.abs(y - 17.1) < 0.8 ? 'g' : 'G'));  // ear (card): own ink ring + inner fold, below the side hair
     var u = (x - 15.4) / 3.4, f = 20.5 - 0.9 * u * u - 0.25 * u;                                     // lip (card): long sagging smile (11.9,19.9)-(15.8,20.9)-(19.6,19.5)
     if (x >= 12.0 && x <= 18.8) { if (Math.abs(y - f) <= 0.6) k = 'L'; else if (y > f + 0.6 && y <= f + 1.0) k = 'l'; }
-    if ((d = el(x, y, 18.4, 15.5, 2.0, 1.7)) < 1) k = (rim(x, y, 18.4, 15.5, 2.0, 1.7) ? 'n' : (el(x, y, 17.8, 15.0, 0.7, 0.5) < 1 ? 'h' : 'G'));  // Homer's nose: separate round shape, full ink ring
-    [[11.3, 11.4, 3.0, 3.0], [16.5, 11.1, 2.6, 3.0]].forEach(function (e) { d = el(x, y, e[0], e[1], e[2], e[3]); if (d < 1) { k = rim(x, y, e[0], e[1], e[2], e[3]) ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
-        else if (k === 'E' && el(x, y, e[0] - 0.1, e[1] + 0.5, 0.85, 0.9) < 1) k = 'P'; } });                               // card eye sizes/centres; touching, one shared outline; small low navy pupils
+    if ((d = el(x, y, 19.5, 15.4, 2.0, 1.75)) < 1) k = (rim(x, y, 19.5, 15.4, 2.0, 1.75) ? 'n' : (el(x, y, 19.0, 14.9, 0.7, 0.5) < 1 ? 'h' : 'G'));  // Homer's nose: separate round shape, full ink ring
+    [[11.1, 11.7, 3.1, 3.1, 0.6], [16.5, 11.1, 2.6, 3.0, -0.1]].forEach(function (e) { d = el(x, y, e[0], e[1], e[2], e[3]); if (d < 1) { k = rim(x, y, e[0], e[1], e[2], e[3]) ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
+        else if (k === 'E' && el(x, y, e[0] + e[4], e[1] + 0.55, 0.75, 0.75) < 1) k = 'P'; } });                               // card eye sizes/centres; touching, one shared outline; small low navy pupils
     return k; }
   function curls(g, t, dy) { /* card hair: two curled strands off the top-left of the dome + zigzag side hair above the ear (ink), v5 space -> adult -> stage scale */
     var pts = [[7.2, 3.0], [6.4, 2.0], [7.4, 1.2],
