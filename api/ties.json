@@ -1,6 +1,6 @@
 {
- "lastBlock": 973420,
- "count": 198,
+ "lastBlock": 973424,
+ "count": 202,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2376,6 +2376,54 @@
    "name": "Chujenuli",
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38252,
+   "asset": "A10217927552272940389",
+   "tiedBlock": 973422,
+   "tiedTx": "6cce5fc65fd6c307ae65a9f96ffb1ddf16ceb2c97bd13aa18c401ebb8a1b401c",
+   "kind": "deed",
+   "name": "Jinoozoon",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38368,
+   "asset": "A5001862849860135741",
+   "tiedBlock": 973422,
+   "tiedTx": "c4497a60c2a69df2aada9e4d9237b75cf1280da83714a61dd23d1a2b8a457411",
+   "kind": "deed",
+   "name": "Tepuboo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38251,
+   "asset": "A11737732984166050390",
+   "tiedBlock": 973423,
+   "tiedTx": "66c562a83ebbe6913106d5371550601feb9e1447f4f5df3554e91a97fd6847fa",
+   "kind": "deed",
+   "name": "Tejochizy",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38274,
+   "asset": "A18369077842944600053",
+   "tiedBlock": 973423,
+   "tiedTx": "0d8c4d4ba4b48ea891a0bfeffd8e641160874fe63ba028d8653358def5244db0",
+   "kind": "deed",
+   "name": "Lazoohumi",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
