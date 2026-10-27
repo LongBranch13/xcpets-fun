@@ -455,6 +455,15 @@
     ['bo-towel', 'Bo towel', 'body', 'chest', 2, 'body', ['.......', '.......', '....ww.', '....wd.', '....wd.', '....ww.']]
   ];
   BO_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: 3, label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], bo: true }; });
+  /* RAREPIGEON GEAR (owner Oct 26 2026 ~10:54 PM CT 'He get the gear too', branch rarepigeon-1of1): RENDER-ONLY maps, same rules as BO_GEAR. NOT in ITEMS,
+   * so never in any roll pool or drop; V2Rules grants one of each ONLY to Rarepigeon's owner (RP_TO) at ACTIVATE_RP_BLOCK. Wearable by any of that player's pets. */
+  var RP_GEAR = [
+    ['rp-bread', 'Rarepigeon bread slice', 'hand', 'handR', null, 'held', ['.lll.', 'lPPPl', 'lPFPl', 'lFPPl', 'lllll']],
+    ['rp-scroll', 'Rarepigeon message scroll', 'hand', 'handR', null, 'held', ['l.....l', 'lPPPPPl', 'lPTTTPl', 'lPPPPPl', 'l..R..l']],
+    ['rp-tube', 'Rarepigeon messenger leg tube', 'body', 'chest', 2, 'body', ['.......', '..LcL..', '..LCL..', '..LCL..', '...R...']],
+    ['rp-cap', 'Rarepigeon courier cap', 'head', 'head', 2, 'hat', ['..mmmm...', '.mmOOmm..', 'mmmmmmmZZ']]
+  ];
+  RP_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: 3, label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], rp: true }; });
   /* BITCOIN STAFF (owner, Oct 20 2026): Wizard-only ★ weapon, the meme's long brown staff tilted up-right with a big orange ₿ coin. Worn in its own
    * 'weapon' slot (right hand) so it pairs with the "Join us" sign (Grip, left hand); rolls inside the Grip pool (rollSlot 'hand', weight 5 like other ★).
    * item.since 'wiz-staff' = OFF until V2Rules.ACTIVATE_WIZ_STAFF_BLOCK is set (null now). Appended at the END of ITEMS. No grants. */
@@ -545,5 +554,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { BO_GEAR: BO_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { BO_GEAR: BO_GEAR, RP_GEAR: RP_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });

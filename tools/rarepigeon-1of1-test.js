@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+/* RAREPIGEON 1 of 1 tests (modeled on bo-1of1-test): gate null (tested via _setRp), grant to the ...e0 address, egg, Legendary, power exactly 142, not boosted by the supreme sweep, grows/breeds/fights/gear,
+ * sprite renders every stage. node tools/rarepigeon-1of1-test.js */
+'use strict';
+const { load, row, snap, run, fakeHash } = require('./lib/load-rules');
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
+const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
+const V2S = ['head', 'face', 'back', 'hand', 'body', 'feet', 'weapon'];
+const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
+ok(V.ACTIVATE_RP_BLOCK === 973345 && V.rpGate() === 973345, 'gate 973345'); ok(V.RP_POWER === 142, 'power 142'); ok(V.RP_TO === 'bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', 'address');
+const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
+const w0 = run(c, s, [], tip); ok(!w0.pets.some(p => p.species === 'rarepigeon'), 'no Rarepigeon before the gate');
+V._setRp(tip); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'rarepigeon');
+ok(B.length === 1, 'exactly one Rarepigeon'); const b = B[0];
+ok(b.owner === 'bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', 'owner ...28e0');
+ok(b.name === 'Rarepigeon' && b.tier === 3 && b.supreme && b.supreme.id === 'rarepigeon' && b.supreme.title === 'The First Rare Pigeon' && b.supreme.of === 1, 'name/tier/1 of 1');
+ok(b.stage === 0 && b.care === 0, 'granted as an egg'); ok(pw(b) === 142, 'power 142 got ' + pw(b)); ok(!b.grantPower, 'not in the 155-160 supreme sweep');
+ok(K.every(k => b.stats[k] >= 1 && b.stats[k] <= 30), 'stats 1..30');
+const w2 = run(c, s, [], tip); ok(w2.pets.filter(p => p.species === 'rarepigeon').length === 1, 'once');
+ok(V.breedable(Object.assign({}, b, { stage: 3 }), 973400) === null, 'can breed');
+/* BO GEAR (owner: just give to player): one of each Rarepigeon piece in ...28e0's inventory, unworn; nobody else has any; never in a roll pool; renders */
+{ const BG = (c.V2Gear.RP_GEAR || []).map(x => x[0]); ok(BG.length === 4, 'four Rarepigeon gear pieces');
+  BG.forEach(id => { const mine = Object.values(w.items).filter(g => g.item === id); ok(mine.length === 1 && mine[0].owner === b.owner && !mine[0].on, id + ': one, owned by ...28e0, unworn');
+    ok(!Object.values(w0.items).some(g => g.item === id), id + ': none before the gate'); ok(V.itemOf(id) && V.itemOf(id).noRoll, id + ': noRoll');
+    ok(!V.ALL_GEAR.some(x => x.id === id), id + ': not in the gear list'); ok(!(c.V2Gear.ITEMS || []).some(x => x.id === id), id + ': not in ITEMS');
+    ['pepe', 'wojak', 'kek', 'nakamoto'].forEach(sp => [0, 1, 2, 3].forEach(ti => V2S.forEach(sl => { const P = V.pool(sl, sp, ti); ok(!(P || []).some(x => x && (x.id === id || x.item === id)), id + ' not in ' + sl + ' pool ' + sp + ' t' + ti); }))); });
+  ok(pw(b) === 142, 'Rarepigeon power 142 with gear granted'); }
+console.log('Rarepigeon #' + b.id + ' stats ' + JSON.stringify(b.stats) + ' power ' + pw(b));
+
+/* BREEDING: Rarepigeon breeds like the contest 1 of 1s (Rarepigeon counts as a copy of the partner's species; normal odds, tier, stats, cap, cooldown) and every
+ * Rarepigeon baby gets Rarepigeon's teal neck sheen (art.rpMark, looks only). Never a Rarepigeon, never a 1 of 1. Hybrid partner -> hybrid baby; 3-way partner -> 3-way baby. */
+const R = c.V2Render; const END = 973500; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
+const wb = JSON.parse(JSON.stringify(w)); wb.byId = {}; wb.pets.forEach(p => { wb.byId[p.id] = p; }); const rp = wb.byId[b.id]; rp.stage = 3; rp.care = 999;
+const clone = () => { const ww = JSON.parse(JSON.stringify(wb)); ww.byId = {}; ww.pets.forEach(p => { ww.byId[p.id] = p; }); return ww; };
+const live = wb.pets.filter(p => !p.dead && !p.released && !p.community && !p.supreme && !p.burnLord && !p.contest && p.species !== 'rarepigeon');
+const partners = {}; live.forEach(p => { const sp = p.species, k = /^hyb3:/.test(sp) ? '3way' : /^hyb/.test(sp) ? 'hybrid' : sp; if (!partners[k]) partners[k] = p; });
+const shown = []; let nb = 0;
+Object.keys(partners).forEach((k, i) => { const P2 = partners[k]; for (let r = 0; r < 3; r++) { const ww = clone(), kid = V.breedOne(ww, ww.byId[rp.id], ww.byId[P2.id], fakeHash(END + i * 7 + r), 'test:rp' + k + r, END, rp.owner); nb++;
+  ok(kid.art.rpMark === 1, k + ': Rarepigeon eye black'); ok(kid.species !== 'rarepigeon' && !kid.supreme && !kid.contest, k + ': not a Rarepigeon / not 1 of 1');
+  if (k === 'hybrid' || k === '3way') ok(V.isHybrid(kid.species), k + ' partner gives a hybrid baby (' + kid.species + ')'); else ok(kid.species === P2.species, k + ': partner species');
+  for (let st = 0; st <= 5; st++) { let fr; try { fr = R.framesWith(kid.art, st, [], []); } catch (e) { ok(false, k + ' render st' + st + ' ' + e.message); continue; } ok(fr && fr.length >= 1, k + ' frames st' + st);
+    if (st >= 1) { const bare = R.framesWith(Object.assign({}, kid.art, { rpMark: 0 }), st, [], [])[0].data; let diff = 0; for (let q = 0; q < bare.length; q += 4) if (bare[q] !== fr[0].data[q] || bare[q + 1] !== fr[0].data[q + 1]) diff++; ok(diff > 0 && diff < 20, k + ' eye black drawn st' + st + ' (' + diff + 'px)'); } }
+  if (r === 0) shown.push({ k, kid }); } });
+/* GEAR on a Rarepigeon baby: every eligible item renders */
+const gk = shown[0].kid, gids = [].concat((c.V2Gear.ITEMS || []).map(x => x.id)).filter(id => V.itemOf(id) && V.eligible(V.itemOf(id), gk.species, null, gk.tier)); let gOk = 0;
+gids.forEach(id => { try { R.framesWith(gk.art, 4, [id], []); gOk++; } catch (e) { ok(false, 'gear ' + id + ' ' + e.message); } }); ok(gOk === gids.length && gOk > 0, 'gear on Rarepigeon baby ' + gOk);
+/* LINEAGE: the mark passes to grandchildren and every later generation (a marked parent marks the baby) */
+{ const ww = clone(), P2 = partners.pepe || partners[Object.keys(partners)[0]]; let par = V.breedOne(ww, ww.byId[rp.id], ww.byId[P2.id], fakeHash(END + 901), 'test:g1', END, rp.owner);
+  for (let g = 2; g <= 4; g++) { par.stage = 3; par.care = 999; const mate = live.find(p => p.species === par.species && p.id !== par.id && p.id !== P2.id) || P2;
+    const kid = V.breedOne(ww, ww.byId[par.id] || par, ww.byId[mate.id], fakeHash(END + 901 + g), 'test:g' + g, END + g, rp.owner); ok(kid.art.rpMark === 1, 'generation ' + g + ' keeps neck sheen (' + kid.species + ')'); par = kid; } }
+/* Rarepigeon gear renders on a Rarepigeon baby and on Rarepigeon himself */
+(c.V2Gear.RP_GEAR || []).forEach(x => { try { const a = R.framesWith(gk.art, 4, [x[0]], [])[0].data, z = R.framesWith(gk.art, 4, [], [])[0].data; let d = 0; for (let q = 0; q < a.length; q += 4) if (a[q] !== z[q] || a[q + 1] !== z[q + 1] || a[q + 2] !== z[q + 2]) d++; ok(d > 0, x[0] + ' drawn on baby (' + d + 'px)'); } catch (e) { ok(false, x[0] + ' baby ' + e.message); }
+  try { const f = R.framesWith(Object.assign({}, b.art, { species: 'rarepigeon' }), 4, [x[0]], []); ok(f && f.length >= 1, x[0] + ' on Rarepigeon'); } catch (e) { ok(false, x[0] + ' on Rarepigeon ' + e.message); } });
+/* before the Rarepigeon gate: no mark (replay SAME) */ { const ww = clone(), P2 = partners[Object.keys(partners)[0]], kid = V.breedOne(ww, ww.byId[P2.id], ww.byId[live.find(p => p.species === P2.species && p.id !== P2.id).id], fakeHash(END), 'test:nb', END, P2.owner); ok(!kid.art.rpMark, 'non-Rarepigeon babies unmarked'); }
+console.log('Rarepigeon babies bred: ' + nb + ' partners ' + Object.keys(partners).join(','));
+if (process.env.RP_SHEET) require('fs').writeFileSync(process.env.RP_SHEET, JSON.stringify(shown.map(x => ({ k: x.k, sp: x.kid.species, name: V.hybridName && V.isHybrid(x.kid.species) ? V.hybridName(x.kid.species) : x.kid.species,
+  frames: [3, 4, 5].map(st => Array.from(R.framesWith(x.kid.art, st, [], [])[0].data)) }))));
+const CS = require('../js/contest-sprite.js'); for (let st = 0; st <= 5; st++) { const f = CS.frames('rarepigeon', st, '#14101e', st ? { hand: { item: 'rp-bread', cols: ['#8a5a2b', '#c8955a'] } } : null); ok(f.length === 4 && f[0].data.length === 4096, 'rp sprite stage ' + st); }
+console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
