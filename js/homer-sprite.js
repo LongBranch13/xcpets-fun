@@ -28,19 +28,20 @@
   var HK = 1.12, HX2 = 3.6, HY2 = 1.5; /* v6: the whole traced head scaled up evenly by HK (same proportions); v5 unit space -> adult space */
   function rim(x, y, cx, cy, rx, ry) { var q = 0.95 / HK; return el(x, y, cx, cy, rx - q, ry - q) >= 1; } /* one-pixel ink ring */
   function fwd(x, y) { return [HX2 + (x - HX) * HK, HY2 + (y - HY) * HK]; }
+  var NOSE_DX = 1 / HK, LEX = 11.9; /* v9: left eye = mirror of the right eye's shape (2.6 x 3.0), sharing its outline */
+  var NOSE = [18.4 + NOSE_DX, 15.5, 2.0, 1.7]; /* v9: nose centre moved out one sprite pixel */
+  function inNose(x, y) { return el(x, y, NOSE[0], NOSE[1], NOSE[2], NOSE[3]) < 1; }
   function keyAt(X, Y, stage, blink) { var k = null, d, c, x = HX + (X - HX2) / HK, y = HY + (Y - HY2) / HK;   // x,y = point in the traced (v5) head space
     if (Y >= 24.5 && el(X, Y, 14.5, 31, 7, 7) < 1) k = (X > 19 ? 'C' : 'w');                                         // shirt (short, v3)
-    var hc = Y < 26.4 && head(x, y), up = Y < 27.4 && head(x, y - 1 / HK);                                            // v8: chin keeps clear of the shirt
-    if (hc) k = hc === '#' ? (x < 7.4 || (y > 21 && x < 10) ? 'g' : 'G') : (y > 21.6 ? 'g' : 'h'); // traced head; light muzzle like the card, stubble shade on the chin
-    else if (up && k) k = 'n';                                                                                                // ink line under the chin, shirt starts below it
-    if (!hc && !up && Y >= 24 && Y <= 26.2) { var ax = Math.abs(X - 14.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - Y) * 1.3) k = (ax >= 1.0 + (26.2 - Y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
+    if (Y < 25.6 && (c = head(x, y))) k = c === '#' ? (x < 7.4 || (y > 21 && x < 10) ? 'g' : 'G') : (y > 21.6 ? 'g' : 'h'); // traced head; light muzzle like the card, stubble shade on the chin
+    if (Y >= 24 && Y <= 26.2) { var ax = Math.abs(X - 14.5); if (ax >= 0.9 && ax <= 1.0 + (26.2 - Y) * 1.3) k = (ax >= 1.0 + (26.2 - Y) * 1.3 - 0.8 ? 'C' : 'W'); } // collar points
     if (el(x, y, 12.0, 5.6, 2.2, 1.8) < 1 && head(x, y) === '#') k = 'h';                                              // dome shine
     if ((d = el(x, y, 6.6, 17.0, 1.35, 1.8)) < 1) k = (rim(x, y, 6.6, 17.0, 1.35, 1.8) ? 'n' : (Math.abs(x - 6.8) < 0.3 && Math.abs(y - 17.1) < 0.8 ? 'g' : 'G'));  // ear (card): own ink ring + inner fold, below the side hair
     var u = (x - 15.4) / 3.4, f = 20.5 - 0.9 * u * u - 0.25 * u;                                     // lip (card): long sagging smile (11.9,19.9)-(15.8,20.9)-(19.6,19.5)
     if (x >= 12.0 && x <= 18.8) { if (Math.abs(y - f) <= 0.6) k = 'L'; else if (y > f + 0.6 && y <= f + 1.0) k = 'l'; }
-    if ((d = el(x, y, 19.5, 15.4, 2.0, 1.75)) < 1) k = (rim(x, y, 19.5, 15.4, 2.0, 1.75) ? 'n' : (el(x, y, 19.0, 14.9, 0.7, 0.5) < 1 ? 'h' : 'G'));  // Homer's nose: separate round shape, full ink ring
-    [[11.1, 11.7, 3.1, 3.1, 0.6], [16.5, 11.1, 2.6, 3.0, -0.1]].forEach(function (e) { d = el(x, y, e[0], e[1], e[2], e[3]); if (d < 1) { k = rim(x, y, e[0], e[1], e[2], e[3]) ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
-        else if (k === 'E' && el(x, y, e[0] + e[4], e[1] + 0.55, 0.75, 0.75) < 1) k = 'P'; } });                               // card eye sizes/centres; touching, one shared outline; small low navy pupils
+    if (inNose(x, y)) k = (rim(x, y, NOSE[0], NOSE[1], NOSE[2], NOSE[3]) ? 'g' : (el(x, y, NOSE[0] - 0.6, NOSE[1] - 0.5, 0.7, 0.5) < 1 ? 'h' : 'G'));  // Homer's nose (v9): one pixel further out, shaded skin edge, no ink ring
+    [[LEX, 11.1, 2.6, 3.0], [16.5, 11.1, 2.6, 3.0]].forEach(function (e) { d = el(x, y, e[0], e[1], e[2], e[3]); if (d < 1) { k = rim(x, y, e[0], e[1], e[2], e[3]) ? 'n' : 'E'; if (blink && k === 'E') k = Math.abs(y - e[1]) < 0.6 ? 'n' : 'G';
+        else if (k === 'E' && el(x, y, e[0] - 0.1, e[1] + 0.5, 0.85, 0.9) < 1) k = 'P'; } });                               // card eye sizes/centres; touching, one shared outline; small low navy pupils
     return k; }
   function curls(g, t, dy) { /* card hair: two curled strands off the top-left of the dome + zigzag side hair above the ear (ink), v5 space -> adult -> stage scale */
     var pts = [[7.2, 3.0], [6.4, 2.0], [7.4, 1.2],
@@ -53,15 +54,15 @@
         g[y].push(k); } }
     [[13, 10], [14, 9], [15, 10], [16, 9], [17, 8], [18, 9]].forEach(function (p) { var Y = p[1] + dy; if (Y >= 0 && !g[Y][p[0]]) g[Y][p[0]] = 'n'; });
     return g; }
-  function outline(g) { var o = g.map(function (r) { return r.slice(); });
-    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (!g[y][x] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var X = x + q[0], Y = y + q[1]; return X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X] && g[Y][X] !== 'n'; })) o[y][x] = 'n';
+  function outline(g, nm) { var o = g.map(function (r) { return r.slice(); });
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (!g[y][x] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var X = x + q[0], Y = y + q[1]; return X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X] && g[Y][X] !== 'n' && !(nm && nm[Y][X]); })) o[y][x] = 'n';
     return o; }
-  function base(stage, frame) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g;
+  function base(stage, frame) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g, nm = null;
     if (s === 0) g = egg(f);
-    else { var t = SCALE[s], dy = f === 1 ? -1 : 0; g = [];
-      for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var sx = 15 + (x + 0.5 - 15) / t, sy = 28.5 + (y - dy + 0.5 - 28.5) / t; g[y].push(y - dy > 29 ? null : keyAt(sx, sy, s, f === 2)); } }
+    else { var t = SCALE[s], dy = f === 1 ? -1 : 0; g = []; nm = [];
+      for (var y = 0; y < N; y++) { g.push([]); nm.push([]); for (var x = 0; x < N; x++) { var sx = 15 + (x + 0.5 - 15) / t, sy = 28.5 + (y - dy + 0.5 - 28.5) / t; g[y].push(y - dy > 29 ? null : keyAt(sx, sy, s, f === 2)); nm[y].push(y - dy <= 29 && !head(HX + (sx - HX2) / HK, HY + (sy - HY2) / HK) && inNose(HX + (sx - HX2) / HK, HY + (sy - HY2) / HK)); } }
     }
-    var o = outline(g); if (s > 0) curls(o, SCALE[s], f === 1 ? -1 : 0);
+    var o = outline(g, nm); if (s > 0) curls(o, SCALE[s], f === 1 ? -1 : 0);
     if (s === 5) { var o2 = o.map(function (r) { return r.slice(); }); /* shared Mythic gold rim */
       for (var ry = 0; ry < 30; ry++) for (var rx = 0; rx < N; rx++) if (!o[ry][rx] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var X = rx + q[0], Y = ry + q[1]; return X >= 0 && Y >= 0 && X < N && Y < N && o[Y][X] === 'n'; })) o2[ry][rx] = 'A';
       o = o2; }
