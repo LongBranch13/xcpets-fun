@@ -3454,7 +3454,7 @@
     var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
-    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; return fp && fp.length === 1 && fa.length > 1 ? fp : fa; } }
+    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; /* feed-burns-fix: never force a big skip-list sync; take whichever plan needs fewer burns (tie -> pet:fa, which makes later feeds 1 burn). */ return fp && fp.length < fa.length ? fp : fa; } }
     return feedListOn(nb) ? feedPlan(ps) : feedBatches(ps);
   }
   /** feedListOn(tip): the UI offers pet:fl bundles only once the chain tip has reached FEED_LIST_BLOCK. */
