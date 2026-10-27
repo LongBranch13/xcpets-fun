@@ -562,7 +562,7 @@
    * (null = OFF until the owner sets the gate) to RP_TO; own species 'rarepigeon' drawn by ContestSprite from js/rarepigeon-sprite.js; name 'Rarepigeon';
    * POWER exactly RP_POWER = 142 (excluded from the grant power sweep, scaled once like Bo). GEAR: one of each V2Gear.RP_GEAR piece into RP_TO's
    * inventory, unworn; lookup-only, never in a roll pool, never dropped. Babies: partner's species + art.rpMark (teal neck sheen, looks only, every generation). */
-  var ACTIVATE_RP_BLOCK = null;
+  var ACTIVATE_RP_BLOCK = 973345; /* tip 973339 (mempool.space, Oct 26 2026 11:20 PM CT) + 6 */
   var RP_TO = 'bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', RP_POWER = 142;
   function grantRp(w, b, hashes) { var G = ACTIVATE_RP_BLOCK; if (G == null || w.rpGranted || b == null || b < G) return; var gh = hashes && hashes[G]; if (!gh) return; w.rpGranted = G;
     var seed = 'XCPETS:supreme:rarepigeon', art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: G }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
