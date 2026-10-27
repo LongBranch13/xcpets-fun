@@ -58,9 +58,9 @@
   };
   /* per-pet status lines on the Pet Guide (data-cp="pet:<id>") */
   function petLine(s, id) { var p = byId(id); if (!p || !s) return null; var cold = s.cold.filter(function (x) { return x.id === id; })[0];
-    if (s.egg && s.egg.id === id) return 'In Cold Storage since block ' + fmt(cold.block) + '. The 1 in 777 egg is now a ' + p.name + ' egg that anyone can hatch, at any tier. There is no other way to get one.';
+    if (s.egg && s.egg.id === id) return 'In Cold Storage since block ' + fmt(cold.block) + '. The 1 in 777 egg is now a ' + p.name + ' egg that anyone can hatch (Rare or Legendary). There is no other way to get one.';
     if (cold && p.egg) return 'In Cold Storage since block ' + fmt(cold.block) + '. ' + p.short + ' eggs stopped when ' + (PETS[p.no] ? PETS[p.no].name : 'the next pet') + ' reached Mythic.';
-    if (s.current && s.current.id === id) return 'The community pet now' + (s.last && s.last.no >= 2 ? ', in ' + s.last.the + poss(s.last.name) + ' place' : '') + '. Not hatched yet. When he reaches Mythic and goes to Cold Storage, the 1 in 777 egg becomes a ' + p.name + ' egg that anyone can hatch, at any tier. There is no other way to get one.';
+    if (s.current && s.current.id === id) return 'The community pet now' + (s.last && s.last.no >= 2 ? ', in ' + s.last.the + poss(s.last.name) + ' place' : '') + '. Not hatched yet. When he reaches Mythic and goes to Cold Storage, the 1 in 777 egg becomes a ' + p.name + ' egg that anyone can hatch (Rare or Legendary). There is no other way to get one.';
     return null; }
   function apply(s, root) { if (!s) return; (root || document).querySelectorAll('[data-cp]').forEach(function (el) { var k = el.getAttribute('data-cp'), t = null;
       try { t = /^pet:/.test(k) ? petLine(s, k.slice(4)) : T[k] ? T[k](s) : null; } catch (e) { t = null; }

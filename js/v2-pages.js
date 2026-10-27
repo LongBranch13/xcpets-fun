@@ -45,7 +45,7 @@
           d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(nm) + '</h3><span class="muted small">Cold Storage</span>'); R.animate(c, f); grid.appendChild(d); return; }
         if (tier !== 'legendary' || box.querySelector(sel)) return;
         var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', id); row.setAttribute('data-cold', id);
-        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatches from the 1 in 777 egg, any tier' : 'Kept in Cold Storage') + '</p></div>';
+        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatched from the 1 in 777 egg (Rare or Legendary from block 972,912)' : 'Kept in Cold Storage') + '</p></div>';
         var strip = document.createElement('div'); strip.className = 'strip6';
         (G.STAGES || V.STAGE_NAMES).forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', ' + name);
           var f = coldFr(k, si); if (f) R.paint(c, f[0]); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
