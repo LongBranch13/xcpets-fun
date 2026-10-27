@@ -173,7 +173,7 @@
    * Each eligible pet (owned, alive, not released, not fed this day, not fully fed, not away on a quest) takes its own meal from the burn in id
    * order; a pet the rest of the burn can't pay for is skipped. No pet limit: one burn can feed every pet of the wallet.
    * Inert before FEED_ALL_BLOCK: before it pet:fa / pet:fx replay exactly as today (unknown pet: tag, community food only). */
-  var FEED_ALL_BLOCK = 973392;     // chain tip 973386 (mempool.space, 2026-10-27 6:20 AM CT) + 6; RE-SET to tip + 6 at deploy
+  var FEED_ALL_BLOCK = 973397;     // chain tip 973391 (mempool.space, 2026-10-27 7:05 AM CT) + 6; RE-SET to tip + 6 at deploy
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
@@ -675,7 +675,7 @@
   var ACTIVATE_MYTHIC_RAISED_ONLY_BLOCK = 973099; /* tip 973093 (api.xcp.fun counterparty_height) + 6, set 2026-10-25 */
   function mythicRaisedOnlyOn(b) { return b != null && b >= ACTIVATE_MYTHIC_RAISED_ONLY_BLOCK; }
   /** noteGot(w, P, to): record an ownership change (call BEFORE P.owner is set). mythic = P was already Mythic for its old owner, or past the natural Mythic line. */
-  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
+  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; if (P.skipBy) P.skipBy = null; /* feed-skip clears on any transfer */ w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
   /** noteOwnCare(w, P, m): the owner fed P m care (feeds are owner-only); counted only for a pet that has changed owner (never-moved pets qualify by (a)). */
   function noteOwnCare(w, P, m) { var g = w.mythicGot && w.mythicGot[P.id]; if (g && g.owner === P.owner) g.own += m; }
   /** raisedBy(w, p): true when p's current owner raised it: never moved (a), or the owner added more than half of its care (b). */
@@ -1504,6 +1504,12 @@
       var lids = p[2].split('.').map(function (x) { return parseInt(x, 32); });
       for (var li = 1; li < lids.length; li++) if (!(lids[li] > lids[li - 1])) return { action: 'invalid' };
       return { action: 'feedl', ids: lids }; }
+    if ((a === 'FX' || a === 'FY' || a === 'SK' || a === 'SU') && p.length === 4 && idOk(p[2]) && /^[0-9A-V]{1,27}$/.test(p[3])) { var wi = []; /* id window, same bitmask as pet:fm */
+      for (var wq = 0; wq < p[3].length; wq++) { var wv = parseInt(p[3][wq], 32); for (var wb = 0; wb < 5; wb++) if (wv & (1 << wb)) wi.push(n(2) + 5 * wq + wb); }
+      if (!wi.length) return { action: 'invalid' }; return a === 'FX' || a === 'FY' ? { action: 'feeda', ex: wi, un: a === 'FY' } : { action: 'skip', ids: wi, un: a === 'SU' }; }
+    if ((a === 'FY' || a === 'SK' || a === 'SU') && p.length === 3 && p[2].length <= MAX_TAG_BYTES - 7 && /^[1-9A-V][0-9A-V]{0,5}(\.[1-9A-V][0-9A-V]{0,5})*$/.test(p[2])) {
+      var yi = p[2].split('.').map(function (x) { return parseInt(x, 32); }); for (var yk = 1; yk < yi.length; yk++) if (!(yi[yk] > yi[yk - 1])) return { action: 'invalid' };
+      return a === 'FY' ? { action: 'feeda', ex: yi, un: true } : { action: 'skip', ids: yi, un: a === 'SU' }; }
     if (a === 'FA' && p.length === 2) return { action: 'feeda', ex: [] }; /* one-tx feed all (inert before FEED_ALL_BLOCK) */
     if (a === 'FX' && p.length === 3 && p[2].length <= MAX_TAG_BYTES - 7 && /^[1-9A-V][0-9A-V]{0,5}(\.[1-9A-V][0-9A-V]{0,5})*$/.test(p[2])) {
       var xids = p[2].split('.').map(function (x) { return parseInt(x, 32); });
@@ -2251,7 +2257,7 @@
       return L(r, 'token', '#' + p.id + ' found a roll token (' + (kind === 'meal' ? 'meal' : 'stage-up') + '): free roll ' + it.label + ' (' + slotLabel(sl) + ')' + (ni.bag != null ? ' -> #' + p.id + "'s bag (slot locked)" : ''), { petId: p.id, gid: ni.gid, token: true, wk: 'tok' + p.id }); }
     if (/^(ad|rug|unad)$/.test(t.action) && !rugOn(b)) t = { action: 'invalid' }; /* Rug Me OFF: same as before (unknown tag) */
     if ((t.action === 'sd' || t.action === 'tt' || t.action === 'join') && !modesOn(b)) t = { action: 'invalid' }; /* arena modes OFF: same as before (unknown tag) */
-    if (t.action === 'feeda' && b < FEED_ALL_BLOCK) t = { action: 'invalid' }; /* one-tx feed OFF: same as before (unknown tag) */
+    if ((t.action === 'feeda' || t.action === 'skip') && b < FEED_ALL_BLOCK) t = { action: 'invalid' }; /* one-tx feed OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
     if ((t.action === 'quest' || t.action === 'aura') && !questOn(b)) t = { action: 'invalid' };
     if (t.action === 'look' && !lookPickOn(b)) t = { action: 'invalid' }; /* look picker OFF: same as before (unknown tag) */ /* Mythic quests OFF: same as before (unknown tag) */
@@ -2307,10 +2313,16 @@
         w._fireFull = mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b, true); var qs = q.stage, qm = mealFor(q.care, q.species, b, petThresholds(w, q, b)); q.care += qm; noteOwnCare(w, q, qm); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b); streakFeed(w, src, q, b, r.tx_hash);
         var fl = L(r, 'feed', 'fed #' + q.id + ' (care ' + q.care + ')', { petId: q.id }); token(q, q.stage > qs ? 'stageUp' : 'meal'); return fl;
       }
+      case 'skip': { /* feed-skip set (on-chain discard for feed-all): pet:sk adds, pet:su removes; nothing is fed */
+        var kok = []; t.ids.forEach(function (id) { var z = w.byId[id]; if (z && z.owner === src && !z.released) { z.skipBy = t.un ? null : src; kok.push(id); } });
+        if (!kok.length) return L(r, 'rejected', 'skip: none of the listed pets are yours');
+        return L(r, 'skip', (t.un ? 'feed-all includes #' : 'feed-all skips #') + kok.join(', #'), { petIds: kok, petId: kok[0] });
+      }
       case 'feeda': {
         if (b < FEED_ALL_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
-        var aleft = amt, afed = [], askip = 0, aup = {}, aex = new Set(t.ex); w._fireFullM = 0;
-        w.pets.filter(function (z) { return z.owner === src && !aex.has(z.id); }).sort(function (x, y) { return x.id - y.id; }).forEach(function (z) {
+        var aleft = amt, afed = [], askip = 0, aup = {}; w._fireFullM = 0;
+        t.ex.forEach(function (id) { var z = w.byId[id]; if (z && z.owner === src) z.skipBy = t.un ? null : src; }); /* pet:fx adds to / pet:fy removes from the owner's feed-skip set, then feeds */
+        w.pets.filter(function (z) { return z.owner === src && z.skipBy !== src; }).sort(function (x, y) { return x.id - y.id; }).forEach(function (z) {
           var m = mealFor(z.care, z.species, b, petThresholds(w, z, b));
           if (z.released || z.dead || z.feedDays[day(b)] || m === 0 || (questOn(b) && questAway(z, b)) || aleft + 1e-9 < mealCost(w, z, m, b)) { askip++; return; }
           var zs = z.stage; aleft -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); z.care += m; noteOwnCare(w, z, m); z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); streakFeed(w, src, z, b, r.tx_hash); aup[z.id] = z.stage > zs; afed.push(z.id); });
@@ -3442,18 +3454,28 @@
     var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
-    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); var one = ps.length > 1 && feedAllPlan(w, owner, ps, nb); if (one) return [one]; }
+    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; return fp && fp.length === 1 && fa.length > 1 ? fp : fa; } }
     return feedListOn(nb) ? feedPlan(ps) : feedBatches(ps);
   }
   /** feedListOn(tip): the UI offers pet:fl bundles only once the chain tip has reached FEED_LIST_BLOCK. */
   function feedAllOn(tip) { return tip != null && Number(tip) >= FEED_ALL_BLOCK; }
-  /** feedAllPlan(w, owner, ps) -> ONE plan (pet:fa or pet:fx:EXCLUDES) feeding exactly ps (the chosen hungry pets), or null when the exclusion list
-   *  doesn't fit 34 bytes. Pets away on a quest can't eat, so they're left out of ps and need no exclusion. amount = exact sum of the meals. */
-  function feedAllPlan(w, owner, ps, nb) { var want = new Set(ps.map(function (p) { return p.id; }));
-    var ex = w.pets.filter(function (p) { return p.owner === owner && !want.has(p.id) && p.hungry && !(questOn(nb) && questAway(p, nb)); }).map(function (p) { return p.id; }).sort(function (a, b) { return a - b; });
-    var tag = ex.length ? 'pet:fx:' + ex.map(b32).join('.') : 'pet:fa'; if (tag.length > MAX_TAG_BYTES) return null;
-    var amount = Math.round(ps.reduce(function (a, p) { return a + p.nextMeal; }, 0) * 1e8) / 1e8;
-    return { tag: tag, amount: amount, petIds: ps.map(function (p) { return p.id; }).sort(function (a, b) { return a - b; }), label: 'Feed ' + ps.length + ' pets (one burn)' }; }
+  /** feedAllPlan(w, owner, ps, nb) -> plans feeding exactly ps (the chosen hungry pets) with ONE feed burn.
+   * The owner's on-chain feed-skip set (p.skipBy === owner) is what pet:fa leaves out. add = hungry pets not chosen and not yet skipped,
+   * del = chosen pets that are skipped. Fits one tag -> [pet:fa | pet:fx:… | pet:fy:…]. Otherwise the set change goes in pet:sk / pet:su
+   * burns (one-time, ~27–135 pets each) before ONE pet:fa; once the set matches, every later feed is ONE pet:fa. */
+  function skipped(p, owner) { return p.skipBy === owner; }
+  function idsTag(pre, ids) { ids = ids.slice().sort(function (a, b) { return a - b; }); var l = pre + ':' + ids.map(b32).join('.'), s0 = ids[0], e = ids[ids.length - 1];
+    var nch = Math.floor((e - s0) / 5) + 1, m = null; if ((pre + ':' + s0 + ':').length + nch <= MAX_TAG_BYTES) { var d = []; for (var k = 0; k < nch; k++) d.push(0); ids.forEach(function (x) { var o = x - s0; d[Math.floor(o / 5)] |= 1 << (o % 5); }); m = pre + ':' + s0 + ':' + d.map(b32).join(''); }
+    var c = [l, m].filter(function (x) { return x && x.length <= MAX_TAG_BYTES; }).sort(function (a, b) { return a.length - b.length; }); return c[0] || null; }
+  function setPlans(pre, ids) { if (!ids.length) return []; var out = []; feedPlan(ids.map(function (id) { return { id: id, nextMeal: 0 }; })).forEach(function (q) { var g = q.petIds || [q.petId]; out.push({ tag: idsTag(pre, g), amount: 1, petIds: g, setOnly: true, label: (pre === 'pet:sk' ? 'Skip ' : 'Unskip ') + g.length + ' pets in feed-all (one-time)' }); }); return out; }
+  function feedAllPlan(w, owner, ps, nb, many) { var want = new Set(ps.map(function (p) { return p.id; }));
+    var cand = w.pets.filter(function (p) { return p.owner === owner && p.hungry && !p.dead && !p.released && !(questOn(nb) && questAway(p, nb)); });
+    var add = cand.filter(function (p) { return !want.has(p.id) && !skipped(p, owner); }).map(function (p) { return p.id; }), del = ps.filter(function (p) { return skipped(p, owner); }).map(function (p) { return p.id; });
+    var amount = Math.round(ps.reduce(function (a, p) { return a + p.nextMeal; }, 0) * 1e8) / 1e8, ids = ps.map(function (p) { return p.id; }).sort(function (a, b) { return a - b; });
+    function feed(tag) { return { tag: tag, amount: amount, petIds: ids, label: 'Feed ' + ps.length + ' pets (one burn)' }; }
+    var tag = !add.length && !del.length ? 'pet:fa' : !del.length ? idsTag('pet:fx', add) : !add.length ? idsTag('pet:fy', del) : null;
+    if (tag) return [feed(tag)]; if (!many) return null;
+    return setPlans('pet:sk', add).concat(setPlans('pet:su', del), [feed('pet:fa')]); }
   function feedListOn(tip) { return tip != null && Number(tip) >= FEED_LIST_BLOCK; }
   function b32(n) { return Number(n).toString(32).toUpperCase(); }
   /** feedPlan(pets) (FEED_LIST_BLOCK on): fewest burns. Sorted by id, split into consecutive groups by DP; each group is one pet:feed (1 pet),

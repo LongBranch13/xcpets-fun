@@ -38,7 +38,26 @@ ok(f4 && f4.kind === 'feed' && f4.petIds.length > 0 && f4.petIds.length < hungry
   ok(q.length === 1 && V.parseTag(q[0].tag).ex.join() === disc.slice().sort((x, y) => x - y).join(), 'feed all minus 3 discarded -> ONE pet:fx excluding them (' + q[0].tag + ')');
   const r = L.row(T, ME, q[0].amount, q[0].tag), z = world(T - 1, [r], T + 1), f = z.w.log.find(l => l.tx === r.tx_hash && (l.kind === 'feed' || l.kind === 'rejected'));
   ok(f && f.petIds.length === keep.length && !f.petIds.some(id => disc.indexOf(id) >= 0), 'no discarded pet fed (' + keep.length + ' fed)');
-  const many = hungry.filter((p, i) => i % 2), q2 = V.feedQueue(a.w, ME, many.map(p => p.id), T), fedIds = [].concat(...q2.map(x => x.petIds || [x.petId]));
-  ok(q2.length > 1 && fedIds.length === many.length && fedIds.every(id => many.some(p => p.id === id)) && q2.every(x => !/^pet:f[ax]/.test(x.tag)), 'many discarded -> explicit-list burns only (' + q2.length + '), never pet:fa/fx');
-  ok(Math.abs(q2.reduce((x, y) => x + y.amount, 0) - many.reduce((x, p) => x + p.nextMeal, 0)) < 1e-6, 'totals count only the non-discarded pets'); }
+  // ANY discard set -> on-chain feed-skip set. Big new discard sets need one-time pet:sk burns, then every feed is ONE pet:fa.
+  const rnd = (k => () => (k = (k * 1103515245 + 12345) % 2147483648) / 2147483648)(7);
+  const runPlans = (qs, blk) => qs.map(x => L.row(blk, ME, x.amount, x.tag));
+  for (const [name, discN] of [['half (every 2nd)', -1], ['300 random', 300], ['1,000 random', 1000], ['5 random', 5]]) {
+    const disc = new Set(discN < 0 ? hungry.filter((p, i) => i % 2 === 0).map(p => p.id) : hungry.map(p => p.id).sort(() => rnd() - 0.5).slice(0, discN));
+    const keep = hungry.filter(p => !disc.has(p.id)), q = V.feedQueue(a.w, ME, keep.map(p => p.id), T), feeds = q.filter(x => !x.setOnly);
+    ok(feeds.length === 1 && q.every(x => x.tag.length <= 34), name + ' discarded (' + disc.size + '): ONE feed burn + ' + (q.length - 1) + ' one-time skip burns');
+    const rows = runPlans(q, T), z = world(T - 1, rows, T + 1), fl = z.w.log.filter(l => rows.some(r => r.tx_hash === l.tx) && l.kind === 'feed'), fedIds = [].concat(...fl.map(l => l.petIds));
+    ok(fedIds.length === keep.length && !fedIds.some(id => disc.has(id)), name + ': fed exactly the ' + keep.length + ' kept pets, no discarded pet');
+    // next day, same discards: ONE pet:fa
+    const z2 = world(T - 1, rows, T + 150), keep2 = z2.w.pets.filter(p => p.owner === ME && p.hungry && !disc.has(p.id)), q3 = V.feedQueue(z2.w, ME, keep2.map(p => p.id), T + 151);
+    ok(q3.length === 1 && q3[0].tag === 'pet:fa', name + ': next day feed = ONE burn ' + (q3[0] && q3[0].tag) + ' (' + keep2.length + ' pets)');
+    if (discN === 300) { // change mind about 4 pets: un-discard -> ONE pet:fy
+      const back = [...disc].slice(0, 4), keep3 = keep2.concat(z2.w.pets.filter(p => back.includes(p.id) && p.hungry)), q4 = V.feedQueue(z2.w, ME, keep3.map(p => p.id), T + 151);
+      ok(q4.length === 1 && /^pet:fy:/.test(q4[0].tag), 'un-discard 4 pets -> ONE burn ' + q4[0].tag);
+      const r4 = runPlans(q4, T + 151), z4 = world(T - 1, rows.concat(r4), T + 152), f4 = z4.w.log.find(l => l.tx === r4[0].tx_hash);
+      ok(f4 && f4.kind === 'feed' && f4.petIds.length === keep3.length, 'pet:fy fed ' + (f4 && f4.petIds.length) + ' incl. the 4 re-included'); }
+  }
+  // transfer clears the skip; sk is invalid before the gate (replay stays SAME)
+  ok(V.parseTag('pet:sk:100:V').action === 'skip' && V.parseTag('pet:su:1.2').un === true, 'pet:sk / pet:su parse');
+  { const r = L.row(T, ME, 1, 'pet:sk:' + hungry[0].id.toString(32).toUpperCase()), z = world(T + 5, [r], T + 1); ok(!z.w.pets.find(p => p.id === hungry[0].id).skipBy, 'pet:sk before FEED_ALL_BLOCK does nothing'); }
+}
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
