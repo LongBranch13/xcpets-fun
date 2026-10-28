@@ -482,7 +482,7 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 .scene-anchor{display:block;position:relative;top:-80px;visibility:hidden}
 .split-off{display:none!important}
 .townbar .tb-st a[aria-current="page"]{background:#E8B33A;color:#100E14}
-.nav nav a.navrank[aria-current="page"]{color:var(--green)}
+.nav nav a.navrank[aria-current="page"],.nav nav a.navtut[aria-current="page"]{color:var(--green)}
 /* pet-sort (Oct 24 2026, display only): sort dropdown right next to the My Pets search */
 .ctlrow .psort{display:flex;align-items:center;gap:4px;flex:0 1 auto}.ctlrow .psort select{max-width:200px}
 @media (max-width:640px){.ctlrow .psort{flex:1 1 auto}.ctlrow .psort select{flex:1;max-width:none}}
