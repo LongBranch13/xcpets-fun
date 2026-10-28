@@ -1,6 +1,6 @@
 {
- "lastBlock": 973503,
- "count": 229,
+ "lastBlock": 973507,
+ "count": 230,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2750,6 +2750,18 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 46069,
+   "asset": "A7885534877986587457",
+   "tiedBlock": 973505,
+   "tiedTx": "778d229f780c4a401e202ca2fe6185435668db75b15746341a8105d07cc1784e",
+   "kind": "deed",
+   "name": "Dupuni",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }

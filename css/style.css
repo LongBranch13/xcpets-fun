@@ -158,11 +158,12 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 .scene-anchor { display: block; height: 0; scroll-margin-top: calc(var(--navh, 72px) + 8px); }
 /* front-page-entries (2026-10-19): home scene cards under the hero buttons */
 .scene-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 6px; }
-.scard { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #120e22; border: 3px solid #000; box-shadow: 4px 4px 0 #000; text-decoration: none; color: #ffd166; transition: transform .12s steps(2); }
+.scard { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #120e22; border: 3px solid #000; box-shadow: 4px 4px 0 #000; text-decoration: none; color: var(--ink); transition: transform .12s steps(2); }
 .scard canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; background: #0b0a1f; }
-.scard .sc-t { font-family: var(--pixel); font-size: 10px; line-height: 1.6; color: #ffd166; text-shadow: 0 0 6px rgba(255,209,102,.45), 2px 2px 0 #000; }
-.scard .sc-d { font-family: var(--meme); font-size: 18px; letter-spacing: .05em; line-height: 1.1; color: #fff6c8; text-shadow: 2px 2px 0 #000; }
+.scard .sc-t { font-family: var(--pixel); font-size: 10px; line-height: 1.6; color: var(--ink); text-shadow: 2px 2px 0 #000; } /* owner Oct 27 2026: place names in the normal text color, no glow; yellow only on hover */
+.scard .sc-d { font-family: var(--meme); font-size: 18px; letter-spacing: .05em; line-height: 1.1; color: var(--ink); opacity: .8; text-shadow: 2px 2px 0 #000; }
 .scard:hover, .scard:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; outline: none; border-color: #ffd166; }
+.scard:hover .sc-t, .scard:focus-visible .sc-t { color: #ffd166; }
 @media (max-width: 640px) { .scene-cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
   .scard { scroll-snap-align: start; } }
 @media (prefers-reduced-motion: reduce) { .scard { transition: none; } .scard:hover, .scard:focus-visible { transform: none; } }
