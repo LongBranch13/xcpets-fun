@@ -7,7 +7,7 @@
 # It also runs after every push to main (a deploy) that touched site files; its own pushes use GITHUB_TOKEN, which never re-trigger workflows.
 name: api-feed
 on:
-  schedule: [{ cron: '*/10 * * * *' }]  # GitHub throttles schedules (runs were landing every 3-6 h); 10-min ticks so new pet tokens get t/ files fast. Commits only on change.
+  # schedule (cron */10) REMOVED Oct 27, 2026 (cx23 step 9, owner approved): the feed now runs on Hetzner xcpets-bot-1 (xcpets-feed.timer). Start by hand with workflow_dispatch if the server is down.
   workflow_dispatch: {}
   push: { branches: [main], paths-ignore: ['api/**', 't/**'] }  # after each deploy
 permissions: { contents: write }
