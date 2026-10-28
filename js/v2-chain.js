@@ -105,10 +105,20 @@
   function applyStale(c, hashes) { if (!c || !Array.isArray(c.rows) || !c.rows.length || !c.tip) return false;
     if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* never replay owners without sales */
     var hc = (function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } })(), seed = window.XCPETS_BLOCK_HASHES || {};
-    Object.keys(seed).forEach(function (k) { if (!hc[k]) hc[k] = seed[k]; }); if (hashes) Object.keys(hashes).forEach(function (k) { if (!hc[k]) hc[k] = hashes[k]; });
+    Object.keys(seed).forEach(function (k) { if (!hc[k]) hc[k] = seed[k]; }); var fin = finalHashes(hashes, c.tip), keep = Object.assign({}, hc); Object.keys(fin).forEach(function (k) { if (!keep[k]) keep[k] = fin[k]; }); /* api-hardening: save only final (6+ deep) hashes */
+    if (hashes) Object.keys(hashes).forEach(function (k) { if (!hc[k]) hc[k] = hashes[k]; }); /* shallow ones only for this stale render (S.verified stays false) */
     if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false; /* family-tree-fix: never replay with a hash missing */
-    if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
+    if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(keep)); } catch (e) {}
     S.rows = c.rows; S.tip = c.tip; S.mempool = []; S.hashes = hc; S.dex = c.dex || undefined; S.verified = false; S.stale = true; S.staleTip = c.tip; S.dataAt = Date.parse(c.generatedAt || '') || c.at || null; /* data-lag-banner: age of the shown copy */ keepOrDrop(); return true; }
+  /* api-hardening (2026-10-27): 6-block reorg rollback. The localStorage hash cache (HKEY) is meant to hold FINAL hashes only (rjs/chain.js
+   * writes a hash once it is FINAL_DEPTH = 6 deep). api/boot.json ships hashes up to its tip, and applyStale used to save all of them, so a block
+   * within 6 of the feed tip that was later reorged kept its orphaned hash here for good (wrong fire-sale / hatch rolls, a stale sale base kept).
+   * finalHashes keeps only blocks at least 6 below the tip for saving; shallowDrop removes cached hashes within 6 of a fresh tip (or above it, a
+   * tip that went back) before the read, so those blocks are always asked fresh. reorgAt(oldH, newH) = lowest block whose hash changed (null =
+   * none). Hashes are the same ones a fresh read gives, so replay results are unchanged on a chain without a reorg. Pure, for tools/api-hardening-test.js. */
+  function finalHashes(h, tip) { var o = {}; if (!h || !(tip > 0)) return o; Object.keys(h).forEach(function (k) { if (Number(k) <= tip - 6) o[k] = h[k]; }); return o; }
+  function shallowDrop(hc, tip) { var n = []; if (!hc || !(tip > 0)) return n; Object.keys(hc).forEach(function (k) { if (Number(k) > tip - 6) { n.push(Number(k)); delete hc[k]; } }); return n; }
+  function reorgAt(oldH, newH) { var at = null; if (!oldH || !newH) return null; Object.keys(newH).forEach(function (k) { if (oldH[k] && newH[k] && oldH[k] !== newH[k] && (at == null || Number(k) < at)) at = Number(k); }); return at; }
   function readLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); return c && c.tip && Date.now() - c.at <= LAST_MAX ? c : null; } catch (e) { return null; } }
   function fetchStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
     return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; }, function () { return null; })
@@ -144,6 +154,9 @@
       var rows = r[0], tip = r[1], blocks = {}; rows.forEach(function (x) { blocks[x.block_index] = 1; }); var FG = V.ACTIVATE_FIRESALE_BLOCK; if (FG != null && tip >= FG) for (var fb = FG; fb <= tip; fb++) blocks[fb] = 1; /* fire sales: every block's hash from the gate decides the schedule */
       var QG = V.questGate ? V.questGate() : null; if (QG != null && tip >= QG) for (var qb = QG; qb <= tip; qb++) blocks[qb] = 1; /* Mythic quests (2026-10-24): every block from the quest gate on, so each Homecoming block's hash is there even with no burn in it; inert while the gate is null */
       var RG = V.raidGate ? V.raidGate() : null; if (RG != null && tip >= RG) for (var rb = RG; rb <= tip; rb++) blocks[rb] = 1; /* raids: every block from the raid gate on (raid opening + kill block hashes); inert while the gate is null */
+      /* api-hardening: reorg rollback. Cached hashes within 6 of this tip (or above it) are re-read, never trusted; a changed hash vs the last load
+       * drops the 60 s session copy and the saved sale base so nothing from the orphaned blocks is reused. */
+      var prevH = S.hashes, shallow = shallowDrop(hc, tip || S.chainTip || 0);
       var need = Object.keys(blocks).filter(function (b) { return !hc[b]; }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
       return chain.blockHashes(Object.keys(blocks), hc, tip, function (n, miss) { step('Some block-hash servers are busy. Retrying ' + miss.length + ' block' + (miss.length === 1 ? '' : 's') + ' (try ' + (n + 1) + ' of 4)… (step 2 of 3)'); }).then(function (bh) {
         try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
@@ -152,7 +165,9 @@
          * S.rows / S.tip keep the last COMPLETE load (empty on first boot), so the world shown (and any burn tag built from it) stays correct. */
         var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
-        var nHashes = Object.assign({}, hc, bh.hashes), nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
+        var nHashes = Object.assign({}, hc, bh.hashes), ro = reorgAt(prevH, nHashes); if (ro != null || (S.tip && tip && tip < S.tip)) { S.reorg = { at: ro, from: S.tip, to: tip, dropped: shallow.length, when: Date.now() };
+          try { console.warn('[xcpets] chain reorg / tip went back: block ' + (ro != null ? ro : tip) + '; recent copies dropped'); sessionStorage.removeItem(SKEY); if (ro != null) { localStorage.removeItem('xcpets-dex-last-1'); sessionStorage.removeItem('xcpets-dex-cache-2'); } } catch (e) {} }
+        var nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
         /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
         var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows, { tip: nTip, hashes: nHashes }).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; S.rows = rows; S.hashes = nHashes; S.tip = nTip; },
           function (e) { throw new Error('pet sales and token transfers could not be read, so pet owners could be out of date (' + String(e && e.message || e).slice(0, 90) + ')'); }) : null;
@@ -261,5 +276,5 @@
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();
