@@ -1,6 +1,6 @@
 {
- "lastBlock": 973492,
- "count": 226,
+ "lastBlock": 973506,
+ "count": 230,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2714,6 +2714,54 @@
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 1,
+   "asset": "A6558773293471858864",
+   "tiedBlock": 973493,
+   "tiedTx": "c369b14399ba840e3e4244b8cdff6e858c2f6ac19262df8c902852964db71f1c",
+   "kind": "deed",
+   "name": "Pori",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 13,
+   "asset": "A10476329829242193716",
+   "tiedBlock": 973496,
+   "tiedTx": "971359d46153361f3c2479689741951dd8f04ef4021399893cbf887ae2c16f0f",
+   "kind": "deed",
+   "name": "Yoki",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 27,
+   "asset": "A17452050335918447452",
+   "tiedBlock": 973496,
+   "tiedTx": "866f114d98c912ad3ea6206d865d28b5c5d88394e8e48150478b21d3f5f6f38e",
+   "kind": "deed",
+   "name": "Nuwamo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 46069,
+   "asset": "A7885534877986587457",
+   "tiedBlock": 973505,
+   "tiedTx": "778d229f780c4a401e202ca2fe6185435668db75b15746341a8105d07cc1784e",
+   "kind": "deed",
+   "name": "Dupuni",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }

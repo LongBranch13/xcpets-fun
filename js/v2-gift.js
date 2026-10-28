@@ -54,7 +54,7 @@
   function gpend(v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(GPK) || 'null'); if (v) localStorage.setItem(GPK, JSON.stringify(v)); else localStorage.removeItem(GPK); } catch (e) { } return null; }
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
     return core('/assets/' + A).then(function (r) { if (r.status === 404) return A; if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }); }
-  function issued(A) { return core('/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address : null; }, function () { return null; }); }
+  function issued(A) { return core('/assets/' + A + '/balances').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var h = (j.result || []).filter(function (x) { return Number(x.quantity) > 0; })[0]; return h ? h.address || h.utxo_address || null : null; } /* api-hardening: UTXO-attached = held by utxo_address */, function () { return null; }); }
   /* token-press (owner Oct 24 2026): only tokenized (tied) pets can be gifted; the gift never makes tokens. Untied pets go to the Token Press (shop.html). */
   var NOTOK = 'no token yet: make one at the Token Press (shop.html)';
   function tied(w, p) { var d = V.deedOf(w, p); return !!(d && d.ok && d.holder === ME); }

@@ -43,14 +43,26 @@
   function now() { return Date.now(); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function retryAfterMs(r) { var h = r && r.headers && r.headers.get ? r.headers.get('Retry-After') : null, n = h != null ? Number(h) : NaN; return isFinite(n) && n >= 0 ? Math.min(MAX_RETRY_AFTER_MS, n * 1000) : null; }
+  /* api-hardening (2026-10-27): Counterparty Core answers 400 (bad request: ValueError / ComposeError, the same on every node), 409 (a pending
+   * transaction in its mempool conflicts) and 503 (node not ready / catching up / bitcoind busy) with {"error": "..."}. errNote reads that text
+   * (1.5 s max) so the message says what the node said. 503 and 409 wait at least 1 s before the next pass; a 503 node is marked sick. When EVERY
+   * failure was a 400, the second pass is skipped (asking again gives the same answer) and the node's reason is shown. Same GETs, same JSON on
+   * success, so data and replays are unchanged. */
+  function errNote(status, txt) { var m = ''; try { var j = JSON.parse(txt); m = j && (j.error || j.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (e) { m = /^\s*</.test(txt || '') ? '' : String(txt || ''); }
+    m = m.replace(/\s+/g, ' ').trim().slice(0, 200);
+    var k = status === 503 ? 'node busy or still catching up, try again shortly' : status === 409 ? 'a pending transaction conflicts, wait for it to confirm' : status === 400 ? 'request rejected' : status === 429 ? 'rate limited' : status === 404 ? 'not found' : '';
+    return k + (m ? (k ? ': ' : '') + m : ''); }
+  function readNote(r) { var t = typeof r.text === 'function' ? Promise.resolve().then(function () { return r.text(); }).catch(function () { return ''; }) : Promise.resolve('');
+    return Promise.race([t, wait(1500).then(function () { return ''; })]).then(function (x) { return errNote(r.status, x); }); }
   /** failover(f, bases, path, parse, opts) -> Promise of parse(response) from the first server that answers OK (see the notes above). */
   function failover(f, bases, path, parse, opts) {
-    opts = opts || {}; var start = now(), deadline = start + (opts.deadline || DEADLINE_MS), errs = [], passes = opts.passes || PASSES, backoff = BACKOFF_MS;
+    opts = opts || {}; var start = now(), deadline = start + (opts.deadline || DEADLINE_MS), errs = [], passes = opts.passes || PASSES, backoff = BACKOFF_MS, onlyBad = true, badMsg = '';
     function attempt(base, ms, ac) {
       var url = typeof base === 'function' ? base(path) : base + path;
       return fetchT(f, url, ms, ac).then(function (r) {
-        if (!r.ok) { var ra = retryAfterMs(r); if (ra != null) backoff = Math.max(backoff, ra); if (r.status === 429 || r.status >= 500) setSick(base); throw new Error(String(base).split('/v2')[0] + ' HTTP ' + r.status); }
-        return parse(r, base); }).then(function (v) { clearSick(base); clearNetSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (/timed out|fetch|network/i.test(m) && !/HTTP \d/.test(m)) { setSick(base); setNetSick(base); } } throw e; });
+        if (!r.ok) { var ra = retryAfterMs(r); if (ra != null) backoff = Math.max(backoff, ra); if (r.status === 429 || r.status >= 500) setSick(base); if (r.status === 503 || r.status === 409) backoff = Math.max(backoff, 1000);
+          return readNote(r).then(function (note) { var e = new Error(String(base).split('/v2')[0] + ' HTTP ' + r.status + (note ? ' (' + note + ')' : '')); e.status = r.status; e.note = note; throw e; }); }
+        return parse(r, base); }).then(function (v) { clearSick(base); clearNetSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (e && e.status === 400) badMsg = badMsg || e.note || m; else onlyBad = false; if (/timed out|fetch|network/i.test(m) && !/HTTP \d/.test(m)) { setSick(base); setNetSick(base); } } throw e; });
     }
     function race(list, ms) { /* every server in `list` at once; first good answer wins, the rest are aborted */
       return new Promise(function (res, rej) { var left = list.length, done = false, acs = [];
@@ -70,7 +82,8 @@
           out++; attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).then(function (v) { fin(true, v); }, function () { go2(); fin(false); });
           if (rest.length) hedge = setTimeout(go2, opts.hedgeMs || HEDGE_MS); })
         : race(list, Math.min(left, opts.backupMs || BACKUP_MS));
-      return step.catch(function () { if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
+      return step.catch(function () { if (onlyBad && badMsg) { var eb = new Error('The Counterparty node rejected this request (HTTP 400): ' + badMsg); eb.status = 400; eb.all = errs.slice(); throw eb; }
+        if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
         var bo = Math.min(backoff, Math.max(0, deadline - now() - 500)); return wait(bo).then(function () { return pass(n + 1); }); });
     }
     /* feed-fallback (api-reduction preview, owner approved 2026-10-25): every Core node remembered as network-blocked (10 min, kept across visits)
@@ -108,11 +121,13 @@
   };
   /** All XCPETS destructions, following next_cursor. */
   Chain.prototype.destructions = function (asset) {
-    var self = this, rows = [];
+    var self = this, rows = [], seen = {};
     function page(cursor) {
       return self.getJson('/assets/' + (asset || ASSET) + '/destructions?limit=1000' + (cursor != null ? '&cursor=' + cursor : '')).then(function (j) {
         rows = rows.concat(j.result || []);
-        return j.next_cursor != null && (j.result || []).length ? page(j.next_cursor) : rows;
+        /* api-hardening: cursor paging has no 10,000 offset cap; a node that repeats a cursor would loop forever, so stop with an error instead */
+        if (j.next_cursor != null && (j.result || []).length) { if (seen[j.next_cursor]) throw new Error('the node repeated a page cursor (' + j.next_cursor + '); not using a partial burn list'); seen[j.next_cursor] = 1; return page(j.next_cursor); }
+        return rows;
       });
     }
     return page(null);
@@ -148,7 +163,7 @@
     }
     return round(blocks).then(function (m) { return again(m, 0); });
   };
-  Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; }; Chain.coreBlocked = function () { return allNetSick(CFG.read || []); }; Chain.forgetBlocked = function () { netSick = {}; sick = {}; probeP = null; try { sessionStorage.removeItem(NET_KEY); localStorage.removeItem(NET_KEY); } catch (e) {} };
+  Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.errNote = errNote; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; }; Chain.coreBlocked = function () { return allNetSick(CFG.read || []); }; Chain.forgetBlocked = function () { netSick = {}; sick = {}; probeP = null; try { sessionStorage.removeItem(NET_KEY); localStorage.removeItem(NET_KEY); } catch (e) {} };
   Chain.TIMEOUTS = { HASH_RETRY_ROUNDS: HASH_RETRY_ROUNDS, HASH_RETRY_WAIT_MS: HASH_RETRY_WAIT_MS, PRIMARY_MS: PRIMARY_MS, BACKUP_MS: BACKUP_MS, DEADLINE_MS: DEADLINE_MS, BACKOFF_MS: BACKOFF_MS, MAX_RETRY_AFTER_MS: MAX_RETRY_AFTER_MS, SICK_MS: SICK_MS, PASSES: PASSES, BLOCK_CONC: BLOCK_CONC };
   Chain.prototype.blockHash = function (h, cache) {
     if (cache && cache[h]) return Promise.resolve(cache[h]);

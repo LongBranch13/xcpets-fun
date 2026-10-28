@@ -84,12 +84,16 @@
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
     /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
-    var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue;
+    var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
     var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
     if (!FAP) $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; if (!FAP) $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
+    /* starred-acts (owner Oct 27 2026): Roll gear / Auto-equip (Rare Room) act on the starred pets, not a selection */
+    var sIds = U.starIds ? U.starIds(w) : [], rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), ae0 = V.autoEquipOps(w, ME, sIds, S.tip);
+    $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' starred' : fmt(V.COSTS.roll) + ' XCPETS per roll · star pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
+    $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae0.length ? ae0.length + ' piece' + (ae0.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae0.length;
     if (!n) return;
     var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
@@ -97,8 +101,6 @@
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
     $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' : '😋 all fed today';
     $('bFeedSel').innerHTML = 'Feed ' + (fq.length ? fmt(fedN) : '') + ' <span class="cost">' + (fq.length ? fmt(sum(fq)) + ' XCPETS' : 'nothing to feed') + '</span>'; $('bFeedSel').disabled = !fq.length;
-    $('bRoll').innerHTML = 'Roll gear ' + rn + ' time' + (rn === 1 ? '' : 's') + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : fmt(V.COSTS.roll) + ' XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq.length; $('bRoll').title = rq.length ? '' : 'Select one or more of your pets, then roll gear (' + fmt(V.COSTS.roll) + ' XCPETS per roll)';
-    var ae = V.autoEquipOps(w, ME, ids, S.tip); $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae.length;
     $('selWhy').textContent = '';
   };
   function bindSel() {
