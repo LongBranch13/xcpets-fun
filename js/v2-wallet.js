@@ -327,34 +327,42 @@
    * XCP Wallet's auto-lock also emits accountsChanged [] (we set locked but showed nothing). Fix: remember that this browser connected
    * (provider kind + public address only: never keys), and silently re-attach with xcp_accounts (no popup; [] when locked/not connected)
    * on load, on tab focus and when the tab becomes visible; track accountsChanged / disconnect; show a small status pill with one-tap reconnect. */
-  var PROV_KEY = 'xcpets-v2-wallet-provider', hooked = null, lastPaint = null, silentAt = 0, silentP = null;
+  /* false-disconnect (owner Oct 28 2026: "Wallet disconnected [Reconnect]" a lot): the pill painted red on every page load before the silent
+   * re-attach had answered (and stayed red through the 25-35 s main-thread freeze, which also delayed the answer); one failed / slow xcp_accounts
+   * made it final until the next focus; XCP Wallet's auto-lock ([] from xcp_accounts) was shown as "disconnected"; a 'disconnect' event dropped
+   * the wallet without asking. Now: no red until a check has finished (with retries 1.5 / 4 / 10 s, an 8 s answer limit, no retries while the
+   * tab is hidden: they run when it is visible again), a locked wallet says "Wallet locked", and 'disconnect' is confirmed with xcp_accounts first. */
+  var PROV_KEY = 'xcpets-v2-wallet-provider', hooked = null, lastPaint = null, silentAt = 0, silentP = null, settled = false, lockSeen = false, RETRY = [1500, 4000, 10000], ACC_MS = 8000;
+  function hidden() { var d = win.document; return !!(d && d.visibilityState === 'hidden'); }
   function get(k) { try { return store.getItem(k); } catch (e) { return null; } }
   function remember() { try { store.setItem(PROV_KEY, 'xcpwallet'); } catch (e) { } }
   function forget() { try { store.removeItem(PROV_KEY); } catch (e) { } }
-  function status() { return wallet && !locked ? 'on' : wallet && locked ? 'locked' : get(PROV_KEY) ? 'off' : 'none'; }
+  function status() { return wallet && !locked ? 'on' : wallet && locked ? 'locked' : !get(PROV_KEY) ? 'none' : lockSeen ? 'locked' : settled ? 'off' : 'checking'; }
   function emit() { try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:wallet', { detail: { status: status(), address: wallet && wallet.address } })); } catch (e) { }
     if (lastPaint) try { paint(lastPaint[0], lastPaint[1]); } catch (e) { } pill(); }
   function hook(p) { if (!p || !p.on || hooked === p) return; hooked = p;
     p.on('accountsChanged', function (a) { if (!wallet) { silent(true); return; }
       if (!a || !a[0]) { locked = true; emit(); return; } if (a[0] === wallet.address) { locked = false; emit(); return; } /* same address re-emitted on unlock: no reload */
       wallet.address = a[0]; setMe(a[0]); if (win.location) win.location.reload(); });
-    p.on('disconnect', function () { wallet = null; locked = false; forget(); emit(); }); }
+    p.on('disconnect', function () { var was = wallet; if (!was) { lockSeen = false; forget(); emit(); return; }
+      silent(true).then(function (a) { if (!a && wallet === was) { wallet = null; locked = false; lockSeen = false; forget(); emit(); } }); }); }
   /** silent(force): re-attach to an already-approved XCP Wallet without opening any window. Resolves the address or null. */
   function silent(force) {
     if (wallet && !locked && !force) return Promise.resolve(wallet.address);
     if (connecting) return connecting.then(function (x) { return x && x.address; }, function () { return null; });
     if (silentP) return silentP; if (!force && Date.now() - silentAt < 2000) return Promise.resolve(wallet && !locked ? wallet.address : null); silentAt = Date.now();
-    return (silentP = waitForXcp(wallet || get(PROV_KEY) ? 2000 : 600).then(function (p) {
-      if (!p || !p.request) return null; hook(p);
-      return p.request({ method: 'xcp_accounts' }).then(function (r) { var a = Array.isArray(r) ? r[0] : r && r.accounts && r.accounts[0];
-        if (!a) { if (wallet) locked = true; return null; }
-        if (wallet && wallet.address === a) { locked = false; return a; }
+    function attempt() { return waitForXcp(wallet || get(PROV_KEY) ? 2000 : 600).then(function (p) {
+      if (!p || !p.request) return { retry: !!get(PROV_KEY) }; hook(p);
+      return withTimeout(Promise.resolve().then(function () { return p.request({ method: 'xcp_accounts' }); }), ACC_MS, 'xcp_accounts timed out').then(function (r) { return use(p, r).then(function (a) { return { a: a }; }); }, function () { return { retry: true }; }); }); }
+    function run(n) { return attempt().then(function (o) { if (!o.retry || n >= RETRY.length) return o; if (hidden()) return { defer: true }; return sleep(RETRY[n]).then(function () { return run(n + 1); }); }); }
+    function use(p, r) { return Promise.resolve().then(function () { var a = Array.isArray(r) ? r[0] : r && r.accounts && r.accounts[0];
+        if (!a) { if (wallet) locked = true; else lockSeen = !!get(PROV_KEY); return null; }
+        lockSeen = false; if (wallet && wallet.address === a) { locked = false; return a; }
         if (wallet && wallet.address !== a) return null; /* a different account: the accountsChanged handler reloads for it */
         var x = new Wallet.Wallet({ kind: 'xcpwallet', label: 'XCP Wallet', p: p }); x.address = a;
         return x.network().then(function (n) { if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) return null;
-          wallet = guard(x); locked = false; remember(); loadSpent(a); if (!get(ME_KEY)) setMe(a); else try { store.setItem(ADDR_KEY, a); } catch (e) { } return a; });
-      }, function () { return null; });
-    }).then(function (a) { silentP = null; emit(); return a; }, function () { silentP = null; emit(); return null; })); }
+          wallet = guard(x); locked = false; remember(); loadSpent(a); if (!get(ME_KEY)) setMe(a); else try { store.setItem(ADDR_KEY, a); } catch (e) { } return a; }); }); }
+    return (silentP = run(0).then(function (o) { silentP = null; if (!o.defer) settled = true; emit(); return o.a || null; }, function () { silentP = null; settled = true; emit(); return null; })); }
   function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
   var PILL_CSS = '#xwPill{position:fixed;left:8px;bottom:8px;z-index:9000;display:flex;align-items:center;gap:6px;padding:4px 8px;font:inherit;font-size:12px;line-height:1.2;background:#0d1410;color:#e8f5ec;border:2px solid #2a3a2e;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.45);max-width:calc(100vw - 16px)}' +
     '#xwPill .xwdot{width:10px;height:10px;flex:0 0 10px;image-rendering:pixelated;background:#ff5a5a;box-shadow:0 0 0 2px #000}#xwPill.on .xwdot{background:#3ddc84}#xwPill.locked .xwdot{background:#ffc93c}#xwPill.on{border-color:#3ddc84}#xwPill.locked{border-color:#ffc93c}#xwPill.off{border-color:#ff5a5a}' +
@@ -362,6 +370,7 @@
     '@media (max-width:600px){#xwPill{left:6px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font-size:11px;padding:3px 6px}#xwPill .xwlong{display:none}}';
   function pill() { var doc = win.document; if (!doc || !doc.body || !doc.createElement) return; var st = status(), el = doc.getElementById('xwPill');
     if (st === 'none') { if (el) el.hidden = true; return; }
+    if (st === 'checking') return; /* still re-attaching: keep whatever is shown (nothing on a fresh page), never a red flash */
     if (!el) { if (!doc.getElementById('xwCss')) { var c = doc.createElement('style'); c.id = 'xwCss'; c.textContent = PILL_CSS; (doc.head || doc.body).appendChild(c); }
       el = doc.createElement('div'); el.id = 'xwPill'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); doc.body.appendChild(el); }
     el.hidden = false; el.className = st;
