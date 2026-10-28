@@ -542,7 +542,14 @@
   var frCache = new Map(), FR_MAX = 6000;
   function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + worn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(','); }
   function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
-  var lazyQ = new Map(), lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting) return; var j = lazyQ.get(e.target); if (!j) return; lazyQ.delete(e.target); lazyObs.unobserve(e.target); j(); }); }, { rootMargin: '300px' }) : null;
+  /* page-unresponsive-fix (2026-10-27, owner: 'the arena freezes while picking fighters'): the observer used to paint EVERY sprite that came into view
+   * in one task (a search in the Arena picker = dozens of Mythic sprites = 1.8 s on the owner's laptop). It now queues them and paints in ~12 ms
+   * slices with a break for input in between. Same pixels, a few frames later. A canvas that left the page before its turn waits for the observer again. */
+  var lazyQ = new Map(), lazyRun = [], lazyT = 0;
+  function lazyDrain() { lazyT = 0; var t0 = Date.now(); while (lazyRun.length) { var c = lazyRun.shift(), j = lazyQ.get(c); if (!j) continue;
+      if (!c.isConnected) { lazyObs.observe(c); continue; } lazyQ.delete(c); try { j(); } catch (e) { if (window.console) console.error(e); } if (Date.now() - t0 > 12) break; }
+    if (lazyRun.length && !lazyT) lazyT = setTimeout(lazyDrain, 0); }
+  var lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting || !lazyQ.has(e.target)) return; lazyObs.unobserve(e.target); lazyRun.push(e.target); }); if (lazyRun.length && !lazyT) lazyDrain(); }, { rootMargin: '300px' }) : null;
   function lazy(c, make, still) { var run = function () { var fr = make(); if (still) paint(c, fr[0]); else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
   /* wiz-black-fix 2026-10-21 (display only): a frame is drawable only if it is a full 32x32 RGBA buffer. */
   function okFrames(fr) { return !!(fr && fr.length && fr.every(function (f) { return f && f.data && f.data.length === 4096; })); }

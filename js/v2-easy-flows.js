@@ -84,6 +84,10 @@
   function fight(w) { var bp = $('battlePanel'), UI = U(); if (!bp || !UI || !w || !window.UXB || !UXB.faceoff) return; var el = $('ezFight');
     if (!el) { el = document.createElement('div'); el.id = 'ezFight'; el.className = 'ez ez-fight'; bp.insertBefore(el, bp.firstChild); bp.classList.add('ez-on'); }
     keep(el, function () { paintFight(el, w); }); }
+  /* page-unresponsive-fix (2026-10-27): the fighter picker re-sorted all ~1,600 of your pets and every opponent on each tap. Lists are now sorted once
+   * per world (and tip / address / sort) and reused; a new world (new block or burn) starts fresh. Display only, same lists in the same order. */
+  var MEMO = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function memo(w, k, fn) { if (!MEMO || !w || typeof w !== 'object') return fn(); var m = MEMO.get(w); if (!m) MEMO.set(w, m = {}); if (!Object.prototype.hasOwnProperty.call(m, k)) { var ks = Object.keys(m); if (ks.length > 40) delete m[ks[0]]; m[k] = fn(); } return m[k]; }
   function paintFight(el, w) { var UI = U(), ME = UI.ME, FO = UXB.faceoff(), why = UXB.whyNot, T = tip(w), s = ST.f, view = UI.viewOnly && UI.viewOnly();
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], IGN = UXB.fightIgnored ? UXB.fightIgnored() : [];
     var inc = (w.fights || []).filter(function (f) { var q = w.byId[f.b]; return f.status === 'open' && T + 1 - f.block <= V().FIGHT_WINDOW && q && q.owner === ME && IGN.indexOf(f.id) < 0; });
@@ -95,8 +99,8 @@
     if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your XCP Wallet to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect XCP Wallet</button></div>';
       $('ezFGo').onclick = function () { UI.confirmPlans('Challenge', [{}]); }; return; }
     /* 1 · your fighter */
-    var mine = UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
-      .sort(function (a, b) { return (!!a.why - !!b.why) || pow(b.p) - pow(a.p) || a.p.id - b.p.id; });
+    var mine = memo(w, 'mine|' + ME + '|' + T, function () { return UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
+      .sort(function (a, b) { return (!!a.why - !!b.why) || pow(b.p) - pow(a.p) || a.p.id - b.p.id; }); });
     var mq = mine.filter(function (x) { return match(x.p, s.qa); }), nOk = mine.filter(function (x) { return !x.why; }).length;
     if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; })) mq = [{ p: A, why: why(A, w) }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
     h += '<div class="ez-box">' + head('1', 'Your fighter', 'ezFqA', s.qa, '<span class="ez-cnt">' + fmt(nOk) + ' of ' + fmt(mine.length) + ' can fight today</span>') +
@@ -108,9 +112,9 @@
     if (s.tab === 'inc') { var ii = inc.filter(function (f) { return match(w.byId[f.a], s.qb) || match(w.byId[f.b], s.qb); });
       opp = ii.slice(0, MAX).map(function (f) { var Y = w.byId[f.a], X = w.byId[f.b]; return card(w, Y, { key: 'f' + f.id, on: s.inc === f.id, tag: 'vs your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: ['⚡ ' + pow(Y) + ' vs your ⚡ ' + pow(X), rec(Y) + ' · fight ' + f.id, '⏳ by block ' + fmt(f.expires)] }); });
       h += strip(opp, ii.length - MAX, 'No one is challenging your pets right now.'); }
-    else { var th = UI.fighters(w, ME, true).filter(function (p) { return match(p, s.qb); }), ap = A ? pow(A) : 0;
-      if (s.tab === 'sug') th.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
-      else th.sort(function (a, b) { return a.id - b.id; });
+    else { var ap = A ? pow(A) : 0, srt = s.tab === 'sug' ? (A ? 'a' + ap : 's') : 'i', th = memo(w, 'th|' + ME + '|' + T + '|' + srt, function () { var t = UI.fighters(w, ME, true).slice();
+        if (s.tab === 'sug') t.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
+        else t.sort(function (a, b) { return a.id - b.id; }); return t; }).filter(function (p) { return match(p, s.qb); }); /* sorted once per world, then filtered: same order (stable sort) */
       if (B && !th.slice(0, MAX).some(function (p) { return p.id === B.id; })) th = [B].concat(th.filter(function (p) { return p.id !== B.id; }));
       opp = th.slice(0, MAX).map(function (p) { return card(w, p, { on: B && B.id === p.id && !s.inc, why: why(p, w), lines: lines(p).concat(['👤 ' + esc(short(p.owner))]) }); });
       h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent can fight today.'); }
