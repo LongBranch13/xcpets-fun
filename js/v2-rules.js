@@ -179,7 +179,10 @@
   /* FEED ALL LIVE CHECK (owner Oct 27 2026 10:13 PM CT, 'no, i make the sacrifice'): the feeda handler (pet:fa / pet:fx / pet:fy) read z.dead
    * without refreshing it, so a dead pet that had not been touched since it died (e.g. never fed) still looked alive and ate a meal
    * (pet:fa abe068af at 973,486 fed 86 dead never-fed pets). From ACTIVATE_FEEDALL_LIVECHECK_BLOCK feeda calls liveAt(w, z, b) first, like
-   * every other feed (pet()), so dead pets are skipped. Below the gate feeda replays exactly as before (no retroactive change, the 973,486 burn stays). */
+   * every other feed (pet()), so dead pets are skipped. Below the gate feeda replays exactly as before (no retroactive change, the 973,486 burn stays).
+   * Owner 10:27 PM CT: dead pets can never be fed, by any feed. With this gate every feed path rejects dead and released pets: pet:feed and
+   * pet:fl / pet:fm already did (pet() refreshes death; unchanged), pet:fa / fx / fy now do. Discard is browser-only (hidden in this browser,
+   * no burn), so the engine has no discard state to check; the planner keeps discarded pets out (pet:sk). */
   var ACTIVATE_FEEDALL_LIVECHECK_BLOCK = null; // PLACEHOLDER (OFF); set to chain tip + 6 at deploy
   function feedAllLiveOn(b) { return ACTIVATE_FEEDALL_LIVECHECK_BLOCK != null && b != null && b >= ACTIVATE_FEEDALL_LIVECHECK_BLOCK; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)

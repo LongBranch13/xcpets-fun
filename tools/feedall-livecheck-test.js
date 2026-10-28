@@ -42,4 +42,20 @@ ok(fed2.join() === planned.join() && planned.join() === liveHungry.join(), 'afte
 // 3) same burn after the gate block but gate OFF: still feeds dead pets (shows the gate is what changes it)
 const offAfter = (() => { const c = L.load(); c.V2Rules._setFeedAllLiveCheckActivation(null); return L.run(c, { rows: prior, hashes: B.hashes }, [row], GATE + 1); })(), fO = logOf(offAfter, row.tx_hash);
 ok(fO && fO.petIds.some(id => KNOWN_DEAD.includes(id)), 'gate OFF at the same block: dead pets still eaten (old behaviour, ' + (fO && fO.petIds.length) + ' fed)');
+// 4) owner Oct 27 2026 10:27 PM CT: "Dead pets can never be fed" and "Discarded pets can never be fed". Every feed path after the gate:
+// pet:feed (single) and pet:fl / pet:fm (list) already refresh death through pet() and reject dead and released pets; pet:fa / fx / fy now do too.
+// Discard is browser-only (hidden in this browser, no burn), so the engine has no discard state; released (pet:rel) is the on-chain removal.
+{ const b32 = n => n.toString(32).toUpperCase(), D = KNOWN_DEAD.find(id => deadAtGate.has(id)), A = liveHungry[0], R = liveHungry[1];
+  const rs = [L.row(GATE, ME, 1, 'pet:rel:' + R), L.row(GATE + 1, ME, AMT, 'pet:feed:' + D), L.row(GATE + 1, ME, AMT, 'pet:fl:' + [A, D].sort((x, y) => x - y).map(b32).join('.')),
+    L.row(GATE + 1, ME, AMT, 'pet:feed:' + R), L.row(GATE + 1, ME, AMT, 'pet:fa')];
+  const go = gate => { const c = L.load(); c.V2Rules._setFeedAllLiveCheckActivation(gate); const z = L.run(c, { rows: prior, hashes: B.hashes }, rs, GATE + 2); return rs.map(r => logOf(z, r.tx_hash) || (z.log || []).find(l => l.tx === r.tx_hash)); };
+  const [rel, f1, fl, f2, fa] = go(GATE), [, o1, ol, o2, oa] = go(null);
+  ok(D && rel && rel.kind === 'release', 'setup: dead never-fed #' + D + ', live #' + A + ', #' + R + ' released at ' + GATE + ' (' + (rel && rel.kind) + ')');
+  ok(f1 && f1.kind === 'rejected' && /dead/.test(f1.msg), 'after the gate: pet:feed on dead #' + D + ' rejected (' + (f1 && f1.msg) + ')');
+  ok(fl && fl.kind === 'feed' && fl.petIds.join() === String(A) && /dead/.test(fl.msg), 'after the gate: pet:fl feeds live #' + A + ' only, dead #' + D + ' skipped (' + (fl && fl.msg.slice(0, 80)) + ')');
+  ok(f2 && f2.kind === 'rejected' && /released/.test(f2.msg), 'after the gate: pet:feed on released #' + R + ' rejected (' + (f2 && f2.msg) + ')');
+  ok(fa && fa.kind === 'feed' && !fa.petIds.includes(D) && !fa.petIds.includes(R) && !fa.petIds.some(id => deadAtGate.has(id)), 'after the gate: pet:fa feeds no dead and no released pet (' + (fa && fa.petIds.length) + ' fed)');
+  ok(o1 && o1.msg === f1.msg && ol && ol.msg === fl.msg && o2 && o2.msg === f2.msg, 'single and list feeds behave the same with the gate OFF (they always refreshed death)');
+  /* (#D itself was refreshed to dead by the pet:feed above, so OFF skips it; the other stale-dead pets are still eaten) */
+  ok(oa && oa.petIds.some(id => deadAtGate.has(id)) && !oa.petIds.includes(R), 'gate OFF: pet:fa still eats stale-dead pets (old behaviour, ' + (oa && oa.petIds.filter(id => deadAtGate.has(id)).length) + '), never the released #' + R); }
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
