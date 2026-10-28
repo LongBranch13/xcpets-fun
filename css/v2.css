@@ -521,3 +521,26 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 #packBox:not(.gearmode) .box>.row .btn,#packBox:not(.gearmode) .box>.row .q{font-size:12px;padding:8px 8px;min-height:40px;white-space:nowrap}
 #packBox:not(.gearmode) .box>#packNote{padding:8px 4px 12px}
 }
+/* hatch-review-simple 2026-10-28: plain review: two equal Keep choices, Show chips, tap a card to select (✓), Hide selected (N) + Done, ✕ in the corner */
+#packBox:not(.gearmode) .box{position:relative}
+#packBox:not(.gearmode) #packX{position:absolute;top:8px;right:8px;z-index:4;min-width:40px;min-height:40px;padding:0 10px;font-size:16px}
+#packBox:not(.gearmode) .box>h2{padding:0 44px}
+#packBox .pkkeep{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:center;align-items:stretch}
+#packBox .pkkeep .btn.pkq{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:220px;line-height:1.2}
+#packBox .pkkeep .btn.pkq small{font-size:11px;opacity:.85;font-weight:normal}
+#packBox .pkkeep .pksafe{flex-basis:100%;text-align:center}
+#packBox .pkshow,#packBox .pktools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:0 0 6px}
+#packBox .pkchip{min-height:34px;padding:3px 10px;font-size:12px}#packBox .pkchip b{margin-left:2px}
+#packBox .pkchip[aria-pressed="true"]{background:#3ddc84;color:#06200f;border-color:#3ddc84}
+#packBox .pkchip.pkgold:not([aria-pressed="true"]) b{color:#ffc93c}
+#packBox .pktools .q{min-height:34px}#packBox .pkgone{font-size:12px;margin-left:4px}#packBox .pktip{text-align:center;margin:0 0 4px}
+#packBox .packgrid .egg.pkcard{cursor:pointer;user-select:none;-webkit-user-select:none;padding-top:6px}
+#packBox .packgrid .egg.pkcard:focus-visible{outline:3px solid #fff;outline-offset:1px}
+#packBox .pkcheck{position:absolute;top:5px;right:5px;width:26px;height:26px;border:2px solid #9aa4b8;border-radius:5px;background:#0a0f0b;color:transparent;font-weight:bold;font-size:18px;line-height:22px;text-align:center;z-index:1}
+#packBox .packgrid .egg.pkcard.picked{outline:3px solid #ff5a5a;outline-offset:-1px;background:rgba(255,90,90,.08)}
+#packBox .packgrid .egg.pkcard.picked .pkcheck{background:#ff5a5a;border-color:#ff5a5a;color:#fff}
+#packBox .packgrid .egg.pkcard.picked>:not(.pkcheck){opacity:.6}
+#packBox #packDiscard:disabled{opacity:.45;cursor:default}
+@media (max-width:600px){#packBox .pkkeep .btn.pkq{min-width:0;flex:1 1 0;font-size:13px;padding:8px 6px}#packBox .pkchip{padding:3px 7px}#packBox:not(.gearmode) .box>h2{padding:0 40px 0 0;font-size:20px}}
+#packBox:not(.gearmode) #packDiscard{order:-1}
+@media (max-width:600px){#packBox:not(.gearmode) #packX{position:fixed;top:8px;right:8px}#packBox:not(.gearmode) .box>h2{font-size:18px;line-height:1.25}}
