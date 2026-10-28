@@ -786,7 +786,8 @@
   function hungerLook(fr, p, w, extra, days) { if (!days) return fr;
     var mp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), mk = petFrames0(mp, w, extra), t = days / 7;
     return fr.map(function (f, fi) { var m = (mk[fi] || mk[0]).data, s = f.data, d = Array.isArray(s) ? s.slice() : new s.constructor(s) /* wiz-show-fix 2026-10-21: WizardSprite/KekSprite frames carry a plain Array; new Array(arr) made a 1-element array (blank sprite + ImageData error on hungry Wizards) */, o = Object.assign({}, f, { data: d }), i, x, y, minX = 32, maxX = -1, minY = 32, sil = [];
-      var isS = function (q) { return !(m[q] === 255 && m[q + 1] === 0 && m[q + 2] === 254); };
+      var dk = function (x, y) { var q = (y * 32 + x) * 4; return m[q] === 26 && m[q + 1] === 16 && m[q + 2] === 32; }, bdg = dk(29, 0) && dk(28, 1) && dk(30, 1) && dk(27, 2) && dk(31, 2) && dk(29, 4); /* hybrid DNA badge (x27-31 y0-4): not body (owner Oct 28 2026: the sweat drop sat under it, it got washed out) */
+      var isS = function (q) { var p = q >> 2, bx = p & 31, by = p >> 5; if (bdg && by < 5 && bx >= 27 && Math.abs(bx - 29) + Math.abs(by - 2) <= 3) return false; return !(m[q] === 255 && m[q + 1] === 0 && m[q + 2] === 254); };
       for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { i = (y * 32 + x) * 4; if (!isS(i)) continue; sil.push(i); if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; }
       var de = Math.min(0.8, 0.12 + t * 0.7), gr = Math.max(0, t - 0.15) * 0.45, dim = days >= 5 ? (days - 4) * 0.07 : 0;
       sil.forEach(function (q) { var r = d[q], g = d[q + 1], b = d[q + 2], L = 0.3 * r + 0.59 * g + 0.11 * b;
