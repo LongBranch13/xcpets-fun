@@ -12,7 +12,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
     await pg.route('http://localhost:8099/zz-wfd.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
     await pg.route(/^https?:\/\/(?!localhost)/, r => r.fulfill({ status: 404, body: '' }));
     await pg.addInitScript(([ADDR, mode]) => { try { localStorage.setItem('xcpets-v2-wallet-provider', 'xcpwallet'); } catch (e) {}
-      const W = window.__W = { calls: [], acc: [ADDR], h: {}, fails: mode.fails || 0, delay: mode.delay || 0, seen: [] };
+      const W = window.__W = { calls: [], acc: mode.locked ? [] : [ADDR], h: {}, fails: mode.fails || 0, delay: mode.delay || 0, seen: [] };
       if (mode.hidden) { W.vis = 'hidden'; Object.defineProperty(document, 'visibilityState', { get: () => W.vis }); }
       window.xcpwallet = { on(e, f) { (W.h[e] = W.h[e] || []).push(f); }, request(a) { W.calls.push(a.method);
         if (a.method === 'xcp_accounts') { if (W.fails > 0) { W.fails--; return Promise.reject(new Error('Could not establish connection')); }
@@ -34,7 +34,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
   ok('2 failed xcp_accounts: retried, connected, never red', await pg.evaluate(() => V2Wallet.status()) === 'on' && !red(await pg.evaluate(() => __W.seen)), JSON.stringify(await pg.evaluate(() => [__W.calls, __W.seen])));
   pg = await page({ busy: 5000, delay: 500 }); await pg.waitForTimeout(7000);
   ok('5 s busy main thread at load: connected, never red', await pg.evaluate(() => V2Wallet.status()) === 'on' && !red(await pg.evaluate(() => __W.seen)), JSON.stringify(await pg.evaluate(() => __W.seen)));
-  pg = await page({}); await pg.evaluate(() => { __W.acc = []; }); await pg.reload(); await pg.waitForTimeout(800);
+  pg = await page({ locked: true }); await pg.waitForTimeout(800);
   ok('auto-locked wallet ([]): pill says locked with Unlock, not disconnected', await pg.evaluate(() => { const p = document.getElementById('xwPill'); return p && p.className === 'locked' && /Wallet locked.*Unlock/.test(p.textContent); }), await pg.evaluate(() => V2Wallet.status()));
   pg = await page({}); await pg.waitForTimeout(800); await pg.evaluate(() => __W.fire('disconnect')); await pg.waitForTimeout(500);
   ok('disconnect event but xcp_accounts still answers: stays connected', await pg.evaluate(() => V2Wallet.status()) === 'on' && !red(await pg.evaluate(() => __W.seen)));
