@@ -166,7 +166,7 @@
     { id: 'feed', ico: '🍖', t: 'Feeding', s: 'Deep dive: meals, days, neglect', deep: 1, steps: [
       ['Once per chain day', 'A chain day is ' + N.blocksPerDay + ' Bitcoin blocks (about a day). Feed each pet <b>once per chain day</b>. A pet that has not eaten today is hungry.'],
       ['Meal sizes', 'A meal gives care that depends on the stage: Hatchling ' + fmt(N.meals[0]) + ', Juvenile ' + fmt(N.meals[1]) + ', Adult ' + fmt(N.meals[2]) + ', Elder ' + fmt(N.meals[3]) + '. The Play page shows what a meal burns right now.', 'feed'],
-      ['Feed them all at once', '<b>Feed all hungry</b> on the Play page bundles your hungry pets into one burn, so a big herd is one signature.'],
+      ['Feed them all at once', '<b>Feed all hungry</b> on the Play page bundles your hungry pets into one burn, so a big herd is one signature.' + (window.XCPETS_FEED_ALL_PAUSED === true ? ' Feed all is paused for a fix.' : '')],
       ['Neglect and death', 'After <b>' + N.neglectedAfter + ' days</b> without food a pet is neglected: no battles, no breeding. After <b>' + N.deathAfter + ' days</b> it dies and goes to the Pet Cemetery. Mythic pets never starve.']],
       quiz: [['How often can you feed a pet?', ['Once per chain day', 'Once per block', 'Once a week'], 0], ['What happens after 7 days with no meal?', ['It dies and goes to the Cemetery', 'Nothing', 'It turns Mythic'], 0], ['Can a neglected pet battle?', ['No', 'Yes'], 0]] },
     { id: 'grow', ico: '🌱', t: 'Growing', s: 'Deep dive: stages and Mythic', deep: 1, demo: 'grow', steps: [
