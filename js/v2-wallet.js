@@ -129,10 +129,33 @@
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
   var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 90000; /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
-  function feeRate() {
-    return withTimeout(F(CFG.mempoolApi + '/v1/fees/recommended').then(function (r) { return r.json(); }), FEE_MS, 'fee rate timed out')
-      .then(function (f) { var x = Math.ceil(Number(f.hourFee)); return x >= 1 ? x : 1; }).catch(function () { return 2; });
-  }
+  /* cheaper-fees (owner Oct 27 2026, "cheaper fees asap"): read mempool.space /v1/fees/precise (decimal rates) instead of /v1/fees/recommended
+   * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
+   * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
+   * wrong, fall back to /recommended; if both fail, 2 sat/vB as before. Cached 60 s so a 16-burn chain does not ask 16 times. Fee only, rules unchanged. */
+  var FEE_FLOOR = 0.1, FEE_CAP = 500, FEE_FALLBACK = 2, FEE_CACHE_MS = 60000, BURN_VB = 155, feeCache = null;
+  function feeNum(x) { x = Number(x); return isFinite(x) && x > 0 ? x : NaN; }
+  function pickFee(f) { if (!f || typeof f !== 'object') return NaN; var eco = feeNum(f.economyFee), hr = feeNum(f.hourFee), min = feeNum(f.minimumFee);
+    var floor = Math.max(FEE_FLOOR, isFinite(min) ? min : FEE_FLOOR), x = isFinite(eco) ? eco : hr;
+    if (isFinite(hr) && hr >= floor && (!isFinite(x) || hr < x)) x = hr;
+    if (!isFinite(x)) return NaN; x = Math.max(floor, Math.min(FEE_CAP, x)); return Math.round(x * 1000) / 1000; }
+  function getFees(path) { return withTimeout(F(CFG.mempoolApi + path).then(function (r) { if (r && r.status && r.status >= 400) throw new Error('fee api ' + r.status); return r.json(); }), FEE_MS, 'fee rate timed out')
+    .then(function (f) { var x = pickFee(f); if (!isFinite(x)) throw new Error('fee api gave no usable rate'); return { rate: x, src: path.indexOf('precise') >= 0 ? 'precise' : 'recommended', raw: f }; }); }
+  /** feeQuote() -> Promise<{rate, src: 'precise'|'recommended'|'fallback', at}>, never rejects */
+  function feeQuote() { var now = Date.now(); if (feeCache && now - feeCache.at < FEE_CACHE_MS) return Promise.resolve(feeCache);
+    return getFees('/v1/fees/precise').catch(function () { return getFees('/v1/fees/recommended'); }).then(function (q) { q.at = Date.now(); feeCache = q; return q; },
+      function () { return { rate: FEE_FALLBACK, src: 'fallback', at: Date.now() }; }); }
+  function feeRate() { return feeQuote().then(function (q) { return q.rate; }); }
+  /** feeEstimate(n, rate[, vb]) -> estimated sats for n burns at rate (about BURN_VB vB each: 1 input, OP_RETURN, change) */
+  function feeEstimate(n, rate, vb) { return Math.ceil((vb || BURN_VB) * Number(rate || 0)) * Math.max(1, n || 1); }
+  function rateText(r) { r = Number(r); return (r >= 10 ? String(Math.round(r)) : String(Math.round(r * 1000) / 1000)) + ' sat/vB'; }
+  /** feeInfo(res, rate): the chosen rate and the fee of the composed transaction, shown before every signing */
+  function feeInfo(res, rate) { var es = res && res.signed_tx_estimated_size, vb = es && Number(es.vsize || es.adjusted_vsize), sats = res && Number(res.btc_fee);
+    if (!isFinite(sats) || sats < 0) sats = feeEstimate(1, rate, vb > 0 ? vb : null); return { rate: rate, sats: sats, vsize: vb > 0 ? vb : null, text: 'network fee ' + fmtSats(sats) + ' sats at ' + rateText(rate) }; }
+  function fmtSats(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  /* Callers that pass no progress callback (shop, quests, gifts, looks, deeds) get the same line as a toast, right before the XCP Wallet window. */
+  function feeToast(info, what) { try { var D = win.document, t = D && D.getElementById('toasts'); if (!t) return; var x = D.createElement('div'); x.className = 'toast'; x.setAttribute('role', 'status');
+    x.textContent = '⛽ ' + (what ? what + ': ' : '') + info.text + '. Approve it in XCP Wallet.'; t.appendChild(x); setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 8000); } catch (e) { } }
   function composeNodes() { return (CFG.composeList && CFG.composeList.length ? CFG.composeList : [CFG.compose]).filter(function (u) { return !/xcp\.fun/.test(u); }); }
   /** whole-XCPETS amount as the decimal string BurnCore.toRaw expects (v2 release = 0.00000001 would stringify as 1e-8) */
   function amt(a) { return typeof a === 'number' ? a.toFixed(8).replace(/\.?0+$/, '') : String(a); }
@@ -218,8 +241,8 @@
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
       if (onTry) onTry(0, 0, 'fee');
-      return feeRate().then(function (fee) { return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
-        if (onTry) onTry(0, 0, 'sign');
+      var fee; return feeRate().then(function (f) { fee = f; return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
+        var fi = feeInfo(res, fee); if (onTry) onTry(0, 0, 'sign', fi); else feeToast(fi, plan && (plan.label || plan.tag));
         return w.signAndBroadcast(res).catch(function (we) {
           /* burn-wait-confirm: XCP Wallet refused/failed a burn built on unconfirmed change -> same wait note (a plain user Cancel stays a cancel) */
           if (res && res._unconf && !(we && (we.code === 4001 || we.code === -32005 || we.code === 4100))) throw confirmErr(we && (we.message || String(we)));
@@ -312,7 +335,7 @@
           return F(dexUrl(urls[i], w.address, plan, fee) + extra).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
             var bad = dexCheck(j.result, w.address, plan, fee); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', ')); return j.result; })
             .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
-        return go(0); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add(dexEntry(plan, r.txid)); return { txid: r.txid, composed: res }; }); });
+        return go(0).then(function (res) { feeToast(feeInfo(res, fee), plan && plan.label); return res; }); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add(dexEntry(plan, r.txid)); return { txid: r.txid, composed: res }; }); });
     }).then(function (x) { release(); return x; }, function (e) { release(); throw e; }); }
   /* player-qol 2026-10-24 (owner relaying a player: "my page will often disconnect from wallet, I'm always checking/reconnecting").
    * Root cause: the connected wallet lived only in this page's memory (var wallet). XCPETS is a multi-page site, so every page load, reload
@@ -380,6 +403,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, tracker: tracker, getWallet: getWallet,
+  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
