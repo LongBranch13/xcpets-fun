@@ -13,7 +13,7 @@ const ME = REAL.source, AMT = REAL.quantity / 1e8, BLK = REAL.block_index, GATE 
 const KNOWN_DEAD = [18845, 18846, 18847, 18848, 18849, 18851, 18852, 18853, 18854, 18855]; // first 10 of the 86 in reports/owner-feedall-973486-pets.txt
 function run(gate, rows, tip) { const c = L.load(); if (gate !== undefined) c.V2Rules._setFeedAllLiveCheckActivation(gate); return { c, w: L.run(c, { rows, hashes: B.hashes }, [], tip) }; }
 const logOf = (w, tx) => (w.log || []).find(l => l.tx === tx && (l.kind === 'feed' || l.kind === 'rejected'));
-{ const c = L.load(); ok(c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK === null || c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK > BLK, 'gate is after the 973,486 burn (' + c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK + ')'); }
+{ const c = L.load(); ok(c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK === 973496 && c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK > BLK, 'gate is after the 973,486 burn (' + c.V2Rules.ACTIVATE_FEEDALL_LIVECHECK_BLOCK + ')'); }
 // 1) history: the real burn, before the gate, replays exactly as before (gate OFF == gate after it)
 const hist = B.rows.filter(r => r.block_index <= BLK);
 const off = run(null, hist, BLK + 1), pre = run(GATE, hist, BLK + 1);

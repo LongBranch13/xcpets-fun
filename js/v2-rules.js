@@ -183,7 +183,7 @@
    * Owner 10:27 PM CT: dead pets can never be fed, by any feed. With this gate every feed path rejects dead and released pets: pet:feed and
    * pet:fl / pet:fm already did (pet() refreshes death; unchanged), pet:fa / fx / fy now do. Discard is browser-only (hidden in this browser,
    * no burn), so the engine has no discard state to check; the planner keeps discarded pets out (pet:sk). */
-  var ACTIVATE_FEEDALL_LIVECHECK_BLOCK = null; // PLACEHOLDER (OFF); set to chain tip + 6 at deploy
+  var ACTIVATE_FEEDALL_LIVECHECK_BLOCK = 973496; // tip 973490 (mempool.space, 2026-10-27 10:34 PM CT) + 6
   function feedAllLiveOn(b) { return ACTIVATE_FEEDALL_LIVECHECK_BLOCK != null && b != null && b >= ACTIVATE_FEEDALL_LIVECHECK_BLOCK; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
