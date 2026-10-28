@@ -83,13 +83,15 @@
     var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
-    var hungry = alive.filter(function (p) { return p.hungry; }), hq = V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
-    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; $('bFeedHungry').disabled = !hungry.length;
+    /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
+    var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
+    var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
+    if (!FAP) $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; if (!FAP) $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
     if (!n) return;
-    var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
+    var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
     var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
