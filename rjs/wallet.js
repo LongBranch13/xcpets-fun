@@ -74,11 +74,13 @@
   Tracker.prototype.list = function () { try { return JSON.parse(this.s.getItem(this.k) || '[]'); } catch (e) { return []; } };
   Tracker.prototype.save = function (l) { this.s.setItem(this.k, JSON.stringify(l)); };
   Tracker.prototype.add = function (tx) { var l = this.list().filter(function (x) { return x.txid !== tx.txid; }); l.push(tx); this.save(l); return tx; };
-  /** Resolves the number of txs that newly confirmed. */
-  Tracker.prototype.poll = function (statusFn) {
+  /** Resolves the number of txs that newly confirmed. api-hardening (2026-10-27): with tip given, a tx confirmed fewer than 6 blocks below the tip
+   *  is checked again; if the source now says it is not in a block (a reorg dropped that block), it goes back to mempool / sent (t.reorged). */
+  Tracker.prototype.poll = function (statusFn, tip) {
     var self = this, l = this.list();
     return Promise.all(l.map(function (t) {
-      if (t.status === 'confirmed') return 0;
+      if (t.status === 'confirmed') { if (!(tip > 0 && t.block > tip - 6)) return 0;
+        return Promise.resolve(statusFn(t.txid)).then(function (st) { if (st && st.confirmed === false) { t.status = st.seen ? 'mempool' : 'sent'; t.reorged = t.block; delete t.block; } return 0; }).catch(function () { return 0; }); }
       return Promise.resolve(statusFn(t.txid)).then(function (st) {
         if (st && st.confirmed) { t.status = 'confirmed'; t.block = st.block; return 1; }
         if (st && st.seen) t.status = 'mempool';
