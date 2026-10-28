@@ -370,14 +370,14 @@
     function mk(p) {
       var d = document.createElement('div'), on = S.sel.indexOf(p.id) >= 0; d.className = 'pet card' + (p.dead ? ' dead' : '') + (on ? ' selected' : ''); var qWhy = !p.dead && V.questBusyWhy ? V.questBusyWhy(p, S.tip + 1) : null, qNap = !p.dead && !qWhy && V.questNap && V.questNap(p, S.tip + 1); if (qWhy) d.className += ' quest-away'; /* Mythic quests: greyed while away (inert while the quest gate is null) */ d.tabIndex = 0; d.dataset.pid = p.id;
       var ct = R.careTarget(w, p, S.tip), /* the engine's per-pet thresholds (Mythic discount), shared with the detail panel and pet page */ fed = p.dead ? '🪦 Died of neglect' : p.fedToday ? 'Fed today: ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full';
-      d.innerHTML = (p.dead ? '' : '<input type="checkbox" class="pick-cb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '>') + '<canvas class="sprite" width="32" height="32"></canvas><h4>' + (p.dead ? '' : keepBtn(p.id)) + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
+      d.innerHTML = /* mypets-simple: no checkbox, the star is the only mark */ '<canvas class="sprite" width="32" height="32"></canvas><h4>' + (p.dead ? '' : keepBtn(p.id)) + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
         '<span class="chip">' + esc(spLabel(p.species)) + '</span>' + tierPill(p.tier) + '<span class="chip stg">' + p.stageName + '</span><span class="chip' + (p.hungry ? ' warn' : '') + '">' + fed + '</span>' +
         (R.genChip ? R.genChip(w, p) : '') + '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + (window.UXB && UXB.power ? '<span class="chip pow"' + ptA(p) + '>⚡ ' + UXB.power(p) + '</span>' : '') + (V.streakOf && !p.dead ? (function (st) { return st.current ? '<span class="chip streak" title="Owner says WAGMI every chain day (best ' + st.best + ')">🚀 WAGMI ' + st.current + 'd</span>' : ''; })(V.streakOf(w, p.owner, w.tip)) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '') + (window.UXB ? UXB.origin(p, w) : '') + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + (R.starveChip ? R.starveChip(w, p) : '') + (qWhy ? '<span class="chip quest-chip" title="' + esc(qWhy) + ': can\'t fight, breed, feed, gift or sell until it is home">🗺️ Gone Questing · back at ' + fmt(p.quest.end) + '</span>' : '') + (qNap ? '<span class="chip" title="Resting after a quest: can fight, breed and eat, but can\'t start a new quest yet">💤 Nap Time until ' + fmt(p.napUntil) + '</span>' : '') + '</div>' +
-        '<div class="bar"><i style="width:' + ct.pct.toFixed(1) + '%"></i></div><div class="small muted">care ' + fmt(p.care) + ' / ' + fmt(ct.mythic) + (ct.discount ? ' <span title="Your Mythic shortcut: you raised a Mythic yourself (never left you, or more than half its care fed by you), so all your pets reach Mythic at ' + fmt(ct.mythic) + ' care">(Mythic shortcut)</span>' : '') + '</div>';
+        '<div class="bar"><i style="width:' + ct.pct.toFixed(1) + '%"></i></div><div class="small muted"' + (ct.discount ? ' title="Mythic at ' + fmt(ct.mythic) + ' care instead of 69,069: you raised a Mythic yourself (never left you, or more than half its care fed by you)"' : '') + '>care ' + fmt(p.care) + ' / ' + fmt(ct.mythic) /* owner Oct 27 2026: no "Mythic shortcut" words in My Pets; the lower target stays in the number and the hover note */ + '</div>';
       var cb = d.querySelector('.pick-cb'); if (cb) cb.onclick = function (e) { e.stopPropagation(); if (window.UXB) UXB.cardTap(p.id, e); else toggle(p.id); };
       d.querySelector('.keepbtn').onclick = function (e) { e.stopPropagation(); e.preventDefault(); toggleKeep(p.id); };
       if (!p.dead && window.UXB) { d.insertAdjacentHTML('beforeend', '<button type="button" class="q openbtn" aria-label="Open #' + p.id + '">Open ▸</button>');
-        d.onclick = function (e) { if (e.target.closest('a')) return; /* build fix: card opens detail again; shift-click or Select mode selects */ if (!e.target.closest('.openbtn') && (e.shiftKey || document.body.classList.contains('selmode'))) return UXB.cardTap(p.id, e); goPet(p.id, e); }; }
+        d.onclick = function (e) { if (e.target.closest('a')) return; /* build fix: card opens detail again; shift-click or Select mode selects */ goPet(p.id, e); /* mypets-simple: a tap always opens the pet (no select mode) */ }; }
       else d.onclick = function (e) { goPet(p.id, e); }; /* P10 (owner 2026-10-21): a card opens the pet page directly (Ctrl/Cmd-click: new tab) */
       return d; }
     renderPets.mk = mk; /* mypets-swipe: the One at a time view reuses the exact grid card (display only) */
@@ -460,16 +460,17 @@
     hb.querySelectorAll('.dcard').forEach(function (d) { var p = w.byId[d.dataset.did]; if (p) R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); });
     return hb; }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
+  function openPile() { DS.open = true; var d = document.querySelector('#discardPile details'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } else render(); }
   function pileLink(n) { var a = $('dpJump'); if (!a) { var anc = $('bulkAnchor'); if (!anc) return; a = document.createElement('button'); a.type = 'button'; a.className = 'q'; a.id = 'dpJump'; anc.parentNode.appendChild(a);
-      a.onclick = function () { DS.open = true; var d = document.querySelector('#discardPile details'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; }
+      a.onclick = openPile; }
     a.hidden = !n; a.textContent = '🗑️ Discard pile (' + n + ')'; a.title = 'Open the Discard pile: restore pets you discarded'; }
   /* hotfix 2: a selection change only updates that card + the count (no full render / replay) */
   function selUi() { var w = world(), alive = mine(w).filter(function (p) { return !p.dead; }), cards = document.querySelectorAll('#pets .pet.card[data-pid]');
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     var all = cards.length > 0; cards.forEach(function (d) { var on = S.sel.indexOf(Number(d.dataset.pid)) >= 0; d.classList.toggle('selected', on); var cb = d.querySelector('.pick-cb'); if (cb) cb.checked = on; if (!on) all = false; }); $('selAll').checked = all; if (window.UXB) UXB.sel(); }
   function toggle(id) { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); save(); selUi(); }
-  $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); $('tabCem').classList.remove('on'); render(); };
-  $('tabCem').onclick = function () { cem = true; this.classList.add('on'); $('tabAlive').classList.remove('on'); render(); };
+  $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); render(); }; /* mypets-simple: the Pet Cemetery tab is gone (Places → Pet Cemetery, cemetery.html) */
+  if ($('tabCem')) $('tabCem').onclick = function () { location.href = 'cemetery.html'; };
   ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); if (id === 'fSort' && resort()) return; render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
   if ($('fStarred')) { $('fStarred').setAttribute('aria-pressed', String(!!S.ui_starOnly)); $('fStarred').onclick = function () { S.ui_starOnly = !S.ui_starOnly; this.setAttribute('aria-pressed', String(S.ui_starOnly)); save(); render(); }; }
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
@@ -483,16 +484,17 @@
   /* bigfix 2026-10-20: big feeds are planned in small slices (V.feedQueueAsync) with a progress bar in the confirm box, so the page never freezes.
    * The overfeed guard runs on the pet list first, so the plan is built once. Same burns as before. */
   var feedTok = 0;
-  function feedAsync(title, ids) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
+  function listOnly(plans) { return plans.filter(function (q) { return !isFeedAllTag(q.tag); }); } /* mypets-simple: Feed my kept pets never sends feed all or skip-list burns */
+  function feedAsync(title, ids, list) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
     var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
-    if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(feedQ(w, ME, hungry)));
+    if (hungry.length < 300 || !V.feedQueueAsync) { var sq = noDiscarded(feedQ(w, ME, hungry, list ? V.FEED_ALL_BLOCK - 1 : undefined)); return confirmPlans(title, list ? listOnly(sq) : sq); }
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
     pendingPlans = null; $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<p class="small">🍖 Getting your meals ready for <b>' + fmt(g.ok.length) + '</b> hungry pets…</p><div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt">0 of ' + fmt(g.ok.length) + ' pets</div>';
     $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
     var t0 = performance.now();
-    V.feedQueueAsync(w, ME, g.ok, faNb(w, null), function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
-      .then(function (plans) { window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
+    V.feedQueueAsync(w, ME, g.ok, list ? V.FEED_ALL_BLOCK - 1 : faNb(w, null), function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
+      .then(function (plans) { window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, list ? listOnly(noDiscarded(plans)) : noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
   }
   $('cfNo').addEventListener('click', function () { feedTok++; });
   if (FEED_ALL_PAUSED) { $('bFeedHungry').style.display = 'none'; $('bFeedHungry').insertAdjacentHTML('afterend', '<span class="small muted" id="faPaused">' + FA_NOTE + '</span>'); }
@@ -565,7 +567,7 @@
     var frs = petFrames(p, w); paint($('dCanvas'), frs[0]); R.animate($('dCanvas'), frs);
     $('dStats').innerHTML = statBars(p);
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
-    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic shortcut)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
+    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic at ' + fmt(R.careTarget(w, p, S.tip).mythic) + ' care because you raised a Mythic)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
     if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button>' + (V.wheelOn && V.wheelOn((S.tip || 0) + 1) ? '<a class="btn ghost" href="#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a>' : '<button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>') + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Moves it to the Discard pile (only hidden in this browser). Free, no burn; restore any time.">🗑️ Discard pet</button></div>' +
       (p.owner === ME ? rollHelp(p) : '');
     h += R.starveHtml ? R.starveHtml(w, p, ME) : ''; /* starve-warning (2026-10-19): neglected + gear worn -> countdown, worn pieces, Feed (display only) */
@@ -586,7 +588,7 @@
   /* founder free rolls (prototype 2026-10-15): pet:fr:ID button + "Free rolls left: N" (minus our unconfirmed pet:fr burns); hidden at 0, non-founders, before activation */
   function frPendingTags() { var T = window.V2Wallet && V2Wallet.tracker ? V2Wallet.tracker.list() : []; return T.filter(function (t) { return !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).map(function (t) { return t.tag; }); }
   /* Mythic discount overflow rolls: one gear roll per full 1,000 care above 21,000; claimed with a 1-sat pet:of:ID burn (same style as the founder Free roll) */
-  function ofBtn(w, p) { var f = V.overflowRolls ? V.overflowRolls(w, p, frPendingTags()) : null; return f && f.on ? freeRollButton('oroll', 'Mythic shortcut', 'Overflow roll', f.left) : ''; }
+  function ofBtn(w, p) { var f = V.overflowRolls ? V.overflowRolls(w, p, frPendingTags()) : null; return f && f.on ? freeRollButton('oroll', 'Care past Mythic', 'Overflow roll', f.left) : ''; }
   /** one free-roll button + its "left" counter (founder Free roll and Mythic-discount Overflow roll share the same markup) */
   function freeRollButton(action, why, label, left) { return '<button class="btn ghost ico-flame" data-a="' + action + '" title="' + why + ': one random gear piece for this pet. You only burn 1 dander of XCPETS">' + label + '</button><span class="small muted frleft">' + label + 's left: ' + fmt(left) + '</span>'; }
   /** the plain "what a roll gives" line under the pet's roll button, plus a pending line while this pet's roll burns wait to confirm */
@@ -1141,5 +1143,5 @@
   var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }
   setInterval(function () { if (document.hidden) return; poll(); }, 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastPoll > 60000) poll(); });
-  window.__demo = { queueAnim: queueAnim, S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans };
+  window.__demo = { queueAnim: queueAnim, S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans, feedIds: function (title, ids) { feedAsync(title, ids, true); }, hiddenIds: hiddenIds, openPile: openPile, feedQueueList: function (w, ids) { return listOnly(feedQ(w, ME, ids, V.FEED_ALL_BLOCK - 1)); } };
 })();
