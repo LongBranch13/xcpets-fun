@@ -1,6 +1,6 @@
 {
- "lastBlock": 973492,
- "count": 226,
+ "lastBlock": 973494,
+ "count": 227,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2713,6 +2713,18 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1,
+   "asset": "A6558773293471858864",
+   "tiedBlock": 973493,
+   "tiedTx": "c369b14399ba840e3e4244b8cdff6e858c2f6ac19262df8c902852964db71f1c",
+   "kind": "deed",
+   "name": "Pori",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Common",
    "stage": "Mythic"
   }
  ]
