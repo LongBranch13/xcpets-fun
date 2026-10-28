@@ -12,6 +12,8 @@
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
   function V() { return window.V2Rules; }
+  /* similar-bugs-fix: the cost the engine charges right now (halvings + Fire Sale), never a hardcoded base */
+  function costNow(k) { var R = V(); if (!R || !R.COSTS) return ''; try { var U = window.V2UI, w = W(), tip = U && U.S ? U.S().tip : null; if (w && tip != null && R.costsAt) { var c = R.costsAt(w, (tip || 0) + 1); if (c[k] != null) return fmt(c[k]); } } catch (e) { } return fmt(R.COSTS[k]); }
   function W() { try { return window.V2UI && V2UI.world ? V2UI.world() : null; } catch (e) { return null; } }
   function me() { return (window.V2UI && V2UI.ME) || ls('xcpets-v2-me') || ''; }
   function viewOnly() { try { return !!(window.V2UI && V2UI.viewOnly && V2UI.viewOnly()); } catch (e) { return false; } }
@@ -63,7 +65,7 @@
         '<ul class="ip-list"><li>Pepe, Wojak, Chud, Peepo, Doge: any tier. Bobo, Mumu, Sarutobi, Lenny: Uncommon+. Snibby, KEVIN: Rare+. Dodo: Legendary only.</li><li>' + cpT('help-egg', '1 in 777 eggs is a Bitcoin Wizard.') + '</li>' +
         '<li><b>Upkeep:</b> every egg needs one meal per chain day. Crack One Open = 1 pet · Crack Pack = 12 pets · Yolk Booster Box = 144 pets · <b>⚡ Electric Shock Box = 1,000 mouths to feed</b>.</li></ul>' + more('hatch', 'Tiers and species'); },
     roll: function () { var w = W(), S = window.V2UI && V2UI.S ? V2UI.S() : null, p = S && pet(S.pet || S.rollPet), Vr = V(), L = (Vr && Vr.SLOT_LABELS) || {}, SL = (Vr && Vr.V2_SLOTS) || [];
-      var h = '<h3>🎲 Gear roll (345)</h3><ul class="ip-list"><li>One roll = one random piece into a random <b>open</b> slot of that pet.</li><li>Open slots (1–6) grow with age (days 2, 5, 10) and how often it was fed (50% and 80% of days).</li><li>Each copy you already own makes that piece 10% less likely (×0.9 per copy).</li><li>★ signature pieces only roll on Legendary pets.</li><li>Lucky drops: growing a stage (25%) or a meal (2%) gives a free auto-roll.</li></ul>';
+      var h = '<h3>🎡 Gear roll (' + costNow('roll') + ')</h3><ul class="ip-list"><li>A gear roll is a Pepe Wheel spin: it picks a random living pet of yours (rarer pets more often: Common 1 · Uncommon 2 · Rare 4 · Legendary 8) and puts one random piece straight on it. If that slot is still locked, the piece waits in the pet\'s bag 🎒.</li><li>Open slots (1–6) grow with age (days 2, 5, 10) and how often it was fed (50% and 80% of days).</li><li>Each copy you already own makes that piece 10% less likely.</li><li>★ signature pieces only roll on Legendary pets.</li><li>Lucky drops: growing a stage (25%) or a meal (2%) gives +1 saved Pepe Wheel spin. Saved spins never expire; use them in the Rare Room, up to 10 per tiny burn.</li></ul>';
       if (p && SL.length) { var open = p.openSlots || SL.slice(0, p.capacity || 1), age = p.ageDays | 0, nx = [2, 5, 10].filter(function (a) { return a > age; })[0];
         h += '<p><b>#' + p.id + ' ' + esc(p.name) + ':</b> ' + open.length + ' of 6 open (' + open.map(function (s) { return esc(L[s] || s); }).join(', ') + ').' + (open.length < 6 ? ' Locked: ' + SL.filter(function (s) { return open.indexOf(s) < 0; }).map(function (s) { return esc(L[s] || s); }).join(', ') + '.' + (nx ? ' Next age unlock at day ' + nx + ' (now day ' + age + ').' : '') : '') + '</p>'; }
       return h + more('gear', 'Gear rules'); },
@@ -87,11 +89,11 @@
   };
 
   // ------------------------------------------------------------------ item 11: glossary
-  var GLOSS = [['care', 'Care', 'Total XCPETS fed to a pet. Care moves it up the stages: Hatchling 69 · Juvenile 8,349 · Adult 22,149 · Elder 41,469 · Mythic 69,069.'],
+  var GLOSS = [['care', 'Care', 'What a pet gets from its meals. Halvings make meals cost less, never give less care: each meal still gives its full care. Care moves it up the stages: Hatchling 69 · Juvenile 8,349 · Adult 22,149 · Elder 41,469 · Mythic 69,069.'],
     ['chainday', 'Chain day', '144 Bitcoin blocks (~24 h). One meal per pet per chain day; one fight per pet per chain day.'],
     ['block', 'Block', 'A Bitcoin block, about every 10 minutes. Burns count once they are in a block.'],
     ['neglected', 'Neglected', '3+ chain days unfed: can\'t fight or breed. 7 full days unfed and it dies.'],
-    ['lucky', 'Lucky drop', 'A free gear roll that happens by itself: 25% when a pet grows a stage, 2% per meal. You don\'t spend it.'],
+    ['lucky', 'Lucky drop', 'A free +1 saved Pepe Wheel spin that drops by itself: 25% when a pet grows a stage, 2% per meal. Saved spins never expire; spend them in the Rare Room, up to 10 per tiny burn.'],
     ['bredtrue', 'Bred-true', 'Same-species parents: the baby keeps the species and gets a bonus (+3 stat, rarer pattern or rarer eye).'],
     ['hybrid', 'Hybrid', 'A mix of two (or three) species. Different species give a hybrid 68.4773435% of the time.'],
     ['score', 'Pet Score', 'One number for how strong and rare a pet is, used to sort and rank.'],
@@ -199,10 +201,10 @@
     /* fight stat letters get their full names on hover / long-press */ d.querySelectorAll('#faceoff .sk:not([title])').forEach(function (k) { var n = { VIG: 'Vigor', SPA: 'Spark', GRI: 'Grit', ZOO: 'Zoom', LUC: 'Luck' }[k.textContent]; if (n) k.title = n; }); }
 
   // ------------------------------------------------------------------ item 13: first-visit tour (no pets, no address)
-  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn 69 XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in The Rare Room', 'Roll gear (345) and dress your pet here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
+  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn {hatch} XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in The Rare Room', 'Spin the Pepe Wheel ({roll} XCPETS a spin) for gear and dress your pets here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
   function tour(force) { if (!$('hatchPanel')) return; if (!force && (ls('xcpets-ip-tour') || me())) return; var i = 0, box = d.createElement('div'); box.className = 'ip-tour'; box.setAttribute('role', 'dialog'); d.body.appendChild(box);
     function show() { d.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); var s = STEPS[i], el = $(s[0]); if (el) { el.classList.add('ip-tour-on'); el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
-      box.innerHTML = '<b>' + s[1] + '</b><p class="small">' + esc(s[2]) + '</p><div class="row"><button type="button" class="btn" data-t="n">' + (i < 3 ? 'Next ▸' : 'Done') + '</button><button type="button" class="q" data-t="x">Skip</button></div>'; }
+      box.innerHTML = '<b>' + s[1] + '</b><p class="small">' + esc(s[2].replace('{hatch}', costNow('hatch')).replace('{roll}', costNow('roll'))) + '</p><div class="row"><button type="button" class="btn" data-t="n">' + (i < 3 ? 'Next ▸' : 'Done') + '</button><button type="button" class="q" data-t="x">Skip</button></div>'; }
     box.onclick = function (e) { var t = e.target.getAttribute('data-t'); if (!t) return; if (t === 'n' && i < 3) { i++; return show(); } ls('xcpets-ip-tour', '1'); box.remove(); d.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); };
     show(); }
 
