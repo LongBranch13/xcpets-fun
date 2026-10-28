@@ -18,4 +18,4 @@
 (function(){var id=+new URLSearchParams(location.search).get('id');if(!(id>0))return;fetch('t/'+id+'.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(j){var f=document.getElementById('facts');if(!f)return;var d=document.createElement('div');d.className='small';
 var v=j&&j.verified;d.textContent=v&&v.asset?'Pet token: '+v.asset+' (verified; any other token is not this pet)':'Pet token: not tied yet';f.parentNode.insertBefore(d,f.nextSibling)}).catch(function(){})})();</script>
 <script src="js/v2-places.js?v=d4f7728475" defer></script>
-</body></html>
+<script src="js/halloween.js?v=d4f7728475" defer></script></body></html>
