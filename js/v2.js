@@ -650,7 +650,7 @@
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's' : '') + ', each signed separately · network fees ~' + fmt(s.feeSats) + ' sats (' + s.feeBtc.toFixed(8) + ' BTC, estimate; XCP Wallet shows the real fee) · balance after ' + fmt(S.balance - s.total) + '</p>' +
-      blocksNote(s.burns) + setupNote(plans) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
+      blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
     $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = false; $('cfNo').disabled = false; open('confirmBox');
@@ -687,6 +687,10 @@
   /* feed-burns-fix: say plainly what pet:sk / pet:su burns are, so a feed with setup burns is not a surprise. */
   function setupNote(plans) { var n = plans.filter(function (p) { return /^pet:s[ku]:/.test(p.tag); }).length; if (!n) return '';
     return '<p class="small"><b>ℹ️ ' + fmt(n) + ' of these ' + (n > 1 ? 'are one-time setup burns' : 'is a one-time setup burn') + '.</b> They tell the chain which of your pets Feed all should leave out (pets you discarded or did not pick). After that, Feed all hungry is 1 burn each time.</p>'; }
+  /* use-all-spins (owner Oct 27 2026): pet:usespin:all spends every saved spin in this 1 burn; say how many and where the pieces go. */
+  function spinNote(plans, w) { if (!plans.some(function (p) { return p.tag === 'pet:usespin:all'; })) return '';
+    var n = V.spinsLeft ? V.spinsLeft(w, ME, (S.tip || 0) + 1, myPendingTags()) : 0;
+    return '<p class="small"><b>🎁 This 1 burn uses all ' + fmt(n) + ' of your saved spins.</b> Only the Bitcoin fee, nothing else. Each spin picks a random pet of yours (pets with an open slot first) and rolls one piece for one of its 6 slots. <b>Pieces go on your pets\' open slots first; the rest land in bags or the stash.</b> A piece for a slot that is still locked waits in that pet\'s bag until the slot opens, and a piece it swaps out or can\'t wear goes to your stash. Wear them later in the Dressing room.</p>'; }
   function blocksNote(burns) { var cap = (window.V2Wallet && V2Wallet.CHAIN_CAP) || 24; if (burns <= cap) return '';
     var blocks = Math.ceil(burns / cap); return '<p class="small"><b>📦 ' + fmt(burns) + ' burns, about ' + blocks + ' Bitcoin blocks (~' + (blocks * 10) + ' min).</b> Bitcoin lets about ' + cap + ' of your burns wait at once, so you sign ' + cap + ', wait for the next block, then press Continue. Nothing is lost if you stop: Continue picks up where you left off.</p>'; }
   function guardIds(w, ids) { var pend = pendingFeedIds(), why = {}, ok = ids.filter(function (id) { var r = V2Habits.feedWhy(w, w.byId[id], ME, pend, (S.tip || 0) + 1, V); /* habits-ux: + away on a quest */
