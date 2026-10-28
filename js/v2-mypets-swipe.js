@@ -1,7 +1,7 @@
 /* mypets-swipe (owner, Oct 22 2026): "One at a time" view for My Pets. DISPLAY ONLY: no burns of its own, no rule change.
  * A toggle next to the pet tabs switches between the existing grid and one big card. The list is the same filtered + sorted
  * list the grid uses (V2UI.petList), so every filter / sort / Starred / Cemetery tab is respected. The big card contains the
- * exact grid card (star, chips, badges, care bar, Open) plus stats, worn gear and actions (Feed, Fight, Breed,
+ * exact grid card (checkbox, chips, badges, care bar, Open) plus stats, worn gear and actions (Feed, Fight, Breed,
  * Details, Pet page) that route into the existing flows, which keep their own confirm windows. Swipe (touch / pointer, same
  * handling style as the Rug Me board, but nothing is ever burned by a swipe), arrow buttons and keyboard arrows move.
  * localStorage: xcpets-mypets-view = 'grid' | 'one'; xcpets-mypets-pos = last pet id shown. */
@@ -61,9 +61,9 @@
     $('mpsPrev').onclick = function () { go(-1); }; $('mpsNext').onclick = function () { go(1); };
     if (dir) { c.style.transition = 'none'; c.style.transform = 'translateX(' + (dir * 100) + '%)'; c.offsetWidth; c.style.transition = 'transform .25s ease-out'; c.style.transform = ''; }
     drag(c); }
-  /* starred-acts (owner Oct 27 2026): no multi-select any more; the ★ on the card is the mark. Feed my kept pets and the Rare Room roll / Auto-equip act on starred pets. */
-  function starLine() { var u = U(), n = u && u.starIds ? u.starIds().length : 0; return '★ <b>' + n.toLocaleString('en-US') + '</b> starred pet' + (n === 1 ? '' : 's') + '. Tap ☆ on a card to star it. Feed my kept pets and the Rare Room multi-pet roll + Auto-equip act on your starred pets.'; }
-  document.addEventListener('xcpets-stars', function () { var e = $('mpsStars'); if (e) e.innerHTML = starLine(); });
+  /* mypets-checkbox (owner Oct 28 2026): the ☑ checkbox on the card is the mark again (no stars). Feed selected, Discard selected and the Rare Room roll / Auto-equip act on the checked pets. */
+  function starLine() { var u = U(), n = u && u.pickIds ? u.pickIds().length : 0; return '☑ <b>' + n.toLocaleString('en-US') + '</b> selected pet' + (n === 1 ? '' : 's') + '. Tick the box on a card to select it. Feed selected, Discard selected and the Rare Room multi-pet roll + Auto-equip act on your selected pets.'; }
+  document.addEventListener('xcpets-sel', function () { var e = $('mpsStars'); if (e) e.innerHTML = starLine(); });
   function go(dir) { var L = list(); if (L.length < 2 || st.busy) return; var i = idx(L), c = $('mpsCard'); st.id = L[(i + dir + L.length) % L.length].id; set(KP, st.id);
     if (!c || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return draw();
     st.busy = true; c.style.transition = 'transform .22s ease-in, opacity .22s'; c.style.transform = 'translateX(' + (-dir * 110) + '%)'; c.style.opacity = '.3';

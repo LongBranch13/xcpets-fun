@@ -14,7 +14,7 @@
   function tip() { var w = W(); return (w && w.tip) || (M.state && M.state().tip) || 0; }
   function on() { return V.giveOn(tip() + 1); }
   function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
-  function keptIds() { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]'); } catch (e) { return []; } }
+  function keptIds() { return []; } /* mypets-checkbox (owner Oct 28 2026): stars are gone, so no starred guard and no auto-star; keepKey is left unused */
   function myth(p) { return !!p.mythicCare || p.stage >= 5; }
   function tierName(p) { return myth(p) ? 'Mythic' : TL[p.tier] || ''; }
   function pill(p) { return '<span class="pill tier tier-' + (myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>' + omB(p); }
@@ -132,7 +132,7 @@
       (PF ? PF.html(f, GF_FIELDS, { species: PF.species(all), count: mine.length, total: all.length }) : '') +
       '<label for="gfMine">Your pet</label> <select id="gfMine">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (pick === p.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name || spL(p)) + ' · ' + esc(tierName(p)) + (V.oldMoney && V.oldMoney(p) ? ' · ' + esc(V.OLD_MONEY_LABEL) : '') + '</option>'; }).join('') + '</select><div id="gfTwo"></div>' +
       '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (mine.length ? '' : ' disabled') + '>🔁 Offer in XCP Wallet</button></div>');
-    function two() { var A = w.byId[$('gfMine').value]; $('gfTwo').innerHTML = A ? sideBySide(w, A, T, 'You give', 'You get') + ((myth(A) || kept.indexOf(A.id) >= 0) ? '<p class="warn"><label><input type="checkbox" id="gfSure"> Yes, I really want to offer #' + A.id + (myth(A) ? ' (Mythic)' : ' (starred)') + '</label></p>' : '') : '<p>You have no pet that can be offered right now.</p>'; paint($('gfTwo')); }
+    function two() { var A = w.byId[$('gfMine').value]; $('gfTwo').innerHTML = A ? sideBySide(w, A, T, 'You give', 'You get') + ((myth(A) || kept.indexOf(A.id) >= 0) ? '<p class="warn"><label><input type="checkbox" id="gfSure"> Yes, I really want to offer #' + A.id + ' (Mythic)' + '</label></p>' : '') : '<p>You have no pet that can be offered right now.</p>'; paint($('gfTwo')); }
     $('gfMine').onchange = function () { pick = Number(this.value); two(); }; two(); $('gfX').onclick = close; if (PF) PF.bind($('gfBox'), f, 'swap', draw);
     $('gfGo').onclick = function () { var A = w.byId[$('gfMine').value]; if (!A) return; if ($('gfSure') && !$('gfSure').checked) { toast2('Tick the box to confirm.'); return; } location.href = 'play.html#swap-' + A.id + '-' + T.id; }; }
     draw(); }
@@ -144,7 +144,7 @@
     var got = V.giftsTo(w, ME).filter(function (g) { return !seen[g.tx + ':' + g.petId] && w.byId[g.petId] && w.byId[g.petId].owner === ME; }), b = tip() + 1, h = meLine(w) + ((TOK || V.playerNo(w, ME)) ? '' : '<p><button class="q" id="gfHi">👋 Get my player # (1 dander)</button></p>');
     function bought(g) { return g.sale != null || /order|match|dex/i.test(String(g.how || '')); } /* post-buy-fixes: a DEX buy is not a gift */
     var nBuy = got.filter(bought).length, nGift = got.length - nBuy;
-    if (got.length) { var kl = keptIds(); got.forEach(function (g) { if (kl.indexOf(g.petId) < 0) kl.push(g.petId); }); try { localStorage.setItem(keepKey(), JSON.stringify(kl)); } catch (e) { } /* one-time auto-star of each received pet */
+    if (got.length) { /* mypets-checkbox: no auto-star of received pets any more */
       h += '<div class="gf-inbox"><b>' + (nGift ? '🎁 You got ' + (got.length === 1 ? 'a pet' : got.length + ' pets') : '🛒 You bought ' + (got.length === 1 ? 'a pet' : got.length + ' pets')) + '!</b><div class="gf-pets">' + got.map(function (g) { return '<div>' + petRow(w, w.byId[g.petId]) + '<small class="muted">' + (g.swap ? 'swap ' + g.swap + ' from' : bought(g) ? 'bought from' : 'gift from') + ' player #' + V.playerCode(V.playerNo(w, g.from)) + ' · starred ★ for you</small></div>'; }).join('') + '</div><button class="q" id="gfOk">Got it</button></div>';
       /* post-buy-fixes: toast once per gift (notified set kept apart from 'seen', which only fills on Got it) */
       var nk = seenKey() + '-toast', nt = {}; try { nt = JSON.parse(localStorage.getItem(nk) || '{}'); } catch (e) { }
@@ -159,7 +159,7 @@
     if ($('gfOk')) $('gfOk').onclick = function () { got.forEach(function (g) { seen[g.tx + ':' + g.petId] = 1; }); try { localStorage.setItem(seenKey(), JSON.stringify(seen)); } catch (e) { } inbox(); };
     if ($('gfHi')) $('gfHi').onclick = function () { if (window.V2HiGo) window.V2HiGo(); };
     $('gfMany').onclick = picker;
-    box.querySelectorAll('[data-gfsw]').forEach(function (x) { x.onclick = function () { if (x.getAttribute('data-gfsure') && !confirm('This gives away a Mythic or starred pet of yours. Accept the swap?')) return; if (window.V2SwapGo) window.V2SwapGo(x.getAttribute('data-gfsw')); }; }); }
+    box.querySelectorAll('[data-gfsw]').forEach(function (x) { x.onclick = function () { if (x.getAttribute('data-gfsure') && !confirm('This gives away a Mythic pet of yours. Accept the swap?')) return; if (window.V2SwapGo) window.V2SwapGo(x.getAttribute('data-gfsw')); }; }); }
   /* ---- pet page buttons */
   function petButtons() { var w = W(), m = /id=(\d+)/.exec(location.search), p = w && m && w.byId[m[1]], acts = $('petActs'); if (!p || !on() || $('gfPetBtns')) return; css();
     var host = acts || ($('petMain') || document.querySelector('main')); if (!host) return; var d = document.createElement('span'); d.id = 'gfPetBtns';
