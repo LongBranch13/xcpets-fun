@@ -498,3 +498,51 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 /* pet-flow-smoother: post-hatch summary order (tier counts, Keep Rare+, then Dud Duster) */
 #packBox .pktiers{font-size:14px;margin:0 0 8px}#packBox .pkkeep{margin:0 0 8px;text-align:center}#packBox .pkkeep .btn{margin:0 auto 4px}
 body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip that is already up hides while the hatch review is open */
+/* hatch-review-big 2026-10-28 (owner: 'scroll box is way too small'): the egg hatch review (#packBox, not the gear popup) is a big popup.
+ * Desktop/tablet: near full viewport, the pet card grid takes all the spare height and scrolls on its own; the two button rows share one line.
+ * Phone: full screen, ONE scroll for the whole review (no tiny inner scroller); the Keep / Later / Dust / Hatch more / Close rows stay pinned at the bottom. */
+#packBox.reveal:not(.gearmode){padding:10px}
+#packBox:not(.gearmode) .box{width:100%;max-width:1240px;height:calc(100vh - 20px);height:calc(100dvh - 20px);max-height:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:8px;align-content:stretch;padding:14px 16px 10px}
+#packBox:not(.gearmode) .box>h2,#packBox:not(.gearmode) .box>#packSummary,#packBox:not(.gearmode) .box>#packGrid,#packBox:not(.gearmode) .box>#packNote{grid-column:1/-1;min-width:0}
+#packBox:not(.gearmode) .box>h2{margin:0 0 6px}
+#packBox:not(.gearmode) #packSummary{margin:0 0 6px}#packBox:not(.gearmode) .pkkeep{margin:0 0 6px}#packBox:not(.gearmode) .dudbar{margin:0 0 6px}
+#packBox:not(.gearmode) .box>.row{margin-top:8px!important;align-self:start}
+#packBox:not(.gearmode) .box>.row:not(.pack-after){grid-column:1;justify-content:flex-end!important}
+#packBox:not(.gearmode) .box>.pack-after{grid-column:2;justify-content:flex-start!important}
+#packBox:not(.gearmode) .box>#packNote{margin:6px 0 0;font-size:11px}
+#packBox:not(.gearmode) .box>#packGrid.packgrid{height:auto;max-height:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;border:1px solid var(--line);border-radius:6px;padding:6px}
+@media (max-width:900px){#packBox:not(.gearmode) .box{grid-template-columns:1fr}#packBox:not(.gearmode) .box>.row:not(.pack-after),#packBox:not(.gearmode) .box>.pack-after{grid-column:1;justify-content:center!important}}
+@media (max-width:600px){
+#packBox.reveal:not(.gearmode){padding:0}
+#packBox:not(.gearmode) .box{display:block;height:100vh;height:100dvh;max-width:none;border-radius:0;border-width:2px;padding:10px 8px 0;overflow-y:auto;overscroll-behavior:contain}
+#packBox:not(.gearmode) .box>#packGrid.packgrid{overflow:visible;border:0;padding:2px 0}
+#packBox:not(.gearmode) .box>.row:not(.pack-after){position:sticky;bottom:52px;z-index:3;margin:0!important;padding:8px 0 4px;background:var(--panel,#18221b);border-top:2px solid #3ddc84;gap:6px;flex-wrap:nowrap}
+#packBox:not(.gearmode) .box>.pack-after{position:sticky;bottom:0;z-index:3;margin:0!important;padding:4px 0 8px;height:52px;box-sizing:border-box;background:var(--panel,#18221b);gap:6px}
+#packBox:not(.gearmode) .box>.row .btn,#packBox:not(.gearmode) .box>.row .q{font-size:12px;padding:8px 8px;min-height:40px;white-space:nowrap}
+#packBox:not(.gearmode) .box>#packNote{padding:8px 4px 12px}
+}
+/* hatch-review-simple 2026-10-28: plain review: two equal Keep choices, Show chips, tap a card to select (✓), Hide selected (N) + Done, ✕ in the corner */
+#packBox:not(.gearmode) .box{position:relative}
+#packBox:not(.gearmode) #packX{position:absolute;top:8px;right:8px;z-index:4;min-width:40px;min-height:40px;padding:0 10px;font-size:16px}
+#packBox:not(.gearmode) .box>h2{padding:0 44px}
+#packBox .pkkeep{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:center;align-items:stretch}
+#packBox .pkkeep .btn.pkq{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:220px;line-height:1.2}
+#packBox .pkkeep .btn.pkq small{font-size:11px;opacity:.85;font-weight:normal}
+#packBox .pkkeep .pksafe{flex-basis:100%;text-align:center}
+#packBox .pkshow,#packBox .pktools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:0 0 6px}
+#packBox .pkchip{min-height:34px;padding:3px 10px;font-size:12px}#packBox .pkchip b{margin-left:2px}
+#packBox .pkchip[aria-pressed="true"]{background:#3ddc84;color:#06200f;border-color:#3ddc84}
+#packBox .pkchip.pkgold:not([aria-pressed="true"]) b{color:#ffc93c}
+#packBox .pktools .q{min-height:34px}#packBox .pkgone{font-size:12px;margin-left:4px}#packBox .pktip{text-align:center;margin:0 0 4px}
+#packBox .packgrid .egg.pkcard{cursor:pointer;user-select:none;-webkit-user-select:none;padding-top:6px}
+#packBox .packgrid .egg.pkcard:focus-visible{outline:3px solid #fff;outline-offset:1px}
+#packBox .pkcheck{position:absolute;top:5px;right:5px;width:26px;height:26px;border:2px solid #9aa4b8;border-radius:5px;background:#0a0f0b;color:transparent;font-weight:bold;font-size:18px;line-height:22px;text-align:center;z-index:1}
+#packBox .packgrid .egg.pkcard.picked{outline:3px solid #ff5a5a;outline-offset:-1px;background:rgba(255,90,90,.08)}
+#packBox .packgrid .egg.pkcard.picked .pkcheck{background:#ff5a5a;border-color:#ff5a5a;color:#fff}
+#packBox .packgrid .egg.pkcard.picked>:not(.pkcheck){opacity:.6}
+#packBox #packDiscard:disabled{opacity:.45;cursor:default}
+@media (max-width:600px){#packBox .pkkeep .btn.pkq{min-width:0;flex:1 1 0;font-size:13px;padding:8px 6px}#packBox .pkchip{padding:3px 7px}#packBox:not(.gearmode) .box>h2{padding:0 40px 0 0;font-size:20px}}
+#packBox:not(.gearmode) #packDiscard{order:-1}
+@media (max-width:600px){#packBox:not(.gearmode) #packX{position:fixed;top:8px;right:8px}#packBox:not(.gearmode) .box>h2{font-size:18px;line-height:1.25}}
+/* hatch-review title fit 2026-10-28: phone title on one line at 390 (smaller pixel text, same font; long titles may still wrap) */
+@media (max-width:600px){#packBox:not(.gearmode) .box>h2{font-size:clamp(8px,2.2vw,13px);letter-spacing:0}}
