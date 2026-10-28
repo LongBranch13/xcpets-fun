@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const { load, row, snap, run } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const S = snap(process.argv[2]), T = S.tip, G = T + 6;
-const c = load(), V = c.V2Rules; ok(V.ACTIVATE_USE_ALL_SPINS_BLOCK === 973483 && !V.useAllOn(973482) && V.useAllOn(973483), 'gate 973483 (tip 973477 + 6)'); V._setUseAllActivation(G); V._setFiresaleActivation(null);
+const c = load(), V = c.V2Rules; ok(V.ACTIVATE_USE_ALL_SPINS_BLOCK === 973484 && !V.useAllOn(973483) && V.useAllOn(973484), 'gate 973484 (tip 973478 + 6)'); V._setUseAllActivation(G); V._setFiresaleActivation(null);
 ok(V.spinsOn(T + 1), 'saved spins already live at the snapshot tip ' + T);
 const w0 = run(c, S, [], T), owners = {}; w0.pets.forEach(p => { if (!p.community && p.owner) owners[p.owner] = 1; });
 const rich = Object.keys(owners).map(a => [a, V.spinsLeft(w0, a, G)]).sort((x, y) => y[1] - x[1]), A = rich[0][0], HAVE = rich[0][1];
