@@ -36,6 +36,8 @@ function harness(o) {
     const w = M.world(); ok(st.main === 0, 'ops changed mid-run: no main-thread replay (got ' + st.main + ')'); ok(w && w.fromWorker && w.ops === JSON.stringify(S.ops), 'ops changed mid-run: world from a 2nd worker run with the new ops'); }
   /* 3. source checks: one job at a time, a longer worker limit, replay inputs unchanged */
   ok(/WORKER_MS = 120000/.test(src), 'worker limit 120 s (laptop worker replays measured 22-39 s)');
+  ok(!/wkOff = true; wkKill\(\); fin\(\); \}, WORKER_MS/.test(src) && /setTimeout\(slow, WORKER_MS\)/.test(src), 'a slow worker is waited for, never a main-thread fallback');
+  ok(!/wkBusy = 0; try \{ world\(\)/.test(src), 'burn check no longer forces a main-thread rebuild');
   ok(/if \(pend\) \{ if \(pend\.sig === sig0 && pend\.oj === oj0\) return pend\.p;/.test(src), 'same inputs join the running worker job');
   ok(/wk\.postMessage\(\{ id: id, scripts: urls, rows: S\.rows, hashes: S\.hashes, ops: ops, tip: S\.tip, dex: S\.dex \|\| undefined, idbKey: key \}\)/.test(src), 'worker gets the same replay inputs');
   ok(/cache = V\.replay\(S\.rows, S\.hashes, S\.ops, \{ tip: S\.tip, live: E\.RealCore, dex: S\.dex \|\| undefined \}\)/.test(src), 'main-thread fallback replay unchanged');

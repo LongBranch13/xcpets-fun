@@ -34,7 +34,7 @@
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
    * so the page stays responsive; the worker also writes the IDB entry. The result is a structured clone of the same world (V.reindex() restores the
-   * gear index). No worker / an error / WORKER_MS without an answer -> cache stays empty and world() replays on the main thread exactly as before. */
+   * gear index). No worker / a worker error -> cache stays empty and world() replays on the main thread exactly as before. */
   var RULE_SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
   /* page-unresponsive-fix (2026-10-27): profiled on the owner's laptop (i3-N305) the worker replay takes 22-39 s, so the 45 s limit was close: one
    * slow moment turned the worker off for good and the next poller replayed on the main thread (27 s, Chrome's "Page unresponsive"). The limit is
@@ -59,7 +59,10 @@
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
           fin(); };
-        t = setTimeout(function () { wkOff = true; wkKill(); fin(); }, WORKER_MS);
+        /* every-page-freeze (owner Oct 28 2026): a slow worker is NOT a reason to replay on the main thread (that IS the 25-35 s freeze). Past WORKER_MS
+         * the job keeps running and the page keeps the last world / placeholder; only a worker error (onerror / !ok) falls back to the main thread. */
+        var slow = function () { if (done) return; try { console.warn('[v2] replay worker still busy after ' + Math.round((Date.now() - t0) / 1000) + ' s; waiting (no main-thread replay)'); } catch (e) {} t = setTimeout(slow, WORKER_MS); }, t0 = Date.now();
+        t = setTimeout(slow, WORKER_MS);
         wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
       } catch (e) { wkOff = true; wkKill(); fin(); } });
     return job.p; }
@@ -194,7 +197,7 @@
   var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null, checking = 0;
   function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var was = sigOf();
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
-      if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ if (checking && !cache) { var wb = wkBusy; wkBusy = 0; try { world(); } catch (e) {} wkBusy = wb; } } return workerReplay(); },
+      if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ /* every-page-freeze (Oct 28 2026): no forced main-thread rebuild here any more (it froze the page 12-30 s); the burn check waits for the worker's world below */ } return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
       if (blocked()) { toFeed(); feedPoll(feedCb); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
       /* stale-copy-fix: a 429 / 5xx is not 'blocked', but the feed may still be newer than the copy shown: check it after EVERY failed read
