@@ -7,13 +7,16 @@
   /* feed-all-pause (owner Oct 27 2026 10:03 PM CT 'yes take it off'): ONE flag, front end only, rules and replay unchanged.
    * true = the one-burn Feed all (pet:fa / fx / fy) and its skip-list setup burns (pet:sk / su) are off: Feed all hungry is hidden,
    * Feed selected and single feeds use plain pet-number feed burns (pet:feed / fl / fm), and an unfinished Feed all run is not continued.
-   * UNDO: set FEED_ALL_PAUSED = false, re-stamp the build, deploy. */
-  var FEED_ALL_PAUSED = true, FA_NOTE = 'Feed all is paused for a fix.';
+   * UNDO: set FEED_ALL_PAUSED = false, re-stamp the build, deploy.
+   * feed-all-unpause (owner Oct 27 2026 11:17 PM CT, deployed at tip >= ACTIVATE_FEEDALL_LIVECHECK_BLOCK 973496): Feed all hungry is back
+   * (pet:fa / fx / fy now skip dead pets on chain). Feed selected KEEPS the plain pet-number list burns (pet:feed / fl / fm): feedQ(..., list=true). */
+  var FEED_ALL_PAUSED = false, FA_NOTE = 'Feed all is paused for a fix.';
   window.XCPETS_FEED_ALL_PAUSED = FEED_ALL_PAUSED;
   function isFeedAllTag(tag) { return /^pet:(fa|fx|fy|sk|su)(:|$)/i.test(String(tag || '')); }
   /* feedQueue for the UI: while paused, plan as if the feed-all gate were not reached (same pet-number bundles as before it) */
-  function faNb(w, nb) { var b = nb != null ? nb : ((w && w.tip) || 0); return FEED_ALL_PAUSED && V.feedAllOn(b) ? V.FEED_ALL_BLOCK - 1 : nb; }
-  function feedQ(w, me, ids, nb) { var q = V.feedQueue(w, me, ids, faNb(w, nb)); return FEED_ALL_PAUSED ? q.filter(function (p) { return !isFeedAllTag(p.tag); }) : q; }
+  function faNb(w, nb, list) { var b = nb != null ? nb : ((w && w.tip) || 0); return (FEED_ALL_PAUSED || list) && V.feedAllOn(b) ? V.FEED_ALL_BLOCK - 1 : nb; }
+  function feedQ(w, me, ids, nb, list) { var q = V.feedQueue(w, me, ids, faNb(w, nb, list)); return (FEED_ALL_PAUSED || list) ? q.filter(function (p) { return !isFeedAllTag(p.tag); }) : q; }
+  function feedSelQ(w, me, ids, nb) { return feedQ(w, me, ids, nb, true); } /* Feed selected: list burns only */
   var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   /* similar-bugs-fix: the accept cost of fight id now (a Tag Team accept costs the team cost, not the 1v1 accept), same halving / Fire Sale as V.COSTS. Display only; planAmount sets the burn. */
   function accNow(w, id) { return V.COSTS.accept * V.acceptCost(w, id) / V.acceptCost(null, 0); }
@@ -489,22 +492,21 @@
   /* bigfix 2026-10-20: big feeds are planned in small slices (V.feedQueueAsync) with a progress bar in the confirm box, so the page never freezes.
    * The overfeed guard runs on the pet list first, so the plan is built once. Same burns as before. */
   var feedTok = 0;
-  function listOnly(plans) { return plans.filter(function (q) { return !isFeedAllTag(q.tag); }); } /* mypets-simple: Feed my kept pets never sends feed all or skip-list burns */
   function feedAsync(title, ids, list) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
     var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
-    if (hungry.length < 300 || !V.feedQueueAsync) { var sq = noDiscarded(feedQ(w, ME, hungry, list ? V.FEED_ALL_BLOCK - 1 : undefined)); return confirmPlans(title, list ? listOnly(sq) : sq); }
+    if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(feedQ(w, ME, hungry, undefined, list)));
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
     pendingPlans = null; $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<p class="small">🍖 Getting your meals ready for <b>' + fmt(g.ok.length) + '</b> hungry pets…</p><div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt">0 of ' + fmt(g.ok.length) + ' pets</div>';
     $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
     var t0 = performance.now();
-    V.feedQueueAsync(w, ME, g.ok, list ? V.FEED_ALL_BLOCK - 1 : faNb(w, null), function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
-      .then(function (plans) { window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, list ? listOnly(noDiscarded(plans)) : noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
+    V.feedQueueAsync(w, ME, g.ok, faNb(w, null, list), function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
+      .then(function (plans) { if (list) plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
   }
   $('cfNo').addEventListener('click', function () { feedTok++; });
   if (FEED_ALL_PAUSED) { $('bFeedHungry').style.display = 'none'; $('bFeedHungry').insertAdjacentHTML('afterend', '<span class="small muted" id="faPaused">' + FA_NOTE + '</span>'); }
   $('bFeedHungry').onclick = function () { if (FEED_ALL_PAUSED) return toast(FA_NOTE); var w = world(); feedAsync('Feed all hungry pets', w.pets.filter(function (p) { return p.owner === ME; }).map(function (p) { return p.id; })); };
-  $('bFeedSel').onclick = function () { feedAsync('Feed selected pets', sel()); };
+  $('bFeedSel').onclick = function () { feedAsync('Feed selected pets', sel(), true); };
   $('bRoll').onclick = function () { var ids = starIds(), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), q = V.rollQueue(world(), ME, ids, rn); if (!ids.length) return toast('★ Star pets in My Pets first: the roll acts on your starred pets.'); var sp = ids.length + ' starred pet' + (ids.length === 1 ? '' : 's'), wh = q.length && q[0].tag === 'pet:spin'; confirmPlans(wh ? '🎡 ' + q.length + ' wheel spin' + (q.length === 1 ? '' : 's') + ' for your ' + sp + ' (' + rn + ' each; the wheel picks a random pet)' : '🎲 Roll gear for your ' + sp + ' · ' + q.length + ' roll' + (q.length === 1 ? '' : 's'), q); }; /* starred-acts */
   if ($('bRelease')) $('bRelease').onclick = function () { if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
   $('bAuto').onclick = function () { if (viewBlock()) return; var ids = starIds(); if (!ids.length) return toast('★ Star pets in My Pets first: Auto-equip acts on your starred pets.'); var ops = V.autoEquipOps(world(), ME, ids, S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip on ' + ids.length + ' starred pet' + (ids.length === 1 ? '' : 's') + ': ' + ops.length + ' pieces (free, no burn)'); render(); }; /* starred-acts */
@@ -724,7 +726,7 @@
     return { ok: ok, skipped: skipped, text: Object.keys(why).map(function (r) { return idList(why[r]) + ' ' + r; }).join(' · ') }; }
   /* habits-ux (Oct 27 2026): check feeds before signing, for pet:feed/fm/fl and feed-all (fa/fx/fy + sk/su). Pets already fed this chain day, dead,
    * away on a quest (and the older checks) are dropped; blocked = no pet left, so no feed burn (and no lone skip-list burn) is composed. */
-  function feedGuard(w, plans) { return V2Habits.feedGuardPlans(w, plans, { me: ME, pend: pendingFeedIds(), nb: (S.tip || 0) + 1, V: V, idList: idList, queue: function (ok) { return feedQ(w, ME, ok); } }); }
+  function feedGuard(w, plans) { return V2Habits.feedGuardPlans(w, plans, { me: ME, pend: pendingFeedIds(), nb: (S.tip || 0) + 1, V: V, idList: idList, queue: function (ok) { return feedQ(w, ME, ok, undefined, !plans.some(function (q) { return isFeedAllTag(q && q.tag); })); } }); } /* the guard keeps the plan's kind: list burns stay list burns */
   function feedBlocked(title, text) { pendingPlans = null; $('cfTitle').textContent = title || 'Feed';
     $('cfBody').innerHTML = '<p class="warn"><b>🍽️ Nothing to feed, so no burn was made.</b></p><p class="small">' + esc(text || 'no pet left to feed') + '</p><p class="small muted">Nothing was signed and no XCPETS were burned.</p>';
     $('cfYes').disabled = true; $('cfYes').style.display = 'none'; $('cfNo').textContent = 'Close'; $('cfNo').disabled = false; open('confirmBox'); window.V2LastBlocked = [text];
@@ -1141,7 +1143,7 @@
     var wrap = document.createElement('div'); wrap.className = 'petsticky'; ctl.parentNode.insertBefore(wrap, ctl); wrap.appendChild(ctl); wrap.appendChild(bulk);
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
-  window.V2UI = { starIds: starIds, keptIds: keptIds, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
+  window.V2UI = { starIds: starIds, keptIds: keptIds, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
   render(); route();
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
