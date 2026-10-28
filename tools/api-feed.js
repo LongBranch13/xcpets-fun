@@ -39,6 +39,12 @@ function context() {
 function prevBoot() { try { const j = JSON.parse(fs.readFileSync(process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), 'utf8')); return j && j.dex && !j.dex.stale && j.dexTip && j.dexHash && j.dexAssets ? j : null; } catch (e) { return null; } }
 /* firesale-hashes: reuse the last boot copy's FINAL hashes (>= 6 deep at its tip) as a cache, so each run only fetches the newest blocks (BOOT_CACHE env or <out>/boot.json) */
 function prevBootHashes() { try { const f = process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), j = JSON.parse(fs.readFileSync(f, 'utf8')), o = {}; Object.keys(j.hashes || {}).forEach(k => { if (+k <= j.tip - 6 && /^[0-9a-f]{64}$/.test(j.hashes[k])) o[k] = j.hashes[k]; }); return o; } catch (e) { return {}; } }
+/* api-hardening (2026-10-27): 6-block reorg rollback in the feed. The last boot.json also ships hashes for its newest blocks (under 6 deep); those
+ * are never reused as a cache (prevBootHashes above), and here they are compared with this run's fresh hashes. Any changed hash, or a tip lower
+ * than the last run's, means the blocks after it were replaced: the sale base from the last run is dropped (full sale re-read) and the run says so. */
+function prevBootAll() { try { const j = JSON.parse(fs.readFileSync(process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), 'utf8')); return j && j.tip ? { tip: +j.tip, hashes: j.hashes || {} } : null; } catch (e) { return null; } }
+function feedReorg(prevAll, fresh, tip) { if (!prevAll) return null; let at = null; Object.keys(prevAll.hashes).forEach(k => { const n = +k; if (n > prevAll.tip - 6 && fresh[k] && prevAll.hashes[k] !== fresh[k] && (at == null || n < at)) at = n; });
+  return at != null ? { at, depth: prevAll.tip - at + 1 } : tip < prevAll.tip ? { at: tip + 1, depth: prevAll.tip - tip, back: true } : null; }
 /* firesale-hashes (Oct 25 2026): every block from each every-block gate (fire sales, Mythic quests, raids) to the tip, the same list js/v2-chain.js load() asks for */
 function gateBlocks(V, tip) { const out = []; [V.ACTIVATE_FIRESALE_BLOCK, V.questGate ? V.questGate() : null, V.raidGate ? V.raidGate() : null].forEach(g => { if (g != null && tip >= g) for (let b = g; b <= tip; b++) out.push(b); }); return out; }
 /* same reads as js/v2-chain.js load(): destructions, tip, block hashes (shipped seed first); refuses to build with any hash missing */
@@ -53,10 +59,12 @@ async function liveInput(ctx) {
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */
+  const ro = A.includes('--full') ? null : feedReorg(prevBootAll(), Object.assign({}, hc, bh.hashes), tip);
+  if (ro) console.error('feed: reorg ' + (ro.back ? '(tip went back) ' : '') + 'from block ' + ro.at + ', ' + ro.depth + ' block(s) rolled back; sale base dropped, full sale re-read');
   let dex = null; const V = ctx.V2Rules;
   if (V.salesGate && V.salesGate() != null) {
     if (!ctx.V2Sales || !ctx.V2Sales.loadDex) throw new Error('V2Sales.loadDex missing');
-    try { dex = await ctx.V2Sales.loadDex(rows, prev ? { tip, hashes: Object.assign({}, hc, bh.hashes) } : undefined); } catch (e) { throw new Error('pet sale data could not be read, not publishing (owners would be wrong): ' + (e && e.message || e)); }
+    try { dex = await ctx.V2Sales.loadDex(rows, prev && !ro ? { tip, hashes: Object.assign({}, hc, bh.hashes) } : undefined); } catch (e) { throw new Error('pet sale data could not be read, not publishing (owners would be wrong): ' + (e && e.message || e)); }
     if (!dex) throw new Error('pet sale data empty while the sales gate is set, not publishing');
   }
   console.error('feed: sale read ' + JSON.stringify(ctx.V2Sales && ctx.V2Sales.loadDex && ctx.V2Sales.loadDex.last || null));
@@ -98,7 +106,7 @@ function build(ctx, input, nowIso) {
     owners: new Set(pets.map(p => p.owner)).size, community: ctx.V2Community ? ctx.V2Community.state(w) : null, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
   return { pets, meta };
 }
-module.exports = { context, liveInput, build, SCRIPTS, SITE, LIMITED };
+module.exports = { context, liveInput, build, SCRIPTS, SITE, LIMITED, feedReorg };
 if (require.main === module) (async () => {
   const ctx = context();
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await liveInput(ctx);
