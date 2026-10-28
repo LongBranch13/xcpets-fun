@@ -14,14 +14,17 @@
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
     { id: 'raid', ico: '🐉', name: 'Raid Boss', url: 'raid.html', line: 'hit it together', pages: ['raid.html'] },
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
-    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
-    { id: 'academy', ico: '🎓', name: 'The Big Beautiful Tutorial', url: 'tutorial.html', line: 'learn by playing', pages: ['tutorial.html'] }
+    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] }
   ];
+  /* tutorial-banner (owner playtest note 1, Oct 27 2026): The Big Beautiful Tutorial is NOT a place. It sits in the top banner by itself
+   * (its own link after Ranking on every page with the banner), never in the Places menu, the My Pets 'Places' card or the front-page place cards. */
+  var TUTORIAL = { ico: '🎓', name: 'Tutorial', title: 'The Big Beautiful Tutorial', url: 'tutorial.html' };
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /** header menu markup (tools/build-places.js writes it between <!--places--> and <!--/places--> on every page) */
   function menu() { return '<details class="navplaces"><summary>🗺️ Places</summary><div class="np-menu" role="menu">' +
-    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- the site\'s existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a>'; }
-  var api = { PLACES: PLACES, menu: menu };
+    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- the site\'s existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a>' +
+    '<!-- the tutorial, standalone in the banner (not a place) --><a class="navtut" href="' + TUTORIAL.url + '" title="' + esc(TUTORIAL.title) + '"><span aria-hidden="true">' + TUTORIAL.ico + '</span> ' + esc(TUTORIAL.name) + '</a>'; }
+  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, menu: menu };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.V2Places = api;
@@ -32,6 +35,8 @@
       if (here) { var a = d.querySelector('.np-' + here.id); if (a) a.setAttribute('aria-current', 'page'); d.querySelector('summary').classList.add('np-on'); }
       document.addEventListener('click', function (e) { if (d.open && !d.contains(e.target)) d.open = false; });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.open = false; }); });
+    /* banner tutorial link: mark it on tutorial.html */
+    if (file === TUTORIAL.url) document.querySelectorAll('header.nav nav a.navtut').forEach(function (a) { a.setAttribute('aria-current', 'page'); });
     /* place pages: Town bar + stations */
     if (here && !document.getElementById('townBar')) { var m = document.querySelector('main') || document.body, bar = document.createElement('nav');
       bar.id = 'townBar'; bar.className = 'townbar'; bar.setAttribute('aria-label', 'Where you are');
