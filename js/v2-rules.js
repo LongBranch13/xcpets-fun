@@ -943,7 +943,7 @@
   /* USE ALL SPINS (owner Oct 27 2026: 'use all spins 1 tx'): from ACTIVATE_USE_ALL_SPINS_BLOCK one 1-sat pet:usespin:all burn spends EVERY saved spin
    * the signer has at that block (no per-burn cap). Each spin is the same wheel rule as pet:usespin:N, seeded with tx + ':' + i. 0 spins left ->
    * rejected (nothing spent). Below the gate pet:usespin:all stays an unknown tag (community food), exactly as before. pet:usespin / :1-10 unchanged. */
-  var ACTIVATE_USE_ALL_SPINS_BLOCK = 973475; // tip 973,469 (api.counterparty.io:4000, Oct 27 2026 ~6:35 PM CT) + 6; reset to tip + 6 at deploy
+  var ACTIVATE_USE_ALL_SPINS_BLOCK = 973483; // tip 973,477 (api.counterparty.io:4000, Oct 27 2026 ~8:03 PM CT) + 6
   function useAllOn(b) { return ACTIVATE_USE_ALL_SPINS_BLOCK != null && b != null && b >= ACTIVATE_USE_ALL_SPINS_BLOCK && spinsOn(b); }
   /* wheel pool once per burn (speed fix, results identical): a multi-spin burn builds the pet pool (wheelPool + liveAt + total wheelWt) ONCE at block b.
    * Same block, so liveAt is a no-op the 2nd time and a spin never changes a pet's open slots (they come from age / days fed / Mythic only).
