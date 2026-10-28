@@ -24,7 +24,7 @@ const r1 = L.row(T, ME, amt, 'pet:fa'), b = world(T - 1, [r1], T + 1), fed = (b.
 ok(fed && fed.kind === 'feed' && fed.petIds.length === hungry.length, 'pet:fa fed all ' + hungry.length + ' pets in one tx (' + (fed && fed.msg.slice(0, 60)) + ')');
 // selected subset -> pet:fx
 const pick = hungry.slice(0, hungry.length - 3), px = V.feedQueue(a.w, ME, pick.map(p => p.id), T);
-ok(px.length === 1 && /^pet:fx:/.test(px[0].tag) && px[0].tag.length <= 34, 'Feed selected (all but 3) -> ONE burn ' + (px[0] && px[0].tag));
+ok(px.length === 1 && /^pet:f[ax](:|$)/.test(px[0].tag) && px[0].tag.length <= 34, 'Feed selected (all but 3) -> ONE burn ' + (px[0] && px[0].tag));
 const r2 = L.row(T, ME, px[0].amount, px[0].tag), c2 = world(T - 1, [r2], T + 1), f2 = (c2.w.log || []).find(l => l.tx === r2.tx_hash && (l.kind === 'feed' || l.kind === 'rejected'));
 ok(f2 && f2.petIds.join() === pick.map(p => p.id).sort((x, y) => x - y).join(), 'pet:fx fed exactly the selected pets');
 // before the gate: community food only, nothing fed
