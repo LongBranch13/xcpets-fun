@@ -716,6 +716,10 @@
     if (mode === 'd') { var lh = Math.min(16, hgt + 2); [['l', bb.x0 - 4.6], ['r', bb.x1 + 1.6]].forEach(function (q) { var s = mythLaurel(q[0], uid); s.setAttribute('style', (s.getAttribute('style') || '') + ';position:absolute;left:' + P(q[1]) + ';top:' + P(bb.y1 + 1 - lh) + ';width:' + P(lh / 3) + ';height:' + P(lh) + (q[0] === 'r' ? ';transform:scaleX(-1)' : '')); o.appendChild(s); }); }
     return o; }
   function mythPlace(c) { var o = c._mfx; if (!o) return; var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
+    /* rankings-outline-fix 2026-10-28: a canvas inside a static <td>/<th>/<table> gets that cell as its offsetParent, but the absolute overlay's containing block is the
+     * nearest POSITIONED ancestor (often the page itself). The line was then pinned to a page coordinate and stayed behind when anything above it moved (banners,
+     * fonts, the board re-rendering), drawing over the rows above. Make the cell the overlay's containing block so offsetLeft/offsetTop and the overlay agree. */
+    var op = c.offsetParent; if (op && /^(TD|TH|TABLE)$/.test(op.tagName) && window.getComputedStyle && getComputedStyle(op).position === 'static') op.style.position = 'relative';
     o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size'; o._pos = c.offsetLeft + ',' + c.offsetTop + ',' + w + ',' + h; try { var cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(), dx = cr.left - orr.left, dy = cr.top - orr.top; /* sub-pixel exact: the line must sit on the rim pixels */ if (Math.abs(dx) > 0.01) o.style.left = (c.offsetLeft + dx) + 'px'; if (Math.abs(dy) > 0.01) o.style.top = (c.offsetTop + dy) + 'px'; } catch (e) {}
     var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } 
     mythFit(); }
@@ -723,6 +727,8 @@
   var mythFitRaf = 0; function mythFit() { if (mythFitRaf || typeof requestAnimationFrame === 'undefined') return; mythFitRaf = requestAnimationFrame(function () { mythFitRaf = 0; var W = document.documentElement.clientWidth; if (!W) return;
   if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', function () { mythFit(); });
     document.querySelectorAll('.mfx').forEach(function (o) { var r = o.getBoundingClientRect(); if (!r.width) return; var room = Math.floor(Math.min(r.left + scrollX, W - r.right - scrollX) - 2);
+      /* rankings-outline-fix: small thumbnails (list rows, under 64 px) keep the arcs/sparks tight around the sprite so they never spill into the next row */
+      if (r.width < 64) room = Math.min(room, Math.max(2, Math.round(r.width * 0.08)));
       if (room < r.width * 0.3) { o.style.overflow = 'clip'; o.style.overflowClipMargin = Math.max(0, room) + 'px'; } else { o.style.overflow = ''; o.style.overflowClipMargin = ''; } }); }); }
   var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
   function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; c._mfxR = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
@@ -1131,7 +1137,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=eb02b17b50'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=eb014849b9'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
