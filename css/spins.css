@@ -4,3 +4,4 @@
 .wh-count{font-size:20px;font-weight:700;color:#f2c14e;text-shadow:2px 2px 0 #1a1020}
 .wh-saved small{flex:1 1 140px;opacity:.85}.wh-use{display:flex;gap:6px;flex-wrap:wrap}
 @media (max-width:480px){.wh-use{width:100%}.wh-use .btn{flex:1;min-height:44px}}
+.wh-all{width:100%}.wh-all .btn[data-useall]{flex:1 1 100%;white-space:normal;text-align:center}

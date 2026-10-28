@@ -285,11 +285,15 @@
   function wheelOnNow() { var V = window.V2Rules, U = window.V2UI; return !!(V && V.wheelOn && U && V.wheelOn(((U.S() || {}).tip || 0) + 1)); }
   function spinFx() { spinNow(3200); S.lt = performance.now(); S.line++; S.say = null; if (S.c && !S.raf) draw(performance.now()); }
   /* SAVED SPINS (saved-spins branch): counter on the wheel + 'Use N' (one 1-sat pet:usespin burn, up to 10 spins; only the Bitcoin fee). Tap Use -> the
-   * game's confirm -> the player's wallet signs. ?preview=spins shows a fake count (nothing can be sent from a preview without spins). */
+   * game's confirm -> the player's wallet signs. ?preview=spins shows a fake count (nothing can be sent from a preview without spins).
+   * use-all-spins (owner Oct 27 2026 'use all spins 1 tx'): from ACTIVATE_USE_ALL_SPINS_BLOCK, 2+ spins -> '🎁 Use all N spins · 1 burn · only the Bitcoin fee'
+   * (one 1-sat pet:usespin:all burn spends every saved spin, no cap); Use 10 / Use 1 stay. Before the gate: the Use 10 / Use 1 buttons as before. */
   function savedHtml() { var V = window.V2Rules, U = window.V2UI, M = window.V2Mock, tip = (M.state().tip || 0) + 1, pv = /[?&]preview=spins\b/.test(location.search);
     if (!V.spinsLeft || (!pv && (!V.spinsOn(tip) || !M.ME))) return ''; var n = pv ? 7 : V.spinsLeft(U.world(), M.ME, tip, U.myPendingTags ? U.myPendingTags() : []), k = Math.min(V.SPINS_MAX_PER_BURN, n);
-    return '<div class="wh-saved" id="whSaved"><span class="wh-count" aria-label="' + n + ' saved spins">🎡 × ' + n + '</span><small>saved spin' + (n === 1 ? '' : 's') + ' · never expire · free, only the Bitcoin fee</small>' +
-      (n ? '<span class="wh-use"><button type="button" class="btn ico-flame" data-usespin="' + k + '">🎁 Use ' + k + ' spin' + (k === 1 ? '' : 's') + '</button>' + (k > 1 ? '<button type="button" class="btn ghost" data-usespin="1">Use 1</button>' : '') + '</span>' : '') + '</div>'; }
+    var all = n > 1 && V.useAllOn && V.useAllOn(tip), nf = Number(n).toLocaleString('en-US');
+    return '<div class="wh-saved" id="whSaved"><span class="wh-count" aria-label="' + n + ' saved spins">🎡 ' + nf + '</span><small>saved spin' + (n === 1 ? '' : 's') + ' · never expire · free, only the Bitcoin fee</small>' +
+      (!n ? '' : all ? '<span class="wh-use wh-all"><button type="button" class="btn ico-flame" data-useall="' + n + '">🎁 Use all ' + nf + ' spins · 1 burn · only the Bitcoin fee</button>' + (k < n && k > 1 ? '<button type="button" class="btn ghost" data-usespin="' + k + '">Use ' + k + '</button>' : '') + '<button type="button" class="btn ghost" data-usespin="1">Use 1</button></span>' :
+        '<span class="wh-use"><button type="button" class="btn ico-flame" data-usespin="' + k + '">🎁 Use ' + k + ' spin' + (k === 1 ? '' : 's') + '</button>' + (k > 1 ? '<button type="button" class="btn ghost" data-usespin="1">Use 1</button>' : '') + '</span>') + '</div>'; }
   function spinBurn() { var U = window.V2UI, V = window.V2Rules; spinNow(700); U.confirmPlans('Spin the Pepe Wheel', [{ tag: V.buildTag('spin'), amount: V.COSTS.roll }], spinFx); }
   /* wheel-click-spin (owner Oct 24 2026): the drawn wheel is a real control. A tap/click/Enter does exactly what the 'Spin the wheel' button does (spinBurn ->
    * the same wallet confirm; view-only / no wallet get confirmPlans' own message). No eligible pet: the same note the panel shows instead of the button. */
@@ -309,6 +313,7 @@
       '<button type="button" class="btn ico-flame rr-best" id="whSpin">🎡 Spin the wheel · 345 <span class="cost">' + (pend ? '🎁 ' + pend + ' spin' + (pend === 1 ? '' : 's') + ' on the way' : 'one piece onto a random pet of yours') + '</span></button>' + res + '</div>'; }
   function bindWheel2(el) { var U = window.V2UI, V = window.V2Rules, w = U.world(), b = el.querySelector('#whSpin'); if (b) b.onclick = spinBurn;
     var us = el.querySelectorAll('[data-usespin]'); [].forEach.call(us, function (q) { q.onclick = function () { var n = +q.dataset.usespin; spinNow(700); U.confirmPlans('Use ' + n + ' saved spin' + (n === 1 ? '' : 's'), [V.useSpinPlan(n)], spinFx); }; });
+    [].forEach.call(el.querySelectorAll('[data-useall]'), function (q) { q.onclick = function () { var n = +q.dataset.useall; spinNow(700); U.confirmPlans('Use all ' + n.toLocaleString('en-US') + ' saved spins', [V.useAllSpinsPlan(n)], spinFx); }; });
     el.querySelectorAll('[data-wgid]').forEach(function (q) { q.onclick = function () { enterDress(q.dataset.wpid, q.dataset.wgid); }; });
     el.querySelectorAll('.wh-res canvas[data-gic]').forEach(function (c) { try { var ic = window.V2Render.iconCanvas(c.dataset.gic); c.getContext('2d').drawImage(ic, 0, 0, 16, 16); } catch (e) { } }); }
   function drMatch(V, p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id) === q || String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || String(V.speciesLabel(p.species) || '').toLowerCase().indexOf(q) >= 0; }
