@@ -36,7 +36,21 @@
     var sd = new Float32Array(34 * 34); for (y = -1; y < 33; y++) for (x = -1; x < 33; x++) { var best = 1e9; for (var k = 0; k < edge.length; k += 2) { var dx = edge[k] - x, dy = edge[k + 1] - y, dd = dx * dx + dy * dy; if (dd < best) best = dd; }
       var inn = x >= 0 && y >= 0 && x < 32 && y < 32 && m[y * 32 + x]; sd[(y + 1) * 34 + x + 1] = inn ? -Math.sqrt(best) - 0.5 : Math.sqrt(best) - 0.5; }
     var cnt = {}, top = null, tn = 0; for (p = 0; p < 1024; p++) if (m[p]) { var i2 = p * 4, L = 0.3 * a[i2] + 0.59 * a[i2 + 1] + 0.11 * a[i2 + 2]; if (L < 48) continue; var k2 = a[i2] + ',' + a[i2 + 1] + ',' + a[i2 + 2]; cnt[k2] = (cnt[k2] || 0) + 1; if (cnt[k2] > tn) { tn = cnt[k2]; top = [a[i2], a[i2 + 1], a[i2 + 2]]; } }
-    return { m: m, sd: sd, x0: x0, x1: x1, y0: y0, y1: y1, yh: yh, cx: sn ? sx / sn : 16, hw: sn ? rx1 - rx0 + 1 : 8, cy: (y0 + y1) / 2, body: top || [128, 128, 128] }; }
+    return { m: m, sd: sd, x0: x0, x1: x1, y0: y0, y1: y1, yh: yh, cx: sn ? sx / sn : 16, hw: sn ? rx1 - rx0 + 1 : 8, cy: (y0 + y1) / 2, body: top || [128, 128, 128], wa: wingAnchor(m) }; }
+  /* HOLO WINGS ANCHOR (owner Oct 28 2026 'just the holo wings are too far off'): the wings hang on the pet's BODY, not on the whole mask. The whole mask
+   * also holds detached pieces (the hybrid DNA badge in the top-right corner, 5x5 at x27-31 y0-4), and its first 4-wide row is that badge, so every
+   * hybrid had cx = 29 and its wings flew off the right edge. Here: the largest 8-connected piece of the mask = the body; wings centre = median of the
+   * row midpoints of its wide rows (>= 60% of the widest, so a leaning wizard hat or a held item does not pull it sideways); height = its middle.
+   * Only the holo wings use this; crown / halo / laurels / aura / sparkles keep their own anchors. */
+  function wingAnchor(m) { var lab = new Int16Array(1024), best = 0, bl = 0, n = 0, st = [], p, q, x, y;
+    for (p = 0; p < 1024; p++) if (m[p] && !lab[p]) { n++; var c = 0; st.length = 0; st.push(p); lab[p] = n;
+      while (st.length) { q = st.pop(); c++; x = q & 31; y = q >> 5; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var X = x + dx, Y = y + dy, r = Y * 32 + X; if (X < 0 || Y < 0 || X > 31 || Y > 31 || !m[r] || lab[r]) continue; lab[r] = n; st.push(r); } }
+      if (c > best) { best = c; bl = n; } }
+    var ry0 = 32, ry1 = -1, wd = [], mx = 0, hw = 0; for (y = 0; y < 32; y++) { var a = 32, b = -1, cn = 0; for (x = 0; x < 32; x++) if (lab[y * 32 + x] === bl) { cn++; if (x < a) a = x; if (x > b) b = x; }
+      if (b >= 0) { if (y < ry0) ry0 = y; ry1 = y; wd.push([b - a + 1, (a + b) / 2]); if (b - a + 1 > mx) mx = b - a + 1; if (!hw && cn >= 4 && y < 31) hw = -1 - y; } }
+    if (hw < 0) { y = -hw; var h0 = 32, h1 = -1; for (x = 0; x < 32; x++) if (lab[y * 32 + x] === bl) { if (x < h0) h0 = x; if (x > h1) h1 = x; } hw = h1 - h0 + 1; } /* same width rule as g.hw (row under the first 4-wide row), body only */
+    var mids = wd.filter(function (r) { return r[0] >= mx * 0.6; }).map(function (r) { return r[1]; }).sort(function (u, v) { return u - v; });
+    return { cx: mids.length ? mids[mids.length >> 1] : 16, cy: ry1 >= 0 ? (ry0 + ry1) / 2 : 16, hw: hw || 8 }; }
   function attachInfo(fr, A, B, looks, seed) { if (!INFO || !looks || !looks.length) return fr; var by = byType(looks), key = TYPES.map(function (t) { return by[t] || ''; }).join('|');
     var gs = A.map(function (f, i) { return geom(f.data, (B[i] || B[0]).data); });
     fr.forEach(function (f, i) { var g = gs[i % gs.length]; if (g && f && typeof f === 'object') INFO.set(f, { by: by, key: key, g: g, seed: (seed | 0) % 997 }); });
@@ -62,8 +76,8 @@
               r += I * (0.15 + 0.5 * Math.max(0, -dy) / 3 * (c === 2 ? 1 : 0.3)); gg += I * (0.95 - 0.25 * c); b += I * (0.45 + 0.2 * c); ac += I; }
             var st = hash(px, py + seed); if (st > 0.996 - ac * 0.003) { var tw = 0.5 + 0.5 * Math.sin(t * 3 + st * 50); r += tw * 0.7; gg += tw * 0.7; b += tw * 0.8; }
           } else if (back === 'holo-wings') { /* iridescent wings behind the body, flapping */
-            var fl = still ? 0 : Math.sin(t * 3.2) * 0.18, wy = g.cy - 1;
-            for (var s2 = -1; s2 <= 1; s2 += 2) { var wx = (X - g.cx) * s2 - g.hw * 0.25, wyy = Y - wy; if (wx < 0) continue; var ang = Math.atan2(-wyy, wx) - 0.45 - fl, rad = Math.sqrt(wx * wx + wyy * wyy);
+            var fl = still ? 0 : Math.sin(t * 3.2) * 0.18, wa = g.wa, wy = wa.cy - 1;
+            for (var s2 = -1; s2 <= 1; s2 += 2) { var wx = (X - wa.cx) * s2 - wa.hw * 0.25, wyy = Y - wy; if (wx < 0) continue; var ang = Math.atan2(-wyy, wx) - 0.45 - fl, rad = Math.sqrt(wx * wx + wyy * wyy);
               var reach = 13.5 * (0.55 + 0.45 * Math.cos(ang * 1.25)) * (Math.abs(ang) < 1.35 ? 1 : 0), fe = Math.abs(Math.sin(ang * 4.5)); reach *= 0.8 + 0.2 * fe;
               if (rad < reach) { var e = rad / reach; irid(e * 0.9 + ang * 0.25 + shine * 0.6 + t * 0.03, tmp); var sh = 0.6 + 0.4 * Math.pow(Math.max(0, Math.cos((ang - shine * 1.5) * 2)), 6), vein = 0.82 + 0.18 * Math.cos(rad * 2.2 + ang * 9);
                 var al = clamp((reach - rad) * 1.2, 0, 1) * 0.92; r = r * (1 - al) + al * (tmp[0] * 0.7 + 0.35) * vein * sh; gg = gg * (1 - al) + al * (tmp[1] * 0.7 + 0.35) * vein * sh; b = b * (1 - al) + al * (tmp[2] * 0.7 + 0.4) * vein * sh;
