@@ -33,13 +33,19 @@
 
   // ------------------------------------------------------------------ engine-backed helpers
   function pet(id) { var w = W(); return w && w.byId ? w.byId[id] : null; }
-  function careNext(w, p) { /* item 4: next stage from the engine's own per-pet thresholds (V2Render.careTarget -> V2Rules.petThresholds) */
-    if (!w || !p || p.dead || p.stage >= 5 || !window.V2Render || !V2Render.careTarget) return null; var ct = V2Render.careTarget(w, p, w.tip), th = ct.th, s = p.stage, need = th[s + 1] - p.care; if (!(need > 0)) return null;
-    var meal = p.nextMeal || 0, meals = meal > 0 ? Math.ceil(need / meal) : null, today = Math.floor(w.tip / BPD), first = p.fedToday ? (today + 1) * BPD : w.tip;
-    return { next: stageNames()[s + 1], at: th[s + 1], need: need, meals: meals, earliest: meals ? first + (meals - 1) * BPD : null, ct: ct }; }
+  function careNext(w, p) { /* item 4: next stage from the engine's own per-pet thresholds (V2Render.careTarget -> V2Rules.petThresholds).
+     * meal-count-fix (Oct 27 2026, display only): the target is the LOWER of the next stage and the pet's Mythic line (a Mythic shortcut at 21,000 can
+     * come before Adult/Elder: the pet then goes straight to Mythic), meals are counted by stepping V2Rules.mealFor() with those thresholds (care per
+     * meal, never the XCPETS a meal burns), and the earliest block is the start of the chain day of the last meal. */
+    var R = V(); if (!w || !p || p.dead || p.stage >= 5 || !window.V2Render || !V2Render.careTarget) return null; var tip = w.tip, ct = V2Render.careTarget(w, p, tip), th = ct.th, s = p.stage, sk = th[5] <= th[s + 1],
+      at = sk ? th[5] : th[s + 1], need = at - p.care; if (!(need > 0)) return null;
+    var meals = null, c = p.care, n = 0, m; if (R && R.mealFor) { while (c < at && n < 999) { m = R.mealFor(c, p.species, tip + 1, th); if (!(m > 0)) break; c += m; n++; } if (c >= at) meals = n; }
+    var per = p.nextCare || p.nextMeal || 0; if (meals == null && per > 0) meals = Math.ceil(need / per); /* fallback: engine without mealFor */
+    var today = Math.floor(tip / BPD), first = p.fedToday ? (today + 1) * BPD : tip + 1, earliest = meals ? (meals === 1 ? first : (Math.floor(first / BPD) + meals - 1) * BPD) : null;
+    return { next: sk ? stageNames()[5] : stageNames()[s + 1], at: at, need: need, meals: meals, per: per, skip: sk, earliest: earliest, ct: ct }; }
   function careShort(w, p) { var n = careNext(w, p); return n && n.meals ? '→ ' + n.next + ' in ' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') : ''; }
   function stageLadder(w, p) { var ct = V2Render.careTarget(w, p, w.tip), th = ct.th, n = stageNames();
-    return '<ol class="ip-ladder">' + th.map(function (v, i) { return '<li class="' + (i === p.stage ? 'on' : i < p.stage ? 'done' : '') + '">' + n[i] + ' <span class="muted">' + fmt(v) + '</span></li>'; }).join('') + '</ol>'; }
+    return '<ol class="ip-ladder">' + th.map(function (v, i) { var sk = i > p.stage && i < 5 && v >= th[5]; /* meal-count-fix: stages the Mythic shortcut jumps over */ return '<li class="' + (i === p.stage ? 'on' : i < p.stage ? 'done' : '') + '">' + n[i] + ' <span class="muted">' + fmt(v) + (sk ? ' · skipped' : '') + '</span></li>'; }).join('') + '</ol>'; }
 
   // ------------------------------------------------------------------ tips (each one is one tap away)
   var TIPS = {
@@ -48,7 +54,7 @@
         (si ? '<li>#' + p.id + ' dies in ~' + esc(si.left) + ' (block ' + fmt(si.at) + ') unless fed.</li>' : '') + '</ul>' + (p && d.getElementById('pets') && window.V2UI ? '<p><button type="button" class="btn" data-ipopen="' + p.id + '">🍽️ Feed #' + p.id + ' ▸</button></p>' : '') + more('feed', 'Feeding rules'); },
     care: function (id) { var w = W(), p = pet(id); if (!w || !p) return '<p>Loading…</p>'; var n = careNext(w, p), ct = V2Render.careTarget(w, p, w.tip);
       return '<h3>📈 #' + p.id + ' care: ' + fmt(p.care) + '</h3>' + stageLadder(w, p) +
-        (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ~' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, ' + fmt(p.nextMeal) + ' each) · earliest ~block ' + fmt(n.earliest) : '') + '.</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
+        (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, up to ' + fmt(n.per) + ' care each) · earliest ~block ' + fmt(n.earliest) : '') + '.' + (n.skip && p.stage < 4 ? ' The Mythic shortcut comes first, so it skips ' + (p.stage < 3 ? 'Adult and Elder' : 'Elder') + '.' : '') + '</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
         (ct.discount ? '<p class="small">' + TIPS.mythic() + '</p>' : '') + more('feed', 'Stages and meals'); },
     mythic: function () { var c = V() && V().MYTHIC_DISCOUNT_CARE; return '<b>Mythic shortcut:</b> once an address raises a living Mythic, every pet it owns reaches Mythic at ' + fmt(c || 21000) + ' care instead of 69,069. That\'s why a Mythic can show less care than a pet still growing.'; },
     mythicRank: function () { return '<h3>Why is this Mythic\'s care lower?</h3><p>' + TIPS.mythic() + '</p>' + more('feed', 'Stages'); },
@@ -228,7 +234,7 @@
     row.innerHTML = ' <a class="btn ghost" href="play.html#pet-' + id + '">🍽️ Feed</a> <a class="btn ghost" href="rare-room.html#rare-room">🎲 Roll / gear</a> <a class="btn ghost" href="fight.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="breed.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
 
   // ------------------------------------------------------------------ exports used by page code
-  window.IPQ = { q: q, open: open, close: close, careShort: careShort,
+  window.IPQ = { q: q, open: open, close: close, careShort: careShort, careNext: careNext, careSheet: function (id) { return TIPS.care(id); },
     mythicQ: function (p) { return p && p.stage === 5 && !p.community ? q('mythicRank', null, 'Why is this Mythic\'s care lower?') : ''; },
     urgency: function (w, p) { if (p.dead || p.mythicCare || p.deathBlock == null) return Infinity; return p.deathBlock - (w ? w.tip : 0); } };
 
