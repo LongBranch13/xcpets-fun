@@ -356,7 +356,7 @@
     /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Starred and selected pets stay listed; discarded
      * pets are already out (mine). A wallet whose few pets are all never fed sees them open. One O(n) pass, so 9k-pet wallets stay fast. */
     var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, new Set(keptIds()), new Set(S.sel)), nfN = nfs.nf.length;
-    var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.shown.concat(nfs.nf) : nfs.shown;
+    var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.nf.concat(nfs.shown) : nfs.shown; /* nf-fold fix (Oct 27 2026): opened never-fed pets go first, right under the fold. They used to go last, past the 150-card page, so the fold opened onto nothing. */
     var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
     $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
