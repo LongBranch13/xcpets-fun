@@ -761,9 +761,14 @@
           if (nt) nt.onclick = function (ev) { ev.preventDefault(); V2Wallet.allowUnconfirmedOnce(); $('cfYes').onclick(); }; } }); })(); };
 
   // ---------------------------------------------------------------- hatch + community (live buttons)
-  $('hatchBtn').textContent = 'Crack One Open (69)'; $('hatchBtn').onclick = function () { confirmPlans('Crack One Open', [{ tag: 'pet:hatch', amount: 69 }]); };
-  $('dozenBtn').onclick = function () { confirmPlans('Crack Pack · 12 eggs', [{ tag: 'pet:hatch12', amount: 690 }]); };
-  $('caseBtn').onclick = function () { confirmPlans('Yolk Booster Box · 144 eggs', [{ tag: 'pet:hatch144', amount: 6900 }]); };
+  /* stale-egg-costs (owner Oct 28 2026): the three egg buttons used to show and burn the ORIGINAL 69 / 690 / 6,900 until the halving UI caught up.
+   * Now they say (…) and stay disabled until the replayed world has set the current costs (V.COSTS.era is only set by syncCosts on a real world),
+   * and a click burns that current cost (planAmount still re-prices it at the next block). The Electric Shock Box is unchanged. UI only. */
+  var EGGS = [['hatchBtn', 'Crack One Open', 'pet:hatch', 'hatch'], ['dozenBtn', 'Crack Pack · 12 eggs', 'pet:hatch12', 'hatch12'], ['caseBtn', 'Yolk Booster Box · 144 eggs', 'pet:hatch144', 'hatch144']];
+  function eggCost(k) { var C = V.COSTS; return C && C.era != null && C[k] > 0 ? C[k] : null; } /* reads only: never asks for the world (no replay) */
+  function eggButtons() { EGGS.forEach(function (e) { var b = $(e[0]); if (!b) return; var c = eggCost(e[3]), t = e[1] + ' (' + (c == null ? '…' : fmt(c)) + ')'; if (b.textContent !== t) b.textContent = t; if (b.disabled !== (c == null)) b.disabled = c == null; }); }
+  EGGS.forEach(function (e) { var b = $(e[0]); if (b) b.onclick = function () { var c = eggCost(e[3]); if (c == null) { eggButtons(); toast('Still loading the current egg price… try again in a moment.'); return; } confirmPlans(e[1], [{ tag: e[2], amount: c }]); }; });
+  eggButtons(); setInterval(eggButtons, 1000);
   /* ELECTRIC EGGS (preview): one pet:hatchzap burn = 1,000 eggs with boosted tier odds. The button stays locked until the chain tip reaches the gate block. */
   if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g); };
     zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Shock Box · 1,000 eggs', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
