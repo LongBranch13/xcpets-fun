@@ -15,7 +15,7 @@
     try { out.push((V2.STAGE_NAMES || [])[p.stage]); } catch (e) { }
     if (p.dead) out.push('dead'); else out.push('alive'); if (p.community) out.push('community'); if (p.released) out.push('released');
     if (p.status) out.push(p.status); if (p.oldMoney) out.push('old money');
-    if (ks && ks.has(p.id)) out.push('starred', 'kept'); /* mypets-top: search words replace the Starred / Never fed filters */
+    if (ks && ks.has(p.id)) out.push('selected', 'checked'); /* mypets-checkbox: the checked pets (was 'starred' / 'kept'; stars are gone) */
     if (p.hungry && !p.dead) out.push('hungry'); if (p.lastFed == null && !Object.keys(p.feedDays || {}).length) out.push('unfed', 'never fed');
     STATS.forEach(function (k) { if (p.stats && p.stats[k] != null) out.push(k); });
     try { if (root.PetCore && p.art) { var d = root.PetCore.describe(p.art); Object.keys(d).forEach(function (k) { if (k !== 'Tier' && d[k]) out.push(d[k]); }); } } catch (e) { }
@@ -28,7 +28,7 @@
     var n = t.replace(/^#/, ''); if (/^\d+$/.test(n)) return String(p.id).indexOf(n) === 0;
     return h.indexOf(t) >= 0; }
   /** matcher(q, w) -> function(p) true when every word matches; null when q is empty. */
-  function matcher(q, w) { var ws = words(q); if (!ws.length) return null; var cache = new Map(), ks = null; try { var U = root.V2UI; if (U && U.keptIds) ks = new Set(U.keptIds().map(Number)); } catch (e) { }
+  function matcher(q, w) { var ws = words(q); if (!ws.length) return null; var cache = new Map(), ks = null; try { var U = root.V2UI; if (U && U.S) ks = new Set((U.S().sel || []).map(Number)); } catch (e) { }
     return function (p) { var h = cache.get(p); if (h == null) { h = hay(p, w, ks); cache.set(p, h); } return ws.every(function (t) { return one(t, p, h); }); }; }
   var api = { matcher: matcher, words: words, haystack: hay };
   root.V2PetSearch = api; if (typeof module !== 'undefined' && module.exports) module.exports = api;

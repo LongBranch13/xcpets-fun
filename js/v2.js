@@ -50,34 +50,23 @@
   function idList(ids) { return '#' + ids.slice(0, 5).join(', #') + (ids.length > 5 ? ' +' + (ids.length - 5) + ' more' : ''); }
   var JUST_BACK = []; /* restore-fix (owner Oct 27 2026, "I can't find my never fed pets I took out of the discard pile"): pets restored this visit go to the top of My Pets, outside the Never fed fold, so they show right away (they used to land folded inside Never fed, often past the first 150 cards) */
   function restoreLocal(ids) { setHidden(hiddenIds().filter(function (x) { return ids.indexOf(x) < 0; })); JUST_BACK = ids.map(Number).concat(JUST_BACK.filter(function (x) { return ids.indexOf(x) < 0; })); render(); toast('↩️ Restored ' + idList(ids) + ' to My Pets. They are at the top of the list.'); }
-  /* Keep/star (build 2, 2026-10-16): browser-only flag per network + address. Kept pets are skipped by the bulk discards; nothing on chain. */
-  function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
-  function keptIds() { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]'); } catch (e) { return []; } }
-  function isKept(id) { return keptIds().indexOf(Number(id)) >= 0; }
-  function toggleKeep(id) { id = Number(id); var l = keptIds(), i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { }
-    var on = i < 0; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Starred: never discarded. Click to unstar.' : 'Star this pet so it is never discarded'; });
-    toast(on ? '★ #' + id + ' starred: it is never discarded.' : '☆ #' + id + ' unstarred: it can be discarded again.'); try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { } return on; }
-  /* starred-acts (owner Oct 27 2026 11:21 PM CT 'yes starred'): Rare Room multi-pet roll, Auto-equip and the swipe view act on the STARRED pets (same xcpets-keep key) now that select mode is gone.
-   * starIds() = starred pets you own that are alive, not released and not discarded in this browser. */
-  function starIds(w) { w = w || world(); if (!ME || !w) return []; var hs = new Set(hiddenIds()); return keptIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !hs.has(id); }); }
-  /* owner add-on 2026-10-21: a feed burn sent from this browser stars the fed pets (never un-stars), so a later bulk discard can't take them. UI/localStorage only. */
-  function keepFed(tag) { var t = V.parseTag(tag), ids = !t ? [] : t.action === 'feed' ? [t.petId] : (t.action === 'feedm' || t.action === 'feedl') ? t.ids : []; if (!ids.length) return 0; var l = keptIds(), n = 0;
-    ids.forEach(function (id) { id = Number(id); if (l.indexOf(id) < 0) { l.push(id); n++; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = '★'; b.setAttribute('aria-pressed', 'true'); b.title = 'Starred: never discarded. Click to unstar.'; }); } });
-    if (n) try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } return n; }
-  function keptToast(n) { if (n) toast('★ ' + fmt(n) + ' fed pet' + (n > 1 ? 's' : '') + ' starred: never discarded.', 7000); }
-  /* backfill auto-star (owner 2026-10-21 9:18 PM): once per pet, star every owned living pet that has ever been fed; the per-address
-   * autoStarSeen set means a later un-star is respected. UI/localStorage only. */
-  function autoStarBackfill(w) { if (!ME || !w || !w.pets) return; var sk = 'xcpets-v2-autoStarSeen-' + NET + '-' + ME, seen; try { seen = JSON.parse(localStorage.getItem(sk) || '[]'); } catch (e) { seen = []; }
-    var ss = {}; seen.forEach(function (id) { ss[id] = 1; }); var l = keptIds(), ks = {}; l.forEach(function (id) { ks[id] = 1; }); var n = 0, add = 0;
-    w.pets.forEach(function (p) { if (p.owner !== ME || p.dead || p.released || ss[p.id]) return; if (p.lastFed == null && !Object.keys(p.feedDays || {}).length) return;
-      seen.push(p.id); add++; if (!ks[p.id]) { l.push(p.id); ks[p.id] = 1; n++; } });
-    if (!add) return; try { localStorage.setItem(sk, JSON.stringify(seen)); if (n) localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { }
-    if (n) { document.querySelectorAll('.keepbtn[data-keep]').forEach(function (b) { if (ks[b.dataset.keep]) { b.textContent = '★'; b.setAttribute('aria-pressed', 'true'); } }); toast('★ ' + fmt(n) + ' fed pet' + (n > 1 ? 's' : '') + ' starred: never discarded.', 8000); } }
-  function keepBtn(id) { var on = isKept(id); return '<button type="button" class="keepbtn" data-keep="' + id + '" aria-pressed="' + on + '" aria-label="Keep #' + id + '" title="' + (on ? 'Starred: never discarded. Click to unstar.' : 'Star this pet so it is never discarded') + '">' + (on ? '★' : '☆') + '</button>'; }
+  /* mypets-checkbox (owner Oct 28 2026 10:21 AM CT: "No stars bring back check box"): stars are retired. The ☑ checkbox on each card (S.sel) is the
+   * one mark. The old browser-only star list (localStorage xcpets-keep-<network>-<address>) is left untouched: never read, never written, so no
+   * hidden star protects or picks anything. keptIds / isKept / toggleKeep / keepFed / keepBtn stay as no-ops for older callers. Nothing on chain. */
+  function keptIds() { return []; }
+  function isKept() { return false; }
+  function toggleKeep() { return false; }
+  /* pickIds() = the CHECKED pets you own that are alive, not released and not discarded in this browser. The Rare Room multi-pet roll, Auto-equip,
+   * Outfit, the lair 'Acts on' chip and the swipe view act on them (as before starred-acts). starIds stays as an alias for older callers. */
+  function pickIds(w) { w = w || world(); if (!ME || !w) return []; var hs = new Set(hiddenIds()); return S.sel.map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !hs.has(id); }); }
+  var starIds = pickIds;
+  function keepFed() { return 0; } /* a feed burn no longer stars the fed pets */
+  function keptToast() { }
+  function autoStarBackfill() { } /* no auto-star backfill */
+  function keepBtn() { return ''; } /* no ☆ button on cards or the pet panel */
   function dropKept(ids) { var k = keptIds(); return ids.filter(function (id) { return k.indexOf(id) < 0; }); }
-  /* discard-pile 2026-10-21: starred pets are NEVER discarded, on every path (card 🗑️, detail, Discard selected, pack review, #discard-ID). Unstar first. */
-  function discardIds(ids) { if (!ids.length) { toast('Tick Discard on at least one pet first.'); return; } var kk = ids.filter(isKept); ids = dropKept(ids);
-    if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
+  /* discard-pile 2026-10-21 / mypets-checkbox: every path (card 🗑️, detail, Discard selected, pack review, #discard-ID) is the same free local discard with a confirm first; Undo anytime. No star skip any more. */
+  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } hideLocal(ids); }
   function mine(w) { var h = hiddenIds(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && h.indexOf(p.id) < 0; }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
@@ -174,27 +163,26 @@
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
   /* hatch-review-simple 2026-10-28 (owner 1:28 AM CT: 'I dont like ticked duds. we need better wording. make this all very simple to do and sort through').
    * Replaces the Dud Duster wording and controls. UI only: hiding = the SAME free local Discard (hidden in this browser, Undo, restorable from the
-   * Discard pile). No burn, no wallet, no chain rule touched, replay unchanged. Protected pets (Legendary, Mythic, wearing gear, starred) are never
-   * picked by Keep Rare and up or Select all, and need an extra confirm to select by hand; starred pets can't be hidden at all. */
+   * Discard pile). No burn, no wallet, no chain rule touched, replay unchanged. Protected pets (Legendary, Mythic, wearing gear) are never
+   * picked by Keep Rare and up or Select all, and need an extra confirm to select by hand (mypets-checkbox: the old 'starred' guard is gone with the stars). */
   function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
-    var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
+    var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); return r; }
   var REV_SHOW = [['all', 'All'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
   function revShows(f, x) { return f === 'all' || !f || (f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
   function plural(n, a) { return n.toLocaleString('en-US') + ' ' + a + (n === 1 ? '' : 's'); }
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
-    var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be hidden. Unstar them first.', 6000); return; }
-    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never hidden).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
+    var go = ids.length; if (!go) return; /* mypets-checkbox: no star skip; Legendary / Mythic / gear protection is in dudGuard */
+    if (!window.confirm(msg + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
     hideIds(ids); rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
     if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x); })) rev.f = 'all'; }
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
   function revKeepTier(w, all, top) { /* top 1 = Keep Rare and up (hides Common + Uncommon), top 2 = Keep Legendary and up (also hides Rare) */
     var ids = all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).map(function (x) { return x.id; });
-    revHide(ids, (top === 1 ? 'Keep Rare and up?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary and up?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '. Mythic, starred and gear-wearing pets always stay.'); }
+    revHide(ids, (top === 1 ? 'Keep Rare and up?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary and up?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '. Mythic and gear-wearing pets always stay.'); }
   function revKeepN(w, all, top) { return all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).length; }
   function revSelectShown(w, shown) { var n = 0, safe = 0; shown.forEach(function (x) { if (dudGuard(w, x).length) { safe++; return; } if (!rev.sel[x.id]) n++; rev.sel[x.id] = 1; });
     drawReveal(); toast('✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(rev.sel).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
   function revToggle(w, x, d) { var on = !rev.sel[x.id];
-    if (on && isKept(x.id)) { toast('★ #' + x.id + ' is starred, so it can\'t be hidden. Unstar it first.', 6000); return; }
     if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to hide? It is ' + gg.join(', ') + '.')) return; rev.sel[x.id] = 1; } else delete rev.sel[x.id];
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
   function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Hide selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
@@ -235,7 +223,7 @@
       var keepRow = many && (kR || kL) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
         '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare and up<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
         '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary and up<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
-        '<div class="muted small pksafe">🛡️ Mythic, starred and gear-wearing pets always stay.</div></div>' : '';
+        '<div class="muted small pksafe">🛡️ Mythic and gear-wearing pets always stay.</div></div>' : '';
       var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' hidden</span>' : '') + '</div>' : '';
@@ -330,14 +318,13 @@
   /* hotfix 3: the filtered + sorted pet list (shared by renderPets and the sort-only reorder) */
   function petList(alive, dead) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value), X = window.UXB ? UXB.filters() : null;
     var list = (cem ? dead : V.hideAtOrBelow(alive, hide)).filter(function (p) { return cem || fT === 'all' || TIER_ID[p.tier] === fT; }).slice().reverse();
-    if (!cem && S.ui_starOnly) { var KS = keptIds(); list = list.filter(function (p) { return KS.indexOf(p.id) >= 0; }); } /* Starred filter chip (owner 2026-10-21, display only) */
     if (X) list = list.filter(function (p) { return X.keep(p); }); /* ux-batch: minimum rarity, origin, search (display only) */
     if (fS === 'num') list.sort(function (a, b) { return a.id - b.id; }); if (fS === 'urgent' && window.IPQ) { var UW = world(); list.sort(function (a, b) { var x = IPQ.urgency(UW, a), y = IPQ.urgency(UW, b); return (x === y ? 0 : x < y ? -1 : 1) || a.id - b.id; }); } /* intuitive-pass item 2: most urgent first (engine deathBlock - tip), display only */
     if (fS === 'tier') { var RW = world(), RB = function (p) { return window.PetScore ? PetScore.bitsOf(RW, p) : -1; }; list.sort(function (a, b) { return b.tier - a.tier || RB(b) - RB(a) || a.id - b.id; }); } /* rarity-sort 2026-10-20: tier, trait-rarity bits, pet number (display only) */ if (fS === 'power' && window.UXB && UXB.power) list.sort(function (a, b) { return UXB.power(b) - UXB.power(a) || a.id - b.id; }); if (fS === 'stage') list.sort(function (a, b) { return b.stage - a.stage || b.care - a.care || b.id - a.id; });
     if (fS === 'species' && X && X.spKey) list.sort(function (a, b) { var x = X.spKey(a), y = X.spKey(b); return x < y ? -1 : x > y ? 1 : a.id - b.id; }); /* species-sort (2026-10-19, display only) */
     if (fS === 'score' && window.PetScore) { var PSw = world(); list.sort(function (a, b) { var x = PetScore.of(PSw, a), y = PetScore.of(PSw, b); return (y ? y.score : -1) - (x ? x.score : -1) || a.id - b.id; }); } /* pet-score (2026-10-19, display only) */
     if (window.V2PetSort && ['new', 'old', 'name', 'vigor', 'spark', 'grit', 'zoom', 'luck', 'wins', 'gear'].indexOf(fS) >= 0) { var PSc = V2PetSort.comparator(fS, world()); if (PSc) list.sort(PSc); } /* pet-sort (Oct 24 2026, display only): js/v2-pet-sort.js */
-    if (fS === 'starred') { var KS2 = new Set(keptIds().map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-top (Oct 28 2026, display only): starred pets first, then pet # */
+    if (fS === 'sel' || fS === 'starred') { var KS2 = new Set(S.sel.map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-checkbox (display only): checked pets first, then pet # (was starred first) */
     if (X && X.flip) list.reverse();
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
@@ -384,9 +371,9 @@
       $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
     var list = petList(alive, dead);
-    /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Starred and selected pets stay listed; discarded
+    /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Checked (selected) pets stay listed; discarded
      * pets are already out (mine). A wallet whose few pets are all never fed sees them open. One O(n) pass, so 9k-pet wallets stay fast. */
-    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, new Set(keptIds()), new Set(S.sel)), nfN = nfs.nf.length;
+    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, null, new Set(S.sel)) /* mypets-checkbox: checked pets stay listed */, nfN = nfs.nf.length;
     var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.nf.concat(nfs.shown) : nfs.shown;
     if (!cem && JUST_BACK.length) { var JB = new Set(JUST_BACK), jb = petList(alive, dead).filter(function (p) { return JB.has(p.id); }); if (jb.length) { list = jb.concat(list.filter(function (p) { return !JB.has(p.id); })); } } /* restore-fix: just restored first (still counted in the Never fed chip) */ /* nf-fold fix (Oct 27 2026): opened never-fed pets go first, right under the fold. They used to go last, past the 150-card page, so the fold opened onto nothing. */
     var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
@@ -402,14 +389,13 @@
     function mk(p) {
       var d = document.createElement('div'), on = S.sel.indexOf(p.id) >= 0; d.className = 'pet card' + (p.dead ? ' dead' : '') + (on ? ' selected' : ''); var qWhy = !p.dead && V.questBusyWhy ? V.questBusyWhy(p, S.tip + 1) : null, qNap = !p.dead && !qWhy && V.questNap && V.questNap(p, S.tip + 1); if (qWhy) d.className += ' quest-away'; /* Mythic quests: greyed while away (inert while the quest gate is null) */ d.tabIndex = 0; d.dataset.pid = p.id;
       var ct = R.careTarget(w, p, S.tip), /* the engine's per-pet thresholds (Mythic discount), shared with the detail panel and pet page */ fed = p.dead ? '🪦 Died of neglect' : p.fedToday ? 'Fed today: ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full';
-      d.innerHTML = /* mypets-simple: no checkbox, the star is the only mark */ '<canvas class="sprite" width="32" height="32"></canvas><h4>' + (p.dead ? '' : keepBtn(p.id)) + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
+      d.innerHTML = /* mypets-checkbox: the checkbox is back, no star */ (p.dead ? '' : '<input type="checkbox" class="pick-cb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '>') + '<canvas class="sprite" width="32" height="32"></canvas><h4>' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4><div class="chips">' +
         '<span class="chip">' + esc(spLabel(p.species)) + '</span>' + tierPill(p.tier) + '<span class="chip stg">' + p.stageName + '</span><span class="chip' + (p.hungry ? ' warn' : '') + '">' + fed + '</span>' +
         (R.genChip ? R.genChip(w, p) : '') + '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + (window.UXB && UXB.power ? '<span class="chip pow"' + ptA(p) + '>⚡ ' + UXB.power(p) + '</span>' : '') + (V.streakOf && !p.dead ? (function (st) { return st.current ? '<span class="chip streak" title="Owner says WAGMI every chain day (best ' + st.best + ')">🚀 WAGMI ' + st.current + 'd</span>' : ''; })(V.streakOf(w, p.owner, w.tip)) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '') + (window.UXB ? UXB.origin(p, w) : '') + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + (R.starveChip ? R.starveChip(w, p) : '') + (qWhy ? '<span class="chip quest-chip" title="' + esc(qWhy) + ': can\'t fight, breed, feed, gift or sell until it is home">🗺️ Gone Questing · back at ' + fmt(p.quest.end) + '</span>' : '') + (qNap ? '<span class="chip" title="Resting after a quest: can fight, breed and eat, but can\'t start a new quest yet">💤 Nap Time until ' + fmt(p.napUntil) + '</span>' : '') + '</div>' +
         '<div class="bar"><i style="width:' + ct.pct.toFixed(1) + '%"></i></div><div class="small muted"' + (ct.discount ? ' title="Mythic at ' + fmt(ct.mythic) + ' care instead of 69,069: you raised a Mythic yourself (never left you, or more than half its care fed by you)"' : '') + '>care ' + fmt(p.care) + ' / ' + fmt(ct.mythic) /* owner Oct 27 2026: no "Mythic shortcut" words in My Pets; the lower target stays in the number and the hover note */ + '</div>';
       var cb = d.querySelector('.pick-cb'); if (cb) cb.onclick = function (e) { e.stopPropagation(); if (window.UXB) UXB.cardTap(p.id, e); else toggle(p.id); };
-      d.querySelector('.keepbtn').onclick = function (e) { e.stopPropagation(); e.preventDefault(); toggleKeep(p.id); };
       if (!p.dead && window.UXB) { d.insertAdjacentHTML('beforeend', '<button type="button" class="q openbtn" aria-label="Open #' + p.id + '">Open ▸</button>');
-        d.onclick = function (e) { if (e.target.closest('a')) return; /* build fix: card opens detail again; shift-click or Select mode selects */ goPet(p.id, e); /* mypets-simple: a tap always opens the pet (no select mode) */ }; }
+        d.onclick = function (e) { if (e.target.closest('a')) return; /* build fix: card opens detail again; shift-click or Select mode selects (mypets-checkbox: restored) */ if (!e.target.closest('.openbtn') && (e.shiftKey || document.body.classList.contains('selmode'))) return UXB.cardTap(p.id, e); goPet(p.id, e); }; }
       else d.onclick = function (e) { goPet(p.id, e); }; /* P10 (owner 2026-10-21): a card opens the pet page directly (Ctrl/Cmd-click: new tab) */
       return d; }
     renderPets.mk = mk; /* mypets-swipe: the One at a time view reuses the exact grid card (display only) */
@@ -435,7 +421,7 @@
    * Same cards as My Pets: name + #id + star, species / rarity / stage / fed state / gear / Power chips, a 'Last fed' line, Open ▸ (pet page) and ↩️ Restore.
    * Sort: recently discarded (the order pets went onto the pile), newest / oldest pet, rarity, species, stage, last fed, Power, plus ⇅ Reverse.
    * Filters: Rarity, Species, Search. Selection: 'Select all shown', Clear, 'Restore selected (N)', 'Restore all (N)'.
-   * Alive tab = discarded living pets, Pet Cemetery tab = discarded dead pets. Starred pets are never discarded (discardIds skips them). */
+   * Alive tab = discarded living pets, Pet Cemetery tab = discarded dead pets. Every discard asks first and can be undone. */
   var DS = { open: false, flip: false, sort: 'recent', tier: 'all', sp: 'all', q: '', sel: {}, n: 120 };
   var DS_SORTS = [['recent', 'Recently discarded'], ['new', 'Newest pet'], ['num', 'Oldest pet'], ['tier', 'Rarity'], ['species', 'Species'], ['stage', 'Stage'], ['fed', 'Last fed'], ['power', 'Power']];
   function dsFed(p, w) { if (p.dead) return { chip: '🪦 Died of neglect', warn: true, line: 'Died of neglect' };
@@ -468,7 +454,7 @@
         '<div class="small muted dp-fed">' + f.line + '</div>' +
         '<div class="row dp-acts"><a class="q" href="pet.html?id=' + p.id + '" aria-label="Open #' + p.id + '">Open ▸</a><button type="button" class="btn" data-restore="' + p.id + '" title="Put #' + p.id + ' back in My Pets">↩️ Restore</button></div></div>'; };
     hb.innerHTML = '<details' + (DS.open ? ' open' : '') + '><summary><span class="dp-title">🗑️ Discard pile</span> <span class="chip">' + gone.length + ' pet' + (gone.length === 1 ? '' : 's') + '</span> <span class="small muted">' + (DS.open ? 'tap to close' : 'tap to open') + '</span></summary>' +
-      '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn. Starred pets are never discarded.</p>' +
+      '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn.</p>' +
       '<div class="row small dctl"><label>Sort <select data-ds="sort">' + DS_SORTS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></label> <button type="button" class="q" data-dsa="dir" aria-pressed="' + DS.flip + '" title="Reverse the order">⇅ Reverse</button> ' +
       '<label>Rarity <select data-ds="tier"><option value="all">All</option>' + TIER_ID.map(function (t, k) { return '<option value="' + t + '">' + TL[k] + '</option>'; }).join('') + '</select></label> ' +
       '<label>Species <select data-ds="sp"><option value="all">All (' + gone.length + ')</option>' + spList.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + ' (' + gone.filter(function (p) { return spOf(p) === s; }).length + ')</option>'; }).join('') + '</select></label> ' +
@@ -499,17 +485,18 @@
   /* hotfix 2: a selection change only updates that card + the count (no full render / replay) */
   function selUi() { var w = world(), alive = mine(w).filter(function (p) { return !p.dead; }), cards = document.querySelectorAll('#pets .pet.card[data-pid]');
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
-    var all = cards.length > 0; cards.forEach(function (d) { var on = S.sel.indexOf(Number(d.dataset.pid)) >= 0; d.classList.toggle('selected', on); var cb = d.querySelector('.pick-cb'); if (cb) cb.checked = on; if (!on) all = false; }); $('selAll').checked = all; if (window.UXB) UXB.sel(); }
+    var all = cards.length > 0; cards.forEach(function (d) { var on = S.sel.indexOf(Number(d.dataset.pid)) >= 0; d.classList.toggle('selected', on); var cb = d.querySelector('.pick-cb'); if (cb) cb.checked = on; if (!on) all = false; }); $('selAll').checked = all; if (window.UXB) UXB.sel(); try { document.dispatchEvent(new CustomEvent('xcpets-sel')); } catch (e) { } } /* mypets-checkbox: 'xcpets-sel' tells the status line, swipe view and Rare Room the checked count changed */
   function toggle(id) { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); save(); selUi(); }
   $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); render(); }; /* mypets-simple: the Pet Cemetery tab is gone (Places → Pet Cemetery, cemetery.html) */
   if ($('tabCem')) $('tabCem').onclick = function () { location.href = 'cemetery.html'; };
+  if (S.ui_fSort === 'starred') S.ui_fSort = 'sel'; S.ui_starOnly = false; /* mypets-checkbox: an older build's Starred sort / filter becomes Checked first / off */
   ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); if (id === 'fSort' && resort()) return; render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
-  if ($('fStarred')) { $('fStarred').setAttribute('aria-pressed', String(!!S.ui_starOnly)); $('fStarred').onclick = function () { S.ui_starOnly = !S.ui_starOnly; this.setAttribute('aria-pressed', String(S.ui_starOnly)); save(); render(); }; }
+  if ($('fStarred')) { $('fStarred').setAttribute('aria-pressed', 'false'); $('fStarred').onclick = function () { }; } /* mypets-checkbox: the hidden Starred filter does nothing */
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
     var shown = V.hideAtOrBelow(mine(w).filter(function (p) { return !p.dead; }), hide).filter(function (p) { return fT === 'all' || TIER_ID[p.tier] === fT; });
     S.sel = this.checked ? shown.map(function (p) { return p.id; }) : []; save(); selUi(); };
   if ($('selMode')) $('selMode').onclick = function () { var on = document.body.classList.toggle('selmode'); this.classList.toggle('on', on); this.setAttribute('aria-pressed', on ? 'true' : 'false'); toast(on ? 'Select mode on: tap cards to select' : 'Select mode off: tap a card to open it'); };
-  $('selNone').onclick = function () { S.sel = []; save(); selUi(); toast('Selection cleared'); };
+  $('selNone').onclick = function () { S.sel = []; save(); selUi(); toast('Selection cleared'); }; /* Select none */
   /* Feed all hungry / Feed selected NEVER include a discarded pet: filtered by the discard set itself (hiddenIds), not by what is on screen,
    * so 'Show discarded', a stale selection or an active filter can't leak one in. */
   function noDiscarded(plans) { var h = hiddenIds(); return plans.filter(function (q) { return h.indexOf(q.petId) < 0; }); }
@@ -531,18 +518,18 @@
   if (FEED_ALL_PAUSED) { $('bFeedHungry').style.display = 'none'; $('bFeedHungry').insertAdjacentHTML('afterend', '<span class="small muted" id="faPaused">' + FA_NOTE + '</span>'); }
   $('bFeedHungry').onclick = function () { if (FEED_ALL_PAUSED) return toast(FA_NOTE); var w = world(); feedAsync('Feed all hungry pets', w.pets.filter(function (p) { return p.owner === ME; }).map(function (p) { return p.id; })); };
   $('bFeedSel').onclick = function () { feedAsync('Feed selected pets', sel(), true); };
-  $('bRoll').onclick = function () { var ids = starIds(), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), q = V.rollQueue(world(), ME, ids, rn); if (!ids.length) return toast('★ Star pets in My Pets first: the roll acts on your starred pets.'); var sp = ids.length + ' starred pet' + (ids.length === 1 ? '' : 's'), wh = q.length && q[0].tag === 'pet:spin'; confirmPlans(wh ? '🎡 ' + q.length + ' wheel spin' + (q.length === 1 ? '' : 's') + ' for your ' + sp + ' (' + rn + ' each; the wheel picks a random pet)' : '🎲 Roll gear for your ' + sp + ' · ' + q.length + ' roll' + (q.length === 1 ? '' : 's'), q); }; /* starred-acts */
+  $('bRoll').onclick = function () { var ids = pickIds(), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), q = V.rollQueue(world(), ME, ids, rn); if (!ids.length) return toast('☑ Tick pets in My Pets first: the roll acts on your selected pets.'); var sp = ids.length + ' selected pet' + (ids.length === 1 ? '' : 's'), wh = q.length && q[0].tag === 'pet:spin'; confirmPlans(wh ? '🎡 ' + q.length + ' wheel spin' + (q.length === 1 ? '' : 's') + ' for your ' + sp + ' (' + rn + ' each; the wheel picks a random pet)' : '🎲 Roll gear for your ' + sp + ' · ' + q.length + ' roll' + (q.length === 1 ? '' : 's'), q); }; /* mypets-checkbox: selected pets */
   if ($('bRelease')) $('bRelease').onclick = function () { if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
-  $('bAuto').onclick = function () { if (viewBlock()) return; var ids = starIds(); if (!ids.length) return toast('★ Star pets in My Pets first: Auto-equip acts on your starred pets.'); var ops = V.autoEquipOps(world(), ME, ids, S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip on ' + ids.length + ' starred pet' + (ids.length === 1 ? '' : 's') + ': ' + ops.length + ' pieces (free, no burn)'); render(); }; /* starred-acts */
+  $('bAuto').onclick = function () { if (viewBlock()) return; var ids = pickIds(); if (!ids.length) return toast('☑ Tick pets in My Pets first: Auto-equip acts on your selected pets.'); var ops = V.autoEquipOps(world(), ME, ids, S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip on ' + ids.length + ' selected pet' + (ids.length === 1 ? '' : 's') + ': ' + ops.length + ' pieces (free, no burn)'); render(); }; /* mypets-checkbox: selected pets */
   if ($('bOutfit')) $('bOutfit').onclick = function () { if (viewBlock()) return;
-    if (!starIds().length) return toast('★ Star pets in My Pets first: Outfit acts on your starred pets.'); var w = world(), inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; });
+    if (!pickIds().length) return toast('☑ Tick pets in My Pets first: Outfit acts on your selected pets.'); var w = world(), inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; });
     $('outfitBody').innerHTML = '<p class="small">Uses free copies from your stash. Missing copies or closed slots are skipped.</p>' + V.V2_SLOTS.map(function (sl) { var k = {}; inv.filter(function (g) { return g.slot === sl; }).forEach(function (g) { (k[g.item] = k[g.item] || { l: g.label, n: 0 }).n++; });
       return '<div class="row small"><b class="slotname">' + SL(sl) + '</b> <select class="pick" data-o="' + sl + '"><option value="">(leave)</option>' + Object.keys(k).map(function (id) { return '<option value="' + id + '">' + esc(k[id].l) + ' · ' + k[id].n + ' free ' + (k[id].n === 1 ? 'copy' : 'copies') + (k[id].n < S.sel.length ? ' (not enough for ' + S.sel.length + ')' : '') + '</option>'; }).join('') + '</select></div>'; }).join('') + '<p class="small muted">' + S.sel.length + ' pets selected. Each pet needs its own free copy (one item = one pet).</p>';
     $('oGo').style.display = ''; $('oNo').textContent = 'Cancel'; open('outfitBox'); };
   $('oNo').onclick = function () { close('outfitBox'); };
   $('oGo').onclick = function () { if (viewBlock()) return; var o = {}; document.querySelectorAll('[data-o]').forEach(function (s) { if (s.value) o[s.dataset.o] = s.value; });
     if (!Object.keys(o).length) return toast('Pick at least one piece');
-    var r = V.outfitOps(world(), ME, starIds(), o, S.tip); /* starred-acts */ S.ops = S.ops.concat(r.ops); save(); render();
+    var r = V.outfitOps(world(), ME, pickIds(), o, S.tip); /* mypets-checkbox: selected pets */ S.ops = S.ops.concat(r.ops); save(); render();
     // keep the dialog open with the full per-pet result (no silent skips)
     $('outfitBody').innerHTML = '<p class="' + (r.report.ok ? '' : 'warn') + '"><b>' + (r.report.ok ? '✓ Outfit applied to all ' + S.sel.length + ' selected pets' : '⚠️ Only part of the outfit could be equipped') + '</b></p>' +
       '<div class="logbox small">' + r.report.text.split('\n').map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>' +
@@ -612,7 +599,7 @@
     R.gearPicker($('gPicker'), { compact: true, world: w, owner: ME, pet: p, msg: detail.msg, viewOnly: viewOnly(), onBlocked: viewBlock, onEquip: function (op, m) { if (viewBlock()) return; op.block_index = S.tip; S.ops.push(op); save(); detail.msg = '✓ ' + m; render(); detail.msg = null; toast(esc(m) + ' (free)'); },
       onEquipMany: function (ops, m) { if (viewBlock()) return; ops.forEach(function (op) { op.block_index = S.tip; S.ops.push(op); }); save(); detail.msg = '✓ ' + m; render(); detail.msg = null; toast(esc(m) + ' (free)'); } });
     $('detail').querySelector('.box').scrollTop = keepY;
-    if ($('dDiscard')) $('dDiscard').onclick = function () { var id = p.id; if (!ME || p.owner !== ME || p.dead) return; if (isKept(id)) return toast('★ #' + id + ' is starred, so it is never discarded. Unstar it first.'); close('detail'); discardIds([id]); };
+    if ($('dDiscard')) $('dDiscard').onclick = function () { var id = p.id; if (!ME || p.owner !== ME || p.dead) return; close('detail'); discardIds([id]); };
     $('dInfo').querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { var a = b.dataset.a; if (!ME || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); if (a === 'froll') return confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); if (a === 'oroll') return confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]); confirmPlans(a === 'feed' ? 'Feed #' + p.id : 'Gear roll #' + p.id, a === 'feed' ? V.feedQueue(world(), ME, [p.id]) : V.rollQueue(world(), ME, [p.id], 1)); }; });
     open('detail');
   }
@@ -1145,7 +1132,7 @@
   $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
-    var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });
+    var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && dudGuard(dw, p).length; });
     revHide(ids, 'Hide ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (Legendary, Mythic or wearing gear): ' + idList(gd) + '.' : '')); };
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
@@ -1170,12 +1157,12 @@
     var wrap = document.createElement('div'); wrap.className = 'petsticky'; ctl.parentNode.insertBefore(wrap, ctl); wrap.appendChild(ctl); wrap.appendChild(bulk);
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
-  window.V2UI = { starIds: starIds, keptIds: keptIds, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
+  window.V2UI = { pickIds: pickIds, starIds: starIds, keptIds: keptIds, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, toast: toast, confirmPlans: confirmPlans, breedSum: breedSum, breedReview: breedReview, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
   render(); route();
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
   var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }
   setInterval(function () { if (document.hidden) return; poll(); }, 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastPoll > 60000) poll(); });
-  window.__demo = { starIds: starIds, queueAnim: queueAnim, S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans, feedIds: function (title, ids) { feedAsync(title, ids, true); }, hiddenIds: hiddenIds, openPile: openPile, feedQueueList: function (w, ids) { return feedSelQ(w, ME, ids); } /* list burns only (pet:feed/fl/fm), never pet:fa */ };
+  window.__demo = { pickIds: pickIds, starIds: starIds, queueAnim: queueAnim, S: function () { return S; }, world: world, render: render, toggle: toggle, detail: function (id) { detailId = id; detail(world().byId[id]); }, playFight: playFight, discardIds: discardIds, mine: mine, isKept: isKept, keptIds: keptIds, toggleKeep: toggleKeep, idList: idList, selUi: selUi, confirmPlans: confirmPlans, feedIds: function (title, ids) { feedAsync(title, ids, true); }, hiddenIds: hiddenIds, openPile: openPile, feedQueueList: function (w, ids) { return feedSelQ(w, ME, ids); } /* list burns only (pet:feed/fl/fm), never pet:fa */ };
 })();

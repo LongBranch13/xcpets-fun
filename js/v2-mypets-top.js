@@ -1,10 +1,11 @@
 /* mypets-top (owner playtest note 4, Oct 27 2026: "five different spots" to sort; "he just wants to sort his pets and feed them"). LAYOUT ONLY:
  * no burn, no rule change, same classes / fonts / pixel style. Everything above the pet cards in My Pets becomes:
- *   1. one status line (#mptStat): pets, ★ kept, hungry, neglected + when the first one dies (text, not a second sort button)
- *   2. the main action: 🍖 Feed my kept pets (big), then the small secondary Discard… and Feed all hungry
- *   3. one tools row: 🔎 Find (search words also cover rarity, species, origin, starred, hungry, unfed) + ↕️ Sort (one menu) + one view toggle
+ *   1. one status line (#mptStat): pets, ☑ selected, hungry, neglected + when the first one dies (text, not a second sort button)
+ *   2. the main action: 🍖 Feed selected (big), then the small secondary Discard selected and Feed all hungry, then Select all / Select none / Select mode
+ *      (mypets-checkbox, Oct 28 2026: checkboxes back, stars gone)
+ *   3. one tools row: 🔎 Find (search words also cover rarity, species, origin, selected, hungry, unfed) + ↕️ Sort (one menu) + one view toggle
  * Dropped from view (elements stay in the page, hidden, so older scripts that look them up keep working): the single My Pets tab, the red
- * 🪦 N tab and the "see most urgent ▸" line (both only set Sort = Most urgent), 💎 Show, ⚙️ More filters (🔼 reverse, ★ Starred, Rarity,
+ * 🪦 N tab and the "see most urgent ▸" line (both only set Sort = Most urgent), 💎 Show, ⚙️ More filters (🔼 reverse, Rarity,
  * Origin, Species), ▲ Hide pets, the two-button Grid / One at a time pair. A filter saved by an older build is turned into search words once,
  * so nothing stays filtered by a control the player can no longer see. */
 (function () {
@@ -27,9 +28,9 @@
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function stat() { var el = $('mptStat'), u = U(); if (!el || !u || !u.world) return; var me = u.ME; try { me = me || localStorage.getItem('xcpets-v2-me'); } catch (e) { }
     var w = u.world(); if (!w || !me) { el.textContent = ''; return; } var L = w.pets.filter(function (p) { return p.owner === me && !p.dead && !p.released && !p.community; });
-    var k = new Set((u.keptIds ? u.keptIds() : []).map(Number)), kept = L.filter(function (p) { return k.has(p.id); }).length, hungry = L.filter(function (p) { return p.hungry; }).length;
+    var k = new Set(((u.S && u.S().sel) || []).map(Number)), kept = L.filter(function (p) { return k.has(p.id); }).length, hungry = L.filter(function (p) { return p.hungry; }).length;
     var urg = L.filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; });
-    var h = '<b>' + fmt(L.length) + '</b> pet' + (L.length === 1 ? '' : 's') + ' · ★ <b>' + fmt(kept) + '</b> kept · 🍽️ <b>' + fmt(hungry) + '</b> hungry';
+    var h = '<b>' + fmt(L.length) + '</b> pet' + (L.length === 1 ? '' : 's') + ' · ☑ <b>' + fmt(kept) + '</b> selected · 🍽️ <b>' + fmt(hungry) + '</b> hungry';
     if (urg.length) h += ' · <span class="warn">🪦 ' + fmt(urg.length) + ' neglected, first dies in ~' + left(Math.min.apply(null, urg.map(function (p) { return p.deathBlock - w.tip; }))) + '</span>';
     if (el.innerHTML !== h) el.innerHTML = h; }
   function view() { var b = $('mptView'); if (!b) return; var one = d.body.classList.contains('mps-one'); b.textContent = one ? '▦ Grid' : '🃏 One at a time'; b.setAttribute('aria-pressed', String(one)); b.title = one ? 'Show all your pets as a grid' : 'Show one big pet at a time (swipe)'; }
@@ -40,7 +41,6 @@
     var o = reset('fOrigin', 'all'); if (o) words.push(o);
     var sp = reset('fSpecies', 'all'); if (sp) words.push(sp);
     var mn = reset('fMin', '0'); if (mn === '3') words.push('legendary');
-    var st = $('fStarred'); if (st && st.getAttribute('aria-pressed') === 'true') { st.click(); words.push('starred'); }
     var dir = $('fDir'), s = $('fSort'); if (dir && s && (s.value === 'num' ? dir.textContent.trim() === '🔽' : dir.title === 'Reversed')) dir.click();
     try { if (localStorage.getItem('xcpets-v2-grid-hidden') === '1') { var g = $('gridToggle'); if (g) g.click(); else { localStorage.setItem('xcpets-v2-grid-hidden', '0'); var P = $('pets'); if (P) P.style.display = ''; d.body.classList.remove('pets-collapsed'); } } } catch (e) { }
     if (words.length) { var cur = q.value.trim(); q.value = (cur ? cur + ' ' : '') + words.filter(function (x) { return (' ' + cur + ' ').indexOf(' ' + x + ' ') < 0; }).join(' '); }
@@ -52,7 +52,7 @@
     var mt = 0; (function wm() { var f = $('fSort'); if (f && f.onchange) setTimeout(migrate, 50); else if (mt++ < 100) setTimeout(wm, 100); })();
     var tm = null; function soon() { clearTimeout(tm); tm = setTimeout(function () { stat(); view(); }, 80); }
     var P = $('pets'); if (P && window.MutationObserver) new MutationObserver(soon).observe(P, { childList: true });
-    window.addEventListener('xcpets-stars', soon); d.addEventListener('click', function (e) { if (e.target && e.target.closest && e.target.closest('.keepbtn')) soon(); }, true);
+    d.addEventListener('xcpets-sel', soon); /* mypets-checkbox: the checked count changed */
     new MutationObserver(view).observe(d.body, { attributes: true, attributeFilter: ['class'] });
     setInterval(stat, 60000); soon(); }
   window.V2MyPetsTop = { init: init, stat: stat, migrate: migrate };

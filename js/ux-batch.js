@@ -90,16 +90,17 @@
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
-    /* starred-acts (owner Oct 27 2026): Roll gear / Auto-equip (Rare Room) act on the starred pets, not a selection */
-    var sIds = U.starIds ? U.starIds(w) : [], rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), ae0 = V.autoEquipOps(w, ME, sIds, S.tip);
-    $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' starred' : fmt(V.COSTS.roll) + ' XCPETS per roll · star pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
+    /* mypets-checkbox (owner Oct 28 2026): Roll gear / Auto-equip (Rare Room) act on the checked pets again (was starred pets) */
+    var sIds = U.pickIds ? U.pickIds(w) : S.sel.slice(), rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), ae0 = V.autoEquipOps(w, ME, sIds, S.tip);
+    $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' selected' : fmt(V.COSTS.roll) + ' XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
     $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae0.length ? ae0.length + ' piece' + (ae0.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae0.length;
     if (!n) return;
     var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
     var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
-    $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' : '😋 all fed today';
+    var exact = ids.length <= 200; /* mypets-checkbox: the burn count is shown when the plan is exact (up to 200 checked); bigger plans show it in the confirm box */
+    $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' + (exact ? ' · <b>' + fmt(fq.length) + '</b> burn' + (fq.length === 1 ? '' : 's') : '') : '😋 all fed today';
     $('bFeedSel').innerHTML = 'Feed ' + (fq.length ? fmt(fedN) : '') + ' <span class="cost">' + (fq.length ? fmt(sum(fq)) + ' XCPETS' : 'nothing to feed') + '</span>'; $('bFeedSel').disabled = !fq.length;
     $('selWhy').textContent = '';
   };
