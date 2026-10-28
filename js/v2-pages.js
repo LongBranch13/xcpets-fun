@@ -110,7 +110,7 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=0ab178ad14'; t.onload = cb; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=eb014849b9'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -153,7 +153,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=0ab178ad14'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=eb014849b9'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -165,7 +165,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=0ab178ad14'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=eb014849b9'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -360,7 +360,7 @@
       $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
-      $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pets' : ' players') + ' on this board · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
+      $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pet' : ' player') + (rows.length === 1 ? '' : 's') + ' on this board.'; /* owner Oct 28 2026: plain words, no burn count */
     }
     $('boardAll').onclick = more;
     /* content-fixes 2026-10-19: Find my pet searches EVERY row of the current board (not only the loaded ones), loads up to the first hit and highlights it.
@@ -521,7 +521,7 @@
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   /* species-ranks (owner Oct 24 2026, display only): Hall of Fame, the best pets within each species.
-   * Order inside a species: tier first (Mythic > Legendary > Rare > Uncommon > Common; Mythic = a pet at the Mythic stage, whatever its hatch tier),
+   * Order inside a species (owner Oct 28 2026): ⚡ Power first (stat total, no gear), then tier (Mythic > Legendary > Rare > Uncommon > Common; Mythic = a pet at the Mythic stage, whatever its hatch tier),
    * then gear (worn pieces, then the tier sum of those pieces), then battle wins, then the lowest pet number. Living, non-community pets only.
    * Gear = replayed items with .on === pet id (the same list api/pets.json shows). Hybrids get their own tab. Nothing is written or burned. */
   var HOF_TIER = ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythic'];
@@ -530,8 +530,10 @@
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g || g.on == null) return; var o = worn[g.on] || (worn[g.on] = { n: 0, t: 0 }); o.n++; o.t += g.legendary ? 3 : (g.tier | 0); });
     var groups = {};
     (w.pets || []).forEach(function (p) { if (p.dead || p.released || p.community) return; var k = V.isHybrid(p.species) ? 'hybrid' : p.species, g = worn[p.id] || { n: 0, t: 0 };
-      (groups[k] = groups[k] || []).push({ p: p, t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
-    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return b.t - a.t || b.g - a.g || b.gt - a.gt || b.w - a.w || a.p.id - b.p.id; }); });
+      (groups[k] = groups[k] || []).push({ p: p, pw: V.petPower(p), t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
+    /* hof-power-first (owner Oct 28 2026, display only): ⚡ Power first (V2Rules.petPower, the stat total shown on pet cards; gear is NOT in it,
+     * gear adds per hit in fights), then the old order: tier, gear worn, gear quality, battle wins, lowest pet number. */
+    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return b.pw - a.pw || b.t - a.t || b.g - a.g || b.gt - a.gt || b.w - a.w || a.p.id - b.p.id; }); });
     return groups; }
   function hallOfFame(O) { O = O || {};
     var w = M.world(), groups = hofRank(w), order = (PetCore.SPECIES || []).map(function (s) { return s.id; }).filter(function (id) { return groups[id]; });
@@ -549,12 +551,13 @@
         return '<tr id="hf' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td>' +
           '<td><a href="pet.html?id=' + p.id + '" aria-label="' + esc(p.name) + ' #' + p.id + ' pet card"><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas></a></td>' +
           '<td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + (st.sp === 'hybrid' ? ' · ' + esc(spLabel(p.species)) : '') + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner || '') + '">' + esc(short(p.owner)) + '</span>' + (me ? ' (you)' : '') + '</div></td>' +
-          '<td class="num"><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
+          '<td class="num"><b class="hof-pw"' + ptA(p) + '>⚡ ' + fmt(r.pw) + ' power</b><div><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b></div><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
       $('board').innerHTML = (O.top || '') + tabs + '<h2 class="sec hof-h" data-ico="trophy">' + esc(lbl(st.sp)) + ' Hall of Fame</h2>' + (rows.length ? '<div class="tw"><table class="board">' + body + '</table></div>' : '<p class="muted small">No living pets here yet.</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
       $('board').querySelectorAll('[data-sp]').forEach(function (x) { x.onclick = function () { st.sp = x.dataset.sp; st.n = STEP; render(); }; }); if (O.wire) O.wire();
-      $('status').textContent = fmt(rows.length) + ' living ' + lbl(st.sp).replace('🧬 ', '') + ' pets · ' + fmt(order.length) + ' species boards · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
+      /* status line (owner Oct 28 2026: plain words, no burn or species-tab counts) */
+      $('status').textContent = fmt(rows.length) + ' living ' + (st.sp === 'hybrid' ? 'hybrid' : lbl(st.sp)) + ' pet' + (rows.length === 1 ? '' : 's') + ' on this board.';
     }
     $('boardAll').onclick = function () { st.n += STEP; render(); };
     window.V2HallOfFame = { rank: hofRank };

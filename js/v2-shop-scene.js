@@ -16,6 +16,9 @@
   function D() { var s = SC(); try { return s && s.ready ? s.data() : null; } catch (e) { return null; } }
   function myth(p) { return !!p && (p.stage >= 5 || !!p.mythicCare); }
   function toast(h) { var s = SC(); if (s && s.toast) return s.toast(h); var t = $('toasts'); if (!t) return; var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); }
+  /* binder-sprites (owner bug Oct 27 2026): cards from V2Sales.scene.card carry an empty <span data-shsp> that only V2Sales paint() fills; the overlays
+   * were never painted, so the Binder / cage pick showed a blank sprite area. Paint after every overlay render. */
+  function paintArt() { var s = SC(); try { if (s && s.paint) s.paint(); } catch (e) { } }
   function wait() { toast('The shop is still opening (reading the chain). One moment.'); }
 
   /* ---- art */
@@ -156,9 +159,9 @@
       '<div class="sh-pager"><button type="button" class="sh-btn" data-csturn="-1"' + (BP ? '' : ' disabled') + ' aria-label="Previous page">◀</button> page ' + (BP + 1) + ' of ' + pgs + ' <button type="button" class="sh-btn" data-csturn="1"' + (BP < pgs - 1 ? '' : ' disabled') + ' aria-label="Next page">▶</button></div></div>'; }
   function openBinder(flipN) { if (!ready()) return wait(); var d = D(), m = ov('csBinder', 'cs-bov');
     if (flipN != null) { var ix = d.listings.map(function (x) { return x.S.n; }).indexOf(flipN); if (ix >= 0) BP = Math.floor(ix / PER); }
-    m.innerHTML = binderHtml(d); m.classList.add('on'); sfx('flip'); if (flipN != null) { var sl = m.querySelector('[data-csn="' + flipN + '"]'); if (sl) setTimeout(function () { sl.classList.add('flipped'); sfx('blip'); }, reduced() ? 0 : 260); } }
+    m.innerHTML = binderHtml(d); paintArt(); m.classList.add('on'); sfx('flip'); if (flipN != null) { var sl = m.querySelector('[data-csn="' + flipN + '"]'); if (sl) setTimeout(function () { sl.classList.add('flipped'); sfx('blip'); }, reduced() ? 0 : 260); } }
   function turn(dir) { var m = $('csBinder'), pgEl = $('csPage'); if (!m) return; sfx('flip');
-    var go = function () { BP += dir; m.innerHTML = binderHtml(D()); var n = $('csPage'); if (n && !reduced()) n.classList.add(dir > 0 ? 'cs-in-r' : 'cs-in-l'); };
+    var go = function () { BP += dir; m.innerHTML = binderHtml(D()); paintArt(); var n = $('csPage'); if (n && !reduced()) n.classList.add(dir > 0 ? 'cs-in-r' : 'cs-in-l'); };
     if (reduced() || !pgEl) return go(); pgEl.classList.add(dir > 0 ? 'cs-out-r' : 'cs-out-l'); setTimeout(go, 230); }
   document.addEventListener('click', function (e) { var t = e.target; if (!t.closest) return; var m;
     if ((m = t.closest('[data-csturn]'))) { turn(Number(m.getAttribute('data-csturn'))); return; }
@@ -177,7 +180,7 @@
     m.innerHTML = '<div class="box cs-pick"><h3>' + esc(p.name || 'Pet') + ' #' + p.id + '</h3><div class="cs-pickrow">' + SC().card(p) + '<div><p class="sh-hint">What should ' + esc(p.name || 'this pet') + ' do?</p>' +
       '<button type="button" class="sh-btn" data-cssell="' + p.id + '"' + (ok ? '' : ' disabled title="Locked right now (fight, breed, Rug Me ad or a pending gift)"') + '>🏷️ List it</button> ' +
       '<button type="button" class="sh-btn" data-csgift="' + p.id + '"' + (G ? '' : ' disabled') + (tk ? '' : ' title="No token yet: press one first"') + '>🎁 Gift it</button> ' + (pz ? '<button type="button" class="sh-btn" data-cspress="' + p.id + '">🏭 Press its token</button> ' : '') + '<button type="button" class="sh-btn sh-ghost" data-csclose>Back</button>' + (ok ? '' : '<p class="sh-warn">This pet is locked right now, so it can’t list.</p>') + '</div></div></div>';
-    m.classList.add('on'); }
+    paintArt(); m.classList.add('on'); }
   function act(id) { var d = D(), m;
     if (id === 'bell') { ST.bell = 900; sfx('bell'); say(['Ding! Welcome to Spam City Games.', 'Yes, yes, I heard the bell.', 'Ding ding. The cat hates that one.'][Math.floor(Math.random() * 3)]); return kick(); }
     if (id === 'cat') { ST.cat = 500; ST.catSay = 900; sfx('meow'); return kick(); }
