@@ -1,0 +1,14 @@
+/* cemetery-v2 (branch cemetery-v2-view, preview): list controls under the perspective graveyard. Loaded by js/v2-cemetery-scene.js. */
+.cemv2bar{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.cemv2bar .cv2-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.cemv2bar .cv2-row input[type=search]{flex:1 1 180px;min-width:0}
+.cemv2bar .cv2-sel label{display:inline-flex;gap:4px;align-items:center}
+.cemv2bar select{max-width:100%;font:inherit;padding:3px 4px;border:2px solid #000;background:#fff8e1;color:#1b1b1b}
+.cemv2bar #cemMsg{margin:2px 0 0}
+.cemv2bar .linkish{background:none;border:0;padding:0;color:#9fe8ff;text-decoration:underline;cursor:pointer;font:inherit}
+.cv2-pager{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:10px 0}
+.cv2-pager:empty{display:none}
+.cv2-pager input{width:4.5em;font:inherit;padding:2px 4px;border:2px solid #000}
+.cv2-pager button[disabled]{opacity:.45;cursor:default}
+.tomb .cv2-facts{margin-top:4px;color:#e9e3ff}
+@media (max-width:520px){.cemv2bar .cv2-sel label{flex:1 1 45%}.cemv2bar .cv2-sel select{flex:1;min-width:0}.cv2-pager .q{padding:4px 6px}}
