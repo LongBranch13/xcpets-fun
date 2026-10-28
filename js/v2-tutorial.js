@@ -190,7 +190,7 @@
       ['Rare surprises', 'Twins 1 in 50, mutations 1 in 100, and hidden traits like Odd eyes (gold, ice, toxic or magenta).']],
       quiz: [['What stage must both parents be?', ['Adult or older', 'Hatchling', 'Any'], 0], ['How often are twins?', ['1 in 50', '1 in 2', 'Never'], 0]] },
     { id: 'gear', ico: '🎡', t: 'Gear & spins', s: 'Drip, slots, the Pepe Wheel', steps: [
-      ['Six slots', 'Headwear, Guise, Drip, Grip, Outfits and Footwear. From block 973,515 every pet has all 6 open, whatever its age, feeding, tier or stage.'],
+      ['Six slots', 'Headwear, Guise, Drip, Grip, Outfits and Footwear. From block 973,519 every pet has all 6 open, whatever its age, feeding, tier or stage.'],
       ['The Pepe Wheel', 'Spin for gear in The Rare Room. Each spin is a small burn: the Play page shows the live amount. Saved spins from lucky drops cost only the Bitcoin fee. Each copy you own makes that item a bit less likely, so duplicates are rarer.']],
       quiz: [['How many gear slots does a Mythic have?', ['6', '2', '1'], 0]] },
     { id: 'shop', ico: '🛒', t: 'Shop & gifting', s: 'Spam City Games', steps: [

@@ -142,7 +142,7 @@
    * (capacity 6; the Wizard's Staff slot opens with Grip as before). The age 2/5/10 days + 50%/80% fed rule no longer limits anything. Once, the first
    * time replay reaches the gate, every living pet with bagged (locked-slot) pieces is refreshed so they unbag through the normal path (oldest piece worn
    * when that slot is empty, never replacing worn gear; the rest back to the stash). Below the gate nothing changes (replay SAME). null = off. */
-  var ACTIVATE_ALL_SLOTS_BLOCK = 973515; /* PREVIEW Oct 28 2026 1:10 AM CT: tip 973509 (mempool.space) + 6; re-set to tip + 6 at the approved deploy */
+  var ACTIVATE_ALL_SLOTS_BLOCK = 973519; /* PREVIEW Oct 28 2026: tip 973513 (mempool.space; Counterparty API unreachable) + 6; re-set to tip + 6 at the approved deploy */
   function allSlotsOn(b) { return ACTIVATE_ALL_SLOTS_BLOCK != null && b != null && b >= ACTIVATE_ALL_SLOTS_BLOCK; }
   /** allSlotsNow(w): the shown world is at or past the gate (every pet has all 6 slots); UI copy switches on this. */
   function allSlotsNow(w) { return !!(w && w.tip != null && allSlotsOn(w.tip)); }
