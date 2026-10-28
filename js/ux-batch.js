@@ -20,11 +20,12 @@
   var lastW = null;
 
   // ================================================================ E. controls row (filters persist in this browser)
-  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }, load('filters', {}));
+  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }, load('filters', {}));
+  if (!Array.isArray(F.sps)) F.sps = []; /* mypets-species-filter (Oct 28 2026): ticked species (empty = All species) */
   function saveF() { store('filters', F); }
   function isHyb(p) { return !!(p.hybrid || (p.art && p.art.hybrid) || V.isHybrid(p.species)); }
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
-  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip || F.sort !== 'num'); }
+  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.sps.length || F.flip || F.sort !== 'num'); }
   /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species' sort; the community Bitcoin Wizard is never listed (he isn't an owned pet); owned player Wizards are (wiz-display-fix) */
   var SPF = ['bobo', 'chud', 'dodo', 'doge', 'kevin', 'lenny', 'mumu', 'nakamoto', 'peepo', 'pepe', 'sarutobi', 'snibby', 'wojak'];
   function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
@@ -35,12 +36,52 @@
     var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; }), list = SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; });
     var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + list.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
     if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; } sel.value = F.sp || 'all'; }
+  /* mypets-species-filter (owner Oct 28 2026: "want show only certain species in the sorts"). DISPLAY ONLY, no burn, no rule change.
+   * '🐾 All species ▾' sits next to ↕️ Sort. It opens a tick list: All species (clears it) + each species and Hybrids, each with how many
+   * of your pets it has. Tick one or more: only those pets show (works with Find and Sort). Saved with the other filters (F.sps).
+   * While it is on, Select all, the checked count, 🍖 Feed selected and the sticky Feed bar only use the checked pets that are shown. */
+  function spsList(c) { var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; });
+    return SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; }).concat(['hybrid']); }
+  function spsLabel() { var n = F.sps.length; return '🐾 ' + (!n ? 'All species' : n <= 2 ? F.sps.map(spName).join(', ') : n + ' species') + ' ▾'; }
+  function spsOpen(on) { var bx = $('fSpBox'), bt = $('fSpBtn'); if (!bx || !bt) return; bx.hidden = !on; bt.setAttribute('aria-expanded', String(!!on)); }
+  function spsSet(list) { F.sps = list; saveF(); U.render(); }
+  function spsMount() { if ($('fSpWrap')) return true; var ps = document.querySelector('#ctlRow .psort'); if (!ps) return false;
+    var wr = document.createElement('span'); wr.id = 'fSpWrap'; wr.className = 'small psp';
+    wr.innerHTML = '<button type="button" class="q" id="fSpBtn" aria-haspopup="true" aria-expanded="false" aria-controls="fSpBox" title="Show only the species you tick">' + esc(spsLabel()) + '</button>' +
+      '<div class="psp-box" id="fSpBox" role="group" aria-label="Show only these species" hidden></div>';
+    ps.parentNode.insertBefore(wr, ps.nextSibling);
+    if (!$('fSpCss')) { var st = document.createElement('style'); st.id = 'fSpCss';
+      st.textContent = '#petsPanel .psp{position:relative;display:inline-flex}#petsPanel .psp>.q{white-space:nowrap}' +
+        '#petsPanel .psp-box{position:absolute;left:0;top:100%;margin-top:4px;z-index:40;background:#0a0f0b;border:2px solid #000;border-radius:8px;box-shadow:4px 4px 0 #000;padding:6px;min-width:220px;max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:2px}' +
+        '#petsPanel .psp-box[hidden]{display:none}#petsPanel .psp-box label{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;min-height:32px}' +
+        '#petsPanel .psp-box label:hover{background:#1f2d23}#petsPanel .psp-box label.zero{opacity:.5}#petsPanel .psp-box .psp-n{margin-left:auto;padding-left:12px}#petsPanel .psp-box .psp-all{border-bottom:1px solid #1f2d23;margin-bottom:2px}' +
+        '#petsPanel .psp-box input{width:18px;height:18px;margin:0;flex:0 0 auto}#petsPanel .psp-box .psp-done{margin-top:4px;align-self:flex-end}' +
+        '@media (max-width:640px){#petsPanel .ctlrow .psp{order:5;flex:1 1 100%;min-width:0}#petsPanel .ctlrow #fShowingSlot{order:6}#petsPanel .ctlrow .psp>.q{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}#petsPanel .psp-box{right:0;min-width:0;max-height:55vh}}'; /* phone: own line under Sort, so Sort keeps its width */
+      document.head.appendChild(st); }
+    $('fSpBtn').onclick = function (e) { e.stopPropagation(); spsOpen($('fSpBox').hidden); };
+    $('fSpBox').addEventListener('click', function (e) { e.stopPropagation(); if (e.target.closest('.psp-done')) spsOpen(false); });
+    $('fSpBox').addEventListener('change', function (e) { var cb = e.target; if (!cb || !cb.matches('input[data-sp]')) return; var k = cb.getAttribute('data-sp');
+      if (k === 'all') return spsSet([]);
+      var L = F.sps.filter(function (x) { return x !== k; }); if (cb.checked) L.push(k); spsSet(L); });
+    document.addEventListener('click', function (e) { var bx = $('fSpBox'); if (bx && !bx.hidden && !e.target.closest('#fSpWrap')) spsOpen(false); });
+    document.addEventListener('keydown', function (e) { var bx = $('fSpBox'); if (e.key === 'Escape' && bx && !bx.hidden) { spsOpen(false); $('fSpBtn').focus(); } });
+    return true; }
+  function paintSps(pets) { if (!spsMount()) return; var c = { all: pets.length };
+    pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
+    var on = new Set(F.sps), h = '<label class="psp-all"><input type="checkbox" data-sp="all"' + (on.size ? '' : ' checked') + '> All species <span class="psp-n muted">' + fmt(c.all) + '</span></label>' +
+      spsList(c).map(function (k) { var n = c[k] || 0; return '<label' + (n || on.has(k) ? '' : ' class="zero"') + '><input type="checkbox" data-sp="' + esc(k) + '"' + (on.has(k) ? ' checked' : '') + '> ' + esc(spName(k)) + ' <span class="psp-n muted">' + fmt(n) + '</span></label>'; }).join('') +
+      '<button type="button" class="q psp-done">Done</button>';
+    var bx = $('fSpBox'); if (bx.__h !== h) { var st = bx.scrollTop; bx.innerHTML = h; bx.__h = h; bx.scrollTop = st; }
+    var bt = $('fSpBtn'), lb = spsLabel(); if (bt.textContent !== lb) bt.textContent = lb; bt.classList.toggle('on', !!F.sps.length); }
+  /* the checked pets that are on the (filtered) list; with no species ticked this is every checked pet, as before */
+  function spsShown(ids) { if (!F.sps.length) return ids; var w = lastW || U.world(), sh = new Set(U.petList(w).map(function (p) { return p.id; })); return ids.filter(function (id) { return sh.has(Number(id)); }); }
   window.UXB = {};
   /* pet-flow-smoother: after a hatch review, My Pets shows Rarest first unless the player already picked a sort (display only) */
   UXB.afterHatch = function () { if (F.sort === 'num' && !F.flip) { F.sort = 'tier'; saveF(); try { bindControls(); U.render(); } catch (e) { } } };
+  UXB.spsOn = function () { return F.sps.length > 0; }; UXB.spsKey = function () { return F.sps.slice().sort().join(','); }; UXB.shownSel = function (ids) { return spsShown(ids); }; /* mypets-species-filter */
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
   UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && q ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search (js/v2-pet-search.js) */
-    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false;
+    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false; if (F.sps.length && F.sps.indexOf(spOf(p)) < 0) return false;
       if (SM) return SM(p);
       if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
@@ -49,12 +90,12 @@
     ['fSort', 'fTier', 'fMin', 'fOrigin', 'fSpecies'].forEach(function (id) { $(id).onchange = upd; });
     var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); };
     $('fDir').onclick = function () { F.flip = !F.flip; saveF(); U.render(); };
-    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }; saveF(); bindControls(); U.render(); };
+    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }; saveF(); bindControls(); U.render(); };
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
   }
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
-    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
+    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
     $('fShowing').textContent = shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''; /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
     $('ctlToggle').textContent = '⚙️ More filters' + ((F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
@@ -82,6 +123,7 @@
   UXB.sel = function () { var w = lastW || U.world(), S = U.S(), alive = U.mine(w).filter(function (p) { return !p.dead; }), shown = U.petList(w).filter(function (p) { return !p.dead; });
     var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
+    if (F.sps.length) { var hidN = n - onShown; n = onShown; $('selCount').textContent = fmt(onShown) + ' of ' + fmt(shown.length) + ' shown selected' + (hidN > 0 ? ' (+' + fmt(hidN) + ' not shown)' : ''); } else /* mypets-species-filter */
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
     /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
     var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
@@ -95,7 +137,7 @@
     $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' selected' : fmt(V.COSTS.roll) + ' XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
     $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae0.length ? ae0.length + ' piece' + (ae0.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae0.length;
     if (!n) return;
-    var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
+    var ids = spsShown(S.sel.slice()), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
     var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
