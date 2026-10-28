@@ -7,7 +7,7 @@
   var STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'], TL = ['common', 'uncommon', 'rare', 'legendary'];
   function V() { return root.V2Rules || {}; }
   function words(q) { return String(q || '').toLowerCase().split(/[\s,]+/).filter(Boolean); }
-  function hay(p, w) { var V2 = V(), out = [p.name, '#' + p.id, p.species];
+  function hay(p, w, ks) { var V2 = V(), out = [p.name, '#' + p.id, p.species];
     try { out.push(V2.speciesLabel(p.species)); } catch (e) { }
     var hyb = !!(p.hybrid || (p.art && p.art.hybrid) || (V2.isHybrid && V2.isHybrid(p.species)));
     if (hyb) out.push('hybrid'); if (p.parents && p.parents.length) out.push('bred'); else out.push('hatched');
@@ -15,6 +15,8 @@
     try { out.push((V2.STAGE_NAMES || [])[p.stage]); } catch (e) { }
     if (p.dead) out.push('dead'); else out.push('alive'); if (p.community) out.push('community'); if (p.released) out.push('released');
     if (p.status) out.push(p.status); if (p.oldMoney) out.push('old money');
+    if (ks && ks.has(p.id)) out.push('starred', 'kept'); /* mypets-top: search words replace the Starred / Never fed filters */
+    if (p.hungry && !p.dead) out.push('hungry'); if (p.lastFed == null && !Object.keys(p.feedDays || {}).length) out.push('unfed', 'never fed');
     STATS.forEach(function (k) { if (p.stats && p.stats[k] != null) out.push(k); });
     try { if (root.PetCore && p.art) { var d = root.PetCore.describe(p.art); Object.keys(d).forEach(function (k) { if (k !== 'Tier' && d[k]) out.push(d[k]); }); } } catch (e) { }
     try { if (w && V2.wornOf) V2.wornOf(w, p.id).forEach(function (g) { out.push('gear', g.label, g.item, g.slot, TL[g.tier] || '', g.legendary ? 'legendary' : '');
@@ -26,8 +28,8 @@
     var n = t.replace(/^#/, ''); if (/^\d+$/.test(n)) return String(p.id).indexOf(n) === 0;
     return h.indexOf(t) >= 0; }
   /** matcher(q, w) -> function(p) true when every word matches; null when q is empty. */
-  function matcher(q, w) { var ws = words(q); if (!ws.length) return null; var cache = new Map();
-    return function (p) { var h = cache.get(p); if (h == null) { h = hay(p, w); cache.set(p, h); } return ws.every(function (t) { return one(t, p, h); }); }; }
+  function matcher(q, w) { var ws = words(q); if (!ws.length) return null; var cache = new Map(), ks = null; try { var U = root.V2UI; if (U && U.keptIds) ks = new Set(U.keptIds().map(Number)); } catch (e) { }
+    return function (p) { var h = cache.get(p); if (h == null) { h = hay(p, w, ks); cache.set(p, h); } return ws.every(function (t) { return one(t, p, h); }); }; }
   var api = { matcher: matcher, words: words, haystack: hay };
   root.V2PetSearch = api; if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
