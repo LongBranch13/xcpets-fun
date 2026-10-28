@@ -116,7 +116,7 @@
       h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent can fight today.'); }
     /* 3 · one button */
     var label, ok = false, hint = '';
-    if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
+    if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept * V().acceptCost(w, +s.inc) / V().acceptCost(null, 0)) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
     else if (s.tab === 'inc') label = inc.length ? 'Tap a challenger above' : 'Pick 🎯 Suggested to start a fight';
     else if (!A) label = 'Pick your fighter (1)';
     else if (!B) label = 'Pick an opponent (2)';

@@ -18,7 +18,11 @@
     el.innerHTML = h.era > 0
       ? (h.era > 1 ? '<b>👑 The halving</b> <span>Halving ' + h.era + ' is live: every burn costs 1/' + Math.pow(2, h.era) + ' of the base amount.</span> <a href="archive.html">Cold Storage</a>' : '<b>👑 The halving</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>')
       : '<b>⚔️ Lord Kek has been defeated</b> <span>From block ' + fmt(h.next) + ' (' + left + ' block' + (left === 1 ? '' : 's') + ' away) every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'; }
-  function labels() { if (!V.COSTS || !V.COSTS.era) return; var C = V.COSTS, set = function (id, t) { var b = document.getElementById(id); if (b && b.textContent !== t) b.textContent = t; };
+  /* similar-bugs-fix (Oct 27 2026): amounts the game draws itself follow every halving / Fire Sale too. [data-ck="KEY"] shows V2Rules.COSTS[KEY]
+   * (the engine's current cost); the Pepe Wheel 'Spin the wheel · N' button keeps its own first text node in step. Display only. */
+  function liveCosts() { var C = V.COSTS; if (!C || C.era == null) return; /* era is only set once syncCosts ran: never paint base costs */ document.querySelectorAll('[data-ck]').forEach(function (el) { var v = C[el.getAttribute('data-ck')]; if (v == null) return; var t = fmt(v); if (el.textContent !== t) el.textContent = t; });
+    var ws = document.getElementById('whSpin'), tn = ws && ws.firstChild; if (tn && tn.nodeType === 3 && C.roll != null) { var nt = tn.nodeValue.replace(/[\d,.]+(\s*)$/, fmt(C.roll) + '$1'); if (nt !== tn.nodeValue) tn.nodeValue = nt; } }
+  function labels() { try { liveCosts(); } catch (e) { } if (!V.COSTS || !V.COSTS.era) return; var C = V.COSTS, set = function (id, t) { var b = document.getElementById(id); if (b && b.textContent !== t) b.textContent = t; };
     set('hatchBtn', 'Crack One Open (' + fmt(C.hatch) + ')'); set('dozenBtn', 'Crack Pack · 12 eggs (' + fmt(C.hatch12) + ')'); set('caseBtn', 'Yolk Booster Box · 144 eggs (' + fmt(C.hatch144) + ')');
     if (C.hatchzap != null) { var zt = document.querySelector('#zapBtn .zap-t'), zs = '⚡ Electric Shock Box · 1,000 eggs (' + fmt(C.hatchzap) + ')'; if (zt && zt.textContent !== zs) zt.textContent = zs; } set('bGo', '🛎️ Check in · ' + fmt(C.breed));
     /* community feed choices halve too (owner Oct 22 2026): relabel the 69 / 690 / 6,900 buttons and keep the chosen amount in step */
