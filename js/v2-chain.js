@@ -36,19 +36,37 @@
    * so the page stays responsive; the worker also writes the IDB entry. The result is a structured clone of the same world (V.reindex() restores the
    * gear index). No worker / an error / WORKER_MS without an answer -> cache stays empty and world() replays on the main thread exactly as before. */
   var RULE_SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
-  var WORKER_MS = 45000, wk = null, wkId = 0, wkOff = false;
+  /* page-unresponsive-fix (2026-10-27): profiled on the owner's laptop (i3-N305) the worker replay takes 22-39 s, so the 45 s limit was close: one
+   * slow moment turned the worker off for good and the next poller replayed on the main thread (27 s, Chrome's "Page unresponsive"). The limit is
+   * now 120 s. Only ONE job runs at a time: a second call with the same inputs joins it; newer inputs stop the old job (its answer would be thrown
+   * away) instead of queueing behind it, where its reassigned onmessage left the old job to time out and turn the worker off. A finished replay
+   * whose inputs changed meanwhile starts the next one right away, so world() never falls back to the main thread in between. Same world out. */
+  var WORKER_MS = 120000, wk = null, wkId = 0, wkOff = false, pend = null;
   function ruleUrls() { var all = Array.prototype.map.call(document.scripts || [], function (x) { return x.src || ''; }), out = [];
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
+  function wkKill() { try { if (wk) wk.terminate(); } catch (e) {} wk = null; }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
-    wkBusy++; return new Promise(function (res) { var id = ++wkId, sig = inSig(), ops = S.ops || [], oj = JSON.stringify(ops), key = idbKey(), done = false, t;
-      function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); res(); }
-      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }; }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; } else if (!m.ok) wkOff = true; fin(); };
-        t = setTimeout(function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }, WORKER_MS);
+    var sig0 = inSig(), oj0 = JSON.stringify(S.ops || []);
+    if (pend) { if (pend.sig === sig0 && pend.oj === oj0) return pend.p; var old = pend; pend = null; wkKill(); old.fin(); } /* same inputs: join; newer inputs: stop the old job */
+    wkBusy++; var job = { sig: sig0, oj: oj0 }; pend = job;
+    job.p = new Promise(function (res) { var id = ++wkId, sig = sig0, ops = S.ops || [], oj = oj0, key = idbKey(), done = false, t;
+      function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
+      job.fin = fin;
+      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id || done) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
+          else if (!m.ok) wkOff = true;
+          else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
+            clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
+          fin(); };
+        t = setTimeout(function () { wkOff = true; wkKill(); fin(); }, WORKER_MS);
         wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
-      } catch (e) { wkOff = true; fin(); } }); }
-  function fromIdb() { if (cache) return Promise.resolve(); return idbGet().then(function (v) { if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () {}); }
+      } catch (e) { wkOff = true; wkKill(); fin(); } });
+    return job.p; }
+  /* page-unresponsive-fix: the cross-visit cache read (up to IDB_WAIT_MS) always runs right before workerReplay(); it counts as busy, so a poller
+   * ticking in that gap gets the last world / the pending placeholder instead of a full main-thread replay (measured 27 s on the owner's laptop). */
+  function fromIdb() { if (cache) return Promise.resolve(); wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
+    return idbGet().then(function (v) { end(); if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
