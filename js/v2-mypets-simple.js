@@ -11,9 +11,10 @@
   var $ = function (id) { return document.getElementById(id); };
   function D() { return window.__demo; }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
-  /** selHungry(): the checked pets for Feed selected (mine() already leaves out discarded pets; hidden list checked again below) */
+  /** selHungry(): the checked pets for Feed selected (mine() already leaves out discarded pets; hidden list checked again below).
+   *  mypets-species-filter (Oct 28 2026): while species are ticked, only the checked pets that are shown (UXB.shownSel) */
   function selHungry() { var d = D(), w = d && d.world && d.world(); if (!w || !d.mine) return { w: w, sel: [], hungry: [] };
-    var s = new Set((d.S().sel || []).map(Number)), h = new Set(d.hiddenIds ? d.hiddenIds() : []);
+    var s0 = (d.S().sel || []).map(Number), s = new Set(window.UXB && UXB.shownSel ? UXB.shownSel(s0) : s0), h = new Set(d.hiddenIds ? d.hiddenIds() : []);
     var sel = d.mine(w).filter(function (p) { return s.has(p.id) && !p.dead && !p.released && !h.has(p.id); });
     return { w: w, sel: sel, hungry: sel.filter(function (p) { return p.hungry; }) }; }
   function label() { var b = $('bFeedKept'); if (!b || !D() || !D().world) return;
