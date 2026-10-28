@@ -85,7 +85,7 @@
     cold: function () { return '<h3>🧊 What happens in Cold Storage?</h3><p>Community pets stay community pets until they reach Mythic. Then they go into Cold Storage and become real pets anyone can hatch and breed. This goes for the Bitcoin Wizard and every community pet after him.</p><p class="small">' + cpT('help-cold', 'Nakamoto (#1) is no longer hatched. The Bitcoin Wizard (#2) now comes from the 1 in 777 hatch roll.') + '</p>' + more('community', 'Community pets'); },
     community: function () { return '<h3>🔔 Community pet ' + cpNo() + '</h3><p>Feeding and gear rolls open when pet ' + cpNo() + ' arrives. There\'s no date yet.</p><p>Get told first: the XCPETS Telegram announces it.</p><p><a class="btn" href="https://t.me/xcpets" target="_blank" rel="noopener">🔔 Join t.me/xcpets</a></p>' + more('community', 'Community pets'); },
     glossary: function (k) { return glossary(k); },
-    bundle: function () { return '<h3>🍽️ Feeding many pets</h3><p>"Feed all hungry" feeds every hungry pet in ONE burn (pet:fa). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
+    bundle: function () { return '<h3>🍽️ Feeding many pets</h3>' + (window.XCPETS_FEED_ALL_PAUSED === true ? '<p>Feed all is paused for a fix.</p>' : '') + '<p>"Feed all hungry" feeds every hungry pet in ONE burn (pet:fa). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
   };
 
   // ------------------------------------------------------------------ item 11: glossary
@@ -163,7 +163,7 @@
     if (ls('xcpets-ip-nba') === String(day) || !L.length) { if (box) box.remove(); return; }
     var starve = urgent(w), hungry = L.filter(function (p) { return p.hungry && p.nextMeal; }), line = '';
     if (starve.length) line = '🪦 ' + starve.length + ' neglected pet' + (starve.length === 1 ? '' : 's') + ' · first dies in ~' + left(Math.min.apply(null, starve.map(function (p) { return p.deathBlock - w.tip; }))) + ' · <a href="#" data-ipnba="urgent">see most urgent ▸</a>';
-    else if (hungry.length) line = '🍽️ ' + hungry.length + ' hungry · <a href="#" data-ipnba="feed">Feed all hungry ▸</a>';
+    else if (hungry.length) line = '🍽️ ' + hungry.length + ' hungry · ' + (window.XCPETS_FEED_ALL_PAUSED === true ? 'Feed all is paused for a fix.' /* feed-all-pause */ : '<a href="#" data-ipnba="feed">Feed all hungry ▸</a>');
     else { var f = L.filter(function (p) { return p.stage >= 2 && !p.neglected && !(p.fightDays && p.fightDays[day]); })[0]; if (f) line = '⚔️ #' + f.id + ' ' + esc(f.name) + ' can fight today · <a href="#kekimus">Kekimus ▸</a>'; }
     if (!line) { if (box) box.remove(); return; }
     if (!box) { box = d.createElement('p'); box.id = 'ipNba'; box.className = 'small ip-nba'; var tabs = pp.querySelector('.pettabs'); pp.insertBefore(box, tabs ? tabs.nextSibling : pp.firstChild.nextSibling);
