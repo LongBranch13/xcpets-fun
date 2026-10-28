@@ -147,7 +147,11 @@
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
       var done = false, bodyT = null; /* burn-compose-fix: the abort timer also covers reading the body (a stalled body used to hang forever) */
       var body = function (r) { return new Promise(function (res, rej) { bodyT = setTimeout(function () { var e6 = new Error('timed out after ' + COMPOSE_MS / 1000 + ' s reading the reply'); e6.retryable = true; e6.backoff = true; rej(e6); }, COMPOSE_MS); Promise.resolve(r.json()).then(res, function (e) { var e7 = new Error('unreadable reply (' + ((e && e.message) || 'bad JSON') + ')'); e7.retryable = true; e7.backoff = true; rej(e7); }); }).then(function (x) { clearTimeout(bodyT); return x; }, function (e) { clearTimeout(bodyT); throw e; }); };
-      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status + (r.status === 429 ? ' (rate limited)' : '')); e5.retryable = true; e5.backoff = true; throw e5; } return body(r); }, function (e) {
+      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t);
+        /* api-hardening: 503 = node not ready / catching up, 409 = a pending transaction in the node's mempool conflicts; both wait (backoff) and retry with the node's own words */
+        if (r.status === 503 || r.status === 409) return body(r).then(null, function () { return null; }).then(function (jj) { var nm = jj && jj.error ? (typeof jj.error === 'string' ? jj.error : JSON.stringify(jj.error)) : '';
+          var e9 = new Error(r.status === 409 ? 'A pending transaction conflicts with this one (HTTP 409' + (nm ? ': ' + nm : '') + '). Wait for it to confirm, then try again.' : 'The Counterparty node is not ready or still catching up (HTTP 503' + (nm ? ': ' + nm : '') + ').'); e9.retryable = true; e9.backoff = true; e9.http = r.status; throw e9; });
+        if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status + (r.status === 429 ? ' (rate limited)' : '')); e5.retryable = true; e5.backoff = true; throw e5; } return body(r); }, function (e) {
         if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; e2.backoff = true; throw e2; })
         .then(function (j) {
           if (!j || typeof j !== 'object') { var e8 = new Error('empty reply'); e8.retryable = true; throw e8; }
@@ -270,10 +274,22 @@
    * whether each unconfirmed tracked tx has a block (at most once a minute); confirmed lines drop off the pending list. Read only. */
   var pollAt = 0, pollP = null;
   function pollPending() { if (pollP || Date.now() - pollAt < 60000) return pollP || Promise.resolve(0); pollAt = Date.now();
-    pollP = tracker.poll(function (txid) { return F('https://mempool.space/api/tx/' + encodeURIComponent(txid) + '/status').then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { return j ? { confirmed: !!j.confirmed, block: j.block_height, seen: true } : null; }, function () { return null; }); })
+    var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state(), tipN = VS && (VS.chainTip || VS.tip) || 0; /* api-hardening: recheck burns < 6 deep (reorg) */
+    pollP = tracker.poll(function (txid) { return F('https://mempool.space/api/tx/' + encodeURIComponent(txid) + '/status').then(function (r) { return r.ok ? r.json() : r.status === 404 ? { gone: true } : null; })
+      .then(function (j) { return j ? (j.gone ? { confirmed: false, seen: false } : { confirmed: !!j.confirmed, block: j.block_height, seen: true }) : null; }, function () { return null; }); }, tipN)
       .then(function (n) { pollP = null; return n; }, function () { pollP = null; return 0; }); return pollP; }
-  function sendDex(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+  /* api-hardening (2026-10-27): pets held on UTXOs. A pet token attached to a Bitcoin output (Counterparty attach) still belongs to that output's
+   * address (the rules follow utxo_address), but a send / MPMA / sell order from the address can't move it: the node answers 'insufficient funds'.
+   * Before the wallet window, look where each pet token sits; attached -> a clear 'detach it first' stop. A failed look just goes on (the
+   * compose still refuses). A 409 (a pending transaction conflicts) gets its own message. Read-only; nothing signs here. */
+  function petTokens(plan) { var L = plan.kind === 'send' ? [plan.asset] : plan.kind === 'mpma' ? (plan.assets || []) : plan.kind === 'order' || !plan.kind ? [plan.give_asset] : []; return L.filter(function (a) { return /^A[1-9][0-9]{16,19}$/.test(a || ''); }); }
+  function utxoErr(A, u) { var e = new Error('Pet token ' + A + ' is attached to a Bitcoin output (' + String(u).slice(0, 16) + '…). Counterparty can only send or sell it after it is detached back to your address. Detach it in XCP Wallet, wait one block, then try again. Nothing was sent.'); e.utxoHeld = u; return e; }
+  function utxoCheck(plan) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state(), T = window.V2Sales && window.V2Sales.tok, as = petTokens(plan);
+    if (!(VS && VS.prod) || !T || !T.tokenAt || !as.length) return Promise.resolve();
+    return Promise.all(as.map(function (A) { return T.tokenAt(A).then(function (t) { return t && t.utxo ? utxoErr(A, t.utxo) : null; }, function () { return null; }); })).then(function (r) { r = r.filter(Boolean); if (r.length) throw r[0]; }); }
+  function conflictMsg(e) { var raw = String((e && e.raw) || (e && e.message) || ''); if (e && !e.utxoHeld && !/safety check/i.test(e.message || '') && /already exists in .*mempool|pending .* already exists|mempool conflict|HTTP 409/i.test(raw)) { var x = new Error('One of your transactions for this is still pending (not in a block yet), and the node will not build another on top of it. Wait for it to confirm, then try again. Nothing was sent.'); Object.keys(e).forEach(function (k) { if (!(k in x)) x[k] = e[k]; }); x.raw = raw; x.conflict = true; return x; } return e; }
+  function sendDex(plan, viewed) { return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
+  function sendDexF(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
     return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
       return sendDex0(plan, viewed); }); }
