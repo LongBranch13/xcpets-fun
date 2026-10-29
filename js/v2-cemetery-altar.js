@@ -10,7 +10,7 @@
   'use strict';
   var PET = [0.03, 0.07, 0.14, 0.25], GEAR = [0.01, 0.025, 0.05, 0.10], RIPE = 1.5, HW = 1.5, CAP = 3, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
   var MILES = [[1.5, 'Shambler'], [2, 'Ghoul'], [2.5, 'Revenant'], [2.8, 'Dread'], [3, 'Ceiling']];
-  var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'], AW = 160, AH = 100, PAGE = 48;
+  var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'], AW = 160, AH = 100, PAGE = 48, ZK = 2, ZS = 3, ZX0 = 112; /* risen zombie (owner Oct 28 'zombie should be bigger'): drawn on its own 2x layer (#altZc) at a whole 3 layer pixels per pet pixel = 48 of 32 (was squeezed to 28), kept right of the altar (x >= 112) */
   var RM = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   function reduced() { return !!RM.matches || !!window.__cemReduced; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -51,7 +51,7 @@
     try { if (wp && wp.art) { c = document.createElement('canvas'); c.width = c.height = 32; /* keyed render (solid magenta background) so only the pet itself flies, smokes and rises, never its square tile */
       R.paint(c, R.framesWith(Object.assign({}, wp.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), wp.stage, [])[0]);
       var x = c.getContext('2d'), d = x.getImageData(0, 0, 32, 32), a = d.data; for (var i = 0; i < a.length; i += 4) { if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) { a[i + 3] = 0; continue; } if (!a[i + 3] || !green) continue; var l = (a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11) / 255;
-        a[i] = Math.round(40 + 90 * l); a[i + 1] = Math.round(90 + 160 * l); a[i + 2] = Math.round(40 + 60 * l); } x.putImageData(d, 0, 0); } } catch (e) { c = null; }
+        a[i] = Math.round(40 + 90 * l); a[i + 1] = Math.round(90 + 160 * l); a[i + 2] = Math.round(40 + 60 * l); } x.putImageData(d, 0, 0); var bx0 = 32, by0 = 32, bx1 = -1, by1 = -1; for (var j = 0; j < 1024; j++) { if (!a[j * 4 + 3]) continue; var jx = j % 32, jy = (j / 32) | 0; if (jx < bx0) bx0 = jx; if (jx > bx1) bx1 = jx; if (jy < by0) by0 = jy; if (jy > by1) by1 = jy; } c.bb = bx1 < 0 ? [0, 0, 32, 32] : [bx0, by0, bx1 - bx0 + 1, by1 - by0 + 1]; /* the pet's own pixels (for the bigger risen zombie) */ } } catch (e) { c = null; }
     SPR[key] = c; return c; }
 
   /* ---------------------------------------------------------------- the altar canvas ---------------------------------------------------------------- */
@@ -103,14 +103,15 @@
     if (t < 1100 && Math.random() < 0.6) A.fx.push({ k: 'chip', x: g.x - 8 + Math.random() * 16, y: g.y - 1, vx: Math.random() * 2 - 1, vy: -(0.6 + Math.random() * 1.6), t: 0, d: 500 });
     if (t > 350 && t < 1500) { var cp = Math.min(1, (t - 350) / 450), cy = g.y - Math.round(10 * cp), cx = g.x - 8; /* the claw */
       px(x, '#2f8a3c', cx, cy, 3, 10 * cp + 1); px(x, '#3fbf4a', cx + 1, cy, 1, 10 * cp); [[-2, -3], [0, -4], [2, -3], [4, -2]].forEach(function (f, i) { px(x, '#7dff6a', cx + f[0], cy + f[1], 1, 3); px(x, '#c9ffb0', cx + f[0], cy + f[1], 1, 1); }); }
-    if (t > 1100) { var rp = Math.min(1, (t - 1100) / 900), e = 1 - Math.pow(1 - rp, 2), top = Math.round(g.y - 26 * e); x.save(); x.beginPath(); x.rect(0, 0, AW, g.y); x.clip(); x.imageSmoothingEnabled = false;
-      if (z) x.drawImage(z, g.x - 14, top - 2, 28, 28); else px(x, '#7dff6a', g.x - 8, top, 16, 22); x.restore();
-      if (rp >= 1) { var bl = Math.floor(t / 220) % 2; x.save(); x.globalAlpha = 0.25 + 0.15 * bl; px(x, '#7dff6a', g.x - 18, g.y - 34, 36, 36); x.restore(); } }
+    var zc = A.zc, zx2 = zc && zc.getContext('2d'); if (t > 1100 && zx2) { var rp = Math.min(1, (t - 1100) / 900), e = 1 - Math.pow(1 - rp, 2), bb = z && z.bb ? z.bb : [8, 6, 16, 22], zw = bb[2] * ZS, zh = bb[3] * ZS, gy = g.y * ZK, zl = ZX0 * ZK,
+        zx = Math.max(zl, Math.min(AW * ZK - zw, g.x * ZK - (zw >> 1))), top = Math.round(gy - zh * e); zx2.save(); zx2.beginPath(); zx2.rect(0, 0, AW * ZK, gy); zx2.clip(); zx2.imageSmoothingEnabled = false;
+      if (z) zx2.drawImage(z, bb[0], bb[1], bb[2], bb[3], zx, top, zw, zh); else { zx2.fillStyle = '#7dff6a'; zx2.fillRect(zx, top, zw, zh); } zx2.restore();
+      if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = 0.25 + 0.15 * bl; zx2.fillStyle = '#7dff6a'; zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy + 4 - hy); zx2.restore(); } }
     if (t > 2100 && !R0.done) { R0.done = true; risenCard(); } }
   function frame(t) { var c = A.cv; if (!c || !c.isConnected) { A.raf = 0; return; } var x = c.getContext('2d'), now = t || performance.now(), dt = A.last ? Math.min(50, now - A.last) : 16; A.last = now; x.imageSmoothingEnabled = false;
     A.flares = A.flares.map(function (f) { return Math.max(0, f - dt / 520); }); if (A.rise) A.rise.t += dt;
     A.fx.forEach(function (f) { step(f, dt); }); var landed = A.fx.filter(function (f) { return f.k === 'fly' && f.t >= f.d; }); A.fx = A.fx.filter(function (f) { return f.t < f.d; }); landed.forEach(land);
-    scene(x, now); if (A.rise) drawRise(x); drawFx(x);
+    if (A.zc) A.zc.getContext('2d').clearRect(0, 0, A.zc.width, A.zc.height); scene(x, now); if (A.rise) drawRise(x); drawFx(x);
     var busy = A.fx.length || A.flares.some(function (f) { return f > 0; }) || (A.rise && !A.rise.done) || A.rise; if (!reduced() && !A.off && (busy || A.offered.length || A.grave)) A.raf = requestAnimationFrame(frame); else A.raf = 0; }
   function kick() { if (!A.raf && A.cv) { A.last = 0; A.raf = requestAnimationFrame(frame); } if (reduced() && A.cv) { A.fx.forEach(function (f) { if (f.k === 'fly') land(f); }); A.fx = []; A.flares = [0, 0, 0, 0, 0, 0]; frame(performance.now()); } }
 
@@ -133,18 +134,18 @@
   function open(grave, ctx) { if (ctx) A.ctx = ctx; if (!A.ctx || !grave) return; var w = A.ctx.w, wp = w.byId ? w.byId[grave.id] : null, s = wp && wp.stats ? wp.stats : null, base = {};
     if (s) STATS.forEach(function (k) { base[k] = s[k] || 0; }); else STATS.forEach(function (k, i) { base[k] = Math.floor((grave.power || 0) / 5) + (i < (grave.power || 0) % 5 ? 1 : 0); });
     A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.ask = null; A.seq = 0; if (!A.mine.length || A.ctxW !== w) { buildMine(); A.ctxW = w; }
-    var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); bind(el); renderAll(true);
+    var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); renderAll(true);
     topGap(); if (!A.rz) { A.rz = true; window.addEventListener('resize', topGap); } if (window.IntersectionObserver && !A.io) { A.io = new IntersectionObserver(function (es) { A.off = !es[0].isIntersecting; if (!A.off) kick(); }); } if (A.io) { A.io.disconnect(); A.io.observe(A.cv); }
     if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('lit'); kick(); el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }
   /* the sticky stage sits just under the site's sticky nav, whatever height the nav wraps to on a phone */
   function topGap() { var n = document.querySelector('.nav'), el = document.getElementById('cemAltar'); if (el) el.style.setProperty('--altTop', ((n && /sticky|fixed/.test(getComputedStyle(n).position)) ? n.offsetHeight + 4 : 0) + 'px'); }
-  function close() { var el = document.getElementById('cemAltar'); if (el) { el.hidden = true; el.innerHTML = ''; } A.cv = null; A.grave = null; if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('off'); }
+  function close() { var el = document.getElementById('cemAltar'); if (el) { el.hidden = true; el.innerHTML = ''; } A.cv = null; A.zc = null; A.grave = null; if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('off'); }
   function shell() { var g = A.grave, sa = A.ctx.shortAddr, ME = A.ctx.ME;
     return '<div class="alt-head"><h2 class="alt-title">🕯️ Seance at the altar <span class="alt-pv">PREVIEW</span></h2><div class="alt-tools"><button type="button" class="q" id="altSnd" aria-pressed="' + A.sound + '" title="Sound">' + (A.sound ? '🔊' : '🔇') + '</button><button type="button" class="q" id="altX" aria-label="Close the seance">✕</button></div></div>' +
       '<p class="small alt-who">Raising <b>' + esc(g.name) + '</b> <span class="muted">#' + g.id + ' · ' + esc(g.spl || '') + ' · ' + TL[g.tier] + ' · owner ' + esc(sa(g.owner)) + (ME && g.owner === ME ? ' (you)' : '') + '</span></p>' +
       '<p class="small alt-hw" id="altHwRow"><span class="alt-hwb" id="altHwB"' + (A.hw ? '' : ' hidden') + '>🎃 Night of the Dead: offerings count 1.5 times</span> <button type="button" class="q" id="altHw" aria-pressed="' + A.hw + '" title="Preview the Halloween window boost (Oct 31 through Nov 11)">🎃 Halloween boost: ' + (A.hw ? 'on' : 'off') + '</button></p>' +
       (A.sample ? '<p class="small alt-note">👀 No wallet pets here, so this preview borrows a sample player\'s living pets (' + esc(sa(A.who)) + '). Nothing is burned.</p>' : '') +
-      '<div class="alt-grid"><div class="alt-left"><div class="alt-stage"><div class="alt-cvwrap"><canvas id="altCv" width="' + AW + '" height="' + AH + '" role="img" aria-label="A stone altar with candles beside the grave. Drop or tap pets to offer them."></canvas><div class="alt-drop" aria-hidden="true">Drop here</div><div class="alt-toast" id="altToast" aria-live="polite"></div></div>' +
+      '<div class="alt-grid"><div class="alt-left"><div class="alt-stage"><div class="alt-cvwrap"><canvas id="altCv" width="' + AW + '" height="' + AH + '" role="img" aria-label="A stone altar with candles beside the grave. Drop or tap pets to offer them."></canvas><canvas id="altZc" width="' + AW * ZK + '" height="' + AH * ZK + '" aria-hidden="true"></canvas><div class="alt-drop" aria-hidden="true">Drop here</div><div class="alt-toast" id="altToast" aria-live="polite"></div></div>' +
       '<div class="alt-power"><div class="alt-pnum" id="altNum"></div><div class="alt-bar" id="altBar"><i class="alt-b0"></i><i class="alt-b1"></i>' + MILES.map(function (m, i) { return '<span class="alt-mk" data-i="' + i + '" style="left:' + (m[0] / CAP * 100) + '%"><em>' + m[1] + '</em></span>'; }).join('') + '</div>' +
       '<div class="alt-stats" id="altStats"></div></div></div>' +
       '<div class="alt-acts"><button type="button" class="btn" id="altRise" disabled>▶ Preview the rise</button><button type="button" class="btn ghost" id="altHold" disabled aria-disabled="true" title="Preview only: nothing is burned">🕯️ Hold seance (preview)</button><button type="button" class="q" id="altClr">↩ Take all back</button></div>' +

@@ -10,6 +10,7 @@
 .alt-stage{position:sticky;top:var(--altTop,64px);z-index:2;background:#120f20}
 .alt-cvwrap{position:relative;border:3px solid #000;box-shadow:3px 3px 0 #000;line-height:0;touch-action:manipulation}
 #altCv{width:100%;aspect-ratio:160/100;image-rendering:pixelated;display:block;background:#0b0a1f}
+#altZc{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
 .alt-drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font:12px var(--pixel);color:#c9ffb0;background:rgba(125,255,106,.08);outline:3px dashed #7dff6a;outline-offset:-6px;line-height:1.4}
 .cem-altar.dragging .alt-drop{display:flex}.cem-altar.over .alt-drop{background:rgba(125,255,106,.25)}
 .alt-ghost{position:fixed;width:56px;height:56px;margin:-28px 0 0 -28px;image-rendering:pixelated;pointer-events:none;z-index:50;filter:drop-shadow(0 0 6px #7dff6a)}
