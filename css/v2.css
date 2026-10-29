@@ -546,3 +546,5 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 @media (max-width:600px){#packBox:not(.gearmode) #packX{position:fixed;top:8px;right:8px}#packBox:not(.gearmode) .box>h2{font-size:18px;line-height:1.25}}
 /* hatch-review title fit 2026-10-28: phone title on one line at 390 (smaller pixel text, same font; long titles may still wrap) */
 @media (max-width:600px){#packBox:not(.gearmode) .box>h2{font-size:clamp(8px,2.2vw,13px);letter-spacing:0}}
+/* community-gear-hover: small tooltip on the community pet sprite (hover on desktop, tap on phones); site font, panel colours */
+.ctip { position: fixed; z-index: 60; max-width: 240px; padding: 6px 10px; background: var(--panel); color: var(--ink); border: 2px solid #000; border-radius: 8px; box-shadow: 3px 3px 0 #000; pointer-events: none; } .ctip > div + div { margin-top: 4px; } .ctip .pill { margin-left: 4px; }
