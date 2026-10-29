@@ -371,19 +371,20 @@
       $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
     var list = petList(alive, dead);
-    /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Checked (selected) pets stay listed; discarded
-     * pets are already out (mine). A wallet whose few pets are all never fed sees them open. One O(n) pass, so 9k-pet wallets stay fast. */
-    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, null, new Set(S.sel)) /* mypets-checkbox: checked pets stay listed */, nfN = nfs.nf.length;
-    var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.nf.concat(nfs.shown) : nfs.shown;
+    /* habits-ux (Oct 27 2026) folded never-fed pets into one collapsed group; mypets-show-all (owner, Oct 28 2026) lists every pet again and the
+     * fold becomes an opt-in 'Never fed only' filter (My Pets and Cemetery tab). Discarded pets are already out (mine). One O(n) pass, so 9k-pet wallets stay fast. */
+    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list) /* mypets-show-all: count every never-fed pet for the optional filter */, nfN = nfs.nf.length;
+    /* mypets-show-all (owner Oct 28 2026): every pet is in the main list by default; 'Never fed only' is an optional filter, off by default (NF[tab] = on) */
+    var nfOnly = !!NF[nfK] && nfN > 0; if (nfOnly) list = nfs.nf;
     if (!cem && JUST_BACK.length) { var JB = new Set(JUST_BACK), jb = petList(alive, dead).filter(function (p) { return JB.has(p.id); }); if (jb.length) { list = jb.concat(list.filter(function (p) { return !JB.has(p.id); })); } } /* restore-fix: just restored first (still counted in the Never fed chip) */ /* nf-fold fix (Oct 27 2026): opened never-fed pets go first, right under the fold. They used to go last, past the 150-card page, so the fold opened onto nothing. */
     var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
     $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
     var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">No pets match this filter.</p>';
-    if (nfN) { var nfg = document.createElement('details'); nfg.className = 'hiddenbox nfgroup'; nfg.id = 'nfGroup'; nfg.open = nfOpen;
-      nfg.innerHTML = '<summary>' + (cem ? '🪦' : '🥚') + ' Never fed <span class="chip">' + fmt(nfN) + '</span> <span class="muted">' + (cem ? 'died without a single meal' : 'pets that have never had a meal') + (nfOpen ? ' · listed below, tap to fold' : ' · tap to show') + '</span></summary>';
-      nfg.addEventListener('toggle', function () { if (NF[nfK] === nfg.open) return; NF[nfK] = nfg.open; render(); }); box.appendChild(nfg); }
+    if (nfN) { var nfg = document.createElement('div'); nfg.className = 'row nffilter'; nfg.id = 'nfGroup'; nfg.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
+      nfg.innerHTML = '<button type="button" class="q" id="nfOnly" aria-pressed="' + nfOnly + '">' + (cem ? '🪦' : '🥚') + ' ' + (nfOnly ? '✓ ' : '') + 'Never fed only <span class="chip">' + fmt(nfN) + '</span></button> <span class="small muted">' + (nfOnly ? 'only pets that ' + (cem ? 'died without a single meal' : 'never had a meal') + ' · tap to show all' : 'optional filter, off: all pets are listed') + '</span>';
+      nfg.querySelector('button').onclick = function (e) { e.stopPropagation(); NF[nfK] = !nfOnly; render(); }; box.appendChild(nfg); }
     /* hotfix 3: cards are built in chunks of 150 with a yield between them, so a 2,000-pet wallet never blocks the page for seconds */
     var tok = renderPets.tok = (renderPets.tok || 0) + 1, CH = 150, tail = document.createComment('pets-more');
     function mk(p) {
