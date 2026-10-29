@@ -1,6 +1,6 @@
 {
- "lastBlock": 973733,
- "count": 272,
+ "lastBlock": 973737,
+ "count": 287,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -193,7 +193,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 23693,
@@ -3264,6 +3264,186 @@
    "name": "Gooloozip",
    "species": "lenny",
    "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38045,
+   "asset": "A15313194768747935981",
+   "tiedBlock": 973734,
+   "tiedTx": "479a5e4e2f7ef5afd110e806aa7879d7f52d6c40e8a06f82a923c4c39dd10d05",
+   "kind": "deed",
+   "name": "Nefook",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38047,
+   "asset": "A5649166852569176563",
+   "tiedBlock": 973734,
+   "tiedTx": "a5cbad058fe5e414b63d0141bf843fc8f75760d82fe5b81023d7dc36575589d1",
+   "kind": "deed",
+   "name": "Lomikibo",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38048,
+   "asset": "A11402611908354748634",
+   "tiedBlock": 973734,
+   "tiedTx": "acd32e9a5e88aa5237673b343cc37310478e7e8d1ca1b6fd58198369732d701a",
+   "kind": "deed",
+   "name": "Zovibit",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38107,
+   "asset": "A10379460101570616469",
+   "tiedBlock": 973734,
+   "tiedTx": "d399c00a3f0ef4bc350c43caa830dbaf942593fe7ca432b0cd850a78a787f766",
+   "kind": "deed",
+   "name": "Lijusek",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38110,
+   "asset": "A14503360130219983691",
+   "tiedBlock": 973734,
+   "tiedTx": "4b421c18069e4b4dc6cd3bc54cef9077debfa6259644c8dda847f3caea8c8447",
+   "kind": "deed",
+   "name": "Ruyupo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38152,
+   "asset": "A16610515989123115073",
+   "tiedBlock": 973734,
+   "tiedTx": "ae1b3eb55bc4b479fa35b214265ce04f867de5f01bfdb491a26db6f107aeea09",
+   "kind": "deed",
+   "name": "Hasapop",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38175,
+   "asset": "A8871284352826853781",
+   "tiedBlock": 973734,
+   "tiedTx": "3567665110f658d4bd5003052b532a3cea5400646dc9df781abf9b09ac910412",
+   "kind": "deed",
+   "name": "Boobegebo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38176,
+   "asset": "A11882762911116666142",
+   "tiedBlock": 973734,
+   "tiedTx": "1ecbbc2e6e7bc1bb760d3c56154edbbf2151d537c5709d9ecd3947dfb20b009f",
+   "kind": "deed",
+   "name": "Matuzy",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38197,
+   "asset": "A4373175349043488435",
+   "tiedBlock": 973734,
+   "tiedTx": "435994d1dede07ae9f16ac1ce5f154ed9846752e3f6b5797f75be4b4b2ec0253",
+   "kind": "deed",
+   "name": "Medoopo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 38230,
+   "asset": "A4209389862651623050",
+   "tiedBlock": 973734,
+   "tiedTx": "3742332f5bdfbc58f7fe5fef378956fd9b8ca56b42739e5519506b9ab8d40d50",
+   "kind": "deed",
+   "name": "Chuchup",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40201,
+   "asset": "A3966184035803893019",
+   "tiedBlock": 973734,
+   "tiedTx": "eb9fa4f167f0d301445bd7f37376dcae867a55af48bd17f492ca05fef7df53e2",
+   "kind": "deed",
+   "name": "Zalili",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40239,
+   "asset": "A8838490838905959319",
+   "tiedBlock": 973734,
+   "tiedTx": "6047b2496b68dd6c0d6cfa47c9fd8c810c33eaf1f718100231e8e7dd8d21a359",
+   "kind": "deed",
+   "name": "Yadilu",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40249,
+   "asset": "A8089571723245748050",
+   "tiedBlock": 973734,
+   "tiedTx": "4c776d148666ac5a3b19897a7404b3bf03706d3ba122dfc712be48c0ae32c2c9",
+   "kind": "deed",
+   "name": "Rigafe",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40414,
+   "asset": "A1205692852946028601",
+   "tiedBlock": 973734,
+   "tiedTx": "ff92c2529b21027c4796f49afe8e5a025c65c6f2fb2f59f68f0b5502d18dad90",
+   "kind": "deed",
+   "name": "Degichun",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40851,
+   "asset": "A2575014885941062586",
+   "tiedBlock": 973734,
+   "tiedTx": "cdd373276f2c7be55f208bcb39c4974f16a8d5d626d224fb204b26a42b6c850e",
+   "kind": "deed",
+   "name": "Jufep",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
