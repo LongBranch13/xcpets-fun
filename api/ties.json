@@ -1,6 +1,6 @@
 {
- "lastBlock": 973696,
- "count": 269,
+ "lastBlock": 973700,
+ "count": 272,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3228,6 +3228,42 @@
    "name": "Loomufoni",
    "species": "kevin",
    "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40079,
+   "asset": "A10587851467977841949",
+   "tiedBlock": 973699,
+   "tiedTx": "fd7699d84c589515624153107f598a73a868e755ad409a8ddd9bad45eb96efc0",
+   "kind": "deed",
+   "name": "Pelepip",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40854,
+   "asset": "A886690403927215435",
+   "tiedBlock": 973699,
+   "tiedTx": "f6b14b1233d963529a3d51efe14613a9106b645c2685ab73bb38ec7e5e503fa1",
+   "kind": "deed",
+   "name": "Rohedootot",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 41026,
+   "asset": "A5559399164695849278",
+   "tiedBlock": 973699,
+   "tiedTx": "436e7013deedbd508fb10602d0d1bf2cb3e91dbf31ce4414efd535c2803aba63",
+   "kind": "deed",
+   "name": "Gooloozip",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
