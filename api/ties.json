@@ -1,5 +1,5 @@
 {
- "lastBlock": 973729,
+ "lastBlock": 973731,
  "count": 272,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -1441,7 +1441,7 @@
    "species": "hyb:sarutobi:doge",
    "speciesLabel": "Sadoge (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Mythic"
   },
   {
    "id": 29524,
