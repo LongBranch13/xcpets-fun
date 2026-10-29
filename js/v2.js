@@ -65,26 +65,39 @@
    * hidden star protects or picks anything. keptIds / isKept / toggleKeep / keepFed / keepBtn stay as no-ops for older callers. Nothing on chain. */
   /* favorite-star-restore (owner Oct 29 2026: "Players want the star back. They use it to mark favorite pets"): the ★ is back as its OWN favorite
    * marker, next to the ☑ checkbox (the checkbox stays the selection for Feed / Discard / Rare Room). Same browser-only list as before
-   * (localStorage xcpets-keep-<network>-<address>), so stars saved by older builds show again. A star only marks a favorite: it does not pick
-   * pets for bulk actions and does not block Discard (that stays with the checkbox flows). No auto-star on feed. Nothing on chain. */
+   * (localStorage xcpets-keep-<network>-<address>), so stars saved by older builds show again. A star does not pick pets for bulk actions.
+   * Owner Oct 29 2026 (6 PM CT): BOTH old star behaviours are back, as the pre-8ef7007 code did them: a feed burn sent from this browser stars
+   * the fed pets (keepFed + once-per-pet autoStarBackfill), and starred pets are never discarded (discardIds / dropKept skip them with a note,
+   * card 🗑️ / detail / Discard selected / Discard unfed / hatch review). Nothing on chain. */
   function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
   function keptIds() { try { var l = JSON.parse(localStorage.getItem(keepKey()) || '[]'); return Array.isArray(l) ? l.map(Number) : []; } catch (e) { return []; } }
   function isKept(id) { return keptIds().indexOf(Number(id)) >= 0; }
   function toggleKeep(id) { id = Number(id); var l = keptIds(), i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { }
-    var on = i < 0; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Favorite. Click to unstar.' : 'Star this pet as a favorite'; });
-    toast(on ? '★ #' + id + ' starred as a favorite.' : '☆ #' + id + ' unstarred.'); try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { }
+    var on = i < 0; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)'; });
+    toast(on ? '★ #' + id + ' starred: a favorite, never discarded.' : '☆ #' + id + ' unstarred: it can be discarded again.'); try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { }
     if (S.ui_starOnly || $('fSort').value === 'starred' || /\b(starred|kept|favorite)\b/i.test(($('fSearch') || {}).value || '')) setTimeout(render, 0); return on; }
   /* pickIds() = the CHECKED pets you own that are alive, not released and not discarded in this browser. The Rare Room multi-pet roll, Auto-equip,
    * Outfit, the lair 'Acts on' chip and the swipe view act on them (as before starred-acts). starIds stays as an alias for older callers. */
   function pickIds(w) { w = w || world(); if (!ME || !w) return []; var hs = new Set(hiddenIds()); return S.sel.map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !hs.has(id); }); }
   var starIds = pickIds;
-  function keepFed() { return 0; } /* a feed burn no longer stars the fed pets */
-  function keptToast() { }
-  function autoStarBackfill() { } /* no auto-star backfill */
-  function keepBtn(id) { var on = isKept(id); return '<button type="button" class="keepbtn" data-keep="' + id + '" aria-pressed="' + on + '" aria-label="Favorite #' + id + '" title="' + (on ? 'Favorite. Click to unstar.' : 'Star this pet as a favorite') + '">' + (on ? '★' : '☆') + '</button>'; } /* favorite-star-restore: the original ☆/★ button (css .keepbtn) */
-  function dropKept(ids) { return ids; } /* favorite-star-restore: stars don't block discards (mypets-checkbox behaviour kept) */
-  /* discard-pile 2026-10-21 / mypets-checkbox: every path (card 🗑️, detail, Discard selected, pack review, #discard-ID) is the same free local discard with a confirm first; Undo anytime. No star skip any more. */
-  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } hideLocal(ids); }
+  /* owner add-on 2026-10-21 (restored Oct 29 2026): a feed burn sent from this browser stars the fed pets (never un-stars), so a later bulk discard can't take them. UI/localStorage only. */
+  function keepFed(tag) { var t = V.parseTag(tag), ids = !t ? [] : t.action === 'feed' ? [t.petId] : (t.action === 'feedm' || t.action === 'feedl') ? t.ids : []; if (!ids.length) return 0; var l = keptIds(), n = 0;
+    ids.forEach(function (id) { id = Number(id); if (l.indexOf(id) < 0) { l.push(id); n++; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = '★'; b.setAttribute('aria-pressed', 'true'); b.title = 'Favorite: never discarded. Click to unstar.'; }); } });
+    if (n) try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } return n; }
+  function keptToast(n) { if (n) toast('★ ' + fmt(n) + ' fed pet' + (n > 1 ? 's' : '') + ' starred: never discarded.', 7000); }
+  /* backfill auto-star (owner 2026-10-21 9:18 PM, restored Oct 29 2026): once per pet, star every owned living pet that has ever been fed; the per-address
+   * autoStarSeen set means a later un-star is respected. UI/localStorage only. */
+  function autoStarBackfill(w) { if (!ME || !w || !w.pets) return; var sk = 'xcpets-v2-autoStarSeen-' + NET + '-' + ME, seen; try { seen = JSON.parse(localStorage.getItem(sk) || '[]'); } catch (e) { seen = []; }
+    var ss = {}; seen.forEach(function (id) { ss[id] = 1; }); var l = keptIds(), ks = {}; l.forEach(function (id) { ks[id] = 1; }); var n = 0, add = 0;
+    w.pets.forEach(function (p) { if (p.owner !== ME || p.dead || p.released || ss[p.id]) return; if (p.lastFed == null && !Object.keys(p.feedDays || {}).length) return;
+      seen.push(p.id); add++; if (!ks[p.id]) { l.push(p.id); ks[p.id] = 1; n++; } });
+    if (!add) return; try { localStorage.setItem(sk, JSON.stringify(seen)); if (n) localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { }
+    if (n) { document.querySelectorAll('.keepbtn[data-keep]').forEach(function (b) { if (ks[b.dataset.keep]) { b.textContent = '★'; b.setAttribute('aria-pressed', 'true'); } }); toast('★ ' + fmt(n) + ' fed pet' + (n > 1 ? 's' : '') + ' starred: never discarded.', 8000); } }
+  function keepBtn(id) { var on = isKept(id); return '<button type="button" class="keepbtn" data-keep="' + id + '" aria-pressed="' + on + '" aria-label="Favorite #' + id + '" title="' + (on ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)') + '">' + (on ? '★' : '☆') + '</button>'; } /* favorite-star-restore: the original ☆/★ button (css .keepbtn) */
+  function dropKept(ids) { var k = keptIds(); return ids.filter(function (id) { return k.indexOf(Number(id)) < 0; }); }
+  /* discard-pile 2026-10-21 (restored Oct 29 2026): starred pets are NEVER discarded, on every path (card 🗑️, detail, Discard selected, pack review, #discard-ID). Unstar first. */
+  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kk = ids.filter(isKept); ids = dropKept(ids);
+    if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
   function mine(w) { var h = hiddenIds(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && h.indexOf(p.id) < 0; }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
@@ -181,26 +194,27 @@
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
   /* hatch-review-simple 2026-10-28 (owner 1:28 AM CT: 'I dont like ticked duds. we need better wording. make this all very simple to do and sort through').
    * Replaces the Dud Duster wording and controls. UI only: hiding = the SAME free local Discard (hidden in this browser, Undo, restorable from the
-   * Discard pile). No burn, no wallet, no chain rule touched, replay unchanged. Protected pets (Legendary, Mythic, wearing gear) are never
-   * picked by Keep Rare and up or Select all, and need an extra confirm to select by hand (mypets-checkbox: the old 'starred' guard is gone with the stars). */
+   * Discard pile). No burn, no wallet, no chain rule touched, replay unchanged. Protected pets (Legendary, Mythic, wearing gear, starred) are never
+   * picked by Keep Rare and up or Select all, and need an extra confirm to select by hand; starred pets can't be hidden at all (restored Oct 29 2026). */
   function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
-    var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); return r; }
+    var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
   var REV_SHOW = [['all', 'All'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
   function revShows(f, x) { return f === 'all' || !f || (f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
   function plural(n, a) { return n.toLocaleString('en-US') + ' ' + a + (n === 1 ? '' : 's'); }
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
-    var go = ids.length; if (!go) return; /* mypets-checkbox: no star skip; Legendary / Mythic / gear protection is in dudGuard */
-    if (!window.confirm(msg + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
+    var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be hidden. Unstar them first.', 6000); return; }
+    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never hidden).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
     hideIds(ids); rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
     if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x); })) rev.f = 'all'; }
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
   function revKeepTier(w, all, top) { /* top 1 = Keep Rare and up (hides Common + Uncommon), top 2 = Keep Legendary and up (also hides Rare) */
     var ids = all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).map(function (x) { return x.id; });
-    revHide(ids, (top === 1 ? 'Keep Rare and up?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary and up?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '. Mythic and gear-wearing pets always stay.'); }
+    revHide(ids, (top === 1 ? 'Keep Rare and up?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary and up?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '. Mythic, starred and gear-wearing pets always stay.'); }
   function revKeepN(w, all, top) { return all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).length; }
   function revSelectShown(w, shown) { var n = 0, safe = 0; shown.forEach(function (x) { if (dudGuard(w, x).length) { safe++; return; } if (!rev.sel[x.id]) n++; rev.sel[x.id] = 1; });
     drawReveal(); toast('✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(rev.sel).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
   function revToggle(w, x, d) { var on = !rev.sel[x.id];
+    if (on && isKept(x.id)) { toast('★ #' + x.id + ' is starred, so it can\'t be hidden. Unstar it first.', 6000); return; }
     if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to hide? It is ' + gg.join(', ') + '.')) return; rev.sel[x.id] = 1; } else delete rev.sel[x.id];
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
   function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Hide selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
@@ -241,7 +255,7 @@
       var keepRow = many && (kR || kL) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
         '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare and up<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
         '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary and up<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
-        '<div class="muted small pksafe">🛡️ Mythic and gear-wearing pets always stay.</div></div>' : '';
+        '<div class="muted small pksafe">🛡️ Mythic, starred and gear-wearing pets always stay.</div></div>' : '';
       var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' hidden</span>' : '') + '</div>' : '';
@@ -442,7 +456,7 @@
    * Same cards as My Pets: name + #id + star, species / rarity / stage / fed state / gear / Power chips, a 'Last fed' line, Open ▸ (pet page) and ↩️ Restore.
    * Sort: recently discarded (the order pets went onto the pile), newest / oldest pet, rarity, species, stage, last fed, Power, plus ⇅ Reverse.
    * Filters: Rarity, Species, Search. Selection: 'Select all shown', Clear, 'Restore selected (N)', 'Restore all (N)'.
-   * Alive tab = discarded living pets, Pet Cemetery tab = discarded dead pets. Every discard asks first and can be undone. */
+   * Alive tab = discarded living pets, Pet Cemetery tab = discarded dead pets. Starred pets are never discarded (discardIds skips them). */
   var DS = { open: false, flip: false, sort: 'recent', tier: 'all', sp: 'all', q: '', sel: {}, n: 120 };
   var DS_SORTS = [['recent', 'Recently discarded'], ['new', 'Newest pet'], ['num', 'Oldest pet'], ['tier', 'Rarity'], ['species', 'Species'], ['stage', 'Stage'], ['fed', 'Last fed'], ['power', 'Power']];
   function dsFed(p, w) { if (p.dead) return { chip: '🪦 Died of neglect', warn: true, line: 'Died of neglect' };
@@ -475,7 +489,7 @@
         '<div class="small muted dp-fed">' + f.line + '</div>' +
         '<div class="row dp-acts"><a class="q" href="pet.html?id=' + p.id + '" aria-label="Open #' + p.id + '">Open ▸</a><button type="button" class="btn" data-restore="' + p.id + '" title="Put #' + p.id + ' back in My Pets">↩️ Restore</button></div></div>'; };
     hb.innerHTML = '<details' + (DS.open ? ' open' : '') + '><summary><span class="dp-title">🗑️ Discard pile</span> <span class="chip">' + gone.length + ' pet' + (gone.length === 1 ? '' : 's') + '</span> <span class="small muted">' + (DS.open ? 'tap to close' : 'tap to open') + '</span></summary>' +
-      '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn.</p>' +
+      '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn. Starred pets are never discarded.</p>' +
       '<div class="row small dctl"><label>Sort <select data-ds="sort">' + DS_SORTS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select></label> <button type="button" class="q" data-dsa="dir" aria-pressed="' + DS.flip + '" title="Reverse the order">⇅ Reverse</button> ' +
       '<label>Rarity <select data-ds="tier"><option value="all">All</option>' + TIER_ID.map(function (t, k) { return '<option value="' + t + '">' + TL[k] + '</option>'; }).join('') + '</select></label> ' +
       '<label>Species <select data-ds="sp"><option value="all">All (' + gone.length + ')</option>' + spList.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + ' (' + gone.filter(function (p) { return spOf(p) === s; }).length + ')</option>'; }).join('') + '</select></label> ' +
@@ -621,7 +635,7 @@
     R.gearPicker($('gPicker'), { compact: true, world: w, owner: ME, pet: p, msg: detail.msg, viewOnly: viewOnly(), onBlocked: viewBlock, onEquip: function (op, m) { if (viewBlock()) return; op.block_index = S.tip; S.ops.push(op); save(); detail.msg = '✓ ' + m; render(); detail.msg = null; toast(esc(m) + ' (free)'); },
       onEquipMany: function (ops, m) { if (viewBlock()) return; ops.forEach(function (op) { op.block_index = S.tip; S.ops.push(op); }); save(); detail.msg = '✓ ' + m; render(); detail.msg = null; toast(esc(m) + ' (free)'); } });
     $('detail').querySelector('.box').scrollTop = keepY;
-    if ($('dDiscard')) $('dDiscard').onclick = function () { var id = p.id; if (!ME || p.owner !== ME || p.dead) return; close('detail'); discardIds([id]); };
+    if ($('dDiscard')) $('dDiscard').onclick = function () { var id = p.id; if (!ME || p.owner !== ME || p.dead) return; if (isKept(id)) return toast('★ #' + id + ' is starred, so it is never discarded. Unstar it first.'); close('detail'); discardIds([id]); };
     $('dInfo').querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { var a = b.dataset.a; if (!ME || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); if (a === 'froll') return confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); if (a === 'oroll') return confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]); confirmPlans(a === 'feed' ? 'Feed #' + p.id : 'Gear roll #' + p.id, a === 'feed' ? V.feedQueue(world(), ME, [p.id]) : V.rollQueue(world(), ME, [p.id], 1)); }; });
     open('detail');
   }
@@ -1154,7 +1168,7 @@
   $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
-    var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && dudGuard(dw, p).length; });
+    var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });
     revHide(ids, 'Hide ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (Legendary, Mythic or wearing gear): ' + idList(gd) + '.' : '')); };
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
