@@ -7,14 +7,16 @@
  *    so the 30+ MB file never parses on the page thread). Until it arrives (or if it fails) the replayed chain world fills the list.
  *    Sorts: newest death, oldest (hatch block), rarest tier, most powerful (Vigor+Spark+Grit+Zoom+Luck, the Ranking sum), most gear, longest lived.
  *    Filters: species, tier, meals. Find a grave (#, name, species, owner), My graves, #tomb-ID / ?id= deep links, paging for thousands of graves.
- * Dormant Halloween hooks kept: V2CemeteryScene.hooks(state), ALTAR, SEANCE (nothing calls them with anything but 'off'). */
+ * 3) THE ALTAR (preview, Oct 28 2026 evening): a stone altar with candles on the path in front. Tap it for a card; every grave in the list has
+ *    "Raise at the altar", which loads js/v2-cemetery-altar.js (+ css/cemetery-altar.css, same ?v=) on demand and opens the mock seance panel.
+ *    hooks('lit') turns the candles green while the panel is open; flare() makes them jump when an offering lands. Still no rule and no burn. */
 (function () {
   'use strict';
   var W = 320, H = 180, HZ = 74, VX = 160, F = 70, CAMH = 1.6, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   var S = { c: null, x: null, k: 1, raf: 0, off: false, hid: false, layer: null, sky: null, hits: [], sel: null, hov: null, line: 0, lt: 0, hook: 'off', total: 0, say: null };
   var LINES = ['Evenin\u2019. Mind the mud.', 'Feed \u2019em daily. Spares me the shovel.', 'Seven days. That\u2019s all it takes.', 'Rows go on past the fog.',
     'Quiet tonight. Too quiet.', 'Lantern\u2019s for you, not them.', 'Rest in pixels, little ones.', 'I stopped counting stones.'];
-  var ALTAR = { x: 146, y: 74, w: 28, h: 20 }, SEANCE = { cx: 272, cy: 158, r: 20 }, MORT = { x: 26, y: 170 };
+  var ALTAR = { x: 138, y: 146, w: 45, h: 32 }, SEANCE = { cx: 272, cy: 158, r: 20 }, MORT = { x: 26, y: 170 };
   function reduced() { return !!RM.matches || !!window.__cemReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   function rnd(i) { var v = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); }
@@ -81,18 +83,32 @@
     var lx = m.x + 9, ly = m.y - 12 + sw; px(x, '#000', lx - 1, ly - 1, 6, 8); px(x, '#ffd166', lx, ly + 1, 4, 5); px(x, '#fff3b0', lx + 1, ly + 2, 2, 2); x.save(); x.globalAlpha = 0.1; px(x, '#ffd166', lx - 4, ly - 4, 12, 14); x.restore();
     if (hv) outline(x, m.x - 7, m.y - 31, 22, 33); S.hits.push({ x: m.x - 7, y: m.y - 31, w: 22, h: 33, k: 'mort' }); }
   function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx)); px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 4, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
+  /* the altar: on the path in front, slab + body + base, four candles; carved marks on the face. hook 'lit' = green flames (seance open). */
+  function altar(x, t) { var a = ALTAR, rm = reduced(), hv = S.hov === 'altar' || S.sel === 'altar', lit = S.hook === 'lit', fl = Math.max(0, 1 - (t - (S.flT || -1e9)) / 600);
+    px(x, '#0c1410', a.x - 2, a.y + 30, a.w + 4, 3); px(x, '#16141f', a.x, a.y + 25, a.w, 6); px(x, '#6a6e7a', a.x + 1, a.y + 26, a.w - 2, 4); px(x, '#525560', a.x + 1, a.y + 29, a.w - 2, 1);
+    px(x, '#16141f', a.x + 6, a.y + 9, a.w - 12, 17); px(x, '#7c808c', a.x + 7, a.y + 9, a.w - 14, 16); px(x, '#525560', a.x + a.w - 13, a.y + 9, 6, 16); px(x, '#9a9ea8', a.x + 7, a.y + 9, 1, 16);
+    px(x, '#16141f', a.x + 2, a.y + 5, a.w - 4, 5); px(x, '#9a9ea8', a.x + 3, a.y + 6, a.w - 6, 3); px(x, '#c8ccd4', a.x + 3, a.y + 6, a.w - 6, 1);
+    for (var m = 0; m < 4; m++) px(x, '#3a3550', a.x + 12 + m * 2, a.y + 13, 1, 6); for (var d = 0; d < 7; d++) px(x, '#3a3550', a.x + 11 + d, a.y + 18 - d, 1, 1);
+    px(x, '#3a3550', a.x + 25, a.y + 13, 5, 1); px(x, '#3a3550', a.x + 27, a.y + 11, 1, 6);
+    [[5, 7], [10, 5], [a.w - 11, 5], [a.w - 6, 7]].forEach(function (c, j) { var cx = a.x + c[0], h = c[1], cy = a.y + 6, f = rm ? 0 : Math.round((Math.sin(t / 90 + j * 2.1) + Math.sin(t / 53 + j)) / 2), big = Math.round(fl * 5) + (lit ? 1 : 0);
+      px(x, '#16141f', cx - 1, cy - h - 1, 4, h + 1); px(x, '#e9e3d0', cx, cy - h, 2, h); px(x, '#b8b09a', cx + 1, cy - h, 1, h);
+      var col = lit || fl > 0.1 ? '#7dff6a' : '#ffc93c', fh = 2 + big + f; x.save(); x.globalAlpha = (lit ? 0.22 : 0.12) + fl * 0.3; px(x, col, cx - 3 - big, cy - h - fh - 3, 8 + big * 2, fh + 5); x.restore();
+      px(x, col, cx, cy - h - fh, 2, fh); px(x, lit || fl > 0.1 ? '#e6ffd8' : '#fff3b0', cx, cy - h - fh + 1, 1, Math.max(1, fh - 1)); });
+    if (lit && !rm) { for (var s = 0; s < 6; s++) { var k = (t / 900 + s / 6) % 1, sx = a.x + a.w / 2 - 6 + ((s * 7) % 12) + Math.round(Math.sin(t / 300 + s) * 2); x.save(); x.globalAlpha = (1 - k) * 0.6; px(x, s % 2 ? '#7dff6a' : '#c9ffb0', sx, Math.round(a.y + 4 - k * 22), 1, 1); x.restore(); } }
+    if (hv) outline(x, a.x - 2, a.y - 8, a.w + 4, a.h + 8); S.hits.push({ x: a.x - 2, y: a.y - 8, w: a.w + 4, h: a.h + 8, k: 'altar' }); }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; S.hits = [];
     if (!S.sky) S.sky = buildSky(); if (!S.layer) S.layer = buildLayer();
-    sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); mort(x, t);
+    sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); altar(x, t); mort(x, t);
     if (!reduced() && t - S.lt > 12000) { S.lt = t; S.line = (S.line + 1) % LINES.length; } if (S.say || (!reduced() && t - S.lt < 4000)) bubble(x, S.say || LINES[S.line], MORT.x - 6, MORT.y - 46);
     if (!reduced() && !S.off && !S.hid) S.raf = requestAnimationFrame(draw); else S.raf = 0; }
   function kick() { if (S.x && !S.raf) draw(performance.now()); }
   function card(k) { var el = document.getElementById('cemCard'); if (!el) return; if (!k) { el.hidden = true; return; } el.hidden = false;
-    if (k === 'mort') el.innerHTML = '<b class="cc-h">🏮 Mort, the caretaker</b><p class="small">Keeps the grass short and the gate shut. A pet ends up here after 7 full chain days (144 blocks each) with no meal. Mythic pets never starve. Every grave is in the list below. Feed yours on <a href="play.html">Play</a>.</p>'; }
+    if (k === 'mort') el.innerHTML = '<b class="cc-h">🏮 Mort, the caretaker</b><p class="small">Keeps the grass short and the gate shut. A pet ends up here after 7 full chain days (144 blocks each) with no meal. Mythic pets never starve. Every grave is in the list below. Feed yours on <a href="play.html">Play</a>.</p>';
+    if (k === 'altar') el.innerHTML = '<b class="cc-h">🕯️ The altar <span class="alt-pv">PREVIEW</span></b><p class="small">Pick any grave below and press <b>Raise at the altar</b>. Offer your living pets (and spare gear) to bring it back as a zombie: more and rarer offerings, more power, up to 3 times what it died with. Preview only: nothing is burned.</p><button type="button" class="btn" id="cemAltGo">🕯️ Try it with the first grave</button>'; var go = document.getElementById('cemAltGo'); if (go) go.onclick = function () { if (S.openAltar) S.openAltar(); }; }
   function at(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height, hs = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; }); return hs.length ? hs[hs.length - 1] : null; }
   /** mount(w, dead): draws the scene into #cemScene; dead = the page's dead list (only its length is used: the stones are generic). */
   function mount(w, dead) { var box = document.getElementById('cemScene'); if (!box) return; S.total = dead ? dead.length : 0; S.sel = null;
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi</div>';
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, a stone altar with candles on the path, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi · 🕯️ tap the altar</div>';
       c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off) kick(); else { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c);
       document.addEventListener('visibilitychange', function () { S.hid = document.hidden; if (S.hid) { cancelAnimationFrame(S.raf); S.raf = 0; } else kick(); });
@@ -103,6 +119,7 @@
     S.c = c; S.x = c.getContext('2d'); if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0) { cancelAnimationFrame(S.raf); S.raf = 0; kick(); } }); } }
     cancelAnimationFrame(S.raf); S.raf = 0; draw(performance.now()); }
   function hooks(state) { S.hook = state === 'lit' ? 'lit' : 'off'; kick(); }
+  function flare() { S.flT = performance.now(); kick(); }
 
   /* ------------------------------------------------------------------ the list ------------------------------------------------------------------ */
   var TIERS = { Common: 0, Uncommon: 1, Rare: 2, Legendary: 3 }, TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
@@ -142,7 +159,8 @@
         '<div class="small">' + esc(p.spl) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div>' +
         '<div class="small cv2-facts">⚡ ' + fmt(p.power) + ' power · 🎒 ' + fmt(p.gear) + ' gear · ⏳ ' + (lf >= 0 ? '~' + fmt(Math.floor(lf / 144)) + ' day' + (Math.floor(lf / 144) === 1 ? '' : 's') : '?') + '</div>' +
         '<div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(sa(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div>' +
-        '<div class="died">🥚 hatched ' + (p.born != null ? 'block ' + fmt(p.born) : '?') + '<br>🪦 died at block ' + fmt(p.died) + '</div>' + (gl ? '<div class="small buried">' + gl + '</div>' : '') + '</div>'; }
+        '<div class="died">🥚 hatched ' + (p.born != null ? 'block ' + fmt(p.born) : '?') + '<br>🪦 died at block ' + fmt(p.died) + '</div>' + (gl ? '<div class="small buried">' + gl + '</div>' : '') +
+        '<button type="button" class="btn cv2-raise" data-raise="' + p.id + '" title="Preview: open the seance for this grave">🕯️ Raise at the altar</button></div>'; }
     function pager(el, pages) { if (pages <= 1) { el.innerHTML = ''; return; } var b = function (k, t, dis) { return '<button type="button" class="q" data-pg="' + k + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>'; };
       el.innerHTML = b('first', '⏮ First', !st.page) + b('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + b('next', 'Next ▶', st.page >= pages - 1) + b('last', 'Last ⏭', st.page >= pages - 1); }
     function paint() { var pages = Math.max(1, Math.ceil(st.list.length / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list.slice(st.page * PER, st.page * PER + PER);
@@ -161,6 +179,10 @@
     function onPager(e) { var t = e.target.closest('[data-pg]'); if (!t) return; var pages = Math.ceil(st.list.length / PER), k = t.getAttribute('data-pg'); st.page = k === 'first' ? 0 : k === 'last' ? pages - 1 : k === 'prev' ? st.page - 1 : st.page + 1; paint(); if (this === pBot) pTop.scrollIntoView({ block: 'start' }); }
     function onPgIn(e) { if (!e.target.hasAttribute('data-pgin')) return; var v = parseInt(e.target.value, 10); if (v > 0) { st.page = v - 1; paint(); } }
     [pTop, pBot].forEach(function (el) { el.addEventListener('click', onPager); el.addEventListener('change', onPgIn); });
+    /* "Raise at the altar" (preview): load the altar module on first use, then open the seance panel for that grave */
+    tombs.addEventListener('click', function (e) { var b = e.target.closest('[data-raise]'); if (!b) return; var id = +b.getAttribute('data-raise'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g) return;
+      b.disabled = true; altarJs(function () { b.disabled = false; if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); });
+    S.openAltar = function () { var g = st.list[0] || all[0]; if (g) altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); };
     var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
     inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
     $('cemGo').onclick = function () { clearTimeout(tmr); st.q = inp.value; apply(); };
@@ -174,7 +196,11 @@
     loadJson(function (r) { st.loading = false; if (r && r.ok && r.rows && r.rows.length) { all = fromRows(r.rows, w, R); src = 'json'; srcBlock = r.block; S.total = all.length; kick(); spOpts(); if (!deep()) apply(true); } status(); window.__cemV2 = { src: src, n: all.length, block: srcBlock, err: r && r.err }; });
     window.__cemV2 = { src: src, n: all.length, loading: true };
   }
+  function ver() { var me = document.querySelector('script[src*="v2-cemetery-scene.js"]'); return me ? (me.getAttribute('src').split('?')[1] || '') : ''; }
+  function altarJs(cb) { if (window.V2CemeteryAltar) return cb(); (S.altQ = S.altQ || []).push(cb); if (S.altQ.length > 1) return; var v = ver();
+    if (!document.getElementById('cemAltCss')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'cemAltCss'; l.href = 'css/cemetery-altar.css' + (v ? '?' + v : ''); document.head.appendChild(l); }
+    var sc = document.createElement('script'); sc.src = 'js/v2-cemetery-altar.js' + (v ? '?' + v : ''); sc.onload = function () { var q = S.altQ; S.altQ = []; q.forEach(function (f) { f(); }); }; sc.onerror = function () { S.altQ = []; }; document.head.appendChild(sc); }
   function css() { if (document.getElementById('cemV2Css')) return; var me = document.querySelector('script[src*="v2-cemetery-scene.js"]'), v = me ? (me.getAttribute('src').split('?')[1] || '') : '', l = document.createElement('link');
     l.rel = 'stylesheet'; l.id = 'cemV2Css'; l.href = 'css/cemetery-v2.css' + (v ? '?' + v : ''); document.head.appendChild(l); }
-  window.V2CemeteryScene = { mount: mount, hooks: hooks, page: page, ALTAR: ALTAR, SEANCE: SEANCE, _state: function () { return S; }, _select: function (k) { S.sel = k; card(k); kick(); } };
+  window.V2CemeteryScene = { mount: mount, hooks: hooks, flare: flare, page: page, ALTAR: ALTAR, SEANCE: SEANCE, _state: function () { return S; }, _select: function (k) { S.sel = k; card(k); kick(); } };
 })();
