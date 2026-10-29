@@ -1,6 +1,6 @@
 {
- "lastBlock": 973622,
- "count": 260,
+ "lastBlock": 973634,
+ "count": 264,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2161,7 +2161,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 38413,
@@ -2221,7 +2221,7 @@
    "species": "hyb3:nakamoto:kek:funtrump",
    "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 2133,
@@ -2485,7 +2485,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 49075,
@@ -2497,7 +2497,7 @@
    "species": "bojackson",
    "speciesLabel": "Bo Jackson",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 7320,
@@ -3122,6 +3122,54 @@
    "speciesLabel": "Wojak",
    "rarity": "Common",
    "stage": "Mythic"
+  },
+  {
+   "id": 21,
+   "asset": "A10503945616808009284",
+   "tiedBlock": 973626,
+   "tiedTx": "e6719e3006edd5fa0f672503c239cc4240e3de4abbd12534e3db893882228e38",
+   "kind": "deed",
+   "name": "Mogi",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 135,
+   "asset": "A15667167802312393727",
+   "tiedBlock": 973626,
+   "tiedTx": "9f2c6488938867e3beebddbb574f02bbdaeceb03b8e02d795535c11068585cbd",
+   "kind": "deed",
+   "name": "Potik",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 7996,
+   "asset": "A11885586046488433292",
+   "tiedBlock": 973626,
+   "tiedTx": "ee438da5e5046a8ff8746d7e02c4195a6f835cc86d202861dadd3016849733d0",
+   "kind": "deed",
+   "name": "Luzo",
+   "species": "hyb:wojak:pepe",
+   "speciesLabel": "Wope (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 16668,
+   "asset": "A5105056370852117366",
+   "tiedBlock": 973633,
+   "tiedTx": "61e1e39f76309a13428fc5b773595e72b71ad67d4031478cf681b24a47d74935",
+   "kind": "deed",
+   "name": "Pechichi",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Elder"
   }
  ]
 }
