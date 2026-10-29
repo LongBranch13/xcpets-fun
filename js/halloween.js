@@ -25,11 +25,30 @@
   function loadCss() { if (cssEl) return; cssEl = document.createElement('link'); cssEl.rel = 'stylesheet'; cssEl.href = 'css/halloween.css' + (ver ? '?v=' + ver : ''); document.head.appendChild(cssEl); }
   function isCemetery() { return !!document.getElementById('cemScene') || /cemetery\.html$/.test(location.pathname); }
 
+  /* v2 decor (owner Oct 29): 8-bit sprites as empty aria-hidden <i> tags; css/halloween.css draws them */
+  var S = { jack: '<i class="hw-s hw-jack hw-lit"><b></b></i>', jack2: '<i class="hw-s hw-jack hw-lit2"><b></b></i>', jackd: '<i class="hw-s hw-jack"><b></b></i>',
+    skull: '<i class="hw-s hw-skull"></i>', skel: '<i class="hw-s hw-skel"></i>', skel2: '<i class="hw-s hw-skel hw-alt"></i>', cc: '<i class="hw-s hw-cc"></i>',
+    hat: '<i class="hw-s hw-hat"></i>', hat2: '<i class="hw-s hw-hat hw-tilt"></i>' };
+  /* rows are their own block between sections (never on top of a card); on phones the CSS hides items past the 7th */
+  var ROWS = [['jack', 'skull', 'skel', 'cc', 'hat', 'cc', 'skel2', 'jack2', 'skull', 'cc', 'jackd'],
+    ['skull', 'jack2', 'cc', 'skel2', 'hat2', 'skel', 'cc', 'jack', 'skull', 'hat'],
+    ['hat', 'skel', 'jack', 'skull', 'cc', 'jack2', 'skel2', 'skull', 'cc', 'hat2']];
+  function row(n) { var r = el('div', 'hw-row hw-row' + n); r.setAttribute('aria-hidden', 'true');
+    r.innerHTML = ROWS[n % ROWS.length].map(function (k) { return S[k]; }).join('') + '<span class="hw-spd"></span>'; return r; }
+  function addRows() {
+    if (document.querySelector('.hw-row')) return; var main = document.querySelector('main'), n = 0;
+    function before(t) { if (t && t.parentNode) t.parentNode.insertBefore(row(n++), t); }
+    if (main) { var p = main.querySelector(':scope > .hw-plq'); if (p) p.insertAdjacentElement('afterend', row(n++)); else if (main.firstElementChild) before(main.firstElementChild); else main.appendChild(row(n++)); }
+    ['cast', 'tombs'].forEach(function (id) { before(document.getElementById(id)); });
+    /* inside the top of the community pet and My Pets panels (other scripts slot panels in between sections there) */
+    ['communityPanel', 'petsPanel'].forEach(function (id) { var e = document.getElementById(id); if (e) { var r = row(n++); r.classList.add('hw-row-in'); e.insertBefore(r, e.firstChild); } });
+  }
   function addLayer() {
     if (layer) return;
     layer = el('div', 'hw-layer'); layer.setAttribute('aria-hidden', 'true');
     layer.innerHTML = '<div class="hw-glow"></div><div class="hw-fog hw-fog1"></div><div class="hw-fog hw-fog2"></div>' +
-      '<div class="hw-bw hw-bw1"><i class="hw-bat"></i></div><div class="hw-bw hw-bw2"><i class="hw-bat hw-batp"></i></div><div class="hw-bw hw-bw3"><i class="hw-bat"></i></div>';
+      '<div class="hw-bw hw-bw1"><i class="hw-bat"></i></div><div class="hw-bw hw-bw2"><i class="hw-bat hw-batp"></i></div><div class="hw-bw hw-bw3"><i class="hw-bat"></i></div>' +
+      '<div class="hw-ww"><i class="hw-witch"></i></div><i class="hw-peek"></i><div class="hw-pile">' + S.skull + S.jack2 + S.cc + S.cc + '</div>';
     PAGES.forEach(function (t, i) { var g = el('div', 'hw-pg hw-pg' + (i + 1)); g.textContent = t; layer.appendChild(g); });
     document.body.appendChild(layer);
   }
@@ -59,8 +78,8 @@
   function addBanner() {
     if (banner) return; try { if (localStorage.getItem(BANNER_KEY) === '1') return; } catch (e) { /* private mode: just show it */ }
     banner = el('div', 'hw-banner'); banner.setAttribute('role', 'note');
-    banner.innerHTML = '<span class="hw-bt">🎃 Happy Halloween, and happy 18th birthday to the Bitcoin white paper (Oct 31, 2008)</span>' +
-      '<button type="button" class="hw-bx" aria-label="Dismiss the Halloween banner">Dismiss</button>';
+    banner.innerHTML = S.jack.replace('<i ', '<i aria-hidden="true" ') + S.skull.replace('<i ', '<i aria-hidden="true" ') + '<span class="hw-bt">🎃 Happy Halloween, and happy 18th birthday to the Bitcoin white paper (Oct 31, 2008)</span>' +
+      '<button type="button" class="hw-bx" aria-label="Dismiss the Halloween banner">Dismiss</button>' + (S.skull + S.jack2).replace(/<i class="hw-s/g, '<i aria-hidden="true" class="hw-s');
     banner.querySelector('.hw-bx').addEventListener('click', function () { try { localStorage.setItem(BANNER_KEY, '1'); } catch (e) { } removeBanner(); });
     var hdr = document.querySelector('header.nav'), after = hdr && hdr.nextElementSibling && hdr.nextElementSibling.classList.contains('pixdiv') ? hdr.nextElementSibling : hdr;
     if (after && after.parentNode) after.parentNode.insertBefore(banner, after.nextSibling); else document.body.insertBefore(banner, document.body.firstChild);
@@ -79,6 +98,11 @@
       var st = window.V2CemeteryScene && V2CemeteryScene._state && V2CemeteryScene._state(), gs = st && st.graves || [];
       gs.forEach(function (g, i) { if (!g || !g.p) return; var s = g.y < 112 ? 0.7 : g.y < 140 ? 0.85 : 1, w = Math.round(30 * s), cx = g.x + w / 2 + 1, cw = 5 * s, ch = 12 * s; /* ₿ candle + flame */
         h += '<i class="hw-cand" style="left:' + (cx / 3.2).toFixed(2) + '%;top:' + ((g.y - ch) / 1.8).toFixed(2) + '%;width:' + (4 * s / 3.2).toFixed(2) + '%;height:' + (ch / 1.8).toFixed(2) + '%;animation-delay:-' + (i * 0.37 % 1.3).toFixed(2) + 's"></i>'; });
+      /* pumpkins / skulls just left of the headstones (g.x is the stone's centre; the candles sit on the right), one dancing skeleton, the witch crossing the moon */
+      var sk = 0; gs.forEach(function (g, i) { if (!g || !g.p || (g.y > 118 && g.y < 140 && g.x < 230)) return; /* keep clear of the keeper's speech bubble (x 19..211, y 122..133) */ var s = g.y < 112 ? 0.7 : g.y < 140 ? 0.85 : 1, k = i % 3, w, ht, t;
+        if (k === 2 && !sk) { sk = 1; w = 11 * s; ht = 16 * s; t = S.skel; } else if (k === 1) { w = 5.5 * s; ht = 8.5 * s; t = S.skull; } else { w = 9 * s; ht = 8.3 * s; t = i % 2 ? S.jack2 : S.jack; }
+        h += t.replace('class="', 'style="left:' + ((g.x - 15 * s - w - 1) / 3.2).toFixed(2) + '%;top:' + ((g.y - ht) / 1.8).toFixed(2) + '%;width:' + (w / 3.2).toFixed(2) + '%;height:' + (ht / 1.8).toFixed(2) + '%" class="'); });
+      h += '<div class="hw-cww"><i class="hw-witch"></i></div>';
       fx.innerHTML = h; c.insertAdjacentElement('afterend', fx); return true;
     }
     if (build()) return;
@@ -86,8 +110,8 @@
   }
   function clearCemFx() { if (cemObs) { cemObs.disconnect(); cemObs = null; } var f = document.querySelectorAll('.hw-cemfx'); for (var i = 0; i < f.length; i++) f[i].parentNode.removeChild(f[i]); }
 
-  function turnOn() { if (on) return; on = true; loadCss(); root.classList.add('hw'); if (isCemetery()) root.classList.add('hw-cem'); addLayer(); addBanner(); plaque(); petTile(); if (isCemetery()) cemFx(); }
-  function turnOff() { if (!on) return; on = false; root.classList.remove('hw', 'hw-cem'); if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; removeBanner(); clearCemFx(); ['.hw-plq', '.hw-wp'].forEach(function (q) { var e = document.querySelector(q); if (e) e.parentNode.removeChild(e); });
+  function turnOn() { if (on) return; on = true; loadCss(); root.classList.add('hw'); if (isCemetery()) root.classList.add('hw-cem'); addLayer(); addBanner(); plaque(); petTile(); addRows(); if (isCemetery()) cemFx(); }
+  function turnOff() { if (!on) return; on = false; root.classList.remove('hw', 'hw-cem'); if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; removeBanner(); clearCemFx(); ['.hw-plq', '.hw-wp', '.hw-row'].forEach(function (q) { var a = document.querySelectorAll(q); for (var i = 0; i < a.length; i++) a[i].parentNode.removeChild(a[i]); });
     if (cssEl && cssEl.parentNode) cssEl.parentNode.removeChild(cssEl); cssEl = null; }
   function apply() { if (wanted()) turnOn(); else turnOff(); }
   /* re-check at the next edge (START or END) if it is less than a day away, else in a day; setTimeout caps near 24.8 days anyway */
