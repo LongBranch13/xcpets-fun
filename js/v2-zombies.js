@@ -47,7 +47,9 @@
       if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }
     DONE.set(fr, out); return out; }
-  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var fr = pf0.apply(this, arguments); return p && p.zombie ? twist(fr, p, w, extra, pf0) : fr; }; }
+  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!p || !p.zombie) return pf0.apply(this, arguments);
+    /* no Mythic smug hand on zombies (owner Oct 29 2026): the zombie's frames and the keyed copies twist() reads are all drawn inside V2ZombieLook.noHand */
+    var run = function () { return twist(pf0.apply(self, args), p, w, extra, pf0); }; return Z && Z.noHand ? Z.noHand(run) : run(); }; }
   /* a zombie keeps the Mythic electric aura, but sickly and dim: the V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
    * and the zombie's canvas + its aura overlay get a class (faint rot glow). Display only. */
   var LK = window.V2Looks;

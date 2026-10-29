@@ -157,5 +157,15 @@
     var r = frame(ka, ka, kb, id, fi, nf, Object.assign({ ground: false }, opt || {})); if (!r) return null; var out = new Uint8ClampedArray(4096);
     for (q = 0; q < 1024; q++) { j = q * 4; var keyBg = r.img[j] === 255 && r.img[j + 1] === 0 && r.img[j + 2] === 254; if (keyBg) continue; out[j] = r.img[j]; out[j + 1] = r.img[j + 1]; out[j + 2] = r.img[j + 2]; out[j + 3] = 255; }
     return { data: out, box: r.box }; }
-  window.V2ZombieLook = { starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras };
+  /* no smug hand (owner Oct 29 2026 [pt2182u] 'Maybe we don't have the mythic smug hand on zombies'): pet-core draws the Mythic hand-to-chin pose from
+   * each species' pose map at stage 5 (rjs/pet-core.js + js/pet-core.js, not edited). noHand(fn) runs fn with every species' pose map lifted off the
+   * loaded PetCore copies and puts them back right after, so only renders made inside it (the zombie's frames and their keyed copies) lose the hand.
+   * Real Mythics, replay and the rules never pass through here. Synchronous only; nested calls are safe. */
+  var handDepth = 0, handSaved = null;
+  function coresWithSpecies() { var out = []; try { [window.PetCore, window.GenPetCore].forEach(function (P) { if (P && P.SPECIES && out.indexOf(P) < 0) out.push(P); }); } catch (e) {} return out; }
+  function noHand(fn, self, args) { if (handDepth++ === 0) { handSaved = []; coresWithSpecies().forEach(function (P) { (P.SPECIES || []).forEach(function (sp) {
+          if (sp && sp.pose) { handSaved.push([sp, sp.pose]); sp.pose = null; } }); }); }
+    try { return fn.apply(self, args || []); }
+    finally { if (--handDepth === 0 && handSaved) { handSaved.forEach(function (e) { e[0].pose = e[1]; }); handSaved = null; } } }
+  window.V2ZombieLook = { starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras, noHand: noHand };
 })();
