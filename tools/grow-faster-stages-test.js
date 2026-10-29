@@ -13,7 +13,7 @@ const canon = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Ar
 function run(rows, tip) { const H = Object.assign({}, c.XCPETS_BLOCK_HASHES, S.hashes); rows.forEach(r => { if (!H[r.block_index]) H[r.block_index] = fakeHash(r.block_index); });
   return V.replay(S.rows.concat(rows), H, [], { tip, live: c.LiveEngine.RealCore }); }
 const OFF = 999999999, SHIPPED = V.ACTIVATE_GROW_FASTER_BLOCK;
-ok(SHIPPED === 973754, 'shipped gate is 973754 (Bitcoin tip 973748 + 6)');
+ok(SHIPPED === 973755, 'shipped gate is 973755 (Bitcoin tip 973749 + 6)');
 
 /* 1) thresholds on their own (no replay) */
 { const w = { mythicOwners: { A: 971900 } }, kek = { owner: 'A', species: 'kek' }, other = { owner: 'B', species: 'kek' }, G = Math.max(T + 6, 973200); /* past the shortcut gate */

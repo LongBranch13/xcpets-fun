@@ -730,7 +730,7 @@
    * array carries it as th.meal, read by mealFor), so care to Mythic, each meal's care and XCPETS, meals to Mythic, Mythic status, overflow, Fire Sale spins
    * and the stage-up drop odds (dropStage) stay exactly as they were: only the stage a pet shows, and what reads the stage (Adult+ to breed, Juvenile+
    * to fight), moves. A fresh pet now steps Hatchling, Juvenile, Adult, Elder, Mythic, one stage a meal. Pets with no lower Mythic line are untouched. */
-  var ACTIVATE_GROW_FASTER_BLOCK = 973754; /* Bitcoin tip 973748 (mempool.space + blockstream.info) + 6, set 2026-10-29 */
+  var ACTIVATE_GROW_FASTER_BLOCK = 973755; /* Bitcoin tip 973749 (mempool.space + blockstream.info) + 6, set 2026-10-29 */
   function growFasterOn(b) { return b != null && ACTIVATE_GROW_FASTER_BLOCK != null && b >= ACTIVATE_GROW_FASTER_BLOCK; }
   /** noteGot(w, P, to): record an ownership change (call BEFORE P.owner is set). mythic = P was already Mythic for its old owner, or past the natural Mythic line. */
   function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; (w.leftBy || (w.leftBy = {}))[P.id] = P.owner; /* feed runs: who had it before (world-level map, not a pet field) */ if (P.skipBy) P.skipBy = null; /* feed-skip clears on any transfer */ w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
