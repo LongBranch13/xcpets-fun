@@ -98,15 +98,16 @@
       else if (f.k === 'smoke') { x.save(); x.globalAlpha = (1 - p) * 0.9; px(x, f.c, Math.round(f.x), Math.round(f.y), f.z, f.z); x.restore(); }
       else if (f.k === 'chip') { px(x, '#c8ccd4', Math.round(f.x), Math.round(f.y), 1, 1); }
       else if (f.k === 'pop') { x.save(); x.globalAlpha = 1 - p; x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(f.s, f.x + 1, f.y - p * 10 + 1); x.fillStyle = '#7dff6a'; x.fillText(f.s, f.x, f.y - p * 10); x.restore(); } }); }
-  /* the rise (mock): ground shakes, dirt flies, a claw breaks out, the zombie climbs up, green and glowing */
+  /* the rise (mock): ground shakes, dirt flies, a claw breaks out, the zombie climbs up, green and glowing. zombie-v3 (owner Oct 28 2026 10:32 PM CT):
+   * the zombie rises from behind the headstone and ends standing above it (clipped at the stone top, glow stops there too), so the 'RIP' and the #id stay readable */
   function drawRise(x) { var R0 = A.rise, t = R0.t, g = GRV, z = sprite(A.grave, true);
     if (t < 1100 && Math.random() < 0.6) A.fx.push({ k: 'chip', x: g.x - 8 + Math.random() * 16, y: g.y - 1, vx: Math.random() * 2 - 1, vy: -(0.6 + Math.random() * 1.6), t: 0, d: 500 });
     if (t > 350 && t < 1500) { var cp = Math.min(1, (t - 350) / 450), cy = g.y - Math.round(10 * cp), cx = g.x - 8; /* the claw */
       px(x, '#2f8a3c', cx, cy, 3, 10 * cp + 1); px(x, '#3fbf4a', cx + 1, cy, 1, 10 * cp); [[-2, -3], [0, -4], [2, -3], [4, -2]].forEach(function (f, i) { px(x, '#7dff6a', cx + f[0], cy + f[1], 1, 3); px(x, '#c9ffb0', cx + f[0], cy + f[1], 1, 1); }); }
-    var zc = A.zc, zx2 = zc && zc.getContext('2d'); if (t > 1100 && zx2) { var rp = Math.min(1, (t - 1100) / 900), e = 1 - Math.pow(1 - rp, 2), bb = z && z.bb ? z.bb : [8, 6, 16, 22], zw = bb[2] * ZS, zh = bb[3] * ZS, gy = g.y * ZK, zl = ZX0 * ZK,
+    var zc = A.zc, zx2 = zc && zc.getContext('2d'); if (t > 1100 && zx2) { var rp = Math.min(1, (t - 1100) / 900), e = 1 - Math.pow(1 - rp, 2), bb = z && z.bb ? z.bb : [8, 6, 16, 22], zw = bb[2] * ZS, zh = bb[3] * ZS, gy = (g.y - 33) * ZK /* headstone top (stone drawn g.y-33..g.y) */, zl = ZX0 * ZK,
         zx = Math.max(zl, Math.min(AW * ZK - zw, g.x * ZK - (zw >> 1))), top = Math.round(gy - zh * e); zx2.save(); zx2.beginPath(); zx2.rect(0, 0, AW * ZK, gy); zx2.clip(); zx2.imageSmoothingEnabled = false;
       if (z) zx2.drawImage(z, bb[0], bb[1], bb[2], bb[3], zx, top, zw, zh); else { zx2.fillStyle = '#7dff6a'; zx2.fillRect(zx, top, zw, zh); } zx2.restore();
-      if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = 0.25 + 0.15 * bl; zx2.fillStyle = '#7dff6a'; zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy + 4 - hy); zx2.restore(); } }
+      if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = 0.25 + 0.15 * bl; zx2.fillStyle = '#7dff6a'; zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy - hy); zx2.restore(); } }
     if (t > 2100 && !R0.done) { R0.done = true; risenCard(); } }
   function frame(t) { var c = A.cv; if (!c || !c.isConnected) { A.raf = 0; return; } var x = c.getContext('2d'), now = t || performance.now(), dt = A.last ? Math.min(50, now - A.last) : 16; A.last = now; x.imageSmoothingEnabled = false;
     A.flares = A.flares.map(function (f) { return Math.max(0, f - dt / 520); }); if (A.rise) A.rise.t += dt;
@@ -218,6 +219,10 @@
     A.cv.addEventListener('click', function () { if (!A.offered.length) toast('Tap a pet below, or drag it here'); }); }
   function risenCard() { var P = project(A.base, ordered()), mi = -1; MILES.forEach(function (m, i) { if (P.total >= Math.floor(P.base * m[0])) mi = i; }); var wrap = A.cv && A.cv.parentNode; if (!wrap) return;
     var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + '</span><small>preview only, nothing burned</small>'; wrap.appendChild(d);
+    /* v2-zombies preview: the raise is still a mock; remember it so play.html (js/v2-zombies.js) lists the zombie in the raiser's My Pets */
+    try { var RK = 'xcpets-cem-risen-preview', st = JSON.parse(window.localStorage.getItem(RK) || '{}') || {};
+      st[A.grave.id] = { by: A.who || (A.ctx && A.ctx.ME) || '', power: P.total, base: P.base, stats: P.stats, n: A.offered.length, title: 'the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread' : 'Zombie'), at: Date.now() };
+      window.localStorage.setItem(RK, JSON.stringify(st)); } catch (e) {}
     setTimeout(function () { if (d.isConnected) d.classList.add('out'); }, 3800); setTimeout(function () { if (d.isConnected) d.remove(); }, 4300); }
   window.V2CemeteryAltar = { open: open, close: close, project: project, HW: HW, setHalloween: function (on) { A.hw = !!on; }, PET: PET, GEAR: GEAR, RIPE: RIPE, _state: function () { return A; }, _offer: offer };
 })();
