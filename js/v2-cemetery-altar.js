@@ -47,11 +47,22 @@
 
   /* ---------------------------------------------------------------- sprites ---------------------------------------------------------------- */
   var SPR = {};
-  function sprite(p, green) { var key = p.id + (green ? 'g' : ''); if (SPR[key] !== undefined) return SPR[key]; var R = A.ctx.R, wp = A.ctx.w.byId ? A.ctx.w.byId[p.id] : null, c = null;
+  /* zombie-dead-look (owner Oct 29 2026 'way more zombie looking and dead looking'): the risen pet uses the same dead look as My Pets (js/v2-zombie-look.js,
+   * loaded next to this file): rotting skin, black sockets, teeth, ribs, a bite, drool, flies and stink. 6 frames (drool drips, flies buzz); c.fr holds them.
+   * Until that file loads the old green tint is used and not cached. */
+  var ZV = (function () { try { var cs = document.currentScript, m = cs && /\?(.*)$/.exec(cs.src); return m ? m[1] : ''; } catch (e) { return ''; } })();
+  function ZL() { return window.V2ZombieLook || null; }
+  try { if (!window.V2ZombieLook && !document.getElementById('zbLook')) { var zs = document.createElement('script'); zs.id = 'zbLook'; zs.src = 'js/v2-zombie-look.js' + (ZV ? '?' + ZV : ''); document.head.appendChild(zs); } } catch (e) {}
+  function zombieFrames(c, x, d, p) { var Z = ZL(), base = new Uint8ClampedArray(d.data), N = 6, fr = [], bb = null, wp = A.ctx.w.byId ? A.ctx.w.byId[p.id] : null, E = wp && Z.starEyes ? Z.starEyes(wp.art, wp.stage, 0) : null;
+    for (var fi = 0; fi < N; fi++) { var r = Z.transparent(base, p.id, fi, N, { ground: false, eyes: E }); var cc = fi ? document.createElement('canvas') : c; if (fi) cc.width = cc.height = 32;
+      var cx = cc.getContext('2d'), id2 = cx.createImageData(32, 32); if (r) { id2.data.set(r.data); if (!bb && r.box) bb = r.box; } else id2.data.set(base); cx.putImageData(id2, 0, 0); fr.push(cc); }
+    c.fr = fr; c.bb = bb ? [bb.x0, bb.y0, bb.W, bb.H] : [0, 0, 32, 32]; c.zb = true; }
+  function sprite(p, green) { var key = p.id + (green ? 'g' : ''); if (SPR[key] !== undefined) return SPR[key]; if (green && !ZL()) { var old = sprite0(p, key); delete SPR[key]; return old; } return sprite0(p, key, green); }
+  function sprite0(p, key, green) { if (green === undefined) green = /g$/.test(key); var R = A.ctx.R, wp = A.ctx.w.byId ? A.ctx.w.byId[p.id] : null, c = null;
     try { if (wp && wp.art) { c = document.createElement('canvas'); c.width = c.height = 32; /* keyed render (solid magenta background) so only the pet itself flies, smokes and rises, never its square tile */
       R.paint(c, R.framesWith(Object.assign({}, wp.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), wp.stage, [])[0]);
-      var x = c.getContext('2d'), d = x.getImageData(0, 0, 32, 32), a = d.data; for (var i = 0; i < a.length; i += 4) { if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) { a[i + 3] = 0; continue; } if (!a[i + 3] || !green) continue; var l = (a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11) / 255;
-        a[i] = Math.round(40 + 90 * l); a[i + 1] = Math.round(90 + 160 * l); a[i + 2] = Math.round(40 + 60 * l); } x.putImageData(d, 0, 0); var bx0 = 32, by0 = 32, bx1 = -1, by1 = -1; for (var j = 0; j < 1024; j++) { if (!a[j * 4 + 3]) continue; var jx = j % 32, jy = (j / 32) | 0; if (jx < bx0) bx0 = jx; if (jx > bx1) bx1 = jx; if (jy < by0) by0 = jy; if (jy > by1) by1 = jy; } c.bb = bx1 < 0 ? [0, 0, 32, 32] : [bx0, by0, bx1 - bx0 + 1, by1 - by0 + 1]; /* the pet's own pixels (for the bigger risen zombie) */ } } catch (e) { c = null; }
+      var x = c.getContext('2d'), d = x.getImageData(0, 0, 32, 32), a = d.data; for (var i = 0; i < a.length; i += 4) { if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) { a[i + 3] = 0; continue; } if (!a[i + 3] || !green || ZL()) continue; var l = (a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11) / 255;
+        a[i] = Math.round(40 + 90 * l); a[i + 1] = Math.round(90 + 160 * l); a[i + 2] = Math.round(40 + 60 * l); } if (green && ZL()) { zombieFrames(c, x, d, p); SPR[key] = c; return c; } x.putImageData(d, 0, 0); var bx0 = 32, by0 = 32, bx1 = -1, by1 = -1; for (var j = 0; j < 1024; j++) { if (!a[j * 4 + 3]) continue; var jx = j % 32, jy = (j / 32) | 0; if (jx < bx0) bx0 = jx; if (jx > bx1) bx1 = jx; if (jy < by0) by0 = jy; if (jy > by1) by1 = jy; } c.bb = bx1 < 0 ? [0, 0, 32, 32] : [bx0, by0, bx1 - bx0 + 1, by1 - by0 + 1]; /* the pet's own pixels (for the bigger risen zombie) */ } } catch (e) { c = null; }
     SPR[key] = c; return c; }
 
   /* ---------------------------------------------------------------- the altar canvas ---------------------------------------------------------------- */
@@ -103,11 +114,13 @@
   function drawRise(x) { var R0 = A.rise, t = R0.t, g = GRV, z = sprite(A.grave, true);
     if (t < 1100 && Math.random() < 0.6) A.fx.push({ k: 'chip', x: g.x - 8 + Math.random() * 16, y: g.y - 1, vx: Math.random() * 2 - 1, vy: -(0.6 + Math.random() * 1.6), t: 0, d: 500 });
     if (t > 350 && t < 1500) { var cp = Math.min(1, (t - 350) / 450), cy = g.y - Math.round(10 * cp), cx = g.x - 8; /* the claw */
-      px(x, '#2f8a3c', cx, cy, 3, 10 * cp + 1); px(x, '#3fbf4a', cx + 1, cy, 1, 10 * cp); [[-2, -3], [0, -4], [2, -3], [4, -2]].forEach(function (f, i) { px(x, '#7dff6a', cx + f[0], cy + f[1], 1, 3); px(x, '#c9ffb0', cx + f[0], cy + f[1], 1, 1); }); }
+      px(x, '#3c4630', cx, cy, 3, 10 * cp + 1); px(x, '#5e6a46', cx + 1, cy, 1, 10 * cp); px(x, '#80402f', cx, cy + 4, 1, 1); [[-2, -3], [0, -4], [2, -3], [4, -2]].forEach(function (f, i) { px(x, i === 2 ? '#d8d0b0' : '#6c7a52', cx + f[0], cy + f[1], 1, 3); px(x, '#e6dfc4', cx + f[0], cy + f[1], 1, 1); }); } /* rotten claw, bone fingertips */
     var zc = A.zc, zx2 = zc && zc.getContext('2d'); if (t > 1100 && zx2) { var rp = Math.min(1, (t - 1100) / 900), e = 1 - Math.pow(1 - rp, 2), bb = z && z.bb ? z.bb : [8, 6, 16, 22], zw = bb[2] * ZS, zh = bb[3] * ZS, gy = (g.y - 33) * ZK /* headstone top (stone drawn g.y-33..g.y) */, zl = ZX0 * ZK,
         zx = Math.max(zl, Math.min(AW * ZK - zw, g.x * ZK - (zw >> 1))), top = Math.round(gy - zh * e); zx2.save(); zx2.beginPath(); zx2.rect(0, 0, AW * ZK, gy); zx2.clip(); zx2.imageSmoothingEnabled = false;
-      if (z) zx2.drawImage(z, bb[0], bb[1], bb[2], bb[3], zx, top, zw, zh); else { zx2.fillStyle = '#7dff6a'; zx2.fillRect(zx, top, zw, zh); } zx2.restore();
-      if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = 0.25 + 0.15 * bl; zx2.fillStyle = '#7dff6a'; zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy - hy); zx2.restore(); } }
+      if (z && z.fr) { var zf = z.fr[Math.floor(t / 170) % z.fr.length], M2 = 3, sx0 = Math.max(0, bb[0] - M2), sy0 = Math.max(0, bb[1] - M2), sx1 = Math.min(32, bb[0] + bb[2] + M2), sy1 = Math.min(32, bb[1] + bb[3] + M2); /* flies / stink sit just outside the body */
+        zx2.drawImage(zf, sx0, sy0, sx1 - sx0, sy1 - sy0, zx - (bb[0] - sx0) * ZS, top - (bb[1] - sy0) * ZS, (sx1 - sx0) * ZS, (sy1 - sy0) * ZS); }
+      else if (z) zx2.drawImage(z, bb[0], bb[1], bb[2], bb[3], zx, top, zw, zh); else { zx2.fillStyle = '#7dff6a'; zx2.fillRect(zx, top, zw, zh); } zx2.restore();
+      if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = z && z.zb ? 0.1 + 0.06 * bl : 0.25 + 0.15 * bl; zx2.fillStyle = z && z.zb ? '#7a8f3e' : '#7dff6a'; /* sickly, dim glow */ zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy - hy); zx2.restore(); } }
     if (t > 2100 && !R0.done) { R0.done = true; risenCard(); } }
   function frame(t) { var c = A.cv; if (!c || !c.isConnected) { A.raf = 0; return; } var x = c.getContext('2d'), now = t || performance.now(), dt = A.last ? Math.min(50, now - A.last) : 16; A.last = now; x.imageSmoothingEnabled = false;
     A.flares = A.flares.map(function (f) { return Math.max(0, f - dt / 520); }); if (A.rise) A.rise.t += dt;
@@ -221,7 +234,7 @@
     var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + '</span><small>preview only, nothing burned</small>'; wrap.appendChild(d);
     /* v2-zombies preview: the raise is still a mock; remember it so play.html (js/v2-zombies.js) lists the zombie in the raiser's My Pets */
     try { var RK = 'xcpets-cem-risen-preview', st = JSON.parse(window.localStorage.getItem(RK) || '{}') || {};
-      st[A.grave.id] = { by: A.who || (A.ctx && A.ctx.ME) || '', power: P.total, base: P.base, stats: P.stats, n: A.offered.length, title: 'the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread' : 'Zombie'), at: Date.now() };
+      st[A.grave.id] = { by: A.who || (A.ctx && A.ctx.ME) || '', power: P.total, base: P.base, stats: P.stats, n: A.offered.length, title: 'the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread' : 'Zombie'), at: Date.now(), blk: (A.ctx && A.ctx.w && +A.ctx.w.tip) || 0 /* zombie hunger: full at this block */ };
       window.localStorage.setItem(RK, JSON.stringify(st)); } catch (e) {}
     setTimeout(function () { if (d.isConnected) d.classList.add('out'); }, 3800); setTimeout(function () { if (d.isConnected) d.remove(); }, 4300); }
   window.V2CemeteryAltar = { open: open, close: close, project: project, HW: HW, setHalloween: function (on) { A.hw = !!on; }, PET: PET, GEAR: GEAR, RIPE: RIPE, _state: function () { return A; }, _offer: offer };
