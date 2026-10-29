@@ -9,15 +9,18 @@ const V2S = ['head', 'face', 'back', 'hand', 'body', 'feet', 'weapon'];
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
 ok(V.ACTIVATE_RP_BLOCK === 973345 && V.rpGate() === 973345, 'gate 973345'); ok(V.RP_POWER === 142, 'power 142'); ok(V.RP_TO === 'bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', 'address');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
+/* gate/blocks derived from the snapshot tip (never hand-fixed when the chain passes the gate): the 'before' world is the tip with the gate moved
+ * just past it; the grant world uses the real gate, or the tip if the chain has not reached it yet. */
+const G = Math.min(V.ACTIVATE_RP_BLOCK, tip); const END = Math.max(tip, V.ACTIVATE_RP_BLOCK) + 155; /* breeding blocks after both the snapshot tip and the real gate (973500 on the frozen fixture, as before) */ V._setRp(tip + 1);
 const w0 = run(c, s, [], tip); ok(!w0.pets.some(p => p.species === 'rarepigeon'), 'no Rarepigeon before the gate');
-V._setRp(tip); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'rarepigeon');
+V._setRp(G); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'rarepigeon');
 ok(B.length === 1, 'exactly one Rarepigeon'); const b = B[0];
 ok(b.owner === 'bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', 'owner ...28e0');
 ok(b.name === 'Rarepigeon' && b.tier === 3 && b.supreme && b.supreme.id === 'rarepigeon' && b.supreme.title === 'The First Rare Pigeon' && b.supreme.of === 1, 'name/tier/1 of 1');
-ok(b.stage === 0 && b.care === 0, 'granted as an egg'); ok(pw(b) === 142, 'power 142 got ' + pw(b)); ok(!b.grantPower, 'not in the 155-160 supreme sweep');
+{ const eg = G < tip ? run(c, { tip: G, rows: s.rows.filter(r => r.block_index <= G), hashes: s.hashes }, [], G).pets.find(p => p.species === 'rarepigeon') : b; ok(eg && eg.id === b.id && eg.stage === 0 && eg.care === 0, 'granted as an egg (at the gate ' + G + ')'); } /* past the gate the real owner may already have fed it */ ok(pw(b) === 142, 'power 142 got ' + pw(b)); ok(!b.grantPower, 'not in the 155-160 supreme sweep');
 ok(K.every(k => b.stats[k] >= 1 && b.stats[k] <= 30), 'stats 1..30');
 const w2 = run(c, s, [], tip); ok(w2.pets.filter(p => p.species === 'rarepigeon').length === 1, 'once');
-ok(V.breedable(Object.assign({}, b, { stage: 3 }), 973400) === null, 'can breed');
+ok(V.breedable(Object.assign({}, b, { stage: 3 }), END) === null, 'can breed');
 /* BO GEAR (owner: just give to player): one of each Rarepigeon piece in ...28e0's inventory, unworn; nobody else has any; never in a roll pool; renders */
 { const BG = (c.V2Gear.RP_GEAR || []).map(x => x[0]); ok(BG.length === 4, 'four Rarepigeon gear pieces');
   BG.forEach(id => { const mine = Object.values(w.items).filter(g => g.item === id); ok(mine.length === 1 && mine[0].owner === b.owner && !mine[0].on, id + ': one, owned by ...28e0, unworn');
@@ -29,7 +32,7 @@ console.log('Rarepigeon #' + b.id + ' stats ' + JSON.stringify(b.stats) + ' powe
 
 /* BREEDING: Rarepigeon breeds like the contest 1 of 1s (Rarepigeon counts as a copy of the partner's species; normal odds, tier, stats, cap, cooldown) and every
  * Rarepigeon baby gets Rarepigeon's teal neck sheen (art.rpMark, looks only). Never a Rarepigeon, never a 1 of 1. Hybrid partner -> hybrid baby; 3-way partner -> 3-way baby. */
-const R = c.V2Render; const END = 973500; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
+const R = c.V2Render; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
 const wb = JSON.parse(JSON.stringify(w)); wb.byId = {}; wb.pets.forEach(p => { wb.byId[p.id] = p; }); const rp = wb.byId[b.id]; rp.stage = 3; rp.care = 999;
 const clone = () => { const ww = JSON.parse(JSON.stringify(wb)); ww.byId = {}; ww.pets.forEach(p => { ww.byId[p.id] = p; }); return ww; };
 const live = wb.pets.filter(p => !p.dead && !p.released && !p.community && !p.supreme && !p.burnLord && !p.contest && p.species !== 'rarepigeon');

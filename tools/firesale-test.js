@@ -34,8 +34,10 @@ const c = load(), V = c.V2Rules; V._setHalvingActivation(G);
   ok(a0.some(s => s.arm >= D && s.arm < h1 + 144), 'the same window had a sale without the defeat');
   ok(a.some(s => s.arm >= h1 + 144), 'sales resume after the pause'); }
 /* 5. replay + saved-spin ledger (real snapshot, fake hashes from the gate) */
-{ const S = snap(process.argv[2]), c3 = load(), V3 = c3.V2Rules, T = S.tip, GG = T + 6; V3._setHalvingActivation(GG); V3._setFiresaleActivation(GG);
-  const HH = {}; for (let b = GG; b < GG + 3000; b++) HH[b] = fakeHash('fs' + b); V3._setFireHashes(HH); const w0 = {}; V3.fireExtend(w0, GG + 2990); const s = w0.fire.sales[0];
+{ const S = snap(process.argv[2]), c3 = load(), V3 = c3.V2Rules, T = S.tip, GG = T + 6; if (V3.ACTIVATE_HALVING_BLOCK == null || V3.ACTIVATE_HALVING_BLOCK > T) V3._setHalvingActivation(GG); V3._setFiresaleActivation(GG);
+  /* keep the real halving gate once the snapshot is past it (moving it to GG would move halving 1 too), and pick the sale from a schedule that knows the
+   * snapshot's Lord Kek defeat: the replay blacks out sales from the defeat to halving 1 + 144, so a schedule built on {} can pick a sale that never runs */
+  const HH = {}; for (let b = GG; b < GG + 3000; b++) HH[b] = fakeHash('fs' + b); const wr = run(c3, S, [], T), w0 = wr.kekMythic ? { kekMythic: wr.kekMythic } : {}; V3._setFireHashes(HH); /* after the replay, which sets its own hashes */ V3.fireExtend(w0, GG + 2990); const s = w0.fire.sales[0];
   ok(!!s, 'found a sale for the replay test'); const ME = 'bc1qfiresaletest0000000000000000000000000';
   /* The fixture includes Lord Kek's defeat (972869), so halving 1 stacks with the sale (era 1: 69 / 2 x 0.31 = 10.695, not the era-0 21.39).
    * Take the era from the replayed fixture instead of hardcoding Oct 22 era-0 prices; later halvings (live 973371) then keep this test valid. */
