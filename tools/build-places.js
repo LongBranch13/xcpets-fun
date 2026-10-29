@@ -5,7 +5,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..'), P = require('../js/v2-places.js');
 const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html'];
-const TAG = '<script src="js/v2-places.js?v=389176322f" defer></script>';
+const TAG = '<script src="js/v2-places.js?v=608dfb8c90" defer></script>';
 function fix(s) { const M = '<!--places-->' + P.menu() + '<!--/places-->';
   s = /<!--places-->[\s\S]*?<!--\/places-->/.test(s) ? s.replace(/<!--places-->[\s\S]*?<!--\/places-->/, M) : s.replace(/(<a class="navplay"[^>]*>[\s\S]*?<\/a>|<nav>)/, '$1' + M);
   if (s.indexOf('js/v2-places.js') < 0) s = s.replace('</body>', TAG + '\n</body>'); return s; }
