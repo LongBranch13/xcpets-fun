@@ -1011,6 +1011,22 @@
     window.PetCore = NG; try { return framesWith(nk, 5, ids, [], 6); } finally { window.PetCore = live; } }
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
+  /* community-gear-hover (owner Oct 29 2026 [pt2180u]: "just hovering on Homer should be the fix"). DISPLAY ONLY. Hover (desktop) or tap (phone) the
+   * community pet sprite: a small tooltip lists only the pieces his sprite draws, item name + rarity. Same gates as hpGear/ftGear/kekGear. */
+  function communityTipItems(w) { var g = (w && w.community && w.community.gear) || {}, gate = hpOn(w) ? V.ACTIVATE_HOMER_BLOCK : ftOn(w) ? V.ACTIVATE_FUNTRUMP_BLOCK : kekOn(w) ? (V.kekActivation ? V.kekActivation() : null) : undefined;
+    return (V.V2_SLOTS || []).filter(function (sl) { var x = g[sl]; return x && (gate === undefined || (gate != null && x.block >= gate)) && !(kekOn(w) && sl === 'head'); })
+      .map(function (sl) { var x = g[sl], t = x.legendary ? 3 : (x.tier || 0); return { label: x.label, t: t, tierName: (V.TIER_LABELS || [])[t] || '', legendary: !!x.legendary }; }); }
+  function bindCommunityTip(cv, w) { if (!cv) return; cv._ctipW = w; if (cv._ctip) return; cv._ctip = 1;
+    var tip = document.createElement('div'); tip.className = 'ctip small'; tip.setAttribute('role', 'tooltip'); tip.id = 'ctip' + (cv.id ? '-' + cv.id : ''); tip.hidden = true; document.body.appendChild(tip); cv.setAttribute('aria-describedby', tip.id);
+    function show() { var w2 = cv._ctipW, it = communityTipItems(w2); if (!w2 || (communityGap && communityGap(w2))) return;
+      tip.innerHTML = it.length ? it.map(function (e) { return '<div>' + esc(e.label) + ' <span class="pill tier tier-' + TID[e.t] + '">' + esc(e.tierName) + (e.legendary ? ' ★' : '') + '</span></div>'; }).join('') : '<div>No gear yet</div>';
+      tip.hidden = false; place(); }
+    function place() { var r = cv.getBoundingClientRect(), tw = tip.offsetWidth, x = r.left + r.width / 2 - tw / 2;
+      tip.style.left = Math.max(6, Math.min(x, document.documentElement.clientWidth - tw - 6)) + 'px'; tip.style.top = (r.bottom + 6) + 'px'; }
+    function hide() { tip.hidden = true; }
+    var pt = 'mouse'; cv.addEventListener('pointerdown', function (e) { pt = e.pointerType; }); cv.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') show(); }); cv.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hide(); });
+    cv.addEventListener('click', function (e) { e.stopPropagation(); if (tip.hidden) show(); else if (pt !== 'mouse') hide(); }); /* tap toggles on phones */
+    document.addEventListener('click', function (e) { if (e.target !== cv) hide(); }); ['resize', 'scroll'].forEach(function (ev) { window.addEventListener(ev, function () { if (!tip.hidden) place(); }, true); }); }
   /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
   function communityWearing(w) { if (kekOn(w)) { var kg = kekGear(w), kt = Object.keys(kg).map(function (sl) { return kg[sl].label + (kg[sl].signature ? ' ★' : ''); }).join(' · '); return 'Wearing: ' + (kt || 'his nemes (part of him)'); }
     var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
@@ -1119,7 +1135,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
@@ -1138,7 +1154,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=d4f7728475'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=608dfb8c90'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

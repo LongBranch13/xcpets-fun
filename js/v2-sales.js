@@ -73,6 +73,11 @@
     function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
       return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
+  /* feed-status-filter (2026-10-28): order lists ask Core for an explicit status list instead of status=all (XCP wallet dev advice: Core supports
+   * comma-separated statuses). OrderStatus in Core 11.x = all | open | expired | filled | cancelled; an 'invalid: ...' order matches none of the four,
+   * so the invalid zero-give orders that made status=all&verbose=true answer HTTP 500 are never sent. These four are every status a funded order can
+   * have, i.e. exactly what okOrder() kept from status=all, so the replay input is unchanged. Unknown values answer 400 (no silent 'all'). */
+  var ORDER_STATUS_Q = 'open,filled,expired,cancelled';
   var slim = function (o) { return { tx_hash: o.tx_hash, tx_index: o.tx_index, block_index: o.block_index, source: o.source, give_asset: o.give_asset, give_quantity: o.give_quantity, give_remaining: o.give_remaining,
     get_asset: o.get_asset, get_quantity: o.get_quantity, get_remaining: o.get_remaining, expiration: o.expiration, expire_index: o.expire_index, status: o.status }; };
   var slimM = function (m) { return { id: m.id, tx0_hash: m.tx0_hash, tx1_hash: m.tx1_hash, tx0_address: m.tx0_address, tx1_address: m.tx1_address, forward_asset: m.forward_asset, forward_quantity: m.forward_quantity,
@@ -99,8 +104,8 @@
       var lo = Infinity; j.result.forEach(function (c) { lo = Math.min(lo, Number(c.block_index)); if (c.asset === A) out.push(c); });
       if (!j.result.length || lo < b0 || !j.next_cursor) return out; return go(nextCur(j, seen, ++k, 200, kind + ' for ' + X)); }); }
     return go(null); }
-  function xcpCredits(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/assets/' + A + '/balances'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'),
-      pages('/orders/' + A + '/XCP?status=all&verbose=true'), pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
+  function xcpCredits(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/assets/' + A + '/balances'), pages('/orders/' + A + '/XCPETS?status=' + ORDER_STATUS_Q + '&verbose=true'),
+      pages('/orders/' + A + '/XCP?status=' + ORDER_STATUS_Q + '&verbose=true'), pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
     var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }); if (!iss.length) return [];
     var b0 = Math.min.apply(null, iss.map(function (i) { return Number(i.block_index); })), bal = {}, cand = {};
     r[1].forEach(function (b) { if (b.utxo) throw new Error('token held on a utxo'); if (Number(b.quantity)) bal[b.address] = Number(b.quantity); cand[b.address] = 1; });
@@ -178,13 +183,41 @@
   function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
     var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, at: c.at, from: 'local' });
     all = all.filter(function (b) { return b.tip <= cx.tip && cx.hashes[b.tip] && cx.hashes[b.tip] === b.hash; }).sort(function (a, b) { return b.tip - a.tip; }); return all[0] || null; }
+  /* feed-invalid-order-fix (2026-10-28): GET /v2/orders/<A>/XCP?status=all&verbose=true answers HTTP 500 on both Core nodes for a pet token that
+   * has an invalid zero-give order (#27613, #20149, #35043 at blocks 973574 / 973587); the same list without verbose, per status, or per asset works.
+   * A 5xx from every node on the pair list now tries, in order: /assets/<A>/orders?status=all&verbose=true (kept to this pair), the four per-status
+   * pair lists (open, filled, expired, cancelled), then the non-verbose pair list. Orders with status 'invalid' or give_quantity 0 are dropped on
+   * every path (they never funded, can't match, and none exist in any earlier feed). If nothing works, only that pet's orders come from the last
+   * verified base (or none) and the pet is listed in staleAssets: its sales are stale, the rest of the feed still publishes. Other errors
+   * (rate limit, network, 4xx) still fail the read exactly as before. Ownership comes from credits, which are read as before. */
+  /* feed-status-filter (2026-10-28): the primary read is now the pair list with status=open,filled,expired,cancelled (ORDER_STATUS_Q), which answers
+   * 200 for those three pets on both nodes (checked from bot-1, same valid orders as the fallback gave). The fallback chain above stays as a safety net
+   * (every list now uses the explicit statuses, never status=all), and also runs on a 400 that rejects the status value, in case a node ever refuses
+   * the comma list (then the four single-status lists answer). okOrder() still drops invalid / zero-give rows on every path. */
+  var ORDER_STATUSES = ORDER_STATUS_Q.split(',');
+  function okOrder(o) { return !!o && !/^invalid/.test(String(o.status)) && Number(o.give_quantity) > 0; }
+  function is5xx(e) { return /DEX API 5\d\d/.test(e && e.message || String(e)); }
+  function isStatusRejected(e) { return /DEX API 400[^;]*invalid value for status/i.test(e && e.message || String(e)); }
+  function orderRows(A, Q, base) { var path = '/orders/' + A + '/' + Q;
+    return pages(path + '?status=' + ORDER_STATUS_Q + '&verbose=true').then(function (r) { return r.filter(okOrder); }, function (e) { if (!is5xx(e) && !isStatusRejected(e)) throw e; var why = [e.message];
+      var pair = function (o) { return (o.give_asset === A && o.get_asset === Q) || (o.give_asset === Q && o.get_asset === A); };
+      var tries = [function () { return pages('/assets/' + A + '/orders?status=' + ORDER_STATUS_Q + '&verbose=true').then(function (r) { return r.filter(pair); }); },
+        function () { return ORDER_STATUSES.reduce(function (p, st) { return p.then(function (acc) { return pages(path + '?status=' + st + '&verbose=true').then(function (r) { return acc.concat(r); }); }); }, Promise.resolve([])); },
+        function () { return pages(path + '?status=' + ORDER_STATUS_Q); }], names = ['asset-orders', 'per-status', 'non-verbose'];
+      function at(i) { if (i >= tries.length) { orderRows.stale.push(A); orderRows.used.push(A + '/' + Q + ':stale');
+          return base && base.d ? slice(base.d, A).orders.filter(function (o) { return pair(o) && okOrder(o); }) : []; }
+        return tries[i]().then(function (r) { orderRows.used.push(A + '/' + Q + ':' + names[i]); return r.filter(okOrder); }, function (e2) { why.push(e2 && e2.message || String(e2)); return at(i + 1); }); }
+      return at(0); }); }
+  orderRows.stale = []; orderRows.used = [];
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null); var cx = arguments[1];
     return mintAssets(rows).then(function (ma) { var key = lkey(rows, ma), as = key ? key.split(',') : [], base = pickBase(cx); loadDex.lastAssets = as;
       var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length, ms = touched.miss.length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
         loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs - ms, unread: ms, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
-      if (!base) loadDex.last = { base: 'none' };
+      if (!base) loadDex.last = { base: 'none' }; orderRows.used = [];
       /* api-reduction time limit: the sale read gets DEX_MS; past that, a known base answers now (sliced to these tokens, flagged stale) and the read keeps going in the background to save its result */
-      var full = pre.then(function (p) { var d0 = loadDex2(rows, ma, p); return d0.then(function (d) { if (p && touched.miss && touched.miss.length) { d = Object.assign({}, d, { stale: base && base.at || Date.now() }); } return d; }); });
+      var full = pre.then(function (p) { var d0 = loadDex2(rows, ma, p, base); return d0.then(function (d) { if (p && touched.miss && touched.miss.length) { d = Object.assign({}, d, { stale: base && base.at || Date.now() }); }
+        if (d && d.staleAssets && d.staleAssets.length) { loadDex.lastAssets = as.filter(function (A) { return d.staleAssets.indexOf(A) < 0; }); as = loadDex.lastAssets; loadDex.last = Object.assign({}, loadDex.last, { staleOrders: d.staleAssets.slice() }); } /* feed-invalid-order-fix: stale pets left out of dexAssets, so the next run re-reads them */
+        if (orderRows.used.length) loadDex.last = Object.assign({}, loadDex.last, { orderFallback: orderRows.used.slice() }); return d; }); });
       var timed = base && as.every(function (A) { return base.assets.indexOf(A) >= 0; }) ? Promise.race([full, wait(DEX_MS).then(function () { return null; })]).then(function (d) { if (d) return d; loadDex.last = Object.assign({}, loadDex.last, { timeout: DEX_MS });
         full.then(function (d2) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d2, tip: cx.tip, hash: cx.hashes[cx.tip], assets: as })); } catch (e) { } }, function () { });
         var o = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }; as.forEach(function (A) { var sl = slice(base.d, A); Object.keys(o).forEach(function (k) { o[k] = o[k].concat(sl[k] || []); }); }); o.stale = base.at || Date.now(); window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: o.stale } })); throw { early: o }; }) : full;
@@ -194,12 +227,12 @@
       try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }
   function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
-  function loadDex2(rows, ma, pre) {
+  function loadDex2(rows, ma, pre, base) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
-    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); });
+    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); }); orderRows.stale = [];
     if (pre) Object.keys(pre).forEach(function (A) { var p = pre[A]; d.issuances = d.issuances.concat(p.issuances); d.orders = d.orders.concat(p.orders); d.matches = d.matches.concat(p.matches); d.credits = d.credits.concat(p.credits); d.destructions = d.destructions.concat(p.destructions); });
-    function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
+    function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), orderRows(A, 'XCPETS', base), orderRows(A, 'XCP', base),
         pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true'), credits(A), pages('/assets/' + A + '/destructions?verbose=true')]).then(function (r) {
       d.credits = d.credits.concat(r[5].map(slimC)); d.destructions = d.destructions.concat(r[6].filter(function (x) { return x.status == null || x.status === 'valid'; }).map(slimX));
       var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }).sort(function (a, b) { return a.tx_index - b.tx_index; })[0]; if (iss) d.issuances.push(slimI(iss));
@@ -211,6 +244,7 @@
       d.destructions.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; });
       d.orders = d.orders.filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; });
       d.matches = d.matches.filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); });
+      if (orderRows.stale.length) { d.staleAssets = orderRows.stale.slice().sort(); return d; } /* feed-invalid-order-fix: a pet whose order book could not be read is not cached */
       try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
   /** freeDeed() -> a random numeric asset nobody has issued (404 on /assets/{A}); 6 tries. */
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);

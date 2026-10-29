@@ -15,7 +15,16 @@
   function isFeedAllTag(tag) { return /^pet:(fa|fx|fy|sk|su)(:|$)/i.test(String(tag || '')); }
   /* feedQueue for the UI: while paused, plan as if the feed-all gate were not reached (same pet-number bundles as before it) */
   function faNb(w, nb, list) { var b = nb != null ? nb : ((w && w.tip) || 0); return (FEED_ALL_PAUSED || list) && V.feedAllOn(b) ? V.FEED_ALL_BLOCK - 1 : nb; }
-  function feedQ(w, me, ids, nb, list) { var q = V.feedQueue(w, me, ids, faNb(w, nb, list)); return (FEED_ALL_PAUSED || list) ? q.filter(function (p) { return !isFeedAllTag(p.tag); }) : q; }
+  /* feed-all-one-burn (owner Oct 28 2026 8:28 PM CT): once the chain reaches V.ACTIVATE_FEED_RUNS_BLOCK, Feed all hungry and Feed selected feed only pets
+   * that really eat (V.frEats: no Mythic, no pet away on a quest) and use ONE pet:fr burn for the total (more only if the 34-byte tag can't hold the
+   * runs), whenever that is no more burns than the old plan. Below the gate: exactly the old plans. */
+  function runsOn(w, nb) { var b = nb != null ? nb : ((w && w.tip) || 0); return !!(V.feedRunsOn && V.feedRunsOn(b)) ? b : null; }
+  function eaters(w, me, ids, nb) { return (ids || w.pets.filter(function (p) { return p.owner === me; }).map(function (p) { return p.id; })).filter(function (id) { var p = w.byId[id]; return p && p.owner === me && V.frEats(p, nb); }); }
+  function feedQold(w, me, ids, nb, list) { var q = V.feedQueue(w, me, ids, faNb(w, nb, list)); return (FEED_ALL_PAUSED || list) ? q.filter(function (p) { return !isFeedAllTag(p.tag); }) : q; }
+  function feedQ(w, me, ids, nb, list) { var rb = runsOn(w, nb); if (rb == null) return feedQold(w, me, ids, nb, list);
+    var ok = eaters(w, me, ids, rb), fr = ok.length > 1 ? V.feedRunsPlan(w, me, ok.map(function (id) { return w.byId[id]; }), rb) : null;
+    if (fr && (ok.length >= 300 || fr.length === 1)) return fr; /* big feeds: the runs plan, without the slow pet-number planner */
+    var q = feedQold(w, me, ok, nb, list); return fr && fr.length <= q.length ? fr : q; }
   function feedSelQ(w, me, ids, nb) { return feedQ(w, me, ids, nb, true); } /* Feed selected: list burns only */
   var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   /* similar-bugs-fix: the accept cost of fight id now (a Tag Team accept costs the team cost, not the 1v1 accept), same halving / Fire Sale as V.COSTS. Display only; planAmount sets the burn. */
@@ -24,6 +33,7 @@
 
   // ---------------------------------------------------------------- chain state (shared with the other pages: js/v2-chain.js, V2Mock interface)
   var M = window.V2Mock, S = M.state();
+  try { window.addEventListener('xcpets-ops-sync', function () { try { render(); } catch (e) {} }); } catch (e) {} /* gear-stick: equips saved in another tab show here too */
   function save() { M.save(); } function burn(src, tag, amount) { M.burn(src, tag, amount); } function adv(n) { M.adv(n); }
   function world() { return M.world(); }
 
@@ -289,11 +299,10 @@
     /* no community pet (Cold Storage gap): the panel STAYS with a coming-soon mystery egg; feed + gear roll disabled (owner rule Oct 20 2026, display only) */
     fr = gap ? R.comingSoonFrames() : R.communityFrames(w); /* community gear roll: the community pet (Bitcoin Wizard, or Nakamoto before) wears its community-roll gear (display only) */
     if (!commAnim) { var cv = document.createElement('canvas'); cv.width = cv.height = 32; cv.className = 'commsprite'; $('community').parentNode.insertBefore(cv, $('community')); commAnim = { c: cv }; }
-    if (fr) R.animate(commAnim.c, fr); commAnim.fr = fr;
+    if (fr) R.animate(commAnim.c, fr); commAnim.fr = fr; if (R.bindCommunityTip) R.bindCommunityTip(commAnim.c, w); /* community-gear-hover: hover/tap shows what he wears */
     var T = V.WIZARD_THRESHOLDS, nx = wiz && c.wizardStage < 5 ? T[c.wizardStage + 1] : null, rp = V.returnProgress(c.burned);
     var cFed = c.current === 'homer' ? c.homerFed || 0 : c.current === 'funtrump' ? c.funtrumpFed || 0 : c.current === 'kek' ? c.kekFed || 0 : null; /* site-audit 2026-10-27: each community pet's own counter */
-    $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(cFed != null ? cFed : c.burned)) + ' <span class="asset">XCPETS</span> ' + (cFed != null ? 'fed to ' + esc(c.petName) : 'burned') +
-      '<div class="small muted" id="cWearing">' + esc(R.communityWearing ? R.communityWearing(w) : 'Gear: ' + R.communityGearText(w)) + '</div>';
+    $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(cFed != null ? cFed : c.burned)) + ' <span class="asset">XCPETS</span> ' + (cFed != null ? 'fed to ' + esc(c.petName) : 'burned'); /* community-gear-hover: old 'Wearing:' line removed (owner 2026-10-29); hover/tap tooltip shows worn gear */
     /* home-page community readout on play (same numbers as index: V2Render.communityStats) */
     if (R.communityStats) { var cs = R.communityStats(w, (V2Mock.state().rows || []).length), F = function (n) { return fmt(n); };
       $('community').insertAdjacentHTML('beforeend', '<div class="sharedwrap cstats"><div class="stats"><div><span>Stage</span><b id="pcStage">' + esc(cs.stage) + '</b></div><div><span>Fed to the community pet</span><b id="pcFed">' + F(cs.fed) + '</b></div><div><span>Next stage</span><b id="pcNext">' + (cs.next != null ? F(cs.next) + ' to ' + esc(cs.nextName) : 'Mythic reached') + '</b></div></div>' +
@@ -371,19 +380,20 @@
       $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
     var list = petList(alive, dead);
-    /* habits-ux (Oct 27 2026): never-fed pets fold into one collapsed group (My Pets and Cemetery). Checked (selected) pets stay listed; discarded
-     * pets are already out (mine). A wallet whose few pets are all never fed sees them open. One O(n) pass, so 9k-pet wallets stay fast. */
-    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list, null, new Set(S.sel)) /* mypets-checkbox: checked pets stay listed */, nfN = nfs.nf.length;
-    var nfOpen = NF[nfK] != null ? NF[nfK] : (!cem && !nfs.shown.length && nfN <= 24); if (nfN) list = nfOpen ? nfs.nf.concat(nfs.shown) : nfs.shown;
+    /* habits-ux (Oct 27 2026) folded never-fed pets into one collapsed group; mypets-show-all (owner, Oct 28 2026) lists every pet again and the
+     * fold becomes an opt-in 'Never fed only' filter (My Pets and Cemetery tab). Discarded pets are already out (mine). One O(n) pass, so 9k-pet wallets stay fast. */
+    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list) /* mypets-show-all: count every never-fed pet for the optional filter */, nfN = nfs.nf.length;
+    /* mypets-show-all (owner Oct 28 2026): every pet is in the main list by default; 'Never fed only' is an optional filter, off by default (NF[tab] = on) */
+    var nfOnly = !!NF[nfK] && nfN > 0; if (nfOnly) list = nfs.nf;
     if (!cem && JUST_BACK.length) { var JB = new Set(JUST_BACK), jb = petList(alive, dead).filter(function (p) { return JB.has(p.id); }); if (jb.length) { list = jb.concat(list.filter(function (p) { return !JB.has(p.id); })); } } /* restore-fix: just restored first (still counted in the Never fed chip) */ /* nf-fold fix (Oct 27 2026): opened never-fed pets go first, right under the fold. They used to go last, past the 150-card page, so the fold opened onto nothing. */
     var aliveS = new Set(alive.map(function (p) { return p.id; })); S.sel = S.sel.filter(function (id) { return aliveS.has(id); }); var selS = new Set(S.sel); /* bigfix: Sets, not nested scans */
     $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
     var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">No pets match this filter.</p>';
-    if (nfN) { var nfg = document.createElement('details'); nfg.className = 'hiddenbox nfgroup'; nfg.id = 'nfGroup'; nfg.open = nfOpen;
-      nfg.innerHTML = '<summary>' + (cem ? '🪦' : '🥚') + ' Never fed <span class="chip">' + fmt(nfN) + '</span> <span class="muted">' + (cem ? 'died without a single meal' : 'pets that have never had a meal') + (nfOpen ? ' · listed below, tap to fold' : ' · tap to show') + '</span></summary>';
-      nfg.addEventListener('toggle', function () { if (NF[nfK] === nfg.open) return; NF[nfK] = nfg.open; render(); }); box.appendChild(nfg); }
+    if (nfN) { var nfg = document.createElement('div'); nfg.className = 'row nffilter'; nfg.id = 'nfGroup'; nfg.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
+      nfg.innerHTML = '<button type="button" class="q" id="nfOnly" aria-pressed="' + nfOnly + '">' + (cem ? '🪦' : '🥚') + ' ' + (nfOnly ? '✓ ' : '') + 'Never fed only <span class="chip">' + fmt(nfN) + '</span></button> <span class="small muted">' + (nfOnly ? 'only pets that ' + (cem ? 'died without a single meal' : 'never had a meal') + ' · tap to show all' : 'optional filter, off: all pets are listed') + '</span>';
+      nfg.querySelector('button').onclick = function (e) { e.stopPropagation(); NF[nfK] = !nfOnly; render(); }; box.appendChild(nfg); }
     /* hotfix 3: cards are built in chunks of 150 with a yield between them, so a 2,000-pet wallet never blocks the page for seconds */
     var tok = renderPets.tok = (renderPets.tok || 0) + 1, CH = 150, tail = document.createComment('pets-more');
     function mk(p) {
@@ -505,6 +515,7 @@
   var feedTok = 0;
   function feedAsync(title, ids, list) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
     var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
+    if (runsOn(w) != null) { var gr = guardIds(w, hungry); if (!gr.ok.length) return feedBlocked(title, gr.text); return confirmPlans(title, noDiscarded(feedQ(w, ME, gr.ok, undefined, list)), null, gr); } /* feed-all-one-burn: runs plan, no slow planner */
     if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(feedQ(w, ME, hungry, undefined, list)));
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
     pendingPlans = null; $('cfTitle').textContent = title;
@@ -681,7 +692,7 @@
     if (!plans.length) { if (fg.skipped.length || fg.blocked) feedBlocked(title, fg.text); else if (!skip.length) toast('Nothing to do'); return; }
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
-    $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's' : '') + ', each signed separately · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
+    $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + (plans.some(function (q) { return q && q.runs; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
       blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
@@ -719,7 +730,7 @@
   function sendWhy(plan) { return V.sendBlock ? V.sendBlock(world(), plan, S.tip, { me: ME, pending: myPendingTags() }) : null; }
   function pendingBreedIds() { var o = {}; myPendingTags().forEach(function (g) { var t = V.parseTag(g); if (t && t.action === 'breed') { o[t.a] = 1; var A = world().byId[t.a], B = world().byId[t.b]; if (A && B && A.owner === B.owner) o[t.b] = 1; } }); return o; }
   function pendingFeedIds() { var o = {}, conf = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
-    function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); if (t.action === 'feeda') { var ex = new Set(t.ex); world().pets.forEach(function (p) { if (p.owner === ME && (t.un ? (ex.has(p.id) || p.skipBy !== ME) : (!ex.has(p.id) && p.skipBy !== ME))) o[p.id] = 1; }); } }
+    function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); if (t.action === 'feedr' && V.feedRunsIds) V.feedRunsIds(world(), ME, t, (S.tip || 0) + 1).forEach(function (id) { o[id] = 1; }); if (t.action === 'feeda') { var ex = new Set(t.ex); world().pets.forEach(function (p) { if (p.owner === ME && (t.un ? (ex.has(p.id) || p.skipBy !== ME) : (!ex.has(p.id) && p.skipBy !== ME))) o[p.id] = 1; }); } }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed' && !conf[t.txid]) add(t.tag); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x && x.source === ME && !conf[x.tx_hash]) add(x.tag); }); return o; }
   /* bigfix 2026-10-20: plain-words heads-up for runs longer than the unconfirmed-burn limit */
