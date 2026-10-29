@@ -1,6 +1,6 @@
 {
- "lastBlock": 973647,
- "count": 264,
+ "lastBlock": 973650,
+ "count": 265,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3170,6 +3170,18 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 7216,
+   "asset": "A11701909782536893982",
+   "tiedBlock": 973650,
+   "tiedTx": "e8c6272a406d8f90152d9d20352be5cfc573a6f32d2950d07a1fc39260413b7f",
+   "kind": "deed",
+   "name": "Peri",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
