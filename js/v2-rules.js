@@ -209,7 +209,7 @@
    * skip, take, skip, take… (the first skip counts from the start of the list). Each taken pet is then fed exactly like pet:fl (ascending,
    * own meal each, owner only, alive, not fed this day, not fully fed, burn must still cover it) and, new: a Mythic or a pet away on a quest
    * never eats. Before ACTIVATE_FEED_RUNS_BLOCK the tag is an unknown pet: tag (community food), exactly as before. */
-  var ACTIVATE_FEED_RUNS_BLOCK = 973630; // tip 973623 (mempool.space, 2026-10-28 8:33 PM CT) + 7; RE-SET to tip + 6 at deploy
+  var ACTIVATE_FEED_RUNS_BLOCK = 973639; // tip 973633 (api.counterparty.io:4000 + api.unspendablelabs.com:4000 counterparty_height, 2026-10-28 9:46 PM CT) + 6, set at deploy
   function feedRunsOn(b) { return ACTIVATE_FEED_RUNS_BLOCK != null && b != null && b >= ACTIVATE_FEED_RUNS_BLOCK; }
   var FR_ANCHOR_MOD = 1024, FR_PREFIX = 'pet:fr:';
   function frDecode(s) { var out = [], v = 0, open = false; for (var i = 0; i < s.length; i++) { var d = parseInt(s[i], 32); if (!(d >= 0)) return null; v = v * 16 + (d & 15); open = true; if (d < 16) { out.push(v); v = 0; open = false; } } return open ? null : out; }
