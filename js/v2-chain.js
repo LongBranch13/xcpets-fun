@@ -72,7 +72,20 @@
     return idbGet().then(function (v) { end(); if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
-  function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
+  /* gear-stick (2026-10-28): local ops (equips) are append-only, but each tab read them ONCE at load and save() wrote its whole list back. So a
+   * second tab (or the pet page next to My Pets) that saved anything later (a tick, a sort, a feed batch ending, an auto-equip choice) wrote
+   * its OLD list over the equips made in the other tab: the gear "came off" on the next load. Now save() merges: it keeps every op already
+   * stored (in order) and adds this tab's ops that are not stored yet (counted, so a real repeat op is kept), and a 'storage' event pulls ops
+   * saved by another tab into this one. Replay and game rules are unchanged (same ops, same replay). */
+  function opKey(o) { return JSON.stringify(o); }
+  function mergeOps(stored, mine) { if (!stored || !stored.length) return mine.slice(); var cnt = {}; stored.forEach(function (o) { var k = opKey(o); cnt[k] = (cnt[k] || 0) + 1; });
+    var out = stored.slice(); mine.forEach(function (o) { var k = opKey(o); if (cnt[k]) cnt[k]--; else out.push(o); }); return out; }
+  function storedOps() { try { var v = JSON.parse(localStorage.getItem(KEY)); return v && Array.isArray(v.ops) ? v.ops : []; } catch (e) { return []; } }
+  function save() { var j = JSON.stringify(S.ops || []); S.ops = mergeOps(storedOps(), S.ops || []);
+    try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (JSON.stringify(S.ops) !== opsSig || j !== opsSig) cache = null; }
+  try { window.addEventListener('storage', function (e) { if (e.key !== KEY || !e.newValue) return; var v; try { v = JSON.parse(e.newValue); } catch (x) { return; }
+    if (!v || !Array.isArray(v.ops)) return; var m = mergeOps(v.ops, S.ops || []); if (JSON.stringify(m) === JSON.stringify(S.ops || [])) return; S.ops = m; cache = null;
+    try { window.dispatchEvent(new Event('xcpets-ops-sync')); } catch (x) {} }); } catch (e) {}
   /* page-load-freeze (2026-10-25): about 20 UI pollers (gift, quests, badges, Old Money marks, ...) call world() every 1-3 s. While the replay
    * worker was still building the world there was no cache, so the first poller to tick ran the whole replay (~12 s) on the main thread,
    * about twice per page load, which froze the page and the burn check's timers. Now, while the worker is busy and nothing is cached,
