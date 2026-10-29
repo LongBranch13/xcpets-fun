@@ -37,9 +37,12 @@ const c = load(), V = c.V2Rules; V._setHalvingActivation(G);
 { const S = snap(process.argv[2]), c3 = load(), V3 = c3.V2Rules, T = S.tip, GG = T + 6; V3._setHalvingActivation(GG); V3._setFiresaleActivation(GG);
   const HH = {}; for (let b = GG; b < GG + 3000; b++) HH[b] = fakeHash('fs' + b); V3._setFireHashes(HH); const w0 = {}; V3.fireExtend(w0, GG + 2990); const s = w0.fire.sales[0];
   ok(!!s, 'found a sale for the replay test'); const ME = 'bc1qfiresaletest0000000000000000000000000';
-  const rows = [row(s.start, ME, 69, 'pet:hatch'), row(s.start, ME, 21.39, 'pet:hatch'), row(s.start + 1, ME, 21.38, 'pet:hatch'), row(s.start + 1, ME, 690, 'pet:hatch12'), row(s.end, ME, 21.39, 'pet:hatch')];
+  /* The fixture includes Lord Kek's defeat (972869), so halving 1 stacks with the sale (era 1: 69 / 2 x 0.31 = 10.695, not the era-0 21.39).
+   * Take the era from the replayed fixture instead of hardcoding Oct 22 era-0 prices; later halvings (live 973371) then keep this test valid. */
+  const wb = run(c3, S, [], s.start + 1, HH), ERA = V3.eraAt(wb, s.start + 1), SP = Math.round(69 / Math.pow(2, ERA) * 0.31 * 1e8) / 1e8, under = Math.round((SP - 0.01) * 1e8) / 1e8;
+  const rows = [row(s.start, ME, 69, 'pet:hatch'), row(s.start, ME, SP, 'pet:hatch'), row(s.start + 1, ME, under, 'pet:hatch'), row(s.start + 1, ME, 690, 'pet:hatch12'), row(s.end, ME, SP, 'pet:hatch')];
   const w = run(c3, S, rows, s.end + 10, HH), mine = w.pets.filter(p => p.owner === ME);
-  ok(mine.length === 14, 'full + sale hatch + sale dozen valid; underpaid sale hatch and post-sale sale-price hatch rejected (' + mine.length + ')');
+  ok(V3.costAt(wb, 69, s.start + 1) === SP && mine.length === 14, 'full + sale hatch + sale dozen valid; underpaid sale hatch and post-sale sale-price hatch rejected (era ' + ERA + ', sale hatch ' + SP + ', ' + mine.length + ')');
   ok(V3.fireSpinsOf(w, ME) === 2 && w.fireSpinLog.length === 2, 'two full-price burns in the sale -> 2 saved spins in the ledger');
   ok(w.fireSpinLog.every(x => x.sale === s.arm && x.owner === ME), 'ledger rows carry the sale + owner');
   const w2 = run(c3, S, rows, s.end + 10, HH); ok(JSON.stringify(w2.fireSpinLog) === JSON.stringify(w.fireSpinLog), 'ledger replays identically');
