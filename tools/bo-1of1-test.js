@@ -9,15 +9,18 @@ const V2S = ['head', 'face', 'back', 'hand', 'body', 'feet', 'weapon'];
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0);
 ok(V.ACTIVATE_BO_BLOCK === 973343, 'gate 973343'); ok(V.BO_POWER === 134, 'power 134');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: s0.hashes };
+/* gate/blocks derived from the snapshot tip (never hand-fixed when the chain passes the gate): the 'before' world is the tip with the gate moved
+ * just past it; the grant world uses the real gate, or the tip if the chain has not reached it yet. */
+const G = Math.min(V.ACTIVATE_BO_BLOCK, tip); const END = Math.max(tip, V.ACTIVATE_BO_BLOCK) + 157; /* breeding blocks after both the snapshot tip and the real gate (973500 on the frozen fixture, as before) */ V._setBo(tip + 1);
 const w0 = run(c, s, [], tip); ok(!w0.pets.some(p => p.species === 'bojackson'), 'no Bo before the gate');
-V._setBo(tip); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'bojackson');
+V._setBo(G); const w = run(c, s, [], tip), B = w.pets.filter(p => p.species === 'bojackson');
 ok(B.length === 1, 'exactly one Bo'); const b = B[0];
 ok(b.owner === 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', 'owner 3gqd');
 ok(b.name === 'Bo Jackson' && b.tier === 3 && b.supreme && b.supreme.id === 'bo' && b.supreme.title === 'Bo Knows' && b.supreme.of === 1, 'name/tier/1 of 1');
-ok(b.stage === 0 && b.care === 0, 'granted as an egg'); ok(pw(b) === 134, 'power 134 got ' + pw(b)); ok(!b.grantPower, 'not in the 155-160 supreme sweep');
+{ const eg = G < tip ? run(c, { tip: G, rows: s.rows.filter(r => r.block_index <= G), hashes: s.hashes }, [], G).pets.find(p => p.species === 'bojackson') : b; ok(eg && eg.id === b.id && eg.stage === 0 && eg.care === 0, 'granted as an egg (at the gate ' + G + ')'); } /* past the gate the real owner may already have fed it */ ok(pw(b) === 134, 'power 134 got ' + pw(b)); ok(!b.grantPower, 'not in the 155-160 supreme sweep');
 ok(K.every(k => b.stats[k] >= 1 && b.stats[k] <= 30), 'stats 1..30');
 const w2 = run(c, s, [], tip); ok(w2.pets.filter(p => p.species === 'bojackson').length === 1, 'once');
-ok(V.breedable(Object.assign({}, b, { stage: 3 }), 973400) === null, 'can breed');
+ok(V.breedable(Object.assign({}, b, { stage: 3 }), END) === null, 'can breed');
 /* BO GEAR (owner: just give to player): one of each Bo piece in 3gqd's inventory, unworn; nobody else has any; never in a roll pool; renders */
 { const BG = (c.V2Gear.BO_GEAR || []).map(x => x[0]); ok(BG.length === 6, 'six Bo gear pieces');
   BG.forEach(id => { const mine = Object.values(w.items).filter(g => g.item === id); ok(mine.length === 1 && mine[0].owner === b.owner && !mine[0].on, id + ': one, owned by 3gqd, unworn');
@@ -29,7 +32,7 @@ console.log('Bo #' + b.id + ' stats ' + JSON.stringify(b.stats) + ' power ' + pw
 
 /* BREEDING: Bo breeds like the contest 1 of 1s (Bo counts as a copy of the partner's species; normal odds, tier, stats, cap, cooldown) and every
  * Bo baby gets Bo's eye black (art.boMark, looks only). Never a Bo, never a 1 of 1. Hybrid partner -> hybrid baby; 3-way partner -> 3-way baby. */
-const R = c.V2Render; const END = 973500; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
+const R = c.V2Render; for (let x = tip + 1; x <= END + 300; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
 const wb = JSON.parse(JSON.stringify(w)); wb.byId = {}; wb.pets.forEach(p => { wb.byId[p.id] = p; }); const bo = wb.byId[b.id]; bo.stage = 3; bo.care = 999;
 const clone = () => { const ww = JSON.parse(JSON.stringify(wb)); ww.byId = {}; ww.pets.forEach(p => { ww.byId[p.id] = p; }); return ww; };
 const live = wb.pets.filter(p => !p.dead && !p.released && !p.community && !p.supreme && !p.burnLord && !p.contest && p.species !== 'bojackson');

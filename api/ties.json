@@ -1,6 +1,6 @@
 {
- "lastBlock": 973689,
- "count": 265,
+ "lastBlock": 973702,
+ "count": 272,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3182,6 +3182,90 @@
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 38979,
+   "asset": "A3631342139806040257",
+   "tiedBlock": 973691,
+   "tiedTx": "f6d922f9737f3c825febb5a4d711a40399c058a11b5b7730640ed042964a8e4c",
+   "kind": "deed",
+   "name": "Vohabo",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40222,
+   "asset": "A12676652984290153615",
+   "tiedBlock": 973691,
+   "tiedTx": "7bcf599dddb8515258a83887c24607b617dc865a89c5480a8b9ba8d54305812b",
+   "kind": "deed",
+   "name": "Koofapip",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40407,
+   "asset": "A8493399505652112877",
+   "tiedBlock": 973691,
+   "tiedTx": "916921eeb90da5be313258385e1016c6e15c2a1ffbc37fb804d617c7a2e29706",
+   "kind": "deed",
+   "name": "Boowoosepip",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40976,
+   "asset": "A9742961224525710809",
+   "tiedBlock": 973691,
+   "tiedTx": "9cf7219e15369fccf75a1f90c85828c492afdf3b5731e8f629f9aeca4ca35d8f",
+   "kind": "deed",
+   "name": "Loomufoni",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40079,
+   "asset": "A10587851467977841949",
+   "tiedBlock": 973699,
+   "tiedTx": "fd7699d84c589515624153107f598a73a868e755ad409a8ddd9bad45eb96efc0",
+   "kind": "deed",
+   "name": "Pelepip",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40854,
+   "asset": "A886690403927215435",
+   "tiedBlock": 973699,
+   "tiedTx": "f6b14b1233d963529a3d51efe14613a9106b645c2685ab73bb38ec7e5e503fa1",
+   "kind": "deed",
+   "name": "Rohedootot",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 41026,
+   "asset": "A5559399164695849278",
+   "tiedBlock": 973699,
+   "tiedTx": "436e7013deedbd508fb10602d0d1bf2cb3e91dbf31ce4414efd535c2803aba63",
+   "kind": "deed",
+   "name": "Gooloozip",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
