@@ -1011,10 +1011,52 @@
     window.PetCore = NG; try { return framesWith(nk, 5, ids, [], 6); } finally { window.PetCore = live; } }
   /** communityGearText(w): 'Headwear: X · Grip: Y' (or '' when Nakamoto has no community gear yet). */
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
+  /* community-roll-clarity (owner Oct 28 2026 11:45 PM CT: "It's hard to know what gear you rolled for community pet", then "what does Homer have?
+   * Looks like a stick. Doesn't say anywhere"). DISPLAY ONLY, no rule touched, replay unchanged.
+   * communityWorn(w) -> { on: [...], off: [...] }: the community pet's pieces split by what his sprite actually DRAWS. w.community.gear is shared by every
+   * community pet, so the old 'Wearing:' line listed pieces rolled for earlier pets (FUNTRUMP, Lord Kek ...) that Homer Pepe never wears (hpGear only
+   * draws rolls from ACTIVATE_HOMER_BLOCK on). Each entry: slot, slotName, label, item, t (0-3, ★ = 3), tierName, legendary, by, block, tx. */
+  function cwEntry(x, sl) { var t = x.legendary ? 3 : (x.tier || 0), TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'];
+    return { slot: sl, slotName: V.slotLabel ? V.slotLabel(sl) : sl, label: x.label, item: x.item, t: t, tierName: TL[t] || '', legendary: !!x.legendary, by: x.by, block: x.block, tx: x.tx }; }
+  function communityWornGate(w) { if (hpOn(w)) return { gate: V.ACTIVATE_HOMER_BLOCK, skip: {} }; if (ftOn(w)) return { gate: V.ACTIVATE_FUNTRUMP_BLOCK, skip: {} };
+    if (kekOn(w)) return { gate: V.kekActivation ? V.kekActivation() : null, skip: { head: 1 } }; return null; }
+  function communityWorn(w) { var g = (w && w.community && w.community.gear) || {}, G = communityWornGate(w), on = [], off = [];
+    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (!x) return; var worn = !G || (!G.skip[sl] && G.gate != null && x.block >= G.gate); (worn ? on : off).push(cwEntry(x, sl)); });
+    return { on: on, off: off, since: G ? G.gate : null }; }
+  function cwPill(e) { return '<span class="pill tier tier-' + TID[e.t] + '">' + esc(e.tierName) + (e.legendary ? ' ★' : '') + '</span>'; }
+  function cwAddr(a, me) { a = String(a || ''); return a === me && me ? 'you' : '<span class="addr" title="' + esc(a) + '">' + esc(a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a) + '</span>'; }
+  function cwNum(n) { return Number(n || 0).toLocaleString('en-US'); }
+  var cwHelpOpen = false; /* the explainer stays open across re-renders (the play panel is rebuilt on every render) */
+  /** communityGearHtml(w, me): a labeled list of what the community pet wears (name + rarity per slot, matching the sprite), the player's own recent
+   *  community rolls, and a tap-to-open explainer (#cGearHelp). Bind with bindCommunityGear(box, sprite). */
+  function communityGearHtml(w, me) { var c = (w && w.community) || {}, nm = c.petName || 'The community pet', W = communityWorn(w), on = W.on.slice(), h = '';
+    var wizHat = c.returned && !hpOn(w) && !ftOn(w) && !kekOn(w) && !(c.gear || {}).head && window.WizardSprite; /* the Bitcoin Wizard's synthetic signature hat (display only, as before) */
+    if (kekOn(w)) h += '<div class="small">👑 <b>Headwear:</b> his nemes (part of him)</div>';
+    if (wizHat) h += '<div class="small">🎩 <b>Headwear:</b> Wizard Hat ★ (signature)</div>';
+    h = '<div class="small" id="cGear"><b>' + esc(nm) + ' wears ' + (on.length ? on.length + ' gear piece' + (on.length === 1 ? '' : 's') : 'no rolled gear yet') + '</b>' + (on.length ? ' <span class="muted">(tap one to see it)</span>' : '') + '</div>' + h +
+      on.map(function (e) { return '<div class="small"><button type="button" class="q" data-cgear="' + esc(e.slot) + '" title="What is this?">' + esc(e.slotName) + ': <b>' + esc(e.label) + '</b></button> ' + cwPill(e) + '</div>'; }).join('');
+    var mine = me ? ((c.gearLog || []).filter(function (g) { return g.by === me; }).slice(-5).reverse()) : [];
+    if (mine.length) { var wornTx = {}; on.forEach(function (e) { wornTx[e.tx] = 1; });
+      h += '<div class="small" id="cMyRolls"><b>🎲 Your recent community rolls</b>' + mine.map(function (g) { var e = cwEntry(g, g.slot), cur = (c.gear || {})[g.slot];
+        var st = wornTx[g.tx] ? '✓ worn by ' + esc(nm) + ' now' : cur && cur.tx !== g.tx && cur.block >= g.block ? 'replaced by ' + esc(cur.label) : 'kept in the record, not worn now';
+        return '<div>' + esc(e.label) + ' ' + cwPill(e) + ' · ' + esc(e.slotName) + ' · block ' + cwNum(g.block) + ' · <span class="muted">' + st + '</span></div>'; }).join('') + '</div>'; }
+    var help = on.map(function (e) { return '<p id="cGearHelp-' + esc(e.slot) + '"><b>' + esc(e.slotName) + ': ' + esc(e.label) + '</b> ' + cwPill(e) + '<br>Rolled by ' + cwAddr(e.by, me) + ' with a community gear roll at block ' + cwNum(e.block) +
+      (e.tx ? ' (burn <span title="' + esc(e.tx) + '">' + esc(String(e.tx).slice(0, 10)) + '…</span>)' : '') + '. ' + esc(nm) + ' wears it until a newer roll lands in the ' + esc(e.slotName) + ' slot.</p>'; }).join('');
+    if (W.off.length) help += '<p>Not worn: ' + W.off.map(function (e) { return esc(e.label) + ' (' + esc(e.tierName) + ', ' + esc(e.slotName) + ')'; }).join(', ') + '. ' + (W.since != null ? 'These were rolled for an earlier community pet. ' + esc(nm) + ' only wears pieces rolled from block ' + cwNum(W.since) + ' on.' : 'Not drawn on this pet.') + '</p>';
+    help += '<p>How it works: a community gear roll burns XCPETS and gives ' + esc(nm) + ' one random gear piece, which he wears right away. A new piece replaces the one in that slot. The piece is his, so it does not go to your stash. Feeding the community pet grows him but gives no gear.</p>';
+    h += '<details class="small muted" id="cGearHelp"' + (cwHelpOpen ? ' open' : '') + '><summary>What is ' + esc(nm) + ' wearing?</summary>' + help + '</details>';
+    return h; }
+  /** bindCommunityGear(box, sprite): tapping the sprite or a gear line opens the explainer (and scrolls that piece into view). Display only. */
+  function bindCommunityGear(box, sprite) { if (!box) return; var d = box.querySelector('#cGearHelp'); if (!d) return;
+    d.addEventListener('toggle', function () { cwHelpOpen = d.open; });
+    function show(sl) { d.open = true; cwHelpOpen = true; var t = sl && box.querySelector('#cGearHelp-' + sl) || d; try { t.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { } }
+    box.querySelectorAll('[data-cgear]').forEach(function (b) { b.onclick = function () { show(b.getAttribute('data-cgear')); }; });
+    if (sprite) { sprite.onclick = function () { show(null); }; sprite.title = 'Tap to see what the community pet is wearing'; sprite.setAttribute('role', 'button'); sprite.tabIndex = 0;
+      sprite.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(null); } }; } }
   /** communityWearing(w): 'Wearing: Headwear: X · …' or 'Wearing: no gear yet' (always shown for the community pet). */
   function communityWearing(w) { if (kekOn(w)) { var kg = kekGear(w), kt = Object.keys(kg).map(function (sl) { return kg[sl].label + (kg[sl].signature ? ' ★' : ''); }).join(' · '); return 'Wearing: ' + (kt || 'his nemes (part of him)'); }
-    var t = communityGearText(w), c = w && w.community, g = (c && c.gear) || {};
-    if (c && c.returned && !g.head && window.WizardSprite) t = 'Headwear: Wizard Hat ★ (signature)' + (t ? ' · ' + t : ''); /* synthetic signature piece, display only */
+    var c = w && w.community, g = (c && c.gear) || {}, t = communityWorn(w).on.map(function (e) { return e.slotName + ': ' + e.label + ' (' + e.tierName + (e.legendary ? ' ★' : '') + ')'; }).join(' · '); /* community-roll-clarity: only what the sprite draws, with rarity */
+    if (c && c.returned && !hpOn(w) && !ftOn(w) && !g.head && window.WizardSprite) t = 'Headwear: Wizard Hat ★ (signature)' + (t ? ' · ' + t : ''); /* synthetic signature piece, display only */
     return 'Wearing: ' + (t || 'no gear yet'); }
   /** familyHtml(w, p): the family line for the pet popup AND the public pet page (2026-10-15, Jake). Parents linked ('none (hatched from a mint)' for
    * minted pets), every breeding partner with block and the resulting egg/pet linked, breedings n/max (+ cooldown). Display only. */
@@ -1119,7 +1161,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, communityWorn: communityWorn, communityGearHtml: communityGearHtml, bindCommunityGear: bindCommunityGear, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

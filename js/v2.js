@@ -142,7 +142,7 @@
     try { localStorage.setItem(k, JSON.stringify(s)); } catch (e) { } return out; }
   /** gear results: where a piece came from, in plain words (no block numbers). Returns { key, long, short }. */
   function winSource(x, w, logBy) { var p = x.rolledOn != null ? w.byId[x.rolledOn] : null, nm = x.rolledOn != null ? '#' + x.rolledOn + (p ? ' ' + p.name : '') : '', g = w.items[x.gid] || {};
-    if (x.community) return { key: 'croll', long: 'Your community gear roll', short: 'Community roll' };
+    if (x.community) return { key: 'croll', long: 'Your community gear roll: ' + commShort(w) + ' (the community pet) got it and wears it', short: 'Community roll' };
     if (g.wonBy != null) { var vs = g.from != null ? ' vs #' + g.from : ''; return { key: 'fight', long: 'Battle win' + vs + ' (won by #' + g.wonBy + ')', short: 'Battle win' + vs, pet: g.wonBy, vs: g.from }; }
     if (x.src === 'roll') return { key: 'roll', long: 'Gear roll you burned for ' + nm, short: 'Gear roll' };
     if (x.src === 'froll') return { key: 'froll', long: 'Founder free roll for ' + nm, short: 'Free roll' };
@@ -155,6 +155,7 @@
     if (x.src === 'live') return { key: 'live', long: 'From the first version of the game', short: 'First game' };
     return { key: 'other', long: 'New piece', short: 'New piece' }; }
   var SRC_PLURAL = { roll: ['gear roll you burned', 'gear rolls you burned'], hatch: ['free bonus roll from hatching', 'free bonus rolls from hatching'], stage: ['free bonus roll from growing a stage', 'free bonus rolls from growing a stage'], meal: ['free bonus roll from a meal', 'free bonus rolls from meals'], froll: ['founder free roll', 'founder free rolls'], oroll: ['overflow roll', 'overflow rolls'], croll: ['community gear roll', 'community gear rolls'], fight: ['battle win', 'battle wins'], trophy: ['trophy', 'trophies'], live: ['piece from the first game', 'pieces from the first game'], other: ['new piece', 'new pieces'] };
+  function commShort(w) { var c = w && w.community; return (c && c.petName) || 'the community pet'; } /* community-roll-clarity: the pet's own name on the result card */
   function communityName(w) { var c = w.community; return c && c.current === 'homer' ? 'Homer Pepe, the community pet' : c && c.current === 'funtrump' ? 'FUNTRUMP, the community pet' : c && c.current === 'kek' ? 'Lord Kek, the community pet' : c && c.returned && !w.wizardMythic ? 'the Bitcoin Wizard, the community pet' : 'the community pet'; }
   // ---------------------------------------------------------------- hatch popup = live #packBox review (live game.js showPack/drawPack), gear wins use the same box
   var packY = null, lastHatchN = 0; /* hatch-exit 2026-10-21: scroll spot when the results opened + size of the last hatch (for 🥚 Hatch more) */
@@ -252,7 +253,7 @@
     list.slice(rev.page * REV_PAGE, rev.page * REV_PAGE + REV_PAGE).forEach(function (x) {
       var d = document.createElement('div');
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
-          '<div class="gwwhere">' + (x._on === 'c' ? '✓ On the community pet' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
+          '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commShort(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
       var gd = dudGuard(w, x), on = !!rev.sel[x.id]; d.className = 'egg pkcard t' + x.art.tierIndex + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to hide'); d.title = 'Tap to select or unselect';
       d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(x.stageName) : '') + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
@@ -303,7 +304,7 @@
     var T = V.WIZARD_THRESHOLDS, nx = wiz && c.wizardStage < 5 ? T[c.wizardStage + 1] : null, rp = V.returnProgress(c.burned);
     var cFed = c.current === 'homer' ? c.homerFed || 0 : c.current === 'funtrump' ? c.funtrumpFed || 0 : c.current === 'kek' ? c.kekFed || 0 : null; /* site-audit 2026-10-27: each community pet's own counter */
     $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(cFed != null ? cFed : c.burned)) + ' <span class="asset">XCPETS</span> ' + (cFed != null ? 'fed to ' + esc(c.petName) : 'burned') +
-      '<div class="small muted" id="cWearing">' + esc(R.communityWearing ? R.communityWearing(w) : 'Gear: ' + R.communityGearText(w)) + '</div>';
+      '<div id="cWearing">' + (R.communityGearHtml ? R.communityGearHtml(w, ME) : '<div class="small muted">' + esc(R.communityWearing ? R.communityWearing(w) : 'Gear: ' + R.communityGearText(w)) + '</div>') + '</div>'; /* community-roll-clarity: labeled worn gear (name + rarity), your recent rolls, tap-to-explain */
     /* home-page community readout on play (same numbers as index: V2Render.communityStats) */
     if (R.communityStats) { var cs = R.communityStats(w, (V2Mock.state().rows || []).length), F = function (n) { return fmt(n); };
       $('community').insertAdjacentHTML('beforeend', '<div class="sharedwrap cstats"><div class="stats"><div><span>Stage</span><b id="pcStage">' + esc(cs.stage) + '</b></div><div><span>Fed to the community pet</span><b id="pcFed">' + F(cs.fed) + '</b></div><div><span>Next stage</span><b id="pcNext">' + (cs.next != null ? F(cs.next) + ' to ' + esc(cs.nextName) : 'Mythic reached') + '</b></div></div>' +
@@ -312,6 +313,7 @@
     if (R.kekOn && R.kekOn(w) && window.V2KekArrival) { $('community').insertAdjacentHTML('beforeend', '<div class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</div>'); V2KekArrival.bindReplay($('community'), world); V2KekArrival.watch($('communityPanel') || commAnim.c, world); } /* Lord Kek arrival scene: once per player, display only */
     if (gap && w.kekMythic && R.setNextNo) R.setNextNo(4); /* gated: Lord Kek in Cold Storage -> next is #4 */
     if (gap) { var nn = '#' + R.COMMUNITY_NEXT_NO; $('community').innerHTML = '<b>' + esc(R.comingSoonText()) + '</b>' + '<div class="small muted">' + (w.kekMythic ? 'Lord Kek' : 'The Bitcoin Wizard') + ' reached Mythic and is in Cold Storage. Community feeding and gear rolls open when pet ' + nn + ' arrives.</div>' + (R.wizardTopHtml ? R.wizardTopHtml(w, esc, fmt) : ''); }
+    commAnim.c.onclick = null; if (R.bindCommunityGear && !gap) R.bindCommunityGear($('community'), commAnim.c); /* community-roll-clarity: tap the sprite or a piece to see what it is */
     var crOn = V.crollOn(S.tip) && !gap; $('crollBtn').textContent = 'Community gear roll (' + fmt(V.COSTS.croll) + ')'; $('crollBtn').disabled = !crOn;
     if (!crOn && !gap) $('community').insertAdjacentHTML('beforeend', '<div class="small muted" id="crollNote">Community gear roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK) + '.</div>');
     $('crollBtn').title = crOn ? 'Burn ' + fmt(V.COSTS.croll) + ' XCPETS: the community pet gets one random gear piece and wears it right away (a new piece replaces the old one in that slot)' : 'Community gear roll switches on at block ' + fmt(V.ACTIVATE_CROLL_BLOCK);
