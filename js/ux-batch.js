@@ -127,7 +127,8 @@
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
     /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
     var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
-    var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
+    var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : (V.feedRunsOn && window.V2UI && V2UI.feedQueue && V.feedRunsOn(w.tip || 0) ? V2UI.feedQueue(w, ME, hungry.map(function (p) { return p.id; }).filter(function (id) { return !(window.__demo && __demo.hiddenIds && __demo.hiddenIds().indexOf(id) >= 0); })) : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; })));
+    if (V.feedRunsOn && V.feedRunsOn(w.tip || 0)) hungry = hq.reduce(function (a, q) { return a.concat(q.petIds || (q.petId != null ? [q.petId] : [])); }, []); /* feed-all-one-burn: count only the pets the burn feeds (Mythics never eat) */
     if (!FAP) $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; if (!FAP) $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
     if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';

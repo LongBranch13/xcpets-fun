@@ -3,6 +3,8 @@
  * Tick a box, shift-click a second box to tick the whole range, or use Select all / Select none / Select mode. Bulk actions on the checked pets:
  *   🍖 Feed selected: the hungry, alive, checked, not discarded pets you own, as explicit pet-number burns (pet:feed / pet:fm / pet:fl).
  *      Never feed all, never a skip list (feed all fed dead pets: blocks 973486 + 973489). The cost and burn count show on the button first.
+ *      From V2Rules.ACTIVATE_FEED_RUNS_BLOCK (feed-all-one-burn, Oct 28 2026): only pets that really eat (no Mythic, none away on a quest), as ONE pet:fr
+ *      burn (a list of the checked pets' places, never a skip list) whenever that is no more burns than the pet-number plan.
  *   🗑️ Discard selected: the same free local Discard as before (confirm first, hidden in this browser, Undo toast, restorable from the Discard pile).
  * Feed all hungry is unchanged. This file keeps the mypets-top layout: #bFeedKept is the big main button (same id, so the same CSS), and the
  * Discard selected button (js/v2-petdiscard.js) moves next to Feed all hungry where Discard… was. */
@@ -19,6 +21,7 @@
     return { w: w, sel: sel, hungry: sel.filter(function (p) { return p.hungry; }) }; }
   function label() { var b = $('bFeedKept'); if (!b || !D() || !D().world) return;
     var r = selHungry(), q = r.hungry.length && D().feedQueueList ? D().feedQueueList(r.w, r.hungry.map(function (p) { return p.id; })) : [], sum = q.reduce(function (t, x) { return t + (x.amount || 0); }, 0);
+    if (window.V2Rules && V2Rules.feedRunsOn && r.w && V2Rules.feedRunsOn(r.w.tip || 0)) { var fed = q.reduce(function (a, x) { return a + (x.petIds ? x.petIds.length : 1); }, 0); r.hungry = r.hungry.slice(0, fed); } /* feed-all-one-burn: count the pets that really eat (Mythics never eat) */
     b.innerHTML = '🍖 Feed selected <span class="cost">(' + (r.hungry.length ? fmt(r.hungry.length) + ' hungry of ' + fmt(r.sel.length) + ' selected · ' + fmt(sum) + ' XCPETS · ' + fmt(q.length) + ' burn' + (q.length === 1 ? '' : 's') : r.sel.length ? 'all ' + fmt(r.sel.length) + ' selected pets fed' : 'tick pets to feed them') + ')</span>';
     b.disabled = !r.hungry.length; }
   /* the Discard selected button is made by js/v2-petdiscard.js; it takes the place of the old Discard… button */
