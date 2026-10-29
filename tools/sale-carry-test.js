@@ -17,7 +17,7 @@ function run(carry, rows, ops, dex, tip) { const c = ctx(carry), H = Object.assi
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
 let rn = 0; const row = (b, src, tag) => ({ tx_index: 9e9 + (rn++), tx_hash: h('row' + tag), block_index: b, source: src, asset: 'XCPETS', quantity: 1, tag: hex(tag), status: 'valid' });
 const B0 = run(null, [], [], null, T), V0 = B0.V, w0 = B0.w, C0 = w0.lookCopies || {};
-ok(V0.ACTIVATE_SALE_CARRY_BLOCK === 973646 && V0.ACTIVATE_SALE_CARRY_BLOCK > 973638, "shipped gate 973646 is after tip 973638 (+8)");
+ok(V0.ACTIVATE_SALE_CARRY_BLOCK === 973644 && V0.ACTIVATE_SALE_CARRY_BLOCK > 973638, "shipped gate 973644 is after tip 973638 (+6)");
 const P = w0.pets.find(p => !p.dead && !p.released && !p.community && p.owner && V0.wornOf(w0, p.id).length && Object.values(C0).some(x => x.at === p.id && x.holder === p.owner) && !V0.giveLocks(w0, p, T + 10));
 ok(!!P, 'fixture pet with worn gear + a Flex Forge look copy: #' + (P && P.id));
 const O = P.owner, worn0 = V0.wornOf(w0, P.id).map(g => g.gid).sort(), copy = Object.keys(C0).find(k => C0[k].at === P.id && C0[k].holder === O);
