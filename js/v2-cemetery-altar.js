@@ -8,7 +8,7 @@
  * gear 1% / 2.5% / 5% / 10%. boost = gap times (1 - product of (1 - share)), per stat, rounded down, at least 1 while below the ceiling. */
 (function () {
   'use strict';
-  var PET = [0.03, 0.07, 0.14, 0.25], GEAR = [0.01, 0.025, 0.05, 0.10], RIPE = 1.5, CAP = 3, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
+  var PET = [0.03, 0.07, 0.14, 0.25], GEAR = [0.01, 0.025, 0.05, 0.10], RIPE = 1.5, HW = 1.5, CAP = 3, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
   var MILES = [[1.5, 'Shambler'], [2, 'Ghoul'], [2.5, 'Revenant'], [2.8, 'Dread'], [3, 'Ceiling']];
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'], AW = 160, AH = 100, PAGE = 48;
   var RM = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
@@ -16,10 +16,15 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   var A = { ctx: null, grave: null, mine: [], offered: [], gear: [0, 0, 0, 0], stash: [0, 0, 0, 0], filt: 'all', shown: PAGE, fx: [], flares: [0, 0, 0, 0, 0, 0], tally: 0, raf: 0, rise: null, sample: '', lastMile: -1, sound: false, ask: null, shown0: 0 };
+  /* Halloween window boost (PROPOSED 1.5 times, owner said yes to a boost Oct 28 2026): Oct 31 through Nov 11 2026 CT, every offering's share counts 1.5 times,
+   * same 3 times ceiling. Preview toggle: on by date inside the window; ?halloween=1 / ?halloween=0 force it. The live rule will use block heights. */
+  var HW_FROM = Date.UTC(2026, 9, 31, 5), HW_TO = Date.UTC(2026, 10, 12, 6); /* Oct 31 00:00 CDT to Nov 12 00:00 CST */
+  function hwDefault() { var q = null; try { q = new URLSearchParams(location.search).get('halloween'); } catch (e) {} if (q === '1') return true; if (q === '0') return false; var n = Date.now(); return n >= HW_FROM && n < HW_TO; }
+  A.hw = hwDefault();
   try { A.sound = localStorage.getItem('xcpets-cem-sfx') === 'on'; } catch (e) {}
 
   /* ---------------------------------------------------------------- the math (proposed) ---------------------------------------------------------------- */
-  function share(o) { return o.kind === 'gear' ? GEAR[o.tier] : PET[o.tier] * (o.ripe ? RIPE : 1); }
+  function share(o) { var s = o.kind === 'gear' ? GEAR[o.tier] : PET[o.tier] * (o.ripe ? RIPE : 1); return Math.min(0.99, s * (A.hw ? HW : 1)); }
   function project(base, list) { var keep = 1; list.forEach(function (o) { keep *= 1 - share(o); }); var f = 1 - keep, out = {}, tot = 0, b0 = 0;
     STATS.forEach(function (k) { var d = base[k] || 0, gap = d * (CAP - 1), add = Math.floor(gap * f); if (f > 0 && gap > 0 && add < 1) add = 1; if (add > gap) add = gap; out[k] = d + add; tot += d + add; b0 += d; });
     return { stats: out, total: tot, base: b0, ceil: b0 * CAP, frac: f, exact: b0 + b0 * (CAP - 1) * f }; }
@@ -137,6 +142,7 @@
   function shell() { var g = A.grave, sa = A.ctx.shortAddr, ME = A.ctx.ME;
     return '<div class="alt-head"><h2 class="alt-title">🕯️ Seance at the altar <span class="alt-pv">PREVIEW</span></h2><div class="alt-tools"><button type="button" class="q" id="altSnd" aria-pressed="' + A.sound + '" title="Sound">' + (A.sound ? '🔊' : '🔇') + '</button><button type="button" class="q" id="altX" aria-label="Close the seance">✕</button></div></div>' +
       '<p class="small alt-who">Raising <b>' + esc(g.name) + '</b> <span class="muted">#' + g.id + ' · ' + esc(g.spl || '') + ' · ' + TL[g.tier] + ' · owner ' + esc(sa(g.owner)) + (ME && g.owner === ME ? ' (you)' : '') + '</span></p>' +
+      '<p class="small alt-hw" id="altHwRow"><span class="alt-hwb" id="altHwB"' + (A.hw ? '' : ' hidden') + '>🎃 Night of the Dead: offerings count 1.5 times</span> <button type="button" class="q" id="altHw" aria-pressed="' + A.hw + '" title="Preview the Halloween window boost (Oct 31 through Nov 11)">🎃 Halloween boost: ' + (A.hw ? 'on' : 'off') + '</button></p>' +
       (A.sample ? '<p class="small alt-note">👀 No wallet pets here, so this preview borrows a sample player\'s living pets (' + esc(sa(A.who)) + '). Nothing is burned.</p>' : '') +
       '<div class="alt-grid"><div class="alt-left"><div class="alt-stage"><div class="alt-cvwrap"><canvas id="altCv" width="' + AW + '" height="' + AH + '" role="img" aria-label="A stone altar with candles beside the grave. Drop or tap pets to offer them."></canvas><div class="alt-drop" aria-hidden="true">Drop here</div><div class="alt-toast" id="altToast" aria-live="polite"></div></div>' +
       '<div class="alt-power"><div class="alt-pnum" id="altNum"></div><div class="alt-bar" id="altBar"><i class="alt-b0"></i><i class="alt-b1"></i>' + MILES.map(function (m, i) { return '<span class="alt-mk" data-i="' + i + '" style="left:' + (m[0] / CAP * 100) + '%"><em>' + m[1] + '</em></span>'; }).join('') + '</div>' +
@@ -147,7 +153,7 @@
       '<div class="alt-filt" role="group" aria-label="Filter">' + [['all', 'All'], ['ripe', '🍂 Ripe'], ['0', 'Common'], ['1', 'Uncommon'], ['2', 'Rare'], ['3', 'Legendary']].map(function (f) { return '<button type="button" class="q" data-f="' + f[0] + '" aria-pressed="' + (A.filt === f[0]) + '">' + f[1] + '</button>'; }).join('') +
       '<button type="button" class="q alt-quick" id="altQuick">⚡ +5 ripe Commons</button></div><div class="alt-tiles" id="altTiles"></div><div class="alt-more"><button type="button" class="q" id="altMore">Show more</button></div>' +
       '<div class="alt-gear"><b class="small">🎒 Stash gear</b> <span class="small muted">(optional, counts half a pet)</span><div class="alt-gr">' + TL.map(function (t, i) { return '<span class="alt-gs tier-' + TID[i] + '"><span class="pill tier tier-' + TID[i] + '">' + t + '</span> <button type="button" class="q" data-g="' + i + '" data-d="-1" aria-label="One less ' + t + ' gear">−</button> <b id="altG' + i + '">0</b>/' + A.stash[i] + ' <button type="button" class="q" data-g="' + i + '" data-d="1" aria-label="One more ' + t + ' gear">+</button></span>'; }).join('') + '</div></div></div></div>' +
-      '<p class="small muted alt-foot">Preview only. No burn, no rule change. Boost numbers are proposals for the owner: each offering closes a share of the gap left to the 3 times ceiling (pets Common 3%, Uncommon 7%, Rare 14%, Legendary 25%; ripe 1.5 times; gear 1% to 10%).</p>'; }
+      '<p class="small muted alt-foot">Preview only. No burn, no rule change. Boost numbers are proposals for the owner: each offering closes a share of the gap left to the 3 times ceiling (pets Common 3%, Uncommon 7%, Rare 14%, Legendary 25%; ripe 1.5 times; gear 1% to 10%; Halloween window Oct 31 through Nov 11: every share 1.5 times, same 3 times ceiling).</p>'; }
   function visible() { return A.mine.filter(function (p) { return A.filt === 'all' ? true : A.filt === 'ripe' ? p.ripe && !p.myth : p.tier === +A.filt && !p.myth; }); }
   function isOn(id) { return A.offered.some(function (o) { return o.id === id; }); }
   function tile(p) { var on = isOn(p.id), dis = p.myth, ask = A.ask === p.id;
@@ -184,6 +190,7 @@
   function takeBack(id) { A.offered = A.offered.filter(function (o) { return o.id !== id; }); A.tally = Math.max(0, A.tally - 1); SFX.back(); renderAll(); kick(); }
   function bind(el) { var R = A.ctx.R;
     el.querySelector('#altX').onclick = close;
+    el.querySelector('#altHw').onclick = function () { A.hw = !A.hw; this.setAttribute('aria-pressed', A.hw); this.textContent = '🎃 Halloween boost: ' + (A.hw ? 'on' : 'off'); document.getElementById('altHwB').hidden = !A.hw; renderPower(true); kick(); };
     el.querySelector('#altSnd').onclick = function () { A.sound = !A.sound; try { localStorage.setItem('xcpets-cem-sfx', A.sound ? 'on' : 'off'); } catch (e) {} this.textContent = A.sound ? '🔊' : '🔇'; this.setAttribute('aria-pressed', A.sound); if (A.sound) SFX.offer(1); };
     el.querySelector('#altClr').onclick = function () { A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.rise = null; A.lastMile = -1; [0, 1, 2, 3].forEach(function (i) { document.getElementById('altG' + i).textContent = 0; }); SFX.back(); renderAll(); kick(); };
     el.querySelector('#altMore').onclick = function () { A.shown += PAGE; renderTiles(); };
@@ -211,5 +218,5 @@
   function risenCard() { var P = project(A.base, ordered()), mi = -1; MILES.forEach(function (m, i) { if (P.total >= Math.floor(P.base * m[0])) mi = i; }); var wrap = A.cv && A.cv.parentNode; if (!wrap) return;
     var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + '</span><small>preview only, nothing burned</small>'; wrap.appendChild(d);
     setTimeout(function () { if (d.isConnected) d.classList.add('out'); }, 3800); setTimeout(function () { if (d.isConnected) d.remove(); }, 4300); }
-  window.V2CemeteryAltar = { open: open, close: close, project: project, PET: PET, GEAR: GEAR, RIPE: RIPE, _state: function () { return A; }, _offer: offer };
+  window.V2CemeteryAltar = { open: open, close: close, project: project, HW: HW, setHalloween: function (on) { A.hw = !!on; }, PET: PET, GEAR: GEAR, RIPE: RIPE, _state: function () { return A; }, _offer: offer };
 })();
