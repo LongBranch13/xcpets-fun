@@ -1142,7 +1142,7 @@
    * made of (head pieces, FUNTRUMP look pieces, the Wizard staff included), and a 1 of 1 pet (supreme or contest edition) may wear ALL gear.
    * Only the wear checks (wear, equipCheck, outfit, auto-equip) pass the pet; roll pools never do, so drops are unchanged. The Chud beard body
    * exclusion stays (art). Gated: ELIG_B (the block being replayed / the equip op's block) >= the block, so every earlier result is unchanged. */
-  var ACTIVATE_GEAR_ROOTS_BLOCK = 973640; /* tip 973634 + 6 (re-picked 2026-10-28 21:55 CT; 973630 had passed) */
+  var ACTIVATE_GEAR_ROOTS_BLOCK = 973646; /* tip 973638 + 8 (re-picked 2026-10-28 23:04 CT; 973630/973640 too close) */
   function gearRootsOn(b) { return b != null && b >= ACTIVATE_GEAR_ROOTS_BLOCK; }
   function isOneOfOne(p) { return !!(p && ((p.supreme && p.supreme.of === 1) || p.contest)); }
   function rootsEligible(it, species, body, pet) { var bd = body || (isHybrid(species) ? null : species);
@@ -1402,7 +1402,7 @@
    *  - Looks: the advertised flame looks stay on the pet (the seller keeps its flame tier), quest / earned copies on the pet (advertised or still
    *    placed) move to the buyer and stay on. Gifts, swaps and token moves from the gate keep looks on the pet too (lookSweep).
    * Chain views come from the op-less recording replay (w._cg), keyed by listing number, so every viewer reads the same gear. */
-  var ACTIVATE_SALE_CARRY_BLOCK = 973640; /* tip 973634 + 6 */
+  var ACTIVATE_SALE_CARRY_BLOCK = 973646; /* tip 973638 + 8 */
   function carryOn(b) { return b != null && b >= ACTIVATE_SALE_CARRY_BLOCK; }
   function chainList(w, key, list) { var cg = w && w._cg; if (!cg) return list(); if (cg.rec) { var l = list(); cg.map[key] = l.map(function (g) { return g.gid; }); return l; }
     var gids = cg.map[key]; if (!gids) return list(); return gids.map(function (gid) { return w.items[gid]; }).filter(Boolean); }

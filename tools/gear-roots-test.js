@@ -18,7 +18,7 @@ const V = load().V2Rules, G = V.ACTIVATE_GEAR_ROOTS_BLOCK, BEFORE = G - 1;
 const at = (b, it, sp, pet, body, tier) => { V._setEligB(b); return V.eligible(it, sp, body, tier, pet); };
 const hyb = 'hyb:pepe:dodo', don = { id: 46073, species: 'hyb3:nakamoto:kek:funtrump', supreme: { id: 'don', n: 1, of: 1 } }, bo = { id: 49075, species: 'bo', supreme: { id: 'bo', n: 1, of: 1 } };
 const hp = { id: 1, species: hyb }, plain = { id: 2, species: 'pepe' };
-ok(G === 973640 && G > 973634, 'gate ' + G + ' is after tip 973634');
+ok(G === 973646 && G > 973638, 'gate ' + G + ' is after tip 973638');
 ok(V.eligible && V.isOneOfOne(don) && V.isOneOfOne(bo) && !V.isOneOfOne(hp) && V.isOneOfOne({ contest: { id: 'x' } }), 'isOneOfOne: supreme + contest editions only');
 // before the gate: old rule exactly
 ok(!at(BEFORE, 'pimp-hat', hyb, hp) && !at(BEFORE, 'v2-dodo-hat', hyb, hp), 'before gate: hybrid still refused its roots\' head sigs');
