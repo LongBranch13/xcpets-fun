@@ -24,6 +24,7 @@
 
   // ---------------------------------------------------------------- chain state (shared with the other pages: js/v2-chain.js, V2Mock interface)
   var M = window.V2Mock, S = M.state();
+  try { window.addEventListener('xcpets-ops-sync', function () { try { render(); } catch (e) {} }); } catch (e) {} /* gear-stick: equips saved in another tab show here too */
   function save() { M.save(); } function burn(src, tag, amount) { M.burn(src, tag, amount); } function adv(n) { M.adv(n); }
   function world() { return M.world(); }
 
