@@ -1,6 +1,6 @@
 {
- "lastBlock": 973632,
- "count": 263,
+ "lastBlock": 973634,
+ "count": 264,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3158,6 +3158,18 @@
    "speciesLabel": "Wope (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 16668,
+   "asset": "A5105056370852117366",
+   "tiedBlock": 973633,
+   "tiedTx": "61e1e39f76309a13428fc5b773595e72b71ad67d4031478cf681b24a47d74935",
+   "kind": "deed",
+   "name": "Pechichi",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Elder"
   }
  ]
 }
