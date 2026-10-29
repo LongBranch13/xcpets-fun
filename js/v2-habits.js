@@ -17,6 +17,7 @@
   function feedGuardPlans(w, plans, o) { var V = o.V, feedIds = [], other = [], why = {}, hasFeed = false;
     plans.forEach(function (q) { var t = V.parseTag(q.tag), a = t && t.action;
       if (a === 'feed') { hasFeed = true; feedIds.push(t.petId); } else if (a === 'feedm' || a === 'feedl') { hasFeed = true; feedIds = feedIds.concat(t.ids); }
+      else if (a === 'feedr') { hasFeed = true; feedIds = feedIds.concat(q.petIds || (V.feedRunsIds ? V.feedRunsIds(w, o.me, t, o.nb) : [])); } /* feed-all-one-burn: pet:fr carries its pets */
       else if (a === 'feeda') { hasFeed = true; feedIds = feedIds.concat(q.petIds || feedAllIds(w, t, o.me)); } else other.push({ q: q, a: a }); });
     if (!hasFeed) return { plans: plans, skipped: [], text: '', blocked: false };
     var seen = {}; feedIds = feedIds.filter(function (id) { if (seen[id]) return false; seen[id] = 1; return true; });
