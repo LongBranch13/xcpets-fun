@@ -14,7 +14,7 @@
   function tip() { var w = W(); return (w && w.tip) || (M.state && M.state().tip) || 0; }
   function on() { return V.giveOn(tip() + 1); }
   function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
-  function keptIds() { return []; } /* mypets-checkbox (owner Oct 28 2026): stars are gone, so no starred guard and no auto-star; keepKey is left unused */
+  function keptIds() { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').map(Number); } catch (e) { return []; } } /* favorite-star-restore: read only (extra 'are you sure' before swapping away a ★ favorite); no auto-star */
   function myth(p) { return !!p.mythicCare || p.stage >= 5; }
   function tierName(p) { return myth(p) ? 'Mythic' : TL[p.tier] || ''; }
   function pill(p) { return '<span class="pill tier tier-' + (myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>' + omB(p); }
