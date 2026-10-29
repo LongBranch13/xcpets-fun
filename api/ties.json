@@ -1,6 +1,6 @@
 {
- "lastBlock": 973568,
- "count": 251,
+ "lastBlock": 973619,
+ "count": 260,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -902,18 +902,6 @@
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
    "stage": "Hatchling"
-  },
-  {
-   "id": 20149,
-   "asset": "A16771857479702094920",
-   "tiedBlock": 973109,
-   "tiedTx": "9af992bbfe1e2d736ec700a4e50e088a95e70bad7b346fc6eae10cc5c9c748c5",
-   "kind": "deed",
-   "name": "Gisa",
-   "species": "bobo",
-   "speciesLabel": "Bobo",
-   "rarity": "Legendary",
-   "stage": "Egg"
   },
   {
    "id": 35416,
@@ -3014,6 +3002,126 @@
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 358,
+   "asset": "A472005173319949511",
+   "tiedBlock": 973569,
+   "tiedTx": "65e4bc2fd748a0c946c43b4418278c336a7ad3fae88df90bb1081156a2061f6b",
+   "kind": "deed",
+   "name": "Bokapo",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 389,
+   "asset": "A579167782082805992",
+   "tiedBlock": 973569,
+   "tiedTx": "6099826dedc5394a9cf955a6d80caab77a8a608bcd74e7f13fb6fdfe177b19c1",
+   "kind": "deed",
+   "name": "Nechimi",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 434,
+   "asset": "A11457320893067424525",
+   "tiedBlock": 973569,
+   "tiedTx": "875e550f00671aa2bb644de4d16d88f4163a7f2d5ed32a02b101bc38776a8747",
+   "kind": "deed",
+   "name": "Newa",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 803,
+   "asset": "A17481331396789537769",
+   "tiedBlock": 973569,
+   "tiedTx": "5176ed1a2ce5957829aa2b42a6b59bcc523cd9f89f0fc6376a580edf0493444f",
+   "kind": "deed",
+   "name": "Bariki",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 430,
+   "asset": "A7481329041817215899",
+   "tiedBlock": 973570,
+   "tiedTx": "f5cea3555cae5d60e938ca76d61992d3ab4cf9425c2f585cb9b8d3d4fd82f6e7",
+   "kind": "deed",
+   "name": "Tope",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 879,
+   "asset": "A5258594888923578153",
+   "tiedBlock": 973587,
+   "tiedTx": "9f1316ce81074c88830a50c7bde8db2c3dd0604209e13a07591f76989a57d4e9",
+   "kind": "deed",
+   "name": "Topo",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 23846,
+   "asset": "A9498470640314864145",
+   "tiedBlock": 973587,
+   "tiedTx": "f8b8d9a830eab2e28e6c9ea940df55ac4d040329ecfb82e9b56d9c2ae476c1b4",
+   "kind": "deed",
+   "name": "Molu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 24380,
+   "asset": "A5180423586038726704",
+   "tiedBlock": 973587,
+   "tiedTx": "9d4099c3cd17d5ff1b2c51e7da28a623f3acb186e1c8ecf05612b5f9bf0cfede",
+   "kind": "deed",
+   "name": "Penu",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 25555,
+   "asset": "A12465408663123974846",
+   "tiedBlock": 973587,
+   "tiedTx": "19d0d8bbe5589e20ed0613969a9055370ae1ec70b7b6d5c0212c5b62b1992c56",
+   "kind": "deed",
+   "name": "Zokilu",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 26000,
+   "asset": "A3130515691752169706",
+   "tiedBlock": 973587,
+   "tiedTx": "caf56a8e4b93337ded15d33b46857da1b12748cffa53ac3a94025eabaf3be7b4",
+   "kind": "deed",
+   "name": "Tikri",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Common",
+   "stage": "Mythic"
   }
  ]
 }
