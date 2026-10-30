@@ -1,6 +1,6 @@
 {
- "lastBlock": 973750,
- "count": 302,
+ "lastBlock": 973830,
+ "count": 304,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -193,7 +193,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 23693,
@@ -2065,7 +2065,7 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 38899,
@@ -2161,7 +2161,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 38413,
@@ -2221,7 +2221,7 @@
    "species": "hyb3:nakamoto:kek:funtrump",
    "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 2133,
@@ -2389,7 +2389,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 38373,
@@ -2473,7 +2473,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 46070,
@@ -2485,7 +2485,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 49075,
@@ -2497,7 +2497,7 @@
    "species": "bojackson",
    "speciesLabel": "Bo Jackson",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 7320,
@@ -2749,7 +2749,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 6906,
@@ -2857,7 +2857,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 40377,
@@ -3626,6 +3626,30 @@
    "speciesLabel": "KEVIN",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 5047,
+   "asset": "A1515666898079694531",
+   "tiedBlock": 973798,
+   "tiedTx": "8d0df0e919ed016044e724ad0954845f70916227818b080ee4c4420cb332e89a",
+   "kind": "deed",
+   "name": "Pipbaki",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 6879,
+   "asset": "A4141915407240825801",
+   "tiedBlock": 973798,
+   "tiedTx": "110902fb50f3b2751ec9b5c102ea4e881c7ace8391bb7e011e6276f238c3bf5c",
+   "kind": "deed",
+   "name": "Toto",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }

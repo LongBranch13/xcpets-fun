@@ -225,3 +225,10 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 #hatchBtn::after, #dozenBtn::after, #caseBtn::after { top: 2px; height: 6px;
   background: linear-gradient(135deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x, linear-gradient(225deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x,
   linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)) 0 5px / 100% 1px no-repeat; }
+
+/* THE gravestone (option C): old grave list cards and the dead pet's death note (also styled in cemetery-v2.css) */
+.tomb.gtomb{background:#14121f;border:3px solid #2a2742;border-radius:8px;padding:10px 12px 12px;box-shadow:0 6px 0 #0b0a12}
+.tomb.gtomb::before{content:none;display:none}
+.tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0}
+.deathnote canvas.gstone.big{float:left;width:120px;height:148px;margin:0 10px 6px 0;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:4px}
+.deathnote::after{content:'';display:block;clear:both}
