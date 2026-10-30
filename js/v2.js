@@ -343,7 +343,7 @@
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
   /* hotfix 3: the filtered + sorted pet list (shared by renderPets and the sort-only reorder) */
-  function petList(alive, dead) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value), X = window.UXB ? UXB.filters() : null;
+  function petList(alive, dead, noZF) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value), X = window.UXB ? UXB.filters() : null;
     var list = (cem ? dead : V.hideAtOrBelow(alive, hide)).filter(function (p) { return cem || fT === 'all' || TIER_ID[p.tier] === fT; }).slice().reverse();
     if (X) list = list.filter(function (p) { return X.keep(p); }); /* ux-batch: minimum rarity, origin, search (display only) */
     if (fS === 'num') list.sort(function (a, b) { return a.id - b.id; }); if (fS === 'urgent' && window.IPQ) { var UW = world(); list.sort(function (a, b) { var x = IPQ.urgency(UW, a), y = IPQ.urgency(UW, b); return (x === y ? 0 : x < y ? -1 : 1) || a.id - b.id; }); } /* intuitive-pass item 2: most urgent first (engine deathBlock - tip), display only */
@@ -352,6 +352,8 @@
     if (fS === 'score' && window.PetScore) { var PSw = world(); list.sort(function (a, b) { var x = PetScore.of(PSw, a), y = PetScore.of(PSw, b); return (y ? y.score : -1) - (x ? x.score : -1) || a.id - b.id; }); } /* pet-score (2026-10-19, display only) */
     if (window.V2PetSort && ['new', 'old', 'name', 'vigor', 'spark', 'grit', 'zoom', 'luck', 'wins', 'gear'].indexOf(fS) >= 0) { var PSc = V2PetSort.comparator(fS, world()); if (PSc) list.sort(PSc); } /* pet-sort (Oct 24 2026, display only): js/v2-pet-sort.js */
     if (fS === 'sel' || fS === 'starred') { var KS2 = new Set(S.sel.map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-checkbox (display only): checked pets first, then pet # (was starred first) */
+    if (fS === 'ztime' && window.V2ZombieFilter) { var ZTw = world(); list.sort(V2ZombieFilter.comparator(ZTw, (ZTw.tip || 0) + 1)); } /* mypets-zombie-filter (Oct 30 2026, display only): zombies first, least time left before feral / dust */
+    if (!cem && !noZF && ZFK && window.V2ZombieFilter) { var ZFw = world(), ZFb = (ZFw.tip || 0) + 1; list = list.filter(function (p) { return V2ZombieFilter.match(ZFK, ZFw, p, ZFb, ME); }); } /* mypets-zombie-filter: All zombies / Hungry / Feral / Crumbling soon (optional, off by default) */
     if (X && X.flip) list.reverse();
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
@@ -359,7 +361,7 @@
     box.querySelectorAll(':scope > .pet.card[data-pid]').forEach(function (d) { m[d.dataset.pid] = d; });
     if (Object.keys(m).length !== list.length || !list.every(function (p) { return m[p.id]; })) return false;
     var f = document.createDocumentFragment(); list.forEach(function (p) { f.appendChild(m[p.id]); }); box.insertBefore(f, box.firstChild); return true; }
-  var PG = { n: 150, key: '' }, NF = {}; /* habits-ux: never-fed group open state per tab (a = alive, c = cemetery), this visit only */
+  var PG = { n: 150, key: '' }, NF = {}, ZFK = window.V2ZombieFilter ? V2ZombieFilter.load() : ''; /* mypets-zombie-filter: '' (off) | all | hungry | feral | soon, this browser session */ /* habits-ux: never-fed group open state per tab (a = alive, c = cemetery), this visit only */
   /* WAGMI bar: streak alive = WAGMI + day count; a missed chain day = NGMI with a joke (never shaming); 'new' = how to start. Only pet:wagmi counts (not feeding). */
   var NGMI_JOKES = ['Your streak took a nap. One WAGMI wakes it up.', 'Streak got rugged (by a good night\u2019s sleep). Day 1 is one tap away.', 'Just a vibe check. Say WAGMI and you\u2019re so back.', 'Even Satoshi took days off. Probably. Tap WAGMI to restart.', 'Ser, the streak fell in the mempool. Fish it out with a WAGMI.'];
   function wagmiBar(stk, w) { var tip = w.tip || S.tip || 0, left = 144 - (tip % 144), hrs = left * 10 / 60, lt = hrs >= 1 ? '~' + Math.round(hrs) + 'h' : '~' + Math.max(1, Math.round(left * 10)) + ' min';
@@ -400,7 +402,7 @@
     var list = petList(alive, dead);
     /* habits-ux (Oct 27 2026) folded never-fed pets into one collapsed group; mypets-show-all (owner, Oct 28 2026) lists every pet again and the
      * fold becomes an opt-in 'Never fed only' filter (My Pets and Cemetery tab). Discarded pets are already out (mine). One O(n) pass, so 9k-pet wallets stay fast. */
-    var nfK = cem ? 'c' : 'a', nfs = V2Habits.splitNeverFed(list) /* mypets-show-all: count every never-fed pet for the optional filter */, nfN = nfs.nf.length;
+    var nfK = cem ? 'c' : 'a', listAll = ZFK && !cem ? petList(alive, dead, true) : list, nfs = V2Habits.splitNeverFed(listAll) /* mypets-zombie-filter: the Never fed chip counts without the zombie filter, so it stays there */ /* mypets-show-all: count every never-fed pet for the optional filter */, nfN = nfs.nf.length;
     /* mypets-show-all (owner Oct 28 2026): every pet is in the main list by default; 'Never fed only' is an optional filter, off by default (NF[tab] = on) */
     var nfOnly = !!NF[nfK] && nfN > 0; if (nfOnly) list = nfs.nf;
     if (!cem && JUST_BACK.length) { var JB = new Set(JUST_BACK), jb = petList(alive, dead).filter(function (p) { return JB.has(p.id); }); if (jb.length) { list = jb.concat(list.filter(function (p) { return !JB.has(p.id); })); } } /* restore-fix: just restored first (still counted in the Never fed chip) */ /* nf-fold fix (Oct 27 2026): opened never-fed pets go first, right under the fold. They used to go last, past the 150-card page, so the fold opened onto nothing. */
@@ -411,7 +413,14 @@
     var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">No pets match this filter.</p>';
     if (nfN) { var nfg = document.createElement('div'); nfg.className = 'row nffilter'; nfg.id = 'nfGroup'; nfg.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
       nfg.innerHTML = '<button type="button" class="q" id="nfOnly" aria-pressed="' + nfOnly + '">' + (cem ? '🪦' : '🥚') + ' ' + (nfOnly ? '✓ ' : '') + 'Never fed only <span class="chip">' + fmt(nfN) + '</span></button> <span class="small muted">' + (nfOnly ? 'only pets that ' + (cem ? 'died without a single meal' : 'never had a meal') + ' · tap to show all' : 'optional filter, off: all pets are listed') + '</span>';
-      nfg.querySelector('button').onclick = function (e) { e.stopPropagation(); NF[nfK] = !nfOnly; render(); }; box.appendChild(nfg); }
+      nfg.querySelector('button').onclick = function (e) { e.stopPropagation(); NF[nfK] = !nfOnly; if (NF[nfK] && ZFK) { ZFK = ''; V2ZombieFilter.save(''); } render(); }; box.appendChild(nfg); }
+    /* mypets-zombie-filter (owner Oct 30 2026): zombie filter pills under the search, only when you own a zombie (or one is on). Counts follow the search + sort list. */
+    if (!cem && window.V2ZombieFilter) { var ZFw2 = w, zcAll = petList(alive, dead, true), zc = V2ZombieFilter.counts(ZFw2, zcAll, (ZFw2.tip || 0) + 1, ME), zAny = ZFK || zc.all || alive.some(ZB);
+      if (zAny) { V2ZombieFilter.css(); var zg = document.createElement('div'); zg.className = 'row zbfilter'; zg.id = 'zbGroup'; zg.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
+        zg.innerHTML = V2ZombieFilter.rowHtml(zc, ZFK, list.length);
+        zg.querySelectorAll('[data-zf]').forEach(function (bt) { bt.onclick = function (e) { e.stopPropagation(); var k = bt.getAttribute('data-zf'); ZFK = ZFK === k ? '' : k; V2ZombieFilter.save(ZFK); if (ZFK) NF[nfK] = false; render(); }; });
+        var zm = box.querySelector(':scope > p.muted'); if (zm) box.insertBefore(zg, zm); else box.appendChild(zg);
+        if (ZFK && !list.length) { var ze = document.createElement('p'); ze.className = 'muted'; ze.style.gridColumn = '1/-1'; ze.textContent = 'No zombies match this filter' + ($('fSearch') && $('fSearch').value.trim() ? ' and search.' : '.'); if (zm) zm.remove(); box.appendChild(ze); } } }
     /* hotfix 3: cards are built in chunks of 150 with a yield between them, so a 2,000-pet wallet never blocks the page for seconds */
     var tok = renderPets.tok = (renderPets.tok || 0) + 1, CH = 150, tail = document.createComment('pets-more');
     function mk(p) {
@@ -432,7 +441,7 @@
       ds.forEach(function (x) { R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
      * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
-    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
+    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|z' + ZFK + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
     var upto = Math.min(list.length, Math.max(CH, PG.n));
     put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
     (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
