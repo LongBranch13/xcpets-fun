@@ -9,7 +9,11 @@
     tiers: [['Common', 6000, 0], ['Uncommon', 2700, 3], ['Rare', 1000, 6], ['Legendary', 300, 10]],
     stages: ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'], thresholds: [0, 69, 8349, 22149, 41469, 69069],
     meals: [4140, 6900, 9660, 9200], blocksPerDay: 144, neglectedAfter: 3, deathAfter: 7, mythicLine: 21000,
-    breedCooldown: 1008, breedCap: 6, blackEye: 72, fightWindow: 144, turns: 12
+    breedCooldown: 1008, breedCap: 6, blackEye: 72, fightWindow: 144, turns: 12,
+    /* tutorial-cemetery (owner ask Oct 30 2026): the cemetery gate mirrored from js/v2-rules.js (tutorial.html does not load the rules);
+     * cemPublic null = OWNER TEST (only grave #cemOwnerGrave by cemOwner). tools/tutorial-test.js checks these against the rules. */
+    cemGate: 973772, cemPublic: null, cemOwnerGrave: 2, cemOwner: 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4',
+    cemPool: 144, cemFeral: 432, cemCap: 3, cemRipe: 1.5
   };
   var SEEN = 'xcpets-tut-seen', DONE = 'xcpets-tut-done', TIPS = 'xcpets-tut-tips';
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -18,6 +22,20 @@
   function half(n) { return fmt(n / 2); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  /* cemetery raise steps: open to this viewer? 'open' (public launch reached), 'owner' (owner test, owner wallet saved in this browser), else 'soon' */
+  var TIP = null;
+  function cemState() {
+    var R = typeof window !== 'undefined' && window.V2Rules, pub = R && R.cemPublicBlock ? R.cemPublicBlock() : N.cemPublic;
+    if (pub != null && TIP != null && TIP >= pub) return 'open';
+    var me = ls('xcpets-v2-me') || ls('xcpets-xcpwallet-address'); return me && me === N.cemOwner ? 'owner' : 'soon';
+  }
+  function cemNote(short) {
+    var st = cemState();
+    if (st === 'open') return '';
+    if (short) return '<br><span class="small">🧪 ' + (st === 'owner' ? 'Owner test: grave #' + N.cemOwnerGrave + ' only.' : '<b>Opens soon.</b>') + '</span>';
+    if (st === 'owner') return '<br><span class="small">🧪 Owner test: for now only grave #' + N.cemOwnerGrave + ' can be raised, and only by your wallet.</span>';
+    return '<br><span class="small">🧪 <b>Opens soon.</b> Raising is in a test right now. These steps show how it will work.</span>';
+  }
   function sfx(n) { try { if (window.V2Sfx && V2Sfx[n]) V2Sfx[n](); } catch (e) {} }
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -202,8 +220,13 @@
       quiz: [['What does the Proof Parade show?', ['Every pet token in order', 'Weather', 'Chat'], 0]] },
     { id: 'cem', ico: '🪦', t: 'Cemetery & community pets', s: 'Rest in pixels, Cold Storage', steps: [
       ['The Pet Cemetery', 'Pets that starve rest in the Pet Cemetery, with their whole story.'],
+      ['Raise a zombie', function () { return 'A grave can come back as a zombie. Open the <b>Pet Cemetery</b> and click a gravestone (or its <b>Raise at the altar</b> button). The altar opens in Mort\'s candle circle.' + cemNote(); }],
+      ['Make your offering', function () { return 'Tap your living pets (or drag them) onto the altar, and throw spare gear into the flames. Pets left unfed for ' + N.neglectedAfter + ' days count ' + N.cemRipe + ' times. Each offering adds a bit less than the one before, up to ' + N.cemCap + ' times the power it had when it died. <b>↩ Take all back</b> clears your picks. Mythics and pets on a quest, in a fight, in Cold Storage or in the shop can\'t be offered.' + cemNote(1); }],
+      ['Hold seance', function () { return 'Press <b>🕯️ Hold seance</b> and sign the burns in your wallet. The offerings burn and the raise starts (if someone else leads the altar, yours joins the pool). <b>🤝 Pledge only</b> adds your pets and gear to that grave\'s pool without starting a raise; the pool stays open for ' + N.cemPool + ' blocks (about a day). Whoever gave the most to the altar leads it, and the leader sees <b>🧟 Raise now</b>.' + cemNote(1); }],
+      ['It rises!', function () { return 'After the burns confirm (about a block) the zombie rises. Everything offered is used up. Your zombie shows in <b>My Pets</b>: feed it living pets from its card. Leave it hungry for ' + N.cemFeral / N.blocksPerDay + ' days and it turns feral.' + cemNote(1); }],
       ['Community pets', 'Some pets belong to everyone: anyone can feed them. When one reaches Mythic it goes to Cold Storage, the next one arrives, and burns cost half (the halving).']],
-      quiz: [['What happens when a community pet reaches Mythic?', ['It goes to Cold Storage and burns cost half', 'It dies', 'Nothing'], 0]] },
+      quiz: [['What happens when a community pet reaches Mythic?', ['It goes to Cold Storage and burns cost half', 'It dies', 'Nothing'], 0],
+        ['What does Pledge only do?', ['Adds your offering to the grave\'s pool without starting a raise', 'Raises the zombie at once', 'Gives your pets back'], 0]] },
     { id: 'ranks', ico: '👑', t: 'Rankings & Burn Lords', s: 'Climb the boards', steps: [
       ['Rankings', 'The Rankings page shows the top keepers, pets and fighters.'],
       ['Burn Lords', 'The top burners are the Burn Lords. Top 5 burners at the snapshot block get special eggs.']],
@@ -220,7 +243,7 @@
     ls(SEEN, '1'); var done = jget(DONE);
     function save() { ls(DONE, JSON.stringify(done)); }
     function menu() {
-      root.innerHTML = ''; var c = el('div', 'tut-card');
+      cur = null; root.innerHTML = ''; var c = el('div', 'tut-card');
       c.appendChild(guide('Hi, I\'m <b>Coach Peepo</b>! Pick a chapter, or start from the top. The gold ones are the deep dives.'));
       c.appendChild(el('h1', 'tut-big', 'The Big Beautiful Tutorial'));
       var nDone = CH.filter(function (x) { return done[x.id]; }).length;
@@ -237,14 +260,18 @@
       var pl = el('a', 'q', 'Skip to Play →'); pl.href = 'play.html?coach=1'; nav.appendChild(st); nav.appendChild(pl); c.appendChild(nav);
       root.appendChild(c); history.replaceState(null, '', location.pathname);
     }
+    var cur = null;
+    if ((window.V2Rules && V2Rules.cemPublicBlock ? V2Rules.cemPublicBlock() : N.cemPublic) != null && window.fetch) /* the tip only matters once a public launch block is set */
+      fetch('api/meta.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { TIP = +j.blockHeight || null; if (cur && CH[cur[0]].id === 'cem') open(cur[0], cur[1]); }, function () {});
     function open(ci, si) {
+      cur = [ci, si];
       var ch = CH[ci], total = ch.steps.length + (ch.quiz.length ? 1 : 0); root.innerHTML = '';
       history.replaceState(null, '', '#' + ch.id + (si ? '-' + (si + 1) : ''));
       var c = el('div', 'tut-card');
       c.appendChild(el('div', 'tut-body small', ch.ico + ' Chapter ' + (ci + 1) + ' of ' + CH.length + (ch.deep ? ' <span class="tut-tag gold">DEEP DIVE</span>' : '')));
       c.appendChild(el('h1', 'tut-big', esc(ch.t)));
       if (si < ch.steps.length) {
-        var s = ch.steps[si]; c.appendChild(guide('<b>' + s[0] + '</b><br>' + s[1]));
+        var s = ch.steps[si]; c.appendChild(guide('<b>' + s[0] + '</b><br>' + (typeof s[1] === 'function' ? s[1]() : s[1])));
         if (s[2] && DEMOS[s[2]]) c.appendChild(DEMOS[s[2]]());
         if (ch.cta) {
           var h = el('div', 'tut-demo', ''); h.appendChild(sprite('pepe', 0, null, '')); h.firstChild.style.width = '96px'; h.firstChild.style.height = '96px';

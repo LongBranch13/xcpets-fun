@@ -32,4 +32,11 @@ eq('Next past last step ends the tour', P2(4, 1, 5, ok), 5);
 eq('skip key name', T.CSKIP, 'xcpets-tut-coach-skip');
 eq('mythic line 21,000 + Mythic 69,069 from v2-rules.js', [N.mythicLine, N.thresholds[5]], [K('MYTHIC_DISCOUNT_CARE'), pick('THRESHOLDS')[5]]);
 eq('raised-only wording (no "own a living Mythic")', /\bown(s)? a (living )?Mythic/i.test(src + fs.readFileSync(path.join(ROOT, 'js/v2-intuitive.js'), 'utf8')), false);
+// tutorial-cemetery: the raise steps mirror the cemetery gate and numbers from v2-rules.js
+eq('cemetery gate + public block + owner test grave/wallet', [N.cemGate, N.cemPublic, N.cemOwnerGrave, N.cemOwner], [V.cemeteryGate(), V.cemPublicBlock(), V.CEM.OWNER_GRAVE, V.CEM.OWNER]);
+eq('cemetery pool, feral, cap, ripe', [N.cemPool, N.cemFeral, N.cemCap, N.cemRipe], [V.CEM.POOL, V.CEM.FERAL, V.CEM.CAP, +(/CEM_RIPE = ([\d.]+)/.exec(RS) || [])[1]]);
+const cem = T.CH.filter(ch => ch.id === 'cem')[0], cs = cem.steps.map(x => typeof x[1] === 'function' ? x[1]() : x[1]).join('\n');
+eq('cemetery chapter teaches the raise (Hold seance, Pledge only, Raise now, Take all back, My Pets)', ['Hold seance', 'Pledge only', 'Raise now', 'Take all back', 'My Pets'].every(k => cs.indexOf(k) >= 0), true);
+eq('raise steps say it opens soon while the cemetery is owner test', V.cemPublicBlock() != null || /Opens soon/.test(cs), true);
+eq('no G Money in the tutorial', /G Money/i.test(src), false);
 console.log(fail ? fail + ' FAILED' : 'tutorial: all checks pass'); process.exit(fail ? 1 : 0);
