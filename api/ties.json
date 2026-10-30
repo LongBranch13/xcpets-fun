@@ -1,5 +1,5 @@
 {
- "lastBlock": 973890,
+ "lastBlock": 973894,
  "count": 325,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2149,7 +2149,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 38413,
@@ -2485,7 +2485,7 @@
    "species": "bojackson",
    "speciesLabel": "Bo Jackson",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 7320,
