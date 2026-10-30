@@ -1,6 +1,6 @@
 /* My Pets bulk discard (wizard-story-short P4, owner 2026-10-21; replaces '🗑️ Delete Commons' / '🗑️ Delete Uncommons').
  * '🗑️ Discard unfed': every pet of mine that was NEVER fed (no meal ever: lastFed null and no fed day), however it arrived (hatched, bred, granted).
- * Dead, released, already-discarded (mine() hides them) and community pets are left out (mypets-checkbox: no star skip any more).
+ * Dead, released, already-discarded (mine() hides them) and community pets are left out; starred 'kept' pets are skipped like every bulk discard (restored Oct 29 2026).
  * Confirm lists the pets (number + thumbnail) first, then runs the SAME free local Discard (hidden in this browser, Undo toast, restorable from
  * Show discarded). No burn, nothing signed, so the wasted-burn guard has nothing to drop. 'Discard selected' is unchanged.
  * P5: '▲ Hide pets' / '▼ Show pets' collapses the whole My Pets grid (localStorage xcpets-v2-grid-hidden); hidden cards never reach the lazy
@@ -9,7 +9,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   function neverFed(p) { return p.lastFed == null && !Object.keys(p.feedDays || {}).length; }
-  function unfed(D) { return D.mine(D.world()).filter(function (p) { return !p.dead && !p.released && !p.community && neverFed(p); }); }
+  function unfed(D) { return D.mine(D.world()).filter(function (p) { return !p.dead && !p.released && !p.community && neverFed(p) && !(D.isKept && D.isKept(p.id)); }); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   var GKEY = 'xcpets-v2-grid-hidden';
   function gridHidden() { try { return localStorage.getItem(GKEY) === '1'; } catch (e) { return false; } }
@@ -27,7 +27,7 @@
       var S = D.S(); prevSel = S.sel.slice(); S.sel = ids.slice(); D.selUi();
       $('duBody').innerHTML = '<p><b>Discard ' + ids.length.toLocaleString('en-US') + ' never-fed pet' + (ids.length > 1 ? 's' : '') + '?</b></p>' +
         '<div class="du-list">' + L.map(function (p) { return '<span class="du-pet" title="' + esc(p.name) + '"><canvas width="32" height="32" data-du="' + p.id + '"></canvas>#' + p.id + '</span>'; }).join('') + '</div>' +
-        '<p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from the <i>🗑️ Discard pile</i> at the bottom of My Pets.' + '</p>';
+        '<p class="small"><b>Free, only hidden in this browser, Undo anytime, no burn.</b> They stay on chain; restore them from the <i>🗑️ Discard pile</i> at the bottom of My Pets.' + (D.keptIds && D.keptIds().length ? ' Starred pets are never discarded.' : '') + '</p>';
       box.classList.add('on'); var w = D.world();
       if (R) box.querySelectorAll('[data-du]').forEach(function (c) { var p = w.byId[c.getAttribute('data-du')]; if (p) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); };
     $('duNo').onclick = function () { box.classList.remove('on'); if (prevSel) { D.S().sel = prevSel; prevSel = null; D.selUi(); } };

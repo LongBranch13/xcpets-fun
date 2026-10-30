@@ -41,6 +41,7 @@
     var o = reset('fOrigin', 'all'); if (o) words.push(o);
     var sp = reset('fSpecies', 'all'); if (sp) words.push(sp);
     var mn = reset('fMin', '0'); if (mn === '3') words.push('legendary');
+    var st = $('fStarred'); if (st && st.getAttribute('aria-pressed') === 'true') { st.click(); words.push('starred'); } /* favorite-star-restore: the hidden Starred filter becomes the search word */
     var dir = $('fDir'), s = $('fSort'); if (dir && s && (s.value === 'num' ? dir.textContent.trim() === '🔽' : dir.title === 'Reversed')) dir.click();
     try { if (localStorage.getItem('xcpets-v2-grid-hidden') === '1') { var g = $('gridToggle'); if (g) g.click(); else { localStorage.setItem('xcpets-v2-grid-hidden', '0'); var P = $('pets'); if (P) P.style.display = ''; d.body.classList.remove('pets-collapsed'); } } } catch (e) { }
     if (words.length) { var cur = q.value.trim(); q.value = (cur ? cur + ' ' : '') + words.filter(function (x) { return (' ' + cur + ' ').indexOf(' ' + x + ' ') < 0; }).join(' '); }

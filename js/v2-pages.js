@@ -199,8 +199,8 @@
       fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
     return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
       /* pet-card-page (owner 2026-10-24 5:08 AM CT): no Pepe Wheel spin / gear roll links here any more; the card's Rare Room / Breed / Battle buttons (js/v2-pet-card.js) go to play.html */
-      /* mypets-checkbox (owner Oct 28 2026): the ☆ Keep star button is gone (stars removed; select pets with the checkbox in My Pets) */
-      '<a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
+      /* favorite-star-restore (owner Oct 29 2026): the ☆ Keep / ★ Kept favorite button is back (same xcpets-keep list as My Pets) */
+      '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Star this pet as a favorite. Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });
   function archive() {
     var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : /preview=kek/.test(location.search) ? 'kek' : false, list = archiveEntries(w, preview), box = $('archList');
