@@ -229,4 +229,29 @@ const CEM_TAGS = ['pet:seance:18846:' + b32(4133), 'pet:alt:18849:' + b32(4098),
   const n = V.cemGraves(w, R + 300, { text: '#16970' }); ok(n.length === 1 && n[0].id === 16970, 'finder: number search');
   const ea = V.cemGraves(w, R + 300, { sort: 'easiest' }); ok(ea.every((g, i) => !i || ea[i - 1].need <= g.need), 'finder: easiest sort'); }
 
+/* ---------- 12. send guard (UI): cemSendWhy / cemHuntWhy and the sendBlock hook mirror the engine ---------- */
+{ const { V, w } = W([row(R, SB, 10000, 'pet:seance:18846:' + b32(4133))], R + 440), b = R + 441, SB_ = { me: SB }, sb = (tag, o) => V.sendBlock(w, { tag, amount: 100000 }, b - 1, Object.assign({ me: SB }, o || {}));
+  const off = W([], R + 5, { gate: null }); ok(/opens at block/.test(off.V.sendBlock(off.w, { tag: 'pet:seance:18849:' + b32(4098), amount: 1e5 }, R, { me: OW }) || ''), 'guard: gate off says the loop is not open');
+  ok(/not your pet/.test(V.sendBlock(w, { tag: 'pet:seance:18849:' + b32(4098), amount: 1e5 }, b - 1, { me: SB }) || ''), 'guard: offering another wallet\'s pet is stopped');
+  ok(/already risen/.test(sb('pet:alt:18846:' + b32(4134)) || ''), 'guard: a risen grave cannot take offerings');
+  const mine = w.pets.filter(p => p.owner === SB && !V.cemOfferWhy(w, p, SB, b)).map(p => p.id).slice(0, 2);
+  ok(mine.length === 2 && sb('pet:alt:18849:' + ids(mine)) === null, 'guard: a good pledge passes (' + mine + ')');
+  ok(/not confirmed yet/.test(sb('pet:alt:18849:' + ids(mine), { pending: ['pet:alt:18845:' + b32(mine[0])] }) || ''), 'guard: a pet already in an unconfirmed burn is stopped');
+  ok(/the grave itself/.test(sb('pet:alt:18849:' + ids([mine[0], 18849].sort((a, c) => a - c))) || '') || /dead/.test(sb('pet:alt:18849:' + ids([mine[0], 18849].sort((a, c) => a - c))) || ''), 'guard: the grave itself is never an offering');
+  ok(/no open altar/.test(sb('pet:raise:18849') || ''), 'guard: raise needs an open altar');
+  ok(sb('pet:raise:18849', { pending: ['pet:alt:18849:' + b32(mine[0])] }) === null, 'guard: raise right after my own pending pledge passes');
+  ok(sb('pet:zfeed:18846:' + b32(mine[0])) === null, 'guard: owner can feed the zombie');
+  ok(/zombie owner/.test(V.sendBlock(w, { tag: 'pet:zfeed:18846:' + b32(mine[0]), amount: 1e5 }, b - 1, { me: OW }) || ''), 'guard: only the owner feeds');
+  ok(/itself/.test(sb('pet:zfeed:18846:' + b32(18846)) || ''), 'guard: a zombie never eats itself');
+  ok(/points/.test(sb('pet:resurrect:18846') || ''), 'guard: Resurrection needs ' + V.CEM.RES_MIN + ' points');
+  ok(/not a zombie/.test(sb('pet:zfeed:18849:' + b32(mine[0])) || ''), 'guard: zfeed on a grave is stopped');
+  const z = w.byId[18846]; V.cemView(w, z, b); ok(z.feral === true, 'guard setup: #18846 is feral 433+ blocks after its raise');
+  const hunter = w.pets.filter(p => p.owner === OW && !V.cemHuntWhy(w, p.id, 18846, OW, b))[0];
+  ok(!!hunter, 'guard: the owner wallet has a pet that can hunt');
+  if (hunter) { ok(V.sendBlock(w, { tag: 'pet:fight:' + hunter.id + ':18846', amount: 1e5 }, b - 1, { me: OW }) === null, 'guard: a good hunt passes the sendBlock hook');
+    ok(/waiting/.test(V.sendBlock(w, { tag: 'pet:fight:' + hunter.id + ':18846', amount: 1e5 }, b - 1, { me: OW, pending: ['pet:fight:' + hunter.id + ':18846'] }) || ''), 'guard: no second hunt burn while one waits'); }
+  ok(/own zombie/.test(V.cemHuntWhy(w, mine[0], 18846, SB, b) || ''), 'guard: you cannot hunt your own zombie');
+  const early = W([row(R, SB, 10000, 'pet:seance:18846:' + b32(4133))], R + 10); ok(/feral/.test(early.V.cemHuntWhy(early.w, hunter ? hunter.id : 1, 18846, OW, R + 11) || ''), 'guard: a fed zombie cannot be hunted');
+  ok(V.cemPlan(w, 'seance', 18849, mine, b).amount === V.cemCost(w, 'seance', b) && V.cemHuntPlan(w, 1, 2, b).amount === V.cemCost(w, 'hunt', b), 'plans carry the halving-aware cost'); }
+
 console.log('cemetery-loop-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
