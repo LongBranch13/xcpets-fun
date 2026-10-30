@@ -3,7 +3,7 @@
  * Story (snapshot 972901, synthetic burns and token events, nothing signed or sent): the owner ties a token to pet #18846, sends the
  * token to another wallet (the pet moves with it), the pet dies (block 973440), the original owner raises it as a zombie and resurrects it.
  * Then: the pet is the raiser's, the old token can no longer move, list or re-tie it, and a new token tied with pet:deed works as usual.
- * Also the preview gate ACTIVATE_RESURRECT_RETIE_BLOCK (null = off): a token tied while the pet was a zombie survives the Resurrection
+ * Also the preview gate ACTIVATE_RESURRECT_RETIE_BLOCK (shipped 973845; synthetic blocks below it = off): a token tied while the pet was a zombie survives the Resurrection
  * with the gate off, and is untied (a keepsake) with the gate on.   node tools/resurrect-deed-test.js */
 'use strict';
 const crypto = require('crypto');
@@ -36,7 +36,8 @@ const RAISE = [row(R, OW, 10000, 'pet:seance:' + PET + ':' + b32(4428)), row(R +
 const RES = [row(RB, OW, 10000, 'pet:resurrect:' + PET, RES_TX)];
 const logs = (w, b0, b1) => w.log.filter(e => e.block >= b0 && e.block <= b1);
 
-ok(V0.resurrectRetieGate() === null && V0.retieOn(999999999) === false, 'shipped: ACTIVATE_RESURRECT_RETIE_BLOCK is null (preview, not active)');
+ok(V0.resurrectRetieGate() === 973845 && V0.retieOn(973844) === false && V0.retieOn(973845) === true, 'shipped: ACTIVATE_RESURRECT_RETIE_BLOCK is 973845 (BTC tip 973839 + 6 at deploy)');
+ok(RB + 8 < V0.resurrectRetieGate(), 'synthetic story blocks (to ' + (RB + 8) + ') are before the shipped gate, so "gate off" = main rules before block 973845');
 /* 1. tie, send, death */
 { let { w } = W(TIE, 973120, dexOf()); ok(w.byId[PET].deed === TA && w.byId[PET].owner === SB && w.deeds[TA].holder === SB, 'token sent to another wallet: the pet moved with it');
   ({ w } = W(TIE, 973445, dexOf())); ok(w.byId[PET].dead && w.byId[PET].owner === SB && w.byId[PET].deed === TA, 'the pet dies held by the other wallet, still tied'); }
