@@ -1,6 +1,6 @@
 {
- "lastBlock": 973797,
- "count": 302,
+ "lastBlock": 973798,
+ "count": 304,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3626,6 +3626,30 @@
    "speciesLabel": "KEVIN",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 5047,
+   "asset": "A1515666898079694531",
+   "tiedBlock": 973798,
+   "tiedTx": "8d0df0e919ed016044e724ad0954845f70916227818b080ee4c4420cb332e89a",
+   "kind": "deed",
+   "name": "Pipbaki",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 6879,
+   "asset": "A4141915407240825801",
+   "tiedBlock": 973798,
+   "tiedTx": "110902fb50f3b2751ec9b5c102ea4e881c7ace8391bb7e011e6276f238c3bf5c",
+   "kind": "deed",
+   "name": "Toto",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
