@@ -166,3 +166,10 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 
 /* cemetery loop: a raisable gravestone is clickable (step 1 of the raise flow) */
 .tomb:has([data-raise]){cursor:pointer}.tomb:has([data-raise]):hover{outline:2px solid #7dff6a;outline-offset:2px}
+
+/* THE gravestone (option C): old grave list cards and the dead pet's death note (also styled in cemetery-v2.css) */
+.tomb.gtomb{background:#14121f;border:3px solid #2a2742;border-radius:8px;padding:10px 12px 12px;box-shadow:0 6px 0 #0b0a12}
+.tomb.gtomb::before{content:none;display:none}
+.tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0}
+.deathnote canvas.gstone.big{float:left;width:120px;height:148px;margin:0 10px 6px 0;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:4px}
+.deathnote::after{content:'';display:block;clear:both}

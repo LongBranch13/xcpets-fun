@@ -45,7 +45,7 @@
   var ZV = (function () { try { var cs = document.currentScript, m = cs && /\?(.*)$/.exec(cs.src); return m ? m[1] : ''; } catch (e) { return ''; } })();
   function ZL() { return window.V2ZombieLook || null; }
   try { if (!window.V2ZombieLook && !document.getElementById('zbLook')) { var zs = document.createElement('script'); zs.id = 'zbLook'; zs.src = 'js/v2-zombie-look.js' + (ZV ? '?' + ZV : ''); document.head.appendChild(zs); } } catch (e) {}
-  function zombieFrames(c, x, d, p) { var Z = ZL(), base = new Uint8ClampedArray(d.data), N = 6, fr = [], bb = null, wp = A.ctx.w.byId ? A.ctx.w.byId[p.id] : null, E = wp && Z.starEyes ? Z.starEyes(wp.art, wp.stage, 0) : null;
+  function zombieFrames(c, x, d, p) { var Z = ZL(), base = new Uint8ClampedArray(d.data), N = 6, fr = [], bb = null, wp = A.ctx.w.byId ? A.ctx.w.byId[p.id] : null, E = wp ? (Z.gameEyes && Z.gameEyes(wp.art, wp.stage, 0)) || (Z.starEyes ? Z.starEyes(wp.art, wp.stage, 0) : null) : null;
     for (var fi = 0; fi < N; fi++) { var r = Z.transparent(base, p.id, fi, N, { ground: false, eyes: E }); var cc = fi ? document.createElement('canvas') : c; if (fi) cc.width = cc.height = 32;
       var cx = cc.getContext('2d'), id2 = cx.createImageData(32, 32); if (r) { id2.data.set(r.data); if (!bb && r.box) bb = r.box; } else id2.data.set(base); cx.putImageData(id2, 0, 0); fr.push(cc); }
     c.fr = fr; c.bb = bb ? [bb.x0, bb.y0, bb.W, bb.H] : [0, 0, 32, 32]; c.zb = true; }
@@ -71,12 +71,15 @@
     for (var y = 60; y < AH; y++) { var k = (y - 60) / 40; px(x, 'rgb(' + [Math.round(74 - 50 * k), Math.round(76 - 46 * k), Math.round(106 - 74 * k)].map(function (v) { return v - v % 6; }).join(',') + ')', 0, y, AW, 1); }
     x.save(); x.globalAlpha = 0.22; px(x, '#8f91b0', 0, 58, AW, 3); x.globalAlpha = 0.1; var fo = reduced() ? 30 : (t / 90) % 220; px(x, '#c8c6e8', Math.round(fo) - 60, 66, 70, 2); px(x, '#c8c6e8', Math.round((fo + 110) % 220) - 60, 74, 50, 2); x.restore();
     /* the chosen grave: a headstone with its ghost, and the dirt where the zombie comes up */
-    var g = GRV, R0 = A.rise; px(x, '#16141f', g.x - 12, g.y - 30, 24, 31); px(x, '#16141f', g.x - 9, g.y - 33, 18, 3); px(x, '#7c808c', g.x - 11, g.y - 29, 22, 29); px(x, '#7c808c', g.x - 8, g.y - 32, 16, 3);
+    var g = GRV, R0 = A.rise, gwp = A.grave && A.ctx.w.byId ? A.ctx.w.byId[A.grave.id] : null;
+    if (window.V2Gravestone && V2Gravestone.paintAt && gwp && gwp.art) { /* THE gravestone (option C, owner's pick Oct 29 2026): the grave's own stone, its pet carved in it, candles in its rarity colour */
+      V2Gravestone.paintAt(x, { art: gwp.art, stage: gwp.stage, tier: Math.max(0, Math.min(3, A.grave.tier | 0)), state: A.grave.state || null, crumbles: A.grave.crumbles || 0, open: true }, g.x - 26, g.y - 56, t);
+    } else { px(x, '#16141f', g.x - 12, g.y - 30, 24, 31); px(x, '#16141f', g.x - 9, g.y - 33, 18, 3); px(x, '#7c808c', g.x - 11, g.y - 29, 22, 29); px(x, '#7c808c', g.x - 8, g.y - 32, 16, 3);
     px(x, '#525560', g.x + 6, g.y - 29, 5, 29); px(x, '#9a9ea8', g.x - 11, g.y - 29, 1, 29); x.font = '5px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#2b2d31'; x.fillText('RIP', g.x - 1, g.y - 20);
-    x.font = '4px "Press Start 2P", monospace'; x.fillText('#' + (A.grave ? A.grave.id : ''), g.x - 1, g.y - 12); x.textAlign = 'left';
+    x.font = '4px "Press Start 2P", monospace'; x.fillText('#' + (A.grave ? A.grave.id : ''), g.x - 1, g.y - 12); x.textAlign = 'left'; }
     var shake = R0 && R0.t < 900 ? Math.round(Math.sin(t / 25) * 1) : 0;
     px(x, '#2a1d14', g.x - 16 + shake, g.y, 32, 6); px(x, '#3e2a18', g.x - 14 + shake, g.y - 1, 28, 2); px(x, '#523822', g.x - 10 + shake, g.y - 2, 6, 1); px(x, '#523822', g.x + 3 + shake, g.y - 2, 5, 1);
-    var gs = A.grave && sprite(A.grave); if (gs && !R0) { x.save(); x.globalAlpha = 0.45 + 0.1 * Math.sin(t / 300); x.imageSmoothingEnabled = false; x.drawImage(gs, g.x - 12, g.y - 58 + (reduced() ? 0 : Math.round(Math.sin(t / 450) * 2)), 24, 24); x.restore(); }
+    var gs = A.grave && sprite(A.grave); if (gs && !R0) { x.save(); x.globalAlpha = 0.45 + 0.1 * Math.sin(t / 300); x.imageSmoothingEnabled = false; x.drawImage(gs, g.x - 12, g.y - (window.V2Gravestone && gwp ? 86 : 58) + (reduced() ? 0 : Math.round(Math.sin(t / 450) * 2)), 24, 24); x.restore(); }
     ring(x, t); A.flares.forEach(function (f, j) { if (j >= 4 && !CAND[j][3]) candle(x, CAND[j], f, t, j); });
     /* the altar: slab, body, base; carved tally on the front */
     px(x, '#16141f', 49, 56, 62, 6); px(x, '#9a9ea8', 50, 57, 60, 4); px(x, '#c8ccd4', 50, 57, 60, 1);

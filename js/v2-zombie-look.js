@@ -125,6 +125,21 @@
   /* frame: the full frame (any background); ka / kb: the same pet keyed on two solid colours (pixels equal in both = the pet).
    * Returns new { img, ka, kb } data arrays (the inputs are not changed). */
   /* the pet's real eye spots: the same star-eye render the gear anchors use (render only; pet-core untouched). null when it can't tell (hybrids, eyeless) */
+  /* the pet's real eye pixels, read from the species sprite map the game draws (E / P cells), with the game's own stage scale,
+   * centring, bob and left/right eye split (same maths as PetCore spriteBox + placeSprite; pet-core itself is untouched).
+   * One socket per eye cluster, at most 4x3, centred on the cluster. null for hybrids, eggs or species without eye cells. */
+  var SCALE = [0, 0.62, 0.78, 0.9, 1, 1], BOB = [0, -1, -1, 0];
+  function gameEyes(art, stage, fi) { try { var P = window.PetCore; if (!P || !art || art.hybrid || !P.SPECIES || !stage) return null;
+      var sp = null; for (var i = 0; i < P.SPECIES.length; i++) if (P.SPECIES[i].id === art.species) sp = P.SPECIES[i]; if (!sp) return null;
+      var st = Math.max(1, Math.min(5, stage | 0)), map = (sp.stageMaps && sp.stageMaps[st]) || sp.map; if (!map || !map.length) return null;
+      var W = map[0].length, H = map.length, s = SCALE[st], w = Math.max(4, Math.round(W * s)), h = Math.max(4, Math.round(H * s)), x0 = 16 - Math.round(w / 2), y0 = 28 - h + BOB[(fi || 0) % 4];
+      var sm = sp.small && sp.small[st] && sp.small[st].length === h && sp.small[st][0].length === w ? sp.small[st] : null, split = sp.eyeSplit != null ? x0 + Math.floor(sp.eyeSplit * w / W) : 16, S = [null, null];
+      for (var dy = 0; dy < h; dy++) for (var dx = 0; dx < w; dx++) { var ch = sm ? (sm[dy] || '').charAt(dx) || '.' : map[Math.floor((dy + 0.5) * H / h)].charAt(Math.floor((dx + 0.5) * W / w));
+        if (ch !== 'E' && ch !== 'P') continue; var x = x0 + dx, y = y0 + dy, k = x < split ? 0 : 1, e = S[k] || (S[k] = { x0: 32, x1: -1, y0: 32, y1: -1 });
+        e.x0 = Math.min(e.x0, x); e.x1 = Math.max(e.x1, x); e.y0 = Math.min(e.y0, y); e.y1 = Math.max(e.y1, y); }
+      S = S.filter(Boolean); if (!S.length) return null;
+      return S.map(function (e) { var cx = (e.x0 + e.x1) / 2, cy = (e.y0 + e.y1) / 2, ww = Math.max(2, Math.min(4, e.x1 - e.x0 + 1)), hh = Math.max(2, Math.min(3, e.y1 - e.y0 + 1)), a = Math.round(cx - (ww - 1) / 2), c = Math.round(cy - (hh - 1) / 2);
+        return { x0: a, x1: a + ww - 1, y0: c, y1: c + hh - 1 }; }); } catch (e) { return null; } }
   function starEyes(art, stage, fi) { try { var P = window.PetCore; if (!P || !art || art.hybrid || typeof P.render !== 'function') return null;
       var k = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none', eyes: 'star' }), o = { stage: stage, frame: fi || 0, gearOverride: {} }, out = null;
       for (var t = 0; t < 2 && !out; t++) { var d = P.render(k, t ? Object.assign({}, o, { openEyes: true }) : o).data, S = [null, null];
@@ -170,5 +185,5 @@
           if (sp && sp.pose) { handSaved.push([sp, sp.pose]); sp.pose = null; } }); }); }
     try { return fn.apply(self, args || []); }
     finally { if (--handDepth === 0 && handSaved) { handSaved.forEach(function (e) { e[0].pose = e[1]; }); handSaved = null; } } }
-  window.V2ZombieLook = { starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras, noHand: noHand };
+  window.V2ZombieLook = { gameEyes: gameEyes, starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras, noHand: noHand };
 })();

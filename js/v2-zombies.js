@@ -33,7 +33,7 @@
   function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} var hit = DONE.get(fr); if (hit && hit.__fe === fe) return hit; var A, B;
     try { A = keyed(pf, p, w, extra, '#ff00fe'); B = keyed(pf, p, w, extra, '#00ff01'); } catch (e) { return fr; }
     if (!A || !B || !A.length || !B.length) return fr; var KA = [], KB = [], out;
-    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null, feral: fe });
+    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: (Z.gameEyes && Z.gameEyes(p.art, p.stage, fi)) || (Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null), feral: fe });
         if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF) ZF.add(g); return g; });
       if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }

@@ -7,7 +7,7 @@
  *    so the 30+ MB file never parses on the page thread). Until it arrives (or if it fails) the replayed chain world fills the list.
  *    Sorts: newest death, oldest (hatch block), rarest tier, most powerful (Vigor+Spark+Grit+Zoom+Luck, the Ranking sum), most gear, longest lived.
  *    Filters: species, tier, meals. Find a grave (#, name, species, owner), My graves, #tomb-ID / ?id= deep links, paging for thousands of graves.
- * 3) THE ALTAR (Oct 28 2026 evening; live behind the cemetery gate Oct 29): a stone altar with candles on the path in front. Tap it for a card; every grave in the list has
+ * 3) THE ALTAR (Oct 28 2026 evening; live behind the cemetery gate Oct 29): a stone altar with candles on the grass beside the path. Tap it for a card; every grave in the list has
  *    "Raise at the altar", which loads js/v2-cemetery-altar.js (+ css/cemetery-altar.css, same ?v=) on demand and opens the mock seance panel.
  *    hooks('lit') turns the candles green while the panel is open; flare() makes them jump when an offering lands. Still no rule and no burn. */
 (function () {
@@ -16,7 +16,7 @@
   var S = { c: null, x: null, k: 1, raf: 0, off: false, hid: false, layer: null, sky: null, hits: [], sel: null, hov: null, line: 0, lt: 0, hook: 'off', total: 0, say: null };
   var LINES = ['Evenin\u2019. Mind the mud.', 'Feed \u2019em daily. Spares me the shovel.', 'Seven days. That\u2019s all it takes.', 'Rows go on past the fog.',
     'Quiet tonight. Too quiet.', 'Lantern\u2019s for you, not them.', 'Rest in pixels, little ones.', 'I stopped counting stones.'];
-  var ALTAR = { x: 138, y: 146, w: 45, h: 32 }, SEANCE = { cx: 234, cy: 166, r: 20 }, MORT = { x: 26, y: 170 };
+  var ALTAR = { x: 58, y: 138, w: 45, h: 32 }, SEANCE = { cx: 232, cy: 158, r: 20 }, MORT = { x: 26, y: 170 };
   function reduced() { return !!RM.matches || !!window.__cemReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   function rnd(i) { var v = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); }
@@ -52,7 +52,11 @@
     if (lean) px(x, R[2], lean < 0 ? a : a + w - 1, b + cap, 1, Math.max(1, Math.round(h / 3)));
     if (w >= 4) px(x, R[1], a + w - Math.max(1, Math.round(w / 4)), b + cap, Math.max(1, Math.round(w / 4)), h - cap); /* shade away from the moon */
     if (w >= 6 && h >= 8) { px(x, R[3], a, b + cap, 1, h - cap); var ly = b + cap + Math.round(h * 0.3); px(x, R[1], a + Math.round(w * 0.25), ly, Math.max(1, Math.round(w * 0.45)), 1); if (h >= 14) px(x, R[1], a + Math.round(w * 0.25), ly + Math.max(2, Math.round(h * 0.15)), Math.max(1, Math.round(w * 0.35)), 1); }
-    if (h >= 10) px(x, '#0c1410', a - 1, b + h, w + 3, 1); /* foot shadow */ }
+    if (h >= 10) px(x, '#0c1410', a - 1, b + h, w + 3, 1); /* foot shadow */
+    if (w >= 8 && h >= 12 && fogStep(z) <= 1) { /* the near rows carry THE gravestone's motifs (option C): a dirt mound, a bone, now and then a skull or a candle */
+      px(x, '#2a1c10', a - 1, b + h - 1, w + 2, 2); px(x, '#3d2a18', a, b + h - 1, w, 1); if (rnd(j + 23) < 0.55) { px(x, '#cfc8b0', a + 1, b + h, 3, 1); px(x, '#cfc8b0', a, b + h - 1, 1, 1); px(x, '#cfc8b0', a + 4, b + h - 1, 1, 1); }
+      if (rnd(j + 29) < 0.25) { px(x, '#000', a + w - 4, b + h - 4, 5, 4); px(x, '#d6d0bc', a + w - 3, b + h - 3, 3, 2); px(x, '#111', a + w - 3, b + h - 2, 1, 1); px(x, '#111', a + w - 1, b + h - 2, 1, 1); }
+      else if (rnd(j + 31) < 0.3) { px(x, '#000', a + w + 1, b + h - 4, 3, 4); px(x, '#cfc9b8', a + w + 2, b + h - 3, 1, 3); px(x, '#ffd166', a + w + 2, b + h - 5, 1, 1); } } }
   function buildSky() { var c = document.createElement('canvas'); c.width = W; c.height = HZ + 2; var x = c.getContext('2d'), B = ['#0b0a1f', '#0e0c25', '#110f2b', '#141232', '#181539', '#1c1840', '#221d48', '#2a2452', '#342e5e'];
     for (var i = 0; i < B.length; i++) px(x, B[i], 0, Math.floor(i * HZ / B.length), W, Math.ceil(HZ / B.length) + 1);
     /* full moon with a stepped glow */ var mx = 244, my = 26; [[22, '#1f1b46'], [18, '#29245a'], [15, '#383274']].forEach(function (g) { disc(x, mx, my, g[0], g[1]); }); disc(x, mx, my, 12, '#fff1c4');
@@ -84,26 +88,50 @@
     if (hv) outline(x, m.x - 7, m.y - 31, 22, 33); S.hits.push({ x: m.x - 7, y: m.y - 31, w: 22, h: 33, k: 'mort' }); }
   function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx)); px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 4, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
   /* the seance circle (restored Oct 29 2026 from the earlier scene art, drawing unchanged; moved right of the path so the REST sign stays clear): six candles round a moon stone, lit while a seance panel is open */
-  function seance(x, t) { var C = SEANCE, lit = S.hook === 'lit', hv = S.hov === 'seance' || S.sel === 'seance';
-    for (var a = 0; a < 40; a++) { var an = a / 40 * Math.PI * 2; px(x, '#2b2a3a', Math.round(C.cx + Math.cos(an) * C.r), Math.round(C.cy + Math.sin(an) * C.r * 0.42), 2, 1); }
-    px(x, '#000', C.cx - 8, C.cy - 3, 16, 7); px(x, '#56526a', C.cx - 7, C.cy - 2, 14, 5); px(x, '#cfc9ff', C.cx - 2, C.cy - 1, 3, 3); px(x, '#56526a', C.cx - 1, C.cy - 1, 2, 2); /* moon stone */
-    for (var i = 0; i < 6; i++) { var b = i / 6 * Math.PI * 2 + 0.3, cx = Math.round(C.cx + Math.cos(b) * C.r), cy = Math.round(C.cy + Math.sin(b) * C.r * 0.42);
-      px(x, '#000', cx - 2, cy - 7, 5, 8); px(x, '#e8e0c8', cx - 1, cy - 6, 3, 6); px(x, '#333', cx, cy - 8, 1, 2);
-      if (lit) { var f = reduced() ? 0 : Math.floor(t / 140 + i) % 2; px(x, '#ffd166', cx - (f ? 1 : 0), cy - 11, 2, 3); px(x, '#fff3b0', cx, cy - 10, 1, 1); } }
-    if (hv) outline(x, C.cx - C.r - 4, C.cy - 14, C.r * 2 + 8, 24); S.hits.push({ x: C.cx - C.r - 4, y: C.cy - 14, w: C.r * 2 + 8, h: 24, k: 'seance' }); }
-  /* the altar: on the path in front, slab + body + base, four candles; carved marks on the face. hook 'lit' = green flames (seance open). */
-  function altar(x, t) { var a = ALTAR, rm = reduced(), hv = S.hov === 'altar' || S.sel === 'altar', lit = S.hook === 'lit', fl = Math.max(0, 1 - (t - (S.flT || -1e9)) / 600);
-    px(x, '#0c1410', a.x - 2, a.y + 30, a.w + 4, 3); px(x, '#16141f', a.x, a.y + 25, a.w, 6); px(x, '#6a6e7a', a.x + 1, a.y + 26, a.w - 2, 4); px(x, '#525560', a.x + 1, a.y + 29, a.w - 2, 1);
+  /* shared 8-bit candle bits: a flickering flame (3 shapes), a stepped glow and a smoke thread that drifts up and fades */
+  function flame(x, cx, top, t, i, col, core, big) { var rm = reduced(), k = rm ? 0 : Math.floor(t / 110 + rnd(i) * 7 + Math.sin(t / 370 + i) * 1.5) % 3, sw = rm ? 0 : [0, -1, 1][Math.floor(t / 190 + i * 3) % 3], fh = 3 + (k === 1 ? 1 : 0) + (big || 0);
+    var B = big || 0; x.save(); x.globalAlpha = 0.07 + (k === 1 ? 0.03 : 0); glow(x, col, cx - 5 - B, top - fh - 5, 11 + 2 * B, fh + 9, 2); x.globalAlpha = 0.12; glow(x, col, cx - 3, top - fh - 3, 7, fh + 5, 1); x.restore();
+    px(x, col, cx + (k === 2 ? sw : 0), top - fh, 1, 1); px(x, col, cx - 1 + sw * (k === 0 ? 1 : 0), top - fh + 1, 3, fh - 1); px(x, core, cx, top - fh + 2, 1, Math.max(1, fh - 2)); }
+  function glow(x, c, a, b, w, h, r) { px(x, c, a + r, b, w - 2 * r, h); px(x, c, a, b + r, r, h - 2 * r); px(x, c, a + w - r, b + r, r, h - 2 * r); if (r > 1) { px(x, c, a + 1, b + 1, 1, h - 2); px(x, c, a + w - 2, b + 1, 1, h - 2); } } /* a rect with stepped corners */
+  function smoke(x, cx, top, t, i, n) { if (reduced()) return; for (var s = 0; s < (n || 3); s++) { var k = ((t / 2600) + rnd(i * 7 + s) + s / (n || 3)) % 1, sy = Math.round(top - 5 - k * 16), sx = Math.round(cx + Math.sin(t / 600 + s * 2 + i) * (1 + k * 2));
+      x.save(); x.globalAlpha = (1 - k) * 0.35; px(x, k < 0.5 ? '#8a8896' : '#5e5c6c', sx, sy, 1, k > 0.6 ? 2 : 1); x.restore(); } }
+  /* the seance circle: on the grass right of the path; a rune ring etched into the turf, six candles with their own foot shadows, the moon stone in the middle.
+   * hook 'lit' (seance open) = green fire and glowing runes; otherwise plain candle flames and runes that only catch the moon now and then. */
+  var RUNES = [[5, 2, 5], [7, 2, 2], [2, 7, 2], [5, 5, 7], [7, 5, 7], [1, 7, 4], [4, 7, 1], [7, 1, 7]];
+  function seance(x, t) { var C = SEANCE, lit = S.hook === 'lit', hv = S.hov === 'seance' || S.sel === 'seance', rm = reduced(), a, an, i;
+    x.save(); x.globalAlpha = 0.55; for (a = -C.r - 11; a <= C.r + 11; a++) { var hw = Math.round(Math.sqrt(Math.max(0, 1 - a * a / ((C.r + 11) * (C.r + 11)))) * (C.r + 11) * 0.42); px(x, '#0c1410', C.cx + a, C.cy - hw + 1, 1, hw * 2); } x.restore(); /* trodden turf */
+    for (a = 0; a < 84; a++) { an = a / 84 * Math.PI * 2; px(x, a % 2 ? '#0a120d' : '#24382a', Math.round(C.cx + Math.cos(an) * (C.r + 9)), Math.round(C.cy + Math.sin(an) * (C.r + 9) * 0.42), 1, 1); } /* outer etched groove */
+    for (a = 0; a < 40; a++) { an = a / 40 * Math.PI * 2; px(x, '#2b2a3a', Math.round(C.cx + Math.cos(an) * C.r), Math.round(C.cy + Math.sin(an) * C.r * 0.42), 2, 1); }
+    var gl = lit ? 0.6 + 0.3 * (rm ? 1 : Math.sin(t / 420)) : 0.45 + (rm ? 0 : 0.25 * Math.max(0, Math.sin(t / 1300))), rc = lit ? '#7dff6a' : '#8f84c8';
+    for (i = 0; i < 8; i++) { an = i / 8 * Math.PI * 2 + Math.PI / 6 + 0.3; var rx = Math.round(C.cx + Math.cos(an) * (C.r + 5)) - 1, ry = Math.round(C.cy + Math.sin(an) * (C.r + 5) * 0.42) - 1, g = RUNES[i];
+      for (var gy = 0; gy < 3; gy++) for (var gx = 0; gx < 3; gx++) if (g[gy] & (4 >> gx)) { px(x, '#0a120d', rx + gx, ry + gy + 1, 1, 1); x.save(); x.globalAlpha = gl; px(x, rc, rx + gx, ry + gy, 1, 1); x.restore(); } }
+    if (lit) { x.save(); x.globalAlpha = 0.08 + (rm ? 0 : 0.04 * Math.sin(t / 300)); px(x, '#7dff6a', C.cx - C.r, C.cy - 8, C.r * 2, 16); x.restore(); }
+    px(x, '#0c1410', C.cx - 9, C.cy + 3, 18, 2); px(x, '#000', C.cx - 8, C.cy - 3, 16, 7); px(x, '#56526a', C.cx - 7, C.cy - 2, 14, 5); px(x, '#6c6884', C.cx - 7, C.cy - 2, 14, 1); px(x, '#cfc9ff', C.cx - 2, C.cy - 1, 3, 3); px(x, '#56526a', C.cx - 1, C.cy - 1, 2, 2); /* moon stone */
+    var HT = [6, 8, 5, 7, 6, 8], back = [], front = [];
+    for (i = 0; i < 6; i++) { var b2 = i / 6 * Math.PI * 2 + 0.3; (Math.sin(b2) < 0 ? back : front).push(i); }
+    back.concat(front).forEach(function (i) { var b = i / 6 * Math.PI * 2 + 0.3, cx = Math.round(C.cx + Math.cos(b) * C.r), cy = Math.round(C.cy + Math.sin(b) * C.r * 0.42), h = HT[i];
+      px(x, '#0c1410', cx - 2, cy + 1, 6, 1); px(x, '#000', cx - 2, cy - h - 1, 5, h + 2); px(x, '#e8e0c8', cx - 1, cy - h, 3, h); px(x, '#b8b09a', cx + 1, cy - h, 1, h); px(x, '#fffbe8', cx - 1, cy - h, 1, 1);
+      if (i % 2) px(x, '#e8e0c8', cx - 2, cy - h + 2, 1, 2); /* wax drip */ px(x, '#333', cx, cy - h - 2, 1, 2);
+      flame(x, cx, cy - h - 2, t, i + 11, lit ? '#7dff6a' : '#ffc93c', lit ? '#e6ffd8' : '#fff3b0', lit ? 1 : 0); smoke(x, cx, cy - h - 6, t, i + 3, lit ? 3 : 2); });
+    if (hv) outline(x, C.cx - C.r - 11, C.cy - 22, C.r * 2 + 22, 35); S.hits.push({ x: C.cx - C.r - 11, y: C.cy - 22, w: C.r * 2 + 22, h: 35, k: 'seance' }); }
+  /* the altar: on the grass left of the path (Oct 29 2026: off the path, grounded with a contact shadow, trodden earth, grass tufts and a warm glow pool),
+   * slab + body + base, four candles; carved marks on the face. hook 'lit' = green flames (seance open). */
+  function altar(x, t) { var a = ALTAR, rm = reduced(), hv = S.hov === 'altar' || S.sel === 'altar', lit = S.hook === 'lit', fl = Math.max(0, 1 - (t - (S.flT || -1e9)) / 600), q;
+    x.save(); x.globalAlpha = 0.5; for (q = -30; q <= 30; q++) { var hh = Math.round(Math.sqrt(1 - q * q / 900) * 5); px(x, '#0a120d', a.x + 22 + q, a.y + 31 - hh, 1, hh * 2); } x.restore(); /* trodden earth */
+    x.save(); x.globalAlpha = (lit ? 0.12 : 0.07) + (rm ? 0 : 0.03 * Math.sin(t / 250)); glow(x, lit ? '#7dff6a' : '#ffc93c', a.x - 6, a.y + 25, a.w + 12, 10, 2); x.restore(); /* glow pool on the turf */
+    px(x, '#05080a', a.x - 1, a.y + 31, a.w + 2, 2); px(x, '#0c1410', a.x - 3, a.y + 30, a.w + 6, 2); px(x, '#16141f', a.x, a.y + 25, a.w, 6); px(x, '#6a6e7a', a.x + 1, a.y + 26, a.w - 2, 4); px(x, '#525560', a.x + 1, a.y + 29, a.w - 2, 1);
     px(x, '#16141f', a.x + 6, a.y + 9, a.w - 12, 17); px(x, '#7c808c', a.x + 7, a.y + 9, a.w - 14, 16); px(x, '#525560', a.x + a.w - 13, a.y + 9, 6, 16); px(x, '#9a9ea8', a.x + 7, a.y + 9, 1, 16);
     px(x, '#16141f', a.x + 2, a.y + 5, a.w - 4, 5); px(x, '#9a9ea8', a.x + 3, a.y + 6, a.w - 6, 3); px(x, '#c8ccd4', a.x + 3, a.y + 6, a.w - 6, 1);
     for (var m = 0; m < 4; m++) px(x, '#3a3550', a.x + 12 + m * 2, a.y + 13, 1, 6); for (var d = 0; d < 7; d++) px(x, '#3a3550', a.x + 11 + d, a.y + 18 - d, 1, 1);
     px(x, '#3a3550', a.x + 25, a.y + 13, 5, 1); px(x, '#3a3550', a.x + 27, a.y + 11, 1, 6);
-    [[5, 7], [10, 5], [a.w - 11, 5], [a.w - 6, 7]].forEach(function (c, j) { var cx = a.x + c[0], h = c[1], cy = a.y + 6, f = rm ? 0 : Math.round((Math.sin(t / 90 + j * 2.1) + Math.sin(t / 53 + j)) / 2), big = Math.round(fl * 5) + (lit ? 1 : 0);
-      px(x, '#16141f', cx - 1, cy - h - 1, 4, h + 1); px(x, '#e9e3d0', cx, cy - h, 2, h); px(x, '#b8b09a', cx + 1, cy - h, 1, h);
-      var col = lit || fl > 0.1 ? '#7dff6a' : '#ffc93c', fh = 2 + big + f; x.save(); x.globalAlpha = (lit ? 0.22 : 0.12) + fl * 0.3; px(x, col, cx - 3 - big, cy - h - fh - 3, 8 + big * 2, fh + 5); x.restore();
-      px(x, col, cx, cy - h - fh, 2, fh); px(x, lit || fl > 0.1 ? '#e6ffd8' : '#fff3b0', cx, cy - h - fh + 1, 1, Math.max(1, fh - 1)); });
+    if (lit) { x.save(); x.globalAlpha = 0.5 + (rm ? 0 : 0.3 * Math.sin(t / 380)); for (m = 0; m < 4; m++) px(x, '#7dff6a', a.x + 12 + m * 2, a.y + 13, 1, 6); for (d = 0; d < 7; d++) px(x, '#7dff6a', a.x + 11 + d, a.y + 18 - d, 1, 1); px(x, '#7dff6a', a.x + 25, a.y + 13, 5, 1); px(x, '#7dff6a', a.x + 27, a.y + 11, 1, 6); x.restore(); } /* the carved marks glow */
+    [[2, '#2f5a3a'], [5, '#24452d'], [a.w - 4, '#2f5a3a'], [a.w - 8, '#24452d'], [14, '#24452d'], [a.w - 17, '#2f5a3a']].forEach(function (g, j) { var gx = a.x + g[0], h = 2 + (j % 3); px(x, g[1], gx, a.y + 31 - h, 1, h); px(x, g[1], gx + 1, a.y + 32 - h + 1, 1, h - 1); }); /* grass tufts over the base */
+    px(x, '#3d6b45', a.x + 1, a.y + 25, 3, 1); px(x, '#3d6b45', a.x + a.w - 5, a.y + 24, 2, 2); /* moss */
+    [[5, 7], [10, 5], [a.w - 11, 5], [a.w - 6, 7]].forEach(function (c, j) { var cx = a.x + c[0], h = c[1], cy = a.y + 6, big = Math.round(fl * 5) + (lit ? 1 : 0), col = lit || fl > 0.1 ? '#7dff6a' : '#ffc93c';
+      px(x, '#16141f', cx - 1, cy - h - 1, 4, h + 1); px(x, '#e9e3d0', cx, cy - h, 2, h); px(x, '#b8b09a', cx + 1, cy - h, 1, h); if (j % 2) px(x, '#e9e3d0', cx - 1, cy - h + 2, 1, 2);
+      flame(x, cx, cy - h, t, j + 31, col, lit || fl > 0.1 ? '#e6ffd8' : '#fff3b0', big); smoke(x, cx, cy - h - 4 - big, t, j + 21, 2); });
     if (lit && !rm) { for (var s = 0; s < 6; s++) { var k = (t / 900 + s / 6) % 1, sx = a.x + a.w / 2 - 6 + ((s * 7) % 12) + Math.round(Math.sin(t / 300 + s) * 2); x.save(); x.globalAlpha = (1 - k) * 0.6; px(x, s % 2 ? '#7dff6a' : '#c9ffb0', sx, Math.round(a.y + 4 - k * 22), 1, 1); x.restore(); } }
-    if (hv) outline(x, a.x - 2, a.y - 8, a.w + 4, a.h + 8); S.hits.push({ x: a.x - 2, y: a.y - 8, w: a.w + 4, h: a.h + 8, k: 'altar' }); }
+    if (hv) outline(x, a.x - 3, a.y - 9, a.w + 6, a.h + 10); S.hits.push({ x: a.x - 3, y: a.y - 9, w: a.w + 6, h: a.h + 10, k: 'altar' }); }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; S.hits = [];
     if (!S.sky) S.sky = buildSky(); if (!S.layer) S.layer = buildLayer();
     sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); seance(x, t); altar(x, t); mort(x, t);
@@ -117,7 +145,7 @@
   function at(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height, hs = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; }); return hs.length ? hs[hs.length - 1] : null; }
   /** mount(w, dead): draws the scene into #cemScene; dead = the page's dead list (only its length is used: the stones are generic). */
   function mount(w, dead) { var box = document.getElementById('cemScene'); if (!box) return; S.total = dead ? dead.length : 0; S.sel = null;
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, a stone altar with candles on the path, a seance circle of six candles, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi · 🕯️ tap the altar</div>';
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, a stone altar with candles on the grass beside the path, a seance circle of six candles in a rune ring, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi · 🕯️ tap the altar</div>';
       c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off) kick(); else { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c);
       document.addEventListener('visibilitychange', function () { S.hid = document.hidden; if (S.hid) { cancelAnimationFrame(S.raf); S.raf = 0; } else kick(); });
@@ -173,7 +201,7 @@
     function canRaise(p) { if (!on || !p.raisable) return false; if (!pub) return p.id === CE.OWNER_GRAVE && ME === CE.OWNER; return true; }
     function tomb(p) { var wp = w.byId[p.id], gl = wp && R.graveCount && R.graveCount(w, wp) ? R.graveLine(w, wp) : '', lf = life(p), v = p.open ? V.cemView(w, wp, b) : null;
       var badge = p.state ? '<span class="cv2-diff d-closed">' + art(p.state === 'halo' ? 'halo' : p.state, 12) + ' ' + STATE[p.state] + '</span>' : '<span class="cv2-diff d-' + p.diff + '" title="Needs at least 1 ' + esc(p.needLabel) + ' offering">' + art(p.diff, 12) + ' ' + DIFF[p.diff] + ' · needs ' + esc(p.needLabel) + '</span>';
-      return '<div class="tomb' + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
+      return '<div class="tomb gtomb' + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
         '<div class="small">' + esc(p.spl) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div>' +
         '<div class="small cv2-badges">' + badge + '</div>' +
         '<div class="small cv2-facts">⚡ ' + fmt(p.power) + ' power · 🎒 ' + fmt(p.gear) + ' gear · 💀 ' + fmt(p.days) + ' day' + (p.days === 1 ? '' : 's') + ' dead' + (p.raisable && p.af < 1 ? ' · grave strength ' + Math.round(p.af * 100) + '%' : '') + (p.crumbles ? ' · crumbled ' + p.crumbles + ' time' + (p.crumbles === 1 ? '' : 's') : '') + '</div>' +
@@ -217,7 +245,7 @@
       el.innerHTML = bt('first', '⏮ First', !st.page) + bt('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + bt('next', 'Next ▶', st.page >= pages - 1) + bt('last', 'Last ⏭', st.page >= pages - 1); }
     function paint() { var pages = Math.max(1, Math.ceil(st.list.length / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list.slice(st.page * PER, st.page * PER + PER);
       tombs.innerHTML = L.length ? L.map(tomb).join('') : '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address, or clear a filter.</p>';
-      L.forEach(function (p) { var wp = w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && wp && wp.art) R.lazy(c, function () { return R.framesWith(wp.art, wp.stage, []); }, true); });
+      stoneJs(function () { L.forEach(function (p) { var wp = w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected && wp && wp.art) window.V2Gravestone.draw(c, { art: wp.art, stage: wp.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open }); }); });
       pager(pTop, pages); pager(pBot, pages); }
     var LOC = { gear: function (a, c) { return c.gear - a.gear || c.power - a.power || a.id - c.id; }, lived: function (a, c) { return life(c) - life(a) || a.id - c.id; } };
     function apply(keepPage) { var q0 = st.q.trim().toLowerCase(), exact = /^#\d+$/.test(q0), q = q0.replace(/^#/, ''), num = /^\d+$/.test(q), meals = q ? '' : st.meals, dd = st.days ? st.days.split('-') : null;
@@ -261,6 +289,9 @@
     window.__cemV2 = { src: 'chain', n: all.length, block: b - 1, on: on, pub: pub };
   }
   function artJs(cb) { if (window.V2CemArt) return; if (document.getElementById('cemArtJs')) return; var v = ver(), sc = document.createElement('script'); sc.id = 'cemArtJs'; sc.src = 'js/v2-cemetery-art.js' + (v ? '?' + v : ''); sc.onload = cb; document.head.appendChild(sc); }
+  /* THE gravestone (option C, owner's pick Oct 29 2026): loaded once, then every finder card draws its stone */
+  function stoneJs(cb) { if (window.V2Gravestone) return cb(); (S.gsQ = S.gsQ || []).push(cb); if (S.gsQ.length > 1) return; var v = ver(), sc = document.createElement('script'); sc.src = 'js/v2-gravestone.js' + (v ? '?' + v : '');
+    sc.onload = function () { var q = S.gsQ; S.gsQ = []; q.forEach(function (f) { f(); }); }; sc.onerror = function () { S.gsQ = []; }; document.head.appendChild(sc); }
   function ver() { var me = document.querySelector('script[src*="v2-cemetery-scene.js"]'); return me ? (me.getAttribute('src').split('?')[1] || '') : ''; }
   function altarJs(cb) { if (window.V2CemeteryAltar) return cb(); (S.altQ = S.altQ || []).push(cb); if (S.altQ.length > 1) return; var v = ver();
     if (!document.getElementById('cemAltCss')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'cemAltCss'; l.href = 'css/cemetery-altar.css' + (v ? '?' + v : ''); document.head.appendChild(l); }

@@ -39,3 +39,10 @@
 .cv2-zact button[disabled]{opacity:.55;cursor:not-allowed}
 .cv2-halos{display:flex;flex-wrap:wrap;gap:6px}
 .cv2-halo{display:inline-flex;gap:4px;align-items:center;border:2px solid #000;background:#1c1824;color:#fff3b0;padding:2px 6px;font-size:12px;text-decoration:none}
+
+/* THE gravestone (option C, owner's pick Oct 29 2026): the card is a night plot and the canvas is the stone itself (no grey slab, no grey filter) */
+.tomb.gtomb{background:#14121f;border:3px solid #2a2742;border-radius:8px;padding:10px 12px 12px;box-shadow:0 6px 0 #0b0a12}
+.tomb.gtomb::before{content:none;display:none}
+.tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0;image-rendering:pixelated;image-rendering:crisp-edges}
+.tomb.gtomb.tomb-hunted,.tomb.gtomb.tomb-dust{opacity:1}
+html.hw .tomb.gtomb::after{display:none}
