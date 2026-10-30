@@ -6,7 +6,7 @@
  * particles, aurora = aurora-borealis backdrop.
  * WHICH looks: exactly V2Rules.shownLooks(w, p): one look per type; looks placed with pet:aura first (highest Flame tier first), then quest
  * looks in earned order. LAYERS (bottom to top): background -> BACK (aurora / holo wings, only where the background shows, so behind the pet)
- * -> pet + gear (pixel) -> SKIN (galaxy) -> FOIL (rainbow / black / gold holo) -> AURA (flame / lightning / neon trail / spell sparkles) -> TOP
+ * -> pet + gear (pixel) -> SKIN (galaxy) -> FOIL (rainbow / black / gold holo; gold is a partial tint, the pet's own colours show through) -> AURA (flame / lightning / neon trail / spell sparkles) -> TOP
  * (laurels / halo / gold-foil crown). Galaxy and foil are separate types, so both can show (foil over galaxy).
  * One renderer (a per-pixel JS "shader") does both the live overlay and static bakes (t/<id>.png token images, Node), so they always match.
  * PERF: overlays render only while on screen (IntersectionObserver), at most MAX_LIVE animate at once (others keep their last frame), ~24 fps,
@@ -14,6 +14,7 @@
  * prefers-reduced-motion = one still frame (no sweep, no particles moving). */
 (function (root) {
   'use strict';
+  var GOLD_TINT = 0.5; /* gold foil strength: 0.5 = half gold, half the pet's own colour (was about 0.7 gold, which hid the pet) */
   var INFO = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
   function fract(x) { return x - Math.floor(x); }
@@ -104,7 +105,9 @@
             var ink = Lm < 0.16, keep = ink ? 0.92 : 0.62; /* dark outline / eye pixels keep the sprite readable */
             if (foil === 'rainbow-holo') { irid(ph * 1.6 + L * 0.5, tmp); var fa = (1 - keep) * (0.7 + band * 0.8); r = r * (1 - fa) + tmp[0] * fa * (0.55 + Lm); gg = gg * (1 - fa) + tmp[1] * fa * (0.55 + Lm); b = b * (1 - fa) + tmp[2] * fa * (0.55 + Lm); }
             else if (foil === 'black-holo') { irid(ph * 1.3 + 0.5, tmp); var dk = ink ? 1 : 0.42; r = r * dk * 0.55 + (ink ? 0 : tmp[0] * 0.22 * (0.35 + band * 2)); gg = gg * dk * 0.55 + (ink ? 0 : tmp[1] * 0.22 * (0.35 + band * 2)); b = b * dk * 0.6 + (ink ? 0 : tmp[2] * 0.28 * (0.35 + band * 2)); }
-            else if (!ink) { var gl = 0.25 + Lm * 0.85 + 0.1 * Math.sin(ph * 9); r = r * 0.3 + gl * 0.8; gg = gg * 0.3 + gl * 0.6; b = b * 0.3 + gl * 0.2; }
+            else if (!ink) { /* gold foil = partial tint (owner Oct 29 2026: "let some original color through"): GOLD_TINT of a shaded gold blended over the
+               pet's own colour, so its colours and shading still show; sheen band + sparkle glints below are kept */
+              var gl = 0.22 + Lm * 0.95 + 0.08 * Math.sin(ph * 9), ga = GOLD_TINT; r = r * (1 - ga) + gl * 1.0 * ga; gg = gg * (1 - ga) + gl * 0.74 * ga; b = b * (1 - ga) + gl * 0.24 * ga; }
             if (!ink) { r += band * 0.32; gg += band * 0.32; b += band * 0.36; }
             var gh = hash((px / 3) | 0, ((py / 3) | 0) + seed * 7); if (gh > 0.94) { var gp = Math.max(0, 1 - Math.abs(fract(gh * 13 + shine * 1.5) - 0.5) * 6); var cxp = (px % 3) - 1, cyp = (py % 3) - 1; var star = (cxp === 0 || cyp === 0) ? (cxp === 0 && cyp === 0 ? 1 : 0.5) : 0; var gv = gp * star * 1.2; r += gv; gg += gv; b += gv; } } }
         if (aura && d > 0 && d < 8 && !(isB && ownB)) {
