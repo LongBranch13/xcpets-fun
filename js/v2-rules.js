@@ -2389,7 +2389,7 @@
    * Set at deploy to tip + about 6. Randomness only from block hash + tx id. Feral and crumble are worked out from block numbers (no burn needed).
    * OWNER TEST: until CEMETERY_PUBLIC_BLOCK is set, raising (seance / pledge / raise) is allowed only for grave #CEM_OWNER_GRAVE and only by
    * CEM_OWNER_ADDR. Flip it off for public launch by setting CEMETERY_PUBLIC_BLOCK to tip + about 6 (a block, so the test history replays the same). */
-  var ACTIVATE_CEMETERY_LOOP_BLOCK = null; // PLACEHOLDER: set at deploy to tip + ~6
+  var ACTIVATE_CEMETERY_LOOP_BLOCK = 973772; // owner-test go-live 2026-10-29 10:09 PM CT: Bitcoin tip 973766 (mempool.space + blockstream.info) + 6
   var CEMETERY_PUBLIC_BLOCK = null;        // null = OWNER TEST mode (grave #2, owner wallet only); set to tip + ~6 for public launch
   var CEM_OWNER_ADDR = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', CEM_OWNER_GRAVE = 2;
   var CEM_HW_FROM = 973935, CEM_HW_TO = 975670;  /* Halloween window (Oct 31 to Nov 11, by block) */

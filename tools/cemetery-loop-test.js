@@ -22,6 +22,7 @@ const CEM_TAGS = ['pet:seance:18846:' + b32(4133), 'pet:alt:18849:' + b32(4098),
 { const rows = CEM_TAGS.map((t, i) => row(R + i, i % 2 ? OW : SB, 10000, t)), junk = CEM_TAGS.map((t, i) => row(R + i, i % 2 ? OW : SB, 10000, 'pet:zz' + i));
   const a = W(rows, R + 20, { gate: null }), z = W(junk, R + 20, { gate: null });
   ok(a.V.cemeteryGate() === null && !a.V.cemOn(R), 'gate placeholder is null (off)');
+  { const V0 = L.load().V2Rules; ok(V0.cemeteryGate() === 973772 && V0.cemPublicBlock() === null, 'shipped: gate 973772, public block null (owner-test mode)'); }
   ok(!a.w.cem, 'gate off: no cemetery state on the world');
   ok(JSON.stringify(a.w.pets) === JSON.stringify(z.w.pets) && JSON.stringify(a.w.items) === JSON.stringify(z.w.items), 'gate off: pets and items identical to the same burns with unknown tags');
   ok(logs(a.w, R).filter(e => /seance|alt|raise|zfeed|rpl|resurrect/.test(e.kind)).length === 0, 'gate off: no cemetery log kinds');
