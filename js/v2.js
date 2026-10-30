@@ -8,15 +8,33 @@
   function zMeals(w, me, b) { if (zMealsMemo && zMealsMemo.w === w && zMealsMemo.me === me && zMealsMemo.b === b) return zMealsMemo.L;
     var L = !V.cemOfferWhy ? [] : (w.pets || []).filter(function (a) { return a.owner === me && !a.dead && !a.released && !ZB(a) && !V.cemOfferWhy(w, a, me, b); })
       .sort(function (a, c) { return (a.tier | 0) - (c.tier | 0) || (a.stage | 0) - (c.stage | 0) || a.id - c.id; }); zMealsMemo = { w: w, me: me, b: b, L: L }; return L; }
+  /* zombie-feed-pets (owner Oct 30 2026 "I fed the zombie but it was xcpets instead of other pets I dont want"): the meal is a PICK, never a default.
+   * Nothing is pre-selected (the old dropdown silently pre-picked the weakest pet), starred pets and pets already in an unconfirmed zombie meal are
+   * left out, you tick any number of unwanted pets, and the button names the pets plus the fee. One pet:zfeed burn eats every listed pet for one
+   * fee (rules unchanged: cemHandle zfeed), so the picks are packed into as few 34-byte tags as fit. A pending meal shows on the card. UI only. */
+  function zPendMeals(z) { var o = []; myPendingTags().forEach(function (tag) { var t = V.parseTag ? V.parseTag(tag) : null; if (t && t.action === 'zfeed' && +t.zombie === +z) (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
+  function zAllPend() { var o = []; myPendingTags().forEach(function (tag) { var t = V.parseTag ? V.parseTag(tag) : null; if (t && t.action === 'zfeed') (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
+  function zFeedPlans(w, z, ids, b) { var s = ids.slice().sort(function (a, c) { return a - c; }), out = [], cur = [];
+    s.forEach(function (id) { var t = cur.concat([id]); if (cur.length && !V.cemPlan(w, 'zfeed', z, t, b).ok) { out.push(cur); cur = [id]; } else cur = t; }); if (cur.length) out.push(cur);
+    return out.map(function (g) { var P = V.cemPlan(w, 'zfeed', z, g, b); return { tag: P.tag, amount: V.cemCost(w, 'zmeal', b), petId: z, label: 'zmeal', zEat: g }; }); }
+  function zBtnText(w, z, ids, b) { var cost = V.cemCost(w, 'zmeal', b); if (!ids.length) return '🍖 Pick pets above to feed it';
+    var n = zFeedPlans(w, z, ids, b).length; return '🍖 Feed ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to it · fee ' + fmt(cost * n) + ' XCPETS' + (n > 1 ? ' (' + n + ' burns)' : ''); }
   function zFeedHtml(p, w) { if (!ZB(p) || !ME || p.owner !== ME || !V.cemOn || !V.cemCost) return ''; var b = (S.tip || 0) + 1; if (!V.cemOn(b)) return '';
-    var L = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id; }), cost = V.cemCost(w, 'zmeal', b);
-    var opts = L.slice(0, 400).map(function (a) { return '<option value="' + a.id + '">' + esc(a.name || '#' + a.id) + ' #' + a.id + ' · ' + TL[a.tier | 0] + '</option>'; }).join('');
-    return '<div class="zb-feed" data-zf="' + p.id + '"><label class="small zb-ml">It eats <select class="zb-meal" aria-label="Pet the zombie eats">' + opts + '</select></label>' +
-      '<button type="button" class="btn zb-feedbtn"' + (L.length ? '' : ' disabled title="You have no living pet it can eat"') + '>🍖 Feed zombie · ' + fmt(cost) + ' XCPETS</button></div>'; }
+    var pend = zAllPend(), mine = zPendMeals(p.id), all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0; });
+    var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length;
+    var rows = L.slice(0, 400).map(function (a) { return '<label class="zb-opt"><input type="checkbox" class="zb-pick" value="' + a.id + '"> ' + esc(a.name || '#' + a.id) + ' <span class="muted">#' + a.id + ' · ' + TL[a.tier | 0] + ' · ' + esc(a.stageName || '') + (a.neglected ? ' · ripe' : '') + '</span></label>'; }).join('');
+    var pn = mine.length ? '<div class="small zb-pend">⏳ Meal waiting for a block: ' + mine.map(function (id) { var a = w.byId[id]; return esc((a && a.name) || '#' + id) + ' #' + id; }).join(', ') + '. It is eaten (and hunger refills) when that burn confirms; until then the pet still shows on your list.</div>' : '';
+    return '<div class="zb-feed" data-zf="' + p.id + '">' + pn + '<details class="zb-pickbox"><summary class="small">🍖 Choose pets for ' + esc(p.name || '#' + p.id) + ' to eat <span class="muted">(' + fmt(L.length) + ' can be eaten)</span></summary>' +
+      '<p class="small zb-warn">A zombie eats <b>pets</b>, not XCPETS. Each pet you tick is <b>used up for good</b>. The XCPETS amount is only the meal fee (one fee covers every pet in the burn). Nothing is ticked for you.' + (kept ? ' ★ Starred pets are not listed (' + kept + ').' : '') + '</p>' +
+      '<div class="zb-list">' + (rows || '<div class="small muted">You have no living pet it can eat.</div>') + '</div></details>' +
+      '<button type="button" class="btn zb-feedbtn" disabled>' + zBtnText(w, p.id, [], b) + '</button></div>'; }
   function zFeedBind(root) { if (!root) return; root.querySelectorAll('.zb-feed').forEach(function (el) { if (el._zb) return; el._zb = true;
-    el.addEventListener('click', function (e) { e.stopPropagation(); var bt = e.target.closest('.zb-feedbtn'); if (!bt || bt.disabled) return; var w = world(), b = (S.tip || 0) + 1, z = +el.dataset.zf, f = +el.querySelector('.zb-meal').value, Z = w.byId[z], F = w.byId[f];
-      if (!Z || !F) return toast('Pick a pet for #' + z + ' to eat.'); var P = V.cemPlan(w, 'zfeed', z, [f], b);
-      confirmPlans('🍖 Feed zombie ' + esc(Z.name || '#' + z) + ' #' + z + ': it eats ' + esc(F.name || '#' + f) + ' #' + f, [{ tag: P.tag, amount: V.cemCost(w, 'zmeal', b), petId: z, label: 'zmeal' }]); });
+    function picked() { return Array.prototype.map.call(el.querySelectorAll('.zb-pick:checked'), function (c) { return +c.value; }); }
+    el.addEventListener('change', function (e) { if (!e.target.classList.contains('zb-pick')) return; var w = world(), ids = picked(), bt = el.querySelector('.zb-feedbtn'); bt.disabled = !ids.length; bt.textContent = zBtnText(w, +el.dataset.zf, ids, (S.tip || 0) + 1); });
+    el.addEventListener('click', function (e) { e.stopPropagation(); var bt = e.target.closest('.zb-feedbtn'); if (!bt) return; var w = world(), b = (S.tip || 0) + 1, z = +el.dataset.zf, Z = w.byId[z], ids = picked();
+      if (!Z || !ids.length) return toast('Tick the pets you want ' + (Z ? esc(Z.name || '#' + z) : 'the zombie') + ' to eat first.');
+      var names = ids.map(function (f) { var F = w.byId[f]; return esc((F && F.name) || '#' + f) + ' #' + f; });
+      confirmPlans('🍖 Feed zombie ' + esc(Z.name || '#' + z) + ' #' + z + ' · eats ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' for good: ' + names.slice(0, 6).join(', ') + (names.length > 6 ? ' +' + (names.length - 6) + ' more' : ''), zFeedPlans(w, z, ids, b)); });
     el.addEventListener('keydown', function (e) { e.stopPropagation(); }); }); }
   'use strict';
   /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
@@ -654,7 +672,7 @@
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
     var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic at ' + fmt(R.careTarget(w, p, S.tip).mythic) + ' care because you raised a Mythic)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
     if (ZB(p)) h += zFeedHtml(p, world());
-    if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row"><button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button>' + (V.wheelOn && V.wheelOn((S.tip || 0) + 1) ? '<a class="btn ghost" href="#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a>' : '<button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>') + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Moves it to the Discard pile (only hidden in this browser). Free, no burn; restore any time.">🗑️ Discard pet</button></div>' +
+    if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row">' + (ZB(p) ? '' : '<button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button>') + /* zombie-feed-pets: a zombie never takes a normal meal, so no Feed button on its panel */ (V.wheelOn && V.wheelOn((S.tip || 0) + 1) ? '<a class="btn ghost" href="#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a>' : '<button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>') + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Moves it to the Discard pile (only hidden in this browser). Free, no burn; restore any time.">🗑️ Discard pet</button></div>' +
       (p.owner === ME ? rollHelp(p) : '');
     h += R.starveHtml ? R.starveHtml(w, p, ME) : ''; /* starve-warning (2026-10-19): neglected + gear worn -> countdown, worn pieces, Feed (display only) */
     h += '<h3 class="sec" data-ico="gear">Gear <span class="small muted gcount">' + V.wornOf(w, p.id).length + '/' + p.capacity + '</span></h3><div class="gpicker" id="gPicker"></div>' + (window.UXB && !p.dead ? UXB.petOdds(p, w) : ''); // pop-up cleanup 2026-10-14: no long capacity/signature/how-to text
@@ -739,6 +757,8 @@
   function viewBlock() { if (!viewOnly()) return false;
     nwSheet('👀 Viewing ' + esc(V2View.short(ME)) + ': view only. Connect the XCP Wallet that owns these pets to feed, equip, battle, breed or roll.');
     return true; }
+  function zEatNote(plans, w) { var ids = []; plans.forEach(function (q) { if (q && q.zEat) ids = ids.concat(q.zEat); else { var t = q && /^pet:zfeed:/.test(q.tag || '') && V.parseTag ? V.parseTag(q.tag) : null; if (t && t.ids) ids = ids.concat(t.ids.map(Number)); } }); if (!ids.length) return '';
+    return '<p class="small warn zb-eatnote">🧟 The zombie eats these pets for good: ' + ids.map(function (f) { var F = w.byId[f]; return '<b>' + esc((F && F.name) || '#' + f) + ' #' + f + '</b>' + (F ? ' (' + TL[F.tier | 0] + ')' : ''); }).join(', ') + '. The XCPETS below is only the meal fee.</p>'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
     if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own XCP Wallet (desktop Chrome extension). Connect it to play, or look up any address to view its pets.'); return; }
@@ -750,7 +770,7 @@
     if (!plans.length) { if (fg.skipped.length || fg.blocked) feedBlocked(title, fg.text); else if (!skip.length) toast('Nothing to do'); return; }
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
-    $('cfBody').innerHTML = '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + (plans.some(function (q) { return q && q.runs; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
+    $('cfBody').innerHTML = zEatNote(plans, bw) + '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + (plans.some(function (q) { return q && q.runs; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
       blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
