@@ -2392,7 +2392,7 @@
   var ACTIVATE_CEMETERY_LOOP_BLOCK = 973772; // owner-test go-live 2026-10-29 10:09 PM CT: Bitcoin tip 973766 (mempool.space + blockstream.info) + 6
   var CEMETERY_PUBLIC_BLOCK = null;        // null = OWNER TEST mode (grave #2, owner wallet only); set to tip + ~6 for public launch
   var CEM_OWNER_ADDR = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', CEM_OWNER_GRAVE = 2;
-  var ACTIVATE_RESURRECT_RETIE_BLOCK = 973855; // resurrect-retie: live from block 973855 (BTC tip 973849 + 6 at deploy, Oct 30 2026). From it, a successful Resurrection unties any token still tied to the pet (keepsake); the pet stays with the resurrecting owner, who ties a new token with pet:deed
+  var ACTIVATE_RESURRECT_RETIE_BLOCK = 973859; // resurrect-retie: live from block 973859 (BTC tip 973849 + 10 at deploy, Oct 30 2026). From it, a successful Resurrection unties any token still tied to the pet (keepsake); the pet stays with the resurrecting owner, who ties a new token with pet:deed
   var CEM_HW_FROM = 973935, CEM_HW_TO = 975670;  /* Halloween window (Oct 31 to Nov 11, by block) */
   var CEM_COSTS = { pledge: 69, raise: 135, zmeal: 69, rpl: 69, resurrect: 690 }; /* base XCPETS; halvings + Fire Sales via costAt / below */
   var CEM_FERAL_BLOCKS = 432, CEM_CRUMBLE_BLOCKS = 432, CEM_POOL_BLOCKS = BLOCKS_PER_DAY;
