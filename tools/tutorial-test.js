@@ -38,5 +38,11 @@ eq('cemetery pool, feral, cap, ripe', [N.cemPool, N.cemFeral, N.cemCap, N.cemRip
 const cem = T.CH.filter(ch => ch.id === 'cem')[0], cs = cem.steps.map(x => typeof x[1] === 'function' ? x[1]() : x[1]).join('\n');
 eq('cemetery chapter teaches the raise (Hold seance, Pledge only, Raise now, Take all back, My Pets)', ['Hold seance', 'Pledge only', 'Raise now', 'Take all back', 'My Pets'].every(k => cs.indexOf(k) >= 0), true);
 eq('raise steps say it opens soon while the cemetery is owner test', V.cemPublicBlock() != null || /Opens soon/.test(cs), true);
+// tutorial-cemetery-v2: zombies eat pets (zombie-feed-pets picker), feral clock, whole-burn rule
+eq('cemetery chapter teaches zombie meals (pets not meals, discarded first, Select all discarded, starred never, fee per burn, hunger full, tier + neglect, whole burn fails, feral)',
+  ['pets, not meals', 'discarded', 'Select all discarded', 'Starred pets are never offered', 'only a fee per burn', 'refills its hunger to full', 'tier', 'neglect', 'whole burn fails', 'feral', 'Whoever raises it owns it'].every(k => cs.indexOf(k) >= 0), true);
+eq('zombie meal + Select all discarded exist in the play UI', /Select all discarded/.test(fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8')), true);
+eq('whole burn fails = rules reject the zfeed burn on the first bad pet', /if \(bad\) return L\(r, 'rejected', 'zombie meal: ' \+ bad\)/.test(RS), true);
+eq('no x / times symbol, price, series, discount or giveaway in the cemetery chapter', /\d ?(x|×)\b|×|\bprice|\bseries|discount|giveaway/i.test(cs), false);
 eq('no G Money in the tutorial', /G Money/i.test(src), false);
 console.log(fail ? fail + ' FAILED' : 'tutorial: all checks pass'); process.exit(fail ? 1 : 0);
