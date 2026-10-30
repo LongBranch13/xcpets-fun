@@ -202,22 +202,23 @@
   function segD(px, py, ax, ay, bx, by) { var dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, k = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0, ex = ax + dx * k - px, ey = ay + dy * k - py; return Math.sqrt(ex * ex + ey * ey); }
   function scr(out, o, c, a) { out[o] = 255 - (255 - out[o]) * (1 - c[0] / 255 * a); out[o + 1] = 255 - (255 - out[o + 1]) * (1 - c[1] / 255 * a); out[o + 2] = 255 - (255 - out[o + 2]) * (1 - c[2] / 255 * a); }
   function mix(out, o, c, a) { out[o] += (c[0] - out[o]) * a; out[o + 1] += (c[1] - out[o + 1]) * a; out[o + 2] += (c[2] - out[o + 2]) * a; }
-  function electric(out, S, rim, t, seed) { if (!rim) return out; var on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && rim[y * 32 + x]; }, pts = [], p;
+  function electric(out, S, rim, t, seed, sick) { if (!rim) return out; /* sick (zombie-dead-look 2026-10-29): a risen zombie keeps the Mythic aura, but dim and rot-green */
+    var sk = function (c) { var l = c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11; return [Math.round(l * 0.5), Math.round(l * 0.62), Math.round(l * 0.26)]; }, mx = sick ? function (a, o, c, f) { mix(a, o, sk(c), f * 0.45); } : mix, sc = sick ? function (a, o, c, f) { scr(a, o, sk(c), f * 0.4); } : scr; var on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && rim[y * 32 + x]; }, pts = [], p;
     for (p = 0; p < 1024; p++) if (rim[p]) pts.push(p); if (!pts.length) return out; var k = 32 / S, cx = 16, cy = 16;
     var flk = kf(t % 0.9 / 0.9, [[0, 0], [0.12, 0.55], [0.16, 0], [0.41, 0.3], [0.44, 0], [0.7, 0.7], [0.73, 0.1], [0.76, 0]], true);
     var cs = Math.floor(t % 0.45 / 0.15), crot = [0, 127, 251][cs], cop = [0.5, 0.9, 0.35][cs];
     var zt = t % 5.3 / 5.3, zr = zt < 0.25 ? 360 * (zt / 0.25) * (zt / 0.25) * (3 - 2 * zt / 0.25) : 360, zop = kf(zt, [[0, 0], [0.03, 1], [0.22, 1], [0.25, 0], [1, 0]]);
     var g1 = 0.35 / 100 * 32, g2 = 0.9 / 100 * 32;
     for (var py = 0; py < S; py++) { var Y = (py + 0.5) * k, iy = Y | 0; for (var px = 0; px < S; px++) { var X = (px + 0.5) * k, ix = X | 0, o = (py * S + px) * 4;
-        if (on(ix, iy)) { var u = px / S, v = py / S; mix(out, o, e5col(clamp((u + v) / 2, 0, 1)), 1);
+        if (on(ix, iy)) { var u = px / S, v = py / S; mx(out, o, e5col(clamp((u + v) / 2, 0, 1)), 1);
           var cxp = ix + 0.5, cyp = iy + 0.5, dc = Math.sqrt((X - cxp) * (X - cxp) + (Y - cyp) * (Y - cyp)) - 0.1;
           for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { if ((!dx && !dy) || !on(ix + dx, iy + dy)) continue; if (dx && dy && (on(ix + dx, iy) || on(ix, iy + dy))) continue; dc = Math.min(dc, segD(X, Y, cxp, cyp, cxp + dx, cyp + dy) - 0.1); }
-          if (dc < 0.04) mix(out, o, [255, 255, 255], 0.85 * clamp((0.04 - dc) / 0.08 + 0.5, 0, 1));
-          if (flk) scr(out, o, [223, 248, 255], flk);
-          var ang = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - crot) % 23, cr = ang < 9 || ang > 13 ? 0 : 0.95 * (1 - Math.abs(ang - 11) / 2); if (cr) scr(out, o, [255, 255, 255], cr * cop);
-          if (zop) { var za = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - zr) % 360, zw = za < 300 ? 0 : za < 335 ? 0.7 * (za - 300) / 35 : za < 350 ? 0.7 + 0.3 * (za - 335) / 15 : za < 357 ? 1 : (360 - za) / 3; if (zw) mix(out, o, za < 340 ? [150, 235, 255] : [255, 255, 255], zw * zop); }
+          if (dc < 0.04) mx(out, o, [255, 255, 255], 0.85 * clamp((0.04 - dc) / 0.08 + 0.5, 0, 1));
+          if (flk) sc(out, o, [223, 248, 255], flk);
+          var ang = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - crot) % 23, cr = ang < 9 || ang > 13 ? 0 : 0.95 * (1 - Math.abs(ang - 11) / 2); if (cr) sc(out, o, [255, 255, 255], cr * cop);
+          if (zop) { var za = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - zr) % 360, zw = za < 300 ? 0 : za < 335 ? 0.7 * (za - 300) / 35 : za < 350 ? 0.7 + 0.3 * (za - 335) / 15 : za < 357 ? 1 : (360 - za) / 3; if (zw) mx(out, o, za < 340 ? [150, 235, 255] : [255, 255, 255], zw * zop); }
         } else { var bd = 9; for (var yy = iy - 1; yy <= iy + 1; yy++) for (var xx = ix - 1; xx <= ix + 1; xx++) if (on(xx, yy)) { var ddx = Math.max(xx - X, 0, X - xx - 1), ddy = Math.max(yy - Y, 0, Y - yy - 1); bd = Math.min(bd, Math.sqrt(ddx * ddx + ddy * ddy)); }
-          if (bd < 2) { scr(out, o, [140, 230, 255], 0.95 * Math.exp(-bd * bd / (2 * g1 * g1))); scr(out, o, [60, 170, 255], 0.55 * Math.exp(-bd * bd / (2 * g2 * g2))); } } } }
+          if (bd < 2) { sc(out, o, [140, 230, 255], 0.95 * Math.exp(-bd * bd / (2 * g1 * g1))); sc(out, o, [60, 170, 255], 0.55 * Math.exp(-bd * bd / (2 * g2 * g2))); } } } }
     for (var a = 0; a < 5; a++) { var d = 0.9 + hash(a, seed + 71) * 1.4, w0 = hash(a, seed + 73) * 1.2, tt = t - w0; if (tt < 0) continue; var cyc = Math.floor(tt / d), ph = tt / d - cyc;
       var op = kf(ph, [[0, 1], [0.08, 0.3], [0.12, 1], [0.24, 0.6], [0.28, 0]], true); if (!op) continue;
       var h = function (n) { return hash(a * 131 + n, seed * 7 + cyc * 17 + 5); }, gp = pts[Math.floor(h(1) * pts.length)], bx = (gp & 31) + 0.5, by = (gp >> 5) + 0.5, U = 22 / 100 * 32 / 10;
@@ -225,14 +226,14 @@
       for (var q = 0; q <= n; q++) V.push([bx + (-Math.cos(an) * L / 2 + Math.cos(an) * L * q / n + (q && q < n ? (h(10 + q) - 0.5) * 2.4 : 0)) * U, by + (-Math.sin(an) * L / 2 + Math.sin(an) * L * q / n + (q && q < n ? (h(20 + q) - 0.5) * 2.4 : 0)) * U]);
       var x0 = Math.max(0, Math.floor((bx - 4.5) / k)), x1 = Math.min(S - 1, Math.ceil((bx + 4.5) / k)), y0 = Math.max(0, Math.floor((by - 4.5) / k)), y1 = Math.min(S - 1, Math.ceil((by + 4.5) / k));
       for (py = y0; py <= y1; py++) for (px = x0; px <= x1; px++) { X = (px + 0.5) * k; Y = (py + 0.5) * k; o = (py * S + px) * 4; var sd = 9; for (q = 0; q < n; q++) sd = Math.min(sd, segD(X, Y, V[q][0], V[q][1], V[q + 1][0], V[q + 1][1]));
-        var aw = 0.85 / 2 * U, cw = 0.4 / 2 * U; if (sd < aw + 1.2) { scr(out, o, [159, 234, 255], op * 0.9 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.4 / 100 * 32 + 0.15), 2))); scr(out, o, [70, 180, 255], op * 0.8 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.9 / 100 * 32 + 0.3), 2)));
-          if (sd < aw) mix(out, o, sd < cw ? [255, 255, 255] : [127, 220, 255], op * clamp((aw - sd) / (k * 0.75), 0, 1)); } } }
+        var aw = 0.85 / 2 * U, cw = 0.4 / 2 * U; if (sd < aw + 1.2) { sc(out, o, [159, 234, 255], op * 0.9 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.4 / 100 * 32 + 0.15), 2))); sc(out, o, [70, 180, 255], op * 0.8 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.9 / 100 * 32 + 0.3), 2)));
+          if (sd < aw) mx(out, o, sd < cw ? [255, 255, 255] : [127, 220, 255], op * clamp((aw - sd) / (k * 0.75), 0, 1)); } } }
     return out; }
   /** compose(frame32, S, t, ptr, out): the full baked picture of a pet frame: looks (when worn, else the nearest-scaled sprite) + the Mythic electric
    *  outline when V2Render tagged the frame (V2Looks.myth hook set by js/v2-render.js). Every bake (papers, GIF, token papers) goes through this. */
   function compose(img, S, t, ptr, out) { var info = infoOf(img), d = img.data, my = API.myth ? API.myth(img) : null; out = out || new Uint8ClampedArray(S * S * 4);
     if (info) render(img, info, S, t, ptr, out); else for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) { var si = (((y * 32 / S) | 0) * 32 + ((x * 32 / S) | 0)) * 4, o = (y * S + x) * 4; out[o] = d[si]; out[o + 1] = d[si + 1]; out[o + 2] = d[si + 2]; out[o + 3] = 255; }
-    if (my) electric(out, S, my.rim, t, my.seed || 0); return out; }
+    if (my) electric(out, S, my.rim, t, my.seed || 0, my.sick); return out; }
   function hasFx(img) { return !!(infoOf(img) || (API.myth && API.myth(img))); }
   function bakeAll(img, size, t) { if (!hasFx(img)) return null; return compose(img, size || 128, t == null ? 1.3 : t, t == null ? [0.42, 0.35] : null); }
   var API = root.V2Looks = { attachInfo: attachInfo, info: infoOf, attach: attach, detach: detach, render: render, bake: bake, STILL: STILL, electric: electric, compose: compose, hasFx: hasFx, bakeAll: bakeAll, myth: null };

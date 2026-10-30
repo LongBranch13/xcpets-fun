@@ -14,9 +14,9 @@
     out.push(TL[p.tier] || ''); if (p.stage >= 5) out.push('mythic');
     try { out.push((V2.STAGE_NAMES || [])[p.stage]); } catch (e) { }
     if (p.dead) out.push('dead'); else out.push('alive'); if (p.community) out.push('community'); if (p.released) out.push('released');
-    if (p.status) out.push(p.status); if (p.oldMoney) out.push('old money');
+    if (p.status) out.push(p.status); if (p.oldMoney) out.push('old money'); if (p.zombie && !p.zombie.end) out.push('risen', 'zombie'); if (p.feral) out.push('feral'); if ((p.zPast || []).some(function (z) { return z.end && z.end.kind === 'resurrected'; })) out.push('resurrected'); /* cemetery loop */
     if (ks && ks.has(p.id)) out.push('selected', 'checked'); /* mypets-checkbox: the checked pets (was 'starred' / 'kept'; stars are gone) */
-    if (p.hungry && !p.dead) out.push('hungry'); if (p.lastFed == null && !Object.keys(p.feedDays || {}).length) out.push('unfed', 'never fed');
+    if (p.hungry && !p.dead) out.push('hungry'); if (p.lastFed == null && !(p.zombie && !p.zombie.end) && !Object.keys(p.feedDays || {}).length) out.push('unfed', 'never fed');
     STATS.forEach(function (k) { if (p.stats && p.stats[k] != null) out.push(k); });
     try { if (root.PetCore && p.art) { var d = root.PetCore.describe(p.art); Object.keys(d).forEach(function (k) { if (k !== 'Tier' && d[k]) out.push(d[k]); }); } } catch (e) { }
     try { if (w && V2.wornOf) V2.wornOf(w, p.id).forEach(function (g) { out.push('gear', g.label, g.item, g.slot, TL[g.tier] || '', g.legendary ? 'legendary' : '');

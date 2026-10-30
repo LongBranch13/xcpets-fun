@@ -29,7 +29,7 @@
     if (!skipped.length) return { plans: plans, skipped: [], text: '', blocked: false };
     return { plans: other.filter(function (x) { return x.a !== 'skip'; }).map(function (x) { return x.q; }).concat(o.queue(ok)), skipped: skipped, text: text, blocked: false }; }
   /* never fed = no feed ever landed (lastFed null). Starred (kept) and selected pets are never folded. */
-  function neverFed(p) { return p && p.lastFed == null; }
+  function neverFed(p) { return p && p.lastFed == null && !(p.zombie && !p.zombie.end); } /* v2-zombies preview: a risen zombie is listed with the others, not folded */
   function splitNeverFed(list, kept, sel) { var shown = [], nf = [];
     for (var i = 0; i < list.length; i++) { var p = list[i]; if (neverFed(p) && !(kept && kept.has(p.id)) && !(sel && sel.has(p.id))) nf.push(p); else shown.push(p); }
     return { shown: shown, nf: nf }; }
