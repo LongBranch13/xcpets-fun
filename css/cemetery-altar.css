@@ -1,0 +1,85 @@
+/* cemetery altar (cemetery loop): the seance panel. Loaded on demand by js/v2-cemetery-scene.js with the same ?v=. */
+.cv2-raise{margin-top:8px;font-size:13px;padding:5px 9px}
+.alt-pv{font-family:var(--pixel);font-size:8px;letter-spacing:1px;background:#7dff6a;color:#0d1117;border:2px solid #000;padding:2px 5px;vertical-align:middle;margin-left:6px}
+.cem-altar{margin:14px 0;padding:12px;background:#120f20;border:3px solid #2b4a33;box-shadow:4px 4px 0 #000;border-radius:4px}
+.alt-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.alt-title{font-family:var(--pixel);font-size:14px;margin:0;color:#c9ffb0}
+.alt-tools{display:flex;gap:6px}
+.alt-who{margin:6px 0}.alt-note{margin:4px 0;color:#ffd23f}
+.alt-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:start}
+.alt-stage{position:sticky;top:var(--altTop,64px);z-index:2;background:#120f20}
+.alt-cvwrap{position:relative;border:3px solid #000;box-shadow:3px 3px 0 #000;line-height:0;touch-action:manipulation}
+#altCv{width:100%;aspect-ratio:160/100;image-rendering:pixelated;display:block;background:#0b0a1f}
+#altZc{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.alt-drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font:12px var(--pixel);color:#c9ffb0;background:rgba(125,255,106,.08);outline:3px dashed #7dff6a;outline-offset:-6px;line-height:1.4}
+.cem-altar.dragging .alt-drop{display:flex}.cem-altar.over .alt-drop{background:rgba(125,255,106,.25)}
+.alt-ghost{position:fixed;width:56px;height:56px;margin:-28px 0 0 -28px;image-rendering:pixelated;pointer-events:none;z-index:50;filter:drop-shadow(0 0 6px #7dff6a)}
+.alt-toast{position:absolute;left:50%;top:10%;transform:translateX(-50%);font-family:var(--meme);font-size:clamp(20px,4vw,30px);letter-spacing:2px;color:#7dff6a;-webkit-text-stroke:1px #000;text-shadow:3px 3px 0 #000;opacity:0;pointer-events:none;white-space:nowrap;line-height:1.1}
+.alt-toast.go{animation:altPop 1.3s steps(8) forwards}
+@keyframes altPop{0%{opacity:0;transform:translateX(-50%) scale(.4)}15%{opacity:1;transform:translateX(-50%) scale(1.25)}30%{transform:translateX(-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+.alt-risen{position:absolute;left:4%;right:4%;bottom:6%;display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(13,17,23,.88);border:3px solid #7dff6a;box-shadow:3px 3px 0 #000;padding:6px;line-height:1.3;animation:altPop2 .35s steps(4)}
+.alt-risen .meme{font-size:clamp(26px,5vw,38px);color:#7dff6a}.alt-risen span{font-weight:700}.alt-risen small{color:#93a89a}.alt-risen.out{opacity:0;transition:opacity .4s}
+@keyframes altPop2{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.alt-power{margin-top:10px}
+.alt-pnum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;line-height:1.3}
+.alt-big{font-family:var(--pixel);font-size:20px;color:#7dff6a;display:inline-block}
+.alt-big.bump{animation:altBump .3s steps(3)}
+.alt-rank{font-family:var(--meme);letter-spacing:1px;font-size:18px;color:#ffd23f;margin-left:auto}
+.alt-bar{position:relative;height:18px;margin:22px 0 6px;background:#0b0912;border:3px solid #000;box-shadow:2px 2px 0 #000}
+.alt-bar i{position:absolute;top:0;bottom:0;left:0;display:block}
+.alt-b0{background:repeating-linear-gradient(90deg,#6a6e7a 0 6px,#5c606b 6px 12px)}
+.alt-b1{background:repeating-linear-gradient(90deg,#3ddc84 0 6px,#2fbf6d 6px 12px);box-shadow:inset 0 3px 0 #9dffc0;transition:width .35s steps(6)}
+.alt-bar.bump{animation:altBump .3s steps(3)}.alt-bar.near{box-shadow:2px 2px 0 #000,0 0 12px #7dff6a}
+@keyframes altBump{0%{transform:scale(1)}40%{transform:scale(1.06,1.25)}100%{transform:scale(1)}}
+.alt-mk{position:absolute;top:-4px;bottom:-4px;width:2px;background:#93a89a;margin-left:-1px}
+.alt-mk em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font:7px var(--pixel);font-style:normal;color:#93a89a;white-space:nowrap;padding-bottom:3px}
+.alt-mk:last-child{background:#ff5a5a;width:3px}.alt-mk:last-child em{transform:translateX(-90%);color:#ff8a8a}
+.alt-mk.hit{background:#7dff6a}.alt-mk.hit em{color:#7dff6a}.alt-mk.next em{color:#ffd23f;animation:altBlink 1s steps(2) infinite}
+.alt-mk[data-i="1"] em{bottom:auto;top:100%;padding:3px 0 0}.alt-mk[data-i="3"] em{bottom:auto;top:100%;padding:3px 0 0}
+.alt-stats{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px;margin-top:16px}.alt-stats i{color:#7dff6a;font-style:normal}
+.alt-acts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.alt-acts button[disabled]{opacity:.55;cursor:not-allowed}
+.alt-tallylist ol{margin:4px 0;padding-left:22px;font-size:13px;max-height:180px;overflow:auto}
+.alt-tallylist li b{color:#7dff6a}
+.alt-pick{min-width:0}
+.alt-ph{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.alt-how{margin:4px 0}
+.alt-filt{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.alt-filt [aria-pressed="true"]{outline:2px solid #ffc93c;background:#2b4a33}
+.alt-quick{margin-left:auto;color:#c9ffb0}
+.alt-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.alt-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 4px 5px;background:#18221b;border:2px solid #000;box-shadow:2px 2px 0 #000;cursor:pointer;min-width:0;text-align:center;user-select:none;-webkit-user-select:none}
+.alt-tile input{position:absolute;top:4px;left:4px;margin:0;width:16px;height:16px;accent-color:#3ddc84}
+.alt-tile .alt-sp{width:56px;height:56px;image-rendering:pixelated;touch-action:none;cursor:grab}
+.alt-tn{font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alt-tm{font-size:10px;color:#93a89a}
+.alt-tile.tier-uncommon .tc{color:#4fd18b}.alt-tile.tier-rare .tc{color:#4f9dff}.alt-tile.tier-legendary .tc{color:#ffc93c}
+.alt-tile.tier-rare{border-color:#1d3d66}.alt-tile.tier-legendary{border-color:#6b5414}
+.alt-tags{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;min-height:14px}
+.alt-tag{font:7px/1.6 var(--pixel);padding:1px 3px;border:1px solid #000}
+.alt-tag.ripe{background:#b5651d;color:#fff3b0}.alt-tag.lock{background:#3a3550;color:#d8d0ff}.alt-tag.gear{background:#2a3a2e;color:#e8f5ec}
+.alt-tile.on{background:#123a1d;outline:2px solid #7dff6a;animation:altGone .45s steps(4) forwards}
+.alt-tile.on .alt-sp{opacity:.25;filter:grayscale(1) sepia(1) hue-rotate(60deg)}
+@keyframes altGone{0%{transform:scale(1)}50%{transform:scale(.9)}100%{transform:scale(.96)}}
+.alt-tile.myth{opacity:.5;cursor:not-allowed}.alt-tile.myth .alt-sp{cursor:not-allowed}
+.alt-ask{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px;background:rgba(13,17,23,.94);font-size:11px;line-height:1.25;border:2px solid #ffd23f;z-index:1}
+.alt-ask .q{padding:3px 8px;font-size:12px}
+.alt-more{text-align:center;margin:8px 0}.alt-more [hidden]{display:none}
+.alt-gear{margin-top:10px;padding-top:8px;border-top:2px dashed #2a3a2e}
+.alt-gr{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:4px;font-size:13px}
+.alt-gs .q{padding:1px 8px}
+.alt-foot{margin:10px 0 0}
+.cem-altar .linkish{background:none;border:0;padding:0 4px;color:#9fe8ff;cursor:pointer;font:inherit}
+@media (max-width:760px){.alt-grid{grid-template-columns:1fr}.alt-stage{top:var(--altTop,52px);display:grid;grid-template-columns:minmax(0,46%) minmax(0,1fr);gap:8px;align-items:center;padding:6px 0;border-bottom:2px solid #2b4a33;margin:0 -2px}.alt-pnum{font-size:11px;gap:2px 6px}.alt-pnum .small{font-size:10px}.alt-bar{height:14px}.alt-left{display:contents}.alt-mk em{font-size:6px;display:none}.alt-mk.next em{display:block}.alt-tallylist{display:none}.alt-stats{display:none}.alt-stage .alt-bar{margin:16px 0 14px}
+  .alt-tiles{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}.alt-tile .alt-sp{width:48px;height:48px}.alt-title{font-size:11px}.alt-big{font-size:16px}.alt-rank{font-size:15px}.alt-quick{margin-left:0}.alt-acts{margin:6px 0 0}.alt-acts .btn{font-size:13px;padding:5px 8px}}
+@media (prefers-reduced-motion:reduce){.alt-big.bump,.alt-bar.bump,.alt-tile.on,.alt-toast.go,.alt-risen{animation:none}.alt-toast.go{opacity:1}.alt-b1{transition:none}}
+@keyframes altBlink{50%{opacity:.35}}
+#altHold[disabled]{background:#2a2f2c!important;color:#9fb3a6!important;cursor:not-allowed;opacity:1;box-shadow:3px 3px 0 #000}
+.alt-mk:last-child em{display:none}
+#cemAltar{scroll-margin-top:var(--altTop,64px)}
+.alt-hw{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
+.alt-hwb{font-family:var(--pixel);font-size:10px;line-height:1.5;color:#0d1117;background:#ff8a1f;border:2px solid #000;box-shadow:2px 2px 0 #000;padding:3px 6px}
+.alt-hwb[hidden]{display:none}
+/* cemetery loop: the burn summary under the buttons */
+.alt-holdinfo{margin:0 0 8px;color:#e9e3ff}.alt-holdinfo .alt-pool{color:#7dff6a;display:block;margin-bottom:2px}
+.alt-acts .alt-c{font-size:.85em;opacity:.85}
