@@ -2588,7 +2588,7 @@
     out.sort(S[q.sort] || S.rarest); return out; }
   function cemList(ids) { return ids.map(function (x) { return Number(x).toString(32).toUpperCase(); }).join('.'); }
   function cemPlan(w, kind, id, ids, b) { b = b != null ? b : (w.tip || 0) + 1; var tg = { seance: 'seance', pledge: 'alt', gear: 'altg', raise: 'raise', zfeed: 'zfeed', rpl: 'rpl', rplg: 'rplg', resurrect: 'resurrect' }[kind];
-    var ck = kind === 'gear' ? 'pledge' : kind === 'rplg' ? 'rpl' : kind, s = ids && ids.length ? (ids.slice().sort(function (a, c) { return a - c; })) : null;
+    var ck = kind === 'gear' ? 'pledge' : kind === 'rplg' ? 'rpl' : kind === 'zfeed' ? 'zmeal' : kind, s = ids && ids.length ? (ids.slice().sort(function (a, c) { return a - c; })) : null;
     var tag = 'pet:' + tg + ':' + id + (s ? ':' + cemList(s) : ''); return { tag: tag, amount: cemCost(w, ck, b), petId: id, ok: Buffer_len(tag) <= MAX_TAG_BYTES, label: kind + ' #' + id }; }
   function cemHuntPlan(w, hunter, zombie, b) { return { tag: 'pet:fight:' + hunter + ':' + zombie, amount: cemCost(w, 'hunt', b != null ? b : (w.tip || 0) + 1), label: 'Hunt #' + zombie + ' with #' + hunter }; }
   /** cemSendWhy(w, t, me, b, pend): the send guard for cemetery tags and hunts (UI only, mirrors cemHandle / cemHunt; never read by replay).

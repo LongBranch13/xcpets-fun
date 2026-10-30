@@ -1,0 +1,41 @@
+/* cemetery-v2 (cemetery loop): list controls under the perspective graveyard. Loaded by js/v2-cemetery-scene.js. */
+.cemv2bar{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.cemv2bar .cv2-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.cemv2bar .cv2-row input[type=search]{flex:1 1 180px;min-width:0}
+.cemv2bar .cv2-sel label{display:inline-flex;gap:4px;align-items:center}
+.cemv2bar select{max-width:100%;font:inherit;padding:3px 4px;border:2px solid #000;background:#fff8e1;color:#1b1b1b}
+.cemv2bar #cemMsg{margin:2px 0 0}
+.cemv2bar .linkish{background:none;border:0;padding:0;color:#9fe8ff;text-decoration:underline;cursor:pointer;font:inherit}
+.cv2-pager{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:10px 0}
+.cv2-pager:empty{display:none}
+.cv2-pager input{width:4.5em;font:inherit;padding:2px 4px;border:2px solid #000}
+.cv2-pager button[disabled]{opacity:.45;cursor:default}
+.tomb .cv2-facts{margin-top:4px;color:#e9e3ff}
+@media (max-width:520px){.cemv2bar .cv2-sel label{flex:1 1 45%}.cemv2bar .cv2-sel select{flex:1;min-width:0}.cv2-pager .q{padding:4px 6px}}
+/* cemetery loop (Oct 29 2026): grave finder quick picks, difficulty badges, open altars, risen zombies. Site fonts and tier colours only. */
+.cemv2bar .cv2-fh{margin:0;font-family:var(--pixel);font-size:12px}
+.cemv2bar .cv2-quick .q[aria-pressed=true]{background:#7dff6a;color:#0d1117;border-color:#000}
+.cemv2bar .cv2-chk{display:inline-flex;gap:4px;align-items:center}
+.cemv2bar .cem-art,.tomb .cem-art,.cv2-zombies .cem-art{image-rendering:pixelated;image-rendering:crisp-edges}
+.tomb .cv2-badges{margin-top:4px}
+.cv2-diff{display:inline-flex;gap:4px;align-items:center;border:2px solid #000;padding:1px 5px;font-size:11px;background:#1c1824;color:#e9e3ff}
+.cv2-diff.d-easy{color:#7dff6a}.cv2-diff.d-medium{color:#ffc93c}.cv2-diff.d-hard{color:#ff7a7a}.cv2-diff.d-closed{color:#c8ccd4}
+.tomb.tomb-hunted,.tomb.tomb-dust{opacity:.8}.tomb.tomb-halo{box-shadow:0 0 0 2px #fff3b0 inset}
+.tomb.tomb-open{box-shadow:0 0 0 2px #7dff6a inset}
+.tomb .cv2-pool{margin-top:4px;color:#7dff6a}
+.tomb .cv2-lock{margin-top:6px}
+.tomb .cv2-raise{margin-top:6px}
+.cv2-zombies{margin:12px 0}.cv2-zombies:empty{display:none}
+.cv2-zombies h3{font-family:var(--pixel);font-size:13px;margin:0 0 4px}
+.cv2-hunters{color:#ffc93c}
+.ztomb{border-color:#3c8a34}.ztomb .zt{color:#7dff6a}
+.ztomb.feral{border-color:#8a1c1c;box-shadow:0 0 0 2px #ff4d4d inset}
+.cv2-feral{color:#ff4d4d;font-family:var(--pixel);font-size:9px}
+.cv2-hunger{height:8px;border:2px solid #000;background:#2a1d14;margin:5px 0}
+.cv2-hunger i{display:block;height:100%;background:#7dff6a}
+.ztomb.feral .cv2-hunger i{background:#ff4d4d}
+.cv2-zact{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.cv2-zact select{max-width:100%;font:inherit;padding:2px 4px;border:2px solid #000;background:#fff8e1;color:#1b1b1b}
+.cv2-zact button[disabled]{opacity:.55;cursor:not-allowed}
+.cv2-halos{display:flex;flex-wrap:wrap;gap:6px}
+.cv2-halo{display:inline-flex;gap:4px;align-items:center;border:2px solid #000;background:#1c1824;color:#fff3b0;padding:2px 6px;font-size:12px;text-decoration:none}

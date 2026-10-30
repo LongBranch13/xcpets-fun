@@ -252,6 +252,7 @@ const CEM_TAGS = ['pet:seance:18846:' + b32(4133), 'pet:alt:18849:' + b32(4098),
     ok(/waiting/.test(V.sendBlock(w, { tag: 'pet:fight:' + hunter.id + ':18846', amount: 1e5 }, b - 1, { me: OW, pending: ['pet:fight:' + hunter.id + ':18846'] }) || ''), 'guard: no second hunt burn while one waits'); }
   ok(/own zombie/.test(V.cemHuntWhy(w, mine[0], 18846, SB, b) || ''), 'guard: you cannot hunt your own zombie');
   const early = W([row(R, SB, 10000, 'pet:seance:18846:' + b32(4133))], R + 10); ok(/feral/.test(early.V.cemHuntWhy(early.w, hunter ? hunter.id : 1, 18846, OW, R + 11) || ''), 'guard: a fed zombie cannot be hunted');
+  ['seance', 'pledge', 'gear', 'raise', 'zfeed', 'rpl', 'rplg', 'resurrect'].forEach(function (k) { var a = V.cemPlan(w, k, 18849, k === 'raise' || k === 'resurrect' ? null : [1], b).amount; ok(typeof a === 'number' && a > 0 && isFinite(a), 'cemPlan ' + k + ' has a real amount (' + a + ')'); });
   ok(V.cemPlan(w, 'seance', 18849, mine, b).amount === V.cemCost(w, 'seance', b) && V.cemHuntPlan(w, 1, 2, b).amount === V.cemCost(w, 'hunt', b), 'plans carry the halving-aware cost'); }
 
 console.log('cemetery-loop-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
