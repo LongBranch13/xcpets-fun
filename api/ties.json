@@ -1,5 +1,5 @@
 {
- "lastBlock": 973750,
+ "lastBlock": 973763,
  "count": 302,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -193,7 +193,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 23693,
@@ -2065,7 +2065,7 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 38899,
@@ -2161,7 +2161,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 38413,
@@ -2221,7 +2221,7 @@
    "species": "hyb3:nakamoto:kek:funtrump",
    "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 2133,
@@ -2389,7 +2389,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 38373,
@@ -2473,7 +2473,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 46070,
@@ -2485,7 +2485,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 49075,
@@ -2497,7 +2497,7 @@
    "species": "bojackson",
    "speciesLabel": "Bo Jackson",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Elder"
   },
   {
    "id": 7320,
@@ -2749,7 +2749,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 6906,
@@ -2857,7 +2857,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 40377,
