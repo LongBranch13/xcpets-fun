@@ -14,24 +14,39 @@
    * fee (rules unchanged: cemHandle zfeed), so the picks are packed into as few 34-byte tags as fit. A pending meal shows on the card. UI only. */
   function zPendMeals(z) { var o = []; myPendingTags().forEach(function (tag) { var t = V.parseTag ? V.parseTag(tag) : null; if (t && t.action === 'zfeed' && +t.zombie === +z) (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
   function zAllPend() { var o = []; myPendingTags().forEach(function (tag) { var t = V.parseTag ? V.parseTag(tag) : null; if (t && t.action === 'zfeed') (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
-  function zFeedPlans(w, z, ids, b) { var s = ids.slice().sort(function (a, c) { return a - c; }), out = [], cur = [];
-    s.forEach(function (id) { var t = cur.concat([id]); if (cur.length && !V.cemPlan(w, 'zfeed', z, t, b).ok) { out.push(cur); cur = [id]; } else cur = t; }); if (cur.length) out.push(cur);
-    return out.map(function (g) { var P = V.cemPlan(w, 'zfeed', z, g, b); return { tag: P.tag, amount: V.cemCost(w, 'zmeal', b), petId: z, label: 'zmeal', zEat: g }; }); }
-  function zBtnText(w, z, ids, b) { var cost = V.cemCost(w, 'zmeal', b); if (!ids.length) return '🍖 Pick pets above to feed it';
-    var n = zFeedPlans(w, z, ids, b).length; return '🍖 Feed ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to it · fee ' + fmt(cost * n) + ' XCPETS' + (n > 1 ? ' (' + n + ' burns)' : ''); }
+  /* Owner Oct 30 2026 6:39 PM CT "I want to use discarded pets": the picker lists your DISCARDED pets first (the free My Pets Discard, hidden in
+   * this browser, plus the on-chain feed-all skip list pet:sk), with one "Select all discarded" tick. Discard is not a rule state, so pet:zfeed already
+   * accepts them (cemOfferWhy never looks at it). Other living pets sit in a closed "not discarded" list. Starred pets are never listed.
+   * Packing: one burn = one meal fee and eats every pet it names. Each burn uses whichever fits more pets in 34 bytes: the id list
+   * (pet:zfeed:Z:A.B.C) or the range mask (pet:zfm:Z:START:MASK, 5 ids per mask character, rules parse it since the cemetery loop shipped). */
+  function zB32(n) { return n.toString(32).toUpperCase(); }
+  function zFeedPlans(w, z, ids, b) { var s = ids.slice().sort(function (a, c) { return a - c; }).filter(function (x, i, A) { return !i || A[i - 1] !== x; }), out = [], i = 0, cost = V.cemCost(w, 'zmeal', b);
+    while (i < s.length) {
+      var lst = [], k = i; while (k < s.length) { var t = 'pet:zfeed:' + z + ':' + lst.concat([s[k]]).map(zB32).join('.'); if (t.length > 34) break; lst.push(s[k]); k++; }
+      var st = s[i], room = 34 - ('pet:zfm:' + z + ':' + st + ':').length, span = Math.max(0, room) * 5, msk = [], m = i; while (m < s.length && s[m] < st + span) { msk.push(s[m]); m++; }
+      var tag, eat; if (msk.length > lst.length) { var ch = []; msk.forEach(function (id) { var o = id - st, c = Math.floor(o / 5); while (ch.length <= c) ch.push(0); ch[c] |= 1 << (o % 5); });
+        tag = 'pet:zfm:' + z + ':' + st + ':' + ch.map(zB32).join(''); eat = msk; i = m; } else { tag = 'pet:zfeed:' + z + ':' + lst.map(zB32).join('.'); eat = lst; i = k; }
+      out.push({ tag: tag, amount: cost, petId: z, label: 'zmeal', zEat: eat }); }
+    return out; }
+  function zBtnText(w, z, ids, b) { var cost = V.cemCost(w, 'zmeal', b); if (!ids.length) return '🍖 Tick pets above to feed it';
+    var n = zFeedPlans(w, z, ids, b).length; return '🍖 Feed ' + fmt(ids.length) + ' pet' + (ids.length > 1 ? 's' : '') + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' × ' + fmt(cost) + ' = ' + fmt(cost * n) + ' XCPETS'; }
+  function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); return h; }
   function zFeedHtml(p, w) { if (!ZB(p) || !ME || p.owner !== ME || !V.cemOn || !V.cemCost) return ''; var b = (S.tip || 0) + 1; if (!V.cemOn(b)) return '';
     var pend = zAllPend(), mine = zPendMeals(p.id), all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0; });
-    var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length;
-    var rows = L.slice(0, 400).map(function (a) { return '<label class="zb-opt"><input type="checkbox" class="zb-pick" value="' + a.id + '"> ' + esc(a.name || '#' + a.id) + ' <span class="muted">#' + a.id + ' · ' + TL[a.tier | 0] + ' · ' + esc(a.stageName || '') + (a.neglected ? ' · ripe' : '') + '</span></label>'; }).join('');
+    var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length, H = zDiscarded(w), D = L.filter(function (a) { return H[a.id]; }), O = L.filter(function (a) { return !H[a.id]; }), cost = V.cemCost(w, 'zmeal', b);
+    var row = function (a) { return '<label class="zb-opt"><input type="checkbox" class="zb-pick' + (H[a.id] ? ' zb-disc' : '') + '" value="' + a.id + '"> ' + esc(a.name || '#' + a.id) + ' <span class="muted">#' + a.id + ' · ' + TL[a.tier | 0] + ' · ' + esc(a.stageName || '') + (a.neglected ? ' · ripe' : '') + '</span></label>'; };
     var pn = mine.length ? '<div class="small zb-pend">⏳ Meal waiting for a block: ' + mine.map(function (id) { var a = w.byId[id]; return esc((a && a.name) || '#' + id) + ' #' + id; }).join(', ') + '. It is eaten (and hunger refills) when that burn confirms; until then the pet still shows on your list.</div>' : '';
-    return '<div class="zb-feed" data-zf="' + p.id + '">' + pn + '<details class="zb-pickbox"><summary class="small">🍖 Choose pets for ' + esc(p.name || '#' + p.id) + ' to eat <span class="muted">(' + fmt(L.length) + ' can be eaten)</span></summary>' +
-      '<p class="small zb-warn">A zombie eats <b>pets</b>, not XCPETS. Each pet you tick is <b>used up for good</b>. The XCPETS amount is only the meal fee (one fee covers every pet in the burn). Nothing is ticked for you.' + (kept ? ' ★ Starred pets are not listed (' + kept + ').' : '') + '</p>' +
-      '<div class="zb-list">' + (rows || '<div class="small muted">You have no living pet it can eat.</div>') + '</div></details>' +
+    return '<div class="zb-feed" data-zf="' + p.id + '">' + pn + '<details class="zb-pickbox"' + (D.length ? ' open' : '') + '><summary class="small">🍖 Feed ' + esc(p.name || '#' + p.id) + ' your discarded pets <span class="muted">(' + fmt(D.length) + ' discarded)</span></summary>' +
+      '<p class="small zb-warn">A zombie eats <b>pets</b>, not XCPETS. Every pet you tick is <b>used up for good</b>. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>, and one burn eats as many pets as fit in it (pets with close ids pack best). Nothing is ticked for you.' + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + '</p>' +
+      '<div class="zb-dhead small"><b>🗑️ Discarded pets (' + fmt(D.length) + ')</b>' + (D.length ? ' <button type="button" class="q zb-alld">Select all discarded</button> <button type="button" class="q zb-none">Clear</button>' : '') + '</div>' +
+      '<div class="zb-list">' + (D.slice(0, 3000).map(row).join('') || '<div class="small muted">No discarded pets it can eat. Discard pets in My Pets (🗑️, free) and they show here.</div>') + '</div>' +
+      (O.length ? '<details class="zb-other"><summary class="small muted">Other pets, not discarded (' + fmt(O.length) + ')</summary><div class="zb-list">' + O.slice(0, 400).map(row).join('') + '</div></details>' : '') + '</details>' +
       '<button type="button" class="btn zb-feedbtn" disabled>' + zBtnText(w, p.id, [], b) + '</button></div>'; }
   function zFeedBind(root) { if (!root) return; root.querySelectorAll('.zb-feed').forEach(function (el) { if (el._zb) return; el._zb = true;
     function picked() { return Array.prototype.map.call(el.querySelectorAll('.zb-pick:checked'), function (c) { return +c.value; }); }
-    el.addEventListener('change', function (e) { if (!e.target.classList.contains('zb-pick')) return; var w = world(), ids = picked(), bt = el.querySelector('.zb-feedbtn'); bt.disabled = !ids.length; bt.textContent = zBtnText(w, +el.dataset.zf, ids, (S.tip || 0) + 1); });
-    el.addEventListener('click', function (e) { e.stopPropagation(); var bt = e.target.closest('.zb-feedbtn'); if (!bt) return; var w = world(), b = (S.tip || 0) + 1, z = +el.dataset.zf, Z = w.byId[z], ids = picked();
+    function upd() { var w = world(), ids = picked(), bt = el.querySelector('.zb-feedbtn'); bt.disabled = !ids.length; bt.textContent = zBtnText(w, +el.dataset.zf, ids, (S.tip || 0) + 1); }
+    el.addEventListener('change', function (e) { if (e.target.classList.contains('zb-pick')) upd(); });
+    el.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.closest('.zb-alld,.zb-none')) { var on = !!e.target.closest('.zb-alld'); el.querySelectorAll(on ? '.zb-pick.zb-disc' : '.zb-pick').forEach(function (c) { c.checked = on; }); upd(); return; } var bt = e.target.closest('.zb-feedbtn'); if (!bt) return; var w = world(), b = (S.tip || 0) + 1, z = +el.dataset.zf, Z = w.byId[z], ids = picked();
       if (!Z || !ids.length) return toast('Tick the pets you want ' + (Z ? esc(Z.name || '#' + z) : 'the zombie') + ' to eat first.');
       var names = ids.map(function (f) { var F = w.byId[f]; return esc((F && F.name) || '#' + f) + ' #' + f; });
       confirmPlans('🍖 Feed zombie ' + esc(Z.name || '#' + z) + ' #' + z + ' · eats ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' for good: ' + names.slice(0, 6).join(', ') + (names.length > 6 ? ' +' + (names.length - 6) + ' more' : ''), zFeedPlans(w, z, ids, b)); });
@@ -757,7 +772,7 @@
   function viewBlock() { if (!viewOnly()) return false;
     nwSheet('👀 Viewing ' + esc(V2View.short(ME)) + ': view only. Connect the XCP Wallet that owns these pets to feed, equip, battle, breed or roll.');
     return true; }
-  function zEatNote(plans, w) { var ids = []; plans.forEach(function (q) { if (q && q.zEat) ids = ids.concat(q.zEat); else { var t = q && /^pet:zfeed:/.test(q.tag || '') && V.parseTag ? V.parseTag(q.tag) : null; if (t && t.ids) ids = ids.concat(t.ids.map(Number)); } }); if (!ids.length) return '';
+  function zEatNote(plans, w) { var ids = []; plans.forEach(function (q) { if (q && q.zEat) ids = ids.concat(q.zEat); else { var t = q && /^pet:(zfeed|zfm):/.test(q.tag || '') && V.parseTag ? V.parseTag(q.tag) : null; if (t && t.ids) ids = ids.concat(t.ids.map(Number)); } }); if (!ids.length) return '';
     return '<p class="small warn zb-eatnote">🧟 The zombie eats these pets for good: ' + ids.map(function (f) { var F = w.byId[f]; return '<b>' + esc((F && F.name) || '#' + f) + ' #' + f + '</b>' + (F ? ' (' + TL[F.tier | 0] + ')' : ''); }).join(', ') + '. The XCPETS below is only the meal fee.</p>'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
