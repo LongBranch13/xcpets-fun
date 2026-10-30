@@ -13,7 +13,7 @@
   function reduced() { return !!RM.matches || !!window.__cemReduced; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
-  var A = { ctx: null, grave: null, mine: [], offered: [], gear: [0, 0, 0, 0], stash: [0, 0, 0, 0], filt: 'all', shown: PAGE, fx: [], flares: [0, 0, 0, 0, 0, 0], tally: 0, raf: 0, rise: null, sample: '', lastMile: -1, sound: false, ask: null, shown0: 0 };
+  var A = { ctx: null, grave: null, mine: [], offered: [], gear: [0, 0, 0, 0], stash: [0, 0, 0, 0], filt: 'all', shown: PAGE, fx: [], flares: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], tally: 0, raf: 0, rise: null, sample: '', lastMile: -1, sound: false, ask: null, shown0: 0 };
 
   try { A.sound = localStorage.getItem('xcpets-cem-sfx') === 'on'; } catch (e) {}
 
@@ -58,7 +58,11 @@
     SPR[key] = c; return c; }
 
   /* ---------------------------------------------------------------- the altar canvas ---------------------------------------------------------------- */
-  var CAND = [[55, 58, 7], [63, 58, 5], [97, 58, 5], [105, 58, 7], [40, 92, 9], [118, 92, 9]], SPOT = { x: 80, y: 57 }, GRV = { x: 134, y: 86 };
+  var CAND = [[55, 58, 7], [63, 58, 5], [97, 58, 5], [105, 58, 7]], SPOT = { x: 80, y: 57 }, GRV = { x: 134, y: 86 };
+  /* Mort's candle circle (the seance circle from the cemetery scene: the same ring + six cream candles) laid round the altar. Owner Oct 29 2026 8:35 PM CT:
+   * pets are sacrificed on the altar INSIDE the circle. Blood (owner 8:36 PM, cartoony pixel red, no gore): a splat per pet, then it runs along the ring. */
+  var RING = { cx: 80, cy: 92, rx: 41, ry: 7 }; (function () { for (var i = 0; i < 6; i++) { var b = i / 6 * Math.PI * 2 + 0.3; CAND.push([Math.round(RING.cx + Math.cos(b) * RING.rx), Math.round(RING.cy + Math.sin(b) * RING.ry), 6, Math.sin(b) > 0]); } })();
+  var BL = ['#8c1216', '#c41e24', '#e8343a', '#ff6a5e'];
   function scene(x, t) { var i;
     var B = ['#0b0a1f', '#110f2b', '#181539', '#221d48', '#2a2452', '#342e5e']; for (i = 0; i < B.length; i++) px(x, B[i], 0, i * 10, AW, 10);
     for (i = 0; i < 18; i++) px(x, i % 5 ? '#8d89c9' : '#fff6d8', (i * 47 + 13) % AW, (i * 29 + 5) % 44, 1, 1);
@@ -73,13 +77,41 @@
     var shake = R0 && R0.t < 900 ? Math.round(Math.sin(t / 25) * 1) : 0;
     px(x, '#2a1d14', g.x - 16 + shake, g.y, 32, 6); px(x, '#3e2a18', g.x - 14 + shake, g.y - 1, 28, 2); px(x, '#523822', g.x - 10 + shake, g.y - 2, 6, 1); px(x, '#523822', g.x + 3 + shake, g.y - 2, 5, 1);
     var gs = A.grave && sprite(A.grave); if (gs && !R0) { x.save(); x.globalAlpha = 0.45 + 0.1 * Math.sin(t / 300); x.imageSmoothingEnabled = false; x.drawImage(gs, g.x - 12, g.y - 58 + (reduced() ? 0 : Math.round(Math.sin(t / 450) * 2)), 24, 24); x.restore(); }
+    ring(x, t); A.flares.forEach(function (f, j) { if (j >= 4 && !CAND[j][3]) candle(x, CAND[j], f, t, j); });
     /* the altar: slab, body, base; carved tally on the front */
     px(x, '#16141f', 49, 56, 62, 6); px(x, '#9a9ea8', 50, 57, 60, 4); px(x, '#c8ccd4', 50, 57, 60, 1);
     px(x, '#16141f', 55, 61, 50, 28); px(x, '#7c808c', 56, 61, 48, 27); px(x, '#525560', 96, 61, 8, 27); px(x, '#9a9ea8', 56, 61, 1, 27);
     px(x, '#16141f', 47, 88, 66, 6); px(x, '#6a6e7a', 48, 88, 64, 5); px(x, '#525560', 48, 92, 64, 1);
     var glow = A.offered.length ? 0.18 + 0.08 * Math.sin(t / 200) : 0; if (glow) { x.save(); x.globalAlpha = glow; px(x, '#7dff6a', 60, 46, 40, 12); x.globalAlpha = glow / 2; px(x, '#7dff6a', 54, 40, 52, 18); x.restore(); }
-    carve(x); A.flares.forEach(function (f, j) { candle(x, CAND[j], f, t, j); });
+    carve(x); stains(x); fire(x, t); A.flares.forEach(function (f, j) { if (j < 4 || CAND[j][3]) candle(x, CAND[j], f, t, j); });
   }
+  /* the ring on the ground (the seance circle's dashes); blood runs round it both ways from the front as pets are offered (A.bflow 0..1 of the ring) */
+  function ring(x, t) { var R = RING, n = 56, fl = A.bflow || 0, head = fl * n;
+    for (var a = 0; a < n; a++) { var an = a / n * Math.PI * 2 + Math.PI / 2, rx = Math.round(R.cx + Math.cos(an) * R.rx), ry = Math.round(R.cy + Math.sin(an) * R.ry), bl = fl > 0 && (a < head / 2 + 0.5 || a > n - head / 2 - 0.5);
+      px(x, bl ? (a % 3 ? BL[1] : BL[0]) : '#2b2a3a', rx, ry, 2, 1); if (bl && a % 7 === 0) px(x, BL[2], rx, ry, 1, 1); }
+    if (fl > 0 && fl < 1 && !reduced()) [head / 2, n - head / 2].forEach(function (h) { var an = h / n * Math.PI * 2 + Math.PI / 2; px(x, BL[3], Math.round(R.cx + Math.cos(an) * R.rx), Math.round(R.cy + Math.sin(an) * R.ry) - (Math.floor(t / 160) % 2), 1, 1); }); }
+  /* splats left on the slab edge and running down the altar front, one per pet (fixed spots so frames stay steady) */
+  function stains(x) { var n = Math.min(A.splats || 0, 12); for (var i = 0; i < n; i++) { var sx = 58 + ((i * 37) % 44), sy = 57 + ((i * 11) % 3), dl = 2 + (i * 5) % 6;
+      px(x, BL[1], sx, sy, 3, 1); px(x, BL[0], sx + 1, sy + 1, 1, dl); px(x, BL[1], sx + 1, sy + 1 + dl, 2, 1); } }
+  /* the ritual fire on the altar (gear goes into the flames; this is NOT a pet aura): low embers while gear is chosen, a burst per item */
+  function gearN() { return (A.gear || []).reduce(function (a, b) { return a + b; }, 0); }
+  function fire(x, t) { var lv = Math.max(gearN() ? 0.35 : 0, A.fire || 0); if (lv <= 0) return; var rm = reduced(), h = Math.round(3 + lv * 12), cx = SPOT.x;
+    x.save(); x.globalAlpha = 0.16 + lv * 0.25; px(x, '#ff8a2a', Math.round(cx - 10 - lv * 4), 56 - h - 3, Math.round(20 + lv * 8), h + 4); x.restore();
+    for (var i = -3; i <= 3; i++) { var fh = Math.max(1, Math.round(h * (1 - Math.abs(i) / 4.2) + (rm ? 0 : Math.sin(t / 70 + i * 1.7) * 2))); px(x, '#c4381c', cx + i * 2 - 1, 56 - fh, 2, fh); px(x, '#ff8a2a', cx + i * 2 - 1, 56 - Math.round(fh * 0.7), 2, Math.round(fh * 0.7)); if (Math.abs(i) < 2) px(x, '#ffd166', cx + i * 2 - 1, 56 - Math.round(fh * 0.4), 2, Math.round(fh * 0.4)); }
+    px(x, '#5a2a12', cx - 7, 55, 14, 2); }
+  /* gear icon for the toss: the item's own catalog icon (V2Render.itemIcon) with its backdrop cut out; a tier-coloured box if there is none */
+  var GSP = {}; function gearSprite(g, tier) { var id = g && g.item, k = id + ':' + tier; if (GSP[k]) return GSP[k]; var c = document.createElement('canvas'); c.width = c.height = 32; var cx = c.getContext('2d'), R = A.ctx.R, ic = null;
+    try { ic = R && R.itemIcon && id ? R.itemIcon(id) : null; } catch (e) { ic = null; }
+    if (ic && !ic.empty) { var d = cx.createImageData(32, 32); d.data.set(ic.data); for (var i = 0; i < d.data.length; i += 4) if (d.data[i] === 20 && d.data[i + 1] === 32 && d.data[i + 2] === 24) d.data[i + 3] = 0; cx.putImageData(d, 0, 0); }
+    else { var col = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'][tier] || '#9aa3b5'; px(cx, '#000', 8, 8, 16, 16); px(cx, col, 9, 9, 14, 14); px(cx, '#fff', 11, 11, 3, 3); }
+    return (GSP[k] = c); }
+  function toss(t) { var arr = (A.gearItems || [])[t] || [], g = arr[Math.max(0, (A.gear[t] || 1) - 1)]; A.fx.push({ k: 'toss', s: gearSprite(g, t), x0: AW - 14, y0: AH + 6, t: 0, d: 520, tier: t }); kick(); }
+  function burnt(f) { A.fire = 1; A.flares[(A.tally++) % 4] = 1; SFX.offer(f.tier);
+    for (var i = 0; i < 18 + f.tier * 6; i++) A.fx.push({ k: 'smoke', x: SPOT.x + (Math.random() * 12 - 6), y: SPOT.y - 6, vx: Math.random() * 1.2 - 0.6, vy: -(0.5 + Math.random() * 1.1), t: 0, d: 420 + Math.random() * 380, c: ['#ffd166', '#ff8a2a', '#c4381c', '#fff3b0'][i % 4], z: 1 });
+    A.fx.push({ k: 'pop', x: SPOT.x, y: SPOT.y - 20, t: 0, d: 700, s: '+gear', col: '#ffd166' }); }
+  /* blood splat on the altar when a pet lands (cartoony: round pixel drops arc out and fall to the ground) */
+  function splat() { A.splats = (A.splats || 0) + 1; A.bwant = Math.min(1, (A.bwant || 0) + 0.2);
+    for (var i = 0; i < 28; i++) { var an = Math.PI + Math.random() * Math.PI, sp = 0.6 + Math.random() * 1.6; A.fx.push({ k: 'blood', x: SPOT.x + (Math.random() * 6 - 3), y: SPOT.y - 2, vx: Math.cos(an) * sp * 1.4, vy: Math.sin(an) * sp, t: 0, d: 520 + Math.random() * 300, z: i % 3 ? 2 : 3, c: BL[i % 3] }); } }
   function carve(x) { var n = Math.min(A.tally, 40); for (var i = 0; i < n; i++) { var grp = Math.floor(i / 5), r = Math.floor(grp / 4), col = grp % 4, k = i % 5, bx = 59 + col * 9, by = 65 + r * 10;
       if (k < 4) px(x, '#1c1824', bx + k * 2, by, 1, 7); else { for (var d = 0; d < 7; d++) px(x, '#1c1824', bx - 1 + d, by + 6 - d, 1, 1); } }
     if (A.tally > 40) { x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#1c1824'; x.fillText('+' + (A.tally - 40), 86, 86); } }
@@ -90,20 +122,25 @@
     px(x, col, cx - 1, cy - h - fh, 3, fh); px(x, core, cx, cy - h - fh + 1, 1, Math.max(1, fh - 1)); }
   /* effects: fly (pet into the altar), smoke (green), chips (carving), text pops */
   function fly(o, from) { var s = sprite(o); A.fx.push({ k: 'fly', s: s, x0: from ? from.x : 80 + (Math.random() * 60 - 30), y0: from ? from.y : AH + 10, t: 0, d: from ? 200 : 280, o: o }); kick(); }
-  function land(f) { var o = f.o, j = (A.tally + o.seq) % 4; A.flares[j] = 1; if (o.tier >= 2) A.flares[4] = A.flares[5] = 1; A.tally++;
+  function land(f) { var o = f.o, j = (A.tally + o.seq) % 4; A.flares[j] = 1; A.flares[4 + (A.tally % 6)] = 1; if (o.tier >= 2) A.flares[4 + ((A.tally + 3) % 6)] = 1; A.tally++; splat();
     for (var i = 0; i < 26 + o.tier * 8; i++) A.fx.push({ k: 'smoke', x: SPOT.x + (Math.random() * 20 - 10), y: SPOT.y - 6 + Math.random() * 8, vx: Math.random() * 0.6 - 0.3, vy: -(0.25 + Math.random() * 0.6), t: 0, d: 500 + Math.random() * 500, c: ['#7dff6a', '#3fbf4a', '#c9ffb0', '#2f8a3c'][i % 4], z: i % 3 ? 1 : 2 });
     var tx = 59 + (Math.floor((A.tally - 1) / 5) % 4) * 9, ty = 65 + Math.floor((A.tally - 1) / 20) * 10; for (var c = 0; c < 6; c++) A.fx.push({ k: 'chip', x: tx + 3, y: ty + 3, vx: Math.random() * 1.4 - 0.7, vy: -Math.random() * 1.2, t: 0, d: 350 });
     A.fx.push({ k: 'pop', x: SPOT.x, y: SPOT.y - 14, t: 0, d: 700, s: '+' + o.add }); SFX.smoke(); if (window.V2CemeteryScene && V2CemeteryScene.flare) V2CemeteryScene.flare(); }
-  function step(f, dt) { f.t += dt; if (f.k === 'smoke' || f.k === 'chip') { f.x += f.vx * dt / 16; f.y += f.vy * dt / 16; if (f.k === 'chip') f.vy += 0.08 * dt / 16; } }
+  function step(f, dt) { f.t += dt; if (f.k === 'smoke' || f.k === 'chip' || f.k === 'blood' || f.k === 'drip') { f.x += f.vx * dt / 16; f.y += f.vy * dt / 16; if (f.k === 'chip' || f.k === 'blood') f.vy += 0.09 * dt / 16; if (f.k === 'drip') f.vy += 0.03 * dt / 16; if ((f.k === 'blood' || f.k === 'drip') && f.y > (f.fl || 94)) { f.y = f.fl || 94; f.vx = 0; f.vy = 0; } } }
   function drawFx(x) { A.fx.forEach(function (f) { var p = Math.min(1, f.t / f.d);
       if (f.k === 'fly') { var e = 1 - Math.pow(1 - p, 3), fx = f.x0 + (SPOT.x - f.x0) * e, fy = f.y0 + (SPOT.y - 12 - f.y0) * e - Math.sin(p * Math.PI) * 18, sz = Math.round(24 - 6 * p);
         if (f.s) { x.save(); x.imageSmoothingEnabled = false; x.globalAlpha = 1 - p * 0.3; x.drawImage(f.s, Math.round(fx - sz / 2), Math.round(fy - sz / 2), sz, sz); x.restore(); } else px(x, '#e9e3ff', Math.round(fx) - 4, Math.round(fy) - 4, 8, 8); }
       else if (f.k === 'smoke') { x.save(); x.globalAlpha = (1 - p) * 0.9; px(x, f.c, Math.round(f.x), Math.round(f.y), f.z, f.z); x.restore(); }
       else if (f.k === 'chip') { px(x, '#c8ccd4', Math.round(f.x), Math.round(f.y), 1, 1); }
-      else if (f.k === 'pop') { x.save(); x.globalAlpha = 1 - p; x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(f.s, f.x + 1, f.y - p * 10 + 1); x.fillStyle = '#7dff6a'; x.fillText(f.s, f.x, f.y - p * 10); x.restore(); } }); }
+      else if (f.k === 'blood' || f.k === 'drip') { x.save(); x.globalAlpha = p > 0.75 ? (1 - p) * 4 : 1; px(x, f.c || BL[1], Math.round(f.x), Math.round(f.y), f.z || 1, (f.z || 1) + (f.vy > 0.6 ? 1 : 0)); x.restore(); }
+      else if (f.k === 'toss') { var tx2 = f.x0 + (SPOT.x - f.x0) * p, ty2 = f.y0 + (SPOT.y - 8 - f.y0) * p - Math.sin(p * Math.PI) * 34, sz2 = Math.round(20 - 6 * p), an2 = reduced() ? 0 : p * Math.PI * 3;
+        x.save(); x.imageSmoothingEnabled = false; x.translate(Math.round(tx2), Math.round(ty2)); x.rotate(Math.round(an2 / (Math.PI / 2)) * Math.PI / 2); x.drawImage(f.s, -sz2 / 2, -sz2 / 2, sz2, sz2); x.restore(); }
+      else if (f.k === 'pop') { x.save(); x.globalAlpha = 1 - p; x.font = '6px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(f.s, f.x + 1, f.y - p * 10 + 1); x.fillStyle = f.col || '#7dff6a'; x.fillText(f.s, f.x, f.y - p * 10); x.restore(); } }); }
   /* the rise (mock): ground shakes, dirt flies, a claw breaks out, the zombie climbs up, green and glowing. zombie-v3 (owner Oct 28 2026 10:32 PM CT):
    * the zombie rises from behind the headstone and ends standing above it (clipped at the stone top, glow stops there too), so the 'RIP' and the #id stay readable */
   function drawRise(x) { var R0 = A.rise, t = R0.t, g = GRV, z = sprite(A.grave, true);
+    if (t > 200 && t < 2400 && Math.random() < 0.35) A.fx.push({ k: 'drip', x: g.x - 10 + Math.floor(Math.random() * 20), y: g.y - 32 + Math.random() * 6, vx: 0, vy: 0.2, t: 0, d: 1600, fl: g.y - 1 - Math.floor(Math.random() * 3), c: BL[Math.floor(Math.random() * 2)], z: 1 }); /* blood drips down the headstone as it rises */
+    if (t > 300) { var dn = Math.min(8, Math.floor((t - 300) / 260)); for (var di = 0; di < dn; di++) { var ddx = g.x - 10 + (di * 7) % 20, dl2 = 2 + (di * 3) % 5; px(x, BL[1], ddx, g.y - 30 + (di % 3), 2, 1); px(x, BL[0], ddx, g.y - 29 + (di % 3), 1, dl2); px(x, BL[1], ddx, g.y - 29 + (di % 3) + dl2, 1, 1); } px(x, BL[0], g.x - 12, g.y, Math.min(24, Math.round((t - 300) / 80)), 1); }
     if (t < 1100 && Math.random() < 0.6) A.fx.push({ k: 'chip', x: g.x - 8 + Math.random() * 16, y: g.y - 1, vx: Math.random() * 2 - 1, vy: -(0.6 + Math.random() * 1.6), t: 0, d: 500 });
     if (t > 350 && t < 1500) { var cp = Math.min(1, (t - 350) / 450), cy = g.y - Math.round(10 * cp), cx = g.x - 8; /* the claw */
       px(x, '#3c4630', cx, cy, 3, 10 * cp + 1); px(x, '#5e6a46', cx + 1, cy, 1, 10 * cp); px(x, '#80402f', cx, cy + 4, 1, 1); [[-2, -3], [0, -4], [2, -3], [4, -2]].forEach(function (f, i) { px(x, i === 2 ? '#d8d0b0' : '#6c7a52', cx + f[0], cy + f[1], 1, 3); px(x, '#e6dfc4', cx + f[0], cy + f[1], 1, 1); }); } /* rotten claw, bone fingertips */
@@ -115,11 +152,11 @@
       if (rp >= 1) { var bl = Math.floor(t / 220) % 2, hx = Math.max(zl, zx - 6), hy = Math.max(2, gy - zh - 8); zx2.save(); zx2.globalAlpha = z && z.zb ? 0.1 + 0.06 * bl : 0.25 + 0.15 * bl; zx2.fillStyle = z && z.zb ? '#7a8f3e' : '#7dff6a'; /* sickly, dim glow */ zx2.fillRect(hx, hy, Math.min(AW * ZK, zx + zw + 6) - hx, gy - hy); zx2.restore(); } }
     if (t > 2100 && !R0.done) { R0.done = true; risenCard(); } }
   function frame(t) { var c = A.cv; if (!c || !c.isConnected) { A.raf = 0; return; } var x = c.getContext('2d'), now = t || performance.now(), dt = A.last ? Math.min(50, now - A.last) : 16; A.last = now; x.imageSmoothingEnabled = false;
-    A.flares = A.flares.map(function (f) { return Math.max(0, f - dt / 520); }); if (A.rise) A.rise.t += dt;
-    A.fx.forEach(function (f) { step(f, dt); }); var landed = A.fx.filter(function (f) { return f.k === 'fly' && f.t >= f.d; }); A.fx = A.fx.filter(function (f) { return f.t < f.d; }); landed.forEach(land);
+    A.fire = Math.max(0, (A.fire || 0) - dt / 900); A.bflow = Math.min(A.bwant || 0, (A.bflow || 0) + dt / 2200); A.flares = A.flares.map(function (f) { return Math.max(0, f - dt / 520); }); if (A.rise) A.rise.t += dt;
+    A.fx.forEach(function (f) { step(f, dt); }); A.fx.filter(function (f) { return f.k === 'toss' && f.t >= f.d; }).forEach(burnt); var landed = A.fx.filter(function (f) { return f.k === 'fly' && f.t >= f.d; }); A.fx = A.fx.filter(function (f) { return f.t < f.d; }); landed.forEach(land);
     if (A.zc) A.zc.getContext('2d').clearRect(0, 0, A.zc.width, A.zc.height); scene(x, now); if (A.rise) drawRise(x); drawFx(x);
     var busy = A.fx.length || A.flares.some(function (f) { return f > 0; }) || (A.rise && !A.rise.done) || A.rise; if (!reduced() && !A.off && (busy || A.offered.length || A.grave)) A.raf = requestAnimationFrame(frame); else A.raf = 0; }
-  function kick() { if (!A.raf && A.cv) { A.last = 0; A.raf = requestAnimationFrame(frame); } if (reduced() && A.cv) { A.fx.forEach(function (f) { if (f.k === 'fly') land(f); }); A.fx = []; A.flares = [0, 0, 0, 0, 0, 0]; frame(performance.now()); } }
+  function kick() { if (!A.raf && A.cv) { A.last = 0; A.raf = requestAnimationFrame(frame); } if (reduced() && A.cv) { A.fx.forEach(function (f) { if (f.k === 'fly') land(f); }); A.fx = []; A.flares = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; frame(performance.now()); } }
 
   /* ---------------------------------------------------------------- data ---------------------------------------------------------------- */
   function myth(p) { return !!p.mythicCare || p.stage >= 5; }
@@ -139,7 +176,7 @@
     var after = document.getElementById('cemCard') || document.getElementById('cemScene'); after.parentNode.insertBefore(el, after.nextSibling); return el; }
   function open(grave, ctx) { if (ctx) A.ctx = ctx; if (!A.ctx || !grave) return; var w = A.ctx.w, wp = w.byId ? w.byId[grave.id] : null, s = wp ? (wp.zDeath || wp.stats) : null, base = {};
     STATS.forEach(function (k) { base[k] = s ? (s[k] || 0) : 0; });
-    A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
+    A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.splats = 0; A.bwant = 0; A.bflow = 0; A.fire = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
     var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); renderAll(true);
     topGap(); if (!A.rz) { A.rz = true; window.addEventListener('resize', topGap); } if (window.IntersectionObserver && !A.io) { A.io = new IntersectionObserver(function (es) { A.off = !es[0].isIntersecting; if (!A.off) kick(); }); } if (A.io) { A.io.disconnect(); A.io.observe(A.cv); }
     if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('lit'); kick(); el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }
@@ -231,7 +268,7 @@
     el.querySelector('#altQuick').onclick = function () { var n = 0, L = A.mine.filter(function (p) { return p.ripe && !p.why && p.tier === 0 && !p.worn.length && !isOn(p.id); }); L.slice(0, 5).forEach(function (p, i) { setTimeout(function () { offer(p.id); }, i * (reduced() ? 0 : 140)); n++; }); if (!n) toast('No more ripe Commons'); };
     el.querySelector('.alt-filt').onclick = function (e) { var b = e.target.closest('[data-f]'); if (!b) return; A.filt = b.getAttribute('data-f'); A.shown = PAGE; this.querySelectorAll('[data-f]').forEach(function (q) { q.setAttribute('aria-pressed', q === b); }); renderTiles(); };
     el.querySelector('.alt-gr').onclick = function (e) { var b = e.target.closest('[data-g]'); if (!b) return; var t = +b.getAttribute('data-g'), d = +b.getAttribute('data-d'), n = Math.max(0, Math.min(A.stash[t], A.gear[t] + d)); if (n === A.gear[t]) return;
-      A.gear[t] = n; document.getElementById('altG' + t).textContent = n; if (d > 0) { A.flares[(A.tally++) % 4] = 1; SFX.offer(t); A.fx.push({ k: 'pop', x: SPOT.x, y: SPOT.y - 14, t: 0, d: 700, s: '🎒' }); for (var i = 0; i < 14; i++) A.fx.push({ k: 'smoke', x: SPOT.x + (Math.random() * 14 - 7), y: SPOT.y - 4, vx: Math.random() * 0.5 - 0.25, vy: -(0.3 + Math.random() * 0.5), t: 0, d: 600, c: '#c9ffb0', z: 1 }); } else { A.tally = Math.max(0, A.tally - 1); SFX.back(); }
+      A.gear[t] = n; document.getElementById('altG' + t).textContent = n; if (d > 0) { if (reduced()) burnt({ tier: t }); else toss(t); } else { A.tally = Math.max(0, A.tally - 1); SFX.back(); }
       renderPower(true); kick(); };
     el.querySelector('#altList').onclick = function (e) { var b = e.target.closest('[data-back]'); if (b) takeBack(+b.getAttribute('data-back')); };
     var tiles = el.querySelector('#altTiles');
@@ -251,7 +288,7 @@
     el.querySelector('#altHold').onclick = function () { hold('seance'); }; var pl = el.querySelector('#altPledge'); if (pl) pl.onclick = function () { hold('pledge'); }; var rz = el.querySelector('#altRaiseNow'); if (rz) rz.onclick = function () { hold('raise'); };
     A.cv.addEventListener('click', function () { if (!A.offered.length) toast('Tap a pet below, or drag it here'); }); }
   function risenCard() { var P = project(), mi = mile(P.times); var wrap = A.cv && A.cv.parentNode; if (!wrap) return;
-    var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + ' · ' + P.times.toFixed(2) + ' times</span><small>this is how it looks once the burns confirm</small>'; wrap.appendChild(d);
+    var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + ' · ' + P.times.toFixed(2) + ' times</span><small>this is how it looks once the burns confirm · then it lives in <a href="play.html#pets">🧟 My Pets</a>, where you feed it</small>'; wrap.appendChild(d);
     setTimeout(function () { if (d.isConnected) d.classList.add('out'); }, 3800); setTimeout(function () { if (d.isConnected) d.remove(); }, 4300); }
   window.V2CemeteryAltar = { open: open, close: close, project: project, plans: plans, _state: function () { return A; }, _offer: offer, _gear: function (t, n) { A.gear[t] = Math.max(0, Math.min(A.stash[t], n)); renderPower(false); } };
 })();

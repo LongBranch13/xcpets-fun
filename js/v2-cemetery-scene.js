@@ -16,7 +16,7 @@
   var S = { c: null, x: null, k: 1, raf: 0, off: false, hid: false, layer: null, sky: null, hits: [], sel: null, hov: null, line: 0, lt: 0, hook: 'off', total: 0, say: null };
   var LINES = ['Evenin\u2019. Mind the mud.', 'Feed \u2019em daily. Spares me the shovel.', 'Seven days. That\u2019s all it takes.', 'Rows go on past the fog.',
     'Quiet tonight. Too quiet.', 'Lantern\u2019s for you, not them.', 'Rest in pixels, little ones.', 'I stopped counting stones.'];
-  var ALTAR = { x: 138, y: 146, w: 45, h: 32 }, SEANCE = { cx: 272, cy: 158, r: 20 }, MORT = { x: 26, y: 170 };
+  var ALTAR = { x: 138, y: 146, w: 45, h: 32 }, SEANCE = { cx: 234, cy: 166, r: 20 }, MORT = { x: 26, y: 170 };
   function reduced() { return !!RM.matches || !!window.__cemReduced; }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   function rnd(i) { var v = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); }
@@ -83,6 +83,14 @@
     var lx = m.x + 9, ly = m.y - 12 + sw; px(x, '#000', lx - 1, ly - 1, 6, 8); px(x, '#ffd166', lx, ly + 1, 4, 5); px(x, '#fff3b0', lx + 1, ly + 2, 2, 2); x.save(); x.globalAlpha = 0.1; px(x, '#ffd166', lx - 4, ly - 4, 12, 14); x.restore();
     if (hv) outline(x, m.x - 7, m.y - 31, 22, 33); S.hits.push({ x: m.x - 7, y: m.y - 31, w: 22, h: 33, k: 'mort' }); }
   function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx)); px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 4, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
+  /* the seance circle (restored Oct 29 2026 from the earlier scene art, drawing unchanged; moved right of the path so the REST sign stays clear): six candles round a moon stone, lit while a seance panel is open */
+  function seance(x, t) { var C = SEANCE, lit = S.hook === 'lit', hv = S.hov === 'seance' || S.sel === 'seance';
+    for (var a = 0; a < 40; a++) { var an = a / 40 * Math.PI * 2; px(x, '#2b2a3a', Math.round(C.cx + Math.cos(an) * C.r), Math.round(C.cy + Math.sin(an) * C.r * 0.42), 2, 1); }
+    px(x, '#000', C.cx - 8, C.cy - 3, 16, 7); px(x, '#56526a', C.cx - 7, C.cy - 2, 14, 5); px(x, '#cfc9ff', C.cx - 2, C.cy - 1, 3, 3); px(x, '#56526a', C.cx - 1, C.cy - 1, 2, 2); /* moon stone */
+    for (var i = 0; i < 6; i++) { var b = i / 6 * Math.PI * 2 + 0.3, cx = Math.round(C.cx + Math.cos(b) * C.r), cy = Math.round(C.cy + Math.sin(b) * C.r * 0.42);
+      px(x, '#000', cx - 2, cy - 7, 5, 8); px(x, '#e8e0c8', cx - 1, cy - 6, 3, 6); px(x, '#333', cx, cy - 8, 1, 2);
+      if (lit) { var f = reduced() ? 0 : Math.floor(t / 140 + i) % 2; px(x, '#ffd166', cx - (f ? 1 : 0), cy - 11, 2, 3); px(x, '#fff3b0', cx, cy - 10, 1, 1); } }
+    if (hv) outline(x, C.cx - C.r - 4, C.cy - 14, C.r * 2 + 8, 24); S.hits.push({ x: C.cx - C.r - 4, y: C.cy - 14, w: C.r * 2 + 8, h: 24, k: 'seance' }); }
   /* the altar: on the path in front, slab + body + base, four candles; carved marks on the face. hook 'lit' = green flames (seance open). */
   function altar(x, t) { var a = ALTAR, rm = reduced(), hv = S.hov === 'altar' || S.sel === 'altar', lit = S.hook === 'lit', fl = Math.max(0, 1 - (t - (S.flT || -1e9)) / 600);
     px(x, '#0c1410', a.x - 2, a.y + 30, a.w + 4, 3); px(x, '#16141f', a.x, a.y + 25, a.w, 6); px(x, '#6a6e7a', a.x + 1, a.y + 26, a.w - 2, 4); px(x, '#525560', a.x + 1, a.y + 29, a.w - 2, 1);
@@ -98,17 +106,18 @@
     if (hv) outline(x, a.x - 2, a.y - 8, a.w + 4, a.h + 8); S.hits.push({ x: a.x - 2, y: a.y - 8, w: a.w + 4, h: a.h + 8, k: 'altar' }); }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; S.hits = [];
     if (!S.sky) S.sky = buildSky(); if (!S.layer) S.layer = buildLayer();
-    sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); altar(x, t); mort(x, t);
+    sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); seance(x, t); altar(x, t); mort(x, t);
     if (!reduced() && t - S.lt > 12000) { S.lt = t; S.line = (S.line + 1) % LINES.length; } if (S.say || (!reduced() && t - S.lt < 4000)) bubble(x, S.say || LINES[S.line], MORT.x - 6, MORT.y - 46);
     if (!reduced() && !S.off && !S.hid) S.raf = requestAnimationFrame(draw); else S.raf = 0; }
   function kick() { if (S.x && !S.raf) draw(performance.now()); }
   function card(k) { var el = document.getElementById('cemCard'); if (!el) return; if (!k) { el.hidden = true; return; } el.hidden = false;
     if (k === 'mort') el.innerHTML = '<b class="cc-h">🏮 Mort, the caretaker</b><p class="small">Keeps the grass short and the gate shut. A pet ends up here after 7 full chain days (144 blocks each) with no meal. Mythic pets never starve. Every grave is in the list below. Feed yours on <a href="play.html">Play</a>.</p>';
+    if (k === 'seance') el.innerHTML = '<b class="cc-h">🕯️ The seance circle</b><p class="small">Six candles round a moon stone. ' + (S.cemOn ? 'They light while a seance is open at the altar.' : 'They won\u2019t light. Not tonight.') + '</p>';
     if (k === 'altar') { var on = !!S.cemOn; el.innerHTML = '<b class="cc-h">🕯️ The altar</b><p class="small">Pick a grave in the finder below and press <b>Raise at the altar</b>. Offer your living pets (and spare gear) to bring it back as a zombie: more and rarer offerings, more power, up to 3 times what it died with. The top giver owns the zombie.' + (on ? '' : ' Raising opens when the cemetery loop goes live; until then the finder is read-only.') + '</p>' + (on ? '<button type="button" class="btn" id="cemAltGo">🕯️ Open the altar for the first grave you can raise</button>' : ''); var go = document.getElementById('cemAltGo'); if (go) go.onclick = function () { if (S.openAltar) S.openAltar(); }; } }
   function at(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height, hs = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; }); return hs.length ? hs[hs.length - 1] : null; }
   /** mount(w, dead): draws the scene into #cemScene; dead = the page's dead list (only its length is used: the stones are generic). */
   function mount(w, dead) { var box = document.getElementById('cemScene'); if (!box) return; S.total = dead ? dead.length : 0; S.sel = null;
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, a stone altar with candles on the path, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi · 🕯️ tap the altar</div>';
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The XCPETS Pet Cemetery at night: endless rows of gravestones fading into fog under a full moon, a stone altar with candles on the path, a seance circle of six candles, Mort the caretaker at the gate"></canvas><div class="cem-hint small">👇 Every grave from every player is in the list below · tap Mort to say hi · 🕯️ tap the altar</div>';
       c = box.querySelector('canvas');
       if (window.IntersectionObserver) new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off) kick(); else { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c);
       document.addEventListener('visibilitychange', function () { S.hid = document.hidden; if (S.hid) { cancelAnimationFrame(S.raf); S.raf = 0; } else kick(); });
@@ -230,7 +239,8 @@
     function onPgIn(e) { if (!e.target.hasAttribute('data-pgin')) return; var v = parseInt(e.target.value, 10); if (v > 0) { st.page = v - 1; paint(); } }
     [pTop, pBot].forEach(function (el) { el.addEventListener('click', onPager); el.addEventListener('change', onPgIn); });
     /* "Raise at the altar": load the altar module on first use, then open the seance panel for that grave (hidden until the gate; owner test: grave #2, owner wallet) */
-    tombs.addEventListener('click', function (e) { var bt = e.target.closest('[data-raise]'); if (!bt) return; var id = +bt.getAttribute('data-raise'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g || !canRaise(g)) return;
+    /* owner's raise flow (Oct 29 2026 8:35 PM CT), step 1: click a gravestone to begin raising that dead pet (the whole stone, not only the button) */
+    tombs.addEventListener('click', function (e) { var bt = e.target.closest('[data-raise]'), tb = e.target.closest('.tomb'); if (!bt && tb && !e.target.closest('a,button,select,input,label')) bt = tb.querySelector('[data-raise]'); if (!bt) return; var id = +bt.getAttribute('data-raise'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g || !canRaise(g)) return;
       bt.disabled = true; altarJs(function () { bt.disabled = false; if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); });
     S.openAltar = function () { var g = st.list.filter(canRaise)[0] || all.filter(canRaise)[0]; if (g) altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); };
     var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };

@@ -2,6 +2,7 @@
  * One pure pixel pass that turns a pet's 32x32 frame into its risen-zombie version, shared by My Pets (js/v2-zombies.js) and the seance rise
  * (js/v2-cemetery-altar.js), so both show the same dead pet. 8-bit only: whole pixels, small fixed palette, nothing smoothed.
  *  - rotting grey-green skin (desaturated, a hint of the species' own colour kept), mottled with darker decay patches and a few pustules
+ *  - feral (opt.feral, hunger ran out): same look, but both eyes lit red, blood instead of green drool, and blood round the jaw
  *  - hollow black eye sockets: one tiny glowing pupil, and the other eye X'd out with thread, or an empty socket (picked by pet id)
  *  - lips and tongue go to dead gum; a crooked jaw with teeth (one missing) or a crooked stitched mouth (by pet id); green drool drips
  *  - exposed ribs (bone bars in a torn cavity) low on the body, or a bare skull patch when the body is too small
@@ -15,6 +16,7 @@
   var C = { line: [12, 15, 10], hole: [5, 6, 5], rim: [30, 36, 26], pupil: [214, 255, 168], pupil2: [150, 214, 96], thread: [196, 186, 146], threadD: [120, 110, 84],
     gum: [70, 34, 42], gumD: [40, 18, 24], tooth: [226, 218, 186], toothD: [170, 160, 128], mouth: [16, 8, 8], bone: [230, 222, 192], boneD: [166, 156, 124], cav: [38, 16, 20],
     flesh: [128, 54, 48], fleshD: [84, 32, 30], rot: [52, 46, 34], rotD: [36, 32, 24], pus: [168, 180, 88], drool: [150, 210, 92], droolL: [214, 255, 150],
+    blood: [140, 18, 22], bloodL: [214, 46, 40], fpupil: [255, 72, 52], fpupil2: [196, 28, 24],
     dirt: [[74, 54, 36], [94, 70, 48], [52, 37, 26], [112, 86, 58]], fly: [10, 10, 12], wing: [200, 210, 220], stink: [132, 156, 60], stinkL: [176, 196, 92] };
   function hsh(a, b, c) { var h = (a * 374761393 + b * 668265263 + (c | 0) * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; h ^= h >>> 16; return (h >>> 0) / 4294967296; }
   function lum(r, g, b) { return 0.3 * r + 0.59 * g + 0.11 * b; }
@@ -65,12 +67,12 @@
     for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; x = q & 31; y = q >> 5; var hv = hsh(x - b.x0, y - b.y0, v + 7); j = q * 4; if (L.c[j] + L.c[j + 1] < 40) continue;
       if (hv < 0.06) { L.c[j] = q8(L.c[j] * 0.72); L.c[j + 1] = q8(L.c[j + 1] * 0.7); L.c[j + 2] = q8(L.c[j + 2] * 0.74); } else if (hv > 0.985 && inner(L, x, y)) { L.c[j] = C.pus[0]; L.c[j + 1] = C.pus[1]; L.c[j + 2] = C.pus[2]; } }
     /* 3. eyes: hollow black sockets with a sunken rim; one tiny glowing pupil; the other X'd out with thread, or empty */
-    var ev = v % 3, glow = fi % 2 ? C.pupil : C.pupil2, eb = 0;
+    var F = !!opt.feral, ev = v % 3, glow = F ? (fi % 2 ? C.fpupil : C.fpupil2) : (fi % 2 ? C.pupil : C.pupil2), eb = 0;
     E.forEach(function (e, n) { var x0 = e.x0, x1 = e.x1, y0 = e.y0, y1 = e.y1; eb = Math.max(eb, y1);
       for (y = y0 - 1; y <= y1 + 1; y++) for (x = x0 - 1; x <= x1 + 1; x++) { if (!on(L, x, y)) continue; var edge = x < x0 || x > x1 || y < y0 || y > y1; j = (y * 32 + x) * 4; if (edge) { if (L.c[j] + L.c[j + 1] > 60) put(L, x, y, C.rim, 1); } else put(L, x, y, C.hole, 1); }
-      var mode = E.length < 2 ? 'pupil' : ev === 0 ? 'pupil' : ev === 1 ? (n === 1 ? 'x' : 'pupil') : (n === 0 ? 'empty' : 'pupil');
+      var mode = F || E.length < 2 ? 'pupil' : ev === 0 ? 'pupil' : ev === 1 ? (n === 1 ? 'x' : 'pupil') : (n === 0 ? 'empty' : 'pupil');
       var cx = Math.round((x0 + x1) / 2 + (n ? -0.3 : 0.3)), cy = Math.round((y0 + y1) / 2 + (n ? 0 : 0.4));
-      if (mode === 'pupil') { put(L, cx, cy, glow, 1); }
+      if (mode === 'pupil') { put(L, cx, cy, glow, 1); if (F && x1 - x0 >= 2) put(L, cx + (n ? -1 : 1), cy, fi % 2 ? C.fpupil2 : C.fpupil, 1); } /* feral: both eyes lit red, 2 px */
       else if (mode === 'x') { var s = Math.min(x1 - x0, y1 - y0 + 1, 3); for (var t = 0; t <= s; t++) { put(L, x0 + t, y0 + t, C.thread, 1); put(L, x0 + s - t, y0 + t, C.thread, 1); } }
       else { put(L, cx, y1 + 1, C.drool, 1); } /* empty socket: one wet pixel under it */ });
     /* 4. mouth: crooked jaw with teeth (one missing) or a crooked stitched slit; any old mouth below stays as dead gum */
@@ -81,8 +83,9 @@
       if (stitched) { put(L, x, yy, C.mouth, 1); if ((x - mx0) % 2 === 1) { put(L, x, yy - 1, C.thread, 1); put(L, x, yy + 1, C.threadD, 1); } }
       else { put(L, x, yy, x === miss ? C.mouth : ((x - mx0) % 2 ? C.toothD : C.tooth), 1); put(L, x, yy + 1, C.mouth, 1); if (on(L, x, yy + 2) && (x - mx0) % 3 === 0) put(L, x, yy + 2, C.toothD, 1); } }
     /* drool from the low corner (length moves with the frame) */
-    var dl = [2, 3, 4, 3, 2, 4][fi % 6], dx = side > 0 ? mx0 : mx1, dy0 = my + 2 + (dx >= half ? 1 : 0);
-    for (i = 0; i < dl; i++) put(L, dx, dy0 + i, i === dl - 1 ? C.droolL : C.drool, L.m[(dy0 + i) * 32 + dx] === 1 ? 1 : 2);
+    var dl = [2, 3, 4, 3, 2, 4][fi % 6] + (F ? 2 : 0), dx = side > 0 ? mx0 : mx1, dy0 = my + 2 + (dx >= half ? 1 : 0), dC = F ? C.blood : C.drool, dCL = F ? C.bloodL : C.droolL;
+    for (i = 0; i < dl; i++) put(L, dx, dy0 + i, i === dl - 1 ? dCL : dC, L.m[(dy0 + i) * 32 + dx] === 1 ? 1 : 2);
+    if (F) [[-2, -1], [-1, 1], [1, -2], [2, 1], [0, 3]].forEach(function (d, n3) { var bx = (n3 & 1 ? mx1 : mx0) + d[0], by = my + d[1]; if (on(L, bx, by) && hsh(bx, by, v + 21) < 0.7) put(L, bx, by, n3 % 2 ? C.blood : C.bloodL, 1); }); /* feral: fresh blood round the jaw */
     /* 5. exposed ribs low on the body (opposite the drool), or a bare skull patch */
     var rh = 5, rw = Math.max(3, Math.min(5, Math.round(W * 0.2))), ry = Math.max(my + 4, b.y0 + Math.round(H * 0.7)), rx = side > 0 ? b.x1 - rw - Math.max(2, Math.round(W * 0.14)) : b.x0 + Math.max(2, Math.round(W * 0.14));
     if (ry + rh > b.y1) { ry = b.y1 - rh; } var ok = 0; for (y = ry; y < ry + rh; y++) for (x = rx; x < rx + rw; x++) if (inner(L, x, y)) ok++;

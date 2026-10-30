@@ -6,7 +6,7 @@
  *    zombie meal, feral after 432 blocks, crumbles to dust 432 blocks after that unless it eats pets (pet:zfeed) or wins a hunt.
  * Never adds the fire aura, the grant flame crown or the edition gold frame. ?zombies=off turns the look off for a page view. Display only. */
 (function () {
-  var M = window.V2Mock, R = window.V2Render, V = function () { return window.V2 || {}; };
+  var M = window.V2Mock, R = window.V2Render, V = function () { return window.V2Rules || window.V2 || {}; };
   var OFF = /[?&]zombies=off\b/.test((window.location && window.location.search) || '');
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
   function apply(w) { if (!w || typeof w !== 'object' || !w.pets || w.__zb === w.tip) return w; w.__zb = w.tip;
@@ -24,20 +24,20 @@
     return '<span class="chip zb-hun' + (low ? ' warn' : '') + '" title="' + hungerTitle(h) + '">' + (h.feral ? '👁️ Feral' : '🧟 Hunger') + ' <i class="zb-hb' + (low ? ' low' : '') + '"><b style="width:' + h.pct + '%"></b></i> ' + (h.feral ? 'dust in ' + span(h.crumbleIn) : h.pct + '%') + '</span>'; }
   function hungerBar(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33;
     return '<div class="bar zb-hbar' + (low ? ' low' : '') + '" title="' + hungerTitle(h) + '"><i style="width:' + Math.max(h.pct, 2) + '%"></i></div>' +
-      '<div class="small zb-hl">' + (h.feral ? '👁️ Feral: anyone can hunt it · crumbles to dust in ~' + span(h.crumbleIn) : '🍖 Hunger ' + h.pct + '% · feral in ~' + span(h.left)) + ' · eats pets, not meals · <a href="cemetery.html#zombie-' + p.id + '">feed at the altar</a></div>'; }
+      '<div class="small zb-hl">' + (h.feral ? '👁️ Feral: anyone can hunt it · crumbles to dust in ~' + span(h.crumbleIn) : '🍖 Hunger ' + h.pct + '% · feral in ~' + span(h.left)) + ' · eats pets, not meals · feed it below</div>'; }
   /* sprite: the shared dead look (js/v2-zombie-look.js) on new frame objects; the keyed copies get the same bites and slouch, and the Mythic aura is
    * rebuilt from them so it traces the zombie's outline. Cached per source frame list, so animation ticks don't redo it. */
   var DONE = typeof WeakMap !== 'undefined' ? new WeakMap() : null, ZF = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
   function keyed(pf, p, w, extra, col) { var a = Object.assign({}, p.art || {}, { background: 'solid', bgColor: col, pattern: 'none' });
     return pf(Object.assign({}, p, { zombie: null, art: a, mutation: null, shows: null }), w, extra); }
-  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var hit = DONE.get(fr); if (hit) return hit; var A, B;
+  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} var hit = DONE.get(fr); if (hit && hit.__fe === fe) return hit; var A, B;
     try { A = keyed(pf, p, w, extra, '#ff00fe'); B = keyed(pf, p, w, extra, '#00ff01'); } catch (e) { return fr; }
     if (!A || !B || !A.length || !B.length) return fr; var KA = [], KB = [], out;
-    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null });
+    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null, feral: fe });
         if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF) ZF.add(g); return g; });
       if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }
-    DONE.set(fr, out); return out; }
+    try { out.__fe = fe; } catch (e) {} DONE.set(fr, out); return out; }
   if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p)) return pf0.apply(this, arguments);
     /* no Mythic smug hand on zombies (owner Oct 29 2026): the zombie's frames and the keyed copies twist() reads are all drawn inside V2ZombieLook.noHand */
     var q = p.stage === 5 ? p : Object.assign({}, p, { stage: 5, stageName: 'Mythic' }), a2 = [q].concat([].slice.call(args, 1)); /* drawn at the Mythic pose (display only) */
@@ -62,7 +62,7 @@
       'canvas.zb-sprite{filter:drop-shadow(0 0 3px rgba(110,140,60,.22)) saturate(.9)}.mfx.zb-mfx{filter:sepia(1) hue-rotate(42deg) saturate(1.3) brightness(.55) contrast(1.15);opacity:.5}canvas.lkx.zb-mfx{filter:drop-shadow(0 0 3px rgba(110,140,60,.25))}' +
       '.chip.zb-pow{border-color:#4d5a3a}.chip.zb-hun{display:inline-flex;align-items:center;gap:4px}.zb-hb{display:inline-block;width:34px;height:7px;background:#1a1d14;border:1px solid #4d5a3a;vertical-align:middle;position:relative}' +
       '.zb-hb b{display:block;height:100%;background:#8aa04c}.zb-hb.low b{background:#b0653a}.bar.zb-hbar i{background:linear-gradient(90deg,#5d7034,#8aa04c)}.bar.zb-hbar.low i{background:linear-gradient(90deg,#7a3a24,#b0653a)}' +
-      '.zb-hl{margin-top:3px;color:#a7b48e}';
+      '.zb-hl{margin-top:3px;color:#a7b48e}.zb-feed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.zb-feed .zb-ml{display:flex;gap:4px;align-items:center;color:#a7b48e;min-width:0}.zb-feed select{max-width:150px;min-width:0}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
   window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, span: span };
 })();
