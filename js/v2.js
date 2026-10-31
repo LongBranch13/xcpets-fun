@@ -320,6 +320,8 @@
   function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
     if (ws) { wspinOn = true; var r0 = rev; WA.reveal(ws, function () { wspinOn = false; if (rev !== r0) return; drawReveal(); open('packBox'); }); return; }
+    if (rev.kind === 'eggs' && !rev.hatchAnim && !lifeReduced()) { rev.hatchAnim = 1; wspinOn = true; var r1 = rev, go = function () { wspinOn = false; if (rev !== r1) return; drawReveal(); open('packBox'); }; /* pixel-anims: the eggs crack open first (js/v2-life-anim.js, lazy) */
+      withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
@@ -490,7 +492,7 @@
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')'; $('cfeedBtn').disabled = !!gap;
     if (gap) { var sn = 'Opens when pet #' + R.COMMUNITY_NEXT_NO + ' arrives'; $('cfeedBtn').textContent = 'Feed community · ' + sn.toLowerCase(); $('crollBtn').textContent = 'Community gear roll · ' + sn.toLowerCase(); $('cfeedBtn').title = $('crollBtn').title = sn; } else $('cfeedBtn').title = '';
-    renderPets(w); renderInv(w); lairRender(w); /* pet-shop mockup; lair-perf: only while the Lair is on (or near) screen */ renderBattles(w); notifyFights(w); notifyBreeds(w); notifyCem(w); renderBreed(w); if (window.V2Motel) { try { V2Motel.render(w); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
+    renderPets(w); renderInv(w); lairRender(w); /* pet-shop mockup; lair-perf: only while the Lair is on (or near) screen */ renderBattles(w); notifyFights(w); notifyBreeds(w); notifyCem(w); notifyLife(w); renderBreed(w); if (window.V2Motel) { try { V2Motel.render(w); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
     offerResume();
   }
@@ -1112,6 +1114,19 @@
   /* cemetery-animations (owner Oct 30 2026 [pt2341u]): confirmed cemetery results (a zombie rising, a Resurrection roll, a zombie meal, feral, crumble,
    * hunted) play their 8-bit animation ONCE (js/v2-cem-anim.js keeps the seen keys), through the same queue / 'While you were away' hold as fights
    * and breeds, plus a toast with Replay. ?anim=raise|resurrect-win|resurrect-fail|zmeal|feral|crumble previews one any time. Display only. */
+  /* pixel-anims (owner Oct 31 2026 4:50 PM CT [pt2513u] "Do them all"): hatching, feeding, stage-ups, Mythic and starvation each get an 8-bit scene
+   * (js/v2-life-anim.js). That file is loaded only when needed: a ?anim= preview, a first look, or a confirmed feed / death of MY pets newer than the
+   * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
+  var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve)\b/.test(location.search);
+  function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=c82f11bf85';
+    var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
+  function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
+    for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
+    return w.pets.some(function (p) { return p.owner === ME && p.dead && p.deathBlock > m && p.deathBlock <= tip; }); }
+  function notifyLife(w) { if (LIFE_PV) { LIFE_PV = false; withLife(function (ok) { if (ok) V2LifeAnim.preview(world(), ME); }); return; } if (!lifeNeeded(w)) return; dataSeen();
+    withLife(function (ok) { if (!ok) return; var LA = window.V2LifeAnim, w2 = world(), q = LA.collect(w2, ME, S.tip || w2.tip || 0);
+      q.forEach(function (ev) { queueAnim(function () { LA.play(ev, { w: world() }); }, LA.caption(ev, w2).slice(0, 70)); }); }); }
   function notifyCem(w) { var CA = window.V2CemAnim; if (!CA) return; if (CA.preview(w, ME)) return; if (!ME) return; dataSeen(); var q = CA.collect(w, ME, S.tip || w.tip || 0);
     q.forEach(function (ev) { toast(esc(CA.caption(ev, w)) + ' <a href="#" data-cemreplay="1">▶ Replay</a>', 15000); var a = $('toasts').lastChild && $('toasts').lastChild.querySelector('[data-cemreplay]');
       if (a) a.onclick = function (e) { e.preventDefault(); CA.play(ev, { w: world() }); };
@@ -1155,7 +1170,7 @@
     run: function () { released = true; heldR = false; var a = heldA; heldA = []; a.forEach(function (x) { queueAnim(x.fn); }); nextReveal(); awayPing(); },
     skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); } };
   function queueAnim(fn, label) { if (holding()) { heldA.push({ fn: fn, label: label || '▶ Replay' }); awayPing(); return; } animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
-  function nextAnim() { if (animM.el || !animQ.length) return; if (window.V2CemAnim && V2CemAnim.busy()) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on')) return setTimeout(nextAnim, 1000); animQ.shift()(); }
+  function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on')) return setTimeout(nextAnim, 1000); animQ.shift()(); }
   window.V2AnimDone = function () { if (!animM.el && animQ.length) setTimeout(nextAnim, 500); };
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
