@@ -30,13 +30,13 @@ function context() {
   const win = { console: q, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: SITE + '/' }, navigator: { userAgent: 'node' },
     setTimeout, clearTimeout, URLSearchParams, URL, TextEncoder, TextDecoder, AbortController, fetch: LIMITED };
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
-  win.XCPETS_PATIENT = 1; /* feed-429-fix */ win.XCPETS_TOUCH_MAX = 400; win.XCPETS_MINT_SCAN = 1; /* feed-rate-limit: incremental sale reads over up to 400 blocks; never trade the full mint-token scan for the race's fallback list */ win.addEventListener = () => {}; win.dispatchEvent = () => true; win.CustomEvent = function CustomEvent(type, o) { this.type = type; this.detail = o && o.detail; }; /* feed-customevent-fix: v2-sales.js's stale branch dispatches a browser event; Node's vm context has none */ win.XCPETS_DEX_MS = 30 * 60 * 1000; /* feed-customevent-fix: the feed waits for the full sale read (never publishes the stale early slice) */ win.window = win; win.self = win; win.globalThis = win;
+  win.XCPETS_PATIENT = 1; /* feed-429-fix */ win.XCPETS_TOUCH_MAX = 400; win.XCPETS_MINT_SCAN = 1; /* feed-rate-limit: incremental sale reads over up to 400 blocks; never trade the full mint-token scan for the race's fallback list */ win.addEventListener = () => {}; win.dispatchEvent = () => true; win.CustomEvent = function CustomEvent(type, o) { this.type = type; this.detail = o && o.detail; }; /* feed-customevent-fix: v2-sales.js's stale branch dispatches a browser event; Node's vm context has none */ win.XCPETS_DEX_MS = (+process.env.FEED_DEX_MS || 15 * 60 * 1000); /* feed-timeout-fix (Oct 31 2026): the sale read gets 15 min (was 30 min = the whole systemd/workflow limit, so slow reads were killed and nothing was published 10:11 PM-5:05 AM CT). Past that the last complete sale copy (boot.json base) is published, flagged stale, and kept as the next run's incremental base */ win.window = win; win.self = win; win.globalThis = win;
   const ctx = vm.createContext(win);
   for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); continue; }
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
   return ctx;
 }
-function prevBoot() { try { const j = JSON.parse(fs.readFileSync(process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), 'utf8')); return j && j.dex && !j.dex.stale && j.dexTip && j.dexHash && j.dexAssets ? j : null; } catch (e) { return null; } }
+function prevBoot() { try { const j = JSON.parse(fs.readFileSync(process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), 'utf8')); return j && j.dex && (!j.dex.stale || j.dexCarry) && j.dexTip && j.dexHash && j.dexAssets ? j : null; } catch (e) { return null; } }
 /* firesale-hashes: reuse the last boot copy's FINAL hashes (>= 6 deep at its tip) as a cache, so each run only fetches the newest blocks (BOOT_CACHE env or <out>/boot.json) */
 function prevBootHashes() { try { const f = process.env.BOOT_CACHE || path.join(OUT, 'boot.json'), j = JSON.parse(fs.readFileSync(f, 'utf8')), o = {}; Object.keys(j.hashes || {}).forEach(k => { if (+k <= j.tip - 6 && /^[0-9a-f]{64}$/.test(j.hashes[k])) o[k] = j.hashes[k]; }); return o; } catch (e) { return {}; } }
 /* api-hardening (2026-10-27): 6-block reorg rollback in the feed. The last boot.json also ships hashes for its newest blocks (under 6 deep); those
@@ -69,7 +69,10 @@ async function liveInput(ctx) {
   }
   console.error('feed: sale read ' + JSON.stringify(ctx.V2Sales && ctx.V2Sales.loadDex && ctx.V2Sales.loadDex.last || null));
   let supply = null; try { const j = await chain.getJson('/assets/' + E.CFG.asset); supply = j && j.result ? Number(j.result.supply) / 1e8 : null; } catch (e) {}
-  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex, dexAssets: dex && ctx.V2Sales.loadDex.lastAssets ? ctx.V2Sales.loadDex.lastAssets.slice() : undefined };
+  /* feed-timeout-fix: a timed-out sale read answers with the base copy itself (sliced to these tokens): it is still exact at the base tip, so carry that tip + hash */
+  const last = ctx.V2Sales && ctx.V2Sales.loadDex && ctx.V2Sales.loadDex.last, dexCarry = dex && dex.stale && last && last.timeout && prev && last.baseTip != null && +last.baseTip === +prev.dexTip ? { tip: +prev.dexTip, hash: prev.dexHash } : undefined;
+  if (dexCarry) console.error('feed: sale read timed out after ' + (last.timeout / 60000) + ' min; publishing the sale copy from block ' + dexCarry.tip + ' (stale) and keeping it as the next base');
+  return { rows, tip, hashes: Object.assign({}, hc, bh.hashes), supply, dex, dexCarry, dexAssets: dex && ctx.V2Sales.loadDex.lastAssets ? ctx.V2Sales.loadDex.lastAssets.slice() : undefined };
 }
 const STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
 function build(ctx, input, nowIso) {
@@ -125,7 +128,8 @@ if (require.main === module) (async () => {
   { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); gateBlocks(ctx.V2Rules, input.tip).forEach(k => { if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); /* firesale-hashes: every gate block's hash ships in the boot copy, so a first visit never stops at fire.missing */
     fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null,
       /* sale-cache: stamp the sale copy with the tip it was read after + that block's hash, so pages can re-read only tokens touched since (js/v2-sales.js pickBase) */
-      dexTip: input.dex && !input.dex.stale && input.dexAssets && input.hashes && input.hashes[input.tip] ? input.tip : undefined, dexHash: input.dex && input.hashes ? input.hashes[input.tip] : undefined, dexAssets: input.dexAssets || undefined })); }
+      dexTip: input.dexCarry && input.dexAssets ? input.dexCarry.tip : input.dex && !input.dex.stale && input.dexAssets && input.hashes && input.hashes[input.tip] ? input.tip : undefined, dexHash: input.dexCarry ? input.dexCarry.hash : input.dex && input.hashes ? input.hashes[input.tip] : undefined, dexAssets: input.dexAssets || undefined, dexCarry: input.dexCarry ? true : undefined })); }
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
   console.log('tip', meta.blockHeight, 'pets', pets.length, 'burns', meta.burns, '->', OUT);
+  process.exit(0); /* feed-timeout-fix: a timed-out sale read keeps going in the background; never let it hold the run open after the files are written */
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
