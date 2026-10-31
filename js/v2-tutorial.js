@@ -13,8 +13,15 @@
     /* tutorial-cemetery (owner ask Oct 30 2026): the cemetery gate mirrored from js/v2-rules.js (tutorial.html does not load the rules);
      * cemPublic null = OWNER TEST (only grave #cemOwnerGrave by cemOwner). tools/tutorial-test.js checks these against the rules. */
     cemGate: 973772, cemPublic: null, cemOwnerGrave: 2, cemOwner: 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4',
-    cemPool: 144, cemFeral: 432, cemCap: 3, cemRipe: 1.5
+    cemPool: 144, cemFeral: 432, cemCap: 3, cemRipe: 1.5,
+    /* resurrect-odds (owner ask Oct 30 2026): Resurrection points + chance mirrored from js/v2-rules.js cemResInfo (CEM_POINTS by tier, CEM_RES_*);
+     * cemHw = the Halloween window by block (CEM_HW_FROM..CEM_HW_TO). tools/tutorial-test.js checks every one against the rules. */
+    resPts: [1, 3, 10, 33], resMin: 25, resBase: 0.05, resSpan: 0.60, resTop: 0.65, resHwPts: 10, resHwTop: 0.75, cemHw: [973935, 975670],
+    resRows: [25, 50, 100, 300, 1000]
   };
+  /* resChance(points, halloween): the same math as V2Rules.cemResInfo (Halloween adds resHwPts to P, the cap is resTop or resHwTop) */
+  function resChance(pts, hw) { var P = pts + (hw ? N.resHwPts : 0); return Math.round(Math.min(hw ? N.resHwTop : N.resTop, N.resBase + N.resSpan * (P / (P + 100))) * 10000) / 10000; }
+  function pct(c) { return Math.round(c * 100) + '%'; }
   var SEEN = 'xcpets-tut-seen', DONE = 'xcpets-tut-done', TIPS = 'xcpets-tut-tips';
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
   function jget(k) { try { return JSON.parse(ls(k) || '{}') || {}; } catch (e) { return {}; } }
@@ -75,6 +82,16 @@
   function rollTier() { var r = Math.floor(Math.random() * 10000), a = 0; for (var i = 0; i < 4; i++) { a += N.tiers[i][1]; if (r < a) return i; } return 0; }
   var HATCHABLE = [['pepe', 0], ['wojak', 0], ['chud', 0], ['peepo', 0], ['doge', 0], ['bobo', 1], ['mumu', 1], ['sarutobi', 1], ['lenny', 1], ['snibby', 2], ['kevin', 2], ['dodo', 3]];
   var DEMOS = {
+    resodds: function () {
+      var d = el('div', 'tut-demo'); d.appendChild(el('span', 'tut-tag gold', 'ODDS')); d.appendChild(el('div', 'tut-h', 'Resurrection odds'));
+      var T = ['Common', 'Uncommon', 'Rare', 'Legendary'], h = '<div class="tut-oddsrow"><div class="tw"><table class="tut-body small tut-odds"><thead><tr><th>Each pledged pet or gear piece</th><th class="num">Points</th></tr></thead><tbody>' +
+        T.map(function (t, i) { return '<tr><td>' + t + '</td><td class="num">' + N.resPts[i] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      h += '<div class="tw"><table class="tut-body small tut-odds"><thead><tr><th>Your points</th><th class="num">Chance</th><th class="num">🎃 Halloween</th></tr></thead><tbody>' +
+        '<tr><td>under ' + N.resMin + '</td><td class="num">can\'t roll</td><td class="num">can\'t roll</td></tr>' +
+        N.resRows.map(function (p) { return '<tr><td>' + fmt(p) + '</td><td class="num">' + pct(resChance(p)) + '</td><td class="num">' + pct(resChance(p, 1)) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      d.appendChild(el('div', '', h));
+      d.appendChild(el('div', 'tut-body small', 'Chance = 5% + 60% of P / (P + 100), where P is your points (plus ' + N.resHwPts + ' in the Halloween window). It levels off and never reaches ' + pct(N.resTop) + ', so each extra point helps a bit less. Examples of ' + N.resMin + ' points: 1 Legendary, or 3 Rares, or 9 Uncommons, or ' + N.resMin + ' Commons.'));
+      return d; },
     hatch: function () {
       var d = demoBox('Crack a practice egg'), box = el('div', 'tut-egg'), egg = sprite('pepe', 0), out = el('div', 'tut-body', 'Tap the egg.');
       box.appendChild(egg); d.appendChild(box); d.appendChild(out); egg.style.cursor = 'pointer'; egg.tabIndex = 0;
@@ -227,11 +244,13 @@
       ['Zombies eat pets', function () { return 'A zombie eats <b>pets, not meals</b>. On its card in <b>My Pets</b> press <b>🍖 Feed it pets</b> and tick the pets it eats: your <b>discarded</b> pets are listed first, and <b>Select all discarded</b> ticks them all. ⭐ Starred pets are never offered. Every pet it eats is used up for good; the XCPETS is only a fee per burn.'; }],
       ['What a meal does', function () { return 'Each meal burn refills its hunger to full. Only <b>tier</b> and <b>neglect</b> count: rarer pets and ripe pets (unfed ' + N.neglectedAfter + '+ days, ' + N.cemRipe + ' times) add more power; meals and stage don\'t matter. Each pet adds a bit less, so extra pets add little near the ' + N.cemCap + ' times cap. If any pet in a burn can\'t be eaten, the whole burn fails.'; }],
       ['Keep it fed', function () { return 'Leave a zombie unfed for ' + N.cemFeral / N.blocksPerDay + ' days and it goes <b>feral</b>: it won\'t fight for you, and other players can hunt it. One meal calms it. Unfed another ' + N.cemFeral / N.blocksPerDay + ' days and it crumbles back into its grave.'; }],
+      ['Resurrection: the odds', function () { return 'A zombie\'s owner can try a <b>😇 Resurrection</b> to bring it back to life. On its cemetery card, <b>Pledge to Resurrection</b> adds one of your pets to it. Each pledged pet or gear piece adds points by tier: Common ' + N.resPts[0] + ', Uncommon ' + N.resPts[1] + ', Rare ' + N.resPts[2] + ', Legendary ' + N.resPts[3] + ' (ripe pets don\'t count extra here). You need at least <b>' + N.resMin + ' points</b> to roll. 🎃 In the Halloween window (Oct 31 to Nov 11) every roll gets <b>+' + N.resHwPts + ' bonus points</b>. It is <b>one roll</b>, and everything pledged is used up either way. Win: it is alive again with a halo and keeps its power. Miss: it turns to <b>dust forever</b>. The card shows your live chance next to <b>😇 Resurrect</b> before you burn.' + cemNote(1); }, 'resodds'],
       ['Community pets', 'Some pets belong to everyone: anyone can feed them. When one reaches Mythic it goes to Cold Storage, the next one arrives, and burns cost half (the halving).']],
       quiz: [['What happens when a community pet reaches Mythic?', ['It goes to Cold Storage and burns cost half', 'It dies', 'Nothing'], 0],
         ['What does Pledge only do?', ['Adds your offering to the grave\'s pool without starting a raise', 'Raises the zombie at once', 'Gives your pets back'], 0],
         ['What does a zombie eat?', ['Your pets (discarded ones listed first)', 'XCPETS meals', 'Gear'], 0],
-        ['One pet in a zombie\'s meal can\'t be eaten. What happens?', ['The whole burn fails', 'The others are eaten', 'The zombie goes feral'], 0]] },
+        ['One pet in a zombie\'s meal can\'t be eaten. What happens?', ['The whole burn fails', 'The others are eaten', 'The zombie goes feral'], 0],
+        ['A Resurrection roll misses. What happens?', ['The zombie turns to dust forever', 'You can roll again', 'It stays a zombie'], 0]] },
     { id: 'ranks', ico: '👑', t: 'Rankings & Burn Lords', s: 'Climb the boards', steps: [
       ['Rankings', 'The Rankings page shows the top keepers, pets and fighters.'],
       ['Burn Lords', 'The top burners are the Burn Lords. Top 5 burners at the snapshot block get special eggs.']],
@@ -451,7 +470,7 @@
     if (onPlay && qs.has('coach')) { ls(SEEN, '1'); setTimeout(coach, 1200); return; }
     if (!ls(SEEN)) setTimeout(function () { welcome(onPlay); }, 900);
   }
-  window.V2Tutorial = { N: N, CH: CH, QUESTS: QUESTS, stats: stats, coach: coach, pickStep: pickStep, CSKIP: CSKIP, open: function () { location.href = 'tutorial.html'; } };
+  window.V2Tutorial = { N: N, CH: CH, resChance: resChance, QUESTS: QUESTS, stats: stats, coach: coach, pickStep: pickStep, CSKIP: CSKIP, open: function () { location.href = 'tutorial.html'; } };
   if (typeof module !== 'undefined') module.exports = window.V2Tutorial;
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

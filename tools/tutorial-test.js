@@ -44,5 +44,16 @@ eq('cemetery chapter teaches zombie meals (pets not meals, discarded first, Sele
 eq('zombie meal + Select all discarded exist in the play UI', /Select all discarded/.test(fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8')), true);
 eq('whole burn fails = rules reject the zfeed burn on the first bad pet', /if \(bad\) return L\(r, 'rejected', 'zombie meal: ' \+ bad\)/.test(RS), true);
 eq('no x / times symbol, price, series, discount or giveaway in the cemetery chapter', /\d ?(x|×)\b|×|\bprice|\bseries|discount|giveaway/i.test(cs), false);
+// resurrect-odds: the Resurrection step mirrors cemResInfo (points by tier, 25 minimum, 5% + 60% of P/(P+100), caps, Halloween +10 and window)
+const RK = n => +(new RegExp('\\b' + n + ' = ([\\d.]+)').exec(RS) || [])[1];
+eq('resurrection points by tier + minimum', [N.resPts, N.resMin], [V.CEM.POINTS, V.CEM.RES_MIN]);
+eq('resurrection base, span, cap, Halloween points + cap', [N.resBase, N.resSpan, N.resTop, N.resHwPts, N.resHwTop], ['CEM_RES_BASE', 'CEM_RES_SPAN', 'CEM_RES_TOP', 'CEM_RES_HW_PTS', 'CEM_RES_HW_TOP'].map(RK));
+eq('Halloween window blocks', N.cemHw, [V.CEM.HW_FROM, V.CEM.HW_TO]);
+eq('cemPts maps tier 0..3 (Common..Legendary) to CEM_POINTS', /function cemPts\(x\) \{ return CEM_POINTS\[cemTier\(x\.tier\)\]; \}/.test(RS) && /function cemTier\(x\) \{ return Math\.max\(0, Math\.min\(3, x \| 0\)\); \}/.test(RS), true);
+eq('resurrection chance formula in the rules is the one the tutorial uses', /P = pts \+ \(hw \? CEM_RES_HW_PTS : 0\), ch = Math\.min\(hw \? CEM_RES_HW_TOP : CEM_RES_TOP, CEM_RES_BASE \+ CEM_RES_SPAN \* \(P \/ \(P \+ 100\)\)\)/.test(RS), true);
+eq('odds table (25, 50, 100, 300, 1000 points; normal | Halloween)', N.resRows.map(p => [T.resChance(p), T.resChance(p, 1)]), [[0.17, 0.2056], [0.25, 0.275], [0.35, 0.3643], [0.5, 0.5037], [0.5955, 0.5959]]);
+eq('Halloween window by block = Oct 31 to Nov 11 (cemHw)', [V.cemHw(N.cemHw[0] - 1), V.cemHw(N.cemHw[0]), V.cemHw(N.cemHw[1]), V.cemHw(N.cemHw[1] + 1)], [false, true, true, false]);
+eq('Resurrection step teaches points, 25 minimum, one roll, dust forever, halo, Halloween bonus, live chance', ['Common 1', 'Uncommon 3', 'Rare 10', 'Legendary 33', '25 points', 'one roll', 'dust forever', 'halo', '+10 bonus points', 'live chance'].every(k => cs.indexOf(k) >= 0), true);
+eq('cemetery card shows the live chance next to Resurrect', /Math\.round\(res\.chance \* 100\) \+ '% chance; a miss turns it to dust/.test(fs.readFileSync(path.join(ROOT, 'js/v2-cemetery-scene.js'), 'utf8')), true);
 eq('no G Money in the tutorial', /G Money/i.test(src), false);
 console.log(fail ? fail + ' FAILED' : 'tutorial: all checks pass'); process.exit(fail ? 1 : 0);
