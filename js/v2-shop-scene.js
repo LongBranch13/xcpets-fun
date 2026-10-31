@@ -162,12 +162,12 @@
     return '<div class="cs-back' + (myth(p) ? ' sh-myth' : '') + '"><div class="sh-hd"><b>' + esc(p.name || 'Pet') + '</b><i>#' + p.id + '</i></div><div class="cs-fam">' + fam + '</div>' +
       '<p><b>Breeds left:</b> ' + (bl ? bl.left + ' of ' + bl.cap : '?') + '</p><p><b>Gear:</b> ' + gearList(d, p) + '</p>' +
       (S.price != null && V.saleAmountText ? '<p class="cs-cost">Cost: ' + esc(V.saleAmountText(S.asset, S.price)) + '</p>' : '') +
-      '<button type="button" class="sh-btn" data-csbuy="' + S.n + '"' + (x.buy ? '' : ' title="Not ready yet"') + '>' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button> <a class="cs-link" href="pet.html?id=' + p.id + '">Pet page</a></div>'; }
+      (x.mine ? '<span class="sh-state sh-s-open">Your listing</span> <button type="button" class="sh-btn sh-ghost" data-cscancel="' + S.n + '">Cancel</button>' : '<button type="button" class="sh-btn" data-csbuy="' + S.n + '"' + (x.buy ? '' : ' title="Not ready yet"') + '>' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>') + ' <a class="cs-link" href="pet.html?id=' + p.id + '">Pet page</a></div>'; }
   function binderHtml(d) { var L = d ? d.listings : [], pgs = Math.max(1, Math.ceil(L.length / PER)); BP = Math.max(0, Math.min(BP, pgs - 1)); var pg = L.slice(BP * PER, BP * PER + PER), s = SC();
     var sleeves = pg.map(function (x) { return '<div class="cs-sleeve" data-csn="' + x.S.n + '"><div class="cs-flip"><div class="cs-face cs-front">' + s.card(x.p, x.S) + '</div><div class="cs-face cs-rear">' + backHtml(d, x) + '</div></div></div>'; }).join('');
     for (var i = pg.length; i < PER; i++) sleeves += '<div class="cs-sleeve cs-emptys">' + (L.length ? '' : '<div class="sh-card sh-back"></div>') + '</div>';
     return '<div class="box cs-binder"><div class="cs-bhd"><h3>📒 The Binder</h3><button type="button" class="sh-btn sh-ghost" data-csclose>Close</button></div>' +
-      (L.length ? '<p class="sh-hint">Tap a card to flip it. ' + L.length + ' pet' + (L.length === 1 ? '' : 's') + ' listed by other players.</p>' : '<p class="sh-hint">The binder is empty right now: the sleeves hold “Coming soon” card backs. <button type="button" class="sh-btn" data-cslist>🏷️ List my pet</button></p>') +
+      (L.length ? '<p class="sh-hint">Tap a card to flip it. ' + L.length + ' pet' + (L.length === 1 ? '' : 's') + ' listed' + (function () { var m = L.filter(function (x) { return x.mine; }).length; return m ? ' (' + m + ' yours)' : ''; })() + '.</p>' : '<p class="sh-hint">The binder is empty right now: the sleeves hold “Coming soon” card backs. <button type="button" class="sh-btn" data-cslist>🏷️ List my pet</button></p>') +
       '<div class="cs-spine"></div><div class="cs-page" id="csPage"><div class="cs-sleeves">' + sleeves + '</div></div>' +
       '<div class="sh-pager"><button type="button" class="sh-btn" data-csturn="-1"' + (BP ? '' : ' disabled') + ' aria-label="Previous page">◀</button> page ' + (BP + 1) + ' of ' + pgs + ' <button type="button" class="sh-btn" data-csturn="1"' + (BP < pgs - 1 ? '' : ' disabled') + ' aria-label="Next page">▶</button></div></div>'; }
   function openBinder(flipN) { if (!ready()) return wait(); var d = D(), m = ov('csBinder', 'cs-bov');
@@ -178,6 +178,7 @@
     if (reduced() || !pgEl) return go(); pgEl.classList.add(dir > 0 ? 'cs-out-r' : 'cs-out-l'); setTimeout(go, 230); }
   document.addEventListener('click', function (e) { var t = e.target; if (!t.closest) return; var m;
     if ((m = t.closest('[data-csturn]'))) { turn(Number(m.getAttribute('data-csturn'))); return; }
+    if ((m = t.closest('[data-cscancel]'))) { e.stopPropagation(); document.querySelectorAll('.cs-ov.on').forEach(shut); SC().cancel(Number(m.getAttribute('data-cscancel'))); return; }
     if ((m = t.closest('[data-csbuy]'))) { e.stopPropagation(); document.querySelectorAll('.cs-ov.on').forEach(shut); sfx('coin'); SC().buy(Number(m.getAttribute('data-csbuy'))); return; }
     if (t.closest('[data-cslist]')) { document.querySelectorAll('.cs-ov.on').forEach(shut); SC().sellPick(); return; }
     if ((m = t.closest('[data-cssell]'))) { shut($('csPick')); SC().sell(Number(m.getAttribute('data-cssell'))); return; }
