@@ -21,10 +21,12 @@
    * (pet:zfeed:Z:A.B.C) or the range mask (pet:zfm:Z:START:MASK, 5 ids per mask character, rules parse it since the cemetery loop shipped). */
   function zB32(n) { return n.toString(32).toUpperCase(); }
   /* CEMETERY RUNS (owner standing rule Oct 31 2026: as few burns as technically possible): from ACTIVATE_CEM_RUNS_BLOCK the picker also tries
-   * the run form (pet:zr / pet:rr, places in your pet list, V.cemRunsPlan) and sends whichever needs fewer burns, usually 1 for any pick. */
+   * the run form (pet:zr / pet:rr, places in your pet list, V.cemRunsPlan): never more burns than the list form, usually 1 for any pick, and
+   * priced PER PET (owner Oct 31 2026: each pet costs its one-by-one fee; V.cemRunsCost). Buttons and the confirm sum the plan amounts. */
+  function zSum(L) { return L.reduce(function (a, q) { return a + (q.amount || 0); }, 0); }
   function zParse(tag) { var t = V.parseTag ? V.parseTag(tag) : null; if (t && t.action === 'cemr' && V.cemRunsResolve) { var w = world(); t = w ? V.cemRunsResolve(w, ME, t, (S.tip || 0) + 1) : null; } return t; }
-  function zFewest(a, r) { return r && r.length && r.length < a.length ? r : a; }
-  function zFeedPlans(w, z, ids, b) { return zFewest(zFeedPlansList(w, z, ids, b), V.cemRunsPlan ? V.cemRunsPlan(w, 'zfeed', z, ids, ME, b) : null); }
+  function zFewest(a, r, w, b) { var pp = function (q) { return V.cemPetAmount ? V.cemPetAmount(w, q, b) : q; }; return (r && r.length && r.length <= a.length ? r : a).map(pp); } /* fewest burns; from the runs gate every pet burn is priced per pet (V.cemPetAmount), so the form never changes the total */
+  function zFeedPlans(w, z, ids, b) { return zFewest(zFeedPlansList(w, z, ids, b), V.cemRunsPlan ? V.cemRunsPlan(w, 'zfeed', z, ids, ME, b) : null, w, b); }
   function zFeedPlansList(w, z, ids, b) { var s = ids.slice().sort(function (a, c) { return a - c; }).filter(function (x, i, A) { return !i || A[i - 1] !== x; }), out = [], i = 0, cost = V.cemCost(w, 'zmeal', b);
     while (i < s.length) {
       var lst = [], k = i; while (k < s.length) { var t = 'pet:zfeed:' + z + ':' + lst.concat([s[k]]).map(zB32).join('.'); if (t.length > 34) break; lst.push(s[k]); k++; }
@@ -34,7 +36,7 @@
       out.push({ tag: tag, amount: cost, petId: z, label: 'zmeal', zEat: eat }); }
     return out; }
   function zBtnText(w, z, ids, b) { var cost = V.cemCost(w, 'zmeal', b); if (!ids.length) return '🍖 Tick pets above to feed it';
-    var n = zFeedPlans(w, z, ids, b).length; return '🍖 Feed ' + fmt(ids.length) + ' pet' + (ids.length > 1 ? 's' : '') + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' × ' + fmt(cost) + ' = ' + fmt(cost * n) + ' XCPETS'; }
+    var L = zFeedPlans(w, z, ids, b), n = L.length, pp = !!(V.cemRunsOn && V.cemRunsOn(b)); return '🍖 Feed ' + fmt(ids.length) + ' pet' + (ids.length > 1 ? 's' : '') + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + (pp ? ' · ' + fmt(ids.length) + ' × ' + fmt(cost) : ' × ' + fmt(cost)) + ' = ' + fmt(zSum(L)) + ' XCPETS'; }
   function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); return h; }
   function zFeedHtml(p, w) { if (!ZB(p) || !ME || p.owner !== ME || !V.cemOn || !V.cemCost) return ''; var b = (S.tip || 0) + 1; if (!V.cemOn(b)) return ''; zPickCss();
     var pend = zPendIds(['zfeed', 'rpl']), mine = zPendMeals(p.id), all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0 && !zPledgedAny(w, a.id); });
@@ -84,7 +86,7 @@
    * live chance (V.cemResInfo on the zombie with the ticked pets added, read-only). Packing: the rules parse only the list form for rpl / rplg
    * (pet:rpl:Z:A.B.C, base-32, ascending, 34 bytes; there is no range form for rpl), so picks are packed greedily into as few list tags as fit,
    * one Resurrection pledge fee (V.cemCost 'rpl') per burn. Pledged pets are only used up when the Resurrection is tried. Rules unchanged. */
-  function zRplPlans(w, z, act, ids, b) { var L = zRplPlansList(w, z, act, ids, b); return act === 'rpl' && ids.length && V.cemRunsPlan ? zFewest(L, V.cemRunsPlan(w, 'rpl', z, ids, ME, b)) : L; }
+  function zRplPlans(w, z, act, ids, b) { var L = zRplPlansList(w, z, act, ids, b); return act === 'rpl' && ids.length && V.cemRunsPlan ? zFewest(L, V.cemRunsPlan(w, 'rpl', z, ids, ME, b), w, b) : act === 'rpl' ? zFewest(L, null, w, b) : L; }
   function zRplPlansList(w, z, act, ids, b) { var s = ids.slice().sort(function (a, c) { return a - c; }).filter(function (x, i, A) { return !i || A[i - 1] !== x; }), out = [], i = 0, cost = V.cemCost(w, 'rpl', b);
     while (i < s.length) { var lst = [], k = i; while (k < s.length) { var t = 'pet:' + act + ':' + z + ':' + lst.concat([s[k]]).map(zB32).join('.'); if (t.length > 34) break; lst.push(s[k]); k++; }
       if (!lst.length) { i++; continue; } out.push({ tag: 'pet:' + act + ':' + z + ':' + lst.map(zB32).join('.'), amount: cost, petId: z, label: 'rpl', zEat: lst }); i = k; }
@@ -108,8 +110,8 @@
       (G.length ? '<details class="zb-gear"><summary class="small">🛡️ Your gear (' + fmt(G.length) + ')</summary><div class="zb-list">' + gr + '</div></details>' : '') +
       '<div class="small zb-sum"></div></details>' +
       '<button type="button" class="btn zb-feedbtn" disabled>' + zRplBtn(w, p.id, [], [], b) + '</button> <button type="button" class="btn ghost zb-resbtn"' + (ri.points < MIN ? ' disabled title="Needs ' + MIN + ' points"' : '') + '>😇 Resurrect · ' + fmt(V.cemCost(w, 'resurrect', b)) + ' XCPETS</button></div>'; }
-  function zRplBtn(w, z, ids, gids, b) { if (!ids.length && !gids.length) return '😇 Tick pets or gear above to pledge'; var cost = V.cemCost(w, 'rpl', b), n = zRplPlans(w, z, 'rpl', ids, b).length + zRplPlans(w, z, 'rplg', gids, b).length, c = ids.length + gids.length;
-    return '😇 Pledge ' + fmt(c) + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' × ' + fmt(cost) + ' = ' + fmt(cost * n) + ' XCPETS'; }
+  function zRplBtn(w, z, ids, gids, b) { if (!ids.length && !gids.length) return '😇 Tick pets or gear above to pledge'; var L = zRplPlans(w, z, 'rpl', ids, b).concat(zRplPlans(w, z, 'rplg', gids, b)), n = L.length, c = ids.length + gids.length;
+    return '😇 Pledge ' + fmt(c) + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' = ' + fmt(zSum(L)) + ' XCPETS' + (V.cemRunsOn && V.cemRunsOn(b) ? ' (' + fmt(V.cemCost(w, 'rpl', b)) + ' per pet)' : ''); }
   function zFeedBind(root) { if (!root) return; root.querySelectorAll('.zb-pk').forEach(function (el) { if (el._zb) return; el._zb = true; var rp = el.dataset.pk === 'rpl', z = +(el.dataset.zf || el.dataset.zr);
     function picked(c) { return Array.prototype.map.call(el.querySelectorAll((c || '.zb-pick') + ':checked'), function (x) { return +x.value; }); }
     function upd() { var w = world(), b = (S.tip || 0) + 1, ids = picked(), gids = rp ? picked('.zb-gpick') : [], bt = el.querySelector('.zb-feedbtn'), sm = el.querySelector('.zb-sum'), Z = w.byId[z]; bt.disabled = !ids.length && !gids.length;
@@ -774,8 +776,8 @@
     if (tags.length > CEM_ROUTE_MAX) { history.replaceState(null, '', location.pathname + location.search); toast('That cemetery link holds ' + tags.length + ' burns, more than ' + CEM_ROUTE_MAX + ' at once. Offer fewer pets per send.'); return true; }
     var w = world(); if (!ME || !S.rows || !S.rows.length) { cemRoute.n = (cemRoute.n || 0) + 1; if (cemRoute.n < 90) setTimeout(cemRoute, 2000); return true; } /* wait for the wallet and the chain replay */
     history.replaceState(null, '', location.pathname + location.search); var b = (S.tip || 0) + 1, bad = null;
-    var plans = tags.map(function (tag) { var t = V.parseTag(tag); if (!t) { bad = bad || tag; return null; } if (t.action === 'cemr') { if (!V.cemRunsOn || !V.cemRunsOn(b)) { bad = bad || tag; return null; } t = { action: t.kind, grave: t.kind === 'alt' || t.kind === 'seance' ? t.target : null, zombie: t.kind === 'zfeed' || t.kind === 'rpl' ? t.target : null }; } var k = CEM_KIND[t.action] || (t.action === 'fight' && w.byId[t.b] && ZB(w.byId[t.b]) ? 'hunt' : null); if (!k) { bad = bad || tag; return null; }
-      return { tag: tag, amount: V.cemCost(w, k, b), petId: t.grave != null ? t.grave : t.zombie != null ? t.zombie : t.b, label: k }; }).filter(Boolean);
+    var plans = tags.map(function (tag) { var t = V.parseTag(tag); if (!t) { bad = bad || tag; return null; } var rn = null; if (t.action === 'cemr') { if (!V.cemRunsOn || !V.cemRunsOn(b) || !V.cemRunsCost) { bad = bad || tag; return null; } rn = { kind: t.kind, n: V.cemRunsIds(w, ME, t, b).length }; if (!rn.n) { bad = bad || tag; return null; } t = { action: t.kind, grave: t.kind === 'alt' || t.kind === 'seance' ? t.target : null, zombie: t.kind === 'zfeed' || t.kind === 'rpl' ? t.target : null }; } var k = CEM_KIND[t.action] || (t.action === 'fight' && w.byId[t.b] && ZB(w.byId[t.b]) ? 'hunt' : null); if (!k) { bad = bad || tag; return null; }
+      return { tag: tag, amount: rn ? V.cemRunsCost(w, rn.kind, rn.n, b) : (V.cemPetAmount ? V.cemPetAmount(w, { tag: tag, amount: V.cemCost(w, k, b) }, b).amount : V.cemCost(w, k, b)), runs: rn ? true : undefined, ids: rn ? V.cemRunsIds(w, ME, V.parseTag(tag), b) : undefined, petId: t.grave != null ? t.grave : t.zombie != null ? t.zombie : t.b, label: k }; }).filter(Boolean);
     var nPets = 0; tags.forEach(function (tag) { var t = zParse(tag); if (t && t.ids && !/^(altg|rplg)$/.test(t.action)) nPets += t.ids.length; });
     if (bad || !plans.length) { toast('That cemetery link holds a burn this page does not send (' + esc(String(bad || 'none')) + ').'); return true; }
     var hunt = plans[0].label === 'hunt'; confirmPlans(hunt ? '🗡️ Zombie hunt' : '🕯️ Cemetery: ' + (nPets ? fmt(nPets) + ' pet' + (nPets > 1 ? 's' : '') + ' in ' : '') + plans.length + ' burn' + (plans.length > 1 ? 's' : ''), plans); return true; }
@@ -881,18 +883,24 @@
     return true; }
   function zEatNote(plans, w) { var ids = []; plans.forEach(function (q) { if (q && q.zEat) ids = ids.concat(q.zEat); else { var t = q && /^pet:(zfeed|zfm|zr):/i.test(q.tag || '') && V.parseTag ? zParse(q.tag) : null; if (t && t.ids) ids = ids.concat(t.ids.map(Number)); } }); if (!ids.length) return '';
     return '<p class="small warn zb-eatnote">🧟 The zombie eats these pets for good: ' + ids.map(function (f) { var F = w.byId[f]; return '<b>' + esc((F && F.name) || '#' + f) + ' #' + f + '</b>' + (F ? ' (' + TL[F.tier | 0] + ')' : ''); }).join(', ') + '. The XCPETS below is only the meal fee.</p>'; }
+  /* cemetery runs in the confirm: pets x per-pet fee (+ the raise for a seance) = the total above. Per pet, owner Oct 31 2026. */
+  function cemRunsNote(plans, w) { var b = (S.tip || 0) + 1; if (!w || !V.cemRunsOn || !V.cemRunsOn(b)) return ''; var by = {}, tot = 0, sr = false, runs = false;
+    plans.forEach(function (q) { var t = q && q.tag ? V.parseTag(q.tag) : null; if (!t) return; var isR = t.action === 'cemr', a = isR ? t.kind : t.action; if (!/^(alt|seance|zfeed|rpl)$/.test(a)) return;
+      var n = isR ? (q.ids ? q.ids.length : V.cemRunsIds(w, ME, t, b).length) : (t.ids || []).length, k = a === 'zfeed' ? 'zmeal' : a === 'rpl' ? 'rpl' : 'pledge'; by[k] = (by[k] || 0) + n; tot += n; if (a === 'seance') sr = true; if (isR) runs = true; });
+    if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' × ' + fmt(V.cemCost(w, k, b)); });
+    return ' (priced per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
     if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own XCP Wallet (desktop Chrome extension). Connect it to play, or look up any address to view its pets.'); return; }
     if (FEED_ALL_PAUSED && plans.some(function (q) { return isFeedAllTag(q && q.tag); })) { plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); toast(FA_NOTE + ' Those burns were not sent.'); if (!plans.length) return; }
-    var bw = world(), skip = []; if (V.planAmount) plans = plans.map(function (p) { return V.planAmount(bw, p, (S.tip || 0) + 1); }); /* halving: burn the price at the next block */ plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
+    var bw = world(), skip = []; if (V.planAmount) plans = plans.map(function (p) { return V.planAmount(bw, p, (S.tip || 0) + 1); }); if (V.cemPetAmount) plans = plans.map(function (p) { return V.cemPetAmount(bw, p, (S.tip || 0) + 1); }); /* cemetery: per pet from the runs gate */ /* halving: burn the price at the next block */ plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     var sp = myPendingTags(); plans = plans.filter(function (p) { var m = V.sendBlock ? V.sendBlock(bw, p, S.tip, { me: ME, pending: sp }) : null; if (m) skip.push('🚫 Not sent (' + p.tag + '): ' + m); else sp.push(p.tag); return !m; }); /* wasted-burn guard (2026-10-20): one shared check mirroring the engine (breed, accept, fight, rolls); never ask the wallet to sign a burn the replay would reject */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ': ' + skip.join(' · ')); window.V2LastBlocked = skip; }
     var fg = feedGuard(bw, plans); plans = fg.plans; if (pre && pre.skipped.length && !fg.skipped.length) fg = { plans: plans, skipped: pre.skipped, text: pre.text };
     if (!plans.length) { if (fg.skipped.length || fg.blocked) feedBlocked(title, fg.text); else if (!skip.length) toast('Nothing to do'); return; }
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
-    $('cfBody').innerHTML = zEatNote(plans, bw) + '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + (plans.some(function (q) { return q && /^pet:(ar|sr|zr|rr):/i.test(q.tag || ''); }) ? ' (cemetery runs: pets named by their place in your pet list, many per burn)' : '') + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
+    $('cfBody').innerHTML = zEatNote(plans, bw) + '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + cemRunsNote(plans, bw) + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
       blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';

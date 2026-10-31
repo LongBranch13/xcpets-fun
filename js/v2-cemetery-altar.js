@@ -234,6 +234,9 @@
     if (!A.offered.length && !(mode === 'pledge' && selGear().length)) return 'Offer at least 1 living pet';
     if (mode === 'seance') { var v2 = V.cemView(w, G, b), need = v2.need, ok = A.offered.some(function (o) { return o.tier >= need; }) || selGear().some(function (g) { return gTier(g) >= need; }) || (v2.altar && v2.altar.givers.length); if (!ok) return TL[A.grave.tier] + ' grave needs 1 ' + TL[need] + '+ offering'; }
     return null; }
+  /* cemetery runs are priced PER PET (owner Oct 31 2026): show pets x pledge (+ the raise) so the total adds up */
+  function perPet(L) { var c = A.ctx, V = c.V, b = bk(), n = 0; if (!V.cemRunsOn || !V.cemRunsOn(b)) return ''; L.forEach(function (p) { var t = p.runs ? null : V.parseTag(p.tag || ''); n += p.runs ? (p.ids || []).length : t && /^(alt|seance)$/.test(t.action) ? (t.ids || []).length : 0; }); if (!n) return '';
+    return ' (' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' × ' + fmt(V.cemCost(c.w, 'pledge', b)) + (L.some(function (p) { return /^pet:sr:/i.test(p.tag || ''); }) ? ' + raise ' + fmt(V.cemCost(c.w, 'raise', b)) : '') + ')'; }
   function cost(L) { return L.reduce(function (a, p) { return a + (p.amount || 0); }, 0); }
   function renderHold() { var c = A.ctx, w = c.w, V = c.V, b = bk(), G = w.byId[A.grave.id], v = V.cemView(w, G, b), box = document.getElementById('altHoldInfo');
     [['altHold', 'seance'], ['altPledge', 'pledge'], ['altRaiseNow', 'raise']].forEach(function (x) { var e = document.getElementById(x[0]); if (!e) return; var why = holdWhy(x[1]), L = why ? [] : plans(x[1]);
@@ -241,7 +244,7 @@
     var rz = document.getElementById('altRaiseNow'); if (rz) rz.hidden = !(v.altar && v.altar.top === c.ME);
     if (box) { var why = holdWhy('seance'), L = why ? [] : plans('seance');
       box.innerHTML = (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · top giver ' + esc(c.shortAddr(v.altar.top || '')) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') + '</span> ' : '') +
-        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'); } }
+        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'); } }
   function cap1(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
   /* plans(mode): the burn tags for this altar, split so every tag fits in 34 bytes. Gear and pet pledges first, the seance last. */
@@ -252,8 +255,8 @@
     chunks('gear', selGear().map(function (g) { return +String(g.gid).slice(1); }).sort(num)).forEach(function (ch) { out.push(V.cemPlan(w, 'gear', id, ch, b)); });
     var pc = chunks('seance', A.offered.map(function (o) { return o.id; }).sort(num));
     var rn = A.offered.length && V.cemRunsPlan ? V.cemRunsPlan(w, mode === 'seance' ? 'seance' : 'pledge', id, A.offered.map(function (o) { return o.id; }), c.ME, b) : null; /* CEMETERY RUNS: fewest burns (usually 1) */
-    if (rn && rn.length < pc.length) return out.concat(rn);
-    pc.forEach(function (ch, i) { out.push(V.cemPlan(w, mode === 'seance' && i === pc.length - 1 ? 'seance' : 'pledge', id, ch, b)); });
+    if (rn && rn.length <= pc.length) return out.concat(rn); /* fewest burns; priced per pet either way: pets x pledge (+ the raise on the seance) */
+    pc.forEach(function (ch, i) { var q = V.cemPlan(w, mode === 'seance' && i === pc.length - 1 ? 'seance' : 'pledge', id, ch, b); out.push(V.cemPetAmount ? V.cemPetAmount(w, q, b) : q); });
     return out; }
   function hold(mode) { var why = holdWhy(mode); if (why) { toast(why); return; } var L = plans(mode); if (!L.length || L.some(function (p) { return !p.ok; })) { toast('Could not fit the offering in the burn tags'); return; }
     A.sent = L; var url = 'play.html#cem-' + encodeURIComponent(L.map(function (p) { return p.tag; }).join('~')); if (A.ctx.go) A.ctx.go(url); else location.href = url; }

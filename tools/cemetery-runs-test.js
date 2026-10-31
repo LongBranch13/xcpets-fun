@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-/* cemetery runs (owner standing rule Oct 31 2026: as few burns as technically possible): checks for pet:ar / pet:sr / pet:zr / pet:rr.
+/* cemetery runs (owner standing rule Oct 31 2026: as few burns as technically possible): checks for pet:ar / pet:sr / pet:zr / pet:rr,
+ * priced PER PET (owner Oct 31 2026: each pet costs its one-by-one fee, a seance = raise + pets x pledge; underpaid run burns are rejected).
  *   node tools/cemetery-runs-test.js [--boot FILE]   Dev tooling only. */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -47,7 +48,7 @@ const res = []; Object.keys(owners).forEach(o => { const ids = owners[o]; if (id
 res.sort((a, b) => b.n - a.n).slice(0, 10).forEach(r => console.log('  ' + r.o.slice(0, 10) + '…  ' + r.n + ' pets   all ' + r.all[0] + ' -> ' + r.all[1] + '   half(' + (r.half ? r.half[2] : 0) + ') ' + (r.half ? r.half[0] + ' -> ' + r.half[1] : '-') + '   120 random ' + r.r120[0] + ' -> ' + r.r120[1]));
 ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][1] != null)), 'runs plan found for every pick (every offerable pet is in the list)');
 ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][3].every(q => Buffer.byteLength(q.tag) <= 34))), 'every run tag fits 34 bytes');
-ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][1] <= r[k][0])), 'runs never need more burns than the list form');
+ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][1] <= r[k][0])), 'altar: runs never need more burns than the list form');
 ok(res.every(r => r.all[1] === 1), 'offering ALL offerable pets is 1 burn for every owner');
 ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][3].reduce((a, q) => a + q.ids.length, 0) === r[k][2])), 'every plan covers exactly the picked pets');
 ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][3].every((q, i, L) => q.tag.startsWith(i === L.length - 1 ? 'pet:sr:' : 'pet:ar:')))), 'seance plans: pledges first, the seance burn last');
@@ -56,6 +57,25 @@ const big = res.slice().sort((a, b) => b.n - a.n)[0];
 if (big) { const pl = big.r120[3], dec = [].concat(...pl.map(q => V.cemRunsIds(w, big.o, V.parseTag(q.tag), nb))).sort((a, c) => a - c), want = big.r120[3].reduce((a, q) => a.concat(q.ids), []).sort((a, c) => a - c);
   ok(JSON.stringify(dec) === JSON.stringify(want), 'decode: the rules read back exactly the planned pets (' + want.length + ' pets, ' + pl.length + ' burn' + (pl.length > 1 ? 's' : '') + ')');
   const zl = zfeedListBurns(99999, want); console.log('  zombie meal of the same ' + want.length + ' pets: list/mask ' + zl + ' burns -> runs ' + (V.cemRunsPlan(w, 'zfeed', 99999, want, big.o, nb) || []).length); }
+/* 2b. PER PET price (owner Oct 31 2026 "Cost per pet. As few burns as possible"): each pet costs its one-by-one fee, a seance = raise + pets x pledge */
+const own0 = (owners[(res[0] || {}).o] || []).slice().sort((a, c) => a - c), U = { pledge: V.cemCost(w, 'pledge', nb), raise: V.cemCost(w, 'raise', nb), zmeal: V.cemCost(w, 'zmeal', nb), rpl: V.cemCost(w, 'rpl', nb) }, sum = L => L.reduce((a, q) => a + q.amount, 0), r8 = x => Math.round(x * 1e8) / 1e8;
+console.log('\nper-pet fees at block ' + nb + ': pledge ' + U.pledge + ', raise ' + U.raise + ', zombie meal ' + U.zmeal + ', Resurrection pledge ' + U.rpl);
+ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r8(sum(r[k][3])) === r8(U.raise + r[k][2] * U.pledge))), 'per pet: every seance plan costs raise + pets x pledge, however it is split into burns');
+ok(res.every(r => ['all', 'half', 'r120'].every(k => !r[k] || r[k][3].every((q, i, L) => r8(q.amount) === r8(q.ids.length * U.pledge + (i === L.length - 1 ? U.raise : 0))))), 'per pet: each burn pays its own pets (ar = n x pledge, sr = raise + n x pledge)');
+ok(r8(V.cemRunsCost(w, 'seance', 1, nb)) === r8(V.cemCost(w, 'seance', nb)) && r8(V.cemRunsCost(w, 'alt', 1, nb)) === r8(U.pledge) && r8(V.cemRunsCost(w, 'zfeed', 1, nb)) === r8(U.zmeal) && r8(V.cemRunsCost(w, 'rpl', 1, nb)) === r8(U.rpl), 'per pet: 1 pet in a run costs exactly what the one-pet burn costs today');
+/* list / mask forms from the gate: the SITE prices them per pet too (V.cemPetAmount, send side), so it can always send the fewest burns */
+{ const zl = 'pet:zfeed:2:' + [5, 9, 12].map(b32).join('.'), q = V.cemPetAmount(w, { tag: zl, amount: U.zmeal }, nb), zm = V.cemPetAmount(w, { tag: 'pet:zfm:2:10:VV', amount: U.zmeal }, nb), rp = V.cemPetAmount(w, { tag: 'pet:rpl:2:' + [5, 9].map(b32).join('.'), amount: U.rpl }, nb), rg = V.cemPetAmount(w, { tag: 'pet:rplg:2:1.2', amount: U.rpl }, nb);
+  const sl = V.cemPlan(w, 'seance', G, [own0[0], own0[1], own0[2]], nb), sq = V.cemPetAmount(w, sl, nb), pq = V.cemPetAmount(w, V.cemPlan(w, 'pledge', G, [own0[0], own0[1]], nb), nb);
+  ok(r8(q.amount) === r8(3 * U.zmeal) && r8(zm.amount) === r8(10 * U.zmeal) && r8(rp.amount) === r8(2 * U.rpl) && r8(rg.amount) === r8(U.rpl), 'site: list zombie meal 3 pets = 3 x meal, mask 10 pets = 10 x meal, rpl 2 pets = 2 x fee, gear pledge stays flat');
+  ok(sl.ok && r8(sq.amount) === r8(U.raise + 3 * U.pledge) && r8(pq.amount) === r8(2 * U.pledge), 'site: list seance of 3 pets = raise + 3 x pledge, list pledge of 2 = 2 x pledge');
+  V._setCemRunsActivation(null); ok(V.cemPetAmount(w, { tag: zl, amount: U.zmeal }, nb).amount === U.zmeal, 'site: gate null -> list prices unchanged (flat per burn)'); V._setCemRunsActivation(nb); }
+const mid = res.filter(r => r.n >= 300).sort((a, b) => a.n - b.n)[0]; [big, mid].filter((r, i, L) => r && L.indexOf(r) === i).forEach(big => { const own = owners[big.o].slice().sort((a, c) => a - c); let rs = 11; const pick = n => own.slice().sort(() => ((rs = (rs * 1103515245 + 12345) % 2147483648) / 2147483648) - 0.5).slice(0, n);
+  console.log('\ncost examples (owner ' + big.o.slice(0, 10) + '…, ' + own.length + ' offerable pets): burns and XCPETS, list form today -> runs per pet');
+  [['24 random', pick(24)], ['96 scattered', pick(96)], ['100 in a row', own.slice(0, 100)]].forEach(([name, ids]) => {
+    const sl = listBurns('seance', G, ids), sr = V.cemRunsPlan(w, 'seance', G, ids, big.o, nb), zl = zfeedListBurns(99999, ids), zr = V.cemRunsPlan(w, 'zfeed', 99999, ids, big.o, nb), rr = V.cemRunsPlan(w, 'rpl', 99999, ids, big.o, nb);
+    console.log('  ' + name + ' (' + ids.length + ' pets): seance ' + sl + ' burns / ' + r8((sl - 1) * U.pledge + U.pledge + U.raise) + ' -> ' + sr.length + ' / ' + r8(sum(sr)) +
+      '   zombie meal ' + zl + ' / ' + r8(zl * U.zmeal) + ' -> ' + Math.min(zl, zr.length) + ' / ' + r8(sum(zr)) + (zl < zr.length ? ' (list/mask is fewer here, priced per pet)' : '') + '   Resurrection pledge -> ' + rr.length + ' / ' + r8(sum(rr)));
+    ok(r8(sum(sr)) === r8(U.raise + ids.length * U.pledge) && r8(sum(zr)) === r8(ids.length * U.zmeal) && r8(sum(rr)) === r8(ids.length * U.rpl), '  ' + name + ': totals are exactly per pet'); }); });
 /* 3. engine: synthetic zombie meal through the real handle (zombie = a pet of the owner marked as zombie) */
 const Zs = w.pets.filter(p => p.zombie && !p.zombie.end && p.owner);
 console.log('\nzombies in the live world: ' + Zs.length);
@@ -67,7 +87,15 @@ if (zo) { const eat = owners[zo.owner].filter(id => id !== zo.id).slice(0, 40), 
   ok(pl.length === 1 && gone.length === eat.length, 'engine: 1 pet:zr burn fed zombie #' + zo.id + ' all ' + eat.length + ' picked pets (list form: ' + zfeedListBurns(zo.id, eat) + ' burns)');
   V._setCemRunsActivation(null); const w3 = V.replay(rows.concat(extra), h2, [], opts(nb));
   ok(eat.every(id => !w3.byId[id].released), 'gate null: the same burns eat nothing (unknown tag, community food, as before)'); V._setCemRunsActivation(nb);
-  const wy = V.sendWhy ? null : null; }
+  /* underpaid run burns are REJECTED (same as any cemetery burn below cost today): nothing eaten, fee stays burned */
+  const short = (d, lbl) => { const bad = extra.map(x => Object.assign({}, x, { quantity: x.quantity - d })), wu = V.replay(rows.concat(bad), h2, [], opts(nb)), lg = wu.log.filter(x => x.block === nb && /below cost/.test(x.msg || ''));
+    ok(eat.every(id => !wu.byId[id].released) && lg.length === bad.length, 'engine: a pet:zr burn ' + lbl + ' is rejected (nothing eaten, log: ' + (lg[0] ? lg[0].msg : '-') + ')'); };
+  short(1, '1e-8 XCPETS short of ' + eat.length + ' x ' + U.zmeal); short(Math.round(U.zmeal * 1e8), 'paying for ' + (eat.length - 1) + ' of ' + eat.length + ' pets');
+  const flat = extra.map(x => Object.assign({}, x, { quantity: Math.round(U.zmeal * 1e8) })), wf = V.replay(rows.concat(flat), h2, [], opts(nb));
+  ok(eat.every(id => !wf.byId[id].released), 'engine: the old flat price (one meal fee for ' + eat.length + ' pets) is rejected');
+  const over = extra.map(x => Object.assign({}, x, { quantity: x.quantity + 5e8 })), wo = V.replay(rows.concat(over), h2, [], opts(nb));
+  ok(eat.every(id => wo.byId[id].released), 'engine: paying more than the per-pet total is accepted, as everywhere');
+  ok(!V.sendBlock(w, pl[0], tip, { me: zo.owner }) && /below cost/.test(V.sendBlock(w, Object.assign({}, pl[0], { amount: U.zmeal }), tip, { me: zo.owner }) || ''), 'send guard: exact per-pet amount passes, the flat amount is stopped before the wallet (' + V.sendBlock(w, Object.assign({}, pl[0], { amount: U.zmeal }), tip, { me: zo.owner }) + ')'); }
 else console.log('  (no zombie with 3+ offerable pets of the same owner in this snapshot: engine meal check skipped)');
 V._setCemRunsActivation(GATE0);
 console.log('\n' + (fails ? fails + ' FAILED' : 'all ok') + '  (gate in the code: ' + GATE0 + ')'); process.exitCode = fails ? 1 : 0;
