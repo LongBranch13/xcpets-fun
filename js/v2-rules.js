@@ -628,13 +628,13 @@
    *     non-classic eyes: laser / star) that the baby does not already show, drawn from stream 'XCPETS:v2:supreme-lineage:sig:' + hash. Parts go through
    *     partsFor(body) like any hybrid part (a piece the body cannot wear is skipped); eyes always fit. Bo / Rarepigeon keep their own marks (boMark / rpMark).
    *  (The gold CROWN MARK of the first proposal is GONE: owner Oct 31 2026 9:48 AM CT "Crown goes". No art.supremeMark is ever set, so the pigeon tuft shows.) */
-  var ACTIVATE_SUPREME_LINEAGE_BLOCK = null; /* <<< set to tip + 6 at deploy, ONLY after owner approval */
+  var ACTIVATE_SUPREME_LINEAGE_BLOCK = 974007; /* LIVE: owner approved Oct 31 2026 [pt2443u]; tip 974001 (api.counterparty.io) + 6 */
   var SUPREME_KEEP_ROOTS = { kek: 1 };
   /* PIGEON + BO LOOKS (branch supreme-lineage, owner Oct 31 2026 'Needs more pigeon in them'; proposal, LOOKS ONLY): a baby of Rarepigeon or Bo Jackson,
    * and every later generation of that line, gets art.rpLook / art.boLook (drawn by V2Render: rpLook = iridescent pigeon collar + barred rock-pigeon
    * wings + red pigeon feet; boLook = thick eye black with a contrast rim + Bo's black #34 jersey patch). No stats, rolls, names or species change.
    * null = OFF: breed() never sets the fields, so replay is SAME. */
-  var ACTIVATE_ONEOFONE_LOOKS_BLOCK = null; /* <<< set to tip + 6 at deploy, ONLY after owner approval */
+  var ACTIVATE_ONEOFONE_LOOKS_BLOCK = 974007; /* LIVE: owner approved Oct 31 2026 [pt2443u]; tip 974001 + 6 */
   /* RARE HYBRID TIERS (branch lineage-tiers, owner Oct 31 2026 9:48 AM CT "build all"; spec previews/rare-tiers/REPORT.md). PREVIEW, NOT ACTIVE: null = OFF,
    * breed() never sets art.rareTier, so replay is SAME. LOOKS ONLY: no stat, tier, power, name or species change. Each roll has its OWN stream
    * ('XCPETS:v2:<tier>:' + breed hash), so the hybrid, part, twin, mutation, hidden and LegMix draws do not move. ONE mark per pet, by priority
@@ -647,10 +647,10 @@
    *   heirloom : both parents pure-bred >= 2 generations deep (parent + all 4 grandparents' breeds from same-species parents), the two lines
    *              different species, child a hybrid, then 1 in 8.
    *   gemini   : twins that are BOTH hybrids, one 1 in 5 roll for the pair (both get it; twin A side 'A', twin B side 'B'), unless a twin already has a tier. */
-  var ACTIVATE_HYBRID_FIX_BLOCK = null; /* <<< HYBRID ART FIXES (audit Oct 31): set to tip + 6 at deploy, ONLY after owner approval. Breed-time only: plan.fix / kid.lookFix are written on NEW pets, old pets keep their pixels */
+  var ACTIVATE_HYBRID_FIX_BLOCK = 974007; /* <<< HYBRID ART FIXES (audit Oct 31): LIVE, owner approved Oct 31 2026 [pt2443u]; tip 974001 + 6. Breed-time only: plan.fix / kid.lookFix are written on NEW pets, old pets keep their pixels */
   function hybridFixOn(b) { return ACTIVATE_HYBRID_FIX_BLOCK != null && b != null && b >= ACTIVATE_HYBRID_FIX_BLOCK; }
   function HFX(art) { return !!(art && art.hybrid && art.hybrid.fix); }
-  var ACTIVATE_RARE_TIERS_BLOCK = null; /* <<< set to tip + 6 at deploy, ONLY after owner approval */
+  var ACTIVATE_RARE_TIERS_BLOCK = 974007; /* LIVE: owner approved Oct 31 2026 [pt2443u]; tip 974001 + 6 */
   var RARE_TIER_ORDER = ['seraph', 'dynast', 'chimera', 'gravekin', 'heirloom', 'gemini'], RARE_TIER_1_IN = { seraph: 1, dynast: 3, chimera: 25, gravekin: 5, heirloom: 8, gemini: 5 };
   var RARE_TIER_LABEL = { seraph: 'Seraph', dynast: 'Dynast', chimera: 'Chimera', gravekin: 'Gravekin', heirloom: 'Heirloom', gemini: 'Gemini' };
   function rareTiersOn(b) { return ACTIVATE_RARE_TIERS_BLOCK != null && b != null && b >= ACTIVATE_RARE_TIERS_BLOCK; }
