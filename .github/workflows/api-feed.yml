@@ -43,7 +43,13 @@ jobs:
           git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"
           for i in 1 2 3 4 5; do
             git fetch origin main
-            git merge --no-edit --no-ff origin/main || { echo "merge conflict, giving up this run"; git merge --abort; exit 1; }
+            if ! git merge --no-edit --no-ff origin/main; then
+              git merge --abort
+              # Server feed (xcpets-bot-1) is the primary writer; if it already published our block or newer, this run is redundant.
+              ours=$(node -p "require('./api/meta.json').blockHeight"); theirs=$(git show origin/main:api/meta.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).blockHeight))")
+              if [ "$theirs" -ge "$ours" ]; then echo "::notice::server feed already at block $theirs (ours $ours); skipping"; exit 0; fi
+              echo "merge conflict, giving up this run (ours $ours, main $theirs)"; exit 1
+            fi
             if git push origin HEAD:main; then echo "pushed"; exit 0; fi
             sleep $((i * 10))
           done
