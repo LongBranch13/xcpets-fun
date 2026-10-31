@@ -2440,7 +2440,7 @@
    * as if it had been listed by number, so the same checks apply (a pet in Cold Storage, on a quest, in a fight, in the shop, pledged elsewhere
    * or no longer yours rejects the whole burn, nothing used up). Priced PER PET (see cemRunsBase). Before ACTIVATE_CEM_RUNS_BLOCK the
    * four tags are unknown pet: tags (community food), exactly as before. */
-  var ACTIVATE_CEM_RUNS_BLOCK = null; // null on the branch: set to the Bitcoin tip + 6 at deploy (owner approval)
+  var ACTIVATE_CEM_RUNS_BLOCK = 974003; // deploy Oct 31 2026 ~11:33 CT: tip 973997 (api.counterparty.io via xcp-api tunnel) + 6, priced per pet (owner approved [pt2430u])
   function cemRunsOn(b) { return ACTIVATE_CEM_RUNS_BLOCK != null && b != null && b >= ACTIVATE_CEM_RUNS_BLOCK && cemOn(b); }
   var CEM_RUN_KIND = { ZR: 'zfeed', AR: 'alt', SR: 'seance', RR: 'rpl' }, CEM_RUN_CODE = { zfeed: 'zr', alt: 'ar', pledge: 'ar', seance: 'sr', rpl: 'rr' };
   /* PER PET PRICE (owner approved Oct 31 2026 [pt2430u] "Cost per pet. As few burns as possible"): a run burn costs what its pets would cost one by one:

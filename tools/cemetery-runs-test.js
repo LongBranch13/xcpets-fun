@@ -26,7 +26,7 @@ ok(V.parseTag('pet:zr:1A:0F:' + '1'.repeat(22)).action === 'invalid', 'parseTag:
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
 const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip = boot.tip || rows[rows.length - 1].block_index;
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}), nb = tip + 1, opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex });
-const GATE0 = V.cemRunsGate(); ok(GATE0 == null, 'gate is null in the code (set to tip + 6 at deploy)');
+const GATE0 = V.cemRunsGate(); ok(GATE0 == null || GATE0 > tip, 'gate in the code is null or after the snapshot tip (' + GATE0 + ' vs ' + tip + ')');
 const canon = v => Array.isArray(v) ? '[' + v.map(canon).join(',') + ']' : v && typeof v === 'object' ? '{' + Object.keys(v).sort().filter(k => v[k] !== undefined && typeof v[k] !== 'function').map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}' : JSON.stringify(v);
 const sig = w => canon({ pets: w.pets, items: w.items, log: w.log.map(x => [x.block, x.tx, x.kind, x.msg]) });
 const w0 = V.replay(rows, hashes, [], opts(tip)), s0 = sig(w0);
