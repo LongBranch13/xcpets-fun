@@ -394,6 +394,7 @@
    * Graves render a page at a time (Show more, same as Ranking: 100 a page, 25 on phones) and a Find box searches EVERY grave
    * (#ID, name, species, owner address). Canvases paint lazily. The status count still uses the full dead list. Display only. */
   function cemetery() {
+    if (window.V2CemAnim) try { V2CemAnim.watch(M.world(), ME, (M.state && M.state().tip) || 0); } catch (e) { if (window.console) console.warn('cem anim', e); } /* cemetery-animations: confirmed raise / Resurrection / meal results play once */
     if (window.V2CemeteryScene && V2CemeteryScene.page) return V2CemeteryScene.page({ w: M.world(), M: M, R: R, V: V, ME: ME, fmt: fmt, shortAddr: shortAddr }); /* cemetery-v2: perspective graveyard + all-graves list (js/v2-cemetery-scene.js) */
     var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock || b.id - a.id; });
     var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100, st = { n: STEP, q: '', mine: false, list: dead };
