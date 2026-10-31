@@ -25,7 +25,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto'), zlib = require('zlib');
 const ROOT = process.env.XC_REPO || path.resolve(__dirname, '..');
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js',
-  'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/block-hashes.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
+  'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/viking-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/block-hashes.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
 function load() {
   const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
   const el = () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, classList: { add() {}, remove() {}, toggle() {} } });
@@ -43,7 +43,7 @@ function load() {
 const L = load(), { P, V, R } = L;
 const H = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const BLK = 974100;
-const ROOTS = P.SPECIES.map(s => s.id).concat(['wizard', 'kek', 'funtrump', 'homer']);
+const ROOTS = P.SPECIES.map(s => s.id).concat(['wizard', 'kek', 'funtrump', 'homer', 'viking']);
 const BG = '#1b1e27'; // a plain dark site tile (not a marker colour, so the Dynast effect renders)
 function baseArt(sp, seed) {
   const a = sp === 'nakamoto' ? P.characterPet('nakamoto', { tier: 'legendary' }) : P.generate({ blockHash: seed ? H('art' + seed) : '00'.repeat(32), petId: 'cross-sheet', blockHeight: 972700 });
@@ -188,6 +188,7 @@ let res = [];
 if (NEW) {
   if (!ROOTS.includes(NEW)) { console.error('unknown species ' + NEW + ' (roots: ' + ROOTS.join(' ') + ')'); process.exit(2); }
   if (FIX && V._setHybridFix) V._setHybridFix(BLK);
+  if (NEW === 'viking' && V._setViking) V._setViking(BLK); /* the Viking line's own gate (viking-1of1): his hybrids carry the audited art fixes from it */
   const STAGES = [1, 2, 3, 4, 5], base = {};
   for (const S of ROOTS) for (const st of STAGES) { const f = frames(baseArt(S), st)[0]; base[S + st] = { img: f, s: stats(f) }; }
   for (const S of ROOTS) { const tiles = { 1: [], 3: [], 5: [] };

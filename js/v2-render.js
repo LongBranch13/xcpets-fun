@@ -599,6 +599,8 @@
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
+    if (art && art.species === 'viking' && !art.hybrid && window.VikingSprite) return VikingSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the VIKING 1 of 1 (branch viking-1of1 PREVIEW, inert: V2Rules.ACTIVATE_VIKING_BLOCK null) */
+    if (art && art.hybrid && art.hybrid.shape === 'viking' && window.VikingSprite) return vikHybFrames(art, stage, itemIds); /* VIKING-body hybrid: VikingSprite gear layer */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'homer' && window.HomerSprite) return hpHybFrames(art, stage, itemIds); /* HOMER-body hybrid: HomerSprite gear layer */
     if (art && art.species === 'funtrump' && !art.hybrid && window.FuntrumpSprite) return ftPetFrames(art, stage, itemIds); /* player FUNTRUMP (branch funtrump-community, inert: none exist) */
@@ -629,7 +631,7 @@
    * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
     var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
-    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer')) return full;
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'viking')) return full;
     var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
     all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
     if (!ban) return full;
@@ -1192,6 +1194,12 @@
     (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; }); return o; }
   function hpHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = HomerSprite.PAL;
     return fr.map(function (f, n) { var a = HomerSprite.draw(stage || 0, n, G), z = HomerSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
+        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
+      return { width: 32, height: 32, data: d }; }); }
+  /* VIKING-body hybrid (viking-1of1 PREVIEW, inert): the hybrid frames plus VikingSprite's gear layer (only pixels gear changes), like Homer's */
+  function vikHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); delete G.head; if (!Object.keys(G).length) return fr; var P = VikingSprite.PAL;
+    return fr.map(function (f, n) { var a = VikingSprite.draw(stage || 0, n, G), z = VikingSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
         d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
       return { width: 32, height: 32, data: d }; }); }
