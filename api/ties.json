@@ -1,6 +1,6 @@
 {
- "lastBlock": 974033,
- "count": 265,
+ "lastBlock": 974036,
+ "count": 266,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3182,6 +3182,18 @@
    "speciesLabel": "Mumu",
    "rarity": "Uncommon",
    "stage": "Mythic"
+  },
+  {
+   "id": 73324,
+   "asset": "A2501206266067218351",
+   "tiedBlock": 974029,
+   "tiedTx": "c1344a2637a878cbfb7f0b0d79bfdf3195381ce72602b0dea71fa1418cc0d09d",
+   "kind": "deed",
+   "name": "Ragnar Kekbeard",
+   "species": "viking",
+   "speciesLabel": "Viking",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }

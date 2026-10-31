@@ -348,7 +348,10 @@
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
   function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
-    if (ws) { wspinOn = true; var r0 = rev; WA.reveal(ws, function () { wspinOn = false; if (rev !== r0) return; drawReveal(); open('packBox'); }); return; }
+    var paid = rev.kind === 'gear' && !rev.gearAnim && !lifeReduced() && (rev.wins || []).some(function (x) { return x && x.src === 'roll'; }); /* pixel-anims batch 4: a paid gear roll's piece lands on the pet (js/v2-life-anim.js gearRoll, lazy) after the wheel */
+    var openG = function (r2) { if (paid && !r2.gearAnim) { r2.gearAnim = 1; wspinOn = true; withLife(function (ok) { var go2 = function () { wspinOn = false; if (rev !== r2) return; drawReveal(); open('packBox'); }; if (!ok || !window.V2LifeAnim || !V2LifeAnim.gearRoll) return go2(); try { V2LifeAnim.gearRoll(world(), r2.wins, ME, go2); } catch (e) { go2(); } }); return; } drawReveal(); open('packBox'); };
+    if (ws) { wspinOn = true; var r0 = rev; WA.reveal(ws, function () { wspinOn = false; if (rev !== r0) return; openG(r0); }); return; }
+    if (paid) return openG(rev);
     if (rev.kind === 'eggs' && !rev.hatchAnim && !lifeReduced()) { rev.hatchAnim = 1; wspinOn = true; var r1 = rev, go = function () { wspinOn = false; if (rev !== r1) return; drawReveal(); open('packBox'); }; /* pixel-anims: the eggs crack open first (js/v2-life-anim.js, lazy) */
       withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
@@ -1146,12 +1149,14 @@
   /* pixel-anims (owner Oct 31 2026 4:50 PM CT [pt2513u] "Do them all"): hatching, feeding, stage-ups, Mythic and starvation each get an 8-bit scene
    * (js/v2-life-anim.js). That file is loaded only when needed: a ?anim= preview, a first look, or a confirmed feed / death of MY pets newer than the
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
-  var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+)(&|$)/.test(location.search);
+  var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=2312a2fcd2';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=5fb7793b30';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
+    var G = w.giftLog || []; for (var j = G.length - 1; j >= 0 && G[j].block > m; j--) if (G[j].from === ME || G[j].to === ME) return true;
+    if ((w.listings || []).some(function (L) { return L && (L.seller === ME || L.buyer === ME) && (L.block > m || L.soldBlock > m || (L.status === 'open' && ((L.endBlock > m) || (L.expire + 1 > m && L.expire < tip + 1)))); })) return true;
     return w.pets.some(function (p) { return p.owner === ME && ((p.dead && p.deathBlock > m && p.deathBlock <= tip) || (p.resurrected && p.resurrected.block > m)); }); }
   function notifyLife(w) { if (LIFE_PV) { LIFE_PV = false; withLife(function (ok) { if (ok) V2LifeAnim.preview(world(), ME); }); return; } if (!lifeNeeded(w)) return; dataSeen();
     withLife(function (ok) { if (!ok) return; var LA = window.V2LifeAnim, w2 = world(), q = LA.collect(w2, ME, S.tip || w2.tip || 0);
