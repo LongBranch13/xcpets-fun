@@ -14,10 +14,12 @@
  *   gear      a paid gear roll: the piece lands on the pet or in the bag, tier ring colour (batch 4)
  *   hunt-won  my pet hunts a zombie: the zombie sinks, a grave rises (+1 spin, badge)     hunt-lost  black eye, nothing else lost (batch 5)
  *   altar     my pledge to a Resurrection altar: pets + gear fly into the candle-lit tomb (batch 5)
+ *   arrival   a 1-of-1 / contest / Burn Lord grant egg of mine lands on a gold beam with its gear (batch 7)
+ *   grant     a Founder kit or Kekistan flag grant drops into my bag by parachute crate (batch 7)
  * Each confirmed event plays ONCE per browser (localStorage 'xcpets-life-seen-<address>', keyed by tx, or pet + stage / pet + death block); several new
  * events of one kind play as ONE scene. First visit: only the last FIRST_WINDOW blocks play. Stage-ups are found by comparing each live pet's stage
  * with the stage this browser saw last time ('xcpets-life-st-<address>').
- * Preview any time (never marks anything seen): ?anim=hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|gear|sold|bought|listed|closed|gift-in|gift-out|swap|hunt-won|hunt-lost|altar[&pet=ID][&seance=1] */
+ * Preview any time (never marks anything seen): ?anim=hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|gear|sold|bought|listed|closed|gift-in|gift-out|swap|hunt-won|hunt-lost|altar|arrival|grant[&pet=ID][&seance=1][&src=flag][&egg=0] */
 (function () {
   'use strict';
   var W = 128, H = 80, FPS = 10, GY = 64, CX = 64, FIRST_WINDOW = 432, FIRST_FEED = 36;
@@ -26,7 +28,7 @@
     sky: ['#1b1440', '#25195a', '#33206e', '#452a7e', '#5a3488'], night: ['#0b0a1f', '#141233', '#1d1a44', '#262150', '#342e5e'], cyan: '#7fe8ff', pink: '#ff8fd8', violet: '#b58cff' };
   var TC = ['#cfd6dd', '#4fc06b', '#3d8bff', '#ffcf3a'], TN = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
   var STAGES = ['EGG', 'HATCHLING', 'JUVENILE', 'ADULT', 'ELDER', 'MYTHIC'];
-  var LEN = { 'hunt-won': 46, 'hunt-lost': 44, altar: 52, gear: 46, sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { 'hunt-won': 40, 'hunt-lost': 38, altar: 46, gear: 40, sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
+  var LEN = { arrival: 54, grant: 46, 'hunt-won': 46, 'hunt-lost': 44, altar: 52, gear: 46, sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { arrival: 48, grant: 40, 'hunt-won': 40, 'hunt-lost': 38, altar: 46, gear: 40, sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function rnd(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -270,7 +272,28 @@
       if (t >= 10 && t < 16) { ring(g, ax, GY - 22, (t - 9) * 3, C.gold2); sparkle(g, f, 81 + i, ax, GY - 22, 20, C.violet, '#ffffff'); } });
     if (G && f >= 30) silhouette(g, sprite(G), ax - 16, GY - 50 - ((f >> 2) % 2), '#cfd6ff', 3);
     if (f >= 34) { banner(g, 'PLEDGED!', 3, '#4a2a8a', '#ffffff', 70); text(g, 'ALTAR ON #' + (G ? G.id : ''), CX, 16, C.cyan, 5); if (ev.closes) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.seance ? 'SEANCE POOL OPEN' : 'CLOSES AT ' + Number(ev.closes).toLocaleString('en-US'), CX, GY + 6, C.gold2, 5); } } }
-  var PAINT = { 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
+  var NOPE = /crown|frame|fire|flame|aura/i; /* the scenes never draw these pieces (captions still count them) */
+  function shown(L) { return (L || []).filter(function (it) { return it && !NOPE.test(it) && iconOk(it); }); } /* and only pieces whose icon shows on the dark disc */
+  var IOK = {}; function iconOk(it) { if (IOK[it] !== undefined) return IOK[it]; var c = icon(it), n = 0; try { if (c) { var a = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (var j = 0; j < a.length; j += 4) { var X = (j >> 2) % c.width; if (a[j + 3] > 128 && a[j] + a[j + 1] + a[j + 2] > 150 && Math.abs(X - c.width / 2) <= c.width / 8 + 1) n++; } } } catch (e) { n = 0; } return (IOK[it] = n >= 2); } /* bright pixels down the middle, so a split piece (cape halves) is not an empty disc */
+  function arrivalF(g, ev, f, P) { var p = P.list[0], t = 3, land = 22, ey = f < 4 ? -16 : f < land ? -16 + (GY + 14) * clamp((f - 4) / (land - 4), 0, 1) : GY - 1, gear = shown(ev.gear).slice(0, 4), gx = [CX - 27, CX + 27, CX - 51, CX + 51];
+    skyBands(g, C.night, f, 30); if (f >= land + 2) rays(g, CX, GY - 8, f, [C.gold, C.gold2, C.violet, '#ffffff'], 12); hills(g); grass(g);
+    if (f >= 2 && f < land + 10) { var bw = f < land ? 5 : clamp(land + 10 - f, 0, 5); for (var by = 0; by < GY; by++) for (var bx = -bw; bx <= bw; bx++) if (((bx + by + (f >> 1)) & 1) === 0 || Math.abs(bx) < bw / 3) px(g, CX + bx, by, Math.abs(bx) < bw / 3 ? '#ffffff' : C.gold2); }
+    nest(g, CX); var tilt = f >= land + 4 && f < land + 14 ? ((f >> 1) % 2 ? 1 : -1) : 0; egg(g, CX, Math.round(ey), t, 0, tilt);
+    if (f < land) sparkle(g, f, 7, CX, ey - 10, 18, C.gold2, '#ffffff');
+    if (f >= land && f < land + 8) { ring(g, CX, GY - 7, (f - land + 1) * 4, (f >> 1) % 2 ? C.gold2 : '#ffffff', (f - land + 1) * 2); }
+    gear.forEach(function (it, i) { var t0 = land + 8 + i * 3, k = clamp((f - t0) / 5, 0, 1); if (f < t0) return; piece(g, { item: it, tier: 3 }, CX + (gx[i] - CX) * k, GY - 12 - Math.sin(k * Math.PI) * 14 - ((f >> 2) % 2) * (k === 1 ? 1 : 0), true); });
+    if (f >= land + 6) sparkle(g, f, 41, CX, GY - 14, 60, C.gold, '#ffffff');
+    if (f >= 30) { banner(g, ev.ed || '1 OF 1!', 3, '#6a3fb0', '#ffffff', ev.ed && ev.ed.length > 8 ? 92 : 64); if (ev.title) text(g, String(ev.title).toUpperCase().slice(0, 24), CX, 16, C.gold2, 5); }
+    if (f >= 38) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.egg ? 'FEED IT TO HATCH' : 'IT IS YOURS', CX, GY + 6, '#ffffff', 5); } }
+  function grantF(g, ev, f, P) { var land = 16, by = f < land ? 6 + f * 3.6 : GY, open = f - land - 6, items = shown(ev.items).slice(0, 4), m = items.length, xs = m > 1 ? items.map(function (x, i) { return CX - 39 + i * (78 / (m - 1)); }) : [CX];
+    skyBands(g, C.sky, f, 14); hills(g); grass(g);
+    if (f < land) { ring(g, CX, by - 30, 12, C.grass2, 6); px(g, CX - 12, by - 30, C.grass2, 24, 1); for (var i = -1; i <= 1; i++) beam(g, CX + i * 11, by - 30, CX, by - 16, 0, C.s2); }
+    var wig = f >= land && open < 0 ? ((f >> 1) % 2 ? 1 : -1) : 0; box(g, CX + wig, by, '#2f7a3a', C.gold, open >= 0 ? clamp(10 + open * 4, 0, 26) : 0);
+    items.forEach(function (it, i) { var t0 = open - i * 3, k = clamp(t0 / 6, 0, 1); if (t0 < 0) return; piece(g, { item: it, tier: 3 }, CX + (xs[i] - CX) * k, GY - 20 - k * 9 - Math.sin(k * Math.PI) * 10 + (k === 1 ? (f >> 2) % 2 : 0), true); });
+    if (open >= 2) sparkle(g, f, 57, CX, GY - 30, 90, C.gold, C.grass2);
+    if (open >= 8) { banner(g, 'GRANT!', 3, '#2f7a3a', '#ffffff', 60); if (ev.label) text(g, String(ev.label).toUpperCase().slice(0, 24), CX, 16, C.gold2, 5); }
+    if (open >= 14) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.rolls ? '+' + ev.rolls + ' FREE ROLLS' : (ev.n || m) + ' PIECE' + ((ev.n || m) === 1 ? '' : 'S') + ' IN YOUR BAG', CX, GY + 6, '#ffffff', 5); } }
+  var PAINT = { arrival: arrivalF, grant: grantF, 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
   function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
   function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
@@ -283,6 +306,8 @@
       case 'mythic': return '🌈 ' + n + ' reached MYTHIC: it never starves now' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets reached Mythic' : '');
       case 'birth': { var T = BT[ev.tier] || BT.twins, lab = T.t.replace('!', '').toLowerCase(); lab = lab.charAt(0).toUpperCase() + lab.slice(1);
         return (ev.tier === 'twins' ? '👯 Twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' hatched from one breed burn' : ev.tier === 'godborn' ? '😇 ' + n + ' is God-born: a child of two Gods' : ev.tier === 'gemini' ? '♊ Gemini twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' (rare hybrid tier)' : '🌟 ' + n + ' was born ' + (/^[AEIOUH]/.test(lab) ? 'an ' : 'a ') + lab + ' (rare hybrid tier: ' + T.sub.toLowerCase() + ')') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : ''); }
+      case 'arrival': return '🎉 ' + n + ' arrived: ' + (ev.title ? ev.title + ', ' : '') + (ev.ed ? ev.ed.replace('!', '').toLowerCase() : '1 of 1') + (ev.ng ? ' + ' + ev.ng + ' gear piece' + (ev.ng === 1 ? '' : 's') : '') + (ev.egg ? '. Feed it to hatch' : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more prize eggs' : '') + b;
+      case 'grant': return '📦 Grant: ' + (ev.label || 'gear') + ' (' + ev.n + ' piece' + (ev.n === 1 ? '' : 's') + (ev.rolls ? ' + ' + ev.rolls + ' free rolls' : ev.free ? ' + free rolls' : '') + ') is in your bag' + b;
       case 'hunt-won': return '🗡️ ' + n + ' hunted ' + nm(P.list[1], ev.ids[1]) + ' and laid it to rest for good' + (ev.spin ? ': +2% of its power, +1 saved spin, Zombie Hunter badge' : ' (hunt reward already taken today)') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more hunts won' : '') + b;
       case 'hunt-lost': return '🤕 ' + n + ' lost the hunt on ' + nm(P.list[1], ev.ids[1]) + ': a black eye, nothing else' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more hunts lost' : '') + b;
       case 'altar': { var cnt = [ev.np ? ev.np + ' pet' + (ev.np === 1 ? '' : 's') : '', ev.ng ? ev.ng + ' gear' : ''].filter(Boolean).join(' + ') || 'an offering';
@@ -387,6 +412,15 @@
     (CM.altarList || []).forEach(function (A) { (A.pledges || []).forEach(function (q) { if (!q || q.src !== ME || !q.tx || !pk[q.tx] || q.block > tip || !fresh('pl:' + q.tx, q.block, FIRST_FEED)) return; var pp = (q.pets || []).map(function (e) { return e.id; }), gg = (q.gear || []).map(function (e) { var it = (w.items || {})[e.gid]; return it && it.item; }).filter(Boolean);
       b5.altar.push({ ids: [A.grave].concat(pp.slice(0, 4)), np: pp.length, ng: (q.gear || []).length, gear: gg.slice(0, 3), block: q.block, closes: A.closesAt, seance: /^seance/.test(pk[q.tx].msg || '') }); }); });
     ['hunt-won', 'hunt-lost', 'altar'].forEach(function (kd) { var L = b5[kd]; if (!L.length) return; L.sort(function (a, b) { return b.block - a.block; }); out.push(Object.assign({}, L[0], { kind: kd, n: L.length })); });
+    /* batch 7: 1-of-1 / edition prize eggs granted to me (p.supreme / p.contest / p.burnLord, hatchTx 'XCPETS:...', never bought or gifted in) and gear grants (founder kit, Kekistan flag) */
+    var moved = {}; (w.giftLog || []).forEach(function (gr) { if (gr && gr.to === ME) moved[gr.petId] = 1; }); (w.listings || []).forEach(function (S) { if (S && S.buyer === ME) moved[S.petId] = 1; });
+    var arr = []; w.pets.forEach(function (p) { var E = p && (p.supreme || p.contest || p.burnLord); if (!E || p.owner !== ME || moved[p.id] || p.released || p.hatchBlock == null || p.hatchBlock < lo || p.hatchBlock > tip || !/^XCPETS:/.test(p.hatchTx || '') || !fresh('ar:' + p.id, p.hatchBlock, FIRST_FEED)) return;
+      var src = p.supreme && p.supreme.id, gg = []; if (src) Object.keys(w.items || {}).forEach(function (gid) { var it = w.items[gid]; if (it && it.src === src && it.owner === ME) gg.push(it.item); });
+      arr.push({ ids: [p.id], block: p.hatchBlock, ed: p.burnLord ? 'BURN LORD ' + p.burnLord.n + '/' + p.burnLord.of : '1 OF 1!', title: (p.supreme && p.supreme.title) || (p.contest && p.contest.title) || (p.burnLord ? 'Burn Lord' : ''), gear: gg, ng: gg.length, egg: !p.lastFed && !(p.stage | 0) }); });
+    if (arr.length) { arr.sort(function (a, b) { return b.block - a.block; }); out.push(Object.assign({}, arr[0], { kind: 'arrival', n: arr.length })); }
+    var GR = { founder: 'Founder kit', 'ft-flag-grant': 'Kekistan flag' }, grs = {}; Object.keys(w.items || {}).forEach(function (gid) { var it = w.items[gid]; if (!it || it.owner !== ME || !GR[it.src]) return; var bk = it.src === 'founder' ? w.founderGranted : it.grantBlock; if (bk == null || bk < lo || bk > tip) return;
+      (grs[it.src] = grs[it.src] || { kind: 'grant', src: it.src, label: GR[it.src], block: bk, items: [], n: 0, free: it.src === 'founder' }).n++; grs[it.src].items.push(it.item); });
+    Object.keys(grs).sort(function (a, b) { return grs[b].block - grs[a].block; }).forEach(function (sk, i) { if (fresh('gr:' + sk, grs[sk].block, FIRST_FEED) && !out.some(function (o) { return o.kind === 'grant'; })) out.push(grs[sk]); });
     if (seen._m !== tip) { seen._m = tip; dirty = true; Object.keys(seen).forEach(function (x) { if (x !== '_m' && x.charAt(0) !== 'g' && seen[x] < tip - FIRST_WINDOW - 144) delete seen[x]; }); } /* older keys can never come back (see the block filters above) */
     if (dirty) try { localStorage.setItem(k, JSON.stringify(seen)); localStorage.setItem(markKey(ME), String(tip)); } catch (e) { } return out; }
   function markKey(ME) { return 'xcpets-life-mark-' + ME; } /* js/v2.js reads this mark to decide, without this file, whether anything is newer (see lifeNeeded there) */
@@ -407,6 +441,11 @@
       var bi = cand ? [cand.id] : []; if (two && cand) bi.push(cand.twinOf && by[cand.twinOf] ? cand.twinOf : (pick(alive.filter(function (p) { return p.id !== cand.id; }), 1)[0])); return { kind: 'birth', tier: bt, ids: bi, n: 1 }; }
     if (/^(sold|bought|listed|closed|gift-in|gift-out)$/.test(kind)) return { kind: kind, ids: ids.length ? ids : pick(alive, 1), n: 1, amt: kind === 'closed' || /^gift/.test(kind) ? '' : '11 XCP', sale: 7, until: (w && w.tip || 0) + 1008, who: /^gift/.test(kind) ? '1F' : '' };
     if (kind === 'swap') { var s1 = ids.length ? ids : pick(alive, 1); return { kind: 'swap', ids: s1.concat(pick((function (L) { var sp0 = by[s1[0]] && by[s1[0]].species, o = L.filter(function (p) { return p.species !== sp0 && stageOf(p) >= 1; }); return o.length ? o : L; })(alive.filter(function (p) { return p.id !== s1[0]; })), 1)), n: 1, swap: 1 }; }
+    if (kind === 'arrival') { var cand = ids.length ? by[ids[0]] : null; if (!cand) { var ed = all.filter(function (p) { return p.art && (p.supreme || p.contest || p.burnLord); }); cand = ed.filter(function (p) { return p.supreme && (p.supreme.id === 'bo' || p.supreme.id === 'rarepigeon'); })[0] || ed[0] || alive[0]; }
+      var sid = cand && cand.supreme && cand.supreme.id, GL = (window.V2Gear && (sid === 'bo' ? V2Gear.BO_GEAR : sid === 'rarepigeon' ? V2Gear.RP_GEAR : null)) || [], ag = GL.map(function (x) { return x[0]; });
+      return { kind: 'arrival', ids: cand ? [cand.id] : [], n: 1, ed: cand && cand.burnLord ? 'BURN LORD ' + cand.burnLord.n + '/' + cand.burnLord.of : '1 OF 1!', title: cand ? (cand.supreme && cand.supreme.title) || (cand.contest && cand.contest.title) || (cand.burnLord ? 'Burn Lord' : '') : '', gear: ag, ng: ag.length, egg: q.get('egg') !== '0', block: cand && cand.hatchBlock }; }
+    if (kind === 'grant') { var flag = q.get('src') === 'flag', its7 = (w && w.items) || {}, fk = Object.keys(its7).filter(function (k) { return its7[k] && its7[k].src === (flag ? 'ft-flag-grant' : 'founder'); }), tx0 = fk.length && its7[fk[0]].founderTx, fl = fk.filter(function (k) { return flag || its7[k].founderTx === tx0; }).slice(0, flag ? 1 : 5).map(function (k) { return its7[k].item; });
+      if (!fl.length) fl = flag ? ['ft-kek-flag'] : ['golden-sword', 'gold', 'goldcape', 'v2-gold-aviators']; return { kind: 'grant', src: flag ? 'ft-flag-grant' : 'founder', label: flag ? 'Kekistan flag' : 'Founder kit', items: fl, n: fl.length, rolls: flag ? 0 : 36, free: !flag, block: w && w.tip }; }
     if (kind === 'hunt-won' || kind === 'hunt-lost') { var h1 = ids.length ? ids : pick(alive, 1), zl = all.filter(function (p) { return p.zombie && p.art && p.id !== h1[0]; }), zp = zl[0] || all.filter(function (p) { return p.art && p.dead && p.id !== h1[0]; })[0] || alive.filter(function (p) { return p.id !== h1[0]; })[0];
       return { kind: kind, ids: h1.concat(zp ? [zp.id] : []), n: 1, spin: kind === 'hunt-won' }; }
     if (kind === 'altar') { var gv = all.filter(function (p) { return p.art && p.dead && !p.zombie && !p.released; }), G0 = gv[gv.length - 1] || alive[0], ofs = pick(alive.filter(function (p) { return !G0 || p.id !== G0.id; }), 2), it2 = (w && w.items) || {}, gk2 = Object.keys(it2).filter(function (k) { return it2[k] && it2[k].item && !/crown|frame|fire|flame|aura/i.test((it2[k].label || '') + ' ' + it2[k].item); });
