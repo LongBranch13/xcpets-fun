@@ -1,6 +1,6 @@
 {
- "lastBlock": 973901,
- "count": 325,
+ "lastBlock": 973913,
+ "count": 327,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2737,7 +2737,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 6906,
@@ -3902,6 +3902,30 @@
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 32,
+   "asset": "A7986733201088284070",
+   "tiedBlock": 973912,
+   "tiedTx": "0e7896f6507c0a694d6dfeb4356b0ce9f765c032f937a8296fa8f599c8c6a65d",
+   "kind": "deed",
+   "name": "Misasa",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42,
+   "asset": "A2664616301082023499",
+   "tiedBlock": 973912,
+   "tiedTx": "4a4702fdf3409e3197322244af9665b3863fbfecf171f0ff8081ee9d8956d431",
+   "kind": "deed",
+   "name": "Moyo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
