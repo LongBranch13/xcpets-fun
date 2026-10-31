@@ -16,8 +16,8 @@
   function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
   function keptIds() { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').map(Number); } catch (e) { return []; } } /* favorite-star-restore: read only (extra 'are you sure' before swapping away a ★ favorite); no auto-star */
   function myth(p) { return !!p.mythicCare || p.stage >= 5; }
-  function tierName(p) { return myth(p) ? 'Mythic' : TL[p.tier] || ''; }
-  function pill(p) { return '<span class="pill tier tier-' + (myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>' + omB(p); }
+  function tierName(p) { return p.resurrected ? 'God' : myth(p) ? 'Mythic' : TL[p.tier] || ''; }
+  function pill(p) { return '<span class="pill tier tier-' + (p.resurrected ? 'god' : myth(p) ? 'legendary' : TID[p.tier]) + '">' + esc(tierName(p)) + '</span>' + omB(p); }
   /* pet-shop-sales: Old Money collector badge (display only) + the shared filter drawer (js/v2-pet-filter.js) replace the old inline species/tier/stage selects */
   var PF = window.V2PetFilter; function omB(p) { return PF ? ' ' + PF.badge(p) : ''; }
   var GF_FIELDS = ['sp', 'tier', 'st', 'badge'];

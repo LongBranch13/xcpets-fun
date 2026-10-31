@@ -329,7 +329,7 @@
   function power(p) { return V.petPower(p); } function st(p, k) { return (p.stats && p.stats[k]) || 0; }
   var PF = window.V2PetFilter, BINDER_F = ['sp', 'tier', 'st', 'badge', 'cur', 'min', 'max', 'pw', 'bl', 'gear', 'buy', 'sort'], PICK_F = ['sp', 'tier', 'st', 'badge', 'sort'];
   function omLine(p) { return V.oldMoney(p) ? '<p class="sh-omline">' + PF.badge(p) + ' Bred while breeding cost 690. A collector mark only; it never changes how the pet plays.</p>' : ''; }
-  function tierName(p) { return p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
+  function tierName(p) { return p.resurrected ? 'God' : p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
   function spName(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
   function art(p) { return PREVIEW || !window.V2Render ? '<img alt="" src="img/theme/sp-' + esc(String(p.species).replace(/[^a-z]/g, '')) + '.png">' : '<span class="sh-sp" data-shsp="' + p.id + '"></span>'; }
   function paint() { var R = window.V2Render; if (PREVIEW || !R || !R.petFrames) return; document.querySelectorAll('[data-shsp]').forEach(function (s) { if (s.firstChild) return; var p = W.byId[s.getAttribute('data-shsp')];

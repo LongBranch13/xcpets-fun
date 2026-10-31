@@ -12,7 +12,7 @@
     try { out.push(V2.speciesLabel(p.species)); } catch (e) { }
     var hyb = !!(p.hybrid || (p.art && p.art.hybrid) || (V2.isHybrid && V2.isHybrid(p.species)));
     if (hyb) out.push('hybrid'); if (p.parents && p.parents.length) out.push('bred'); else out.push('hatched');
-    out.push(TL[p.tier] || ''); if (p.stage >= 5) out.push('mythic');
+    out.push(TL[p.tier] || ''); if (p.stage >= 5) out.push('mythic'); if (p.resurrected) out.push('god', 'gods');
     try { out.push((V2.STAGE_NAMES || [])[p.stage]); } catch (e) { }
     if (p.dead) out.push('dead'); else out.push('alive'); if (p.community) out.push('community'); if (p.released) out.push('released');
     if (p.status) out.push(p.status); if (p.oldMoney) out.push('old money'); if (p.zombie && !p.zombie.end) out.push('risen', 'zombie'); if (p.feral) out.push('feral'); if ((p.zPast || []).some(function (z) { return z.end && z.end.kind === 'resurrected'; })) out.push('resurrected'); /* cemetery loop */

@@ -37,7 +37,7 @@
   /** deck(w, me, my): open ads (newest first) that my pet `my` qualifies for. Only posted pets ever appear. */
   function deck(w, ME, my, withSkipped) { var b = tip() + 1, sk = withSkipped ? [] : skips(my.id), out = [];
     V.openAds(w, tip()).forEach(function (ad) { if (ad.owner === ME) return; var P = w.byId[ad.pet];
-      if (V.meetsReq(w, my, ad.req) || V.breedable(my, b) || V.breedable(P, b) || (V.breedV2On(b) && V.kinWhy(P, my))) return; out.push({ ad: ad, pet: P, bio: bioOf(ad) }); });
+      if (V.meetsReq(w, my, ad.req) || V.breedable(my, b) || V.breedable(P, b) || (V.breedV2On(b) && V.kinWhy(P, my)) || (V.resPairWhy && V.resPairWhy(P, my, b))) return; out.push({ ad: ad, pet: P, bio: bioOf(ad) }); });
     return out.filter(function (c) { return sk.indexOf(cardKey(c)) < 0; }); }
   /* ---------- card ---------- */
   function sprite(p, w) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'rm-sprite';
@@ -48,7 +48,7 @@
       '<div class="stat tot"' + ptA(p) + '><span class="sk">⚡ POWER</span><b>' + tot + '</b></div></div>'; }
   function traits(p) { var a = p.art || {}, o = []; if (a.pattern) o.push(a.pattern); if (a.eyes) o.push(a.eyes + ' eyes'); if (p.hidden && p.shows) o.push(p.shows); return o; }
   function cardHtml(c, w) { var p = c.pet, b = tip() + 1, left = c.ad.block + V.AD_WINDOW - b;
-    return '<div class="rm-top"><span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
+    return '<div class="rm-top"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
       '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' +
       '<div class="rm-sub">' + esc(V.speciesLabel(p.species)) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
       '<div class="rm-bio">“' + esc(c.bio) + '”</div>' +
