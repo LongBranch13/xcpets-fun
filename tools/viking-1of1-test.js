@@ -8,12 +8,12 @@ const { load, row, snap, run, fakeHash } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/viking-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, K = P.STAT_KEYS, R = c.V2Render, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
 const pw = p => K.reduce((a, k) => a + p.stats[k], 0), TO = '15dx2KbwKxppVjJYvXrK6pCwnQeqat71ZA';
-ok(V.ACTIVATE_VIKING_BLOCK === null, 'gate null on the preview branch (replay SAME)'); ok(V.VIKING_POWER === 141, 'power 141'); ok(V.VIKING_TO === TO, 'address');
+ok(V.ACTIVATE_VIKING_BLOCK === 974009, 'gate 974009 (live)'); /* null-gate world still tested below via _setViking(null) */ ok(V.VIKING_POWER === 141, 'power 141'); ok(V.VIKING_TO === TO, 'address');
 ok(V.VIKING_NAME === 'Ragnar Kekbeard' && V.VIKING_TITLE === 'The Last Viking', 'name / title');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: Object.assign({}, s0.hashes) };
 const DAY = 144, G = tip + 1, END = tip + DAY * 14; for (let b = tip + 1; b <= END + 400; b++) if (!H[b] && !s.hashes[b]) s.hashes[b] = fakeHash(b);
 /* gate null: nothing changes */
-const w0 = run(c, s, [], END); ok(!w0.pets.some(p => p.species === 'viking' || /viking/.test(p.species)), 'no Viking while the gate is null');
+V._setViking(null); const w0 = run(c, s, [], END); ok(!w0.pets.some(p => p.species === 'viking' || /viking/.test(p.species)), 'no Viking while the gate is null');
 V._setViking(END + 999); const w1 = run(c, s, [], END); ok(JSON.stringify(w1.pets.map(p => [p.id, p.species, p.owner, p.stats])) === JSON.stringify(w0.pets.map(p => [p.id, p.species, p.owner, p.stats])), 'gate in the future: identical world');
 /* grant */
 V._setViking(G); const w = run(c, s, [], G), B = w.pets.filter(p => p.species === 'viking');

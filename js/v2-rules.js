@@ -709,7 +709,7 @@
    * BABIES (gated by the same block): Viking is a real hybrid ROOT (not a contest species): every baby with a Viking-line parent comes out a Viking hybrid
    * ('hyb:viking:<partner root>' or a 3-way that keeps the viking root), so his horned helmet or braided beard (HYBRID_PARTS.viking) carries over.
    * Go-live = a separate commit setting ACTIVATE_VIKING_BLOCK to tip + 6, only after owner approval. */
-  var ACTIVATE_VIKING_BLOCK = null; /* <<< set to tip + 6 at deploy, ONLY after owner approval */
+  var ACTIVATE_VIKING_BLOCK = 974009; /* LIVE: owner approved Oct 31 2026 12:44 PM CT ('go ahead') [pt2456u]; tip 974003 + 6 */
   var VIKING_TO = '15dx2KbwKxppVjJYvXrK6pCwnQeqat71ZA', VIKING_POWER = 141, VIKING_NAME = 'Ragnar Kekbeard', VIKING_TITLE = 'The Last Viking';
   function vikingOn(b) { return ACTIVATE_VIKING_BLOCK != null && b != null && b >= ACTIVATE_VIKING_BLOCK; }
   function grantViking(w, b, hashes) { var G = ACTIVATE_VIKING_BLOCK; if (G == null || w.vikingGranted || b == null || b < G) return; var gh = hashes && hashes[G]; if (!gh) return; w.vikingGranted = G;
