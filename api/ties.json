@@ -1,6 +1,6 @@
 {
- "lastBlock": 974008,
- "count": 327,
+ "lastBlock": 974013,
+ "count": 331,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3924,6 +3924,54 @@
    "name": "Moyo",
    "species": "dodo",
    "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 10905,
+   "asset": "A15592083454883526941",
+   "tiedBlock": 974010,
+   "tiedTx": "a048a4323777de0f1e7e1c462e4fc31beff9695ab6b3dcfbb107eeb2fa0d1908",
+   "kind": "deed",
+   "name": "Pepo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 13437,
+   "asset": "A5488438032446069077",
+   "tiedBlock": 974010,
+   "tiedTx": "53d74acfb22191bb47e5194e0ac8f0aa9642b93588fdce497fba672624beeb3c",
+   "kind": "deed",
+   "name": "Yoneyo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 13826,
+   "asset": "A6396054037226944700",
+   "tiedBlock": 974010,
+   "tiedTx": "6ac334aecc3f27c2d76dec3e62712a0c58f7a5c5b9b9e58975e26c1c21f45fa5",
+   "kind": "deed",
+   "name": "Nechiwa",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 14900,
+   "asset": "A8937073558757013860",
+   "tiedBlock": 974010,
+   "tiedTx": "ac84b3e147f1da52b3870d7a047b65d5b70a2402c2320cf9bc0a3c4163b6341c",
+   "kind": "deed",
+   "name": "Towa",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
