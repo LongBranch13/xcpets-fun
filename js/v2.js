@@ -1120,7 +1120,7 @@
   /* pixel-anims (owner Oct 31 2026 4:50 PM CT [pt2513u] "Do them all"): hatching, feeding, stage-ups, Mythic and starvation each get an 8-bit scene
    * (js/v2-life-anim.js). That file is loaded only when needed: a ?anim= preview, a first look, or a confirmed feed / death of MY pets newer than the
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
-  var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear)(&|$)/.test(location.search);
+  var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=5fb7793b30';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
@@ -1128,6 +1128,7 @@
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
     var G = w.giftLog || []; for (var j = G.length - 1; j >= 0 && G[j].block > m; j--) if (G[j].from === ME || G[j].to === ME) return true;
     if ((w.listings || []).some(function (L) { return L && (L.seller === ME || L.buyer === ME) && (L.block > m || L.soldBlock > m || (L.status === 'open' && ((L.endBlock > m) || (L.expire + 1 > m && L.expire < tip + 1)))); })) return true;
+    var CM = w.cem; if (CM && ((CM.hunts || []).some(function (H) { return H && H.by === ME && H.block > m; }) || (CM.altarList || []).some(function (A) { return (A.pledges || []).some(function (q) { return q && q.src === ME && q.block > m; }); }))) return true; /* pixel-anims batch 5: my hunts + altar pledges */
     return w.pets.some(function (p) { return p.owner === ME && ((p.dead && p.deathBlock > m && p.deathBlock <= tip) || (p.resurrected && p.resurrected.block > m)); }); }
   function notifyLife(w) { if (LIFE_PV) { LIFE_PV = false; withLife(function (ok) { if (ok) V2LifeAnim.preview(world(), ME); }); return; } if (!lifeNeeded(w)) return; dataSeen();
     withLife(function (ok) { if (!ok) return; var LA = window.V2LifeAnim, w2 = world(), q = LA.collect(w2, ME, S.tip || w2.tip || 0);
