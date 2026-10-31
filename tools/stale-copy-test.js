@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* stale-copy-fix (2026-10-26): which copy a page shows first, the feed fallback after ANY failed Core read, and the 'blocks behind' text.
  *   node tools/stale-copy-test.js            (pure + source checks, no network)
- *   STALE_E2E=1 node tools/stale-copy-test.js (also headless Chrome on a local server, port 8873: normal / 429 / blocked, stale saved copy) */
+ *   STALE_E2E=1 node tools/stale-copy-test.js (also headless Chrome on a local server, port 8873 or $XCPETS_TEST_PORT: normal / 429 / blocked, stale saved copy) */
 'use strict';
 const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..'), src = fs.readFileSync(path.join(ROOT, 'js/v2-chain.js'), 'utf8');
@@ -35,7 +35,8 @@ const newTxt = [L.note(5, { dataTip: 1, chainTip: 9 }), L.behindText({ dataTip: 
 ok(!/\b(price|series|discount)\b/i.test(newTxt) && !/\d\s?x\b/.test(newTxt), "player text: no price/series/discount, no 'x' for times");
 async function e2e() {
   const { chromium, devices } = require(process.env.PW || '/workspace/pw/node_modules/playwright-core'); const cp = require('child_process');
-  const srv = cp.spawn('python3', ['-m', 'http.server', '8873', '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' }); await new Promise(r => setTimeout(r, 800));
+  const PORT = process.env.XCPETS_TEST_PORT || 8873; /* own port under tools/run-tests */
+  const srv = cp.spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' }); await new Promise(r => setTimeout(r, 800));
   const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'))), old = JSON.parse(fs.readFileSync(process.env.OLD_BOOT || '/workspace/pw/old-boot.json'));
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
   try { for (const mode of ['normal', '429', 'blocked']) {
@@ -43,7 +44,7 @@ async function e2e() {
     await c.addInitScript(([o]) => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', 1); localStorage.setItem('xcpets-v2-last-1', JSON.stringify({ at: Date.now() - 9 * 3600e3, build: 'x', rows: o.rows, tip: o.tip, dex: o.dex })); localStorage.setItem('xcpets-v2-prod-hashes', JSON.stringify(o.hashes)); }, [old]);
     let xcpfun = 0; await c.route(/api\.xcp\.fun/, r => { xcpfun++; r.abort(); });
     await c.route(/:4000\//, r => mode === '429' ? r.fulfill({ status: 429, headers: { 'access-control-allow-origin': '*' }, body: '{}' }) : mode === 'blocked' ? r.abort('timedout') : r.continue());
-    const p = await c.newPage(); await p.goto('http://127.0.0.1:8873/play.html', { waitUntil: 'load' }); await p.waitForTimeout(mode === 'normal' ? 40000 : 15000);
+    const p = await c.newPage(); await p.goto('http://127.0.0.1:' + PORT + '/play.html', { waitUntil: 'load' }); await p.waitForTimeout(mode === 'normal' ? 40000 : 15000);
     const s = await p.evaluate(() => { const S = V2Mock.state(); return { tip: S.tip, verified: !!S.verified }; });
     ok(s.tip >= boot.tip, mode + ': stale saved copy (' + old.tip + ') replaced, shows ' + s.tip + ' >= feed ' + boot.tip);
     ok(mode === 'normal' ? true : !s.verified, mode + ': feed copy is not verified, burns wait');
