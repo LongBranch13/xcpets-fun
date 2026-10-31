@@ -1,6 +1,6 @@
 {
- "lastBlock": 974027,
- "count": 252,
+ "lastBlock": 974030,
+ "count": 265,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3026,6 +3026,162 @@
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 38044,
+   "asset": "A10046987317353882851",
+   "tiedBlock": 974029,
+   "tiedTx": "127fdb9a79882a06fb1ef3828da68ec97c7d9e4d35b322e04bf65021ab3ffd39",
+   "kind": "deed",
+   "name": "Vosookebit",
+   "species": "hyb:chud:bobo",
+   "speciesLabel": "Chubo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 40105,
+   "asset": "A4424028312267486184",
+   "tiedBlock": 974029,
+   "tiedTx": "a3418cff2eb5a0956ed19eaae4fe543b2130174eed015e4773614a64fa5aedd5",
+   "kind": "deed",
+   "name": "Marotot",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40110,
+   "asset": "A3596313523311997630",
+   "tiedBlock": 974029,
+   "tiedTx": "c6b861ca8acd73bd48b8658fd6e63cd1630fc04afc97acac5a14172ef9995b29",
+   "kind": "deed",
+   "name": "Fipulu",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40118,
+   "asset": "A4704681841581217043",
+   "tiedBlock": 974029,
+   "tiedTx": "87128108a2c82857a6da818909906c7464f52f0fb9a00fbd48b616eab364b634",
+   "kind": "deed",
+   "name": "Peguru",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40185,
+   "asset": "A13458293155356445380",
+   "tiedBlock": 974029,
+   "tiedTx": "f928aba552ec0267710e4a488bba18f6bc2edfae9a819c09dec92495fc61cff7",
+   "kind": "deed",
+   "name": "Tafezen",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40225,
+   "asset": "A11798123704616170882",
+   "tiedBlock": 974029,
+   "tiedTx": "e2ad06632585f8db8249d94d97d77f638a0c6428c5d37f6f449cfc7057fe3867",
+   "kind": "deed",
+   "name": "Kigooweli",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40350,
+   "asset": "A16417080733182489874",
+   "tiedBlock": 974029,
+   "tiedTx": "cc42b5f80e8c832623ac6779e6d3ca27448b8ea9e89072868450b95e06540525",
+   "kind": "deed",
+   "name": "Jomiboki",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40353,
+   "asset": "A6654791027862314897",
+   "tiedBlock": 974029,
+   "tiedTx": "218951ebf91bf1cc3302b3304d1921e8a618b15497dc78329dce673b31118462",
+   "kind": "deed",
+   "name": "Bawip",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40358,
+   "asset": "A9847932109734942720",
+   "tiedBlock": 974029,
+   "tiedTx": "5a424904a35e4f3dc97bcceb5901923a633b63998d1975f9a8e020c4833943ee",
+   "kind": "deed",
+   "name": "Vejugub",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40418,
+   "asset": "A15694085045730088963",
+   "tiedBlock": 974029,
+   "tiedTx": "153eceedab0be52da89159f7831df858be924495c5dc15f20ee22f1339bb7c83",
+   "kind": "deed",
+   "name": "Dujapoboo",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40478,
+   "asset": "A2001261105451181127",
+   "tiedBlock": 974029,
+   "tiedTx": "df7dfc012987ef6f181f89c67cecc5305c213e21fa7833bea9efc06462723242",
+   "kind": "deed",
+   "name": "Jevuru",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 53843,
+   "asset": "A12836623718514611434",
+   "tiedBlock": 974029,
+   "tiedTx": "51cee3bbe4fee4230f933cae4b790871a62dab9029879b6390badc6c4517b96c",
+   "kind": "deed",
+   "name": "Bibo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 54897,
+   "asset": "A14728075307393401048",
+   "tiedBlock": 974029,
+   "tiedTx": "3b80e38aa64c2911d39b572e5d728f437f97626b611e6c45ad1e328fb0e5b0ac",
+   "kind": "deed",
+   "name": "Newisopip",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
   }
  ]
 }
