@@ -477,7 +477,47 @@
       if (art.rpLook) n += rpLookPaint(d, C, stage, f, art); if (art.boLook) n += boLookPaint(d, C, stage, f, art);
       if (V._lookLog) V._lookLog.push({ sh: sh, stage: stage, frame: f, n: n, neck: lookNeckY(C) }); return n ? Object.assign({}, img, { data: d }) : img; }); }
   if (V) V._oneOfOneLookFrames = oneOfOneLookFrames;
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); return fr; }
+  /* RARE HYBRID TIER MARKS (branch lineage-tiers, owner Oct 31 2026 9:48 AM CT "build all"; PREVIEW). Drawn only for art.rareTier, which V2Rules sets
+   * only from ACTIVATE_RARE_TIERS_BLOCK (null = nothing sets it = every pet draws exactly as before). ONE mark per pet (the rules pick it by priority).
+   * Looks only. Every mark stays out of the DNA badge corner (x >= 26, y < 5) and uses the pet's own silhouette (two keyed renders: pixels equal on a
+   * magenta and a green background = the pet). Not a fire aura, flame crown, gold frame, crown, halo or wings.
+   *   chimera  : prismatic 1 px rim (dark outline pixels recoloured in a 5-hue cycle that moves per frame) + 4 px prism crest top left
+   *   heirloom : two-tone pedigree rosette (royal blue | crimson, white centre, two tails) pinned bottom left
+   *   seraph   : ascension beam: dithered pale-blue light column on background pixels only + three rising white motes
+   *   gravekin : violet-grey grave mist over the feet and ground + one lilac will-o-wisp
+   *   gemini   : split coral heart: twin A (art.rareSide 'A') the left half on its right edge, twin B the right half on its left edge
+   *   (dynast  : mark being redesigned; no draw) */
+  var RT_HUES = [[255, 80, 80], [255, 200, 60], [80, 230, 120], [60, 200, 255], [170, 110, 255]];
+  function rtHex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function rtSil(art, stage, itemIds, extraOv, cap, baseGo) { var mk = function (c) { var a = Object.assign({}, art, { background: 'solid', bgColor: c, pattern: 'none', rareTier: null }); delete a.bgV2; return framesWithB(a, stage, itemIds, extraOv, cap, baseGo); };
+    var A, B; try { A = mk('#ff00fe'); B = mk('#00ff01'); } catch (e) { return null; } if (!A || !B) return null;
+    return A.map(function (fa, f) { var fb = B[f] || fa, on = new Uint8Array(1024); for (var j = 0; j < 1024; j++) { var i = j * 4; on[j] = (fa.data[i] === fb.data[i] && fa.data[i + 1] === fb.data[i + 1] && fa.data[i + 2] === fb.data[i + 2]) ? 1 : 0; } return on; }); }
+  function rareTierPaint(kind, side, d, on, f) { var badge = function (x, y) { return x >= 26 && y < 5; }, isOn = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && !!on[y * 32 + x]; };
+    var n = 0, put = function (x, y, c) { if (x < 0 || y < 0 || x > 31 || y > 31 || badge(x, y)) return; var j = (y * 32 + x) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; n++; };
+    var x0 = 32, y0 = 32, x1 = -1, y1 = -1, x, y; for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (isOn(x, y) && !badge(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 < 0) return 0; var cx = Math.round((x0 + x1) / 2), ph = f || 0, src = new Uint8ClampedArray(d);
+    if (kind === 'chimera') { for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { if (!isOn(x, y) || badge(x, y)) continue; var edge = !isOn(x + 1, y) || !isOn(x - 1, y) || !isOn(x, y + 1) || !isOn(x, y - 1), j = (y * 32 + x) * 4;
+        if (edge && 0.3 * src[j] + 0.59 * src[j + 1] + 0.11 * src[j + 2] < 70) put(x, y, RT_HUES[(x + y + ph) % 5]); }
+      [[1, 1, [255, 255, 255]], [0, 2, [255, 80, 200]], [1, 2, [80, 200, 255]], [2, 2, [255, 220, 60]]].forEach(function (q) { put(q[0], q[1], q[2]); }); }
+    else if (kind === 'heirloom') { var BL = rtHex('#2f62e0'), BD = rtHex('#173a8f'), RD = rtHex('#d8344a'), RK = rtHex('#7c1426'), W = [255, 255, 255];
+      ['..ddd..', '.dbbrd.', 'dbbbrrd', 'dbbWrrd', 'dbbbrrd', '.dbbrd.', '..ddd..', '..b.r..', '.b...r.'].forEach(function (row, yy) { for (var xx = 0; xx < row.length; xx++) { var ch = row.charAt(xx); if (ch === '.') continue;
+        put(xx, 22 + yy, ch === 'd' ? (xx < 3 ? BD : xx > 3 ? RK : (yy < 3 ? BD : RK)) : ch === 'b' ? BL : ch === 'r' ? RD : W); } }); }
+    else if (kind === 'seraph') { var P1 = rtHex('#eaf6ff'), P2 = rtHex('#a9d4ff'), P3 = rtHex('#6f9fd8'), M = [255, 255, 255];
+      for (y = 0; y < 32; y++) for (x = cx - 7; x <= cx + 7; x++) { if (isOn(x, y)) continue; var dx = Math.abs(x - cx); if (dx <= 2 && (x + y) % 2 === 0) put(x, y, P1); else if (dx <= 4 && (x + y) % 2 === 0) put(x, y, P2); else if (dx > 4 && dx <= 7 && (x + y) % 4 === 0) put(x, y, P3); }
+      [[cx - 9, (y0 + 4 + ph) % 32], [cx + 9, (y0 + 11 + ph) % 32], [cx - 8, (y0 + 18 + ph) % 32]].forEach(function (q) { if (!isOn(q[0], q[1])) put(q[0], q[1], M); }); }
+    else if (kind === 'gravekin') { var M1 = rtHex('#8e80ad'), M2 = rtHex('#c4b8de'), Wp = rtHex('#e4d6ff'), Wc = [255, 255, 255], yb = Math.min(31, y1 + 1);
+      for (y = yb - 3; y <= yb; y++) for (x = x0 - 3; x <= x1 + 3; x++) { var r = yb - y, m = (((x + 2 * y + ph) % 3) + 3) % 3; if (r === 0 && m !== 2) put(x, y, M2); else if (r === 1 && m === 0) put(x, y, M2); else if (r === 2 && m === 0 && x % 2 === 0) put(x, y, M1); else if (r === 3 && (((x + ph) % 6) + 6) % 6 === 0) put(x, y, M1); }
+      var wx = Math.max(1, x0 - 2), wy = Math.max(6, y1 - 9); if (!isOn(wx, wy)) { put(wx, wy, Wc); put(wx, wy + 1, Wp); put(wx + 1, wy, Wp); put(wx + 1, wy + 1, Wc); put(wx - 1, wy + 1, M2); put(wx + 2, wy, M2); put(wx, wy - 1, M2); } }
+    else if (kind === 'gemini') { var H = ['.XX.XX.', 'XHXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'], C1 = rtHex('#ff4f86'), HL = rtHex('#ffc6d8'), OL = rtHex('#6e1232'), cols = side === 'B' ? [3, 4, 5, 6] : [0, 1, 2, 3], ox = side === 'B' ? -3 : 28, cells = [];
+      H.forEach(function (row, yy) { cols.forEach(function (xx) { if (row.charAt(xx) !== '.') cells.push([xx, yy, row.charAt(xx)]); }); });
+      var has = function (a, b) { return cells.some(function (c) { return c[0] === a && c[1] === b; }); };
+      cells.forEach(function (c) { var xx = c[0], yy = c[1], edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var nx = xx + q[0], ny = yy + q[1]; return !has(nx, ny) && !(cols.indexOf(nx) < 0 && nx >= 0 && nx <= 6 && H[ny] && H[ny].charAt(nx) !== '.'); });
+        put(ox + xx, 19 + yy, c[2] === 'H' ? HL : edge ? OL : C1); }); }
+    return n; }
+  function rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo) { if (!fr || !art || !art.rareTier || stage < 1 || art.rareTier === 'dynast') return fr; var S = rtSil(art, stage, itemIds, extraOv, cap, baseGo); if (!S) return fr;
+    return fr.map(function (img, f) { var on = S[f] || S[0], d = new Uint8ClampedArray(img.data); var n = rareTierPaint(art.rareTier, art.rareSide, d, on, f); if (V && V._rareLog) V._rareLog.push({ t: art.rareTier, stage: stage, frame: f, n: n }); return n ? Object.assign({}, img, { data: d }) : img; }); }
+  if (V) { V._rareTierPaint = rareTierPaint; V._rareTierFrames = rareTierFrames; }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
