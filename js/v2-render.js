@@ -408,7 +408,7 @@
   var PG = { a: [0x14, 0x14, 0x1a], w: [0xf4, 0xf6, 0xfa], d: [0xb8, 0xc0, 0xce], b: [0x9a, 0xa3, 0xb4], c: [0x7a, 0x83, 0x96], e: [0x2a, 0x2d, 0x36] };
   var PG_IRI = [[0x3f, 0xb8, 0xa0], [0x2e, 0x8a, 0x5a], [0x8a, 0x5a, 0xc8], [0x5e, 0x3a, 0x96]], PG_HI = [0xb8, 0xf0, 0xe0];
   var PG_WING = ['.aaa.', 'awdba', 'adbba', 'aeeea', 'abbba', 'aeeea', '.aba.', '..a..'], PG_WING_S = ['.aa.', 'awda', 'aeea', 'abba', 'aeea', '.aa.'];
-  var BO34 = { '3': ['###', '..#', '.##', '..#', '###'], '4': ['#.#', '#.#', '###', '..#', '..#'] }, BO_C = { k: [0x2c, 0x2c, 0x36], d: [0x20, 0x20, 0x28], w: [0xf4, 0xf4, 0xee], s: [0xb9, 0xc3, 0xcf], p: [0x8d, 0x96, 0xa8] };
+  var BO34 = { '3': ['###', '..#', '.##', '..#', '###'], '4': ['#.#', '#.#', '###', '..#', '..#'] }, BO34S = { '3': ['###', '.##', '..#', '###'], '4': ['#.#', '###', '..#', '..#'] }, BO34T = { '3': ['###', '.##', '###'], '4': ['#.#', '###', '..#'] }, BO_C = { k: [0x2c, 0x2c, 0x36], d: [0x20, 0x20, 0x28], w: [0xf4, 0xf4, 0xee], s: [0xb9, 0xc3, 0xcf], p: [0x8d, 0x96, 0xa8] };
   var LOOK_FACE = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1, homer: 1 };
   function lookLum(c) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; }
   function lookCtx(sh, art, stage, f) { var o0 = { stage: stage, frame: f, gearOverride: {} }, kr, A; try { kr = V._keyedRender(sh, art, o0); } catch (e) { return null; } if (!kr || !kr.keys || !V._anatomy) return null;
@@ -466,10 +466,14 @@
       body.forEach(function (q) { var y = q >> 5, x = q & 31, L = lookLum([d[q * 4], d[q * 4 + 1], d[q * 4 + 2]]), edge = [q - 1, q + 1, q - 32, q + 32].some(function (n) { return n < 0 || n >= 29 * 32 || Math.abs((n & 31) - x) > 1 || !C.s[n]; });
         lookPut(d, q, y >= pantsY ? (L > 110 ? BO_C.s : BO_C.p) : y === ny ? BO_C.s : L > 60 || edge ? BO_C.k : BO_C.d); painted++; }); }
     /* #34: white 3x5 digits on a black 9 x 7 patch (silver trim on the pigeon body) centred on the chest, when the chest has room */
-    var PW = 9, PH = 7, best = null, reg = {}; lookBodyBelow(C, ny + 1).forEach(function (q) { reg[q] = 1; });
-    for (var y0 = ny + 2; y0 <= Math.min(bb.b - PH + 1, ny + 5); y0++) { var all = true; for (var yy = 0; yy < PH && all; yy++) for (var xx = 0; xx < PW; xx++) { var X = cx - 4 + xx, q = (y0 + yy) * 32 + X; if (X < 0 || X > 31 || !reg[q]) { all = false; break; } } if (all) { best = y0; break; } }
-    if (best != null) { for (var yy2 = 0; yy2 < PH; yy2++) for (var xx2 = 0; xx2 < PW; xx2++) { var q2 = (best + yy2) * 32 + cx - 4 + xx2, edge = art.rpLook && (yy2 === 0 || yy2 === PH - 1 || xx2 === 0 || xx2 === PW - 1); lookPut(d, q2, edge ? BO_C.s : BO_C.k); painted++; }
-      ['3', '4'].forEach(function (dg, i) { BO34[dg].forEach(function (rw, yy3) { for (var xx3 = 0; xx3 < 3; xx3++) if (rw[xx3] === '#') lookPut(d, (best + 1 + yy3) * 32 + cx - 3 + i * 4 + xx3, BO_C.w); }); }); }
+    /* tries the full 9 x 7 patch first, then a tight 7 x 5 one (digits on black, no margin), then 7 x 4 with 3 x 4 digits for the short chests (Pepe, Bobo; Wojak, Chud, Lenny start it on the collar row), then 7 x 3 with 3 x 3 digits (Kevin); a few columns either side of centre */
+    var reg = {}, regN = {}, best = null; lookBodyBelow(C, ny + 1).forEach(function (q) { reg[q] = 1; }); lookBodyBelow(C, ny).forEach(function (q) { regN[q] = 1; });
+    [[9, 7, 5], [7, 5, 8], [7, 4, 8], [7, 4, 8, 1], [7, 3, 8]].some(function (P) { var PW = P[0], PH = P[1], R = P[3] ? regN : reg;
+      for (var y0 = P[3] ? ny : ny + 1; y0 <= Math.min(bb.b - PH + 1, ny + P[2]); y0++) for (var o = 0; o <= 4; o++) for (var sg = -1; sg <= 1; sg += 2) { if (!o && sg > 0) continue; var x0 = cx - (PW >> 1) + o * sg, all = true;
+        for (var yy = 0; yy < PH && all; yy++) for (var xx = 0; xx < PW; xx++) { var X = x0 + xx, q = (y0 + yy) * 32 + X; if (X < 0 || X > 31 || !R[q]) { all = false; break; } }
+        if (all) { best = { x: x0, y: y0, w: PW, h: PH }; return true; } } return false; });
+    if (best) { var m = best.w === 9 ? 1 : 0; for (var yy2 = 0; yy2 < best.h; yy2++) for (var xx2 = 0; xx2 < best.w; xx2++) { var q2 = (best.y + yy2) * 32 + best.x + xx2, edge = m && art.rpLook && (yy2 === 0 || yy2 === best.h - 1 || xx2 === 0 || xx2 === best.w - 1); lookPut(d, q2, edge ? BO_C.s : BO_C.k); painted++; }
+      var FONT = best.h === 3 ? BO34T : best.h === 4 ? BO34S : BO34; ['3', '4'].forEach(function (dg, i) { FONT[dg].forEach(function (rw, yy3) { for (var xx3 = 0; xx3 < 3; xx3++) if (rw[xx3] === '#') lookPut(d, (best.y + m + yy3) * 32 + best.x + m + i * 4 + xx3, BO_C.w); }); }); }
     else if (art.rpLook) { /* no room for the patch: a black jersey stripe with a silver edge across the pigeon chest */ var sy = Math.min(bb.b - 1, ny + 2); [0, 1].forEach(function (r) { lookBodyBelow(C, sy + r).filter(function (q) { return (q >> 5) === sy + r; }).forEach(function (q) { lookPut(d, q, r ? BO_C.s : BO_C.k); painted++; }); }); }
     return painted; }
   function oneOfOneLookFrames(fr, art, stage) { if (!fr || !art || !(art.rpLook || art.boLook) || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
