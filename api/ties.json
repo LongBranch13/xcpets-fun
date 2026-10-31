@@ -1,5 +1,5 @@
 {
- "lastBlock": 973896,
+ "lastBlock": 973899,
  "count": 325,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2209,7 +2209,7 @@
    "species": "hyb3:nakamoto:kek:funtrump",
    "speciesLabel": "Trukekamoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 2133,
@@ -2473,7 +2473,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 49075,
