@@ -394,7 +394,22 @@
       spots.forEach(function (S) { var c = RP_SHEEN[S.r], q = S.q; d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
   if (V) V._rpMarkSpots = rpMarkSpots;
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); return fr; }
+  /* SUPREME LINEAGE CROWN MARK (branch supreme-lineage, proposal; drawn only for art.supremeMark, which nothing sets until
+   * V2Rules ACTIVATE_SUPREME_LINEAGE_BLOCK is set): a small 5x3 gold crown floating one row above the top of the pet (keyed render), centred on
+   * the top row; if there is no room above, it sits on the top of the head. Looks only. */
+  var SL_CROWN = ['y.y.y', 'yryry', 'ddddd'], SL_COL = { y: [0xff, 0xd2, 0x3f], r: [0xe0, 0x3b, 0x3b], d: [0xb8, 0x86, 0x0b] };
+  function supremeMarkSpots(k) { var top = -1, xs = [], j; for (j = 0; j < 29 * 32; j++) if (k[j] && k[j] !== 'bg' && k[j] !== 'shadow') { top = j >> 5; break; } if (top < 0) return [];
+    for (j = top * 32; j < top * 32 + 32; j++) if (k[j] && k[j] !== 'bg' && k[j] !== 'shadow') xs.push(j & 31);
+    var cx = Math.round((xs[0] + xs[xs.length - 1]) / 2), y0 = Math.max(1, top - 4), out = [];
+    SL_CROWN.forEach(function (row, ry) { for (var rx = 0; rx < 5; rx++) { var c = row.charAt(rx); if (c === '.') continue; var x = cx - 2 + rx, y = y0 + ry; if (x >= 0 && x < 32 && y >= 0 && y < 29) out.push({ q: y * 32 + x, c: SL_COL[c] }); } });
+    return out; }
+  function supremeMarkFrames(fr, art, stage) { if (!fr || !art || !art.supremeMark || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
+    return fr.map(function (img, f) { var k; try { k = V._keyedRender(sh, art, { stage: stage, frame: f, gearOverride: {} }).keys; } catch (e) { return img; } if (!k) return img;
+      var spots = supremeMarkSpots(k); if (!spots.length) return img; var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (var j = 0; j < d.length; j++) d[j] = img.data[j];
+      spots.forEach(function (S) { d[S.q * 4] = S.c[0]; d[S.q * 4 + 1] = S.c[1]; d[S.q * 4 + 2] = S.c[2]; d[S.q * 4 + 3] = 255; });
+      return Object.assign({}, img, { data: d }); }); }
+  if (V) V._supremeMarkSpots = supremeMarkSpots;
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); if (art && art.supremeMark) fr = supremeMarkFrames(fr, art, stage); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
