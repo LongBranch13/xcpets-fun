@@ -53,13 +53,20 @@ ok(V0.RES_BREED_WHY === 'resurrected pets only breed with other resurrected pets
   ok(V.resPairWhy(R1, N1, 100) === V.RES_BREED_WHY && V.resPairWhy(N1, R1, 100) === V.RES_BREED_WHY, 'gate on: resurrected x normal blocked (both orders)');
   ok(V.resPairWhy(R1, R2, 100) === null && V.resPairWhy(N1, N2, 100) === null, 'gate on: resurrected x resurrected and normal x normal allowed');
   ok(V.tierLabelOf({ tier: 3, stage: 5, resurrected: { block: 1 } }) === 'God' && V.tierLabelOf({ tier: 3 }) === V.TIER_LABELS[3] && V.tierLabelOf({ tier: 0 }) === V.TIER_LABELS[0], 'tierLabelOf: resurrected -> God, others unchanged');
-  ok(V.GOD_LABEL === 'God' && V.GOD_PLURAL === 'Gods', 'labels are God / Gods (not "God tier")'); }
+  ok(V.GOD_LABEL === 'God' && V.GOD_PLURAL === 'Gods', 'labels are God / Gods (not "God tier")');
+  ok(V.stageLabelOf({ stage: 5, stageName: 'Mythic', resurrected: { block: 1 } }) === 'God' && V.stageLabelOf({ stage: 5, stageName: 'Mythic' }) === 'Mythic' && V.stageLabelOf({ stage: 3, stageName: 'Adult', resurrected: { block: 1 } }) === 'Adult', 'stageLabelOf: a Mythic-stage God shows God; others keep their stage name');
+  const gw = { byId: { 1: { id: 1, resurrected: { block: 50 } }, 2: { id: 2, resurrected: { block: 60 } }, 3: { id: 3 } } };
+  ok(V.GOD_BORN_LABEL === 'God-born' && V.godBornOf(gw, { parents: [1, 2], hatchBlock: 70 }) === true, 'godBornOf: baby of two Gods -> God-born');
+  ok(!V.godBornOf(gw, { parents: [1, 3], hatchBlock: 70 }) && !V.godBornOf(gw, { parents: [1, 2], hatchBlock: 55 }) && !V.godBornOf(gw, { parents: [1], hatchBlock: 70 }) && !V.godBornOf(gw, { parents: null, hatchBlock: 70 }) && !V.godBornOf(null, { parents: [1, 2], hatchBlock: 70 }), 'godBornOf: one God parent, a parent resurrected after the hatch, a jackpot baby or no parents -> not God-born'); }
 /* 2. replay */
 { const { w } = W(BASE, BB - 1, dex); const Z = w.byId[PET];
   ok(Z.resurrected && !Z.dead && !Z.zombie && Z.owner === OW && !w.byId[MATE].resurrected && w.byId[MATE].owner === OW, 'story: #' + PET + ' resurrected at ' + RB + ', mate #' + MATE + ' (same owner) is not');
   ok(!g0why(w, Z) && !g0why(w, w.byId[MATE]), 'story: both can breed at ' + BB);
   let r = W(BASE.concat(BREED(PET, MATE)), BB + 1, dex).w;
   ok(eggs(r).length === 1 && !rej(r).length, 'gate off: resurrected x normal breeds as on main ' + JSON.stringify(rej(r)));
+  { const k = eggs(r)[0]; ok(!V0.godBornOf(r, k) && !('godBorn' in k), 'God-born: egg of a God x normal pet is not God-born, and nothing is stored on the pet');
+    const mt = r.byId[MATE], keep = mt.resurrected; mt.resurrected = { block: RB }; const yes = V0.godBornOf(r, k); mt.resurrected = { block: k.hatchBlock + 1 }; const late = V0.godBornOf(r, k); mt.resurrected = keep;
+    ok(yes && !late, 'God-born: derived read-only from the replayed parents (both Gods at the hatch block -> God-born; mate resurrected later -> not)'); }
   r = W(BASE.concat(BREED(PET, MATE)), BB + 1, dex, { resb: BB - 5 }).w;
   ok(eggs(r).length === 0 && rej(r).some(m => m.indexOf(V0.RES_BREED_WHY) >= 0), 'gate on: pet:breed:' + PET + ':' + MATE + ' rejected with the reason ' + JSON.stringify(rej(r)));
   r = W(BASE.concat(BREED(MATE, PET)), BB + 1, dex, { resb: BB - 5 }).w;
