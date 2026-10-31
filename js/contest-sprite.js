@@ -35,6 +35,33 @@
   /* RAREPIGEON 1 of 1 (owner Oct 26 2026, branch rarepigeon-1of1): baked art (js/rarepigeon-sprite.js, RarepigeonSprite) per stage, same idle bob as Bo; gear lands on RP_A. */
   var RPS = (typeof RarepigeonSprite !== 'undefined') ? RarepigeonSprite : (typeof require === 'function' ? (function () { try { return require('./rarepigeon-sprite.js'); } catch (e) { return null; } })() : null);
   if (RPS) PAL.rarepigeon = Object.assign({}, RPS.PAL);
+  /* BO PIGEON 'borp' (owner Oct 31 2026 9:49 AM CT, branch borp-twins, PREVIEW): the body every Bo Jackson x Rarepigeon baby gets (rules: ACTIVATE_BORP_BLOCK,
+   * null = OFF, so no pet has it). A pigeon-athlete: Rarepigeon's shape (head, beak, iridescent collar, red legs, tail) wearing Bo's kit: charcoal jersey (wing
+   * bars kept), white #34 from Adult, silver pants, eye black under the eye and a football tucked at the chest from Juvenile. Derived at load from RarepigeonSprite
+   * (no new file, no page changes); stage sizes, idle bob, anchors and Rarepigeon's own kit spots are Rarepigeon's. */
+  var BORP_PAL = { J: '#2a2a33', K: '#4a4a56', W: '#f4f4ee', P: '#c3cad8', Q: '#8d96a8', B: '#8a5634', b2: null, L: '#ffffff', X: '#0b0b0d', Z: '#5c3a1e' }; delete BORP_PAL.b2;
+  var DIG = { 3: ['WWW', '..W', '.WW', '..W', 'WWW'], 4: ['W.W', 'W.W', 'WWW', '..W', '..W'] };
+  function borpStage(S0, st) { var G = S0.map(function (r) { return r.split(''); }), H = S0.length, x, y, k = function (X, Y) { return Y >= 0 && Y < H && X >= 0 && X < 32 ? G[Y][X] : '.'; };
+    if (st === 0) { for (y = 0; y < H; y++) for (x = 0; x < 32; x++) { if (G[y][x] === 'g') G[y][x] = 'J'; else if (G[y][x] === 'f') G[y][x] = 'P'; } return G.map(function (r) { return r.join(''); }); } /* egg: Bo's charcoal + silver speckles */
+    var cTop = 99, cBot = -1, legTop = 99, legL = 99; for (y = 0; y < H; y++) for (x = 0; x < 32; x++) { var c = G[y][x]; if (c === 'f' || c === 'h') { cTop = Math.min(cTop, y); cBot = Math.max(cBot, y); } if (c === 'j') { legTop = Math.min(legTop, y); legL = Math.min(legL, x); } }
+    var BODY = { b: 'J', c: 'J', d: 'J', e: 'K', m: 'K' }, left = legL - 3, pantsTop = legTop - (st >= 3 ? 3 : 2);
+    for (y = cTop; y < legTop; y++) for (x = left; x < 32; x++) { var q = G[y][x]; if (BODY[q] || (q === 'l' && y > cBot)) G[y][x] = y >= pantsTop ? (q === 'e' || q === 'm' ? 'Q' : 'P') : (BODY[q] || 'J'); } /* jersey above, silver pants below; tail + wing tip (left of the legs) stay pigeon grey */
+    var ex = -1, ey = -1; for (y = 0; y < cTop; y++) for (x = 16; x < 32; x++) if (G[y][x] === 'l') { ex = x; ey = y; } /* eye black: under the eye highlight */
+    if (ex >= 0) for (x = ex - 2; x <= ex - 1; x++) if (k(x, ey + 1) === 'b') G[ey + 1][x] = 'X';
+    var bR = -1; for (y = cBot + 1; y < pantsTop; y++) for (x = 0; x < 32; x++) if (G[y][x] === 'J' || G[y][x] === 'K') bR = Math.max(bR, x);
+    if (st >= 3 && bR > 0) { var nx = bR - 9, ny = cBot + 1; [3, 4].forEach(function (d, i) { DIG[d].forEach(function (row, r) { for (var c2 = 0; c2 < 3; c2++) if (row.charAt(c2) === 'W' && /[JK]/.test(k(nx + i * 4 + c2, ny + r))) G[ny + r][nx + i * 4 + c2] = st === 5 ? 'n' : 'W'; }); }); } /* #34 (gold at Mythic, like Bo's) */
+    if (st >= 2 && bR > 0) { var fy = cBot + (st >= 3 ? 3 : 2), fx = bR - 1, BALL = st >= 3 ? ['.BBB.', 'BBLBB', 'ZBBBZ', '.ZZZ.'] : ['.BB.', 'BLBB', '.ZZ.'];
+      BALL.forEach(function (row, r) { for (var c3 = 0; c3 < row.length; c3++) if (row.charAt(c3) !== '.') G[fy + r][fx + c3] = row.charAt(c3); }); /* football tucked at the chest */
+      var O = G.map(function (r) { return r.slice(); }); BALL.forEach(function (row, r) { for (var c4 = -1; c4 <= row.length; c4++) [[0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]].forEach(function (dd) { var X = fx + c4 + dd[0], Y = fy + r + dd[1]; if (k(X, Y) === '.') O[Y][X] = 'a'; }); }); G = O; } /* ink outline around the ball */
+    return G.map(function (r) { return r.join(''); }); }
+  var BORP = RPS ? { PAL: Object.assign({}, RPS.PAL, BORP_PAL), STAGES: RPS.STAGES.map(function (S0, st) { return borpStage(S0, st); }) } : null;
+  if (BORP) { PAL.borp = BORP.PAL; NAMES.borp = 'Bo Pigeon'; }
+  function borpDraw(stage, f, gear) { var S = BORP.STAGES[stage], g = grid(), dy = [0, -1, -1, 0][f];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
+    if (stage > 0 && gear) { var rest = {}; ['feet', 'hand', 'head', 'body', 'face', 'back', 'weapon'].forEach(function (sl) { var it = gear[sl], id = it && (it.item || it.id);
+        if (id && RP_KIT[id]) rpKit(g, S, dy, id); else if (it) rest[sl] = it; }); gear = rest; } /* same body as Rarepigeon: his kit sits on the same beak / crown / leg */
+    if (stage > 0 && gear && Object.keys(gear).length) { var A = Object.assign({}, RP_A, { headTop: RP_A.headTop + dy, headBot: RP_A.headBot + dy, eyeY: RP_A.eyeY + dy, bodyTop: RP_A.bodyTop + dy, bodyEnd: RP_A.bodyEnd + dy }); gearLayer(g, 'borp', stage, A, gear); }
+    return g; }
   var RP_A = { cx: 19, headTop: 3, headBot: 11, hw: 4, eyeY: 6, bodyTop: 12, bodyEnd: 23, bw: 7 };
   /* Rarepigeon kit pinned to the baked art: bread / scroll held in the beak (orange 'i'), cap on the crown (from the eye highlight), message tube on the front leg (red 'j'). */
   var RP_KC = { G: '#2f9f5f', g: '#1e6b40', O: '#ff7a1a', L: '#8a5a2b', P: '#f4ecd8', F: '#cfc3a3', T: '#a89a78', R: '#ff2a2a', C: '#2a9fd0', c: '#6fe3ff', W: '#e9fbff' };
@@ -150,7 +177,7 @@
     if (sp === 'lukespam') { rect(g, 10, 14 + bob, 12, 3, 'R'); hline(g, 18, 23, 17 + bob, 'r'); rect(g, 13, 20 + bob, 5, 6, 'C'); hline(g, 13, 17, 22 + bob, 'c'); }
     return outline(g); }
   /** anchors(sp, stage, frame): where gear lands on this pet */
-  function anchors(sp, stage, frame) { if (sp === 'rarepigeon') { var e = [0, -1, -1, 0][frame || 0]; return { cx: 19, headTop: 3 + e, headBot: 11 + e, hw: 4, eyeY: 6 + e, bodyTop: 12 + e, bodyEnd: 23 + e, bw: 7 }; } if (sp === 'bojackson') { var d = [0, -1, -1, 0][frame || 0]; return { cx: 16, headTop: 2 + d, headBot: 11 + d, hw: 5, eyeY: 6 + d, bodyTop: 13 + d, bodyEnd: 21 + d, bw: 6 }; } var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
+  function anchors(sp, stage, frame) { if (sp === 'rarepigeon' || sp === 'borp') { var e = [0, -1, -1, 0][frame || 0]; return { cx: 19, headTop: 3 + e, headBot: 11 + e, hw: 4, eyeY: 6 + e, bodyTop: 12 + e, bodyEnd: 23 + e, bw: 7 }; } if (sp === 'bojackson') { var d = [0, -1, -1, 0][frame || 0]; return { cx: 16, headTop: 2 + d, headBot: 11 + d, hw: 5, eyeY: 6 + d, bodyTop: 13 + d, bodyEnd: 21 + d, bw: 6 }; } var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
   /* ---------- gear layer: every slot (head, face, hand, body, back, feet, weapon) from the anchors, like KekSprite ---------- */
   function gearLayer(g, sp, st, A, Gr) { function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
     function col(sl, i) { var x = Gr[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); } var cx = A.cx, put = [];
@@ -169,7 +196,7 @@
       if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod/.test(ak)) { for (var t = 0; t < 8; t++) p(hx, hy - t, t > 5 ? a1 : a0); } else { rect(g, hx - 1, hy - 2, 3, 3, a0); set(g, hx, hy - 1, a1); } }
     if (Gr.weapon) { var wx = cx + A.bw + 4; for (var tw = 0; tw < 9; tw++) set(g, wx, A.bodyEnd - tw, tw > 6 ? col('weapon', 1) : col('weapon')); }
     return put; }
-  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
+  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (sp === 'borp' && BORP) return borpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
     if (s === 0) return eggArt(g, sp, f);
     var A = geom(s, f); SL_GEAR = gear || null; try { DRAW[sp](g, s, A, f); } finally { SL_GEAR = null; } if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
     var o = outline(g); if (s === 5) { o = mythicRim(o); if (sp !== 'starlordkek') aura(o, sp, f); } if (sp === 'starlordkek') slFx(o, s, f); return o; }
@@ -180,5 +207,5 @@
   function toImg(g, P, bg) { var B = hexRgb(bg || '#14101e'), d = []; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function render(sp, stage, frame, bg, gear, opts) { return toImg(draw(sp, stage, frame, gear), Object.assign({}, PAL[sp], (opts && opts.pal) || {}), bg); }
   function frames(sp, stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(sp, stage, f, bg, gear, opts); }); }
-  return { STAGES: STAGES, NAMES: NAMES, PAL: PAL, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, SPECIES: Object.keys(NAMES) };
+  return { BORP: BORP, STAGES: STAGES, NAMES: NAMES, PAL: PAL, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, SPECIES: Object.keys(NAMES) };
 });
