@@ -1,13 +1,14 @@
 /* player-qol 2026-10-24: wallet stays connected across page loads / tab focus (silent xcp_accounts, no popup), tracks lock/unlock/disconnect,
  * status pill with one-tap reconnect, and stores only the provider kind + public address. Run: python3 -m http.server 8099 in the repo root. */
 const { chromium } = require('playwright-core');
+const PORT = process.env.XCPETS_TEST_PORT || 8099; /* tools/run-tests gives each test its own port; standalone runs keep :8099 */
 const ADDR = 'bc1qtestaddressxxxxxxxxxxxxxxxxxxxxxxxxxx';
 const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>';
 (async () => {
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   const pg = await b.newPage(); const res = []; const ok = (n, c, x) => res.push((c ? 'PASS ' : 'FAIL ') + n + (x ? ' — ' + x : ''));
   pg.on('pageerror', e => res.push('FAIL pageerror ' + e.message));
-  await pg.route('http://localhost:8099/zz-wallet-persist.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
+  await pg.route('http://localhost:' + PORT + '/zz-wallet-persist.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
   await pg.route(/^https?:\/\/(?!localhost)/, r => r.fulfill({ status: 404, body: '' }));
   await pg.addInitScript(ADDR => { const W = window.__W = { calls: [], acc: [ADDR], h: {} };
     window.xcpwallet = { on(e, f) { (W.h[e] = W.h[e] || []).push(f); }, request(a) { W.calls.push(a.method);
@@ -18,7 +19,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
   const ev = (f, a) => pg.evaluate(f, a), wait = ms => pg.waitForTimeout(ms);
   const pill = () => ev(() => { const p = document.getElementById('xwPill'); return p && !p.hidden ? p.className + '|' + p.textContent : 'none'; });
   // fresh browser, never connected: no pill, no popup
-  await pg.goto('http://localhost:8099/zz-wallet-persist.html'); await wait(900);
+  await pg.goto('http://localhost:' + PORT + '/zz-wallet-persist.html'); await wait(900);
   let c = await ev(() => __W.calls); ok('no popup on load', !c.includes('xcp_requestAccounts'), JSON.stringify(c));
   ok('already-approved wallet attaches silently on first load', await ev(() => V2Wallet.status()) === 'on');
   // reload with the remembered connection: silent attach, pill green

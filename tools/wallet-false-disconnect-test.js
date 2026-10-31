@@ -2,6 +2,7 @@
  * running (slow answer, busy main thread, hidden tab), a failed xcp_accounts is retried before red, a locked wallet says "locked",
  * and a 'disconnect' event is confirmed with xcp_accounts first. Run: python3 -m http.server 8099 in the repo root. */
 const { chromium } = require('playwright-core');
+const PORT = process.env.XCPETS_TEST_PORT || 8099; /* tools/run-tests gives each test its own port; standalone runs keep :8099 */
 const ADDR = 'bc1qtestaddressxxxxxxxxxxxxxxxxxxxxxxxxxx';
 const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>';
 (async () => {
@@ -9,7 +10,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
   const res = []; const ok = (n, c, x) => res.push((c ? 'PASS ' : 'FAIL ') + n + (x ? ' — ' + x : ''));
   async function page(mode) {
     const ctx = await b.newContext(), pg = await ctx.newPage(); pg.on('pageerror', e => res.push('FAIL pageerror ' + e.message));
-    await pg.route('http://localhost:8099/zz-wfd.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
+    await pg.route('http://localhost:' + PORT + '/zz-wfd.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
     await pg.route(/^https?:\/\/(?!localhost)/, r => r.fulfill({ status: 404, body: '' }));
     await pg.addInitScript(([ADDR, mode]) => { try { localStorage.setItem('xcpets-v2-wallet-provider', 'xcpwallet'); } catch (e) {}
       const W = window.__W = { calls: [], acc: mode.locked ? [] : [ADDR], h: {}, fails: mode.fails || 0, delay: mode.delay || 0, seen: [] };
@@ -24,7 +25,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
       const snap = () => { const p = document.getElementById('xwPill'); W.seen.push(p && !p.hidden ? p.className : 'none'); };
       document.addEventListener('DOMContentLoaded', () => { new MutationObserver(snap).observe(document.body, { subtree: true, childList: true, attributes: true }); snap(); });
     }, [ADDR, mode]);
-    await pg.goto('http://localhost:8099/zz-wfd.html'); return pg;
+    await pg.goto('http://localhost:' + PORT + '/zz-wfd.html'); return pg;
   }
   const red = s => s.includes('off');
   let pg = await page({ delay: 3000 }); await pg.waitForTimeout(1500);
