@@ -6,3 +6,6 @@
 
 # local burn snapshots (tests rebuild them from tools/fixtures with: node tools/lib/fixtures.js)
 /tools/snapshots/
+
+# offline tool output (tools/cross-sheet.js)
+/out/
