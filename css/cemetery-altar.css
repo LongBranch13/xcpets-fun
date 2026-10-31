@@ -57,6 +57,7 @@
 .alt-tags{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;min-height:14px}
 .alt-tag{font:7px/1.6 var(--pixel);padding:1px 3px;border:1px solid #000}
 .alt-tag.ripe{background:#b5651d;color:#fff3b0}.alt-tag.lock{background:#3a3550;color:#d8d0ff}.alt-tag.gear{background:#2a3a2e;color:#e8f5ec}.alt-tag.dies{background:#4a1418;color:#ffd0c8}
+.alt-tag.dies.soon{background:#8a1010;color:#fff}.alt-diewarn{display:block;color:#ffb4a8;font-weight:600;margin-bottom:2px}
 .alt-raisewhy{margin:4px 0 0;color:#ffb4a8}
 .alt-tile.on{background:#123a1d;outline:2px solid #7dff6a;animation:altGone .45s steps(4) forwards}
 .alt-tile.on .alt-sp{opacity:.25;filter:grayscale(1) sepia(1) hue-rotate(60deg)}
