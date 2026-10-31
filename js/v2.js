@@ -323,12 +323,18 @@
     var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
   var REV_SHOW = [['all', 'All'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
   function revShows(f, x) { return f === 'all' || !f || (f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
+  /* hatch-species-filter 2026-10-30 (owner 9:35 PM CT [pt2372u]: 'not a to z but just show particular species'). DISPLAY ONLY: a Species dropdown
+   * in the hatch review shows only one species (or Hybrids). It combines with the rarity Show chips (each side counts within the other), Select all shown and paging. */
+  function revSp(x) { return (x.hybrid || (x.art && x.art.hybrid) || (V.isHybrid && V.isHybrid(x.species))) ? 'hybrid' : x.species; }
+  function revSpName(k) { return k === 'hybrid' ? 'Hybrids' : k === 'kevin' ? 'Kevin' : (V.speciesLabel ? V.speciesLabel(k) : k); }
+  function revSpShows(k, x) { return !k || k === 'all' || revSp(x) === k; }
   function plural(n, a) { return n.toLocaleString('en-US') + ' ' + a + (n === 1 ? '' : 's'); }
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
     var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be hidden. Unstar them first.', 6000); return; }
     if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never hidden).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
     hideIds(ids); ids = ids.filter(function (id) { return kk.indexOf(id) < 0; }); /* starred pets stay in the review too */ rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
-    if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x); })) rev.f = 'all'; }
+    if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x) && revSpShows(rev.sp, x); })) rev.f = 'all'; }
+    if (rev.sp && rev.sp !== 'all') { var w2 = world(); if (!rev.eggs.some(function (id) { var x = w2.byId[id]; return x && revSpShows(rev.sp, x); })) rev.sp = 'all'; }
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
   function revKeepTier(w, all, top) { /* top 1 = Keep Rare and up (hides Common + Uncommon), top 2 = Keep Legendary and up (also hides Rare) */
     var ids = all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).map(function (x) { return x.id; });
@@ -347,7 +353,10 @@
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
     var nMy = gear ? 0 : list.filter(function (x) { return x.stage === 5; }).length;
-    if (!gear) { if (!rev.f) rev.f = 'all'; list = all.filter(function (x) { return revShows(rev.f, x); }); if (!list.length && rev.f !== 'sel') { rev.f = 'all'; list = all; } } /* hatch-review-simple: the Show filter */
+    var spAll = gear ? all : all.filter(function (x) { return revSpShows(rev.sp, x); }); /* hatch-species-filter: pets of the chosen species (any rarity) */
+    if (!gear) { if (!rev.f) rev.f = 'all'; if (!rev.sp) rev.sp = 'all';
+      if (rev.sp !== 'all' && !spAll.length) { rev.sp = 'all'; spAll = all; }
+      list = spAll.filter(function (x) { return revShows(rev.f, x); }); if (!list.length && rev.f !== 'sel') { rev.f = 'all'; list = spAll; } } /* hatch-review-simple: the Show filter (+ species) */
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
     $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : ((rev.n0 || all.length) === 1 ? '1 egg hatched' : (rev.n0 || all.length).toLocaleString('en-US') + ' eggs hatched') + (tiers[3] ? ' · ' + tiers[3] + ' Legendary' : '') + (nMy ? ' · ' + nMy + ' Mythic' : '');
     $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = 'Hiding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* the hide note belongs to the egg review only */
@@ -373,16 +382,23 @@
     var pager = pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '';
     if (gear) $('packSummary').innerHTML = info + '<span class="grtiers">' + tierLine + '</span>' + pager;
     else { /* hatch-review-simple: two equal quick choices, a Show filter by rarity, one Sort, Select all shown / Clear selection, the pager */
-      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), many = all.length > 1, cnt = { all: all.length, my: nMy, sel: Object.keys(rev.sel).length };
-      tiers.forEach(function (n, i) { cnt[i] = n; });
+      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
+      spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (x.stage === 5) cnt.my++; if (rev.sel[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
+      if (!spOn) cnt.sel = Object.keys(rev.sel).length;
+      var spC = {}, spK = [], spBase = all.filter(function (x) { return revShows(rev.f, x); }); all.forEach(function (x) { var k = revSp(x); if (spC[k] == null) { spC[k] = 0; spK.push(k); } });
+      spBase.forEach(function (x) { spC[revSp(x)]++; }); /* species counts = within the chosen rarity chip */
+      spK.sort(function (a, b) { if (a === 'hybrid' || b === 'hybrid') return a === 'hybrid' ? 1 : -1; var x = revSpName(a).toLowerCase(), y = revSpName(b).toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
+      var spSel = many && spK.length > 1 ? '<label class="pksort pkspl">Species <select id="pkSp" aria-label="Show only one species"' + (spOn ? ' class="pkon"' : '') + '><option value="all">All species ' + spBase.length.toLocaleString('en-US') + '</option>' +
+        spK.map(function (k) { return '<option value="' + esc(k) + '"' + (rev.sp === k ? ' selected' : '') + (spC[k] || rev.sp === k ? '' : ' disabled') + '>' + esc(revSpName(k)) + ' ' + spC[k].toLocaleString('en-US') + '</option>'; }).join('') + '</select></label>' +
+        (spOn ? ' <button type="button" class="q" id="pkSpX" title="Show every species again">✕ ' + esc(revSpName(rev.sp)) + '</button>' : '') : '';
       var keepRow = many && (kR || kL) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
         '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare and up<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
         '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary and up<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
         '<div class="muted small pksafe">🛡️ Mythic, starred and gear-wearing pets always stay.</div></div>' : '';
-      var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]]; }).map(function (f) {
+      var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' hidden</span>' : '') + '</div>' : '';
-      var tools = many ? '<div class="pktools"><label class="pksort">Sort <select id="pkSort" aria-label="Sort the pets">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</select></label>' +
+      var tools = many ? '<div class="pktools">' + spSel + ' <label class="pksort">Sort <select id="pkSort" aria-label="Sort the pets">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</select></label>' +
         ' <button type="button" class="q" id="pkSelAll">Select all shown</button> <button type="button" class="q" id="pkClear"' + (cnt.sel ? '' : ' hidden') + '>Clear selection</button>' + pager + '</div>' +
         '<div class="muted small pktip">Tap a pet to select it, then Hide selected.</div>' : '';
       $('packSummary').innerHTML = keepRow + chips + tools; }
@@ -390,6 +406,8 @@
     if (!gear) { $('packSummary').querySelectorAll('.pkq').forEach(function (b) { b.onclick = function () { revKeepTier(w, all, +b.dataset.top); }; });
       $('packSummary').querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { rev.f = b.dataset.f; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; }; });
       if ($('pkSelAll')) $('pkSelAll').onclick = function () { revSelectShown(w, list); };
+      if ($('pkSp')) { $('pkSp').value = rev.sp; $('pkSp').onchange = function () { rev.sp = this.value; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; }; }
+      if ($('pkSpX')) $('pkSpX').onclick = function () { rev.sp = 'all'; rev.page = 0; drawReveal(); };
       if ($('pkClear')) $('pkClear').onclick = function () { rev.sel = {}; if (rev.f === 'sel') rev.f = 'all'; drawReveal(); }; }
     if ($('pkSort')) $('pkSort').onchange = function () { rev.sort = this.value; rev.page = 0; drawReveal(); };
     if ($('pkPrev')) { $('pkPrev').onclick = function () { rev.page--; drawReveal(); }; $('pkNext').onclick = function () { rev.page++; drawReveal(); }; }
