@@ -12,7 +12,7 @@
     breedCooldown: 1008, breedCap: 6, blackEye: 72, fightWindow: 144, turns: 12,
     /* tutorial-cemetery (owner ask Oct 30 2026): the cemetery gate mirrored from js/v2-rules.js (tutorial.html does not load the rules);
      * cemPublic null = OWNER TEST (only grave #cemOwnerGrave by cemOwner). tools/tutorial-test.js checks these against the rules. */
-    cemGate: 973772, cemPublic: null, cemOwnerGrave: 2, cemOwner: 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4',
+    cemGate: 973772, cemPublic: 973933, cemOwnerGrave: 2, cemOwner: 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4',
     cemPool: 144, cemFeral: 432, cemCap: 3, cemRipe: 1.5,
     /* resurrect-odds (owner ask Oct 30 2026): Resurrection points + chance mirrored from js/v2-rules.js cemResInfo (CEM_POINTS by tier, CEM_RES_*);
      * cemHw = the Halloween window by block (CEM_HW_FROM..CEM_HW_TO). tools/tutorial-test.js checks every one against the rules. */

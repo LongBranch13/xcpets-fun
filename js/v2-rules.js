@@ -2390,7 +2390,7 @@
    * OWNER TEST: until CEMETERY_PUBLIC_BLOCK is set, raising (seance / pledge / raise) is allowed only for grave #CEM_OWNER_GRAVE and only by
    * CEM_OWNER_ADDR. Flip it off for public launch by setting CEMETERY_PUBLIC_BLOCK to tip + about 6 (a block, so the test history replays the same). */
   var ACTIVATE_CEMETERY_LOOP_BLOCK = 973772; // owner-test go-live 2026-10-29 10:09 PM CT: Bitcoin tip 973766 (mempool.space + blockstream.info) + 6
-  var CEMETERY_PUBLIC_BLOCK = null;        // null = OWNER TEST mode (grave #2, owner wallet only); set to tip + ~6 for public launch
+  var CEMETERY_PUBLIC_BLOCK = 973933;      // PUBLIC launch (owner 'Yes' Oct 30 2026 11:07 PM CT): Bitcoin tip 973927 (mempool.space + blockstream.info, 11:09 PM CT) + 6, about midnight CT Oct 31. Before it: OWNER TEST mode (grave #2, owner wallet only)
   var CEM_OWNER_ADDR = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', CEM_OWNER_GRAVE = 2;
   var ACTIVATE_RESURRECT_RETIE_BLOCK = 973859; // resurrect-retie: live from block 973859 (BTC tip 973849 + 10 at deploy, Oct 30 2026). From it, a successful Resurrection unties any token still tied to the pet (keepsake); the pet stays with the resurrecting owner, who ties a new token with pet:deed
   var CEM_HW_FROM = 973935, CEM_HW_TO = 975670;  /* Halloween window (Oct 31 to Nov 11, by block) */
