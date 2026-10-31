@@ -220,8 +220,11 @@
    * fresh, verified replay: the same pets, owner, costs and balance -> go on; something that matters changed -> stop with what changed.
    * No recheck given -> the old strict stop. send0's verified gate still runs after this. */
   function staleErr(why) { var e = new Error(why ? 'New chain activity just came in: ' + why + '. Nothing was sent. Check it and press again.' : 'New chain activity just came in, so we double-checked. Nothing was sent. Press again.'); e.stale = true; return e; }
+  /* boot-from-cache (Oct 31 2026): also while the page shows a provisional saved world or the fresh replay is still being built (V2Mock.updating()):
+   * whenFresh then waits for the fresh world and answers same:false if it differs from the one the action was built from (recheck or stop). */
+  function upd() { try { return !!(window.V2Mock && window.V2Mock.updating && window.V2Mock.updating()); } catch (e) { return false; } }
   function send(plan, viewed, onTry, recheck) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
+    if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
     return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.').then(function (r) {
       if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
@@ -232,6 +235,7 @@
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (VS && VS.prod && upd()) { var eu = new Error('Still updating pets to the latest block, so pet numbers could be out of date. Nothing was burned. Try again in a moment.'); eu.unverified = true; eu.retry = true; return Promise.reject(eu); }
     if (VS && VS.prod && !VS.verified) { var ev = new Error(VS.stale ? 'Still checking the latest chain data, so pet numbers could be out of date. Nothing was burned. Try again in a moment.' : "Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now();
@@ -313,11 +317,12 @@
   function conflictMsg(e) { var raw = String((e && e.raw) || (e && e.message) || ''); if (e && !e.utxoHeld && !/safety check/i.test(e.message || '') && /already exists in .*mempool|pending .* already exists|mempool conflict|HTTP 409/i.test(raw)) { var x = new Error('One of your transactions for this is still pending (not in a block yet), and the node will not build another on top of it. Wait for it to confirm, then try again. Nothing was sent.'); Object.keys(e).forEach(function (k) { if (!(k in x)) x[k] = e[k]; }); x.raw = raw; x.conflict = true; return x; } return e; }
   function sendDex(plan, viewed) { return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
   function sendDexF(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (!(VS && VS.prod && VS.stale && !VS.verified && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
+    if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
     return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
       return sendDex0(plan, viewed); }); }
   function sendDex0(plan, viewed) {
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (VS && VS.prod && upd()) return Promise.reject(new Error('Still updating pets to the latest block. Nothing was sent. Try again in a moment.'));
     if (VS && VS.prod && !VS.verified) return Promise.reject(new Error(VS.stale ? 'Still checking the latest chain data. Nothing was sent. Try again in a moment.' : "Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now(); function release() { if (signing === mine) signing = 0; }

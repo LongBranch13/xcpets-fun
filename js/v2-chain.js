@@ -30,7 +30,7 @@
     var r = indexedDB.open(IDB_NAME, 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
   function idbKey() { return BUILD + '|' + inSig() + '|' + JSON.stringify(S.ops || []); }
   function idbGet() { var key = idbKey(); return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    idb().then(function (db) { var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.key === key && v.world ? v : null); };
+    idb().then(function (db) { var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? (v.key === key ? v : { key: v.key, world: v.world, old: true }) : null); };
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
    * so the page stays responsive; the worker also writes the IDB entry. The result is a structured clone of the same world (V.reindex() restores the
@@ -54,7 +54,7 @@
       function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
       job.fin = fin;
       try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id || done) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -68,8 +68,17 @@
     return job.p; }
   /* page-unresponsive-fix: the cross-visit cache read (up to IDB_WAIT_MS) always runs right before workerReplay(); it counts as busy, so a poller
    * ticking in that gap gets the last world / the pending placeholder instead of a full main-thread replay (measured 27 s on the owner's laptop). */
-  function fromIdb() { if (cache) return Promise.resolve(); wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
-    return idbGet().then(function (v) { end(); if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
+  /* boot-from-cache (owner approved 'Both', Oct 31 2026 2:28 PM CT): fromIdb(true) at boot also takes a saved world whose key does NOT match
+   * (an older tip, build, burns or local ops). It is shown at once as a PROVISIONAL world (S.provisional; world() hands it out while the worker
+   * builds the fresh one, the same way it hands out the last world mid-session) and is never the cache, so the fresh replay always runs and
+   * replaces it (bootShow/armFresh repaint the page). While it shows, js/v2-wallet.js and the inscribe flow wait for the fresh world (updating())
+   * and recheck the action against it. Replay inputs and results are unchanged; only what is on screen during the first seconds changes. */
+  var provKey = null, storedKey = null;
+  function fromIdb(prov) { if (cache) return Promise.resolve(); wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
+    return idbGet().then(function (v) { end(); if (!v || cache) return;
+      if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
+        lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
+      var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   /* gear-stick (2026-10-28): local ops (equips) are append-only, but each tab read them ONCE at load and save() wrote its whole list back. So a
@@ -92,9 +101,14 @@
    * world() hands back the last finished world (only if the local ops are unchanged), or before the first world a small placeholder
    * (w.pending = true, no pets) that pollers skip; they repaint when the real world lands (a new object). If the worker is off,
    * fails or is rejected, wkBusy is 0 and world() replays on the main thread exactly as before. Game results are unchanged. */
-  var lastW = null, lastOps = null, emptyW = null;
+  var lastW = null, lastOps = null, emptyW = null, lastSig = null;
   function peek() { return (cache || !wkBusy) ? world() : null; }
-  function keep(w) { lastW = w; lastOps = opsSig; return w; }
+  function keep(w) { lastW = w; lastOps = opsSig; lastSig = cacheSig + '#' + opsSig; if (S.provisional) S.provisional = false; return w; }
+  /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
+   * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
+  function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
+  function updating() { return !!S.provisional || (!current() && wkBusy > 0); }
+  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
   function world() {
     if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
       if (lastW && lastOps === oj) { if (V.syncCosts) V.syncCosts(lastW, (S.tip || 0) + 1); return lastW; }
@@ -209,7 +223,7 @@
     /* the boot line sits at the bottom of the page; a verify failure is moved to the top of <main> as a panel so it can't be missed */
     if (missing) { try { var mn = document.querySelector('main'); if (mn && st.parentNode !== mn) mn.insertBefore(st, mn.firstChild); st.classList.add('panel'); st.style.textAlign = 'center'; st.style.margin = '12px auto'; st.style.border = '2px solid #ffc93c'; st.setAttribute('role', 'alert'); } catch (e) {} } }
   function run(st, then) { stepEl = st; var done = false, w = setTimeout(function () { if (!done && st && !booted) { st.textContent = 'Using backup source, this can take a minute…'; st.className = 'small muted'; } }, BOOT_WATCH_MS); /* site-fast: calm note, the read keeps going (a real failure still shows Retry) */
-    load(true).then(fromIdb).then(workerReplay).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
+    load(true).then(function () { return fromIdb(true); }).then(function () { return worldOrShow(st, then); }).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
       function (e) { done = true; clearTimeout(w); if (booted) return;
         bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : '', e && e.missingBlocks); }); }
   /* site-fast-reread (2026-10-24): the status bar is a slim strip at the top of the page (in the flow, never fixed), so it can't cover buttons
@@ -236,7 +250,7 @@
     return reval; }
   /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
    * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
-  function whenFresh() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
+  function whenRead() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
     staleBar('Checking the latest chain data before your burn…', 'none');
     /* one try: join the running re-read, or run one now (a pending timer retry is pulled forward, not doubled). A failed read resolves
      * {ok:false} right away, so the button shows Retry instead of spinning; the background timer retries stay as they were. */
@@ -257,9 +271,43 @@
     checking++; var p = tryRead(0);
     return Promise.resolve(p).then(function () { checking--; clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
-  function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
+  /* boot-from-cache: whenFresh() = the chain re-read above (whenRead), then, while updating() (a provisional saved world, or the worker still
+   * rebuilding), it WAITS for the fresh world before answering. same is false when the world the page showed at the press is not the fresh one,
+   * so js/v2-wallet.js re-judges the action against the fresh world (recheck) or stops with nothing sent. */
+  function whenFresh() { var wasW = lastSig; return whenRead().then(function (r) { if (!r.ok || !updating()) return r;
+    staleBar('Updating pets to the latest block before your burn… Nothing is signed until this finishes.', 'none');
+    return waitWorld().then(function () { try { world(); } catch (e) {} var b = document.getElementById('v2stale'); if (b && !b.querySelector('button')) b.remove();
+      return { ok: !!S.verified, same: r.same && lastSig === wasW }; }); }); }
+  /* boot-from-cache: worldOrShow() = the old "wait for the worker" step, except when a provisional saved world is showing: then the page boots at
+   * once and armFresh() repaints it when the worker's fresh world lands. */
+  function worldOrShow(st, then) { var p = workerReplay(); if (!S.provisional || !lastW) return p; armFresh(); return null; }
+  var freshHooks = [], armed = false, RL = 'xcpets-v2-swr-reload', RL_GAP = 120e3;
+  function onFresh(fn) { if (typeof fn === 'function') freshHooks.push(fn); }
+  function updBar(on) { try { var b = document.getElementById('v2upd'); if (!on) { if (b) b.remove(); return; } if (b || !document.body) return; b = document.createElement('div'); b.id = 'v2upd'; b.setAttribute('role', 'status');
+    b.style.cssText = 'background:#1d1b2e;color:#ffc93c;padding:2px 10px;font-size:11px;line-height:1.5;text-align:center';
+    b.textContent = '⟳ Updating to the latest block… (showing your last saved copy' + (S.provisionalTip ? ', block ' + fmtN(S.provisionalTip) : '') + '; burns wait until it is done)';
+    var s0 = document.getElementById('v2stale'); document.body.insertBefore(b, s0 ? s0.nextSibling : document.body.firstChild); } catch (e) {} }
+  /* pages with an in-page repaint (js/v2.js: play, fight, breed, raid, rare room) register it with onFresh; the others reload in place once the
+   * fresh world is stored (it then boots from the exact cache in about a second, scroll kept), unless the visitor is typing / in a dialog / in a
+   * burn, or one auto reload already ran in the last 2 minutes: then the usual 'Newer game data is ready' Refresh bar shows instead. */
+  function busy() { try { var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox') return true;
+      if (document.querySelector('dialog[open], [aria-modal="true"]:not([hidden])')) return true; if (checking) return true; } catch (e) {} return false; }
+  function softReload() { var last = 0; try { last = Number(sessionStorage.getItem(RL)) || 0; } catch (e) {}
+    if (busy() || Date.now() - last < RL_GAP) { staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); return; }
+    try { sessionStorage.setItem(RL, String(Date.now())); } catch (e) {} var t0 = Date.now();
+    (function go() { if (storedKey === idbKeyStored || Date.now() - t0 > 4000) { if (busy()) return staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); try { location.reload(); } catch (e) {} return; } setTimeout(go, 100); })(); }
+  function repaint() { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {}
+    if (freshHooks.length) { freshHooks.forEach(function (fn) { try { fn(); } catch (e) { try { console.warn('[v2] repaint', e); } catch (x) {} } }); return; }
+    softReload(); }
+  function armFresh() { if (armed) return; armed = true; updBar(true);
+    /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once */
+    var settle = function () { return waitWorld().then(function () { if (!reval) return; return reval.then(settle, settle); }); };
+    settle().then(function () { try { world(); } catch (e) {} S.provisional = false; updBar(false);
+      /* hooks are registered by the page scripts the boot callback loads: give them until the window load event */
+      var fire = function () { setTimeout(repaint, 50); }; if (document.readyState === 'complete') fire(); else window.addEventListener('load', fire, { once: true }); }); }
+  function bootStale(st, then) { fromIdb(true).then(function () { return worldOrShow(st, then); }).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
-    if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
+    if (fromSession()) { fromIdb(true).then(function () { return worldOrShow(st, then); }).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
     if (/[?&]fresh=1/.test(location.search)) return run(st, then);
     refTip(); fromBest().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
@@ -289,5 +337,5 @@
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();
