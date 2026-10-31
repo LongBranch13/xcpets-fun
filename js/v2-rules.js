@@ -2316,8 +2316,11 @@
     /* pet changed hands since the last sweep: wallet flame looks come off it (the seller keeps its flame tier and can place them again) */
     w.pets.forEach(function (p) { var o = LO[p.id]; if (o && o !== p.owner && carryOn(p.lastGot)) { Object.keys(C).forEach(function (k) { if (C[k].at === p.id && C[k].holder === o) C[k].holder = p.owner; }); LO[p.id] = p.owner; return; } /* sale-carry: from the gate the looks go with the pet */
       if (o && o !== p.owner && p.flameLooks && p.flameLooks.length) p.flameLooks = []; LO[p.id] = p.owner; });
-    w.pets.forEach(function (p) { if (p.community || p.released) return; var S = lookSrcIds(p);
+    var M = LSM.get(w); if (!M) { M = {}; LSM.set(w, M); }
+    w.pets.forEach(function (p) { if (p.community || p.released) return; var q = p.questLooks, e = p.earn && p.earn.looks, sg = (q ? q.join(',') : '') + '|' + (e ? e.join(',') : '');
+      if (M[p.id] === sg) return; M[p.id] = sg; var S = lookSrcIds(p);
       ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; if (!C[key]) C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id, since: b }; }); }); }); }
+  var LSM = typeof WeakMap === 'function' ? new WeakMap() : { get: function () { return null; }, set: function () {} };
   function copyList(w) { var C = w.lookCopies; if (!C) { C = {}; w.pets.forEach(function (p) { if (p.community || p.released) return; var S = lookSrcIds(p); /* before the gate (display only): each look sits on its own pet */
       ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id }; }); }); }); } return Object.keys(C).sort(function (a, z) { var A = C[a], Z = C[z]; return A.kind !== Z.kind ? (A.kind === 'quest' ? -1 : 1) : A.src !== Z.src ? A.src - Z.src : A.id < Z.id ? -1 : 1; }).map(function (k) { return C[k]; }); }
   function copyOnPet(w, c) { var q = c.at ? w.byId[c.at] : null; return !!(q && q.owner === c.holder && !q.dead && !q.released); }
