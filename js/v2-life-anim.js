@@ -21,7 +21,7 @@
     sky: ['#1b1440', '#25195a', '#33206e', '#452a7e', '#5a3488'], night: ['#0b0a1f', '#141233', '#1d1a44', '#262150', '#342e5e'], cyan: '#7fe8ff', pink: '#ff8fd8', violet: '#b58cff' };
   var TC = ['#cfd6dd', '#4fc06b', '#3d8bff', '#ffcf3a'], TN = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
   var STAGES = ['EGG', 'HATCHLING', 'JUVENILE', 'ADULT', 'ELDER', 'MYTHIC'];
-  var LEN = { birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
+  var LEN = { sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function rnd(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -159,7 +159,55 @@
     if (f < 16) dither(g, s, x, GY - 20 + (16 - f), [9, 8, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 1, 1][f]); else if (f < 24 && f % 2) silhouette(g, s, x, y, '#ffffff'); else drawSpr(g, s, x, y + (f >= 34 ? (f >> 2) % 2 : 0));
     if (f >= 24) halo(g, CX, y + topY(s) - 4 - clamp(30 - f, 0, 6), '#fff3b0'); if (f >= 26) sparkle(g, f, 31, CX, 30, 100, C.cyan, '#ffffff');
     if (f >= 30) { text(g, 'GOD!', CX, 4, (f >> 1) % 2 ? '#ffffff' : C.cyan, 8); px(g, 22, GY + 4, C.ol, 84, 12); text(g, 'RISEN + MYTHIC', CX, GY + 6, '#ffffff', 5); } }
-  var PAINT = { birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
+  /* ---- batch 3: the shop (sold / bought / listed / closed), gifts and swaps. Data: w.listings (V2Rules addListing/applyMatch), w.giftLog (gift / swap / token move) */
+  function stall(g, f, shut) { px(g, 30, 22, C.ol, 3, GY - 22); px(g, 95, 22, C.ol, 3, GY - 22); px(g, 31, 22, '#8a5a2b', 1, GY - 22); px(g, 96, 22, '#8a5a2b', 1, GY - 22);
+    for (var i = 0; i < 12; i++) { var x = 26 + i * 6.5; px(g, x, 16, i % 2 ? '#ffffff' : '#e8414f', 7, 8); disc(g, x + 3, 24, 3, i % 2 ? '#ffffff' : '#e8414f', 2); } px(g, 26, 15, C.ol, 78, 1);
+    if (shut) { var sh = Math.round(clamp(shut, 0, 1) * (GY - 40)); for (var y = 0; y < sh; y += 3) { px(g, 33, 27 + y, '#9aa3ad', 62, 2); px(g, 33, 29 + y, '#5c636b', 62, 1); } }
+    px(g, 28, GY - 14, C.ol, 72, 14); px(g, 29, GY - 13, '#b07a3a', 70, 12); px(g, 29, GY - 13, '#e0b060', 70, 2); for (var k = 34; k < 98; k += 10) px(g, k, GY - 10, '#8a5a2b', 1, 9); }
+  function coin(g, x, y, f) { var e = (f >> 1) % 4; px(g, x - (e === 2 ? 0 : 2), y - 2, C.ol, e === 2 ? 2 : 5, 5); px(g, x - (e === 2 ? 0 : 1), y - 1, C.gold, e === 2 ? 1 : 3, 3); if (e !== 2) px(g, x - 1, y - 1, C.gold2, 1, 1); }
+  function tag(g, x, y, f, c) { var sw = (f >> 2) % 2; px(g, x + 2, y - 4, C.s2, 1, 4); px(g, x - 1 + sw, y, C.ol, 9, 6); px(g, x + sw, y + 1, c || '#ffffff', 7, 4); px(g, x + 1 + sw, y + 2, C.ol, 1, 1); }
+  function box(g, x, y, c, c2, lid) { px(g, x - 9, y - 14, C.ol, 18, 14); px(g, x - 8, y - 13, c, 16, 12); px(g, x - 1, y - 13, c2, 2, 12); px(g, x - 8, y - 9, c2, 16, 2);
+    var ly = y - 16 - (lid || 0); px(g, x - 10, ly, C.ol, 20, 4); px(g, x - 9, ly + 1, c, 18, 2); px(g, x - 1, ly, c2, 2, 4); px(g, x - 5, ly - 3, c2, 4, 3); px(g, x + 1, ly - 3, c2, 4, 3); }
+  function banner(g, s, y, bg, fg, w0) { var w = w0 || 76; px(g, CX - w / 2 - 1, y - 1, C.ol, w + 2, 13); px(g, CX - w / 2, y, bg, w, 11); text(g, s, CX, y + 2, fg, 8); }
+  function walk(f, a, b, n) { var k = clamp(f / n, 0, 1); return Math.round(a + (b - a) * k); }
+  function hop(f) { return (f >> 1) % 2 ? 2 : 0; }
+  function soldF(g, ev, f, P) { var p = P.list[0], s = sprite(p); skyBands(g, C.sky, f, 12); hills(g); grass(g); stall(g, f);
+    var x = f < 12 ? CX - 16 : walk(f - 12, CX - 16, W + 4, 16), y = f < 12 ? GY - 46 : f < 16 ? GY - 46 + (f - 12) * 4 : GY - 32 - hop(f); if (x < W) drawSpr(g, s, x, y); if (f < 12) tag(g, CX + 10, GY - 30, f);
+    var bag = clamp(Math.floor((f - 18) / 2), 0, 12); disc(g, 14, GY - 6, 7 + (bag >> 2), '#8a5a2b', 6 + (bag >> 2)); px(g, 11, GY - 14 - (bag >> 2), '#5a3a1b', 7, 3); text(g, '$', 14, GY - 10, C.gold, 5);
+    for (var i = 0; i < 9; i++) { var t = f - 18 - i * 2; if (t >= 0 && t < 10) coin(g, 12 + ((i * 5) % 9), 4 + t * 5.5, f + i); }
+    if (f >= 16) { var d = clamp(22 - f, 0, 6); banner(g, 'SOLD!', 3 - d * 3, '#e8414f', '#ffffff', 60); }
+    if (f >= 28 && ev.amt) { px(g, 26, GY + 4, C.ol, 76, 12); text(g, '+' + ev.amt, CX, GY + 6, C.gold, 5); } if (f >= 30) sparkle(g, f, 23, 14, GY - 12, 26, C.gold, C.gold2); }
+  function boughtF(g, ev, f, P) { var p = P.list[0], s = sprite(p); skyBands(g, C.sky, f, 12); hills(g); grass(g); stall(g, f);
+    for (var i = 0; i < 6; i++) { var t = f - i * 2; if (t >= 0 && t < 12) coin(g, 4 + t * 7, GY - 20 - Math.sin(t / 11 * Math.PI) * 26, f + i); }
+    var x = f < 18 ? CX - 16 : walk(f - 18, CX - 16, 4, 14), y = f < 18 ? GY - 46 : f < 22 ? GY - 46 + (f - 18) * 4 : GY - 32 - (f < 32 ? hop(f) : 0); drawSpr(g, s, x, y); if (f < 18) tag(g, CX + 10, GY - 30, f);
+    for (var h = 0; h < 3; h++) { var hs = f - 32 - h * 4; if (hs >= 0 && hs < 14) heart(g, x + 8 + h * 6, y - 4 - hs, hs > 10 ? C.heart2 : C.heart); }
+    if (f >= 30) { banner(g, 'NEW PET!', 3, C.bowl2, '#ffffff', 76); text(g, 'FROM THE SHOP', CX, GY + 6, C.gold2, 5); } }
+  function listedF(g, ev, f, P) { var p = P.list[0], s = sprite(p); skyBands(g, C.sky, f, 12); hills(g); grass(g); stall(g, f);
+    var x = f < 10 ? walk(f, W, CX + 18, 10) : CX - 16 + clamp(26 - (f - 10) * 6, 0, 34), y = f < 10 ? GY - 32 - hop(f) : f < 16 ? GY - 46 - [6, 10, 10, 8, 4, 0][f - 10] : GY - 46; drawSpr(g, s, x, y);
+    if (f >= 18) { var dy = clamp(24 - f, 0, 6) * 4; tag(g, CX + 10, GY - 30 - dy, f, C.gold2); } if (f >= 22) { banner(g, 'LISTED!', 3, '#2f7a24', '#ffffff', 70); if (ev.amt) text(g, 'ASKS ' + ev.amt, CX, GY + 6, C.gold2, 5); } if (f >= 22) sparkle(g, f, 41, CX, GY - 30, 40, C.gold2, '#ffffff'); }
+  function closedF(g, ev, f, P) { var p = P.list[0], s = sprite(p); skyBands(g, C.sky, f, 12); hills(g); grass(g);
+    var x = f < 18 ? CX - 16 : walk(f - 18, CX - 16, -34, 16), y = f < 18 ? GY - 46 : f < 22 ? GY - 46 + (f - 18) * 4 : GY - 32 - hop(f); stall(g, f, f >= 12 ? (f - 12) / 14 : 0); drawSpr(g, s, x, y);
+    if (f < 8) tag(g, CX + 10, GY - 30, f); else if (f < 16) tag(g, CX + 10, GY - 30 + (f - 8) * 4, f); if (f >= 26) { banner(g, 'OFF THE SHELF', 3, C.s4, '#ffffff', 112); text(g, 'STAYS WITH YOU', CX, GY + 6, '#ffffff', 5); } }
+  function giftInF(g, ev, f, P) { var p = P.list[0], s = sprite(p), land = 16, by = f < land ? 6 + f * 3.6 : GY; skyBands(g, C.sky, f, 14); hills(g); grass(g);
+    if (f < land) { ring(g, CX, by - 30, 12, '#ffffff', 6); px(g, CX - 12, by - 30, '#ffffff', 24, 1); for (var i = -1; i <= 1; i++) beam(g, CX + i * 11, by - 30, CX, by - 16, 0, C.s2); }
+    var open = f - land - 6, wig = f >= land && open < 0 ? ((f >> 1) % 2 ? 1 : -1) : 0;
+    if (open >= 0) { var r = clamp(open, 0, 6); drawSpr(g, s, CX - 16, GY - 32 - clamp(open * 3, 0, 18) + (open > 8 ? 18 - hop(f) : 0) - (open > 8 ? 18 : 0)); for (var c = 0; c < 14; c++) { var a = c / 14 * Math.PI * 2, rr = 6 + r * 4; px(g, CX + Math.cos(a) * rr, GY - 20 + Math.sin(a) * rr * 0.7 + open * 0.6, [C.heart, C.gold, C.cyan, C.grass2][c % 4], 2, 2); } }
+    box(g, CX + wig, by, '#e8414f', C.gold, open >= 0 ? 10 + open * 4 : 0); if (open >= 6) { banner(g, 'A GIFT!', 3, '#e8414f', '#ffffff', 64); if (ev.who) text(g, 'FROM PLAYER #' + ev.who, CX, GY + 6, C.gold2, 5); else if (ev.n > 1) text(g, ev.n + ' PETS', CX, GY + 6, C.gold2, 5); }
+    if (open >= 10) for (var h = 0; h < 3; h++) { var hs = open - 10 - h * 4; if (hs >= 0 && hs < 14) heart(g, CX - 10 + h * 8, GY - 40 - hs, hs > 10 ? C.heart2 : C.heart); } }
+  function giftOutF(g, ev, f, P) { var p = P.list[0], s = sprite(p); skyBands(g, C.sky, f, 14); hills(g); grass(g);
+    var drop = 12, fly = f - 24, by = f < drop ? 10 + f * 4.5 : GY - Math.max(0, fly) * 3.2; if (f < drop + 2) drawSpr(g, s, CX - 16, GY - 32 - (f < 8 ? hop(f) : 0));
+    if (f >= 2) { if (fly >= 0) { [[-8, '#ff8fd8'], [0, C.cyan], [8, C.gold]].forEach(function (b) { var bx = CX + b[0], bt = by - 34; px(g, bx, bt + 6, C.s2, 1, 14 + (b[0] ? 2 : 0)); disc(g, bx, bt, 4, b[1], 5); px(g, bx - 2, bt - 3, '#ffffff', 1, 2); }); }
+      if (f >= drop || f % 2 === 0) box(g, CX, Math.min(by, GY), '#3d8bff', C.gold, 0); }
+    if (f >= 30) { banner(g, 'GIFTED!', 3, '#3d8bff', '#ffffff', 64); text(g, ev.who ? 'TO PLAYER #' + ev.who : 'SENT', CX, GY + 6, C.gold2, 5); if (ev.n > 1) text(g, '+' + (ev.n - 1) + ' MORE', CX, 16, '#ffffff', 5); }
+    if (f >= 16 && f < 22) sparkle(g, f, 51, CX, GY - 10, 30, C.gold, '#ffffff'); }
+  function swapF(g, ev, f, P) { var a = P.list[0], b = P.list[1] || P.list[0], sa = sprite(a), sb = sprite(b), t = clamp((f - 8) / 16, 0, 1), L = 18, R = W - 50;
+    skyBands(g, C.sky, f, 14); hills(g); grass(g); var ax = Math.round(L + (R - L) * t), bx = Math.round(R - (R - L) * t), arc = Math.round(Math.sin(t * Math.PI) * 22);
+    if (f >= 4 && f < 26) { for (var i = 0; i < 20; i++) if ((i + (f >> 1)) % 3 === 0) { var k = i / 19; px(g, L + 16 + (R - L) * k, GY - 40 - Math.sin(k * Math.PI) * 22, C.cyan, 2, 1); px(g, L + 16 + (R - L) * k, GY - 4 + Math.sin(k * Math.PI) * 0, C.pink, 2, 1); } }
+    drawSpr(g, sa, ax, GY - 32 - arc - (f > 28 ? hop(f) : 0)); drawSpr(g, sb, bx, GY - 32 + (t > 0 && t < 1 ? 2 : 0) - (f > 28 ? hop(f + 1) : 0));
+    if (f < 26) { text(g, '#' + a.id, ax + 16, GY - 40 - arc, C.cyan, 5); text(g, '#' + b.id, bx + 16, GY + 3, C.pink, 5); }
+    if (f >= 12 && f < 20) sparkle(g, f, 61, CX, GY - 24, 30, C.cyan, C.pink);
+    if (f >= 26) { banner(g, 'SWAP!', 3, '#7a3fd0', '#ffffff', 56); text(g, '#' + a.id + ' <-> #' + b.id, CX, GY + 6, C.gold2, 5); } }
+  var PAINT = { sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
   function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
   function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
@@ -172,6 +220,13 @@
       case 'mythic': return '🌈 ' + n + ' reached MYTHIC: it never starves now' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets reached Mythic' : '');
       case 'birth': { var T = BT[ev.tier] || BT.twins, lab = T.t.replace('!', '').toLowerCase(); lab = lab.charAt(0).toUpperCase() + lab.slice(1);
         return (ev.tier === 'twins' ? '👯 Twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' hatched from one breed burn' : ev.tier === 'godborn' ? '😇 ' + n + ' is God-born: a child of two Gods' : ev.tier === 'gemini' ? '♊ Gemini twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' (rare hybrid tier)' : '🌟 ' + n + ' was born ' + (/^[AEIOUH]/.test(lab) ? 'an ' : 'a ') + lab + ' (rare hybrid tier: ' + T.sub.toLowerCase() + ')') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : ''); }
+      case 'sold': return '💰 SOLD! ' + n + ' went to a new home through the shop' + (ev.amt ? '. You got ' + ev.amt : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more sales' : '') + b;
+      case 'bought': return '🛒 You bought ' + n + ' from the shop' + (ev.amt ? ' for ' + ev.amt : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more new pets from the shop' : '') + b;
+      case 'listed': return '🏷️ ' + n + ' is in the shop' + (ev.sale ? ' (listing ' + ev.sale + ')' : '') + (ev.amt ? ', asking ' + ev.amt : '') + (ev.until ? ', open until block ' + Number(ev.until).toLocaleString('en-US') : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more listed' : '');
+      case 'closed': return '📦 ' + (ev.sale ? 'Listing ' + ev.sale + ' closed: ' : '') + n + ' is off the shelf and stays with you' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more listings closed' : '') + b;
+      case 'gift-in': return '🎁 ' + n + ' arrived as a gift' + (ev.who ? ' from player #' + ev.who : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets came with it' : '') + b;
+      case 'gift-out': return '🎁 You gave ' + n + (ev.who ? ' to player #' + ev.who : ' away') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets went too' : '') + b;
+      case 'swap': return '🔁 Swap done: you gave ' + n + ' and got ' + nm(P.list[1], ev.ids[1]) + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more swaps' : '') + b;
       case 'god': return '👼 ' + n + ' became a God: risen from the Pet Cemetery and Mythic' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more new Gods' : '');
       case 'starve': return '🪦 ' + n + ' starved (7 days unfed) and went to the Pet Cemetery' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets starved' : '') + b; }
     return ''; }
@@ -236,6 +291,22 @@
     /* starvation: my pets that died unfed (not raised as zombies since), newest first */
     var dead = []; w.pets.forEach(function (p) { if (p.owner !== ME || !p.dead || p.released || p.zombie || p.deathBlock == null || p.deathBlock > tip) return; if (p.deathBlock < (seen._m || tip) - FIRST_WINDOW) return; if (fresh('d:' + p.id + ':' + p.deathBlock, p.deathBlock)) dead.push(p); });
     if (dead.length) { dead.sort(function (a, b) { return b.deathBlock - a.deathBlock || tierOf(b) - tierOf(a); }); out.push({ kind: 'starve', ids: [dead[0].id], n: dead.length, block: dead[0].deathBlock }); }
+    /* the shop (w.listings), gifts + swaps (w.giftLog): one event per kind, newest first; first look plays only the last few hours (FIRST_FEED) */
+    var R = window.V2Rules, lo = (seen._m || tip) - FIRST_WINDOW, mk = { sold: [], bought: [], listed: [], closed: [], 'gift-in': [], 'gift-out': [], swap: [] };
+    function amtOf(S) { try { return R.saleAmountText(S.asset, S.price); } catch (e) { return ''; } }
+    function who(a) { try { var n = R.playerNo(w, a); return n == null ? '' : R.playerCode(n); } catch (e) { return ''; } }
+    (w.listings || []).forEach(function (S) { if (!S || (S.seller !== ME && S.buyer !== ME)) return; var A = { ids: [S.petId], sale: S.n, amt: amtOf(S) };
+      if (S.status === 'sold' && S.soldBlock >= lo && S.soldBlock <= tip) { if (S.seller === ME && fresh('sd:' + S.n, S.soldBlock, FIRST_FEED)) mk.sold.push(Object.assign({ block: S.soldBlock }, A)); if (S.buyer === ME && fresh('bt:' + S.n, S.soldBlock, FIRST_FEED)) mk.bought.push(Object.assign({ block: S.soldBlock }, A)); }
+      if (S.seller !== ME) return; var stt = ''; try { stt = R.saleState(w, S, tip + 1); } catch (e) { }
+      if (S.block >= lo && fresh('ls:' + S.n, S.block, FIRST_FEED) && stt === 'open') mk.listed.push(Object.assign({ block: S.block, until: S.expire }, A));
+      if (S.status === 'open' && (stt === 'ended' || stt === 'expired')) { var eb = stt === 'ended' && S.endBlock ? S.endBlock : S.expire + 1; if (eb >= lo && eb <= tip + 1 && fresh('cl:' + S.n, eb, FIRST_FEED)) mk.closed.push(Object.assign({ block: eb }, A)); } });
+    var gtx = {}; (w.giftLog || []).forEach(function (gr) { if (!gr || gr.sale || gr.block < lo || gr.block > tip || (gr.from !== ME && gr.to !== ME) || gr.from === gr.to) return; var p = by[gr.petId]; if (p && p.burnedTo) return;
+      var key = gr.swap ? 'sw:' + gr.swap : 'gf:' + gr.tx + ':' + (gr.to === ME ? 'i' : 'o'); (gtx[key] = gtx[key] || { key: key, block: gr.block, rows: [] }).rows.push(gr); });
+    Object.keys(gtx).forEach(function (key) { var G = gtx[key], r0 = G.rows[0]; if (!fresh(key, G.block, FIRST_FEED)) return;
+      if (r0.swap) { var gave = G.rows.filter(function (r) { return r.from === ME; })[0], got = G.rows.filter(function (r) { return r.to === ME; })[0]; mk.swap.push({ ids: [gave ? gave.petId : r0.petId, got ? got.petId : r0.petId], block: G.block, swap: r0.swap }); return; }
+      var inn = r0.to === ME; mk[inn ? 'gift-in' : 'gift-out'].push({ ids: G.rows.map(function (r) { return r.petId; }), block: G.block, who: who(inn ? r0.from : r0.to) }); });
+    ['sold', 'bought', 'gift-in', 'swap', 'gift-out', 'listed', 'closed'].forEach(function (kd) { var L = mk[kd]; if (!L.length) return; L.sort(function (a, b) { return b.block - a.block; });
+      var n = L.reduce(function (s, e) { return s + e.ids.length; }, 0), e0 = L[0]; out.push(Object.assign({}, e0, { kind: kd, ids: kd === 'swap' ? e0.ids : e0.ids.slice(0, 1), n: kd === 'swap' ? L.length : n })); });
     if (seen._m !== tip) { seen._m = tip; dirty = true; Object.keys(seen).forEach(function (x) { if (x !== '_m' && x.charAt(0) !== 'g' && seen[x] < tip - FIRST_WINDOW - 144) delete seen[x]; }); } /* older keys can never come back (see the block filters above) */
     if (dirty) try { localStorage.setItem(k, JSON.stringify(seen)); localStorage.setItem(markKey(ME), String(tip)); } catch (e) { } return out; }
   function markKey(ME) { return 'xcpets-life-mark-' + ME; } /* js/v2.js reads this mark to decide, without this file, whether anything is newer (see lifeNeeded there) */
@@ -254,6 +325,8 @@
     if (kind.indexOf('birth-') === 0) { var bt = kind.slice(6); if (!BT[bt]) return null; var two = bt === 'twins' || bt === 'gemini', cand = ids.length ? by[ids[0]] : null;
       if (!cand) { var withPar = alive.filter(function (p) { return p.parents && p.parents.length === 2; }), hit = withPar.filter(function (p) { return specialOf(w, p) === bt; }); cand = hit[0] || withPar.filter(function (p) { return two ? p.twinOf : true; }).sort(function (a, b) { return tierOf(b) - tierOf(a) || b.id - a.id; })[0] || alive[0]; }
       var bi = cand ? [cand.id] : []; if (two && cand) bi.push(cand.twinOf && by[cand.twinOf] ? cand.twinOf : (pick(alive.filter(function (p) { return p.id !== cand.id; }), 1)[0])); return { kind: 'birth', tier: bt, ids: bi, n: 1 }; }
+    if (/^(sold|bought|listed|closed|gift-in|gift-out)$/.test(kind)) return { kind: kind, ids: ids.length ? ids : pick(alive, 1), n: 1, amt: kind === 'closed' || /^gift/.test(kind) ? '' : '11 XCP', sale: 7, until: (w && w.tip || 0) + 1008, who: /^gift/.test(kind) ? '1F' : '' };
+    if (kind === 'swap') { var s1 = ids.length ? ids : pick(alive, 1); return { kind: 'swap', ids: s1.concat(pick((function (L) { var sp0 = by[s1[0]] && by[s1[0]].species, o = L.filter(function (p) { return p.species !== sp0 && stageOf(p) >= 1; }); return o.length ? o : L; })(alive.filter(function (p) { return p.id !== s1[0]; })), 1)), n: 1, swap: 1 }; }
     if (kind === 'starve') return { kind: 'starve', ids: ids.length ? ids : pick(mineL.filter(function (p) { return p.dead; }).concat(alive), 1), n: 1, block: id && by[id] ? by[id].deathBlock : null };
     return null; }
   var PV = false;
