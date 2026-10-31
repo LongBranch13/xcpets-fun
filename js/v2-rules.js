@@ -2766,10 +2766,10 @@
   /** cemGraves(w, b, q): the grave finder list (UI). q = { tier, stage, minDays, maxDays, diff, text, sort: 'rarest' | 'newest' | 'oldest' | 'easiest' | 'strongest' | 'id' }. */
   function cemGraves(w, b, q) { q = q || {}; b = b != null ? b : (w.tip || 0) + 1; var out = [], txt = String(q.text || '').trim().toLowerCase().replace(/^#/, '');
     w.pets.forEach(function (p) { if (p.community || p.released || isZ(p)) return; liveAt(w, p, b); if (!p.dead) return; var st = p.graveState || (p.resurrected ? 'halo' : null);
-      var d0 = p.zFirstDeath != null ? p.zFirstDeath : p.deathBlock, days = Math.max(0, day(b) - day(d0)), need = Math.max(0, cemTier(p.tier) - 1), dp = CEM_STATS.reduce(function (a, k) { return a + ((p.zDeath || p.stats)[k] || 0); }, 0);
+      var d0 = p.zFirstDeath != null ? p.zFirstDeath : p.deathBlock, days = Math.max(0, day(b) - day(d0)), need = p.mgDead ? Math.max(MG.NEED_TIER, cemTier(p.tier) - 1) : Math.max(0, cemTier(p.tier) - 1), dp = CEM_STATS.reduce(function (a, k) { return a + ((p.zDeath || p.stats)[k] || 0); }, 0);
       var diff = st ? 'closed' : cemTier(p.tier) >= 3 ? 'hard' : cemTier(p.tier) === 2 ? 'medium' : 'easy', A = w.cem && w.cem.altars[p.id];
       out.push({ id: p.id, name: p.name || null, species: p.species, tier: cemTier(p.tier), tierLabel: TIER_LABELS[cemTier(p.tier)], stage: p.stage, stageName: STAGE_NAMES[p.stage], daysDead: days, deathBlock: d0, owner: p.owner,
-        need: need, needLabel: TIER_LABELS[need] + '+', diff: diff, state: st, open: !!(A && A.status === 'open'), crumbles: p.zCrumbles || 0, deathPower: dp, ageFactor: cemAgeFactor(p, b), raisable: !st }); });
+        need: need, needLabel: TIER_LABELS[need] + '+', diff: diff, state: st, open: !!(A && A.status === 'open'), crumbles: p.zCrumbles || 0, deathPower: dp, ageFactor: cemAgeFactor(p, b), raisable: !st, mythic: !!p.mgDead }); });
     out = out.filter(function (g) { if (q.tier != null && q.tier !== '' && g.tier !== Number(q.tier)) return false; if (q.stage != null && q.stage !== '' && g.stage !== Number(q.stage)) return false;
       if (q.minDays != null && g.daysDead < q.minDays) return false; if (q.maxDays != null && g.daysDead > q.maxDays) return false; if (q.diff && g.diff !== q.diff) return false; if (q.raisable && !g.raisable) return false;
       if (txt && String(g.id) !== txt && (g.name || '').toLowerCase().indexOf(txt) < 0 && String(g.species).toLowerCase().indexOf(txt) < 0) return false; return true; });

@@ -164,6 +164,7 @@
   function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function caption(ev, P) { var n = nm(P.pet, ev.id), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
+    if (CAPS[ev.kind]) return CAPS[ev.kind](ev, P, n, b);
     switch (ev.kind) { case 'raise': return '🧟 ' + n + ' rose from the grave!' + b;
       case 'resurrect-win': return '😇 ' + n + ' is ALIVE again! Rolled ' + ev.roll + ', needed under ' + ev.need + b;
       case 'resurrect-fail': return '🪦 ' + n + ': Resurrection failed. Rolled ' + ev.roll + ', needed under ' + ev.need + '. Dust forever' + b;
@@ -196,6 +197,7 @@
   function zrec(p, tx) { if (!p) return null; if (p.zombie && (!tx || p.zombie.tx === tx)) return p.zombie; var L = p.zPast || []; for (var i = L.length - 1; i >= 0; i--) if (!tx || L[i].tx === tx) return L[i]; return p.zombie || null; }
   function mine(p, z, ME) { return !!ME && !!((p && p.owner === ME) || (z && (z.by === ME || z.prevOwner === ME))); }
   function fromLog(w, l, ME) { var p = w.byId[l.petId], m, z;
+    for (var xi = 0; xi < EXT.length; xi++) { var xe = EXT[xi](w, l, ME, { zrec: zrec, mine: mine }); if (xe !== undefined) return xe; } /* MYTHIC GOD LOOP: js/v2-mg-anim.js claims its own lines (undefined = not its line) */
     if (l.kind === 'raise') { z = zrec(p, l.tx); return mine(p, z, ME) ? { kind: 'raise', id: l.petId, block: l.block, tx: l.tx, key: 'raise:' + l.tx } : null; }
     if (l.kind === 'zfeed') { z = zrec(p); m = /\((#[\d, #]+)\)/.exec(l.msg || ''); var ids = m ? m[1].replace(/#/g, '').split(/,\s*/).map(Number) : [];
       return mine(p, z, ME) || ids.some(function (id) { var v = w.byId[id]; return v && v.owner === ME; }) ? { kind: 'zmeal', id: l.petId, victims: ids, block: l.block, tx: l.tx, key: 'zfeed:' + l.tx } : null; }
@@ -216,6 +218,10 @@
     if (steps.length) steps[steps.length - 1] = { pts: fin.points, ch: fin.chance };
     return { kind: 'pledge', id: p.id, victims: add.filter(function (e) { return e.id != null; }).map(function (e) { return e.id; }), gear: add.filter(function (e) { return e.gid; }).map(function (e) { return e.gid; }), pts0: i0.points, ch0: i0.chance, steps: steps, min: (V.CEM && V.CEM.RES_MIN) || 25 }; }
   var KINDS = { raise: 1, zfeed: 1, resurrect: 1, crumble: 1, hunt: 1, rpl: 1 };
+  /* extend({ kinds: {name: {len, key, paint, caption}}, logKinds: [..], from: fn(w, l, ME, kit) }): more animations in the same overlay (MYTHIC GOD LOOP, display only) */
+  var EXT = [], CAPS = {};
+  function extend(o) { Object.keys(o.kinds || {}).forEach(function (k) { var d = o.kinds[k]; LEN[k] = d.len; KEY_F[k] = d.key; PAINT[k] = d.paint; if (d.caption) CAPS[k] = d.caption; });
+    (o.logKinds || []).forEach(function (k) { KINDS[k] = 1; }); if (o.from) EXT.push(o.from); API.KINDS = Object.keys(PAINT); }
   function seenKey(ME) { return 'xcpets-cem-anim-seen-' + ME; }
   function collect(w, ME, tip) { if (!w || !w.log || !ME) return []; tip = tip || w.tip || 0; var k = seenKey(ME), seen = null; try { seen = JSON.parse(localStorage.getItem(k)); } catch (e) {} var first = !seen; seen = seen || {}; var out = [], dirty = first;
     function add(ev) { if (!ev || seen[ev.key]) return; seen[ev.key] = 1; dirty = true; if (first && tip - (ev.block || tip) > FIRST_WINDOW) return; out.push(ev); }
@@ -231,7 +237,7 @@
     var need = 2500, z = by[id] && by[id].zombie;
     if (kind === 'pledge' && by[id]) { var pe = Object.assign(pledgeSteps(w, by[id], (z && z.rpl) || [], eat.slice(0, Math.max(3, eat.length)).map(function (x) { return { id: x }; }).concat((q.get('gear') || '').split('.').filter(Boolean).map(function (g) { return { gid: 'g' + g.replace(/^g/, '') }; })), (w && w.tip) || 0), { block: (w && w.tip) || 0, preview: true });
       if (pe.steps.length && pe.steps[pe.steps.length - 1].pts === pe.pts0) { var pp = pe.pts0; pe.steps = pe.steps.map(function (st, k) { pp += ptsOf(by[pe.victims[k]] || { tier: 0 }); return { pts: pp, ch: Math.min(0.65, 0.05 + 0.6 * pp / (pp + 100)) }; }); } return pe; } /* preview only: pets the rules would refuse still show their tier points */
-    return { kind: kind, id: id, victims: eat, roll: kind === 'resurrect-fail' ? 6342 : 1873, need: need, block: (z && (kind === 'zmeal' ? z.fedAt : z.raisedAt)) || (w && w.tip) || 0, preview: true }; }
+    return { kind: kind, id: id, victims: eat, roll: /fail$/.test(kind) ? 6342 : 1873, need: need, seat: +q.get('seat') || 1, block: (z && (kind === 'zmeal' ? z.fedAt : z.raisedAt)) || (w && w.tip) || 0, preview: true }; }
   var PV = false;
   function preview(w, ME, o) { if (PV) return false; var ev = previewEvent(w, ME); if (!ev) return false; PV = true; setTimeout(function () { play(ev, Object.assign({ w: w }, o || {})); }, 400); return true; }
   /* standalone watcher for pages without v2.js's animation queue (cemetery.html): plays the new events one after another */
@@ -239,5 +245,5 @@
   function watch(w, ME, tip) { if (preview(w, ME)) return; collect(w, ME, tip).forEach(function (ev) { WQ.push(ev); }); next(); }
   function next() { if (BUSY || !WQ.length) return; var ev = WQ.shift(); setTimeout(function () { play(ev, { done: function () { setTimeout(next, 400); } }); }, 500); }
   var API = window.V2CemAnim = { last: null, play: play, paint: paint, collect: collect, watch: watch, preview: preview, previewKind: previewKind, caption: function (ev, w) { return caption(ev, pets(ev, w)); },
-    busy: function () { return !!BUSY; }, LEN: LEN, KEY_F: KEY_F, W: W, H: H, FPS: FPS, KINDS: Object.keys(PAINT) };
+    busy: function () { return !!BUSY; }, extend: extend, kit: { C: C, W: W, H: H, GY: GY, CX: CX, px: px, disc: disc, ring: ring, text: text, rnd: rnd, clamp: clamp, sprite: sprite, topY: topY, drawSpr: drawSpr, silhouette: silhouette, sky: sky, ground: ground, stone: stone, mound: mound, candles: candles, cracks: cracks, chips: chips, blood: blood, bones: bones, halo: halo, sparkle: sparkle, raiseF: raiseF, resF: resF, dustPet: dustPet, rollShown: rollShown, nm: nm }, LEN: LEN, KEY_F: KEY_F, W: W, H: H, FPS: FPS, KINDS: Object.keys(PAINT) };
 })();
