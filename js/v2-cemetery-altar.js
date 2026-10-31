@@ -208,7 +208,7 @@
     return '<label class="alt-tile tier-' + TID[p.tier] + (on ? ' on' : '') + (dis ? ' myth' : '') + (p.ripe && !dis ? ' ripe' : '') + '" data-id="' + p.id + '"' + (dis ? ' title="' + esc(cap1(p.why)) + '"' : '') + '>' +
       '<input type="checkbox" data-id="' + p.id + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + ' aria-label="Offer ' + esc(p.name) + ' #' + p.id + '">' +
       '<canvas width="32" height="32" data-sp="' + p.id + '" class="alt-sp"></canvas><span class="alt-tn">' + esc(p.name) + '</span><span class="alt-tm">#' + p.id + ' · <span class="tc">' + (p && p.resurrected ? 'God' : TL[p.tier]) + '</span></span>' +
-      '<span class="alt-tags">' + (dis ? '<span class="alt-tag lock">🔒 ' + esc(p.myth ? 'Mythic' : cap1(p.why).slice(0, 18)) + '</span>' : '') + (p.ripe && !dis ? '<span class="alt-tag ripe">🍂 RIPE</span>' + (p.dies != null ? '<span class="alt-tag dies" title="Unfed: it dies at block ' + p.dies + ' unless it is fed or offered first">☠ dies at block ' + p.dies + '</span>' : '') : '') + (p.worn.length ? '<span class="alt-tag gear" title="Its worn gear comes off and stays in your stash">🎒' + p.worn.length + ' back</span>' : '') + '</span></label>'; }
+      '<span class="alt-tags">' + (dis ? '<span class="alt-tag lock">🔒 ' + esc(p.myth ? 'Mythic' : cap1(p.why).slice(0, 18)) + '</span>' : '') + (p.ripe && !dis ? '<span class="alt-tag ripe">🍂 RIPE</span>' + (p.dies != null ? '<span class="alt-tag dies' + (soon(p) ? ' soon' : '') + '" title="Unfed: it dies at block ' + p.dies + ' unless it is fed or offered first' + (soon(p) ? ' (in ' + (p.dies - bk()) + ' blocks: it may die before your burns confirm)' : '') + '">☠ dies at block ' + p.dies + (soon(p) ? ' ⚠' : '') + '</span>' : '') : '') + (p.worn.length ? '<span class="alt-tag gear" title="Its worn gear comes off and stays in your stash">🎒' + p.worn.length + ' back</span>' : '') + '</span></label>'; }
   function renderTiles() { var el = document.getElementById('altTiles'); if (!el) return; var L = visible(), R = A.ctx.R, w = A.ctx.w; el.innerHTML = L.slice(0, A.shown).map(tile).join('') || '<p class="small muted">No pets in this filter.</p>';
     L.slice(0, A.shown).forEach(function (p) { var c = el.querySelector('canvas[data-sp="' + p.id + '"]'), wp = w.byId ? w.byId[p.id] : null; if (c && wp && wp.art && R.lazy) R.lazy(c, function () { return R.framesWith(wp.art, wp.stage, []); }, true); });
     var m = document.getElementById('altMore'); m.hidden = L.length <= A.shown; m.textContent = 'Show more (' + (L.length - A.shown) + ' left)';
@@ -234,6 +234,13 @@
     if (!A.offered.length) return 'Offer at least 1 living pet';
     if (mode === 'seance') { var v2 = V.cemView(w, G, b), need = v2.need, ok = A.offered.some(function (o) { return o.tier >= need; }) || selGear().some(function (g) { return gTier(g) >= need; }) || (v2.altar && v2.altar.givers.length); if (!ok) return TL[A.grave.tier] + ' grave needs 1 ' + TL[need] + '+ offering'; }
     return null; }
+  /* die-soon warning (UI only): a pet that dies before its burn confirms, or before the raise when it joins someone else's pool, no longer counts */
+  var SOON = 6;
+  function limit() { var c = A.ctx, v = A.grave && c.w.byId[A.grave.id] ? c.V.cemView(c.w, c.w.byId[A.grave.id], bk()) : null; return v && v.altar && v.altar.top && v.altar.top !== c.ME ? Math.max(SOON, v.altar.closesIn || 0) : SOON; }
+  function soon(p, n) { return p && p.dies != null && p.dies - bk() <= (n == null ? SOON : n); }
+  function dieWarn() { var n = limit(), L = A.offered.filter(function (o) { return o.kind === 'pet' && soon(o, n); }); if (!L.length) return '';
+    var at = Math.min.apply(null, L.map(function (o) { return o.dies; }));
+    return '<span class="alt-diewarn">⚠ ' + L.length + ' offered ' + (L.length === 1 ? 'pet dies' : 'pets die') + ' soon (' + (L.length === 1 ? 'at' : 'first at') + ' block ' + at + '). ' + (n > SOON ? 'This altar is led by someone else and closes in ' + n + ' blocks; a pet that dies before the raise no longer counts.' : 'If ' + (L.length === 1 ? 'it dies' : 'they die') + ' before your burns confirm, ' + (L.length === 1 ? 'it no longer counts' : 'they no longer count') + '.') + '</span> '; }
   /* the viewer's pets pledged to this grave's open altar that have died since (the engine stops counting them at the raise, cemCheck); UI only, reads the world */
   function deadPledges() { var c = A.ctx, w = c.w, V = c.V, b = bk(), Al = w.cem && w.cem.altars ? w.cem.altars[A.grave.id] : null, n = 0, at = 0, seen = {};
     if (!c.ME || !Al || Al.status !== 'open') return { n: 0, at: 0 };
@@ -248,9 +255,9 @@
     [['altHold', 'seance'], ['altRaiseNow', 'raise']].forEach(function (x) { var e = document.getElementById(x[0]); if (!e) return; var why = holdWhy(x[1]), L = why ? [] : plans(x[1]);
       e.disabled = !!why; e.title = why || (L.length + (L.length === 1 ? ' burn' : ' burns') + ', ' + fmt(cost(L)) + ' XCPETS in all'); var s = e.querySelector('.alt-c'); if (s) s.textContent = why ? '' : ' · ' + fmt(cost(L)) + ' XCPETS'; });
     var rz = document.getElementById('altRaiseNow'), rw = document.getElementById('altRaiseWhy'), rwhy = holdWhy('raise'), mine = v.altar && c.ME && (v.altar.top === c.ME || deadPledges().n || v.altar.givers.some(function (g) { return g.src === c.ME; }));
-    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? '🧟 Raise now: ' + rwhy : ''; }
+    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? (/^Your \d+ pledged/.test(rwhy) ? rwhy : '🧟 Raise now: ' + rwhy) : ''; }
     if (box) { var why = holdWhy('seance'), L = why ? [] : plans('seance');
-      box.innerHTML = (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living pledges') + '</span> ' : '') +
+      box.innerHTML = dieWarn() + (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living pledges') + '</span> ' : '') +
         (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'); } }
   function cap1(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
@@ -272,8 +279,8 @@
 
   /* ---------------------------------------------------------------- actions ---------------------------------------------------------------- */
   function offer(id, from) { if (A.rise) A.rise = null; var p = A.mine.filter(function (q) { return q.id === id; })[0]; if (!p || p.why || isOn(id)) return false;
-    var before = project().exact, o = { kind: 'pet', id: p.id, name: p.name, tier: p.tier, ripe: p.ripe, worn: p.worn, seq: ++A.seq }; A.offered.push(o); o.add = dec(project().exact - before);
-    SFX.offer(p.tier); fly(o, from); renderAll(); return true; }
+    var before = project().exact, o = { kind: 'pet', id: p.id, name: p.name, tier: p.tier, ripe: p.ripe, dies: p.dies, worn: p.worn, seq: ++A.seq }; A.offered.push(o); o.add = dec(project().exact - before);
+    SFX.offer(p.tier); fly(o, from); renderAll(); if (soon(p, limit())) toast('⚠ dies in ' + Math.max(0, p.dies - bk()) + (p.dies - bk() === 1 ? ' block' : ' blocks')); return true; }
   function takeBack(id) { A.offered = A.offered.filter(function (o) { return o.id !== id; }); A.tally = Math.max(0, A.tally - 1); SFX.back(); renderAll(); kick(); }
   function bind(el) { var R = A.ctx.R;
     el.querySelector('#altX').onclick = close;
