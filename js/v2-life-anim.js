@@ -21,7 +21,7 @@
     sky: ['#1b1440', '#25195a', '#33206e', '#452a7e', '#5a3488'], night: ['#0b0a1f', '#141233', '#1d1a44', '#262150', '#342e5e'], cyan: '#7fe8ff', pink: '#ff8fd8', violet: '#b58cff' };
   var TC = ['#cfd6dd', '#4fc06b', '#3d8bff', '#ffcf3a'], TN = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
   var STAGES = ['EGG', 'HATCHLING', 'JUVENILE', 'ADULT', 'ELDER', 'MYTHIC'];
-  var LEN = { sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
+  var LEN = { gear: 46, sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { gear: 40, sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function rnd(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -207,7 +207,29 @@
     if (f < 26) { text(g, '#' + a.id, ax + 16, GY - 40 - arc, C.cyan, 5); text(g, '#' + b.id, bx + 16, GY + 3, C.pink, 5); }
     if (f >= 12 && f < 20) sparkle(g, f, 61, CX, GY - 24, 30, C.cyan, C.pink);
     if (f >= 26) { banner(g, 'SWAP!', 3, '#7a3fd0', '#ffffff', 56); text(g, '#' + a.id + ' <-> #' + b.id, CX, GY + 6, C.gold2, 5); } }
-  var PAINT = { sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
+  /* ---- batch 4: a paid gear roll lands (after the Pepe Wheel reveal): a capsule in the piece's tier colour drops, pops, the real piece flies onto the pet (or into its bag when the slot is locked) */
+  var ICON = {};
+  function icon(item) { if (!item) return null; if (ICON[item] !== undefined) return ICON[item]; var out = null;
+    try { var c = window.V2Render && V2Render.iconCanvas ? V2Render.iconCanvas(item, '') : null; if (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height), a = d.data, n = c.width, bg = [a[0], a[1], a[2]], x0 = n, y0 = n, x1 = -1, y1 = -1;
+        for (var q = 0; q < n * n; q++) { var j = q * 4; if (!a[j + 3] || (Math.abs(a[j] - bg[0]) + Math.abs(a[j + 1] - bg[1]) + Math.abs(a[j + 2] - bg[2]) < 6)) { a[j + 3] = 0; continue; } var X = q % n, Y = (q / n) | 0; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+        if (x1 >= 0) { out = document.createElement('canvas'); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1; var t = document.createElement('canvas'); t.width = t.height = n; t.getContext('2d').putImageData(d, 0, 0); out.getContext('2d').drawImage(t, x0, y0, out.width, out.height, 0, 0, out.width, out.height); } } } catch (e) { out = null; }
+    ICON[item] = out; return out; } /* the real piece's own pixels (V2Render.iconCanvas), background keyed out and cropped; drawn at whole-pixel scale */
+  function piece(g, ev, x, y, big) { var t = clamp(ev.tier | 0, 0, 3), ic = icon(ev.item), w = ic ? ic.width : 6, h = ic ? ic.height : 6, r = Math.min(12, Math.round(Math.max(w, h) / 2) + 3);
+    if (big) { disc(g, x, y, r + 1, C.ol); disc(g, x, y, r, TC[t]); disc(g, x, y, r - 1, '#2a1f55'); }
+    if (ic) { g.save(); g.imageSmoothingEnabled = false; g.drawImage(ic, Math.round(x - w / 2), Math.round(y - h / 2)); g.restore(); } else { px(g, x - 3, y - 3, TC[t], 6, 6); px(g, x - 2, y - 2, C.ol, 4, 4); } }
+  function bag(g, x, f) { px(g, x - 7, GY - 12, C.ol, 14, 12); px(g, x - 6, GY - 11, '#8a5a2b', 12, 10); px(g, x - 6, GY - 11, '#a8743a', 12, 2); px(g, x - 3, GY - 15, C.ol, 6, 4); px(g, x - 2, GY - 14, '#b07a3a', 4, 2); px(g, x - 1, GY - 7, C.s2, 2, 2); }
+  function gearF(g, ev, f, P) { var p = P.list[0], s = sprite(p), t = clamp(ev.tier | 0, 0, 3), col = TC[t], px0 = CX - 30, py = GY - 32, cx = CX + 14, ty = topY(s); skyBands(g, C.sky, f, 14); hills(g); grass(g);
+    var inBag = !!ev.bag, bx = CX + 44; if (inBag) bag(g, bx, f);
+    if (f < 12) { var cy = -6 + f * 5.6; if (cy > GY - 6) cy = GY - 6; for (var k = 1; k < 4; k++) if (cy - k * 6 > 0) px(g, cx, cy - k * 6, k === 1 ? col : C.violet, 1, 3); disc(g, cx, cy, 6, C.ol); disc(g, cx, cy, 5, col); px(g, cx - 5, cy, C.ol, 11, 1); px(g, cx - 2, cy - 4, '#ffffff', 2, 2); }
+    else if (f < 18) { var wb = (f % 2 ? 1 : -1) * (f < 16 ? 1 : 0); disc(g, cx + wb, GY - 6, 6, C.ol); disc(g, cx + wb, GY - 6, 5, col); px(g, cx - 5 + wb, GY - 6, C.ol, 11, 1); px(g, cx - 2 + wb, GY - 10, '#ffffff', 2, 2); }
+    else if (f < 22) { var r0 = (f - 17) * 4; ring(g, cx, GY - 8, r0, col); ring(g, cx, GY - 8, r0 + 2, '#ffffff'); disc(g, cx - 4 - (f - 18), GY - 4, 4, col, 2); disc(g, cx + 4 + (f - 18), GY - 4, 4, col, 2); }
+    var end = inBag ? { x: bx, y: GY - 16 } : { x: px0 + 16, y: py + ty + 2 };
+    if (f >= 18 && f < 34) { var k2 = clamp((f - 24) / 8, 0, 1), rise = f < 24 ? (f - 18) * 3 : 18, x = cx + (end.x - cx) * k2, y = (GY - 10 - rise) + (end.y - (GY - 28)) * k2 - Math.sin(k2 * Math.PI) * 10;
+      if (t >= 2 && f < 26) rays(g, x, y, f, [col, '#ffffff'], 8); piece(g, ev, x, y, k2 < 0.7); if (f >= 20 && f < 26) sparkle(g, f, 41, x, y, 22, col, '#ffffff'); }
+    drawSpr(g, s, px0, py - (f >= 32 ? hop(f) : 0));
+    if (f >= 34) { if (inBag) { piece(g, ev, bx, GY - 18 - ((f >> 2) % 2), false); } else piece(g, ev, end.x, end.y - (f >= 32 ? hop(f) : 0), false); sparkle(g, f, 23, inBag ? bx : px0 + 16, inBag ? GY - 18 : py + 12, 30, col, '#ffffff');
+      banner(g, 'NEW GEAR!', 3, '#2a6f3a', '#ffffff', 80); text(g, TN[t], CX, 18, col, 5); if (p) text(g, '#' + p.id, px0 + 16, GY + 4, C.gold2, 5); } }
+  var PAINT = { gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
   function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
   function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
@@ -220,6 +242,7 @@
       case 'mythic': return '🌈 ' + n + ' reached MYTHIC: it never starves now' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets reached Mythic' : '');
       case 'birth': { var T = BT[ev.tier] || BT.twins, lab = T.t.replace('!', '').toLowerCase(); lab = lab.charAt(0).toUpperCase() + lab.slice(1);
         return (ev.tier === 'twins' ? '👯 Twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' hatched from one breed burn' : ev.tier === 'godborn' ? '😇 ' + n + ' is God-born: a child of two Gods' : ev.tier === 'gemini' ? '♊ Gemini twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' (rare hybrid tier)' : '🌟 ' + n + ' was born ' + (/^[AEIOUH]/.test(lab) ? 'an ' : 'a ') + lab + ' (rare hybrid tier: ' + T.sub.toLowerCase() + ')') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : ''); }
+      case 'gear': return '🎲 ' + n + ' got ' + (ev.label || 'a new piece') + ' (' + TN[clamp(ev.tier | 0, 0, 3)].toLowerCase() + (ev.slot ? ', ' + ev.slot : '') + ') from a paid gear roll' + (ev.bag ? ': it went to the bag (slot locked)' : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pieces came with it' : '');
       case 'sold': return '💰 SOLD! ' + n + ' went to a new home through the shop' + (ev.amt ? '. You got ' + ev.amt : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more sales' : '') + b;
       case 'bought': return '🛒 You bought ' + n + ' from the shop' + (ev.amt ? ' for ' + ev.amt : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more new pets from the shop' : '') + b;
       case 'listed': return '🏷️ ' + n + ' is in the shop' + (ev.sale ? ' (listing ' + ev.sale + ')' : '') + (ev.amt ? ', asking ' + ev.amt : '') + (ev.until ? ', open until block ' + Number(ev.until).toLocaleString('en-US') : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more listed' : '');
@@ -263,6 +286,11 @@
     var then = bev ? function () { if (reduced()) return done(); play(bev, { w: w, done: done, noQueue: true }); } : done;
     if (bev && n <= 2 && (n === 1 || bev.ids.length === 2)) return then(); /* one special egg (or one twin pair): its birth scene has the cracking egg already */
     play({ kind: n > 12 ? 'hatch-bulk' : 'hatch', ids: best.slice(0, n > 12 ? 3 : 5), n: n }, { w: w, done: then, noQueue: true }); }
+  /* ---- batch 4: wins (js/v2.js notifyWins, V2Rules.newWins: already once per piece) -> one 'gear' event for the best piece a PAID roll (src 'roll') gave my pet, or null */
+  function gearOf(w, wins, ME) { if (!w || !wins || !wins.length) return null; var by = w.byId || {}, L = wins.filter(function (x) { var p = x && x.rolledOn != null ? by[x.rolledOn] : null; return x && x.src === 'roll' && p && (!ME || p.owner === ME); }); if (!L.length) return null;
+    var best = L[0]; L.forEach(function (x) { if ((x.legendary ? 4 : x.tier || 0) > (best.legendary ? 4 : best.tier || 0)) best = x; }); var it = (w.items || {})[best.gid] || {};
+    return { kind: 'gear', ids: [best.rolledOn], n: L.length, item: best.item, label: best.label || best.item, tier: best.legendary ? 3 : best.tier | 0, slot: best.slotName || '', bag: it.bag != null && it.on !== best.rolledOn }; }
+  function gearRoll(w, wins, ME, done) { done = done || function () { }; var ev = null; try { ev = gearOf(w, wins, ME); } catch (e) { ev = null; } if (!ev || reduced() || BUSY) { done(); return; } play(ev, { w: w, done: done, noQueue: true }); }
   /* ---- confirmed events for one wallet, from the replayed world ---- */
   function seenKey(ME) { return 'xcpets-life-seen-' + ME; } function stKey(ME) { return 'xcpets-life-st-' + ME; }
   function careOf(w, p, tip, careAt) { var R = window.V2Rules; try { var th = R.petThresholds(w, p, tip), s = R.stageFor(careAt, th); if (s >= 5) return { a: 1, b: 1, mythic: true };
@@ -327,10 +355,13 @@
       var bi = cand ? [cand.id] : []; if (two && cand) bi.push(cand.twinOf && by[cand.twinOf] ? cand.twinOf : (pick(alive.filter(function (p) { return p.id !== cand.id; }), 1)[0])); return { kind: 'birth', tier: bt, ids: bi, n: 1 }; }
     if (/^(sold|bought|listed|closed|gift-in|gift-out)$/.test(kind)) return { kind: kind, ids: ids.length ? ids : pick(alive, 1), n: 1, amt: kind === 'closed' || /^gift/.test(kind) ? '' : '11 XCP', sale: 7, until: (w && w.tip || 0) + 1008, who: /^gift/.test(kind) ? '1F' : '' };
     if (kind === 'swap') { var s1 = ids.length ? ids : pick(alive, 1); return { kind: 'swap', ids: s1.concat(pick((function (L) { var sp0 = by[s1[0]] && by[s1[0]].species, o = L.filter(function (p) { return p.species !== sp0 && stageOf(p) >= 1; }); return o.length ? o : L; })(alive.filter(function (p) { return p.id !== s1[0]; })), 1)), n: 1, swap: 1 }; }
+    if (kind === 'gear') { var gp0 = ids.length ? ids : pick(alive, 1), its = (w && w.items) || {}, gk = Object.keys(its).filter(function (k) { return its[k] && its[k].item && !/crown|frame|fire|flame|aura/i.test((its[k].label || '') + ' ' + its[k].item); }) /* preview only: a plain piece */, tq = q.get('tier'), gt = tq != null && /^[0-3]$/.test(tq) ? +tq : 2;
+      var gi = gk.filter(function (k) { return its[k].rolledOn === gp0[0] && (its[k].legendary ? 3 : its[k].tier | 0) === gt; })[0] || gk.filter(function (k) { return (its[k].legendary ? 3 : its[k].tier | 0) === gt; })[0] || gk[0], G = gi ? its[gi] : {};
+      return { kind: 'gear', ids: gp0, n: 1, item: G.item || '', label: G.label || 'a new piece', tier: gt, slot: G.slot || '', bag: q.get('bag') === '1' }; }
     if (kind === 'starve') return { kind: 'starve', ids: ids.length ? ids : pick(mineL.filter(function (p) { return p.dead; }).concat(alive), 1), n: 1, block: id && by[id] ? by[id].deathBlock : null };
     return null; }
   var PV = false;
   function preview(w, ME, o) { if (PV) return false; var ev = previewEvent(w, ME); if (!ev) return false; PV = true; setTimeout(function () { play(ev, Object.assign({ w: w }, o || {})); }, 400); return true; }
-  API = window.V2LifeAnim = { birthOf: birthOf, specialOf: specialOf, BIRTH_KINDS: BIRTH_ORDER, last: null, play: play, paint: paint, hatch: hatch, collect: collect, preview: preview, previewKind: previewKind, previewEvent: previewEvent, caption: caption,
+  API = window.V2LifeAnim = { birthOf: birthOf, specialOf: specialOf, BIRTH_KINDS: BIRTH_ORDER, last: null, play: play, paint: paint, hatch: hatch, collect: collect, gearOf: gearOf, gearRoll: gearRoll, preview: preview, previewKind: previewKind, previewEvent: previewEvent, caption: caption,
     busy: function () { return !!BUSY; }, LEN: LEN, KEY_F: KEY_F, W: W, H: H, FPS: FPS, KINDS: Object.keys(PAINT) };
 })();
