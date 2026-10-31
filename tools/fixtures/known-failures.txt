@@ -1,5 +1,5 @@
 # FAIL lines that already failed on origin/main b0090a8 (2026-10-24) with the frozen fixture; format: <test file> | <line>
-breeding-v2-test.js | FAIL hybridParts: beard drawn on peepo/wojak/bobo/kevin/lenny; none on excluded
+breeding-v2-test.js | FAIL hybridParts: beard drawn on wojak/bobo/kevin/lenny; none on excluded
 hatchbot-warnings-test.js | FAIL live chain now (care 6942174, not 90%): no warnings due
 pet-gift-test.js | FAIL accept only once
 pet-gift-test.js | FAIL accept swaps the owners
