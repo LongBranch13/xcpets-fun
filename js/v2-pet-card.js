@@ -112,7 +112,7 @@
     var key = [w.tip, id, ME, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start), zb, H && H.pct, H && H.feral].join('|'); if (key === last) return; last = key;
     card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away);
     var sp = window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(p.species) : p.species;
-    $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + '×' : '') : myth ? 'Mythic' : TIERS[p.tier] || '') + '</span><span>' + esc(sp) + ' · ' + esc(p.stageName || '') + '</span>';
+    $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + '×' : '') : p.resurrected ? 'God' : myth ? 'Mythic' : TIERS[p.tier] || '') + '</span><span>' + esc(sp) + ' · ' + esc(p.stageName || '') + '</span>';
     $('pcFoot').textContent = 'No. ' + String(p.id).padStart(5, '0') + ' · blk ' + fmt(p.hatchBlock);
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';
     $('pcActs').innerHTML = acts(p, mine);

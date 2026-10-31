@@ -56,7 +56,7 @@
   function genOf(w, p, seen) { if (!p || !p.parents || !p.parents.length) return 0; seen = seen || {}; if (seen[p.id]) return 0; seen[p.id] = 1; var g = 0;
     p.parents.forEach(function (id) { var q = w.byId[id]; g = Math.max(g, 1 + genOf(w, q, seen)); }); return g; }
   function info(w, p, V, o) { o = o || {}; var t = o.tie || tieOf(w, p); if (!t) return null; var sc = o.score || null;
-    return { id: p.id, name: p.name, speciesLabel: o.speciesLabel || (V && V.speciesLabel ? V.speciesLabel(p.species) : p.species), tier: TIERS[p.tier] || String(p.tier || ''), score: sc ? sc.score : null, rank: sc ? sc.rank : null,
+    return { id: p.id, name: p.name, speciesLabel: o.speciesLabel || (V && V.speciesLabel ? V.speciesLabel(p.species) : p.species), tier: p.resurrected ? 'God' : TIERS[p.tier] || String(p.tier || ''), score: sc ? sc.score : null, rank: sc ? sc.rank : null,
       stageName: p.stageName, generation: genOf(w, p), bornBlock: p.hatchBlock, bornTx: p.hatchTx, stats: STATS.map(function (k) { return [k, (p.stats || {})[k] || 0]; }),
       parents: (p.parents || []).map(function (id) { var q = w.byId[id]; return { id: id, name: q ? q.name : '' }; }), asset: t.asset, tiedBlock: t.block, tiedTx: t.tx, tiedBy: t.by }; }
   /* ---- layouts ---- */

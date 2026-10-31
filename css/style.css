@@ -44,6 +44,7 @@ td { border-bottom: 1px dashed var(--line); padding: 6px 8px; vertical-align: to
 .card .t { display:flex; justify-content: space-between; align-items:center; margin-top: 8px; font-weight: 700; gap: 6px; }
 .card .m { color: var(--dim); font-size: 12px; margin-top: 4px; word-break: break-all; }
 .tier-common { background: var(--common); } .tier-uncommon { background: var(--uncommon); } .tier-rare { background: var(--rare); } .tier-legendary { background: var(--legendary); }
+.tier-god { background: linear-gradient(180deg,#fffbe6,#ffe58a); color:#3a2a00; box-shadow: 0 0 0 1px #c9b24a, 0 0 6px rgba(255,229,138,.55); } /* resurrected-breed-only: resurrected pets show 'God' (display only) */
 .card.preview { border-style: dashed; }
 footer { max-width: 1100px; margin: 0 auto; padding: 10px 24px 40px; color: var(--dim); text-align:center; }
 

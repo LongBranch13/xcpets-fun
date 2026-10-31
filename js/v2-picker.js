@@ -50,7 +50,7 @@
     return { matches: L.length, pages: pages }; }
   /* fix-display-mismatch (Oct 20 2026, display only): the chip number follows the sort (Pet Score / Rarity -> ⭐ score, Power / Newest -> ⚡ power) */
   function stat(w, p, sort) { return (sort === 'score' || sort === 'rarity') && window.PetScore ? '⭐' + score(w, p) : '<span' + ptA(p) + '>⚡' + pow(p) + '</span>'; }
-  function petChip(w) { return function (r, sort) { var p = r.pets[0]; return '<b>#' + p.id + '</b><span>' + esc(String(p.name || '').slice(0, 10)) + '</span><small>' + esc(TIERS[p.tier] || '') + ' · ' + stat(w, p, sort) + '</small>'; }; }
+  function petChip(w) { return function (r, sort) { var p = r.pets[0]; return '<b>#' + p.id + '</b><span>' + esc(String(p.name || '').slice(0, 10)) + '</span><small>' + esc((p.resurrected ? 'God' : TIERS[p.tier]) || '') + ' · ' + stat(w, p, sort) + '</small>'; }; }
   var CSS = '.pk{border:2px solid #4b3f7a;background:#120e22;padding:6px;margin:6px 0}.pk-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pk-q{flex:1 1 140px;min-width:0}.pk-top select{max-width:46%}' +
     '.pk-n{font-family:"Press Start 2P",monospace;font-size:9px;color:#ffd166}.pk-chips{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.pk-chip{font-size:12px;padding:3px 8px;border:2px solid #4b3f7a;background:#1b1530;color:#eee;border-radius:0;cursor:pointer}' +
     '.pk-chip.on{background:#ffd166;color:#140f24;border-color:#000}.pk-row{display:flex;align-items:stretch;gap:4px}.pk-arr{flex:0 0 30px;font-size:14px;background:#2b2350;color:#ffd166;border:2px solid #000;cursor:pointer}.pk-arr[disabled]{opacity:.35}' +

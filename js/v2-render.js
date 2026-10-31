@@ -1142,10 +1142,10 @@
   if (typeof document === 'undefined' || !document.addEventListener) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   /* content-fixes 2026-10-19: a dead pet is shared with cemetery wording, not a brag */
-  function memorial(p) { var V = window.V2Rules, sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, t = TL[p.tier] || '';
+  function memorial(p) { var V = window.V2Rules, sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, t = (p.resurrected ? 'God' : TL[p.tier]) || '';
     return 'Remembering ' + (p.name || ('#' + p.id)) + ' #' + p.id + ', ' + (/^[AEIOU]/.test(t) ? 'an ' : 'a ') + t + ' ' + sp + ', resting in the XCPETS Pet Cemetery.'; }
   function shareUrl(p) { var V = window.V2Rules, base = location.href.replace(/[^\/]*([?#].*)?$/, ''), link = base + 'pet.html?id=' + p.id;
-    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + (TL[p.tier] || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + ((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
   /* P9 (wizard-story-short 2026-10-21): 'Share to Telegram' sends the pet's dancing GIF to the XCPets group, client-side only (no bot token in the site):
    * phones with file sharing -> the share sheet with the GIF (the player picks the XCPets group); otherwise the GIF downloads and t.me/xcpets opens
@@ -1171,7 +1171,7 @@
     g.imageSmoothingEnabled = false; g.drawImage(s, 152, 40, 896, 896); /* 32px sprite x28 nearest-neighbour */
     var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, F = "'Press Start 2P', monospace"; g.textAlign = 'center'; g.fillStyle = '#ffffff';
     g.font = '48px ' + F; g.fillText(((p.name || '') + ' #' + p.id).slice(0, 22), W / 2, 1010);
-    g.fillStyle = col; g.font = '32px ' + F; g.fillText((TL[p.tier] || '') + ' ' + sp + ' · ' + (p.stageName || ''), W / 2, 1072);
+    g.fillStyle = col; g.font = '32px ' + F; g.fillText(((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' · ' + (p.stageName || ''), W / 2, 1072);
     g.fillStyle = '#3ddc84'; g.font = '24px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
   function toast(msg) { var t = document.createElement('div'); t.className = 'shtoast'; t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18221b;color:#fff;border:2px solid #3ddc84;border-radius:10px;padding:10px 16px;z-index:99999;font-size:14px;max-width:90vw;text-align:center';
     document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000); }
