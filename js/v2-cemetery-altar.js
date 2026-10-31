@@ -251,6 +251,8 @@
     function chunks(kind, list) { var res = [], cur = []; list.forEach(function (x) { var t = cur.concat([x]); if (!cur.length || V.cemPlan(w, kind, id, t, b).ok) cur = t; else { res.push(cur); cur = [x]; } }); if (cur.length) res.push(cur); return res; }
     chunks('gear', selGear().map(function (g) { return +String(g.gid).slice(1); }).sort(num)).forEach(function (ch) { out.push(V.cemPlan(w, 'gear', id, ch, b)); });
     var pc = chunks('seance', A.offered.map(function (o) { return o.id; }).sort(num));
+    var rn = A.offered.length && V.cemRunsPlan ? V.cemRunsPlan(w, mode === 'seance' ? 'seance' : 'pledge', id, A.offered.map(function (o) { return o.id; }), c.ME, b) : null; /* CEMETERY RUNS: fewest burns (usually 1) */
+    if (rn && rn.length < pc.length) return out.concat(rn);
     pc.forEach(function (ch, i) { out.push(V.cemPlan(w, mode === 'seance' && i === pc.length - 1 ? 'seance' : 'pledge', id, ch, b)); });
     return out; }
   function hold(mode) { var why = holdWhy(mode); if (why) { toast(why); return; } var L = plans(mode); if (!L.length || L.some(function (p) { return !p.ok; })) { toast('Could not fit the offering in the burn tags'); return; }
