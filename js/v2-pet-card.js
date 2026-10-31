@@ -15,11 +15,18 @@
   function me() { return (window.V2Mock && V2Mock.ME) || ''; }
   function viewOnly() { return !!(window.V2View && V2View.viewOnly && V2View.viewOnly()); }
   function isMythic(p) { return !!p && (p.stage >= 5 || !!p.mythicCare); }
+  /* nezu-card-fix (2026-10-30): a risen zombie (the engine's p.zombie record, same test as js/v2-zombies.js) is labelled and offered as a zombie, not a Mythic */
+  function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
+  function zh(p, w) { try { return window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null; } catch (e) { return null; } }
   function hrs(n) { var h = n * 10 / 60; return h < 48 ? '~' + Math.round(h) + ' h' : '~' + (h / 24).toFixed(1) + ' days'; }
 
   function acts(p, mine) {
     if (p.dead || p.released || p.burnedTo) return '<p class="small muted pc-none">' + (p.dead ? '🪦 Resting in the Pet Cemetery.' : 'Out of play.') + '</p>';
     var own = mine && !viewOnly(), q = function (h) { return own ? h + '-' + p.id : h; };
+    if (isZ(p)) { var zp = own ? 'play.html#pet-' + p.id : 'play.html'; /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt */
+      return '<div class="pc-actrow"><a class="pc-act pc-zb" href="' + zp + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>Feed it pets</b><small>' + (own ? 'Your discarded pets, on Play' : mine ? 'Connect the wallet on Play' : 'Owner only, on Play') + '</small></a>' +
+        '<a class="pc-act pc-bt" href="fight.html#' + (own ? 'battle-' + p.id : 'kekimus') + '"><span class="pc-ico" aria-hidden="true">⚔️</span><b>Battle</b><small>The arena</small></a></div>' +
+        '<p class="small muted pc-note">🧟 Risen zombie: no breeding, quests or XCPETS meals. It eats pets at the altar or wins hunts.' + (own ? '' : mine ? ' View only: connect the owner wallet on Play to act.' : '') + '</p>'; }
     var PAGE = function (h) { return /^(battle|kekimus)/.test(h) ? 'fight.html' : /^(breed|gooby|no-tail)/.test(h) ? 'breed.html' : /^rare-room/.test(h) ? 'rare-room.html' : 'play.html'; }; /* species-ranks-split: straight to the place's own page */
     var b = function (href, ico, label, sub, cls) { return '<a class="pc-act ' + cls + '" href="' + PAGE(href) + '#' + href + '"><span class="pc-ico" aria-hidden="true">' + ico + '</span><b>' + label + '</b><small>' + sub + '</small></a>'; };
     return '<div class="pc-actrow">' + b(q('rare-room'), '💎', 'Rare Room', own ? 'Gear for #' + p.id : 'Gear & spins', 'pc-rr') +
@@ -31,6 +38,7 @@
   function questsOn() { var V = window.V2Rules; return !!(V && V.questInfo && V.questOn && V.QUEST_CODES && V.QUESTS && V.questOn(tip() + 1)); }
   function quests(w, p, mine) {
     var h = '<h3 class="pc-qh">🗺️ Quests</h3>';
+    if (isZ(p)) return h + '<p class="pc-soon">Zombies cannot go on quests.</p>';
     if (!questsOn()) return h + '<p class="pc-soon">Quests open soon. Mythic pets will go on quests to Spam City, Cold Storage, Lord Kek\'s Swamp, the Wizard\'s Tower and the Burning Mines.</p>';
     var V = window.V2Rules, b = tip() + 1, I = V.questInfo(w, p, b) || {};
     if (I.away) { var A = I.away, Q = V.QUESTS[A.code] || {}, done = Math.max(0, Math.min(1, (b - A.start) / ((A.end - A.start) || 1)));
@@ -99,12 +107,12 @@
   var last = '';
   function paint() {
     var w = world(), id = +(new URLSearchParams(location.search).get('id') || 0), card = $('petCard'); if (!w || !w.byId || !card) return;
-    var p = w.byId[id]; if (!p) return; var ME = me(), mine = !!ME && p.owner === ME, myth = isMythic(p);
+    var p = w.byId[id]; if (!p) return; var ME = me(), mine = !!ME && p.owner === ME, zb = isZ(p), myth = !zb && isMythic(p), H = zb ? zh(p, w) : null;
     var I = questsOn() ? (window.V2Rules.questInfo(w, p, tip() + 1) || {}) : {};
-    var key = [w.tip, id, ME, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start)].join('|'); if (key === last) return; last = key;
-    card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead); card.classList.toggle('pc-away', !!I.away);
+    var key = [w.tip, id, ME, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start), zb, H && H.pct, H && H.feral].join('|'); if (key === last) return; last = key;
+    card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away);
     var sp = window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(p.species) : p.species;
-    $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(myth ? 'Mythic' : TIERS[p.tier] || '') + '</span><span>' + esc(sp) + ' · ' + esc(p.stageName || '') + '</span>';
+    $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + '×' : '') : myth ? 'Mythic' : TIERS[p.tier] || '') + '</span><span>' + esc(sp) + ' · ' + esc(p.stageName || '') + '</span>';
     $('pcFoot').textContent = 'No. ' + String(p.id).padStart(5, '0') + ' · blk ' + fmt(p.hatchBlock);
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';
     $('pcActs').innerHTML = acts(p, mine);
