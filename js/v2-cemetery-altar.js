@@ -250,7 +250,7 @@
     var rz = document.getElementById('altRaiseNow'), rw = document.getElementById('altRaiseWhy'), rwhy = holdWhy('raise'), mine = v.altar && c.ME && (v.altar.top === c.ME || deadPledges().n || v.altar.givers.some(function (g) { return g.src === c.ME; }));
     if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? '🧟 Raise now: ' + rwhy : ''; }
     if (box) { var why = holdWhy('seance'), L = why ? [] : plans('seance');
-      box.innerHTML = (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · top giver ' + esc(c.shortAddr(v.altar.top || '')) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') + '</span> ' : '') +
+      box.innerHTML = (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living pledges') + '</span> ' : '') +
         (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'); } }
   function cap1(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
