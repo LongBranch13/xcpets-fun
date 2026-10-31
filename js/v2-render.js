@@ -394,7 +394,7 @@
       spots.forEach(function (S) { var c = RP_SHEEN[S.r], q = S.q; d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
   if (V) V._rpMarkSpots = rpMarkSpots;
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); return fr; }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.species === 'borp' && !art.hybrid) return fr; /* BO PIGEON (branch borp-twins): its own body already carries the eye black + neck sheen */ if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
