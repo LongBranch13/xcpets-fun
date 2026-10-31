@@ -394,6 +394,89 @@
       spots.forEach(function (S) { var c = RP_SHEEN[S.r], q = S.q; d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
   if (V) V._rpMarkSpots = rpMarkSpots;
+  /* PIGEON + BO LOOKS (branch supreme-lineage, owner Oct 31 2026 'Needs more pigeon in them'; proposal): drawn only for art.rpLook / art.boLook, which
+   * nothing sets until V2Rules ACTIVATE_ONEOFONE_LOOKS_BLOCK is set. Looks only, 8-bit, no aura, no crown, no frame. Placement comes from the body's
+   * keyed render + V2Rules anatomy (silhouette, eye box, mouth box, core columns), so it lands the same way on every body, hybrids included:
+   *   rpLook  NECK  = an iridescent pigeon collar (teal / green / violet, a highlight that walks one pixel per frame) 2 rows deep across the whole neck,
+   *                   on the narrowest row under the face (eyes, mouth, beak, beard), skin pixels only (outline, eyes and mouth stay);
+   *           WINGS = rock-pigeon wings (grey, white edge, two black wing bars) folded on the body sides below the collar: both sides on a front-facing
+   *                   body, the back side on a profile body (Dodo, Doge, Nakamoto, FUNTRUMP, Homer); half outside the silhouette so they read on any body colour;
+   *           FEET  = Rarepigeon's red feet on the bottom row of the body (Stage 2+).
+   *   boLook  EYE BLACK = 2 rows under each eye, 1 px wider than the eye, with a 1 px light rim when the skin is dark (Wizard, Dodo, Kek) so it never vanishes;
+   *           #34 = Bo's black Raiders jersey patch with a white 34 (3x5 digits) and a silver trim on the chest (Stage 2+, when the chest has room;
+   *                 otherwise a black / silver jersey stripe). Replaces the old 1-row boMark / rpMark when present. */
+  var PG = { a: [0x14, 0x14, 0x1a], w: [0xf4, 0xf6, 0xfa], d: [0xb8, 0xc0, 0xce], b: [0x9a, 0xa3, 0xb4], c: [0x7a, 0x83, 0x96], e: [0x2a, 0x2d, 0x36] };
+  var PG_IRI = [[0x3f, 0xb8, 0xa0], [0x2e, 0x8a, 0x5a], [0x8a, 0x5a, 0xc8], [0x5e, 0x3a, 0x96]], PG_HI = [0xb8, 0xf0, 0xe0];
+  var PG_WING = ['.aaa.', 'awdba', 'adbba', 'aeeea', 'abbba', 'aeeea', '.aba.', '..a..'], PG_WING_S = ['.aa.', 'awda', 'aeea', 'abba', 'aeea', '.aa.'];
+  var BO34 = { '3': ['###', '..#', '.##', '..#', '###'], '4': ['#.#', '#.#', '###', '..#', '..#'] }, BO_C = { k: [0x2c, 0x2c, 0x36], d: [0x20, 0x20, 0x28], w: [0xf4, 0xf4, 0xee], s: [0xb9, 0xc3, 0xcf], p: [0x8d, 0x96, 0xa8] };
+  var LOOK_FACE = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1, homer: 1 };
+  function lookLum(c) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; }
+  function lookCtx(sh, art, stage, f) { var o0 = { stage: stage, frame: f, gearOverride: {} }, kr, A; try { kr = V._keyedRender(sh, art, o0); } catch (e) { return null; } if (!kr || !kr.keys || !V._anatomy) return null;
+    try { A = V._anatomy(kr.keys); } catch (e) { return null; } if (!A || !A.bb || A.bb.b < 0) return null; var k = kr.keys, j, eyes = [], mT = 29, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null;
+    for (j = 0; j < 29 * 32; j++) if (k[j] === 'mouth') { mT = j >> 5; break; }
+    for (j = 0; j < mT * 32; j++) if (BO_EYE_KEYS[k[j]]) eyes.push(j);
+    if (!eyes.length && SE) eyes = SE.list.filter(function (q) { return (q >> 5) < 29; });
+    if (!eyes.length) eyes = boStyleEyes(sh, art, o0, k);
+    var eb = eyes.length ? { l: 32, r: -1, t: 32, b: -1 } : null; eyes.forEach(function (q) { eb.l = Math.min(eb.l, q & 31); eb.r = Math.max(eb.r, q & 31); eb.t = Math.min(eb.t, q >> 5); eb.b = Math.max(eb.b, q >> 5); });
+    /* the face bottom: eyes, then the mouth / beak and any top-part (beard, hat brim) pixels that hang under the eyes in the head */
+    var bb = A.bb, faceB = eb ? eb.b : bb.t + Math.round(bb.h * 0.4), mb = -1; (A.mouth || []).forEach(function (q) { if (!eb || (q >> 5) <= eb.b + 7) mb = Math.max(mb, q >> 5); }); faceB = Math.max(faceB, mb);
+    var top = (kr.parts && kr.parts.top) || [], tb = -1; top.forEach(function (q) { if ((q >> 5) <= faceB + 6) tb = Math.max(tb, q >> 5); });
+    return { k: k, A: A, s: A.s, bb: bb, eb: eb, eyes: eyes, faceB: faceB, beardB: tb, sh: sh, spr: LOOK_SPR[sh] ? lookSprRegion(sh, stage, f) : null }; }
+  /* sprite-drawn bodies (all keys 'body' in the keyed render): the clothes / torso come from the sprite's own colour keys. Rows: [first row allowed] */
+  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 } };
+  function lookSprRegion(sh, stage, f) { var D = LOOK_SPR[sh], S = D && window[D.g]; if (!S || !S.draw) return null; var g; try { g = S.draw(stage, f, {}); } catch (e) { return null; } if (!g) return null;
+    var y0 = 0, y, x, on = {}, neck = -1; if (D.below) for (y = 0; y < 29; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === D.below) y0 = y + 2;
+    for (y = y0; y < 29; y++) { var n = 0; for (x = 0; x < 32; x++) { var kk = g[y] && g[y][x]; if (kk && D.k.indexOf(kk) >= 0) { on[y * 32 + x] = 1; n++; } } if (neck < 0 && n >= D.min) neck = y; }
+    if (neck < 0) return null; Object.keys(on).forEach(function (q) { if ((q >> 5) < neck) delete on[q]; }); return { on: on, neck: neck }; }
+  function lookRows(C) { var s = C.s, W = []; for (var y = 0; y < 29; y++) { var l = -1, r = -1; for (var x = 0; x < 32; x++) if (s[y * 32 + x]) { if (l < 0) l = x; r = x; } W[y] = l < 0 ? null : { l: l, r: r, w: r - l + 1 }; } return W; }
+  function lookNeckY(C) { if (C.spr) return C.spr.neck; var W = lookRows(C), bb = C.bb, y0 = C.faceB + 1, y1 = Math.min(bb.b - 3, bb.t + Math.round(bb.h * 0.78)), best = -1, bw = 99;
+    if (C.beardB > C.faceB && C.beardB < y1) y0 = Math.max(y0, C.beardB + 1); /* never across a beard / hood hanging under the face (Bitcoin Wizard) */
+    for (var y = y0; y <= Math.min(y1, y0 + 3); y++) if (W[y] && W[y].w < bw) { bw = W[y].w; best = y; }
+    return best < 0 ? Math.min(y0, bb.b - 3) : best; }
+  function lookCopy(img) { var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (var j = 0; j < d.length; j++) d[j] = img.data[j]; return d; }
+  function lookPut(d, q, c) { if (q < 0 || q >= 29 * 32) return; d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255; }
+  function lookSkinRgb(d, C, list) { var n = {}, best = null, bn = 0; list.forEach(function (q) { if (!boSkin(C.k, q)) return; var key = d[q * 4] + ',' + d[q * 4 + 1] + ',' + d[q * 4 + 2]; n[key] = (n[key] || 0) + 1; if (n[key] > bn) { bn = n[key]; best = key; } }); return best ? best.split(',').map(Number) : [128, 128, 128]; }
+  function lookBodyBelow(C, y0) { var out = [], eyeOn = {}, mouthOn = {}; C.eyes.forEach(function (q) { eyeOn[q] = 1; }); (C.A.mouth || []).forEach(function (q) { mouthOn[q] = 1; });
+    for (var q = Math.max(0, y0) * 32; q < 29 * 32; q++) if (C.s[q] && boSkin(C.k, q) && !eyeOn[q] && !mouthOn[q] && (!C.spr || C.spr.on[q])) out.push(q); return out; }
+  function rpLookPaint(d, C, stage, f, art) { var W = lookRows(C), bb = C.bb, ny = lookNeckY(C), face = LOOK_FACE[C.sh] || 0, painted = 0, y, x, q;
+    /* BODY: every skin pixel under the collar turns pigeon grey (shade kept: light / mid / dark by the pixel's own brightness) */
+    var body = lookBodyBelow(C, ny + 2);
+    body.forEach(function (q) { var L = lookLum([d[q * 4], d[q * 4 + 1], d[q * 4 + 2]]); lookPut(d, q, L > 165 ? PG.d : L > 95 ? PG.b : L > 45 ? PG.c : PG.e); painted++; });
+    /* WING BARS: two black rock-pigeon bars on the wing (the body side, both sides when front-facing, the back side in profile) */
+    var by0 = ny + 4; [0, 2].forEach(function (o) { y = by0 + o; if (y > bb.b - 1 || !W[y]) return; var row = body.filter(function (q) { return (q >> 5) === y; }); if (row.length < 4) return;
+      var xs = row.map(function (q) { return q & 31; }), lo = Math.min.apply(null, xs), hi = Math.max.apply(null, xs), len = Math.max(2, Math.min(4, Math.floor((hi - lo + 1) / 3)));
+      row.forEach(function (q) { var xq = q & 31, back = face > 0 ? xq - lo < len + 1 : face < 0 ? hi - xq < len + 1 : (xq - lo < len || hi - xq < len); if (back) { lookPut(d, q, PG.e); painted++; } }); });
+    /* NECK: 2 rows, teal-green over violet, one bright pixel walking along the collar with the frame (iridescence) */
+    for (var r = 0; r < 2; r++) { y = ny + r; if (y >= 29 || !W[y]) continue; var row2 = lookBodyBelow(C, y).filter(function (q) { return (q >> 5) === y; });
+      row2.forEach(function (q, i) { var c = r === 0 ? PG_IRI[(i + f) % 3 === 0 ? 1 : 0] : PG_IRI[(i + f) % 3 === 0 ? 3 : 2]; if (r === 0 && row2.length > 2 && i === (f * 2 + 1) % row2.length) c = PG_HI; lookPut(d, q, c); painted++; }); }
+    /* TUFT: Rarepigeon's white head feather (3 px) on the top of the head, unless the crown mark sits there */
+    if (!art.supremeMark && bb.t >= 3) { var tx = -1, tops = []; for (x = 0; x < 32; x++) if (C.s[bb.t * 32 + x]) tops.push(x); if (tops.length) { tx = tops[Math.floor(tops.length / 2)] + (face > 0 ? -1 : face < 0 ? 1 : 0);
+        [[0, -3, PG.a], [1, -3, PG.a], [-1, -2, PG.a], [0, -2, PG.w], [1, -2, PG.w], [2, -2, PG.a], [-1, -1, PG.a], [0, -1, PG.w], [1, -1, PG.a], [0, 0, PG.w]].forEach(function (t) { var X = tx + t[0], Y = bb.t + t[1]; if (X < 0 || X > 31 || Y < 0) return; var qq = Y * 32 + X; if (t[1] === 0 && !C.s[qq]) return; lookPut(d, qq, t[2]); painted++; }); } }
+    return painted; }
+  function boLookPaint(d, C, stage, f, art) { var painted = 0, W = lookRows(C), bb = C.bb;
+    /* EYE BLACK: per eye cluster, 2 rows directly below, 1 px wider each side; silver rim under it on dark skin */
+    if (C.eyes.length) { var plan = boMarkPlan(C.k, C.eyes); plan.forEach(function (E) { var y0 = E.by + 1, sk = [], x, y, q; for (y = y0; y < y0 + 2; y++) for (x = E.lx - 1; x <= E.rx + 1; x++) { q = y * 32 + x; if (y < 29 && x >= 0 && x < 32 && C.s[q] && boSkin(C.k, q) && C.eyes.indexOf(q) < 0) sk.push(q); }
+        if (!sk.length) return; var skin = lookSkinRgb(d, C, sk), dark = lookLum(skin) < 95;
+        sk.forEach(function (q) { lookPut(d, q, BO_C.k); painted++; });
+        if (dark) { y = y0 + 2; for (x = E.lx - 1; x <= E.rx + 1; x++) { q = y * 32 + x; if (y < 29 && x >= 0 && x < 32 && C.s[q] && boSkin(C.k, q) && C.eyes.indexOf(q) < 0) { lookPut(d, q, BO_C.s); painted++; } } } }); }
+    if (stage < 2) return painted;
+    var ny = lookNeckY(C), cl = C.A.core ? C.A.core[0] : bb.l, cr = C.A.core ? C.A.core[1] : bb.r, cx = Math.round((cl + cr) / 2);
+    /* JERSEY: Bo's black Raiders jersey under the neck (silver collar trim), unless the pigeon body is there (Bo x Rarepigeon line: grey pigeon + #34 patch) */
+    if (!art.rpLook) { var body = lookBodyBelow(C, ny), on = {}, yb = ny; body.forEach(function (q) { on[q] = 1; yb = Math.max(yb, q >> 5); }); var hgt = yb - ny + 1, pantsY = hgt >= 8 ? ny + Math.ceil(hgt * 0.6) : 99;
+      body.forEach(function (q) { var y = q >> 5, x = q & 31, L = lookLum([d[q * 4], d[q * 4 + 1], d[q * 4 + 2]]), edge = [q - 1, q + 1, q - 32, q + 32].some(function (n) { return n < 0 || n >= 29 * 32 || Math.abs((n & 31) - x) > 1 || !C.s[n]; });
+        lookPut(d, q, y >= pantsY ? (L > 110 ? BO_C.s : BO_C.p) : y === ny ? BO_C.s : L > 60 || edge ? BO_C.k : BO_C.d); painted++; }); }
+    /* #34: white 3x5 digits on a black 9 x 7 patch (silver trim on the pigeon body) centred on the chest, when the chest has room */
+    var PW = 9, PH = 7, best = null, reg = {}; lookBodyBelow(C, ny + 1).forEach(function (q) { reg[q] = 1; });
+    for (var y0 = ny + 2; y0 <= Math.min(bb.b - PH + 1, ny + 5); y0++) { var all = true; for (var yy = 0; yy < PH && all; yy++) for (var xx = 0; xx < PW; xx++) { var X = cx - 4 + xx, q = (y0 + yy) * 32 + X; if (X < 0 || X > 31 || !reg[q]) { all = false; break; } } if (all) { best = y0; break; } }
+    if (best != null) { for (var yy2 = 0; yy2 < PH; yy2++) for (var xx2 = 0; xx2 < PW; xx2++) { var q2 = (best + yy2) * 32 + cx - 4 + xx2, edge = art.rpLook && (yy2 === 0 || yy2 === PH - 1 || xx2 === 0 || xx2 === PW - 1); lookPut(d, q2, edge ? BO_C.s : BO_C.k); painted++; }
+      ['3', '4'].forEach(function (dg, i) { BO34[dg].forEach(function (rw, yy3) { for (var xx3 = 0; xx3 < 3; xx3++) if (rw[xx3] === '#') lookPut(d, (best + 1 + yy3) * 32 + cx - 3 + i * 4 + xx3, BO_C.w); }); }); }
+    else if (art.rpLook) { /* no room for the patch: a black jersey stripe with a silver edge across the pigeon chest */ var sy = Math.min(bb.b - 1, ny + 2); [0, 1].forEach(function (r) { lookBodyBelow(C, sy + r).filter(function (q) { return (q >> 5) === sy + r; }).forEach(function (q) { lookPut(d, q, r ? BO_C.s : BO_C.k); painted++; }); }); }
+    return painted; }
+  function oneOfOneLookFrames(fr, art, stage) { if (!fr || !art || !(art.rpLook || art.boLook) || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
+    return fr.map(function (img, f) { var C = lookCtx(sh, art, stage, f); if (!C) return img; var d = lookCopy(img), n = 0;
+      if (art.rpLook) n += rpLookPaint(d, C, stage, f, art); if (art.boLook) n += boLookPaint(d, C, stage, f, art);
+      if (V._lookLog) V._lookLog.push({ sh: sh, stage: stage, frame: f, n: n, neck: lookNeckY(C) }); return n ? Object.assign({}, img, { data: d }) : img; }); }
+  if (V) V._oneOfOneLookFrames = oneOfOneLookFrames;
   /* SUPREME LINEAGE CROWN MARK (branch supreme-lineage, proposal; drawn only for art.supremeMark, which nothing sets until
    * V2Rules ACTIVATE_SUPREME_LINEAGE_BLOCK is set): a small 5x3 gold crown floating one row above the top of the pet (keyed render), centred on
    * the top row; if there is no room above, it sits on the top of the head. Looks only. */
@@ -409,7 +492,7 @@
       spots.forEach(function (S) { d[S.q * 4] = S.c[0]; d[S.q * 4 + 1] = S.c[1]; d[S.q * 4 + 2] = S.c[2]; d[S.q * 4 + 3] = 255; });
       return Object.assign({}, img, { data: d }); }); }
   if (V) V._supremeMarkSpots = supremeMarkSpots;
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark) fr = rpMarkFrames(fr, art, stage); if (art && art.supremeMark) fr = supremeMarkFrames(fr, art, stage); return fr; }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.supremeMark) fr = supremeMarkFrames(fr, art, stage); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
