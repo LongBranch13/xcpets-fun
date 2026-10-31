@@ -2404,7 +2404,7 @@
   /* resurrected-breed-only (owner idea Oct 31 2026 6:08 AM CT): from ACTIVATE_RES_BREED_ONLY_BLOCK a resurrected pet (p.resurrected, set by a successful
    * Resurrection) breeds ONLY with another resurrected pet; a pair where exactly one parent is resurrected is rejected (pet:breed and Rug Me).
    * null = OFF (branch); set to tip + 6 or more at deploy so every earlier burn replays the same. */
-  var ACTIVATE_RES_BREED_ONLY_BLOCK = null;
+  var ACTIVATE_RES_BREED_ONLY_BLOCK = 973982; // LIVE (owner 'Yeah live' Oct 31 2026 7:52 AM CT): Bitcoin tip 973976 (mempool.space + blockstream.info, 7:53 AM CT) + 6, about 8:55 AM CT
   var RES_BREED_WHY = 'resurrected pets only breed with other resurrected pets';
   function resBreedOn(b) { return ACTIVATE_RES_BREED_ONLY_BLOCK != null && b != null && Number(b) >= ACTIVATE_RES_BREED_ONLY_BLOCK; }
   function isRes(p) { return !!(p && p.resurrected); }

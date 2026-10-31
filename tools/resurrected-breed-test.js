@@ -25,7 +25,7 @@ let K = 9; while (parseInt(sha(bh(R + K) + ':' + RES_TX + ':resurrect').slice(0,
 const RB = R + K;
 /* W(rows, tip, dex, o): owner-test mode (grave #18846, owner wallet only), like live; o.retie / o.resb = preview gate blocks */
 function W(rows, tip, dex, o) { o = o || {}; const c = L.load(), V = c.V2Rules; V._setCemeteryActivation(ON); V._setCemeteryPublic(null); V._setCemOwnerTest(OW, PET);
-  if (o.retie !== undefined) V._setResurrectRetieActivation(o.retie); if (o.resb !== undefined) V._setResBreedOnlyActivation(o.resb);
+  if (o.retie !== undefined) V._setResurrectRetieActivation(o.retie); V._setResBreedOnlyActivation(o.resb !== undefined ? o.resb : null); /* default = gate off (the shipped block is checked above) */
   const H = Object.assign({}, c.XCPETS_BLOCK_HASHES, S.hashes); rows.forEach(r => { if (!H[r.block_index]) H[r.block_index] = L.fakeHash(r.block_index); });
   return { V, w: V.replay(S.rows.concat(rows), H, [], { tip, live: c.LiveEngine.RealCore, dex }) }; }
 const dexOf = (credits, more) => { const d = { issuances: [iss(OW, 973099, TA)], orders: [], matches: [], credits: [cr(TA, OW, 973099, 'issuance'), cr(TA, SB, 973110)].concat(credits || []), destructions: [] };
@@ -43,7 +43,7 @@ const eggs = w => w.pets.filter(p => p.parents && p.parents.map(Number).sort((x,
 const g0why = (w, p) => V0.breedable(p, BB);
 const rej = w => w.log.filter(e => e.block === BB && e.kind === 'rejected').map(e => e.msg);
 /* 0. shipped value on the branch: null = OFF */
-ok(V0.resBreedOnlyGate() === null && V0.resBreedOn(BB) === false && V0.resBreedOn(1e9) === false, 'branch ships ACTIVATE_RES_BREED_ONLY_BLOCK = null (off; set to tip + 6 or more at deploy)');
+ok(V0.resBreedOnlyGate() === 973982 && V0.resBreedOn(973981) === false && V0.resBreedOn(973982) === true, 'shipped: ACTIVATE_RES_BREED_ONLY_BLOCK = 973982 (tip 973976 + 6)');
 ok(V0.RES_BREED_WHY === 'resurrected pets only breed with other resurrected pets', 'reason text');
 /* 1. unit: a reason only when exactly one parent is resurrected and the gate is on */
 { const V = L.load().V2Rules, R1 = { id: 1, resurrected: { block: 1 } }, R2 = { id: 2, resurrected: { block: 2 } }, N1 = { id: 3 }, N2 = { id: 4 };
