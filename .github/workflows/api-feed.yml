@@ -41,16 +41,26 @@ jobs:
           git add api/token-meta-state.json 2>/dev/null || true
           git add api/ties.json 2>/dev/null || true
           git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"
+          FEED=$(git rev-parse HEAD)
+          FILES=$(git diff --name-only --no-renames HEAD~1 HEAD -- api t)
+          bh() { node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).blockHeight||0)}catch(e){console.log(0)}})"; }
           for i in 1 2 3 4 5; do
             git fetch origin main
+            ours=$(git show $FEED:api/meta.json | bh); theirs=$(git show origin/main:api/meta.json | bh)
+            # Server feed (xcpets-bot-1) is the primary writer; if it already published our block or newer, this run is redundant.
+            if [ "$theirs" -ge "$ours" ]; then echo "::notice::main already at block $theirs (ours $ours); skipping"; exit 0; fi
             if ! git merge --no-edit --no-ff origin/main; then
-              git merge --abort
-              # Server feed (xcpets-bot-1) is the primary writer; if it already published our block or newer, this run is redundant.
-              ours=$(node -p "require('./api/meta.json').blockHeight"); theirs=$(git show origin/main:api/meta.json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).blockHeight))")
-              if [ "$theirs" -ge "$ours" ]; then echo "::notice::server feed already at block $theirs (ours $ours); skipping"; exit 0; fi
-              echo "merge conflict, giving up this run (ours $ours, main $theirs)"; exit 1
+              # Our feed data is newer: keep our whole copy of every feed file this run wrote (never mix JSON hunks).
+              BAD=$(git diff --name-only --diff-filter=U | grep -vE '^(api|t)/' || true)
+              if [ -n "$BAD" ]; then echo "merge conflict outside api/ t/: $BAD"; git merge --abort; exit 1; fi
+              echo "$FILES" | xargs -r git checkout $FEED --
+              if [ -n "$(git diff --name-only --diff-filter=U)" ]; then echo "unresolved: $(git diff --name-only --diff-filter=U)"; git merge --abort; exit 1; fi
+              for f in api/*.json; do node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || { echo "bad json $f"; git merge --abort; exit 1; }; done
+              git commit --no-edit -q
+              echo "merge conflict on feed files resolved with our newer block $ours (main was $theirs)"
             fi
             if git push origin HEAD:main; then echo "pushed"; exit 0; fi
+            git reset -q --hard $FEED
             sleep $((i * 10))
           done
           echo "push failed after retries"; exit 1
