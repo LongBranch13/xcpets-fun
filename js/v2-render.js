@@ -476,7 +476,7 @@
       var FONT = best.h === 3 ? BO34T : best.h === 4 ? BO34S : BO34; ['3', '4'].forEach(function (dg, i) { FONT[dg].forEach(function (rw, yy3) { for (var xx3 = 0; xx3 < 3; xx3++) if (rw[xx3] === '#') lookPut(d, (best.y + m + yy3) * 32 + best.x + m + i * 4 + xx3, BO_C.w); }); }); }
     else if (art.rpLook) { /* no room for the patch: a black jersey stripe with a silver edge across the pigeon chest */ var sy = Math.min(bb.b - 1, ny + 2); [0, 1].forEach(function (r) { lookBodyBelow(C, sy + r).filter(function (q) { return (q >> 5) === sy + r; }).forEach(function (q) { lookPut(d, q, r ? BO_C.s : BO_C.k); painted++; }); }); }
     return painted; }
-  function oneOfOneLookFrames(fr, art, stage) { if (!fr || !art || !(art.rpLook || art.boLook) || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
+  function oneOfOneLookFrames(fr, art, stage) { if (!fr || !art || !(art.rpLook || art.boLook) || stage < 1 || !V._keyedRender) return fr; if (art.species === 'borp' && !art.hybrid) return fr; /* Bo Pigeon body (branch borp-twins, if it merges) already IS the pigeon in Bo's kit: never paint the looks on top */ var sh = art.hybrid ? art.hybrid.shape : art.species;
     return fr.map(function (img, f) { var C = lookCtx(sh, art, stage, f); if (!C) return img; var d = lookCopy(img), n = 0;
       if (art.rpLook) n += rpLookPaint(d, C, stage, f, art); if (art.boLook) n += boLookPaint(d, C, stage, f, art);
       if (V._lookLog) V._lookLog.push({ sh: sh, stage: stage, frame: f, n: n, neck: lookNeckY(C) }); return n ? Object.assign({}, img, { data: d }) : img; }); }
