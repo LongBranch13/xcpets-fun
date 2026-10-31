@@ -1,25 +1,59 @@
 #!/usr/bin/env node
 /* One command for the whole suite from a fresh checkout:  node tools/run-tests   (or ./tools/run-tests)
- *   --replay-base <git-ref>  also run tools/replay-check.js --compare <ref> on the fixture snapshots and require SAME
- *   --jobs N                 tests in parallel (default: CPU count)
+ *   --replay-base <git-ref>  also run tools/replay-check.js --compare <ref> on the fixture snapshots; each must print exactly SAME
+ *                            (overall hash equal). "SAME (names aside)" or DIFF is a failure.
+ *   --jobs N                 up to N tests (and the replay checks) in parallel (default: min(4, CPU count)). --jobs 1 = one at a time.
+ *                            Memory gate: a test starts only if free RAM (MemAvailable) still covers its peak from the last run (2.5 GB
+ *                            if unknown) plus the growth left in the running ones and $XCPETS_TEST_RESERVE_MB (default 1500) to spare;
+ *                            the box is shared and has no swap, so more jobs never OOM-kill other agents. One test always may run.
+ *   --only a,b               run only the named test files (e.g. --only feed-all-test.js,raids-test.js)
+ *   --keep-tmp               keep each test's temp dir (printed at the end) instead of deleting it
  * 1) rebuilds the burn snapshots from tools/fixtures (tools/lib/fixtures.js), 2) runs every tools/*-test.js,
  * 3) a test fails on a non-zero exit or on any FAIL line that is not in tools/fixtures/known-failures.txt.
  * known-failures.txt = FAIL lines that already failed on main on 2026-10-24 (the frozen fixture predates later gates).
- * A known failure that now passes is reported so the list can shrink. Exit 0 only when nothing new fails. */
+ * A known failure that now passes is reported so the list can shrink. Exit 0 only when nothing new fails.
+ * Parallel safety: every test gets its own free localhost port (env XCPETS_TEST_PORT, picked by the OS, never a fixed
+ * port like 8099/8841) and its own temp dir (TMPDIR/TMP/TEMP and XCPETS_TEST_TMP), so tests never share a server,
+ * a browser profile or a temp file. Results are printed in file order, so the output is the same for any --jobs.
+ * Long tests start first (durations from the last run, kept outside the repo in $XCPETS_CACHE or ~/.cache/xcpets). */
 'use strict';
-const fs = require('fs'), path = require('path'), os = require('os'), { spawn, execFileSync } = require('child_process');
+const fs = require('fs'), path = require('path'), os = require('os'), net = require('net'), { spawn } = require('child_process');
 const T = __dirname, ROOT = path.resolve(T, '..'), A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
+const T0 = Date.now();
 const made = require('./lib/fixtures').ensure(); if (made.length) console.log('fixtures: built ' + made.join(', '));
 const KNOWN = new Set(fs.readFileSync(path.join(T, 'fixtures', 'known-failures.txt'), 'utf8').split('\n').filter(l => l && !l.startsWith('#')));
-const tests = fs.readdirSync(T).filter(f => /-test\.js$/.test(f)).sort(), jobs = +(opt('--jobs') || os.cpus().length || 2);
+const only = opt('--only') ? opt('--only').split(',').map(s => s.trim()).filter(Boolean) : null;
+const tests = fs.readdirSync(T).filter(f => /-test\.js$/.test(f) && (!only || only.includes(f))).sort();
+const jobs = Math.max(1, +(opt('--jobs') || Math.min(4, os.cpus().length || 2)) | 0), keepTmp = A.includes('--keep-tmp');
 const failLine = l => /^\s*(FAIL|not ok)\b/.test(l) || /\b[1-9]\d* (FAILED|failed)\b/.test(l) || /^\s*(AssertionError|Error:|TypeError|ReferenceError)/.test(l);
-function runOne(f) { return new Promise(res => { const t0 = Date.now(), p = spawn(process.execPath, [path.join(T, f)], { cwd: ROOT, env: Object.assign({}, process.env, { XCPETS_TEST: '1' }) });
+const RUN_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'xcpets-run-tests-'));
+const CACHE = process.env.XCPETS_CACHE || path.join(os.homedir(), '.cache', 'xcpets'), TIMES = path.join(CACHE, 'run-times.json');
+let times = {}; try { times = JSON.parse(fs.readFileSync(TIMES, 'utf8')); } catch (e) {}
+const MEMF = path.join(CACHE, 'run-mem.json'); let mem = {}; try { mem = JSON.parse(fs.readFileSync(MEMF, 'utf8')); } catch (e) {}
+const MB = 1 << 20, RESERVE = (+process.env.XCPETS_TEST_RESERVE_MB || 1500) * MB, PEAK_DEFAULT = 2500 * MB;
+function availMem() { try { const m = /MemAvailable:\s+(\d+) kB/.exec(fs.readFileSync('/proc/meminfo', 'utf8')); if (m) return +m[1] * 1024; } catch (e) {} return os.freemem(); }
+function rssOf(pid) { try { const m = /VmRSS:\s+(\d+) kB/.exec(fs.readFileSync('/proc/' + pid + '/status', 'utf8')); return m ? +m[1] * 1024 : 0; } catch (e) { return 0; } }
+const running = new Map(); /* pid -> { f, peak (bytes, observed this run) } */
+setInterval(() => running.forEach((r, pid) => { r.peak = Math.max(r.peak, rssOf(pid)); }), 500).unref();
+const want = f => mem[f] || PEAK_DEFAULT;
+let pend = 0; /* admitted but not spawned yet */
+function roomFor(f) { if (!running.size && !pend) return true; let grow = pend; running.forEach((r, pid) => { grow += Math.max(0, want(r.f) - rssOf(pid)); }); return availMem() - grow - want(f) >= RESERVE; }
+const usedPorts = new Set();
+function freePort() { return new Promise((res, rej) => { const s = net.createServer(); s.unref(); s.on('error', rej);
+  s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => usedPorts.has(p) ? freePort().then(res, rej) : (usedPorts.add(p), res(p))); }); }); }
+function child(args, tag) { return new Promise(async res => { const port = await freePort(), tmp = fs.mkdtempSync(path.join(RUN_TMP, tag.replace(/[^\w.-]+/g, '_') + '-'));
+  const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+  const t0 = Date.now(), p = spawn(process.execPath, args, { cwd: ROOT, env }), me = { f: tag, peak: 0 }; running.set(p.pid, me); pend -= want(tag);
   let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
   const kill = setTimeout(() => { out += '\nFAIL timeout after 600 s'; p.kill('SIGKILL'); }, 600000);
-  p.on('close', code => { clearTimeout(kill); res({ f, code, out, ms: Date.now() - t0 }); }); }); }
+  p.on('close', (code, sig) => { clearTimeout(kill); running.delete(p.pid); if (me.peak) mem[tag] = me.peak; if (sig) out += '\nkilled by ' + sig + (sig === 'SIGKILL' ? ' (out of memory? see dmesg)' : ''); if (!keepTmp) fs.rmSync(tmp, { recursive: true, force: true }); res({ code, out, ms: Date.now() - t0, port, tmp }); }); }); }
+const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.json', 'snap-972901.json'];
+const tasks = tests.map(f => ({ kind: 'test', f, args: [path.join(T, f)] }))
+  .concat(base ? SNAPS.map(s => ({ kind: 'replay', f: 'replay ' + s, s, args: [path.join(T, 'replay-check.js'), '--compare', base, '--snap', path.join(T, 'snapshots', s)] })) : []);
 (async () => {
-  const q = tests.slice(), results = []; await Promise.all(Array.from({ length: Math.min(jobs, q.length) }, async () => { while (q.length) results.push(await runOne(q.shift())); }));
-  results.sort((a, b) => a.f < b.f ? -1 : 1); let bad = 0; const seenKnown = new Set();
+  const q = tasks.slice().sort((a, b) => (times[b.f] || 0) - (times[a.f] || 0) || (a.f < b.f ? -1 : 1)), done = [];
+  await Promise.all(Array.from({ length: Math.min(jobs, q.length) }, async () => { while (q.length) { const i = q.findIndex(t => roomFor(t.f)); if (i < 0) { await new Promise(r => setTimeout(r, 1000)); continue; } const t = q.splice(i, 1)[0]; pend += want(t.f); done.push(Object.assign(t, await child(t.args, t.f))); } }));
+  const results = done.filter(r => r.kind === 'test').sort((a, b) => a.f < b.f ? -1 : 1); let bad = 0; const seenKnown = new Set();
   for (const r of results) {
     const fails = r.out.split('\n').map(l => l.replace(/\s+$/, '').replace(/\d+(\.\d+)?\s?ms\b/g, '')).filter(failLine).map(l => r.f + ' | ' + l.trim());
     const fresh = fails.filter(l => !KNOWN.has(l)); fails.filter(l => KNOWN.has(l)).forEach(l => seenKnown.add(l));
@@ -28,13 +62,14 @@ function runOne(f) { return new Promise(res => { const t0 = Date.now(), p = spaw
     console.log((ok ? 'ok   ' : 'FAIL ') + r.f + ' (' + (r.ms / 1000).toFixed(1) + ' s' + (fails.length ? ', ' + (fails.length - fresh.length) + ' known failure line(s)' : '') + ')');
     fresh.forEach(l => console.log('       new: ' + l)); if (exitBad) console.log('       exit code ' + r.code + '\n' + r.out.split('\n').slice(-15).join('\n'));
   }
-  const gone = [...KNOWN].filter(l => !seenKnown.has(l)); if (gone.length) console.log('\nknown failures that no longer show (remove from tools/fixtures/known-failures.txt):\n  ' + gone.join('\n  '));
-  const base = opt('--replay-base');
-  if (base) for (const s of ['snap-971786.json', 'snap-972883.json', 'snap-972901.json']) {
-    let o = ''; try { o = execFileSync(process.execPath, [path.join(T, 'replay-check.js'), '--compare', base, '--snap', path.join(T, 'snapshots', s)], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26 }); } catch (e) { o = String(e.stdout || '') + String(e.stderr || '') + '\nERROR ' + e.message; }
-    const same = /\bSAME\b/.test(o) && !/\bDIFF/i.test(o); if (!same) bad++;
-    console.log((same ? 'ok   ' : 'FAIL ') + 'replay ' + s + ' vs ' + base + ': ' + (same ? 'SAME' : 'DIFFERENT\n' + o.split('\n').slice(-20).join('\n')));
+  const gone = only ? [] : [...KNOWN].filter(l => !seenKnown.has(l)); if (gone.length) console.log('\nknown failures that no longer show (remove from tools/fixtures/known-failures.txt):\n  ' + gone.join('\n  '));
+  for (const s of base ? SNAPS : []) { const r = done.find(x => x.s === s), o = r.out;
+    /* exact: replay-check prints exactly 'SAME' only when the overall hash (pets, items, community, fights, breed requests) matches */
+    const same = r.code === 0 && o.split('\n').some(l => l.trim() === 'SAME') && !/\bDIFF\b|names aside/.test(o); if (!same) bad++;
+    console.log((same ? 'ok   ' : 'FAIL ') + 'replay ' + s + ' vs ' + base + ': ' + (same ? 'SAME' : 'DIFFERENT (exit ' + r.code + ')\n' + o.split('\n').slice(-20).join('\n')));
   }
-  console.log('\n' + (bad ? bad + ' problem(s)' : 'all ' + results.length + ' test files pass' + (base ? ', replay SAME' : '')));
+  try { fs.mkdirSync(CACHE, { recursive: true }); done.forEach(r => { times[r.f] = r.ms; }); [[TIMES, times], [MEMF, mem]].forEach(([F, o]) => { const tf = F + '.' + process.pid; fs.writeFileSync(tf, JSON.stringify(o)); fs.renameSync(tf, F); }); } catch (e) {}
+  if (keepTmp) console.log('\ntemp dirs kept in ' + RUN_TMP); else fs.rmSync(RUN_TMP, { recursive: true, force: true });
+  console.log('\n' + (bad ? bad + ' problem(s)' : 'all ' + results.length + ' test files pass' + (base ? ', replay SAME' : '')) + '  [--jobs ' + jobs + ', wall ' + ((Date.now() - T0) / 1000).toFixed(1) + ' s]');
   process.exit(bad ? 1 : 0);
 })();
