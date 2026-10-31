@@ -36,7 +36,7 @@ eq('raised-only wording (no "own a living Mythic")', /\bown(s)? a (living )?Myth
 eq('cemetery gate + public block + owner test grave/wallet', [N.cemGate, N.cemPublic, N.cemOwnerGrave, N.cemOwner], [V.cemeteryGate(), V.cemPublicBlock(), V.CEM.OWNER_GRAVE, V.CEM.OWNER]);
 eq('cemetery pool, feral, cap, ripe', [N.cemPool, N.cemFeral, N.cemCap, N.cemRipe], [V.CEM.POOL, V.CEM.FERAL, V.CEM.CAP, +(/CEM_RIPE = ([\d.]+)/.exec(RS) || [])[1]]);
 const cem = T.CH.filter(ch => ch.id === 'cem')[0], cs = cem.steps.map(x => typeof x[1] === 'function' ? x[1]() : x[1]).join('\n');
-eq('cemetery chapter teaches the raise (Hold seance, Pledge only, Raise now, Take all back, My Pets)', ['Hold seance', 'Pledge only', 'Raise now', 'Take all back', 'My Pets'].every(k => cs.indexOf(k) >= 0), true);
+eq('cemetery chapter teaches the raise (Hold seance, Raise now, Take all back, My Pets; no Pledge only button since Oct 31)', ['Hold seance', 'Raise now', 'Take all back', 'My Pets'].every(k => cs.indexOf(k) >= 0) && cs.indexOf('Pledge only') < 0 && ['Hold seance'].every(k => cs.indexOf(k) >= 0), true);
 eq('raise steps say it opens soon while the cemetery is owner test', V.cemPublicBlock() != null || /Opens soon/.test(cs), true);
 // tutorial-cemetery-v2: zombies eat pets (zombie-feed-pets picker), feral clock, whole-burn rule
 eq('cemetery chapter teaches zombie meals (pets not meals, discarded first, Select all discarded, starred never, fee per burn, hunger full, tier + neglect, whole burn fails, feral)',
