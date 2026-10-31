@@ -486,7 +486,7 @@
    *   seraph   : ascension beam: dithered pale-blue light column on background pixels only + three rising white motes
    *   gravekin : violet-grey grave mist over the feet and ground + one lilac will-o-wisp
    *   gemini   : split coral heart: twin A (art.rareSide 'A') the left half on its right edge, twin B the right half on its left edge
-   *   (dynast  : mark being redesigned; no draw) */
+   *   dynast   : the Ancestor Channel (dynastFrames below) */
   var RT_HUES = [[255, 80, 80], [255, 200, 60], [80, 230, 120], [60, 200, 255], [170, 110, 255]];
   function rtHex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
   function rtSil(art, stage, itemIds, extraOv, cap, baseGo) { var mk = function (c) { var a = Object.assign({}, art, { background: 'solid', bgColor: c, pattern: 'none', rareTier: null }); delete a.bgV2; return framesWithB(a, stage, itemIds, extraOv, cap, baseGo); };
@@ -514,9 +514,84 @@
       cells.forEach(function (c) { var xx = c[0], yy = c[1], edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (q) { var nx = xx + q[0], ny = yy + q[1]; return !has(nx, ny) && !(cols.indexOf(nx) < 0 && nx >= 0 && nx <= 6 && H[ny] && H[ny].charAt(nx) !== '.'); });
         put(ox + xx, 19 + yy, c[2] === 'H' ? HL : edge ? OL : C1); }); }
     return n; }
-  function rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo) { if (!fr || !art || !art.rareTier || stage < 1 || art.rareTier === 'dynast') return fr; var S = rtSil(art, stage, itemIds, extraOv, cap, baseGo); if (!S) return fr;
+  /* DYNAST: the ANCESTOR CHANNEL. An 8-frame loop: frames 0-3 channel ancestor A (art.dynast[0]), frames 4-7 ancestor B. Every power lands on THIS body's
+   * anchors (V2Rules dynastAnchor: the real eyes; the head top and the silhouette from this frame):
+   *   kekamozard : red laser eyes: the eyes glow, the beams leave the head at eye height (never painted over the face)
+   *   kekamoto   : deal-with-it shades sized to the real eyes, glint at the end
+   *   rarepigeon : a pigeon flies in (clear of the body) and lands on top of the head, coos a heart
+   *   bo         : a football spirals past, its whole path clear of the body
+   * Key renders (marker backgrounds) get the 8 frames with no effect, so lookFx / looks stay frame-aligned. */
+  var DYN_C = { R: rtHex('#ff2a3a'), Pk: rtHex('#ffb3b8'), W: [255, 255, 255], Y: rtHex('#fff27a'), K: rtHex('#101014'), Kh: rtHex('#3a3a46'), PP: rtHex('#9e98c4'), PL: rtHex('#d4cdf2'), Pk2: rtHex('#101014'), Po: rtHex('#f08a3c'), H: rtHex('#ff5c8a'), Fb: rtHex('#7a4a28'), Fw: [255, 255, 255], Fl: rtHex('#dfe3ee') };
+  var DYN_PIG = [['..PPP..', '.PPkPo.', '.PPPPoo', '.PPPP..', 'PPLLPP.', 'PPLLLPP', '.PPPPP.', '..o.o..'], ['.PPP.', 'PPkPo', 'PPPP.', 'PLLP.', '.o.o.'], ['.PP.', 'PkPo', 'PLP.', '.oo.']];
+  var DYN_PIGFLY = [['L.....L', 'LL...LL', '.LPPPL.', '.PPkPo.', '.PPPPoo', '..PPP..'], ['L...L', 'LPPPL', 'PPkPo', '.PPP.'], ['L..L', 'PkPo', '.PP.']];
+  var DYN_BALL = [['..bbb..', '.bwwwbb', 'bbbbbbb', '.bbbbb.'], ['..bb..', '.bbbb.', 'bbwbbb', '.bbbb.', '..bb..'], ['.bb.', 'bwwb', '.bb.']];
+  var DYN_HEART = ['P.P', 'PPP', '.P.'];
+  function dynSprite(rows) { var L = []; rows.forEach(function (r, y) { for (var x = 0; x < r.length; x++) if (r.charAt(x) !== '.') L.push([x, y, r.charAt(x)]); }); return { w: rows[0].length, h: rows.length, px: L }; }
+  function dynastPaint(anc, k, d, on, A, log) { var badge = function (x, y) { return x >= 26 && y < 5; }, inF = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32; }, isOn = function (x, y) { return inF(x, y) && !!on[y * 32 + x]; };
+    var put = function (x, y, c, role) { if (!inF(x, y) || badge(x, y)) return false; var j = (y * 32 + x) * 4; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; if (log) log.px.push([x, y, role]); return true; };
+    var putOff = function (x, y, c, role) { return isOn(x, y) ? false : put(x, y, c, role); }; /* never over the pet */
+    var x, y, i, G = 31 - 2; /* ground row 29 and below is the shadow */
+    var colTop = function (xx) { for (var yy = 0; yy < 29; yy++) if (isOn(xx, yy) && !badge(xx, yy)) return yy; return 99; };
+    var eyes = A.eyes || []; if (!eyes.length) return 0;
+    var eL = eyes[0], eR = eyes[eyes.length - 1], eT = Math.min.apply(null, eyes.map(function (e) { return e.t; })), eB = Math.max.apply(null, eyes.map(function (e) { return e.b; }));
+    var hx0 = eL.l, hx1 = eR.r, hcx = Math.round((hx0 + hx1) / 2);
+    /* clear spot for a free-flying sprite: nearest to (tx, ty), sprite + 1 px margin clear of the pet, the badge, inside the frame, above the ground */
+    var clearAt = function (S, x0, y0) { for (var q = 0; q < S.px.length; q++) { var px = x0 + S.px[q][0], py = y0 + S.px[q][1]; if (!inF(px, py) || py >= 28 || badge(px, py)) return false; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) if (isOn(px + dx, py + dy)) return false; } return true; };
+    var findClear = function (S, tx, ty, maxD) { var best = null; for (var yy = 0; yy <= 28 - S.h; yy++) for (var xx = 0; xx <= 32 - S.w; xx++) { var dd = Math.abs(xx - tx) + Math.abs(yy - ty) * 1.5; if (maxD != null && dd > maxD) continue; if ((!best || dd < best.d) && clearAt(S, xx, yy)) best = { x: xx, y: yy, d: dd }; } return best; };
+    var stamp = function (S, x0, y0, pal, role, off) { S.px.forEach(function (p) { (off ? putOff : put)(x0 + p[0], y0 + p[1], pal[p[2]], role); }); };
+    if (anc === 'kekamozard') { var C = DYN_C;
+      eyes.forEach(function (e, ei) { var y0 = e.cy, dirs = eyes.length === 2 ? [ei === 0 ? -1 : 1] : A.face ? [A.face] : [-1, 1];
+        e.px.forEach(function (q) { var qx = q & 31, qy = q >> 5; if (Math.abs(qy - y0) <= 1) put(qx, qy, k === 0 ? C.R : (qy === y0 ? C.W : C.R), 'glow'); });
+        if (k === 0) return; dirs.forEach(function (dir) { var xs = dir < 0 ? e.l - 1 : e.r + 1, len = k === 1 ? 6 : 40, run = 0;
+          for (x = xs; x >= 0 && x <= 31; x += dir) { if (isOn(x, y0)) { if (run) break; continue; } /* through the face to its edge, then out: a beam stops at the next body part it would hit */
+            run++; if (run > len) break; if (k === 3 && run % 2 === 0) { putOff(x, y0, C.R, 'beam'); continue; }
+            putOff(x, y0, k === 2 && run % 2 ? C.W : C.Pk, 'beam'); if (k !== 3) { putOff(x, y0 - 1, C.R, 'beam'); putOff(x, y0 + 1, C.R, 'beam'); } }
+          if (k === 2) { var ex = dir < 0 ? 0 : 31; putOff(ex, y0 - 3, C.Y, 'spark'); putOff(ex - dir, y0 + 3, C.Y, 'spark'); } }); }); }
+    else if (anc === 'kekamoto') { var C2 = DYN_C, hh = Math.max(2, Math.min(4, eB - eT + 1)), yt = eT + Math.max(0, Math.floor((eB - eT + 1 - hh) / 2)), sx0 = eL.l - 1, sx1 = eR.r + 1, gap0 = eyes.length === 2 ? eL.r + 1 : 99, gap1 = eyes.length === 2 ? eR.l - 1 : -1;
+      if (eyes.length === 1 && A.face) { if (A.face > 0) sx0 = Math.max(0, eL.l - 3); else sx1 = Math.min(31, eR.r + 3); } /* profile: one lens + the arm back over the cheek */
+      var rows = []; for (y = 0; y < hh; y++) { var r = ''; for (x = sx0; x <= sx1; x++) { var bridge = x >= gap0 && x <= gap1, arm = eyes.length === 1 && (x < eL.l - 1 || x > eR.r + 1); r += (bridge || arm) ? (y === 0 ? 'K' : '.') : 'K'; } rows.push(r); }
+      var SH = dynSprite(rows), yy0 = yt;
+      if (k === 0) { var up = findClear(SH, sx0, Math.max(0, yt - hh - 6), 12); if (up && up.y < yt - hh) yy0 = up.y; } /* k0: the shades hover above the head when there is room, else they are already on */
+      stamp(SH, sx0, yy0, { K: C2.K }, yy0 === yt ? 'shades' : 'shades-air', yy0 !== yt);
+      if (yy0 === yt) { put(sx0 + 1, yt, C2.Kh, 'shades'); if (k >= 2 && hh > 1) put(sx0 + 1, yt + 1, C2.Kh, 'shades');
+        if (k === 3) { var gx = sx1 - 1; put(gx, yt, C2.W, 'shades'); putOff(gx + 1, yt - 1, C2.W, 'glint'); putOff(gx + 2, yt - 2, C2.Y, 'glint'); putOff(gx - 1, yt - 1, C2.W, 'glint'); } } }
+    else if (anc === 'rarepigeon') { var C3 = DYN_C, pal = { P: C3.PP, L: C3.PL, k: C3.Pk2, o: C3.Po }, pick = null;
+      /* perch: biggest pigeon whose feet rest on the head top (the silhouette under its columns) without touching the eyes */
+      /* perch: biggest pigeon that rests on the head (lowest drop that touches the pet), feet on it if possible, near the head centre, clear of the badge */
+      var restAt = function (S, bx) { var by = 99, q; for (q = 0; q < S.px.length; q++) by = Math.min(by, colTop(bx + S.px[q][0]) - 1 - S.px[q][1]); if (by < 0 || by > 28) return null;
+          if (S.px.some(function (p) { return badge(bx + p[0], by + p[1]); })) return null; var feet = S.px.filter(function (p) { return p[2] === 'o' && p[1] === S.h - 1 && isOn(bx + p[0], by + p[1] + 1); }).length;
+          return { y: by, feet: feet, touch: S.px.some(function (p) { return isOn(bx + p[0], by + p[1] + 1); }) }; };
+      for (i = 0; i < DYN_PIG.length && !pick; i++) { var S = dynSprite(DYN_PIG[i]), best = null;
+        for (var dx = -6; dx <= 6; dx++) { var bx = hcx - (S.w >> 1) + dx; if (bx < 0 || bx + S.w > 32) continue; var cx = bx + (S.w - 1) / 2; if (cx < hx0 - 2 || cx > hx1 + 2) continue;
+          var r0 = restAt(S, bx); if (!r0 || !r0.touch || r0.y + S.h > eT - 1) continue; var sc = (r0.feet >= 2 ? 0 : r0.feet ? 1 : 3) + Math.abs(dx) * 0.4; if (!best || sc < best.sc) best = { sc: sc, x: bx, y: r0.y }; }
+        if (best) pick = { S: S, x: best.x, y: best.y, i: i, sit: 0 }; }
+      if (!pick) { var S2 = dynSprite(DYN_PIG[2]), bx2 = Math.max(0, Math.min(28, hcx - 2)), by2 = 0; pick = { S: S2, x: bx2, y: by2, i: 2, sit: 1 }; } /* no room above (Homer s4): it sits in the hair, still above the eyes */
+      var land = pick, FL = dynSprite(DYN_PIGFLY[pick.i]);
+      if (k >= 2) { stamp(land.S, land.x, land.y, pal, land.sit ? 'pigeon-sit' : 'pigeon'); if (log) log.perch = { x: land.x, y: land.y, w: land.S.w, h: land.S.h, sit: land.sit };
+        if (k === 3) { var HS = dynSprite(DYN_HEART), hp = findClear(HS, land.x - 4, land.y - 2, 10) || findClear(HS, land.x + land.S.w + 1, land.y - 2, 12); if (hp) stamp(HS, hp.x, hp.y, { P: C3.H }, 'heart'); } }
+      else { var tgt = k === 0 ? [24, 6] : [Math.round((24 + land.x) / 2), Math.max(0, Math.round((6 + land.y) / 2) - 2)], fp = findClear(FL, tgt[0], tgt[1]); if (!fp && pick.i < 2) { FL = dynSprite(DYN_PIGFLY[2]); fp = findClear(FL, tgt[0], tgt[1]); } if (fp) stamp(FL, fp.x, fp.y, pal, 'pigeon-air'); } }
+    else if (anc === 'bo') { var C4 = DYN_C, tx = [1, 8, 17, 24][k], top = 99; for (x = 0; x < 32; x++) top = Math.min(top, colTop(x));
+      var tries = [DYN_BALL[k % 2], DYN_BALL[2]], bp = null, BS = null; for (i = 0; i < tries.length * 2 && !bp; i++) { BS = dynSprite(tries[i % 2]); var ty = Math.max(0, Math.min(28 - BS.h, top - BS.h - 2 + [3, 0, 0, 3][k])); bp = findClear(BS, tx, ty, i < 2 ? 14 : null); } /* a spiral over the head, left to right; the second pass takes the nearest clear spot anywhere */
+      if (bp) { stamp(BS, bp.x, bp.y, { b: C4.Fb, w: C4.Fw }, 'ball'); var ly = bp.y + (BS.h >> 1); for (i = 1; i <= 5; i += 2) putOff(bp.x - i - 1, ly + (i % 4 === 1 ? 0 : 1), C4.Fl, 'speed');
+        if (k === 3) [[bp.x - 1, bp.y - 2], [bp.x + BS.w, bp.y - 2], [bp.x + BS.w + 1, bp.y + BS.h]].forEach(function (q) { putOff(q[0], q[1], C4.Y, 'spark'); }); if (log) log.ball = { x: bp.x, y: bp.y, w: BS.w, h: BS.h }; } }
+    return log ? log.px.length : 1; }
+  function dynastFrames(fr, art, stage, itemIds, extraOv, cap, baseGo) { if (!fr || !fr.length) return fr; var two = [0, 1, 2, 3, 4, 5, 6, 7].map(function (t) { return fr[t % fr.length]; });
+    var D = art.dynast; if (!D || D.length !== 2 || stage < 1 || !V || !V._dynastAnchor) return fr;
+    if (art.background === 'solid' && (art.bgColor === '#ff00fe' || art.bgColor === '#00ff01')) return two; /* key render: same 8-frame clock, no effect */
+    var S = rtSil(art, stage, itemIds, extraOv, cap, baseGo); if (!S) return two;
+    var silTop = function (on) { for (var j = 0; j < 1024; j++) if (on[j] && !((j & 31) >= 26 && (j >> 5) < 5)) return j >> 5; return 0; };
+    var anc = function (f) { var A = V._dynastAnchor(art, { stage: stage, frame: f }); if (A && A.eyes && A.eyes.length) return A;
+      for (var g = 0; g < fr.length; g++) { if (g === f) continue; var B = V._dynastAnchor(art, { stage: stage, frame: g }); if (!B || !B.eyes || !B.eyes.length) continue; /* blink frame: the open eyes of another frame, moved with the bob */
+        var dy = silTop(S[f] || S[0]) - silTop(S[g] || S[0]), on = S[f] || S[0], mv = function (q) { return q + dy * 32; };
+        var eyes = B.eyes.map(function (e) { return { l: e.l, r: e.r, t: e.t + dy, b: e.b + dy, cx: e.cx, cy: e.cy + dy, px: e.px.map(mv).filter(function (q) { return q >= 0 && q < 1024 && on[q]; }) }; });
+        return Object.assign({}, B, { frame: f, eyes: eyes, mouthTop: B.mouthTop == null ? null : B.mouthTop + dy, src: B.src + '+blink' }); } return A; };
+    return two.map(function (img, t) { var f = t % fr.length, on = S[f] || S[0], A; try { A = anc(f); } catch (e) { return img; }
+      if (A && A.eyes) A = Object.assign({}, A, { eyes: A.eyes.map(function (e) { var k = e.px.filter(function (q) { return on[q]; }); return k.length ? Object.assign({}, e, { px: k }) : e; }) }); /* eye pixels on this frame's real silhouette only */
+      var d = new Uint8ClampedArray(img.data), log = V._dynLog ? { t: t, f: f, anc: D[t < 4 ? 0 : 1], k: t % 4, stage: stage, px: [], A: A, on: on } : null;
+      dynastPaint(D[t < 4 ? 0 : 1], t % 4, d, on, A, log); if (log) V._dynLog.push(log); return Object.assign({}, img, { data: d }); }); }
+  function rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo) { if (art && art.rareTier === 'dynast') return dynastFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (!fr || !art || !art.rareTier || stage < 1) return fr; var S = rtSil(art, stage, itemIds, extraOv, cap, baseGo); if (!S) return fr;
     return fr.map(function (img, f) { var on = S[f] || S[0], d = new Uint8ClampedArray(img.data); var n = rareTierPaint(art.rareTier, art.rareSide, d, on, f); if (V && V._rareLog) V._rareLog.push({ t: art.rareTier, stage: stage, frame: f, n: n }); return n ? Object.assign({}, img, { data: d }) : img; }); }
-  if (V) { V._rareTierPaint = rareTierPaint; V._rareTierFrames = rareTierFrames; }
+  if (V) { V._rareTierPaint = rareTierPaint; V._rareTierFrames = rareTierFrames; V._dynastPaint = dynastPaint; V._dynastFrames = dynastFrames; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
