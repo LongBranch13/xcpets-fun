@@ -450,7 +450,7 @@
     for (var r = 0; r < 2; r++) { y = ny + r; if (y >= 29 || !W[y]) continue; var row2 = lookBodyBelow(C, y).filter(function (q) { return (q >> 5) === y; });
       row2.forEach(function (q, i) { var c = r === 0 ? PG_IRI[(i + f) % 3 === 0 ? 1 : 0] : PG_IRI[(i + f) % 3 === 0 ? 3 : 2]; if (r === 0 && row2.length > 2 && i === (f * 2 + 1) % row2.length) c = PG_HI; lookPut(d, q, c); painted++; }); }
     /* TUFT: Rarepigeon's white head feather (3 px) on the top of the head, unless the crown mark sits there */
-    if (!art.supremeMark && bb.t >= 3) { var tx = -1, tops = []; for (x = 0; x < 32; x++) if (C.s[bb.t * 32 + x]) tops.push(x); if (tops.length) { tx = tops[Math.floor(tops.length / 2)] + (face > 0 ? -1 : face < 0 ? 1 : 0);
+    if (bb.t >= 3) { var tx = -1, tops = []; for (x = 0; x < 32; x++) if (C.s[bb.t * 32 + x]) tops.push(x); if (tops.length) { tx = tops[Math.floor(tops.length / 2)] + (face > 0 ? -1 : face < 0 ? 1 : 0);
         [[0, -3, PG.a], [1, -3, PG.a], [-1, -2, PG.a], [0, -2, PG.w], [1, -2, PG.w], [2, -2, PG.a], [-1, -1, PG.a], [0, -1, PG.w], [1, -1, PG.a], [0, 0, PG.w]].forEach(function (t) { var X = tx + t[0], Y = bb.t + t[1]; if (X < 0 || X > 31 || Y < 0) return; var qq = Y * 32 + X; if (t[1] === 0 && !C.s[qq]) return; lookPut(d, qq, t[2]); painted++; }); } }
     return painted; }
   function boLookPaint(d, C, stage, f, art) { var painted = 0, W = lookRows(C), bb = C.bb;
@@ -477,22 +477,7 @@
       if (art.rpLook) n += rpLookPaint(d, C, stage, f, art); if (art.boLook) n += boLookPaint(d, C, stage, f, art);
       if (V._lookLog) V._lookLog.push({ sh: sh, stage: stage, frame: f, n: n, neck: lookNeckY(C) }); return n ? Object.assign({}, img, { data: d }) : img; }); }
   if (V) V._oneOfOneLookFrames = oneOfOneLookFrames;
-  /* SUPREME LINEAGE CROWN MARK (branch supreme-lineage, proposal; drawn only for art.supremeMark, which nothing sets until
-   * V2Rules ACTIVATE_SUPREME_LINEAGE_BLOCK is set): a small 5x3 gold crown floating one row above the top of the pet (keyed render), centred on
-   * the top row; if there is no room above, it sits on the top of the head. Looks only. */
-  var SL_CROWN = ['y.y.y', 'yryry', 'ddddd'], SL_COL = { y: [0xff, 0xd2, 0x3f], r: [0xe0, 0x3b, 0x3b], d: [0xb8, 0x86, 0x0b] };
-  function supremeMarkSpots(k) { var top = -1, xs = [], j; for (j = 0; j < 29 * 32; j++) if (k[j] && k[j] !== 'bg' && k[j] !== 'shadow') { top = j >> 5; break; } if (top < 0) return [];
-    for (j = top * 32; j < top * 32 + 32; j++) if (k[j] && k[j] !== 'bg' && k[j] !== 'shadow') xs.push(j & 31);
-    var cx = Math.round((xs[0] + xs[xs.length - 1]) / 2), y0 = Math.max(1, top - 4), out = [];
-    SL_CROWN.forEach(function (row, ry) { for (var rx = 0; rx < 5; rx++) { var c = row.charAt(rx); if (c === '.') continue; var x = cx - 2 + rx, y = y0 + ry; if (x >= 0 && x < 32 && y >= 0 && y < 29) out.push({ q: y * 32 + x, c: SL_COL[c] }); } });
-    return out; }
-  function supremeMarkFrames(fr, art, stage) { if (!fr || !art || !art.supremeMark || stage < 1 || !V._keyedRender) return fr; var sh = art.hybrid ? art.hybrid.shape : art.species;
-    return fr.map(function (img, f) { var k; try { k = V._keyedRender(sh, art, { stage: stage, frame: f, gearOverride: {} }).keys; } catch (e) { return img; } if (!k) return img;
-      var spots = supremeMarkSpots(k); if (!spots.length) return img; var d = new (img.data.constructor === Array ? Array : Uint8ClampedArray)(img.data.length); for (var j = 0; j < d.length; j++) d[j] = img.data[j];
-      spots.forEach(function (S) { d[S.q * 4] = S.c[0]; d[S.q * 4 + 1] = S.c[1]; d[S.q * 4 + 2] = S.c[2]; d[S.q * 4 + 3] = 255; });
-      return Object.assign({}, img, { data: d }); }); }
-  if (V) V._supremeMarkSpots = supremeMarkSpots;
-  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.supremeMark) fr = supremeMarkFrames(fr, art, stage); return fr; }
+  function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); return fr; }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */

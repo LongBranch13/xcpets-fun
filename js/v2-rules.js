@@ -627,8 +627,7 @@
    *  2. ONE GUARANTEED SIGNATURE: one piece of a Supreme parent's curated look (SUPREME[id].parts: Wizard hat, Nakamoto glasses; plus that parent's
    *     non-classic eyes: laser / star) that the baby does not already show, drawn from stream 'XCPETS:v2:supreme-lineage:sig:' + hash. Parts go through
    *     partsFor(body) like any hybrid part (a piece the body cannot wear is skipped); eyes always fit. Bo / Rarepigeon keep their own marks (boMark / rpMark).
-   *  3. CROWN MARK: art.supremeMark = 1 (small gold crown drawn by js/v2-render.js supremeMarkFrames) on the baby of a 1 of 1 AND every later generation
-   *     of that line (same pattern as boMark / rpMark). */
+   *  (The gold CROWN MARK of the first proposal is GONE: owner Oct 31 2026 9:48 AM CT "Crown goes". No art.supremeMark is ever set, so the pigeon tuft shows.) */
   var ACTIVATE_SUPREME_LINEAGE_BLOCK = null; /* <<< set to tip + 6 at deploy, ONLY after owner approval */
   var SUPREME_KEEP_ROOTS = { kek: 1 };
   /* PIGEON + BO LOOKS (branch supreme-lineage, owner Oct 31 2026 'Needs more pigeon in them'; proposal, LOOKS ONLY): a baby of Rarepigeon or Bo Jackson,
@@ -651,8 +650,7 @@
       if (!plan || q.sp === plan.shape) return false; /* non-hybrid babies take eyes only; a body of that species already wears the piece natively */
       if ((plan.parts || []).some(function (x) { return x.sp === q.sp && x.part === q.part; })) return false;
       return partsFor(plan.shape, q.sp, b).some(function (d) { return d.id === q.part; }); });
-    if (pool.length) { var q = pool[R() % pool.length]; if (q.eyes) { if (plan) plan.eyes = q.eyes; else art.eyes = q.eyes; } else plan.parts = (plan.parts || []).concat([{ sp: q.sp, part: q.part }]); art.supremeSig = q; }
-    art.supremeMark = 1; }
+    if (pool.length) { var q = pool[R() % pool.length]; if (q.eyes) { if (plan) plan.eyes = q.eyes; else art.eyes = q.eyes; } else plan.parts = (plan.parts || []).concat([{ sp: q.sp, part: q.part }]); art.supremeSig = q; } }
   function grantRp(w, b, hashes) { var G = ACTIVATE_RP_BLOCK; if (G == null || w.rpGranted || b == null || b < G) return; var gh = hashes && hashes[G]; if (!gh) return; w.rpGranted = G;
     var seed = 'XCPETS:supreme:rarepigeon', art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: G }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
     Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = Math.max(1, art.baseStats[k] + d); }); art.tierIndex = 3; art.tier = L1.id; art.species = 'rarepigeon'; art.defaultName = 'Rarepigeon';
@@ -3822,10 +3820,10 @@
     var cp = contestOn(b) ? contestParents(sha(bh + tx), A, B) : null; /* contest parent breeds as a normal species (gated; null before = replay SAME) */
     var c = cp ? breedChild(sha(bh + tx), cp[0], cp[1], b) : breedChild(sha(bh + tx), A, B, b), art = PetCore.generate({ blockHash: bh, petId: tx + ':child', blockHeight: b });
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); if (specialTierOn(b) && !c.hybrid && isSpecialSpecies(c.species) && c.species !== 'nakamoto' && c.tier < 2) setWizTier(c, 'stats', 2); /* COMMUNITY-SPECIES TIER: pure Kek/Wizard/FUNTRUMP child floored at Rare */ if (c.species === 'funtrump' && !c.hybrid && c.tier < 2) setWizTier(c, 'stats', 2); /* FUNTRUMP child: Rare (suit) at least; inert (no FUNTRUMP parent before ACTIVATE_FT_BREED_BLOCK) */ art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats; if (c.species === 'funtrump' && !c.hybrid) { art.ftLook = ftLookOfTier(c.tier); if (!specialNamesOn(b)) art.defaultName = 'FUNTRUMP'; }
-    var lin = supremeLineageOn(b) && [A, B].some(isOneOfOne), linMark = supremeLineageOn(b) && [A, B].some(function (P) { return isOneOfOne(P) || (P.art && P.art.supremeMark); }); /* SUPREME LINEAGE (gated; null = replay SAME) */
+    var lin = supremeLineageOn(b) && [A, B].some(isOneOfOne); /* SUPREME LINEAGE (gated; null = replay SAME); no crown mark */
     if (lin) lineageSpecies(sha(bh + tx), A, B, c);
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species, b); art.species = plan.shape; art.hybrid = plan; }
-    if (lin) lineageLook(sha(bh + tx), A, B, art, b); else if (linMark) art.supremeMark = 1; /* crown mark on every later generation of the line */
+    if (lin) lineageLook(sha(bh + tx), A, B, art, b);
     var fix = breedFixOn(b), capped = fix ? capTraits(art, c.tier) : null;
     if (b >= ACTIVATE_BREEDCARRY_BLOCK) [A, B].forEach(function (P) { (P.carried || []).forEach(function (cr) { if (c.stats[cr.stat] != null && c.stats[cr.stat] < cr.value) c.stats[cr.stat] = cr.value; }); }); /* carried stat floor */
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
