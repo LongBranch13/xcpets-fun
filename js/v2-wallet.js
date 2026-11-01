@@ -152,7 +152,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 12000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 12 s then a clear stop + Retry (the background re-reads keep going) */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going) */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
   /* cheaper-fees (owner Oct 27 2026, "cheaper fees asap"): read mempool.space /v1/fees/precise (decimal rates) instead of /v1/fees/recommended
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
@@ -249,12 +249,13 @@
    * whenFresh then waits for the fresh world and answers same:false if it differs from the one the action was built from (recheck or stop). */
   function upd() { try { return !!(window.V2Mock && window.V2Mock.updating && window.V2Mock.updating()); } catch (e) { return false; } }
   /* burn-stuck-1101: cancel() (the sheet's Cancel) drops every burn that has not reached the wallet window yet; nothing is signed or sent. */
-  var cancelGen = 0; function cancel() { cancelGen++; }
+  var cancelGen = 0, cancelWait = []; function cancel() { cancelGen++; var w = cancelWait; cancelWait = []; w.forEach(function (f) { try { f(); } catch (e) { } }); }
+  function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
   function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
   function send(plan, viewed, onTry, recheck) { var g0 = cancelGen, VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
-    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.').then(function (r) {
+    return Promise.race([cancelP(), withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.')]).then(function (r) { cancelWait = [];
       if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
       var VB = window.V2Mock.state(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
