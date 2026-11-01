@@ -1,6 +1,6 @@
 {
- "lastBlock": 974164,
- "count": 93,
+ "lastBlock": 974165,
+ "count": 94,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1118,6 +1118,18 @@
    "speciesLabel": "Nawiz (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 22043,
+   "asset": "A954918272669896767",
+   "tiedBlock": 974165,
+   "tiedTx": "ef2197a6648a6d5a1d5988eb17ff3cc1fc6505a2cd66235198ea345678ba8584",
+   "kind": "deed",
+   "name": "Pochi",
+   "species": "hyb:lenny:pepe",
+   "speciesLabel": "Lepe (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
