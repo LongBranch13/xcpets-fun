@@ -1,6 +1,6 @@
 {
- "lastBlock": 974168,
- "count": 94,
+ "lastBlock": 974170,
+ "count": 95,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1130,6 +1130,18 @@
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 53218,
+   "asset": "A17981520726257503137",
+   "tiedBlock": 974170,
+   "tiedTx": "826eef8dd52c0cd035860e356f9afde47e91c9fca1efa1d3b47721527d780328",
+   "kind": "deed",
+   "name": "Mopazy",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
