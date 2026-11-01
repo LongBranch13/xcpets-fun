@@ -767,7 +767,7 @@
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
     pendingPlans = null; $('cfTitle').textContent = title;
     $('cfBody').innerHTML = '<p class="small">🍖 Getting your meals ready for <b>' + fmt(g.ok.length) + '</b> hungry pets…</p><div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt">0 of ' + fmt(g.ok.length) + ' pets</div>';
-    $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
+    $('cfYes').textContent = 'Sign & burn in ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = true; $('cfNo').disabled = false; open('confirmBox');
     var t0 = performance.now();
     V.feedQueueAsync(w, ME, g.ok, faNb(w, null, list), function (d, n) { if (tok !== feedTok) return; var pc = n ? 100 * d / n : 100; if ($('pg')) $('pg').style.width = pc.toFixed(1) + '%'; if ($('pgt')) $('pgt').textContent = fmt(d) + ' of ' + fmt(n) + ' pets'; })
       .then(function (plans) { if (list) plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); window.V2LastFeedPlanMs = Math.round(performance.now() - t0); if (tok !== feedTok || !$('confirmBox').classList.contains('on')) return; confirmPlans(title, noDiscarded(plans), null, g); }, function (e) { toast('Could not plan the feed: ' + esc(String(e && e.message || e))); });
@@ -956,7 +956,7 @@
     return ' (priced per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
-    if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own XCP Wallet (desktop Chrome extension). Connect it to play, or look up any address to view its pets.'); return; }
+    if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own wallet: XCP Wallet on desktop Chrome, or the Casa Tookan app on your phone (open xcpets.fun inside it). Connect it to play, or look up any address to view its pets.'); return; }
     if (FEED_ALL_PAUSED && plans.some(function (q) { return isFeedAllTag(q && q.tag); })) { plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); toast(FA_NOTE + ' Those burns were not sent.'); if (!plans.length) return; }
     var bw = world(), skip = []; if (V.planAmount) plans = plans.map(function (p) { return V.planAmount(bw, p, (S.tip || 0) + 1); }); if (V.cemPetAmount) plans = plans.map(function (p) { return V.cemPetAmount(bw, p, (S.tip || 0) + 1); }); /* cemetery: per pet from the runs gate */ /* halving: burn the price at the next block */ plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     var sp = myPendingTags(); plans = plans.filter(function (p) { var m = V.sendBlock ? V.sendBlock(bw, p, S.tip, { me: ME, pending: sp }) : null; if (m) skip.push('🚫 Not sent (' + p.tag + '): ' + m); else sp.push(p.tag); return !m; }); /* wasted-burn guard (2026-10-20): one shared check mirroring the engine (breed, accept, fight, rolls); never ask the wallet to sign a burn the replay would reject */
@@ -969,7 +969,7 @@
       blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
-    $('cfYes').textContent = 'Sign & burn in XCP Wallet'; $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = false; $('cfNo').disabled = false; open('confirmBox');
+    $('cfYes').textContent = 'Sign & burn in ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = false; $('cfNo').disabled = false; open('confirmBox');
     if (window.V2Wallet && V2Wallet.feeQuote) V2Wallet.feeQuote().then(function (q) { var el = $('cfFee'); if (el && pendingPlans === plans) el.innerHTML = feeLine(s.burns, q); });
   }
   /* cheaper-fees (owner Oct 27 2026): the confirm sheet shows the live fee rate (mempool.space precise, about 0.1 to 1 sat/vB on a quiet day)
@@ -1106,7 +1106,7 @@
         (p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner) + '">Other Pets ' + esc(short(p.owner)) + '</em>') + '</div></div>'; };
     $('cfBody').insertAdjacentHTML('afterbegin', '<div class="brv">' + card(w.byId[a], 'Pet 1') + card(w.byId[b], 'Pet 2') + '</div>');
     $('cfBody').querySelectorAll('[data-brv]').forEach(function (s2) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s2.appendChild(c); R.lazy(c, function () { return R.petFrames(w.byId[s2.getAttribute('data-brv')], w); }, true); });
-    $('cfYes').textContent = '💞 Confirm breed · sign in XCP Wallet'; $('cfNo').textContent = '← Back'; }
+    $('cfYes').textContent = '💞 Confirm breed · sign in ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); $('cfNo').textContent = '← Back'; }
   if (!document.getElementById('brvCss')) { var brs = document.createElement('style'); brs.id = 'brvCss'; brs.textContent = '.brv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}.brv-pet{display:flex;gap:8px;align-items:center;border:2px solid #4b3f7a;background:#120e22;padding:6px;min-width:0}.brv-pet>div{min-width:0;overflow-wrap:anywhere;font-size:14px}.brv-sp canvas{width:64px;height:64px;image-rendering:pixelated}.brv-nm{font-weight:700}.brv-sc{color:#ffd166;white-space:nowrap}.brv .pill.tier{white-space:nowrap}.brv .bk-own{font-style:normal;font-weight:700;font-size:12px;letter-spacing:.5px;padding:2px 4px;border:1px solid #000;background:#4b3f7a;color:#fff;display:inline-block;margin-top:3px}.brv .bk-own.me{background:#4fd18b;color:#0d1a12}@media (max-width:520px){.brv{grid-template-columns:1fr}}'; document.head.appendChild(brs); }
   function petLbl(w, id) { var p = w.byId[id]; return (p && p.name ? esc(p.name) + ' ' : 'Pet ') + '#' + id; }
   function agoLbl(ms) { if (!ms) return ''; var m = Math.max(0, Math.round((Date.now() - ms) / 60000)); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; }

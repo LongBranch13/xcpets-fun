@@ -24,7 +24,9 @@
   var pv = /[?&]preview=datalag\b/.test(location.search);
   function snap() { var S = M.state() || {}, F = (window.V2Sales && window.V2Sales.feed) || {};
     return { dataTip: S.tip, dataAt: S.dataAt, verified: !!S.verified, chainTip: S.chainTip, feedTip: Math.max(F.tip || 0, S.feedTip || 0) || undefined, feedAt: F.at }; }
-  function bar(on, sn) { var el = document.getElementById('dataLagBar'); if (!on) { if (el) el.remove(); return; }
+  /* calm-first-screen (Nov 1 2026): ONE status line. When the chain status line (#v2stale, js/v2-chain.js) is up it already says which block is shown
+   * and that burns wait, so this bar stays away instead of stacking a second box under it. */
+  function bar(on, sn) { var el = document.getElementById('dataLagBar'); if (on && document.getElementById('v2stale')) on = false; if (!on) { if (el) el.remove(); return; }
     if (el) { var q = el.querySelector('.dl-behind'); if (q) q.textContent = sn ? behindText(sn) : ''; return; }
     el = document.createElement('div'); el.id = 'dataLagBar'; el.className = 'halving-ribbon data-lag'; el.setAttribute('role', 'status');
     el.innerHTML = '<b>⏳ Catching up</b> <span></span> <span class="dl-behind"></span>'; el.querySelector('span').textContent = TEXT; el.querySelector('.dl-behind').textContent = sn ? behindText(sn) : '';
