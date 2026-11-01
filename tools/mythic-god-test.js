@@ -31,6 +31,10 @@ const DBG = (w, b0, b1) => console.log(w.log.filter(e => e.block >= b0 && e.bloc
   const late = W([SEANCE, UNL], R + 500, { gate: R + 441, hashes: H() }); ok(!late.w.cem.mg && logs(late.w, R + 440, 'unleash').length === 0, 'a burn one block before the gate stays inert');
   const P = t => a.V.parseTag ? a.V.parseTag(t) : null; if (a.V.parseTag) { ok(P('pet:unleash:18846').action === 'unleash' && P('pet:unleash:18846').zombie === 18846, 'tag pet:unleash:Z (decimal id)'); ok(P('pet:unleash:x').action === 'invalid' && P('pet:unleash:1:2').action === 'invalid', 'bad unleash tags are invalid'); } }
 
+/* ---------- 1b. the price: base 690 = 172.5 XCPETS in the Halving 2 era (owner Oct 31 2026 9:01 PM CT [pt2525u]) ---------- */
+{ const { V, w } = W([], R + 10), b = R + 20, amt = V.mgPlan(w, 18846, b).amount, pl = V.costAt(w, 69, b);
+  ok(V.MG_COSTS.unleash === 690 && amt === V.costAt(w, 690, b) && Math.abs(amt - pl * 10) < 1e-9, 'unleash = 10 pledges at the same era (' + amt + ' vs pledge ' + pl + '): 690 / 4 = 172.5 in the Halving 2 era, like pledge 69 -> 17.25'); }
+
 /* ---------- 2. the unleash burn checks (rejected = nothing used up, nothing locked) ---------- */
 { const rows = [SEANCE, row(R, SB, 100000, 'pet:seance:18849:' + b32(4154)),
     row(R + 100, SB, 100000, 'pet:unleash:18846'),   /* not starving yet */
@@ -61,6 +65,11 @@ const DBG = (w, b0, b1) => console.log(w.log.filter(e => e.block >= b0 && e.bloc
   tryF('deed', 'XCPETSA', /tokenized/); tryF('cold', { since: 1 }, /Cold Storage/); tryF('lastGot', b - 4319, /held 4319 of 4320/); tryF('lastGot', b - 4320, /^$/);
   const o = M.owner; M.owner = OW; ok(V.mgEdibleWhy(w, M, SB, b) === 'not yours', 'only the unleasher\'s own Mythics'); M.owner = o;
   const cm = w.pets.find(p => p.community && (p.stage === 5 || p.mythicCare)); if (cm) ok(/community/.test(V.mgEdibleWhy(w, cm, cm.owner, b) || ''), 'community Mythics are never eaten');
+  else tryF('community', true, /community/); /* snapshot 972901 has no community Mythic in w.pets: flag one (this was the test that went missing, 62 -> 61) */
+  /* the owner's #1, #2 and #13 are never eaten (owner Oct 31 2026 9:01 PM CT [pt2525u]) */
+  ok(V.MG_NEVER_EAT && [1, 2, 13].every(id => V.MG_NEVER_EAT[id]) && Object.keys(V.MG_NEVER_EAT).length === 3, 'MG_NEVER_EAT is exactly #1, #2, #13');
+  [1, 2, 13].forEach(id => { const q = w.byId[id]; ok(q && q.owner === OW && /never eaten/.test(V.mgEdibleWhy(w, q, OW, b) || ''), '#' + id + ' (owner wallet Mythic) is never eaten -> ' + (q && V.mgEdibleWhy(w, q, OW, b))); });
+  { const ed = V.mgEdible(w, OW, b).map(p => p.id); ok(ed.length > 0 && [1, 2, 13].every(id => ed.indexOf(id) < 0), 'the owner wallet still has other edible Mythics, never #1, #2 or #13 (' + ed.length + ')'); }
   ok(V.mgEdible(w, SB, b).every((p, i, a) => !i || a[i - 1].id < p.id), 'the pool is sorted by id'); }
 
 /* ---------- 4. the meal: random pick from the meal block hash; the Mythic-fed zombie ---------- */
@@ -99,6 +108,12 @@ const base = [SEANCE, UNL];
   ok(rej(w, R + 452, /a Mythic zombie never eats/, R + 452).length === 1 && !w.byId[4111].released, 'a Mythic zombie takes no zombie meals');
   ok(rej(w, R + 900, /a Mythic zombie never eats/).length === 1, 'a Mythic zombie never unleashes');
   const vw = V.cemView(w, G, R + 460); ok(vw.mythic === true, 'cemView marks the Mythic zombie'); }
+
+/* ---------- 6b. anyone can raise a Mythic grave (owner Oct 31 2026 9:01 PM CT [pt2525u]): another wallet raises SB's Mythic grave ---------- */
+{ const rows = base.concat([row(R + 451, OW, 100000, 'pet:seance:' + E + ':' + b32(15367))]);
+  const { w } = W(rows, R + 460, { hashes: H() }), G = w.byId[E], z = G.zombie;
+  ok(z && z.mythic && z.by === OW && G.owner === OW && z.prevOwner === SB && w.byId[15367].released, 'another wallet raises a Mythic grave with its own Legendary offering: the Mythic zombie is the raiser\'s');
+  ok(rej(w, R + 451, /owner|not your/, R + 451).length === 0, 'no owner-only block on raising a Mythic grave'); }
 
 /* ---------- 7. Resurrection into a Mythic God ---------- */
 { const pre = base.concat([row(R + 451, SB, 100000, 'pet:seance:' + E + ':' + b32(20870)), row(R + 452, SB, 100000, 'pet:rpl:' + E + ':' + b32(20871))]);

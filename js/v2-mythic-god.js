@@ -4,7 +4,7 @@
  *     a light tint and a halo style from sha256("XCPETS:god-look:" + id) (60 looks).
  *   Mythic God: its Pantheon seat recipe, a stronger shine, Twin Moons and the violet starlight trace (replaces the electric aura).
  *   Mythic-fed zombie: cyan eyes and drool, a dotted cyan glow.   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
- * God looks for existing Gods go live with the Mythic gate (V2Rules.mgOn) or with ?godlook=1 (preview). ?godlook=0 turns them off.
+ * God looks for existing Gods are on right away (owner Oct 31 2026 9:01 PM CT), not tied to the Mythic gate. ?godlook=0 turns them off (?godlook=1 kept, no-op).
  * Sprites carry no text. Effects are 8-frame loops on top of the pet's own idle frames. Loaded after js/v2-zombies.js. */
 (function () {
   'use strict';
@@ -12,7 +12,7 @@
   var FORCE = /[?&]godlook=1(&|$)/.test(Q), OFF = /[?&]godlook=0(&|$)/.test(Q);
   function V() { return window.V2Rules || window.V2 || {}; }
   function tipOf(w) { try { return (w && w.tip) || (window.V2Chain && V2Chain.state && V2Chain.state().tip) || 0; } catch (e) { return 0; } }
-  function gateOn(w) { if (OFF) return false; if (FORCE) return true; var v = V(); try { return !!(v.mgOn && v.mgOn(tipOf(w) + 1)); } catch (e) { return false; } }
+  function gateOn(w) { return !OFF; } /* owner Oct 31 2026 9:01 PM CT [pt2525u]: existing Gods shine right away (display only, not tied to the Mythic gate); ?godlook=0 turns it off */
   /* ---------- small pixel helpers (img = array of [r,g,b]) ---------- */
   function badge(x, y) { return x >= 26 && y < 5; }
   function onAt(on, x, y) { return x >= 0 && x < 32 && y >= 0 && y < 32 && on[y * 32 + x]; }
