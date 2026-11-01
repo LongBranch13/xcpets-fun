@@ -25,7 +25,7 @@
   function inCasa() { try { return !!(win.casaTookan && win.casaTookan.isCasaTookan); } catch (e) { return false; } }
   var CASA_MISS = 'Casa Tookan did not give this page its wallet yet. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from Browse \u203a Apps (or type xcpets.fun/play.html) and tap Connect Casa Tookan again.';
   /** label(): the wallet name for page copy: 'Casa Tookan' inside Casa Tookan, else 'XCP Wallet' (all XCP Wallet copy unchanged) */
-  function label() { var k = wallet ? wallet.w.kind : win.xcpwallet ? 'xcpwallet' : casa() ? 'webxcp' : get(PROV_KEY); return k === 'webxcp' ? 'Casa Tookan' : 'XCP Wallet'; }
+  function label() { if (wallet && wallet.w && wallet.w.label) return wallet.w.label; /* wallet-name (Nov 1 2026): the connected wallet's own name (XCP Wallet / Casa Tookan / Horizon Wallet) */ var k = win.xcpwallet ? 'xcpwallet' : casa() ? 'webxcp' : get(PROV_KEY); return k === 'webxcp' ? 'Casa Tookan' : k === 'horizon' ? 'Horizon Wallet' : 'XCP Wallet'; }
   function isCasa() { return label() === 'Casa Tookan'; }
   function waitForXcp(ms) {
     return new Promise(function (resolve) {
@@ -44,7 +44,9 @@
   /* wallet-unlock (2026-10-22): XCP Wallet answers 4100 when it is locked (or this site is not connected). Say plainly what to do. */
   var UNLOCK = 'Unlock XCP Wallet to continue. It is locked (or this site is not connected): click again and unlock it in the XCP Wallet window that opens (it may be behind this window).';
   var CASA_4100 = 'Casa Tookan says this is not the active casa\'s address. Switch back to the casa you connected with, or tap Reconnect.';
-  function errText(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return (isCasa() ? CASA_4100 : UNLOCK) + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
+  /* wallet-name: wallet error text names the wallet in use (rjs/wallet.js messages say XCP Wallet) */
+  function errText(e) { var s = errText0(e), L = label(); return L !== 'XCP Wallet' ? String(s).replace(/XCP Wallet/g, L) : s; }
+  function errText0(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return (isCasa() ? CASA_4100 : UNLOCK) + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
     return m + (raw && m.indexOf(raw) < 0 ? ' (wallet said: ' + raw + ')' : '') + ' [code ' + e.code + ']'; }
   /* burn-wait-confirm (2026-10-26, PREVIEW): the only usable coin is the unconfirmed change of the player's last burn. XCP Wallet's input check
    * often can't verify such a coin ("Couldn't verify asset status"), so we no longer fall back to it silently: we show this note instead.
@@ -333,7 +335,7 @@
    * Before the wallet window, look where each pet token sits; attached -> a clear 'detach it first' stop. A failed look just goes on (the
    * compose still refuses). A 409 (a pending transaction conflicts) gets its own message. Read-only; nothing signs here. */
   function petTokens(plan) { var L = plan.kind === 'send' ? [plan.asset] : plan.kind === 'mpma' ? (plan.assets || []) : plan.kind === 'order' || !plan.kind ? [plan.give_asset] : []; return L.filter(function (a) { return /^A[1-9][0-9]{16,19}$/.test(a || ''); }); }
-  function utxoErr(A, u) { var e = new Error('Pet token ' + A + ' is attached to a Bitcoin output (' + String(u).slice(0, 16) + '…). Counterparty can only send or sell it after it is detached back to your address. Detach it in XCP Wallet, wait one block, then try again. Nothing was sent.'); e.utxoHeld = u; return e; }
+  function utxoErr(A, u) { var e = new Error('Pet token ' + A + ' is attached to a Bitcoin output (' + String(u).slice(0, 16) + '…). Counterparty can only send or sell it after it is detached back to your address. Detach it in ' + label() + ', wait one block, then try again. Nothing was sent.'); e.utxoHeld = u; return e; }
   function utxoCheck(plan) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state(), T = window.V2Sales && window.V2Sales.tok, as = petTokens(plan);
     if (!(VS && VS.prod) || !T || !T.tokenAt || !as.length) return Promise.resolve();
     return Promise.all(as.map(function (A) { return T.tokenAt(A).then(function (t) { return t && t.utxo ? utxoErr(A, t.utxo) : null; }, function () { return null; }); })).then(function (r) { r = r.filter(Boolean); if (r.length) throw r[0]; }); }
@@ -431,12 +433,22 @@
     if (!el) { if (!doc.getElementById('xwCss')) { var c = doc.createElement('style'); c.id = 'xwCss'; c.textContent = PILL_CSS; (doc.head || doc.body).appendChild(c); }
       el = doc.createElement('div'); el.id = 'xwPill'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); doc.body.appendChild(el); }
     el.hidden = false; el.className = st;
-    var txt = st === 'on' ? 'Wallet connected <span class="xwlong">' + esc(short(wallet.address)) + '</span>' : st === 'locked' ? 'Wallet locked' : 'Wallet disconnected';
+    var L = label(); relabel(); /* wallet-name: the pill names the wallet */ var txt = st === 'on' ? esc(L) + ' connected <span class="xwlong">' + esc(short(wallet.address)) + '</span>' : st === 'locked' ? esc(L) + ' locked' : esc(L) + ' disconnected';
     el.innerHTML = '<span class="xwdot" aria-hidden="true"></span><span class="xwt">' + txt + '</span>' + (st === 'on' ? '' : '<button type="button" id="xwRe">' + (st === 'locked' ? 'Unlock' : 'Reconnect') + '</button>');
-    el.title = isCasa() ? (st === 'on' ? 'Casa Tookan connected: ' + wallet.address : 'Tap to reconnect Casa Tookan') : st === 'on' ? 'XCP Wallet connected: ' + wallet.address : 'Tap to reconnect XCP Wallet (opens the XCP Wallet window)';
+    el.title = st === 'on' ? L + ' connected: ' + wallet.address : 'Tap to reconnect ' + L + (L === 'XCP Wallet' ? ' (opens the XCP Wallet window)' : '');
     var b = el.querySelector('#xwRe'); if (b) b.onclick = function () { b.disabled = true; b.textContent = '…'; connect().then(function (a) { var me = get(ME_KEY); if (me && a !== me && win.location && /play\.html/.test(win.location.pathname || '')) win.location.reload(); }, function (e) { b.disabled = false; b.textContent = 'Retry'; el.title = errText(e); }); }; }
+  /* wallet-name (Nov 1 2026): static and late-built copy (owner login, wait overlay, any sheet button) names the wallet in use.
+   * Only buttons + #waitText/#gWalletNote, only when the wallet is not XCP Wallet; inscription buttons stay XCP Wallet (inscribing is XCP Wallet only). */
+  var relabelObs = null, relabelQ = 0;
+  function relabel() { var doc = win.document; if (!doc || !doc.querySelectorAll) return; var L = label(); if (L === 'XCP Wallet') return;
+    try { doc.querySelectorAll('button, .btn, #waitText').forEach(function (b) { if (/^insc/.test(b.id || '') || (b.closest && b.closest('[data-wl-keep]'))) return;
+        if (b.children.length === 0) { if (b.textContent.indexOf('XCP Wallet') >= 0) b.textContent = b.textContent.replace(/XCP Wallet/g, L); }
+        else b.childNodes.forEach(function (n) { if (n.nodeType === 3 && n.nodeValue.indexOf('XCP Wallet') >= 0) n.nodeValue = n.nodeValue.replace(/XCP Wallet/g, L); }); });
+      var g = doc.getElementById('gWallet'), gp = g && g.parentNode && g.parentNode.nextElementSibling; if (gp && /owner address in XCP Wallet/.test(gp.textContent)) gp.textContent = gp.textContent.replace(/XCP Wallet/g, L);
+    } catch (e) { }
+    if (!relabelObs && win.MutationObserver && doc.body) { relabelObs = new win.MutationObserver(function () { if (relabelQ) return; relabelQ = 1; setTimeout(function () { relabelQ = 0; relabel(); }, 30); }); relabelObs.observe(doc.body, { childList: true, subtree: true, characterData: true }); } }
   function autoBoot() { var doc = win.document; if (!doc) return;
-    var go = function () { pill(); silent(); };
+    var go = function () { pill(); relabel(); silent(); };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', go); else go();
     doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') silent(); });
     win.addEventListener('focus', function () { silent(); });
@@ -447,7 +459,7 @@
     try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:connected', { detail: { address: w.address } })); } catch (e) { } return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
   function paint(ME, $) {
-    lastPaint = [ME, $]; var c = $('wconnect'); if (!c) return; var L = label();
+    lastPaint = [ME, $]; relabel(); var c = $('wconnect'); if (!c) return; var L = label();
     $('me').textContent = ME ? ME + (wallet && wallet.address === ME ? ' (' + L + ')' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? (locked && wallet ? ' (' + L + ' locked: tap Unlock)' : ' (' + L + ': not attached, tap Reconnect)') : ' (view only: connect to burn)') : 'not connected';
     c.textContent = wallet && wallet.address === ME ? '✓ ' + L + ' connected' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? '↻ Reconnect ' + L : 'Connect ' + L; c.disabled = false;
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';

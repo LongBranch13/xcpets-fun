@@ -77,7 +77,7 @@
   function paint() { var u = U(), box = $('rugMe'); if (!u || !box || box.hidden) return; var w = u.world(), ME = u.ME, b = tip() + 1;
     if (V.retireOn && V.retireOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me closed at block ' + fmt(V.retireGate()) + '. Use 🛎️ Check in (the motel two-owner breed) instead.</p>'; return; }
     if (!V.rugOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me opens at block ' + (V.rugGate() != null ? fmt(V.rugGate()) : '(not set yet)') + '.</p>'; return; }
-    if (!ME) { box.innerHTML = '<p class="small">Connect XCP Wallet to swipe. You swipe as one of your Adult+ pets.</p>'; return; }
+    if (!ME) { box.innerHTML = '<p class="small">Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to swipe. You swipe as one of your Adult+ pets.</p>'; return; }
     var mine = myPets(w, ME); if (!mine.length) { box.innerHTML = '<p class="small">You need an Adult or older pet to swipe.</p>'; return; }
     if (!st.as || !mine.some(function (p) { return p.id === st.as; })) st.as = mine[0].id; var my = w.byId[st.as], cards = deck(w, ME, my), c = cards[0];
     var others = mine.filter(function (p) { return p.id !== my.id; }), alsoQ = c && c.ad ? others.filter(function (p) { return !V.meetsReq(w, p, c.ad.req) && !V.breedable(p, b); }) : [];
@@ -129,7 +129,7 @@
       '<div class="chips">' + chip('power', 50, 'Power 50+') + chip('power', 60, 'Power 60+') + chip('power', 80, 'Power 80+') + '</div>' +
       '<div class="chips">' + ['jeweled-crown', 'goldcape'].concat(owned.slice(0, 3).map(function (g) { return V.resolveItem(g.item); })).filter(function (x, i, a) { return a.indexOf(x) === i && V.itemOf(x); }).slice(0, 4).map(function (id) { return chip('gear', id, 'Owns ' + V.itemOf(id).label); }).join('') + '</div>' +
       '<div class="small muted">Wants: ' + esc(V.reqText(q)) + ' · ' + fmt(postCost()) + ' per pet · open 1,008 blocks (~7 days) · one ad per pet · a pet resting after a breed can still post (the ad waits) · bio: a random preset · the egg comes to you</div>' +
-      (sel.length ? '<div class="small rm-sum"><b>' + sel.length + ' pet' + (sel.length > 1 ? 's' : '') + ' · ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' · total ' + fmt(total) + ' XCPETS</b>' + (plans.length > 1 ? ' (one XCP Wallet window per burn, with progress; you can stop and resume)' : '') + '<br><span class="muted">' + plans.map(function (p) { return '<code>' + esc(p.tag) + '</code>'; }).join(' · ') + '</span></div>' : '') +
+      (sel.length ? '<div class="small rm-sum"><b>' + sel.length + ' pet' + (sel.length > 1 ? 's' : '') + ' · ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' · total ' + fmt(total) + ' XCPETS</b>' + (plans.length > 1 ? ' (one ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' window per burn, with progress; you can stop and resume)' : '') + '<br><span class="muted">' + plans.map(function (p) { return '<code>' + esc(p.tag) + '</code>'; }).join(' · ') + '</span></div>' : '') +
       (bad ? '<div class="small warn">' + esc(bad.why) + '. Drop a standard.</div>' : '') +
       '<button class="btn" id="rmPost"' + (!sel.length || bad ? ' disabled' : '') + '>📌 Post on Rug Me · ' + fmt(total || postCost()) + '</button></div>'; }
   function bindPost(w, mine) { var box = $('rugMe');
