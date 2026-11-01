@@ -77,7 +77,7 @@
   /** view(raw): check, ask first if a different XCP Wallet is connected, remember, then open play.html?addr=. Returns an error string or ''. */
   function view(raw) { var c = check(raw); if (!c.ok) return c.error; var w = walletAddr();
     if (w && c.addr === w) { ls.del(VIEW_KEY); ls.set(ME_KEY, w); loc.href = 'play.html'; return ''; } /* your own wallet: the normal, connected view */
-    if (w && !root.confirm('Your XCP Wallet (' + short(w) + ') is connected in this browser.\n\nView ' + c.addr + ' instead? It is view only: nothing can be fed, equipped or burned. Your wallet stays connected; tap Stop viewing to go back to your own pets.')) return 'Kept your XCP Wallet pets. Nothing changed.';
+    if (w && !root.confirm('Your ' + (root.V2Wallet && root.V2Wallet.label ? root.V2Wallet.label() : 'XCP Wallet') + ' (' + short(w) + ') is connected in this browser.\n\nView ' + c.addr + ' instead? It is view only: nothing can be fed, equipped or burned. Your wallet stays connected; tap Stop viewing to go back to your own pets.')) return 'Kept your ' + (root.V2Wallet && root.V2Wallet.label ? root.V2Wallet.label() : 'XCP Wallet') + ' pets. Nothing changed.';
     ls.set(VIEW_KEY, c.addr); loc.href = 'play.html?addr=' + encodeURIComponent(c.addr); return ''; }
   /** stop(): forget the viewed address and go back to the connected wallet's pets (or to the not-connected page). */
   function stop(stay) { ls.del(VIEW_KEY); var w = walletAddr(), m = ls.get(ME_KEY); if (w) ls.set(ME_KEY, w); else if (m) ls.del(ME_KEY);

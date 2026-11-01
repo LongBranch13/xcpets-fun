@@ -96,7 +96,7 @@
     var rec = function (p) { return '🏆 ' + (p.wins || 0) + '-' + (p.losses || 0); };
     var lines = function (p) { return ['<span' + ptA(p) + '>⚡ ' + pow(p) + '</span> · ⭐ ' + score(w, p), rec(p) + ' · ' + esc(spL(p.species))]; };
     var h = '';
-    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your XCP Wallet to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect XCP Wallet</button></div>';
+    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
       $('ezFGo').onclick = function () { UI.confirmPlans('Challenge', [{}]); }; return; }
     /* 1 · your fighter */
     var mine = memo(w, 'mine|' + ME + '|' + T, function () { return UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
@@ -153,7 +153,7 @@
   function incoming(w, ME, T) { var win = V().BREED_WINDOW || 144; return (w.breedReqs || []).filter(function (r) { var X = w.byId[r.b]; return !r.used && !(T && T - r.block > win) && X && X.owner === ME && r.owner !== ME; }).sort(function (a, b) { return b.block - a.block; }); }
   function paintBreed(el, w) { var UI = U(), Vr = V(), ME = UI.ME, T = tip(w), s = ST.b, view = UI.viewOnly && UI.viewOnly(), M = window.V2Motel;
     var a = $('bA').value, b = $('bB').value, L = Vr.breedPicker(w, ME, T, a, UI.pendingBreedIds ? UI.pendingBreedIds() : null), v2 = !!(Vr.breedV2On && Vr.breedV2On(T + 1));
-    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate, ring the bell. Connect your XCP Wallet to check in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect XCP Wallet</button></div>';
+    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate, ring the bell. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to check in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
       $('ezBGo').onclick = function () { $('bGo').click(); }; return; }
     var A = a && w.byId[a], Bp = b && w.byId[b], gen = function (p) { return Vr.genOf ? Vr.genOf(w, p) : 0; };
     var badges = function (p) { var x = Vr.breederBadges ? Vr.breederBadges(w, p) : []; return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };

@@ -1059,7 +1059,7 @@
     box.innerHTML = h;
     var oa = box.querySelector('[data-offall]'), oy = box.querySelector('[data-offyes]'), on = box.querySelector('[data-offno]');
     var notOwner = function () { box.removeAttribute('data-offall'); say('Only the owner can take gear off #' + p.id + '. Connect the wallet that owns it.', true); };
-    var viewMsg = function () { say('👀 View only: connect the XCP Wallet that owns #' + p.id + ' to change its gear.', true); if (o.onBlocked) o.onBlocked(); };
+    var viewMsg = function () { say('👀 View only: connect the ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' that owns #' + p.id + ' to change its gear.', true); if (o.onBlocked) o.onBlocked(); };
     if (oa) oa.onclick = function () { if (!ownsP()) return notOwner(); box.setAttribute('data-offall', '1'); gearPicker(box, o); };
     if (on) on.onclick = function () { box.removeAttribute('data-offall'); gearPicker(box, o); };
     if (oy) oy.onclick = function () { if (!ownsP()) return notOwner(); box.removeAttribute('data-offall'); var ops = wornSlots.map(function (sl) { return { kind: 'equip', owner: o.owner, petId: p.id, slot: sl, gid: null }; }), m = 'Took ' + ops.length + ' piece' + (ops.length === 1 ? '' : 's') + ' off #' + p.id + ': back in your stock';
