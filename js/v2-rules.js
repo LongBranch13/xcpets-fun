@@ -2807,7 +2807,7 @@
     var f = fightable(A, b); if (f) return f; if (A.fightDays && A.fightDays[day(b)]) return 'one battle per pet per 144-block day'; if (inOpenFight(w, A.id, b)) return 'pet already has an open challenge'; return null; }
   var CEM_ACTIONS = { seance: 1, alt: 1, altg: 1, raise: 1, zfeed: 1, rpl: 1, rplg: 1, resurrect: 1 };
   /* ===================== MYTHIC GOD LOOP (branch mythic-god, owner approved Oct 31 2026 5:18 PM CT [pt2522u] "Yes on all") =====================
-   * NOT ACTIVE: ACTIVATE_MYTHIC_UNLEASH_BLOCK = null, so pet:unleash is an unknown tag (community food) and nothing below ever runs: replay SAME.
+   * ACTIVE from block 974074 (ACTIVATE_MYTHIC_UNLEASH_BLOCK); before it pet:unleash is an unknown tag (community food) and nothing below runs: replay SAME.
    * Spec: previews/mythic-god/PROPOSAL.md.
    *  UNLEASH   pet:unleash:Z (decimal zombie id), MG_COSTS.unleash base. Z must be the sender's own FERAL zombie (starving), not Mythic-fed, not a
    *            Mythic zombie, no unleash already waiting, and the meal block (burn + 6) must come before it crumbles (last burn block = fedAt + 857).
@@ -2826,7 +2826,7 @@
    *            Blocked (nothing used) when the Pantheon is full or the wallet made a Mythic God in the last 4,320 blocks. One try: fail = dust.
    *            WIN = a Mythic God: its Mythic stats at death plus 25%, cap 4 times, never dies, Moon Ward (the first battle loss each 144-block day
    *            costs no gear and no black eye), breeding cooldown 2 times, a Pantheon seat 1..21 in order. */
-  var ACTIVATE_MYTHIC_UNLEASH_BLOCK = null; /* NOT SET: the whole loop is off (replay SAME). Set to a future block to switch it on. */
+  var ACTIVATE_MYTHIC_UNLEASH_BLOCK = 974074; /* owner Oct 31 2026 9:01 PM CT [pt2525u] "Send it": Counterparty tip 974,068 + 6 at deploy (replay SAME: no snapshot reaches it) */
   var MG_COSTS = { unleash: 690 }; /* base XCPETS (halvings + Fire Sales via costAt / below): 172.5 XCPETS in the Halving 2 era (1/4), owner confirmed Oct 31 2026 9:01 PM CT [pt2525u] */
   var MG_NEVER_EAT = { 1: 1, 2: 1, 13: 1 }; /* the owner's pets #1, #2 and #13 are never eaten (owner Oct 31 2026 9:01 PM CT [pt2525u]) */
   var MG = { DELAY: 6, HOLD: 4320, WALLET_GAP: 4320, GOD_GAP: 4320, SEATS: 21, FED_SHARE: 0.30, FED_CAP: 4, GRAVE_FACTOR: 0.5, ZCAP: 3, NEED_TIER: 3,

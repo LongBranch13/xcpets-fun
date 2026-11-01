@@ -1,4 +1,4 @@
-/* mythic-god-test: the Mythic God loop (gate ACTIVATE_MYTHIC_UNLEASH_BLOCK, shipped null = off).
+/* mythic-god-test: the Mythic God loop (gate ACTIVATE_MYTHIC_UNLEASH_BLOCK, shipped 974074).
  * UNLEASH burn, the random own-Mythic meal, the Mythic-fed zombie, the Mythic grave, the Mythic zombie, Resurrection into a Mythic God,
  * the 21-seat Pantheon, Moon Ward and the 2 times breeding cooldown. Built on snapshot 972901 with synthetic burns. Dev only; nothing signed or sent. */
 'use strict';
@@ -20,8 +20,8 @@ const H = (o) => { const h = {}; h[R + 446] = MEAL_H; return Object.assign(h, o 
 const SEANCE = row(R, SB, 100000, 'pet:seance:18846:' + b32(4133)), UNL = row(R + 440, SB, 100000, 'pet:unleash:18846');
 
 const DBG = (w, b0, b1) => console.log(w.log.filter(e => e.block >= b0 && e.block <= b1).map(e => "  " + e.block + " " + e.kind + " " + e.msg).join("\n"));
-/* ---------- 1. shipped: the gate is null and an unleash burn is just an unknown tag ---------- */
-{ const V0 = L.load().V2Rules; ok(V0.mythicUnleashGate() === null && !V0.mgOn(R) && !V0.mgOn(990000), 'shipped: ACTIVATE_MYTHIC_UNLEASH_BLOCK is null (off)');
+/* ---------- 1. shipped gate 974074; with the gate off an unleash burn is just an unknown tag ---------- */
+{ const V0 = L.load().V2Rules; ok(V0.mythicUnleashGate() === 974074 && !V0.mgOn(R) && !V0.mgOn(974074 - 1) && V0.mgOn(974074) && V0.mgOn(990000), 'shipped: ACTIVATE_MYTHIC_UNLEASH_BLOCK is 974074 (owner Oct 31 9:01 PM CT), off before it');
   const tags = ['pet:unleash:18846', 'pet:unleash:1', 'pet:unleash:x', 'pet:unleash:18846:1'];
   const a = W([SEANCE].concat(tags.map((t, i) => row(R + 440 + i, SB, 100000, t))), R + 500, { gate: null, hashes: H() });
   const z = W([SEANCE].concat(tags.map((t, i) => row(R + 440 + i, SB, 100000, 'pet:zz' + i))), R + 500, { gate: null, hashes: H() });
