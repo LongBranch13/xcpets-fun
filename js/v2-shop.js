@@ -428,7 +428,7 @@
    * lowest #. Every button builds the SAME pet:roll:ID tag at the SAME 345 XCPETS through the same confirm + wasted-burn guard. No rule change. */
   var CREW_N = 8;
   function crewSort(pets) { return pets.filter(function (p) { return !p.released && (p.openSlots || []).length; }).sort(function (a, b) { return (b.openSlots || []).length - (a.openSlots || []).length || a.id - b.id; }); }
-  function pendAll() { var U = window.V2UI, f = window.UXB && UXB.pendingFor; if (!U || !f) return 0; try { return U.mine(U.world()).reduce(function (s, p) { return s + (+f(p.id) || 0); }, 0); } catch (e) { return 0; } }
+  function pendAll() { var U = window.V2UI, f = window.UXB && UXB.pendingFor; if (!U || !f) return 0; if (UXB.pendingForIds) try { return UXB.pendingForIds(U.mine(U.world()).map(function (p) { return p.id; })); } catch (e) { return 0; } /* speed1-1101: one pass */ try { return U.mine(U.world()).reduce(function (s, p) { return s + (+f(p.id) || 0); }, 0); } catch (e) { return 0; } }
   function openWheel() { var d = document.getElementById('pepeWheel'); if (!d) return; d.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); d.classList.remove('rr-flash'); void d.offsetWidth; d.classList.add('rr-flash'); spinNow(900); }
   function wheelPanel(w, pets) { var V = window.V2Rules, L = crewSort(pets), best = L[0], pend = window.UXB && UXB.pendingFor ? UXB.pendingFor : null, n = S.crewN || CREW_N;
     if (!L.length) return '<div class="rr-door"><div class="rr-dh">🎡 The Pepe Wheel · Roll for gear</div><p class="small">' + (V.allSlotsNow && V.allSlotsNow(w) ? 'No living pet to roll for yet.' : 'No living pet with an open slot yet. Slots open as pets grow (age and days fed).') + '</p></div>';

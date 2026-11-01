@@ -187,7 +187,10 @@
     return out; };
 
   // pending crates: our unconfirmed pet:roll burns (this browser's tracker + node mempool)
-  function pendingRolls() { var S = U.S(), conf = {}, out = [], seen = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
+  /* speed1-1101: the confirmed-tx map is rebuilt only when the chain rows change (was rebuilt on every call: the shop asked once per owned pet per frame, 6-8 s of load CPU) */
+  var confC = { rows: null, n: -1, m: null };
+  function confMap(S) { var r = S.rows || []; if (confC.rows !== r || confC.n !== r.length) { var m = {}; r.forEach(function (x) { m[x.tx_hash] = 1; }); confC = { rows: r, n: r.length, m: m }; } return confC.m; }
+  function pendingRolls() { var S = U.S(), conf = confMap(S), out = [], seen = {};
     function add(tx, tag, at) { var m = /^pet:(roll|fr|of):(\d+)$/.exec(String(tag)), c = /^pet:c:roll/.test(String(tag)), sp = String(tag) === 'pet:spin'; if (!tx || seen[tx] || conf[tx] || !(m || c || sp)) return; seen[tx] = 1; out.push({ tx: tx, id: m ? Number(m[2]) : null, community: c, spin: sp, kind: m ? m[1] : sp ? 'spin' : 'croll', at: at }); }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed') add(t.txid, t.tag, t.at); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x.source === ME) add(x.tx_hash, x.tag, x.at); }); return out; }
@@ -199,6 +202,8 @@
       return '<div class="crate" title="' + (c.community ? 'Community gear roll' : c.spin ? 'Pepe Wheel spin (random pet)' : 'Gear roll for #' + c.id) + ' · tx ' + esc(c.tx.slice(0, 10)) + '…"><span class="box8">📦</span><span class="small">' + (c.community ? 'Community pet' : c.spin ? '🎡 Wheel spin' : '#' + c.id + (p ? ' ' + esc(p.name) : '')) + '</span></div>'; }).join('') + '</div>' : ''; }
   /** pendingFor(petId): this pet's gear rolls still waiting to confirm (for the pet detail's pending line). */
   UXB.pendingSpins = function () { return pendingRolls().filter(function (c) { return c.spin; }).length; };
+  /* speed1-1101: pending gear rolls for a set of pet ids in ONE pass (the shop's pendAll used pendingFor once per owned pet) */
+  UXB.pendingForIds = function (ids) { var set = {}; (ids || []).forEach(function (i) { set[i] = 1; }); return pendingRolls().filter(function (c) { return c.id != null && set[c.id]; }).length; };
   UXB.pendingFor = function (petId) { return pendingRolls().filter(function (c) { return c.id === petId; }).length; };
   /* gear results (2026-10-19): cards only flash/glow by tier; the meme caption is ONE line for the whole batch (v2.js UXB_CAP, best piece),
    * never per card (per-card captions used the global .meme headline style: 34-64px Bangers with a 4px shadow, so they overlapped the cards). */
