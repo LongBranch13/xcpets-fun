@@ -62,4 +62,11 @@
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '30px serif'; x.fillText(p.ico, 160, 60);
     var n = p.name.toUpperCase(), fs = n.length > 16 ? 8 : 10; x.font = fs + 'px "Press Start 2P", monospace'; x.fillStyle = '#FAFAF5'; x.fillText(n, 160, 94); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  /* casatookan-app (Nov 1 2026): Casa Tookan wallet browser keeps its splash up until the page says it has drawn
+   * (manifest capability wallet.ready, 10 s cap). Call it once, after load + the next two frames. No-op everywhere else. */
+  function appReady() { var done = false; function go() { if (done) return; done = true; try { if (root.wallet && typeof root.wallet.ready === 'function') root.wallet.ready(); } catch (e) {} }
+    var raf = root.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    function after() { raf(function () { raf(go); }); }
+    if (document.readyState === 'complete') after(); else root.addEventListener('load', after); }
+  if (typeof document !== 'undefined') appReady();
 })(typeof window !== 'undefined' ? window : globalThis);

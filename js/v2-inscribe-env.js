@@ -11,7 +11,7 @@
     network: CFG.network, mempoolApi: CFG.mempoolApi, explorer: CFG.mempool, ordinals: CFG.network === 'mainnet' ? 'https://ordinals.com' : null,
     cpRead: (CFG.read || []).slice(), fromBlock: CFG.network === 'mainnet' ? ACTIVATE_INSCRIBE_BLOCK : 0, label: CFG.network === 'mainnet' ? '' : CFG.network.toUpperCase(),
     fetch: function (u, o) { return window.fetch(u, o); },
-    provider: function () { var W = window.V2Wallet; return (W && W.getWallet ? W.getWallet().then(function (w) { return w.w.p; }) : waitXcp(2000)).then(function (p) { if (!p) throw new Error('XCP Wallet not found. Install XCP Wallet, unlock it, then try again.'); return p; }); },
+    provider: function () { var W = window.V2Wallet; return (W && W.getWallet ? W.getWallet().then(function (w) { if (w.w.kind !== 'xcpwallet') throw new Error('Inscribing needs the XCP Wallet Chrome extension (it signs inscription PSBTs). ' + (w.w.label || 'This wallet') + ' can burn and sign messages here, but cannot inscribe yet.'); return w.w.p; }) : waitXcp(2000)).then(function (p) { if (!p) throw new Error('XCP Wallet not found. Install XCP Wallet, unlock it, then try again.'); return p; }); },
     addrOf: function (owner) { return owner; },
     tip: function () { return M.state().tip; },
     replayAt: function (b, ops) { var S = M.state(); return V.replay(S.rows.filter(function (r) { return r.block_index <= b; }), S.hashes, ops, { tip: b, live: LE && LE.RealCore }); }
