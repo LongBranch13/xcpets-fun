@@ -1,6 +1,6 @@
 {
- "lastBlock": 974076,
- "count": 266,
+ "lastBlock": 974078,
+ "count": 270,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3194,6 +3194,54 @@
    "speciesLabel": "Viking",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 4718,
+   "asset": "A12352019731893481721",
+   "tiedBlock": 974077,
+   "tiedTx": "cc438acb6a2df7861b2c90ba175853c1da01e9a5f5ec4e45cd3220b364a7f7e4",
+   "kind": "deed",
+   "name": "Toba",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 7060,
+   "asset": "A299019998816149588",
+   "tiedBlock": 974077,
+   "tiedTx": "d5aced9a74eedc753028f8f6c9c76b4fbbdca94c19375ee067fba5113c6d61f2",
+   "kind": "deed",
+   "name": "Ponelu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8024,
+   "asset": "A11653963755775592201",
+   "tiedBlock": 974077,
+   "tiedTx": "d6562280b698b242a75a52ae0362e9edb2a01a2a3ed8527219c52701bde9aa8b",
+   "kind": "deed",
+   "name": "Mopene",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8111,
+   "asset": "A18357633144678602772",
+   "tiedBlock": 974077,
+   "tiedTx": "8a83c40e2fb2848bb52e8160ec836fe738e74d918ec10ff9e50e17d2a11bcc3b",
+   "kind": "deed",
+   "name": "Chito",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
