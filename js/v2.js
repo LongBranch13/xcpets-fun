@@ -105,7 +105,13 @@
   function zPickSort(el, keep) { el.querySelectorAll('.zb-list[data-zk]').forEach(function (list) { zListDraw(el, list, keep); }); }
   function zRec(el, gear) { var L = el.querySelectorAll('.zb-list[data-zk]'); for (var i = 0; i < L.length; i++) { var R = ZPK[L[i].getAttribute('data-zk')]; if (R && !!R.gear === !!gear) return R; } return null; }
   function zPendIds(acts, z) { var o = []; myPendingTags().forEach(function (tag) { var t = zParse(tag); if (t && acts.indexOf(t.action) >= 0 && (z == null || +t.zombie === +z)) (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
-  function zPledgedAny(w, id) { return (w.pets || []).some(function (Z) { return Z.zombie && !Z.zombie.end && (Z.zombie.rpl || []).some(function (e) { return e.id === id; }); }); }
+  /* unresp-1101: zPledgedAny was O(all pets) per candidate pet, run for every candidate of every zombie card on every render(), so with many pets
+   * + zombies each button press (all call render) froze the page ~10 s. Same answer from one pass: a set of ids pledged to any open zombie,
+   * built once per world per task (cleared on the next macrotask, so it never goes stale). */
+  var zPledW = null, zPledS = null;
+  function zPledgedAny(w, id) { if (zPledW !== w || !zPledS) { var s = {}; (w.pets || []).forEach(function (Z) { if (Z && Z.zombie && !Z.zombie.end) (Z.zombie.rpl || []).forEach(function (e) { if (e && e.id != null) s[e.id] = 1; }); });
+      zPledW = w; zPledS = s; setTimeout(function () { zPledW = null; zPledS = null; }, 0); }
+    return zPledS[id] === 1; }
   /* Resurrection pledge picker (owner Oct 30 2026 7:54 PM CT "should be able to sacrifice more than one at a time and should have animation"): the
    * zombie's card lists your pets (discarded first, starred never) and your gear; tick any number; the card shows the running points total and the
    * live chance (V.cemResInfo on the zombie with the ticked pets added, read-only). Packing: the rules parse only the list form for rpl / rplg
