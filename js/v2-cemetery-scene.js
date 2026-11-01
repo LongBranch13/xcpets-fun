@@ -235,12 +235,14 @@
         (H.length ? '<h3>' + art('halo', 16) + ' Brought back <span class="small muted">(' + fmt(H.length) + ')</span></h3><p class="small muted">A Resurrection that succeeds makes the zombie a living pet again, with a halo for good (power ceiling ' + CE.CAP_RES + ' times). One that fails turns it to dust.</p><div class="cv2-halos">' +
           H.slice(0, 24).map(function (p) { return '<a class="cv2-halo" href="pet.html?id=' + p.id + '">' + art('halo', 12) + ' ' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + ' · block ' + fmt(p.resurrected.block) + (ME && p.owner === ME ? ' · yours' : '') + '</span></a>'; }).join('') + '</div>' : '');
       Z.forEach(function (p) { var c = zs.querySelector('canvas[data-z="' + p.id + '"]'); if (c && p.art && R.lazy) R.lazy(c, function () { return R.framesWith(p.art, Math.max(5, p.stage), []); }, true); }); }
-    function go(tags) { location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }
+    /* cemetery-handoff (Nov 1 2026): zombie meal / Resurrection pledge / Resurrection / hunt are signed right here (V2CemeteryAltar.sendPlans, same
+     * send guard as play.html) instead of a redirect to play.html#cem-...; the old link stays only as a fallback if the altar file fails to load */
+    function go(L, title) { var tags = L.map(function (p) { return p.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (p) { return V.cemPetAmount ? V.cemPetAmount(w, p, b) : p; }), ctx); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }
     zs.addEventListener('click', function (e) { var t = e.target.closest('[data-hunt],[data-zfeed],[data-rpl],[data-res]'); if (!t || t.disabled) return; var z;
-      if ((z = t.getAttribute('data-hunt'))) { var a = +zs.querySelector('[data-hpick="' + z + '"]').value, why = V.cemHuntWhy(w, a, +z, ME, b); if (why) { t.title = why; return; } go([V.cemHuntPlan(w, a, +z, b).tag]); }
-      else if ((z = t.getAttribute('data-zfeed'))) { var f = +zs.querySelector('[data-fpick="' + z + '"]').value; go([V.cemPlan(w, 'zfeed', +z, [f], b).tag]); }
-      else if ((z = t.getAttribute('data-rpl'))) { var r = +zs.querySelector('[data-rpick="' + z + '"]').value; go([V.cemPlan(w, 'rpl', +z, [r], b).tag]); }
-      else if ((z = t.getAttribute('data-res'))) go([V.cemPlan(w, 'resurrect', +z, null, b).tag]); });
+      if ((z = t.getAttribute('data-hunt'))) { var a = +zs.querySelector('[data-hpick="' + z + '"]').value, why = V.cemHuntWhy(w, a, +z, ME, b); if (why) { t.title = why; return; } go([V.cemHuntPlan(w, a, +z, b)], '🗡️ Zombie hunt'); }
+      else if ((z = t.getAttribute('data-zfeed'))) { var f = +zs.querySelector('[data-fpick="' + z + '"]').value; go([V.cemPlan(w, 'zfeed', +z, [f], b)], '🍖 Zombie meal for #' + z); }
+      else if ((z = t.getAttribute('data-rpl'))) { var r = +zs.querySelector('[data-rpick="' + z + '"]').value; go([V.cemPlan(w, 'rpl', +z, [r], b)], '😇 Resurrection offering for #' + z); }
+      else if ((z = t.getAttribute('data-res'))) go([V.cemPlan(w, 'resurrect', +z, null, b)], '😇 Resurrection of #' + z); });
     function pager(el, pages) { if (pages <= 1) { el.innerHTML = ''; return; } var bt = function (k, t, dis) { return '<button type="button" class="q" data-pg="' + k + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>'; };
       el.innerHTML = bt('first', '⏮ First', !st.page) + bt('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + bt('next', 'Next ▶', st.page >= pages - 1) + bt('last', 'Last ⏭', st.page >= pages - 1); }
     function paint() { var pages = Math.max(1, Math.ceil(st.list.length / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list.slice(st.page * PER, st.page * PER + PER);
@@ -285,7 +287,13 @@
     function deep() { var d = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id'); if (!d || !all.some(function (p) { return String(p.id) === String(d); })) return false;
       inp.value = '#' + d; st.q = '#' + d; apply(true); var e = $('tomb-' + d); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } return true; }
     window.addEventListener('hashchange', deep);
-    opts(); status(); zombies(); st.ready = true; if (!all.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; } else if (!deep()) apply();
+    opts(); status(); zombies(); st.ready = true; resumeNote(); if (!all.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; } else if (!deep()) apply();
+    /* cemetery-handoff: an offering saved in this browser (not yet sent, or stopped half way) gets a note at the top of the list with an Open button */
+    function resumeNote() { if (!ME) return; var o = {}; try { o = JSON.parse(localStorage.getItem('xcpets-cem-build-v1-' + ME) || '{}') || {}; } catch (e) { o = {}; }
+      var ids = Object.keys(o).filter(function (k) { var x = o[k]; return x && Date.now() - (x.at || 0) < 24 * 3600e3 && ((x.offered && x.offered.length) || (x.run && x.run.left && x.run.left.length)); });
+      var old = $('cemResume'); if (old) old.remove(); if (!ids.length) return; var m = $('cemMsg'); if (!m) return; var d = document.createElement('p'); d.id = 'cemResume'; d.className = 'small cem-resume';
+      d.innerHTML = '🕯️ Unsent offering saved in this browser: ' + ids.map(function (k) { var x = o[k]; return '<button type="button" class="q" data-resume="' + esc(k) + '">Open #' + esc(k) + ' ' + esc(x.name || '') + ' (' + ((x.offered || []).length) + ' pet' + ((x.offered || []).length === 1 ? '' : 's') + ')</button>'; }).join(' ');
+      m.parentNode.insertBefore(d, m); d.onclick = function (e) { var bt = e.target.closest('[data-resume]'); if (!bt) return; var id = +bt.getAttribute('data-resume'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g || !canRaise(g)) { bt.disabled = true; bt.title = 'This grave can no longer be raised'; return; } altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); }; }
     window.__cemV2 = { src: 'chain', n: all.length, block: b - 1, on: on, pub: pub };
   }
   function artJs(cb) { if (window.V2CemArt) return; if (document.getElementById('cemArtJs')) return; var v = ver(), sc = document.createElement('script'); sc.id = 'cemArtJs'; sc.src = 'js/v2-cemetery-art.js' + (v ? '?' + v : ''); sc.onload = cb; document.head.appendChild(sc); }
