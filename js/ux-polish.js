@@ -28,8 +28,8 @@
   // 9. alt text for every image (static + ones added later)
   function altFix(root) { (root.querySelectorAll ? root.querySelectorAll('img:not([alt])') : []).forEach(function (im) { var t = im.getAttribute('title') || im.getAttribute('aria-label') || ''; if (!t) { var f = (im.getAttribute('src') || '').split('/').pop().split('?')[0].replace(/\.\w+$/, ''); t = f.replace(/^sp-/, '').replace(/[-_]+/g, ' ').trim(); t = /logo/.test(f) ? 'XCPETS logo' : t ? 'XCPETS ' + t : 'XCPETS image'; } im.setAttribute('alt', t); }); }
   // 12. plain-words wallet errors (raw text kept in a details line)
-  function plain(raw, code) { var r = String(raw || ''); if (code === 4001 || /reject|denied|cancel/i.test(r)) return 'You cancelled the request in XCP Wallet. Nothing was burned.';
-    if (code === -32005 || /-32005|busy|pending request/i.test(r)) return 'XCP Wallet is busy with another request. Wait a few seconds and try again.';
+  function plain(raw, code) { var r = String(raw || ''); if (code === 4001 || /reject|denied|cancel/i.test(r)) return 'You cancelled the request in ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '. Nothing was burned.';
+    if (code === -32005 || /-32005|busy|pending request/i.test(r)) return (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' is busy with another request. Wait a few seconds and try again.';
     if (/fee.*(low|small)|min relay|insufficient fee|mempool min/i.test(r)) return 'The network fee was too low for Bitcoin right now. Try again (the fee is re-estimated).';
     if (/utxo|missing ?inputs|already spent|double.?spend|txn-mempool-conflict|bad-txns-inputs/i.test(r)) return 'A coin this burn wanted to spend is already used by one of your unconfirmed burns. Wait for the next block, then try again.';
     if (/insufficient|not enough|balance/i.test(r)) return /btc|fee/i.test(r) ? 'Not enough BTC in the wallet to pay the network fee.' : 'Not enough XCPETS in the wallet for this burn.';
