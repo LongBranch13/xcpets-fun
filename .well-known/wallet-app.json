@@ -1,0 +1,25 @@
+{
+  "name": "XCPETS",
+  "short_name": "XCPETS",
+  "description": "8-bit meme pets on Bitcoin. Hatch, feed, fight and breed pets with Counterparty burns, and every pet is rebuilt from the public chain by anyone.",
+  "start_url": "/play.html",
+  "scope": "/",
+  "background_color": "#0d1117",
+  "categories": ["games", "counterparty", "bitcoin", "pets"],
+  "icons": [
+    { "src": "/img/app/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ],
+  "wallet": {
+    "version": "1",
+    "subtitle": "Hatch 8-bit pets on Bitcoin",
+    "heroImageUrl": "/img/app/hero-1200x630.png",
+    "splashImageUrl": "/img/app/splash-200.png",
+    "chains": {
+      "required": ["bip122:000000000019d6689c085ae165831e93"]
+    },
+    "capabilities": {
+      "required": ["provider.counterparty"],
+      "optional": ["wallet.ready"]
+    }
+  }
+}
