@@ -18,7 +18,7 @@
     var dw = Math.round(24 * open); px(ctx, 119, 50, 24, 26, '#0b1220'); if (dw < 24) px(ctx, 119 + dw, 50, 24 - dw, 26, C.stone2);
     if (frost) { ctx.globalAlpha = frost; px(ctx, 119, 50, 24, 26, C.ice); ctx.globalAlpha = 1; } px(ctx, 108, 76, 46, 2, C.ice2); }
   function egg(ctx, x, y) { px(ctx, x + 2, y, 6, 1, '#1a1020'); px(ctx, x + 1, y + 1, 8, 10, '#1a1020'); px(ctx, x + 2, y + 1, 6, 9, C.green); px(ctx, x + 3, y + 2, 2, 3, '#7cc55a'); px(ctx, x + 2, y + 8, 6, 1, '#ffffff'); }
-  function text(ctx, s, x, y, c, size) { if (!ctx.fillText) return; ctx.fillStyle = c; ctx.font = (size || 6) + 'px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillText(s, x, y); }
+  function text(ctx, s, x, y, c, size) { if (!ctx.fillText) return; ctx.fillStyle = c; ctx.font = (size || 6) + 'px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillText(s, Math.round(x), Math.round(y)); } /* crisp-text-1101: whole pixels */
   /** draw(ctx, t, o): frame t (0..FRAMES-1). o = { frames: HomerSprite.frames(5, bg) (4 frames), ghosts: [frames of earlier community pets], total, next } */
   function draw(ctx, t, o) { o = o || {}; var fr = o.frames || [], f = fr[(t >> 3) % 4] || fr[0], total = o.total || 0;
     px(ctx, 0, 0, W, H, C.bg); px(ctx, 0, 78, W, 12, '#0e1324');

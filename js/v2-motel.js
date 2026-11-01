@@ -73,7 +73,10 @@
     px(x, '#6e4520', tx - 1, ty + 1, 2, 2); px(x, '#6e4520', tx + 2, ty + 2, 2, 2); }
   function bush(x, bx, by, w) { px(x, '#1f6e3a', bx, by - 5, w, 5); px(x, '#2f9e44', bx + 1, by - 7, w - 2, 3); px(x, '#3ddc84', bx + 2, by - 6, 2, 1); px(x, '#3ddc84', bx + w - 4, by - 4, 2, 1); }
   function flowers(x, bx, by, w) { px(x, '#4a2d1e', bx, by - 3, w, 3); for (var i = 1; i < w - 1; i += 3) { px(x, '#2f9e44', bx + i, by - 5, 1, 2); px(x, ['#ff4fd8', '#ffd166', '#ff6b6b', '#c9c9ff'][(i / 3 | 0) % 4], bx + i - 1 + (i % 2), by - 7, 2, 2); } }
-  function others(w) { /* real recent breeding pairs: live pending check-ins first, then the guestbook */ var seen = {}, out = [], skip = [S.A && S.A.id, S.B && S.B.id];
+  /* speed2-1101: others() ran every animation frame (filter + sort of every pet); cached per world + picked pair */
+  var OC = { w: null, k: '', v: null };
+  function others(w) { var k = (S.A && S.A.id) + ':' + (S.B && S.B.id); if (OC.w === w && OC.k === k && OC.v) return OC.v; OC = { w: w, k: k, v: others0(w) }; return OC.v; }
+  function others0(w) { /* real recent breeding pairs: live pending check-ins first, then the guestbook */ var seen = {}, out = [], skip = [S.A && S.A.id, S.B && S.B.id];
     var add = function (a, b) { var A = w.byId[a], B = w.byId[b]; if (!A || !B || skip.indexOf(A.id) >= 0 || skip.indexOf(B.id) >= 0) return; var k = [A.id, B.id].sort().join(':'); if (seen[k]) return; seen[k] = 1; out.push([A, B]); };
     (w.breedReqs || []).slice().sort(function (p, q) { return q.block - p.block; }).forEach(function (r) { if (!r.used) add(r.a, r.b); });
     w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (p, q) { return (q.hatchBlock || 0) - (p.hatchBlock || 0) || q.id - p.id; }).slice(0, 12).forEach(function (c) { add(c.parents[0], c.parents[1]); });
@@ -166,7 +169,13 @@
     if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
-    if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
+    if (!rm) S.raf = requestAnimationFrame(frame); else S.raf = 0; }
+  /* speed2-1101: the scene redraws at most ~20 fps, and not at all while it is off screen or the tab is hidden (it used to redraw every frame, ~15% of a core) */
+  var FRAME_MS = 50, motelVis = true, motelObs = null;
+  function watchVis(c) { if (motelObs || typeof IntersectionObserver === 'undefined') return; try { motelObs = new IntersectionObserver(function (es) { es.forEach(function (e) { motelVis = e.isIntersecting; }); }); motelObs.observe(c); } catch (e) { motelObs = null; } }
+  function frame(n) { if (S.c && S.c !== (motelObs && motelObs._c)) { if (motelObs) { try { motelObs.disconnect(); } catch (e) { } motelObs = null; } watchVis(S.c); if (motelObs) motelObs._c = S.c; }
+    if ((document.hidden || !motelVis) || n - (S.drawn || 0) < FRAME_MS) { S.raf = requestAnimationFrame(frame); return; } S.drawn = n;
+    if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
     if (A && B) { var pair = [String(A.id), String(B.id)].sort().join(':');
       kid = w.pets.filter(function (p) { return p.parents && p.parents.map(String).sort().join(':') === pair; }).sort(function (x, y) { return y.hatchBlock - x.hatchBlock; })[0] || null;

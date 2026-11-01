@@ -35,8 +35,14 @@
   function px(g, x, y, c, w, h) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w || 1, h || w || 1); }
   function disc(g, cx, cy, r, c, ry) { ry = ry || r; for (var y = -ry; y <= ry; y++) for (var x = -r; x <= r; x++) if ((x * x) / (r * r || 1) + (y * y) / (ry * ry || 1) <= 1) px(g, cx + x, cy + y, c); }
   function ring(g, cx, cy, r, c, ry) { ry = ry || r; var n = Math.max(10, Math.round(r * 7)); for (var i = 0; i < n; i++) { var a = i / n * Math.PI * 2; px(g, cx + Math.cos(a) * r, cy + Math.sin(a) * ry, c); } }
-  function text(g, s, x, y, c, size, align) { g.save(); g.font = (size || 8) + 'px "Press Start 2P", monospace'; g.textAlign = align || 'center'; g.textBaseline = 'top';
-    g.fillStyle = C.ol; g.fillText(s, Math.round(x) + 1, Math.round(y) + 1); g.fillStyle = c; g.fillText(s, Math.round(x), Math.round(y)); g.restore(); }
+  /* crisp-text-1101: the scene is drawn at k device pixels per scene pixel (k = whole number, set in paint). Text is drawn at device resolution
+   * in a whole multiple of 8 px (Press Start 2P's own grid), at whole device pixels, with a hard one-font-pixel shadow (no blur, no sub-pixel ghost). */
+  function text(g, s, x, y, c, size, align) { var k = g.__k || 1; g.save(); size = size || 8;
+    if (k < 2) { g.font = size + 'px "Press Start 2P", monospace'; g.textAlign = align || 'center'; g.textBaseline = 'top'; g.fillStyle = C.ol; g.fillText(s, Math.round(x) + 1, Math.round(y) + 1); g.fillStyle = c; g.fillText(s, Math.round(x), Math.round(y)); g.restore(); return; }
+    var want = size * k, fp = Math.max(8, Math.floor(want / 8) * 8); if (fp < want * 0.75) fp = Math.ceil(want / 8) * 8; var u = fp / 8;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.shadowColor = 'transparent'; g.font = fp + 'px "Press Start 2P", monospace'; g.textAlign = 'left'; g.textBaseline = 'top';
+    var wd = Math.round(g.measureText(s).width / u) * u, X = Math.round(x * k) - (align === 'left' ? 0 : align === 'right' ? wd : Math.round(wd / 2 / u) * u), Y = Math.round(y * k);
+    g.fillStyle = C.ol; g.fillText(s, X + u, Y + u); g.fillStyle = c; g.fillText(s, X, Y); g.restore(); }
   /* ---- sprites: the pet's own 32x32 art on a keyed background (bare: no gear, no looks) ---- */
   var SPR = {};
   function keyed(p, stage, ov) { var r = window.V2Render; if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
@@ -295,7 +301,7 @@
     if (open >= 14) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.rolls ? '+' + ev.rolls + ' FREE ROLLS' : (ev.n || m) + ' PIECE' + ((ev.n || m) === 1 ? '' : 'S') + ' IN YOUR BAG', CX, GY + 6, '#ffffff', 5); } }
   var PAINT = { arrival: arrivalF, grant: grantF, 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
   function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
-  function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
+  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function more(n, shown) { return n > shown ? ' and ' + (n - shown).toLocaleString('en-US') + ' more' : ''; }
   function caption(ev, w) { var P = pets(ev, w), p = P.list[0], n = nm(p, ev.ids && ev.ids[0]), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
@@ -325,14 +331,14 @@
     return ''; }
   function css() { if (document.getElementById('laCss')) return; var s = document.createElement('style'); s.id = 'laCss';
     s.textContent = '.la-ov{position:fixed;inset:0;z-index:100010;background:rgba(10,8,22,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;padding:12px;box-sizing:border-box;overflow:hidden}' +
-      '.la-ov canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:4px solid #000;box-shadow:4px 4px 0 #000;background:#1b1440;max-width:100%}' +
+      '.la-ov canvas{image-rendering:crisp-edges;image-rendering:pixelated;border:4px solid #000;box-shadow:4px 4px 0 #000;background:#1b1440;max-width:100%}' +
       '.la-cap{font-family:inherit;color:#fff3b0;font-size:17px;text-align:center;text-shadow:2px 2px 0 #000;max-width:92vw;line-height:1.35;overflow-wrap:anywhere}.la-skip{color:#bbb;font-size:12px}';
     document.head.appendChild(s); }
   var BUSY = null, API;
   /* play(ev, {w, done, still}) -> {end, canvas, frame(k)}; ev = {kind, ids, n, to, care, block, key} */
   function play(ev, o) { o = o || {}; css(); var w = o.w || (window.V2Mock && V2Mock.world && V2Mock.world()), N = LEN[ev.kind] || 40;
     var ov = document.createElement('div'); ov.className = 'la-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', caption(ev, w)); ov.dataset.anim = ev.kind;
-    var sc = Math.max(2, Math.min(6, Math.floor(Math.min(window.innerWidth - 40, 640) / W))), c = document.createElement('canvas'); c.width = W; c.height = H; c.style.width = W * sc + 'px'; c.style.height = H * sc + 'px';
+    var sc = Math.max(2, Math.min(6, Math.floor(Math.min(window.innerWidth - 40, 640) / W))), c = document.createElement('canvas'), dpr = window.devicePixelRatio || 1, K = Math.max(1, Math.round(sc * dpr)); /* crisp-text-1101: whole device pixels per scene pixel */ c.width = W * K; c.height = H * K; c.style.width = W * K / dpr + 'px'; c.style.height = H * K / dpr + 'px';
     var cap = document.createElement('div'); cap.className = 'la-cap'; cap.textContent = caption(ev, w); var skip = document.createElement('div'); skip.className = 'la-skip'; skip.textContent = 'Tap to skip';
     ov.appendChild(c); ov.appendChild(cap); ov.appendChild(skip); document.body.appendChild(ov); var f = 0, tm = null, ended = false;
     function key(e) { if (e) { e.preventDefault(); e.stopPropagation(); } end(); }
