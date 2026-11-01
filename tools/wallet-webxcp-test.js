@@ -94,6 +94,14 @@ async function node() {
   // not found
   r = rig({ webXCP: false }); x = await r.W.connect().then(v => ({ s: 'ok' }), e => ({ s: 'err', e }));
   chk('no wallet -> new not-found copy', x.s === 'err' && x.e.message === 'No wallet found. Use the XCP Wallet Chrome extension, or open xcpets.fun in the Casa Tookan app.' && /Casa Tookan/.test(x.e.html), x.e && x.e.message);
+  // casa-connect (Nov 1 2026): inside Casa Tookan with no provider yet -> waits for a late webXCP (up to 6 s), and a miss explains how to attach it
+  r = rig({ webXCP: false }); r.win.casaTookan = { isCasaTookan: true }; chk('casa-connect: in Casa, no provider yet -> label Casa Tookan', r.W.label() === 'Casa Tookan' && r.W.inCasa() === true);
+  setTimeout(() => { r.win.webXCP = casaStub(r.S, ME); }, 2600); let t0 = Date.now(); a = await r.W.connect();
+  chk('casa-connect: webXCP attached 2.6 s late still connects', a === ME && Date.now() - t0 >= 2500, (Date.now() - t0) + ' ms');
+  r = rig({ webXCP: false }); r.win.casaTookan = { isCasaTookan: true }; t0 = Date.now(); x = await r.W.connect().then(v => ({ s: 'ok' }), e => ({ s: 'err', e }));
+  chk('casa-connect: in Casa, never attached -> Casa hint after ~6 s (not install XCP Wallet)', x.s === 'err' && x.e.casaMiss && /Browse \u203a Apps/.test(x.e.message) && Date.now() - t0 >= 5800, x.e && x.e.message);
+  r = rig({ webXCP: false }); t0 = Date.now(); x = await r.W.connect().then(v => ({ s: 'ok' }), e => ({ s: 'err', e }));
+  chk('casa-connect: outside Casa the wait stays 2 s', x.s === 'err' && !x.e.casaMiss && Date.now() - t0 < 3500, (Date.now() - t0) + ' ms');
 }
 async function chrome() {
   const { chromium } = require('playwright-core');
