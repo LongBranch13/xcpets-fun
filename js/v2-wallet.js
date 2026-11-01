@@ -16,22 +16,31 @@
   var tracker = new Wallet.Tracker(store, 'xcpets-v2-pending-' + NET);
   var STORE = 'https://chromewebstore.google.com/detail/xcp-wallet/nicpjdbehgcjbjfjkobcidnfmfpijohg';
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  /* casatookan-wallet (Nov 1 2026): a wallet is XCP Wallet (window.xcpwallet, always first) or Casa Tookan's in-app browser (window.webXCP /
+   * window.web3xcp, see rjs/wallet.js). find() -> {kind, label, p} or null. Casa injects a few ms after load, so we keep polling for it too. */
+  function find() { var w = Wallet.detect(win); return w && (w.kind === 'xcpwallet' || w.kind === 'webxcp') ? w : null; }
+  function casa() { return !win.xcpwallet && !!(win.webXCP || win.web3xcp); }
+  /** label(): the wallet name for page copy: 'Casa Tookan' inside Casa Tookan, else 'XCP Wallet' (all XCP Wallet copy unchanged) */
+  function label() { var k = wallet ? wallet.w.kind : win.xcpwallet ? 'xcpwallet' : casa() ? 'webxcp' : get(PROV_KEY); return k === 'webxcp' ? 'Casa Tookan' : 'XCP Wallet'; }
+  function isCasa() { return label() === 'Casa Tookan'; }
   function waitForXcp(ms) {
     return new Promise(function (resolve) {
-      if (win.xcpwallet) return resolve(win.xcpwallet);
+      if (find()) return resolve(find());
       var t0 = Date.now(), done = false;
-      function fin() { if (done) return; if (win.xcpwallet || Date.now() - t0 >= ms) { done = true; resolve(win.xcpwallet || null); } }
+      function fin() { if (done) return; var w = find(); if (w || Date.now() - t0 >= ms) { done = true; resolve(w); } }
       if (win.addEventListener) win.addEventListener('xcp-wallet#initialized', fin);
       try { win.dispatchEvent(new win.Event('xcp-wallet#discover')); } catch (e) { /* ignore */ }
       (function poll() { fin(); if (!done) setTimeout(poll, 150); })();
     });
   }
-  function NotFound() { var e = new Error('XCP Wallet not found.'); e.html = 'XCP Wallet not found. Install the <a href="' + STORE + '" target="_blank" rel="noopener">XCP Wallet Chrome extension</a>, then refresh.'; return e; }
+  var NOT_FOUND = 'No wallet found. Use the XCP Wallet Chrome extension, or open xcpets.fun in the Casa Tookan app.';
+  function NotFound() { var e = new Error(NOT_FOUND); e.notFound = true; e.html = 'No wallet found. Use the <a href="' + STORE + '" target="_blank" rel="noopener">XCP Wallet Chrome extension</a> (then refresh), or open xcpets.fun in the Casa Tookan app.'; return e; }
   /* hotfix-chain (2026-10-14): keep the wallet's real reason. Wallet.errMsg maps -32603 to a bare 'Wallet error.' and drops e.message
    * (e.g. 'txn-mempool-conflict' / 'bad-txns-inputs-missingorspent'); show both. */
   /* wallet-unlock (2026-10-22): XCP Wallet answers 4100 when it is locked (or this site is not connected). Say plainly what to do. */
   var UNLOCK = 'Unlock XCP Wallet to continue. It is locked (or this site is not connected): click again and unlock it in the XCP Wallet window that opens (it may be behind this window).';
-  function errText(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return UNLOCK + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
+  var CASA_4100 = 'Casa Tookan says this is not the active casa\'s address. Switch back to the casa you connected with, or tap Reconnect.';
+  function errText(e) { if (!e) return 'Wallet request failed.'; if (e.code === 4100) return (isCasa() ? CASA_4100 : UNLOCK) + ' [code 4100]'; if (!e.code) return e.message || String(e); var m = Wallet.errMsg(e), raw = e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || '';
     return m + (raw && m.indexOf(raw) < 0 ? ' (wallet said: ' + raw + ')' : '') + ' [code ' + e.code + ']'; }
   /* burn-wait-confirm (2026-10-26, PREVIEW): the only usable coin is the unconfirmed change of the player's last burn. XCP Wallet's input check
    * often can't verify such a coin ("Couldn't verify asset status"), so we no longer fall back to it silently: we show this note instead.
@@ -86,7 +95,7 @@
    * the page cannot name, focus or reuse that window. So never have two wallet requests open at once: concurrent connects share one promise,
    * and a second burn while one is waiting for approval is refused with a hint instead of opening another window. */
   var connecting = null, signing = 0, LOCK_MS = 10 * 60e3; /* signing = start time of the pending burn; the lock self-clears after 10 min (XCP Wallet's own sign-request TTL) */
-  function busyErr() { var e = new Error('An XCP Wallet window is already open and waiting for you (it may be behind this window). Finish or close the open XCP Wallet windows, then try again.'); e.walletBusy = true; return e; }
+  function busyErr() { var e = new Error(isCasa() ? 'Casa Tookan is already asking you to approve a transaction. Finish or cancel it there, then try again.' : 'An XCP Wallet window is already open and waiting for you (it may be behind this window). Finish or close the open XCP Wallet windows, then try again.'); e.walletBusy = true; return e; }
   /* wallet-unlock (2026-10-22): the wallet object used to be cached forever, so after XCP Wallet locked itself every action failed with 4100.
    * XCP Wallet's xcp_requestAccounts opens its own unlock window when locked (waits up to 5 min), so: when the wallet reported a lock
    * (accountsChanged []) re-run connect before handing the wallet out, and if a sign request still answers 4100, unlock via connect and retry once.
@@ -97,7 +106,7 @@
     var x = wallet, was = x.address;
     return (connecting = x.connect().then(function (r) {
       if (!r.address) { var e = new Error(UNLOCK); e.code = 4100; throw e; }
-      if (r.address !== was) { x.address = was; setMe(r.address); if (win.location) win.location.reload(); throw new Error('XCP Wallet switched to another address (' + r.address + '). Reloading for that address.'); }
+      if (r.address !== was) { x.address = was; setMe(r.address); if (win.location) win.location.reload(); throw new Error(x.w.label + ' switched to another address (' + r.address + '). Reloading for that address.'); }
       locked = false; return x;
     })).then(function (x) { connecting = null; return x; }, function (e) { connecting = null;
       if (e && e.code === 4001) { var u = new Error(UNLOCK); u.code = 4100; u.cause = e; throw u; } throw e; }); /* closed the unlock window: still locked, say so */
@@ -107,18 +116,27 @@
     function retry(f) { return function () { var self = this, a = arguments; return f.apply(self, a).catch(function (e) { if (!e || e.code !== 4100) throw e; return unlock().then(function () { return f.apply(self, a); }); }); }; }
     x.signAndBroadcast = retry(sb); x.signMessage = retry(sm); return x;
   }
+  /* casatookan-wallet: Casa Tookan signs, the site broadcasts (POST mempool /tx, like the inscribe flow). 30 s limit; a timeout may still have sent it. */
+  function broadcast(hex) {
+    return withTimeout(F(CFG.mempoolApi + '/tx', { method: 'POST', body: hex }).then(function (r) { return r.text().then(function (t) { t = String(t || '').trim();
+      if (!r.ok) throw new Error('The network refused the signed transaction (' + (t || 'HTTP ' + r.status) + '). Nothing was sent.'); return t; }); }),
+      30000, 'Broadcasting did not answer in 30 s. The transaction may still have been sent: check your address on mempool.space before trying again.');
+  }
+  function mk(f) { return new Wallet.Wallet(f.kind === 'webxcp' ? { kind: 'webxcp', label: f.label, p: f.p, broadcast: broadcast } : { kind: f.kind, label: f.label, p: f.p }); }
+  /** the event source for accountsChanged/disconnect: XCP Wallet itself; in Casa Tookan its window.unisat emitter (casa switch) */
+  function evp(f) { return f.kind === 'webxcp' ? (win.casaTookan && win.unisat && win.unisat.on ? win.unisat : null) : f.p; }
   function getWallet() {
     if (wallet) return locked ? unlock() : Promise.resolve(wallet);
     if (connecting) return connecting;
-    return (connecting = waitForXcp(2000).then(function (p) {
-      if (!p) throw NotFound();
-      var x = new Wallet.Wallet({ kind: 'xcpwallet', label: 'XCP Wallet', p: p });
+    return (connecting = waitForXcp(2000).then(function (f) {
+      if (!f) throw NotFound();
+      var x = mk(f), L = f.label;
       return x.connect().then(function (r) {
-        if (!r.address) throw new Error('XCP Wallet returned no address');
+        if (!r.address) throw new Error(L + ' returned no address');
         return x.network().then(function (n) {
-          if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) throw new Error('XCP Wallet is on ' + n + ' but this page is on ' + NET + '. Switch one of them.');
+          if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) throw new Error(L + ' is on ' + n + ' but this page is on ' + NET + '. Switch one of them.');
           wallet = guard(x); locked = false; setMe(x.address); loadSpent(x.address);
-          hook(p); remember(); emit();
+          hook(evp(f)); remember(f.kind); emit();
           return x;
         });
       });
@@ -133,7 +151,7 @@
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
    * wrong, fall back to /recommended; if both fail, 2 sat/vB as before. Cached 60 s so a 16-burn chain does not ask 16 times. Fee only, rules unchanged. */
-  var FEE_FLOOR = 0.1, FEE_CAP = 500, FEE_FALLBACK = 2, FEE_CACHE_MS = 60000, BURN_VB = 155, feeCache = null;
+  var FEE_FLOOR = 0.1, FEE_CAP = 500, FEE_FALLBACK = 2, FEE_CACHE_MS = 60000, BURN_VB = 155, BURN_VB_P2PKH = 240, feeCache = null; /* casatookan-wallet: a legacy 1... input is ~148 vB vs ~68 (segwit); Casa Tookan's default address is legacy */
   function feeNum(x) { x = Number(x); return isFinite(x) && x > 0 ? x : NaN; }
   function pickFee(f) { if (!f || typeof f !== 'object') return NaN; var eco = feeNum(f.economyFee), hr = feeNum(f.hourFee), min = feeNum(f.minimumFee);
     var floor = Math.max(FEE_FLOOR, isFinite(min) ? min : FEE_FLOOR), x = isFinite(eco) ? eco : hr;
@@ -147,7 +165,8 @@
       function () { return { rate: FEE_FALLBACK, src: 'fallback', at: Date.now() }; }); }
   function feeRate() { return feeQuote().then(function (q) { return q.rate; }); }
   /** feeEstimate(n, rate[, vb]) -> estimated sats for n burns at rate (about BURN_VB vB each: 1 input, OP_RETURN, change) */
-  function feeEstimate(n, rate, vb) { return Math.ceil((vb || BURN_VB) * Number(rate || 0)) * Math.max(1, n || 1); }
+  function burnVb() { return wallet && wallet.w.kind === 'webxcp' && /^1/.test(wallet.address || '') ? BURN_VB_P2PKH : BURN_VB; }
+  function feeEstimate(n, rate, vb) { return Math.ceil((vb || burnVb()) * Number(rate || 0)) * Math.max(1, n || 1); }
   function rateText(r) { r = Number(r); return (r >= 10 ? String(Math.round(r)) : String(Math.round(r * 1000) / 1000)) + ' sat/vB'; }
   /** feeInfo(res, rate): the chosen rate and the fee of the composed transaction, shown before every signing */
   function feeInfo(res, rate) { var es = res && res.signed_tx_estimated_size, vb = es && Number(es.vsize || es.adjusted_vsize), sats = res && Number(res.btc_fee);
@@ -155,7 +174,7 @@
   function fmtSats(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
   /* Callers that pass no progress callback (shop, quests, gifts, looks, deeds) get the same line as a toast, right before the XCP Wallet window. */
   function feeToast(info, what) { try { var D = win.document, t = D && D.getElementById('toasts'); if (!t) return; var x = D.createElement('div'); x.className = 'toast'; x.setAttribute('role', 'status');
-    x.textContent = '⛽ ' + (what ? what + ': ' : '') + info.text + '. Approve it in XCP Wallet.'; t.appendChild(x); setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 8000); } catch (e) { } }
+    x.textContent = '⛽ ' + (what ? what + ': ' : '') + info.text + '. Approve it in ' + label() + '.'; t.appendChild(x); setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 8000); } catch (e) { } }
   function composeNodes() { return (CFG.composeList && CFG.composeList.length ? CFG.composeList : [CFG.compose]).filter(function (u) { return !/xcp\.fun/.test(u); }); }
   /** whole-XCPETS amount as the decimal string BurnCore.toRaw expects (v2 release = 0.00000001 would stringify as 1e-8) */
   function amt(a) { return typeof a === 'number' ? a.toFixed(8).replace(/\.?0+$/, '') : String(a); }
@@ -353,10 +372,10 @@
    * made it final until the next focus; XCP Wallet's auto-lock ([] from xcp_accounts) was shown as "disconnected"; a 'disconnect' event dropped
    * the wallet without asking. Now: no red until a check has finished (with retries 1.5 / 4 / 10 s, an 8 s answer limit, no retries while the
    * tab is hidden: they run when it is visible again), a locked wallet says "Wallet locked", and 'disconnect' is confirmed with xcp_accounts first. */
-  var PROV_KEY = 'xcpets-v2-wallet-provider', hooked = null, lastPaint = null, silentAt = 0, silentP = null, settled = false, lockSeen = false, RETRY = [1500, 4000, 10000], ACC_MS = 8000;
+  var PROV_KEY = 'xcpets-v2-wallet-provider', casaAsked = false, hooked = null, lastPaint = null, silentAt = 0, silentP = null, settled = false, lockSeen = false, RETRY = [1500, 4000, 10000], ACC_MS = 8000;
   function hidden() { var d = win.document; return !!(d && d.visibilityState === 'hidden'); }
   function get(k) { try { return store.getItem(k); } catch (e) { return null; } }
-  function remember() { try { store.setItem(PROV_KEY, 'xcpwallet'); } catch (e) { } }
+  function remember(k) { try { store.setItem(PROV_KEY, k || (wallet && wallet.w.kind) || 'xcpwallet'); } catch (e) { } }
   function forget() { try { store.removeItem(PROV_KEY); } catch (e) { } }
   function status() { return wallet && !locked ? 'on' : wallet && locked ? 'locked' : !get(PROV_KEY) ? 'none' : lockSeen ? 'locked' : settled ? 'off' : 'checking'; }
   function emit() { try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:wallet', { detail: { status: status(), address: wallet && wallet.address } })); } catch (e) { }
@@ -372,17 +391,30 @@
     if (wallet && !locked && !force) return Promise.resolve(wallet.address);
     if (connecting) return connecting.then(function (x) { return x && x.address; }, function () { return null; });
     if (silentP) return silentP; if (!force && Date.now() - silentAt < 2000) return Promise.resolve(wallet && !locked ? wallet.address : null); silentAt = Date.now();
-    function attempt() { return waitForXcp(wallet || get(PROV_KEY) ? 2000 : 600).then(function (p) {
+    function attempt() { return waitForXcp(wallet || get(PROV_KEY) ? 2000 : 600).then(function (f) {
+      if (f && f.kind === 'webxcp') return casaSilent(f);
+      var p = f && f.p;
       if (!p || !p.request) return { retry: !!get(PROV_KEY) }; hook(p);
-      return withTimeout(Promise.resolve().then(function () { return p.request({ method: 'xcp_accounts' }); }), ACC_MS, 'xcp_accounts timed out').then(function (r) { return use(p, r).then(function (a) { return { a: a }; }); }, function () { return { retry: true }; }); }); }
+      return withTimeout(Promise.resolve().then(function () { return p.request({ method: 'xcp_accounts' }); }), ACC_MS, 'xcp_accounts timed out').then(function (r) { return use(f, r).then(function (a) { return { a: a }; }); }, function () { return { retry: true }; }); }); }
     function run(n) { return attempt().then(function (o) { if (!o.retry || n >= RETRY.length) return o; if (hidden()) return { defer: true }; return sleep(RETRY[n]).then(function () { return run(n + 1); }); }); }
-    function use(p, r) { return Promise.resolve().then(function () { var a = Array.isArray(r) ? r[0] : r && r.accounts && r.accounts[0];
+    /* casatookan-wallet: never open Casa's connect sheet unasked. Casa's window.unisat.getAccounts answers silently ([] when this site is not
+     * connected); without it, only a browser that connected before (PROV_KEY 'webxcp') asks webXCP.getAccounts, once per page load
+     * (Casa remembers the site, so that does not prompt again). */
+    function casaSilent(f) {
+      var u = win.casaTookan && win.unisat && typeof win.unisat.getAccounts === 'function' ? win.unisat : null, ev = evp(f); if (ev) hook(ev);
+      var q = u ? Promise.resolve().then(function () { return u.getAccounts(); })
+        : get(PROV_KEY) === 'webxcp' && !casaAsked ? (casaAsked = true, mk(f).connect().then(function (r) { return r.address ? [r.address] : []; })) : null;
+      if (!q) return Promise.resolve({ a: null });
+      return withTimeout(q, ACC_MS, 'Casa Tookan accounts timed out').then(function (r) { return use(f, r).then(function (a) { return { a: a }; }); }, function () { return { retry: false }; }); }
+    function use(f0, r) { var f = f0 && f0.kind ? f0 : { kind: 'xcpwallet', label: 'XCP Wallet', p: f0 };
+      return Promise.resolve().then(function () { var a = Array.isArray(r) ? r[0] : r && r.accounts && r.accounts[0]; if (a && typeof a === 'object') a = a.address;
         if (!a) { if (wallet) locked = true; else lockSeen = !!get(PROV_KEY); return null; }
         lockSeen = false; if (wallet && wallet.address === a) { locked = false; return a; }
         if (wallet && wallet.address !== a) return null; /* a different account: the accountsChanged handler reloads for it */
-        var x = new Wallet.Wallet({ kind: 'xcpwallet', label: 'XCP Wallet', p: p }); x.address = a;
+        if (f.kind === 'webxcp' && !validAddr(a)) return null;
+        var x = mk(f); x.address = a;
         return x.network().then(function (n) { if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) return null;
-          wallet = guard(x); locked = false; remember(); loadSpent(a); if (!get(ME_KEY)) setMe(a); else try { store.setItem(ADDR_KEY, a); } catch (e) { } return a; }); }); }
+          wallet = guard(x); locked = false; remember(f.kind); loadSpent(a); if (!get(ME_KEY)) setMe(a); else try { store.setItem(ADDR_KEY, a); } catch (e) { } return a; }); }); }
     return (silentP = run(0).then(function (o) { silentP = null; if (!o.defer) settled = true; emit(); return o.a || null; }, function () { silentP = null; settled = true; emit(); return null; })); }
   function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
   var PILL_CSS = '#xwPill{position:fixed;left:8px;bottom:8px;z-index:9000;display:flex;align-items:center;gap:6px;padding:4px 8px;font:inherit;font-size:12px;line-height:1.2;background:#0d1410;color:#e8f5ec;border:2px solid #2a3a2e;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.45);max-width:calc(100vw - 16px)}' +
@@ -397,7 +429,7 @@
     el.hidden = false; el.className = st;
     var txt = st === 'on' ? 'Wallet connected <span class="xwlong">' + esc(short(wallet.address)) + '</span>' : st === 'locked' ? 'Wallet locked' : 'Wallet disconnected';
     el.innerHTML = '<span class="xwdot" aria-hidden="true"></span><span class="xwt">' + txt + '</span>' + (st === 'on' ? '' : '<button type="button" id="xwRe">' + (st === 'locked' ? 'Unlock' : 'Reconnect') + '</button>');
-    el.title = st === 'on' ? 'XCP Wallet connected: ' + wallet.address : 'Tap to reconnect XCP Wallet (opens the XCP Wallet window)';
+    el.title = isCasa() ? (st === 'on' ? 'Casa Tookan connected: ' + wallet.address : 'Tap to reconnect Casa Tookan') : st === 'on' ? 'XCP Wallet connected: ' + wallet.address : 'Tap to reconnect XCP Wallet (opens the XCP Wallet window)';
     var b = el.querySelector('#xwRe'); if (b) b.onclick = function () { b.disabled = true; b.textContent = '…'; connect().then(function (a) { var me = get(ME_KEY); if (me && a !== me && win.location && /play\.html/.test(win.location.pathname || '')) win.location.reload(); }, function (e) { b.disabled = false; b.textContent = 'Retry'; el.title = errText(e); }); }; }
   function autoBoot() { var doc = win.document; if (!doc) return;
     var go = function () { pill(); silent(); };
@@ -411,12 +443,12 @@
     try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:connected', { detail: { address: w.address } })); } catch (e) { } return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
   function paint(ME, $) {
-    lastPaint = [ME, $]; var c = $('wconnect'); if (!c) return;
-    $('me').textContent = ME ? ME + (wallet && wallet.address === ME ? ' (XCP Wallet)' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? (locked && wallet ? ' (XCP Wallet locked: tap Unlock)' : ' (XCP Wallet: not attached, tap Reconnect)') : ' (view only: connect to burn)') : 'not connected';
-    c.textContent = wallet && wallet.address === ME ? '✓ XCP Wallet connected' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? '↻ Reconnect XCP Wallet' : 'Connect XCP Wallet'; c.disabled = false;
-    if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for XCP Wallet…';
+    lastPaint = [ME, $]; var c = $('wconnect'); if (!c) return; var L = label();
+    $('me').textContent = ME ? ME + (wallet && wallet.address === ME ? ' (' + L + ')' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? (locked && wallet ? ' (' + L + ' locked: tap Unlock)' : ' (' + L + ': not attached, tap Reconnect)') : ' (view only: connect to burn)') : 'not connected';
+    c.textContent = wallet && wallet.address === ME ? '✓ ' + L + ' connected' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? '↻ Reconnect ' + L : 'Connect ' + L; c.disabled = false;
+    if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
+  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
