@@ -950,7 +950,7 @@
   function cemRunsNote(plans, w) { var b = (S.tip || 0) + 1; if (!w || !V.cemRunsOn || !V.cemRunsOn(b)) return ''; var by = {}, tot = 0, sr = false, runs = false;
     plans.forEach(function (q) { var t = q && q.tag ? V.parseTag(q.tag) : null; if (!t) return; var isR = t.action === 'cemr', a = isR ? t.kind : t.action; if (!/^(alt|seance|zfeed|rpl)$/.test(a)) return;
       var n = isR ? (q.ids ? q.ids.length : V.cemRunsIds(w, ME, t, b).length) : (t.ids || []).length, k = a === 'zfeed' ? 'zmeal' : a === 'rpl' ? 'rpl' : 'pledge'; by[k] = (by[k] || 0) + n; tot += n; if (a === 'seance') sr = true; if (isR) runs = true; });
-    if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' × ' + fmt(V.cemCost(w, k, b)); });
+    if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' times ' + fmt(V.cemCost(w, k, b)); });
     return ' (priced per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;

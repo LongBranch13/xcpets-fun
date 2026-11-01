@@ -1887,6 +1887,7 @@
     w.burnedBy = {}; w.questsOut = []; w.questFeed = []; preRows.forEach(function (r) { var x = r.raw || r, a = Number(r.amount != null ? r.amount : x.quantity / 1e8); if (a > 0) w.burnedBy[x.source] = (w.burnedBy[x.source] || 0) + a; });
     w.freeRolls = {}; w.overflowUsed = {}; w.mythicOwners = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
+      cemFlush(w, e.b); /* SEANCE ALWAYS RAISES: finish earlier blocks' seances first */
       if (saleIx) settleSales(w, e.b, saleIx);
       spinsGate(w, e.b); mgSweep(w, e.b, blockHashes); cemSweep(w, e.b); wizHatClear(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); grantBurnLords(w, e.b, blockHashes); grantContestEggs(w, e.b, blockHashes); grantBo(w, e.b, blockHashes); grantRp(w, e.b, blockHashes); grantViking(w, e.b, blockHashes); grantPowerSweep(w, e.b); grantKekFlags(w, e.b); relabelTiers(w, e.b); wizTierRelabel(w, e.b); wizTier2Relabel(w, e.b); repairGear(w, e.b); allSlotsSweep(w, e.b); maybeRumbles(e.b); questLaunch(w, e.b); questSettle(w, e.b, blockHashes, L); earnSweep(w, e.b); lookSweep(w, e.b); raidSweep(w, e.b, blockHashes); raidSettle(w, e.b, blockHashes, L);
       if (e.op) { applyOp(w, e.op); return; }
@@ -1899,7 +1900,7 @@
       if (fireOn(r.block_index)) fireExtend(w, r.block_index - 1); /* fire sale arms are decided for blocks before this burn */
       var res = handle(w, r, t, amt, bh, L); if (fireOn(r.block_index)) fireCredit(w, r, t, amt, res); if (earnOn(r.block_index) && res && res.kind !== 'rejected' && res.kind !== 'plain' && res.petId != null) earnBurn(w, w.byId[res.petId], amt, r.block_index);
     });
-    if (saleIx) settleSales(w, tip, saleIx, true);
+    cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);
     lookSweep(w, tip); if (fireOn(tip)) fireExtend(w, tip); spinsGate(w, tip); mgSweep(w, tip, blockHashes); cemSweep(w, tip); wizHatClear(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); grantBurnLords(w, tip, blockHashes); grantContestEggs(w, tip, blockHashes); grantBo(w, tip, blockHashes); grantRp(w, tip, blockHashes); grantViking(w, tip, blockHashes); grantPowerSweep(w, tip); grantKekFlags(w, tip); relabelTiers(w, tip); wizTierRelabel(w, tip); wizTier2Relabel(w, tip); repairGear(w, tip); allSlotsSweep(w, tip); maybeRumbles(tip); questLaunch(w, tip); questSettle(w, tip, blockHashes, L); earnSweep(w, tip); raidSweep(w, tip, blockHashes); raidSettle(w, tip, blockHashes, L);
     w.pets.forEach(function (p) { finish(w, p, tip); });
     var rp = returnProgress(w.community.burned), cm = w.community;
@@ -2509,6 +2510,21 @@
   var CEM_HW_FROM = 973935, CEM_HW_TO = 975670;  /* Halloween window (Oct 31 to Nov 11, by block) */
   var CEM_COSTS = { pledge: 69, raise: 135, zmeal: 69, rpl: 69, resurrect: 690 }; /* base XCPETS; halvings + Fire Sales via costAt / below */
   var CEM_FERAL_BLOCKS = 432, CEM_CRUMBLE_BLOCKS = 432, CEM_POOL_BLOCKS = BLOCKS_PER_DAY;
+  /* SEANCE ALWAYS RAISES (owner approved Nov 1 2026 1:40 AM CT [pt2553u] "Yes live do that. It seems less confusing"): from ACTIVATE_SEANCE_RAISES_BLOCK
+   * every valid seance raises the pet FOR THE WALLET THAT HOLDS IT. No seance is ever turned into a pledge and pledging to a shared pool is gone:
+   *  - pet:alt / pet:altg / pet:ar (the first burns of a multi-burn seance) are SEANCE PARTS: the sender's own pieces, held only for that same
+   *    wallet's seance on that grave (log kind 'spart'). They never count for another wallet. Held for 144 blocks after the latest part.
+   *  - pet:seance / pet:sr raises at the END of its block with the sender's own parts plus its own pets and gear, whatever the order of the txs in
+   *    that block (a seance that lands before its own parts still gets them). The zombie is the sender's. Other wallets' pieces are handed back.
+   *  - pet:raise = finish your own seance with the pieces you already hold (the raise fee only).
+   *  - a second wallet's seance or part on the same grave in the same block, after a seance there, is rejected (nothing used): the first seance wins.
+   *  - a raise that fails (minimum offering, no living pet) rejects the seance: nothing is used up and the sender's pieces are handed back.
+   *  - pieces held with no seance for 144 blocks are all handed back (no auto-raise for someone else).
+   *  OPEN POOLS from before the gate keep their old ending: at closesAt the top giver (old pledges only) raises it, raised together, as before.
+   *  A seance on such a pool after the gate raises it for the seancer with the seancer's own pieces only; the other wallets' old pledges are
+   *  handed back untouched (no one's pets ever power someone else's zombie). Below the gate nothing changes, so replay is SAME. */
+  var ACTIVATE_SEANCE_RAISES_BLOCK = 974100; /* Nov 1 2026 ~1:03 AM CST: Counterparty tip 974094 (api.counterparty.io:4000 via tools/lib/xcp-api.js; mempool.space + blockstream.info agree) + 6 */
+  function seanceOn(b) { return ACTIVATE_SEANCE_RAISES_BLOCK != null && b >= ACTIVATE_SEANCE_RAISES_BLOCK; }
   var CEM_PET_SHARE = [0.03, 0.07, 0.14, 0.25], CEM_GEAR_SHARE = [0.01, 0.025, 0.05, 0.10], CEM_MEAL_SHARE = [0.02, 0.05, 0.12, 0.25];
   var CEM_GRAVE_FACTOR = [1.0, 0.8, 0.6, 0.4], CEM_RIPE = 1.5, CEM_HW_MULT = 1.5, CEM_AGE_STEP = 0.05, CEM_AGE_FLOOR = 0.5, CEM_SHARE_MAX = 0.95;
   var CEM_CAP = 3, CEM_CAP_RES = 4, CEM_STEAL = 0.02, CEM_PET_GAIN_LIMIT = 0.20;
@@ -2573,7 +2589,7 @@
   function cemRunsResolve(w, src, t, b) { if (!t || t.action !== 'cemr') return t; var o = { action: t.kind, ids: cemRunsIds(w, src, t, b), cr: true }; if (t.kind === 'zfeed' || t.kind === 'rpl') o.zombie = t.target; else o.grave = t.target; return o; }
   /** cemRunsPlan(w, kind, id, ids, src, b) -> run-form burn plans (fewest burns) offering exactly the pets ids to grave / zombie id, or null
    * (gate off, or a pet is not in the signer's list: the caller keeps the list form). kind: 'pledge' | 'seance' | 'zfeed' | 'rpl'. Places
-   * the rules pass over anyway join the runs on both sides. For 'seance' every burn but the last is a pledge (pet:ar), the last is pet:sr. */
+   * the rules pass over anyway join the runs on both sides. For 'seance' every burn but the last is a pledge (pet:ar), the last is pet:sr; from ACTIVATE_SEANCE_RAISES_BLOCK those pet:ar burns are the sender's own seance parts (never a pledge to a pool). */
   function cemRunsPlan(w, kind, id, ids, src, b) { var A = w && w.tip; if (A == null || !ids || !ids.length || !src) return null; b = b != null ? b : A + 1; if (!cemRunsOn(b) || !CEM_RUN_CODE[kind]) return null;
     var want = new Set(ids.map(Number)), ref = refList(w, src, A, b), got = 0;
     var v = ref.map(function (p) { if (want.has(p.id)) { got++; return 1; } return cemRunPass(w, p, b, id) ? 2 : 0; });
@@ -2589,7 +2605,7 @@
     close(); if (!bodies.length) return null;
     return bodies.map(function (x, n) { var kk = kind === 'seance' && n < bodies.length - 1 ? 'pledge' : kind, ck = kk === 'zfeed' ? 'zmeal' : kk;
       return { tag: 'pet:' + CEM_RUN_CODE[kk] + ':' + tgt + ':' + aa + ':' + x.body, amount: cemRunsCost(w, kk === 'pledge' ? 'alt' : kk, x.ids.length, b), perPet: cemCost(w, ck === 'seance' ? 'pledge' : ck, b), petId: id, ok: true, runs: true, anchor: A, ids: x.ids, zEat: kk === 'zfeed' || kk === 'rpl' ? x.ids : undefined,
-        label: (kk === 'zfeed' ? 'zmeal' : kk) + ' #' + id + ' (' + x.ids.length + ' pet' + (x.ids.length === 1 ? '' : 's') + ', one burn)' }; }); }
+        label: (kk === 'zfeed' ? 'zmeal' : kk === 'pledge' && seanceOn(b) ? 'seance part' : kk) + ' #' + id + ' (' + x.ids.length + ' pet' + (x.ids.length === 1 ? '' : 's') + ', one burn)' }; }); }
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
   function cemR6(x) { return Math.round(x * 1e6) / 1e6; }
   function cemW(w) { return w.cem || (w.cem = { altars: {}, altarList: [], zombies: [], hunts: [], huntDay: {}, firstRise: null, raisedBy: {}, huntedBy: {}, log: [] }); }
@@ -2615,10 +2631,10 @@
     if (p.community) return 'community pet'; if (p.owner !== src) return 'not your pet'; if (p.released) return 'released or used up'; if (isZ(p)) return 'zombies cannot be offered or eaten';
     if (p.dead) return 'dead'; if (isMythic(p)) return 'Mythics cannot be offered'; if (p.cold) return 'in Cold Storage'; if (questAway(p, b)) return 'away on a quest';
     if (inOpenFight(w, p.id, b)) return 'has an open fight'; if (saleListing(w, p.id, b)) return 'listed in the shop';
-    if (open !== false && p.pledge != null) { var A = cemW(w).altars[p.pledge]; if (A && A.status === 'open') return 'already pledged to grave #' + p.pledge; }
+    if (open !== false && p.pledge != null) { var A = cemW(w).altars[p.pledge]; if (A && A.status === 'open') return (seanceOn(b) ? 'already held for a seance on grave #' : 'already pledged to grave #') + p.pledge; }
     return null; }
   function cemGearWhy(w, g, src, b) { if (!g) return 'no such gear'; if (g.spent) return 'used up'; if (g.owner !== src) return 'not your gear'; if (g.grave != null || graveLocked(w, g, b)) return 'resting on a grave';
-    if (g.pledge != null) { var A = cemW(w).altars[g.pledge]; if (A && A.status === 'open') return 'already pledged'; } return null; }
+    if (g.pledge != null) { var A = cemW(w).altars[g.pledge]; if (A && A.status === 'open') return seanceOn(b) ? 'already held for a seance' : 'already pledged'; } return null; }
   function cemTier(x) { return Math.max(0, Math.min(3, x | 0)); }
   function cemPetShare(p, b) { return CEM_PET_SHARE[cemTier(p.tier)] * (p.neglected ? CEM_RIPE : 1) * (cemHw(b) ? CEM_HW_MULT : 1); }
   function cemGearShare(g, b) { return CEM_GEAR_SHARE[cemTier(g.tier)] * (cemHw(b) ? CEM_HW_MULT : 1); }
@@ -2629,8 +2645,8 @@
   /** altar points (top giver): Common 1, Uncommon 3, Rare 10, Legendary 33 per pet or gear piece (ripe / Halloween do not change points) */
   function cemPts(x) { return CEM_POINTS[cemTier(x.tier)]; }
   /** cemCheck(w, A, b): re-check every pledge at close (owner and life checked again); returns the valid items + the top giver. */
-  function cemCheck(w, A, b) { var pets = [], gear = [], giv = {}, order = [];
-    A.pledges.forEach(function (pl, i) {
+  function cemCheck(w, A, b, only) { var pets = [], gear = [], giv = {}, order = [];
+    A.pledges.forEach(function (pl, i) { if (only ? pl.src !== only : pl.part) return; /* SEANCE ALWAYS RAISES: seance parts count only for their own sender */
       pl.pets.forEach(function (e) { var p = w.byId[e.id]; if (cemOfferWhy(w, p, pl.src, b, false)) return; if (p.pledge !== A.grave) return; pets.push({ p: p, share: e.share, src: pl.src }); add(pl.src, cemPts(p), i); });
       pl.gear.forEach(function (e) { var g = w.items[e.gid]; if (!g || g.spent || g.owner !== pl.src || g.pledge !== A.grave) return; gear.push({ g: g, share: e.share, src: pl.src }); add(pl.src, cemPts(g), i); }); });
     function add(s, n, i) { if (!giv[s]) { giv[s] = { src: s, points: 0, first: i }; order.push(giv[s]); } giv[s].points += n; }
@@ -2640,7 +2656,7 @@
     if (chk.pets.some(function (e) { return cemTier(e.p.tier) >= need; }) || chk.gear.concat(gg.map(function (g) { return { g: g }; })).some(function (e) { return cemTier(e.g.tier) >= need; })) return null;
     return G.mgDead ? 'a Mythic grave needs 1 ' + TIER_LABELS[need] + '+ offering' : TIER_LABELS[cemTier(G.tier)] + ' grave needs 1 ' + TIER_LABELS[need] + '+ offering'; }
   /** raise: use everything up, the top giver owns the zombie. */
-  function cemRaise(w, A, b, tx, L, r) { var C = cemW(w), G = w.byId[A.grave], chk = cemCheck(w, A, b), gg = cemGraveGear(w, G), mw = cemMinWhy(G, chk, gg.offer);
+  function cemRaise(w, A, b, tx, L, r, only) { var C = cemW(w), G = w.byId[A.grave], chk = cemCheck(w, A, b, only), gg = cemGraveGear(w, G), mw = cemMinWhy(G, chk, gg.offer);
     if (mw) return { why: mw };
     var gf = (G.mgDead ? MG.GRAVE_FACTOR : CEM_GRAVE_FACTOR[cemTier(G.tier)]) * cemAgeFactor(G, b), keep = 1, shares = [];
     function take(s, what) { var v = Math.min(CEM_SHARE_MAX, s * gf); keep *= 1 - v; shares.push({ what: what, share: cemR6(v) }); }
@@ -2653,21 +2669,34 @@
     G.owner = owner; G.lastGot = b; delete G.graveGear; delete G.graveTx;
     G.zombie = { gen: G.zRaises, raisedAt: b, tx: tx, by: owner, prevOwner: prev, death: Object.assign({}, G.zDeath), keep: cemR6(keep), bonus: {}, cap: G.mgDead ? MG.ZCAP : CEM_CAP, fedAt: b, meals: 0,
       givers: chk.givers.map(function (x) { return { src: x.src, points: x.points }; }), points: chk.givers.reduce(function (s, x) { return s + x.points; }, 0), shares: shares,
-      hw: cemHw(b), pool: A.pledges.length > 1 || A.pool, altar: A.n, rpl: [] };
+      hw: cemHw(b), pool: only ? false : A.pledges.length > 1 || A.pool, altar: A.n, rpl: [] };
     if (G.mgDead) G.zombie.mythic = true; /* MYTHIC GOD: a Mythic zombie (violet) */
     if (C.firstRise == null && b >= CEM_HW_FROM) { C.firstRise = { petId: G.id, block: b, by: owner }; G.zombie.firstRise = true; }
     C.raisedBy[owner] = (C.raisedBy[owner] || 0) + 1; C.zombies.push(G.id);
-    A.status = 'raised'; A.closed = b; A.owner = owner; liveAt(w, G, b); cemSetStats(G);
-    return { petId: G.id, msg: '#' + G.id + ' rose as a ' + (G.mgDead ? 'Mythic ' : '') + 'zombie (' + cemTimes(G.zombie).toFixed(2) + ' times its death power) for ' + owner.slice(0, 10) + '…' + (A.pledges.length > 1 ? ' · raised together by ' + chk.givers.length : '') }; }
+    A.status = 'raised'; A.closed = b; A.owner = owner; liveAt(w, G, b); cemSetStats(G); if (only) cemFree(w, A, null); /* seance: other wallets' pieces handed back */
+    return { petId: G.id, msg: '#' + G.id + ' rose as a ' + (G.mgDead ? 'Mythic ' : '') + 'zombie (' + cemTimes(G.zombie).toFixed(2) + ' times its death power) for ' + owner.slice(0, 10) + '…' + (!only && A.pledges.length > 1 ? ' · raised together by ' + chk.givers.length : '') }; }
   function cemDissolve(w, A, b, why) { A.status = why || 'missed'; A.closed = b; A.pledges.forEach(function (pl) { pl.pets.forEach(function (e) { var p = w.byId[e.id]; if (p && p.pledge === A.grave) p.pledge = null; });
     pl.gear.forEach(function (e) { var g = w.items[e.gid]; if (g && g.pledge === A.grave) g.pledge = null; }); }); }
+  /** cemFree(w, A, src): unlock the pieces still held on altar A (all of them, or only src's); nothing is used up. */
+  function cemFree(w, A, src) { A.pledges.forEach(function (pl) { if (src && pl.src !== src) return; pl.pets.forEach(function (e) { var p = w.byId[e.id]; if (p && p.pledge === A.grave) p.pledge = null; });
+    pl.gear.forEach(function (e) { var g = w.items[e.gid]; if (g && g.pledge === A.grave) g.pledge = null; }); }); }
+  /** cemFlush(w, b, end): SEANCE ALWAYS RAISES. Finish the seances held in earlier blocks (b = the next event's block), or at the end of the replay
+   * every one up to b (end). Runs before every other sweep, so a seance raises at the end of its own block with all of its sender's parts. */
+  function cemFlush(w, b, end) { var C = w.cem; if (!C || !C.pend || !C.pend.length) return; var keep = [];
+    C.pend.forEach(function (A) { var P = A.pend; if (!P) return; if (end ? P.b > b : P.b >= b) { keep.push(A); return; } delete A.pend; if (A.status === 'open') cemFinish(w, A, P); }); C.pend = keep; }
+  function cemFinish(w, A, P) { var b = P.b, G = w.byId[A.grave], gw = cemGraveWhy(w, G, P.src, b), rz = gw ? { why: gw } : cemRaise(w, A, b, P.tx, null, null, P.src), e = P.e;
+    if (!rz.why) { e.kind = 'raise'; e.msg = rz.msg; e.petId = G.id; earnBurn(w, G, P.amt, b); return; } /* the raise credits the risen pet, as a seance that raised at once did */
+    e.kind = 'rejected'; e.msg = P.k + ': ' + rz.why + ' (nothing used up: your pieces are handed back)'; cemFree(w, A, P.src);
+    A.pledges = A.pledges.filter(function (pl) { return pl.src !== P.src; }); if (!A.pledges.length) { A.status = 'missed'; A.closed = b; } }
   function cemEnd(w, p, kind, b, extra) { var z = p.zombie; z.end = Object.assign({ kind: kind, block: b }, extra || {}); wornOf(w, p.id).forEach(function (g) { g.on = null; }); /* worn gear back to its owner */
     delete p.feral; Object.assign(p.stats, p.zDeath); if (kind === 'crumble') p.zCrumbles = (p.zCrumbles || 0) + 1; if (kind === 'hunted') p.graveState = 'hunted'; if (kind === 'dust') p.graveState = 'dust';
     (p.zPast = p.zPast || []).push(z); p.zombie = null; liveAt(w, p, b); }
   /** cemSweep(w, b): crumble zombies whose clock ran out and auto-close pools 144 blocks after the first pledge (before any burn at block b). */
   function cemSweep(w, b, L) { if (!cemOn(b) || !w.cem) return; var C = w.cem;
     C.zombies.forEach(function (id) { var p = w.byId[id]; if (!isZ(p) || p.zombie.mfed) return; var ca = p.zombie.fedAt + CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS; if (b >= ca) { cemEnd(w, p, 'crumble', ca); w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, msg: '#' + p.id + ' crumbled back into its grave (unfed): it can be raised again' }); } });
-    C.altarList.forEach(function (A) { if (A.status !== 'open' || b < A.closesAt) return; var G = w.byId[A.grave], top = cemCheck(w, A, A.closesAt).top, gw = cemGraveWhy(w, G, top, A.closesAt), rz = gw ? { why: gw } : cemRaise(w, A, A.closesAt, null);
+    C.altarList.forEach(function (A) { if (A.status !== 'open' || b < A.closesAt) return;
+      if (seanceOn(A.opened)) { cemDissolve(w, A, A.closesAt, 'missed'); w.log.push({ block: A.closesAt, tx: null, kind: 'altarClosed', petId: A.grave, msg: 'seance pieces on #' + A.grave + ' were held ' + CEM_POOL_BLOCKS + ' blocks with no seance: everything handed back' }); return; } /* SEANCE ALWAYS RAISES: no auto-raise */
+      var G = w.byId[A.grave], top = cemCheck(w, A, A.closesAt).top, gw = cemGraveWhy(w, G, top, A.closesAt), rz = gw ? { why: gw } : cemRaise(w, A, A.closesAt, null);
       if (rz.why) { cemDissolve(w, A, A.closesAt, 'missed'); w.log.push({ block: A.closesAt, tx: null, kind: 'altarClosed', petId: A.grave, msg: 'altar on #' + A.grave + ' closed without a raise (' + rz.why + '): everything unlocked' }); }
       else w.log.push({ block: A.closesAt, tx: null, kind: 'raise', petId: A.grave, msg: rz.msg + ' (pool closed by itself)' }); }); }
   /** cemPledge: add a pledge (pets / gear) from src to the altar on G (opens it). Whole burn ignored when any piece is bad. */
@@ -2700,8 +2729,23 @@
     A.zHunts = (A.zHunts || 0) + 1; C.huntedBy[src] = (C.huntedBy[src] || 0) + 1; cemEnd(w, Z, 'hunted', b, { by: src, petId: A.id, tx: r.tx_hash });
     return L(r, 'hunt', '#' + A.id + ' hunted #' + Z.id + ': laid to rest for good' + (paid ? ' · +2% of its power, +1 saved spin, Zombie Hunter badge' : ' · (one hunt reward per wallet per chain day)'), { petId: A.id, hunt: H.n }); }
   function cemIds(t) { return t.ids || []; }
+  /** cemSeance(w, r, t, amt, L): SEANCE ALWAYS RAISES (from ACTIVATE_SEANCE_RAISES_BLOCK). seance / raise are held to the end of their block
+   * (A.pend, finished by cemFlush); alt / altg are the sender's own seance parts. */
+  function cemSeance(w, r, t, amt, L) { var b = r.block_index, src = r.source, C = cemW(w), k = t.action, G = w.byId[t.grave], ck = k === 'alt' || k === 'altg' ? 'pledge' : k, nm = ck === 'pledge' ? 'seance part' : k;
+    if (below(w, amt, cemBase(ck, b), b)) return L(r, 'rejected', nm + ': below cost ' + cemCost(w, ck, b));
+    var gw = cemGraveWhy(w, G, src, b); if (gw) return L(r, 'rejected', nm + ': ' + gw);
+    var A = C.altars[G.id]; if (A && A.status !== 'open') A = null; var P = A && A.pend;
+    if (P && P.src !== src) return L(r, 'rejected', nm + ': #' + G.id + ' already rises in this block for the seance that landed first (nothing used)');
+    function hold(A) { A.pend = { src: src, b: b, tx: r.tx_hash, amt: amt, k: k, e: L(r, 'seance', k + ' #' + G.id + ': it rises for you at the end of block ' + b) }; (C.pend = C.pend || []).push(A); return A.pend.e; }
+    if (k === 'raise') { if (P) return L(r, 'rejected', 'raise: your seance on #' + G.id + ' already rises in this block');
+      if (!A || !A.pledges.some(function (pl) { return pl.src === src; })) return L(r, 'rejected', 'raise: nothing of yours is held on #' + G.id + ' (hold a seance)'); return hold(A); }
+    var pr = cemPledge(w, G, src, b, r.tx_hash, k === 'altg' ? [] : cemIds(t), k === 'altg' ? cemIds(t) : []); if (pr.why) return L(r, 'rejected', nm + ': ' + pr.why);
+    var pl = pr.A.pledges[pr.A.pledges.length - 1], n = pl.pets.length + pl.gear.length; pl.part = 1; if (seanceOn(pr.A.opened)) pr.A.closesAt = Math.max(pr.A.closesAt, b + CEM_POOL_BLOCKS);
+    if (k === 'seance' && !P) return hold(pr.A);
+    return L(r, 'spart', 'seance part on #' + G.id + ': ' + n + (n === 1 ? ' piece' : ' pieces') + ' held for your seance' + (P ? ' (it rises at the end of this block)' : ' until block ' + pr.A.closesAt)); }
   /** cemHandle(w, r, t, amt, bh, L): every cemetery tag. Returns a log entry. */
   function cemHandle(w, r, t, amt, bh, L) { var b = r.block_index, src = r.source, C = cemW(w), k = t.action;
+    if ((k === 'seance' || k === 'alt' || k === 'altg' || k === 'raise') && seanceOn(b)) return cemSeance(w, r, t, amt, L);
     if (k === 'seance' || k === 'alt' || k === 'altg' || k === 'raise') { var G = w.byId[t.grave], kind = k === 'seance' ? 'seance' : k === 'raise' ? 'raise' : 'pledge';
       if (below(w, amt, cemBase(kind, b), b)) return L(r, 'rejected', kind + ': below cost ' + cemCost(w, kind, b));
       var gw = cemGraveWhy(w, G, src, b); if (gw) return L(r, 'rejected', kind + ': ' + gw);
@@ -2753,9 +2797,12 @@
       o.times = cemR6(cemTimes(z)); o.milestone = cemMilestone(o.times); o.power = Math.round(cemPower(z)); o.deathPower = cemDeathPower(z); o.ceiling = Math.round(cemDeathPower(z) * z.cap); o.cap = z.cap;
       o.by = z.by; o.prevOwner = z.prevOwner; o.givers = z.givers; o.hw = z.hw; o.firstRise = !!z.firstRise; o.meals = z.meals; o.res = cemResInfo(w, p, b); return o; }
     o.grave = !!p.dead && !p.community && !p.released; o.state = p.graveState || (p.resurrected ? 'halo' : null); o.why = o.grave ? cemGraveWhy(w, p, CEM_OWNER_ADDR, b) : null;
-    if (o.grave) { o.ageFactor = cemAgeFactor(p, b); o.graveFactor = CEM_GRAVE_FACTOR[cemTier(p.tier)]; o.need = Math.max(0, cemTier(p.tier) - 1); o.crumbles = p.zCrumbles || 0; var A = w.cem && w.cem.altars[p.id]; if (A && A.status === 'open') { var ck = cemCheck(w, A, b); o.altar = { closesAt: A.closesAt, closesIn: Math.max(0, A.closesAt - b), top: ck.top, givers: ck.givers }; } }
+    if (o.grave) { o.ageFactor = cemAgeFactor(p, b); o.graveFactor = CEM_GRAVE_FACTOR[cemTier(p.tier)]; o.need = Math.max(0, cemTier(p.tier) - 1); o.crumbles = p.zCrumbles || 0; var A = w.cem && w.cem.altars[p.id]; if (A && A.status === 'open') { var ck = cemCheck(w, A, b); o.altar = { closesAt: A.closesAt, closesIn: Math.max(0, A.closesAt - b), top: ck.top, givers: ck.givers, seance: seanceOn(b), legacy: !seanceOn(A.opened) }; } }
     if (p.zPast && p.zPast.length) { var last = p.zPast[p.zPast.length - 1]; o.lastEnd = last.end; o.raisedBy = last.by; }
     return o; }
+  /** cemHeld(w, gid, me, b): SEANCE ALWAYS RAISES. My own pieces still held on grave gid's altar (UI only): { pets, gear, n, closesAt } or null. */
+  function cemHeld(w, gid, me, b) { var A = w.cem && w.cem.altars[gid]; if (!A || A.status !== 'open' || !me) return null; var ck = cemCheck(w, A, b != null ? b : (w.tip || 0) + 1, me);
+    var n = ck.pets.length + ck.gear.length; return n ? { pets: ck.pets.map(function (e) { return e.p.id; }), gear: ck.gear.map(function (e) { return e.g.gid; }), n: n, closesAt: A.closesAt } : null; }
   /** cemPreview(w, G, pets, gear, b): what a raise with these offerings would make (UI only). */
   function cemPreview(w, G, pets, gear, b) { var gf = (G.mgDead ? MG.GRAVE_FACTOR : CEM_GRAVE_FACTOR[cemTier(G.tier)]) * cemAgeFactor(G, b), keep = 1, list = [];
     (pets || []).forEach(function (p) { liveAt(w, p, b); var s = Math.min(CEM_SHARE_MAX, cemPetShare(p, b) * gf); keep *= 1 - s; list.push({ id: p.id, share: s, ripe: !!p.neglected }); });
@@ -2780,7 +2827,7 @@
   function cemList(ids) { return ids.map(function (x) { return Number(x).toString(32).toUpperCase(); }).join('.'); }
   function cemPlan(w, kind, id, ids, b) { b = b != null ? b : (w.tip || 0) + 1; var tg = { seance: 'seance', pledge: 'alt', gear: 'altg', raise: 'raise', zfeed: 'zfeed', rpl: 'rpl', rplg: 'rplg', resurrect: 'resurrect' }[kind];
     var ck = kind === 'gear' ? 'pledge' : kind === 'rplg' ? 'rpl' : kind === 'zfeed' ? 'zmeal' : kind, s = ids && ids.length ? (ids.slice().sort(function (a, c) { return a - c; })) : null;
-    var tag = 'pet:' + tg + ':' + id + (s ? ':' + cemList(s) : ''); return { tag: tag, amount: cemCost(w, ck, b), petId: id, ok: Buffer_len(tag) <= MAX_TAG_BYTES, label: kind + ' #' + id }; }
+    var tag = 'pet:' + tg + ':' + id + (s ? ':' + cemList(s) : ''); return { tag: tag, amount: cemCost(w, ck, b), petId: id, ok: Buffer_len(tag) <= MAX_TAG_BYTES, label: (seanceOn(b) && (kind === 'pledge' || kind === 'gear') ? 'seance ' + (kind === 'gear' ? 'gear' : 'part') : kind) + ' #' + id }; }
   function cemHuntPlan(w, hunter, zombie, b) { return { tag: 'pet:fight:' + hunter + ':' + zombie, amount: cemCost(w, 'hunt', b != null ? b : (w.tip || 0) + 1), label: 'Hunt #' + zombie + ' with #' + hunter }; }
   /** cemSendWhy(w, t, me, b, pend): the send guard for cemetery tags and hunts (UI only, mirrors cemHandle / cemHunt; never read by replay).
    * Returns words for a burn the replay would reject, or null. pend = parsed tags of my unconfirmed burns. */
@@ -2789,7 +2836,9 @@
     function busy(id) { return pend.some(function (q) { return q !== t && CEM_ACTIONS[q.action] && q.action !== 'altg' && q.action !== 'rplg' && (q.ids || []).indexOf(id) >= 0; }); }
     if (k === 'seance' || k === 'alt' || k === 'altg' || k === 'raise') { var G = w.byId[t.grave], gw = cemGraveWhy(w, G, me, b); if (gw) return gw;
       var A = C.altars[G.id]; if (A && A.status !== 'open') A = null;
-      if (k === 'raise') { if (!A && !pend.some(function (q) { return (q.action === 'alt' || q.action === 'altg' || q.action === 'seance') && q.grave === G.id; })) return 'no open altar on #' + G.id; return null; }
+      if (k === 'raise') { var pq = pend.some(function (q) { return (q.action === 'alt' || q.action === 'altg' || q.action === 'seance') && q.grave === G.id; });
+        if (seanceOn(b)) { if (!pq && !(A && A.pledges.some(function (pl) { return pl.src === me; }))) return 'nothing of yours is held on #' + G.id + ': hold a seance'; return null; } /* SEANCE ALWAYS RAISES: finish your own seance */
+        if (!A && !pq) return 'no open altar on #' + G.id; return null; }
       for (i = 0; i < ids.length; i++) { if (dup[ids[i]]) return 'listed twice'; dup[ids[i]] = 1;
         if (k === 'altg') { y = cemGearWhy(w, w.items['g' + ids[i]], me, b); if (y) return 'gear g' + ids[i] + ': ' + y; }
         else { if (ids[i] === G.id) return 'the grave itself cannot be offered'; y = cemOfferWhy(w, w.byId[ids[i]], me, b); if (y) return '#' + ids[i] + ': ' + y; if (busy(ids[i])) return '#' + ids[i] + ' is already in a burn of yours that is not confirmed yet'; } }
@@ -4434,7 +4483,8 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { mythicUnleashGate: function () { return ACTIVATE_MYTHIC_UNLEASH_BLOCK; }, mgOn: mgOn, _setMythicUnleashActivation: _setMythicUnleashActivation, MG: MG, MG_COSTS: MG_COSTS, MG_NEVER_EAT: MG_NEVER_EAT,
+  return { seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
+    mythicUnleashGate: function () { return ACTIVATE_MYTHIC_UNLEASH_BLOCK; }, mgOn: mgOn, _setMythicUnleashActivation: _setMythicUnleashActivation, MG: MG, MG_COSTS: MG_COSTS, MG_NEVER_EAT: MG_NEVER_EAT,
     mgEdible: mgEdible, mgEdibleWhy: mgEdibleWhy, mgUnleashWhy: mgUnleashWhy, mgView: mgView, mgPantheon: mgPantheon, mgPlan: mgPlan, mgSendWhy: mgSendWhy, mgSeatsLeft: mgSeatsLeft, isMythicZ: isMythicZ, isMythicFed: isMythicFed, mgPending: mgPending, _mgWard: mgWard, mgBreedCool: mgBreedCool,
     resBreedOnlyGate: function () { return ACTIVATE_RES_BREED_ONLY_BLOCK; }, resBreedOn: resBreedOn, _setResBreedOnlyActivation: function (b) { ACTIVATE_RES_BREED_ONLY_BLOCK = b == null ? null : Number(b); }, RES_BREED_WHY: RES_BREED_WHY, isRes: isRes, resPairWhy: resPairWhy, GOD_LABEL: GOD_LABEL, GOD_PLURAL: GOD_PLURAL, tierLabelOf: tierLabelOf, stageLabelOf: stageLabelOf, GOD_BORN_LABEL: GOD_BORN_LABEL, godBornOf: godBornOf, resurrectRetieGate: function () { return ACTIVATE_RESURRECT_RETIE_BLOCK; }, retieOn: retieOn, _setResurrectRetieActivation: function (b) { ACTIVATE_RESURRECT_RETIE_BLOCK = b == null ? null : Number(b); }, cemeteryGate: function () { return ACTIVATE_CEMETERY_LOOP_BLOCK; }, cemOn: cemOn, _setCemeteryActivation: function (b) { ACTIVATE_CEMETERY_LOOP_BLOCK = b == null ? null : Number(b); }, cemPublicBlock: function () { return CEMETERY_PUBLIC_BLOCK; }, cemPublic: cemPublic, _setCemeteryPublic: function (b) { CEMETERY_PUBLIC_BLOCK = b == null ? null : Number(b); }, CEM: { OWNER: CEM_OWNER_ADDR, OWNER_GRAVE: CEM_OWNER_GRAVE, HW_FROM: CEM_HW_FROM, HW_TO: CEM_HW_TO, COSTS: CEM_COSTS, FERAL: CEM_FERAL_BLOCKS, CRUMBLE: CEM_CRUMBLE_BLOCKS, POOL: CEM_POOL_BLOCKS, PET_SHARE: CEM_PET_SHARE, GEAR_SHARE: CEM_GEAR_SHARE, MEAL_SHARE: CEM_MEAL_SHARE, GRAVE_FACTOR: CEM_GRAVE_FACTOR, CAP: CEM_CAP, CAP_RES: CEM_CAP_RES, STEAL: CEM_STEAL, POINTS: CEM_POINTS, RES_MIN: CEM_RES_MIN, MILESTONES: CEM_MILESTONES }, cemHw: cemHw, cemCost: cemCost, isZ: isZ, cemView: cemView, cemPreview: cemPreview, cemPlan: cemPlan, cemHuntPlan: cemHuntPlan, cemGraveWhy: cemGraveWhy, _setCemOwnerTest: function (a, g) { CEM_OWNER_ADDR = a; CEM_OWNER_GRAVE = Number(g); }, _cemGainTest: cemGain, cemGraves: cemGraves, cemSendWhy: cemSendWhy, cemHuntWhy: cemHuntWhy, cemOfferWhy: cemOfferWhy, cemGearWhy: cemGearWhy, cemResInfo: cemResInfo, cemMilestone: cemMilestone, cemExact: cemExact, _lookSweep: lookSweep, lookPickGate: function () { return ACTIVATE_LOOK_PICK_BLOCK; }, lookPickOn: lookPickOn, _setLookPickActivation: function (b) { ACTIVATE_LOOK_PICK_BLOCK = b == null ? null : Number(b); }, LOOK_CODES: LOOK_CODES, LOOK_MAX_PAIRS: LOOK_MAX_PAIRS, lookDef: lookDef, lookCode: lookCode, ownedLooks: ownedLooks, lookPlan: lookPlan, lookPlans: lookPlans, _lookPick: lookPick, raidGate: function () { return ACTIVATE_RAID_BLOCK; }, raidOn: raidOn, _setRaidActivation: function (b) { ACTIVATE_RAID_BLOCK = b == null ? null : Number(b); }, RAID: { EVERY: RAID_EVERY, LEN: RAID_LEN, CONFIRM: RAID_CONFIRM, MIN: RAID_MIN, RELIC_SPINS: RAID_RELIC_SPINS, STAGE_BONUS: RAID_STAGE_BONUS, TIER_BONUS: RAID_TIER_BONUS }, RAID_BOSSES: RAID_BOSSES, RAID_EVENT_BOSS: RAID_EVENT_BOSS, raidBossById: raidBossById, raidOpenOf: raidOpenOf, raidNoAt: raidNoAt, raidEventAt: raidEventAt, raidBossFor: raidBossFor, raidMult: raidMult, raidCrit: raidCrit, raidDamage: raidDamage, raidWhy: raidWhy, raidInfo: raidInfo, raidPlan: raidPlan, earnGate: function () { return ACTIVATE_EARN_BLOCK; }, earnOn: earnOn, _setEarnActivation: function (b) { ACTIVATE_EARN_BLOCK = b == null ? null : Number(b); }, EARN: EARN, EARN_LOOKS: EARN_LOOKS, earnedLooks: earnedLooks, questGate: function () { return ACTIVATE_QUEST_BLOCK; }, questOn: questOn, _setQuestActivation: function (b) { ACTIVATE_QUEST_BLOCK = b == null ? null : Number(b); }, QUESTS: QUESTS, QUEST_CODES: QUEST_CODES, QUEST_TIERS: QUEST_TIERS, FLAME_TIERS: FLAME_TIERS, POB_TIERS: POB_TIERS, questInfo: questInfo, questOdds: questOdds, questWhy: questWhy, questCost: questCost, questAway: questAway, questNap: questNap, questBusyWhy: questBusyWhy, walletBurned: walletBurned, flameTierOf: flameTierOf, flameLooksOf: flameLooksOf, pobOf: pobOf, shownLooks: shownLooks, isMythic: isMythic, questPlan: function (id, code, w, b) { var p = w && w.byId[id], free = !!(p && p.freeQuest && !(p.questHist && p.questHist.length)); return { tag: 'pet:quest:' + id + ':' + code, amount: free ? QUEST_FREE_MIN : costAt(w, QUESTS[code].base, b), label: QUESTS[code].name + ' #' + id + (free ? ' (free)' : '') }; }, auraPlan: function (id, on) { return { tag: 'pet:aura:' + id + ':' + (on ? 'on' : 'off'), amount: QUEST_FREE_MIN, label: (on ? 'Lights On' : 'Lights Out') + ' #' + id }; }, oneTieOn: oneTieOn, rebindGuardOn: rebindGuardOn, rebindGate: function () { return ACTIVATE_DEED_REBIND_BLOCK; }, _setRebindActivation: function (v) { ACTIVATE_DEED_REBIND_BLOCK = v == null ? null : Number(v); }, mintTiesOn: mintTiesOn, oneTieGate: function () { return ACTIVATE_ONE_TIE_PATH_BLOCK; }, _setOneTieActivation: function (v) { ACTIVATE_ONE_TIE_PATH_BLOCK = v == null ? null : Number(v); }, holderAt: holderAt, tokenOnly: function () { return TOKEN_ONLY; }, _setTokenOnly: function (v) { TOKEN_ONLY = !!v; }, petFilter: petFilter, petFilterMatch: petFilterMatch, petFilterSort: petFilterSort, OLD_MONEY_LABEL: OLD_MONEY_LABEL, oldMoney: oldMoney, oldMoneyBefore: function () { return ACTIVATE_BREED_135_BLOCK; }, ACTIVATE_SALES_BLOCK: ACTIVATE_SALES_BLOCK, salesGate: function () { return ACTIVATE_SALES_BLOCK; }, salesOn: salesOn, _setSalesActivation: function (b) { ACTIVATE_SALES_BLOCK = b; }, SALE_EXPIRY: SALE_EXPIRY, SALE_MAX_EXPIRY: SALE_MAX_EXPIRY, SALE_ORDER_LAG: SALE_ORDER_LAG, SALE_UNSELL_SETTLE: SALE_UNSELL_SETTLE, SALE_MIN: SALE_MIN, DEED_MIN: DEED_MIN, DEED_MAX: DEED_MAX, deedOk: deedOk, deedDesc: deedDesc, deedScan: deedScan, deedDescOk: deedDescOk, DEED_URL: DEED_URL, deedTag: deedTag, decTo36: decTo36, b36ToDec: b36ToDec, randomDeed: randomDeed, deedWhy: deedWhy, deedIssueWhy: deedIssueWhy, listWhy: listWhy, unsellWhy: unsellWhy, deedOf: deedOf, sellStep: sellStep, dexIndex: dexIndex, petFree: petFree, saleState: saleState, saleListing: saleListing, openListings: openListings, saleFill: saleFill, mintPlan: mintPlan, deedPlan: deedPlan, listPlan: listPlan, buyPlan: buyPlan, cancelPlan: cancelPlan, unsellTag: unsellTag, unsellPlan: unsellPlan, buyGuard: buyGuard, saleAmountText: saleAmountText, saleExpire: saleExpire, ACTIVATE_GIVE_BLOCK: ACTIVATE_GIVE_BLOCK, GIVE_SETTLE: GIVE_SETTLE, giveOn: giveOn, _setGiveActivation: function (b) { ACTIVATE_GIVE_BLOCK = b; }, spamCityGate: function () { return ACTIVATE_SPAM_CITY_BLOCK; }, rulesGate: function () { return ACTIVATE_SPAM_RULES_BLOCK; }, rulesOn: rulesOn, _setRulesActivation: function (b) { ACTIVATE_SPAM_RULES_BLOCK = b; }, isBurnAddr: isBurnAddr, mintId: mintId, giveGate: function () { return ACTIVATE_GIVE_BLOCK; }, _setSpamCityActivation: function (b) { ACTIVATE_SPAM_CITY_BLOCK = ACTIVATE_GIVE_BLOCK = ACTIVATE_SALES_BLOCK = b; }, giveWhy: giveWhy, giveLocks: giveLocks, giftMoves: giftMoves, givePlan: givePlan, giveBatches: giveBatches, SWAP_WINDOW: SWAP_WINDOW, swapWhy: swapWhy, swapOpen: swapOpen, swapsFor: swapsFor, swapPlan: swapPlan, swapOkPlan: swapOkPlan, swapNoPlan: swapNoPlan, giftsTo: giftsTo, playerNo: playerNo, playerAddr: playerAddr, playerCode: playerCode, parsePlayer: parsePlayer, hiPlan: { tag: 'pet:hi', amount: 0.00000001 },   ACTIVATE_RUGME_BLOCK: ACTIVATE_RUGME_BLOCK, rugGate: function () { return ACTIVATE_RUGME_BLOCK; }, rugOn: rugOn, _setRugActivation: function (b) { ACTIVATE_RUGME_BLOCK = b; }, breed135Gate: function () { return ACTIVATE_BREED_135_BLOCK; }, breed135On: breed135On, breedCost: breedCost, uiBreedFee: uiBreedFee, uiBreedFeeStr: uiBreedFeeStr, rugCost: rugCost, BREED_135: BREED_135, RUG_ACCEPT_COST: RUG_ACCEPT_COST, _setBreed135Activation: function (b) { ACTIVATE_BREED_135_BLOCK = b; }, AD_WINDOW: AD_WINDOW, parseReq: parseReq, reqTag: reqTag, reqText: reqText, meetsReq: meetsReq, petPower: petPower, ownsGear: ownsGear, adState: adState, openAds: openAds, onRug: onRug, adTag: adTag, RUG_AD_COST: RUG_AD_COST, adWhy: adWhy, rugCheck: rugCheck, reqWhy: reqWhy,
     ACTIVATE_CONTEST_EGGS_BLOCK: ACTIVATE_CONTEST_EGGS_BLOCK, ACTIVATE_GRANT_POWER_BLOCK: ACTIVATE_GRANT_POWER_BLOCK, GRANT_POWER: GRANT_POWER, grantPowerOn: grantPowerOn, grantPowerTarget: grantPowerTarget, grantPowerScale: grantPowerScale, _setGrantPower: function (b) { ACTIVATE_GRANT_POWER_BLOCK = b; }, ACTIVATE_BO_BLOCK: ACTIVATE_BO_BLOCK, BO_TO: BO_TO, BO_POWER: BO_POWER, _setBo: function (b) { ACTIVATE_BO_BLOCK = b; }, ACTIVATE_RP_BLOCK: ACTIVATE_RP_BLOCK, RP_TO: RP_TO, RP_POWER: RP_POWER, _setRp: function (b) { ACTIVATE_RP_BLOCK = b; }, ACTIVATE_VIKING_BLOCK: ACTIVATE_VIKING_BLOCK, VIKING_TO: VIKING_TO, VIKING_POWER: VIKING_POWER, VIKING_NAME: VIKING_NAME, VIKING_TITLE: VIKING_TITLE, vikingOn: vikingOn, _setViking: function (b) { ACTIVATE_VIKING_BLOCK = b; }, ACTIVATE_SUPREME_LINEAGE_BLOCK: ACTIVATE_SUPREME_LINEAGE_BLOCK, ACTIVATE_ONEOFONE_LOOKS_BLOCK: ACTIVATE_ONEOFONE_LOOKS_BLOCK, oneOfOneLooksOn: oneOfOneLooksOn, _setOneOfOneLooks: function (b) { ACTIVATE_ONEOFONE_LOOKS_BLOCK = b; }, _setRareTiers: function (b) { ACTIVATE_RARE_TIERS_BLOCK = b; }, _dynastAnchor: dynastAnchor, _dynastPick: dynastPick, _dynAnc: dynAnc, _setHybridFix: function (b) { ACTIVATE_HYBRID_FIX_BLOCK = b; }, hybridFixOn: hybridFixOn, _hybridParts: hybridParts, _partsFor: partsFor, rareTierOf: rareTierOf, RARE_TIER_ORDER: RARE_TIER_ORDER, RARE_TIER_LABEL: RARE_TIER_LABEL, supremeLineageOn: supremeLineageOn, _setSupremeLineage: function (b) { ACTIVATE_SUPREME_LINEAGE_BLOCK = b; }, rpGate: function () { return ACTIVATE_RP_BLOCK; }, contestOn: contestOn, CONTEST: CONTEST, CONTEST_TO: CONTEST_TO, isContestSp: isContestSp, _setContestActivation: function (b, to, grantB) { ACTIVATE_CONTEST_EGGS_BLOCK = b; CONTEST_GRANT_BLOCK = grantB === undefined ? b : grantB; if (to) Object.assign(CONTEST_TO, to); }, grantBreedOn: grantBreedOn, pickSpecies12: pickSpecies12, contestGrantBlock: function () { return CONTEST_GRANT_BLOCK; },

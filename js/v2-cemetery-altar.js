@@ -230,38 +230,44 @@
   /* the burn buttons: every check here mirrors the engine (cemGraveWhy, cemMinWhy, top giver); play.html's send guard checks again before signing */
   function holdWhy(mode) { var c = A.ctx, V = c.V, w = c.w, b = bk(), G = w.byId[A.grave.id];
     if (!c.ME) return 'Connect XCP Wallet on the Play page first'; var gw = V.cemGraveWhy(w, G, c.ME, b); if (gw) return cap1(gw);
-    if (mode === 'raise') { var v = V.cemView(w, G, b); if (!v.altar) return 'No open altar on this grave'; if (v.altar.top !== c.ME) { var dd = deadPledges(); return dd.n ? 'Your ' + dd.n + ' pledged ' + (dd.n === 1 ? 'pet' : 'pets') + ' died at block ' + dd.at + ' and no longer count. Hold a new seance with 1 living ' + TL[v.need] + '+ pet.' : 'Only the top giver can raise'; } return null; }
+    if (mode === 'raise' && V.seanceOn && V.seanceOn(b)) { var vh = V.cemView(w, G, b), hd = V.cemHeld(w, G.id, c.ME, b); /* SEANCE ALWAYS RAISES: Raise now = finish your own seance with the pieces you hold */
+      if (!hd) { var d0 = deadPledges(); return d0.n ? 'Your ' + d0.n + ' held ' + (d0.n === 1 ? 'pet' : 'pets') + ' died at block ' + d0.at + ' and no longer count. Hold a new seance with 1 living ' + TL[vh.need] + '+ pet.' : 'Nothing of yours is held on this grave'; }
+      if (!hd.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= vh.need; }) && !hd.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= vh.need; })) return TL[A.grave.tier] + ' grave needs 1 ' + TL[vh.need] + '+ offering';
+      return null; }
+    if (mode === 'raise') { var v = V.cemView(w, G, b); if (!v.altar) return 'No open altar on this grave'; if (v.altar.top !== c.ME) { var dd = deadPledges(); return dd.n ? 'Your ' + dd.n + ' offered ' + (dd.n === 1 ? 'pet' : 'pets') + ' died at block ' + dd.at + ' and no longer count. Hold a new seance with 1 living ' + TL[v.need] + '+ pet.' : 'Only the top giver can raise'; } return null; }
     if (!A.offered.length) return 'Offer at least 1 living pet';
-    if (mode === 'seance') { var v2 = V.cemView(w, G, b), need = v2.need, ok = A.offered.some(function (o) { return o.tier >= need; }) || selGear().some(function (g) { return gTier(g) >= need; }) || (v2.altar && v2.altar.givers.length); if (!ok) return TL[A.grave.tier] + ' grave needs 1 ' + TL[need] + '+ offering'; }
+    if (mode === 'seance') { var v2 = V.cemView(w, G, b), need = v2.need, sOn = V.seanceOn && V.seanceOn(b), h2 = sOn ? V.cemHeld(w, G.id, c.ME, b) : null, ok = A.offered.some(function (o) { return o.tier >= need; }) || selGear().some(function (g) { return gTier(g) >= need; }) ||
+        (sOn ? !!h2 && (h2.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= need; }) || h2.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= need; })) : (v2.altar && v2.altar.givers.length)); if (!ok) return TL[A.grave.tier] + ' grave needs 1 ' + TL[need] + '+ offering'; }
     return null; }
   /* die-soon warning (UI only): a pet that dies before its burn confirms, or before the raise when it joins someone else's pool, no longer counts */
   var SOON = 6;
-  function limit() { var c = A.ctx, v = A.grave && c.w.byId[A.grave.id] ? c.V.cemView(c.w, c.w.byId[A.grave.id], bk()) : null; return v && v.altar && v.altar.top && v.altar.top !== c.ME ? Math.max(SOON, v.altar.closesIn || 0) : SOON; }
+  function limit() { var c = A.ctx, v = A.grave && c.w.byId[A.grave.id] ? c.V.cemView(c.w, c.w.byId[A.grave.id], bk()) : null; return v && v.altar && !v.altar.seance && v.altar.top && v.altar.top !== c.ME ? Math.max(SOON, v.altar.closesIn || 0) : SOON; }
   function soon(p, n) { return p && p.dies != null && p.dies - bk() <= (n == null ? SOON : n); }
   function dieWarn() { var n = limit(), L = A.offered.filter(function (o) { return o.kind === 'pet' && soon(o, n); }); if (!L.length) return '';
     var at = Math.min.apply(null, L.map(function (o) { return o.dies; }));
     return '<span class="alt-diewarn">⚠ ' + L.length + ' offered ' + (L.length === 1 ? 'pet dies' : 'pets die') + ' soon (' + (L.length === 1 ? 'at' : 'first at') + ' block ' + at + '). ' + (n > SOON ? 'This altar is led by someone else and closes in ' + n + ' blocks; a pet that dies before the raise no longer counts.' : 'If ' + (L.length === 1 ? 'it dies' : 'they die') + ' before your burns confirm, ' + (L.length === 1 ? 'it no longer counts' : 'they no longer count') + '.') + '</span> '; }
-  /* the viewer's pets pledged to this grave's open altar that have died since (the engine stops counting them at the raise, cemCheck); UI only, reads the world */
+  /* the viewer's pets offered (held) on this grave's open altar that have died since (the engine stops counting them at the raise, cemCheck); UI only, reads the world */
   function deadPledges() { var c = A.ctx, w = c.w, V = c.V, b = bk(), Al = w.cem && w.cem.altars ? w.cem.altars[A.grave.id] : null, n = 0, at = 0, seen = {};
     if (!c.ME || !Al || Al.status !== 'open') return { n: 0, at: 0 };
     (Al.pledges || []).forEach(function (pl) { if (pl.src !== c.ME) return; (pl.pets || []).forEach(function (e) { var p = w.byId[e.id]; if (!p || seen[e.id]) return; seen[e.id] = 1;
       if (V.cemOfferWhy(w, p, c.ME, b, false) === 'dead' && p.pledge === A.grave.id) { n++; at = Math.max(at, p.deathBlock || 0); } }); });
     return { n: n, at: at }; }
-  /* cemetery runs are priced PER PET (owner Oct 31 2026): show pets x pledge (+ the raise) so the total adds up */
+  /* cemetery runs are priced PER PET (owner Oct 31 2026): show pets times the per-pet fee (+ the raise) so the total adds up */
   function perPet(L) { var c = A.ctx, V = c.V, b = bk(), n = 0; if (!V.cemRunsOn || !V.cemRunsOn(b)) return ''; L.forEach(function (p) { var t = p.runs ? null : V.parseTag(p.tag || ''); n += p.runs ? (p.ids || []).length : t && /^(alt|seance)$/.test(t.action) ? (t.ids || []).length : 0; }); if (!n) return '';
-    return ' (' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' × ' + fmt(V.cemCost(c.w, 'pledge', b)) + (L.some(function (p) { return /^pet:sr:/i.test(p.tag || ''); }) ? ' + raise ' + fmt(V.cemCost(c.w, 'raise', b)) : '') + ')'; }
+    return ' (' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' times ' + fmt(V.cemCost(c.w, 'pledge', b)) + (L.some(function (p) { return /^pet:sr:/i.test(p.tag || ''); }) ? ' + raise ' + fmt(V.cemCost(c.w, 'raise', b)) : '') + ')'; }
   function cost(L) { return L.reduce(function (a, p) { return a + (p.amount || 0); }, 0); }
   function renderHold() { var c = A.ctx, w = c.w, V = c.V, b = bk(), G = w.byId[A.grave.id], v = V.cemView(w, G, b), box = document.getElementById('altHoldInfo');
     [['altHold', 'seance'], ['altRaiseNow', 'raise']].forEach(function (x) { var e = document.getElementById(x[0]); if (!e) return; var why = holdWhy(x[1]), L = why ? [] : plans(x[1]);
       e.disabled = !!why; e.title = why || (L.length + (L.length === 1 ? ' burn' : ' burns') + ', ' + fmt(cost(L)) + ' XCPETS in all'); var s = e.querySelector('.alt-c'); if (s) s.textContent = why ? '' : ' · ' + fmt(cost(L)) + ' XCPETS'; });
-    var rz = document.getElementById('altRaiseNow'), rw = document.getElementById('altRaiseWhy'), rwhy = holdWhy('raise'), mine = v.altar && c.ME && (v.altar.top === c.ME || deadPledges().n || v.altar.givers.some(function (g) { return g.src === c.ME; }));
-    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? (/^Your \d+ pledged/.test(rwhy) ? rwhy : '🧟 Raise now: ' + rwhy) : ''; }
+    var rz = document.getElementById('altRaiseNow'), rw = document.getElementById('altRaiseWhy'), rwhy = holdWhy('raise'), sOn = V.seanceOn && V.seanceOn(b), held = sOn && c.ME ? V.cemHeld(w, G.id, c.ME, b) : null,
+      mine = sOn ? !!(c.ME && (held || deadPledges().n)) : v.altar && c.ME && (v.altar.top === c.ME || deadPledges().n || v.altar.givers.some(function (g) { return g.src === c.ME; }));
+    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? (/^Your \d+ (offered|held)/.test(rwhy) ? rwhy : '🧟 Raise now: ' + rwhy) : ''; }
     if (box) { var why = holdWhy('seance'), L = why ? [] : plans('seance');
-      box.innerHTML = dieWarn() + (v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living pledges') + '</span> ' : '') +
-        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'); } }
+      box.innerHTML = dieWarn() + (sOn ? (held ? '<span class="alt-pool">🕯️ Your seance pieces: ' + held.n + ' held on this grave until block ' + fmt(held.closesAt) + '. Only you can use them. Hold the seance (or Raise now) and it rises for you.</span> ' : '') : v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living offerings') + '</span> ' : '') +
+        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + (sOn ? '. The last one holds the seance: the zombie rises for you at the end of that block, with your own offerings only.</span>' : '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>')); } }
   function cap1(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
-  /* plans(mode): the burn tags for this altar, split so every tag fits in 34 bytes. Gear and pet pledges first, the seance last. */
+  /* plans(mode): the burn tags for this altar, split so every tag fits in 34 bytes. Gear and pet parts first, the seance last. */
   function plans(mode) { var c = A.ctx, w = c.w, V = c.V, b = bk(), id = A.grave.id, out = [];
     if (mode === 'raise') return [V.cemPlan(w, 'raise', id, null, b)];
     function num(a, z) { return a - z; }
