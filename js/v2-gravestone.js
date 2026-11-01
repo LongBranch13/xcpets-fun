@@ -37,6 +37,7 @@
     if (st === 'halo' && o.bg !== false) { x.save(); x.globalAlpha = 0.14; R(x, '#fff3b0', 6, 0, W - 12, H - 16); x.restore(); }
     var gx = 9, gy = 4 + (big ? 2 : 0), gw = W - 18, gh = H - 22 - (big ? 2 : 0), ox = Math.round(W / 2 - 16), oy = gy + 10 + (big ? Math.round((gh - 46) / 2) : 0);
     if (o.open && o.bg !== false) { /* an altar is open: a faint green glow hugging the stone (stepped, 8-bit) */ x.save(); x.globalAlpha = 0.13; R(x, '#7dff6a', gx - 3, gy + 3, gw + 6, gh - 3); R(x, '#7dff6a', gx - 1, gy, gw + 2, 3); R(x, '#7dff6a', gx + 2, gy - 2, gw - 4, 2); x.globalAlpha = 0.08; R(x, '#7dff6a', gx - 5, gy + 6, gw + 10, gh - 6); x.restore(); }
+    if (o.mythic && o.bg !== false) { /* MYTHIC GOD LOOP: a Mythic eaten by a zombie rests in a violet grave (display only) */ x.save(); x.globalAlpha = o.open ? 0.08 : 0.15; R(x, '#b46cff', gx - 3, gy + 3, gw + 6, gh - 3); R(x, '#b46cff', gx - 1, gy, gw + 2, 3); R(x, '#b46cff', gx + 2, gy - 2, gw - 4, 2); x.globalAlpha = 0.07; R(x, '#b46cff', gx - 6, gy + 7, gw + 12, gh - 7); x.restore(); }
     if (st === 'dust') { /* the slab snapped: the lower half stands, the top half lies on the mound */
       var cut = gy + Math.round(gh * 0.45); slab(x, gx, gy, gw, gh, '#8a8e98', '#5e626c', '#b0b4bc', '#6e727c');
       x.clearRect(gx - 1, gy - 1, gw + 2, cut - gy + 1); if (o.bg !== false) R(x, '#14121f', gx - 1, gy - 1, gw + 2, cut - gy + 1); for (k = 0; k < gw + 2; k += 2) { x.clearRect(gx - 1 + k, cut, 2, 1 + (k % 4 ? 1 : 0) + (k % 6 ? 0 : 1)); if (o.bg !== false) R(x, '#14121f', gx - 1 + k, cut, 2, 1 + (k % 4 ? 1 : 0) + (k % 6 ? 0 : 1)); }
@@ -47,6 +48,7 @@
       ptxt(x, 'R.I.P.', W / 2, gy + 4, '#3a3d45');
       /* halo: it was raised once and rests for good with its halo, the relief worn pale */
       carve(x, M, ox, oy, st === 'halo' ? '#6a6e7a' : '#45484f', st === 'halo' ? '#eef0f4' : '#d2d6de', st === 'halo' ? '#b8bcc6' : '#9a9ea8', st === 'hunted' ? 0.1 : st === 'halo' ? 0.2 : 0);
+      if (o.mythic) [[gx + 3, gy + 2], [gx + gw - 8, gy + 2]].forEach(function (s0) { var sx = s0[0], sy = s0[1]; /* carved violet stars beside R.I.P. */ R(x, '#3b1b66', sx + 2, sy, 1, 5); R(x, '#3b1b66', sx, sy + 2, 5, 1); R(x, '#8a4fe0', sx + 1, sy + 1, 3, 3); R(x, '#d6b4ff', sx + 2, sy + 1, 1, 1); R(x, '#d6b4ff', sx + 2, sy + 2, 1, 1); });
       if (cr || st === 'hunted') { crack(x, gx + 6, gy + 6, 7, 1); if (cr > 1 || st === 'hunted') crack(x, gx + gw - 9, gy + gh - 16, 6, -1); if (cr > 2 || st === 'hunted') crack(x, gx + Math.round(gw / 2) + 3, gy + 1, 5, 1);
         x.clearRect(gx + gw - 3, gy - 1, 5, 4); x.clearRect(gx + gw - 1, gy + 3, 2, 2); if (o.bg !== false) { R(x, '#14121f', gx + gw - 3, gy - 1, 5, 4); R(x, '#14121f', gx + gw - 1, gy + 3, 2, 2); } R(x, '#000', gx + gw - 4, gy + 2, 1, 2); R(x, '#000', gx + gw - 2, gy + 4, 1, 2); /* chipped corner */ }
       if (st === 'hunted') { for (k = 0; k < 3; k++) for (var q = 0; q < 9; q++) R(x, '#3a2a2a', gx + 6 + k * 3 + Math.floor(q / 3), gy + gh - 22 + q, 1, 1); /* claw marks */
@@ -66,17 +68,17 @@
     /* flowers in the rarity colour (wilted grey on a hunted or dusted grave) */ for (k = 0; k < i + 1; k++) { var fx = gx + 4 + k * 6, fc = st === 'hunted' || st === 'dust' ? '#6e6a62' : t; if (st === 'dust' && fx < 26) continue;
       R(x, '#3f7a34', fx, gy + gh + 1, 1, 3); R(x, fc, fx - 1, gy + gh, 3, 1); R(x, fc, fx, gy + gh - 1, 1, 3); }
     if (st === 'halo') { var hcx = Math.round(W / 2), hy = 1; R(x, '#000', hcx - 7, hy, 14, 4); R(x, '#ffc93c', hcx - 6, hy + 1, 12, 2); x.clearRect(hcx - 4, hy + 2, 8, 1); if (o.bg !== false) R(x, '#14121f', hcx - 4, hy + 2, 8, 1); R(x, '#fff3b0', hcx - 5, hy + 1, 3, 1); }
-    return { c: c, L: L, lit: st !== 'dust' && st !== 'hunted', green: !!o.open, halo: st === 'halo', smoke: st === 'dust' };
+    return { c: c, L: L, lit: st !== 'dust' && st !== 'hunted', green: !!o.open, halo: st === 'halo', violet: !!o.mythic, smoke: st === 'dust' };
   }
   function frame(cv, B, tm) { var x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height); flames(x, B, tm, 0, 0); }
   function flames(x, B, tm, dx, dy) { var rm = !!RM.matches, f = rm ? 0 : Math.floor((tm || 0) / 150); x.imageSmoothingEnabled = false; x.drawImage(B.c, dx, dy); x.save(); x.translate(dx, dy);
     B.L.forEach(function (p, k) { var cx = p[0], top = p[1];
-      if (B.lit) { var col = B.green ? '#7dff6a' : B.halo ? '#fff3b0' : '#ffd166', core = B.green ? '#e6ffd8' : '#fff3b0', s = (f + k) % 3, sw = s === 2 ? 1 : 0, hh = s === 1 ? 3 : 2;
+      if (B.lit) { var col = B.green ? '#7dff6a' : B.violet ? '#c08cff' : B.halo ? '#fff3b0' : '#ffd166', core = B.green ? '#e6ffd8' : B.violet ? '#f1e4ff' : '#fff3b0', s = (f + k) % 3, sw = s === 2 ? 1 : 0, hh = s === 1 ? 3 : 2;
         x.save(); x.globalAlpha = 0.13 + (s === 1 ? 0.05 : 0); R(x, col, cx - 3, top - 6, 6, 6); R(x, col, cx - 2, top - 7, 4, 1); x.restore();
         R(x, col, cx - 1 + sw, top - hh - 1, 1, hh); R(x, core, cx, top - 2, 1, 1); if (s === 1) R(x, col, cx - 1, top - 4, 1, 1); }
       else if (B.smoke && !rm) { var kk = (((tm || 0) / 1800) + k * 0.37) % 1; x.save(); x.globalAlpha = (1 - kk) * 0.5; R(x, '#8a8896', cx + Math.round(Math.sin((tm || 0) / 500 + k) * kk * 2), Math.round(top - 2 - kk * 9), 1, 1); x.restore(); } }); x.restore(); }
   /* paint the stone (no night background) into another canvas, e.g. beside the altar; the caller's own frame loop keeps it flickering */
-  var PC = {}; function paintAt(x, o, dx, dy, tm, W, H) { W = W || 52; H = H || 62; var k = [o.art && (o.art.dna || o.art.species), o.stage, o.tier, o.state, o.crumbles, !!o.open, W, H].join('|');
+  var PC = {}; function paintAt(x, o, dx, dy, tm, W, H) { W = W || 52; H = H || 62; var k = [o.art && (o.art.dna || o.art.species), o.stage, o.tier, o.state, o.crumbles, !!o.open, !!o.mythic, W, H].join('|');
     if (!PC[k]) { var ks = Object.keys(PC); if (ks.length > 40) delete PC[ks[0]]; PC[k] = base(Object.assign({}, o, { bg: false }), W, H); } flames(x, PC[k], tm, dx, dy); }
   function tick() { var tm = performance.now(); LIVE = LIVE.filter(function (e) { return e.cv.isConnected; }); LIVE.forEach(function (e) { if (e.vis) frame(e.cv, e.B, tm); }); if (!LIVE.length || RM.matches) { clearInterval(timer); timer = 0; } }
   /* draw the stone into a canvas (its width/height pick the card or detail size) and keep its flames flickering while it is on screen */
