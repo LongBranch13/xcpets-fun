@@ -953,7 +953,7 @@
     plans.forEach(function (q) { var t = q && q.tag ? V.parseTag(q.tag) : null; if (!t) return; var isR = t.action === 'cemr', a = isR ? t.kind : t.action; if (!/^(alt|seance|zfeed|rpl)$/.test(a)) return;
       var n = isR ? (q.ids ? q.ids.length : V.cemRunsIds(w, ME, t, b).length) : (t.ids || []).length, k = a === 'zfeed' ? 'zmeal' : a === 'rpl' ? 'rpl' : 'pledge'; by[k] = (by[k] || 0) + n; tot += n; if (a === 'seance') sr = true; if (isR) runs = true; });
     if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' times ' + fmt(V.cemCost(w, k, b)); });
-    return ' (priced per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
+    return ' (cost per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   function confirmPlans(title, plans, after, pre) {
     if (viewBlock()) return;
     if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own wallet: XCP Wallet on desktop Chrome, or the Casa Tookan app on your phone (open xcpets.fun inside it). Connect it to play, or look up any address to view its pets.'); return; }
@@ -1081,7 +1081,7 @@
   var EGGS = [['hatchBtn', 'Crack One Open', 'pet:hatch', 'hatch'], ['dozenBtn', 'Crack Pack · 12 eggs', 'pet:hatch12', 'hatch12'], ['caseBtn', 'Yolk Booster Box · 144 eggs', 'pet:hatch144', 'hatch144']];
   function eggCost(k) { var C = V.COSTS; return C && C.era != null && C[k] > 0 ? C[k] : null; } /* reads only: never asks for the world (no replay) */
   function eggButtons() { EGGS.forEach(function (e) { var b = $(e[0]); if (!b) return; var c = eggCost(e[3]), t = e[1] + ' (' + (c == null ? '…' : fmt(c)) + ')'; if (b.textContent !== t) b.textContent = t; if (b.disabled !== (c == null)) b.disabled = c == null; }); }
-  EGGS.forEach(function (e) { var b = $(e[0]); if (b) b.onclick = function () { var c = eggCost(e[3]); if (c == null) { eggButtons(); toast('Still loading the current egg price… try again in a moment.'); return; } confirmPlans(e[1], [{ tag: e[2], amount: c }]); }; });
+  EGGS.forEach(function (e) { var b = $(e[0]); if (b) b.onclick = function () { var c = eggCost(e[3]); if (c == null) { eggButtons(); toast('Still loading the current egg cost… try again in a moment.'); return; } confirmPlans(e[1], [{ tag: e[2], amount: c }]); }; });
   eggButtons(); setInterval(eggButtons, 1000);
   /* ELECTRIC EGGS (preview): one pet:hatchzap burn = 1,000 eggs with boosted tier odds. The button stays locked until the chain tip reaches the gate block. */
   if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g); };
