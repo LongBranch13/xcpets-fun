@@ -41,7 +41,7 @@
       if (!b.onclick) b.onclick = function () { connect(true); }; });
     if (!anyProv() && Date.now() - t0 >= POLL_FOR && msg && !msg.innerHTML) {
       if (inCasa()) say('Casa Tookan has not attached its wallet to this page. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from <b>Browse \u203a Apps</b> (or type xcpets.fun/play.html).', 'cc-hint');
-      else if (phone()) say('No wallet in this browser. ' + openLink() + ' to play on your phone (XCP Wallet is desktop Chrome only).', 'cc-hint');
+      else if (phone()) say('No wallet in this browser. ' + openLink() + ' to play on your phone (XCP Wallet is the desktop Chrome extension).', 'cc-hint');
     }
     if (anyProv() && msg && /cc-hint/.test(msg.className)) say('');
   }

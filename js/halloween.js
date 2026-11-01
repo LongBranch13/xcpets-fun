@@ -14,6 +14,11 @@
   'use strict';
   if (window.__hwLoaded) return; window.__hwLoaded = 1;
   var START = new Date(Date.UTC(2026, 9, 31, 5, 0, 0)), END = new Date(Date.UTC(2026, 10, 2, 6, 0, 0)); /* fixed UTC instants, not the visitor's clock zone; END is exclusive */
+  /* calm-first-screen (Nov 1 2026, owner-approved plan item 1): the seasonal CARDS (banner, white paper plaque, sprite rows, pet tile) are dated to
+   * Halloween itself and expire at the end of Oct 31 Central (2026-11-01T05:00Z); only the ambient bats/fog layer and the header pumpkin stay to END.
+   * ?halloween=1 still forces everything on for previews. */
+  var CARD_END = new Date(Date.UTC(2026, 10, 1, 5, 0, 0));
+  function cardsOn() { return flag() === '1' || new Date() < CARD_END; }
   var BANNER_KEY = 'xcpets-halloween-2026-banner-hidden';
   var me = document.currentScript, ver = (me && /[?&]v=([\w.-]+)/.exec(me.src) || [])[1] || '';
   function flag() { var m = /[?&]halloween=([01])\b/.exec(location.search); return m ? m[1] : null; }
@@ -110,16 +115,17 @@
   }
   function clearCemFx() { if (cemObs) { cemObs.disconnect(); cemObs = null; } var f = document.querySelectorAll('.hw-cemfx'); for (var i = 0; i < f.length; i++) f[i].parentNode.removeChild(f[i]); }
 
-  function turnOn() { if (on) return; on = true; loadCss(); root.classList.add('hw'); if (isCemetery()) root.classList.add('hw-cem'); addLayer(); addBanner(); plaque(); petTile(); addRows(); if (isCemetery()) cemFx(); }
+  function turnOn() { if (on) return; on = true; loadCss(); root.classList.add('hw'); if (isCemetery()) root.classList.add('hw-cem'); addLayer(); if (cardsOn()) { addBanner(); plaque(); petTile(); addRows(); } if (isCemetery()) cemFx(); }
   function turnOff() { if (!on) return; on = false; root.classList.remove('hw', 'hw-cem'); if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; removeBanner(); clearCemFx(); ['.hw-plq', '.hw-wp', '.hw-row'].forEach(function (q) { var a = document.querySelectorAll(q); for (var i = 0; i < a.length; i++) a[i].parentNode.removeChild(a[i]); });
     if (cssEl && cssEl.parentNode) cssEl.parentNode.removeChild(cssEl); cssEl = null; }
-  function apply() { if (wanted()) turnOn(); else turnOff(); }
+  function dropCards() { removeBanner(); ['.hw-plq', '.hw-wp', '.hw-row'].forEach(function (q) { var a = document.querySelectorAll(q); for (var i = 0; i < a.length; i++) a[i].parentNode.removeChild(a[i]); }); }
+  function apply() { if (wanted()) { turnOn(); if (!cardsOn()) dropCards(); } else turnOff(); }
   /* re-check at the next edge (START or END) if it is less than a day away, else in a day; setTimeout caps near 24.8 days anyway */
-  function arm() { if (flag() !== null) return; var now = Date.now(), next = [START.getTime(), END.getTime()].filter(function (t) { return t > now; })[0]; if (!next) return;
+  function arm() { if (flag() !== null) return; var now = Date.now(), next = [START.getTime(), CARD_END.getTime(), END.getTime()].filter(function (t) { return t > now; })[0]; if (!next) return;
     setTimeout(function () { apply(); arm(); }, Math.min(next - now + 500, 864e5)); }
   /* a tab woken from sleep may have skipped the timer: check again when it becomes visible */
   document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
   function start() { apply(); arm(); }
-  window.XCHalloween = { START: START, END: END, inWindow: inWindow, wanted: wanted, isOn: function () { return on; } };
+  window.XCHalloween = { START: START, END: END, CARD_END: CARD_END, cardsOn: cardsOn, inWindow: inWindow, wanted: wanted, isOn: function () { return on; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -14,9 +14,11 @@
     var show = h && h.defeat && (h.era > 0 || h.next); if (!show) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'halvingRibbon'; el.className = 'halving-ribbon'; el.setAttribute('role', 'status');
       var host = document.querySelector('main') || document.body, nav = document.querySelector('nav, .nav, header'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
-    var left = h.next ? Math.max(0, h.next - h.tip) : 0;
+    var left = h.next ? Math.max(0, h.next - h.tip) : 0; el.classList.add('halving-chip'); /* calm-first-screen (Nov 1 2026): a small chip, not a box */
+    var full = h.era > 0 ? 'Halving ' + h.era + ' is live: every burn costs 1/' + Math.pow(2, h.era) + ' of the base amount.' : 'Lord Kek has been defeated. From block ' + fmt(h.next) + ' every burn costs half.';
+    if (el.title !== full) { el.title = full; el.setAttribute('aria-label', full); }
     el.innerHTML = h.era > 0
-      ? (h.era > 1 ? '<b>👑 The halving</b> <span>Halving ' + h.era + ' is live: every burn costs 1/' + Math.pow(2, h.era) + ' of the base amount.</span> <a href="archive.html">Cold Storage</a>' : '<b>👑 The halving</b> <span>STAR LORD KEK defeated Lord Kek. Every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>')
+      ? (h.era > 1 ? '<b>👑 Halving ' + h.era + ':</b> <span>every burn costs 1/' + Math.pow(2, h.era) + '</span> <a href="archive.html">Cold Storage</a>' : '<b>👑 Halving:</b> <span>every burn costs half</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>')
       : '<b>⚔️ Lord Kek has been defeated</b> <span>From block ' + fmt(h.next) + ' (' + left + ' block' + (left === 1 ? '' : 's') + ' away) every burn costs half.</span> <a href="archive.html">Lord Kek&rsquo;s farewell</a>'; }
   /* similar-bugs-fix (Oct 27 2026): amounts the game draws itself follow every halving / Fire Sale too. [data-ck="KEY"] shows V2Rules.COSTS[KEY]
    * (the engine's current cost); the Pepe Wheel 'Spin the wheel · N' button keeps its own first text node in step. Display only. */
