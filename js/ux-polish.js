@@ -7,9 +7,20 @@
   var isMobile = function () { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') || (matchMedia && matchMedia('(pointer:coarse)').matches && phone()); };
   function toast(html, ms) { var t = d.getElementById('toasts'); if (!t) { t = d.createElement('div'); t.id = 'toasts'; d.body.appendChild(t); } var x = d.createElement('div'); x.className = 'toast uxp-toast'; x.setAttribute('role', 'status'); x.innerHTML = html; t.appendChild(x); setTimeout(function () { x.remove(); }, ms || 12000); }
   // 4. How to start card (Home + Play), dismissible
-  function startCard(anchor, before) { if (!anchor || ls.get('xcpets-uxp-start') === 'x') return; var c = d.createElement('section'); c.className = 'panel uxp-card'; c.setAttribute('aria-label', 'How to start');
-    c.innerHTML = '<b>How to start</b><ol><li>Get a wallet: the <a href="https://chromewebstore.google.com/search/XCP%20Wallet" target="_blank" rel="noopener">XCP Wallet</a> Chrome extension on desktop, or the Casa Tookan app on your phone (open xcpets.fun inside it).</li><li>Get some XCPETS (Counterparty token) on <a href="https://xcp.fun" target="_blank" rel="noopener">xcp.fun</a>, plus a little BTC for fees, into that wallet.</li><li>Hatch an egg for <span data-cost="69" data-ck="hatch">17.25</span> XCPETS on the <a href="play.html#hatchPanel">Play</a> page.</li><li>Feed it every day: a pet unfed for 7 days dies.</li></ol><button type="button" class="q uxp-x" aria-label="Dismiss how to start">✕</button>';
-    c.querySelector('.uxp-x').onclick = function () { ls.set('xcpets-uxp-start', 'x'); c.remove(); }; anchor.parentNode.insertBefore(c, before ? anchor : anchor.nextSibling); }
+  /* first-time-path (Nov 1 2026, owner-approved critique plan item 3): "Start here", 3 steps for a wallet with no pets yet (was "How to start").
+   * Hidden once the connected wallet owns a living pet (#nAlive > 0 on Play) or when dismissed (same key as before). Links only: it never signs. */
+  function startCard(anchor, before) { if (!anchor || ls.get('xcpets-uxp-start') === 'x') return; var c = d.createElement('section'); c.className = 'panel uxp-card uxp-start'; c.id = 'uxpStart'; c.setAttribute('aria-label', 'Start here');
+    var onPlay = page === 'play.html', feedHref = onPlay ? '#petsPanel' : 'play.html#petsPanel', hatchHref = onPlay ? '#hatchPanel' : 'play.html#hatchPanel';
+    c.innerHTML = '<b>👋 Start here</b><ol class="uxp-steps">' +
+      '<li><b>Get a wallet.</b> On desktop: the <a href="https://chromewebstore.google.com/search/XCP%20Wallet" target="_blank" rel="noopener">XCP Wallet</a> Chrome extension. On your phone: the <b>Casa Tookan</b> app (open xcpets.fun inside it). Put some XCPETS (from <a href="https://xcp.fun" target="_blank" rel="noopener">xcp.fun</a>) and a little BTC for fees in it.</li>' +
+      '<li><b>Hatch one egg</b> for <b><span data-cost="69" data-ck="hatch">17.25</span> XCPETS</b> plus the Bitcoin network fee. <a class="btn uxp-go" href="' + hatchHref + '">🥚 Hatch</a></li>' +
+      '<li><b>Feed it once a day</b> with one button: <b>Feed all hungry</b> on My Pets feeds every hungry pet you own. A pet unfed for 7 days dies. <a class="q uxp-go" href="' + feedHref + '">🍽️ Feed all</a></li></ol>' +
+      '<p class="small muted" style="margin:6px 0 0">Before every burn you see the amount, the tag and the fee, and nothing is sent until you approve it in your wallet.</p>' +
+      '<button type="button" class="q uxp-x" aria-label="Hide Start here">✕</button>';
+    c.querySelector('.uxp-x').onclick = function () { ls.set('xcpets-uxp-start', 'x'); c.remove(); };
+    if (onPlay) c.querySelectorAll('.uxp-go').forEach(function (a) { a.addEventListener('click', function () { setTimeout(function () { var b = d.getElementById(/feed/i.test(a.textContent) ? 'bFeedHungry' : 'hatchBtn'); if (b && b.focus) try { b.focus({ preventScroll: true }); } catch (e) {} }, 400); }); });
+    anchor.parentNode.insertBefore(c, before ? anchor : anchor.nextSibling);
+    var t = setInterval(function () { if (!c.isConnected) return clearInterval(t); var n = d.getElementById('nAlive'), v = n ? parseInt(String(n.textContent).replace(/[^0-9]/g, ''), 10) : NaN; if (v > 0) { c.remove(); clearInterval(t); } }, 1500); }
   // 6. phone notice next to Connect
   function phoneNote(btn) { if (!btn || !isMobile() || btn._uxp) return; btn._uxp = 1; var n = d.createElement('div'); n.className = 'small uxp-note'; n.textContent = '📱 Play on your phone: open xcpets.fun inside the Casa Tookan app, then tap Connect.'; if (window.V2Wallet && V2Wallet.label && V2Wallet.label() === 'Casa Tookan') return; btn.parentNode.insertBefore(n, btn.nextSibling); }
   // 9. alt text for every image (static + ones added later)
