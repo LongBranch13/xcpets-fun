@@ -1,6 +1,6 @@
 {
- "lastBlock": 974182,
- "count": 95,
+ "lastBlock": 974185,
+ "count": 96,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1141,6 +1141,18 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 48079,
+   "asset": "A5661218335239325026",
+   "tiedBlock": 974183,
+   "tiedTx": "df93bf9d512efdebdeaa339c61a92c153756ee4154633a795006ca87db4ad57c",
+   "kind": "deed",
+   "name": "Jootebit",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
