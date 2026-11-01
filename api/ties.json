@@ -1,6 +1,6 @@
 {
- "lastBlock": 974162,
- "count": 92,
+ "lastBlock": 974164,
+ "count": 93,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -577,7 +577,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 6906,
@@ -1105,6 +1105,18 @@
    "species": "funtrump",
    "speciesLabel": "FUNTRUMP",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22037,
+   "asset": "A4589323021848396739",
+   "tiedBlock": 974164,
+   "tiedTx": "beffba7327ad969d6c89104bd50d5f58fac3e46fc9fba34e75dbb1a834cb2030",
+   "kind": "deed",
+   "name": "Waka",
+   "species": "hyb:nakamoto:wizard",
+   "speciesLabel": "Nawiz (hybrid)",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
