@@ -31,8 +31,14 @@
   function px(g, x, y, c, w, h) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w || 1, h || w || 1); }
   function disc(g, cx, cy, r, c, ry) { ry = ry || r; for (var y = -ry; y <= ry; y++) for (var x = -r; x <= r; x++) if ((x * x) / (r * r || 1) + (y * y) / (ry * ry || 1) <= 1) px(g, cx + x, cy + y, c); }
   function ring(g, cx, cy, r, c, ry) { ry = ry || r; var n = Math.max(10, Math.round(r * 7)); for (var i = 0; i < n; i++) { var a = i / n * Math.PI * 2; px(g, cx + Math.cos(a) * r, cy + Math.sin(a) * ry, c); } }
-  function text(g, s, x, y, c, size, align) { g.save(); g.font = (size || 8) + 'px "Press Start 2P", monospace'; g.textAlign = align || 'center'; g.textBaseline = 'top';
-    if (c !== C.ol) { g.fillStyle = C.ol; g.fillText(s, Math.round(x) + 1, Math.round(y) + 1); } g.fillStyle = c; g.fillText(s, Math.round(x), Math.round(y)); g.restore(); }
+  /* crisp-text-1101: the scene is drawn at k device pixels per scene pixel (k = whole number, set in paint). Text is drawn at device resolution
+   * in a whole multiple of 8 px (Press Start 2P's own grid), at whole device pixels, with a hard one-font-pixel shadow (no blur, no sub-pixel ghost). */
+  function text(g, s, x, y, c, size, align) { var k = g.__k || 1; g.save(); size = size || 8;
+    if (k < 2) { g.font = size + 'px "Press Start 2P", monospace'; g.textAlign = align || 'center'; g.textBaseline = 'top'; if (c !== C.ol) { g.fillStyle = C.ol; g.fillText(s, Math.round(x) + 1, Math.round(y) + 1); } g.fillStyle = c; g.fillText(s, Math.round(x), Math.round(y)); g.restore(); return; }
+    var want = size * k, fp = Math.max(8, Math.floor(want / 8) * 8); if (fp < want * 0.75) fp = Math.ceil(want / 8) * 8; var u = fp / 8;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.shadowColor = 'transparent'; g.font = fp + 'px "Press Start 2P", monospace'; g.textAlign = 'left'; g.textBaseline = 'top';
+    var wd = Math.round(g.measureText(s).width / u) * u, X = Math.round(x * k) - (align === 'left' ? 0 : align === 'right' ? wd : Math.round(wd / 2 / u) * u), Y = Math.round(y * k);
+    if (c !== C.ol) { g.fillStyle = C.ol; g.fillText(s, X + u, Y + u); } g.fillStyle = c; g.fillText(s, X, Y); g.restore(); }
   /* ---- sprites: the pet's own 32x32 pixel art on a keyed background (only the pet moves, never its square tile) ---- */
   var SPR = {};
   function R() { return window.V2Render || null; }
@@ -161,7 +167,7 @@
   function ptsOf(x) { var V = window.V2Rules, Pt = (V && V.CEM && V.CEM.POINTS) || [1, 3, 10, 33]; return Pt[Math.max(0, Math.min(3, (x && x.tier) | 0))]; }
   var PAINT = { raise: raiseF, 'resurrect-win': resF, 'resurrect-fail': resF, zmeal: zmealF, feral: feralF, crumble: crumbleF, hunted: crumbleF, pledge: pledgeF };
   function pets(ev, w) { var by = (w && w.byId) || {}; return { pet: by[ev.id] || ev.pet || null, victims: (ev.victims || []).map(function (id) { return by[id] || { id: id }; }) }; }
-  function paint(c, ev, f, w) { var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H); (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
+  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function caption(ev, P) { var n = nm(P.pet, ev.id), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
     if (CAPS[ev.kind]) return CAPS[ev.kind](ev, P, n, b);
@@ -176,14 +182,14 @@
         return '😇 ' + cnt + ' pledged to the Resurrection of ' + n + (P.victims.length ? ' (' + P.victims.slice(0, 6).map(function (v) { return '#' + v.id; }).join(', ') + (P.victims.length > 6 ? ', …' : '') + ')' : '') + ' · ' + L.pts + ' of ' + (ev.min || 25) + ' points · ' + Math.round(L.ch * 100) + '% chance' + b; } return n; }
   function css() { if (document.getElementById('caCss')) return; var s = document.createElement('style'); s.id = 'caCss';
     s.textContent = '.ca-ov{position:fixed;inset:0;z-index:100010;background:rgba(10,8,22,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;padding:12px;box-sizing:border-box}' +
-      '.ca-ov canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:4px solid #000;box-shadow:4px 4px 0 #000;background:#0b0a1f;max-width:100%}' +
+      '.ca-ov canvas{image-rendering:crisp-edges;image-rendering:pixelated;border:4px solid #000;box-shadow:4px 4px 0 #000;background:#0b0a1f;max-width:100%}' +
       '.ca-cap{font-family:inherit;color:#b9ff9a;font-size:17px;text-align:center;text-shadow:2px 2px 0 #000;max-width:92vw;line-height:1.35}.ca-skip{color:#bbb;font-size:12px}';
     document.head.appendChild(s); }
   var BUSY = null;
   /* play(ev, {w, done}) -> {end, canvas, frame(k)}; ev = {kind, id, victims, roll, need, block, tx} */
   function play(ev, o) { o = o || {}; css(); var w = o.w || (window.V2Mock && V2Mock.world && V2Mock.world()), P = pets(ev, w), N = LEN[ev.kind] || 40;
     var ov = document.createElement('div'); ov.className = 'ca-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Cemetery: ' + ev.kind); ov.dataset.anim = ev.kind;
-    var sc = Math.max(2, Math.min(6, Math.floor(Math.min(window.innerWidth - 40, 640) / W))), c = document.createElement('canvas'); c.width = W; c.height = H; c.style.width = W * sc + 'px'; c.style.height = H * sc + 'px';
+    var sc = Math.max(2, Math.min(6, Math.floor(Math.min(window.innerWidth - 40, 640) / W))), c = document.createElement('canvas'), dpr = window.devicePixelRatio || 1, K = Math.max(1, Math.round(sc * dpr)); /* crisp-text-1101: whole device pixels per scene pixel */ c.width = W * K; c.height = H * K; c.style.width = W * K / dpr + 'px'; c.style.height = H * K / dpr + 'px';
     var cap = document.createElement('div'); cap.className = 'ca-cap'; cap.textContent = caption(ev, P); var skip = document.createElement('div'); skip.className = 'ca-skip'; skip.textContent = 'Tap to skip';
     ov.appendChild(c); ov.appendChild(cap); ov.appendChild(skip); document.body.appendChild(ov); var f = 0, tm = null, ended = false;
     function end() { if (ended) return; ended = true; clearInterval(tm); window.removeEventListener('keydown', end); ov.remove(); BUSY = null; if (o.done) try { o.done(); } catch (e) {} if (window.V2AnimDone) try { V2AnimDone(); } catch (e) {} }

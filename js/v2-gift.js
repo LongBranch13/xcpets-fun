@@ -24,7 +24,7 @@
   function spL(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
   function sprite(p) { return '<span class="gf-sp" data-gfsp="' + p.id + '"></span>'; }
   function paint(root) { var R = window.V2Render, w = W(); if (!R || !R.petFrames || !w) return; root.querySelectorAll('[data-gfsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-gfsp')]; if (!p) return;
-      var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c); try { var fr = R.petFrames(p, w); if (R.lazy) R.lazy(c, function () { return fr; }, true); else if (R.animate) R.animate(c, fr); } catch (e) { } }); }
+      var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c); try { if (R.lazy) R.lazy(c, function () { return R.petFrames(p, w); }, true); else if (R.animate) R.animate(c, R.petFrames(p, w)); } catch (e) { } }); } /* speed2-1101: frames are built only when a row scrolls into view (was all 300 up front, ~1.3 s) */
   function css() { if ($('gfCss')) return; var st = document.createElement('style'); st.id = 'gfCss'; st.textContent =
     '.gf .box{max-width:560px;width:calc(100vw - 24px);max-height:88vh;overflow:auto;text-align:left}.gf h2{margin:0 0 8px}.gf .addr{word-break:break-all;font-family:monospace;font-size:13px;background:rgba(0,0,0,.25);padding:6px 8px;border-radius:6px}' +
     '.gf input[type=text]{width:100%;box-sizing:border-box;padding:10px;font:inherit;font-size:16px}.gf .gf-pets{display:grid;gap:6px;margin:8px 0}.gf .gf-pet{display:flex;gap:8px;align-items:center;padding:6px;border:2px solid rgba(255,255,255,.12);border-radius:8px}' +
@@ -115,13 +115,13 @@
     function shown() { return V.petFilter(w, mine.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; }); }
     function draw() { var S = shown(), n = Object.keys(sel).length;
       modal('<h2>🎁 Gift several pets</h2>' + meLine(w) + (PF ? PF.html(f, GF_FIELDS, { species: PF.species(mine), count: S.length, total: mine.length }) : '') +
-        (mine.some(function (p) { return tied(w, p); }) ? '' : pressNote()) + '<p><button class="q" id="gfAll">Select all shown (' + S.length + ')</button> <button class="q" id="gfNone">Clear</button> <b>' + n + ' selected</b></p><div class="gf-pets">' +
+        (mine.some(function (p) { return tied(w, p); }) ? '' : pressNote()) + '<p><button class="q" id="gfAll">Select all shown (' + S.length + ')</button> <button class="q" id="gfNone">Clear</button> <b id="gfN">' + n + ' selected</b></p><div class="gf-pets">' +
         S.slice(0, 300).map(function (p) { var why = lockOf(w, p, b); return '<label class="gf-pet' + (why ? ' gf-skip' : '') + '"><input type="checkbox" data-gfid="' + p.id + '"' + (sel[p.id] ? ' checked' : '') + (why ? ' disabled' : '') + '>' + sprite(p) +
           '<div><b>' + esc(p.name || spL(p)) + '</b> <span class="muted">#' + p.id + '</span> ' + pill(p) + '<small>' + esc(spL(p)) + (why ? ' · <span class="warn">' + esc(why) + '</span>' : '') + '</small></div></label>'; }).join('') + (S.length > 300 ? '<p class="small muted">Showing 300 of ' + S.length + ': narrow the filters.</p>' : '') + '</div>' +
         '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfNext"' + (n ? '' : ' disabled') + '>Next: recipient →</button></div>');
       if (PF) PF.bind($('gfBox'), f, 'gift', draw);
       $('gfAll').onclick = function () { S.forEach(function (p) { if (!lockOf(w, p, b)) sel[p.id] = 1; }); draw(); }; $('gfNone').onclick = function () { sel = {}; draw(); }; $('gfX').onclick = close;
-      $('gfBox').querySelectorAll('[data-gfid]').forEach(function (c) { c.onchange = function () { if (c.checked) sel[c.getAttribute('data-gfid')] = 1; else delete sel[c.getAttribute('data-gfid')]; draw(); }; });
+      $('gfBox').querySelectorAll('[data-gfid]').forEach(function (c) { c.onchange = function () { if (c.checked) sel[c.getAttribute('data-gfid')] = 1; else delete sel[c.getAttribute('data-gfid')]; var k = Object.keys(sel).length; if ($('gfN') && $('gfNext')) { $('gfN').textContent = k + ' selected'; $('gfNext').disabled = !k; } else draw(); }; /* speed2-1101: a tick updates the count, no full rebuild */ });
       $('gfNext').onclick = function () { giftFlow(Object.keys(sel).map(Number)); }; }
     draw(); }
   /* ---- swap offer (pet.html, someone else's pet) */
