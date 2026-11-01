@@ -19,7 +19,11 @@
   /* casatookan-wallet (Nov 1 2026): a wallet is XCP Wallet (window.xcpwallet, always first) or Casa Tookan's in-app browser (window.webXCP /
    * window.web3xcp, see rjs/wallet.js). find() -> {kind, label, p} or null. Casa injects a few ms after load, so we keep polling for it too. */
   function find() { var w = Wallet.detect(win); return w && (w.kind === 'xcpwallet' || w.kind === 'webxcp') ? w : null; }
-  function casa() { return !win.xcpwallet && !!(win.webXCP || win.web3xcp); }
+  function casa() { return !win.xcpwallet && !!(win.webXCP || win.web3xcp || inCasa()); }
+  /* casa-connect (Nov 1 2026, owner [pt2571u]): inside Casa Tookan's browser (window.casaTookan) the Counterparty provider can attach a moment late,
+   * so connect waits up to 6 s for it there (2 s elsewhere), and a miss says how to get it attached instead of 'install XCP Wallet'. */
+  function inCasa() { try { return !!(win.casaTookan && win.casaTookan.isCasaTookan); } catch (e) { return false; } }
+  var CASA_MISS = 'Casa Tookan did not give this page its wallet yet. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from Browse \u203a Apps (or type xcpets.fun/play.html) and tap Connect Casa Tookan again.';
   /** label(): the wallet name for page copy: 'Casa Tookan' inside Casa Tookan, else 'XCP Wallet' (all XCP Wallet copy unchanged) */
   function label() { var k = wallet ? wallet.w.kind : win.xcpwallet ? 'xcpwallet' : casa() ? 'webxcp' : get(PROV_KEY); return k === 'webxcp' ? 'Casa Tookan' : 'XCP Wallet'; }
   function isCasa() { return label() === 'Casa Tookan'; }
@@ -34,7 +38,7 @@
     });
   }
   var NOT_FOUND = 'No wallet found. Use the XCP Wallet Chrome extension, or open xcpets.fun in the Casa Tookan app.';
-  function NotFound() { var e = new Error(NOT_FOUND); e.notFound = true; e.html = 'No wallet found. Use the <a href="' + STORE + '" target="_blank" rel="noopener">XCP Wallet Chrome extension</a> (then refresh), or open xcpets.fun in the Casa Tookan app.'; return e; }
+  function NotFound() { if (inCasa() && !win.xcpwallet) { var c = new Error(CASA_MISS); c.notFound = true; c.casaMiss = true; return c; } var e = new Error(NOT_FOUND); e.notFound = true; e.html = 'No wallet found. Use the <a href="' + STORE + '" target="_blank" rel="noopener">XCP Wallet Chrome extension</a> (then refresh), or open xcpets.fun in the Casa Tookan app.'; return e; }
   /* hotfix-chain (2026-10-14): keep the wallet's real reason. Wallet.errMsg maps -32603 to a bare 'Wallet error.' and drops e.message
    * (e.g. 'txn-mempool-conflict' / 'bad-txns-inputs-missingorspent'); show both. */
   /* wallet-unlock (2026-10-22): XCP Wallet answers 4100 when it is locked (or this site is not connected). Say plainly what to do. */
@@ -128,7 +132,7 @@
   function getWallet() {
     if (wallet) return locked ? unlock() : Promise.resolve(wallet);
     if (connecting) return connecting;
-    return (connecting = waitForXcp(2000).then(function (f) {
+    return (connecting = waitForXcp(inCasa() && !find() ? 6000 : 2000).then(function (f) {
       if (!f) throw NotFound();
       var x = mk(f), L = f.label;
       return x.connect().then(function (r) {
@@ -449,6 +453,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
+  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
