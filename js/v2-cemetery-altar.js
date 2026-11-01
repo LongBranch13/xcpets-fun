@@ -3,7 +3,10 @@
  * cemPlan (burn tags, split so each fits 34 bytes) and cemCost (costs follow the halving era). Owner, Oct 28 6:33 PM CT: the main sacrifice
  * happens AT THE SEANCE. Pick a dead pet, offer living pets plus optional stash gear; each offering adds less than the one before, ceiling 3 times.
  * Drag or tap pets onto the altar; each flies in, melts into green smoke, a candle flares and a tally is carved; the power bar lights milestones;
- * "See the rise" plays the claw-from-the-grave. "Hold seance" hands the tags to play.html (#cem-...), whose send guard checks and signs them. */
+ * "See the rise" plays the claw-from-the-grave. cemetery-handoff (Nov 1 2026): "Hold seance" signs the burns RIGHT HERE (V2Wallet.send, one window
+ * per burn, same send guard as play.html), no redirect. The build (offered pets, gear, burns already sent) is saved in localStorage per wallet and
+ * restored when the altar reopens, the page reloads or a burn stops. A copyable memo (every burn tag + amount, the pet count and list) is always
+ * shown, with a manual-burn fallback. The power number includes the pieces you already gave (held). UI only: every number is still the engine's. */
 (function () {
   'use strict';
   var CAP = 3, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
@@ -19,12 +22,18 @@
 
   /* ---------------------------------------------------------------- the math (engine) ---------------------------------------------------------------- */
   function eng() { var c = A.ctx, w = c.w; return { w: w, V: c.V, b: bk(), G: w.byId[A.grave.id] }; }
-  function project() { var E = eng(), pets = A.offered.map(function (o) { return E.w.byId[o.id]; }).filter(Boolean), P = E.V.cemPreview(E.w, E.G, pets, selGear(), E.b), out = {};
+  /* cemetery-handoff: the pieces you already gave (held on this grave, seance-always-raise) count in the power shown, as they will at the raise */
+  function heldNow() { var c = A.ctx, V = c && c.V, b = bk(); if (!c || !c.ME || !A.grave || !V || !V.seanceOn || !V.seanceOn(b) || !V.cemHeld) return null; try { return V.cemHeld(c.w, A.grave.id, c.ME, b); } catch (e) { return null; } }
+  function heldParts() { var E = eng(), hd = heldNow(), pend = pendParts(), seen = {}, pets = [], gear = [];
+    (hd ? hd.pets : []).concat(pend.pets).forEach(function (id) { var p = E.w.byId[id]; if (p && !seen[id] && !p.dead) { seen[id] = 1; pets.push(p); } });
+    (hd ? hd.gear : []).concat(pend.gear).forEach(function (gid) { var g = E.w.items[gid]; if (g && !seen[gid]) { seen[gid] = 1; gear.push(g); } });
+    return { pets: pets, gear: gear, n: hd ? hd.n : 0, hd: hd, pend: pend.pets.length + pend.gear.length }; }
+  function project(onlyHeld) { var E = eng(), H = heldParts(), pets = H.pets.concat(onlyHeld ? [] : A.offered.map(function (o) { return E.w.byId[o.id]; }).filter(function (p) { return p && H.pets.indexOf(p) < 0; })), P = E.V.cemPreview(E.w, E.G, pets, H.gear.concat(onlyHeld ? [] : selGear()), E.b), out = {};
     STATS.forEach(function (k) { var d = A.base[k] || 0; out[k] = Math.max(d, Math.min(d * CAP, Math.round(d * P.times))); });
-    return { stats: out, total: P.power, base: P.deathPower, ceil: P.ceiling, times: P.times, list: P.list, gf: P.gf, exact: P.deathPower * P.times }; }
+    return { stats: out, total: P.power, base: P.deathPower, ceil: P.ceiling, times: P.times, list: P.list, gf: P.gf, exact: P.deathPower * P.times, held: H }; }
   /* offerings shown strongest first, so each line adds less than the one before (the total does not depend on the order) */
   function steps() { var P = project(), keep = 1, prev = P.base, L = P.list.slice().sort(function (a, b) { return b.share - a.share; }), out = [];
-    L.forEach(function (e) { keep *= 1 - e.share; var t = P.base * Math.min(CAP, 1 + 2 * (1 - keep)), o; if (e.id != null) { o = A.offered.filter(function (q) { return q.id === e.id; })[0] || { kind: 'pet', id: e.id, name: '#' + e.id, tier: 0 }; } else { var g = eng().w.items[e.gid]; o = { kind: 'gear', label: (g && g.label || 'Gear') + (e.grave ? ' (the grave\'s own)' : '') + ' · ' + TL[gTier(g)] }; }
+    L.forEach(function (e) { keep *= 1 - e.share; var t = P.base * Math.min(CAP, 1 + 2 * (1 - keep)), o; if (e.id != null) { var hp = eng().w.byId[e.id]; o = A.offered.filter(function (q) { return q.id === e.id; })[0] || { kind: 'pet', id: e.id, name: hp ? hp.name : '#' + e.id, tier: hp ? hp.tier | 0 : 0, held: true }; } else { var g = eng().w.items[e.gid]; o = { kind: 'gear', label: (g && g.label || 'Gear') + (e.grave ? ' (the grave\'s own)' : '') + ' · ' + TL[gTier(g)] }; }
       out.push({ o: o, add: dec(t - prev) }); prev = t; }); return out; }
   function dec(v) { return (Math.round(v * 10) / 10).toFixed(1); }
 
@@ -180,22 +189,25 @@
   function open(grave, ctx) { if (ctx) A.ctx = ctx; if (!A.ctx || !grave) return; var w = A.ctx.w, wp = w.byId ? w.byId[grave.id] : null, s = wp ? (wp.zDeath || wp.stats) : null, base = {};
     STATS.forEach(function (k) { base[k] = s ? (s[k] || 0) : 0; });
     A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.splats = 0; A.bwant = 0; A.bflow = 0; A.fire = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
-    var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); renderAll(true);
+    A.run = null; A.sentLog = []; var rs = A.ctx.ME ? restore() : 0;
+    var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); [0, 1, 2, 3].forEach(function (i) { var e = document.getElementById('altG' + i); if (e) e.textContent = A.gear[i]; }); renderAll(true);
+    if (A.restored) toast(rs ? '↩ Restored your unsent offering: ' + rs + ' pet' + (rs === 1 ? '' : 's') : '↩ Restored your unfinished seance');
+    if (!A.hooked && A.ctx.M && A.ctx.M.onFresh) { A.hooked = true; A.ctx.M.onFresh(function () { if (A.grave || (A.run && A.run.zombie)) refreshWorld(false); else { saveBuild(); try { location.reload(); } catch (e) {} } }); } poll();
     topGap(); if (!A.rz) { A.rz = true; window.addEventListener('resize', topGap); } if (window.IntersectionObserver && !A.io) { A.io = new IntersectionObserver(function (es) { A.off = !es[0].isIntersecting; if (!A.off) kick(); }); } if (A.io) { A.io.disconnect(); A.io.observe(A.cv); }
     if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('lit'); kick(); el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }
   /* the sticky stage sits just under the site's sticky nav, whatever height the nav wraps to on a phone */
   function topGap() { var n = document.querySelector('.nav'), el = document.getElementById('cemAltar'); if (el) el.style.setProperty('--altTop', ((n && /sticky|fixed/.test(getComputedStyle(n).position)) ? n.offsetHeight + 4 : 0) + 'px'); }
-  function close() { var el = document.getElementById('cemAltar'); if (el) { el.hidden = true; el.innerHTML = ''; } A.cv = null; A.zc = null; A.grave = null; if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('off'); }
+  function close() { if (A.run && A.run.busy) { toast('A burn is being signed. Finish or cancel it in XCP Wallet first.'); return; } if (A.grave) saveBuild(); var el = document.getElementById('cemAltar'); if (el) { el.hidden = true; el.innerHTML = ''; } A.cv = null; A.zc = null; A.grave = null; if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('off'); }
   function shell() { var g = A.grave, sa = A.ctx.shortAddr, ME = A.ctx.ME, V = A.ctx.V, b = bk(), hw = V.cemHw(b), pub = V.cemPublic(b);
     return '<div class="alt-head"><h2 class="alt-title">🕯️ Seance at the altar</h2><div class="alt-tools"><button type="button" class="q" id="altSnd" aria-pressed="' + A.sound + '" title="Sound">' + (A.sound ? '🔊' : '🔇') + '</button><button type="button" class="q" id="altX" aria-label="Close the seance">✕</button></div></div>' +
       '<p class="small alt-who">Raising <b>' + esc(g.name) + '</b> <span class="muted">#' + g.id + ' · ' + esc(g.spl || '') + ' · ' + (g && g.resurrected ? 'God' : TL[g.tier]) + ' · owner ' + esc(sa(g.owner)) + (ME && g.owner === ME ? ' (you)' : '') + '</span></p>' +
       (hw ? '<p class="small alt-hw" id="altHwRow"><span class="alt-hwb" id="altHwB">🎃 Night of the Dead: offerings count 1.5 times (blocks ' + V.CEM.HW_FROM + ' to ' + V.CEM.HW_TO + ')</span></p>' : '') +
       (!pub ? '<p class="small alt-note">🧪 Owner test: until launch only grave #' + V.CEM.OWNER_GRAVE + ' can be raised, and only by the owner wallet.</p>' : '') +
-      (!ME ? '<p class="small alt-note">👛 Connect XCP Wallet on the Play page to offer your pets.</p>' : '') +
+      (!ME ? '<p class="small alt-note">👛 <button type="button" class="q" id="altConn">Connect XCP Wallet</button> to offer your pets. You stay on this page.</p>' : '') +
       '<div class="alt-grid"><div class="alt-left"><div class="alt-stage"><div class="alt-cvwrap"><canvas id="altCv" width="' + AW + '" height="' + AH + '" role="img" aria-label="A stone altar with candles beside the grave. Drop or tap pets to offer them."></canvas><canvas id="altZc" width="' + AW * ZK + '" height="' + AH * ZK + '" aria-hidden="true"></canvas><div class="alt-drop" aria-hidden="true">Drop here</div><div class="alt-toast" id="altToast" aria-live="polite"></div></div>' +
       '<div class="alt-power"><div class="alt-pnum" id="altNum"></div><div class="alt-bar" id="altBar"><i class="alt-b0"></i><i class="alt-b1"></i>' + MILES.map(function (m, i) { return '<span class="alt-mk" data-i="' + i + '" style="left:' + (m[0] / CAP * 100) + '%"><em>' + m[1] + '</em></span>'; }).join('') + '</div>' +
       '<div class="alt-stats" id="altStats"></div></div></div>' +
-      '<div class="alt-acts"><button type="button" class="btn" id="altHold" disabled>🕯️ Hold seance<span class="alt-c"></span></button><button type="button" class="btn" id="altRaiseNow" hidden disabled>🧟 Raise now<span class="alt-c"></span></button><button type="button" class="q" id="altRise" disabled>▶ See the rise</button><button type="button" class="q" id="altClr">↩ Take all back</button></div><p class="small alt-raisewhy" id="altRaiseWhy" hidden></p><p class="small alt-holdinfo" id="altHoldInfo" aria-live="polite"></p>' +
+      '<div class="alt-acts"><button type="button" class="btn" id="altHold" disabled>🕯️ Hold seance<span class="alt-c"></span></button><button type="button" class="btn" id="altRaiseNow" hidden disabled>🧟 Raise now<span class="alt-c"></span></button><button type="button" class="q" id="altRise" disabled>▶ See the rise</button><button type="button" class="q" id="altClr">↩ Take all back</button></div><p class="small alt-raisewhy" id="altRaiseWhy" hidden></p><p class="small alt-holdinfo" id="altHoldInfo" aria-live="polite"></p><div class="alt-send" id="altSend"></div>' +
       '<div class="alt-tallylist" id="altList"></div></div>' +
 '<div class="alt-pick"><div class="alt-ph"><b>Your living pets</b> <span class="small muted" id="altCount"></span></div><p class="small muted alt-how">Tap a pet, or drag its picture onto the altar. Ripe pets (3+ days unfed) count 1.5 times. Mythics, pets on a quest, in a fight, in Cold Storage or in the shop can\'t be offered. Worn gear comes off and stays yours.</p>' +
       '<div class="alt-filt" role="group" aria-label="Filter">' + [['all', 'All'], ['ripe', '🍂 Ripe'], ['0', 'Common'], ['1', 'Uncommon'], ['2', 'Rare'], ['3', 'Legendary']].map(function (f) { return '<button type="button" class="q" data-f="' + f[0] + '" aria-pressed="' + (A.filt === f[0]) + '">' + f[1] + '</button>'; }).join('') +
@@ -216,8 +228,8 @@
     document.getElementById('altCount').textContent = A.mine.length + ' living · ' + ripe + ' ripe · ' + my + ' can\'t be offered · ' + A.offered.length + ' on the altar'; }
   function mile(t) { var mi = -1; MILES.forEach(function (m, i) { if (t + 1e-9 >= m[0]) mi = i; }); return mi; }
   function renderPower(bump) { var P = project(), base = P.base, ceil = Math.max(1, P.ceil), num = document.getElementById('altNum'), bar = document.getElementById('altBar'); if (!num) return;
-    var mi = A.offered.length ? mile(P.times) : -1, sh = base ? Math.min(P.total, ceil) : 0;
-    num.innerHTML = '<span class="alt-big" id="altBig">' + P.total + '</span> <span class="small">zombie power</span> <span class="small muted">· died with ' + base + ' · +' + Math.max(0, P.total - base) + ' boost · ceiling ' + P.ceil + ' (' + CAP + ' times)' + (P.gf < 1 ? ' · grave strength ' + Math.round(P.gf * 100) + '%' : '') + '</span><span class="alt-rank">' + (mi >= 0 ? (mi === MILES.length - 1 ? 'MAXED' : MILES[mi][1].toUpperCase()) : 'RISEN') + ' · ' + P.times.toFixed(2) + ' times</span>';
+    var hN = P.held.pets.length + P.held.gear.length, hP = hN ? project(true).total : base, mi = A.offered.length || hN ? mile(P.times) : -1, sh = base ? Math.min(P.total, ceil) : 0;
+    num.innerHTML = '<span class="alt-big" id="altBig">' + P.total + '</span> <span class="small">zombie power</span> <span class="small muted">· died with ' + base + (hN ? ' · +' + Math.max(0, hP - base) + ' from the ' + hN + ' piece' + (hN === 1 ? '' : 's') + ' you already gave' + (A.offered.length || selGear().length ? ' · +' + Math.max(0, P.total - hP) + ' from the altar now' : '') : ' · +' + Math.max(0, P.total - base) + ' boost') + ' · ceiling ' + P.ceil + ' (' + CAP + ' times)' + (P.gf < 1 ? ' · grave strength ' + Math.round(P.gf * 100) + '%' : '') + '</span><span class="alt-rank">' + (mi >= 0 ? (mi === MILES.length - 1 ? 'MAXED' : MILES[mi][1].toUpperCase()) : 'RISEN') + ' · ' + P.times.toFixed(2) + ' times</span>';
     bar.querySelector('.alt-b0').style.width = (base / ceil * 100) + '%'; bar.querySelector('.alt-b1').style.width = (Math.max(0, sh - base) / ceil * 100) + '%'; bar.querySelector('.alt-b1').style.left = (base / ceil * 100) + '%';
     bar.querySelectorAll('.alt-mk').forEach(function (m) { var i = +m.getAttribute('data-i'); m.classList.toggle('hit', i <= mi); m.classList.toggle('next', i === mi + 1); });
     bar.classList.toggle('near', P.times >= 2.5);
@@ -225,20 +237,23 @@
     if (mi > A.lastMile && A.lastMile >= -1 && bump) { toast((mi === MILES.length - 1 ? '💀 CEILING! ' + CAP + ' times' : '🧟 ' + MILES[mi][1].toUpperCase() + '!') + ''); SFX.mile(); } A.lastMile = mi;
     document.getElementById('altStats').innerHTML = STATS.map(function (k) { return '<span><b>' + k.charAt(0).toUpperCase() + k.slice(1) + '</b> ' + (A.base[k] || 0) + ' → <i>' + P.stats[k] + '</i></span>'; }).join('');
     var st = steps(); document.getElementById('altList').innerHTML = st.length ? '<b class="small">Offerings, strongest first</b> <span class="small muted">(each adds less; power before rounding)</span><ol>' + st.slice(0, 30).map(function (s) { var o = s.o;
-      return '<li>' + (o.kind === 'gear' ? '🎒 ' + esc(o.label) : esc(o.name) + ' <span class="muted">#' + o.id + '</span> · ' + (o && o.resurrected ? 'God' : TL[o.tier]) + (o.ripe ? ' · 🍂 ripe' : '')) + ' <b>+' + s.add + '</b>' + (o.kind === 'pet' ? ' <button type="button" class="linkish" data-back="' + o.id + '" aria-label="Take back #' + o.id + '">↩</button>' : '') + '</li>'; }).join('') + '</ol>' + (st.length > 30 ? '<p class="small muted">…and ' + (st.length - 30) + ' more, each adding less.</p>' : '') : '<p class="small muted">The altar is bare. Offer a pet to wake the candles.</p>';
+      return '<li>' + (o.kind === 'gear' ? '🎒 ' + esc(o.label) : esc(o.name) + ' <span class="muted">#' + o.id + '</span> · ' + (o && o.resurrected ? 'God' : TL[o.tier]) + (o.ripe ? ' · 🍂 ripe' : '') + (o.held ? ' · <span class="muted">already given</span>' : '')) + ' <b>+' + s.add + '</b>' + (o.kind === 'pet' && !o.held ? ' <button type="button" class="linkish" data-back="' + o.id + '" aria-label="Take back #' + o.id + '">↩</button>' : '') + '</li>'; }).join('') + '</ol>' + (st.length > 30 ? '<p class="small muted">…and ' + (st.length - 30) + ' more, each adding less.</p>' : '') : '<p class="small muted">The altar is bare. Offer a pet to wake the candles.</p>';
     document.getElementById('altRise').disabled = !A.offered.length; renderHold(); }
   /* the burn buttons: every check here mirrors the engine (cemGraveWhy, cemMinWhy, top giver); play.html's send guard checks again before signing */
   function holdWhy(mode) { var c = A.ctx, V = c.V, w = c.w, b = bk(), G = w.byId[A.grave.id];
-    if (!c.ME) return 'Connect XCP Wallet on the Play page first'; var gw = V.cemGraveWhy(w, G, c.ME, b); if (gw) return cap1(gw);
+    if (!c.ME) return 'Connect XCP Wallet first (button above)'; var gw = V.cemGraveWhy(w, G, c.ME, b); if (gw) return cap1(gw);
     if (mode === 'raise' && V.seanceOn && V.seanceOn(b)) { var vh = V.cemView(w, G, b), hd = V.cemHeld(w, G.id, c.ME, b); /* SEANCE ALWAYS RAISES: Raise now = finish your own seance with the pieces you hold */
-      if (!hd) { var d0 = deadPledges(); return d0.n ? 'Your ' + d0.n + ' held ' + (d0.n === 1 ? 'pet' : 'pets') + ' died at block ' + d0.at + ' and no longer count. Hold a new seance with 1 living ' + TL[vh.need] + '+ pet.' : 'Nothing of yours is held on this grave'; }
-      if (!hd.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= vh.need; }) && !hd.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= vh.need; })) return TL[A.grave.tier] + ' grave needs 1 ' + TL[vh.need] + '+ offering';
+      if (!hd) { var d0 = deadPledges(); return d0.n ? 'Your ' + d0.n + ' given ' + (d0.n === 1 ? 'pet' : 'pets') + ' died at block ' + d0.at + ' and no longer count. Offer pets again, including at least 1 ' + needTxt(vh.need) + ' pet, and press Hold seance.' : 'You have not given any pets to this grave yet, so there is nothing to raise with. Offer pets and press Hold seance.'; }
+      if (!hd.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= vh.need; }) && !hd.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= vh.need; })) return 'The ' + hd.n + ' piece' + (hd.n === 1 ? '' : 's') + ' you already gave (' + tierMix(hd) + ') are not enough on their own: a ' + TL[A.grave.tier] + ' grave needs at least 1 ' + needTxt(vh.need) + ' pet or gear. Add one below and press Hold seance (your given pieces still count).';
       return null; }
     if (mode === 'raise') { var v = V.cemView(w, G, b); if (!v.altar) return 'No open altar on this grave'; if (v.altar.top !== c.ME) { var dd = deadPledges(); return dd.n ? 'Your ' + dd.n + ' offered ' + (dd.n === 1 ? 'pet' : 'pets') + ' died at block ' + dd.at + ' and no longer count. Hold a new seance with 1 living ' + TL[v.need] + '+ pet.' : 'Only the top giver can raise'; } return null; }
     if (!A.offered.length) return 'Offer at least 1 living pet';
     if (mode === 'seance') { var v2 = V.cemView(w, G, b), need = v2.need, sOn = V.seanceOn && V.seanceOn(b), h2 = sOn ? V.cemHeld(w, G.id, c.ME, b) : null, ok = A.offered.some(function (o) { return o.tier >= need; }) || selGear().some(function (g) { return gTier(g) >= need; }) ||
-        (sOn ? !!h2 && (h2.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= need; }) || h2.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= need; })) : (v2.altar && v2.altar.givers.length)); if (!ok) return TL[A.grave.tier] + ' grave needs 1 ' + TL[need] + '+ offering'; }
+        (sOn ? pendParts().pets.some(function (id) { var p = w.byId[id]; return p && !p.dead && (p.tier | 0) >= need; }) || pendParts().gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= need; }) : false) || (sOn ? !!h2 && (h2.pets.some(function (id) { var p = w.byId[id]; return p && (p.tier | 0) >= need; }) || h2.gear.some(function (gid) { var g = w.items[gid]; return g && gTier(g) >= need; })) : (v2.altar && v2.altar.givers.length)); if (!ok) return 'A ' + TL[A.grave.tier] + ' grave needs at least 1 ' + needTxt(need) + ' pet or gear among your offerings. Add one.'; }
     return null; }
+  function needTxt(t) { return t >= 3 ? 'Legendary' : t <= 0 ? 'living' : TL.slice(t).join(' or '); }
+  function tierMix(hd) { var w = A.ctx.w, n = [0, 0, 0, 0]; hd.pets.forEach(function (id) { var p = w.byId[id]; if (p) n[Math.max(0, Math.min(3, p.tier | 0))]++; }); hd.gear.forEach(function (gid) { var g = w.items[gid]; if (g) n[gTier(g)]++; });
+    return n.map(function (k, i) { return k ? k + ' ' + TL[i] : ''; }).filter(Boolean).join(', ') || 'none'; }
   /* die-soon warning (UI only): a pet that dies before its burn confirms, or before the raise when it joins someone else's pool, no longer counts */
   var SOON = 6;
   function limit() { var c = A.ctx, v = A.grave && c.w.byId[A.grave.id] ? c.V.cemView(c.w, c.w.byId[A.grave.id], bk()) : null; return v && v.altar && !v.altar.seance && v.altar.top && v.altar.top !== c.ME ? Math.max(SOON, v.altar.closesIn || 0) : SOON; }
@@ -261,10 +276,12 @@
       e.disabled = !!why; e.title = why || (L.length + (L.length === 1 ? ' burn' : ' burns') + ', ' + fmt(cost(L)) + ' XCPETS in all'); var s = e.querySelector('.alt-c'); if (s) s.textContent = why ? '' : ' · ' + fmt(cost(L)) + ' XCPETS'; });
     var rz = document.getElementById('altRaiseNow'), rw = document.getElementById('altRaiseWhy'), rwhy = holdWhy('raise'), sOn = V.seanceOn && V.seanceOn(b), held = sOn && c.ME ? V.cemHeld(w, G.id, c.ME, b) : null,
       mine = sOn ? !!(c.ME && (held || deadPledges().n)) : v.altar && c.ME && (v.altar.top === c.ME || deadPledges().n || v.altar.givers.some(function (g) { return g.src === c.ME; }));
-    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? (/^Your \d+ (offered|held)/.test(rwhy) ? rwhy : '🧟 Raise now: ' + rwhy) : ''; }
+    if (rz) rz.hidden = !mine; if (rw) { rw.hidden = !(mine && rwhy); rw.textContent = mine && rwhy ? '🧟 Raise now is off: ' + rwhy : ''; }
     if (box) { var why = holdWhy('seance'), L = why ? [] : plans('seance');
-      box.innerHTML = dieWarn() + (sOn ? (held ? '<span class="alt-pool">🕯️ Your seance pieces: ' + held.n + ' held on this grave until block ' + fmt(held.closesAt) + '. Only you can use them. Hold the seance (or Raise now) and it rises for you.</span> ' : '') : v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living offerings') + '</span> ' : '') +
-        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + (sOn ? '. The last one holds the seance: the zombie rises for you at the end of that block, with your own offerings only.</span>' : '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>')); } }
+      box.innerHTML = dieWarn() + (sOn ? (held ? '<span class="alt-pool">🕯️ Already given by you: ' + held.n + ' piece' + (held.n === 1 ? '' : 's') + ' (' + tierMix(held) + ') from your earlier burns. They are saved on this grave for you only until block ' + fmt(held.closesAt) + ' (' + hrs(held.closesAt) + '), and they are already in the power number above. To raise: press Hold seance with more pets, or Raise now to raise with just these.</span> ' : '') : v.altar ? '<span class="alt-pool">🤝 Altar open: closes in ' + v.altar.closesIn + ' blocks · ' + (v.altar.top ? 'top giver ' + esc(c.shortAddr(v.altar.top)) + (v.altar.top === c.ME ? ' (you)' : '') + ' · ' + v.altar.givers.length + (v.altar.givers.length === 1 ? ' giver' : ' givers') : 'no living offerings') + '</span> ' : '') +
+        (why ? '<span class="muted">' + esc(why) + '</span>' : '<span>' + L.length + (L.length === 1 ? ' burn' : ' burns') + ' (each tag fits on chain) · ' + fmt(cost(L)) + ' XCPETS' + perPet(L) + (sOn ? '. The last burn is the seance: the zombie rises for you when it confirms, with everything you gave (earlier pieces included).</span>' : '. The last one holds the seance: if you are the top giver the zombie rises in that block; if not, your offerings join the pool.</span>'));
+      box.innerHTML += ' <span class="muted alt-fresh">Chain data up to block ' + fmt(w.tip) + (updating() ? ' · updating…' : '') + ' <button type="button" class="linkish" id="altRefresh">↻ refresh</button></span>'; var rf = document.getElementById('altRefresh'); if (rf) rf.onclick = function () { refreshWorld(true); }; }
+    renderSend(); }
   function cap1(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
   /* plans(mode): the burn tags for this altar, split so every tag fits in 34 bytes. Gear and pet parts first, the seance last. */
@@ -278,9 +295,109 @@
     if (rn && rn.length <= pc.length) return out.concat(rn); /* fewest burns; priced per pet either way: pets x pledge (+ the raise on the seance) */
     pc.forEach(function (ch, i) { var q = V.cemPlan(w, mode === 'seance' && i === pc.length - 1 ? 'seance' : 'pledge', id, ch, b); out.push(V.cemPetAmount ? V.cemPetAmount(w, q, b) : q); });
     return out; }
-  function hold(mode) { var why = holdWhy(mode); if (why) { toast(why); return; } var L = plans(mode); if (!L.length || L.some(function (p) { return !p.ok; })) { toast('Could not fit the offering in the burn tags'); return; }
-    A.sent = L; var url = 'play.html#cem-' + encodeURIComponent(L.map(function (p) { return p.tag; }).join('~')); if (A.ctx.go) A.ctx.go(url); else location.href = url; }
-  function renderAll(first) { renderTiles(); renderPower(!first); }
+  function hold(mode) { if (A.run && A.run.busy) return; var why = holdWhy(mode); if (why) { toast(why); return; } var L = plans(mode); if (!L.length || L.some(function (p) { return !p.ok; })) { toast('Could not fit the offering in the burn tags'); return; }
+    A.sent = L; startRun(mode === 'raise' ? '🧟 Raise now' : '🕯️ Seance', L, mode); }
+
+  /* ---------------------------------------------------------------- cemetery-handoff (Nov 1 2026): save, memo, sign here ---------------------------------------------------------------- */
+  var BK = 'xcpets-cem-build-v1-', KEEP = 24 * 3600e3, SENT_KEEP = 6 * 3600e3;
+  function M_() { return A.ctx && A.ctx.M; }
+  function VS() { try { var M = M_(); return M && M.state ? M.state() : {}; } catch (e) { return {}; } }
+  function updating() { try { var M = M_(); return !!(M && M.updating && M.updating()); } catch (e) { return false; } }
+  function hrs(b) { var t = (A.ctx.w.tip || 0), n = Math.max(0, b - t); return n * 10 < 90 ? 'about ' + Math.max(1, n * 10) + ' min' : 'about ' + Math.round(n * 10 / 60) + ' h'; }
+  function store() { try { var o = JSON.parse(localStorage.getItem(BK + (A.ctx.ME || '')) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+  function storeSet(o) { try { var now = Date.now(); Object.keys(o).forEach(function (k) { var b = o[k]; if (!b || now - (b.at || 0) > KEEP) delete o[k]; }); if (Object.keys(o).length) localStorage.setItem(BK + (A.ctx.ME || ''), JSON.stringify(o)); else localStorage.removeItem(BK + (A.ctx.ME || '')); } catch (e) {} }
+  function confirmed() { var c = {}; (VS().rows || []).forEach(function (r) { c[r.tx_hash] = 1; }); return c; }
+  function sentLog() { var now = Date.now(); A.sentLog = (A.sentLog || []).filter(function (x) { return now - (x.at || 0) < SENT_KEEP; }); return A.sentLog; }
+  function pendParts() { var c = confirmed(), o = { pets: [], gear: [] }; sentLog().forEach(function (x) { if (c[x.txid]) return; (x.ids || []).forEach(function (id) { o.pets.push(id); }); (x.gids || []).forEach(function (g) { o.gear.push(g); }); }); return o; }
+  function sentIds() { var o = {}; pendParts().pets.forEach(function (id) { o[id] = 1; }); return o; }
+  function saveBuild() { if (!A.ctx || !A.ctx.ME || !A.grave) return; var o = store(), r = A.run && !A.run.done ? { title: A.run.title, mode: A.run.mode, left: A.run.plans.slice(A.run.i).map(function (p) { return p.tag; }) } : null;
+    if (!A.offered.length && !selGear().length && !sentLog().length && !r) delete o[A.grave.id];
+    else o[A.grave.id] = { name: A.grave.name, offered: A.offered.map(function (q) { return q.id; }), gear: A.gear.slice(), sent: sentLog(), run: r, at: Date.now() };
+    storeSet(o); }
+  /* restore the saved build of this grave (pets still offerable only; pets already sent stay out) */
+  function restore() { var b = store()[A.grave.id]; if (!b) return 0; A.sentLog = b.sent || []; var pend = sentIds(), n = 0;
+    (b.offered || []).forEach(function (id) { var p = A.mine.filter(function (q) { return q.id === id; })[0]; if (!p || p.why || pend[id] || isOn(id)) return; A.offered.push({ kind: 'pet', id: p.id, name: p.name, tier: p.tier, ripe: p.ripe, dies: p.dies, worn: p.worn, seq: ++A.seq }); n++; });
+    (b.gear || []).forEach(function (k, t) { A.gear[t] = Math.max(0, Math.min(A.stash[t] || 0, k | 0)); });
+    A.tally = n; A.restored = n + (b.run && b.run.left && b.run.left.length ? 1 : 0) ? { n: n, run: b.run } : null; return n; }
+  function idsOf(p) { if (p.ids && p.ids.length) return p.ids.slice(); if (p.petIds) return p.petIds.slice(); var t = A.ctx.V.parseTag(p.tag || ''); return t && t.ids && !/^(altg|rplg)$/.test(t.action) ? t.ids.slice() : []; }
+  function gidsOf(p) { var t = A.ctx.V.parseTag(p.tag || ''); return t && /^(altg|rplg)$/.test(t.action) && t.ids ? t.ids.map(function (n) { return 'g' + n; }) : []; }
+  function petName(id) { var p = A.ctx.w.byId[id]; return '#' + id + (p ? ' ' + p.name + ' (' + ((p && p.resurrected) ? 'God' : TL[Math.max(0, Math.min(3, p.tier | 0))]) + ')' : ''); }
+  /* the plans the memo shows: an unfinished run first, then what Hold seance (or Raise now) would send right now */
+  function memoPlans() { if (!A.grave) return { L: A.run ? A.run.plans.slice(A.run.i) : [], why: '' }; if (A.run && !A.run.done && A.run.i < A.run.plans.length) return { L: A.run.plans.slice(A.run.i), why: '', mode: A.run.mode };
+    if (A.offered.length || selGear().length) { var w1 = holdWhy('seance'); return { L: w1 ? [] : plans('seance'), why: w1, mode: 'seance' }; }
+    var hd = heldNow(); if (hd) { var w2 = holdWhy('raise'); return { L: w2 ? [] : plans('raise'), why: w2, mode: 'raise' }; } return { L: [], why: '' }; }
+  function memoText(m) { var c = A.ctx, g = A.grave, L = m.L, pets = [], seen = {}, tot = 0, H = g ? heldParts() : { pets: [], gear: [] };
+    L.forEach(function (p) { idsOf(p).forEach(function (id) { if (!seen[id]) { seen[id] = 1; pets.push(id); } }); tot += Number(p.amount || 0); });
+    if (!L.length) A.offered.forEach(function (o) { if (!seen[o.id]) { seen[o.id] = 1; pets.push(o.id); } });
+    var out = ['XCPETS ' + (g ? (m.mode === 'raise' ? 'Raise now' : 'seance') + ' for grave #' + g.id + ' ' + g.name + ' (' + TL[g.tier] + ' ' + (g.spl || '') + ')' : (A.run && A.run.title || 'cemetery burns')), 'Wallet: ' + (c.ME || '(not connected)') + ' · chain data block ' + fmt(c.w.tip || 0)];
+    var pd = sentIds(), hp = H.pets.filter(function (p) { return !pd[p.id]; }), sp = H.pets.filter(function (p) { return pd[p.id]; }), hg = (H.hd ? H.hd.gear.length : 0);
+    if (g && hp.length + hg) out.push('Already given (held on this grave, not burned again): ' + (hp.length + hg) + ' piece' + (hp.length + hg === 1 ? '' : 's') + (hp.length ? ': ' + hp.map(function (p) { return petName(p.id); }).join(', ') : ''));
+    if (g && sp.length) out.push('Sent, waiting to confirm (do not send again): ' + sp.length + ' pet' + (sp.length === 1 ? '' : 's') + ': ' + sp.map(function (p) { return petName(p.id); }).join(', '));
+    out.push((L.length ? 'Pets in these burns: ' : 'Pets you picked: ') + pets.length + (pets.length ? ': ' + pets.map(petName).join(', ') : ''));
+    var gs = L.reduce(function (a, p) { return a.concat(gidsOf(p)); }, []); if (!L.length) gs = selGear().map(function (x) { return x.gid; }); if (gs.length) out.push('Stash gear: ' + gs.length + ': ' + gs.join(', '));
+    if (!L.length) { out.push(m.why ? 'Not ready to send: ' + m.why : 'Nothing to send yet.'); return out.join('\n'); }
+    out.push('Burns to send, in this order (' + L.length + ', ' + fmt(tot) + ' XCPETS in all). Each = destroy XCPETS, amount, memo/tag exactly as shown:');
+    L.forEach(function (p, i) { var n = idsOf(p).length, k = gidsOf(p).length; out.push((i + 1) + ') ' + fmt(p.amount) + ' XCPETS  memo: ' + p.tag + '  (' + (n ? n + ' pet' + (n === 1 ? '' : 's') : k ? k + ' gear' : /^pet:(sr|seance|raise)/.test(p.tag) ? 'the raise' : 'burn') + (/^pet:(sr:|seance:|raise:)/.test(p.tag) ? ', this one raises the zombie' : '') + ')'); });
+    return out.join('\n'); }
+  function copyText(s, btn) { function ok() { if (btn) { var t = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(function () { btn.textContent = t; }, 1600); } }
+    function fb() { var ta = document.getElementById('altMemo'); if (!ta) return; ta.focus(); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Select the memo and copy it'); } }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(ok, fb); else fb(); } catch (e) { fb(); } }
+  function renderSend() { var el = document.getElementById('altSend'); if (!el || !A.ctx) return; var m = memoPlans(), txt = memoText(m), c = A.ctx, cf = confirmed(), R = A.run, tot = m.L.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0);
+    var sl = sentLog().filter(function (x) { return !cf[x.txid]; });
+    el.innerHTML = '<div class="alt-memoh"><b>📋 Your burn memo</b> <span class="small muted">(stays on this page and in this browser; copy it any time)</span> <button type="button" class="q" id="altCopy">Copy memo</button></div>' +
+      '<textarea id="altMemo" class="alt-memo" readonly rows="' + Math.min(10, Math.max(3, txt.split('\n').length)) + '" aria-label="Burn memo: every burn tag and amount, and the pets in them">' + esc(txt) + '</textarea>' +
+      (R && !R.done && R.i < R.plans.length ? '<p class="small alt-run"><b>' + esc(R.title) + ':</b> ' + R.i + ' of ' + R.plans.length + ' burn' + (R.plans.length === 1 ? '' : 's') + ' sent.' + (R.busy ? '' : ' <button type="button" class="btn" id="altGo">▶ Continue from burn ' + (R.i + 1) + '</button> <button type="button" class="linkish" id="altDrop">forget the rest</button>') + '</p>' : '') +
+      '<div class="alt-pgw"><div class="bar"><i id="altPgBar" style="width:' + (R && R.plans.length ? 100 * R.i / R.plans.length : 0) + '%"></i></div><div class="small" id="altPg" aria-live="polite">' + (R && R.msg ? R.msg : (m.L.length ? m.L.length + ' burn' + (m.L.length === 1 ? '' : 's') + ', ' + fmt(tot) + ' XCPETS. Press ' + (m.mode === 'raise' ? 'Raise now' : 'Hold seance') + ' to sign ' + (m.L.length === 1 ? 'it' : 'them') + ' here in XCP Wallet, one window per burn. You stay on this page.' : '')) + '</div></div>' +
+      (sl.length ? '<p class="small alt-sent">⏳ Sent, waiting to confirm: ' + sl.map(function (x) { return '<code>' + esc(x.tag) + '</code> <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + esc(x.txid) + '">' + esc(String(x.txid).slice(0, 8)) + '… ↗</a>'; }).join(' · ') + '. This page checks the chain every minute; the pets move to "Already given" once a block confirms them.</p>' : '') +
+      '<details class="small alt-manual"><summary>Manual burn (only if Sign &amp; burn keeps failing)</summary><ol><li>Copy the memo above.</li><li>In XCP Wallet, from this same wallet (' + esc(c.ME ? c.shortAddr(c.ME) : 'connect it first') + '), make a Counterparty <b>destroy</b> of <b>XCPETS</b>.</li><li>Quantity = the amount on line 1; tag/memo = the text after "memo:" on line 1, exactly, no spaces.</li><li>Send it, then do line 2, and so on, in order. The burn that raises the zombie is always last.</li><li>Send them within a few hours: the memo is tied to chain block ' + fmt(c.w.tip || 0) + '. If a line will not send, come back here and press ↻ refresh; the memo is rebuilt for the new block.</li></ol></details>';
+    var cp = document.getElementById('altCopy'); if (cp) cp.onclick = function () { copyText(txt, cp); };
+    var go = document.getElementById('altGo'); if (go) go.onclick = function () { step(); };
+    var dr = document.getElementById('altDrop'); if (dr) dr.onclick = function () { A.run = null; saveBuild(); renderHold(); }; }
+  function pendingTags() { var o = [], cf = confirmed(), seen = {}, me = A.ctx.ME; function add(h, t) { if (!t || cf[h] || seen[h]) return; seen[h] = 1; o.push(String(t)); }
+    try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed') add(t.txid, t.tag); }); } catch (e) {}
+    (VS().mempool || []).forEach(function (x) { if (x && x.source === me) add(x.tx_hash, x.tag); }); return o; }
+  function connect(then) { if (!window.V2Wallet) { toast('XCP Wallet support did not load. Reload the page.'); return; } saveBuild(); setMsg('Connecting XCP Wallet…');
+    V2Wallet.connect().then(function (a) { if (!a) return; if (a !== A.ctx.ME) { saveBuild(); setMsg('Wallet connected. Reloading this page for ' + c0(a) + '; your offering is saved and comes back.'); setTimeout(function () { location.reload(); }, 300); return; } if (then) then(); }, function (e) { setMsg('<span class="warn">' + V2Wallet.errHtml(e) + '</span>', true); }); }
+  function c0(a) { return A.ctx.shortAddr ? A.ctx.shortAddr(a) : a; }
+  function setMsg(h, html) { if (A.run) A.run.msg = h; var p = document.getElementById('altPg'); if (!p) return; if (html) p.innerHTML = h; else p.textContent = h; }
+  /* the run: same order and checks as play.html confirmPlans (planAmount, cemPetAmount, send guard), one XCP Wallet window per burn */
+  function startRun(title, L, mode, opts) { var c = A.ctx, V = c.V, w = c.w, b = (w.tip || 0) + 1, me = c.ME; opts = opts || {};
+    if (!me) { connect(); return; } if (!window.V2Wallet || !V2Wallet.send) { toast('XCP Wallet support did not load. Reload the page; your offering is saved.'); return; }
+    if (V.planAmount) L = L.map(function (p) { return V.planAmount(w, p, b); }); if (V.cemPetAmount) L = L.map(function (p) { return V.cemPetAmount(w, p, b); });
+    A.run = { title: title, plans: L, i: 0, mode: mode, busy: false, done: false, msg: '', zombie: !!opts.zombie }; saveBuild(); if (A.grave) renderHold(); else renderSend(); step(); }
+  function step() { var c = A.ctx, V = c.V, R = A.run; if (!R || R.busy) return; var me = c.ME;
+    if (V2Wallet.current && V2Wallet.current() !== me) { connect(step); return; }
+    if (R.i >= R.plans.length) return finish();
+    var S0 = VS(), left = R.plans.slice(R.i), tot = left.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0); if (tot > Number(S0.balance || 0) && !(S0.stale && !S0.verified)) { setMsg('Not enough XCPETS in this wallet for the ' + left.length + ' burn' + (left.length === 1 ? '' : 's') + ' left (' + fmt(tot) + ' needed). Nothing was sent.'); renderSend(); return; }
+    var p = R.plans[R.i], k = R.i + 1, n = R.plans.length, why = V.sendBlock ? V.sendBlock(c.w, p, c.w.tip, { me: me, pending: pendingTags() }) : null;
+    if (why) { R.msg = '<span class="warn">Burn ' + k + ' of ' + n + ' not sent: ' + esc(why) + '. Nothing was burned for it.' + (R.zombie ? '' : ' Press ↻ refresh, then Hold seance again (your offering is saved).') + '</span>'; R.done = true; saveBuild(); renderSend(); var pg = document.getElementById('altPg'); if (pg) pg.innerHTML = R.msg; return; }
+    R.busy = true; R.msg = 'Burn ' + k + ' of ' + n + ': building ' + p.tag + '…'; renderSend(); renderBtns();
+    V2Wallet.send(p, me, function (a, bb, ph, fi) { setMsg('Burn ' + k + ' of ' + n + ': ' + (ph === 'fresh' ? 'checking the latest chain data…' : ph === 'fee' ? 'getting the network fee rate…' : ph === 'check' ? 'safety-checking ' + p.tag + ' (node ' + a + ' of ' + bb + ')…' : ph === 'sign' ? (fi && fi.text ? fi.text + ' · ' : '') + 'approve ' + p.tag + ' in XCP Wallet now. If no window opened, click the XCP Wallet icon in your browser toolbar.' : 'building ' + p.tag + ' on Counterparty node ' + a + ' of ' + bb + '…')); }).then(function (r) {
+      R.busy = false; R.i = k; var ids = idsOf(p), gids = gidsOf(p); sentLog().push({ tag: p.tag, txid: r.txid, ids: ids, gids: gids, amount: p.amount, at: Date.now() });
+      if (!R.zombie && A.grave) { A.offered = A.offered.filter(function (o) { return ids.indexOf(o.id) < 0; }); gids.forEach(function (g) { (A.gearItems || []).forEach(function (arr, t) { var j = arr.map(function (x) { return x.gid; }).indexOf(g); if (j >= 0) { arr.splice(j, 1); A.stash[t] = Math.max(0, A.stash[t] - 1); if (A.gear[t]) A.gear[t]--; } }); }); }
+      R.msg = 'Burn ' + k + ' of ' + n + ' sent: ' + p.tag + ' · tx ' + String(r.txid).slice(0, 10) + '…'; saveBuild(); if (A.grave) renderAll(); else renderSend(); if (R.i < n) setTimeout(step, 1500); else finish(); },
+    function (e) { R.busy = false; var raw = e ? (e.message || (e.data && (e.data.message || JSON.stringify(e.data))) || String(e)) : '', eh = e && e.confirmNote && V2Wallet.confirmNoteHtml ? V2Wallet.confirmNoteHtml(true) : e && e.waitConfirm ? esc(k > 1 ? 'Burn ' + (k - 1) + ' is waiting to confirm. Wait about one block, then press Continue.' : 'An earlier burn of yours is waiting to confirm. Wait about one block, then press Continue.') : V2Wallet.errHtml(e);
+      R.msg = '<span class="warn">Stopped at burn ' + k + ' of ' + n + ' (' + (k - 1) + ' sent): ' + eh + (raw && !e.waitConfirm && !e.walletBusy && !e.stale && String(eh).replace(/<[^>]*>/g, '').indexOf(raw) < 0 ? ' <span class="muted">· wallet/node said: <code>' + esc(raw) + '</code></span>' : '') + ' Your offering and this list are saved; nothing is lost.</span>';
+      saveBuild(); renderSend(); renderBtns(); var pg = document.getElementById('altPg'); if (pg) { pg.innerHTML = R.msg; if (e && e.confirmNote) { var nb = pg.querySelector('.bwc-go'), nt = pg.querySelector('.bwc-try'); if (nb) nb.onclick = function () { step(); }; if (nt) nt.onclick = function (ev) { ev.preventDefault(); V2Wallet.allowUnconfirmedOnce(); step(); }; } }
+      if (e && e.reload) { saveBuild(); } }); }
+  function finish() { var R = A.run; if (!R) return; R.done = true; R.busy = false; var n = R.plans.length;
+    R.msg = '✓ ' + n + ' burn' + (n === 1 ? '' : 's') + ' sent from XCP Wallet. ' + (R.zombie ? 'The result shows here once it confirms (usually about 10 minutes).' : 'Your zombie rises when the last one confirms in a block (usually about 10 minutes). This page checks the chain every minute; you can close it.');
+    saveBuild(); if (A.grave) renderAll(); else renderSend(); var pg = document.getElementById('altPg'); if (pg) pg.textContent = R.msg; poll(); }
+  function renderBtns() { var busy = !!(A.run && A.run.busy); ['altHold', 'altRaiseNow', 'altClr'].forEach(function (id) { var e = document.getElementById(id); if (e && busy) e.disabled = true; }); if (!busy && A.grave) { var cl = document.getElementById('altClr'); if (cl) cl.disabled = false; } }
+  /* fresh chain data in place: keeps the offering, drops pets that can no longer be offered, re-reads held pieces */
+  function refreshWorld(manual) { var M = M_(); if (!M || !M.world) return; if (A.run && A.run.busy) return;
+    function apply() { try { A.ctx.w = M.world(); A.ctx.b = (A.ctx.w.tip || 0) + 1; } catch (e) { return; } if (!A.grave) { renderSend(); return; } var keep = A.offered.slice(), g = A.gear.slice(); buildMine();
+      A.offered = keep.filter(function (o) { var p = A.mine.filter(function (q) { return q.id === o.id; })[0]; return p && !p.why; }); g.forEach(function (k, t) { A.gear[t] = Math.min(A.stash[t] || 0, k); }); [0, 1, 2, 3].forEach(function (i) { var e = document.getElementById('altG' + i); if (e) e.textContent = A.gear[i]; });
+      if (A.run && A.run.done) A.run = null; saveBuild(); renderAll(); }
+    if (manual) toast('Checking the chain…'); var done = false, cb = function () { done = true; apply(); };
+    try { var pr = M.refresh ? M.refresh(cb) : null; if (pr && pr.then) pr.then(function () { if (!done) apply(); if (manual) toast('Up to block ' + fmt(A.ctx.w.tip || 0)); }, function () { if (!done) apply(); }); else apply(); } catch (e) { apply(); } }
+  function poll() { if (A.pt) return; A.pt = setInterval(function () { if (document.hidden) return; if (!A.grave && !(A.run && A.run.zombie)) { clearInterval(A.pt); A.pt = 0; return; } var pend = pendParts(); if (pend.pets.length || pend.gear.length || (A.run && !A.run.done)) refreshWorld(false); }, 60e3); }
+  /* zombie feed / Resurrection / hunt from the cemetery list: same signer, a small sheet in the altar spot (no redirect to play.html) */
+  function sendPlans(title, L, ctx) { if (ctx) A.ctx = ctx; if (!A.ctx || !L || !L.length) return; if (A.grave) close(); var el = host(); el.hidden = false;
+    el.innerHTML = '<div class="alt-head"><h2 class="alt-title">' + esc(title) + '</h2><div class="alt-tools"><button type="button" class="q" id="altX" aria-label="Close">✕</button></div></div>' + (!A.ctx.ME ? '<p class="small alt-note">👛 <button type="button" class="q" id="altConn">Connect XCP Wallet</button> to send this. You stay on this page.</p>' : '') + '<div class="alt-send" id="altSend"></div>';
+    el.querySelector('#altX').onclick = function () { if (A.run && A.run.busy) return; A.run = null; close(); }; var cn = el.querySelector('#altConn'); if (cn) cn.onclick = function () { connect(); };
+    el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); startRun(title, L, 'zombie', { zombie: true }); }
+  function renderAll(first) { renderTiles(); renderPower(!first); if (!first) saveBuild(); renderBtns(); }
   function toast(s) { var t = document.getElementById('altToast'); if (!t) return; t.textContent = s; t.classList.remove('go'); void t.offsetWidth; t.classList.add('go'); }
 
   /* ---------------------------------------------------------------- actions ---------------------------------------------------------------- */
@@ -289,9 +406,9 @@
     SFX.offer(p.tier); fly(o, from); renderAll(); if (soon(p, limit())) toast('⚠ dies in ' + Math.max(0, p.dies - bk()) + (p.dies - bk() === 1 ? ' block' : ' blocks')); return true; }
   function takeBack(id) { A.offered = A.offered.filter(function (o) { return o.id !== id; }); A.tally = Math.max(0, A.tally - 1); SFX.back(); renderAll(); kick(); }
   function bind(el) { var R = A.ctx.R;
-    el.querySelector('#altX').onclick = close;
+    el.querySelector('#altX').onclick = close; var cn = el.querySelector('#altConn'); if (cn) cn.onclick = function () { connect(); };
     el.querySelector('#altSnd').onclick = function () { A.sound = !A.sound; try { localStorage.setItem('xcpets-cem-sfx', A.sound ? 'on' : 'off'); } catch (e) {} this.textContent = A.sound ? '🔊' : '🔇'; this.setAttribute('aria-pressed', A.sound); if (A.sound) SFX.offer(1); };
-    el.querySelector('#altClr').onclick = function () { A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.rise = null; A.lastMile = -1; [0, 1, 2, 3].forEach(function (i) { document.getElementById('altG' + i).textContent = 0; }); SFX.back(); renderAll(); kick(); };
+    el.querySelector('#altClr').onclick = function () { if (A.run && A.run.busy) return; A.run = null; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.rise = null; A.lastMile = -1; [0, 1, 2, 3].forEach(function (i) { document.getElementById('altG' + i).textContent = 0; }); SFX.back(); renderAll(); kick(); };
     el.querySelector('#altMore').onclick = function () { A.shown += PAGE; renderTiles(); };
     el.querySelector('.alt-filt').onclick = function (e) { var b = e.target.closest('[data-f]'); if (!b) return; A.filt = b.getAttribute('data-f'); A.shown = PAGE; this.querySelectorAll('[data-f]').forEach(function (q) { q.setAttribute('aria-pressed', q === b); }); renderTiles(); };
     el.querySelector('.alt-gr').onclick = function (e) { var b = e.target.closest('[data-g]'); if (!b) return; var t = +b.getAttribute('data-g'), d = +b.getAttribute('data-d'), n = Math.max(0, Math.min(A.stash[t], A.gear[t] + d)); if (n === A.gear[t]) return;
@@ -317,5 +434,5 @@
   function risenCard() { var P = project(), mi = mile(P.times); var wrap = A.cv && A.cv.parentNode; if (!wrap) return;
     var d = document.createElement('div'); d.className = 'alt-risen'; d.id = 'altRisen'; d.innerHTML = '<b class="meme">RISEN!</b><span>' + esc(A.grave.name) + ' the ' + (mi >= 0 && mi < MILES.length - 1 ? MILES[mi][1] : mi === MILES.length - 1 ? 'Dread (maxed)' : 'Zombie') + ' · ⚡ ' + P.total + ' · ' + P.times.toFixed(2) + ' times</span><small>this is how it looks once the burns confirm · then it lives in <a href="play.html#pets">🧟 My Pets</a>, where you feed it</small>'; wrap.appendChild(d);
     setTimeout(function () { if (d.isConnected) d.classList.add('out'); }, 3800); setTimeout(function () { if (d.isConnected) d.remove(); }, 4300); }
-  window.V2CemeteryAltar = { open: open, close: close, project: project, plans: plans, _state: function () { return A; }, _offer: offer, _gear: function (t, n) { A.gear[t] = Math.max(0, Math.min(A.stash[t], n)); renderPower(false); } };
+  window.V2CemeteryAltar = { open: open, close: close, project: project, plans: plans, sendPlans: sendPlans, memo: function () { return A.grave ? memoText(memoPlans()) : ''; }, saved: function (me) { try { return JSON.parse(localStorage.getItem(BK + (me || '')) || '{}'); } catch (e) { return {}; } }, _state: function () { return A; }, _offer: offer, _gear: function (t, n) { A.gear[t] = Math.max(0, Math.min(A.stash[t], n)); renderPower(false); } };
 })();

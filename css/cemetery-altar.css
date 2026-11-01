@@ -84,3 +84,18 @@
 /* cemetery loop: the burn summary under the buttons */
 .alt-holdinfo{margin:0 0 8px;color:#e9e3ff}.alt-holdinfo .alt-pool{color:#7dff6a;display:block;margin-bottom:2px}
 .alt-acts .alt-c{font-size:.85em;opacity:.85}
+/* cemetery-handoff (Nov 1 2026): in-page signing, the always-visible burn memo, manual fallback */
+.cem-altar .alt-send{margin:8px 0;padding:8px;border:1px solid #3a5a3a;border-radius:8px;background:rgba(20,32,20,.55)}
+.cem-altar .alt-memoh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px}
+.cem-altar .alt-memoh .q{margin-left:auto}
+.cem-altar .alt-memo{display:block;box-sizing:border-box;width:100%;max-width:100%;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;background:#0d140d;color:#cfe8cf;border:1px solid #2c442c;border-radius:6px;padding:6px;resize:vertical;user-select:text;-webkit-user-select:text}
+.cem-altar .alt-pgw{margin-top:6px}
+.cem-altar .alt-pgw .bar{height:6px;background:#1c261c;border-radius:4px;overflow:hidden}
+.cem-altar .alt-pgw .bar i{display:block;height:100%;background:#7bd17b;transition:width .3s}
+.cem-altar .alt-pgw #altPg{margin-top:4px;overflow-wrap:anywhere}
+.cem-altar .alt-sent,.cem-altar .alt-run{overflow-wrap:anywhere}
+.cem-altar .alt-manual summary{cursor:pointer}
+.cem-altar .alt-manual ol{margin:4px 0 0 18px;padding:0}
+.cem-altar .alt-fresh{display:inline-block}
+.cem-resume{padding:6px 8px;border:1px dashed #7bd17b;border-radius:8px}
+.cem-resume .q{margin:2px 4px}
