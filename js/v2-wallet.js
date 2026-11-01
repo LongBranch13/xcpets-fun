@@ -152,7 +152,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 90000; /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going) */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
   /* cheaper-fees (owner Oct 27 2026, "cheaper fees asap"): read mempool.space /v1/fees/precise (decimal rates) instead of /v1/fees/recommended
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
@@ -248,15 +248,19 @@
   /* boot-from-cache (Oct 31 2026): also while the page shows a provisional saved world or the fresh replay is still being built (V2Mock.updating()):
    * whenFresh then waits for the fresh world and answers same:false if it differs from the one the action was built from (recheck or stop). */
   function upd() { try { return !!(window.V2Mock && window.V2Mock.updating && window.V2Mock.updating()); } catch (e) { return false; } }
-  function send(plan, viewed, onTry, recheck) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry);
+  /* burn-stuck-1101: cancel() (the sheet's Cancel) drops every burn that has not reached the wallet window yet; nothing is signed or sent. */
+  var cancelGen = 0, cancelWait = []; function cancel() { cancelGen++; var w = cancelWait; cancelWait = []; w.forEach(function (f) { try { f(); } catch (e) { } }); }
+  function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
+  function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
+  function send(plan, viewed, onTry, recheck) { var g0 = cancelGen, VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
-    return withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.').then(function (r) {
+    return Promise.race([cancelP(), withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.')]).then(function (r) { cancelWait = [];
       if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
       var VB = window.V2Mock.state(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
-      return send0(plan, viewed, onTry); }); }
-  function send0(plan, viewed, onTry) {
+      if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0); }); }
+  function send0(plan, viewed, onTry, g0) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
@@ -272,6 +276,7 @@
       if (onTry) onTry(0, 0, 'fee');
       var fee; return feeRate().then(function (f) { fee = f; return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
         var fi = feeInfo(res, fee); if (onTry) onTry(0, 0, 'sign', fi); else feeToast(fi, plan && (plan.label || plan.tag));
+        if (g0 !== cancelGen) throw cancelErr(); /* burn-stuck-1101: Cancel pressed while building: the wallet window never opens */
         return w.signAndBroadcast(res).catch(function (we) {
           /* burn-wait-confirm: XCP Wallet refused/failed a burn built on unconfirmed change -> same wait note (a plain user Cancel stays a cancel) */
           if (res && res._unconf && !(we && (we.code === 4001 || we.code === -32005 || we.code === 4100))) throw confirmErr(we && (we.message || String(we)));
@@ -465,6 +470,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
+  return { cancel: cancel, allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
