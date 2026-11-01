@@ -14,7 +14,9 @@
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
     { id: 'raid', ico: '🐉', name: 'Raid Boss', url: 'raid.html', line: 'hit it together', pages: ['raid.html'] },
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
-    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] }
+    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
+    /* live-activity (owner Nov 1 2026): the Live Feed, what just happened, newest first (display only, no wallet) */
+    { id: 'live', ico: '📡', name: 'Live Feed', url: 'live.html', line: 'what just happened', pages: ['live.html'] }
   ];
   /* tutorial-banner (owner playtest note 1, Oct 27 2026): The Big Beautiful Tutorial is NOT a place. It sits in the top banner by itself
    * (its own link after Ranking on every page with the banner), never in the Places menu, the My Pets 'Places' card or the front-page place cards. */
