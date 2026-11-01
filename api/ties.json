@@ -1,6 +1,6 @@
 {
- "lastBlock": 974079,
- "count": 270,
+ "lastBlock": 974082,
+ "count": 262,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -256,42 +256,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 35041,
-   "asset": "A8634607082497296056",
-   "tiedBlock": 973118,
-   "tiedTx": "cbe18ca0fb2dad63f69f3a0d2de6fdcaffcb993c9ba4e1edf1f0efb76aea41e3",
-   "kind": "deed",
-   "name": "Nineyeki",
-   "species": "kevin",
-   "speciesLabel": "KEVIN",
-   "rarity": "Legendary",
-   "stage": "Egg"
-  },
-  {
-   "id": 35042,
-   "asset": "A10164783536822789077",
-   "tiedBlock": 973118,
-   "tiedTx": "57ef374d0d33c0fa2fc67204d9559ab75d6f8d48ab4ef52eb723d1971a6947a6",
-   "kind": "deed",
-   "name": "Yevubit",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Egg"
-  },
-  {
-   "id": 35043,
-   "asset": "A8060785761162798924",
-   "tiedBlock": 973118,
-   "tiedTx": "1800d34e19823be2cfa706418ca9c463bf3a6104c6364e10b7749f6c75a418e4",
-   "kind": "deed",
-   "name": "Deluruli",
-   "species": "hyb:snibby:dodo",
-   "speciesLabel": "Snido (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Egg"
-  },
-  {
    "id": 11905,
    "asset": "A9069274084192706686",
    "tiedBlock": 973121,
@@ -376,6 +340,18 @@
    "stage": "Mythic"
   },
   {
+   "id": 29832,
+   "asset": "A3521620804625995965",
+   "tiedBlock": 973140,
+   "tiedTx": "44b4ce7a1083ce5d51e1af8c3442616f23fe3f2a3cbef04c0d040f81970ec46e",
+   "kind": "deed",
+   "name": "Gifutik",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
    "id": 35148,
    "asset": "A14572375362545741876",
    "tiedBlock": 973140,
@@ -444,18 +420,6 @@
    "name": "Guwazook",
    "species": "peepo",
    "speciesLabel": "Peepo",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 35091,
-   "asset": "A994197714742610147",
-   "tiedBlock": 973148,
-   "tiedTx": "ea4bf010e49beb3a0752232bf888a471fb279591bd2cd14a16497569d4408dfd",
-   "kind": "deed",
-   "name": "Nufoomi",
-   "species": "mumu",
-   "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Hatchling"
   },
@@ -556,18 +520,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 35890,
-   "asset": "A16362391524709089010",
-   "tiedBlock": 973153,
-   "tiedTx": "bd7fd66e277d37627681f53cb36b8e0d96744bd0293c2ea569c8cda56cfcb205",
-   "kind": "deed",
-   "name": "Yegelu",
-   "species": "wojak",
-   "speciesLabel": "Wojak",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 35891,
    "asset": "A3229970373460140293",
    "tiedBlock": 973153,
@@ -640,16 +592,16 @@
    "stage": "Hatchling"
   },
   {
-   "id": 35111,
-   "asset": "A13378243922041400945",
+   "id": 27613,
+   "asset": "A15309817566111199365",
    "tiedBlock": 973196,
-   "tiedTx": "f8a54608b8d74a5cc8f40c28f991efbfacd45923e92fc3cfe2bd54e6a8378ac6",
+   "tiedTx": "564abd22a89ce63bf62ff5445fa3252db8de5f2079f7f10b2f494e7bce903060",
    "kind": "deed",
-   "name": "Padoohabit",
+   "name": "Potik",
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 35127,
@@ -796,18 +748,6 @@
    "stage": "Hatchling"
   },
   {
-   "id": 35082,
-   "asset": "A13538097209895499735",
-   "tiedBlock": 973249,
-   "tiedTx": "bc0bc919df884bc089bf3143b2c259b9bfe61ef1d8e72b2ad031a7aa9f5f6d52",
-   "kind": "deed",
-   "name": "Dazoki",
-   "species": "snibby",
-   "speciesLabel": "Snibby",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
    "id": 35201,
    "asset": "A6608820809421200382",
    "tiedBlock": 973249,
@@ -838,42 +778,6 @@
    "tiedTx": "8a24bf8c99d3f78690b0be28b8f1204509597e01fde07a8fb4a1f499bb711a5a",
    "kind": "deed",
    "name": "Lekatot",
-   "species": "snibby",
-   "speciesLabel": "Snibby",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 35087,
-   "asset": "A7534539986826273127",
-   "tiedBlock": 973250,
-   "tiedTx": "19fa8e61fc588aa02dc0b408ac0635992ef52af034b55601fde863f784820769",
-   "kind": "deed",
-   "name": "Vuwik",
-   "species": "snibby",
-   "speciesLabel": "Snibby",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 35093,
-   "asset": "A3647292487606353958",
-   "tiedBlock": 973250,
-   "tiedTx": "6eda1e4195e76aa3a9de148cb857b57001df8a1d786652fb5cd6a3efa4204f86",
-   "kind": "deed",
-   "name": "Dozobabun",
-   "species": "snibby",
-   "speciesLabel": "Snibby",
-   "rarity": "Legendary",
-   "stage": "Hatchling"
-  },
-  {
-   "id": 35126,
-   "asset": "A6037617953940279022",
-   "tiedBlock": 973250,
-   "tiedTx": "bc8eb5a0be87e1ceeffc237194db0c5956094e4ecb1a00533bf9130f9ee25fa5",
-   "kind": "deed",
-   "name": "Woolugoo",
    "species": "snibby",
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
