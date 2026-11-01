@@ -241,7 +241,23 @@
   var TIER_ID = ['common', 'uncommon', 'rare', 'legendary'], SL = V.slotLabel;
   var cem = false, detailId = null;
   function tierPill(t, p) { if (p && p.resurrected) return '<span class="pill tier tier-god" title="Resurrected pet: shows as God (display only)">' + (V.GOD_LABEL || 'God') + '</span>'; return '<span class="pill tier tier-' + TIER_ID[t] + '">' + TL[t] + '</span>'; } /* resurrected-breed-only: resurrected pets show 'God' (display only) */
-  function toast(html, ms) { var t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html; $('toasts').appendChild(t); setTimeout(function () { t.remove(); }, ms || 4000); }
+  /* toast-tidy-1101 (owner phone screenshot): live-event toasts (the ones with a ▶ Replay link) used to stack down the whole screen on page open
+   * (every breed / rise / meal / resurrection seen since the last visit). Now: a burst of event toasts (each within 2 s of the last) collapses into
+   * ONE toast: the newest event + '+N more'; repeated meals of the same zombie in the same block are summed into one line. On narrow screens
+   * (<= 600 px) only one toast shows at a time, compact at the bottom, event toasts close after 5 s, and a tap on a toast (not on a link) closes it.
+   * Callers still find their toast as $('toasts').lastChild. Display only. */
+  var TEV = { at: 0, more: 0, meal: null };
+  function narrowScreen() { try { return window.matchMedia('(max-width: 600px)').matches; } catch (e) { return false; } }
+  function toast(html, ms) { var box = $('toasts'), now = Date.now(), evt = /▶ Replay<\/a>/.test(String(html)), narrow = narrowScreen(), prev = null;
+    if (evt) { prev = TEV.el && TEV.el.parentNode === box && now - TEV.at < 2000 ? TEV.el : null;
+      var mm = /^🍖 (#\d+[^<]*?) ate (\d+) pets? \(.*?\)\. Hunger full · block ([\d,]+)/.exec(String(html)), merged = false;
+      if (prev) { TEV.more++; if (mm && TEV.meal && TEV.meal.who === mm[1] && TEV.meal.block === mm[3]) { TEV.more--; TEV.meal.n += +mm[2]; merged = true; html = '🍖 ' + mm[1] + ' ate ' + TEV.meal.n + ' pets. Hunger full · block ' + mm[3] + String(html).slice(String(html).indexOf(' <a ')); } prev.remove(); } else TEV.more = 0;
+      if (mm && !merged) TEV.meal = { who: mm[1], block: mm[3], n: +mm[2] }; else if (!mm) TEV.meal = null;
+      if (TEV.more > 0) html += ' <span class="muted small">· +' + TEV.more + ' more event' + (TEV.more === 1 ? '' : 's') + '</span>'; TEV.at = now; }
+    if (narrow) { Array.prototype.slice.call(box.children).forEach(function (c) { if (c.classList && c.classList.contains('toast')) c.remove(); }); if (evt) ms = Math.min(ms || 4000, 5000); }
+    var t = document.createElement('div'); t.className = 'toast' + (evt ? ' evtoast' : ''); t.innerHTML = html; box.appendChild(t); if (evt) TEV.el = t;
+    t.addEventListener('click', function (e) { if (!(e.target && e.target.closest && e.target.closest('a,button'))) t.remove(); });
+    setTimeout(function () { t.remove(); }, ms || 4000); }
   function open(id) { $(id).classList.add('on'); } function close(id) { $(id).classList.remove('on'); }
   /* Local discard (any rarity) = live xcpets.fun: no burn, no wallet, hidden in THIS browser per network + address; still on chain; restorable. */
   var NET = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo');
