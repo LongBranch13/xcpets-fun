@@ -1,6 +1,6 @@
 {
- "lastBlock": 974118,
- "count": 262,
+ "lastBlock": 974120,
+ "count": 272,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3145,6 +3145,126 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 40138,
+   "asset": "A8180024034488648691",
+   "tiedBlock": 974119,
+   "tiedTx": "a46a6b18c895b52a3254056165c78b54aec2741d592c751e246603c6b2503cac",
+   "kind": "deed",
+   "name": "Zewohubun",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40447,
+   "asset": "A12204969809616418899",
+   "tiedBlock": 974119,
+   "tiedTx": "34a8257175aba79a8439dbaa2fbe150b87a74d89ba9a4679d88ae0b0db44ab17",
+   "kind": "deed",
+   "name": "Wafooru",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40486,
+   "asset": "A16885335805149120906",
+   "tiedBlock": 974119,
+   "tiedTx": "7af7adc55049758c13a217da0b5d89db726e4765fe5c5f2ae4a26ebb5cd48959",
+   "kind": "deed",
+   "name": "Novibit",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40492,
+   "asset": "A15802273626830887455",
+   "tiedBlock": 974119,
+   "tiedTx": "9487029ffe311a32fb9ca83aa7fce540ed0e5251a4bd6eb20e55f9c9780eac85",
+   "kind": "deed",
+   "name": "Rajoomi",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40506,
+   "asset": "A8464227858390865889",
+   "tiedBlock": 974119,
+   "tiedTx": "2bc3e2fedb53c25ddba42c6d5baef6744f4911cda6482741a93948f10c251141",
+   "kind": "deed",
+   "name": "Roochipop",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 40569,
+   "asset": "A5234447988871247688",
+   "tiedBlock": 974119,
+   "tiedTx": "98298b472a34b02aa9398ecc1dce06461bc4aba896164d114d64d627a43c7cb2",
+   "kind": "deed",
+   "name": "Kosupip",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 46074,
+   "asset": "A9300496028711309021",
+   "tiedBlock": 974119,
+   "tiedTx": "77d91012897e43b4f11d06be8cb1b10caa20b1ab84dc130ce6173a74ea2347a4",
+   "kind": "deed",
+   "name": "Joyap",
+   "species": "hyb:kek:nakamoto",
+   "speciesLabel": "Kekmoto (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 49076,
+   "asset": "A16718532725235030354",
+   "tiedBlock": 974119,
+   "tiedTx": "27b7fb129887f94493892aec7f393cf05d3698556626721501cd5eb0227556c1",
+   "kind": "deed",
+   "name": "Rarepigeon",
+   "species": "rarepigeon",
+   "speciesLabel": "Rarepigeon",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 53107,
+   "asset": "A10695708597251600522",
+   "tiedBlock": 974119,
+   "tiedTx": "4ecbd920c22c353804078020cf7f1675b1ad8f1b8fb9b4c339762182cbff2a99",
+   "kind": "deed",
+   "name": "Rooriyoobo",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 53318,
+   "asset": "A4555412399309764343",
+   "tiedBlock": 974119,
+   "tiedTx": "a044f9c455911bb0c14bc93e9367ad44011a31c6d999b70506f7dadb95492230",
+   "kind": "deed",
+   "name": "Nalufootot",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
