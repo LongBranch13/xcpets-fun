@@ -5,3 +5,8 @@
 /* data-lag-banner: same ribbon, calmer site-dark look with the gold edge (no pink) */
 .halving-ribbon.data-lag{background:#1d1b2e;color:#fff;border-color:#ffc93c;box-shadow:0 3px 0 #1a1020}
 .halving-ribbon.data-lag b{color:#ffc93c}
+/* calm-first-screen (Nov 1 2026, plan item 1): the halving is a small chip, and the catching-up note is one thin line like the chain status line */
+.halving-ribbon.halving-chip{width:fit-content;max-width:calc(100% - 12px);margin:6px auto;padding:2px 10px;border-width:2px;border-radius:999px;box-shadow:0 2px 0 #1a1020;font-size:12px;line-height:1.4;gap:2px 6px;flex-wrap:wrap}
+.halving-ribbon.halving-chip b{font-weight:700}
+.halving-ribbon.data-lag{max-width:none;margin:0;padding:3px 10px;border:0;border-bottom:2px solid #ffc93c;box-shadow:none;font-size:12px;line-height:1.45;gap:2px 6px}
+@media (max-width:480px){.halving-ribbon.halving-chip{margin:6px auto;font-size:12px}.halving-ribbon.data-lag{margin:0;font-size:12px}}

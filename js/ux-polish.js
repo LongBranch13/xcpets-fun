@@ -13,7 +13,7 @@
   // 6. phone notice next to Connect
   /* casa-connect (Nov 1 2026, owner [pt2571u]): inside Casa Tookan (or any page with a wallet) no 'play on desktop' note; on other phones point to Casa Tookan */
   var walletHere = function () { return !!(window.casaTookan || window.webXCP || window.web3xcp || window.xcpwallet); };
-  function phoneNote(btn) { if (!btn || !isMobile() || btn._uxp) return; btn._uxp = 1; setTimeout(function () { if (walletHere()) return; var n = d.createElement('div'); n.className = 'small uxp-note'; n.textContent = 'On a phone? Play in the Casa Tookan app (open xcpets.fun in its browser). XCP Wallet is a desktop Chrome extension.'; btn.parentNode.insertBefore(n, btn.nextSibling); }, 1500); }
+  function phoneNote(btn) { if (!btn || !isMobile() || btn._uxp) return; btn._uxp = 1; setTimeout(function () { if (walletHere()) return; var n = d.createElement('div'); n.className = 'small uxp-note'; n.textContent = '📱 Play on your phone: open xcpets.fun inside the Casa Tookan app, then tap Connect.'; btn.parentNode.insertBefore(n, btn.nextSibling); }, 1500); }
   // 9. alt text for every image (static + ones added later)
   function altFix(root) { (root.querySelectorAll ? root.querySelectorAll('img:not([alt])') : []).forEach(function (im) { var t = im.getAttribute('title') || im.getAttribute('aria-label') || ''; if (!t) { var f = (im.getAttribute('src') || '').split('/').pop().split('?')[0].replace(/\.\w+$/, ''); t = f.replace(/^sp-/, '').replace(/[-_]+/g, ' ').trim(); t = /logo/.test(f) ? 'XCPETS logo' : t ? 'XCPETS ' + t : 'XCPETS image'; } im.setAttribute('alt', t); }); }
   // 12. plain-words wallet errors (raw text kept in a details line)

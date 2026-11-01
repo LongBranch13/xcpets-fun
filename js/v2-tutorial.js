@@ -189,7 +189,7 @@
       ['Every move is a burn', 'Each action is a small burn of XCPETS that you sign in your own wallet. No server, no account: the game rebuilds every pet from public Bitcoin history, so everyone sees the same pets.']],
       quiz: [['How does the game know what your pets did?', ['It replays public burns on Bitcoin', 'A company server saves it', 'Your browser makes it up'], 0]] },
     { id: 'wallet', ico: '👛', t: 'Wallet & XCPETS', s: 'Get ready to play', steps: [
-      ['Get a wallet', 'Install <b>XCP Wallet</b> (desktop Chrome extension). It holds your XCPETS and signs every burn.'],
+      ['Get a wallet', 'On desktop, install <b>XCP Wallet</b> (Chrome extension). On your phone, use the <b>Casa Tookan</b> app and open xcpets.fun inside it. The wallet holds your XCPETS and signs every burn.'],
       ['Get XCPETS', 'Get XCPETS on xcp.fun, plus a little BTC for network fees.'],
       ['Connect', 'On the Play page press <b>Connect wallet</b>. Your pets show up under My Pets.']],
       quiz: [['What else do you need besides XCPETS?', ['A little BTC for fees', 'An email account', 'Nothing'], 0]] },

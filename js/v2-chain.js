@@ -230,7 +230,7 @@
    * at the bottom of a phone screen. The background re-read retries on its own (RETRY_MS) before it shows Retry. */
   function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
       b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; document.body.insertBefore(b, document.body.firstChild); }
-      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
+      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'v2stale-btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin:0 0 0 6px;padding:0 8px;font:inherit;font-weight:700;font-size:11px;line-height:1.6;color:#1a1020;background:#ffc93c;border:0;border-radius:6px;cursor:pointer;vertical-align:baseline';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
   /* direct-counterparty-api (2026-10-25): ONE re-read chain at a time. Before, a failed try queued a timer retry AND whenFresh (Sign & Burn) started
@@ -320,7 +320,7 @@
    * a Core node (S.verified stays false), so nothing is signed from feed data. api.xcp.fun is never used for Core reads. */
   function blocked() { try { return !!(E.Chain.coreBlocked && E.Chain.coreBlocked()); } catch (e) { return false; } }
   function behindTxt() { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? ' (' + fmtN(b) + ' block' + (b === 1 ? '' : 's') + ' behind the tip)' : ''; }
-  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. ' + (blocked() ? 'The Counterparty servers can\'t be reached from this network (port 4000)' : 'The Counterparty servers are busy right now') + ', so burns wait until they answer.', true); }
+  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. ' + (blocked() ? 'Chain servers can\'t be reached from here' : 'Chain servers are busy') + ', so burns wait.', true); } /* calm-first-screen: shorter, one thin line */
   /* stale-copy-fix: pages without their own poll (index, pet, ranking...) get the newer feed copy via a Refresh bar; play/fight/breed pass render */
   var lastCb = null; function feedCb() { if (lastCb) return lastCb(); staleBar('Newer game data is ready (block ' + fmtN(S.tip) + ').', false); }
   function toFeed() { S.feed = true; feedBar(); }
