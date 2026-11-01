@@ -220,7 +220,7 @@
    * other parts still happen. The burn is rejected only when no part did anything. The burn must be at least 1 dander; the WAGMI and spin parts add
    * nothing to the amount (the meals are the whole cost). Before ACTIVATE_DAILY_CHORES_BLOCK the tag is an unknown pet: tag (community food),
    * exactly as before. Gate: null placeholder, set to tip + 6 at deploy. */
-  var ACTIVATE_DAILY_CHORES_BLOCK = 974154 /* go-live Nov 1 2026 [pt2580u]: tip 974148 (api.counterparty.io:4000) + 6 */, DC_PREFIX = 'pet:dc:', DC_WAGMI = 1, DC_SPINS = 2;
+  var ACTIVATE_DAILY_CHORES_BLOCK = 974163 /* go-live Nov 1 2026 [pt2580u]: tip 974157 (api.counterparty.io:4000) + 6 */, DC_PREFIX = 'pet:dc:', DC_WAGMI = 1, DC_SPINS = 2;
   function choresOn(b) { return ACTIVATE_DAILY_CHORES_BLOCK != null && b != null && b >= ACTIVATE_DAILY_CHORES_BLOCK && feedRunsOn(b) && wagmiOn(b) && useAllOn(b); }
   /* TAG RETIREMENT (chores-audit-1101 items 1-8, owner Nov 1 2026 [pt2580u]): ONE shared gate for every retired tag. From
    * ACTIVATE_RETIRE_TAGS_BLOCK these burns are invalid (unknown pet: tag = community food, like any other closed tag):
@@ -229,7 +229,7 @@
    *   (unclaimed "Join us" sign claims lapse). Burns BELOW the gate replay exactly as before (released pets stay released, rolled gear stays,
    * auras on stay on, claimed signs stay, babies keep everything). Kept: pet:feed:ID, pet:fm, pet:fr, hatch tags, wagmi, spin/usespin, breed/accept/
    * fight, raid, quest, deed/unsell, look, pet:c:roll, cemetery tags. Gate = the daily chores gate (same deploy), set to tip + 6 at deploy. */
-  var ACTIVATE_RETIRE_TAGS_BLOCK = 974154; /* = ACTIVATE_DAILY_CHORES_BLOCK; go-live Nov 1 2026 [pt2580u]: tip 974148 (api.counterparty.io:4000) + 6 */
+  var ACTIVATE_RETIRE_TAGS_BLOCK = 974163; /* = ACTIVATE_DAILY_CHORES_BLOCK; go-live Nov 1 2026 [pt2580u]: tip 974157 (api.counterparty.io:4000) + 6 */
   var RETIRED_ACTIONS = { release: 'pet:rel', roll: 'pet:roll:ID', feeda: 'pet:fa / fx / fy', skip: 'pet:sk / su', feedl: 'pet:fl', sd: 'pet:sd', tt: 'pet:tt', join: 'pet:join', ad: 'pet:ad', rug: 'pet:rug', unad: 'pet:unad', aura: 'pet:aura', wsign: 'pet:sign' };
   function retireOn(b) { return ACTIVATE_RETIRE_TAGS_BLOCK != null && b != null && b >= ACTIVATE_RETIRE_TAGS_BLOCK; }
   function retiredAt(t, b) { return !!(t && RETIRED_ACTIONS.hasOwnProperty(t.action) && retireOn(b)); }
