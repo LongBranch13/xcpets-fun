@@ -220,8 +220,19 @@
    * other parts still happen. The burn is rejected only when no part did anything. The burn must be at least 1 dander; the WAGMI and spin parts add
    * nothing to the amount (the meals are the whole cost). Before ACTIVATE_DAILY_CHORES_BLOCK the tag is an unknown pet: tag (community food),
    * exactly as before. Gate: null placeholder, set to tip + 6 at deploy. */
-  var ACTIVATE_DAILY_CHORES_BLOCK = null, DC_PREFIX = 'pet:dc:', DC_WAGMI = 1, DC_SPINS = 2;
+  var ACTIVATE_DAILY_CHORES_BLOCK = 974154 /* go-live Nov 1 2026 [pt2580u]: tip 974148 (api.counterparty.io:4000) + 6 */, DC_PREFIX = 'pet:dc:', DC_WAGMI = 1, DC_SPINS = 2;
   function choresOn(b) { return ACTIVATE_DAILY_CHORES_BLOCK != null && b != null && b >= ACTIVATE_DAILY_CHORES_BLOCK && feedRunsOn(b) && wagmiOn(b) && useAllOn(b); }
+  /* TAG RETIREMENT (chores-audit-1101 items 1-8, owner Nov 1 2026 [pt2580u]): ONE shared gate for every retired tag. From
+   * ACTIVATE_RETIRE_TAGS_BLOCK these burns are invalid (unknown pet: tag = community food, like any other closed tag):
+   *   1 pet:rel (release)  2 pet:roll:ID (old gear roll; use pet:spin)  3 pet:fa / fx / fy / sk / su (old feed-all + skip lists)  4 pet:fl (list feed)
+   *   5 pet:sd / tt / join (arena modes)  6 pet:ad / rug / unad (Rug Me; open ads close at the gate)  7 pet:aura (alias of pet:look)  8 pet:sign
+   *   (unclaimed "Join us" sign claims lapse). Burns BELOW the gate replay exactly as before (released pets stay released, rolled gear stays,
+   * auras on stay on, claimed signs stay, babies keep everything). Kept: pet:feed:ID, pet:fm, pet:fr, hatch tags, wagmi, spin/usespin, breed/accept/
+   * fight, raid, quest, deed/unsell, look, pet:c:roll, cemetery tags. Gate = the daily chores gate (same deploy), set to tip + 6 at deploy. */
+  var ACTIVATE_RETIRE_TAGS_BLOCK = 974154; /* = ACTIVATE_DAILY_CHORES_BLOCK; go-live Nov 1 2026 [pt2580u]: tip 974148 (api.counterparty.io:4000) + 6 */
+  var RETIRED_ACTIONS = { release: 'pet:rel', roll: 'pet:roll:ID', feeda: 'pet:fa / fx / fy', skip: 'pet:sk / su', feedl: 'pet:fl', sd: 'pet:sd', tt: 'pet:tt', join: 'pet:join', ad: 'pet:ad', rug: 'pet:rug', unad: 'pet:unad', aura: 'pet:aura', wsign: 'pet:sign' };
+  function retireOn(b) { return ACTIVATE_RETIRE_TAGS_BLOCK != null && b != null && b >= ACTIVATE_RETIRE_TAGS_BLOCK; }
+  function retiredAt(t, b) { return !!(t && RETIRED_ACTIONS.hasOwnProperty(t.action) && retireOn(b)); }
   function frDecode(s) { var out = [], v = 0, open = false; for (var i = 0; i < s.length; i++) { var d = parseInt(s[i], 32); if (!(d >= 0)) return null; v = v * 16 + (d & 15); open = true; if (d < 16) { out.push(v); v = 0; open = false; } } return open ? null : out; }
   function frVar(n) { var d = [n % 16]; n = Math.floor(n / 16); while (n > 0) { d.unshift(16 + n % 16); n = Math.floor(n / 16); } return d.map(function (x) { return x.toString(32).toUpperCase(); }).join(''); }
   function frAnchor(b, code) { return b - (((b - code) % FR_ANCHOR_MOD) + FR_ANCHOR_MOD) % FR_ANCHOR_MOD; }
@@ -344,7 +355,7 @@
     if (q.gear && !ownsGear(w, p, q.gear)) return 'needs to own ' + ((BY_ID[q.gear] || {}).label || q.gear);
     if (q.power && petPower(p) < q.power) return 'needs Power ' + q.power + '+ (has ' + petPower(p) + ')'; return null; }
   /** adState(w, ad, b): 'open' | 'taken' | 'cancelled' | 'expired' | 'closed' (poster pet dead, released or no longer the poster's). */
-  function adState(w, ad, b) { if (ad.state !== 'open') return ad.state; var P = w.byId[ad.pet]; if (!P || P.dead || P.released || P.owner !== ad.owner) return 'closed'; return b - ad.block >= AD_WINDOW ? 'expired' : 'open'; }
+  function adState(w, ad, b) { if (ad.state !== 'open') return ad.state; if (retireOn(b)) return 'closed'; /* Rug Me retired: open ads close at ACTIVATE_RETIRE_TAGS_BLOCK */ var P = w.byId[ad.pet]; if (!P || P.dead || P.released || P.owner !== ad.owner) return 'closed'; return b - ad.block >= AD_WINDOW ? 'expired' : 'open'; }
   var RUG_AD_COST = 69; /* owner, Oct 22 8:42 PM: posting costs 69 per pet; accepting (pet:rug) is breedCost(b): 690 (total 759) before ACTIVATE_BREED_135_BLOCK, 135 (total 204) from it */
   /** onRug(w, p, b): p has an open Rug Me ad (shown as a card, and 'On Rug Me' on its pet page). */
   function onRug(w, p, b) { return !!(p && (w.ads || []).some(function (a) { return a.pet === p.id && adState(w, a, b) === 'open'; })); }
@@ -1908,6 +1919,7 @@
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1; playerSeen(w, r.source);
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
+      if (retiredAt(t, r.block_index)) t = { action: 'invalid', retired: t.action }; /* TAG RETIREMENT gate (ACTIVATE_RETIRE_TAGS_BLOCK): retired tags = community food */
       w.burnedBy[r.source] = (w.burnedBy[r.source] || 0) + amt; w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
       wizTrack(w, r, amt); kekTrack(w, r, amt); ftTrack(w, r, amt); homerTrack(w, r, amt); /* HOMER PEPE care (inert: ACTIVATE_HOMER_BLOCK null) */ /* FUNTRUMP care (live from 972,880) */ /* Lord Kek care + Cold Storage (live from 972,396) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
@@ -2047,6 +2059,7 @@
   var SEND_MARGIN = 3; /* blocks: an accept sent with fewer blocks left than this may confirm after the window */
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;
     var b = (tip || w.tip || 0) + 1, me = o.me, P = function (id) { return w.byId[id]; }, pend = (o.pending || []).map(function (g) { return parseTag(g); }).filter(Boolean), amt = plan && plan.amount;
+    if (retiredAt(t, b)) return RETIRED_ACTIONS[t.action] + ' was retired at block ' + ACTIVATE_RETIRE_TAGS_BLOCK + ': this burn would only be community food';
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
     if (t.action === 'swap' || t.action === 'swapok' || t.action === 'swapno') { if (!giveOn(b)) return 'swaps open at a later block';
       if (t.action === 'swapok') return swapWhy(w, w.swaps && w.swaps[t.n - 1], me || '', b);
@@ -3249,7 +3262,7 @@
         var ta = ads[t.adId - 1], TA = pet(ta.pet), TB = pet(t.petId); ta.state = 'taken'; ta.taken = { pet: TB.id, owner: src, block: b, tx: r.tx_hash };
         var rk = breed(w, TA, TB, bh, r.tx_hash, b, ta.owner); ta.taken.kid = rk.id;
         return L(r, 'breed', 'Rug Me match (ad ' + ta.id + '): #' + TB.id + ' rugged #' + TA.id + ' -> Egg #' + rk.id + ' (' + (rk.tier != null ? TIER_LABELS[rk.tier] + ' ' : '') + speciesLabel(rk.species) + ') to the poster', { petId: rk.id, adId: ta.id }); }
-      case 'invalid': return L(r, 'rejected', 'unknown pet: tag (community food)');
+      case 'invalid': return L(r, 'rejected', t.retired ? RETIRED_ACTIONS[t.retired] + ' was retired at block ' + ACTIVATE_RETIRE_TAGS_BLOCK + ' (community food)' : 'unknown pet: tag (community food)');
       case 'hi': {
         if (!giveOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
         return L(r, 'hi', src + ' said hi: player #' + playerCode(playerNo(w, src)), { player: playerNo(w, src) }); }
@@ -4315,14 +4328,14 @@
     var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
-    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps) : null; /* feed-burns-fix: the skip-list sync (pet:sk/su) is one-time and saves (fp-1) burns on each later feed. Use it only if it pays for itself within
+    if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps, retireOn(nb)) : null; /* feed-burns-fix: the skip-list sync (pet:sk/su) is one-time and saves (fp-1) burns on each later feed. Use it only if it pays for itself within
        * SYNC_PAYBACK_FEEDS feeds; otherwise feed directly with fp (e.g. 18 pets: 4 burns, not 51 setup + 1). */
       if (!fp || fa.length <= fp.length) return fa; if (fp.length === 1) return fp; return (fa.length - fp.length) / (fp.length - 1) <= SYNC_PAYBACK_FEEDS ? fa : fp; } }
-    return feedListOn(nb) ? feedPlan(ps) : feedBatches(ps);
+    return feedListOn(nb) ? feedPlan(ps, retireOn(nb)) : feedBatches(ps);
   }
   /** feedListOn(tip): the UI offers pet:fl bundles only once the chain tip has reached FEED_LIST_BLOCK. */
   var SYNC_PAYBACK_FEEDS = 3;
-  function feedAllOn(tip) { return tip != null && Number(tip) >= FEED_ALL_BLOCK; }
+  function feedAllOn(tip) { return tip != null && Number(tip) >= FEED_ALL_BLOCK && !retireOn(Number(tip) + 1); } /* pet:fa / fx / fy / sk / su retired at ACTIVATE_RETIRE_TAGS_BLOCK */
   /** feedAllPlan(w, owner, ps, nb) -> plans feeding exactly ps (the chosen hungry pets) with ONE feed burn.
    * The owner's on-chain feed-skip set (p.skipBy === owner) is what pet:fa leaves out. add = hungry pets not chosen and not yet skipped,
    * del = chosen pets that are skipped. Fits one tag -> [pet:fa | pet:fx:… | pet:fy:…]. Otherwise the set change goes in pet:sk / pet:su
@@ -4387,14 +4400,14 @@
     var rest = (fr || []).slice(1).concat(extra), nAll = 1 + rest.length; if (nAll > 1) head.label = 'Daily chores (burn 1 of ' + nAll + ')';
     rest.forEach(function (p, k) { var c = p.petIds ? p.petIds.length : 1; p.label = (c === 1 ? 'Feed #' + (p.petId || p.petIds[0]) : 'Feed ' + c + ' pets') + ' (burn ' + (k + 2) + ' of ' + nAll + ')'; });
     return { plans: [head].concat(rest), parts: head.parts, oldBurns: (fr ? fr.length : 0) + extra.length + (wg ? 1 : 0) + (sp && spinsLeft(w, owner, nb) > 0 ? 1 : 0) }; }
-  function feedListOn(tip) { return tip != null && Number(tip) >= FEED_LIST_BLOCK; }
+  function feedListOn(tip) { return tip != null && Number(tip) >= FEED_LIST_BLOCK; } /* pet:fm windows stay; pet:fl lists are left out from ACTIVATE_RETIRE_TAGS_BLOCK (feedPlan noFl) */
   function b32(n) { return Number(n).toString(32).toUpperCase(); }
   /** feedPlan(pets) (FEED_LIST_BLOCK on): fewest burns. Sorted by id, split into consecutive groups by DP; each group is one pet:feed (1 pet),
    * one pet:fm window (dense run) or one pet:fl list (scattered), whichever fits in 34 bytes. Ties: fewer tag bytes, then fm before fl.
    * amount = the sum of the group's meals (exact, rounded to 8 dp), same as feedBatches. */
-  function feedPlan(ps) { var job = feedPlanJob(ps); job.step(Infinity); return job.result(); }
+  function feedPlan(ps, noFl) { var job = feedPlanJob(ps, noFl); job.step(Infinity); return job.result(); }
   /** feedPlanJob(pets): the feedPlan DP, resumable (bigfix 2026-10-20) so the UI can run it in slices and show progress. Same output as before. */
-  function feedPlanJob(ps) {
+  function feedPlanJob(ps, noFl) {
     ps = ps.slice().sort(function (a, b) { return a.id - b.id; }); var n = ps.length, best = [{ c: 0, by: 0 }], j = 0;
     /* bigfix 2026-10-20: the DP only compares tag lengths, so lengths are worked out in O(1) (prefix sums of the base-32 id lengths)
      * and the tag text is built only for the groups that are picked. Same choices and same tags as the old enc(). */
@@ -4402,7 +4415,7 @@
     function encLen(i, j) { /* -> { len, kind: 'one' | 'fm' | 'fl' } or null; ties: fm before fl (the old stable sort) */
       var s = ps[i].id, e = ps[j].id; if (i === j) return { len: ('pet:feed:' + s).length, kind: 'one' };
       var best0 = null, fmLen = ('pet:fm:' + s + ':').length + Math.floor((e - s) / 5) + 1; if (fmLen <= MAX_TAG_BYTES) best0 = { len: fmLen, kind: 'fm' };
-      var flLen = 'pet:fl:'.length + (bl[j + 1] - bl[i]) + (j - i); if (flLen <= MAX_TAG_BYTES && (!best0 || flLen < best0.len)) best0 = { len: flLen, kind: 'fl' };
+      var flLen = 'pet:fl:'.length + (bl[j + 1] - bl[i]) + (j - i); if (!noFl && flLen <= MAX_TAG_BYTES && (!best0 || flLen < best0.len)) best0 = { len: flLen, kind: 'fl' };
       return best0; }
     function encTag(i, j, kind) { var s = ps[i].id, e = ps[j].id; if (kind === 'one') return 'pet:feed:' + s;
       if (kind === 'fl') return 'pet:fl:' + ps.slice(i, j + 1).map(function (p) { return b32(p.id); }).join('.');
@@ -4425,7 +4438,7 @@
   function feedQueueAsync(w, owner, ids, nextBlock, onProgress) {
     var idSet = ids ? new Set(ids) : null, ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); }), nb = nextBlock != null ? nextBlock : (w.tip || 0);
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2 || !feedListOn(nb) || feedAllOn(nb)) return Promise.resolve(feedQueue(w, owner, ids, nextBlock));
-    var job = feedPlanJob(ps);
+    var job = feedPlanJob(ps, retireOn(nb));
     return new Promise(function (res, rej) { (function go() { try { var t0 = Date.now(), fin = false, k = 50;
         while (!fin && Date.now() - t0 < 40) fin = job.step(k);
         if (onProgress) onProgress(job.done(), job.total); if (fin) return res(job.result()); setTimeout(go, 0); } catch (e) { rej(e); } })(); });
@@ -4533,7 +4546,8 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
+  return { retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
+    dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
     mythicUnleashGate: function () { return ACTIVATE_MYTHIC_UNLEASH_BLOCK; }, mgOn: mgOn, _setMythicUnleashActivation: _setMythicUnleashActivation, MG: MG, MG_COSTS: MG_COSTS, MG_NEVER_EAT: MG_NEVER_EAT,
     mgEdible: mgEdible, mgEdibleWhy: mgEdibleWhy, mgUnleashWhy: mgUnleashWhy, mgView: mgView, mgPantheon: mgPantheon, mgPlan: mgPlan, mgSendWhy: mgSendWhy, mgSeatsLeft: mgSeatsLeft, isMythicZ: isMythicZ, isMythicFed: isMythicFed, mgPending: mgPending, _mgWard: mgWard, mgBreedCool: mgBreedCool,

@@ -9,11 +9,12 @@
     if (!d || !d.classList || !d.classList.contains('card') || !d.dataset || !d.dataset.pid || d.classList.contains('dead') || d.querySelector('.' + CLS)) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = CLS; b.dataset.discard = d.dataset.pid; b.title = DW;
     b.setAttribute('aria-label', 'Discard #' + d.dataset.pid); b.textContent = '🗑️'; d.appendChild(b);
+    if ((window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world()))) return; /* pet:rel retired at ACTIVATE_RETIRE_TAGS_BLOCK: Discard only */
     var r = document.createElement('button'); r.type = 'button'; r.className = RC; r.dataset.release = d.dataset.pid; r.title = RT; r.setAttribute('aria-label', 'Release #' + d.dataset.pid + ' (on-chain burn)'); r.textContent = '🔥 Release'; d.appendChild(r);
   }
   function onClick(e, D) {
     var t = e.target, rb = t && t.closest ? t.closest('.' + RC) : null;
-    if (rb) { e.stopPropagation(); e.preventDefault(); var rid = Number(rb.dataset.release); if (!rid) return;  /* the existing single-pet release path: same plans + burn confirmation as 'Release selected' */
+    if (rb) { e.stopPropagation(); e.preventDefault(); var rid = Number(rb.dataset.release); if (!rid || (window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world()))) return;  /* the existing single-pet release path: same plans + burn confirmation as 'Release selected' */
       D.confirmPlans('Release #' + rid + ' (on-chain burn, permanent)', window.V2Rules.releaseBatches([rid])); return; }
     var b = t && t.closest ? t.closest('.' + CLS) : null; if (!b) return;
     e.stopPropagation(); e.preventDefault();

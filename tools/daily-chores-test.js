@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* daily-chores (PLAN item 8, owner Nov 1 2026 [pt2570u]; PREVIEW, gate not set): checks for the pet:dc:F[:AA:RUNS] one-burn daily chores tag.
+/* daily-chores (PLAN item 8, owner Nov 1 2026 [pt2570u]; gate set at go-live [pt2580u]): checks for the pet:dc:F[:AA:RUNS] one-burn daily chores tag.
  *  1. parse: flags 0-3, optional feed-runs part, 34-byte limit.   2. gate off (null, as shipped): plan is null, a pet:dc burn is an unknown tag (community food),
  *     world identical to any other unknown tag.   3. gate on (tip + 1, live world api/boot.json): one pet:dc burn = WAGMI + feed runs + use all spins,
  *     same result as the three separate burns (care, fed days, WAGMI day, spins used).   4. skips: a second burn the same day does nothing -> rejected.
@@ -26,7 +26,8 @@ const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}); [nb, nb + 1, nb + 2].forEach(b => { if (!hashes[b]) hashes[b] = crypto.createHash('sha256').update('fake-block-' + b).digest('hex'); });
 const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = rows[rows.length - 1].tx_index + 1;
 const mk = (b, src, amt, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('dc-test:' + (seed || tag) + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: Math.round(amt * 1e8), tag: hex(tag), status: 'valid' });
-ok(V.dailyChoresGate() === null && !V.choresOn(nb) && !V.choresOn(9e9), 'gate as shipped: ACTIVATE_DAILY_CHORES_BLOCK = null (placeholder, set to tip + 6 at deploy), rule off at every block');
+const G = V.dailyChoresGate(); ok(G === null ? (!V.choresOn(nb) && !V.choresOn(9e9)) : (Number.isInteger(G) && G > tip - 50000 && V.choresOn(G) && !V.choresOn(G - 1)), 'gate in the code: ACTIVATE_DAILY_CHORES_BLOCK = ' + G + (G === null ? ' (rule off at every block)' : ' (on from that block, off before)'));
+V._setDailyChoresActivation(null); /* sections 1-2 check the gate-off behaviour (every block before the gate) */
 const w = V.replay(rows, hashes, [], opts(tip));
 const owners = {}; w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 ok(V.dailyChoresPlan(w, Object.keys(owners)[0], nb) === null, 'gate off: the planner offers nothing');
@@ -71,5 +72,5 @@ if (plan) { const head = plan.plans[0], all = plan.plans.map(q => mk(nb, who.o, 
 let oldT = 0, newT = 0, fit = true, n = 0; Object.keys(owners).forEach(o => { const q = V.dailyChoresPlan(w, o, nb); if (!q) return; n++; oldT += q.oldBurns; newT += q.plans.length; if (!q.plans.every(x => Buffer.byteLength(x.tag) <= 34)) fit = false; });
 ok(fit, 'every owner\u2019s plan fits 34 bytes (' + n + ' owners with something to do)');
 ok(newT <= oldT, 'burns for one day of chores, all owners: old ' + oldT + ', new ' + newT + ' (' + (oldT - newT) + ' fewer signatures)');
-V._setDailyChoresActivation(null);
+V._setDailyChoresActivation(G);
 console.log('\n' + (fails ? fails + ' FAILED' : 'all ok') + '  (gate in the code: ' + V.dailyChoresGate() + ')'); process.exitCode = fails ? 1 : 0;

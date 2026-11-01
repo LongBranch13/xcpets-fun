@@ -71,10 +71,11 @@
     var h = panel.querySelector('h2,h3'); panel.insertBefore(tabs, h ? h.nextSibling : panel.firstChild);
     var box = document.createElement('div'); box.id = 'rugMe'; box.className = 'rug-me'; box.hidden = true; panel.appendChild(box);
     tabs.querySelectorAll('[data-rmtab]').forEach(function (b) { b.onclick = function () { setTab(b.getAttribute('data-rmtab')); }; }); setTab(st.tab); return true; }
-  function setTab(t) { st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.classList.toggle('rm-on', t === 'rug');
+  function setTab(t) { var rt = !!(V && V.retireOn && V.retireOn(tip() + 1)); if (rt && t === 'rug') t = 'motel'; /* Rug Me retired at ACTIVATE_RETIRE_TAGS_BLOCK: tab hidden */ st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.querySelectorAll('[data-rmtab="rug"]').forEach(function (x) { x.hidden = rt; }); panel.classList.toggle('rm-on', t === 'rug');
     panel.querySelectorAll('[data-rmtab]').forEach(function (b) { var on = b.getAttribute('data-rmtab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
     $('rugMe').hidden = t !== 'rug'; if (t === 'rug') paint(); }
   function paint() { var u = U(), box = $('rugMe'); if (!u || !box || box.hidden) return; var w = u.world(), ME = u.ME, b = tip() + 1;
+    if (V.retireOn && V.retireOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me closed at block ' + fmt(V.retireGate()) + '. Use 🛎️ Check in (the motel two-owner breed) instead.</p>'; return; }
     if (!V.rugOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me opens at block ' + (V.rugGate() != null ? fmt(V.rugGate()) : '(not set yet)') + '.</p>'; return; }
     if (!ME) { box.innerHTML = '<p class="small">Connect XCP Wallet to swipe. You swipe as one of your Adult+ pets.</p>'; return; }
     var mine = myPets(w, ME); if (!mine.length) { box.innerHTML = '<p class="small">You need an Adult or older pet to swipe.</p>'; return; }
@@ -153,7 +154,7 @@
     if (e.key === 'ArrowLeft') { e.preventDefault(); fling(-1, c); } else if (e.key === 'ArrowRight') { e.preventDefault(); fling(1, c); } });
   /* ---------- pet pop-up (#detail): 'On Rug Me' marker; owner-only 'Post on Rug Me' ---------- */
   function decorateDetail() { var u = U(), info = $('dInfo'), t = $('dTitle'); if (!u || !info || !t || info.querySelector('.rm-drow')) return; var m = /#(\d+)/.exec(t.textContent || ''); if (!m) return;
-    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b)) return; var on = V.onRug(w, p, b), mineP = p.owner === u.ME && !(u.viewOnly && u.viewOnly()) && !p.dead && !p.released && p.stage >= 3 && !V.adWhy(p, b);
+    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b) || (V.retireOn && V.retireOn(b))) return; var on = V.onRug(w, p, b), mineP = p.owner === u.ME && !(u.viewOnly && u.viewOnly()) && !p.dead && !p.released && p.stage >= 3 && !V.adWhy(p, b);
     if (!on && !mineP) return; var d = document.createElement('div'); d.className = 'row rm-drow';
     d.innerHTML = on ? '<span class="rm-mark">' + MARK + '</span>' : '<button class="btn ghost" data-rmpost="' + p.id + '">📌 Post on Rug Me</button>';
     info.insertBefore(d, info.firstChild); var bt = d.querySelector('[data-rmpost]'); if (bt) bt.onclick = function () { openPost(p.id); }; }
