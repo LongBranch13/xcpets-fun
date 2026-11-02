@@ -35,6 +35,33 @@
   /* RAREPIGEON 1 of 1 (owner Oct 26 2026, branch rarepigeon-1of1): baked art (js/rarepigeon-sprite.js, RarepigeonSprite) per stage, same idle bob as Bo; gear lands on RP_A. */
   var RPS = (typeof RarepigeonSprite !== 'undefined') ? RarepigeonSprite : (typeof require === 'function' ? (function () { try { return require('./rarepigeon-sprite.js'); } catch (e) { return null; } })() : null);
   if (RPS) PAL.rarepigeon = Object.assign({}, RPS.PAL);
+  /* BO PIGEON 'borp' (owner Oct 31 2026 9:49 AM CT, branch borp-twins, PREVIEW): the body every Bo Jackson times Rarepigeon baby gets (rules: ACTIVATE_BORP_BLOCK,
+   * null = OFF, so no pet has it). A pigeon-athlete: Rarepigeon's shape (head, beak, iridescent collar, red legs, tail) wearing Bo's kit: charcoal jersey (wing
+   * bars kept), white #34 from Adult, silver pants, eye black under the eye and a football tucked at the chest from Juvenile. Derived at load from RarepigeonSprite
+   * (no new file, no page changes); stage sizes, idle bob, anchors and Rarepigeon's own kit spots are Rarepigeon's. */
+  var BORP_PAL = { J: '#2a2a33', K: '#4a4a56', W: '#f4f4ee', P: '#c3cad8', Q: '#8d96a8', B: '#8a5634', b2: null, L: '#ffffff', X: '#0b0b0d', Z: '#5c3a1e' }; delete BORP_PAL.b2;
+  var DIG = { 3: ['WWW', '..W', '.WW', '..W', 'WWW'], 4: ['W.W', 'W.W', 'WWW', '..W', '..W'] };
+  function borpStage(S0, st) { var G = S0.map(function (r) { return r.split(''); }), H = S0.length, x, y, k = function (X, Y) { return Y >= 0 && Y < H && X >= 0 && X < 32 ? G[Y][X] : '.'; };
+    if (st === 0) { for (y = 0; y < H; y++) for (x = 0; x < 32; x++) { if (G[y][x] === 'g') G[y][x] = 'J'; else if (G[y][x] === 'f') G[y][x] = 'P'; } return G.map(function (r) { return r.join(''); }); } /* egg: Bo's charcoal + silver speckles */
+    var cTop = 99, cBot = -1, legTop = 99, legL = 99; for (y = 0; y < H; y++) for (x = 0; x < 32; x++) { var c = G[y][x]; if (c === 'f' || c === 'h') { cTop = Math.min(cTop, y); cBot = Math.max(cBot, y); } if (c === 'j') { legTop = Math.min(legTop, y); legL = Math.min(legL, x); } }
+    var BODY = { b: 'J', c: 'J', d: 'J', e: 'K', m: 'K' }, left = legL - 3, pantsTop = legTop - (st >= 3 ? 3 : 2);
+    for (y = cTop; y < legTop; y++) for (x = left; x < 32; x++) { var q = G[y][x]; if (BODY[q] || (q === 'l' && y > cBot)) G[y][x] = y >= pantsTop ? (q === 'e' || q === 'm' ? 'Q' : 'P') : (BODY[q] || 'J'); } /* jersey above, silver pants below; tail + wing tip (left of the legs) stay pigeon grey */
+    var ex = -1, ey = -1; for (y = 0; y < cTop; y++) for (x = 16; x < 32; x++) if (G[y][x] === 'l') { ex = x; ey = y; } /* eye black: under the eye highlight */
+    if (ex >= 0) for (x = ex - 2; x <= ex - 1; x++) if (k(x, ey + 1) === 'b') G[ey + 1][x] = 'X';
+    var bR = -1; for (y = cBot + 1; y < pantsTop; y++) for (x = 0; x < 32; x++) if (G[y][x] === 'J' || G[y][x] === 'K') bR = Math.max(bR, x);
+    if (st >= 3 && bR > 0) { var nx = bR - 9, ny = cBot + 1; [3, 4].forEach(function (d, i) { DIG[d].forEach(function (row, r) { for (var c2 = 0; c2 < 3; c2++) if (row.charAt(c2) === 'W' && /[JK]/.test(k(nx + i * 4 + c2, ny + r))) G[ny + r][nx + i * 4 + c2] = st === 5 ? 'n' : 'W'; }); }); } /* #34 (gold at Mythic, like Bo's) */
+    if (st >= 2 && bR > 0) { var fy = cBot + (st >= 3 ? 3 : 2), fx = bR - 1, BALL = st >= 3 ? ['.BBB.', 'BBLBB', 'ZBBBZ', '.ZZZ.'] : ['.BB.', 'BLBB', '.ZZ.'];
+      BALL.forEach(function (row, r) { for (var c3 = 0; c3 < row.length; c3++) if (row.charAt(c3) !== '.') G[fy + r][fx + c3] = row.charAt(c3); }); /* football tucked at the chest */
+      var O = G.map(function (r) { return r.slice(); }); BALL.forEach(function (row, r) { for (var c4 = -1; c4 <= row.length; c4++) [[0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]].forEach(function (dd) { var X = fx + c4 + dd[0], Y = fy + r + dd[1]; if (k(X, Y) === '.') O[Y][X] = 'a'; }); }); G = O; } /* ink outline around the ball */
+    return G.map(function (r) { return r.join(''); }); }
+  var BORP = RPS ? { PAL: Object.assign({}, RPS.PAL, BORP_PAL), STAGES: RPS.STAGES.map(function (S0, st) { return borpStage(S0, st); }) } : null;
+  if (BORP) { PAL.borp = BORP.PAL; NAMES.borp = 'Bo Pigeon'; }
+  function borpDraw(stage, f, gear) { var S = BORP.STAGES[stage], g = grid(), dy = [0, -1, -1, 0][f];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
+    if (stage > 0 && gear) { var rest = {}; ['feet', 'hand', 'head', 'body', 'face', 'back', 'weapon'].forEach(function (sl) { var it = gear[sl], id = it && (it.item || it.id);
+        if (id && RP_KIT[id]) rpKit(g, S, dy, id); else if (it) rest[sl] = it; }); gear = rest; } /* same body as Rarepigeon: his kit sits on the same beak / crown / leg */
+    if (stage > 0 && gear && Object.keys(gear).length) { var A = Object.assign({}, RP_A, { headTop: RP_A.headTop + dy, headBot: RP_A.headBot + dy, eyeY: RP_A.eyeY + dy, bodyTop: RP_A.bodyTop + dy, bodyEnd: RP_A.bodyEnd + dy }); gearLayer(g, 'borp', stage, A, gear); }
+    return g; }
   var RP_A = { cx: 19, headTop: 3, headBot: 11, hw: 4, eyeY: 6, bodyTop: 12, bodyEnd: 23, bw: 7 };
   /* Rarepigeon kit pinned to the baked art: bread / scroll held in the beak (orange 'i'), cap on the crown (from the eye highlight), message tube on the front leg (red 'j'). */
   var RP_KC = { G: '#2f9f5f', g: '#1e6b40', O: '#ff7a1a', L: '#8a5a2b', P: '#f4ecd8', F: '#cfc3a3', T: '#a89a78', R: '#ff2a2a', C: '#2a9fd0', c: '#6fe3ff', W: '#e9fbff' };
@@ -150,7 +177,7 @@
     if (sp === 'lukespam') { rect(g, 10, 14 + bob, 12, 3, 'R'); hline(g, 18, 23, 17 + bob, 'r'); rect(g, 13, 20 + bob, 5, 6, 'C'); hline(g, 13, 17, 22 + bob, 'c'); }
     return outline(g); }
   /** anchors(sp, stage, frame): where gear lands on this pet */
-  function anchors(sp, stage, frame) { if (sp === 'rarepigeon') { var e = [0, -1, -1, 0][frame || 0]; return { cx: 19, headTop: 3 + e, headBot: 11 + e, hw: 4, eyeY: 6 + e, bodyTop: 12 + e, bodyEnd: 23 + e, bw: 7 }; } if (sp === 'bojackson') { var d = [0, -1, -1, 0][frame || 0]; return { cx: 16, headTop: 2 + d, headBot: 11 + d, hw: 5, eyeY: 6 + d, bodyTop: 13 + d, bodyEnd: 21 + d, bw: 6 }; } var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
+  function anchors(sp, stage, frame) { if (sp === 'rarepigeon' || sp === 'borp') { var e = [0, -1, -1, 0][frame || 0]; return { cx: 19, headTop: 3 + e, headBot: 11 + e, hw: 4, eyeY: 6 + e, bodyTop: 12 + e, bodyEnd: 23 + e, bw: 7 }; } if (sp === 'bojackson') { var d = [0, -1, -1, 0][frame || 0]; return { cx: 16, headTop: 2 + d, headBot: 11 + d, hw: 5, eyeY: 6 + d, bodyTop: 13 + d, bodyEnd: 21 + d, bw: 6 }; } var A = geom(Math.max(1, stage), frame); return { cx: A.cx, headTop: A.headTop, headBot: A.headBot, hw: A.hw, eyeY: sp === 'starlordkek' ? A.headTop + 1 : A.eyeY, bodyTop: A.bodyTop, bodyEnd: A.bodyEnd, bw: A.bw }; }
   /* ---------- gear layer: every slot (head, face, hand, body, back, feet, weapon) from the anchors, like KekSprite ---------- */
   function gearLayer(g, sp, st, A, Gr) { function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
     function col(sl, i) { var x = Gr[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); } var cx = A.cx, put = [];
@@ -169,7 +196,7 @@
       if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod/.test(ak)) { for (var t = 0; t < 8; t++) p(hx, hy - t, t > 5 ? a1 : a0); } else { rect(g, hx - 1, hy - 2, 3, 3, a0); set(g, hx, hy - 1, a1); } }
     if (Gr.weapon) { var wx = cx + A.bw + 4; for (var tw = 0; tw < 9; tw++) set(g, wx, A.bodyEnd - tw, tw > 6 ? col('weapon', 1) : col('weapon')); }
     return put; }
-  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
+  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (sp === 'borp' && BORP) return borpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
     if (s === 0) return eggArt(g, sp, f);
     var A = geom(s, f); SL_GEAR = gear || null; try { DRAW[sp](g, s, A, f); } finally { SL_GEAR = null; } if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
     var o = outline(g); if (s === 5) { o = mythicRim(o); if (sp !== 'starlordkek') aura(o, sp, f); } if (sp === 'starlordkek') slFx(o, s, f); return o; }
@@ -180,5 +207,97 @@
   function toImg(g, P, bg) { var B = hexRgb(bg || '#14101e'), d = []; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function render(sp, stage, frame, bg, gear, opts) { return toImg(draw(sp, stage, frame, gear), Object.assign({}, PAL[sp], (opts && opts.pal) || {}), bg); }
   function frames(sp, stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(sp, stage, f, bg, gear, opts); }); }
-  return { STAGES: STAGES, NAMES: NAMES, PAL: PAL, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, SPECIES: Object.keys(NAMES) };
+  /* 1 OF 1 CROSS BODIES (owner Nov 1 2026 7:36 PM CT "we should do this for all pets ... All that", branch allpets-crosses-1101, PREVIEW; rules gate
+   * V2Rules.ACTIVATE_ONEOFONE_CROSS_BLOCK null = no pet ever has art.cross = inert). A baby of Bo Jackson or Rarepigeon times any other pet gets the 1 of 1's
+   * body (Bo's #34 kit, or the pigeon) in the PARTNER's colours, wearing the partner's tell on the head (Pepe eye domes, Doge ears, Viking helmet + beard,
+   * Kekamozard hat + glasses, Don hair + glasses ...). Bo times Rarepigeon stays the Bo Pigeon above. Looks only. No fire aura, no flame crown, no gold frame. */
+  var CROSS_CANON = { pepe: ['#6aa84f', '#3d6fd1', '#b5533c'], wojak: ['#f1e4d4', '#5a6a8a', '#dcb8a2'], chud: ['#f1e4d4', '#6b7a3a', '#6b4a2b'], bobo: ['#704728', '#cc1414', '#c4805b'],
+    mumu: ['#d06311', '#33ae1f', '#f0d8b2'], snibby: ['#ffdf01', '#fba901', '#dd9604'], dodo: ['#4a4a56', '#c41a1a', '#6b6b78'], kevin: ['#bd8a75', '#84a1b6', '#b1806c'],
+    peepo: ['#8cc63f', '#0649ff', '#9f4d37'], sarutobi: ['#7f4106', '#5a2c03', '#e9a63a'], doge: ['#ce9a41', '#bd8a3b', '#f0e6cc'], lenny: ['#f2b98a', '#3a3a44', '#ffdcc0'],
+    nakamoto: ['#488101', '#555555', '#7f7f7f'], kek: ['#5aa83c', '#c8342c', '#ffd23f'], wizard: ['#2f6fe0', '#ffd23f', '#e6e6ee'], funtrump: ['#ff8a2a', '#c8342c', '#e6bd85'],
+    homer: ['#5aa83c', '#e0582e', '#f4f4ee'], viking: ['#3580a8', '#cc5a1e', '#9aa6b4'] };
+  var CROSS_LABEL = { pepe: 'Pepe', wojak: 'Wojak', chud: 'Chud', bobo: 'Bobo', mumu: 'Mumu', snibby: 'Snibby', dodo: 'Dodo', kevin: 'Kevin', peepo: 'Peepo', sarutobi: 'Sarutobi', doge: 'Doge',
+    lenny: 'Lenny', nakamoto: 'Nakamoto', kek: 'Kek', wizard: 'Wizard', funtrump: 'FUNTRUMP', homer: 'Homer', viking: 'Viking', kekamozard: 'Kekamozard', don: 'Don' };
+  function cxRgb(h) { return hexRgb(h); }
+  function cxHex(r) { return '#' + r.map(function (n) { n = Math.max(0, Math.min(255, Math.round(n))); return (n < 16 ? '0' : '') + n.toString(16); }).join(''); }
+  function cxMix(a, b, t) { var A = cxRgb(a), B = cxRgb(b); return cxHex(A.map(function (n, i) { return n + (B[i] - n) * t; })); }
+  function cxLum(h) { var c = cxRgb(h); return c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11; }
+  function cxLt(h, t) { return cxMix(h, '#ffffff', t); } function cxDk(h, t) { return cxMix(h, '#000000', t); }
+  /* the body's letters that take the partner's colours; everything else keeps the 1 of 1's own palette (Bo's jersey and silver pants, the pigeon's beak and legs) */
+  function crossPal(body, col, st) { var K = CROSS_CANON[col] || CROSS_CANON.pepe, bd = K[0], ac = K[1], be = K[2], P = Object.assign({}, PAL[body]);
+    if (body === 'bojackson') { if (st === 0) { P.q = cxLt(bd, 0.25); P.r = cxDk(bd, 0.12); P.g = cxDk(ac, 0.1); } else { P.B = cxLt(bd, 0.18); P.i = bd; P.A = cxDk(bd, 0.32); P.f = cxDk(bd, 0.62); } }
+    else { var lightBelly = cxLum(be) > cxLum(bd) + 20; if (st === 0) { P.d = cxLt(bd, 0.22); P.g = ac; P.f = cxDk(ac, 0.2); }
+      else { P.b = bd; P.c = cxDk(bd, 0.16); P.d = lightBelly ? be : cxLt(bd, 0.3); P.e = cxDk(bd, 0.45); P.m = cxDk(bd, 0.34); P.g = cxLt(ac, 0.2); P.f = ac; P.h = cxDk(ac, 0.3);
+        if (st === 5) { P.o = cxDk(ac, 0.25); P.n = cxLt(ac, 0.35); } } } /* the pigeon's Mythic rim takes the partner's accent: never gold */
+    return P; }
+  /* head anchors read off the baked grid of THIS frame (so the idle bob is already in): head box, crown row, eye, chin, and the front foot */
+  function crossHead(g, body) { var y, x, t = 99, b = -1, l = 99, r = -1, ex = -1, ey = -1, top = 99, foot = null, hk = body === 'bojackson' ? /[fiAB]/ : /b/;
+    var lim = body === 'bojackson' ? 99 : 99; for (y = 0; y < N; y++) { var any = false; for (x = 0; x < N; x++) { var k = g[y][x]; if (!k) continue; if (y < top) top = y;
+        if (hk.test(k)) { if (body === 'bojackson' && b >= 0 && y > b + 1) continue; any = true; if (y < t) t = y; if (y > b) b = y; if (x < l) l = x; if (x > r) r = x; } }
+      if (body === 'bojackson' && t < 99 && !any && y > t + 2) break; if (body !== 'bojackson' && t < 99 && !any && y > t + 1) break; }
+    for (y = t; y <= b; y++) for (x = l; x <= r; x++) { var k2 = g[y][x]; if (body === 'bojackson' ? (k2 === 'l' || k2 === 'g') : k2 === 'l') { if (x >= ex) { ex = x; ey = y; } } }
+    if (ex < 0) { ex = r - 1; ey = t + Math.round((b - t) / 2); }
+    for (y = N - 1; y >= 0 && !foot; y--) for (x = N - 1; x >= 0; x--) if (g[y][x] && g[y][x] !== 'y' && g[y][x] !== 'a' && g[y][x] !== 'n' && g[y][x] !== 'o') { foot = [x, y]; break; }
+    var back = null, mid = Math.round((b + (foot ? foot[1] : b + 8)) / 2); for (x = 0; x < N && !back; x++) if (g[mid] && g[mid][x] && !/[yano]/.test(g[mid][x])) back = [x, mid];
+    return { t: t, b: b, l: l, r: r, ex: ex, ey: ey, w: r - l + 1, foot: foot, back: back }; }
+  var CXI = { ink: '#14141a', white: '#f8f8f4', steel: '#9aa6b4', steelD: '#5e6a78', horn: '#efe6cf', hornD: '#b9a985', gold: '#ffd23f', blue: '#2f4fd0', blueL: '#4f7cf0', blueD: '#1d3f94',
+    star: '#fff6b0', wire: '#c8d0da', tear: '#7fc4ff', ft: '#ff9a2a', ftL: '#ffc04a', ftD: '#c86a14', beard: '#cc5a1e', beardD: '#8a3a10', bag: '#6a5a8a', stub: '#3a3a30' };
+  function crossTell(g, tell, st, H, col) { var K = CROSS_CANON[col] || CROSS_CANON.pepe, bd = K[0], ac = K[1], be = K[2], big = st >= 3, mid = st === 2, put = [];
+    function p(x, y, c) { if (x >= 0 && y >= 0 && x < N && y < N) { g[y][x] = c; put.push([x, y]); } }
+    function stamp(M, ox, oy, C) { for (var yy = 0; yy < M.length; yy++) for (var xx = 0; xx < M[yy].length; xx++) { var k = M[yy].charAt(xx); if (k !== '.' && C[k]) p(ox + xx, oy + yy, C[k]); } }
+    var cx = Math.round((H.l + H.r) / 2), t = H.t, ex = H.ex, ey = H.ey;
+    function domes() { var M = big ? ['.ooo.', 'owwko', 'owkko', 'bbbbb'] : mid ? ['.oo.', 'owko', 'bbbb'] : ['oo', 'wk'], w = M[0].length, x1 = Math.min(H.r - w + 1, ex - w + 2), x0 = x1 - w;
+      var C = { o: cxDk(bd, 0.2), w: CXI.white, k: CXI.ink, b: bd }; stamp(M, x0, t - M.length + 1, C); stamp(M, x1, t - M.length + 1, C); }
+    function glasses(frame, lens) { var w = big ? 3 : 2, y0 = ey - (big ? 1 : 0), x0 = ex - w + 1; for (var xx = x0 - 1; xx <= x0 + w; xx++) { p(xx, y0 - 1, frame); p(xx, y0 + (big ? 2 : 1), frame); }
+      for (var yy = y0; yy < y0 + (big ? 2 : 1); yy++) { p(x0 - 1, yy, frame); p(x0 + w, yy, frame); } p(x0 - 2, y0, frame); if (big) p(x0 - 3, y0, frame); if (lens) p(x0, y0, lens); }
+    function hat(C) { var bw = big ? H.w + 2 : H.w + 1, b0 = cx - Math.floor(bw / 2), rows = Math.max(1, Math.min(big ? 3 : mid ? 2 : 1, t)), L = b0 + 1, R = b0 + bw - 2, i;
+      for (var xx = b0; xx < b0 + bw; xx++) p(xx, t, xx === b0 || xx === b0 + bw - 1 ? C.d : C.m);
+      for (i = 1; i <= rows; i++) { if (i > 1) L++; R -= 2; if (R < L) R = L; for (var x2 = L; x2 <= R; x2++) p(x2, t - i, x2 === L ? C.l : C.m); }
+      p(L - 1, t - rows, C.m); if (big || mid) p(L - 2, t - rows + 1, C.d); if (big) p(L - 3, t - rows + 2, C.s); /* the tip flops back: a pet has no headroom for a tall cone */
+      if (big) { p(L + 1, t - 1, C.s); p(L + 3, t - 2, C.s); } else if (mid) p(L + 1, t - 1, C.s); }
+    function swoop(C) { var M = big ? ['...hhhhh..', '.hhHHHHhhh', 'hHHHHHHHHh', 'dHHHHHdHHd', '.d.dd..d..'] : mid ? ['..hhhh.', '.hHHHHh', 'dHHHHHd', '.d..d..'] : ['.hhh', 'hHHh', 'd..d'];
+      stamp(M, Math.min(H.r - M[0].length + 3, cx - Math.floor(M[0].length / 2) + 1), t - M.length + 2, C); }
+    function earsPair(M, C, inset) { var w = M[0].length; stamp(M, H.l + inset, t - M.length + 1, C); stamp(M, H.r - w + 1 - inset, t - M.length + 1, C); }
+    function beardB(C) { var M = big ? ['bbbbb', 'bBbBb', '.bBb.', '.b.b.', '.d.d.'] : mid ? ['bbb', 'bBb', '.d.'] : ['bb', 'd.'], bx = Math.max(H.l, ex - M[0].length + 1); stamp(M, bx, H.b, C); }
+    if (tell === 'pepe' || tell === 'peepo') domes();
+    else if (tell === 'homer') { domes(); var hy = t - (big ? 4 : mid ? 3 : 2); p(cx - 3, hy, CXI.ink); p(cx - 3, hy - 1, CXI.ink); p(cx - 2, hy - 2, CXI.ink); if (big) { p(cx - 1, hy - 1, CXI.ink); p(cx - 1, hy - 2, CXI.ink); }
+      for (var sx = ex - 2; sx <= ex; sx++) p(sx, ey + (big ? 3 : 2), '#8a7a52'); } /* Homer's two hairs + stubble */
+    else if (tell === 'kek') { var nw = H.w + (big ? 2 : 0), n0 = cx - Math.floor(nw / 2), nr = big ? 3 : 2, ry; for (ry = 0; ry < nr; ry++) for (var xx = n0 + (ry === nr - 1 ? 1 : 0); xx < n0 + nw - (ry === nr - 1 ? 1 : 0); xx++) p(xx, t - ry, ry % 2 ? CXI.gold : CXI.blue);
+      var ly = big ? 5 : mid ? 3 : 2; for (var yy = 1; yy <= ly; yy++) { p(n0, t + yy, yy % 2 ? CXI.gold : CXI.blue); if (big) p(n0 + 1, t + yy, yy % 2 ? CXI.gold : CXI.blue); }
+      p(cx, t - (big ? 3 : 2), '#c8342c'); } /* nemes headdress, striped, with the red uraeus dot */
+    else if (tell === 'bobo') earsPair(big ? ['.BBB.', 'BbbbB', 'BbbbB'] : mid ? ['BBB', 'BbB'] : ['BB'], { B: cxDk(bd, 0.15), b: be }, big ? 0 : 0);
+    else if (tell === 'doge') earsPair(big ? ['B...', 'BB..', 'BbB.', 'BbbB'] : mid ? ['B..', 'BB.', 'BbB'] : ['B.', 'BB'], { B: cxDk(bd, 0.12), b: be }, 0);
+    else if (tell === 'mumu') { var M = big ? ['h...', 'hH..', '.hHH'] : mid ? ['h..', '.hH'] : ['h.', '.h'], C = { h: CXI.horn, H: CXI.hornD }; stamp(M, H.l - (big ? 2 : 1), t - M.length + 2, C);
+      stamp(M.map(function (r) { return r.split('').reverse().join(''); }), H.r - M[0].length + (big ? 3 : 2), t - M.length + 2, C); }
+    else if (tell === 'wojak') { p(ex - 1, ey - 1, CXI.ink); p(ex, ey - 2, CXI.ink); if (big) p(ex + 1, ey - 2, CXI.ink); p(ex - 1, ey + 1, CXI.tear); if (big) { p(ex - 1, ey + 2, CXI.tear); p(ex - 2, ey + 1, CXI.white); } } /* sad brow + a tear */
+    else if (tell === 'chud') glasses(CXI.ink); /* the beard is gear, not his part */
+    else if (tell === 'nakamoto') glasses(CXI.wire, '#e8f4ff');
+    else if (tell === 'kevin') { for (var kx = ex - (big ? 2 : 1); kx <= ex; kx++) { p(kx, ey - 1, cxDk(bd, 0.5)); p(kx, ey + 1, CXI.bag); } if (big) p(ex - 1, ey, cxDk(bd, 0.35)); } /* heavy lids, eye bags */
+    else if (tell === 'lenny') { p(ex - 2, ey - 2, CXI.ink); p(ex - 1, ey - 3, CXI.ink); p(ex, ey - 3, CXI.ink); if (big) p(ex + 1, ey - 2, CXI.ink); p(ex - 1, ey, cxDk(bd, 0.4)); p(ex - 2, ey + 3, CXI.ink); p(ex - 1, ey + 3, CXI.ink); p(ex, ey + 2, CXI.ink); } /* raised brow, half lid, smirk */
+    else if (tell === 'dodo') { var by2 = ey + (big ? 1 : 1), bl = big ? 5 : mid ? 4 : 3, bx0 = H.r; for (var i = 0; i < bl; i++) { p(bx0 + i, by2, '#d8c8a0'); if (big || mid) p(bx0 + i, by2 + 1, i === bl - 1 ? '#8a7a5a' : '#c8b88a'); }
+      p(bx0 + bl, by2 + 1, '#8a7a5a'); if (big) p(bx0 + bl, by2 + 2, '#8a7a5a'); p(bx0, by2 - 1, ac); p(bx0 + 1, by2 - 1, ac); } /* the hooked dodo beak with a red cere */
+    else if (tell === 'snibby' && H.foot) { var fx = H.foot[0], fy = H.foot[1]; [[1, 0], [1, -1], [1, -2]].slice(0, big ? 3 : 2).forEach(function (d) { p(fx + d[0], fy + d[1], '#fff6d0'); p(fx + d[0] + 1, fy + d[1], CXI.ink); }); } /* claws */
+    else if (tell === 'sarutobi' && H.back) { var tx = H.back[0] - 1, ty = H.back[1], TL = big ? [[0, 0], [-1, 0], [-2, -1], [-3, -2], [-3, -3], [-3, -4], [-2, -5], [-1, -5], [0, -4]] : [[0, 0], [-1, -1], [-2, -2], [-1, -3]];
+      TL.forEach(function (d, i) { p(tx + d[0], ty + d[1], i % 2 ? cxLt(bd, 0.25) : cxLt(bd, 0.12)); }); } /* curled monkey tail */
+    else if (tell === 'wizard') hat({ m: CXI.blue, l: CXI.blueL, d: CXI.blueD, s: CXI.star });
+    else if (tell === 'funtrump') swoop({ h: CXI.ft, H: CXI.ftL, d: CXI.ftD });
+    else if (tell === 'viking') { var hw2 = Math.max(2, Math.floor(H.w / 2) + (big ? 1 : 0)); for (var r2 = 0; r2 < (big ? 3 : 2); r2++) for (var x3 = cx - hw2 + r2; x3 <= cx + hw2 - r2; x3++) p(x3, t - r2, r2 === 0 && (x3 === cx - hw2 || x3 === cx + hw2) ? CXI.steelD : x3 < cx ? CXI.steel : CXI.steelD);
+      var hn = big ? [[-1, 0], [-2, 0], [-3, -1], [-3, -2]] : [[-1, 0], [-2, -1]]; hn.forEach(function (d) { p(cx - hw2 + d[0], t + d[1] - 1, CXI.horn); p(cx + hw2 - d[0], t + d[1] - 1, CXI.horn); });
+      beardB({ b: CXI.beard, B: CXI.beardD, d: CXI.beardD }); } /* horned helmet + braided beard */
+    else if (tell === 'kekamozard') { hat({ m: CXI.blue, l: CXI.blueL, d: CXI.blueD, s: CXI.star }); glasses(CXI.wire, '#e8f4ff'); }
+    else if (tell === 'don') { swoop({ h: CXI.ft, H: CXI.ftL, d: CXI.ftD }); glasses(CXI.wire, '#e8f4ff'); }
+    return put; }
+  function crossOutline(g, put, ink) { var o = {}; put.forEach(function (q) { o[q[0] + ',' + q[1]] = 1; });
+    put.forEach(function (q) { [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var X = q[0] + d[0], Y = q[1] + d[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && !g[Y][X] && !o[X + ',' + Y]) g[Y][X] = ink; }); }); }
+  /** crossDraw(cross, stage, frame, gear): 32x32 grid of hex colours. cross = { body: 'bojackson' | 'rarepigeon', col: colour root, tell: tell id } (rules art.cross). */
+  function crossDraw(cx, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, body = cx.body === 'rarepigeon' ? 'rarepigeon' : 'bojackson';
+    var base = body === 'bojackson' ? boDraw(s, f, null) : rpDraw(s, f, null), P = crossPal(body, cx.col, s), g = base.map(function (r) { return r.map(function (k) { return k ? (P[k] || k) : null; }); });
+    if (s > 0) { var H = crossHead(base, body); var put = crossTell(g, cx.tell, s, H, cx.col); crossOutline(g, put, body === 'bojackson' ? PAL.bojackson.y : PAL.rarepigeon.a); }
+    if (s > 0 && gear && Object.keys(gear).length) { var wg = body === 'bojackson' ? boDraw(s, f, gear) : rpDraw(s, f, gear), WP = PAL[body];
+      for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (wg[y][x] !== base[y][x] && wg[y][x]) g[y][x] = WP[wg[y][x]] || wg[y][x]; } /* worn gear on top, in its own colours */
+    return g; }
+  function crossName(cx) { var who = CROSS_LABEL[cx.tell] || CROSS_LABEL[cx.col] || 'Cross'; return who + (cx.body === 'rarepigeon' ? ' Pigeon' : ' Bo'); }
+  function crossFrames(cx, stage, bg, gear) { return [0, 1, 2, 3].map(function (f) { return toImg(crossDraw(cx, stage, f, gear), {}, bg); }); }
+  var CROSS = { draw: crossDraw, frames: crossFrames, name: crossName, CANON: CROSS_CANON, LABEL: CROSS_LABEL, TELLS: Object.keys(CROSS_LABEL) };
+  return { CROSS: CROSS, BORP: BORP, STAGES: STAGES, NAMES: NAMES, PAL: PAL, DIM: DIM, draw: draw, render: render, frames: frames, anchors: anchors, SPECIES: Object.keys(NAMES) };
 });

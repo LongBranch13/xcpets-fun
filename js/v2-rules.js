@@ -773,7 +773,45 @@
     lukespam: { place: 3, name: 'Luke Spam Junior', title: 'Meme Contest 3rd Place' } };
   var CONTEST_TO = { starlordkek: null, gooby: null, lukespam: null }; /* winners' addresses: owner names them (open question) */
   function contestOn(b) { return ACTIVATE_CONTEST_EGGS_BLOCK != null && b != null && b >= ACTIVATE_CONTEST_EGGS_BLOCK; }
-  function isContestSp(sp) { return !!CONTEST[sp] || sp === 'bojackson' || sp === 'rarepigeon'; }
+  function isContestSp(sp) { return !!CONTEST[sp] || sp === 'bojackson' || sp === 'rarepigeon' || sp === 'borp'; }
+  /* BO PIGEON (owner Oct 31 2026 9:49 AM CT, branch borp-twins, PREVIEW; null = OFF): a baby of Bo Jackson times Rarepigeon (the two 1 of 1s bred together, either
+   * order) gets its own body, species 'borp' ('Bo Pigeon': Rarepigeon's pigeon shape in Bo's #34 kit, drawn by ContestSprite), instead of the random plain
+   * species contestParents gives two contest parents. Looks only: same draws, tier (Legendary times Legendary), stats, name and marks as before; no new RNG.
+   * A Bo Pigeon breeds like the 1 of 1s (a copy of the partner's species; with another contest pet, a random plain species). Never a 1 of 1. */
+  var ACTIVATE_BORP_BLOCK = null;
+  function borpOn(b) { return ACTIVATE_BORP_BLOCK != null && b != null && b >= ACTIVATE_BORP_BLOCK; }
+  function isBorpPair(A, B) { return !!A && !!B && ((A.species === 'bojackson' && B.species === 'rarepigeon') || (A.species === 'rarepigeon' && B.species === 'bojackson')); }
+  /* 1 OF 1 CROSSES (owner Nov 1 2026 7:36 PM CT "we should do this for all pets ... All that", branch allpets-crosses-1101, PREVIEW; null = OFF): every baby
+   * with a 1 of 1 parent gets a custom cross body, like the Bo Pigeon. Looks only: no new draws on any existing stream, same species / tier / stats / name.
+   *  - Bo Jackson or Rarepigeon times any other pet (plain, community, hybrid, Viking, Kekamozard, Don): art.cross = { body, col, tell }; ContestSprite.CROSS
+   *    draws Bo's #34 kit or the pigeon in the partner's colours with the partner's tell (a hybrid partner: colours of its colour root, tell of its shape root).
+   *  - Bo Jackson times Rarepigeon stays the Bo Pigeon ('borp', ACTIVATE_BORP_BLOCK).
+   *  - two hybrid-engine 1 of 1s (Viking, Lord Kekamozard, Don Kekamoto): a fixed hybrid plan (CROSS_PLANS) mixing both signatures, drawn by the hybrid engine.
+   *  - one of Viking / Kekamozard / Don times a normal pet already gets a hybrid body from the live engine (Viking line, supreme lineage): unchanged.
+   *  - contest pets (Star-Lord Kek, Gooby, Luke Spam Jr, never granted) and Bo Pigeons as partners: not covered (art unchanged). */
+  var ACTIVATE_ONEOFONE_CROSS_BLOCK = null;
+  function crossOn(b) { return ACTIVATE_ONEOFONE_CROSS_BLOCK != null && b != null && b >= ACTIVATE_ONEOFONE_CROSS_BLOCK; }
+  var CROSS_TELL_OF = { archmage: 'kekamozard', don: 'don' }, CROSS_COL_OF = { kekamozard: 'wizard', don: 'kek', viking: 'viking' };
+  var CROSS_PLANS = {
+    'don+kekamozard': { name: 'Kekamozard Don', key: 'hyb3:nakamoto:wizard:funtrump', shape: 'funtrump', color: 'wizard', featSp: 'nakamoto', parts: [{ sp: 'wizard', part: 'hat' }, { sp: 'nakamoto', part: 'glasses' }] },
+    'kekamozard+viking': { name: 'Viking Kekamozard', key: 'hyb3:viking:wizard:kek', shape: 'kek', color: 'viking', featSp: 'nakamoto', parts: [{ sp: 'viking', part: 'horns' }, { sp: 'viking', part: 'beard' }, { sp: 'nakamoto', part: 'glasses' }] },
+    'don+viking': { name: 'Viking Don', key: 'hyb3:viking:kek:funtrump', shape: 'funtrump', color: 'viking', featSp: 'nakamoto', parts: [{ sp: 'viking', part: 'beard' }, { sp: 'nakamoto', part: 'glasses' }] } };
+  function crossOneId(P) { if (!P) return null; if (P.species === 'bojackson' || P.species === 'rarepigeon' || P.species === 'viking') return P.species;
+    if (P.supreme && P.supreme.of === 1) return CROSS_TELL_OF[P.supreme.id] || (P.supreme.id === 'viking' ? 'viking' : null); return null; }
+  function crossPartner(P) { var id = crossOneId(P); if (id === 'viking' || id === 'kekamozard' || id === 'don') return { col: CROSS_COL_OF[id], tell: id };
+    if (!P || isContestSp(P.species) || P.contest) return null; var h = P.art && P.art.hybrid; if (h && h.shape && h.color) return { col: h.color, tell: h.shape };
+    if (isHybrid(P.species)) { var r = hybridRoots(P.species); return { col: r[1] || r[0], tell: r[0] }; } return { col: P.species, tell: P.species }; }
+  function crossOf(A, B) { var oa = crossOneId(A), ob = crossOneId(B), BODY = { bojackson: 1, rarepigeon: 1 }; if (!oa && !ob) return null;
+    if (BODY[oa] && BODY[ob]) return null; /* Bo Pigeon: ACTIVATE_BORP_BLOCK */
+    if (BODY[oa] || BODY[ob]) { var body = BODY[oa] ? oa : ob, L = crossPartner(BODY[oa] ? B : A); return L ? { body: body, col: L.col, tell: L.tell } : null; }
+    if (oa && ob && oa !== ob) { var k = [oa, ob].sort().join('+'); return CROSS_PLANS[k] ? { plan: k } : null; }
+    return null; }
+  var CROSS_NAMES = { pepe: 'Pepe', wojak: 'Wojak', chud: 'Chud', bobo: 'Bobo', mumu: 'Mumu', snibby: 'Snibby', dodo: 'Dodo', kevin: 'Kevin', peepo: 'Peepo', sarutobi: 'Sarutobi', doge: 'Doge', lenny: 'Lenny', nakamoto: 'Nakamoto', kek: 'Kek', wizard: 'Wizard', funtrump: 'FUNTRUMP', homer: 'Homer', viking: 'Viking', kekamozard: 'Kekamozard', don: 'Don' };
+  function crossLabel(x) { if (!x) return ''; if (x.plan) return CROSS_PLANS[x.plan] ? CROSS_PLANS[x.plan].name : x.plan; return (CROSS_NAMES[x.tell] || x.tell) + (x.body === 'rarepigeon' ? ' Pigeon' : ' Bo'); }
+  /** crossLook(A, B, art, hex, b): writes the cross body on the baby's art (looks only; the plan copy reads its own stream via hybridPlan0). */
+  function crossLook(A, B, art, hex, b) { var x = crossOf(A, B); if (!x) return; if (x.body) { art.cross = x; return; }
+    var D = CROSS_PLANS[x.plan], plan = art.hybrid ? JSON.parse(JSON.stringify(art.hybrid)) : hybridPlan0(sha(hex + ':cross'), D.key); plan.shape = D.shape; plan.color = D.color; plan.featSp = D.featSp;
+    plan.parts = D.parts.map(function (q) { return Object.assign({}, q); }); if (hybridFixOn(b)) plan.fix = 1; delete plan.legMix; art.species = D.shape; art.hybrid = plan; art.cross = x; }
   function contestArt(gh, id, gate) { var seed = 'XCPETS:contest:' + id, art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: gate }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
     Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = Math.max(1, art.baseStats[k] + d); }); art.tierIndex = 3; art.tier = L1.id;
     art.species = id; art.defaultName = CONTEST[id].name; return { art: noBornShades(art), seed: seed }; }
@@ -2277,7 +2315,7 @@
       if (k.hybrid && k.hybrid.roots && Rx() % JACKPOT.legMix1In === 0) { var pool2 = PetCore.SPECIES.map(function (x) { return x.id; }).filter(function (x) { return k.hybrid.roots.indexOf(x) < 0; }), third = pool2[Rx() % pool2.length], LL = partsFor(k.hybrid.shape, third);
         k.hybrid.legMix = third; k.hybrid.featSp = third; k.hybrid.parts = (k.hybrid.parts || []).concat(LL.length ? [{ sp: third, part: LL[Rx() % LL.length].id }] : []); }
       return k; }
-    var kid = one(tag); if (R() % JACKPOT.twin1In === 0) { var tw = one(tag + ':twin'); tw.twinOf = kid.id; kid.twinOf = tw.id; } return kid; }
+    var kid = one(tag); if (R() % JACKPOT.twin1In === 0) { var tw = one(tag + ':twin'); tw.twinOf = kid.id; kid.twinOf = tw.id; if (twinAlikeOn(b)) twinAlike(kid, tw, hx); } return kid; }
   /** questSettle(w, b, hashes, L): every quest whose return block is <= b and whose hash is known comes home (block order, then pet id). */
   function questSettle(w, b, hashes, L) { if (!questOn(b) || !w.questsOut || !w.questsOut.length) return;
     var due = w.questsOut.filter(function (q) { return q.end <= b && hashes[q.end]; }); if (!due.length) return;
@@ -3457,7 +3495,7 @@
    * only labels shown to players use hybridLabel(). */
   var HYBRID_DISPLAY = { 'hyb3:nakamoto:kek:funtrump': 'Trukekamoto' };
   function hybridLabel(sp) { return HYBRID_DISPLAY[sp] || hybridName(sp); }
-  function speciesLabel(sp) { if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
+  function speciesLabel(sp) { if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
@@ -4131,6 +4169,25 @@
     toxic: { label: 'Radioactive Kek', ramp: ['#1b3300', '#39ff14', '#b4ff00', '#f0ffb0'] }, sunset: { label: 'WAGMI Sunset', ramp: ['#3d0c45', '#e8505b', '#f9a03f', '#ffe29a'] },
     shadow: { label: 'Burn Ash', ramp: ['#0d0d12', '#2e2a3d', '#5b5470', '#9a90b5'] }, rarepepe: { label: 'Rare Pepe', ramp: ['#0f3d0f', '#3c9a2e', '#7ed957', '#d8ffb0'] } };
   function twinDraw(hex) { return stream('XCPETS:v2:twins:' + hex)() % TWIN_1_IN === 0; }
+  /* TWINS ALIKE (owner Oct 31 2026 9:49 AM CT on borp-twins; Nov 1 7:36 PM CT "we should do this for all pets", branch allpets-crosses-1101, PREVIEW; null = OFF):
+   * every twin pair in the game comes out nearly identical: breed twins AND jackpot / ambush twins (jackpotEgg). The twin is still rolled exactly as before
+   * (twinDraw and every existing stream untouched, so twin odds and every other pet are unchanged), then takes its sibling's body: species, tier, hybrid plan +
+   * parts (+ legendary mix), 1 of 1 cross body, palette / pattern / eyes, mutation, hidden trait and look fix. It keeps its own name, pet id and its own rare tier
+   * roll (no extra rare tiers minted). The small differences come from ONE new stream 'XCPETS:v2:twin-alike:' + breed hash: each stat is the sibling's
+   * -1 / 0 / +1, and ONE look detail differs (eyes, pattern or cheeks; never above the twin's tier, never born shades). */
+  var ACTIVATE_TWIN_ALIKE_BLOCK = null;
+  function twinAlikeOn(b) { return ACTIVATE_TWIN_ALIKE_BLOCK != null && b != null && b >= ACTIVATE_TWIN_ALIKE_BLOCK; }
+  function twinAlike(kid, tw, hex) { var R = stream('XCPETS:v2:twin-alike:' + hex), cp = function (o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }, art = cp(kid.art), own = tw.art || {};
+    art.defaultName = own.defaultName; ['rareTier', 'rareSide', 'dynast'].forEach(function (k) { if (own[k] != null) art[k] = cp(own[k]); else delete art[k]; }); /* its own rare tier roll */
+    tw.species = kid.species; tw.tier = kid.tier; if (kid.hybrid) tw.hybrid = art.hybrid; else delete tw.hybrid;
+    var st = {}; Object.keys(kid.stats).forEach(function (k) { st[k] = Math.max(1, kid.stats[k] + (R() % 3) - 1); }); tw.stats = st; art.baseStats = Object.assign({}, st);
+    ['mutation', 'hidden', 'shows', 'oddEye', 'breedBonus', 'traitCap', 'lookFix'].forEach(function (k) { if (kid[k] != null) tw[k] = cp(kid[k]); else delete tw[k]; });
+    var kinds = ['eyes', 'pattern', 'cheeks'], kd = kinds[R() % kinds.length], x = R(), from, to;
+    function other(pool, cur, skip) { var ok = (pool || []).filter(function (o) { return o.t <= tw.tier && o.id !== cur && (skip || []).indexOf(o.id) < 0; }); return ok.length ? ok[x % ok.length].id : null; }
+    if (kd === 'eyes') { var he = art.hybrid && art.hybrid.eyes != null; from = he ? art.hybrid.eyes : art.eyes; to = other(PetCore.EYES, from, ['beady']); if (to) { if (he) art.hybrid.eyes = to; else art.eyes = to; } }
+    else if (kd === 'pattern') { from = art.pattern; to = other(PetCore.PATTERNS, from); if (to) art.pattern = to; }
+    else { var CK = ['blush', 'none', 'freckles', 'tears'], c0 = art.cheeks === true ? 'blush' : (!art.cheeks ? 'none' : String(art.cheeks)), oc = CK.filter(function (q) { return q !== c0; }); from = c0; to = oc[x % oc.length]; art.cheeks = to; } /* PetCore cheeks ids */
+    tw.art = art; tw.twinAlike = { trait: kd, from: from, to: to == null ? from : to }; return tw; }
   function breedExtras(A, B, hex, kid, b) { var fx = hybridFixOn(b) || (vikingOn(b) && hybridRoots(kid.species).indexOf('viking') >= 0); if (fx) kid.lookFix = 1; /* fix: frost + palette also on pale bodies (lookFx) */
     var Rm = stream('XCPETS:v2:mutation:' + hex); if (Rm() % MUTATION_1_IN === 0) kid.mutation = { kind: Rm() % 2 ? 'glitch' : 'palette', hue: 60 + Rm() % 241, seed: Rm() }; if (kid.mutation && kid.mutation.kind === 'palette') { var PK = Object.keys(PALETTE_SETS); kid.mutation.set = PK[stream('XCPETS:v2:hybrid-parts:' + hex + ':palette')() % PK.length]; } /* looks only */
     var Rh = stream('XCPETS:v2:hidden:' + hex), car = [A, B].filter(function (p) { return p.hidden; });
@@ -4164,7 +4221,8 @@
     if (kids.some(function (c) { return isHybrid(c.species); })) out.push({ id: 'mad-scientist', icon: '\uD83E\uDDEA', name: 'MAD SCIENTIST', tip: 'Made a hybrid' });
     if (Object.keys(mates).length >= 3) out.push({ id: 'single-mother', icon: '\uD83D\uDC5C', name: 'SINGLE MOTHER', tip: 'Children with 3+ different partners' });
     if (kids.some(function (c) { return c.twinOf; })) out.push({ id: 'twin-parent', icon: '\uD83D\uDC6F', name: 'TWIN PARENT', tip: 'Had twins' });
-    if (p.twinOf) out.push({ id: 'twin', icon: '\u264A', name: 'TWIN', tip: 'Twin of #' + p.twinOf });
+    if (p.twinOf) out.push({ id: 'twin', icon: '\u264A', name: 'TWIN', tip: 'Twin of #' + p.twinOf + (p.twinAlike ? ' (identical but for its ' + p.twinAlike.trait + ')' : '') });
+    if (p.art && p.art.cross) out.push({ id: 'cross', icon: '\u2728', name: '1 OF 1 CROSS', tip: crossLabel(p.art.cross) + ' body' });
     if (p.art && p.art.rareTier && RARE_TIER_LABEL[p.art.rareTier]) out.push({ id: 'rare-' + p.art.rareTier, icon: '\u2728', name: RARE_TIER_LABEL[p.art.rareTier].toUpperCase(), tip: 'Rare hybrid tier: ' + RARE_TIER_LABEL[p.art.rareTier] }); /* RARE HYBRID TIERS (display only; nothing has it while the gate is null) */
     if (p.mutation) out.push({ id: 'mutant', icon: '\uD83E\uDDEC', name: 'MUTANT', tip: mutationLabel(p.mutation) + ' (1 in ' + MUTATION_1_IN + ')' });
     if (p.hybrid && p.hybrid.legMix) out.push({ id: 'leg-mix', icon: '\uD83D\uDC51', name: 'LEGENDARY MIX', tip: 'Three-way look with ' + speciesLabel(p.hybrid.legMix) });
@@ -4177,7 +4235,7 @@
     if (p.shows) out.push({ id: 'throwback', icon: '\uD83E\uDDEC', name: 'THROWBACK', tip: hiddenLabel(p.shows) + ' (skipped a generation)' });
     return out; }
   /** oddEyeHand(p, frame, eye, data, sil): pixels [{j, r}] of the hand-placed odd eye for this pet, or null (no spot, or it does not sit on eye pixels here). */
-  function oddEyeHand(p, fi, eye, d, sil) { if (!p || !p.art || p.stage == null || p.stage < 1) return null;
+  function oddEyeHand(p, fi, eye, d, sil) { if (!p || !p.art || p.stage == null || p.stage < 1 || (p.art.cross && p.art.cross.body)) return null; /* a 1 of 1 cross body is drawn by ContestSprite: no hand spot */
     var sp = p.art.hybrid ? p.art.hybrid.shape : (p.art.species || p.species), E = ODD_EYE_SPOTS[sp] && ODD_EYE_SPOTS[sp][Math.min(5, p.stage)]; if (!E) return null; E = E[eye ? 1 : 0];
     var dy = 0; try { var m0 = keyedRender(sp, p.art, { stage: p.stage, frame: 0 }).keys, m1 = fi ? keyedRender(sp, p.art, { stage: p.stage, frame: fi }).keys : m0, best = -1;
       if (fi) for (var s = -3; s <= 3; s++) { var sc = 0; for (var j = 0; j < 1024; j++) { var y = (j >> 5) + s; if (y < 0 || y > 31 || y >= GROUND_ROW) continue; if (!!m0[j] === !!m1[y * 32 + (j & 31)]) sc++; } if (sc > best || (sc === best && Math.abs(s) < Math.abs(dy))) { best = sc; dy = s; } } } catch (e) { dy = 0; }
@@ -4220,7 +4278,7 @@
           if (ring[3]) { var av = [ring[0] / ring[3], ring[1] / ring[3], ring[2] / ring[3]]; if (dist(OC, av) < 110) { var dk = shadeRgb(OC, 0.62), lt = OC.map(function (n) { return Math.round(n + (255 - n) * 0.55); }); OCh = dist(dk, av) >= dist(lt, av) ? dk : lt; } } /* odd colour too close to the fur around the eye (gold on Snibby): darker or lighter, whichever reads */
           HS.forEach(function (q) { set(q.j, q.r === 'g' ? [255, 255, 255] : q.r === 'p' ? shadeRgb(OCh, 0.45) : OCh); });
           return Object.assign({}, f, { data: d }); }
-        var EB = null, KRk = null; if (p.art) try { var spK = p.art.hybrid ? p.art.hybrid.shape : (p.art.species || p.species), KR = keyedRender(spK, p.art, { stage: p.stage == null ? 3 : p.stage, frame: fi }), AK = anatomy(KR.keys); KRk = []; for (var jk = 0; jk < 1024; jk++) if (KR.keys[jk] === 'eye' || KR.keys[jk] === 'pupil' || KR.keys[jk] === 'white' || (KR.keys[jk] === 'ink' && AK.eyeBox && (jk >> 5) >= AK.eyeBox.t && (jk >> 5) <= AK.eyeBox.b + 1)) KRk.push(jk); if (AK.eyeBox && AK.eyeBox.w >= 3 && KRk.length) EB = AK.eyeBox; else if (p.stage >= 4) { var KR4 = keyedRender(spK, p.art, { stage: 3, frame: fi }), A4 = anatomy(KR4.keys); if (A4.eyeBox) { var dyE = AK.bb.t - A4.bb.t; KRk = []; for (var j4k = 0; j4k < 1024; j4k++) if (KR4.keys[j4k] === 'eye' || KR4.keys[j4k] === 'pupil' || KR4.keys[j4k] === 'white') { var tq = j4k + dyE * 32; if (tq >= 0 && tq < 1024) KRk.push(tq); } EB = { l: A4.eyeBox.l, r: A4.eyeBox.r, t: A4.eyeBox.t + dyE, b: A4.eyeBox.b + dyE, w: A4.eyeBox.w, h: A4.eyeBox.h }; } } } catch (e) { EB = null; }
+        var EB = null, KRk = null; if (p.art && !(p.art.cross && p.art.cross.body)) try { var spK = p.art.hybrid ? p.art.hybrid.shape : (p.art.species || p.species), KR = keyedRender(spK, p.art, { stage: p.stage == null ? 3 : p.stage, frame: fi }), AK = anatomy(KR.keys); KRk = []; for (var jk = 0; jk < 1024; jk++) if (KR.keys[jk] === 'eye' || KR.keys[jk] === 'pupil' || KR.keys[jk] === 'white' || (KR.keys[jk] === 'ink' && AK.eyeBox && (jk >> 5) >= AK.eyeBox.t && (jk >> 5) <= AK.eyeBox.b + 1)) KRk.push(jk); if (AK.eyeBox && AK.eyeBox.w >= 3 && KRk.length) EB = AK.eyeBox; else if (p.stage >= 4) { var KR4 = keyedRender(spK, p.art, { stage: 3, frame: fi }), A4 = anatomy(KR4.keys); if (A4.eyeBox) { var dyE = AK.bb.t - A4.bb.t; KRk = []; for (var j4k = 0; j4k < 1024; j4k++) if (KR4.keys[j4k] === 'eye' || KR4.keys[j4k] === 'pupil' || KR4.keys[j4k] === 'white') { var tq = j4k + dyE * 32; if (tq >= 0 && tq < 1024) KRk.push(tq); } EB = { l: A4.eyeBox.l, r: A4.eyeBox.r, t: A4.eyeBox.t + dyE, b: A4.eyeBox.b + dyE, w: A4.eyeBox.w, h: A4.eyeBox.h }; } } } catch (e) { EB = null; }
         if (EB) { var mid = (EB.l + EB.r) / 2, REG = {}, KK = KRk || [], RW = [], RK = []; /* the pet's own eye pixels (keyed render), the chosen side, grown by 1 */
           KK.forEach(function (q) { var x = q & 31; if ((x > mid) !== !!OE.eye) return; for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) { var n = q + oy * 32 + ox; if (n >= 0 && n < 1024 && Math.abs(((n & 31) - x)) <= 1) REG[n] = 1; } });
           Object.keys(REG).forEach(function (k2) { var q = +k2; if (!inner(q)) return; if (white(q)) RW.push(q); else if (d[q * 4] + d[q * 4 + 1] + d[q * 4 + 2] < 200 && KK.indexOf(q) >= 0) RK.push(q); });
@@ -4249,6 +4307,8 @@
     var bonus = hybridRateOn(b) && !c.hybrid && !isHybrid(A.species) && A.species === B.species ? bredTrueBonus(sha(bh + tx), art, c.tier, c.stats, fix) : null;
     if (b >= ACTIVATE_BO_BLOCK && [A, B].some(function (P) { return P.species === 'bojackson' || (P.art && P.art.boMark); })) { art.boMark = 1; } if (ACTIVATE_RP_BLOCK != null && b >= ACTIVATE_RP_BLOCK && [A, B].some(function (P) { return P.species === 'rarepigeon' || (P.art && P.art.rpMark); })) { art.rpMark = 1; } /* RAREPIGEON LINE (gated): looks only, teal neck sheen on every later generation */ /* BO LINE (gated): looks only, Bo's eye black under the eyes on Bo's babies AND every later generation (a parent carrying the mark passes it on); no stats, no draws, never a 1 of 1 */
     if (oneOfOneLooksOn(b)) { if ([A, B].some(function (P) { return P.species === 'rarepigeon' || (P.art && P.art.rpLook); })) art.rpLook = 1; if ([A, B].some(function (P) { return P.species === 'bojackson' || (P.art && P.art.boLook); })) art.boLook = 1; } /* PIGEON + BO LOOKS (gated, looks only, every generation) */
+    if (borpOn(b) && isBorpPair(A, B) && !c.hybrid) { c.species = 'borp'; art.species = 'borp'; } /* BO PIGEON (gated): Bo Jackson times Rarepigeon baby body, looks only */
+    if (crossOn(b)) crossLook(A, B, art, sha(bh + tx), b); /* 1 OF 1 CROSS (gated): looks only */
     var kid = mk(w, owner, noBornShades(art), b, 0, tx); kid.species = c.species; if (c.hybrid) kid.hybrid = art.hybrid; if (bonus) kid.breedBonus = bonus; if (capped && capped.length) kid.traitCap = capped; kid.parents = [A.id, B.id]; // no gear or care inherited: starts as an Egg (feed 69 to hatch)
     return kid;
   }
@@ -4259,7 +4319,7 @@
       (B.carried = B.carried || []).push({ from: A.id, species: A.species, stat: bk, value: A.stats[bk], block: b, child: kid.id }); } /* breed carry: parent B (accepting owner, no egg) */
     if (breedV2On(b)) { breedExtras(A, B, sha(bh + tx), kid, b); /* breeding v2 (own streams; nothing above moves) */
       if (twinDraw(sha(bh + tx))) { var tw = breedOne(w, A, B, bh, tx + ':twin', b, owner); [A, B].forEach(function (p) { p.children.push(tw.id); }); /* twins: ONE breed (counts once), second egg = next pet id */
-        tw.twinOf = kid.id; kid.twinOf = tw.id; breedExtras(A, B, sha(bh + tx + ':twin'), tw, b);
+        tw.twinOf = kid.id; kid.twinOf = tw.id; breedExtras(A, B, sha(bh + tx + ':twin'), tw, b); if (twinAlikeOn(b)) twinAlike(kid, tw, sha(bh + tx)); /* TWINS ALIKE (gated) */
         if (rareTiersOn(b) && kid.hybrid && tw.hybrid && rtRoll('gemini', sha(bh + tx))) [[kid, 'A'], [tw, 'B']].forEach(function (T) { if (T[0].art && !T[0].art.rareTier) { T[0].art.rareTier = 'gemini'; T[0].art.rareSide = T[1]; } }); } } /* GEMINI (gated): one roll for the pair */
     return kid;
   }
@@ -4546,7 +4606,10 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
+  return { ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
+    ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
+    ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
+    retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
     mythicUnleashGate: function () { return ACTIVATE_MYTHIC_UNLEASH_BLOCK; }, mgOn: mgOn, _setMythicUnleashActivation: _setMythicUnleashActivation, MG: MG, MG_COSTS: MG_COSTS, MG_NEVER_EAT: MG_NEVER_EAT,
