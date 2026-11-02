@@ -30,7 +30,7 @@ const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}); for (let b = nb; b < nb + 12; b++) if (!hashes[b]) hashes[b] = crypto.createHash('sha256').update('fake-block-' + b).digest('hex');
 const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = rows[rows.length - 1].tx_index + 1;
 const mk = (b, src, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('gtf-test:' + (seed || tag) + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: 1, tag: hex(tag), status: 'valid' });
-const G0 = V.spinTargetGate(); ok(G0 === 974276 && !V.spinTargetOn(G0 - 1) && V.spinTargetOn(G0), 'gate in the code: ACTIVATE_SPIN_TARGET_BLOCK = ' + G0 + ' (LIVE Nov 2 2026 [pt2654u]: tip 974270 + 6)');
+const G0 = V.spinTargetGate(); ok(G0 === 974279 && !V.spinTargetOn(G0 - 1) && V.spinTargetOn(G0), 'gate in the code: ACTIVATE_SPIN_TARGET_BLOCK = ' + G0 + ' (LIVE Nov 2 2026 [pt2654u]: tip 974273 + 6)');
 V._setSpinTargetActivation(null); /* the gate-off checks below run with the gate off at every block, whatever the boot tip is */
 const w = V.replay(rows, hashes, [], opts(tip));
 /* the grant note */

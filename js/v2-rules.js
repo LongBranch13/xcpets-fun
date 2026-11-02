@@ -1196,7 +1196,7 @@
     return Math.max(0, R.earned + ((w.fireSpins && w.fireSpins[a]) || 0) + overflowSpins(w, a, b) - R.used - pend); }
   function useAllSpinsPlan(n) { return { tag: 'pet:usespin:all', amount: COSTS.froll, n: n, all: true, label: 'Use all ' + (n != null ? n + ' ' : '') + 'saved spins' }; }
   function useSpinPlan(n) { n = Math.max(1, Math.min(SPINS_MAX_PER_BURN, n | 0)); return { tag: 'pet:usespin' + (n > 1 ? ':' + n : ''), amount: COSTS.froll, label: 'Use ' + n + ' saved spin' + (n === 1 ? '' : 's') }; }
-  /* PICKED-PET SPINS (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,276 [pt2654u]). Problem: pet:usespin:all sent every saved spin to a
+  /* PICKED-PET SPINS (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,279 [pt2654u]). Problem: pet:usespin:all sent every saved spin to a
    * random living pet of the signer (the wheel rule), and Discard only hides a pet in one browser, so 1,011 of the owner's 1,157 spins on
    * Nov 1 (tx 38a32dc6…, block 974,216) landed on pets he never fed. From ACTIVATE_SPIN_TARGET_BLOCK a saved spin lands ONLY on pets the player
    * picks in the burn itself:
@@ -1209,7 +1209,7 @@
    * From the same block pet:usespin, pet:usespin:N and pet:usespin:all (and the 'use all spins' part of pet:dc) are rejected with nothing spent:
    * the spins stay saved until the player picks pets. Paid pet:spin is unchanged. Before the gate pet:ut / pet:rw are unknown pet: tags
    * (community food) and every old tag replays exactly as before. Gate: null placeholder, set to tip + 6 at deploy. */
-  var ACTIVATE_SPIN_TARGET_BLOCK = 974276; /* LIVE Nov 2 2026 (owner 'Yes and yes' [pt2654u]): tip 974270 + 6 */
+  var ACTIVATE_SPIN_TARGET_BLOCK = 974279; /* LIVE Nov 2 2026 (owner 'Yes and yes' [pt2654u]): tip 974273 + 6 */
   var UT_PREFIX = 'pet:ut:', UT_MAX_N = 9999;
   function spinTargetOn(b) { return ACTIVATE_SPIN_TARGET_BLOCK != null && b != null && b >= ACTIVATE_SPIN_TARGET_BLOCK && spinsOn(b); }
   /** spinList(w, src, A, b): the signer's pets a pet:ut / pet:rw run counts over (like refList, but Mythics stay in: they wear gear too). */
@@ -1240,7 +1240,7 @@
     bodies.forEach(function (bd, j) { var c = j === bodies.length - 1 ? left : Math.max(1, Math.round(k * bd.ids.length / tot)); c = Math.min(c, left, UT_MAX_N); if (c < 1) return; left -= c;
       out.push({ tag: UT_PREFIX + c + ':' + aa + ':' + bd.body, amount: COSTS.froll, n: c, petIds: bd.ids, anchor: A, label: 'Use ' + c + ' saved spin' + (c === 1 ? '' : 's') + ' on ' + bd.ids.length + ' picked pet' + (bd.ids.length === 1 ? '' : 's') }); });
     out.forEach(function (p, j) { if (out.length > 1) p.label += ' (burn ' + (j + 1) + ' of ' + out.length + ')'; }); return out.length ? out : null; }
-  /* ONE-TIME RE-WEAR (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,276, owner + G Money [pt2654u]). REWEAR_GRANTS lists use-all burns whose pieces landed on
+  /* ONE-TIME RE-WEAR (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,279, owner + G Money [pt2654u]). REWEAR_GRANTS lists use-all burns whose pieces landed on
    * pets the signer never fed. While such a burn replays, the engine notes (w._rw, not part of any pet or item) which of its pieces went onto a
    * pet with no meal yet (lastFed null at that burn). From ACTIVATE_SPIN_TARGET_BLOCK the granted wallet may send ONE 1-sat
    *   pet:rw:AA:RUNS   (picked pets, same spin-list runs as pet:ut)
