@@ -66,4 +66,6 @@ In a browser, [verify-pet.html](https://xcpets.fun/verify-pet.html) does the sam
 
 ## License
 
-No license file yet, so default copyright applies. The source is public so anyone can check the game.
+- **Code:** MIT, see [LICENSE](LICENSE).
+- **Art, pet names and the XCPETS brand:** all rights reserved, see [LICENSE-ART.md](LICENSE-ART.md).
+- Fonts in `fonts/` keep their own SIL Open Font License.
