@@ -88,5 +88,16 @@ const tokPaintSafe = pg => { try { pg.win.V2PetCard.paint(); } catch (e) { } };
     ok(pg.sent.length === 1 && pg.sent[0].kind === 'issuance', 'no token anywhere: step 1 still mints (one wallet window, ' + (pg.sent[0] && pg.sent[0].kind) + ')'); }
   { const pg = page({ down: u => /:4000\//.test(u) }); pg.box(); await pg.flush(); pg.box(); const btn = pg.el('pcTokMint'); btn.disabled = false; btn.onclick(); for (let i = 0; i < 4; i++) await pg.flush();
     ok(pg.sent.length === 0 && /^Not sent: could not check the chain/.test(pg.el('pcTokMsg').textContent), 'chain unreadable at click time: nothing sent (' + pg.el('pcTokMsg').textContent.slice(0, 70) + ')'); }
+  /* 7) tokenize-cap-1102: an owner with MORE than 4 unbound tokens (bc1qfgqx… made 14 at 974170) - the pet's token is older than the 4 newest */
+  { const a = api0(), bal = a['/addresses/' + ME + '/balances'], OLD = TOK[2][0], d = id => ({ asset_info: { description: V.deedDesc(id) } });
+    const newer = ['A11111111111111111111', 'A12222222222222222222', 'A13333333333333333333', 'A14444444444444444444', 'A15555555555555555555'];
+    newer.forEach((A, i) => { a['/assets/' + A + '/issuances'] = iss(A, 974300 + i, 'n' + i, 70000 + i); });
+    a['/addresses/' + ME + '/balances'] = { result: newer.map((A, i) => Object.assign({ address: ME, asset: A, quantity: 1 }, d(70000 + i))).concat([Object.assign({ address: ME, asset: OLD, quantity: 1 }, d(ID))]) };
+    TOK.slice(0, 2).forEach(t => { delete a['/assets/' + t[0] + '/issuances']; });
+    const pg = page({ api: a }); const pd = await pg.T.chainPend(ID, ME, { deeds: {} });
+    ok(pd && pd.asset === OLD, '6th-newest token found by its description (was: only the 4 newest checked = step 1 again): ' + (pd && pd.asset));
+    ok(pg.calls.some(u => /balances\?limit=1000&verbose=true/.test(u)), 'balances read asks for asset_info (verbose=true)');
+    const pg2 = page({ api: Object.assign({}, a, { ['/addresses/' + ME + '/balances']: { result: newer.map(A => ({ address: ME, asset: A, quantity: 1 })).concat([{ address: ME, asset: OLD, quantity: 1 }]) } }) });
+    const pd2 = await pg2.T.chainPend(ID, ME, { deeds: {} }); ok(pd2 === null, 'no asset_info (older Core): same 4-newest look as before, no error'); void bal; }
   console.log('tokenize-retry: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
 })();

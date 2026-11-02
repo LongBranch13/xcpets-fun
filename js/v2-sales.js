@@ -279,8 +279,13 @@
     if (PREVIEW || !me) return Promise.resolve(have);
     var withTie = function (pd) { if (!pd || pd.tieTx) return pd; return chainTie(id, pd.asset, me).then(function (t) { if (t) { pd.tieTx = t.tieTx; pd.tieBlock = t.tieBlock; pend(id, pd); } return pd; }); };
     if (have) return withTie(have);
-    return coreJ('/addresses/' + me + '/balances?limit=1000').then(function (j) {
-      var as = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }).slice(0, 4).map(function (b) { return b.asset; });
+    /* tokenize-cap-1102 (Nov 2 2026): only the 4 newest unbound tokens were checked, so an owner who made more than 4 tokens before tying
+     * (bc1qfgqx… made 14 at 974170) saw step 1 again for the older pets (= a second token). verbose=true adds asset_info.description, so
+     * EVERY unbound token whose description names this pet is checked, plus the 4 newest as before (a superset of the old look). */
+    return coreJ('/addresses/' + me + '/balances?limit=1000&verbose=true').then(function (j) {
+      var cand = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }), seen = {};
+      var as = cand.filter(function (b) { return b.asset_info && V.deedDescOk(b.asset_info.description, id); }).concat(cand.slice(0, 4))
+        .map(function (b) { return b.asset; }).filter(function (A) { return seen[A] ? false : (seen[A] = 1); });
       var bad = null; /* tokenize-69321: a failed issuance read is "unknown", not "not this pet's token" */
       return Promise.all(as.map(function (A) { return coreJ('/assets/' + A + '/issuances?verbose=true').then(function (k) { var i = (k.result || []).filter(function (x) { return x.status == null || x.status === 'valid'; })[0];
         return i && !V.deedIssueWhy(i, id, me, 1e12) ? { petId: id, asset: A, mintTx: i.tx_hash, at: Number(i.block_index), fromChain: true } : null; }, function (e) { bad = bad || e; return null; }); }))
