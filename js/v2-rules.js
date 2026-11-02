@@ -1192,10 +1192,92 @@
   function overflowSpins(w, a, b) { var n = 0; (w.pets || []).forEach(function (p) { if (p.owner === a && !p.community) n += overflowLeft(w, p, b); }); return n; }
   /** spinsLeft(w, addr, b, pendingTags): saved spins left (earned + fire credits + overflow left - used - unconfirmed pet:usespin burns). */
   function spinsLeft(w, a, b, pendingTags) { if (!w || !a) return 0; b = b != null ? b : (w.tip || 0) + 1; if (!spinsOn(b)) return 0; var R = (w.spins && w.spins[a]) || { earned: 0, used: 0 },
-      pend = 0; (pendingTags || []).forEach(function (g) { var t = parseTag(g); if (t.action === 'usespin') pend += t.all ? Infinity : t.n; }); /* an unconfirmed pet:usespin:all spends them all */
+      pend = 0; (pendingTags || []).forEach(function (g) { var t = parseTag(g); if (t.action === 'usespin' || t.action === 'usespint') pend += t.all ? Infinity : t.n; }); /* an unconfirmed pet:usespin:all spends them all */
     return Math.max(0, R.earned + ((w.fireSpins && w.fireSpins[a]) || 0) + overflowSpins(w, a, b) - R.used - pend); }
   function useAllSpinsPlan(n) { return { tag: 'pet:usespin:all', amount: COSTS.froll, n: n, all: true, label: 'Use all ' + (n != null ? n + ' ' : '') + 'saved spins' }; }
   function useSpinPlan(n) { n = Math.max(1, Math.min(SPINS_MAX_PER_BURN, n | 0)); return { tag: 'pet:usespin' + (n > 1 ? ':' + n : ''), amount: COSTS.froll, label: 'Use ' + n + ' saved spin' + (n === 1 ? '' : 's') }; }
+  /* PICKED-PET SPINS (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,279 [pt2654u]). Problem: pet:usespin:all sent every saved spin to a
+   * random living pet of the signer (the wheel rule), and Discard only hides a pet in one browser, so 1,011 of the owner's 1,157 spins on
+   * Nov 1 (tx 38a32dc6…, block 974,216) landed on pets he never fed. From ACTIVATE_SPIN_TARGET_BLOCK a saved spin lands ONLY on pets the player
+   * picks in the burn itself:
+   *   pet:ut:N:AA:RUNS   N = how many saved spins (1-9999) or ALL; AA:RUNS = the picked pets, same anchor + runs encoding as pet:fr, counted
+   *                      in the signer's SPIN LIST at the anchor A: spinList(w, signer, A, b) = refList without the Mythic exclusion (pets the
+   *                      signer owned at A, hatched by A, not released by A, alive at A, sorted by pet number). Mythics can be picked.
+   *   Each spin is the same wheel rule as pet:usespin (seed tx + ':' + i, tier weights 1/2/4/8, pets with an open slot first), but the wheel
+   *   only holds the picked pets that are still the signer's, alive and not released at the burn. No picked pet left -> rejected, nothing spent.
+   *   More than the balance -> rejected whole (same as pet:usespin:N). ALL with 0 left -> rejected.
+   * From the same block pet:usespin, pet:usespin:N and pet:usespin:all (and the 'use all spins' part of pet:dc) are rejected with nothing spent:
+   * the spins stay saved until the player picks pets. Paid pet:spin is unchanged. Before the gate pet:ut / pet:rw are unknown pet: tags
+   * (community food) and every old tag replays exactly as before. Gate: null placeholder, set to tip + 6 at deploy. */
+  var ACTIVATE_SPIN_TARGET_BLOCK = 974279; /* LIVE Nov 2 2026 (owner 'Yes and yes' [pt2654u]): tip 974273 + 6 */
+  var UT_PREFIX = 'pet:ut:', UT_MAX_N = 9999;
+  function spinTargetOn(b) { return ACTIVATE_SPIN_TARGET_BLOCK != null && b != null && b >= ACTIVATE_SPIN_TARGET_BLOCK && spinsOn(b); }
+  /** spinList(w, src, A, b): the signer's pets a pet:ut / pet:rw run counts over (like refList, but Mythics stay in: they wear gear too). */
+  function spinList(w, src, A, b) { return w.pets.filter(function (p) { return !p.community && p.hatchBlock != null && p.hatchBlock <= A && frOwnedAt(w, p, src, A) && !(p.released && !(typeof p.released === 'number' && p.released > A)) && !frDeadAt(w, p, b, A); }).sort(function (x, y) { return x.id - y.id; }); }
+  /** runIds(list, runs): pet numbers at the taken places (skip, take, skip, take…). */
+  function runIds(list, runs) { var o = [], pos = 0; for (var q = 0; q < runs.length; q++) { if (q % 2 === 0) { pos += runs[q]; continue; } for (var j = 0; j < runs[q] && pos < list.length; j++) o.push(list[pos++].id); } return o; }
+  /** targetIds(w, src, t, b): the picked pet numbers of a parsed pet:ut / pet:rw tag landing at block b. */
+  function targetIds(w, src, t, b) { return t && t.runs ? runIds(spinList(w, src, frAnchor(b, t.a), b), t.runs) : []; }
+  /** targetPool(w, src, ids, b): the wheel for a picked-pet spin = picked pets still the signer's, alive, not released (open slot first, like wheelPool). */
+  function targetPool(w, src, ids, b) { var S = new Set(ids), L = wheelPets(w, src, b, true).filter(function (p) { return S.has(p.id); }), o = L.filter(function (p) { return (p.openSlots || []).length > 0; }); return o.length ? o : L; }
+  /** runBodies(ref, ids, bodyMax): pack the picked pets (all must be in ref) into run bodies of <= bodyMax characters; null if one is not in ref. */
+  function runBodies(ref, ids, bodyMax) { var want = new Set(ids), v = ref.map(function (p) { return want.has(p.id) ? 1 : 0; }); if (v.reduce(function (a, x) { return a + x; }, 0) !== want.size) return null;
+    var blocks = [], i; for (i = 0; i < v.length; i++) if (v[i] === 1) { var s0 = i; while (i < v.length && v[i] === 1) i++; blocks.push([s0, i - s0]); }
+    var out = [], cur = null; function close() { if (cur) out.push({ body: cur.body, ids: cur.ids }); cur = null; }
+    blocks.forEach(function (bk) { var bi = []; for (var q = bk[0]; q < bk[0] + bk[1]; q++) bi.push(ref[q].id); var add = cur ? frVar(bk[0] - cur.end) + frVar(bk[1]) : null;
+      if (cur && cur.body.length + add.length <= bodyMax) { cur.body += add; cur.ids = cur.ids.concat(bi); cur.end = bk[0] + bk[1]; return; }
+      close(); cur = { body: frVar(bk[0]) + frVar(bk[1]), ids: bi, end: bk[0] + bk[1] }; });
+    close(); return out; }
+  /** spinTargetPlans(w, owner, ids, n, nb) -> 1-sat pet:ut plans that spend n saved spins (n = 'all' or a number) on exactly the picked pets, or
+   * null (gate off / nothing picked / a picked pet not in the spin list). One burn if the picks fit 34 bytes; otherwise the spins are split over
+   * the burns by how many pets each burn holds (every count written out, so each burn is exact). */
+  function spinTargetPlans(w, owner, ids, n, nb) { var A = w && w.tip; if (A == null || !owner || !ids || !ids.length) return null; nb = nb != null ? nb : A + 1; if (!spinTargetOn(nb)) return null;
+    var have = spinsLeft(w, owner, nb), all = n === 'all' || n == null, k = all ? have : Math.min(have, Math.max(0, n | 0)); if (!(k > 0)) return null;
+    var code = A % FR_ANCHOR_MOD, aa = (code < 32 ? '0' : '') + code.toString(32).toUpperCase(), ref = spinList(w, owner, A, nb);
+    var nTag = all ? 'ALL' : String(Math.min(k, UT_MAX_N)), one = runBodies(ref, ids, MAX_TAG_BYTES - UT_PREFIX.length - nTag.length - 1 - 3); if (!one) return null;
+    if (one.length === 1) return [{ tag: UT_PREFIX + nTag + ':' + aa + ':' + one[0].body, amount: COSTS.froll, n: k, all: all, petIds: one[0].ids, anchor: A, label: (all ? 'Use all ' + k : 'Use ' + k) + ' saved spin' + (k === 1 ? '' : 's') + ' on ' + one[0].ids.length + ' picked pet' + (one[0].ids.length === 1 ? '' : 's') }];
+    var bodies = runBodies(ref, ids, MAX_TAG_BYTES - UT_PREFIX.length - 4 - 1 - 3), tot = ids.length, left = k, out = [];
+    bodies.forEach(function (bd, j) { var c = j === bodies.length - 1 ? left : Math.max(1, Math.round(k * bd.ids.length / tot)); c = Math.min(c, left, UT_MAX_N); if (c < 1) return; left -= c;
+      out.push({ tag: UT_PREFIX + c + ':' + aa + ':' + bd.body, amount: COSTS.froll, n: c, petIds: bd.ids, anchor: A, label: 'Use ' + c + ' saved spin' + (c === 1 ? '' : 's') + ' on ' + bd.ids.length + ' picked pet' + (bd.ids.length === 1 ? '' : 's') }); });
+    out.forEach(function (p, j) { if (out.length > 1) p.label += ' (burn ' + (j + 1) + ' of ' + out.length + ')'; }); return out.length ? out : null; }
+  /* ONE-TIME RE-WEAR (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,279, owner + G Money [pt2654u]). REWEAR_GRANTS lists use-all burns whose pieces landed on
+   * pets the signer never fed. While such a burn replays, the engine notes (w._rw, not part of any pet or item) which of its pieces went onto a
+   * pet with no meal yet (lastFed null at that burn). From ACTIVATE_SPIN_TARGET_BLOCK the granted wallet may send ONE 1-sat
+   *   pet:rw:AA:RUNS   (picked pets, same spin-list runs as pet:ut)
+   * Every noted piece that the wallet still owns and that is not grave-locked or on a dead pet comes off (worn or bagged), then goes back on,
+   * best first (Legendary, then tier, then roll order), onto the picked pets: each piece tries the picked pets in turn (per slot, round robin)
+   * and goes on the first one whose slot is open, that can wear it and whose slot is empty or holds a lower tier (that piece goes to the
+   * stash). A piece no picked pet can take stays in the stash, unworn: still the wallet's, free to wear in the Dressing room. The take-off
+   * happens once (the first pet:rw); a later pet:rw only places noted pieces still unworn in the stash (so a player with pets spread out can
+   * pick them over a few burns); with none left it is rejected. Nothing else changes: no spin is spent or given, no other wallet is touched. */
+  var REWEAR_GRANTS = { '38a32dc60285b3d50a4133098178709153aa6bdc2923481e94447fb3f82d2848': 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', /* owner's use-all, block 974,216: 1,161 spins, 1,014 on never-fed pets */
+    'a49beb8f9f200f1574d9a1abca9769f3a98f9c944d7e6147d09c3eb95b45d865': 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q' }; /* G Money's use-all, block 974,179: 768 spins, 725 on never-fed pets (owner 'Yes and yes' Nov 2 2026 [pt2654u]) */
+  var RW_PREFIX = 'pet:rw:';
+  function rwNote(w, r, src, got, unfed) { if (REWEAR_GRANTS[r.tx_hash] !== src) return; (w._rw = w._rw || {})[r.tx_hash] = { owner: src, block: r.block_index, gids: got.filter(function (x, i) { return unfed[i]; }).map(function (x) { return x.gid; }) }; }
+  /** rewearGrant(w, addr): { tx, n, used } for the wallet's open re-wear grant (n = noted pieces it still owns), or null. */
+  function rwLeft(w, R, a) { return R.gids.filter(function (gid) { var g = w.items[gid]; return g && g.owner === a && (!R.used || (g.on == null && g.bag == null)); }); }
+  function rewearGrant(w, a) { var R = w && w._rw; if (!R || !a) return null; for (var tx in R) { if (!R.hasOwnProperty(tx) || R[tx].owner !== a) continue;
+      return { tx: tx, n: rwLeft(w, R[tx], a).length, total: R[tx].gids.length, used: R[tx].used || null, burns: (R[tx].burns || []).length, block: R[tx].block }; } return null; }
+  /** rewearPlans(w, owner, ids, nb) -> 1-sat pet:rw plans that re-wear the noted pieces onto exactly the picked pets (several burns when the
+   * picks do not fit 34 bytes; the first burn takes every noted piece off, later ones place what is still in the stash), or null. */
+  function rewearPlans(w, owner, ids, nb) { var A = w && w.tip; if (A == null || !owner || !ids || !ids.length) return null; nb = nb != null ? nb : A + 1; if (!spinTargetOn(nb)) return null; var G = rewearGrant(w, owner); if (!G || !G.n) return null;
+    var code = A % FR_ANCHOR_MOD, aa = (code < 32 ? '0' : '') + code.toString(32).toUpperCase(), bd = runBodies(spinList(w, owner, A, nb), ids, MAX_TAG_BYTES - RW_PREFIX.length - 3); if (!bd || !bd.length) return null;
+    return bd.map(function (x, j) { return { tag: RW_PREFIX + aa + ':' + x.body, amount: COSTS.froll, petIds: x.ids, anchor: A, label: 'Re-wear ' + (j === 0 ? G.n.toLocaleString('en-US') + ' pieces' : 'the rest') + ' on ' + x.ids.length + ' picked pet' + (x.ids.length === 1 ? '' : 's') + (bd.length > 1 ? ' (burn ' + (j + 1) + ' of ' + bd.length + ')' : '') }; }); }
+  function rewearPlan(w, owner, ids, nb) { var L = rewearPlans(w, owner, ids, nb); return L ? L[0] : null; }
+  function rewearRun(w, r, src, t, b, L) { var R = w._rw, tx = null; for (var k in (R || {})) if (R.hasOwnProperty(k) && R[k].owner === src) { tx = k; break; }
+    if (!tx) return L(r, 'rejected', 're-wear: no re-wear grant for this wallet'); var first = !R[tx].used; if (!first && !rwLeft(w, R[tx], src).length) return L(r, 'rejected', 're-wear: nothing left in the stash to re-wear (first used at block ' + R[tx].used + ')');
+    var ids = targetIds(w, src, t, b), tg = wheelPets(w, src, b, true).filter(function (p) { return ids.indexOf(p.id) >= 0; }); if (!tg.length) return L(r, 'rejected', 're-wear: no picked pet of yours is alive');
+    var skip = 0, P = R[tx].gids.map(function (gid, i) { return { g: w.items[gid], i: i }; }).filter(function (x) { var g = x.g; if (!g || g.owner !== src) return false; if (!first && (g.on != null || g.bag != null)) return false;
+      var h = g.on != null ? w.byId[g.on] : null; if (h) liveAt(w, h, b); if (graveLocked(w, g, b) || (h && h.dead)) { skip++; return false; } return true; });
+    P.forEach(function (x) { var g = x.g; if (g.bag != null) { var bp = g.bag; if (w.bags && w.bags[bp]) { w.bags[bp] = w.bags[bp].filter(function (q) { return q !== g.gid; }); if (!w.bags[bp].length) delete w.bags[bp]; } delete g.bag; if (w.itemList && w.itemList.indexOf(g) < 0) w.itemList.push(g); } g.on = null; });
+    P.sort(function (x, y) { return (y.g.legendary ? 1 : 0) - (x.g.legendary ? 1 : 0) || (y.g.tier || 0) - (x.g.tier || 0) || x.i - y.i; });
+    var ptr = {}, worn = 0, perPet = {};
+    P.forEach(function (x) { var g = x.g, s = ptr[g.slot] || 0;
+      for (var j = 0; j < tg.length; j++) { var p = tg[(s + j) % tg.length], cur = wornIn(w, p.id, g.slot);
+        if (!slotOpen(p, g.slot) || (cur && (cur.legendary ? 9 : cur.tier || 0) >= (g.legendary ? 9 : g.tier || 0))) continue;
+        if (wear(w, p, g)) { g.rewornOn = p.id; worn++; perPet[p.id] = (perPet[p.id] || 0) + 1; ptr[g.slot] = (s + j + 1) % tg.length; return; } } });
+    if (first) R[tx].used = b; (R[tx].burns = R[tx].burns || []).push(r.tx_hash);
+    return L(r, 'rewear', 're-wear (' + (first ? 'one time' : 'more picks') + '): ' + worn + ' of ' + P.length + ' pieces now worn on ' + Object.keys(perPet).length + ' of ' + tg.length + ' picked pets · ' + (P.length - worn) + ' in your stash' + (skip ? ' · ' + skip + ' left alone (grave / dead pet)' : ''), { rewear: { tx: tx, worn: worn, stash: P.length - worn, skipped: skip, pets: perPet } }); }
   var ACTIVATE_GRAVE_GEAR_BLOCK = 972157; // deploy tip 972151 + 6 (Oct 19 2026 ~8:19 AM CT); must stay < first death block 972432
   function graveOn(b) { return b != null && b >= ACTIVATE_GRAVE_GEAR_BLOCK; }
   function gravePlan(petId, on) { return { tag: 'pet:grave:' + petId + (on === false ? ':off' : ''), amount: COSTS.froll, petId: petId, label: (on === false ? 'Cancel grave gear #' : 'Leave gear on the grave #') + petId }; }
@@ -1750,6 +1832,10 @@
     if (a === 'GRAVE' && p.length === 3 && idOk(p[2])) return { action: 'grave', petId: n(2), on: true }; /* grave gear opt-in; inert before ACTIVATE_GRAVE_GEAR_BLOCK */
     if (a === 'GRAVE' && p.length === 4 && idOk(p[2]) && p[3] === 'OFF') return { action: 'grave', petId: n(2), on: false };
     if (a === 'OF' && p.length === 3 && idOk(p[2])) return { action: 'oroll', petId: n(2) }; /* overflow roll (Mythic discount); inert before ACTIVATE_MYTHIC_DISCOUNT_BLOCK */
+    if (a === 'UT' && p.length === 5 && /^(ALL|[1-9][0-9]{0,3})$/.test(p[2]) && /^[0-9A-V]{2}$/.test(p[3]) && /^[0-9A-V]{2,24}$/.test(p[4]) && t.length <= MAX_TAG_BYTES) { /* picked-pet spins (inert before ACTIVATE_SPIN_TARGET_BLOCK) */
+      var utr = frDecode(p[4]), uta = parseInt(p[3], 32); if (utr && utr.length >= 2 && utr.length % 2 === 0 && uta < FR_ANCHOR_MOD && utr.every(function (v, k) { return k === 0 || v > 0; })) return { action: 'usespint', n: p[2] === 'ALL' ? 0 : n(2), all: p[2] === 'ALL', a: uta, runs: utr }; }
+    if (a === 'RW' && p.length === 4 && /^[0-9A-V]{2}$/.test(p[2]) && /^[0-9A-V]{2,24}$/.test(p[3]) && t.length <= MAX_TAG_BYTES) { /* one-time re-wear (inert before ACTIVATE_SPIN_TARGET_BLOCK) */
+      var rwr = frDecode(p[3]), rwa = parseInt(p[2], 32); if (rwr && rwr.length >= 2 && rwr.length % 2 === 0 && rwa < FR_ANCHOR_MOD && rwr.every(function (v, k) { return k === 0 || v > 0; })) return { action: 'rewear', a: rwa, runs: rwr }; }
     if (a === 'USESPIN' && p.length === 3 && p[2] === 'ALL') return { action: 'usespin', n: 0, all: true }; /* use ALL saved spins; unknown tag (community food) below ACTIVATE_USE_ALL_SPINS_BLOCK */
     if (a === 'USESPIN' && (p.length === 2 || (p.length === 3 && /^(10|[1-9])$/.test(p[2])))) return { action: 'usespin', n: p.length === 3 ? n(2) : 1 }; /* saved spins; inert before ACTIVATE_SPINS_BLOCK; N > 10 is invalid */
     if (a === 'SPIN' && p.length === 2) return { action: 'spin' }; /* Pepe Wheel spin (random pet); inert before ACTIVATE_WHEEL_RANDOM_BLOCK */
@@ -2105,6 +2191,10 @@
       return swapOpen(w, w.swaps && w.swaps[t.n - 1], b) ? null : 'offer is not open'; }
     if (t.action === 'gives') { if (!giveOn(b)) return 'gifting opens at a later block'; var gok = t.ids.filter(function (id) { return !giveWhy(w, { petId: id, to: t.to }, me || (w.byId[id] || {}).owner, b, amt); }); return gok.length ? null : 'no pet in this batch can be gifted'; }
     if (t.action === 'give') { if (!giveOn(b)) return 'gifting opens at a later block'; var gpd = pend.some(function (q) { return q.action === 'give' && q.petId === t.petId; }); return gpd ? 'a gift of this pet is already pending' : giveWhy(w, t, me || (w.byId[t.petId] || {}).owner, b, amt); }
+    if (t.action === 'usespin' && spinTargetOn(b)) return 'saved spins now land only on pets you pick (pick pets first)';
+    if (t.action === 'usespint' || t.action === 'rewear') { if (!spinTargetOn(b)) return 'picking pets for spins opens at a later block'; if (!me) return null; var tids = targetIds(w, me, t, b); if (!tids.length) return 'no pets at those places';
+      if (t.action === 'rewear') { var rg = rewearGrant(w, me); return !rg ? 'no re-wear for this wallet' : !rg.n ? 'nothing left to re-wear' : null; }
+      var slt = spinsLeft(w, me, b, o.pending); return slt < 1 ? 'no saved spins left' : !t.all && slt < t.n ? 'only ' + slt + ' saved spin' + (slt === 1 ? '' : 's') + ' left' : null; }
     if (t.action === 'usespin' && t.all) { if (!useAllOn(b)) return 'Use all spins opens at block ' + ACTIVATE_USE_ALL_SPINS_BLOCK; var sla = me ? spinsLeft(w, me, b, o.pending) : null; return sla != null && sla < 1 ? 'no saved spins left' : null; }
     if (t.action === 'usespin') { if (!spinsOn(b)) return 'saved spins open at block ' + ACTIVATE_SPINS_BLOCK; var sl = me ? spinsLeft(w, me, b, o.pending) : null; return sl != null && sl < t.n ? 'only ' + sl + ' saved spin' + (sl === 1 ? '' : 's') + ' left' : null; }
     if (/^(ad|rug|unad)$/.test(t.action)) { if (!rugOn(b)) return 'Rug Me is not open yet' + (ACTIVATE_RUGME_BLOCK != null ? ' (block ' + ACTIVATE_RUGME_BLOCK + ')' : ''); var dup = pend.some(function (q) { return q.action === t.action && String(q.ids || q.petId) === String(t.ids || t.petId) && q.adId === t.adId; }); if (dup) return 'that Rug Me burn is still waiting to confirm'; return me ? rugCheck(w, t, me, b, amt, P) : null; }
@@ -3063,6 +3153,10 @@
       if (t.action === 'fight') { var zA = w.byId[t.a], zB = w.byId[t.b]; if (zA) liveAt(w, zA, b); if (zB) liveAt(w, zB, b);
         if (isZ(zB) && zB.feral) { if (below(w, amt, COSTS.fight, b)) return L(r, 'rejected', 'hunt: below cost ' + costAt(w, COSTS.fight, b)); if (zA && zA.owner === src && w.moveAt && questOn(b)) w.moveAt[zA.id] = b; return cemHunt(w, r, zA, zB, bh, L); } } }
     if ((t.action === 'quest' || t.action === 'aura') && !questOn(b)) t = { action: 'invalid' };
+    if ((t.action === 'usespint' || t.action === 'rewear') && !spinTargetOn(b)) t = { action: 'invalid' }; /* picked-pet spins / re-wear OFF: same as before (unknown tag) */
+    if (t.action === 'rewear') return rewearRun(w, r, src, t, b, L);
+    if (t.action === 'usespin' && spinTargetOn(b)) return L(r, 'rejected', 'saved spins now land only on pets you pick: use pet:ut (pick pets), nothing spent');
+    if (t.action === 'usespint') { var utIds = targetIds(w, src, t, b); t = { action: 'usespin', n: t.n, all: t.all, targets: utIds }; if (!utIds.length) return L(r, 'rejected', 'picked spins: no pets at those places'); }
     if (t.action === 'usespin' && t.all && !useAllOn(b)) t = { action: 'invalid' }; /* use all spins OFF: same as before (unknown tag) */
     if (t.action === 'look' && !lookPickOn(b)) t = { action: 'invalid' }; /* look picker OFF: same as before (unknown tag) */ /* Mythic quests OFF: same as before (unknown tag) */
     if (questOn(b)) { questLaunch(w, b); /* quests: a pet away can't be fed for care; one move (quest / aura / fight / breed) per pet per block */
@@ -3169,14 +3263,15 @@
       case 'usespin': {  /* SAVED SPINS: 1-sat burn, N (1-10) wheel spins for the signer, each seeded with tx + ':' + i (same wheel rule as pet:spin) */
         if (!spinsOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
         var have = spinsLeft(w, src, b), un = t.all ? have : t.n; if (t.all && !have) return L(r, 'rejected', 'no saved spins left'); if (have < un) return L(r, 'rejected', 'saved spins left ' + have + ', asked for ' + un); if (!bh) return L(r, 'rejected', 'block hash pending');
-        var got = [], spool = wheelPool(w, src, b, true), spT = wheelTotal(spool); /* pool once per burn (speed fix, same results) */
-        for (var si = 0; si < un; si++) { var sd = r.tx_hash + ':' + si; if (WHEEL_POOL_EACH_SPIN) { spool = wheelPool(w, src, b, true); spT = wheelTotal(spool); } var sg = wheelPickT(spool, spT, sha(bh + sd + 'XCPETS:v2:wheel-pet')); if (!sg) break;
+        var got = [], unfed = [], rwOn = REWEAR_GRANTS[r.tx_hash] === src, tgt = t.targets || null, spool = tgt ? targetPool(w, src, tgt, b) : wheelPool(w, src, b, true), spT = wheelTotal(spool); /* pool once per burn (speed fix, same results) */
+        if (tgt && !spool.length) return L(r, 'rejected', 'picked spins: none of the picked pets is yours and alive, nothing spent');
+        for (var si = 0; si < un; si++) { var sd = r.tx_hash + ':' + si; if (WHEEL_POOL_EACH_SPIN) { spool = tgt ? targetPool(w, src, tgt, b) : wheelPool(w, src, b, true); spT = wheelTotal(spool); } var sg = wheelPickT(spool, spT, sha(bh + sd + 'XCPETS:v2:wheel-pet')); if (!sg) break;
           var sopen = (sg.openSlots || []).length > 0, shh = sha(bh + sd + 'XCPETS:v2:gear-roll'), ssl = anySlotOn(b) ? rollSlotOf(sg, shh, b) : sopen ? sg.openSlots[parseInt(shh.slice(16, 24), 16) % sg.openSlots.length] : V2_SLOTS[parseInt(shh.slice(16, 24), 16) % V2_SLOTS.length], sit = pickItem(shh, ssl, sg.species, sg.tier, dedupFor(w, b, sg.owner));
-          if (!sit) break; var sni = newItem(w, sit, sg.owner, 'usespin'); sni.rolledOn = sg.id; sni.wheel = 1; sni.saved = 1; if (anySlotOn(b)) placeRolled(w, sg, sni, b); else if (sopen) wear(w, sg, sni); /* any-slot rolls: locked slot -> pet's bag */ got.push({ petId: sg.id, gid: sni.gid }); }
-        if (!got.length) return L(r, 'rejected', 'Pepe Wheel: no living pet');
+          if (!sit) break; var sni = newItem(w, sit, sg.owner, 'usespin'); sni.rolledOn = sg.id; sni.wheel = 1; sni.saved = 1; if (anySlotOn(b)) placeRolled(w, sg, sni, b); else if (sopen) wear(w, sg, sni); /* any-slot rolls: locked slot -> pet's bag */ got.push({ petId: sg.id, gid: sni.gid }); if (rwOn) unfed.push(sg.lastFed == null); }
+        if (!got.length) return L(r, 'rejected', 'Pepe Wheel: no living pet'); if (rwOn) rwNote(w, r, src, got, unfed);
         spinRec(w, src).used += got.length; spinRec(w, src).log.push({ block: b, tx: r.tx_hash, src: 'use', n: -got.length });
-        var sx = { petId: got[0].petId, gid: got[0].gid, spins: got, wheel: 1, saved: true }; if (t.all) sx.all = true;
-        return L(r, 'roll', 'used ' + (t.all ? 'all ' : '') + got.length + ' saved spin' + (got.length === 1 ? '' : 's') + ' · ' + spinsLeft(w, src, b) + ' left', sx); }
+        var sx = { petId: got[0].petId, gid: got[0].gid, spins: got, wheel: 1, saved: true }; if (t.all) sx.all = true; if (tgt) sx.picked = tgt.length;
+        return L(r, 'roll', 'used ' + (t.all ? 'all ' : '') + got.length + ' saved spin' + (got.length === 1 ? '' : 's') + (tgt ? ' on ' + spool.length + ' picked pet' + (spool.length === 1 ? '' : 's') : '') + ' · ' + spinsLeft(w, src, b) + ' left', sx); }
       case 'spin': if (!wheelOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)'); /* falls through */
       case 'roll': {
         if (wheelOn(b)) { if (below(w, amt, COSTS.roll, b)) return L(r, 'rejected', 'below roll cost ' + costAt(w, COSTS.roll, b)); if (!bh) return L(r, 'rejected', 'block hash pending');
@@ -4448,7 +4543,7 @@
    * fit go in normal pet:fr burns after it (same plan as Feed all, packed to 22 characters so the first burn can carry the flags). */
   var DC_BODY = MAX_TAG_BYTES - DC_PREFIX.length - 2 - 3;
   function dailyChoresPlan(w, owner, nb, o) { o = o || {}; var A = w && w.tip; if (A == null || !owner) return null; nb = nb != null ? nb : A + 1; if (!choresOn(nb)) return null;
-    var wg = !(w.wagmi && w.wagmi[owner] && w.wagmi[owner][day(nb)]), sp = o.spins !== false, f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
+    var wg = !(w.wagmi && w.wagmi[owner] && w.wagmi[owner][day(nb)]), sp = o.spins !== false && !spinTargetOn(nb), f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
     var ps = w.pets.filter(function (p) { return p.owner === owner && frEats(p, nb) && (!o.ids || o.ids.indexOf(p.id) >= 0); }), inRef = new Set(refList(w, owner, A, nb).map(function (p) { return p.id; }));
     var left = ps.filter(function (p) { return !inRef.has(p.id); }); ps = ps.filter(function (p) { return inRef.has(p.id); }); /* a pet outside the eater list goes in a pet-number feed burn after the chores (same as Feed all) */
     var fr = ps.length ? feedRunsPlan(w, owner, ps, nb, DC_BODY) : null, extra = left.length ? feedQueue(w, owner, left.map(function (p) { return p.id; }), nb) : [];
@@ -4606,7 +4701,8 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
+  return { ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
+    ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
