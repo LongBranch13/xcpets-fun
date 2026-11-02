@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><!--smooth-perf--><link rel="preconnect" href="https://api.counterparty.io:4000" crossorigin><script>/* smooth-perf: start the first chain reads now (rjs/chain.js takes them once; same URLs and JSON) */(function(){try{if(/[?&]network=/.test(location.search)||localStorage.getItem("XCPETS_NETWORK"))return;var c=JSON.parse(sessionStorage.getItem("xcpets-v2-prod-rows")||"null");if(c&&Date.now()-c.at<60000)return;var B="https://api.counterparty.io:4000/v2",s=JSON.parse(sessionStorage.getItem("xcpets-api-sick")||"{}");var n=JSON.parse(sessionStorage.getItem("xcpets-api-netsick")||"{}");if(s[B]>Date.now()||n[B]>Date.now())return;var P=window.__xcpPre={};window.__xcpPreT0=Date.now();["/assets/XCPETS/destructions?limit=1000","/","/mempool/events/ASSET_DESTRUCTION?limit=1000"].forEach(function(p){P[B+p]=fetch(B+p,{method:"GET"}).catch(function(){return null;});});}catch(e){}})();</script><link rel="prefetch" as="script" href="js/v2-bg.js?v=b5fc7db690"><link rel="prefetch" as="script" href="js/v2-render.js?v=b5fc7db690"><link rel="prefetch" as="script" href="js/v2-pages.js?v=b5fc7db690"><!--smooth-perf--><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify it yourself · XCPETS</title><meta name="description" content="Pick any XCPETS pet and check its proof: the burn, the block hash, the seed, the DNA and the traits re-rolled in your browser. Then replay every burn yourself and compare with the published pets.json."><meta property="og:site_name" content="XCPETS"><meta property="og:type" content="website"><meta property="og:title" content="Verify it yourself: XCPETS"><meta property="og:description" content="Pick any XCPETS pet and check its proof: the burn, the block hash, the seed, the DNA and the traits re-rolled in your browser. Then replay every burn yourself and compare with the published pets.json."><meta property="og:url" content="https://xcpets.fun/verify-pet.html"><link rel="canonical" href="https://xcpets.fun/verify-pet.html"><meta property="og:image" content="https://xcpets.fun/img/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="XCPETS: 8-bit meme pets rolled from Bitcoin blocks"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@XCPets"><meta name="twitter:title" content="Verify it yourself: XCPETS"><meta name="twitter:description" content="Pick any XCPETS pet and check its proof: the burn, the block hash, the seed, the DNA and the traits re-rolled in your browser. Then replay every burn yourself and compare with the published pets.json."><meta name="twitter:image" content="https://xcpets.fun/img/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="css/style.css?v=b5fc7db690"><link rel="stylesheet" href="css/game.css?v=b5fc7db690"><link rel="stylesheet" href="css/v2.css?v=b5fc7db690"><script>(function(){var v=localStorage.getItem("xcpets-bg")||"pets",o=["pets","btc","xcp","mix"];if(v==="rotate")v=o[Math.floor(Math.random()*o.length)];document.documentElement.setAttribute("data-bg",v);})();</script><link rel="icon" href="img/favicon.png"><style>[data-q],#fNpc,#introSkip{display:none!important}.vf-main h2{font-size:22px;line-height:1.3}
+@media (max-width:600px){.vf-main h2{font-size:17px}}
+.vf-card h2{font-size:16px}
+@media (max-width:600px){.vf-table{font-size:12px}.vf-table th[scope=row]{white-space:nowrap}.vf-table th,.vf-table td{padding:3px 4px}}
+</style><link rel="stylesheet" href="css/intuitive.css?v=b5fc7db690"><style>
+.vf-main{max-width:980px;margin:0 auto}
+.vf-main [hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.vf-form{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.vf-form input{width:9em;padding:8px;border:2px solid #000;background:#1d1530;color:#FAFAF5;font:inherit;font-size:15px}
+.vf-err{color:#ff8a8a;min-height:1em}
+.vf-card{border:3px solid #000;background:rgba(16,14,20,.82);color:#FAFAF5;box-shadow:3px 3px 0 #000;padding:12px;margin-top:10px;min-width:0}
+.vf-card a{color:#9fe3ff}
+.vf-head{display:flex;gap:12px;align-items:center}
+#vfSprite{width:96px;height:96px;image-rendering:pixelated;background:#1d1530;border:2px solid #000;flex:0 0 auto}#vfSprite.vf-dead{filter:grayscale(1) brightness(.75)}
+#vfName{margin:0;font-size:18px;overflow-wrap:anywhere}
+.vf-facts{margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.vf-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:8px}.vf-row dt{opacity:.8}.vf-row dd{margin:0;min-width:0;overflow-wrap:anywhere}
+@media (max-width:600px){.vf-row{grid-template-columns:1fr;gap:0}}
+.vf-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
+.vf-checks{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px}
+.vf-ok{color:#7CE3A0}.vf-warn{color:#E8B33A}.vf-bad{color:#ff8a8a}
+.vf-tablewrap{overflow-x:auto;margin-top:8px}
+.vf-table{border-collapse:collapse;width:100%;font-size:14px}.vf-table th,.vf-table td{border:2px solid #000;padding:4px 6px;text-align:left;overflow-wrap:anywhere}
+.vf-table tr.vf-diff td{color:#E8B33A}.vf-table tr.vf-ok td{color:#FAFAF5}
+.vf-steps{margin:6px 0 0 1.2em;padding:0;line-height:1.5}
+</style></head>
+<body data-v2page="verify">
+<header class="nav">
+  <a class="brand" href="index.html"><img src="img/logo.png" alt="XCPETS logo" width="28" height="28"> XCPETS</a>
+  <nav><!--places--><details class="navplaces"><summary>🗺️ Places</summary><div class="np-menu" role="menu"><a role="menuitem" class="np-circus" href="fight.html"><span aria-hidden="true">⚔️</span> X Circus Kekimus</a><a role="menuitem" class="np-rare" href="rare-room.html"><span aria-hidden="true">🖼️</span> The Rare Room</a><a role="menuitem" class="np-motel" href="breed.html"><span aria-hidden="true">🏨</span> Gooby’s No-Tail Motel</a><a role="menuitem" class="np-spam" href="shop.html"><span aria-hidden="true">🛒</span> Spam City Games</a><a role="menuitem" class="np-raid" href="raid.html"><span aria-hidden="true">🐉</span> Raid Boss</a><a role="menuitem" class="np-cemetery" href="cemetery.html"><span aria-hidden="true">🪦</span> Pet Cemetery</a><a role="menuitem" class="np-tokens" href="tokens.html"><span aria-hidden="true">🎖️</span> Proof Parade</a><a role="menuitem" class="np-live" href="live.html"><span aria-hidden="true">📡</span> Live Feed</a></div></details><!-- the site's existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a><!-- the tutorial, standalone in the banner (not a place) --><a class="navtut" href="tutorial.html" title="The Big Beautiful Tutorial"><span aria-hidden="true">🎓</span> Tutorial</a><!--/places--><a href="index.html#cast">The cast</a><a class="navplay" href="play.html"><span class="navegg" aria-hidden="true"></span>Play</a><a href="pets.html">Pet Guide</a><a href="rules.html">Rules</a><a href="rules-short.html">Short rules</a><a href="how-it-works.html" class="rulesLink"><b>How It Works</b></a></nav>
+</header><div class="pixdiv" aria-hidden="true"></div>
+<main class="vf-main">
+<section class="panel">
+  <h1 class="meme sec" data-ico="pet">🔎 Verify it yourself</h1>
+  <p class="small muted">Every pet comes from a burn on Bitcoin. Nobody rolls the dice in secret: the pet is rolled from the hash of the block its burn landed in. This page shows that proof for any pet, and redoes the math in your browser. No wallet, nothing to sign.</p>
+  <p class="small" id="vfStatus" role="status" aria-live="polite">Reading the chain…</p>
+  <form class="vf-form" id="vfForm" autocomplete="off" novalidate aria-label="Pick a pet"><label for="vfId">Pet #</label><input id="vfId" type="text" inputmode="numeric" maxlength="9" placeholder="1" aria-describedby="vfErr"><button class="btn" type="submit">Verify</button><button class="btn ghost" type="button" id="vfRandom">🎲 Any pet</button></form>
+  <div class="small vf-err" id="vfErr" aria-live="polite"></div>
+  <div id="vfOut" hidden>
+    <div class="vf-card">
+      <div class="vf-head"><canvas id="vfSprite" width="32" height="32" aria-hidden="true"></canvas><div><h2 id="vfName"></h2><div class="small muted" id="vfSub"></div></div></div>
+      <dl class="vf-facts" id="vfFacts"></dl>
+      <ul class="vf-checks small" id="vfChecks"></ul>
+    </div>
+    <div class="vf-card">
+      <h2>Traits, rolled again just now</h2>
+      <div class="vf-tablewrap"><table class="vf-table" id="vfTraits"></table></div>
+      <p class="small muted" id="vfTraitNote"></p>
+      <p id="vfLinks"></p>
+    </div>
+  </div>
+</section>
+<section class="panel">
+  <h2>Run my own replay</h2>
+  <p class="small muted">The site has no server deciding who owns what. Your browser reads every XCPETS burn from Counterparty and replays the game rules from the first block. The public <a href="api/README.md">pets.json</a> feed is the same replay, run once an hour. This button replays every burn up to the file’s block here in your tab, then compares a SHA-256 of both.</p>
+  <p><button class="btn" type="button" id="vfRun">▶ Run my own replay</button></p>
+  <div class="vf-card small" id="vfRunOut" aria-live="polite">Not run yet. It takes a few seconds and downloads about 650 KB.</div>
+</section>
+<section class="panel">
+  <h2>Check it without this site</h2>
+  <ol class="small vf-steps">
+    <li>Find the hatch burn on <a href="https://mempool.space" target="_blank" rel="noopener">mempool.space</a> or any Counterparty explorer, and the hash of the block it landed in.</li>
+    <li>The seed is that block hash and the pet id joined by a colon, both lowercase. The DNA is the SHA-256 of the seed.</li>
+    <li>The roll is plain JavaScript with no dependencies: <a href="https://github.com/LongBranch13/xcpets-fun/blob/main/js/pet-core.js" target="_blank" rel="noopener">js/pet-core.js</a> (same seed, same pet). The game rules are <a href="https://github.com/LongBranch13/xcpets-fun/blob/main/js/v2-rules.js" target="_blank" rel="noopener">js/v2-rules.js</a>.</li>
+    <li>To replay the whole game from a terminal, see <a href="https://github.com/LongBranch13/xcpets-fun#readme" target="_blank" rel="noopener">the README</a> (tools/replay-check.js).</li>
+  </ol>
+  <p><a class="btn ghost" href="how-it-works.html">How It Works</a> <a class="btn ghost" href="watch.html">📺 Watch live</a></p>
+</section>
+</main>
+<div class="pixdiv" aria-hidden="true"></div><footer class="panel" style="max-width:1100px;margin:22px auto"><p class="muted small">Live chain data. <a href="index.html">Home</a> · <a href="play.html">Play</a> · <a href="ranking.html">Ranking</a> · <a href="shop.html">🛒 Spam City</a> · <a href="how-it-works.html">How It Works</a> · <a href="pets.html">Pet Guide</a> · <a href="verify.html">🔍 Token check</a> · <a class="rulehistlink small" href="rules.html#v2rules">Rule history →</a></p><div class="parade" aria-hidden="true"><img src="img/theme/sp-pepe.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-wojak.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-chud.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-bobo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-mumu.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-snibby.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-dodo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-kevin.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-peepo.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-sarutobi.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-doge.png" alt="" width="40" height="40" loading="lazy"><img src="img/theme/sp-lenny.png" alt="" width="40" height="40" loading="lazy"></div><div class="bgpick small"><label>Background <select id="bgPick" aria-label="Page background"><option value="pets">Pets</option><option value="btc">Bitcoin ₿</option><option value="xcp">XCP</option><option value="mix">Mix</option><option value="rotate">Rotate each visit</option></select></label></div><script>(function(){var s=document.getElementById("bgPick");s.value=localStorage.getItem("xcpets-bg")||"pets";s.onchange=function(){localStorage.setItem("xcpets-bg",s.value);location.reload();};})();</script></footer>
+<p class="risk">⚠️ This is experimental software. Token burns are irreversible. You can lose XCPETS and Bitcoin transaction fees. No one guarantees this game will work as expected or that the token will retain any value. Use at your own risk.</p>
+
+<div id="v2boot" class="small muted" style="text-align:center;padding:8px">Reading XCPETS burns from the chain…</div><script src="rjs/config.js?v=b5fc7db690"></script><script src="rjs/pet-core.js?v=b5fc7db690"></script><script src="rjs/game-core.js?v=b5fc7db690"></script><script src="rjs/bonus-gear.js?v=b5fc7db690"></script><script src="rjs/real-core.js?v=b5fc7db690"></script><script src="rjs/chain.js?v=b5fc7db690"></script><script src="rjs/wallet.js?v=b5fc7db690"></script><script src="rjs/burn-core.js?v=b5fc7db690"></script><script>window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain.Chain,CFG:window.XCPETS_CONFIG};</script><script src="js/v2-wallet.js?v=b5fc7db690"></script><script src="js/pet-core.js?v=b5fc7db690"></script><script src="js/bonus-gear.js?v=b5fc7db690"></script><script src="js/v2-gear.js?v=b5fc7db690"></script><script src="js/v2-fit.js?v=b5fc7db690"></script><script src="js/v2-rules.js?v=b5fc7db690"></script><script src="js/v2-power-tip.js?v=b5fc7db690"></script><script src="js/wizard-sprite.js?v=b5fc7db690"></script><script src="js/kek-sprite.js?v=b5fc7db690"></script><script src="js/funtrump-sprite.js?v=b5fc7db690"></script><script src="js/homer-sprite.js?v=b5fc7db690"></script><script src="js/viking-sprite.js?v=b5fc7db690"></script><script src="js/bo-sprite.js?v=b5fc7db690"></script><script src="js/rarepigeon-sprite.js?v=b5fc7db690"></script><script src="js/contest-sprite.js?v=b5fc7db690"></script><script src="js/block-hashes.js?v=b5fc7db690"></script><script src="js/v2-chain.js?v=b5fc7db690"></script><script src="js/v2-sales.js?v=b5fc7db690"></script><link rel="stylesheet" href="css/halving.css?v=b5fc7db690"><script src="js/v2-halving.js?v=b5fc7db690"></script><script src="js/v2-datalag.js?v=b5fc7db690"></script><link rel="stylesheet" href="css/firesale.css?v=b5fc7db690"><link rel="stylesheet" href="css/onfire.css?v=b5fc7db690"><script src="js/dan-sprite.js?v=b5fc7db690"></script><script src="js/v2-firesale.js?v=b5fc7db690"></script><link rel="stylesheet" href="css/spins.css?v=b5fc7db690"><script src="js/v2-spins.js?v=b5fc7db690"></script><script src="js/v2-onfire.js?v=b5fc7db690"></script><script>V2Mock.boot(function(){var L=["js/v2-bg.js?v=b5fc7db690", "js/v2-looks.js?v=b5fc7db690", "js/v2-render.js?v=b5fc7db690", "js/v2-sharp.js?v=b5fc7db690", "js/v2-mythic-god.js?v=b5fc7db690", "js/v2-verify.js?v=b5fc7db690"];L.forEach(function(x){var t=document.createElement("script");t.src=x;t.async=false;document.body.appendChild(t);});});</script><script src="js/insc-gate.js?v=b5fc7db690"></script><link rel="stylesheet" href="css/ux-polish.css?v=b5fc7db690"><script src="js/ux-polish.js?v=b5fc7db690"></script>
+<script src="js/v2-intuitive.js?v=b5fc7db690"></script>
+<script src="js/v2-places.js?v=b5fc7db690" defer></script>
+<script src="js/halloween.js?v=b5fc7db690" defer></script><script src="js/v2-calm.js?v=b5fc7db690" defer></script><script src="js/v2-cached.js?v=b5fc7db690" defer></script><script src="js/v2-simple.js?v=b5fc7db690" defer></script><script src="js/casa-connect.js?v=b5fc7db690" defer></script></body></html>
