@@ -1,6 +1,6 @@
 /* trait-rank-1101 (owner 8:14 PM CT Nov 1 2026, "We need a ranking for that too"; display only, no rule change): the 💎 Trait rarity board on
  * ranking.html?board=trait. Every pet PetScore ranks (js/pet-score.js: community and released pets are not ranked), sorted by its trait
- * rarity '1 in N' (2^bits over species, eyes, pattern, background and cheeks), rarest first; the same number as the 💎 chip on the pet page.
+ * rarity '1 in N' (2^bits over species, eyes, pattern, background, cheeks, mutation and throwback trait), rarest first; the same number as the 💎 chip on the pet page.
  * Filters: 🥚 Egg-hatched (no parents, not a hybrid: the same test as the 🥚 Hatched badge) or every pet, and alive only. One page of rows at a
  * time (50, 25 on phones); sprites draw lazily (V2Render.lazy). The sorted list is computed once per replayed world (WeakMap on the world,
  * tip and pet count, like PetScore.get) and only after the page has painted, so the page never freezes.
@@ -31,7 +31,7 @@
     function url() { try { var u = new URL(location.href); u.searchParams.set('board', 'trait'); ['mode', 'span', 'species'].forEach(function (k) { u.searchParams.delete(k); });
       if (st.eggOnly) u.searchParams.delete('pets'); else u.searchParams.set('pets', 'all'); if (st.alive) u.searchParams.set('alive', '1'); else u.searchParams.delete('alive');
       if (st.pg > 1) u.searchParams.set('page', st.pg); else u.searchParams.delete('page'); if (st.focus) u.searchParams.set('pet', st.focus); else u.searchParams.delete('pet'); u.hash = ''; history.replaceState(null, '', u); } catch (e) { } }
-    var NOTE = 'Trait rarity: how unusual a pet\u2019s species, eyes, pattern, background and cheeks are across every pet, shown as 1 in N (the 💎 chip on each pet page). Display only: it is not the hatch tier and changes nothing in the game.';
+    var NOTE = 'Trait rarity: how unusual a pet\u2019s species, eyes, pattern, background, cheeks, mutation and throwback trait are across every pet, shown as 1 in N (the 💎 chip on each pet page). Display only: it is not the hatch tier and changes nothing in the game.';
     function shell(inner) { $('board').innerHTML = (O.top || '') + '<p class="small muted rknote">' + NOTE + '</p>' + inner; if (O.wire) O.wire(); }
     shell('<p class="small muted" id="trWait">💎 Ranking every pet by trait rarity…</p>');
     var L = null;

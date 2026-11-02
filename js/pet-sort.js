@@ -32,7 +32,7 @@
     ['stage', '🌱 Stage', 'Mythic first', 'youngest stage first', function (w, p) { return [p.stage || 0, p.care || 0]; }, function (w, p) { return '🌱 ' + (p.stageName || ''); }],
     ['sp', '🧬 Species', 'A to Z', 'Z to A', null],
     ['age', '🎂 Age', 'oldest first', 'youngest first', function (w, p) { return [-(p.hatchBlock || 0), -p.id]; }, function (w, p) { return '🎂 ' + (p.ageDays || 0) + ' days'; }],
-    ['gen', '🌳 Generation', 'high to low', 'low to high', function (w, p) { var R = V(); return [R.genOf ? R.genOf(w, p) : 0]; }],
+    ['gen', '🌳 Generation', 'high to low', 'low to high', function (w, p) { var R = V(), R2 = window.V2Render; return [R2 && R2.genOf ? R2.genOf(w, p) : R.genOf ? R.genOf(w, p) : 0]; }],
     ['bl', '💞 Breeds left', 'most first', 'least first', function (w, p, b) { return [bleft(p, b)]; }],
     ['wins', '🏆 Fight wins', 'most first', 'least first', function (w, p) { return [p.wins || 0, wr(p)]; }, function (w, p) { return '🏆 ' + (p.wins || 0) + ' wins · ' + (p.losses || 0) + ' losses'; }],
     ['wr', '🏆 Win rate', 'high to low', 'low to high', function (w, p) { return [wr(p), p.wins || 0]; }, function (w, p) { var r = wr(p); return '🏆 ' + (r < 0 ? 'no fights' : Math.round(r * 100) + '% of ' + ((p.wins || 0) + (p.losses || 0))); }],
