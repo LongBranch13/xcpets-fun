@@ -1,43 +1,80 @@
 #!/usr/bin/env node
-/* practice-mode-1101 (owner approved Nov 1 2026 9:28 PM CT, PREVIEW): guest practice page (practice.html + js/v2-practice.js).
- * Checks: no wallet / chain / network code on the page, practice state only under 'xcpets-practice-v1' and never read by the real game,
- * never a flame crown or an edition / 1 of 1 / special egg, copy rules. Pure source checks (no network, no browser).
+/* practice-fun-1102 (owner Nov 1 2026 11:04 PM CT, PREVIEW): practice mode is the REAL game pages (practice*.html, built from play / fight /
+ * rare-room / breed / pet by tools/build-practice-page.js) over a pretend in-browser chain (js/practice-engine.js + js/practice-guard.js).
+ * Checks: pages are current and carry the PRACTICE bar + "Play for real"; no wallet connector, cached chain data or real block hashes on them;
+ * practice storage only under 'xcpets-practice-' and never read by a real-game script; boosted but rule-legal luck (no flame crown, fire aura,
+ * edition, special egg); trading / gifting / flame looks refused; copy rules. No network, no browser.
  *   node tools/practice-mode-test.js */
 'use strict';
-const fs = require('fs'), path = require('path'), vm = require('vm');
+const fs = require('fs'), path = require('path'), vm = require('vm'), cp = require('child_process');
 const ROOT = path.resolve(__dirname, '..'), rd = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
-const html = rd('practice.html'), js = rd('js/v2-practice.js'), css = rd('css/practice.css');
-const scripts = (html.match(/<script src="([^"?]+)/g) || []).map(s => s.replace('<script src="', ''));
-['js/pet-core.js', 'js/v2-rules.js', 'js/v2-render.js', 'js/v2-life-anim.js', 'js/v2-practice.js'].forEach(f => ok(scripts.includes(f), 'practice.html loads ' + f));
-ok(scripts.every(f => !/^rjs\/|wallet|chain|burn|block-hashes|v2\.js$|v2-view|casa-connect|insc-gate/.test(f)), 'practice.html loads no wallet / chain / burn code: ' + scripts.join(' '));
-ok(!/fetch\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource|import\(/.test(js), 'v2-practice.js makes no network calls');
-const code = js.replace(/\/\*[\s\S]*?\*\//g, ''); ok(!/\bsign\w*|wallet|broadcast|api\.counterparty|api\.xcp\.fun|webxcp|psbt/i.test(code), 'v2-practice.js never signs or calls a wallet / chain API');
-ok((js.match(/localStorage\.(get|set)Item\(([^)]*)\)/g) || []).every(s => /\(KEY/.test(s)), 'v2-practice.js only reads / writes its own key');
-ok(/var KEY = 'xcpets-practice-v1'/.test(js), "practice key is 'xcpets-practice-v1'");
-const others = fs.readdirSync(path.join(ROOT, 'js')).filter(f => /\.js$/.test(f) && f !== 'v2-practice.js').concat(fs.readdirSync(path.join(ROOT, 'rjs')).map(f => '../rjs/' + f));
-ok(others.every(f => rd('js/' + f).indexOf('xcpets-practice') < 0), 'no real-game script reads the practice key (rankings, feeds, replay never see practice pets)');
-/* PRACTICE marks everywhere */
-ok(/PRACTICE MODE/.test(html) && /class="pr-badge">PRACTICE</.test(js) && /\.pr-card::after\{content:'PRACTICE'/.test(css) && /\.la-ov::after\{content:'PRACTICE/.test(css) && /body\.pr-page::before/.test(css), 'PRACTICE badge on cards, watermark on cards, page and scenes');
-ok(/<body class="pr-page"/.test(html), 'page watermark class on body');
-ok(/href="play\.html">Play the real game/.test(html), 'gentle nudge to the real game');
+const PAGES = ['practice.html', 'practice-fight.html', 'practice-rare.html', 'practice-breed.html', 'practice-pet.html'];
+const OWN = ['practice-engine.js', 'practice-guard.js', 'practice-ui.js', 'v2-practice-wallet.js'];
+
+/* 1 · built pages are current (the builder's own --check) */
+let chk = ''; try { chk = cp.execFileSync(process.execPath, [path.join(ROOT, 'tools/build-practice-page.js'), '--check'], { encoding: 'utf8' }); ok(true); } catch (e) { ok(false, 'practice pages are stale: run node tools/build-practice-page.js\n' + (e.stdout || '') + (e.stderr || '')); }
+
+/* 2 · every practice page */
+PAGES.forEach(f => {
+  const h = rd(f), src = (h.match(/<script[^>]*src="([^"?]+)/g) || []).map(s => s.replace(/.*src="/, ''));
+  ok(src[0] === 'js/practice-guard.js' && src[1] === 'js/practice-engine.js', f + ': guard + pretend chain load before everything else');
+  ok(src.includes('js/practice-ui.js'), f + ': loads the practice bar');
+  ok(!src.some(s => /casa-connect|block-hashes|v2-cached|smooth-perf/.test(s)), f + ': no wallet connector, cached chain data or real block hashes: ' + src.join(' '));
+  ok(/class="px-bar"/.test(h) && /PRACTICE/.test(h) && /class="px-badge"/.test(h), f + ': PRACTICE bar');
+  ok(/<a class="btn px-real[^"]*" href="play\.html"/.test(h), f + ': Play for real button');
+  ok(/noindex/.test(h), f + ': preview page is noindex');
+  ok(/<body[^>]*class="[^"]*\bpractice\b/.test(h), f + ': body.practice');
+  ok(!/<link[^>]*rel="(preconnect|prefetch|dns-prefetch)"[^>]*(counterparty|xcp\.io|mempool)/i.test(h), f + ': no chain preconnects');
+});
+ok(/data-split="fight"/.test(rd('practice-fight.html')) && /data-split="breed"/.test(rd('practice-breed.html')) && /data-split="rare"/.test(rd('practice-rare.html')), 'game places keep their real layouts');
 ok(/href="practice\.html"/.test(rd('index.html')), 'index links to practice mode');
-ok(/noindex/.test(html), 'preview page is noindex');
-/* copy rules: times not x, no series / discount, never api.xcp.fun */
-const copy = (html + js + css).replace(/<[^>]+>/g, ' ');
-ok(!/\b\d[\d,.]*\s?x\b|\bx\s?\d/.test(copy), "copy writes 'times', never 'x' for multiplying");
-ok(!/series|discount|api\.xcp\.fun/i.test(html + js + css), "no 'series', 'discount' or api.xcp.fun");
-ok(!/flame-crown'?\s*[,}]/.test(js.replace("a.crown === 'flame-crown'", '')), 'practice never picks a flame crown on its own');
-/* load v2-practice.js with stubs (the page boot is skipped: no #practice) and check the art filters */
-const sb = { window: {}, document: { readyState: 'complete', getElementById: () => null }, localStorage: { getItem: () => null, setItem: () => { } } };
-sb.window.V2Rules = { SPECIES12: [{ id: 'pepe' }, { id: 'doge' }] }; sb.window.PetCore = {}; sb.window.V2Render = {}; sb.window.V2LifeAnim = {}; sb.window.document = sb.document;
-vm.createContext(sb); vm.runInContext(js, sb); const P = sb.window.V2Practice;
-ok(P && P.KEY === 'xcpets-practice-v1', 'V2Practice exported');
-ok(P.tidy({ crown: 'flame-crown' }).crown === 'jeweled-crown', 'a rolled flame crown becomes a jeweled crown');
-ok(P.tidy({ crown: 'gold-crown' }).crown === 'gold-crown', 'other crowns unchanged');
-ok(!('edition' in P.tidy({ edition: 1 })) && !('auraFire' in P.tidy({ auraFire: 1 })), 'no edition frame or fire aura flags');
-ok(P.okArt({ species: 'pepe' }) && !P.okArt({ species: 'nakamoto' }) && !P.okArt({ species: 'pepe', rareTier: 'x1' }) && !P.okArt({ species: 'pepe', boMark: 1 }) && !P.okArt({ species: 'wizard' }), 'only normal eggs (no special / edition / 1 of 1 pets)');
-ok(P.HATCH.map(h => h.cost).join() === '69,690,6900' && P.HATCH.map(h => h.n).join() === '1,12,144', 'practice hatch sizes match the real 69 / 690 / 6,900');
-/* rule files untouched by this page */
-ok(!/V2Rules\.\w+\s*=|PetCore\.\w+\s*=|_set\w+Activation/.test(js), 'practice never changes V2Rules / PetCore');
+
+/* 3 · storage + isolation */
+const guard = rd('js/practice-guard.js'), ui = rd('js/practice-ui.js'), eng = rd('js/practice-engine.js'), wal = rd('js/v2-practice-wallet.js'), css = rd('css/practice.css');
+ok(/xcpets-practice-/.test(guard) && /indexedDB/.test(guard) && /serviceWorker/.test(guard), 'guard prefixes storage and turns off IndexedDB / service workers');
+ok(/'xcpets-practice-ledger'/.test(eng), "pretend chain key is 'xcpets-practice-ledger'");
+const realJs = fs.readdirSync(path.join(ROOT, 'js')).filter(f => /\.js$/.test(f) && !OWN.includes(f)).map(f => 'js/' + f).concat(fs.readdirSync(path.join(ROOT, 'rjs')).filter(f => /\.js$/.test(f)).map(f => 'rjs/' + f));
+ok(realJs.every(f => rd(f).indexOf('xcpets-practice') < 0 && rd(f).indexOf('XcpPractice') < 0), 'no real-game script reads practice data (rankings, feeds, replay never see practice pets)');
+ok(!fs.existsSync(path.join(ROOT, 'js/v2-practice.js')), 'old stand-alone practice script removed');
+const own = OWN.filter(f => f !== 'practice-guard.js').map(f => rd('js/' + f).replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
+ok(!/\bsignPsbt|signTransaction|broadcast\w*\(|sendBeacon|WebSocket|EventSource/.test(own), 'practice code never signs, broadcasts or opens sockets');
+ok(/sendBeacon/.test(guard) && !/sendBeacon\(/.test(guard.replace(/\/\*[\s\S]*?\*\//g, '')), 'guard switches off sendBeacon, never calls it');
+ok(!/fetch\(\s*['"]https?:/.test(own), 'practice code fetches nothing outside the page');
+
+/* 4 · copy rules on practice wording */
+const copy = (OWN.map(f => rd('js/' + f)).join('\n') + css + rd('tools/build-practice-page.js')).replace(/\/\*[\s\S]*?\*\//g, ' ');
+const txt = (copy.match(/'[^'\n]{12,}'/g) || []).join(' ');
+ok(!/\b\d[\d,.]*\s?x\b|\bx\s?\d/.test(txt), "copy writes 'times', never 'x' for multiplying");
+ok(!/series|discount|api\.xcp\.fun/i.test(copy), "no 'series', 'discount' or api.xcp.fun");
+
+/* 5 · the pretend chain, run with the real rules in a vm */
+const c = require('./lib/load-rules').load(); c.crypto = require('crypto').webcrypto; c.URL = URL;
+const st = {}; c.__xcpPracticeStore = { get: k => (k in st ? st[k] : null), set: (k, v) => { st[k] = String(v); } };
+vm.runInContext(eng, c); const X = c.XcpPractice, V = c.V2Rules;
+ok(X && typeof X.burn === 'function' && typeof X.serve === 'function', 'XcpPractice exported');
+ok(X.EGG_ODDS.map(e => e[0] + e[1]).join() === 'legendary40,rare30,uncommon18,common12', 'practice egg odds 40 / 30 / 18 / 12 percent');
+X.load(); const s0 = X.state();
+ok(s0.bal === X.START_BAL && s0.tip === X.START_TIP && s0.day === 1, 'fresh practice wallet: 1,000,000 pretend XCPETS, day 1');
+const r1 = X.burn({ tag: 'pet:hatch', amount: 69 }), s1 = X.state();
+ok(/^[0-9a-f]{64}$/.test(r1.txid) && r1.block === X.START_TIP + 1 && s1.bal === X.START_BAL - 69, 'a hatch burn mines one pretend block and costs 69 pretend XCPETS');
+ok(s1.stats.hatched === 1 && s1.stats.legendary === 1 && s1.stats.wow === 1, 'the first practice egg is a Legendary with a showy trait');
+const L = X.load(), w = X._replay(L.rows, L.tip), mine = w.pets.filter(p => p.owner === X.ME);
+ok(mine.length === 1 && mine[0].tier === 3, 'the real replay sees the practice pet as a Legendary');
+let leg = 0, bad = 0; const N = 30;
+for (let i = 0; i < N; i++) { const b = 980000 + i, g = X._grindHatch(X.blockHash(b), b, false); if (!g) continue; if (g.art.tierIndex === 3) leg++;
+  if (g.art.crown === 'flame-crown' || g.art.auraFire || g.art.edition || !X._okArt(g.art)) bad++; }
+ok(leg >= 5, 'boosted eggs: ' + leg + ' of ' + N + ' Legendary (real eggs about 1)');
+ok(bad === 0, 'never a flame crown, fire aura, edition or special egg');
+ok(X.tidyArt({ crown: 'flame-crown', auraFire: 1, edition: 2, goldFrame: 1 }).crown === 'jeweled-crown', 'a rolled flame crown shows as a jeweled crown');
+const t = X.tidyArt({ auraFire: 1, edition: 2, goldFrame: 1 }); ok(!t.auraFire && !t.edition && !t.goldFrame, 'no fire aura, edition or gold frame on practice pets');
+const refuse = tag => { try { X.burn({ tag, amount: 69 }); return false; } catch (e) { return !!e.practice; } };
+ok(refuse('pet:hatchzap') && refuse('pet:aura:1') && refuse('pet:deed:1') && refuse('pet:give:1:x') && refuse('pet:sell:1'), 'shock box, flame aura, trade, gift and sell burns refused in practice');
+ok((() => { try { X.burn({ tag: 'pet:hatch', amount: 9e9 }); return false; } catch (e) { return /Refill/.test(e.message); } })(), 'over-spending asks for a free Refill');
+const d0 = X.state().day; X.nextDay(); ok(X.state().day === d0 + 1, 'Next day skips one pretend day');
+X.reset(); ok(X.state().rows >= 0 && X.state().stats.hatched === 0 && X.state().bal === X.START_BAL, 'Start over gives a fresh pretend wallet');
+ok(Object.keys(st).every(k => /^xcpets-practice-/.test(k)), 'saved only under xcpets-practice-*: ' + Object.keys(st).join(','));
+const core = X.serve('https://api.counterparty.io:4000/v2/blocks/last');
+ok(core !== null, 'the pretend node answers Core URLs (nothing reaches the real API)');
+
 console.log('practice-mode-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

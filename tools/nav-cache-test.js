@@ -50,7 +50,8 @@ ok(/S\.fullAt = fullAt; S\.verified = true;/.test(src) && /function applyStale[\
 ok(/function bootShow[\s\S]*?pre\(\) && \(cache \|\| \(S\.provisional && lastW\)\)[\s\S]*?held = true; wkBusy\+\+/.test(src), 'prerender: provisional world held (no main-thread replay)');
 ok(/function bootStale\(st, then\) \{ bootShow\(st, then, function \(\) \{ setTimeout\(function \(\) \{ revalidate\(0\); \}, 50\); \}\); \}/.test(src) && /whenOpen\(function \(\) \{ \(cache \? Promise/.test(src), 'prerender: re-read / replay wait until opened');
 ok(/LAST_NOW = 5 \* 60e3/.test(src) && /last\.build === BUILD && age >= 0 && age <= LAST_NOW && applyStale\(last, null\)/.test(src), 'saved copy shown at once only same build, under 5 min, as a stale copy');
-const pages = fs.readdirSync(ROOT).filter(f => /\.html$/.test(f)).concat(['templates/game.html']);
+const pages = fs.readdirSync(ROOT).filter(f => /\.html$/.test(f) && !/^practice/.test(f)).concat(['templates/game.html']);
+fs.readdirSync(ROOT).filter(f => /^practice.*\.html$/.test(f)).forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8'); ok(h.indexOf('nav-cache-1102') < 0 && h.indexOf('speculationrules') < 0, f + ': practice page has no prerender guard or rules (never prerendered)'); });
 pages.forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
   ok((h.match(/<!--nav-cache-1102--><script>/g) || []).length === 1 && h.indexOf('<!--nav-cache-1102-->') < h.indexOf('<script', h.indexOf('<!--nav-cache-1102-->') + 30) + 1, f + ': prerender guard first in <head>');
   ok(/<script type="speculationrules">\{"prerender":\[\{"where":\{"and":\[\{"href_matches":"\/\*"\}[\s\S]*?a\[href\*='fresh='\], a\[href\*='addr='\][\s\S]*?a\[href\*='practice'\][\s\S]*?"eagerness":"moderate"/.test(h), f + ': same-site .html links only, moderate, no fresh=/addr= links');

@@ -1,25 +1,19 @@
-/* PRACTICE MODE (preview, practice-mode-1101): guest play page only */
-.pr-wrap{max-width:1100px;margin:0 auto;padding:16px;position:relative}
-.pr-top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border:3px dashed #ffd23f;border-radius:14px;padding:12px 16px;background:rgba(255,210,63,.08)}
-.pr-top h1{margin:0;font-family:'Press Start 2P',monospace;font-size:18px;line-height:1.5}
-.pr-stamp{display:inline-block;font-family:'Press Start 2P',monospace;font-size:11px;background:#ffd23f;color:#1a1a1a;padding:5px 8px;border-radius:6px;transform:rotate(-3deg);letter-spacing:1px}
-.pr-stats{display:flex;gap:10px;flex-wrap:wrap}.pr-stat{background:rgba(0,0,0,.25);border:1px solid var(--line,#333);border-radius:10px;padding:6px 10px;text-align:center;min-width:92px}
-.pr-stat b{display:block;font-family:'Press Start 2P',monospace;font-size:13px;margin-top:4px}
-.pr-panel{margin-top:14px;border:2px solid var(--line,#333);border-radius:14px;padding:12px 14px;background:rgba(0,0,0,.18)}
-.pr-panel h2{margin:0 0 8px;font-size:18px}.pr-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pr-msg{min-height:1.4em;margin:10px 0 0;font-weight:700}
-.pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-top:10px;position:relative}
-.pr-card{position:relative;border:2px dashed #8a7a3a;border-radius:12px;padding:10px;text-align:center;background:rgba(0,0,0,.28);overflow:hidden}
-.pr-card.t1{border-color:#4fd18b}.pr-card.t2{border-color:#4f9dff}.pr-card.t3{border-color:#c77dff}
-.pr-card::after{content:'PRACTICE';position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) rotate(-24deg);font-family:'Press Start 2P',monospace;font-size:15px;color:rgba(255,255,255,.10);pointer-events:none;white-space:nowrap}
-.pr-badge{position:absolute;top:6px;left:6px;font-family:'Press Start 2P',monospace;font-size:8px;background:#ffd23f;color:#1a1a1a;padding:3px 5px;border-radius:4px;z-index:1}
-.pr-pix{width:96px;height:96px;image-rendering:pixelated;display:block;margin:8px auto 6px;border-radius:8px}
-.pr-name{font-weight:700}.pr-bar{height:8px;border-radius:5px;background:rgba(255,255,255,.12);margin:6px 0 3px;overflow:hidden}.pr-bar i{display:block;height:100%;background:#7bd389}
-.pr-feed{margin-top:6px;font-size:13px;padding:6px 10px}.pr-done{margin-top:8px}
-.pr-empty{grid-column:1/-1;text-align:center;padding:24px;opacity:.85}
-.pr-nudge{margin-top:14px;border:2px solid #4f9dff;border-radius:14px;padding:12px 14px;background:rgba(79,157,255,.10);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.pr-nudge.pr-pop{animation:prpop .5s ease-out}@keyframes prpop{0%{transform:scale(.96)}60%{transform:scale(1.02)}100%{transform:scale(1)}}
-.pr-log{margin:6px 0 0;padding-left:18px;font-size:13px;opacity:.85}
-body.pr-page::before{content:'PRACTICE  PRACTICE  PRACTICE';position:fixed;left:-10%;top:45%;width:120%;text-align:center;transform:rotate(-18deg);font-family:'Press Start 2P',monospace;font-size:46px;letter-spacing:6px;color:rgba(255,210,63,.045);pointer-events:none;z-index:0;white-space:nowrap}
-.la-ov::after{content:'PRACTICE · pretend pets, nothing on chain';position:absolute;top:12px;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:10px;background:#ffd23f;color:#1a1a1a;padding:6px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:5}
-@media (max-width:600px){.pr-top h1{font-size:14px}.pr-grid{grid-template-columns:repeat(2,1fr)}.pr-pix{width:80px;height:80px}.pr-stat{min-width:0;flex:1}body.pr-page::before{font-size:26px}.la-ov::after{font-size:8px}}
+/* PRACTICE MODE (practice-fun-1102): practice.html is the real play page with pretend burns. Clear, small marking + "Play for real". */
+.px-bar{position:relative;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;max-width:1100px;margin:8px auto 0;padding:7px 10px;border:2px dashed #ffd23f;border-radius:12px;background:rgba(24,20,8,.92);box-sizing:border-box;font-size:13px}
+.px-badge{font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:1px;background:#ffd23f;color:#1a1a1a;padding:5px 7px;border-radius:6px;transform:rotate(-3deg)}
+.px-txt{flex:1 1 220px;min-width:0}.px-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.px-btns .btn,.px-btns .q{padding:5px 9px;font-size:12px;min-height:32px}
+.px-msg{flex-basis:100%;min-height:0;color:#ffd23f}.px-msg:empty{display:none}
+.btn.px-real{background:#2ecc71;border-color:#1e8f4d;color:#08240f;font-weight:700}.btn.px-real.big{font-size:16px;padding:10px 16px}
+.px-nav{display:flex;gap:4px 12px;align-items:center;flex-wrap:wrap;justify-content:center;min-width:0}.px-nav a{white-space:nowrap}.px-nav .btn{padding:5px 10px}
+@media (max-width:600px){.px-nav{gap:2px 9px;font-size:12px}.px-nav .btn{padding:3px 8px;font-size:12px}}
+.px-odds{background:rgba(255,210,63,.08);border:1px dashed rgba(255,210,63,.5);border-radius:8px;padding:6px 8px}
+.px-cta{border:2px solid #2ecc71;background:rgba(46,204,113,.08)}.px-cta.px-pop{animation:pxpop .6s ease-out}
+@keyframes pxpop{0%{transform:scale(.97)}60%{transform:scale(1.02)}100%{transform:scale(1)}}
+body.practice #zapBtn,body.practice #zapFence,body.practice #zapOdds,body.practice #wdisconnect,body.practice #balRefresh{display:none!important}
+/* a faint PRACTICE stamp on every pet card and on the hatch reveal */
+body.practice .pets .pet,body.practice .pets .card{position:relative}
+body.practice .pets .pet::after,body.practice .pets .card::after{content:'PRACTICE';position:absolute;right:6px;top:6px;font-family:'Press Start 2P',monospace;font-size:7px;background:rgba(255,210,63,.85);color:#1a1a1a;padding:2px 4px;border-radius:3px;pointer-events:none;z-index:3}
+.px-reveal-tag{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100000;font-family:'Press Start 2P',monospace;font-size:10px;background:#ffd23f;color:#1a1a1a;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:nowrap}
+html,body{overflow-x:hidden}
+@media (max-width:600px){.px-bar{margin:6px 6px 0;font-size:12px}.px-txt{flex-basis:100%}.px-btns .btn,.px-btns .q{font-size:11px;padding:4px 7px}}
