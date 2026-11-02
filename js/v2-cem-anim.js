@@ -157,8 +157,8 @@
       if (k >= per - 2) { sparkle(g, f, 40 + i, CX, GY - 18, 26); disc(g, CX, GY - 18, 3 + (k - per + 2) * 2, C.gold2); return; }
       if (it.pet) { var vsp = sprite(it.pet, 'live', 0); g.drawImage(vsp, 0, 0, 32, 32, Math.round(x), Math.round(y - wob), sz, sz); } else gearIcon(g, Math.round(x), Math.round(y - wob), sz);
       if (k < 0 && (f + i) % 6 < 3) px(g, sx + 7, sy - 3, C.gold2, 2, 1); });
-    /* the points panel */ var MIN = ev.min || 25, bw = 76; px(g, 26, 2, C.ol, 76, 21); px(g, 27, 3, '#221d38', 74, 19);
-    text(g, 'POINTS ' + pts + '/' + MIN, CX, 5, pts >= MIN ? C.zg : C.gold2, 5); px(g, 30, 12, C.s4, 68, 3); px(g, 30, 12, pts >= MIN ? C.zg2 : C.gold, Math.round(68 * clamp(pts / MIN, 0, 1)), 3);
+    /* the points panel (hatchspeed-1101, display only: '166 PTS (MIN 25)' instead of 'POINTS 166/25'; panel widened 76 -> 92 to fit 16 letters) */ var MIN = ev.min || 25, bw = 92; px(g, 18, 2, C.ol, 92, 21); px(g, 19, 3, '#221d38', 90, 19);
+    text(g, pts + ' PTS (MIN ' + MIN + ')', CX, 5, pts >= MIN ? C.zg : C.gold2, 5); px(g, 30, 12, C.s4, 68, 3); px(g, 30, 12, pts >= MIN ? C.zg2 : C.gold, Math.round(68 * clamp(pts / MIN, 0, 1)), 3);
     text(g, 'CHANCE ' + Math.round(ch * 100) + '%', CX, 16, '#ffffff', 5);
     if (f >= s0 && cur < sh.length && t >= per - 2) { var add = Math.max(0, stepAt(cur + 1).pts - stepAt(cur).pts); text(g, '+' + add, CX + 22, GY - 34 - (t - per + 2) * 2, C.gold2, 6); }
     if (n > 4 && f < endF + 2) text(g, '+' + (n - 4) + ' MORE', 4, 26, C.gold, 5, 'left');
