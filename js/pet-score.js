@@ -22,7 +22,7 @@
   /* trait-rank-1101 (display only): the trait rarity part of compute() on its own, so the 💎 Trait rarity board (js/v2-trait-rank.js) can rank
    * every pet without the full score. Same population, same keys, same numbers as compute(). */
   function population(w) { return (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }); }
-  function traitBits(pets) { var N = pets.length, RF = {}, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks)];
+  function traitBits(pets) { var N = pets.length, RF = {}, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks), p.mutation ? 'mut-' + (p.mutation.kind || 'odd') : 'none', p.shows ? 'tb-' + p.shows : 'none']; /* glitch-display-1102: a mutation and a showing throwback trait are traits too (display only) */
       for (var t = 0; t < v.length; t++) { var key = t + ':' + v[t]; RF[key] = (RF[key] || 0) + 1; v[t] = key; } return v; });
     return { RF: RF, rk: rk, bits: rk.map(function (v) { var b = 0; for (var t = 0; t < v.length; t++) b -= Math.log2(RF[v[t]] / N); return b; }) }; }
   /** rarityAll(w) -> [{ id, bits, oneIn }] for every ranked pet (community and released pets left out), in world order. Cached per world. */
@@ -78,7 +78,7 @@
   function fmtN(n) { if (!(n >= 1)) return '1'; var u = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]; for (var i = 0; i < u.length; i++) if (n >= u[i][0]) { var v = n / u[i][0]; return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + u[i][1]; } return String(Math.round(n)); }
   function rarityLine(w, p) { var r = rarity(w, p); return r ? '💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) : ''; }
   function rarityChip(w, p) { if (!p || isComm(p)) return ''; var r = rarity(w, p); if (!r) return '';
-    return '<span class="chip prar" title="Trait rarity: how unusual this pet\'s species, eyes, pattern, background and cheeks are across every pet (display only, not the hatch tier)">💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) + '</span>'; }
+    return '<span class="chip prar" title="Trait rarity: how unusual this pet\'s species, eyes, pattern, background, cheeks, mutation and throwback trait are across every pet (display only, not the hatch tier)">💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) + '</span>'; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function label(s) { return s.score + ' · top ' + s.top + '%'; }
   function badge(w, p) { if (!p || isComm(p)) return ''; var s = of(w, p); if (!s) return ''; var b = s.breakdown;
@@ -92,15 +92,15 @@
     '@media (hover:hover){.psw:hover .psbd{display:block}}.psw:focus .psbd,.psw.open .psbd{display:block}.psw.open,.psw:hover,.psw:focus{z-index:90}*:has(> .chips .psw.open),*:has(> .chips .psw:hover),*:has(> .chips .psw:focus),#chips:has(.psw.open){position:relative;z-index:60}';
 
   /* player-qol 2026-10-24 (display only): everything a player needs to decide Keep or Discard, inline on the egg review / Discard pile card,
-   * so no clicking in and out. Traits = species, eyes, pattern, background, cheeks, each with its own '1 in N' across every pet; the
-   * 💎 Rarity score is the same trait-rarity bits as the rarity chip/sort (sum of -log2(freq/N) of those five traits); ⭐ Pet Score; ⚡ Power. */
+   * so no clicking in and out. Traits = species, eyes, pattern, background, cheeks (plus mutation and throwback in the score), each with its own '1 in N' across every pet; the
+   * 💎 Rarity score is the same trait-rarity bits as the rarity chip/sort (sum of -log2(freq/N) of those traits); ⭐ Pet Score; ⚡ Power. */
   var TR = ['Species', 'Eyes', 'Pattern', 'Bg', 'Cheeks'], SK = [['vigor', 'VIG'], ['spark', 'SPK'], ['grit', 'GRT'], ['zoom', 'ZM'], ['luck', 'LCK']];
   function cap(s) { s = String(s == null ? '' : s).replace(/[-_]/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); }
   function discardInfo(w, p, spName) { if (!p || isComm(p)) return ''; var s = of(w, p), a = p.art || {}, st = p.stats || {};
     var val = [spName || cap(isHyb(p) ? 'hybrid' : p.species), cap(a.eyes || '-'), cap(a.pattern || '-'), cap(a.background || '-'), cap(cheekKey(a.cheeks))];
     var rows = TR.map(function (t, i) { var o = s && s.traitOneIn ? s.traitOneIn[i] : 0; return '<li><span class="dit">' + t + '</span> <b>' + esc(val[i]) + '</b>' + (o ? ' <span class="dio">1/' + fmtN(o) + '</span>' : '') + '</li>'; }).join('');
     var pw = total(p), stl = SK.map(function (k) { return k[1] + ' ' + (+st[k[0]] || 0); }).join(' · ');
-    return '<div class="dinfo">' + (s ? '<div class="dihead"><span class="dirar" title="Rarity score: trait rarity of species, eyes, pattern, background and cheeks across every pet (display only, not the hatch tier)">💎 Rarity ' + s.rarityBits.toFixed(1) + ' <span class="dio">1 in ' + fmtN(s.rarityOneIn) + '</span></span> <span class="disc2" title="Pet Score (display only)">⭐ ' + s.score + '</span> <span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>' : '<div class="dihead"><span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>') +
+    return '<div class="dinfo">' + (s ? '<div class="dihead"><span class="dirar" title="Rarity score: trait rarity of species, eyes, pattern, background, cheeks, mutation and throwback trait across every pet (display only, not the hatch tier)">💎 Rarity ' + s.rarityBits.toFixed(1) + ' <span class="dio">1 in ' + fmtN(s.rarityOneIn) + '</span></span> <span class="disc2" title="Pet Score (display only)">⭐ ' + s.score + '</span> <span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>' : '<div class="dihead"><span class="dipw"' + ptA(p) + '>⚡ Power ' + pw + '</span></div>') +
       '<ul class="ditr">' + rows + '</ul><div class="dist">' + stl + '</div></div>'; }
   var DCSS = '.dinfo{text-align:left;font-size:11px;line-height:1.3;margin-top:3px}.dinfo .dihead{display:flex;flex-wrap:wrap;gap:3px 6px;justify-content:center;margin-bottom:2px}' +
     '.dinfo .dirar{color:#bfe9ff;font-weight:bold}.dinfo .disc2{color:#ffd166}.dinfo .dipw{color:#9fe8b5}.dinfo .dio{color:#9aa4b8;font-weight:normal;font-size:10px}' +

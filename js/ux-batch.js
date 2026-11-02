@@ -104,7 +104,10 @@
   // ================================================================ F. origin badges
   UXB.origin = function (p, w) { var o = originOf(p), par = p.parents || [];
     function lk(id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '" data-jump="' + id + '">#' + id + '</a>' + (o === 'hybrid' && q ? ' ' + esc(spL(q.species)) : ''); }
-    if (o === 'hatched') return '<span class="chip origin" title="Hatched from an egg burn">🥚 Hatched</span>';
+    /* glitch-display-1102: quest jackpot eggs, grant eggs and Electric Eggs get their own origin chip (they were 'Hybrid' or 'Hatched from an egg burn') */
+    var og = window.V2Render && V2Render.originOf ? V2Render.originOf(w, p) : null;
+    if (og && og.kind !== 'bred' && og.kind !== 'hybrid' && og.kind !== 'hatched' && og.kind !== 'live') return '<span class="chip origin" title="' + esc(og.title) + '">' + esc(og.chip) + (p.jackpot ? ' ' + lk(p.jackpot.from) : '') + '</span>';
+    if (o === 'hatched') return '<span class="chip origin" title="' + esc(og ? og.title : 'Hatched from an egg burn') + '">🥚 Hatched</span>';
     var two = par.length >= 2, bonus = p.breedBonus ? ' <span title="Bred true: same-species bonus (' + esc(p.breedBonus.kind || 'bonus') + ')">✨</span>' : '', R = window.V2Render;
     var bf = two && R && R.bredFrom ? R.bredFrom(w, p, true) : '';
     if (o === 'hybrid') return '<span class="chip origin hybrid">🧬 ' + (two ? lk(par[0]) + ' × ' + lk(par[1]) : 'Hybrid') + bonus + '</span>' + bf;

@@ -58,10 +58,10 @@
   function info(w, p, V, o) { o = o || {}; var t = o.tie || tieOf(w, p); if (!t) return null; var sc = o.score || null;
     return { id: p.id, name: p.name, speciesLabel: o.speciesLabel || (V && V.speciesLabel ? V.speciesLabel(p.species) : p.species), tier: p.resurrected ? 'God' : TIERS[p.tier] || String(p.tier || ''), score: sc ? sc.score : null, rank: sc ? sc.rank : null,
       stageName: p.stageName, generation: genOf(w, p), bornBlock: p.hatchBlock, bornTx: p.hatchTx, stats: STATS.map(function (k) { return [k, (p.stats || {})[k] || 0]; }),
-      parents: (p.parents || []).map(function (id) { var q = w.byId[id]; return { id: id, name: q ? q.name : '' }; }), asset: t.asset, tiedBlock: t.block, tiedTx: t.tx, tiedBy: t.by }; }
+      parents: (p.parents || []).map(function (id) { var q = w.byId[id]; return { id: id, name: q ? q.name : '' }; }).concat(p.jackpot ? [{ id: 'wild', name: 'wild Legendary ' + (V && V.speciesLabel ? V.speciesLabel(p.jackpot.wild) : p.jackpot.wild) }] : []), /* glitch-display-1102: a quest jackpot egg's second parent is a wild Legendary */ asset: t.asset, tiedBlock: t.block, tiedTx: t.tx, tiedBy: t.by }; }
   /* ---- layouts ---- */
   function rows(I) { return [['NAME', I.name], ['PET ID', '#' + I.id], ['SPECIES', I.speciesLabel], ['RARITY', I.tier + (I.score != null ? ' ' + I.score + (I.rank ? ' #' + I.rank : '') : '')], ['STAGE', I.stageName], ['GENERATION', String(I.generation)]]; }
-  function lineage(I) { return I.parents.length ? { a: I.parents.map(function (q) { return '#' + q.id; }).join(' + '), b: I.parents.map(function (q) { return q.name; }).join(' + ') } : null; }
+  function lineage(I) { return I.parents.length ? { a: I.parents.map(function (q) { return q.id === 'wild' ? 'wild' : '#' + q.id; }).join(' + '), b: I.parents.map(function (q) { return q.name; }).join(' + ') } : null; }
   function desktop(I, spr) { var W = 400, H = 267, im = new Img(W, H), y, L = rows(I), lin = lineage(I); border(im);
     text(im, W / 2, 16, 'OFFICIAL XCPETS', 8, DRED, 'mt'); text(im, W / 2, 27, 'PROOF OF PET', 16, INK, 'mt'); im.line([[20, 47], [W - 21, 47]], DGOLD);
     im.rect(18, 54, 117, 153, BG); if (spr) im.sprite(spr, 32, 32, 3, 20, 56);

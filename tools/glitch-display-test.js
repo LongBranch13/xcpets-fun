@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+/* glitch-display-1102 tests (dev tooling only, display only): mutation chip / odds text, quest jackpot origin + generation, pet-score mutation trait. */
+'use strict';
+const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert');
+const ROOT = path.resolve(__dirname, '..'), rd = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const store = {}, ls = { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+const el = () => ({ style: {}, appendChild() {}, setAttribute() {}, addEventListener() {}, getContext: () => null, classList: { add() {}, remove() {}, toggle() {} } });
+const doc = { createElement: el, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, head: null, documentElement: el(), body: el() };
+const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, document: doc, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {}, requestAnimationFrame: () => 0, MutationObserver: function () { this.observe = () => {}; }, URLSearchParams, URL, TextEncoder, TextDecoder };
+win.window = win; win.self = win; win.globalThis = win; const ctx = vm.createContext(win);
+for (const f of ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-render.js', 'js/pet-score.js']) vm.runInContext(rd(f), ctx, { filename: f });
+const V = ctx.V2Rules, R = ctx.V2Render, S = ctx.PetScore;
+let pass = 0; const t = (name, fn) => { fn(); pass++; console.log('ok', name); };
+t('JACKPOT_ODDS mirrors v2-rules JACKPOT', () => { const m = rd('js/v2-rules.js').match(/var JACKPOT = (\{[^}]*\})/); assert(m, 'JACKPOT not found'); assert.strictEqual(JSON.stringify(R.JACKPOT_ODDS), JSON.stringify(vm.runInNewContext('(' + m[1] + ')'))); });
+const w = { byId: {}, pets: [] }, add = p => { p.parents = p.parents || []; w.byId[p.id] = p; w.pets.push(p); return p; };
+const a = add({ id: 1, species: 'cat', hatchBlock: 900000 }), b = add({ id: 2, species: 'dog', hatchBlock: 900001 });
+const c = add({ id: 3, species: 'cat', parents: [1, 2], hatchBlock: 972000 }), d = add({ id: 4, species: 'cat', parents: [1, 3], hatchBlock: 972100 });
+const j = add({ id: 5, species: 'hybrid-x', parents: [4], jackpot: { from: 4, wild: 'frog', block: 974000 }, mutation: { kind: 'glitch', hue: 90, seed: 1 }, hatchBlock: 974000 });
+const bm = add({ id: 6, species: 'cat', parents: [1, 2], mutation: { kind: 'palette', set: Object.keys(V.PALETTE_SETS || { x: 1 })[0] }, twinOf: 7, hatchBlock: 973000 });
+t('gen: hatched 0, bred = older parent + 1, inbred line not undercounted', () => { assert.strictEqual(R.genOf(w, a), 0); assert.strictEqual(R.genOf(w, c), 1); assert.strictEqual(R.genOf(w, d), 2); });
+t('gen: quest jackpot egg = its one parent + 1', () => assert.strictEqual(R.genOf(w, j), 3));
+t('origin: jackpot says quest jackpot, not bred', () => { const o = R.originOf(w, j); assert.strictEqual(o.kind, 'jackpot'); assert(/^from a quest jackpot at block 974,000/.test(o.line), o.line); assert(!/bred/i.test(o.line)); });
+t('origin: bred and hatched', () => { assert.strictEqual(R.originOf(w, c).kind, 'bred'); assert.strictEqual(R.originOf(w, a).kind, 'hatched'); });
+t('origin: grants are not "hatched from an egg burn"', () => { for (const p of [{ supreme: { id: 'bo', title: 'Bo', gate: 1 } }, { contest: { id: 'x', title: 'X', gate: 1 } }, { burnLord: { n: 1, of: 3, gate: 1, rank: 1, total: 1 } }, { top3Grant: { rank: 1 } }, { priorityGrant: { tx: 'a', block: 1 } }]) { const o = R.originOf(w, Object.assign({ id: 99, hatchBlock: 1 }, p)); assert.notStrictEqual(o.kind, 'hatched'); assert(!/^Hatched from an egg burn/.test(o.title), o.title); } });
+t('mutation odds: jackpot 1 in 5 / 1 in 10, bred 1 in 100 / 1 in 200', () => { assert(/1 in 5 for a mutation.*1 in 10 for this kind/.test(R.mutationOdds(j))); assert(/1 in 100 for a mutation.*1 in 200 for this kind.*twins share it/.test(R.mutationOdds(bm))); assert.strictEqual(V.MUTATION_1_IN, 100); });
+t('mutation chip + tip: looks only, glitch named', () => { const h = R.mutationChip(j); assert(/🧬 Glitch mutation/.test(h)); assert(/Looks only/.test(R.mutationTip(j))); assert.strictEqual(R.mutationChip(a), ''); });
+t('MUTANT badge tip uses the right odds', () => { const B = R.badgesOf(w, j).filter(x => x.id === 'mutant'); assert.strictEqual(B.length, 1); assert(/1 in 5 for a mutation/.test(B[0].tip), B[0].tip); });
+t('born traits rows include Mutation', () => assert(R.bornExtraRows(j).some(r => /Mutation/.test(JSON.stringify(r)))));
+t('pet-score: a mutation is a rarer trait', () => { const pets = []; for (let i = 0; i < 50; i++) pets.push({ id: 100 + i, species: 'cat', parents: [], art: { eyes: 'e', pattern: 'p', background: 'b', cheeks: 'c' }, stats: {} }); pets[0].mutation = { kind: 'glitch' };
+  const r = S.rarityAll({ pets, tip: 1 }); assert(r[0].bits > r[1].bits, 'mutant ' + r[0].bits + ' vs ' + r[1].bits); assert.strictEqual(r[1].bits, r[2].bits); });
+for (const f of ['js/v2-render.js', 'js/v2-pages.js', 'js/v2-easy-flows.js', 'js/ux-batch.js', 'pets.html']) t('wording: no "×" counts / no series or discount in new text ' + f, () => { const s = rd(f); assert(!/glitch-display-1102[^\n]*\b(series|discount)\b/i.test(s)); assert(!/bred ' \+ [^\n]{0,40}'×'/.test(s)); });
+console.log('ALL PASS (' + pass + ')');
