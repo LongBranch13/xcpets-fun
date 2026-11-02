@@ -1250,7 +1250,8 @@
    * stash). A piece no picked pet can take stays in the stash, unworn: still the wallet's, free to wear in the Dressing room. The take-off
    * happens once (the first pet:rw); a later pet:rw only places noted pieces still unworn in the stash (so a player with pets spread out can
    * pick them over a few burns); with none left it is rejected. Nothing else changes: no spin is spent or given, no other wallet is touched. */
-  var REWEAR_GRANTS = { '38a32dc60285b3d50a4133098178709153aa6bdc2923481e94447fb3f82d2848': 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4' }; /* owner's 1,157-spin use-all, block 974,216 */
+  var REWEAR_GRANTS = { '38a32dc60285b3d50a4133098178709153aa6bdc2923481e94447fb3f82d2848': 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', /* owner's use-all, block 974,216: 1,161 spins, 1,014 on never-fed pets */
+    'a49beb8f9f200f1574d9a1abca9769f3a98f9c944d7e6147d09c3eb95b45d865': 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q' }; /* G Money's use-all, block 974,179: 768 spins, 725 on never-fed pets (owner 'Yes and yes' Nov 2 2026 [pt2654u]) */
   var RW_PREFIX = 'pet:rw:';
   function rwNote(w, r, src, got, unfed) { if (REWEAR_GRANTS[r.tx_hash] !== src) return; (w._rw = w._rw || {})[r.tx_hash] = { owner: src, block: r.block_index, gids: got.filter(function (x, i) { return unfed[i]; }).map(function (x) { return x.gid; }) }; }
   /** rewearGrant(w, addr): { tx, n, used } for the wallet's open re-wear grant (n = noted pieces it still owns), or null. */

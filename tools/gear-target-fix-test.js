@@ -14,7 +14,7 @@ const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
 const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine;
-const OWNER = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', OWNER_TX = '38a32dc60285b3d50a4133098178709153aa6bdc2923481e94447fb3f82d2848', GMONEY = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q';
+const OWNER = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', OWNER_TX = '38a32dc60285b3d50a4133098178709153aa6bdc2923481e94447fb3f82d2848', GMONEY = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', GMONEY_TX = 'a49beb8f9f200f1574d9a1abca9769f3a98f9c944d7e6147d09c3eb95b45d865';
 /* 1. parse */
 const P = t => V.parseTag(t);
 const u1 = P('pet:ut:ALL:A1:0513'); ok(u1.action === 'usespint' && u1.all && u1.a === parseInt('A1', 32) && JSON.stringify(u1.runs) === '[0,5,1,3]', 'parse: pet:ut:ALL:A1:0513');
@@ -35,7 +35,8 @@ const w = V.replay(rows, hashes, [], opts(tip));
 /* the grant note */
 const hasOwner = rows.some(r => r.tx_hash === OWNER_TX), gr = V.rewearGrant(w, OWNER);
 if (hasOwner) { ok(gr && gr.tx === OWNER_TX && gr.total === 1014 && !gr.used, 'grant note: the owner\'s use-all burn (1,161 spins with the sale data the site replays) put ' + (gr && gr.total) + ' pieces on pets with no meal yet (expect 1,014), ' + (gr && gr.n) + ' still his');
-  ok(V.rewearGrant(w, GMONEY) === null, 'grant note: G Money (768-spin use-all) has no re-wear (owner decision)'); }
+  const gg = V.rewearGrant(w, GMONEY); ok(gg && gg.tx === GMONEY_TX && gg.total === 725 && gg.n === 725 && !gg.used, 'grant note: G Money\'s use-all burn (768 spins, block 974,179) put ' + (gg && gg.total) + ' pieces on pets with no meal yet (expect 725) [pt2654u]');
+  ok(V.rewearGrant(w, 'bc1qs88h0000000000000000000000000000y0j6n') === null, 'grant note: any other wallet has no re-wear'); }
 else console.log('  (boot file has no owner use-all burn: grant checks skipped)');
 ok(V.spinTargetPlans(w, OWNER, [1], 'all', nb) === null && V.rewearPlan(w, OWNER, [1], nb) === null, 'gate off: planners offer nothing');
 ok(/later block/.test(V.sendBlock(w, { tag: 'pet:ut:ALL:00:02' }, tip, { me: OWNER }) || ''), 'gate off: send guard says picking opens at a later block');
@@ -78,7 +79,9 @@ const old1 = mk(G, W, 'pet:usespin:all', 'o1'), old2 = mk(G, W, 'pet:usespin:3',
 const frVar = n => { const d = [n % 16]; n = Math.floor(n / 16); while (n > 0) { d.unshift(16 + n % 16); n = Math.floor(n / 16); } return d.map(x => x.toString(32).toUpperCase()).join(''); };
 const dc = mk(G + 1, W2.a, 'pet:dc:2', 'dc'), bad = mk(G + 1, W2.a, 'pet:ut:1:' + plans[0].tag.split(':')[3] + ':' + frVar(V.spinList(w, W2.a, tip, G).length + 5) + '1', 'bad');
 const extra = [old1, old2, ut, ut2, dc, bad]; let rwr = null, rw2 = null, rwg = null;
-if (rwPlan) { rwr = mk(G + 3, OWNER, rwPlan.tag, 'rw'); rw2 = mk(G + 4, OWNER, rwPlan2[0].tag, 'rw2'); rwg = mk(G + 3, GMONEY, rwPlan.tag, 'rwg'); extra.push(rwr, rw2, rwg); }
+if (rwPlan) { rwr = mk(G + 3, OWNER, rwPlan.tag, 'rw'); rw2 = mk(G + 4, OWNER, rwPlan2[0].tag, 'rw2'); rwg = mk(G + 3, W2.a, rwPlan.tag, 'rwg'); extra.push(rwr, rw2, rwg); }
+const gmFed = (pets[GMONEY] || []).filter(p => p.lastFed != null).map(p => p.id), gmPlans = hasOwner ? V.rewearPlans(w, GMONEY, gmFed, G) : null; let rwgm = [];
+if (gmPlans) { rwgm = gmPlans.map((p, j) => mk(G + 3 + j, GMONEY, p.tag, 'rwgm' + j)); extra.push(...rwgm); }
 const w2 = V.replay(rows.concat(extra), hashes, [], opts(G + 6)), lg = t => w2.log.find(x => x.tx === t.tx_hash) || {};
 ok(lg(old1).kind === 'rejected' && /pick/.test(lg(old1).msg) && lg(old2).kind === 'rejected', 'gate on: pet:usespin:all and pet:usespin:3 rejected [' + lg(old1).msg + ']');
 const lu = lg(ut), sp = lu.spins || [];
@@ -89,7 +92,7 @@ ok(V.spinsLeft(w2, W, G + 6) === 0 && lg(ut2).kind === 'rejected', 'gate on: 0 s
 ok(lg(bad).kind === 'rejected' && /no pets at those places/.test(lg(bad).msg), 'gate on: runs past the end of the list rejected, nothing spent [' + lg(bad).msg + ']');
 const dcl = lg(dc); ok(!dcl.kind || dcl.kind !== 'roll', 'gate on: pet:dc spins part does not spin [' + (dcl.kind + ': ' + dcl.msg) + ']');
 ok(V.spinsLeft(w2, W2.a, G + 6) === V.spinsLeft(w, W2.a, G + 6), 'gate on: chores wallet keeps its ' + V.spinsLeft(w2, W2.a, G + 6) + ' spins');
-if (rwPlan) { const R = w._rw[OWNER_TX], set = new Set(R.gids), l = lg(rwr), rr = l.rewear || {};
+if (rwPlan) { const R = w._rw[OWNER_TX], set = new Set(R.gids.concat((w._rw[GMONEY_TX] || { gids: [] }).gids)), l = lg(rwr), rr = l.rewear || {};
   ok(l.kind === 'rewear' && rr.worn + rr.stash + rr.skipped === gr.n, 're-wear: ' + l.msg);
   const moved = R.gids.map(g => w2.items[g]).filter(g => g && g.owner === OWNER);
   const PK = rwPick.concat(rwPlan2[0].petIds), l2 = lg(rw2), r2 = l2.rewear || {};
@@ -98,10 +101,15 @@ if (rwPlan) { const R = w._rw[OWNER_TX], set = new Set(R.gids), l = lg(rwr), rr 
   ok(moved.every(g => g.on == null || rwPick.indexOf(g.on) >= 0 || (w.items[g.gid].on === g.on && rr.skipped > 0)) && moved.every(g => g.bag == null), 're-wear: every noted piece is now on a picked pet or in the stash (none left in a bag)');
   ok(moved.filter(g => g.on != null && rwPick.indexOf(g.on) >= 0).length === rr.worn && rr.worn > 0, 're-wear: ' + rr.worn + ' worn over both burns on ' + rwPick.length + ' picked pets');
   ok(Object.keys(w.items).length + WS === Object.keys(w2.items).length && Object.keys(w.items).every(k => w.items[k].owner === w2.items[k].owner), 're-wear: no piece created, destroyed or moved to another wallet');
-  ok(Object.keys(w.items).filter(k => !set.has(k) && w.items[k].on !== w2.items[k].on).every(k => w2.items[k].on == null && rwPick.indexOf(w.items[k].on) >= 0 && w.items[k].owner === OWNER || w.items[k].owner === W), 're-wear: other pieces touched only when a better noted piece took their slot on a picked pet');
+  ok(Object.keys(w.items).filter(k => !set.has(k) && w.items[k].on !== w2.items[k].on).every(k => w2.items[k].on == null && (rwPick.indexOf(w.items[k].on) >= 0 && w.items[k].owner === OWNER || gmFed.indexOf(w.items[k].on) >= 0 && w.items[k].owner === GMONEY) || w.items[k].owner === W), 're-wear: other pieces touched only when a better noted piece took their slot on a picked pet');
   const wornBy = {}; Object.keys(w2.items).forEach(k => { const g = w2.items[k]; if (g.on != null && rwPick.indexOf(g.on) >= 0) { const key = g.on + ':' + g.slot; wornBy[key] = (wornBy[key] || 0) + 1; } });
   ok(Object.values(wornBy).every(n => n === 1), 're-wear: one piece per slot on every picked pet');
-  ok(lg(rwg).kind === 'rejected' && /no re-wear grant/.test(lg(rwg).msg), 're-wear: G Money has none [' + lg(rwg).msg + ']');
+  ok(lg(rwg).kind === 'rejected' && /no re-wear grant/.test(lg(rwg).msg), 're-wear: a wallet with no grant is refused [' + lg(rwg).msg + ']');
   const g2 = V.rewearGrant(w2, OWNER); ok(g2.used === G + 3 && g2.burns === 2 && g2.n === r2.stash, 're-wear: first used at ' + g2.used + ', 2 burns, ' + g2.n + ' pieces still in the stash for more picks'); }
+if (hasOwner) { ok(gmPlans && gmPlans.length, 'G Money re-wear planner: ' + gmFed.length + ' fed pets -> ' + (gmPlans && gmPlans.length) + ' burns');
+  const a = rwgm.map(lg), r0 = (a[0] || {}).rewear || {}, worn = a.reduce((n, l) => n + ((l.rewear || {}).worn || 0), 0), last = (a[a.length - 1] || {}).rewear || {};
+  ok(a.length && a[0].kind === 'rewear' && r0.worn + r0.stash + r0.skipped === 725, 'G Money re-wear, first burn: ' + (a[0] && a[0].msg));
+  ok(a.every(l => l.kind === 'rewear' || /nothing left/.test(l.msg || '')), 'G Money re-wear: ' + a.length + ' burns, ' + worn + ' of 725 worn on his fed pets, ' + (V.rewearGrant(w2, GMONEY) || {}).n + ' left in the stash');
+  ok(V.rewearGrant(w2, GMONEY).used === G + 3 && Object.keys(w.items).every(k => w.items[k].owner === w2.items[k].owner), 'G Money re-wear: used once from block ' + (G + 3) + ', no piece changed hands'); }
 V._setSpinTargetActivation(null);
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);
