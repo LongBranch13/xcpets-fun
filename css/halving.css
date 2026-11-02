@@ -10,3 +10,8 @@
 .halving-ribbon.halving-chip b{font-weight:700}
 .halving-ribbon.data-lag{max-width:none;margin:0;padding:3px 10px;border:0;border-bottom:2px solid #ffc93c;box-shadow:none;font-size:12px;line-height:1.45;gap:2px 6px}
 @media (max-width:480px){.halving-ribbon.halving-chip{margin:6px auto;font-size:12px}.halving-ribbon.data-lag{margin:0;font-size:12px}}
+
+/* one banner style (critique 2026-11-01, item 10): the halving chip uses the same night-blue + yellow look as the feed-status strip */
+.halving-ribbon.halving-chip{background:#1d1b2e;color:#fff;border-color:#ffc93c}
+.halving-ribbon.halving-chip b{color:#ffc93c}
+.halving-ribbon.halving-chip a{color:#ffc93c}
