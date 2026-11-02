@@ -5,3 +5,14 @@
 .wh-saved small{flex:1 1 140px;opacity:.85}.wh-use{display:flex;gap:6px;flex-wrap:wrap}
 @media (max-width:480px){.wh-use{width:100%}.wh-use .btn{flex:1;min-height:44px}}
 .wh-all{width:100%}.wh-all .btn[data-useall]{flex:1 1 100%;white-space:normal;text-align:center}
+/* gear-target-fix-1102: Use all warning + picked-pet spin picker */
+.wh-warn{flex:1 1 100%;margin:4px 0 0;padding:6px 8px;border:2px solid #1a1020;background:#4a1020;color:#ffe3e3}
+.wh-rw .btn{flex:1 1 100%;white-space:normal;text-align:center;background:#1f6f4a;color:#fff}
+.pk-modal{position:fixed;inset:0;z-index:200;background:rgba(10,6,20,.72);display:flex;align-items:center;justify-content:center;padding:12px}
+.pk-box{background:#2a0f4a;color:#f4ecff;border:3px solid #1a1020;box-shadow:0 4px 0 #1a1020;max-width:560px;width:100%;max-height:92vh;display:flex;flex-direction:column;padding:12px 14px;gap:6px}
+.pk-box h3{margin:0;font-size:18px;color:#f2c14e}.pk-box p{margin:0}
+.pk-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.pk-q{flex:1 1 140px;min-height:36px;padding:4px 8px}
+.pk-list{overflow:auto;flex:1 1 auto;min-height:120px;max-height:46vh;border:2px solid #1a1020;background:#1d0a33;padding:4px}
+.pk-row{display:flex;gap:6px;align-items:center;padding:6px;border-bottom:1px solid #3a2060;cursor:pointer;min-height:36px}.pk-row.on{background:#3b1d63}
+.pk-row .muted{opacity:.7;font-size:12px}.pk-k{width:80px}
+.pk-act{display:flex;gap:6px;flex-wrap:wrap}.pk-act .btn{flex:1 1 160px;min-height:44px}.pk-act .btn[disabled]{opacity:.5}
