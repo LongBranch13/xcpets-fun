@@ -1280,7 +1280,8 @@
         (nKids > FAM_SHOW ? '<button type="button" class="fbtoggle" onclick="this.parentNode.classList.toggle(\'open\')"><span class="fbmore">Show all ' + nKids + ' children ▾</span><span class="fbfew">Show fewer ▴</span></button>' : '') + '</div>'); }
     if (p.carried && p.carried.length) out.push('<b>Carries:</b> ' + p.carried.map(function (c) { return esc(V2 && V2.speciesLabel ? V2.speciesLabel(c.species) : c.species) + ' traits from ' + L(c.from) + ' <span class="muted">(' + esc(String(c.stat).toUpperCase()) + ' ' + c.value + ' floor for its future children)</span>'; }).join(' · '));
     var cd = V2 && p.lastBreed != null && tip != null && tip - p.lastBreed < V2.BREED_COOLDOWN ? ' · cooldown ' + (V2.BREED_COOLDOWN - (tip - p.lastBreed)) + ' blocks' : '';
-    out.push('<b>Breedings:</b> ' + (p.breeds || 0) + (V2 && V2.breedCapOn && V2.breedCapOn(tip) ? '/' + V2.BREED_MAX : '') + cd);
+    var jkn = jks.filter(function (c) { return c.jackpot.child && (c.twinOf == null || c.id < c.twinOf); }).length; /* JACKPOT CHILD (gated in v2-rules): counted jackpot eggs, a twin pair once */
+    out.push('<b>Breedings:</b> ' + (p.breeds || 0) + (V2 && V2.breedCapOn && V2.breedCapOn(tip) ? '/' + V2.BREED_MAX : '') + (jkn ? ' <span class="muted">(' + jkn + ' from ' + (jkn === 1 ? 'a quest jackpot egg' : 'quest jackpot eggs') + ')</span>' : '') + cd);
     if (V2 && V2.breedsLeft) { var bl = V2.breedsLeft(p, tip); out.push('<b>Lifetime breeds:</b> <span class="brused' + (bl.left ? '' : ' brcap') + '">' + bl.used + '/' + bl.cap + '</span> used · ' + (bl.left ? bl.left + ' left' : 'no breeds left') + ' <span class="muted">(Gen ' + genOf(w, p) + ')</span>'); }
     var xb = breedExtrasHtml(w, p); if (xb) out.push(xb);
     return '<div class="small famline">' + out.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div>'; }
