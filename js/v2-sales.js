@@ -488,7 +488,10 @@
   function viaChain(p, draw) { var d = V.deedOf(W, p); if (d && d.ok) { pend(p.id, null); return draw(); }
     var pd = pend(p.id); if (pd && pd.tieTx) return draw(); if (PREVIEW) return draw();
     modal('<h3>#' + p.id + '</h3><p class="sh-hint">Checking the chain for a token you already made…</p>');
-    chainPend(p.id, ME, W).then(draw, draw); }
+    /* tokenize-69321: a failed look is "could not check", not "no token": say so and offer Try again instead of opening window 1 (a second mint) */
+    chainPend(p.id, ME, W).then(draw, function (e) { if (!(e && e.lookFailed)) return draw();
+      modal('<h3>#' + p.id + '</h3><p class="sh-warn">⚠️ ' + esc(e.message) + '. Step 1 waits so you don\'t make a second token by mistake.</p><p><button class="sh-btn" id="shLookAgain">🔎 Try again</button> <button class="sh-btn" data-close>Close</button></p>');
+      var b = $('shLookAgain'); if (b) b.onclick = function () { viaChain(p, draw); }; }); }
   function tieWait(p, pd) { return '<p class="sh-ok">💌 The tie burn for #' + p.id + ' (token ' + esc(short(pd.asset)) + ') was sent' + (pd.tieBlock ? ' and confirmed in block ' + blk(pd.tieBlock) : '') + '. Nothing else to send: #' + p.id + ' shows as tied once the game data reaches that block' + (TIP ? ' (it is at block ' + blk(TIP) + ' now)' : '') + '.</p>'; }
   function press(p) { var pd = pend(p.id), one = V.mintTiesOn ? V.mintTiesOn(TIP + 1) : false, waitB = pd ? 1 - (TIP - (Number(pd.at) || 0)) : 1;
     var steps = one ? '<ol class="sh-steps"><li><b>Step 1:</b> make the token (1 unit, locked, “' + esc(V.deedDesc(p.id)) + '”). Free: only the Bitcoin network fee. It is tied as soon as it confirms.</li></ol>'

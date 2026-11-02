@@ -71,6 +71,9 @@ const tokPaintSafe = pg => { try { pg.win.V2PetCard.paint(); } catch (e) { } };
   { const a = api0(); delete a['/assets/' + TOK[0][0] + '/issuances']; delete a['/assets/' + TOK[1][0] + '/issuances']; delete a['/assets/' + TOK[2][0] + '/issuances'];
     const pg = page({ api: a, down: u => /\/assets\/A\d+\/issuances/.test(u) && !/A13420616103885206571/.test(u) }); let e = null;
     await pg.T.chainPend(ID, ME, { deeds: {} }).then(null, x => { e = x; }); ok(e && e.lookFailed, 'a failed issuance read is "unknown", not "not this pet"'); }
+  /* shop: a failed look does not open window 1 */
+  { const src = fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8'), m = src.match(/function viaChain[\s\S]*?\n  function tieWait/);
+    ok(m && !/\.then\(draw, draw\)/.test(m[0]) && /e && e\.lookFailed/.test(m[0]) && /shLookAgain/.test(m[0]), 'shop viaChain: failed look shows Try again, not window 1'); }
   /* 6) step 1 clicked with an empty store and a token already on chain: no second mint */
   { const a = api0(), bal = a['/addresses/' + ME + '/balances']; a['/addresses/' + ME + '/balances'] = { result: [] }; const pg = page({ api: a });
     pg.box(); await pg.flush(); const b = pg.box(); ok(b.mint && !b.mintOff, 'no token on chain yet: step 1 offered (right): ' + b.txt.slice(0, 200));
