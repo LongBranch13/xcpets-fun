@@ -269,17 +269,22 @@
       return r ? { tieTx: r.tx_hash, tieBlock: Number(r.block_index) } : null; }, function () { return null; }); }
   /* spam-city-tokenized-fix: Core first (coreJ: COUNTERPARTY_CORE, then backup, proxy only when :4000 is blocked); one look per pet+wallet per 5 min */
   var cpMemo = {};
-  function chainPend(id, me, w) { var mk = id + '|' + me, m = cpMemo[mk]; if (m && Date.now() - m.at < 300e3 && !pend(id)) return m.p.then(function (pd) { if (pd && !pend(id)) pend(id, pd); return pd; });
-    var p = chainPend0(id, me, w); cpMemo[mk] = { at: Date.now(), p: p }; return p; }
+  /* tokenize-69321 (Nov 2 2026): a look that could not read the chain now REJECTS (err.lookFailed) instead of resolving null, so callers can tell
+   * "no token yet" (null: step 1 is right) from "could not check" (do not offer a second mint). Failed looks are not memoized (the next look reads
+   * again); o.fresh skips the 5 min memo (the pre-mint check on the pet card). */
+  function chainPend(id, me, w, o) { var mk = id + '|' + me, m = cpMemo[mk]; if (!(o && o.fresh) && m && Date.now() - m.at < 300e3 && !pend(id)) return m.p.then(function (pd) { if (pd && !pend(id)) pend(id, pd); return pd; });
+    var p = Promise.resolve(chainPend0(id, me, w)); cpMemo[mk] = { at: Date.now(), p: p }; p.then(null, function () { if (cpMemo[mk] && cpMemo[mk].p === p) delete cpMemo[mk]; }); return p; }
+  function lookErr(id, e) { var x = new Error('could not check the chain for a token you already made for #' + id + ' (' + ((e && e.message) || e || 'read failed') + ')'); x.lookFailed = true; x.retry = true; return x; }
   function chainPend0(id, me, w) { var have = pend(id), bound = (w && w.deeds) || {};
     if (PREVIEW || !me) return Promise.resolve(have);
     var withTie = function (pd) { if (!pd || pd.tieTx) return pd; return chainTie(id, pd.asset, me).then(function (t) { if (t) { pd.tieTx = t.tieTx; pd.tieBlock = t.tieBlock; pend(id, pd); } return pd; }); };
     if (have) return withTie(have);
     return coreJ('/addresses/' + me + '/balances?limit=1000').then(function (j) {
       var as = (j.result || []).filter(function (b) { return Number(b.quantity) === 1 && V.deedOk(b.asset) && !bound[b.asset]; }).slice(0, 4).map(function (b) { return b.asset; });
+      var bad = null; /* tokenize-69321: a failed issuance read is "unknown", not "not this pet's token" */
       return Promise.all(as.map(function (A) { return coreJ('/assets/' + A + '/issuances?verbose=true').then(function (k) { var i = (k.result || []).filter(function (x) { return x.status == null || x.status === 'valid'; })[0];
-        return i && !V.deedIssueWhy(i, id, me, 1e12) ? { petId: id, asset: A, mintTx: i.tx_hash, at: Number(i.block_index), fromChain: true } : null; }, function () { return null; }); }))
-        .then(function (r) { var pd = r.filter(Boolean).sort(function (a, b) { return b.at - a.at; })[0] || null; if (!pd) return null; pend(id, pd); return withTie(pd); }); }, function () { return null; }); }
+        return i && !V.deedIssueWhy(i, id, me, 1e12) ? { petId: id, asset: A, mintTx: i.tx_hash, at: Number(i.block_index), fromChain: true } : null; }, function (e) { bad = bad || e; return null; }); }))
+        .then(function (r) { var pd = r.filter(Boolean).sort(function (a, b) { return b.at - a.at; })[0] || null; if (!pd) { if (bad) throw lookErr(id, bad); return null; } pend(id, pd); return withTie(pd); }); }, function (e) { throw lookErr(id, e); }); }
   /** mintCheck(id, A, tip) -> Promise<plan>: the ONE pre-mint gate for every mint path (js/token-proof.js). Rejects with a clear reason when
    *  the Proof of Pet link or picture can't be built, so no wallet window opens for a token that would carry no proof. */
   function mintCheck(id, A, tip) { var TP = window.TokenProof, plan = V.mintPlan(id, A);
