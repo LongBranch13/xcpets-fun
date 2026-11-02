@@ -10,7 +10,7 @@ const HARNESS = '<!doctype html><html><head><meta charset="utf-8"></head><body><
   const res = []; const ok = (n, c, x) => res.push((c ? 'PASS ' : 'FAIL ') + n + (x ? ' — ' + x : ''));
   async function page(mode) {
     const ctx = await b.newContext(), pg = await ctx.newPage(); pg.on('pageerror', e => res.push('FAIL pageerror ' + e.message));
-    await pg.route('http://localhost:' + PORT + '/zz-wfd.html', r => r.fulfill({ contentType: 'text/html', body: HARNESS }));
+    await require('./lib/serve-repo.js')(pg, { '/zz-wfd.html': HARNESS }, 'http://localhost:' + PORT); /* serves the checkout on the run-tests port (no server needed) */
     await pg.route(/^https?:\/\/(?!localhost)/, r => r.fulfill({ status: 404, body: '' }));
     await pg.addInitScript(([ADDR, mode]) => { try { localStorage.setItem('xcpets-v2-wallet-provider', 'xcpwallet'); } catch (e) {}
       const W = window.__W = { calls: [], acc: mode.locked ? [] : [ADDR], h: {}, fails: mode.fails || 0, delay: mode.delay || 0, seen: [] };

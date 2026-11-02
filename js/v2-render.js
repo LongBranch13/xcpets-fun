@@ -1226,11 +1226,23 @@
    * community pet sprite: a small tooltip lists only the pieces his sprite draws, item name + rarity. Same gates as hpGear/ftGear/kekGear. */
   function communityTipItems(w) { var g = (w && w.community && w.community.gear) || {}, gate = hpOn(w) ? V.ACTIVATE_HOMER_BLOCK : ftOn(w) ? V.ACTIVATE_FUNTRUMP_BLOCK : kekOn(w) ? (V.kekActivation ? V.kekActivation() : null) : undefined;
     return (V.V2_SLOTS || []).filter(function (sl) { var x = g[sl]; return x && (gate === undefined || (gate != null && x.block >= gate)) && !(kekOn(w) && sl === 'head'); })
-      .map(function (sl) { var x = g[sl], t = x.legendary ? 3 : (x.tier || 0); return { label: x.label, t: t, tierName: (V.TIER_LABELS || [])[t] || '', legendary: !!x.legendary }; }); }
-  function bindCommunityTip(cv, w) { if (!cv) return; cv._ctipW = w; if (cv._ctip) return; cv._ctip = 1;
+      .map(function (sl) { var x = g[sl], t = x.legendary ? 3 : (x.tier || 0); return { slot: sl, slotName: V.slotLabel ? V.slotLabel(sl) : sl, label: x.label, t: t, tierName: (V.TIER_LABELS || [])[t] || '', legendary: !!x.legendary, tx: x.tx, block: x.block }; }); }
+  /* community-roll-tip (Nov 1 2026, rework of community-roll-clarity 17d5564f to fit this hover/tap tooltip). DISPLAY ONLY, no rule touched.
+   * communityTipHtml(w, me): '<pet> wears' + each worn piece as slot: name + rarity pill, then 'Your recent community rolls' (last 3 by this wallet,
+   * newest first) with where each one is now. */
+  function ctPill(t, nm, leg) { return '<span class="pill tier tier-' + TID[t] + '">' + esc(nm) + (leg ? ' ★' : '') + '</span>'; }
+  function communityTipHtml(w, me) { var c = (w && w.community) || {}, nm = c.petName || 'The community pet', it = communityTipItems(w), worn = {}, vis;
+    vis = {}; it.forEach(function (e) { if (e.tx) worn[e.tx] = 1; vis[e.slot] = e; });
+    var h = '<div><b>' + esc(nm) + (it.length ? ' wears' : ': no gear yet') + '</b></div>' + it.map(function (e) { return '<div>' + esc(e.slotName) + ': ' + esc(e.label) + ' ' + ctPill(e.t, e.tierName, e.legendary) + '</div>'; }).join('');
+    var mine = me ? (c.gearLog || []).filter(function (g) { return g.by === me; }).slice(-3).reverse() : [];
+    if (mine.length) h += '<div class="ctip-h"><b>🎲 Your recent community rolls</b></div>' + mine.map(function (g) { var t = g.legendary ? 3 : (g.tier || 0), cur = vis[g.slot]; /* only a piece the sprite draws can 'replace' a roll */
+      var st = worn[g.tx] ? '✓ worn now' : cur && cur.tx !== g.tx && cur.block >= g.block ? 'replaced by ' + esc(cur.label) : 'not worn now';
+      return '<div>' + esc(g.label) + ' ' + ctPill(t, (V.TIER_LABELS || [])[t] || '', !!g.legendary) + ' <span class="muted">' + st + '</span></div>'; }).join('');
+    return h; }
+  function bindCommunityTip(cv, w, me) { if (!cv) return; cv._ctipW = w; cv._ctipMe = me; if (cv._ctip) return; cv._ctip = 1;
     var tip = document.createElement('div'); tip.className = 'ctip small'; tip.setAttribute('role', 'tooltip'); tip.id = 'ctip' + (cv.id ? '-' + cv.id : ''); tip.hidden = true; document.body.appendChild(tip); cv.setAttribute('aria-describedby', tip.id);
     function show() { var w2 = cv._ctipW, it = communityTipItems(w2); if (!w2 || (communityGap && communityGap(w2))) return;
-      tip.innerHTML = it.length ? it.map(function (e) { return '<div>' + esc(e.label) + ' <span class="pill tier tier-' + TID[e.t] + '">' + esc(e.tierName) + (e.legendary ? ' ★' : '') + '</span></div>'; }).join('') : '<div>No gear yet</div>';
+      tip.innerHTML = communityTipHtml(w2, cv._ctipMe); /* community-roll-tip: slot + rarity per worn piece, your recent community rolls */
       tip.hidden = false; place(); }
     function place() { var r = cv.getBoundingClientRect(), tw = tip.offsetWidth, x = r.left + r.width / 2 - tw / 2;
       tip.style.left = Math.max(6, Math.min(x, document.documentElement.clientWidth - tw - 6)) + 'px'; tip.style.top = (r.bottom + 6) + 'px'; }
@@ -1352,7 +1364,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { frKey: frKey, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { frKey: frKey, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
@@ -1371,7 +1383,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=b41fdd1d38'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=fabe606600'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
