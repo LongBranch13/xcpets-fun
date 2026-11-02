@@ -68,7 +68,7 @@
   function card(w, p, o) { o = o || {};
     return '<button type="button" class="ez-c t' + p.tier + (o.on ? ' on' : '') + (o.why ? ' no' : '') + '" data-ez="' + esc(o.key || p.id) + '"' + (o.why ? ' aria-disabled="true"' : '') + ' aria-pressed="' + !!o.on + '" title="' + esc('#' + p.id + ' ' + (p.name || '') + (o.why ? ' · ' + o.why : '')) + '">' +
       (o.tag ? '<span class="ez-tag' + (o.tagMe ? ' me' : '') + '">' + o.tag + '</span>' : '') + '<span class="ez-sp" data-ezsp="' + p.id + '"></span>' +
-      '<b class="ez-nm">' + esc(p.name || '') + '</b><span class="ez-id">#' + p.id + (p.blackEye ? ' 🤕' : '') + '</span><span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span>' +
+      '<b class="ez-nm">' + esc(p.name || '') + '</b><span class="ez-id">#' + p.id + (p.blackEye ? ' 🤕' : '') + '</span><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span>' +
       (o.lines || []).map(function (l) { return '<span class="ez-l">' + l + '</span>'; }).join('') + (o.why ? '<span class="ez-why">✋ ' + esc(o.why) + '</span>' : '') + '</button>'; }
   function sprites(root, w) { var R = window.V2Render; if (!R) return; root.querySelectorAll('[data-ezsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-ezsp')]; if (!p) return; var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c);
     if (R.lazy && R.petFrames) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
@@ -84,6 +84,10 @@
   function fight(w) { var bp = $('battlePanel'), UI = U(); if (!bp || !UI || !w || !window.UXB || !UXB.faceoff) return; var el = $('ezFight');
     if (!el) { el = document.createElement('div'); el.id = 'ezFight'; el.className = 'ez ez-fight'; bp.insertBefore(el, bp.firstChild); bp.classList.add('ez-on'); }
     keep(el, function () { paintFight(el, w); }); }
+  /* page-unresponsive-fix (2026-10-27): the fighter picker re-sorted all ~1,600 of your pets and every opponent on each tap. Lists are now sorted once
+   * per world (and tip / address / sort) and reused; a new world (new block or burn) starts fresh. Display only, same lists in the same order. */
+  var MEMO = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function memo(w, k, fn) { if (!MEMO || !w || typeof w !== 'object') return fn(); var m = MEMO.get(w); if (!m) MEMO.set(w, m = {}); if (!Object.prototype.hasOwnProperty.call(m, k)) { var ks = Object.keys(m); if (ks.length > 40) delete m[ks[0]]; m[k] = fn(); } return m[k]; }
   function paintFight(el, w) { var UI = U(), ME = UI.ME, FO = UXB.faceoff(), why = UXB.whyNot, T = tip(w), s = ST.f, view = UI.viewOnly && UI.viewOnly();
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], IGN = UXB.fightIgnored ? UXB.fightIgnored() : [];
     var inc = (w.fights || []).filter(function (f) { var q = w.byId[f.b]; return f.status === 'open' && T + 1 - f.block <= V().FIGHT_WINDOW && q && q.owner === ME && IGN.indexOf(f.id) < 0; });
@@ -92,11 +96,11 @@
     var rec = function (p) { return '🏆 ' + (p.wins || 0) + '-' + (p.losses || 0); };
     var lines = function (p) { return ['<span' + ptA(p) + '>⚡ ' + pow(p) + '</span> · ⭐ ' + score(w, p), rec(p) + ' · ' + esc(spL(p.species))]; };
     var h = '';
-    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your XCP Wallet to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect XCP Wallet</button></div>';
+    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
       $('ezFGo').onclick = function () { UI.confirmPlans('Challenge', [{}]); }; return; }
     /* 1 · your fighter */
-    var mine = UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
-      .sort(function (a, b) { return (!!a.why - !!b.why) || pow(b.p) - pow(a.p) || a.p.id - b.p.id; });
+    var mine = memo(w, 'mine|' + ME + '|' + T, function () { return UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
+      .sort(function (a, b) { return (!!a.why - !!b.why) || pow(b.p) - pow(a.p) || a.p.id - b.p.id; }); });
     var mq = mine.filter(function (x) { return match(x.p, s.qa); }), nOk = mine.filter(function (x) { return !x.why; }).length;
     if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; })) mq = [{ p: A, why: why(A, w) }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
     h += '<div class="ez-box">' + head('1', 'Your fighter', 'ezFqA', s.qa, '<span class="ez-cnt">' + fmt(nOk) + ' of ' + fmt(mine.length) + ' can fight today</span>') +
@@ -108,15 +112,15 @@
     if (s.tab === 'inc') { var ii = inc.filter(function (f) { return match(w.byId[f.a], s.qb) || match(w.byId[f.b], s.qb); });
       opp = ii.slice(0, MAX).map(function (f) { var Y = w.byId[f.a], X = w.byId[f.b]; return card(w, Y, { key: 'f' + f.id, on: s.inc === f.id, tag: 'vs your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: ['⚡ ' + pow(Y) + ' vs your ⚡ ' + pow(X), rec(Y) + ' · fight ' + f.id, '⏳ by block ' + fmt(f.expires)] }); });
       h += strip(opp, ii.length - MAX, 'No one is challenging your pets right now.'); }
-    else { var th = UI.fighters(w, ME, true).filter(function (p) { return match(p, s.qb); }), ap = A ? pow(A) : 0;
-      if (s.tab === 'sug') th.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
-      else th.sort(function (a, b) { return a.id - b.id; });
+    else { var ap = A ? pow(A) : 0, srt = s.tab === 'sug' ? (A ? 'a' + ap : 's') : 'i', th = memo(w, 'th|' + ME + '|' + T + '|' + srt, function () { var t = UI.fighters(w, ME, true).slice();
+        if (s.tab === 'sug') t.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
+        else t.sort(function (a, b) { return a.id - b.id; }); return t; }).filter(function (p) { return match(p, s.qb); }); /* sorted once per world, then filtered: same order (stable sort) */
       if (B && !th.slice(0, MAX).some(function (p) { return p.id === B.id; })) th = [B].concat(th.filter(function (p) { return p.id !== B.id; }));
       opp = th.slice(0, MAX).map(function (p) { return card(w, p, { on: B && B.id === p.id && !s.inc, why: why(p, w), lines: lines(p).concat(['👤 ' + esc(short(p.owner))]) }); });
       h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent can fight today.'); }
     /* 3 · one button */
     var label, ok = false, hint = '';
-    if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
+    if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept * V().acceptCost(w, +s.inc) / V().acceptCost(null, 0)) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
     else if (s.tab === 'inc') label = inc.length ? 'Tap a challenger above' : 'Pick 🎯 Suggested to start a fight';
     else if (!A) label = 'Pick your fighter (1)';
     else if (!B) label = 'Pick an opponent (2)';
@@ -149,7 +153,7 @@
   function incoming(w, ME, T) { var win = V().BREED_WINDOW || 144; return (w.breedReqs || []).filter(function (r) { var X = w.byId[r.b]; return !r.used && !(T && T - r.block > win) && X && X.owner === ME && r.owner !== ME; }).sort(function (a, b) { return b.block - a.block; }); }
   function paintBreed(el, w) { var UI = U(), Vr = V(), ME = UI.ME, T = tip(w), s = ST.b, view = UI.viewOnly && UI.viewOnly(), M = window.V2Motel;
     var a = $('bA').value, b = $('bB').value, L = Vr.breedPicker(w, ME, T, a, UI.pendingBreedIds ? UI.pendingBreedIds() : null), v2 = !!(Vr.breedV2On && Vr.breedV2On(T + 1));
-    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate, ring the bell. Connect your XCP Wallet to check in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect XCP Wallet</button></div>';
+    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate, ring the bell. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to check in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
       $('ezBGo').onclick = function () { $('bGo').click(); }; return; }
     var A = a && w.byId[a], Bp = b && w.byId[b], gen = function (p) { return Vr.genOf ? Vr.genOf(w, p) : 0; };
     var badges = function (p) { var x = Vr.breederBadges ? Vr.breederBadges(w, p) : []; return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
@@ -170,11 +174,14 @@
     var tl = [['mine', '🏠 My other pets'], ['asks', '💌 Asking you (' + reqs.length + ')', reqs.length], ['other', '🌍 Other wallets']];
     h += head('2', s.tab === 'asks' ? 'Breed requests for you' : 'Mate', 'ezBqB', s.qb, '', s.tab === 'asks' ? sortSel('ezBsB', s.sb, 'Mate') : sortSelMate('ezBsB', s.sb, A)) + tabs(tl, s.tab);
     if (s.tab === 'asks') { var rr = reqs.filter(function (r) { return match(w.byId[r.a], s.qb) || match(w.byId[r.b], s.qb); }); if (s.sb) rr = PetSort.sort(w, rr, s.sb, function (r) { return w.byId[r.a]; }, T + 1); /* '' keeps newest request first */
-      h += strip(rr.slice(0, MAX).map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null;
-        return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y, s.sb).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
+      h += strip(rr.slice(0, MAX).map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null; var rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null;
+        return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y, s.sb).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
     else { var pool = L.partners.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && fok(s, x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME) && match(x.p, s.qb); })
         ; var egK = EGGK.some(function (e) { return e[0] === s.sb; }); pool = egK && A ? eggSort(pool, s.sb, A, px, T + 1) : psort(w, pool, egK ? '' : s.sb, px, T + 1); pool = pool.filter(function (x) { return !kin(x.p); }).concat(pool.filter(function (x) { return kin(x.p); })); /* greyed (kin) pets stay last, as before */
       if (Bp && !s.req && !pool.slice(0, MAX).some(function (x) { return x.p.id === Bp.id; }) && (s.tab === 'mine') === (Bp.owner === ME)) pool = [{ p: Bp }].concat(pool.filter(function (x) { return x.p.id !== Bp.id; }));
+      /* resurrected-breed-only: mates hidden by the 'resurrected only with resurrected' rule (gate on) get one line with the reason */
+      var RW = Vr.RES_BREED_WHY, resHid = RW && A ? L.partners.filter(function (x) { return x.why === RW && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME); }).length : 0;
+      if (resHid) h += '<div class="ez-hint ez-res" role="note">😇 ' + (A.resurrected ? '#' + A.id + ' is a God (resurrected). ' : '') + 'Resurrected pets only breed with other resurrected pets: ' + fmt(resHid) + ' ' + (A.resurrected ? 'non-resurrected pet' + (resHid === 1 ? '' : 's') : (resHid === 1 ? 'God' : (Vr.GOD_PLURAL || 'Gods'))) + (s.fall ? ' greyed out.' : ' hidden.') + '</div>';
       h += strip(pool.slice(0, MAX).map(function (x) { var k = kin(x.p); return card(w, x.p, { on: Bp && Bp.id === x.p.id && !s.req, why: k ? k + ' (no inbreeding)' : x.why || null, lines: info(x.p, s.sb).concat(A && x.p.id !== A.id ? [eggLine(eggOf(A, x.p, T + 1)), eggTags(eggOf(A, x.p, T + 1))].filter(Boolean) : []).concat(x.p.owner !== ME ? ['👤 ' + esc(short(x.p.owner))] : []) }); }), pool.length - MAX,
         s.tab === 'mine' ? 'No other pet of yours can breed right now.' : 'No pet matches. Search by #, name, species or the start of a wallet address.'); }
     h += '</div></div>';
@@ -224,7 +231,7 @@
       '.ez-more,.ez-empty{flex:0 0 auto;align-self:center;color:#9fe8ff;font-size:13px;padding:6px;margin:0}' +
       '.ez-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}.ez-tab{min-height:36px;padding:4px 10px;border:2px solid #000;background:#f5efe0;color:#2a1530;font:inherit;font-size:13px;box-shadow:2px 2px 0 #000;cursor:pointer}.ez-tab.on{background:#4fd18b;color:#0d1a12}.ez-tab.hot:not(.on){background:#ff9ad5}' +
       '.ez-foot{border-top:2px dashed #4b3f7a;margin-top:4px;padding-top:6px}.ez-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ez-go{flex:1 1 260px;min-height:52px;font-size:17px}.ez-go[disabled]{opacity:.6;cursor:default}' +
-      '.ez-hint{font-size:12px;color:#c9c0e6;margin-top:4px;overflow-wrap:anywhere}.ez-odds{font-size:13px;background:#ffd166;color:#1b1b1b;border:2px solid #000;padding:4px 6px;margin-bottom:6px;overflow-wrap:anywhere}' +
+      '.ez-hint{font-size:12px;color:#c9c0e6;margin-top:4px;overflow-wrap:anywhere}.ez-hint.ez-res{color:#ffe58a;margin:4px 0 6px;padding:4px 6px;border:1px dashed #c9b24a;background:#1d1830}.ez-odds{font-size:13px;background:#ffd166;color:#1b1b1b;border:2px solid #000;padding:4px 6px;margin-bottom:6px;overflow-wrap:anywhere}' +
       '.ez-cmp{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13px;margin-bottom:6px;color:#fff}.ez-vs{color:#ff5a7a;font-weight:700}.ez-st{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.ez-st i{font-style:normal;font-size:11px;padding:1px 4px;background:#2a2342}.ez-st i.up{color:#4fd18b}.ez-st i.dn{color:#ff8080}' +
       '.ez-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}.ez-col{min-width:0;border:2px solid #4b3f7a;background:#1b1530;padding:4px 6px}.ez-col .ez-q{max-width:none}' +
       /* owner 4:26 AM CT: each slot list scrolls up and down (fixed-height column, touch scroll) instead of sideways */

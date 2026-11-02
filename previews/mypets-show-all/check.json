@@ -1,0 +1,98 @@
+[
+ {
+  "w": 1280,
+  "default": {
+   "pager": "Showing 150 of 2,454 pets",
+   "filter": "🥚 Never fed only 2,134 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 80,
+   "hungryOnScreen": 70,
+   "more": "Show more (2,304 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "neverFedOnly": {
+   "pager": "Showing 150 of 2,134 pets",
+   "filter": "🥚 ✓ Never fed only 2,134 only pets that never had a meal · tap to show all",
+   "filterOn": "true",
+   "cards": 150,
+   "mythicOnScreen": 0,
+   "hungryOnScreen": 150,
+   "more": "Show more (1,984 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "backOff": {
+   "pager": "Showing 150 of 2,454 pets",
+   "filter": "🥚 Never fed only 2,134 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 80,
+   "hungryOnScreen": 70,
+   "more": "Show more (2,304 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "ownerLike": {
+   "pager": "Showing 150 of 549 pets",
+   "filter": "🥚 Never fed only 414 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 135,
+   "hungryOnScreen": 15,
+   "more": "Show more (399 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "errs": []
+ },
+ {
+  "w": 390,
+  "default": {
+   "pager": "Showing 150 of 2,454 pets",
+   "filter": "🥚 Never fed only 2,134 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 80,
+   "hungryOnScreen": 70,
+   "more": "Show more (2,304 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "neverFedOnly": {
+   "pager": "Showing 150 of 2,134 pets",
+   "filter": "🥚 ✓ Never fed only 2,134 only pets that never had a meal · tap to show all",
+   "filterOn": "true",
+   "cards": 150,
+   "mythicOnScreen": 0,
+   "hungryOnScreen": 150,
+   "more": "Show more (1,984 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "backOff": {
+   "pager": "Showing 150 of 2,454 pets",
+   "filter": "🥚 Never fed only 2,134 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 80,
+   "hungryOnScreen": 70,
+   "more": "Show more (2,304 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "ownerLike": {
+   "pager": "Showing 150 of 549 pets",
+   "filter": "🥚 Never fed only 414 optional filter, off: all pets are listed",
+   "filterOn": "false",
+   "cards": 150,
+   "mythicOnScreen": 135,
+   "hungryOnScreen": 15,
+   "more": "Show more (399 left)",
+   "oldFold": false,
+   "badWords": false
+  },
+  "errs": []
+ }
+]

@@ -37,10 +37,11 @@
   function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=|\/issuances\?/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page (site-fast-reread: not the global /issuances scan, ~10 MB per page, which a phone can't download in 3 s) */ : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
-      if (r.status === 429 || r.status === 503) { if (n >= (PATIENT ? 6 : 2)) { var eb = new Error('DEX API busy (' + r.status + ')'); eb.busy = true; throw eb; } /* direct-counterparty-api: at most 2 short retries, then the next Core node (was 6 tries x up to 60 s each) */ var ra = r.headers.get('Retry-After'), s = Number(ra);
+      if (r.status === 429 || r.status === 503 || r.status === 409) { if (n >= (PATIENT ? 6 : 2)) { var eb = new Error('DEX API busy (' + r.status + (r.status === 503 ? ': node not ready or catching up' : r.status === 409 ? ': a pending transaction conflicts' : ': rate limited') + ')'); eb.busy = true; eb.http = r.status; throw eb; } /* api-hardening: 409 (pending mempool conflict) waits and retries like 503 */ /* direct-counterparty-api: at most 2 short retries, then the next Core node (was 6 tries x up to 60 s each) */ var ra = r.headers.get('Retry-After'), s = Number(ra);
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 4000)); return wait(Math.min(ms || 1000 * (n + 1), PATIENT ? 60e3 : 4000)).then(function () { return getJ0(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
-      if (!r.ok) throw new Error('DEX API ' + r.status); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
+      if (!r.ok) return r.text().then(function (t) { return t; }, function () { return ''; }).then(function (t) { var m = ''; try { var jj = JSON.parse(t); m = jj && (jj.error || jj.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (x) { } /* api-hardening: say what the node said (400 = bad request, the same on every node) */
+        var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
   /* direct-counterparty-api (2026-10-25): every DEX/token read goes to the Counterparty Core nodes directly (COUNTERPARTY_CORE, then CORE_BACKUP),
    * one node per paginated list (cursors belong to one node). The api.xcp.fun proxy (API above) is asked only when every Core node failed with a
    * timeout / network error (port 4000 blocked), never after a 429. Same JSON from all of them, so the replay input is unchanged. */
@@ -48,16 +49,20 @@
    * so a network that blocks port 4000 pays the short timeout once per session, not on every read or page. */
   var NET_KEY = 'xcpets-api-netsick', NETDEAD = (function () { var r = {}; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}, t = Date.now(); Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = 1; }); } catch (e) { } return r; })();
   function netDead(b) { if (NETDEAD[b]) return true; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; return o[b] > Date.now(); } catch (e) { return false; } }
-  function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
+  function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; /* session only */ sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
   function coreBases() { var CFG = window.XCPETS_CONFIG || {}; return (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'])
     .filter(function (u) { return !/xcp\.fun/.test(u); }).map(function (u) { u = String(u).replace(/\/+$/, ''); return /\/v2$/.test(u) ? u : u + '/v2'; }); }
   function isNet(e) { return !!e && !e.busy && e.status == null && !/DEX API \d/.test(e.message || '') && (e.name === 'AbortError' || /abort|fetch|network|timed out|load failed/i.test(e.message || String(e))); }
   /* core-no-proxy: no api.xcp.fun fallback for Core reads. Both Core nodes failed -> one clear error; a network that blocks :4000 gets the Retry text */
   function coreErr(errs) { var e = new Error((coreBlocked() ? 'Could not reach the Counterparty servers (port 4000 may be blocked on this network). Press Retry, or try another network. ' : 'every Counterparty node failed ') + '(' + errs.join('; ') + ')'); e.retry = true; e.unverified = true; return e; }
   function coreBlocked() { var b = coreBases(); return b.length > 0 && b.every(function (u) { return netDead(u); }); }
-  function pagesAt(base, path, cap) { var out = [], k = 0;
+  /* api-hardening (2026-10-27): every list here pages by next_cursor (Core caps offset= at 10,000 on address history; cursors have no cap). A list
+   * longer than the page cap, or a node that repeats a cursor, now fails (next node / unverified) instead of silently returning a partial list. */
+  function nextCur(j, seen, k, cap, what) { if (!j.next_cursor) return null; if (seen[j.next_cursor]) throw new Error('node repeated a page cursor for ' + what + ' (partial list not used)'); seen[j.next_cursor] = 1;
+    if (k >= cap) throw new Error('more than ' + cap + ' pages of ' + what + ' (partial list not used)'); return j.next_cursor; }
+  function pagesAt(base, path, cap) { var out = [], k = 0, seen = {};
     function go(cur) { return getJ(base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) {
-      out = out.concat(j.result || []); if (j.next_cursor && ++k < cap) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
+      out = out.concat(j.result || []); var nc = (j.result || []).length ? nextCur(j, seen, ++k, cap, path) : null; if (nc) return go(nc); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
     return go(null); }
   function pages(path, cap) { cap = cap || 50; var bs = coreBases().filter(function (u) { return !DEAD[u] && !netDead(u); }), errs = [];
     function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
@@ -68,6 +73,11 @@
     function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
       return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
     return on(0); }
+  /* feed-status-filter (2026-10-28): order lists ask Core for an explicit status list instead of status=all (XCP wallet dev advice: Core supports
+   * comma-separated statuses). OrderStatus in Core 11.x = all | open | expired | filled | cancelled; an 'invalid: ...' order matches none of the four,
+   * so the invalid zero-give orders that made status=all&verbose=true answer HTTP 500 are never sent. These four are every status a funded order can
+   * have, i.e. exactly what okOrder() kept from status=all, so the replay input is unchanged. Unknown values answer 400 (no silent 'all'). */
+  var ORDER_STATUS_Q = 'open,filled,expired,cancelled';
   var slim = function (o) { return { tx_hash: o.tx_hash, tx_index: o.tx_index, block_index: o.block_index, source: o.source, give_asset: o.give_asset, give_quantity: o.give_quantity, give_remaining: o.give_remaining,
     get_asset: o.get_asset, get_quantity: o.get_quantity, get_remaining: o.get_remaining, expiration: o.expiration, expire_index: o.expire_index, status: o.status }; };
   var slimM = function (m) { return { id: m.id, tx0_hash: m.tx0_hash, tx1_hash: m.tx1_hash, tx0_address: m.tx0_address, tx1_address: m.tx1_address, forward_asset: m.forward_asset, forward_quantity: m.forward_quantity,
@@ -79,9 +89,9 @@
   var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
   function nodeCredits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('every Counterparty node failed'));
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base] || netDead(base)) return on(i + 1);
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0, seen = {}; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base] || netDead(base)) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
-        out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
+        out = out.concat(j.result); var nc = j.result.length ? nextCur(j, seen, ++k, 200, A + ' credits') : null; if (nc) return go(nc); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
       return go(null).catch(function (e) { if (isNet(e)) markNet(base); if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
     return on(0); }
   /* xcpfun-backup: api.xcp.fun has no /assets/A/credits, so rebuild that list from per-address credits/debits of every address that can have touched
@@ -89,13 +99,13 @@
    * event, every address's credits - debits must equal its current balance, unknown actions or utxo-held balances reject. Same rows as the full node. */
   var XC_PAIR = { 'send': 1, 'mpma send': 1 }, XC_CR_OK = { 'issuance': 1, 'order match': 1, 'cancel order': 1, 'order cancelled': 1, 'order expired': 1, 'filled': 1, 'send': 1, 'mpma send': 1 },
     XC_DB_OK = { 'open order': 1, 'destroy': 1, 'send': 1, 'mpma send': 1 };
-  function addrRows(X, kind, A, b0) { var out = [], k = 0;
+  function addrRows(X, kind, A, b0) { var out = [], k = 0, seen = {};
     function go(cur) { return getJ(API + '/addresses/' + X + '/' + kind + '?limit=1000' + (cur ? '&cursor=' + cur : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad ' + kind + ' reply');
       var lo = Infinity; j.result.forEach(function (c) { lo = Math.min(lo, Number(c.block_index)); if (c.asset === A) out.push(c); });
-      if (!j.result.length || lo < b0 || !j.next_cursor) return out; if (++k >= 200) throw new Error('too many ' + kind + ' for ' + X); return go(j.next_cursor); }); }
+      if (!j.result.length || lo < b0 || !j.next_cursor) return out; return go(nextCur(j, seen, ++k, 200, kind + ' for ' + X)); }); }
     return go(null); }
-  function xcpCredits(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/assets/' + A + '/balances'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'),
-      pages('/orders/' + A + '/XCP?status=all&verbose=true'), pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
+  function xcpCredits(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/assets/' + A + '/balances'), pages('/orders/' + A + '/XCPETS?status=' + ORDER_STATUS_Q + '&verbose=true'),
+      pages('/orders/' + A + '/XCP?status=' + ORDER_STATUS_Q + '&verbose=true'), pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true')]).then(function (r) {
     var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }); if (!iss.length) return [];
     var b0 = Math.min.apply(null, iss.map(function (i) { return Number(i.block_index); })), bal = {}, cand = {};
     r[1].forEach(function (b) { if (b.utxo) throw new Error('token held on a utxo'); if (Number(b.quantity)) bal[b.address] = Number(b.quantity); cand[b.address] = 1; });
@@ -134,10 +144,10 @@
   function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
     var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); }); nodes = nodes.filter(function (u) { return !netDead(String(u).replace(/\/+$/, '')); }).concat(nodes.filter(function (u) { return netDead(String(u).replace(/\/+$/, '')); }));
     function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG && !window.XCPETS_MINT_SCAN) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
+      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0, seen = {}; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
-        if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); if (++k >= 50) throw new Error('too many issuances to scan'); return go(j.next_cursor); }); }
+        if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); return go(nextCur(j, seen, ++k, 50, 'issuances to scan')); }); }
       return go(null).catch(function (e) { if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
     return on(0); }
   /* sale-cache: a verified BASE copy of the sale data (CI's api/boot.json, or this browser's last verified read) is stamped {tip, hash, assets}.
@@ -158,26 +168,56 @@
   function blockEvents(n, hx) { return recent().then(function (R) { var e = R && R.blocks[n]; if (e && e.complete === true && Array.isArray(e.events) && hx && hx[n] && e.hash === hx[n]) { blockEvents.src[n] = 'file'; return e.events; } blockEvents.src[n] = 'node'; return blockEvents0(n); }); }
   blockEvents.src = {};
   function blockEvents0(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
-    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0;
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0, seen = {};
       function go(cur) { return getJ0(base + '/blocks/' + n + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad events');
-        out = out.concat(j.result); if (j.next_cursor && ++k < 50) return go(j.next_cursor); return out; }); }
-      if (DEAD[base]) return on(i + 1); return go(null).catch(function () { DEAD[base] = 1; return on(i + 1); }); }
+        out = out.concat(j.result); var nc = j.result.length ? nextCur(j, seen, ++k, 50, 'block ' + n + ' events') : null; if (nc) return go(nc); return out; }); }
+      if (DEAD[base]) return on(i + 1); return go(null).catch(function (e) { if (e && e.status != null) DEAD[base] = 1; /* ratelimit-calm: a CORS-less 429 looks like a network error; do not write the node off for the whole page */ return on(i + 1); }); }
     return on(0); }
   function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > (window.XCPETS_TOUCH_MAX || 60)) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
     blockEvents.src = {}; touched.miss = []; /* api-reduction: a block whose events no source gave keeps the saved slices (flagged stale) instead of dropping the base and re-reading every token */
-    return Promise.all(n.map(function (b) { return blockEvents(b, hs).catch(function () { touched.miss.push(b); blockEvents.src[b] = 'miss'; return []; }); })).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
+    /* ratelimit-calm (2026-10-26): at most 3 block reads in flight (was every gap block at once: 26 parallel reads tripped the nodes' per-IP 429, which arrives without CORS as 'Failed to fetch') */
+    var q = n.slice(), L = [], runOne = function () { if (!q.length) return null; var b = q.shift(), i = n.indexOf(b); return blockEvents(b, hs).catch(function () { touched.miss.push(b); blockEvents.src[b] = 'miss'; return []; }).then(function (r) { L[i] = r; return runOne(); }); };
+    return Promise.all([runOne(), runOne(), runOne()]).then(function () { return L; }).then(function (L) { L.forEach(function (evs) { evs.forEach(function (e) { var t = JSON.stringify(e);
       as.forEach(function (A) { if (t.indexOf('"' + A + '"') >= 0) need[A] = 1; }); Object.keys(hx).forEach(function (h) { if (t.indexOf(h) >= 0) need[hx[h]] = 1; }); }); }); return need; }); }
   function pickBase(cx) { if (!cx || !cx.hashes || !cx.tip) return null; var c = null; try { c = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) { }
     var all = BASES.slice(); if (c && c.tip && c.hash && c.assets && c.d) all.push({ tip: c.tip, hash: c.hash, assets: c.assets, d: c.d, at: c.at, from: 'local' });
     all = all.filter(function (b) { return b.tip <= cx.tip && cx.hashes[b.tip] && cx.hashes[b.tip] === b.hash; }).sort(function (a, b) { return b.tip - a.tip; }); return all[0] || null; }
+  /* feed-invalid-order-fix (2026-10-28): GET /v2/orders/<A>/XCP?status=all&verbose=true answers HTTP 500 on both Core nodes for a pet token that
+   * has an invalid zero-give order (#27613, #20149, #35043 at blocks 973574 / 973587); the same list without verbose, per status, or per asset works.
+   * A 5xx from every node on the pair list now tries, in order: /assets/<A>/orders?status=all&verbose=true (kept to this pair), the four per-status
+   * pair lists (open, filled, expired, cancelled), then the non-verbose pair list. Orders with status 'invalid' or give_quantity 0 are dropped on
+   * every path (they never funded, can't match, and none exist in any earlier feed). If nothing works, only that pet's orders come from the last
+   * verified base (or none) and the pet is listed in staleAssets: its sales are stale, the rest of the feed still publishes. Other errors
+   * (rate limit, network, 4xx) still fail the read exactly as before. Ownership comes from credits, which are read as before. */
+  /* feed-status-filter (2026-10-28): the primary read is now the pair list with status=open,filled,expired,cancelled (ORDER_STATUS_Q), which answers
+   * 200 for those three pets on both nodes (checked from bot-1, same valid orders as the fallback gave). The fallback chain above stays as a safety net
+   * (every list now uses the explicit statuses, never status=all), and also runs on a 400 that rejects the status value, in case a node ever refuses
+   * the comma list (then the four single-status lists answer). okOrder() still drops invalid / zero-give rows on every path. */
+  var ORDER_STATUSES = ORDER_STATUS_Q.split(',');
+  function okOrder(o) { return !!o && !/^invalid/.test(String(o.status)) && Number(o.give_quantity) > 0; }
+  function is5xx(e) { return /DEX API 5\d\d/.test(e && e.message || String(e)); }
+  function isStatusRejected(e) { return /DEX API 400[^;]*invalid value for status/i.test(e && e.message || String(e)); }
+  function orderRows(A, Q, base) { var path = '/orders/' + A + '/' + Q;
+    return pages(path + '?status=' + ORDER_STATUS_Q + '&verbose=true').then(function (r) { return r.filter(okOrder); }, function (e) { if (!is5xx(e) && !isStatusRejected(e)) throw e; var why = [e.message];
+      var pair = function (o) { return (o.give_asset === A && o.get_asset === Q) || (o.give_asset === Q && o.get_asset === A); };
+      var tries = [function () { return pages('/assets/' + A + '/orders?status=' + ORDER_STATUS_Q + '&verbose=true').then(function (r) { return r.filter(pair); }); },
+        function () { return ORDER_STATUSES.reduce(function (p, st) { return p.then(function (acc) { return pages(path + '?status=' + st + '&verbose=true').then(function (r) { return acc.concat(r); }); }); }, Promise.resolve([])); },
+        function () { return pages(path + '?status=' + ORDER_STATUS_Q); }], names = ['asset-orders', 'per-status', 'non-verbose'];
+      function at(i) { if (i >= tries.length) { orderRows.stale.push(A); orderRows.used.push(A + '/' + Q + ':stale');
+          return base && base.d ? slice(base.d, A).orders.filter(function (o) { return pair(o) && okOrder(o); }) : []; }
+        return tries[i]().then(function (r) { orderRows.used.push(A + '/' + Q + ':' + names[i]); return r.filter(okOrder); }, function (e2) { why.push(e2 && e2.message || String(e2)); return at(i + 1); }); }
+      return at(0); }); }
+  orderRows.stale = []; orderRows.used = [];
   function loadDex(rows) { if (V.salesGate() == null && !PREVIEW) return Promise.resolve(null); var cx = arguments[1];
     return mintAssets(rows).then(function (ma) { var key = lkey(rows, ma), as = key ? key.split(',') : [], base = pickBase(cx); loadDex.lastAssets = as;
       var pre = base ? touched(base, cx.tip, as, cx.hashes).then(function (need) { var p = {}, src = blockEvents.src, fs = Object.keys(src).filter(function (k) { return src[k] === 'file'; }).length, ms = touched.miss.length; as.forEach(function (A) { if (!need[A]) p[A] = slice(base.d, A); });
         loadDex.last = { base: base.from, baseTip: base.tip, blocks: cx.tip - base.tip, fromFile: fs, fromNode: Object.keys(src).length - fs - ms, unread: ms, reread: as.length - Object.keys(p).length, kept: Object.keys(p).length }; return p; }, function (e) { loadDex.last = { base: 'none (' + e.message + ')' }; return null; }) : Promise.resolve(null);
-      if (!base) loadDex.last = { base: 'none' };
+      if (!base) loadDex.last = { base: 'none' }; orderRows.used = [];
       /* api-reduction time limit: the sale read gets DEX_MS; past that, a known base answers now (sliced to these tokens, flagged stale) and the read keeps going in the background to save its result */
-      var full = pre.then(function (p) { var d0 = loadDex2(rows, ma, p); return d0.then(function (d) { if (p && touched.miss && touched.miss.length) { d = Object.assign({}, d, { stale: base && base.at || Date.now() }); } return d; }); });
+      var full = pre.then(function (p) { var d0 = loadDex2(rows, ma, p, base); return d0.then(function (d) { if (p && touched.miss && touched.miss.length) { d = Object.assign({}, d, { stale: base && base.at || Date.now() }); }
+        if (d && d.staleAssets && d.staleAssets.length) { loadDex.lastAssets = as.filter(function (A) { return d.staleAssets.indexOf(A) < 0; }); as = loadDex.lastAssets; loadDex.last = Object.assign({}, loadDex.last, { staleOrders: d.staleAssets.slice() }); } /* feed-invalid-order-fix: stale pets left out of dexAssets, so the next run re-reads them */
+        if (orderRows.used.length) loadDex.last = Object.assign({}, loadDex.last, { orderFallback: orderRows.used.slice() }); return d; }); });
       var timed = base && as.every(function (A) { return base.assets.indexOf(A) >= 0; }) ? Promise.race([full, wait(DEX_MS).then(function () { return null; })]).then(function (d) { if (d) return d; loadDex.last = Object.assign({}, loadDex.last, { timeout: DEX_MS });
         full.then(function (d2) { try { localStorage.setItem(LKEY, JSON.stringify({ at: Date.now(), key: key, d: d2, tip: cx.tip, hash: cx.hashes[cx.tip], assets: as })); } catch (e) { } }, function () { });
         var o = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }; as.forEach(function (A) { var sl = slice(base.d, A); Object.keys(o).forEach(function (k) { o[k] = o[k].concat(sl[k] || []); }); }); o.stale = base.at || Date.now(); window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: o.stale } })); throw { early: o }; }) : full;
@@ -187,12 +227,12 @@
       try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }
   function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
-  function loadDex2(rows, ma, pre) {
+  function loadDex2(rows, ma, pre, base) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
-    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); });
+    var d = { issuances: [], orders: [], matches: [], credits: [], destructions: [] }, q = as.filter(function (A) { return !(pre && pre[A]); }); orderRows.stale = [];
     if (pre) Object.keys(pre).forEach(function (A) { var p = pre[A]; d.issuances = d.issuances.concat(p.issuances); d.orders = d.orders.concat(p.orders); d.matches = d.matches.concat(p.matches); d.credits = d.credits.concat(p.credits); d.destructions = d.destructions.concat(p.destructions); });
-    function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), pages('/orders/' + A + '/XCPETS?status=all&verbose=true'), pages('/orders/' + A + '/XCP?status=all&verbose=true'),
+    function one(A) { return Promise.all([pages('/assets/' + A + '/issuances?verbose=true'), orderRows(A, 'XCPETS', base), orderRows(A, 'XCP', base),
         pages('/orders/' + A + '/XCPETS/matches?verbose=true'), pages('/orders/' + A + '/XCP/matches?verbose=true'), credits(A), pages('/assets/' + A + '/destructions?verbose=true')]).then(function (r) {
       d.credits = d.credits.concat(r[5].map(slimC)); d.destructions = d.destructions.concat(r[6].filter(function (x) { return x.status == null || x.status === 'valid'; }).map(slimX));
       var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }).sort(function (a, b) { return a.tx_index - b.tx_index; })[0]; if (iss) d.issuances.push(slimI(iss));
@@ -204,16 +244,17 @@
       d.destructions.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; });
       d.orders = d.orders.filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; });
       d.matches = d.matches.filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); });
+      if (orderRows.stale.length) { d.staleAssets = orderRows.stale.slice().sort(); return d; } /* feed-invalid-order-fix: a pet whose order book could not be read is not cached */
       try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
   /** freeDeed() -> a random numeric asset nobody has issued (404 on /assets/{A}); 6 tries. */
   function freeDeed(n) { n = n || 0; var b = new Uint8Array(8); crypto.getRandomValues(b); var A = V.randomDeed(b);
     if (PREVIEW) return Promise.resolve(A);
     return coreJ('/assets/' + A).then(function () { if (n >= 5) throw new Error('could not find a free token name'); return freeDeed(n + 1); }, function (e) { if (e && e.status === 404) return A; throw e; }); }
-  /** tokenAt(A) -> {issued, block, holder} from the API (live) */
+  /** tokenAt(A) -> {issued, block, holder, utxo} from the API (live); utxo = 'txid:vout' when the token is attached to a Bitcoin output */
   function tokenAt(A) { return Promise.all([coreJ('/assets/' + A + '/issuances?verbose=true').then(function (j) { return j.result || []; }, function () { return []; }),
       coreJ('/assets/' + A + '/balances').then(function (j) { return j.result || []; }, function () { return []; })]).then(function (r) {
       var i = r[0].filter(function (x) { return x.status == null || x.status === 'valid'; })[0], h = r[1].filter(function (x) { return Number(x.quantity) > 0; })[0];
-      return { issued: !!i, block: i ? i.block_index : null, holder: h ? h.address : null }; }); }
+      return { issued: !!i, block: i ? i.block_index : null, holder: h ? h.address || h.utxo_address || null : null, utxo: h && h.utxo || null }; }); } /* api-hardening: a token attached to a UTXO is held by utxo_address (was: holder null) */
   /* a token made in window 1 waits here (per pet) until it confirms; shared with the pet card's Tokenize button (js/v2-pet-card.js) */
   var PK = 'xcpets-deed-pending'; function pendAll() { try { return JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { return {}; } }
   function pend(id, v) { var a = pendAll(); if (v === undefined) return a[id] || null; if (v) a[id] = v; else delete a[id]; try { localStorage.setItem(PK, JSON.stringify(a)); } catch (e) { } return null; }
@@ -288,7 +329,7 @@
   function power(p) { return V.petPower(p); } function st(p, k) { return (p.stats && p.stats[k]) || 0; }
   var PF = window.V2PetFilter, BINDER_F = ['sp', 'tier', 'st', 'badge', 'cur', 'min', 'max', 'pw', 'bl', 'gear', 'buy', 'sort'], PICK_F = ['sp', 'tier', 'st', 'badge', 'sort'];
   function omLine(p) { return V.oldMoney(p) ? '<p class="sh-omline">' + PF.badge(p) + ' Bred while breeding cost 690. A collector mark only; it never changes how the pet plays.</p>' : ''; }
-  function tierName(p) { return p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
+  function tierName(p) { return p.resurrected ? 'God' : p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
   function spName(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
   function art(p) { return PREVIEW || !window.V2Render ? '<img alt="" src="img/theme/sp-' + esc(String(p.species).replace(/[^a-z]/g, '')) + '.png">' : '<span class="sh-sp" data-shsp="' + p.id + '"></span>'; }
   function paint() { var R = window.V2Render; if (PREVIEW || !R || !R.petFrames) return; document.querySelectorAll('[data-shsp]').forEach(function (s) { if (s.firstChild) return; var p = W.byId[s.getAttribute('data-shsp')];
@@ -331,8 +372,9 @@
     return '<div class="sh-openbar" id="shOpenBar"><b>📋 You have ' + L.length + ' open listing' + (L.length === 1 ? '' : 's') + '</b><ul>' + L.map(function (S) { var p = W.byId[S.petId] || { id: S.petId }, o = orderOf(S);
       return '<li>#' + S.petId + ' ' + esc(p.name || '') + ' for <b class="sh-coin">' + esc(V.saleAmountText(S.asset, S.price)) + '</b> · ends after block ' + blk(S.expire) + ' (' + Math.max(0, S.expire - TIP) + ' blocks left) ' +
         (o && o.status === 'cancelled' ? '<span class="sh-hint">order cancelled</span>' : '<button class="sh-btn sh-ghost" data-cancel="' + S.n + '">Cancel</button>') + '</li>'; }).join('') + '</ul></div>'; }
+  function mineBtn(S) { var o = orderOf(S); return '<span class="sh-state sh-s-open">Your listing</span> ' + (o && o.status === 'cancelled' ? '<span class="sh-hint">order cancelled</span>' : '<button class="sh-btn sh-ghost" data-cancel="' + S.n + '">Cancel</button>'); }
   function render() { var root = $('shop'); if (!on()) { root.innerHTML = '<p class="sh-soon">The shop opens soon. Until then the cases hold card backs.</p><div class="sh-grid">' + '<div class="sh-card sh-back"></div>'.repeat(6) + '</div>'; return; }
-    var b = TIP + 1, all = V.openListings(W, b).filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }),
+    var b = TIP + 1, all = V.openListings(W, b).map(function (S) { var own = !!ME && S.seller === ME; return { p: W.byId[S.petId], S: S, mine: own, buy: !own && !V.buyGuard(W, S, BOOK, b, ME) }; }), /* listings-fix: own listings stay in the binder, marked Yours */
       fB = PF.load('binder'), fM = PF.load('mine'), xs = V.petFilter(W, all, fB, b), others = xs.map(function (x) { return x.S; }),
       mineAll = (W.listings || []).filter(function (S) { return S.seller === ME || S.buyer === ME; }).map(function (S) { return { p: W.byId[S.petId], S: S }; }), mine = V.petFilter(W, mineAll, fM, b).map(function (x) { return x.S; }),
       pgs = Math.max(1, Math.ceil(others.length / PER));
@@ -343,7 +385,7 @@
     if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = openBanner(b) + tabs + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
     root.innerHTML = openBanner(b) + tabs + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : '<div class="sh-bar"><span class="sh-hint">' + others.length + ' of ' + all.length + ' pet' + (all.length === 1 ? '' : 's') + ' in the binder · every pet sells with its own 🎟 pet token</span></div>' +
       '<div id="shBinF">' + PF.html(fB, BINDER_F, { species: PF.species(all.map(function (x) { return x.p; })), count: others.length, total: all.length }) + '</div>' +
-      '<div class="sh-binder"><div class="sh-rings"></div><div class="sh-grid">' + (pg.map(function (x) { return card(x.p, x.S, '<button class="sh-btn sh-buy' + (x.buy ? '' : ' sh-later') + '" data-buy="' + x.S.n + '">' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>'); }).join('') || '<p class="sh-hint">' + (all.length ? 'No pets match these filters.' : 'The binder is empty.') + '</p>') + '</div>' +
+      '<div class="sh-binder"><div class="sh-rings"></div><div class="sh-grid">' + (pg.map(function (x) { return card(x.p, x.S, x.mine ? mineBtn(x.S) : '<button class="sh-btn sh-buy' + (x.buy ? '' : ' sh-later') + '" data-buy="' + x.S.n + '">' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>'); }).join('') || '<p class="sh-hint">' + (all.length ? 'No pets match these filters.' : 'The binder is empty.') + '</p>') + '</div>' +
       '<div class="sh-pager"><button class="sh-btn" id="shPrev"' + (PAGE ? '' : ' disabled') + '>◀</button> page ' + (PAGE + 1) + ' of ' + pgs + ' <button class="sh-btn" id="shNext"' + (PAGE < pgs - 1 ? '' : ' disabled') + '>▶</button></div></div>') +
       (TAB !== 'sell' ? '' : '<h2 class="sec">My listings</h2><div id="shMineF">' + PF.html(fM, ['state', 'sort'], { count: mine.length, total: mineAll.length }) + '</div><div class="sh-mine">' + (mine.map(function (S) { var p = W.byId[S.petId], stt = V.saleState(W, S, b);
         return '<div class="sh-row">' + card(p, S) + '<div class="sh-rinfo"><span class="sh-state sh-s-' + stt + '">' + (S.buyer === ME && S.seller !== ME ? 'Bought' : ST[stt]) + '</span> Listing ' + S.n + '<br>Asks exactly ' + esc(V.saleAmountText(S.asset, S.price)) +
@@ -365,7 +407,7 @@
     window.V2Wallet.send(plan, ME).then(function (r) { toast('Sent: ' + esc(plan.label)); if (then) then(r); }, function (e) { toast('Not sent: ' + esc(e.message || e)); }); }
   /* pend(): the pending-token store, defined above (shared with the pet card) */
 
-  function sellable(p) { return !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
+  function sellable(p) { return (V.sellStep(W, p, ME) === 'list' ? !V.petFree(W, p, ME, TIP + 1) && !V.saleListing(W, p.id, TIP + 1) : !V.deedWhy(W, { petId: p.id }, ME, TIP + 1)) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
   function sellPick() { var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
@@ -485,9 +527,9 @@
     else if (t.closest('[data-unsell]')) unsell(Number(t.closest('[data-unsell]').getAttribute('data-unsell'))); });
   /* card-shop-scene: read-only hooks for js/v2-shop-scene.js. The scene only opens these existing flows; it never composes or signs. */
   window.V2Sales.scene = { ready: false, data: function () { var b = TIP + 1, open = on() && W ? V.openListings(W, b) : [];
-      return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.filter(function (S) { return S.seller !== ME; }).map(function (S) { return { p: W.byId[S.petId], S: S, buy: !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }),
+      return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.map(function (S) { var own = !!ME && S.seller === ME; return { p: W.byId[S.petId], S: S, mine: own, buy: !own && !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }), /* listings-fix (owner 9:42 PM CT Oct 30): the seller's own open listings show too, marked as theirs */
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
-    card: card, buy: function (n) { buy(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
+    card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
   function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };

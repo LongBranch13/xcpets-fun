@@ -28,8 +28,8 @@
   function info(el) { for (var i = 0; i < T.length; i++) if (el.matches(T[i].sel)) { var id = T[i].id(el); return id ? { id: +id, mode: typeof T[i].mode === 'function' ? T[i].mode() : T[i].mode } : null; } return null; }
   function row(k, v, cls) { return '<div class="hc-r' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + v + '</b></div>'; }
   function head(p) { var hy = V().isHybrid && V().isHybrid(p.species);
-    return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc(TL[p.tier] || '') + '</span></div>' +
-      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc(p.stageName || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
+    return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span></div>' +
+      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
   /** breeding facts, straight from V2Rules.breedable / breedsLeft / breedChild */
   function breedHtml(w, p) { var R = V(), b = (w.tip || 0) + 1, why = R.breedable ? R.breedable(p, b) : null, h = head(p);
     if (p.species === 'wizard' && why) h += '<div class="hc-no">🧙 Wizards can\u2019t breed</div>';
@@ -37,10 +37,10 @@
     var cd = R.BREED_COOLDOWN || 1008, left = p.lastBreed != null ? cd - (b - p.lastBreed) : 0;
     h += row('⏳ Cooldown', left > 0 ? fmtN(left) + ' blocks (' + hrs(left) + ')' : 'ready');
     if (R.breedsLeft) { var bl = R.breedsLeft(p, b); if (bl.on) h += row('🥚 Breeds left', bl.left + ' / ' + bl.cap); }
-    var A = selA(w); if (A && A.id !== p.id && R.kinWhy) { var k = R.kinWhy(A, p); if (k) h += '<div class="hc-no">👪 with #' + A.id + ': ' + esc(k) + '</div>'; }
+    var A = selA(w); if (A && A.id !== p.id && R.kinWhy) { var k = R.kinWhy(A, p); if (k) h += '<div class="hc-no">👪 with #' + A.id + ': ' + esc(k) + '</div>'; } if (A && A.id !== p.id && R.resPairWhy) { var rq = R.resPairWhy(A, p, (w.tip || 0) + 1); if (rq) h += '<div class="hc-no">😇 with #' + A.id + ': ' + esc(rq) + '</div>'; }
     var s = p.stats || {}, best = STATS.reduce(function (m, k) { return (s[k] || 0) > (s[m] || 0) ? k : m; }, STATS[0]);
     h += '<div class="hc-sub">Passes down</div>' + row('Species', esc(spL(p.species)) + ' (50/50, mixed pair can hatch a hybrid)') +
-      row('Tier', esc(TL[p.tier] || '') + ' (baby: lower, higher or +1 tier)') +
+      row('Tier', esc((p.resurrected ? 'God' : TL[p.tier]) || '') + ' (baby: lower, higher or +1 tier)') +
       row('Stats', STATS.map(function (k) { return k.slice(0, 3) + ' ' + (s[k] || 0); }).join(' · ')) +
       row('', 'baby = parents\u2019 average ±2; hybrid keeps best ' + best + ' ' + (s[best] || 0), 'hc-m');
     var a = p.art || {}, tr = [];

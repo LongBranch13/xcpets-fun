@@ -6,7 +6,7 @@
  * particles, aurora = aurora-borealis backdrop.
  * WHICH looks: exactly V2Rules.shownLooks(w, p): one look per type; looks placed with pet:aura first (highest Flame tier first), then quest
  * looks in earned order. LAYERS (bottom to top): background -> BACK (aurora / holo wings, only where the background shows, so behind the pet)
- * -> pet + gear (pixel) -> SKIN (galaxy) -> FOIL (rainbow / black / gold holo) -> AURA (flame / lightning / neon trail / spell sparkles) -> TOP
+ * -> pet + gear (pixel) -> SKIN (galaxy) -> FOIL (rainbow / black / gold holo; gold is a partial tint, the pet's own colours show through) -> AURA (flame / lightning / neon trail / spell sparkles) -> TOP
  * (laurels / halo / gold-foil crown). Galaxy and foil are separate types, so both can show (foil over galaxy).
  * One renderer (a per-pixel JS "shader") does both the live overlay and static bakes (t/<id>.png token images, Node), so they always match.
  * PERF: overlays render only while on screen (IntersectionObserver), at most MAX_LIVE animate at once (others keep their last frame), ~24 fps,
@@ -14,6 +14,7 @@
  * prefers-reduced-motion = one still frame (no sweep, no particles moving). */
 (function (root) {
   'use strict';
+  var GOLD_TINT = 0.5; /* gold foil strength: 0.5 = half gold, half the pet's own colour (was about 0.7 gold, which hid the pet) */
   var INFO = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
   function fract(x) { return x - Math.floor(x); }
@@ -27,16 +28,41 @@
   function byType(looks) { var by = {}; (looks || []).forEach(function (L) { if (L && L.type && !by[L.type]) by[L.type] = L.id; }); return by; }
   /** info(fr, A, B, looks): silhouette masks from the two keyed renders (equal pixels = pet + gear) + geometry; one per frame. */
   function geom(a, b) { var m = new Uint8Array(1024), p, x, y; for (p = 0; p < 1024; p++) { var i = p * 4; if (a[i] === b[i] && a[i + 1] === b[i + 1] && a[i + 2] === b[i + 2]) m[p] = 1; }
-    var x0 = 32, x1 = -1, y0 = 32, y1 = -1; for (p = 0; p < 1024; p++) if (m[p]) { x = p & 31; y = p >> 5; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    var g = dims(m); if (!g) return null;
+    var bdg = badgeOf(a, m), bm = m; if (bdg) { bm = new Uint8Array(m); for (p = 0; p < 1024; p++) if (bdg[p]) bm[p] = 0; }
+    var cnt = {}, top = null, tn = 0; for (p = 0; p < 1024; p++) if (bm[p]) { var i2 = p * 4, L = 0.3 * a[i2] + 0.59 * a[i2 + 1] + 0.11 * a[i2 + 2]; if (L < 48) continue; var k2 = a[i2] + ',' + a[i2 + 1] + ',' + a[i2 + 2]; cnt[k2] = (cnt[k2] || 0) + 1; if (cnt[k2] > tn) { tn = cnt[k2]; top = [a[i2], a[i2 + 1], a[i2 + 2]]; } }
+    g.m = m; g.sd = sdOf(m); g.body = top || [128, 128, 128]; g.bdg = bdg; g.b = bdg ? dims(bm) || g : g; g.sdb = bdg ? sdOf(bm) : g.sd; g.wa = wingAnchor(bm); return g; }
+  /* BADGE vs BODY (owner Oct 28 2026 'fix that and find anything else like that'): a hybrid's keyed render ends with the DNA badge (V2Rules hybridRender:
+   * a 21 px diamond at x27-31 y0-4, dark #1a1020 backing), and it is in the mask like the body. g keeps the whole-mask numbers (the lightning aura sparks
+   * and glow, the foil glints: kept as they are, owner wants the electric look unchanged); g.b / g.sdb / g.wa are the same numbers on the body only
+   * (badge pixels removed), used by the crown, halo, laurels, spell sparkles + glow, neon trail and holo wings. Non-hybrids: no badge, g.b === g. */
+  function badgeOf(a, m) { var D = [[29, 0], [28, 1], [30, 1], [27, 2], [31, 2], [29, 4]];
+    for (var n = 0; n < D.length; n++) { var p = D[n][1] * 32 + D[n][0], i = p * 4; if (!m[p] || a[i] !== 26 || a[i + 1] !== 16 || a[i + 2] !== 32) return null; }
+    var bd = new Uint8Array(1024); for (var y = 0; y < 5; y++) for (var x = 27; x < 32; x++) if (Math.abs(x - 29) + Math.abs(y - 2) <= 3) bd[y * 32 + x] = 1; return bd; }
+  function dims(m) { var p, x, y, x0 = 32, x1 = -1, y0 = 32, y1 = -1; for (p = 0; p < 1024; p++) if (m[p]) { x = p & 31; y = p >> 5; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     if (x1 < 0) return null;
     var yh = y0; for (y = y0; y <= y1; y++) { var cn = 0; for (x = 0; x < 32; x++) cn += m[y * 32 + x]; if (cn >= 4) { yh = y; break; } }
     var r2 = Math.min(31, yh + 1), sx = 0, sn = 0, rx0 = 32, rx1 = -1; for (x = 0; x < 32; x++) if (m[r2 * 32 + x]) { sx += x; sn++; if (x < rx0) rx0 = x; if (x > rx1) rx1 = x; }
-    /* signed distance on the 32 grid (pixel centres), brute force once per mask: outside > 0, inside < 0 */
-    var edge = []; for (p = 0; p < 1024; p++) { x = p & 31; y = p >> 5; var e = 0; if (m[p]) { if (x === 0 || x === 31 || y === 0 || y === 31 || !m[p - 1] || !m[p + 1] || !m[p - 32] || !m[p + 32]) e = 1; } if (e) edge.push(x, y); }
+    return { x0: x0, x1: x1, y0: y0, y1: y1, yh: yh, cx: sn ? sx / sn : 16, hw: sn ? rx1 - rx0 + 1 : 8, cy: (y0 + y1) / 2 }; }
+  /* signed distance on the 32 grid (pixel centres), brute force once per mask: outside > 0, inside < 0 */
+  function sdOf(m) { var p, x, y, edge = []; for (p = 0; p < 1024; p++) { x = p & 31; y = p >> 5; var e = 0; if (m[p]) { if (x === 0 || x === 31 || y === 0 || y === 31 || !m[p - 1] || !m[p + 1] || !m[p - 32] || !m[p + 32]) e = 1; } if (e) edge.push(x, y); }
     var sd = new Float32Array(34 * 34); for (y = -1; y < 33; y++) for (x = -1; x < 33; x++) { var best = 1e9; for (var k = 0; k < edge.length; k += 2) { var dx = edge[k] - x, dy = edge[k + 1] - y, dd = dx * dx + dy * dy; if (dd < best) best = dd; }
       var inn = x >= 0 && y >= 0 && x < 32 && y < 32 && m[y * 32 + x]; sd[(y + 1) * 34 + x + 1] = inn ? -Math.sqrt(best) - 0.5 : Math.sqrt(best) - 0.5; }
-    var cnt = {}, top = null, tn = 0; for (p = 0; p < 1024; p++) if (m[p]) { var i2 = p * 4, L = 0.3 * a[i2] + 0.59 * a[i2 + 1] + 0.11 * a[i2 + 2]; if (L < 48) continue; var k2 = a[i2] + ',' + a[i2 + 1] + ',' + a[i2 + 2]; cnt[k2] = (cnt[k2] || 0) + 1; if (cnt[k2] > tn) { tn = cnt[k2]; top = [a[i2], a[i2 + 1], a[i2 + 2]]; } }
-    return { m: m, sd: sd, x0: x0, x1: x1, y0: y0, y1: y1, yh: yh, cx: sn ? sx / sn : 16, hw: sn ? rx1 - rx0 + 1 : 8, cy: (y0 + y1) / 2, body: top || [128, 128, 128] }; }
+    return sd; }
+  /* HOLO WINGS ANCHOR (owner Oct 28 2026 'just the holo wings are too far off'): the wings hang on the pet's BODY, not on the whole mask. The whole mask
+   * also holds detached pieces (the hybrid DNA badge in the top-right corner, 5x5 at x27-31 y0-4), and its first 4-wide row is that badge, so every
+   * hybrid had cx = 29 and its wings flew off the right edge. Here: the largest 8-connected piece of the mask = the body; wings centre = median of the
+   * row midpoints of its wide rows (>= 60% of the widest, so a leaning wizard hat or a held item does not pull it sideways); height = its middle.
+   * Runs on the body mask (badge removed, see BADGE vs BODY), so a badge that touches the art is not counted either. */
+  function wingAnchor(m) { var lab = new Int16Array(1024), best = 0, bl = 0, n = 0, st = [], p, q, x, y;
+    for (p = 0; p < 1024; p++) if (m[p] && !lab[p]) { n++; var c = 0; st.length = 0; st.push(p); lab[p] = n;
+      while (st.length) { q = st.pop(); c++; x = q & 31; y = q >> 5; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var X = x + dx, Y = y + dy, r = Y * 32 + X; if (X < 0 || Y < 0 || X > 31 || Y > 31 || !m[r] || lab[r]) continue; lab[r] = n; st.push(r); } }
+      if (c > best) { best = c; bl = n; } }
+    var ry0 = 32, ry1 = -1, wd = [], mx = 0, hw = 0; for (y = 0; y < 32; y++) { var a = 32, b = -1, cn = 0; for (x = 0; x < 32; x++) if (lab[y * 32 + x] === bl) { cn++; if (x < a) a = x; if (x > b) b = x; }
+      if (b >= 0) { if (y < ry0) ry0 = y; ry1 = y; wd.push([b - a + 1, (a + b) / 2]); if (b - a + 1 > mx) mx = b - a + 1; if (!hw && cn >= 4 && y < 31) hw = -1 - y; } }
+    if (hw < 0) { y = -hw; var h0 = 32, h1 = -1; for (x = 0; x < 32; x++) if (lab[y * 32 + x] === bl) { if (x < h0) h0 = x; if (x > h1) h1 = x; } hw = h1 - h0 + 1; } /* same width rule as g.hw (row under the first 4-wide row), body only */
+    var mids = wd.filter(function (r) { return r[0] >= mx * 0.6; }).map(function (r) { return r[1]; }).sort(function (u, v) { return u - v; });
+    return { cx: mids.length ? mids[mids.length >> 1] : 16, cy: ry1 >= 0 ? (ry0 + ry1) / 2 : 16, hw: hw || 8 }; }
   function attachInfo(fr, A, B, looks, seed) { if (!INFO || !looks || !looks.length) return fr; var by = byType(looks), key = TYPES.map(function (t) { return by[t] || ''; }).join('|');
     var gs = A.map(function (f, i) { return geom(f.data, (B[i] || B[0]).data); });
     fr.forEach(function (f, i) { var g = gs[i % gs.length]; if (g && f && typeof f === 'object') INFO.set(f, { by: by, key: key, g: g, seed: (seed | 0) % 997 }); });
@@ -49,11 +75,11 @@
   function render(img, info, S, t, ptr, out) {
     var src = img.data, by = info.by, g = info.g, seed = info.seed, k = 32 / S, still = ptr === false;
     var shine = ptr ? ptr[0] * 1.3 - 0.15 + ptr[1] * 0.25 : fract(t * 0.07 + seed * 0.013) * 1.8 - 0.4; /* foil light position */
-    var back = by.back, gal = by.galaxy, foil = by.foil, aura = by.aura, top = by.top, B = g.body;
+    var back = by.back, gal = by.galaxy, foil = by.foil, aura = by.aura, top = by.top, B = g.body, gb = g.b || g, ownB = aura === 'spell-sparkles' || aura === 'neon-trail', SG = ownB && g.sdb ? { sd: g.sdb } : g; /* body-only aura distance (badge left out) */
     for (var py = 0; py < S; py++) { var Y = (py + 0.5) * k, iy = Y | 0, v = py / S;
       for (var px = 0; px < S; px++) { var X = (px + 0.5) * k, ix = X | 0, u = px / S, si = (iy * 32 + ix) * 4, o = (py * S + px) * 4;
-        var r = src[si] / 255, gg = src[si + 1] / 255, b = src[si + 2] / 255, inside = g.m[iy * 32 + ix] === 1, d = 9;
-        if (!inside || aura) d = sdAt(g, X, Y);
+        var r = src[si] / 255, gg = src[si + 1] / 255, b = src[si + 2] / 255, inside = g.m[iy * 32 + ix] === 1, isB = !!(g.bdg && g.bdg[iy * 32 + ix]), d = 9;
+        if (!inside || aura) d = sdAt(SG, X, Y);
         if (!inside) {
           if (back === 'aurora') { /* aurora borealis: night sky + flowing curtains with vertical rays */
             r = r * 0.35 + 0.01; gg = gg * 0.35 + 0.03; b = b * 0.35 + 0.09; var ac = 0;
@@ -62,13 +88,13 @@
               r += I * (0.15 + 0.5 * Math.max(0, -dy) / 3 * (c === 2 ? 1 : 0.3)); gg += I * (0.95 - 0.25 * c); b += I * (0.45 + 0.2 * c); ac += I; }
             var st = hash(px, py + seed); if (st > 0.996 - ac * 0.003) { var tw = 0.5 + 0.5 * Math.sin(t * 3 + st * 50); r += tw * 0.7; gg += tw * 0.7; b += tw * 0.8; }
           } else if (back === 'holo-wings') { /* iridescent wings behind the body, flapping */
-            var fl = still ? 0 : Math.sin(t * 3.2) * 0.18, wy = g.cy - 1;
-            for (var s2 = -1; s2 <= 1; s2 += 2) { var wx = (X - g.cx) * s2 - g.hw * 0.25, wyy = Y - wy; if (wx < 0) continue; var ang = Math.atan2(-wyy, wx) - 0.45 - fl, rad = Math.sqrt(wx * wx + wyy * wyy);
+            var fl = still ? 0 : Math.sin(t * 3.2) * 0.18, wa = g.wa, wy = wa.cy - 1;
+            for (var s2 = -1; s2 <= 1; s2 += 2) { var wx = (X - wa.cx) * s2 - wa.hw * 0.25, wyy = Y - wy; if (wx < 0) continue; var ang = Math.atan2(-wyy, wx) - 0.45 - fl, rad = Math.sqrt(wx * wx + wyy * wyy);
               var reach = 13.5 * (0.55 + 0.45 * Math.cos(ang * 1.25)) * (Math.abs(ang) < 1.35 ? 1 : 0), fe = Math.abs(Math.sin(ang * 4.5)); reach *= 0.8 + 0.2 * fe;
               if (rad < reach) { var e = rad / reach; irid(e * 0.9 + ang * 0.25 + shine * 0.6 + t * 0.03, tmp); var sh = 0.6 + 0.4 * Math.pow(Math.max(0, Math.cos((ang - shine * 1.5) * 2)), 6), vein = 0.82 + 0.18 * Math.cos(rad * 2.2 + ang * 9);
                 var al = clamp((reach - rad) * 1.2, 0, 1) * 0.92; r = r * (1 - al) + al * (tmp[0] * 0.7 + 0.35) * vein * sh; gg = gg * (1 - al) + al * (tmp[1] * 0.7 + 0.35) * vein * sh; b = b * (1 - al) + al * (tmp[2] * 0.7 + 0.4) * vein * sh;
                 if (reach - rad < 0.35) { r += 0.35; gg += 0.35; b += 0.4; } } } } }
-        else {
+        else if (!isB) { /* the hybrid DNA badge keeps its own colours (no galaxy / foil skin on it) */
           var L = 0.3 * r + 0.59 * gg + 0.11 * b;
           if (gal === 'galaxy-skin') { var dr = src[si] - B[0], dg = src[si + 1] - B[1], db = src[si + 2] - B[2];
             if (dr * dr + dg * dg + db * db < 8100) { var shade = clamp(L / (0.3 * B[0] / 255 + 0.59 * B[1] / 255 + 0.11 * B[2] / 255 + 0.01), 0.55, 1.3), n = fbm(X * 0.28 + t * 0.03, Y * 0.28), n2 = fbm(X * 0.5 + 11, Y * 0.5 - t * 0.02);
@@ -79,28 +105,30 @@
             var ink = Lm < 0.16, keep = ink ? 0.92 : 0.62; /* dark outline / eye pixels keep the sprite readable */
             if (foil === 'rainbow-holo') { irid(ph * 1.6 + L * 0.5, tmp); var fa = (1 - keep) * (0.7 + band * 0.8); r = r * (1 - fa) + tmp[0] * fa * (0.55 + Lm); gg = gg * (1 - fa) + tmp[1] * fa * (0.55 + Lm); b = b * (1 - fa) + tmp[2] * fa * (0.55 + Lm); }
             else if (foil === 'black-holo') { irid(ph * 1.3 + 0.5, tmp); var dk = ink ? 1 : 0.42; r = r * dk * 0.55 + (ink ? 0 : tmp[0] * 0.22 * (0.35 + band * 2)); gg = gg * dk * 0.55 + (ink ? 0 : tmp[1] * 0.22 * (0.35 + band * 2)); b = b * dk * 0.6 + (ink ? 0 : tmp[2] * 0.28 * (0.35 + band * 2)); }
-            else if (!ink) { var gl = 0.25 + Lm * 0.85 + 0.1 * Math.sin(ph * 9); r = r * 0.3 + gl * 0.8; gg = gg * 0.3 + gl * 0.6; b = b * 0.3 + gl * 0.2; }
+            else if (!ink) { /* gold foil = partial tint (owner Oct 29 2026: "let some original color through"): GOLD_TINT of a shaded gold blended over the
+               pet's own colour, so its colours and shading still show; sheen band + sparkle glints below are kept */
+              var gl = 0.22 + Lm * 0.95 + 0.08 * Math.sin(ph * 9), ga = GOLD_TINT; r = r * (1 - ga) + gl * 1.0 * ga; gg = gg * (1 - ga) + gl * 0.74 * ga; b = b * (1 - ga) + gl * 0.24 * ga; }
             if (!ink) { r += band * 0.32; gg += band * 0.32; b += band * 0.36; }
             var gh = hash((px / 3) | 0, ((py / 3) | 0) + seed * 7); if (gh > 0.94) { var gp = Math.max(0, 1 - Math.abs(fract(gh * 13 + shine * 1.5) - 0.5) * 6); var cxp = (px % 3) - 1, cyp = (py % 3) - 1; var star = (cxp === 0 || cyp === 0) ? (cxp === 0 && cyp === 0 ? 1 : 0.5) : 0; var gv = gp * star * 1.2; r += gv; gg += gv; b += gv; } } }
-        if (aura && d > 0 && d < 8) {
+        if (aura && d > 0 && d < 8 && !(isB && ownB)) {
           if (aura === 'flame-aura') { var up = clamp((g.cy - Y) / 12 + 0.6, 0.3, 1.6), fn = fbm(X * 0.45, Y * 0.32 + t * 2.6) , fi = Math.exp(-d / (1.3 + 1.6 * up * fn)) * (0.55 + 0.9 * fn) * up;
             fi = clamp(fi * 1.4 - 0.25, 0, 1.4); r += fi * 1.0; gg += fi * fi * 0.62; b += fi * fi * fi * 0.25; }
           else if (aura === 'lightning-aura') { var glow = Math.exp(-d / 1.1) * 0.55; r += glow * 0.25; gg += glow * 0.6; b += glow * 1.0;
             var en = vnoise(X * 0.55 + t * 5.3, Y * 0.55 - t * 4.1), arc = Math.abs(en - 0.5); if (d < 5 && arc < 0.035) { var ai = (1 - arc / 0.035) * (1 - d / 5) * 1.6; r += ai * 0.8; gg += ai * 0.95; b += ai; } }
-          else if (aura === 'neon-trail') { var tr = 0; for (var q = 1; q <= 6; q++) { var dd2 = sdAt(g, X + q * 1.4, Y); if (dd2 < 0.5) { tr = Math.max(tr, (1 - q / 7)); } } var ng = Math.exp(-d / 0.9) * 0.6; var hue = fract(Y / 32 * 1.5 - t * 0.25);
+          else if (aura === 'neon-trail') { var tr = 0; for (var q = 1; q <= 6; q++) { var dd2 = sdAt(SG, X + q * 1.4, Y); if (dd2 < 0.5) { tr = Math.max(tr, (1 - q / 7)); } } var ng = Math.exp(-d / 0.9) * 0.6; var hue = fract(Y / 32 * 1.5 - t * 0.25);
             irid(hue * 0.35 + 0.75, tmp); var I2 = ng + tr * 0.75 * (0.75 + 0.25 * Math.sin(Y * 1.7 + t * 6)); r += I2 * (tmp[0] * 0.6 + 0.5); gg += I2 * (tmp[1] * 0.5 + 0.15); b += I2 * (tmp[2] * 0.6 + 0.6); }
           else if (aura === 'spell-sparkles') { var sg = Math.exp(-d / 1.4) * 0.35; r += sg * 0.75; gg += sg * 0.45; b += sg * 1.0; } }
         out[o] = clamp(r, 0, 1) * 255; out[o + 1] = clamp(gg, 0, 1) * 255; out[o + 2] = clamp(b, 0, 1) * 255; out[o + 3] = 255; } }
     /* particles (capped at 24) splatted with a soft glow */
     var parts = [];
-    if (aura === 'spell-sparkles') for (var i = 0; i < 18; i++) { var hh = hash(i, seed + 3), a0 = hh * 6.283 + t * (0.4 + hh * 0.5), rr = g.hw * 0.55 + 5 + 3 * hash(i, 9), life = fract(t * 0.5 + hh * 7);
-      parts.push([g.cx + Math.cos(a0) * rr, g.cy + Math.sin(a0) * rr * 0.9, 1.3 + hh, Math.sin(life * 3.1416), [0.85, 0.6, 1.0], 1]); }
+    if (aura === 'spell-sparkles') for (var i = 0; i < 18; i++) { var hh = hash(i, seed + 3), a0 = hh * 6.283 + t * (0.4 + hh * 0.5), rr = gb.hw * 0.55 + 5 + 3 * hash(i, 9), life = fract(t * 0.5 + hh * 7);
+      parts.push([gb.cx + Math.cos(a0) * rr, gb.cy + Math.sin(a0) * rr * 0.9, 1.3 + hh, Math.sin(life * 3.1416), [0.85, 0.6, 1.0], 1]); }
     if (aura === 'flame-aura') for (var j = 0; j < 14; j++) { var h2 = hash(j, seed + 5), lf = fract(t * (0.5 + h2 * 0.4) + h2 * 3), ex = g.x0 + h2 * (g.x1 - g.x0 + 1) + Math.sin(t * 3 + j) * 1.2;
       parts.push([ex, g.y1 - lf * (g.y1 - g.y0 + 8), 0.6 + h2 * 0.5, (1 - lf) * 0.9, [1, 0.55, 0.15], 0]); }
     if (aura === 'lightning-aura') for (var j2 = 0; j2 < 6; j2++) { var h3 = hash(j2, seed + Math.floor(t * 6)), aa = h3 * 6.283; parts.push([g.cx + Math.cos(aa) * (g.hw * 0.6 + 3), g.cy + Math.sin(aa) * (g.y1 - g.y0) * 0.55, 0.8, 0.9, [0.6, 0.85, 1], 1]); }
     if (foil) { /* a few large lens glints near the shine line */ for (var j3 = 0; j3 < 3; j3++) { var h4 = hash(j3, seed + 11); var gx = g.x0 + h4 * (g.x1 - g.x0), gy = g.y0 + hash(j3, 4) * (g.y1 - g.y0); var near = Math.exp(-Math.pow((gx + gy * 0.6) / 32 - shine * 1.1, 2) * 30); if (near > 0.2 && g.m[(gy | 0) * 32 + (gx | 0)]) parts.push([gx, gy, 1.6, near, [1, 1, 1], 1]); } }
     parts.slice(0, 24).forEach(function (P) { splat(out, S, P[0], P[1], P[2], P[3], P[4], P[5]); });
-    if (top) drawTop(out, S, g, top, t, shine, still);
+    if (top) drawTop(out, S, gb, top, t, shine, still); /* body-only anchors (badge left out) */
     return out; }
   function add(out, o, c, a) { out[o] = Math.min(255, out[o] + c[0] * a * 255); out[o + 1] = Math.min(255, out[o + 1] + c[1] * a * 255); out[o + 2] = Math.min(255, out[o + 2] + c[2] * a * 255); }
   function splat(out, S, X, Y, R, A, col, starry) { if (A <= 0.01) return; var k = S / 32, cx = X * k, cy = Y * k, rr = R * k * 2.2, x0 = Math.max(0, Math.floor(cx - rr)), x1 = Math.min(S - 1, Math.ceil(cx + rr)), y0 = Math.max(0, Math.floor(cy - rr)), y1 = Math.min(S - 1, Math.ceil(cy + rr));
@@ -174,22 +202,23 @@
   function segD(px, py, ax, ay, bx, by) { var dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, k = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0, ex = ax + dx * k - px, ey = ay + dy * k - py; return Math.sqrt(ex * ex + ey * ey); }
   function scr(out, o, c, a) { out[o] = 255 - (255 - out[o]) * (1 - c[0] / 255 * a); out[o + 1] = 255 - (255 - out[o + 1]) * (1 - c[1] / 255 * a); out[o + 2] = 255 - (255 - out[o + 2]) * (1 - c[2] / 255 * a); }
   function mix(out, o, c, a) { out[o] += (c[0] - out[o]) * a; out[o + 1] += (c[1] - out[o + 1]) * a; out[o + 2] += (c[2] - out[o + 2]) * a; }
-  function electric(out, S, rim, t, seed) { if (!rim) return out; var on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && rim[y * 32 + x]; }, pts = [], p;
+  function electric(out, S, rim, t, seed, sick) { if (!rim) return out; /* sick (zombie-dead-look 2026-10-29): a risen zombie keeps the Mythic aura, but dim and rot-green */
+    var sk = function (c) { var l = c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11; return [Math.round(l * 0.5), Math.round(l * 0.62), Math.round(l * 0.26)]; }, mx = sick ? function (a, o, c, f) { mix(a, o, sk(c), f * 0.45); } : mix, sc = sick ? function (a, o, c, f) { scr(a, o, sk(c), f * 0.4); } : scr; var on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && rim[y * 32 + x]; }, pts = [], p;
     for (p = 0; p < 1024; p++) if (rim[p]) pts.push(p); if (!pts.length) return out; var k = 32 / S, cx = 16, cy = 16;
     var flk = kf(t % 0.9 / 0.9, [[0, 0], [0.12, 0.55], [0.16, 0], [0.41, 0.3], [0.44, 0], [0.7, 0.7], [0.73, 0.1], [0.76, 0]], true);
     var cs = Math.floor(t % 0.45 / 0.15), crot = [0, 127, 251][cs], cop = [0.5, 0.9, 0.35][cs];
     var zt = t % 5.3 / 5.3, zr = zt < 0.25 ? 360 * (zt / 0.25) * (zt / 0.25) * (3 - 2 * zt / 0.25) : 360, zop = kf(zt, [[0, 0], [0.03, 1], [0.22, 1], [0.25, 0], [1, 0]]);
     var g1 = 0.35 / 100 * 32, g2 = 0.9 / 100 * 32;
     for (var py = 0; py < S; py++) { var Y = (py + 0.5) * k, iy = Y | 0; for (var px = 0; px < S; px++) { var X = (px + 0.5) * k, ix = X | 0, o = (py * S + px) * 4;
-        if (on(ix, iy)) { var u = px / S, v = py / S; mix(out, o, e5col(clamp((u + v) / 2, 0, 1)), 1);
+        if (on(ix, iy)) { var u = px / S, v = py / S; mx(out, o, e5col(clamp((u + v) / 2, 0, 1)), 1);
           var cxp = ix + 0.5, cyp = iy + 0.5, dc = Math.sqrt((X - cxp) * (X - cxp) + (Y - cyp) * (Y - cyp)) - 0.1;
           for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { if ((!dx && !dy) || !on(ix + dx, iy + dy)) continue; if (dx && dy && (on(ix + dx, iy) || on(ix, iy + dy))) continue; dc = Math.min(dc, segD(X, Y, cxp, cyp, cxp + dx, cyp + dy) - 0.1); }
-          if (dc < 0.04) mix(out, o, [255, 255, 255], 0.85 * clamp((0.04 - dc) / 0.08 + 0.5, 0, 1));
-          if (flk) scr(out, o, [223, 248, 255], flk);
-          var ang = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - crot) % 23, cr = ang < 9 || ang > 13 ? 0 : 0.95 * (1 - Math.abs(ang - 11) / 2); if (cr) scr(out, o, [255, 255, 255], cr * cop);
-          if (zop) { var za = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - zr) % 360, zw = za < 300 ? 0 : za < 335 ? 0.7 * (za - 300) / 35 : za < 350 ? 0.7 + 0.3 * (za - 335) / 15 : za < 357 ? 1 : (360 - za) / 3; if (zw) mix(out, o, za < 340 ? [150, 235, 255] : [255, 255, 255], zw * zop); }
+          if (dc < 0.04) mx(out, o, [255, 255, 255], 0.85 * clamp((0.04 - dc) / 0.08 + 0.5, 0, 1));
+          if (flk) sc(out, o, [223, 248, 255], flk);
+          var ang = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - crot) % 23, cr = ang < 9 || ang > 13 ? 0 : 0.95 * (1 - Math.abs(ang - 11) / 2); if (cr) sc(out, o, [255, 255, 255], cr * cop);
+          if (zop) { var za = (Math.atan2(X - cx, cy - Y) * 57.2958 + 720 - zr) % 360, zw = za < 300 ? 0 : za < 335 ? 0.7 * (za - 300) / 35 : za < 350 ? 0.7 + 0.3 * (za - 335) / 15 : za < 357 ? 1 : (360 - za) / 3; if (zw) mx(out, o, za < 340 ? [150, 235, 255] : [255, 255, 255], zw * zop); }
         } else { var bd = 9; for (var yy = iy - 1; yy <= iy + 1; yy++) for (var xx = ix - 1; xx <= ix + 1; xx++) if (on(xx, yy)) { var ddx = Math.max(xx - X, 0, X - xx - 1), ddy = Math.max(yy - Y, 0, Y - yy - 1); bd = Math.min(bd, Math.sqrt(ddx * ddx + ddy * ddy)); }
-          if (bd < 2) { scr(out, o, [140, 230, 255], 0.95 * Math.exp(-bd * bd / (2 * g1 * g1))); scr(out, o, [60, 170, 255], 0.55 * Math.exp(-bd * bd / (2 * g2 * g2))); } } } }
+          if (bd < 2) { sc(out, o, [140, 230, 255], 0.95 * Math.exp(-bd * bd / (2 * g1 * g1))); sc(out, o, [60, 170, 255], 0.55 * Math.exp(-bd * bd / (2 * g2 * g2))); } } } }
     for (var a = 0; a < 5; a++) { var d = 0.9 + hash(a, seed + 71) * 1.4, w0 = hash(a, seed + 73) * 1.2, tt = t - w0; if (tt < 0) continue; var cyc = Math.floor(tt / d), ph = tt / d - cyc;
       var op = kf(ph, [[0, 1], [0.08, 0.3], [0.12, 1], [0.24, 0.6], [0.28, 0]], true); if (!op) continue;
       var h = function (n) { return hash(a * 131 + n, seed * 7 + cyc * 17 + 5); }, gp = pts[Math.floor(h(1) * pts.length)], bx = (gp & 31) + 0.5, by = (gp >> 5) + 0.5, U = 22 / 100 * 32 / 10;
@@ -197,14 +226,14 @@
       for (var q = 0; q <= n; q++) V.push([bx + (-Math.cos(an) * L / 2 + Math.cos(an) * L * q / n + (q && q < n ? (h(10 + q) - 0.5) * 2.4 : 0)) * U, by + (-Math.sin(an) * L / 2 + Math.sin(an) * L * q / n + (q && q < n ? (h(20 + q) - 0.5) * 2.4 : 0)) * U]);
       var x0 = Math.max(0, Math.floor((bx - 4.5) / k)), x1 = Math.min(S - 1, Math.ceil((bx + 4.5) / k)), y0 = Math.max(0, Math.floor((by - 4.5) / k)), y1 = Math.min(S - 1, Math.ceil((by + 4.5) / k));
       for (py = y0; py <= y1; py++) for (px = x0; px <= x1; px++) { X = (px + 0.5) * k; Y = (py + 0.5) * k; o = (py * S + px) * 4; var sd = 9; for (q = 0; q < n; q++) sd = Math.min(sd, segD(X, Y, V[q][0], V[q][1], V[q + 1][0], V[q + 1][1]));
-        var aw = 0.85 / 2 * U, cw = 0.4 / 2 * U; if (sd < aw + 1.2) { scr(out, o, [159, 234, 255], op * 0.9 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.4 / 100 * 32 + 0.15), 2))); scr(out, o, [70, 180, 255], op * 0.8 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.9 / 100 * 32 + 0.3), 2)));
-          if (sd < aw) mix(out, o, sd < cw ? [255, 255, 255] : [127, 220, 255], op * clamp((aw - sd) / (k * 0.75), 0, 1)); } } }
+        var aw = 0.85 / 2 * U, cw = 0.4 / 2 * U; if (sd < aw + 1.2) { sc(out, o, [159, 234, 255], op * 0.9 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.4 / 100 * 32 + 0.15), 2))); sc(out, o, [70, 180, 255], op * 0.8 * Math.exp(-Math.pow(Math.max(0, sd - aw) / (0.9 / 100 * 32 + 0.3), 2)));
+          if (sd < aw) mx(out, o, sd < cw ? [255, 255, 255] : [127, 220, 255], op * clamp((aw - sd) / (k * 0.75), 0, 1)); } } }
     return out; }
   /** compose(frame32, S, t, ptr, out): the full baked picture of a pet frame: looks (when worn, else the nearest-scaled sprite) + the Mythic electric
    *  outline when V2Render tagged the frame (V2Looks.myth hook set by js/v2-render.js). Every bake (papers, GIF, token papers) goes through this. */
   function compose(img, S, t, ptr, out) { var info = infoOf(img), d = img.data, my = API.myth ? API.myth(img) : null; out = out || new Uint8ClampedArray(S * S * 4);
     if (info) render(img, info, S, t, ptr, out); else for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) { var si = (((y * 32 / S) | 0) * 32 + ((x * 32 / S) | 0)) * 4, o = (y * S + x) * 4; out[o] = d[si]; out[o + 1] = d[si + 1]; out[o + 2] = d[si + 2]; out[o + 3] = 255; }
-    if (my) electric(out, S, my.rim, t, my.seed || 0); return out; }
+    if (my) electric(out, S, my.rim, t, my.seed || 0, my.sick); return out; }
   function hasFx(img) { return !!(infoOf(img) || (API.myth && API.myth(img))); }
   function bakeAll(img, size, t) { if (!hasFx(img)) return null; return compose(img, size || 128, t == null ? 1.3 : t, t == null ? [0.42, 0.35] : null); }
   var API = root.V2Looks = { attachInfo: attachInfo, info: infoOf, attach: attach, detach: detach, render: render, bake: bake, STILL: STILL, electric: electric, compose: compose, hasFx: hasFx, bakeAll: bakeAll, myth: null };

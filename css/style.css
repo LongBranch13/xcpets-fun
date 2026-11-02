@@ -44,6 +44,8 @@ td { border-bottom: 1px dashed var(--line); padding: 6px 8px; vertical-align: to
 .card .t { display:flex; justify-content: space-between; align-items:center; margin-top: 8px; font-weight: 700; gap: 6px; }
 .card .m { color: var(--dim); font-size: 12px; margin-top: 4px; word-break: break-all; }
 .tier-common { background: var(--common); } .tier-uncommon { background: var(--uncommon); } .tier-rare { background: var(--rare); } .tier-legendary { background: var(--legendary); }
+.godborn { display:inline-flex; align-items:center; gap:4px; color:#ffe58a; border:1px solid #c9a227; background:rgba(255,229,138,.10); } .pc-gb.godborn { text-transform:none; letter-spacing:0; padding:0 4px; border-radius:6px; font-size:11px; vertical-align:middle; } .godborn .gb-halo { image-rendering: pixelated; flex:none; } /* God-born: baby of two Gods (display only) */
+.tier-god { background: linear-gradient(180deg,#fffbe6,#ffe58a); color:#3a2a00; box-shadow: 0 0 0 1px #c9b24a, 0 0 6px rgba(255,229,138,.55); } /* resurrected-breed-only: resurrected pets show 'God' (display only) */
 .card.preview { border-style: dashed; }
 footer { max-width: 1100px; margin: 0 auto; padding: 10px 24px 40px; color: var(--dim); text-align:center; }
 
@@ -158,11 +160,12 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 .scene-anchor { display: block; height: 0; scroll-margin-top: calc(var(--navh, 72px) + 8px); }
 /* front-page-entries (2026-10-19): home scene cards under the hero buttons */
 .scene-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 6px; }
-.scard { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #120e22; border: 3px solid #000; box-shadow: 4px 4px 0 #000; text-decoration: none; color: #ffd166; transition: transform .12s steps(2); }
+.scard { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: #120e22; border: 3px solid #000; box-shadow: 4px 4px 0 #000; text-decoration: none; color: var(--ink); transition: transform .12s steps(2); }
 .scard canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; background: #0b0a1f; }
-.scard .sc-t { font-family: var(--pixel); font-size: 10px; line-height: 1.6; color: #ffd166; text-shadow: 0 0 6px rgba(255,209,102,.45), 2px 2px 0 #000; }
-.scard .sc-d { font-family: var(--meme); font-size: 18px; letter-spacing: .05em; line-height: 1.1; color: #fff6c8; text-shadow: 2px 2px 0 #000; }
+.scard .sc-t { font-family: var(--pixel); font-size: 10px; line-height: 1.6; color: var(--ink); text-shadow: 2px 2px 0 #000; } /* owner Oct 27 2026: place names in the normal text color, no glow; yellow only on hover */
+.scard .sc-d { font-family: var(--meme); font-size: 18px; letter-spacing: .05em; line-height: 1.1; color: var(--ink); opacity: .8; text-shadow: 2px 2px 0 #000; }
 .scard:hover, .scard:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; outline: none; border-color: #ffd166; }
+.scard:hover .sc-t, .scard:focus-visible .sc-t { color: #ffd166; }
 @media (max-width: 640px) { .scene-cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
   .scard { scroll-snap-align: start; } }
 @media (prefers-reduced-motion: reduce) { .scard { transition: none; } .scard:hover, .scard:focus-visible { transform: none; } }
@@ -224,3 +227,10 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 #hatchBtn::after, #dozenBtn::after, #caseBtn::after { top: 2px; height: 6px;
   background: linear-gradient(135deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x, linear-gradient(225deg, rgba(0,0,0,.7) 33%, transparent 33%) 0 0 / 8px 6px repeat-x,
   linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,.75)) 0 5px / 100% 1px no-repeat; }
+
+/* THE gravestone (option C): old grave list cards and the dead pet's death note (also styled in cemetery-v2.css) */
+.tomb.gtomb{background:#14121f;border:3px solid #2a2742;border-radius:8px;padding:10px 12px 12px;box-shadow:0 6px 0 #0b0a12}
+.tomb.gtomb::before{content:none;display:none}
+.tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0}
+.deathnote canvas.gstone.big{float:left;width:120px;height:148px;margin:0 10px 6px 0;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:4px}
+.deathnote::after{content:'';display:block;clear:both}

@@ -12,7 +12,7 @@ function load() { const store = {}, ls = { getItem: k => store[k] || null, setIt
   for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext("window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};", ctx); continue; } const p = path.join(ROOT, f); if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, { filename: f }); }
   return ctx; }
 const snap = JSON.parse(fs.readFileSync(SNAP, 'utf8')); let fail = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
-function run(gate, anyGate) { const ctx = load(), V = ctx.V2Rules; if (gate !== undefined) V._setMythicSlotsActivation(gate); if (anyGate !== undefined) V._setAnySlotActivation(anyGate); const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, snap.hashes);
+function run(gate, anyGate) { const ctx = load(), V = ctx.V2Rules; if (V._setAllSlotsActivation) V._setAllSlotsActivation(Infinity); /* this test covers the Mythic rule before the all-slots unlock (gear-slots-unlocked-test covers that) */ if (gate !== undefined) V._setMythicSlotsActivation(gate); if (anyGate !== undefined) V._setAnySlotActivation(anyGate); const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, snap.hashes);
   return { V, w: V.replay(snap.rows, hashes, [], { tip: snap.tip, live: ctx.LiveEngine && ctx.LiveEngine.RealCore }) }; }
 const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)) ? Object.keys(x).sort().reduce((o, k2) => (o[k2] = x[k2], o), {}) : x);
 const sig = w => canon(Object.values(w.items).map(g => [g.gid, g.item, g.on, g.bag == null ? null : g.bag]));

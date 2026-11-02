@@ -38,7 +38,7 @@ async function findMints(pets, api, cache) { const owner = {}; pets.forEach(p =>
         if (c === undefined) { try { const i = await getJ(api + '/assets/' + b.asset + '/issuances?verbose=true'); const f = firstIssuances(i.result)[b.asset];
             c = cache[b.asset] = f && descId(f.description) != null ? { asset: f.asset, source: f.source, issuer: f.issuer, block_index: f.block_index, tx_index: f.tx_index, tx_hash: f.tx_hash, quantity: f.quantity, divisible: f.divisible, locked: f.locked, description: f.description } : 0; } catch (e) { console.error('issuances', b.asset, e.message); continue; } }
         if (c) cand.push(c); }
-      cur = j.next_cursor; } while (cur && ++n < 20); }
+      cur = j.next_cursor; } while (cur && ++n < 20); if (cur && n >= 20) console.error('balances', a, 'more than 20 pages: list cut short (api-hardening warning)'); }
   const out = {};
   for (const x of cand) { const id = descId(x.description); if (id == null || !owner[id]) continue;
     if (issueWhy(Object.assign({}, x, { block_index: x.block_index == null ? 0 : x.block_index }), id, owner[id], Infinity)) continue;
@@ -53,7 +53,7 @@ async function recentMints(pets, api, nodes, minBlock) { const owner = {}; pets.
   try { const j = await getJ(api + '/mempool/events/ASSET_ISSUANCE?limit=1000'); (j.result || []).forEach(e => { const x = e.params || {}; cand.push(Object.assign({}, x, { tx_hash: e.tx_hash || x.tx_hash, block_index: null, mempool: true })); }); } catch (e) { console.error('mempool:', e.message); }
   let got = false;
   for (const node of nodes || []) { try { let cur = null, n = 0; do { const j = await getJ(node + '/issuances?limit=1000&verbose=true' + (cur ? '&cursor=' + cur : ''), 30000); const r = j.result || [];
-        r.forEach(x => { if (descId(x.description) != null) cand.push(x); }); cur = j.next_cursor; if (!r.length || Math.min(...r.map(x => Number(x.block_index))) < minBlock) break; } while (cur && ++n < 10);
+        r.forEach(x => { if (descId(x.description) != null) cand.push(x); }); cur = j.next_cursor; if (!r.length || Math.min(...r.map(x => Number(x.block_index))) < minBlock) { cur = null; break; } } while (cur && ++n < 10); if (cur) console.error('issuances', node, 'scan stopped at 10 pages before block ' + minBlock + ' (api-hardening warning)');
       got = true; break; } catch (e) { console.error('issuances', node, e.message); } }
   if (!got) console.error('recentMints: no full node reachable; only mempool mints seen');
   const out = {};

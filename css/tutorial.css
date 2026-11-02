@@ -97,3 +97,6 @@
 .ftg-ok{min-height:44px}
 .tut-grad .ftg-replay{align-self:flex-start;margin-top:4px;min-height:40px}
 @media (prefers-reduced-motion:reduce){.ftg-cap{transition:none}}
+/* resurrect-odds: the two Resurrection tables side by side (stacked on phones) */
+.tut-oddsrow{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:0 0 10px}.tut-oddsrow .tw{flex:1 1 240px;max-width:420px}
+.tut-odds{background:#1b1430;border:2px solid #000;border-radius:10px}.tut-odds th{color:#ffd24a;font-weight:700}.tut-odds td,.tut-odds th{padding:5px 8px}

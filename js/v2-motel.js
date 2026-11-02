@@ -20,9 +20,9 @@
   function odds(V, A, B) { var hy = V.isHybrid, hi = Math.max(A.tier, B.tier), lo = Math.min(A.tier, B.tier), lab = function (s) { return V.speciesLabel(s); };
     var roots = function (s) { return hy(s) ? s.replace(/^hyb3?:/, '').split(':') : [s]; }, ph, sp;
     if (hy(A.species) || hy(B.species)) { var U = roots(A.species); roots(B.species).forEach(function (r) { if (U.indexOf(r) < 0) U.push(r); }); ph = 1; /* hybrid3Species: always a hybrid */
-      sp = U.length === 2 ? [[V.hybridName(hy(A.species) ? A.species : B.species), 100]] : [['3-way hybrid', 50], ['2-way hybrid', 50]]; }
+      sp = U.length === 2 ? [[(V.hybridLabel || V.hybridName)(hy(A.species) ? A.species : B.species), 100]] : [['3-way hybrid', 50], ['2-way hybrid', 50]]; }
     else if (A.species === B.species) { ph = 0; sp = [[lab(A.species), 100]]; }
-    else { ph = V.HYBRID_RATE_1E9 / 1e9; var pu = (1 - ph) / 2; sp = [[V.hybridName('hyb:' + A.species + ':' + B.species), ph * 100], [lab(A.species), pu * 100], [lab(B.species), pu * 100]]; }
+    else { ph = V.HYBRID_RATE_1E9 / 1e9; var pu = (1 - ph) / 2; sp = [[(V.hybridLabel || V.hybridName)('hyb:' + A.species + ':' + B.species), ph * 100], [lab(A.species), pu * 100], [lab(B.species), pu * 100]]; }
     /* tiers: purebred child 5% hi+1 / 30% hi / 65% lo (RARITY_*_10K); hybrid child 10% hi+1 / 90% hi (HYBRID_RARITY_UP_10K) */
     var up = ph * 0.10 + (1 - ph) * 0.05, h = ph * 0.90 + (1 - ph) * 0.30, l = (1 - ph) * 0.65; if (hi === 3) { h += up; up = 0; } if (hi === lo) { h += l; l = 0; }
     return { hyb: ph * 100, sp: sp, tier: { up: up * 100, hi: h * 100, lo: l * 100 }, hiT: hi, loT: lo }; }
@@ -73,7 +73,10 @@
     px(x, '#6e4520', tx - 1, ty + 1, 2, 2); px(x, '#6e4520', tx + 2, ty + 2, 2, 2); }
   function bush(x, bx, by, w) { px(x, '#1f6e3a', bx, by - 5, w, 5); px(x, '#2f9e44', bx + 1, by - 7, w - 2, 3); px(x, '#3ddc84', bx + 2, by - 6, 2, 1); px(x, '#3ddc84', bx + w - 4, by - 4, 2, 1); }
   function flowers(x, bx, by, w) { px(x, '#4a2d1e', bx, by - 3, w, 3); for (var i = 1; i < w - 1; i += 3) { px(x, '#2f9e44', bx + i, by - 5, 1, 2); px(x, ['#ff4fd8', '#ffd166', '#ff6b6b', '#c9c9ff'][(i / 3 | 0) % 4], bx + i - 1 + (i % 2), by - 7, 2, 2); } }
-  function others(w) { /* real recent breeding pairs: live pending check-ins first, then the guestbook */ var seen = {}, out = [], skip = [S.A && S.A.id, S.B && S.B.id];
+  /* speed2-1101: others() ran every animation frame (filter + sort of every pet); cached per world + picked pair */
+  var OC = { w: null, k: '', v: null };
+  function others(w) { var k = (S.A && S.A.id) + ':' + (S.B && S.B.id); if (OC.w === w && OC.k === k && OC.v) return OC.v; OC = { w: w, k: k, v: others0(w) }; return OC.v; }
+  function others0(w) { /* real recent breeding pairs: live pending check-ins first, then the guestbook */ var seen = {}, out = [], skip = [S.A && S.A.id, S.B && S.B.id];
     var add = function (a, b) { var A = w.byId[a], B = w.byId[b]; if (!A || !B || skip.indexOf(A.id) >= 0 || skip.indexOf(B.id) >= 0) return; var k = [A.id, B.id].sort().join(':'); if (seen[k]) return; seen[k] = 1; out.push([A, B]); };
     (w.breedReqs || []).slice().sort(function (p, q) { return q.block - p.block; }).forEach(function (r) { if (!r.used) add(r.a, r.b); });
     w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (p, q) { return (q.hatchBlock || 0) - (p.hatchBlock || 0) || q.id - p.id; }).slice(0, 12).forEach(function (c) { add(c.parents[0], c.parents[1]); });
@@ -166,7 +169,13 @@
     if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
-    if (!rm) S.raf = requestAnimationFrame(function (n) { if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }); else S.raf = 0; }
+    if (!rm) S.raf = requestAnimationFrame(frame); else S.raf = 0; }
+  /* speed2-1101: the scene redraws at most ~20 fps, and not at all while it is off screen or the tab is hidden (it used to redraw every frame, ~15% of a core) */
+  var FRAME_MS = 50, motelVis = true, motelObs = null;
+  function watchVis(c) { if (motelObs || typeof IntersectionObserver === 'undefined') return; try { motelObs = new IntersectionObserver(function (es) { es.forEach(function (e) { motelVis = e.isIntersecting; }); }); motelObs.observe(c); } catch (e) { motelObs = null; } }
+  function frame(n) { if (S.c && S.c !== (motelObs && motelObs._c)) { if (motelObs) { try { motelObs.disconnect(); } catch (e) { } motelObs = null; } watchVis(S.c); if (motelObs) motelObs._c = S.c; }
+    if ((document.hidden || !motelVis) || n - (S.drawn || 0) < FRAME_MS) { S.raf = requestAnimationFrame(frame); return; } S.drawn = n;
+    if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
     if (A && B) { var pair = [String(A.id), String(B.id)].sort().join(':');
       kid = w.pets.filter(function (p) { return p.parents && p.parents.map(String).sort().join(':') === pair; }).sort(function (x, y) { return y.hatchBlock - x.hatchBlock; })[0] || null;
@@ -180,13 +189,13 @@
   function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
     return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
-        '<span class="bk-row"><span class="pill tier tier-' + (TID[p.tier] || 'common') + '">' + esc(TL[p.tier] || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc"' + ptA(p) + '>⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
+        '<span class="bk-row"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier] || 'common') + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc"' + ptA(p) + '>⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
         (V.breedsLeft ? '<span class="bk-br" title="Lifetime breeds used">💞 ' + V.breedsLeft(p, w.tip).used + '/' + V.BREED_CAP_V2 + '</span>' : '') + ''; }; }
   if (typeof document !== 'undefined' && !document.getElementById('bkCss')) { var bs = document.createElement('style'); bs.id = 'bkCss';
     bs.textContent = '.bk-br{font-size:12px;color:#ff9ad5;white-space:nowrap}.pk-breed .pk-keys{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-breed .pk-key{padding:6px 4px;gap:3px}.pk-breed .pk-key .bk-nm{font-size:14px}' +
       '.bk-sp{font-size:13px;color:#fff;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bk-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;align-items:center}.bk-row .pill.tier{font-size:11px;white-space:nowrap}' +
       '.bk-sc{font-size:12px;color:#ffd166;white-space:nowrap}.bk-own{font-style:normal;font-weight:700;font-size:11px;letter-spacing:.5px;line-height:1.25;padding:2px 4px;border:1px solid #000;background:#4b3f7a;color:#fff;max-width:100%;text-align:center;white-space:nowrap}.bk-own.me{background:#4fd18b;color:#0d1a12}' +
-      '.pk-keys .bk-none{grid-column:1/-1}.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
+      '.pk-keys .bk-none{grid-column:1/-1}.bk-none.bk-res{color:#ffe58a;border-color:#c9b24a}.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
       '@media (max-width:520px){.pk-breed .pk-keys{grid-template-columns:repeat(2,minmax(0,1fr))}.pk-breed .pk-key .bk-nm{font-size:15px}.bk-sp{font-size:14px}.bk-row .pill.tier{font-size:12px}.bk-sc{font-size:13px}}';
     (document.head || document.documentElement).appendChild(bs); }
   function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
@@ -199,11 +208,13 @@
     var mainWhy = function () { var c = {}; L.mine.forEach(function (x) { var r = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); if (!r) return; r = /cooldown/.test(r) ? 'on breeding cooldown' : /Adult|young|stage/i.test(r) ? 'too young (Adult+)' : r; c[r] = (c[r] || 0) + 1; });
       var k = Object.keys(c).sort(function (p, q) { return c[q] - c[p]; })[0]; return k ? ' · mostly ' + k : (L.mine.length ? '' : ' · no live pets at this address'); };
     var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+    var side0 = S.pickSide || step, resHid = V.RES_BREED_WHY && s.A ? L.partners.filter(function (x) { return x.why === V.RES_BREED_WHY; }).length : 0; /* resurrected-breed-only: one line with the reason when the rule hides mates */
     var hint = !ME ? 'Connect your wallet to check in' : step === 'A' ? '1 · Pick your guest' : step === 'B' ? '2 · Pick the date (yours or anyone\u2019s)' : s.st === 'half' ? 'Checked in · waiting for #' + s.B.id + '\u2019s owner' : s.st === 'invite' ? '💌 #' + s.B.id + ' already checked in · ring to join' : s.st === 'open' ? '🥚 Door\u2019s open: egg #' + (s.kid && s.kid.id) : '3 · Ring the bell';
     desk.innerHTML = '<div class="mt-hint">' + hint + '</div>' +
       '<div class="mt-guests"><button type="button" class="mt-g' + (step === 'A' || S.pickSide === 'A' ? ' on' : '') + '" data-side="A">' + (s.A ? 'Room #' + s.A.id + ' · ' + esc(s.A.name) : 'Guest 1 ?') + '</button><span>+</span><button type="button" class="mt-g' + (step === 'B' || S.pickSide === 'B' ? ' on' : '') + '" data-side="B">' + (s.B ? 'Room #' + s.B.id + ' · ' + esc(s.B.name) : 'Guest 2 ?') + '</button></div>' +
       (od ? '<div class="mt-odds" aria-label="Odds"><b>ODDS</b> ' + od.sp.map(function (q) { return esc(q[0]) + ' ' + q[1].toFixed(q[1] === 100 ? 0 : 1) + '%'; }).join(' · ') + '<br>' + (od.tier.up ? '⬆ ' + T[Math.min(3, od.hiT + 1)] + ' ' + od.tier.up.toFixed(1) + '% · ' : '') + T[od.hiT] + ' ' + od.tier.hi.toFixed(1) + '%' + (od.tier.lo ? ' · ' + T[od.loT] + ' ' + od.tier.lo.toFixed(1) + '%' : '') + '</div>' : '') +
       (ME && window.UXB && UXB.browsePets && s.st !== 'open' ? '<div class="mt-browse" style="text-align:center;margin:6px 0"><button type="button" class="q" id="mtBrowse" title="Browse all your pets (or partners) with search, sort, filters and thumbnails">📋 Browse pets</button></div>' : '') +
+      (side0 === 'B' && resHid ? '<p class="bk-none bk-res" role="note">😇 ' + (s.A && s.A.resurrected ? '#' + s.A.id + ' is a God (resurrected). ' : '') + 'Resurrected pets only breed with other resurrected pets: ' + resHid + ' ' + (s.A && s.A.resurrected ? 'non-resurrected pet' + (resHid === 1 ? '' : 's') : resHid === 1 ? 'God' : (V.GOD_PLURAL || 'Gods')) + ' hidden.</p>' : '') +
       '<div id="motelPick"></div>';
     var side = S.pickSide || step; desk.querySelectorAll('[data-side]').forEach(function (bt) { bt.onclick = function () { S.pickSide = bt.dataset.side; S.fresh = null; render(U.world()); }; });
     /* P13 (2026-10-21): 'Browse pets' opens the fight picker's pet browser (UXB.browsePets) for the current guest slot: every pet in the breed list
@@ -253,7 +264,7 @@
     h += '<div class="gb-sec">🥚 Checked out with an egg</div>' + (P.length ? P.map(function (c) { var hy = V.isHybrid && V.isHybrid(c.species), sp = V.speciesLabel ? V.speciesLabel(c.species) : c.species;
         return '<div class="gb-row"><div class="gb-pics">' + gbSpr(w.byId[c.parents[0]]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[c.parents[1]]) + '<span class="gb-op">→</span>' + gbSpr(c) + '</div>' +
           '<div class="gb-txt"><span class="gb-main">' + gbName(w, c.parents[0]) + ' × ' + gbName(w, c.parents[1]) + '</span>' +
-          '<span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (TID[c.tier] || 'common') + '">' + esc(TL[c.tier] || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
+          '<span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (c.resurrected ? 'god' : TID[c.tier] || 'common') + '">' + esc((c.resurrected ? 'God' : TL[c.tier]) || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
           '<span class="gb-meta">block ' + Number(c.hatchBlock || 0).toLocaleString('en-US') + (ago(tip, c.hatchBlock) ? ' · ' + ago(tip, c.hatchBlock) : '') + '</span>' +
           '<span class="gb-note">Gooby\u2019s note: \u201c' + NOTES[c.id % NOTES.length] + '\u201d</span></div></div>'; }).join('') : '<div class="gb-row gb-empty">' + (BK.mine ? 'None of my pets have stayed here yet. Pick two guests above.' : 'No guests yet. Be the first.') + '</div>') +
       '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span>' + (BK.page + 1) + ' / ' + pages + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button></div></div>';

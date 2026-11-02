@@ -9,11 +9,12 @@
     if (!d || !d.classList || !d.classList.contains('card') || !d.dataset || !d.dataset.pid || d.classList.contains('dead') || d.querySelector('.' + CLS)) return;
     var b = document.createElement('button'); b.type = 'button'; b.className = CLS; b.dataset.discard = d.dataset.pid; b.title = DW;
     b.setAttribute('aria-label', 'Discard #' + d.dataset.pid); b.textContent = '🗑️'; d.appendChild(b);
+    if ((window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world()))) return; /* pet:rel retired at ACTIVATE_RETIRE_TAGS_BLOCK: Discard only */
     var r = document.createElement('button'); r.type = 'button'; r.className = RC; r.dataset.release = d.dataset.pid; r.title = RT; r.setAttribute('aria-label', 'Release #' + d.dataset.pid + ' (on-chain burn)'); r.textContent = '🔥 Release'; d.appendChild(r);
   }
   function onClick(e, D) {
     var t = e.target, rb = t && t.closest ? t.closest('.' + RC) : null;
-    if (rb) { e.stopPropagation(); e.preventDefault(); var rid = Number(rb.dataset.release); if (!rid) return;  /* the existing single-pet release path: same plans + burn confirmation as 'Release selected' */
+    if (rb) { e.stopPropagation(); e.preventDefault(); var rid = Number(rb.dataset.release); if (!rid || (window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world()))) return;  /* the existing single-pet release path: same plans + burn confirmation as 'Release selected' */
       D.confirmPlans('Release #' + rid + ' (on-chain burn, permanent)', window.V2Rules.releaseBatches([rid])); return; }
     var b = t && t.closest ? t.closest('.' + CLS) : null; if (!b) return;
     e.stopPropagation(); e.preventDefault();
@@ -33,8 +34,8 @@
       var hn = document.getElementById('relHint'); rel.parentNode.insertBefore(ds, (hn || rel).nextSibling);
       var upd = function () { var n = D.S().sel.length; ds.disabled = !n; ds.textContent = '🗑️ Discard selected' + (n ? ' (' + n + ')' : ''); };
       ds.onclick = function () { var ids = D.S().sel.slice(); if (!ids.length) return; var n = ids.length;
-        var kk = D.isKept ? ids.filter(D.isKept) : [], go = n - kk.length; if (!go) { D.discardIds(ids); return; }
-        if (!window.confirm('Discard ' + go + ' selected pet' + (go > 1 ? 's' : '') + '?' + (kk.length ? '\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + D.idList(kk) + '): starred pets are never discarded.' : '') + '\n\nThey move to the Discard pile at the bottom of My Pets. Free, only hidden in this browser, Undo anytime, no burn.')) return;
+        var kk = D.isKept ? ids.filter(D.isKept) : [], go = n - kk.length; if (!go) { D.discardIds(ids); return; } /* favorite-star-restore: starred pets skipped (as before 8ef7007) */
+        if (!window.confirm('Discard ' + go + ' selected pet' + (go > 1 ? 's' : '') + '? (' + D.idList(ids.filter(function (id) { return kk.indexOf(id) < 0; })) + ')' + (kk.length ? '\n\n' + kk.length + ' starred pet' + (kk.length > 1 ? 's are' : ' is') + ' skipped (' + D.idList(kk) + '): starred pets are never discarded.' : '') + '\n\nThey move to the Discard pile at the bottom of My Pets. Free, only hidden in this browser, Undo anytime, no burn.')) return;
         D.discardIds(ids); var S = D.S(); S.sel = []; D.selUi(); upd(); };
       var sc = document.getElementById('selCount'); if (sc && window.MutationObserver) new MutationObserver(upd).observe(sc, { childList: true, characterData: true, subtree: true }); upd();
       window.V2PetDiscard && (window.V2PetDiscard.updDiscSel = upd); }

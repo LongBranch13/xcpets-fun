@@ -13,18 +13,19 @@
   var LSK = 'xcpets-ux-' + (ME || 'anon');
   function load(k, d) { try { var v = JSON.parse(localStorage.getItem(LSK + '-' + k)); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(LSK + '-' + k, JSON.stringify(v)); } catch (e) { } }
-  function pill(t) { return '<span class="pill tier tier-' + TID[t] + '">' + TL[t] + '</span>'; }
+  function pill(t, p) { if (p && p.resurrected) return '<span class="pill tier tier-god">God</span>'; return '<span class="pill tier tier-' + TID[t] + '">' + TL[t] + '</span>'; }
   function spL(id) { return V.speciesLabel(id); }
   function power(p) { var s = p.stats || {}; return STATS.reduce(function (a, k) { return a + (s[k] || 0); }, 0); }
   function canvasFor(p, w, cls) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = cls || 'sprite'; R.lazy(c, function () { return R.petFrames(p, w); }, true); return c; }
   var lastW = null;
 
   // ================================================================ E. controls row (filters persist in this browser)
-  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }, load('filters', {}));
+  var F = Object.assign({ q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }, load('filters', {}));
+  if (!Array.isArray(F.sps)) F.sps = []; /* mypets-species-filter (Oct 28 2026): ticked species (empty = All species) */
   function saveF() { store('filters', F); }
   function isHyb(p) { return !!(p.hybrid || (p.art && p.art.hybrid) || V.isHybrid(p.species)); }
   function originOf(p) { return isHyb(p) && p.parents ? 'hybrid' : p.parents && p.parents.length ? 'bred' : isHyb(p) ? 'hybrid' : 'hatched'; }
-  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip || F.sort !== 'num'); }
+  function filtered() { return !!(F.q || F.min || F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.sps.length || F.flip || F.sort !== 'num'); }
   /* species-sort (2026-10-19, display only): species filter (13 hatchable species + Hybrids, owner's counts) and 'Species' sort; the community Bitcoin Wizard is never listed (he isn't an owned pet); owned player Wizards are (wiz-display-fix) */
   var SPF = ['bobo', 'chud', 'dodo', 'doge', 'kevin', 'lenny', 'mumu', 'nakamoto', 'peepo', 'pepe', 'sarutobi', 'snibby', 'wojak'];
   function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
@@ -35,10 +36,52 @@
     var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; }), list = SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; });
     var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + list.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
     if (sel.__h !== h) { sel.innerHTML = h; sel.__h = h; } sel.value = F.sp || 'all'; }
+  /* mypets-species-filter (owner Oct 28 2026: "want show only certain species in the sorts"). DISPLAY ONLY, no burn, no rule change.
+   * '🐾 All species ▾' sits next to ↕️ Sort. It opens a tick list: All species (clears it) + each species and Hybrids, each with how many
+   * of your pets it has. Tick one or more: only those pets show (works with Find and Sort). Saved with the other filters (F.sps).
+   * While it is on, Select all, the checked count, 🍖 Feed selected and the sticky Feed bar only use the checked pets that are shown. */
+  function spsList(c) { var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; });
+    return SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; }).concat(['hybrid']); }
+  function spsLabel() { var n = F.sps.length; return '🐾 ' + (!n ? 'All species' : n <= 2 ? F.sps.map(spName).join(', ') : n + ' species') + ' ▾'; }
+  function spsOpen(on) { var bx = $('fSpBox'), bt = $('fSpBtn'); if (!bx || !bt) return; bx.hidden = !on; bt.setAttribute('aria-expanded', String(!!on)); }
+  function spsSet(list) { F.sps = list; saveF(); U.render(); }
+  function spsMount() { if ($('fSpWrap')) return true; var ps = document.querySelector('#ctlRow .psort'); if (!ps) return false;
+    var wr = document.createElement('span'); wr.id = 'fSpWrap'; wr.className = 'small psp';
+    wr.innerHTML = '<button type="button" class="q" id="fSpBtn" aria-haspopup="true" aria-expanded="false" aria-controls="fSpBox" title="Show only the species you tick">' + esc(spsLabel()) + '</button>' +
+      '<div class="psp-box" id="fSpBox" role="group" aria-label="Show only these species" hidden></div>';
+    ps.parentNode.insertBefore(wr, ps.nextSibling);
+    if (!$('fSpCss')) { var st = document.createElement('style'); st.id = 'fSpCss';
+      st.textContent = '#petsPanel .psp{position:relative;display:inline-flex}#petsPanel .psp>.q{white-space:nowrap}' +
+        '#petsPanel .psp-box{position:absolute;left:0;top:100%;margin-top:4px;z-index:40;background:#0a0f0b;border:2px solid #000;border-radius:8px;box-shadow:4px 4px 0 #000;padding:6px;min-width:220px;max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:2px}' +
+        '#petsPanel .psp-box[hidden]{display:none}#petsPanel .psp-box label{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;min-height:32px}' +
+        '#petsPanel .psp-box label:hover{background:#1f2d23}#petsPanel .psp-box label.zero{opacity:.5}#petsPanel .psp-box .psp-n{margin-left:auto;padding-left:12px}#petsPanel .psp-box .psp-all{border-bottom:1px solid #1f2d23;margin-bottom:2px}' +
+        '#petsPanel .psp-box input{width:18px;height:18px;margin:0;flex:0 0 auto}#petsPanel .psp-box .psp-done{margin-top:4px;align-self:flex-end}' +
+        '@media (max-width:640px){#petsPanel .ctlrow .psp{order:5;flex:1 1 100%;min-width:0}#petsPanel .ctlrow #fShowingSlot{order:6}#petsPanel .ctlrow .psp>.q{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}#petsPanel .psp-box{right:0;min-width:0;max-height:55vh}}'; /* phone: own line under Sort, so Sort keeps its width */
+      document.head.appendChild(st); }
+    $('fSpBtn').onclick = function (e) { e.stopPropagation(); spsOpen($('fSpBox').hidden); };
+    $('fSpBox').addEventListener('click', function (e) { e.stopPropagation(); if (e.target.closest('.psp-done')) spsOpen(false); });
+    $('fSpBox').addEventListener('change', function (e) { var cb = e.target; if (!cb || !cb.matches('input[data-sp]')) return; var k = cb.getAttribute('data-sp');
+      if (k === 'all') return spsSet([]);
+      var L = F.sps.filter(function (x) { return x !== k; }); if (cb.checked) L.push(k); spsSet(L); });
+    document.addEventListener('click', function (e) { var bx = $('fSpBox'); if (bx && !bx.hidden && !e.target.closest('#fSpWrap')) spsOpen(false); });
+    document.addEventListener('keydown', function (e) { var bx = $('fSpBox'); if (e.key === 'Escape' && bx && !bx.hidden) { spsOpen(false); $('fSpBtn').focus(); } });
+    return true; }
+  function paintSps(pets) { if (!spsMount()) return; var c = { all: pets.length };
+    pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
+    var on = new Set(F.sps), h = '<label class="psp-all"><input type="checkbox" data-sp="all"' + (on.size ? '' : ' checked') + '> All species <span class="psp-n muted">' + fmt(c.all) + '</span></label>' +
+      spsList(c).map(function (k) { var n = c[k] || 0; return '<label' + (n || on.has(k) ? '' : ' class="zero"') + '><input type="checkbox" data-sp="' + esc(k) + '"' + (on.has(k) ? ' checked' : '') + '> ' + esc(spName(k)) + ' <span class="psp-n muted">' + fmt(n) + '</span></label>'; }).join('') +
+      '<button type="button" class="q psp-done">Done</button>';
+    var bx = $('fSpBox'); if (bx.__h !== h) { var st = bx.scrollTop; bx.innerHTML = h; bx.__h = h; bx.scrollTop = st; }
+    var bt = $('fSpBtn'), lb = spsLabel(); if (bt.textContent !== lb) bt.textContent = lb; bt.classList.toggle('on', !!F.sps.length); }
+  /* the checked pets that are on the (filtered) list; with no species ticked this is every checked pet, as before */
+  function spsShown(ids) { if (!F.sps.length) return ids; var w = lastW || U.world(), sh = new Set(U.petList(w).map(function (p) { return p.id; })); return ids.filter(function (id) { return sh.has(Number(id)); }); }
   window.UXB = {};
+  /* pet-flow-smoother: after a hatch review, My Pets shows Rarest first unless the player already picked a sort (display only) */
+  UXB.afterHatch = function () { if (F.sort === 'num' && !F.flip) { F.sort = 'tier'; saveF(); try { bindControls(); U.render(); } catch (e) { } } };
+  UXB.spsOn = function () { return F.sps.length > 0; }; UXB.spsKey = function () { return F.sps.slice().sort().join(','); }; UXB.shownSel = function (ids) { return spsShown(ids); }; /* mypets-species-filter */
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
   UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && q ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search (js/v2-pet-search.js) */
-    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false;
+    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false; if (F.sps.length && F.sps.indexOf(spOf(p)) < 0) return false;
       if (SM) return SM(p);
       if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
@@ -47,15 +90,15 @@
     ['fSort', 'fTier', 'fMin', 'fOrigin', 'fSpecies'].forEach(function (id) { $(id).onchange = upd; });
     var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); };
     $('fDir').onclick = function () { F.flip = !F.flip; saveF(); U.render(); };
-    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all' }; saveF(); bindControls(); U.render(); };
+    $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }; saveF(); bindControls(); U.render(); };
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
   }
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
-    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
+    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
     $('fShowing').textContent = shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''; /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
-    $('ctlToggle').textContent = '⚙️ Filter & sort' + (filtered() ? ' •' : '');
+    $('ctlToggle').textContent = '⚙️ More filters' + ((F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
   }
 
   // ================================================================ F. origin badges
@@ -80,21 +123,28 @@
   UXB.sel = function () { var w = lastW || U.world(), S = U.S(), alive = U.mine(w).filter(function (p) { return !p.dead; }), shown = U.petList(w).filter(function (p) { return !p.dead; });
     var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
+    if (F.sps.length) { var hidN = n - onShown; n = onShown; $('selCount').textContent = fmt(onShown) + ' of ' + fmt(shown.length) + ' shown selected' + (hidN > 0 ? ' (+' + fmt(hidN) + ' not shown)' : ''); } else /* mypets-species-filter */
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
-    var hungry = alive.filter(function (p) { return p.hungry; }), hq = V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }));
-    $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; $('bFeedHungry').disabled = !hungry.length;
+    /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
+    var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
+    var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : (V.feedRunsOn && window.V2UI && V2UI.feedQueue && V.feedRunsOn(w.tip || 0) ? V2UI.feedQueue(w, ME, hungry.map(function (p) { return p.id; }).filter(function (id) { return !(window.__demo && __demo.hiddenIds && __demo.hiddenIds().indexOf(id) >= 0); })) : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; })));
+    if (V.feedRunsOn && V.feedRunsOn(w.tip || 0)) hungry = hq.reduce(function (a, q) { return a.concat(q.petIds || (q.petId != null ? [q.petId] : [])); }, []); /* feed-all-one-burn: count only the pets the burn feeds (Mythics never eat) */
+    if (!FAP) $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; if (!FAP) $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);
-    if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
+    if ($('bRelease')) $('bRelease').hidden = !!(window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world())); if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
+    /* mypets-checkbox (owner Oct 28 2026): Roll gear / Auto-equip (Rare Room) act on the checked pets again (was starred pets) */
+    var sIds = U.pickIds ? U.pickIds(w) : S.sel.slice(), rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), ae0 = V.autoEquipOps(w, ME, sIds, S.tip);
+    $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' selected' : fmt(V.COSTS.roll) + ' XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
+    $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae0.length ? ae0.length + ' piece' + (ae0.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae0.length;
     if (!n) return;
-    var ids = S.sel.slice(), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : V.feedQueue(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
+    var ids = spsShown(S.sel.slice()), idS = new Set(ids), fq = ids.length > 200 ? w.pets.filter(function (p) { return p.owner === ME && p.hungry && idS.has(p.id); }).map(function (p) { return { amount: p.nextMeal, petId: p.id }; }) : FQ(w, ME, ids), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq = V.rollQueue(w, ME, ids, rn);
     /* sticky-feed-bar: the bar is about feeding only (roll gear / auto-equip moved to the Lair, same #bRoll/#bAuto handlers). */
     var fedN = fq.reduce(function (t, x) { return t + ((x.petIds && x.petIds.length) || (x.petId != null ? 1 : 0) || 1); }, 0);
     $('selBarCount').innerHTML = '<b>' + fmt(n) + '</b> selected';
-    $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' : '😋 all fed today';
+    var exact = ids.length <= 200; /* mypets-checkbox: the burn count is shown when the plan is exact (up to 200 checked); bigger plans show it in the confirm box */
+    $('selMeal').innerHTML = fq.length ? '🍖 <b>' + fmt(fedN) + '</b> hungry · meal <b>' + fmt(sum(fq)) + '</b> XCPETS' + (exact ? ' · <b>' + fmt(fq.length) + '</b> burn' + (fq.length === 1 ? '' : 's') : '') : '😋 all fed today';
     $('bFeedSel').innerHTML = 'Feed ' + (fq.length ? fmt(fedN) : '') + ' <span class="cost">' + (fq.length ? fmt(sum(fq)) + ' XCPETS' : 'nothing to feed') + '</span>'; $('bFeedSel').disabled = !fq.length;
-    $('bRoll').innerHTML = 'Roll gear ×' + rn + ' <span class="cost">' + (rq.length ? fmt(rq.length) + ' roll' + (rq.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq)) + ' XCPETS' : '345 XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq.length; $('bRoll').title = rq.length ? '' : 'Select one or more of your pets, then roll gear (345 XCPETS per roll)';
-    var ae = V.autoEquipOps(w, ME, ids, S.tip); $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae.length;
     $('selWhy').textContent = '';
   };
   function bindSel() {
@@ -127,17 +177,20 @@
     var rolls = plans.filter(function (x) { return /^pet:(roll|fr|of):\d+$/.test(x.tag); });
     if (rolls.length) { var ids = []; rolls.forEach(function (x) { var id = Number(x.tag.split(':')[2]); if (ids.indexOf(id) < 0) ids.push(id); });
       out += '<div class="small grwhat"><b>🎲 What you get:</b> ' + (rolls.length === 1 ? 'one random gear piece' : rolls.length + ' random gear pieces, one per roll') + ', for the pet named in each burn. ' + (U.autoEquip && U.autoEquip() ? 'Auto-equip is on: a new piece is worn right away unless the pet already wears something better.' : 'New pieces go to your stash (Auto-equip is off); equip them in The Rare Room (free).') + '</div><div class="small muted">🎁 Your gear arrives once the burn confirms, usually in about 10 minutes.</div>' +
-        '<div class="small"><b>🎲 Your odds</b> (per roll)</div>' + ids.slice(0, 3).map(function (id) { var p = w.byId[id]; return p ? '<div class="small">#' + id + ' ' + esc(p.name) + ' ' + pill(p.tier) + '</div>' + oddsHtml(p, true) : ''; }).join('') + (ids.length > 3 ? '<div class="small muted">… and ' + (ids.length - 3) + ' more pets</div>' : '') +
+        '<div class="small"><b>🎲 Your odds</b> (per roll)</div>' + ids.slice(0, 3).map(function (id) { var p = w.byId[id]; return p ? '<div class="small">#' + id + ' ' + esc(p.name) + ' ' + pill(p.tier, p) + '</div>' + oddsHtml(p, true) : ''; }).join('') + (ids.length > 3 ? '<div class="small muted">… and ' + (ids.length - 3) + ' more pets</div>' : '') +
         ''; }
     var spins = plans.filter(function (x) { return x.tag === 'pet:spin'; }); if (spins.length) { var pool = V.wheelPool ? V.wheelPool(w, ME) : [], WW = V.WHEEL_W || [1, 2, 4, 8], tw = pool.reduce(function (t, q) { return t + WW[q.tier || 0]; }, 0), pc = function (k) { return tw ? (WW[k] / tw * 100).toPrecision(2) + '%' : '—'; }; out += '<div class="small grwhat"><b>🎡 Pepe Wheel:</b> ' + (spins.length === 1 ? 'one random gear piece' : spins.length + ' random gear pieces') + ' for a <b>random pet of yours</b> (' + pool.length.toLocaleString('en-US') + ' living pets with an open slot; rarer pets are likelier: Common 1 · Uncommon 2 · Rare 4 · Legendary 8, so each Common pet ' + pc(0) + ', each Legendary ' + pc(3) + ' per spin). The piece is rolled for that pet like a normal roll and worn right away. The wheel shows who got what once the burn confirms, usually in about 10 minutes.</div>'; }
     if (plans.some(function (x) { return /^pet:c:roll/.test(x.tag); })) out += '<div class="small grwhat"><b>🎲 What you get:</b> the community pet gets one random gear piece and wears it right away. A new piece replaces the one in that slot. It shows once the burn confirms, usually in about 10 minutes.</div>';
     var rel = plans.filter(function (x) { return /^pet:rel/.test(x.tag); });
-    if (rel.length) { var S = U.S(), names = S.sel.map(function (id) { var p = w.byId[id]; return p ? '#' + id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc(spL(p.species)) + ')' : '#' + id; });
+    if (rel.length) { var S = U.S(), names = S.sel.map(function (id) { var p = w.byId[id]; return p ? '#' + id + ' ' + esc(p.name) + ' (' + (p && p.resurrected ? 'God' : TL[p.tier]) + ' ' + esc(spL(p.species)) + ')' : '#' + id; });
       out += '<div class="relwarn"><b>🔥 Releasing ' + names.length + ' pet' + (names.length === 1 ? '' : 's') + ':</b> ' + names.slice(0, 30).join(', ') + (names.length > 30 ? ' … +' + (names.length - 30) + ' more' : '') + '<br><b>Burns are final.</b> Released pets are gone for good and cannot be restored.</div>'; }
     return out; };
 
   // pending crates: our unconfirmed pet:roll burns (this browser's tracker + node mempool)
-  function pendingRolls() { var S = U.S(), conf = {}, out = [], seen = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
+  /* speed1-1101: the confirmed-tx map is rebuilt only when the chain rows change (was rebuilt on every call: the shop asked once per owned pet per frame, 6-8 s of load CPU) */
+  var confC = { rows: null, n: -1, m: null };
+  function confMap(S) { var r = S.rows || []; if (confC.rows !== r || confC.n !== r.length) { var m = {}; r.forEach(function (x) { m[x.tx_hash] = 1; }); confC = { rows: r, n: r.length, m: m }; } return confC.m; }
+  function pendingRolls() { var S = U.S(), conf = confMap(S), out = [], seen = {};
     function add(tx, tag, at) { var m = /^pet:(roll|fr|of):(\d+)$/.exec(String(tag)), c = /^pet:c:roll/.test(String(tag)), sp = String(tag) === 'pet:spin'; if (!tx || seen[tx] || conf[tx] || !(m || c || sp)) return; seen[tx] = 1; out.push({ tx: tx, id: m ? Number(m[2]) : null, community: c, spin: sp, kind: m ? m[1] : sp ? 'spin' : 'croll', at: at }); }
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed') add(t.txid, t.tag, t.at); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x.source === ME) add(x.tx_hash, x.tag, x.at); }); return out; }
@@ -149,6 +202,8 @@
       return '<div class="crate" title="' + (c.community ? 'Community gear roll' : c.spin ? 'Pepe Wheel spin (random pet)' : 'Gear roll for #' + c.id) + ' · tx ' + esc(c.tx.slice(0, 10)) + '…"><span class="box8">📦</span><span class="small">' + (c.community ? 'Community pet' : c.spin ? '🎡 Wheel spin' : '#' + c.id + (p ? ' ' + esc(p.name) : '')) + '</span></div>'; }).join('') + '</div>' : ''; }
   /** pendingFor(petId): this pet's gear rolls still waiting to confirm (for the pet detail's pending line). */
   UXB.pendingSpins = function () { return pendingRolls().filter(function (c) { return c.spin; }).length; };
+  /* speed1-1101: pending gear rolls for a set of pet ids in ONE pass (the shop's pendAll used pendingFor once per owned pet) */
+  UXB.pendingForIds = function (ids) { var set = {}; (ids || []).forEach(function (i) { set[i] = 1; }); return pendingRolls().filter(function (c) { return c.id != null && set[c.id]; }).length; };
   UXB.pendingFor = function (petId) { return pendingRolls().filter(function (c) { return c.id === petId; }).length; };
   /* gear results (2026-10-19): cards only flash/glow by tier; the meme caption is ONE line for the whole batch (v2.js UXB_CAP, best piece),
    * never per card (per-card captions used the global .meme headline style: 34-64px Bangers with a 4px shadow, so they overlapped the cards). */
@@ -173,7 +228,7 @@
   function petOpts(pets, sel, f, tierTxt) { f = String(f || '').trim(); var L = pets.filter(function (q) { return petMatch(q, f); });
     if (!f && L.length > PET_OPT_MAX) L = L.slice().sort(function (a, b) { return b.id - a.id; });
     var out = L.slice(0, PET_OPT_MAX); if (sel != null && !out.some(function (q) { return q.id === sel; })) { var sp = pets.filter(function (q) { return q.id === sel; })[0]; if (sp) out.unshift(sp); }
-    var o = out.map(function (q) { return '<option value="' + q.id + '"' + (q.id === sel ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + (tierTxt ? ' · ' + TL[q.tier] : '') + '</option>'; }).join('');
+    var o = out.map(function (q) { return '<option value="' + q.id + '"' + (q.id === sel ? ' selected' : '') + '>#' + q.id + ' ' + esc(q.name) + (tierTxt ? ' · ' + (q && q.resurrected ? 'God' : TL[q.tier]) : '') + '</option>'; }).join('');
     if (L.length > out.length) o += '<option value="" disabled>… ' + (L.length - PET_OPT_MAX).toLocaleString('en-US') + ' more: type #ID, name or species</option>';
     return o; }
   function findBox(id, f, n) { return n > PET_OPT_MAX ? ' <input type="search" id="' + id + '" class="pick petfind" placeholder="Find #ID / species" value="' + esc(f || '') + '" style="width:11em;max-width:45%" aria-label="Find a pet by #ID, name or species">' : ''; }
@@ -261,7 +316,7 @@
   function side(p, w, mine, other) { if (!p) return '<button type="button" class="fside empty" data-side="' + (mine ? 'a' : 'b') + '"><span class="big">＋</span><span>' + (mine ? 'Pick your pet' : 'Pick an opponent') + '</span></button>';
     var g = V.wornOf(w, p.id), why = whyNot(p, w);
     var FT = window.V2FightTag; /* fight-owner-labels */
-    return '<button type="button" class="fside t' + p.tier + (why ? ' no' : '') + (FT && FT.mine(p) ? ' fme' : '') + '" data-side="' + (mine ? 'a' : 'b') + '" aria-label="' + (mine ? 'Change your pet' : 'Change opponent') + '">' + (FT ? FT.html(p, other) : '') + '<span class="fsp" data-fsp="' + p.id + '"></span><span class="fn"><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + '</span><span class="small">' + pill(p.tier) + ' ' + esc(spL(p.species)) + ' · ' + p.stageName + '</span><span class="fpow"' + ptA(p) + '>⚡ ' + power(p) + ' Power</span>' +
+    return '<button type="button" class="fside t' + p.tier + (why ? ' no' : '') + (FT && FT.mine(p) ? ' fme' : '') + '" data-side="' + (mine ? 'a' : 'b') + '" aria-label="' + (mine ? 'Change your pet' : 'Change opponent') + '">' + (FT ? FT.html(p, other) : '') + '<span class="fsp" data-fsp="' + p.id + '"></span><span class="fn"><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + '</span><span class="small">' + pill(p.tier, p) + ' ' + esc(spL(p.species)) + ' · ' + p.stageName + '</span><span class="fpow"' + ptA(p) + '>⚡ ' + power(p) + ' Power</span>' +
       '<span class="fstats">' + STATS.map(function (k) { var v = (p.stats || {})[k] || 0, o = other ? (other.stats || {})[k] || 0 : 0; return '<span class="fst"><span class="sk">' + k.slice(0, 3).toUpperCase() + '</span><span class="fb"><i class="' + (other && v > o ? 'up' : other && v < o ? 'dn' : '') + '" style="width:' + Math.min(100, 100 * v / 35).toFixed(0) + '%"></i></span><b>' + v + '</b></span>'; }).join('') + '</span>' +
       '<span class="fgear">' + (g.length ? g.map(function (x) { return '<span class="gi" data-icon="' + esc(x.item) + '" title="' + esc(x.label) + (x.legendary ? ' ★ (safe)' : '') + '"></span>'; }).join('') : '<span class="small muted">no gear worn</span>') + '</span>' + (why ? '<span class="small warn">✋ ' + esc(why) + '</span>' : '') + (mine ? '<span class="fchg">✎ Change</span>' : '') + '</button>'; }
   function paintFace(w) { var box = $('faceoff'); if (!box) return; var mine = U.mine(w).filter(function (p) { return !p.dead; });
@@ -277,7 +332,7 @@
     var tab = FO.tab || 'new', nInc = inc.length;
     var h = '<div class="ch-tabs" role="tablist"><button type="button" role="tab" class="ch-tab' + (tab === 'new' ? ' on' : '') + '" data-chtab="new" aria-selected="' + (tab === 'new') + '">⚔️ New challenge</button><button type="button" role="tab" class="ch-tab' + (tab === 'inc' ? ' on' : '') + (nInc ? ' hot' : '') + '" data-chtab="inc" aria-selected="' + (tab === 'inc') + '">📥 Incoming <span class="ch-badge">' + nInc + '</span></button></div>';
     if (tab === 'new') h += '<div class="fcard"><div class="fgrid">' + side(A, w, true, B) + '<div class="vs" aria-hidden="true">VS</div>' + side(B, w, false, A) + '</div>' +
-      '<button type="button" class="btn ico-flame fgo" id="foGo"' + (okA && okB ? '' : ' disabled') + '>' + (!A ? 'Pick your pet first' : B ? 'Challenge #' + B.id + ' · burn 690 XCPETS' : 'Pick an opponent to challenge') + '</button> <button type="button" class="q ar-qm" id="arQuick">🎲 Quick match</button><span class="small ar-qmsg" id="arQmsg" aria-live="polite"></span>' + (A && B && (!okA || !okB) ? '<div class="small warn">✋ ' + esc(sw ? sw : !okA ? 'Your pet: ' + whyNot(A, w) : 'Opponent: ' + whyNot(B, w)) + '</div>' : '') + '</div>';
+      '<button type="button" class="btn ico-flame fgo" id="foGo"' + (okA && okB ? '' : ' disabled') + '>' + (!A ? 'Pick your pet first' : B ? 'Challenge #' + B.id + ' · burn ' + fmt(V.COSTS.fight) + ' XCPETS' : 'Pick an opponent to challenge') + '</button> <button type="button" class="q ar-qm" id="arQuick">🎲 Quick match</button><span class="small ar-qmsg" id="arQmsg" aria-live="polite"></span>' + (A && B && (!okA || !okB) ? '<div class="small warn">✋ ' + esc(sw ? sw : !okA ? 'Your pet: ' + whyNot(A, w) : 'Opponent: ' + whyNot(B, w)) + '</div>' : '') + '</div>';
     if (tab === 'inc') h += (nInc ? '' : '<p class="small muted">No incoming challenges right now. When someone challenges your pet it shows up here.</p>') + inc.slice(0, 10).map(function (f) { var X = w.byId[f.b], Y = w.byId[f.a];
       return '<div class="fcard inc"><div class="fgrid">' + side(X, w, true, Y).replace('data-side="a"', 'data-noside="1"').replace('<span class="fchg">✎ Change</span>', '') + '<div class="vs">VS</div>' + side(Y, w, false, X).replace('data-side="b"', 'data-noside="1"') + '</div><div class="small fstake">Fight ' + f.id + ' · accept by block ' + fmt(f.expires) + ' · loser gives 1 random worn piece, ★ safe</div><div class="row"><button type="button" class="btn ico-flame" data-facc="' + f.id + '"' + (function (y) { return y ? ' disabled title="' + esc(y) + '">Can\'t accept: ' + esc(y) : '>Accept (' + fmt(V.COSTS.accept) + ')'; })(window.V2UI && V2UI.sendWhy ? V2UI.sendWhy({ tag: 'pet:accept:' + f.id }) : null) + '</button><button type="button" class="q" data-fign="' + f.id + '">Ignore</button></div></div>'; }).join('');
     box.innerHTML = h;

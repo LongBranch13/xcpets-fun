@@ -33,9 +33,9 @@
   /* direct-counterparty-api (2026-10-25): CFG.coreFallback (api.xcp.fun/node, an unpublished proxy of Core) is only asked once EVERY direct Core
    * node failed with a timeout / network error in the last SICK_MS (port 4000 blocked on this network). A 429 or 5xx from a Core node never
    * opens it: busy is not blocked, and the proxy rate-limits harder. netSick = bases whose last failure was a timeout / network error. */
-  var FALLBACK = CFG.coreFallback || null, NET_KEY = 'xcpets-api-netsick', netSick = (function () { try { var o = Object.assign({}, (function () { try { return JSON.parse(localStorage.getItem(NET_KEY)) || {}; } catch (e) { return {}; } })(), JSON.parse(sessionStorage.getItem(NET_KEY)) || {}), t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
-  function setNetSick(b) { netSick[String(b)] = now() + 10 * 60e3; /* remembered 10 min per session: a network that blocks :4000 pays the timeout once */ try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); localStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} }
-  function clearNetSick(b) { if (netSick[String(b)]) { delete netSick[String(b)]; try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); localStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} } }
+  var FALLBACK = CFG.coreFallback || null, NET_KEY = 'xcpets-api-netsick', netSick = (function () { try { var o = (function () { try { localStorage.removeItem(NET_KEY); } catch (e) {} return JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; })(), t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
+  function setNetSick(b) { netSick[String(b)] = now() + 10 * 60e3; /* remembered 10 min per session: a network that blocks :4000 pays the timeout once */ try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} } /* burn-check-fix: session only again; a localStorage copy kept one slow moment blocking every visit for 10 min */
+  function clearNetSick(b) { if (netSick[String(b)]) { delete netSick[String(b)]; try { sessionStorage.setItem(NET_KEY, JSON.stringify(netSick)); } catch (e) {} } }
   function fallbackOk(bases) { var t = now(), core = bases.filter(function (b) { return b !== FALLBACK && typeof b === 'string'; }); return core.length > 0 && core.every(function (b) { return netSick[String(b)] > t; }); }
   function saveSick() { try { sessionStorage.setItem(SICK_KEY, JSON.stringify(sick)); } catch (e) {} }
   function setSick(b) { sick[String(b)] = now() + SICK_MS; saveSick(); }
@@ -43,14 +43,26 @@
   function now() { return Date.now(); }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function retryAfterMs(r) { var h = r && r.headers && r.headers.get ? r.headers.get('Retry-After') : null, n = h != null ? Number(h) : NaN; return isFinite(n) && n >= 0 ? Math.min(MAX_RETRY_AFTER_MS, n * 1000) : null; }
+  /* api-hardening (2026-10-27): Counterparty Core answers 400 (bad request: ValueError / ComposeError, the same on every node), 409 (a pending
+   * transaction in its mempool conflicts) and 503 (node not ready / catching up / bitcoind busy) with {"error": "..."}. errNote reads that text
+   * (1.5 s max) so the message says what the node said. 503 and 409 wait at least 1 s before the next pass; a 503 node is marked sick. When EVERY
+   * failure was a 400, the second pass is skipped (asking again gives the same answer) and the node's reason is shown. Same GETs, same JSON on
+   * success, so data and replays are unchanged. */
+  function errNote(status, txt) { var m = ''; try { var j = JSON.parse(txt); m = j && (j.error || j.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (e) { m = /^\s*</.test(txt || '') ? '' : String(txt || ''); }
+    m = m.replace(/\s+/g, ' ').trim().slice(0, 200);
+    var k = status === 503 ? 'node busy or still catching up, try again shortly' : status === 409 ? 'a pending transaction conflicts, wait for it to confirm' : status === 400 ? 'request rejected' : status === 429 ? 'rate limited' : status === 404 ? 'not found' : '';
+    return k + (m ? (k ? ': ' : '') + m : ''); }
+  function readNote(r) { var t = typeof r.text === 'function' ? Promise.resolve().then(function () { return r.text(); }).catch(function () { return ''; }) : Promise.resolve('');
+    return Promise.race([t, wait(1500).then(function () { return ''; })]).then(function (x) { return errNote(r.status, x); }); }
   /** failover(f, bases, path, parse, opts) -> Promise of parse(response) from the first server that answers OK (see the notes above). */
   function failover(f, bases, path, parse, opts) {
-    opts = opts || {}; var start = now(), deadline = start + (opts.deadline || DEADLINE_MS), errs = [], passes = opts.passes || PASSES, backoff = BACKOFF_MS;
+    opts = opts || {}; var start = now(), deadline = start + (opts.deadline || DEADLINE_MS), errs = [], passes = opts.passes || PASSES, backoff = BACKOFF_MS, onlyBad = true, badMsg = '';
     function attempt(base, ms, ac) {
       var url = typeof base === 'function' ? base(path) : base + path;
       return fetchT(f, url, ms, ac).then(function (r) {
-        if (!r.ok) { var ra = retryAfterMs(r); if (ra != null) backoff = Math.max(backoff, ra); if (r.status === 429 || r.status >= 500) setSick(base); throw new Error(String(base).split('/v2')[0] + ' HTTP ' + r.status); }
-        return parse(r, base); }).then(function (v) { clearSick(base); clearNetSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (/timed out|fetch|network/i.test(m) && !/HTTP \d/.test(m)) { setSick(base); setNetSick(base); } } throw e; });
+        if (!r.ok) { var ra = retryAfterMs(r); if (ra != null) backoff = Math.max(backoff, ra); if (r.status === 429 || r.status >= 500) setSick(base); if (r.status === 503 || r.status === 409) backoff = Math.max(backoff, 1000);
+          return readNote(r).then(function (note) { var e = new Error(String(base).split('/v2')[0] + ' HTTP ' + r.status + (note ? ' (' + note + ')' : '')); e.status = r.status; e.note = note; throw e; }); }
+        return parse(r, base); }).then(function (v) { clearSick(base); clearNetSick(base); return v; }, function (e) { var m = e && e.message || String(e); if (!(ac && ac.signal && ac.signal.aborted && ac.won)) { errs.push(m); if (e && e.status === 400) badMsg = badMsg || e.note || m; else onlyBad = false; if (/timed out|fetch|network/i.test(m) && !/HTTP \d/.test(m)) { setSick(base); setNetSick(base); } } throw e; });
     }
     function race(list, ms) { /* every server in `list` at once; first good answer wins, the rest are aborted */
       return new Promise(function (res, rej) { var left = list.length, done = false, acs = [];
@@ -70,17 +82,22 @@
           out++; attempt(list[0], Math.min(left, n === 0 ? (opts.primaryMs || PRIMARY_MS) : (opts.backupMs || BACKUP_MS))).then(function (v) { fin(true, v); }, function () { go2(); fin(false); });
           if (rest.length) hedge = setTimeout(go2, opts.hedgeMs || HEDGE_MS); })
         : race(list, Math.min(left, opts.backupMs || BACKUP_MS));
-      return step.catch(function () { if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
+      return step.catch(function () { if (onlyBad && badMsg) { var eb = new Error('The Counterparty node rejected this request (HTTP 400): ' + badMsg); eb.status = 400; eb.all = errs.slice(); throw eb; }
+        if (n + 1 >= passes) throw new Error('all APIs failed: ' + errs.join('; '));
         var bo = Math.min(backoff, Math.max(0, deadline - now() - 500)); return wait(bo).then(function () { return pass(n + 1); }); });
     }
     /* feed-fallback (api-reduction preview, owner approved 2026-10-25): every Core node remembered as network-blocked (10 min, kept across visits)
      * -> ONE short probe of the first node instead of waiting out the timeouts; if it fails the read fails at once (the page uses the game feed). */
-    if (!FALLBACK && allNetSick(bases)) { var pr = bases.filter(function (b) { return typeof b === 'string'; })[0];
-      if (!probeP || now() - probeAt > 30e3) { probeAt = now(); probeP = fetchT(f, pr + '/', PROBE_MS).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); clearNetSick(pr); }); probeP.catch(function () {}); } /* one shared probe per 30 s, not one per read */
+    /* burn-check-fix: opts.patient (burn safety reads) skips the remembered-blocked shortcut and does the full failover; the probe asks EVERY
+     * Core node (api.unspendablelabs.com too), PROBE_MS each, and any answer clears that node. */
+    if (!FALLBACK && !opts.patient && allNetSick(bases)) { var prs = bases.filter(function (b) { return typeof b === 'string'; });
+      if (!probeP || now() - probeAt > 30e3) { probeAt = now(); probeP = new Promise(function (res, rej) { var left = prs.length, ok = false, last = null;
+          prs.forEach(function (pr) { fetchT(f, pr + '/', PROBE_MS).then(function (r) { if (!r.ok && r.status !== 429) throw new Error('HTTP ' + r.status); clearNetSick(pr); if (!ok) { ok = true; res(); } }).catch(function (e) { last = e; if (--left === 0 && !ok) rej(last); }); }); });
+        probeP.catch(function () {}); } /* one shared probe per 30 s, not one per read */
       return probeP.then(function () { return pass(0); }, function (e) { var er = new Error('Counterparty servers blocked on this network (remembered): ' + (e && e.message || e)); er.blocked = true; throw er; }); }
     return pass(0);
   }
-  var PROBE_MS = 1500, probeP = null, probeAt = 0;
+  var PROBE_MS = 4000, probeP = null, probeAt = 0;
   function allNetSick(bases) { var t = now(), core = bases.filter(function (b) { return b !== FALLBACK && typeof b === 'string'; }); return core.length > 0 && core.every(function (b) { return netSick[String(b)] > t; }); }
   /** fetch with an AbortController timeout (no-op timeout where AbortController is missing, e.g. old Node); `ac` = optional caller controller */
   function fetchT(f, url, ms, ac) {
@@ -104,11 +121,13 @@
   };
   /** All XCPETS destructions, following next_cursor. */
   Chain.prototype.destructions = function (asset) {
-    var self = this, rows = [];
+    var self = this, rows = [], seen = {};
     function page(cursor) {
       return self.getJson('/assets/' + (asset || ASSET) + '/destructions?limit=1000' + (cursor != null ? '&cursor=' + cursor : '')).then(function (j) {
         rows = rows.concat(j.result || []);
-        return j.next_cursor != null && (j.result || []).length ? page(j.next_cursor) : rows;
+        /* api-hardening: cursor paging has no 10,000 offset cap; a node that repeats a cursor would loop forever, so stop with an error instead */
+        if (j.next_cursor != null && (j.result || []).length) { if (seen[j.next_cursor]) throw new Error('the node repeated a page cursor (' + j.next_cursor + '); not using a partial burn list'); seen[j.next_cursor] = 1; return page(j.next_cursor); }
+        return rows;
       });
     }
     return page(null);
@@ -144,13 +163,13 @@
     }
     return round(blocks).then(function (m) { return again(m, 0); });
   };
-  Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; }; Chain.coreBlocked = function () { return allNetSick(CFG.read || []); };
+  Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.errNote = errNote; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; }; Chain.coreBlocked = function () { return allNetSick(CFG.read || []); }; Chain.forgetBlocked = function () { netSick = {}; sick = {}; probeP = null; try { sessionStorage.removeItem(NET_KEY); localStorage.removeItem(NET_KEY); } catch (e) {} };
   Chain.TIMEOUTS = { HASH_RETRY_ROUNDS: HASH_RETRY_ROUNDS, HASH_RETRY_WAIT_MS: HASH_RETRY_WAIT_MS, PRIMARY_MS: PRIMARY_MS, BACKUP_MS: BACKUP_MS, DEADLINE_MS: DEADLINE_MS, BACKOFF_MS: BACKOFF_MS, MAX_RETRY_AFTER_MS: MAX_RETRY_AFTER_MS, SICK_MS: SICK_MS, PASSES: PASSES, BLOCK_CONC: BLOCK_CONC };
   Chain.prototype.blockHash = function (h, cache) {
     if (cache && cache[h]) return Promise.resolve(cache[h]);
     var bases = BLOCK_APIS.map(function (b) { var mp = b.indexOf('mempool:') === 0, u = mp ? b.slice(8) : b, fn = function (p) { return u + p; }; fn.mp = mp; fn.toString = function () { return u; }; return fn; });
     return failover(this.f, bases, String(h), function (r, base) { return (base.mp ? r.text() : r.json()).then(function (j) {
-        var x = base.mp ? String(j).trim() : j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(x || '')) throw new Error('bad block hash'); if (cache) cache[h] = x; return x; }); }, { deadline: 12000 })
+        var x = base.mp ? String(j).trim() : j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(x || '')) throw new Error('bad block hash'); if (cache) cache[h] = x; return x; }); }, { deadline: 12000, hedgeMs: 1000 }) /* burn-check-fast: a slow mempool.space no longer holds a hash for seconds; same hash from every source */
       .catch(function () { return null; });
   };
   /** txStatus(txid) -> {confirmed, block, seen}: confirmed = the Counterparty node has parsed it in a block (so replay includes it). */

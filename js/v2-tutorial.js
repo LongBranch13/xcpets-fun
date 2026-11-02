@@ -9,8 +9,19 @@
     tiers: [['Common', 6000, 0], ['Uncommon', 2700, 3], ['Rare', 1000, 6], ['Legendary', 300, 10]],
     stages: ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'], thresholds: [0, 69, 8349, 22149, 41469, 69069],
     meals: [4140, 6900, 9660, 9200], blocksPerDay: 144, neglectedAfter: 3, deathAfter: 7, mythicLine: 21000,
-    breedCooldown: 1008, breedCap: 6, blackEye: 72, fightWindow: 144, turns: 12
+    breedCooldown: 1008, breedCap: 6, blackEye: 72, fightWindow: 144, turns: 12,
+    /* tutorial-cemetery (owner ask Oct 30 2026): the cemetery gate mirrored from js/v2-rules.js (tutorial.html does not load the rules);
+     * cemPublic null = OWNER TEST (only grave #cemOwnerGrave by cemOwner). tools/tutorial-test.js checks these against the rules. */
+    cemGate: 973772, cemPublic: 973933, cemOwnerGrave: 2, cemOwner: 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4',
+    cemPool: 144, cemFeral: 432, cemCap: 3, cemRipe: 1.5,
+    /* resurrect-odds (owner ask Oct 30 2026): Resurrection points + chance mirrored from js/v2-rules.js cemResInfo (CEM_POINTS by tier, CEM_RES_*);
+     * cemHw = the Halloween window by block (CEM_HW_FROM..CEM_HW_TO). tools/tutorial-test.js checks every one against the rules. */
+    resPts: [1, 3, 10, 33], resMin: 25, resBase: 0.05, resSpan: 0.60, resTop: 0.65, resHwPts: 10, resHwTop: 0.75, cemHw: [973935, 975670],
+    resRows: [25, 50, 100, 300, 1000]
   };
+  /* resChance(points, halloween): the same math as V2Rules.cemResInfo (Halloween adds resHwPts to P, the cap is resTop or resHwTop) */
+  function resChance(pts, hw) { var P = pts + (hw ? N.resHwPts : 0); return Math.round(Math.min(hw ? N.resHwTop : N.resTop, N.resBase + N.resSpan * (P / (P + 100))) * 10000) / 10000; }
+  function pct(c) { return Math.round(c * 100) + '%'; }
   var SEEN = 'xcpets-tut-seen', DONE = 'xcpets-tut-done', TIPS = 'xcpets-tut-tips';
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
   function jget(k) { try { return JSON.parse(ls(k) || '{}') || {}; } catch (e) { return {}; } }
@@ -18,6 +29,20 @@
   function half(n) { return fmt(n / 2); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  /* cemetery raise steps: open to this viewer? 'open' (public launch reached), 'owner' (owner test, owner wallet saved in this browser), else 'soon' */
+  var TIP = null;
+  function cemState() {
+    var R = typeof window !== 'undefined' && window.V2Rules, pub = R && R.cemPublicBlock ? R.cemPublicBlock() : N.cemPublic;
+    if (pub != null && TIP != null && TIP >= pub) return 'open';
+    var me = ls('xcpets-v2-me') || ls('xcpets-xcpwallet-address'); return me && me === N.cemOwner ? 'owner' : 'soon';
+  }
+  function cemNote(short) {
+    var st = cemState();
+    if (st === 'open') return '';
+    if (short) return '<br><span class="small">🧪 ' + (st === 'owner' ? 'Owner test: grave #' + N.cemOwnerGrave + ' only.' : '<b>Opens soon.</b>') + '</span>';
+    if (st === 'owner') return '<br><span class="small">🧪 Owner test: for now only grave #' + N.cemOwnerGrave + ' can be raised, and only by your wallet.</span>';
+    return '<br><span class="small">🧪 <b>Opens soon.</b> Raising is in a test right now. These steps show how it will work.</span>';
+  }
   function sfx(n) { try { if (window.V2Sfx && V2Sfx[n]) V2Sfx[n](); } catch (e) {} }
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -57,6 +82,16 @@
   function rollTier() { var r = Math.floor(Math.random() * 10000), a = 0; for (var i = 0; i < 4; i++) { a += N.tiers[i][1]; if (r < a) return i; } return 0; }
   var HATCHABLE = [['pepe', 0], ['wojak', 0], ['chud', 0], ['peepo', 0], ['doge', 0], ['bobo', 1], ['mumu', 1], ['sarutobi', 1], ['lenny', 1], ['snibby', 2], ['kevin', 2], ['dodo', 3]];
   var DEMOS = {
+    resodds: function () {
+      var d = el('div', 'tut-demo'); d.appendChild(el('span', 'tut-tag gold', 'ODDS')); d.appendChild(el('div', 'tut-h', 'Resurrection odds'));
+      var T = ['Common', 'Uncommon', 'Rare', 'Legendary'], h = '<div class="tut-oddsrow"><div class="tw"><table class="tut-body small tut-odds"><thead><tr><th>Each pledged pet or gear piece</th><th class="num">Points</th></tr></thead><tbody>' +
+        T.map(function (t, i) { return '<tr><td>' + t + '</td><td class="num">' + N.resPts[i] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      h += '<div class="tw"><table class="tut-body small tut-odds"><thead><tr><th>Your points</th><th class="num">Chance</th><th class="num">🎃 Halloween</th></tr></thead><tbody>' +
+        '<tr><td>under ' + N.resMin + '</td><td class="num">can\'t roll</td><td class="num">can\'t roll</td></tr>' +
+        N.resRows.map(function (p) { return '<tr><td>' + fmt(p) + '</td><td class="num">' + pct(resChance(p)) + '</td><td class="num">' + pct(resChance(p, 1)) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      d.appendChild(el('div', '', h));
+      d.appendChild(el('div', 'tut-body small', 'Chance = 5% + 60% of P / (P + 100), where P is your points (plus ' + N.resHwPts + ' in the Halloween window). It levels off and never reaches ' + pct(N.resTop) + ', so each extra point helps a bit less. Examples of ' + N.resMin + ' points: 1 Legendary, or 3 Rares, or 9 Uncommons, or ' + N.resMin + ' Commons.'));
+      return d; },
     hatch: function () {
       var d = demoBox('Crack a practice egg'), box = el('div', 'tut-egg'), egg = sprite('pepe', 0), out = el('div', 'tut-body', 'Tap the egg.');
       box.appendChild(egg); d.appendChild(box); d.appendChild(out); egg.style.cursor = 'pointer'; egg.tabIndex = 0;
@@ -154,7 +189,7 @@
       ['Every move is a burn', 'Each action is a small burn of XCPETS that you sign in your own wallet. No server, no account: the game rebuilds every pet from public Bitcoin history, so everyone sees the same pets.']],
       quiz: [['How does the game know what your pets did?', ['It replays public burns on Bitcoin', 'A company server saves it', 'Your browser makes it up'], 0]] },
     { id: 'wallet', ico: '👛', t: 'Wallet & XCPETS', s: 'Get ready to play', steps: [
-      ['Get a wallet', 'Install <b>XCP Wallet</b> (desktop Chrome extension). It holds your XCPETS and signs every burn.'],
+      ['Get a wallet', 'On desktop, install <b>XCP Wallet</b> (Chrome extension). On your phone, use the <b>Casa Tookan</b> app and open xcpets.fun inside it. The wallet holds your XCPETS and signs every burn.'],
       ['Get XCPETS', 'Get XCPETS on xcp.fun, plus a little BTC for network fees.'],
       ['Connect', 'On the Play page press <b>Connect wallet</b>. Your pets show up under My Pets.']],
       quiz: [['What else do you need besides XCPETS?', ['A little BTC for fees', 'An email account', 'Nothing'], 0]] },
@@ -166,7 +201,7 @@
     { id: 'feed', ico: '🍖', t: 'Feeding', s: 'Deep dive: meals, days, neglect', deep: 1, steps: [
       ['Once per chain day', 'A chain day is ' + N.blocksPerDay + ' Bitcoin blocks (about a day). Feed each pet <b>once per chain day</b>. A pet that has not eaten today is hungry.'],
       ['Meal sizes', 'A meal gives care that depends on the stage: Hatchling ' + fmt(N.meals[0]) + ', Juvenile ' + fmt(N.meals[1]) + ', Adult ' + fmt(N.meals[2]) + ', Elder ' + fmt(N.meals[3]) + '. The Play page shows what a meal burns right now.', 'feed'],
-      ['Feed them all at once', '<b>Feed all hungry</b> on the Play page bundles your hungry pets into one burn, so a big herd is one signature.'],
+      ['Feed them all at once', '<b>Feed all hungry</b> on the Play page bundles your hungry pets into one burn, so a big herd is one signature.' + (window.XCPETS_FEED_ALL_PAUSED === true ? ' Feed all is paused for a fix.' : '')],
       ['Neglect and death', 'After <b>' + N.neglectedAfter + ' days</b> without food a pet is neglected: no battles, no breeding. After <b>' + N.deathAfter + ' days</b> it dies and goes to the Pet Cemetery. Mythic pets never starve.']],
       quiz: [['How often can you feed a pet?', ['Once per chain day', 'Once per block', 'Once a week'], 0], ['What happens after 7 days with no meal?', ['It dies and goes to the Cemetery', 'Nothing', 'It turns Mythic'], 0], ['Can a neglected pet battle?', ['No', 'Yes'], 0]] },
     { id: 'grow', ico: '🌱', t: 'Growing', s: 'Deep dive: stages and Mythic', deep: 1, demo: 'grow', steps: [
@@ -190,7 +225,7 @@
       ['Rare surprises', 'Twins 1 in 50, mutations 1 in 100, and hidden traits like Odd eyes (gold, ice, toxic or magenta).']],
       quiz: [['What stage must both parents be?', ['Adult or older', 'Hatchling', 'Any'], 0], ['How often are twins?', ['1 in 50', '1 in 2', 'Never'], 0]] },
     { id: 'gear', ico: '🎡', t: 'Gear & spins', s: 'Drip, slots, the Pepe Wheel', steps: [
-      ['Six slots', 'Headwear, Guise, Drip, Grip, Outfits and Footwear. Slots open with age and good feeding; Mythic pets have all 6.'],
+      ['Six slots', 'Headwear, Guise, Drip, Grip, Outfits and Footwear. From block 973,560 every pet has all 6 open, whatever its age, feeding, tier or stage.'],
       ['The Pepe Wheel', 'Spin for gear in The Rare Room. Each spin is a small burn: the Play page shows the live amount. Saved spins from lucky drops cost only the Bitcoin fee. Each copy you own makes that item a bit less likely, so duplicates are rarer.']],
       quiz: [['How many gear slots does a Mythic have?', ['6', '2', '1'], 0]] },
     { id: 'shop', ico: '🛒', t: 'Shop & gifting', s: 'Spam City Games', steps: [
@@ -202,8 +237,20 @@
       quiz: [['What does the Proof Parade show?', ['Every pet token in order', 'Weather', 'Chat'], 0]] },
     { id: 'cem', ico: '🪦', t: 'Cemetery & community pets', s: 'Rest in pixels, Cold Storage', steps: [
       ['The Pet Cemetery', 'Pets that starve rest in the Pet Cemetery, with their whole story.'],
+      ['Raise a zombie', function () { return 'A grave can come back as a zombie. Open the <b>Pet Cemetery</b> and click a gravestone (or its <b>Raise at the altar</b> button). The altar opens in Mort\'s candle circle.' + cemNote(); }],
+      ['Make your offering', function () { return 'Tap your living pets (or drag them) onto the altar, and throw spare gear into the flames. Pets left unfed for ' + N.neglectedAfter + ' days count ' + N.cemRipe + ' times. Each offering adds a bit less than the one before, up to ' + N.cemCap + ' times the power it had when it died. <b>↩ Take all back</b> clears your picks. Mythics and pets on a quest, in a fight, in Cold Storage or in the shop can\'t be offered.' + cemNote(1); }],
+      ['Hold seance', function () { return 'Press <b>🕯️ Hold seance</b> and sign the burns in your wallet. Every seance raises the pet: when it confirms, the zombie rises for you at the end of that block, with your own offerings only. Nothing you offer ever goes to someone else\'s zombie. A big offering can take more than one burn: the earlier burns hold your pieces for your seance (only you can use them, for ' + N.cemPool + ' blocks, about a day), and <b>🧟 Raise now</b> finishes it. An offered pet that dies before the raise no longer counts, so ripe pets show the block they die at.' + cemNote(1); }],
+      ['It rises!', function () { return 'After the burns confirm (about a block) the zombie rises. Everything offered is used up. <b>The wallet that holds the seance owns it</b>, and it shows in <b>My Pets</b>.' + cemNote(1); }],
+      ['Zombies eat pets', function () { return 'A zombie eats <b>pets, not meals</b>. On its card in <b>My Pets</b> press <b>🍖 Feed it pets</b> and tick the pets it eats: your <b>discarded</b> pets are listed first, and <b>Select all discarded</b> ticks them all. ⭐ Starred pets are never offered. Every pet it eats is used up for good; the XCPETS is only a fee per burn.'; }],
+      ['What a meal does', function () { return 'Each meal burn refills its hunger to full. Only <b>tier</b> and <b>neglect</b> count: rarer pets and ripe pets (unfed ' + N.neglectedAfter + '+ days, ' + N.cemRipe + ' times) add more power; meals and stage don\'t matter. Each pet adds a bit less, so extra pets add little near the ' + N.cemCap + ' times cap. If any pet in a burn can\'t be eaten, the whole burn fails.'; }],
+      ['Keep it fed', function () { return 'Leave a zombie unfed for ' + N.cemFeral / N.blocksPerDay + ' days and it goes <b>feral</b>: it won\'t fight for you, and other players can hunt it. One meal calms it. Unfed another ' + N.cemFeral / N.blocksPerDay + ' days and it crumbles back into its grave.'; }],
+      ['Resurrection: the odds', function () { return 'A zombie\'s owner can try a <b>😇 Resurrection</b> to bring it back to life. On its cemetery card, <b>Pledge to Resurrection</b> adds one of your pets to it. Each pledged pet or gear piece adds points by tier: Common ' + N.resPts[0] + ', Uncommon ' + N.resPts[1] + ', Rare ' + N.resPts[2] + ', Legendary ' + N.resPts[3] + ' (ripe pets don\'t count extra here). You need at least <b>' + N.resMin + ' points</b> to roll. 🎃 In the Halloween window (Oct 31 to Nov 11) every roll gets <b>+' + N.resHwPts + ' bonus points</b>. It is <b>one roll</b>, and everything pledged is used up either way. Win: it is alive again with a halo and keeps its power. Miss: it turns to <b>dust forever</b>. The card shows your live chance next to <b>😇 Resurrect</b> before you burn.' + cemNote(1); }, 'resodds'],
       ['Community pets', 'Some pets belong to everyone: anyone can feed them. When one reaches Mythic it goes to Cold Storage, the next one arrives, and burns cost half (the halving).']],
-      quiz: [['What happens when a community pet reaches Mythic?', ['It goes to Cold Storage and burns cost half', 'It dies', 'Nothing'], 0]] },
+      quiz: [['What happens when a community pet reaches Mythic?', ['It goes to Cold Storage and burns cost half', 'It dies', 'Nothing'], 0],
+        ['An offered pet dies before the raise. Does it still count?', ['No, hold a new seance with a living pet', 'Yes, it counts double', 'It comes back to life'], 0],
+        ['What does a zombie eat?', ['Your pets (discarded ones listed first)', 'XCPETS meals', 'Gear'], 0],
+        ['One pet in a zombie\'s meal can\'t be eaten. What happens?', ['The whole burn fails', 'The others are eaten', 'The zombie goes feral'], 0],
+        ['A Resurrection roll misses. What happens?', ['The zombie turns to dust forever', 'You can roll again', 'It stays a zombie'], 0]] },
     { id: 'ranks', ico: '👑', t: 'Rankings & Burn Lords', s: 'Climb the boards', steps: [
       ['Rankings', 'The Rankings page shows the top keepers, pets and fighters.'],
       ['Burn Lords', 'The top burners are the Burn Lords. Top 5 burners at the snapshot block get special eggs.']],
@@ -220,7 +267,7 @@
     ls(SEEN, '1'); var done = jget(DONE);
     function save() { ls(DONE, JSON.stringify(done)); }
     function menu() {
-      root.innerHTML = ''; var c = el('div', 'tut-card');
+      cur = null; root.innerHTML = ''; var c = el('div', 'tut-card');
       c.appendChild(guide('Hi, I\'m <b>Coach Peepo</b>! Pick a chapter, or start from the top. The gold ones are the deep dives.'));
       c.appendChild(el('h1', 'tut-big', 'The Big Beautiful Tutorial'));
       var nDone = CH.filter(function (x) { return done[x.id]; }).length;
@@ -237,14 +284,18 @@
       var pl = el('a', 'q', 'Skip to Play →'); pl.href = 'play.html?coach=1'; nav.appendChild(st); nav.appendChild(pl); c.appendChild(nav);
       root.appendChild(c); history.replaceState(null, '', location.pathname);
     }
+    var cur = null;
+    if ((window.V2Rules && V2Rules.cemPublicBlock ? V2Rules.cemPublicBlock() : N.cemPublic) != null && window.fetch) /* the tip only matters once a public launch block is set */
+      fetch('api/meta.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { TIP = +j.blockHeight || null; if (cur && CH[cur[0]].id === 'cem') open(cur[0], cur[1]); }, function () {});
     function open(ci, si) {
+      cur = [ci, si];
       var ch = CH[ci], total = ch.steps.length + (ch.quiz.length ? 1 : 0); root.innerHTML = '';
       history.replaceState(null, '', '#' + ch.id + (si ? '-' + (si + 1) : ''));
       var c = el('div', 'tut-card');
       c.appendChild(el('div', 'tut-body small', ch.ico + ' Chapter ' + (ci + 1) + ' of ' + CH.length + (ch.deep ? ' <span class="tut-tag gold">DEEP DIVE</span>' : '')));
       c.appendChild(el('h1', 'tut-big', esc(ch.t)));
       if (si < ch.steps.length) {
-        var s = ch.steps[si]; c.appendChild(guide('<b>' + s[0] + '</b><br>' + s[1]));
+        var s = ch.steps[si]; c.appendChild(guide('<b>' + s[0] + '</b><br>' + (typeof s[1] === 'function' ? s[1]() : s[1])));
         if (s[2] && DEMOS[s[2]]) c.appendChild(DEMOS[s[2]]());
         if (ch.cta) {
           var h = el('div', 'tut-demo', ''); h.appendChild(sprite('pepe', 0, null, '')); h.firstChild.style.width = '96px'; h.firstChild.style.height = '96px';
@@ -394,6 +445,8 @@
   ];
   var lastKey = '', tipOpen = false;
   function playTick() {
+    /* pet-flow-smoother: no coach tips while the hatch review (#packBox) is open; they wait until it closes (lastKey is not touched, so the next tick retries) */
+    var pk = document.getElementById('packBox'); if (pk && pk.classList.contains('on')) return;
     if (!window.V2UI || !V2UI.world) return; var w; try { w = V2UI.world(); } catch (e) { return; } if (!w || !w.pets) return;
     var me = V2UI.ME || null; if (!me) return; var s = stats(w, me); s.me = me; s.tip = w.tip || 0; s.grad = graduated(); s.spin = (w.streakSpin && w.streakSpin[me]) || null; var key = JSON.stringify(s); if (key === lastKey) return; lastKey = key;
     questsPanel(s);
@@ -417,7 +470,7 @@
     if (onPlay && qs.has('coach')) { ls(SEEN, '1'); setTimeout(coach, 1200); return; }
     if (!ls(SEEN)) setTimeout(function () { welcome(onPlay); }, 900);
   }
-  window.V2Tutorial = { N: N, CH: CH, QUESTS: QUESTS, stats: stats, coach: coach, pickStep: pickStep, CSKIP: CSKIP, open: function () { location.href = 'tutorial.html'; } };
+  window.V2Tutorial = { N: N, CH: CH, resChance: resChance, QUESTS: QUESTS, stats: stats, coach: coach, pickStep: pickStep, CSKIP: CSKIP, open: function () { location.href = 'tutorial.html'; } };
   if (typeof module !== 'undefined') module.exports = window.V2Tutorial;
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

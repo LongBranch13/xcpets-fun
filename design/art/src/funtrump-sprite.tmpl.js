@@ -23,6 +23,9 @@
       if (SUIT[k]) { a.by0 = Math.min(a.by0, y); a.by1 = Math.max(a.by1, y); a.bx0 = Math.min(a.bx0, x); a.bx1 = Math.max(a.bx1, x); }
       if ((k === 'P' || k === 'I') && y < 24) { if (a.ey < 0) a.ey = y; a.ey1 = y; a.ex0 = Math.min(a.ex0, x); a.ex1 = Math.max(a.ex1, x); } }
     if (a.ey < 0) a.ey = a.fy0 + 2; a.fx0 = Math.max(a.fx0, a.ex0 - 3); a.fx1 = Math.min(a.fx1, a.ex1 + 3); ['fy0', 'fy1', 'by0', 'by1', 'ey', 'ey1', 'top'].forEach(function (k) { a[k] += dy; }); if (frame === 1) a.top = Math.max(0, a.top); return a; }
+  var FT_FLAG_COL = { b: '#2b4aa8', w: '#f4f4ee', Q: '#c8242c', m: '#2f9f4a', n: '#111111' };
+  var FT_FLAG_MAPS = { 'ft-us-flag': ['y.......', 'XbwbwQQQ', 'Xbbbbwww', 'XbwbwQQQ', 'Xwwwwwww', 'XQQQQQQQ', 'Xwwwwwww', 'XQQQQQQQ'],
+    'ft-kek-flag': ['y.......', 'Xmwnwmwn', 'Xmwnwmnw', 'Xwwnwwww', 'Xnnnnnnn', 'Xwwnwwww', 'Xmwnwmmm', 'Xmwnwmmm'] };
   function draw(stage, frame, gear, look) {
     var g = base(stage, frame, look), Gr = gear || {}; stage = Math.max(0, Math.min(5, stage | 0));
     if (stage === 0 || !Object.keys(Gr).length) return g;
@@ -56,7 +59,11 @@
     if (Gr.hand) { /* held on his RIGHT (viewer's right): the left side is his windblown hair; Elder/Mythic hold it in the hand he already shows */
       var hnd = -1; for (var yH = A.by0; yH <= A.by1; yH++) for (var xH = A.bx1 + 1; xH < N; xH++) if (SKIN[orig[yH][xH]]) hnd = Math.max(hnd, xH);
       var hx = Gr.weapon ? Math.max(1, A.bx0 - 4) : Math.min(30, hnd >= 0 ? hnd + 1 : A.bx1 + 3), hy = Math.min(28, A.by1 - 1), ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
-      if (Gr.hand.item === 'ft-gold-phone') { for (var yp = 0; yp < 5; yp++) for (var xp = 0; xp < 3; xp++) set(hx + xp, hy - yp, (yp > 0 && yp < 4 && xp === 1) ? '#2a2f3a' : 'y'); set(hx + 1, hy - 3, '#7fd8ff'); set(hx + 2, hy, '#c98a00'); }
+      if (Gr.hand.item === 'ft-us-flag' || Gr.hand.item === 'ft-kek-flag') { /* FUNTRUMP flags (branch funtrump-flags): pole in his hand, flag flies from the top; mirrored (canton/hoist stays on the pole) when it would leave the frame */
+        var FM = FT_FLAG_MAPS[Gr.hand.item], fwid = FM[0].length - 1, ptop = Math.max(0, hy - 13), px = Math.min(31, hx), flip = px + fwid > 31;
+        for (var yP = ptop; yP <= hy; yP++) set(px, yP, '#7a4a22'); set(px, ptop, '#ffd23f');
+        for (var fr = 1; fr < FM.length; fr++) for (var fc = 1; fc <= fwid; fc++) { var ch = FM[fr][fc]; if (ch === '.') continue; set(flip ? px - fc : px + fc, ptop + fr, FT_FLAG_COL[ch]); } }
+      else if (Gr.hand.item === 'ft-gold-phone') { for (var yp = 0; yp < 5; yp++) for (var xp = 0; xp < 3; xp++) set(hx + xp, hy - yp, (yp > 0 && yp < 4 && xp === 1) ? '#2a2f3a' : 'y'); set(hx + 1, hy - 3, '#7fd8ff'); set(hx + 2, hy, '#c98a00'); }
       else if (Gr.hand.item === 'ft-hairspray') { for (var ys = 0; ys < 5; ys++) { set(hx, hy - ys, 'y'); set(hx + 1, hy - ys, ys === 2 ? 'B' : 'o'); } set(hx, hy - 5, 'w'); set(hx - 1, hy - 7, 'w'); set(hx - 2, hy - 8, 'w'); set(hx, hy - 8, 'w'); }
       else if (/mug|cup|coffee|tea|bowl|beer|drink/.test(ak)) { for (var xm = hx; xm <= hx + 2; xm++) for (var ym = hy - 2; ym <= hy; ym++) set(xm, ym, a0); set(hx + 1, hy - 2, a1); set(hx + 2, hy - 2, a1); }
       else if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod|lance|scepter|sceptre/.test(ak)) { for (var t = 0; t < 8; t++) set(hx, hy - t, t > 5 ? a1 : a0); }

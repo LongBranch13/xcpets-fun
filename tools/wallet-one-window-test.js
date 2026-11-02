@@ -1,4 +1,5 @@
 const { chromium } = require('playwright-core');
+const PORT = process.env.XCPETS_TEST_PORT || 8099; /* tools/run-tests gives each test its own port; standalone runs keep :8099 */
 const ADDR='bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', TXF=require('./lib/txfake.js'); /* real-structured destroy: the wallet decodes the raw tx before signing */
 (async () => {
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args:['--no-sandbox'] });
@@ -15,8 +16,8 @@ const ADDR='bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', TXF
       if (a.method==='xcp_signTransaction') return new Promise((r,j)=>W.pend.push({m:a.method,res:()=>r({hex:'02aa'}),rej:(c,msg)=>{const e=new Error(msg);e.code=c;j(e);}}));
       if (a.method==='xcp_broadcastTransaction') { W.n=(W.n||0)+1; return Promise.resolve({txid:String(W.n).padStart(64,'a')}); }
       return Promise.resolve(null); } }; }, ADDR);
-  await require('./lib/serve-repo.js')(pg, { '/zz-harness.html': '<!doctype html><html><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>' }); /* was an untracked file on a separate :8099 server */
-  await pg.goto('http://localhost:8099/zz-harness.html');
+  await require('./lib/serve-repo.js')(pg, { '/zz-harness.html': '<!doctype html><html><body><script src="rjs/config.js"></script><script src="rjs/wallet.js"></script><script src="rjs/burn-core.js"></script><script src="js/v2-wallet.js"></script></body></html>' }, 'http://localhost:' + PORT); /* serves the checkout on the run-tests port (no server needed) */
+  await pg.goto('http://localhost:' + PORT + '/zz-harness.html');
   const ev = (f,...a)=>pg.evaluate(f,...a);
   const settle = (key, fn) => ev(([key, fn]) => { window[key]={state:'pending'}; eval(fn).then(v=>window[key]={state:'ok',v}, e=>window[key]={state:'err',msg:e.message,busy:!!e.walletBusy,code:e.code}); }, [key, fn]);
   const st = k => ev(k=>window[k], k); const W = ()=>ev(()=>({calls:__W.calls, pend:__W.pend.map(p=>p.m)}));

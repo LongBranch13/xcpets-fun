@@ -21,6 +21,6 @@ self.onmessage = function (ev) {
     if (!loaded) { shim(); importScripts.apply(self, m.scripts); self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG }; loaded = true; }
     var t0 = Date.now(), w = self.V2Rules.replay(m.rows, m.hashes, m.ops, { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex }), ms = Date.now() - t0;
     self.postMessage({ id: m.id, ok: true, world: w, ms: ms });
-    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w);
+    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w).then(function () { self.postMessage({ stored: true, key: m.idbKey }); }); /* boot-from-cache: the page may reload once it is stored */
   } catch (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); }
 };

@@ -37,7 +37,7 @@
   /** deck(w, me, my): open ads (newest first) that my pet `my` qualifies for. Only posted pets ever appear. */
   function deck(w, ME, my, withSkipped) { var b = tip() + 1, sk = withSkipped ? [] : skips(my.id), out = [];
     V.openAds(w, tip()).forEach(function (ad) { if (ad.owner === ME) return; var P = w.byId[ad.pet];
-      if (V.meetsReq(w, my, ad.req) || V.breedable(my, b) || V.breedable(P, b) || (V.breedV2On(b) && V.kinWhy(P, my))) return; out.push({ ad: ad, pet: P, bio: bioOf(ad) }); });
+      if (V.meetsReq(w, my, ad.req) || V.breedable(my, b) || V.breedable(P, b) || (V.breedV2On(b) && V.kinWhy(P, my)) || (V.resPairWhy && V.resPairWhy(P, my, b))) return; out.push({ ad: ad, pet: P, bio: bioOf(ad) }); });
     return out.filter(function (c) { return sk.indexOf(cardKey(c)) < 0; }); }
   /* ---------- card ---------- */
   function sprite(p, w) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'rm-sprite';
@@ -48,7 +48,7 @@
       '<div class="stat tot"' + ptA(p) + '><span class="sk">⚡ POWER</span><b>' + tot + '</b></div></div>'; }
   function traits(p) { var a = p.art || {}, o = []; if (a.pattern) o.push(a.pattern); if (a.eyes) o.push(a.eyes + ' eyes'); if (p.hidden && p.shows) o.push(p.shows); return o; }
   function cardHtml(c, w) { var p = c.pet, b = tip() + 1, left = c.ad.block + V.AD_WINDOW - b;
-    return '<div class="rm-top"><span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
+    return '<div class="rm-top"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
       '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' +
       '<div class="rm-sub">' + esc(V.speciesLabel(p.species)) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
       '<div class="rm-bio">“' + esc(c.bio) + '”</div>' +
@@ -71,12 +71,13 @@
     var h = panel.querySelector('h2,h3'); panel.insertBefore(tabs, h ? h.nextSibling : panel.firstChild);
     var box = document.createElement('div'); box.id = 'rugMe'; box.className = 'rug-me'; box.hidden = true; panel.appendChild(box);
     tabs.querySelectorAll('[data-rmtab]').forEach(function (b) { b.onclick = function () { setTab(b.getAttribute('data-rmtab')); }; }); setTab(st.tab); return true; }
-  function setTab(t) { st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.classList.toggle('rm-on', t === 'rug');
+  function setTab(t) { var rt = !!(V && V.retireOn && V.retireOn(tip() + 1)); if (rt && t === 'rug') t = 'motel'; /* Rug Me retired at ACTIVATE_RETIRE_TAGS_BLOCK: tab hidden */ st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.querySelectorAll('[data-rmtab="rug"]').forEach(function (x) { x.hidden = rt; }); panel.classList.toggle('rm-on', t === 'rug');
     panel.querySelectorAll('[data-rmtab]').forEach(function (b) { var on = b.getAttribute('data-rmtab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
     $('rugMe').hidden = t !== 'rug'; if (t === 'rug') paint(); }
   function paint() { var u = U(), box = $('rugMe'); if (!u || !box || box.hidden) return; var w = u.world(), ME = u.ME, b = tip() + 1;
+    if (V.retireOn && V.retireOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me closed at block ' + fmt(V.retireGate()) + '. Use 🛎️ Check in (the motel two-owner breed) instead.</p>'; return; }
     if (!V.rugOn(b)) { box.innerHTML = '<p class="small muted">💘 Rug Me opens at block ' + (V.rugGate() != null ? fmt(V.rugGate()) : '(not set yet)') + '.</p>'; return; }
-    if (!ME) { box.innerHTML = '<p class="small">Connect XCP Wallet to swipe. You swipe as one of your Adult+ pets.</p>'; return; }
+    if (!ME) { box.innerHTML = '<p class="small">Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to swipe. You swipe as one of your Adult+ pets.</p>'; return; }
     var mine = myPets(w, ME); if (!mine.length) { box.innerHTML = '<p class="small">You need an Adult or older pet to swipe.</p>'; return; }
     if (!st.as || !mine.some(function (p) { return p.id === st.as; })) st.as = mine[0].id; var my = w.byId[st.as], cards = deck(w, ME, my), c = cards[0];
     var others = mine.filter(function (p) { return p.id !== my.id; }), alsoQ = c && c.ad ? others.filter(function (p) { return !V.meetsReq(w, p, c.ad.req) && !V.breedable(p, b); }) : [];
@@ -128,7 +129,7 @@
       '<div class="chips">' + chip('power', 50, 'Power 50+') + chip('power', 60, 'Power 60+') + chip('power', 80, 'Power 80+') + '</div>' +
       '<div class="chips">' + ['jeweled-crown', 'goldcape'].concat(owned.slice(0, 3).map(function (g) { return V.resolveItem(g.item); })).filter(function (x, i, a) { return a.indexOf(x) === i && V.itemOf(x); }).slice(0, 4).map(function (id) { return chip('gear', id, 'Owns ' + V.itemOf(id).label); }).join('') + '</div>' +
       '<div class="small muted">Wants: ' + esc(V.reqText(q)) + ' · ' + fmt(postCost()) + ' per pet · open 1,008 blocks (~7 days) · one ad per pet · a pet resting after a breed can still post (the ad waits) · bio: a random preset · the egg comes to you</div>' +
-      (sel.length ? '<div class="small rm-sum"><b>' + sel.length + ' pet' + (sel.length > 1 ? 's' : '') + ' · ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' · total ' + fmt(total) + ' XCPETS</b>' + (plans.length > 1 ? ' (one XCP Wallet window per burn, with progress; you can stop and resume)' : '') + '<br><span class="muted">' + plans.map(function (p) { return '<code>' + esc(p.tag) + '</code>'; }).join(' · ') + '</span></div>' : '') +
+      (sel.length ? '<div class="small rm-sum"><b>' + sel.length + ' pet' + (sel.length > 1 ? 's' : '') + ' · ' + plans.length + ' burn' + (plans.length > 1 ? 's' : '') + ' · total ' + fmt(total) + ' XCPETS</b>' + (plans.length > 1 ? ' (one ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' window per burn, with progress; you can stop and resume)' : '') + '<br><span class="muted">' + plans.map(function (p) { return '<code>' + esc(p.tag) + '</code>'; }).join(' · ') + '</span></div>' : '') +
       (bad ? '<div class="small warn">' + esc(bad.why) + '. Drop a standard.</div>' : '') +
       '<button class="btn" id="rmPost"' + (!sel.length || bad ? ' disabled' : '') + '>📌 Post on Rug Me · ' + fmt(total || postCost()) + '</button></div>'; }
   function bindPost(w, mine) { var box = $('rugMe');
@@ -153,7 +154,7 @@
     if (e.key === 'ArrowLeft') { e.preventDefault(); fling(-1, c); } else if (e.key === 'ArrowRight') { e.preventDefault(); fling(1, c); } });
   /* ---------- pet pop-up (#detail): 'On Rug Me' marker; owner-only 'Post on Rug Me' ---------- */
   function decorateDetail() { var u = U(), info = $('dInfo'), t = $('dTitle'); if (!u || !info || !t || info.querySelector('.rm-drow')) return; var m = /#(\d+)/.exec(t.textContent || ''); if (!m) return;
-    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b)) return; var on = V.onRug(w, p, b), mineP = p.owner === u.ME && !(u.viewOnly && u.viewOnly()) && !p.dead && !p.released && p.stage >= 3 && !V.adWhy(p, b);
+    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b) || (V.retireOn && V.retireOn(b))) return; var on = V.onRug(w, p, b), mineP = p.owner === u.ME && !(u.viewOnly && u.viewOnly()) && !p.dead && !p.released && p.stage >= 3 && !V.adWhy(p, b);
     if (!on && !mineP) return; var d = document.createElement('div'); d.className = 'row rm-drow';
     d.innerHTML = on ? '<span class="rm-mark">' + MARK + '</span>' : '<button class="btn ghost" data-rmpost="' + p.id + '">📌 Post on Rug Me</button>';
     info.insertBefore(d, info.firstChild); var bt = d.querySelector('[data-rmpost]'); if (bt) bt.onclick = function () { openPost(p.id); }; }

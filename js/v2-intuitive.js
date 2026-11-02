@@ -12,6 +12,8 @@
   function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
   function V() { return window.V2Rules; }
+  /* similar-bugs-fix: the cost the engine charges right now (halvings + Fire Sale), never a hardcoded base */
+  function costNow(k) { var R = V(); if (!R || !R.COSTS) return ''; try { var U = window.V2UI, w = W(), tip = U && U.S ? U.S().tip : null; if (w && tip != null && R.costsAt) { var c = R.costsAt(w, (tip || 0) + 1); if (c[k] != null) return fmt(c[k]); } } catch (e) { } return fmt(R.COSTS[k]); }
   function W() { try { return window.V2UI && V2UI.world ? V2UI.world() : null; } catch (e) { return null; } }
   function me() { return (window.V2UI && V2UI.ME) || ls('xcpets-v2-me') || ''; }
   function viewOnly() { try { return !!(window.V2UI && V2UI.viewOnly && V2UI.viewOnly()); } catch (e) { return false; } }
@@ -33,13 +35,19 @@
 
   // ------------------------------------------------------------------ engine-backed helpers
   function pet(id) { var w = W(); return w && w.byId ? w.byId[id] : null; }
-  function careNext(w, p) { /* item 4: next stage from the engine's own per-pet thresholds (V2Render.careTarget -> V2Rules.petThresholds) */
-    if (!w || !p || p.dead || p.stage >= 5 || !window.V2Render || !V2Render.careTarget) return null; var ct = V2Render.careTarget(w, p, w.tip), th = ct.th, s = p.stage, need = th[s + 1] - p.care; if (!(need > 0)) return null;
-    var meal = p.nextMeal || 0, meals = meal > 0 ? Math.ceil(need / meal) : null, today = Math.floor(w.tip / BPD), first = p.fedToday ? (today + 1) * BPD : w.tip;
-    return { next: stageNames()[s + 1], at: th[s + 1], need: need, meals: meals, earliest: meals ? first + (meals - 1) * BPD : null, ct: ct }; }
+  function careNext(w, p) { /* item 4: next stage from the engine's own per-pet thresholds (V2Render.careTarget -> V2Rules.petThresholds).
+     * meal-count-fix (Oct 27 2026, display only): the target is the LOWER of the next stage and the pet's Mythic line (a Mythic shortcut at 21,000 can
+     * come before Adult/Elder: the pet then goes straight to Mythic), meals are counted by stepping V2Rules.mealFor() with those thresholds (care per
+     * meal, never the XCPETS a meal burns), and the earliest block is the start of the chain day of the last meal. */
+    var R = V(); if (!w || !p || p.dead || p.stage >= 5 || !window.V2Render || !V2Render.careTarget) return null; var tip = w.tip, ct = V2Render.careTarget(w, p, tip), th = ct.th, s = p.stage, sk = th[5] <= th[s + 1],
+      at = sk ? th[5] : th[s + 1], need = at - p.care; if (!(need > 0)) return null;
+    var meals = null, c = p.care, n = 0, m; if (R && R.mealFor) { while (c < at && n < 999) { m = R.mealFor(c, p.species, tip + 1, th); if (!(m > 0)) break; c += m; n++; } if (c >= at) meals = n; }
+    var per = p.nextCare || p.nextMeal || 0; if (meals == null && per > 0) meals = Math.ceil(need / per); /* fallback: engine without mealFor */
+    var today = Math.floor(tip / BPD), first = p.fedToday ? (today + 1) * BPD : tip + 1, earliest = meals ? (meals === 1 ? first : (Math.floor(first / BPD) + meals - 1) * BPD) : null;
+    return { next: sk ? stageNames()[5] : stageNames()[s + 1], at: at, need: need, meals: meals, per: per, skip: sk, earliest: earliest, ct: ct }; }
   function careShort(w, p) { var n = careNext(w, p); return n && n.meals ? '→ ' + n.next + ' in ' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') : ''; }
   function stageLadder(w, p) { var ct = V2Render.careTarget(w, p, w.tip), th = ct.th, n = stageNames();
-    return '<ol class="ip-ladder">' + th.map(function (v, i) { return '<li class="' + (i === p.stage ? 'on' : i < p.stage ? 'done' : '') + '">' + n[i] + ' <span class="muted">' + fmt(v) + '</span></li>'; }).join('') + '</ol>'; }
+    return '<ol class="ip-ladder">' + th.map(function (v, i) { var sk = i > p.stage && i < 5 && v >= th[5]; /* meal-count-fix: stages the Mythic shortcut jumps over */ return '<li class="' + (i === p.stage ? 'on' : i < p.stage ? 'done' : '') + '">' + n[i] + ' <span class="muted">' + fmt(v) + (sk ? ' · skipped' : '') + '</span></li>'; }).join('') + '</ol>'; }
 
   // ------------------------------------------------------------------ tips (each one is one tap away)
   var TIPS = {
@@ -48,7 +56,7 @@
         (si ? '<li>#' + p.id + ' dies in ~' + esc(si.left) + ' (block ' + fmt(si.at) + ') unless fed.</li>' : '') + '</ul>' + (p && d.getElementById('pets') && window.V2UI ? '<p><button type="button" class="btn" data-ipopen="' + p.id + '">🍽️ Feed #' + p.id + ' ▸</button></p>' : '') + more('feed', 'Feeding rules'); },
     care: function (id) { var w = W(), p = pet(id); if (!w || !p) return '<p>Loading…</p>'; var n = careNext(w, p), ct = V2Render.careTarget(w, p, w.tip);
       return '<h3>📈 #' + p.id + ' care: ' + fmt(p.care) + '</h3>' + stageLadder(w, p) +
-        (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ~' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, ' + fmt(p.nextMeal) + ' each) · earliest ~block ' + fmt(n.earliest) : '') + '.</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
+        (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, up to ' + fmt(n.per) + ' care each) · earliest ~block ' + fmt(n.earliest) : '') + '.' + (n.skip && p.stage < 4 ? ' The Mythic shortcut comes first, so it skips ' + (p.stage < 3 ? 'Adult and Elder' : 'Elder') + '.' : '') + '</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
         (ct.discount ? '<p class="small">' + TIPS.mythic() + '</p>' : '') + more('feed', 'Stages and meals'); },
     mythic: function () { var c = V() && V().MYTHIC_DISCOUNT_CARE; return '<b>Mythic shortcut:</b> once an address raises a living Mythic, every pet it owns reaches Mythic at ' + fmt(c || 21000) + ' care instead of 69,069. That\'s why a Mythic can show less care than a pet still growing.'; },
     mythicRank: function () { return '<h3>Why is this Mythic\'s care lower?</h3><p>' + TIPS.mythic() + '</p>' + more('feed', 'Stages'); },
@@ -57,11 +65,12 @@
         '<ul class="ip-list"><li>Pepe, Wojak, Chud, Peepo, Doge: any tier. Bobo, Mumu, Sarutobi, Lenny: Uncommon+. Snibby, KEVIN: Rare+. Dodo: Legendary only.</li><li>' + cpT('help-egg', '1 in 777 eggs is a Bitcoin Wizard.') + '</li>' +
         '<li><b>Upkeep:</b> every egg needs one meal per chain day. Crack One Open = 1 pet · Crack Pack = 12 pets · Yolk Booster Box = 144 pets · <b>⚡ Electric Shock Box = 1,000 mouths to feed</b>.</li></ul>' + more('hatch', 'Tiers and species'); },
     roll: function () { var w = W(), S = window.V2UI && V2UI.S ? V2UI.S() : null, p = S && pet(S.pet || S.rollPet), Vr = V(), L = (Vr && Vr.SLOT_LABELS) || {}, SL = (Vr && Vr.V2_SLOTS) || [];
-      var h = '<h3>🎲 Gear roll (345)</h3><ul class="ip-list"><li>One roll = one random piece into a random <b>open</b> slot of that pet.</li><li>Open slots (1–6) grow with age (days 2, 5, 10) and how often it was fed (50% and 80% of days).</li><li>Each copy you already own makes that piece 10% less likely (×0.9 per copy).</li><li>★ signature pieces only roll on Legendary pets.</li><li>Lucky drops: growing a stage (25%) or a meal (2%) gives a free auto-roll.</li></ul>';
+      var all = !!(Vr && Vr.allSlotsNow && Vr.allSlotsNow(w)); /* ALL SLOTS UNLOCKED: from the gate no slot is locked, so no lock / unlock copy */
+      var h = '<h3>🎡 Gear roll (' + costNow('roll') + ')</h3><ul class="ip-list"><li>A gear roll is a Pepe Wheel spin: it picks a random living pet of yours (rarer pets more often: Common 1 · Uncommon 2 · Rare 4 · Legendary 8) and puts one random piece straight on it.' + (all ? '' : ' If that slot is still locked, the piece waits in the pet\'s bag 🎒.') + '</li>' + (all ? '<li>' + esc(Vr.allSlotsText()) + '</li>' : '<li>Open slots (1–6) grow with age (days 2, 5, 10) and how often it was fed (50% and 80% of days).</li>') + '<li>Each copy you already own makes that piece 10% less likely.</li><li>★ signature pieces only roll on Legendary pets.</li><li>Lucky drops: growing a stage (25%) or a meal (2%) gives +1 saved Pepe Wheel spin. Saved spins never expire; use them in the Rare Room, up to 10 per tiny burn.</li></ul>';
       if (p && SL.length) { var open = p.openSlots || SL.slice(0, p.capacity || 1), age = p.ageDays | 0, nx = [2, 5, 10].filter(function (a) { return a > age; })[0];
         h += '<p><b>#' + p.id + ' ' + esc(p.name) + ':</b> ' + open.length + ' of 6 open (' + open.map(function (s) { return esc(L[s] || s); }).join(', ') + ').' + (open.length < 6 ? ' Locked: ' + SL.filter(function (s) { return open.indexOf(s) < 0; }).map(function (s) { return esc(L[s] || s); }).join(', ') + '.' + (nx ? ' Next age unlock at day ' + nx + ' (now day ' + age + ').' : '') : '') + '</p>'; }
       return h + more('gear', 'Gear rules'); },
-    slot: function (s) { var L = (V() && V().SLOT_LABELS) || {}; return '<h3>🔒 ' + esc(L[s] || s) + ' is locked</h3><p>Slots open in this order: Headwear, Grip, Outfits, Drip, Guise, Footwear. You start with 1. One more opens at age 2, 5 and 10 days, one when 50% of days were fed, and one at 80% (3+ fed days). Max 6. Mythic pets have all 6 slots. Slots never close once open.</p>' + more('gear', 'Gear rules'); },
+    slot: function (s) { var L = (V() && V().SLOT_LABELS) || {}; if (V() && V().allSlotsNow && V().allSlotsNow(W())) return '<h3>🔓 ' + esc(L[s] || s) + ' is open</h3><p>' + esc(V().allSlotsText()) + '</p>' + more('gear', 'Gear rules'); return '<h3>🔒 ' + esc(L[s] || s) + ' is locked</h3><p>Slots open in this order: Headwear, Grip, Outfits, Drip, Guise, Footwear. You start with 1. One more opens at age 2, 5 and 10 days, one when 50% of days were fed, and one at 80% (3+ fed days). Max 6. Mythic pets have all 6 slots. Slots never close once open.</p>' + more('gear', 'Gear rules'); },
     fight: function () { var w = W(), FO = window.UXB && UXB.faceoff ? UXB.faceoff() : null;
       var h = '<h3>⚔️ How a fight is decided</h3><table class="ip-tbl"><tr><td><b>VIG</b> Vigor</td><td>HP = 40 + 2×Vigor + Grit + 6×stage</td></tr><tr><td><b>SPA</b> Spark</td><td>hit = 4 + Spark÷3 + gear power + 0–7</td></tr><tr><td><b>GRI</b> Grit</td><td>more HP, blocks Grit÷6 per hit</td></tr><tr><td><b>ZOO</b> Zoom</td><td>goes first more often, dodge Zoom÷5 %</td></tr><tr><td><b>LUC</b> Luck</td><td>crit (×2) 5 + Luck÷4 %</td></tr></table><p class="small">⚡ Power = Vigor + Spark + Grit + Zoom + Luck.</p>' +
         '<p class="small"><b>No win %:</b> the dice come from the accept burn\'s own block hash and tx id, which don\'t exist until the opponent accepts, so an exact chance can\'t be shown before the fight.</p>';
@@ -77,15 +86,15 @@
     cold: function () { return '<h3>🧊 What happens in Cold Storage?</h3><p>Community pets stay community pets until they reach Mythic. Then they go into Cold Storage and become real pets anyone can hatch and breed. This goes for the Bitcoin Wizard and every community pet after him.</p><p class="small">' + cpT('help-cold', 'Nakamoto (#1) is no longer hatched. The Bitcoin Wizard (#2) now comes from the 1 in 777 hatch roll.') + '</p>' + more('community', 'Community pets'); },
     community: function () { return '<h3>🔔 Community pet ' + cpNo() + '</h3><p>Feeding and gear rolls open when pet ' + cpNo() + ' arrives. There\'s no date yet.</p><p>Get told first: the XCPETS Telegram announces it.</p><p><a class="btn" href="https://t.me/xcpets" target="_blank" rel="noopener">🔔 Join t.me/xcpets</a></p>' + more('community', 'Community pets'); },
     glossary: function (k) { return glossary(k); },
-    bundle: function () { return '<h3>🍽️ Feeding many pets</h3><p>"Feed all hungry" packs up to ~110 pets into one burn (pet:fm). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
+    bundle: function () { return '<h3>🍽️ Feeding many pets</h3>' + (window.XCPETS_FEED_ALL_PAUSED === true ? '<p>Feed all is paused for a fix.</p>' : '') + '<p>"Feed all hungry" feeds every hungry pet in ONE burn (pet:fa). You see pets · XCPETS · burns before anything is signed, and your wallet asks once per burn.</p>' + more('feed'); }
   };
 
   // ------------------------------------------------------------------ item 11: glossary
-  var GLOSS = [['care', 'Care', 'Total XCPETS fed to a pet. Care moves it up the stages: Hatchling 69 · Juvenile 8,349 · Adult 22,149 · Elder 41,469 · Mythic 69,069.'],
+  var GLOSS = [['care', 'Care', 'What a pet gets from its meals. Halvings make meals cost less, never give less care: each meal still gives its full care. Care moves it up the stages: Hatchling 69 · Juvenile 8,349 · Adult 22,149 · Elder 41,469 · Mythic 69,069.'],
     ['chainday', 'Chain day', '144 Bitcoin blocks (~24 h). One meal per pet per chain day; one fight per pet per chain day.'],
     ['block', 'Block', 'A Bitcoin block, about every 10 minutes. Burns count once they are in a block.'],
     ['neglected', 'Neglected', '3+ chain days unfed: can\'t fight or breed. 7 full days unfed and it dies.'],
-    ['lucky', 'Lucky drop', 'A free gear roll that happens by itself: 25% when a pet grows a stage, 2% per meal. You don\'t spend it.'],
+    ['lucky', 'Lucky drop', 'A free +1 saved Pepe Wheel spin that drops by itself: 25% when a pet grows a stage, 2% per meal. Saved spins never expire; spend them in the Rare Room, up to 10 per tiny burn.'],
     ['bredtrue', 'Bred-true', 'Same-species parents: the baby keeps the species and gets a bonus (+3 stat, rarer pattern or rarer eye).'],
     ['hybrid', 'Hybrid', 'A mix of two (or three) species. Different species give a hybrid 68.4773435% of the time.'],
     ['score', 'Pet Score', 'One number for how strong and rare a pet is, used to sort and rank.'],
@@ -155,7 +164,7 @@
     if (ls('xcpets-ip-nba') === String(day) || !L.length) { if (box) box.remove(); return; }
     var starve = urgent(w), hungry = L.filter(function (p) { return p.hungry && p.nextMeal; }), line = '';
     if (starve.length) line = '🪦 ' + starve.length + ' neglected pet' + (starve.length === 1 ? '' : 's') + ' · first dies in ~' + left(Math.min.apply(null, starve.map(function (p) { return p.deathBlock - w.tip; }))) + ' · <a href="#" data-ipnba="urgent">see most urgent ▸</a>';
-    else if (hungry.length) line = '🍽️ ' + hungry.length + ' hungry · <a href="#" data-ipnba="feed">Feed all hungry ▸</a>';
+    else if (hungry.length) line = '🍽️ ' + hungry.length + ' hungry · ' + (window.XCPETS_FEED_ALL_PAUSED === true ? 'Feed all is paused for a fix.' /* feed-all-pause */ : '<a href="#" data-ipnba="feed">Feed all hungry ▸</a>');
     else { var f = L.filter(function (p) { return p.stage >= 2 && !p.neglected && !(p.fightDays && p.fightDays[day]); })[0]; if (f) line = '⚔️ #' + f.id + ' ' + esc(f.name) + ' can fight today · <a href="#kekimus">Kekimus ▸</a>'; }
     if (!line) { if (box) box.remove(); return; }
     if (!box) { box = d.createElement('p'); box.id = 'ipNba'; box.className = 'small ip-nba'; var tabs = pp.querySelector('.pettabs'); pp.insertBefore(box, tabs ? tabs.nextSibling : pp.firstChild.nextSibling);
@@ -193,10 +202,10 @@
     /* fight stat letters get their full names on hover / long-press */ d.querySelectorAll('#faceoff .sk:not([title])').forEach(function (k) { var n = { VIG: 'Vigor', SPA: 'Spark', GRI: 'Grit', ZOO: 'Zoom', LUC: 'Luck' }[k.textContent]; if (n) k.title = n; }); }
 
   // ------------------------------------------------------------------ item 13: first-visit tour (no pets, no address)
-  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn 69 XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in The Rare Room', 'Roll gear (345) and dress your pet here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
+  var STEPS = [['hatchPanel', '1/4 · Hatch', 'Burn {hatch} XCPETS to hatch an egg. Tier and species come from the Bitcoin block.'], ['petsPanel', '2/4 · Feed daily', 'One meal per pet per chain day. 7 days unfed and it dies.'], ['invPanel', '3/4 · Gear in The Rare Room', 'Spin the Pepe Wheel ({roll} XCPETS a spin) for gear and dress your pets here.'], ['arenaPanel', '4/4 · Fight and breed', 'Fight at X Circus Kekimus, breed at Gooby\'s No-Tail Motel.']];
   function tour(force) { if (!$('hatchPanel')) return; if (!force && (ls('xcpets-ip-tour') || me())) return; var i = 0, box = d.createElement('div'); box.className = 'ip-tour'; box.setAttribute('role', 'dialog'); d.body.appendChild(box);
     function show() { d.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); var s = STEPS[i], el = $(s[0]); if (el) { el.classList.add('ip-tour-on'); el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
-      box.innerHTML = '<b>' + s[1] + '</b><p class="small">' + esc(s[2]) + '</p><div class="row"><button type="button" class="btn" data-t="n">' + (i < 3 ? 'Next ▸' : 'Done') + '</button><button type="button" class="q" data-t="x">Skip</button></div>'; }
+      box.innerHTML = '<b>' + s[1] + '</b><p class="small">' + esc(s[2].replace('{hatch}', costNow('hatch')).replace('{roll}', costNow('roll'))) + '</p><div class="row"><button type="button" class="btn" data-t="n">' + (i < 3 ? 'Next ▸' : 'Done') + '</button><button type="button" class="q" data-t="x">Skip</button></div>'; }
     box.onclick = function (e) { var t = e.target.getAttribute('data-t'); if (!t) return; if (t === 'n' && i < 3) { i++; return show(); } ls('xcpets-ip-tour', '1'); box.remove(); d.querySelectorAll('.ip-tour-on').forEach(function (x) { x.classList.remove('ip-tour-on'); }); };
     show(); }
 
@@ -228,7 +237,7 @@
     row.innerHTML = ' <a class="btn ghost" href="play.html#pet-' + id + '">🍽️ Feed</a> <a class="btn ghost" href="rare-room.html#rare-room">🎲 Roll / gear</a> <a class="btn ghost" href="fight.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="breed.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
 
   // ------------------------------------------------------------------ exports used by page code
-  window.IPQ = { q: q, open: open, close: close, careShort: careShort,
+  window.IPQ = { q: q, open: open, close: close, careShort: careShort, careNext: careNext, careSheet: function (id) { return TIPS.care(id); },
     mythicQ: function (p) { return p && p.stage === 5 && !p.community ? q('mythicRank', null, 'Why is this Mythic\'s care lower?') : ''; },
     urgency: function (w, p) { if (p.dead || p.mythicCare || p.deathBlock == null) return Infinity; return p.deathBlock - (w ? w.tip : 0); } };
 

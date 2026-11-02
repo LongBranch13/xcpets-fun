@@ -1,6 +1,6 @@
 /* My Pets bulk discard (wizard-story-short P4, owner 2026-10-21; replaces '🗑️ Delete Commons' / '🗑️ Delete Uncommons').
  * '🗑️ Discard unfed': every pet of mine that was NEVER fed (no meal ever: lastFed null and no fed day), however it arrived (hatched, bred, granted).
- * Dead, released, already-discarded (mine() hides them) and community pets are left out; starred 'kept' pets are skipped like every bulk discard.
+ * Dead, released, already-discarded (mine() hides them) and community pets are left out; starred 'kept' pets are skipped like every bulk discard (restored Oct 29 2026).
  * Confirm lists the pets (number + thumbnail) first, then runs the SAME free local Discard (hidden in this browser, Undo toast, restorable from
  * Show discarded). No burn, nothing signed, so the wasted-burn guard has nothing to drop. 'Discard selected' is unchanged.
  * P5: '▲ Hide pets' / '▼ Show pets' collapses the whole My Pets grid (localStorage xcpets-v2-grid-hidden); hidden cards never reach the lazy

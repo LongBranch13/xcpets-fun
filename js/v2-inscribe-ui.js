@@ -98,7 +98,9 @@
     go.disabled = true; b.busy = true; ['inscFrame', 'inscStamp', 'inscRate'].forEach(function (k) { if ($(k)) $(k).disabled = true; });
     var prov, addr, rec, C, tempPriv = T.newTempKey();
     function stop(e) { b.busy = false; step('⛔ ' + esc(e && e.message || e), 'stuck'); back.textContent = 'Close'; }
-    selfCheck(P).then(function () { step('🔌 Connecting XCP Wallet…'); return E.provider(); }).then(function (p) { prov = p; return p.request({ method: 'xcp_requestAccounts' }); })
+    /* boot-from-cache (Oct 31 2026): never start from a provisional / still-rebuilding world: wait for the fresh one, stop if it differs */
+    var MV = window.V2Mock, fresh = MV && MV.updating && MV.updating() && MV.whenFresh ? (step('⟳ Updating pets to the latest block first…'), MV.whenFresh().then(function (r) { if (!r.ok || !r.same) throw new Error(r.ok ? 'New chain activity just came in. Check the pet and press again. Nothing was signed.' : 'Could not check the latest chain data. Nothing was signed. Try again in a moment.'); })) : Promise.resolve();
+    fresh.then(function () { return selfCheck(P); }).then(function () { step('🔌 Connecting XCP Wallet…'); return E.provider(); }).then(function (p) { prov = p; return p.request({ method: 'xcp_requestAccounts' }); })
       .then(function (res) { addr = (res && res.accounts && res.accounts[0]) || (Array.isArray(res) ? res[0] : null);
         if (addr !== P.owner) throw new Error('XCP Wallet is on ' + (addr || 'no address') + ', but pet #' + P.pet.id + ' belongs to ' + P.owner + '. Switch the active address in XCP Wallet.');
         T.requireOwnerAddr(addr, E.network); step('✓ Connected: ' + esc(addr) + '. Reading your spendable BTC…');

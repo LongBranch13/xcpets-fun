@@ -3,8 +3,11 @@
 'use strict';
 const { load, row, snap, run } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
-const S = snap(process.argv[2]), T = S.tip, G = T + 6;
-const c = load(), V = c.V2Rules; V._setSpinsActivation(G); V._setFiresaleActivation(null);
+/* The test needs a world from BEFORE the saved-spins gate (it moves the gate to T + 6 and burns after it). The fixture snapshots now run past the
+ * live gate (ACTIVATE_SPINS_BLOCK 972641), so cut the snapshot just before the real gate, read from the rules (never a hand-set block). */
+const c = load(), V = c.V2Rules, S0 = snap(process.argv[2]), GATE = V.ACTIVATE_SPINS_BLOCK;
+const S = GATE == null || S0.tip < GATE ? S0 : { tip: GATE - 1, rows: S0.rows.filter(r => r.block_index < GATE), hashes: Object.fromEntries(Object.entries(S0.hashes || {}).filter(([b]) => +b < GATE)) }, T = S.tip, G = T + 6;
+V._setSpinsActivation(G); V._setFiresaleActivation(null);
 const w0 = run(c, S, [], T); /* before the gate */
 const fr = Object.assign({}, w0.freeRolls), founders = Object.keys(fr).filter(a => fr[a] > 0);
 const owners = {}; w0.pets.forEach(p => { if (!p.community && p.owner) owners[p.owner] = 1; });
@@ -39,5 +42,5 @@ const u1 = rej(rows[5].tx_hash); ok(u1 && u1.kind === 'roll' && u1.saved, 'playe
 const a1 = V.spinsLeft(w, F, G + 200), wLate = run(c, S, rows, G + 200000); ok(V.spinsLeft(wLate, F, G + 200000) === a1, 'balance unchanged 200,000 blocks later (never expire)');
 ok(V.spinsLeft(wLate, ME, G + 200000) === toks - 1, 'lucky-drop spins kept too');
 /* pre-gate replay unchanged */
-const c2 = load(), w2 = run(c2, S, [], T); ok(!w2.spins, 'live tip: no spins ledger yet');
+const c2 = load(), w2 = run(c2, S, [], T); ok(!w2.spins, 'real rules before the real gate (tip ' + T + '): no spins ledger yet');
 console.log(`saved-spins-test: ${pass}/${pass + fail} pass`); process.exitCode = fail ? 1 : 0;

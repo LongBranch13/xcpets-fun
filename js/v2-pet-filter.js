@@ -14,7 +14,7 @@
   /** html(f, fields, o) o = { species: [[id,label]], count, total, title } */
   function html(f, fields, o) { o = o || {}; var on = fields.filter(function (k) { return k !== 'sort' && f[k] !== undefined && f[k] !== ''; }).length, h = '';
     fields.forEach(function (k) { var c = f[k], in_ = '';
-      if (k === 'sp') in_ = sel(k, c, o.species || []); else if (k === 'tier') in_ = sel(k, c, TL.map(function (t, i) { return [String(i), t]; }).concat([['M', 'Mythic']]));
+      if (k === 'sp') in_ = sel(k, c, o.species || []); else if (k === 'tier') in_ = sel(k, c, TL.map(function (t, i) { return [String(i), t]; }).concat([['M', 'Mythic'], ['G', V.GOD_PLURAL || 'Gods']]));
       else if (k === 'st') in_ = sel(k, c, (V.STAGE_NAMES || []).map(function (t, i) { return [String(i), t]; }));
       else if (k === 'badge') in_ = sel(k, c, [['om', (V.OLD_MONEY_LABEL || 'Old Money') + ' only'], ['hyb', 'Hybrids only']], 'Any');
       else if (k === 'cur') in_ = sel(k, c, [['XCPETS', 'XCPETS'], ['XCP', 'XCP']], 'Both');

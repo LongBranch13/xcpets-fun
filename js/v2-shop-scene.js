@@ -16,10 +16,26 @@
   function D() { var s = SC(); try { return s && s.ready ? s.data() : null; } catch (e) { return null; } }
   function myth(p) { return !!p && (p.stage >= 5 || !!p.mythicCare); }
   function toast(h) { var s = SC(); if (s && s.toast) return s.toast(h); var t = $('toasts'); if (!t) return; var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); }
+  /* binder-sprites (owner bug Oct 27 2026): cards from V2Sales.scene.card carry an empty <span data-shsp> that only V2Sales paint() fills; the overlays
+   * were never painted, so the Binder / cage pick showed a blank sprite area. Paint after every overlay render. */
+  function paintArt() { var s = SC(); try { if (s && s.paint) s.paint(); } catch (e) { } }
   function wait() { toast('The shop is still opening (reading the chain). One moment.'); }
 
   /* ---- art */
   var IMG = {}; function img(src) { if (!IMG[src]) { var i = new Image(); i.onload = function () { kick(); }; i.src = src; IMG[src] = i; } return IMG[src].complete && IMG[src].naturalWidth ? IMG[src] : null; }
+  /* spam-city-glass-match (owner bug Oct 28 2026 8:04 AM CT: 'the pets in glass species don't seem to match the 2 pets for sale'): the glass case and the
+   * cages drew the stock species portrait img/theme/sp-<first word of p.species>.png, so a hybrid showed its first parent (Sadoge hyb:sarutobi:doge = the
+   * plain Sarutobi monkey) and every pet showed the adult stock art, not its own stage / colours / gear. Now they draw the pet's OWN frames
+   * (V2Render.petFrames, the same sprite the binder card paints), on the keyed background like the arena so the card colours show through.
+   * Display only; the stock portrait stays as the fallback while V2Render is not ready. */
+  var PF = { w: null, m: {} };
+  function petImg(p, w, t) { var R = window.V2Render; if (!p || !w || !R || !R.petFrames) return null; if (PF.w !== w) { PF.w = w; PF.m = {}; }
+    var k = p.id + '|' + p.species + '|' + p.stage, fr = PF.m[k];
+    if (fr === undefined) { fr = null; try { var mp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'keyed', bgColor: '#ff00fe', pattern: 'none' }) }), F = R.petFrames(mp, w, { noHunger: true });
+        if (F && F.length) fr = F.map(function (f) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!f || !f.data || f.data.length !== 4096) return c; var d = new ImageData(new Uint8ClampedArray(f.data), 32, 32), D = d.data;
+          for (var j = 0; j < D.length; j += 4) if (D[j + 1] === 0 && ((D[j] === 255 && D[j + 2] === 254) || (D[j] === 153 && D[j + 2] === 152))) D[j + 3] = 0; c.getContext('2d').putImageData(d, 0, 0); return c; }); } catch (e) { fr = null; }
+      PF.m[k] = fr; }
+    return fr && fr.length ? fr[reduced() ? 0 : Math.floor((t || 0) / 300) % fr.length] : null; }
   function spImg(p) { var s = String((p && p.species) || 'pepe').replace(/^hyb3?:/, '').split(':')[0].replace(/[^a-z]/g, '') || 'pepe'; return img('img/theme/sp-' + s + '.png'); }
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(a, b, w, h); }
   var TIERC = ['#9a9a9a', '#4fd18b', '#4aa3ff', '#E8B33A'], RAINBOW = ['#ff5ec7', '#ffd84a', '#5effb0', '#5ec2ff', '#c45eff'];
@@ -45,7 +61,7 @@
 
   function cardArt(x, ox, oy, p, t, i) { var m = myth(p), bc = m ? RAINBOW[Math.floor(t / 160 + i) % 5] : TIERC[p.tier || 0];
     px(x, '#000', ox - 1, oy - 1, 28, 42); px(x, bc, ox, oy, 26, 40); px(x, '#1b1b26', ox + 2, oy + 2, 22, 36); px(x, '#000a', ox + 2, oy + 2, 22, 6);
-    var s = spImg(p); if (s) x.drawImage(s, ox + 3, oy + 9, 20, 20);
+    var s = petImg(p, PF.cw, t) || spImg(p); if (s) x.drawImage(s, ox + 3, oy + 9, 20, 20);
     px(x, '#cfe', ox + 4, oy + 31, 12, 2); px(x, '#cfe', ox + 4, oy + 34, 8, 2);
     if (m) { var sw = reduced() ? 10 : Math.floor((t / 18 + i * 13) % 60) - 14; x.save(); x.beginPath(); x.rect(ox + 2, oy + 2, 22, 36); x.clip(); x.globalAlpha = 0.45;
       for (var k = 0; k < 5; k++) px(x, RAINBOW[k], ox + sw + k * 2, oy + 2, 2, 36); x.globalAlpha = 1; x.restore();
@@ -56,7 +72,7 @@
   var F = { S: '111100111001111', O: '111101101101111', N: '110101101101101', L: '100100100100111', I: '111010010010111', T: '111010010010010', R: '110101110101101', A: '010101111101101', D: '110101101101110', E: '111100111100111', G: '111100101101111', F: '111100111100100', W: '101101111111101', P: '110101110100100', M: '101111111101101', Y: '101101010010010', B: '110101110101110', K: '101101110101101', ' ': '000000000000000' };
   function txt(x, s, ox, oy, c) { for (var i = 0; i < s.length; i++) { var g = F[s[i]] || F[' ']; for (var k = 0; k < 15; k++) if (g[k] === '1') px(x, c, ox + i * 4 + (k % 3), oy + Math.floor(k / 3), 1, 1); } }
 
-  function draw() { var x = cv.getContext('2d'), t = reduced() ? 0 : ST.t, d = D();
+  function draw() { var x = cv.getContext('2d'), t = reduced() ? 0 : ST.t, d = D(); PF.cw = d && d.W;
     ST.k = window.V2Sharp ? V2Sharp.fit(cv, W, H) : 1; if (window.V2Sharp) V2Sharp.begin(x, ST.k); else x.imageSmoothingEnabled = false;
     /* wall + floor */
     px(x, '#3D3640', 0, 0, W, 112); for (var i = 0; i < W; i += 40) px(x, '#2B2730', i, 0, 2, 112); px(x, '#D62028', 0, 108, W, 4);
@@ -66,7 +82,7 @@
     var sw = ST.bell > 0 ? Math.round(Math.sin(ST.t / 40) * 2 * Math.min(1, ST.bell / 300)) : 0; px(x, '#5A5A5A', 157, 2, 2, 5); px(x, '#E8B33A', 153 + sw, 7, 10, 7); px(x, '#b98a1f', 153 + sw, 13, 10, 2); px(x, '#100E14', 157 + sw * 2, 15, 2, 2);
     /* cages with your idle pets */
     var cg = cages(d); for (i = 0; i < 4; i++) { var cx = 8 + i * 36, cy = 6; px(x, '#100E14', cx - 1, cy - 1, 34, 36); px(x, '#8FD3E8', cx, cy, 32, 34); px(x, '#2a3d48', cx + 1, cy + 1, 30, 32);
-      var p = cg[i]; if (p) { var s = spImg(p), bob = reduced() ? 0 : (Math.floor(t / 400 + i) % 2); if (s) { x.save(); if (!reduced() && Math.floor(t / 2600 + i * 3) % 2) { x.translate(cx * 2 + 32, 0); x.scale(-1, 1); } x.drawImage(s, cx + 4, cy + 6 - bob, 24, 24); x.restore(); } }
+      var p = cg[i]; if (p) { var s = petImg(p, d && d.W, t) || spImg(p), bob = reduced() ? 0 : (Math.floor(t / 400 + i) % 2); if (s) { x.save(); if (!reduced() && Math.floor(t / 2600 + i * 3) % 2) { x.translate(cx * 2 + 32, 0); x.scale(-1, 1); } x.drawImage(s, cx + 4, cy + 6 - bob, 24, 24); x.restore(); } }
       else { px(x, '#3a5262', cx + 10, cy + 20, 12, 8); px(x, '#3a5262', cx + 13, cy + 16, 6, 4); }
       for (var b = 3; b < 32; b += 5) px(x, '#E8B33A', cx + b, cy, 1, 34); px(x, '#E8B33A', cx, cy + 33, 32, 2); }
     /* glass case */
@@ -146,22 +162,23 @@
     return '<div class="cs-back' + (myth(p) ? ' sh-myth' : '') + '"><div class="sh-hd"><b>' + esc(p.name || 'Pet') + '</b><i>#' + p.id + '</i></div><div class="cs-fam">' + fam + '</div>' +
       '<p><b>Breeds left:</b> ' + (bl ? bl.left + ' of ' + bl.cap : '?') + '</p><p><b>Gear:</b> ' + gearList(d, p) + '</p>' +
       (S.price != null && V.saleAmountText ? '<p class="cs-cost">Cost: ' + esc(V.saleAmountText(S.asset, S.price)) + '</p>' : '') +
-      '<button type="button" class="sh-btn" data-csbuy="' + S.n + '"' + (x.buy ? '' : ' title="Not ready yet"') + '>' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button> <a class="cs-link" href="pet.html?id=' + p.id + '">Pet page</a></div>'; }
+      (x.mine ? '<span class="sh-state sh-s-open">Your listing</span> <button type="button" class="sh-btn sh-ghost" data-cscancel="' + S.n + '">Cancel</button>' : '<button type="button" class="sh-btn" data-csbuy="' + S.n + '"' + (x.buy ? '' : ' title="Not ready yet"') + '>' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>') + ' <a class="cs-link" href="pet.html?id=' + p.id + '">Pet page</a></div>'; }
   function binderHtml(d) { var L = d ? d.listings : [], pgs = Math.max(1, Math.ceil(L.length / PER)); BP = Math.max(0, Math.min(BP, pgs - 1)); var pg = L.slice(BP * PER, BP * PER + PER), s = SC();
     var sleeves = pg.map(function (x) { return '<div class="cs-sleeve" data-csn="' + x.S.n + '"><div class="cs-flip"><div class="cs-face cs-front">' + s.card(x.p, x.S) + '</div><div class="cs-face cs-rear">' + backHtml(d, x) + '</div></div></div>'; }).join('');
     for (var i = pg.length; i < PER; i++) sleeves += '<div class="cs-sleeve cs-emptys">' + (L.length ? '' : '<div class="sh-card sh-back"></div>') + '</div>';
     return '<div class="box cs-binder"><div class="cs-bhd"><h3>📒 The Binder</h3><button type="button" class="sh-btn sh-ghost" data-csclose>Close</button></div>' +
-      (L.length ? '<p class="sh-hint">Tap a card to flip it. ' + L.length + ' pet' + (L.length === 1 ? '' : 's') + ' listed by other players.</p>' : '<p class="sh-hint">The binder is empty right now: the sleeves hold “Coming soon” card backs. <button type="button" class="sh-btn" data-cslist>🏷️ List my pet</button></p>') +
+      (L.length ? '<p class="sh-hint">Tap a card to flip it. ' + L.length + ' pet' + (L.length === 1 ? '' : 's') + ' listed' + (function () { var m = L.filter(function (x) { return x.mine; }).length; return m ? ' (' + m + ' yours)' : ''; })() + '.</p>' : '<p class="sh-hint">The binder is empty right now: the sleeves hold “Coming soon” card backs. <button type="button" class="sh-btn" data-cslist>🏷️ List my pet</button></p>') +
       '<div class="cs-spine"></div><div class="cs-page" id="csPage"><div class="cs-sleeves">' + sleeves + '</div></div>' +
       '<div class="sh-pager"><button type="button" class="sh-btn" data-csturn="-1"' + (BP ? '' : ' disabled') + ' aria-label="Previous page">◀</button> page ' + (BP + 1) + ' of ' + pgs + ' <button type="button" class="sh-btn" data-csturn="1"' + (BP < pgs - 1 ? '' : ' disabled') + ' aria-label="Next page">▶</button></div></div>'; }
   function openBinder(flipN) { if (!ready()) return wait(); var d = D(), m = ov('csBinder', 'cs-bov');
     if (flipN != null) { var ix = d.listings.map(function (x) { return x.S.n; }).indexOf(flipN); if (ix >= 0) BP = Math.floor(ix / PER); }
-    m.innerHTML = binderHtml(d); m.classList.add('on'); sfx('flip'); if (flipN != null) { var sl = m.querySelector('[data-csn="' + flipN + '"]'); if (sl) setTimeout(function () { sl.classList.add('flipped'); sfx('blip'); }, reduced() ? 0 : 260); } }
+    m.innerHTML = binderHtml(d); paintArt(); m.classList.add('on'); sfx('flip'); if (flipN != null) { var sl = m.querySelector('[data-csn="' + flipN + '"]'); if (sl) setTimeout(function () { sl.classList.add('flipped'); sfx('blip'); }, reduced() ? 0 : 260); } }
   function turn(dir) { var m = $('csBinder'), pgEl = $('csPage'); if (!m) return; sfx('flip');
-    var go = function () { BP += dir; m.innerHTML = binderHtml(D()); var n = $('csPage'); if (n && !reduced()) n.classList.add(dir > 0 ? 'cs-in-r' : 'cs-in-l'); };
+    var go = function () { BP += dir; m.innerHTML = binderHtml(D()); paintArt(); var n = $('csPage'); if (n && !reduced()) n.classList.add(dir > 0 ? 'cs-in-r' : 'cs-in-l'); };
     if (reduced() || !pgEl) return go(); pgEl.classList.add(dir > 0 ? 'cs-out-r' : 'cs-out-l'); setTimeout(go, 230); }
   document.addEventListener('click', function (e) { var t = e.target; if (!t.closest) return; var m;
     if ((m = t.closest('[data-csturn]'))) { turn(Number(m.getAttribute('data-csturn'))); return; }
+    if ((m = t.closest('[data-cscancel]'))) { e.stopPropagation(); document.querySelectorAll('.cs-ov.on').forEach(shut); SC().cancel(Number(m.getAttribute('data-cscancel'))); return; }
     if ((m = t.closest('[data-csbuy]'))) { e.stopPropagation(); document.querySelectorAll('.cs-ov.on').forEach(shut); sfx('coin'); SC().buy(Number(m.getAttribute('data-csbuy'))); return; }
     if (t.closest('[data-cslist]')) { document.querySelectorAll('.cs-ov.on').forEach(shut); SC().sellPick(); return; }
     if ((m = t.closest('[data-cssell]'))) { shut($('csPick')); SC().sell(Number(m.getAttribute('data-cssell'))); return; }
@@ -177,7 +194,7 @@
     m.innerHTML = '<div class="box cs-pick"><h3>' + esc(p.name || 'Pet') + ' #' + p.id + '</h3><div class="cs-pickrow">' + SC().card(p) + '<div><p class="sh-hint">What should ' + esc(p.name || 'this pet') + ' do?</p>' +
       '<button type="button" class="sh-btn" data-cssell="' + p.id + '"' + (ok ? '' : ' disabled title="Locked right now (fight, breed, Rug Me ad or a pending gift)"') + '>🏷️ List it</button> ' +
       '<button type="button" class="sh-btn" data-csgift="' + p.id + '"' + (G ? '' : ' disabled') + (tk ? '' : ' title="No token yet: press one first"') + '>🎁 Gift it</button> ' + (pz ? '<button type="button" class="sh-btn" data-cspress="' + p.id + '">🏭 Press its token</button> ' : '') + '<button type="button" class="sh-btn sh-ghost" data-csclose>Back</button>' + (ok ? '' : '<p class="sh-warn">This pet is locked right now, so it can’t list.</p>') + '</div></div></div>';
-    m.classList.add('on'); }
+    paintArt(); m.classList.add('on'); }
   function act(id) { var d = D(), m;
     if (id === 'bell') { ST.bell = 900; sfx('bell'); say(['Ding! Welcome to Spam City Games.', 'Yes, yes, I heard the bell.', 'Ding ding. The cat hates that one.'][Math.floor(Math.random() * 3)]); return kick(); }
     if (id === 'cat') { ST.cat = 500; ST.catSay = 900; sfx('meow'); return kick(); }

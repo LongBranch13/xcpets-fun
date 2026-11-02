@@ -12,7 +12,7 @@
   if (q('addr')) try { var wa = localStorage.getItem('xcpets-xcpwallet-address'); if (!wa || wa === ME) localStorage.setItem('xcpets-v2-me', ME); } catch (e) {}
   var loc = (function () { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
   var S = { rows: [], hashes: {}, ops: loc.ops || [], tip: 0, balance: 0, n: 0, sel: loc.sel || [], hide: loc.hide != null ? loc.hide : -1, hidden: loc.hidden || [], prod: true, mempool: [] };
-  var cache = null, opsSig = null, cacheSig = null;
+  var cache = null, opsSig = null, cacheSig = null, wkBusy = 0;
   /* smooth-perf (owner approved 2026-10-19): the replay is rebuilt ONLY when its inputs changed. inSig() = tip + an FNV-1a hash of the burn rows +
    * a hash of every block hash, i.e. everything V.replay reads besides the local ops (opsSig). load() used to drop the cache on every read, so the 60 s
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
@@ -30,29 +30,91 @@
     var r = indexedDB.open(IDB_NAME, 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
   function idbKey() { return BUILD + '|' + inSig() + '|' + JSON.stringify(S.ops || []); }
   function idbGet() { var key = idbKey(); return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    idb().then(function (db) { var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.key === key && v.world ? v : null); };
+    idb().then(function (db) { var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? (v.key === key ? v : { key: v.key, world: v.world, old: true }) : null); };
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
    * so the page stays responsive; the worker also writes the IDB entry. The result is a structured clone of the same world (V.reindex() restores the
-   * gear index). No worker / an error / WORKER_MS without an answer -> cache stays empty and world() replays on the main thread exactly as before. */
+   * gear index). No worker / a worker error -> cache stays empty and world() replays on the main thread exactly as before. */
   var RULE_SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
-  var WORKER_MS = 45000, wk = null, wkId = 0, wkOff = false;
+  /* page-unresponsive-fix (2026-10-27): profiled on the owner's laptop (i3-N305) the worker replay takes 22-39 s, so the 45 s limit was close: one
+   * slow moment turned the worker off for good and the next poller replayed on the main thread (27 s, Chrome's "Page unresponsive"). The limit is
+   * now 120 s. Only ONE job runs at a time: a second call with the same inputs joins it; newer inputs stop the old job (its answer would be thrown
+   * away) instead of queueing behind it, where its reassigned onmessage left the old job to time out and turn the worker off. A finished replay
+   * whose inputs changed meanwhile starts the next one right away, so world() never falls back to the main thread in between. Same world out. */
+  var WORKER_MS = 120000, wk = null, wkId = 0, wkOff = false, pend = null;
   function ruleUrls() { var all = Array.prototype.map.call(document.scripts || [], function (x) { return x.src || ''; }), out = [];
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
+  function wkKill() { try { if (wk) wk.terminate(); } catch (e) {} wk = null; }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
-    return new Promise(function (res) { var id = ++wkId, sig = inSig(), ops = S.ops || [], oj = JSON.stringify(ops), key = idbKey(), done = false, t;
-      function fin() { if (done) return; done = true; clearTimeout(t); res(); }
-      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }; }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.id !== id) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; } else if (!m.ok) wkOff = true; fin(); };
-        t = setTimeout(function () { wkOff = true; try { wk.terminate(); } catch (e) {} wk = null; fin(); }, WORKER_MS);
+    var sig0 = inSig(), oj0 = JSON.stringify(S.ops || []);
+    if (pend) { if (pend.sig === sig0 && pend.oj === oj0) return pend.p; var old = pend; pend = null; wkKill(); old.fin(); } /* same inputs: join; newer inputs: stop the old job */
+    wkBusy++; var job = { sig: sig0, oj: oj0 }; pend = job;
+    job.p = new Promise(function (res) { var id = ++wkId, sig = sig0, ops = S.ops || [], oj = oj0, key = idbKey(), done = false, t;
+      function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
+      job.fin = fin;
+      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
+          else if (!m.ok) wkOff = true;
+          else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
+            clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
+          fin(); };
+        /* every-page-freeze (owner Oct 28 2026): a slow worker is NOT a reason to replay on the main thread (that IS the 25-35 s freeze). Past WORKER_MS
+         * the job keeps running and the page keeps the last world / placeholder; only a worker error (onerror / !ok) falls back to the main thread. */
+        var slow = function () { if (done) return; try { console.warn('[v2] replay worker still busy after ' + Math.round((Date.now() - t0) / 1000) + ' s; waiting (no main-thread replay)'); } catch (e) {} t = setTimeout(slow, WORKER_MS); }, t0 = Date.now();
+        t = setTimeout(slow, WORKER_MS);
         wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
-      } catch (e) { wkOff = true; fin(); } }); }
-  function fromIdb() { if (cache) return Promise.resolve(); return idbGet().then(function (v) { if (!v || cache) return; var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () {}); }
+      } catch (e) { wkOff = true; wkKill(); fin(); } });
+    return job.p; }
+  /* page-unresponsive-fix: the cross-visit cache read (up to IDB_WAIT_MS) always runs right before workerReplay(); it counts as busy, so a poller
+   * ticking in that gap gets the last world / the pending placeholder instead of a full main-thread replay (measured 27 s on the owner's laptop). */
+  /* boot-from-cache (owner approved 'Both', Oct 31 2026 2:28 PM CT): fromIdb(true) at boot also takes a saved world whose key does NOT match
+   * (an older tip, build, burns or local ops). It is shown at once as a PROVISIONAL world (S.provisional; world() hands it out while the worker
+   * builds the fresh one, the same way it hands out the last world mid-session) and is never the cache, so the fresh replay always runs and
+   * replaces it (bootShow/armFresh repaint the page). While it shows, js/v2-wallet.js and the inscribe flow wait for the fresh world (updating())
+   * and recheck the action against it. Replay inputs and results are unchanged; only what is on screen during the first seconds changes. */
+  var provKey = null, storedKey = null;
+  function fromIdb(prov) { if (cache) return Promise.resolve(); wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
+    return idbGet().then(function (v) { end(); if (!v || cache) return;
+      if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
+        lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
+      var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
-  function save() { var j = JSON.stringify(S.ops || []); try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (j !== opsSig) cache = null; }
-  function world() { if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore, dex: S.dex || undefined }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; } if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return cache; }
+  /* gear-stick (2026-10-28): local ops (equips) are append-only, but each tab read them ONCE at load and save() wrote its whole list back. So a
+   * second tab (or the pet page next to My Pets) that saved anything later (a tick, a sort, a feed batch ending, an auto-equip choice) wrote
+   * its OLD list over the equips made in the other tab: the gear "came off" on the next load. Now save() merges: it keeps every op already
+   * stored (in order) and adds this tab's ops that are not stored yet (counted, so a real repeat op is kept), and a 'storage' event pulls ops
+   * saved by another tab into this one. Replay and game rules are unchanged (same ops, same replay). */
+  function opKey(o) { return JSON.stringify(o); }
+  function mergeOps(stored, mine) { if (!stored || !stored.length) return mine.slice(); var cnt = {}; stored.forEach(function (o) { var k = opKey(o); cnt[k] = (cnt[k] || 0) + 1; });
+    var out = stored.slice(); mine.forEach(function (o) { var k = opKey(o); if (cnt[k]) cnt[k]--; else out.push(o); }); return out; }
+  function storedOps() { try { var v = JSON.parse(localStorage.getItem(KEY)); return v && Array.isArray(v.ops) ? v.ops : []; } catch (e) { return []; } }
+  function save() { var j = JSON.stringify(S.ops || []); S.ops = mergeOps(storedOps(), S.ops || []);
+    try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (JSON.stringify(S.ops) !== opsSig || j !== opsSig) cache = null; }
+  try { window.addEventListener('storage', function (e) { if (e.key !== KEY || !e.newValue) return; var v; try { v = JSON.parse(e.newValue); } catch (x) { return; }
+    if (!v || !Array.isArray(v.ops)) return; var m = mergeOps(v.ops, S.ops || []); if (JSON.stringify(m) === JSON.stringify(S.ops || [])) return; S.ops = m; cache = null;
+    try { window.dispatchEvent(new Event('xcpets-ops-sync')); } catch (x) {} }); } catch (e) {}
+  /* page-load-freeze (2026-10-25): about 20 UI pollers (gift, quests, badges, Old Money marks, ...) call world() every 1-3 s. While the replay
+   * worker was still building the world there was no cache, so the first poller to tick ran the whole replay (~12 s) on the main thread,
+   * about twice per page load, which froze the page and the burn check's timers. Now, while the worker is busy and nothing is cached,
+   * world() hands back the last finished world (only if the local ops are unchanged), or before the first world a small placeholder
+   * (w.pending = true, no pets) that pollers skip; they repaint when the real world lands (a new object). If the worker is off,
+   * fails or is rejected, wkBusy is 0 and world() replays on the main thread exactly as before. Game results are unchanged. */
+  var lastW = null, lastOps = null, emptyW = null, lastSig = null;
+  function peek() { return (cache || !wkBusy) ? world() : null; }
+  function keep(w) { lastW = w; lastOps = opsSig; lastSig = cacheSig + '#' + opsSig; if (S.provisional) S.provisional = false; return w; }
+  /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
+   * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
+  function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
+  function updating() { return !!S.provisional || (!current() && wkBusy > 0); }
+  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
+  function world() {
+    if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
+      if (lastW && lastOps === oj) { if (V.syncCosts) V.syncCosts(lastW, (S.tip || 0) + 1); return lastW; }
+      if (!emptyW) { emptyW = V.replay([], {}, [], { tip: S.tip, live: E.RealCore }); emptyW.pending = true; } return emptyW; }
+    if (!cache) { cache = V.replay(S.rows, S.hashes, S.ops, { tip: S.tip, live: E.RealCore, dex: S.dex || undefined }); opsSig = JSON.stringify(S.ops || []); cacheSig = inSig(); S.fromCache = false; }
+    if (V.syncCosts) V.syncCosts(cache, (S.tip || 0) + 1); /* halving: UI prices at the next block */ return keep(cache); }
   function burn() { var m = 'Burns from the v2 pages are not wired to a wallet in this build. Nothing was burned.'; try { var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = m; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } else alert(m); } catch (e) {} }
   /* hotfix 3: a short-TTL (60 s) sessionStorage copy of the burns + tip, so moving between pages doesn't re-read the whole chain;
    * refresh() always goes to the network. Block hashes were already cached in localStorage (HKEY). */
@@ -65,19 +127,40 @@
    * CI-built copy ships as api/boot.json. A page with no 60 s session copy renders AT ONCE from one of these (S.verified stays false and S.stale
    * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
    * the same replay out (rules unchanged); when the fresh read differs, a small bar offers a refresh. */
-  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5;
+  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5, LAST_FRESH = 30 * 60e3; /* stale-copy-fix: older than 30 min = only used when api/boot.json can't load */
   function toLast() { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), build: BUILD, rows: S.rows, tip: S.tip, dex: S.dex || null })); } catch (e) {} }
   function applyStale(c, hashes) { if (!c || !Array.isArray(c.rows) || !c.rows.length || !c.tip) return false;
     if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* never replay owners without sales */
     var hc = (function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } })(), seed = window.XCPETS_BLOCK_HASHES || {};
-    Object.keys(seed).forEach(function (k) { if (!hc[k]) hc[k] = seed[k]; }); if (hashes) Object.keys(hashes).forEach(function (k) { if (!hc[k]) hc[k] = hashes[k]; });
+    Object.keys(seed).forEach(function (k) { if (!hc[k]) hc[k] = seed[k]; }); var fin = finalHashes(hashes, c.tip), keep = Object.assign({}, hc); Object.keys(fin).forEach(function (k) { if (!keep[k]) keep[k] = fin[k]; }); /* api-hardening: save only final (6+ deep) hashes */
+    if (hashes) Object.keys(hashes).forEach(function (k) { if (!hc[k]) hc[k] = hashes[k]; }); /* shallow ones only for this stale render (S.verified stays false) */
     if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false; /* family-tree-fix: never replay with a hash missing */
-    if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
+    if (hashes) try { localStorage.setItem(HKEY, JSON.stringify(keep)); } catch (e) {}
     S.rows = c.rows; S.tip = c.tip; S.mempool = []; S.hashes = hc; S.dex = c.dex || undefined; S.verified = false; S.stale = true; S.staleTip = c.tip; S.dataAt = Date.parse(c.generatedAt || '') || c.at || null; /* data-lag-banner: age of the shown copy */ keepOrDrop(); return true; }
-  function fromLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); if (!c || Date.now() - c.at > LAST_MAX) return false; return applyStale(c, null); } catch (e) { return false; } }
-  function fromStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
-    return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; })
-      .then(function (j) { try { if (j && window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} return !!(j && applyStale(j, j.hashes)); }, function () { return false; }); }
+  /* api-hardening (2026-10-27): 6-block reorg rollback. The localStorage hash cache (HKEY) is meant to hold FINAL hashes only (rjs/chain.js
+   * writes a hash once it is FINAL_DEPTH = 6 deep). api/boot.json ships hashes up to its tip, and applyStale used to save all of them, so a block
+   * within 6 of the feed tip that was later reorged kept its orphaned hash here for good (wrong fire-sale / hatch rolls, a stale sale base kept).
+   * finalHashes keeps only blocks at least 6 below the tip for saving; shallowDrop removes cached hashes within 6 of a fresh tip (or above it, a
+   * tip that went back) before the read, so those blocks are always asked fresh. reorgAt(oldH, newH) = lowest block whose hash changed (null =
+   * none). Hashes are the same ones a fresh read gives, so replay results are unchanged on a chain without a reorg. Pure, for tools/api-hardening-test.js. */
+  function finalHashes(h, tip) { var o = {}; if (!h || !(tip > 0)) return o; Object.keys(h).forEach(function (k) { if (Number(k) <= tip - 6) o[k] = h[k]; }); return o; }
+  function shallowDrop(hc, tip) { var n = []; if (!hc || !(tip > 0)) return n; Object.keys(hc).forEach(function (k) { if (Number(k) > tip - 6) { n.push(Number(k)); delete hc[k]; } }); return n; }
+  function reorgAt(oldH, newH) { var at = null; if (!oldH || !newH) return null; Object.keys(newH).forEach(function (k) { if (oldH[k] && newH[k] && oldH[k] !== newH[k] && (at == null || Number(k) < at)) at = Number(k); }); return at; }
+  function readLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); return c && c.tip && Date.now() - c.at <= LAST_MAX ? c : null; } catch (e) { return null; } }
+  function fetchStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000);
+    return fetch('api/boot.json', ac ? { signal: ac.signal, cache: 'no-cache' } : undefined).then(function (r) { clearTimeout(t); return r.ok ? r.json() : null; }, function () { return null; })
+      .then(function (j) { if (j && j.tip) { S.feedTip = Math.max(S.feedTip || 0, j.tip); try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} } return j && j.tip ? j : null; }, function () { return null; }); }
+  /* stale-copy-fix (2026-10-26): a phone showed its own 9-hour-old saved copy (block 973,246) while api/boot.json was at 973,306, because the saved
+   * copy always won and boot.json was never read. pickCopy: the saved copy only when it is under 30 min old AND its tip is >= boot.json's;
+   * otherwise boot.json; an older saved copy (up to 7 days) only when boot.json can't load. Pure, for tools/stale-copy-test.js. */
+  function pickCopy(last, feed, now) { var fresh = last && now - last.at <= LAST_FRESH;
+    if (feed && (!fresh || feed.tip > last.tip)) return 'feed'; if (last && (fresh || !feed)) return 'last'; return null; }
+  function fromBest() { var last = readLast(); return fetchStatic().then(function (j) { var k = pickCopy(last, j, Date.now());
+    if (k === 'feed' && applyStale(j, j.hashes)) return true; if (k === 'last' && applyStale(last, null)) return true;
+    if (k === 'feed' && last && applyStale(last, null)) return true; if (k === 'last' && j && applyStale(j, j.hashes)) return true; return false; }); }
+  /* stale-copy-fix: the chain tip from mempool.space (not a Counterparty node), so 'N blocks behind' can be shown even while the Core nodes say 429 */
+  var tipAt = 0; function refTip() { if (Date.now() - tipAt < 60e3 || typeof fetch !== 'function') return Promise.resolve(); tipAt = Date.now(); var base = (E.CFG && E.CFG.mempoolApi) || 'https://mempool.space/api';
+    return fetch(base + '/blocks/tip/height', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; }).then(function (t) { var n = parseInt(t, 10); if (n > (S.chainTip || 0)) S.chainTip = n; }, function () {}); }
   /* api-reduction: the mempool read, shared by load() and the quick poll */
   function readMempool(chain) { return chain.getJson('/mempool/events/ASSET_DESTRUCTION?limit=1000').then(function (j) { return ((j && j.result) || []).map(function (e) { var x = e.params || {}, t = x.tag;
       if (typeof t === 'string' && /^([0-9a-f]{2})+$/i.test(t)) { try { t = decodeURIComponent(t.replace(/(..)/g, '%$1')); } catch (er) { } }
@@ -98,6 +181,9 @@
       var rows = r[0], tip = r[1], blocks = {}; rows.forEach(function (x) { blocks[x.block_index] = 1; }); var FG = V.ACTIVATE_FIRESALE_BLOCK; if (FG != null && tip >= FG) for (var fb = FG; fb <= tip; fb++) blocks[fb] = 1; /* fire sales: every block's hash from the gate decides the schedule */
       var QG = V.questGate ? V.questGate() : null; if (QG != null && tip >= QG) for (var qb = QG; qb <= tip; qb++) blocks[qb] = 1; /* Mythic quests (2026-10-24): every block from the quest gate on, so each Homecoming block's hash is there even with no burn in it; inert while the gate is null */
       var RG = V.raidGate ? V.raidGate() : null; if (RG != null && tip >= RG) for (var rb = RG; rb <= tip; rb++) blocks[rb] = 1; /* raids: every block from the raid gate on (raid opening + kill block hashes); inert while the gate is null */
+      /* api-hardening: reorg rollback. Cached hashes within 6 of this tip (or above it) are re-read, never trusted; a changed hash vs the last load
+       * drops the 60 s session copy and the saved sale base so nothing from the orphaned blocks is reused. */
+      var prevH = S.hashes, shallow = shallowDrop(hc, tip || S.chainTip || 0);
       var need = Object.keys(blocks).filter(function (b) { return !hc[b]; }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
       return chain.blockHashes(Object.keys(blocks), hc, tip, function (n, miss) { step('Some block-hash servers are busy. Retrying ' + miss.length + ' block' + (miss.length === 1 ? '' : 's') + ' (try ' + (n + 1) + ' of 4)… (step 2 of 3)'); }).then(function (bh) {
         try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
@@ -106,7 +192,9 @@
          * S.rows / S.tip keep the last COMPLETE load (empty on first boot), so the world shown (and any burn tag built from it) stays correct. */
         var miss = (bh.missing || []).filter(function (b) { return !hc[b] && !bh.hashes[b]; });
         if (miss.length) { var me = new Error('missing block hashes: ' + miss.join(', ')); me.missingBlocks = miss; throw me; }
-        var nHashes = Object.assign({}, hc, bh.hashes), nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
+        var nHashes = Object.assign({}, hc, bh.hashes), ro = reorgAt(prevH, nHashes); if (ro != null || (S.tip && tip && tip < S.tip)) { S.reorg = { at: ro, from: S.tip, to: tip, dropped: shallow.length, when: Date.now() };
+          try { console.warn('[xcpets] chain reorg / tip went back: block ' + (ro != null ? ro : tip) + '; recent copies dropped'); sessionStorage.removeItem(SKEY); if (ro != null) { localStorage.removeItem('xcpets-dex-last-1'); sessionStorage.removeItem('xcpets-dex-cache-2'); } } catch (e) {} }
+        var nTip = tip || rows.reduce(function (a, x) { return Math.max(a, x.block_index); }, 0); /* site-fast-reread: staged, committed together with the sale data below */
         /* pet-shop-sales: pet-token issuances + orders + matches (found from the pet:deed burns) are replay inputs once ACTIVATE_SALES_BLOCK is set (never fetched while it is null) */
         var dx = V.salesGate && V.salesGate() != null && window.V2Sales ? window.V2Sales.loadDex(rows, { tip: nTip, hashes: nHashes }).then(function (d) { if (!d) throw new Error('pet sale data is empty'); S.dex = d; S.rows = rows; S.hashes = nHashes; S.tip = nTip; },
           function (e) { throw new Error('pet sales and token transfers could not be read, so pet owners could be out of date (' + String(e && e.message || e).slice(0, 90) + ')'); }) : null;
@@ -135,43 +223,93 @@
     /* the boot line sits at the bottom of the page; a verify failure is moved to the top of <main> as a panel so it can't be missed */
     if (missing) { try { var mn = document.querySelector('main'); if (mn && st.parentNode !== mn) mn.insertBefore(st, mn.firstChild); st.classList.add('panel'); st.style.textAlign = 'center'; st.style.margin = '12px auto'; st.style.border = '2px solid #ffc93c'; st.setAttribute('role', 'alert'); } catch (e) {} } }
   function run(st, then) { stepEl = st; var done = false, w = setTimeout(function () { if (!done && st && !booted) { st.textContent = 'Using backup source, this can take a minute…'; st.className = 'small muted'; } }, BOOT_WATCH_MS); /* site-fast: calm note, the read keeps going (a real failure still shows Retry) */
-    load(true).then(fromIdb).then(workerReplay).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
+    load(true).then(function () { return fromIdb(true); }).then(function () { return worldOrShow(st, then); }).then(function () { done = true; clearTimeout(w); if (booted) return; setTimeout(function () { booted = true; if (st) st.remove(); then(); }, 30); },
       function (e) { done = true; clearTimeout(w); if (booted) return;
         bootFail(st, then, e && e.message ? String(e.message).slice(0, 160) : '', e && e.missingBlocks); }); }
   /* site-fast-reread (2026-10-24): the status bar is a slim strip at the top of the page (in the flow, never fixed), so it can't cover buttons
    * at the bottom of a phone screen. The background re-read retries on its own (RETRY_MS) before it shows Retry. */
   function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
       b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; document.body.insertBefore(b, document.body.firstChild); }
-      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin-left:6px;padding:2px 8px;font-size:12px';
+      b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'v2stale-btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin:0 0 0 6px;padding:0 8px;font:inherit;font-weight:700;font-size:11px;line-height:1.6;color:#1a1020;background:#ffc93c;border:0;border-radius:6px;cursor:pointer;vertical-align:baseline';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
   /* direct-counterparty-api (2026-10-25): ONE re-read chain at a time. Before, a failed try queued a timer retry AND whenFresh (Sign & Burn) started
    * its own revalidate right away, and every press started another, so the same destructions/sale reads ran 2-3 times in parallel against a
    * rate-limited server (the repeated 429 loop). Now a pending timer retry is pulled forward instead of doubled, and presses share it. */
-  var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null;
+  var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null, checking = 0;
   function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var was = sigOf();
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
-      if (sigOf() !== was) staleBar('New chain activity since your last visit.', false); return workerReplay(); },
+      if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ /* every-page-freeze (Oct 28 2026): no forced main-thread rebuild here any more (it froze the page 12-30 s); the burn check waits for the worker's world below */ } return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
-      if (blocked()) { toFeed(); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
+      if (blocked()) { toFeed(); feedPoll(feedCb); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
+      /* stale-copy-fix: a 429 / 5xx is not 'blocked', but the feed may still be newer than the copy shown: check it after EVERY failed read
+       * (burns still wait for a Core read: S.verified stays false). The timer retries against the Core nodes keep going as before. */
+      S.feed = true; feedPoll(feedCb);
       if (n < RETRY_MS.length) { retryT = setTimeout(function () { retryT = null; revalidate(n + 1); }, RETRY_MS[n]); return; }
-      staleBar('Showing saved pets from block ' + fmtN(S.staleTip || S.tip) + '. The chain servers are slow right now, so burns wait until they answer.', true); });
+      staleBar('Showing pets from block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. The chain servers are slow right now, so burns wait until they answer.', true); });
     return reval; }
   /* site-fast-reread: an action pressed while the saved copy is showing WAITS for the re-read instead of failing. Resolves {ok, same}: same =
    * the fresh burns + sale data match the copy the action was built from (so its pet numbers are right); never resolves ok on a failed read. */
-  function whenFresh() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
+  function whenRead() { if (!S.stale || S.verified) return Promise.resolve({ ok: !!S.verified, same: true }); var was = sigOf();
     staleBar('Checking the latest chain data before your burn…', 'none');
     /* one try: join the running re-read, or run one now (a pending timer retry is pulled forward, not doubled). A failed read resolves
      * {ok:false} right away, so the button shows Retry instead of spinning; the background timer retries stay as they were. */
-    var p = reval || (S.verified ? null : revalidate(RETRY_MS.length));
-    return Promise.resolve(p).then(function () { if (S.verified) return { ok: true, same: sigOf() === was };
+    /* burn-check-fix (2026-10-25): the burn safety read forgets the remembered 'port 4000 blocked' state (a single slow moment set it for
+     * 10 min and failed every press at once) and tries patiently: up to 3 full reads (both Core nodes, failover to api.unspendablelabs.com),
+     * 2 s then 5 s apart. Never api.xcp.fun. */
+    var waitP = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }, GAPS = [4000, 10000, 20000]; /* ratelimit-calm (2026-10-26): the nodes' 429 cool-down is ~10-60 s; 2 s/5 s retries failed inside it */
+    /* burn-check-fast (2026-10-25): profiled on the laptop, the reads take ~2 s; the rest (20-50 s) was the full pet rebuild after the read.
+     * When the fresh burns + sale data are the SAME as the copy the burn was built from (sigOf unchanged), that rebuild cannot change the pet
+     * numbers, so the check answers as soon as the verified read lands and the rebuild finishes in the background (same rule as the old
+     * same:true path). Changed data still waits for the rebuild, because the recheck judges the burn against it. */
+    function readDone(p) { return new Promise(function (res) { var iv = setInterval(function () { if (S.verified && sigOf() === was) { clearInterval(iv); res(); } }, 100);
+      Promise.resolve(p).then(function () { clearInterval(iv); res(); }, function () { clearInterval(iv); res(); }); }); }
+    var slowT = setTimeout(function () { if (!S.verified) staleBar('Still checking the latest chain data… the Counterparty servers are slow right now. Nothing is signed until this finishes.', 'none'); }, 15000);
+    function tryRead(k) { try { if (E.Chain.forgetBlocked) E.Chain.forgetBlocked(); } catch (e) {} if (S.feed) S.feed = false;
+      return readDone(reval || (S.verified ? null : revalidate(RETRY_MS.length))).then(function () {
+        if (S.verified || k >= GAPS.length) return; return waitP(GAPS[k]).then(function () { return tryRead(k + 1); }); }); }
+    checking++; var p = tryRead(0);
+    return Promise.resolve(p).then(function () { checking--; clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
-  function bootStale(st, then) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
+  /* boot-from-cache: whenFresh() = the chain re-read above (whenRead), then, while updating() (a provisional saved world, or the worker still
+   * rebuilding), it WAITS for the fresh world before answering. same is false when the world the page showed at the press is not the fresh one,
+   * so js/v2-wallet.js re-judges the action against the fresh world (recheck) or stops with nothing sent. */
+  function whenFresh() { var wasW = lastSig; return whenRead().then(function (r) { if (!r.ok || !updating()) return r;
+    staleBar('Updating pets to the latest block before your burn… Nothing is signed until this finishes.', 'none');
+    return waitWorld().then(function () { try { world(); } catch (e) {} var b = document.getElementById('v2stale'); if (b && !b.querySelector('button')) b.remove();
+      return { ok: !!S.verified, same: r.same && lastSig === wasW }; }); }); }
+  /* boot-from-cache: worldOrShow() = the old "wait for the worker" step, except when a provisional saved world is showing: then the page boots at
+   * once and armFresh() repaints it when the worker's fresh world lands. */
+  function worldOrShow(st, then) { var p = workerReplay(); if (!S.provisional || !lastW) return p; armFresh(); return null; }
+  var freshHooks = [], armed = false, RL = 'xcpets-v2-swr-reload', RL_GAP = 120e3;
+  function onFresh(fn) { if (typeof fn === 'function') freshHooks.push(fn); }
+  function updBar(on) { try { var b = document.getElementById('v2upd'); if (!on) { if (b) b.remove(); return; } if (b || !document.body) return; b = document.createElement('div'); b.id = 'v2upd'; b.setAttribute('role', 'status');
+    b.style.cssText = 'background:#1d1b2e;color:#ffc93c;padding:2px 10px;font-size:11px;line-height:1.5;text-align:center';
+    b.textContent = '⟳ Updating to the latest block… (showing your last saved copy' + (S.provisionalTip ? ', block ' + fmtN(S.provisionalTip) : '') + '; burns wait until it is done)';
+    var s0 = document.getElementById('v2stale'); document.body.insertBefore(b, s0 ? s0.nextSibling : document.body.firstChild); } catch (e) {} }
+  /* pages with an in-page repaint (js/v2.js: play, fight, breed, raid, rare room) register it with onFresh; the others reload in place once the
+   * fresh world is stored (it then boots from the exact cache in about a second, scroll kept), unless the visitor is typing / in a dialog / in a
+   * burn, or one auto reload already ran in the last 2 minutes: then the usual 'Newer game data is ready' Refresh bar shows instead. */
+  function busy() { try { var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox') return true;
+      if (document.querySelector('dialog[open], [aria-modal="true"]:not([hidden])')) return true; if (checking) return true; } catch (e) {} return false; }
+  function softReload() { var last = 0; try { last = Number(sessionStorage.getItem(RL)) || 0; } catch (e) {}
+    if (busy() || Date.now() - last < RL_GAP) { staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); return; }
+    try { sessionStorage.setItem(RL, String(Date.now())); } catch (e) {} var t0 = Date.now();
+    (function go() { if (storedKey === idbKeyStored || Date.now() - t0 > 4000) { if (busy()) return staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); try { location.reload(); } catch (e) {} return; } setTimeout(go, 100); })(); }
+  function repaint() { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {}
+    if (freshHooks.length) { freshHooks.forEach(function (fn) { try { fn(); } catch (e) { try { console.warn('[v2] repaint', e); } catch (x) {} } }); return; }
+    softReload(); }
+  function armFresh() { if (armed) return; armed = true; updBar(true);
+    /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once */
+    var settle = function () { return waitWorld().then(function () { if (!reval) return; return reval.then(settle, settle); }); };
+    settle().then(function () { try { world(); } catch (e) {} S.provisional = false; updBar(false);
+      /* hooks are registered by the page scripts the boot callback loads: give them until the window load event */
+      var fire = function () { setTimeout(repaint, 50); }; if (document.readyState === 'complete') fire(); else window.addEventListener('load', fire, { once: true }); }); }
+  function bootStale(st, then) { fromIdb(true).then(function () { return worldOrShow(st, then); }).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); setTimeout(function () { revalidate(0); }, 50); }); }
   function boot(then) { var st = document.getElementById('v2boot');
-    if (fromSession()) { fromIdb().then(workerReplay).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
+    if (fromSession()) { fromIdb(true).then(function () { return worldOrShow(st, then); }).then(function () { if (booted) return; booted = true; if (st) st.remove(); then(); }); return; }
     if (/[?&]fresh=1/.test(location.search)) return run(st, then);
-    if (fromLast()) return bootStale(st, then);
-    fromStatic().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
+    refTip(); fromBest().then(function (ok) { if (ok) bootStale(st, then); else run(st, then); }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   /* api-reduction (preview): the 60 s poll reads the tip first (1 call). Same tip as the shown data -> only the mempool is re-read (1 call) and
    * the burns, sales and block reads are skipped; a full re-read happens when the tip moves, or at least every 10 minutes. Never a replay input change:
@@ -181,19 +319,23 @@
    * once a minute, visible tab only: the poll itself is skipped while hidden) and shown as 'from the game feed, block N'. Burns still wait for
    * a Core node (S.verified stays false), so nothing is signed from feed data. api.xcp.fun is never used for Core reads. */
   function blocked() { try { return !!(E.Chain.coreBlocked && E.Chain.coreBlocked()); } catch (e) { return false; } }
-  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + '. The Counterparty servers can\'t be reached from this network (port 4000), so burns wait until they answer.', true); }
+  function behindTxt() { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? ' (' + fmtN(b) + ' block' + (b === 1 ? '' : 's') + ' behind the tip)' : ''; }
+  function feedBar() { staleBar('Showing pets from the game feed, block ' + fmtN(S.staleTip || S.tip) + behindTxt() + '. ' + (blocked() ? 'Chain servers can\'t be reached from here' : 'Chain servers are busy') + ', so burns wait.', true); } /* calm-first-screen: shorter, one thin line */
+  /* stale-copy-fix: pages without their own poll (index, pet, ranking...) get the newer feed copy via a Refresh bar; play/fight/breed pass render */
+  var lastCb = null; function feedCb() { if (lastCb) return lastCb(); staleBar('Newer game data is ready (block ' + fmtN(S.tip) + ').', false); }
   function toFeed() { S.feed = true; feedBar(); }
   var feedAt = 0;
   function feedPoll(cb) { if (Date.now() - feedAt < 60e3) return Promise.resolve(); feedAt = Date.now(); var t0 = S.tip;
     return fetch('api/boot.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      if (!j || !(j.tip > t0)) return; try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {}
+      if (j && j.tip) S.feedTip = Math.max(S.feedTip || 0, j.tip); if (!j || !(j.tip > t0)) return; try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {}
       if (applyStale(j, j.hashes)) return fromIdb().then(workerReplay).then(function () { feedBar(); cb(); }); }, function () {}); }
   var lastFull = Date.now();
-  function refresh(cb) { if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
+  if (typeof setInterval === 'function' && typeof document !== 'undefined') setInterval(function () { if (!booted || document.hidden || S.verified || lastCb) return; refTip(); if (S.feed) feedPoll(feedCb); }, 60e3); /* stale-copy-fix: no-poll pages */
+  function refresh(cb) { if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
     if (!S.verified || !S.tip || Date.now() - lastFull > 600e3) { lastFull = Date.now(); return refreshFull(cb); }
     var chain = new E.Chain(), m0 = (S.mempool || []).map(function (x) { return x.tx_hash; }).join();
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, whenFresh: whenFresh, seed: function () {}, boot: boot, refresh: refresh };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();

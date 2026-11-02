@@ -66,7 +66,7 @@
     var css = document.createElement('style'); css.textContent = '.am-card{margin:14px 0 4px;padding:10px;border:2px solid #4b3f7a;border-radius:12px;background:#120e22}.am-chips{display:flex;gap:6px;flex-wrap:wrap}.am-chip{min-height:40px}.am-chip.on{border-color:#ffd166;background:#3a2a10;color:#ffd166}' +
       '.am-hint{margin:6px 0}.am-step{margin:8px 0 4px}.am-row{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 4px;-webkit-overflow-scrolling:touch}.am-row .ez-c{position:relative}.am-go{margin:10px 0 4px}.am-go .btn{width:100%;min-height:48px}.am-go .btn[disabled]{opacity:.7}' +
       '.am-open div{padding:4px 0;border-top:1px dashed #2c2440;overflow-wrap:anywhere}.am-friend input{width:7em}.am-belts{margin-top:8px}'; document.head.appendChild(css); return true; }
-  var last = null; function tick() { var u = U(); if (!u || !$('arenaPanel')) return; if (!$('arModes') && !mount()) return; var w = u.world(); if (w !== last) { last = w; render(); } }
+  var last = null; function tick() { var u = U(); if (!u || !$('arenaPanel')) return; if (window.V2Rules && V2Rules.retiredUI && V2Rules.retiredUI(u.world())) { var am = $('arModes'); if (am) am.remove(); return; } /* arena modes retired at ACTIVATE_RETIRE_TAGS_BLOCK */ if (!$('arModes') && !mount()) return; var w = u.world(); if (w !== last) { last = w; render(); } }
   setInterval(tick, 1500); setTimeout(tick, 200);
   window.V2ArenaModes = { render: render, state: function () { return S; } };
 })();

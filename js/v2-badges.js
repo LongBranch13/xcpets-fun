@@ -126,7 +126,7 @@
   if (typeof document === 'undefined' || !document.getElementById) return;
   /* ------------------------------------------------------------------ UI (play.html My Pets strip, pet.html row) */
   var memo = { w: null, r: null };
-  function get() { var M = root.V2Mock; if (!M || !M.world) return null; var w = M.world(); if (!w || !w.pets || !w.pets.length) return null; if (memo.w !== w) { memo.w = w; memo.r = compute(w, (M.state() || {}).rows || []); } return memo.r; }
+  function get() { var M = root.V2Mock; if (!M || !M.world) return null; var w = M.peek ? M.peek() : M.world(); /* page-load-freeze: never force a main-thread replay */ if (!w || !w.pets || !w.pets.length) return null; if (memo.w !== w) { memo.w = w; memo.r = compute(w, (M.state() || {}).rows || []); } return memo.r; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function chip(b, i) { return '<button type="button" class="bdg bdg-' + b.rarity + '" data-i="' + i + '" title="' + esc(label(b) + ': ' + DEF[b.id].flavour) + '"><img src="' + img(b) + '" alt="' + esc(label(b)) + '" width="32" height="32"></button>'; }
   function detailHtml(b) { var d = DEF[b.id]; return '<img src="' + img(b) + '" alt="" width="64" height="64"><div><b>' + esc(label(b)) + '</b><i>\u201c' + esc(d.flavour) + '\u201d</i><span>' + esc(ruleText(b)) + (b.block ? ' \u00b7 block ' + Number(b.block).toLocaleString('en-US') : '') + (b.petId ? ' \u00b7 <a href="pet.html?id=' + b.petId + '">#' + b.petId + '</a>' : '') + '</span></div>'; }
@@ -150,7 +150,7 @@
     '@media (max-width:600px){.bdg img{width:32px;height:32px}.bdg-row{gap:4px}}';
   document.head.appendChild(css);
   /* Old Money marker on pet cards (My Pets grid + pickers) and the pet page chips: display only */
-  function markCards() { var M = root.V2Mock, w = M && M.world && M.world(); if (!w || !w.byId) return;
+  function markCards() { var M = root.V2Mock, w = M && M.world && (M.peek ? M.peek() : M.world()); if (!w || !w.byId) return;
     document.querySelectorAll('.pet.card[data-pid]').forEach(function (d) { if (d.querySelector('.om-mark')) return; var p = w.byId[+d.dataset.pid]; if (oldMoney(p)) d.insertAdjacentHTML('beforeend', oldMoneyMark(p)); });
     if (document.body && document.body.getAttribute('data-v2page') === 'pet') { var ch = document.getElementById('chips'), id = +(new URLSearchParams(location.search).get('id') || 0); if (ch && id && !ch.querySelector('.om-mark') && oldMoney(w.byId[id])) ch.insertAdjacentHTML('beforeend', ' ' + oldMoneyMark(w.byId[id])); } }
   css.textContent += '.om-mark{display:inline-block;font-size:11px;line-height:1.2;padding:2px 6px;margin:2px;border-radius:8px;background:#2a2410;color:#ffd75e;border:1px solid #b8932e;white-space:nowrap}.pet.card .om-mark{position:relative;font-size:10px}';

@@ -17,10 +17,10 @@
   node("/assets/XCPETS").then(function(d){
     var s=d&&d.result&&d.result.supply; if(!(s>0)) throw 0;
     stats.textContent=fmt(s); stats.parentNode.hidden=false; show();
-    // total burned = sum of all XCPETS destroys (cursor paging, max 20 pages)
-    var tot=0,pg=0;
-    function page(cur){return node("/assets/XCPETS/destructions?limit=1000"+(cur?"&cursor="+cur:"")).then(function(r){
-      (r.result||[]).forEach(function(x){tot+=+x.quantity||0}); if(r.next_cursor&&++pg<20) return page(r.next_cursor);});}
+    // total burned = sum of all XCPETS destroys (cursor paging; api-hardening: up to 200 pages, a repeated cursor or more pages hides the total instead of showing a short one)
+    var tot=0,pg=0,seen={};
+    function page(cur){return node("/assets/XCPETS/destructions?limit=1000"+(cur?"&cursor="+encodeURIComponent(cur):"")).then(function(r){
+      (r.result||[]).forEach(function(x){tot+=+x.quantity||0}); if(r.next_cursor&&(r.result||[]).length){ if(seen[r.next_cursor]||++pg>=200) throw 0; seen[r.next_cursor]=1; return page(r.next_cursor);} });}
     return page().then(function(){ if(tot>0){burnEl.textContent=fmt(tot);burnEl.parentNode.hidden=false;} }).catch(function(){});
   }).catch(function(){});
   j(XCPFUN_API+"/candles/XCPETS").then(function(d){

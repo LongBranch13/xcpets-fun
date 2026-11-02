@@ -1,26 +1,26 @@
 {
-  "blockHeight": 973152,
-  "generatedAt": "2026-10-26T00:16:20Z",
+  "blockHeight": 974196,
+  "generatedAt": "2026-11-02T01:14:44Z",
   "asset": "XCPETS",
-  "totalPets": 43059,
-  "alive": 30001,
-  "dead": 13057,
-  "released": 1,
-  "burns": 1663,
-  "burnedXCPETS": 20919386.50000208,
-  "supplyXCPETS": 79080613.49999791,
-  "owners": 17,
+  "totalPets": 74347,
+  "alive": 32605,
+  "dead": 41006,
+  "released": 736,
+  "burns": 2991,
+  "burnedXCPETS": 27238430.0675059,
+  "supplyXCPETS": 72761569.9324941,
+  "owners": 22,
   "community": {
-    "tip": 973152,
+    "tip": 974196,
     "current": {
-      "id": "funtrump",
-      "no": 4,
-      "name": "FUNTRUMP",
-      "short": "FUNTRUMP",
-      "plural": "FUNTRUMPs",
+      "id": "homer",
+      "no": 5,
+      "name": "Homer Pepe",
+      "short": "Homer Pepe",
+      "plural": "Homer Pepes",
       "the": ""
     },
-    "nextNo": 4,
+    "nextNo": 5,
     "cold": [
       {
         "id": "nakamoto",
@@ -48,27 +48,27 @@
         "plural": "Lord Keks",
         "the": "",
         "block": 972869
+      },
+      {
+        "id": "funtrump",
+        "no": 4,
+        "name": "FUNTRUMP",
+        "short": "FUNTRUMP",
+        "plural": "FUNTRUMPs",
+        "the": "",
+        "block": 973365
       }
     ],
     "egg": {
-      "id": "kek",
-      "no": 3,
-      "name": "Lord Kek",
-      "short": "Lord Kek",
-      "plural": "Lord Keks",
+      "id": "funtrump",
+      "no": 4,
+      "name": "FUNTRUMP",
+      "short": "FUNTRUMP",
+      "plural": "FUNTRUMPs",
       "the": "",
-      "block": 972869
+      "block": 973365
     },
     "prevEgg": {
-      "id": "wizard",
-      "no": 2,
-      "name": "Bitcoin Wizard",
-      "short": "Wizard",
-      "plural": "Bitcoin Wizards",
-      "the": "the ",
-      "block": 972325
-    },
-    "last": {
       "id": "kek",
       "no": 3,
       "name": "Lord Kek",
@@ -77,10 +77,20 @@
       "the": "",
       "block": 972869
     },
+    "last": {
+      "id": "funtrump",
+      "no": 4,
+      "name": "FUNTRUMP",
+      "short": "FUNTRUMP",
+      "plural": "FUNTRUMPs",
+      "the": "",
+      "block": 973365
+    },
     "halvings": [
-      972875
+      972875,
+      973371
     ],
-    "halvingsDone": 1,
+    "halvingsDone": 2,
     "nextHalving": null
   },
   "files": {

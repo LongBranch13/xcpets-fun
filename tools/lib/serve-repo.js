@@ -1,4 +1,4 @@
-/* Serve the repo checkout to a Playwright page without a real HTTP server: every http://localhost:8099/<path> request is
+/* Serve the repo checkout to a Playwright page without a real HTTP server: every <origin>/<path> request (origin = http://localhost:<XCPETS_TEST_PORT>, the port run-tests gives each test; :8099 standalone) is
  * fulfilled from the repo root on disk (extra = { '/path': 'html body' } for in-memory harness pages). Before this, the
  * wallet tests needed a separately started `python3 -m http.server 8099`, which CI never had (and the box had one serving
  * an old worktree), so the scripts 404'd in CI and V2Wallet was undefined. No socket is opened, so no port is used. */

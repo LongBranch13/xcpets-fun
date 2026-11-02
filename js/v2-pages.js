@@ -45,7 +45,7 @@
           d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(nm) + '</h3><span class="muted small">Cold Storage</span>'); R.animate(c, f); grid.appendChild(d); return; }
         if (tier !== 'legendary' || box.querySelector(sel)) return;
         var row = document.createElement('div'); row.className = 'cast-row'; row.setAttribute('data-sp', id); row.setAttribute('data-cold', id);
-        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? 'Hatches from the 1 in 777 egg, any tier' : 'Kept in Cold Storage') + '</p></div>';
+        row.innerHTML = '<div><h3 class="ch">' + esc(nm) + '</h3><p class="muted">Community pet #' + k.x.no + ' · Mythic at block ' + fmt(k.x.block) + ' · in Cold Storage</p><p class="muted">' + (k.p.egg ? (window.V2Community && V2Community.state(w).egg && V2Community.state(w).egg.id === id ? 'Hatches from the 1 in 777 egg now (Rare or Legendary)' : 'Hatched from the 1 in 777 egg until the next community pet reached Mythic') : 'Kept in Cold Storage') + '</p></div>';
         var strip = document.createElement('div'); strip.className = 'strip6';
         (G.STAGES || V.STAGE_NAMES).forEach(function (name, si) { var d = document.createElement('div'), c = document.createElement('canvas'); c.width = c.height = 32; c.setAttribute('role', 'img'); c.setAttribute('aria-label', nm + ', ' + name);
           var f = coldFr(k, si); if (f) R.paint(c, f[0]); d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d); });
@@ -110,7 +110,9 @@
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=3ea75d1666'; t.onload = cb; document.body.appendChild(t); }
+  /* THE gravestone (option C): the dead pet's own stone, drawn at the top of its death note and in the old grave list */
+  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=b5fc7db690'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=b5fc7db690'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -136,7 +138,13 @@
       stats: function (w) { var x = w.kekMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
       story: ['Lord Kek, Ruler of All Pepes. All Pepes worshipped him as the most powerful Pepe in existence.', 'The Bitcoin Wizard went into Cold Storage and left an egg. Every burn fed it, and Lord Kek rose.',
         'At Mythic, a sacrifice of 7 sacred artifacts was made, and Lord Kek was defeated.', 'After the great victory, the real and only ruler is STAR LORD KEK.', 'Lord Kek rests in Cold Storage. A new era begins: burns cost half.'],
-      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(M.world()), info: info }); }); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(M.world()), info: info }); }); } },
+    /* #4 FUNTRUMP (site-audit 2026-10-27): Mythic -> Cold Storage at block 973,365 (w.funtrumpMythic, pure replay record). Same Cold Storage pattern as Lord Kek,
+     * existing FUNTRUMP sprite at its Mythic stage; no farewell scene exists, so no replay button. */
+    { id: 'funtrump', name: 'FUNTRUMP', sp: 'funtrump', loadout: [], done: function (c, w) { return !!(w && w.funtrumpMythic); }, block: function (c, w) { return w.funtrumpMythic.block; }, tx: function (c, w) { return w.funtrumpMythic.tx; },
+      stats: function (w) { var x = w.funtrumpMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
+      story: ['Lord Kek went into Cold Storage and left an egg. Every burn fed it, and FUNTRUMP rose.', 'At Mythic, FUNTRUMP went into Cold Storage and Homer Pepe became the community pet.', 'Six blocks later came the second halving: every burn costs a quarter of the base amount.'],
+      sprites: function () { return coldEntryFrames(this); } }
   ];
   /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style
    * (js/v2-kek-farewell.js, lazy-loaded like the Wizard's). Replaces the halving-v1 .kekbye pop-up. The last sub-line hands off to FUNTRUMP, read from
@@ -147,7 +155,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=3ea75d1666'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=b5fc7db690'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -159,7 +167,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=3ea75d1666'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=b5fc7db690'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -191,7 +199,8 @@
       fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
     return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
       /* pet-card-page (owner 2026-10-24 5:08 AM CT): no Pepe Wheel spin / gear roll links here any more; the card's Rare Room / Breed / Battle buttons (js/v2-pet-card.js) go to play.html */
-      '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
+      /* favorite-star-restore (owner Oct 29 2026): the ☆ Keep / ★ Kept favorite button is back (same xcpets-keep list as My Pets) */
+      '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Star this pet as a favorite. Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
   document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#petKeep'); if (!b) return; var m = /id=(\d+)/.exec(location.search); if (!m) return; var on = toggleKept(m[1]); b.textContent = on ? '★ Kept' : '☆ Keep'; b.setAttribute('aria-pressed', String(on)); });
   function archive() {
     var w = M.world(), c = w.community, preview = /preview=return/.test(location.search) ? 'nakamoto' : /preview=wizard/.test(location.search) ? 'wizard' : /preview=kek/.test(location.search) ? 'kek' : false, list = archiveEntries(w, preview), box = $('archList');
@@ -206,7 +215,7 @@
         '<h2 class="archive-name">Community pet</h2><p>The community pet grows with every XCPETS burn, from anyone.</p><div class="archive-stats"><div class="archive-stat"><b>' + fmt(Math.floor(c.wizardFed)) + '</b><span>XCPETS burned so far</span></div><div class="archive-stat"><b>' + esc(V.STAGE_NAMES[c.wizardStage]) + '</b><span>Stage</span></div></div>' + (R && R.communityWearing ? '<p class="small muted">' + esc(R.communityWearing(w)) + '</p>' : '') + '</div>';
       var x = it.x, dt = x.row && x.row.block_time ? new Date(x.row.block_time * 1000).toISOString().slice(0, 10) : '';
       return '<div class="archive-player"><span class="archive-cap">▶ REPLAY · ' + esc(x.e.name.toUpperCase()) + '</span><canvas class="archive-fsprite" width="32" height="32" id="archFeatCv"></canvas>' +
-        '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div></div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
+        (x.e.play ? '<div class="archive-play"><button class="btn archive-watch archplay" type="button">▶ ' + esc(x.e.watch || 'Watch the replay') + '</button></div>' : '') + '</div><div class="archive-fdesc"><span class="archive-tag done">' + (x.done ? 'COMPLETED' : 'PREVIEW') + '</span> <span class="archive-tag myth">MYTHIC</span>' +
         '<h2 class="archive-name">' + esc(x.e.name) + '</h2>' + (x.e.story ? '<p class="archive-story-lead">' + esc(x.e.story[0]) + '</p><p><button type="button" class="q archive-storybtn" id="archStoryBtn" aria-haspopup="dialog">📜 Read the story</button></p>' : '<p>The community cycle came full circle.</p>') + '<div class="archive-stats">' +
         '<div class="archive-stat"><b>' + (x.done ? '#' + fmt(x.block) : '—') + '</b><span>Completed at block</span></div><div class="archive-stat"><b class="archdate">' + (dt || '—') + '</b><span>Date (UTC)</span></div>' +
         '<div class="archive-stat"><b>' + fmt(Math.floor(x.total)) + '</b><span>XCPETS burned total</span></div><div class="archive-stat"><b>' + fmt(x.feeders) + '</b><span>Feeders</span></div></div>' +
@@ -241,12 +250,14 @@
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true });
     var gap = R.communityGap && R.communityGap(w); /* no community pet (Cold Storage gap): the card, feature tile and nav link STAY, with a coming-soon mystery egg (owner rule Oct 20 2026) */
-    R.animate($('crCanvas'), gap ? R.comingSoonFrames() : R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */
-    if ($('crGearTxt')) $('crGearTxt').textContent = R.communityWearing ? R.communityWearing(w) : ''; if (R.kekOn && R.kekOn(w) && window.V2KekArrival && $('crGearTxt')) { var kr = $('kekReplayRow'); if (!kr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</p>'); kr = $('kekReplayRow'); } V2KekArrival.bindReplay(kr, M.world); V2KekArrival.watch($('crCanvas'), M.world); } /* Lord Kek arrival scene (display only) */ $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
+    R.animate($('crCanvas'), gap ? R.comingSoonFrames() : R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */ if (R.bindCommunityTip) R.bindCommunityTip($('crCanvas'), w); /* community-gear-hover: hover/tap shows what he wears */
+    if ($('crGearTxt')) $('crGearTxt').textContent = ''; /* old 'Wearing:' line removed (owner 2026-10-29); hover/tap tooltip shows worn gear */ if (R.kekOn && R.kekOn(w) && window.V2KekArrival && $('crGearTxt')) { var kr = $('kekReplayRow'); if (!kr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</p>'); kr = $('kekReplayRow'); } V2KekArrival.bindReplay(kr, M.world); V2KekArrival.watch($('crCanvas'), M.world); } /* Lord Kek arrival scene (display only) */ $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
     $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
+    if (c.current === 'homer' && R.communityStats) { var hs2 = R.communityStats(w, M.state().rows.length); /* HOMER PEPE (community pet #5, PREVIEW, gated, inert): care = burns since FUNTRUMP's Mythic */
+      $('crFed').textContent = fmt(hs2.fed); $('crNext').textContent = hs2.next != null ? fmt(hs2.next) + ' to ' + hs2.nextName : 'Mythic reached'; $('crProg').style.width = hs2.pct.toFixed(1) + '%'; }
     if (c.current === 'funtrump' && R.communityStats) { var fs2 = R.communityStats(w, M.state().rows.length); /* FUNTRUMP (community pet #4, gated, inert): care = burns since Lord Kek's Mythic */
       $('crFed').textContent = fmt(fs2.fed); $('crNext').textContent = fs2.next != null ? fmt(fs2.next) + ' to ' + fs2.nextName : 'Mythic reached'; $('crProg').style.width = fs2.pct.toFixed(1) + '%'; }
     if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, M.state().rows.length); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
@@ -269,9 +280,9 @@
       try { var ck = String(c.returnTx || c.returnBlock); if (c.returned && V2Return.seen() !== ck) localStorage.setItem(V2Return.SEEN_KEY, ck); } catch (e) { } if (V2Return.previewRequested()) V2Return.maybeAutoplay(w, opts);
     });
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
-    $('crNet').textContent = ' chain'; $('crNote').textContent = 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.';
+    $('crNet').textContent = ' chain'; $('crNote').textContent = window.V2DataLag && V2DataLag.note ? V2DataLag.note(M.state().rows.length, { dataTip: M.state().tip, chainTip: M.state().chainTip, feedTip: M.state().feedTip }) : 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.'; /* stale-copy-fix: blocks behind */
     cast(w);
-    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect XCP Wallet'; /* address-lookup: a viewed address is not a connection */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for XCP Wallet…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
+    var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); /* address-lookup: a viewed address is not a connection. casa-connect: 'Connect Casa Tookan' inside Casa */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
   function ranking() {
     var w = M.world(), score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
@@ -336,7 +347,7 @@
         (ME ? '<button type="button" class="q" id="rkFind">📍 Find me</button>' : '') + '</div><p class="small muted rknote">' + esc(B.note) + (wk ? ' This week = the last 7 days (1,008 blocks): new pets, burns or wins in that time.' : '') + '</p>';
       var show = rows.slice(0, st.n), extra = (st.hits || []).filter(function (i) { return i >= st.n && i < rows.length; }), mineRank = -1; rows.forEach(function (r, i) { if (mineRank < 0 && (r.owner || (r.p && r.p.owner)) === ME) mineRank = i; });
       var rowHtml = function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
-        var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + TL[p.tier] + ' · ' + p.stageName + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
+        var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + (p && p.resurrected ? 'God' : TL[p.tier]) + ' · ' + (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
           : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
         return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + (r.subQ || '') + '</div>' : '') + '</td></tr>'; };
       var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
@@ -352,7 +363,7 @@
       $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
-      $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pets' : ' players') + ' on this board · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
+      $('status').textContent = fmt(rows.length) + (md === 'pets' ? ' pet' : ' player') + (rows.length === 1 ? '' : 's') + ' on this board.'; /* owner Oct 28 2026: plain words, no burn count */
     }
     $('boardAll').onclick = more;
     /* content-fixes 2026-10-19: Find my pet searches EVERY row of the current board (not only the loaded ones), loads up to the first hit and highlights it.
@@ -383,6 +394,8 @@
    * Graves render a page at a time (Show more, same as Ranking: 100 a page, 25 on phones) and a Find box searches EVERY grave
    * (#ID, name, species, owner address). Canvases paint lazily. The status count still uses the full dead list. Display only. */
   function cemetery() {
+    if (window.V2CemAnim) try { V2CemAnim.watch(M.world(), ME, (M.state && M.state().tip) || 0); } catch (e) { if (window.console) console.warn('cem anim', e); } /* cemetery-animations: confirmed raise / Resurrection / meal results play once */
+    if (window.V2CemeteryScene && V2CemeteryScene.page) return V2CemeteryScene.page({ w: M.world(), M: M, R: R, V: V, ME: ME, fmt: fmt, shortAddr: shortAddr }); /* cemetery-v2: perspective graveyard + all-graves list (js/v2-cemetery-scene.js) */
     var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock || b.id - a.id; });
     var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100, st = { n: STEP, q: '', mine: false, list: dead };
     $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(M.state().rows.length) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
@@ -390,22 +403,29 @@
     if (window.V2CemeteryScene) V2CemeteryScene.mount(w, dead); /* cemetery-scene branch: pixel scene over the list (newest 12 graves) */
     if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; }
     var tomb = function (p) { var gc = R.graveCount(w, p);
-      return '<div class="tomb" id="tomb-' + p.id + '"><canvas width="32" height="32" data-id="' + p.id + '" role="img" aria-label="ghost of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
-        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + TID[p.tier] + '">' + TL[p.tier] + '</span> · reached ' + esc(p.stageName) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (gc ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; };
+      return '<div class="tomb gtomb" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
+        '<div class="small">' + esc(spLabel(p.species)) + ' · <span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span> · reached ' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</div><div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(shortAddr(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + '</div><div class="died">🪦 died at block ' + fmt(p.deathBlock) + '</div>' + (gc ? '<div class="small buried">' + R.graveLine(w, p) + '</div>' : '') + '</div>'; };
     var bar = document.createElement('div'); bar.className = 'uxp-find cemfind';
     bar.innerHTML = '<label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '<span class="small muted" id="cemMsg" aria-live="polite"></span>';
     tombs.parentNode.insertBefore(bar, tombs);
+    /* habits-ux (Oct 27 2026): graves of pets that were never fed fold into one collapsed group with its count (display only).
+     * Fed pets that died stay listed one by one. A search (Find a grave) still looks through every grave. */
+    var nfg = document.createElement('details'); nfg.className = 'hiddenbox nfgroup'; nfg.id = 'nfGroup'; nfg.style.display = 'none'; tombs.parentNode.insertBefore(nfg, tombs); st.nfOpen = false;
+    nfg.addEventListener('toggle', function () { if (st.nfOpen === nfg.open) return; st.nfOpen = nfg.open; apply(); });
+    function fold(list) { if (!window.V2Habits || st.q.trim()) { nfg.style.display = 'none'; return list; } var sp = V2Habits.splitNeverFed(list), n = sp.nf.length; nfg.style.display = n ? '' : 'none';
+      if (n) { nfg.innerHTML = '<summary>🪦 Never fed <span class="chip">' + fmt(n) + '</span> <span class="muted">grave' + (n === 1 ? '' : 's') + ' of pets that died without a single meal' + (st.nfOpen ? ' · listed after the others, tap to fold' : ' · tap to show') + '</span></summary>'; nfg.open = st.nfOpen; }
+      return st.nfOpen ? sp.shown.concat(sp.nf) : sp.shown; }
     var more = document.createElement('button'); more.type = 'button'; more.className = 'q'; more.id = 'tombsMore'; more.style.display = 'none'; tombs.parentNode.insertBefore(more, tombs.nextSibling);
     function paint(from, to) { var frag = st.list.slice(from, to).map(tomb).join(''); tombs.insertAdjacentHTML('beforeend', frag);
-      st.list.slice(from, to).forEach(function (p) { var c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c) R.lazy(c, function () { return R.framesWith(p.art, p.stage, []); }, true); });
-      more.style.display = st.list.length > to ? '' : 'none'; more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
+      var sl = st.list.slice(from, to); withStone(function () { sl.forEach(function (p) { var c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected) V2Gravestone.draw(c, { art: p.art, stage: p.stage, tier: Math.max(0, Math.min(3, p.tier | 0)), state: p.graveState || (p.resurrected ? 'halo' : null), crumbles: p.zCrumbles || 0, mythic: !!p.mgDead }); }); });
+      more.style.display = st.list.length > to ? '' : 'none'; if (st.list.length > to) more.textContent = 'Show more (' + fmt(st.list.length - to) + ' left)'; }
     function apply() { var q = st.q.trim().toLowerCase().replace(/^#/, ''), num = /^\d+$/.test(q);
       st.list = dead.filter(function (p) { if (st.mine && p.owner !== ME) return false; if (!q) return true;
         return num ? String(p.id) === q || String(p.id).indexOf(q) === 0 : String(p.name).toLowerCase().indexOf(q) >= 0 || String(spLabel(p.species)).toLowerCase().indexOf(q) >= 0 || String(p.owner).toLowerCase() === q || (q.length >= 6 && String(p.owner).toLowerCase().indexOf(q) >= 0); });
       if (num) st.list.sort(function (a, b) { return (String(b.id) === q) - (String(a.id) === q); });
-      st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
-      $('cemMsg').textContent = (q || st.mine) ? (st.list.length ? fmt(st.list.length) + ' grave' + (st.list.length === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
-      if (!st.list.length) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
+      var found = st.list.length; st.list = fold(st.list); st.n = STEP; tombs.innerHTML = ''; paint(0, st.n);
+      $('cemMsg').textContent = (q || st.mine) ? (found ? fmt(found) + ' grave' + (found === 1 ? '' : 's') + ' found' : 'No grave found' + (q ? ' for "' + st.q.trim() + '"' : '') + '.') : '';
+      if (!found) tombs.innerHTML = '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address.</p>'; }
     more.onclick = function () { var a = st.n; st.n += STEP; paint(a, st.n); };
     var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
     inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
@@ -413,7 +433,7 @@
     if ($('cemMine')) $('cemMine').onclick = function () { st.mine = !st.mine; this.setAttribute('aria-pressed', st.mine); this.classList.toggle('on', st.mine); this.textContent = st.mine ? 'All graves' : 'My graves'; apply(); };
     var deep = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id');
     if (deep && w.byId[deep] && w.byId[deep].dead) { inp.value = '#' + deep; st.q = deep; apply(); var e = $('tomb-' + deep); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } }
-    else paint(0, st.n);
+    else { st.list = fold(dead); paint(0, st.n); }
   }
   function pet() {
     $('page').style.display = 'block';
@@ -426,12 +446,15 @@
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
       var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"' + ptA(p) + '><span class="sk">TOTAL</span><b>' + T + '</b></div>';
-      $('chips').innerHTML = [TL[p.tier], spLabel(p.species), p.stageName].concat(p.dead ? [] : [(V.streakOf ? (function (st) { return st.state === 'wagmi' ? '🚀 owner WAGMI ' + st.current + '-day streak' : st.state === 'ngmi' ? '💀 owner NGMI (best ' + st.best + ')' : '🚀 owner: no WAGMI yet'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip))]).concat(['🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)]).map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.burnedTo ? '<span class="chip" title="Its token went to a burn address in block ' + p.burnedTo.block + '. Nobody can use it.">🔥 sent to a burn address (out of play)</span>' : '') + (R.genChip ? R.genChip(w, p) : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
-      /* Rug Me (branch rug-me): a small 'On Rug Me' marker when the pet has an open ad; owner-only 'Post on Rug Me' link to the game page (one wallet confirm there; nothing is signed here) */ if (V.onRug && V.rugOn && V.rugOn((w.tip || 0) + 1) && !p.dead && !p.released) { var rmOn = V.onRug(w, p, (w.tip || 0) + 1); $('chips').insertAdjacentHTML('beforeend', (rmOn ? ' <span class="rm-mark" title="This pet has an open Rug Me ad">💘 On Rug Me</span>' : '') + (!rmOn && ME && p.owner === ME && p.stage >= 3 && !(window.V2View && V2View.viewOnly()) ? ' <a class="btn ghost rm-postlink" href="play.html#rugpost-' + p.id + '" title="Owner only: opens the Rug Me post form on the game page">📌 Post on Rug Me</a>' : '')); }
+      $('chips').innerHTML = [(p && p.resurrected ? 'God' : TL[p.tier]), spLabel(p.species), (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)].concat(p.dead ? [] : [(V.streakOf ? (function (st) { return st.state === 'wagmi' ? '🚀 owner WAGMI ' + st.current + '-day streak' : st.state === 'ngmi' ? '💀 owner NGMI (best ' + st.best + ')' : '🚀 owner: no WAGMI yet'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip))]).concat(['🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)]).map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.burnedTo ? '<span class="chip" title="Its token went to a burn address in block ' + p.burnedTo.block + '. Nobody can use it.">🔥 sent to a burn address (out of play)</span>' : '') + (R.genChip ? R.genChip(w, p) : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '');
+      /* God-born (display only, owner Oct 31 2026 7:07 AM CT): halo badge for a baby of two Gods */ if (R.godBornChip) $('chips').insertAdjacentHTML('afterbegin', R.godBornChip(w, p)); /* MYTHIC GOD LOOP chips (display only) */ if (window.V2MythicGod) $('chips').insertAdjacentHTML('afterbegin', V2MythicGod.chips(p, w));
+      /* nezu-card-fix (2026-10-30): a risen zombie gets its zombie chips (risen x times, hunger), as on My Pets; display only */ if (p.zombie && !p.zombie.end && window.V2Zombies) { var zH = V2Zombies.hunger(p, w); $('chips').insertAdjacentHTML('afterbegin', '<span class="chip zb-risen" title="Raised at the seance altar at block ' + fmt(p.zombie.raisedAt) + (zH ? ': ' + zH.times + ' times its death stats' : '') + '">🧟 Zombie' + (zH ? ' · ' + (zH.milestone ? esc(zH.milestone) + ' ' : '') + Number(zH.times).toFixed(2) + '×' : '') + '</span>' + V2Zombies.hungerChip(p, w)); }
+      /* Rug Me (branch rug-me): a small 'On Rug Me' marker when the pet has an open ad; owner-only 'Post on Rug Me' link to the game page (one wallet confirm there; nothing is signed here) */ if (V.onRug && V.rugOn && V.rugOn((w.tip || 0) + 1) && !(V.retireOn && V.retireOn((w.tip || 0) + 1)) && !p.dead && !p.released && !(p.zombie && !p.zombie.end)) { /* nezu-card-fix: no Rug Me post link for a risen zombie (zombies cannot breed) */ var rmOn = V.onRug(w, p, (w.tip || 0) + 1); $('chips').insertAdjacentHTML('beforeend', (rmOn ? ' <span class="rm-mark" title="This pet has an open Rug Me ad">💘 On Rug Me</span>' : '') + (!rmOn && ME && p.owner === ME && p.stage >= 3 && !(window.V2View && V2View.viewOnly()) ? ' <a class="btn ghost rm-postlink" href="play.html#rugpost-' + p.id + '" title="Owner only: opens the Rug Me post form on the game page">📌 Post on Rug Me</a>' : '')); }
       if (window.V2Rivals) { var rvEl = $('rivals'); if (!rvEl) { rvEl = document.createElement('div'); rvEl.id = 'rivals'; $('chips').parentNode.insertBefore(rvEl, $('chips').nextSibling); } rvEl.innerHTML = V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }); } /* rivals strip (battle-arena DRAFT, off-chain) */
-      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote">🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
+      $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote"><canvas class="gstone big" id="graveStone" width="60" height="74" role="img" aria-label="the gravestone of #' + p.id + '"></canvas>🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + (p.burnedTo ? ' <b>🔥 sent to a burn address in block ' + fmt(p.burnedTo.block) + ' (out of play)</b>' : '') + ' · hatched in block ' + fmt(p.hatchBlock) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic shortcut)' : '') + (p.parents ? ' · child of #' + p.parents.join(' × #') : '') +
         (p.owner === ME && !p.dead ? petActs(w, p) : '');
+      if (p.dead && $('graveStone')) withStone(function () { var gs = $('graveStone'), A = w.cem && w.cem.altars && w.cem.altars[p.id]; if (gs) V2Gravestone.draw(gs, { art: p.art, stage: p.stage, tier: Math.max(0, Math.min(3, p.tier | 0)), state: p.graveState || (p.resurrected ? 'halo' : null), crumbles: p.zCrumbles || 0, open: !!(A && A.status === 'open'), mythic: !!p.mgDead }); });
       var g = $('gear');
       if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s stash.</p>';
       else /* pet-card-page: gear is read-only on the pet page for everyone (equip / change it in the Rare Room on play.html) */ g.innerHTML = '<div class="chips">' + V.V2_SLOTS.map(function (sl) { var x = V.wornOf(w, p.id).filter(function (q) { return q.slot === sl; })[0]; return '<span class="chip">' + V.slotLabel(sl) + ': ' + (x ? esc(x.label) : p.openSlots.indexOf(sl) < 0 ? 'locked' : 'empty') + '</span>'; }).join('') + '</div><p class="small muted">' + (p.owner === ME ? 'Change this pet\'s gear in the <a href="rare-room.html#rare-room-' + p.id + '">Rare Room</a>.' : 'Only the owner can change this pet\'s gear.') + '</p>';
@@ -482,7 +505,7 @@
     $('hybStatus').textContent = list.length ? fmt(list.length) + ' hybrid mix' + (list.length === 1 ? '' : 'es') + ' so far' + (three ? ' (' + fmt(three) + ' three-way)' : '') + ', replayed from ' + fmt(M.state().rows.length) + ' XCPETS burns.' : 'No hybrids yet. Breed two different species to make the first one.';
     function draw() {
       grid.innerHTML = list.map(function (e, i) { var roots = e.roots || [e.a, e.b], k = n[e.key] || 0;
-        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc(e.name) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
+        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc((V.hybridLabel || V.hybridName)(e.key)) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
           '<p class="muted small">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (k ? ' · ' + fmt(k) + ' pet' + (k === 1 ? '' : 's') : '') + '</p><div class="hybbodies">' +
           (e.builds || [e.plan]).map(function (pl, j) { return '<figure><canvas width="32" height="32" data-i="' + i + '" data-j="' + j + '" role="img" aria-label="' + esc(e.name + ', ' + spLabel(pl.shape) + ' body, ' + V.STAGE_NAMES[stage]) + '"></canvas><figcaption class="small muted">' + esc(spLabel(pl.shape)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
       Array.prototype.forEach.call(grid.querySelectorAll('canvas[data-i]'), function (c) { var e = list[+c.getAttribute('data-i')], pl = (e.builds || [e.plan])[+c.getAttribute('data-j')], art = G.characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
@@ -506,7 +529,7 @@
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   /* species-ranks (owner Oct 24 2026, display only): Hall of Fame, the best pets within each species.
-   * Order inside a species: tier first (Mythic > Legendary > Rare > Uncommon > Common; Mythic = a pet at the Mythic stage, whatever its hatch tier),
+   * Order inside a species (owner Oct 28 2026): ⚡ Power first (stat total, no gear), then tier (Mythic > Legendary > Rare > Uncommon > Common; Mythic = a pet at the Mythic stage, whatever its hatch tier),
    * then gear (worn pieces, then the tier sum of those pieces), then battle wins, then the lowest pet number. Living, non-community pets only.
    * Gear = replayed items with .on === pet id (the same list api/pets.json shows). Hybrids get their own tab. Nothing is written or burned. */
   var HOF_TIER = ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythic'];
@@ -515,8 +538,10 @@
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g || g.on == null) return; var o = worn[g.on] || (worn[g.on] = { n: 0, t: 0 }); o.n++; o.t += g.legendary ? 3 : (g.tier | 0); });
     var groups = {};
     (w.pets || []).forEach(function (p) { if (p.dead || p.released || p.community) return; var k = V.isHybrid(p.species) ? 'hybrid' : p.species, g = worn[p.id] || { n: 0, t: 0 };
-      (groups[k] = groups[k] || []).push({ p: p, t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
-    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return b.t - a.t || b.g - a.g || b.gt - a.gt || b.w - a.w || a.p.id - b.p.id; }); });
+      (groups[k] = groups[k] || []).push({ p: p, pw: V.petPower(p), t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
+    /* hof-power-first (owner Oct 28 2026, display only): ⚡ Power first (V2Rules.petPower, the stat total shown on pet cards; gear is NOT in it,
+     * gear adds per hit in fights), then the old order: tier, gear worn, gear quality, battle wins, lowest pet number. */
+    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return b.pw - a.pw || b.t - a.t || b.g - a.g || b.gt - a.gt || b.w - a.w || a.p.id - b.p.id; }); });
     return groups; }
   function hallOfFame(O) { O = O || {};
     var w = M.world(), groups = hofRank(w), order = (PetCore.SPECIES || []).map(function (s) { return s.id; }).filter(function (id) { return groups[id]; });
@@ -533,19 +558,20 @@
       var body = show.map(function (r, i) { var p = r.p, me = !!ME && p.owner === ME, col = TCOL[r.t];
         return '<tr id="hf' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td>' +
           '<td><a href="pet.html?id=' + p.id + '" aria-label="' + esc(p.name) + ' #' + p.id + ' pet card"><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas></a></td>' +
-          '<td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + (st.sp === 'hybrid' ? ' · ' + esc(spLabel(p.species)) : '') + ' · ' + p.stageName + '</span><div class="small muted">owner <span title="' + esc(p.owner || '') + '">' + esc(short(p.owner)) + '</span>' + (me ? ' (you)' : '') + '</div></td>' +
-          '<td class="num"><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
+          '<td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + (st.sp === 'hybrid' ? ' · ' + esc(spLabel(p.species)) : '') + ' · ' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</span><div class="small muted">owner <span title="' + esc(p.owner || '') + '">' + esc(short(p.owner)) + '</span>' + (me ? ' (you)' : '') + '</div></td>' +
+          '<td class="num"><b class="hof-pw"' + ptA(p) + '>⚡ ' + fmt(r.pw) + ' power</b><div><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b></div><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
       $('board').innerHTML = (O.top || '') + tabs + '<h2 class="sec hof-h" data-ico="trophy">' + esc(lbl(st.sp)) + ' Hall of Fame</h2>' + (rows.length ? '<div class="tw"><table class="board">' + body + '</table></div>' : '<p class="muted small">No living pets here yet.</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
       $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
       $('board').querySelectorAll('[data-sp]').forEach(function (x) { x.onclick = function () { st.sp = x.dataset.sp; st.n = STEP; render(); }; }); if (O.wire) O.wire();
-      $('status').textContent = fmt(rows.length) + ' living ' + lbl(st.sp).replace('🧬 ', '') + ' pets · ' + fmt(order.length) + ' species boards · from ' + fmt(M.state().rows.length) + ' XCPETS burns.';
+      /* status line (owner Oct 28 2026: plain words, no burn or species-tab counts) */
+      $('status').textContent = fmt(rows.length) + ' living ' + (st.sp === 'hybrid' ? 'hybrid' : lbl(st.sp)) + ' pet' + (rows.length === 1 ? '' : 's') + ' on this board.';
     }
     $('boardAll').onclick = function () { st.n += STEP; render(); };
     window.V2HallOfFame = { rank: hofRank };
     render();
   }
-  var go = { front: front, ranking: ranking, halloffame: hallOfFame, cemetery: cemetery, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
+  var go = { front: front, ranking: ranking, halloffame: hallOfFame, cemetery: cemetery, pantheon: function () { if (window.V2Pantheon) V2Pantheon.page({ w: M.world(), M: M, R: R, V: V, ME: ME, fmt: fmt, shortAddr: shortAddr }); }, pet: pet, inscriptions: inscriptions, archive: archive, hybrids: hybrids }[page]; if (go) go();
   /* smooth-perf (2026-10-19): in-page anchors (e.g. hybrids.html "Back to the cast" -> index.html#cast) land under the sticky nav, not behind it:
    * --navh = measured nav height feeds scroll-margin-top (css/style.css). The browser jumps to the anchor before the chain data fills the page, so
    * once it is drawn, the anchor is re-aligned instantly, unless the visitor already scrolled, tapped or used the keyboard. */
