@@ -53,7 +53,7 @@ ok(/LAST_NOW = 5 \* 60e3/.test(src) && /last\.build === BUILD && age >= 0 && age
 const pages = fs.readdirSync(ROOT).filter(f => /\.html$/.test(f)).concat(['templates/game.html']);
 pages.forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8');
   ok((h.match(/<!--nav-cache-1102--><script>/g) || []).length === 1 && h.indexOf('<!--nav-cache-1102-->') < h.indexOf('<script', h.indexOf('<!--nav-cache-1102-->') + 30) + 1, f + ': prerender guard first in <head>');
-  ok(/<script type="speculationrules">\{"prerender":\[\{"where":\{"and":\[\{"href_matches":"\/\*"\}[\s\S]*?a\[href\*='fresh='\], a\[href\*='addr='\][\s\S]*?"eagerness":"moderate"/.test(h), f + ': same-site .html links only, moderate, no fresh=/addr= links');
+  ok(/<script type="speculationrules">\{"prerender":\[\{"where":\{"and":\[\{"href_matches":"\/\*"\}[\s\S]*?a\[href\*='fresh='\], a\[href\*='addr='\][\s\S]*?a\[href\*='practice'\][\s\S]*?"eagerness":"moderate"/.test(h), f + ': same-site .html links only, moderate, no fresh=/addr= links');
   if (/__xcpPre/.test(h)) ok(/try\{if\(document\.prerendering\|\|/.test(h), f + ': head chain reads skipped while prerendered');
   ok(h.indexOf('<!--nav-cache-1102-->') < h.indexOf('<script src='), f + ': guard runs before any page script'); });
 const ch2 = fs.readFileSync(path.join(ROOT, 'rjs/chain.js'), 'utf8');
