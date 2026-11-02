@@ -19,7 +19,7 @@
  * Each confirmed event plays ONCE per browser (localStorage 'xcpets-life-seen-<address>', keyed by tx, or pet + stage / pet + death block); several new
  * events of one kind play as ONE scene. First visit: only the last FIRST_WINDOW blocks play. Stage-ups are found by comparing each live pet's stage
  * with the stage this browser saw last time ('xcpets-life-st-<address>').
- * Preview any time (never marks anything seen): ?anim=hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|gear|sold|bought|listed|closed|gift-in|gift-out|swap|hunt-won|hunt-lost|altar|arrival|grant[&pet=ID][&seance=1][&src=flag][&egg=0] */
+ * Preview any time (never marks anything seen): ?anim=hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|birth-cross|birth-alike|gear|sold|bought|listed|closed|gift-in|gift-out|swap|hunt-won|hunt-lost|altar|arrival|grant[&pet=ID][&seance=1][&src=flag][&egg=0] */
 (function () {
   'use strict';
   var W = 128, H = 80, FPS = 10, GY = 64, CX = 64, FIRST_WINDOW = 432, FIRST_FEED = 36;
@@ -134,8 +134,17 @@
   var BT = { seraph: { t: 'SERAPH!', sub: 'HYBRID OF TWO GODS', c: '#ffffff', c2: C.cyan, sky: 'sky' }, dynast: { t: 'DYNAST!', sub: 'ANCESTOR CHANNEL', c: C.violet, c2: C.cyan, sky: 'night' },
     chimera: { t: 'CHIMERA!', sub: 'SIX BLOODLINES', c: '#ff6b6b', c2: '#6bff9a', sky: 'night' }, gravekin: { t: 'GRAVEKIN!', sub: 'BORN OF THE GRAVE', c: '#7dff9a', c2: '#cfd6ff', sky: 'night' },
     heirloom: { t: 'HEIRLOOM!', sub: 'TWO PURE LINES', c: '#7dff6a', c2: '#ffb3c6', sky: 'sky' }, gemini: { t: 'GEMINI!', sub: 'TWIN STARS', c: C.pink, c2: C.cyan, sky: 'night' },
-    godborn: { t: 'GOD-BORN!', sub: 'CHILD OF TWO GODS', c: '#ffffff', c2: '#cfe9ff', sky: 'sky' }, twins: { t: 'TWINS!', sub: 'TWO EGGS, ONE BURN', c: C.pink, c2: '#ffffff', sky: 'sky' } };
-  var BIRTH_ORDER = ['seraph', 'dynast', 'chimera', 'gravekin', 'heirloom', 'gemini', 'godborn', 'twins'];
+    godborn: { t: 'GOD-BORN!', sub: 'CHILD OF TWO GODS', c: '#ffffff', c2: '#cfe9ff', sky: 'sky' },
+    cross: { t: '1 OF 1!', sub: 'A CROSS ALL ITS OWN', c: '#b98cff', c2: '#7dff6a', sky: 'night' }, alike: { t: 'ALIKE!', sub: 'TWO OF THE SAME', c: '#7fe3ff', c2: '#ffb3c6', sky: 'sky' }, twins: { t: 'TWINS!', sub: 'TWO EGGS, ONE BURN', c: C.pink, c2: '#ffffff', sky: 'sky' } };
+  var BIRTH_ORDER = ['seraph', 'dynast', 'chimera', 'gravekin', 'heirloom', 'gemini', 'godborn', 'cross', 'alike', 'twins'];
+  /* batch 8 (branch allpets-crosses-1101, owner Nov 1 2026 7:36 PM CT, PREVIEW; both events need a rules gate that is null on main, so nothing plays live):
+   *   birth-cross  a baby of a 1 of 1 with its own cross body (Bo or pigeon in the partner's colours, or a Viking / Kekamozard / Don mix): the two
+   *                parents' colours braid into the egg, it hatches, the new body is named ("PEPE BO")
+   *   birth-alike  look-alike twins: the two eggs hatch together, a scan line sweeps both, an equals sign blinks, "ALL BUT ITS EYES" names the one difference */
+  var DEMO = {}; /* ?anim= preview only: stand-in pets built with the real rule functions when the world has none yet */
+  function twoKids(t) { return t === 'twins' || t === 'gemini' || t === 'alike'; }
+  function crossName(p) { var R = window.V2Rules; return p && p.art && p.art.cross && R && R.crossLabel ? R.crossLabel(p.art.cross) : ''; }
+  function alikeSub(p, q) { var a = (p && p.twinAlike) || (q && q.twinAlike); return a ? 'ALL BUT ITS ' + String(a.trait).toUpperCase() : BT.alike.sub; }
   function flipSpr(g, spr, x, y) { g.save(); g.translate(Math.round(x) + 32, Math.round(y)); g.scale(-1, 1); g.drawImage(spr, 0, 0); g.restore(); }
   function wing(g, cx, cy, side, f, c, c2) { var up = (f >> 1) % 2; for (var i = 0; i < 6; i++) { var len = 11 - i * 1.5, y = cy - 6 + i * 3 - (up ? 2 - i * 0.4 : 0); px(g, side > 0 ? cx : cx - len, y, C.ol, len + 1, 3); px(g, side > 0 ? cx : cx - len + 1, y + 1, i % 2 ? c2 : c, len - 1, 1); } }
   function halo(g, cx, y, c) { ring(g, cx, y, 8, C.ol, 3); ring(g, cx, y, 7, c, 2); ring(g, cx, y - 1, 7, '#ffffff', 2); }
@@ -151,6 +160,8 @@
     par.slice(0, 2).forEach(function (q, i) { var sx = i ? W - 34 : 2, a = sprite(q), on = ev.tier !== 'dynast' || up < 0 || ((f >> 2) % 2) === i; if (f < 4) return;
       if (f < 10) silhouette(g, a, sx, 2, T.c, 3); else if (on) drawSpr(g, a, sx, 2); else silhouette(g, a, sx, 2, T.c, 2);
       if (f >= 6 && (up < 0 || ev.tier === 'dynast') && on) beam(g, sx + 16, 26, CX, up < 0 ? GY - 8 : GY - 20, f, i ? T.c2 : T.c); });
+    if (ev.tier === 'cross' && f >= 8 && up < 0) { var pc = par.map(function (q) { var a = sprite(q).rgba, cnt = {}, best = null; if (a) for (var j = 0; j < 1024; j++) if (a[j * 4 + 3]) { var k = a[j * 4] + ',' + a[j * 4 + 1] + ',' + a[j * 4 + 2]; if (a[j * 4] + a[j * 4 + 1] + a[j * 4 + 2] > 160) { cnt[k] = (cnt[k] || 0) + 1; if (!best || cnt[k] > cnt[best]) best = k; } } return best ? 'rgb(' + best + ')' : T.c; });
+      for (var hb = 0; hb < 30; hb++) { var yb = 30 + hb, ph = hb * 0.45 - f * 0.5, wv = Math.round(Math.sin(ph) * 7); px(g, CX + wv, yb, hb % 4 === 0 ? '#ffffff' : (pc[0] || T.c), 2, 1); px(g, CX - wv, yb, hb % 4 === 2 ? '#ffffff' : (pc[1] || T.c2), 2, 1); } } /* the two parents' colours braid down into the egg */
     if (up < 0) { xs.forEach(function (x, i) { nest(g, x); var t = tierOf(kids[i]), tilt = f >= 6 ? ((f >> 1) % 2 ? 1 : -1) * (f > 12 ? 2 : 1) : 0; egg(g, x, GY - 1, t, clamp(Math.floor((f - 10) / 2), 0, 4), tilt);
         if (f >= 16) { silhouette(g, sprite(kids[i]), x - 16, GY - 33, T.c, 2); px(g, x - 7, GY - 16, '#ffffff', 14, 14); } }); return birthText(g, ev, f, T, false); }
     if (up < 3) { for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) if (((xx + yy) % (up + 2)) === 0) px(g, xx, yy, '#ffffff'); }
@@ -160,10 +171,12 @@
       if (ev.tier === 'gemini' && i === 1) flipSpr(g, s, x - 16, y); else drawSpr(g, s, x - 16, y);
       if (ev.tier === 'seraph' || ev.tier === 'godborn') halo(g, x, y + topY(s) - 4 - (ev.tier === 'godborn' ? clamp(10 - up, 0, 10) : 0), ev.tier === 'godborn' ? '#fff3b0' : T.c2);
       if (ev.tier === 'chimera') [['#ff6b6b', 0], ['#6bff9a', 2.09], ['#6b9bff', 4.19]].forEach(function (o) { var a = o[1] + f * 0.35, r = clamp(26 - up, 15, 26); for (var tr = 0; tr < 4; tr++) px(g, x + Math.cos(a - tr * 0.18) * r, y + 18 + Math.sin(a - tr * 0.18) * r * 0.55, tr ? o[0] : '#ffffff', tr ? 1 : 3, tr ? 1 : 3); }); });
+    if (ev.tier === 'alike' && up >= 4) { var sx2 = CX - 34 + ((up - 4) * 4) % 76; if (up < 23) for (var sy = GY - 34; sy < GY; sy += 2) px(g, sx2, sy, '#ffffff', 1, 1); if ((f >> 2) % 2) { px(g, CX - 3, GY - 20, T.c, 7, 2); px(g, CX - 3, GY - 16, T.c, 7, 2); } } /* scan both twins, blink = */
+    if (ev.tier === 'cross' && up >= 6) { for (var cr = 0; cr < 8; cr++) { var ca = cr / 8 * Math.PI * 2 + f * 0.2; px(g, CX + Math.cos(ca) * 22, GY - 18 + Math.sin(ca) * 10, cr % 2 ? T.c : T.c2, 2, 2); } } /* a ring of sparks round the new body */
     if (ev.tier === 'gemini') { var gc = (f >> 1) % 2 ? T.c : T.c2; px(g, CX - 4, 22, gc, 9, 1); px(g, CX - 4, 32, gc, 9, 1); px(g, CX - 2, 23, gc, 1, 9); px(g, CX + 2, 23, gc, 1, 9); }
     if (up >= 4) sparkle(g, f, 17, CX, GY - 20, two ? 90 : 60, T.c, T.c2); birthText(g, ev, f, T, true); }
   function birthText(g, ev, f, T, born) { if (!born) { if (f >= 6) text(g, 'SOMETHING STIRS...', CX, GY + 6, T.c2, 5); return; } var up = f - 20; if (up < 6) return;
-    text(g, T.t, CX, 4, (f >> 1) % 2 ? T.c : '#ffffff', 8); text(g, T.sub, CX, GY + 6, T.c2, 5); if (ev.n > 1) text(g, '+' + (ev.n - 1) + ' MORE', CX, 15, '#ffffff', 5); }
+    text(g, T.t, CX, 4, (f >> 1) % 2 ? T.c : '#ffffff', 8); text(g, ev.sub || T.sub, CX, GY + 6, T.c2, 5); if (ev.n > 1) text(g, '+' + (ev.n - 1) + ' MORE', CX, 15, '#ffffff', 5); }
   function godF(g, ev, f, P) { var p = P.list[0], s = sprite(p, 5), dawn = clamp((f - 8) / 20, 0, 1), rise = clamp((f - 16) / 14, 0, 1), y = GY - 32 - Math.round(rise * 10), x = CX - 16;
     var bands = C.night.map(function (c, i) { return dawn < 0.5 ? c : ['#3a2a6e', '#5a3c8a', '#8a5aa0', '#c08ab0', '#e8b8c0'][i]; }); skyBands(g, bands, f, dawn < 0.5 ? 26 : 8);
     if (f >= 18) rays(g, CX, y + 14, f, ['#ffffff', C.cyan, '#cfe9ff'], 14); if (f >= 10) { var bw = clamp(f - 10, 0, 7); for (var by = 0; by < GY; by++) for (var bx = -bw; bx <= bw; bx++) if (((bx + by + (f >> 1)) & 1) === 0 || Math.abs(bx) < bw / 3) px(g, CX + bx, by, Math.abs(bx) < bw / 3 ? '#ffffff' : '#cfe9ff'); }
@@ -300,7 +313,7 @@
     if (open >= 8) { banner(g, 'GRANT!', 3, '#2f7a3a', '#ffffff', 60); if (ev.label) text(g, String(ev.label).toUpperCase().slice(0, 24), CX, 16, C.gold2, 5); }
     if (open >= 14) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.rolls ? '+' + ev.rolls + ' FREE ROLLS' : (ev.n || m) + ' PIECE' + ((ev.n || m) === 1 ? '' : 'S') + ' IN YOUR BAG', CX, GY + 6, '#ffffff', 5); } }
   var PAINT = { arrival: arrivalF, grant: grantF, 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
-  function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
+  function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || DEMO[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
   function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function more(n, shown) { return n > shown ? ' and ' + (n - shown).toLocaleString('en-US') + ' more' : ''; }
@@ -311,6 +324,8 @@
       case 'stage': return '✨ ' + n + ' grew to ' + (STAGES[ev.to] || '').charAt(0) + (STAGES[ev.to] || '').slice(1).toLowerCase() + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets grew a stage' : '');
       case 'mythic': return '🌈 ' + n + ' reached MYTHIC: it never starves now' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets reached Mythic' : '');
       case 'birth': { var T = BT[ev.tier] || BT.twins, lab = T.t.replace('!', '').toLowerCase(); lab = lab.charAt(0).toUpperCase() + lab.slice(1);
+        if (ev.tier === 'cross') return '\u2728 ' + n + ' was born a 1 of 1 cross: ' + (crossName(P.list[0]) || 'a body all its own') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : '') + b;
+        if (ev.tier === 'alike') return '\uD83D\uDC6F Look-alike twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' hatched from one breed burn, ' + (ev.sub || '').toLowerCase() + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : '') + b;
         return (ev.tier === 'twins' ? '👯 Twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' hatched from one breed burn' : ev.tier === 'godborn' ? '😇 ' + n + ' is God-born: a child of two Gods' : ev.tier === 'gemini' ? '♊ Gemini twins! ' + n + ' and ' + nm(P.list[1], ev.ids[1]) + ' (rare hybrid tier)' : '🌟 ' + n + ' was born ' + (/^[AEIOUH]/.test(lab) ? 'an ' : 'a ') + lab + ' (rare hybrid tier: ' + T.sub.toLowerCase() + ')') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more special births' : ''); }
       case 'arrival': return '🎉 ' + n + ' arrived: ' + (ev.title ? ev.title + ', ' : '') + (ev.ed ? ev.ed.replace('!', '').toLowerCase() : '1 of 1') + (ev.ng ? ' + ' + ev.ng + ' gear piece' + (ev.ng === 1 ? '' : 's') : '') + (ev.egg ? '. Feed it to hatch' : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more prize eggs' : '') + b;
       case 'grant': return '📦 Grant: ' + (ev.label || 'gear') + ' (' + ev.n + ' piece' + (ev.n === 1 ? '' : 's') + (ev.rolls ? ' + ' + ev.rolls + ' free rolls' : ev.free ? ' + free rolls' : '') + ') is in your bag' + b;
@@ -351,11 +366,13 @@
   /* ---- hatch: called by js/v2.js nextReveal before the #packBox review opens. ids = the eggs of one hatch burn. Reduced motion: nothing, done() at once. */
   function rank(w, ids) { var by = (w && w.byId) || {}; return ids.slice().sort(function (a, b) { var A = by[a], B = by[b]; return tierOf(B) - tierOf(A) || a - b; }); }
   function specialOf(w, p) { if (!p || !p.art) return null; var R = window.V2Rules; if (p.art.rareTier && BT[p.art.rareTier]) return p.art.rareTier;
-    try { if (R && R.godBornOf && R.godBornOf(w, p)) return 'godborn'; } catch (e) { } return p.twinOf && w.byId[p.twinOf] ? 'twins' : null; }
+    try { if (R && R.godBornOf && R.godBornOf(w, p)) return 'godborn'; } catch (e) { } if (p.art.cross) return 'cross';
+    return p.twinOf && w.byId[p.twinOf] ? (p.twinAlike || w.byId[p.twinOf].twinAlike ? 'alike' : 'twins') : null; }
   /* the special births among the hatched eggs -> one 'birth' event for the most special (twins / Gemini show both twins) */
   function birthOf(w, ids) { var sp = [], seen = {}; ids.slice(0, 3000).forEach(function (id) { var p = w.byId[id], t = specialOf(w, p); if (!t || seen[id]) return; seen[id] = 1; if (p.twinOf) seen[p.twinOf] = 1; sp.push({ p: p, t: t }); });
     if (!sp.length) return null; sp.sort(function (a, b) { return BIRTH_ORDER.indexOf(a.t) - BIRTH_ORDER.indexOf(b.t) || tierOf(b.p) - tierOf(a.p) || a.p.id - b.p.id; }); var top = sp[0];
-    return { kind: 'birth', tier: top.t, ids: (top.t === 'twins' || top.t === 'gemini') && top.p.twinOf ? [Math.min(top.p.id, top.p.twinOf), Math.max(top.p.id, top.p.twinOf)] : [top.p.id], n: sp.length }; }
+    var ev = { kind: 'birth', tier: top.t, ids: twoKids(top.t) && top.p.twinOf ? [Math.min(top.p.id, top.p.twinOf), Math.max(top.p.id, top.p.twinOf)] : [top.p.id], n: sp.length };
+    if (top.t === 'cross') ev.sub = (crossName(top.p) + ' CROSS').toUpperCase(); if (top.t === 'alike') ev.sub = alikeSub(top.p, w.byId[top.p.twinOf]); return ev; }
   function hatch(w, ids, done) { done = done || function () { }; if (!ids || !ids.length || reduced() || BUSY) { done(); return; }
     var n = ids.length, best = ids.length > 400 ? rank(w, ids.slice(0, 0).concat(ids.filter(function (id) { var p = w.byId[id]; return p && tierOf(p) >= 2; }).slice(0, 400))) : rank(w, ids); if (!best.length) best = ids.slice(0, 5);
     var bev = null; try { bev = birthOf(w, ids); } catch (e) { bev = null; }
@@ -430,6 +447,18 @@
     if (seen._m !== tip) { seen._m = tip; dirty = true; Object.keys(seen).forEach(function (x) { if (x !== '_m' && x.charAt(0) !== 'g' && seen[x] < tip - FIRST_WINDOW - 144) delete seen[x]; }); } /* older keys can never come back (see the block filters above) */
     if (dirty) try { localStorage.setItem(k, JSON.stringify(seen)); localStorage.setItem(markKey(ME), String(tip)); } catch (e) { } return out; }
   function markKey(ME) { return 'xcpets-life-mark-' + ME; } /* js/v2.js reads this mark to decide, without this file, whether anything is newer (see lifeNeeded there) */
+  /* demoBirth: a real cross / look-alike pair when the world has one, else (gates null) stand-ins made by V2Rules.crossOf / twinAlike on copies of live pets.
+   * ?anim=birth-cross[&body=rp][&pet=PARTNER]  ?anim=birth-alike[&pet=ID]. Preview only: the copies live in DEMO, never in the world. */
+  function demoBirth(w, t, ids, alive, by) { var R = window.V2Rules, q = {}; try { new URLSearchParams(location.search).forEach(function (v, k) { q[k] = v; }); } catch (e) { }
+    var real = alive.filter(function (p) { return specialOf(w, p) === t; })[0]; if (real && !ids.length) { var e0 = birthOf(w, [real.id]); if (e0) return e0; }
+    if (!R) return null; var cp = function (o) { return JSON.parse(JSON.stringify(o)); };
+    if (t === 'cross') { var body = q.body === 'rp' ? 'rarepigeon' : 'bojackson', O = alive.filter(function (p) { return p.species === body; })[0] || { id: -9, species: body, art: { species: body, tierIndex: 3, bgColor: '#14101e' } };
+      var Q = (ids.length && by[ids[0]]) || alive.filter(function (p) { return p.species === 'pepe' && stageOf(p) >= 3; })[0] || alive.filter(function (p) { return p.species !== body; })[0]; if (!Q) return null;
+      var x = R.crossOf ? R.crossOf(O, Q) : null; if (!x || !x.body) return null; var k = { id: -1, name: 'Baby', parents: [O.id, Q.id], stage: 1, tier: 3, species: Q.species, art: Object.assign(cp(Q.art), { cross: x, tierIndex: 3 }) };
+      DEMO[-1] = k; if (O.id === -9) DEMO[-9] = O; return { kind: 'birth', tier: 'cross', ids: [-1], n: 1, sub: (R.crossLabel(x) + ' CROSS').toUpperCase() }; }
+    var A = (ids.length && by[ids[0]]) || alive.filter(function (p) { return stageOf(p) >= 3 && p.parents && p.parents.length === 2; }).sort(function (a, b) { return tierOf(b) - tierOf(a) || b.id - a.id; })[0]; if (!A || !R.twinAlike) return null;
+    var B = alive.filter(function (p) { return p.id !== A.id && p.species === A.species; })[0] || alive.filter(function (p) { return p.id !== A.id; })[0], a = Object.assign(cp(A), { id: -2, twinOf: -3, stage: 1 }), tw = Object.assign(cp(B), { id: -3, twinOf: -2, stage: 1, parents: A.parents });
+    R.twinAlike(a, tw, String(A.id) + 'demo'); DEMO[-2] = a; DEMO[-3] = tw; return { kind: 'birth', tier: 'alike', ids: [-2, -3], n: 1, sub: alikeSub(a, tw) }; }
   function previewKind() { try { var q = new URLSearchParams(location.search).get('anim'); return q && (PAINT[q] || q === 'feed-many' || (q.indexOf('birth-') === 0 && BT[q.slice(6)])) ? q : null; } catch (e) { return null; } }
   function previewEvent(w, ME) { var kind = previewKind(); if (!kind) return null; var q = new URLSearchParams(location.search), by = (w && w.byId) || {}, id = +q.get('pet') || 0, all = (w && w.pets) || [];
     var mineL = all.filter(function (p) { return (!ME || p.owner === ME) && !p.released && !p.community && p.art; }); if (!mineL.length) mineL = all.filter(function (p) { return p.art && !p.community; });
@@ -442,7 +471,8 @@
     if (kind === 'stage') { var sp = ids.length ? by[ids[0]] : by[pick(alive.filter(function (p) { return p.stage >= 2 && p.stage < 5; }), 1)[0]] || by[pick(alive, 1)[0]]; return { kind: 'stage', ids: sp ? [sp.id] : [], to: sp ? Math.max(1, Math.min(4, stageOf(sp))) : 2, n: 1 }; }
     if (kind === 'mythic') return { kind: 'mythic', ids: ids.length ? ids : pick(alive.filter(function (p) { return stageOf(p) >= 5; }).concat(alive), 1), n: 1 };
     if (kind === 'god') { var gp = ids.length ? ids : pick(alive.filter(function (p) { return p.resurrected; }).concat(alive.filter(function (p) { return stageOf(p) >= 5; })).concat(alive), 1); return { kind: 'god', ids: gp.slice(0, 1), n: 1 }; }
-    if (kind.indexOf('birth-') === 0) { var bt = kind.slice(6); if (!BT[bt]) return null; var two = bt === 'twins' || bt === 'gemini', cand = ids.length ? by[ids[0]] : null;
+    if (kind === 'birth-cross' || kind === 'birth-alike') { var dm = demoBirth(w, kind.slice(6), ids, alive, by); if (dm) return dm; }
+    if (kind.indexOf('birth-') === 0) { var bt = kind.slice(6); if (!BT[bt]) return null; var two = twoKids(bt), cand = ids.length ? by[ids[0]] : null;
       if (!cand) { var withPar = alive.filter(function (p) { return p.parents && p.parents.length === 2; }), hit = withPar.filter(function (p) { return specialOf(w, p) === bt; }); cand = hit[0] || withPar.filter(function (p) { return two ? p.twinOf : true; }).sort(function (a, b) { return tierOf(b) - tierOf(a) || b.id - a.id; })[0] || alive[0]; }
       var bi = cand ? [cand.id] : []; if (two && cand) bi.push(cand.twinOf && by[cand.twinOf] ? cand.twinOf : (pick(alive.filter(function (p) { return p.id !== cand.id; }), 1)[0])); return { kind: 'birth', tier: bt, ids: bi, n: 1 }; }
     if (/^(sold|bought|listed|closed|gift-in|gift-out)$/.test(kind)) return { kind: kind, ids: ids.length ? ids : pick(alive, 1), n: 1, amt: kind === 'closed' || /^gift/.test(kind) ? '' : '11 XCP', sale: 7, until: (w && w.tip || 0) + 1008, who: /^gift/.test(kind) ? '1F' : '' };
