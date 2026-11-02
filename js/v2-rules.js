@@ -778,7 +778,7 @@
    * order) gets its own body, species 'borp' ('Bo Pigeon': Rarepigeon's pigeon shape in Bo's #34 kit, drawn by ContestSprite), instead of the random plain
    * species contestParents gives two contest parents. Looks only: same draws, tier (Legendary times Legendary), stats, name and marks as before; no new RNG.
    * A Bo Pigeon breeds like the 1 of 1s (a copy of the partner's species; with another contest pet, a random plain species). Never a 1 of 1. */
-  var ACTIVATE_BORP_BLOCK = 974214;
+  var ACTIVATE_BORP_BLOCK = 974216;
   function borpOn(b) { return ACTIVATE_BORP_BLOCK != null && b != null && b >= ACTIVATE_BORP_BLOCK; }
   function isBorpPair(A, B) { return !!A && !!B && ((A.species === 'bojackson' && B.species === 'rarepigeon') || (A.species === 'rarepigeon' && B.species === 'bojackson')); }
   /* 1 OF 1 CROSSES (owner Nov 1 2026 7:36 PM CT "we should do this for all pets ... All that", branch allpets-crosses-1101, PREVIEW; null = OFF): every baby
@@ -789,7 +789,7 @@
    *  - two hybrid-engine 1 of 1s (Viking, Lord Kekamozard, Don Kekamoto): a fixed hybrid plan (CROSS_PLANS) mixing both signatures, drawn by the hybrid engine.
    *  - one of Viking / Kekamozard / Don times a normal pet already gets a hybrid body from the live engine (Viking line, supreme lineage): unchanged.
    *  - contest pets (Star-Lord Kek, Gooby, Luke Spam Jr, never granted) and Bo Pigeons as partners: not covered (art unchanged). */
-  var ACTIVATE_ONEOFONE_CROSS_BLOCK = 974214;
+  var ACTIVATE_ONEOFONE_CROSS_BLOCK = 974216;
   function crossOn(b) { return ACTIVATE_ONEOFONE_CROSS_BLOCK != null && b != null && b >= ACTIVATE_ONEOFONE_CROSS_BLOCK; }
   var CROSS_TELL_OF = { archmage: 'kekamozard', don: 'don' }, CROSS_COL_OF = { kekamozard: 'wizard', don: 'kek', viking: 'viking' };
   var CROSS_PLANS = {
@@ -4175,7 +4175,7 @@
    * parts (+ legendary mix), 1 of 1 cross body, palette / pattern / eyes, mutation, hidden trait and look fix. It keeps its own name, pet id and its own rare tier
    * roll (no extra rare tiers minted). The small differences come from ONE new stream 'XCPETS:v2:twin-alike:' + breed hash: each stat is the sibling's
    * -1 / 0 / +1, and ONE look detail differs (eyes, pattern or cheeks; never above the twin's tier, never born shades). */
-  var ACTIVATE_TWIN_ALIKE_BLOCK = 974214;
+  var ACTIVATE_TWIN_ALIKE_BLOCK = 974216;
   function twinAlikeOn(b) { return ACTIVATE_TWIN_ALIKE_BLOCK != null && b != null && b >= ACTIVATE_TWIN_ALIKE_BLOCK; }
   function twinAlike(kid, tw, hex) { var R = stream('XCPETS:v2:twin-alike:' + hex), cp = function (o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }, art = cp(kid.art), own = tw.art || {};
     art.defaultName = own.defaultName; ['rareTier', 'rareSide', 'dynast'].forEach(function (k) { if (own[k] != null) art[k] = cp(own[k]); else delete art[k]; }); /* its own rare tier roll */
