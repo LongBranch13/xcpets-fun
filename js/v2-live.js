@@ -179,7 +179,7 @@
     $('lvMore').addEventListener('click', function () { shown += PAGE; draw(); });
     var box = $('lvList'); box.addEventListener('click', function (ev) { if (ev.target.closest('a')) return; var li = ev.target.closest('.lv-row'); if (li) play(EV[+li.getAttribute('data-i')]); });
     box.addEventListener('keydown', function (ev) { if (ev.key !== 'Enter' && ev.key !== ' ') return; var li = ev.target.closest && ev.target.closest('.lv-row'); if (!li || ev.target !== li) return; ev.preventDefault(); play(EV[+li.getAttribute('data-i')]); }); }
-  function start() { if (!M || !R || !V) return; wire(); refresh(); setInterval(paintTimes, 60e3);
+  function start() { if (!M || !R || !V || !$('lvList')) return; wire(); /* watch.html loads this file for V2Live.events only */ refresh(); setInterval(paintTimes, 60e3);
     if (M.onFresh) M.onFresh(refresh);
     setInterval(function () { if (document.hidden) return; try { M.refresh(refresh); } catch (e) {} }, 60e3); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
