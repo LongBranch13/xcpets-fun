@@ -236,8 +236,8 @@ html.viewonly .gp-item { pointer-events: none; cursor: default; }
 .deathnote::after{content:'';display:block;clear:both}
 /* art polish (critique 2026-11-01, item 10): UI only, same 8-bit fonts and buttons */
 /* rules / how-it-works / pet guide: the Press Start 2P page title was 88px (rules = four giant lines at 1280); 8px grid steps */
-h1.sec { font-size: 24px; line-height: 1.25; }
-@media (min-width: 712px) { h1.sec { font-size: 40px; } }
+h1.sec:not(.meme) { font-size: 24px; line-height: 1.25; }
+@media (min-width: 712px) { h1.sec:not(.meme) { font-size: 40px; } }
 /* home: the pet parade starts at the top of the hero (it was centred on the tall copy column, below the fold at 1280) */
 @media (min-width: 821px) { .hero { align-items: start; padding-top: 16px; } .hero-pets { align-self: start; position: sticky; top: 72px; } }
 /* 390 nav row: Places, Play and Simple menu all the same 40px height as the text links */
