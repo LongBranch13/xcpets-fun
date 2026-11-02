@@ -220,7 +220,8 @@
     if (fr && (ok.length >= 300 || fr.length === 1)) return fr; /* big feeds: the runs plan, without the slow pet-number planner */
     var q = feedQold(w, me, ok, nb, list); return fr && fr.length <= q.length ? fr : q; }
   function feedSelQ(w, me, ids, nb) { return feedQ(w, me, ids, nb, true); } /* Feed selected: list burns only */
-  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
+  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); };
+  function cfeedText() { var a = Number(($('cAmt') || {}).value) || 0; return 'Feed community (' + fmt(Math.max(a, 0)) + ')'; } /* hatchspeed-1101: display only (halving amounts like 172.5 keep their decimals, as v2-halving.js shows them) */ /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   /* similar-bugs-fix: the accept cost of fight id now (a Tag Team accept costs the team cost, not the 1v1 accept), same halving / Fire Sale as V.COSTS. Display only; planAmount sets the burn. */
   function accNow(w, id) { return V.COSTS.accept * V.acceptCost(w, id) / V.acceptCost(null, 0); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
@@ -573,7 +574,7 @@
     $('goalBar').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('goalTxt').innerHTML = wiz ? '<b>' + fmt(Math.floor(c.burned)) + '</b> <span class="asset">XCPETS</span> burned' : '<b>' + fmt(Math.floor(rp.count)) + '</b> / ' + fmt(V.COMMUNITY_GOAL) + ' <span class="asset">XCPETS</span> burned (' + (rp.pct * 100).toFixed(1) + '%)'; /* Cold Storage bar: no Return wording (Jake 2026-10-14) */
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
-    var amt = Math.floor(Number($('cAmt').value) || 0); $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.max(amt, 0)) + ')'; $('cfeedBtn').disabled = !!gap;
+    $('cfeedBtn').textContent = cfeedText(); $('cfeedBtn').disabled = !!gap; /* hatchspeed-1101: same label as the chip fast path (172.5 showed as 172 though 172.5 is burned) */
     if (gap) { var sn = 'Opens when pet #' + R.COMMUNITY_NEXT_NO + ' arrives'; $('cfeedBtn').textContent = 'Feed community · ' + sn.toLowerCase(); $('crollBtn').textContent = 'Community gear roll · ' + sn.toLowerCase(); $('cfeedBtn').title = $('crollBtn').title = sn; } else $('cfeedBtn').title = '';
     renderPets(w); renderInv(w); lairRender(w); /* pet-shop mockup; lair-perf: only while the Lair is on (or near) screen */ renderBattles(w); notifyFights(w); notifyBreeds(w); notifyCem(w); notifyLife(w); renderBreed(w); if (window.V2Motel) { try { V2Motel.render(w); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
     if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
@@ -1125,9 +1126,13 @@
   if ($('wizSignBtn') && WIZARD_SIGN_CLAIM_ON) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };
   /* community feed amount (2026-10-15, Jake): three fixed choices 69 / 690 / 6,900 (69 by default) instead of a free amount field; same tag + burn flow */
-  document.querySelectorAll('[data-camt]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.camt;
-    document.querySelectorAll('[data-camt]').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); }); render(); }; });
-  document.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { $('cAmt').value = b.dataset.q; render(); }; });
+  /* hatchspeed-1101 (owner [pt2616u], UI only): an amount chip changes only the chosen amount (#cAmt), the chip highlight and the Feed community label.
+   * It used to call render() (whole page: My Pets, motel, arena, log...), about 0.4-0.5 s per click; now it touches just those three things.
+   * The burn is still built from #cAmt by V.communityFeedPlan at Feed community, exactly as before. The label is left alone while feeding is closed (gap). */
+  function cfeedPick(v) { $('cAmt').value = v; var cf = $('cfeedBtn'); if (cf && /\(/.test(cf.textContent)) { var t = cfeedText(); if (cf.textContent !== t) cf.textContent = t; } }
+  document.querySelectorAll('[data-camt]').forEach(function (b) { b.onclick = function () { cfeedPick(b.dataset.camt);
+    document.querySelectorAll('[data-camt]').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); }); }; });
+  document.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { cfeedPick(b.dataset.q); }; });
   $('cAmt').oninput = function () { if (R.communityGap && R.communityGap(world())) return; $('cfeedBtn').textContent = 'Feed community (' + fmt(Math.floor(Number(this.value) || 0)) + ')'; };
   $('cfeedBtn').onclick = function () { if (R.communityGap && R.communityGap(world())) return toast('Community feeding opens when pet #' + R.COMMUNITY_NEXT_NO + ' arrives.'); var p = V.communityFeedPlan($('cAmt').value); if (!p.ok) return toast('⚠️ ' + p.error); confirmPlans('Feed the ' + V.COMMUNITY_PET, [{ tag: p.tag, amount: p.amount }]); };
   /* community gear roll (2026-10-15, Jake): pet:c:roll, 690, the community pet gets one random gear piece; offered only once the tip reaches ACTIVATE_CROLL_BLOCK */
@@ -1230,7 +1235,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=3147087172';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=908b4d10c5';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
