@@ -7,8 +7,8 @@
 const { load, snap, run, fakeHash } = require('./lib/load-rules');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const c = load(['js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/viking-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js']), _vr = (c.setInterval = () => 0, c.document.readyState = 'loading', c.clearInterval = () => {}, c.requestAnimationFrame = () => 0, c.ImageData = c.ImageData || function (d, w, h) { this.data = d; this.width = w; this.height = h; }, require('vm').runInContext(require('fs').readFileSync(require('path').join(__dirname, '../js/v2-render.js'), 'utf8'), c)), V = c.V2Rules, P = c.PetCore, R = c.V2Render, s0 = snap(), H = Object.assign({}, c.XCPETS_BLOCK_HASHES, s0.hashes);
-ok(V.crossGate() === null && V.ACTIVATE_ONEOFONE_CROSS_BLOCK === null && !V.crossOn(99999999), '1 of 1 cross gate null (off)');
-ok(V.twinAlikeGate() === null && !V.twinAlikeOn(99999999) && V.borpGate() === null, 'twins-alike + Bo Pigeon gates null (off)');
+ok(V.crossGate() === 974207 && V.ACTIVATE_ONEOFONE_CROSS_BLOCK === 974207 && !V.crossOn(974206) && V.crossOn(974207), '1 of 1 cross gate 974207 (go-live)');
+ok(V.twinAlikeGate() === 974207 && !V.twinAlikeOn(974206) && V.twinAlikeOn(974207) && V.borpGate() === 974207, 'twins-alike + Bo Pigeon gates 974207 (go-live)');
 const tip = Math.max.apply(null, s0.rows.map(r => r.block_index).filter(b => H[b])), s = { tip, rows: s0.rows.filter(r => r.block_index <= tip), hashes: Object.assign({}, s0.hashes) };
 const END = Math.max(tip, V.ACTIVATE_VIKING_BLOCK) + 400; for (let x = tip - 50; x <= END + 5000; x++) if (!s.hashes[x] && !H[x]) s.hashes[x] = fakeHash(x);
 V._setBo(Math.min(V.ACTIVATE_BO_BLOCK, tip)); V._setRp(Math.min(V.ACTIVATE_RP_BLOCK, tip)); V._setViking(Math.min(V.ACTIVATE_VIKING_BLOCK, tip)); V._setBurnLordsSnapshot(tip - 20);
