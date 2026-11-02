@@ -1,5 +1,5 @@
 {
- "lastBlock": 974194,
+ "lastBlock": 974195,
  "count": 96,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -217,7 +217,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 43046,
@@ -241,7 +241,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Hatchling"
   },
   {
    "id": 45063,
