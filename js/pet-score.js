@@ -19,6 +19,18 @@
     while (i < n) { var j = i; while (j + 1 < n && vals[idx[j + 1]] === vals[idx[i]]) j++; var pc = n === 1 ? 0.5 : ((i + j) / 2) / (n - 1); for (var k = i; k <= j; k++) out[idx[k]] = pc; i = j + 1; }
     return out; }
   function streak(p, tip) { var fd = p.feedDays || {}, d = Math.floor(tip / BPD); if (!fd[d]) d--; var n = 0; while (fd[d]) { n++; d--; } return n; }
+  /* trait-rank-1101 (display only): the trait rarity part of compute() on its own, so the 💎 Trait rarity board (js/v2-trait-rank.js) can rank
+   * every pet without the full score. Same population, same keys, same numbers as compute(). */
+  function population(w) { return (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }); }
+  function traitBits(pets) { var N = pets.length, RF = {}, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks)];
+      for (var t = 0; t < v.length; t++) { var key = t + ':' + v[t]; RF[key] = (RF[key] || 0) + 1; v[t] = key; } return v; });
+    return { RF: RF, rk: rk, bits: rk.map(function (v) { var b = 0; for (var t = 0; t < v.length; t++) b -= Math.log2(RF[v[t]] / N); return b; }) }; }
+  /** rarityAll(w) -> [{ id, bits, oneIn }] for every ranked pet (community and released pets left out), in world order. Cached per world. */
+  var rcache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function rarityAll(w) { if (!w) return []; var c0 = cache && cache.get(w), n = (w.pets || []).length; if (c0 && c0.tip === w.tip && c0.len === n) return c0.r.ranked.map(function (r) { return { id: r.id, bits: r.rarityBits, oneIn: r.rarityOneIn }; });
+    var c = rcache && rcache.get(w); if (c && c.tip === w.tip && c.len === n) return c.r;
+    var pets = population(w), b = traitBits(pets).bits, r = pets.map(function (p, i) { return { id: p.id, bits: b[i], oneIn: Math.pow(2, b[i]) }; });
+    if (rcache) rcache.set(w, { tip: w.tip, len: n, r: r }); return r; }
   function compute(w, opt) {
     opt = opt || {}; var V = opt.rules || root.V2Rules, tip = w.tip || 0;
     var pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }), N = pets.length, byId = {};
@@ -35,9 +47,7 @@
       var val = t + 1 + (t >= 3 ? 3 : 0) + (it.legendary || v.exclusive ? 4 : 0) + (v.sig ? 2 : 0); gv[pid] = (gv[pid] || 0) + val; });
     /* Trait rarity (rarity-sort 2026-10-20, owner approved 8:58 PM CT; display only): bits = sum of -log2(freq / N) over species (hybrids one bucket,
      * player Wizards / Lord Kek their own species), eyes, pattern, background and cheeks, from the global frequencies of this same population. */
-    var RF = {}, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks)];
-      for (var t = 0; t < v.length; t++) { var key = t + ':' + v[t]; RF[key] = (RF[key] || 0) + 1; v[t] = key; } return v; });
-    var rBits = rk.map(function (v) { var b = 0; for (var t = 0; t < v.length; t++) b -= Math.log2(RF[v[t]] / N); return b; });
+    var TR = traitBits(pets), RF = TR.RF, rk = TR.rk, rBits = TR.bits;
     /* Scarcity: inverse species count */
     var sc = {}; pets.forEach(function (p) { var g = isHyb(p) ? 'hybrid' : String(p.species); sc[g] = (sc[g] || 0) + 1; });
     var minC = Math.min.apply(null, Object.keys(sc).map(function (k) { return sc[k]; })), maxL = Math.log(N / minC) || 1;
@@ -102,7 +112,7 @@
     doc.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.psw') : null;
       doc.querySelectorAll('.psw.open').forEach(function (x) { if (x !== t) x.classList.remove('open'); });
       if (t) { e.stopPropagation(); e.preventDefault(); t.classList.toggle('open'); } }, true); }
-  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
+  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
 })(typeof window !== 'undefined' ? window : globalThis);
