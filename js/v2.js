@@ -1081,6 +1081,10 @@
    * V2Wallet to drop a burn that has not reached the wallet window yet (nothing is signed or sent). A window already open stays the wallet's own choice. */
   var sendRun = null;
   $('cfNo').onclick = function () { if (sendRun) { sendRun.stop = true; sendRun = null; try { if (V2Wallet.cancel) V2Wallet.cancel(); } catch (e) { } } close('confirmBox'); pendingPlans = null; };
+  /* modal-close (Nov 1 2026, the one fix kept from feed-setup-cheaper 37451f59): Esc and a click on the dark background close the confirm box
+   * exactly like Cancel (same handler: stops a running burn queue and cancels a pending wallet request). Nothing is signed here. */
+  $('confirmBox').addEventListener('click', function (e) { if (e.target === $('confirmBox')) $('cfNo').click(); });
+  document.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && $('confirmBox').classList.contains('on')) $('cfNo').click(); });
   $('cfYes').onclick = function () { var plans = pendingPlans; if (!plans) return; var s = V.burnSummary(plans); if (!ME || V2Wallet.current() !== ME) { toast('Connecting ' + WL() + '…'); V2Wallet.connect().then(function (a) { if (a !== ME) location.reload(); else $('cfYes').onclick(); }, function (e) { toast(V2Wallet.errHtml(e)); }); return; } if (s.total > S.balance && !(S.stale && !S.verified)) return toast('Not enough XCPETS in this wallet'); /* direct-counterparty-api: a saved copy has no balance yet (0); the pre-burn re-read reads it and v2-wallet re-checks */
     var run = sendRun = { stop: false }; $('cfYes').disabled = true; $('cfNo').disabled = false; $('cfNo').textContent = 'Cancel'; var i = 0, sentTx = [], title = $('cfTitle').textContent, day0 = V.day(S.tip || 0); saveResume(title, plans);
     /* wasted-burn guard (2026-10-20): a long Feed all queue can cross a 144-block chain day while it is being signed. When the day changes, the unsent
