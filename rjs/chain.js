@@ -28,7 +28,7 @@
    * for SICK_MS in sessionStorage too, so the next page in this tab starts with a healthy one. Only the order/timing of GETs changes: the JSON returned
    * on success is the same, so data and replays are identical. (Not done, owner decision: falling back to the last known chain height when the tip
    * read fails; tip is a replay input.) */
-  var PRIMARY_MS = 4000, PRE_MS = 3000, HEDGE_MS = 2500 /* direct-counterparty-api: a blocked :4000 trips in 3 s, then is remembered for the session */, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
+  var PRIMARY_MS = 4000, PRE_MS = 3000, HEDGE_MS = 1200 /* direct-counterparty-api: a blocked :4000 trips in 3 s, then is remembered for the session; nav-cache-1102: the backup node starts racing after 1.2 s (was 2.5 s); a node that closes the connection hands over at once */, BACKUP_MS = 3000, DEADLINE_MS = 12000, BACKOFF_MS = 400, MAX_RETRY_AFTER_MS = 2000, SICK_MS = 30000, PASSES = 2, BLOCK_CONC = 6;
   var SICK_KEY = 'xcpets-api-sick', sick = (function () { try { var o = JSON.parse(sessionStorage.getItem(SICK_KEY)) || {}, t = Date.now(), r = {}; Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = o[k]; }); return r; } catch (e) { return {}; } })();
   /* direct-counterparty-api (2026-10-25): CFG.coreFallback (api.xcp.fun/node, an unpublished proxy of Core) is only asked once EVERY direct Core
    * node failed with a timeout / network error in the last SICK_MS (port 4000 blocked on this network). A 429 or 5xx from a Core node never
@@ -97,7 +97,7 @@
       return probeP.then(function () { return pass(0); }, function (e) { var er = new Error('Counterparty servers blocked on this network (remembered): ' + (e && e.message || e)); er.blocked = true; throw er; }); }
     return pass(0);
   }
-  var PROBE_MS = 4000, probeP = null, probeAt = 0;
+  var PROBE_MS = 2500 /* nav-cache-1102: was 4 s; the probe is one tiny GET of / */, probeP = null, probeAt = 0;
   function allNetSick(bases) { var t = now(), core = bases.filter(function (b) { return b !== FALLBACK && typeof b === 'string'; }); return core.length > 0 && core.every(function (b) { return netSick[String(b)] > t; }); }
   /** fetch with an AbortController timeout (no-op timeout where AbortController is missing, e.g. old Node); `ac` = optional caller controller */
   function fetchT(f, url, ms, ac) {
