@@ -784,16 +784,24 @@
     for (var it = 0, ch = true; ch && it < 40; it++) { ch = false; for (p = 0; p < 1024; p++) { if (r[p]) continue; i = p * 4; if (a[i] !== 255 || a[i + 1] !== 201 || a[i + 2] !== 60 || b[i] !== 255 || b[i + 1] !== 201 || b[i + 2] !== 60) continue;
       var x = p & 31, y = p >> 5; if (bg(x + 1, y) || bg(x - 1, y) || bg(x, y + 1) || bg(x, y - 1)) { r[p] = 1; ch = true; } } }
     return r; }
+  /* mythRingOf(a, b): fallback rim for sprites that draw no Mythic rim: every background pixel (differs between the keyed renders) that touches the
+   * pet (same in both) on a side, rows 0-29 like pet-core's rim. */
+  function mythRingOf(a, b) { var r = new Uint8Array(1024), pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+    for (var p = 0; p < 1024; p++) { var x = p & 31, y = p >> 5; if (y > 29 || pet(x, y)) continue; if (pet(x + 1, y) || pet(x - 1, y) || pet(x, y + 1) || pet(x, y - 1)) r[p] = 1; }
+    return r; }
   /* mythRimUrls(r): crisp hi-res masks of that same rim: line = every rim pixel as a full square (same path / thickness / position as today),
    * core = a thin centre thread joining neighbouring rim pixels (the white hot highlight inside the line). */
-  function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, mk = function () { var c = document.createElement('canvas'); c.width = c.height = W; return c; };
-    var L = mk(), lg = L.getContext('2d'), C = mk(), cg = C.getContext('2d'), on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
-    lg.fillStyle = '#fff'; cg.strokeStyle = cg.fillStyle = '#fff'; cg.lineWidth = S * 0.2; cg.lineCap = 'round';
-    for (var p = 0; p < 1024; p++) if (r[p]) { var x = p & 31, y = p >> 5, cx = (x + 0.5) * S, cy = (y + 0.5) * S; lg.fillRect(x * S, y * S, S, S);
-      cg.beginPath(); cg.arc(cx, cy, S * 0.1, 0, 7); cg.fill();
+  function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
+    /* naka-gif-speed-1102: the same two masks as tiny SVG data URLs (row runs of squares, round dots + threads) instead of two 384x384 canvas PNG
+     * encodes per rim per frame; same squares / thread size / position, so the outline looks the same but appears without the encode wait. */
+    var line = '', core = '', x, y;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (on(x, y)) { var x0 = x; while (on(x + 1, y)) x++; line += 'M' + x0 * S + ' ' + y * S + 'h' + (x - x0 + 1) * S + 'v' + S + 'h-' + (x - x0 + 1) * S + 'z'; }
+    for (var p = 0; p < 1024; p++) if (r[p]) { x = p & 31; y = p >> 5; var cx = (x + 0.5) * S, cy = (y + 0.5) * S; core += 'M' + cx + ' ' + cy + 'h0';
       [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(function (d) { if (!on(x + d[0], y + d[1])) return; if (d[0] && d[1] && (on(x + d[0], y) || on(x, y + d[1]))) return;
-        cg.beginPath(); cg.moveTo(cx, cy); cg.lineTo(cx + d[0] * S, cy + d[1] * S); cg.stroke(); }); }
-    var out = { line: L.toDataURL(), core: C.toDataURL() }; if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
+        core += 'M' + cx + ' ' + cy + 'l' + d[0] * S + ' ' + d[1] * S; }); }
+    var svg = function (b) { return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + W + '" viewBox="0 0 ' + W + ' ' + W + '">' + b + '</svg>'); };
+    var out = { line: svg('<path fill="#fff" shape-rendering="crispEdges" d="' + line + '"/>'), core: svg('<path fill="none" stroke="#fff" stroke-width="' + S * 0.2 + '" stroke-linecap="round" d="' + core + '"/>') };
+    if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
   function mythFrame(c, img, info) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (c._mfxR === r.k) return; c._mfxR = r.k;
     var U = mythRimUrls(r); o.style.setProperty('--rl', 'url(' + U.line + ')'); o.style.setProperty('--rc', 'url(' + U.core + ')'); }
   function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
@@ -806,6 +814,12 @@
       for (var f = 0; f < fr.length; f++) { var Af = (A[f] || A[0]).data, Bf = (B[f] || B[0]).data, r = mythRimOf(Af, Bf), s2 = '';
         for (p = 0; p < 1024; p += 32) { var rw = 0; for (var q2 = 0; q2 < 32; q2++) { rw = rw * 2 + r[p + q2] >>> 0; if (r[p + q2]) any = true; } s2 += '.' + rw.toString(36); }
         r.k = s2; rims.push(r); rk += '|' + s2; }
+      if (!any) { /* mythic-outline-1102: a sprite with no gold Mythic rim of its own (FUNTRUMP body, FUNTRUMP-body hybrids) gets the same one-pixel ring
+         * just outside its silhouette, found from the two keyed renders. Display only: the sprite pixels are not changed, only the aura5 line mask. */
+        rims = []; rk = mode;
+        for (f = 0; f < fr.length; f++) { r = mythRingOf((A[f] || A[0]).data, (B[f] || B[0]).data); s2 = '';
+          for (p = 0; p < 1024; p += 32) { rw = 0; for (q2 = 0; q2 < 32; q2++) { rw = rw * 2 + r[p + q2] >>> 0; if (r[p + q2]) any = true; } s2 += '.' + rw.toString(36); }
+          r.k = s2; rims.push(r); rk += '|' + s2; } }
       if (!any) return fr; var ainfo = { mode: mode, m: m, bb: bb, key: rk, rims: rims };
       return fr.map(function (f, i) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, ainfo); MYTH_FI.set(g, i); return g; }); }
     bb.yh = bb.y0; for (var yy = bb.y0; yy <= bb.y1; yy++) { var cnt = 0; for (var xx = 0; xx < 32; xx++) cnt += m[yy * 32 + xx]; if (cnt >= 4) { bb.yh = yy; break; } } /* head top (skips a lone badge/gear pixel) */
