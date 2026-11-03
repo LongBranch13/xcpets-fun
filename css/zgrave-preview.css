@@ -1,0 +1,49 @@
+/* zgrave-preview (TEMPORARY, ?grave=1|2|3 only): 8-bit grave looks for risen-zombie cards. Loaded by js/zgrave-preview.js. */
+.tomb.zg.zg1,.tomb.zg.zg2,.tomb.zg.zg3{background:none;border:0;border-radius:0;box-shadow:none;isolation:isolate;color:#eef0f3}
+.tomb.zg > canvas.zgbg{position:absolute;left:0;top:0;z-index:0;pointer-events:none;width:auto;height:auto;opacity:1;filter:none;background:none;border-radius:0;image-rendering:pixelated;image-rendering:crisp-edges}
+.tomb.zg > :not(.zgbg):not(.zgflame){position:relative;z-index:1}
+html.hw .tomb.zg::after{display:none}
+.tomb.zg.zg1::before,.tomb.zg.zg2::before,.tomb.zg.zg3::before{position:relative;z-index:1;font:9px 'Press Start 2P',monospace;letter-spacing:3px}
+.tomb.zg h4,.tomb.zg h4 a,.tomb.zg .small,.tomb.zg .muted{text-shadow:1px 1px 0 #000,-1px 0 0 #000,0 -1px 0 #000}
+.tomb.zg .muted{color:#dfe1e6}.tomb.zg .small{color:#eceef2}
+.tomb.zg .zt{color:var(--zgc,#7dff6a)}
+.tomb.zg .cv2-hunger{background:#140e0a;box-shadow:0 0 0 1px #6b6f78}
+.tomb.zg .cv2-zact{justify-content:center}
+.tomb.zg canvas[data-z]{opacity:.85;image-rendering:pixelated}
+.tomb.zg.feral .zt,.tomb.zg.feral .cv2-hunger + .small{color:#ff6b6b}
+
+/* 1: carved stone */
+.tomb.zg1{padding:20px 14px 30px}
+.tomb.zg1::before{color:#2a2c31;text-shadow:1px 1px 0 #9ca0a8}
+.tomb.zg1 canvas[data-z]{background:#3a3d43;border-radius:0;box-shadow:inset 3px 3px 0 #23252a,inset -3px -3px 0 #8a8e96,0 0 0 3px #1c1d21}
+.tomb.zg1[data-zm=dread] canvas[data-z]{background:#2c2d35}
+.tomb.zg1.feral > canvas.zgbg{animation:zgRed 1.6s steps(4) infinite}
+
+/* 2: spooky slate, glow, crow, candle, fog */
+.tomb.zg2{padding:18px 14px 34px}
+.tomb.zg2 > canvas.zgbg{filter:drop-shadow(0 0 3px var(--zgc)) drop-shadow(0 0 8px color-mix(in srgb,var(--zgc) 55%,transparent));animation:zgGlow 3s steps(6) infinite}
+.tomb.zg2::before{color:var(--zgc);text-shadow:0 0 6px var(--zgc),1px 1px 0 #000}
+.tomb.zg2 canvas[data-z]{background:#0f141c;border-radius:0;filter:grayscale(1) brightness(1.2) drop-shadow(0 0 4px var(--zgc));box-shadow:0 0 0 3px #06080c}
+.tomb.zg2::after{content:'';position:absolute;left:0;right:0;bottom:0;height:42px;z-index:2;pointer-events:none;background:repeating-linear-gradient(90deg,rgba(200,210,240,.16) 0 12px,rgba(200,210,240,0) 12px 30px);-webkit-mask:linear-gradient(transparent,#000 70%);mask:linear-gradient(transparent,#000 70%);animation:zgFog 9s steps(30) infinite}
+html.hw .tomb.zg2::after{display:block}
+.zgflame{position:absolute;z-index:2;width:9px;height:12px;pointer-events:none;background:linear-gradient(#fff6c8 0 3px,#ffc23d 3px 7px,#ff7a1a 7px);clip-path:polygon(33% 0,66% 0,66% 25%,100% 25%,100% 100%,0 100%,0 25%,33% 25%);animation:zgFlick 1.1s steps(3) infinite;filter:drop-shadow(0 0 4px #ffb347)}
+.tomb.zg2.feral .zgflame{background:linear-gradient(#ffd0d0 0 3px,#ff4d4d 3px 7px,#a01010 7px);filter:drop-shadow(0 0 4px #ff3030)}
+
+/* 3: gothic ogive + cross + iron fence */
+.tomb.zg3{padding:62px 16px 46px}
+.tomb.zg3::before{color:#d9d2e6;text-shadow:1px 1px 0 #000}
+.tomb.zg3[data-zm=dread]::before{color:#c9b3ff}
+.tomb.zg3 canvas[data-z]{background:#16141c;border-radius:48px 48px 0 0;box-shadow:0 0 0 3px #0c0b10,0 0 0 5px #5a5868}
+.tomb.zg3.feral canvas[data-z]{box-shadow:0 0 0 3px #0c0b10,0 0 0 5px #8a2a2a}
+.tomb.zg3.feral > canvas.zgbg{animation:zgRed 1.6s steps(4) infinite}
+
+@keyframes zgRed{0%,100%{filter:drop-shadow(0 0 0 #ff3030)}50%{filter:drop-shadow(0 0 6px #ff3030)}}
+@keyframes zgGlow{0%,100%{opacity:1}50%{opacity:.86}}
+@keyframes zgFog{from{background-position:0 0}to{background-position:120px 0}}
+@keyframes zgFlick{0%{transform:scaleY(1)}33%{transform:scaleY(.82) translateX(1px)}66%{transform:scaleY(1.08) translateX(-1px)}}
+@media (prefers-reduced-motion:reduce){.tomb.zg > canvas.zgbg,.tomb.zg2::after,.zgflame{animation:none!important}}
+
+/* temporary switcher */
+.zg-switch{position:fixed;left:8px;top:8px;z-index:9999;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;max-width:calc(100vw - 16px);box-sizing:border-box;padding:5px 7px;background:#14121f;border:2px solid #7dff6a;color:#eee;font:11px/1.3 monospace;box-shadow:3px 3px 0 #000}
+.zg-switch a{color:#9fe8ff;padding:2px 5px;border:1px solid #3a3850}
+.zg-switch a[aria-current]{background:#7dff6a;color:#000;border-color:#7dff6a}
