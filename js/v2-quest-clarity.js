@@ -27,7 +27,9 @@
     if (code === 'cold') return two ? '1 Jackpot Egg' : '1 saved spin';
     return ''; }
   function eggNote(b) { var R = V(), J = MIRROR.JACKPOT, s = 'Jackpot Egg = a free Legendary hybrid egg (twins 1 in ' + J.twin1In + ', mutation 1 in ' + J.mutation1In + ', hidden trait 1 in ' + J.hidden1In + ', three-way look 1 in ' + J.legMix1In + ').';
-    if (R.jackpotChildOn && R.jackpotChildOn(b)) s += ' It counts as a child: it uses 1 of this pet\u2019s ' + (R.breedsLeft ? R.breedsLeft({}, b).cap : 6) + ' lifetime breeds (twins count once). No cooldown, and the egg comes even when the pet has no breeds left.';
+    var cap = R.breedsLeft ? R.breedsLeft({}, b).cap : 6;
+    if (R.jackpotNobreedOn && R.jackpotNobreedOn(b)) s += ' It counts as a child of this pet but uses none of its ' + cap + ' lifetime breeds. No cooldown, and the egg comes even when the pet has no breeds left.'; /* jackpot-nobreed-1103 (gated) */
+    else if (R.jackpotChildOn && R.jackpotChildOn(b)) s += ' It counts as a child: it uses 1 of this pet\u2019s ' + cap + ' lifetime breeds (twins count once). No cooldown, and the egg comes even when the pet has no breeds left.';
     return s; }
   function outcomes(w, p, code, b) { var R = V(); if (!R || !R.QUESTS || !R.QUESTS[code] || !R.questOdds) return '';
     var Q = R.QUESTS[code], od = R.questOdds(w, p, code, b), T = R.QUEST_TIERS, base = Q.odds, isFT = p && p.species === 'funtrump' && !p.community;
