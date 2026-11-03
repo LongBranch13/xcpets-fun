@@ -1,0 +1,23 @@
+ok   1280 harness: wallet treated as connected (view-only off)
+ok   1280 breedable pair found ({"a":891,"b":1,"no":[7850,"That’s its kid"],"n":1083})
+ok   1280 dock search finds #891
+ok   1280 DRAG #891 onto 🥚 Nest -> first guest (#bA)
+ok   1280 wrong partner #7850 -> Nest greyed with the picker reason (true #7850: That’s its kid; picker says: That’s its kid)
+ok   1280 hungry #32071 -> 🍼 Bowl is open
+ok   1280 🍼 Bowl opens the existing feed confirm window (burn confirm kept)
+ok   1280 Cancel closes it (nothing signed)
+ok   1280 a My Pets card with an active 💞 button
+ok   1280 💞 on card #891 opens Gooby’s with it as first guest (/breed.html?addr=bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n#gooby-inn, #bA=891)
+ok   1280 no page errors []
+ok   390 harness: wallet treated as connected (view-only off)
+ok   390 breedable pair found ({"a":891,"b":1,"no":[7850,"That’s its kid"],"n":1083})
+ok   390 dock search finds #891
+ok   390 DRAG #891 onto 🥚 Nest -> first guest (#bA)
+ok   390 wrong partner #7850 -> Nest greyed with the picker reason (true #7850: That’s its kid; picker says: That’s its kid)
+ok   390 hungry #32071 -> 🍼 Bowl is open
+ok   390 🍼 Bowl opens the existing feed confirm window (burn confirm kept)
+ok   390 Cancel closes it (nothing signed)
+ok   390 a My Pets card with an active 💞 button
+ok   390 💞 on card #891 opens Gooby’s with it as first guest (/breed.html?addr=bc1qs88hlk930p8l6h5s2svcrvzd45ny2pn54y0j6n#gooby-inn, #bA=891)
+ok   390 no page errors []
+all ok

@@ -1,0 +1,11 @@
+start 09:59:34 avail=7601
+  scrollY 602
+before nest 1280 scrolled-to: #motelScene selects: 18 xc-select: 0 errors: 0 []
+  scrollY 827
+before nest 390 scrolled-to: #motelScene selects: 19 xc-select: 0 errors: 0 []
+before exit 0 avail=7010
+  scrollY 1079
+after nest 1280 scrolled-to: #lfDock selects: 0 xc-select: 18 errors: 0 []
+  scrollY 1142
+after nest 390 scrolled-to: #lfDock selects: 0 xc-select: 19 errors: 0 []
+after exit 0 10:01:18
