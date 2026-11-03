@@ -695,7 +695,7 @@
       return d; }
     renderPets.mk = mk; /* mypets-swipe: the One at a time view reuses the exact grid card (display only) */
     function put(ps, before) { var f = document.createDocumentFragment(); mk.reuse = true; var ds; try { ds = ps.map(function (p) { var d = mk(p); f.appendChild(d); return [d, p]; }); } finally { mk.reuse = false; } if (before) box.insertBefore(f, before); else box.appendChild(f);
-      ds.forEach(function (x) { if (x[0]._reused) { x[0]._reused = 0; return; } R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
+      ds.forEach(function (x) { if (x[0]._reused) { x[0]._reused = 0; if (R.revive) R.revive(x[0].querySelector('canvas')); /* mypets-first3-1103: outline + animation back */ return; } R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
      * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
     var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|z' + ZFK + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }

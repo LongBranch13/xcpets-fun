@@ -80,9 +80,14 @@ html.vd h1.meme { text-shadow: 4px 4px 0 #000, 0 0 16px rgba(244, 244, 238, .35)
 /* sitewide layer: soft glow in two corners, stars drifting across the top, FUNTRUMP hanging from a bit of bunting in the right margin */
 .vd-layer { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; contain: strict; }
 .vd-glow { position: absolute; inset: 0; background: radial-gradient(420px 240px at 0 0, rgba(244, 244, 238, .07), transparent 70%), radial-gradient(420px 240px at 100% 100%, rgba(244, 244, 238, .05), transparent 70%); }
-.vd-sw { position: absolute; left: 0; top: 0; will-change: transform; animation: vd-fall 22s linear infinite; transform: translate3d(0, -20px, 0); }
-.vd-sw1 { left: 8%; } .vd-sw2 { left: 23%; animation-duration: 29s; animation-delay: -9s; } .vd-sw3 { left: 41%; animation-duration: 25s; animation-delay: -17s; }
-.vd-sw4 { left: 62%; animation-duration: 31s; animation-delay: -4s; } .vd-sw5 { left: 78%; animation-duration: 27s; animation-delay: -13s; } .vd-sw6 { left: 93%; animation-duration: 34s; animation-delay: -21s; }
+.vd-sw { position: absolute; left: 0; top: 0; will-change: transform; animation: vd-fall 22s linear infinite; transform: translate3d(0, -20px, 0); display: none; }
+/* mypets-first3-1103 (owner Nov 3 2026 [pt2760u]): the drifting stars stay in the empty side margins (main is 1100 px wide), never over pet cards,
+ * chips or care bars, where they read as stray sprites. Screens without margins get no drifting stars (bunting, rows and banner stay). */
+@media (min-width: 1220px) {
+  .vd-sw { display: block; --vdm: calc((100% - 1100px) / 2); }
+  .vd-sw1 { left: calc(var(--vdm) * .12); } .vd-sw2 { left: calc(var(--vdm) * .5 - 20px); animation-duration: 29s; animation-delay: -9s; } .vd-sw3 { left: calc(var(--vdm) - 48px); animation-duration: 25s; animation-delay: -17s; }
+  .vd-sw4 { left: calc(100% - var(--vdm) + 8px); animation-duration: 31s; animation-delay: -4s; } .vd-sw5 { left: calc(100% - var(--vdm) * .5 - 10px); animation-duration: 27s; animation-delay: -13s; } .vd-sw6 { left: calc(100% - 48px); animation-duration: 34s; animation-delay: -21s; }
+}
 .vd-sw .vd-star { opacity: .55; }
 .vd-hang { display: none; position: absolute; right: 10px; top: 64px; width: 64px; text-align: center; }
 .vd-hbunt { display: block; width: 64px; height: 11px; background: var(--vd-bunt) 0 0 / 54px 11px repeat-x; image-rendering: pixelated; }
