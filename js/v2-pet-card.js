@@ -67,12 +67,22 @@
    * Tied = V2Rules.deedOf(w, p).ok (the replay). ?tokPreview=none|made|ready|tied shows a state without any wallet window (screenshots). */
   var TPV = (/[?&]tokPreview=(none|made|ready|tied)\b/.exec(location.search) || [])[1] || null, tpv = TPV, tokMsg = '', tokLast = '';
   function tokTools() { return window.V2Sales && V2Sales.tok && window.V2Rules && V2Rules.mintPlan && V2Rules.deedPlan ? V2Sales.tok : null; }
-  var chk = {}; /* spam-city-tokenized-fix: one chain look-up per pet per page load (V2Sales.tok.chainPend) */
+  /* spam-city-tokenized-fix: one chain look-up per pet per page load (V2Sales.tok.chainPend).
+   * tokenize-69321 (Nov 2 2026, a player made 3 tokens for #69321 and never saw step 2): the box showed a live step 1 button while the look was
+   * still running, and again when the look FAILED (chainPend resolved null on any read error, once per page load, never retried), so a token made
+   * in another browser / wallet app / cleared store looked like "not tokenized". Now chk[id] = {s: 'run'|'ok'|'err', at}: while it runs the box
+   * says it is checking (no button); a failed look pauses step 1 (disabled, with the reason) and tries again every CHK_RETRY ms. */
+  var chk = {}, CHK_RETRY = 30e3;
+  function tokLook(w, p, T) { var c = chk[p.id] = { s: 'run', at: Date.now() };
+    T.chainPend(p.id, me(), w).then(function () { if (chk[p.id] === c) chk[p.id] = { s: 'ok', at: Date.now() }; tokPaint(true); },
+      function (e) { if (chk[p.id] === c) chk[p.id] = { s: 'err', at: Date.now(), e: (e && e.message) || String(e) }; tokPaint(true); }); }
   function tokState(w, p) { var V = window.V2Rules, T = tokTools();
     if (tpv) return { s: tpv, pd: tpv === 'none' ? null : { asset: 'A12345678901234567890', at: tip() - (tpv === 'made' ? 0 : 2) }, d: tpv === 'tied' ? { asset: 'A12345678901234567890', ok: true } : null };
     var d = V && V.deedOf ? V.deedOf(w, p) : null; if (d && d.ok) { if (T && T.pend(p.id)) T.pend(p.id, null); return { s: 'tied', d: d }; }
-    var pd = T ? T.pend(p.id) : null; if (T && T.chainPend && !tpv && me() && p.owner === me() && !chk[p.id] && (!pd || !pd.tieTx)) { chk[p.id] = 1; T.chainPend(p.id, me(), w).then(function (x) { if (x) tokPaint(true); }); }
-    if (!pd) return { s: 'none', d: d };
+    var pd = T ? T.pend(p.id) : null, c = chk[p.id], look = !!(T && T.chainPend && !tpv && me() && p.owner === me());
+    if (look && (!pd || !pd.tieTx) && (!c || (c.s === 'err' && Date.now() - c.at >= CHK_RETRY))) { tokLook(w, p, T); c = chk[p.id]; pd = T.pend(p.id); }
+    if (!pd && look && c && c.s === 'run') return { s: 'checking', d: d };
+    if (!pd) return { s: 'none', d: d, err: look && c && c.s === 'err' ? c.e : null };
     return { s: tip() >= (Number(pd.at) || 0) + 1 ? 'ready' : 'made', pd: pd, d: d }; }
   function shortA(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
   function tokHtml(w, p, mine) {
@@ -80,9 +90,11 @@
     var S = tokState(w, p), own = (!!mine && !viewOnly()) || !!tpv, V = window.V2Rules;
     if (S.s === 'tied') return '<div class="pc-tok pc-tok-tied"><b>🎟 Tied!</b> <span>#' + p.id + ' has its own pet token ' + esc(shortA(S.d.asset)) + '. Whoever holds the token holds the pet.</span></div>';
     var why = !own ? (mine ? 'connect the owner wallet on Play to tokenize' : 'only the owner can tokenize this pet') : !tpv && !tokTools() ? 'the token tools did not load' : !tpv && V.deedWhy ? V.deedWhy(w, { petId: p.id }, me(), tip() + 1) : null;
-    var dots = ['none', 'made', 'ready'].map(function (k, i) { var at = ['none', 'made', 'ready'].indexOf(S.s); return '<li class="' + (i < at ? 'done' : i === at ? 'now' : '') + '">' + ['Not tokenized', 'Token made', 'Tie ready'][i] + '</li>'; }).join('') + '<li>Tied</li>';
+    if (S.s === 'none' && S.err && !why) why = 'could not check the chain for a token you already made, so step 1 waits (no second token by mistake). It tries again every 30 seconds; if this network blocks port 4000, try another network';
+    var dots = ['none', 'made', 'ready'].map(function (k, i) { var at = ['none', 'made', 'ready'].indexOf(S.s === 'checking' ? 'none' : S.s); return '<li class="' + (i < at ? 'done' : i === at ? 'now' : '') + '">' + ['Not tokenized', 'Token made', 'Tie ready'][i] + '</li>'; }).join('') + '<li>Tied</li>';
     var body;
-    if (S.s === 'none') body = '<p>Give #' + p.id + ' its very own 🎟 pet token! Step 1 makes it for free (you only pay the tiny Bitcoin fee).' + (S.d && !S.d.ok ? ' The old token ' + esc(shortA(S.d.asset)) + ' sits in another wallet, so a fresh one replaces it.' : '') + '</p>' +
+    if (S.s === 'checking') body = '<p>🔎 Looking on the chain for a token you already made for #' + p.id + '…</p>';
+    else if (S.s === 'none') body = '<p>Give #' + p.id + ' its very own 🎟 pet token! Step 1 makes it for free (you only pay the tiny Bitcoin fee).' + (S.d && !S.d.ok ? ' The old token ' + esc(shortA(S.d.asset)) + ' sits in another wallet, so a fresh one replaces it.' : '') + '</p>' +
       '<button type="button" class="btn pc-tokgo" id="pcTokMint"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎟 Tokenize: step 1 of 2</button>';
     else if (S.s === 'made') body = '<p>⏳ Token ' + esc(shortA(S.pd.asset)) + ' is on its way! Wait 1 block (about 10 minutes) for it to confirm, then come back for step 2.</p>';
     else body = (S.pd.tieTx ? '<p>💌 Tie burn sent' + (S.pd.tieBlock ? ' and confirmed in block ' + S.pd.tieBlock.toLocaleString('en-US') : '') + '! #' + p.id + ' shows as tied (here and in Spam City) once the game data reaches it. No need to send anything again.</p>' : '<p>✨ Token ' + esc(shortA(S.pd.asset)) + ' is ready. Step 2 ties it to #' + p.id + ' with a 1-dander burn (<code>pet:deed</code>).</p>') +
@@ -93,7 +105,10 @@
   function tokBind(w, p) { var T = tokTools(), V = window.V2Rules, a = $('pcTokMint'), b = $('pcTokTie');
     if (a) a.onclick = function () { if (a.disabled) return; if (tpv) { tpv = 'made'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
       tokSay('Finding a free token name…'); a.disabled = true;
-      T.freeDeed().then(function (A) { tokSay('Checking the Proof of Pet…'); return (T.mintCheck ? T.mintCheck(p.id, A, tip()) : Promise.reject(new Error('the Proof of Pet check did not load, reload the page'))).then(function (plan) { return window.V2Wallet.sendDex(plan, me()); }).then(function (r) { T.pend(p.id, { petId: p.id, asset: A, mintTx: r && r.txid, at: tip() }); tokSay('Step 1 sent! Your token is being made.'); tokPaint(true); }); })
+      /* tokenize-69321: last look right before a new token, past the 5 min memo; a token already made for this pet = go to step 2, no second mint */
+      tokSay('Checking for a token you already made…');
+      T.chainPend(p.id, me(), w, { fresh: true }).then(function (x) { if (x) { a.disabled = false; tokSay('You already made token ' + shortA(x.asset) + ' for #' + p.id + '. No new token needed: step 2 is ready.'); tokPaint(true); return; }
+      return T.freeDeed().then(function (A) { tokSay('Checking the Proof of Pet…'); return (T.mintCheck ? T.mintCheck(p.id, A, tip()) : Promise.reject(new Error('the Proof of Pet check did not load, reload the page'))).then(function (plan) { return window.V2Wallet.sendDex(plan, me()); }).then(function (r) { T.pend(p.id, { petId: p.id, asset: A, mintTx: r && r.txid, at: tip() }); tokSay('Step 1 sent! Your token is being made.'); tokPaint(true); }); }); })
         .catch(function (e) { a.disabled = false; tokSay('Not sent: ' + (e && e.message || e)); }); };
     if (b) b.onclick = function () { if (b.disabled) return; if (tpv) { tpv = 'tied'; tokSay('Preview: no wallet window, nothing was sent.'); tokPaint(true); return; }
       var pd = T.pend(p.id); if (!pd) return tokPaint(true); b.disabled = true; tokSay('Checking the token…');

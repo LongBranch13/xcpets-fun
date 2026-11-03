@@ -1,6 +1,10 @@
 /* token-gallery (owner 1:17 AM CT Oct 25, 2026, pt1589u): tokens.html "Proof Parade", every tokenized pet in tokenize order.
  * Display only: reads api/ties.json, t/<id>.png and the replayed world (V2Mock.world()) for the current holder and open Spam City
- * listings. Never signs, no rule change, replay untouched. Shows the tied block only (token-gallery-2, Oct 26 2026: no per-block chain calls). Token links go to https://xcp.io/asset/<asset>. */
+ * listings. Never signs, no rule change, replay untouched. Shows the tied block only (token-gallery-2, Oct 26 2026: no per-block chain calls). Token links go to https://xcp.io/asset/<asset>.
+ * proof-parade-alive-1102 (owner 12:37 AM CT Nov 2, 2026, pt2647u 'no dead pets in proof parade'): only LIVING pets march: dead, released and community
+ * pets are left out (a risen zombie counts as alive, the same as the rules: p.dead is false until it crumbles). The rest keep token order, renumbered.
+ * Ties the hourly feed has not drawn yet (not in api/ties.json, so t/<id>.png is the plain sprite) get the Proof of Pet badge drawn here with
+ * js/v2-papers.js (same 'token' layout and pixels as tools/token-meta.js), so every tile shows its proof. */
 (function () {
   'use strict';
   var M = window.V2Mock, V = window.V2Rules || {}, R = window.V2Render || {};
@@ -11,11 +15,13 @@
   function ord(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
   var RAR = ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythic'], TID = ['common', 'uncommon', 'rare', 'legendary', 'mythic'];
   var st = { newest: false, holder: '', rarity: '', species: '', list: [] };
-  var ME = M && M.ME;
+  var ME = M && M.ME, P = window.V2Papers && window.V2Papers.render && window.V2Papers.info && window.V2Papers.tieOf ? window.V2Papers : null, byNo = {};
 
   function load() {
     return fetch('api/ties.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : { ties: [] }; }).catch(function () { return { ties: [] }; });
   }
+  /* alive(p): the rules' own flags. Dead (starved, eaten, crumbled zombie), released and community pets are out; a risen zombie is alive until it crumbles. */
+  function alive(p) { return !!(p && !p.dead && !p.released && !p.community && !(p.art && p.art.community)); }
   function build(feed) {
     var w = null; try { w = M && M.world(); } catch (e) {}
     var tip = (M && M.state && M.state().tip) || (w && w.tip) || feed.lastBlock || 0, listed = {};
@@ -27,15 +33,17 @@
       by[p.id] = { idx: Infinity, id: p.id, asset: a, block: D.block, tx: D.tx, kind: 'deed', name: p.name, rarity: RAR[p.tier], species: (p.species === 'kevin' ? 'KEVIN' : String(p.species || '').charAt(0).toUpperCase() + String(p.species || '').slice(1)), stage: p.stageName }; });
     Object.keys(by).forEach(function (k) { var e = by[k], p = w && w.byId && w.byId[e.id];
       if (p) { e.owner = p.owner; e.name = p.name || e.name; e.stage = p.stageName || e.stage; e.pet = p; if (p.deed && p.deed !== e.asset) e.asset = p.deed; }
+      if (w && w.byId && !alive(p)) return; /* living pets only (no world loaded = the feed's list as is) */
       e.listed = !!listed[e.id]; out.push(e); });
     /* same block: api/ties.json order (its index); ties replayed past the feed come after, by tx then id */
     out.sort(function (a, b) { return a.block - b.block || (a.idx === b.idx ? 0 : a.idx === Infinity ? 1 : b.idx === Infinity ? -1 : a.idx - b.idx) || String(a.tx).localeCompare(String(b.tx)) || a.id - b.id; });
-    out.forEach(function (e, i) { e.no = i + 1; });
+    out.forEach(function (e, i) { e.no = i + 1; byNo[e.id] = e; });
     return out;
   }
   function tile(e) {
     var rid = TID[RAR.indexOf(e.rarity)] || 'common', me = ME && e.owner === ME;
-    var art = '<img class="tg-art" src="t/' + e.id + '.png" alt="Proof of Pet for ' + esc(e.name) + ' #' + e.id + '" loading="lazy" data-id="' + e.id + '">';
+    var art = e.idx === Infinity && P ? '<canvas class="tg-art tg-pp" width="128" height="128" role="img" aria-label="Proof of Pet for ' + esc(e.name) + ' #' + e.id + '" data-id="' + e.id + '"></canvas>' :
+      '<img class="tg-art" src="t/' + e.id + '.png" alt="Proof of Pet for ' + esc(e.name) + ' #' + e.id + '" loading="lazy" data-id="' + e.id + '">';
     return '<div class="tg-tile" id="tok-' + e.id + '"><div class="tg-no">' + ord(e.no) + '</div><a href="pet.html?id=' + e.id + '" aria-label="' + esc(e.name) + ' #' + e.id + ' pet card">' + art + '</a>' +
       '<h4><a href="pet.html?id=' + e.id + '">' + esc(e.name) + '</a> <span class="muted">#' + e.id + '</span></h4>' +
       '<div class="small"><span class="pill tier tier-' + rid + '">' + esc(e.rarity) + '</span>' + (e.species ? ' · ' + esc(e.species) : '') + '</div>' +
@@ -44,7 +52,14 @@
       '<div class="small" title="' + esc(e.owner || '') + '">holder ' + esc(short(e.owner) || 'unknown') + (me ? ' (you)' : '') + '</div>' +
       (e.listed ? '<a class="pill tg-spam" href="shop.html">🛒 Spam City</a>' : '') + '</div>';
   }
-  function swapArt() { /* a pet with no Proof of Pet image falls back to its live pixel art */
+  /* drawProof(): Proof of Pet badge for ties the feed has not drawn yet (same as tools/token-meta.js: 'token' layout, looks baked at 4 pixels per badge pixel) */
+  function drawProof(c) { var w = M && M.world(), e = byNo[c.getAttribute('data-id')], p = e && e.pet; if (!w || !p) return;
+    var t = P.tieOf(w, p) || { asset: e.asset, block: e.block, tx: e.tx }, I = P.info(w, p, V, { tie: t }); if (!I) return;
+    var fr = null; try { fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); } catch (x) { fr = null; } var f0 = fr && fr[0] && fr[0].data && fr[0].data.length === 4096 ? fr[0] : null;
+    var r = P.render(I, f0 ? f0.data : null, 'token'); if (f0 && window.V2Looks && window.V2Looks.hasFx && window.V2Looks.hasFx(f0)) r = P.withLooks(P.scaleUp(r, 4), 4, f0);
+    c.width = r.w; c.height = r.h; c.getContext('2d').putImageData(new ImageData(r.data, r.w, r.h), 0, 0); }
+  function swapArt() {
+    if (P) $('tgGrid').querySelectorAll('canvas.tg-pp').forEach(function (c) { if (window.IntersectionObserver) { var o = new IntersectionObserver(function (L) { if (L.some(function (x) { return x.isIntersecting; })) { o.disconnect(); try { drawProof(c); } catch (x) {} } }, { rootMargin: '400px' }); o.observe(c); } else try { drawProof(c); } catch (x) {} }); /* a pet with no Proof of Pet image falls back to its live pixel art */
     $('tgGrid').querySelectorAll('img.tg-art').forEach(function (im) { im.onerror = function () { var w = M && M.world(), p = w && w.byId[im.getAttribute('data-id')]; if (!p || !R.petFrames) { im.onerror = null; return; }
       var c = document.createElement('canvas'); c.width = 32; c.height = 32; c.className = 'tg-art'; im.replaceWith(c); R.lazy(c, function () { return R.petFrames(p, w); }, true); }; if (im.complete && !im.naturalWidth) im.onerror(); });
   }
@@ -53,7 +68,7 @@
     var show = st.list.filter(function (e) { return (!st.rarity || e.rarity === st.rarity) && (!st.species || e.species === st.species) && (!q || String(e.owner || '').toLowerCase().indexOf(q) >= 0); });
     if (st.newest) show = show.slice().reverse();
     var holders = {}; st.list.forEach(function (e) { if (e.owner) holders[e.owner] = 1; });
-    $('status').textContent = fmt(st.list.length) + ' tokenized pet' + (st.list.length === 1 ? '' : 's') + ' from ' + fmt(Object.keys(holders).length) + ' holder' + (Object.keys(holders).length === 1 ? '' : 's') + '.';
+    $('status').textContent = fmt(st.list.length) + ' living tokenized pet' + (st.list.length === 1 ? '' : 's') + ' from ' + fmt(Object.keys(holders).length) + ' holder' + (Object.keys(holders).length === 1 ? '' : 's') + '.';
     $('tgCount').textContent = show.length === st.list.length ? 'Showing all ' + fmt(show.length) + '.' : 'Showing ' + fmt(show.length) + ' of ' + fmt(st.list.length) + '.';
     $('tgGrid').innerHTML = show.length ? show.map(tile).join('') : '<p class="muted small">No tokenized pets match.</p>';
     swapArt();

@@ -8,7 +8,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  function neverFed(p) { return p.lastFed == null && !Object.keys(p.feedDays || {}).length; }
+  function neverFed(p) { return p.lastFed == null && !Object.keys(p.feedDays || {}).length && !(p.zombie && !p.zombie.end) && !p.resurrected; } /* gmoney-god-1102: a risen zombie eats zombie meals (lastFed stays null) and a God is never 'unfed', so neither is swept by Discard unfed */
   function unfed(D) { return D.mine(D.world()).filter(function (p) { return !p.dead && !p.released && !p.community && neverFed(p) && !(D.isKept && D.isKept(p.id)); }); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   var GKEY = 'xcpets-v2-grid-hidden';
