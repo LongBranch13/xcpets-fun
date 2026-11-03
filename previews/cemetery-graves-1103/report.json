@@ -1,0 +1,250 @@
+{
+ "now@1280": {
+  "n": 10,
+  "bg": 0,
+  "hscroll": false,
+  "tiers": [
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "1@1280": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "2@1280": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "3@1280": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "now@390": {
+  "n": 10,
+  "bg": 0,
+  "hscroll": false,
+  "tiers": [
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-",
+   "-"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "1@390": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "2@390": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ },
+ "3@390": {
+  "n": 10,
+  "bg": 10,
+  "hscroll": false,
+  "tiers": [
+   "ghoul",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread",
+   "dread"
+  ],
+  "buttons": [
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   4,
+   4,
+   4
+  ],
+  "covered": [],
+  "errors": []
+ }
+}

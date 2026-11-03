@@ -52,7 +52,7 @@
   var CROW = ['     kkk   ', '    kkkkk  ', '   kkkkkeyy', '  kkkkkkk  ', ' kkkkkkkk  ', 'kkkkkkkkk  ', 'kk kkkkkk  ', 'k   kkkk   ', '     y y   ', '    yy yy  '];
 
   var TIERS = { Risen: 0, Shambler: 1, Ghoul: 2, Revenant: 3, Dread: 4 };
-  var ACC = ['#a9c3a4', '#8fe07f', '#7dff6a', '#5ff5d8', '#b48cff'];
+  var ACC = ['#b9d4b4', '#9cf08a', '#7dff6a', '#6ff8de', '#d2b8ff'];
 
   /* ---------- look 1: carved stone, cracks, moss, dirt mound ---------- */
   function draw1(b, st) { var w = b.w, h = b.h, r = st.r, cx = (w - 1) / 2, hw = (w - 5) / 2, archH = Math.min(16, Math.round(hw * .55)), base = h - 5;
@@ -109,7 +109,7 @@
   }
 
   /* ---------- look 3: gothic ogive + cross, iron fence ---------- */
-  function draw3(b, st) { var w = b.w, h = b.h, r = st.r, cx = Math.floor(w / 2), apex = 17, archH = 14, hw = (w - 8) / 2, R = 1.6, sL = 3, sR = w - 4, base = h - 8;
+  function draw3(b, st) { var w = b.w, h = b.h, r = st.r, cx = Math.floor(w / 2), apex = 17, archH = 20, hw = (w - 8) / 2, R = 1.6, sL = 3, sR = w - 4, base = h - 8;
     var mask = new Uint8Array(w * h), norm = Math.sqrt(R * R - (R - 1) * (R - 1)), top = function (x) { var xp = Math.min(x - sL, sR - x) / hw; if (xp < 0) return h; xp = Math.min(1, xp); return Math.round(apex + archH - archH * Math.sqrt(Math.max(0, R * R - Math.pow(R - xp, 2))) / norm); };
     for (var x = sL; x <= sR; x++) for (var y = top(x); y < base; y++) mask[y * w + x] = 1;
     // plinth steps
@@ -154,15 +154,15 @@
     (st.flames || []).forEach(function (f, i) { var s = document.createElement('i'); s.className = 'zgflame'; s.setAttribute('aria-hidden', 'true'); s.style.left = (f[0] * P - 4) + 'px'; s.style.top = (f[1] * P - 13) + 'px'; s.style.animationDelay = (-i * .37 - id % 5 * .21) + 's'; busy = true; card.appendChild(s); busy = false; });
   }
   var ro = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { paint(e.target); }); }) : null;
-  function scan() { document.querySelectorAll('.ztomb').forEach(function (c) { c.classList.add('zg', 'zg' + look); if (!c._zgObs) { c._zgObs = 1; ro && ro.observe(c); } paint(c); }); }
+  function scan() { bar(); document.querySelectorAll('.ztomb').forEach(function (c) { c.classList.add('zg', 'zg' + look); if (!c._zgObs) { c._zgObs = 1; ro && ro.observe(c); } paint(c); }); }
   var t; function soon() { if (busy) return; clearTimeout(t); t = setTimeout(scan, 60); }
-  new MutationObserver(function (ms) { if (ms.some(function (m) { return [].some.call(m.addedNodes, function (n) { return n.nodeType === 1 && !/zgbg|zgflame/.test(n.className || ''); }); })) soon(); }).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(function (ms) { if (ms.some(function (m) { return [].some.call(m.addedNodes, function (n) { return n.nodeType === 1 && !/zgbg|zgflame|zg-switch/.test(n.className || ''); }); })) soon(); }).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', soon);
 
   /* temporary look switcher (preview only) */
-  function bar() { var d = document.createElement('div'); d.className = 'zg-switch'; d.innerHTML = '<b>Grave look (preview):</b> ' + ['Now', '1 Stone', '2 Spooky', '3 Gothic'].map(function (n, i) {
+  function bar() { if (document.querySelector('.zg-switch')) return; var host = document.getElementById('cemZombies'); if (!host) return; var d = document.createElement('div'); d.className = 'zg-switch'; d.innerHTML = '<b>Grave look (preview):</b> ' + ['Now', '1 Stone', '2 Spooky', '3 Gothic'].map(function (n, i) {
       var u = new URL(location.href); u.searchParams.set('grave', String(i)); return '<a href="' + u.pathname.split('/').pop() + u.search + u.hash + '"' + (i === look ? ' aria-current="true"' : '') + '>' + n + '</a>'; }).join(' ');
-    document.body.appendChild(d); }
-  function boot() { bar(); scan(); }
+    busy = true; host.insertBefore(d, host.firstChild); busy = false; }
+  function boot() { scan(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
