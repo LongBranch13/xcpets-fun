@@ -1,6 +1,6 @@
 {
- "lastBlock": 974320,
- "count": 97,
+ "lastBlock": 974322,
+ "count": 98,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1164,6 +1164,18 @@
    "name": "Jootebit",
    "species": "kek",
    "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8520,
+   "asset": "A2220156705771658193",
+   "tiedBlock": 974322,
+   "tiedTx": "d8537fe4e96fa62348cec7ace0347ba779588f691318a7b0ba8437aed7846d8b",
+   "kind": "deed",
+   "name": "Boba",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
    "rarity": "Rare",
    "stage": "Mythic"
   }
