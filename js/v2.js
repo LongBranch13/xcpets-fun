@@ -441,8 +441,16 @@
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
   function revKeepTier(w, all, top) { /* top 1 = Keep Rare and up (hides Common + Uncommon), top 2 = Keep Legendary and up (also hides Rare) */
     var ids = all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).map(function (x) { return x.id; });
-    revHide(ids, (top === 1 ? 'Keep Rare and up?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary and up?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '. Mythic, starred and gear-wearing pets always stay.'); }
+    var st = revSafeNote(w, all, top); revHide(ids, (top === 1 ? 'Keep Rare & Legendary?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary only?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '.' + (st ? ' ' + st + '.' : '')); }
   function revKeepN(w, all, top) { return all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).length; }
+  /* hatch-review-tiers-1103 (owner [pt2741u] 'you dont hatch these sorts of pets'). DISPLAY ONLY. Eggs hatch only Common/Uncommon/Rare/Legendary
+   * (Mythic is a feeding stage; a new pet has no gear and is never auto-starred because it was never fed), so the old fixed line
+   * 'Mythic, starred and gear-wearing pets always stay.' described pets a hatch never makes. dudGuard still protects them (a late review can
+   * hold fed, starred or geared pets); the note now names only the protected pets that are really in the tiers the buttons would hide. */
+  function revSafeNote(w, all, top) { var my = 0, sk = 0, gr = 0;
+    all.forEach(function (x) { if (x.art.tierIndex > top) return; if (isKept(x.id)) sk++; else if (x.stage === 5) my++; else if (R.worn && R.worn(w, x.id).length) gr++; });
+    var bits = []; if (sk) bits.push(plural(sk, 'starred pet')); if (gr) bits.push(plural(gr, 'pet') + ' wearing gear'); if (my) bits.push(plural(my, 'Mythic'));
+    return bits.length ? 'These stay too: ' + bits.join(', ') : ''; }
   function revSelectShown(w, shown) { var n = 0, safe = 0; shown.forEach(function (x) { if (dudGuard(w, x).length) { safe++; return; } if (!rev.sel[x.id]) n++; rev.sel[x.id] = 1; });
     drawReveal(); toast('✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(rev.sel).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
   function revToggle(w, x, d) { var on = !rev.sel[x.id];
@@ -495,9 +503,9 @@
         spK.map(function (k) { return '<option value="' + esc(k) + '"' + (rev.sp === k ? ' selected' : '') + (spC[k] || rev.sp === k ? '' : ' disabled') + '>' + esc(revSpName(k)) + ' ' + spC[k].toLocaleString('en-US') + '</option>'; }).join('') + '</xc-select></label>' +
         (spOn ? ' <button type="button" class="q" id="pkSpX" title="Show every species again">✕ ' + esc(revSpName(rev.sp)) + '</button>' : '') : '';
       var keepRow = many && (kR || kL) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
-        '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare and up<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
-        '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary and up<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
-        '<div class="muted small pksafe">🛡️ Mythic, starred and gear-wearing pets always stay.</div></div>' : '';
+        '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare &amp; Legendary<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
+        '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary only<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
+        '<div class="muted small pksafe">🛡️ Legendary pets are never hidden.' + (function () { var t = revSafeNote(w, all, 2); return t ? ' ' + esc(t) + '.' : ''; })() + '</div></div>' : '';
       var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' hidden</span>' : '') + '</div>' : '';
@@ -1510,7 +1518,7 @@
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
     var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });
-    revHide(ids, 'Hide ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (Legendary, Mythic or wearing gear): ' + idList(gd) + '.' : '')); };
+    revHide(ids, 'Hide ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (' + (function () { var why = []; gd.forEach(function (id) { dudGuard(dw, dw.byId[id]).forEach(function (r) { r = /^wearing/.test(r) ? 'wearing gear' : r; if (why.indexOf(r) < 0) why.push(r); }); }); return why.join(', '); })() + '): ' + idList(gd) + '.' : '')); };
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
   $('introSkip').onclick = function () { close('intro'); };
