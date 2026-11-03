@@ -215,6 +215,15 @@
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
   function drawEyeGear(img, a, d, sp) { var g = d.v2eye, C = BonusGear.COLORS, D = img.data, E = [a.eyeL, a.eyeR].filter(Boolean);
+    /* gear-fit 2026-11-03 (display only): BonusGear.anchors splits the eye pixels at x=16, so a face whose centre is off x=16 (Doge: eyes at x7-10 and
+     * x14-17) got its right eye's inner half counted as the LEFT eye -> one 9-px-wide left lens + a 2-px right lens (Lulu #228's oversized glasses).
+     * Re-split the same eye pixels into their two column-connected groups; faces already split right are unchanged. */
+    if (a.eyeL && a.eyeR) { var allP = a.eyeL[2].concat(a.eyeR[2]), cols = {}; allP.forEach(function (q) { cols[q[0]] = 1; });
+      var cx = Object.keys(cols).map(Number).sort(function (p, q) { return p - q; }), grp = [[cx[0]]];
+      for (var ci = 1; ci < cx.length; ci++) { if (cx[ci] === cx[ci - 1] + 1) grp[grp.length - 1].push(cx[ci]); else grp.push([cx[ci]]); }
+      if (grp.length === 2 && grp[0][grp[0].length - 1] !== Math.max.apply(null, a.eyeL[2].map(function (q) { return q[0]; }))) {
+        var cut = grp[1][0], mk = function (p) { var sx = 0, sy = 0; p.forEach(function (q) { sx += q[0]; sy += q[1]; }); return [Math.round(sx / p.length), Math.round(sy / p.length), p]; };
+        E = [mk(allP.filter(function (q) { return q[0] < cut; })), mk(allP.filter(function (q) { return q[0] >= cut; }))]; } }
     if (!E.length && g.s === 'bags') { // closed (^ ^) eyes: bags go one row under the first dark interior marks on each side of the face
       var ink = function (x, y) { var q = (y * 32 + x) * 4; return a.isSil(x - 1, y) && a.isSil(x + 1, y) && D[q] + D[q + 1] + D[q + 2] < 200; }, cxm = (a.minX + a.maxX) / 2, done = 0;
       [-1, 1].forEach(function (sd) { for (var yy = a.minY + 3; yy < a.minY + Math.round((a.maxY - a.minY) * 0.6); yy++) { var xs = []; for (var xx = 0; xx < 32; xx++) if ((xx - cxm) * sd > 0 && ink(xx, yy)) xs.push(xx); if (xs.length) { var yb = yy; while (xs.some(function (v) { return ink(v, yb + 1) || ink(v - 1, yb + 1) || ink(v + 1, yb + 1); })) yb++; for (var k = Math.min.apply(null, xs); k <= Math.max.apply(null, xs); k++) put(k, yb + 2, g.f); done++; return; } } });
@@ -686,7 +695,10 @@
     if (F && stage > 0) { ov.forEach(function (id) { if (F.isCape(id)) fitCape = id; }); if (go.cape && F.isCape(go.cape)) { if (!fitCape) fitCape = go.cape; delete go.cape; }
       if (go.armor) { fitArmor = PetCore.ARMORS.filter(function (x) { return x.id === go.armor; })[0] || null; if (fitArmor) delete go.armor; } }
     if (fitCape) ov = ov.filter(function (id) { return !F.isCape(id); });
-    var fr = art.hybrid ? V.hybridFrames(art, { stage: stage, gearOverride: go, gearCap: cap }) : PetCore.renderFrames(art, { stage: stage, gearOverride: go, gearCap: cap }); // hybrids: assembled art + badge
+    /* gear-fit 2026-11-03 (display only): Laser-eye beams run from the eyes to the canvas edges, so under shades / a visor / a mask they stuck out of the
+     * lens sides as a stray red bar across the face (Lulu #228). Eyewear that covers the eyes hides the beams (frames drawn with classic eyes). */
+    var lzr = art && art.eyes === 'laser' && ov.some(function (id) { var d0 = BonusGear.DEFS[id]; return d0 && d0.v2eye && /^(glasses|visor|mask)$/.test(d0.v2eye.s); }), artF = lzr ? Object.assign({}, art, { eyes: 'classic' }) : art;
+    var fr = art.hybrid ? V.hybridFrames(artF, { stage: stage, gearOverride: go, gearCap: cap }) : PetCore.renderFrames(artF, { stage: stage, gearOverride: go, gearCap: cap }); // hybrids: assembled art + badge
     if ((ov.length || fitCape || fitArmor) && stage > 0) { var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }, art.eyes === 'laser' ? { eyes: 'classic' } : {}), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255]; /* sprite-fixes 2026-10-20: gear anchors are measured on a laser-free key (Laser-eye beams run to the canvas edges and used to stretch the silhouette: headset bar, feet, held pieces, hoodie off the edge); the drawn frames keep their lasers */
       var order = ['back', 'body', 'feet', 'hand', 'head', 'face']; // z-order: cape (behind) < outfit/armour < feet < held < headwear < face
