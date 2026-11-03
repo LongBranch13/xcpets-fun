@@ -65,8 +65,7 @@
     d.innerHTML = '<div class="vd-scene" aria-hidden="true"><i class="vd-cbunt"></i><div class="vd-stage">' + S.box2 +
       '<div class="vd-ftwrap"><span class="vd-bub">Go vote!</span>' + FT + '</div>' + pet('doge') + pet('mumu') + '</div></div>' +
       '<div class="vd-card-t"><div class="vd-k">Tuesday, Nov 3, 2026</div><div class="vd-h">🗳️ Happy Election Day!</div>' +
-      '<div class="vd-a">FUNTRUMP says <b>Go vote!</b> Every pet is wearing its I Voted sticker today.</div>' +
-      '<div class="vd-n small">Decor only, just for today: no game rule changes.</div></div>';
+      '<div class="vd-a">FUNTRUMP says <b>Go vote!</b> Every pet is wearing its I Voted sticker today.</div></div>';
     var main = document.querySelector('main'); if (main) main.insertBefore(d, main.firstChild); else document.body.appendChild(d);
   }
   /* pet pages: an I Voted sticker on the pet's portrait + a small tile under Gear (nothing is granted, nothing changes on the pet) */
