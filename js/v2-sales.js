@@ -383,6 +383,11 @@
       return '<li>#' + S.petId + ' ' + esc(p.name || '') + ' for <b class="sh-coin">' + esc(V.saleAmountText(S.asset, S.price)) + '</b> · ends after block ' + blk(S.expire) + ' (' + Math.max(0, S.expire - TIP) + ' blocks left) ' +
         (o && o.status === 'cancelled' ? '<span class="sh-hint">order cancelled</span>' : '<button class="sh-btn sh-ghost" data-cancel="' + S.n + '">Cancel</button>') + '</li>'; }).join('') + '</ul></div>'; }
   function mineBtn(S) { var o = orderOf(S); return '<span class="sh-state sh-s-open">Your listing</span> ' + (o && o.status === 'cancelled' ? '<span class="sh-hint">order cancelled</span>' : '<button class="sh-btn sh-ghost" data-cancel="' + S.n + '">Cancel</button>'); }
+  var TOPN = null, TOPTRY = 0;
+  function syncTop(n) { if (n) TOPN = n; var bar = $('townBar'); if (!bar) { if (TOPN && TOPTRY++ < 40) setTimeout(function () { syncTop(); }, 250); return; }
+    bar.querySelectorAll('.tb-st a[href^="shop.html#"]').forEach(function (a) { var k = a.getAttribute('href').slice(10), c = TOPN && TOPN[k], b = a.querySelector('.sh-cnt');
+      if (/^(buy|sell|trade|gift)$/.test(k)) { if (TAB === k) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
+      if (c) { if (!b) { b = document.createElement('b'); b.className = 'sh-cnt'; a.appendChild(b); } b.textContent = c; } else if (b) b.remove(); }); }
   function render() { var root = $('shop'); if (!on()) { root.innerHTML = '<p class="sh-soon">The shop opens soon. Until then the cases hold card backs.</p><div class="sh-grid">' + '<div class="sh-card sh-back"></div>'.repeat(6) + '</div>'; return; }
     var b = TIP + 1, all = V.openListings(W, b).map(function (S) { var own = !!ME && S.seller === ME; return { p: W.byId[S.petId], S: S, mine: own, buy: !own && !V.buyGuard(W, S, BOOK, b, ME) }; }), /* listings-fix: own listings stay in the binder, marked Yours */
       fB = PF.load('binder'), fM = PF.load('mine'), xs = V.petFilter(W, all, fB, b), others = xs.map(function (x) { return x.S; }),
@@ -390,10 +395,14 @@
       pgs = Math.max(1, Math.ceil(others.length / PER));
     PAGE = Math.min(PAGE, pgs - 1); var pg = xs.slice(PAGE * PER, PAGE * PER + PER);
     var nSell = mineAll.filter(function (x) { return x.S.seller === ME && V.saleState(W, x.S, b) === 'open'; }).length, nTrade = V.swapsFor ? V.swapsFor(W, ME, b).length : 0;
-    var tabs = '<nav class="sh-tabs" role="tablist">' + [['buy', '🛒 Buy', all.length], ['sell', '🎟 Sell', nSell], ['trade', '🔁 Trade', nTrade], ['gift', '🎁 Gift', null]].map(function (t) {
-      return '<button class="sh-tab' + (TAB === t[0] ? ' on' : '') + '" role="tab" aria-selected="' + (TAB === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + (t[2] ? ' <b class="sh-cnt">' + t[2] + '</b>' : '') + '</button>'; }).join('') + '</nav>';
-    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = openBanner(b) + tabs + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
-    root.innerHTML = openBanner(b) + tabs + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : '<div class="sh-bar"><span class="sh-hint">' + others.length + ' of ' + all.length + ' pet' + (all.length === 1 ? '' : 's') + ' in the binder · every pet sells with its own 🎟 pet token</span></div>' +
+    /* shop-dedupe-1103 (owner [pt2720u] 'top and bottom seems redundant'): the lower Buy/Sell/Trade/Gift tab row is gone; the Town bar stations
+     * at the top (js/v2-places.js) are the only row. syncTop() gives them what the old row had: the current tab marked, the same count badges
+     * (Buy = open listings, Sell = your open listings, Trade = trades for you) and in-place switching (no reload; see the click handler). */
+    syncTop({ buy: all.length, sell: nSell, trade: nTrade, gift: null });
+    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = openBanner(b) + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
+    root.innerHTML = openBanner(b) + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : /* shop-dedupe-1103: the 'N of M pets in the binder · every pet sells with its own pet token' line is dropped: the Filters summary right
+       * under it already says 'showing N of M', and the token sentence is in the Sell bar and the page footer. */
+      '' +
       '<div id="shBinF">' + PF.html(fB, BINDER_F, { species: PF.species(all.map(function (x) { return x.p; })), count: others.length, total: all.length }) + '</div>' +
       '<div class="sh-binder"><div class="sh-rings"></div><div class="sh-grid">' + (pg.map(function (x) { return card(x.p, x.S, x.mine ? mineBtn(x.S) : '<button class="sh-btn sh-buy' + (x.buy ? '' : ' sh-later') + '" data-buy="' + x.S.n + '">' + (x.buy ? 'Buy' : 'Buy (wait)') + '</button>'); }).join('') || '<p class="sh-hint">' + (all.length ? 'No pets match these filters.' : 'The binder is empty.') + '</p>') + '</div>' +
       '<div class="sh-pager"><button class="sh-btn" id="shPrev"' + (PAGE ? '' : ' disabled') + '>◀</button> page ' + (PAGE + 1) + ' of ' + pgs + ' <button class="sh-btn" id="shNext"' + (PAGE < pgs - 1 ? '' : ' disabled') + '>▶</button></div></div>') +
@@ -531,6 +540,12 @@
 
   document.addEventListener('click', function (e) { var t = e.target; if (!t.closest) return;
     if (t.closest('[data-tab]')) { TAB = t.closest('[data-tab]').getAttribute('data-tab'); try { history.replaceState(null, '', '#' + TAB); } catch (x) { } render(); return; }
+    /* shop-dedupe-1103: a Town bar station on this page switches in place like the old lower tabs did (no reload). Before the shop is ready
+     * the plain link still reloads into that station (js/v2-places.js hashchange). Token Press opens the press, as #press does on load. */
+    var ts = t.closest('#townBar .tb-st a[href^="shop.html#"]'), tk = ts && ts.getAttribute('href').slice(10);
+    if (ts && window.V2Sales.scene.ready && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+      if (/^(buy|sell|trade|gift)$/.test(tk)) { e.preventDefault(); window.V2Sales.scene.tab(tk); return; }
+      if (tk === 'press' && window.V2ShopScene) { e.preventDefault(); try { history.replaceState(null, '', '#press'); } catch (x) { } window.V2ShopScene.act('press'); return; } }
     if (t.id === 'shGiftMany' && window.V2Gift) { window.V2Gift.picker(); return; } if (t.closest('[data-gift]') && window.V2Gift) { window.V2Gift.gift([Number(t.closest('[data-gift]').getAttribute('data-gift'))]); return; }
     if (t.id === 'shSwapGo' && window.V2Gift) { var sid = Number($('shSwapId').value), sp = W.byId[sid]; if (!sp || sp.owner === ME || sp.dead || sp.released || sp.community) { toast('Enter the # of a living pet someone else owns.'); return; } window.V2Gift.swap(sid); return; }
     if (t.closest('[data-swapgo]')) { window.V2SwapGo(t.closest('[data-swapgo]').getAttribute('data-swapgo')); return; }
