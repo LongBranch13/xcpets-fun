@@ -73,8 +73,8 @@
     if (document.body.getAttribute('data-v2page') !== 'pet' && !/pet\.html$/.test(location.pathname)) return;
     var art = document.querySelector('#pcFront .pc-art'); if (art && !art.querySelector('.vd-pstk')) { var s = el('i', 'vd-pstk'); s.setAttribute('aria-hidden', 'true'); art.appendChild(s); art.classList.add('vd-art'); }
     var g = document.getElementById('gear'); if (!g || document.querySelector('.vd-tile')) return;
-    var t = el('div', 'vd-tile'); t.innerHTML = '<i class="vd-s vd-bigstk" aria-hidden="true"></i><div><b>🗳️ I Voted sticker</b> <span class="vd-tag">decor · just for today</span>' +
-      '<div class="small">Every pet wears one on Election Day, Tue Nov 3. Not gear: nothing is granted and no stats change.</div></div>';
+    var t = el('div', 'vd-tile'); t.innerHTML = '<i class="vd-s vd-bigstk" aria-hidden="true"></i><div><b>🗳️ I Voted sticker</b>' +
+      '<div class="small">Every pet wears one on Election Day, Tue Nov 3.</div></div>';
     g.insertAdjacentElement('afterend', t);
   }
   function addBanner() {
