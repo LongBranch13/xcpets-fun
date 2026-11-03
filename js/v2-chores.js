@@ -1,5 +1,5 @@
 /* XCPETS Daily chores (PLAN item 8, branch chores-audit-1101, PREVIEW ONLY until the gate is set at deploy).
- * One burn `pet:dc:F[:AA:RUNS]` = WAGMI check-in + feed every pet that eats + use all saved spins, in that order.
+ * One burn `pet:dc:F[:AA:RUNS]` = WAGMI check-in + feed every pet that eats (never a discarded one) + use all saved spins, in that order.
  * This file is UI only: a "🧹 Daily chores" button under the WAGMI bar, a sign sheet that lists every part, and a
  * pixel animation when your chores burn confirms. The rule lives in js/v2-rules.js (case 'chores', ACTIVATE_DAILY_CHORES_BLOCK).
  * While the gate is null the button stays hidden (?chores=preview shows a disabled preview for screenshots). The site never signs. */
@@ -40,15 +40,28 @@
     document.body.appendChild(el); var steps = el.querySelectorAll('.dc-step'), t = RM.matches ? 0 : 450;
     [].forEach.call(steps, function (s, i) { setTimeout(function () { s.className = 'dc-step ' + done(s.dataset.k); }, t * (i + 1)); });
     setTimeout(function () { el.remove(); }, RM.matches ? 1800 : 3200); }
-  function plan() { var u = U(), v = V(), w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!w || !u.ME || !v.dailyChoresPlan) return null; return v.dailyChoresPlan(w, u.ME, (tip || w.tip) + 1); }
+  /* chores-skip-discards-1103 (owner Nov 3 2026 3:15 PM CT [pt2751u] "daily chores is useless because it feeds discards"): UI only.
+   * Discard is browser-only (V2UI.hiddenIds, no rule state), so the rule feeds exactly the places the tag names; the SITE picks them. Daily chores now
+   * passes only your hungry, NOT discarded pets to V2Rules.dailyChoresPlan (its o.ids option), the same as Feed all hungry / Feed selected (noDiscarded).
+   * A discarded pet becomes a 0 (must not eat) place in the runs, so it is never in the burn. The sheet shows the pets it will really feed
+   * (every burn, not only the first) and how many discarded pets were left out. Rule files untouched. */
+  function hiddenSet() { var u = U(); try { return new Set(((u && u.hiddenIds && u.hiddenIds()) || []).map(Number)); } catch (e) { return new Set(); } }
+  function plan() { var u = U(), v = V(), w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!w || !u.ME || !v.dailyChoresPlan) return null;
+    var nb = (tip || w.tip) + 1, h = hiddenSet(), eats = v.frEats || function (p) { return p && p.hungry; }, ids = [], gone = 0;
+    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (h.has(p.id)) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } ids.push(p.id); });
+    var set = new Set(ids); ids.indexOf = function (x) { return set.has(x) ? 0 : -1; }; /* the planner asks ids.indexOf(id) >= 0 per pet; a Set keeps big wallets fast */
+    var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
+    P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }
+  function feedLine(P) { var n = P.feedTotal != null ? P.feedTotal : P.parts.feed; return n ? '✓ feed ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') : '– no pet needs food'; }
+  function goneLine(P) { var g = P.discardedSkipped || 0; return g ? '– ' + fmt(g) + ' discarded pet' + (g === 1 ? '' : 's') + ' left out (not fed)' : ''; }
   function sheetParts(P) { var p = P.parts; return '<ul class="dc-parts small" style="text-align:left;margin:6px auto;max-width:420px;padding-left:18px">' +
     '<li>' + (p.wagmi ? '✓ WAGMI check-in' : '– WAGMI: already said today') + '</li>' +
-    '<li>' + (p.feed ? '✓ feed ' + fmt(p.feed) + ' pet' + (p.feed === 1 ? '' : 's') : '– no pet needs food') + '</li>' +
+    '<li>' + feedLine(P) + '</li>' + (goneLine(P) ? '<li class="dc-gone">' + goneLine(P) + '</li>' : '') +
     '<li>' + (p.spins ? '✓ use all saved spins' : '– no saved spins') + '</li>' +
     '<li>' + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + ' (fewer signatures, less network fee)</li></ul>'; }
   function sheetTitle(P) { var p = P.parts, bits = [];
     bits.push(p.wagmi ? '✓ WAGMI check-in' : '– WAGMI (already said today)');
-    bits.push(p.feed ? '✓ feed ' + fmt(p.feed) + ' pet' + (p.feed === 1 ? '' : 's') : '– no pet needs food');
+    bits.push(feedLine(P)); if (goneLine(P)) bits.push(goneLine(P));
     bits.push(p.spins ? '✓ use all saved spins' : '– no saved spins');
     var dan = P.plans.reduce(function (s, q) { return s + dander(q.amount || 0); }, 0);
     return '🧹 Daily chores · ' + bits.join(' · ') + ' · ' + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + ' · ' + (dan < 1e8 ? fmt(dan) + ' dander' : fmt(dan / 1e8) + ' XCPETS'); }
@@ -61,7 +74,7 @@
     if (!on || !u.ME || bar.style.display === 'none') { if (row) row.style.display = 'none'; return; }
     css(); if (!row) { row = document.createElement('div'); row.id = 'dcRow'; row.className = 'dc-row'; bar.parentNode.insertBefore(row, bar.nextSibling); }
     row.style.display = ''; var tip = (u.S && u.S().tip) || 0, live = gate != null && tip + 1 >= gate, P = live ? plan() : null;
-    var note = !live ? (gate == null ? 'Preview: opens when the rule goes live' : 'Opens at block ' + fmt(gate)) : P ? P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns : 'All done today';
+    var note = !live ? (gate == null ? 'Preview: opens when the rule goes live' : 'Opens at block ' + fmt(gate)) : P ? (P.feedTotal ? 'feeds ' + fmt(P.feedTotal) + ' pet' + (P.feedTotal === 1 ? '' : 's') + ' · ' : '') + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + (P.discardedSkipped ? ' · ' + fmt(P.discardedSkipped) + ' discarded left out' : '') : 'All done today';
     row.innerHTML = '<button class="dc-btn" id="dcBtn" type="button"' + (live && P ? '' : ' disabled') + '>🧹 Daily chores</button><span class="dc-note">WAGMI + feed + spins in one burn · ' + note + '</span>';
     var b = $('dcBtn'); if (b && !b.disabled) b.onclick = go; }
   /* watch the log for your own confirmed chores burns and queue the pixel animation once per tx */
@@ -72,5 +85,5 @@
     try { localStorage.setItem('xcpets.dcSeen', JSON.stringify(seen)); } catch (e) {} }
   var first = true;
   setInterval(function () { ensure(); if (first) { var u = U(), w = u && u.world && u.world(); if (w && w.log) { w.log.forEach(function (ev) { if (ev.kind === 'chores') seen[ev.tx || (ev.block + ':' + ev.msg)] = 1; }); first = false; } } else watch(); }, 2000);
-  window.V2Chores = { play: play, plan: plan, sheetTitle: sheetTitle, ensure: ensure, demo: function () { play({ parts: [{ part: 'wagmi', done: true }, { part: 'feed', done: true }, { part: 'spins', done: false }], petIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }); } };
+  window.V2Chores = { play: play, plan: plan, hiddenSet: hiddenSet, sheetTitle: sheetTitle, ensure: ensure, demo: function () { play({ parts: [{ part: 'wagmi', done: true }, { part: 'feed', done: true }, { part: 'spins', done: false }], petIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }); } };
 })();
