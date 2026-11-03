@@ -6,9 +6,9 @@ const ROOT = path.resolve(process.argv[2]), TAG = process.argv[3] || 'after', OU
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.webp': 'image/webp', '.woff2': 'font/woff2' };
 async function open(b, W) {
   const ctx = await b.newContext({ viewport: { width: W, height: W > 500 ? 900 : 844 }, isMobile: W < 500, hasTouch: W < 500, deviceScaleFactor: 1 });
-  await ctx.addInitScript(() => { window.open = () => null; try { localStorage.setItem('xcpets-hint-motel', '1'); localStorage.setItem('xcpets-tour-seen', '1'); } catch (e) { }
+  await ctx.addInitScript((vo) => { window.open = () => null; try { localStorage.setItem('xcpets-hint-motel', '1'); localStorage.setItem('xcpets-tour-seen', '1'); } catch (e) { }
     let _ca; Object.defineProperty(window, 'V2CemAnim', { configurable: true, get() { return _ca; }, set(v) { if (v && v.watch) v.watch = function () { }; _ca = v; } });
-    let _vw; Object.defineProperty(window, 'V2View', { configurable: true, get() { return _vw; }, set(v) { if (v) v.viewOnly = () => false; _vw = v; } }); });
+    let _vw; Object.defineProperty(window, 'V2View', { configurable: true, get() { return _vw; }, set(v) { if (v && !vo) v.viewOnly = () => false; _vw = v; } }); }, !!process.env.VIEWONLY); // VIEWONLY=1: leave the page view-only, like the public preview link
   const pg = await ctx.newPage(); pg.errs = [];
   pg.on('pageerror', e => pg.errs.push(String(e && e.message || e).slice(0, 200))); pg.on('dialog', d => d.dismiss().catch(() => { }));
   await pg.route(u => u.href.startsWith(ORIGIN + '/'), r => { const p = decodeURIComponent(new URL(r.request().url()).pathname); const f = path.join(ROOT, p === '/' ? 'index.html' : p);

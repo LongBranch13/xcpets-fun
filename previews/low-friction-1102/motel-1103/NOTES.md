@@ -17,3 +17,6 @@ although 1,083 could (diag.js output). Nothing else was wrong: the list was just
 ## Checks
 interact.js (log: interact.log) at 1280 (mouse) and 390 (CDP touch drag): ALL OK. shoot.js makes before/after shots (before = 473f6e1d tree).
 Harness only: cemetery event overlays (.ca-ov, from live chain events) are hidden in shots/checks; they covered taps at random.
+
+## Public preview is view-only (fixed in d377c487)
+The pinned githack link has no wallet connected, so every pet is "View only: connect the wallet to breed". With ✅ Can breed on by default, the dock showed "0 of 1,674" there. Now the Can breed filter skips view-only and still-loading pages, so everyone shows, greyed with the reason. Checks: viewonly.js / viewonly.log (local, 1280 + 390: 40 tiles, 1,674 pets) and linkcheck.js / linkcheck.log (the real pinned githack URL at 50c2d715: no old boxes, 5 sort + 5 stage chips, species picker, drop pill, 40 tiles, 0 page errors). Connected-wallet checks rerun: interact.js ALL OK.
