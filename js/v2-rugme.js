@@ -70,8 +70,15 @@
     tabs.innerHTML = '<button class="btn" role="tab" data-rmtab="motel">🛎️ Check in</button><button class="btn" role="tab" data-rmtab="rug">💘 Rug Me</button>';
     var h = panel.querySelector('h2,h3'); panel.insertBefore(tabs, h ? h.nextSibling : panel.firstChild);
     var box = document.createElement('div'); box.id = 'rugMe'; box.className = 'rug-me'; box.hidden = true; panel.appendChild(box);
-    tabs.querySelectorAll('[data-rmtab]').forEach(function (b) { b.onclick = function () { setTab(b.getAttribute('data-rmtab')); }; }); setTab(st.tab); return true; }
-  function setTab(t) { var rt = !!(V && V.retireOn && V.retireOn(tip() + 1)); if (rt && t === 'rug') t = 'motel'; /* Rug Me retired at ACTIVATE_RETIRE_TAGS_BLOCK: tab hidden */ st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.querySelectorAll('[data-rmtab="rug"]').forEach(function (x) { x.hidden = rt; }); panel.classList.toggle('rm-on', t === 'rug');
+    tabs.querySelectorAll('[data-rmtab]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-rmtab'); setTab(t); if (t === 'motel') goCheckIn(); }; }); setTab(st.tab); return true; }
+  /* motel-partner-1103 (owner Nov 3, 3:28 PM CT: the 'Check in' tab did nothing when tapped, it only re-selected the tab already on): it now also
+   * scrolls to the check-in flow (the motel scene + pet dock; the Parent 1 picker when there is no dock) and puts the focus on the first pet there. */
+  function goCheckIn() { var sc = $('motelScene'), d = $('lfDock'), ez = $('ezBreed'), el = sc && sc.offsetParent !== null ? sc : (ez && ez.offsetParent !== null ? ez : $('motelDesk')); if (!el) return;
+    try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { el.scrollIntoView(); }
+    var f = (d && d.offsetParent !== null && (d.querySelector('#lfStrip [data-lf]') || $('lfQ'))) || (ez && ez.querySelector('button,[tabindex]')); if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) { } }, 350);
+    var u = U(); if (u && u.toast) u.toast(d && $('bA') && $('bA').value && !$('bB').value ? '💞 Now drag a date onto the motel: your pets or other players’ pets.' : '🛎️ Drag a pet onto the motel (or tap a pet, then the motel) to check in.'); }
+  function setTab(t) { var rt = !!(V && V.retireOn && V.retireOn(tip() + 1)); if (rt && t === 'rug') t = 'motel'; /* Rug Me retired at ACTIVATE_RETIRE_TAGS_BLOCK: tab hidden */ st.tab = t; var panel = $('breedPanel'); if (!panel) return; panel.querySelectorAll('[data-rmtab="rug"]').forEach(function (x) { x.hidden = rt; x.style.display = rt ? 'none' : ''; }); panel.classList.toggle('rm-on', t === 'rug');
+    var tb = $('rmTabs'); if (tb) { tb.classList.toggle('rm-solo', rt); if (rt) tb.removeAttribute('role'); else tb.setAttribute('role', 'tablist'); tb.querySelectorAll('[data-rmtab]').forEach(function (x) { if (rt) x.removeAttribute('role'); else x.setAttribute('role', 'tab'); }); } /* motel-partner-1103: once retired the bar is one plain 🛎️ Check in button (no tab list with a single tab) */
     panel.querySelectorAll('[data-rmtab]').forEach(function (b) { var on = b.getAttribute('data-rmtab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
     $('rugMe').hidden = t !== 'rug'; if (t === 'rug') paint(); }
   function paint() { var u = U(), box = $('rugMe'); if (!u || !box || box.hidden) return; var w = u.world(), ME = u.ME, b = tip() + 1;
@@ -161,9 +168,10 @@
   function hashPost() { var m = /^#rugpost-(\d+)$/.exec(location.hash || ''); if (!m || !U() || !U().ME) return; history.replaceState(null, '', location.pathname + location.search); setTimeout(function () { openPost(+m[1]); }, 400); }
   /* ---------- hook into the normal render ---------- */
   function boot() { if (!U() || !$('breedPanel')) return setTimeout(boot, 300); mount();
-    if (window.V2Motel && V2Motel.render) { var mr = V2Motel.render; V2Motel.render = function () { var r = mr.apply(this, arguments); try { mount(); paint(); } catch (e) { if (window.console) console.error(e); } return r; }; }
+    if (window.V2Motel && V2Motel.render) { var mr = V2Motel.render; V2Motel.render = function () { var r = mr.apply(this, arguments); try { mount(); setTab(st.tab); /* motel-partner-1103: re-check the retire gate every render (was only once at boot, before the chain tip was known, so 💘 Rug Me stayed on screen after block 974,163); setTab paints the Rug Me box when it is the open tab */ } catch (e) { if (window.console) console.error(e); } return r; }; }
     var di = $('dInfo'); if (di && window.MutationObserver) new MutationObserver(function () { try { decorateDetail(); } catch (e) { } }).observe(di, { childList: true });
+    window.addEventListener('xcpets-world-fresh', function () { try { if ($('rmTabs')) setTab(st.tab); } catch (e) { } }); /* motel-partner-1103: the retire check also follows a fresh chain tip */
     paint(); hashPost(); }
-  window.V2RugMe = { paint: paint, setTab: setTab, deck: deck, BIOS: BIOS, MARK: MARK, openPost: openPost, packPlans: packPlans, _st: st };
+  window.V2RugMe = { paint: paint, setTab: setTab, goCheckIn: goCheckIn, deck: deck, BIOS: BIOS, MARK: MARK, openPost: openPost, packPlans: packPlans, _st: st };
   boot();
 })();

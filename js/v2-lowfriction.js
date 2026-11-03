@@ -13,11 +13,15 @@
  * 4) Batch: "Feed N selected" = the existing Feed selected (one burn list, existing chaining rules). Breed stays one pair per
  *    burn and chores are one account-wide burn, so there is no batch for those (the rules have none).
  * 5) Phones: My Pets opens in the existing swipe view ("One at a time") unless you picked a view before.
+ * motel-partner-1103 (owner Nov 3, pt2757u: "when I drag pet into animation it doesnt have the options for other peoples pets to drag in after"):
+ *    once guest 1 is in, the strip switches to the dates guest 1 can breed with (V2Rules.breedPicker partners, the list the old picker and
+ *    the Other wallets tab use): your pets AND other players' pets, chips All / 👤 Mine / 🌍 Other players, ↺ Change guest 1. Mixed God and
+ *    non-God pairs are never listed (gods-breed-gods-1102). A date from another wallet goes into #bB, the existing two-owner motel breed.
  * localStorage: xcpets-lf-last = last pet id used here; xcpets-lf-dock = dock sort / filters (display only). */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); }, U = function () { return window.V2UI; }, V = function () { return window.V2Rules; };
-  var LS = window.localStorage, KL = 'xcpets-lf-last', KD = 'xcpets-lf-dock', st = { held: null, q: '', n: 40, drag: null, sort: 'power', stg: '', sp: '', ok: true };
+  var LS = window.localStorage, KL = 'xcpets-lf-last', KD = 'xcpets-lf-dock', st = { held: null, q: '', n: 40, drag: null, sort: 'power', stg: '', sp: '', ok: true, who: '' };
   function get(k) { try { return LS.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { LS.setItem(k, String(v)); } catch (e) { } }
   (function () { try { var o = JSON.parse(get(KD) || '{}'); ['sort', 'stg', 'sp'].forEach(function (k) { if (typeof o[k] === 'string') st[k] = o[k]; }); st.ok = o.ok === undefined ? true : !!o.ok; /* default: only pets that can check in now */ } catch (e) { } })();
@@ -37,6 +41,7 @@
     '.lf-p{flex:0 0 auto;scroll-snap-align:start;width:84px;font:inherit;font-size:11px;color:inherit;background:#1a281e;border:2px solid #000;border-radius:10px;padding:4px;cursor:grab;touch-action:pan-x;user-select:none;-webkit-user-select:none;display:flex;flex-direction:column;align-items:center;gap:2px}' +
     '.lf-p canvas{width:56px!important;height:56px!important;image-rendering:pixelated;pointer-events:none}.lf-p .nm{max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.lf-p.held{border-color:#ffc93c;background:#3a3417;box-shadow:0 0 0 2px #ffc93c}.lf-p .hb{color:#ffb347}.lf-p .pw{color:#ffd166}.lf-p.last{border-color:#3ddc84}.lf-p.no{opacity:.55}.lf-p.no .sp{filter:grayscale(.8)}' +
+    '.lf-p .ow{font-size:10px;color:#9fd3ff;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lf-row[hidden]{display:none}' +
     '.lf-ghost{position:fixed;z-index:99980;pointer-events:none;opacity:.9;transform:translate(-50%,-60%) scale(1.1)}' +
     '.lf-hint{font-size:11px;opacity:.75;text-align:center;margin-top:2px}' +
     '.lf-acts{display:flex;gap:4px;justify-content:center;margin-top:4px;flex-wrap:wrap}.lf-acts button{font:inherit;font-size:12px;min-height:34px;min-width:40px;padding:3px 7px;border-radius:8px;border:2px solid #000;background:#1f2d23;color:var(--ink,#e9fbe9);cursor:pointer}' +
@@ -54,11 +59,16 @@
   function whys(w) { var a = ($('bA') || {}).value || '', b = ($('bB') || {}).value || '', k = a + '|' + b + '|' + tip(w) + '|' + (w.pets ? w.pets.length : 0) + '|' + Object.keys(pend() || {}).join(',') + '|' + (U().ME || ''); if (WC.k === k && WC.m) return WC;
     var Vr = V(); WC = { k: k, m: {}, pa: null, a: a, b: b }; if (!Vr || !Vr.breedPicker) return WC;
     try { Vr.breedPicker(w, U().ME, tip(w), '', pend()).mine.forEach(function (x) { WC.m[x.p.id] = x.why || (x.p.stage >= 3 ? null : 'Too young: Adult+ only'); }); } catch (e) { }
-    if (a && !b) { WC.pa = {}; try { Vr.breedPicker(w, U().ME, tip(w), a, pend()).partners.forEach(function (x) { WC.pa[x.p.id] = x.why || (x.p.stage >= 3 ? null : 'Too young: Adult+ only'); }); } catch (e) { } }
+    if (a && !b) { WC.pa = {}; WC.pl = []; var A = w.byId && w.byId[a], T = tip(w) + 1, rx = function (p) { return !!(A && Vr.resPairWhy && Vr.resPairWhy(A, p, T)); };
+      try { Vr.breedPicker(w, U().ME, tip(w), a, pend()).partners.forEach(function (x) { WC.pa[x.p.id] = x.why || (x.p.stage >= 3 ? null : 'Too young: Adult+ only');
+        if (String(x.p.id) !== a && !x.p.dead && !x.p.released && !rx(x.p)) WC.pl.push(x.p); /* motel-partner-1103: the date pool (yours + other players'), never a mixed God / non-God pair */ }); } catch (e) { } }
     return WC; }
   function whyNest(w, p) { var Vr = V(); if (!Vr || !Vr.breedPicker) return 'Breeding is not loaded yet'; if (vo()) return 'View only: connect the wallet to breed'; var c = whys(w);
     if (!c.a || c.a === String(p.id) || c.b) return p.id in c.m ? c.m[p.id] : 'Only your own pets can check in first';
     return c.pa && p.id in c.pa ? c.pa[p.id] : 'This pet can’t breed right now'; }
+  /* motel-partner-1103: step 2 (guest 1 in, no date yet) lists the dates, yours and other players'; otherwise your own pets */
+  function dateFor(w) { if (mode() !== 'breed' || !U() || !U().ME) return ''; var a = ($('bA') || {}).value || '', b = ($('bB') || {}).value || ''; if (!a || b) return ''; var p = w.byId && w.byId[a]; return p && owns(p) ? a : ''; }
+  function pool(w) { var a = dateFor(w); if (!a) return mine(w); var c = whys(w), me = U().ME; return (c.pl || []).filter(function (p) { return st.who === 'mine' ? p.owner === me : st.who === 'other' ? p.owner !== me : true; }); }
   function whyBowl(w, p) { if (!owns(p)) return 'Only the owner can feed a pet'; if (vo()) return 'View only: connect the wallet to feed'; return p.hungry ? null : 'Not hungry right now'; }
   function remember(id) { set(KL, id); }
   /* the action: it only picks / routes; the burn uses the existing confirm + wallet */
@@ -70,7 +80,7 @@
     remember(p.id); U().render(); var go = $('bGo'); if (go && b.value) setTimeout(function () { try { go.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { } }, 60); }
   function drop(id) { var w = W(), p = w && w.byId[id]; if (!p) return; nest(w, p); hold(null); }
   /* --- the dock --- */
-  var SORTS = [['power', '⚡ Power'], ['rarity', '💎 Rarity'], ['new', '🆕 Newest'], ['id', '# ID'], ['hungry', '🍼 Hungry']], STG = [['', 'All'], ['young', '🐣 Young'], ['3', '🐸 Adult'], ['4', '🧓 Elder'], ['5', '✨ Mythic']];
+  var WHO = [['', 'All'], ['mine', '👤 Mine'], ['other', '🌍 Other players']], SORTS = [['power', '⚡ Power'], ['rarity', '💎 Rarity'], ['new', '🆕 Newest'], ['id', '# ID'], ['hungry', '🍼 Hungry']], STG = [['', 'All'], ['young', '🐣 Young'], ['3', '🐸 Adult'], ['4', '🧓 Elder'], ['5', '✨ Mythic']];
   function power(p) { return window.UXB && UXB.power ? UXB.power(p) : 0; }
   function spK(p) { var X = window.UXB && UXB.filters ? UXB.filters() : null; return X && X.spKey ? X.spKey(p) : String(p.species || '').toLowerCase(); }
   function spLabel(k) { var h = k.charAt(0) === '~', t = h ? k.slice(1) : k; return (h ? '🧬 ' : '') + t.charAt(0).toUpperCase() + t.slice(1); }
@@ -79,16 +89,19 @@
     if (s === 'new') return function (a, b) { return (Number(b.hatchBlock) || 0) - (Number(a.hatchBlock) || 0) || b.id - a.id; };
     if (s === 'rarity') { var R = function (p) { return window.PetScore ? PetScore.bitsOf(w, p) : -1; }; return function (a, b) { return b.tier - a.tier || R(b) - R(a) || a.id - b.id; }; }
     if (s === 'hungry') { var Ur = function (p) { return window.IPQ && IPQ.urgency ? IPQ.urgency(w, p) : 0; }; return function (a, b) { return (b.hungry ? 1 : 0) - (a.hungry ? 1 : 0) || (Ur(a) < Ur(b) ? -1 : Ur(a) > Ur(b) ? 1 : 0) || a.id - b.id; }; } /* hungry first, then the one closest to starving */
-    return function (a, b) { return power(b) - power(a) || a.id - b.id; }; }
+    var PM = {}, pw = function (p) { return p.id in PM ? PM[p.id] : (PM[p.id] = power(p)); }; /* motel-partner-1103: the date pool can be thousands of pets, so power is worked out once per pet per sort */
+    return function (a, b) { return pw(b) - pw(a) || a.id - b.id; }; }
   function keep(w, p) { if (st.stg === 'young' ? p.stage >= 3 : st.stg && p.stage !== Number(st.stg)) return false; if (st.sp && spK(p) !== st.sp) return false;
     if (st.ok && !st.q && !vo() && V() && V().breedPicker && whyNest(w, p)) return false; /* a search shows every match (greyed with the reason); view-only or still-loading shows everyone, greyed with the reason, instead of an empty dock */ if (!st.q) return true; return String(p.id).indexOf(st.q) === 0 || String(p.name || '').toLowerCase().indexOf(st.q) >= 0 || String(p.species || '').toLowerCase().indexOf(st.q) >= 0; }
   function sub(p, w) { var s = st.sort; if (s === 'hungry' || (s !== 'power' && p.hungry && s !== 'rarity')) return p.hungry ? '<span class="hb">🍼 ' + (p.nextMeal ? Number(p.nextMeal).toLocaleString('en-US') : 'hungry') + '</span>' : '<span class="hb" style="opacity:.5">fed</span>';
     if (s === 'rarity') return '<span class="pw">' + esc(['Common', 'Uncommon', 'Rare', 'Legendary'][p.tier] || '') + '</span>'; if (s === 'new' || s === 'id') return '<span class="pw">' + esc(p.stageName || '') + '</span>'; return '<span class="pw">⚡ ' + power(p) + '</span>'; }
-  function tileHtml(p, last, w) { var why = whyNest(w, p); return '<button type="button" class="lf-p' + (p.id === last ? ' last' : '') + (why ? ' no' : '') + '" data-lf="' + p.id + '" aria-pressed="false"' + (why ? ' title="' + esc('#' + p.id + ': ' + why) + '"' : '') + ' aria-label="#' + p.id + ' ' + esc(p.name || '') + (p.hungry ? ', hungry' : '') + (why ? ', can’t check in: ' + esc(why) : '') + '. Pick up, then drop on the motel"><span class="sp"></span><span class="nm">#' + p.id + ' ' + esc(p.name || '') + '</span>' + sub(p, w) + '</button>'; }
+  function tileHtml(p, last, w) { var why = whyNest(w, p); return '<button type="button" class="lf-p' + (p.id === last ? ' last' : '') + (why ? ' no' : '') + '" data-lf="' + p.id + '" aria-pressed="false"' + (why ? ' title="' + esc('#' + p.id + ': ' + why) + '"' : '') + ' aria-label="#' + p.id + ' ' + esc(p.name || '') + (owns(p) ? '' : ', owned by another player ' + esc(ownLab(p))) + (p.hungry ? ', hungry' : '') + (why ? ', can’t check in: ' + esc(why) : '') + '. Pick up, then drop on the motel"><span class="sp"></span><span class="nm">#' + p.id + ' ' + esc(p.name || '') + '</span>' + sub(p, w) + (owns(p) ? '' : '<span class="ow">🌍 ' + esc(ownLab(p)) + '</span>') + '</button>'; }
+  function ownLab(p) { var o = String(p.owner || ''); return o ? o.slice(0, 5) + '…' + o.slice(-4) : 'other player'; }
   function chips(row, L, cur) { return L.map(function (o) { return '<button type="button" class="lf-c" data-' + row + '="' + o[0] + '" aria-pressed="' + (o[0] === cur) + '">' + o[1] + '</button>'; }).join(''); }
   function bar() { var d = $('lfDock'); if (!d) return; d.querySelectorAll('[data-srt]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.srt === st.sort)); }); d.querySelectorAll('[data-stg]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.stg === st.stg)); });
+    d.querySelectorAll('[data-who]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.who === st.who)); });
     var ok = $('lfOk'); if (ok) ok.setAttribute('aria-pressed', String(st.ok)); }
-  function spSel(w) { var s = $('lfSp'); if (!s) return; var c = {}; mine(w).forEach(function (p) { var k = spK(p); c[k] = (c[k] || 0) + 1; }); var ks = Object.keys(c).sort(), sig = ks.map(function (k) { return k + c[k]; }).join(',');
+  var SC = { k: '', c: null }; function spSel(w) { var s = $('lfSp'); if (!s) return; var sk = (dateFor(w) ? whys(w).k : 'm' + (w.pets ? w.pets.length : 0) + (U().ME || '')) + '|' + st.who, c = SC.k === sk && SC.w === w && SC.c; if (!c) { c = {}; pool(w).forEach(function (p) { var k = spK(p); c[k] = (c[k] || 0) + 1; }); SC = { k: sk, w: w, c: c }; } /* motel-partner-1103: counted once per state (the date pool can be thousands of pets) */ var ks = Object.keys(c).sort(), sig = ks.map(function (k) { return k + c[k]; }).join(',');
     if (s.dataset.sig === sig) return; s.dataset.sig = sig; if (st.sp && !c[st.sp]) st.sp = '';
     s.innerHTML = '<option value="">🐸 All species</option>' + ks.map(function (k) { return '<option value="' + esc(k) + '"' + (k === st.sp ? ' selected' : '') + '>' + esc(spLabel(k)) + ' (' + c[k].toLocaleString('en-US') + ')</option>'; }).join(''); try { s.value = st.sp; } catch (e) { } }
   function dock() { var sc = $('motelScene'); if (!sc || !U() || !U().cardFor) return false; var d = $('lfDock');
@@ -96,12 +109,13 @@
       d.innerHTML = '<div class="lf-bar"><input type="search" id="lfQ" placeholder="Find: #12, name, species" aria-label="Find a pet in the dock"><button type="button" class="q" id="lfFeedSel" hidden>🍼 Feed selected</button></div>' +
         '<div class="lf-row" role="group" aria-label="Sort the dock"><span class="lb">Sort</span>' + chips('srt', SORTS, st.sort) + '</div>' +
         '<div class="lf-row" role="group" aria-label="Filter the dock"><button type="button" class="lf-c" id="lfOk" aria-pressed="' + st.ok + '">✅ Can breed</button>' + chips('stg', STG, st.stg) + '<xc-select id="lfSp" class="pick" aria-label="Species"><option value="">🐸 All species</option></xc-select><span class="lb" id="lfN" aria-live="polite"></span></div>' +
+        '<div class="lf-row" id="lfWho" role="group" aria-label="Whose pets" hidden><span class="lb" id="lfWhoL">Date for</span>' + chips('who', WHO, st.who) + '<button type="button" class="lf-c" id="lfA0">↺ Change guest 1</button></div>' +
         '<div class="lf-strip" id="lfStrip" role="listbox" aria-label="Your pets" aria-orientation="horizontal"></div>' +
-        '<div class="lf-hint">Drag a pet onto the motel, or tap a pet then the motel.</div>';
+        '<div class="lf-hint" id="lfHint">Drag a pet onto the motel, or tap a pet then the motel.</div>';
       sc.parentNode.insertBefore(d, sc.nextSibling);
       $('lfQ').oninput = function () { st.q = this.value.trim().toLowerCase().replace(/^#/, ''); st.n = 40; paint(); };
       $('lfFeedSel').onclick = function () { var b = $('bFeedSel'); if (b && !b.disabled) b.click(); else toast('Tick pets in My Pets first.'); };
-      d.addEventListener('click', function (e) { var c = e.target.closest('.lf-c'); if (!c) return; if (c.dataset.srt) st.sort = c.dataset.srt; else if (c.dataset.stg != null) st.stg = c.dataset.stg; else if (c.id === 'lfOk') st.ok = !st.ok; st.n = 40; saveDock(); bar(); paint(); var s0 = $('lfStrip'); if (s0) s0.scrollLeft = 0; });
+      d.addEventListener('click', function (e) { var c = e.target.closest('.lf-c'); if (!c) return; if (c.dataset.srt) st.sort = c.dataset.srt; else if (c.dataset.stg != null) st.stg = c.dataset.stg; else if (c.dataset.who != null) st.who = c.dataset.who; else if (c.id === 'lfA0') { var a0 = $('bA'), b0 = $('bB'); if (a0) a0.value = ''; if (b0) b0.value = ''; hold(null); U().render(); toast('🥚 Guest 1 cleared. Pick your pet to check in.'); } else if (c.id === 'lfOk') st.ok = !st.ok; st.n = 40; saveDock(); bar(); paint(); var s0 = $('lfStrip'); if (s0) s0.scrollLeft = 0; });
       $('lfSp').addEventListener('change', function () { st.sp = this.value || ''; st.n = 40; saveDock(); paint(); });
       var strip = $('lfStrip'); strip.addEventListener('click', function (e) { var b = e.target.closest('[data-lf]'); if (b && !st.dragged) hold(Number(b.dataset.lf) === st.held ? null : Number(b.dataset.lf)); st.dragged = false; var m = e.target.closest('[data-more]'); if (m) { st.n += 60; paint(); } });
       strip.addEventListener('pointerdown', down); document.addEventListener('xcpets-sel', selBtn);
@@ -112,10 +126,12 @@
     paint(); return true; }
   function sceneTap() { var w = W(), p = w && st.held != null ? w.byId[st.held] : null; if (!p) return; var why = whyNest(w, p); if (why) return toast('#' + p.id + ': ' + why); drop(p.id); }
   function selBtn() { var b = $('lfFeedSel'), u = U(), n = u && u.pickIds ? u.pickIds().length : 0; if (!b) return; b.hidden = !n; b.textContent = '🍼 Feed ' + n.toLocaleString('en-US') + ' selected'; }
-  var pk = ''; function paint() { var w = W(), s = $('lfStrip'); if (!w || !s) return; spSel(w); var last = Number(get(KL)) || 0, all = mine(w), L = all.filter(function (p) { return keep(w, p); }).sort(cmp(w));
+  var pk = '', LC = { k: '' }; function paint() { var w = W(), s = $('lfStrip'); if (!w || !s) return; spSel(w); var last = Number(get(KL)) || 0, lk = (dateFor(w) ? whys(w).k : 'm' + whys(w).k) + '|' + [st.sort, st.stg, st.sp, st.ok, st.q, st.who, vo()].join('|'), all, L; if (LC.k === lk && LC.w === w) { all = LC.all; L = LC.L; } else { all = pool(w); L = all.filter(function (p) { return keep(w, p); }).sort(cmp(w)); LC = { k: lk, w: w, all: all, L: L }; } /* motel-partner-1103: filter + sort once per state, not on every 4 s tick */
+    var da = dateFor(w), wr = $('lfWho'); if (wr) { wr.hidden = !da; var wl = $('lfWhoL'); if (wl && da) wl.textContent = 'Date for #' + da; } var hn = $('lfHint'), ht = da ? 'Now drag a date for #' + da + ' onto the motel: your pets or other players’ pets (a date from another wallet asks its owner to accept). Or tap a pet, then the motel.' : 'Drag a pet onto the motel, or tap a pet then the motel.'; if (hn && hn.textContent !== ht) hn.textContent = ht;
+    s.setAttribute('aria-label', da ? 'Dates for #' + da + ': your pets and other players’ pets' : 'Your pets');
     var n = $('lfN'); if (n) { var t = L.length === all.length ? all.length.toLocaleString('en-US') + ' pets' : L.length.toLocaleString('en-US') + ' of ' + all.length.toLocaleString('en-US'); if (n.textContent !== t) n.textContent = t; }
-    var key = L.slice(0, st.n).map(function (p) { return p.id + (p.hungry ? 'h' + p.nextMeal : '') + (whyNest(w, p) ? 'x' : ''); }).join(',') + '|' + last + '|' + st.n + '|' + L.length + '|' + st.sort; if (key === pk && s.childNodes.length) { target(); return; } pk = key;
-    if (!L.length) { s.innerHTML = '<span class="muted small">' + (!U().ME ? 'Connect a wallet (or view an address) to see your pets.' : all.length ? 'No pets match. Tap All, turn off ✅ Can breed, or clear the search.' : 'No pets here.') + '</span>'; target(); return; }
+    var key = L.slice(0, st.n).map(function (p) { return p.id + (p.hungry ? 'h' + p.nextMeal : '') + (whyNest(w, p) ? 'x' : ''); }).join(',') + '|' + last + '|' + st.n + '|' + L.length + '|' + st.sort + '|' + da + '|' + st.who; if (key === pk && s.childNodes.length) { target(); return; } pk = key;
+    if (!L.length) { s.innerHTML = '<span class="muted small">' + (!U().ME ? 'Connect a wallet (or view an address) to see your pets.' : all.length ? 'No pets match. Tap All, turn off ✅ Can breed, or clear the search.' : da ? 'No date can breed with #' + da + ' right now' + (st.who ? ' here. Tap All.' : '. Tap ↺ Change guest 1.') : 'No pets here.') + '</span>'; target(); return; }
     s.innerHTML = L.slice(0, st.n).map(function (p) { return tileHtml(p, last, w); }).join('') + (L.length > st.n ? '<button type="button" class="lf-p" data-more="1">+' + (L.length - st.n).toLocaleString('en-US') + ' more</button>' : '');
     s.querySelectorAll('[data-lf]').forEach(function (b) { var p = w.byId[b.dataset.lf], d = p && U().cardFor(p, w), c = d && d.querySelector('canvas'); if (c) { c.removeAttribute('style'); c.className = ''; b.querySelector('.sp').appendChild(c); } });
     if (st.held != null && !w.byId[st.held]) st.held = null; mark(); target(); selBtn(); }
@@ -156,5 +172,5 @@
     var pets = $('pets'); if (pets) new MutationObserver(tick).observe(pets, { childList: true, subtree: true });
     var bp = $('breedPanel'); if (bp) new MutationObserver(function (ms) { var d = $('lfDock'); if (ms.some(function (m) { return !d || !d.contains(m.target); })) target(); }).observe(bp, { childList: true, subtree: true, attributes: true, attributeFilter: ['value'] });
     ['xcpets-sel', 'xcpets-world', 'xcpets-render'].forEach(function (ev) { document.addEventListener(ev, tick); }); setInterval(tick, 4000); })();
-  window.V2LowFriction = { hold: hold, drop: drop, why: function (id) { var w = W(), p = w && w.byId[id]; return p ? whyNest(w, p) : 'no such pet'; }, held: function () { return st.held; }, state: function () { return { sort: st.sort, stg: st.stg, sp: st.sp, ok: st.ok, q: st.q }; } };
+  window.V2LowFriction = { hold: hold, drop: drop, why: function (id) { var w = W(), p = w && w.byId[id]; return p ? whyNest(w, p) : 'no such pet'; }, held: function () { return st.held; }, state: function () { return { sort: st.sort, stg: st.stg, sp: st.sp, ok: st.ok, q: st.q, who: st.who }; }, list: function () { var w = W(); return w ? pool(w).filter(function (p) { return keep(w, p); }).map(function (p) { return p.id; }) : []; } };
 })();

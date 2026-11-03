@@ -1,5 +1,5 @@
 /* RUG ME (branch rug-me, preview): swipe stack inside Gooby's No-Tail Motel. Mobile first; site fonts and tier colours. */
-.rm-tabs{display:flex;gap:6px;margin:6px 0 10px}.rm-tabs .btn{flex:1;font-family:var(--pixel);font-size:11px;padding:10px 6px;opacity:.7}.rm-tabs .btn.on{opacity:1;outline:2px solid var(--legendary,#ffc93c)}
+.rm-tabs{display:flex;gap:6px;margin:6px 0 10px}.rm-tabs .btn{flex:1;font-family:var(--pixel);font-size:11px;padding:10px 6px;opacity:.7}.rm-tabs .btn.on{opacity:1;outline:2px solid var(--legendary,#ffc93c)}.rm-tabs.rm-solo .btn{opacity:1;outline:0}.rm-tabs.rm-solo .btn:focus-visible{outline:3px solid #ffc93c}
 #breedPanel.rm-on>*:not(.rm-tabs):not(#rugMe):not(h2):not(.scene-anchor){display:none!important}
 .rug-me{max-width:440px;margin:0 auto}
 .rm-as{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.rm-as label{flex:1 1 220px}.rm-as select{width:100%;max-width:100%}
