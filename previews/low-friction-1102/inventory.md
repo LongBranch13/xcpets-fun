@@ -25,13 +25,13 @@ Rule of thumb: **nothing moved off its page and nothing was removed.** Every old
 - [x] Parent A and partner B pickers, their sort (the same list of sorts) and species/stage/rarity filters: same place, same choices. Now sheets/chips with pet pictures.
 - [x] "Check in" button, price and the burn confirm: unchanged.
 - [x] Who may breed with whom (Gods only with Gods, kin, already parent A, owner only): unchanged rules. They are now also shown as greyed targets with the reason.
-- [x] New: a dock under the motel scene with your pets. Drag a pet (or tap it, then tap) onto 🥚 Nest, 💎 Rare Room or 🍼 Bowl. Checked in the screenshots: drag fills parent A, a wrong partner greys out the Nest with the same reason the picker gives ("That's its kid"), and Bowl opens the normal feed confirm.
+- [x] New (motel-1103, owner pt2722u): the Gooby motel scene itself is the drop target. Drag a pet from the dock onto the animation (or tap the pet, then tap the scene or its "🥚 Drop #id here" pill) to check it in; the scene glows green under the pet. The old 🥚 Nest, 💎 Rare Room and 🍼 Bowl boxes are gone. Checked at 1280 (mouse) and 390 (real touch drag): the drop fills parent A then B, and a wrong partner greys the whole scene with the picker's own reason ("🚫 #7850: That's its kid") and is refused.
 - [x] **Change:** the breed page fills parent A with the last pet you used, if it is still allowed and the link did not name a pet. Clearing it works like any other choice.
 
 **Rare Room**
 - [x] Pet picker, sort and filters: same place, same choices (now a sheet).
 - [x] Pepe Wheel link, community feed amounts, check-in and raid buttons: identical on both trees (checked back to back).
-- [x] New: drag or tap a pet onto 💎 Rare Room in the dock.
+- [x] Rare Room lives where it always did: Places menu → 💎 Rare Room (rare-room.html), then pick the pet. (The dock's 💎 drop box was removed in motel-1103; nothing else changed.)
 
 **Raid, Fight, Gear and pet page**
 - [x] Raid page controls and buttons: the same. Two differences in one run were live-data timing and came back identical when checked again.
@@ -200,18 +200,18 @@ Result: **0 confirm screens removed.** Every one that exists guards something ir
 
 | ☑ | Action | Old way (still there) | New shortcut | Tap/click/keyboard equivalent of the drag |
 |---|---|---|---|---|
-| ✅ | Breed a pet | Breed panel: pick parent A then partner B, Breed | Drag the pet onto 🥚 Nest in the dock under the Gooby scene (fills A, then B) · 💞 on its My Pets card | Tap/click/Enter the pet tile, then tap/click/Enter 🥚 Nest |
-| ✅ | Open the Rare Room for a pet | Rare Room page, pick the pet | Drag onto 💎 Rare Room · from the dock | Tap the pet, then 💎 |
-| ✅ | Feed a pet | Feed button on the pet / feed panel (same burn confirm) | Drag onto 🍼 Bowl · 🍼 on its card | Tap the pet, then 🍼 Bowl |
-| ✅ | Feed selected (batch) | Existing "Feed selected" (#bFeedSel) | 🍼 Feed N selected button in the dock (clicks the same button) | it is a button |
+| ✅ | Breed a pet | Breed panel: pick parent A then partner B, Breed | Drag the pet from the dock onto the Gooby motel scene (fills A, then B; scene glows green, or greys with the reason) · 💞 on its My Pets card | Tap/click the pet tile, then tap/click the scene or the "🥚 Drop #id here" pill in it (keyboard: Enter on the tile, Enter on the pill; Esc lets go) |
+| ✅ | Open the Rare Room for a pet | Places menu → 💎 Rare Room (rare-room.html), pick the pet | — (dock drop box removed in motel-1103; the owner did not want it) | the Places menu link |
+| ✅ | Feed a pet | Feed button on the pet / feed panel (same burn confirm) | 🍼 on its My Pets card (dock 🍼 Bowl removed in motel-1103) · the dock's 🍼 Hungry sort lists who needs a meal | the 🍼 card button |
+| ✅ | Feed selected (batch) | Existing "Feed selected" (#bFeedSel) and Feed all | 🍼 Feed N selected button in the dock, next to the search (clicks the same button) | it is a button |
 | ✅ | Daily chores | Chores button (#dcBtn, one account-wide burn) | 🧹 on every card (clicks the same button) | it is a button |
-| ✅ | Rules on targets | Gods only with Gods, kin rules, already parent A, owner only, view only, not hungry | Invalid targets turn grey with the reason on hover/focus and in a toast | same reasons show for tap and keyboard |
-| ✅ | Find a pet in the dock | — | Search box (#, name, species); last used pet first, then hungry pets with the cheapest next meal; "+N more" | keyboard: Tab to the box |
+| ✅ | Rules on the drop | Gods only with Gods, kin rules, already parent A, owner only, view only, Adult+ only (motel picker) | Pets that can't check in are greyed with the reason on hover/focus; dragging one greys the whole scene with that reason and the drop is refused with a toast | same reasons show for tap and keyboard |
+| ✅ | Find a pet in the dock | — | Every living pet you own (not My Pets' filters). Sort chips ⚡ Power (default) · 💎 Rarity · 🆕 Newest · # ID · 🍼 Hungry; filters ✅ Can breed (on by default), stage chips (All · Young · Adult · Elder · Mythic) and a species picker with counts; search (#, name, species) shows every match; "+N more"; choices are remembered | every chip is a button (tap/click/Enter); species opens the usual picker sheet |
 | ✅ | Move between pets on a phone | My Pets grid/one-at-a-time toggle | Phones open in the swipe (one-at-a-time) view unless you already picked a view | the view toggle is unchanged, so desktop and keyboard keep the grid |
 | ✅ | Last pet used | — | Breed page starts with the last pet you used in slot A if it is still valid and the link did not name one | clear it like any choice |
 
 ## E. Not built, and why
 - Batch breed: one pair per burn under the current rules, so there is no batch to show.
 - Per-pet or batch chores: chores are one account-wide burn, so 🧹 runs that same burn.
-- Auto-picking the "cheapest" partner: every breed costs the same (135), so there is no cheaper partner to choose. The default is the last pet used; the dock lists hungry pets by cheapest meal.
+- Auto-picking the "cheapest" partner: every breed costs the same (135), so there is no cheaper partner to choose. The default is the last pet used. (The dock used to list hungry pets by cheapest meal first; motel-1103 replaced that with sort chips, default ⚡ Power.)
 - Removing confirm screens: none of them guard nothing (section C).
