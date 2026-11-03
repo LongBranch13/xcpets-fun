@@ -849,9 +849,12 @@
   petReturn();
   /* P10: pet-page actions that need this page's burn flow (confirmPlans + wasted-burn guard) arrive as play.html#act-<feed|roll|froll|oroll>-ID;
    * the pet detail pop-up stays reachable as play.html#pet-ID ('More in the game' on the pet page) so nothing is lost. */
-  function actBack(p) { setTimeout(function () { var cb = $('confirmBox'); if (!cb || !cb.classList.contains('on')) return; var link = '<a href="pet.html?id=' + p.id + '">← Back to #' + p.id + ' ' + esc(p.name || '') + '</a>';
-      $('cfBody').insertAdjacentHTML('afterbegin', '<p class="small cf-back">' + link + '</p>');
-      var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
+  /* feed-return (Nov 2 2026, owner 7:10 PM CT): a feed started on pet.html (play.html#act-feed-ID-pet) goes back to that pet page:
+   * sent -> pet.html?id=ID&fed=<tip> (the pet page shows the fed status), closed / cancelled -> pet.html?id=ID. Other feeds (My Pets, Feed all, cards) stay on Play as before. UI only. */
+  function petBackGo(id, tip) { actBack.going = 1; location.href = 'pet.html?id=' + id + (tip ? '&fed=' + tip : ''); }
+  function actBack(p, back) { actBack.going = 0; setTimeout(function () { var cb = $('confirmBox'); if (!cb || !cb.classList.contains('on')) return; var link = '<a href="pet.html?id=' + p.id + '">← Back to #' + p.id + ' ' + esc(p.name || '') + '</a>';
+      $('cfBody').insertAdjacentHTML('afterbegin', '<p class="small cf-back">' + link + (back ? ' <span class="muted">· you return there after the feed</span>' : '') + '</p>');
+      var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); if (actBack.going) return; if (back) return petBackGo(p.id); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
   /* pet-gift: pet.html / the batch picker arrive as play.html#gift-<id.id.id>-<player# base 32>; the confirm then signs each 1-dander burn in turn
    * (same confirmPlans queue: one XCP Wallet window at a time, Stop + Resume). Locked pets are dropped here and skipped by the engine anyway. */
   function swapRoute() { var m = /^#(swap)-(\d+)-(\d+)$|^#(swapok|swapno)-(\d+)$/.exec(location.hash); if (!m || !V.swapPlan) return false; if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🔁 Swap burns are off: swap by gifting each other the pet tokens, or a token-for-token DEX order.', 9000); return true; }
@@ -884,13 +887,13 @@
     var hunt = plans[0].label === 'hunt', ttl = hunt ? '🗡️ Zombie hunt' : '🕯️ Cemetery: ' + (nPets ? fmt(nPets) + ' pet' + (nPets > 1 ? 's' : '') + ' in ' : '') + plans.length + ' burn' + (plans.length > 1 ? 's' : '');
     saveResume(ttl, plans); resumeShown = true; /* cemetery-handoff (Nov 1 2026): the link's burns are saved before the sheet opens, so Cancel, a wallet reload or a closed tab no longer loses them (the usual Continue / Dismiss note offers them again) */
     confirmPlans(ttl, plans); return true; }
-  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)$/.exec(location.hash); if (!m) return false;
+  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
-    history.replaceState(null, '', location.pathname + location.search); if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
-    actBack(p);
-    if (a === 'feed') { if (p.mythicCare || !p.hungry) { toast('#' + p.id + (ZB(p) ? ' is a risen zombie: it eats pets, not meals. Use 🍖 Feed zombie on its card.' : p.mythicCare ? ' is Mythic: no meals needed.' : ' is not hungry right now.')); return true; } confirmPlans('Feed #' + p.id, feedQ(w, ME, [p.id])); }
-    else if (a === 'froll') confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); else if (a === 'oroll') confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]);
-    else confirmPlans('Gear roll #' + p.id, V.rollQueue(w, ME, [p.id], 1)); return true; }
+    history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
+    if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; } /* stays on Play: the wallet connect is here */
+    if (a === 'feed') { if (p.mythicCare || !p.hungry) { toast('#' + p.id + (ZB(p) ? ' is a risen zombie: it eats pets, not meals. Use 🍖 Feed zombie on its card.' : p.mythicCare ? ' is Mythic: no meals needed.' : ' is not hungry right now.')); return bounce(); } actBack(p, back); confirmPlans('Feed #' + p.id, feedQ(w, ME, [p.id]), back ? function () { petBackGo(p.id, (S.tip || 0) + 1); } : null); }
+    else { actBack(p); if (a === 'froll') confirmPlans('Free roll #' + p.id, [V.freeRollPlan(p.id)]); else if (a === 'oroll') confirmPlans('Overflow roll #' + p.id, [V.overflowRollPlan(p.id)]);
+    else confirmPlans('Gear roll #' + p.id, V.rollQueue(w, ME, [p.id], 1)); } return true; }
   function detail(p, w) {
     if (!p) return; w = w || world(); $('dTitle').innerHTML = (p.owner === ME && !p.dead ? keepBtn(p.id) : '') + esc(p.name) + ' <span class="muted">#' + p.id + '</span> ' + tierPill(p.tier, p);
     var kb = $('dTitle').querySelector('.keepbtn'); if (kb) kb.onclick = function (e) { e.preventDefault(); toggleKeep(p.id); };
