@@ -1,5 +1,5 @@
 {
- "lastBlock": 974322,
+ "lastBlock": 974323,
  "count": 98,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -1141,7 +1141,7 @@
    "species": "hyb:lenny:pepe",
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 53218,
