@@ -1,0 +1,110 @@
+/* voting-day (owner Nov 2 2026). Loaded ONLY by js/voting-day.js while the theme is on (12:00 AM CT to 11:59 PM CT Nov 3, 2026, i.e. 2026-11-03T06:00Z to
+ * 2026-11-04T06:00Z, or ?votingday=1). STRICTLY NONPARTISAN decor: I Voted stickers, ballot boxes, red-white-blue bunting (always all three together,
+ * never red or blue alone as a theme), pets wearing sticker badges. Fonts, colours and layout of the site are unchanged.
+ * Everything here is pointer-events: none and animates transform/opacity only. prefers-reduced-motion: reduce = no animation at all.
+ * Sprites: generated pixel maps (crispEdges SVG); pets are the real game sprites (img/theme/sp-*.png, img/voting/ft-hoodie.png = FuntrumpSprite stage 3, hoodie look, 2 frames). */
+html.vd {
+  --vd-ballot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 15' shape-rendering='crispEdges'%3E%3Cpath fill='%23111111' d='M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM10 0h1v1h-1zM11 0h1v1h-1zM4 1h1v1h-1zM11 1h1v1h-1zM4 2h1v1h-1zM11 2h1v1h-1zM4 3h1v1h-1zM11 3h1v1h-1zM4 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM0 6h1v1h-1zM3 6h1v1h-1zM12 6h1v1h-1zM15 6h1v1h-1zM0 7h1v1h-1zM15 7h1v1h-1zM0 8h1v1h-1zM15 8h1v1h-1zM0 9h1v1h-1zM15 9h1v1h-1zM0 10h1v1h-1zM15 10h1v1h-1zM0 11h1v1h-1zM15 11h1v1h-1zM0 12h1v1h-1zM15 12h1v1h-1zM0 13h1v1h-1zM15 13h1v1h-1zM0 14h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1z'/%3E%3Cpath fill='%23f4f4ee' d='M5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM9 2h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1z'/%3E%3Cpath fill='%232b4aa8' d='M10 2h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1z'/%3E%3Cpath fill='%23c9ced6' d='M1 6h1v1h-1zM2 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM14 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM10 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM1 10h1v1h-1zM2 10h1v1h-1zM13 10h1v1h-1zM14 10h1v1h-1zM1 11h1v1h-1zM2 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM14 12h1v1h-1z'/%3E%3Cpath fill='%231a1a1a' d='M4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1z'/%3E%3Cpath fill='%23c8242c' d='M3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1z'/%3E%3Cpath fill='%238a919c' d='M1 13h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1z'/%3E%3C/svg%3E"); /* 16x15 */
+  --vd-sticker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23111111' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM1 1h1v1h-1zM9 1h1v1h-1zM0 2h1v1h-1zM10 2h1v1h-1zM0 3h1v1h-1zM10 3h1v1h-1zM0 4h1v1h-1zM10 4h1v1h-1zM0 5h1v1h-1zM10 5h1v1h-1zM0 6h1v1h-1zM10 6h1v1h-1zM1 7h1v1h-1zM9 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z'/%3E%3Cpath fill='%23f4f4ee' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM6 2h1v1h-1zM9 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM1 5h1v1h-1zM9 5h1v1h-1zM1 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1z'/%3E%3Cpath fill='%232b4aa8' d='M2 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1z'/%3E%3Cpath fill='%23c8242c' d='M2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1z'/%3E%3C/svg%3E"); /* 11x9 */
+  --vd-bunt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 6' shape-rendering='crispEdges'%3E%3Cpath fill='%23111111' d='M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM10 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM13 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM16 0h1v1h-1zM17 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM25 0h1v1h-1zM26 0h1v1h-1zM27 0h1v1h-1zM28 0h1v1h-1zM29 0h1v1h-1zM0 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM17 1h1v1h-1zM18 1h1v1h-1zM26 1h1v1h-1zM2 2h1v1h-1zM8 2h1v1h-1zM11 2h1v1h-1zM17 2h1v1h-1zM20 2h1v1h-1zM26 2h1v1h-1zM3 3h1v1h-1zM7 3h1v1h-1zM12 3h1v1h-1zM16 3h1v1h-1zM21 3h1v1h-1zM25 3h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM13 4h1v1h-1zM15 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM5 5h1v1h-1zM14 5h1v1h-1zM23 5h1v1h-1z'/%3E%3Cpath fill='%23c8242c' d='M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM5 4h1v1h-1z'/%3E%3Cpath fill='%23f4f4ee' d='M10 1h1v1h-1zM11 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM14 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM14 4h1v1h-1z'/%3E%3Cpath fill='%232b4aa8' d='M19 1h1v1h-1zM20 1h1v1h-1zM21 1h1v1h-1zM22 1h1v1h-1zM23 1h1v1h-1zM24 1h1v1h-1zM25 1h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM23 2h1v1h-1zM24 2h1v1h-1zM25 2h1v1h-1zM22 3h1v1h-1zM23 3h1v1h-1zM24 3h1v1h-1zM23 4h1v1h-1z'/%3E%3C/svg%3E"); /* 30x6 */
+  --vd-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath fill='%23f4f4ee' d='M2 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E"); /* 5x5 */
+  --vd-starr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath fill='%23c8242c' d='M2 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E"); /* 5x5 */
+  --vd-starb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath fill='%232b4aa8' d='M2 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E"); /* 5x5 */
+  --vd-r: #c8242c; --vd-w: #f4f4ee; --vd-b: #2b4aa8; --vd-ink: #16181f; }
+
+/* header: red-white-blue bunting under the bar + a small ballot box by the logo */
+html.vd header.nav::after { content: ''; position: absolute; left: 0; right: 0; bottom: -15px; height: 14px; pointer-events: none; image-rendering: pixelated;
+  background: var(--vd-bunt) 0 0 / 45px 9px repeat-x, linear-gradient(90deg, var(--vd-r) 0 33.3%, var(--vd-w) 33.3% 66.6%, var(--vd-b) 66.6%) 0 12px / 100% 2px no-repeat; }
+html.vd header.nav .brand::after { content: ''; display: inline-block; width: 21px; height: 20px; flex: 0 0 21px; margin-left: 3px;
+  background: var(--vd-ballot) center / contain no-repeat; image-rendering: pixelated; animation: vd-bob 2.4s steps(2) infinite; }
+html.vd h1.meme { text-shadow: 4px 4px 0 #000, 0 0 16px rgba(244, 244, 238, .35); }
+
+/* shared sprites */
+.vd-s { display: inline-block; flex: 0 0 auto; background: center / contain no-repeat; image-rendering: pixelated; pointer-events: none; vertical-align: middle; }
+.vd-box { width: 26px; height: 24px; background-image: var(--vd-ballot); }
+.vd-box.vd-drop { animation: vd-bob 1.8s steps(2) infinite; animation-delay: -.6s; }
+.vd-bigstk { width: 22px; height: 18px; background-image: var(--vd-sticker); transform: rotate(-8deg); }
+.vd-star { display: inline-block; width: 10px; height: 10px; background: var(--vd-star) center / contain no-repeat; image-rendering: pixelated; }
+.vd-star.vd-r { background-image: var(--vd-starr); } .vd-star.vd-b { background-image: var(--vd-starb); }
+.vd-s.vd-star { animation: vd-twinkle 1.6s steps(2) infinite; } .vd-row .vd-s.vd-star:nth-child(2n) { animation-delay: -.8s; }
+/* a pet wearing its I Voted sticker: the real 32x32 sprite, sticker on the chest */
+.vd-pet { position: relative; display: inline-block; flex: 0 0 auto; width: 36px; height: 36px; pointer-events: none; vertical-align: bottom; }
+.vd-pet img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.vd-pet .vd-stk { position: absolute; right: -3px; bottom: 6px; width: 15px; height: 12px; background: var(--vd-sticker) center / contain no-repeat; image-rendering: pixelated;
+  transform: rotate(-10deg); filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, .6)); }
+.vd-ft .vd-fts { position: absolute; inset: 0; background: url(../img/voting/ft-hoodie.png) 0 0 / 200% 100% no-repeat; image-rendering: pixelated; animation: vd-ftbob 1.2s steps(1) infinite; }
+.vd-ft .vd-stk { right: 4px; bottom: 2px; }
+
+/* banner */
+.vd-banner { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; max-width: 1100px; margin: 18px auto 0; padding: 8px 12px;
+  background: #1c1f2a; color: #f4f4ee; border: 3px solid #000; border-radius: 6px; font-size: 14px; line-height: 1.35; text-align: center; position: relative; z-index: 3; box-sizing: border-box;
+  box-shadow: 4px 4px 0 #000, inset 0 -3px 0 var(--vd-r), inset 0 -6px 0 var(--vd-w), inset 0 -9px 0 var(--vd-b); padding-bottom: 14px; }
+.vd-banner .vd-bt { min-width: 0; overflow-wrap: anywhere; }
+.vd-banner .vd-bx { font: inherit; font-size: 12px; cursor: pointer; color: #16181f; background: #f4f4ee; border: 2px solid #000; border-radius: 4px; padding: 2px 8px; box-shadow: 2px 2px 0 #000; }
+.vd-banner .vd-bx:hover, .vd-banner .vd-bx:focus-visible { filter: brightness(.92); }
+
+/* Home card: bunting across the top, FUNTRUMP with his sticker by a ballot box saying "Go vote!", two pets with stickers */
+.vd-card { display: flex; align-items: center; gap: 18px; max-width: 760px; margin: 16px auto; padding: 18px 18px 14px; box-sizing: border-box; position: relative; z-index: 3;
+  background: #1c1f2a; border: 3px solid #000; border-radius: 8px; box-shadow: 4px 4px 0 #000; overflow: hidden; }
+.vd-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--vd-bunt) 0 0 / 50px 10px repeat-x; image-rendering: pixelated; pointer-events: none; }
+.vd-scene { position: relative; flex: 0 0 auto; padding-top: 34px; }
+.vd-stage { display: flex; align-items: flex-end; gap: 8px; }
+.vd-stage .vd-box { width: 48px; height: 45px; }
+.vd-ftwrap { position: relative; }
+.vd-ftwrap .vd-pet { width: 72px; height: 72px; } .vd-ftwrap .vd-stk { width: 24px; height: 20px; right: 8px; bottom: 4px; }
+.vd-stage > .vd-pet { width: 44px; height: 44px; } .vd-stage > .vd-pet .vd-stk { width: 17px; height: 14px; }
+.vd-bub { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-30%); white-space: nowrap; font: 10px/1.4 var(--pixel, monospace); color: #16181f;
+  background: #fff; border: 3px solid #000; border-radius: 6px; padding: 5px 8px; box-shadow: 2px 2px 0 #000; animation: vd-pop 2.4s steps(2) infinite; }
+.vd-bub::after { content: ''; position: absolute; left: 22%; top: 100%; border: 6px solid transparent; border-top-color: #000; }
+.vd-card-t { min-width: 0; flex: 1; }
+.vd-k { font: 8px/1.6 var(--pixel, monospace); color: #b8bfcc; letter-spacing: 1px; }
+.vd-h { font: 13px/1.5 var(--pixel, monospace); color: #fff; margin: 4px 0 6px; text-shadow: 2px 2px 0 #000; }
+.vd-a { font-size: 14px; font-weight: 700; color: #f4f4ee; } .vd-n { color: #b8bfcc; margin-top: 6px; }
+
+/* pet page: sticker on the portrait + a tile under Gear */
+.vd-art { position: relative; }
+.vd-pstk { position: absolute; right: 10%; bottom: 8%; width: 18%; aspect-ratio: 11 / 9; background: var(--vd-sticker) center / contain no-repeat; image-rendering: pixelated;
+  transform: rotate(-10deg); filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, .65)); pointer-events: none; z-index: 2; }
+.vd-tile { display: flex; gap: 12px; align-items: center; margin: 10px 0; padding: 10px 12px; border: 2px dashed #f4f4ee; border-radius: 8px; background: rgba(28, 31, 42, .6); }
+.vd-tile .vd-bigstk { width: 33px; height: 27px; }
+.vd-tile .vd-tag { font-size: 11px; color: #f4f4ee; border: 1px solid #f4f4ee; border-radius: 99px; padding: 0 6px; margin-left: 4px; white-space: nowrap; }
+
+/* decor rows: ballot boxes, stickers, stars and pets with stickers, standing on a red-white-blue strip, bunting along the top */
+.vd-row { display: flex; align-items: flex-end; justify-content: center; gap: 14px; max-width: 1100px; height: 60px; margin: 8px auto; padding: 12px 30px 8px; box-sizing: border-box;
+  position: relative; pointer-events: none; overflow: hidden; z-index: 1; }
+.vd-row::before { content: ''; position: absolute; left: 30px; right: 30px; top: 0; height: 9px; background: var(--vd-bunt) 0 0 / 45px 9px repeat-x; image-rendering: pixelated; opacity: .9; }
+.vd-row::after { content: ''; position: absolute; left: 30px; right: 30px; bottom: 2px; height: 6px;
+  background: linear-gradient(var(--vd-r) 0 2px, var(--vd-w) 2px 4px, var(--vd-b) 4px 6px); border-radius: 2px; }
+.vd-row.vd-row-in { margin: -4px auto 4px; }
+.vd-row .vd-pet:nth-child(odd) img { animation: vd-bob 1.4s steps(2) infinite; } .vd-row .vd-pet:nth-child(even) img { animation: vd-bob 1.4s steps(2) infinite; animation-delay: -.7s; }
+
+/* sitewide layer: soft glow in two corners, stars drifting across the top, FUNTRUMP hanging from a bit of bunting in the right margin */
+.vd-layer { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; contain: strict; }
+.vd-glow { position: absolute; inset: 0; background: radial-gradient(420px 240px at 0 0, rgba(244, 244, 238, .07), transparent 70%), radial-gradient(420px 240px at 100% 100%, rgba(244, 244, 238, .05), transparent 70%); }
+.vd-sw { position: absolute; left: 0; top: 0; will-change: transform; animation: vd-fall 22s linear infinite; transform: translate3d(0, -20px, 0); }
+.vd-sw1 { left: 8%; } .vd-sw2 { left: 23%; animation-duration: 29s; animation-delay: -9s; } .vd-sw3 { left: 41%; animation-duration: 25s; animation-delay: -17s; }
+.vd-sw4 { left: 62%; animation-duration: 31s; animation-delay: -4s; } .vd-sw5 { left: 78%; animation-duration: 27s; animation-delay: -13s; } .vd-sw6 { left: 93%; animation-duration: 34s; animation-delay: -21s; }
+.vd-sw .vd-star { opacity: .55; }
+.vd-hang { display: none; position: absolute; right: 10px; top: 64px; width: 64px; text-align: center; }
+.vd-hbunt { display: block; width: 64px; height: 11px; background: var(--vd-bunt) 0 0 / 54px 11px repeat-x; image-rendering: pixelated; }
+.vd-hang .vd-pet { width: 54px; height: 54px; transform-origin: 50% 0; animation: vd-swing 2.6s ease-in-out infinite alternate; }
+@media (min-width: 1240px) { .vd-hang { display: block; } }
+
+@keyframes vd-bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+@keyframes vd-ftbob { 0% { background-position: 0 0; } 50% { background-position: 100% 0; } }
+@keyframes vd-twinkle { from { opacity: 1; } to { opacity: .55; } }
+@keyframes vd-pop { 0% { transform: translateX(-30%) translateY(0); } 50% { transform: translateX(-30%) translateY(-2px); } }
+@keyframes vd-swing { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes vd-fall { 0% { transform: translate3d(0, -20px, 0) rotate(0); } 100% { transform: translate3d(30px, calc(100vh + 20px), 0) rotate(180deg); } }
+
+@media (max-width: 600px) {
+  .vd-banner { margin: 16px 8px 0; font-size: 13px; padding: 6px 8px 12px; } .vd-banner .vd-s { display: none; }
+  .vd-card { flex-direction: column; text-align: center; margin: 12px 8px; padding: 16px 12px 12px; gap: 10px; } .vd-h { font-size: 11px; }
+  .vd-row { gap: 7px; height: 50px; padding: 10px 14px 8px; margin: 6px 0; } .vd-row::before, .vd-row::after { left: 14px; right: 14px; }
+  .vd-row > :nth-child(n+8) { display: none; } .vd-row .vd-pet { width: 30px; height: 30px; } .vd-row .vd-box { width: 22px; height: 20px; }
+  .vd-sw4, .vd-sw5, .vd-sw6 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vd-layer *, .vd-row *, .vd-banner *, .vd-card *, html.vd header.nav .brand::after { animation: none !important; }
+  .vd-sw { display: none; }
+}
