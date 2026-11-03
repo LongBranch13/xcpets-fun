@@ -266,7 +266,7 @@
   function hiddenIds() { try { return JSON.parse(localStorage.getItem(hidKey()) || '[]'); } catch (e) { return []; } }
   function setHidden(l) { localStorage.setItem(hidKey(), JSON.stringify(l.filter(function (x, i, a) { return a.indexOf(x) === i; }))); }
   function hideLocal(ids) { setHidden(hiddenIds().concat(ids)); S.sel = S.sel.filter(function (x) { return ids.indexOf(x) < 0; }); save(); render();
-    toast('🗑️ Moved ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to the Discard pile (only hidden in this browser, still on chain). <a href="#" class="undo">Undo</a>', 9000);
+    toast('🗑️ Moved ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to the Discard pile (only in this browser, still on chain). <a href="#" class="undo">Undo</a>', 9000);
     var u = $('toasts').lastChild.querySelector('.undo'); if (u) u.onclick = function (e) { e.preventDefault(); restoreLocal(ids); this.parentNode.remove(); }; }
   function idList(ids) { return '#' + ids.slice(0, 5).join(', #') + (ids.length > 5 ? ' +' + (ids.length - 5) + ' more' : ''); }
   var JUST_BACK = []; /* restore-fix (owner Oct 27 2026, "I can't find my never fed pets I took out of the discard pile"): pets restored this visit go to the top of My Pets, outside the Never fed fold, so they show right away (they used to land folded inside Never fed, often past the first 150 cards) */
