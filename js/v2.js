@@ -433,16 +433,21 @@
   function revSpShows(k, x) { return !k || k === 'all' || revSp(x) === k; }
   function plural(n, a) { return n.toLocaleString('en-US') + ' ' + a + (n === 1 ? '' : 's'); }
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
-    var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be hidden. Unstar them first.', 6000); return; }
-    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never hidden).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
+    var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be discarded. Unstar them first.', 6000); return; }
+    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never discarded).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
     hideIds(ids); ids = ids.filter(function (id) { return kk.indexOf(id) < 0; }); /* starred pets stay in the review too */ rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
     if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x) && revSpShows(rev.sp, x); })) rev.f = 'all'; }
     if (rev.sp && rev.sp !== 'all') { var w2 = world(); if (!rev.eggs.some(function (id) { var x = w2.byId[id]; return x && revSpShows(rev.sp, x); })) rev.sp = 'all'; }
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
-  function revKeepTier(w, all, top) { /* top 1 = Keep Rare and up (hides Common + Uncommon), top 2 = Keep Legendary and up (also hides Rare) */
-    var ids = all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).map(function (x) { return x.id; });
-    var st = revSafeNote(w, all, top); revHide(ids, (top === 1 ? 'Keep Rare & Legendary?\n\nThis hides ' + plural(ids.length, 'Common and Uncommon pet') : 'Keep Legendary only?\n\nThis hides ' + plural(ids.length, 'Common, Uncommon and Rare pet')) + '.' + (st ? ' ' + st + '.' : '')); }
-  function revKeepN(w, all, top) { return all.filter(function (x) { return x.art.tierIndex <= top && !dudGuard(w, x).length; }).length; }
+  /* hide-all-1103 (owner [pt2745u] 'a discard all even legendary would be helpful'). DISPLAY ONLY: top 3 = Hide all, Legendary included. Starred, Mythic
+   * and gear-wearing pets stay protected (revGuard drops only the Legendary reason for top 3); hiding is the same free local Discard pile, Restore undoes it. */
+  function revGuard(w, x, top) { return top >= 3 ? x.stage === 5 || isKept(x.id) || !!(R.worn && R.worn(w, x.id).length) : dudGuard(w, x).length > 0; }
+  function revKeepTier(w, all, top) { /* top 1 = Keep Rare & Legendary (hides Common + Uncommon), top 2 = Keep Legendary only (also hides Rare), top 3 = Hide all */
+    var ids = all.filter(function (x) { return x.art.tierIndex <= top && !revGuard(w, x, top); }).map(function (x) { return x.id; });
+    var st = revSafeNote(w, all, top), nL = top >= 3 ? all.filter(function (x) { return x.art.tierIndex >= 3 && !revGuard(w, x, 3); }).length : 0;
+    revHide(ids, (top === 1 ? 'Keep Rare & Legendary?\n\nThis discards ' + plural(ids.length, 'Common and Uncommon pet') : top === 2 ? 'Keep Legendary only?\n\nThis discards ' + plural(ids.length, 'Common, Uncommon and Rare pet') :
+      'Discard all?\n\nThis discards ' + plural(ids.length, 'pet') + ' from this hatch' + (nL ? '. Legendary pets will be discarded too (' + nL.toLocaleString('en-US') + ')' : '')) + '.' + (st ? ' ' + st + '.' : '')); }
+  function revKeepN(w, all, top) { return all.filter(function (x) { return x.art.tierIndex <= top && !revGuard(w, x, top); }).length; }
   /* hatch-review-tiers-1103 (owner [pt2741u] 'you dont hatch these sorts of pets'). DISPLAY ONLY. Eggs hatch only Common/Uncommon/Rare/Legendary
    * (Mythic is a feeding stage; a new pet has no gear and is never auto-starred because it was never fed), so the old fixed line
    * 'Mythic, starred and gear-wearing pets always stay.' described pets a hatch never makes. dudGuard still protects them (a late review can
@@ -454,10 +459,10 @@
   function revSelectShown(w, shown) { var n = 0, safe = 0; shown.forEach(function (x) { if (dudGuard(w, x).length) { safe++; return; } if (!rev.sel[x.id]) n++; rev.sel[x.id] = 1; });
     drawReveal(); toast('✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(rev.sel).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
   function revToggle(w, x, d) { var on = !rev.sel[x.id];
-    if (on && isKept(x.id)) { toast('★ #' + x.id + ' is starred, so it can\'t be hidden. Unstar it first.', 6000); return; }
-    if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to hide? It is ' + gg.join(', ') + '.')) return; rev.sel[x.id] = 1; } else delete rev.sel[x.id];
+    if (on && isKept(x.id)) { toast('★ #' + x.id + ' is starred, so it can\'t be discarded. Unstar it first.', 6000); return; }
+    if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to discard? It is ' + gg.join(', ') + '.')) return; rev.sel[x.id] = 1; } else delete rev.sel[x.id];
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
-  function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Hide selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
+  function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Discard selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
     var c = $('pkSelN'); if (c) c.textContent = n.toLocaleString('en-US'); var cl = $('pkClear'); if (cl) cl.hidden = !n; }
   function drawReveal() {
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
@@ -470,7 +475,7 @@
       list = spAll.filter(function (x) { return revShows(rev.f, x); }); if (!list.length && rev.f !== 'sel') { rev.f = 'all'; list = spAll; } } /* hatch-review-simple: the Show filter (+ species) */
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
     $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : ((rev.n0 || all.length) === 1 ? '1 egg hatched' : (rev.n0 || all.length).toLocaleString('en-US') + ' eggs hatched') + (tiers[3] ? ' · ' + tiers[3] + ' Legendary' : '') + (nMy ? ' · ' + nMy + ' Mythic' : '');
-    $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = 'Hiding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* the hide note belongs to the egg review only */
+    $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = 'Discarding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* the hide note belongs to the egg review only */
     var logBy = {}, info = '', where = { on: 0, bag: 0, comm: 0 };
     if (gear) { (w.log || []).forEach(function (l) { if (l.gid) logBy[l.gid] = l; });
       var srcN = {}, order = [], pets = [], vsIds = [];
@@ -493,7 +498,7 @@
     var pager = pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '';
     if (gear) $('packSummary').innerHTML = info + '<span class="grtiers">' + tierLine + '</span>' + pager;
     else { /* hatch-review-simple: two equal quick choices, a Show filter by rarity, one Sort, Select all shown / Clear selection, the pager */
-      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
+      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), kA = revKeepN(w, all, 3), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
       spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (x.stage === 5) cnt.my++; if (rev.sel[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
       if (!spOn) cnt.sel = Object.keys(rev.sel).length;
       var spC = {}, spK = [], spBase = all.filter(function (x) { return revShows(rev.f, x); }); all.forEach(function (x) { var k = revSp(x); if (spC[k] == null) { spC[k] = 0; spK.push(k); } });
@@ -502,16 +507,17 @@
       var spSel = many && spK.length > 1 ? '<label class="pksort pkspl">Species <xc-select id="pkSp" aria-label="Show only one species"' + (spOn ? ' class="pkon"' : '') + '><option value="all">All species ' + spBase.length.toLocaleString('en-US') + '</option>' +
         spK.map(function (k) { return '<option value="' + esc(k) + '"' + (rev.sp === k ? ' selected' : '') + (spC[k] || rev.sp === k ? '' : ' disabled') + '>' + esc(revSpName(k)) + ' ' + spC[k].toLocaleString('en-US') + '</option>'; }).join('') + '</xc-select></label>' +
         (spOn ? ' <button type="button" class="q" id="pkSpX" title="Show every species again">✕ ' + esc(revSpName(rev.sp)) + '</button>' : '') : '';
-      var keepRow = many && (kR || kL) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
-        '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare &amp; Legendary<small>hides ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
-        '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary only<small>hides ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
-        '<div class="muted small pksafe">🛡️ Legendary pets are never hidden.' + (function () { var t = revSafeNote(w, all, 2); return t ? ' ' + esc(t) + '.' : ''; })() + '</div></div>' : '';
+      var keepRow = many && (kR || kL || kA) ? '<div class="pkkeep" role="group" aria-label="Quick choices">' +
+        '<button type="button" class="btn pkq" id="pkKeepRare" data-top="1"' + (kR ? '' : ' disabled') + '>Keep Rare &amp; Legendary<small>discards ' + kR.toLocaleString('en-US') + ' Common &amp; Uncommon</small></button>' +
+        '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary only<small>discards ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
+        '<button type="button" class="btn pkq pkall" id="pkHideAll" data-top="3"' + (kA ? '' : ' disabled') + '>Discard all<small>discards ' + kA.toLocaleString('en-US') + ', Legendary too</small></button>' +
+        '<div class="muted small pksafe">🛡️ Legendary pets are never discarded, except by Discard all.' + (function () { var t = revSafeNote(w, all, 3); return t ? ' ' + esc(t.replace(/^These stay too: /, 'Always kept: ')) + '.' : ''; })() + '</div></div>' : ''; /* hide-all-1103: owner wording 'Discard', not 'Hide' */
       var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
-        (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' hidden</span>' : '') + '</div>' : '';
+        (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' discarded</span>' : '') + '</div>' : '';
       var tools = many ? '<div class="pktools">' + spSel + ' <label class="pksort">Sort <xc-select id="pkSort" aria-label="Sort the pets">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</xc-select></label>' +
         ' <button type="button" class="q" id="pkSelAll">Select all shown</button> <button type="button" class="q" id="pkClear"' + (cnt.sel ? '' : ' hidden') + '>Clear selection</button>' + pager + '</div>' +
-        '<div class="muted small pktip">Tap a pet to select it, then Hide selected.</div>' : '';
+        '<div class="muted small pktip">Tap a pet to select it, then Discard selected.</div>' : '';
       $('packSummary').innerHTML = keepRow + chips + tools; }
     bindAeTogs($('packSummary'));
     if (!gear) { $('packSummary').querySelectorAll('.pkq').forEach(function (b) { b.onclick = function () { revKeepTier(w, all, +b.dataset.top); }; });
@@ -528,7 +534,7 @@
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commName(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
-      var gd = dudGuard(w, x), on = !!rev.sel[x.id]; d.className = 'egg pkcard t' + x.art.tierIndex + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to hide'); d.title = 'Tap to select or unselect';
+      var gd = dudGuard(w, x), on = !!rev.sel[x.id]; d.className = 'egg pkcard t' + x.art.tierIndex + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
       d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.onclick = function (e) { if (e.target.closest && e.target.closest('a,button,input,select,xc-select')) return; revToggle(w, x, d); };
@@ -1518,7 +1524,7 @@
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
     var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });
-    revHide(ids, 'Hide ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (' + (function () { var why = []; gd.forEach(function (id) { dudGuard(dw, dw.byId[id]).forEach(function (r) { r = /^wearing/.test(r) ? 'wearing gear' : r; if (why.indexOf(r) < 0) why.push(r); }); }); return why.join(', '); })() + '): ' + idList(gd) + '.' : '')); };
+    revHide(ids, 'Discard ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (' + (function () { var why = []; gd.forEach(function (id) { dudGuard(dw, dw.byId[id]).forEach(function (r) { r = /^wearing/.test(r) ? 'wearing gear' : r; if (why.indexOf(r) < 0) why.push(r); }); }); return why.join(', '); })() + '): ' + idList(gd) + '.' : '')); };
   $('txClose').onclick = function () { close('txBox'); };
   $('waitCancel').onclick = function () { close('waitOverlay'); };
   $('introSkip').onclick = function () { close('intro'); };
