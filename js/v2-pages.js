@@ -502,9 +502,19 @@
       bt.innerHTML = '<h2 class="sec" data-ico="egg">Born traits</h2><table class="small borntraits">' + V.bornTraits(p, p.stage).concat(R.bornExtraRows ? R.bornExtraRows(p) : []).map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (r[0] === 'Background colour' ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #000;background:' + esc(r[1]) + '"></span> ' : '') + esc(r[1]) + '</td></tr>'; }).join('') + '</table>';
       if (!bt.parentNode) gs0.parentNode.insertBefore(bt, gs0.nextSibling); })();
     /* family tree on the PUBLIC pet page for every visitor (2026-10-15, Jake): chart (V2Render turns ul.tree into the family chart) + parents / bred-with / breedings */
-    (function () { var fs = $('famTree') || document.createElement('section'); fs.className = 'panel'; fs.id = 'famTree';
+    function fam() { var fs = $('famTree') || document.createElement('section'); fs.className = 'panel'; fs.id = 'famTree';
       fs.innerHTML = '<h2 class="sec" data-ico="egg">Family tree</h2><ul class="tree"><li>#' + p.id + ' ' + esc(p.name) + '</li></ul>' + R.familyHtml(M.world(), M.world().byId[p.id], M.state().tip);
-      if (!fs.parentNode) $('bornTraits').parentNode.insertBefore(fs, $('bornTraits').nextSibling); })();
+      if (!fs.parentNode) $('bornTraits').parentNode.insertBefore(fs, $('bornTraits').nextSibling); }
+    fam();
+    /* breeds-redraw-1103 (display only): a first visit shows the saved / feed world, and the fresh world from the background re-read used to land
+     * without a repaint here (the 'New chain activity' bar only), so the Family tree (Breedings line), facts and history kept the old counts until
+     * Refresh. Now the card + family tree redraw once when M.world() hands out a new finished world (same world object = nothing redrawn), never
+     * while the visitor is typing or in a dialog, and only via peek() (never a main-thread replay). Replay, rules and data are unchanged. */
+    (function () { var shown = M.world();
+      function typing() { try { var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT|XC-SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox') return true; return !!document.querySelector('dialog[open], [aria-modal="true"]:not([hidden])'); } catch (e) { return false; } }
+      function redraw() { if (document.hidden || typing()) return; var nw = M.peek ? M.peek() : null; if (!nw || nw === shown || nw.pending || !nw.byId || !nw.byId[id]) return;
+        shown = nw; try { draw(); fam(); document.body.setAttribute('data-pet-redrawn', String(nw.tip || '')); } catch (e) { try { console.warn('[v2] pet redraw', e); } catch (x) {} } }
+      window.addEventListener('xcpets-world-fresh', function () { setTimeout(redraw, 0); }); setInterval(redraw, 2500); })();
     if (window.V2InscribeEnv && window.V2InscribeUI) { var gs1 = $('gear').closest('section') || $('gear').parentNode, h1 = document.createElement('section'); h1.className = 'panel'; h1.id = 'inscPanel'; gs1.parentNode.insertBefore(h1, gs1.nextSibling); V2InscribeUI.petSection(h1, p, w, p.owner === ME); return; } // TEST LINK only (?inscribe=test)
   }
   /* Hybrids browser (hybrids.html, homepage-cast 2026-10-19): every hybrid mix that exists on chain (V.castHybrids, the same list the
