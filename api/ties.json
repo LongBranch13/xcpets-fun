@@ -1,6 +1,6 @@
 {
- "lastBlock": 974429,
- "count": 106,
+ "lastBlock": 974433,
+ "count": 120,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1274,6 +1274,174 @@
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
    "stage": "Juvenile"
+  },
+  {
+   "id": 53884,
+   "asset": "A14557950198627546267",
+   "tiedBlock": 974431,
+   "tiedTx": "8a695b23bc6a8c5feb49470d794c4a9d152f6837a81f5a1f0ad8d096cda198ea",
+   "kind": "deed",
+   "name": "Waboomok",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 54718,
+   "asset": "A147303391710209451",
+   "tiedBlock": 974431,
+   "tiedTx": "c05b953a239183d146671f6e9cd49564486750f28792bd2bf757a99580319dc5",
+   "kind": "deed",
+   "name": "Mimugeru",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 57160,
+   "asset": "A8565167384610743518",
+   "tiedBlock": 974431,
+   "tiedTx": "9038915a50fd19cf2c190adf383d8e9ea52b4cc427861c7ec9f0124ba6fad578",
+   "kind": "deed",
+   "name": "Keliru",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 57254,
+   "asset": "A1303999430405570122",
+   "tiedBlock": 974431,
+   "tiedTx": "92935c170246a1e5101e8e3f3fd8180cef6c1a6e221f0cfb1af683cdc29f205a",
+   "kind": "deed",
+   "name": "Rojaboo",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 57478,
+   "asset": "A3217894461416909964",
+   "tiedBlock": 974431,
+   "tiedTx": "2d2fc49ff32d2d1039530b391820ac223a6da6cc2fc32d5ef93740f68c46eac2",
+   "kind": "deed",
+   "name": "Lefezoolu",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65085,
+   "asset": "A17575854750663251614",
+   "tiedBlock": 974431,
+   "tiedTx": "402c31a335560cff91cc996e64ccfafc1322d642306e08df8c1cc65b5148e76a",
+   "kind": "deed",
+   "name": "Kawoogoolu",
+   "species": "hyb:chud:peepo",
+   "speciesLabel": "Chupo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65086,
+   "asset": "A6432672232719665386",
+   "tiedBlock": 974431,
+   "tiedTx": "d5c9348efd1d7e48d32c5e9fcdab111510c5209f28542090b31b5c928b365edf",
+   "kind": "deed",
+   "name": "Wemuroomi",
+   "species": "hyb:kek:dodo",
+   "speciesLabel": "Kekdo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65087,
+   "asset": "A17799858854229080562",
+   "tiedBlock": 974431,
+   "tiedTx": "7dac8b12544c940070d0b4d5c9884620b845d6c88fb69a84a534db189d3fb6ea",
+   "kind": "deed",
+   "name": "Hezuzabo",
+   "species": "hyb:doge:kevin",
+   "speciesLabel": "Dogvin (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65088,
+   "asset": "A10956306531328245406",
+   "tiedBlock": 974431,
+   "tiedTx": "2adf913144a8ccfa9d50913725d106870cd273b54d0fdfc4ffa947c35270cd9e",
+   "kind": "deed",
+   "name": "Kefen",
+   "species": "hyb:kevin:lenny",
+   "speciesLabel": "Kelen (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65089,
+   "asset": "A1171961040193722500",
+   "tiedBlock": 974431,
+   "tiedTx": "d319d41ec746e742cdec6c37779f2bd05bed13c874ebaaa1a1fe55c8a4d2ac30",
+   "kind": "deed",
+   "name": "Zajoovibit",
+   "species": "hyb:snibby:doge",
+   "speciesLabel": "Snige (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65090,
+   "asset": "A14599269553949756997",
+   "tiedBlock": 974431,
+   "tiedTx": "ecfd8ff123b718a895209de37fbfb031b98e2ac9b2f0ecf4adc416a2625a49ef",
+   "kind": "deed",
+   "name": "Dilapip",
+   "species": "hyb:doge:wojak",
+   "speciesLabel": "Dogjak (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65091,
+   "asset": "A171488851981364329",
+   "tiedBlock": 974431,
+   "tiedTx": "5dfd7f9e3d41b654a8ebb48dc2a95aefc65c01c6de08f731fd1c4bd2264eb79b",
+   "kind": "deed",
+   "name": "Woofishab",
+   "species": "hyb:snibby:kevin",
+   "speciesLabel": "Snivin (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66092,
+   "asset": "A16701981998381926864",
+   "tiedBlock": 974431,
+   "tiedTx": "d102a47558c4c47e9f6926fdc95fa9a0cbb59818849fd7ac1c0b179fdba3c208",
+   "kind": "deed",
+   "name": "Mewazy",
+   "species": "hyb:pepe:sarutobi",
+   "speciesLabel": "Pebi (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66094,
+   "asset": "A14281827791514136116",
+   "tiedBlock": 974431,
+   "tiedTx": "f97feaf2a17bc3c3b6e444cee877433d426b790c920ef0c9e80fa383e01d077e",
+   "kind": "deed",
+   "name": "Chubuki",
+   "species": "hyb:pepe:dodo",
+   "speciesLabel": "Pepodo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
