@@ -111,8 +111,8 @@
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
   /* THE gravestone (option C): the dead pet's own stone, drawn at the top of its death note and in the old grave list */
-  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=e74cecf901'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=e74cecf901'; t.onload = cb; document.body.appendChild(t); }
+  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=a6d77f4696'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=a6d77f4696'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -155,7 +155,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=e74cecf901'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=a6d77f4696'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -167,7 +167,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=e74cecf901'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=a6d77f4696'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -195,9 +195,14 @@
   function keepKey() { var N = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo'); return 'xcpets-keep-' + N + '-' + (ME || ''); }
   function kept(id) { try { return JSON.parse(localStorage.getItem(keepKey()) || '[]').indexOf(Number(id)) >= 0; } catch (e) { return false; } }
   function toggleKept(id) { var l = []; try { l = JSON.parse(localStorage.getItem(keepKey()) || '[]'); } catch (e) { } var i = l.indexOf(Number(id)); if (i >= 0) l.splice(i, 1); else l.push(Number(id)); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } return i < 0; }
-  function petActs(w, p) { var myth = !!p.mythicCare || p.stage >= 5, a = function (k, label, title, cls) { return '<a class="btn ' + (cls || '') + ' ico-flame" href="play.html#act-' + k + '-' + p.id + '" title="' + esc(title) + '">' + label + '</a> '; },
+  /* feed-return (Nov 2 2026): a feed started here returns as pet.html?id=ID&fed=<block>. Until the burn confirms the pet still reads hungry, so the
+   * Feed button becomes '⏳ Feed sent' (no double meal) with a note; once confirmed it says fed. The note ends ~2 h (12 blocks) after the send. Display only. */
+  function fedSent(w, p) { var f = +(new URLSearchParams(location.search).get('fed') || 0), t = w.tip || 0; if (!f || Number(new URLSearchParams(location.search).get('id')) !== p.id || t > f + 12) return '';
+    return p.hungry ? 'pending' : 'fed'; }
+  function fedNote(w, p) { var s = fedSent(w, p); return !s ? '' : '<p class="small fed-note" id="fedNote">' + (s === 'pending' ? '⏳ Feed sent for #' + p.id + '. It shows as fed here once the burn confirms in a block (usually about 10 minutes).' : '✓ #' + p.id + ' is fed: the meal burn confirmed.') + '</p>'; }
+  function petActs(w, p) { var myth = !!p.mythicCare || p.stage >= 5, sent = fedSent(w, p) === 'pending', a = function (k, label, title, cls) { return '<a class="btn ' + (cls || '') + ' ico-flame" href="play.html#act-' + k + '-' + p.id + '" title="' + esc(title) + '">' + label + '</a> '; },
       fr = V.freeRolls ? V.freeRolls(w, ME, []) : null, of = V.overflowRolls ? V.overflowRolls(w, p, []) : null;
-    return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry ? '' : ' disabled') + '"' + (p.hungry ? ' href="play.html#act-feed-' + p.id + '"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
+    return '<div class="row petacts" id="petActs">' + (myth ? '' : '<a class="btn ico-flame' + (p.hungry && !sent ? '' : ' disabled') + '"' + (p.hungry && !sent ? ' href="play.html#act-feed-' + p.id + '-pet"' : ' aria-disabled="true"') + ' title="One meal per chain day">' + (sent ? '⏳ Feed sent' : p.hungry ? 'Feed (' + fmt(p.nextMeal || 0) + ')' : p.fedToday ? 'Fed today ✓' : 'Full') + '</a> ') +
       /* pet-card-page (owner 2026-10-24 5:08 AM CT): no Pepe Wheel spin / gear roll links here any more; the card's Rare Room / Breed / Battle buttons (js/v2-pet-card.js) go to play.html */
       /* favorite-star-restore (owner Oct 29 2026): the ☆ Keep / ★ Kept favorite button is back (same xcpets-keep list as My Pets) */
       '<button type="button" class="q keepbtn" id="petKeep" aria-pressed="' + kept(p.id) + '" title="Star this pet as a favorite. Starred pets are never discarded">' + (kept(p.id) ? '★ Kept' : '☆ Keep') + '</button> <a class="q" href="play.html#pet-' + p.id + '">More in the game</a></div>'; }
@@ -458,7 +463,7 @@
       if (window.V2Rivals) { var rvEl = $('rivals'); if (!rvEl) { rvEl = document.createElement('div'); rvEl.id = 'rivals'; $('chips').parentNode.insertBefore(rvEl, $('chips').nextSibling); } rvEl.innerHTML = V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }); } /* rivals strip (battle-arena DRAFT, off-chain) */
       $('facts').innerHTML = (p.dead ? '<p class="deathnote" id="deathNote"><canvas class="gstone big" id="graveStone" width="60" height="74" role="img" aria-label="the gravestone of #' + p.id + '"></canvas>🪦 Died of neglect at block ' + fmt(p.deathBlock) + ' and rests in the <a href="cemetery.html">Pet Cemetery</a>. ' + (R.graveCount(w, p) ? 'Its ' + R.graveCount(w, p) + ' gear piece' + (R.graveCount(w, p) === 1 ? '' : 's') + ' stay' + (R.graveCount(w, p) === 1 ? 's' : '') + ' on its grave (the owner chose this on chain).' : 'Its gear went back to the owner\'s stash.') + '</p>' : '') +
         'Owner <code class="addr" tabindex="0" role="button" title="' + esc(p.owner) + '" data-full="' + esc(p.owner) + '" data-short="' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '" onclick="this.textContent=this.textContent===this.dataset.full?this.dataset.short:this.dataset.full;this.classList.toggle(\'open\')">' + esc(String(p.owner).length > 16 ? String(p.owner).slice(0, 6) + '…' + String(p.owner).slice(-4) : p.owner) + '</code>' + (p.owner === ME ? ' (you)' + (p.dead ? '' : ' <a class="btn" href="play.html#discard-' + p.id + '" title="Free: hides it in your browser; restore from My Pets">🗑️ Discard</a>') : '') + (p.burnedTo ? ' <b>🔥 sent to a burn address in block ' + fmt(p.burnedTo.block) + ' (out of play)</b>' : '') + ' · ' + esc(R.originOf ? R.originOf(w, p).line : 'hatched in block ' + fmt(p.hatchBlock)) + ' (tx ' + esc(String(p.hatchTx).slice(0, 12)) + '…) · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, w.tip).mythic) + (R.careTarget(w, p, w.tip).discount ? ' (Mythic shortcut)' : '') + (p.parents && !p.jackpot ? ' · child of #' + p.parents.join(' × #') : '') +
-        (p.owner === ME && !p.dead ? petActs(w, p) : '');
+        (p.owner === ME && !p.dead ? fedNote(w, p) + petActs(w, p) : '');
       if (p.dead && $('graveStone')) withStone(function () { var gs = $('graveStone'), A = w.cem && w.cem.altars && w.cem.altars[p.id]; if (gs) V2Gravestone.draw(gs, { art: p.art, stage: p.stage, tier: Math.max(0, Math.min(3, p.tier | 0)), state: p.graveState || (p.resurrected ? 'halo' : null), crumbles: p.zCrumbles || 0, open: !!(A && A.status === 'open'), mythic: !!p.mgDead }); });
       var g = $('gear');
       if (p.dead) g.innerHTML = R.graveCount(w, p) ? '<p class="small">' + R.graveLine(w, p) + ': ' + V.wornOf(w, p.id).map(function (x) { return esc(V.slotLabel(x.slot) + ': ' + x.label); }).join(' · ') + '. Left on the grave: they can\'t be worn or moved.</p>' : '<p class="small">A pet in the Pet Cemetery can\'t wear gear. Its gear went back to the owner\'s stash.</p>';
@@ -473,7 +478,8 @@
               '<span class="pb-tx"><b>' + esc(x.label) + (x.legendary ? ' ★' : '') + '</b><small>' + esc(V.slotLabel(x.slot)) + ' · ' + esc((V.TIER_LABELS || [])[t] || '') + '</small><small class="pb-req">' + esc(u.text) + '</small></span></div>'; }).join('') + '</div>';
         el.querySelectorAll('.gi[data-icon]').forEach(function (s2) { if (!s2.firstChild && R.iconCanvas) s2.appendChild(R.iconCanvas(s2.getAttribute('data-icon'), '')); }); })();
 
-      if ($('starveWarn')) { $('starveWarn').innerHTML = R.starveHtml(w, p, ME, { feedHref: 'play.html#pet-' + p.id }); R.bindStarve($('starveWarn'), w, p, ME, {}); }
+      if ($('starveWarn')) { $('starveWarn').innerHTML = R.starveHtml(w, p, ME, { feedHref: 'play.html#pet-' + p.id, feedActHref: 'play.html#act-feed-' + p.id + '-pet' }); R.bindStarve($('starveWarn'), w, p, ME, {});
+        if (fedSent(w, p) === 'pending') $('starveWarn').querySelectorAll('a[data-sfeed]').forEach(function (x) { x.removeAttribute('href'); x.classList.add('disabled'); x.setAttribute('aria-disabled', 'true'); x.textContent = '⏳ Feed sent'; }); }
       /* history (2026-10-16 fix): chain rows carry hex tags + raw quantity; decode them, match every log entry that names this pet
        * (petId / ids / '#ID' in the message incl. pack ranges and fights), add the hatch row and pre-v2 burns, in chain order. */
       var RW = M.state().rows || [], byTx = {}; RW.forEach(function (r) { byTx[r.tx_hash] = r; });

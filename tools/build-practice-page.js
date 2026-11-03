@@ -12,7 +12,7 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const B = () => (fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() || 'dev');
-function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */ const b = B();
+function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); h = h.replace(/<!--err-report-1102-->[\s\S]*?<!--err-report-1102-->/, ''); /* safeguards-1102: practice pages send nothing anywhere (practice-guard refuses outside hosts), so no page-error reporter */ /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */ const b = B();
   const must = (re, what) => { if (!re.test(h)) throw new Error('build-practice-page: ' + src + ' changed, cannot find ' + what); };
   const sub = (re, to, what) => { must(re, what); h = h.replace(re, to); };
   h = h.replace(/<link rel="preconnect" href="https:\/\/api\.counterparty\.io[^>]*>/g, '').replace(/<link rel="prefetch"[^>]*>/g, '');
@@ -34,7 +34,7 @@ function buildPet() { const c = common('pet.html'), sub = c.sub;
   sub(/<script>\/\* pet token \(verified asset\)[\s\S]*?<\/script>/, '', 'pet token script');
   return c.get(); }
 function build(src, title) {
-  let h = fs.readFileSync(path.join(ROOT, src || 'play.html'), 'utf8'); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */
+  let h = fs.readFileSync(path.join(ROOT, src || 'play.html'), 'utf8'); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); h = h.replace(/<!--err-report-1102-->[\s\S]*?<!--err-report-1102-->/, ''); /* safeguards-1102: practice pages send nothing anywhere (practice-guard refuses outside hosts), so no page-error reporter */ /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */
   const B = (fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() || 'dev');
   const must = (re, what) => { if (!re.test(h)) throw new Error('build-practice-page: ' + (src || 'play.html') + ' changed, cannot find ' + what); };
   const sub = (re, to, what) => { must(re, what); h = h.replace(re, to); };

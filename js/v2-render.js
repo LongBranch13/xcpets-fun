@@ -215,6 +215,15 @@
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
   function drawEyeGear(img, a, d, sp) { var g = d.v2eye, C = BonusGear.COLORS, D = img.data, E = [a.eyeL, a.eyeR].filter(Boolean);
+    /* gear-fit 2026-11-03 (display only): BonusGear.anchors splits the eye pixels at x=16, so a face whose centre is off x=16 (Doge: eyes at x7-10 and
+     * x14-17) got its right eye's inner half counted as the LEFT eye -> one 9-px-wide left lens + a 2-px right lens (Lulu #228's oversized glasses).
+     * Re-split the same eye pixels into their two column-connected groups; faces already split right are unchanged. */
+    if (a.eyeL && a.eyeR) { var allP = a.eyeL[2].concat(a.eyeR[2]), cols = {}; allP.forEach(function (q) { cols[q[0]] = 1; });
+      var cx = Object.keys(cols).map(Number).sort(function (p, q) { return p - q; }), grp = [[cx[0]]];
+      for (var ci = 1; ci < cx.length; ci++) { if (cx[ci] === cx[ci - 1] + 1) grp[grp.length - 1].push(cx[ci]); else grp.push([cx[ci]]); }
+      if (grp.length === 2 && grp[0][grp[0].length - 1] !== Math.max.apply(null, a.eyeL[2].map(function (q) { return q[0]; }))) {
+        var cut = grp[1][0], mk = function (p) { var sx = 0, sy = 0; p.forEach(function (q) { sx += q[0]; sy += q[1]; }); return [Math.round(sx / p.length), Math.round(sy / p.length), p]; };
+        E = [mk(allP.filter(function (q) { return q[0] < cut; })), mk(allP.filter(function (q) { return q[0] >= cut; }))]; } }
     if (!E.length && g.s === 'bags') { // closed (^ ^) eyes: bags go one row under the first dark interior marks on each side of the face
       var ink = function (x, y) { var q = (y * 32 + x) * 4; return a.isSil(x - 1, y) && a.isSil(x + 1, y) && D[q] + D[q + 1] + D[q + 2] < 200; }, cxm = (a.minX + a.maxX) / 2, done = 0;
       [-1, 1].forEach(function (sd) { for (var yy = a.minY + 3; yy < a.minY + Math.round((a.maxY - a.minY) * 0.6); yy++) { var xs = []; for (var xx = 0; xx < 32; xx++) if ((xx - cxm) * sd > 0 && ink(xx, yy)) xs.push(xx); if (xs.length) { var yb = yy; while (xs.some(function (v) { return ink(v, yb + 1) || ink(v - 1, yb + 1) || ink(v + 1, yb + 1); })) yb++; for (var k = Math.min.apply(null, xs); k <= Math.max.apply(null, xs); k++) put(k, yb + 2, g.f); done++; return; } } });
@@ -686,7 +695,10 @@
     if (F && stage > 0) { ov.forEach(function (id) { if (F.isCape(id)) fitCape = id; }); if (go.cape && F.isCape(go.cape)) { if (!fitCape) fitCape = go.cape; delete go.cape; }
       if (go.armor) { fitArmor = PetCore.ARMORS.filter(function (x) { return x.id === go.armor; })[0] || null; if (fitArmor) delete go.armor; } }
     if (fitCape) ov = ov.filter(function (id) { return !F.isCape(id); });
-    var fr = art.hybrid ? V.hybridFrames(art, { stage: stage, gearOverride: go, gearCap: cap }) : PetCore.renderFrames(art, { stage: stage, gearOverride: go, gearCap: cap }); // hybrids: assembled art + badge
+    /* gear-fit 2026-11-03 (display only): Laser-eye beams run from the eyes to the canvas edges, so under shades / a visor / a mask they stuck out of the
+     * lens sides as a stray red bar across the face (Lulu #228). Eyewear that covers the eyes hides the beams (frames drawn with classic eyes). */
+    var lzr = art && art.eyes === 'laser' && ov.some(function (id) { var d0 = BonusGear.DEFS[id]; return d0 && d0.v2eye && /^(glasses|visor|mask)$/.test(d0.v2eye.s); }), artF = lzr ? Object.assign({}, art, { eyes: 'classic' }) : art;
+    var fr = art.hybrid ? V.hybridFrames(artF, { stage: stage, gearOverride: go, gearCap: cap }) : PetCore.renderFrames(artF, { stage: stage, gearOverride: go, gearCap: cap }); // hybrids: assembled art + badge
     if ((ov.length || fitCape || fitArmor) && stage > 0) { var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }, art.eyes === 'laser' ? { eyes: 'classic' } : {}), eyes = Object.assign({}, key, { eyes: 'star' }), KB = [255, 0, 255]; /* sprite-fixes 2026-10-20: gear anchors are measured on a laser-free key (Laser-eye beams run to the canvas edges and used to stretch the silhouette: headset bar, feet, held pieces, hoodie off the edge); the drawn frames keep their lasers */
       var order = ['back', 'body', 'feet', 'hand', 'head', 'face']; // z-order: cape (behind) < outfit/armour < feet < held < headwear < face
@@ -784,16 +796,24 @@
     for (var it = 0, ch = true; ch && it < 40; it++) { ch = false; for (p = 0; p < 1024; p++) { if (r[p]) continue; i = p * 4; if (a[i] !== 255 || a[i + 1] !== 201 || a[i + 2] !== 60 || b[i] !== 255 || b[i + 1] !== 201 || b[i + 2] !== 60) continue;
       var x = p & 31, y = p >> 5; if (bg(x + 1, y) || bg(x - 1, y) || bg(x, y + 1) || bg(x, y - 1)) { r[p] = 1; ch = true; } } }
     return r; }
+  /* mythRingOf(a, b): fallback rim for sprites that draw no Mythic rim: every background pixel (differs between the keyed renders) that touches the
+   * pet (same in both) on a side, rows 0-29 like pet-core's rim. */
+  function mythRingOf(a, b) { var r = new Uint8Array(1024), pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+    for (var p = 0; p < 1024; p++) { var x = p & 31, y = p >> 5; if (y > 29 || pet(x, y)) continue; if (pet(x + 1, y) || pet(x - 1, y) || pet(x, y + 1) || pet(x, y - 1)) r[p] = 1; }
+    return r; }
   /* mythRimUrls(r): crisp hi-res masks of that same rim: line = every rim pixel as a full square (same path / thickness / position as today),
    * core = a thin centre thread joining neighbouring rim pixels (the white hot highlight inside the line). */
-  function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, mk = function () { var c = document.createElement('canvas'); c.width = c.height = W; return c; };
-    var L = mk(), lg = L.getContext('2d'), C = mk(), cg = C.getContext('2d'), on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
-    lg.fillStyle = '#fff'; cg.strokeStyle = cg.fillStyle = '#fff'; cg.lineWidth = S * 0.2; cg.lineCap = 'round';
-    for (var p = 0; p < 1024; p++) if (r[p]) { var x = p & 31, y = p >> 5, cx = (x + 0.5) * S, cy = (y + 0.5) * S; lg.fillRect(x * S, y * S, S, S);
-      cg.beginPath(); cg.arc(cx, cy, S * 0.1, 0, 7); cg.fill();
+  function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
+    /* naka-gif-speed-1102: the same two masks as tiny SVG data URLs (row runs of squares, round dots + threads) instead of two 384x384 canvas PNG
+     * encodes per rim per frame; same squares / thread size / position, so the outline looks the same but appears without the encode wait. */
+    var line = '', core = '', x, y;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (on(x, y)) { var x0 = x; while (on(x + 1, y)) x++; line += 'M' + x0 * S + ' ' + y * S + 'h' + (x - x0 + 1) * S + 'v' + S + 'h-' + (x - x0 + 1) * S + 'z'; }
+    for (var p = 0; p < 1024; p++) if (r[p]) { x = p & 31; y = p >> 5; var cx = (x + 0.5) * S, cy = (y + 0.5) * S; core += 'M' + cx + ' ' + cy + 'h0';
       [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(function (d) { if (!on(x + d[0], y + d[1])) return; if (d[0] && d[1] && (on(x + d[0], y) || on(x, y + d[1]))) return;
-        cg.beginPath(); cg.moveTo(cx, cy); cg.lineTo(cx + d[0] * S, cy + d[1] * S); cg.stroke(); }); }
-    var out = { line: L.toDataURL(), core: C.toDataURL() }; if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
+        core += 'M' + cx + ' ' + cy + 'l' + d[0] * S + ' ' + d[1] * S; }); }
+    var svg = function (b) { return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + W + '" viewBox="0 0 ' + W + ' ' + W + '">' + b + '</svg>'); };
+    var out = { line: svg('<path fill="#fff" shape-rendering="crispEdges" d="' + line + '"/>'), core: svg('<path fill="none" stroke="#fff" stroke-width="' + S * 0.2 + '" stroke-linecap="round" d="' + core + '"/>') };
+    if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
   function mythFrame(c, img, info) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (c._mfxR === r.k) return; c._mfxR = r.k;
     var U = mythRimUrls(r); o.style.setProperty('--rl', 'url(' + U.line + ')'); o.style.setProperty('--rc', 'url(' + U.core + ')'); }
   function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
@@ -806,6 +826,12 @@
       for (var f = 0; f < fr.length; f++) { var Af = (A[f] || A[0]).data, Bf = (B[f] || B[0]).data, r = mythRimOf(Af, Bf), s2 = '';
         for (p = 0; p < 1024; p += 32) { var rw = 0; for (var q2 = 0; q2 < 32; q2++) { rw = rw * 2 + r[p + q2] >>> 0; if (r[p + q2]) any = true; } s2 += '.' + rw.toString(36); }
         r.k = s2; rims.push(r); rk += '|' + s2; }
+      if (!any) { /* mythic-outline-1102: a sprite with no gold Mythic rim of its own (FUNTRUMP body, FUNTRUMP-body hybrids) gets the same one-pixel ring
+         * just outside its silhouette, found from the two keyed renders. Display only: the sprite pixels are not changed, only the aura5 line mask. */
+        rims = []; rk = mode;
+        for (f = 0; f < fr.length; f++) { r = mythRingOf((A[f] || A[0]).data, (B[f] || B[0]).data); s2 = '';
+          for (p = 0; p < 1024; p += 32) { rw = 0; for (q2 = 0; q2 < 32; q2++) { rw = rw * 2 + r[p + q2] >>> 0; if (r[p + q2]) any = true; } s2 += '.' + rw.toString(36); }
+          r.k = s2; rims.push(r); rk += '|' + s2; } }
       if (!any) return fr; var ainfo = { mode: mode, m: m, bb: bb, key: rk, rims: rims };
       return fr.map(function (f, i) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, ainfo); MYTH_FI.set(g, i); return g; }); }
     bb.yh = bb.y0; for (var yy = bb.y0; yy <= bb.y1; yy++) { var cnt = 0; for (var xx = 0; xx < 32; xx++) cnt += m[yy * 32 + xx]; if (cnt >= 4) { bb.yh = yy; break; } } /* head top (skips a lone badge/gear pixel) */
@@ -1382,11 +1408,11 @@
     return { blocks: n, at: p.deathBlock, left: L.long, short: L.short, unfed: hungerDays(p, w), gear: g, grave: p.graveGear != null, graveBlock: p.graveGear, graveTx: p.graveTx, graveLive: !!(V.graveOn && V.graveOn(w.tip)) }; }
   function fmtN(n) { return Number(n).toLocaleString('en-US'); }
   /** starveHtml(w, p, owner, o): the warning ('' when the pet does not qualify). owner = connected address ('' = none).
-   *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID); otherwise it is a button wired by bindStarve to the existing feed flow. */
+   *  o.feedHref: owner CTA is a link (pet.html -> play.html#pet-ID; o.feedActHref, when given, is the feed link: play.html#act-feed-ID-pet, back to the pet page after); otherwise it is a button wired by bindStarve to the existing feed flow. */
   function starveHtml(w, p, owner, o) {
     var b = starveInfo(w, p); if (!b) return ''; o = o || {};
     var own = !!owner && p.owner === owner && !p.released, n = b.gear.length, pcs = n + ' gear piece' + (n === 1 ? '' : 's'), bag = own ? 'your stash' : 'the owner\'s stash';
-    var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
+    var cta = own ? (p.hungry && p.nextMeal > 0 ? (o.feedHref ? '<a class="btn ico-flame" data-sfeed="1" href="' + esc(o.feedActHref || o.feedHref) + '">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</a>' : '<button type="button" class="btn ico-flame" data-sfeed="1">Feed #' + p.id + ' (' + fmtN(p.nextMeal) + ')</button>') + ' <span class="small muted">one meal resets the clock</span>' : '<span class="small muted">No meal is due right now.</span>')
       : '<span class="small">Only the owner can feed #' + p.id + '.</span>' + (!owner ? ' <span class="small">Your pet? <button type="button" class="q" data-sconn="1">Connect wallet</button> to feed it.</span>' : ' <span class="small muted">The connected wallet does not own #' + p.id + '.</span>');
     return '<div class="starve" data-starve="' + p.id + '" role="region" aria-label="Starvation warning for #' + p.id + '"><h3 class="sec" data-ico="skull">Starvation warning</h3>' +
       '<p class="bcount">💀 #' + p.id + ' dies of hunger in <b>~' + b.left + '</b> <span class="small muted">(' + fmtN(b.blocks) + ' block' + (b.blocks === 1 ? '' : 's') + ', at block ' + fmtN(b.at) + ')</span> unless it is fed.</p>' +
@@ -1434,7 +1460,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=e74cecf901'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=a6d77f4696'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

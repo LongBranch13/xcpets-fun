@@ -32,8 +32,13 @@
   /* nav-cache-1102: the saved world can be read (and decoded, ~0.3 s desktop / ~1.4 s phone) WHILE api/boot.json loads; idbPre holds that read for
    * the next fromIdb. The key is still compared when the entry is USED (idbKey() of the inputs loaded by then), so the same entry is accepted or
    * shown as provisional exactly as before; only the waiting overlaps. */
+  /* cold-load-fix (Nov 2 2026, owner 7:06 / 7:42 PM CT 'stuck on reading the chain'): the saved world is now ~74,000 pets. Reading + decoding it can
+   * pass 2.5 s on a busy laptop or a phone, and the old single 2.5 s cut-off then threw it away, so the page waited for a FULL rebuild of every pet
+   * (20-30 s, the static 'Reading XCPETS burns from the chain…' line). Now 2.5 s only guards opening the database; once a saved world is being
+   * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
+  var IDB_READ_MS = 15000;
   function idbRaw() { return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    idb().then(function (db) { var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
+    idb().then(function (db) { if (!done) { clearTimeout(t); t = setTimeout(function () { done = true; res(null); }, IDB_READ_MS); } var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
   var idbPre = null;
   function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return p.then(function (v) { if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
@@ -316,7 +321,14 @@
       return { ok: !!S.verified, same: r.same && lastSig === wasW }; }); }); }
   /* boot-from-cache: worldOrShow() = the old "wait for the worker" step, except when a provisional saved world is showing: then the page boots at
    * once and armFresh() repaints it when the worker's fresh world lands. */
-  function worldOrShow(st, then) { var p = workerReplay(); if (!S.provisional || !lastW) return p; armFresh(); return null; }
+  function worldOrShow(st, then) { var p = workerReplay(); if (!S.provisional || !lastW) return bootProgress(st, p); armFresh(); return null; }
+  /* cold-load-fix: with no saved world on this device the page must rebuild every pet from the burns once (20-30 s on a phone). The boot line
+   * now says so, with a running clock and the burn count, instead of the static 'Reading XCPETS burns from the chain…' that looked stuck.
+   * The chain servers are NOT waited for here (the feed copy is already loaded; the chain re-read runs after the page shows). */
+  function bootProgress(st, p) { if (!st || !p || typeof p.then !== 'function' || cache) return p; var t0 = Date.now(), n = (S.rows || []).length, iv;
+    function tick() { if (!st.isConnected) return clearInterval(iv); var s2 = Math.round((Date.now() - t0) / 1000);
+      st.textContent = 'Building every pet from ' + (n ? fmtN(n) + ' ' : '') + 'XCPETS burns (block ' + fmtN(S.tip || 0) + ', from the game feed)… ' + s2 + ' s' + (s2 >= 4 ? ' · first visit on this device or new data: this runs once, then pages open from the saved copy' : ''); }
+    iv = setInterval(tick, 1000); tick(); var stop = function () { clearInterval(iv); }; p.then(stop, stop); return p; }
   var freshHooks = [], armed = false, RL = 'xcpets-v2-swr-reload', RL_GAP = 120e3;
   function onFresh(fn) { if (typeof fn === 'function') freshHooks.push(fn); }
   function updBar(on) { try { var b = document.getElementById('v2upd'); if (!on) { if (b) b.remove(); return; } if (b || !document.body) return; b = document.createElement('div'); b.id = 'v2upd'; b.setAttribute('role', 'status');
