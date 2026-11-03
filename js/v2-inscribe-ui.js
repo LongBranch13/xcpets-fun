@@ -78,8 +78,8 @@
     shell('Inscribe pet #' + pet.id, '<div class="inscprev"><img alt="" src="' + thumb + '" style="width:192px;height:192px;image-rendering:pixelated"><div class="small">' +
       '<p><b>' + esc(pet.name) + '</b> · pet #' + pet.id + ' · rendered from the chain at block ' + P.meta.b + (P.meta.g.length ? ' with its worn gear' : '') + '</p>' +
       '<p>Still PNG ' + r.width + '×' + r.height + ' (' + esc(r.scale) + ', lossless) · ' + r.kb + ' KB</p>' +
-      (P.frames.length > 1 ? '<p><label>Frame to inscribe <select id="inscFrame">' + P.frames.map(function (_, i) { return '<option value="' + i + '"' + (i === P.meta.f ? ' selected' : '') + '>frame ' + (i + 1) + '</option>'; }).join('') + '</select></label></p>' : '') +
-      '<p><label>Name stamp <select id="inscStamp">' + I.NAME_POS.map(function (x) { return '<option value="' + x + '"' + (x === P.meta.s ? ' selected' : '') + '>' + (x === 'none' ? 'No name' : x) + '</option>'; }).join('') + '</select></label></p>' +
+      (P.frames.length > 1 ? '<p><label>Frame to inscribe <xc-select id="inscFrame">' + P.frames.map(function (_, i) { return '<option value="' + i + '"' + (i === P.meta.f ? ' selected' : '') + '>frame ' + (i + 1) + '</option>'; }).join('') + '</xc-select></label></p>' : '') +
+      '<p><label>Name stamp <xc-select id="inscStamp">' + I.NAME_POS.map(function (x) { return '<option value="' + x + '"' + (x === P.meta.s ? ' selected' : '') + '>' + (x === 'none' ? 'No name' : x) + '</option>'; }).join('') + '</xc-select></label></p>' +
       '<p><label>Fee rate <input type="number" id="inscRate" min="1" max="500" value="" style="width:5em"> sat/vB</label> <span id="inscFee" class="muted"></span></p>' +
       '<p class="muted">This exact still will be inscribed to your address <b>' + esc(P.owner) + '</b>. You pay Bitcoin network fees only (no site fee, no XCPETS). Signed in <b>XCP Wallet</b>.</p></div></div>' +
       '<div id="inscSteps" class="small"></div><p><button type="button" class="btn" id="inscGo2">Continue with XCP Wallet…</button> <button type="button" class="btn ghost" id="inscBack">Back</button></p>');
