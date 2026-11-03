@@ -28,7 +28,23 @@
   var IDB_NAME = 'xcpets-world', IDB_WAIT_MS = 2500, idbKeyStored = null;
   function idb() { return new Promise(function (res, rej) { if (!BUILD || typeof indexedDB === 'undefined') return rej(new Error('no idb'));
     var r = indexedDB.open(IDB_NAME, 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
-  function idbKey() { return BUILD + '|' + inSig() + '|' + JSON.stringify(S.ops || []); }
+  /* rules-key-1103 (site-speed, owner 'whole game is a loading bug'): the saved world used to be keyed to the BUILD id, so EVERY deploy (most are UI
+   * only) threw it away and each device rebuilt every pet (20-25 s desk, 40-60 s phone). It is now keyed to a SHA-256 of the exact bytes of the
+   * scripts the replay runs (RULE_SCRIPTS + the worker, fetched from the browser cache at the same ?v= URLs the page loaded). The world is a pure
+   * function of those scripts and the inputs in inSig()/ops, so the same key means the same world. A rule change changes the bytes, so the key and
+   * a full rebuild. No hash in time (3 s) or no crypto/fetch -> the old BUILD key, exactly as before. Burns still wait on the verified read. */
+  var RSIG = null, rsigP = null;
+  function rulesSig() { if (rsigP) return rsigP; rsigP = new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, 3000);
+    function out(v) { if (done) return; done = true; clearTimeout(t); if (v) RSIG = v; res(v || null); }
+    try { var urls = ruleUrls(); if (!urls || !BUILD || typeof fetch !== 'function' || !(window.crypto && crypto.subtle) || typeof Uint8Array === 'undefined') return out(null);
+      urls = urls.concat([new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href]);
+      Promise.all(urls.map(function (u) { return fetch(u, { cache: 'force-cache', credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('rules ' + r.status); return r.arrayBuffer(); }); }))
+        .then(function (bufs) { var n = 0, i, o = 0, all; for (i = 0; i < bufs.length; i++) n += bufs[i].byteLength + 8;
+          all = new Uint8Array(n); for (i = 0; i < bufs.length; i++) { var L = bufs[i].byteLength; all[o] = L >>> 24 & 255; all[o + 1] = L >>> 16 & 255; all[o + 2] = L >>> 8 & 255; all[o + 3] = L & 255; all.set(new Uint8Array(bufs[i]), o + 8); o += L + 8; }
+          return crypto.subtle.digest('SHA-256', all); })
+        .then(function (d) { var h = Array.prototype.map.call(new Uint8Array(d), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); out('r' + h.slice(0, 32)); }, function () { out(null); });
+    } catch (e) { out(null); } }); return rsigP; }
+  function idbKey() { return (RSIG || BUILD) + '|' + inSig() + '|' + JSON.stringify(S.ops || []); }
   /* nav-cache-1102: the saved world can be read (and decoded, ~0.3 s desktop / ~1.4 s phone) WHILE api/boot.json loads; idbPre holds that read for
    * the next fromIdb. The key is still compared when the entry is USED (idbKey() of the inputs loaded by then), so the same entry is accepted or
    * shown as provisional exactly as before; only the waiting overlaps. */
@@ -41,7 +57,7 @@
     idb().then(function (db) { if (!done) { clearTimeout(t); t = setTimeout(function () { done = true; res(null); }, IDB_READ_MS); } var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
   var idbPre = null;
-  function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return p.then(function (v) { if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
+  function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return Promise.all([p, rulesSig()]).then(function (r) { var v = r[0]; if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
    * so the page stays responsive; the worker also writes the IDB entry. The result is a structured clone of the same world (V.reindex() restores the
    * gear index). No worker / a worker error -> cache stays empty and world() replays on the main thread exactly as before. */
@@ -375,7 +391,7 @@
     if (/[?&]fresh=1/.test(location.search)) return whenOpen(function () { run(st, then); });
     whenOpen(refTip); var last = readLast(), age = last ? Date.now() - last.at : -1;
     if (last && BUILD && last.build === BUILD && age >= 0 && age <= LAST_NOW && applyStale(last, null)) { fetchStatic(); return bootStale(st, then); }
-    idbPre = idbRaw(); /* the saved world is decoded while api/boot.json loads */
+    idbPre = idbRaw(); rulesSig(); /* the saved world is decoded while api/boot.json loads (rules-key-1103: and the rule scripts hashed) */
     fromBest().then(function (ok) { if (ok) bootStale(st, then); else { idbPre = null; whenOpen(function () { run(st, then); }); } }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */
   /* api-reduction (preview): the 60 s poll reads the tip first (1 call). Same tip as the shown data -> only the mempool is re-read (1 call) and
