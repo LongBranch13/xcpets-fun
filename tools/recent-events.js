@@ -3,7 +3,7 @@
  * each stamped with its block hash, read from a full node (:4000). Only events that can change sale data are kept: any event naming a
  * numeric pet token (A + 17..20 digits) and every order / match / cancel / expiry event. The browser (js/v2-sales.js) uses a block's list
  * only if the stamped hash equals its own fresh chain read; anything else falls to a :4000 node, then the full read.
- * Usage: node tools/recent-events.js [--out api] [--blocks 60] [--node URL]... ; reuses entries of the existing file whose hash still matches.
+ * Usage: node tools/recent-events.js [--out api] [--blocks 60] [--node URL]... [--no-slim] ; reuses entries of the existing file whose hash still matches.
  * Any failure: the old file is left alone and the exit code is 0 (the feed must never fail because of this optional file). */
 'use strict';
 /* api-reduction (2026-10-25): every Counterparty read here goes through the same gate as tools/api-feed.js (tools/lib/core-limiter.js: 1 in flight, 2/s per host, shared 429 cooldown). FEED_NO_LIMIT=1 turns it off. */
@@ -15,6 +15,16 @@ const nodes = args.reduce((a, x, i) => (x === '--node' ? a.concat(args[i + 1]) :
 const NODES = nodes.length ? nodes : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'];
 const KEEP_RE = /"A[1-9][0-9]{16,19}"/, KEEP_EV = /ORDER|MATCH|CANCEL|EXPIR|BTC_PAY/;
 const keep = (e) => KEEP_EV.test(String(e.event || '')) || KEEP_RE.test(JSON.stringify(e));
+/* recent-events-slim-1103 (owner approved Nov 3, 2026): an issuance description longer than SLIM_MAX chars (the hex-JPEG art of some
+ * non-XCPETS tokens, ~0.75 MB each; ~11 MB of the ~11.3 MB file) is replaced by a short stub string AFTER keep() chose the event, so which events
+ * are kept does not change. The browser (js/v2-sales.js touched()) only looks for '"<pet token>"' and 64-hex order / match hashes in each
+ * event; those live in the asset / tx_hash / order fields, never inside a description, so every block still flags exactly the same tokens.
+ * Stub: '[recent-events-slim: N chars, sha256 <hex16>, ends <last 32 chars>]'. Reused entries of an older file are slimmed too. --no-slim = old output. */
+const SLIM_MAX = 4096, SLIM = !args.includes('--no-slim');
+function slimEv(e) { const p = e && e.params; if (!SLIM || !p || typeof p.description !== 'string' || p.description.length <= SLIM_MAX) return e;
+  const d = p.description, h = require('crypto').createHash('sha256').update(d).digest('hex').slice(0, 16);
+  return Object.assign({}, e, { params: Object.assign({}, p, { description: '[recent-events-slim: ' + d.length + ' chars, sha256 ' + h + ', ends ' + d.slice(-32) + ']' }) }); }
+const slimBlock = (x) => (x && Array.isArray(x.events) ? Object.assign({}, x, { events: x.events.map(slimEv) }) : x);
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 async function getJ(u, tries = 7) {
   for (let n = 0; ; n++) {
@@ -32,11 +42,11 @@ async function onNode(base, prev) {
   let k = 0, reused = 0;
   async function one(b) {
     const h = H[b], p = prev && prev.blocks && prev.blocks[b];
-    if (p && p.hash === h && p.complete === true) { blocks[b] = p; reused++; return; }
+    if (p && p.hash === h && p.complete === true) { blocks[b] = slimBlock(p); reused++; return; }
     let out = [], cur = null, pg = 0;
     do { const j = await getJ(base + '/blocks/' + b + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')); if (!Array.isArray(j.result)) throw new Error('bad events ' + b);
       out = out.concat(j.result); cur = j.next_cursor; if (++pg > 50) throw new Error('too many event pages ' + b); } while (cur);
-    blocks[b] = { hash: h, complete: true, total: out.length, events: out.filter(keep) };
+    blocks[b] = { hash: h, complete: true, total: out.length, events: out.filter(keep).map(slimEv) };
     await wait(250); /* gentle: the public nodes answer 429 to bursts */
   }
   async function worker() { while (k < list.length) await one(list[k++]); }
@@ -44,7 +54,8 @@ async function onNode(base, prev) {
   const H2 = await hashes(base); for (const b of list) if (H2[b] !== H[b]) throw new Error('block ' + b + ' changed while reading (reorg)');
   return { v: 1, generatedAt: new Date().toISOString(), node: base.replace(/^https?:\/\//, ''), from: tip - N + 1, tip, hash: H[tip], blocks, reused };
 }
-(async () => {
+module.exports = { keep, slimEv, slimBlock, SLIM_MAX };
+if (require.main === module) (async () => {
   const file = path.join(OUT, 'recent-events.json'); let prev = null; try { prev = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { }
   for (const base of NODES) {
     try { const t0 = Date.now(), j = await onNode(base.replace(/\/+$/, ''), prev), reused = j.reused; delete j.reused;
