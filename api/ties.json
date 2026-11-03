@@ -1,6 +1,6 @@
 {
- "lastBlock": 974373,
- "count": 99,
+ "lastBlock": 974376,
+ "count": 103,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1190,6 +1190,54 @@
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 4183,
+   "asset": "A13118815332649505341",
+   "tiedBlock": 974375,
+   "tiedTx": "16f8b01fec94d0427b80a61c734aa9d99816c407c54c22f41c223fec13f98cac",
+   "kind": "deed",
+   "name": "Peyo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 4248,
+   "asset": "A3185230841294403317",
+   "tiedBlock": 974375,
+   "tiedTx": "7bc9b659be9be90c758be5af0262839e34b1cca44e24ad3e3f957b401f551876",
+   "kind": "deed",
+   "name": "Gichiyo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 32061,
+   "asset": "A7583921760264163303",
+   "tiedBlock": 974375,
+   "tiedTx": "2a6092ada86733ecf988b42065c455061c8ab13b18c2f80dd96d4f19840e2120",
+   "kind": "deed",
+   "name": "Gipip",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 32511,
+   "asset": "A5073416077643155313",
+   "tiedBlock": 974375,
+   "tiedTx": "e92632810b008b431ea89badb2b5fc73da1f53eb3a4c24c5840eb7734dee4bf8",
+   "kind": "deed",
+   "name": "Miwaki",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
