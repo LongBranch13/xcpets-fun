@@ -5,7 +5,7 @@
 'use strict';
 const path = require('path');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
-global.PetScore = { of: (w, p) => ({ score: p.sc }) };
+global.PetScore = { of: (w, p) => ({ score: p.sc }), rarity: (w, p) => (p.rb == null ? null : { bits: p.rb, oneIn: 1 }) };
 global.PetCore = { TIERS: [{ label: 'Common', statBonus: 0 }, { label: 'Uncommon', statBonus: 3 }, { label: 'Rare', statBonus: 6 }, { label: 'Legendary', statBonus: 10 }] };
 global.V2Rules = { wornOf: (w, id) => (w.worn[id] || []), isMythic: p => p.stage === 5, genOf: (w, p) => p.g || 0, breedsLeft: p => ({ left: 6 - (p.breeds || 0), cap: 6 }),
   QUESTS: { wiz: { name: "Wizard's Tower", fav: ['spark', 'zoom'] }, mine: { name: 'Burning Mines', fav: ['grit', 'vigor'] } }, questOdds: () => ({ haul: 650 }) };
@@ -35,5 +35,11 @@ ok(kid.steps.some(s => /1 left/.test(s) && /Haul 6.50%/.test(s)) && kid.gain ===
 ok(/do not change Power/.test(kid.edge), 'gear and stage are fight edge, not Power');
 const all = JSON.stringify([g0, kid]); ok(!/price|series|×|\dx\b/i.test(all), 'breakdown words');
 const done = PS.ways(w, P(11, { questBoost: 3, stage: 5 }), 1); ok(done.gain === 0 && done.steps.some(s => /are used/.test(s)), 'cap reached');
+/* hatch-review-tiers-1103: Rarity = tier, then 💎 Rarity score high first, Power only breaks ties (owner's Legendary cards ran by Power: 9.5, 9.7, 14.6, 11.0, 9.0) */
+const L = [P(21, { tier: 3, rb: 9.5, stats: S(30, 30, 30, 30, 11) }), P(22, { tier: 3, rb: 9.7, stats: S(26, 26, 26, 26, 26) }), P(23, { tier: 3, rb: 14.6, stats: S(26, 26, 26, 26, 26) }),
+  P(24, { tier: 3, rb: 11.0, stats: S(26, 26, 26, 26, 26) }), P(25, { tier: 2, rb: 30, stats: S(40, 40, 40, 40, 40) }), P(26, { tier: 3, rb: 11.0, stats: S(27, 27, 27, 27, 27) }), P(27, { tier: 3, stats: S(50, 50, 50, 50, 50) })];
+const rid = k => PS.sort(w, L, k).map(p => p.id).join(',');
+ok(rid('rar') === '23,26,24,22,21,27,25', 'Rarity high to low: tier, then rarity score, Power only as tie-break, no score last in its tier');
+ok(rid('rar-') === '25,27,21,22,24,26,23', 'Rarity low to high is the exact reverse');
 const before = JSON.stringify(pets); PS.sort(w, pets, 'pow'); PS.ways(w, pets[0], 1); ok(JSON.stringify(pets) === before, 'read only');
 console.log('hotel-sort-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
