@@ -65,8 +65,7 @@
     d.innerHTML = '<div class="vd-scene" aria-hidden="true"><i class="vd-cbunt"></i><div class="vd-stage">' + S.box2 +
       '<div class="vd-ftwrap"><span class="vd-bub">Go vote!</span>' + FT + '</div>' + pet('doge') + pet('mumu') + '</div></div>' +
       '<div class="vd-card-t"><div class="vd-k">Tuesday, Nov 3, 2026</div><div class="vd-h">🗳️ Happy Election Day!</div>' +
-      '<div class="vd-a">FUNTRUMP says <b>Go vote!</b> Every pet is wearing its I Voted sticker today.</div>' +
-      '<div class="vd-n small">Decor only, just for today: no game rule changes.</div></div>';
+      '<div class="vd-a">FUNTRUMP says <b>Go vote!</b> Every pet is wearing its I Voted sticker today.</div></div>';
     var main = document.querySelector('main'); if (main) main.insertBefore(d, main.firstChild); else document.body.appendChild(d);
   }
   /* pet pages: an I Voted sticker on the pet's portrait + a small tile under Gear (nothing is granted, nothing changes on the pet) */
@@ -74,8 +73,8 @@
     if (document.body.getAttribute('data-v2page') !== 'pet' && !/pet\.html$/.test(location.pathname)) return;
     var art = document.querySelector('#pcFront .pc-art'); if (art && !art.querySelector('.vd-pstk')) { var s = el('i', 'vd-pstk'); s.setAttribute('aria-hidden', 'true'); art.appendChild(s); art.classList.add('vd-art'); }
     var g = document.getElementById('gear'); if (!g || document.querySelector('.vd-tile')) return;
-    var t = el('div', 'vd-tile'); t.innerHTML = '<i class="vd-s vd-bigstk" aria-hidden="true"></i><div><b>🗳️ I Voted sticker</b> <span class="vd-tag">decor · just for today</span>' +
-      '<div class="small">Every pet wears one on Election Day, Tue Nov 3. Not gear: nothing is granted and no stats change.</div></div>';
+    var t = el('div', 'vd-tile'); t.innerHTML = '<i class="vd-s vd-bigstk" aria-hidden="true"></i><div><b>🗳️ I Voted sticker</b>' +
+      '<div class="small">Every pet wears one on Election Day, Tue Nov 3.</div></div>';
     g.insertAdjacentElement('afterend', t);
   }
   function addBanner() {

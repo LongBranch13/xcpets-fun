@@ -1,6 +1,6 @@
 {
- "lastBlock": 974385,
- "count": 103,
+ "lastBlock": 974422,
+ "count": 105,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -265,7 +265,7 @@
    "species": "hyb:dodo:wojak",
    "speciesLabel": "Dojak (hybrid)",
    "rarity": "Legendary",
-   "stage": "Egg"
+   "stage": "Juvenile"
   },
   {
    "id": 46068,
@@ -1237,6 +1237,30 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2483,
+   "asset": "A1358756492480075270",
+   "tiedBlock": 974395,
+   "tiedTx": "187e8aec32bfd39e90f5ad7d401f30efef7e90914b0cb8d11d6a36525e77409b",
+   "kind": "deed",
+   "name": "Chipip",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 64084,
+   "asset": "A13420616103885206571",
+   "tiedBlock": 974404,
+   "tiedTx": "78e2ab6f7b355528773dd92eebcc418f2948f3f18390d8a2f3c41a220fee49e1",
+   "kind": "deed",
+   "name": "Bimip",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
