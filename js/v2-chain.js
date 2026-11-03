@@ -154,7 +154,13 @@
    * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
    * the same replay out (rules unchanged); when the fresh read differs, a small bar offers a refresh. */
   var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5, LAST_FRESH = 30 * 60e3; /* stale-copy-fix: older than 30 min = only used when api/boot.json can't load */
-  function toLast() { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), fullAt: S.fullAt || null, build: BUILD, rows: S.rows, tip: S.tip, dex: S.dex || null })); } catch (e) {} }
+  /* refresh-banner-1103 (Fix B): the saved copy also keeps the SHALLOW block hashes (within 6 of its tip) from the verified read it came from.
+   * They are never written to the HKEY cache (api-hardening: final hashes only); applyStale uses them only for the stale render (S.verified
+   * stays false, burns still wait for the re-read). Before, a copy whose newest burns were < 6 deep failed the 'every row has a hash' check, so
+   * every reload fell back to the older api/boot.json and the 'New chain activity' bar came back after each Refresh. */
+  function shallowOf(h, tip) { var o = {}; if (!h || !(tip > 0)) return o; Object.keys(h).forEach(function (k) { var n = Number(k); if (n > tip - 6 && n <= tip) o[k] = h[k]; }); return o; }
+  function toLast() { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), fullAt: S.fullAt || null, build: BUILD, rows: S.rows, tip: S.tip, dex: S.dex || null, shallow: S.verified ? shallowOf(S.hashes, S.tip) : null })); } catch (e) {} }
+  function lastHashes(c) { return c && c.shallow && typeof c.shallow === 'object' && Object.keys(c.shallow).length ? c.shallow : null; }
   function applyStale(c, hashes) { if (!c || !Array.isArray(c.rows) || !c.rows.length || !c.tip) return false;
     if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* never replay owners without sales */
     var hc = (function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } })(), seed = window.XCPETS_BLOCK_HASHES || {};
@@ -186,8 +192,8 @@
   function pickCopy(last, feed, now) { var fresh = last && now - last.at <= LAST_FRESH;
     if (feed && (!fresh || feed.tip > last.tip)) return 'feed'; if (last && (fresh || !feed)) return 'last'; return null; }
   function fromBest() { var last = readLast(); return fetchStatic().then(function (j) { var k = pickCopy(last, j, Date.now());
-    if (k === 'feed' && applyStale(j, j.hashes)) return true; if (k === 'last' && applyStale(last, null)) return true;
-    if (k === 'feed' && last && applyStale(last, null)) return true; if (k === 'last' && j && applyStale(j, j.hashes)) return true; return false; }); }
+    if (k === 'feed' && applyStale(j, j.hashes)) return true; if (k === 'last' && applyStale(last, lastHashes(last))) return true;
+    if (k === 'feed' && last && applyStale(last, lastHashes(last))) return true; if (k === 'last' && j && applyStale(j, j.hashes)) return true; return false; }); }
   /* stale-copy-fix: the chain tip from mempool.space (not a Counterparty node), so 'N blocks behind' can be shown even while the Core nodes say 429 */
   var tipAt = 0; function refTip() { if (Date.now() - tipAt < 60e3 || typeof fetch !== 'function') return Promise.resolve(); tipAt = Date.now(); var base = (E.CFG && E.CFG.mempoolApi) || 'https://mempool.space/api';
     return fetch(base + '/blocks/tip/height', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; }).then(function (t) { var n = parseInt(t, 10); if (n > (S.chainTip || 0)) S.chainTip = n; }, function () {}); }
@@ -290,13 +296,24 @@
       b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'v2stale-btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin:0 0 0 6px;padding:0 8px;font:inherit;font-weight:700;font-size:11px;line-height:1.6;color:#1a1020;background:#ffc93c;border:0;border-radius:6px;cursor:pointer;vertical-align:baseline';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
+  /* refresh-banner-1103 (Fix A): the 'New chain activity since your last visit' bar compared sigOf() (row count + the LENGTH of the sale data
+   * JSON). The CI feed's sale data lists more pet-token issuances than this browser's own read (its full mint scan), so the length always
+   * differed and the bar showed after every boot from api/boot.json, though the burns and every pet's owner were identical. The bar now shows
+   * only when the burn rows changed, or when the sale data changed for the tokens this browser read (a token only in the old copy is ignored).
+   * sigOf() itself is unchanged: whenRead()'s burn check still uses it, so burn safety is exactly as before. */
+  function rowsKey() { var r = S.rows || []; return r.length + '|' + fnv(r.map(function (x) { return x.tx_hash + ':' + x.block_index; }).join(',')).toString(16); }
+  function dexKey(d, set) { if (!d) return 'none'; var inA = function (a) { return !!set[a]; }, f = function (k, t) { return JSON.stringify((d[k] || []).filter(t)); };
+    return fnv([f('issuances', function (x) { return inA(x.asset); }), f('credits', function (x) { return inA(x.asset); }), f('destructions', function (x) { return inA(x.asset); }),
+      f('orders', function (o) { return inA(o.give_asset) || inA(o.get_asset); }), f('matches', function (m) { return inA(m.forward_asset) || inA(m.backward_asset); })].join('#')).toString(16); }
+  function dexSet(d) { var set = {}; if (d) ['issuances', 'credits', 'destructions'].forEach(function (k) { (d[k] || []).forEach(function (x) { if (x && x.asset) set[x.asset] = 1; }); }); return set; }
+  function newActivity(wasRows, wasDex) { if (rowsKey() !== wasRows) return true; if (!wasDex !== !S.dex) return true; if (!S.dex) return false; var set = dexSet(S.dex); return dexKey(wasDex, set) !== dexKey(S.dex, set); }
   /* direct-counterparty-api (2026-10-25): ONE re-read chain at a time. Before, a failed try queued a timer retry AND whenFresh (Sign & Burn) started
    * its own revalidate right away, and every press started another, so the same destructions/sale reads ran 2-3 times in parallel against a
    * rate-limited server (the repeated 429 loop). Now a pending timer retry is pulled forward instead of doubled, and presses share it. */
   var RETRY_MS = [5000, 15000, 30000], reval = null, retryT = null, checking = 0;
-  function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var was = sigOf();
+  function revalidate(n) { if (reval) return reval; if (retryT) { clearTimeout(retryT); retryT = null; } n = n || 0; var wasRows = rowsKey(), wasDex = S.dex || null;
     reval = load(true).then(function () { reval = null; var b = document.getElementById('v2stale'); if (b) b.remove();
-      if (sigOf() !== was) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ /* every-page-freeze (Oct 28 2026): no forced main-thread rebuild here any more (it froze the page 12-30 s); the burn check waits for the worker's world below */ } return workerReplay(); },
+      if (newActivity(wasRows, wasDex)) { staleBar('New chain activity since your last visit.', false); /* page-load-freeze: a burn check waiting on CHANGED data rebuilds on the main thread right away (as the pollers used to force); the worker's 2nd replay measured 12-19 s vs ~12 s here */ /* every-page-freeze (Oct 28 2026): no forced main-thread rebuild here any more (it froze the page 12-30 s); the burn check waits for the worker's world below */ } return workerReplay(); },
     function (e) { reval = null; try { console.warn('[v2] background re-read failed (try ' + (n + 1) + '):', e && (e.message || e)); } catch (x) {}
       if (blocked()) { toFeed(); feedPoll(feedCb); return; } /* feed-fallback: no timer retries against a blocked port; the 60 s poll re-checks */
       /* stale-copy-fix: a 429 / 5xx is not 'blocked', but the feed may still be newer than the copy shown: check it after EVERY failed read
@@ -390,7 +407,7 @@
     if (fromSession()) return bootShow(st, then, null);
     if (/[?&]fresh=1/.test(location.search)) return whenOpen(function () { run(st, then); });
     whenOpen(refTip); var last = readLast(), age = last ? Date.now() - last.at : -1;
-    if (last && BUILD && last.build === BUILD && age >= 0 && age <= LAST_NOW && applyStale(last, null)) { fetchStatic(); return bootStale(st, then); }
+    if (last && BUILD && last.build === BUILD && age >= 0 && age <= LAST_NOW && applyStale(last, lastHashes(last))) { fetchStatic(); return bootStale(st, then); }
     idbPre = idbRaw(); rulesSig(); /* the saved world is decoded while api/boot.json loads (rules-key-1103: and the rule scripts hashed) */
     fromBest().then(function (ok) { if (ok) bootStale(st, then); else { idbPre = null; whenOpen(function () { run(st, then); }); } }); }
   /** refresh(cb): re-read the chain (new confirmed burns, e.g. your roll) and call cb() when the tip or burn count changed. */

@@ -12,6 +12,7 @@
   var STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'], SL = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
   function power(p) { var s = (p && p.stats) || {}; return Object.keys(s).reduce(function (a, k) { return a + (Number(s[k]) || 0); }, 0); }
   function score(w, p) { var s = window.PetScore && PetScore.of ? PetScore.of(w, p) : null; return s ? s.score : -1; }
+  function rbits(w, p) { var r = window.PetScore && PetScore.rarity ? PetScore.rarity(w, p) : null; return r && isFinite(r.bits) ? r.bits : -1; } /* the 💎 Rarity number on the card */
   function tier(p) { return p.art && p.art.tierIndex != null ? p.art.tierIndex : (p.tier || 0); }
   function sp(p) { var R = V(), s = String(p.species), h = R.isHybrid ? R.isHybrid(s) : /^hyb3?:/.test(s), lab = function (x) { return String(R.speciesLabel ? R.speciesLabel(x) : x).toLowerCase(); };
     return h ? [lab(s.split(':')[1]), 1, lab(s)] : [lab(s), 0, '']; }
@@ -28,7 +29,9 @@
     ['gain', '⚡ Power to gain', 'most first', 'least first', function (w, p) { return [gain(p), power(p)]; }, function (w, p) { return '⚡ +' + gain(p) + ' to gain'; }],
     ['vigor'], ['spark'], ['grit'], ['zoom'], ['luck'],
     ['sc', '⭐ Pet Score', 'high to low', 'low to high', function (w, p) { return [score(w, p)]; }],
-    ['rar', '💎 Rarity', 'high to low', 'low to high', function (w, p) { return [tier(p), power(p)]; }],
+    /* hatch-review-tiers-1103 (owner Nov 3 2026): Rarity = hatch tier, then the 💎 Rarity score shown on the card (PetScore trait rarity, high first),
+     * Power only as a tie-break. It used to be [tier, power], so inside one tier the cards ran by Power and the Rarity numbers jumped around. */
+    ['rar', '💎 Rarity', 'high to low', 'low to high', function (w, p) { return [tier(p), rbits(w, p), power(p)]; }],
     ['stage', '🌱 Stage', 'Mythic first', 'youngest stage first', function (w, p) { return [p.stage || 0, p.care || 0]; }, function (w, p) { return '🌱 ' + (p.stageName || ''); }],
     ['sp', '🧬 Species', 'A to Z', 'Z to A', null],
     ['age', '🎂 Age', 'oldest first', 'youngest first', function (w, p) { return [-(p.hatchBlock || 0), -p.id]; }, function (w, p) { return '🎂 ' + (p.ageDays || 0) + ' days'; }],

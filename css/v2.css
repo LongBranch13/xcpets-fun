@@ -529,6 +529,7 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 #packBox .pkkeep .btn.pkq{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:220px;line-height:1.2}
 #packBox .pkkeep .btn.pkq small{font-size:11px;opacity:.85;font-weight:normal}
 #packBox .pkkeep .pksafe{flex-basis:100%;text-align:center}
+#packBox .pkkeep .btn.pkq.pkall{background:#3a2326;border-color:#e0605a;color:#ffd6d3}#packBox .pkkeep .btn.pkq.pkall:disabled{opacity:.45;cursor:default} /* hide-all-1103: the one quick choice that also hides Legendary */
 #packBox .pkshow,#packBox .pktools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:0 0 6px}
 #packBox .pkchip{min-height:34px;padding:3px 10px;font-size:12px}#packBox .pkchip b{margin-left:2px}
 #packBox .pkchip[aria-pressed="true"]{background:#3ddc84;color:#06200f;border-color:#3ddc84}
