@@ -35,8 +35,9 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': '
       const sec = await pg.$('#cemZombies');
       await pg.waitForTimeout(300);
       const name = 'grave' + L + '-' + W + '.png';
-      const bb = sec && await pg.evaluate(() => { scrollTo(0, 0); const r = document.querySelector('#cemZombies').getBoundingClientRect(); return { x: 0, y: Math.max(0, r.top + scrollY), width: document.documentElement.clientWidth, height: Math.min(r.height, 4000) }; });
-      await pg.screenshot({ path: path.join(OUT, (FERAL ? 'feral-' : '') + name), fullPage: true, clip: bb || undefined, timeout: 60000, animations: 'disabled' });
+      await pg.evaluate(() => { const r = document.querySelector('#cemZombies'); if (r) scrollTo(0, r.getBoundingClientRect().top + scrollY - 70); });
+      await pg.waitForTimeout(500);
+      await pg.screenshot({ path: path.join(OUT, (FERAL ? 'feral-' : '') + name), timeout: 120000, animations: 'disabled', caret: 'hide' });
       report[L + '@' + W] = Object.assign(info, { errors: errs.splice(0) });
       console.log(L, W, JSON.stringify(report[L + '@' + W]).slice(0, 600));
     }
