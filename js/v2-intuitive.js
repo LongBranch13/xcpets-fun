@@ -234,7 +234,7 @@
   // ------------------------------------------------------------------ item 26: pet page action row (owner only)
   function petActions() { if (!/pet\.html/.test(location.pathname)) return; var id = +new URLSearchParams(location.search).get('id'), w = window.V2Mock && V2Mock.world ? V2Mock.world() : null, p = w && w.byId ? w.byId[id] : null, m = me(), a = d.querySelector('a.btn[href^="play.html#pet-"]');
     if (!a || $('ipActs') || !m) return; var row = d.createElement('span'); row.id = 'ipActs'; row.className = 'ip-acts';
-    row.innerHTML = ' <a class="btn ghost" href="play.html#pet-' + id + '">🍽️ Feed</a> <a class="btn ghost" href="rare-room.html#rare-room">🎲 Roll / gear</a> <a class="btn ghost" href="fight.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="breed.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
+    row.innerHTML = ' <a class="btn ghost" href="play.html#' + (p && p.owner === m && p.hungry && !p.dead ? 'act-feed-' + id + '-pet' : 'pet-' + id) + '">🍽️ Feed</a> <a class="btn ghost" href="rare-room.html#rare-room">🎲 Roll / gear</a> <a class="btn ghost" href="fight.html#battle-' + id + '">⚔️ Fight</a> <a class="btn ghost" href="breed.html#no-tail-motel">💞 Breed</a>'; a.insertAdjacentElement('afterend', row); }
 
   // ------------------------------------------------------------------ exports used by page code
   window.IPQ = { q: q, open: open, close: close, careShort: careShort, careNext: careNext, careSheet: function (id) { return TIPS.care(id); },
