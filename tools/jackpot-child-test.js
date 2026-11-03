@@ -17,7 +17,7 @@ function world() { const P = mk(1, { breeds: 1, breedsV2: 1, lastBreed: 972700, 
     T1 = mk(6, { parents: [4], twinOf: 7, jackpot: { from: 4, wild: 'mumu', block: 973500 } }), T2 = mk(7, { parents: [4], twinOf: 6, jackpot: { from: 4, wild: 'mumu', block: 973500 } }), G = mk(8, { parents: [5, 3] });
   const pets = [P, M, B, Q, J1, T1, T2, G], byId = {}; pets.forEach(p => { byId[p.id] = p; }); return { pets, byId, tip: 974300 }; }
 const GATE0 = V.ACTIVATE_JACKPOT_CHILD_BLOCK;
-t('placeholder gate: far in the future and off now', () => { assert.ok(GATE0 >= 99999999); assert.strictEqual(V.jackpotChildOn(974300), false); });
+t('gate set (974435 at deploy, or a placeholder) and off before it', () => { assert.ok(GATE0 >= 974435); assert.strictEqual(V.jackpotChildOn(974300), false); assert.strictEqual(V.jackpotChildOn(GATE0 - 1), false); assert.strictEqual(V.jackpotChildOn(GATE0), true); });
 t('before the gate: the sweep changes nothing and genOf ignores one-parent pets', () => { const w = world(), s = JSON.stringify(w); V._jackpotChildSweep(w, 974300); assert.strictEqual(JSON.stringify(w), s); assert.strictEqual(V.genOf(w, w.byId[5]), 0); });
 t('at the gate: each jackpot egg becomes a child and one breed (twins once), no cooldown', () => { V._setJackpotChildActivation(974250); try { const w = world(); V._jackpotChildSweep(w, 974250);
   const P = w.byId[1], Q = w.byId[4]; assert.deepStrictEqual(JSON.parse(JSON.stringify(P.children)), [3, 5]); assert.strictEqual(P.breeds, 2); assert.strictEqual(P.breedsV2, 2); assert.strictEqual(P.lastBreed, 972700);
@@ -37,5 +37,5 @@ t('rules.html: quest jackpot egg section with odds from the rules', () => { cons
   const src = rd('js/v2-rules.js'), J = JSON.parse(src.match(/var JACKPOT = (\{[^}]*\})/)[1].replace(/(\w+):/g, '"$1":'));
   assert.ok(sec.includes('mutation 1 in ' + J.mutation1In)); assert.ok(sec.includes('twins 1 in ' + J.twin1In)); assert.ok(sec.includes('hidden trait 1 in ' + J.hidden1In)); assert.ok(sec.includes('three-way mix look 1 in ' + J.legMix1In));
   assert.ok(sec.includes('1 in 100')); assert.ok(sec.includes('1 in 69')); assert.ok(!/\u00d7|series|discount/i.test(sec)); });
-t('rules.html: the gate block is marked for deploy', () => { assert.ok((RH.match(/JACKPOT-CHILD-GATE/g) || []).length >= 2); });
+t('rules.html: the gate block is shown and matches v2-rules', () => { assert.ok((RH.match(/JACKPOT-CHILD-GATE/g) || []).length >= 2); assert.ok(!/go-live/.test(RH)); const n = GATE0.toLocaleString('en-US'); assert.strictEqual((RH.match(new RegExp('JACKPOT-CHILD-GATE[^>]*-->' + n + '|' + n + ' <!-- JACKPOT-CHILD-GATE', 'g')) || []).length, 2); });
 console.log(`jackpot-child-test: ${pass} pass, ${fail} fail`); process.exitCode = fail ? 1 : 0;

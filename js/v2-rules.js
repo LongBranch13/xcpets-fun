@@ -2350,13 +2350,13 @@
   var QUEST_TIERS = { haul: 'Legendary Haul', loot: 'Solid Loot', empty: 'Came Home Empty' };
   var QUEST_STAT_CAP = 3, QUEST_STAT_PT = 25 /* 0.25 pt in basis points */, QUEST_STAT_MAX = 800, QUEST_GEAR_MAX = 400, AMBUSH_1_IN = 69;
   var JACKPOT = { twin1In: 5, mutation1In: 5, hidden1In: 3, legMix1In: 2 };
-  /* JACKPOT CHILD (owner approved Nov 1 2026 11:53 PM CT [pt2640u]; PREVIEW: the gate is a placeholder, set to tip + 6 at deploy).
+  /* JACKPOT CHILD (owner approved Nov 1 2026 11:53 PM CT [pt2640u]; LIVE from block 974435 = tip + 6; owner final OK Nov 3 2026 12:47 PM CT).
    * From ACTIVATE_JACKPOT_CHILD_BLOCK a quest jackpot egg (Cold Storage haul or FUNTRUMP Ambush) is a child of its one parent and one of its breeds:
    *   the egg (and its twin) go into the parent's children, and the parent's breeds and lifetime v2 breeds (breedsV2) go up by 1 (a twin pair counts once,
    *   like bred twins). lastBreed is NOT set, so a quest never starts a breeding cooldown. A jackpot egg is never blocked by the breed cap.
    * At the gate, ONCE (jackpotChildSweep), every earlier jackpot egg is counted the same way, in pet id order. Before the gate nothing changes.
    * Also from the gate: genOf counts a one-parent pet (jackpot egg) as its parent's gen + 1, the same as the pages (display only). */
-  var ACTIVATE_JACKPOT_CHILD_BLOCK = 999999999; /* <<< PLACEHOLDER: set to tip + 6 at deploy (owner's final OK needed) */
+  var ACTIVATE_JACKPOT_CHILD_BLOCK = 974435; /* Counterparty tip 974429 (Nov 3 2026 1:36 PM CT) + 6; owner final OK Nov 3 2026 12:47 PM CT */
   function jackpotChildOn(b) { return ACTIVATE_JACKPOT_CHILD_BLOCK != null && b != null && b >= ACTIVATE_JACKPOT_CHILD_BLOCK; }
   function jackpotCount(P, kids) { kids.forEach(function (k) { if (P.children.indexOf(k.id) < 0) P.children.push(k.id); k.jackpot.child = 1; });
     P.breeds = (P.breeds || 0) + 1; if (breedV2On(kids[0].jackpot.block)) P.breedsV2 = (P.breedsV2 || 0) + 1; }
