@@ -326,7 +326,7 @@
   /* pages with an in-page repaint (js/v2.js: play, fight, breed, raid, rare room) register it with onFresh; the others reload in place once the
    * fresh world is stored (it then boots from the exact cache in about a second, scroll kept), unless the visitor is typing / in a dialog / in a
    * burn, or one auto reload already ran in the last 2 minutes: then the usual 'Newer game data is ready' Refresh bar shows instead. */
-  function busy() { try { var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox') return true;
+  function busy() { try { var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT|XC-SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox') return true;
       if (document.querySelector('dialog[open], [aria-modal="true"]:not([hidden])')) return true; if (checking) return true; } catch (e) {} return false; }
   function softReload() { var last = 0; try { last = Number(sessionStorage.getItem(RL)) || 0; } catch (e) {}
     if (busy() || Date.now() - last < RL_GAP) { staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); return; }

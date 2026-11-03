@@ -10,7 +10,7 @@
   var $ = function (id) { return document.getElementById(id); }, LS = window.localStorage, KV = 'xcpets-mypets-view', KP = 'xcpets-mypets-pos';
   function get(k, d) { try { return LS.getItem(k) || d; } catch (e) { return d; } }
   function set(k, v) { try { LS.setItem(k, String(v)); } catch (e) { } }
-  var st = { view: get(KV, 'grid'), id: Number(get(KP, 0)) || 0, busy: false }, U = function () { return window.V2UI; };
+  var st = { view: get(KV, window.matchMedia && window.matchMedia('(max-width: 600px)').matches ? 'one' : 'grid') /* low-friction-1102: phones start in the swipe view unless a view was picked before */, id: Number(get(KP, 0)) || 0, busy: false }, U = function () { return window.V2UI; };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function css() { if ($('mpsCss')) return; var s = document.createElement('style'); s.id = 'mpsCss';
     s.textContent = '.mps-tog{display:flex;gap:6px;margin:6px 0;flex-wrap:wrap}.mps-tog .q[aria-pressed="true"]{outline:2px solid #ffc93c;color:#ffc93c}' +
@@ -70,7 +70,7 @@
     setTimeout(function () { st.busy = false; draw(dir); }, 210); }
   /* swipe: same pointer handling as the Rug Me board (pointerdown/move/up, 30% / 110px threshold, spring back) - display only */
   function drag(el) { var x0 = null, y0 = 0, dx = 0, moved = false;
-    el.addEventListener('pointerdown', function (e) { if (e.target.closest('button,a,input,select')) return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; el.style.transition = 'none'; });
+    el.addEventListener('pointerdown', function (e) { if (e.target.closest('button,a,input,select,xc-select')) return; x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false; el.style.transition = 'none'; });
     el.addEventListener('pointermove', function (e) { if (x0 == null) return; dx = e.clientX - x0; if (!moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)) { moved = true; try { el.setPointerCapture(e.pointerId); } catch (x) { } } if (moved) el.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 40) + 'deg)'; });
     function up() { if (x0 == null) return; x0 = null; var lim = Math.min(110, el.offsetWidth * 0.3); if (moved && dx < -lim) go(1); else if (moved && dx > lim) go(-1); else { el.style.transition = 'transform .2s'; el.style.transform = ''; } }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);

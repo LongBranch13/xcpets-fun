@@ -443,7 +443,7 @@
     $('shConfirmGo').onclick = function () { if (low && !($('shLowOk') && $('shLowOk').checked)) return; go(); }; }
   function priceForm(p, asset, sticker) { var ask = toBase(sticker), bad = !(ask === ask), low = bad || !(ask >= V.SALE_MIN[asset]);
     if (bad) ask = 0;
-    return { ask: ask, low: low, html: '<label>Coin <select id="shAsset"><option' + (asset === 'XCPETS' ? ' selected' : '') + '>XCPETS</option><option' + (asset === 'XCP' ? ' selected' : '') + '>XCP</option></select></label>' +
+    return { ask: ask, low: low, html: '<label>Coin <xc-select id="shAsset"><option' + (asset === 'XCPETS' ? ' selected' : '') + '>XCPETS</option><option' + (asset === 'XCP' ? ' selected' : '') + '>XCP</option></xc-select></label>' +
       '<label class="sh-amt">Amount <input id="shSticker" type="text" inputmode="decimal" autocomplete="off" value="' + esc(sticker) + '"> <b class="sh-coin">' + esc(asset) + '</b></label>' +
       (bad ? '<p class="sh-warn">Type a number of ' + esc(asset) + ', up to 8 decimal places.</p>' : coinLine(p, asset, ask)) +
       (!bad && low ? '<p class="sh-warn">Minimum is 1 XCPETS or 0.00001 XCP.</p>' : !bad && isLow(asset, ask) ? lowWarn(asset) : '') }; }
