@@ -1,6 +1,6 @@
 {
- "lastBlock": 974393,
- "count": 103,
+ "lastBlock": 974395,
+ "count": 104,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1237,6 +1237,18 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2483,
+   "asset": "A1358756492480075270",
+   "tiedBlock": 974395,
+   "tiedTx": "187e8aec32bfd39e90f5ad7d401f30efef7e90914b0cb8d11d6a36525e77409b",
+   "kind": "deed",
+   "name": "Chipip",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
