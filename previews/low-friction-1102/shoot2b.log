@@ -1,0 +1,19 @@
+start 09:56:09 avail=7622
+  scrollY 2251
+before mypets 1280 scrolled-to: #mptView selects: 28 xc-select: 0 errors: 0 []
+  scrollY 0
+before nest 1280 scrolled-to: #motelScene selects: 18 xc-select: 0 errors: 0 []
+  scrollY 2840
+before mypets 390 scrolled-to: #mptView selects: 29 xc-select: 0 errors: 0 []
+  scrollY 0
+before nest 390 scrolled-to: #motelScene selects: 19 xc-select: 0 errors: 0 []
+before exit 0 avail=6862
+  scrollY 2251
+after mypets 1280 scrolled-to: #mptView selects: 0 xc-select: 28 errors: 0 []
+  scrollY 0
+after nest 1280 scrolled-to: #lfDock selects: 0 xc-select: 18 errors: 0 []
+  scrollY 2840
+after mypets 390 scrolled-to: #mptView selects: 0 xc-select: 29 errors: 0 []
+  scrollY 0
+after nest 390 scrolled-to: #lfDock selects: 0 xc-select: 19 errors: 0 []
+after exit 0 09:58:45

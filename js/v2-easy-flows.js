@@ -5,7 +5,7 @@
  * Breeding (Gooby's No-Tail Motel): 'Parent 1' strip -> mate portraits (My other pets / Asking you / Other wallets) -> one big button.
  *   Check in = the existing #bGo bell (#bA/#bB -> pet:breed:A:B 690); a request at the desk = the existing #motelReqs Accept button.
  *   Breeding v2 info (breeds left of 6, inbreeding guard) only from V2Rules.breedV2On; generation + breeder badges are display only.
- * No new tags, amounts, rules or gates. The site never signs; the confirm pop-up and the wallet are unchanged. No <select> in these panels. */
+ * No new tags, amounts, rules or gates. The site never signs; the confirm pop-up and the wallet are unchanged. No dropdown menus in these panels. */
 (function () {
   'use strict';
   /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
@@ -25,7 +25,7 @@
    * Power: high to low (= the old Pet Score order). Base order = hatch order (hatch block, then #id), so 'Hatch order' and every tie keep it. */
   function hatchOrd(arr, pet) { return arr.slice().sort(function (x, y) { var a = pet(x), b = pet(y); return (a.hatchBlock || 0) - (b.hatchBlock || 0) || a.id - b.id; }); }
   function psort(w, arr, k, pet, b) { var h = hatchOrd(arr, pet); return window.PetSort ? PetSort.sort(w, h, k, pet, b) : h; }
-  function sortSel(id, k, title) { return window.PetSort ? '<label class="ez-so">Sort <select id="' + id + '" aria-label="Sort ' + esc(title) + '">' + (PetSort.hotelOptions ? PetSort.hotelOptions(k) : PetSort.options(k)) + '</select></label>' : ''; }
+  function sortSel(id, k, title) { return window.PetSort ? '<label class="ez-so">Sort <xc-select id="' + id + '" aria-label="Sort ' + esc(title) + '">' + (PetSort.hotelOptions ? PetSort.hotelOptions(k) : PetSort.options(k)) + '</xc-select></label>' : ''; }
   /* hotel-breed-power 2026-10-24 (preview, display only): egg Power for Parent 1 + each mate from js/egg-power.js (the real breedChild math, no hash, so a spread not one egg) */
   var EGGK = [['mate', '🥚 Best mate for Power', 'best first'], ['egg', '🥚 Egg Power', 'high to low'], ['egg-', '🥚 Egg Power', 'low to high'], ['pass', '🧬 Traits passed', 'most first']];
   function eggOf(A, B, b) { try { return A && B && A.id !== B.id && window.EggPower ? EggPower.preview(A, B, b) : null; } catch (e) { return null; } }
@@ -33,7 +33,7 @@
     m.sort(function (p, q) { for (var j = 0; j < 2; j++) if (p.v[j] !== q.v[j]) return dir * (q.v[j] - p.v[j]); return p.i - q.i; }); return m.map(function (o) { return o.x; }); }
   function sortSelMate(id, k, A) { var base = sortSel(id, EGGK.some(function (e) { return e[0] === k; }) ? 'x' : k, 'Mate'); if (!base || !A || !window.EggPower) return base;
     var eg = '<optgroup label="For Parent 1 #' + A.id + '">' + EGGK.map(function (e) { return '<option value="' + e[0] + '"' + (k === e[0] ? ' selected' : '') + '>' + e[1] + ': ' + e[2] + '</option>'; }).join('') + '</optgroup>';
-    return base.replace(/(<select[^>]*>)/, '$1' + eg); }
+    return base.replace(/(<xc-select[^>]*>)/, '$1' + eg); }
   function eggLine(e) { if (!e) return null; return '🥚 egg ⚡ ~' + (e.expHi > e.exp ? Math.round(e.exp) + '-' + Math.round(e.expHi) : Math.round(e.exp)) + ' (' + e.lo + ' to ' + e.hi + ')'; }
   function eggTags(e) { if (!e) return null; var t = []; if (e.hybridPct) t.push('keeps best stats ' + Math.round(e.hybridPct) + '%'); if (e.bredTrue) t.push('bred true +3'); if (e.passes.some(function (x) { return /^Carried/.test(x); })) t.push('carried floor'); if (e.passes.some(function (x) { return /^Hidden/.test(x); })) t.push('hidden trait'); return t.length ? '🧬 ' + t.join(' · ') : null; }
   function pairCard(P1, P2, b) { var e = eggOf(P1, P2, b); if (!e) return ''; var SL = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
@@ -50,9 +50,9 @@
     pets.forEach(function (p) { sps[p.species] = spL(p.species); }); var spk = Object.keys(sps).sort(function (a, b) { return sps[a] < sps[b] ? -1 : sps[a] > sps[b] ? 1 : 0; });
     var SN = (V().STAGE_NAMES || ['Egg', 'Baby', 'Kid', 'Adult', 'Elder', 'Mythic']), n = (s.fsp ? 1 : 0) + (s.fst !== '' ? 1 : 0) + (s.frar !== '' ? 1 : 0) + (s.fall ? 1 : 0) + (s.fslot ? 1 : 0);
     return '<div class="ez-fb" role="group" aria-label="Filters"><span class="ez-fbl">🔎 Filter</span>' +
-      '<label class="ez-so"><select id="ezFsp" aria-label="Species">' + o('', 'All species', s.fsp) + spk.map(function (k) { return o(k, sps[k], s.fsp); }).join('') + '</select></label>' +
-      '<label class="ez-so"><select id="ezFst" aria-label="Stage">' + o('', 'All stages', s.fst) + SN.map(function (l, i) { return i ? o(i, l, s.fst) : ''; }).join('') + '</select></label>' +
-      '<label class="ez-so"><select id="ezFrar" aria-label="Rarity">' + o('', 'All rarities', s.frar) + TL.map(function (l, i) { return o(i, l, s.frar); }).join('') + '</select></label>' +
+      '<label class="ez-so"><xc-select id="ezFsp" aria-label="Species">' + o('', 'All species', s.fsp) + spk.map(function (k) { return o(k, sps[k], s.fsp); }).join('') + '</xc-select></label>' +
+      '<label class="ez-so"><xc-select id="ezFst" aria-label="Stage">' + o('', 'All stages', s.fst) + SN.map(function (l, i) { return i ? o(i, l, s.fst) : ''; }).join('') + '</xc-select></label>' +
+      '<label class="ez-so"><xc-select id="ezFrar" aria-label="Rarity">' + o('', 'All rarities', s.frar) + TL.map(function (l, i) { return o(i, l, s.frar); }).join('') + '</xc-select></label>' +
       '<button type="button" class="ez-tab ez-chip' + (s.fall ? ' on' : '') + '" id="ezFall" aria-pressed="' + !!s.fall + '" title="Show every hatched, living pet, not only the ones that can breed now">🐣 All hatched</button>' +
       '<button type="button" class="ez-tab ez-chip' + (s.fslot ? ' on' : '') + '" id="ezFslot" aria-pressed="' + !!s.fslot + '">🛡️ Free gear slot</button>' +
       (n ? '<button type="button" class="ez-tab ez-chip" id="ezFclr">✖ Clear ' + n + '</button>' : '') + '</div>'; }

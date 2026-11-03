@@ -8,7 +8,7 @@
   function load(key) { try { return JSON.parse(sessionStorage.getItem(K + key) || '{}') || {}; } catch (e) { return {}; } }
   function save(key, f) { try { sessionStorage.setItem(K + key, JSON.stringify(f)); } catch (e) { } }
   var TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'];
-  function sel(id, cur, list, all) { return '<select data-pf="' + id + '">' + '<option value="">' + (all || 'All') + '</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur == null ? '' : cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>'; }
+  function sel(id, cur, list, all) { return '<xc-select data-pf="' + id + '">' + '<option value="">' + (all || 'All') + '</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur == null ? '' : cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</xc-select>'; }
   function num(id, cur, ph) { return '<input type="number" min="0" data-pf="' + id + '" value="' + esc(cur == null ? '' : cur) + '" placeholder="' + esc(ph) + '">'; }
   var LBL = { sp: 'Species', tier: 'Rarity', st: 'Stage', badge: 'Badge', cur: 'Currency', min: 'Cost from', max: 'Cost to', pw: 'Power at least', bl: 'Breeds left at least', gear: 'Gear', buy: 'Buyable', state: 'Status', sort: 'Sort' };
   /** html(f, fields, o) o = { species: [[id,label]], count, total, title } */

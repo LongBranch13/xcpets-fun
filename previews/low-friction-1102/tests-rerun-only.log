@@ -1,0 +1,19 @@
+ok   bo-1of1-test.js (47.9 s)
+ok   cemetery-loop-test.js (81.4 s)
+ok   cemetery-runs-test.js (64.1 s)
+ok   feed-all-test.js (116.1 s)
+ok   feedall-livecheck-test.js (69.5 s)
+ok   fight-gear-test.js (33.3 s)
+ok   mythic-god-test.js (52.8 s)
+ok   pet-sales-test.js (68.1 s, 6 known failure line(s))
+ok   raids-test.js (96.9 s)
+ok   rarepigeon-1of1-test.js (46.8 s)
+ok   retire-tags-test.js (223.2 s)
+ok   seance-raises-test.js (480.4 s)
+ok   viking-1of1-test.js (45.6 s)
+ok   wallet-webxcp-test.js (17.7 s)
+ok   replay snap-971786.json vs origin/main: SAME
+ok   replay snap-972883.json vs origin/main: SAME
+ok   replay snap-972901.json vs origin/main: SAME
+
+all 14 test files pass, replay SAME  [--jobs 2, wall 729.7 s]

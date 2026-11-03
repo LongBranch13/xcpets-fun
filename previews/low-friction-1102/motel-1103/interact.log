@@ -1,0 +1,44 @@
+ok   1280 no Nest / Rare Room / Bowl boxes in the dock
+ok   1280 default: ✅ Can breed on, every tile can check in: {"all":1674,"n":"1,083 of 1,674","shown":40,"hungry":11,"canBreed":40,"targets":0,"more":"+1,043 more"}
+ok   1280 default view is not all hungry pets (11 hungry / 40 shown, 40 can breed)
+ok   1280 TAP sort id -> ordered {"ok":true,"st":"id","first":[891,1900,2479,2480]}
+ok   1280 TAP sort new -> ordered {"ok":true,"st":"new","first":[74315,74275,74264,74248]}
+ok   1280 TAP sort rarity -> ordered {"ok":true,"st":"rarity","first":[22247,22104,22215,29286]}
+ok   1280 TAP sort hungry -> ordered {"ok":true,"st":"hungry","first":[32071,32182,32459,32463]}
+ok   1280 TAP sort power -> ordered {"ok":true,"st":"power","first":[73339,72323,18844,22104]}
+ok   1280 TAP stage Elder -> only Elders (40 tiles)
+ok   1280 TAP ✅ Can breed off -> every living pet is listed (too-young ones greyed with the reason) {"n":40,"greyed":10,"lbl":"1,674 pets","all":1674}
+ok   1280 TAP ✅ Can breed -> only pets that can check in {"n":40,"bad":0,"lbl":"1,083 of 1,674"}
+ok   1280 TAP species -> sheet opens, pick Bitcoin wizard (1) -> only that species {"k":"bitcoin wizard","n":1,"all":true}
+ok   1280 breedable pair {"a":891,"b":1900,"no":[7850,"That’s its kid"]}
+ok   1280 search finds #891
+ok   1280 MOUSE drag over the motel -> scene highlighted {"hot":true,"pill":"🥚 Drop #891 here to check in"}
+ok   1280 drop #891 on the motel -> first guest (#bA)
+ok   1280 wrong partner #7850 dragged -> motel greyed "🚫 #7850: That’s its kid" (picker: That’s its kid), drop refused {"a":"891","b":""}
+ok   1280 TAP #1900 then TAP the motel -> date (#bB) {"held":{"h":1900,"on":true,"pill":"💞 Drop #1900 here: date for #891"},"r3":{"a":"891","b":"1900","go":false,"held":null},"dbg":[[439.59999999999997,215.42890624999998],"CANVAS",876,-0.1875],"dbg2":[["CANVAS."],"💞 #891 + #1900. Ring the bell when ready."]}
+ok   1280 KEYBOARD Enter on the pet, Enter on 🥚 (in the motel) -> first guest
+ok   1280 Rare Room is still linked on the page (Places menu)
+ok   1280 feeding still there (Feed selected #bFeedSel, 🍼 on My Pets cards)
+ok   1280 no page errors []
+ok   390 no Nest / Rare Room / Bowl boxes in the dock
+ok   390 default: ✅ Can breed on, every tile can check in: {"all":1674,"n":"1,083 of 1,674","shown":40,"hungry":11,"canBreed":40,"targets":0,"more":"+1,043 more"}
+ok   390 default view is not all hungry pets (11 hungry / 40 shown, 40 can breed)
+ok   390 TAP sort id -> ordered {"ok":true,"st":"id","first":[891,1900,2479,2480]}
+ok   390 TAP sort new -> ordered {"ok":true,"st":"new","first":[74315,74275,74264,74248]}
+ok   390 TAP sort rarity -> ordered {"ok":true,"st":"rarity","first":[22247,22104,22215,29286]}
+ok   390 TAP sort hungry -> ordered {"ok":true,"st":"hungry","first":[32071,32182,32459,32463]}
+ok   390 TAP sort power -> ordered {"ok":true,"st":"power","first":[73339,72323,18844,22104]}
+ok   390 TAP stage Elder -> only Elders (40 tiles)
+ok   390 TAP ✅ Can breed off -> every living pet is listed (too-young ones greyed with the reason) {"n":40,"greyed":10,"lbl":"1,674 pets","all":1674}
+ok   390 TAP ✅ Can breed -> only pets that can check in {"n":40,"bad":0,"lbl":"1,083 of 1,674"}
+ok   390 TAP species -> sheet opens, pick Bitcoin wizard (1) -> only that species {"k":"bitcoin wizard","n":1,"all":true}
+ok   390 breedable pair {"a":891,"b":1900,"no":[7850,"That’s its kid"]}
+ok   390 search finds #891
+ok   390 TOUCH drag over the motel -> scene highlighted {"hot":true,"pill":"🥚 Drop #891 here to check in"}
+ok   390 drop #891 on the motel -> first guest (#bA)
+ok   390 wrong partner #7850 dragged -> motel greyed "🚫 #7850: That’s its kid" (picker: That’s its kid), drop refused {"a":"891","b":""}
+ok   390 TAP #1900 then TAP the motel -> date (#bB) {"held":{"h":1900,"on":true,"pill":"💞 Drop #1900 here: date for #891"},"r3":{"a":"891","b":"1900","go":false,"held":null},"dbg":[[117,126.671875],"CANVAS",1225,-0.328125],"dbg2":[["CANVAS."],"💞 #891 + #1900. Ring the bell when ready."]}
+ok   390 Rare Room is still linked on the page (Places menu)
+ok   390 feeding still there (Feed selected #bFeedSel, 🍼 on My Pets cards)
+ok   390 no page errors []
+ALL OK

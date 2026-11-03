@@ -82,7 +82,7 @@
     if (!st.as || !mine.some(function (p) { return p.id === st.as; })) st.as = mine[0].id; var my = w.byId[st.as], cards = deck(w, ME, my), c = cards[0];
     var others = mine.filter(function (p) { return p.id !== my.id; }), alsoQ = c && c.ad ? others.filter(function (p) { return !V.meetsReq(w, p, c.ad.req) && !V.breedable(p, b); }) : [];
     var myAds = (w.ads || []).filter(function (a) { return a.owner === ME && V.adState(w, a, tip() + 1) === 'open'; });
-    box.innerHTML = '<div class="rm-as"><label class="small">Swiping as <select id="rmAs">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (p.id === my.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc(V.speciesLabel(p.species)) + ' ' + ST[p.stage] + ')' + (V.onRug(w, p, b) ? ' · on Rug Me' : '') + '</option>'; }).join('') + '</select></label>' +
+    box.innerHTML = '<div class="rm-as"><label class="small">Swiping as <xc-select id="rmAs">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (p.id === my.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc(V.speciesLabel(p.species)) + ' ' + ST[p.stage] + ')' + (V.onRug(w, p, b) ? ' · on Rug Me' : '') + '</option>'; }).join('') + '</xc-select></label>' +
       '<button class="btn ghost rm-posttog" id="rmPostGo">📌 Post on Rug Me</button></div>' +
       (V.breedable(my, b) ? '<p class="small warn">#' + my.id + ' can\u2019t breed right now (' + esc(V.breedable(my, b)) + '). Pick another pet.</p>' : '') +
       '<div class="rm-stack" id="rmStack">' + (c ? (cards[1] ? '<div class="rm-card rm-under"></div>' : '') + '<div class="rm-card" id="rmCard" tabindex="0">' + cardHtml(c, w) + '</div>' : '<div class="rm-empty">💤 No more cards for #' + my.id + ' today.<br><span class="small muted">0 pets qualify. Standards: delusional. Skips reset each chain day.</span></div>') + '</div>' +
@@ -121,7 +121,7 @@
         (ok.length > 1 ? '<button class="chip rm-chip" data-rall="1">' + (sel.length === ok.length ? 'None' : 'All') + '</button>' : '') + '</div>' +
       (mine.length > ok.length ? '<div class="small muted">' + (mine.length - ok.length) + ' pet(s) hidden: already on Rug Me or can\u2019t breed.</div>' : '') +
       (sel.length > 1 ? '<div class="small rm-mode"><label><input type="radio" name="rmMode" data-rmode="same"' + (st.perMode ? '' : ' checked') + '> Same standards for all</label> <label><input type="radio" name="rmMode" data-rmode="per"' + (st.perMode ? ' checked' : '') + '> Per pet</label>' +
-        (st.perMode ? ' · editing <select id="rmEdit">' + sel.map(function (id) { return '<option value="' + id + '"' + (id === st.edit ? ' selected' : '') + '>#' + id + ' ' + esc(w.byId[id].name) + '</option>'; }).join('') + '</select>' : '') + '</div>' : '') +
+        (st.perMode ? ' · editing <xc-select id="rmEdit">' + sel.map(function (id) { return '<option value="' + id + '"' + (id === st.edit ? ' selected' : '') + '>#' + id + ' ' + esc(w.byId[id].name) + '</option>'; }).join('') + '</xc-select>' : '') + '</div>' : '') +
       '<div class="small">Standards (max 4):</div>' +
       '<div class="chips">' + chip('tier', 1, 'Uncommon+') + chip('tier', 2, 'Rare+') + chip('tier', 3, 'Legendary') + '</div>' +
       '<div class="chips">' + chip('stage', 3, 'Adult+') + chip('stage', 4, 'Elder+') + chip('stage', 5, 'Mythic') + '</div>' +

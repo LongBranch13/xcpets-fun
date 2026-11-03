@@ -1,0 +1,100 @@
+{
+ "label": "before-lf",
+ "src": "local:/workspace/wt-shop-dedupe-lf-1103",
+ "hash": "",
+ "proxy": "socks5://127.0.0.1:18080",
+ "widths": {
+  "390": {
+   "ready": true,
+   "errs": [],
+   "shot": "/workspace/xcpets/previews/shop-dedupe-1103/before-lf-390.png",
+   "build": "http://localhost:8099/js/xc-select.js?v=a6d77f4696",
+   "top": [
+    {
+     "t": "🃏 Buy",
+     "href": "shop.html#buy",
+     "cur": null
+    },
+    {
+     "t": "🏷️ Sell",
+     "href": "shop.html#sell",
+     "cur": null
+    },
+    {
+     "t": "🔁 Trade",
+     "href": "shop.html#trade",
+     "cur": null
+    },
+    {
+     "t": "🎁 Gift Wrap",
+     "href": "shop.html#gift",
+     "cur": null
+    },
+    {
+     "t": "🏭 Token Press",
+     "href": "shop.html#press",
+     "cur": null
+    }
+   ],
+   "lower": [
+    "🛒 Buy",
+    "🎟 Sell",
+    "🔁 Trade",
+    "🎁 Gift"
+   ],
+   "binder": [
+    "0 of 0 pets in the binder · every pet sells with its own 🎟 pet token"
+   ],
+   "filt": "Filters · showing 0 of 0",
+   "hash": "",
+   "sideways": false,
+   "clicks": []
+  },
+  "1280": {
+   "ready": true,
+   "errs": [],
+   "shot": "/workspace/xcpets/previews/shop-dedupe-1103/before-lf-1280.png",
+   "build": "http://localhost:8099/js/xc-select.js?v=a6d77f4696",
+   "top": [
+    {
+     "t": "🃏 Buy",
+     "href": "shop.html#buy",
+     "cur": null
+    },
+    {
+     "t": "🏷️ Sell",
+     "href": "shop.html#sell",
+     "cur": null
+    },
+    {
+     "t": "🔁 Trade",
+     "href": "shop.html#trade",
+     "cur": null
+    },
+    {
+     "t": "🎁 Gift Wrap",
+     "href": "shop.html#gift",
+     "cur": null
+    },
+    {
+     "t": "🏭 Token Press",
+     "href": "shop.html#press",
+     "cur": null
+    }
+   ],
+   "lower": [
+    "🛒 Buy",
+    "🎟 Sell",
+    "🔁 Trade",
+    "🎁 Gift"
+   ],
+   "binder": [
+    "0 of 0 pets in the binder · every pet sells with its own 🎟 pet token"
+   ],
+   "filt": "Filters · showing 0 of 0",
+   "hash": "",
+   "sideways": false,
+   "clicks": []
+  }
+ }
+}
