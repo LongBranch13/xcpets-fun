@@ -1,4 +1,4 @@
-/* XCPETS quest-clarity-1103 (UI only, owner review pending; NOT LIVE). Display only: no burns, no rule changes.
+/* XCPETS quest-clarity-1103 (UI only; owner OK "Put it live" Nov 3 2026 5:37 PM CT). Display only: no burns, no rule changes.
  *  1) V2QuestClarity.outcomes(w, p, code, b): what a quest can bring home, with this pet's odds from V2Rules.questOdds (js/v2-rules.js).
  *  2) V2QuestClarity.lastLine(w, p): the last Homecoming result, kept on the pet card after the 1-day Homecoming box is gone.
  *  3) "My cooldowns" in Gooby's No-Tail Motel (#breedPanel): every pet of the connected wallet with breed-ready and quest-ready timers.
