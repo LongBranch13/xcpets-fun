@@ -1,6 +1,6 @@
 {
- "lastBlock": 974588,
- "count": 127,
+ "lastBlock": 974591,
+ "count": 128,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1525,6 +1525,18 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 17544,
+   "asset": "A15858712556154072693",
+   "tiedBlock": 974591,
+   "tiedTx": "9555ca2ad8fac5c84c7df163c0c85d7c023b72cacc746634c2299023f49315fa",
+   "kind": "deed",
+   "name": "Wizard",
+   "species": "wizard",
+   "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
