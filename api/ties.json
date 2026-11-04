@@ -1,6 +1,6 @@
 {
- "lastBlock": 974537,
- "count": 124,
+ "lastBlock": 974540,
+ "count": 127,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1261,7 +1261,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 53884,
@@ -1490,6 +1490,42 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 8508,
+   "asset": "A13252633373636436771",
+   "tiedBlock": 974540,
+   "tiedTx": "da9d3548fbfc3fdc1de7ffe1f5282fad752b8e4d6534f3dfeda915eb6a7f40eb",
+   "kind": "deed",
+   "name": "Motomo",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42053,
+   "asset": "A3724815299000965960",
+   "tiedBlock": 974540,
+   "tiedTx": "3ae676b189b2c74189d9160c277cc1d61569d8cd7c4633f9dea50724f3281a7b",
+   "kind": "deed",
+   "name": "Yiloon",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42068,
+   "asset": "A10090594425421775266",
+   "tiedBlock": 974540,
+   "tiedTx": "13f1c3ec6ef5b20d8c043e7cd8b0187836af9ace60d6196e1e81dd2c4e2cd48b",
+   "kind": "deed",
+   "name": "Pajoomi",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
