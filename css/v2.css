@@ -554,3 +554,4 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:pointer}a.prarlink:hover .chip.prar,a.prarlink:focus-visible .chip.prar{outline:2px solid #4f9dff}
 .tr-ctl,.tr-pager{display:flex;flex-wrap:wrap}.tr-pager .q[disabled]{opacity:.45;cursor:default}.tr-alivebox{display:inline-flex;align-items:center;gap:4px}
 .trboard .tr-n{color:#ffc93c}.trboard .chip.tr-alive{font-size:11px;padding:1px 7px}.trboard tr.tr-focus td{background:rgba(255,201,60,.12)}
+#cfFireEnd.fs-endwarn{border:2px solid #ff7a2e;background:#2a1206;color:#ffe9d6;padding:8px 10px;margin:6px 0;border-radius:4px}#cfFireEnd .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}#cfFireEnd .q[aria-pressed="true"]{background:#ff7a2e;color:#1a0a00;border-color:#ff7a2e}
