@@ -46,3 +46,13 @@
 .tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0;image-rendering:pixelated;image-rendering:crisp-edges}
 .tomb.gtomb.tomb-hunted,.tomb.gtomb.tomb-dust{opacity:1}
 html.hw .tomb.gtomb::after{display:none}
+
+/* cemetery-rarity-1103 (owner [pt2761u]): a rarity chip on every grave card, under the stone (display only) */
+.tomb .cv2-rar{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin:6px 0 2px}
+.tomb .cv2-rar .chip{display:inline-block;font-size:12px;font-weight:700;line-height:1.2;padding:3px 9px;border-radius:999px;border:2px solid;letter-spacing:.2px}
+.tomb .cv2-rk.rk-common{background:#2a2d33;color:#e3e6ea;border-color:#8a9099}
+.tomb .cv2-rk.rk-uncommon{background:#13301c;color:#9cf2a8;border-color:#3fbf5a}
+.tomb .cv2-rk.rk-rare{background:#122542;color:#a8cfff;border-color:#3d8bff}
+.tomb .cv2-rk.rk-legendary{background:#3a2a08;color:#ffd75e;border-color:#f2b417}
+.tomb .cv2-rk.rk-mythic{background:#2a1440;color:#e2c4ff;border-color:#b46cff;box-shadow:0 0 8px rgba(180,108,255,.45)}
+.tomb .cv2-rbits{background:#101a24;color:#9fe6f5;border-color:#2f6f86;font-weight:600}

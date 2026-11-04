@@ -162,7 +162,27 @@
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
   /* grave finder (owner, Oct 29 2026 6:49 PM CT): sort and filter by rarity, stage, days dead, raise difficulty, name / number; "Rarest first" quick pick.
    * Every grave fact comes from the replayed world through V.cemGraves (same block as the rules), so state and difficulty are exact. */
-  var SORTS = [['rarest', 'Rarest first'], ['newest', 'Newest graves'], ['oldest', 'Longest dead'], ['easiest', 'Easiest to raise'], ['strongest', 'Strongest at death'], ['gear', 'Most gear'], ['lived', 'Longest lived'], ['id', 'Pet number']];
+  /* cemetery-rarity-1103 (owner [pt2761u]: "rarest sorts by power. rarity is not shown, and power isnt an option to pick from"): every sort is done
+   * here in the page (display only; V.cemGraves still filters, its own sort order is not used), each one doing exactly what its label says.
+   * "Strongest at death" is now "Most power at death" so the power sort is easy to find. */
+  var SORTS = [['rarest', 'Rarest first'], ['newest', 'Newest graves'], ['oldest', 'Longest dead'], ['easiest', 'Easiest to raise'], ['strongest', 'Most power at death'], ['gear', 'Most gear'], ['lived', 'Longest lived'], ['id', 'Pet number']];
+  /* rarity rank, same tier logic as the hatch review (js/pet-sort.js, hatch-review-tiers-1103): Mythic (a stage, shown above every tier), then
+   * Legendary, Rare, Uncommon, Common (the hatch tier, art.tierIndex). The game has no Epic tier. Inside a rank: 💎 Rarity score, then power. */
+  var RK_LABEL = { 4: 'Mythic', 3: 'Legendary', 2: 'Rare', 1: 'Uncommon', 0: 'Common' }, RK_ID = { 4: 'mythic', 3: 'legendary', 2: 'rare', 1: 'uncommon', 0: 'common' };
+  function hatchTier(wp, g) { var t = wp && wp.art && wp.art.tierIndex != null ? wp.art.tierIndex : g.tier; return Math.max(0, Math.min(3, t | 0)); }
+  function rankOf(wp, g) { return g.mythic || (wp && (wp.stage >= 5 || wp.mythicCare)) ? 4 : hatchTier(wp, g); }
+  function rarMap(w) { var m = {}; try { if (window.PetScore && PetScore.rarityAll) PetScore.rarityAll(w).forEach(function (r) { if (isFinite(r.bits)) m[r.id] = r; }); } catch (e) { } return m; }
+  function rarChip(p) { return '<div class="cv2-rar"><span class="chip cv2-rk rk-' + RK_ID[p.rank] + '" title="Rarity: ' + RK_LABEL[p.rank] + (p.rank === 4 ? ' (Mythic stage, above every hatch tier)' : ' hatch tier') + '">' + (p.rank === 4 ? '💜 ' : '') + RK_LABEL[p.rank] + '</span>' +
+    (p.rbits >= 0 ? ' <span class="chip cv2-rbits" title="Trait rarity: how unusual this pet\'s species, eyes, pattern, background, cheeks, mutation and throwback trait are across every pet">💎 Rarity ' + p.rbits.toFixed(1) + (p.oneIn ? ' · 1 in ' + p.oneIn : '') + '</span>' : '') + '</div>'; }
+  var SORTF = {
+    rarest: function (a, c) { return c.rank - a.rank || c.rbits - a.rbits || c.power - a.power || a.id - c.id; },
+    newest: function (a, c) { return c.died - a.died || a.id - c.id; },
+    oldest: function (a, c) { return a.died - c.died || a.id - c.id; },
+    easiest: function (a, c) { return (c.raisable - a.raisable) || a.need - c.need || c.af - a.af || a.id - c.id; },
+    strongest: function (a, c) { return c.power - a.power || a.id - c.id; },
+    gear: function (a, c) { return c.gear - a.gear || c.power - a.power || a.id - c.id; },
+    lived: function (a, c) { return life(c) - life(a) || a.id - c.id; },
+    id: function (a, c) { return a.id - c.id; } };
   var DAYS = [['', 'Any time'], ['0-1', '0 to 1 days'], ['2-7', '2 to 7 days'], ['8-30', '8 to 30 days'], ['31-', 'Over 30 days']];
   var DIFF = { easy: 'Easy', medium: 'Medium', hard: 'Hard', closed: 'Closed' };
   var STATE = { hunted: 'Hunted: laid to rest for good', dust: 'Turned to dust', halo: 'Resurrected: rests with its halo' };
@@ -173,8 +193,8 @@
     var b = (w.tip || (M.state && M.state().tip) || 0) + 1, on = V.cemOn ? V.cemOn(b) : false, pub = on && V.cemPublic(b), CE = V.CEM || {}, gate = V.cemeteryGate ? V.cemeteryGate() : null;
     ctx.b = b; S.cemOn = on; css(); artJs(function () { if (st.ready) { zombies(); paint(); } });
     function row(g) { var p = w.byId[g.id], s = p.zDeath || p.stats || {}; return { id: g.id, name: g.name || ('#' + g.id), species: g.species, spl: V.speciesLabel ? V.speciesLabel(g.species) : g.species, tier: g.tier, stage: g.stage, stageName: g.stageName, owner: g.owner,
-      gear: R.graveCount ? R.graveCount(w, p) : 0, power: g.deathPower, born: p.hatchBlock, died: g.deathBlock, fed: p.lastFed, hybrid: V.isHybrid ? !!V.isHybrid(g.species) : false, days: g.daysDead, diff: g.diff, need: g.need, needLabel: g.needLabel, state: g.state, open: g.open, raisable: g.raisable, af: g.ageFactor, crumbles: g.crumbles, mythic: !!g.mythic }; }
-    var all = V.cemGraves(w, b, { sort: 'id' }).map(row), phone = window.matchMedia && matchMedia('(max-width: 640px)').matches, PER = phone ? 24 : 60;
+      gear: R.graveCount ? R.graveCount(w, p) : 0, power: g.deathPower, born: p.hatchBlock, died: g.deathBlock, fed: p.lastFed, hybrid: V.isHybrid ? !!V.isHybrid(g.species) : false, days: g.daysDead, diff: g.diff, need: g.need, needLabel: g.needLabel, state: g.state, open: g.open, raisable: g.raisable, af: g.ageFactor, crumbles: g.crumbles, mythic: !!g.mythic, rank: rankOf(p, g), rbits: RM[g.id] ? RM[g.id].bits : -1, oneIn: RM[g.id] ? (PetScore.fmtN ? PetScore.fmtN(RM[g.id].oneIn) : String(Math.round(RM[g.id].oneIn))) : '' }; }
+    var RM = rarMap(w), all = V.cemGraves(w, b, { sort: 'id' }).map(row), phone = window.matchMedia && matchMedia('(max-width: 640px)').matches, PER = phone ? 24 : 60;
     var st = { q: '', mine: false, sort: 'rarest', sp: '', tier: '', stage: '', days: '', diff: '', raisable: false, meals: '', page: 0, list: [] }, tombs = $('tombs');
     mount(w, all);
     var zs = document.createElement('section'); zs.className = 'cv2-zombies'; zs.id = 'cemZombies'; tombs.parentNode.insertBefore(zs, tombs);
@@ -201,7 +221,7 @@
     function canRaise(p) { if (!on || !p.raisable) return false; if (!pub) return p.id === CE.OWNER_GRAVE && ME === CE.OWNER; return true; }
     function tomb(p) { var wp = w.byId[p.id], gl = wp && R.graveCount && R.graveCount(w, wp) ? R.graveLine(w, wp) : '', lf = life(p), v = p.open ? V.cemView(w, wp, b) : null;
       var badge = p.state ? '<span class="cv2-diff d-closed">' + art(p.state === 'halo' ? 'halo' : p.state, 12) + ' ' + STATE[p.state] + '</span>' : '<span class="cv2-diff d-' + p.diff + '" title="Needs at least 1 ' + esc(p.needLabel) + ' offering">' + art(p.diff, 12) + ' ' + DIFF[p.diff] + ' · needs ' + esc(p.needLabel) + '</span>';
-      return '<div class="tomb gtomb' + (p.mythic ? ' tomb-mythic' : '') + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas><h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
+      return '<div class="tomb gtomb' + (p.mythic ? ' tomb-mythic' : '') + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas>' + rarChip(p) + '<h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
         '<div class="small">' + esc(p.spl) + ' · <span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span> · reached ' + esc(p.stageName) + '</div>' +
         '<div class="small cv2-badges">' + badge + (p.mythic ? ' <span class="cv2-diff mg-grave" title="A Mythic eaten by an unleashed zombie. Raise it with a Legendary or better offering; raised, it can be resurrected into a Mythic God.">💜 Mythic grave</span>' : '') + '</div>' +
         '<div class="small cv2-facts">⚡ ' + fmt(p.power) + ' power · 🎒 ' + fmt(p.gear) + ' gear · 💀 ' + fmt(p.days) + ' day' + (p.days === 1 ? '' : 's') + ' dead' + (p.raisable && p.af < 1 ? ' · grave strength ' + Math.round(p.af * 100) + '%' : '') + (p.crumbles ? ' · crumbled ' + p.crumbles + ' time' + (p.crumbles === 1 ? '' : 's') : '') + '</div>' +
@@ -249,7 +269,7 @@
       tombs.innerHTML = L.length ? L.map(tomb).join('') : '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address, or clear a filter.</p>';
       stoneJs(function () { L.forEach(function (p) { var wp = w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected && wp && wp.art) window.V2Gravestone.draw(c, { art: wp.art, stage: wp.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open, mythic: !!p.mythic }); }); });
       pager(pTop, pages); pager(pBot, pages); }
-    var LOC = { gear: function (a, c) { return c.gear - a.gear || c.power - a.power || a.id - c.id; }, lived: function (a, c) { return life(c) - life(a) || a.id - c.id; } };
+    var LOC = SORTF; /* cemetery-rarity-1103: every sort is local (see SORTF) */
     function apply(keepPage) { var q0 = st.q.trim().toLowerCase(), exact = /^#\d+$/.test(q0), q = q0.replace(/^#/, ''), num = /^\d+$/.test(q), meals = q ? '' : st.meals, dd = st.days ? st.days.split('-') : null;
       var Q = { tier: st.tier, stage: st.stage, diff: st.diff, raisable: st.raisable, sort: LOC[st.sort] ? 'id' : st.sort }; if (dd) { Q.minDays = +dd[0]; if (dd[1] !== '') Q.maxDays = +dd[1]; }
       var ids = {}, ord = {}; V.cemGraves(w, b, Q).forEach(function (g, i) { ids[g.id] = 1; ord[g.id] = i; });
