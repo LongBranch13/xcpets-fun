@@ -1,6 +1,6 @@
 {
- "lastBlock": 974599,
- "count": 118,
+ "lastBlock": 974600,
+ "count": 119,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1057,7 +1057,7 @@
    "species": "hyb:lenny:pepe",
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 48079,
@@ -1333,7 +1333,7 @@
    "species": "snibby",
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 46494,
@@ -1345,7 +1345,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 8508,
@@ -1416,6 +1416,18 @@
    "name": "Kigon",
    "species": "dodo",
    "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 58150,
+   "asset": "A18013904614637361926",
+   "tiedBlock": 974600,
+   "tiedTx": "1feb802d48f1b8fbc0ec0f91eca08f040494ed5229dc46cb2a4cfb9d2ba88820",
+   "kind": "deed",
+   "name": "Koroogoomi",
+   "species": "doge",
+   "speciesLabel": "Doge",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
