@@ -28,7 +28,7 @@
       form: 'AABB', tempo: { A: 0.9, B: 1.18 }, density: 0.2, arp: 2, bassPat: [0, null, null, null, 7, null, null, null], hatPat: [] }
   };
 
-  function chordTones(c) { var p = c.split(' '); var r = n(p[0]), q = p[1]; return [r, r + (q === 'm' ? 3 : 4), r + 7, r + (q === 'm' ? 10 : 11)]; }
+  function chordTones(c) { var p = c.split(' '); var r = n(p[0]), q = p[1]; return [r, r + (q === 'm' ? 3 : 4), r + 7, r + (q === 'M' ? 11 : 10)]; } // M = maj7, m = m7, 7 = dominant 7
 
   // Build note events: {t (seconds), d (seconds), f (hz), v (0..1), w ('pulse'|'tri'|'noise'), duty}
   function compose(key) {
@@ -85,13 +85,13 @@
     return { events: ev, length: pos, title: T.title };
   }
 
-  // ---- 8-bit style (default; owner Nov 4: warm, nostalgic RPG town / overworld chiptune). Original melodies, written here note by note.
+  // ---- 8-bit style (default; owner Nov 4: warm, nostalgic RPG town / overworld chiptune). Original melodies, written here note by note. Nov 4 rev: an octave lower, smoother (pulse+triangle leads, ~3 kHz low-pass), harmony voice, 3-note pad, counter-melody, 7th/sus chords.
   // Bars of 8 eighth notes: '.' rest, '-' hold. Each part = 4 written bars played twice (2nd time bars 3-4 use the alt ending).
   // Form: A, B, A (with harmony), Bridge, B (with harmony) = 40 bars -> 83-102 s per loop. Soft square lead, flowing 16th arpeggio,
   // soft triangle bass, light noise drums, and a circular echo (wraps around the loop, so the restart is seamless).
   var CHIP = {
     meadow: { title: 'Pixel Meadow', bpm: 104, duty: 0.25,
-      ac: ['C4 M', 'A3 m', 'F3 M', 'G3 M'], bc: ['F3 M', 'C4 M', 'D3 m', 'G3 M'], rc: ['A3 m', 'E3 m', 'F3 M', 'G3 M'],
+      ac: ['C4 M', 'A3 m', 'F3 M', 'G3 7'], bc: ['F3 M', 'C4 M', 'D3 m', 'G3 7'], rc: ['A3 m', 'E3 m', 'F3 M', 'G3 7'],
       A: ['E5 - - D5 C5 - G4 -', 'A4 - C5 - E5 - D5 C5', 'F5 - E5 - D5 - C5 A4', 'B4 - - - G4 - . .'],
       Aa: ['A4 C5 F5 - E5 - D5 C5', 'D5 - - - B4 - . .'],
       B: ['A5 - G5 - F5 - C5 -', 'E5 - - G5 C6 - B5 A5', 'A5 - - F5 D5 - F5 A5', 'G5 - - - B4 D5 G5 -'],
@@ -99,7 +99,7 @@
       R: ['C5 - - E5 A5 - G5 E5', 'B4 - - - E5 - D5 B4', 'C5 - A4 - F5 - E5 C5', 'D5 - - - G5 - - -'],
       Ra: ['A5 - G5 F5 C6 - A5 F5', 'G5 - F5 - D5 - B4 .'] },
     parade: { title: 'Snack Parade', bpm: 112, duty: 0.25,
-      ac: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], bc: ['Bb2 M', 'F3 M', 'G2 m', 'C3 M'], rc: ['D3 m', 'A2 m', 'Bb2 M', 'C3 M'],
+      ac: ['F3 M', 'D3 m', 'Bb2 M', 'C3 7'], bc: ['Bb2 M', 'F3 M', 'G2 m', 'C3 7'], rc: ['D3 m', 'A2 m', 'Bb2 M', 'C3 7'],
       A: ['C5 - F5 - A5 - G5 F5', 'D5 - - F5 A5 - F5 D5', 'Bb4 - D5 - F5 - E5 D5', 'E5 - - - C5 - . .'],
       Aa: ['D5 - F5 - Bb5 - A5 G5', 'G5 - - - E5 - C5 .'],
       B: ['D6 - - C6 Bb5 - F5 -', 'A5 - C6 - F5 - A5 C6', 'Bb5 - - A5 G5 - D5 -', 'E5 - - - G5 - C6 -'],
@@ -107,15 +107,15 @@
       R: ['F5 - - A5 D5 - F5 A5', 'E5 - - - C5 - A4 -', 'D5 - F5 - Bb5 - A5 F5', 'G5 - - - E5 - - -'],
       Ra: ['F5 - D5 F5 Bb5 - D6 -', 'C6 - - - Bb5 - G5 E5'] },
     'arena-chip': { title: 'Arena Rush', bpm: 115, duty: 0.5,
-      ac: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], bc: ['C3 M', 'D3 M', 'B2 m', 'E3 m'], rc: ['A2 m', 'D3 M', 'G3 M', 'B2 M'],
+      ac: ['E3 m', 'C3 M', 'D3 M', 'B2 7'], bc: ['C3 M', 'D3 M', 'B2 m', 'E3 m'], rc: ['A2 m', 'D3 7', 'G3 M', 'B2 7'],
       A: ['E5 - - B4 E5 - G5 -', 'G5 - - E5 C5 - E5 G5', 'F#5 - - D5 A5 - F#5 D5', 'D#5 - - - B4 - . .'],
       Aa: ['F#5 - A5 - D6 - A5 F#5', 'D#6 - - - B5 - F#5 D#5'],
       B: ['G5 - - E5 C6 - B5 G5', 'A5 - - F#5 D6 - C6 A5', 'B5 - - D6 F#5 - B5 D6', 'E6 - - - B5 - G5 -'],
       Ba: ['D6 - C#6 B5 F#5 - D5 F#5', 'G5 - - F#5 E5 - - .'],
       R: ['C5 - E5 - A5 - G5 E5', 'F#5 - - - D5 - A4 -', 'B4 - D5 - G5 - F#5 G5', 'F#5 - - - D#5 - B4 -'],
       Ra: ['D5 - G5 - B5 - A5 G5', 'F#5 - - - D#5 F#5 B5 -'] },
-    crypt: { title: 'Lantern Crypt', bpm: 94, duty: 0.125,
-      ac: ['A3 m', 'F3 M', 'C4 M', 'E3 M'], bc: ['D3 m', 'A3 m', 'F3 M', 'E3 M'], rc: ['F3 M', 'G3 M', 'E3 m', 'A3 m'],
+    crypt: { title: 'Lantern Crypt', bpm: 94, duty: 0.25,
+      ac: ['A3 m', 'F3 M', 'C4 M', 'E3 7'], bc: ['D3 m', 'A3 m', 'F3 M', 'E3 7'], rc: ['F3 M', 'G3 7', 'E3 m', 'A3 m'],
       A: ['A4 - - C5 E5 - D5 C5', 'C5 - - A4 F4 - A4 C5', 'E5 - - D5 C5 - G4 -', 'G#4 - - - B4 - E5 -'],
       Aa: ['G5 - E5 - C5 - E5 G5', 'B5 - - G#5 E5 - - .'],
       B: ['F5 - - E5 D5 - A5 -', 'E5 - - C5 A4 - C5 E5', 'A5 - - G5 F5 - C5 A4', 'B4 - - - G#4 - E4 -'],
@@ -132,27 +132,40 @@
     sec.forEach(function (S) {
       var t0 = bar * 8 * e8, ct = chordTones(S.ch), tok = S.m.split(/\s+/);
       if (tok.length !== 8) throw new Error(key + ' bar ' + bar + ' has ' + tok.length + ' steps');
+      // lead an octave down (around C4-C5): soft pulse + triangle mix, gentle envelope, light vibrato;
+      // a second voice a 3rd/6th below almost always (alternates by bar), on a 50% pulse, quieter
       for (var i = 0; i < 8; i++) {
         if (tok[i] === '.' || tok[i] === '-') continue;
         var j = i + 1; while (j < 8 && tok[j] === '-') j++;
-        var p = n(tok[i]), held = j - i > 1, d = e8 * ((j - i) - (held ? 0.12 : 0.25));
-        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.11, w: 'pulse', duty: T.duty, att: 0.008, rel: 0.12, vib: held ? 0.01 : 0, vd: 0.2 });
-        if (S.o.harm) { var h = p - 3, ok = [0, ct[1] - ct[0], 7]; while (h > p - 9 && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--;
-          ev.push({ t: t0 + i * e8, d: d, f: hz(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.008, rel: 0.12 }); }
+        var p = n(tok[i]) - 12, held = j - i > 1, d = e8 * ((j - i) - (held ? 0.1 : 0.2));
+        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.075, w: 'pulse', duty: T.duty, att: 0.025, rel: 0.22, vib: 0.006, vd: 0.18 });
+        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.06, w: 'tri', att: 0.025, rel: 0.22, vib: 0.006, vd: 0.18 });
+        var sixth = (bar % 4) >= 2, h = p - (sixth ? 8 : 3), ok = [0, ct[1] - ct[0], 7, ct[3] - ct[0]];
+        while (h > p - (sixth ? 10 : 6) && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--;
+        if (ok.indexOf(((h - ct[0]) % 12 + 12) % 12) >= 0) ev.push({ t: t0 + i * e8, d: d, f: hz(h), v: 0.04, w: 'pulse', duty: 0.5, att: 0.03, rel: 0.22, vib: 0.005, vd: 0.2 });
       }
-      // flowing 16th arpeggio (up and down the chord), quiet, under the lead
-      var arp = [0, 1, 2, 3, 2, 1, 2, 1], tones = [ct[0], ct[1], ct[2], ct[0] + 12];
-      for (var k = 0; k < 16; k++) ev.push({ t: t0 + k * e8 / 2, d: e8 * 0.4, f: hz(tones[arp[k % 8]] + 12), v: S.o.soft ? 0.03 : 0.026, w: 'pulse', duty: 0.125, att: 0.004, rel: 0.08 });
+      // sustained 3-note pad (3rd, 5th, 7th of the chord; first half of A bars leans in as a sus4 then resolves)
+      var pad = [ct[1], ct[2], ct[3]], sus = S.s === 'A' && bar % 2 === 0;
+      pad.forEach(function (pp, q) {
+        if (sus && q === 0) { ev.push({ t: t0, d: 4 * e8, f: hz(ct[0] + 5), v: 0.032, w: 'tri', att: 0.2, rel: 0.25 }); ev.push({ t: t0 + 4 * e8, d: 4 * e8, f: hz(pp), v: 0.032, w: 'tri', att: 0.15, rel: 0.4 }); return; }
+        ev.push({ t: t0, d: 8 * e8, f: hz(pp) * (1 + 0.002 * (q - 1)), v: 0.032, w: 'tri', att: 0.25, rel: 0.4 });
+      });
+      // moving counter-melody on triangle (quarter notes through chord tones), from the 2nd pass of A onward
+      if (bar >= 16) { var cm = (bar % 2) ? [3, 2, 1, 2] : [2, 3, 2, 1];
+        for (var c4 = 0; c4 < 4; c4++) ev.push({ t: t0 + c4 * 2 * e8, d: e8 * 1.8, f: hz(ct[cm[c4]] + 12 - (cm[c4] === 3 ? 12 : 0)), v: 0.035, w: 'tri', att: 0.04, rel: 0.2 }); }
+      // soft flowing 16th arpeggio on triangle (chord incl. 7th)
+      var arp = [0, 1, 2, 3, 2, 1, 2, 1], tones = [ct[0], ct[1], ct[2], ct[3]];
+      for (var k = 0; k < 16; k++) ev.push({ t: t0 + k * e8 / 2, d: e8 * 0.45, f: hz(tones[arp[k % 8]] + 12), v: 0.02, w: 'tri', att: 0.006, rel: 0.1 });
       // soft triangle bass: root on 1, fifth on 3, passing octave
       var bp = S.o.soft ? [[0, 0, 7.6]] : [[0, 0, 3.6], [4, 7, 2.6], [7, 12, 0.9]];
-      bp.forEach(function (q) { ev.push({ t: t0 + q[0] * e8, d: q[2] * e8, f: hz(ct[0] - 12 + q[1]), v: 0.17, w: 'tri', att: 0.01, rel: 0.1 }); });
+      bp.forEach(function (q) { ev.push({ t: t0 + q[0] * e8, d: q[2] * e8, f: hz(ct[0] - 12 + q[1]), v: 0.16, w: 'tri', att: 0.015, rel: 0.12 }); });
       // light noise drums
       for (i = 0; i < 8; i++) {
-        if (S.fill && i >= 6) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e8, d: 0.08, f: 0, v: 0.05 + 0.01 * q, w: 'noise', dec: 0.04, rel: 0.02 }); continue; }
-        if (S.o.soft) { if (i === 0) ev.push({ t: t0, d: 0.12, f: 120, v: 0.14, w: 'kick', rel: 0.02 }); if (i % 2 === 1) ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: 0.012, w: 'noise', rel: 0.01 }); continue; }
+        if (S.fill && i >= 6) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e8, d: 0.08, f: 0, v: 0.03 + 0.006 * q, w: 'noise', dec: 0.035, rel: 0.02 }); continue; }
+        if (S.o.soft) { if (i === 0) ev.push({ t: t0, d: 0.12, f: 120, v: 0.14, w: 'kick', rel: 0.02 }); if (i % 2 === 1) ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: 0.008, w: 'noise', rel: 0.01 }); continue; }
         if (i === 0 || i === 5) ev.push({ t: t0 + i * e8, d: 0.12, f: 120, v: 0.18, w: 'kick', rel: 0.02 });
-        if (i === 2 || i === 6) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.07, w: 'noise', dec: 0.06, rel: 0.02 });
-        ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: i % 2 ? 0.014 : 0.02, w: 'noise', rel: 0.01 });
+        if (i === 2 || i === 6) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.04, w: 'noise', dec: 0.05, rel: 0.02 });
+        ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: i % 2 ? 0.008 : 0.012, w: 'noise', rel: 0.01 });
       }
       bar++;
     });
@@ -180,10 +193,10 @@
       }
     });
     // gentle one-pole low-pass (softens the square edges); run twice so the filter state wraps too
-    var a = chip ? 1 - Math.exp(-2 * Math.PI * 4200 / sr) : 0.28, y = 0;
+    var a = chip ? 1 - Math.exp(-2 * Math.PI * 3000 / sr) : 0.28, y = 0;
     // warm echo on the 8-bit style (dotted quarter, circular so the tail wraps into the loop start)
     if (chip && c.echo) { var D = Math.round(c.echo * sr), wet = new Float32Array(N); for (var ep = 0; ep < 3; ep++) for (var ei = 0; ei < N; ei++) wet[ei] = 0.3 * (out[(ei - D + N) % N] + wet[(ei - D + N) % N]); for (ei = 0; ei < N; ei++) out[ei] += 0.7 * wet[ei]; }
-    for (var pass = 0; pass < 2; pass++) for (var i = 0; i < N; i++) { y += a * (out[i] - y); if (pass) out[i] = y; }
+    for (var st = 0; st < (chip ? 2 : 1); st++) { y = 0; for (var pass = 0; pass < 2; pass++) for (var i = 0; i < N; i++) { y += a * (out[i] - y); if (pass) out[i] = y; } }
     // DC blocker (pulse waves are lopsided; without this the level jumps at the loop point). Two passes so its state wraps too.
     var xp = 0, yp = 0, R = 0.997, o;
     for (pass = 0; pass < 2; pass++) for (i = 0; i < N; i++) { o = out[i] - xp + R * yp; xp = out[i]; yp = o; if (pass) out[i] = o; }
