@@ -12,6 +12,7 @@ Successor to Homer Pepe (#5). Shows up as the community pet only after Homer Pep
   - `wr-waistcoat` Checked waistcoat, Body, tier 2.
   - `wr-drink-me` Little potion bottle, Grip, tier 2.
   - `wr-shades` Rabbit-hole shades, Face, tier 1.
+  - Cold Storage look (`PETS` loadout in js/v2-community.js): pocket watch + waistcoat + shades, one piece per slot like Homer Pepe; the potion bottle stays in the drop pool only (both are Grips).
   RabbitSprite draws its own version of each on him; the maps draw them on every other body.
 - Hybrids: works as a root with every species and every gear id (`tools/community-pet-check.js --pet rabbit`). Names: `<species>bit` (Pepebit, Homerbit) and `Rab<species>` (Rabjak, Rabmer); 3-way parts Rab / bi / bit. Feature parts: long ears (top), ruby eyes.
 - Mythic effect (`js/mythic-sig.js` `clockwork`): a gold clock face behind him with 12 ticks, a hand sweeping once per loop, and breadcrumbs lighting up one by one along the ground.

@@ -2088,7 +2088,7 @@
       cm.petName = 'Homer Pepe'; cm.petStage = cm.homerStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     if (wrOn(tip) && handoffPrev(w, 'rabbit')) { var WRc = w.rabbit || { fed: 0, feeds: 0, by: {} }; /* THE WHITE RABBIT = community pet #6 (PREVIEW, inert: ACTIVATE_RABBIT_BLOCK null) */
       cm.rabbitFed = WRc.fed; cm.rabbitStage = stageFor(WRc.fed, COMMUNITY_THRESHOLDS); cm.current = 'rabbit'; cm.nextPet = w.rabbitMythic ? null : 'rabbit';
-      cm.petName = 'The White Rabbit'; cm.petStage = cm.rabbitStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
+      cm.petName = 'White Rabbit'; cm.petStage = cm.rabbitStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });
     w.fights.forEach(function (f) { if (f.status === 'open' && tip - f.block > FIGHT_WINDOW) f.status = 'expired'; });
     w.itemList = Object.keys(w.items).map(function (k) { return w.items[k]; }).filter(function (g) { return g.bag == null; }); /* any-slot rolls: pet-bound bag pieces stay out of the stash */
