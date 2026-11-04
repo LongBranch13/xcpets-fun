@@ -1018,15 +1018,33 @@
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ': ' + skip.join(' · ')); window.V2LastBlocked = skip; }
     var fg = feedGuard(bw, plans); plans = fg.plans; if (pre && pre.skipped.length && !fg.skipped.length) fg = { plans: plans, skipped: pre.skipped, text: pre.text };
     if (!plans.length) { if (fg.skipped.length || fg.blocked) feedBlocked(title, fg.text); else if (!skip.length) toast('Nothing to do'); return; }
+    var fe = fireEndPlans(bw, plans); /* firesale-countdown-1104: last 2 sale blocks -> offer the full cost */
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
-    $('cfBody').innerHTML = zEatNote(plans, bw) + '<div class="bigamt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + cemRunsNote(plans, bw) + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
-      blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
+    $('cfBody').innerHTML = zEatNote(plans, bw) + (fe ? fireEndNote(fe) : '') + '<div class="bigamt" id="cfAmt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + cemRunsNote(plans, bw) + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
+      blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small" id="cfLog">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
     $('cfYes').textContent = 'Sign & burn in ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); $('cfNo').textContent = 'Cancel'; $('cfYes').disabled = false; $('cfNo').disabled = false; open('confirmBox');
-    if (window.V2Wallet && V2Wallet.feeQuote) V2Wallet.feeQuote().then(function (q) { var el = $('cfFee'); if (el && pendingPlans === plans) el.innerHTML = feeLine(s.burns, q); });
+    if (window.V2Wallet && V2Wallet.feeQuote) V2Wallet.feeQuote().then(function (q) { var el = $('cfFee'); if (el && (pendingPlans === plans || (fe && pendingPlans === fe.full))) el.innerHTML = feeLine(s.burns, q); });
+    if (fe) fireEndWire(fe);
   }
+  /* firesale-countdown-1104 (UI only, rules unchanged): a burn is judged at the block it confirms in. In the last 2 blocks of a live Fire Sale
+   * a burn sent at the sale cost may land after the sale and then pays only part of a meal list. The confirm sheet warns and offers the full
+   * cost (sale amount / 0.31, rounded up, plus 2 sats per pet for the 8-place rounding), keeping the sale cost as the other choice. */
+  var FIRE_END_WARN = 2, FIRE_SALE_PART = 0.31;
+  function fireEndPlans(w, plans) { if (!V.fireInfo || !plans || !plans.length) return null; var f; try { f = V.fireInfo(w, S.tip || 0); } catch (e) { return null; }
+    var sl = f && f.live; if (!sl) return null; var left = sl.end - f.nextBlock; if (left > FIRE_END_WARN) return null; var any = false;
+    var full = plans.map(function (p) { var a = Number(p && p.amount); if (!(a >= 0.001)) return p; any = true; var n = (p.petIds && p.petIds.length) || 1;
+      return Object.assign({}, p, { amount: (Math.ceil(a / FIRE_SALE_PART * 1e8 - 1e-6) + 2 * n) / 1e8 }); });
+    return any ? { sale: plans, full: full, left: left, end: sl.end } : null; }
+  function fireEndNote(fe) { return '<div class="warn fs-endwarn" id="cfFireEnd" role="alert"><p><b>🔥 Sale may end before this confirms. Pay full cost to be safe?</b></p><p class="small">' +
+      (fe.left === 1 ? 'This is the last block' : 'Only ' + fe.left + ' blocks are') + ' left in the Fire Sale (it ends at block ' + fmt(fe.end) + '). A burn is judged at the block it lands in. If it lands after the sale at the sale cost, only some of the pets get fed.</p>' +
+      '<div class="row"><button type="button" class="q" id="cfPayFull" aria-pressed="false">Pay full cost · ' + fmt(V.burnSummary(fe.full).total) + '</button> <button type="button" class="q" id="cfPaySale" aria-pressed="true">Keep sale cost · ' + fmt(V.burnSummary(fe.sale).total) + '</button></div></div>'; }
+  function fireEndWire(fe) { function pick(full) { var L = full ? fe.full : fe.sale; if (pendingPlans !== fe.sale && pendingPlans !== fe.full) return; pendingPlans = L;
+      var a = $('cfAmt'); if (a) a.textContent = fmt(V.burnSummary(L).total) + ' XCPETS'; var g = $('cfLog'); if (g) g.innerHTML = L.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (L.length > 12 ? '<div>… +' + (L.length - 12) + ' more</div>' : '');
+      var bf = $('cfPayFull'), bs = $('cfPaySale'); if (bf) bf.setAttribute('aria-pressed', String(!!full)); if (bs) bs.setAttribute('aria-pressed', String(!full)); }
+    var bf = $('cfPayFull'), bs = $('cfPaySale'); if (bf) bf.onclick = function () { pick(true); }; if (bs) bs.onclick = function () { pick(false); }; }
   /* cheaper-fees (owner Oct 27 2026): the confirm sheet shows the live fee rate (mempool.space precise, about 0.1 to 1 sat/vB on a quiet day)
    * and the sats it comes to, per burn and for the whole run, instead of the old flat 1,500 sats per burn guess. Each burn's exact fee is shown
    * again on the progress line right before its XCP Wallet window. */
