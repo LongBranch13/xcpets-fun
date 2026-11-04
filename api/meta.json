@@ -1,17 +1,17 @@
 {
-  "blockHeight": 974530,
-  "generatedAt": "2026-11-04T13:31:35Z",
+  "blockHeight": 974534,
+  "generatedAt": "2026-11-04T14:09:08Z",
   "asset": "XCPETS",
   "totalPets": 78358,
   "alive": 28356,
   "dead": 48597,
   "released": 1405,
-  "burns": 3280,
-  "burnedXCPETS": 28218948.06750647,
-  "supplyXCPETS": 71781051.93249352,
+  "burns": 3281,
+  "burnedXCPETS": 28219983.06750647,
+  "supplyXCPETS": 71780016.93249352,
   "owners": 23,
   "community": {
-    "tip": 974530,
+    "tip": 974534,
     "current": {
       "id": "homer",
       "no": 5,
