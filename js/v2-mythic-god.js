@@ -74,8 +74,13 @@
   /* ---------- 3. wings ---------- */
   var WING = ['g.............', 'og............', 'owg...........', 'owwo..........', '.owwo.........', '.owwwo........', '.oswwwo.......', '..oswwwo......',
     '..owswwwo.....', '..oswswwwoo...', '...owswswwwo..', '...oswswswwwo.', '....owswswwwA.', '.....o.o.o.o..'], FLAP = [0, 0, 7, 15, 20, 15, 7, 0];
-  function wings(img, A, f, P) { var on = A.on, bb = A.bb, sy = Math.max(11, Math.min(bb[3] - 3, A.ey + 3, A.ht + 7)), mn = 99, mx = -1;
-    for (var x = 0; x < 32; x++) if (on[sy * 32 + x]) { if (x < mn) mn = x; if (x > mx) mx = x; } if (mx < 0) { mn = bb[0]; mx = bb[2]; }
+  /* the wings grow from the shoulders: the first row at or below the eyes where the body is at least 85% of its widest row.
+     (Before this the root row came only from the eyes, so on a long-necked pet such as the Dodo the wings sprouted from the head and neck.) */
+  function rowSpan(on, y) { var mn = 99, mx = -1; for (var x = 0; x < 32; x++) if (on[y * 32 + x]) { if (x < mn) mn = x; if (x > mx) mx = x; } return [mn, mx]; }
+  function wings(img, A, f, P) { var on = A.on, bb = A.bb, y0 = Math.max(11, Math.min(bb[3] - 3, A.ey + 3, A.ht + 7)), sy = y0, wmax = 0, y, s;
+    for (y = bb[1]; y <= bb[3]; y++) { s = rowSpan(on, y); if (s[1] >= 0) wmax = Math.max(wmax, s[1] - s[0] + 1); }
+    for (y = y0; y <= Math.min(bb[3] - 3, 24); y++) { s = rowSpan(on, y); if (s[1] >= 0 && s[1] - s[0] + 1 >= wmax * 0.85) { sy = y; break; } }
+    s = rowSpan(on, sy); var mn = s[0], mx = s[1]; if (mx < 0) { mn = bb[0]; mx = bb[2]; }
     var lx = mn + 3, rx = mx - 3, C = { o: P.fout, w: P.feather, s: P.fsh, g: P.mid, A: P.feather }, th = FLAP[f % NF] * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
     for (var ty = -16; ty < 4; ty++) for (var tx = -16; tx < 4; tx++) { var u = co * tx - si * ty, v = si * tx + co * ty, xx = Math.round(12 + u), yy = Math.round(12 + v);
       if (yy >= 0 && yy < WING.length && xx >= 0 && xx < WING[0].length && WING[yy][xx] !== '.') { var c = C[WING[yy][xx]]; put(img, on, lx + tx, sy + ty, c); put(img, on, rx - tx, sy + ty, c); } } }
@@ -120,11 +125,13 @@
   function dilate(on, n) { var rings = [], seen = {}, cur = [], i; for (i = 0; i < 1024; i++) if (on[i]) { seen[i] = 1; cur.push(i); }
     for (var s = 0; s < n; s++) { var nx = [], got = {}; cur.forEach(function (q) { var x = q % 32, y = (q / 32) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].forEach(function (d) { var xx = x + d[0], yy = y + d[1], k = yy * 32 + xx; if (xx >= 0 && xx < 32 && yy >= 0 && yy < 32 && !seen[k] && !got[k]) { got[k] = 1; nx.push(k); } }); });
       nx.forEach(function (k) { seen[k] = 1; }); rings.push(nx); cur = nx; } return rings; }
-  function shineAura(img, A, f, P, my) { var g = GLOW[f % NF], bb = A.bb, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, rings = A.rings || (A.rings = dilate(A.on, my ? 4 : 3)), spokes = my ? 12 : 8, st = my ? 0.85 : 0.7;
-    rings.forEach(function (ring, k) { ring.forEach(function (i) { var x = i % 32, y = (i / 32) | 0; if (badge(x, y)) return; if (k === 0) { img[i] = mix(img[i], P.mid, st * g); return; }
-      if (k === 1 && (x + y + f) % 2 === 0) img[i] = mix(img[i], P.lo, (my ? 0.6 : 0.45) * g);
+  /* a crisp gold rim: solid palette pixels only, never blended into the background, so the outline stays one clean pixel line
+     on any backdrop (the old soft rings mixed gold into the floor and backdrop tiles and read as a muddy grey-gold smear). */
+  function shineAura(img, A, f, P, my) { var g = GLOW[f % NF], bb = A.bb, cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, rings = A.rings || (A.rings = dilate(A.on, 2)), spokes = my ? 12 : 8;
+    rings.forEach(function (ring, k) { ring.forEach(function (i) { var x = i % 32, y = (i / 32) | 0; if (badge(x, y)) return;
       var ang = Math.atan2(y - cy, x - cx) / (2 * Math.PI) * spokes + f * 0.25; ang = ang - Math.floor(ang);
-      if (ang < 0.34) { var fall = 1 - (k - 1) / rings.length; img[i] = mix(img[i], k === 1 ? P.hi : P.mid, st * g * fall * (1 - Math.abs(ang - 0.17) / 0.2)); } }); }); }
+      if (k === 0) { img[i] = ang < 0.12 && g > 0.8 ? P.hi : P.mid; return; }
+      if (ang < 0.06 && g > 0.65) img[i] = P.lo; }); }); }
   function shineBody(img, A, f, P, my) { var on = A.on, g = GLOW[f % NF], prot = {}; A.eyes.forEach(function (q) { prot[q] = 1; [-1, 1, -32, 32, -33, -31, 31, 33].forEach(function (d) { prot[q + d] = 1; }); });
     var bb = A.bb, span = (bb[2] - bb[0]) + (bb[3] - bb[1]) + 8, s = bb[0] + bb[1] - 4 + (f % NF) * span / (NF - 1), base = (my ? 0.46 : 0.34) * (0.8 + 0.2 * g), band = my ? 0.7 : 0.55;
     for (var i = 0; i < 1024; i++) { if (!on[i] || prot[i]) continue; var x = i % 32, y = (i / 32) | 0; if (badge(x, y)) continue; var c = img[i], lum = (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255; if (lum < 0.16) continue;
