@@ -11,7 +11,7 @@
   if (!M || !V || !PC || !$('vfForm')) return;
   var NOPE = /crown|frame|fire|flame|aura/i, TIERS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   var RULES = { raw: 'the basic roll (PetCore.generate)', hatchArt: 'the egg rule (V2Rules.hatchArt)', electricArt: 'the Electric egg rule (V2Rules.electricArt)', kekArt: 'the Lord Kek egg rule',
-    ftArt: 'the FUNTRUMP egg rule', hpArt: 'the Homer Pepe egg rule', burnLordArt: 'the Burn Lord rule', supremeArt: 'the Supreme rule' };
+    ftArt: 'the FUNTRUMP egg rule', hpArt: 'the Homer Pepe egg rule', wrArt: 'the White Rabbit egg rule', burnLordArt: 'the Burn Lord rule', supremeArt: 'the Supreme rule' };
   var TRAITS = [['tier', 'Rarity'], ['species', 'Species'], ['pattern', 'Pattern'], ['eyes', 'Eyes'], ['cheeks', 'Cheeks'], ['band', 'Band'], ['armor', 'Armor'], ['cape', 'Cape'],
     ['weapon', 'Weapon'], ['crown', 'Hat'], ['background', 'Background'], ['bgColor', 'Background color'], ['baseStats', 'Base stats'], ['defaultName', 'Name']];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }

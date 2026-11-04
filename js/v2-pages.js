@@ -146,6 +146,11 @@
     { id: 'funtrump', name: 'FUNTRUMP', sp: 'funtrump', loadout: [], done: function (c, w) { return !!(w && w.funtrumpMythic); }, block: function (c, w) { return w.funtrumpMythic.block; }, tx: function (c, w) { return w.funtrumpMythic.tx; },
       stats: function (w) { var x = w.funtrumpMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
       story: ['Lord Kek went into Cold Storage and left an egg. Every burn fed it, and FUNTRUMP rose.', 'At Mythic, FUNTRUMP went into Cold Storage and Homer Pepe became the community pet.', 'Six blocks later came the second halving: every burn costs a quarter of the base amount.'],
+      sprites: function () { return coldEntryFrames(this); } },
+    /* #5 HOMER PEPE (branch whiterabbit-community PREVIEW): shows only once w.homerMythic exists (his Mythic -> Cold Storage), same pattern as FUNTRUMP. */
+    { id: 'homer', name: 'Homer Pepe', sp: 'homer', loadout: ['hp-donut', 'hard-hat', 'hp-rad-suit', 'hp-slippers'], done: function (c, w) { return !!(w && w.homerMythic); }, block: function (c, w) { return w.homerMythic.block; }, tx: function (c, w) { return w.homerMythic.tx; },
+      stats: function (w) { var x = w.homerMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
+      story: ['FUNTRUMP went into Cold Storage and left an egg. Every burn fed it, and Homer Pepe rose.', 'At Mythic, Homer Pepe went into Cold Storage. Right on time, a White Rabbit with a gold pocket watch hopped past, and the community followed him down the hole.', 'Six blocks later came the third halving: every burn costs an eighth of the base amount.'],
       sprites: function () { return coldEntryFrames(this); } }
   ];
   /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style
@@ -266,6 +271,8 @@
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
+    if (c.current === 'rabbit' && R.communityStats) { var rs2 = R.communityStats(w, M.state().rows.length); /* THE WHITE RABBIT (community pet #6, PREVIEW, gated, inert): care = burns since Homer Pepe's Mythic */
+      $('crFed').textContent = fmt(rs2.fed); $('crNext').textContent = rs2.next != null ? fmt(rs2.next) + ' to ' + rs2.nextName : 'Mythic reached'; $('crProg').style.width = rs2.pct.toFixed(1) + '%'; }
     if (c.current === 'homer' && R.communityStats) { var hs2 = R.communityStats(w, M.state().rows.length); /* HOMER PEPE (community pet #5, PREVIEW, gated, inert): care = burns since FUNTRUMP's Mythic */
       $('crFed').textContent = fmt(hs2.fed); $('crNext').textContent = hs2.next != null ? fmt(hs2.next) + ' to ' + hs2.nextName : 'Mythic reached'; $('crProg').style.width = hs2.pct.toFixed(1) + '%'; }
     if (c.current === 'funtrump' && R.communityStats) { var fs2 = R.communityStats(w, M.state().rows.length); /* FUNTRUMP (community pet #4, gated, inert): care = burns since Lord Kek's Mythic */
