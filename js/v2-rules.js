@@ -2369,7 +2369,7 @@
    * (children, family tree, the Breedings line and p.breeds are unchanged) but no longer uses one of the parent's 6 lifetime breeds (breedsV2).
    * At the gate, ONCE (jackpotNobreedSweep), every lifetime breed a jackpot egg used under ACTIVATE_JACKPOT_CHILD_BLOCK is given back (a twin pair
    * gave 1, so it gives back 1), so no jackpot egg ever counts against the cap. Before the gate nothing changes. */
-  var ACTIVATE_JACKPOT_NOBREED_BLOCK = 974475; /* tip 974469 (mempool.space, Nov 3 2026 9:19 PM CT) + 6; owner-approved, deployed */
+  var ACTIVATE_JACKPOT_NOBREED_BLOCK = 974478; /* tip 974472 (mempool.space + blockstream, Nov 3 2026 9:49 PM CT) + 6; owner-approved, deployed */
   function jackpotNobreedOn(b) { return ACTIVATE_JACKPOT_NOBREED_BLOCK != null && b != null && b >= ACTIVATE_JACKPOT_NOBREED_BLOCK; }
   /** jackpotUsedBreed(w, k): did jackpot egg k take a lifetime breed (breedsV2) from its parent? (counted, v2 on at its block, before this gate; a twin pair once) */
   function jackpotUsedBreed(w, k) { if (!k || !k.jackpot || !k.jackpot.child || !breedV2On(k.jackpot.block) || jackpotNobreedOn(k.jackpot.block)) return false;
