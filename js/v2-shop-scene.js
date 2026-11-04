@@ -199,7 +199,7 @@
     if (id === 'bell') { ST.bell = 900; sfx('bell'); say(['Ding! Welcome to Spam City Games.', 'Yes, yes, I heard the bell.', 'Ding ding. The cat hates that one.'][Math.floor(Math.random() * 3)]); return kick(); }
     if (id === 'cat') { ST.cat = 500; ST.catSay = 900; sfx('meow'); return kick(); }
     if (id === 'luke') { ST.luke = 500; sfx('blip'); say(LUKE[li++ % LUKE.length]); return kick(); }
-    if (!ready()) return wait();
+    if (!ready()) { if (id === 'press') { try { history.replaceState(null, '', '#press'); } catch (x) { } return toast('The shop is still opening (reading the chain). The Token Press opens by itself when it is ready.'); } return wait(); } /* token-press-speed-1104 */
     if (id === 'binder') return openBinder(null);
     if (id === 'register') { sfx('coin'); return SC().sellPick(); }
     if (id === 'trade') { sfx('blip'); return SC().tab('trade'); }
