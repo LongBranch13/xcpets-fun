@@ -33,7 +33,7 @@
 .sh-modal{position:fixed;inset:0;background:#000c;z-index:80;align-items:center;justify-content:center}
 .sh-modal .box{background:#100E14;border:6px solid #D62028;box-shadow:0 0 0 3px #FAFAF5;padding:16px;max-width:760px;width:calc(100% - 24px);max-height:calc(100% - 24px);overflow:auto;color:#FAFAF5}
 .sh-modal h3{font:14px 'Press Start 2P',monospace;color:#E8B33A}
-.sh-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:10px 0}.sh-pk{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.sh-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:10px 0}.sh-pick .sh-more{grid-column:1/-1;justify-self:center}.sh-pk{background:none;border:0;padding:0;cursor:pointer;text-align:left}
 .sh-sellrow{display:flex;gap:18px;align-items:flex-start}.sh-sellrow>.sh-card{flex:0 0 180px}.sh-form label{display:block;margin:6px 0}.sh-form input,.sh-form select{font:inherit;padding:4px;margin-left:6px}
 .sh-exact{font-size:15px}.sh-steps{padding-left:18px;font-size:13px}
 .sh-soon{text-align:center;margin:20px}
