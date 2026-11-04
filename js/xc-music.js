@@ -85,48 +85,98 @@
     return { events: ev, length: pos, title: T.title };
   }
 
+  // ---- meme style (music-btn-pos-1103, owner Nov 3): goofy, bouncy, hooky chiptune. Original melodies, written here note by note.
+  // Each bar = 8 eighth notes. '.' rest, '-' hold previous note. Chords: one per bar, cycling.
+  var MEME = {
+    bop: { title: 'Pixel Bop (meme)', bpm: 128, chords: ['C4 M', 'G3 M', 'A3 m', 'F3 M'], form: 'AABA', duty: 0.25,
+      A: ['C5 C5 E5 G5 - E5 G5 A5', 'G5 - E5 - D5 - . .', 'C5 C5 E5 G5 - E5 A5 C6', 'B5 - G5 - . . . .'],
+      B: ['A5 A5 G5 E5 - C5 D5 E5', 'D5 D5 C5 A4 - G4 A4 C5', 'C5 E5 G5 C6 - B5 G5 E5', 'D5 - - - . . G4 G4'] },
+    spook: { title: 'Grave Wiggle (meme)', bpm: 112, chords: ['A3 m', 'A3 m', 'D3 m', 'E3 M'], form: 'AABA', duty: 0.125,
+      A: ['A4 . C5 . E5 D#5 E5 .', 'A4 . C5 . E5 F5 E5 .', 'D5 . F5 . A5 G#5 A5 .', 'B4 C5 B4 G#4 E4 . . .'],
+      B: ['E5 - D5 - C5 - B4 -', 'A4 C5 E5 A5 - . . .', 'F5 E5 D5 F5 E5 D5 C5 B4', 'G#4 - B4 - E5 - . .'] },
+    battle: { title: 'Bonk Arena (meme)', bpm: 140, chords: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], form: 'AABA', duty: 0.5,
+      A: ['E5 E5 . E5 G5 . E5 D5', 'C5 C5 . C5 E5 . C5 B4', 'D5 D5 . D5 F#5 . A5 G5', 'F#5 - D#5 - B4 - . .'],
+      B: ['G5 . G5 A5 B5 . A5 G5', 'E5 . E5 G5 C6 - B5 A5', 'A5 . A5 G5 F#5 . D5 E5', 'F#5 . B4 . D#5 . F#5 .'] },
+    hop: { title: 'Snack Hop (meme)', bpm: 120, chords: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], form: 'AABA', duty: 0.25,
+      A: ['F5 . A5 F5 C6 . A5 .', 'D5 . F5 D5 A5 . G5 F5', 'Bb4 D5 F5 D5 Bb5 - A5 G5', 'A5 - G5 - E5 - C5 .'],
+      B: ['C6 C6 A5 A5 F5 F5 A5 .', 'D6 C6 A5 F5 D5 - . .', 'Bb5 A5 G5 F5 D5 F5 G5 .', 'G5 - E5 - C5 E5 G5 .'] }
+  };
+  function composeMeme(key) {
+    var T = MEME[key], e8 = 60 / T.bpm / 2, ev = [], bar = 0;
+    T.form.split('').forEach(function (sec) {
+      T[sec].forEach(function (line, bi) {
+        var t0 = bar * 8 * e8, ct = chordTones(T.chords[bi % T.chords.length]), tok = line.split(/\s+/);
+        for (var i = 0; i < 8; i++) {
+          if (tok[i] === '.' || tok[i] === '-') continue;
+          var j = i + 1; while (j < 8 && tok[j] === '-') j++;
+          var held = j - i > 1;
+          ev.push({ t: t0 + i * e8, d: e8 * (held ? (j - i) - 0.2 : 0.6), f: hz(n(tok[i])), v: 0.13, w: 'pulse', duty: T.duty, rel: 0.05, vib: held ? 0.006 : 0 });
+          ev.push({ t: t0 + i * e8 + e8 * 0.02, d: e8 * 0.5, f: hz(n(tok[i]) - 12) * 1.003, v: 0.035, w: 'pulse', duty: 0.5, rel: 0.04 }); // fat double
+        }
+        for (i = 0; i < 8; i++) {
+          ev.push({ t: t0 + i * e8, d: e8 * 0.7, f: hz(ct[0] - 12 + (i % 2 ? 12 : 0)), v: 0.17, w: 'tri', rel: 0.03 }); // bouncy octave bass
+          if (i % 4 === 0) ev.push({ t: t0 + i * e8, d: 0.12, f: 140, v: 0.32, w: 'kick', rel: 0.02 });
+          if (i % 4 === 2) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.12, w: 'noise', dec: 0.06, rel: 0.02 });
+          else ev.push({ t: t0 + i * e8 + e8 * 0.5, d: 0.03, f: 0, v: 0.03, w: 'noise', rel: 0.01 });
+          if (i % 2) ev.push({ t: t0 + i * e8, d: e8 * 0.35, f: hz(ct[(i >> 1) % 3] + 24), v: 0.03, w: 'pulse', duty: 0.125, rel: 0.02 }); // blip arp
+        }
+        bar++;
+      });
+    });
+    return { events: ev, length: bar * 8 * e8, title: T.title };
+  }
+
   // Render to Float32Array of exactly `length` seconds; overflow wraps to the start (seamless loop)
   function render(key, sr) {
     sr = sr || SR;
-    var c = compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
+    var c = MEME[key] ? composeMeme(key) : compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
     c.events.forEach(function (e) {
-      var s0 = Math.round(e.t * sr), len = Math.round(e.d * sr), rel = Math.round((e.w === 'noise' ? 0.06 : 0.9) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
+      var s0 = Math.round(e.t * sr), len = Math.round(e.d * sr), rel = Math.round((e.rel != null ? e.rel : e.w === 'noise' ? 0.06 : 0.9) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
       var nv = 0, nc = 0;
       for (var i = 0; i < tot; i++) {
         var env = i < atk ? i / atk : (i < len ? 1 - 0.3 * (i / len) : 0.7 * Math.pow(1 - (i - len) / rel, 2));
         var x;
         if (e.w === 'pulse') x = (ph < e.duty ? 1 : -1);
         else if (e.w === 'tri') x = 4 * Math.abs(ph - 0.5) - 1;
-        else { if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 2; } x = nv; env = Math.exp(-i / (0.012 * sr)); }
+        else if (e.w === 'kick') { x = 4 * Math.abs(ph - 0.5) - 1; inc = (e.f * Math.exp(-i / (0.03 * sr)) + 45) / sr; env = Math.exp(-i / (0.07 * sr)); }
+        else { if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 2; } x = nv; env = Math.exp(-i / ((e.dec || 0.012) * sr)); }
         ph += e.vib ? inc * (1 + e.vib * Math.sin(i / sr * 2 * Math.PI * 4.5)) : inc; if (ph >= 1) ph -= 1;
         out[(s0 + i) % N] += x * e.v * env;
       }
     });
     // gentle one-pole low-pass (softens the square edges); run twice so the filter state wraps too
-    var a = 0.28, y = 0;
+    var a = MEME[key] ? 0.55 : 0.28, y = 0;
     for (var pass = 0; pass < 2; pass++) for (var i = 0; i < N; i++) { y += a * (out[i] - y); if (pass) out[i] = y; }
+    var pk = 0; for (i = 0; i < N; i++) pk = Math.max(pk, Math.abs(out[i]));
+    var g = pk > 0 ? 0.8 / pk : 1; for (i = 0; i < N; i++) out[i] *= g; // peak 0.8 before the volume gain (max 0.55) -> never above 0.44 full scale
     return { samples: out, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
-  function pickTrack(path) {
-    var p = String(path || '').toLowerCase();
-    if (/cemetery/.test(p)) return 'cemetery';
-    if (/fight|raid/.test(p)) return 'arena';
-    return 'yard';
+  // style 'meme' (default) or 'chill'
+  function pickTrack(path, style) {
+    var p = String(path || '').toLowerCase(), chill = style === 'chill';
+    if (/cemetery/.test(p)) return chill ? 'cemetery' : 'spook';
+    if (/fight|raid|arena/.test(p)) return chill ? 'arena' : 'battle';
+    if (!chill && /pet|breed|hatch|shop/.test(p)) return 'hop';
+    return chill ? 'yard' : 'bop';
   }
 
-  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS) };
+  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), memeTracks: Object.keys(MEME) };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   // ---- browser player ----
-  var ctx = null, src = null, gain = null, cache = {};
-  api.VOLUME = 0.14;
+  var ctx = null, src = null, srcKey = '', gain = null, cache = {};
+  api.LEVELS = { low: 0.18, med: 0.35, high: 0.55 };
+  api.VOLUME = 0.35;
+  api.style = 'meme';
+  api.setVolume = function (v) { api.VOLUME = v; if (ctx && src) { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(v, ctx.currentTime, 0.1); } };
+  api.setStyle = function (st) { api.style = st === 'chill' ? 'chill' : 'meme'; if (src) { try { src.stop(); } catch (e) {} src.disconnect(); src = null; api.start(); } };
   api.start = function () {
     var AC = root.AudioContext || root.webkitAudioContext; if (!AC) return false;
     if (!ctx) { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination); }
     if (ctx.state === 'suspended') ctx.resume();
     if (!src) {
-      var key = pickTrack(root.location.pathname);
+      var key = pickTrack(root.location.pathname, api.style); srcKey = key;
       var r = cache[key] || (cache[key] = render(key, SR));
       var buf = ctx.createBuffer(1, r.samples.length, r.sampleRate); buf.getChannelData(0).set(r.samples);
       src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();

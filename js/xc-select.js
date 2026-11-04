@@ -104,16 +104,21 @@
   window.XcSelect = XcSelect;
 })();
 
-/* ambient-music-1103 (PREVIEW, UI only, no rule change): small pixel speaker toggle, bottom-left on every page.
- * Muted by default. No audio code or sound loads until a tap: the first tap pulls js/xc-music.js (synth, no audio files).
- * On/off is kept in localStorage 'xcpets.music'; when it was left on, music starts on the first tap/key anywhere. */
+/* ambient-music-1103 + music-btn-pos-1103 (UI only, no rule change): small pixel speaker toggle on every page.
+ * Lives inside the sticky site header, just left of the glossary (book) button, so it never floats over Connect wallet / the wallet
+ * pill, the refresh bar, toasts, tips, help buttons or any page control. Pages without the header (404, verify) get a fixed spot on
+ * the right edge a little below the middle, clear of every top/bottom fixed control.
+ * Muted by default. No audio code loads until a tap: the first tap pulls js/xc-music.js (synth, no audio files).
+ * Tap = on/off. While on, a small knob under it opens Volume (Low / Med / High) and Style (Meme / Chill); long-press the speaker opens it too.
+ * Saved in localStorage: 'xcpets.music' on|off, 'xcpets.music.vol' low|med|high (default med), 'xcpets.music.style' meme|chill (default meme). */
 (function () {
   'use strict';
   if (window.__xcMusicBtn) return; window.__xcMusicBtn = 1;
   var KEY = 'xcpets.music', cur = document.currentScript, ver = '';
   try { ver = (/[?&]v=([^&]+)/.exec(cur && cur.src) || [])[1] || ''; } catch (e) {}
-  function getOn() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } }
-  function setOn(v) { try { localStorage.setItem(KEY, v ? 'on' : 'off'); } catch (e) {} }
+  function get(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var LV = { low: 0.18, med: 0.35, high: 0.55 };
   var loading = null;
   function load(cb) {
     if (window.XCMusic) return cb(window.XCMusic);
@@ -128,25 +133,67 @@
   function init() {
     if (!document.body || document.getElementById('xc-music-btn')) return;
     var st = document.createElement('style');
-    st.textContent = '#xc-music-btn{position:fixed;left:10px;bottom:10px;z-index:9000;width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;' +
-      'background:#1f2d23;color:#e9fbe9;border:2px solid #000;border-radius:0;box-shadow:2px 2px 0 #000,inset -2px -2px 0 #14201a;cursor:pointer;opacity:.82;image-rendering:pixelated}' +
-      '#xc-music-btn:hover{opacity:1;border-color:#3ddc84}#xc-music-btn:focus-visible{outline:2px solid #ffc93c;outline-offset:1px}' +
+    st.textContent = '#xc-music{position:fixed;right:6px;top:calc(50% + 60px);z-index:9000;display:flex;flex-direction:column;align-items:flex-end;gap:3px}' +
+      '#xc-music.hdr{position:relative;right:auto;top:auto;z-index:2;flex-direction:row;align-items:center;margin-left:auto;margin-right:6px;flex:0 0 auto;height:30px}' +
+      '#xc-music.hdr.abs{position:absolute;top:8px;margin:0}#xc-music.hdr #xc-music-btn{width:30px;height:30px}#xc-music.hdr #xc-music-knob{width:16px;height:30px}#xc-music.hdr #xc-music-pan{right:0;top:38px;z-index:9001}' +
+      '#xc-music button{font:inherit;padding:0;display:flex;align-items:center;justify-content:center;background:#1f2d23;color:#e9fbe9;border:2px solid #000;border-radius:0;box-shadow:2px 2px 0 #000,inset -2px -2px 0 #14201a;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '#xc-music-btn{width:34px;height:34px;opacity:.82}#xc-music-btn:hover,#xc-music-btn[aria-pressed="true"]{opacity:1}#xc-music button:hover{border-color:#3ddc84}#xc-music button:focus-visible{outline:2px solid #ffc93c;outline-offset:1px}' +
       '#xc-music-btn[aria-pressed="true"]{color:#3ddc84}#xc-music-btn svg{width:20px;height:20px;shape-rendering:crispEdges;fill:currentColor}' +
-      '@media print{#xc-music-btn{display:none}}';
+      '#xc-music-knob{width:34px;height:16px;font-size:10px;line-height:1;letter-spacing:1px}#xc-music-knob[hidden]{display:none}' +
+      '#xc-music-pan{position:absolute;right:42px;top:0;background:#14201a;color:#e9fbe9;border:2px solid #000;box-shadow:3px 3px 0 #000;padding:6px;display:grid;gap:5px;font-size:11px;white-space:nowrap}' +
+      '#xc-music-pan[hidden]{display:none}#xc-music-pan .r{display:flex;gap:3px;align-items:center}#xc-music-pan .l{width:42px;opacity:.8}' +
+      '#xc-music-pan button{padding:4px 7px;min-height:26px;box-shadow:1px 1px 0 #000}#xc-music-pan button[aria-checked="true"]{background:#3ddc84;color:#04130a;font-weight:700}' +
+      '@media print{#xc-music{display:none}}';
     document.head.appendChild(st);
+    var wrap = document.createElement('div'); wrap.id = 'xc-music';
     var b = document.createElement('button'); b.id = 'xc-music-btn'; b.type = 'button';
-    var on = getOn();
-    function paint() { b.setAttribute('aria-pressed', on ? 'true' : 'false'); var t = on ? 'Music on (tap to mute)' : 'Music off (tap to play)'; b.title = t; b.setAttribute('aria-label', t);
-      b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' + SPK + (on ? WAVES : MUTE) + '</svg>'; }
+    var k = document.createElement('button'); k.id = 'xc-music-knob'; k.type = 'button'; k.title = 'Music volume and style'; k.setAttribute('aria-label', k.title); k.setAttribute('aria-expanded', 'false'); k.textContent = '\u2261';
+    var pan = document.createElement('div'); pan.id = 'xc-music-pan'; pan.hidden = true; pan.setAttribute('role', 'dialog'); pan.setAttribute('aria-label', 'Music settings');
+    var on = get(KEY, 'off') === 'on', vol = get(KEY + '.vol', 'med'), sty = get(KEY + '.style', 'meme');
+    if (!LV[vol]) vol = 'med'; if (sty !== 'chill') sty = 'meme';
+    function chips(lbl, name, opts, val) { return '<div class="r" role="radiogroup" aria-label="' + lbl + '"><span class="l">' + lbl + '</span>' + opts.map(function (o) {
+      return '<button type="button" role="radio" data-' + name + '="' + o[0] + '" aria-checked="' + (o[0] === val) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+    function paint() {
+      b.setAttribute('aria-pressed', on ? 'true' : 'false'); var t = on ? 'Music on (tap to mute, hold for settings)' : 'Music off (tap to play)'; b.title = t; b.setAttribute('aria-label', t);
+      b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' + SPK + (on ? WAVES : MUTE) + '</svg>';
+      k.hidden = !on; if (!on) { pan.hidden = true; k.setAttribute('aria-expanded', 'false'); }
+      pan.innerHTML = chips('Volume', 'vol', [['low', 'Low'], ['med', 'Med'], ['high', 'High']], vol) + chips('Style', 'sty', [['meme', 'Meme'], ['chill', 'Chill']], sty);
+    }
+    function apply(M) { if (!M) return; M.style = sty; M.setVolume(LV[vol]); }
+    function play() { load(function (M) { if (M && on) { apply(M); M.start(); } }); }
     paint();
+    var held = false, ht = 0;
+    b.addEventListener('pointerdown', function () { held = false; clearTimeout(ht); ht = setTimeout(function () { held = true; if (!on) { on = true; set(KEY, 'on'); paint(); play(); } pan.hidden = false; k.setAttribute('aria-expanded', 'true'); }, 550); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, function () { clearTimeout(ht); }); });
+    b.addEventListener('contextmenu', function (e) { if (held) e.preventDefault(); });
     b.addEventListener('click', function (e) {
-      e.stopPropagation(); on = !on; setOn(on); paint();
-      if (on) load(function (M) { if (M && on) M.start(); }); else if (window.XCMusic) window.XCMusic.stop();
+      e.stopPropagation(); if (held) { held = false; return; }
+      on = !on; set(KEY, on ? 'on' : 'off'); paint();
+      if (on) play(); else if (window.XCMusic) window.XCMusic.stop();
     });
-    document.body.appendChild(b);
+    k.addEventListener('click', function (e) { e.stopPropagation(); pan.hidden = !pan.hidden; k.setAttribute('aria-expanded', String(!pan.hidden)); });
+    pan.addEventListener('click', function (e) {
+      e.stopPropagation(); var t = e.target.closest && e.target.closest('button'); if (!t) return;
+      if (t.dataset.vol) { vol = t.dataset.vol; set(KEY + '.vol', vol); if (window.XCMusic) window.XCMusic.setVolume(LV[vol]); }
+      if (t.dataset.sty && t.dataset.sty !== sty) { sty = t.dataset.sty; set(KEY + '.style', sty); if (window.XCMusic) window.XCMusic.setStyle(sty); }
+      paint(); pan.hidden = false;
+    });
+    document.addEventListener('click', function (e) { if (!pan.hidden && !wrap.contains(e.target)) { pan.hidden = true; k.setAttribute('aria-expanded', 'false'); } }, true);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pan.hidden) { pan.hidden = true; k.setAttribute('aria-expanded', 'false'); k.focus(); } });
+    wrap.appendChild(b); wrap.appendChild(k); wrap.appendChild(pan);
+    function place() { // header slot when there is one; the book button may be added a moment later by other scripts
+      var h = document.querySelector('header.nav'), tools = h && h.querySelector('#ipTools');
+      if (!h) { if (wrap.parentNode !== document.body) { wrap.className = ''; document.body.appendChild(wrap); } return; }
+      if (tools) { if (wrap.nextSibling !== tools) h.insertBefore(wrap, tools); } else if (wrap.parentNode !== h) h.appendChild(wrap);
+      var abs = tools && getComputedStyle(tools).position === 'absolute'; // phones: book button is pinned top-right, sit just left of it
+      wrap.className = 'hdr' + (abs ? ' abs' : '');
+      wrap.style.right = abs ? (parseFloat(getComputedStyle(tools).right) + tools.offsetWidth + 6) + 'px' : '';
+    }
+    place(); setTimeout(place, 0); window.addEventListener('load', function () { place(); setTimeout(place, 1500); });
+    var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(place, 150); });
     if (on) { // browsers need a gesture before sound: start on the first tap or key anywhere
       var go = function (e) { document.removeEventListener('pointerdown', go, true); document.removeEventListener('keydown', go, true);
-        if (e && e.target && e.target.closest && e.target.closest('#xc-music-btn')) return; if (on) load(function (M) { if (M && on) M.start(); }); };
+        if (e && e.target && e.target.closest && e.target.closest('#xc-music')) return; if (on) play(); };
       document.addEventListener('pointerdown', go, true); document.addEventListener('keydown', go, true);
     }
   }
