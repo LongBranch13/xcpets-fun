@@ -109,8 +109,8 @@
  * pill, the refresh bar, toasts, tips, help buttons or any page control. Pages without the header (404, verify) get a fixed spot on
  * the right edge a little below the middle, clear of every top/bottom fixed control.
  * Muted by default. No audio code loads until a tap: the first tap pulls js/xc-music.js (synth, no audio files).
- * Tap = on/off. While on, a small knob under it opens Volume (Low / Med / High) and Style (Meme / Chill); long-press the speaker opens it too.
- * Saved in localStorage: 'xcpets.music' on|off, 'xcpets.music.vol' low|med|high (default med), 'xcpets.music.style' meme|chill (default meme). */
+ * Tap = on/off. While on, a small knob under it opens Volume (Low / Med / High) and Style (8-bit / Chill); long-press the speaker opens it too.
+ * Saved in localStorage: 'xcpets.music' on|off, 'xcpets.music.vol' low|med|high (default med), 'xcpets.music.style' chip|chill (default chip). */
 (function () {
   'use strict';
   if (window.__xcMusicBtn) return; window.__xcMusicBtn = 1;
@@ -149,15 +149,15 @@
     var b = document.createElement('button'); b.id = 'xc-music-btn'; b.type = 'button';
     var k = document.createElement('button'); k.id = 'xc-music-knob'; k.type = 'button'; k.title = 'Music volume and style'; k.setAttribute('aria-label', k.title); k.setAttribute('aria-expanded', 'false'); k.textContent = '\u2261';
     var pan = document.createElement('div'); pan.id = 'xc-music-pan'; pan.hidden = true; pan.setAttribute('role', 'dialog'); pan.setAttribute('aria-label', 'Music settings');
-    var on = get(KEY, 'off') === 'on', vol = get(KEY + '.vol', 'med'), sty = get(KEY + '.style', 'meme');
-    if (!LV[vol]) vol = 'med'; if (sty !== 'chill') sty = 'meme';
+    var on = get(KEY, 'off') === 'on', vol = get(KEY + '.vol', 'med'), sty = get(KEY + '.style', 'chip');
+    if (!LV[vol]) vol = 'med'; if (sty !== 'chill') sty = 'chip';
     function chips(lbl, name, opts, val) { return '<div class="r" role="radiogroup" aria-label="' + lbl + '"><span class="l">' + lbl + '</span>' + opts.map(function (o) {
       return '<button type="button" role="radio" data-' + name + '="' + o[0] + '" aria-checked="' + (o[0] === val) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
     function paint() {
       b.setAttribute('aria-pressed', on ? 'true' : 'false'); var t = on ? 'Music on (tap to mute, hold for settings)' : 'Music off (tap to play)'; b.title = t; b.setAttribute('aria-label', t);
       b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' + SPK + (on ? WAVES : MUTE) + '</svg>';
       k.hidden = !on; if (!on) { pan.hidden = true; k.setAttribute('aria-expanded', 'false'); }
-      pan.innerHTML = chips('Volume', 'vol', [['low', 'Low'], ['med', 'Med'], ['high', 'High']], vol) + chips('Style', 'sty', [['meme', 'Meme'], ['chill', 'Chill']], sty);
+      pan.innerHTML = chips('Volume', 'vol', [['low', 'Low'], ['med', 'Med'], ['high', 'High']], vol) + chips('Style', 'sty', [['chip', '8-bit'], ['chill', 'Chill']], sty);
     }
     function apply(M) { if (!M) return; M.style = sty; M.setVolume(LV[vol]); }
     function play() { load(function (M) { if (M && on) { apply(M); M.start(); } }); }

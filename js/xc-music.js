@@ -85,43 +85,74 @@
     return { events: ev, length: pos, title: T.title };
   }
 
-  // ---- meme style (music-btn-pos-1103, owner Nov 3): goofy, bouncy, hooky chiptune. Original melodies, written here note by note.
-  // Each bar = 8 eighth notes. '.' rest, '-' hold previous note. Chords: one per bar, cycling.
-  var MEME = {
-    bop: { title: 'Pixel Bop (meme)', bpm: 128, chords: ['C4 M', 'G3 M', 'A3 m', 'F3 M'], form: 'AABA', duty: 0.25,
-      A: ['C5 C5 E5 G5 - E5 G5 A5', 'G5 - E5 - D5 - . .', 'C5 C5 E5 G5 - E5 A5 C6', 'B5 - G5 - . . . .'],
-      B: ['A5 A5 G5 E5 - C5 D5 E5', 'D5 D5 C5 A4 - G4 A4 C5', 'C5 E5 G5 C6 - B5 G5 E5', 'D5 - - - . . G4 G4'] },
-    spook: { title: 'Grave Wiggle (meme)', bpm: 112, chords: ['A3 m', 'A3 m', 'D3 m', 'E3 M'], form: 'AABA', duty: 0.125,
-      A: ['A4 . C5 . E5 D#5 E5 .', 'A4 . C5 . E5 F5 E5 .', 'D5 . F5 . A5 G#5 A5 .', 'B4 C5 B4 G#4 E4 . . .'],
-      B: ['E5 - D5 - C5 - B4 -', 'A4 C5 E5 A5 - . . .', 'F5 E5 D5 F5 E5 D5 C5 B4', 'G#4 - B4 - E5 - . .'] },
-    battle: { title: 'Bonk Arena (meme)', bpm: 140, chords: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], form: 'AABA', duty: 0.5,
-      A: ['E5 E5 . E5 G5 . E5 D5', 'C5 C5 . C5 E5 . C5 B4', 'D5 D5 . D5 F#5 . A5 G5', 'F#5 - D#5 - B4 - . .'],
-      B: ['G5 . G5 A5 B5 . A5 G5', 'E5 . E5 G5 C6 - B5 A5', 'A5 . A5 G5 F#5 . D5 E5', 'F#5 . B4 . D#5 . F#5 .'] },
-    hop: { title: 'Snack Hop (meme)', bpm: 120, chords: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], form: 'AABA', duty: 0.25,
-      A: ['F5 . A5 F5 C6 . A5 .', 'D5 . F5 D5 A5 . G5 F5', 'Bb4 D5 F5 D5 Bb5 - A5 G5', 'A5 - G5 - E5 - C5 .'],
-      B: ['C6 C6 A5 A5 F5 F5 A5 .', 'D6 C6 A5 F5 D5 - . .', 'Bb5 A5 G5 F5 D5 F5 G5 .', 'G5 - E5 - C5 E5 G5 .'] }
+  // ---- 8-bit style (default, owner Nov 4): classic melodic NES / Game Boy chiptune. Original melodies, written here note by note.
+  // Bars of 8 eighth notes: '.' rest, '-' hold. Form: verse (8) chorus (8) verse 2 (8, + echo lead) chorus 2 (8) bridge (4) -> ~60-75 s.
+  // Verse/chorus = 4 written bars, played twice; the 2nd time bars 7-8 use the alt ending.
+  var CHIP = {
+    meadow: { title: 'Pixel Meadow', bpm: 124, duty: 0.25,
+      vc: ['C4 M', 'A3 m', 'F3 M', 'G3 M'], cc: ['F3 M', 'G3 M', 'E3 m', 'A3 m'], bc: ['D3 m', 'E3 m', 'F3 M', 'G3 M'],
+      V: ['E5 - G5 E5 D5 C5 D5 E5', 'C5 - . A4 C5 E5 D5 C5', 'A4 - C5 F5 E5 - D5 C5', 'D5 - - - G4 - . .'],
+      Va: ['A4 C5 F5 A5 G5 - F5 E5', 'D5 - E5 F5 G5 - . .'],
+      C: ['C6 - A5 - G5 A5 C6 -', 'D6 - B5 - G5 - D5 E5', 'G5 - E5 - B4 E5 G5 B5', 'A5 - - - E5 - C5 .'],
+      Ca: ['C6 - A5 C6 F6 - E6 D6', 'D6 - - C6 B5 - G5 .'],
+      B: ['F5 - E5 D5 A4 - D5 F5', 'G5 - F5 E5 B4 - E5 G5', 'A5 - G5 F5 C5 - F5 A5', 'B5 - - - D6 - - -'] },
+    crypt: { title: 'Lantern Crypt', bpm: 116, duty: 0.125,
+      vc: ['A3 m', 'F3 M', 'C4 M', 'G3 M'], cc: ['D3 m', 'E3 M', 'A3 m', 'F3 M'], bc: ['F3 M', 'G3 M', 'C4 M', 'E3 M'],
+      V: ['A4 - C5 E5 A5 - G5 E5', 'F5 - E5 C5 A4 - C5 .', 'E5 - D5 C5 G4 - C5 E5', 'D5 - - B4 G4 - . .'],
+      Va: ['E5 - G5 C6 B5 - G5 E5', 'D5 - B4 D5 G5 - . .'],
+      C: ['F5 - A5 - D6 - C6 A5', 'G#5 - B5 - E6 - D6 B5', 'C6 - B5 A5 E5 - A5 C6', 'C6 - - - A5 - F5 .'],
+      Ca: ['F5 A5 D6 F6 E6 - D6 C6', 'B5 - G#5 - E5 - . .'],
+      B: ['A5 - C6 - F5 - A5 C6', 'B5 - D6 - G5 - B5 D6', 'C6 - E6 - G5 - C6 E6', 'G#5 - - - B5 - E5 .'] },
+    'arena-chip': { title: 'Arena Rush', bpm: 136, duty: 0.5,
+      vc: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], cc: ['C3 M', 'D3 M', 'B2 m', 'E3 m'], bc: ['A2 m', 'D3 M', 'G3 M', 'B2 M'],
+      V: ['E5 - B4 E5 G5 - F#5 E5', 'E5 - C5 E5 G5 - A5 G5', 'F#5 - D5 F#5 A5 - G5 F#5', 'D#5 - - - B4 - . .'],
+      Va: ['F#5 A5 D6 - C#6 - A5 F#5', 'D#6 - B5 - F#5 - D#5 .'],
+      C: ['G5 - G5 A5 B5 - A5 G5', 'A5 - A5 B5 C6 - B5 A5', 'B5 - F#5 - D5 F#5 B5 D6', 'E6 - - - B5 - G5 .'],
+      Ca: ['D6 - C#6 B5 F#5 - B5 D6', 'E6 - D6 B5 G5 - E5 .'],
+      B: ['C6 - B5 A5 E5 - A5 C6', 'D6 - C6 A5 F#5 - A5 D6', 'B5 - A5 G5 D5 - G5 B5', 'D#6 - - - F#5 - B5 .'] },
+    parade: { title: 'Snack Parade', bpm: 120, duty: 0.25,
+      vc: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], cc: ['Bb2 M', 'C3 M', 'A2 m', 'D3 m'], bc: ['G2 m', 'A2 m', 'Bb2 M', 'C3 M'],
+      V: ['C5 - F5 - A5 G5 F5 -', 'D5 - F5 - A5 - G5 F5', 'D5 - Bb4 D5 F5 - E5 D5', 'E5 - - - C5 - . .'],
+      Va: ['D5 F5 Bb5 - A5 - G5 F5', 'G5 - - E5 C5 - . .'],
+      C: ['F5 - Bb5 - D6 - C6 Bb5', 'G5 - C6 - E6 - D6 C6', 'C6 - A5 - E5 A5 C6 E6', 'D6 - - - A5 - F5 .'],
+      Ca: ['Bb5 - D6 F6 E6 - D6 C6', 'C6 - - Bb5 G5 - E5 .'],
+      B: ['D5 - G5 Bb5 A5 - G5 F5', 'E5 - A5 C6 Bb5 - A5 G5', 'F5 - Bb5 D6 C6 - Bb5 A5', 'G5 - - - C6 - E5 .'] }
   };
-  function composeMeme(key) {
-    var T = MEME[key], e8 = 60 / T.bpm / 2, ev = [], bar = 0;
-    T.form.split('').forEach(function (sec) {
-      T[sec].forEach(function (line, bi) {
-        var t0 = bar * 8 * e8, ct = chordTones(T.chords[bi % T.chords.length]), tok = line.split(/\s+/);
-        for (var i = 0; i < 8; i++) {
-          if (tok[i] === '.' || tok[i] === '-') continue;
-          var j = i + 1; while (j < 8 && tok[j] === '-') j++;
-          var held = j - i > 1;
-          ev.push({ t: t0 + i * e8, d: e8 * (held ? (j - i) - 0.2 : 0.6), f: hz(n(tok[i])), v: 0.13, w: 'pulse', duty: T.duty, rel: 0.05, vib: held ? 0.006 : 0 });
-          ev.push({ t: t0 + i * e8 + e8 * 0.02, d: e8 * 0.5, f: hz(n(tok[i]) - 12) * 1.003, v: 0.035, w: 'pulse', duty: 0.5, rel: 0.04 }); // fat double
-        }
-        for (i = 0; i < 8; i++) {
-          ev.push({ t: t0 + i * e8, d: e8 * 0.7, f: hz(ct[0] - 12 + (i % 2 ? 12 : 0)), v: 0.17, w: 'tri', rel: 0.03 }); // bouncy octave bass
-          if (i % 4 === 0) ev.push({ t: t0 + i * e8, d: 0.12, f: 140, v: 0.32, w: 'kick', rel: 0.02 });
-          if (i % 4 === 2) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.12, w: 'noise', dec: 0.06, rel: 0.02 });
-          else ev.push({ t: t0 + i * e8 + e8 * 0.5, d: 0.03, f: 0, v: 0.03, w: 'noise', rel: 0.01 });
-          if (i % 2) ev.push({ t: t0 + i * e8, d: e8 * 0.35, f: hz(ct[(i >> 1) % 3] + 24), v: 0.03, w: 'pulse', duty: 0.125, rel: 0.02 }); // blip arp
-        }
-        bar++;
-      });
+  function composeChip(key) {
+    var T = CHIP[key], e8 = 60 / T.bpm / 2, ev = [], bar = 0;
+    var sec = [];
+    function part(name, ch, lines, alt, opt) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ s: name, ch: ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], o: opt, last: false }); }
+    part('V', T.vc, T.V, T.Va, {}); part('C', T.cc, T.C, T.Ca, { harm: 1 });
+    part('V', T.vc, T.V, T.Va, { echo: 1 }); part('C', T.cc, T.C, T.Ca, { harm: 1, echo: 1 });
+    for (var i = 0; i < 4; i++) sec.push({ s: 'B', ch: T.bc[i], m: T.B[i], o: { half: 1 } });
+    sec[sec.length - 1].fill = true;
+    sec.forEach(function (S) {
+      var t0 = bar * 8 * e8, ct = chordTones(S.ch), tok = S.m.split(/\s+/), chorus = S.s === 'C';
+      for (var i = 0; i < 8; i++) {
+        if (tok[i] === '.' || tok[i] === '-') continue;
+        var j = i + 1; while (j < 8 && tok[j] === '-') j++;
+        var p = n(tok[i]), held = j - i > 1, d = e8 * ((j - i) - (held ? 0.15 : 0.3));
+        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.12, w: 'pulse', duty: T.duty, rel: 0.06, vib: held ? 0.012 : 0, vd: 0.14 });
+        if (S.o.echo) ev.push({ t: t0 + (i + 3) * e8, d: d, f: hz(p), v: 0.04, w: 'pulse', duty: 0.25, rel: 0.06 }); // GB-style delay
+        if (S.o.harm) { var h = p - 3, ok = [0, ct[1] - ct[0], 7]; while (h > p - 9 && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--; // nearest chord tone a 3rd-6th below
+          ev.push({ t: t0 + i * e8, d: d, f: hz(h), v: 0.05, w: 'pulse', duty: 0.5, rel: 0.06, vib: held ? 0.01 : 0, vd: 0.14 }); }
+      }
+      // fast NES chord arpeggio: 16ths in verses/bridge, 32nds in choruses
+      var as = chorus ? e8 / 4 : e8 / 2, tri = [ct[0], ct[1], ct[2], ct[1] + 12];
+      for (var k = 0; k < 8 * e8 / as - 0.5; k++) ev.push({ t: t0 + k * as, d: as * 0.8, f: hz(tri[k % (chorus ? 3 : 4)] + 24), v: chorus ? 0.032 : 0.028, w: 'pulse', duty: 0.125, rel: 0.015 });
+      // driving triangle bass
+      var bp = chorus ? [0, 12, 0, 12, 0, 12, 7, 12] : S.o.half ? [0, null, 12, null, 7, null, 12, 7] : [0, 0, 12, 0, 0, 12, 7, 12];
+      for (i = 0; i < 8; i++) if (bp[i] != null) ev.push({ t: t0 + i * e8, d: e8 * 0.8, f: hz(ct[0] - 12 + bp[i]), v: 0.2, w: 'tri', rel: 0.03 });
+      // noise-channel drums
+      for (i = 0; i < 8; i++) {
+        var kick = S.o.half ? i === 0 || i === 5 : (i % 4 === 0 || (chorus && i === 7)), snare = S.o.half ? i === 4 : i % 4 === 2;
+        if (S.fill && i >= 4) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e8, d: 0.1, f: 0, v: 0.035 + 0.01 * (i - 4) + 0.005 * q, w: 'noise', dec: 0.05, rel: 0.02 }); continue; }
+        if (kick) ev.push({ t: t0 + i * e8, d: 0.12, f: 140, v: 0.3, w: 'kick', rel: 0.02 });
+        if (snare) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.13, w: 'noise', dec: 0.07, rel: 0.02 });
+        ev.push({ t: t0 + i * e8 + (chorus ? 0 : e8 * 0.5), d: 0.03, f: 0, v: 0.028, w: 'noise', rel: 0.01 });
+        if (chorus) ev.push({ t: t0 + i * e8 + e8 * 0.5, d: 0.03, f: 0, v: 0.02, w: 'noise', rel: 0.01 });
+      }
+      bar++;
     });
     return { events: ev, length: bar * 8 * e8, title: T.title };
   }
@@ -129,7 +160,7 @@
   // Render to Float32Array of exactly `length` seconds; overflow wraps to the start (seamless loop)
   function render(key, sr) {
     sr = sr || SR;
-    var c = MEME[key] ? composeMeme(key) : compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
+    var c = CHIP[key] ? composeChip(key) : compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
     c.events.forEach(function (e) {
       var s0 = Math.round(e.t * sr), len = Math.round(e.d * sr), rel = Math.round((e.rel != null ? e.rel : e.w === 'noise' ? 0.06 : 0.9) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
       var nv = 0, nc = 0;
@@ -140,37 +171,40 @@
         else if (e.w === 'tri') x = 4 * Math.abs(ph - 0.5) - 1;
         else if (e.w === 'kick') { x = 4 * Math.abs(ph - 0.5) - 1; inc = (e.f * Math.exp(-i / (0.03 * sr)) + 45) / sr; env = Math.exp(-i / (0.07 * sr)); }
         else { if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 2; } x = nv; env = Math.exp(-i / ((e.dec || 0.012) * sr)); }
-        ph += e.vib ? inc * (1 + e.vib * Math.sin(i / sr * 2 * Math.PI * 4.5)) : inc; if (ph >= 1) ph -= 1;
+        ph += e.vib ? inc * (1 + e.vib * Math.min(1, Math.max(0, i / sr - (e.vd || 0)) / 0.15) * Math.sin(i / sr * 2 * Math.PI * 5.5)) : inc; // delayed vibrato if (ph >= 1) ph -= 1;
         out[(s0 + i) % N] += x * e.v * env;
       }
     });
     // gentle one-pole low-pass (softens the square edges); run twice so the filter state wraps too
-    var a = MEME[key] ? 0.55 : 0.28, y = 0;
+    var a = CHIP[key] ? 0.6 : 0.28, y = 0;
     for (var pass = 0; pass < 2; pass++) for (var i = 0; i < N; i++) { y += a * (out[i] - y); if (pass) out[i] = y; }
+    // DC blocker (pulse waves are lopsided; without this the level jumps at the loop point). Two passes so its state wraps too.
+    var xp = 0, yp = 0, R = 0.997, o;
+    for (pass = 0; pass < 2; pass++) for (i = 0; i < N; i++) { o = out[i] - xp + R * yp; xp = out[i]; yp = o; if (pass) out[i] = o; }
     var pk = 0; for (i = 0; i < N; i++) pk = Math.max(pk, Math.abs(out[i]));
     var g = pk > 0 ? 0.8 / pk : 1; for (i = 0; i < N; i++) out[i] *= g; // peak 0.8 before the volume gain (max 0.55) -> never above 0.44 full scale
     return { samples: out, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
-  // style 'meme' (default) or 'chill'
+  // style 'chip' (default, classic 8-bit) or 'chill'
   function pickTrack(path, style) {
     var p = String(path || '').toLowerCase(), chill = style === 'chill';
-    if (/cemetery/.test(p)) return chill ? 'cemetery' : 'spook';
-    if (/fight|raid|arena/.test(p)) return chill ? 'arena' : 'battle';
-    if (!chill && /pet|breed|hatch|shop/.test(p)) return 'hop';
-    return chill ? 'yard' : 'bop';
+    if (/cemetery/.test(p)) return chill ? 'cemetery' : 'crypt';
+    if (/fight|raid|arena/.test(p)) return chill ? 'arena' : 'arena-chip';
+    if (!chill && /pet|breed|hatch|shop/.test(p)) return 'parade';
+    return chill ? 'yard' : 'meadow';
   }
 
-  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), memeTracks: Object.keys(MEME) };
+  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), chipTracks: Object.keys(CHIP) };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   // ---- browser player ----
   var ctx = null, src = null, srcKey = '', gain = null, cache = {};
   api.LEVELS = { low: 0.18, med: 0.35, high: 0.55 };
   api.VOLUME = 0.35;
-  api.style = 'meme';
+  api.style = 'chip';
   api.setVolume = function (v) { api.VOLUME = v; if (ctx && src) { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(v, ctx.currentTime, 0.1); } };
-  api.setStyle = function (st) { api.style = st === 'chill' ? 'chill' : 'meme'; if (src) { try { src.stop(); } catch (e) {} src.disconnect(); src = null; api.start(); } };
+  api.setStyle = function (st) { api.style = st === 'chill' ? 'chill' : 'chip'; if (src) { try { src.stop(); } catch (e) {} src.disconnect(); src = null; api.start(); } };
   api.start = function () {
     var AC = root.AudioContext || root.webkitAudioContext; if (!AC) return false;
     if (!ctx) { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination); }
