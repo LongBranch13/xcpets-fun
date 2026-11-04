@@ -2363,7 +2363,7 @@
    * turn into base stats. Shard power in any pet is at most +15 in every generation, so it cannot stack up over a family line. The breed carry
    * value and a Jackpot Egg's wild parent use base stats + shards the same way. Per stat the inherited points are also capped at
    * floor(A's shards / 2) + floor(B's shards / 2), so a hybrid's kept best stat cannot inflate them. */
-  var ACTIVATE_QUEST_SHARDS_BLOCK = 974478; /* tip 974472 (mempool.space + blockstream.info, Nov 3 2026 10:03 PM CT) + 6; owner-approved, deployed */
+  var ACTIVATE_QUEST_SHARDS_BLOCK = 974485; /* tip 974479 (mempool.space + blockstream.info, Nov 3 2026 10:23 PM CT) + 6; owner-approved, deployed */
   function shardsOn(b) { return ACTIVATE_QUEST_SHARDS_BLOCK != null && b != null && b >= ACTIVATE_QUEST_SHARDS_BLOCK; }
   var QUEST_SHARDS = { spam: [2, 1], cold: [3, 1], kek: [4, 2], wiz: [5, 2], mine: [6, 3] }, SHARD_CAP = 15, SHARD_STAT_MAX = 8;
   function shardSum(p) { var S = p && p.shards, t = 0; if (S) for (var k in S) t += S[k] || 0; return t; }
