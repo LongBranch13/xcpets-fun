@@ -1,6 +1,6 @@
 {
- "lastBlock": 974594,
- "count": 117,
+ "lastBlock": 974597,
+ "count": 118,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1404,6 +1404,18 @@
    "name": "Wizard",
    "species": "wizard",
    "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 43295,
+   "asset": "A9506000612284417342",
+   "tiedBlock": 974596,
+   "tiedTx": "8745781c8fd96eb0cdff9e9ba623141ce9d12acce73d9aa8ae77eaf3924bf6b0",
+   "kind": "deed",
+   "name": "Kigon",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
