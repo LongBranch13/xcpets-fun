@@ -15,7 +15,7 @@ const KEYS = c.PetCore.STAT_KEYS, sum = o => Object.values(o || {}).reduce((a, b
 const pet = (id, sp, st, extra) => Object.assign({ id, species: sp, tier: 2, stats: Object.assign({}, st), parents: null, children: [], breeds: 0, carried: [] }, extra || {});
 const flat = v => KEYS.reduce((o, k) => (o[k] = v, o), {});
 
-t('gate: 974462 (tip 974456 + 6), off before it, null-able', () => { assert.strictEqual(GATE0, 974462); assert.strictEqual(V.shardsOn(GATE0 - 1), false); assert.strictEqual(V.shardsOn(GATE0), true);
+t('gate: 974478 (tip 974472 + 6), off before it, null-able', () => { assert.strictEqual(GATE0, 974478); assert.strictEqual(V.shardsOn(GATE0 - 1), false); assert.strictEqual(V.shardsOn(GATE0), true);
   V._setQuestShardsActivation(null); try { assert.strictEqual(V.shardsOn(999999999), false); } finally { V._setQuestShardsActivation(GATE0); } });
 t('table [Haul, Loot] and caps', () => { assert.deepStrictEqual(JSON.parse(JSON.stringify(V.QUEST_SHARDS)), { spam: [2, 1], cold: [3, 1], kek: [4, 2], wiz: [5, 2], mine: [6, 3] }); assert.strictEqual(V.SHARD_CAP, 15); assert.strictEqual(V.SHARD_STAT_MAX, 8); });
 t('a grant spreads across the two favoured stats and adds to stats', () => { const P = pet(1, 'pepe', flat(20)), Q = V.QUESTS.mine, a = V._shardGrant(P, Q, 6, sha('h1'));
@@ -64,7 +64,7 @@ t('replay: simulated quests bring shards (Haul and Loot), Cold Loot brings no sp
   const S = L.snap('snap-972901.json'), TIP = S.tip, G = 972300, H0 = Object.assign({}, c.XCPETS_BLOCK_HASHES, S.hashes), H = b => H0[b] || sha('SIMULATED-xcpets-block:' + b);
   const real = JSON.stringify(V.replay(S.rows, H0, [], { tip: TIP, live: c.LiveEngine.RealCore }).pets.map(p => [p.id, p.stats, p.shards || null]));
   V._setQuestShardsActivation(null); const nul = JSON.stringify(V.replay(S.rows, H0, [], { tip: TIP, live: c.LiveEngine.RealCore }).pets.map(p => [p.id, p.stats, p.shards || null])); V._setQuestShardsActivation(GATE0);
-  assert.strictEqual(real, nul, 'gate at 974462 vs null: identical pets on 972901');
+  assert.strictEqual(real, nul, 'gate at 974478 vs null: identical pets on 972901');
   const QG = V.questGate ? V.questGate() : null; V._setQuestActivation(G); V._setQuestShardsActivation(G);
   try { const w0 = V.replay(S.rows.filter(r => r.block_index < G), H0, [], { tip: G - 1, live: c.LiveEngine.RealCore });
     const myth = w0.pets.filter(p => !p.dead && !p.community && !p.released && V.isMythic(p) && !V.questBusyWhy(p, G)).slice(0, 3); assert.ok(myth.length >= 3, 'three Mythics at the gate');
@@ -85,7 +85,7 @@ t('replay: simulated quests bring shards (Haul and Loot), Cold Loot brings no sp
     assert.ok(!A2.shards && A2.questHist[0].boost, 'shard gate off: the old Haul +1 is back'); assert.ok(w2.byId[bq.id].questHist[0].rewards.some(r => r.kind === 'spins'), 'shard gate off: Cold Loot spin is back');
   } finally { V._setQuestShardsActivation(GATE0); V._setQuestActivation(QG); } });
 
-t('rules.html: Power Shards section and rule history line, gate markers', () => { const h = rd('rules.html'); assert.ok(/id="power-shards"/.test(h)); assert.ok(/QUEST-SHARDS-GATE -->974,462/.test(h)); assert.ok(/QUEST-SHARDS-GATE -->:/.test(h));
+t('rules.html: Power Shards section and rule history line, gate markers', () => { const h = rd('rules.html'); assert.ok(/id="power-shards"/.test(h)); assert.ok(/QUEST-SHARDS-GATE -->974,478/.test(h)); assert.ok(/QUEST-SHARDS-GATE -->:/.test(h));
   assert.ok(/half strength/.test(h) && /15 shard points per pet/.test(h)); });
 t('wording rules on every added line (no "series", "discount", "price"; "times", not "x")', () => { let d = ''; try { d = execSync('git diff origin/main -- js css rules.html tools/quest-shards-test.js', { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }); } catch (e) { return; }
   const added = d.split('\n').filter(l => l.startsWith('+') && !l.startsWith('+++') && /shard|Shard/.test(l) && !/wording rules/.test(l));
