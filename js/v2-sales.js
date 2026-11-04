@@ -342,8 +342,17 @@
   function tierName(p) { return p.resurrected ? 'God' : p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
   function spName(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
   function art(p) { return PREVIEW || !window.V2Render ? '<img alt="" src="img/theme/sp-' + esc(String(p.species).replace(/[^a-z]/g, '')) + '.png">' : '<span class="sh-sp" data-shsp="' + p.id + '"></span>'; }
+  /* token-press-speed-1104: profiled on live (G Money, 2,972 free pets) the first Token Press page froze ~1.0 s, all of it here: 48 sprites at
+   * ~21 ms each (Mythic overlays). The empty canvases are placed at once (so a second paint() call skips them, same as before) and the sprites
+   * are drawn in ~10 ms slices between frames, top card first, so the list shows right away and the page keeps answering. Same sprites. */
+  var paintQ = [], paintOn = false;
+  function paintNext(f) { if (window.requestAnimationFrame && !document.hidden) requestAnimationFrame(f); else setTimeout(f, 0); }
+  function paintRun() { var R = window.V2Render, t0 = Date.now();
+    while (paintQ.length && (Date.now() - t0 < 10)) { var j = paintQ.shift(); if (!j.c.isConnected) continue; try { var fr = R.petFrames(j.p, W); if (R.animate) R.animate(j.c, fr); } catch (e) { } }
+    if (paintQ.length) paintNext(paintRun); else paintOn = false; }
   function paint() { var R = window.V2Render; if (PREVIEW || !R || !R.petFrames) return; document.querySelectorAll('[data-shsp]').forEach(function (s) { if (s.firstChild) return; var p = W.byId[s.getAttribute('data-shsp')];
-    var c = document.createElement('canvas'); c.width = c.height = 32; s.appendChild(c); try { var fr = R.petFrames(p, W); if (R.animate) R.animate(c, fr); } catch (e) { } }); }
+    var c = document.createElement('canvas'); c.width = c.height = 32; s.appendChild(c); if (p) paintQ.push({ c: c, p: p }); });
+    if (paintQ.length && !paintOn) { paintOn = true; paintNext(paintRun); } }
   /* token badge: green = the pet owner holds the token (sellable); grey = no token yet; red = token is held elsewhere (remint to sell) */
   function deedBadge(p) { var d = V.deedOf(W, p); if (!d) return '';
     return '<div class="sh-deed' + (d.ok ? '' : ' sh-deed-bad') + '" title="Pet token ' + esc(d.asset) + (d.ok ? '' : ' (held by another address)') + '">🎟 ' + esc(short(d.asset)) + '</div>'; }
@@ -557,6 +566,12 @@
     /* shop-dedupe-1103: a Town bar station on this page switches in place like the old lower tabs did (no reload). Before the shop is ready
      * the plain link still reloads into that station (js/v2-places.js hashchange). Token Press opens the press, as #press does on load. */
     var ts = t.closest('#townBar .tb-st a[href^="shop.html#"]'), tk = ts && ts.getAttribute('href').slice(10);
+    /* token-press-speed-1104: a station clicked BEFORE the shop is ready used to reload the page (hashchange), which threw away the chain read
+     * in progress and started it again (a first visit: ~17 s more). Now it only sets the station; the shop opens on it when it is ready
+     * (render() reads TAB; js/v2-shop-scene.js opens the press for #press on v2sales:ready). */
+    if (ts && !window.V2Sales.scene.ready && /^(buy|sell|trade|gift|press)$/.test(tk) && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+      e.preventDefault(); if (tk !== 'press') TAB = tk; try { history.replaceState(null, '', '#' + tk); } catch (x) { }
+      toast((tk === 'press' ? 'The Token Press' : 'That station') + ' opens by itself as soon as the shop has read the chain.'); return; }
     if (ts && window.V2Sales.scene.ready && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
       if (/^(buy|sell|trade|gift)$/.test(tk)) { e.preventDefault(); window.V2Sales.scene.tab(tk); return; }
       if (tk === 'press' && window.V2ShopScene) { e.preventDefault(); try { history.replaceState(null, '', '#press'); } catch (x) { } window.V2ShopScene.act('press'); return; } }
