@@ -1,6 +1,6 @@
 {
- "lastBlock": 974479,
- "count": 122,
+ "lastBlock": 974484,
+ "count": 123,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1466,6 +1466,18 @@
    "speciesLabel": "Wojak",
    "rarity": "Rare",
    "stage": "Mythic"
+  },
+  {
+   "id": 37789,
+   "asset": "A8133765648959419937",
+   "tiedBlock": 974480,
+   "tiedTx": "df8c15ddafb0ef6a5b9ae71124ca91afa524ec4e6efa7cf309f47b7336a2da38",
+   "kind": "deed",
+   "name": "Kishujik",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Adult"
   }
  ]
 }
