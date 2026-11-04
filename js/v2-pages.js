@@ -3,6 +3,8 @@
 (function () {
   'use strict';
   /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
+  function shardTot(p) { var S = (p && p.shards) || {}; return Object.keys(S).reduce(function (a, k) { return a + (S[k] || 0); }, 0); } /* POWER SHARDS (quest-shards-1103), display only */
+  function shardSub(p) { var n = shardTot(p); return n ? '💠 ' + n + ' shard point' + (n === 1 ? '' : 's') + (p.shardsIn ? ' (' + p.shardsIn + ' from parents)' : '') : ''; }
   function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
   var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
@@ -111,8 +113,8 @@
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }
   /* THE gravestone (option C): the dead pet's own stone, drawn at the top of its death note and in the old grave list */
-  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=d87e7d9cf9'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
-  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=d87e7d9cf9'; t.onload = cb; document.body.appendChild(t); }
+  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=0a0063fd66'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
+  function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=0a0063fd66'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes
    * (?preview=return shows Nakamoto's entry from current data). */
@@ -155,7 +157,7 @@
     return { kek: coldEntryFrames(entryOf('kek')), wizard: coldEntryFrames(entryOf('wizard')), nakamoto: nakaFrames(), egg: window.FuntrumpSprite ? FuntrumpSprite.frames(0, '#2a3a2e', {}, { community: true }) : (window.KekSprite ? KekSprite.frames(0, '#2a3a2e', {}, { community: true }) : null), /* owner Oct 24 12:26 AM CT: FUNTRUMP egg on the throne */
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
-  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=d87e7d9cf9'; t.onload = cb; document.body.appendChild(t); }
+  function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=0a0063fd66'; t.onload = cb; document.body.appendChild(t); }
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -167,7 +169,7 @@
   function farewellSprites(w) { var x = w.wizardMythic, e = entryOf('wizard'), dn = (e.putDown || []), lo = (e.loadout || []).filter(function (id) { return dn.indexOf(id) < 0; }),
       noSign = (R && R.coldFrames && R.coldFrames(e.sp, lo, COLD_STAGE)) || null;
     return { wizard: coldEntryFrames(e), wizardDown: noSign, egg: WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, {}), nakamoto: nakaFrames(), total: x ? x.total : V.WIZARD_THRESHOLDS[5] }; }
-  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=d87e7d9cf9'; t.onload = cb; document.body.appendChild(t); }
+  function withFarewell(cb) { if (window.V2Farewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-wizard-farewell.js?v=0a0063fd66'; t.onload = cb; document.body.appendChild(t); }
   function archiveEntries(w, preview) { var c = w.community, rows = M.state().rows;
     return ARCHIVE.map(function (e) { var done = e.done(c, w); if (e.stats && !done && preview !== e.id && preview !== true) return null; if (!done && !preview) return null;
       var blk = done ? e.block(c, w) : null, tot = {}, sum = 0;
@@ -324,7 +326,7 @@
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
-      return L.map(function (r) { return { p: r.p, score: B.id === 'power' ? '<span' + ptA(r.p) + '>' + fmt(r.v) + ' power</span>' : fmt(r.v) + ' win' + (r.v === 1 ? '' : 's'), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : '' }; }); }
+      return L.map(function (r) { return { p: r.p, score: B.id === 'power' ? '<span' + ptA(r.p) + '>' + fmt(r.v) + ' power</span>' : fmt(r.v) + ' win' + (r.v === 1 ? '' : 's'), sub: B.id === 'wins' ? 'W' + (r.p.wins || 0) + '/L' + (r.p.losses || 0) : B.id === 'power' ? shardSub(r.p) : '' }; }); }
     function playerRows(B, wk) { var m = {}, best = {};
       function add(o, v, p) { m[o] = (m[o] || 0) + v; if (p && (!best[o] || p.tier > best[o].tier || (p.tier === best[o].tier && p.stage > best[o].stage))) best[o] = p; }
       if (B.id === 'wagmi') { var WA = (w.wagmi || {}), ow = Object.keys(WA).map(function (o) { return { o: o, s: V.streakOf(w, o, tip) }; }).filter(function (x) { return x.s.days > 0; });
@@ -340,7 +342,7 @@
         if (B.id === 'power') { var v = power(p); if (!m[p.owner] || v > m[p.owner]) { m[p.owner] = v; best[p.owner] = p; } }
         if (B.id === 'burn' && m[p.owner] && (!best[p.owner] || p.tier > best[p.owner].tier)) best[p.owner] = p; });
       var unit = { pets: ' pets', rare: ' pts', leg: ' Legendary', wins: ' wins', power: ' power', burn: ' XCPETS' }[B.id];
-      return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit }; }); }
+      return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit, sub: B.id === 'power' && best[o] ? shardSub(best[o]) : undefined }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
     function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
@@ -457,7 +459,7 @@
       w = M.world(); p = w.byId[id];
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
       R.animate($('cv'), R.petFrames(p, w)); $('cv').style.filter = p.dead ? 'grayscale(1) brightness(.75)' : '';
-      var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"' + ptA(p) + '><span class="sk">TOTAL</span><b>' + T + '</b></div>';
+      var T = 0; $('stats').innerHTML = PetCore.STAT_KEYS.map(function (k) { var v = p.stats[k]; T += v; var sk = (p.shards && p.shards[k]) || 0; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / 31).toFixed(0) + '%"></i></span><b>' + v + '</b>' + (sk ? '<small class="shd" title="' + sk + ' of these are shard points from quests">💠+' + sk + '</small>' : '') + '</div>'; }).join('') + '<div class="stat tot"' + ptA(p) + '><span class="sk">TOTAL</span><b>' + T + '</b>' + (shardTot(p) ? '<small class="shd">💠 ' + shardTot(p) + ' shard pts</small>' : '') + '</div>';
       $('chips').innerHTML = [(p && p.resurrected ? 'God' : TL[p.tier]), spLabel(p.species), (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)].concat(p.dead ? [] : [(V.streakOf ? (function (st) { return st.state === 'wagmi' ? '🚀 owner WAGMI ' + st.current + '-day streak' : st.state === 'ngmi' ? '💀 owner NGMI (best ' + st.best + ')' : '🚀 owner: no WAGMI yet'; })(V.streakOf(w, p.owner, w.tip)) : '🔥 streak ' + streak(p, w.tip))]).concat(['🎒 ' + V.wornOf(w, p.id).length + '/' + p.capacity + ' slots', 'W' + (p.wins || 0) + '/L' + (p.losses || 0)]).map(function (c) { return '<span class="chip">' + esc(c) + '</span>'; }).join('') + (p.blackEye ? '<span class="chip">🤕 black eye</span>' : '') + (p.burnedTo ? '<span class="chip" title="Its token went to a burn address in block ' + p.burnedTo.block + '. Nobody can use it.">🔥 sent to a burn address (out of play)</span>' : '') + (R.genChip ? R.genChip(w, p) : '') + (R.bredFrom ? R.bredFrom(w, p, false) : '') + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? (function (c) { /* trait-rank-1101: the chip opens this pet's place on the 💎 Trait rarity board */ return c ? '<a class="prarlink" href="ranking.html?board=trait&pet=' + p.id + '" title="See where #' + p.id + ' ranks on the Trait rarity board">' + c + '</a>' : ''; })(PetScore.rarityChip(w, p)) : '');
       /* glitch-display-1102 (display only): origin chip for non-bred pets (jackpot, grants, Electric Eggs) and a mutation chip near the sprite */ if (R.originOf) { var og0 = R.originOf(w, p); if (og0.kind !== 'bred' && og0.kind !== 'hybrid') $('chips').insertAdjacentHTML('beforeend', '<span class="chip origin" title="' + esc(og0.title) + '">' + esc(og0.chip) + '</span>'); } if (R.mutationChip) $('chips').insertAdjacentHTML('afterbegin', R.mutationChip(p));
       /* God-born (display only, owner Oct 31 2026 7:07 AM CT): halo badge for a baby of two Gods */ if (R.godBornChip) $('chips').insertAdjacentHTML('afterbegin', R.godBornChip(w, p)); /* MYTHIC GOD LOOP chips (display only) */ if (window.V2MythicGod) $('chips').insertAdjacentHTML('afterbegin', V2MythicGod.chips(p, w));

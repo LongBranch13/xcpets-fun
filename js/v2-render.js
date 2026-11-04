@@ -1330,6 +1330,8 @@
     var TN = ['Common', 'Uncommon', 'Rare', 'Legendary'], ch = [];
     [p.wizTier, p.wizTier2].forEach(function (t) { if (t) ch.push('Bitcoin Wizard tier rule at block ' + nfmt(t.block) + ': ' + (TN[t.from] || t.from) + ' to ' + (TN[t.to] || t.to) + ' (each stat ' + (t.bonus >= 0 ? '+' : '') + t.bonus + ', looks kept)'); });
     if (p.grantPower) ch.push('grant power boost at block ' + nfmt(p.grantPower.block) + ': total power ' + p.grantPower.from + ' to ' + p.grantPower.to + ' (rule for 1 of 1 and Burn Lord eggs)');
+    var shN = p.shards ? Object.keys(p.shards).reduce(function (a, k) { return a + (p.shards[k] || 0); }, 0) : 0; /* POWER SHARDS (quest-shards-1103), display only */
+    if (shN) ch.push('+' + shN + ' shard point' + (shN === 1 ? '' : 's') + ' (' + Object.keys(p.shards).filter(function (k) { return p.shards[k]; }).map(function (k) { return k.charAt(0).toUpperCase() + k.slice(1) + ' +' + p.shards[k]; }).join(', ') + ')' + (p.shardsIn ? ', ' + p.shardsIn + ' passed down from its parents at half strength' : '') + ' (15 at most, 8 in one stat)');
     if (p.questBoost) ch.push('+' + p.questBoost + ' stat point' + (p.questBoost === 1 ? '' : 's') + ' from Legendary Haul quests (3 at most)');
     if (ch.length) out.push('<b>Stat changes:</b> <span class="muted">' + esc(ch.join('; ')) + '.</span>');
     var bd = badgesOf(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));
@@ -1468,7 +1470,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=d87e7d9cf9'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=0a0063fd66'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}

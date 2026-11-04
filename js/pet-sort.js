@@ -17,7 +17,10 @@
   function sp(p) { var R = V(), s = String(p.species), h = R.isHybrid ? R.isHybrid(s) : /^hyb3?:/.test(s), lab = function (x) { return String(R.speciesLabel ? R.speciesLabel(x) : x).toLowerCase(); };
     return h ? [lab(s.split(':')[1]), 1, lab(s)] : [lab(s), 0, '']; }
   var QCAP = 3; /* QUEST_STAT_CAP in js/v2-rules.js: a Legendary Haul adds +1 to a favoured stat, up to 3 times per pet */
-  function gain(p) { return !p || p.dead || p.released ? 0 : Math.max(0, QCAP - (p.questBoost || 0)); }
+  /* POWER SHARDS (quest-shards-1103, gated by V2Rules.shardsOn): from the gate a quest Loot or Haul brings shard points, up to SHARD_CAP (15) per pet */
+  function sOn(b) { var R = V(); if (!R || !R.shardsOn) return false; if (b == null) { var M = window.V2Mock, S = M && M.state && M.state(); b = S && S.tip ? S.tip + 1 : null; } return R.shardsOn(b); }
+  function shN(p) { var S = (p && p.shards) || {}; return Object.keys(S).reduce(function (a, k) { return a + (S[k] || 0); }, 0); }
+  function gain(p, b) { if (!p || p.dead || p.released) return 0; var R = V(); if (sOn(b)) return R.shardRoom ? R.shardRoom(p) : Math.max(0, (R.SHARD_CAP || 15) - shN(p) - (p.questBoost || 0)); return Math.max(0, QCAP - (p.questBoost || 0)); }
   function worn(w, p) { var R = V(); try { return R.wornOf ? R.wornOf(w, p.id).length : 0; } catch (e) { return 0; } }
   function looks(w, p) { var R = V(), n = 0; try { n += R.shownLooks ? R.shownLooks(w, p).length : 0; } catch (e) { } try { if (!R.shownLooks && R.earnedLooks) n += R.earnedLooks(p).length; } catch (e) { } return n; }
   function bleft(p, b) { var R = V(); try { var x = R.breedsLeft ? R.breedsLeft(p, b) : null; return x ? x.left : -(p.breeds || 0); } catch (e) { return 0; } }
@@ -26,7 +29,7 @@
   /* KEYS: [key, menu label, high-first words, low-first words, value(w, p, b), card line(w, p, b) or null] */
   var KEYS = [
     ['pow', '⚡ Power', 'high to low', 'low to high', function (w, p) { return [power(p), score(w, p)]; }],
-    ['gain', '⚡ Power to gain', 'most first', 'least first', function (w, p) { return [gain(p), power(p)]; }, function (w, p) { return '⚡ +' + gain(p) + ' to gain'; }],
+    ['gain', '⚡ Power to gain', 'most first', 'least first', function (w, p, b) { return [gain(p, b), power(p)]; }, function (w, p, b) { return '⚡ +' + gain(p, b) + ' to gain'; }],
     ['vigor'], ['spark'], ['grit'], ['zoom'], ['luck'],
     ['sc', '⭐ Pet Score', 'high to low', 'low to high', function (w, p) { return [score(w, p)]; }],
     /* hatch-review-tiers-1103 (owner Nov 3 2026): Rarity = hatch tier, then the 💎 Rarity score shown on the card (PetScore trait rarity, high first),
@@ -62,19 +65,22 @@
   /* ways(w, p, b) -> { power, parts: [[label, points, note]], steps: [text], gain, edge }. Real rules only (js/v2-rules.js). */
   function ways(w, p, b) { var R = V(), P = window.PetCore, tot = power(p), qb = p.questBoost || 0, T = P && P.TIERS && P.TIERS[tier(p)], bred = !!(p.parents && p.parents.length), tb = bred ? 0 : (T && T.statBonus) || 0; /* hatch rolls get the rarity bonus on each stat; eggs from breeding take the parents' average instead */
     var bb = p.breedBonus && p.breedBonus.kind === 'stat' ? (p.breedBonus.value || 0) : 0, parts = [];
-    var rest = tot - tb * STATS.length - qb - bb;
+    var sh = shN(p), shIn = Math.min(sh, p.shardsIn || 0), rest = tot - tb * STATS.length - qb - bb - sh;
     parts.push([bred ? '🥚 From its parents (average ±2)' : '🥚 Hatch roll', rest]);
     if (tb) parts.push(['💎 ' + ((T && T.label) || 'Rarity') + ' bonus (+' + tb + ' on each stat)', tb * STATS.length]);
     if (bb) parts.push(['🧬 Bred-true bonus', bb]);
     if (qb) parts.push(['🗺️ Quest Legendary Hauls', qb]);
-    var steps = [], g = gain(p), Q = R.QUESTS || {}, live = !p.dead && !p.released;
+    if (sh - shIn) parts.push(['💠 Power Shards from quests', sh - shIn]);
+    if (shIn) parts.push(['💠 Shard points from its parents (half strength)', shIn]);
+    var steps = [], g = gain(p, b), so = sOn(b), CAP = so ? (R.SHARD_CAP || 15) : QCAP, Q = R.QUESTS || {}, live = !p.dead && !p.released;
     if (live && g > 0) { var my = R.isMythic ? R.isMythic(p) : p.stage === 5, qs = Object.keys(Q).map(function (c) { var q = Q[c], od = null; try { od = my && R.questOdds ? R.questOdds(w, p, c, b) : null; } catch (e) { }
         return (q.name || c) + ' (' + (q.fav || []).map(function (s) { return SL[s] || s; }).join(' or ') + (od ? ', Haul ' + (od.haul / 100).toFixed(od.haul % 100 ? 2 : 0) + '%' : '') + ')'; });
       if (!my) steps.push('🌱 Keep feeding until Mythic: only Mythics can go on quests.');
-      steps.push('🗺️ Quests: a Legendary Haul adds +1 to one of the quest\'s stats, up to ' + QCAP + ' times per pet (' + g + ' left). ' + qs.join(' · '));
+      steps.push(so ? '🗺️ Quests: a Loot or a Legendary Haul brings Power Shards, permanent points on the quest\'s two stats (Loot 1 to 3, Haul 2 to 6), up to ' + CAP + ' per pet and ' + (R.SHARD_STAT_MAX || 8) + ' in one stat (' + g + ' left). ' + qs.join(' · ')
+        : '🗺️ Quests: a Legendary Haul adds +1 to one of the quest\'s stats, up to ' + QCAP + ' times per pet (' + g + ' left). ' + qs.join(' · '));
       if (my) steps.push('🛡️ Gear in the quest\'s slot raises the Haul chance (+1%, ★ +2%, up to +4%), and favoured stats above the Mythic average add a little more.'); }
-    else if (live) steps.push('🗺️ All ' + QCAP + ' quest stat boosts are used. This pet\'s Power is set.');
-    if (live && (p.stage || 0) >= 3) steps.push('💞 Breeding: pair high-Power pets to pass strong stats down, and each generation can build higher. Each egg stat is the parents\' average ±2, a hybrid egg keeps each parent\'s best stat, a same-species egg can come out bred true (+' + (R.BRED_TRUE_STAT || 3) + ' on one stat, or a rarer pattern or eyes), and a hidden trait passes from a carrier parent half the time.');
+    else if (live) steps.push(so ? '🗺️ All ' + CAP + ' shard points are used. Quests still bring gear, spins and eggs.' : '🗺️ All ' + QCAP + ' quest stat boosts are used. This pet\'s Power is set.');
+    if (live && (p.stage || 0) >= 3) steps.push('💞 Breeding: pair high-Power pets to pass strong stats down, and each generation can build higher. Each egg stat is the parents\' average ±2, a hybrid egg keeps each parent\'s best stat, a same-species egg can come out bred true (+' + (R.BRED_TRUE_STAT || 3) + ' on one stat, or a rarer pattern or eyes), and a hidden trait passes from a carrier parent half the time.' + (so ? ' Shard points pass at half strength: each parent counts half its shard points (rounded down), and the egg keeps them as its own shard points inside its cap of ' + CAP + '.' : ''));
     return { power: tot, parts: parts, steps: steps, gain: g, edge: 'Gear, looks and stage only help in fights: worn gear adds hit damage and each stage adds HP. They do not change Power.' }; }
   var API = window.PetSort = { OPTS: OPTS, KEYS: KEYS, STATS: STATS, sort: sort, options: options, hotelOptions: hotelOptions, line: line, power: power, gain: gain, free: free, ways: ways };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
