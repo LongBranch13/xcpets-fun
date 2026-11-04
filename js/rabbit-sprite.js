@@ -39,13 +39,13 @@
     if (el(X, Y, 23.3, 12.5, 1.0, 0.85) < 1) k = 'N';                                                                    // nose
     if (Y > 13.7 && Y < 14.5 && X > 21.8 && X < 23.4) k = 'n';                                                           // mouth
     if (Y >= 16.0 && Y <= 17.6 && X >= 15.0 && X <= 19.4) { var bw = Math.abs(X - 17.2); k = bw < 0.6 ? 'b' : (Math.abs(Y - 16.8) < 0.95 - (bw - 0.6) * 0.18 ? 'B' : k); } // red bow
-    if (stage === 4 || stage === 5) { if (el(X, Y, 14.6, 6.0, 1.2, 0.5) < 1 || el(X, Y, 19.0, 6.0, 1.0, 0.5) < 1) k = 's'; }                     // Elder brow tufts
+    if (stage === 4 || stage === 5) { if (el(X, Y, 14.6, 8.2, 1.2, 0.5) < 1 || el(X, Y, 19.0, 8.2, 1.0, 0.5) < 1) k = 's'; }                     // Elder brow tufts
     /* eyes: stamped as pixel-art in base() (eyes v2, owner Nov 4 2026) */
     return k; }
   /* EYES v2 (owner Nov 4 2026 'eyes need work'): two identical, symmetric 8-bit eyes stamped per stage: ruby iris R, dark pupil P, one white
    * highlight pixel E top-left; blink (frame 2) = a closed ink line of the same width. Keys stay R/P/E (anchors + hybrid eye masks read them). */
   var EYE_T = { s: ['E', 'R'], m: ['ER', 'RP'], l: ['ER', 'RP'] }; /* v3 (owner Nov 4 2026 'too big, move up and left'): Baby 1x2, Child+ 2x2 */
-  function stampEyes(g, s, f) { var t = SCALE[s], dy = f === 1 ? -1 : 0, T = s >= 3 ? EYE_T.l : s === 2 ? EYE_T.m : EYE_T.s, w = T[0].length, h = T.length, gap = s >= 3 ? 2 : s === 1 ? 2 : 1, sx = 0, sy = s >= 3 ? -2 : -1; /* v4 (owner [pt2828u] 'move eyes to the right'): back to the original column, v3 height + size */
+  function stampEyes(g, s, f) { var t = SCALE[s], dy = f === 1 ? -1 : 0, T = s >= 3 ? EYE_T.l : s === 2 ? EYE_T.m : EYE_T.s, w = T[0].length, h = T.length, gap = s >= 3 ? 2 : s === 1 ? 2 : 1, sx = 0, sy = 0; /* v5 (owner [pt2829u] 'lower'): back down 1px (Baby/Child) / 2px (Teen+) */ /* v4 (owner [pt2828u] 'move eyes to the right'): back to the original column, v3 height + size */
     var gx = function (X) { return 15.5 + (X - 15.5) * t - 0.5; }, gy = function (Y) { return 28.5 + (Y - 28.5) * t - 0.5 + dy; };
     var cx = Math.round((gx(14.6) + gx(19.3)) / 2), x0 = cx - Math.floor((2 * w + gap) / 2) + sx, y0 = Math.round(gy(11.0) - (h - 1) / 2) + sy;
     [x0, x0 + w + gap].forEach(function (ex) { for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) { var Y = y0 + yy, X = ex + xx; if (Y < 0 || Y >= N || X < 0 || X >= N || !g[Y][X]) continue;
