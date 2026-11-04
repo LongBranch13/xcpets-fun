@@ -103,3 +103,52 @@
   window.customElements.define('xc-select', XcSelect);
   window.XcSelect = XcSelect;
 })();
+
+/* ambient-music-1103 (PREVIEW, UI only, no rule change): small pixel speaker toggle, bottom-left on every page.
+ * Muted by default. No audio code or sound loads until a tap: the first tap pulls js/xc-music.js (synth, no audio files).
+ * On/off is kept in localStorage 'xcpets.music'; when it was left on, music starts on the first tap/key anywhere. */
+(function () {
+  'use strict';
+  if (window.__xcMusicBtn) return; window.__xcMusicBtn = 1;
+  var KEY = 'xcpets.music', cur = document.currentScript, ver = '';
+  try { ver = (/[?&]v=([^&]+)/.exec(cur && cur.src) || [])[1] || ''; } catch (e) {}
+  function getOn() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } }
+  function setOn(v) { try { localStorage.setItem(KEY, v ? 'on' : 'off'); } catch (e) {} }
+  var loading = null;
+  function load(cb) {
+    if (window.XCMusic) return cb(window.XCMusic);
+    if (!loading) { loading = []; var s = document.createElement('script'); s.src = 'js/xc-music.js' + (ver ? '?v=' + ver : ''); s.async = true;
+      s.onload = function () { var q = loading; loading = null; q.forEach(function (f) { f(window.XCMusic); }); }; document.head.appendChild(s); }
+    if (loading) loading.push(cb);
+  }
+  var SPK = '<rect x="1" y="5" width="3" height="6"/><rect x="4" y="4" width="2" height="8"/><rect x="6" y="2" width="2" height="12"/>';
+  var WAVES = '<rect x="10" y="6" width="1" height="4"/><rect x="12" y="4" width="1" height="8"/><rect x="14" y="2" width="1" height="12"/>';
+  var MUTE = '<rect x="10" y="5" width="1" height="1"/><rect x="11" y="6" width="1" height="1"/><rect x="12" y="7" width="2" height="2"/><rect x="14" y="10" width="1" height="1"/><rect x="15" y="11" width="1" height="1"/>' +
+             '<rect x="15" y="5" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="11" y="9" width="1" height="1"/><rect x="10" y="10" width="1" height="1"/>';
+  function init() {
+    if (!document.body || document.getElementById('xc-music-btn')) return;
+    var st = document.createElement('style');
+    st.textContent = '#xc-music-btn{position:fixed;left:10px;bottom:10px;z-index:9000;width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;' +
+      'background:#1f2d23;color:#e9fbe9;border:2px solid #000;border-radius:0;box-shadow:2px 2px 0 #000,inset -2px -2px 0 #14201a;cursor:pointer;opacity:.82;image-rendering:pixelated}' +
+      '#xc-music-btn:hover{opacity:1;border-color:#3ddc84}#xc-music-btn:focus-visible{outline:2px solid #ffc93c;outline-offset:1px}' +
+      '#xc-music-btn[aria-pressed="true"]{color:#3ddc84}#xc-music-btn svg{width:20px;height:20px;shape-rendering:crispEdges;fill:currentColor}' +
+      '@media print{#xc-music-btn{display:none}}';
+    document.head.appendChild(st);
+    var b = document.createElement('button'); b.id = 'xc-music-btn'; b.type = 'button';
+    var on = getOn();
+    function paint() { b.setAttribute('aria-pressed', on ? 'true' : 'false'); var t = on ? 'Music on (tap to mute)' : 'Music off (tap to play)'; b.title = t; b.setAttribute('aria-label', t);
+      b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' + SPK + (on ? WAVES : MUTE) + '</svg>'; }
+    paint();
+    b.addEventListener('click', function (e) {
+      e.stopPropagation(); on = !on; setOn(on); paint();
+      if (on) load(function (M) { if (M && on) M.start(); }); else if (window.XCMusic) window.XCMusic.stop();
+    });
+    document.body.appendChild(b);
+    if (on) { // browsers need a gesture before sound: start on the first tap or key anywhere
+      var go = function (e) { document.removeEventListener('pointerdown', go, true); document.removeEventListener('keydown', go, true);
+        if (e && e.target && e.target.closest && e.target.closest('#xc-music-btn')) return; if (on) load(function (M) { if (M && on) M.start(); }); };
+      document.addEventListener('pointerdown', go, true); document.addEventListener('keydown', go, true);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
