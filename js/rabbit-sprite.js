@@ -9,12 +9,12 @@
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.RabbitSprite = factory(); })(this, function () {
   'use strict';
   var N = 32, PAL = { n: '#1a1020', W: '#f6f4fa', S: '#cfcadc', s: '#a8a2bc', u: '#ff9ec4', N: '#ff7fae', E: '#ffffff', R: '#d8203a', P: '#4a0612',
-    c: '#fff1d6', m: '#fff1d6', C: '#e8d2a8', B: '#d8203a', b: '#8e1424', A: '#ffc93c', y: '#ffd23f', o: '#c49a1a', '#': '#ffffff' };
+    c: '#fff1d6', m: '#fff1d6', C: '#e8d2a8', B: '#d8203a', b: '#8e1424', A: '#ffc93c', y: '#ffd23f', o: '#c98a00', Y: '#fff1a8', '#': '#ffffff' };
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var SKIN = { W: 1, S: 1, s: 1 }, SUIT = { c: 1, C: 1 }, EARS = { U: 1, u: 1 };
   /** WR_WATCH: his SIGNATURE Grip (gear id 'wr-pocket-watch', ★ tier 3, White Rabbit + White Rabbit hybrids; gated by ACTIVATE_RABBIT_BLOCK in V2Rules). Display record. */
   var WR_WATCH = { slot: 'hand', item: 'wr-pocket-watch', label: 'Gold pocket watch', tier: 'legendary', legendary: true, signature: true, exclusive: 'rabbit' };
-  var WRC = { G: '#ffd23f', g: '#c49a1a', F: '#fffbe8', h: '#1a1020', V: '#e8a838', v: '#a8641c', K: '#5a2d1a', D: '#1a1020', d: '#2b3a2b', L: '#39ff14', Q: '#7fd0ff', q: '#3a7bd5', T: '#fff1d6', X: '#5a2d82', x: '#3a1a5a' };
+  var WRC = { G: '#ffd23f', g: '#c98a00', H: '#fff1a8', F: '#fffbe8', h: '#1a1020', V: '#ffd23f', v: '#c98a00', K: '#5a2d1a', D: '#1a1020', d: '#2b3a2b', L: '#39ff14', Q: '#7fd0ff', q: '#3a7bd5', T: '#fff1d6', X: '#5a2d82', x: '#3a1a5a' };
   var SCALE = [0.62, 0.62, 0.74, 0.86, 0.94, 1.0], EARLEN = [0, 0.7, 0.82, 0.92, 1.0, 1.0];
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function el(x, y, cx, cy, rx, ry) { var a = (x - cx) / rx, b = (y - cy) / ry; return a * a + b * b; }
@@ -40,14 +40,20 @@
     if (Y > 13.7 && Y < 14.5 && X > 21.8 && X < 23.4) k = 'n';                                                           // mouth
     if (Y >= 16.0 && Y <= 17.6 && X >= 15.0 && X <= 19.4) { var bw = Math.abs(X - 17.2); k = bw < 0.6 ? 'b' : (Math.abs(Y - 16.8) < 0.95 - (bw - 0.6) * 0.18 ? 'B' : k); } // red bow
     if (stage === 4 || stage === 5) { if (el(X, Y, 15.2, 8.4, 1.2, 0.5) < 1 || el(X, Y, 19.6, 8.4, 1.0, 0.5) < 1) k = 's'; }                     // Elder brow tufts
-    [[14.6, 11.0, 1.25, 1.65], [19.3, 11.0, 1.0, 1.5]].forEach(function (e, i) { if (el(X, Y, e[0], e[1], e[2], e[3]) < 1) {                 // ruby eyes (the near one smaller, 3/4)
-      if (f === 2) { k = Math.abs(Y - e[1]) < 0.5 ? 'n' : k; return; }
-      k = 'R'; if (el(X, Y, e[0] + 0.25, e[1] + 0.35, e[2] * 0.6, e[3] * 0.6) < 1) k = 'P'; if (el(X, Y, e[0] - 0.3, e[1] - 0.55, 0.42, 0.42) < 1) k = 'E'; } });
+    /* eyes: stamped as pixel-art in base() (eyes v2, owner Nov 4 2026) */
     return k; }
+  /* EYES v2 (owner Nov 4 2026 'eyes need work'): two identical, symmetric 8-bit eyes stamped per stage: ruby iris R, dark pupil P, one white
+   * highlight pixel E top-left; blink (frame 2) = a closed ink line of the same width. Keys stay R/P/E (anchors + hybrid eye masks read them). */
+  var EYE_T = { s: ['ER', 'RP'], m: ['ER', 'PP', 'RP'], l: ['ERR', 'RPP', 'RPP'] };
+  function stampEyes(g, s, f) { var t = SCALE[s], dy = f === 1 ? -1 : 0, T = s >= 3 ? EYE_T.l : s === 2 ? EYE_T.m : EYE_T.s, w = T[0].length, h = T.length, gap = s >= 3 ? 2 : 1;
+    var gx = function (X) { return 15.5 + (X - 15.5) * t - 0.5; }, gy = function (Y) { return 28.5 + (Y - 28.5) * t - 0.5 + dy; };
+    var cx = Math.round((gx(14.6) + gx(19.3)) / 2), x0 = cx - Math.floor((2 * w + gap) / 2), y0 = Math.round(gy(11.0) - (h - 1) / 2);
+    [x0, x0 + w + gap].forEach(function (ex) { for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) { var Y = y0 + yy, X = ex + xx; if (Y < 0 || Y >= N || X < 0 || X >= N || !g[Y][X]) continue;
+      g[Y][X] = f === 2 ? (yy === Math.min(h - 1, 1) ? 'n' : (g[Y][X] === 'S' ? 'S' : 'W')) : T[yy][xx]; } }); }
   function egg(f) { var g = [], dy = f === 1 ? -1 : 0; for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var yy = y - dy + 0.5, xx = x + 0.5, k = null;
         if (el(xx, yy, 16, 19.5, 7, 9) < 1) { k = xx < 12 ? 'S' : 'W'; if (el(xx, yy, 13.5, 14.5, 1.8, 2.4) < 1) k = 'E';
-          var cd = el(xx, yy, 17, 21, 3.4, 3.4); if (cd < 1) { k = cd > 0.62 ? 'y' : 'c'; if (cd <= 0.62 && ((Math.abs(xx - 17) < 0.5 && yy < 21 && yy > 18.6) || (Math.abs(yy - 21) < 0.5 && xx > 17 && xx < 18.9 + (f === 3 ? 0.5 : 0)))) k = 'n'; }
-          if (Math.abs(xx - 17) < 0.6 && yy > 16.6 && yy < 17.8) k = 'y'; }                                                // a gold pocket-watch face on the shell
+          var cd = el(xx, yy, 17, 21, 3.4, 3.4); if (cd < 1) { k = cd > 0.62 ? (xx + yy < 37.5 ? 'Y' : (xx + yy > 40.5 ? 'o' : 'y')) : 'c'; if (cd <= 0.62 && ((Math.abs(xx - 17) < 0.5 && yy < 21 && yy > 18.6) || (Math.abs(yy - 21) < 0.5 && xx > 17 && xx < 18.9 + (f === 3 ? 0.5 : 0)))) k = 'n'; }
+          if (Math.abs(xx - 17) < 0.6 && yy > 16.6 && yy < 17.8) k = 'Y'; }                                                // a gold pocket-watch face on the shell
         g[y].push(k); } }
     [[12, 10], [13, 9], [19, 9], [20, 10]].forEach(function (p) { var Y = p[1] + dy + 1; if (Y >= 0 && !g[Y][p[0]]) g[Y][p[0]] = 'u'; });             // two ear tips poking out
     return g; }
@@ -58,6 +64,7 @@
     if (s === 0) g = egg(f);
     else { var t = SCALE[s], dy = f === 1 ? -1 : 0; g = [];
       for (var y = 0; y < N; y++) { g.push([]); for (var x = 0; x < N; x++) { var sx = 15.5 + (x + 0.5 - 15.5) / t, sy = 28.5 + (y - dy + 0.5 - 28.5) / t; var k = y - dy > 29 ? null : keyAt(sx, sy, s, f); g[y].push(k === 'U' ? 'W' : k); } } }
+    if (s > 0) stampEyes(g, s, f);
     /* inner ear / eye seams: one ink pixel between the two ears where they touch */
     var o = outline(g);
     if (s > 0) { var o1 = o.map(function (r) { return r.slice(); }); for (var yy = 1; yy < N - 1; yy++) for (var xx = 1; xx < N - 1; xx++) if ((o[yy][xx] === 'R' || o[yy][xx] === 'E') && (o[yy - 1][xx] === 'W' || o[yy - 1][xx] === 'S')) o1[yy - 1][xx] = 'n'; o = o1; } /* a dark upper lid over each eye */
@@ -84,7 +91,7 @@
     function set(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && k) { g[y][x] = k; put[y * N + x] = 1; } }
     function under(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && !g[y][x]) set(x, y, k); }
     function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
-    function col(sl, i) { var x = Gr[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); }
+    function col(sl, i) { var x = Gr[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c98a00' : '#ffd23f'); }
     function iid(sl) { return Gr[sl] && Gr[sl].item; }
     var fw = A.fx1 - A.fx0 + 1, cx = Math.round((A.fx0 + A.fx1) / 2);
     if (Gr.back) { var c0 = col('back'), c1 = col('back', 1); for (var yb = A.by0 - 2; yb <= Math.min(29, A.by1); yb++) { var fl = Math.round((yb - A.by0 + 2) / 3);
@@ -107,7 +114,7 @@
         for (var xb = A.fx0 - 1; xb <= A.fx1 - 2 + (/cap|visor/.test(hk) ? 2 : 0); xb++) set(xb, ht + 2, h1); } }
     if (Gr.weapon) { var wx = Math.min(29, A.bx1 + 3), wy = Math.min(28, A.by1 - 1); set(wx, wy, 'o'); set(wx, wy - 1, 'n'); set(wx - 1, wy - 2, 'y'); set(wx, wy - 2, 'y'); set(wx + 1, wy - 2, 'y'); for (var tb = 3; tb < 12; tb++) set(wx, wy - tb, tb === 11 ? 'W' : (tb % 3 ? '#c8d0da' : 'W')); }
     if (Gr.hand) { var hx = Gr.weapon ? Math.max(1, A.bx0 - 5) : Math.min(28, A.bx1 + 2), hy = Math.min(27, A.by0 + 3), ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
-      if (iid('hand') === 'wr-pocket-watch') { var WT = ['..gg..', '.g..g.', '.GGGG.', 'GFFhFG', 'GFFhFG', 'GFhhFG', 'GFFFFG', '.GGGG.'], tick = frame % 2; /* chain loop on top, the hand ticks between frames */
+      if (iid('hand') === 'wr-pocket-watch') { var WT = ['..HG..', '.H..g.', '.HGGG.', 'HFFhFg', 'GFFhFg', 'GFhhFg', 'GFFFFg', '.gggg.'] /* gold v2: game gold #fff1a8 / #ffd23f / #c98a00, lit top-left */, tick = frame % 2; /* chain loop on top, the hand ticks between frames */
         for (var yw = 0; yw < 8; yw++) for (var xw = 0; xw < 6; xw++) { var q = WT[yw][xw]; if (q === '.') continue; if (tick && q === 'h' && yw === 3) q = 'F'; if (tick && yw === 4 && xw === 4) q = 'h'; set(hx - 2 + xw, hy - 6 + yw, WRC[q]); } }
       else if (iid('hand') === 'wr-drink-me') { var BT = ['.TT.', '.qq.', 'QQQQ', 'QqQQ', 'QQQQ', 'qqqq']; for (var yd = 0; yd < 6; yd++) for (var xd = 0; xd < 4; xd++) { var q2 = BT[yd][xd]; if (q2 !== '.') set(hx - 1 + xd, hy - 4 + yd, WRC[q2]); } }
       else if (/mug|cup|coffee|tea|bowl|beer|drink/.test(ak)) { for (var xm = hx; xm <= hx + 2; xm++) for (var ym = hy - 2; ym <= hy; ym++) set(xm, ym, a0); set(hx + 1, hy - 2, a1); set(hx + 2, hy - 2, a1); }

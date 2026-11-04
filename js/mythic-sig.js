@@ -60,13 +60,13 @@
   /* The White Rabbit (PREVIEW, whiterabbit-community; no live White Rabbit can exist while V2Rules.ACTIVATE_RABBIT_BLOCK is null): a gold clock face behind him,
    * 12 tick marks, a hand sweeping once per loop (he is late), and a trail of breadcrumbs lighting up one by one along the ground, leading down the rabbit hole. */
   FX.clockwork = function (o, M, f) { var cx = (M.bb.x0 + M.bb.x1) / 2, cy = (M.bb.y0 + M.bb.y1) / 2, rx = (M.bb.x1 - M.bb.x0) / 2 + 2.6, ry = (M.bb.y1 - M.bb.y0) / 2 + 2.2, w = 1.3 / Math.min(rx, ry), ha = f / NF * 6.283 - 1.571, i;
-    glow(o, M, '#ffe08a', pul(f, 0.25, 0.45), 0.1);
+    glow(o, M, '#fff1a8', pul(f, 0.25, 0.45), 0.1);
     for (var p = 0; p < N * N; p++) { if (M.pet[p]) continue; var x = p & 31, y = p >> 5, dx = (x - cx) / rx, dy = (y - cy) / ry, r = Math.sqrt(dx * dx + dy * dy), col = null;
-      if (Math.abs(r - 1) < w) col = r > 1 ? '#a8641c' : '#ffd23f';
-      else if (r < 1 - w) { var a = Math.atan2(dy, dx), da = Math.abs(((a - ha) % 6.283 + 9.425) % 6.283 - 3.1416); if (da < 0.09 && r > 0.25) col = '#fff6c8'; }
+      if (Math.abs(r - 1) < w) col = r > 1 ? '#c98a00' : '#ffd23f';
+      else if (r < 1 - w) { var a = Math.atan2(dy, dx), da = Math.abs(((a - ha) % 6.283 + 9.425) % 6.283 - 3.1416); if (da < 0.09 && r > 0.25) col = '#fff6c2'; }
       if (col) { var c = hex(col); o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; } }
-    for (i = 0; i < 12; i++) { var t = i * 0.5236, tx = Math.round(cx + Math.cos(t) * (rx + 1.6)), ty = Math.round(cy + Math.sin(t) * (ry + 1.6)); put(o, M, tx, ty, i % 3 === 0 ? '#ffffff' : '#ffe08a'); }
-    for (i = 0; i < 7; i++) { var bx = 2 + i * 4, by = 30 - (i % 2); if (i <= f % NF) put(o, M, bx, by, i === f % NF ? '#ffffff' : '#e8a838'); } };
+    for (i = 0; i < 12; i++) { var t = i * 0.5236, tx = Math.round(cx + Math.cos(t) * (rx + 1.6)), ty = Math.round(cy + Math.sin(t) * (ry + 1.6)); put(o, M, tx, ty, i % 3 === 0 ? '#ffffff' : '#fff1a8'); }
+    for (i = 0; i < 7; i++) { var bx = 2 + i * 4, by = 30 - (i % 2); if (i <= f % NF) put(o, M, bx, by, i === f % NF ? '#ffffff' : '#ffd23f'); } };
   /* Ragnar the Viking: ice-blue frost glow, slow snowflakes */
   FX.frost = function (o, M, f) { glow(o, M, '#9fe8ff', pul(f, 0.35, 0.6), 0.2); for (var i = 0; i < 6; i++) { var x = 2 + hsh(i, 5) % 28, y = (hsh(i, 6) % 32 + f * 2) % 34 - 1; put(o, M, x, y, '#eafcff', i % 2 === 0, 1); } };
   /* Bo Jackson: speed lines streaking past and a baseball orbiting (Bo Knows) */

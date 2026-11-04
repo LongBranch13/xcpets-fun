@@ -108,6 +108,15 @@ if (!only && V._setFtBreedActivation && V.breedOne) { const pet = (sp, tier) => 
     let e; try { const fr = R.framesWith(k.art, 4, []); for (const f of fr) { const m = check(f, bgOf(f)); if (m) { e = m; break; } } } catch (z) { e = 'throw ' + z.message; } if (e) bf('child ' + k.species + ' render: ' + e); else ftb.ok++; }
   ftb.seen = seen; if (!seen.ft || !seen.hyb) bf('expected both FUNTRUMP and hybrid children, got ' + JSON.stringify(seen));
   V._setFtBreedActivation(null); V._setFtPoolFrom(Infinity); }
+/* White Rabbit (owner Nov 4 2026): one -bbit/-abbit name per pair, 3-way names end -bbit/-abbit, and earless partners get his bunny ears */
+if (out.pets.rabbit && V.wrEarsFor) { const wr = out.pets.rabbit.wr = { ok: 0, fail: [], ears: 0, own: 0 }, wf = m => { wr.fail.push(m); fails++; };
+  const os = roots.filter(r => r !== 'rabbit');
+  for (const o of os) { const a = V.hybridName('hyb:' + o + ':rabbit'), b = V.hybridName('hyb:rabbit:' + o); if (a !== b) wf('two names for ' + o + ' x rabbit: ' + a + ' / ' + b); else if (!/[^a]bbit$|abbit$/.test(a)) wf('name ' + a + ' does not end -bbit/-abbit'); else wr.ok++;
+    for (const dir of ['shape', 'color']) { const want = dir === 'shape' ? { shape: 'rabbit', color: o } : { shape: o, color: 'rabbit' }, plan = planFor('hyb:rabbit:' + o, want); if (!plan) continue;
+      const e2 = V.wrEarsFor(plan), expect = plan.shape !== 'rabbit' && !V.WR_EARED[o]; if (!!(e2 && e2.wrEars) !== expect) wf('ears rule wrong on ' + o + ' x rabbit (' + plan.shape + ' body)'); else { wr.ok++; if (expect) wr.ears++; else if (V.WR_EARED[o]) wr.own++; } } }
+  for (let i = 0; i < os.length; i++) { const tri = ['rabbit', os[i], os[(i + 5) % os.length]], n = V.hybridName('hyb3:' + tri.join(':')); if (!/bbit$/.test(n || '')) wf('3-way name ' + n + ' for ' + tri.join('/')); else wr.ok++;
+    for (const sh of [tri[1], tri[2]]) { const plan = planFor('hyb3:' + tri.join(':'), { shape: sh }); if (!plan) continue; const expect = !tri.some(r => V.WR_EARED[r]), got = !!(V.wrEarsFor(plan) || {}).wrEars; if (got !== expect) wf('3-way ears rule wrong on ' + tri.join('/')); else { wr.ok++; if (expect) wr.ears++; } } }
+  console.log('rabbit    names + bunny-ears rule ok ' + wr.ok + ' (ears given ' + wr.ears + ', own ears kept ' + wr.own + ') · FAIL ' + wr.fail.length); wr.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x)); }
 const W = (k, r) => k + ' ok ' + r.ok + (r.byDesign ? ' · by design ' + r.byDesign : '') + ' · FAIL ' + r.fail.length;
 for (const p of Object.keys(out.pets)) { const r = out.pets[p]; console.log(p.padEnd(9), [W('sprite', r.sprite), W('hybrids', r.hybrids), W('3-way', r.hybrid3), W('gear', r.gear)].join(' | '));
   for (const k of ['sprite', 'hybrids', 'hybrid3', 'gear']) { const f = r[k].fail; f.slice(0, 8).forEach(x => console.log('   ✗ ' + k + ': ' + x)); if (f.length > 8) console.log('   … ' + (f.length - 8) + ' more ' + k + ' failures (see --json)'); } }
