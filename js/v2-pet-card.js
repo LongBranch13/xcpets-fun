@@ -51,11 +51,12 @@
     else if (!isMythic(p) && !I.mythic) why = 'not Mythic yet (quests are for Mythics)';
     if (why) return h + '<p class="pc-noq">No quests for this pet: ' + esc(why) + '.</p>';
     var own = !!mine && !viewOnly(), can = own && window.V2Quests && typeof V2Quests.start === 'function', busy = V.questWhy ? V.questWhy(w, p, me() || p.owner, V.QUEST_CODES[0], 1e12, b) : null;
+    if (window.V2QuestClarity) h += V2QuestClarity.lastLine(w, p); /* quest-clarity-1103 */
     if (I.napUntil) h += '<p class="small">💤 Nap Time until block ' + fmt(I.napUntil) + '.</p>';
     h += (I.freeQuest ? '<p class="small"><b>🎟️ Free first quest</b> (0.00000001 XCPETS burn).</p>' : '') + '<div class="pc-qlist">' + V.QUEST_CODES.map(function (c) {
       var Q = V.QUESTS[c], pl = V.questPlan ? V.questPlan(p.id, c, w, b) : null, cost = I.freeQuest ? 'free' : pl ? fmt(pl.amount) + ' XCPETS' : '', dis = !can || !!busy;
       return '<div class="pc-q"><span class="pc-mb" title="Mythic quest">MYTHIC</span><b>' + esc(Q.name) + '</b><small>' + fmt(Q.len) + ' blocks · ' + cost + '</small>' +
-        '<button type="button" class="btn pc-qgo" data-pcq="' + esc(c) + '"' + (dis ? ' disabled title="' + esc(!own ? 'Only the owner wallet can send this pet' : busy || 'Quest module not loaded') + '"' : '') + '>Start</button></div>'; }).join('') + '</div>' +
+        '<button type="button" class="btn pc-qgo" data-pcq="' + esc(c) + '"' + (dis ? ' disabled title="' + esc(!own ? 'Only the owner wallet can send this pet' : busy || 'Quest module not loaded') + '"' : '') + '>Start</button>' + (window.V2QuestClarity ? V2QuestClarity.outcomes(w, p, c, b) : '') + '</div>'; }).join('') + '</div>' +
       (busy ? '<p class="small muted">Can\'t start a quest now: ' + esc(busy) + '.</p>' : !own ? '<p class="small muted">Only the owner wallet can send this pet.</p>' : '');
     return h;
   }
