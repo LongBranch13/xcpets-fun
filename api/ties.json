@@ -1,5 +1,5 @@
 {
- "lastBlock": 974460,
+ "lastBlock": 974464,
  "count": 120,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -229,7 +229,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 43046,
@@ -253,7 +253,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 45063,
@@ -265,7 +265,7 @@
    "species": "hyb:dodo:wojak",
    "speciesLabel": "Dojak (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Egg"
   },
   {
    "id": 46068,
@@ -1189,7 +1189,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 4183,
