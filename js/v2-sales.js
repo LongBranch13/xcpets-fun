@@ -427,11 +427,24 @@
   /* pend(): the pending-token store, defined above (shared with the pet card) */
 
   function sellable(p) { return (V.sellStep(W, p, ME) === 'list' ? !V.petFree(W, p, ME, TIP + 1) && !V.saleListing(W, p.id, TIP + 1) : !V.deedWhy(W, { petId: p.id }, ME, TIP + 1)) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
+  /* token-press-freeze-1103 (owner 10:47 PM CT Nov 3 2026 'opening token press froze the site'): the Token Press and List pickers drew a card
+   * plus an animated sprite canvas for EVERY free pet at once (7,242 cards / 4.7 MB of HTML / 86k nodes for a 7,365-pet wallet = ~20 s frozen
+   * main thread, then animation long tasks). Now the first PICK_PER cards are drawn and 'Show more' appends the next page in place.
+   * Filters + sort still run over the whole list (cheap: ~10 ms), so the count line and the order are unchanged. */
+  var PICK_PER = 48;
+  function pickPages(list, cardHtml, wire) { var box = document.querySelector('#shModal .sh-pick'); if (!box) return; var n = 0;
+    function more() { var old = box.querySelector('.sh-more'); if (old) old.remove(); var next = list.slice(n, n + PICK_PER); n += next.length;
+      var tmp = document.createElement('div'); tmp.innerHTML = next.map(cardHtml).join(''); var added = [].slice.call(tmp.children);
+      added.forEach(function (el) { box.appendChild(el); wire(el); });
+      if (n < list.length) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sh-btn sh-ghost sh-more'; b.textContent = 'Show ' + Math.min(PICK_PER, list.length - n) + ' more (' + n + ' of ' + list.length + ' shown)'; b.onclick = function (e) { e.stopPropagation(); more(); }; box.appendChild(b); }
+      paint(); }
+    more(); }
   function sellPick() { var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
-      (mine.map(function (p) { return '<button class="sh-pk" data-pick="' + p.id + '">' + card(p) + '</button>'; }).join('') || '<p>No free pets right now.</p>') + '</div><button class="sh-btn" data-close>Close</button>');
-    document.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-pick')]; viaChain(p, function () { sellPrice(p, 'XCPETS', '100'); }); }; });
+      (mine.length ? '' : '<p>No free pets right now.</p>') + '</div><button class="sh-btn" data-close>Close</button>');
+    pickPages(mine, function (p) { return '<button class="sh-pk" data-pick="' + p.id + '">' + card(p) + '</button>'; },
+      function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-pick')]; viaChain(p, function () { sellPrice(p, 'XCPETS', '100'); }); }; });
     PF.bind($('shModal'), fS, 'sell', sellPick); }
   /* shop-safety (owner 5:22 AM CT Oct 24): amounts are typed in whole coins for BOTH XCPETS and XCP (decimals up to 8 places), converted
    * exactly to base units (1 coin = 100,000,000). SALE_MIN is unchanged in base units. LOW_FLOOR = the "are you sure" floor: under 10 XCPETS or
@@ -494,9 +507,10 @@
     var tied = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) === 'list'; }).length;
     modal('<h3>🏭 Token Press</h3><p class="sh-hint">Pick a pet without a token. The press makes its 🎟 pet token and ties it to the pet: then the pet can be gifted or listed in one wallet window. ' + (tied ? 'You already have ' + tied + ' tokenized pet' + (tied === 1 ? '' : 's') + '.' : '') + ' Pets in a fight, a breed request, a Rug Me ad, a listing or a pending gift/swap are locked and are not shown.</p>' +
       PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
-      (mine.map(function (p) { var pd = pend(p.id); return '<button class="sh-pk" data-press="' + p.id + '">' + card(p, null, pd ? '<span class="sh-hint">Step 1 sent</span>' : '') + '</button>'; }).join('') || '<p>' + (free.length ? 'No pets match these filters.' : 'Every pet you own already has its token (or is locked right now).') + '</p>') + '</div><button class="sh-btn" data-close>Close</button>');
+      (mine.length ? '' : '<p>' + (free.length ? 'No pets match these filters.' : 'Every pet you own already has its token (or is locked right now).') + '</p>') + '</div><button class="sh-btn" data-close>Close</button>');
     PF.bind($('shModal'), fS, 'press', pressPick);
-    document.querySelectorAll('[data-press]').forEach(function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-press')]; viaChain(p, function () { press(p); }); }; }); }
+    pickPages(mine, function (p) { var pd = pend(p.id); return '<button class="sh-pk" data-press="' + p.id + '">' + card(p, null, pd ? '<span class="sh-hint">Step 1 sent</span>' : '') + '</button>'; },
+      function (b) { b.onclick = function () { var p = W.byId[b.getAttribute('data-press')]; viaChain(p, function () { press(p); }); }; }); }
   /* spam-city-tokenized-fix: before a pet's Token Press / List screen is drawn, a tied pet drops its pending record, and a pet with no local
    * record gets one from the chain (chainPend), so a token made on the pet page or in another browser is never asked for again (window 1). */
   function viaChain(p, draw) { var d = V.deedOf(W, p); if (d && d.ok) { pend(p.id, null); return draw(); }
