@@ -19,7 +19,7 @@
       '#petsPanel .petsticky{display:flex;flex-direction:column}#petsPanel #bulkRow{order:-1;margin-bottom:6px}' +
       '#petsPanel #bulkRow #bFeedKept{font-size:14px;padding:9px 16px;min-height:44px}' +
       '#petsPanel .mpt-alt{display:inline-flex;flex-wrap:wrap;gap:8px}#petsPanel .mpt-hint{flex-basis:100%}' +
-      '#petsPanel .mpt-stat{margin:4px 0 8px}#petsPanel .mpt-stat .warn{white-space:nowrap}' +
+      '#petsPanel .mpt-stat{margin:4px 0 8px}#petsPanel .mpt-stat .mpt-next{display:inline-block;margin-top:3px;padding:1px 8px;border:1px solid rgba(255,200,80,.45);border-radius:6px;white-space:nowrap}#petsPanel .mpt-stat .warn{white-space:nowrap}' +
       '#petsPanel .ctlrow .mpt-view{white-space:nowrap}#petsPanel #fShowingSlot:empty{display:none}' +
       '#petsPanel .pettabs{display:none!important}#petsPanel #bulkRow #bFeedKept{font-size:15px;padding:10px 20px}' +
       '@media (max-width:640px){#petsPanel #bulkRow #bFeedKept{flex:1 1 0;min-width:0}#petsPanel .mpt-alt{flex:1 1 100%}#petsPanel .mpt-alt .q{flex:1 1 0;min-width:0}' +
@@ -32,7 +32,12 @@
     var urg = L.filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; });
     var h = '<b>' + fmt(L.length) + '</b> pet' + (L.length === 1 ? '' : 's') + ' · ☑ <b>' + fmt(kept) + '</b> selected · 🍽️ <b>' + fmt(hungry) + '</b> hungry';
     if (urg.length) h += ' · <span class="warn">🪦 ' + fmt(urg.length) + ' neglected, first dies in ~' + left(Math.min.apply(null, urg.map(function (p) { return p.deathBlock - w.tip; }))) + '</span>';
+    var nc = nextCycle(w.tip); if (nc) h += '<br><span class="mpt-next" title="Every pet can eat one meal per chain day (144 blocks). A new day starts at this block. About 10 minutes per block.">⏳ Next feed cycle: block <b>' + fmt(nc.block) + '</b> (about ' + nc.about + ')</span>';
     if (el.innerHTML !== h) el.innerHTML = h; }
+  /* feed-countdown-1103 (player ask, display only): the next chain day (floor(block/144), the same day V2Rules uses for one meal per pet) starts at
+   * the first block N > tip with N % 144 === 0; time is an estimate at about 10 minutes per block. */
+  function nextCycle(tip) { tip = +tip || 0; if (!tip) return null; var n = Math.ceil((tip + 1) / 144) * 144, hr = (n - tip) * 10 / 60, x = hr < 10 ? Math.round(hr * 10) / 10 : Math.round(hr);
+    return { block: n, blocks: n - tip, about: x + (x === 1 ? ' hour' : ' hours') }; }
   function view() { var b = $('mptView'); if (!b) return; var one = d.body.classList.contains('mps-one'); b.textContent = one ? '▦ Grid' : '🃏 One at a time'; b.setAttribute('aria-pressed', String(one)); b.title = one ? 'Show all your pets as a grid' : 'Show one big pet at a time (swipe)'; }
   /* one time per page load: an older build's hidden filters become search words, then the hidden controls go back to "all" */
   function migrate() { var q = $('fSearch'), words = [], ch = false; if (!q) return;
@@ -56,6 +61,6 @@
     d.addEventListener('xcpets-sel', soon); /* mypets-checkbox: the checked count changed */
     new MutationObserver(view).observe(d.body, { attributes: true, attributeFilter: ['class'] });
     setInterval(stat, 60000); soon(); }
-  window.V2MyPetsTop = { init: init, stat: stat, migrate: migrate };
+  window.V2MyPetsTop = { init: init, stat: stat, migrate: migrate, nextCycle: nextCycle };
   var tries = 0; (function poll() { init(); if (!done && tries++ < 600) setTimeout(poll, 200); })();
 })();
