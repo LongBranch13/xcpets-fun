@@ -1,20 +1,8 @@
 {
- "lastBlock": 974472,
- "count": 120,
+ "lastBlock": 974479,
+ "count": 122,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
-  {
-   "id": 2,
-   "asset": "A11825070992356920202",
-   "tiedBlock": 972714,
-   "tiedTx": "49922dbfbfdbb6cb44f0479dbd529725a1cb85c20abd3a6cd92cb8cdda0f7a4a",
-   "kind": "deed",
-   "name": "Nezu",
-   "species": "wojak",
-   "speciesLabel": "Wojak",
-   "rarity": "Rare",
-   "stage": "Mythic"
-  },
   {
    "id": 3150,
    "asset": "A175164024751316932",
@@ -1441,6 +1429,42 @@
    "species": "hyb:pepe:dodo",
    "speciesLabel": "Pepodo (hybrid)",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8457,
+   "asset": "A12767919646442307627",
+   "tiedBlock": 974474,
+   "tiedTx": "24f4b086909ee308b1e85dbafe121a672430b5dfe35b5ecb7d3d3ef82027d9d1",
+   "kind": "deed",
+   "name": "Zurupip",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Uncommon",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 52945,
+   "asset": "A158286936081329910",
+   "tiedBlock": 974474,
+   "tiedTx": "54b224202bc111b238dc5ea42a19a62e4eb5449ca30ece5e52461a0f5843712a",
+   "kind": "deed",
+   "name": "Voonooni",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2,
+   "asset": "A5064049076188175501",
+   "tiedBlock": 974476,
+   "tiedTx": "beb57335d8477919ca70482cc7e0e20f79a8870d1fc83d7cfab07994fd2754bd",
+   "kind": "deed",
+   "name": "Nezu",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
