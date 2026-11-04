@@ -1,6 +1,6 @@
 {
- "lastBlock": 974485,
- "count": 123,
+ "lastBlock": 974487,
+ "count": 124,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1478,6 +1478,18 @@
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
    "stage": "Adult"
+  },
+  {
+   "id": 46494,
+   "asset": "A1735162206498414289",
+   "tiedBlock": 974487,
+   "tiedTx": "4b0d2aebcf0cfd6f6a7927863e10a042dccbc9848ddc5c885497940c6e93e42d",
+   "kind": "deed",
+   "name": "Zadiboopip",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
