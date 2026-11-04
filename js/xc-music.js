@@ -12,6 +12,7 @@
   var NAMES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
   function n(s) { var m = /^([A-G])(#|b)?(\d)$/.exec(s); return 12 * (+m[3] + 1) + NAMES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); }
   function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function hzc(m) { return 432 * Math.pow(2, (m - 69) / 12); } // 8-bit style: A4 = 432 Hz (owner, Nov 4)
   function rng(seed) { var s = seed >>> 0; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 
   // chord = [root midi, quality]; scale = intervals used for melody passing tones
@@ -129,11 +130,12 @@
   };
   function composeChip(key) {
     var T = CHIP[key], M = T.meter, e = 60 / T.bpm / (M === 12 ? 3 : 2), ev = [], bar = 0, sec = [];
-    function part(name, ch, lines, alt, lvl, tr) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ s: name, ch: (r && i >= 2) ? T[name + 'c2'][i - 2] : ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], lvl: lvl, tr: tr || 0 }); }
+    function part(name, ch, lines, alt, lvl, tr) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ r: r, s: name, ch: (r && i >= 2) ? T[name + 'c2'][i - 2] : ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], lvl: lvl, tr: tr || 0 }); }
     for (var i0 = 0; i0 < 4; i0++) sec.push({ s: 'I', ch: T.ic[i0], m: T.I[i0], lvl: 0, ramp: (i0 + 1) / 4, roll: i0 === 3 });
     part('A', T.ac, T.A, T.Aa, 1); part('B', T.bc, T.B, T.Ba, 2); part('A', T.ac, T.A, T.Aa, 2);
     part('R', T.rc, T.R, T.Ra, 1); part('B', T.bc, T.B, T.Ba, 3, T.lift);
     sec.push({ s: 'O', ch: T.oc, m: T.O, lvl: 1, roll: true });
+    sec[3].riser = 1; sec[35].riser = 1; // last intro bar, last bridge bar
     function chordT(c) { var p = c.split(' '), r = n(p[0]), q = p[1];
       if (q === 'T') return [r, r + 4, r + 7, r + 12]; if (q === 't') return [r, r + 3, r + 7, r + 12]; if (q === 's') return [r, r + 5, r + 7, r + 12]; if (q === 'o') return [r, r + 3, r + 6, r + 9];
       return chordTones(c); }
@@ -146,30 +148,32 @@
         if (tok[i] === '.' || tok[i] === '-') continue;
         j = i + 1; while (j < M && tok[j] === '-') j++;
         var p = n(tok[i]) + S.tr, held = j - i > 1, d = e * ((j - i) - (held ? 0.1 : 0.2));
-        ev.push({ t: t0 + i * e, d: d, f: hz(p), v: 0.08, w: 'pulse', duty: T.duty, att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18 });
-        ev.push({ t: t0 + i * e, d: d, f: hz(p), v: 0.06, w: 'tri', att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18 });
-        if (big || T.organ && L >= 2) ev.push({ t: t0 + i * e, d: d, f: hz(p - 12), v: 0.05, w: 'pulse', duty: 0.5, att: 0.02, rel: 0.22 });
+        [-1, 1].forEach(function (sd) { ev.push({ t: t0 + i * e, d: d, f: hzc(p) * (1 + sd * 0.0035), v: 0.05, w: 'pulse', duty: T.duty, att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18, pan: 0.5 * sd }); }); // detuned unison, spread L/R
+        ev.push({ t: t0 + i * e, d: d, f: hzc(p), v: 0.06, w: 'tri', att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18 });
+        if (big || T.organ && L >= 2) ev.push({ t: t0 + i * e, d: d, f: hzc(p - 12), v: 0.05, w: 'pulse', duty: 0.5, att: 0.02, rel: 0.22, pan: -0.3 });
         if (L >= 2 || S.s === 'I') { var sixth = (bar % 4) >= 2, h = p - (sixth ? 8 : 3), ok = ct.map(function (x) { return ((x - ct[0]) % 12 + 12) % 12; });
           while (h > p - (sixth ? 10 : 6) && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--;
-          if (ok.indexOf(((h - ct[0]) % 12 + 12) % 12) >= 0) ev.push({ t: t0 + i * e, d: d, f: hz(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.03, rel: 0.22, vib: 0.005, vd: 0.2 }); }
+          if (ok.indexOf(((h - ct[0]) % 12 + 12) % 12) >= 0) ev.push({ t: t0 + i * e, d: d, f: hzc(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.03, rel: 0.22, vib: 0.005, vd: 0.2, pan: 0.35 }); }
       }
       // held chord pad (3 notes); organ on the crypt: pulse + triangle with a low octave root
       [ct[1], ct[2], ct[3]].forEach(function (pp, q) {
-        ev.push({ t: t0, d: M * e, f: hz(pp) * (1 + 0.002 * (q - 1)), v: 0.035 * amp, w: 'tri', att: 0.2, rel: 0.35 });
-        if (T.organ) ev.push({ t: t0, d: M * e, f: hz(pp), v: 0.022 * amp, w: 'pulse', duty: 0.5, att: 0.15, rel: 0.35 });
+        ev.push({ t: t0, d: M * e, f: hzc(pp) * (1 + 0.002 * (q - 1)), v: 0.035 * amp, w: 'tri', att: 0.2, rel: 0.35, pan: (q - 1) * 0.6, duck: 1 });
+        ev.push({ t: t0, d: M * e, f: hzc(pp + 12) * (1 - 0.002 * (q - 1)), v: 0.016 * amp, w: 'pulse', duty: 0.5, att: 0.25, rel: 0.35, pan: (1 - q) * 0.6, duck: 1 }); // octave doubling, opposite side
+        if (T.organ) ev.push({ t: t0, d: M * e, f: hzc(pp), v: 0.022 * amp, w: 'pulse', duty: 0.5, att: 0.15, rel: 0.35, pan: (1 - q) * 0.4, duck: 1 });
       });
-      if (T.organ) ev.push({ t: t0, d: M * e, f: hz(ct[0] - 12), v: 0.06 * amp, w: 'tri', att: 0.15, rel: 0.35 });
+      if (T.organ) ev.push({ t: t0, d: M * e, f: hzc(ct[0] - 12), v: 0.06 * amp, w: 'tri', att: 0.15, rel: 0.35, duck: 1 });
       // counter-melody on triangle (beat notes through chord tones), levels 2-3
       if (L >= 2) { var beat = M === 12 ? 3 : 2, cm = (bar % 2) ? [3, 2, 1, 2] : [2, 3, 2, 1];
-        for (k = 0; k * beat < M; k++) ev.push({ t: t0 + k * beat * e, d: e * beat * 0.9, f: hz(ct[cm[k % 4]] + (cm[k % 4] === 3 ? 0 : 12)), v: 0.035, w: 'tri', att: 0.04, rel: 0.2 }); }
+        for (k = 0; k * beat < M; k++) ev.push({ t: t0 + k * beat * e, d: e * beat * 0.9, f: hzc(ct[cm[k % 4]] + (cm[k % 4] === 3 ? 0 : 12)), v: 0.035, w: 'tri', att: 0.04, rel: 0.2, pan: -0.4 }); }
       // arpeggio (16ths in 4/4 and 3/4, 8th-note triplets in 12/8)
       if (L >= 1) { var as = M === 12 ? e : e / 2, arp = [0, 1, 2, 3, 2, 1];
-        for (k = 0; k < M * e / as - 0.5; k++) ev.push({ t: t0 + k * as, d: as * 0.85, f: hz(ct[arp[k % 6]] + 12), v: big ? 0.026 : 0.02, w: 'tri', att: 0.006, rel: 0.1 }); }
+        for (k = 0; k < M * e / as - 0.5; k++) ev.push({ t: t0 + k * as, d: as * 0.85, f: hzc(ct[arp[k % 6]] + 12), v: big ? 0.026 : 0.02, w: 'tri', att: 0.006, rel: 0.1, pan: k % 2 ? 0.45 : -0.45 }); }
       // strong triangle bass
       var BP = M === 8 ? (key === 'arena-chip' || big ? [0, 0, 12, 0, 0, 12, 7, 12] : [0, null, 7, null, 0, null, 7, 12])
         : M === 12 ? [0, null, null, 7, null, null, 0, null, null, 7, null, 12] : [0, null, 7, null, 12, null];
       for (i = 0; i < M; i++) if (BP[i] != null) { j = i + 1; while (j < M && BP[j] == null) j++;
-        ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hz(ct[0] - 12 + BP[i]), v: 0.2 * amp, w: 'tri', att: 0.008, rel: 0.08 }); }
+        ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(ct[0] - 12 + BP[i]), v: 0.17 * amp, w: 'tri', att: 0.008, rel: 0.08 });
+        var sb = ct[0] - 12 + (BP[i] % 12 ? 0 : 0) - 12; ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(sb < 31 ? sb + 12 : sb), v: 0.16 * amp, w: 'sine', att: 0.01, rel: 0.08 }); } // sub-bass
       // drums (noise snare/hats + triangle kick); intro builds with a snare roll into A
       for (i = 0; i < M; i++) {
         var kick, snare, hat;
@@ -177,20 +181,25 @@
         else if (M === 12) { kick = i === 0 || i === 6; snare = i === 3 || i === 9 || big && i === 11; hat = i % 3 === 0 || big; }
         else { kick = i === 0 || big && i === 3; snare = i === 2 || i === 4; hat = i % 2 === 0; }
         if (S.s === 'I' && bar < 2) { snare = false; hat = i === 0; }
+        if (S.s === 'R' && !S.r) { kick = i === 0; snare = i === M / 2; hat = i % (M === 12 ? 3 : 2) === 0; } // half-time drop (1st bridge pass)
         if (S.roll && i >= M / 2) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e, d: 0.08, f: 0, v: 0.03 + 0.02 * (i - M / 2) / M + 0.004 * q, w: 'noise', dec: 0.04, rel: 0.02 }); continue; }
-        if (kick) ev.push({ t: t0 + i * e, d: 0.14, f: 120, v: 0.26 * amp, w: 'kick', rel: 0.02 });
-        if (snare && L >= 1) ev.push({ t: t0 + i * e, d: 0.12, f: 0, v: big ? 0.06 : 0.045, w: 'noise', dec: 0.06, rel: 0.02 });
-        if (hat && L >= 1) ev.push({ t: t0 + i * e, d: 0.03, f: 0, v: 0.01, w: 'noise', rel: 0.01 });
+        if (kick) { ev.push({ t: t0 + i * e, d: 0.18, f: 110, v: 0.32 * amp, w: 'kick', rel: 0.02 }); ev.push({ t: t0 + i * e, d: 0.02, f: 0, v: 0.04 * amp, w: 'noise', dec: 0.004, rel: 0.01 }); } // sine thump + click
+        if (snare && L >= 1) { ev.push({ t: t0 + i * e, d: 0.16, f: 0, v: big ? 0.075 : 0.06, w: 'noise', dec: 0.09, rel: 0.02, pan: 0.1 }); ev.push({ t: t0 + i * e, d: 0.1, f: 150, v: 0.12, w: 'kick', dec: 0.04, rel: 0.02 }); } // noise + sine body
+        if (hat && L >= 1) ev.push({ t: t0 + i * e, d: 0.03, f: 0, v: 0.01, w: 'noise', rel: 0.01, pan: 0.3 });
+      }
+      // riser into the climax and into A after the intro: noise swell + upward pitch sweep
+      if (S.riser) { ev.push({ t: t0, d: M * e, f: 0, v: 0.05, w: 'rise', rel: 0.02 }); ev.push({ t: t0, d: M * e, f: hzc(ct[0]), v: 0.03, w: 'sweep', rel: 0.02 });
       }
       bar++;
     });
-    return { events: ev, length: bar * M * e, title: T.title, echo: e * 3, bpm: T.bpm };
+    return { events: ev, length: bar * M * e, title: T.title, echo: e * 3, bpm: T.bpm, beat: e * (M === 12 ? 3 : 2), intro: 4 * M * e };
   }
   function blep(t, dt) { if (t < dt) { t /= dt; return t + t - t * t - 1; } if (t > 1 - dt) { t = (t - 1) / dt; return t * t + t + t + 1; } return 0; }
 
   // Render to Float32Array of exactly `length` seconds; overflow wraps to the start (seamless loop)
   function render(key, sr) {
-    var chip = !!CHIP[key]; sr = sr || (chip ? 44100 : SR);
+    if (CHIP[key]) return renderChip(key, sr);
+    var chip = false; sr = sr || (chip ? 44100 : SR);
     var c = CHIP[key] ? composeChip(key) : compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
     c.events.forEach(function (e) {
       var s0 = Math.round(e.t * sr), len = Math.round(e.d * sr), rel = Math.round((e.rel != null ? e.rel : e.w === 'noise' ? 0.06 : 0.9) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
@@ -220,6 +229,64 @@
     return { samples: out, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
+  // 8-bit style: stereo render. Pads go to a sidechain bus that pumps on every beat; big circular reverb + ping-pong echo;
+  // filter sweep opens over the intro. Everything that runs past the end wraps to the start, so the loop is seamless.
+  function renderChip(key, sr) {
+    sr = sr || 44100;
+    var c = composeChip(key), N = Math.round(c.length * sr), L = new Float32Array(N), Rr = new Float32Array(N), PL = new Float32Array(N), PR = new Float32Array(N), nz = rng(7), TAU = 2 * Math.PI;
+    c.events.forEach(function (e) {
+      var s0 = Math.round(e.t * sr), len = Math.max(1, Math.round(e.d * sr)), rel = Math.round((e.rel != null ? e.rel : 0.06) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
+      var pan = e.pan || 0, gl = Math.cos((pan + 1) * Math.PI / 4) * 1.414, gr = Math.sin((pan + 1) * Math.PI / 4) * 1.414, oL = e.duck ? PL : L, oR = e.duck ? PR : Rr;
+      var nv = 0, nc = 0, lp = 0, k = { pulse: 1, tri: 2, sine: 3, kick: 4, sweep: 5, rise: 6 }[e.w] || 7, duty = e.duty, ev = e.v;
+      var dk = Math.exp(-1 / ((e.dec || (k === 4 ? 0.09 : 0.012)) * sr)), dkf = Math.exp(-1 / (0.035 * sr)), ex = 1, exf = 1, at = s0 % N, vib = e.vib, vd = (e.vd || 0) * sr, w55 = TAU * 5.5 / sr, ra = 1 / atk, rl = 1 / len, rr = 1 / rel;
+      for (var i = 0; i < tot; i++, at++) {
+        if (at >= N) at -= N;
+        var env, x, q;
+        if (k === 4 || k === 7) { env = ex; ex *= dk; }
+        else if (k === 5 || k === 6) { var u = i * rl; env = i < len ? (k === 5 ? u * u : u * u * u) : Math.max(0, 1 - (i - len) * rr); }
+        else if (i < atk) env = i * ra; else if (i < len) env = 1 - 0.3 * i * rl; else { q = 1 - (i - len) * rr; env = 0.7 * q * q; }
+        switch (k) {
+          case 1: x = (ph < duty ? 1 : -1) + blep(ph, inc) - blep((ph - duty + 1) % 1, inc); break;
+          case 2: x = 4 * Math.abs(ph - 0.5) - 1; break;
+          case 3: x = Math.sin(TAU * ph); break;
+          case 4: x = Math.sin(TAU * ph); inc = (e.f * exf + 42) / sr; exf *= dkf; break;
+          case 5: x = 4 * Math.abs(ph - 0.5) - 1; inc = e.f * Math.pow(4, Math.min(1, i * rl)) / sr; break;
+          case 6: if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 1; } var u2 = Math.min(1, i * rl); lp += (0.02 + 0.5 * u2 * u2) * (nv - lp); x = lp; break;
+          default: if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 2; } x = nv;
+        }
+        ph += vib ? inc * (1 + vib * Math.min(1, Math.max(0, i - vd) / (0.15 * sr)) * Math.sin(i * w55)) : inc;
+        if (ph >= 1) ph -= Math.floor(ph);
+        var v = x * ev * env; oL[at] += v * gl; oR[at] += v * gr;
+      }
+    });
+    // sidechain pump: pads dip on each beat and swell back (modern pumping), then join the mix
+    var bt = c.beat * sr, i, j;
+    for (i = 0; i < N; i++) { var ph2 = (i % bt) / sr, g2 = 1 - 0.65 * Math.exp(-ph2 / 0.09) * (ph2 < 0.004 ? ph2 / 0.004 : 1); L[i] += PL[i] * g2; Rr[i] += PR[i] * g2; }
+    PL = PR = null;
+    // ping-pong echo (dotted 8th-ish) and a big circular reverb (4 combs per side, decorrelated L/R)
+    function wrapComb(src, dst, D, fb, mix) { var w = new Float32Array(N), W = Math.min(N, 3 * sr); for (var pass = 0; pass < 2; pass++) for (var q = 0; q < (pass ? W : N); q++) { var r = q - D; if (r < 0) r += N; w[q] = src[q] + fb * w[r]; } for (q = 0; q < N; q++) dst[q] += mix * w[q]; }
+    var D = Math.round(c.echo * sr), eL = new Float32Array(N), eR = new Float32Array(N);
+    for (var pass = 0; pass < 2; pass++) for (i = 0; i < (pass ? Math.min(N, 4 * sr) : N); i++) { var a1 = i - D; if (a1 < 0) a1 += N; eL[i] = 0.35 * (Rr[a1] + eR[a1]); eR[i] = 0.35 * (L[a1] + eL[a1]); }
+    var mL = new Float32Array(N); for (i = 0; i < N; i++) mL[i] = 0.5 * (L[i] + Rr[i]);
+    var vL = new Float32Array(N), vR = new Float32Array(N);
+    [0.0297, 0.0371, 0.0437].forEach(function (t, q) { wrapComb(mL, vL, Math.round(t * sr * 2.2), 0.8, 0.06); wrapComb(mL, vR, Math.round((t + 0.0023 * (q + 1)) * sr * 2.2), 0.8, 0.06); });
+    mL = null;
+    // soften the reverb (one-pole ~2.5 kHz)
+    var ar = 1 - Math.exp(-TAU * 2500 / sr);
+    var WU = Math.max(0, N - sr); [vL, vR].forEach(function (b) { var y = 0, q; for (q = WU; q < N; q++) y += ar * (b[q] - y); for (q = 0; q < N; q++) { y += ar * (b[q] - y); b[q] = y; } });
+    for (i = 0; i < N; i++) { L[i] += 0.55 * eL[i] + vL[i]; Rr[i] += 0.55 * eR[i] + vR[i]; }
+    eL = eR = vL = vR = null;
+    // 2-pole low-pass ~3 kHz; over the intro it sweeps up from ~400 Hz (filter-sweep build)
+    var introN = Math.round(c.intro * sr), aFull = 1 - Math.exp(-TAU * 3000 / sr), coef = new Float32Array(introN);
+    for (i = 0; i < introN; i++) coef[i] = 1 - Math.exp(-TAU * 400 * Math.pow(7.5, i / introN) / sr);
+    [L, Rr].forEach(function (b) { var y1 = 0, y2 = 0, q; for (q = WU; q < N; q++) { y1 += aFull * (b[q] - y1); y2 += aFull * (y1 - y2); } for (q = 0; q < N; q++) { var cf = q < introN ? coef[q] : aFull; y1 += cf * (b[q] - y1); y2 += cf * (y1 - y2); b[q] = y2; } });
+    // DC blocker, two passes so its state wraps
+    [L, Rr].forEach(function (b) { var xp = 0, yp = 0, o, q, last = b[N - 1]; for (q = WU; q < N; q++) { o = b[q] - xp + 0.997 * yp; xp = b[q]; yp = o; } for (q = 0; q < N; q++) { o = b[q] - xp + 0.997 * yp; xp = b[q]; yp = o; b[q] = o; } });
+    var pk = 0; for (i = 0; i < N; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(Rr[i]));
+    var g = pk > 0 ? 0.8 / pk : 1; for (i = 0; i < N; i++) { L[i] *= g; Rr[i] *= g; } // peak 0.8 before the volume gain (max 0.55)
+    return { samples: L, samplesR: Rr, sampleRate: sr, seconds: c.length, title: c.title };
+  }
+
   // style 'chip' (default, classic 8-bit) or 'chill'
   function pickTrack(path, style) {
     var p = String(path || '').toLowerCase(), chill = style === 'chill';
@@ -246,7 +313,7 @@
     if (!src) {
       var key = pickTrack(root.location.pathname, api.style); srcKey = key;
       var r = cache[key] || (cache[key] = render(key, SR));
-      var buf = ctx.createBuffer(1, r.samples.length, r.sampleRate); buf.getChannelData(0).set(r.samples);
+      var buf = ctx.createBuffer(r.samplesR ? 2 : 1, r.samples.length, r.sampleRate); buf.getChannelData(0).set(r.samples); if (r.samplesR) buf.getChannelData(1).set(r.samplesR);
       src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();
     }
     gain.gain.cancelScheduledValues(ctx.currentTime);
