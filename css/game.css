@@ -175,3 +175,4 @@ details.traits td { color: #e9fbe9; padding: 1px 0; } details.traits td.dna { fo
 .tomb.gtomb canvas.gstone{width:156px;height:186px;max-width:100%;filter:none;opacity:1;background:none;border-radius:0}
 .deathnote canvas.gstone.big{float:left;width:120px;height:148px;margin:0 10px 6px 0;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:4px}
 .deathnote::after{content:'';display:block;clear:both}
+.statbox .shd { font-size:10px; color:#7fb8ff; white-space:nowrap; margin-left:2px; } /* POWER SHARDS (quest-shards-1103): shard points inside a stat */

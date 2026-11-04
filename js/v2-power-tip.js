@@ -13,14 +13,15 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function st(p, k) { return Number(((p && p.stats) || {})[k]) || 0; }
   function total(p) { return K.reduce(function (a, k) { return a + st(p, k); }, 0); }
-  function power(p) { return K.map(function (k) { return N[k] + ' ' + st(p, k); }).join(' + ') + ' = ' + total(p); }
+  function shards(p) { var S = (p && p.shards) || {}; return K.reduce(function (a, k) { return a + (Number(S[k]) || 0); }, 0); } /* POWER SHARDS (quest-shards-1103): shard points are already inside the stats */
+  function power(p) { var s = shards(p); return K.map(function (k) { return N[k] + ' ' + st(p, k); }).join(' + ') + ' = ' + total(p) + (s ? ' (includes ' + s + ' shard point' + (s === 1 ? '' : 's') + ' from quests' + (p.shardsIn ? ', ' + p.shardsIn + ' from its parents' : '') + ')' : ''); }
   function stats(p) { return K.map(function (k) { return N[k] + ' ' + st(p, k); }).join(' · '); }
   function hp(p) { var s = (p && p.stage) || 0; return '40 + 2 times Vigor ' + st(p, 'vigor') + ' + Grit ' + st(p, 'grit') + ' + 6 times stage ' + s + (STG[s] ? ' (' + STG[s] + ')' : '') + ' = ' + (40 + 2 * st(p, 'vigor') + st(p, 'grit') + 6 * s); }
   /* list: [{label, tier}] -> each piece adds 1 + 2 times its tier per hit */
   function gear(list) { list = list || []; if (!list.length) return 'No gear worn: +0 per hit'; var t = 0;
     return list.map(function (g) { var v = 1 + 2 * (Number(g.tier) || 0); t += v; return g.label + ' ' + v; }).join(' + ') + ' = +' + t + ' per hit (each piece 1 + 2 times its tier)'; }
   function attr(text) { var e = esc(text); return ' data-ptip="' + e + '" aria-label="' + e + '" tabindex="0"'; }
-  var api = { power: power, stats: stats, hp: hp, gear: gear, attr: attr, total: total };
+  var api = { shards: shards, power: power, stats: stats, hp: hp, gear: gear, attr: attr, total: total };
   window.V2PowerTip = api;
   if (typeof document === 'undefined') return;
   var d = document, bub = null, cur = null;

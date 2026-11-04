@@ -1330,6 +1330,8 @@
     var TN = ['Common', 'Uncommon', 'Rare', 'Legendary'], ch = [];
     [p.wizTier, p.wizTier2].forEach(function (t) { if (t) ch.push('Bitcoin Wizard tier rule at block ' + nfmt(t.block) + ': ' + (TN[t.from] || t.from) + ' to ' + (TN[t.to] || t.to) + ' (each stat ' + (t.bonus >= 0 ? '+' : '') + t.bonus + ', looks kept)'); });
     if (p.grantPower) ch.push('grant power boost at block ' + nfmt(p.grantPower.block) + ': total power ' + p.grantPower.from + ' to ' + p.grantPower.to + ' (rule for 1 of 1 and Burn Lord eggs)');
+    var shN = p.shards ? Object.keys(p.shards).reduce(function (a, k) { return a + (p.shards[k] || 0); }, 0) : 0; /* POWER SHARDS (quest-shards-1103), display only */
+    if (shN) ch.push('+' + shN + ' shard point' + (shN === 1 ? '' : 's') + ' (' + Object.keys(p.shards).filter(function (k) { return p.shards[k]; }).map(function (k) { return k.charAt(0).toUpperCase() + k.slice(1) + ' +' + p.shards[k]; }).join(', ') + ')' + (p.shardsIn ? ', ' + p.shardsIn + ' passed down from its parents at half strength' : '') + ' (15 at most, 8 in one stat)');
     if (p.questBoost) ch.push('+' + p.questBoost + ' stat point' + (p.questBoost === 1 ? '' : 's') + ' from Legendary Haul quests (3 at most)');
     if (ch.length) out.push('<b>Stat changes:</b> <span class="muted">' + esc(ch.join('; ')) + '.</span>');
     var bd = badgesOf(w, p); if (bd.length) out.push('<b>Badges:</b> ' + bd.map(function (x) { return '<span class="chip brbadge" title="' + esc(x.tip) + '">' + x.icon + ' ' + esc(x.name) + '</span>'; }).join(' '));

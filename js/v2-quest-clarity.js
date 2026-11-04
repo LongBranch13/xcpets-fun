@@ -26,6 +26,12 @@
     if (code === 'wiz') return two ? '6 saved spins' : '3 saved spins';
     if (code === 'cold') return two ? '1 Jackpot Egg' : '1 saved spin';
     return ''; }
+  /* POWER SHARDS (quest-shards-1103, gated by V2Rules.shardsOn; numbers read from V2Rules.QUEST_SHARDS / SHARD_CAP / SHARD_STAT_MAX, not mirrored) */
+  function shardsOn(b) { var R = V(); return !!(R && R.shardsOn && R.shardsOn(b) && R.QUEST_SHARDS); }
+  function shardWord(n) { return n + ' Power Shard' + (n === 1 ? '' : 's'); }
+  function prizeS(code, tier) { var R = V(), n = R.QUEST_SHARDS[code][tier === 'haul' ? 0 : 1];
+    if (code === 'cold' && tier === 'loot') return shardWord(n); /* Cold Loot: the shard replaces the saved spin */
+    return prize(code, tier) + ' + ' + shardWord(n); }
   function eggNote(b) { var R = V(), J = MIRROR.JACKPOT, s = 'Jackpot Egg = a free Legendary hybrid egg (twins 1 in ' + J.twin1In + ', mutation 1 in ' + J.mutation1In + ', hidden trait 1 in ' + J.hidden1In + ', three-way look 1 in ' + J.legMix1In + ').';
     var cap = R.breedsLeft ? R.breedsLeft({}, b).cap : 6;
     if (R.jackpotNobreedOn && R.jackpotNobreedOn(b)) s += ' It counts as a child of this pet but uses none of its ' + cap + ' lifetime breeds. No cooldown, and the egg comes even when the pet has no breeds left.'; /* jackpot-nobreed-1103 (gated) */
@@ -33,19 +39,22 @@
     return s; }
   function outcomes(w, p, code, b) { var R = V(); if (!R || !R.QUESTS || !R.QUESTS[code] || !R.questOdds) return '';
     var Q = R.QUESTS[code], od = R.questOdds(w, p, code, b), T = R.QUEST_TIERS, base = Q.odds, isFT = p && p.species === 'funtrump' && !p.community;
-    var boostLeft = Math.max(0, MIRROR.QUEST_STAT_CAP - ((p && p.questBoost) || 0)), favs = Q.fav.map(function (k) { return STAT[k] || k; }).join(' or ');
+    var boostLeft = Math.max(0, MIRROR.QUEST_STAT_CAP - ((p && p.questBoost) || 0)), favs = Q.fav.map(function (k) { return STAT[k] || k; }).join(' or '), sh = shardsOn(b), room = sh && R.shardRoom ? R.shardRoom(p || {}) : 0;
+    var roomTxt = sh ? (room ? ' (this pet can still gain ' + room + ')' : ' (this pet already has all ' + R.SHARD_CAP + ' shard points; the shards are skipped)') : '';
     var row = function (ico, name, bp, b0, what) { return '<li><span class="qc-t">' + ico + ' ' + esc(name) + '</span><b class="qc-p">' + pct(bp) + '</b>' + (bp !== b0 ? '<span class="qc-base">base ' + pct(b0) + '</span>' : '') + '<span class="qc-w">' + what + '</span></li>'; };
     var h = '<details class="qc-out"><summary>What it can bring home</summary><ul>' +
+      (sh ? row('🏆', T.haul, od.haul, base[0], esc(prizeS(code, 'haul')) + esc(roomTxt)) + row('🎒', T.loot, od.loot, base[1], esc(prizeS(code, 'loot')) + esc(roomTxt)) :
       row('🏆', T.haul, od.haul, base[0], esc(prize(code, 'haul')) + ' + 1 ' + esc(favs) + (boostLeft ? ' (this pet can still gain ' + boostLeft + ')' : ' (this pet already has the most stat gains: ' + MIRROR.QUEST_STAT_CAP + ')')) +
-      row('🎒', T.loot, od.loot, base[1], esc(prize(code, 'loot'))) +
+      row('🎒', T.loot, od.loot, base[1], esc(prize(code, 'loot')))) +
       row('🕳️', T.empty, od.empty, base[2], 'nothing') + '</ul>';
     h += '<p class="qc-n">Any result: ' + (isFT ? MIRROR.AMBUSH_FT : 1) + ' in ' + MIRROR.AMBUSH_1_IN + ' FUNTRUMP Ambush = a bonus Jackpot Egg' + (isFT ? ' (FUNTRUMP\u2019s badge always)' : ' + FUNTRUMP badge') + '. Always: the ' + esc(Q.badge) + ' and ' + (Q.look.by === 'haul' ? esc(Q.look.name) + ' progress on a ' + esc(T.haul) : esc(Q.look.name) + ' progress') + '. No pet dies on a quest.</p>';
+    if (sh) h += '<p class="qc-n qc-sh">💠 Power Shard = +1 to ' + esc(favs) + ' for good, spread across both stats. Up to ' + R.SHARD_CAP + ' per pet, ' + R.SHARD_STAT_MAX + ' in one stat. Shard points count in Power, fights and rankings, and pass to eggs at half strength.</p>';
     if (od.shift) h += '<p class="qc-n">This pet\u2019s boost: +' + pct(od.shift) + ' moved from ' + esc(T.empty) + ' to ' + esc(T.haul) + ' (' + esc(favs) + ' above the Mythic average' + (od.gearPts ? ', ' + esc(Q.slot) + ' gear' : '') + ').</p>';
     else h += '<p class="qc-n">Raise the odds: ' + esc(favs) + ' above the Mythic average, or wear ' + esc(Q.slot) + ' gear.</p>';
     if (code === 'cold') h += '<p class="qc-n">' + esc(eggNote(b)) + '</p>';
     h += '<p class="qc-n">Away ' + fmt(Q.len) + ' blocks (' + hrs(Q.len) + '), then Nap Time ' + fmt(Q.len / 2) + ' blocks (no quests; fights, breeding and feeding are fine).</p></details>';
     return h; }
-  function rewardWord(r) { return r.kind === 'gear' ? (r.star ? '★ ' : '') + r.label : r.kind === 'spins' ? r.n + ' saved spin' + (r.n > 1 ? 's' : '') : r.kind === 'egg' ? (r.ambush ? 'FUNTRUMP Ambush Jackpot Egg #' : 'Jackpot Egg #') + r.petId : r.kind === 'stat' ? '+1 ' + (STAT[r.stat] || r.stat) : ''; }
+  function rewardWord(r) { return r.kind === 'gear' ? (r.star ? '★ ' : '') + r.label : r.kind === 'spins' ? r.n + ' saved spin' + (r.n > 1 ? 's' : '') : r.kind === 'egg' ? (r.ambush ? 'FUNTRUMP Ambush Jackpot Egg #' : 'Jackpot Egg #') + r.petId : r.kind === 'stat' ? '+1 ' + (STAT[r.stat] || r.stat) : r.kind === 'shards' ? '💠 ' + shardWord(r.n) + ' (' + Object.keys(r.stats || {}).map(function (k) { return (STAT[k] || k) + ' +' + r.stats[k]; }).join(', ') + ')' : ''; }
   function lastLine(w, p) { var R = V(), H = p && p.questHist; if (!R || !H || !H.length) return ''; var q = H[H.length - 1], Q = R.QUESTS[q.code] || {};
     var got = (q.rewards || []).map(rewardWord).filter(Boolean);
     return '<p class="qc-last"><b>Last quest:</b> ' + esc(Q.name || q.code) + ', ' + esc(R.QUEST_TIERS[q.tier]) + (got.length ? ': ' + esc(got.join(', ')) : ' (nothing this time)') + ' <span class="muted">(home at block ' + fmt(q.end) + ')</span>' + (H.length > 1 ? ' · ' + H.length + ' quests in all' : '') + '</p>'; }
@@ -93,7 +102,7 @@
     '.qc-out{margin-top:6px;font-size:12px;line-height:1.4}.qc-out summary{cursor:pointer;font-weight:700}.qc-out ul{list-style:none;margin:6px 0;padding:0}' +
     '.qc-out li{display:grid;grid-template-columns:1fr auto;gap:0 6px;padding:4px 0;border-top:1px dashed rgba(0,0,0,.25)}.qc-out .qc-p{text-align:right}.qc-out .qc-base{grid-column:2;text-align:right;font-size:10px;opacity:.7}.qc-out .qc-w{grid-column:1/3;font-size:11px}' +
     '.pc-q .qc-out{grid-column:1/-1;grid-row:3}.pc-q:has(.ip-why) .qc-out{grid-column:2/-1}.pc-q:has(.qc-out) .ip-why{grid-column:1;grid-row:3;align-self:start;margin-top:6px}.qc-n{margin:4px 0;font-size:11px}.qc-last{margin:6px 0;font-size:12px}' +
-    '.qc-cool{margin:14px 0;padding:10px;border:3px solid #1a0d1f;background:#fff4d6;color:#2b1928;box-shadow:4px 4px 0 #1a0d1f}.qc-h{margin:0 0 6px;font-family:"Press Start 2P",monospace;font-size:12px}' +
+    '.qc-sh{background:rgba(79,157,255,.12);padding:3px 5px;border-left:3px solid #4f9dff}.qc-cool{margin:14px 0;padding:10px;border:3px solid #1a0d1f;background:#fff4d6;color:#2b1928;box-shadow:4px 4px 0 #1a0d1f}.qc-h{margin:0 0 6px;font-family:"Press Start 2P",monospace;font-size:12px}' +
     '.qc-wrap{overflow-x:auto;margin:8px 0}.qc-tab{border-collapse:collapse;width:100%;font-size:12px}.qc-tab th,.qc-tab td{border-bottom:1px solid rgba(0,0,0,.2);padding:5px 6px;text-align:left;vertical-align:top}' +
     '.qc-tab td small{display:block;font-size:10px;opacity:.75}.qc-tab a{color:inherit;font-weight:700}.qc-ok{color:#11772a;font-weight:700}.qc-no{opacity:.6}.qc-m{font-size:9px;background:#1a0d1f;color:#ffd84a;padding:1px 3px}' +
     '@media (max-width:480px){.qc-tab th:nth-child(3),.qc-tab td:nth-child(3){display:none}.qc-tab{font-size:11px}}';

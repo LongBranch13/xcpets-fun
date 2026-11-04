@@ -25,6 +25,7 @@
   function addW(acc, d, w) { Object.keys(d).forEach(function (k) { acc[k] = (acc[k] || 0) + d[k] * w; }); }
   /** preview(A, B, blk) -> { exp, expHi (bred true: exp counts the +3 half the time, expHi every time; the real share sits between), lo, hi, dist, stats: { k: { a, b, avg, lo, hi, exp, keep, floor } }, hybridPct, bredTrue, notes: [], passes: [] } */
   function preview(A, B, blk) {
+    var R0 = V(), sh = R0.shardsOn && R0.shardsOn(blk) && R0.shardView && ((R0.shardSum(A) || 0) + (R0.shardSum(B) || 0)) > 0; if (sh) { A = R0.shardView(A, 1); B = R0.shardView(B, 1); } /* POWER SHARDS (quest-shards-1103, gated): parents count base stats + half their shard points */
     var R = V(), sa = A.stats || {}, sb = B.stats || {}, ha = hyb(A.species), hb = hyb(B.species), same = A.species === B.species && !ha && !hb;
     var rateOn = R.hybridRateOn ? R.hybridRateOn(blk) : true, h = 0, notes = [];
     if (!same && !ha && !hb) h = rateOn ? (R.HYBRID_RATE_1E9 || 684773435) / 1e9 : 0;
@@ -47,6 +48,7 @@
     Object.keys(fl).forEach(function (k) { passes.push('Carried ' + k.toUpperCase() + ' ' + fl[k].v + ' (from #' + fl[k].from + '): the egg\u2019s ' + k.toUpperCase() + ' is at least ' + fl[k].v); });
     if (bt) passes.push('Bred true: +' + BT + ' on one stat in at least half of eggs, else a rarer pattern or eyes');
     [A, B].forEach(function (P) { if (P.hidden) passes.push('Hidden trait from #' + P.id + ': passes half the time'); });
+    if (sh) notes.push('Power Shards pass at half strength: each parent counts its base stats plus half its shard points (rounded down). The egg keeps those as its own shard points, inside its cap of ' + (R.SHARD_CAP || 15) + '.');
     if ([A.species, B.species].some(function (s) { return /^(wizard|kek|funtrump|nakamoto)$/.test(s); })) notes.push('Community and Nakamoto species have fixed tiers that can add a rarity bonus not shown here.');
     return { exp: Math.round(exp * 10) / 10, expHi: Math.round((exp + (bt ? BT * 0.5 : 0)) * 10) / 10, lo: Math.min.apply(null, vals), hi: Math.max.apply(null, vals), dist: dist, stats: stats, hybridPct: Math.round(h * 1000) / 10, bredTrue: bt, passes: passes, notes: notes,
       parentPower: [KEYS.reduce(function (a, k) { return a + (sa[k] || 0); }, 0), KEYS.reduce(function (a, k) { return a + (sb[k] || 0); }, 0)] };
