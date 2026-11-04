@@ -85,81 +85,84 @@
     return { events: ev, length: pos, title: T.title };
   }
 
-  // ---- 8-bit style (default, owner Nov 4): classic melodic NES / Game Boy chiptune. Original melodies, written here note by note.
-  // Bars of 8 eighth notes: '.' rest, '-' hold. Form: verse (8) chorus (8) verse 2 (8, + echo lead) chorus 2 (8) bridge (4) -> ~60-75 s.
-  // Verse/chorus = 4 written bars, played twice; the 2nd time bars 7-8 use the alt ending.
+  // ---- 8-bit style (default; owner Nov 4: warm, nostalgic RPG town / overworld chiptune). Original melodies, written here note by note.
+  // Bars of 8 eighth notes: '.' rest, '-' hold. Each part = 4 written bars played twice (2nd time bars 3-4 use the alt ending).
+  // Form: A, B, A (with harmony), Bridge, B (with harmony) = 40 bars -> 83-102 s per loop. Soft square lead, flowing 16th arpeggio,
+  // soft triangle bass, light noise drums, and a circular echo (wraps around the loop, so the restart is seamless).
   var CHIP = {
-    meadow: { title: 'Pixel Meadow', bpm: 124, duty: 0.25,
-      vc: ['C4 M', 'A3 m', 'F3 M', 'G3 M'], cc: ['F3 M', 'G3 M', 'E3 m', 'A3 m'], bc: ['D3 m', 'E3 m', 'F3 M', 'G3 M'],
-      V: ['E5 - G5 E5 D5 C5 D5 E5', 'C5 - . A4 C5 E5 D5 C5', 'A4 - C5 F5 E5 - D5 C5', 'D5 - - - G4 - . .'],
-      Va: ['A4 C5 F5 A5 G5 - F5 E5', 'D5 - E5 F5 G5 - . .'],
-      C: ['C6 - A5 - G5 A5 C6 -', 'D6 - B5 - G5 - D5 E5', 'G5 - E5 - B4 E5 G5 B5', 'A5 - - - E5 - C5 .'],
-      Ca: ['C6 - A5 C6 F6 - E6 D6', 'D6 - - C6 B5 - G5 .'],
-      B: ['F5 - E5 D5 A4 - D5 F5', 'G5 - F5 E5 B4 - E5 G5', 'A5 - G5 F5 C5 - F5 A5', 'B5 - - - D6 - - -'] },
-    crypt: { title: 'Lantern Crypt', bpm: 116, duty: 0.125,
-      vc: ['A3 m', 'F3 M', 'C4 M', 'G3 M'], cc: ['D3 m', 'E3 M', 'A3 m', 'F3 M'], bc: ['F3 M', 'G3 M', 'C4 M', 'E3 M'],
-      V: ['A4 - C5 E5 A5 - G5 E5', 'F5 - E5 C5 A4 - C5 .', 'E5 - D5 C5 G4 - C5 E5', 'D5 - - B4 G4 - . .'],
-      Va: ['E5 - G5 C6 B5 - G5 E5', 'D5 - B4 D5 G5 - . .'],
-      C: ['F5 - A5 - D6 - C6 A5', 'G#5 - B5 - E6 - D6 B5', 'C6 - B5 A5 E5 - A5 C6', 'C6 - - - A5 - F5 .'],
-      Ca: ['F5 A5 D6 F6 E6 - D6 C6', 'B5 - G#5 - E5 - . .'],
-      B: ['A5 - C6 - F5 - A5 C6', 'B5 - D6 - G5 - B5 D6', 'C6 - E6 - G5 - C6 E6', 'G#5 - - - B5 - E5 .'] },
-    'arena-chip': { title: 'Arena Rush', bpm: 136, duty: 0.5,
-      vc: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], cc: ['C3 M', 'D3 M', 'B2 m', 'E3 m'], bc: ['A2 m', 'D3 M', 'G3 M', 'B2 M'],
-      V: ['E5 - B4 E5 G5 - F#5 E5', 'E5 - C5 E5 G5 - A5 G5', 'F#5 - D5 F#5 A5 - G5 F#5', 'D#5 - - - B4 - . .'],
-      Va: ['F#5 A5 D6 - C#6 - A5 F#5', 'D#6 - B5 - F#5 - D#5 .'],
-      C: ['G5 - G5 A5 B5 - A5 G5', 'A5 - A5 B5 C6 - B5 A5', 'B5 - F#5 - D5 F#5 B5 D6', 'E6 - - - B5 - G5 .'],
-      Ca: ['D6 - C#6 B5 F#5 - B5 D6', 'E6 - D6 B5 G5 - E5 .'],
-      B: ['C6 - B5 A5 E5 - A5 C6', 'D6 - C6 A5 F#5 - A5 D6', 'B5 - A5 G5 D5 - G5 B5', 'D#6 - - - F#5 - B5 .'] },
-    parade: { title: 'Snack Parade', bpm: 120, duty: 0.25,
-      vc: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], cc: ['Bb2 M', 'C3 M', 'A2 m', 'D3 m'], bc: ['G2 m', 'A2 m', 'Bb2 M', 'C3 M'],
-      V: ['C5 - F5 - A5 G5 F5 -', 'D5 - F5 - A5 - G5 F5', 'D5 - Bb4 D5 F5 - E5 D5', 'E5 - - - C5 - . .'],
-      Va: ['D5 F5 Bb5 - A5 - G5 F5', 'G5 - - E5 C5 - . .'],
-      C: ['F5 - Bb5 - D6 - C6 Bb5', 'G5 - C6 - E6 - D6 C6', 'C6 - A5 - E5 A5 C6 E6', 'D6 - - - A5 - F5 .'],
-      Ca: ['Bb5 - D6 F6 E6 - D6 C6', 'C6 - - Bb5 G5 - E5 .'],
-      B: ['D5 - G5 Bb5 A5 - G5 F5', 'E5 - A5 C6 Bb5 - A5 G5', 'F5 - Bb5 D6 C6 - Bb5 A5', 'G5 - - - C6 - E5 .'] }
+    meadow: { title: 'Pixel Meadow', bpm: 104, duty: 0.25,
+      ac: ['C4 M', 'A3 m', 'F3 M', 'G3 M'], bc: ['F3 M', 'C4 M', 'D3 m', 'G3 M'], rc: ['A3 m', 'E3 m', 'F3 M', 'G3 M'],
+      A: ['E5 - - D5 C5 - G4 -', 'A4 - C5 - E5 - D5 C5', 'F5 - E5 - D5 - C5 A4', 'B4 - - - G4 - . .'],
+      Aa: ['A4 C5 F5 - E5 - D5 C5', 'D5 - - - B4 - . .'],
+      B: ['A5 - G5 - F5 - C5 -', 'E5 - - G5 C6 - B5 A5', 'A5 - - F5 D5 - F5 A5', 'G5 - - - B4 D5 G5 -'],
+      Ba: ['F5 - E5 D5 A4 - D5 F5', 'G5 - F5 - D5 - B4 .'],
+      R: ['C5 - - E5 A5 - G5 E5', 'B4 - - - E5 - D5 B4', 'C5 - A4 - F5 - E5 C5', 'D5 - - - G5 - - -'],
+      Ra: ['A5 - G5 F5 C6 - A5 F5', 'G5 - F5 - D5 - B4 .'] },
+    parade: { title: 'Snack Parade', bpm: 112, duty: 0.25,
+      ac: ['F3 M', 'D3 m', 'Bb2 M', 'C3 M'], bc: ['Bb2 M', 'F3 M', 'G2 m', 'C3 M'], rc: ['D3 m', 'A2 m', 'Bb2 M', 'C3 M'],
+      A: ['C5 - F5 - A5 - G5 F5', 'D5 - - F5 A5 - F5 D5', 'Bb4 - D5 - F5 - E5 D5', 'E5 - - - C5 - . .'],
+      Aa: ['D5 - F5 - Bb5 - A5 G5', 'G5 - - - E5 - C5 .'],
+      B: ['D6 - - C6 Bb5 - F5 -', 'A5 - C6 - F5 - A5 C6', 'Bb5 - - A5 G5 - D5 -', 'E5 - - - G5 - C6 -'],
+      Ba: ['Bb5 - A5 G5 D5 - G5 Bb5', 'C6 - Bb5 - G5 - E5 .'],
+      R: ['F5 - - A5 D5 - F5 A5', 'E5 - - - C5 - A4 -', 'D5 - F5 - Bb5 - A5 F5', 'G5 - - - E5 - - -'],
+      Ra: ['F5 - D5 F5 Bb5 - D6 -', 'C6 - - - Bb5 - G5 E5'] },
+    'arena-chip': { title: 'Arena Rush', bpm: 115, duty: 0.5,
+      ac: ['E3 m', 'C3 M', 'D3 M', 'B2 M'], bc: ['C3 M', 'D3 M', 'B2 m', 'E3 m'], rc: ['A2 m', 'D3 M', 'G3 M', 'B2 M'],
+      A: ['E5 - - B4 E5 - G5 -', 'G5 - - E5 C5 - E5 G5', 'F#5 - - D5 A5 - F#5 D5', 'D#5 - - - B4 - . .'],
+      Aa: ['F#5 - A5 - D6 - A5 F#5', 'D#6 - - - B5 - F#5 D#5'],
+      B: ['G5 - - E5 C6 - B5 G5', 'A5 - - F#5 D6 - C6 A5', 'B5 - - D6 F#5 - B5 D6', 'E6 - - - B5 - G5 -'],
+      Ba: ['D6 - C#6 B5 F#5 - D5 F#5', 'G5 - - F#5 E5 - - .'],
+      R: ['C5 - E5 - A5 - G5 E5', 'F#5 - - - D5 - A4 -', 'B4 - D5 - G5 - F#5 G5', 'F#5 - - - D#5 - B4 -'],
+      Ra: ['D5 - G5 - B5 - A5 G5', 'F#5 - - - D#5 F#5 B5 -'] },
+    crypt: { title: 'Lantern Crypt', bpm: 94, duty: 0.125,
+      ac: ['A3 m', 'F3 M', 'C4 M', 'E3 M'], bc: ['D3 m', 'A3 m', 'F3 M', 'E3 M'], rc: ['F3 M', 'G3 M', 'E3 m', 'A3 m'],
+      A: ['A4 - - C5 E5 - D5 C5', 'C5 - - A4 F4 - A4 C5', 'E5 - - D5 C5 - G4 -', 'G#4 - - - B4 - E5 -'],
+      Aa: ['G5 - E5 - C5 - E5 G5', 'B5 - - G#5 E5 - - .'],
+      B: ['F5 - - E5 D5 - A5 -', 'E5 - - C5 A4 - C5 E5', 'A5 - - G5 F5 - C5 A4', 'B4 - - - G#4 - E4 -'],
+      Ba: ['C5 - F5 - A5 - G5 F5', 'E5 - - - D5 - B4 G#4'],
+      R: ['A4 - C5 F5 E5 - C5 A4', 'B4 - D5 G5 F5 - D5 B4', 'G4 - B4 E5 D5 - B4 G4', 'A4 - - - C5 - E5 -'],
+      Ra: ['F5 - E5 D5 C5 - A4 C5', 'B4 - - - G#4 - - .'] }
   };
   function composeChip(key) {
-    var T = CHIP[key], e8 = 60 / T.bpm / 2, ev = [], bar = 0;
-    var sec = [];
-    function part(name, ch, lines, alt, opt) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ s: name, ch: ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], o: opt, last: false }); }
-    part('V', T.vc, T.V, T.Va, {}); part('C', T.cc, T.C, T.Ca, { harm: 1 });
-    part('V', T.vc, T.V, T.Va, { echo: 1 }); part('C', T.cc, T.C, T.Ca, { harm: 1, echo: 1 });
-    for (var i = 0; i < 4; i++) sec.push({ s: 'B', ch: T.bc[i], m: T.B[i], o: { half: 1 } });
+    var T = CHIP[key], e8 = 60 / T.bpm / 2, ev = [], bar = 0, sec = [];
+    function part(name, ch, lines, alt, opt) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ s: name, ch: (r && i >= 2 && T[name + 'c2']) ? T[name + 'c2'][i - 2] : ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], o: opt }); }
+    part('A', T.ac, T.A, T.Aa, {}); part('B', T.bc, T.B, T.Ba, {});
+    part('A', T.ac, T.A, T.Aa, { harm: 1 }); part('R', T.rc, T.R, T.Ra, { soft: 1 }); part('B', T.bc, T.B, T.Ba, { harm: 1 });
     sec[sec.length - 1].fill = true;
     sec.forEach(function (S) {
-      var t0 = bar * 8 * e8, ct = chordTones(S.ch), tok = S.m.split(/\s+/), chorus = S.s === 'C';
+      var t0 = bar * 8 * e8, ct = chordTones(S.ch), tok = S.m.split(/\s+/);
+      if (tok.length !== 8) throw new Error(key + ' bar ' + bar + ' has ' + tok.length + ' steps');
       for (var i = 0; i < 8; i++) {
         if (tok[i] === '.' || tok[i] === '-') continue;
         var j = i + 1; while (j < 8 && tok[j] === '-') j++;
-        var p = n(tok[i]), held = j - i > 1, d = e8 * ((j - i) - (held ? 0.15 : 0.3));
-        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.12, w: 'pulse', duty: T.duty, rel: 0.06, vib: held ? 0.012 : 0, vd: 0.14 });
-        if (S.o.echo) ev.push({ t: t0 + (i + 3) * e8, d: d, f: hz(p), v: 0.04, w: 'pulse', duty: 0.25, rel: 0.06 }); // GB-style delay
-        if (S.o.harm) { var h = p - 3, ok = [0, ct[1] - ct[0], 7]; while (h > p - 9 && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--; // nearest chord tone a 3rd-6th below
-          ev.push({ t: t0 + i * e8, d: d, f: hz(h), v: 0.05, w: 'pulse', duty: 0.5, rel: 0.06, vib: held ? 0.01 : 0, vd: 0.14 }); }
+        var p = n(tok[i]), held = j - i > 1, d = e8 * ((j - i) - (held ? 0.12 : 0.25));
+        ev.push({ t: t0 + i * e8, d: d, f: hz(p), v: 0.11, w: 'pulse', duty: T.duty, att: 0.008, rel: 0.12, vib: held ? 0.01 : 0, vd: 0.2 });
+        if (S.o.harm) { var h = p - 3, ok = [0, ct[1] - ct[0], 7]; while (h > p - 9 && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--;
+          ev.push({ t: t0 + i * e8, d: d, f: hz(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.008, rel: 0.12 }); }
       }
-      // fast NES chord arpeggio: 16ths in verses/bridge, 32nds in choruses
-      var as = chorus ? e8 / 4 : e8 / 2, tri = [ct[0], ct[1], ct[2], ct[1] + 12];
-      for (var k = 0; k < 8 * e8 / as - 0.5; k++) ev.push({ t: t0 + k * as, d: as * 0.8, f: hz(tri[k % (chorus ? 3 : 4)] + 24), v: chorus ? 0.032 : 0.028, w: 'pulse', duty: 0.125, rel: 0.015 });
-      // driving triangle bass
-      var bp = chorus ? [0, 12, 0, 12, 0, 12, 7, 12] : S.o.half ? [0, null, 12, null, 7, null, 12, 7] : [0, 0, 12, 0, 0, 12, 7, 12];
-      for (i = 0; i < 8; i++) if (bp[i] != null) ev.push({ t: t0 + i * e8, d: e8 * 0.8, f: hz(ct[0] - 12 + bp[i]), v: 0.2, w: 'tri', rel: 0.03 });
-      // noise-channel drums
+      // flowing 16th arpeggio (up and down the chord), quiet, under the lead
+      var arp = [0, 1, 2, 3, 2, 1, 2, 1], tones = [ct[0], ct[1], ct[2], ct[0] + 12];
+      for (var k = 0; k < 16; k++) ev.push({ t: t0 + k * e8 / 2, d: e8 * 0.4, f: hz(tones[arp[k % 8]] + 12), v: S.o.soft ? 0.03 : 0.026, w: 'pulse', duty: 0.125, att: 0.004, rel: 0.08 });
+      // soft triangle bass: root on 1, fifth on 3, passing octave
+      var bp = S.o.soft ? [[0, 0, 7.6]] : [[0, 0, 3.6], [4, 7, 2.6], [7, 12, 0.9]];
+      bp.forEach(function (q) { ev.push({ t: t0 + q[0] * e8, d: q[2] * e8, f: hz(ct[0] - 12 + q[1]), v: 0.17, w: 'tri', att: 0.01, rel: 0.1 }); });
+      // light noise drums
       for (i = 0; i < 8; i++) {
-        var kick = S.o.half ? i === 0 || i === 5 : (i % 4 === 0 || (chorus && i === 7)), snare = S.o.half ? i === 4 : i % 4 === 2;
-        if (S.fill && i >= 4) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e8, d: 0.1, f: 0, v: 0.035 + 0.01 * (i - 4) + 0.005 * q, w: 'noise', dec: 0.05, rel: 0.02 }); continue; }
-        if (kick) ev.push({ t: t0 + i * e8, d: 0.12, f: 140, v: 0.3, w: 'kick', rel: 0.02 });
-        if (snare) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.13, w: 'noise', dec: 0.07, rel: 0.02 });
-        ev.push({ t: t0 + i * e8 + (chorus ? 0 : e8 * 0.5), d: 0.03, f: 0, v: 0.028, w: 'noise', rel: 0.01 });
-        if (chorus) ev.push({ t: t0 + i * e8 + e8 * 0.5, d: 0.03, f: 0, v: 0.02, w: 'noise', rel: 0.01 });
+        if (S.fill && i >= 6) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e8, d: 0.08, f: 0, v: 0.05 + 0.01 * q, w: 'noise', dec: 0.04, rel: 0.02 }); continue; }
+        if (S.o.soft) { if (i === 0) ev.push({ t: t0, d: 0.12, f: 120, v: 0.14, w: 'kick', rel: 0.02 }); if (i % 2 === 1) ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: 0.012, w: 'noise', rel: 0.01 }); continue; }
+        if (i === 0 || i === 5) ev.push({ t: t0 + i * e8, d: 0.12, f: 120, v: 0.18, w: 'kick', rel: 0.02 });
+        if (i === 2 || i === 6) ev.push({ t: t0 + i * e8, d: 0.12, f: 0, v: 0.07, w: 'noise', dec: 0.06, rel: 0.02 });
+        ev.push({ t: t0 + i * e8, d: 0.03, f: 0, v: i % 2 ? 0.014 : 0.02, w: 'noise', rel: 0.01 });
       }
       bar++;
     });
-    return { events: ev, length: bar * 8 * e8, title: T.title };
+    return { events: ev, length: bar * 8 * e8, title: T.title, echo: e8 * 3, bpm: T.bpm };
   }
+  function blep(t, dt) { if (t < dt) { t /= dt; return t + t - t * t - 1; } if (t > 1 - dt) { t = (t - 1) / dt; return t * t + t + t + 1; } return 0; }
 
   // Render to Float32Array of exactly `length` seconds; overflow wraps to the start (seamless loop)
   function render(key, sr) {
-    sr = sr || SR;
+    var chip = !!CHIP[key]; sr = sr || (chip ? 44100 : SR);
     var c = CHIP[key] ? composeChip(key) : compose(key), N = Math.round(c.length * sr), out = new Float32Array(N), nz = rng(7);
     c.events.forEach(function (e) {
       var s0 = Math.round(e.t * sr), len = Math.round(e.d * sr), rel = Math.round((e.rel != null ? e.rel : e.w === 'noise' ? 0.06 : 0.9) * sr), atk = Math.max(80, Math.round((e.att || 0) * sr)), tot = len + rel, ph = 0, inc = e.f / sr;
@@ -167,16 +170,19 @@
       for (var i = 0; i < tot; i++) {
         var env = i < atk ? i / atk : (i < len ? 1 - 0.3 * (i / len) : 0.7 * Math.pow(1 - (i - len) / rel, 2));
         var x;
-        if (e.w === 'pulse') x = (ph < e.duty ? 1 : -1);
+        if (e.w === 'pulse') { x = (ph < e.duty ? 1 : -1); if (chip) x += blep(ph, inc) - blep((ph - e.duty + 1) % 1, inc); }
         else if (e.w === 'tri') x = 4 * Math.abs(ph - 0.5) - 1;
         else if (e.w === 'kick') { x = 4 * Math.abs(ph - 0.5) - 1; inc = (e.f * Math.exp(-i / (0.03 * sr)) + 45) / sr; env = Math.exp(-i / (0.07 * sr)); }
         else { if (nc-- <= 0) { nv = nz() * 2 - 1; nc = 2; } x = nv; env = Math.exp(-i / ((e.dec || 0.012) * sr)); }
-        ph += e.vib ? inc * (1 + e.vib * Math.min(1, Math.max(0, i / sr - (e.vd || 0)) / 0.15) * Math.sin(i / sr * 2 * Math.PI * 5.5)) : inc; // delayed vibrato if (ph >= 1) ph -= 1;
+        ph += e.vib ? inc * (1 + e.vib * Math.min(1, Math.max(0, i / sr - (e.vd || 0)) / 0.15) * Math.sin(i / sr * 2 * Math.PI * 5.5)) : inc; // delayed vibrato
+        if (ph >= 1) ph -= Math.floor(ph);
         out[(s0 + i) % N] += x * e.v * env;
       }
     });
     // gentle one-pole low-pass (softens the square edges); run twice so the filter state wraps too
-    var a = CHIP[key] ? 0.6 : 0.28, y = 0;
+    var a = chip ? 1 - Math.exp(-2 * Math.PI * 4200 / sr) : 0.28, y = 0;
+    // warm echo on the 8-bit style (dotted quarter, circular so the tail wraps into the loop start)
+    if (chip && c.echo) { var D = Math.round(c.echo * sr), wet = new Float32Array(N); for (var ep = 0; ep < 3; ep++) for (var ei = 0; ei < N; ei++) wet[ei] = 0.3 * (out[(ei - D + N) % N] + wet[(ei - D + N) % N]); for (ei = 0; ei < N; ei++) out[ei] += 0.7 * wet[ei]; }
     for (var pass = 0; pass < 2; pass++) for (var i = 0; i < N; i++) { y += a * (out[i] - y); if (pass) out[i] = y; }
     // DC blocker (pulse waves are lopsided; without this the level jumps at the loop point). Two passes so its state wraps too.
     var xp = 0, yp = 0, R = 0.997, o;
