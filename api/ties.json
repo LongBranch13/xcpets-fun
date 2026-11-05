@@ -1,6 +1,6 @@
 {
- "lastBlock": 974633,
- "count": 123,
+ "lastBlock": 974639,
+ "count": 124,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1474,6 +1474,18 @@
    "tiedTx": "484032d3df853f3657f8d62b2c331537588249779e8afc713e5961cc43059b2e",
    "kind": "deed",
    "name": "Bowane",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 21878,
+   "asset": "A212027987861348070",
+   "tiedBlock": 974637,
+   "tiedTx": "526a8fc5833b1aab14affbbaccf0defde86b18eebe082da9eece17cfc32c56ab",
+   "kind": "deed",
+   "name": "Gifu",
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
