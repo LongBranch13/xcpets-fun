@@ -100,9 +100,19 @@
     /* rows of sharp white teeth: upper teeth hang down, lower teeth point up */
     for (var x4 = sxL + 1; x4 <= hx - 2; x4 += (big ? 1 : 2)) { if ((x4 - sxL) % 2 === 1 || !big) set(g, x4, my, 'X'); }
     for (var x5 = sxL + H.jaw + 1; x5 <= hx - 2; x5 += 2) set(g, x5, ly - 1, H.jaw > 1 || !big ? 'X' : get(g, x5, ly - 1));
-    /* yellow eye with a slit and a heavy brow */
-    var eyx = hx - 1, eyy = hy - (big ? 2 : 1); set(g, eyx, eyy, 'V'); set(g, eyx + 1, eyy, 'V'); if (!big) { set(g, eyx, eyy + 1, 'V'); set(g, eyx + 1, eyy + 1, 'P'); } else set(g, eyx + 1, eyy, 'P');
-    hline(g, eyx - 1, eyx + 2, eyy - 1, 'd');
+    /* yellow eye BIGGER (owner Nov 4 2026 'Bigger eyes'): still yellow (V) + dark slit pupil (P) + heavy brow; egg untouched.
+     * Chibi = 3x3 above the teeth (raised so it does not sit on the tooth row); Adult+ = 3x2 above the snout. */
+    var eyx = hx - 1, eyy = hy - (big ? 3 : 2);
+    if (big) {
+      set(g, eyx - 1, eyy, 'V'); set(g, eyx, eyy, 'V'); set(g, eyx + 1, eyy, 'V');
+      set(g, eyx - 1, eyy + 1, 'V'); set(g, eyx, eyy + 1, 'P'); set(g, eyx + 1, eyy + 1, 'V');
+      hline(g, eyx - 2, eyx + 2, eyy - 1, 'd');
+    } else {
+      set(g, eyx - 1, eyy, 'V'); set(g, eyx, eyy, 'V'); set(g, eyx + 1, eyy, 'V');
+      set(g, eyx - 1, eyy + 1, 'V'); set(g, eyx, eyy + 1, 'V'); set(g, eyx + 1, eyy + 1, 'P');
+      set(g, eyx - 1, eyy + 2, 'V'); set(g, eyx, eyy + 2, 'V'); set(g, eyx + 1, eyy + 2, 'V');
+      hline(g, eyx - 2, eyx + 2, eyy - 1, 'd');
+    }
     /* swept-back horns / crest from the back of the skull */
     for (var c = 0; c < H.cr; c++) { set(g, hx + 1 + c, hy - H.hr + 1 - Math.floor(c / 2), c === H.cr - 1 ? 'c' : 'C'); if (big && c > 0) set(g, hx + c, hy - H.hr + 2 - Math.floor(c / 2), 'c'); }
     for (var c2 = 0; c2 < Math.max(1, H.cr - 2); c2++) set(g, hx + 2 + c2, hy - H.hr + 3, 'c');
