@@ -2892,7 +2892,7 @@
    * (cemOfferWhy) and cemetery runs skip it (cemRunPass), same shape as Mythics. Whole burn rejected
    * if a named list includes a tied pet (existing cemOfferWhy pattern = nothing used). Gate null = off
    * (replay SAME); set to tip + 6 only at deploy. */
-  var ACTIVATE_CEM_TOKEN_OFFER_BLOCK = null; /* preview: leave null; deploy = tip + 6 */
+  var ACTIVATE_CEM_TOKEN_OFFER_BLOCK = 974735; /* offer-discards-only-1105 GO LIVE tip 974729 + 6 */
   function cemTokenOfferOn(b) { return ACTIVATE_CEM_TOKEN_OFFER_BLOCK != null && b != null && b >= ACTIVATE_CEM_TOKEN_OFFER_BLOCK; }
   /** cemTied(w, p): pet has a bound pet token still in w.deeds (Spam City tied). */
   function cemTied(w, p) { return !!(p && p.deed && w && w.deeds && w.deeds[p.deed]); }
