@@ -953,8 +953,8 @@
    * mythicKeepSweep also revives pets that already died the discount-Mythic-sold way (Tolu #23866, Motikzu #10631, and any
    * others found): they come back as alive Mythics under their current owner. Eaten Mythics (mgDead), active zombies,
    * released and community pets are left alone. PRESS F / rip badges only show while p.dead, so they drop on revival.
-   * PREVIEW: ACTIVATE_MYTHIC_KEEP_BLOCK = null (OFF) until the owner sets tip+6. */
-  var ACTIVATE_MYTHIC_KEEP_BLOCK = null; /* OFF until owner OK; then tip + 6 */
+   * LIVE from ACTIVATE_MYTHIC_KEEP_BLOCK 974679; burns before it replay SAME. */
+  var ACTIVATE_MYTHIC_KEEP_BLOCK = 974679; // Counterparty tip 974673 (api.counterparty.io:4000 + api.unspendablelabs.com:4000 agree) + 6, owner 'Yes, put it live' 7:09 AM CT Nov 5 2026 [pt2888u]
   function mythicKeepOn(b) { return ACTIVATE_MYTHIC_KEEP_BLOCK != null && b != null && b >= ACTIVATE_MYTHIC_KEEP_BLOCK; }
   /** noteGot(w, P, to): record an ownership change (call BEFORE P.owner is set). mythic = P was already Mythic for its old owner, or past the natural Mythic line. */
   function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; (w.leftBy || (w.leftBy = {}))[P.id] = P.owner; /* feed runs: who had it before (world-level map, not a pet field) */ if (P.skipBy) P.skipBy = null; /* feed-skip clears on any transfer */ w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
