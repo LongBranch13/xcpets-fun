@@ -1500,6 +1500,11 @@
    * In that carrier's later breeds (at/after this block) the child's stat k is at least the carried value. No RNG draw is added or moved, species/tier/hybrid
    * logic is untouched, so every earlier breed (incl. 42 x 2451 at 971,605) and every breed without a carrier replays exactly as before. */
   var ACTIVATE_BREEDCARRY_BLOCK = 971650;
+  /** CARRY PICK FIX (carry-fix-1105): the breed carry to parent B picked argmax of A.stats (which count shards) but carried shardView(A,1)
+   * (base + floor(shards/2)), so Luck 30 vs Vigor 29+1 shard tied at 30, Vigor won the tie and only 29 was carried. From this block (with shards on)
+   * the pick uses the carried values. PLACEHOLDER far-future block: set to tip + 6 at deploy. Before it = replay SAME. */
+  var ACTIVATE_CARRYPICK_BLOCK = 999999999;
+  function carryPickOn(b) { return ACTIVATE_CARRYPICK_BLOCK != null && b != null && b >= ACTIVATE_CARRYPICK_BLOCK; }
   var ACTIVATE_DEDUP_BLOCK = 971588;  // Bitcoin tip 971,585 at 2026-10-15 09:20 CT + 3 (Jake approved)
   var DEDUP_NUM = 9, DEDUP_DEN = 10, DEDUP_SCALE = 1000000;
   function dampWCalc(w0, c) { var x = w0 * DEDUP_SCALE; for (var i = 0; i < c && x > 1; i++) x = Math.floor(x * DEDUP_NUM / DEDUP_DEN); return Math.max(1, x); }
@@ -4570,7 +4575,7 @@
   function breed(w, A, B, bh, tx, b, owner) {
     var kid = breedOne(w, A, B, bh, tx, b, owner);
     [A, B].forEach(function (p) { p.breeds++; p.lastBreed = b; p.children.push(kid.id); if (breedV2On(b)) p.breedsV2 = (p.breedsV2 || 0) + 1; });
-    if (b >= ACTIVATE_BREEDCARRY_BLOCK && B.owner !== owner && A.owner === owner) { var bk = Object.keys(A.stats).reduce(function (m, k) { return A.stats[k] > A.stats[m] ? k : m; }, Object.keys(A.stats)[0]);
+    if (b >= ACTIVATE_BREEDCARRY_BLOCK && B.owner !== owner && A.owner === owner) { var CS = carryPickOn(b) && shardsOn(b) ? shardView(A, 1).stats : A.stats, bk = Object.keys(CS).reduce(function (m, k) { return CS[k] > CS[m] ? k : m; }, Object.keys(CS)[0]); /* CARRY PICK (gated): from ACTIVATE_CARRYPICK_BLOCK with shards on, pick the stat with the highest CARRIED value (base + half shards), tie = first key; before it, argmax of A.stats exactly as before */
       (B.carried = B.carried || []).push({ from: A.id, species: A.species, stat: bk, value: shardsOn(b) ? shardView(A, 1).stats[bk] : A.stats[bk], block: b, child: kid.id }); } /* POWER SHARDS (gated): carried value = base + half shards */ /* breed carry: parent B (accepting owner, no egg) */
     if (breedV2On(b)) { breedExtras(A, B, sha(bh + tx), kid, b); /* breeding v2 (own streams; nothing above moves) */
       if (twinDraw(sha(bh + tx))) { var tw = breedOne(w, A, B, bh, tx + ':twin', b, owner); [A, B].forEach(function (p) { p.children.push(tw.id); }); /* twins: ONE breed (counts once), second egg = next pet id */
@@ -4861,7 +4866,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
+  return { ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
     ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
