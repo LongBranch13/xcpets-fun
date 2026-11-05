@@ -3,7 +3,7 @@
  * (32x32 key grid, render -> {width,height,data RGBA}, frames -> 4 idle frames, ink outline).
  * Egg (stage 0): orange scaled shell, two cream horn nubs and a spike ridge on top, a zig-zag crack with a warm amber glow INSIDE the crack only.
  *   Idle: f0 rest, f1 wobble left, f2 rest + crack glint, f3 wobble right.
- * Baby dragon (stages 1-5): orange scales, cream belly plates, horn nubs that grow, back spikes, wings that grow with the stage, curled tail.
+ * Baby dragon (stages 1-5): orange scales, cream belly plates, horn nubs that grow, back spikes, dramatic shaded bat wings (finger bones + claw tips) that grow with the stage, curled tail.
  * No fire aura, no flame crown, no gold frame / rim, no flame halo. The Mythic look is brighter ember scales on the wings and spikes only. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.DragonSprite = factory(); })(this, function () {
   'use strict';
@@ -12,9 +12,10 @@
     C: '#f6e2b0', c: '#d8b878',                                        // cream belly / horns
     G: '#ffd24a', g: '#ff9a1a', Y: '#fff6c8',                          // warm crack glow: amber, deep amber, glint
     E: '#f4f2ea', P: '#141018', m: '#7a2a22',                          // eyes, mouth
-    W: '#4a1c0c', w: '#2a0e06', K: '#ffb86a',                          // dark bat-wing membrane, wing bone, Mythic ember edge
+    W: '#6b3420', R: '#3d1a0c', w: '#9a5a32', B: '#c88850',            // bat wing: mid membrane, deep shade, finger bones, claw/rim highlight (dark-brown family, no fire)
+    K: '#ffb86a',                                                     // Mythic ember edge (spikes/tips only)
     T: '#6a2a06',                                                     // claws
-    X: '#fbfaf2', V: '#ffd800' };                                     // teeth, yellow eye                                                    // claws
+    X: '#fbfaf2', V: '#ffd800' };                                     // teeth, yellow eye
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   /* per stage: head half-width, head rows, body half-width, body rows, horn length, wing span, tail length */
   var DIM = [null, { hw: 5, hh: 6, bw: 4, bh: 5, hn: 1, wg: 0, tl: 2 }, { hw: 5, hh: 6, bw: 5, bh: 6, hn: 1, wg: 2, tl: 3 },
@@ -56,28 +57,50 @@
    * crocodile snout, open jaw with rows of white teeth, yellow eye, swept-back horns/crest, big dark bat wings, heavy body. ORANGE, not maroon. Dragon only:
    * no rider, no flag, no flames. Hatchling/Juvenile = chibi (big head, short snout, tiny teeth); Adult/Elder/Mythic = the full reference dragon. */
   var HD = [null,
-    { bx: 18, by: 22, rx: 5, ry: 4, hx: 11, hy: 15, hr: 6, sn: 2, jaw: 1, wg: 4, tl: 4, cr: 2, lg: 2 },
-    { bx: 18, by: 22, rx: 6, ry: 4, hx: 11, hy: 14, hr: 6, sn: 3, jaw: 1, wg: 6, tl: 5, cr: 3, lg: 2 },
-    { bx: 19, by: 21, rx: 7, ry: 6, hx: 10, hy: 13, hr: 4, sn: 7, jaw: 2, wg: 9, tl: 6, cr: 4, lg: 3 },
-    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 13, hr: 4, sn: 8, jaw: 3, wg: 10, tl: 6, cr: 5, lg: 3 },
-    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 12, hr: 4, sn: 9, jaw: 3, wg: 11, tl: 6, cr: 6, lg: 3 }];
+    { bx: 18, by: 22, rx: 5, ry: 4, hx: 11, hy: 15, hr: 6, sn: 2, jaw: 1, wg: 5, tl: 4, cr: 2, lg: 2 },
+    { bx: 18, by: 22, rx: 6, ry: 4, hx: 11, hy: 14, hr: 6, sn: 3, jaw: 1, wg: 7, tl: 5, cr: 3, lg: 2 },
+    { bx: 19, by: 21, rx: 7, ry: 6, hx: 10, hy: 13, hr: 4, sn: 7, jaw: 2, wg: 11, tl: 6, cr: 4, lg: 3 },
+    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 13, hr: 4, sn: 8, jaw: 3, wg: 12, tl: 6, cr: 5, lg: 3 },
+    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 12, hr: 4, sn: 9, jaw: 3, wg: 13, tl: 6, cr: 6, lg: 3 }];
   function ell(g, cx, cy, rx, ry, f) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + 0.5) + (y * y) / (ry * ry + 0.5) <= 1) set(g, cx + x, cy + y, f(x, y)); }
   function sc(x, y, rx, ry) { if (y <= -ry + 1 && x < rx - 1) return 'L'; if (y >= ry - 1 || x >= rx - 1) return 'd'; if (y > 0) return 'o'; return (x + 2 * y) % 4 === 0 ? 'o' : 'O'; }
   function draw(stage, frame, gear, opts) {
     if (!stage) return egg(frame || 0);
     var g = grid(), H = HD[stage], bob = [0, -1, -1, 0][frame || 0], flap = frame === 1 || frame === 2 ? -1 : 0, myth = stage === 5, big = stage >= 3;
     var bx = H.bx, by = H.by + bob, hx = H.hx, hy = H.hy + bob;
-    /* big bat wing behind: a filled fan from the shoulder up to the tip and back down to the trailing edge, scalloped between dark finger bones */
-    var sx = bx - 2, sy = by - H.ry + 1, tipx = sx + Math.round(H.wg * 0.55), tipy = Math.max(1, sy - H.wg + flap), trx = sx + H.wg + 1, tr_y = sy + 1;
+    /* cooler bat wing (owner Nov 4 2026 'wings should look cooler'): more dramatic span, shaded membrane depth (W mid / R deep), visible finger bones (w),
+     * sharp claw tips (B), scalloped trailing edge. Dark-brown family only — no fire/flames. */
+    var sx = bx - 2, sy = by - H.ry + 1, tipx = sx + Math.round(H.wg * 0.5), tipy = Math.max(0, sy - H.wg - 1 + flap), trx = sx + H.wg + 2, tr_y = sy + 2;
     function inTri(px, py, ax, ay, bx2, by2, cx2, cy2) { var d1 = (px - bx2) * (ay - by2) - (ax - bx2) * (py - by2), d2 = (px - cx2) * (by2 - cy2) - (bx2 - cx2) * (py - cy2), d3 = (px - ax) * (cy2 - ay) - (cx2 - ax) * (py - ay);
       return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)); }
-    var fingers = [0.35, 0.65, 1].map(function (f) { return [Math.round(tipx + (trx - tipx) * f), Math.round(tipy + (tr_y - tipy) * f)]; });
-    for (var wy = tipy; wy <= tr_y + 1; wy++) for (var wx = sx; wx <= trx; wx++) if (inTri(wx, wy, sx, sy, tipx, tipy, trx, tr_y)) {
-      var u = (wx - tipx) / Math.max(1, trx - tipx), sc0 = Math.round(Math.abs(Math.sin(u * Math.PI * 3)) * 2);
-      if (wy > tipy + (tr_y - tipy) * u - sc0 + 1 || wx <= tipx + 0 || wy < tr_y - 0) set(g, wx, wy, 'W'); }
-    for (var t = 0; t <= H.wg; t++) set(g, Math.round(sx + (tipx - sx) * t / H.wg), Math.round(sy + (tipy - sy) * t / H.wg), 'w');   // leading arm bone
-    fingers.forEach(function (f) { for (var t2 = 0; t2 <= 6; t2++) { var fx = Math.round(tipx + (f[0] - tipx) * t2 / 6), fy = Math.round(tipy + (f[1] - tipy) * t2 / 6); set(g, fx, fy, 'w'); } if (myth) set(g, f[0], f[1], 'K'); });
-    set(g, tipx, tipy - 1, myth ? 'K' : 'w');
+    var fingers = [0.28, 0.55, 0.8, 1].map(function (f) { return [Math.round(tipx + (trx - tipx) * f), Math.round(tipy + (tr_y - tipy) * f * 0.95)]; });
+    for (var wy = tipy; wy <= tr_y + 2; wy++) for (var wx = sx - 1; wx <= trx + 1; wx++) if (inTri(wx, wy, sx, sy, tipx, tipy, trx, tr_y)) {
+      var u = (wx - tipx) / Math.max(1, trx - tipx), v = (wy - tipy) / Math.max(1, tr_y - tipy);
+      var scall = Math.round(Math.abs(Math.sin(u * Math.PI * 4)) * (big ? 3 : 2));
+      if (wy > tipy + (tr_y - tipy) * Math.max(0, u) - scall + 1 || wx <= tipx || wy >= tr_y - 1) {
+        /* depth: lighter near leading tip/arm, deeper toward trailing scallops and lower membrane */
+        var deep = v > 0.55 || (scall >= 2 && wy > tipy + 2);
+        set(g, wx, wy, deep ? 'R' : 'W');
+      }
+    }
+    /* leading arm bone (shoulder -> tip) + lighter rim along the top edge */
+    for (var t = 0; t <= H.wg + 1; t++) {
+      var ax = Math.round(sx + (tipx - sx) * t / Math.max(1, H.wg)), ay = Math.round(sy + (tipy - sy) * t / Math.max(1, H.wg));
+      set(g, ax, ay, 'w'); if (t > 1) set(g, ax, ay - 1, 'B');
+    }
+    /* finger bones radiating from near the tip joint down to the trailing edge, with sharp claw points */
+    fingers.forEach(function (f, fi) {
+      var steps = big ? 8 : 5;
+      for (var t2 = 0; t2 <= steps; t2++) {
+        var fx = Math.round(tipx + (f[0] - tipx) * t2 / steps), fy = Math.round(tipy + (f[1] - tipy) * t2 / steps);
+        set(g, fx, fy, 'w');
+        if (t2 > 0 && t2 < steps) set(g, fx + (fi % 2 ? 0 : 1), fy, 'R'); /* membrane shade next to bone */
+      }
+      /* sharp claw tip: 2-px point past the finger end */
+      set(g, f[0], f[1], 'B'); set(g, f[0] + (f[0] >= tipx ? 1 : 0), f[1] + 1, 'B');
+      if (myth) set(g, f[0], f[1] - 1, 'K');
+    });
+    set(g, tipx, tipy - 1, myth ? 'K' : 'B'); set(g, tipx + 1, tipy, 'B'); /* primary claw at the apex */
     /* tail out to the right, tapering down, a spade tip */
     for (var k = 0; k < H.tl + 3; k++) { var tx = bx + H.rx - 1 + k, ty = by + 1 + Math.round(k * 0.45); set(g, tx, ty, k % 2 ? 'o' : 'd'); if (k < H.tl - 1) set(g, tx, ty - 1, 'O'); }
     var ex = bx + H.rx + H.tl + 2, ey0 = by + 1 + Math.round((H.tl + 2) * 0.45); set(g, ex + 1, ey0, myth ? 'K' : 'd'); set(g, ex, ey0 - 1, 'd');
