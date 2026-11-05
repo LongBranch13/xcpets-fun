@@ -1,5 +1,5 @@
 {
- "lastBlock": 974681,
+ "lastBlock": 974682,
  "count": 126,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -445,7 +445,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Mythic"
   },
   {
    "id": 23945,
@@ -1405,7 +1405,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Mythic"
   },
   {
    "id": 68293,
