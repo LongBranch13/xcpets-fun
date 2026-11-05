@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* CEMETERY DISCARD / TOKEN OFFER GUARD (offer-discards-only-1105, owner Nov 5 2026):
- * Gate live 974735. Replay at tip before gate stays SAME. When on: tied pets (deed in w.deeds) can't be offered (cemOfferWhy)
+ * Gate live 974738. Replay at tip before gate stays SAME. When on: tied pets (deed in w.deeds) can't be offered (cemOfferWhy)
  * and cemetery runs skip them (cemRunPass). Discard itself is browser-only — not asserted here.
  *   node tools/cem-token-offer-block-test.js [snap] */
 'use strict';
@@ -11,8 +11,8 @@ const c = load(), V = c.V2Rules; V._setTokenOnly(false);
 const H = Object.assign({}, c.XCPETS_BLOCK_HASHES, S.hashes);
 function run(tip) { return V.replay(S.rows, H, [], { tip: tip != null ? tip : T, live: c.LiveEngine.RealCore }); }
 
-ok(V.ACTIVATE_CEM_TOKEN_OFFER_BLOCK === 974735, 'gate live at 974735');
-ok(typeof V.cemTokenOfferOn === 'function' && V.cemTokenOfferOn(974735) === true && V.cemTokenOfferOn(974734) === false, 'cemTokenOfferOn respects live gate');
+ok(V.ACTIVATE_CEM_TOKEN_OFFER_BLOCK === 974738, 'gate live at 974738');
+ok(typeof V.cemTokenOfferOn === 'function' && V.cemTokenOfferOn(974738) === true && V.cemTokenOfferOn(974737) === false, 'cemTokenOfferOn respects live gate');
 ok(typeof V.cemTied === 'function' && typeof V._setCemTokenOfferActivation === 'function', 'cemTied + _setCemTokenOfferActivation exported');
 
 const base = run(T);
