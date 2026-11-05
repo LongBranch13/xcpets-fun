@@ -1,6 +1,6 @@
 {
- "lastBlock": 974617,
- "count": 121,
+ "lastBlock": 974618,
+ "count": 122,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1452,6 +1452,18 @@
    "name": "Motikzu",
    "species": "dodo",
    "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 68293,
+   "asset": "A11947208274796406901",
+   "tiedBlock": 974618,
+   "tiedTx": "3a160475b892a74ecf6ab7ab044b59caf50ecaa8a2e239a3cd2c245af7dee079",
+   "kind": "deed",
+   "name": "Ruyeru",
+   "species": "hyb:wizard:nakamoto",
+   "speciesLabel": "Wizmoto (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
