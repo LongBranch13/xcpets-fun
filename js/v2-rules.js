@@ -729,7 +729,7 @@
    * No fire aura, no flame crown, no gold frame. POWER exactly JP_POWER (excluded from the grant power sweep, scaled once like Bo). No gear: his cane and medal are drawn on him.
    * Babies (owner decision Nov 4 2026, like the Viking): every baby with an Old-Hickory-line parent is a hybrid 'hyb:jacksonpepe:<partner root>' (jpChild) that keeps his
    * swept white hair (HYBRID_PARTS.jacksonpepe), never a second pure one; he is never the hybrid body, only the hair/colour donor. Go-live = a separate commit setting ACTIVATE_JP_BLOCK to tip + 6, only after owner approval. */
-  var ACTIVATE_JP_BLOCK = null;
+  var ACTIVATE_JP_BLOCK = 974635; // Counterparty tip 974629 (api.counterparty.io:4000 + api.unspendablelabs.com:4000 agree) + 6, owner 'Yes, put both grant eggs live' 11:38 PM CT Nov 4 2026
   function jpOn(b) { return ACTIVATE_JP_BLOCK != null && b != null && b >= ACTIVATE_JP_BLOCK; }
   /* jpChild: mirrors vikingChild (own stream). Gated by jpOn (null = OFF). */
   function jpChild(hex, A, B, c) { var ra = A ? hybridRoots(A.species) : [], rb = B ? hybridRoots(B.species) : []; if (ra.indexOf('jacksonpepe') < 0 && rb.indexOf('jacksonpepe') < 0) return;
