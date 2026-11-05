@@ -401,9 +401,24 @@
   // ---------------------------------------------------------------- hatch popup = live #packBox review (live game.js showPack/drawPack), gear wins use the same box
   var packY = null, lastHatchN = 0; /* hatch-exit 2026-10-21: scroll spot when the results opened + size of the last hatch (for 🥚 Hatch more) */
   var HKEY = 'xcpets-v2-hatched-' + KEY + '-' + ME, revealQ = [], rev = null, REV_PAGE = 36, TIERS = (window.PetCore && PetCore.TIERS) || [{ label: 'Common' }, { label: 'Uncommon' }, { label: 'Rare' }, { label: 'Legendary' }];
+  /* hatchloop-fix-1104: the seen-hatch list used to be saved as one 'tx:pos' key per pet (~73 chars each, 1.3M chars for an 18k-pet wallet).
+   * Big wallets filled localStorage (5M quota), the save failed silently, and every render re-queued the same eggs -> the hatch animation
+   * played over and over. Now: (1) saved compact as {v:2, t:{tx:'1-1000,1003'}} (same keys, ranges per hatch tx, ~1/20 the size; old saves
+   * still read); (2) the last seen set is also kept in memory, so a failed save can never re-queue a hatch in the same page. Display only:
+   * V.newHatches gets exactly the same key object it always did. */
+  var hMem = null;
+  function hPack(s) { var t = {}; Object.keys(s).forEach(function (k) { var i = k.lastIndexOf(':'), n = Number(k.slice(i + 1)); if (i < 1 || !(n > 0) || n % 1) { (t['!'] = t['!'] || []).push(k); return; } (t[k.slice(0, i)] = t[k.slice(0, i)] || []).push(n); });
+    Object.keys(t).forEach(function (tx) { if (tx === '!') return; var a = t[tx].sort(function (x, y) { return x - y; }), out = [], lo = a[0], hi = a[0];
+      for (var j = 1; j <= a.length; j++) { if (j < a.length && a[j] === hi + 1) { hi = a[j]; continue; } out.push(lo === hi ? String(lo) : lo + '-' + hi); if (j < a.length) lo = hi = a[j]; } t[tx] = out.join(','); });
+    return { v: 2, t: t }; }
+  function hUnpack(o) { if (!o || typeof o !== 'object') return null; if (o.v !== 2 || !o.t) return o; var s = {};
+    Object.keys(o.t).forEach(function (tx) { if (tx === '!') { (o.t[tx] || []).forEach(function (k) { s[k] = 1; }); return; }
+      String(o.t[tx]).split(',').forEach(function (r) { var m = r.split('-'), lo = Number(m[0]), hi = m.length > 1 ? Number(m[1]) : lo; for (var n = lo; n <= hi; n++) s[tx + ':' + n] = 1; }); });
+    return s; }
   function notifyHatch(w) { dataSeen();
-    var seen = null; try { seen = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
-    var r = V.newHatches(w, ME, seen); try { localStorage.setItem(HKEY, JSON.stringify(r.seen)); } catch (e) { }
+    var seen = null; try { seen = hUnpack(JSON.parse(localStorage.getItem(HKEY))); } catch (e) { }
+    if (hMem) seen = Object.assign(seen || {}, hMem);
+    var r = V.newHatches(w, ME, seen); hMem = r.seen; try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { }
     r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
   }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
@@ -1283,7 +1298,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=79de272f19';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=ef0308467a';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
