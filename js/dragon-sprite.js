@@ -12,8 +12,9 @@
     C: '#f6e2b0', c: '#d8b878',                                        // cream belly / horns
     G: '#ffd24a', g: '#ff9a1a', Y: '#fff6c8',                          // warm crack glow: amber, deep amber, glint
     E: '#f4f2ea', P: '#141018', m: '#7a2a22',                          // eyes, mouth
-    W: '#d85a14', w: '#9a3a0a', K: '#ffb86a',                          // wing membrane, wing bone, Mythic ember edge
-    T: '#6a2a06' };                                                    // claws
+    W: '#4a1c0c', w: '#2a0e06', K: '#ffb86a',                          // dark bat-wing membrane, wing bone, Mythic ember edge
+    T: '#6a2a06',                                                     // claws
+    X: '#fbfaf2', V: '#ffd800' };                                     // teeth, yellow eye                                                    // claws
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   /* per stage: head half-width, head rows, body half-width, body rows, horn length, wing span, tail length */
   var DIM = [null, { hw: 5, hh: 6, bw: 4, bh: 5, hn: 1, wg: 0, tl: 2 }, { hw: 5, hh: 6, bw: 5, bh: 6, hn: 1, wg: 2, tl: 3 },
@@ -51,41 +52,64 @@
     [[15, 17], [14, 16]].forEach(function (p) { if (get(g, p[0], p[1] + top - 11)) set(g, p[0], p[1] + top - 11, 'g'); });
     if (glint) { set(g, 16, 19 + top - 11, 'Y'); set(g, 15, 18 + top - 11, 'Y'); set(g, 12, 19 + top - 11, 'G'); set(g, 12, 14 + top - 11, 'Y'); }
     return outline(g); }
+  /* hatched stages: side view facing the viewer's left, after the GAMESOFTRUMP Dragons Edition dragon (owner Nov 4 2026 'Use this dragon'): long
+   * crocodile snout, open jaw with rows of white teeth, yellow eye, swept-back horns/crest, big dark bat wings, heavy body. ORANGE, not maroon. Dragon only:
+   * no rider, no flag, no flames. Hatchling/Juvenile = chibi (big head, short snout, tiny teeth); Adult/Elder/Mythic = the full reference dragon. */
+  var HD = [null,
+    { bx: 18, by: 22, rx: 5, ry: 4, hx: 11, hy: 15, hr: 6, sn: 2, jaw: 1, wg: 4, tl: 4, cr: 2, lg: 2 },
+    { bx: 18, by: 22, rx: 6, ry: 4, hx: 11, hy: 14, hr: 6, sn: 3, jaw: 1, wg: 6, tl: 5, cr: 3, lg: 2 },
+    { bx: 19, by: 21, rx: 7, ry: 6, hx: 10, hy: 13, hr: 4, sn: 7, jaw: 2, wg: 9, tl: 6, cr: 4, lg: 3 },
+    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 13, hr: 4, sn: 8, jaw: 3, wg: 10, tl: 6, cr: 5, lg: 3 },
+    { bx: 19, by: 21, rx: 8, ry: 6, hx: 10, hy: 12, hr: 4, sn: 9, jaw: 3, wg: 11, tl: 6, cr: 6, lg: 3 }];
+  function ell(g, cx, cy, rx, ry, f) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + 0.5) + (y * y) / (ry * ry + 0.5) <= 1) set(g, cx + x, cy + y, f(x, y)); }
+  function sc(x, y, rx, ry) { if (y <= -ry + 1 && x < rx - 1) return 'L'; if (y >= ry - 1 || x >= rx - 1) return 'd'; if (y > 0) return 'o'; return (x + 2 * y) % 4 === 0 ? 'o' : 'O'; }
   function draw(stage, frame, gear, opts) {
     if (!stage) return egg(frame || 0);
-    var g = grid(), bob = [0, -1, -1, 0][frame || 0], flap = frame === 1 || frame === 2 ? -1 : 0, D = DIM[stage], myth = stage === 5, cx = 16;
-    var bodyEnd = 27 + bob, bodyTop = bodyEnd - D.bh + 1, headBot = bodyTop, headTop = headBot - D.hh + 1;
-    /* wings behind the body (Juvenile+): bone along the top edge, membrane below, ember edge at Mythic */
-    if (D.wg) for (var i = 0; i < D.wg + 2; i++) { var wx = cx - D.bw - 1 - i, wy = bodyTop + 1 - Math.floor(i * 0.8) + flap;
-      set(g, wx, wy, 'w'); for (var j = 1; j <= Math.max(1, D.wg + 1 - i); j++) set(g, wx, wy + j, myth && j === Math.max(1, D.wg + 1 - i) ? 'K' : 'W');
-      set(g, mir(wx), wy, 'w'); for (var j2 = 1; j2 <= Math.max(1, D.wg + 1 - i); j2++) set(g, mir(wx), wy + j2, myth && j2 === Math.max(1, D.wg + 1 - i) ? 'K' : 'W'); }
-    /* tail curling out to the viewer's right */
-    for (var t = 0; t < D.tl; t++) set(g, cx + D.bw + t, bodyEnd - Math.floor(t / 2), t % 2 ? 'o' : 'O');
-    set(g, cx + D.bw + D.tl, bodyEnd - Math.floor(D.tl / 2) - 1, myth ? 'K' : 'L');
-    /* body */
-    for (var y = bodyTop; y <= bodyEnd; y++) { var w = y === bodyTop ? D.bw - 1 : D.bw; for (var x = cx - w; x < cx + w; x++) set(g, x, y, scale(x, y, cx - w, cx + w - 1)); }
-    /* belly plates */
-    for (var yb = bodyTop + 1; yb <= bodyEnd - 1; yb++) { var bw = D.bw - 2; for (var xb = cx - bw; xb < cx + bw; xb++) set(g, xb, yb, yb % 2 ? 'C' : 'c'); }
-    /* feet + claws */
-    hline(g, cx - D.bw + 1, cx - 2, bodyEnd + 1, 'o'); hline(g, cx + 1, cx + D.bw - 2, bodyEnd + 1, 'o'); set(g, cx - D.bw + 1, bodyEnd + 1, 'T'); set(g, cx + D.bw - 2, bodyEnd + 1, 'T');
-    /* little arms */
-    set(g, cx - D.bw, bodyTop + 2, 'O'); set(g, cx - D.bw, bodyTop + 3, 'T'); set(g, cx + D.bw - 1, bodyTop + 2, 'o'); set(g, cx + D.bw - 1, bodyTop + 3, 'T');
-    /* head: rounded, a bit wider than the body, snout row at the bottom */
-    for (var yh = headTop; yh <= headBot; yh++) { var r = yh - headTop, hw = r === 0 ? D.hw - 2 : r === 1 ? D.hw - 1 : D.hw; for (var xh = cx - hw; xh < cx + hw; xh++) set(g, xh, yh, scale(xh, yh, cx - hw, cx + hw - 1)); }
-    var ey = headTop + 2, snY = headBot - 1;
-    /* big baby eyes */
-    set(g, cx - 4, ey, 'E'); set(g, cx - 3, ey, 'E'); set(g, cx - 3, ey + 1, 'P'); set(g, cx - 4, ey + 1, 'E');
-    set(g, cx + 2, ey, 'E'); set(g, cx + 3, ey, 'E'); set(g, cx + 2, ey + 1, 'P'); set(g, cx + 3, ey + 1, 'E');
-    /* snout: cream muzzle, two nostrils, small smile */
-    hline(g, cx - 2, cx + 1, snY, 'C'); hline(g, cx - 3, cx + 2, snY + 1, 'c'); set(g, cx - 2, snY, 'd'); set(g, cx + 1, snY, 'd'); set(g, cx - 1, snY + 1, 'm'); set(g, cx, snY + 1, 'm');
-    /* horn nubs (grow with stage) + a spike ridge on the crown */
-    for (var h = 0; h < D.hn + 1; h++) { both(g, cx - D.hw + 2 - Math.floor(h / 2), headTop - 1 - h, h === D.hn ? 'c' : 'C'); }
-    set(g, cx - 1, headTop - 1, myth ? 'K' : 'L'); set(g, cx, headTop - 1, 'o');
-    /* back spikes down the shoulders (Adult+) */
-    if (stage >= 3) { both(g, cx - D.bw, bodyTop - 1, myth ? 'K' : 'C'); }
-    if (stage >= 4) { set(g, cx - 3, headTop + 1, 'L'); set(g, cx + 3, headTop + 4, 'o'); }   // Elder: a couple of weathered scales
-    /* face gear (Guise) over the eye row, like the other 1 of 1 sprites */
-    var Gr = gear || {}; if (Gr.face) { var gc = (Gr.face.cols && Gr.face.cols[0]) || '#141018'; hline(g, cx - 4, cx - 3, ey, gc); hline(g, cx + 2, cx + 3, ey, gc); }
+    var g = grid(), H = HD[stage], bob = [0, -1, -1, 0][frame || 0], flap = frame === 1 || frame === 2 ? -1 : 0, myth = stage === 5, big = stage >= 3;
+    var bx = H.bx, by = H.by + bob, hx = H.hx, hy = H.hy + bob;
+    /* big bat wing behind: a filled fan from the shoulder up to the tip and back down to the trailing edge, scalloped between dark finger bones */
+    var sx = bx - 2, sy = by - H.ry + 1, tipx = sx + Math.round(H.wg * 0.55), tipy = Math.max(1, sy - H.wg + flap), trx = sx + H.wg + 1, tr_y = sy + 1;
+    function inTri(px, py, ax, ay, bx2, by2, cx2, cy2) { var d1 = (px - bx2) * (ay - by2) - (ax - bx2) * (py - by2), d2 = (px - cx2) * (by2 - cy2) - (bx2 - cx2) * (py - cy2), d3 = (px - ax) * (cy2 - ay) - (cx2 - ax) * (py - ay);
+      return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)); }
+    var fingers = [0.35, 0.65, 1].map(function (f) { return [Math.round(tipx + (trx - tipx) * f), Math.round(tipy + (tr_y - tipy) * f)]; });
+    for (var wy = tipy; wy <= tr_y + 1; wy++) for (var wx = sx; wx <= trx; wx++) if (inTri(wx, wy, sx, sy, tipx, tipy, trx, tr_y)) {
+      var u = (wx - tipx) / Math.max(1, trx - tipx), sc0 = Math.round(Math.abs(Math.sin(u * Math.PI * 3)) * 2);
+      if (wy > tipy + (tr_y - tipy) * u - sc0 + 1 || wx <= tipx + 0 || wy < tr_y - 0) set(g, wx, wy, 'W'); }
+    for (var t = 0; t <= H.wg; t++) set(g, Math.round(sx + (tipx - sx) * t / H.wg), Math.round(sy + (tipy - sy) * t / H.wg), 'w');   // leading arm bone
+    fingers.forEach(function (f) { for (var t2 = 0; t2 <= 6; t2++) { var fx = Math.round(tipx + (f[0] - tipx) * t2 / 6), fy = Math.round(tipy + (f[1] - tipy) * t2 / 6); set(g, fx, fy, 'w'); } if (myth) set(g, f[0], f[1], 'K'); });
+    set(g, tipx, tipy - 1, myth ? 'K' : 'w');
+    /* tail out to the right, tapering down, a spade tip */
+    for (var k = 0; k < H.tl + 3; k++) { var tx = bx + H.rx - 1 + k, ty = by + 1 + Math.round(k * 0.45); set(g, tx, ty, k % 2 ? 'o' : 'd'); if (k < H.tl - 1) set(g, tx, ty - 1, 'O'); }
+    var ex = bx + H.rx + H.tl + 2, ey0 = by + 1 + Math.round((H.tl + 2) * 0.45); set(g, ex + 1, ey0, myth ? 'K' : 'd'); set(g, ex, ey0 - 1, 'd');
+    /* heavy body + belly plates */
+    ell(g, bx, by, H.rx, H.ry, function (x, y) { return sc(x, y, H.rx, H.ry); });
+    for (var bxp = bx - H.rx + 2; bxp <= bx + H.rx - 3; bxp++) set(g, bxp, by + H.ry - 1, bxp % 2 ? 'C' : 'c');
+    /* legs + claws (front leg forward, back leg under the haunch) */
+    for (var l = 1; l <= H.lg; l++) { set(g, bx - H.rx + 2, by + H.ry - 1 + l, 'o'); set(g, bx + H.rx - 3, by + H.ry - 1 + l, 'd'); }
+    set(g, bx - H.rx + 1, by + H.ry - 1 + H.lg, 'T'); set(g, bx + H.rx - 4, by + H.ry - 1 + H.lg, 'T');
+    /* neck */
+    for (var n = 0; n < 4; n++) ell(g, hx + 2 + n, hy + 2 + n, big ? 2 : 3, 2, function (x, y) { return y > 0 ? 'o' : 'O'; });
+    /* head (skull) */
+    ell(g, hx, hy, H.hr, H.hr - (big ? 1 : 0), function (x, y) { return y < -1 && x < 1 ? 'L' : y > 1 ? 'o' : 'O'; });
+    /* snout to the left: upper jaw, open mouth, lower jaw */
+    var sxL = hx - H.hr - H.sn + 1, uy = hy - (big ? 1 : 0), my = uy + 1, ly = my + H.jaw;
+    for (var x = sxL; x <= hx - 1; x++) { set(g, x, uy, x === sxL ? 'o' : 'O'); if (big) set(g, x, uy - 1, x < sxL + 2 ? null : (x % 3 ? 'O' : 'L')); }
+    set(g, sxL + 1, uy - (big ? 1 : 0), 'd');                                                   // nostril
+    for (var yy = my; yy < ly; yy++) for (var x2 = sxL + 1 + (yy - my); x2 <= hx - 1; x2++) set(g, x2, yy, 'm');   // open mouth
+    for (var x3 = sxL + H.jaw; x3 <= hx; x3++) { set(g, x3, ly, 'o'); if (big) set(g, x3, ly + 1, x3 > sxL + H.jaw + 1 ? 'd' : null); }
+    /* rows of sharp white teeth: upper teeth hang down, lower teeth point up */
+    for (var x4 = sxL + 1; x4 <= hx - 2; x4 += (big ? 1 : 2)) { if ((x4 - sxL) % 2 === 1 || !big) set(g, x4, my, 'X'); }
+    for (var x5 = sxL + H.jaw + 1; x5 <= hx - 2; x5 += 2) set(g, x5, ly - 1, H.jaw > 1 || !big ? 'X' : get(g, x5, ly - 1));
+    /* yellow eye with a slit and a heavy brow */
+    var eyx = hx - 1, eyy = hy - (big ? 2 : 1); set(g, eyx, eyy, 'V'); set(g, eyx + 1, eyy, 'V'); if (!big) { set(g, eyx, eyy + 1, 'V'); set(g, eyx + 1, eyy + 1, 'P'); } else set(g, eyx + 1, eyy, 'P');
+    hline(g, eyx - 1, eyx + 2, eyy - 1, 'd');
+    /* swept-back horns / crest from the back of the skull */
+    for (var c = 0; c < H.cr; c++) { set(g, hx + 1 + c, hy - H.hr + 1 - Math.floor(c / 2), c === H.cr - 1 ? 'c' : 'C'); if (big && c > 0) set(g, hx + c, hy - H.hr + 2 - Math.floor(c / 2), 'c'); }
+    for (var c2 = 0; c2 < Math.max(1, H.cr - 2); c2++) set(g, hx + 2 + c2, hy - H.hr + 3, 'c');
+    /* spikes down the neck and back */
+    for (var sp = 0; sp < (big ? 4 : 2); sp++) set(g, hx + 4 + sp * 2, hy + 1 + sp - (big ? 0 : 1) - 0 + (sp > 1 ? 1 : 0) - 1, myth ? 'K' : 'd');
+    if (stage === 4) { set(g, hx - 2, hy + 1, 'd'); set(g, bx + 2, by - 1, 'L'); }                  // Elder: scarred scales
+    var Gr = gear || {}; if (Gr.face) { var gc = (Gr.face.cols && Gr.face.cols[0]) || '#141018'; hline(g, eyx - 1, eyx + 2, eyy, gc); }
     return outline(g); }
   function anchors(stage, frame) { if (!stage) return { ey: -1 }; var g = draw(stage, frame || 0, {}), ey = -1, x0 = 99, x1 = -1, my = -1;
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x]; if (k === 'E' || k === 'P') { if (ey < 0) ey = y; if (y === ey) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); } } if (k === 'm' && my < 0) my = y; }
