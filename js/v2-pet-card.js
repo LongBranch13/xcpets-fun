@@ -21,7 +21,7 @@
   function hrs(n) { var h = n * 10 / 60; return h < 48 ? '~' + Math.round(h) + ' h' : '~' + (h / 24).toFixed(1) + ' days'; }
 
   function acts(p, mine) {
-    if (p.dead || p.released || p.burnedTo) return '<p class="small muted pc-none">' + (p.dead ? '🪦 Resting in the Pet Cemetery.' : 'Out of play.') + '</p>';
+    if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? ('Used up at the cemetery (' + esc(String(p.usedUp)) + ').') : 'Out of play.'); return '<p class="small muted pc-none">' + gone + '</p>'; }
     var own = mine && !viewOnly(), q = function (h) { return own ? h + '-' + p.id : h; };
     if (isZ(p)) { var zp = own ? 'play.html#pet-' + p.id : 'play.html'; /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt */
       return '<div class="pc-actrow"><a class="pc-act pc-zb" href="' + zp + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>Feed it pets</b><small>' + (own ? 'Your discarded pets, on Play' : mine ? 'Connect the wallet on Play' : 'Owner only, on Play') + '</small></a>' +
