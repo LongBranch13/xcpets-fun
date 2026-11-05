@@ -1,5 +1,5 @@
-/* ORANGE DRAGON sprite (1 of 1, PREVIEW, branch orange-dragon-1of1, owner Nov 4 2026: a 1 of 1 orange dragon egg for a player, recipient not known yet).
- * NOT used by any rule: V2Rules.ACTIVATE_DRAGON_BLOCK is null (OFF) and DRAGON_TO is a placeholder. Same frame format and API as VikingSprite
+/* ORANGE DRAGON sprite (1 of 1, PREVIEW, branch orange-dragon-1of1, owner Nov 4 2026: a 1 of 1 orange dragon egg for bc1qr0nfspwd75gdyurds0aplau74rf45qq8w7zvgy).
+ * NOT used by any rule yet: V2Rules.ACTIVATE_DRAGON_BLOCK is null (OFF); DRAGON_TO is set. Same frame format and API as VikingSprite
  * (32x32 key grid, render -> {width,height,data RGBA}, frames -> 4 idle frames, ink outline).
  * Egg (stage 0): orange scaled shell, two cream horn nubs and a spike ridge on top, a zig-zag crack with a warm amber glow INSIDE the crack only.
  *   Idle: f0 rest, f1 wobble left, f2 rest + crack glint, f3 wobble right.

@@ -740,15 +740,16 @@
     var n = boStats(p.stats, VIKING_POWER); if (n) PetCore.STAT_KEYS.forEach(function (k) { p.stats[k] = n[k]; });
     p.supreme = { id: 'viking', title: VIKING_TITLE, n: 1, of: 1, gate: G, egg: true };
     w.log.push({ block: G, tx: seed, kind: 'hatch', msg: VIKING_TITLE + ': egg #' + p.id + ' ' + VIKING_NAME + ' (1 of 1), feed it to hatch', petId: p.id }); }
-  /* ORANGE DRAGON 1 of 1 (owner Nov 4 2026, branch orange-dragon-1of1, PREVIEW). NOT ACTIVE: ACTIVATE_DRAGON_BLOCK null = replay SAME, and DRAGON_TO is a
-   * placeholder (recipient not known yet; grantDragon refuses to run while it is the placeholder). Built like the Viking: one Legendary egg, pure replay rule
-   * (no burn, no issuance, no signature), own species 'orangedragon' drawn by DragonSprite (js/dragon-sprite.js): orange scaled shell egg with horn nubs and a
-   * warm glow crack, baby dragon with cream belly, horn nubs, wings that grow by stage. No fire aura, no flame crown, no gold frame, no flame halo.
-   * TODO before go-live (owner approval): real DRAGON_TO, power, render/label wiring in v2-render.js + speciesLabel, a test, rules.html line, gate = tip + 6. */
+  /* ORANGE DRAGON 1 of 1 (owner Nov 4 2026, branch orange-dragon-1of1, PREVIEW). NOT ACTIVE: ACTIVATE_DRAGON_BLOCK null = replay SAME (grant OFF).
+   * Recipient set (owner [pt2880u] 'Dragon addy'): DRAGON_TO = bc1qr0nfspwd75gdyurds0aplau74rf45qq8w7zvgy (valid bech32 P2WPKH). Built like the Viking: one
+   * Legendary egg, pure replay rule (no burn, no issuance, no signature), own species 'orangedragon' drawn by DragonSprite (js/dragon-sprite.js): orange scaled
+   * shell egg with horn nubs and a warm glow crack, baby dragon with cream belly, horn nubs, dramatic shaded bat wings. No fire aura, no flame crown, no gold
+   * frame, no flame halo.
+   * TODO before go-live (owner approval): power confirm, render/label wiring in v2-render.js + speciesLabel, a test, rules.html line, gate = tip + 6. */
   var ACTIVATE_DRAGON_BLOCK = null; /* OFF */
-  var DRAGON_TO_PLACEHOLDER = 'RECIPIENT_TBD', DRAGON_TO = DRAGON_TO_PLACEHOLDER, DRAGON_POWER = 141, DRAGON_NAME = 'Emberkek', DRAGON_TITLE = 'The Orange Dragon';
-  function dragonOn(b) { return ACTIVATE_DRAGON_BLOCK != null && DRAGON_TO !== DRAGON_TO_PLACEHOLDER && b != null && b >= ACTIVATE_DRAGON_BLOCK; }
-  function grantDragon(w, b, hashes) { var G = ACTIVATE_DRAGON_BLOCK; if (G == null || DRAGON_TO === DRAGON_TO_PLACEHOLDER || w.dragonGranted || b == null || b < G) return; var gh = hashes && hashes[G]; if (!gh) return; w.dragonGranted = G;
+  var DRAGON_TO = 'bc1qr0nfspwd75gdyurds0aplau74rf45qq8w7zvgy', DRAGON_POWER = 141, DRAGON_NAME = 'Emberkek', DRAGON_TITLE = 'The Orange Dragon';
+  function dragonOn(b) { return ACTIVATE_DRAGON_BLOCK != null && b != null && b >= ACTIVATE_DRAGON_BLOCK; }
+  function grantDragon(w, b, hashes) { var G = ACTIVATE_DRAGON_BLOCK; if (G == null || w.dragonGranted || b == null || b < G) return; var gh = hashes && hashes[G]; if (!gh) return; w.dragonGranted = G;
     var seed = 'XCPETS:supreme:orangedragon', art = PetCore.generate({ blockHash: gh, petId: seed, blockHeight: G }), L0 = PetCore.TIERS[art.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
     Object.keys(art.baseStats).forEach(function (k) { art.baseStats[k] = Math.max(1, art.baseStats[k] + d); }); art.tierIndex = 3; art.tier = L1.id; art.species = 'orangedragon'; art.defaultName = DRAGON_NAME;
     art = noBornShades(art); var p = mk(w, DRAGON_TO, art, G, 0, seed); p.species = 'orangedragon'; p.name = DRAGON_NAME;
