@@ -1,6 +1,6 @@
 {
- "lastBlock": 974639,
- "count": 124,
+ "lastBlock": 974641,
+ "count": 126,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -184,18 +184,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 35311,
-   "asset": "A4640023424944164131",
-   "tiedBlock": 973126,
-   "tiedTx": "fcc471e39d0f58b83fcdda4087dbf1d1350d5f6a3f09f20f55cd5d6b04ad1722",
-   "kind": "deed",
-   "name": "Zifaki",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Juvenile"
-  },
-  {
    "id": 891,
    "asset": "A17354511562208255366",
    "tiedBlock": 973131,
@@ -208,18 +196,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 29832,
-   "asset": "A3521620804625995965",
-   "tiedBlock": 973140,
-   "tiedTx": "44b4ce7a1083ce5d51e1af8c3442616f23fe3f2a3cbef04c0d040f81970ec46e",
-   "kind": "deed",
-   "name": "Gifutik",
-   "species": "sarutobi",
-   "speciesLabel": "Sarutobi",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 43046,
    "asset": "A7137406390875557436",
    "tiedBlock": 973155,
@@ -228,18 +204,6 @@
    "name": "Chubezibun",
    "species": "hyb:sarutobi:doge",
    "speciesLabel": "Sadoge (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 27613,
-   "asset": "A15309817566111199365",
-   "tiedBlock": 973196,
-   "tiedTx": "564abd22a89ce63bf62ff5445fa3252db8de5f2079f7f10b2f494e7bce903060",
-   "kind": "deed",
-   "name": "Potik",
-   "species": "chud",
-   "speciesLabel": "Chud",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -1490,6 +1454,66 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 18612,
+   "asset": "A682803047228994266",
+   "tiedBlock": 974641,
+   "tiedTx": "c32a06b922f0c4a0d2edd4ae7f409c91f849ad5bcd1d853d34db26eeabd254ab",
+   "kind": "deed",
+   "name": "Chiki",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 27613,
+   "asset": "A12841237064148033525",
+   "tiedBlock": 974641,
+   "tiedTx": "4e78d811eb190d16d9e8f12267da49dc66cd2d1c107c5e0712b8309c65f69e1e",
+   "kind": "deed",
+   "name": "Potik",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 29832,
+   "asset": "A3934329772653247327",
+   "tiedBlock": 974641,
+   "tiedTx": "5e6cb7cc1b9c037b02763e92b1ae4fa6ce8f6be4582f428ca5764eb204792669",
+   "kind": "deed",
+   "name": "Gifutik",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 35311,
+   "asset": "A2526641395452220738",
+   "tiedBlock": 974641,
+   "tiedTx": "a82a41d1afcd4185f3ec4d2a8f555f1d87aefd8a484f4cd994e3b0f0f362bd14",
+   "kind": "deed",
+   "name": "Zifaki",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 40225,
+   "asset": "A8460821284708930705",
+   "tiedBlock": 974641,
+   "tiedTx": "791641141bc71309b2df57338dd46c936c27a4c67d64734396dd113102ba1ae5",
+   "kind": "deed",
+   "name": "Kigooweli",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
