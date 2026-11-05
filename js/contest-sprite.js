@@ -20,7 +20,7 @@
     gooby: Object.assign({}, BASE, { G: '#18181c', g: '#0c0c0e', h: '#34343e', W: '#f5f5f0', V: '#cfcfc6', H: '#6ef04a', I: '#3fae2a', B: '#e8352a', b: '#b0221a', N: '#000000', U: '#ff5ad1', u: '#7af7ff' }),
     lukespam: Object.assign({}, BASE, { G: '#f2c29a', g: '#d99c76', h: '#ffdcbc', T: '#7a4a22', O: '#d8662a', Q: '#a8461a', R: '#d8262e', r: '#9a1a20', B: '#1f2f5c', b: '#16213f', C: '#2b6cd6', c: '#ffd23f', U: '#ff7ae0', u: '#7affd8' })
   };
-  var NAMES = { starlordkek: 'Star-Lord Kek', gooby: 'Gooby', lukespam: 'Luke Spam Junior', bojackson: 'Bo Jackson', rarepigeon: 'Rarepigeon' };
+  var NAMES = { starlordkek: 'Star-Lord Kek', gooby: 'Gooby', lukespam: 'Luke Spam Junior', bojackson: 'Bo Jackson', rarepigeon: 'Rarepigeon', jacksonpepe: 'Old Hickory Pepe' };
   /* BO JACKSON 1 of 1 (owner Oct 26 2026): baked v3 art (js/bo-sprite.js, BoSprite) per stage; the idle bob moves the whole grid, gear lands on BO_A. */
   var BOS = (typeof BoSprite !== 'undefined') ? BoSprite : (typeof require === 'function' ? require('./bo-sprite.js') : null);
   if (BOS) PAL.bojackson = Object.assign({}, BOS.PAL);
@@ -35,6 +35,9 @@
   /* RAREPIGEON 1 of 1 (owner Oct 26 2026, branch rarepigeon-1of1): baked art (js/rarepigeon-sprite.js, RarepigeonSprite) per stage, same idle bob as Bo; gear lands on RP_A. */
   var RPS = (typeof RarepigeonSprite !== 'undefined') ? RarepigeonSprite : (typeof require === 'function' ? (function () { try { return require('./rarepigeon-sprite.js'); } catch (e) { return null; } })() : null);
   if (RPS) PAL.rarepigeon = Object.assign({}, RPS.PAL);
+  /* OLD HICKORY PEPE 1 of 1 (owner Nov 4 2026, branch jackson-pepe-1of1, PREVIEW): baked art (js/jackson-sprite.js, JacksonSprite); idle bob like Bo, blink on frame 2 */
+  var JPS = (typeof JacksonSprite !== 'undefined') ? JacksonSprite : (typeof require === 'function' ? (function () { try { return require('./jackson-sprite.js'); } catch (e) { return null; } })() : null);
+  if (JPS) PAL.jacksonpepe = Object.assign({}, JPS.PAL);
   /* BO PIGEON 'borp' (owner Oct 31 2026 9:49 AM CT, branch borp-twins, PREVIEW): the body every Bo Jackson times Rarepigeon baby gets (rules: ACTIVATE_BORP_BLOCK,
    * null = OFF, so no pet has it). A pigeon-athlete: Rarepigeon's shape (head, beak, iridescent collar, red legs, tail) wearing Bo's kit: charcoal jersey (wing
    * bars kept), white #34 from Adult, silver pants, eye black under the eye and a football tucked at the chest from Juvenile. Derived at load from RarepigeonSprite
@@ -72,6 +75,14 @@
     for (y = 0; y < Math.min(by, N); y++) for (x = 16; x < N; x++) if (S[y].charAt(x) === 'l') { ht = y; hl = x; } /* the eye highlight: lowest 'l' above the beak */
     var ox, oy; if (K.at === 'beak') { if (bx < 0) return; ox = bx - 1; oy = by - 1; } else if (K.at === 'crown') { if (ht === 99) return; ox = hl - 4; oy = ht - 2 - M.length + 1; } else { if (lx === 99) return; ox = lx - 1; oy = ly; }
     for (y = 0; y < M.length; y++) for (x = 0; x < M[y].length; x++) { var k = M[y].charAt(x); if (k !== '.') set(g, ox + x, oy + y + dy, RP_KC[k]); } }
+  var JP_A = [null, [12, 21, 16, 21, 8], [8, 19, 14, 20, 9], [5, 17, 11, 18, 10]]; /* [headTop, headBot, eyeY, bodyTop, bw] for Hatchling, Juvenile, Adult+ */
+  function jpDraw(stage, f, gear) { var S = JPS.STAGES[stage], g = grid(), dy = stage > 0 ? [0, -1, -1, 0][f] : [0, 0, -1, 0][f];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, (f === 2 && stage > 0 && c === 'e') ? 'G' : c); }
+    if (stage > 0 && gear && Object.keys(gear).length) { /* per-stage anchors from the baked art (audit Nov 4): head/face gear on the right-facing face (cx 19), body/hand/back/feet gear on the cloak (cx 15) */
+      var J = JP_A[Math.min(stage, 3)], hg = {}, bg = {}; Object.keys(gear).forEach(function (k) { (k === 'head' || k === 'face' ? hg : bg)[k] = gear[k]; });
+      var A = { cx: 15, headTop: J[0] + dy, headBot: J[1] + dy, hw: 5, eyeY: J[2] + dy, bodyTop: J[3] + dy, bodyEnd: 28 + dy, bw: J[4] };
+      if (Object.keys(bg).length) gearLayer(g, 'jacksonpepe', stage, A, bg); if (Object.keys(hg).length) gearLayer(g, 'jacksonpepe', stage, Object.assign({}, A, { cx: 19 }), hg); }
+    return g; }
   function rpDraw(stage, f, gear) { var S = RPS.STAGES[stage], g = grid(), dy = [0, -1, -1, 0][f];
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
     if (stage > 0 && gear) { var rest = {}; ['feet', 'hand', 'head', 'body', 'face', 'back', 'weapon'].forEach(function (sl) { var it = gear[sl], id = it && (it.item || it.id);
@@ -196,7 +207,7 @@
       if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod/.test(ak)) { for (var t = 0; t < 8; t++) p(hx, hy - t, t > 5 ? a1 : a0); } else { rect(g, hx - 1, hy - 2, 3, 3, a0); set(g, hx, hy - 1, a1); } }
     if (Gr.weapon) { var wx = cx + A.bw + 4; for (var tw = 0; tw < 9; tw++) set(g, wx, A.bodyEnd - tw, tw > 6 ? col('weapon', 1) : col('weapon')); }
     return put; }
-  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (sp === 'borp' && BORP) return borpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
+  function draw(sp, stage, frame, gear) { var s = Math.max(0, Math.min(5, stage | 0)), f = ((frame | 0) % 4 + 4) % 4, g = grid(); if (sp === 'bojackson') return boDraw(s, f, gear); if (sp === 'rarepigeon') return rpDraw(s, f, gear); if (sp === 'jacksonpepe' && JPS) return jpDraw(s, f, gear); if (sp === 'borp' && BORP) return borpDraw(s, f, gear); if (!DRAW[sp]) throw new Error('unknown contest pet ' + sp);
     if (s === 0) return eggArt(g, sp, f);
     var A = geom(s, f); SL_GEAR = gear || null; try { DRAW[sp](g, s, A, f); } finally { SL_GEAR = null; } if (gear && Object.keys(gear).length) gearLayer(g, sp, s, A, gear);
     var o = outline(g); if (s === 5) { o = mythicRim(o); if (sp !== 'starlordkek') aura(o, sp, f); } if (sp === 'starlordkek') slFx(o, s, f); return o; }
