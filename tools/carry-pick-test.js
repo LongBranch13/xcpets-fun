@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* carry-fix-1105 tests (dev tooling only): breed carry pick, gated by V2Rules.ACTIVATE_CARRYPICK_BLOCK.
- *  1) gate: placeholder 999999999, off before, null-able
+ *  1) gate: live 974682, off before, null-able
  *  2) Luck 30 vs Vigor 29 + 1 shard (A.stats both 30): before the gate Vigor wins the tie and carries 29; after it Luck carries 30
  *  3) ties on carried value keep the first key; no shards = same pick both ways
  *  4) replay: newest snapshot, gate at placeholder vs null vs moved to block 0: identical carries (forward-only) */
@@ -27,7 +27,7 @@ const vig = KEYS.indexOf('vigor') >= 0 ? 'vigor' : KEYS[0], luck = KEYS.indexOf(
 const base = () => { const o = {}; KEYS.forEach(k => { o[k] = 10; }); o[vig] = 30; o[luck] = 30; return o; };
 assert.ok(KEYS.indexOf(vig) < KEYS.indexOf(luck), 'vigor before luck in key order');
 
-t('gate: placeholder 999999999, off before it, null-able', () => { assert.strictEqual(GATE0, 999999999); assert.strictEqual(V.carryPickOn(GATE0 - 1), false); assert.strictEqual(V.carryPickOn(GATE0), true);
+t('gate: live 974682, off before it, null-able', () => { assert.strictEqual(GATE0, 974682); assert.strictEqual(V.carryPickOn(GATE0 - 1), false); assert.strictEqual(V.carryPickOn(GATE0), true);
   V._setCarryPick(null); try { assert.strictEqual(V.carryPickOn(2e9), false); } finally { V._setCarryPick(GATE0); } });
 t('BEFORE the gate: Luck 30 vs Vigor 29+1 shard -> Vigor wins the tie, carries 29 (old behaviour)', () => {
   const cr = carryAt(BB, base(), { [vig]: 1 }); assert.strictEqual(cr.stat, vig); assert.strictEqual(cr.value, 29); console.log('     before: ' + cr.stat + ' ' + cr.value); });

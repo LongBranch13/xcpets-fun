@@ -1500,10 +1500,10 @@
    * In that carrier's later breeds (at/after this block) the child's stat k is at least the carried value. No RNG draw is added or moved, species/tier/hybrid
    * logic is untouched, so every earlier breed (incl. 42 x 2451 at 971,605) and every breed without a carrier replays exactly as before. */
   var ACTIVATE_BREEDCARRY_BLOCK = 971650;
-  /** CARRY PICK FIX (carry-fix-1105): the breed carry to parent B picked argmax of A.stats (which count shards) but carried shardView(A,1)
+  /** CARRY PICK FIX (carry-fix-1105): the breed carry to parent B picked argmax of A.stats (which count shards) but carried shardView(A, 1)
    * (base + floor(shards/2)), so Luck 30 vs Vigor 29+1 shard tied at 30, Vigor won the tie and only 29 was carried. From this block (with shards on)
-   * the pick uses the carried values. PLACEHOLDER far-future block: set to tip + 6 at deploy. Before it = replay SAME. */
-  var ACTIVATE_CARRYPICK_BLOCK = 999999999;
+   * the pick uses the carried values. LIVE from ACTIVATE_CARRYPICK_BLOCK 974682; burns before it replay SAME. */
+  var ACTIVATE_CARRYPICK_BLOCK = 974682; // Counterparty tip 974676 (api.counterparty.io:4000 + api.unspendablelabs.com:4000 agree) + 6, owner approved go-live 7:35 AM CT Nov 5 2026
   function carryPickOn(b) { return ACTIVATE_CARRYPICK_BLOCK != null && b != null && b >= ACTIVATE_CARRYPICK_BLOCK; }
   var ACTIVATE_DEDUP_BLOCK = 971588;  // Bitcoin tip 971,585 at 2026-10-15 09:20 CT + 3 (Jake approved)
   var DEDUP_NUM = 9, DEDUP_DEN = 10, DEDUP_SCALE = 1000000;
