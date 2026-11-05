@@ -75,9 +75,13 @@
     for (y = 0; y < Math.min(by, N); y++) for (x = 16; x < N; x++) if (S[y].charAt(x) === 'l') { ht = y; hl = x; } /* the eye highlight: lowest 'l' above the beak */
     var ox, oy; if (K.at === 'beak') { if (bx < 0) return; ox = bx - 1; oy = by - 1; } else if (K.at === 'crown') { if (ht === 99) return; ox = hl - 4; oy = ht - 2 - M.length + 1; } else { if (lx === 99) return; ox = lx - 1; oy = ly; }
     for (y = 0; y < M.length; y++) for (x = 0; x < M[y].length; x++) { var k = M[y].charAt(x); if (k !== '.') set(g, ox + x, oy + y + dy, RP_KC[k]); } }
+  var JP_A = [null, [12, 21, 16, 21, 8], [8, 19, 14, 20, 9], [5, 17, 11, 18, 10]]; /* [headTop, headBot, eyeY, bodyTop, bw] for Hatchling, Juvenile, Adult+ */
   function jpDraw(stage, f, gear) { var S = JPS.STAGES[stage], g = grid(), dy = stage > 0 ? [0, -1, -1, 0][f] : [0, 0, -1, 0][f];
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, (f === 2 && stage > 0 && c === 'e') ? 'G' : c); }
-    if (stage > 0 && gear && Object.keys(gear).length) gearLayer(g, 'jacksonpepe', stage, Object.assign({}, RP_A, { headTop: 4 + dy, headBot: 16 + dy, eyeY: 10 + dy, bodyTop: 19 + dy, bodyEnd: 28 + dy }), gear);
+    if (stage > 0 && gear && Object.keys(gear).length) { /* per-stage anchors from the baked art (audit Nov 4): head/face gear on the right-facing face (cx 19), body/hand/back/feet gear on the cloak (cx 15) */
+      var J = JP_A[Math.min(stage, 3)], hg = {}, bg = {}; Object.keys(gear).forEach(function (k) { (k === 'head' || k === 'face' ? hg : bg)[k] = gear[k]; });
+      var A = { cx: 15, headTop: J[0] + dy, headBot: J[1] + dy, hw: 5, eyeY: J[2] + dy, bodyTop: J[3] + dy, bodyEnd: 28 + dy, bw: J[4] };
+      if (Object.keys(bg).length) gearLayer(g, 'jacksonpepe', stage, A, bg); if (Object.keys(hg).length) gearLayer(g, 'jacksonpepe', stage, Object.assign({}, A, { cx: 19 }), hg); }
     return g; }
   function rpDraw(stage, f, gear) { var S = RPS.STAGES[stage], g = grid(), dy = [0, -1, -1, 0][f];
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var c = S[y].charAt(x); if (c !== '.') set(g, x, y + dy, c); }
