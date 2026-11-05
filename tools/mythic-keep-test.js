@@ -31,8 +31,8 @@ function iss(src, block, asset, desc) {
 }
 const bytes = k => Array.from(crypto.createHash('sha256').update('mk' + k).digest()).slice(0, 8);
 
-ok(V.ACTIVATE_MYTHIC_KEEP_BLOCK === 974679, 'gate live at 974679');
-ok(typeof V._setMythicKeepActivation === 'function' && V.mythicKeepOn(974679) === true && V.mythicKeepOn(974678) === false, '_setMythicKeepActivation + mythicKeepOn respects live gate');
+ok(V.ACTIVATE_MYTHIC_KEEP_BLOCK === 974682, 'gate live at 974682');
+ok(typeof V._setMythicKeepActivation === 'function' && V.mythicKeepOn(974682) === true && V.mythicKeepOn(974681) === false, '_setMythicKeepActivation + mythicKeepOn respects live gate');
 
 const base = run([], T);
 const live = p => !p.dead && !p.released && !p.community && p.owner;
