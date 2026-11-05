@@ -1,6 +1,6 @@
 {
- "lastBlock": 974714,
- "count": 126,
+ "lastBlock": 974717,
+ "count": 123,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -204,30 +204,6 @@
    "name": "Chubezibun",
    "species": "hyb:sarutobi:doge",
    "speciesLabel": "Sadoge (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 45063,
-   "asset": "A9727395758701490812",
-   "tiedBlock": 973259,
-   "tiedTx": "691377c5d2d34134a4ef283b0cad758723b104cb56ab56d42fca5c62c562efb8",
-   "kind": "deed",
-   "name": "Mokoop",
-   "species": "hyb:dodo:wojak",
-   "speciesLabel": "Dojak (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Egg"
-  },
-  {
-   "id": 46068,
-   "asset": "A1673289172511296123",
-   "tiedBlock": 973306,
-   "tiedTx": "72ebca64ce328790bcc16e97f7dc170dc332139d82e391a0df9a31016bb1dfa6",
-   "kind": "deed",
-   "name": "Yazoolomi",
-   "species": "hyb:wizard:kek",
-   "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -1249,7 +1225,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Uncommon",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 52945,
@@ -1500,18 +1476,6 @@
    "name": "Zifaki",
    "species": "dodo",
    "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Juvenile"
-  },
-  {
-   "id": 40225,
-   "asset": "A8460821284708930705",
-   "tiedBlock": 974641,
-   "tiedTx": "791641141bc71309b2df57338dd46c936c27a4c67d64734396dd113102ba1ae5",
-   "kind": "deed",
-   "name": "Kigooweli",
-   "species": "pepe",
-   "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Juvenile"
   }
