@@ -1,6 +1,6 @@
 {
- "lastBlock": 974613,
- "count": 119,
+ "lastBlock": 974615,
+ "count": 120,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1429,6 +1429,18 @@
    "species": "doge",
    "speciesLabel": "Doge",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42245,
+   "asset": "A17798493309098621723",
+   "tiedBlock": 974615,
+   "tiedTx": "54548c5dc3138e32b585b9460dd9dd7943b086e4134da0792bd37607e37c21f9",
+   "kind": "deed",
+   "name": "Jawa",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
