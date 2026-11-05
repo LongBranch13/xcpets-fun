@@ -143,7 +143,25 @@
     for (var sp = 0; sp < (big ? 4 : 2); sp++) set(g, hx + 4 + sp * 2, hy + 1 + sp - (big ? 0 : 1) - 0 + (sp > 1 ? 1 : 0) - 1, myth ? 'K' : 'd');
     if (stage === 4) { set(g, hx - 2, hy + 1, 'd'); set(g, bx + 2, by - 1, 'L'); }                  // Elder: scarred scales
     var Gr = gear || {}; if (Gr.face) { var gc = (Gr.face.cols && Gr.face.cols[0]) || '#141018'; hline(g, eyx - 1, eyx + 2, eyy, gc); }
+    if (stage > 0) gearLayer(g, Gr, eyx, eyy);
     return outline(g); }
+  /* Per-stage gear anchors, measured from the drawn dragon (head faces left, wings on the right): head = columns eyx-3..eyx+4 above the eye,
+   * torso = 'o'/'O' scales below the mouth right of the snout, feet = 'T' claws. Every slot draws on the 32x32 key grid, so nothing can throw. */
+  function gearLayer(g, Gr, eyx, eyy) {
+    function col(it, i, d) { return (it && it.cols && it.cols[i]) || (it && it.cols && it.cols[0]) || d; }
+    var top = 99; for (var y = 0; y < eyy; y++) for (var x = eyx - 3; x <= eyx + 4; x++) if (get(g, x, y) && y < top) top = y; if (top === 99) top = eyy - 3;
+    var b0 = eyy + 5, rows = [];                                   // torso rows: below the jaw
+    for (var y2 = b0; y2 < N; y2++) { var mn = 99, mx = -1; for (var x2 = eyx + 3; x2 < N; x2++) { var k = get(g, x2, y2); if (k === 'o' || k === 'O' || k === 'L') { mn = Math.min(mn, x2); mx = Math.max(mx, x2); } } if (mx >= 0) rows.push([y2, mn, mx]); }
+    if (Gr.back && rows.length) { var bc = col(Gr.back, 0, '#c0303a'), bd = col(Gr.back, 1, '#7a1820'); rows.forEach(function (r, i) { if (i < 1) return; var w = 1 + Math.min(2, i >> 2); for (var q = 1; q <= w; q++) { if (!get(g, r[1] - q, r[0])) set(g, r[1] - q, r[0], q === w ? bd : bc); } }); }
+    if (Gr.body && rows.length) { var ac = col(Gr.body, 0, '#9aa4b0'), ad = col(Gr.body, 1, '#5a6470'); rows.slice(1, -2).forEach(function (r) { for (var x3 = r[1]; x3 <= Math.min(r[2], r[1] + 11); x3++) { var k3 = get(g, x3, r[0]); if (k3 === 'o' || k3 === 'O' || k3 === 'L') set(g, x3, r[0], (x3 + r[0]) % 4 ? ac : ad); } }); }
+    if (Gr.feet) { var fc = col(Gr.feet, 0, '#6a3a1a'); for (var y4 = 0; y4 < N; y4++) for (var x4 = 0; x4 < N; x4++) if (get(g, x4, y4) === 'T') { set(g, x4, y4, fc); set(g, x4 + 1, y4, fc); if (y4 > 0 && get(g, x4 + 1, y4 - 1) === 'n') set(g, x4 + 1, y4 - 1, fc); } }
+    if (Gr.head) { var hc = col(Gr.head, 0, '#c0303a'), hd = col(Gr.head, 1, '#7a1820');
+      if (/headband|band/i.test(Gr.head.label || '')) { hline(g, eyx - 2, eyx + 4, eyy - 2, hc); }
+      else { for (var hy2 = top - 3; hy2 <= top - 1; hy2++) hline(g, eyx - 2, eyx + 3, Math.max(0, hy2), hy2 === top - 1 ? hd : hc); hline(g, eyx - 4, eyx + 5, Math.max(0, top), hd); } }
+    if (rows.length && (Gr.hand || Gr.weapon)) { var r0 = rows[Math.min(2, rows.length - 1)], hx3 = Math.max(1, r0[1] - 3);
+      if (Gr.hand) { var wc = col(Gr.hand, 0, '#8a5a2a'), wh = col(Gr.hand, 1, '#c8c8d0'); for (var y5 = r0[0] - 7; y5 <= r0[0] + 2; y5++) set(g, hx3, Math.max(0, y5), y5 < r0[0] - 4 ? wh : wc); set(g, hx3 - 1, r0[0] - 3, wc); set(g, hx3 + 1, r0[0] - 3, wc); set(g, hx3 + 1, r0[0], 'O'); }
+      if (Gr.weapon) { var lr = rows[rows.length - 1], wx = Math.min(N - 2, lr[2] + 2), w1 = col(Gr.weapon, 0, '#9a4a12'), w2 = col(Gr.weapon, 1, '#f7931a'); for (var y6 = lr[0] - 9; y6 <= lr[0]; y6++) set(g, wx, Math.max(0, y6), w1); set(g, wx, Math.max(0, lr[0] - 10), w2); set(g, wx - 1, Math.max(0, lr[0] - 10), w2); } } }
+
   function anchors(stage, frame) { if (!stage) return { ey: -1 }; var g = draw(stage, frame || 0, {}), ey = -1, x0 = 99, x1 = -1, my = -1;
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x]; if (k === 'E' || k === 'P') { if (ey < 0) ey = y; if (y === ey) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); } } if (k === 'm' && my < 0) my = y; }
     return { ey: ey, ex0: x0, ex1: x1, my: my }; }

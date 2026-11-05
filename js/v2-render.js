@@ -609,6 +609,7 @@
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS) return ContestSprite.CROSS.frames(art.cross, stage || 0, art.bgColor || '#14101e', wizGearOf(itemIds)); /* 1 OF 1 CROSS (branch allpets-crosses-1101 PREVIEW, inert: V2Rules.ACTIVATE_ONEOFONE_CROSS_BLOCK null) */
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
+    if (art && art.species === 'orangedragon' && !art.hybrid && window.DragonSprite) return DragonSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the ORANGE DRAGON 1 of 1 (inert: V2Rules.ACTIVATE_DRAGON_BLOCK null) */
     if (art && art.species === 'viking' && !art.hybrid && window.VikingSprite) return VikingSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the VIKING 1 of 1 (branch viking-1of1 PREVIEW, inert: V2Rules.ACTIVATE_VIKING_BLOCK null) */
     if (art && art.hybrid && art.hybrid.shape === 'viking' && window.VikingSprite) return vikHybFrames(art, stage, itemIds); /* VIKING-body hybrid: VikingSprite gear layer */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
@@ -641,7 +642,7 @@
    * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
     var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
-    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'viking')) return full;
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'viking' || art.species === 'orangedragon')) return full;
     var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
     all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
     if (!ban) return full;
