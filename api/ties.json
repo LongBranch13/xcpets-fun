@@ -1,6 +1,6 @@
 {
- "lastBlock": 974618,
- "count": 122,
+ "lastBlock": 974629,
+ "count": 123,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1084,18 +1084,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 69321,
-   "asset": "A17226813662021203359",
-   "tiedBlock": 974347,
-   "tiedTx": "23f939fd098dfdf59ffae5c0034e7eb7167a13574f5c8ff837f25976d171f1ed",
-   "kind": "deed",
-   "name": "Gubakabo",
-   "species": "pepe",
-   "speciesLabel": "Pepe",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 4183,
    "asset": "A13118815332649505341",
    "tiedBlock": 974375,
@@ -1464,6 +1452,30 @@
    "name": "Ruyeru",
    "species": "hyb:wizard:nakamoto",
    "speciesLabel": "Wizmoto (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 14904,
+   "asset": "A2750381639501642727",
+   "tiedBlock": 974628,
+   "tiedTx": "808e5fd37182159fdb96aae1eafcb94632b1c3a711d944a48c9fc90326fb77cb",
+   "kind": "deed",
+   "name": "Toki",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 20221,
+   "asset": "A8534602913192310517",
+   "tiedBlock": 974628,
+   "tiedTx": "484032d3df853f3657f8d62b2c331537588249779e8afc713e5961cc43059b2e",
+   "kind": "deed",
+   "name": "Bowane",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
