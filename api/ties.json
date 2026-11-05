@@ -1,6 +1,6 @@
 {
- "lastBlock": 974615,
- "count": 120,
+ "lastBlock": 974617,
+ "count": 121,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -217,7 +217,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 43046,
@@ -241,7 +241,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 45063,
@@ -1297,7 +1297,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Uncommon",
-   "stage": "Juvenile"
+   "stage": "Hatchling"
   },
   {
    "id": 52945,
@@ -1441,6 +1441,18 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 10631,
+   "asset": "A8195877350156490261",
+   "tiedBlock": 974617,
+   "tiedTx": "ae1ade81f4d1efb69c47846c421b8d237d4bbe0389f117e8d26f16522357e16c",
+   "kind": "deed",
+   "name": "Motikzu",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
