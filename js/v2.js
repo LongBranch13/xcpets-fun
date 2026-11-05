@@ -6,7 +6,10 @@
    * pets that it eats. Same confirm sheet and send guard as every other burn. Not part of Feed all: Feed all never spends a pet. */
   var zMealsMemo = null;
   function zMeals(w, me, b) { if (zMealsMemo && zMealsMemo.w === w && zMealsMemo.me === me && zMealsMemo.b === b) return zMealsMemo.L;
-    var L = !V.cemOfferWhy ? [] : (w.pets || []).filter(function (a) { return a.owner === me && !a.dead && !a.released && !ZB(a) && !V.cemOfferWhy(w, a, me, b); })
+    /* offer-discards-only-1105: when the cemetery token/discard gate is on, only Discarded pets (browser Discard pile) can be offered/eaten.
+     * Discard is not on chain; the picker enforces it. Tied pets are also refused by cemOfferWhy under the same gate. */
+    var discOnly = !!(V.cemTokenOfferOn && V.cemTokenOfferOn(b)), H0 = discOnly ? zDiscarded(w) : null;
+    var L = !V.cemOfferWhy ? [] : (w.pets || []).filter(function (a) { return a.owner === me && !a.dead && !a.released && !ZB(a) && !V.cemOfferWhy(w, a, me, b) && (!discOnly || H0[a.id]); })
       .sort(function (a, c) { return (a.tier | 0) - (c.tier | 0) || (a.stage | 0) - (c.stage | 0) || a.id - c.id; }); zMealsMemo = { w: w, me: me, b: b, L: L }; return L; }
   /* zombie-feed-pets (owner Oct 30 2026 "I fed the zombie but it was xcpets instead of other pets I dont want"): the meal is a PICK, never a default.
    * Nothing is pre-selected (the old dropdown silently pre-picked the weakest pet), starred pets and pets already in an unconfirmed zombie meal are
@@ -43,8 +46,8 @@
     var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length, H = zDiscarded(w), D = L.filter(function (a) { return H[a.id]; }), cost = V.cemCost(w, 'zmeal', b), v = V.cemView(w, p, b) || {};
     var pn = mine.length ? '<div class="small zb-pend">⏳ Meal waiting for a block: ' + mine.map(function (id) { var a = w.byId[id]; return esc((a && a.name) || '#' + id) + ' #' + id; }).join(', ') + '. It is eaten (and hunger refills) when that burn confirms; until then the pet still shows on your list.</div>' : '';
     return '<div class="zb-feed zb-pk" data-zf="' + p.id + '" data-pk="feed">' + pn + '<details class="zb-pickbox"' + (D.length ? ' open' : '') + '><summary class="small">🍖 Feed ' + esc(p.name || '#' + p.id) + ' pets you pick <span class="muted">(' + fmt(D.length) + ' discarded · ' + fmt(L.length - D.length) + ' other)</span></summary>' +
-      '<p class="small zb-warn">A zombie eats <b>pets</b>, not XCPETS. Every pet you tick is <b>used up for good</b>. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>, and one burn eats as many pets as fit in it (pets with close ids pack best). Any meal refills hunger to full. Each row shows the <b>⚡ power</b> that pet alone would add (rules math). Nothing is ticked for you.' + zCapNote(p) + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + '</p>' +
-      zSortBar('feed', D.length) + zList({ items: L, w: w, H: H, valOf: function (a) { return zMealGain(w, p, [a]); }, unit: '⚡', empty: 'No pets it can eat. Discard pets in My Pets (🗑️, free) and they show first here.' }) +
+      '<p class="small zb-warn">A zombie eats <b>pets</b>, not XCPETS. Every pet you tick is <b>used up for good</b>. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>, and one burn eats as many pets as fit in it (pets with close ids pack best). Any meal refills hunger to full. Each row shows the <b>⚡ power</b> that pet alone would add (rules math). Nothing is ticked for you.' + zCapNote(p) + (V.cemTokenOfferOn && V.cemTokenOfferOn(b) ? ' <b>Only Discarded pets</b> can be offered (🗑️ in My Pets). Tokenized pets can\'t be offered.' : '') + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + '</p>' +
+      zSortBar('feed', D.length) + zList({ items: L, w: w, H: H, valOf: function (a) { return zMealGain(w, p, [a]); }, unit: '⚡', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn(b) ? 'No Discarded pets it can eat. Discard pets in My Pets (🗑️, free) first. Tokenized pets can\'t be offered.' : 'No pets it can eat. Discard pets in My Pets (🗑️, free) and they show first here.') }) +
       '<div class="small zb-sum" data-pow="' + (v.power || 0) + '"></div></details>' +
       '<button type="button" class="btn zb-feedbtn" disabled>' + zBtnText(w, p.id, [], b) + '</button></div>'; }
   /* cem-pickers (owner Oct 30 2026 7:55 PM CT "sacrifice options shown by rarity or pet score or power or something not all pick best"): both pet
@@ -137,7 +140,7 @@
       (mine.length ? '<div class="small zb-pend">⏳ Pledge waiting for a block: ' + mine.length + ' item' + (mine.length > 1 ? 's' : '') + '. It counts when that burn confirms.</div>' : '') +
       '<details class="zb-pickbox"><summary class="small">😇 Pledge pets &amp; gear to ' + esc(p.name || '#' + p.id) + '’s Resurrection <span class="muted">(' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ' points · ' + Math.round(ri.chance * 100) + '% chance)</span></summary>' +
       '<p class="small zb-warn">Pledged pets and gear are <b>used up when the Resurrection is tried</b>, win or lose. Points by rarity: ' + TL.map(function (t, i) { return esc(t) + ' ' + zRpPts({ tier: i }); }).join(' · ') + '. It needs ' + MIN + ' points to try. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>; one burn pledges as many as fit in it. Nothing is ticked for you.' + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + '</p>' +
-      zSortBar('rpl', D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: 'No pets you can pledge.' }) +
+      zSortBar('rpl', D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') }) +
       (G.length ? '<details class="zb-gear"><summary class="small">🛡️ Your gear (' + fmt(G.length) + ')</summary>' + gr + '</details>' : '') +
       '<div class="small zb-sum"></div></details>' +
       '<button type="button" class="btn zb-feedbtn" disabled>' + zRplBtn(w, p.id, [], [], b) + '</button> <button type="button" class="btn ghost zb-resbtn"' + (ri.points < MIN ? ' disabled title="Needs ' + MIN + ' points"' : '') + '>😇 Resurrect · ' + fmt(V.cemCost(w, 'resurrect', b)) + ' XCPETS</button></div>'; }
@@ -1298,7 +1301,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=f16585367d';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=8abf122bf2';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }

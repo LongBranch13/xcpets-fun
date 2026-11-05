@@ -19,9 +19,11 @@
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
   function zh(p, w) { try { return window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null; } catch (e) { return null; } }
   function hrs(n) { var h = n * 10 / 60; return h < 48 ? '~' + Math.round(h) + ' h' : '~' + (h / 24).toFixed(1) + ' days'; }
+  /* offer-discards-only-1105 (owner Nov 5 2026): seance offerings read as Sacrificed, not "used up". usedUp field unchanged. */
+  function sacLine(u) { u = String(u == null ? '' : u); var m = /^offered to #(\d+)$/i.exec(u); if (m) return 'Sacrificed to #' + m[1]; if (/^offered to\b/i.test(u) || !u) return 'Sacrificed'; m = /#(\d+)/.exec(u); if (m && (/^eaten by\b/i.test(u) || /^Resurrection of\b/i.test(u))) return 'Sacrificed to #' + m[1]; return 'Sacrificed'; }
 
   function acts(p, mine) {
-    if (p.dead || p.released || p.burnedTo) return '<p class="small muted pc-none">' + (p.dead ? '🪦 Resting in the Pet Cemetery.' : 'Out of play.') + '</p>';
+    if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? sacLine(p.usedUp) : 'Out of play.'); return '<p class="small muted pc-none">' + gone + '</p>'; }
     var own = mine && !viewOnly(), q = function (h) { return own ? h + '-' + p.id : h; };
     if (isZ(p)) { var zp = own ? 'play.html#pet-' + p.id : 'play.html'; /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt */
       return '<div class="pc-actrow"><a class="pc-act pc-zb" href="' + zp + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>Feed it pets</b><small>' + (own ? 'Your discarded pets, on Play' : mine ? 'Connect the wallet on Play' : 'Owner only, on Play') + '</small></a>' +

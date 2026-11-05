@@ -1294,8 +1294,8 @@
   /* family-tree-fix (2026-10-19, display only): dead / released parents, partners and children are marked (🪦 / released); 'Bred with' is grouped by
    * partner with a count, and after FAM_SHOW children the rest fold away behind a 'Show all' toggle (reads well at 390px). */
   var FAM_SHOW = 6;
-  function goneOf(q) { return !q ? '' : q.released ? 'released' : q.dead ? 'dead' : ''; }
-  function goneMark(q) { var g = goneOf(q); return g === 'dead' ? ' <span class="fgone" title="Died">🪦</span>' : g === 'released' ? ' <span class="fgone">(released)</span>' : ''; }
+  function goneOf(q) { return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
+  function goneMark(q) { var g = goneOf(q); return g === 'dead' ? ' <span class="fgone" title="Died">🪦</span>' : g === 'sacrificed' ? ' <span class="fgone">(sacrificed)</span>' : g === 'released' ? ' <span class="fgone">(released)</span>' : ''; }
   function familyHtml(w, p, tip) { var V2 = window.V2Rules, L = function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '"' + (goneOf(q) ? ' class="fgonelink"' : '') + '>' + (q ? esc(q.name) + ' ' : '') + '#' + id + '</a>' + goneMark(q); }, out = [];
     var og = originOf(w, p); /* glitch-display-1102: a quest jackpot egg has one parent and was not bred; grant eggs were not minted by a burn */
     out.push('<b>Parents:</b> ' + (p.jackpot ? L(p.jackpot.from) + ' × a wild Legendary ' + esc(spName(p.jackpot.wild)) + ' <span class="muted">(' + esc(og.line) + ')</span>' : p.parents && p.parents.length ? p.parents.map(L).join(' × ') + ' <span class="muted">(bred at block ' + Number(p.hatchBlock).toLocaleString('en-US') + ')</span>' : 'none <span class="muted">(' + esc(og.line) + ')</span>'));
@@ -1471,7 +1471,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=f16585367d'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=8abf122bf2'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
@@ -1523,7 +1523,7 @@
    * e.g. #891 or #4248, no longer gets an empty box). A grandparent that has parents of its own gets a '+ older ancestors' link to its own page.
    * Dead / released pets: greyed sprite + 🪦 / 'released'. More than FT_SHOW children fold behind a '+N more' toggle. Legendary/Uncommon boxes use dark text. */
   var FT_SHOW = 6;
-  function goneOf(q) { return !q ? '' : q.released ? 'released' : q.dead ? 'dead' : ''; }
+  function goneOf(q) { return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
   function node(t, opts) { opts = opts || {}; var w = null, p = null; try { w = window.V2Mock.world(); p = w.byId[t.id]; } catch (e) {}
     var g = goneOf(p), d = document.createElement('div'); d.className = 'ftnode tier-' + (TC[t.tier] || '') + (g ? ' ftgone ft-' + g : '') + (opts.self ? ' ftself' : '');
     if (opts.older) { var o = document.createElement('a'); o.className = 'ftolder'; o.href = 'pet.html?id=' + t.id; o.textContent = '+ older ancestors'; o.title = 'Open #' + t.id + ' to see its parents'; d.appendChild(o); }
@@ -1531,7 +1531,7 @@
     try { window.V2Render.paint(c, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
     var sp = window.V2Rules && window.V2Rules.speciesLabel ? window.V2Rules.speciesLabel(t.species) : t.species, a = document.createElement('a'); a.href = 'pet.html?id=' + t.id; a.appendChild(c);
     var s = document.createElement('span'); s.innerHTML = '<b></b><br><span class="muted"></span>'; s.firstChild.textContent = (p && p.stage === 0 && opts.kid ? 'Egg ' : '') + (t.name || '') + ' #' + t.id; s.lastChild.textContent = sp + ' · ' + (TL[t.tier] || ''); a.appendChild(s);
-    if (g) { var m = document.createElement('span'); m.className = 'ftgonetag'; m.textContent = g === 'dead' ? '🪦 died' : 'released'; a.appendChild(m); a.title = g === 'dead' ? 'This pet died' : 'This pet was released'; }
+    if (g) { var m = document.createElement('span'); m.className = 'ftgonetag'; m.textContent = g === 'dead' ? '🪦 died' : (g === 'sacrificed' ? 'sacrificed' : 'released'); a.appendChild(m); a.title = g === 'dead' ? 'This pet died' : (g === 'sacrificed' ? 'This pet was sacrificed' : 'This pet was released'); }
     d.appendChild(a); return d; }
   function hasParents(id) { try { var q = window.V2Mock.world().byId[id]; return !!(q && q.parents && q.parents.length); } catch (e) { return false; } }
   function branch(t, lvl) { var li = document.createElement('li'); li.appendChild(node(t, { self: lvl === 0, older: lvl === 2 && hasParents(t.id) }));

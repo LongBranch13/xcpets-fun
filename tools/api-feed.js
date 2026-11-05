@@ -95,7 +95,7 @@ function build(ctx, input, nowIso) {
       id: p.id, name: p.name, species: p.species, speciesLabel: V.speciesLabel(p.species), hybrid: !!hyb,
       tier: ['Common', 'Uncommon', 'Rare', 'Legendary'][p.tier] || tierName, rarityScore: s ? s.score : null, rarityRank: s ? s.rank : null,
       stage: p.stage, stageName: STAGES[p.stage] || p.stageName, care: p.care,
-      status: p.released ? 'released' : p.dead ? 'dead' : 'alive', community: !!(p.community || (p.art && p.art.community)),
+      status: p.released ? 'released' : p.dead ? 'dead' : 'alive', usedUp: p.usedUp || null, community: !!(p.community || (p.art && p.art.community)),
       owner: p.owner, generation: genOf(p.id), parents: p.parents ? p.parents.slice() : null,
       gear: gear[p.id] || [], stats: p.stats, wins: p.wins || 0, losses: p.losses || 0,
       bornBlock: p.hatchBlock, lastFedBlock: p.lastFed == null ? null : p.lastFed, deathBlock: p.deathBlock == null ? null : p.deathBlock,
