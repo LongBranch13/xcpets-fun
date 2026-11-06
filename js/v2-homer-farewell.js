@@ -2,7 +2,7 @@
  * Trigger = chain state w.homerMythic; autoplay once per browser keyed by the trigger tx; ?preview=homer.
  * Same frame as the Wizard / Lord Kek farewells: 160x90 pixel canvas x4, 30 fps. 4 beats (360 frames, ~12 s), one caption at a time:
  *   0-89    COMMUNITY PET: Mythic Homer Pepe (HomerSprite stage 5, character only) bobbing centre stage, burn counter climbing to his total;
- *   90-179  "Wait a mintue, I'm a Mythic!" (intentional "mintue"; owner Nov 6), he walks right to the frost vault;
+ *   90-179  "Wait a mintue, I'm a Mythic!" (intentional "mintue"; owner Nov 6); captionFit wraps/shrinks so W/! never clip; he walks right to the frost vault;
  *   180-269 Into Cold Storage: vault door closes, frost, earlier community pets as ice silhouettes inside;
  *   270-359 white flash, "Mythic. Kept cold forever.", a Homer Pepe egg drops (1 in 777), footer "Next: " + opts.next (DJ Pepe).
  * window.V2HomerFarewell = { draw, play, maybeAutoplay, FRAMES, SEEN_KEY, seen, previewRequested } */
@@ -19,17 +19,42 @@
     if (frost) { ctx.globalAlpha = frost; px(ctx, 119, 50, 24, 26, C.ice); ctx.globalAlpha = 1; } px(ctx, 108, 76, 46, 2, C.ice2); }
   function egg(ctx, x, y) { px(ctx, x + 2, y, 6, 1, '#1a1020'); px(ctx, x + 1, y + 1, 8, 10, '#1a1020'); px(ctx, x + 2, y + 1, 6, 9, C.green); px(ctx, x + 3, y + 2, 2, 3, '#7cc55a'); px(ctx, x + 2, y + 8, 6, 1, '#ffffff'); }
   function text(ctx, s, x, y, c, size) { if (!ctx.fillText) return; ctx.fillStyle = c; ctx.font = (size || 6) + 'px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillText(s, Math.round(x), Math.round(y)); }
+  /** captionFit: top-of-canvas caption that always fits W with padding. Shrinks font and/or wraps to 2 centered lines. Stays above Homer (sprite y~46). */
+  function captionFit(ctx, s, y, c, size) {
+    if (!ctx.fillText || !s) return;
+    var pad = 4, maxW = W - pad * 2, sz = size || 6, cx = Math.round(W / 2);
+    ctx.textAlign = 'center'; ctx.fillStyle = c;
+    function setF(n) { ctx.font = n + 'px "Press Start 2P", monospace'; }
+    function width(str, n) { setF(n); var m = ctx.measureText(str); return (m && m.width) || str.length * n; }
+    function wrap2(str) {
+      var i = str.indexOf(', '); if (i > 0) return [str.slice(0, i + 1), str.slice(i + 2)];
+      i = str.lastIndexOf(' ', Math.floor(str.length / 2)); if (i > 0) return [str.slice(0, i), str.slice(i + 1)];
+      return [str];
+    }
+    if (width(s, sz) <= maxW) { setF(sz); ctx.fillText(s, cx, Math.round(y)); return; }
+    var lines = wrap2(s);
+    while (sz > 3) {
+      if (lines.every(function (L) { return width(L, sz) <= maxW; })) break;
+      sz--;
+    }
+    /* still too wide on one line? force single-line shrink */
+    if (lines.length === 1) { while (sz > 3 && width(s, sz) > maxW) sz--; setF(sz); ctx.fillText(s, cx, Math.round(y)); return; }
+    var gap = sz + 2, y0 = Math.round(y);
+    /* keep both lines in the top band (above Homer at y 46) */
+    if (y0 + gap > 40) y0 = Math.max(10, 40 - gap);
+    lines.forEach(function (L, i) { setF(sz); ctx.fillText(L, cx, y0 + i * gap); });
+  }
   /** draw(ctx, t, o): frame t (0..FRAMES-1). o = { frames, ghosts, total, next } */
   function draw(ctx, t, o) { o = o || {}; var fr = o.frames || [], f = fr[(t >> 3) % 4] || fr[0], total = o.total || 0;
     px(ctx, 0, 0, W, H, C.bg); px(ctx, 0, 78, W, 12, '#0e1324');
     if (t < 180) { var walk = t < 90 ? 0 : Math.min(1, (t - 90) / 80), x = 64 + walk * 50; vault(ctx, 1, 0); sprite(ctx, f, x - 16, 46 - (t < 90 ? 0 : (t >> 2) % 2), 1, 1);
-      text(ctx, t < 90 ? 'COMMUNITY PET' : 'Wait a mintue, I\'m a Mythic!', 80, 14, t < 90 ? C.gold : C.ink, 6);
+      captionFit(ctx, t < 90 ? 'COMMUNITY PET' : 'Wait a mintue, I\'m a Mythic!', 12, t < 90 ? C.gold : C.ink, 6);
       text(ctx, Math.floor(total * Math.min(1, t / 80)).toLocaleString('en-US') + ' burned', 80, 86, C.dim, 5); }
     else if (t < 270) { var k = (t - 180) / 90; vault(ctx, 1 - Math.min(1, k * 1.6), Math.max(0, k * 1.6 - 1) * 0.8);
       (o.ghosts || []).forEach(function (g, i) { sprite(ctx, g && g[0], 121 + i * 6, 52, 0.5, 0.35 + 0.4 * (1 - Math.min(1, k * 1.6)), C.ice); });
-      if (k < 0.6) sprite(ctx, f, 115, 46, 1, 1 - k / 0.6); text(ctx, 'Into Cold Storage', 80, 14, C.ice, 6); }
+      if (k < 0.6) sprite(ctx, f, 115, 46, 1, 1 - k / 0.6); captionFit(ctx, 'Into Cold Storage', 12, C.ice, 6); }
     else { var q = (t - 270) / 90; vault(ctx, 0, 0.8); if (q < 0.15) { ctx.globalAlpha = 1 - q / 0.15; px(ctx, 0, 0, W, H, '#ffffff'); ctx.globalAlpha = 1; }
-      text(ctx, 'Mythic. Kept cold forever.', 80, 14, C.ice3, 6); egg(ctx, 60, Math.min(66, 20 + q * 120)); text(ctx, 'Homer Pepe eggs: 1 in 777', 80, 26, C.gold, 5);
+      captionFit(ctx, 'Mythic. Kept cold forever.', 12, C.ice3, 6); egg(ctx, 60, Math.min(66, 20 + q * 120)); captionFit(ctx, 'Homer Pepe eggs: 1 in 777', 26, C.gold, 5);
       if (o.next) text(ctx, 'Next: ' + o.next, 80, 86, C.dim, 5); } }
   function seenTx() { try { return localStorage.getItem(SEEN_KEY); } catch (e) { return null; } }
   function previewRequested() { try { return new URLSearchParams(location.search).get('preview') === 'homer'; } catch (e) { return false; } }
