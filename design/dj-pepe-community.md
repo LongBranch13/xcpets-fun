@@ -22,10 +22,13 @@ Rules flavor: *He spins vinyl, he takes no requests and his Bitcoin stays red. B
 ## Open questions
 - Hand-off text from PENPEN (farewell line + arrival caption).
 - Gate blocks (set before PENPEN reaches Mythic).
-- Signature item (gear piece so it can come off).
+- Signature item: thick gold chain + RED Bitcoin B pendant (drawn on the sprite; gear-piece version so it can come off still open).
 - Mythic effect (not fire).
 - Hybrid names.
 - Confirm #8 display name stays PENPEN (this branch uses PENPEN in PETS / hand-off).
 
 ## Refine Nov 6 12:24 PM CT (owner re-sent reference card)
 Sprite reworked against `previews/dj-pepe-community/reference.png`: bigger post-scale deal-with-it shades (readable at Hatchling/Juvenile), white flat-brim pointing right, wide red lips with dark outline, brown jaw beard, gold stud, gold chain + RED Bitcoin B, black tee + white round logo, bold Adult+ turntables/vinyl. Mythic rim only. Display name still **DJ Pepe**.
+
+## Gold chain signature (Nov 6 12:27 PM CT, owner [pt2962u] 'Gold chain is important.')
+Drawn as the signature look: thick bright gold V (2px links + highlight) over the black tee, larger gold-framed RED Bitcoin B pendant. Stamped post-scale so Hatchling+ reads clearly; Egg gets a chain/pendant hint. Never covers the face. Adult+ turntables made bolder. Still gated.

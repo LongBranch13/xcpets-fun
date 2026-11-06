@@ -2,8 +2,9 @@
  * NOT loaded by any page; inert until ACTIVATE_DJPEPE_BLOCK. Matched to the owner's DJ PEPENAT trading-card
  * reference (previews/dj-pepe-community/reference.png): green Pepe head, white flat-brim cap worn forward
  * (brim points right), bold black-and-white 'deal with it' shades, wide red lips with dark outline, brown
- * jaw beard, gold stud earring, gold chain + RED Bitcoin B pendant (gold rim; Bitcoin is always red, never
- * orange), black tee with a round white record-label logo, green hands on bold turntables/vinyl (Adult+).
+ * jaw beard, gold stud earring, SIGNATURE thick bright gold chain (2px V links + highlight) with a larger gold-framed
+ * RED Bitcoin B pendant (Bitcoin is always red, never orange; reads Hatchling+ with an Egg hint), black tee
+ * with a round white record-label logo, green hands on bold turntables/vinyl (Adult+).
  * Display name is DJ Pepe only. Stages 0 Egg..5 Mythic, 4 idle frames (stand, bob, blink, scratch).
  * Mythic = shared Mythic gold rim only (no fire aura, no flame crown, no edition frame). */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.DjPepeSprite = factory(); })(this, function () {
@@ -34,27 +35,29 @@
     var scratch = f === 3 ? 1.4 : 0;
     var x = X - (f === 3 ? 0.25 : 0);
 
-    /* ===== DECKS (Adult+: bold vinyl silhouette; earlier stages get a slim hint) ===== */
+    /* ===== DECKS (Adult+: bolder vinyl silhouette; earlier stages get a slim hint) ===== */
     if (s >= 3) {
-      var deckY = 27.0, leftCx = 8.0, rightCx = 24.0 + scratch * 0.2;
+      var deckY = 26.8, leftCx = 7.4, rightCx = 24.6 + scratch * 0.2;
       /* mixer slab between decks */
-      if (Y > 24.4 && Y < 28.2 && Math.abs(x - 16) < 4.0) {
+      if (Y > 23.8 && Y < 28.4 && Math.abs(x - 16) < 4.4) {
         k = 'M';
-        if (Y > 25.0 && Y < 26.2 && Math.abs(x - 16) < 3.2) k = 'm';
-        if (Math.abs(x - 14.2) < 0.5 && Math.abs(Y - 25.6) < 0.45) k = 'C';
-        if (Math.abs(x - 17.8) < 0.5 && Math.abs(Y - 25.6) < 0.45) k = 'k';
-        if (Math.abs(x - 16) < 0.45 && Y > 25.2 && Y < 27.0) k = 'S';
+        if (Y > 24.6 && Y < 26.4 && Math.abs(x - 16) < 3.6) k = 'm';
+        if (Math.abs(x - 14.0) < 0.55 && Math.abs(Y - 25.4) < 0.5) k = 'C';
+        if (Math.abs(x - 18.0) < 0.55 && Math.abs(Y - 25.4) < 0.5) k = 'k';
+        if (Math.abs(x - 16) < 0.5 && Y > 24.8 && Y < 27.2) k = 'S';
       }
-      /* left vinyl */
-      if (el(x, Y, leftCx, deckY, 4.6, 2.2) < 1) k = 'T';
-      if (el(x, Y, leftCx, deckY, 3.8, 1.7) < 1) k = 'K';
-      if (el(x, Y, leftCx, deckY, 1.2, 0.8) < 1) k = 'c';
-      if (Math.abs(Y - deckY) < 0.35 && Math.abs(x - leftCx) < 3.6) k = 'S'; /* groove ring */
+      /* left vinyl — thicker platter */
+      if (el(x, Y, leftCx, deckY, 5.2, 2.6) < 1) k = 'T';
+      if (el(x, Y, leftCx, deckY, 4.4, 2.1) < 1) k = 'K';
+      if (el(x, Y, leftCx, deckY, 1.5, 1.0) < 1) k = 'c';
+      if (Math.abs(Y - deckY) < 0.45 && Math.abs(x - leftCx) < 4.2) k = 'S';
+      if (Math.abs(Y - (deckY - 0.8)) < 0.35 && Math.abs(x - leftCx) < 3.4) k = 'S';
       /* right vinyl (scratches) */
-      if (el(x, Y, rightCx, deckY, 4.6, 2.2) < 1) k = 'T';
-      if (el(x, Y, rightCx, deckY, 3.8, 1.7) < 1) k = 'K';
-      if (el(x, Y, rightCx + scratch * 0.15, deckY, 1.2, 0.8) < 1) k = 'c';
-      if (Math.abs(Y - deckY) < 0.35 && Math.abs(x - rightCx) < 3.6) k = 'S';
+      if (el(x, Y, rightCx, deckY, 5.2, 2.6) < 1) k = 'T';
+      if (el(x, Y, rightCx, deckY, 4.4, 2.1) < 1) k = 'K';
+      if (el(x, Y, rightCx + scratch * 0.15, deckY, 1.5, 1.0) < 1) k = 'c';
+      if (Math.abs(Y - deckY) < 0.45 && Math.abs(x - rightCx) < 4.2) k = 'S';
+      if (Math.abs(Y - (deckY - 0.8)) < 0.35 && Math.abs(x - rightCx) < 3.4) k = 'S';
     } else if (s >= 1) {
       /* slim deck hint under Hatchling/Juvenile */
       if (Y > 26.6 && Y < 28.4 && (Math.abs(x - 10.5) < 3.2 || Math.abs(x - 21.5) < 3.2)) k = 'K';
@@ -83,15 +86,13 @@
       if (el(x, Y, 11.0, 24.6, 1.5, 1.3) < 1 || el(x, Y, 21.0, 24.6, 1.5, 1.3) < 1) k = 'G';
     }
 
-    /* ===== GOLD CHAIN + RED BITCOIN B (clear pendant) ===== */
-    if (s >= 1 && Y > 15.6 && Y < 18.8) {
-      if (Math.abs(Y - 16.4) < 0.4 && Math.abs(x - 16) < 5.6) k = 'C';
-      /* pendant disc: gold rim, RED face */
-      if (el(x, Y, 16, 17.6, 2.1, 2.1) < 1) k = 'c';
-      if (el(x, Y, 16, 17.6, 1.5, 1.5) < 1) k = 'R';
-      /* B stem + arms in gold on the red face */
-      if (Math.abs(x - 16) < 0.4 && Y > 16.7 && Y < 18.5) k = 'C';
-      if (Math.abs(x - 16.7) < 0.35 && (Math.abs(Y - 17.2) < 0.35 || Math.abs(Y - 18.0) < 0.35)) k = 'C';
+    /* ===== GOLD CHAIN underpaint (bold signature stamped post-scale in stampChain) ===== */
+    if (s >= 1 && Y > 15.8 && Y < 19.6) {
+      /* clear V over the tee — never into the face (face ends ~y15) */
+      var vLeft = 16 - (Y - 15.8) * 1.15, vRight = 16 + (Y - 15.8) * 1.15;
+      if (Y < 17.4 && (Math.abs(x - vLeft) < 1.1 || Math.abs(x - vRight) < 1.1)) k = 'C';
+      if (el(x, Y, 16, 18.2, 2.4, 2.4) < 1) k = 'c';
+      if (el(x, Y, 16, 18.2, 1.7, 1.7) < 1) k = 'R';
     }
 
     /* ===== HEAD (classic Pepe) ===== */
@@ -167,6 +168,44 @@
     }
   }
 
+
+  /* Stamp SIGNATURE gold chain AFTER scale so Hatchling+ still reads a thick V + big pendant. Never covers the face. */
+  function stampChain(g, s, f) {
+    if (s < 1) return;
+    var t = SCALE[s], dy = f === 1 ? -1 : 0;
+    var P2 = function (X, Y) {
+      return [Math.round(15.5 + (X - 15.5) * t - 0.5), Math.round(28.5 + (Y - 28.5) * t - 0.5) + dy];
+    };
+    function set(X, Y, k) {
+      var p = P2(X, Y);
+      if (p[0] < 0 || p[1] < 0 || p[0] >= N || p[1] >= N) return;
+      /* never paint over the face band (shades / lips live above ~y15.2 adult-space) */
+      if (Y < 15.2) return;
+      g[p[1]][p[0]] = k;
+    }
+    /* Thick 2px V chain with a highlight pixel on the outer edge of each link */
+    var topY = 15.4, tipY = 17.2;
+    for (var yy = topY; yy <= tipY; yy += 0.5) {
+      var spread = (yy - topY) * 1.35;
+      var lx = 16 - spread, rx = 16 + spread;
+      set(lx, yy, 'C'); set(lx - 0.7, yy, 'C'); set(lx + 0.5, yy, 'c'); /* left 2px + highlight */
+      set(rx, yy, 'C'); set(rx + 0.7, yy, 'C'); set(rx - 0.5, yy, 'c'); /* right 2px + highlight */
+    }
+    /* Larger pendant: gold frame, RED face, gold B */
+    var cx = 16, cy = 18.4, rad = s >= 3 ? 2.6 : (s >= 2 ? 2.4 : 2.2);
+    for (var py = cy - rad; py <= cy + rad; py += 0.5) {
+      for (var px = cx - rad; px <= cx + rad; px += 0.5) {
+        var d2 = ((px - cx) / rad) * ((px - cx) / rad) + ((py - cy) / rad) * ((py - cy) / rad);
+        if (d2 > 1.05) continue;
+        if (d2 > 0.72) set(px, py, 'C');      /* gold frame */
+        else set(px, py, 'R');                 /* RED face */
+      }
+    }
+    /* B stem + arms in gold on the red face */
+    for (var by = cy - 1.3; by <= cy + 1.3; by += 0.5) set(cx, by, 'C');
+    set(cx + 0.8, cy - 0.7, 'C'); set(cx + 0.8, cy + 0.7, 'C');
+    set(cx + 1.2, cy - 0.7, 'C'); set(cx + 1.2, cy + 0.7, 'C');
+  }
   function egg(f) {
     var g = [], dy = f === 1 ? -1 : 0;
     for (var y = 0; y < N; y++) {
@@ -184,9 +223,15 @@
           /* wide red lip */
           if (yy > 19.2 && yy < 21.4 && Math.abs(xx - 16) < 4.2) k = 'L';
           if (Math.abs(yy - 20.2) < 0.35 && Math.abs(xx - 16) < 3.6) k = 'n';
-          /* red B coin */
-          if (el(xx, yy, 16, 24.4, 2.4, 2.2) < 1) k = 'c';
-          if (el(xx, yy, 16, 24.4, 1.5, 1.4) < 1) k = 'R';
+          /* signature gold-chain hint: V links + larger RED B pendant */
+          if (yy > 21.6 && yy < 23.2) {
+            var evL = 16 - (yy - 21.6) * 1.4, evR = 16 + (yy - 21.6) * 1.4;
+            if (Math.abs(xx - evL) < 1.0 || Math.abs(xx - evR) < 1.0) k = 'C';
+          }
+          if (el(xx, yy, 16, 24.6, 2.8, 2.6) < 1) k = 'c';
+          if (el(xx, yy, 16, 24.6, 2.0, 1.8) < 1) k = 'R';
+          if (Math.abs(xx - 16) < 0.4 && yy > 23.6 && yy < 25.6) k = 'C';
+          if (Math.abs(xx - 16.8) < 0.35 && (Math.abs(yy - 24.2) < 0.35 || Math.abs(yy - 25.0) < 0.35)) k = 'C';
         }
         g[y].push(k);
       }
@@ -216,6 +261,7 @@
         }
       }
       stampShades(g, s, f);
+      stampChain(g, s, f);
     }
     var o = outline(g);
     if (s === 5) {
