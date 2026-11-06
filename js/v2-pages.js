@@ -150,7 +150,7 @@
     /* #5 HOMER PEPE: shows once w.homerMythic exists (Mythic -> Cold Storage). Farewell hands off to DJ Pepe (#6). */
     { id: 'homer', name: 'Homer Pepe', sp: 'homer', loadout: ['hp-donut', 'hard-hat', 'hp-rad-suit', 'hp-slippers'], done: function (c, w) { return !!(w && w.homerMythic); }, block: function (c, w) { return w.homerMythic.block; }, tx: function (c, w) { return w.homerMythic.tx; },
       stats: function (w) { var x = w.homerMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
-      story: ['FUNTRUMP went into Cold Storage and left an egg. Every burn fed it, and Homer Pepe rose.', 'At Mythic, Homer Pepe went into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.', 'Six blocks later came the third halving: every burn costs an eighth of the base amount.'],
+      story: ['FUNTRUMP went into Cold Storage and left an egg. Every burn fed it, and Homer Pepe rose.', 'Homer Pepe: "Wait a mintue, I\'m a Mythic!" Homer went into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.', 'Six blocks later came the third halving: every burn costs an eighth of the base amount.'],
       sprites: function () { return coldEntryFrames(this); }, play: function (info) { withHomerFarewell(function () { V2HomerFarewell.play({ sprites: homerFarewellSprites(M.world()), info: info }); }); } }
   ];
   /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style

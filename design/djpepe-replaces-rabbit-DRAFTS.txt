@@ -1,7 +1,7 @@
 DJ Pepe replaces White Rabbit as community pet #6 — DRAFT COPY (owner must approve)
 
 === Homer Pepe farewell (replaces rabbit hand-off) — LIVE in js/v2-pages.js (draft pending owner OK) ===
-At Mythic, Homer Pepe went into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.
+Homer Pepe: "Wait a mintue, I'm a Mythic!" Homer went into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.
 
 === Homer "Next" line ===
 While waiting:  Next: DJ Pepe · community pet #6
@@ -17,6 +17,8 @@ Alt (booth):
 No requests. DJ Pepe took the booth the moment Homer Pepe hit Mythic.
 
 === Notes ===
+- Homer quote: intentional misspelling "mintue" (not "minute"). Do not spellcheck-fix.
+- Farewell animation caption (beat 90-179) uses the same quote at top of canvas (y=14); no speech-bubble module exists — caption stays above Homer (sprite y=46) so it does not cover face/body.
 - No fire on Mythic; rim only.
 - Bitcoin B is RED (gold frame on pendant).
 - Do not touch Ragnar.

@@ -2,7 +2,7 @@
  * Trigger = chain state w.homerMythic; autoplay once per browser keyed by the trigger tx; ?preview=homer.
  * Same frame as the Wizard / Lord Kek farewells: 160x90 pixel canvas x4, 30 fps. 4 beats (360 frames, ~12 s), one caption at a time:
  *   0-89    COMMUNITY PET: Mythic Homer Pepe (HomerSprite stage 5, character only) bobbing centre stage, burn counter climbing to his total;
- *   90-179  "Wait a Mintue, Im a Mythic" (intentional typo; his card line, adapted), he walks right to the frost vault;
+ *   90-179  "Wait a mintue, I'm a Mythic!" (intentional "mintue"; owner Nov 6), he walks right to the frost vault;
  *   180-269 Into Cold Storage: vault door closes, frost, earlier community pets as ice silhouettes inside;
  *   270-359 white flash, "Mythic. Kept cold forever.", a Homer Pepe egg drops (1 in 777), footer "Next: " + opts.next (DJ Pepe).
  * window.V2HomerFarewell = { draw, play, maybeAutoplay, FRAMES, SEEN_KEY, seen, previewRequested } */
@@ -23,7 +23,7 @@
   function draw(ctx, t, o) { o = o || {}; var fr = o.frames || [], f = fr[(t >> 3) % 4] || fr[0], total = o.total || 0;
     px(ctx, 0, 0, W, H, C.bg); px(ctx, 0, 78, W, 12, '#0e1324');
     if (t < 180) { var walk = t < 90 ? 0 : Math.min(1, (t - 90) / 80), x = 64 + walk * 50; vault(ctx, 1, 0); sprite(ctx, f, x - 16, 46 - (t < 90 ? 0 : (t >> 2) % 2), 1, 1);
-      text(ctx, t < 90 ? 'COMMUNITY PET' : 'Wait a Mintue, Im a Mythic', 80, 14, t < 90 ? C.gold : C.ink, 6);
+      text(ctx, t < 90 ? 'COMMUNITY PET' : 'Wait a mintue, I\'m a Mythic!', 80, 14, t < 90 ? C.gold : C.ink, 6);
       text(ctx, Math.floor(total * Math.min(1, t / 80)).toLocaleString('en-US') + ' burned', 80, 86, C.dim, 5); }
     else if (t < 270) { var k = (t - 180) / 90; vault(ctx, 1 - Math.min(1, k * 1.6), Math.max(0, k * 1.6 - 1) * 0.8);
       (o.ghosts || []).forEach(function (g, i) { sprite(ctx, g && g[0], 121 + i * 6, 52, 0.5, 0.35 + 0.4 * (1 - Math.min(1, k * 1.6)), C.ice); });
