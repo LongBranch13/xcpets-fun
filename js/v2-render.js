@@ -418,7 +418,7 @@
   var PG_IRI = [[0x3f, 0xb8, 0xa0], [0x2e, 0x8a, 0x5a], [0x8a, 0x5a, 0xc8], [0x5e, 0x3a, 0x96]], PG_HI = [0xb8, 0xf0, 0xe0];
   var PG_WING = ['.aaa.', 'awdba', 'adbba', 'aeeea', 'abbba', 'aeeea', '.aba.', '..a..'], PG_WING_S = ['.aa.', 'awda', 'aeea', 'abba', 'aeea', '.aa.'];
   var BO34 = { '3': ['###', '..#', '.##', '..#', '###'], '4': ['#.#', '#.#', '###', '..#', '..#'] }, BO34S = { '3': ['###', '.##', '..#', '###'], '4': ['#.#', '###', '..#', '..#'] }, BO34T = { '3': ['###', '.##', '###'], '4': ['#.#', '###', '..#'] }, BO_C = { k: [0x2c, 0x2c, 0x36], d: [0x20, 0x20, 0x28], w: [0xf4, 0xf4, 0xee], s: [0xb9, 0xc3, 0xcf], p: [0x8d, 0x96, 0xa8] };
-  var LOOK_FACE = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1, homer: 1 };
+  var LOOK_FACE = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1, homer: 1, rabbit: 1 };
   function lookLum(c) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; }
   function lookCtx(sh, art, stage, f) { var o0 = { stage: stage, frame: f, gearOverride: {} }, kr, A; try { kr = V._keyedRender(sh, art, o0); } catch (e) { return null; } if (!kr || !kr.keys || !V._anatomy) return null;
     try { A = V._anatomy(kr.keys); } catch (e) { return null; } if (!A || !A.bb || A.bb.b < 0) return null; var k = kr.keys, j, eyes = [], mT = 29, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null;
@@ -432,7 +432,7 @@
     var top = (kr.parts && kr.parts.top) || [], tb = -1; top.forEach(function (q) { if ((q >> 5) <= faceB + 6) tb = Math.max(tb, q >> 5); });
     return { k: k, A: A, s: A.s, bb: bb, eb: eb, eyes: eyes, faceB: faceB, beardB: tb, sh: sh, spr: LOOK_SPR[sh] ? lookSprRegion(sh, stage, f) : null }; }
   /* sprite-drawn bodies (all keys 'body' in the keyed render): the clothes / torso come from the sprite's own colour keys. Rows: [first row allowed] */
-  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 } };
+  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 }, rabbit: { g: 'RabbitSprite', k: 'cCB', min: 3 } };
   function lookSprRegion(sh, stage, f) { var D = LOOK_SPR[sh], S = D && window[D.g]; if (!S || !S.draw) return null; var g; try { g = S.draw(stage, f, {}); } catch (e) { return null; } if (!g) return null;
     var y0 = 0, y, x, on = {}, neck = -1; if (D.below) for (y = 0; y < 29; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === D.below) y0 = y + 2;
     for (y = y0; y < 29; y++) { var n = 0; for (x = 0; x < 32; x++) { var kk = g[y] && g[y][x]; if (kk && D.k.indexOf(kk) >= 0) { on[y * 32 + x] = 1; n++; } } if (neck < 0 && n >= D.min) neck = y; }
@@ -612,6 +612,8 @@
     if (art && art.species === 'orangedragon' && !art.hybrid && window.DragonSprite) return DragonSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the ORANGE DRAGON 1 of 1 (inert: V2Rules.ACTIVATE_DRAGON_BLOCK null) */
     if (art && art.species === 'viking' && !art.hybrid && window.VikingSprite) return VikingSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the VIKING 1 of 1 (branch viking-1of1 PREVIEW, inert: V2Rules.ACTIVATE_VIKING_BLOCK null) */
     if (art && art.hybrid && art.hybrid.shape === 'viking' && window.VikingSprite) return vikHybFrames(art, stage, itemIds); /* VIKING-body hybrid: VikingSprite gear layer */
+    if (art && art.species === 'rabbit' && !art.hybrid && window.RabbitSprite) return RabbitSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player THE WHITE RABBIT (branch whiterabbit-community PREVIEW, inert: none exist) */
+    if (art && art.hybrid && art.hybrid.shape === 'rabbit' && window.RabbitSprite) return wrHybFrames(art, stage, itemIds); /* RABBIT-body hybrid: RabbitSprite gear layer */
     if (art && art.species === 'homer' && !art.hybrid && window.HomerSprite) return HomerSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player HOMER PEPE (branch homerpepe-community PREVIEW, inert: none exist) */
     if (art && art.hybrid && art.hybrid.shape === 'homer' && window.HomerSprite) return hpHybFrames(art, stage, itemIds); /* HOMER-body hybrid: HomerSprite gear layer */
     if (art && art.species === 'funtrump' && !art.hybrid && window.FuntrumpSprite) return ftPetFrames(art, stage, itemIds); /* player FUNTRUMP (branch funtrump-community, inert: none exist) */
@@ -642,7 +644,7 @@
    * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
     var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
-    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'viking' || art.species === 'orangedragon')) return full;
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'rabbit' || art.species === 'viking' || art.species === 'orangedragon')) return full;
     var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
     all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
     if (!ban) return full;
@@ -1232,13 +1234,26 @@
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
         d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
       return { width: 32, height: 32, data: d }; }); }
+  /* THE WHITE RABBIT (community pet #6, PREVIEW, V2Rules.ACTIVATE_RABBIT_BLOCK null): c.current === 'rabbit' only once the gate is set AND Homer is in Cold Storage.
+   * No built-in hat: every slot is drawn by RabbitSprite's gear layer (anchors on his own frames). Same shape as Homer's. */
+  function wrOn(w) { return !!(w && w.community && w.community.current === 'rabbit' && window.RabbitSprite); }
+  function wrGear(w) { var V = window.V2Rules, gate = V.ACTIVATE_RABBIT_BLOCK, g = (w.community && w.community.gear) || {}, o = {};
+    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; });
+    /* owner Nov 6 7:04 AM CT: community White Rabbit never wears shades / glasses; open ruby eyes (wr-shades stays in the player drop pool) */
+    if (o.face && (o.face.item === 'wr-shades' || /shade|sunglass|glass/i.test(String(o.face.label || o.face.item || '')))) delete o.face;
+    return o; }
+  function wrHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = Object.assign({}, RabbitSprite.PAL, RabbitSprite.WRC || {});
+    return fr.map(function (f, n) { var a = RabbitSprite.draw(stage || 0, n, G), z = RabbitSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
+        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
+      return { width: 32, height: 32, data: d }; }); }
   /* VIKING-body hybrid (viking-1of1 PREVIEW, inert): the hybrid frames plus VikingSprite's gear layer (only pixels gear changes), like Homer's */
   function vikHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); delete G.head; if (!Object.keys(G).length) return fr; var P = VikingSprite.PAL;
     return fr.map(function (f, n) { var a = VikingSprite.draw(stage || 0, n, G), z = VikingSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
         d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
       return { width: 32, height: 32, data: d }; }); }
-  var COLD_SPRITES = { homer: function () { return window.HomerSprite; }, wizard: function () { return window.WizardSprite; }, kek: function () { return window.KekSprite; }, funtrump: function () { return window.FuntrumpSprite; } };
+  var COLD_SPRITES = { rabbit: function () { return window.RabbitSprite; }, homer: function () { return window.HomerSprite; }, wizard: function () { return window.WizardSprite; }, kek: function () { return window.KekSprite; }, funtrump: function () { return window.FuntrumpSprite; } };
   function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
@@ -1247,7 +1262,7 @@
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
-  function communityFrames(w) { var c = w && w.community; if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
+  function communityFrames(w) { var c = w && w.community; if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', wrGear(w), { community: true }); /* THE WHITE RABBIT (PREVIEW, inert) */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
     return nakaFrames(w); }
   function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
@@ -1258,7 +1273,7 @@
   function communityGearText(w) { var g = (w && w.community && w.community.gear) || {}; return (V.V2_SLOTS || []).filter(function (s) { return g[s]; }).map(function (s) { return V.slotLabel(s) + ': ' + g[s].label + (g[s].legendary ? ' ★' : ''); }).join(' · '); }
   /* community-gear-hover (owner Oct 29 2026 [pt2180u]: "just hovering on Homer should be the fix"). DISPLAY ONLY. Hover (desktop) or tap (phone) the
    * community pet sprite: a small tooltip lists only the pieces his sprite draws, item name + rarity. Same gates as hpGear/ftGear/kekGear. */
-  function communityTipItems(w) { var g = (w && w.community && w.community.gear) || {}, gate = hpOn(w) ? V.ACTIVATE_HOMER_BLOCK : ftOn(w) ? V.ACTIVATE_FUNTRUMP_BLOCK : kekOn(w) ? (V.kekActivation ? V.kekActivation() : null) : undefined;
+  function communityTipItems(w) { var g = (w && w.community && w.community.gear) || {}, gate = wrOn(w) ? V.ACTIVATE_RABBIT_BLOCK : hpOn(w) ? V.ACTIVATE_HOMER_BLOCK : ftOn(w) ? V.ACTIVATE_FUNTRUMP_BLOCK : kekOn(w) ? (V.kekActivation ? V.kekActivation() : null) : undefined;
     return (V.V2_SLOTS || []).filter(function (sl) { var x = g[sl]; return x && (gate === undefined || (gate != null && x.block >= gate)) && !(kekOn(w) && sl === 'head'); })
       .map(function (sl) { var x = g[sl], t = x.legendary ? 3 : (x.tier || 0); return { slot: sl, slotName: V.slotLabel ? V.slotLabel(sl) : sl, label: x.label, t: t, tierName: (V.TIER_LABELS || [])[t] || '', legendary: !!x.legendary, tx: x.tx, block: x.block }; }); }
   /* community-roll-tip (Nov 1 2026, rework of community-roll-clarity 17d5564f to fit this hover/tap tooltip). DISPLAY ONLY, no rule touched.
@@ -1393,6 +1408,7 @@
     return '<span class="chip origin bred bredfrom">💞 Bred from ' + L(p.parents[0]) + ' × ' + L(p.parents[1]) + '</span>'; }
   /** communityStats(w, rowsN): the home page community-pet readout numbers (same formulas as v2-pages.js front()), for the play page. Display only. */
   function communityStats(w, rowsN) { var V = window.V2Rules, c = w.community, T = V.WIZARD_THRESHOLDS, N = V.STAGE_NAMES, wiz = !!c.returned, st = c.petStage;
+    if (c.current === 'rabbit') { T = V.COMMUNITY_THRESHOLDS || T; var rf = c.rabbitFed || 0, rh = st < 5 ? T[st + 1] : null; return { stage: N[st], fed: Math.floor(rf), next: rh ? Math.ceil(rh - rf - 1e-6) : null, nextName: rh ? N[st + 1] : null, pct: rh ? Math.min(100, 100 * (rf - T[st]) / (rh - T[st])) : 100, burns: rowsN, pets: w.pets.length }; } /* THE WHITE RABBIT (gated, inert) */
     if (c.current === 'homer') { T = V.COMMUNITY_THRESHOLDS || T; var hf = c.homerFed || 0, hh = st < 5 ? T[st + 1] : null; return { stage: N[st], fed: Math.floor(hf), next: hh ? Math.ceil(hh - hf - 1e-6) : null, nextName: hh ? N[st + 1] : null, pct: hh ? Math.min(100, 100 * (hf - T[st]) / (hh - T[st])) : 100, burns: rowsN, pets: w.pets.length }; } /* HOMER PEPE (gated, inert) */
     if (c.current === 'funtrump') { T = V.COMMUNITY_THRESHOLDS || T; var ff = c.funtrumpFed || 0, fh = st < 5 ? T[st + 1] : null; return { stage: N[st], fed: Math.floor(ff), next: fh ? Math.ceil(fh - ff - 1e-6) : null, nextName: fh ? N[st + 1] : null, pct: fh ? Math.min(100, 100 * (ff - T[st]) / (fh - T[st])) : 100, burns: rowsN, pets: w.pets.length }; } /* FUNTRUMP (gated, inert) */
     if (c.current === 'kek') { T = V.COMMUNITY_THRESHOLDS || T; var kf = c.kekFed || 0, kh = st < 5 ? T[st + 1] : null; return { stage: N[st], fed: Math.floor(kf), next: kh ? Math.ceil(kh - kf - 1e-6) : null, nextName: kh ? N[st + 1] : null, pct: kh ? Math.min(100, 100 * (kf - T[st]) / (kh - T[st])) : 100, burns: rowsN, pets: w.pets.length }; }
