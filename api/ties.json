@@ -1,6 +1,6 @@
 {
- "lastBlock": 974852,
- "count": 154,
+ "lastBlock": 974855,
+ "count": 156,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1848,6 +1848,30 @@
    "name": "Chidoon",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 17063,
+   "asset": "A6768658678571441196",
+   "tiedBlock": 974855,
+   "tiedTx": "f394d435df212c998d329845d82b02c17c6586bf125fdfda4fd0afa58c685e37",
+   "kind": "deed",
+   "name": "Tomo",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 26768,
+   "asset": "A16062273811510866276",
+   "tiedBlock": 974855,
+   "tiedTx": "e6d22491dcc6ebdfb0219d76713fcbf0fd3894735fb1f6bd03897a754dadf58b",
+   "kind": "deed",
+   "name": "Pipsa",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
