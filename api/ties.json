@@ -1,6 +1,6 @@
 {
- "lastBlock": 974836,
- "count": 151,
+ "lastBlock": 974841,
+ "count": 153,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -985,7 +985,7 @@
    "species": "hyb:lenny:pepe",
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 48079,
@@ -1177,7 +1177,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Uncommon",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 52945,
@@ -1213,7 +1213,7 @@
    "species": "snibby",
    "speciesLabel": "Snibby",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 46494,
@@ -1225,7 +1225,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8508,
@@ -1810,6 +1810,30 @@
    "tiedTx": "8e7c21487077dd7aad7074af101fbd9748396a5133fc7cd71c5d64652a46b3e4",
    "kind": "deed",
    "name": "Charijolu",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 14158,
+   "asset": "A6418617419389098809",
+   "tiedBlock": 974841,
+   "tiedTx": "9df6499767ffbdd4357927084d99bcbc3e9d145ad2ec59996b2d070944b7fb54",
+   "kind": "deed",
+   "name": "Chirigi",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36415,
+   "asset": "A17104559079995521933",
+   "tiedBlock": 974841,
+   "tiedTx": "fcf610b9b85b302f6aeeb4220c023bfcbf998257395d3f326327b8cd0f95799c",
+   "kind": "deed",
+   "name": "Vushenebun",
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",

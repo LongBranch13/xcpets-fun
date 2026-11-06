@@ -1,26 +1,26 @@
 {
-  "blockHeight": 974836,
-  "generatedAt": "2026-11-06T18:41:19Z",
+  "blockHeight": 974841,
+  "generatedAt": "2026-11-06T19:01:28Z",
   "asset": "XCPETS",
-  "totalPets": 85378,
-  "alive": 19142,
+  "totalPets": 86379,
+  "alive": 20143,
   "dead": 64511,
   "released": 1725,
-  "burns": 3564,
-  "burnedXCPETS": 28733859.6850074,
-  "supplyXCPETS": 71266140.3149926,
+  "burns": 3586,
+  "burnedXCPETS": 28813816.68500747,
+  "supplyXCPETS": 71186183.31499253,
   "owners": 24,
   "community": {
-    "tip": 974836,
+    "tip": 974841,
     "current": {
-      "id": "homer",
-      "no": 5,
-      "name": "Homer Pepe",
-      "short": "Homer Pepe",
-      "plural": "Homer Pepes",
-      "the": ""
+      "id": "rabbit",
+      "no": 6,
+      "name": "White Rabbit",
+      "short": "White Rabbit",
+      "plural": "White Rabbits",
+      "the": "the "
     },
-    "nextNo": 5,
+    "nextNo": 6,
     "cold": [
       {
         "id": "nakamoto",
@@ -57,27 +57,27 @@
         "plural": "FUNTRUMPs",
         "the": "",
         "block": 973365
+      },
+      {
+        "id": "homer",
+        "no": 5,
+        "name": "Homer Pepe",
+        "short": "Homer Pepe",
+        "plural": "Homer Pepes",
+        "the": "",
+        "block": 974841
       }
     ],
     "egg": {
-      "id": "funtrump",
-      "no": 4,
-      "name": "FUNTRUMP",
-      "short": "FUNTRUMP",
-      "plural": "FUNTRUMPs",
+      "id": "homer",
+      "no": 5,
+      "name": "Homer Pepe",
+      "short": "Homer Pepe",
+      "plural": "Homer Pepes",
       "the": "",
-      "block": 973365
+      "block": 974841
     },
     "prevEgg": {
-      "id": "kek",
-      "no": 3,
-      "name": "Lord Kek",
-      "short": "Lord Kek",
-      "plural": "Lord Keks",
-      "the": "",
-      "block": 972869
-    },
-    "last": {
       "id": "funtrump",
       "no": 4,
       "name": "FUNTRUMP",
@@ -85,13 +85,23 @@
       "plural": "FUNTRUMPs",
       "the": "",
       "block": 973365
+    },
+    "last": {
+      "id": "homer",
+      "no": 5,
+      "name": "Homer Pepe",
+      "short": "Homer Pepe",
+      "plural": "Homer Pepes",
+      "the": "",
+      "block": 974841
     },
     "halvings": [
       972875,
-      973371
+      973371,
+      974847
     ],
     "halvingsDone": 2,
-    "nextHalving": null
+    "nextHalving": 974847
   },
   "files": {
     "pets": "https://xcpets.fun/api/pets.json",
