@@ -14,7 +14,8 @@
     { id: 'kek', no: 3, name: 'Lord Kek', short: 'Lord Kek', plural: 'Lord Keks', rec: 'kekMythic', sp: 'kek', loadout: ['kek-card'], egg: true },
     { id: 'funtrump', no: 4, name: 'FUNTRUMP', short: 'FUNTRUMP', plural: 'FUNTRUMPs', rec: 'funtrumpMythic', sp: 'funtrump', loadout: [], egg: true },
     { id: 'homer', no: 5, name: 'Homer Pepe', short: 'Homer Pepe', plural: 'Homer Pepes', rec: 'homerMythic', sp: 'homer', loadout: ['hp-donut', 'hard-hat', 'hp-rad-suit', 'hp-slippers'], egg: true }, /* PREVIEW (homerpepe-community): inert until V2Rules.ACTIVATE_HOMER_BLOCK; signature Grip = open question */
-    { id: 'rabbit', no: 6, name: 'White Rabbit', short: 'White Rabbit', plural: 'White Rabbits', the: 'the ', rec: 'rabbitMythic', sp: 'rabbit', loadout: ['wr-pocket-watch', 'wr-waistcoat'] /* no shades on community pet (owner Nov 6 7:04 AM CT) */, egg: true } /* PREVIEW (whiterabbit-community): inert until V2Rules.ACTIVATE_RABBIT_BLOCK; w.rabbitMythic never set before then */
+    { id: 'rabbit', no: 6, name: 'White Rabbit', short: 'White Rabbit', plural: 'White Rabbits', the: 'the ', rec: 'rabbitMythic', sp: 'rabbit', loadout: ['wr-pocket-watch', 'wr-waistcoat'] /* no shades on community pet (owner Nov 6 7:04 AM CT) */, egg: true },
+    { id: 'djpepe', no: 7, name: 'DJ Pepe', short: 'DJ Pepe', plural: 'DJ Pepes', rec: 'djpepeMythic', sp: 'djpepe', loadout: ['dj-gold-chain', 'dj-headphones'], egg: true } /* djpepe-7 #7; inert until V2Rules.ACTIVATE_DJPEPE_BLOCK */
   ];
   function byId(id) { return PETS.filter(function (p) { return p.id === id; })[0] || null; }
   function pub(p, extra) { return p ? Object.assign({ id: p.id, no: p.no, name: p.name, short: p.short, plural: p.plural, the: p.the || '' }, extra || {}) : null; }

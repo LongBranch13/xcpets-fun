@@ -1,0 +1,35 @@
+DJ Pepe as community pet #7 (after White Rabbit #6) — DRAFT COPY (owner must approve)
+
+Branch: djpepe-7
+Owner decision Nov 6 2026 2:01 PM CT: Keep White Rabbit as #6; finish DJ Pepe as #7.
+Abandon djpepe-replaces-rabbit deploy (branch left as history, not merged).
+
+=== Rabbit farewell -> DJ Pepe hand-off (DRAFT — plain and short) ===
+"I'm late... I'm a Mythic!" The White Rabbit hopped into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.
+
+Alt:
+The White Rabbit is in Cold Storage. DJ Pepe dropped in with the gold chain and the RED B. Feed the booth.
+
+=== Rabbit "Next" line ===
+While waiting:  Next: DJ Pepe · community pet #7
+After gate + rabbitMythic / current=djpepe:  DJ Pepe is the new community pet
+
+=== DJ Pepe arrival (DRAFT — wired in js/v2-djpepe-arrival.js captions) ===
+DJ Pepe dropped in with the gold chain and the RED B. The White Rabbit is in Cold Storage. Feed the booth.
+
+Scene beats (display only):
+  0-39   The booths warm up (chain flash)
+  40-99  DJ Pepe drops in
+  100-179 "No requests." / COMMUNITY PET #7
+  180-239 DJ Pepe is on the decks · The White Rabbit is in Cold Storage
+
+=== Homer farewell ===
+LEFT AS LIVE (unchanged). Homer still hands off to The White Rabbit #6.
+
+=== Notes ===
+- Gates stay null until deploy: ACTIVATE_DJPEPE_BLOCK = ACTIVATE_DJ_BREED_BLOCK = tip+6 at deploy.
+- Signature gear: dj-gold-chain (Gold Chain, ★ Grip, gold links + RED Bitcoin B).
+- Open gear: dj-vinyl, dj-headphones, dj-flat-cap.
+- No Groyper / PENPEN on main — nothing to shift after DJ.
+- Do not touch Ragnar.
+- Bitcoin B is RED (never orange).

@@ -1,0 +1,45 @@
+DJ Pepe as community pet #7 (after White Rabbit #6) — PREPARE ONLY (not deployed)
+
+Branch: djpepe-7
+Worktree: /workspace/wt-djpepe-7
+Base: origin/main 7d0d7890 (live build df6aadae37 / a9e6f989; rabbit live as #6 untouched)
+Owner decision Nov 6 2026 2:01 PM CT: Keep White Rabbit #6; finish DJ Pepe as #7.
+Abandon djpepe-replaces-rabbit deploy (left as history, not merged).
+
+Groyper / PENPEN on main: NONE (no slots to shift). Line = Homer #5 → Rabbit #6 → DJ Pepe #7.
+
+Sprite: js/djpepe-sprite.js from 520d49f8/c2f81c2c body art + gear draw handlers for dj-gold-chain / vinyl / headphones / flat-cap.
+Signature gear: dj-gold-chain (Gold Chain, ★ Grip tier 3, since:'djpepe', gold links + RED Bitcoin B).
+Open gear: dj-vinyl, dj-headphones, dj-flat-cap.
+
+Gates (null until deploy):
+  ACTIVATE_DJPEPE_BLOCK = null
+  ACTIVATE_DJ_BREED_BLOCK = null
+  DJ_POOL_FROM = Infinity
+  COMMUNITY_HANDOFF[2] after:'rabbitMythic'
+  Homer farewell LIVE text unchanged.
+
+Parity checklist:
+  [x] breedable() Cold gate (djBreedOn)
+  [x] speciesObj DJ_SP
+  [x] renderRoot player sprite
+  [x] djSprite/djPal hybrid recolour
+  [x] HYBRID_NAMES / H3_ORDER / 3-way names
+  [x] pages communityStats current==='djpepe' fed bar
+  [x] communityTipItems djOn branch
+  [x] arrival scene (v2-djpepe-arrival.js)
+  [x] coldStorageAfterKek includes djpepeMythic
+  [x] signature gear dj-gold-chain since:'djpepe'
+
+Checks:
+  replay SAME on 971786 / 972883 / 972901 vs origin/main
+  SAME: pet-core, rjs/pet-core, bonus-gear, rjs/bonus-gear, v2-fit, rabbit-sprite
+  DIFF: v2-rules, v2-community, v2-render, v2-pages, v2-gear + HTML sprite tags
+  NEW: js/djpepe-sprite.js, js/v2-djpepe-arrival.js, design/dj-pepe-community.md, design/djpepe-7-DRAFTS.txt
+  Local smoke port 8897 (not 8841 / not xcpets-fun): index/play/archive 200
+
+Previews: /workspace/xcpets/previews/djpepe-7/
+  hybrid-sheet.png, gear-sheet.png, current-pet-panel.png, stages-sheet.png,
+  farewell-beats.png, arrival-beats.png, DRAFTS.txt, SUMMARY.txt
+
+NOT merged, NOT deployed. Do not touch Ragnar.
