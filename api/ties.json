@@ -1,6 +1,6 @@
 {
- "lastBlock": 974732,
- "count": 123,
+ "lastBlock": 974737,
+ "count": 118,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -964,18 +964,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 46074,
-   "asset": "A9300496028711309021",
-   "tiedBlock": 974119,
-   "tiedTx": "77d91012897e43b4f11d06be8cb1b10caa20b1ab84dc130ce6173a74ea2347a4",
-   "kind": "deed",
-   "name": "Joyap",
-   "species": "hyb:kek:nakamoto",
-   "speciesLabel": "Kekmoto (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 22037,
    "asset": "A4589323021848396739",
    "tiedBlock": 974164,
@@ -1084,18 +1072,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 64084,
-   "asset": "A13420616103885206571",
-   "tiedBlock": 974404,
-   "tiedTx": "78e2ab6f7b355528773dd92eebcc418f2948f3f18390d8a2f3c41a220fee49e1",
-   "kind": "deed",
-   "name": "Bimip",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 47904,
    "asset": "A7687174163958704953",
    "tiedBlock": 974423,
@@ -1180,18 +1156,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 65091,
-   "asset": "A171488851981364329",
-   "tiedBlock": 974431,
-   "tiedTx": "5dfd7f9e3d41b654a8ebb48dc2a95aefc65c01c6de08f731fd1c4bd2264eb79b",
-   "kind": "deed",
-   "name": "Woofishab",
-   "species": "hyb:snibby:kevin",
-   "speciesLabel": "Snivin (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 66092,
    "asset": "A16701981998381926864",
    "tiedBlock": 974431,
@@ -1200,18 +1164,6 @@
    "name": "Mewazy",
    "species": "hyb:pepe:sarutobi",
    "speciesLabel": "Pebi (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 66094,
-   "asset": "A14281827791514136116",
-   "tiedBlock": 974431,
-   "tiedTx": "f97feaf2a17bc3c3b6e444cee877433d426b790c920ef0c9e80fa383e01d077e",
-   "kind": "deed",
-   "name": "Chubuki",
-   "species": "hyb:pepe:dodo",
-   "speciesLabel": "Pepodo (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -1344,18 +1296,6 @@
    "name": "Kigon",
    "species": "dodo",
    "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 58150,
-   "asset": "A18013904614637361926",
-   "tiedBlock": 974600,
-   "tiedTx": "1feb802d48f1b8fbc0ec0f91eca08f040494ed5229dc46cb2a4cfb9d2ba88820",
-   "kind": "deed",
-   "name": "Koroogoomi",
-   "species": "doge",
-   "speciesLabel": "Doge",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
