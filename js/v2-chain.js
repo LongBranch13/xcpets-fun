@@ -5,6 +5,16 @@
 (function () {
   'use strict';
   var V = window.V2Rules, E = window.LiveEngine, KEY = 'xcpets-v2-prod', HKEY = 'xcpets-v2-prod-hashes';
+  /* chain-deps-1106: a failed rules script used to publish a working-looking adapter with V permanently undefined.
+   * Boot then rejected at salesGate and UI pollers threw at replay. Fail closed BEFORE caches, timers or V2Mock
+   * are installed; the page's existing missing-adapter panel offers a full reload (not an empty/fake world).
+   * Classic scripts are ordered: a missing V here is a failed dependency, not the community hand-off. */
+  if (!V || typeof V.replay !== 'function') {
+    var st = document.getElementById('v2boot');
+    if (st) { st.textContent = 'Could not load the game rules. '; var retry = document.createElement('button');
+      retry.type = 'button'; retry.textContent = 'Retry'; retry.onclick = function () { location.reload(); }; st.appendChild(retry); }
+    return;
+  }
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   var ME = q('addr') || (function () { try { return localStorage.getItem('xcpets-v2-me') || ''; } catch (e) { return ''; } })();
   /* address-lookup (2026-10-19): a viewed ?addr= is remembered as before, except when a different XCP Wallet is connected in this browser:
