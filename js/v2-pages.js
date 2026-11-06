@@ -147,11 +147,11 @@
       stats: function (w) { var x = w.funtrumpMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
       story: ['Lord Kek went into Cold Storage and left an egg. Every burn fed it, and FUNTRUMP rose.', 'At Mythic, FUNTRUMP went into Cold Storage and Homer Pepe became the community pet.', 'Six blocks later came the second halving: every burn costs a quarter of the base amount.'],
       sprites: function () { return coldEntryFrames(this); } },
-    /* #5 HOMER PEPE (branch whiterabbit-community PREVIEW): shows only once w.homerMythic exists (his Mythic -> Cold Storage), same pattern as FUNTRUMP. */
+    /* #5 HOMER PEPE: shows once w.homerMythic exists (Mythic -> Cold Storage). Farewell hands off to The White Rabbit (#6). */
     { id: 'homer', name: 'Homer Pepe', sp: 'homer', loadout: ['hp-donut', 'hard-hat', 'hp-rad-suit', 'hp-slippers'], done: function (c, w) { return !!(w && w.homerMythic); }, block: function (c, w) { return w.homerMythic.block; }, tx: function (c, w) { return w.homerMythic.tx; },
-      stats: function (w) { var x = w.homerMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; },
+      stats: function (w) { var x = w.homerMythic || {}; return { total: x.total || 0, feeders: x.feeders || 0, top: x.top || [] }; }, watch: 'Watch the farewell', farewell: true,
       story: ['FUNTRUMP went into Cold Storage and left an egg. Every burn fed it, and Homer Pepe rose.', 'At Mythic, Homer Pepe went into Cold Storage. Right on time, a White Rabbit with a gold pocket watch hopped past, and the community followed him down the hole.', 'Six blocks later came the third halving: every burn costs an eighth of the base amount.'],
-      sprites: function () { return coldEntryFrames(this); } }
+      sprites: function () { return coldEntryFrames(this); }, play: function (info) { withHomerFarewell(function () { V2HomerFarewell.play({ sprites: homerFarewellSprites(M.world()), info: info }); }); } }
   ];
   /* Lord Kek farewell (kek-farewell-v2, owner Oct 24 2026 12:09 AM CT): full 160x90x4 canvas scene in the Bitcoin Wizard farewell style
    * (js/v2-kek-farewell.js, lazy-loaded like the Wizard's). Replaces the halving-v1 .kekbye pop-up. The last sub-line hands off to FUNTRUMP, read from
@@ -163,6 +163,17 @@
       funtrump: window.FuntrumpSprite ? FuntrumpSprite.frames(Math.max(3, (w.community && w.community.funtrumpStage) || 0), '#1f2a44', {}, { community: true }) : null, /* owner Oct 24 12:19 AM CT: show FUNTRUMP; Adult+ so he never shows as an egg */
       total: x ? x.total : (T[5] || 6906900), next: kekNextLine(w) }; }
   function withKekFarewell(cb) { if (window.V2KekFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-kek-farewell.js?v=8abf122bf2'; t.onload = cb; document.body.appendChild(t); }
+
+  /* HOMER PEPE farewell (whiterabbit-launch-1106): same lazy-load pattern as Lord Kek. Next = The White Rabbit. */
+  function homerNextLine(w) { var g = V.ACTIVATE_RABBIT_BLOCK, tip = (w && w.tip) || 0, cur = w && w.community && w.community.current;
+    if (cur === 'rabbit' || (g != null && tip >= g && w && w.homerMythic)) return 'The White Rabbit is the new community pet';
+    return 'Next: The White Rabbit · community pet #6'; }
+  function homerFarewellSprites(w) { var x = w.homerMythic, T = V.COMMUNITY_THRESHOLDS || [];
+    return { frames: coldEntryFrames(entryOf('homer')), ghosts: [coldEntryFrames(entryOf('funtrump')), coldEntryFrames(entryOf('kek')), coldEntryFrames(entryOf('wizard'))].filter(Boolean),
+      total: x ? x.total : (T[5] || 6906900), next: homerNextLine(w) }; }
+  function withHomerFarewell(cb) { if (window.V2HomerFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-homer-farewell.js?v=8abf122bf2'; t.onload = cb; document.body.appendChild(t); }
+  function withRabbitArrival(cb) { if (window.V2RabbitArrival) return cb(); var t = document.createElement('script'); t.src = 'js/v2-rabbit-arrival.js?v=8abf122bf2'; t.onload = cb; document.body.appendChild(t); }
+
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
    * sets sp/loadout and sprites: function () { return coldEntryFrames(this); }. */
@@ -256,6 +267,7 @@
     }
     draw(); withReturn(function () {}); if (preview === 'wizard') withFarewell(function () { V2Farewell.play({ sprites: farewellSprites(w), info: 'Bitcoin Wizard farewell (preview)' }); });
     if (preview === 'kek') withKekFarewell(function () { V2KekFarewell.play({ sprites: kekFarewellSprites(w), info: w.kekMythic ? 'Lord Kek · Mythic at block ' + fmt(w.kekMythic.block) + ' · now in Cold Storage' : 'Lord Kek farewell (preview)' }); });
+    if (preview === 'homer') withHomerFarewell(function () { V2HomerFarewell.play({ sprites: homerFarewellSprites(w), info: w.homerMythic ? 'Homer Pepe · Mythic at block ' + fmt(w.homerMythic.block) + ' · now in Cold Storage' : 'Homer Pepe farewell (preview)' }); });
   }
   function front() {
     heroGrid(); try { castParade(); } catch (e) { if (window.console) console.warn('cast parade', e); }
@@ -266,7 +278,7 @@
     var nkFrames = [0, 1, 2, 3].map(function (f) { return NG.render(nk, { stage: 5, frame: f, gearOverride: {} }); }), eggFrames = WizardSprite.frames(0, '#2a3a2e', { head: WizardSprite.WIZARD_HAT }, { community: true });
     var gap = R.communityGap && R.communityGap(w); /* no community pet (Cold Storage gap): the card, feature tile and nav link STAY, with a coming-soon mystery egg (owner rule Oct 20 2026) */
     R.animate($('crCanvas'), gap ? R.comingSoonFrames() : R.communityFrames(w)); /* community roll gear: the community pet wears it (display only) */ if (R.bindCommunityTip) R.bindCommunityTip($('crCanvas'), w, ME); /* community-gear-hover: hover/tap shows what he wears */
-    if ($('crGearTxt')) $('crGearTxt').textContent = ''; /* old 'Wearing:' line removed (owner 2026-10-29); hover/tap tooltip shows worn gear */ if (R.kekOn && R.kekOn(w) && window.V2KekArrival && $('crGearTxt')) { var kr = $('kekReplayRow'); if (!kr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</p>'); kr = $('kekReplayRow'); } V2KekArrival.bindReplay(kr, M.world); V2KekArrival.watch($('crCanvas'), M.world); } /* Lord Kek arrival scene (display only) */ $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
+    if ($('crGearTxt')) $('crGearTxt').textContent = ''; /* old 'Wearing:' line removed (owner 2026-10-29); hover/tap tooltip shows worn gear */ if (R.kekOn && R.kekOn(w) && window.V2KekArrival && $('crGearTxt')) { var kr = $('kekReplayRow'); if (!kr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</p>'); kr = $('kekReplayRow'); } V2KekArrival.bindReplay(kr, M.world); V2KekArrival.watch($('crCanvas'), M.world); } /* Lord Kek arrival scene (display only) */ if (w.community && w.community.current === 'rabbit' && $('crGearTxt')) { withRabbitArrival(function () { var rr = $('rabbitReplayRow'); if (!rr) { $('crGearTxt').insertAdjacentHTML('afterend', '<p class="small" id="rabbitReplayRow">' + V2RabbitArrival.LINK + '</p>'); rr = $('rabbitReplayRow'); } V2RabbitArrival.bindReplay(rr, M.world); V2RabbitArrival.watch($('crCanvas'), M.world); }); } /* White Rabbit arrival (display only) */ $('crCanvas').setAttribute('aria-label', 'Community pet: ' + c.petName + ', ' + N[st]);
     $('crName').textContent = c.petName; $('crStage').textContent = N[st]; $('crFed').textContent = fmt(Math.floor(wiz ? c.wizardFed : c.burned));
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
@@ -289,8 +301,10 @@
     var info = wiz ? 'Community cycle · block ' + fmt(c.returnBlock) + (c.returnTx ? ' · tx ' + String(c.returnTx).slice(0, 12) + '…' : '') : 'Preview (not reached yet)';
     var opts = { sprites: { nakamoto: nkFrames, egg: eggFrames }, info: info };
     var returning = false; try { returning = !!localStorage.getItem('xcpets-v2-return-seen'); } catch (e) { }
-    function kekAuto() { if (w.kekMythic || /preview=kek/.test(location.search)) withKekFarewell(function () { V2KekFarewell.maybeAutoplay(w, { sprites: kekFarewellSprites(w), info: w.kekMythic ? 'Lord Kek · Mythic at block ' + fmt(w.kekMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); } /* Lord Kek farewell: once per browser, returning visitors only, after the Wizard's if both are unseen */
-    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { if (!V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), onDone: kekAuto, info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning)) kekAuto(); }); else kekAuto(); /* farewell: once per browser, returning visitors only */
+    function rabbitArrive() { if ((w.community && w.community.current === 'rabbit') || /preview=rabbit-arrival/.test(location.search)) withRabbitArrival(function () { V2RabbitArrival.watch($('crCanvas'), function () { return w; }); }); }
+    function homerAuto() { if (w.homerMythic || /preview=homer/.test(location.search)) withHomerFarewell(function () { if (!V2HomerFarewell.maybeAutoplay(w, { sprites: homerFarewellSprites(w), onDone: rabbitArrive, info: w.homerMythic ? 'Homer Pepe · Mythic at block ' + fmt(w.homerMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning)) rabbitArrive(); }); else rabbitArrive(); } /* Homer farewell -> White Rabbit arrival */
+    function kekAuto() { if (w.kekMythic || /preview=kek/.test(location.search)) withKekFarewell(function () { V2KekFarewell.maybeAutoplay(w, { sprites: kekFarewellSprites(w), onDone: homerAuto, info: w.kekMythic ? 'Lord Kek · Mythic at block ' + fmt(w.kekMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning); }); else homerAuto(); } /* Lord Kek farewell then Homer */
+    if (w.wizardMythic || /preview=wizard/.test(location.search)) withFarewell(function () { if (!V2Farewell.maybeAutoplay(w, { sprites: farewellSprites(w), onDone: kekAuto, info: w.wizardMythic ? 'Bitcoin Wizard · Mythic at block ' + fmt(w.wizardMythic.block) + ' · now in Cold Storage' : 'Preview (not reached yet)' }, returning)) kekAuto(); }); else kekAuto(); /* farewell chain: Wizard -> Kek -> Homer -> Rabbit arrival */
     withReturn(function () {
       /* no Watch The Return button on the active community pet (Jake 2026-10-14): replays live only in Cold Storage (archive.html); the one-time autoplay stays */
       /* UX polish 2026-10-16 (owner): no full-screen autoplay for visitors, so new players see the game first; mark it seen (Cold Storage still replays it) */

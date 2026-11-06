@@ -1129,8 +1129,8 @@
    *   breed  = breedable after his Cold Storage once ACTIVATE_WR_BREED_BLOCK is set; hybrid root with every species (WR_SP below).
    * ALL GATES NULL: the rabbit hand-off returns at once, nothing is written, WR_POOL_FROM stays Infinity -> replay unchanged.
    * Launch: set ACTIVATE_RABBIT_BLOCK = deploy tip + ~6 BEFORE Homer's Mythic (and ACTIVATE_WR_BREED_BLOCK = the same block, Homer precedent). */
-  var ACTIVATE_RABBIT_BLOCK = null;   // PREVIEW: off
-  var ACTIVATE_WR_BREED_BLOCK = null; // PREVIEW: off; wrBreedOn also waits for his own Cold Storage (b >= WR_POOL_FROM)
+  var ACTIVATE_RABBIT_BLOCK = null;   // LAUNCH GATE (owner sets at go-live): tip + 6 BEFORE Homer Mythic. Pattern = ACTIVATE_HOMER_BLOCK 973341. DO NOT GUESS a block here. COMMUNITY_HANDOFF still lands him the exact block Homer enters Cold Storage (after:'homerMythic').
+  var ACTIVATE_WR_BREED_BLOCK = null; // = ACTIVATE_RABBIT_BLOCK at go-live (Homer precedent); wrBreedOn also waits for his own Cold Storage (b >= WR_POOL_FROM)
   var WR_POOL_FROM = Infinity;
   function wrOn(b) { return ACTIVATE_RABBIT_BLOCK != null && b != null && b >= ACTIVATE_RABBIT_BLOCK; }
   function wrBreedOn(b) { return ACTIVATE_WR_BREED_BLOCK != null && b != null && b >= ACTIVATE_WR_BREED_BLOCK && b >= WR_POOL_FROM; }

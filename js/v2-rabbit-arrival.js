@@ -207,10 +207,17 @@
     });
   }
 
+  /** watch(el, getW): first time el is on screen while the White Rabbit is the community pet, play once per player. */
+  function watch(el, getW) { if (!el || el.__rabbitArr) return; el.__rabbitArr = 1;
+    var go = function () { var w = typeof getW === 'function' ? getW() : getW; var c = w && w.community; if (!(c && c.current === 'rabbit')) return false; if (seen() && !previewRequested()) return true; play(w); return true; };
+    if (previewRequested()) { setTimeout(go, 300); return; }
+    if (!('IntersectionObserver' in root)) { go(); return; }
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && go()) io.disconnect(); }); }, { threshold: 0.4 }); io.observe(el); }
+
   var api = {
     W: W, H: H, S: S, FRAMES: FRAMES, SEEN_KEY: SEEN_KEY,
     B1: B1, B2: B2, B3: B3, B4: B4,
-    draw: draw, play: play, sprites: sprites, seen: seen, bindReplay: bindReplay,
+    draw: draw, play: play, watch: watch, sprites: sprites, seen: seen, bindReplay: bindReplay,
     LINK: '<a href="#" class="small rabbitreplay">Replay arrival</a>'
   };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.V2RabbitArrival = api;
