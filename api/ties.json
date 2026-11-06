@@ -1,6 +1,6 @@
 {
- "lastBlock": 974829,
- "count": 150,
+ "lastBlock": 974833,
+ "count": 151,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1800,6 +1800,18 @@
    "name": "Fupe",
    "species": "pepe",
    "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 44295,
+   "asset": "A14339458190350572163",
+   "tiedBlock": 974832,
+   "tiedTx": "8e7c21487077dd7aad7074af101fbd9748396a5133fc7cd71c5d64652a46b3e4",
+   "kind": "deed",
+   "name": "Charijolu",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
