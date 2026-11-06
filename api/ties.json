@@ -1,6 +1,6 @@
 {
- "lastBlock": 974769,
- "count": 145,
+ "lastBlock": 974771,
+ "count": 150,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1740,6 +1740,66 @@
    "name": "Boowerumi",
    "species": "bobo",
    "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 17730,
+   "asset": "A3233224970388313757",
+   "tiedBlock": 974770,
+   "tiedTx": "06d9f01227fdcfd9cc8751d062eb2123dd0751488f7ad522e5675e394bed8d40",
+   "kind": "deed",
+   "name": "Chiwa",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 29021,
+   "asset": "A12951682544553460482",
+   "tiedBlock": 974770,
+   "tiedTx": "95b6808eca3b0ddbae15ead4abf2ba4827f509f6b93e68676449e3683be20fe1",
+   "kind": "deed",
+   "name": "Bazuto",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 62526,
+   "asset": "A431377532423367862",
+   "tiedBlock": 974770,
+   "tiedTx": "8c12a666f76bdb358d1503e21c697b8ce29d3c53bfdffb87aece0071adebef0a",
+   "kind": "deed",
+   "name": "Voyonepo",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 68305,
+   "asset": "A5729979934710503984",
+   "tiedBlock": 974770,
+   "tiedTx": "3c4ea8cf3e1e05b8ca0655609c8039862fca944d5ada9c21ead313f46ba037e4",
+   "kind": "deed",
+   "name": "Lusemi",
+   "species": "hyb:pepe:peepo",
+   "speciesLabel": "Pepeep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 13712,
+   "asset": "A1567518054143974698",
+   "tiedBlock": 974771,
+   "tiedTx": "4e86f83dfba8d96b470429a8cf0f36d72dd3b80b63389750d3fad139f176aefc",
+   "kind": "deed",
+   "name": "Fupe",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
