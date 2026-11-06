@@ -4,7 +4,7 @@
  *   0-89    COMMUNITY PET: Mythic Homer Pepe (HomerSprite stage 5, character only) bobbing centre stage, burn counter climbing to his total;
  *   90-179  "Wait a Mintue, Im a Mythic" (intentional typo; his card line, adapted), he walks right to the frost vault;
  *   180-269 Into Cold Storage: vault door closes, frost, earlier community pets as ice silhouettes inside;
- *   270-359 white flash, "Mythic. Kept cold forever.", a Homer Pepe egg drops (1 in 777), footer "Next: " + opts.next (The White Rabbit).
+ *   270-359 white flash, "Mythic. Kept cold forever.", a Homer Pepe egg drops (1 in 777), footer "Next: " + opts.next (DJ Pepe).
  * window.V2HomerFarewell = { draw, play, maybeAutoplay, FRAMES, SEEN_KEY, seen, previewRequested } */
 (function (root) {
   'use strict';

@@ -1,0 +1,23 @@
+DJ Pepe replaces White Rabbit as community pet #6 — DRAFT COPY (owner must approve)
+
+=== Homer Pepe farewell (replaces rabbit hand-off) — LIVE in js/v2-pages.js (draft pending owner OK) ===
+At Mythic, Homer Pepe went into Cold Storage. The decks lit up, a gold chain flashed, and DJ Pepe took the booth — no requests.
+
+=== Homer "Next" line ===
+While waiting:  Next: DJ Pepe · community pet #6
+After gate + homerMythic / current=djpepe:  DJ Pepe is the new community pet
+
+=== DJ Pepe arrival line (DRAFT ONLY — not wired to a scene module; owner approves text) ===
+DJ Pepe dropped in with the gold chain and the RED B. Homer Pepe is in Cold Storage. Feed the booth.
+
+Alt (shorter):
+DJ Pepe is on the decks. Homer Pepe went into Cold Storage. Community pet #6.
+
+Alt (booth):
+No requests. DJ Pepe took the booth the moment Homer Pepe hit Mythic.
+
+=== Notes ===
+- No fire on Mythic; rim only.
+- Bitcoin B is RED (gold frame on pendant).
+- Do not touch Ragnar.
+- Gates stay null until deploy; set ACTIVATE_DJPEPE_BLOCK = ACTIVATE_DJ_BREED_BLOCK = tip+6 at deploy time.

@@ -432,7 +432,7 @@
     var top = (kr.parts && kr.parts.top) || [], tb = -1; top.forEach(function (q) { if ((q >> 5) <= faceB + 6) tb = Math.max(tb, q >> 5); });
     return { k: k, A: A, s: A.s, bb: bb, eb: eb, eyes: eyes, faceB: faceB, beardB: tb, sh: sh, spr: LOOK_SPR[sh] ? lookSprRegion(sh, stage, f) : null }; }
   /* sprite-drawn bodies (all keys 'body' in the keyed render): the clothes / torso come from the sprite's own colour keys. Rows: [first row allowed] */
-  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 }, rabbit: { g: 'RabbitSprite', k: 'cCB', min: 3 } };
+  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 }, rabbit: { g: 'RabbitSprite', k: 'cCB', min: 3 }, djpepe: { g: 'DjPepeSprite', k: 'GLh', min: 3 } };
   function lookSprRegion(sh, stage, f) { var D = LOOK_SPR[sh], S = D && window[D.g]; if (!S || !S.draw) return null; var g; try { g = S.draw(stage, f, {}); } catch (e) { return null; } if (!g) return null;
     var y0 = 0, y, x, on = {}, neck = -1; if (D.below) for (y = 0; y < 29; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === D.below) y0 = y + 2;
     for (y = y0; y < 29; y++) { var n = 0; for (x = 0; x < 32; x++) { var kk = g[y] && g[y][x]; if (kk && D.k.indexOf(kk) >= 0) { on[y * 32 + x] = 1; n++; } } if (neck < 0 && n >= D.min) neck = y; }
@@ -1237,6 +1237,10 @@
   /* THE WHITE RABBIT (community pet #6, PREVIEW, V2Rules.ACTIVATE_RABBIT_BLOCK null): c.current === 'rabbit' only once the gate is set AND Homer is in Cold Storage.
    * No built-in hat: every slot is drawn by RabbitSprite's gear layer (anchors on his own frames). Same shape as Homer's. */
   function wrOn(w) { return !!(w && w.community && w.community.current === 'rabbit' && window.RabbitSprite); }
+  function djOn(w) { return !!(w && w.community && w.community.current === 'djpepe' && window.DjPepeSprite); }
+  function djGear(w) { var g = (w.community && w.community.gear) || {}, o = {};
+    /* signature gold chain is drawn on the sprite; no separate community loadout pieces yet */
+    return o; }
   function wrGear(w) { var V = window.V2Rules, gate = V.ACTIVATE_RABBIT_BLOCK, g = (w.community && w.community.gear) || {}, o = {};
     (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; });
     /* owner Nov 6 7:04 AM CT: community White Rabbit never wears shades / glasses; open ruby eyes (wr-shades stays in the player drop pool) */
@@ -1262,7 +1266,7 @@
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
-  function communityFrames(w) { var c = w && w.community; if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', wrGear(w), { community: true }); /* THE WHITE RABBIT (PREVIEW, inert) */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
+  function communityFrames(w) { var c = w && w.community; if (djOn(w)) return DjPepeSprite.frames(c.djpepeStage || 0, '#2a3a2e', djGear(w), { community: true }); /* DJ PEPE #6 */ if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', wrGear(w), { community: true }); /* WHITE RABBIT disarmed */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
     return nakaFrames(w); }
   function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
