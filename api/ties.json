@@ -1,6 +1,6 @@
 {
- "lastBlock": 974858,
- "count": 158,
+ "lastBlock": 974861,
+ "count": 162,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1896,6 +1896,54 @@
    "name": "Fifoopek",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 44095,
+   "asset": "A712339121138339176",
+   "tiedBlock": 974860,
+   "tiedTx": "f858d7ec6c4b92e1b447b17c29777b6e854460d9107cf934d2d6bf58f1871c83",
+   "kind": "deed",
+   "name": "Dojok",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 59562,
+   "asset": "A9978942182062231332",
+   "tiedBlock": 974860,
+   "tiedTx": "b77697c335f35e0d66ce15f4f04b2d317a293abd4ff6797b7f2bc0b245258dba",
+   "kind": "deed",
+   "name": "Jofibun",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 62406,
+   "asset": "A15763337071667082826",
+   "tiedBlock": 974860,
+   "tiedTx": "cc02715488206b4acb9c0555b8360d6f2a4cf7b901ef867930acf61a9c0a4bc2",
+   "kind": "deed",
+   "name": "Jujini",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 62706,
+   "asset": "A687809096133981640",
+   "tiedBlock": 974860,
+   "tiedTx": "fd467ad8e5e328dab74e0469d0facaf4aaedb37bcd666e85d416f304c211dffa",
+   "kind": "deed",
+   "name": "Senayoki",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
