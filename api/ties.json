@@ -1,6 +1,6 @@
 {
- "lastBlock": 974845,
- "count": 153,
+ "lastBlock": 974847,
+ "count": 154,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1834,6 +1834,18 @@
    "tiedTx": "fcf610b9b85b302f6aeeb4220c023bfcbf998257395d3f326327b8cd0f95799c",
    "kind": "deed",
    "name": "Vushenebun",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 35395,
+   "asset": "A7823593285762599236",
+   "tiedBlock": 974847,
+   "tiedTx": "e66936cf5602a17c670ab5a2d4aada7d9210fe37a233a5db2941581df8f9c09d",
+   "kind": "deed",
+   "name": "Chidoon",
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
