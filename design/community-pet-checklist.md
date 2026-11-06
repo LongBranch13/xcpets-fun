@@ -17,3 +17,7 @@ Applies to every community pet from #5 (Homer Pepe) on. Older pets keep their li
 - Egg after Cold Storage takes the previous pet's 1-in-777 slot, Rare or Legendary (`SPECIAL_TIER`).
 - The community pet itself never breeds.
 - `node tools/community-pet-check.js --pet <id>` 0 FAIL; `node tools/replay-check.js --compare origin/main` SAME.
+
+## Pets so far
+- #5 Homer Pepe: `homerpepe-community` (live, gate 973,341).
+- #6 The White Rabbit: `whiterabbit-community` (preview, gated off; `COMMUNITY_HANDOFF[1]`, after `homerMythic`). See design/whiterabbit-community.md.

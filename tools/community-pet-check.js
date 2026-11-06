@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* COMMUNITY PET CHECK (owner standing rule, Oct 22 2026 10:15 PM CT: "community pets must ALWAYS work for hybrids and gear").
- * Dev tooling only, not loaded by any page. For every community pet (nakamoto, wizard, kek, funtrump, homer) it checks, in a Node vm with the repo's scripts:
+ * Dev tooling only, not loaded by any page. For every community pet (nakamoto, wizard, kek, funtrump, homer, rabbit) it checks, in a Node vm with the repo's scripts:
  *   1. SPRITE   stages 0..5 x 4 idle frames render (32x32, no NaN, no magenta key pixels, not blank).
  *   2. HYBRIDS  the pet as SHAPE and as COLOUR/FEATURE with every other root (13 species + the other community pets), head and side feature,
  *               stages 0..5 x 4 frames: no throw, no blank frame (>= 30 non-background pixels), no broken pixels; plus 3-way hybrids
@@ -16,7 +16,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; }, has = k => A.includes(k);
 const ROOT = path.resolve(opt('--repo') || path.join(__dirname, '..'));
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js',
-  'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/viking-sprite.js', 'js/v2-rules.js', 'js/block-hashes.js', 'js/v2-render.js'];
+  'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/viking-sprite.js', 'js/v2-rules.js', 'js/block-hashes.js', 'js/v2-render.js'];
 function load() { const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
   const el = () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, classList: { add() {}, remove() {}, toggle() {} } });
   const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/', pathname: '/' }, navigator: { userAgent: 'node' },
@@ -31,8 +31,9 @@ const SPECIES = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kev
 const PETS = { nakamoto: { sprite: null }, wizard: { sprite: 'WizardSprite' }, kek: { sprite: 'KekSprite', designSkip: { head: 'nemes is part of him (Headwear never drawn)' }, sig: 'kek-card' },
   funtrump: { sprite: 'FuntrumpSprite', look: 'suit', tier: 2 }, /* SUIT = Rare look (also the community pet's look) */
   'funtrump-hoodie': { sp: 'funtrump', sprite: 'FuntrumpSprite', look: 'hoodie', tier: 3, hybrids: false }, /* HOODIE = Legendary look; hybrids are covered by 'funtrump' (hybrid bodies wear the suit) */
-  homer: { sprite: 'HomerSprite', tier: 2 } /* HOMER PEPE (community pet #5 PREVIEW): one look, Rare or Legendary */ };
-if (V && V._setFuntrumpActivation) { V._setFuntrumpActivation(0); V._setEligB(0); } if (V && V._setHomerActivation) V._setHomerActivation(0); /* check-only: HOMER PEPE gate ON in this vm */ /* check-only: FUNTRUMP gate ON inside this vm so his gear is eligible/drawable; every other gate stays at its pre-launch state */
+  homer: { sprite: 'HomerSprite', tier: 2 }, /* HOMER PEPE (community pet #5 PREVIEW): one look, Rare or Legendary */
+  rabbit: { sprite: 'RabbitSprite', tier: 2 } /* THE WHITE RABBIT (community pet #6 PREVIEW): one look, Rare or Legendary */ };
+if (V && V._setFuntrumpActivation) { V._setFuntrumpActivation(0); V._setEligB(0); } if (V && V._setHomerActivation) V._setHomerActivation(0); if (V && V._setRabbitActivation) V._setRabbitActivation(0); /* check-only: THE WHITE RABBIT gate ON in this vm */ /* check-only: HOMER PEPE gate ON in this vm */ /* check-only: FUNTRUMP gate ON inside this vm so his gear is eligible/drawable; every other gate stays at its pre-launch state */
 const STAGES = has('--quick') ? [0, 3, 5] : [0, 1, 2, 3, 4, 5];
 function check(img, bg) { if (!img || !img.data) return 'no image'; const d = img.data; if ((img.width || 32) !== 32 || d.length !== 4096) return 'size ' + d.length;
   let n = 0; for (let j = 0; j < 1024; j++) { const r = d[j * 4], g = d[j * 4 + 1], b = d[j * 4 + 2]; if ([r, g, b].some(v => typeof v !== 'number' || isNaN(v))) return 'NaN pixel';
@@ -44,7 +45,7 @@ function baseArt(sp) { const a = sp === 'nakamoto' ? P.characterPet('nakamoto', 
 function planFor(key, want) { for (let i = 0; i < 400; i++) { const hx = require('crypto').createHash('sha256').update(key + ':' + i).digest('hex'), p = V.hybridPlan(hx, key, 972700);
   if (Object.keys(want).every(k => p[k] === want[k])) return p; } return null; }
 const out = { repo: ROOT, loaded, pets: {} }; let fails = 0;
-const only = opt('--pet'), roots = SPECIES.concat(['wizard', 'kek', 'funtrump', 'homer']);
+const only = opt('--pet'), roots = SPECIES.concat(['wizard', 'kek', 'funtrump', 'homer', 'rabbit']);
 for (const pet of Object.keys(PETS).filter(p => !only || p === only || PETS[p].sp === only)) {
   const cfg = PETS[pet], sp = cfg.sp || pet, res = out.pets[pet] = { sprite: { ok: 0, fail: [] }, hybrids: { ok: 0, fail: [] }, hybrid3: { ok: 0, fail: [] }, gear: { ok: 0, fail: [], byDesign: 0 } };
   const S = cfg.sprite && ctx[cfg.sprite]; if (cfg.sprite && !S) { res.sprite.fail.push(cfg.sprite + ' not loaded'); fails++; continue; }
@@ -107,6 +108,15 @@ if (!only && V._setFtBreedActivation && V.breedOne) { const pet = (sp, tier) => 
     let e; try { const fr = R.framesWith(k.art, 4, []); for (const f of fr) { const m = check(f, bgOf(f)); if (m) { e = m; break; } } } catch (z) { e = 'throw ' + z.message; } if (e) bf('child ' + k.species + ' render: ' + e); else ftb.ok++; }
   ftb.seen = seen; if (!seen.ft || !seen.hyb) bf('expected both FUNTRUMP and hybrid children, got ' + JSON.stringify(seen));
   V._setFtBreedActivation(null); V._setFtPoolFrom(Infinity); }
+/* White Rabbit (owner Nov 4 2026): one -bbit/-abbit name per pair, 3-way names end -bbit/-abbit, and earless partners get his bunny ears */
+if (out.pets.rabbit && V.wrEarsFor) { const wr = out.pets.rabbit.wr = { ok: 0, fail: [], ears: 0, own: 0 }, wf = m => { wr.fail.push(m); fails++; };
+  const os = roots.filter(r => r !== 'rabbit');
+  for (const o of os) { const a = V.hybridName('hyb:' + o + ':rabbit'), b = V.hybridName('hyb:rabbit:' + o); if (a !== b) wf('two names for ' + o + ' x rabbit: ' + a + ' / ' + b); else if (!/[^a]bbit$|abbit$/.test(a)) wf('name ' + a + ' does not end -bbit/-abbit'); else wr.ok++;
+    for (const dir of ['shape', 'color']) { const want = dir === 'shape' ? { shape: 'rabbit', color: o } : { shape: o, color: 'rabbit' }, plan = planFor('hyb:rabbit:' + o, want); if (!plan) continue;
+      const e2 = V.wrEarsFor(plan), expect = plan.shape !== 'rabbit' && !V.WR_EARED[o]; if (!!(e2 && e2.wrEars) !== expect) wf('ears rule wrong on ' + o + ' x rabbit (' + plan.shape + ' body)'); else { wr.ok++; if (expect) wr.ears++; else if (V.WR_EARED[o]) wr.own++; } } }
+  for (let i = 0; i < os.length; i++) { const tri = ['rabbit', os[i], os[(i + 5) % os.length]], n = V.hybridName('hyb3:' + tri.join(':')); if (!/bbit$/.test(n || '')) wf('3-way name ' + n + ' for ' + tri.join('/')); else wr.ok++;
+    for (const sh of [tri[1], tri[2]]) { const plan = planFor('hyb3:' + tri.join(':'), { shape: sh }); if (!plan) continue; const expect = !tri.some(r => V.WR_EARED[r]), got = !!(V.wrEarsFor(plan) || {}).wrEars; if (got !== expect) wf('3-way ears rule wrong on ' + tri.join('/')); else { wr.ok++; if (expect) wr.ears++; } } }
+  console.log('rabbit    names + bunny-ears rule ok ' + wr.ok + ' (ears given ' + wr.ears + ', own ears kept ' + wr.own + ') · FAIL ' + wr.fail.length); wr.fail.slice(0, 12).forEach(x => console.log('   ✗ ' + x)); }
 const W = (k, r) => k + ' ok ' + r.ok + (r.byDesign ? ' · by design ' + r.byDesign : '') + ' · FAIL ' + r.fail.length;
 for (const p of Object.keys(out.pets)) { const r = out.pets[p]; console.log(p.padEnd(9), [W('sprite', r.sprite), W('hybrids', r.hybrids), W('3-way', r.hybrid3), W('gear', r.gear)].join(' | '));
   for (const k of ['sprite', 'hybrids', 'hybrid3', 'gear']) { const f = r[k].fail; f.slice(0, 8).forEach(x => console.log('   ✗ ' + k + ': ' + x)); if (f.length > 8) console.log('   … ' + (f.length - 8) + ' more ' + k + ' failures (see --json)'); } }

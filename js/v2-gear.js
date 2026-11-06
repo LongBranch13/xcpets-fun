@@ -515,6 +515,19 @@
   FT_FLAGS.forEach(function (x) {
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: 'handR', behind: false, map: x[4], origin: 'funtrump', exclusive: false, kind: 'held', sig: false };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'funtrump', exclusive: false, legendary: false, kind: 'held', sig: false, overlay: true, since: 'ft-flags' }); });
+  /* THE WHITE RABBIT GEAR (owner Nov 4 2026, branch whiterabbit-community, PREVIEW + INERT): original pixel art, no logos/text. item.since 'rabbit' = OFF (never
+   * in any roll pool, never wearable) until V2Rules.ACTIVATE_RABBIT_BLOCK is set (null now) -> replay SAME. Appended at the END of ITEMS (append-only pools).
+   * Gold pocket watch = his SIGNATURE Grip (★ tier 3, White Rabbit + White Rabbit hybrids only, like hp-donut). Map keys = BonusGear COLORS.
+   * RabbitSprite draws its own versions (by item id) on the rabbit; these maps are for every other body. [id, label, slot, tier, exclusive, kind, anchor, dy, map] */
+  var WR_BATCH = [
+    ['wr-pocket-watch', 'Gold pocket watch', 'hand', 3, true, 'held', 'handR', null, ['..GG..', '.G..G.', '.gggg.', 'gwwnwg', 'gwwnwg', 'gwnnwg', 'gwwwwg', '.gggg.']],
+    ['wr-drink-me', 'Little potion bottle', 'hand', 2, false, 'held', 'handR', null, ['.ll.', '.cc.', 'cCCc', 'cwCc', 'cKKc', 'cCCc', '.cc.']],
+    ['wr-waistcoat', 'Checked waistcoat', 'body', 2, false, 'body', 'chest', -1, ['e.....e', 'YeYBYeY', 'eYeBeYe', 'YeYBYeY', 'eYeBeYe', '.YeYeY.']],
+    ['wr-shades', 'Rabbit-hole shades', 'face', 1, false, 'face', 'eyes', null, ['nnnn.nnnn', 'ZZZnnnZZZ', '.ZZ...ZZ.']]
+  ];
+  WR_BATCH.forEach(function (x) { var ex = x[4];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'rabbit', exclusive: ex, species: ex ? 'rabbit' : undefined, kind: x[5], sig: ex };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'rabbit', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'rabbit' }); });
   EYE_GEAR_FT = { 'ft-aviators': { s: 'glasses', f: 'g', l: ['Z', 'Z'], drop: 1, up: 1, wide: 1 } };
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
