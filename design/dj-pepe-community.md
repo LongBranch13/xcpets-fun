@@ -32,3 +32,6 @@ Sprite reworked against `previews/dj-pepe-community/reference.png`: bigger post-
 
 ## Gold chain signature (Nov 6 12:27 PM CT, owner [pt2962u] 'Gold chain is important.')
 Drawn as the signature look: thick bright gold V (2px links + highlight) over the black tee, larger gold-framed RED Bitcoin B pendant. Stamped post-scale so Hatchling+ reads clearly; Egg gets a chain/pendant hint. Never covers the face. Adult+ turntables made bolder. Still gated.
+
+## Chain placement fix (Nov 6 12:30 PM CT)
+Owner review of 0a3a193b: chain was a gold/red blob under the face covering lips/beard (read as flame at Hatchling/Juvenile). Fixed: chain starts 1px below beard; thin V (1px gold + highlight) on black tee; 3x3/4x4 gold-framed RED B pendant on chest with black tee gap; never covers face; no orange/flame. Contact-sheet title no longer overlaps the reference label.

@@ -68,10 +68,10 @@
     var bd = el(x, Y, 16, 20.8, 7.0, 5.8);
     if (bd < 1.05 && Y < 26.6 && Y > 15.5) {
       k = bd > 0.78 ? 'k' : 'K';
-      /* round white record-label logo */
-      if (el(x, Y, 16, 19.6, 2.6, 2.6) < 1) k = 'W';
-      if (el(x, Y, 16, 19.6, 1.5, 1.5) < 1) k = 'w';
-      if (el(x, Y, 16, 19.6, 0.55, 0.55) < 1) k = 'K';
+      /* round white record-label logo (kept above the pendant zone) */
+      if (el(x, Y, 16, 18.8, 2.0, 2.0) < 1 && Y < 20.0) k = 'W';
+      if (el(x, Y, 16, 18.8, 1.1, 1.1) < 1 && Y < 20.0) k = 'w';
+      if (el(x, Y, 16, 18.8, 0.45, 0.45) < 1 && Y < 20.0) k = 'K';
     }
 
     /* arms + green hands on decks */
@@ -86,18 +86,12 @@
       if (el(x, Y, 11.0, 24.6, 1.5, 1.3) < 1 || el(x, Y, 21.0, 24.6, 1.5, 1.3) < 1) k = 'G';
     }
 
-    /* ===== GOLD CHAIN underpaint (bold signature stamped post-scale in stampChain) ===== */
-    if (s >= 1 && Y > 15.8 && Y < 19.6) {
-      /* clear V over the tee — never into the face (face ends ~y15) */
-      var vLeft = 16 - (Y - 15.8) * 1.15, vRight = 16 + (Y - 15.8) * 1.15;
-      if (Y < 17.4 && (Math.abs(x - vLeft) < 1.1 || Math.abs(x - vRight) < 1.1)) k = 'C';
-      if (el(x, Y, 16, 18.2, 2.4, 2.4) < 1) k = 'c';
-      if (el(x, Y, 16, 18.2, 1.7, 1.7) < 1) k = 'R';
-    }
+    /* ===== GOLD CHAIN underpaint (real stamp is post-scale, below the beard) ===== */
+    /* intentionally empty here: lips/beard draw next; stampChain paints the chest V + pendant */
 
-    /* ===== HEAD (classic Pepe) ===== */
-    var hd = el(x, Y, 16, 10.6, 9.0, 7.6);
-    if (hd < 1.05) {
+    /* ===== HEAD (classic Pepe) — clipped below the jaw so the black tee stays black ===== */
+    var hd = el(x, Y, 16, 10.6, 9.0, 7.0);
+    if (hd < 1.05 && Y < 16.6) {
       k = (x < 10.2 || (Y > 13.5 && x < 11.5)) ? 'g' : 'G';
       if (el(x, Y, 16, 13.0, 5.8, 3.8) < 1) k = 'h'; /* lighter muzzle */
     }
@@ -169,42 +163,81 @@
   }
 
 
-  /* Stamp SIGNATURE gold chain AFTER scale so Hatchling+ still reads a thick V + big pendant. Never covers the face. */
+  /* Stamp SIGNATURE gold chain in GRID space after scale.
+   * Starts 1px below the beard. Thin bright V (1 gold + 1 highlight) onto the black tee —
+   * arms stop short of center so they never merge into a gold/red blob. Small 3x3/4x4
+   * gold-framed RED B pendant centered on the chest with black tee pixels between chin and pendant.
+   * Never covers lips/beard/face; no orange/flame. */
   function stampChain(g, s, f) {
     if (s < 1) return;
-    var t = SCALE[s], dy = f === 1 ? -1 : 0;
-    var P2 = function (X, Y) {
-      return [Math.round(15.5 + (X - 15.5) * t - 0.5), Math.round(28.5 + (Y - 28.5) * t - 0.5) + dy];
-    };
-    function set(X, Y, k) {
-      var p = P2(X, Y);
-      if (p[0] < 0 || p[1] < 0 || p[0] >= N || p[1] >= N) return;
-      /* never paint over the face band (shades / lips live above ~y15.2 adult-space) */
-      if (Y < 15.2) return;
-      g[p[1]][p[0]] = k;
+    function face(c) {
+      return c === 'L' || c === 'l' || c === 'B' || c === 'b' || c === 'G' || c === 'g' || c === 'h' || c === 'n';
     }
-    /* Thick 2px V chain with a highlight pixel on the outer edge of each link */
-    var topY = 15.4, tipY = 17.2;
-    for (var yy = topY; yy <= tipY; yy += 0.5) {
-      var spread = (yy - topY) * 1.35;
-      var lx = 16 - spread, rx = 16 + spread;
-      set(lx, yy, 'C'); set(lx - 0.7, yy, 'C'); set(lx + 0.5, yy, 'c'); /* left 2px + highlight */
-      set(rx, yy, 'C'); set(rx + 0.7, yy, 'C'); set(rx - 0.5, yy, 'c'); /* right 2px + highlight */
+    function set(x, y, k) {
+      if (x < 0 || y < 0 || x >= N || y >= N) return;
+      if (face(g[y][x])) return;
+      g[y][x] = k;
     }
-    /* Larger pendant: gold frame, RED face, gold B */
-    var cx = 16, cy = 18.4, rad = s >= 3 ? 2.6 : (s >= 2 ? 2.4 : 2.2);
-    for (var py = cy - rad; py <= cy + rad; py += 0.5) {
-      for (var px = cx - rad; px <= cx + rad; px += 0.5) {
-        var d2 = ((px - cx) / rad) * ((px - cx) / rad) + ((py - cy) / rad) * ((py - cy) / rad);
-        if (d2 > 1.05) continue;
-        if (d2 > 0.72) set(px, py, 'C');      /* gold frame */
-        else set(px, py, 'R');                 /* RED face */
+
+    var beardBottom = -1, lipBottom = -1;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+      var c = g[y][x];
+      if (c === 'B' || c === 'b') beardBottom = y;
+      if (c === 'L' || c === 'l') lipBottom = y;
+    }
+    var startY = (beardBottom >= 0 ? beardBottom : (lipBottom >= 0 ? lipBottom : 16)) + 1;
+    var midX = 15;
+
+    /* Black-tee band under the beard (clear spilled green / logo under the jaw) */
+    for (var cy = startY; cy <= startY + 1 && cy < N; cy++) {
+      for (var cx = 10; cx <= 21; cx++) {
+        if (face(g[cy][cx])) continue;
+        if (g[cy][cx] === 'G' || g[cy][cx] === 'g' || g[cy][cx] === 'h' || g[cy][cx] === 'W' || g[cy][cx] === 'w') g[cy][cx] = 'K';
       }
     }
-    /* B stem + arms in gold on the red face */
-    for (var by = cy - 1.3; by <= cy + 1.3; by += 0.5) set(cx, by, 'C');
-    set(cx + 0.8, cy - 0.7, 'C'); set(cx + 0.8, cy + 0.7, 'C');
-    set(cx + 1.2, cy - 0.7, 'C'); set(cx + 1.2, cy + 0.7, 'C');
+
+    var size = s >= 3 ? 4 : 3;
+    var gap = 2;
+    var y0 = startY + gap;
+    if (y0 + size >= N - 2) y0 = Math.max(startY + 1, N - 2 - size);
+    var x0 = midX - Math.floor((size - 1) / 2);
+
+    /* Thin V arms from neck toward pendant corners — never paint the pendant columns above it */
+    var neckL = midX - (s >= 3 ? 6 : 5), neckR = midX + (s >= 3 ? 6 : 5);
+    var tipY = y0 - 1;
+    var steps = Math.max(2, tipY - startY);
+    for (var i = 0; i <= steps; i++) {
+      var yy = startY + i;
+      if (yy >= y0) break;
+      var tt = i / steps;
+      var lx = Math.round(neckL + ((x0 - 1) - neckL) * tt);
+      var rx = Math.round(neckR + ((x0 + size) - neckR) * tt);
+      /* keep arms outside the pendant x-range on the last steps */
+      if (lx >= x0 && lx < x0 + size) lx = x0 - 1;
+      if (rx >= x0 && rx < x0 + size) rx = x0 + size;
+      set(lx, yy, 'C'); set(lx - 1, yy, 'c');
+      set(rx, yy, 'C'); set(rx + 1, yy, 'c');
+    }
+
+    /* Guarantee black tee in the gap between beard and pendant (kills any torch stalk) */
+    for (var sy = startY; sy < y0; sy++) {
+      for (var sx = x0; sx < x0 + size; sx++) {
+        if (face(g[sy][sx])) continue;
+        g[sy][sx] = 'K';
+      }
+    }
+
+    /* Small square pendant */
+    for (var py = 0; py < size; py++) for (var px = 0; px < size; px++) {
+      var onEdge = px === 0 || py === 0 || px === size - 1 || py === size - 1;
+      set(x0 + px, y0 + py, onEdge ? 'C' : 'R');
+    }
+    /* B mark only when there is room (4x4); on 3x3 leave a solid RED center so it doesn't read as a gold blob */
+    if (size >= 4) {
+      var bx = x0 + Math.floor(size / 2);
+      for (var by = y0 + 1; by <= y0 + size - 2; by++) set(bx, by, 'C');
+      set(bx + 1, y0 + 1, 'C'); set(bx + 1, y0 + size - 2, 'C');
+    }
   }
   function egg(f) {
     var g = [], dy = f === 1 ? -1 : 0;
@@ -223,15 +256,17 @@
           /* wide red lip */
           if (yy > 19.2 && yy < 21.4 && Math.abs(xx - 16) < 4.2) k = 'L';
           if (Math.abs(yy - 20.2) < 0.35 && Math.abs(xx - 16) < 3.6) k = 'n';
-          /* signature gold-chain hint: V links + larger RED B pendant */
-          if (yy > 21.6 && yy < 23.2) {
-            var evL = 16 - (yy - 21.6) * 1.4, evR = 16 + (yy - 21.6) * 1.4;
-            if (Math.abs(xx - evL) < 1.0 || Math.abs(xx - evR) < 1.0) k = 'C';
+          /* signature gold-chain hint: thin V below the lip, small square RED B on lower egg */
+          if (yy > 21.8 && yy < 23.4) {
+            var evL = 16 - (yy - 21.8) * 1.2, evR = 16 + (yy - 21.8) * 1.2;
+            if (Math.abs(xx - evL) < 0.7 || Math.abs(xx - evR) < 0.7) k = 'C';
           }
-          if (el(xx, yy, 16, 24.6, 2.8, 2.6) < 1) k = 'c';
-          if (el(xx, yy, 16, 24.6, 2.0, 1.8) < 1) k = 'R';
-          if (Math.abs(xx - 16) < 0.4 && yy > 23.6 && yy < 25.6) k = 'C';
-          if (Math.abs(xx - 16.8) < 0.35 && (Math.abs(yy - 24.2) < 0.35 || Math.abs(yy - 25.0) < 0.35)) k = 'C';
+          /* 3x3-ish pendant well below the lip line */
+          if (Math.abs(xx - 16) <= 1.5 && Math.abs(yy - 25.0) <= 1.5) {
+            var onE = Math.abs(xx - 16) > 1.0 || Math.abs(yy - 25.0) > 1.0;
+            k = onE ? 'C' : 'R';
+          }
+          if (Math.abs(xx - 16) < 0.35 && Math.abs(yy - 25.0) <= 1.0) k = 'C';
         }
         g[y].push(k);
       }
