@@ -21,3 +21,6 @@ Applies to every community pet from #5 (Homer Pepe) on. Older pets keep their li
 ## Pets so far
 - #5 Homer Pepe: `homerpepe-community` (live, gate 973,341).
 - #6 The White Rabbit: `whiterabbit-community` (preview, gated off; `COMMUNITY_HANDOFF[1]`, after `homerMythic`). See design/whiterabbit-community.md.
+- #7 Groyper: `groyper-community` (preview, art + inert gates; after `rabbitMythic`). See design/groyper-community.md.
+- #8 PENPEN: `penguin-community` (preview, art + inert gates; after `groyperMythic`). See design/penguin-community.md.
+- #9 DJ Pepe: `dj-pepe-community` (preview, art + inert gates + COMMUNITY_HANDOFF after `penguinMythic`). See design/dj-pepe-community.md.

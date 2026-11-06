@@ -495,7 +495,7 @@
    * the roll (kekArt) and a pure bred Lord Kek child is floored at Rare (breedOne). Existing pets keep their tier (no relabel). OFF while null. */
   var ACTIVATE_SPECIAL_TIER_BLOCK = 972912; // LIVE: tip 972906 + 6 (owner approved deploy Oct 24 2026 4:16 AM CT)
   var SPECIAL_RARE_W = 1000, SPECIAL_LEG_W = 300;
-  var SPECIAL_TIER = { nakamoto: { fixed: 3 }, wizard: { salt: 'XCPETS:v2:wiztier' }, funtrump: { salt: 'XCPETS:v2:fttier' }, kek: { salt: 'XCPETS:v2:kektier' }, homer: { salt: 'XCPETS:v2:hptier' }, rabbit: { salt: 'XCPETS:v2:wrtier' } }; /* homer = HOMER PEPE (PREVIEW, inert: no pet has species 'homer' until ACTIVATE_HOMER_BLOCK) */
+  var SPECIAL_TIER = { nakamoto: { fixed: 3 }, wizard: { salt: 'XCPETS:v2:wiztier' }, funtrump: { salt: 'XCPETS:v2:fttier' }, kek: { salt: 'XCPETS:v2:kektier' }, homer: { salt: 'XCPETS:v2:hptier' }, rabbit: { salt: 'XCPETS:v2:wrtier' }, groyper: { salt: 'XCPETS:v2:gytier' }, penguin: { salt: 'XCPETS:v2:pgtier' }, djpepe: { salt: 'XCPETS:v2:djtier' } }; /* groyper/penguin/djpepe = PREVIEW inert while their ACTIVATE_*_BLOCK is null */ /* homer = HOMER PEPE (PREVIEW, inert: no pet has species 'homer' until ACTIVATE_HOMER_BLOCK) */
   function specialTierOn(b) { return ACTIVATE_SPECIAL_TIER_BLOCK != null && b != null && b >= ACTIVATE_SPECIAL_TIER_BLOCK; }
   function isSpecialSpecies(sp) { return !!SPECIAL_TIER[sp]; }
   function specialRollTier(sp, id, b) { var R = SPECIAL_TIER[sp]; if (!R) return null; if (R.fixed != null) return R.fixed;
@@ -1134,14 +1134,34 @@
   var WR_POOL_FROM = Infinity;
   function wrOn(b) { return ACTIVATE_RABBIT_BLOCK != null && b != null && b >= ACTIVATE_RABBIT_BLOCK; }
   function wrBreedOn(b) { return ACTIVATE_WR_BREED_BLOCK != null && b != null && b >= ACTIVATE_WR_BREED_BLOCK && b >= WR_POOL_FROM; }
-  function wrColdOn(w, b) { return wrOn(b) && !!(w && w.rabbitMythic) && b > w.rabbitMythic.block; }
+    function wrColdOn(w, b) { return wrOn(b) && !!(w && w.rabbitMythic) && b > w.rabbitMythic.block; }
+  /* GROYPER (community pet #7, branch groyper-community / carried into dj-pepe-community, PREVIEW ONLY):
+   * would follow the White Rabbit's Mythic. Art in js/groyper-sprite.js (not loaded by any page). All gates OFF -> replay SAME.
+   * Launch needs full hand-off wiring (COMMUNITY_HANDOFF entry below is inert while the gate is null). */
+  var ACTIVATE_GROYPER_BLOCK = null;   // PREVIEW: off
+  var ACTIVATE_GY_BREED_BLOCK = null;  // PREVIEW: off
+  var GY_POOL_FROM = Infinity;         // PREVIEW: his egg never enters the 1-in-777 slot
+  /* PENPEN / PENGUIN (community pet #8, branch penguin-community / carried into dj-pepe-community, PREVIEW ONLY):
+   * would follow Groyper's Mythic. Art in js/penguin-sprite.js (not loaded by any page). All gates OFF -> replay SAME. */
+  var ACTIVATE_PENGUIN_BLOCK = null;   // PREVIEW: off
+  var ACTIVATE_PG_BREED_BLOCK = null;  // PREVIEW: off
+  var PG_POOL_FROM = Infinity;         // PREVIEW: his egg never enters the 1-in-777 slot
+  /* DJ PEPE (community pet #9, branch dj-pepe-community, PREVIEW ONLY, Nov 6 2026): would follow PENPEN's Mythic.
+   * Art in js/djpepe-sprite.js (not loaded by any page). All gates OFF -> replay SAME.
+   * Launch: set ACTIVATE_DJPEPE_BLOCK = deploy tip + ~6 BEFORE PENPEN's Mythic (and ACTIVATE_DJ_BREED_BLOCK = same block). */
+  var ACTIVATE_DJPEPE_BLOCK = null;    // PREVIEW: off
+  var ACTIVATE_DJ_BREED_BLOCK = null;  // PREVIEW: off
+  var DJ_POOL_FROM = Infinity;         // PREVIEW: his egg never enters the 1-in-777 slot
   /* COMMUNITY HAND-OFF (standing owner rule, Oct 26 2026): each new community pet lands the SAME moment the previous one enters Cold Storage.
    * Generic for pet #5 onward (Lord Kek / FUNTRUMP keep their live code unchanged): a pet's care counts every burn after the previous pet's Mythic
    * burn (that burn itself excluded); it shows as the community pet from that point once its rule gate (deploy tip + ~6, set BEFORE the previous pet's
    * Mythic) is reached. Target = the STANDARD community target COMMUNITY_THRESHOLDS[5]; it never halves (only costs halve). Add pet #6 as a new entry. */
   var COMMUNITY_HANDOFF = [
     { id: 'homer', name: 'HOMER PEPE', after: 'funtrumpMythic', key: 'homer', rec: 'homerMythic', log: 'homercold', gate: function () { return ACTIVATE_HOMER_BLOCK; }, onCold: function (b) { HP_POOL_FROM = b + 1; } },
-    { id: 'rabbit', name: 'THE WHITE RABBIT', after: 'homerMythic', key: 'rabbit', rec: 'rabbitMythic', log: 'rabbitcold', gate: function () { return ACTIVATE_RABBIT_BLOCK; }, onCold: function (b) { WR_POOL_FROM = b + 1; } } /* PREVIEW (whiterabbit-community), inert while the gate is null */
+    { id: 'rabbit', name: 'THE WHITE RABBIT', after: 'homerMythic', key: 'rabbit', rec: 'rabbitMythic', log: 'rabbitcold', gate: function () { return ACTIVATE_RABBIT_BLOCK; }, onCold: function (b) { WR_POOL_FROM = b + 1; } },
+    { id: 'groyper', name: 'GROYPER', after: 'rabbitMythic', key: 'groyper', rec: 'groyperMythic', log: 'groypercold', gate: function () { return ACTIVATE_GROYPER_BLOCK; }, onCold: function (b) { GY_POOL_FROM = b + 1; } }, /* PREVIEW: inert while ACTIVATE_GROYPER_BLOCK is null */
+    { id: 'penguin', name: 'PENPEN', after: 'groyperMythic', key: 'penguin', rec: 'penguinMythic', log: 'penguincold', gate: function () { return ACTIVATE_PENGUIN_BLOCK; }, onCold: function (b) { PG_POOL_FROM = b + 1; } }, /* PREVIEW: inert while ACTIVATE_PENGUIN_BLOCK is null */
+    { id: 'djpepe', name: 'DJ PEPE', after: 'penguinMythic', key: 'djpepe', rec: 'djpepeMythic', log: 'djpepecold', gate: function () { return ACTIVATE_DJPEPE_BLOCK; }, onCold: function (b) { DJ_POOL_FROM = b + 1; } } /* PREVIEW (dj-pepe-community): inert while ACTIVATE_DJPEPE_BLOCK is null */
   ];
   function handoffOf(id) { return COMMUNITY_HANDOFF.filter(function (H) { return H.id === id; })[0] || null; }
   function handoffPrev(w, id) { var H = handoffOf(id); return H && w ? w[H.after] || null : null; } /* previous pet's Cold Storage record = this pet's start */
@@ -1153,7 +1173,10 @@
     H.onCold(r.block_index);
     w.log.push({ block: r.block_index, tx: r.tx_hash, kind: H.log, msg: H.name + ' reached Mythic (' + Math.floor(K.fed) + ' burned) and went into Cold Storage' }); }
   function homerTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[0]); }
-  function rabbitTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[1]); } /* THE WHITE RABBIT (PREVIEW): returns at once while ACTIVATE_RABBIT_BLOCK is null */
+  function rabbitTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[1]); } /* THE WHITE RABBIT */
+  function groyperTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[2]); } /* GROYPER (PREVIEW): returns at once while ACTIVATE_GROYPER_BLOCK is null */
+  function penguinTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[3]); } /* PENPEN (PREVIEW): returns at once while ACTIVATE_PENGUIN_BLOCK is null */
+  function djpepeTrack(w, r, amt) { handoffTrack(w, r, amt, COMMUNITY_HANDOFF[4]); } /* DJ PEPE (PREVIEW): returns at once while ACTIVATE_DJPEPE_BLOCK is null */
   function wrArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'rabbit'; if (!specialNamesOn(b)) art.defaultName = 'White Rabbit'; setArtTier(art, specialRollTier('rabbit', id, b)); /* Rare or Legendary */ return noBornShades(art); }
   function hpArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'homer'; if (!specialNamesOn(b)) art.defaultName = 'Homer Pepe'; setArtTier(art, specialRollTier('homer', id, b)); /* Rare or Legendary */ return noBornShades(art); }
   /** kekArt(bh, id, b): a Lord Kek egg = a normal egg roll (tier, stats, background) with species 'kek' (KekSprite, player palette). */
@@ -2136,7 +2159,7 @@
       if (retiredAt(t, r.block_index)) t = { action: 'invalid', retired: t.action }; /* TAG RETIREMENT gate (ACTIVATE_RETIRE_TAGS_BLOCK): retired tags = community food */
       w.burnedBy[r.source] = (w.burnedBy[r.source] || 0) + amt; w.community.burned += amt; // EVERY valid burn feeds the community pet (incl. failed actions, fights, rumbles, breeds)
       if (w.community.returnBlock == null && returnProgress(w.community.burned).done) { w.community.returnBlock = r.block_index; w.community.returnTx = r.tx_hash; }
-      wizTrack(w, r, amt); kekTrack(w, r, amt); ftTrack(w, r, amt); homerTrack(w, r, amt); rabbitTrack(w, r, amt); /* THE WHITE RABBIT care (PREVIEW, inert: ACTIVATE_RABBIT_BLOCK null) */ /* HOMER PEPE care (inert: ACTIVATE_HOMER_BLOCK null) */ /* FUNTRUMP care (live from 972,880) */ /* Lord Kek care + Cold Storage (live from 972,396) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
+      wizTrack(w, r, amt); kekTrack(w, r, amt); ftTrack(w, r, amt); homerTrack(w, r, amt); rabbitTrack(w, r, amt); groyperTrack(w, r, amt); penguinTrack(w, r, amt); djpepeTrack(w, r, amt); /* THE WHITE RABBIT care (PREVIEW, inert: ACTIVATE_RABBIT_BLOCK null) */ /* HOMER PEPE care (inert: ACTIVATE_HOMER_BLOCK null) */ /* FUNTRUMP care (live from 972,880) */ /* Lord Kek care + Cold Storage (live from 972,396) */ /* Wizard Cold Storage trigger (display record, see ACTIVATE_WIZ_COLD_BLOCK) */
       if (!v2 && (t.action === 'fight' || t.action === 'accept' || t.action === 'rumble' || t.action === 'breed')) { L(r, 'plain', 'before v2 cutoff block ' + V2_FROM_BLOCK + ': plain burn (community food)'); return; }
       if (fireOn(r.block_index)) fireExtend(w, r.block_index - 1); /* fire sale arms are decided for blocks before this burn */
       var res = handle(w, r, t, amt, bh, L); if (fireOn(r.block_index)) fireCredit(w, r, t, amt, res); if (earnOn(r.block_index) && res && res.kind !== 'rejected' && res.kind !== 'plain' && res.petId != null) earnBurn(w, w.byId[res.petId], amt, r.block_index);
