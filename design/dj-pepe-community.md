@@ -26,3 +26,6 @@ Rules flavor: *He spins vinyl, he takes no requests and his Bitcoin stays red. B
 - Mythic effect (not fire).
 - Hybrid names.
 - Confirm #8 display name stays PENPEN (this branch uses PENPEN in PETS / hand-off).
+
+## Refine Nov 6 12:24 PM CT (owner re-sent reference card)
+Sprite reworked against `previews/dj-pepe-community/reference.png`: bigger post-scale deal-with-it shades (readable at Hatchling/Juvenile), white flat-brim pointing right, wide red lips with dark outline, brown jaw beard, gold stud, gold chain + RED Bitcoin B, black tee + white round logo, bold Adult+ turntables/vinyl. Mythic rim only. Display name still **DJ Pepe**.
