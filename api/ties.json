@@ -1,6 +1,6 @@
 {
- "lastBlock": 974862,
- "count": 163,
+ "lastBlock": 974864,
+ "count": 165,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1956,6 +1956,30 @@
    "name": "Yebabun",
    "species": "doge",
    "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 31320,
+   "asset": "A9934117887775897867",
+   "tiedBlock": 974864,
+   "tiedTx": "262642c796930e2f119dbdce1f39122a2141f69daaee187d2c7f8ac5af878c59",
+   "kind": "deed",
+   "name": "Boki",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36979,
+   "asset": "A12938338943795104191",
+   "tiedBlock": 974864,
+   "tiedTx": "5f23a8f9932d1ba9d610100abc0c2db9e22dbd415c46f7e7451f376bd1025f75",
+   "kind": "deed",
+   "name": "Loofoonip",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
