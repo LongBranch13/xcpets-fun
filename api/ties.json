@@ -1,6 +1,6 @@
 {
- "lastBlock": 974755,
- "count": 118,
+ "lastBlock": 974757,
+ "count": 125,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1418,6 +1418,90 @@
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 3480,
+   "asset": "A7071084392125723246",
+   "tiedBlock": 974757,
+   "tiedTx": "3b73cf1d00400e1932084a5c0abd63a30dd7917d3111c4772dcb3dac373728b2",
+   "kind": "deed",
+   "name": "Ruba",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 4050,
+   "asset": "A16906893710178881609",
+   "tiedBlock": 974757,
+   "tiedTx": "d2c0030f38531b3077d407f4e0a40c99f82c17fbf51d6bc6b5aa9a6339c47671",
+   "kind": "deed",
+   "name": "Toto",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 9532,
+   "asset": "A4636005483448355414",
+   "tiedBlock": 974757,
+   "tiedTx": "a19399e02beba663d6c159a67669a8bdac45534cf71ae54c88e20e50dc90e6cc",
+   "kind": "deed",
+   "name": "Chine",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 10944,
+   "asset": "A12895112003983214273",
+   "tiedBlock": 974757,
+   "tiedTx": "12794d9d64b9988f49d9a47375b0be655980255279226b70172dc2ad7811ef83",
+   "kind": "deed",
+   "name": "Zomo",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 30041,
+   "asset": "A166242760179270924",
+   "tiedBlock": 974757,
+   "tiedTx": "39d862f8295ef3c7ff329e1e02bd23977cfcc23457ab66fa5db6fdba6ac30590",
+   "kind": "deed",
+   "name": "Nekinu",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 30431,
+   "asset": "A14799100366186576447",
+   "tiedBlock": 974757,
+   "tiedTx": "e615b70a96621245c1e007aa40ae09f686a8e100641f92b0a494c42d072c42f3",
+   "kind": "deed",
+   "name": "Wayori",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 68318,
+   "asset": "A2906870967720855182",
+   "tiedBlock": 974757,
+   "tiedTx": "152159692ad31fbdb88799ca3bb017a907141266b83e2760347ef6e16038afab",
+   "kind": "deed",
+   "name": "Misoobe",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
