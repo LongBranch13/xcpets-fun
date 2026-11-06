@@ -1238,7 +1238,10 @@
    * No built-in hat: every slot is drawn by RabbitSprite's gear layer (anchors on his own frames). Same shape as Homer's. */
   function wrOn(w) { return !!(w && w.community && w.community.current === 'rabbit' && window.RabbitSprite); }
   function wrGear(w) { var V = window.V2Rules, gate = V.ACTIVATE_RABBIT_BLOCK, g = (w.community && w.community.gear) || {}, o = {};
-    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; }); return o; }
+    (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; });
+    /* owner Nov 6 7:04 AM CT: community White Rabbit never wears shades / glasses; open ruby eyes (wr-shades stays in the player drop pool) */
+    if (o.face && (o.face.item === 'wr-shades' || /shade|sunglass|glass/i.test(String(o.face.label || o.face.item || '')))) delete o.face;
+    return o; }
   function wrHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = Object.assign({}, RabbitSprite.PAL, RabbitSprite.WRC || {});
     return fr.map(function (f, n) { var a = RabbitSprite.draw(stage || 0, n, G), z = RabbitSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
