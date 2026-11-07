@@ -17,6 +17,11 @@
 .lv-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .lv-txt{overflow-wrap:anywhere;line-height:1.35}.lv-txt a{color:#9fe3ff}
 .lv-meta{font-size:12px;opacity:.8;overflow-wrap:anywhere}.lv-meta a{color:#9fe3ff}.lv-cat{font-family:"Press Start 2P",monospace;font-size:9px}.lv-play{color:#E8B33A}
+.lv-share{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.lv-sh,.lv-tg{font-family:"Press Start 2P",monospace;font-size:9px;line-height:1;padding:7px 8px;min-height:30px;background:#1b1530;color:#ffe68a;border:2px solid #000;box-shadow:2px 2px 0 #E8B33A;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}.lv-tg{color:#9fe3ff;box-shadow:2px 2px 0 #2aa3e0}.lv-sh:active,.lv-tg:active{transform:translate(2px,2px);box-shadow:none}.lv-perma{opacity:.6;text-decoration:none}
+.lv-spot{margin:10px 0 14px;scroll-margin-top:170px}.lv-spot-in{position:relative;text-align:center;padding:18px 12px 12px;border:4px solid #000;background:#120d22;box-shadow:0 0 0 3px #E8B33A,6px 6px 0 3px #000;image-rendering:pixelated}.lv-spot-tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#E8B33A;color:#000;font-family:"Press Start 2P",monospace;font-size:9px;padding:4px 8px;border:2px solid #000;white-space:nowrap}.lv-spot-cv{width:144px;height:144px;image-rendering:pixelated;display:block;margin:6px auto;animation:lvBob 1.2s steps(2) infinite}.lv-spot-ico{font-size:64px;display:block}.lv-spot-txt{font-size:17px;margin:8px 0 4px}.lv-spot-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center}.lv-spot-btns .lv-share{margin:0}
+@keyframes lvBob{50%{transform:translateY(-4px)}}.lv-row.lv-linked{outline:3px dashed #E8B33A;outline-offset:2px}
+.lv-toast{max-width:92vw;overflow-wrap:anywhere;user-select:all;position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(80px);background:#E8B33A;color:#000;font-family:"Press Start 2P",monospace;font-size:10px;padding:10px 14px;border:3px solid #000;box-shadow:3px 3px 0 #000;z-index:99;transition:transform .15s steps(3)}.lv-toast.on{transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.lv-spot-cv{animation:none}.lv-toast{transition:none}}
 .lv-empty{padding:12px}.lv-morewrap{text-align:center;margin:10px 0}
 @media (max-width:480px){.lv-row{gap:8px;padding:6px}.lv-th{flex-basis:38px;width:38px;height:38px}.lv-cv{width:34px;height:34px}.lv-txt{font-size:14px}.lv-f{padding:6px 8px;font-size:13px}}
 </style><script src="js/xc-select.js?v=1e9d6b6633"></script></head>
@@ -27,9 +32,10 @@
 </header><div class="pixdiv" aria-hidden="true"></div>
 <main><section class="panel livefeed">
   <h1 class="meme sec" data-ico="pet">📡 Live Feed</h1>
-  <p class="small muted lv-lede">What just happened in XCPETS, newest first, read straight from the chain. No wallet needed. Tap a row to replay it. For a big-screen view that plays itself, try <a href="watch.html">📺 Watch mode</a>.</p>
+  <p class="small muted lv-lede">What just happened in XCPETS, newest first, read straight from the chain. No wallet needed. Tap a row to replay it, or 🔗 Share it. For a big-screen view that plays itself, try <a href="watch.html">📺 Watch mode</a>.</p>
   <p class="small lv-status" id="lvStatus" role="status" aria-live="polite">Reading the chain…</p>
   <div class="lv-filters" id="lvFilters" role="group" aria-label="Show"><button type="button" class="lv-f btn ghost on" data-f="all" aria-pressed="true">All</button><button type="button" class="lv-f btn ghost" data-f="births" aria-pressed="false">🐣 Births</button><button type="button" class="lv-f btn ghost" data-f="deaths" aria-pressed="false">🪦 Deaths</button><button type="button" class="lv-f btn ghost" data-f="gods" aria-pressed="false">😇 Gods</button><button type="button" class="lv-f btn ghost" data-f="gear" aria-pressed="false">🎲 Gear</button></div>
+  <div class="lv-spot" id="lvSpot" hidden aria-live="polite"></div>
   <ol class="lv-list" id="lvList" aria-label="Latest events"><li class="lv-empty muted">Loading the latest blocks…</li></ol>
   <p class="lv-morewrap"><button type="button" class="btn ghost" id="lvMore" hidden>Show more</button></p>
   <p class="small muted">Times are Central Time (CT). A time with ~ is an estimate (about 10 minutes a block) until that block's time is read from Counterparty. Stage-ups and starvation are worked out from each pet's care and death block.</p>
