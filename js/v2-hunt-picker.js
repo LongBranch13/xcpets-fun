@@ -7,7 +7,8 @@
     var prior = document.getElementById('huntPicker'); if (prior) prior.close();
     var V = c.V, w = c.w, Z = w.byId[c.zombie], focus = document.activeElement, page = 0, query = '', chosen = null, size = 24;
     var d = document.createElement('dialog'); d.id = 'huntPicker'; d.className = 'hunt-picker'; d.setAttribute('aria-labelledby', 'huntTitle');
-    var rows = c.pets.map(function (p) { var why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); return {p:p, why:why, power:V.petPower(p), search:((p.name || '') + ' #' + p.id).toLowerCase()}; });
+    var revised = V.huntRulesOn && V.huntRulesOn(c.block);
+    var rows = c.pets.map(function (p) { var why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); return {p:p, why:why, power:V.petPower(p) * (revised ? 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100 : 1), search:((p.name || '') + ' #' + p.id).toLowerCase()}; });
     rows.sort(function (a,b) { return b.power - a.power || a.p.id - b.p.id; });
     var best = rows.filter(function (r) { return !r.why; })[0];
     function close() { d.close(); }
@@ -28,18 +29,18 @@
       page = Math.max(0, Math.min(page, pages - 1));
       var el = d.querySelector('#huntResults');
       el.innerHTML = '<p class="small" role="status">' + filtered.length.toLocaleString() + ' pets · Page ' + (page + 1) + ' of ' + pages + '</p><div class="hunt-grid">' + filtered.slice(page*size, (page+1)*size).map(function (r) {
-        return '<button type="button" class="hunt-card' + (r === best ? ' suggested' : '') + '" data-pick="' + r.p.id + '"' + (r.why ? ' disabled' : '') + '>' + (r === best ? '<b class="hunt-badge">★ SUGGESTED</b>' : '') + sprite(r.p) + '<strong>' + name(r.p) + '</strong><span>⚡ ' + r.power + ' power</span><small>' + (r.why ? esc(r.why) : 'Ready to hunt') + '</small></button>';
+        return '<button type="button" class="hunt-card' + (r === best ? ' suggested' : '') + '" data-pick="' + r.p.id + '"' + (r.why ? ' disabled' : '') + '>' + (r === best ? '<b class="hunt-badge">★ SUGGESTED</b>' : '') + sprite(r.p) + '<strong>' + name(r.p) + '</strong><span>⚡ ' + Math.round(r.power * 100) / 100 + ' power</span><small>' + (r.why ? esc(r.why) : 'Ready to hunt') + '</small></button>';
       }).join('') + '</div>' + (!filtered.length ? '<p>No pets match. Try another name or number.</p>' : '') + '<nav aria-label="Hunter pages"><button type="button" class="btn" data-prev' + (!page ? ' disabled' : '') + '>◀ Previous</button><button type="button" class="btn" data-next' + (page+1 >= pages ? ' disabled' : '') + '>Next ▶</button></nav>';
       el.querySelector('[data-prev]').onclick = function () { page--; list(); d.scrollTop = 0; el.querySelector('[data-prev]').focus(); };
       el.querySelector('[data-next]').onclick = function () { page++; list(); d.scrollTop = 0; el.querySelector('[data-next]').focus(); };
       el.querySelectorAll('[data-pick]').forEach(function (bt) { bt.onclick = function () { var p = w.byId[+bt.dataset.pick], why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); if (why) { bt.disabled = true; return; } chosen = p; versus(); }; }); paint();
     }
-    function stats(p, label) { return '<article class="hunt-side"><b>' + label + '</b>' + sprite(p) + '<h3>' + name(p) + '</h3><strong>⚡ ' + V.petPower(p) + ' power</strong><dl>' + keys.map(function (k) { return '<div><dt>' + k[0].toUpperCase()+k.slice(1) + '</dt><dd>' + esc((p.stats || {})[k] || 0) + '</dd></div>'; }).join('') + '</dl></article>'; }
+    function stats(p, label) { var mult = revised ? (p.id === Z.id ? 0.9 : 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100) : 1; return '<article class="hunt-side"><b>' + label + '</b>' + sprite(p) + '<h3>' + name(p) + '</h3><strong>⚡ ' + Math.round(V.petPower(p) * mult * 100) / 100 + ' fight power</strong><dl>' + keys.map(function (k) { return '<div><dt>' + k[0].toUpperCase()+k.slice(1) + '</dt><dd>' + esc(Math.round(((p.stats || {})[k] || 0) * mult * 100) / 100) + '</dd></div>'; }).join('') + '</dl></article>'; }
     function versus() {
       shell('⚔️ Face the feral');
       var plan = V.cemHuntPlan(w, chosen.id, Z.id, c.block);
       plan.label = 'Hunt with ' + (chosen.name || 'Pet') + ' #' + chosen.id + ' against ' + (Z.name || 'Zombie') + ' #' + Z.id + ' · ' + plan.amount + ' XCPETS';
-      d.querySelector('#huntBody').innerHTML = '<div class="hunt-versus">' + stats(chosen, 'YOUR HUNTER') + '<b class="hunt-vs">VS</b>' + stats(Z, 'FERAL ZOMBIE') + '</div><p>A win lays the zombie to rest. A loss gives your hunter a black eye for 72 blocks. One fight per pet per chain day.</p><p><b>Hunter: ' + name(chosen) + '</b><br>Burn: ' + esc(plan.amount) + ' XCPETS · wallet confirmation comes next.</p><p class="small" id="huntError" role="alert"></p><footer><button type="button" class="btn ghost" data-back>◀ Change hunter</button><button type="button" class="btn" data-ready>Continue with ' + name(chosen) + '</button></footer>';
+      d.querySelector('#huntBody').innerHTML = '<div class="hunt-versus">' + stats(chosen, 'YOUR HUNTER') + '<b class="hunt-vs">VS</b>' + stats(Z, 'FERAL ZOMBIE') + '</div><p>' + (revised ? 'Win: capture this zombie and feed it. Lose: no new black eye; +5% Grudge (up to +15%) and a quarter of this burn as rematch credit, for 432 blocks. Feral fights at 90% power. Your Grudge: +' + plan.grudge + '%. Credit used: ' + plan.credit + ' XCPETS. One fight per pet per chain day.' : 'A win lays the zombie to rest. A loss gives your hunter a black eye for 72 blocks. One fight per pet per chain day.') + '</p><p><b>Hunter: ' + name(chosen) + '</b><br>Burn: ' + esc(plan.amount) + ' XCPETS · wallet confirmation comes next.</p><p class="small" id="huntError" role="alert"></p><footer><button type="button" class="btn ghost" data-back>◀ Change hunter</button><button type="button" class="btn" data-ready>Continue with ' + name(chosen) + '</button></footer>';
       d.querySelector('[data-back]').onclick = pick;
       d.querySelector('[data-ready]').onclick = function () { if (!chosen) return; var why = V.cemHuntWhy(w, chosen.id, Z.id, c.me, c.block); if (why) { d.querySelector('#huntError').textContent = why; return; } var title = 'Hunt with ' + (chosen.name || 'Pet') + ' #' + chosen.id + ' against #' + Z.id + ' · ' + plan.amount + ' XCPETS'; close(); c.send([plan], title); }; paint(); d.querySelector('[data-back]').focus();
     }
