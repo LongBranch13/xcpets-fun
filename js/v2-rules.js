@@ -1878,7 +1878,7 @@
   /* TRANSFER GAPS (transfer-gaps-1107, preview, gated; Infinity = off): from ACTIVATE_TRANSFER_GAPS_BLOCK (1) a pet that changes owner voids every open
    * challenge / Tag Team fight it is in (daily fight uses already spent stay spent), (2) several credits of a pet token in one block settle the pet
    * on the LAST credit holder of that block (hold[] order: tx_index, then credit_index), not the first. */
-  var ACTIVATE_TRANSFER_GAPS_BLOCK = Infinity;
+  var ACTIVATE_TRANSFER_GAPS_BLOCK = 975005;
   function xferOn(b) { return ACTIVATE_TRANSFER_GAPS_BLOCK != null && b != null && b >= ACTIVATE_TRANSFER_GAPS_BLOCK; }
   function blockFinalHolder(ix, asset, b) { var L = ix && ix.hold && ix.hold[asset], h = null; (L || []).forEach(function (c) { if (Number(c.block_index) === b) h = creditTo(c) || h; }); return h; }
   function voidMovedFights(w, P, b, tx) { (w.fights || []).forEach(function (f) { if (f.status !== 'open' || b - f.block > FIGHT_WINDOW || fightPets(f).indexOf(P.id) < 0) return;
