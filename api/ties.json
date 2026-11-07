@@ -1,6 +1,6 @@
 {
- "lastBlock": 974942,
- "count": 173,
+ "lastBlock": 974953,
+ "count": 174,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1165,7 +1165,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Uncommon",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 52945,
@@ -1213,7 +1213,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 8508,
@@ -2077,6 +2077,18 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 77,
+   "asset": "A2770159986249261452",
+   "tiedBlock": 974946,
+   "tiedTx": "3add0098da87cf761b05e189564b7ad1716a2cfa276e4fd0198fe6858e34ed4c",
+   "kind": "deed",
+   "name": "Pipki",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Uncommon",
    "stage": "Mythic"
   }
  ]
