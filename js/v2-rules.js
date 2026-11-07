@@ -906,7 +906,7 @@
     setArtTier(art, electricTier(bh, id)); art.species = pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex, b); art.electric = 1; return art; }
   /* Local future hatch implementation. Disabled until a separately approved gate.
    * Chad joins the ordinary tier pool at the SAME future birth-block gate. */
-  var ACTIVATE_RARE_EGGS_BLOCK = Infinity;
+  var ACTIVATE_RARE_EGGS_BLOCK = 974962;
   var DJ_RARE_POOL_FROM = Infinity;
   function djRareBreedOn(b) { return rareEggsOn(b) && b >= DJ_RARE_POOL_FROM; }
   var RARE_D = 86902439766912, RARE_48 = 281474976710656;
