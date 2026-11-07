@@ -40,7 +40,7 @@
     var wd = Math.round(g.measureText(s).width / u) * u, X = Math.round(x * k) - (align === 'left' ? 0 : align === 'right' ? wd : Math.round(wd / 2 / u) * u), Y = Math.round(y * k);
     if (c !== C.ol) { g.fillStyle = C.ol; g.fillText(s, X + u, Y + u); } g.fillStyle = c; g.fillText(s, X, Y); g.restore(); }
   /* ---- sprites: the pet's own 32x32 pixel art on a keyed background (only the pet moves, never its square tile) ---- */
-  var SPR = {};
+  var SPR = {}, SPR_WORLD = null;
   function R() { return window.V2Render || null; }
   function Z() { return window.V2ZombieLook || null; }
   function keyedRGBA(p, raw) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
@@ -118,16 +118,18 @@
       var fy = Math.min(GY - 1 - (q % 3), y0 + y + 0.18 * d * d), fx = x0 + x + d * (0.5 + rr) * 0.9; px(g, fx, fy, grey[q % 4]); } }
   function zmealF(g, ev, f, P) { var vs = P.victims.slice(0, 3), n = P.victims.length, per = 13, s0 = 8, endF = s0 + vs.length * per;
     sky(g, f, 0); ground(g, 0); var spr = sprite(P.pet, f < endF ? 'zombie' : 'zombie', f >> 2), ate = clamp(Math.floor((f - s0) / per) + (((f - s0) % per) >= 6 ? 1 : 0), 0, vs.length), cur = Math.floor((f - s0) / per), t = (f - s0) % per;
-    var VX = [64, 84, 104], zx = 8; if (f >= s0 && cur < vs.length) zx = VX[cur] - 30 + (t < 4 ? Math.round(t * 2) - 8 : t < 8 ? 0 : -Math.round((t - 7))); else if (f >= endF) zx = VX[vs.length - 1] - 38;
+    var VX = [64, 84, 104], zx = 8; if (f >= s0 && cur < vs.length) zx = VX[cur] - 30 + (t < 4 ? Math.round(t * 2) - 8 : t < 8 ? 0 : -Math.round((t - 7))); else if (f >= endF) zx = (vs.length ? VX[vs.length - 1] : 64) - 38;
     if (f >= s0 && cur < vs.length && t < 4) zx = (cur ? VX[cur - 1] - 38 : 8) + Math.round((VX[cur] - 30 - (cur ? VX[cur - 1] - 38 : 8)) * t / 4);
     vs.forEach(function (v, i) { var x = VX[i], gone = i < ate, now = i === cur && t >= 4 && t < 6; if (gone) { if (i === cur && t < 12) blood(g, t - 6, 31 + i, x + 8, GY - 8); bones(g, x + 4, GY + 2 + (i % 2)); return; }
       var shiver = f % 2 && !now ? 1 : 0, vsp = sprite(v, 'live', 0); if (now) { g.save(); g.globalAlpha = 1; } R().drawSprite(g,vsp,x+shiver,GY-16,16,false,{x:0,y:12,w:W,h:GY-12}); if (now) { g.restore(); px(g, x, GY - 16, '#ffffff', 16, 16); g.save(); g.globalAlpha = 0.6; R().drawSprite(g,vsp,x,GY-16,16,false,{x:0,y:12,w:W,h:GY-12}); g.restore(); }
       if ((f + i) % 4 < 2) px(g, x + 13, GY - 18, '#27e1ff', 1, 2); });
-    drawSpr(g, spr, zx, GY - 31 + (f >= endF ? (f >> 1) % 2 : 0));
-    if (f >= s0 && cur < vs.length && t >= 4 && t < 7) text(g, 'CHOMP!', VX[cur] + 4, 30, C.b4, 5);
+    var chew = f >= s0 && cur < vs.length && t >= 4 && t < 10;
+    g.save(); g.translate(zx + 16 + (chew ? t % 2 : 0), GY);
+    drawSpr(g, spr, -16, -31 + (chew ? t % 2 : f >= endF ? (f >> 1) % 2 : 0)); g.restore();
+    if (f >= s0 && cur < vs.length && t >= 4 && t < 7) text(g, 'CHOMP!', CX, 19, C.b4, 5);
     var hunger = clamp(0.18 + 0.82 * (n ? ate / vs.length : 1), 0, 1); text(g, 'HUNGER', 6, 4, C.s2, 5, 'left'); px(g, 41, 4, C.ol, 42, 7); px(g, 42, 5, '#1a1d14', 40, 5); px(g, 42, 5, hunger >= 1 ? C.zg : '#8aa04c', Math.round(40 * hunger), 5);
     if (n > 3) text(g, '+' + (n - 3) + ' MORE', 122, 4, C.b4, 5, 'right');
-    if (f >= endF + 2) { px(g, zx + 26, GY - 40, '#ffffff', 26, 11); px(g, zx + 26, GY - 29, '#ffffff', 3, 3); text(g, 'BURP', zx + 39, GY - 37, C.ol, 6); }
+    if (f >= endF + 2) text(g, 'BURP!', CX, 19, C.gold2, 6);
     if (f >= endF + 6) text(g, 'FULL!', 104, 14, C.zg, 7); }
   function feralF(g, ev, f, P) { var on = f >= 6, shake = on && f < 20 ? (f % 2 ? 1 : -1) : 0; sky(g, f, on ? -(0.1 + 0.08 * (f % 2)) : 0); stone(g, 0, false); ground(g, 0); mound(g, 0, true); candles(g, 0.05, f);
     var spr = sprite(P.pet, on ? 'feral' : 'zombie', f >> 1); drawSpr(g, spr, CX - 16 + shake, GY - 31);
@@ -168,7 +170,7 @@
   function ptsOf(x) { var V = window.V2Rules, Pt = (V && V.CEM && V.CEM.POINTS) || [1, 3, 10, 33]; return Pt[Math.max(0, Math.min(3, (x && x.tier) | 0))]; }
   var PAINT = { raise: raiseF, 'resurrect-win': resF, 'resurrect-fail': resF, zmeal: zmealF, feral: feralF, crumble: crumbleF, hunted: crumbleF, pledge: pledgeF };
   function pets(ev, w) { var by = (w && w.byId) || {}; return { pet: by[ev.id] || ev.pet || null, victims: (ev.victims || []).map(function (id) { return by[id] || { id: id }; }) }; }
-  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
+  function paint(c, ev, f, w) { SPR_WORLD = w || null; var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function caption(ev, P) { var n = nm(P.pet, ev.id), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
     if (CAPS[ev.kind]) return CAPS[ev.kind](ev, P, n, b);
