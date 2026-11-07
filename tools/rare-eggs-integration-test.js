@@ -9,13 +9,14 @@ for(const [tag,amount,count,electric]of [['pet:hatch12',1000,12,false],['pet:hat
  ok(()=>assert.strictEqual(pets.length,count));
  for(let i=0;i<count;i++){const seed=r.tx_hash+':'+i,a=(electric?V.electricArt:V.hatchArt)(bh,seed,G);ok(()=>assert.strictEqual(pets[i].hatchTx,seed));a.shades=false;if(a.eyes==='beady')a.eyes='classic';ok(()=>same(pets[i].art,a));ok(()=>same(pets[i].rareHatch,a.rareHatch));}
 }
-// Weird metadata never propagates through the independent breeding path.
+// Explicit miss fixture: inheritance is a separate gated stream, not an unconditional copy.
 const Arow=row(G,'integration-owner',100,'pet:hatch'),Brow=row(G,'integration-owner',100,'pet:hatch');
 const w=V.replay([Arow,Brow],{[G]:bh},[],{tip:G});const [A,B]=w.pets.filter(p=>p.owner==='integration-owner');
 A.rareHatch=A.art.rareHatch={version:1,kind:'tiny',block:G};B.rareHatch=B.art.rareHatch={version:1,kind:'ghost',block:G};
 const kid=V.breedOne(w,A,B,bh,H('breed-test'),G+1,'integration-owner');
 ok(()=>assert(!kid.rareHatch&&!kid.art.rareHatch));ok(()=>assert(kid.parents.length===2));
 // Shared Star-Lord identity does not fabricate an edition or unlock all gear.
+delete B.rareHatch;delete B.art.rareHatch;
 A.species='starlordkek';A.art.species='starlordkek';delete A.contest;A.rareHatch=A.art.rareHatch={version:1,kind:'god',block:G};
 const godkid=V.breedOne(w,A,B,bh,H('god-breed'),G+1,'integration-owner');
 ok(()=>assert(!godkid.contest&&!godkid.rareHatch&&!godkid.art.rareHatch));ok(()=>assert(V.SPECIES12.some(q=>q.id===godkid.species)||V.isHybrid(godkid.species)));

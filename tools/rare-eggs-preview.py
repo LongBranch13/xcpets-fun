@@ -37,4 +37,16 @@ if djfile.exists():
  for i,a in enumerate(dj):
   x=12+(i%4)*250;y=45+(i//4)*200;dd.text((x,y),a['pair'],font=f,fill='white');dd.text((x,y+15),'body: '+a['plan']['shape'],font=f,fill='#9ce');tile(sheet,im(a['data']),x,y+40,4)
  sheet.save(D/'dj-signature-and-hybrids.png')
+inheritfile=ROOT/'rare-build-inherit-render.json'
+if inheritfile.exists():
+ obj=json.loads(inheritfile.read_text());cases=obj['previews'];sheet=Image.new('RGB',(1340,80+258*len(cases)),'#0c121d');dd=ImageDraw.Draw(sheet)
+ dd.text((12,12),'SECRET / GATED WEIRD INHERITANCE / REAL BREED ENGINE FIXTURES',font=f,fill='white')
+ dd.text((12,30),'1 in 77 per weird parent; first parent wins a double hit; one trait only. Not live.',font=f,fill='#9ce')
+ for col,title in enumerate(['WEIRD PARENT','NORMAL PARENT','NEW EGG','INHERITED BABY','ADULT PROJECTION','SAME GENES / NO TRAIT']):dd.text((12+col*220,55),title,font=f,fill='white')
+ for row,a in enumerate(cases):
+  y=80+row*258;dd.text((12,y+8),a['kind'].upper()+' / immediate parent #'+str(a['parent']),font=f,fill='#9ce')
+  for col,frame in enumerate(a['frames']):
+   image=im(frame['data'],frame['width'],frame['height']);tile(sheet,image,12+col*220,y+236-image.height*3,3)
+ sheet.save(D/'weird-parent-inherited-baby.png')
+ sheet.crop((0,0,1340,338)).save(D/'weird-parent-inherited-baby-tiny.png')
 print(D)
