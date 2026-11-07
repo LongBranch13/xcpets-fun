@@ -7,7 +7,7 @@ const L = require('./lib/load-rules');
   const scene = fs.readFileSync(path.join(L.ROOT,'js/v2-cemetery-scene.js'),'utf8'); assert(!scene.includes('data-hpick'), 'no hunter dropdown'); assert(scene.includes('window.V2HuntPicker.open'), 'Hunt launches explicit picker');
   const ctx = L.load(), snap = L.snap(), w = L.run(ctx, snap, [], snap.tip), base = w.pets.find(p => p.art && p.stage >= 2 && !p.dead && !p.released && !p.zombie && !p.community);
   assert(base, 'real replay pet for sprite fixture');
-  const out = '/workspace/xcpets/previews/hunt-picker-1107'; fs.mkdirSync(out, {recursive:true});
+  const out = process.env.HUNT_PREVIEW_OUT || '/workspace/xcpets/previews/hunt-picker-1107'; fs.mkdirSync(out, {recursive:true});
   const browser = await chromium.launch({executablePath:'/usr/bin/google-chrome', args:['--no-sandbox']});
   try {
     for (const width of [1280,390]) {
