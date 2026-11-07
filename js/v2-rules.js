@@ -1788,7 +1788,7 @@
     if (rulesOn(mb) && P.movedAt === mb && P.owner !== f.buyer) f = { ok: false, why: 'pet already moved in block ' + mb + ' (one move per block)' };
     if (!f.ok) { S.status = 'void'; S.voidBlock = mb; S.voidWhy = f.why; S.matchId = m.id; lg.msg = 'listing ' + S.n + ' (#' + S.petId + '): ' + f.why; w.log.push(lg); return; }
     var carry = carryOn(mb); if (carry) lookSweep(w, mb); /* sale-carry: settle look holders as they were before the sale */
-    var mv = carry ? saleMoves(w, P, S, 'sale:' + S.n) : giftMoves(w, P); noteGot(w, P, f.buyer); P.owner = f.buyer; P.lastGot = mb; if (rulesOn(mb)) { P.movedAt = mb; if (isBurnAddr(f.buyer)) P.burnedTo = { block: mb, tx: m.tx1_hash, addr: f.buyer }; } mv.worn.concat(mv.bag).forEach(function (g) { g.owner = f.buyer; }); w.deeds[S.give].holder = f.buyer;
+    var mv = carry ? saleMoves(w, P, S, 'sale:' + S.n) : giftMoves(w, P); noteGot(w, P, f.buyer); P.owner = f.buyer; P.lastGot = mb; if (xferOn(mb)) voidMovedFights(w, P, mb, m.tx1_hash); if (rulesOn(mb)) { P.movedAt = mb; if (isBurnAddr(f.buyer)) P.burnedTo = { block: mb, tx: m.tx1_hash, addr: f.buyer }; } mv.worn.concat(mv.bag).forEach(function (g) { g.owner = f.buyer; }); w.deeds[S.give].holder = f.buyer;
     if (carry) { saleWear(w, P, mv); saleLooks(w, P, S.advLooks, S.seller, f.buyer); }
     Object.assign(S, { status: 'sold', buyer: f.buyer, soldBlock: mb, matchId: m.id, gear: mv.worn.length + mv.bag.length });
     var gr = { block: mb, tx: m.tx1_hash, petId: P.id, from: S.seller, to: f.buyer, toNo: playerNo(w, f.buyer), tier: P.tier, sale: S.n, gear: S.gear };
@@ -1802,13 +1802,24 @@
   function movePet(w, P, to, b, tx, how) { if (P && to && P.owner !== to && questOn(b) && P.pob) { P.pob = false; P.pobLost = b; } /* Ash Gone with the Wind */ if (!P || !to || P.owner === to) return; var from = P.owner, carry = carryOn(b), SL = null; if (carry) { lookSweep(w, b); SL = (w.listings || []).filter(function (x) { return x.status === 'open' && x.petId === P.id && x.seller === from; })[0] || { adv: [], advLooks: null }; }
     var mv = carry ? saleMoves(w, P, SL, 'move:' + P.id + ':' + b + ':' + (P.gifts || []).length) : giftMoves(w, P); noteGot(w, P, to); P.owner = to; P.lastGot = b; mv.worn.concat(mv.bag).forEach(function (g) { g.owner = to; });
     if (carry) { saleWear(w, P, mv); saleLooks(w, P, SL.advLooks, from, to); } /* sale-carry: a DEX trade / token send outside a listing carries the same way */
+    if (xferOn(b)) voidMovedFights(w, P, b, tx);
     if (rulesOn(b)) { P.movedAt = b; if (isBurnAddr(to)) P.burnedTo = { block: b, tx: tx, addr: to }; else if (P.burnedTo) delete P.burnedTo; }
     var gr = { block: b, tx: tx, petId: P.id, from: from, to: to, toNo: playerNo(w, to), tier: P.tier, gear: mv.worn.length + mv.bag.length, token: P.deed, how: how };
     (P.gifts = P.gifts || []).push(gr); (w.giftLog = w.giftLog || []).push(gr);
     w.log.push({ block: b, tx: tx, kind: 'tokenMove', petId: P.id, msg: '#' + P.id + ' moved with its token ' + P.deed + ' to ' + to.slice(0, 10) + '…' + (gr.gear ? ' with ' + gr.gear + ' gear' : '') });
     if (P.burnedTo && P.burnedTo.block === b) w.log.push({ block: b, tx: tx, kind: 'tokenBurnAddr', petId: P.id, msg: '#' + P.id + ' was sent to a burn address (' + to + '): out of play, nobody can use it' }); }
-  function applyCredit(w, c, b) { var D = w.deeds && w.deeds[c.asset]; if (!D) return; var to = creditTo(c); if (!to) return; D.holder = to;
+  /* TRANSFER GAPS (transfer-gaps-1107, preview, gated; Infinity = off): from ACTIVATE_TRANSFER_GAPS_BLOCK (1) a pet that changes owner voids every open
+   * challenge / Tag Team fight it is in (daily fight uses already spent stay spent), (2) several credits of a pet token in one block settle the pet
+   * on the LAST credit holder of that block (hold[] order: tx_index, then credit_index), not the first. */
+  var ACTIVATE_TRANSFER_GAPS_BLOCK = Infinity;
+  function xferOn(b) { return ACTIVATE_TRANSFER_GAPS_BLOCK != null && b != null && b >= ACTIVATE_TRANSFER_GAPS_BLOCK; }
+  function blockFinalHolder(ix, asset, b) { var L = ix && ix.hold && ix.hold[asset], h = null; (L || []).forEach(function (c) { if (Number(c.block_index) === b) h = creditTo(c) || h; }); return h; }
+  function voidMovedFights(w, P, b, tx) { (w.fights || []).forEach(function (f) { if (f.status !== 'open' || b - f.block > FIGHT_WINDOW || fightPets(f).indexOf(P.id) < 0) return;
+      f.status = 'void'; f.voidBlock = b; f.voidWhy = '#' + P.id + ' changed owner'; w.log.push({ block: b, tx: tx, kind: 'fightVoid', petId: P.id, fightId: f.id, msg: 'fight ' + f.id + ' was called off: #' + P.id + ' changed owner (fight uses already spent stay spent)' }); }); }
+  function applyCredit(w, c, b, ix) { var D = w.deeds && w.deeds[c.asset]; if (!D) return; var to = creditTo(c); if (!to) return; D.holder = to;
     var P = w.byId[D.petId]; if (!P || P.deed !== c.asset || P.dead || P.released || P.community) return;
+    if (xferOn(b) && ix) { var fin = blockFinalHolder(ix, c.asset, b); if (fin && fin !== to) return; /* an earlier credit in this block: wait for the block's last one */ D.holder = to;
+      if (P.owner === to) return; liveAt(w, P, b); if (P.dead) return; movePet(w, P, to, b, c.tx_hash || c.event, c.calling_function || 'send'); return; }
     if (rulesOn(b) && P.movedAt === b && P.owner !== to) { w.log.push({ block: b, tx: c.tx_hash || c.event, kind: 'tokenMoveIgnored', petId: P.id, msg: '#' + P.id + ' already moved in block ' + b + ': this second move (token to ' + to.slice(0, 10) + '…) is ignored, the pet stays with ' + P.owner.slice(0, 10) + '…' }); return; }
     liveAt(w, P, b); if (P.dead) return; movePet(w, P, to, b, c.tx_hash || c.event, c.calling_function || 'send'); }
   /** a destroyed pet token unties the pet: it stays with its last holder and can get a new token (pet:deed) later. */
@@ -1819,7 +1830,7 @@
     for (; k < ix.ev.length; k++) { var e = ix.ev[k]; if (e.b < ACTIVATE_SALES_BLOCK) continue; if (inclusive ? e.b > upto : e.b >= upto) break;
       if (rulesOn(e.b) && !w._grand) grandfather(w, ix);
       if (e.n) { if (mintTiesOn(e.b)) applyMint(w, e.n, e.b, ix); continue; }
-      if (e.o) { if (w.deeds[e.o.give_asset]) addListing(w, e.o, e.b); } else if (e.m) applyMatch(w, e.m); else if (e.c) applyCredit(w, e.c, e.b); else if (e.x) applyDestroy(w, e.x, e.b); }
+      if (e.o) { if (w.deeds[e.o.give_asset]) addListing(w, e.o, e.b); } else if (e.m) applyMatch(w, e.m); else if (e.c) applyCredit(w, e.c, e.b, ix); else if (e.x) applyDestroy(w, e.x, e.b); }
     if (!w._grand && rulesOn(upto)) grandfather(w, ix);
     try { Object.defineProperty(w, '_dexPos', { value: k, enumerable: false, writable: true, configurable: true }); } catch (x) { } }
   /** mintId(desc) -> the pet id a token description names (deedDescOk forms), or null. */
@@ -4930,7 +4941,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
+  return { ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
     ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
