@@ -1177,6 +1177,17 @@
   };
   SPECIES.forEach(function (sp) { if (SMALL_MAPS[sp.id]) sp.small = SMALL_MAPS[sp.id]; });
   /* SMALL_MAPS:END */
+  /* Chad v4 display art, selected from local approved art commit 92cef1d2.
+   * Freeze the original generation table BEFORE display-only registration.
+   * Block-aware future hatch eligibility is exclusively in v2-rules. */
+  var GENERATION_SPECIES = SPECIES.slice();
+  var CHAD_ART = {"adult":[".....3333333......","...33444444333....","..33444433333333..",".3344433333333333.",".333333bbbbbbbbbb.","33bbbbbbbbbbbbbbbb","3bbbbBBBBbbBBBBbb.","3bbbbEPPEbbEPPEbb.","bbbbbEPPEbbEPPEbb.","bbbbbbbbbb1bbbbb1.","2bbbbbbbbbb1bbbbb.","22bbbbbbbbbb1bbbbb","222bbbbbb222222bb.",".222bbb2252225222.",".2222222425524222.","..222224225242222.","...22222425222222.","....2222425222222.",".....22225222222..","......22222222....","..aaaaaaaaaaaaaa..","aaaaaaaaaaaaaaaaaa"],"small1":["..3344433..",".344433333.",".333bbbbbb.","3bBBbbBBbb3","bbEPbbEPbbb","bbEPbbEPbbb","bbbbb1bbbbb","22bbbb2222.","22222224222","22222524222",".222242222.","..2225222..","...22222...","aaaaaaaaaaa"],"small2":["....33333.....","..334444333...",".344433333333.",".333bbbbbbbbb.","3bbbBBbbbBBbbb","3bbbEPPEbEPPEb","bbbbEPPEbEPPEb","bbbbbbbb1bbbb.","bbbbbbbbb1bbbb","2bbbb222222bb.",".222225225222.",".222242552222.","..22225242222.","...2222422222.","....22252222..","..aaaaaaaaaa..","aaaaaaaaaaaaaa"],"palette":{"body":"#eedcca","accent":"#171a22","belly":"#d7b66b"},"colors":{"1":{"from":"body","dark":0.24},"2":"#d7b66b","3":"#baa066","4":"#f3dc97","5":"#987b46"}};
+  var chad = JSON.parse(JSON.stringify(byId(SPECIES, 'chud')));
+  Object.assign(chad, { id: 'chad', label: 'Chad', w: 8, canon: CHAD_ART.palette,
+    colors: CHAD_ART.colors, eyeWhite: '#ffffff', pupil: '#263d4e', glasses: false,
+    map: CHAD_ART.adult, small: {1: CHAD_ART.small1, 2: CHAD_ART.small2}, pose: null,
+    arc: [['Steady','base','keep','base'],['Steady','base','keep','base'],['Steady','base','keep','base'],['Steady','base','keep','base'],['Steady','base','keep','base']], egg: {shell:'#f3e8cf',spot:'#b9a16b'} });
+  SPECIES.push(chad);
   var COMMUNITY_SPECIES = 'nakamoto';
   var CHARKEY = { b: 'body', a: 'accent', l: 'belly', k: 'ink', B: 'brow', w: 'white', z: 'muzzle', Z: 'muzzleb', E: 'eye', P: 'pupil', m: 'mouth',
     h: 'horn', g: 'gold', T: 'tear', f: 'ember', F: 'ember2', r: 'spr', v: 'spv', e: 'spe',
@@ -1318,7 +1329,7 @@
     else if (r < TIERS[3].chance + TIERS[2].chance + TIERS[1].chance) tierIdx = 1;
     if (input.community) tierIdx = 3;
 
-    var species = rng.pick(SPECIES, tierIdx);
+    var species = rng.pick(GENERATION_SPECIES, tierIdx);
     if (input.community) species = byId(SPECIES, COMMUNITY_SPECIES);
     rng.next(); // v3.16: former palette roll (one PRNG draw, result discarded) so later traits do not shift
     var pattern = rng.pick(PATTERNS, tierIdx);

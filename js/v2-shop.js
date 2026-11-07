@@ -435,7 +435,7 @@
   function paintHero(el, w, P) { put(el.querySelector('.sc-hc'), framesFor(w, P, window.V2Rules.wornOf(w, P.id).map(function (x) { return x.item; }))); }
   var SLOT_ORDER = ['head', 'hand', 'body', 'back', 'face', 'feet'];
   function framesFor(w, P, ids) { var R = window.V2Render; try { return R.framesWith(P.art, P.stage, ids, P.blackEye ? ['v2-black-eye'] : []); } catch (e) { return null; } }
-  function put(c, fr) { if (!c || !fr || !fr[0]) return; try { c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data), 32, 32), 0, 0); } catch (e) { } }
+  function put(c, fr) { if (!c || !fr || !fr[0]) return; try { if(window.V2Render) V2Render.paint(c,fr[0]); else c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data),32,32),0,0); } catch (e) { } }
   function paintTry(el, w, P, g, sl, wearing) { var V = window.V2Rules, worn = V.wornOf(w, P.id), now = worn.map(function (x) { return x.item; }), aft = worn.filter(function (x) { return x.slot !== sl; }).map(function (x) { return x.item; }).concat([g.item]);
     put(el.querySelector('.sc-now'), framesFor(w, P, now)); put(el.querySelector('.sc-after'), framesFor(w, P, wearing ? now : aft)); }
   function bindBest(el, w, P) { var U = window.V2UI, V = window.V2Rules, ME = U.ME; if (!P) return; var free = (w.itemList || []).filter(function (x) { return x.owner === ME && x.on == null; }), worn = V.wornOf(w, P.id), out = [];
