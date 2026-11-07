@@ -73,6 +73,30 @@
       '<button type="button" class="q psp-done">Done</button>';
     var bx = $('fSpBox'); if (bx.__h !== h) { var st = bx.scrollTop; bx.innerHTML = h; bx.__h = h; bx.scrollTop = st; }
     var bt = $('fSpBtn'), lb = spsLabel(); if (bt.textContent !== lb) bt.textContent = lb; bt.classList.toggle('on', !!F.sps.length); }
+  /* rarity-filter-1107 (display only): the old 'Rarity' filter (F.tier / #fTier, hidden since mypets-top) comes back as 8-bit pill buttons
+   * under the controls: All + Common, Uncommon, Rare, Legendary, each with how many of this player's pets it has. One tap = only that rarity
+   * (works with Find, Sort, Species, Starred and paging; saved with the other filters; Reset clears it). Only the 4 public tiers are shown. */
+  var RAR = [['all', 'All'], ['common', 'Common'], ['uncommon', 'Uncommon'], ['rare', 'Rare'], ['legendary', 'Legendary']], RAR_ID = ['common', 'uncommon', 'rare', 'legendary'];
+  function rarMount() { if ($('fRarRow')) return true; var row = $('ctlRow'); if (!row) return false;
+    var d = document.createElement('div'); d.id = 'fRarRow'; d.className = 'rarpills'; d.setAttribute('role', 'group'); d.setAttribute('aria-label', 'Show only this rarity');
+    row.parentNode.insertBefore(d, row.nextSibling);
+    if (!$('fRarCss')) { var st = document.createElement('style'); st.id = 'fRarCss';
+      st.textContent = '#petsPanel .rarpills{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}' +
+        '#petsPanel .rarpill{font:inherit;font-size:12px;cursor:pointer;padding:5px 10px;min-height:32px;border:2px solid #000;border-radius:999px;box-shadow:2px 2px 0 #000;background:#16211a;color:#dfe;display:inline-flex;align-items:center;gap:6px}' +
+        '#petsPanel .rarpill .n{opacity:.75}#petsPanel .rarpill:active{transform:translate(2px,2px);box-shadow:none}#petsPanel .rarpill.zero{opacity:.45}' +
+        '#petsPanel .rarpill[data-r=common]{border-color:#000}#petsPanel .rarpill[data-r=uncommon] .dot{background:#5fd35f}#petsPanel .rarpill[data-r=rare] .dot{background:#4aa3ff}#petsPanel .rarpill[data-r=legendary] .dot{background:#ffcc33}#petsPanel .rarpill[data-r=common] .dot{background:#bbb}' +
+        '#petsPanel .rarpill .dot{width:8px;height:8px;display:inline-block;border:1px solid #000}' +
+        '#petsPanel .rarpill[aria-pressed=true]{background:#ffe066;color:#111}#petsPanel .rarpill[aria-pressed=true] .n{opacity:1}' +
+        '@media (max-width:640px){#petsPanel .rarpills{gap:5px}#petsPanel .rarpill{padding:4px 8px;font-size:11px}}';
+      document.head.appendChild(st); }
+    d.addEventListener('click', function (e) { var b = e.target.closest('.rarpill'); if (!b) return; var r = b.getAttribute('data-r');
+      F.tier = (r === F.tier && r !== 'all') ? 'all' : r; if ($('fTier')) $('fTier').value = F.tier; saveF(); U.render(); });
+    return true; }
+  function paintRar(pets) { if (!rarMount()) return; var c = { all: pets.length };
+    pets.forEach(function (p) { var k = RAR_ID[p.tier]; if (k) c[k] = (c[k] || 0) + 1; });
+    var cur = RAR_ID.indexOf(F.tier) >= 0 ? F.tier : 'all';
+    var h = RAR.map(function (r) { var n = c[r[0]] || 0; return '<button type="button" class="rarpill' + (n || r[0] === cur ? '' : ' zero') + '" data-r="' + r[0] + '" aria-pressed="' + (r[0] === cur) + '">' + (r[0] === 'all' ? '' : '<span class="dot"></span>') + esc(r[1]) + ' <span class="n">' + fmt(n) + '</span></button>'; }).join('');
+    var d = $('fRarRow'); if (d.__h !== h) { d.innerHTML = h; d.__h = h; } }
   /* the checked pets that are on the (filtered) list; with no species ticked this is every checked pet, as before */
   function spsShown(ids) { if (!F.sps.length) return ids; var w = lastW || U.world(), sh = new Set(U.petList(w).map(function (p) { return p.id; })); return ids.filter(function (id) { return sh.has(Number(id)); }); }
   window.UXB = {};
@@ -95,10 +119,10 @@
   }
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
-    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
+    var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintRar(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
     $('fShowing').textContent = shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''; /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
-    $('ctlToggle').textContent = '⚙️ More filters' + ((F.tier !== 'all' || F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
+    $('ctlToggle').textContent = '⚙️ More filters' + ((F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
   }
 
   // ================================================================ F. origin badges
