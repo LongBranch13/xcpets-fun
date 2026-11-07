@@ -1,6 +1,6 @@
 {
- "lastBlock": 974913,
- "count": 172,
+ "lastBlock": 974916,
+ "count": 173,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2064,6 +2064,18 @@
    "name": "Shirupip",
    "species": "peepo",
    "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66093,
+   "asset": "A1145666566673282421",
+   "tiedBlock": 974916,
+   "tiedTx": "9d00d5ce0d47b636da580d7af73c485b070fc5a584c67038c014426f8670bb0d",
+   "kind": "deed",
+   "name": "Moohafabit",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
