@@ -1,6 +1,6 @@
 {
- "lastBlock": 974953,
- "count": 174,
+ "lastBlock": 974956,
+ "count": 176,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2090,6 +2090,30 @@
    "speciesLabel": "Bobo",
    "rarity": "Uncommon",
    "stage": "Mythic"
+  },
+  {
+   "id": 86548,
+   "asset": "A18189010040496638190",
+   "tiedBlock": 974956,
+   "tiedTx": "112421a8ac02ba80574109ac77e213aaa230270e9f730214f2c6d0e70ff10be2",
+   "kind": "deed",
+   "name": "Muvidoobun",
+   "species": "hyb3:doge:wojak:lenny",
+   "speciesLabel": "Dogjony (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 86549,
+   "asset": "A11913154224903075200",
+   "tiedBlock": 974956,
+   "tiedTx": "ec8386cce4070f3816fc86b994690f1a55ecbc1c0a2796ba2ebfd4f0a1a6e519",
+   "kind": "deed",
+   "name": "Fiyak",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
