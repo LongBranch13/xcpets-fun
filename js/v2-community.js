@@ -30,6 +30,31 @@
     var done = hs.filter(function (b) { return b <= tip + 1; }).length, next = hs.filter(function (b) { return b > tip + 1; })[0] || null;
     return { tip: tip, current: pub(cur), nextNo: nextNo, cold: cold, egg: egg, prevEgg: prevEgg, last: last, halvings: hs, halvingsDone: done, nextHalving: next };
   }
+  /** eraOf(w, p): community pet active at the immutable birth block (display only).
+   * Block-level convention: the new era includes the hand-off block, not a tx order.
+   * Early arrivals were gated AFTER Cold Storage: use max(previous record, rule gate).
+   * Future catalogue entries follow ACTIVATE_<ID>_BLOCK, or can name eraGate explicitly.
+   * Never infer an arrival from a halving, egg species, today's pet, or an unset gate. */
+  function eraOf(w, p) {
+    var b = p && p.hatchBlock, V = window.V2Rules, c = w && w.community;
+    if (!c || !V || !p || p.community || b == null || !Number.isSafeInteger(+b) || +b <= 0 || !(w.tip >= +b)) return null;
+    var first = PETS[0]; if (!first) return null;
+    var eras = [{ pet: first, block: 0 }];
+    PETS.slice(1).forEach(function (q, ix) {
+      var prev = PETS[ix], r = prev.rec ? w[prev.rec] : { block: c.returnBlock };
+      if (!r || r.block == null || !Number.isSafeInteger(+r.block) || +r.block <= 0 || +r.block > w.tip) return;
+      var start = +r.block;
+      if (ix > 0) {
+        var gate = V[q.eraGate || ('ACTIVATE_' + q.id.toUpperCase() + '_BLOCK')];
+        if (gate == null || !Number.isSafeInteger(+gate) || +gate <= 0) return;
+        start = Math.max(start, +gate);
+      }
+      if (start <= w.tip) eras.push({ pet: q, block: start });
+    });
+    eras.sort(function (a, z) { return a.block - z.block || a.pet.no - z.pet.no; });
+    var found = eras.filter(function (e) { return e.block <= +b; }).pop();
+    return found ? { id: found.pet.id, name: found.pet.short || found.pet.name, start: found.block, birth: +b } : null;
+  }
   function costText(base, done) { if (!(base > 0)) return null; var v = Math.round(base / Math.pow(2, done) * 1e8) / 1e8; return v.toLocaleString('en-US', { maximumFractionDigits: 8 }); }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
   function up(t) { return t ? t[0].toUpperCase() + t.slice(1) : ''; }
@@ -77,7 +102,7 @@
   function fromWorld(w) { var s = state(w); set(s); return s; }
   /* no replay on this page: read the hourly feed (same replay); quiet on failure, the HTML text stays */
   function fromFeed() { if (!window.fetch || window.V2Mock) return; fetch('api/meta.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) { if (m && m.community && !last) set(m.community); }).catch(function () { }); }
-  window.V2Community = { PETS: PETS, byId: byId, state: state, apply: apply, set: set, fromWorld: fromWorld, current: function () { return last; }, text: T, petLine: petLine, costText: costText };
+  window.V2Community = { eraOf: eraOf, PETS: PETS, byId: byId, state: state, apply: apply, set: set, fromWorld: fromWorld, current: function () { return last; }, text: T, petLine: petLine, costText: costText };
   if (typeof document !== 'undefined' && document.addEventListener && document.querySelector) { var go = function () { if (!document.body || document.body.getAttribute('data-v2page')) return; fromFeed(); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 })();
