@@ -43,11 +43,11 @@
   var PETL = ['gm. Room for two?', 'One key pls.', 'Cash. No receipt.', 'Just a nap. Swear.'];
   var SPR = {};
   function spr(p, sil) { var k = p.id + (sil ? 's' : ''); if (SPR[k]) return SPR[k]; var out = [];
-    try { var fr = window.V2Render.petFrames(p, S.w); fr.forEach(function (f) { var c = document.createElement('canvas'); c.width = c.height = 32; window.V2Render.paint(c, f); var g0 = c.getContext('2d'), id = g0.getImageData(0, 0, 32, 32), d = id.data, r0 = d[0], g1 = d[1], b0 = d[2]; /* key out the sprite's backdrop (corner colour) */
+    try { var fr = window.V2Render.petFrames(p, S.w); fr.forEach(function (f) { var c = document.createElement('canvas'); c.width = c.height = 32; window.V2Render.paint(c, f); var g0 = c.getContext('2d'), id = g0.getImageData(0, 0, c.width, c.height), d = id.data, r0 = d[0], g1 = d[1], b0 = d[2]; /* key out the sprite's backdrop (corner colour) */
       for (var q = 0; q < d.length; q += 4) if (Math.abs(d[q] - r0) + Math.abs(d[q + 1] - g1) + Math.abs(d[q + 2] - b0) < 12) d[q + 3] = 0; g0.putImageData(id, 0, 0);
-      if (sil) { var g = c.getContext('2d'); g.globalCompositeOperation = 'source-in'; g.fillStyle = sil; g.fillRect(0, 0, 32, 32); } out.push(c); }); } catch (e) { out = []; }
+      if (sil) { var g = c.getContext('2d'); g.globalCompositeOperation = 'source-in'; g.fillStyle = sil; g.fillRect(0, 0, c.width, c.height); } out.push(c); }); } catch (e) { out = []; }
     if (Object.keys(SPR).length > 80) SPR = {}; return (SPR[k] = out); }
-  function putPet(x, p, cx, by, sz, t, sil, alpha) { var f = spr(p, sil); if (!f.length) return; var c = f[Math.floor(t / 300) % f.length]; x.save(); if (alpha != null) x.globalAlpha = alpha; x.drawImage(c, Math.round(cx - sz / 2), Math.round(by - sz), sz, sz); x.restore(); }
+  function putPet(x, p, cx, by, sz, t, sil, alpha) { var f = spr(p, sil); if (!f.length) return; var c = f[Math.floor(t / 300) % f.length]; x.save(); if (alpha != null) x.globalAlpha = alpha; V2Render.drawSprite(x,c,Math.round(cx-sz/2),Math.round(by-sz),sz,false,{x:0,y:24,w:x.canvas.width,h:x.canvas.height-24}); x.restore(); }
   function door(x, dx, col) { px(x, '#1a1010', dx - 1, 79, 24, 41); px(x, col, dx, 80, 22, 40); px(x, '#00000033', dx + 3, 84, 16, 14); px(x, '#00000033', dx + 3, 102, 16, 15); px(x, '#ffd166', dx + 17, 100, 2, 2); } /* ONE door size for office + rooms = the red room door (22x40, owner 8:39 PM CT) */
   function lerp(a, b, k) { return a + (b - a) * Math.max(0, Math.min(1, k)); }
   var OD = 151, WY = 140, SLA = 200, SLB = 238; /* office door x, walkway feet y, room slots */

@@ -21,13 +21,13 @@
   /* arena-injury: the key is the flat #ff00fe plus pet-core's ground shadow on it (mix(key, black, 0.4) = #990098). The arena frames use the
    * non-swappable 'keyed' background so V2Bg never repaints the key as a stripe/dot pattern (the magenta stripes around #4409 in fight #6). */
   function isKey(D, j) { return D[j + 1] === 0 && ((D[j] === 255 && D[j + 2] === 254) || (D[j] === 153 && D[j + 2] === 152)); }
-  function toCanvas(img, tint) { var c = document.createElement('canvas'); c.width = c.height = 32; if (!img) return c; var d = new ImageData(new Uint8ClampedArray(img.data), 32, 32);
+  function toCanvas(img, tint) { var c = document.createElement('canvas'); if(!img){c.width=c.height=32;return c;} img=V2Render.nativeFrame(img);c.width=img.width||32;c.height=img.height||32;var d = new ImageData(new Uint8ClampedArray(img.data), c.width, c.height);
     for (var j = 0; j < d.data.length; j += 4) if (isKey(d.data, j)) d.data[j + 3] = 0;
     if (tint) for (var i = 0; i < d.data.length; i += 4) { if (!d.data[i + 3]) continue; var g = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2], side = ((i / 4) % 32) < 14 ? 22 : ((i / 4) % 32) > 19 ? -18 : 0, v = Math.max(40, Math.min(235, 62 + g * 0.62 + side));
       /* arena-sharp-text: carved stone (cool grey), lit on the left, shaded on the right, so it reads as a statue and not a live pet */ d.data[i] = v; d.data[i + 1] = v; d.data[i + 2] = Math.min(255, v + 10); }
     c.getContext('2d').putImageData(d, 0, 0); return c; }
   /* arena-sharp-text: a black silhouette of the statue for a 1px outline against the sand */
-  function silhouette(src) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'); x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#0a0812'; x.fillRect(0, 0, 32, 32); return c; }
+  function silhouette(src) { var c = document.createElement('canvas'); c.width=src.width;c.height=src.height; var x = c.getContext('2d'); x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#0a0812'; x.fillRect(0, 0, c.width, c.height); return c; }
   /* arena-sharp-text (owner 9:31/9:32 PM CT, everything looked blurry): the 320x180 scene used to be a 320x180 bitmap stretched by CSS to the page width
    * (996 px at 1280 = 3.11x, 286 px on a 390 phone = 0.89x), so pixels came out uneven and the 4-6 px canvas text smeared. Now the backing store is
    * 320*k x 180*k with an integer k >= CSS width * devicePixelRatio / 320 and everything draws in the same 320x180 units through setTransform(k): sprites stay
@@ -74,15 +74,15 @@
     r('#3a2a10', CX - 32, top + 5, 64, 16); r('#ffd166', CX - 31, top + 6, 62, 14); /* gold nameplate */
     [CX - 44, CX + 42].forEach(function (tx, n) { r('#0a0812', tx - 1, top + 6, 4, 25); r('#7a5a2a', tx, top + 8, 2, 22); r('#3a2a10', tx - 1, top + 6, 4, 2); var f2 = (fl + n) % 3; r('rgba(255,170,60,.18)', tx - 4, top - 3, 10, 10); r('#ff7a1a', tx - 1, top + 1 - f2 % 2, 4, 5); r('#ffd166', tx, top + 2, 2, 3 - (f2 === 2 ? 1 : 0)); }); /* torches */
     x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-    if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { x.drawImage(S.statueSil, CX - 16 + o[0], top - 32 + o[1], 32, 32); }); } x.drawImage(S.statue, CX - 16, top - 32, 32, 32);
+    if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { V2Render.drawSprite(x,S.statueSil,CX-16+o[0],top-32+o[1],32,false,{x:CX-38,y:26,w:76,h:top-26}); }); } V2Render.drawSprite(x,S.statue,CX-16,top-32,32,false,{x:CX-38,y:26,w:76,h:top-26});
       x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, top - 23 + (lv === 2 ? -1 : 0), 2, 2); } /* laurel */
       if (small()) bigPlate(x, '#' + S.champ.p.id, top + 17); else { plateText(x, String(S.champ.p.name || 'Pet'), ' #' + S.champ.p.id, top + 12); plateText(x, S.champ.streak + ' WIN STREAK', '', top + 18); } if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
     else if (small()) bigPlate(x, 'OPEN', top + 17); else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
     x.textAlign = 'left'; if (window.V2ArenaFun) V2ArenaFun.beltCase(x, !(S.champ && S.champ.streak >= 3)); }
-  function actor(a, t) { var x = S.x, bob = Math.floor(t / 120) % 2; x.save(); if (a.flip) { x.translate(Math.round(a.x) + 12, 0); x.scale(-1, 1); x.drawImage(a.img[Math.floor(t / 150) % a.img.length], -12, Math.round(a.y) - 24 - bob, 24, 24); } else x.drawImage(a.img[Math.floor(t / 150) % a.img.length], Math.round(a.x) - 12, Math.round(a.y) - 24 - bob, 24, 24); x.restore(); }
+  function actor(a,t){var g=S.x,bob=Math.floor(t/120)%2;V2Render.drawSprite(g,a.img[Math.floor(t/150)%a.img.length],Math.round(a.x)-12,Math.round(a.y)-24-bob,24,!!a.flip,{x:0,y:26,w:W,h:H-26});}
   function caption(s) { if (!s) return; var x = S.x; x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(s, CX + 1, 171); x.fillStyle = '#ffd166'; x.fillText(s, CX, 170); x.textAlign = 'left'; }
   function frame(now) { if (!S.x) return; var t = now - S.t0; bg(now);
-    if (S.mode === 'walk') { var k = Math.min(1, t / 2600); S.actors.forEach(function (a, i) { var tx = i ? CX + 40 : CX - 40, ty = 166; var e = k < .4 ? k / .4 : 1; a.x = TUN.x + (tx - TUN.x) * (k < .4 ? 0.25 * e : 0.25 + 0.75 * (k - .4) / .6) - (i ? 10 * (1 - k) : 0); a.y = 80 + (ty - 80) * Math.min(1, k * 1.6); a.flip = i === 1 && k > .95; actor(a, now); if (window.V2FightTag) V2FightTag.canvas(S.x, a.p, (S.actors[1 - i] || {}).p, Math.round(a.x), Math.round(a.y) - 30); }); /* fight-owner-labels */
+    if (S.mode === 'walk') { var k = Math.min(1, t / 2600); S.actors.forEach(function (a, i) { var tx = i ? CX + 40 : CX - 40, ty = 166; var e = k < .4 ? k / .4 : 1; a.x = TUN.x + (tx - TUN.x) * (k < .4 ? 0.25 * e : 0.25 + 0.75 * (k - .4) / .6) - (i ? 10 * (1 - k) : 0); a.y = 80 + (ty - 80) * Math.min(1, k * 1.6); a.flip = i === 1 && k > .95; actor(a, now); if (window.V2FightTag) V2FightTag.canvas(S.x, a.p, (S.actors[1 - i] || {}).p, Math.round(a.x), Math.round(a.y) - 30 - (((a.img[0]||{}).height||32)-32)*24/32); }); /* fight-owner-labels */
       caption('#' + S.actors[0].p.id + '  VS  #' + S.actors[1].p.id); if (k >= 1 && S.onWalk) { var cb = S.onWalk; S.onWalk = null; setTimeout(cb, 250); } }
     else if (S.mode === 'fight') fightFrame(now);
     else if (S.mode === 'result') resultFrame();

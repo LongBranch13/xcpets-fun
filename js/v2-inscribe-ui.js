@@ -22,7 +22,7 @@
   function broadcast(raw) { return F('/tx', { method: 'POST', body: raw }).then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error('broadcast refused: ' + t.slice(0, 200)); return t.trim(); }); }); }
   function txLink(id) { return '<a href="' + esc(E.explorer) + '/tx/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…</a>'; }
   function inscLink(id) { return E.ordinals ? '<a href="' + esc(E.ordinals) + '/inscription/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…i0</a>' : '<span title="' + esc(id) + '">' + esc(id.slice(0, 10)) + '…i0</span>'; }
-  function toF(img) { return { w: img.width || 32, h: img.height || 32, data: new Uint8ClampedArray(img.data) }; }
+  function toF(img) { img=R.exportFrame(img); return { w: img.width || 32, h: img.height || 32, data: new Uint8ClampedArray(img.data) }; }
   function distinctFrames(fr) { var out = [fr[0]]; for (var k = 1; k < fr.length; k++) { var a = fr[k].data, b = fr[0].data, same = true; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) { same = false; break; } if (!same) out.push(fr[k]); } return out.length > 1 ? fr : [fr[0]]; }
   /* ---- canonical render: the ONLY art source (inscribing AND validating others' inscriptions) ---- */
   var wcache = {};
