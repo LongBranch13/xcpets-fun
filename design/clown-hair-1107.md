@@ -64,3 +64,13 @@ clamped to the eye span (no beaks/snouts), one puff column down each temple,
 always one clear row above the eyes, ink outline only on the outside. No
 floating side curls. Previews: /workspace/xcpets/previews/clown-hair-refit-1107/
 (before/ = 17deaa39, after/ = refit; 12 species, every stage, 4 frames).
+
+## Honk redraw 1107 (owner: refit "looks terrible" 8:49 AM CT; reference + "they should get the nose too" 8:51 AM CT)
+Redrawn from scratch to match the owner's Honk Pepe reference: a chunky mass of
+big overlapping round puffs (red, yellow, green, blue; shade + white glint per puff,
+ink outline) arcing over the head and bulging past both sides, plus a round red
+clown nose INCLUDED in the same Clown Hair item (face centre just below the eyes;
+side-view faces get it on the snout front). Eye pixels + 1px ring are keep-out for
+both pieces. Previews: /workspace/xcpets/previews/clown-hair-honk-1107/
+(reference-vs-peepo-adult.png, clown-hair-contact-sheet.png, per species/stage png+gif).
+No rule/renderer changes; replay SAME on 971786, 972883, 972901.
