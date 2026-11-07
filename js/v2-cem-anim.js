@@ -40,27 +40,30 @@
     var wd = Math.round(g.measureText(s).width / u) * u, X = Math.round(x * k) - (align === 'left' ? 0 : align === 'right' ? wd : Math.round(wd / 2 / u) * u), Y = Math.round(y * k);
     if (c !== C.ol) { g.fillStyle = C.ol; g.fillText(s, X + u, Y + u); } g.fillStyle = c; g.fillText(s, X, Y); g.restore(); }
   /* ---- sprites: the pet's own 32x32 pixel art on a keyed background (only the pet moves, never its square tile) ---- */
-  var SPR = {};
+  var SPR = {}, SPR_WORLD = null;
   function R() { return window.V2Render || null; }
   function Z() { return window.V2ZombieLook || null; }
-  function keyedRGBA(p) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
-    r.paint(c, r.framesWith(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, [])[0]);
-    var d = c.getContext('2d').getImageData(0, 0, 32, 32), a = d.data; for (var i = 0; i < a.length; i += 4) if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) a[i + 3] = 0;
+  // Read raw frames: R.paint may attach card-only Mythic DOM effects to a
+  // detached canvas. Never let a card effect failure replace the pet with a blob.
+  // Keep the real stage and worn equipment; key only the background.
+  function keyedRGBA(p, fi) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null;
+    var art = Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }); delete art.bgV2;
+    var ids = r.worn && SPR_WORLD ? r.worn(SPR_WORLD, p.id).map(function (g) { return g.item; }) : [];
+    var frames = r.framesWith(art, p.stage, ids), frame = frames && frames[(fi || 0) % frames.length];
+    if (!frame || !frame.data || frame.data.length !== 4096) return null;
+    var a = new Uint8ClampedArray(frame.data); for (var i = 0; i < a.length; i += 4) if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) a[i + 3] = 0;
     /* edge pixels blended with the magenta key (a pink fringe) also go: only where they touch a keyed pixel, so pink pets keep their colour */
     var kill = []; for (var q = 0; q < 1024; q++) { var j = q * 4; if (!a[j + 3] || !(a[j] - a[j + 1] > 60 && a[j + 2] - a[j + 1] > 50)) continue; var x = q % 32, y = (q / 32) | 0;
       if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X < 0 || Y < 0 || X > 31 || Y > 31 || !a[(Y * 32 + X) * 4 + 3]; })) kill.push(j); }
     kill.forEach(function (j) { a[j + 3] = 0; }); return a; }
   function toCanvas(a) { var c = document.createElement('canvas'); c.width = c.height = 32; var id = c.getContext('2d').createImageData(32, 32); id.data.set(a); c.getContext('2d').putImageData(id, 0, 0); c.rgba = a; return c; }
-  function fallback(mode) { var a = new Uint8ClampedArray(4096), col = mode === 'live' ? [232, 200, 150] : [90, 160, 80];
-    function put(x, y, k) { var j = (y * 32 + x) * 4; a[j] = k[0]; a[j + 1] = k[1]; a[j + 2] = k[2]; a[j + 3] = 255; }
-    for (var y = 10; y < 32; y++) for (var x = 10; x < 22; x++) if (y > 12 || (x > 11 && x < 20)) put(x, y, col);
-    put(13, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); put(18, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); return toCanvas(a); }
-  function sprite(p, mode, fi) { mode = mode || 'live'; fi = fi || 0; var k = (p ? p.id : 0) + ':' + mode + ':' + (mode === 'live' ? 0 : fi % 4); if (SPR[k]) return SPR[k]; var out = null;
-    try { if (mode === 'live') { var a = keyedRGBA(p); out = a ? toCanvas(a) : null; }
-      else { var z = Z(); if (z && p && p.art) { var run = function () { return keyedRGBA(p); }, base = z.noHand ? z.noHand(run) : run();
+  function sprite(p, mode, fi) { mode = mode || 'live'; fi = fi || 0; var k = JSON.stringify([p && p.id, p && p.stage, p && p.art, mode, fi % 4, p && R() && R().worn && SPR_WORLD ? R().worn(SPR_WORLD, p.id).map(function (g) { return g.item; }) : []]); if (SPR[k]) return SPR[k]; var out = null;
+    try { if (mode === 'live') { var a = keyedRGBA(p, fi); out = a ? toCanvas(a) : null; }
+      else { var z = Z(); if (z && p && p.art) { var run = function () { return keyedRGBA(p, fi); }, base = z.noHand ? z.noHand(run) : run();
           var E = (z.gameEyes && z.gameEyes(p.art, p.stage, fi % 4)) || (z.starEyes ? z.starEyes(p.art, p.stage, fi % 4) : null);
           var r = base && z.transparent(base, p.id, fi % 4, 4, { ground: false, eyes: E, feral: mode === 'feral' }); out = r ? toCanvas(r.data) : null; } } } catch (e) { out = null; }
-    if (!out) out = fallback(mode); SPR[k] = out; return out; }
+    if (!out) { var raw = null; try { raw = keyedRGBA(p, fi); } catch (e) {} return raw ? toCanvas(raw) : toCanvas(new Uint8ClampedArray(4096)); }
+    if (Object.keys(SPR).length > 256) SPR = {}; SPR[k] = out; return out; }
   function topY(spr) { var a = spr.rgba; if (!a) return 8; for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) if (a[(y * 32 + x) * 4 + 3]) return y; return 8; }
   function drawSpr(g, spr, x, y, clipY, alpha) { g.save(); if (clipY != null) { g.beginPath(); g.rect(0, 0, W, clipY); g.clip(); } if (alpha != null) g.globalAlpha = alpha; g.drawImage(spr, Math.round(x), Math.round(y)); g.restore(); }
   function silhouette(g, spr, x, y, col) { var a = spr.rgba; if (!a) return; for (var q = 0; q < 1024; q++) if (a[q * 4 + 3]) px(g, x + (q % 32), y + ((q / 32) | 0), col); }
@@ -117,16 +120,18 @@
       var fy = Math.min(GY - 1 - (q % 3), y0 + y + 0.18 * d * d), fx = x0 + x + d * (0.5 + rr) * 0.9; px(g, fx, fy, grey[q % 4]); } }
   function zmealF(g, ev, f, P) { var vs = P.victims.slice(0, 3), n = P.victims.length, per = 13, s0 = 8, endF = s0 + vs.length * per;
     sky(g, f, 0); ground(g, 0); var spr = sprite(P.pet, f < endF ? 'zombie' : 'zombie', f >> 2), ate = clamp(Math.floor((f - s0) / per) + (((f - s0) % per) >= 6 ? 1 : 0), 0, vs.length), cur = Math.floor((f - s0) / per), t = (f - s0) % per;
-    var VX = [64, 84, 104], zx = 8; if (f >= s0 && cur < vs.length) zx = VX[cur] - 30 + (t < 4 ? Math.round(t * 2) - 8 : t < 8 ? 0 : -Math.round((t - 7))); else if (f >= endF) zx = VX[vs.length - 1] - 38;
+    var VX = [64, 84, 104], zx = 8; if (f >= s0 && cur < vs.length) zx = VX[cur] - 30 + (t < 4 ? Math.round(t * 2) - 8 : t < 8 ? 0 : -Math.round((t - 7))); else if (f >= endF) zx = (vs.length ? VX[vs.length - 1] : 64) - 38;
     if (f >= s0 && cur < vs.length && t < 4) zx = (cur ? VX[cur - 1] - 38 : 8) + Math.round((VX[cur] - 30 - (cur ? VX[cur - 1] - 38 : 8)) * t / 4);
     vs.forEach(function (v, i) { var x = VX[i], gone = i < ate, now = i === cur && t >= 4 && t < 6; if (gone) { if (i === cur && t < 12) blood(g, t - 6, 31 + i, x + 8, GY - 8); bones(g, x + 4, GY + 2 + (i % 2)); return; }
       var shiver = f % 2 && !now ? 1 : 0, vsp = sprite(v, 'live', 0); if (now) { g.save(); g.globalAlpha = 1; } g.drawImage(vsp, 0, 0, 32, 32, x + shiver, GY - 16, 16, 16); if (now) { g.restore(); px(g, x, GY - 16, '#ffffff', 16, 16); g.save(); g.globalAlpha = 0.6; g.drawImage(vsp, 0, 0, 32, 32, x, GY - 16, 16, 16); g.restore(); }
       if ((f + i) % 4 < 2) px(g, x + 13, GY - 18, '#27e1ff', 1, 2); });
-    drawSpr(g, spr, zx, GY - 31 + (f >= endF ? (f >> 1) % 2 : 0));
-    if (f >= s0 && cur < vs.length && t >= 4 && t < 7) text(g, 'CHOMP!', VX[cur] + 4, 30, C.b4, 5);
+    var chew = f >= s0 && cur < vs.length && t >= 4 && t < 10;
+    g.save(); g.translate(zx + 16 + (chew ? t % 2 : 0), GY);
+    drawSpr(g, spr, -16, -31 + (chew ? t % 2 : f >= endF ? (f >> 1) % 2 : 0)); g.restore();
+    if (f >= s0 && cur < vs.length && t >= 4 && t < 7) text(g, 'CHOMP!', CX, 19, C.b4, 5);
     var hunger = clamp(0.18 + 0.82 * (n ? ate / vs.length : 1), 0, 1); text(g, 'HUNGER', 6, 4, C.s2, 5, 'left'); px(g, 41, 4, C.ol, 42, 7); px(g, 42, 5, '#1a1d14', 40, 5); px(g, 42, 5, hunger >= 1 ? C.zg : '#8aa04c', Math.round(40 * hunger), 5);
     if (n > 3) text(g, '+' + (n - 3) + ' MORE', 122, 4, C.b4, 5, 'right');
-    if (f >= endF + 2) { px(g, zx + 26, GY - 40, '#ffffff', 26, 11); px(g, zx + 26, GY - 29, '#ffffff', 3, 3); text(g, 'BURP', zx + 39, GY - 37, C.ol, 6); }
+    if (f >= endF + 2) text(g, 'BURP!', CX, 19, C.gold2, 6);
     if (f >= endF + 6) text(g, 'FULL!', 104, 14, C.zg, 7); }
   function feralF(g, ev, f, P) { var on = f >= 6, shake = on && f < 20 ? (f % 2 ? 1 : -1) : 0; sky(g, f, on ? -(0.1 + 0.08 * (f % 2)) : 0); stone(g, 0, false); ground(g, 0); mound(g, 0, true); candles(g, 0.05, f);
     var spr = sprite(P.pet, on ? 'feral' : 'zombie', f >> 1); drawSpr(g, spr, CX - 16 + shake, GY - 31);
@@ -167,7 +172,7 @@
   function ptsOf(x) { var V = window.V2Rules, Pt = (V && V.CEM && V.CEM.POINTS) || [1, 3, 10, 33]; return Pt[Math.max(0, Math.min(3, (x && x.tier) | 0))]; }
   var PAINT = { raise: raiseF, 'resurrect-win': resF, 'resurrect-fail': resF, zmeal: zmealF, feral: feralF, crumble: crumbleF, hunted: crumbleF, pledge: pledgeF };
   function pets(ev, w) { var by = (w && w.byId) || {}; return { pet: by[ev.id] || ev.pet || null, victims: (ev.victims || []).map(function (id) { return by[id] || { id: id }; }) }; }
-  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
+  function paint(c, ev, f, w) { SPR_WORLD = w || null; var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || raiseF)(g, ev, f, pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function caption(ev, P) { var n = nm(P.pet, ev.id), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
     if (CAPS[ev.kind]) return CAPS[ev.kind](ev, P, n, b);
