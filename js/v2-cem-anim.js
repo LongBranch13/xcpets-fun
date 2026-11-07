@@ -186,6 +186,8 @@
       '.ca-cap{font-family:inherit;color:#b9ff9a;font-size:17px;text-align:center;text-shadow:2px 2px 0 #000;max-width:92vw;line-height:1.35}.ca-skip{color:#bbb;font-size:12px}';
     document.head.appendChild(s); }
   var BUSY = null;
+  /* download-clips-1107: ⬇️ Download (js/v2-clip.js, loaded on first use with this file's own ?v=) */
+  function clipLib(cb) { if (window.V2Clip) return cb(); var P = window.__clipP; if (!P) { P = window.__clipP = new Promise(function (res) { var me = document.querySelector('script[src*="js/v2-cem-anim.js"]'), v = me && /[?&]v=([0-9a-z]+)/.exec(me.src), t = document.createElement('script'); t.src = 'js/v2-clip.js' + (v ? '?v=' + v[1] : ''); t.onload = t.onerror = function () { res(); }; document.head.appendChild(t); }); } P.then(function () { if (window.V2Clip) cb(); }); }
   /* play(ev, {w, done}) -> {end, canvas, frame(k)}; ev = {kind, id, victims, roll, need, block, tx} */
   function play(ev, o) { o = o || {}; css(); var w = o.w || (window.V2Mock && V2Mock.world && V2Mock.world()), P = pets(ev, w), N = LEN[ev.kind] || 40;
     var ov = document.createElement('div'); ov.className = 'ca-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Cemetery: ' + ev.kind); ov.dataset.anim = ev.kind;
@@ -194,6 +196,7 @@
     ov.appendChild(c); ov.appendChild(cap); ov.appendChild(skip); document.body.appendChild(ov); var f = 0, tm = null, ended = false;
     function end() { if (ended) return; ended = true; clearInterval(tm); window.removeEventListener('keydown', end); ov.remove(); BUSY = null; if (o.done) try { o.done(); } catch (e) {} if (window.V2AnimDone) try { V2AnimDone(); } catch (e) {} }
     ov.addEventListener('click', end); window.addEventListener('keydown', end); BUSY = { end: end };
+    if (!o.still && !o.noClip) clipLib(function () { if (!ended) V2Clip.offer(ov, c, function (d) { ov.style.visibility = 'hidden'; return play(ev, { w: w, done: d }); }, caption(ev, P), (ev.kind === 'hunted' ? 'hunt' : ev.kind || 'clip') + '-' + (ev.id || '')); });
     var draw = function (k) { try { paint(c, ev, k, w); } catch (e) { if (window.console) console.warn('cem anim', e); } };
     try { if (window.V2SFX && ev.kind === 'raise' && V2SFX.rise) V2SFX.rise(); } catch (e) {}
     if (reduced() || o.still) { draw(KEY_F[ev.kind] || N - 1); skip.textContent = 'Tap to close'; if (!o.still) tm = setInterval(end, 3000); return { end: end, canvas: c, frame: draw }; }

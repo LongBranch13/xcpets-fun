@@ -171,7 +171,11 @@
     box.innerHTML = '<div class="lv-spot-in lv-' + e.cat + '"><span class="lv-spot-tag">★ SHARED EVENT ★</span>' +
       (p && p.art ? '<canvas class="lv-spot-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-sid="' + p.id + '"></canvas>' : '<span class="lv-spot-ico" aria-hidden="true">' + e.icon + '</span>') +
       '<p class="lv-spot-txt"><span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</p><p class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span></p>' +
-      '<p class="lv-spot-btns">' + (e.anim ? '<button type="button" class="btn lv-spot-play" data-sp="' + i + '">▶ Play it</button> ' : '') + shareBar(e, i) + ' <button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>';
+      '<p class="lv-spot-btns">' + (e.anim ? '<button type="button" class="btn lv-spot-play" data-sp="' + i + '">▶ Play it</button> ' : '') + '<span class="lv-spot-dl"></span>' + shareBar(e, i) + ' <button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>';
+    if (e.anim) loadAnims().then(function () { var d = box.querySelector('.lv-spot-dl'); if (!d || !root.V2Clip || d.firstChild) return; /* download-clips-1107: the shared moment as a video, recorded on this device */
+      d.appendChild(V2Clip.button(function () { var A = e.anim.lib === 'cem' ? root.V2CemAnim : root.V2LifeAnim; if (!A || !A.play) return Promise.reject(new Error('Animation not loaded')); if (A.busy && A.busy()) return Promise.reject(new Error('An animation is already playing'));
+        var ended = false, r = A.play(Object.assign({ block: e.block }, e.anim.ev), { w: W, noQueue: true, noClip: true, done: function () { ended = true; } }); if (!r || !r.canvas) return Promise.reject(new Error('Nothing to record'));
+        return V2Clip.record({ source: r.canvas, caption: e.icon + ' ' + plain(e), until: function () { return ended; }, tailMs: 200 }); }, { name: e.cat + '-' + e.block + '-' + (e.pet != null ? e.pet : '') })); });
     box.hidden = false; var c = box.querySelector('canvas[data-sid]'); if (c) { try { R.lazy(c, function () { return frames(p); }, true); } catch (x) {} } }
   function missing(k) { var box = $('lvSpot'); if (!box) return; var m = /^(\d+)-[^-]*-(\w+)-(\d+|x)$/.exec(k || ''), pid = m && m[3] !== 'x' ? +m[3] : null;
     box.innerHTML = '<div class="lv-spot-in"><span class="lv-spot-tag">★ SHARED EVENT ★</span><p class="lv-spot-txt">That event' + (m ? ' (block ' + fmt(+m[1]) + ')' : '') + ' is no longer in the last ' + Math.round(WINDOW / 144) + ' days of the feed' + (m && +m[1] > W.tip ? ', or its block is not read yet. Try again in a minute' : '') + '.</p><p class="lv-spot-btns">' + (pid != null && W.byId[pid] ? '<a class="btn" href="pet.html?id=' + pid + '">See ' + esc(nm(pid)) + ' →</a> ' : '') + '<button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>'; box.hidden = false; }
@@ -200,7 +204,7 @@
   function refresh() { try { if (build()) { needTime(W.tip); draw(); } status(); openWanted(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } }
   /* ---- animations: loaded on the first tap ---- */
   var animP = null;
-  function loadAnims() { if (animP) return animP; var L = ['js/v2-life-anim.js', 'js/v2-cem-anim.js', 'js/v2-mg-anim.js'];
+  function loadAnims() { if (animP) return animP; var L = ['js/v2-clip.js', 'js/v2-life-anim.js', 'js/v2-cem-anim.js', 'js/v2-mg-anim.js']; /* download-clips-1107: + the ⬇️ Download recorder */
     animP = L.reduce(function (p, src) { return p.then(function () { return new Promise(function (res) { var t = document.createElement('script'); t.src = src + (BUILD ? '?v=' + BUILD : ''); t.async = false; t.onload = res; t.onerror = res; document.body.appendChild(t); }); }); }, Promise.resolve()); return animP; }
   function play(e) { if (!e || !e.anim) return; loadAnims().then(function () { var A = e.anim.lib === 'cem' ? root.V2CemAnim : root.V2LifeAnim; if (!A || !A.play) return; if (A.busy && A.busy()) return;
       try { A.play(Object.assign({ block: e.block }, e.anim.ev), { w: W, noQueue: true }); } catch (x) { if (root.console) console.warn('[live] anim', x); } }); }
