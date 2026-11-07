@@ -23,11 +23,18 @@ await pg.mouse.move(0,0);await pg.waitForTimeout(1200);
 // Shop's Sell picker is a pure local modal. This never clicks a mint/list action.
 if(spec.name==='shop'&&!(await pg.locator(spec.badge).count()))throw Error('shop badges absent');
 assert.deepStrictEqual(errors,[],spec.name+' w'+width+' page errors');n++;
-const metrics=await pg.locator(spec.badge).evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect(),art=e.closest('.pet,.pcard,.sh-card,.ftnode')?.querySelector('canvas');const a=art?.getBoundingClientRect();return {text:e.textContent.trim(),era:e.dataset.era,width:r.width,visible:r.width>0&&r.height>0,overlap:!!a&&r.left<a.right&&r.right>a.left&&r.top<a.bottom&&r.bottom>a.top,title:e.title}}));
+const metrics=await pg.locator(spec.badge).evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect(),art=e.closest('.pet,.pcard,.sh-card,.ftnode')?.querySelector('canvas');const a=art?.getBoundingClientRect();return {text:e.textContent.trim(),era:e.dataset.era,width:r.width,visible:r.width>0&&r.height>0,overlap:!!a&&r.left<a.right&&r.right>a.left&&r.top<a.bottom&&r.bottom>a.top,title:e.title,icon:e.querySelector('.era-pet-icon')?.dataset.eraIcon,iconWidth:e.querySelector('.era-pet-icon')?.getBoundingClientRect().width,viewBox:e.querySelector('.era-pet-icon')?.getAttribute('viewBox'),crisp:e.querySelector('.era-pet-icon')?.getAttribute('shape-rendering')}}));
 assert(metrics.some(x=>x.visible),'visible badge '+spec.name);n++;assert(metrics.every(x=>!x.overlap),'no art overlap '+spec.name);n++;assert(metrics.every(x=>x.title.includes('Born in block')),'birth tooltip '+spec.name);n++;
+assert(metrics.filter(x=>x.visible).every(x=>x.icon===x.era),'correct community pet portraits '+spec.name);n++;assert(metrics.filter(x=>x.visible).every(x=>x.iconWidth===24&&x.viewBox==='0 0 24 24'&&x.crisp==='crispEdges'),'native crisp pixels '+spec.name);n++;
 if(spec.name==='my-pets')await pg.locator(spec.badge+':visible').first().scrollIntoViewIfNeeded();else{const target=pg.locator(spec.target);if(await target.count())await target.first().scrollIntoViewIfNeeded();else await pg.locator(spec.badge+':visible').first().scrollIntoViewIfNeeded();}
 await pg.screenshot({path:path.join(OUT,spec.name+'-'+width+'.png'),fullPage:false});
 if(spec.name==='pet-card'){await pg.evaluate(()=>scrollTo(0,0));const box=await pg.locator('#petCard').boundingBox();await pg.screenshot({path:path.join(OUT,'pet-card-crop-'+width+'.png'),clip:box});}
+await pg.locator(spec.badge+':visible').first().screenshot({path:path.join(OUT,'era-icon-crop-'+spec.name+'-'+width+'.png')});
+if(spec.name==='my-pets'&&width===1280){
+ await pg.evaluate(()=>{const g=document.createElement('section');g.id='eraIconGallery';g.style.cssText='display:flex;align-items:center;gap:14px;width:max-content;padding:20px;background:#101820;';const w=V2Mock.world(),seen={};w.pets.forEach(p=>{const e=V2Community.eraOf(w,p);if(e&&!seen[e.id]){seen[e.id]=1;g.insertAdjacentHTML('beforeend',V2Render.eraChip(w,p));}});document.body.appendChild(g);});
+ await pg.locator('#eraIconGallery').screenshot({path:path.join(OUT,'era-icons-native.png')});
+ await pg.locator('#eraIconGallery').evaluate(e=>e.remove());
+}
 report.push({surface:spec.name,width,errors,metrics});await ctx.close();
 }}finally{await b.close()}
 fs.writeFileSync(path.join(OUT,'browser-results.json'),JSON.stringify({checks:n,report,fixture:'Main block '+source.tip+' pets; wallet ownership grouped only in browser layout fixture. No wallet actions or non-local requests.'},null,2));console.log('era-badge-browser-test: '+n+' checks pass');})().catch(e=>{console.error(e);process.exitCode=1});

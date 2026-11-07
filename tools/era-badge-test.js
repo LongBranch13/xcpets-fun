@@ -25,4 +25,30 @@ vm.runInContext(fs.readFileSync(path.join(root,'js/v2-render.js'),'utf8'),c,{fil
 const html=c.V2Render.eraChip(w,p(974841));check(html.includes('White Rabbit era')&&html.includes('data-era="rabbit"'),'shared renderer label');check(html.includes('974,841')&&html.includes('Looks only'),'birth/help is accessible in title');check(html.includes('<svg')&&!/position:/.test(html),'8-bit icon, no sprite overlay');check(c.V2Render.eraChip(w,p(null))==='','missing birth never guesses');
 for(const f of ['js/v2.js','js/v2-pages.js','js/v2-sales.js','js/v2-cemetery-scene.js','js/v2-rugme.js','js/v2-token-gallery.js','js/v2-trait-rank.js'])check(fs.readFileSync(path.join(root,f),'utf8').includes('.eraChip('),'card integration '+f);
 for(const f of ['play.html','pet.html','shop.html','templates/game.html']){const t=fs.readFileSync(path.join(root,f),'utf8');check(t.indexOf('js/v2-community.js')<t.indexOf('js/v2-chain.js'),'catalogue before boot '+f)}
+// Real sprite pixels, no new art or rule changes. Delayed modules recover on a later render.
+check(html.includes('era-pending-icon'),'missing sprite keeps a safe fallback');
+for(const name of ['wizard','kek','funtrump','homer','rabbit'])vm.runInContext(fs.readFileSync(path.join(root,'js/'+name+'-sprite.js'),'utf8'),c,{filename:name+'-sprite.js'});
+for(const [birth,id] of [[971631,'nakamoto'],[971632,'wizard'],[972396,'kek'],[972880,'funtrump'],[973365,'homer'],[974841,'rabbit']]) {
+ const before=JSON.stringify(w),a=c.V2Render.eraChip(w,p(birth));
+ check(a.includes('data-era-icon="'+id+'"'),'actual portrait '+id);
+ check(a.includes('viewBox="0 0 24 24"')&&a.includes('shape-rendering="crispEdges"'),'native pixel geometry '+id);
+ check((a.match(/<path /g)||[]).length>2,'colored existing sprite '+id);
+ check(a===c.V2Render.eraChip(w,p(birth)),'stable cached portrait '+id);
+ check(before===JSON.stringify(w),'portrait never mutates replay '+id);
+}
+check(c.V2Render.eraChip(w,p(971632)).includes('#8a4fd8'),'Wizard uses purple community palette');
+check(c.V2Render.eraChip(w,p(972396)).includes('#2a4fbf'),'Kek uses community lapis palette');
+const realRabbit=c.RabbitSprite;
+c.RabbitSprite={draw(){throw Error('late/broken sprite')}};
+check(c.V2Render.eraChip(w,p(974841)).includes('era-pending-icon'),'broken sprite cannot break cards');
+c.RabbitSprite=realRabbit;
+check(c.V2Render.eraChip(w,p(974841)).includes('data-era-icon="rabbit"'),'sprite restoration recovers');
+C.PETS.push({id:'djpepe',no:7,name:'DJ Pepe',rec:'djpepeMythic'});
+c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975000;
+const djWorld={...w,tip:975100,rabbitMythic:{block:975000}};
+check(c.V2Render.eraChip(djWorld,p(975001)).includes('era-pending-icon'),'future sprite not yet loaded: graceful');
+c.DJPepeSprite={PAL:{f:'#23aabb'},draw(){return Array.from({length:32},(_,y)=>Array.from({length:32},(_,x)=>x===15&&y===8?'f':null))}};
+check(c.V2Render.eraChip(djWorld,p(975001)).includes('data-era-icon="djpepe"'),'future mixed-case DJPepeSprite discovered automatically');
+check(c.V2Render.eraChip(djWorld,p(975001)).includes('#23aabb'),'future real sprite pixels used, not a substitute');
+C.PETS.pop();delete c.DJPepeSprite;
 console.log('era-badge-test: '+n+' checks pass');

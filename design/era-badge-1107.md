@@ -67,3 +67,34 @@ stats, cost, ownership or replay behavior changes.
 - Four rule MD5s match main. Replay comparisons SAME at 971786, 972883 and 972901.
 - Live build stays 1620633b8a. No deployment, main merge, rule changes or wallet
   actions. Primary checkout and port 8841 untouched; no CloudAgent.
+
+## Tiny community portraits (owner pt2986u, 2026-11-07 CST)
+
+Each badge now includes a native 24-pixel adult head/upper-body crop from that
+era's existing sprite. Shared SVG paths keep the original pixel colors and
+crisp edges; portraits sit in normal badge flow, never over the pet art.
+Wizard/Kek use their community purple/lapis palettes. Nakamoto uses existing
+PetCore art; all other icons use the loaded sprite draw/palette APIs, not new art.
+
+The canonical catalogue supplies the species; sprite globals are discovered
+case-insensitively, so a future DJPepeSprite works without another renderer
+branch. Optional catalogue eraSprite can name a nonstandard module. Missing or
+broken modules retain the small hourglass and retry on a later render; successful
+portraits are cached by species and source module identity. No rules, RNG, world
+objects or saved pet fields change.
+
+85 era/unit checks and 48 browser checks passed, including actual colored
+portraits on all four surfaces at 1280/390, native 24-pixel geometry, no overlap,
+clean pages, late-module recovery and a synthetic future DJ Pepe module. Existing
+display16/community10/dependency18/sort16 checks passed. Replays SAME at
+971786/972883/972901; four standard rule MD5s equal origin/main.
+
+All prior screenshots regenerated. New native badge crops are
+era-icon-crop-{my-pets,pet-card,family,shop}-{1280,390}.png in the preview directory.
+era-icons-native.png shows all six canonical portraits. Run
+python3 tools/era-badge-zoom.py for nearest-neighbor zooms:
+era-icon-wizard-zoom.png, era-icon-homer-zoom.png, era-icon-rabbit-zoom.png,
+era-icon-card-zoom-1280.png and era-icon-card-zoom-390.png.
+These are enlarged actual browser crops, not a different mock-up.
+
+Local commit only. No push, merge or deployment.

@@ -1400,12 +1400,50 @@
     return out; }
   /** badgesOf(w, p): V2Rules.breederBadges with the MUTANT tip giving the real odds for this pet's source. */
   function badgesOf(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.breederBadges) return []; return V2.breederBadges(w, p).map(function (x) { return x.id === 'mutant' ? Object.assign({}, x, { tip: mutationTip(p) }) : x; }); }
+  // Read-only mini portraits from the canonical era's existing adult sprite. No RNG or pet writes.
+  // Resolve names case-insensitively: a future DJPepeSprite needs no renderer switch case.
+  var eraIconCache = Object.create(null);
+  function eraIcon(e) {
+    var C = window.V2Community, q = C && C.byId(e.id), sp = q && (q.sp || q.id), S, NG;
+    if (!sp) return '';
+    var wanted = String(q.eraSprite || (sp + 'Sprite')).toLowerCase();
+    var key = Object.keys(window).filter(function (k) { return k.toLowerCase() === wanted; })[0];
+    if (key) S = window[key];
+    NG = sp === 'nakamoto' && window.PetCore;
+    var source = S || NG, cached = eraIconCache[sp];
+    if (source && cached && cached.source === source) return cached.html;
+    var grid, pal, image;
+    try {
+      if (S && typeof S.draw === 'function') { grid = S.draw(3, 0, {}, { community: true }); pal = Object.assign({}, S.PAL, S.PAL_COMMUNITY); }
+      else if (NG && NG.characterPet && NG.render) {
+        var art = Object.assign({}, NG.characterPet('nakamoto'), { background: 'solid', bgColor: '#102d3d', band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
+        image = NG.render(art, { stage: 3, frame: 0, gearCap: 0, gearOverride: {} });
+      }
+      var paths = Object.create(null), pixels = 0;
+      // Native 24-pixel head/upper-body crop, drawn at 24 CSS pixels: no fractional resampling.
+      for (var y = 0; y < 24; y++) for (var x = 4; x < 28; x++) {
+        var col = null;
+        if (grid && grid[y]) col = pal[grid[y][x]] || grid[y][x];
+        else if (image && image.data && image.data.length === 4096) {
+          var i = (y * 32 + x) * 4, d = image.data;
+          if (d[i + 3] && !(d[i] === 16 && d[i + 1] === 45 && d[i + 2] === 61)) col = '#' + [d[i], d[i + 1], d[i + 2]].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+        }
+        if (typeof col !== 'string' || !/^#[0-9a-f]{6}$/i.test(col)) continue;
+        paths[col] = (paths[col] || '') + 'M' + (x - 4) + ' ' + y + 'h1v1h-1z'; pixels++;
+      }
+      if (pixels) {
+        var html = '<svg class="era-pet-icon" data-era-icon="' + esc(sp) + '" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" shape-rendering="crispEdges">' + Object.keys(paths).map(function (col) { return '<path fill="' + col + '" d="' + paths[col] + '"/>'; }).join('') + '</svg>';
+        eraIconCache[sp] = { source: source, html: html }; return html;
+      }
+    } catch (ignore) { /* Missing/late sprite never breaks the card; retry on the next render. */ }
+    return '<svg class="era-pending-icon" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h10v2H1zM1 10h10v2H1zM2 2h2v2H2zM8 2h2v2H8zM4 4h4v2H4zM5 6h2v1H5zM4 7h4v1H4zM2 8h8v2H2z"/></svg>';
+  }
   /** Small pixel era label in normal text flow, never over the art. No stored pet field. */
   function eraChip(w, p) {
     var C = window.V2Community, e = C && C.eraOf(w, p); if (!e) return '';
     var tip = 'Born in block ' + e.birth.toLocaleString('en-US') + '. Community pet era: ' + e.name +
       (e.start ? ' (from block ' + e.start.toLocaleString('en-US') + ')' : '') + '. The hand-off block belongs to the new era. Looks only.';
-    return '<span class="era-badge" data-era="' + esc(e.id) + '" title="' + esc(tip) + '"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h10v2H1zM1 10h10v2H1zM2 2h2v2H2zM8 2h2v2H8zM4 4h4v2H4zM5 6h2v1H5zM4 7h4v1H4zM2 8h8v2H2z"/></svg><span>' + esc(e.name) + ' era</span></span>';
+    return '<span class="era-badge" data-era="' + esc(e.id) + '" title="' + esc(tip) + '">' + eraIcon(e) + '<span>' + esc(e.name) + ' era</span></span>';
   }
   /** genChip(w, p): 'Gen N' chip (Gen 0 = hatched) plus 'n/6 breeds' for cards. Display only. */
   function genChip(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.genOf) return ''; var bl = V2.breedsLeft(p, w && w.tip);
