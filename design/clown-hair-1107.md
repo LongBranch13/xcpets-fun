@@ -57,3 +57,10 @@ V2Render and custom/special species still need integration and fit tests.
 ## Reproduce
 node tools/clown-hair-preview.js /workspace/xcpets/previews/clown-hair-1107/frames.json
 python3 tools/clown-hair-sheets.py /workspace/xcpets/previews/clown-hair-1107
+
+## Refit 1107 (owner: "needs to fit better", 8:44 AM CT)
+Wig now hugs the real head outline column by column (smoothed over ears),
+clamped to the eye span (no beaks/snouts), one puff column down each temple,
+always one clear row above the eyes, ink outline only on the outside. No
+floating side curls. Previews: /workspace/xcpets/previews/clown-hair-refit-1107/
+(before/ = 17deaa39, after/ = refit; 12 species, every stage, 4 frames).
