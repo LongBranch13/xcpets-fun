@@ -73,7 +73,7 @@ stats, cost, ownership or replay behavior changes.
 Each badge now includes a native 24-pixel adult head/upper-body crop from that
 era's existing sprite. Shared SVG paths keep the original pixel colors and
 crisp edges; portraits sit in normal badge flow, never over the pet art.
-Wizard/Kek use their community purple/lapis palettes. Nakamoto uses existing
+Wizard/Kek use their community purple/lapis palettes; the Wizard retains his existing signature pointy hat. Nakamoto uses existing
 PetCore art; all other icons use the loaded sprite draw/palette APIs, not new art.
 
 The canonical catalogue supplies the species; sprite globals are discovered

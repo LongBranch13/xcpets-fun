@@ -1414,7 +1414,7 @@
     if (source && cached && cached.source === source) return cached.html;
     var grid, pal, image;
     try {
-      if (S && typeof S.draw === 'function') { grid = S.draw(3, 0, {}, { community: true }); pal = Object.assign({}, S.PAL, S.PAL_COMMUNITY); }
+      if (S && typeof S.draw === 'function') { grid = S.draw(3, 0, S.WIZARD_HAT ? { head: S.WIZARD_HAT } : {}, { community: true }); pal = Object.assign({}, S.PAL, S.PAL_COMMUNITY); }
       else if (NG && NG.characterPet && NG.render) {
         var art = Object.assign({}, NG.characterPet('nakamoto'), { background: 'solid', bgColor: '#102d3d', band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
         image = NG.render(art, { stage: 3, frame: 0, gearCap: 0, gearOverride: {} });
