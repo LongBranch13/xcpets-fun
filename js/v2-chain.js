@@ -28,7 +28,7 @@
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
   function fnv(s, h) { h = h == null ? 0x811c9dc5 : h; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function inSig() { var hk = Object.keys(S.hashes || {}).sort(function (a, b) { return a - b; }), hh = 0x811c9dc5; hk.forEach(function (k) { hh = fnv(k + ':' + S.hashes[k] + ';', hh); });
-    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.issuances, S.dex.orders, S.dex.matches])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
+    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.issuances, S.dex.orders, S.dex.matches, S.dex.credits || null, S.dex.destructions || null])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
   function keepOrDrop() { if (cache && cacheSig !== inSig()) cache = null; }
   /* Cross-visit cache (smooth-perf): the last replayed world is kept in IndexedDB under ONE entry, keyed by build id + inSig() + opsSig. A page whose
    * inputs match (same build, burns, tip, hashes and local ops) reuses it instead of replaying; anything else replays as before. The stored value is
