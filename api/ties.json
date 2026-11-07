@@ -1,6 +1,6 @@
 {
- "lastBlock": 974878,
- "count": 165,
+ "lastBlock": 974881,
+ "count": 163,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -504,18 +504,6 @@
    "name": "Nuwamo",
    "species": "dodo",
    "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 46069,
-   "asset": "A7885534877986587457",
-   "tiedBlock": 973505,
-   "tiedTx": "778d229f780c4a401e202ca2fe6185435668db75b15746341a8105d07cc1784e",
-   "kind": "deed",
-   "name": "Dupuni",
-   "species": "hyb:wizard:kek",
-   "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -1488,18 +1476,6 @@
    "name": "Wayori",
    "species": "chud",
    "speciesLabel": "Chud",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
-   "id": 68318,
-   "asset": "A2906870967720855182",
-   "tiedBlock": 974757,
-   "tiedTx": "152159692ad31fbdb88799ca3bb017a907141266b83e2760347ef6e16038afab",
-   "kind": "deed",
-   "name": "Misoobe",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
