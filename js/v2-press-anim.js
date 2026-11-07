@@ -6,6 +6,8 @@
   var W = 160, H = 112, DUR = 3600, FPS = 12;
   var IMG = {}; function img(src, cb) { if (!IMG[src]) { var i = new Image(); i.onload = function () { if (cb) cb(); }; i.src = src; IMG[src] = i; } return IMG[src].complete && IMG[src].naturalWidth ? IMG[src] : null; }
   function spSrc(p) { var s = String((p && p.species) || 'pepe').replace(/^hyb3?:/, '').split(':')[0].replace(/[^a-z]/g, '') || 'pepe'; return 'img/theme/sp-' + s + '.png'; }
+  var liveSprites=new WeakMap();
+  function liveSprite(p,o){var R=window.V2Render;if(!p||!p.art||!R||!(p.art.rareHatch||p.species==='chad'||/djpepe/.test(p.species)))return null;var w=o.world||(window.V2Mock&&V2Mock.world&&V2Mock.world()),old=liveSprites.get(p);if(old&&old.w===w)return old.c;try{var c=R.spriteCanvas(R.petFrames(p,w,{noHunger:true})[0],false);liveSprites.set(p,{w:w,c:c});return c;}catch(e){return null;}}
   function px(x, c, a, b, w, h) { x.fillStyle = c; x.fillRect(Math.round(a), Math.round(b), Math.round(w), Math.round(h)); }
   var F = { '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001001001001', '8': '111101111101111', '9': '111101111001111',
     'T': '111010010010010', 'O': '111101101101111', 'K': '101101110101101', 'E': '111100111100111', 'N': '111101101101101', '!': '010010010000010', '#': '101111101111101', 'P': '111101111100100', 'R': '111101110101101', 'S': '111100111001111', ' ': '000000000000000', 'X': '101101010101101', 'C': '111100100100111', 'A': '111101111101101', 'I': '111010010010111', 'D': '110101101101110' };
@@ -16,7 +18,7 @@
   /* frameAt(canvas, t, pet, opts): draws the frame for time t (ms), stepped to 12 fps */
   function frameAt(cv, t, pet, o) { o = o || {}; var x = cv.getContext('2d'); if (cv.width !== W) { cv.width = W; cv.height = H; } x.imageSmoothingEnabled = false;
     t = Math.floor(Math.min(DUR, Math.max(0, t)) / (1000 / FPS)) * (1000 / FPS);
-    var sp = img(spSrc(pet), o.onload), tier = (pet && (pet.stage >= 5 || pet.mythicCare)) ? 3 : (pet && pet.tier) || 0;
+    var live=liveSprite(pet,o),sp = live||img(spSrc(pet), o.onload), tier = (pet && (pet.stage >= 5 || pet.mythicCare)) ? 3 : (pet && pet.tier) || 0;
     /* wall + floor (Spam City colours) */
     px(x, '#3D3640', 0, 0, W, 86); for (var i = 0; i < W; i += 20) px(x, '#2B2730', i, 0, 1, 86); px(x, '#D62028', 0, 84, W, 3);
     for (var fy = 87; fy < H; fy += 6) for (var fx = 0; fx < W; fx += 6) px(x, ((fx + fy) / 6) % 2 ? '#bdbdbd' : '#8d8d8d', fx, fy, 6, 6);
@@ -37,7 +39,7 @@
     var petX = Math.round(-26 + slide * 78), petH = 24;
     if (down > 0) { var top = my + 34 + ram; petH = Math.max(3, Math.min(24, 74 - top)); }
     if (up > 0) petH = 3 + Math.round(up * 0);
-    if (sp && up < 1) { if (up > 0) x.globalAlpha = 1 - up; x.drawImage(sp, petX, 74 - petH, 24, petH); x.globalAlpha = 1; }
+    if (sp && up < 1) { if (up > 0) x.globalAlpha = 1 - up; if(live&&sp.width>32)V2Render.drawSprite(x,sp,petX,74-petH,petH,false,{x:0,y:28,w:90,h:46});else x.drawImage(sp, petX, 74 - petH, 24, petH); x.globalAlpha = 1; }
     if (t > 1100 && t < 1600) for (i = 0; i < 8; i++) { var a = i * 0.785, r = 6 + (Math.floor(t / 83) % 3) * 4; px(x, SPARK[i % 5], 64 + Math.cos(a) * r * 1.6, 70 + Math.sin(a) * r * 0.6, 2, 2); }
     /* output slot + token card */
     px(x, '#100E14', 104, 52, 10, 24); px(x, '#2a2a2a', 105, 53, 8, 22);

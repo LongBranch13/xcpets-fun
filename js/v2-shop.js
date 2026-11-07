@@ -78,9 +78,9 @@
   function ambPets(w) { var U = window.V2UI, R = window.V2Render; if (!U || !R || !w) return; var mine = U.mine(w).filter(function (p) { return !p.dead && !p.released && p.stage >= 1; }), L;
     if (mine.length) L = mine.slice(0, 3); else { var all = (w.pets || []).filter(function (p) { return !p.dead && p.stage >= 2 && !p.community; }); L = []; for (var i = 0; i < 3 && all.length; i++) L.push(all[(i * 7919 + 1337) % all.length]); }
     var key = L.map(function (p) { return p.id; }).join(','); if (key === S.ambKey) return; S.ambKey = key;
-    S.amb = L.map(function (p) { var c = null; try { var V = window.V2Rules, f = R.framesWith(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, V.wornOf(w, p.id).map(function (x) { return x.item; }), [])[0]; c = toCv([f]); var g0 = c.getContext('2d'), id = g0.getImageData(0, 0, 32, 32), d = id.data, r0 = d[0], g1 = d[1], b0 = d[2];
+    S.amb = L.map(function (p) { var c = null; try { var V = window.V2Rules, f = R.framesWith(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, V.wornOf(w, p.id).map(function (x) { return x.item; }), [])[0]; c = toCv([f]); var g0 = c.getContext('2d'), id = g0.getImageData(0, 0, c.width, c.height), d = id.data, r0 = d[0], g1 = d[1], b0 = d[2];
       for (var i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r0) + Math.abs(d[i + 1] - g1) + Math.abs(d[i + 2] - b0) < 12 || (d[i] > 200 && d[i + 1] < 70 && d[i + 2] > 200)) d[i + 3] = 0; g0.putImageData(id, 0, 0); } catch (e) { c = null; } return c ? { id: p.id, c: c } : null; }).filter(Boolean); } /* backdrop keyed out like the motel guests */
-  function drawAmb(x, t) { (S.amb || []).forEach(function (a, n) { var sp = AMB[n]; if (!sp) return; var b = !reduced() && Math.floor(t / 600 + n) % 2 ? 1 : 0; px(x, 'rgba(0,0,0,.3)', sp.x + 3, sp.y + sp.s - 1, sp.s - 6, 2); x.drawImage(a.c, sp.x, sp.y - b, sp.s, sp.s); }); }
+  function drawAmb(x, t) { (S.amb || []).forEach(function (a, n) { var sp = AMB[n]; if (!sp) return; var b = !reduced() && Math.floor(t / 600 + n) % 2 ? 1 : 0; px(x, 'rgba(0,0,0,.3)', sp.x + 3, sp.y + sp.s - 1, sp.s - 6, 2); V2Render.drawSprite(x,a.c,sp.x,sp.y-b,sp.s,false,{x:0,y:40,w:W,h:H-40}); }); }
   function spinNow(ms) { if (reduced()) return; S.spinStart = performance.now(); S.spinUntil = Math.max(S.spinUntil || 0, performance.now() + (ms || 2400)); }
   function onWheel(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return Math.abs(mx - WH.x) <= WH.r + 6 && my >= WH.y - WH.r - 12 && my <= WH.y + WH.r + 12; }
   function wheel(x, cx, cy, R0, ang, pepe) { var J = ['#d0284f', '#1fb5a5', '#7b3fe4', '#2f6fe0'], i, a;
@@ -142,7 +142,7 @@
     door(x, t); /* door-pass: the dressing-room door between the left pillar and the mirror */
     /* try-on mirror on a dais, showing the pet you are dressing */
     px(x, '#000', 138, 98, 44, 7); px(x, RR.floorA, 139, 99, 42, 5); px(x, RR.gold, 139, 98, 42, 1);
-    gild(x, 147, 59, 26, 38); px(x, RR.sky, 147, 59, 26, 38); px(x, '#d8f6ff', 149, 61, 2, 26); if (S.mirror) x.drawImage(S.mirror, 144, 64, 32, 32);
+    gild(x, 147, 59, 26, 38); px(x, RR.sky, 147, 59, 26, 38); px(x, '#d8f6ff', 149, 61, 2, 26); if (S.mirror) V2Render.drawSprite(x,S.mirror,144,64,32,false,{x:144,y:48,w:64,h:64});
     /* SOON objects (design only, nothing to buy): Can-o-Rare + Gear-o-Matic vending machines and the sale rack */
     [[8, RR.velvet, 'CAN-O-RARE'], [38, RR.emerald, 'GEAR-O-MATIC']].forEach(function (m) { var a = m[0], b = 102; px(x, '#000', a - 1, b - 1, 24, 34); px(x, m[1], a, b, 22, 32); px(x, RR.gold, a, b, 22, 2); px(x, '#bfe9ff', a + 3, b + 5, 11, 16); px(x, '#4fd18b', a + 5, b + 7, 7, 3); px(x, '#4f9dff', a + 5, b + 12, 7, 3); px(x, '#ffc93c', a + 5, b + 17, 7, 3); px(x, RR.goldHi, a + 16, b + 7, 3, 10); px(x, '#111', a + 3, b + 25, 16, 4); });
     plate(x, 'SOON', 19, 100, 4); plate(x, 'SOON', 49, 100, 4);
@@ -224,7 +224,7 @@
     mirrorPet(w); ambPets(w); counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.fitRaf); S.fitRaf = requestAnimationFrame(function () { S.fitRaf = 0; fitDraw(c); }); } /* lair-perf: measure + first draw on the next frame, so a render never forces a full-page layout */
   /* Rare Room mirror: the pet you are dressing (S.pet / roll pet / first living pet), wearing the tapped piece as a live try-on (same framesWith as the Wear panel) */
-  function toCv(fr) { if (!fr || !fr[0]) return null; var c = document.createElement('canvas'); c.width = 32; c.height = 32; try { c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data), 32, 32), 0, 0); } catch (e) { return null; } return c; }
+  function toCv(fr){return fr&&fr[0]?V2Render.spriteCanvas(fr[0],false):null;}
   function mirrorPet(w) { var U = window.V2UI, V = window.V2Rules, R = window.V2Render; if (!U || !V || !R) return; var pets = U.mine(w).filter(function (p) { return !p.dead && !p.released; }), P = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0];
     if (!S.pepe) { var pp = (w.pets || []).filter(function (q) { return q.species === 'pepe' && q.stage >= 3; })[0]; if (pp) try { S.pepe = toCv(R.framesWith(Object.assign({}, pp.art, { background: 'solid', bgColor: '#bfe9d6', pattern: 'none' }), pp.stage, [], [])); } catch (e) { } }
     if (!P) { S.mirror = null; return; } var worn = V.wornOf(w, P.id), ids = worn.map(function (x) { return x.item; }), g = S.sel;
@@ -435,7 +435,7 @@
   function paintHero(el, w, P) { put(el.querySelector('.sc-hc'), framesFor(w, P, window.V2Rules.wornOf(w, P.id).map(function (x) { return x.item; }))); }
   var SLOT_ORDER = ['head', 'hand', 'body', 'back', 'face', 'feet'];
   function framesFor(w, P, ids) { var R = window.V2Render; try { return R.framesWith(P.art, P.stage, ids, P.blackEye ? ['v2-black-eye'] : []); } catch (e) { return null; } }
-  function put(c, fr) { if (!c || !fr || !fr[0]) return; try { c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data), 32, 32), 0, 0); } catch (e) { } }
+  function put(c, fr) { if (!c || !fr || !fr[0]) return; try { if(window.V2Render) V2Render.paint(c,fr[0]); else c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr[0].data),32,32),0,0); } catch (e) { } }
   function paintTry(el, w, P, g, sl, wearing) { var V = window.V2Rules, worn = V.wornOf(w, P.id), now = worn.map(function (x) { return x.item; }), aft = worn.filter(function (x) { return x.slot !== sl; }).map(function (x) { return x.item; }).concat([g.item]);
     put(el.querySelector('.sc-now'), framesFor(w, P, now)); put(el.querySelector('.sc-after'), framesFor(w, P, wearing ? now : aft)); }
   function bindBest(el, w, P) { var U = window.V2UI, V = window.V2Rules, ME = U.ME; if (!P) return; var free = (w.itemList || []).filter(function (x) { return x.owner === ME && x.on == null; }), worn = V.wornOf(w, P.id), out = [];

@@ -76,13 +76,13 @@
     sig(im, 322, 190, 60); text(im, 322, 202, 'Gooby', 8); text(im, 322, 212, 'Registrar', 6, MUT);
     im.rect(12, H - 37, W - 13, H - 14, BAND); ftext(im, W / 2, H - 33, 'TOKEN ' + I.asset, [8, 7, 6], 370, INK, 'mt'); text(im, W / 2, H - 22, 'WHOEVER HOLDS THIS TOKEN OWNS THIS PET', 8, DRED, 'mt');
     return im; }
-  function phone(I, spr) { var W = 180, H = 400, im = new Img(W, H), y, L = rows(I), lin = lineage(I); border(im);
+  function phone(I, spr, expanded) { var W = 180, H = expanded ? 464 : 400, shift = expanded ? 64 : 0, im = new Img(W, H), y, L = rows(I), lin = lineage(I); border(im);
     text(im, W / 2, 16, 'OFFICIAL XCPETS', 8, DRED, 'mt'); text(im, W / 2, 27, 'PROOF OF', 16, INK, 'mt'); text(im, W / 2, 45, 'PET', 16, INK, 'mt');
-    im.rect(W / 2 - 34, 64, W / 2 + 33, 131, BG); if (spr) im.sprite(spr, 32, 32, 2, W / 2 - 32, 66); seal(im, W - 30, 120, 14);
-    y = 140; L.slice(0, 5).forEach(function (r) { text(im, 16, y, r[0] + ':', 8, MUT); ftext(im, 16, y + 9, r[1], [8, 6], 150); y += 20; });
-    y = 242; text(im, 16, y, 'LINEAGE:', 8, MUT); if (lin) ftext(im, 16, y + 9, lin.a, [8, 6], 150, GRN); else text(im, 16, y + 9, 'Hatched from egg', 8, GRN);
-    y = 264; I.stats.forEach(function (s, i) { bar(im, 16, y + i * 10, s[0].toUpperCase(), s[1], 90); });
-    y = 318; text(im, 16, y, 'BORN', 8, DRED); text(im, 56, y, 'blk ' + n(I.bornBlock), 8); text(im, 16, y + 10, 'TIED', 8, DRED); text(im, 56, y + 10, 'blk ' + n(I.tiedBlock), 8);
+    if(expanded){im.rect(24,64,155,195,BG);im.sprite(spr.data,spr.width,spr.height,2,26,66);seal(im,W-20,184,10);}else{im.rect(W / 2 - 34, 64, W / 2 + 33, 131, BG); if (spr) im.sprite(spr, 32, 32, 2, W / 2 - 32, 66); seal(im, W - 30, 120, 14);}
+    y = 140 + shift; L.slice(0, 5).forEach(function (r) { text(im, 16, y, r[0] + ':', 8, MUT); ftext(im, 16, y + 9, r[1], [8, 6], 150); y += 20; });
+    y = 242 + shift; text(im, 16, y, 'LINEAGE:', 8, MUT); if (lin) ftext(im, 16, y + 9, lin.a, [8, 6], 150, GRN); else text(im, 16, y + 9, 'Hatched from egg', 8, GRN);
+    y = 264 + shift; I.stats.forEach(function (s, i) { bar(im, 16, y + i * 10, s[0].toUpperCase(), s[1], 90); });
+    y = 318 + shift; text(im, 16, y, 'BORN', 8, DRED); text(im, 56, y, 'blk ' + n(I.bornBlock), 8); text(im, 16, y + 10, 'TIED', 8, DRED); text(im, 56, y + 10, 'blk ' + n(I.tiedBlock), 8);
     sig(im, 16, y + 24, 60); text(im, 80, y + 26, 'Gooby, Reg.', 6);
     im.rect(12, H - 46, W - 13, H - 14, BAND); ftext(im, W / 2, H - 43, I.asset, [7, 6], 152, INK, 'mt');
     text(im, W / 2, H - 33, 'WHOEVER HOLDS THIS TOKEN', 6, DRED, 'mt'); text(im, W / 2, H - 24, 'OWNS THIS PET', 6, DRED, 'mt');
@@ -101,7 +101,13 @@
     ftext(im, W / 2, 95, nm, z ? [z] : [6], TW, INK, 'mt'); ftext(im, W / 2, 104, sub, [6], TW, MUT, 'mt');
     if (I.asset) text(im, W / 2, 111, tokenLine(I.asset, KW), 6, DRED, 'mt'); /* anti-fake: the badge names the ONE genuine asset (shortened only when it cannot fit; the full number is in t/<id>.json) */ return im; }
   /** render(info, spriteRGBA32x32|null, 'desktop'|'phone'|'token') -> {w, h, data: RGBA} at 1 pixel per art pixel */
-  function render(I, spr, layout) { var im = (layout === 'phone' ? phone : layout === 'token' ? token : desktop)(I, spr); return { w: im.w, h: im.h, data: im.d, spr: im.spr || null }; }
+  function render(I, spr, layout) { var im;
+    if(spr&&spr.data){var f=spr.rareScene||spr;if((f.width||32)>32){
+      /* Full native portrait with space reserved ABOVE facts. Token badges are bounded thumbnails. */
+      if(layout==='token'){im=token(I,null);im.sprite(f.data,f.width,f.height,1,24,29);}else im=phone(I,f,true);
+    }else spr=f.data;}
+    if(!im)im=(layout==='phone'?phone:layout==='token'?token:desktop)(I,spr);
+    return {w:im.w,h:im.h,data:im.d,spr:im.spr||null}; }
   /* looks-draw: paste the realistic looks (js/v2-looks.js, the same renderer as the live pet) over the sprite box at output resolution.
    * look = the pet's frame 0 from V2Render (carries the look info); still frame = V2Looks.bake defaults (t 1.3, fixed shine). */
   function withLooks(r, k, look, Lx) { var L = Lx || root.V2Looks; if (!look || !L || !r.spr || !L.hasFx(look)) return r; var b = r.spr, N = b.n * b.s * k, img = L.bakeAll(look, N); if (!img) return r;
@@ -119,8 +125,8 @@
   document.head.appendChild(css);
   var lastKey = '', scoreW = null, scoreR = null;
   function phoneMode() { return !!(root.matchMedia && root.matchMedia('(max-width:600px)').matches); }
-  function frameOf(p, w) { var R = root.V2Render; if (!R) return null; try { var fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); var f = fr && fr[0]; return f && f.data && f.data.length === 4096 ? f : null; } catch (e) { return null; } }
-  function spriteOf(p, w) { var f = frameOf(p, w); return f ? f.data : null; }
+  function frameOf(p, w) { var R = root.V2Render; if (!R) return null; try { var fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); var f = fr && fr[0];return f&&f.data?f:null; } catch (e) { return null; } }
+  function spriteOf(p, w) { var f = frameOf(p, w); return f ? (f.rareScene?f:f.data) : null; }
   function scoreOf(w, id) { if (!root.PetScore) return null; if (scoreW !== w) { try { scoreR = root.PetScore.compute(w); } catch (e) { scoreR = null; } scoreW = w; } return scoreR && scoreR.byId ? scoreR.byId[id] || null : null; }
   function toCanvas(r, c) { c.width = r.w; c.height = r.h; var x = c.getContext('2d'); x.putImageData(new ImageData(r.data, r.w, r.h), 0, 0); return c; }
   function cssSize(c, r, wrapW) { var k = Math.max(1, Math.min(r.w === 400 ? 2 : 3, Math.floor(wrapW / r.w))); c.style.width = (r.w * k) + 'px'; }
@@ -146,7 +152,7 @@
     var t = liveTie(w, p, V, M); if (!t || !facts) { if (el) el.remove(); lastKey = ''; return; }
     var lay = phoneMode() ? 'phone' : 'desktop', worn = (V.wornOf ? V.wornOf(w, id) : []).map(function (g) { return g.item; }).join(',');
     var key = [w.tip, id, t.asset, t.block, p.name, p.stage, JSON.stringify(p.stats), worn, lay, (p.flameLooks || []).join('+'), (p.questLooks || []).join('+')].join('|'); if (!force && key === lastKey && el) return; lastKey = key;
-    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), fr0 = frameOf(p, w), spr = fr0 ? fr0.data : null, r = render(I, spr, lay), hasLk = !!(fr0 && root.V2Looks && root.V2Looks.hasFx && root.V2Looks.hasFx(fr0));
+    var I = info(w, p, V, { tie: t, score: scoreOf(w, id) }), fr0 = frameOf(p, w), spr = fr0 ? (fr0.rareScene?fr0:fr0.data) : null, r = render(I, spr, lay), hasLk = !!(fr0 && root.V2Looks && root.V2Looks.hasFx && root.V2Looks.hasFx(fr0));
     if (!el) { el = document.createElement('section'); el.id = 'petPapers'; el.setAttribute('aria-label', 'Proof of Pet');
       el.innerHTML = '<h2 class="sec" data-ico="star">Proof of Pet</h2><canvas class="pp-cv" role="img"></canvas><div class="pp-row"><button type="button" class="btn" id="ppDl">⬇ Download Proof of Pet (PNG)</button> <a class="btn" id="ppVerify" href="verify.html">🔍 Is a token real? Check it</a></div>' +
         '<p class="small muted pp-note">Drawn live from the chain replay for this pet\'s verified token. Whoever holds this token owns this pet.</p>';

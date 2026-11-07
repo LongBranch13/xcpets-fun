@@ -73,11 +73,11 @@
   var tmp = [0, 0, 0], tmp2 = [0, 0, 0];
   /** render(img32, info, S, t, ptr, out): full composite (pixel sprite, nearest, + effects) into out (S*S*4). ptr = [x,y] 0..1 or null. */
   function render(img, info, S, t, ptr, out) {
-    var src = img.data, by = info.by, g = info.g, seed = info.seed, k = 32 / S, still = ptr === false;
+    var native=img.rareScene||img,srcN=native.width||32,src=native.data, by = info.by, g = info.g, seed = info.seed, k = 32 / S, still = ptr === false;
     var shine = ptr ? ptr[0] * 1.3 - 0.15 + ptr[1] * 0.25 : fract(t * 0.07 + seed * 0.013) * 1.8 - 0.4; /* foil light position */
     var back = by.back, gal = by.galaxy, foil = by.foil, aura = by.aura, top = by.top, B = g.body, gb = g.b || g, ownB = aura === 'spell-sparkles' || aura === 'neon-trail', SG = ownB && g.sdb ? { sd: g.sdb } : g; /* body-only aura distance (badge left out) */
     for (var py = 0; py < S; py++) { var Y = (py + 0.5) * k, iy = Y | 0, v = py / S;
-      for (var px = 0; px < S; px++) { var X = (px + 0.5) * k, ix = X | 0, u = px / S, si = (iy * 32 + ix) * 4, o = (py * S + px) * 4;
+      for (var px = 0; px < S; px++) { var X = (px + 0.5) * k, ix = X | 0, u = px / S, si = (Math.floor((py+.5)*srcN/S)*srcN+Math.floor((px+.5)*srcN/S))*4, o = (py * S + px) * 4;
         var r = src[si] / 255, gg = src[si + 1] / 255, b = src[si + 2] / 255, inside = g.m[iy * 32 + ix] === 1, isB = !!(g.bdg && g.bdg[iy * 32 + ix]), d = 9;
         if (!inside || aura) d = sdAt(SG, X, Y);
         if (!inside) {
@@ -118,6 +118,7 @@
           else if (aura === 'neon-trail') { var tr = 0; for (var q = 1; q <= 6; q++) { var dd2 = sdAt(SG, X + q * 1.4, Y); if (dd2 < 0.5) { tr = Math.max(tr, (1 - q / 7)); } } var ng = Math.exp(-d / 0.9) * 0.6; var hue = fract(Y / 32 * 1.5 - t * 0.25);
             irid(hue * 0.35 + 0.75, tmp); var I2 = ng + tr * 0.75 * (0.75 + 0.25 * Math.sin(Y * 1.7 + t * 6)); r += I2 * (tmp[0] * 0.6 + 0.5); gg += I2 * (tmp[1] * 0.5 + 0.15); b += I2 * (tmp[2] * 0.6 + 0.6); }
           else if (aura === 'spell-sparkles') { var sg = Math.exp(-d / 1.4) * 0.35; r += sg * 0.75; gg += sg * 0.45; b += sg * 1.0; } }
+        if(src[si+3]<255){var alpha=src[si+3]/255;r=r*alpha+src[0]/255*(1-alpha);gg=gg*alpha+src[1]/255*(1-alpha);b=b*alpha+src[2]/255*(1-alpha);}
         out[o] = clamp(r, 0, 1) * 255; out[o + 1] = clamp(gg, 0, 1) * 255; out[o + 2] = clamp(b, 0, 1) * 255; out[o + 3] = 255; } }
     /* particles (capped at 24) splatted with a soft glow */
     var parts = [];
@@ -231,8 +232,8 @@
     return out; }
   /** compose(frame32, S, t, ptr, out): the full baked picture of a pet frame: looks (when worn, else the nearest-scaled sprite) + the Mythic electric
    *  outline when V2Render tagged the frame (V2Looks.myth hook set by js/v2-render.js). Every bake (papers, GIF, token papers) goes through this. */
-  function compose(img, S, t, ptr, out) { var info = infoOf(img), d = img.data, my = API.myth ? API.myth(img) : null; out = out || new Uint8ClampedArray(S * S * 4);
-    if (info) render(img, info, S, t, ptr, out); else for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) { var si = (((y * 32 / S) | 0) * 32 + ((x * 32 / S) | 0)) * 4, o = (y * S + x) * 4; out[o] = d[si]; out[o + 1] = d[si + 1]; out[o + 2] = d[si + 2]; out[o + 3] = 255; }
+  function compose(img, S, t, ptr, out) { var info = infoOf(img), native=img.rareScene||img,nativeN=native.width||32,d = native.data, my = API.myth ? API.myth(img) : null; out = out || new Uint8ClampedArray(S * S * 4);
+    if (info) render(img, info, S, t, ptr, out); else for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) { var si = (((y * nativeN / S) | 0) * nativeN + ((x * nativeN / S) | 0)) * 4, o = (y * S + x) * 4; out[o] = d[si]; out[o + 1] = d[si + 1]; out[o + 2] = d[si + 2]; out[o + 3] = 255; }
     if (my) electric(out, S, my.rim, t, my.seed || 0, my.sick); return out; }
   function hasFx(img) { return !!(infoOf(img) || (API.myth && API.myth(img))); }
   function bakeAll(img, size, t) { if (!hasFx(img)) return null; return compose(img, size || 128, t == null ? 1.3 : t, t == null ? [0.42, 0.35] : null); }
