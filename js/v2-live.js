@@ -151,12 +151,45 @@
   /* ---- rows ---- */
   function nm(id) { var p = W.byId[id]; return '#' + id + (p && p.name ? ' ' + p.name : ''); }
   function line(e) { return e.t.map(function (x) { return typeof x === 'string' ? esc(x) : x && x.pet != null ? '<a href="pet.html?id=' + x.pet + '">' + esc(nm(x.pet)) + '</a>' : ''; }).join(''); }
+  /* ---- feed-share-1107 (owner Nov 7 2026 9:30 AM CT [pt3065u] "lets make the individual things in the live feed sharable"): display only.
+   * Every row gets a stable permalink live.html?ev=BLOCK-TX12-CAT-PET (block, first 12 chars of the tx id, row type, pet id) that opens
+   * straight to that event, spotlit with its sprite, and replays its animation. Share = native share sheet on phones, copy link elsewhere;
+   * plus a Telegram share link. The share text is the row's own line, nothing more. */
+  function evKey(e) { return e.block + '-' + String(e.tx || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12) + '-' + e.cat + '-' + (e.pet != null ? e.pet : 'x'); }
+  function evUrl(e) { return location.origin + location.pathname + '?ev=' + encodeURIComponent(evKey(e)); }
+  function plain(e) { return line(e).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'"); }
+  function shareText(e) { return e.icon + ' ' + plain(e) + ' (XCPETS, block ' + fmt(e.block) + ')'; }
+  function tgUrl(e) { return 'https://t.me/share/url?url=' + encodeURIComponent(evUrl(e)) + '&text=' + encodeURIComponent(shareText(e)); }
+  var WANT = (function () { try { var m = /[?&]ev=([^&#]+)/.exec(location.search || '') || /#ev=([^&]+)/.exec(location.hash || ''); return m ? decodeURIComponent(m[1]) : null; } catch (e) { return null; } })(), wantDone = false;
+  function toast(msg) { var t = $('lvToast'); if (!t) { t = document.createElement('div'); t.id = 'lvToast'; t.className = 'lv-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); } t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove('on'); }, msg.length > 30 ? 6000 : 2200); }
+  function copy(txt) { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt); return new Promise(function (res, rej) { try { var a = document.createElement('textarea'); a.value = txt; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); var ok = document.execCommand('copy'); a.remove(); ok ? res() : rej(); } catch (x) { rej(x); } }); }
+  function share(e) { var url = evUrl(e), touch = root.matchMedia && root.matchMedia('(pointer:coarse)').matches;
+    if (touch && navigator.share) { navigator.share({ title: 'XCPETS Live Feed', text: shareText(e), url: url }).catch(function () {}); return; }
+    copy(url).then(function () { toast('🔗 Link copied!'); }, function () { toast('Copy this link: ' + url); }); }
+  function shareBar(e, i) { return '<span class="lv-share"><button type="button" class="lv-sh" data-sh="' + i + '" aria-label="Share this event">🔗 Share</button><a class="lv-tg" href="' + esc(tgUrl(e)) + '" target="_blank" rel="noopener" aria-label="Share on Telegram">✈️ Telegram</a></span>'; }
+  function spotlight(e, i) { var box = $('lvSpot'); if (!box) return; var p = e.pet != null && W.byId[e.pet];
+    box.innerHTML = '<div class="lv-spot-in lv-' + e.cat + '"><span class="lv-spot-tag">★ SHARED EVENT ★</span>' +
+      (p && p.art ? '<canvas class="lv-spot-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-sid="' + p.id + '"></canvas>' : '<span class="lv-spot-ico" aria-hidden="true">' + e.icon + '</span>') +
+      '<p class="lv-spot-txt"><span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</p><p class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span></p>' +
+      '<p class="lv-spot-btns">' + (e.anim ? '<button type="button" class="btn lv-spot-play" data-sp="' + i + '">▶ Play it</button> ' : '') + '<span class="lv-spot-dl"></span>' + shareBar(e, i) + ' <button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>';
+    if (e.anim) loadAnims().then(function () { var d = box.querySelector('.lv-spot-dl'); if (!d || !root.V2Clip || d.firstChild) return; /* download-clips-1107: the shared moment as a video, recorded on this device */
+      d.appendChild(V2Clip.button(function () { var A = e.anim.lib === 'cem' ? root.V2CemAnim : root.V2LifeAnim; if (!A || !A.play) return Promise.reject(new Error('Animation not loaded')); if (A.busy && A.busy()) return Promise.reject(new Error('An animation is already playing'));
+        var ended = false, r = A.play(Object.assign({ block: e.block }, e.anim.ev), { w: W, noQueue: true, noClip: true, done: function () { ended = true; } }); if (!r || !r.canvas) return Promise.reject(new Error('Nothing to record'));
+        return V2Clip.record({ source: r.canvas, caption: e.icon + ' ' + plain(e), until: function () { return ended; }, tailMs: 200 }); }, { name: e.cat + '-' + e.block + '-' + (e.pet != null ? e.pet : '') })); });
+    box.hidden = false; var c = box.querySelector('canvas[data-sid]'); if (c) { try { R.lazy(c, function () { return frames(p); }, true); } catch (x) {} } }
+  function missing(k) { var box = $('lvSpot'); if (!box) return; var m = /^(\d+)-[^-]*-(\w+)-(\d+|x)$/.exec(k || ''), pid = m && m[3] !== 'x' ? +m[3] : null;
+    box.innerHTML = '<div class="lv-spot-in"><span class="lv-spot-tag">★ SHARED EVENT ★</span><p class="lv-spot-txt">That event' + (m ? ' (block ' + fmt(+m[1]) + ')' : '') + ' is no longer in the last ' + Math.round(WINDOW / 144) + ' days of the feed' + (m && +m[1] > W.tip ? ', or its block is not read yet. Try again in a minute' : '') + '.</p><p class="lv-spot-btns">' + (pid != null && W.byId[pid] ? '<a class="btn" href="pet.html?id=' + pid + '">See ' + esc(nm(pid)) + ' →</a> ' : '') + '<button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>'; box.hidden = false; }
+  function openWanted() { if (!WANT || wantDone || !W) return; var i = -1; for (var j = 0; j < EV.length; j++) if (evKey(EV[j]) === WANT) { i = j; break; }
+    if (i < 0) { if (+(/^\d+/.exec(WANT) || [0])[0] > W.tip) return; wantDone = true; missing(WANT); return; } wantDone = true; var e = EV[i];
+    if (FILTERS[filt] && !FILTERS[filt][e.cat]) filt = 'all'; var L = list(), pos = L.indexOf(e); if (pos >= shown) shown = Math.ceil((pos + 1) / PAGE) * PAGE; draw(); spotlight(e, i);
+    var li = document.querySelector('.lv-row[data-i="' + i + '"]'); if (li) li.classList.add('lv-linked');
+    var sp = $('lvSpot'); if (sp && sp.scrollIntoView) sp.scrollIntoView({ block: 'start' }); if (e.anim) setTimeout(function () { play(e); }, 1200); }
   var CAT = { birth: 'Birth', feed: 'Feed', stage: 'Stage-up', mythic: 'Mythic', death: 'Death', god: 'God', gear: 'Gear', other: 'Game' };
   function rowHtml(e, i) { var p = e.pet != null && W.byId[e.pet], fresh = seenTx && !seenTx[e.tx + ':' + e.cat + ':' + e.pet];
     return '<li class="lv-row lv-' + e.cat + (e.hot ? ' lv-hot' : '') + (fresh ? ' lv-new' : '') + (e.anim ? ' lv-can' : '') + '" data-i="' + i + '"' + (e.anim ? ' tabindex="0" role="button" aria-label="Play the animation: ' + esc(line(e).replace(/<[^>]+>/g, '')) + '"' : '') + '>' +
       '<span class="lv-th">' + (p && p.art ? '<a href="pet.html?id=' + p.id + '" tabindex="-1" aria-hidden="true"><canvas class="lv-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-id="' + p.id + '"></canvas></a>' : '<span class="lv-ico" aria-hidden="true">' + e.icon + '</span>') + '</span>' +
       '<span class="lv-body"><span class="lv-txt"><span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</span>' +
-      '<span class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span>' + (e.anim ? ' · <span class="lv-play">▶ replay</span>' : '') + (p ? ' · <a href="pet.html?id=' + p.id + '">pet page →</a>' : '') + '</span></span></li>'; }
+      '<span class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span>' + (e.anim ? ' · <span class="lv-play">▶ replay</span>' : '') + (p ? ' · <a href="pet.html?id=' + p.id + '">pet page →</a>' : '') + ' · <a class="lv-perma" href="?ev=' + encodeURIComponent(evKey(e)) + '" title="Permalink to this event">#</a></span>' + shareBar(e, i) + '</span></li>'; }
   function list() { var F = FILTERS[filt]; return F ? EV.filter(function (e) { return F[e.cat]; }) : EV; }
   function draw() { var box = $('lvList'); if (!box || !W) return; var L = list(), vis = L.slice(0, shown);
     box.innerHTML = vis.length ? vis.map(function (e) { return rowHtml(e, EV.indexOf(e)); }).join('') : '<li class="lv-empty muted">Nothing in the last ' + Math.round(WINDOW / 144) + ' days for this filter.</li>';
@@ -168,16 +201,19 @@
     el.innerHTML = '<span class="lv-dot" aria-hidden="true"></span> Live at block <b>' + fmt(W.tip) + '</b>' + (timeTxt(W.tip) ? ' (' + esc(timeTxt(W.tip)) + ')' : '') + (beh ? ' · ' + fmt(beh) + ' block' + (beh === 1 ? '' : 's') + ' behind the chain, catching up' : '') + (s.provisional ? ' · updating to the latest block…' : '') + ' · checks for new blocks every minute · ' + fmt(EV.length) + ' events in the last ' + Math.round(WINDOW / 144) + ' days'; }
   function build() { var w = M.world(); if (!w || !w.pets) return false; if (W && w === W && EV.length) return false; var old = EV; W = w;
     EV = events(w, V); if (!firstDraw) { seenTx = {}; old.forEach(function (e) { seenTx[e.tx + ':' + e.cat + ':' + e.pet] = 1; }); } else seenTx = null; firstDraw = false; return true; }
-  function refresh() { try { if (build()) { needTime(W.tip); draw(); } status(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } }
+  function refresh() { try { if (build()) { needTime(W.tip); draw(); } status(); openWanted(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } }
   /* ---- animations: loaded on the first tap ---- */
   var animP = null;
-  function loadAnims() { if (animP) return animP; var L = ['js/v2-life-anim.js', 'js/v2-cem-anim.js', 'js/v2-mg-anim.js'];
+  function loadAnims() { if (animP) return animP; var L = ['js/v2-clip.js', 'js/v2-life-anim.js', 'js/v2-cem-anim.js', 'js/v2-mg-anim.js']; /* download-clips-1107: + the ⬇️ Download recorder */
     animP = L.reduce(function (p, src) { return p.then(function () { return new Promise(function (res) { var t = document.createElement('script'); t.src = src + (BUILD ? '?v=' + BUILD : ''); t.async = false; t.onload = res; t.onerror = res; document.body.appendChild(t); }); }); }, Promise.resolve()); return animP; }
   function play(e) { if (!e || !e.anim) return; loadAnims().then(function () { var A = e.anim.lib === 'cem' ? root.V2CemAnim : root.V2LifeAnim; if (!A || !A.play) return; if (A.busy && A.busy()) return;
       try { A.play(Object.assign({ block: e.block }, e.anim.ev), { w: W, noQueue: true }); } catch (x) { if (root.console) console.warn('[live] anim', x); } }); }
   function wire() { $('lvFilters').addEventListener('click', function (ev) { var b = ev.target.closest('.lv-f'); if (!b) return; filt = b.getAttribute('data-f'); shown = PAGE; try { history.replaceState(null, '', filt === 'all' ? location.pathname + location.search : '#f=' + filt); } catch (e) {} draw(); });
     $('lvMore').addEventListener('click', function () { shown += PAGE; draw(); });
-    var box = $('lvList'); box.addEventListener('click', function (ev) { if (ev.target.closest('a')) return; var li = ev.target.closest('.lv-row'); if (li) play(EV[+li.getAttribute('data-i')]); });
+    var onShare = function (ev) { var b = ev.target.closest('.lv-sh'); if (b) { ev.preventDefault(); share(EV[+b.getAttribute('data-sh')]); return true; } if (ev.target.closest('.lv-tg')) return true; return false; };
+    var sp = $('lvSpot'); if (sp) sp.addEventListener('click', function (ev) { if (onShare(ev)) return; var p = ev.target.closest('.lv-spot-play'); if (p) { play(EV[+p.getAttribute('data-sp')]); return; }
+      if (ev.target.closest('.lv-spot-x')) { sp.hidden = true; sp.innerHTML = ''; try { history.replaceState(null, '', location.pathname + (filt === 'all' ? '' : '#f=' + filt)); } catch (x) {} } });
+    var box = $('lvList'); box.addEventListener('click', function (ev) { if (onShare(ev)) return; if (ev.target.closest('a')) return; var li = ev.target.closest('.lv-row'); if (li) play(EV[+li.getAttribute('data-i')]); });
     box.addEventListener('keydown', function (ev) { if (ev.key !== 'Enter' && ev.key !== ' ') return; var li = ev.target.closest && ev.target.closest('.lv-row'); if (!li || ev.target !== li) return; ev.preventDefault(); play(EV[+li.getAttribute('data-i')]); }); }
   function start() { if (!M || !R || !V || !$('lvList')) return; wire(); /* watch.html loads this file for V2Live.events only */ refresh(); setInterval(paintTimes, 60e3);
     if (M.onFresh) M.onFresh(refresh);

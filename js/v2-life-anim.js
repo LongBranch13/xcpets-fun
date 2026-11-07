@@ -350,6 +350,8 @@
       '.la-cap{font-family:inherit;color:#fff3b0;font-size:17px;text-align:center;text-shadow:2px 2px 0 #000;max-width:92vw;line-height:1.35;overflow-wrap:anywhere}.la-skip{color:#bbb;font-size:12px}';
     document.head.appendChild(s); }
   var BUSY = null, API;
+  /* download-clips-1107: ⬇️ Download (js/v2-clip.js, loaded on first use with this file's own ?v=) */
+  function clipLib(cb) { if (window.V2Clip) return cb(); var P = window.__clipP; if (!P) { P = window.__clipP = new Promise(function (res) { var me = document.querySelector('script[src*="js/v2-life-anim.js"]'), v = me && /[?&]v=([0-9a-z]+)/.exec(me.src), t = document.createElement('script'); t.src = 'js/v2-clip.js' + (v ? '?v=' + v[1] : ''); t.onload = t.onerror = function () { res(); }; document.head.appendChild(t); }); } P.then(function () { if (window.V2Clip) cb(); }); }
   /* play(ev, {w, done, still}) -> {end, canvas, frame(k)}; ev = {kind, ids, n, to, care, block, key} */
   function play(ev, o) { o = o || {}; css(); var w = o.w || (window.V2Mock && V2Mock.world && V2Mock.world()), N = LEN[ev.kind] || 40;
     var ov = document.createElement('div'); ov.className = 'la-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', caption(ev, w)); ov.dataset.anim = ev.kind;
@@ -359,6 +361,7 @@
     function key(e) { if (e) { e.preventDefault(); e.stopPropagation(); } end(); }
     function end() { if (ended) return; ended = true; clearInterval(tm); document.removeEventListener('keydown', key, true); ov.remove(); BUSY = null; if (o.done) try { o.done(); } catch (e) { } if (!o.noQueue && window.V2AnimDone) try { V2AnimDone(); } catch (e) { } }
     ov.addEventListener('click', function () { end(); }); document.addEventListener('keydown', key, true); BUSY = { end: end };
+    if (!o.still && !o.noClip) clipLib(function () { if (!ended) V2Clip.offer(ov, c, function (d) { ov.style.visibility = 'hidden'; return play(ev, { w: w, done: d, noQueue: true, noClipQ: 1 }); }, caption(ev, w), (ev.kind || 'clip') + '-' + (ev.block || '')); });
     var draw = function (k) { try { paint(c, ev, k, w); } catch (e) { if (window.console) console.warn('life anim', e); } };
     if (reduced() || o.still) { draw(KEY_F[ev.kind] || N - 1); skip.textContent = 'Tap to close'; if (!o.still) tm = setInterval(end, 3000); return (API.last = { end: end, canvas: c, frame: draw }); }
     draw(0); tm = setInterval(function () { f++; if (f >= N + 12) return end(); if (f < N) draw(f); }, 1000 / FPS); /* the last frame holds ~1.2 s */

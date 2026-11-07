@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   var KEY = 'xcpets-announcer-voice', ctx = null;
-  function on() { try { return window.V2Announcer ? V2Announcer.voiceOn() : localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  function on() { if (window.V2Clip && V2Clip.recording) return true; /* download-clips-1107: a clip being recorded gets its hit sounds */ try { return window.V2Announcer ? V2Announcer.voiceOn() : localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
   function ac() { if (!ctx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ctx = new C(); } if (ctx.state === 'suspended') ctx.resume(); return ctx; }
   function tone(type, f0, f1, dur, vol, delay) { var a = ac(); if (!a) return; var t = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02); }
@@ -25,6 +25,7 @@
     wrap: function () { if (!on()) return; noise(0.35, 0.1, 2400, 0, true); tone('square', 784, 0, 0.08, 0.06, 0.32); tone('square', 1046, 0, 0.14, 0.06, 0.4); },
     blip: function () { if (!on()) return; tone('square', 660, 0, 0.05, 0.06); },
     on: on,
+    ctx: ac, /* download-clips-1107: V2Clip records this context's sound */
     set: function (v) { if (window.V2Announcer) V2Announcer.setVoice(v); else try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) { } paint(); },
     /** toggle(): a small speaker button for the Lair / motel, same saved setting as the arena announcer button */
     toggle: function (cls) { return '<button type="button" class="q sfx-tog ' + (cls || '') + '" data-sfx="1" aria-pressed="' + (on() ? 'true' : 'false') + '" title="8-bit sound (shared with the announcer)">' + (on() ? '🔊' : '🔇') + '</button>'; }
