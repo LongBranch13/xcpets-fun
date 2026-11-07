@@ -1,0 +1,59 @@
+# Clown Hair — private visual proposal, not activated
+
+Base: main b8a02962520fc2e0684f08cd263ea6d9af44c6ef.
+
+Rainbow clown afro wig, head/Headwear slot. Proposed Uncommon (tier 1),
+standard shared weight 10, origin Peepo, NOT exclusive and NOT signature.
+Peepo is the inspiration; all standard species may wear it. Headwear replaces
+other headwear, not another slot. Red/yellow/green/cyan/violet/pink curls,
+dark pixel outline, small white highlights; no orange, Bitcoin logo or fire.
+
+This branch changes NO game rules, production renderer or live page. Only
+preview tools and this design. Preview tool uses actual PetCore stage/animation
+frames and BonusGear's gearless silhouette/eye anchors; it is not loaded by the
+site. Egg intentionally stays bare (the normal renderer hides gear at stage 0).
+Hatchling, Juvenile, Adult, Elder, Mythic have stage-scaled wigs. Also previewed
+Pepe, Wojak and Doge at every stage, four animation frames each. Production
+V2Render and custom/special species still need integration and fit tests.
+
+## Existing gear system / acquisition proposal
+- Six slots: head/Headwear, face/Guise, back/Drip, hand/Grip, body/Outfits,
+  feet/Footwear (`js/v2-gear.js:1-7`). All six open from block 973560,
+  regardless of stage/age (`js/v2-rules.js:145-150`). Egg art still hides gear.
+- Shared non-signature gear is universal; signatures and explicit special locks
+  restrict some items (`js/v2-rules.js:1488-1502`). This wig adds no restriction.
+- Add to normal head roll pool (paid Pepe Wheel, saved spins, auto meal/stage
+  rolls, eligible quests and community rolls); not a guaranteed gift and no
+  bespoke drop or paid purchase. Paid roll base is 345 XCPETS, scaled by era
+  and active sale; saved-spin action burns one dander separately.
+- Wheel first picks a pet with tier weights 1/2/4/8, then one of six slots.
+  Eligible pool includes items at or below pet tier; same-tier weights x4.
+  Thus the proposed wig has head-pool weight 40 for Uncommon, 10 for Rare or
+  Legendary, and is normally unavailable on Common rolls. See
+  `js/v2-rules.js:128,155,1504-1508,3440-3457`.
+- Baseline probability per roll on a selected eligible pet is
+  (1/6) * wigWeight / sum(eligibleHeadWeights INCLUDING wig). Not a fixed 1-in-N:
+  pet tier/species, activation history and duplicate holdings change it.
+  Duplicate dampening preserves the initially drawn gear tier, then redraws
+  within that tier with weights reduced x0.9 per owned copy
+  (`js/v2-rules.js:1510-1514,1525-1527,1550-1557`).
+- Existing meal/stage bonus rolls call the same pickItem; quest variants may
+  use different tier/filter rules (`js/v2-rules.js:2545-2554,3307`).
+
+## To ship later (requires owner OK)
+1. Decide universal Uncommon versus Peepo-exclusive or Common. Recommendation:
+   universal Uncommon, ordinary rolls. Choosing Common would let Common Peepos
+   roll it themselves; an Uncommon wig can still be equipped from inventory.
+2. Integrate art into `js/v2-gear.js` and `js/v2-render.js` (adaptive draw), with
+   custom community-body handling where needed.
+3. New pool entry changes replay outcomes: this IS a rules change, despite
+   cosmetic art. `js/v2-rules.js` needs a new future-block eligibility gate for
+   the `js/v2-gear.js` append-only ITEMS entry. Gate stays null pending approval;
+   select tip+6 only at approved deployment. Do not modify historical pools.
+   `js/pet-core.js`, `rjs/pet-core.js`, `js/bonus-gear.js` need not change.
+4. Test before/after replay, item eligibility, all stage frames, overlays,
+   hybrids and custom species. No push/deploy authorized by this preview.
+
+## Reproduce
+node tools/clown-hair-preview.js /workspace/xcpets/previews/clown-hair-1107/frames.json
+python3 tools/clown-hair-sheets.py /workspace/xcpets/previews/clown-hair-1107
