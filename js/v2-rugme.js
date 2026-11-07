@@ -51,6 +51,7 @@
     return '<div class="rm-top"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
       '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' +
       '<div class="rm-sub">' + esc(V.speciesLabel(p.species)) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
+      (window.V2Render && V2Render.eraChip ? V2Render.eraChip(w, p) : '') +
       '<div class="rm-bio">“' + esc(c.bio) + '”</div>' +
       '<div class="rm-wants">Wants: <b>' + esc(V.reqText(c.ad.req)) + '</b> · ' + fmt(Math.max(0, left)) + ' blocks left</div>' +
       '<div class="rm-stamp yes">RUG ME</div><div class="rm-stamp no">NGMI</div>'; }

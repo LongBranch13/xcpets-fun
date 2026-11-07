@@ -1400,6 +1400,51 @@
     return out; }
   /** badgesOf(w, p): V2Rules.breederBadges with the MUTANT tip giving the real odds for this pet's source. */
   function badgesOf(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.breederBadges) return []; return V2.breederBadges(w, p).map(function (x) { return x.id === 'mutant' ? Object.assign({}, x, { tip: mutationTip(p) }) : x; }); }
+  // Read-only mini portraits from the canonical era's existing adult sprite. No RNG or pet writes.
+  // Resolve names case-insensitively: a future DJPepeSprite needs no renderer switch case.
+  var eraIconCache = Object.create(null);
+  function eraIcon(e) {
+    var C = window.V2Community, q = C && C.byId(e.id), sp = q && (q.sp || q.id), S, NG;
+    if (!sp) return '';
+    var wanted = String(q.eraSprite || (sp + 'Sprite')).toLowerCase();
+    var key = Object.keys(window).filter(function (k) { return k.toLowerCase() === wanted; })[0];
+    if (key) S = window[key];
+    NG = sp === 'nakamoto' && window.PetCore;
+    var source = S || NG, cached = eraIconCache[sp];
+    if (source && cached && cached.source === source) return cached.html;
+    var grid, pal, image;
+    try {
+      if (S && typeof S.draw === 'function') { grid = S.draw(3, 0, S.WIZARD_HAT ? { head: S.WIZARD_HAT } : {}, { community: true }); pal = Object.assign({}, S.PAL, S.PAL_COMMUNITY); }
+      else if (NG && NG.characterPet && NG.render) {
+        var art = Object.assign({}, NG.characterPet('nakamoto'), { background: 'solid', bgColor: '#102d3d', band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' });
+        image = NG.render(art, { stage: 3, frame: 0, gearCap: 0, gearOverride: {} });
+      }
+      var paths = Object.create(null), pixels = 0;
+      // Native 24-pixel head/upper-body crop, drawn at 24 CSS pixels: no fractional resampling.
+      for (var y = 0; y < 24; y++) for (var x = 4; x < 28; x++) {
+        var col = null;
+        if (grid && grid[y]) col = pal[grid[y][x]] || grid[y][x];
+        else if (image && image.data && image.data.length === 4096) {
+          var i = (y * 32 + x) * 4, d = image.data;
+          if (d[i + 3] && !(d[i] === 16 && d[i + 1] === 45 && d[i + 2] === 61)) col = '#' + [d[i], d[i + 1], d[i + 2]].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+        }
+        if (typeof col !== 'string' || !/^#[0-9a-f]{6}$/i.test(col)) continue;
+        paths[col] = (paths[col] || '') + 'M' + (x - 4) + ' ' + y + 'h1v1h-1z'; pixels++;
+      }
+      if (pixels) {
+        var html = '<svg class="era-pet-icon" data-era-icon="' + esc(sp) + '" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" shape-rendering="crispEdges">' + Object.keys(paths).map(function (col) { return '<path fill="' + col + '" d="' + paths[col] + '"/>'; }).join('') + '</svg>';
+        eraIconCache[sp] = { source: source, html: html }; return html;
+      }
+    } catch (ignore) { /* Missing/late sprite never breaks the card; retry on the next render. */ }
+    return '<svg class="era-pending-icon" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h10v2H1zM1 10h10v2H1zM2 2h2v2H2zM8 2h2v2H8zM4 4h4v2H4zM5 6h2v1H5zM4 7h4v1H4zM2 8h8v2H2z"/></svg>';
+  }
+  /** Small pixel era label in normal text flow, never over the art. No stored pet field. */
+  function eraChip(w, p) {
+    var C = window.V2Community, e = C && C.eraOf(w, p); if (!e) return '';
+    var tip = 'Born in block ' + e.birth.toLocaleString('en-US') + '. Community pet era: ' + e.name +
+      (e.start ? ' (from block ' + e.start.toLocaleString('en-US') + ')' : '') + '. The hand-off block belongs to the new era. Looks only.';
+    return '<span class="era-badge" data-era="' + esc(e.id) + '" title="' + esc(tip) + '">' + eraIcon(e) + '<span>' + esc(e.name) + ' era</span></span>';
+  }
   /** genChip(w, p): 'Gen N' chip (Gen 0 = hatched) plus 'n/6 breeds' for cards. Display only. */
   function genChip(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.genOf) return ''; var bl = V2.breedsLeft(p, w && w.tip);
     return '<span class="chip gen" title="Generation: Gen 0 = hatched or granted; a baby is one more than its older parent (a quest jackpot egg is one more than its one parent)">Gen ' + genOf(w, p) + '</span>' + (p.stage >= 3 && !p.dead ? '<span class="chip brk" title="Lifetime breeds used (cap ' + bl.cap + ')">💞 ' + bl.used + '/' + bl.cap + '</span>' : ''); }
@@ -1468,7 +1513,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { originOf: originOf, genOf: genOf, mutationChip: mutationChip, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { eraChip: eraChip, originOf: originOf, genOf: genOf, mutationChip: mutationChip, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: framesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
@@ -1548,6 +1593,7 @@
     var sp = window.V2Rules && window.V2Rules.speciesLabel ? window.V2Rules.speciesLabel(t.species) : t.species, a = document.createElement('a'); a.href = 'pet.html?id=' + t.id; a.appendChild(c);
     var s = document.createElement('span'); s.innerHTML = '<b></b><br><span class="muted"></span>'; s.firstChild.textContent = (p && p.stage === 0 && opts.kid ? 'Egg ' : '') + (t.name || '') + ' #' + t.id; s.lastChild.textContent = sp + ' · ' + (TL[t.tier] || ''); a.appendChild(s);
     if (g) { var m = document.createElement('span'); m.className = 'ftgonetag'; m.textContent = g === 'dead' ? '🪦 died' : (g === 'sacrificed' ? 'sacrificed' : 'released'); a.appendChild(m); a.title = g === 'dead' ? 'This pet died' : (g === 'sacrificed' ? 'This pet was sacrificed' : 'This pet was released'); }
+    if (p && window.V2Render.eraChip) a.insertAdjacentHTML('beforeend', window.V2Render.eraChip(w, p));
     d.appendChild(a); return d; }
   function hasParents(id) { try { var q = window.V2Mock.world().byId[id]; return !!(q && q.parents && q.parents.length); } catch (e) { return false; } }
   function branch(t, lvl) { var li = document.createElement('li'); li.appendChild(node(t, { self: lvl === 0, older: lvl === 2 && hasParents(t.id) }));

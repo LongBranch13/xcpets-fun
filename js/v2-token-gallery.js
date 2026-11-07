@@ -47,6 +47,7 @@
     return '<div class="tg-tile" id="tok-' + e.id + '"><div class="tg-no">' + ord(e.no) + '</div><a href="pet.html?id=' + e.id + '" aria-label="' + esc(e.name) + ' #' + e.id + ' pet card">' + art + '</a>' +
       '<h4><a href="pet.html?id=' + e.id + '">' + esc(e.name) + '</a> <span class="muted">#' + e.id + '</span></h4>' +
       '<div class="small"><span class="pill tier tier-' + rid + '">' + esc(e.rarity) + '</span>' + (e.species ? ' · ' + esc(e.species) : '') + '</div>' +
+      (e.pet && R.eraChip ? R.eraChip(M.world(), e.pet) : '') +
       '<div class="small muted tg-asset" title="' + esc(e.asset) + '">🎟️ <a href="https://xcp.io/asset/' + encodeURIComponent(e.asset) + '" target="_blank" rel="noopener" aria-label="Token ' + esc(e.asset) + ' on xcp.io">' + esc(e.asset) + ' ↗</a></div>' +
       '<div class="small muted">⛓️ tied in block ' + fmt(e.block) + (e.stage ? ' · ' + esc(e.stage) : '') + '</div>' +
       '<div class="small" title="' + esc(e.owner || '') + '">holder ' + esc(short(e.owner) || 'unknown') + (me ? ' (you)' : '') + '</div>' +
