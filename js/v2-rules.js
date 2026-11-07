@@ -3020,7 +3020,7 @@
       return { tag: 'pet:' + CEM_RUN_CODE[kk] + ':' + tgt + ':' + aa + ':' + x.body, amount: cemRunsCost(w, kk === 'pledge' ? 'alt' : kk, x.ids.length, b), perPet: cemCost(w, ck === 'seance' ? 'pledge' : ck, b), petId: id, ok: true, runs: true, anchor: A, ids: x.ids, zEat: kk === 'zfeed' || kk === 'rpl' ? x.ids : undefined,
         label: (kk === 'zfeed' ? 'zmeal' : kk === 'pledge' && seanceOn(b) ? 'seance part' : kk) + ' #' + id + ' (' + x.ids.length + ' pet' + (x.ids.length === 1 ? '' : 's') + ', one burn)' }; }); }
   /* Hunt revision preview: deliberately OFF until a separate activation approval. */
-  var ACTIVATE_HUNT_RULES_BLOCK = Infinity, HUNT_GRUDGE_BLOCKS = 3 * BLOCKS_PER_DAY;
+  var ACTIVATE_HUNT_RULES_BLOCK = 975006, HUNT_GRUDGE_BLOCKS = 3 * BLOCKS_PER_DAY;
   function huntRulesOn(b) { return Number.isFinite(ACTIVATE_HUNT_RULES_BLOCK) && b >= ACTIVATE_HUNT_RULES_BLOCK; }
   function huntPair(a, z) { return a + ':' + z; }
   function huntGrudge(w, a, z, b) { var A = w.byId[a], Z = w.byId[z], g = w.cem && w.cem.grudges && w.cem.grudges[huntPair(a, z)];
