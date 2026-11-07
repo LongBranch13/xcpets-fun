@@ -16,7 +16,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = req
 const F = require('./api-feed.js'); const PAPERS = require('../js/v2-papers.js');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 const ROOT = path.resolve(__dirname, '..'), OUT = path.resolve(ROOT, opt('--out') || 't'), SITE = F.SITE, SCALE = 4;
-const EXTRA = ['js/viking-sprite.js', 'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
+const EXTRA = ['js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
 function crc32(b) { let c, t = crc32.t; if (!t) { t = crc32.t = new Int32Array(256); for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } }
   c = -1; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
 function chunk(type, data) { const l = Buffer.alloc(4), td = Buffer.concat([Buffer.from(type), data]), cr = Buffer.alloc(4); l.writeUInt32BE(data.length); cr.writeUInt32BE(crc32(td)); return Buffer.concat([l, td, cr]); }
@@ -83,9 +83,9 @@ if (require.main === module) (async () => {
     /* Proof of Pet (branch pet-papers): a pet with a verified tied token gets the 128x128 Proof of Pet badge (js/v2-papers.js, same pixels as the
      * pet.html card); every other pet (no token, a fresh untied mint, community) keeps the plain 32x32 x4 sprite. */
     const tie = assetOf[p.id], q = byId.get(p.id);
-    if (tie && q && !q.community && !(q.art && q.art.community)) { const r0 = PAPERS.render({ id: p.id, name: p.name, tier: p.tier || '', speciesLabel: p.speciesLabel, asset: tie.asset }, fr[0].data, 'token'), lk = ctx.V2Looks && ctx.V2Looks.hasFx(fr[0]); /* looks-draw: realistic looks baked into the badge at 4 output pixels per badge pixel */
+    if (tie && q && !q.community && !(q.art && q.art.community)) { const r0 = PAPERS.render({ id: p.id, name: p.name, tier: p.tier || '', speciesLabel: p.speciesLabel, asset: tie.asset }, fr[0].rareScene?ctx.V2Render.nativeFrame(fr[0]):fr[0].data, 'token'), lk = ctx.V2Looks && ctx.V2Looks.hasFx(fr[0]); /* looks-draw: realistic looks baked into the badge at 4 output pixels per badge pixel */
       const r = lk ? PAPERS.withLooks(PAPERS.scaleUp(r0, 4), 4, fr[0], ctx.V2Looks) : r0; np += put(path.join(OUT, p.id + '.png'), png(r.data, r.w, r.h, 1)); }
-    else { const bk = ctx.V2Looks && ctx.V2Looks.bakeAll(fr[0], 32 * SCALE); /* looks-draw: realistic looks baked as a still */ np += put(path.join(OUT, p.id + '.png'), bk ? png(bk, 32 * SCALE, 32 * SCALE, 1) : png(fr[0].data, 32, 32, SCALE)); } }
+    else { const nf=ctx.V2Render.exportFrame(fr[0]);const bk = ctx.V2Looks && ctx.V2Looks.bakeAll(fr[0], 32 * SCALE); /* looks-draw: realistic looks baked as a still */ np += put(path.join(OUT, p.id + '.png'), bk ? png(bk, 32 * SCALE, 32 * SCALE, 1) : png(nf.data,nf.width,nf.height,SCALE)); } }
   if (!only) put(path.join(OUT, 'index.json'), Buffer.from(JSON.stringify({ blockHeight: input.tip, count: pets.length, url: SITE + '/t/<id>.json' }) + '\n'));
   if (A.includes('--tokened') && mintsOk) put(STATE, Buffer.from(JSON.stringify({ lastBlock: input.tip }) + '\n'));
   /* api/ties.json (Oct 24 2026): every verified tie in one small file (HatchBot tie announcements read this instead of polling t/<id>.json).

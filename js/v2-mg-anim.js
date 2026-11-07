@@ -42,7 +42,7 @@
   /* mgcancel: called off (hunted, moved or crumbled first): the zombie fades, the Mythics stay safe */
   function cancelF(g, ev, f, P) { K.sky(g, f, 0); K.ground(g, 0); var zs = K.sprite(P.pet, 'zombie', f >> 2), fade = clamp((f - 8) / 12, 0, 1);
     if (fade < 1) K.drawSpr(g, zs, 20, GY - 31, null, 1 - fade); px(g, 70, GY - 30, '#2a2742', 44, 30);
-    P.victims.slice(0, 3).forEach(function (v, i) { var x = 74 + i * 16, vs = K.sprite(v, 'live', 0); g.drawImage(vs, 0, 0, 32, 32, x, GY - 16 - ((f + i * 3) >> 2) % 2, 16, 16); if (f >= 10) K.halo(g, x + 8, GY - 18, f + i); }); /* the Mythics stay safe in the stash */
+    P.victims.slice(0, 3).forEach(function (v, i) { var x = 74 + i * 16, vs = K.sprite(v, 'live', 0); V2Render.drawSprite(g,vs,x,GY-16-((f+i*3)>>2)%2,16,false,{x:0,y:12,w:K.W,h:GY-12}); if (f >= 10) K.halo(g, x + 8, GY - 18, f + i); }); /* the Mythics stay safe in the stash */
     if (f >= 10) K.sparkle(g, f, 29, 98, GY - 10, 40);
     if (f >= 16) text(g, 'CALLED OFF', CX, 6, C.gold2, 8); if (f >= 22) text(g, 'NOTHING WAS EATEN', CX, 18, C.s2, 5); }
   /* mgraise: the violet grave opens */

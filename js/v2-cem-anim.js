@@ -43,27 +43,28 @@
   var SPR = {};
   function R() { return window.V2Render || null; }
   function Z() { return window.V2ZombieLook || null; }
-  function keyedRGBA(p) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
-    r.paint(c, r.framesWith(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, [])[0]);
-    var d = c.getContext('2d').getImageData(0, 0, 32, 32), a = d.data; for (var i = 0; i < a.length; i += 4) if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) a[i + 3] = 0;
+  function keyedRGBA(p, raw) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
+    r.paint(c, (raw?r.anatomyFramesWith:r.framesWith)(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, [])[0]);
+    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height), a = d.data; for (var i = 0; i < a.length; i += 4) if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) a[i + 3] = 0;
     /* edge pixels blended with the magenta key (a pink fringe) also go: only where they touch a keyed pixel, so pink pets keep their colour */
-    var kill = []; for (var q = 0; q < 1024; q++) { var j = q * 4; if (!a[j + 3] || !(a[j] - a[j + 1] > 60 && a[j + 2] - a[j + 1] > 50)) continue; var x = q % 32, y = (q / 32) | 0;
-      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X < 0 || Y < 0 || X > 31 || Y > 31 || !a[(Y * 32 + X) * 4 + 3]; })) kill.push(j); }
+    var kill = []; for (var q = 0; q < c.width*c.height; q++) { var j = q * 4; if (!a[j + 3] || !(a[j] - a[j + 1] > 60 && a[j + 2] - a[j + 1] > 50)) continue; var x = q % c.width, y = (q / c.width) | 0;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X < 0 || Y < 0 || X >= c.width || Y >= c.height || !a[(Y * c.width + X) * 4 + 3]; })) kill.push(j); }
     kill.forEach(function (j) { a[j + 3] = 0; }); return a; }
-  function toCanvas(a) { var c = document.createElement('canvas'); c.width = c.height = 32; var id = c.getContext('2d').createImageData(32, 32); id.data.set(a); c.getContext('2d').putImageData(id, 0, 0); c.rgba = a; return c; }
+  function toCanvas(a) { var c = document.createElement('canvas'); c.width=c.height=Math.sqrt(a.length/4); var id = c.getContext('2d').createImageData(c.width,c.height); id.data.set(a); c.getContext('2d').putImageData(id, 0, 0); c.rgba = a; return c; }
   function fallback(mode) { var a = new Uint8ClampedArray(4096), col = mode === 'live' ? [232, 200, 150] : [90, 160, 80];
     function put(x, y, k) { var j = (y * 32 + x) * 4; a[j] = k[0]; a[j + 1] = k[1]; a[j + 2] = k[2]; a[j + 3] = 255; }
     for (var y = 10; y < 32; y++) for (var x = 10; x < 22; x++) if (y > 12 || (x > 11 && x < 20)) put(x, y, col);
     put(13, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); put(18, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); return toCanvas(a); }
   function sprite(p, mode, fi) { mode = mode || 'live'; fi = fi || 0; var k = (p ? p.id : 0) + ':' + mode + ':' + (mode === 'live' ? 0 : fi % 4); if (SPR[k]) return SPR[k]; var out = null;
     try { if (mode === 'live') { var a = keyedRGBA(p); out = a ? toCanvas(a) : null; }
-      else { var z = Z(); if (z && p && p.art) { var run = function () { return keyedRGBA(p); }, base = z.noHand ? z.noHand(run) : run();
+      else { var z = Z(); if (z && p && p.art) { var run = function () { return keyedRGBA(p,true); }, base = z.noHand ? z.noHand(run) : run();
           var E = (z.gameEyes && z.gameEyes(p.art, p.stage, fi % 4)) || (z.starEyes ? z.starEyes(p.art, p.stage, fi % 4) : null);
-          var r = base && z.transparent(base, p.id, fi % 4, 4, { ground: false, eyes: E, feral: mode === 'feral' }); out = r ? toCanvas(r.data) : null; } } } catch (e) { out = null; }
+          var r = base && z.transparent(base, p.id, fi % 4, 4, { ground: false, eyes: E, feral: mode === 'feral' }); if(r&&p.art.rareHatch){var source=r.data,frame=function(bg){var d=new Uint8ClampedArray(source),rgb=bg.match(/[0-9a-f]{2}/gi).map(function(h){return parseInt(h,16);});for(var j=0;j<d.length;j+=4)if(!d[j+3]){d.set(rgb,j);d[j+3]=255;}return {width:32,height:32,data:d};};var ff=R().rareHatchFrames([frame('#ff00fe')],p,{items:{}},{rareKey:function(bg){return [frame(bg)];}})[0],cv=R().spriteCanvas(ff,true);cv.rgba=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;out=cv;}else out=r?toCanvas(r.data):null; } } } catch (e) { out = null; }
     if (!out) out = fallback(mode); SPR[k] = out; return out; }
-  function topY(spr) { var a = spr.rgba; if (!a) return 8; for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) if (a[(y * 32 + x) * 4 + 3]) return y; return 8; }
-  function drawSpr(g, spr, x, y, clipY, alpha) { g.save(); if (clipY != null) { g.beginPath(); g.rect(0, 0, W, clipY); g.clip(); } if (alpha != null) g.globalAlpha = alpha; g.drawImage(spr, Math.round(x), Math.round(y)); g.restore(); }
-  function silhouette(g, spr, x, y, col) { var a = spr.rgba; if (!a) return; for (var q = 0; q < 1024; q++) if (a[q * 4 + 3]) px(g, x + (q % 32), y + ((q / 32) | 0), col); }
+  function topY(spr){var a=spr.rgba,n=spr.width||32;if(!a)return 8;for(var y=0;y<spr.height;y++)for(var x=0;x<n;x++)if(a[(y*n+x)*4+3])return y-(spr.height-32);return 8;}
+  function drawSpr(g,spr,x,y,clipY,alpha){g.save();if(clipY!=null){g.beginPath();g.rect(0,0,W,clipY);g.clip();}if(alpha!=null)g.globalAlpha=alpha;R().drawSprite(g,spr,Math.round(x),Math.round(y),32,false,{x:0,y:12,w:W,h:GY-10});g.restore();}
+  function silhouette(g,spr,x,y,col){var a=spr.rgba,n=spr.width||32;if(!a)return;x-=(n-32)/2;y-=spr.height-32;for(var q=0;q<a.length/4;q++)if(a[q*4+3])px(g,x+q%n,y+Math.floor(q/n),col);}
+
   /* ---- the cemetery set (same palette as the cemetery scene / altar) ---- */
   function sky(g, f, tint) { for (var i = 0; i < 5; i++) px(g, 0, i * 13, C.sky[i], W, 13); var r = rnd(7); for (var s = 0; s < 22; s++) { var sx = r() * W, sy = r() * 40; if ((s + (f >> 2)) % 7) px(g, sx, sy, s % 3 ? '#cfd3ff' : '#ffffff'); }
     disc(g, 106, 12, 5, C.gold2); px(g, 104, 10, '#e8dc9a', 2); px(g, 108, 14, '#e8dc9a'); px(g, 0, 50, '#2b2650', W, 12);
@@ -120,7 +121,7 @@
     var VX = [64, 84, 104], zx = 8; if (f >= s0 && cur < vs.length) zx = VX[cur] - 30 + (t < 4 ? Math.round(t * 2) - 8 : t < 8 ? 0 : -Math.round((t - 7))); else if (f >= endF) zx = VX[vs.length - 1] - 38;
     if (f >= s0 && cur < vs.length && t < 4) zx = (cur ? VX[cur - 1] - 38 : 8) + Math.round((VX[cur] - 30 - (cur ? VX[cur - 1] - 38 : 8)) * t / 4);
     vs.forEach(function (v, i) { var x = VX[i], gone = i < ate, now = i === cur && t >= 4 && t < 6; if (gone) { if (i === cur && t < 12) blood(g, t - 6, 31 + i, x + 8, GY - 8); bones(g, x + 4, GY + 2 + (i % 2)); return; }
-      var shiver = f % 2 && !now ? 1 : 0, vsp = sprite(v, 'live', 0); if (now) { g.save(); g.globalAlpha = 1; } g.drawImage(vsp, 0, 0, 32, 32, x + shiver, GY - 16, 16, 16); if (now) { g.restore(); px(g, x, GY - 16, '#ffffff', 16, 16); g.save(); g.globalAlpha = 0.6; g.drawImage(vsp, 0, 0, 32, 32, x, GY - 16, 16, 16); g.restore(); }
+      var shiver = f % 2 && !now ? 1 : 0, vsp = sprite(v, 'live', 0); if (now) { g.save(); g.globalAlpha = 1; } R().drawSprite(g,vsp,x+shiver,GY-16,16,false,{x:0,y:12,w:W,h:GY-12}); if (now) { g.restore(); px(g, x, GY - 16, '#ffffff', 16, 16); g.save(); g.globalAlpha = 0.6; R().drawSprite(g,vsp,x,GY-16,16,false,{x:0,y:12,w:W,h:GY-12}); g.restore(); }
       if ((f + i) % 4 < 2) px(g, x + 13, GY - 18, '#27e1ff', 1, 2); });
     drawSpr(g, spr, zx, GY - 31 + (f >= endF ? (f >> 1) % 2 : 0));
     if (f >= s0 && cur < vs.length && t >= 4 && t < 7) text(g, 'CHOMP!', VX[cur] + 4, 30, C.b4, 5);
@@ -155,7 +156,7 @@
         x = tx + (sx - tx) * r0 * Math.cos(ang) - (sy - ty) * r0 * Math.sin(ang) * 0.4; y = ty + (sy - ty - 8 * lift) * r0 + Math.sin(ang) * 6 * r0; sz = Math.max(4, Math.round((16 - 12 * u) / 2) * 2); wob = 0;
         for (var tr = 1; tr < 4; tr++) px(g, x + sz / 2 - tr * (sx < CX ? -2 : 2), y + sz / 2 + tr, tr % 2 ? C.gold : C.gold2); }
       if (k >= per - 2) { sparkle(g, f, 40 + i, CX, GY - 18, 26); disc(g, CX, GY - 18, 3 + (k - per + 2) * 2, C.gold2); return; }
-      if (it.pet) { var vsp = sprite(it.pet, 'live', 0); g.drawImage(vsp, 0, 0, 32, 32, Math.round(x), Math.round(y - wob), sz, sz); } else gearIcon(g, Math.round(x), Math.round(y - wob), sz);
+      if (it.pet) { var vsp = sprite(it.pet, 'live', 0); R().drawSprite(g,vsp,Math.round(x),Math.round(y-wob),sz,false,{x:0,y:12,w:W,h:GY-12}); } else gearIcon(g, Math.round(x), Math.round(y - wob), sz);
       if (k < 0 && (f + i) % 6 < 3) px(g, sx + 7, sy - 3, C.gold2, 2, 1); });
     /* the points panel (hatchspeed-1101, display only: '166 PTS (MIN 25)' instead of 'POINTS 166/25'; panel widened 76 -> 92 to fit 16 letters) */ var MIN = ev.min || 25, bw = 92; px(g, 18, 2, C.ol, 92, 21); px(g, 19, 3, '#221d38', 90, 19);
     text(g, pts + ' PTS (MIN ' + MIN + ')', CX, 5, pts >= MIN ? C.zg : C.gold2, 5); px(g, 30, 12, C.s4, 68, 3); px(g, 30, 12, pts >= MIN ? C.zg2 : C.gold, Math.round(68 * clamp(pts / MIN, 0, 1)), 3);

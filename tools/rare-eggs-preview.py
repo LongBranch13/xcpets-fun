@@ -31,4 +31,10 @@ cs.save(D/'chad-v4-stages-and-gear.png')
 hs=Image.new('RGB',(760,220),'#0c121d');hd=ImageDraw.Draw(hs)
 for i,a in enumerate(chad['hybridPreviews']):hd.text((i*250+12,12),'CHAD / '+a['role'].upper()+' / '+a['other'].upper(),font=f,fill='white');tile(hs,im(a['data']),i*250+15,50,4)
 hs.save(D/'chad-v4-hybrids.png')
+djfile=ROOT/'rare-build-dj-render.json'
+if djfile.exists():
+ dj=json.loads(djfile.read_text()); sheet=Image.new('RGB',(1000,50+((len(dj)+3)//4)*200),'#0c121d');dd=ImageDraw.Draw(sheet);dd.text((12,12),'PRIVATE DJ SIGNATURE / HYBRIDS AFTER CANONICAL COLD STORAGE (FIXTURE)',font=f,fill='white')
+ for i,a in enumerate(dj):
+  x=12+(i%4)*250;y=45+(i//4)*200;dd.text((x,y),a['pair'],font=f,fill='white');dd.text((x,y+15),'body: '+a['plan']['shape'],font=f,fill='#9ce');tile(sheet,im(a['data']),x,y+40,4)
+ sheet.save(D/'dj-signature-and-hybrids.png')
 print(D)
