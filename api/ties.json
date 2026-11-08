@@ -1,6 +1,6 @@
 {
- "lastBlock": 975089,
- "count": 240,
+ "lastBlock": 975092,
+ "count": 242,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2882,6 +2882,30 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
    "stage": "Adult"
+  },
+  {
+   "id": 8434,
+   "asset": "A337847801404875613",
+   "tiedBlock": 975092,
+   "tiedTx": "0ee3b45637636a9c452ede8e8729ad9a64fc99728ba40d7606ef175a0d96819e",
+   "kind": "deed",
+   "name": "Kilu",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8457,
+   "asset": "A11283138795259581785",
+   "tiedBlock": 975092,
+   "tiedTx": "f5d8b87d4aacbabe29939417f96d29cdb23fa63a2647b2161c5969615430e678",
+   "kind": "deed",
+   "name": "Zurupip",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
   }
  ]
 }
