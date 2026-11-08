@@ -3,6 +3,72 @@
 (function () {
   'use strict';
   var V = window.V2Rules;
+  /* t3176u: a kept hybrid top (FUNTRUMP windblown hair, Lord Kek nemes, Viking horns) is fitted once
+   * against the frame margin. It stays still while the body bobs, and the pixels that stick out past
+   * that fit miss the ink outline. Shift the layer by the body's own bounce and close the outline.
+   * Display only: the part list, the plan and the roll are untouched. */
+  var hybridFramesBare = V.hybridFrames;
+  function hairFollowsBody(art, opts, fr) {
+    var h = art && art.hybrid, parts = h && h.parts;
+    if (!h || !parts || !parts.length || !fr || fr.length < 2 || !hybridFramesBare) return fr;
+    var keep = {};
+    parts.forEach(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); if (d && d.keep && d.kind === 'top') keep[q.sp + ':' + q.part] = 1; });
+    if (!Object.keys(keep).length) return fr;
+    var rest = parts.filter(function (q) { return !keep[q.sp + ':' + q.part]; });
+    var bare = hybridFramesBare(Object.assign({}, art, { hybrid: Object.assign({}, h, { parts: rest }) }), opts);
+    if (!bare || bare.length !== fr.length) return fr;
+    var INK = [26, 16, 32];
+    function isInk(d, q) { return Math.abs(d[q] - INK[0]) + Math.abs(d[q + 1] - INK[1]) + Math.abs(d[q + 2] - INK[2]) <= 8; }
+    function maskOf(f) {
+      var a = fr[f].data, b = bare[f].data, m = new Uint8Array(1024), n = 0;
+      for (var j = 0; j < 1024; j++) { var x = j & 31, y = j >> 5; if (x > 25 && y < 6) continue; var q = j * 4;
+        if (a[q] !== b[q] || a[q + 1] !== b[q + 1] || a[q + 2] !== b[q + 2]) { m[j] = 1; n++; } }
+      m.n = n; return m;
+    }
+    /* s maps frame 0 onto this frame: this[y] lines up with frame0[y - s]. Same bounce the gear rig uses. */
+    function bounce(a, b, bytes) {
+      var best = null;
+      for (var s = -2; s <= 2; s++) { var mis = 0;
+        for (var y = 0; y < 28; y++) for (var x = 0; x < 26; x++) { var Y = y - s;
+          if (Y < 0 || Y > 31) { mis++; continue; }
+          if (bytes) { var i = (y * 32 + x) * 4, j = (Y * 32 + x) * 4; if (a[i] !== b[j] || a[i + 1] !== b[j + 1] || a[i + 2] !== b[j + 2]) mis++; }
+          else if (a[y * 32 + x] !== b[Y * 32 + x]) mis++; }
+        if (!best || mis < best[1]) best = [s, mis]; }
+      return best[1] <= 80 ? best[0] : 0;
+    }
+    function bgAt(d) { return [d[0], d[1], d[2]]; }
+    function isBg(d, q, bg) { return Math.abs(d[q] - bg[0]) + Math.abs(d[q + 1] - bg[1]) + Math.abs(d[q + 2] - bg[2]) <= 8; }
+    function closeOutline(data, hair, bg) {
+      var nb = [[1, 0], [-1, 0], [0, 1], [0, -1]], add = [];
+      function at(x, y) { return (x < 0 || y < 0 || x > 31 || y > 28 || (x > 25 && y < 6)) ? -1 : y * 32 + x; }
+      for (var j = 0; j < 1024; j++) if (hair[j] && !isBg(data, j * 4, bg) && !isInk(data, j * 4)) { var x = j & 31, y = j >> 5;
+        nb.forEach(function (dv) { var n = at(x + dv[0], y + dv[1]); if (n < 0 || hair[n] || !isBg(data, n * 4, bg)) return; add.push(n); }); }
+      add.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; hair[n] = 1; });
+      /* a background pixel the layer left between itself and the ink is a hole in the outline */
+      for (var pass = 0; pass < 3; pass++) { var fill = [];
+        for (j = 0; j < 1024; j++) if (hair[j] && isBg(data, j * 4, bg)) { var x2 = j & 31, y2 = j >> 5;
+          if (nb.some(function (dv) { var n = at(x2 + dv[0], y2 + dv[1]); return n >= 0 && (isInk(data, n * 4) || (hair[n] && !isBg(data, n * 4, bg))); })) fill.push(j); }
+        fill.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; }); if (!fill.length) break; }
+    }
+    var m0 = maskOf(0); if (m0.n < 8) return fr;
+    var mRef = new Uint8Array(m0);
+    for (var f = 0; f < fr.length; f++) {
+      var bodyS = f === 0 ? 0 : bounce(bare[f].data, bare[0].data, 1);
+      var hairS = f === 0 ? 0 : bounce(maskOf(f), mRef, 0);
+      var bg = bgAt(bare[f].data), data, hair;
+      if (f === 0 || bodyS === hairS) { data = new Uint8ClampedArray(fr[f].data); hair = f === 0 ? m0 : maskOf(f); }
+      else {
+        data = new Uint8ClampedArray(bare[f].data); hair = new Uint8Array(1024);
+        var src = fr[0].data;
+        for (var j = 0; j < 1024; j++) if (m0[j]) { var y = (j >> 5) + bodyS, x = j & 31; if (y < 0 || y > 28 || (x > 25 && y < 6)) continue;
+          var t = y * 32 + x, q = t * 4, s = j * 4; data[q] = src[s]; data[q + 1] = src[s + 1]; data[q + 2] = src[s + 2]; data[q + 3] = 255; hair[t] = 1; }
+      }
+      closeOutline(data, hair, bg);
+      fr[f] = Object.assign({}, fr[f], { data: data });
+    }
+    return fr;
+  }
+  V.hybridFrames = function (art, opts) { var fr = hybridFramesBare.apply(V, arguments); try { return hairFollowsBody(art, opts, fr); } catch (eHair) { return fr; } };
   V2Gear.install(BonusGear);
   BonusGear.DEFS['v2-black-eye'] = BonusGear.DEFS['v2-black-eye'] || { slot: 'face', tier: 0, label: 'Black eye', at: 'eyes', map: ['nVVn.....', 'VnnV.....', 'nVVn.....'] };
   /* black eye fit (2026-10-15, Jake: on Dodo it sat on the back of the head): traced on the real eye pixels of this species/stage/frame (drawEyeGear 'shiner'),
@@ -1634,7 +1700,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=e9f47a2a6b'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=d71843d83f'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
