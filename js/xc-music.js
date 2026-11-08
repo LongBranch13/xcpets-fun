@@ -1,7 +1,9 @@
-/* Site-wide playlist (music-playlist-1107). Original loops only: pulse, triangle, sine and noise, no samples.
+/* Site-wide playlist (music-playlist-1107, more-wub-1107). Original loops only: pulse, triangle, sine and noise, no samples.
  * Chill loops stay soft and slow. 8-bit loops are written note by note. New electronic tracks use the same
  * chip writer with their own drum kit, bass motion and melody (drum and bass, trance, synthwave, house,
  * dubstep, techno, jungle). Nothing here is a copied melody.
+ * Each song keeps its written melody, then resolves with a short original cadence that thins out, a 4s fade,
+ * and a 1.5s crossfade into the next playlist song. The melodies themselves are not rewritten.
  * The speaker button in js/xc-select.js loads this file on the first tap. One playlist per style plays on
  * every page and advances when a song ends. The browser player remembers the song and position in sessionStorage.
  * Same file renders preview audio in Node: tools/render-ambient-music.js */
@@ -30,6 +32,32 @@
   };
 
   function chordTones(c) { var p = c.split(' '); var r = n(p[0]), q = p[1]; return [r, r + (q === 'm' ? 3 : 4), r + 7, r + (q === 'M' ? 11 : 10)]; } // M = maj7, m = m7, 7 = dominant 7
+  var FADE_S = 4, XFADE_S = 1.5; // ending fade 3-5s, playlist crossfade 1-2s (owner, Nov 8)
+  function leadTonic(root) { var t = root; while (t < 60) t += 12; while (t > 72) t -= 12; return t; }
+  // Original closing cadence after the written bars. Does not edit those bars. One bar of melody, then a held tonic under the fade.
+  function pushOutro(ev, opt) {
+    var hzFn = opt.hz, t0 = opt.t0, bar = opt.bar, fade = opt.fade || FADE_S, tonic = opt.tonic, minor = opt.minor;
+    var deg = opt.variant === 1 ? (minor ? [3, 5, 7, 0] : [4, 5, 7, 0]) : opt.variant === 2 ? (minor ? [7, 3, 2, 0] : [7, 4, 2, 0]) : (minor ? [7, 5, 3, 0] : [7, 5, 4, 0]);
+    var slots = opt.variant === 1 ? [0, 0.5, 0.66, 0.82] : opt.variant === 2 ? [0.1, 0.32, 0.55, 0.78] : [0, 0.25, 0.5, 0.75];
+    var holds = opt.variant === 1 ? [0.42, 0.14, 0.14, 0.22] : [0.22, 0.2, 0.2, 0.3];
+    var duty = opt.duty || 0.25, lead = opt.lead || 0.05, i, p, tN, d;
+    for (i = 0; i < 4; i++) {
+      tN = t0 + slots[i] * bar; d = holds[i] * bar; p = tonic + deg[i];
+      ev.push({ t: tN, d: d, f: hzFn(p), v: lead, w: 'tri', att: 0.03, rel: 0.32, vib: 0.005, vd: 0.12 });
+      if (opt.pulse) {
+        ev.push({ t: tN, d: d, f: hzFn(p) * 1.0035, v: lead * 0.8, w: 'pulse', duty: duty, att: 0.02, rel: 0.26, pan: 0.4 });
+        ev.push({ t: tN, d: d, f: hzFn(p) * 0.9965, v: lead * 0.8, w: 'pulse', duty: duty, att: 0.02, rel: 0.26, pan: -0.4 });
+      }
+    }
+    ev.push({ t: t0 + bar * 0.98, d: fade * 0.86, f: hzFn(tonic), v: lead * 0.65, w: 'tri', att: 0.08, rel: 0.8, vib: 0.004, vd: 0.25 });
+    var outroLen = bar + fade;
+    (opt.pad || []).forEach(function (pp, q) {
+      ev.push({ t: t0, d: outroLen, f: hzFn(pp) * (1 + 0.002 * (q - 1)), v: opt.padV || 0.018, w: 'tri', att: 0.3, rel: 0.9, pan: (q - 1) * 0.5 });
+    });
+    if (opt.bass != null) ev.push({ t: t0, d: outroLen * 0.92, f: hzFn(opt.bass), v: opt.bassV || 0.1, w: 'sine', att: 0.02, rel: 0.55 });
+    if (opt.kick) ev.push({ t: t0, d: 0.14, f: 90, v: 0.1, w: 'kick', rel: 0.02 });
+    return outroLen;
+  }
 
   // Build note events: {t (seconds), d (seconds), f (hz), v (0..1), w ('pulse'|'tri'|'noise'), duty}
   function compose(key) {
@@ -83,7 +111,9 @@
       // soft hats
       for (i = 0; i < 16; i++) if (T.hatPat[i]) ev.push({ t: bar0 + i * step, d: 0.04, f: 0, v: T.hat, w: 'noise' });
     }
-    return { events: ev, length: pos, title: T.title };
+    var body = pos, homeC = chordTones(T.prog[0]), qC = T.prog[0].split(' ')[1], barDur = 16 * (60 / T.bpm / 4);
+    var outroLen = pushOutro(ev, { t0: body, bar: barDur, tonic: leadTonic(homeC[0]), minor: qC === 'm', duty: T.duty, hz: hz, lead: T.lead * 0.85, pulse: true, pad: [homeC[1], homeC[2], homeC[3]], padV: (T.pad || 0.03) * 0.7, bass: homeC[0] - 12, bassV: T.bass, variant: (homeC[0] + Math.round(T.bpm)) % 3, kick: true });
+    return { events: ev, length: body + outroLen, body: body, title: T.title, fade: FADE_S };
   }
 
   // ---- 8-bit style (default). Owner Nov 4: "All need to be epic." Grand classic-RPG overworld / boss feel, each track distinct.
@@ -220,7 +250,59 @@
       rc: ['G2 t', 'Eb2 T', 'C2 t', 'D2 7'], Rc2: ['F2 T', 'D2 7'],
       R: ['G4 - - - Bb4 - - - D5 - - - Bb4 - - .', 'Eb4 - - - G4 - - - Bb4 - - - G4 - - .', 'F4 - - - A4 - - - C5 - - - A4 - - .', 'F#4 - - - A4 - - - C5 - - - - - - .'],
       Ra: ['Bb4 - - - C5 - - - D5 - - - F5 - - .', 'D5 - - - Bb4 - - - G4 - - - F#4 - - .'],
-      oc: 'D2 7', O: 'D4 . F#4 . A4 . C5 . . . . . . . . .' }
+      oc: 'D2 7', O: 'D4 . F#4 . A4 . C5 . . . . . . . . .' },
+    // Original dubstep, same kit and wobble bass as Rift Wub, each with its own key, melody, wobble and drop.
+    'bog-motor': { title: 'Bog Motor', genre: 'Dubstep', bpm: 140, meter: 16, div: 4, duty: 0.5, lift: 0, kit: 'dubstep', bass: 'wobble',
+      wob: [0, 0, 0, 3, 3, 1, 0, 0, 0, 10, 10, 3, 1, 0, 0, 1],
+      wobDuty: [0.12, 0.12, 0.5, 0.5, 0.15, 0.42, 0.18, 0.48, 0.1, 0.55, 0.3, 0.2, 0.45, 0.14, 0.4, 0.16],
+      wobGap: 'xxxx..xxxx..xx.x', bareDrop: 1, pump: 0.42, pad: 0.02, arpEvery: 4, arpV: 0.012, counter: false,
+      dropKit: { k: 'x.......x...x..x', s: '........x.......', h: '..x...x...x...x.', o: '......x.......x.' },
+      ic: ['F2 t', 'F2 t', 'Db2 T', 'C2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'C5 . . Ab4 . . . F4 . . . . . . . .', 'Eb4 . . . . F4 . G4 . . . Ab4 . . . .'],
+      ac: ['F2 t', 'Ab2 T', 'Db2 T', 'C2 7'], Ac2: ['Bb2 t', 'C2 7'],
+      A: ['Ab4 . . . F4 . . Eb4 . . . C4 . . . .', 'F4 . Ab4 . C5 . . . Ab4 . . F4 . . . .', 'Db5 . . C5 . . Ab4 . . F4 . . . Eb4 . .', 'C4 . . . . . . . F4 . . . . . . .'],
+      Aa: ['C5 . . Ab4 . F4 . . Eb4 . . C4 . . . .', 'F4 . . . . . . . . . Ab4 . . . . .'],
+      bc: ['F2 t', 'Db2 T', 'Eb2 T', 'C2 7'], Bc2: ['Ab2 T', 'C2 7'],
+      B: ['F4 . . . Ab4 . C5 . . . . . . . . .', 'Eb5 . . . . . . . C5 . Ab4 . F4 . . .', 'Db5 . . . Bb4 . . . Ab4 . . . G4 . . .', 'F4 . . . . . . . . . . . . . . .'],
+      Ba: ['C5 . . . Ab4 . . . . . F4 . . . . .', 'Eb4 . . F4 . . Ab4 . . . C5 . . . . .'],
+      rc: ['F2 t', 'Db2 T', 'Bb2 t', 'C2 7'], Rc2: ['Ab2 T', 'C2 7'],
+      R: ['F4 - - - Ab4 - - - C5 - - - . . . .', 'Db5 - - - C5 - - - Ab4 - - - F4 - - .', 'Eb4 - - - G4 - - - Bb4 - - - G4 - - .', 'E4 - - - G4 - - - C5 - - - - - - .'],
+      Ra: ['Ab4 - - - C5 - - - Eb5 - - - C5 - - .', 'F5 - - - Eb5 - - - C5 - - - Ab4 - - .'],
+      oc: 'C2 7', O: 'C4 . E4 . G4 . Bb4 . . . . . . . . .' },
+    'gutter-bloom': { title: 'Gutter Bloom', genre: 'Dubstep', bpm: 146, meter: 16, div: 4, duty: 0.5, lift: 0, kit: 'dubstep', bass: 'wobble',
+      wob: [0, 7, 0, 12, 7, 0, 3, 7, 12, 7, 0, 7, 3, 0, 7, 12],
+      wobDuty: [0.2, 0.5, 0.15, 0.45, 0.22, 0.48, 0.12, 0.38, 0.18, 0.52, 0.14, 0.42, 0.2, 0.5, 0.16, 0.36],
+      wobGap: 'x.x.xxx.x.x.xxxx', bareDrop: 1, pump: 0.58, pad: 0.018, arpEvery: 2, arpV: 0.013, counter: false,
+      dropKit: { k: 'x...x.......x...', s: '....x..x.x..x..x', h: 'x.x.x.x.x.x.x.x.', o: '..x.......x.....' },
+      ic: ['E2 T', 'E2 T', 'A2 T', 'B2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'G#4 . B4 . . . E5 . . . . . D#5 . . .', 'B4 . . . . . G#4 . . . E4 . . . . .'],
+      ac: ['E2 T', 'C#2 t', 'A2 T', 'B2 7'], Ac2: ['F#2 t', 'B2 7'],
+      A: ['E5 . . . . D#5 . . C#5 . . B4 . . . .', 'C#5 . . B4 . . G#4 . . . . E4 . . . .', 'A4 . . B4 . C#5 . . E5 . . . D#5 . . .', 'B4 . . . . . . . . . . . E4 . . .'],
+      Aa: ['G#4 . B4 . E5 . . . D#5 . B4 . G#4 . . .', 'E4 . . . . . . . . . . . . . . .'],
+      bc: ['E2 T', 'G#2 t', 'A2 T', 'B2 7'], Bc2: ['C#2 t', 'B2 7'],
+      B: ['. . E4 . . . G#4 . . . B4 . . . . .', 'C#5 . . . . B4 . . . G#4 . . E4 . . .', '. . A4 . . . G#4 . . . F#4 . . . E4 .', 'E5 . . . . . . . . . . . . . . .'],
+      Ba: ['B4 . . G#4 . . E4 . . . D#4 . . . . .', '. . E4 . . . F#4 . . . G#4 . . B4 . .'],
+      rc: ['E2 T', 'A2 T', 'F#2 t', 'B2 7'], Rc2: ['C#2 t', 'B2 7'],
+      R: ['E5 - D#5 - C#5 - B4 - G#4 - . . . . . .', 'C#5 - B4 - A4 - G#4 - F#4 - . . . . . .', 'D#5 - . . C#5 - . . B4 - . . A4 - . .', 'B4 - - - - - A4 - G#4 - - - . . . .'],
+      Ra: ['G#4 . . A4 . . B4 . . E5 . . . D#5 . .', 'B4 - - - G#4 - - - E4 - - - . . . .'],
+      oc: 'B2 7', O: '. . . . B3 - D#4 - F#4 - . . . . . .' },
+    'moss-clank': { title: 'Moss Clank', genre: 'Dubstep', bpm: 134, meter: 16, div: 4, duty: 0.5, lift: 0, kit: 'dubstep', bass: 'wobble',
+      wob: [0, 12, 0, 12, 7, 12, 0, 3, 0, 12, 10, 0, 7, 12, 3, 0],
+      wobDuty: [0.5, 0.14, 0.48, 0.12, 0.5, 0.16, 0.42, 0.1, 0.5, 0.18, 0.45, 0.12, 0.4, 0.15, 0.5, 0.2],
+      wobGap: 'x.x.x.x.xxxx.x.x', bareDrop: 1, pump: 0.48, pad: 0.024, arpEvery: 8, arpV: 0.011, counter: false,
+      dropKit: { k: 'x..x........x..x', s: '..........x..x..', h: 'x...x.x.x...x.x.', o: '....x...x.......' },
+      ic: ['C2 t', 'C2 t', 'Ab2 T', 'G2 7'],
+      I: ['. . . . . . . . . . . . . . . .', 'C4 . . . . . . . G4 . . . . . . .', 'Eb4 . G4 . . . C5 . . . . . Bb4 . . .', 'Ab4 . . . . . G4 . . . . . . . . .'],
+      ac: ['C2 t', 'Eb2 T', 'Ab2 T', 'G2 7'], Ac2: ['F2 t', 'G2 7'],
+      A: ['C5 . . Eb5 . . . C5 . . G4 . . . . .', 'Bb4 . . . Ab4 . . G4 . . . Eb4 . . . .', 'G4 . C5 . . . Eb5 . . . D5 . . C5 . .', 'Bb4 . . . . . . . G4 . . . . . . .'],
+      Aa: ['Eb5 . . C5 . . G4 . . Eb4 . . C4 . . .', 'C4 . . . . . . . . . . . . . . .'],
+      bc: ['C2 t', 'Bb2 T', 'Ab2 T', 'G2 7'], Bc2: ['Eb2 T', 'G2 7'],
+      B: ['C5 . . . . . . . . . . . G4 . . .', 'G5 . . . Eb5 . . . C5 . . . . . . .', 'Eb5 . . . C5 . . . Bb4 . . . Ab4 . . .', 'G4 . . . . . . . C5 . . . . . . .'],
+      Ba: ['G5 . . Eb5 . . C5 . . . Bb4 . . . . .', 'C5 . . . . . D5 . Eb5 . . . . . . .'],
+      rc: ['C2 t', 'Ab2 T', 'F2 t', 'G2 7'], Rc2: ['Bb2 T', 'G2 7'],
+      R: ['C5 - - - . . Eb5 - - - . . G4 - - .', 'Bb4 - - - . . Ab4 - - - . . G4 - - .', 'Eb4 - - - G4 - - - Bb4 - - - . . . .', 'F#4 - - - G4 - - - D5 - - - - - - .'],
+      Ra: ['Eb5 - - - D5 - - - C5 - - - Bb4 - - .', 'C5 - - - . . . . G4 - - - . . . .'],
+      oc: 'G2 7', O: 'G4 . B4 . D5 . . . . . F5 . . . . .' }
   };
   // 16-step drum kits. Each row is one bar of sixteenths. Original patterns, not a transcribed break.
   var KITS = {
@@ -267,11 +349,11 @@
       drop:  { k: 'x..x.x....x..x..', s: '..x...x..x.x..x.', h: 'x.x.x.x.x.x.x.x.', o: '..x.....x...x...' }
     }
   };
-  function kitHit(kit, S, i, big) {
+  function kitHit(kit, S, i, big, dropKit) {
     var K = KITS[kit];
     if (!K) throw new Error('unknown kit ' + kit);
     var name = big ? 'drop' : (S.s === 'I' ? 'intro' : (S.s === 'R' && !S.r ? 'break' : 'main'));
-    var P = K[name] || K.main;
+    var P = (big && dropKit) ? dropKit : (K[name] || K.main);
     return { kick: P.k.charAt(i) === 'x', snare: P.s.charAt(i) === 'x', hat: P.h.charAt(i) === 'x', open: P.o.charAt(i) === 'x' };
   }
   function composeChip(key) {
@@ -279,6 +361,7 @@
     if (T.kit) ['intro', 'break', 'main', 'drop'].forEach(function (nm) {
       var P = KITS[T.kit][nm]; if (!P) return; ['k', 's', 'h', 'o'].forEach(function (ch) { if (P[ch] && P[ch].length !== M) throw new Error(key + ' kit ' + nm + ' ' + ch); });
     });
+    if (T.dropKit) ['k', 's', 'h', 'o'].forEach(function (ch) { if (!T.dropKit[ch] || T.dropKit[ch].length !== M) throw new Error(key + ' drop ' + ch); });
     function part(name, ch, lines, alt, lvl, tr) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ r: r, s: name, ch: (r && i >= 2) ? T[name + 'c2'][i - 2] : ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], lvl: lvl, tr: tr || 0 }); }
     for (var i0 = 0; i0 < 4; i0++) sec.push({ s: 'I', ch: T.ic[i0], m: T.I[i0], lvl: 0, ramp: (i0 + 1) / 4, roll: i0 === 3 });
     part('A', T.ac, T.A, T.Aa, 1); part('B', T.bc, T.B, T.Ba, 2); part('A', T.ac, T.A, T.Aa, 2);
@@ -370,7 +453,7 @@
       // drums (noise snare/hats + sine kick). A kit replaces the default rock pattern. Intro still rolls into the next section.
       for (i = 0; i < M; i++) {
         var kick, snare, hat, open = false, swH = (T.swing && (i % 2)) ? T.swing * e : 0;
-        if (T.kit) { var hit = kitHit(T.kit, S, i, big); kick = hit.kick; snare = hit.snare; hat = hit.hat; open = hit.open; }
+        if (T.kit) { var hit = kitHit(T.kit, S, i, big, T.dropKit); kick = hit.kick; snare = hit.snare; hat = hit.hat; open = hit.open; }
         else if (M === 8) { kick = i === 0 || i === 4 || (big || key === 'arena-chip') && (i === 3 || i === 7); snare = i === 2 || i === 6; hat = true; }
         else if (M === 12) { kick = i === 0 || i === 6; snare = i === 3 || i === 9 || big && i === 11; hat = i % 3 === 0 || big; }
         else { kick = i === 0 || big && i === 3; snare = i === 2 || i === 4; hat = i % 2 === 0; }
@@ -387,7 +470,11 @@
       }
       bar++;
     });
-    return { events: ev, length: bar * M * e, title: T.title, echo: e * 3, bpm: T.bpm, beat: e * div, intro: 4 * M * e, pump: T.pump, genre: T.genre, key: key };
+    var bodySec = bar * M * e, home = chordT(T.ac[0]), qH = T.ac[0].split(' ')[1], bnote = home[0] - 12, variant = 0, vi;
+    if (bnote < 31) bnote = home[0];
+    for (vi = 0; vi < key.length; vi++) variant += key.charCodeAt(vi);
+    var outroLen = pushOutro(ev, { t0: bodySec, bar: M * e, tonic: leadTonic(home[0]), minor: qH === 't' || qH === 'm', duty: T.duty, hz: hzc, lead: 0.05, pulse: true, pad: [home[1], home[2], home[3]], padV: 0.016, bass: bnote, bassV: 0.11, variant: variant % 3, kick: true });
+    return { events: ev, length: bodySec + outroLen, body: bodySec, title: T.title, echo: e * 3, bpm: T.bpm, beat: e * div, intro: 4 * M * e, pump: T.pump, genre: T.genre, key: key, fade: FADE_S };
   }
   function blep(t, dt) { if (t < dt) { t /= dt; return t + t - t * t - 1; } if (t > 1 - dt) { t = (t - 1) / dt; return t * t + t + t + 1; } return 0; }
 
@@ -421,6 +508,7 @@
     for (pass = 0; pass < 2; pass++) for (i = 0; i < N; i++) { o = out[i] - xp + R * yp; xp = out[i]; yp = o; if (pass) out[i] = o; }
     var pk = 0; for (i = 0; i < N; i++) pk = Math.max(pk, Math.abs(out[i]));
     var g = pk > 0 ? 0.8 / pk : 1; for (i = 0; i < N; i++) out[i] *= g; // peak 0.8 before the volume gain (max 0.55) -> never above 0.44 full scale
+    if (c.fade) { var fn = Math.min(N, Math.round(c.fade * sr)), f0 = N - fn, fi, fg; for (fi = f0; fi < N; fi++) { fg = Math.cos(((fi - f0) / Math.max(1, fn - 1)) * Math.PI * 0.5); out[fi] *= fg; } }
     return { samples: out, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
@@ -479,6 +567,7 @@
     [L, Rr].forEach(function (b) { var xp = 0, yp = 0, o, q, last = b[N - 1]; for (q = WU; q < N; q++) { o = b[q] - xp + 0.997 * yp; xp = b[q]; yp = o; } for (q = 0; q < N; q++) { o = b[q] - xp + 0.997 * yp; xp = b[q]; yp = o; b[q] = o; } });
     var pk = 0; for (i = 0; i < N; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(Rr[i]));
     var g = pk > 0 ? 0.8 / pk : 1; for (i = 0; i < N; i++) { L[i] *= g; Rr[i] *= g; } // peak 0.8 before the volume gain (max 0.55)
+    if (c.fade) { var fn = Math.min(N, Math.round(c.fade * sr)), f0 = N - fn, fi, fg; for (fi = f0; fi < N; fi++) { fg = Math.cos(((fi - f0) / Math.max(1, fn - 1)) * Math.PI * 0.5); L[fi] *= fg; Rr[fi] *= fg; } }
     return { samples: L, samplesR: Rr, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
@@ -488,6 +577,7 @@
     { key: 'meadow', style: 'chip' }, { key: 'parade', style: 'chip' }, { key: 'arena-chip', style: 'chip' }, { key: 'crypt', style: 'chip' },
     { key: 'night-market', style: 'chip' }, { key: 'glass-gate', style: 'chip' }, { key: 'neon-rook', style: 'chip' }, { key: 'block-party', style: 'chip' },
     { key: 'rift-wub', style: 'chip' }, { key: 'grid-ritual', style: 'chip' }, { key: 'canopy-break', style: 'chip' },
+    { key: 'bog-motor', style: 'chip' }, { key: 'gutter-bloom', style: 'chip' }, { key: 'moss-clank', style: 'chip' },
     { key: 'yard', style: 'chill' }, { key: 'cemetery', style: 'chill' }, { key: 'arena', style: 'chill' }
   ];
   function playlistFor(style) {
@@ -499,22 +589,43 @@
     var T = CHIP[key] || TRACKS[key] || {};
     return { key: key, title: T.title || key, genre: T.genre || (CHIP[key] ? '8-bit' : 'Chill'), style: CHIP[key] ? 'chip' : 'chill' };
   }
-  var lenCache = {};
+  var lenCache = {}, bodyCache = {};
   function songLength(key) {
     if (lenCache[key]) return lenCache[key];
     var c = CHIP[key] ? composeChip(key) : compose(key);
     lenCache[key] = c.length;
+    bodyCache[key] = c.body != null ? c.body : c.length;
     return c.length;
+  }
+  function bodyLength(key) { if (bodyCache[key] == null) songLength(key); return bodyCache[key]; }
+  // Saved playhead across pages: index + seconds, wrapping onto the next song only past the end (including the outro).
+  function advance(list, i, pos) {
+    var guard = 0;
+    i = ((i % list.length) + list.length) % list.length;
+    pos = +pos || 0;
+    while (guard++ < list.length + 2) {
+      var len = songLength(list[i]);
+      if (pos < len - 0.08) return { i: i, pos: pos, key: list[i] };
+      pos -= len; i = (i + 1) % list.length;
+    }
+    if (pos < 0) pos = 0;
+    return { i: i, pos: pos, key: list[i] };
+  }
+  function crossfadePlan(duration, offset, xfade) {
+    var xf = xfade == null ? XFADE_S : xfade, remain = Math.max(0, duration - (+offset || 0));
+    if (remain <= 0.12) return { overlap: 0, delay: 0, startNow: true };
+    var ov = remain < xf + 0.35 ? Math.max(0.4, remain * 0.5) : xf;
+    return { overlap: ov, delay: Math.max(0, remain - ov), startNow: false };
   }
   // path is ignored: every page shares the playlist. Returns the first song of that lane.
   function pickTrack(path, style) { void path; return playlistFor(style)[0]; }
 
-  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), chipTracks: Object.keys(CHIP), playlist: PLAYLIST, playlistFor: playlistFor, trackMeta: trackMeta, songLength: songLength };
+  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), chipTracks: Object.keys(CHIP), playlist: PLAYLIST, playlistFor: playlistFor, trackMeta: trackMeta, songLength: songLength, bodyLength: bodyLength, advance: advance, crossfadePlan: crossfadePlan, FADE: FADE_S, XFADE: XFADE_S };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   // ---- browser player: songs play back to back. sessionStorage keeps the song and the position across navigations. ----
   var SS = 'xcpets.music.cursor';
-  var ctx = null, src = null, srcKey = '', gain = null, cache = {}, curI = 0, startOffset = 0, startedAt = 0, tick = 0, gen = 0;
+  var ctx = null, src = null, srcGain = null, srcKey = '', gain = null, cache = {}, curI = 0, startOffset = 0, startedAt = 0, tick = 0, gen = 0, follower = null, followTimer = 0;
   api.LEVELS = { low: 0.18, med: 0.35, high: 0.55 };
   api.VOLUME = 0.35;
   api.style = 'chip';
@@ -524,6 +635,7 @@
   function saveCursors(all) { try { root.sessionStorage.setItem(SS, JSON.stringify(all)); } catch (e) {} }
   function heardPos() { if (!ctx || !src) return startOffset; return startOffset + Math.max(0, ctx.currentTime - startedAt); }
   function saveNow() {
+    if (follower && ctx && ctx.currentTime >= follower.when - 0.03) adoptFollower(gen, true);
     var all = loadCursors();
     var live = ctx && ctx.state === 'running' && gain && gain.gain.value > 0.02;
     all[lane()] = { i: curI, pos: heardPos(), t: live ? Date.now() : 0 };
@@ -531,17 +643,10 @@
   }
   function resolveCursor(style) {
     var all = loadCursors(), c = all[style === 'chill' ? 'chill' : 'chip'] || { i: 0, pos: 0, t: 0 };
-    var list = playlistFor(style), i = ((c.i % list.length) + list.length) % list.length, pos = +c.pos || 0;
-    var gap = c.t ? (Date.now() - c.t) / 1000 : 0;
+    var pos = +c.pos || 0, gap = c.t ? (Date.now() - c.t) / 1000 : 0;
     if (gap > 0 && gap < 20) pos += gap;
-    var guard = 0;
-    while (guard++ < list.length + 2) {
-      var len = songLength(list[i]);
-      if (pos < len - 0.08) break;
-      pos -= len; i = (i + 1) % list.length;
-    }
-    if (pos < 0 || guard > list.length + 1) pos = 0;
-    return { i: i, pos: pos };
+    var hit = advance(playlistFor(style), c.i || 0, pos);
+    return { i: hit.i, pos: hit.pos < 0 ? 0 : hit.pos };
   }
   function emit() { if (typeof api.onTrack === 'function') { try { api.onTrack(api.current()); } catch (e) {} } }
   function remember(key, rendered) {
@@ -555,11 +660,64 @@
       delete cache[drop];
     }
   }
+  function killSrc(s) { if (!s) return; try { s.onended = null; } catch (e) {} try { s.stop(); } catch (e2) {} try { s.disconnect(); } catch (e3) {} }
+  function dropGain(g) { if (!g) return; try { g.disconnect(); } catch (e) {} }
   function haltSource() {
+    if (followTimer) { clearTimeout(followTimer); followTimer = 0; }
+    if (follower) { killSrc(follower.src); dropGain(follower.g); follower = null; }
+    dropGain(srcGain); srcGain = null;
     if (!src) return;
-    var s = src; src = null; s.onended = null;
-    try { s.stop(); } catch (e) {}
-    try { s.disconnect(); } catch (e) {}
+    var s = src; src = null; killSrc(s);
+  }
+  function makeBuf(r) {
+    var buf = ctx.createBuffer(r.samplesR ? 2 : 1, r.samples.length, r.sampleRate);
+    buf.getChannelData(0).set(r.samples); if (r.samplesR) buf.getChannelData(1).set(r.samplesR);
+    return buf;
+  }
+  function spawn(buf, offset, when, fadeIn, overlap) {
+    var g = ctx.createGain(); g.connect(gain);
+    var s = ctx.createBufferSource(); s.buffer = buf; s.loop = false; s.connect(g);
+    var t = when == null ? ctx.currentTime : when, off = Math.max(0, offset || 0), dur = Math.max(0, buf.duration - off), ov = overlap || api.XFADE;
+    if (fadeIn && ov > 0.05) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(1, t + Math.min(ov, Math.max(0.05, dur))); }
+    else g.gain.setValueAtTime(1, t);
+    var endT = t + dur, fo = endT - ov;
+    if (dur > ov + 0.3 && fo > t + (fadeIn ? ov : 0) + 0.05) { g.gain.setValueAtTime(1, fo); g.gain.linearRampToValueAtTime(0.0001, endT); }
+    s.start(t, off);
+    return { src: s, g: g, when: t, offset: off };
+  }
+  function scheduleFollower(token) {
+    if (!ctx || !src || token !== gen) return;
+    var list = playlistFor(api.style), ni = (curI + 1) % list.length, nk = list[ni];
+    function planNow() {
+      if (token !== gen || !src || !ctx) return null;
+      return api.crossfadePlan(src.buffer.duration, startOffset + Math.max(0, ctx.currentTime - startedAt), api.XFADE);
+    }
+    function go() {
+      if (token !== gen || !ctx || !src || follower) return;
+      var plan = planNow(); if (!plan) return;
+      if (plan.startNow) { arm(ni, 0, true); return; }
+      var nr = cache[nk] || render(nk, SR); remember(nk, nr);
+      follower = spawn(makeBuf(nr), 0, ctx.currentTime + plan.delay, true, plan.overlap);
+      follower.i = ni;
+      followTimer = root.setTimeout(function () { adoptFollower(token, false); }, Math.max(0, plan.delay * 1000));
+    }
+    var plan0 = planNow();
+    if (!plan0) return;
+    if (plan0.startNow) { arm(ni, 0, true); return; }
+    if (cache[nk] || plan0.delay < 2) go();
+    else followTimer = root.setTimeout(function () { if (token !== gen) return; try { remember(nk, render(nk, SR)); } catch (e) {} go(); }, 700);
+  }
+  function adoptFollower(token, fromSave) {
+    if (token !== gen || !follower || !ctx) return;
+    if (ctx.currentTime + 0.05 < follower.when) return;
+    if (followTimer) { clearTimeout(followTimer); followTimer = 0; }
+    var prev = src, prevG = srcGain, f = follower; follower = null;
+    src = f.src; srcGain = f.g; curI = f.i; startOffset = f.offset || 0; startedAt = f.when;
+    srcKey = playlistFor(api.style)[curI];
+    if (prev && prev !== src) { prev.onended = function () { dropGain(prevG); killSrc(prev); }; }
+    if (!fromSave) saveNow();
+    emit();
+    scheduleFollower(token);
   }
   function arm(i, offset, fade) {
     var list = playlistFor(api.style);
@@ -570,20 +728,20 @@
     var r = cache[key] || render(key, SR);
     remember(key, r);
     if (!ctx) return;
-    var buf = ctx.createBuffer(r.samplesR ? 2 : 1, r.samples.length, r.sampleRate);
-    buf.getChannelData(0).set(r.samples); if (r.samplesR) buf.getChannelData(1).set(r.samplesR);
-    var off = Math.max(0, offset || 0);
+    var buf = makeBuf(r), off = Math.max(0, offset || 0);
     if (off > buf.duration - 0.12) { arm((i + 1) % list.length, Math.max(0, off - buf.duration), fade); return; }
-    src = ctx.createBufferSource(); src.buffer = buf; src.loop = false; src.connect(gain);
-    startOffset = off; startedAt = ctx.currentTime;
-    src.onended = function () { if (src !== this) return; src = null; arm(i + 1, 0, true); };
-    src.start(0, off);
+    var node = spawn(buf, off, ctx.currentTime, false, api.XFADE);
+    src = node.src; srcGain = node.g; startOffset = off; startedAt = ctx.currentTime;
+    src.onended = function () {
+      if (token !== gen) return;
+      if (follower) { adoptFollower(token, false); return; }
+      if (src === this) arm(i + 1, 0, true);
+    };
     gain.gain.cancelScheduledValues(ctx.currentTime);
     if (fade) { gain.gain.setValueAtTime(Math.max(0.0001, api.VOLUME * 0.45), ctx.currentTime); gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.08); }
     else gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4);
     saveNow(); emit();
-    var nk = list[(i + 1) % list.length];
-    root.setTimeout(function () { if (token !== gen || cache[nk]) return; remember(nk, render(nk, SR)); }, 700);
+    scheduleFollower(token);
   }
   api.current = function () {
     var list = playlistFor(api.style);
@@ -614,13 +772,16 @@
     if (!ctx) { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination); }
     if (ctx.state === 'suspended') ctx.resume();
     if (!src) { var c = resolveCursor(api.style); arm(c.i, c.pos, false); }
-    else { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4); emit(); }
+    else { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4); if (!follower) scheduleFollower(gen); emit(); }
     if (!tick) tick = root.setInterval(saveNow, 1000);
     return true;
   };
   api.stop = function () {
     if (!ctx) return;
+    if (follower && ctx.currentTime >= follower.when - 0.03) adoptFollower(gen, true);
     saveNow();
+    if (followTimer) { clearTimeout(followTimer); followTimer = 0; }
+    if (follower) { killSrc(follower.src); dropGain(follower.g); follower = null; }
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15);
     root.setTimeout(function () { if (ctx && gain.gain.value < 0.01 && ctx.state === 'running') ctx.suspend(); }, 900);
