@@ -53,11 +53,15 @@
   function showLive(canvas, pet, stage) { var frames = G.renderFrames(Object.assign({}, pet, NOGEAR), { stage: stage }), ctx = canvas.getContext('2d'); paint(ctx, frames[0]);
     for (var i = 0; i < animated.length; i++) if (animated[i].canvas === canvas) { animated.splice(i, 1); break; } animated.push({ canvas: canvas, ctx: ctx, frames: frames, f: 0 }); }
   var batch = 0;
+  // home-gallery-seed-fix-1107: from the rare-eggs gate V2Rules.hatchArt only takes a 64-hex tx id (rareSeed throws on 'gallery-N'),
+  // so the example eggs use a 64-hex seed made from the label (V2Rules.sha), and one bad example is skipped instead of breaking the page.
+  function galleryArt(label, b) { try { var id = V.sha ? V.sha(label) : label; if (!/^[0-9a-f]{64}$/i.test(id)) return null; return V.hatchArt(GALLERY_HASH, id, b); } catch (e) { return null; } }
   function renderGallery() {
     var box = $('galleryCards'), want = { common: 2, uncommon: 2, rare: 2, legendary: 2 }, found = [], b = oddsBlock();
     box.innerHTML = ''; animated = animated.filter(function (a) { return document.body.contains(a.canvas); });
     for (var n = 0; n < 20000 && found.length < 8; n++) {
-      var id = (batch ? 'promo-' + batch + '-' : 'gallery-') + n, p = LIVE ? V.hatchArt(GALLERY_HASH, id, b) : PetCore.generate({ blockHash: GALLERY_HASH, petId: id });
+      var id = (batch ? 'promo-' + batch + '-' : 'gallery-') + n, p = LIVE ? galleryArt(id, b) : PetCore.generate({ blockHash: GALLERY_HASH, petId: id });
+      if (!p) continue;
       if (want[p.tier] > 0) { want[p.tier]--; found.push(p); }
     }
     found.sort(function (a, b) { return a.tierIndex - b.tierIndex; });
