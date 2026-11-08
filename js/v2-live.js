@@ -50,7 +50,13 @@
               anim: { lib: 'life', ev: { kind: 'arrival', ids: [ap.id], n: 1, ed: ap.burnLord ? 'BURN LORD ' + ap.burnLord.n + '/' + ap.burnLord.of : '1 OF 1!', title: title, gear: [], ng: 0, egg: true, block: b } } }); continue; }
           ids = /#\d+-#\d+/.test(l.msg || '') ? range(l.msg) : [l.petId || nums(l.msg)[0]]; var L = best(w, ids); if (!L.length) continue; var top = L[0], tc = tierCounts(V, L), elec = /Electric/.test(l.msg || '');
           var tl = ((V && V.TIER_LABELS) || [])[tierOf(top)] || '', spl = V && V.speciesLabel ? V.speciesLabel(top.species) : top.species;
-          add({ block: b, tx: l.tx, cat: 'birth', icon: tierOf(top) >= 3 ? '🌟' : tierOf(top) >= 2 ? '✨' : '🐣', pet: top.id, hot: tierOf(top) >= 2, ids: ids,
+          /* rare-discover-1107: Legend / weird hatches (art.rareHatch, via V2Render.rareInfo) get a highlighted row and their own reveal; same share key as before */
+          var RI = root.V2Render && root.V2Render.rareInfo, rares = RI ? L.filter(function (q) { return RI(q); }).slice(0, 12) : [], ti = RI && RI(top);
+          if (ti && L.length === 1) { add({ block: b, tx: l.tx, cat: 'birth', icon: ti.icon, pet: top.id, hot: true, rare: ti, ids: ids, t: [{ pet: top.id }, ' hatched from ' + (ti.legend ? 'a Legend egg: ' + ti.name + '!' : 'a weird egg: ' + ti.label.replace(/^Weird · /, '').toLowerCase() + '!')],
+            anim: { lib: 'life', ev: { kind: 'rare', ids: [top.id], n: 1 } } }); continue; }
+          rares.forEach(function (q) { if (q === top) return; var qi = RI(q); add({ block: b, tx: l.tx, cat: 'birth', icon: qi.icon, pet: q.id, hot: true, rare: qi, ids: [q.id], t: [{ pet: q.id }, ' hatched from ' + (qi.legend ? 'a Legend egg: ' + qi.name + '!' : 'a weird egg: ' + qi.label.replace(/^Weird · /, '').toLowerCase() + '!'), (elec ? ' (in an Electric Egg case)' : ' (in a pack of ' + L.length + ')')],
+            anim: { lib: 'life', ev: { kind: 'rare', ids: [q.id], n: 1 } } }); });
+          add({ block: b, tx: l.tx, cat: 'birth', icon: tierOf(top) >= 3 ? '🌟' : tierOf(top) >= 2 ? '✨' : '🐣', pet: top.id, hot: tierOf(top) >= 2, ids: ids, rare: ti || null,
             t: L.length === 1 ? [{ pet: top.id }, ' hatched: a ' + tl + ' ' + spl] : [(elec ? 'An Electric Egg case' : 'A pack of ' + L.length + ' eggs') + ' hatched' + (tc ? ' (' + tc + ')' : '') + '. Best: ', { pet: top.id }, ', ' + tl + ' ' + spl],
             anim: { lib: 'life', ev: { kind: L.length > 5 ? 'hatch-bulk' : 'hatch', ids: L.slice(0, 5).map(function (q) { return q.id; }), n: L.length } } }); continue; }
         if (k === 'breed') { ids = nums(l.msg); var kid = P(l.petId); if (!kid) continue; var rug = /^Rug Me/.test(l.msg || ''), par = kid.parents || [], tw = kid.twinOf && P(kid.twinOf);
@@ -117,7 +123,7 @@
     out.forEach(function (e) { var k2 = key(e); if (last && last.k === k2) { last.e.n = (last.e.n || 1) + 1; return; } last = { k: k2, e: e }; res.push(e); });
     res.forEach(function (e) { if (e.n > 1) e.t = e.t.concat([' (' + e.n + ' times in this block)']); });
     return res; }
-  var FILTERS = { all: null, births: { birth: 1 }, deaths: { death: 1 }, gods: { god: 1 }, gear: { gear: 1 } };
+  var FILTERS = { all: null, rare: { _rare: 1 }, births: { birth: 1 }, deaths: { death: 1 }, gods: { god: 1 }, gear: { gear: 1 } };
   var API = { events: events, FILTERS: FILTERS, WINDOW: WINDOW };
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   root.V2Live = API;
@@ -144,7 +150,7 @@
   function ago(b) { var x = timeOf(b); if (!x) return ''; var s = Math.max(0, Date.now() / 1000 - x.t); return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; }
   function paintTimes() { Array.prototype.forEach.call(document.querySelectorAll('.lv-time[data-b]'), function (el) { var b = +el.getAttribute('data-b'); el.textContent = timeTxt(b); el.title = ago(b); }); }
   /* ---- thumbnails: the pet's own sprite and its gear, minus crowns, frames, fire, flames and auras ---- */
-  function frames(p) { var ids = []; try { ids = (R.worn(W, p.id) || []).map(function (g) { return g.item; }).filter(function (it) { return it && !NOPE.test(it); }); } catch (e) {}
+  function frames(p) { if (p && p.art && p.art.rareHatch) { try { var rf = R.petFrames(p, W); if (rf && rf.length) return rf; } catch (e) {} } /* rare-discover-1107: weird looks */ var ids = []; try { ids = (R.worn(W, p.id) || []).map(function (g) { return g.item; }).filter(function (it) { return it && !NOPE.test(it); }); } catch (e) {}
     try { var f = R.framesWith(p.art, p.stage, ids, []); if (f && f.length && f[0] && f[0].data) return f; } catch (e) {}
     return R.petFrames(p, W); }
   function thumbs(box) { Array.prototype.forEach.call(box.querySelectorAll('canvas.lv-cv[data-id]:not([data-done])'), function (c) { var p = W.byId[c.getAttribute('data-id')]; c.setAttribute('data-done', '1'); if (!p || !p.art) return; R.lazy(c, function () { return frames(p); }, true); }); }
@@ -168,7 +174,7 @@
     copy(url).then(function () { toast('🔗 Link copied!'); }, function () { toast('Copy this link: ' + url); }); }
   function shareBar(e, i) { return '<span class="lv-share"><button type="button" class="lv-sh" data-sh="' + i + '" aria-label="Share this event">🔗 Share</button><a class="lv-tg" href="' + esc(tgUrl(e)) + '" target="_blank" rel="noopener" aria-label="Share on Telegram">✈️ Telegram</a></span>'; }
   function spotlight(e, i) { var box = $('lvSpot'); if (!box) return; var p = e.pet != null && W.byId[e.pet];
-    box.innerHTML = '<div class="lv-spot-in lv-' + e.cat + '"><span class="lv-spot-tag">★ SHARED EVENT ★</span>' +
+    box.innerHTML = '<div class="lv-spot-in lv-' + e.cat + '"><span class="lv-spot-tag">★ SHARED EVENT ★</span>' + (e.rare ? '<span class="lv-rtag">' + esc(e.rare.banner + ' ' + e.rare.label) + '</span>' : '') +
       (p && p.art ? '<canvas class="lv-spot-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-sid="' + p.id + '"></canvas>' : '<span class="lv-spot-ico" aria-hidden="true">' + e.icon + '</span>') +
       '<p class="lv-spot-txt"><span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</p><p class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span></p>' +
       '<p class="lv-spot-btns">' + (e.anim ? '<button type="button" class="btn lv-spot-play" data-sp="' + i + '">▶ Play it</button> ' : '') + '<span class="lv-spot-dl"></span>' + shareBar(e, i) + ' <button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>';
@@ -181,16 +187,17 @@
     box.innerHTML = '<div class="lv-spot-in"><span class="lv-spot-tag">★ SHARED EVENT ★</span><p class="lv-spot-txt">That event' + (m ? ' (block ' + fmt(+m[1]) + ')' : '') + ' is no longer in the last ' + Math.round(WINDOW / 144) + ' days of the feed' + (m && +m[1] > W.tip ? ', or its block is not read yet. Try again in a minute' : '') + '.</p><p class="lv-spot-btns">' + (pid != null && W.byId[pid] ? '<a class="btn" href="pet.html?id=' + pid + '">See ' + esc(nm(pid)) + ' →</a> ' : '') + '<button type="button" class="btn ghost lv-spot-x">✕ Back to the feed</button></p></div>'; box.hidden = false; }
   function openWanted() { if (!WANT || wantDone || !W) return; var i = -1; for (var j = 0; j < EV.length; j++) if (evKey(EV[j]) === WANT) { i = j; break; }
     if (i < 0) { if (+(/^\d+/.exec(WANT) || [0])[0] > W.tip) return; wantDone = true; missing(WANT); return; } wantDone = true; var e = EV[i];
-    if (FILTERS[filt] && !FILTERS[filt][e.cat]) filt = 'all'; var L = list(), pos = L.indexOf(e); if (pos >= shown) shown = Math.ceil((pos + 1) / PAGE) * PAGE; draw(); spotlight(e, i);
+    if (FILTERS[filt] && !fmatch(FILTERS[filt], e)) filt = 'all'; var L = list(), pos = L.indexOf(e); if (pos >= shown) shown = Math.ceil((pos + 1) / PAGE) * PAGE; draw(); spotlight(e, i);
     var li = document.querySelector('.lv-row[data-i="' + i + '"]'); if (li) li.classList.add('lv-linked');
     var sp = $('lvSpot'); if (sp && sp.scrollIntoView) sp.scrollIntoView({ block: 'start' }); if (e.anim) setTimeout(function () { play(e); }, 1200); }
   var CAT = { birth: 'Birth', feed: 'Feed', stage: 'Stage-up', mythic: 'Mythic', death: 'Death', god: 'God', gear: 'Gear', other: 'Game' };
   function rowHtml(e, i) { var p = e.pet != null && W.byId[e.pet], fresh = seenTx && !seenTx[e.tx + ':' + e.cat + ':' + e.pet];
-    return '<li class="lv-row lv-' + e.cat + (e.hot ? ' lv-hot' : '') + (fresh ? ' lv-new' : '') + (e.anim ? ' lv-can' : '') + '" data-i="' + i + '"' + (e.anim ? ' tabindex="0" role="button" aria-label="Play the animation: ' + esc(line(e).replace(/<[^>]+>/g, '')) + '"' : '') + '>' +
+    return '<li class="lv-row lv-' + e.cat + (e.hot ? ' lv-hot' : '') + (e.rare ? ' lv-rare' + (e.rare.legend ? '' : ' lv-weird') : '') + (fresh ? ' lv-new' : '') + (e.anim ? ' lv-can' : '') + '" data-i="' + i + '"' + (e.anim ? ' tabindex="0" role="button" aria-label="Play the animation: ' + esc(line(e).replace(/<[^>]+>/g, '')) + '"' : '') + '>' +
       '<span class="lv-th">' + (p && p.art ? '<a href="pet.html?id=' + p.id + '" tabindex="-1" aria-hidden="true"><canvas class="lv-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-id="' + p.id + '"></canvas></a>' : '<span class="lv-ico" aria-hidden="true">' + e.icon + '</span>') + '</span>' +
-      '<span class="lv-body"><span class="lv-txt"><span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</span>' +
+      '<span class="lv-body"><span class="lv-txt">' + (e.rare ? '<span class="lv-rtag">' + esc(e.rare.banner) + '</span>' : '') + '<span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</span>' +
       '<span class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span>' + (e.anim ? ' · <span class="lv-play">▶ replay</span>' : '') + (p ? ' · <a href="pet.html?id=' + p.id + '">pet page →</a>' : '') + ' · <a class="lv-perma" href="?ev=' + encodeURIComponent(evKey(e)) + '" title="Permalink to this event">#</a></span>' + shareBar(e, i) + '</span></li>'; }
-  function list() { var F = FILTERS[filt]; return F ? EV.filter(function (e) { return F[e.cat]; }) : EV; }
+  function fmatch(F, e) { return F._rare ? !!e.rare : !!F[e.cat]; }
+  function list() { var F = FILTERS[filt]; return F ? EV.filter(function (e) { return fmatch(F, e); }) : EV; }
   function draw() { var box = $('lvList'); if (!box || !W) return; var L = list(), vis = L.slice(0, shown);
     box.innerHTML = vis.length ? vis.map(function (e) { return rowHtml(e, EV.indexOf(e)); }).join('') : '<li class="lv-empty muted">Nothing in the last ' + Math.round(WINDOW / 144) + ' days for this filter.</li>';
     $('lvMore').hidden = L.length <= shown; $('lvMore').textContent = 'Show more (' + fmt(L.length - shown) + ' older)';

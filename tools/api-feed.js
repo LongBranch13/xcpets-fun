@@ -99,6 +99,7 @@ function build(ctx, input, nowIso) {
       owner: p.owner, generation: genOf(p.id), parents: p.parents ? p.parents.slice() : null,
       gear: gear[p.id] || [], stats: p.stats, wins: p.wins || 0, losses: p.losses || 0,
       bornBlock: p.hatchBlock, lastFedBlock: p.lastFed == null ? null : p.lastFed, deathBlock: p.deathBlock == null ? null : p.deathBlock,
+      rareHatch: (p.rareHatch || (p.art && p.art.rareHatch)) ? JSON.parse(JSON.stringify(p.rareHatch || p.art.rareHatch)) : null, /* rare-discover-1107: Legend / weird hatch record (rareApply), null for ordinary pets */
       url: SITE + '/pet.html?id=' + p.id
     };
   });
