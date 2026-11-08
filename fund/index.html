@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XCPETS.fun.d fundraiser · XCPETS</title>
+<meta name="description" content="XCPETS.fun.d fundraiser: Round 1, 200 tokens, 1 token for 1,350 sats from the official dispenser. Proceeds cover XCPETS game expenses.">
+<link rel="canonical" href="https://xcpets.fun/fund/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="../css/style.css?v=f8edc49c6f">
+<style>
+.fund{max-width:760px;margin:24px auto;padding:0 14px}
+.fund h1{font-family:'Press Start 2P',monospace;font-size:20px;line-height:1.5;margin:8px 0 16px}
+.fund h2{font-family:'Press Start 2P',monospace;font-size:14px;margin:22px 0 10px}
+.fund .art{display:block;width:min(100%,384px);height:auto;margin:10px auto;image-rendering:pixelated;border:4px solid #000;box-shadow:6px 6px 0 #000}
+.fund .facts{list-style:none;padding:0;margin:0}
+.fund .facts li{padding:8px 10px;border-bottom:2px dashed rgba(255,255,255,.18)}
+.fund .facts b{font-family:'Press Start 2P',monospace;font-size:11px}
+.fund .addr{font-family:monospace;font-size:14px;word-break:break-all;background:rgba(0,0,0,.35);padding:10px;border:2px solid #000;display:block;margin:8px 0}
+.fund .btn8{display:inline-block;font-family:'Press Start 2P',monospace;font-size:11px;padding:10px 12px;background:#e0262b;color:#fff;border:3px solid #000;box-shadow:4px 4px 0 #000;cursor:pointer;text-decoration:none}
+.fund .back{font-family:'Press Start 2P',monospace;font-size:11px}
+</style></head>
+<body>
+<main class="fund">
+<p><a class="back" href="../index.html">← XCPETS home</a></p>
+<section class="panel">
+<h1>XCPETS.fun.d fundraiser</h1>
+<img class="art" src="../token/xcpets-fun-d.png" width="384" height="384" alt="XCPETS.fun.d token art: an open treasure chest of red Bitcoin coins with XCPETS pets">
+<p>XCPETS.fun.d is the XCPETS fundraiser token. Proceeds cover XCPETS game expenses.</p>
+<h2>Round 1</h2>
+<ul class="facts">
+<li><b>Tokens:</b> 200</li>
+<li><b>Cost:</b> 1 token for 1,350 sats (0.00001350 BTC)</li>
+<li><b>Where:</b> the official dispenser below</li>
+</ul>
+<h2>Official dispenser</h2>
+<p class="muted small">Send 1,350 sats from a wallet that can receive Counterparty assets to get 1 token. Send 2,700 sats for 2 tokens, and so on.</p>
+<code class="addr" id="disp">bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4</code>
+<button class="btn8" type="button" id="copy">Copy address</button>
+<p class="muted small"><a href="../token/xcpets-fun-d.json">token info (JSON)</a></p>
+<h2>More rounds</h2>
+<p>The token stays unlocked so more rounds may be issued later. Every round will be listed on this page.</p>
+<p class="muted small">XCPETS.fun.d is a fundraiser token for the XCPETS game. No promise of value, not financial advice.</p>
+</section>
+</main>
+<script>document.getElementById('copy').onclick=function(){var t=document.getElementById('disp').textContent,b=this;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied';},function(){b.textContent='Select and copy the address';});};</script>
+</body></html>
