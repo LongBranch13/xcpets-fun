@@ -12,15 +12,39 @@ function shim() {
     createElement: function () { return { getContext: function () { return null; }, style: {} }; }, addEventListener: function () {}, body: null, documentElement: { style: {} }, readyState: 'complete' };
   if (!self.addEventListener) self.addEventListener = function () {};
 }
-function idbPut(key, w) { return new Promise(function (res) { try { var r = indexedDB.open('xcpets-world', 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); };
-  r.onsuccess = function () { var db = r.result; try { var tx = db.transaction('w', 'readwrite'); tx.objectStore('w').put({ key: key, at: Date.now(), world: w }, 'world'); tx.oncomplete = tx.onerror = tx.onabort = function () { db.close(); res(); }; } catch (e) { db.close(); res(); } };
-  r.onerror = r.onblocked = function () { res(); }; } catch (e) { res(); } }); }
+/* idb-split-1107 (owner 'rareroom is taking a while to load', Nov 7 2026): the saved world grew past Chrome's per-record IndexedDB limit
+ * (142,039,798 > 133,169,152 bytes serialized at block 974,939), so put() aborted every time and EVERY page visit rebuilt every pet (~25 s
+ * desktop). The world is now stored as v:2 parts: big collections' entries (and any object reached twice) go into a shared table split over
+ * many records; each reference to a table entry is written as {__wsr:i} and js/v2-chain.js puts the very same object back, so shared
+ * references (pets[] / byId / ...) stay one object, exactly as one structured clone. Same world, same key; only how it is stored changes. */
+var WS_BIG = 256, WS_PART = 4000, WS_MARK = '__wsr';
+function wsPlain(o) { if (!o || typeof o !== 'object') return false; if (Array.isArray(o)) return true; var p = Object.getPrototypeOf(o); return p === Object.prototype || p === null; }
+function wsEncode(w) { var seen = new Map(), tab = new Map(), list = [], st = [w], o, ks, i, v, big;
+  seen.set(w, 1);
+  while (st.length) { o = st.pop(); ks = Array.isArray(o) ? null : Object.keys(o); var n = ks ? ks.length : o.length; big = n > WS_BIG;
+    for (i = 0; i < n; i++) { v = ks ? o[ks[i]] : o[i]; if (!wsPlain(v)) continue;
+      if (seen.has(v)) { if (!tab.has(v) && v !== w) { tab.set(v, list.length); list.push(v); } continue; }
+      seen.set(v, 1); if (big) { tab.set(v, list.length); list.push(v); } st.push(v); } }
+  seen = null;
+  function enc(x, self) { if (!wsPlain(x)) return x; if (x === w && self !== w) throw new Error('world refers to itself'); if (x !== self && tab.has(x)) { var m = {}; m[WS_MARK] = tab.get(x); return m; }
+    if (Array.isArray(x)) { var a = new Array(x.length); for (var j = 0; j < x.length; j++) if (j in x) a[j] = enc(x[j], null); return a; }
+    var c = {}, k = Object.keys(x); for (var j2 = 0; j2 < k.length; j2++) c[k[j2]] = enc(x[k[j2]], null); return c; }
+  var root = enc(w, w), parts = [], cur = [];
+  for (i = 0; i < list.length; i++) { cur.push(enc(list[i], list[i])); if (cur.length >= WS_PART) { parts.push(cur); cur = []; } }
+  if (cur.length) parts.push(cur);
+  return { root: root, parts: parts, n: list.length }; }
+function idbPut(key, w) { return new Promise(function (res) { try { var e = wsEncode(w), r = indexedDB.open('xcpets-world', 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); };
+  r.onsuccess = function () { var db = r.result; try { var tx = db.transaction('w', 'readwrite'), os = tx.objectStore('w'); os.clear();
+      for (var i = 0; i < e.parts.length; i++) os.put(e.parts[i], 'world:' + i);
+      os.put({ key: key, at: Date.now(), v: 2, parts: e.parts.length, n: e.n, root: e.root }, 'world'); e = null;
+      tx.oncomplete = function () { db.close(); res(true); }; tx.onerror = tx.onabort = function () { try { console.warn('[v2] saved world not stored: ' + (tx.error && tx.error.message)); } catch (x) {} db.close(); res(false); }; } catch (x) { db.close(); res(false); } };
+  r.onerror = r.onblocked = function () { res(false); }; } catch (x) { res(false); } }); }
 self.onmessage = function (ev) {
   var m = ev.data || {};
   try {
     if (!loaded) { shim(); importScripts.apply(self, m.scripts); self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG }; loaded = true; }
     var t0 = Date.now(), w = self.V2Rules.replay(m.rows, m.hashes, m.ops, { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex }), ms = Date.now() - t0;
     self.postMessage({ id: m.id, ok: true, world: w, ms: ms });
-    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w).then(function () { self.postMessage({ stored: true, key: m.idbKey }); }); /* boot-from-cache: the page may reload once it is stored */
+    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w).then(function (ok) { if (ok) self.postMessage({ stored: true, key: m.idbKey }); }); /* boot-from-cache: the page may reload once it is stored */
   } catch (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); }
 };

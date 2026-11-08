@@ -64,8 +64,18 @@
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
   function idbRaw() { return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    idb().then(function (db) { if (!done) { clearTimeout(t); t = setTimeout(function () { done = true; res(null); }, IDB_READ_MS); } var q = db.transaction('w', 'readonly').objectStore('w').get('world'); q.onsuccess = function () { var v = q.result; db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
+    idb().then(function (db) { if (!done) { clearTimeout(t); t = setTimeout(function () { done = true; res(null); }, IDB_READ_MS); } var os = db.transaction('w', 'readonly').objectStore('w'), q = os.get('world'); q.onsuccess = function () { var v = q.result; if (v && v.v === 2 && v.root && v.parts > 0) { var all = os.getAll(IDBKeyRange.bound('world:', 'world:\uffff')), kq = os.getAllKeys(IDBKeyRange.bound('world:', 'world:\uffff')); all.onsuccess = function () { kq.onsuccess = function () { db.close(); if (done) return; done = true; clearTimeout(t); var w = null; try { w = wsDecode(v, all.result, kq.result); } catch (e) { w = null; } res(w ? { key: v.key, at: v.at, world: w } : null); }; }; all.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; return; } db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
       q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
+  /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
+   * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
+  function wsDecode(v, parts, keys) { var byIx = [], i, j, T = [], M = '__wsr';
+    for (i = 0; i < keys.length; i++) { var k = /^world:(\d+)$/.exec(keys[i]); if (k) byIx[+k[1]] = parts[i]; }
+    for (i = 0; i < v.parts; i++) { if (!byIx[i]) return null; for (j = 0; j < byIx[i].length; j++) T.push(byIx[i][j]); }
+    if (T.length !== v.n) return null;
+    function isP(o) { if (!o || typeof o !== 'object') return false; if (Array.isArray(o)) return true; var p = Object.getPrototypeOf(o); return p === Object.prototype || p === null; }
+    function fix(o) { var st = [o], x, ks, n, a, val; while (st.length) { x = st.pop(); a = Array.isArray(x); ks = a ? null : Object.keys(x); n = a ? x.length : ks.length;
+      for (var q = 0; q < n; q++) { var kk = a ? q : ks[q]; val = x[kk]; if (!isP(val)) continue; if (!Array.isArray(val) && typeof val[M] === 'number' && Object.keys(val).length === 1) { var r = T[val[M]]; if (!r) throw new Error('ws ref'); x[kk] = r; } else st.push(val); } } }
+    for (i = 0; i < T.length; i++) fix(T[i]); fix(v.root); return v.root; }
   var idbPre = null;
   function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return Promise.all([p, rulesSig()]).then(function (r) { var v = r[0]; if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
