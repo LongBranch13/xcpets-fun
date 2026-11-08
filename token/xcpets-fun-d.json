@@ -1,7 +1,7 @@
 {
-  "asset": "XCPETS.FUN.D",
+  "asset": "XCPETS.fun.d",
   "name": "XCPETS Fund",
-  "description": "XCPETS.FUN.D fundraiser token. Round 1: 200 tokens, 1 token for 1,350 sats from the official dispenser. Proceeds cover XCPETS game expenses. More rounds may be issued later, and each round is listed at xcpets.fun.",
+  "description": "XCPETS.fun.d fundraiser token. Round 1: 200 tokens, 1 token for 1,350 sats from the official dispenser. Proceeds cover XCPETS game expenses. More rounds may be issued later, and each round is listed at xcpets.fun.",
   "image": "https://xcpets.fun/token/xcpets-fun-d.png",
   "website": "https://xcpets.fun",
   "pgpsig": ""
