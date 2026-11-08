@@ -16,7 +16,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = req
 const F = require('./api-feed.js'); const PAPERS = require('../js/v2-papers.js');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 const ROOT = path.resolve(__dirname, '..'), OUT = path.resolve(ROOT, opt('--out') || 't'), SITE = F.SITE, SCALE = 4;
-const EXTRA = ['js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
+const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* proof-parade-sprite-1108: every sprite script pet.html loads (homer/rabbit/dragon/jackson were missing) */ /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
 function crc32(b) { let c, t = crc32.t; if (!t) { t = crc32.t = new Int32Array(256); for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } }
   c = -1; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
 function chunk(type, data) { const l = Buffer.alloc(4), td = Buffer.concat([Buffer.from(type), data]), cr = Buffer.alloc(4); l.writeUInt32BE(data.length); cr.writeUInt32BE(crc32(td)); return Buffer.concat([l, td, cr]); }
@@ -44,7 +44,7 @@ if (require.main === module) (async () => {
   const liveRetry = async () => { for (let i = 0; ; i++) { try { return await F.liveInput(ctx); } catch (e) { if (i >= 2 || !/429|busy/i.test(String(e && e.message || e))) throw e; console.log('token-meta: chain busy, retry in', 20 * (i + 1), 's'); await new Promise(r => setTimeout(r, 20000 * (i + 1))); } } };
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : opt('--input') && fs.existsSync(opt('--input')) ? JSON.parse(fs.readFileSync(opt('--input'), 'utf8')) : await liveRetry();
   const V = ctx.V2Rules, E = ctx.LiveEngine, rows = input.rows.filter(r => r.block_index <= input.tip), hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, input.hashes);
-  const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore }); w.tip = w.tip || input.tip;
+  const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore, dex: input.dex || undefined }); /* proof-parade-sprite-1108: same opts as api-feed build() + js/v2-chain.js; without dex sale/ID order differed, so a badge drew another pet's sprite */ w.tip = w.tip || input.tip;
   const { pets } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));
   /* verified tokens: V2Rules.deedScan over the burns + each deed asset's first issuance (live: fetched; --snap: --dex FILE or none) */
   let dex = opt('--dex') ? JSON.parse(fs.readFileSync(opt('--dex'), 'utf8')) : null;
