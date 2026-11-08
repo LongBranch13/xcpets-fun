@@ -79,7 +79,7 @@
   function castParade() { var pic = document.querySelector('#cast picture'), img = pic && pic.querySelector('img.cast-gif'); if (!pic || !img || !R || !R.framesWith || !V2Gear.CAST_KITS) return;
     var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [];
     live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
-      window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
+      window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, id === 'peepo' ? ['v2-honk'] : [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
       if (fr && fr.length) list.push({ id: id, fr: fr }); });
     /* cast-cold-storage: every pet in Cold Storage (from the replay) marches too, not just the Wizard */
     var CC = window.V2Community, cst = null; try { cst = CC && CC.state(M.world()); } catch (e) { cst = null; }
@@ -108,7 +108,7 @@
   function heroGrid() { var old = $('heroPets'); if (!old || !V2Gear.CAST_KITS) return; var box = old.cloneNode(false); old.parentNode.replaceChild(box, old);
     var G = window.GenPetCore || PetCore, live = window.PetCore, ids = live.SPECIES.map(function (s) { return s.id; }), cache = {}, k = 0, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' };
     function frames(id) { if (cache[id]) return cache[id]; var kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); });
-      window.PetCore = G; try { cache[id] = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE), HERO_STAGE[id] || 5, kit, [], 5); } finally { window.PetCore = live; } return cache[id]; }
+      window.PetCore = G; try { cache[id] = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE), HERO_STAGE[id] || 5, kit, id === 'peepo' ? ['v2-honk'] : [], 5); } finally { window.PetCore = live; } return cache[id]; }
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
     function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
     fill(); setInterval(fill, 4200); }

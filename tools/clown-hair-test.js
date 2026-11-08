@@ -28,3 +28,23 @@ for(const sp of Object.keys(C.FIT))for(let stage=1;stage<=5;stage++)for(let f=0;
  assert.deepEqual(img.data,again.data,tag+' nondeterministic pixels');count++;
 }
 console.log('PASS '+count+' fitted frames: touching puffs, no clipping, clear eyes, Kevin replacement, deterministic pixels');
+global.PetCore = require('../js/pet-core.js');
+global.BonusGear = require('../js/bonus-gear.js');
+global.HomerSprite = require('../js/homer-sprite.js');
+global.WizardSprite = require('../js/wizard-sprite.js');
+global.KekSprite = require('../js/kek-sprite.js');
+global.FuntrumpSprite = require('../js/funtrump-sprite.js');
+global.RabbitSprite = require('../js/rabbit-sprite.js');
+const H = require('../js/v2-clown-hair.js');
+let live = 0;
+for (const sp of Object.keys(C.FIT)) for (let stage = 1; stage <= 5; stage++) {
+  const bares = [0, 1, 2, 3].map(f => C.render(sp, stage, f));
+  const worn = H.apply(bares.map(b => ({ data: new Uint8ClampedArray(b.data) })), { species: sp }, stage);
+  for (let f = 0; f < 4; f++) {
+    const prev = { data: new Uint8ClampedArray(bares[f].data) };
+    C.wig(prev, C.anchor(sp, stage, f), stage, sp);
+    assert.deepEqual(Buffer.from(worn[f].data), Buffer.from(prev.data), sp + '/' + stage + '/' + f + ' production pixels differ from the approved preview');
+    live++;
+  }
+}
+console.log('PASS ' + live + ' production frames match the approved Honk v2 preview');
