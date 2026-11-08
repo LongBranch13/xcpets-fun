@@ -1,6 +1,6 @@
 {
- "lastBlock": 975082,
- "count": 228,
+ "lastBlock": 975084,
+ "count": 234,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1489,7 +1489,7 @@
    "species": "hyb3:snibby:pepe:lenny",
    "speciesLabel": "Snipeny (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 8508,
@@ -1621,7 +1621,7 @@
    "species": "hyb:dodo:wojak",
    "speciesLabel": "Dojak (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 14904,
@@ -2738,6 +2738,78 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
    "stage": "Adult"
+  },
+  {
+   "id": 35887,
+   "asset": "A17709379782262405055",
+   "tiedBlock": 975084,
+   "tiedTx": "72128d437a12f79e6af626b172de80a2cbf4a117c6ce7e8164dd40ec822802b4",
+   "kind": "deed",
+   "name": "Yutebo",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 43925,
+   "asset": "A14735552434793073196",
+   "tiedBlock": 975084,
+   "tiedTx": "ab21213f762e46d649787a2b6ec24219d41dc00c5d25020ad3e4ae0e6970d70c",
+   "kind": "deed",
+   "name": "Bofuloobo",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 45105,
+   "asset": "A5400990916257656912",
+   "tiedBlock": 975084,
+   "tiedTx": "1c7e31cf72cf56c592cf858a1dfdb26803af51ffea07e6335a15a5d966445e68",
+   "kind": "deed",
+   "name": "Yesami",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 45521,
+   "asset": "A8616877270484839403",
+   "tiedBlock": 975084,
+   "tiedTx": "dc8d5c6626276bb252fa11e8e6e6c11526174bd7ef6be590586a33f5d094535f",
+   "kind": "deed",
+   "name": "Sashuwapop",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 45579,
+   "asset": "A610440231713510662",
+   "tiedBlock": 975084,
+   "tiedTx": "d7928ed8c9900b700c4544d6021a5be6defb892941faa2aa70ff8045fe217a57",
+   "kind": "deed",
+   "name": "Sapizy",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 111321,
+   "asset": "A17170904793162543255",
+   "tiedBlock": 975084,
+   "tiedTx": "dcd029bf5a2c1dff92f814107a061810cd43344c33b044a96922c7dda19ab24f",
+   "kind": "deed",
+   "name": "Foohuchibit",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Juvenile"
   }
  ]
 }
