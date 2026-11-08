@@ -211,7 +211,7 @@
    * band fits put them on the viewer's right, which is the back for front/left-facers but the FRONT for right-facers (Wojak, Chud, Dodo). Rule: on a
    * right-facer, the band pixels that stick out past the right edge of the head are mirrored to the left edge. (The McDonald's visor facing on left-facers is
    * handled separately on branch naka-flag-fix; this table can feed it.) */
-  var FACING = { wojak: 'right', chud: 'right', chad: 'right', dodo: 'right', doge: 'left', nakamoto: 'left', kevin: 'left', chupacabra: 'left' }; /* Starman faces forward: the suited spaceman, not a left-facing car */
+  var FACING = { wojak: 'right', chud: 'right', chad: 'right', dodo: 'right', doge: 'left', nakamoto: 'left', kevin: 'left' }; /* the five top-burner pets face forward */
   function isKnotBand(id) { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {}; return !!(d && it.slot === 'head' && (d.at === 'ninja' || (d.kind === 'band' && d.at === 'head'))); }
   function knotToBack(D, before, a) { var ch = [], p, x, y, L = 99, R = -1; for (p = 0; p < 1024; p++) { var i = p * 4; if (D[i] !== before[i] || D[i + 1] !== before[i + 1] || D[i + 2] !== before[i + 2]) ch.push(p); }
     if (!ch.length) return; var y0 = 99, y1 = -1; ch.forEach(function (q) { y = (q / 32) | 0; y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
