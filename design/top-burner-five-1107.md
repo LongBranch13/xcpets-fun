@@ -16,7 +16,7 @@ Checked 2026-11-08 against Counterparty Core destructions for XCPETS (`api.count
 | `sasquatch` | Sasquatch | 143 |
 | `greypepe` | GreyPepe Alien | 144 |
 | `chupacabra` | Chupacabra | 145 |
-| `starman` | Starman | 146 |
+| `starman` | Starman (suited spaceman, no car) | 146 |
 
 Each is a Legendary egg (`care` 0), `p.supreme` 1 of 1, drawn by `js/topburner-sprites.js` through Egg, Hatchling, Juvenile, Adult, Elder and Mythic (4 frames: rest, bob, blink or visor glint, action). Dead is the grey palette. Risen uses the shared zombie pass. Gear draws on the cap, cape, wrap, boots, hand and glasses without covering the eyes. No fire aura, flame crown, edition gold frame or flame pixels. Babies are normal pets, never a second pure copy.
 

@@ -1,7 +1,8 @@
 /* TOP BURNER FIVE sprites (1 of 1 each, PREVIEW, branch top-burner-five-1107).
  * Gift eggs for the #1 all-time XCPETS burner. NOT granted until V2Rules.ACTIVATE_TOP_BURNER_FIVE_BLOCK
  * is set (null = OFF). Same 32x32 key grid, ink outline and 4-frame idle as VikingSprite / DragonSprite.
- * Frames: 0 rest, 1 bob, 2 blink or visor glint, 3 action (arm, quill, wheel). No fire aura, no flame
+ * Frames: 0 rest, 1 bob, 2 blink or visor glint, 3 action (arm or quill). Starman is the suited
+ * spaceman alone (owner t3174u: he does not need to be in the car). No fire aura, no flame
  * crown, no gold frame, no flame pixels. Bitcoin, if it is ever drawn, is red. No letters, no memes.
  * Dead: opts.dead greys the palette. Risen zombies are the shared V2ZombieLook pass (light eye + dark pupil). */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.TopBurnerSprites = factory(); })(typeof window !== 'undefined' ? window : this, function () {
@@ -84,8 +85,9 @@
       set(g, 15, top + 7, 'V'); set(g, 18, top + 7, 'V');
       if (glint) set(g, 16, top + 8, 'i');
     } else {
-      hline(g, 12, 20, top + 6, 'I'); hline(g, 13, 19, top + 7, 'I'); set(g, 14, top + 6, glint ? 'K' : 'i');
-      hline(g, 11, 21, top + 12, 'R'); hline(g, 12, 20, top + 13, 'r');
+      /* white shell, a dark visor slit, no car and no red stripe */
+      hline(g, 12, 20, top + 6, 'I'); hline(g, 13, 19, top + 7, 'I');
+      set(g, 14, top + 6, glint ? 'K' : 'i'); set(g, 15, top + 6, 'E'); set(g, 16, top + 6, 'P');
       if (glint) set(g, 15, top + 6, 'K');
     }
     return outline(g);
@@ -171,45 +173,37 @@
     gearOn(g, gear, { kind: 'side', cx: H.hx, ey: ey, top: hy - H.hr, handX: H.bx - H.rx, handY: by + 1 });
     return outline(g);
   }
+  /* Starman: the spaceman alone. White suit, dark visor, gloves and boots. No car, no wheels, no red stripe. */
+  var SUIT = [null,
+    { hw: 4, hh: 5, bw: 2, bh: 4, arm: 2 },
+    { hw: 5, hh: 6, bw: 3, bh: 5, arm: 3 },
+    { hw: 5, hh: 6, bw: 4, bh: 7, arm: 4 },
+    { hw: 5, hh: 6, bw: 4, bh: 8, arm: 5 },
+    { hw: 6, hh: 7, bw: 4, bh: 8, arm: 5 }];
   function starman(stage, frame, gear) {
-    var g = grid(), bob = [0, -1, -1, 0][frame || 0], blink = frame === 2, act = frame === 3, myth = stage === 5;
-    if (stage < 3) {
-      var hh = 4 + stage, bw = 3 + (stage > 1 ? 1 : 0), top = 14 - stage + bob, cx = 16;
-      for (var y = 0; y < hh; y++) for (var x = cx - 3; x <= cx + 2; x++) set(g, x, top + y, y < 2 ? 'I' : 'W');
-      /* visor after the helmet, so the eyes stay on top of the glass */
-      set(g, cx - 2, top + 1, blink ? 'I' : 'E'); set(g, cx - 1, top + 1, blink ? 'I' : 'P'); set(g, cx, top + 1, blink ? 'I' : 'E'); set(g, cx + 1, top + 1, 'I');
-      if (!blink && myth) set(g, cx - 2, top + 1, 'K');
-      for (var yb = 0; yb < 3 + stage; yb++) for (var xb = cx - bw; xb <= cx + bw - 1; xb++) set(g, xb, top + hh + yb, xb >= cx + bw - 2 ? 'd' : 'o');
-      hline(g, cx - bw, cx - 1, top + hh + 3 + stage, 'F'); hline(g, cx, cx + bw - 1, top + hh + 3 + stage, 'F');
-      set(g, cx - bw - 1, top + hh + 1, 'H'); set(g, cx + bw, top + hh + 1, 'H');
-      if (act) set(g, cx - bw - 1, top + hh - 1, 'H');
-      if (stage === 2) { set(g, cx + bw + 2, top + hh + 3, 'F'); set(g, cx + bw + 2, top + hh + 2, 'Q'); } /* a loose wheel */
-      if (myth) set(g, cx, top, 'K');
-      gearOn(g, gear, { kind: 'front', cx: cx, ey: top + 1, top: top, handX: cx + bw, handY: top + hh + 1 });
-      return outline(g);
-    }
-    /* adult+: the suited mannequin seated in the red roadster, facing left. No exhaust, no flame, no badge text. */
-    var cy = 16 + bob, carL = stage === 3 ? 6 : 4, carR = stage === 3 ? 26 : 28, carY = cy + 4;
-    hline(g, carL + 2, carR - 2, carY, 'r');
-    for (var y = 1; y <= 4; y++) hline(g, carL + (y < 3 ? 1 : 0), carR - (y < 3 ? 1 : 0), carY + y, y === 1 ? 'L' : 'R');
-    hline(g, carL + 3, carL + 8, carY, 'I'); /* windshield, dark, not a flame */
-    set(g, carL + 4, carY, blink || myth ? 'K' : 'i');
-    /* wheels. Frame 3 turns the hub one pixel. */
-    [[carL + 4, carY + 5], [carR - 5, carY + 5]].forEach(function (p, i) { var ox = act ? (i ? 1 : -1) : 0;
-      for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) if (dx * dx + dy * dy <= 5) set(g, p[0] + dx, p[1] + dy, dx * dx + dy * dy > 2 ? 'F' : 'Q');
-      set(g, p[0] + ox, p[1], 'U'); });
-    /* driver: white suit, dark visor, seated in the cockpit */
-    var hx = carL + 10, hy = carY - 6;
-    for (var y2 = 0; y2 < 5; y2++) for (var x2 = 0; x2 < 6; x2++) set(g, hx + x2, hy + y2, y2 === 0 ? 'W' : y2 < 3 ? 'I' : 'W');
-    /* one dark visor band with a glass reflection, not a second face */
-    if (!blink) { set(g, hx + 1, hy + 1, 'E'); set(g, hx + 2, hy + 1, 'P'); set(g, hx + 3, hy + 2, 'i'); if (myth) set(g, hx + 1, hy, 'K'); }
-    else hline(g, hx + 1, hx + 4, hy + 1, 'd');
-    for (var y3 = 0; y3 < 4; y3++) for (var x3 = 0; x3 < 4; x3++) set(g, hx + x3, hy + 5 + y3, 'o');
-    set(g, hx - 1, hy + 6, 'H'); set(g, hx + 4, hy + 7, 'H'); /* hands on the body of the car */
-    if (act) set(g, hx - 1, hy + 4, 'H');
-    set(g, hx + 1, carY + 3, 'F'); set(g, hx + 2, carY + 3, 'F');
-    if (myth) { set(g, hx + 2, hy, 'K'); set(g, carR - 2, carY + 1, 'Q'); } /* shoulder lamp, cold, not a flame */
-    gearOn(g, gear, { kind: 'side', cx: hx + 2, ey: hy + 1, top: hy, handX: hx - 1, handY: hy + 6 });
+    var g = grid(), D = SUIT[stage], bob = [0, -1, -1, 0][frame || 0], blink = frame === 2, act = frame === 3, myth = stage === 5, cx = 16;
+    var bodyEnd = 27 + bob, bodyTop = bodyEnd - D.bh + 1, headBot = bodyTop, headTop = headBot - D.hh + 1;
+    /* life-support pack on the back, from Juvenile up. It sits behind the suit and is not a cape. */
+    if (stage >= 2) { for (var yb = bodyTop + 1; yb <= bodyEnd - 2; yb++) { set(g, cx + D.bw, yb, 'B'); set(g, cx + D.bw + 1, yb, 'd'); } set(g, cx + D.bw, bodyTop, 'Q'); }
+    for (var y = bodyTop; y <= bodyEnd; y++) for (var x = cx - D.bw; x < cx + D.bw; x++) {
+      var chest = y >= bodyTop + 2 && y <= bodyTop + 3 && x >= cx - 1 && x <= cx;
+      set(g, x, y, chest ? 'o' : (x >= cx + D.bw - 2 ? 'w' : 'W')); }
+    hline(g, cx - D.bw + 1, cx + D.bw - 2, bodyTop, 'Q'); /* neck ring */
+    if (stage >= 4) { set(g, cx - 1, bodyEnd - 1, 'Q'); set(g, cx + 1, bodyEnd - 1, 'Q'); } /* knee rings */
+    hline(g, cx - D.bw, cx - 1, bodyEnd + 1, 'F'); hline(g, cx, cx + D.bw - 1, bodyEnd + 1, 'F');
+    var lx = cx - D.bw - 1, rx = cx + D.bw + (stage >= 2 ? 2 : 0), armTop = bodyTop + 1;
+    for (var a = 0; a < D.arm; a++) { var ay = Math.min(N - 2, armTop + a); set(g, lx, ay, a === D.arm - 1 ? 'Q' : 'w'); set(g, rx, ay, a === D.arm - 1 ? 'Q' : 'w'); }
+    if (act) { for (var a2 = 0; a2 < D.arm; a2++) set(g, lx, Math.min(N - 2, armTop + a2), null);
+      for (var a3 = 0; a3 < D.arm; a3++) set(g, lx, Math.max(1, headTop + 1 - (D.arm - 1 - a3)), a3 === D.arm - 1 ? 'Q' : 'w'); }
+    for (var yh = headTop; yh <= headBot; yh++) { var inset = yh === headTop ? 2 : yh === headTop + 1 ? 1 : 0;
+      for (var xh = cx - D.hw + inset; xh <= cx + D.hw - 1 - inset; xh++) set(g, xh, yh, yh === headTop ? 'w' : 'W'); }
+    var ey = headTop + Math.max(2, Math.floor(D.hh * 0.42));
+    hline(g, cx - D.hw + 1, cx + D.hw - 2, ey, 'I');
+    if (D.hh > 5) hline(g, cx - D.hw + 2, cx + D.hw - 3, ey + 1, 'I');
+    if (blink) hline(g, cx - 2, cx + 1, ey, 'd');
+    else { set(g, cx - 2, ey, 'E'); set(g, cx - 1, ey, 'P'); set(g, cx, ey, 'i'); if (myth) set(g, cx + 1, ey, 'K'); }
+    if (myth) set(g, rx, bodyTop, 'i'); /* cold shoulder lamp, not a flame */
+    gearOn(g, gear, { kind: 'front', cx: cx, ey: ey, top: headTop, handX: act ? lx : rx, handY: act ? Math.max(2, headTop + 1) : Math.min(N - 2, armTop + D.arm - 1) });
     return outline(g);
   }
   function gearOn(g, gear, a) {

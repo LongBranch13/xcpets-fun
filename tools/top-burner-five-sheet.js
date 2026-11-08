@@ -42,6 +42,19 @@ IDS.forEach((id, row) => { const y0 = 16 + row * (cell * 2 + 28 + pad); text(she
     blit(sheet, CW, S.render(id, st, 0, '#1b2430'), x, y0 + 12, SC);
     blit(sheet, CW, S.render(id, st, 2, '#1b2430'), x, y0 + 12 + cell + 4, SC); } });
 save('contact-sheet.png', CW, CH, sheet);
+/* one growth sheet per pet: every stage left to right, egg through mythic, large and labeled above the sprite */
+const SSC = 12, cellS = 32 * SSC;
+IDS.forEach(id => {
+  const sw = pad * 2 + 6 * (cellS + pad), sh = 28 + 16 + cellS + pad;
+  const d = canvas(sw, sh, [12, 16, 22]);
+  text(d, sw, S.NAMES[id], pad, 8, [244, 247, 251]);
+  for (let st = 0; st < 6; st++) {
+    const x = pad + st * (cellS + pad);
+    text(d, sw, STAGES[st], x, 28, [154, 168, 184]);
+    blit(d, sw, S.render(id, st, 0, '#1b2430'), x, 44, SSC);
+  }
+  save('stages-' + id + '.png', sw, sh, d);
+});
 /* close-ups: adult and mythic, large, plus dead and risen under the adult */
 IDS.forEach(id => { const S2 = 14, w = pad * 3 + 32 * S2 * 2, h = 36 + 32 * S2 + 8 + 32 * 6;
   const d = canvas(w, h, [12, 16, 22]); text(d, w, S.NAMES[id], pad, 8, [244, 247, 251]);

@@ -49,6 +49,7 @@ IDS.forEach(id => { for (let st = 0; st <= 5; st++) { const fr = S.frames(id, st
   for (let x = 0; x < 32; x++) if (near(px, x * 4, GOLD) || near(px, (31 * 32 + x) * 4, GOLD)) goldRing++;
   ok(body > 40, 'art ' + id + ' stage ' + st + ' has a body');
   ok(fire === 0, 'art ' + id + ' stage ' + st + ' has no fire pixels');
+  if (id === 'starman') { let car = 0; for (let f = 0; f < 4; f++) S.draw(id, st, f, {}).forEach(r => r.forEach(k => { if (k === 'R' || k === 'r' || k === 'L') car++; })); ok(car === 0, 'starman stage ' + st + ' has no car'); }
   ok(goldRing < 8, 'art ' + id + ' stage ' + st + ' has no gold frame');
   if (st > 0) { const g = S.draw(id, st, 0, {}); let eyes = 0; g.forEach(r => r.forEach(k => { if (k === 'E' || k === 'P' || k === 'V') eyes++; })); ok(eyes >= 2, 'art ' + id + ' stage ' + st + ' has eyes'); } } });
 /* frame test: idle bob, blink or glint, and the action frame all change pixels. Gear fits and leaves the eyes. */
