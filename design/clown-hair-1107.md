@@ -74,3 +74,39 @@ side-view faces get it on the snout front). Eye pixels + 1px ring are keep-out f
 both pieces. Previews: /workspace/xcpets/previews/clown-hair-honk-1107/
 (reference-vs-peepo-adult.png, clown-hair-contact-sheet.png, per species/stage png+gif).
 No rule/renderer changes; replay SAME on 971786, 972883, 972901.
+
+
+## Honk v2 — Nov 7, local preview correction
+
+Base: approved local Honk commit `4917f126`, not the rejected cloud attempt.
+Branch/worktree: `clown-hair-honk-v2-1107` / `/workspace/wt-clown-hair-honk-v2-1107`.
+
+- Same Honk palette, white glints, shaded round puffs and round red nose.
+- Touching/overlapping colour union; no dark separators or detached fringe.
+- Five explicit stage fittings for each of 17 regular/community body families.
+- Kevin's grey bob is removed under the wig and the exposed face is re-outlined;
+  it is not merely covered by a hat or recoloured into straight rainbow locks.
+- Dodo's backward-set crest leaves his eye and beak clear. Homer's tilted dome
+  has a separate fitting and his original scalp curls do not float over the wig.
+- Egg art stays unchanged. All four idle frames checked at each wearable stage.
+- Scope is 12 regular species plus Homer, Wizard, Lord Kek, FUNTRUMP and White
+  Rabbit. Retired Nakamoto and Ragnar are untouched. Named one-of-one/contest
+  body renderers and hybrid combinations are not part of this sheet.
+- Preview-only tooling; no page integration, rules edits, deployment or messages.
+
+Outputs: `/workspace/xcpets/previews/clown-hair-honk-v2/`
+- `kevin-dodo-homer-closeups.png`: 1920 by 1080, every growth stage.
+- `clown-hair-contact-sheet.png`: complete 17-family coverage sheet.
+- `approved-honk-vs-v2.png`: approved source compared with this revision.
+- Per-species sheets and per-stage PNG/GIFs; `frames.json` contains raw pixels.
+
+Reproduce:
+```
+node tools/clown-hair-preview.js /workspace/xcpets/previews/clown-hair-honk-v2/frames.json
+python3 tools/clown-hair-sheets.py /workspace/xcpets/previews/clown-hair-honk-v2
+node tools/clown-hair-test.js
+```
+Art regression: 340 wearable frames, connected puffs, no border clipping, eye
+pixels preserved, Kevin replacement and deterministic pixels. Replay SAME at
+971786, 972883 and 972901 against the approved local base. Rules unchanged from
+that base (this branch is not a merge of current main).
