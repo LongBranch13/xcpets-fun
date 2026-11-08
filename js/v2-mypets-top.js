@@ -42,7 +42,7 @@
   /* one time per page load: an older build's hidden filters become search words, then the hidden controls go back to "all" */
   function migrate() { var q = $('fSearch'), words = [], ch = false; if (!q) return;
     function reset(id, v) { var e = $(id); if (e && e.value !== v) { var o = e.value; e.value = v; ch = true; return o; } return null; }
-    var t = reset('fTier', 'all'); if (t) words.push(t);
+    /* rarity-filter-1107: fTier is a visible control again (rarity pills in ux-batch.js), so it is no longer turned into a search word */
     var o = reset('fOrigin', 'all'); if (o) words.push(o);
     var sp = reset('fSpecies', 'all'); if (sp) words.push(sp);
     var mn = reset('fMin', '0'); if (mn === '3') words.push('legendary');
