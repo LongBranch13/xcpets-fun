@@ -1,10 +1,10 @@
-/* ambient-music-1103 (PREVIEW, UI only, no rule change): three original, very chill 8-bit loops made entirely in code.
- * Mood only (warm Tycho-like pads, Selected-Ambient-Works-like soft textures, small glitchy arps); no melodies copied.
- * Speed drifts between slower and slightly quicker sections inside each loop.
- * Loaded only after the first tap on the speaker button (see xc-music-btn in js/xc-select.js).
- * Each track is rendered once into a mono PCM buffer (pulse lead, triangle bass, soft noise hats) and played
- * with loop=true. Note tails that run past the end are wrapped onto the start, so the loop point is seamless.
- * Same file renders the preview MP3s in Node: tools/render-ambient-music.js */
+/* Site-wide playlist (music-playlist-1107). Original loops only: pulse, triangle, sine and noise, no samples.
+ * Chill loops stay soft and slow. 8-bit loops are written note by note. New electronic tracks use the same
+ * chip writer with their own drum kit, bass motion and melody (drum and bass, trance, synthwave, house,
+ * dubstep, techno, jungle). Nothing here is a copied melody.
+ * The speaker button in js/xc-select.js loads this file on the first tap. One playlist per style plays on
+ * every page and advances when a song ends. The browser player remembers the song and position in sessionStorage.
+ * Same file renders preview audio in Node: tools/render-ambient-music.js */
 (function (root) {
   'use strict';
   var SR = 22050;
@@ -18,13 +18,13 @@
   // chord = [root midi, quality]; scale = intervals used for melody passing tones
   // all three are slow, soft and dreamy (owner, Nov 3: very chill background, nothing upbeat)
   var TRACKS = {
-    yard: { title: 'Cozy Yard (chill)', bpm: 66, seed: 11, scale: [0, 2, 4, 7, 9], duty: 0.25, lead: 0.07, bass: 0.10, hat: 0, swing: 0, pad: 0.035, arpV: 0.028,
+    yard: { title: 'Cozy Yard (chill)', genre: 'Chill', bpm: 66, seed: 11, scale: [0, 2, 4, 7, 9], duty: 0.25, lead: 0.07, bass: 0.10, hat: 0, swing: 0, pad: 0.035, arpV: 0.028,
       prog: ['C4 M', 'A3 m', 'F3 M', 'G3 M', 'C4 M', 'E3 m', 'F3 M', 'G3 M', 'A3 m', 'F3 M', 'C4 M', 'G3 M'],
       form: 'AABA', tempo: { A: 1, B: 1.2 }, density: 0.18, arp: 2, bassPat: [0, null, null, null, null, null, null, null], hatPat: [] },
-    cemetery: { title: 'Misty Cemetery (chill)', bpm: 58, seed: 66, scale: [0, 2, 3, 7, 8], duty: 0.125, lead: 0.06, bass: 0.10, hat: 0, swing: 0, pad: 0.04, arpV: 0.022,
+    cemetery: { title: 'Misty Cemetery (chill)', genre: 'Chill', bpm: 58, seed: 66, scale: [0, 2, 3, 7, 8], duty: 0.125, lead: 0.06, bass: 0.10, hat: 0, swing: 0, pad: 0.04, arpV: 0.022,
       prog: ['A3 m', 'A3 m', 'F3 M', 'E3 M', 'D3 m', 'A3 m', 'F3 M', 'E3 M', 'A3 m', 'F3 M'],
       form: 'ABAB', tempo: { A: 0.92, B: 1.12 }, density: 0.14, echo: true, arp: 4, bassPat: [0, null, null, null, null, null, null, null], hatPat: [] },
-    arena: { title: 'Sunset Arena (chill)', bpm: 72, seed: 690, scale: [0, 2, 4, 7, 9, 11], duty: 0.25, lead: 0.065, bass: 0.10, hat: 0, swing: 0, pad: 0.035, arpV: 0.03,
+    arena: { title: 'Sunset Arena (chill)', genre: 'Chill', bpm: 72, seed: 690, scale: [0, 2, 4, 7, 9, 11], duty: 0.25, lead: 0.065, bass: 0.10, hat: 0, swing: 0, pad: 0.035, arpV: 0.03,
       prog: ['F3 M', 'G3 M', 'E3 m', 'A3 m', 'D3 m', 'G3 M', 'C4 M', 'C4 M', 'F3 M', 'G3 M', 'E3 m', 'A3 m', 'D3 m', 'E3 m', 'F3 M', 'G3 M'],
       form: 'AABB', tempo: { A: 0.9, B: 1.18 }, density: 0.2, arp: 2, bassPat: [0, null, null, null, 7, null, null, null], hatPat: [] }
   };
@@ -91,7 +91,7 @@
   // Form: Intro build (4) | A x2 | B x2 | A x2 (+harmony, counter) | Bridge x2 | Climax = B x2 lifted by T.lift semitones, all layers | turnaround (1).
   // Lead sits ~G3-E5 (pulse + triangle mix, low-passed ~3 kHz); 3rd/6th harmony voice; held chord pad (organ on crypt); strong triangle bass; noise drums.
   var CHIP = {
-    meadow: { title: 'Pixel Meadow', bpm: 108, meter: 8, duty: 0.25, lift: 2, // heroic overworld, D major, 4/4
+    meadow: { title: 'Pixel Meadow', genre: '8-bit', bpm: 108, meter: 8, duty: 0.25, lift: 2, // heroic overworld, D major, 4/4
       ic: ['D3 T', 'G2 T', 'B2 t', 'A2 s'], I: ['. . . . . . . .', '. . . . . . . .', 'D4 - - - F#4 - - -', 'A4 - - - - - A3 -'],
       ac: ['D3 T', 'A2 T', 'B2 t', 'G2 T'], Ac2: ['E3 m', 'A2 7'],
       A: ['D4 - - A3 D4 - F#4 -', 'E4 - - C#4 A3 - E4 -', 'F#4 - E4 D4 B3 - D4 F#4', 'G4 - - - - - A4 -'], Aa: ['G4 - F#4 E4 B3 - E4 G4', 'A4 - - - - - . .'],
@@ -100,7 +100,7 @@
       rc: ['B2 t', 'G2 T', 'E3 t', 'A2 s'], Rc2: ['G2 T', 'A2 7'],
       R: ['F#4 - - - D4 - B3 -', 'D4 - - - B3 - G3 -', 'G4 - - - E4 - B3 -', 'A4 - - - - - - -'], Ra: ['B4 - A4 G4 D4 - G4 B4', 'C#5 - B4 A4 E4 - C#5 E5'],
       oc: 'A2 7', O: '. . . . A3 - C#4 E4' },
-    parade: { title: 'Snack Parade', bpm: 120, meter: 12, duty: 0.25, lift: 2, // regal festival march, Bb major, 12/8
+    parade: { title: 'Snack Parade', genre: '8-bit', bpm: 120, meter: 12, duty: 0.25, lift: 2, // regal festival march, Bb major, 12/8
       ic: ['Bb2 T', 'Bb2 T', 'Eb3 T', 'F2 s'], I: ['. . . . . . . . . . . .', '. . . . . . . . . . . .', 'Bb3 - - D4 - - F4 - - Bb4 - -', 'A4 - - - - - F4 - - - - -'],
       ac: ['Bb2 T', 'F2 T', 'G2 t', 'Eb2 T'], Ac2: ['C3 m', 'F2 7'],
       A: ['F4 - - Bb4 - - D5 - C5 Bb4 - -', 'C5 - - A4 - - F4 - G4 A4 - -', 'Bb4 - - G4 - - D4 - Eb4 F4 - -', 'G4 - - - - - Eb4 - - - - -'], Aa: ['Eb4 - - G4 - - C5 - Bb4 A4 - -', 'F4 - - - - - . . . C4 D4 Eb4'],
@@ -109,7 +109,7 @@
       rc: ['G2 t', 'D3 t', 'Eb2 T', 'F2 s'], Rc2: ['Eb2 T', 'F2 7'],
       R: ['Bb4 - - - - - G4 - - D4 - -', 'A4 - - - - - F4 - - D4 - -', 'G4 - - Bb4 - - Eb5 - - - - -', 'F4 - - - - - - - - - - -'], Ra: ['G4 - - Bb4 - - Eb5 - D5 C5 - -', 'C5 - - - - - A4 - - F4 G4 A4'],
       oc: 'F2 7', O: '. . . . . . F3 - - A3 - -' },
-    'arena-chip': { title: 'Arena Rush', bpm: 152, meter: 8, duty: 0.5, lift: 1, // boss battle, E minor, 4/4
+    'arena-chip': { title: 'Arena Rush', genre: '8-bit', bpm: 152, meter: 8, duty: 0.5, lift: 1, // boss battle, E minor, 4/4
       ic: ['E2 t', 'E2 t', 'E2 t', 'B2 7'], I: ['. . . . . . . .', '. . . . . . . .', 'E4 - E4 - E4 - E4 E4', 'D#4 - - - B3 - - -'],
       ac: ['E2 t', 'C3 T', 'D3 T', 'B2 7'], Ac2: ['A2 t', 'B2 7'],
       A: ['E4 - - B3 E4 - G4 -', 'G4 - - E4 C4 - E4 G4', 'F#4 - - D4 A4 - F#4 D4', 'D#4 - - - B3 - F#4 -'], Aa: ['C5 - B4 A4 E4 - A4 C5', 'B4 - - - D#4 - F#4 -'],
@@ -118,7 +118,7 @@
       rc: ['A2 t', 'F2 T', 'C3 T', 'B2 7'], Rc2: ['A2 t', 'B2 7'],
       R: ['A4 - - - C5 - - -', 'A4 - - - F4 - - -', 'G4 - - - E4 - C4 -', 'B3 - - - D#4 - F#4 -'], Ra: ['C5 - B4 C5 E5 - C5 A4', 'B4 - - - - - - -'],
       oc: 'B2 7', O: 'B3 - - - D#4 - F#4 -' },
-    crypt: { title: 'Lantern Crypt', bpm: 84, meter: 6, duty: 0.25, lift: 0, organ: 1, // dark cathedral, C harmonic minor, 3/4
+    crypt: { title: 'Lantern Crypt', genre: '8-bit', bpm: 84, meter: 6, duty: 0.25, lift: 0, organ: 1, // dark cathedral, C harmonic minor, 3/4
       ic: ['C3 t', 'Ab2 T', 'F2 t', 'G2 7'], I: ['. . . . . .', '. . . . . .', 'C4 - - - Eb4 -', 'D4 - - - B3 -'],
       ac: ['C3 t', 'Ab2 T', 'F2 t', 'G2 7'], Ac2: ['Ab2 M', 'G2 7'],
       A: ['C4 - Eb4 - G4 -', 'Ab4 - - G4 F4 Eb4', 'F4 - - Eb4 D4 C4', 'B3 - - - G3 -'], Aa: ['Eb4 - F4 - G4 Ab4', 'G4 - - - B3 -'],
@@ -126,10 +126,159 @@
       B: ['Ab4 - - - G4 F4', 'G4 - - - Eb4 C4', 'C5 - - Ab4 Eb4 C4', 'B3 - D4 - G4 -'], Ba: ['F4 - Ab4 - Db5 -', 'B4 - - - G4 -'],
       rc: ['Eb3 T', 'B2 o', 'C3 t', 'G2 7'], Rc2: ['Ab2 T', 'G2 7'],
       R: ['G4 - - - Bb4 -', 'Ab4 - - - F4 -', 'G4 - - - Eb4 -', 'D4 - - - B3 -'], Ra: ['C5 - - Ab4 Eb4 C4', 'D4 - F4 - B4 -'],
-      oc: 'G2 7', O: 'D4 - - - B3 -' }
+      oc: 'G2 7', O: 'D4 - - - B3 -' },
+    // New electronic tracks: 16 sixteenths per bar (div 4). Melodies written for this game, not borrowed.
+    'night-market': { title: 'Night Market', genre: 'Drum and bass', bpm: 174, meter: 16, div: 4, duty: 0.25, lift: 0, kit: 'dnb', bass: 'reese', pump: 0.22, pad: 0.028, arpEvery: 2, arpV: 0.016, counter: false,
+      ic: ['F#2 t', 'F#2 t', 'C#2 s', 'C#2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'F#4 - . . A4 - . . G#4 - . . F#4 - . .', 'E4 - . . C#4 - . . . . . . . . . .'],
+      ac: ['F#2 t', 'B2 t', 'D2 T', 'E2 T'], Ac2: ['C#2 t', 'C#2 7'],
+      A: ['F#4 - . . A4 - G#4 - F#4 - . . E4 - F#4 -', 'D5 - C#5 - A4 - . . B4 - A4 - G#4 - . .', 'F#4 - A4 - C#5 - B4 - A4 - G#4 - F#4 - . .', 'E4 - . . G#4 - . . F#4 - - - - - - -'],
+      Aa: ['A4 - B4 - C#5 - D5 - C#5 - B4 - A4 - . .', 'F#5 - . . E5 - C#5 - . . A4 - . . . .'],
+      bc: ['D2 T', 'A2 T', 'E2 T', 'C#2 t'], Bc2: ['B2 t', 'C#2 7'],
+      B: ['C#5 - . . E5 - D5 - C#5 - B4 - A4 - G#4 -', 'B4 - D5 - F#5 - E5 - D5 - C#5 - B4 - . .', 'A4 - C#5 - E5 - F#5 - E5 - C#5 - A4 - . .', 'G#4 - A4 - B4 - C#5 - - - - - - - . .'],
+      Ba: ['F#5 - E5 - D5 - C#5 - B4 - A4 - G#4 - . .', 'F#5 - - - - - E5 - D5 - C#5 - . . . .'],
+      rc: ['F#2 t', 'E2 T', 'D2 T', 'C#2 s'], Rc2: ['B2 t', 'C#2 7'],
+      R: ['F#4 - - - A4 - - - C#5 - - - A4 - - .', 'E4 - - - G#4 - - - B4 - - - G#4 - - .', 'D4 - - - F#4 - - - A4 - - - F#4 - - .', 'C#4 - - - E4 - - - G#4 - - - - - - .'],
+      Ra: ['A4 - - - B4 - - - C#5 - - - E5 - - .', 'F#5 - - - - - E5 - C#5 - - - . . . .'],
+      oc: 'C#2 7', O: 'C#4 - E4 - G#4 - . . . . . . . . . .' },
+    'glass-gate': { title: 'Glass Gate', genre: 'Trance', bpm: 136, meter: 16, div: 4, duty: 0.5, lift: 0, kit: 'trance', bass: 'offbeat', bassSeq: [0, 0, 7, 12], pump: 0.72, pad: 0.05, arpEvery: 1, arpV: 0.024,
+      ic: ['A2 t', 'A2 t', 'F2 T', 'E2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'A4 - - - C5 - - - E5 - - - . . . .', 'E4 - G#4 - B4 - E5 - . . . . . . . .'],
+      ac: ['A2 t', 'F2 T', 'C3 T', 'G2 T'], Ac2: ['D2 t', 'E2 7'],
+      A: ['A4 - E5 - E5 - D5 - C5 - A4 - B4 - C5 .', 'D5 - - - B4 - G4 - A4 - C5 - B4 - A4 -', 'E5 - D5 - C5 - A4 - C5 - E5 - D5 - C5 .', 'B4 - - - E5 - - - A4 - - - - - - -'],
+      Aa: ['C5 - D5 - E5 - G5 - E5 - D5 - C5 - B4 .', 'A4 - - - - - C5 - E5 - - - . . . .'],
+      bc: ['F2 T', 'C3 T', 'G2 T', 'A2 t'], Bc2: ['D2 t', 'E2 7'],
+      B: ['E5 - G5 - E5 - D5 - C5 - A4 - B4 - C5 .', 'G5 - E5 - C5 - D5 - E5 - G5 - E5 - C5 .', 'A4 - C5 - E5 - G5 - E5 - D5 - C5 - B4 .', 'A4 - - - C5 - E5 - A4 - - - - - - -'],
+      Ba: ['E5 - D5 - C5 - B4 - A4 - G4 - A4 - B4 .', 'C5 - - - B4 - A4 - G#4 - - - . . . .'],
+      rc: ['A2 t', 'G2 T', 'F2 T', 'E2 7'], Rc2: ['D2 t', 'E2 7'],
+      R: ['A4 - - - C5 - - - E5 - - - C5 - - .', 'G4 - - - B4 - - - D5 - - - B4 - - .', 'F4 - - - A4 - - - C5 - - - A4 - - .', 'E4 - - - G#4 - - - B4 - - - - - - .'],
+      Ra: ['C5 - - - D5 - - - E5 - - - G5 - - .', 'E5 - - - D5 - - - C5 - - - B4 - - .'],
+      oc: 'E2 7', O: 'E4 - G#4 - B4 - D5 - . . . . . . . .' },
+    'neon-rook': { title: 'Neon Rook', genre: 'Synthwave', bpm: 104, meter: 16, div: 4, duty: 0.125, lift: 0, kit: 'synthwave', bass: 'pump8', bassSeq: [0, 12, 0, 12, 0, 7, 0, 12], pump: 0.68, pad: 0.052, arpEvery: 2, arpV: 0.022,
+      ic: ['D2 t', 'D2 t', 'Bb2 T', 'A2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'D4 - - - A4 - - - F4 - - - D4 - - .', 'E4 - - - C#4 - - - D4 - - - . . . .'],
+      ac: ['D2 t', 'Bb2 T', 'F2 T', 'C3 T'], Ac2: ['G2 t', 'A2 7'],
+      A: ['A4 - D5 - F5 - D5 - A4 - G4 - F4 - E4 .', 'F4 - A4 - D5 - C5 - A4 - G4 - F4 - D4 .', 'D5 - - - C5 - A4 - Bb4 - A4 - G4 - F4 .', 'E4 - - - A4 - - - D4 - - - - - - -'],
+      Aa: ['F5 - D5 - A4 - D5 - F5 - E5 - D5 - C5 .', 'D5 - - - - - A4 - . . . . . . . .'],
+      bc: ['G2 t', 'D2 t', 'Bb2 T', 'A2 7'], Bc2: ['F2 T', 'A2 7'],
+      B: ['G4 - Bb4 - D5 - Bb4 - G4 - F4 - D4 - Bb3 .', 'A4 - D5 - F5 - D5 - A4 - G4 - E4 - C4 .', 'D5 - E5 - F5 - G5 - F5 - D5 - C5 - A4 .', 'A4 - - - G4 - E4 - D4 - - - - - - -'],
+      Ba: ['F5 - E5 - D5 - C5 - Bb4 - A4 - G4 - F4 .', 'E4 - - - A4 - C5 - D5 - - - . . . .'],
+      rc: ['D2 t', 'Bb2 T', 'C3 T', 'A2 7'], Rc2: ['G2 t', 'A2 7'],
+      R: ['D4 - - - F4 - - - A4 - - - F4 - - .', 'Bb3 - - - D4 - - - F4 - - - D4 - - .', 'C4 - - - E4 - - - G4 - - - E4 - - .', 'A3 - - - C#4 - - - E4 - - - - - - .'],
+      Ra: ['F4 - - - G4 - - - A4 - - - D5 - - .', 'A4 - - - G4 - F4 - E4 - - - . . . .'],
+      oc: 'A2 7', O: 'A3 - C#4 - E4 - G4 - . . . . . . . .' },
+    'block-party': { title: 'Block Party', genre: 'House', bpm: 122, meter: 16, div: 4, duty: 0.25, lift: 0, kit: 'house', clap: 1, swing: 0.22, pump: 0.75, pad: 0.04, arpEvery: 2, arpV: 0.018, counter: false,
+      bassPat: [0, null, 12, 0, null, 0, 7, 12, 0, null, 12, null, 10, 12, 7, null],
+      ic: ['F2 t', 'F2 t', 'Eb2 T', 'C2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'F4 . . . Ab4 . . . C5 . . . . . . .', 'E4 . . . G4 . . . Bb4 . . . . . . .'],
+      ac: ['F2 t', 'Ab2 T', 'Eb2 T', 'C2 7'], Ac2: ['Bb2 T', 'C2 7'],
+      A: ['F4 . . . Ab4 . C5 . . . Bb4 . Ab4 . G4 .', 'Ab4 . . . G4 . F4 . . . Eb4 . . . C4 .', 'F4 . Ab4 . C5 . . . Db5 . C5 . Ab4 . . .', 'G4 . . . . . F4 . . . . . . . . .'],
+      Aa: ['C5 . Bb4 . Ab4 . G4 . F4 . Eb4 . C4 . . .', 'F4 . . . . . Ab4 . C5 . . . . . . .'],
+      bc: ['Db2 T', 'Eb2 T', 'F2 t', 'C2 7'], Bc2: ['Ab2 T', 'C2 7'],
+      B: ['C5 . . . F5 . . . Eb5 . C5 . Ab4 . . .', 'Bb4 . . . Db5 . . . C5 . Ab4 . G4 . . .', 'Ab4 . C5 . Eb5 . . . Db5 . C5 . Bb4 . Ab4 .', 'G4 . . . Bb4 . . . C5 . . . . . . .'],
+      Ba: ['F5 . Eb5 . C5 . Ab4 . G4 . F4 . Eb4 . C4 .', 'F4 . . . . . . . C5 . . . . . . .'],
+      rc: ['F2 t', 'Eb2 T', 'Db2 T', 'C2 7'], Rc2: ['Bb2 t', 'C2 7'],
+      R: ['F4 . . . . . Ab4 . . . . . C5 . . .', 'Eb4 . . . . . G4 . . . . . Bb4 . . .', 'Db4 . . . . . F4 . . . . . Ab4 . . .', 'E4 . . . . . G4 . . . . . Bb4 . . .'],
+      Ra: ['C5 . . . Ab4 . . . F4 . . . G4 . . .', 'F4 . . . . . . . . . . . . . . .'],
+      oc: 'C2 7', O: 'C4 . E4 . G4 . Bb4 . . . . . . . . .' },
+    'rift-wub': { title: 'Rift Wub', genre: 'Dubstep', bpm: 140, meter: 16, div: 4, duty: 0.5, lift: 0, kit: 'dubstep', bass: 'wobble', wobGap: 'xxxxxxx..xxxxxxx', bareDrop: 1, pump: 0.5, pad: 0.022, arpEvery: 4, arpV: 0.014, counter: false,
+      ic: ['E2 t', 'E2 t', 'C2 t', 'B2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'E4 . . . B3 . . . E4 . . . . . . .', 'D#4 . . . F#4 . . . B3 . . . . . . .'],
+      ac: ['E2 t', 'C2 T', 'G2 T', 'Bb2 T'], Ac2: ['D2 T', 'B2 7'],
+      A: ['E4 . . . . . G4 . . . . . F#4 . . .', 'D4 . . . . . E4 . . . . . B3 . . .', 'G4 . . . . . A4 . . . B4 . . . G4 .', 'F#4 . . . . . . . E4 . . . . . . .'],
+      Aa: ['B4 . . . G4 . . . E4 . . . D4 . . .', 'E4 . . . . . . . . . . . . . . .'],
+      bc: ['E2 t', 'G2 T', 'D2 T', 'Bb2 T'], Bc2: ['C2 T', 'B2 7'],
+      B: ['E4 . . . . . . . B4 . . . . . . .', 'D5 . . . . . B4 . . . . . G4 . . .', 'A4 . . . . . G4 . . . F#4 . . . E4 .', 'E4 . . . . . . . . . . . . . . .'],
+      Ba: ['B4 . G4 . E4 . . . D4 . B3 . . . . .', 'E4 . . . . . F#4 . G4 . . . . . . .'],
+      rc: ['E2 t', 'C2 T', 'A2 t', 'B2 7'], Rc2: ['D2 T', 'B2 7'],
+      R: ['E4 - - - G4 - - - B4 - - - G4 - - .', 'A4 - - - G4 - - - F#4 - - - E4 - - .', 'D4 - - - F#4 - - - A4 - - - F#4 - - .', 'D#4 - - - F#4 - - - B4 - - - - - - .'],
+      Ra: ['G4 - - - A4 - - - B4 - - - E5 - - .', 'D5 - - - B4 - - - G4 - - - F#4 - - .'],
+      oc: 'B2 7', O: 'B3 . D#4 . F#4 . . . . . . . . . . .' },
+    'grid-ritual': { title: 'Grid Ritual', genre: 'Techno', bpm: 132, meter: 16, div: 4, duty: 0.125, lift: 0, kit: 'techno', bass: 'offbeat', bassSeq: [0, 0, 0, 0], snareV: 0.55, pump: 0.62, pad: 0.03, arpEvery: 2, arpV: 0.015, counter: false,
+      ic: ['A2 t', 'A2 t', 'A2 t', 'G2 s'],
+      I: ['. . . . . . . . . . . . . . . .', 'A3 - . . E4 - . . A3 - . . E4 - . .', 'A3 - E4 - G4 - E4 - A3 - E4 - G4 - E4 .', 'G4 - E4 - D4 - B3 - . . . . . . . .'],
+      ac: ['A2 t', 'A2 t', 'F2 T', 'E2 t'], Ac2: ['D2 t', 'E2 7'],
+      A: ['A3 - E4 - G4 - E4 - A3 - E4 - G4 - E4 .', 'A3 - E4 - G4 - E4 - C4 - E4 - G4 - D4 .', 'A3 - F4 - E4 - C4 - A3 - E4 - D4 - E4 .', 'B3 - E4 - G4 - E4 - A3 - - - - - - -'],
+      Aa: ['C4 - E4 - A4 - E4 - G4 - E4 - D4 - C4 .', 'A3 - - - E4 - - - . . . . . . . .'],
+      bc: ['A2 t', 'C3 T', 'G2 T', 'E2 t'], Bc2: ['D2 t', 'E2 7'],
+      B: ['A4 - C5 - E5 - C5 - A4 - G4 - E4 - C4 .', 'B4 - D5 - E5 - D5 - B4 - G4 - E4 - D4 .', 'C5 - A4 - E4 - C4 - D4 - E4 - G4 - A4 .', 'E4 - - - G4 - B4 - A4 - - - - - - -'],
+      Ba: ['A4 - G4 - E4 - D4 - C4 - B3 - A3 - E4 .', 'A3 - - - - - E4 - . . . . . . . .'],
+      rc: ['A2 t', 'F2 T', 'C3 T', 'E2 7'], Rc2: ['D2 t', 'E2 7'],
+      R: ['A4 - - - G4 - - - E4 - - - C4 - - .', 'D4 - - - E4 - - - G4 - - - E4 - - .', 'A3 - - - C4 - - - E4 - - - C4 - - .', 'B3 - - - D4 - - - E4 - - - - - - .'],
+      Ra: ['E4 - - - G4 - - - A4 - - - C5 - - .', 'B4 - - - A4 - - - G4 - - - E4 - - .'],
+      oc: 'E2 7', O: 'E4 - G4 - B4 - D5 - . . . . . . . .' },
+    'canopy-break': { title: 'Canopy Break', genre: 'Jungle', bpm: 168, meter: 16, div: 4, duty: 0.25, lift: 0, kit: 'jungle', pump: 0.2, pad: 0.026, arpEvery: 2, arpV: 0.016, counter: false,
+      bassPat: [0, null, 0, 12, null, 0, null, 10, 0, null, 12, null, 0, 7, null, 12],
+      ic: ['G2 t', 'G2 t', 'Eb2 T', 'D2 7'],
+      I: ['. . . . . . . . . . . . . . . .', '. . . . . . . . . . . . . . . .', 'G4 . . . Bb4 . . . D5 . . . . . . .', 'F#4 . . . A4 . . . D5 . . . . . . .'],
+      ac: ['G2 t', 'Eb2 T', 'Bb2 T', 'D2 T'], Ac2: ['C2 t', 'D2 7'],
+      A: ['G4 . Bb4 . D5 . . . F5 . D5 . Bb4 . G4 .', 'F4 . G4 . A4 . Bb4 . A4 . G4 . F4 . D4 .', 'Bb4 . D5 . . . G4 . . . A4 . Bb4 . D5 .', 'A4 . . . F4 . . . G4 . . . . . . .'],
+      Aa: ['D5 . Bb4 . G4 . Bb4 . D5 . F5 . D5 . Bb4 .', 'G4 . . . . . D5 . . . . . . . . .'],
+      bc: ['G2 t', 'F2 T', 'Eb2 T', 'D2 7'], Bc2: ['Bb2 T', 'D2 7'],
+      B: ['Bb4 . D5 . F5 . D5 . Bb4 . A4 . G4 . F4 .', 'G4 . A4 . Bb4 . D5 . Bb4 . A4 . G4 . D4 .', 'F5 . D5 . Bb4 . G4 . A4 . Bb4 . C5 . D5 .', 'D5 . . . A4 . . . G4 . . . . . . .'],
+      Ba: ['F5 . Eb5 . D5 . C5 . Bb4 . A4 . G4 . F4 .', 'G4 . . . D4 . . . . . . . . . . .'],
+      rc: ['G2 t', 'Eb2 T', 'C2 t', 'D2 7'], Rc2: ['F2 T', 'D2 7'],
+      R: ['G4 - - - Bb4 - - - D5 - - - Bb4 - - .', 'Eb4 - - - G4 - - - Bb4 - - - G4 - - .', 'F4 - - - A4 - - - C5 - - - A4 - - .', 'F#4 - - - A4 - - - C5 - - - - - - .'],
+      Ra: ['Bb4 - - - C5 - - - D5 - - - F5 - - .', 'D5 - - - Bb4 - - - G4 - - - F#4 - - .'],
+      oc: 'D2 7', O: 'D4 . F#4 . A4 . C5 . . . . . . . . .' }
   };
+  // 16-step drum kits. Each row is one bar of sixteenths. Original patterns, not a transcribed break.
+  var KITS = {
+    dnb: {
+      intro: { k: 'x...............', s: '........x.......', h: 'x...x...x...x...', o: '............x...' },
+      break: { k: 'x...............', s: '....x.......x...', h: 'x...x...x...x...', o: '........x.......' },
+      main:  { k: 'x..x....x..x.x..', s: '....x..x....x...', h: 'x.x.x.x.x.x.x.x.', o: '......x.......x.' },
+      drop:  { k: 'x..x..x...x.x..x', s: '....x..x....x..x', h: 'x.x.x.x.x.x.x.x.', o: '..x.....x...x...' }
+    },
+    trance: {
+      intro: { k: 'x...x...x...x...', s: '................', h: 'x...x...x...x...', o: '..x.....x.......' },
+      break: { k: '................', s: '................', h: 'x...x...x...x...', o: '..x...x...x...x.' },
+      main:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '..x...x...x...x.' },
+      drop:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '..x...x...x...x.' }
+    },
+    synthwave: {
+      intro: { k: 'x...x...x...x...', s: '................', h: 'x...x...x...x...', o: '......x.........' },
+      break: { k: '................', s: '....x.......x...', h: 'x...x...x...x...', o: '......x.........' },
+      main:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '......x.........' },
+      drop:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '......x.....x...' }
+    },
+    house: {
+      intro: { k: 'x...x...x...x...', s: '................', h: 'x...x...x...x...', o: '..x.....x.......' },
+      break: { k: '................', s: '....x.......x...', h: 'x...x...x...x...', o: '..x...x...x...x.' },
+      main:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '..x...x...x...x.' },
+      drop:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '..x...x...x...x.' }
+    },
+    dubstep: {
+      intro: { k: 'x...............', s: '................', h: 'x...x...x...x...', o: '................' },
+      break: { k: '................', s: '........x.......', h: 'x.......x.......', o: '................' },
+      main:  { k: 'x...............', s: '........x.......', h: '..x...x...x...x.', o: '......x.......x.' },
+      drop:  { k: 'x...........x...', s: '........x..x....', h: 'x.x.x.x.x.x.x.x.', o: '....x.......x...' }
+    },
+    techno: {
+      intro: { k: 'x...x...x...x...', s: '................', h: 'x...x...x...x...', o: '......x.........' },
+      break: { k: '................', s: '................', h: 'x.x.x.x.x.x.x.x.', o: '..x...x...x...x.' },
+      main:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '......x.......x.' },
+      drop:  { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx', o: '......x.......x.' }
+    },
+    jungle: {
+      intro: { k: 'x...............', s: '....x.......x...', h: 'x...x...x...x...', o: '........x.......' },
+      break: { k: 'x...............', s: '........x.......', h: 'x...x...x...x...', o: '................' },
+      main:  { k: 'x...x.....x..x..', s: '..x...x....x..x.', h: 'x.x.x.x.x.x.x.x.', o: '....x.......x...' },
+      drop:  { k: 'x..x.x....x..x..', s: '..x...x..x.x..x.', h: 'x.x.x.x.x.x.x.x.', o: '..x.....x...x...' }
+    }
+  };
+  function kitHit(kit, S, i, big) {
+    var K = KITS[kit];
+    if (!K) throw new Error('unknown kit ' + kit);
+    var name = big ? 'drop' : (S.s === 'I' ? 'intro' : (S.s === 'R' && !S.r ? 'break' : 'main'));
+    var P = K[name] || K.main;
+    return { kick: P.k.charAt(i) === 'x', snare: P.s.charAt(i) === 'x', hat: P.h.charAt(i) === 'x', open: P.o.charAt(i) === 'x' };
+  }
   function composeChip(key) {
-    var T = CHIP[key], M = T.meter, e = 60 / T.bpm / (M === 12 ? 3 : 2), ev = [], bar = 0, sec = [];
+    var T = CHIP[key], M = T.meter, div = T.div || (M === 12 ? 3 : 2), e = 60 / T.bpm / div, ev = [], bar = 0, sec = [];
+    if (T.kit) ['intro', 'break', 'main', 'drop'].forEach(function (nm) {
+      var P = KITS[T.kit][nm]; if (!P) return; ['k', 's', 'h', 'o'].forEach(function (ch) { if (P[ch] && P[ch].length !== M) throw new Error(key + ' kit ' + nm + ' ' + ch); });
+    });
     function part(name, ch, lines, alt, lvl, tr) { for (var r = 0; r < 2; r++) for (var i = 0; i < 4; i++) sec.push({ r: r, s: name, ch: (r && i >= 2) ? T[name + 'c2'][i - 2] : ch[i], m: (r && i >= 2) ? alt[i - 2] : lines[i], lvl: lvl, tr: tr || 0 }); }
     for (var i0 = 0; i0 < 4; i0++) sec.push({ s: 'I', ch: T.ic[i0], m: T.I[i0], lvl: 0, ramp: (i0 + 1) / 4, roll: i0 === 3 });
     part('A', T.ac, T.A, T.Aa, 1); part('B', T.bc, T.B, T.Ba, 2); part('A', T.ac, T.A, T.Aa, 2);
@@ -148,51 +297,97 @@
         if (tok[i] === '.' || tok[i] === '-') continue;
         j = i + 1; while (j < M && tok[j] === '-') j++;
         var p = n(tok[i]) + S.tr, held = j - i > 1, d = e * ((j - i) - (held ? 0.1 : 0.2));
-        [-1, 1].forEach(function (sd) { ev.push({ t: t0 + i * e, d: d, f: hzc(p) * (1 + sd * 0.0035), v: 0.05, w: 'pulse', duty: T.duty, att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18, pan: 0.5 * sd }); }); // detuned unison, spread L/R
-        ev.push({ t: t0 + i * e, d: d, f: hzc(p), v: 0.06, w: 'tri', att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18 });
-        if (big || T.organ && L >= 2) ev.push({ t: t0 + i * e, d: d, f: hzc(p - 12), v: 0.05, w: 'pulse', duty: 0.5, att: 0.02, rel: 0.22, pan: -0.3 });
-        if (L >= 2 || S.s === 'I') { var sixth = (bar % 4) >= 2, h = p - (sixth ? 8 : 3), ok = ct.map(function (x) { return ((x - ct[0]) % 12 + 12) % 12; });
+        var tN = t0 + i * e + ((T.swing && (i % 2)) ? T.swing * e : 0);
+        [-1, 1].forEach(function (sd) { ev.push({ t: tN, d: d, f: hzc(p) * (1 + sd * 0.0035), v: 0.05, w: 'pulse', duty: T.duty, att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18, pan: 0.5 * sd }); }); // detuned unison, spread L/R
+        ev.push({ t: tN, d: d, f: hzc(p), v: 0.06, w: 'tri', att: 0.02, rel: 0.22, vib: 0.007, vd: 0.18 });
+        if (big || T.organ && L >= 2) ev.push({ t: tN, d: d, f: hzc(p - 12), v: 0.05, w: 'pulse', duty: 0.5, att: 0.02, rel: 0.22, pan: -0.3 });
+        if ((L >= 2 || S.s === 'I') && T.counter !== false) { var sixth = (bar % 4) >= 2, h = p - (sixth ? 8 : 3), ok = ct.map(function (x) { return ((x - ct[0]) % 12 + 12) % 12; });
           while (h > p - (sixth ? 10 : 6) && ok.indexOf(((h - ct[0]) % 12 + 12) % 12) < 0) h--;
-          if (ok.indexOf(((h - ct[0]) % 12 + 12) % 12) >= 0) ev.push({ t: t0 + i * e, d: d, f: hzc(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.03, rel: 0.22, vib: 0.005, vd: 0.2, pan: 0.35 }); }
+          if (ok.indexOf(((h - ct[0]) % 12 + 12) % 12) >= 0) ev.push({ t: tN, d: d, f: hzc(h), v: 0.045, w: 'pulse', duty: 0.5, att: 0.03, rel: 0.22, vib: 0.005, vd: 0.2, pan: 0.35 }); }
       }
       // held chord pad (3 notes); organ on the crypt: pulse + triangle with a low octave root
+      var padV = (T.bareDrop && big) ? (T.pad != null ? T.pad : 0.035) * 0.35 : (T.pad != null ? T.pad : 0.035);
+      var padP = (T.bareDrop && big) ? 0.006 : 0.016;
       [ct[1], ct[2], ct[3]].forEach(function (pp, q) {
-        ev.push({ t: t0, d: M * e, f: hzc(pp) * (1 + 0.002 * (q - 1)), v: 0.035 * amp, w: 'tri', att: 0.2, rel: 0.35, pan: (q - 1) * 0.6, duck: 1 });
-        ev.push({ t: t0, d: M * e, f: hzc(pp + 12) * (1 - 0.002 * (q - 1)), v: 0.016 * amp, w: 'pulse', duty: 0.5, att: 0.25, rel: 0.35, pan: (1 - q) * 0.6, duck: 1 }); // octave doubling, opposite side
+        ev.push({ t: t0, d: M * e, f: hzc(pp) * (1 + 0.002 * (q - 1)), v: padV * amp, w: 'tri', att: 0.2, rel: 0.35, pan: (q - 1) * 0.6, duck: 1 });
+        ev.push({ t: t0, d: M * e, f: hzc(pp + 12) * (1 - 0.002 * (q - 1)), v: padP * amp, w: 'pulse', duty: 0.5, att: 0.25, rel: 0.35, pan: (1 - q) * 0.6, duck: 1 }); // octave doubling, opposite side
         if (T.organ) ev.push({ t: t0, d: M * e, f: hzc(pp), v: 0.022 * amp, w: 'pulse', duty: 0.5, att: 0.15, rel: 0.35, pan: (1 - q) * 0.4, duck: 1 });
       });
       if (T.organ) ev.push({ t: t0, d: M * e, f: hzc(ct[0] - 12), v: 0.06 * amp, w: 'tri', att: 0.15, rel: 0.35, duck: 1 });
       // counter-melody on triangle (beat notes through chord tones), levels 2-3
-      if (L >= 2) { var beat = M === 12 ? 3 : 2, cm = (bar % 2) ? [3, 2, 1, 2] : [2, 3, 2, 1];
+      if (L >= 2 && T.counter !== false) { var beat = M === 12 ? 3 : (T.div ? T.div : 2), cm = (bar % 2) ? [3, 2, 1, 2] : [2, 3, 2, 1];
         for (k = 0; k * beat < M; k++) ev.push({ t: t0 + k * beat * e, d: e * beat * 0.9, f: hzc(ct[cm[k % 4]] + (cm[k % 4] === 3 ? 0 : 12)), v: 0.035, w: 'tri', att: 0.04, rel: 0.2, pan: -0.4 }); }
-      // arpeggio (16ths in 4/4 and 3/4, 8th-note triplets in 12/8)
-      if (L >= 1) { var as = M === 12 ? e : e / 2, arp = [0, 1, 2, 3, 2, 1];
-        for (k = 0; k < M * e / as - 0.5; k++) ev.push({ t: t0 + k * as, d: as * 0.85, f: hzc(ct[arp[k % 6]] + 12), v: big ? 0.026 : 0.02, w: 'tri', att: 0.006, rel: 0.1, pan: k % 2 ? 0.45 : -0.45 }); }
-      // strong triangle bass
-      var BP = M === 8 ? (key === 'arena-chip' || big ? [0, 0, 12, 0, 0, 12, 7, 12] : [0, null, 7, null, 0, null, 7, 12])
-        : M === 12 ? [0, null, null, 7, null, null, 0, null, null, 7, null, 12] : [0, null, 7, null, 12, null];
-      for (i = 0; i < M; i++) if (BP[i] != null) { j = i + 1; while (j < M && BP[j] == null) j++;
-        ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(ct[0] - 12 + BP[i]), v: 0.17 * amp, w: 'tri', att: 0.008, rel: 0.08 });
-        var sb = ct[0] - 12 + (BP[i] % 12 ? 0 : 0) - 12; ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(sb < 31 ? sb + 12 : sb), v: 0.16 * amp, w: 'sine', att: 0.01, rel: 0.08 }); } // sub-bass
-      // drums (noise snare/hats + triangle kick); intro builds with a snare roll into A
+      // arpeggio (16ths in 4/4 and 3/4, 8th-note triplets in 12/8). New tracks set arpEvery in steps.
+      if (L >= 1 && !(T.bareDrop && big)) { var as = T.arpEvery ? e * T.arpEvery : (M === 12 ? e : e / 2), arp = [0, 1, 2, 3, 2, 1], arpV = T.arpV != null ? T.arpV : (big ? 0.026 : 0.02);
+        for (k = 0; k < M * e / as - 0.5; k++) ev.push({ t: t0 + k * as + ((T.swing && (k % 2)) ? T.swing * e : 0), d: as * 0.85, f: hzc(ct[arp[k % 6]] + 12), v: arpV, w: 'tri', att: 0.006, rel: 0.1, pan: k % 2 ? 0.45 : -0.45 }); }
+      // bass: classic triangle pattern, or a genre motion (reese, offbeat, pulsing 8ths, wobble, or a written pattern)
+      function bassNote(time, dur, midi, vMul) {
+        ev.push({ t: time, d: dur, f: hzc(midi), v: 0.15 * amp * vMul, w: 'tri', att: 0.005, rel: 0.05 });
+        var sb2 = midi - 12; if (sb2 < 31) sb2 += 12;
+        ev.push({ t: time, d: dur, f: hzc(sb2), v: 0.15 * amp * vMul, w: 'sine', att: 0.005, rel: 0.05 });
+      }
+      if (T.bass === 'reese') {
+        var mid = ct[0], subR = ct[0] - 12;
+        [-0.007, 0.007].forEach(function (det, di) { ev.push({ t: t0, d: M * e * 0.96, f: hzc(mid) * (1 + det), v: 0.05 * amp, w: 'pulse', duty: di ? 0.48 : 0.2, att: 0.03, rel: 0.08, pan: di ? 0.4 : -0.4 }); });
+        ev.push({ t: t0, d: M * e * 0.96, f: hzc(mid), v: 0.04 * amp, w: 'tri', att: 0.02, rel: 0.08 });
+        ev.push({ t: t0, d: M * e * 0.96, f: hzc(subR < 28 ? subR + 12 : subR), v: 0.16 * amp, w: 'sine', att: 0.01, rel: 0.06 });
+        if (L >= 2) ev.push({ t: t0 + 8 * e, d: 6 * e, f: hzc(mid + 7), v: 0.035 * amp, w: 'pulse', duty: 0.35, att: 0.01, rel: 0.05 });
+      } else if (T.bass === 'offbeat') {
+        var seq = T.bassSeq || [0, 0, 7, 0];
+        for (i = 0; i < M; i++) if (i % 4 === 2) {
+          var iv = seq[((i / 4) | 0) % seq.length], swb = (T.swing && (i % 2)) ? T.swing * e : 0;
+          bassNote(t0 + i * e + swb, e * 1.5, ct[0] - 12 + iv, 1);
+          ev.push({ t: t0 + i * e + swb, d: e * 1.15, f: hzc(ct[0] - 12 + iv), v: 0.07 * amp, w: 'pulse', duty: 0.25, att: 0.003, rel: 0.04 });
+        }
+      } else if (T.bass === 'pump8') {
+        var seq8 = T.bassSeq || [0, 12, 0, 12, 0, 7, 0, 12];
+        for (i = 0; i < M; i += 2) {
+          var iv8 = seq8[((i / 2) | 0) % seq8.length];
+          bassNote(t0 + i * e, e * 1.7, ct[0] - 12 + iv8, 1);
+        }
+      } else if (T.bass === 'wobble') {
+        if ((S.s === 'R' && !S.r) || (S.s === 'I' && bar < 3)) bassNote(t0, M * e * 0.92, ct[0] - 12, 0.75);
+        else {
+          var wseq = T.wob || [0, 0, 3, 1, 0, 7, 1, 3], duties = T.wobDuty || [0.16, 0.46, 0.12, 0.4, 0.2, 0.5, 0.14, 0.34];
+          for (i = 0; i < M; i++) {
+            if (T.wobGap && T.wobGap.charAt(i) === '.') continue;
+            ev.push({ t: t0 + i * e, d: e * 0.9, f: hzc(ct[0] + wseq[i % wseq.length]), v: (big ? 0.1 : 0.075) * amp, w: 'pulse', duty: duties[i % duties.length], att: 0.002, rel: 0.02, pan: i % 2 ? 0.25 : -0.25 });
+            if (i % 4 === 0) ev.push({ t: t0 + i * e, d: e * 3.4, f: hzc(ct[0] - 12), v: 0.15 * amp, w: 'sine', att: 0.003, rel: 0.04 });
+          }
+        }
+      } else if (T.bassPat) {
+        for (i = 0; i < M; i++) if (T.bassPat[i] != null) {
+          var swp = (T.swing && (i % 2)) ? T.swing * e : 0;
+          bassNote(t0 + i * e + swp, e * 1.35, ct[0] - 12 + T.bassPat[i], 1);
+        }
+      } else {
+        var BP = M === 8 ? (key === 'arena-chip' || big ? [0, 0, 12, 0, 0, 12, 7, 12] : [0, null, 7, null, 0, null, 7, 12])
+          : M === 12 ? [0, null, null, 7, null, null, 0, null, null, 7, null, 12] : [0, null, 7, null, 12, null];
+        for (i = 0; i < M; i++) if (BP[i] != null) { j = i + 1; while (j < M && BP[j] == null) j++;
+          ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(ct[0] - 12 + BP[i]), v: 0.17 * amp, w: 'tri', att: 0.008, rel: 0.08 });
+          var sb = ct[0] - 12 + (BP[i] % 12 ? 0 : 0) - 12; ev.push({ t: t0 + i * e, d: e * (j - i) * 0.85, f: hzc(sb < 31 ? sb + 12 : sb), v: 0.16 * amp, w: 'sine', att: 0.01, rel: 0.08 }); } // sub-bass
+      }
+      // drums (noise snare/hats + sine kick). A kit replaces the default rock pattern. Intro still rolls into the next section.
       for (i = 0; i < M; i++) {
-        var kick, snare, hat;
-        if (M === 8) { kick = i === 0 || i === 4 || (big || key === 'arena-chip') && (i === 3 || i === 7); snare = i === 2 || i === 6; hat = true; }
+        var kick, snare, hat, open = false, swH = (T.swing && (i % 2)) ? T.swing * e : 0;
+        if (T.kit) { var hit = kitHit(T.kit, S, i, big); kick = hit.kick; snare = hit.snare; hat = hit.hat; open = hit.open; }
+        else if (M === 8) { kick = i === 0 || i === 4 || (big || key === 'arena-chip') && (i === 3 || i === 7); snare = i === 2 || i === 6; hat = true; }
         else if (M === 12) { kick = i === 0 || i === 6; snare = i === 3 || i === 9 || big && i === 11; hat = i % 3 === 0 || big; }
         else { kick = i === 0 || big && i === 3; snare = i === 2 || i === 4; hat = i % 2 === 0; }
-        if (S.s === 'I' && bar < 2) { snare = false; hat = i === 0; }
-        if (S.s === 'R' && !S.r) { kick = i === 0; snare = i === M / 2; hat = i % (M === 12 ? 3 : 2) === 0; } // half-time drop (1st bridge pass)
+        if (!T.kit && S.s === 'I' && bar < 2) { snare = false; hat = i === 0; }
+        if (!T.kit && S.s === 'R' && !S.r) { kick = i === 0; snare = i === M / 2; hat = i % (M === 12 ? 3 : 2) === 0; } // half-time drop (1st bridge pass)
         if (S.roll && i >= M / 2) { for (var q = 0; q < 2; q++) ev.push({ t: t0 + (i + q / 2) * e, d: 0.08, f: 0, v: 0.03 + 0.02 * (i - M / 2) / M + 0.004 * q, w: 'noise', dec: 0.04, rel: 0.02 }); continue; }
         if (kick) { ev.push({ t: t0 + i * e, d: 0.18, f: 110, v: 0.32 * amp, w: 'kick', rel: 0.02 }); ev.push({ t: t0 + i * e, d: 0.02, f: 0, v: 0.04 * amp, w: 'noise', dec: 0.004, rel: 0.01 }); } // sine thump + click
-        if (snare && L >= 1) { ev.push({ t: t0 + i * e, d: 0.16, f: 0, v: big ? 0.075 : 0.06, w: 'noise', dec: 0.09, rel: 0.02, pan: 0.1 }); ev.push({ t: t0 + i * e, d: 0.1, f: 150, v: 0.12, w: 'kick', dec: 0.04, rel: 0.02 }); } // noise + sine body
-        if (hat && L >= 1) ev.push({ t: t0 + i * e, d: 0.03, f: 0, v: 0.01, w: 'noise', rel: 0.01, pan: 0.3 });
+        if (snare && (L >= 1 || T.kit)) { ev.push({ t: t0 + i * e + swH, d: T.clap ? 0.09 : 0.16, f: 0, v: (big ? 0.075 : 0.06) * (T.snareV || 1), w: 'noise', dec: T.clap ? 0.045 : 0.09, rel: 0.02, pan: 0.1 }); ev.push({ t: t0 + i * e + swH, d: 0.1, f: T.clap ? 220 : 150, v: 0.12 * (T.snareV || 1), w: 'kick', dec: 0.04, rel: 0.02 }); }
+        if (open && (L >= 1 || T.kit)) ev.push({ t: t0 + i * e + swH, d: 0.12, f: 0, v: 0.02 * amp, w: 'noise', dec: 0.07, rel: 0.02, pan: -0.25 });
+        else if (hat && (L >= 1 || T.kit)) ev.push({ t: t0 + i * e + swH, d: 0.03, f: 0, v: 0.012, w: 'noise', rel: 0.01, pan: 0.3 });
       }
       // riser into the climax and into A after the intro: noise swell + upward pitch sweep
       if (S.riser) { ev.push({ t: t0, d: M * e, f: 0, v: 0.05, w: 'rise', rel: 0.02 }); ev.push({ t: t0, d: M * e, f: hzc(ct[0]), v: 0.03, w: 'sweep', rel: 0.02 });
       }
       bar++;
     });
-    return { events: ev, length: bar * M * e, title: T.title, echo: e * 3, bpm: T.bpm, beat: e * (M === 12 ? 3 : 2), intro: 4 * M * e };
+    return { events: ev, length: bar * M * e, title: T.title, echo: e * 3, bpm: T.bpm, beat: e * div, intro: 4 * M * e, pump: T.pump, genre: T.genre, key: key };
   }
   function blep(t, dt) { if (t < dt) { t /= dt; return t + t - t * t - 1; } if (t > 1 - dt) { t = (t - 1) / dt; return t * t + t + t + 1; } return 0; }
 
@@ -260,8 +455,8 @@
       }
     });
     // sidechain pump: pads dip on each beat and swell back (modern pumping), then join the mix
-    var bt = c.beat * sr, i, j;
-    for (i = 0; i < N; i++) { var ph2 = (i % bt) / sr, g2 = 1 - 0.65 * Math.exp(-ph2 / 0.09) * (ph2 < 0.004 ? ph2 / 0.004 : 1); L[i] += PL[i] * g2; Rr[i] += PR[i] * g2; }
+    var bt = c.beat * sr, i, j, pump = c.pump != null ? c.pump : 0.65;
+    for (i = 0; i < N; i++) { var ph2 = (i % bt) / sr, g2 = 1 - pump * Math.exp(-ph2 / 0.09) * (ph2 < 0.004 ? ph2 / 0.004 : 1); L[i] += PL[i] * g2; Rr[i] += PR[i] * g2; }
     PL = PR = null;
     // ping-pong echo (dotted 8th-ish) and a big circular reverb (4 combs per side, decorrelated L/R)
     function wrapComb(src, dst, D, fb, mix) { var w = new Float32Array(N), W = Math.min(N, 3 * sr); for (var pass = 0; pass < 2; pass++) for (var q = 0; q < (pass ? W : N); q++) { var r = q - D; if (r < 0) r += N; w[q] = src[q] + fb * w[r]; } for (q = 0; q < N; q++) dst[q] += mix * w[q]; }
@@ -287,44 +482,150 @@
     return { samples: L, samplesR: Rr, sampleRate: sr, seconds: c.length, title: c.title };
   }
 
-  // style 'chip' (default, classic 8-bit) or 'chill'
-  function pickTrack(path, style) {
-    var p = String(path || '').toLowerCase(), chill = style === 'chill';
-    if (/cemetery/.test(p)) return chill ? 'cemetery' : 'crypt';
-    if (/fight|raid|arena/.test(p)) return chill ? 'arena' : 'arena-chip';
-    if (!chill && /pet|breed|hatch|shop/.test(p)) return 'parade';
-    return chill ? 'yard' : 'meadow';
+  // One ordered list for the whole site. Style still picks a lane (8-bit, including the new
+  // electronic tracks, or chill) so the existing style control keeps its meaning. The page never picks the song.
+  var PLAYLIST = [
+    { key: 'meadow', style: 'chip' }, { key: 'parade', style: 'chip' }, { key: 'arena-chip', style: 'chip' }, { key: 'crypt', style: 'chip' },
+    { key: 'night-market', style: 'chip' }, { key: 'glass-gate', style: 'chip' }, { key: 'neon-rook', style: 'chip' }, { key: 'block-party', style: 'chip' },
+    { key: 'rift-wub', style: 'chip' }, { key: 'grid-ritual', style: 'chip' }, { key: 'canopy-break', style: 'chip' },
+    { key: 'yard', style: 'chill' }, { key: 'cemetery', style: 'chill' }, { key: 'arena', style: 'chill' }
+  ];
+  function playlistFor(style) {
+    var s = style === 'chill' ? 'chill' : 'chip', out = [];
+    for (var i = 0; i < PLAYLIST.length; i++) if (PLAYLIST[i].style === s) out.push(PLAYLIST[i].key);
+    return out;
   }
+  function trackMeta(key) {
+    var T = CHIP[key] || TRACKS[key] || {};
+    return { key: key, title: T.title || key, genre: T.genre || (CHIP[key] ? '8-bit' : 'Chill'), style: CHIP[key] ? 'chip' : 'chill' };
+  }
+  var lenCache = {};
+  function songLength(key) {
+    if (lenCache[key]) return lenCache[key];
+    var c = CHIP[key] ? composeChip(key) : compose(key);
+    lenCache[key] = c.length;
+    return c.length;
+  }
+  // path is ignored: every page shares the playlist. Returns the first song of that lane.
+  function pickTrack(path, style) { void path; return playlistFor(style)[0]; }
 
-  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), chipTracks: Object.keys(CHIP) };
+  var api = { render: render, pickTrack: pickTrack, tracks: Object.keys(TRACKS), chipTracks: Object.keys(CHIP), playlist: PLAYLIST, playlistFor: playlistFor, trackMeta: trackMeta, songLength: songLength };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
-  // ---- browser player ----
-  var ctx = null, src = null, srcKey = '', gain = null, cache = {};
+  // ---- browser player: songs play back to back. sessionStorage keeps the song and the position across navigations. ----
+  var SS = 'xcpets.music.cursor';
+  var ctx = null, src = null, srcKey = '', gain = null, cache = {}, curI = 0, startOffset = 0, startedAt = 0, tick = 0, gen = 0;
   api.LEVELS = { low: 0.18, med: 0.35, high: 0.55 };
   api.VOLUME = 0.35;
   api.style = 'chip';
+  api.onTrack = null;
+  function lane() { return api.style === 'chill' ? 'chill' : 'chip'; }
+  function loadCursors() { try { return JSON.parse(root.sessionStorage.getItem(SS)) || {}; } catch (e) { return {}; } }
+  function saveCursors(all) { try { root.sessionStorage.setItem(SS, JSON.stringify(all)); } catch (e) {} }
+  function heardPos() { if (!ctx || !src) return startOffset; return startOffset + Math.max(0, ctx.currentTime - startedAt); }
+  function saveNow() {
+    var all = loadCursors();
+    var live = ctx && ctx.state === 'running' && gain && gain.gain.value > 0.02;
+    all[lane()] = { i: curI, pos: heardPos(), t: live ? Date.now() : 0 };
+    saveCursors(all);
+  }
+  function resolveCursor(style) {
+    var all = loadCursors(), c = all[style === 'chill' ? 'chill' : 'chip'] || { i: 0, pos: 0, t: 0 };
+    var list = playlistFor(style), i = ((c.i % list.length) + list.length) % list.length, pos = +c.pos || 0;
+    var gap = c.t ? (Date.now() - c.t) / 1000 : 0;
+    if (gap > 0 && gap < 20) pos += gap;
+    var guard = 0;
+    while (guard++ < list.length + 2) {
+      var len = songLength(list[i]);
+      if (pos < len - 0.08) break;
+      pos -= len; i = (i + 1) % list.length;
+    }
+    if (pos < 0 || guard > list.length + 1) pos = 0;
+    return { i: i, pos: pos };
+  }
+  function emit() { if (typeof api.onTrack === 'function') { try { api.onTrack(api.current()); } catch (e) {} } }
+  function remember(key, rendered) {
+    cache[key] = rendered;
+    var guard = 0, stereo;
+    while (guard++ < 8) {
+      stereo = Object.keys(cache).filter(function (k) { return cache[k] && cache[k].samplesR; });
+      if (stereo.length <= 2) break;
+      var drop = stereo[0] === key ? stereo[1] : stereo[0];
+      if (!drop || drop === key) break;
+      delete cache[drop];
+    }
+  }
+  function haltSource() {
+    if (!src) return;
+    var s = src; src = null; s.onended = null;
+    try { s.stop(); } catch (e) {}
+    try { s.disconnect(); } catch (e) {}
+  }
+  function arm(i, offset, fade) {
+    var list = playlistFor(api.style);
+    i = ((i % list.length) + list.length) % list.length;
+    var key = list[i], token = ++gen;
+    haltSource();
+    curI = i; srcKey = key;
+    var r = cache[key] || render(key, SR);
+    remember(key, r);
+    if (!ctx) return;
+    var buf = ctx.createBuffer(r.samplesR ? 2 : 1, r.samples.length, r.sampleRate);
+    buf.getChannelData(0).set(r.samples); if (r.samplesR) buf.getChannelData(1).set(r.samplesR);
+    var off = Math.max(0, offset || 0);
+    if (off > buf.duration - 0.12) { arm((i + 1) % list.length, Math.max(0, off - buf.duration), fade); return; }
+    src = ctx.createBufferSource(); src.buffer = buf; src.loop = false; src.connect(gain);
+    startOffset = off; startedAt = ctx.currentTime;
+    src.onended = function () { if (src !== this) return; src = null; arm(i + 1, 0, true); };
+    src.start(0, off);
+    gain.gain.cancelScheduledValues(ctx.currentTime);
+    if (fade) { gain.gain.setValueAtTime(Math.max(0.0001, api.VOLUME * 0.45), ctx.currentTime); gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.08); }
+    else gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4);
+    saveNow(); emit();
+    var nk = list[(i + 1) % list.length];
+    root.setTimeout(function () { if (token !== gen || cache[nk]) return; remember(nk, render(nk, SR)); }, 700);
+  }
+  api.current = function () {
+    var list = playlistFor(api.style);
+    var i = src ? curI : resolveCursor(api.style).i;
+    i = ((i % list.length) + list.length) % list.length;
+    var m = trackMeta(list[i]); m.index = i; m.total = list.length; return m;
+  };
   api.setVolume = function (v) { api.VOLUME = v; if (ctx && src) { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(v, ctx.currentTime, 0.1); } };
-  api.setStyle = function (st) { api.style = st === 'chill' ? 'chill' : 'chip'; if (src) { try { src.stop(); } catch (e) {} src.disconnect(); src = null; api.start(); } };
+  api.setStyle = function (st) {
+    var next = st === 'chill' ? 'chill' : 'chip';
+    if (next === api.style) return;
+    if (src) saveNow();
+    api.style = next;
+    if (!ctx) return;
+    haltSource();
+    var c = resolveCursor(next);
+    arm(c.i, c.pos, false);
+  };
+  api.skip = function (dir) {
+    if (!ctx) return api.start();
+    var list = playlistFor(api.style), i = curI + (dir < 0 ? -1 : 1);
+    if (i < 0) i = list.length - 1;
+    arm(i, 0, true);
+    return true;
+  };
   api.start = function () {
     var AC = root.AudioContext || root.webkitAudioContext; if (!AC) return false;
     if (!ctx) { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination); }
     if (ctx.state === 'suspended') ctx.resume();
-    if (!src) {
-      var key = pickTrack(root.location.pathname, api.style); srcKey = key;
-      var r = cache[key] || (cache[key] = render(key, SR));
-      var buf = ctx.createBuffer(r.samplesR ? 2 : 1, r.samples.length, r.sampleRate); buf.getChannelData(0).set(r.samples); if (r.samplesR) buf.getChannelData(1).set(r.samplesR);
-      src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();
-    }
-    gain.gain.cancelScheduledValues(ctx.currentTime);
-    gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4);
+    if (!src) { var c = resolveCursor(api.style); arm(c.i, c.pos, false); }
+    else { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(api.VOLUME, ctx.currentTime, 0.4); emit(); }
+    if (!tick) tick = root.setInterval(saveNow, 1000);
     return true;
   };
   api.stop = function () {
     if (!ctx) return;
+    saveNow();
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15);
-    setTimeout(function () { if (ctx && gain.gain.value < 0.01 && ctx.state === 'running') ctx.suspend(); }, 900);
+    root.setTimeout(function () { if (ctx && gain.gain.value < 0.01 && ctx.state === 'running') ctx.suspend(); }, 900);
   };
+  root.addEventListener('pagehide', saveNow);
+  root.addEventListener('visibilitychange', function () { if (root.document && root.document.visibilityState === 'hidden') saveNow(); });
   root.XCMusic = api;
 })(typeof window !== 'undefined' ? window : this);
