@@ -1,6 +1,6 @@
 {
- "lastBlock": 975020,
- "count": 177,
+ "lastBlock": 975025,
+ "count": 178,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1144,18 +1144,6 @@
    "stage": "Mythic"
   },
   {
-   "id": 66092,
-   "asset": "A16701981998381926864",
-   "tiedBlock": 974431,
-   "tiedTx": "d102a47558c4c47e9f6926fdc95fa9a0cbb59818849fd7ac1c0b179fdba3c208",
-   "kind": "deed",
-   "name": "Mewazy",
-   "species": "hyb:pepe:sarutobi",
-   "speciesLabel": "Pebi (hybrid)",
-   "rarity": "Legendary",
-   "stage": "Mythic"
-  },
-  {
    "id": 8457,
    "asset": "A12767919646442307627",
    "tiedBlock": 974474,
@@ -2125,6 +2113,30 @@
    "species": "djpepe",
    "speciesLabel": "DJ Pepe",
    "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 109786,
+   "asset": "A12157144428483803272",
+   "tiedBlock": 975025,
+   "tiedTx": "52933aa622387c318291af70f3a25ce16ffc18fcf5d18913fc6ff32e3e0b1b0b",
+   "kind": "deed",
+   "name": "Gabali",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 110589,
+   "asset": "A448157056742282792",
+   "tiedBlock": 975025,
+   "tiedTx": "cb0e2755afce3457b9f199d827d4843e53dd920409e87cdf6ed73fefbcef2528",
+   "kind": "deed",
+   "name": "Komopop",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
    "stage": "Juvenile"
   }
  ]
