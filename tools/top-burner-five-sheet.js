@@ -6,6 +6,8 @@ const fs = require('fs'), path = require('path'), zlib = require('zlib'), vm = r
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'previews', 'top-burner-five-1107'));
 const S = require(path.join(ROOT, 'js', 'topburner-sprites.js'));
+const Wiz = require(path.join(ROOT, 'js', 'wizard-sprite.js'));
+const Drag = require(path.join(ROOT, 'js', 'dragon-sprite.js'));
 const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
 const win = { console, localStorage: ls, sessionStorage: ls, location: { search: '' }, navigator: { userAgent: 'node' }, document: { getElementById: () => null, documentElement: { style: {} } }, Uint8ClampedArray, Uint8Array };
 win.window = win; const ctx = vm.createContext(win);
@@ -54,6 +56,12 @@ IDS.forEach(id => {
     blit(d, sw, S.render(id, st, 0, '#1b2430'), x, 44, SSC);
   }
   save('stages-' + id + '.png', sw, sh, d);
+  const CS = 10, cw = pad * 4 + 3 * 32 * CS, ch = 36 + 32 * CS + pad;
+  const cd = canvas(cw, ch, [12, 16, 22]);
+  text(cd, cw, S.NAMES[id] + '  VS  WIZARD  AND  DRAGON', pad, 8, [244, 247, 251]);
+  const trio = [['WIZARD', Wiz.render(5, 0, '#1b2430')], [S.NAMES[id].toUpperCase(), S.render(id, 5, 0, '#1b2430')], ['DRAGON', Drag.render(5, 0, '#1b2430')]];
+  trio.forEach((item, i) => { const x = pad + i * (32 * CS + pad); text(cd, cw, item[0].slice(0, 16), x, 22, [154, 168, 184]); blit(cd, cw, item[1], x, 36, CS); });
+  save('compare-' + id + '.png', cw, ch, cd);
 });
 /* close-ups: adult and mythic, large, plus dead and risen under the adult */
 IDS.forEach(id => { const S2 = 14, w = pad * 3 + 32 * S2 * 2, h = 36 + 32 * S2 + 8 + 32 * 6;
