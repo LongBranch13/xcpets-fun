@@ -24,8 +24,10 @@
       if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);return;
     }
     if(c._rareStyle){c.style.width=c._rareStyle.width;c.style.height=c._rareStyle.height;c.style.maxWidth=c._rareStyle.maxWidth;c._rareStyle=null;c.width=c.height=32;}
-    c.getContext('2d').putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
-  var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (a) a.vis = e.isIntersecting; }); }) : null;
+    /* goobys-grid-1107: a card canvas that was a 64px rare scene, or that still holds a previous frame, must be cleared before the 32px sprite is drawn or the old pixels smear across the card */
+    if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
+    var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
+  var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (!a) return; var was = a.vis; a.vis = e.isIntersecting; if (a.vis && !was) ensureOutline(e.target); }); }) : null;
   setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
     animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
   function animate(c, fr) { c._fr = fr; c._frStill = false; paint(c, fr[0]); if (fr.length > 1) { var o = animated.get(c); animated.set(c, { fr: fr, f: 0, vis: o ? o.vis : !seen }); if (seen && !o) seen.observe(c); } else if (animated.has(c)) { animated.delete(c); if (seen) seen.unobserve(c); } return c; }
@@ -819,12 +821,19 @@
     var bg = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return true; var j = (y * 32 + x) * 4; return (a[j] !== b[j] || a[j + 1] !== b[j + 1] || a[j + 2] !== b[j + 2]) || r[y * 32 + x]; };
     for (var it = 0, ch = true; ch && it < 40; it++) { ch = false; for (p = 0; p < 1024; p++) { if (r[p]) continue; i = p * 4; if (a[i] !== 255 || a[i + 1] !== 201 || a[i + 2] !== 60 || b[i] !== 255 || b[i + 1] !== 201 || b[i + 2] !== 60) continue;
       var x = p & 31, y = p >> 5; if (bg(x + 1, y) || bg(x - 1, y) || bg(x, y + 1) || bg(x, y - 1)) { r[p] = 1; ch = true; } } }
-    return r; }
+    return mythRimOuter(a, b, r); }
+  /* goobys-grid-1107: pet-core's gold reach also fills the narrow gaps BETWEEN parts (laser beams, star eyes, a split brow). Those pixels read as rim, so the electric
+   * line drew a light-blue/white bar through the face and the glow spilled onto the next card. A real outline pixel has pet on one side only. A pixel
+   * with pet both left and right is a bridge across a gap: drop it. If that would erase the whole line, keep the original. */
+  function mythRimOuter(a, b, r) { var body = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var q = y * 32 + x; if (r[q]) return false; var j = q * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+    var o = new Uint8Array(1024), p, x, y, d, L, R, any = false;
+    for (p = 0; p < 1024; p++) if (r[p]) { x = p & 31; y = p >> 5; L = false; R = false; for (d = 1; d < 32; d++) { if (body(x - d, y)) L = true; if (body(x + d, y)) R = true; } if (L && R) continue; o[p] = 1; any = true; }
+    return any ? o : r; }
   /* mythRingOf(a, b): fallback rim for sprites that draw no Mythic rim: every background pixel (differs between the keyed renders) that touches the
    * pet (same in both) on a side, rows 0-29 like pet-core's rim. */
   function mythRingOf(a, b) { var r = new Uint8Array(1024), pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
     for (var p = 0; p < 1024; p++) { var x = p & 31, y = p >> 5; if (y > 29 || pet(x, y)) continue; if (pet(x + 1, y) || pet(x - 1, y) || pet(x, y + 1) || pet(x, y - 1)) r[p] = 1; }
-    return r; }
+    return mythRimOuter(a, b, r); }
   /* mythRimUrls(r): crisp hi-res masks of that same rim: line = every rim pixel as a full square (same path / thickness / position as today),
    * core = a thin centre thread joining neighbouring rim pixels (the white hot highlight inside the line). */
   function mythRimUrls(r) { var k = 'r' + r.k; if (mythMasks[k]) return mythMasks[k]; var S = 12, W = 32 * S, on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; };
@@ -838,7 +847,7 @@
     var svg = function (b) { return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + W + '" viewBox="0 0 ' + W + ' ' + W + '">' + b + '</svg>'); };
     var out = { line: svg('<path fill="#fff" shape-rendering="crispEdges" d="' + line + '"/>'), core: svg('<path fill="none" stroke="#fff" stroke-width="' + S * 0.2 + '" stroke-linecap="round" d="' + core + '"/>') };
     if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
-  function mythFrame(c, img, info) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (c._mfxR === r.k) return; c._mfxR = r.k;
+  function mythFrame(c, img, info, force) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (!force && c._mfxR === r.k) return; c._mfxR = r.k;
     var U = mythRimUrls(r); o.style.setProperty('--rl', 'url(' + U.line + ')'); o.style.setProperty('--rc', 'url(' + U.core + ')'); }
   function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
     var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
@@ -863,9 +872,12 @@
     var info = { mode: mode, m: m, bb: bb, key: key };
     return fr.map(function (f) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, info); return g; }); }
   var mythCss = false, mythLive = typeof Set !== 'undefined' ? new Set() : null, mythMasks = {}, mythUid = 0, mythPtr = null, mythTilt = null, mythRaf = 0;
-  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); }); }) : null;
+  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); if (e.isIntersecting) ensureOutline(e.target); }); }) : null;
+  /* goobys-grid-1107: scrolling a card off and back used to leave the electric line off. The lazy pass paints once, the 300ms tick skips off-screen canvases, and a detached overlay is unobserved, so nothing put the line back. When the canvas is on screen again, redraw a missing line and re-apply the mask (a browser can drop an off-screen mask). */
+  function ensureOutline(c) { var fr = c && c._fr; if (!fr || !okFrames(fr) || !c.isConnected || !MYTH_MODE || !MYTH_INFO) return; var slot = animated.get(c), img = (slot && fr[slot.f]) || fr[0], info = MYTH_INFO.get(img) || MYTH_INFO.get(fr[0]); if (!info) return;
+    if (!(c._mfx && c._mfx.isConnected && c._mfx.parentNode === c.parentNode)) { paint(c, img); return; } mythFrame(c, img, info, true); mythPlace(c); }
   function mythStyle() { if (mythCss || !document.head) return; mythCss = true; var s = document.createElement('style'); s.id = 'mfx-css';
-    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:visible}.mfx>*{position:absolute;pointer-events:none}' +
+    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:clip}.mfx>*{position:absolute;pointer-events:none}' +
       '.mfx .pm{inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;overflow:hidden}' +
       '.mfx .holo{inset:0;background:linear-gradient(115deg,#ff3a6e,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8,#ff3a6e,#ffb13a,#fff36a,#4dff9a);background-size:400% 400%;mix-blend-mode:color-dodge;opacity:.38}' +
       '.mfx .holo2{inset:0;background:repeating-linear-gradient(65deg,rgba(255,255,255,.0) 0 2px,rgba(160,255,255,.35) 3px,rgba(255,160,255,.0) 5px),repeating-linear-gradient(-25deg,rgba(255,255,255,0) 0 3px,rgba(255,255,200,.22) 4px,rgba(255,255,255,0) 6px);mix-blend-mode:overlay;opacity:.8}' +
@@ -970,7 +982,9 @@
         [0, -3.2].forEach(function (dl) { var b = el('b', '', 'animation-delay:' + dl + 's'), i = el('i', '', 'animation-delay:' + (dl - 1.6) + 's'); b.appendChild(i); ob.appendChild(b); }); o.appendChild(ob); }
     if (mode === 'd') { var lh = Math.min(16, hgt + 2); [['l', bb.x0 - 4.6], ['r', bb.x1 + 1.6]].forEach(function (q) { var s = mythLaurel(q[0], uid); s.setAttribute('style', (s.getAttribute('style') || '') + ';position:absolute;left:' + P(q[1]) + ';top:' + P(bb.y1 + 1 - lh) + ';width:' + P(lh / 3) + ';height:' + P(lh) + (q[0] === 'r' ? ';transform:scaleX(-1)' : '')); o.appendChild(s); }); }
     return o; }
-  function mythPlace(c) { var o = c._mfx; if (!o) return; var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
+  function mythClipCard(c) { var card = c.closest ? c.closest('.pet.card,.lf-p,.fpc,.ez-c,.pk-key,.dcard,.brv-pet') : null; if (!card) card = c.parentNode; if (!card || !card.style || card === document.body || card === document.documentElement) return;
+    var cs = window.getComputedStyle ? getComputedStyle(card) : null; if (!cs) return; if (cs.position === 'static') card.style.position = 'relative'; if (cs.overflow === 'visible') card.style.overflow = 'clip'; }
+  function mythPlace(c) { var o = c._mfx; if (!o) return; mythClipCard(c); var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
     /* rankings-outline-fix 2026-10-28: a canvas inside a static <td>/<th>/<table> gets that cell as its offsetParent, but the absolute overlay's containing block is the
      * nearest POSITIONED ancestor (often the page itself). The line was then pinned to a page coordinate and stayed behind when anything above it moved (banners,
      * fonts, the board re-rendering), drawing over the rows above. Make the cell the overlay's containing block so offsetLeft/offsetTop and the overlay agree. */

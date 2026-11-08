@@ -179,7 +179,7 @@
     if (o._img !== img) { o._img = img; o._info = info; o._dirty = 1; } kick(); }
   function draw(o, t) { var S = o.width; if (!S || !o._img) return; var x = o.getContext('2d'); if (!o._id) o._id = x.createImageData(S, S);
     var p = null; if (!STILL) { var r = o.getBoundingClientRect(); if (ptr && r.width) { var px = (ptr[0] - r.left) / r.width, py = (ptr[1] - r.top) / r.height; if (px > -0.3 && px < 1.3 && py > -0.3 && py < 1.3) p = [clamp(px, 0, 1), clamp(py, 0, 1)]; } if (!p && tilt) p = tilt; }
-    render(o._img, o._info, S, STILL ? 1.3 : t, STILL ? false : p, o._id.data); x.putImageData(o._id, 0, 0); o._dirty = 0; }
+    render(o._img, o._info, S, STILL ? 1.3 : t, STILL ? false : p, o._id.data); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, S, S); x.putImageData(o._id, 0, 0); o._dirty = 0; }
   function tick(now) { raf = 0; if (!live || (typeof document !== 'undefined' && document.hidden)) return; if (now - last < 1000 / FPS) { raf = requestAnimationFrame(tick); return; } last = now; var t = now / 1000, n = 0, any = false;
     live.forEach(function (c) { var o = c._lkx; if (!o || !c.isConnected) { detach(c); return; } if (!o._vis && !onScreen(o)) return; if (STILL) { if (o._dirty) draw(o, t); return; } if (n < MAX_LIVE || o._dirty) { draw(o, t); n++; any = true; } });
     if (any && !STILL) raf = requestAnimationFrame(tick); }
