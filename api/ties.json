@@ -1,6 +1,6 @@
 {
- "lastBlock": 974999,
- "count": 176,
+ "lastBlock": 975011,
+ "count": 177,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -901,7 +901,7 @@
    "species": "viking",
    "speciesLabel": "Viking",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 4718,
@@ -2112,6 +2112,18 @@
    "name": "Fiyak",
    "species": "dodo",
    "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 108675,
+   "asset": "A216674605604643934",
+   "tiedBlock": 975006,
+   "tiedTx": "745567ca085a48ab733b3acab5cb7e2e046da517e76119716431a9aa19c151bc",
+   "kind": "deed",
+   "name": "Shigeloob",
+   "species": "djpepe",
+   "speciesLabel": "DJ Pepe",
    "rarity": "Legendary",
    "stage": "Juvenile"
   }
