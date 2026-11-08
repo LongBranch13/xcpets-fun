@@ -5,6 +5,16 @@ let count=0;
 for(const sp of Object.keys(C.FIT))for(let stage=1;stage<=5;stage++)for(let f=0;f<4;f++){
  const tag=`${sp}/${stage}/${f}`,a=C.anchor(sp,stage,f),img=C.render(sp,stage,f),bare=img.data.slice();
  C.wig(img,a,stage,sp);
+ if(a.noseFit){
+  const [x,y,size]=a.noseFit;
+  const red=[];for(let yy=y;yy<y+size;yy++)for(let xx=x;xx<x+size;xx++){
+   const k=(yy*32+xx)*4;if(img.data[k]===255&&img.data[k+1]===31&&img.data[k+2]===45)red.push([xx,yy]);
+  }
+  assert(red.length,tag+' fitted nose missing from snout');
+  const still=C.anchor(sp,stage,0).noseFit;
+  const bob=['homer','wizard','rabbit','funtrump'].includes(sp)?(f===1?-1:0):[0,-1,-1,0][f];
+  assert.equal(y,still[1]+bob,tag+' nose does not follow body bob');
+ }
  assert(img.clownHair&&img.clownHair.length,tag+' missing wig');
  const u=new Set(img.clownHair),q=[u.values().next().value];u.delete(q[0]);
  while(q.length){const k=q.pop();for(const d of [-32,-1,1,32]){const n=k+d;if(Math.abs(n%32-k%32)<=1&&u.has(n)){u.delete(n);q.push(n);}}}

@@ -24,6 +24,23 @@ kek:[[0,1,.9,1],[0,1,.9,1],[0,1,.9,1],[0,2,.9,1],[0,2,.9,1]],
 funtrump:[[0,1,.95,1],[0,1,.95,1],[0,1,1,1],[0,2,1,1],[0,2,1,1]],
 rabbit:[[0,1,.9,1],[0,1,.9,1],[0,1,.9,1],[0,2,.9,1],[0,2,.9,1]]
 };
+// Nose-only fittings: [left, top, size] on the actual snout, not the eye midpoint.
+// Stage zero remains an unequipped egg. These do not alter any hair anchors.
+const NOSE_FIT={
+ funtrump:[[17,23,2],[16,21,3],[16,20,3],[16,19,3],[16,19,3]],
+ homer:[[20,19,2],[19,17,3],[19,15,3],[19,14,4],[20,13,4]],
+ rabbit:[[20,18,2],[20,16,3],[21,14,3],[21,12,4],[21,11,4]],
+ wizard:[[17,18,2],[16,16,3],[15,13,3],[15,12,3],[15,12,3]],
+ chud:[[15,20,2],[17,20,3],[17,19,3],[18,18,3],[18,18,3]],
+ wojak:[[15,21,2],[17,20,3],[17,19,3],[18,18,3],[18,18,3]],
+ peepo:[[17,20,2],[17,19,3],[17,17,3],[17,16,3],[17,16,3]]
+};
+function noseFit(species,stage,frame){
+ const q=NOSE_FIT[species]&&NOSE_FIT[species][stage-1];
+ if(!q)return null;
+ const bob=SPECIAL[species]?(frame===1?-1:0):([0,-1,-1,0][frame]);
+ return [q[0],q[1]+bob,q[2]];
+}
 const ITEM = {id:'clown-hair',label:'Clown Hair',includes:'red clown nose',slot:'head',tier:1,exclusive:false,origin:'peepo',weight:10};
 // Honk 1107: matches owner reference (Honk Pepe). Big round rainbow puffs in
 // red, yellow, green, blue + a round red clown nose, both in the same item.
@@ -120,7 +137,7 @@ function wig(img,a,stage,species) {
 // Round red clown nose: same item as the hair. Face centre between the eyes,
 // just below them; one-eyed (side-view) faces get it on the snout front.
 function nose(img,a,stage,eyes,ey,put){
-  const s=stage<2?2:stage<4?3:4; let eb=ey; for(const e of eyes) for(const p of e[2]) eb=Math.max(eb,p[1]); let nx,ny=eb+1+Math.floor(s/2);
+  const s=a.noseFit?a.noseFit[2]:(stage<2?2:stage<4?3:4); let eb=ey; for(const e of eyes) for(const p of e[2]) eb=Math.max(eb,p[1]); let nx,ny=eb+1+Math.floor(s/2);
   if(eyes.length===2) nx=Math.round((a.eyeL[0]+a.eyeR[0])/2);
   else if(eyes.length===1){const e=eyes[0]; let x=e[0]; const dir=e[0]<16?-1:1; while(a.isSil(x+dir,ey+1)) x+=dir; nx=x-dir*Math.floor(s/2);}
   else return;
@@ -128,10 +145,10 @@ function nose(img,a,stage,eyes,ey,put){
   const T={2:['RR','RD'],3:['.R.','WRR','.DD'],4:['.RR.','RWRR','RRRD','.DD.']}[s];
   const RED={R:'#ff1f2d',D:'#a80f1a',W:'#ffffff',K:'#ff1f2d'};
   if(s===2){T[0]='RR';T[1]='RD';}
-  const ox=nx-Math.floor(s/2), oy=ny-Math.floor(s/2)+ (s>=3?0:0);
+  const ox=a.noseFit?a.noseFit[0]:nx-Math.floor(s/2), oy=a.noseFit?a.noseFit[1]:ny-Math.floor(s/2);
   const eyeSet=new Set(); for(const e of eyes) for(const [x,y] of e[2]) eyeSet.add(y*32+x);
-  let dy=0; while(dy<3){let hit=false;for(let y=0;y<s;y++)for(let x=0;x<s;x++) if(T[y][x]!=='.'&&eyeSet.has((oy+dy+y)*32+ox+x))hit=true; if(!hit)break; dy++;}
-  for(let y=0;y<s;y++)for(let x=0;x<s;x++){const c=T[y][x]; if(c!=='.') put(ox+x,oy+dy+y,RED[c]);}
+  let dy=0; while(!a.noseFit&&dy<3){let hit=false;for(let y=0;y<s;y++)for(let x=0;x<s;x++) if(T[y][x]!=='.'&&eyeSet.has((oy+dy+y)*32+ox+x))hit=true; if(!hit)break; dy++;}
+  for(let y=0;y<s;y++)for(let x=0;x<s;x++){const c=T[y][x]; if(c!=='.'&&(!a.noseFit||!eyeSet.has((oy+dy+y)*32+ox+x))) put(ox+x,oy+dy+y,RED[c]);}
   if(s>=3) for(let y=-1;y<=s;y++)for(let x=-1;x<=s;x++){const inT=y>=0&&x>=0&&y<s&&x<s&&T[y][x]!=='.'; if(inT)continue;
     const nb=[[0,1],[1,0],[0,-1],[-1,0]].some(([u,v])=>{const yy=y+v,xx=x+u;return yy>=0&&xx>=0&&yy<s&&xx<s&&T[yy][xx]!=='.';});
     if(nb&&!eyeSet.has((oy+dy+y)*32+ox+x)) put(ox+x,oy+dy+y,'#3a0a10');}
@@ -155,7 +172,7 @@ function anchor(species,stage,f){
     const h=render(species,stage,f,'#14101e',true);a.hair=new Set();
     for(let k=0;k<1024;k++)if(h.data[k*4]===255&&h.data[k*4+1]===0&&h.data[k*4+2]===254)a.hair.add(k);
     a.hairBottom=Math.max(...[...a.hair].map(k=>k>>5));
-  }return a;
+  }a.noseFit=noseFit(species,stage,f);return a;
  }
  const gf=(species==='homer'||species==='rabbit'||species==='funtrump')&&f===2?0:f;
  const g=S.draw(stage,gf,{}),sil=S.draw(stage,f,{}),pts=[];
@@ -166,7 +183,7 @@ function anchor(species,stage,f){
  }
  const mid=pts.length?(Math.min(...pts.map(p=>p[0]))+Math.max(...pts.map(p=>p[0])))/2:16;
  const eye=p=>p.length?[Math.round(p.reduce((s,q)=>s+q[0],0)/p.length),Math.round(p.reduce((s,q)=>s+q[1],0)/p.length),p]:null;
- return {minY,maxY,minX,maxX,eyeL:eye(pts.filter(p=>p[0]<=mid)),eyeR:eye(pts.filter(p=>p[0]>mid)),isSil:(x,y)=>!!(sil[y]&&sil[y][x])};
+ return {noseFit:noseFit(species,stage,f),minY,maxY,minX,maxX,eyeL:eye(pts.filter(p=>p[0]<=mid)),eyeR:eye(pts.filter(p=>p[0]>mid)),isSil:(x,y)=>!!(sil[y]&&sil[y][x])};
 }
 function build(){
  const out=[];

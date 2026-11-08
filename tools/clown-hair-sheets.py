@@ -40,3 +40,14 @@ if ref.exists():
    compare.paste(sprite(r).resize((256,256),Image.Resampling.NEAREST),(i*384+32,j*325+40))
    d.text((i*384+32,j*325+299),sp.upper(),font=font,fill='white')
  compare.save(root/'approved-honk-vs-v2.png')
+
+# Nose placement review: all stages, including unchanged unequipped eggs.
+review=['funtrump','homer','rabbit','wizard','chud','wojak','peepo']
+close=Image.new('RGB',(1920,70+330*len(review)),'#211a30');d=ImageDraw.Draw(close)
+d.text((24,14),'HONK V2 / NOSE FIT / PREVIEW ONLY',font=font,fill='white')
+for j,sp in enumerate(review):
+ for i,r in enumerate(r for r in rows if r['species']==sp):
+  x=i*320+32;y=70+j*330
+  close.paste(sprite(r).resize((256,256),Image.Resampling.NEAREST),(x,y))
+  d.text((x,y+265),sp.upper()+' / '+names[r['stage']],font=font,fill='white')
+close.save(root/'nose-fix-closeups.png')
