@@ -150,7 +150,14 @@
   function ago(b) { var x = timeOf(b); if (!x) return ''; var s = Math.max(0, Date.now() / 1000 - x.t); return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; }
   function paintTimes() { Array.prototype.forEach.call(document.querySelectorAll('.lv-time[data-b]'), function (el) { var b = +el.getAttribute('data-b'); el.textContent = timeTxt(b); el.title = ago(b); }); }
   /* ---- thumbnails: the pet's own sprite and its gear, minus crowns, frames, fire, flames and auras ---- */
-  function frames(p) { if (p && p.art && p.art.rareHatch) { try { var rf = R.petFrames(p, W); if (rf && rf.length) return rf; } catch (e) {} } /* rare-discover-1107: weird looks */ var ids = []; try { ids = (R.worn(W, p.id) || []).map(function (g) { return g.item; }).filter(function (it) { return it && !NOPE.test(it); }); } catch (e) {}
+  /* rare-discover-1107: a weird look's expanded 64 px scene, cropped to the pet and scaled to fill the 32 px row thumbnail (centred, not tiny and low) */
+  function fitThumb(f) { var rs = f && f.rareScene; if (!rs || !rs.data || rs.width !== 64) return f; var d = rs.data, S = 64, b0 = [d[0], d[1], d[2]], x0 = S, y0 = S, x1 = -1, y1 = -1;
+    for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) { var j = (y * S + x) * 4; if (d[j + 3] && (Math.abs(d[j] - b0[0]) + Math.abs(d[j + 1] - b0[1]) + Math.abs(d[j + 2] - b0[2]) > 24)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 < 0) return f; var side = Math.max(x1 - x0 + 1, y1 - y0 + 1, 32) + 4, cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2, sx = Math.round(cx - side / 2), sy = Math.round(cy - side / 2), out = new Uint8ClampedArray(4096);
+    for (var ty = 0; ty < 32; ty++) for (var tx = 0; tx < 32; tx++) { var X = sx + Math.floor(tx * side / 32), Y = sy + Math.floor(ty * side / 32), o = (ty * 32 + tx) * 4;
+      if (X < 0 || Y < 0 || X >= S || Y >= S) { out[o] = b0[0]; out[o + 1] = b0[1]; out[o + 2] = b0[2]; out[o + 3] = 255; continue; } var k = (Y * S + X) * 4; out[o] = d[k]; out[o + 1] = d[k + 1]; out[o + 2] = d[k + 2]; out[o + 3] = d[k + 3]; }
+    return { width: 32, height: 32, data: out }; }
+  function frames(p) { if (p && p.art && p.art.rareHatch) { try { var rf = R.petFrames(p, W); if (rf && rf.length) return rf.map(fitThumb); } catch (e) {} } /* rare-discover-1107: weird looks */ var ids = []; try { ids = (R.worn(W, p.id) || []).map(function (g) { return g.item; }).filter(function (it) { return it && !NOPE.test(it); }); } catch (e) {}
     try { var f = R.framesWith(p.art, p.stage, ids, []); if (f && f.length && f[0] && f[0].data) return f; } catch (e) {}
     return R.petFrames(p, W); }
   function thumbs(box) { Array.prototype.forEach.call(box.querySelectorAll('canvas.lv-cv[data-id]:not([data-done])'), function (c) { var p = W.byId[c.getAttribute('data-id')]; c.setAttribute('data-done', '1'); if (!p || !p.art) return; R.lazy(c, function () { return frames(p); }, true); }); }
