@@ -162,6 +162,18 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 .fpc.t1{border-color:#4fd18b}.fpc.t2{border-color:#4f9dff}.fpc.t3{border-color:#ffc93c}.fpc.no{opacity:.45;filter:grayscale(1);cursor:not-allowed}.fpc canvas{width:64px;height:64px;image-rendering:pixelated}
 @media (max-width:640px){.fgrid{grid-template-columns:1fr}.vs{font-size:26px;text-align:center}.fgo{min-width:0;width:100%}.dollslots{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}}
 .rktabs{flex-wrap:wrap}.rkctl{gap:8px;align-items:center;margin:6px 0}.seg{display:inline-flex;gap:0}.seg .q.on,.rkctl .q.on{background:#3ddc84;color:#0b0f1a}.board td.num{text-align:right;white-space:nowrap}
+/* rankings-species-1107: species crews are buttons with pixel pets, never a dropdown */
+.rksp-wrap{margin:8px 0 12px}
+.rksp-lead{margin:0 0 6px}
+.rksp{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.rksp-btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:700;font-size:12px;line-height:1.15;color:#e7ffe8;background:#141c28;border:3px solid #2c4a38;border-radius:8px;padding:3px 10px 3px 3px;cursor:pointer;box-shadow:3px 3px 0 #000}
+.rksp-btn canvas,.rksp-mark{width:36px;height:36px;image-rendering:pixelated;image-rendering:crisp-edges;background:#0e1612;border:2px solid #000;border-radius:4px;flex:none}
+.rksp-mark{display:inline-flex;align-items:center;justify-content:center;font-size:18px}
+.rksp-btn.on{background:#1b4630;border-color:#3ddc84;color:#fff;transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
+.rksp-btn:hover{border-color:#ffd166}
+.rksp-btn:focus-visible{outline:2px solid #ffd166;outline-offset:2px}
+.rksp-nm{max-width:9.5em}
+@media (max-width:640px){.rksp-btn{font-size:11px;padding:2px 8px 2px 2px}.rksp-btn canvas,.rksp-mark{width:32px;height:32px}}
 
 #fOldRow{display:none!important}
 
