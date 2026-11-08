@@ -1,6 +1,6 @@
 {
- "lastBlock": 975085,
- "count": 234,
+ "lastBlock": 975088,
+ "count": 240,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2810,6 +2810,78 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
    "stage": "Juvenile"
+  },
+  {
+   "id": 46592,
+   "asset": "A10633575741516271909",
+   "tiedBlock": 975088,
+   "tiedTx": "ab843545f5eeee30c61dea1362f758a96f4be1cf73b944bedbf6456ac96916f5",
+   "kind": "deed",
+   "name": "Jovewoni",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 93722,
+   "asset": "A6761473793990169704",
+   "tiedBlock": 975088,
+   "tiedTx": "36fddcf162b231e7c6f0f8ae768721071529ac1b506ec5af0380ed86d7adc94b",
+   "kind": "deed",
+   "name": "Kuforoobit",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 104746,
+   "asset": "A15289098963169514403",
+   "tiedBlock": 975088,
+   "tiedTx": "43e7ecc64d409917d690efc696bf1b2cd8985fbff44c8dcf8e47bcd629186adf",
+   "kind": "deed",
+   "name": "Hijepip",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 105437,
+   "asset": "A880658552654199323",
+   "tiedBlock": 975088,
+   "tiedTx": "8b7fdfa08cb51dcfa6dd0355c885b1032050d55ba7244719edeea0851e4dc4cb",
+   "kind": "deed",
+   "name": "Vasusaboo",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Adult"
+  },
+  {
+   "id": 105449,
+   "asset": "A15217413760401801014",
+   "tiedBlock": 975088,
+   "tiedTx": "7fd36200dbd63c2455ed5eef6ba0b371707bca005969c66a59cd6de6c16d858d",
+   "kind": "deed",
+   "name": "Nushebomi",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 108985,
+   "asset": "A16770362443584669173",
+   "tiedBlock": 975088,
+   "tiedTx": "b46b3b85ab8b5f3d3ce0bd1c636ad6085a89c546ef38bae7c3adf2e0fffd1209",
+   "kind": "deed",
+   "name": "Yeja",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Adult"
   }
  ]
 }
