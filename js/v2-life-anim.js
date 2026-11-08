@@ -28,7 +28,7 @@
     sky: ['#1b1440', '#25195a', '#33206e', '#452a7e', '#5a3488'], night: ['#0b0a1f', '#141233', '#1d1a44', '#262150', '#342e5e'], cyan: '#7fe8ff', pink: '#ff8fd8', violet: '#b58cff' };
   var TC = ['#cfd6dd', '#4fc06b', '#3d8bff', '#ffcf3a'], TN = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
   var STAGES = ['EGG', 'HATCHLING', 'JUVENILE', 'ADULT', 'ELDER', 'MYTHIC'];
-  var LEN = { arrival: 54, grant: 46, 'hunt-won': 46, 'hunt-lost': 44, altar: 52, gear: 46, sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48 }, KEY_F = { arrival: 48, grant: 40, 'hunt-won': 40, 'hunt-lost': 38, altar: 46, gear: 40, sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
+  var LEN = { arrival: 54, grant: 46, 'hunt-won': 46, 'hunt-lost': 44, altar: 52, gear: 46, sold: 46, bought: 48, listed: 36, closed: 40, 'gift-in': 48, 'gift-out': 42, swap: 40, birth: 58, god: 60, hatch: 46, 'hatch-bulk': 30, feed: 40, stage: 40, mythic: 64, starve: 48, rare: 64 }, KEY_F = { rare: 54, arrival: 48, grant: 40, 'hunt-won': 40, 'hunt-lost': 38, altar: 46, gear: 40, sold: 42, bought: 44, listed: 32, closed: 36, 'gift-in': 44, 'gift-out': 38, swap: 36, birth: 52, god: 54, hatch: 40, 'hatch-bulk': 26, feed: 30, stage: 34, mythic: 58, starve: 44 };
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function rnd(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 10000) / 10000; }; }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -312,9 +312,27 @@
     if (open >= 2) sparkle(g, f, 57, CX, GY - 30, 90, C.gold, C.grass2);
     if (open >= 8) { banner(g, 'GRANT!', 3, '#2f7a3a', '#ffffff', 60); if (ev.label) text(g, String(ev.label).toUpperCase().slice(0, 24), CX, 16, C.gold2, 5); }
     if (open >= 14) { px(g, 10, GY + 4, C.ol, 108, 12); text(g, ev.rolls ? '+' + ev.rolls + ' FREE ROLLS' : (ev.n || m) + ' PIECE' + ((ev.n || m) === 1 ? '' : 'S') + ' IN YOUR BAG', CX, GY + 6, '#ffffff', 5); } }
-  var PAINT = { arrival: arrivalF, grant: grantF, 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF };
+  /* rare-discover-1107: the rare hatch reveal. The egg glows in the find's colours and shakes, cracks with a flash, the pet jumps out on a spinning
+   * starburst, and a big banner names the find ("LEGEND!" / "GOD PET!" / "TWO-HEADED!" ...). Display only: reads art.rareHatch via V2Render.rareInfo. */
+  function rInfo(p) { var R = window.V2Render; return (R && R.rareInfo && R.rareInfo(p)) || { legend: true, banner: 'RARE!', sub: '', kind: 'legend', name: '' }; }
+  function rareCols(i) { return i.god ? ['#7fe8ff', '#ffffff', '#b58cff'] : i.legend ? ['#ffcf3a', '#fff3b0', '#ff8fd8'] : ['#7dff9a', '#b58cff', '#ffffff']; }
+  /* the pet's real look, weird shape included (V2Render.petFrames applies the rare-hatch look), framed like a trading card */
+  var RSPR = {}; function rareSpr(p, w) { var R = window.V2Render; if (!p || !p.art || !R || !R.petFrames || !R.paint) return null; if (RSPR[p.id]) return RSPR[p.id];
+    try { var c = document.createElement('canvas'); c.width = c.height = 32; var f0 = R.petFrames(p, w || { byId: {}, items: {} })[0]; R.paint(c, f0 && f0.rareScene ? { width: 32, height: 32, data: f0.data } : f0); /* expanded scenes: their own 32 px thumbnail */ return (RSPR[p.id] = c); } catch (e) { return null; } }
+  function rareF(g, ev, f, P) { var p = P.list[0], i = rInfo(p), cols = rareCols(i), pop = 26, up = f - pop, t = tierOf(p);
+    skyBands(g, C.night, f, 30); if (f >= 8) rays(g, CX, GY - 20, f, f < pop ? [cols[0]] : cols, f < pop ? 6 : 12); hills(g); grass(g); nest(g, CX);
+    if (up < 0) { var sh = f >= 6 ? ((f >> 1) % 2 ? 1 : -1) * (f > 16 ? 3 : 1) : 0; for (var k = 0; k < 3; k++) ring(g, CX, GY - 8, 9 + k * 3 + (f % 4), cols[k % 3], 1);
+      egg(g, CX, GY - 1, t, clamp(Math.floor((f - 12) / 2), 0, 4), sh); if (f >= 20) { silhouette(g, sprite(p), CX - 16, GY - 33, cols[0], 2); px(g, CX - 7, GY - 16, '#ffffff', 14, 14); }
+      text(g, i.legend ? 'SOMETHING RARE...' : 'SOMETHING WEIRD...', CX, 6, (f >> 2) % 2 ? cols[0] : '#ffffff', 5); return; }
+    if (up < 4) { for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) if (((xx + yy) % (up + 2)) === 0) px(g, xx, yy, '#ffffff'); }
+    var jy = up < 6 ? [0, 6, 9, 10, 9, 6][up] : ((f >> 2) % 2), rs = rareSpr(p, P.w); shellBits(g, CX, GY - 2, up, 7);
+    if (rs) { var bx = CX - 19, by = GY - 40 - (up < 4 ? jy : 0); px(g, bx - 1, by - 1, C.ol, 40, 40); px(g, bx, by, cols[0], 38, 38); g.drawImage(rs, 0, 0, rs.width, rs.height, bx + 3, by + 3, 32, 32); } else drawSpr(g, sprite(p), CX - 16, GY - 32 - jy);
+    sparkle(g, f, 3, CX, GY - 24, 54, cols[0], cols[1]); sparkle(g, f, 11, CX, GY - 24, 70, cols[2], '#ffffff');
+    if (up >= 4) { var d = clamp(10 - up, 0, 6); banner(g, i.banner, 3 - d * 3, i.legend ? (i.god ? '#1d3a7a' : '#8a5a00') : '#1f6a3a', '#ffffff', Math.max(64, i.banner.length * 8 + 14));
+      if (i.sub) text(g, i.sub.slice(0, 24), CX, 17, cols[0], 5); if (up >= 10) text(g, '#' + p.id + (p.name ? ' ' + String(p.name).toUpperCase().slice(0, 14) : ''), CX, GY + 6, '#ffffff', 5); } }
+  var PAINT = { arrival: arrivalF, grant: grantF, 'hunt-won': huntF, 'hunt-lost': huntF, altar: altarF, gear: gearF, sold: soldF, bought: boughtF, listed: listedF, closed: closedF, 'gift-in': giftInF, 'gift-out': giftOutF, swap: swapF, birth: birthF, god: godF, hatch: hatchF, 'hatch-bulk': hatchF, feed: feedF, stage: stageF, mythic: mythicF, starve: starveF, rare: rareF };
   function pets(ev, w) { var by = (w && w.byId) || {}, L = (ev.ids || []).slice(0, 5).map(function (id) { return by[id] || DEMO[id] || { id: id }; }); return { list: L, care: ev.care || null, par: ev.kind === 'birth' && L[0] && L[0].parents ? L[0].parents.map(function (id) { return by[id]; }).filter(Boolean) : [] }; }
-  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || feedF)(g, ev, f, pets(ev, w)); }
+  function paint(c, ev, f, w) { var g = c.getContext('2d'), k = Math.max(1, Math.round(c.width / W)); g.__k = k; g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = false; g.shadowBlur = 0; g.clearRect(0, 0, W, H); /* crisp-text-1101 */ (PAINT[ev.kind] || feedF)(g, ev, f, ev.kind === 'rare' ? Object.assign(pets(ev, w), { w: w }) : pets(ev, w)); }
   function nm(p, id) { return '#' + (p ? p.id : id) + (p && p.name ? ' ' + p.name : ''); }
   function more(n, shown) { return n > shown ? ' and ' + (n - shown).toLocaleString('en-US') + ' more' : ''; }
   function caption(ev, w) { var P = pets(ev, w), p = P.list[0], n = nm(p, ev.ids && ev.ids[0]), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
@@ -341,6 +359,7 @@
       case 'gift-in': return '🎁 ' + n + ' arrived as a gift' + (ev.who ? ' from player #' + ev.who : '') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets came with it' : '') + b;
       case 'gift-out': return '🎁 You gave ' + n + (ev.who ? ' to player #' + ev.who : ' away') + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets went too' : '') + b;
       case 'swap': return '🔁 Swap done: you gave ' + n + ' and got ' + nm(P.list[1], ev.ids[1]) + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more swaps' : '') + b;
+      case 'rare': { var ri = rInfo(p); return (ri.icon || '✨') + ' ' + n + ' hatched from ' + (ri.legend ? 'a Legend egg: ' + ri.name + '!' : 'a weird egg: ' + (ri.name || '').toLowerCase() + '!') + b; }
       case 'god': return '👼 ' + n + ' became a God: risen from the Pet Cemetery and Mythic' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more new Gods' : '');
       case 'starve': return '🪦 ' + n + ' starved (7 days unfed) and went to the Pet Cemetery' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets starved' : '') + b; }
     return ''; }
@@ -380,6 +399,9 @@
     var n = ids.length, best = ids.length > 400 ? rank(w, ids.slice(0, 0).concat(ids.filter(function (id) { var p = w.byId[id]; return p && tierOf(p) >= 2; }).slice(0, 400))) : rank(w, ids); if (!best.length) best = ids.slice(0, 5);
     var bev = null; try { bev = birthOf(w, ids); } catch (e) { bev = null; }
     var then = bev ? function () { if (reduced()) return done(); play(bev, { w: w, done: done, noQueue: true }); } : done;
+    /* rare-discover-1107: a Legend / weird hatch gets its own reveal right after the hatch scene (before any special-birth scene) */
+    var rp = null; try { var RR = window.V2Render; if (RR && RR.rareInfo) for (var ri = 0; ri < ids.length && ri < 5000; ri++) { var rq = w.byId[ids[ri]]; if (rq && RR.rareInfo(rq) && (!rp || RR.rareInfo(rq).legend && !RR.rareInfo(rp).legend)) rp = rq; } } catch (e) { rp = null; }
+    if (rp) { var then0 = then; then = function () { if (reduced()) return then0(); play({ kind: 'rare', ids: [rp.id], n: 1 }, { w: w, done: then0, noQueue: true }); }; if (n === 1) return then(); }
     if (bev && n <= 2 && (n === 1 || bev.ids.length === 2)) return then(); /* one special egg (or one twin pair): its birth scene has the cracking egg already */
     play({ kind: n > 12 ? 'hatch-bulk' : 'hatch', ids: best.slice(0, n > 12 ? 3 : 5), n: n }, { w: w, done: then, noQueue: true }); }
   /* ---- batch 4: wins (js/v2.js notifyWins, V2Rules.newWins: already once per piece) -> one 'gear' event for the best piece a PAID roll (src 'roll') gave my pet, or null */
@@ -467,6 +489,7 @@
     var mineL = all.filter(function (p) { return (!ME || p.owner === ME) && !p.released && !p.community && p.art; }); if (!mineL.length) mineL = all.filter(function (p) { return p.art && !p.community; });
     var alive = mineL.filter(function (p) { return !p.dead; }), pick = function (L, n) { L = L.slice().sort(function (a, b) { return tierOf(b) - tierOf(a) || b.stage - a.stage || a.id - b.id; }); return L.slice(0, n).map(function (p) { return p.id; }); };
     var ids = id && by[id] ? [id] : [];
+    if (kind === 'rare') { var RR0 = window.V2Render, rl = all.filter(function (p) { return RR0 && RR0.rareInfo && RR0.rareInfo(p); }); return { kind: 'rare', ids: ids.length ? ids : rl.length ? [rl[0].id] : pick(alive, 1), n: 1 }; }
     if (kind === 'hatch') return { kind: 'hatch', ids: ids.length ? ids : pick(alive, 1), n: 1 };
     if (kind === 'hatch-bulk') { var hb = ids.concat(pick(alive.filter(function (p) { return p.id !== id; }), 3 - ids.length)); return { kind: 'hatch-bulk', ids: hb, n: 144 }; }
     if (kind === 'feed') { var fp = ids.length ? by[ids[0]] : by[pick(alive.filter(function (p) { return p.stage < 5; }), 1)[0]]; return { kind: 'feed', ids: fp ? [fp.id] : [], n: 1, care: fp ? careOf(w, fp, w.tip || 0, fp.care) : null }; }
