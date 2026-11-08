@@ -20,11 +20,20 @@
   function span(bl) { var m = Math.round(bl * 10), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60); return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + (m % 60) + 'm' : (m % 60) + 'm'; }
   function hungerTitle(h) { return 'Zombie hunger ' + h.pct + '%. Zombies never take normal meals: they eat pets at the altar or win hunts. Feral after 432 blocks without a zombie meal, then dust 432 blocks later.' +
     (h.feral ? ' FERAL now: anyone can hunt it. Crumbles in ' + h.crumbleIn + ' blocks (~' + span(h.crumbleIn) + ').' : ' Feral in ' + h.left + ' blocks (~' + span(h.left) + ').'); }
+  /* one plain sentence for the top of the card. Mythic-fed zombies are handled by the hunger bar override. */
+  function statusLine(p, w) { var h = hunger(p, w); if (!h || (p && p.zombie && p.zombie.mfed)) return '';
+    if (h.feral) return 'Feral zombie. Feed it in ' + span(h.crumbleIn) + ' or it turns to dust. Anyone can hunt it.';
+    if (h.pct <= 33) return 'Hungry zombie. Feed it in ' + span(h.left) + ' or it goes feral. Then anyone can hunt it.';
+    return 'Fed zombie. It goes feral in ' + span(h.left) + ' without a meal.'; }
   function hungerChip(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33;
     return '<span class="chip zb-hun' + (low ? ' warn' : '') + '" title="' + hungerTitle(h) + '">' + (h.feral ? '👁️ Feral' : '🧟 Hunger') + ' <i class="zb-hb' + (low ? ' low' : '') + '"><b style="width:' + h.pct + '%"></b></i> ' + (h.feral ? 'dust in ' + span(h.crumbleIn) : h.pct + '%') + '</span>'; }
-  function hungerBar(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33;
-    return '<div class="bar zb-hbar' + (low ? ' low' : '') + '" title="' + hungerTitle(h) + '"><i style="width:' + Math.max(h.pct, 2) + '%"></i></div>' +
-      '<div class="small zb-hl">' + (h.feral ? '👁️ Feral: anyone can hunt it · crumbles to dust in ~' + span(h.crumbleIn) : '🍖 Hunger ' + h.pct + '% · feral in ~' + span(h.left)) + ' · eats your pets, not XCPETS meals · feed it your discarded pets below</div>'; }
+  function hungerBar(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33, cls = h.feral ? 'feral' : (h.pct <= 33 ? 'hungry' : 'ok');
+    var more = 'Zombies never take normal meals. They eat Discarded pets, or they win hunts. Feral after 432 blocks without a zombie meal, then dust 432 blocks later. Hunger is ' + h.pct + '%. ' +
+      (h.feral ? 'Anyone can hunt it now. It turns to dust in ' + h.crumbleIn + ' blocks (about ' + span(h.crumbleIn) + ').' : 'It goes feral in ' + h.left + ' blocks (about ' + span(h.left) + ').');
+    return '<p class="zb-status ' + cls + '">' + statusLine(p, w) + '</p>' +
+      '<div class="bar zb-hbar' + (low ? ' low' : '') + '" title="' + hungerTitle(h) + '"><i style="width:' + Math.max(h.pct, 2) + '%"></i></div>' +
+      '<div class="small zb-hl">Hunger ' + h.pct + '% <button type="button" class="ip-q zb-qbtn" aria-expanded="false" aria-label="What is this?">?</button></div>' +
+      '<div class="zb-help" hidden>' + more + '</div>'; }
   /* sprite: the shared dead look (js/v2-zombie-look.js) on new frame objects; the keyed copies get the same bites and slouch, and the Mythic aura is
    * rebuilt from them so it traces the zombie's outline. Cached per source frame list, so animation ticks don't redo it. */
   var DONE = typeof WeakMap !== 'undefined' ? new WeakMap() : null, ZF = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
@@ -62,7 +71,11 @@
       'canvas.zb-sprite{filter:drop-shadow(0 0 3px rgba(110,140,60,.22)) saturate(.9)}.mfx.zb-mfx{filter:sepia(1) hue-rotate(42deg) saturate(1.3) brightness(.55) contrast(1.15);opacity:.5}canvas.lkx.zb-mfx{filter:drop-shadow(0 0 3px rgba(110,140,60,.25))}' +
       '.chip.zb-pow{border-color:#4d5a3a}.chip.zb-hun{display:inline-flex;align-items:center;gap:4px}.zb-hb{display:inline-block;width:34px;height:7px;background:#1a1d14;border:1px solid #4d5a3a;vertical-align:middle;position:relative}' +
       '.zb-hb b{display:block;height:100%;background:#8aa04c}.zb-hb.low b{background:#b0653a}.bar.zb-hbar i{background:linear-gradient(90deg,#5d7034,#8aa04c)}.bar.zb-hbar.low i{background:linear-gradient(90deg,#7a3a24,#b0653a)}' +
-      '.zb-hl{margin-top:3px;color:#a7b48e}.zb-feed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.zb-feed .zb-ml{display:flex;gap:4px;align-items:center;color:#a7b48e;min-width:0}.zb-feed select{max-width:150px;min-width:0}.zb-pickbox{flex:1 1 100%;min-width:0}.zb-pickbox summary{cursor:pointer;color:#c9d6a9}.zb-warn{color:#e3c27a;margin:4px 0}.zb-list{max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding:4px;border:1px solid #3b4430;border-radius:6px}.zb-opt{display:flex;gap:6px;align-items:center;font-size:12px}.zb-pend{flex:1 1 100%;color:#e3c27a}.zb-feedbtn:disabled{opacity:.5;cursor:not-allowed}.zb-dhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}.zb-other{margin-top:6px}';
+      '.zb-hl{margin:2px 0 4px;color:#a7b48e}.zb-status{margin:2px 0 6px;padding-left:28px;font-size:14px;line-height:1.35;font-weight:700;color:#f6e7c8}.zb-status.feral{color:#ffb089}.zb-status.hungry{color:#f0d48a}' +
+      '.zb-status,.zb-help,.zb-noact,.zb-stepnote,.zb-hl{position:static}.zb-groups{display:flex;flex-direction:column;align-items:stretch;gap:6px}.zb-chiprow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px;border-radius:8px}.zb-who{background:#1a2418;border:1px solid #3d4a32}.zb-nums{background:#141910;border:1px solid #2a3324}' +
+      '.mps-card .zb-status{text-align:left;padding-left:36px;padding-right:8px}.mps-card .zb-chiprow{justify-content:center}.zb-help{margin:4px 0 6px;padding:6px 8px;background:#1c2416;border:1px solid #4d5a3a;border-radius:6px;color:#e3c27a;font-size:12px;line-height:1.4}.zb-noact{margin:6px 0;color:#f0d7b0;font-size:13px;line-height:1.35}' +
+      '.zb-feed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.zb-feed .zb-ml{display:flex;gap:4px;align-items:center;color:#a7b48e;min-width:0}.zb-feed select{max-width:150px;min-width:0}.zb-pickbox{flex:1 1 100%;min-width:0}.zb-pickbox summary{cursor:pointer;color:#c9d6a9}.zb-warn{color:#e3c27a;margin:4px 0}.zb-list{max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding:4px;border:1px solid #3b4430;border-radius:6px}.zb-opt{display:flex;gap:6px;align-items:center;font-size:12px}.zb-pend{flex:1 1 100%;color:#e3c27a}.zb-feedbtn:disabled{opacity:.5;cursor:not-allowed}.zb-dhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}.zb-other{margin-top:6px}' +
+      '.zb-step{flex:1 1 100%;margin-top:8px;padding:8px;border:1px solid #3b4430;border-radius:8px;background:#10160e}.zb-h{margin:0 0 4px;font-size:14px;line-height:1.3;color:#e7f6c9}.zb-stepnote{margin:0 0 6px;color:#d5e4b8}.zb-feed .zb-feedbtn{flex:1 1 100%;min-height:42px}.mg-unl.zb-quiet{border:0;background:transparent;padding:0}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
-  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, span: span };
+  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, statusLine: statusLine, span: span };
 })();
