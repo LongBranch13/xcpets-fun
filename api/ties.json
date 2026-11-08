@@ -1,5 +1,5 @@
 {
- "lastBlock": 975030,
+ "lastBlock": 975035,
  "count": 178,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2113,7 +2113,7 @@
    "species": "djpepe",
    "speciesLabel": "DJ Pepe",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 109786,
@@ -2125,7 +2125,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 110589,
@@ -2137,7 +2137,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   }
  ]
 }
