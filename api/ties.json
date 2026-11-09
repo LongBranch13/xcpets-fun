@@ -1,5 +1,5 @@
 {
- "lastBlock": 975181,
+ "lastBlock": 975186,
  "count": 252,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -997,7 +997,7 @@
    "species": "viking",
    "speciesLabel": "Viking",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 4718,
