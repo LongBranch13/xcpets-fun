@@ -582,3 +582,9 @@ a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:point
 .pcard .rare-badge{font-size:11px}@media(max-width:520px){.rare-badge{font-size:9px;padding:3px 5px}}
 .lv-row.lv-rare{background:linear-gradient(90deg,rgba(255,207,58,.18),rgba(181,140,255,.14));border-left:4px solid #ffcf3a}.lv-row.lv-rare.lv-weird{border-left-color:#7dff9a;background:linear-gradient(90deg,rgba(125,255,154,.16),rgba(181,140,255,.12))}
 .lv-rtag{display:inline-block;margin-right:6px;padding:1px 6px;border:2px solid #000;background:#ffcf3a;color:#1b1440;font:bold 10px/1.4 monospace;box-shadow:2px 2px 0 #000}.lv-weird .lv-rtag{background:#7dff9a}
+
+/* mypets-tok-badge: token status sits in the chip row with species and stage, never on the sprite. Same chip shape as the other info. */
+.chip.tokmark{white-space:nowrap}
+.chip.tokmark.tok-yes{background:#1d3a24;color:#c8f7d8}
+.chip.tokmark.tok-away{background:#3a1818;color:#ffb4b4}
+.chip.tokmark.tok-no{background:#3a2e18;color:#ffe7a8}
