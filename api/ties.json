@@ -1,6 +1,6 @@
 {
- "lastBlock": 975179,
- "count": 253,
+ "lastBlock": 975181,
+ "count": 252,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1682,18 +1682,6 @@
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
    "stage": "Mythic"
-  },
-  {
-   "id": 35311,
-   "asset": "A2526641395452220738",
-   "tiedBlock": 974641,
-   "tiedTx": "a82a41d1afcd4185f3ec4d2a8f555f1d87aefd8a484f4cd994e3b0f0f362bd14",
-   "kind": "deed",
-   "name": "Zifaki",
-   "species": "dodo",
-   "speciesLabel": "Dodo",
-   "rarity": "Legendary",
-   "stage": "Juvenile"
   },
   {
    "id": 84373,
