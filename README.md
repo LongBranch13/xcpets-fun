@@ -48,7 +48,7 @@ In a browser, [verify-pet.html](https://xcpets.fun/verify-pet.html) does the sam
 
 [`api/`](api/) has free, read-only JSON, rebuilt every hour by replaying every burn with these same rules ([`tools/api-feed.js`](tools/api-feed.js)):
 
-- [`api/pets.json`](https://xcpets.fun/api/pets.json): every pet (owner, species, rarity, stage, care, gear, parents, born/fed/death blocks)
+- [`api/pets.json`](https://xcpets.fun/api/pets.json): every pet (owner, species, rarity, stage, care, gear, parents, born/fed/death blocks). Columnar file; [`js/pets-feed.js`](js/pets-feed.js) expands it to those objects.
 - [`api/meta.json`](https://xcpets.fun/api/meta.json): block height, totals, supply
 - Field docs: [`api/README.md`](api/README.md)
 

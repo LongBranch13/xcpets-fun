@@ -77,7 +77,7 @@
     var b = $('vfRun'); if (b.disabled) return; if (!world()) { say('Still reading the chain. Try again in a moment.'); return; }
     b.disabled = true; say('Downloading api/pets.json…'); var t0 = Date.now(), text = '';
     fetch('api/pets.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); }).then(function (t) { text = t; return sha256(t); }).then(function (fileHash) {
-      var pub = JSON.parse(text), h = +pub.blockHeight;
+      var pub = JSON.parse(text); if (root.XCPETSPetsFeed && root.XCPETSPetsFeed.expand) pub = root.XCPETSPetsFeed.expand(pub); else if (pub.v === 2) throw new Error('pets feed helper missing'); var h = +pub.blockHeight;
       if (!(h > 0)) throw new Error('no blockHeight');
       if (S.tip < h) { say('pets.json is at block ' + fmt(h) + ' but this tab has only read up to ' + fmt(S.tip) + '. Reload in a minute and run it again.'); b.disabled = false; return; }
       say('Replaying ' + fmt(S.rows.filter(function (r) { return r.block_index <= h; }).length) + ' burns up to block ' + fmt(h) + ' in this tab…');

@@ -1,0 +1,57 @@
+# pages-feed (Nov 9 2026). The built-in branch deploy (pages-build-deployment) calls actions/deploy-pages
+# with timeout 600000. On Nov 9 the feed commit for block 975218 stayed in syncing_files until that cap,
+# then the action aborted and cancelled the deployment. A retry did the same, so xcpets.fun kept the previous feed.
+# This workflow publishes only after Settings → Pages → Source is GitHub Actions (build_type workflow).
+# Until then it does nothing, so it does not race the branch deploy. Once it is the publisher it:
+#   - omits previews/ (design screenshots, ~24MB of the ~47MB compressed artifact, not used by any page)
+#   - packs api/pets.json to columnar v2 if the committed file is still the old object list
+#   - waits 30 minutes for syncing_files instead of 10, and does not cancel an in-progress sync for a newer push
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+# Not the built-in "pages" group: that one is the branch deploy. Sharing it would queue feed publishes behind this check.
+concurrency:
+  group: pages-actions
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: See how this repo publishes
+        id: src
+        env: { GH_TOKEN: ${{ github.token }} }
+        run: |
+          bt=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type || echo unknown)
+          echo "build_type=$bt"
+          echo "type=$bt" >> "$GITHUB_OUTPUT"
+          echo "Pages build_type: $bt" >> "$GITHUB_STEP_SUMMARY"
+      - name: Stage the site without design previews
+        if: steps.src.outputs.type == 'workflow'
+        run: |
+          mkdir -p _site
+          rsync -a --exclude _site --exclude .git --exclude previews --exclude node_modules ./ _site/
+          node tools/pets-pack.js --compact _site/api/pets.json
+          echo "staged $(du -sb _site | awk '{print $1}') bytes, pets.json $(wc -c < _site/api/pets.json) bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.src.outputs.type == 'workflow'
+        with: { path: _site }
+      - id: deployment
+        if: steps.src.outputs.type == 'workflow'
+        uses: actions/deploy-pages@v5
+        with: { timeout: 1800000 }
+      - name: Branch deploy still publishes this push
+        if: steps.src.outputs.type != 'workflow'
+        run: echo "::notice::Pages source is '${{ steps.src.outputs.type }}', so this workflow did not upload a second copy. Set Settings → Pages → Source to GitHub Actions after this file is on main. Feed publishes then use a 30 minute sync budget, omit previews/, and ship the compact pets.json."
