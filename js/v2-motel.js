@@ -79,7 +79,7 @@
   function others0(w) { /* real recent breeding pairs: live pending check-ins first, then the guestbook */ var seen = {}, out = [], skip = [S.A && S.A.id, S.B && S.B.id];
     var add = function (a, b) { var A = w.byId[a], B = w.byId[b]; if (!A || !B || skip.indexOf(A.id) >= 0 || skip.indexOf(B.id) >= 0) return; var k = [A.id, B.id].sort().join(':'); if (seen[k]) return; seen[k] = 1; out.push([A, B]); };
     (w.breedReqs || []).slice().sort(function (p, q) { return q.block - p.block; }).forEach(function (r) { if (!r.used) add(r.a, r.b); });
-    w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (p, q) { return (q.hatchBlock || 0) - (p.hatchBlock || 0) || q.id - p.id; }).slice(0, 12).forEach(function (c) { add(c.parents[0], c.parents[1]); });
+    bredKids(w).slice(0, 12).forEach(function (c) { add(c.parents[0], c.parents[1]); });
     return out; }
   /* gooby-guestbook (2026-10-21, owner 10:07 PM CT): Gooby reacts to real motel activity and to the player. Display only, nothing on chain.
    * - Lines alternate: a FACT read from the replayed chain (newest egg, eggs today, guests waiting, busy rooms, total stays) then a JOKE (LINES).
@@ -92,8 +92,8 @@
   var G = { it: 0, tap: 0, can: 0, canCol: '#6ef04a', cans: 0, said: '', saidAt: 0, f: [], fi: 0, ft: null,
     nm: function (p) { return '#' + p.id + (p.name ? ' ' + p.name : ''); },
     facts: function () { var w = S.w; if (!w) return []; if (G.ft === w) return G.f; var V = window.V2Rules || {}, tip = w.tip || 0, out = [];
-      var kids = w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
-      var today = kids.filter(function (k) { return tip && tip - (k.hatchBlock || 0) <= 144; }).length, live = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); });
+      var kids = bredKids(w);
+      var today = 0; for (var ti = 0; ti < kids.length; ti++) if (tip && tip - (kids[ti].hatchBlock || 0) <= 144) today++; var live = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); });
       if (kids[0]) { var k = kids[0], hy = V.isHybrid && V.isHybrid(k.species); out.push('Newest egg: ' + G.nm(k) + ', ' + (V.speciesLabel ? V.speciesLabel(k.species) : k.species) + (hy ? ' hybrid!' : '.')); }
       out.push(today ? today + (today === 1 ? ' egg' : ' eggs') + ' checked out today.' : 'No eggs today. Slow night, pls.');
       if (live.length) out.push(live.length + (live.length === 1 ? ' guest is' : ' guests are') + ' waiting on a date.');
@@ -169,16 +169,37 @@
     if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
-    if (!rm) S.raf = requestAnimationFrame(frame); else S.raf = 0; }
-  /* speed2-1101: the scene redraws at most ~20 fps, and not at all while it is off screen or the tab is hidden (it used to redraw every frame, ~15% of a core) */
+    if (!rm && placeOn()) S.raf = requestAnimationFrame(frame); else S.raf = 0; }
+  /* speed2-1101: the scene redraws at most ~20 fps, and not at all while it is off screen or the tab is hidden (it used to redraw every frame, ~15% of a core).
+   * places-perf: once it is off screen or the tab is hidden the loop STOPS (Spam City already cancels its scene). The old loop kept scheduling frames forever. */
   var FRAME_MS = 50, motelVis = true, motelObs = null;
-  function watchVis(c) { if (motelObs || typeof IntersectionObserver === 'undefined') return; try { motelObs = new IntersectionObserver(function (es) { es.forEach(function (e) { motelVis = e.isIntersecting; }); }); motelObs.observe(c); } catch (e) { motelObs = null; } }
+  function placeOn() { var p = document.getElementById('breedPanel'); return !!(p && !p.hidden && !p.classList.contains('split-off')); }
+  function halt() { if (S.raf) { cancelAnimationFrame(S.raf); S.raf = 0; } }
+  function kick() { if (!S.raf && motelVis && !document.hidden && placeOn()) S.raf = requestAnimationFrame(frame); }
+  function watchVis(c) { if (motelObs || typeof IntersectionObserver === 'undefined') return; try { motelObs = new IntersectionObserver(function (es) { es.forEach(function (e) { motelVis = e.isIntersecting; }); if (motelVis) kick(); else halt(); }); motelObs.observe(c); } catch (e) { motelObs = null; } }
   function frame(n) { if (S.c && S.c !== (motelObs && motelObs._c)) { if (motelObs) { try { motelObs.disconnect(); } catch (e) { } motelObs = null; } watchVis(S.c); if (motelObs) motelObs._c = S.c; }
-    if ((document.hidden || !motelVis) || n - (S.drawn || 0) < FRAME_MS) { S.raf = requestAnimationFrame(frame); return; } S.drawn = n;
+    if (document.hidden || !motelVis || !placeOn()) { S.raf = 0; return; }
+    if (n - (S.drawn || 0) < FRAME_MS) { S.raf = requestAnimationFrame(frame); return; } S.drawn = n;
     if (n - S.lt > 4200) { S.lt = n; S.line++; S.bubble = null; } draw(n); }
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', function () { if (document.hidden) halt(); else kick(); });
+  /* One breedPicker for this world + owner + parent A. Rare Room and every other place used to run it on each refresh even when Gooby was hidden. */
+  var PK = { w: null, k: '', v: null };
+  function picker(w, owner, tip, selA, pend) { var V = window.V2Rules; if (!V || !V.breedPicker || !w) return { mine: [], partners: [] };
+    var pk = ''; if (pend) { var ks = Object.keys(pend); if (ks.length) pk = ks.sort().join(','); }
+    var k = (tip || 0) + '|' + (owner || '') + '|' + (selA == null ? '' : selA) + '|' + pk;
+    if (PK.w === w && PK.k === k && PK.v) return PK.v;
+    PK = { w: w, k: k, v: V.breedPicker(w, owner, tip, selA, pend) }; return PK.v; }
+  /* One newest-first list of bred pets per world. The guest book, Gooby's facts and the other-room windows used to each sort every egg. */
+  var bredMap = typeof WeakMap !== 'undefined' ? new WeakMap() : null, bredFallback = null;
+  function bredKids(w) { if (!w) return []; var hit = bredMap ? bredMap.get(w) : (bredFallback && bredFallback.w === w ? bredFallback.v : null); if (hit) return hit;
+    var all = []; (w.pets || []).forEach(function (p) { if (p.parents && p.parents.length === 2) all.push(p); });
+    all.sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
+    if (bredMap) bredMap.set(w, all); else bredFallback = { w: w, v: all }; return all; }
+  var kidMap = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function kidOf(w, pair) { if (!w || !pair) return null; var ix = kidMap && kidMap.get(w); if (!ix) { ix = {}; (w.pets || []).forEach(function (p) { if (!p.parents || p.parents.length !== 2) return; var k = p.parents.map(String).sort().join(':'), c = ix[k]; if (!c || (p.hatchBlock || 0) > (c.hatchBlock || 0) || ((p.hatchBlock || 0) === (c.hatchBlock || 0) && p.id > c.id)) ix[k] = p; }); if (kidMap) kidMap.set(w, ix); } return ix[pair] || null; }
   function state(w, a, b, ME) { var A = a ? w.byId[a] : null, B = b ? w.byId[b] : null, kid = null, st = 'empty';
     if (A && B) { var pair = [String(A.id), String(B.id)].sort().join(':');
-      kid = w.pets.filter(function (p) { return p.parents && p.parents.map(String).sort().join(':') === pair; }).sort(function (x, y) { return y.hatchBlock - x.hatchBlock; })[0] || null;
+      kid = kidOf(w, pair);
       var tip = w.tip, live = function (r) { return !r.used && (tip == null || tip - r.block <= (window.V2Rules.BREED_WINDOW || 144)); }, req = (w.breedReqs || []).some(function (r) { return live(r) && r.a === A.id && r.b === B.id; }), inc = (w.breedReqs || []).some(function (r) { return live(r) && r.a === B.id && r.b === A.id; });
       st = kid && S.fresh === pair ? 'open' : req ? 'half' : inc ? 'invite' : 'both'; }
     else if (A || B) st = 'one';
@@ -198,17 +219,18 @@
       '.pk-keys .bk-none{grid-column:1/-1}.bk-none.bk-res{color:#ffe58a;border-color:#c9b24a}.bk-none{margin:6px 0;padding:8px;border:2px solid #4b3f7a;background:#120e22;color:#9fe8ff;font-size:14px}.pk-key.sel .bk-sp,.pk-key.sel .bk-sc{color:#140f24}' +
       '@media (max-width:520px){.pk-breed .pk-keys{grid-template-columns:repeat(2,minmax(0,1fr))}.pk-breed .pk-key .bk-nm{font-size:15px}.bk-sp{font-size:14px}.bk-row .pill.tier{font-size:12px}.bk-sc{font-size:13px}}';
     (document.head || document.documentElement).appendChild(bs); }
-  function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
+  function render(w) { var U = window.V2UI, V = window.V2Rules, box = document.getElementById('motelScene'); if (!box || !U || !w) return; if (!placeOn()) { halt(); return; } if (window.V2MotelReqs) V2MotelReqs.render(w); var ME = U.ME, tip = (U.S && U.S().tip) || w.tip;
     var a = document.getElementById('bA').value, b = document.getElementById('bB').value; if ((!a || !b) && S.fresh) { var fp = S.fresh.split(':'); a = fp[0]; b = fp[1]; } /* the pair just checked in may now be on breed cooldown; keep showing their door */ var s = state(w, a, b, ME); S.w = w; S.A = s.A; S.B = s.B; S.kid = s.kid; var now = performance.now(); ['A', 'B'].forEach(function (k) { var p = s[k]; if (!p) { delete S.walk[k]; return; } if (!S.walk[k] || S.walk[k].id !== p.id) S.walk[k] = { id: p.id, t0: k === 'B' && S.walk.A && S.walk.A.id === (s.A && s.A.id) ? Math.max(now, S.walk.A.t0 + 6200) : now }; }); if (s.st !== S.state) { S.state = s.st; if (s.st === 'open') { S.open = performance.now(); if (S.c && window.V2Sfx) V2Sfx.creak(); } }
     var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, your guests walk in, other rooms busy"></canvas>'; c = box.querySelector('canvas'); }
     S.c = c; S.x = c.getContext('2d'); if (!c.dataset.gb) { c.dataset.gb = '1'; c.addEventListener('click', G.click); c.addEventListener('mousemove', G.move); } if (window.V2Sharp) { S.k = V2Sharp.fit(c, W, H); if (!S.rs) { S.rs = 1; V2Sharp.watch(function () { if (!S.c) return; var k0 = S.k; S.k = V2Sharp.fit(S.c, W, H); if (S.k !== k0 && !S.raf) draw(performance.now()); }); } } cancelAnimationFrame(S.raf); draw(performance.now());
-    book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var L = V.breedPicker(w, ME, tip, a, window.V2UI && V2UI.pendingBreedIds ? V2UI.pendingBreedIds() : null), okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
+    book(w); var desk = document.getElementById('motelDesk'); if (!desk) return; var ezOn = document.getElementById('breedPanel') && document.getElementById('breedPanel').classList.contains('ez-on');
+    var L = ezOn ? { mine: [], partners: [] } : picker(w, ME, tip, a, window.V2UI && V2UI.pendingBreedIds ? V2UI.pendingBreedIds() : null), okA = ezOn ? [] : L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), okB = ezOn ? [] : L.partners.filter(function (x) { return !x.why && x.p.stage >= 3; });
     /* breed-picker-fix (2026-10-19 10:20 PM CT): the picker lists only pets that can breed now (owner 10:23 PM CT: not-eligible pets stay out);
      * each chip now shows species, rarity, Pet Score and an owner badge. If none can, one short line with the main reason replaces the empty box. */
     var mainWhy = function () { var c = {}; L.mine.forEach(function (x) { var r = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); if (!r) return; r = /cooldown/.test(r) ? 'on breeding cooldown' : /Adult|young|stage/i.test(r) ? 'too young (Adult+)' : r; c[r] = (c[r] || 0) + 1; });
       var k = Object.keys(c).sort(function (p, q) { return c[q] - c[p]; })[0]; return k ? ' · mostly ' + k : (L.mine.length ? '' : ' · no live pets at this address'); };
     var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
-    var side0 = S.pickSide || step, resX = function (p) { return !!(s.A && V.resPairWhy && V.resPairWhy(s.A, p, (tip || 0) + 1)); }, resHid = V.RES_BREED_WHY && s.A ? L.partners.filter(function (x) { return (!x.why || x.why === V.RES_BREED_WHY) && x.p.stage >= 3 && resX(x.p); }).length : 0; /* resurrected-breed-only: one line with the reason when the rule hides mates */
+    var side0 = S.pickSide || step, resX = function (p) { return !!(s.A && V.resPairWhy && V.resPairWhy(s.A, p, (tip || 0) + 1)); }, resHid = !ezOn && V.RES_BREED_WHY && s.A ? L.partners.filter(function (x) { return (!x.why || x.why === V.RES_BREED_WHY) && x.p.stage >= 3 && resX(x.p); }).length : 0; /* resurrected-breed-only: one line with the reason when the rule hides mates */
     var hint = !ME ? 'Connect your wallet to check in' : step === 'A' ? '1 · Pick your guest' : step === 'B' ? '2 · Pick the date (yours or anyone\u2019s)' : s.st === 'half' ? 'Checked in · waiting for #' + s.B.id + '\u2019s owner' : s.st === 'invite' ? '💌 #' + s.B.id + ' already checked in · ring to join' : s.st === 'open' ? '🥚 Door\u2019s open: egg #' + (s.kid && s.kid.id) : '3 · Ring the bell';
     desk.innerHTML = '<div class="mt-hint">' + hint + '</div>' +
       '<div class="mt-guests"><button type="button" class="mt-g' + (step === 'A' || S.pickSide === 'A' ? ' on' : '') + '" data-side="A">' + (s.A ? 'Room #' + s.A.id + ' · ' + esc(s.A.name) : 'Guest 1 ?') + '</button><span>+</span><button type="button" class="mt-g' + (step === 'B' || S.pickSide === 'B' ? ' on' : '') + '" data-side="B">' + (s.B ? 'Room #' + s.B.id + ' · ' + esc(s.B.name) : 'Guest 2 ?') + '</button></div>' +
@@ -226,6 +248,10 @@
         onPick: function (id) { var k = String(id); S.fresh = null; document.getElementById(sd === 'A' ? 'bA' : 'bB').value = k; if (sd === 'A' && document.getElementById('bB').value === k) document.getElementById('bB').value = '';
           S.pickSide = sd === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + k + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); };
     var bell = document.getElementById('bGo'); if (bell) { bell.textContent = (s.st === 'invite' ? 'Accept check-in · ' : 'Check in · ') + (window.V2Rules && V2Rules.uiBreedFeeStr ? V2Rules.uiBreedFeeStr() : '690'); bell.disabled = !(s.A && s.B) || s.st === 'open'; }
+    /* easy flow is the visible picker (48 cards). The desk picker used to build a record for every breedable pet.
+     * v2.js renders once before v2-easy-flows.js adds .ez-on, so the mount waits one turn and then skips if the easy flow claimed the desk. */
+    if (document.getElementById('breedPanel') && document.getElementById('breedPanel').classList.contains('ez-on')) return;
+    if (S.deskWait) return; S.deskWait = 1; setTimeout(function () { S.deskWait = 0; var bp = document.getElementById('breedPanel'); if (!bp || bp.classList.contains('ez-on') || !document.getElementById('motelPick')) return;
     if (side && window.V2Picker) { var list = side === 'A' ? okA : okB; if (!list.length) { document.getElementById('motelPick').innerHTML = '<p class="bk-none">No pets can breed right now' + esc(side === 'A' ? mainWhy() : '') + '</p>'; return; }
       /* breed-empty-fix (2026-10-19 ~11 PM CT): the empty line used to fire only when the UNFILTERED list was empty; a picker filter (My Pets chip in the
      * partner picker, search, species, rarity) that left nothing fell through to the generic 'No matches' box. Now the filtered-empty case shows the same line. */
@@ -233,7 +259,7 @@
         empty: function (st) { var why = st.who === 'mine' && !list.some(function (x) { return x.p.owner === ME; }) ? 'None of my pets can breed right now' + esc(mainWhy()) : st.who === 'others' && !list.some(function (x) { return x.p.owner !== ME; }) ? 'No other pets can breed right now' : 'No breedable pets match these filters';
           return '<p class="bk-none">' + why + '</p>'; }, sorts: ['score', 'rarity', 'power', 'newest'], dir: true, w: w, me: ME, selected: side === 'A' ? a : b, per: 8, records: function () { return list.map(function (x) { return { key: String(x.p.id), pets: [x.p], newest: x.p.hatchBlock, html: breedChip(w, ME) }; }); },
         onPick: function (r) { S.fresh = null; document.getElementById(side === 'A' ? 'bA' : 'bB').value = r.key; if (side === 'A') document.getElementById('bB').value = document.getElementById('bB').value === r.key ? '' : document.getElementById('bB').value;
-          S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); } }
+          S.pickSide = side === 'A' && !document.getElementById('bB').value ? 'B' : null; S.bubble = 'Room #' + r.key + '? Gooby pls.'; S.lt = G.it = performance.now(); U.render(); } }); } }, 0); }
   /* after a check-in burn the existing code clears bA/bB and plays playBreed; we keep the pair so the door can open in place when the egg lands */
   /* GUESTBOOK (owner 7:58 PM CT): past breeding results from the replayed world, one short PG-13 note per egg, newest first, paged on the desk. */
   var NOTES = ['Left the DND sign up all night.', 'Room service: one egg.', 'Gooby heard nothing. Gooby pls.', 'Five stars. Would nest again.', 'Ice bucket never got used.', 'Checked out early. Glowing.',
@@ -247,7 +273,7 @@
   function gbName(w, id) { var p = w.byId[id]; return '<a href="pet.html?id=' + id + '">#' + id + '</a>' + (p && p.name ? ' ' + esc(p.name) : ''); }
   function book(w) { var el = document.getElementById('motelBook'); if (!el) return; var V = window.V2Rules || {}, ME = window.V2UI && V2UI.ME, tip = w.tip || 0, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
     var mineP = function (id) { var p = w.byId[id]; return !!(p && ME && p.owner === ME); };
-    var all = w.pets.filter(function (p) { return p.parents && p.parents.length === 2; }).sort(function (a, b) { return (b.hatchBlock || 0) - (a.hatchBlock || 0) || b.id - a.id; });
+    var all = bredKids(w);
     var L = BK.mine ? all.filter(function (c) { return mineP(c.id) || mineP(c.parents[0]) || mineP(c.parents[1]); }) : all;
     var wait = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)) && (!BK.mine || mineP(r.a) || mineP(r.b)); }).sort(function (p, q) { return q.block - p.block; });
     var today = all.filter(function (c) { return tip && tip - (c.hatchBlock || 0) <= 144; }).length, hyb = all.filter(function (c) { return V.isHybrid && V.isHybrid(c.species); }).length;
@@ -358,5 +384,5 @@
       '.eggpop:not(.rm) .ep-fx{animation:epb .6s steps(3) 4}.eggpop:not(.rm) .ep-sp{display:inline-block;animation:epw .5s steps(2) 5}@keyframes epb{50%{transform:translateY(-6px)}}@keyframes epw{50%{transform:rotate(6deg)}}@media (prefers-reduced-motion:reduce){.eggpop .ep-fx,.eggpop .ep-sp{animation:none!important}}';
     (document.head || document.documentElement).appendChild(es); }
   function checkedIn(a, b) { S.fresh = [String(a), String(b)].sort().join(':'); if (window.V2Sfx) V2Sfx.creak(); S.bubble = 'Keys out. Door opens when both are in.'; S.lt = performance.now(); }
-  window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, celebrate: celebrate, eggPop: eggPop, LINES: LINES, _state: function () { return S; } };
+  window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, celebrate: celebrate, eggPop: eggPop, LINES: LINES, picker: picker, placeOn: placeOn, bredKids: bredKids, _state: function () { return S; } };
 })();

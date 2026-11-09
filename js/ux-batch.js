@@ -104,15 +104,16 @@
   UXB.afterHatch = function () { if (F.sort === 'num' && !F.flip) { F.sort = 'tier'; saveF(); try { bindControls(); U.render(); } catch (e) { } } };
   UXB.spsOn = function () { return F.sps.length > 0; }; UXB.spsKey = function () { return F.sps.slice().sort().join(','); }; UXB.shownSel = function (ids) { return spsShown(ids); }; /* mypets-species-filter */
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
-  UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && q ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search (js/v2-pet-search.js) */
+  UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && String(F.q || '').trim() ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search, or an exact id list (js/v2-pet-search.js) */
     return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false; if (F.sps.length && F.sps.indexOf(spOf(p)) < 0) return false;
       if (SM) return SM(p);
-      if (q) { if (/^\d+$/.test(q)) return String(p.id) === q || String(p.id).indexOf(q) === 0; return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
+      if (q) { if (/^\d+$/.test(q)) return Number(p.id) === parseInt(q, 10); return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
     $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1'; if ($('fSpecies')) $('fSpecies').value = F.sp || 'all';
     function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; if ($('fSpecies')) F.sp = $('fSpecies').value; saveF(); U.render(); }
     ['fSort', 'fTier', 'fMin', 'fOrigin', 'fSpecies'].forEach(function (id) { $(id).onchange = upd; });
-    var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); };
+    var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); }; if (window.V2PetSearch && V2PetSearch.bindPaste) V2PetSearch.bindPaste($('fSearch'));
+    if ($('fSearch') && $('fSearch').placeholder.indexOf('paste') < 0) $('fSearch').placeholder = 'Find: name, species, weird, or paste pet #s';
     $('fDir').onclick = function () { F.flip = !F.flip; saveF(); U.render(); };
     $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }; saveF(); bindControls(); U.render(); };
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
@@ -120,7 +121,11 @@
   function paintControls(w) {
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
     var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintRar(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
-    $('fShowing').textContent = shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''; /* bigfix: the cards themselves page 150 at a time (see #petPager) */
+    var iq = window.V2PetSearch && V2PetSearch.idQuery && V2PetSearch.idQuery(F.q), idLine = '';
+    if (iq && iq.mode === 'bad') idLine = 'Those entries are not pet numbers. Nothing was selected.';
+    else if (iq && iq.mode === 'ids' && shown) { var set = {}, hit = 0; iq.ids.forEach(function (id) { set[id] = 1; }); alive.forEach(function (p) { if (set[p.id]) hit++; });
+      idLine = fmt(shown.length) + ' shown · ' + fmt(hit) + ' of ' + fmt(iq.pasted) + ' IDs in this list' + (iq.pasted - hit > 0 ? ' · ' + fmt(iq.pasted - hit) + ' not here' : '') + (iq.capped ? ' · first ' + fmt(V2PetSearch.ID_CAP) + ' only' : ''); }
+    $('fShowing').textContent = idLine || (shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''); /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
     $('ctlToggle').textContent = '⚙️ More filters' + ((F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
   }
