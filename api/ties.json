@@ -1,5 +1,5 @@
 {
- "lastBlock": 975189,
+ "lastBlock": 975191,
  "count": 252,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -1621,7 +1621,7 @@
    "species": "hyb:dodo:wojak",
    "speciesLabel": "Dojak (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 14904,
@@ -2257,7 +2257,7 @@
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 35395,
@@ -2665,7 +2665,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 93719,
@@ -2677,7 +2677,7 @@
    "species": "hyb:sarutobi:bobo",
    "speciesLabel": "Sabo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 93721,
@@ -2689,7 +2689,7 @@
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 108675,
@@ -2809,7 +2809,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93722,
@@ -2821,7 +2821,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 104746,
@@ -2833,7 +2833,7 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 105437,
@@ -2845,7 +2845,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 105449,
@@ -2857,7 +2857,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 108985,
@@ -2869,7 +2869,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8434,
@@ -2905,7 +2905,7 @@
    "species": "djpepe",
    "speciesLabel": "DJ Pepe",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 105486,
@@ -2917,7 +2917,7 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 109499,
