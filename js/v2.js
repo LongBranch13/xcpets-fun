@@ -685,6 +685,7 @@
     if (fS === 'starred') { var KS3 = new Set(keptIds()); list.sort(function (a, b) { return (KS3.has(b.id) ? 1 : 0) - (KS3.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* favorite-star-restore (display only): starred favorites first, then pet # */
     if (fS === 'sel') { var KS2 = new Set(S.sel.map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-checkbox (display only): checked pets first, then pet # (was starred first) */
     if (fS === 'ztime' && window.V2ZombieFilter) { var ZTw = world(); list.sort(V2ZombieFilter.comparator(ZTw, (ZTw.tip || 0) + 1)); } /* mypets-zombie-filter (Oct 30 2026, display only): zombies first, least time left before feral / dust */
+    if (fS === 'weird' && window.V2Render && V2Render.rareInfo) list.sort(function (a, b) { var ia = V2Render.rareInfo(a), ib = V2Render.rareInfo(b), sa = ia ? (ia.weird ? 2 : ia.legend ? 1 : 0) : 0, sb = ib ? (ib.weird ? 2 : ib.legend ? 1 : 0) : 0; return sb - sa || String((ia && ia.kind) || '').localeCompare(String((ib && ib.kind) || '')) || a.id - b.id; }); /* places-perf: Weird birth traits first, then Legends, so a shock-box haul can be sorted before discard */
     if (!cem && !noZF && ZFK && window.V2ZombieFilter) { var ZFw = world(), ZFb = (ZFw.tip || 0) + 1; list = list.filter(function (p) { return V2ZombieFilter.match(ZFK, ZFw, p, ZFb, ME); }); } /* mypets-zombie-filter: All zombies / Hungry / Feral / Crumbling soon (optional, off by default) */
     if (X && X.flip) list.reverse();
     return list; }
@@ -744,7 +745,8 @@
     $('selAll').checked = list.length > 0 && list.every(function (p) { return selS.has(p.id); });
     $('selCount').textContent = S.sel.length + ' selected · ' + alive.filter(function (p) { return p.hungry; }).length + ' hungry';
     $('bulkRow').style.display = cem ? 'none' : '';
-    var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">No pets match this filter.</p>';
+    var iqE = window.V2PetSearch && V2PetSearch.idQuery && V2PetSearch.idQuery(($('fSearch') || {}).value || '');
+    var box = $('pets'); box.innerHTML = list.length || nfN ? '' : '<p class="muted">' + (iqE && iqE.mode === 'bad' ? 'Those entries are not pet numbers. Nothing was selected or discarded.' : iqE && iqE.mode === 'ids' ? 'None of those IDs are in this list.' : 'No pets match this filter.') + '</p>';
     if (nfN) { var nfg = document.createElement('div'); nfg.className = 'row nffilter'; nfg.id = 'nfGroup'; nfg.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
       nfg.innerHTML = '<button type="button" class="q" id="nfOnly" aria-pressed="' + nfOnly + '">' + (cem ? '🪦' : '🥚') + ' ' + (nfOnly ? '✓ ' : '') + 'Never fed only <span class="chip">' + fmt(nfN) + '</span></button> <span class="small muted">' + (nfOnly ? 'only pets that ' + (cem ? 'died without a single meal' : 'never had a meal') + ' · tap to show all' : 'optional filter, off: all pets are listed') + '</span>';
       nfg.querySelector('button').onclick = function (e) { e.stopPropagation(); NF[nfK] = !nfOnly; if (NF[nfK] && ZFK) { ZFK = ''; V2ZombieFilter.save(''); } render(); }; box.appendChild(nfg); }
@@ -804,8 +806,9 @@
    * Sort: recently discarded (the order pets went onto the pile), newest / oldest pet, rarity, species, stage, last fed, Power, plus ⇅ Reverse.
    * Filters: Rarity, Species, Search. Selection: 'Select all shown', Clear, 'Restore selected (N)', 'Restore all (N)'.
    * Alive tab = discarded living pets, Pet Cemetery tab = discarded dead pets. Starred pets are never discarded (discardIds skips them). */
-  var DS = { open: false, flip: false, sort: 'recent', tier: 'all', sp: 'all', q: '', sel: {}, n: 120 };
-  var DS_SORTS = [['recent', 'Recently discarded'], ['new', 'Newest pet'], ['num', 'Oldest pet'], ['tier', 'Rarity'], ['species', 'Species'], ['stage', 'Stage'], ['fed', 'Last fed'], ['power', 'Power']];
+  var DS = { open: false, flip: false, sort: 'recent', tier: 'all', sp: 'all', q: '', birth: '', sel: {}, n: 120 };
+  var DS_SORTS = [['recent', 'Recently discarded'], ['weird', 'Weird first'], ['legend', 'Legends first'], ['new', 'Newest pet'], ['num', 'Oldest pet'], ['tier', 'Rarity'], ['species', 'Species'], ['stage', 'Stage'], ['fed', 'Last fed'], ['power', 'Power']];
+  function dsRare(p) { var R2 = window.V2Render; return R2 && R2.rareInfo ? R2.rareInfo(p) : null; }
   function dsFed(p, w) { if (p.dead) return { chip: '🪦 Died of neglect', warn: true, line: 'Died of neglect' };
     var never = p.lastFed == null, ago = never ? null : Math.max(0, Math.floor(w.tip / 144) - Math.floor(p.lastFed / 144));
     var line = never ? 'Never fed' : ago === 0 ? 'Last fed today' : 'Last fed ' + ago + ' day' + (ago === 1 ? '' : 's') + ' ago';
@@ -815,8 +818,15 @@
     var order = hiddenIds(), pos = {}; order.forEach(function (id, i) { pos[id] = i; });
     var spOf = function (p) { return spLabel(p.species); }, spList = gone.map(spOf).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort();
     if (DS.sp !== 'all' && spList.indexOf(DS.sp) < 0) DS.sp = 'all';
-    var q = DS.q.trim().toLowerCase(), list = gone.filter(function (p) { return (DS.tier === 'all' || TIER_ID[p.tier] === DS.tier) && (DS.sp === 'all' || spOf(p) === DS.sp) && (!q || ('#' + p.id + ' ' + (p.name || '') + ' ' + spOf(p) + ' ' + p.stageName).toLowerCase().indexOf(q) >= 0); });
+    var q = DS.q.trim().toLowerCase(), iq = window.V2PetSearch && V2PetSearch.idQuery && V2PetSearch.idQuery(DS.q), idSet = iq && iq.mode === 'ids' ? {} : null; if (idSet) iq.ids.forEach(function (id) { idSet[id] = 1; });
+    var kinds = [], list = gone.filter(function (p) { var i = dsRare(p); if (i && kinds.indexOf(i.kind) < 0) kinds.push(i.kind);
+      if (DS.birth === 'weird' && !(i && i.weird)) return false; if (DS.birth === 'legend' && !(i && i.legend)) return false; if (DS.birth && DS.birth !== 'weird' && DS.birth !== 'legend' && !(i && i.kind === DS.birth)) return false;
+      if ((DS.tier !== 'all' && TIER_ID[p.tier] !== DS.tier) || (DS.sp !== 'all' && spOf(p) !== DS.sp)) return false;
+      if (iq && iq.mode === 'bad') return false; if (idSet) return !!idSet[p.id];
+      var blob = ('#' + p.id + ' ' + (p.name || '') + ' ' + spOf(p) + ' ' + (p.stageName || '') + (i ? ' ' + i.kind + ' ' + i.name + ' ' + i.label + (i.weird ? ' weird' : '') + (i.legend ? ' legend' : '') : '')).toLowerCase();
+      return !q || blob.indexOf(q) >= 0; });
     var S0 = DS.sort, pw = function (p) { return window.UXB && UXB.power ? UXB.power(p) : 0; };
+    if (S0 === 'weird' || S0 === 'legend') list.sort(function (a, b) { var ia = dsRare(a), ib = dsRare(b), ra = function (i) { return !i ? 0 : S0 === 'weird' ? (i.weird ? 2 : i.legend ? 1 : 0) : (i.legend ? 2 : i.weird ? 1 : 0); }; return ra(ib) - ra(ia) || String((ia && ia.kind) || '').localeCompare(String((ib && ib.kind) || '')) || a.id - b.id; });
     if (S0 === 'recent') list.sort(function (a, b) { return (pos[b.id] || 0) - (pos[a.id] || 0) || b.id - a.id; });
     if (S0 === 'new') list.sort(function (a, b) { return b.id - a.id; }); if (S0 === 'num') list.sort(function (a, b) { return a.id - b.id; });
     if (S0 === 'tier') { var DB = function (p) { return window.PetScore ? PetScore.bitsOf(w, p) : -1; }; list.sort(function (a, b) { return b.tier - a.tier || DB(b) - DB(a) || a.id - b.id; }); } /* rarity-sort */
@@ -827,6 +837,8 @@
     if (DS.flip) list.reverse();
     Object.keys(DS.sel).forEach(function (k) { if (!gone.some(function (p) { return String(p.id) === k; })) delete DS.sel[k]; });
     var nsel = Object.keys(DS.sel).length, shown = list.slice(0, DS.n), allOn = shown.length > 0 && shown.every(function (p) { return DS.sel[p.id]; });
+    var inPile = 0; if (idSet) gone.forEach(function (p) { if (idSet[p.id]) inPile++; });
+    var meta = iq && iq.mode === 'bad' ? 'Not pet numbers. Nothing was selected.' : iq && iq.mode === 'ids' ? (list.length + ' shown · ' + inPile + ' of ' + iq.ids.length + ' IDs in this pile' + (iq.ids.length - inPile > 0 ? ' · ' + (iq.ids.length - inPile) + ' not in this pile' : '') + (iq.capped ? ' · first ' + iq.ids.length + ' of ' + iq.pasted : '')) : (list.length + ' of ' + gone.length + ' match');
     var card = function (p) { var f = dsFed(p, w), on = !!DS.sel[p.id];
       return '<div class="dcard' + (on ? ' selected' : '') + (p.dead ? ' dead' : '') + '" data-did="' + p.id + '"><input type="checkbox" class="dcb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '><canvas class="sprite" width="32" height="32"></canvas>' +
         '<h4>' + esc(p.name || spOf(p)) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4>' +
@@ -838,18 +850,20 @@
         '<div class="row dp-acts"><a class="q" href="pet.html?id=' + p.id + '" aria-label="Open #' + p.id + '">Open ▸</a><button type="button" class="btn" data-restore="' + p.id + '" title="Put #' + p.id + ' back in My Pets">↩️ Restore</button></div></div>'; };
     hb.innerHTML = '<details' + (DS.open ? ' open' : '') + '><summary><span class="dp-title">🗑️ Discard pile</span> <span class="chip">' + gone.length + ' pet' + (gone.length === 1 ? '' : 's') + '</span> <span class="small muted">' + (DS.open ? 'tap to close' : 'tap to open') + '</span></summary>' +
       '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn. Starred pets are never discarded.</p>' +
+      '<div class="row small dctl dp-birth" role="group" aria-label="Birth trait">' + [['', 'All births'], ['weird', '🌀 Weird'], ['legend', '🏆 Legends']].concat(kinds.map(function (k) { var sample = gone.filter(function (p) { var i = dsRare(p); return i && i.kind === k; })[0], i = sample && dsRare(sample); return [k, (i && i.icon ? i.icon + ' ' : '') + (i && i.name || k)]; })).map(function (o) { return '<button type="button" class="q' + (DS.birth === o[0] ? ' on' : '') + '" data-dbirth="' + esc(o[0]) + '" aria-pressed="' + (DS.birth === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<div class="row small dctl"><label>Sort <xc-select data-ds="sort">' + DS_SORTS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</xc-select></label> <button type="button" class="q" data-dsa="dir" aria-pressed="' + DS.flip + '" title="Reverse the order">⇅ Reverse</button> ' +
       '<label>Rarity <xc-select data-ds="tier"><option value="all">All</option>' + TIER_ID.map(function (t, k) { return '<option value="' + t + '">' + TL[k] + '</option>'; }).join('') + '</xc-select></label> ' +
       '<label>Species <xc-select data-ds="sp"><option value="all">All (' + gone.length + ')</option>' + spList.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + ' (' + gone.filter(function (p) { return spOf(p) === s; }).length + ')</option>'; }).join('') + '</xc-select></label> ' +
-      '<label>Search <input type="search" data-ds="q" placeholder="#id, name, species" value="' + esc(DS.q) + '"></label> <span class="muted">' + list.length + ' of ' + gone.length + ' match</span></div>' +
+      '<label>Search <input type="search" data-ds="q" placeholder="name, weird, or paste #ids" value="' + esc(DS.q) + '"></label> <span class="muted" data-ds="meta">' + meta + '</span></div>' +
       '<div class="row small dctl dsel"><label><input type="checkbox" data-dsa="selall"' + (allOn ? ' checked' : '') + '> Select all shown (' + shown.length + ')</label> <span class="dp-n">' + nsel + ' selected</span> <button type="button" class="q" data-dsa="none"' + (nsel ? '' : ' disabled') + '>Clear</button> ' +
       '<button type="button" class="btn" data-dsa="sel"' + (nsel ? '' : ' disabled') + '>↩️ Restore selected' + (nsel ? ' (' + nsel + ')' : '') + '</button> <button type="button" class="q" data-dsa="all">Restore all (' + gone.length + ')</button></div>' +
-      '<div class="dgrid">' + (shown.length ? shown.map(card).join('') : '<p class="muted small">No discarded pets match.</p>') + '</div>' +
+      '<div class="dgrid">' + (shown.length ? shown.map(card).join('') : '<p class="muted small">' + (iq && iq.mode === 'bad' ? 'Those entries are not pet numbers. Nothing was restored or discarded.' : iq && iq.mode === 'ids' ? 'None of those IDs are in the Discard pile.' : 'No discarded pets match.') + '</p>') + '</div>' +
       (list.length > shown.length ? '<p><button type="button" class="q" data-dsa="more">Show more (' + (list.length - shown.length) + ' left)</button></p>' : '') + '</details>';
     hb.querySelector('details').ontoggle = function () { DS.open = this.open; var t = hb.querySelector('summary .small'); if (t) t.textContent = this.open ? 'tap to close' : 'tap to open'; };
     hb.querySelector('[data-ds="sort"]').value = DS.sort; hb.querySelector('[data-ds="tier"]').value = DS.tier; hb.querySelector('[data-ds="sp"]').value = DS.sp;
+    hb.querySelectorAll('[data-dbirth]').forEach(function (b) { b.onclick = function () { DS.birth = b.getAttribute('data-dbirth') || ''; DS.n = 120; render(); }; });
     hb.querySelectorAll('xc-select[data-ds]').forEach(function (x) { x.onchange = function () { DS[x.dataset.ds] = x.value; render(); }; });
-    var si = hb.querySelector('[data-ds="q"]'), st = null; si.oninput = function () { clearTimeout(st); st = setTimeout(function () { DS.q = si.value; render(); var n = document.querySelector('.hiddenbox [data-ds="q"]'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); };
+    var si = hb.querySelector('[data-ds="q"]'), st = null; si.oninput = function () { clearTimeout(st); st = setTimeout(function () { DS.q = si.value; render(); var n = document.querySelector('.hiddenbox [data-ds="q"]'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); }; if (window.V2PetSearch && V2PetSearch.bindPaste) V2PetSearch.bindPaste(si);
     var selUpd = function () { var n = Object.keys(DS.sel).length, b = hb.querySelector('[data-dsa="sel"]'); b.disabled = !n; b.textContent = '↩️ Restore selected' + (n ? ' (' + n + ')' : ''); hb.querySelector('[data-dsa="none"]').disabled = !n; hb.querySelector('.dp-n').textContent = n + ' selected';
       hb.querySelector('[data-dsa="selall"]').checked = shown.length > 0 && shown.every(function (p) { return DS.sel[p.id]; }); };
     hb.querySelectorAll('.dcb').forEach(function (c) { c.onchange = function () { var d = c.closest('.dcard'), id = d.dataset.did; if (c.checked) DS.sel[id] = 1; else delete DS.sel[id]; d.classList.toggle('selected', c.checked); selUpd(); }; });
@@ -873,6 +887,7 @@
   $('tabAlive').onclick = function () { cem = false; this.classList.add('on'); render(); }; /* mypets-simple: the Pet Cemetery tab is gone (Places → Pet Cemetery, cemetery.html) */
   if ($('tabCem')) $('tabCem').onclick = function () { location.href = 'cemetery.html'; };
   /* favorite-star-restore: 'starred' is a real sort again (★ Starred first) and the Starred filter works again */
+  (function () { var s = $('fSort'); if (!s || s.querySelector('option[value="weird"]')) return; var g = document.createElement('optgroup'); g.setAttribute('label', 'Birth'); var o = document.createElement('option'); o.value = 'weird'; o.textContent = '🌀 Weird first'; g.appendChild(o); s.appendChild(g); })();
   ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); if (id === 'fSort' && resort()) return; render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
   if ($('fStarred')) { $('fStarred').setAttribute('aria-pressed', String(!!S.ui_starOnly)); $('fStarred').onclick = function () { S.ui_starOnly = !S.ui_starOnly; this.setAttribute('aria-pressed', String(S.ui_starOnly)); save(); render(); }; } /* favorite-star-restore */
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
@@ -1449,7 +1464,8 @@
   if (M.prod) ['fNpc'].forEach(function (id) { if ($(id)) $(id).style.display = 'none'; }); /* NPC simulation buttons: nothing to simulate on the live chain */
   // ---------------------------------------------------------------- breeding
   function renderBreed(w) {
-    var a = $('bA').value, b = $('bB').value, L = V.breedPicker(w, ME, S.tip, a, pendingBreedIds());
+    if (window.V2Motel && V2Motel.placeOn && !V2Motel.placeOn()) return; /* hidden on every place except Gooby: do not scan the world or build cards */
+    var a = $('bA').value, b = $('bB').value, pick = window.V2Motel && V2Motel.picker ? V2Motel.picker : V.breedPicker.bind(V), L = pick(w, ME, S.tip, a, pendingBreedIds());
     if (a && !L.mine.some(function (x) { return String(x.p.id) === a && !x.why; })) a = $('bA').value = '';
     if (b && !L.partners.some(function (x) { return String(x.p.id) === b && !x.why; })) b = $('bB').value = '';
     /* perf (2026-10-14): a 2,000-pet wallet has ~6,000 picker cards. Eligibility is one breedPicker pass per render (cheap); the cards are built
@@ -1477,6 +1493,9 @@
     function reasons(list) { var c = {}; list.forEach(function (x) { if (x.why) { var k = why0(x.why); c[k] = (c[k] || 0) + 1; } });
       return Object.keys(c).sort(function (x, y) { return c[y] - c[x]; }).map(function (k) { return esc(k) + ' (' + fmt(c[k]) + ')'; }).join(', '); }
     var RULE = 'A pet can breed when it is <b>Adult or older</b> (stage 3+: Adult, Elder, Mythic), not neglected, ' + (V.breedCapOn && V.breedCapOn(S.tip) ? 'has bred fewer than <b>' + V.BREED_MAX + '</b> times and ' : 'and ') + 'its last breeding was at least <b>' + fmt(V.BREED_COOLDOWN) + ' blocks</b> ago (about a week). ' + (V.breedV2On && V.breedV2On(S.tip + 1) ? 'It can\'t breed with its parent, child or sibling. Community pets and risen zombies never breed.' : 'Nakamoto and community pets never breed.'); /* glitch-display-1102: Nakamoto breeds like any pet since breeding v2 (pets.html), the old line said it never does */
+    var gridsOff = $('bGridA') && $('bGridA').closest && $('bGridA').closest('[hidden]');
+    if (gridsOff) { /* the old grids are hidden (easy flow is the picker). Building a card per breedable pet in the world locked the page. */
+      recentKids(w); reqsLine(w); return; }
     var okA = L.mine.filter(function (x) { return !x.why; }), okB = L.partners.filter(function (x) { return !x.why; });
     function note(id, after, html) { var n = $(id); if (!n) { n = document.createElement('div'); n.id = id; n.className = 'small muted bnote'; after.parentNode.insertBefore(n, after); } n.innerHTML = html; }
     note('bNoteA', $('bGridA'), fmt(okA.length) + ' of ' + fmt(L.mine.length) + ' of your pets can breed now.');
@@ -1486,9 +1505,16 @@
     if (!okB.length) $('bGridB').innerHTML = '<p class="small bempty">No partner can breed right now' + (L.partners.length ? ': ' + reasons(L.partners) : '') + '. ' + RULE + '</p>';
     if (!okA.length) $('bGridA').__w = null; if (!okB.length) $('bGridB').__w = null;
     $('bSelA').innerHTML = a ? '#' + a + ' ' + esc(w.byId[a].name) + ' ' + tierPill(w.byId[a].tier, w.byId[a]) : 'pick one'; $('bSelB').innerHTML = b ? '#' + b + ' ' + esc(w.byId[b].name) + ' ' + tierPill(w.byId[b].tier, w.byId[b]) + (w.byId[b].owner !== ME ? ' <span class="muted">' + shortAddr(w.byId[b].owner) + '</span>' : '') : 'pick one';
-    $('bKids').innerHTML = w.pets.filter(function (p) { return p.parents; }).map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + (V.tierLabelOf ? V.tierLabelOf(k) : TL[k.tier]) + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>';
-    $('bReqs').innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div data-btx="' + esc(r.tx || '') + '">' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + ((w.byId[r.b] || {}).owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : (V.sendBlock && V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME }) ? '<span class="muted">can\'t accept: ' + esc(V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME })) + '</span>' : '<span class="muted">accept it in Your pending challenges above</span>')) + '</div>'; }).join('') + unconfBreeds(w) || '<div class="muted">none</div>';
+    recentKids(w); reqsLine(w);
   }
+  /* House-rules children used to print every egg in the world into the DOM on each refresh. Newest 24, plus the real count. One shared newest-first list (V2Motel.bredKids) so this does not sort the world again. */
+  function recentKids(w) { var box = $('bKids'); if (!box) return; var all = window.V2Motel && V2Motel.bredKids ? V2Motel.bredKids(w) : null, last, n;
+    if (!all) { last = []; n = 0; for (var i = 0; i < w.pets.length; i++) { var p = w.pets[i]; if (!p.parents) continue; n++; last.push(p); if (last.length > 24) last.shift(); } }
+    else { n = all.length; last = all.slice(0, 24); }
+    var key = n + '|' + (last[0] ? last[0].id : 0); if (box.__rk === key) return; box.__rk = key;
+    box.innerHTML = (n > last.length ? '<span class="muted">Newest ' + last.length + ' of ' + fmt(n) + ' eggs. </span>' : '') + (last.map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + (V.tierLabelOf ? V.tierLabelOf(k) : TL[k.tier]) + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>'); }
+  function reqsLine(w) { var box = $('bReqs'); if (!box) return;
+    box.innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div data-btx="' + esc(r.tx || '') + '">' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + ((w.byId[r.b] || {}).owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : (V.sendBlock && V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME }) ? '<span class="muted">can\'t accept: ' + esc(V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME })) + '</span>' : '<span class="muted">accept it in Your pending challenges above</span>')) + '</div>'; }).join('') + unconfBreeds(w) || '<div class="muted">none</div>'; }
   /* unconfirmed breed burns (node mempool + this browser's tracker) shown in the open list until the tx is in S.rows (display only) */
   function unconfBreeds(w) { var conf = {}, seen = {}, out = []; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
     var L = (S.mempool || []).map(function (x) { return { h: x.tx_hash, tag: x.tag, src: x.source }; });

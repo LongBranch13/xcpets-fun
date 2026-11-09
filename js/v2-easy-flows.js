@@ -147,13 +147,16 @@
     var ig = $('ezFIgn'); if (ig) ig.onclick = function () { var id = s.inc; s.inc = null; UXB.ignoreFight(id); UI.toast('Ignored here. It expires on its own if nobody accepts.'); }; }
 
   // ================================================================ BREED
-  function breed(w) { var bp = $('breedPanel'), UI = U(); if (!bp || !UI || !w) return; var el = $('ezBreed');
+  function placeCheck(html) { var sc = $('motelScene'), bar = $('ezCheck'); if (!bar) { bar = document.createElement('div'); bar.id = 'ezCheck'; bar.className = 'ez-check'; }
+    if (sc && sc.parentNode) sc.parentNode.insertBefore(bar, sc.nextSibling); else { var bp = $('breedPanel'); if (bp) bp.insertBefore(bar, bp.firstChild); } bar.innerHTML = html; return bar; }
+  function breed(w) { var bp = $('breedPanel'), UI = U(); if (!bp || !UI || !w) return; if (window.V2Motel && V2Motel.placeOn && !V2Motel.placeOn()) return; var el = $('ezBreed');
     if (!el) { el = document.createElement('div'); el.id = 'ezBreed'; el.className = 'ez ez-breed'; var at = $('motelReqs') || $('motelDesk'); bp.insertBefore(el, at); bp.classList.add('ez-on'); }
     keep(el, function () { paintBreed(el, w); }); }
   function incoming(w, ME, T) { var win = V().BREED_WINDOW || 144; return (w.breedReqs || []).filter(function (r) { var X = w.byId[r.b]; return !r.used && !(T && T - r.block > win) && X && X.owner === ME && r.owner !== ME; }).sort(function (a, b) { return b.block - a.block; }); }
   function paintBreed(el, w) { var UI = U(), Vr = V(), ME = UI.ME, T = tip(w), s = ST.b, view = UI.viewOnly && UI.viewOnly(), M = window.V2Motel;
-    var a = $('bA').value, b = $('bB').value, L = Vr.breedPicker(w, ME, T, a, UI.pendingBreedIds ? UI.pendingBreedIds() : null), v2 = !!(Vr.breedV2On && Vr.breedV2On(T + 1));
-    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate, ring the bell. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to check in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
+    var a = $('bA').value, b = $('bB').value, pick = M && M.picker ? M.picker : Vr.breedPicker.bind(Vr), L = pick(w, ME, T, a, UI.pendingBreedIds ? UI.pendingBreedIds() : null), v2 = !!(Vr.breedV2On && Vr.breedV2On(T + 1));
+    if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">💞 Pick Parent 1, pick a mate. The check-in button is next to the motel.</p></div>';
+      placeCheck('<div class="ez-checkin"><p class="ez-lead">💞 Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to check in. This is the motel breed, not the daily WAGMI check-in.</p><button type="button" class="btn ico-egg ez-go" id="ezBGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>');
       $('ezBGo').onclick = function () { $('bGo').click(); }; return; }
     var A = a && w.byId[a], Bp = b && w.byId[b], gen = function (p) { var R2 = window.V2Render; return R2 && R2.genOf ? R2.genOf(w, p) : Vr.genOf ? Vr.genOf(w, p) : 0; }; /* glitch-display-1102: a quest jackpot egg is one generation after its one parent */
     var badges = function (p) { var R2 = window.V2Render, x = R2 && R2.badgesOf ? R2.badgesOf(w, p) : Vr.breederBadges ? Vr.breederBadges(w, p) : []; return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
@@ -164,9 +167,10 @@
     var okA = L.mine.filter(function (x) { return !x.why && x.p.stage >= 3; }), shA = L.mine.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && fok(s, x.p); }), reqs = incoming(w, ME, T);
     if (s.req && !reqs.some(function (r) { return r.b + ':' + r.a === s.req; })) s.req = null;
     if (!s.tab) s.tab = reqs.length ? 'asks' : 'mine';
-    var h = '<div class="ez-box">' + fbar(w, s, L.mine.map(function (x) { return x.p; }).concat(L.partners.map(function (x) { return x.p; })));
+    var spPets = L.mine.map(function (x) { return x.p; }); if (s.tab === 'other') { var seenSp = {}; L.partners.forEach(function (x) { if (x.p.owner !== ME && !seenSp[x.p.species]) { seenSp[x.p.species] = 1; spPets.push(x.p); } }); }
+    var h = '<div class="ez-box">' + fbar(w, s, spPets);
     /* 1 · parent 1 */
-    var px = function (x) { return x.p; }, mq = psort(w, shA.filter(function (x) { return match(x.p, s.qa); }), s.sa, px, T + 1);
+    var px = function (x) { return x.p; }, mqBase = memo(w, ['p1', s.sa, s.fall ? 1 : 0, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, T].join('|'), function () { return psort(w, shA, s.sa, px, T + 1); }), mq = mqBase.filter(function (x) { return match(x.p, s.qa); });
     if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; }) && A.owner === ME) mq = [{ p: A }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
     h += '<div class="ez-cols"><div class="ez-col">' + head('1', 'Parent 1 · your pet', 'ezBqA', s.qa, '<span class="ez-cnt">' + fmt(okA.length) + ' of ' + fmt(L.mine.length) + ' can breed now</span>', sortSel('ezBsA', s.sa, 'Parent 1')) +
       strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id && !s.req, why: x.why && x.p.id !== (A && A.id) ? x.why : null, lines: info(x.p, s.sa) }); }), mq.length - MAX, L.mine.length ? (shA.length || okA.length ? 'No pet matches.' : 'None of your pets can breed right now (Adult+, fed, off cooldown).') : 'No living pets at this address yet.') + '</div><div class="ez-col">';
@@ -177,8 +181,12 @@
       h += strip(rr.slice(0, MAX).map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null; var rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null;
         return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y, s.sb).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
     else { var resX = function (p) { return !!(A && Vr.resPairWhy && Vr.resPairWhy(A, p, T + 1)); }; /* gods-breed-gods-1102: a God (resurrected, Mythic Gods too) sees only Gods as mates and a non-God never sees a God, even with 'Show all' on */
-      var pool = L.partners.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && !resX(x.p) && fok(s, x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME) && match(x.p, s.qb); })
-        ; var egK = EGGK.some(function (e) { return e[0] === s.sb; }); pool = egK && A ? eggSort(pool, s.sb, A, px, T + 1) : psort(w, pool, egK ? '' : s.sb, px, T + 1); pool = pool.filter(function (x) { return !kin(x.p); }).concat(pool.filter(function (x) { return kin(x.p); })); /* greyed (kin) pets stay last, as before */
+      var egK = EGGK.some(function (e) { return e[0] === s.sb; });
+      var base = memo(w, ['mate', s.tab, s.fall ? 1 : 0, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, s.sb, A ? A.id : 0, T].join('|'), function () {
+        var raw = L.partners.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && !resX(x.p) && fok(s, x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME); });
+        raw = egK && A ? eggSort(raw, s.sb, A, px, T + 1) : psort(w, raw, egK ? '' : s.sb, px, T + 1);
+        return raw.filter(function (x) { return !kin(x.p); }).concat(raw.filter(function (x) { return kin(x.p); })); });
+      var pool = base.filter(function (x) { return match(x.p, s.qb); }); /* search does not re-score every mate */
       if (Bp && !s.req && !resX(Bp) && !pool.slice(0, MAX).some(function (x) { return x.p.id === Bp.id; }) && (s.tab === 'mine') === (Bp.owner === ME)) pool = [{ p: Bp }].concat(pool.filter(function (x) { return x.p.id !== Bp.id; }));
       /* resurrected-breed-only: mates hidden by the 'resurrected only with resurrected' rule (gate on) get one line with the reason */
       var RW = Vr.RES_BREED_WHY, resHid = RW && A ? L.partners.filter(function (x) { return x.p.id !== A.id && (s.fall ? x.p.stage >= 1 : !x.why || x.why === RW) && resX(x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME); }).length : 0;
@@ -199,7 +207,8 @@
     var od = '';
     if (P1 && P2 && M && M.odds) { try { var o = M.odds(Vr, P1, P2); od = '<div class="ez-odds"><b>ODDS</b> ' + o.sp.map(function (x) { return esc(x[0]) + ' ' + x[1].toFixed(x[1] === 100 ? 0 : 1) + '%'; }).join(' · ') + ' · ' + TL[o.hiT] + ' ' + o.tier.hi.toFixed(1) + '%' + (o.tier.up ? ' · ⬆ ' + TL[Math.min(3, o.hiT + 1)] + ' ' + o.tier.up.toFixed(1) + '%' : '') + (o.tier.lo ? ' · ' + TL[o.loT] + ' ' + o.tier.lo.toFixed(1) + '%' : '') + '</div>'; } catch (e) { od = ''; }
       if (v2 && P1.species !== P2.species) od += '<div class="ez-hint">🧬 Different species: body parts can trade in the egg.</div>'; od += pairCard(P1, P2, T + 1); }
-    h += '<div class="ez-foot">' + od + '<div class="ez-acts"><button type="button" class="btn ico-egg ez-go" id="ezBGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button></div><div class="ez-hint">' + esc(hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn.' : '') + '</div></div></div>';
+    h += '</div>';
+    placeCheck('<div class="ez-checkin" role="region" aria-label="Check in">' + od + '<div class="ez-acts"><button type="button" class="btn ico-egg ez-go" id="ezBGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button></div><div class="ez-hint">' + esc(hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn. Nothing is signed from this page until you confirm.' : ' Motel check-in (pet:breed), not the daily WAGMI check-in.') + '</div></div>');
     el.innerHTML = h; sprites(el, w);
     var pick = function (side, id) { $(side === 'A' ? 'bA' : 'bB').value = id; if (side === 'A' && $('bB').value === id) $('bB').value = ''; var S = M && M._state ? M._state() : null; if (S) { S.fresh = null; S.pickSide = null; if (id) { S.bubble = 'Room #' + id + '? Gooby pls.'; S.lt = performance.now(); } } UI.render(); };
     el.querySelectorAll('[data-ez]').forEach(function (bt) { bt.onclick = function () { if (bt.getAttribute('aria-disabled')) { UI.toast((bt.querySelector('.ez-why') || {}).textContent || ''); return; } var k = bt.dataset.ez;
@@ -231,7 +240,7 @@
       '.ez-l{color:#d9d2f0;max-width:100%;overflow-wrap:anywhere}.ez-why{color:#ff9a9a;font-weight:700}.ez-tag{font-size:10px;font-weight:700;background:#4b3f7a;padding:1px 3px;max-width:100%;overflow-wrap:anywhere}.ez-tag.me{background:#4fd18b;color:#0d1a12}' +
       '.ez-more,.ez-empty{flex:0 0 auto;align-self:center;color:#9fe8ff;font-size:13px;padding:6px;margin:0}' +
       '.ez-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}.ez-tab{min-height:36px;padding:4px 10px;border:2px solid #000;background:#f5efe0;color:#2a1530;font:inherit;font-size:13px;box-shadow:2px 2px 0 #000;cursor:pointer}.ez-tab.on{background:#4fd18b;color:#0d1a12}.ez-tab.hot:not(.on){background:#ff9ad5}' +
-      '.ez-foot{border-top:2px dashed #4b3f7a;margin-top:4px;padding-top:6px}.ez-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ez-go{flex:1 1 260px;min-height:52px;font-size:17px}.ez-go[disabled]{opacity:.6;cursor:default}' +
+      '.ez-check{position:sticky;top:calc(var(--navh, 48px) + 4px);z-index:6;margin:8px 0}.ez-checkin{border:3px solid #000;background:#2a1530;box-shadow:4px 4px 0 #000;padding:8px}.ez-foot{border-top:2px dashed #4b3f7a;margin-top:4px;padding-top:6px}.ez-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ez-go{flex:1 1 260px;min-height:52px;font-size:17px}.ez-go[disabled]{opacity:.6;cursor:default}' +
       '.ez-hint{font-size:12px;color:#c9c0e6;margin-top:4px;overflow-wrap:anywhere}.ez-hint.ez-res{color:#ffe58a;margin:4px 0 6px;padding:4px 6px;border:1px dashed #c9b24a;background:#1d1830}.ez-odds{font-size:13px;background:#ffd166;color:#1b1b1b;border:2px solid #000;padding:4px 6px;margin-bottom:6px;overflow-wrap:anywhere}' +
       '.ez-cmp{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13px;margin-bottom:6px;color:#fff}.ez-vs{color:#ff5a7a;font-weight:700}.ez-st{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.ez-st i{font-style:normal;font-size:11px;padding:1px 4px;background:#2a2342}.ez-st i.up{color:#4fd18b}.ez-st i.dn{color:#ff8080}' +
       '.ez-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}.ez-col{min-width:0;border:2px solid #4b3f7a;background:#1b1530;padding:4px 6px}.ez-col .ez-q{max-width:none}' +
