@@ -1,6 +1,6 @@
 {
- "lastBlock": 975150,
- "count": 247,
+ "lastBlock": 975153,
+ "count": 253,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1705,7 +1705,7 @@
    "species": "orangedragon",
    "speciesLabel": "Orange Dragon",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 3480,
@@ -2966,6 +2966,78 @@
    "speciesLabel": "Bitcoin Wizard",
    "rarity": "Rare",
    "stage": "Mythic"
+  },
+  {
+   "id": 1900,
+   "asset": "A11975890779555526421",
+   "tiedBlock": 975152,
+   "tiedTx": "454f12f20eb0930ea9a61f3431b270d907f1a2d6d26e6371ff6e9de0eed8a44b",
+   "kind": "deed",
+   "name": "Bawa",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8429,
+   "asset": "A8421355902656658304",
+   "tiedBlock": 975152,
+   "tiedTx": "a9bd6f52c4d6417387e15907383dc9d83f497794e1a4f79cf553c6f070f296e8",
+   "kind": "deed",
+   "name": "Tikkiwa",
+   "species": "hyb:bobo:pepe",
+   "speciesLabel": "Bope (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 58293,
+   "asset": "A832406616302828763",
+   "tiedBlock": 975152,
+   "tiedTx": "a2b615e90816e33daca8cba69d896374bd7615119d63c9735418d801c9ac1008",
+   "kind": "deed",
+   "name": "Zayebit",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 93710,
+   "asset": "A11176601301231421206",
+   "tiedBlock": 975152,
+   "tiedTx": "d48165a2bacdbad2f77fa99e4db814cd9cec0638925f6e577ecf6caf66139271",
+   "kind": "deed",
+   "name": "Hawin",
+   "species": "hyb:lenny:pepe",
+   "speciesLabel": "Lepe (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 93713,
+   "asset": "A14740520779484750494",
+   "tiedBlock": 975152,
+   "tiedTx": "5e48e54432610d5630203cf520e150846d72a952f53c68b7a26fae3531269842",
+   "kind": "deed",
+   "name": "Merudi",
+   "species": "hyb:lenny:bobo",
+   "speciesLabel": "Lebo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 140028,
+   "asset": "A3515043811413607284",
+   "tiedBlock": 975152,
+   "tiedTx": "fa8bfe14e4836ed26ac4be5753a1f042ab07ef7df6fa886c30ef176e34c20ceb",
+   "kind": "deed",
+   "name": "Nelookin",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
