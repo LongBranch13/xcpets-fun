@@ -8,7 +8,9 @@
  *   --no-dex    (with --snap) replay a snapshot without sale data (old behaviour, for comparisons only)
  *   Live mode refuses to write anything if the sale data can't be read (ownership would be wrong after any sale/tie).
  *   --out DIR (default api)   --now ISO (fixed generated time, for reproducible output)
- * Output is deterministic for a given (burns, tip): pets sorted by id, fixed key order, no timestamps in pets.json. */
+ * Output is deterministic for a given (burns, tip): pets sorted by id, fixed key order, no timestamps in pets.json.
+ * pets.json is columnar v2 (js/pets-feed.js): one pet per line, dictionaries for repeated owners and species.
+ * The expanded objects match the old file. GitHub Pages was aborting feed deploys at the 10 minute sync cap while this file was ~75MB. */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
@@ -22,6 +24,7 @@ const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bo
  * then the same request is sent again (4 times) before the refusal reaches v2-sales.js's own retry logic. See tools/lib/core-limiter.js.
  * FEED_CONC / FEED_RPS env override the pace; FEED_NO_LIMIT=1 restores the old unthrottled fetch. */
 const LIM = require('./lib/core-limiter.js');
+const PetsFeed = require('../js/pets-feed.js'); /* pages-feed: columnar pets.json (same expanded objects as before) */
 const RAW = (u, o) => fetch(u, Object.assign({}, o, { headers: { 'user-agent': 'xcpets-api-feed' } }));
 const LIMITED = process.env.FEED_NO_LIMIT ? RAW : LIM.makeFetch(RAW, { conc: +process.env.FEED_CONC || 1, rps: +process.env.FEED_RPS || 2 });
 function context() {
@@ -124,7 +127,7 @@ if (require.main === module) (async () => {
   if (opt('--save-dex') && input.dex) { fs.mkdirSync(path.dirname(path.resolve(opt('--save-dex'))), { recursive: true }); } if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
   const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, 'pets.json'), '{"blockHeight":' + meta.blockHeight + ',"count":' + pets.length + ',"pets":[\n' + pets.map(p => JSON.stringify(p)).join(',\n') + '\n]}\n' /* one pet per line: small git diffs */);
+  fs.writeFileSync(path.join(OUT, 'pets.json'), PetsFeed.stringify(pets, meta.blockHeight) /* v2, one pet per line: small git diffs */);
   /* site-fast: first-visit boot copy for js/v2-chain.js fromStatic() (only the hashes the rows need; the page re-reads the chain right after) */
   { const rr = input.rows.filter(r => r.block_index <= input.tip), seed = ctx.XCPETS_BLOCK_HASHES || {}, hs = {}; rr.forEach(r => { const k = r.block_index; if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); gateBlocks(ctx.V2Rules, input.tip).forEach(k => { if (!seed[k] && input.hashes && input.hashes[k]) hs[k] = input.hashes[k]; }); /* firesale-hashes: every gate block's hash ships in the boot copy, so a first visit never stops at fire.missing */
     fs.writeFileSync(path.join(OUT, 'boot.json'), JSON.stringify({ tip: input.tip, generatedAt: meta.generatedAt, rows: rr, hashes: hs, dex: input.dex || null,

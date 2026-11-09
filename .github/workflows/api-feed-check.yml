@@ -14,6 +14,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - run: node tools/api-feed.js --out /tmp/api --save-dex /tmp/api/dex.json
-      - run: node -e "const j=require('/tmp/api/pets.json');const p=j.pets.find(x=>x.id===2);console.log('tip',j.blockHeight,'pet 2',p.name,'owner',p.owner)"
+      - run: node -e "const F=require('./js/pets-feed.js');const j=F.expand(require('/tmp/api/pets.json'));const p=j.pets.find(x=>x.id===2);if(!p)throw new Error('no pet 2');console.log('tip',j.blockHeight,'pet 2',p.name,'owner',p.owner)"
       - uses: actions/upload-artifact@v4
         with: { name: api-feed-check, path: /tmp/api }
