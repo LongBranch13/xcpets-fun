@@ -1,6 +1,6 @@
 {
- "lastBlock": 975198,
- "count": 252,
+ "lastBlock": 975202,
+ "count": 253,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3026,6 +3026,18 @@
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 74340,
+   "asset": "A16057091047490485848",
+   "tiedBlock": 975200,
+   "tiedTx": "c832c2438fafa7ae1a3a5a132f73d942c2a89e46ae60cee7a938053d5e224187",
+   "kind": "deed",
+   "name": "Puwen",
+   "species": "hyb:lenny:peepo",
+   "speciesLabel": "Lepo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
