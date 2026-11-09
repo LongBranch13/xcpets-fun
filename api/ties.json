@@ -1,6 +1,6 @@
 {
- "lastBlock": 975121,
- "count": 245,
+ "lastBlock": 975124,
+ "count": 247,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2942,6 +2942,30 @@
    "speciesLabel": "Chad",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 4104,
+   "asset": "A6063840072797096959",
+   "tiedBlock": 975123,
+   "tiedTx": "900e9b503538e59ee66792d8bbab448ce51f795f5483f7eb38cc741f9d216ea9",
+   "kind": "deed",
+   "name": "Baba",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 19322,
+   "asset": "A15304671164065698124",
+   "tiedBlock": 975123,
+   "tiedTx": "0585991116fedd05d5134df3ba370be5cfcd42606e07fb222c012c6b173e7c79",
+   "kind": "deed",
+   "name": "Wizard",
+   "species": "wizard",
+   "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
