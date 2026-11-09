@@ -1,5 +1,5 @@
 {
- "lastBlock": 975174,
+ "lastBlock": 975177,
  "count": 253,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2653,7 +2653,7 @@
    "species": "hyb3:doge:wojak:lenny",
    "speciesLabel": "Dogjony (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 86549,
@@ -2665,7 +2665,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 93718,
