@@ -1,5 +1,5 @@
 {
- "lastBlock": 975192,
+ "lastBlock": 975196,
  "count": 252,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -1861,7 +1861,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 84376,
@@ -1873,7 +1873,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 11358,
@@ -2617,7 +2617,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 77,
@@ -2701,7 +2701,7 @@
    "species": "djpepe",
    "speciesLabel": "DJ Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 109786,
@@ -2713,7 +2713,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 110589,
@@ -2725,7 +2725,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 35887,
@@ -2797,7 +2797,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 46592,
@@ -3001,7 +3001,7 @@
    "species": "hyb:lenny:pepe",
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 93713,
@@ -3013,7 +3013,7 @@
    "species": "hyb:lenny:bobo",
    "speciesLabel": "Lebo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 140028,
@@ -3025,7 +3025,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   }
  ]
 }
