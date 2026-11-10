@@ -673,7 +673,8 @@
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
   /* hotfix 3: the filtered + sorted pet list (shared by renderPets and the sort-only reorder) */
-  function petList(alive, dead, noZF) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value), X = window.UXB ? UXB.filters() : null;
+  function tokKind() { var e = $('fTok'), v = e ? e.value : ''; return window.V2TokFilter ? V2TokFilter.norm(v) : (/^(yes|no|away)$/.test(v) ? v : ''); }
+  function petList(alive, dead, noZF, noTok) { var fT = $('fTier').value, fS = $('fSort').value, hide = Number($('fHide').value), X = window.UXB ? UXB.filters() : null;
     var list = (cem ? dead : V.hideAtOrBelow(alive, hide)).filter(function (p) { return cem || fT === 'all' || TIER_ID[p.tier] === fT; }).slice().reverse();
     if (!cem && S.ui_starOnly) { var KS = new Set(keptIds()); list = list.filter(function (p) { return KS.has(p.id); }); } /* Starred filter (favorite-star-restore, display only) */
     if (X) list = list.filter(function (p) { return X.keep(p); }); /* ux-batch: minimum rarity, origin, search (display only) */
@@ -686,7 +687,9 @@
     if (fS === 'sel') { var KS2 = new Set(S.sel.map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-checkbox (display only): checked pets first, then pet # (was starred first) */
     if (fS === 'ztime' && window.V2ZombieFilter) { var ZTw = world(); list.sort(V2ZombieFilter.comparator(ZTw, (ZTw.tip || 0) + 1)); } /* mypets-zombie-filter (Oct 30 2026, display only): zombies first, least time left before feral / dust */
     if (fS === 'weird' && window.V2Render && V2Render.rareInfo) list.sort(function (a, b) { var ia = V2Render.rareInfo(a), ib = V2Render.rareInfo(b), sa = ia ? (ia.weird ? 2 : ia.legend ? 1 : 0) : 0, sb = ib ? (ib.weird ? 2 : ib.legend ? 1 : 0) : 0; return sb - sa || String((ia && ia.kind) || '').localeCompare(String((ib && ib.kind) || '')) || a.id - b.id; }); /* places-perf: Weird birth traits first, then Legends, so a shock-box haul can be sorted before discard */
+    if (fS === 'tok' && window.V2TokFilter) list.sort(V2TokFilter.comparator(world())); /* mypets-tok-filter: tokenized pets together, ahead of the ones with no token */
     if (!cem && !noZF && ZFK && window.V2ZombieFilter) { var ZFw = world(), ZFb = (ZFw.tip || 0) + 1; list = list.filter(function (p) { return V2ZombieFilter.match(ZFK, ZFw, p, ZFb, ME); }); } /* mypets-zombie-filter: All zombies / Hungry / Feral / Crumbling soon (optional, off by default) */
+    if (!noTok && window.V2TokFilter) { var tk = tokKind(); if (tk) { var Tw = world(); list = list.filter(function (p) { return V2TokFilter.match(tk, Tw, p); }); } } /* mypets-tok-filter: optional, off by default; noTok counts the other filters without this one */
     if (X && X.flip) list.reverse();
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
@@ -734,6 +737,7 @@
     if (V.streakOf && $('streakBar')) { var stk = ME ? V.streakOf(w, ME, w.tip) : null; /* WAGMI / NGMI daily check-in (login-streak rework, Oct 21 2026) */
       $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
     $('nAlive').textContent = alive.length; $('nDead').textContent = dead.length; $('petBadge').textContent = alive.length;
+    if (window.V2TokFilter && $('fTok')) { var tc = V2TokFilter.counts(w, petList(alive, dead, false, true)); [['', 'All', tc.all], ['yes', 'Tokenized', tc.yes], ['no', 'Not tokenized', tc.no], ['away', 'Token held elsewhere', tc.away]].forEach(function (x) { var o = $('fTok').querySelector('option[value="' + x[0] + '"]'); if (!o) return; var t = x[1] + ' · ' + fmt(x[2]); if (o.textContent !== t) o.textContent = t; }); } /* mypets-tok-filter: counts follow the other filters, one pass, labels change only when a number does */
     var list = petList(alive, dead);
     /* habits-ux (Oct 27 2026) folded never-fed pets into one collapsed group; mypets-show-all (owner, Oct 28 2026) lists every pet again and the
      * fold becomes an opt-in 'Never fed only' filter (My Pets and Cemetery tab). Discarded pets are already out (mine). One O(n) pass, so 9k-pet wallets stay fast. */
@@ -797,7 +801,7 @@
       ds.forEach(function (x) { if (x[0]._reused) { x[0]._reused = 0; if (R.revive) R.revive(x[0].querySelector('canvas')); /* mypets-first3-1103: outline + animation back */ return; } R.lazy(x[0].querySelector('canvas'), function () { return petFrames(x[1], w); }); }); }
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
      * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
-    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|z' + ZFK + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
+    var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|z' + ZFK + '|t' + tokKind() + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
     var upto = Math.min(list.length, Math.max(CH, PG.n));
     put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
     (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
@@ -898,6 +902,8 @@
   if ($('tabCem')) $('tabCem').onclick = function () { location.href = 'cemetery.html'; };
   /* favorite-star-restore: 'starred' is a real sort again (★ Starred first) and the Starred filter works again */
   (function () { var s = $('fSort'); if (!s || s.querySelector('option[value="weird"]')) return; var g = document.createElement('optgroup'); g.setAttribute('label', 'Birth'); var o = document.createElement('option'); o.value = 'weird'; o.textContent = '🌀 Weird first'; g.appendChild(o); s.appendChild(g); })();
+  (function () { var s = $('fSort'); if (!window.V2TokFilter || !s || s.querySelector('option[value="tok"]')) return; var g = document.createElement('optgroup'); g.setAttribute('label', 'Token'); var o = document.createElement('option'); o.value = 'tok'; o.textContent = '🎟 Tokenized first'; g.appendChild(o); s.appendChild(g); })(); /* mypets-tok-filter: only when the filter module loaded, so a page without it does not grow a sort that does nothing */
+  if ($('fTok') && window.V2TokFilter) { var tk0 = V2TokFilter.load(); if (tk0) $('fTok').value = tk0; $('fTok').onchange = function () { V2TokFilter.save(this.value); render(); }; } /* mypets-tok-filter: sessionStorage, same visit, like the zombie filter and Spam City filters */
   ['fTier', 'fSort', 'fHide'].forEach(function (id) { $(id).onchange = function () { S['ui_' + id] = this.value; save(); if (id === 'fSort' && resort()) return; render(); }; if (S['ui_' + id] != null) $(id).value = S['ui_' + id]; });
   if ($('fStarred')) { $('fStarred').setAttribute('aria-pressed', String(!!S.ui_starOnly)); $('fStarred').onclick = function () { S.ui_starOnly = !S.ui_starOnly; this.setAttribute('aria-pressed', String(S.ui_starOnly)); save(); render(); }; } /* favorite-star-restore */
   $('selAll').onchange = function () { var w = world(), hide = Number($('fHide').value), fT = $('fTier').value;
