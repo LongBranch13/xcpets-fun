@@ -1,6 +1,6 @@
 {
- "lastBlock": 975268,
- "count": 266,
+ "lastBlock": 975273,
+ "count": 267,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3192,6 +3192,18 @@
    "name": "Pepafuzy",
    "species": "pepe",
    "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 147179,
+   "asset": "A3798322434231355475",
+   "tiedBlock": 975270,
+   "tiedTx": "46e3588ae1300d720527def482564250a34a1e7c3e849cda2f53e65c88d92abe",
+   "kind": "deed",
+   "name": "Favaki",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
