@@ -166,7 +166,7 @@
     if ($('bRelease')) $('bRelease').hidden = !!(window.V2Rules && V2Rules.retiredUI && window.V2UI && V2UI.world && V2Rules.retiredUI(V2UI.world())); if ($('bRelease')) $('bRelease').disabled = !n; if ($('bRelease')) $('bRelease').title = n ? 'Release ' + n + ' selected pet' + (n === 1 ? '' : 's') + ' (a burn, final)' : 'Select pets first';
     if (window.V2LairQoL && V2LairQoL.mount && document.getElementById('lairQol')) { try { V2LairQoL.mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } catch (e) { } }
     /* mypets-checkbox (owner Oct 28 2026): Roll gear / Auto-equip (Rare Room) act on the checked pets again (was starred pets) */
-    var sIds = U.pickIds ? U.pickIds(w) : S.sel.slice(), rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), ae0 = V.autoEquipOps(w, ME, sIds, S.tip);
+    var sIds = U.pickIds ? U.pickIds(w) : S.sel.slice(), rn0 = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), rq0 = V.rollQueue(w, ME, sIds, rn0), aePlan = window.V2LairQoL && V2LairQoL.autoEquipOps ? V2LairQoL.autoEquipOps : V.autoEquipOps, ae0 = aePlan(w, ME, sIds, S.tip);
     $('bRoll').innerHTML = 'Roll gear ' + rn0 + ' time' + (rn0 === 1 ? '' : 's') + ' <span class="cost">' + (rq0.length ? fmt(rq0.length) + ' roll' + (rq0.length === 1 ? '' : 's') + ' · ' + fmt(sum(rq0)) + ' XCPETS · ' + fmt(sIds.length) + ' selected' : fmt(V.COSTS.roll) + ' XCPETS per roll · select pets first') + '</span>'; $('bRoll').disabled = !rq0.length;
     $('bAuto').innerHTML = '✨ Auto-equip <span class="cost">' + (ae0.length ? ae0.length + ' piece' + (ae0.length === 1 ? '' : 's') + ' · free' : '') + '</span>'; $('bAuto').disabled = !ae0.length;
     if (!n) return;
