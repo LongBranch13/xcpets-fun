@@ -497,7 +497,9 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 .nav nav a.navrank[aria-current="page"],.nav nav a.navtut[aria-current="page"]{color:var(--green)}
 /* pet-sort (Oct 24 2026, display only): sort dropdown right next to the My Pets search */
 .ctlrow .psort{display:flex;align-items:center;gap:4px;flex:0 1 auto}.ctlrow .psort select{max-width:200px}
-@media (max-width:640px){.ctlrow .psort{flex:1 1 auto}.ctlrow .psort select{flex:1;max-width:none}}
+.ctlrow .ptok{display:flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;max-width:100%}
+.ctlrow .ptok xc-select{min-width:0;max-width:100%}
+@media (max-width:640px){.ctlrow .psort{flex:1 1 auto}.ctlrow .psort select{flex:1;max-width:none}.ctlrow .ptok{flex:1 1 100%}}
 /* Dud Duster (easy-discard 2026-10-24) */
 #packBox .dudbar{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;justify-content:center;margin:0 0 8px;padding:6px;border:1px dashed var(--line);border-radius:6px}
 #packBox .dudbar .q{padding:3px 7px;font-size:11px}#packBox .dudpw input{width:52px;font:inherit;padding:2px 4px}

@@ -23,7 +23,8 @@
       '#petsPanel .ctlrow .mpt-view{white-space:nowrap}#petsPanel #fShowingSlot:empty{display:none}' +
       '#petsPanel .pettabs{display:none!important}#petsPanel #bulkRow #bFeedKept{font-size:15px;padding:10px 20px}' +
       '@media (max-width:640px){#petsPanel #bulkRow #bFeedKept{flex:1 1 0;min-width:0}#petsPanel .mpt-alt{flex:1 1 100%}#petsPanel .mpt-alt .q{flex:1 1 0;min-width:0}' +
-      '#petsPanel .ctlrow .psort{flex:1 1 0;min-width:0;display:flex}#petsPanel .ctlrow .psort select{flex:1 1 0;min-width:0;width:100%}#petsPanel .ctlrow .mpt-view{flex:0 0 auto}#petsPanel #fShowingSlot{flex-basis:100%}}';
+      '#petsPanel .ctlrow .psort{flex:1 1 0;min-width:0;display:flex}#petsPanel .ctlrow .psort select{flex:1 1 0;min-width:0;width:100%}' +
+      '#petsPanel .ctlrow .ptok{flex:1 1 100%;min-width:0}#petsPanel .ctlrow .ptok xc-select{flex:1;max-width:100%}#petsPanel .ctlrow .mpt-view{flex:0 0 auto}#petsPanel #fShowingSlot{flex-basis:100%}}';
     d.head.appendChild(s); }
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function stat() { var el = $('mptStat'), u = U(); if (!el || !u || !u.world) return; var me = u.ME; try { me = me || localStorage.getItem('xcpets-v2-me'); } catch (e) { }
