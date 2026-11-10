@@ -68,6 +68,12 @@ IDS.forEach(id => {
     const fn = 'compare-' + id + '-' + label.toLowerCase() + '.png';
     fs.writeFileSync(path.join(OUT, fn), png(w, h, cd)); paths.push(fn);
   });
+  const Z = 14, close = 32 * Z, cWide = pad * 2 + close, cTall = 28 + close;
+  const md = canvas(cWide, cTall, BG);
+  text(md, cWide, S.NAMES[id] + '  MYTHIC', pad, 8, LAB);
+  blit(md, cWide, S.render(id, 5, 0, '#1b2430'), pad, 24, Z);
+  const cn = 'compare-' + id + '-mythic-close.png';
+  fs.writeFileSync(path.join(OUT, cn), png(cWide, cTall, md)); paths.push(cn);
 });
 console.log(paths.join('\n'));
 console.log('wrote', OUT);

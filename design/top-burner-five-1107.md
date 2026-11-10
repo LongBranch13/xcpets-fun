@@ -18,7 +18,7 @@ Checked 2026-11-08 against Counterparty Core destructions for XCPETS (`api.count
 | `chupacabra` | Chupacabra | 145 |
 | `starman` | Starman (suited astronaut, no car) | 146 |
 
-Looks follow `design/art/top-burner-five/concept-*.jpg`: the yeti roars with both arms up, the sasquatch stands shaggy with both arms out, GreyPepe is a grey alien Pepe with a green glow and a UFO effect, the chupacabra is a fanged spiny crouch, and Starman is the white suit with a gold visor and a shoulder flag (no car). Species ids and powers are unchanged. The gate stays null. Bitcoin, if drawn, is red. No fire aura.
+Looks follow `design/art/top-burner-five/concept-*.jpg`: the yeti roars with both arms up, the sasquatch stands shaggy with both arms out, GreyPepe is a grey alien Pepe with no UFO, the chupacabra is a fanged spiny crouch, and Starman is the white suit with a gold visor and a shoulder flag (no car). Each pet's own glow is mythic only. Species ids and powers are unchanged. The gate stays null. Bitcoin, if drawn, is red. No fire aura.
 
 Each is a Legendary egg (`care` 0), `p.supreme` 1 of 1, drawn by `js/topburner-sprites.js` through Egg, Hatchling, Juvenile, Adult, Elder and Mythic (4 frames: rest, bob, blink or visor glint, action). Dead is the grey palette. Risen uses the shared zombie pass. Gear draws on the cap, cape, wrap, boots, hand and glasses without covering the eyes. No fire aura, flame crown, edition gold frame or flame pixels. Babies are normal pets, never a second pure copy.
 

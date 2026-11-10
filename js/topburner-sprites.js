@@ -1,10 +1,8 @@
 /* TOP BURNER FIVE (1 of 1, PREVIEW). Gate stays null until the owner says go.
- * Sprites are derived from design/art/top-burner-five/concept-*.jpg: background removed,
- * the character fit to the 32x32 grid (same size as the Bitcoin Wizard and the Orange Dragon),
- * quantized to 3-4 shades per material, then hand-cleaned (1px ink outline, readable eyes and
- * mouth, highlights and shadows). Younger stages are smaller versions of that same character.
- * Frames are small offsets of the body, head and limbs. Dead is the grey pass. Risen uses the
- * shared zombie pass on this same base. No fire aura. Bitcoin red is the house rule; these
+ * Sprites follow design/art/top-burner-five/concept-*.jpg on the 32x32 grid. Faces are drawn
+ * after the body is scaled so the eyes, brow and mouth stay readable from hatchling through
+ * mythic. The egg is an egg. GreyPepe has no UFO. Each pet's own glow is mythic only
+ * (ice, moss, green, blood, starlight). No fire aura. Bitcoin red is the house rule; these
  * pets carry no coin. Starman has no car. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.TopBurnerSprites = factory(); })(typeof window !== 'undefined' ? window : this, function () {
   'use strict';
@@ -12,14 +10,12 @@
   var IDS = ['yeti', 'sasquatch', 'greypepe', 'chupacabra', 'starman'];
   var NAMES = { yeti: 'Abominable Snowman', sasquatch: 'Sasquatch', greypepe: 'GreyPepe Alien', chupacabra: 'Chupacabra', starman: 'Starman' };
   var PAL = {
-    yeti: { n: '#12161c', W: '#f4f8ff', w: '#d6e0ec', d: '#b0bed0', s: '#8298ae', b: '#5a7090', k: '#3a4e68', H: '#ffffff', M: '#3d5270', m: '#161e2c', G: '#10141c', R: '#e45870', X: '#fffaf4', E: '#ffffff', P: '#0a0c12', C: '#243044', c: '#a8bdd0', o: '#d6e0ec', F: '#3a4e68' },
-    sasquatch: { n: '#140e0a', W: '#9c6840', w: '#764c2c', d: '#52341e', s: '#342012', S: '#d2a072', B: '#e6e0d6', b: '#a8a094', E: '#fcf8f2', P: '#1c120c', m: '#602822', X: '#fffaf4', C: '#c89264', o: '#764c2c', F: '#342012' },
-    greypepe: { n: '#10141c', W: '#d2d6da', w: '#a8acb0', d: '#74787e', s: '#4a4e54', E: '#080a0e', P: '#ffffff', M: '#9c441a', m: '#d6682a', g: '#40e8b0', j: '#126e60', Q: '#a0e8e0', U: '#969ca4', L: '#e6fffa', I: '#e6ecf2', o: '#a8acb0', F: '#4a4e54' },
-    chupacabra: { n: '#100e10', W: '#baceA0', w: '#88a276', d: '#5a704e', s: '#32402c', q: '#12100e', K: '#ecf0dc', E: '#fafffc', P: '#080a0c', X: '#f8f2e0', C: '#f6f4ee', m: '#461618', o: '#88a276', F: '#32402c' },
-    starman: { n: '#12141c', W: '#f8f9fb', w: '#d6dce4', d: '#969eaa', s: '#464e5a', A: '#e6a42e', a: '#965a16', E: '#fff8dc', Z: '#c1121f', N: '#1d3f8a', U: '#ffffff', Q: '#ecf0f4', I: '#1e222a', o: '#d6dce4', F: '#464e5a' }
+    yeti: { n: '#12161c', W: '#f4f8ff', w: '#d6e0ec', d: '#b0bed0', s: '#8298ae', b: '#5a7090', k: '#3a4e68', H: '#ffffff', M: '#3d5270', m: '#1c283c', G: '#10141c', R: '#e45870', X: '#fffaf4', E: '#ffffff', P: '#0a0c12', C: '#243044', c: '#a8bdd0', o: '#d6e0ec', F: '#3a4e68', f: '#f4f8ff', Y: '#7ecfff' },
+    sasquatch: { n: '#140e0a', W: '#9c6840', w: '#764c2c', d: '#52341e', s: '#342012', S: '#d2a072', B: '#e6e0d6', b: '#a8a094', E: '#fcf8f2', P: '#1c120c', m: '#e09878', X: '#fffaf4', C: '#c89264', N: '#3a2414', o: '#764c2c', F: '#342012', f: '#764c2c', Y: '#86a84a' },
+    greypepe: { n: '#10141c', W: '#d2d6da', w: '#a8acb0', d: '#74787e', s: '#4a4e54', E: '#080a0e', P: '#ffffff', M: '#9c441a', m: '#d6682a', g: '#40e8b0', j: '#126e60', Q: '#a0e8e0', U: '#969ca4', L: '#e6fffa', I: '#e6ecf2', o: '#a8acb0', F: '#4a4e54', f: '#969ca4', Y: '#3ef0c0' },
+    chupacabra: { n: '#100e10', W: '#bacea0', w: '#88a276', d: '#5a704e', s: '#32402c', q: '#161410', K: '#e4eed6', E: '#f4fff8', P: '#080a0c', X: '#f8f4ea', C: '#f4f0e6', m: '#6e2438', o: '#88a276', F: '#32402c', f: '#bacea0', Y: '#c23060' },
+    starman: { n: '#12141c', W: '#f7f8fa', w: '#d4dae2', d: '#8e96a4', s: '#3e4654', A: '#e6a42e', a: '#8a5414', E: '#fff6d4', Z: '#c1121f', N: '#1d3f8a', U: '#ffffff', h: '#f7f8fa', I: '#2c3344', o: '#d4dae2', F: '#3e4654', f: '#f7f8fa', Y: '#d5e4ff', y: '#f3e0a0' }
   };
-  /* chupacabra W hex must be lowercase-safe; fix #bacea0 */
-  PAL.chupacabra.W = '#bacea0';
   var LID = { yeti: 'm', sasquatch: 's', greypepe: 'd', chupacabra: 's', starman: 'a' };
   var RAW = {
     yeti: `..............HWH...............
@@ -192,12 +188,13 @@ CcC........WWWWWWWWWW.......CcC.
   function scaleTo(src, th) { var b = bbox(src); if (b.x1 < 0) return clone(src); var sw = b.x1 - b.x0 + 1, sh = b.y1 - b.y0 + 1; if (th >= sh - 1) return clone(src);
     var tw = Math.max(8, Math.round(th * sw / sh)); if (tw > 30) { tw = 30; th = Math.max(10, Math.round(sh * 30 / sw)); }
     var x0 = Math.max(0, Math.floor((N - tw) / 2)), y0 = Math.max(0, 30 - th), g = grid();
-    var feat = { E: 1, P: 1, X: 1, R: 1, A: 1, a: 1, Z: 1, N: 1, B: 1, M: 1, m: 1 };
+    var feat = { E: 1, P: 1, X: 1, R: 1, A: 1, a: 1, Z: 1, N: 1, B: 1, M: 1, m: 1, f: 1, h: 1, K: 1, C: 1, c: 1 };
     for (var y = 0; y < th; y++) { var sy0 = b.y0 + Math.floor(y * sh / th), sy1 = Math.max(sy0, b.y0 + Math.ceil((y + 1) * sh / th) - 1);
       for (var x = 0; x < tw; x++) { var sx0 = b.x0 + Math.floor(x * sw / tw), sx1 = Math.max(sx0, b.x0 + Math.ceil((x + 1) * sw / tw) - 1), votes = {}, n = 0, best = null, bn = 0, fbest = null, fn = 0;
         for (var sy = sy0; sy <= sy1 && sy < N; sy++) for (var sx = sx0; sx <= sx1 && sx < N; sx++) { var k = src[sy][sx]; if (!k) continue; n++; votes[k] = (votes[k] || 0) + 1; if (votes[k] > bn) { bn = votes[k]; best = k; } if (feat[k] && votes[k] > fn) { fn = votes[k]; fbest = k; } }
         if (!n) continue;
-        g[y0 + y][x0 + x] = (fbest && fn / n >= 0.34) ? fbest : best; } }
+        var thresh = (fbest === 'f' || fbest === 'h') ? 0.18 : (fbest === 'K' || fbest === 'C' || fbest === 'c') ? 0.4 : 0.34;
+        g[y0 + y][x0 + x] = (fbest && fn / n >= thresh) ? fbest : best; } }
     return g; }
   function eyeCount(g) { var n = 0; for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (g[y][x] === 'E' || g[y][x] === 'P') n++; return n; }
   function ensureEyes(g, id) { if (eyeCount(g) >= 2) return; var pts = [];
@@ -205,25 +202,27 @@ CcC........WWWWWWWWWW.......CcC.
     if (pts.length < 2) { var b = bbox(g); if (b.x1 < 0) return; pts = [[b.x0 + 2, b.y0 + 2], [b.x0 + 4, b.y0 + 2]]; }
     g[pts[0][1]][pts[0][0]] = 'E'; var q = pts[Math.min(pts.length - 1, 2)]; if (g[q[1]]) g[q[1]][q[0]] = 'P'; }
   function blink(g, lid) { var o = clone(g); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (o[y][x] === 'E' || o[y][x] === 'P') o[y][x] = lid; return o; }
-  function nudge(g, id) { var o = clone(g), b = bbox(g); if (b.x1 < 0) return o; var cx = (b.x0 + b.x1) / 2, yCut = b.y0 + (b.y1 - b.y0) * 0.7, headY = b.y0 + (b.y1 - b.y0) * 0.34, pts = [];
-    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x]; if (!k || y > yCut) continue; var head = y < headY && Math.abs(x - cx) < 4; if (head && id !== 'greypepe') continue;
-      var left = x < cx - 3, right = x > cx + 3;
-      if (id === 'yeti' && (left || right)) pts.push([x, y, k]);
-      else if (id === 'sasquatch' && right) pts.push([x, y, k]);
-      else if (id === 'chupacabra' && left) pts.push([x, y, k]);
-      else if (id === 'starman' && left) pts.push([x, y, k]);
-      else if (id === 'greypepe' && (k === 'Q' || k === 'U' || k === 'L')) pts.push([x, y, k, 1]); }
+  function nudge(g, id) { var o = clone(g), b = bbox(g); if (b.x1 < 0) return o; var cx = (b.x0 + b.x1) / 2, yLo = b.y0 + (b.y1 - b.y0) * 0.34, yCut = b.y0 + (b.y1 - b.y0) * 0.72, pts = [];
+    var face = { E: 1, P: 1, X: 1, R: 1, m: 1, M: 1, B: 1, A: 1, a: 1, N: 1, Z: 1, U: 1, f: 1, G: 1 };
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x]; if (!k || y > yCut) continue;
+      if (id === 'greypepe') { if ((k === 'm' || k === 'M') && y > yLo) pts.push([x, y, k, 1]); continue; }
+      if (face[k]) continue;
+      if (id === 'starman') { if (k === 'h') pts.push([x, y, k]); }
+      else if (id === 'yeti' && y < yCut && (x < cx - 6 || x > cx + 6)) pts.push([x, y, k]);
+      else if (id === 'sasquatch' && x > cx + 6 && y < yCut) pts.push([x, y, k]);
+      else if (id === 'chupacabra' && x < cx - 4 && y > yLo) pts.push([x, y, k]); }
     pts.forEach(function (p) { o[p[1]][p[0]] = null; });
-    pts.forEach(function (p) { set(o, p[0] + (p[3] ? -2 : 0), p[1] - 1, p[2]); });
+    pts.forEach(function (p) { set(o, p[0] + (p[3] ? 1 : 0), p[1] - (p[3] ? 0 : 1), p[2]); });
     return o; }
-  function markGear(g) { var b = bbox(g); if (b.x1 < 0) return; var body = { W: 1, w: 1, d: 1, s: 1, Q: 1 }, cx = (b.x0 + b.x1) / 2, yA = b.y0 + (b.y1 - b.y0) * 0.4, yB = b.y0 + (b.y1 - b.y0) * 0.68, n = 0;
-    for (var y = Math.floor(yA); y <= yB; y++) for (var x = Math.floor(cx - 3); x <= cx + 3; x++) if (g[y] && body[g[y][x]] && n < 18) { g[y][x] = 'o'; n++; }
+  function markGear(g) { var b = bbox(g); if (b.x1 < 0) return; var body = { W: 1, w: 1, d: 1, s: 1, Q: 1, U: 1 }, cx = (b.x0 + b.x1) / 2, yA = b.y0 + (b.y1 - b.y0) * 0.5, yB = b.y0 + (b.y1 - b.y0) * 0.72, n = 0;
+    for (var y = Math.floor(yA); y <= yB; y++) { var faceRow = false; for (var xf = 0; xf < N; xf++) if (g[y][xf] === 'E' || g[y][xf] === 'P' || g[y][xf] === 'R' || g[y][xf] === 'X' || g[y][xf] === 'A' || g[y][xf] === 'm') faceRow = true; if (faceRow) continue;
+      for (var x = Math.floor(cx - 3); x <= cx + 3; x++) if (g[y] && body[g[y][x]] && n < 18) { g[y][x] = 'o'; n++; } }
     for (var y2 = b.y1 - 1; y2 <= b.y1; y2++) for (var x2 = 0; x2 < N; x2++) if (g[y2] && body[g[y2][x2]]) g[y2][x2] = 'F'; }
   function outline(g) { var o = g.map(function (r) { return r.slice(); }); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (!g[y][x]) {
     if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X]; })) o[y][x] = 'n'; } return o; }
   function hexRgb(c) { return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]; }
   function deadRgb(rgb) { var L = 0.3 * rgb[0] + 0.59 * rgb[1] + 0.11 * rgb[2]; return [Math.round(L * 0.45 + 48), Math.round(L * 0.47 + 46), Math.round(L * 0.4 + 42)]; }
-  function eyeTop(g) { var ey = 99, top = 99, y, x; for (y = 0; y < N; y++) for (x = 0; x < N; x++) { if (g[y][x] && g[y][x] !== 'g' && g[y][x] !== 'j' && y < top) top = y; if ((g[y][x] === 'E' || g[y][x] === 'P') && y < ey) ey = y; } return { ey: ey === 99 ? 8 : ey, top: top === 99 ? 2 : top }; }
+  function eyeTop(g) { var ey = 99, top = 99, y, x, skip = { g: 1, j: 1, h: 1, Y: 1, y: 1 }; for (y = 0; y < N; y++) for (x = 0; x < N; x++) { if (g[y][x] && !skip[g[y][x]] && y < top) top = y; if ((g[y][x] === 'E' || g[y][x] === 'P') && y < ey) ey = y; } return { ey: ey === 99 ? 8 : ey, top: top === 99 ? 2 : top }; }
   function hline(g, x0, x1, y, k) { for (var x = x0; x <= x1; x++) set(g, x, y, k); }
   function gearOn(g, gear, a) {
     var Gr = gear || {}; if (!Gr.head && !Gr.face && !Gr.body && !Gr.back && !Gr.feet && !Gr.hand && !Gr.weapon) return;
@@ -256,26 +255,151 @@ CcC........WWWWWWWWWW.......CcC.
     if (glint) set(g, 13 + tilt, top + 4, id === 'starman' ? 'E' : shade[0]);
     if (id === 'yeti') { set(g, 15, top - 1, 'H'); set(g, 16, top - 2, 'H'); set(g, 17, top - 1, 'W'); set(g, 14, top - 1, 'W'); set(g, 10, top + 2, 'C'); set(g, 21, top + 2, 'C'); set(g, 9, top + 3, 'c'); set(g, 22, top + 3, 'c'); }
     else if (id === 'sasquatch') { for (var xb = 13; xb <= 19; xb++) if (g[top + 10] && g[top + 10][xb]) g[top + 10][xb] = 'B'; set(g, 14, top + 11, 'B'); set(g, 18, top + 11, 'b'); set(g, 16, top - 1, 'd'); set(g, 15, top - 2, 'W'); }
-    else if (id === 'greypepe') { set(g, 24, top + 1, 'Q'); set(g, 25, top + 1, 'Q'); set(g, 23, top + 2, 'U'); set(g, 24, top + 2, 'L'); set(g, 25, top + 2, 'U'); set(g, 26, top + 2, 'U'); set(g, 24, top + 3, 'L'); set(g, 26, top + 3, 'L');
-      var skin = { W: 1, w: 1, d: 1, s: 1 }, add = [];
-      for (var y2 = 0; y2 < N; y2++) for (var x2 = 0; x2 < N; x2++) if (!g[y2][x2] && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x2 + d[0], Y = y2 + d[1]; return Y >= 0 && X >= 0 && Y < N && X < N && skin[g[Y][X]]; })) add.push([x2, y2]);
-      add.forEach(function (p) { g[p[1]][p[0]] = 'g'; }); }
+    else if (id === 'greypepe') { /* grey shell, orange crack. No UFO and no glow on the egg. */ }
     else if (id === 'chupacabra') { set(g, 14, top - 1, 'q'); set(g, 16, top - 2, 'K'); set(g, 18, top - 1, 'q'); set(g, 15, top, 'K'); set(g, 12, top + 8, 'q'); set(g, 19, top + 12, 'q'); }
     else { for (var xa = 11; xa <= 21; xa++) if (g[top + 6] && g[top + 6][xa]) g[top + 6][xa] = xa < 16 ? 'A' : 'a'; set(g, 12, top + 10, 'N'); set(g, 13, top + 10, 'Z'); set(g, 12, top + 11, 'U'); set(g, 13, top + 11, 'Z'); }
     return g;
   }
+  function put(g, x, y, k) { if (x < 0 || y < 0 || x >= N || y >= N || !g[y][x]) return false; g[y][x] = k; return true; }
+  function hputs(g, x0, x1, y, k) { for (var x = x0; x <= x1; x++) put(g, x, y, k); }
+  function grow(g, x, y, k) { if (put(g, x, y, k)) return true; if (y <= 0 || y >= N || x < 0 || x >= N || !g[y - 1][x]) return false; g[y][x] = k; return true; }
+  function thick(g, x0, y0, x1, y1, k) { var steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+    for (var i = 0; i <= steps; i++) { var x = Math.round(x0 + (x1 - x0) * i / steps), y = Math.round(y0 + (y1 - y0) * i / steps); set(g, x, y, k); set(g, x + 1, y, k); set(g, x, y + 1, k); } }
+  function keepLargest(g) { var seen = [], best = [], bestN = 0, idAt = function (x, y) { return y * N + x; };
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { if (!g[y][x] || seen[idAt(x, y)]) continue; var stack = [[x, y]], comp = []; seen[idAt(x, y)] = 1;
+      while (stack.length) { var p = stack.pop(); comp.push(p); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var X = p[0] + d[0], Y = p[1] + d[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X] && !seen[idAt(X, Y)]) { seen[idAt(X, Y)] = 1; stack.push([X, Y]); } }); }
+      if (comp.length > bestN) { bestN = comp.length; best = comp; } }
+    var keep = {}; best.forEach(function (p) { keep[idAt(p[0], p[1])] = 1; });
+    for (var y2 = 0; y2 < N; y2++) for (var x2 = 0; x2 < N; x2++) if (g[y2][x2] && !keep[idAt(x2, y2)]) g[y2][x2] = null; }
+  function prepYeti(g) { var eyes = [], all = [], face = { m: 1, G: 1, R: 1, X: 1, E: 1, P: 1 };
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { if (!face[g[y][x]]) continue; all.push([x, y]); if (g[y][x] === 'E' || g[y][x] === 'P') eyes.push([x, y]); g[y][x] = 'W'; }
+    var src = eyes.length ? eyes : all; if (!src.length) return; var ax = 0, ay = 0; src.forEach(function (p) { ax += p[0]; ay += p[1]; });
+    ax = Math.round(ax / src.length); ay = Math.round(ay / src.length); set(g, ax, ay, 'f'); set(g, ax + 1, ay, 'f'); set(g, ax, ay + 1, 'f'); }
+  function calmHead(g, yFrac) { var b = bbox(g); if (b.x1 < 0) return; var yMax = Math.round(b.y0 + (b.y1 - b.y0) * yFrac);
+    for (var y = b.y0; y <= yMax; y++) { var xs = []; for (var x = 0; x < N; x++) if (g[y][x]) xs.push(x); if (xs.length < 4) continue; var L = xs[0], R = xs[xs.length - 1];
+      xs.forEach(function (x) { if (x === L || x === R) return; var k = g[y][x]; if (k === 'C' || k === 'c' || k === 'h' || k === 'K') return; var t = (x - L) / Math.max(1, R - L); g[y][x] = t < 0.22 ? 'W' : t > 0.72 ? 'd' : 'w'; }); } }
+  function plantBox(g, y0f, y1f) { var b = bbox(g); if (b.x1 < 0) return; var yA = b.y0 + (b.y1 - b.y0) * y0f, yB = b.y0 + (b.y1 - b.y0) * y1f, cx = (b.x0 + b.x1) / 2, sx = 0, sy = 0, n = 0;
+    for (var y = Math.floor(yA); y <= yB; y++) for (var x = 0; x < N; x++) if (g[y] && g[y][x] && Math.abs(x - cx) < 7) { sx += x; sy += y; n++; }
+    if (!n) return; var ax = Math.round(sx / n), ay = Math.round(sy / n); set(g, ax, ay, 'f'); if (g[ay] && g[ay][ax + 1]) g[ay][ax + 1] = 'f'; if (g[ay + 1] && g[ay + 1][ax]) g[ay + 1][ax] = 'f'; }
+  function prepSquatch(g) { var map = { B: 'w', b: 'w', E: 'w', P: 'w', m: 'w', X: 'w' };
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (map[g[y][x]]) g[y][x] = map[g[y][x]]; calmHead(g, 0.4); plantBox(g, 0.08, 0.28); }
+  function prepPepe(g) { for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { if (g[y][x] === 'g' || g[y][x] === 'j') g[y][x] = 'U'; if (g[y][x] === 'Q' || g[y][x] === 'L') g[y][x] = null; } keepLargest(g); }
+  function peelEyeCrust(g) { var edge = [];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (g[y][x] === 'E' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X < 0 || Y < 0 || X >= N || Y >= N || !g[Y][X]; })) edge.push([x, y]);
+    edge.forEach(function (p) { g[p[1]][p[0]] = 'd'; });
+    var drop = [];
+    for (var y2 = 0; y2 < N; y2++) for (var x2 = 0; x2 < N; x2++) { if (g[y2][x2] !== 'P' && g[y2][x2] !== 'E') continue;
+      var side = (x2 > 0 && (g[y2][x2 - 1] === 'E' || g[y2][x2 - 1] === 'P')) || (x2 + 1 < N && (g[y2][x2 + 1] === 'E' || g[y2][x2 + 1] === 'P'));
+      if (!side) drop.push([x2, y2, g[y2][x2] === 'P' ? 'U' : 'd']); }
+    drop.forEach(function (p) { g[p[1]][p[0]] = p[2]; }); }
+  function takeAnchor(g, fur) { var xs = [], ys = [];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (g[y][x] === 'f') { xs.push(x); ys.push(y); g[y][x] = fur; }
+    if (!xs.length) return null; var ax = 0, ay = 0; xs.forEach(function (v, i) { ax += v; ay += ys[i]; }); return { x: Math.round(ax / xs.length), y: Math.round(ay / ys.length) }; }
+  function fallbackAnchor(g, fx, fy) { var b = bbox(g); if (b.x1 < 0) return { x: 15, y: 10 }; return { x: Math.round(b.x0 + (b.x1 - b.x0) * fx), y: Math.round(b.y0 + (b.y1 - b.y0) * fy) }; }
+  function paintYetiFace(g, a, stage) { var ax = a.x, ay = a.y, big = stage >= 3, mid = stage >= 2, rx = big ? 5 : mid ? 4 : 3, ry = big ? 5 : mid ? 4 : 3;
+    for (var dy = -ry; dy <= ry; dy++) for (var dx = -rx; dx <= rx; dx++) { var x = ax + dx, y = ay + dy; if (y < 0 || x < 0 || y >= N || x >= N || !g[y][x]) continue; if (g[y][x] === 'C' || g[y][x] === 'c') continue;
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1) continue; g[y][x] = dx > rx - 2 ? 'b' : 'W'; }
+    if (big) { hputs(g, ax - 5, ax + 5, ay - 3, 'm'); hputs(g, ax - 5, ax + 5, ay - 2, 'm');
+      [[-4, -2], [2, 4]].forEach(function (r) { var x0 = ax + r[0], x1 = ax + r[1]; hputs(g, x0, x1, ay, 'E'); hputs(g, x0, x1, ay + 1, 'E'); put(g, x0 - 1, ay, 'm'); put(g, x0 - 1, ay + 1, 'm'); put(g, x1 + 1, ay, 'm'); put(g, x1 + 1, ay + 1, 'm'); put(g, Math.round((x0 + x1) / 2), ay + 1, 'P'); });
+      hputs(g, ax - 4, ax + 4, ay + 2, 'W'); for (var row = 0; row < 4; row++) hputs(g, ax - 3, ax + 3, ay + 3 + row, 'R'); [-2, 0, 2].forEach(function (dx) { put(g, ax + dx, ay + 3, 'X'); put(g, ax + dx, ay + 6, 'X'); }); }
+    else if (mid) { hputs(g, ax - 4, ax + 4, ay - 2, 'm'); hputs(g, ax - 4, ax + 4, ay - 1, 'm'); [-3, -2, 2, 3].forEach(function (dx) { put(g, ax + dx, ay, 'E'); put(g, ax + dx, ay + 1, 'E'); }); put(g, ax - 3, ay + 1, 'P'); put(g, ax + 2, ay + 1, 'P'); put(g, ax - 4, ay, 'm'); put(g, ax + 4, ay, 'm');
+      for (var row2 = 0; row2 < 3; row2++) hputs(g, ax - 2, ax + 2, ay + 2 + row2, 'R'); [-1, 1].forEach(function (dx) { put(g, ax + dx, ay + 2, 'X'); put(g, ax + dx, ay + 4, 'X'); }); }
+    else { hputs(g, ax - 3, ax + 3, ay - 1, 'm'); put(g, ax - 2, ay, 'E'); put(g, ax - 1, ay, 'P'); put(g, ax + 1, ay, 'E'); put(g, ax + 2, ay, 'P'); put(g, ax - 3, ay, 'm'); put(g, ax + 3, ay, 'm'); hputs(g, ax - 2, ax + 2, ay + 2, 'R'); hputs(g, ax - 2, ax + 2, ay + 3, 'R'); put(g, ax - 1, ay + 2, 'X'); put(g, ax + 1, ay + 2, 'X'); put(g, ax, ay + 3, 'X'); } }
+  function paintSquatchFace(g, a, stage) { var ax = a.x, ay = a.y, big = stage >= 3, mid = stage >= 2, rx = big ? 5 : mid ? 4 : 3, ry = big ? 6 : mid ? 5 : 4;
+    for (var dy = -ry; dy <= ry; dy++) for (var dx = -rx; dx <= rx; dx++) { var x = ax + dx, y = ay + dy; if (y < 0 || x < 0 || y >= N || x >= N || !g[y][x]) continue; if (g[y][x] === 'C' || g[y][x] === 'c' || g[y][x] === 'h') continue;
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1) continue; g[y][x] = dx > rx - 2 ? 'd' : dx < -rx + 2 ? 'W' : 'w'; }
+    if (big) { hputs(g, ax - 4, ax + 4, ay - 3, 's'); hputs(g, ax - 3, ax + 3, ay - 2, 's');
+      [-3, -2, -1, 1, 2, 3].forEach(function (dx) { put(g, ax + dx, ay - 1, 'E'); put(g, ax + dx, ay, 'E'); }); put(g, ax - 2, ay, 'P'); put(g, ax + 2, ay, 'P');
+      put(g, ax, ay + 1, 'N'); put(g, ax - 1, ay + 1, 'd'); put(g, ax + 1, ay + 1, 'd');
+      hputs(g, ax - 2, ax + 2, ay + 2, 'm'); put(g, ax - 3, ay + 2, 'B'); put(g, ax + 3, ay + 2, 'B');
+      hputs(g, ax - 2, ax + 2, ay + 3, 'X'); hputs(g, ax - 2, ax + 2, ay + 4, 'm');
+      for (var dx = -3; dx <= 3; dx++) grow(g, ax + dx, ay + 5, 'B'); for (var dx2 = -2; dx2 <= 2; dx2++) grow(g, ax + dx2, ay + 6, 'B'); grow(g, ax, ay + 7, 'b'); grow(g, ax - 1, ay + 7, 'B'); grow(g, ax + 1, ay + 7, 'b'); }
+    else if (mid) { hputs(g, ax - 3, ax + 3, ay - 2, 's'); [-2, -1, 1, 2].forEach(function (dx) { put(g, ax + dx, ay - 1, 'E'); }); put(g, ax - 2, ay - 1, 'P'); put(g, ax + 1, ay - 1, 'P'); put(g, ax, ay, 'N');
+      hputs(g, ax - 2, ax + 2, ay + 1, 'm'); hputs(g, ax - 1, ax + 1, ay + 2, 'X'); for (var dx3 = -2; dx3 <= 2; dx3++) grow(g, ax + dx3, ay + 3, 'B'); for (var dx4 = -1; dx4 <= 1; dx4++) grow(g, ax + dx4, ay + 4, 'B'); }
+    else { hputs(g, ax - 2, ax + 2, ay - 1, 's'); put(g, ax - 2, ay, 'E'); put(g, ax - 1, ay, 'P'); put(g, ax + 1, ay, 'E'); put(g, ax + 2, ay, 'P'); put(g, ax, ay + 1, 'N'); hputs(g, ax - 1, ax + 1, ay + 2, 'm'); put(g, ax - 1, ay + 3, 'X'); put(g, ax, ay + 3, 'X'); put(g, ax + 1, ay + 3, 'X'); grow(g, ax - 1, ay + 4, 'B'); grow(g, ax, ay + 4, 'B'); grow(g, ax + 1, ay + 4, 'B'); } }
+  function spike(g, x, base, tip) { var y0 = Math.min(base, tip), y1 = Math.max(base, tip); for (var y = y0; y <= y1; y++) set(g, x, y, y === y0 ? 'q' : y < y0 + 2 ? 'K' : 'w'); }
+  function blob(g, cx, cy, rx, ry) { for (var y = cy - ry; y <= cy + ry; y++) for (var x = cx - rx; x <= cx + rx; x++) { var dx = (x - cx) / rx, dy = (y - cy) / ry; if (dx * dx + dy * dy > 1) continue; var t = (x - (cx - rx)) / (2 * rx); set(g, x, y, t < 0.22 ? 'W' : t > 0.76 ? 'd' : 'w'); } }
+  function buildChupa() { var g = grid(); blob(g, 16, 9, 6, 5); blob(g, 16, 17, 5, 4);
+    spike(g, 11, 6, 1); spike(g, 14, 6, 0); spike(g, 17, 6, 0); spike(g, 20, 6, 1);
+    spike(g, 23, 14, 8); spike(g, 26, 17, 11); spike(g, 28, 20, 15);
+    thick(g, 11, 15, 4, 21, 'w'); thick(g, 21, 15, 27, 21, 'd');
+    [[2, 20], [3, 22], [5, 23]].forEach(function (p) { set(g, p[0], p[1], 'C'); set(g, p[0] + 1, p[1], 'C'); });
+    [[29, 20], [28, 22], [26, 23]].forEach(function (p) { set(g, p[0], p[1], 'C'); set(g, p[0] - 1, p[1], 'C'); });
+    thick(g, 13, 20, 8, 29, 'w'); thick(g, 19, 20, 24, 29, 'd');
+    [[6, 29], [7, 30], [9, 30]].forEach(function (p) { set(g, p[0], p[1], 'C'); });
+    [[22, 30], [24, 30], [26, 29]].forEach(function (p) { set(g, p[0], p[1], 'C'); });
+    [[14, 16], [18, 18], [15, 19], [17, 15]].forEach(function (p) { set(g, p[0], p[1], 'q'); set(g, p[0] + 1, p[1], 'q'); });
+    set(g, 15, 9, 'f'); set(g, 16, 9, 'f'); set(g, 15, 10, 'f'); return g; }
+  function paintChupaFace(g, a, stage) { var ax = a.x, ay = a.y, big = stage >= 3, mid = stage >= 2;
+    if (big) { hputs(g, ax - 4, ax + 4, ay - 2, 'q'); hputs(g, ax - 3, ax + 3, ay - 1, 'q');
+      [[-4, -2], [2, 4]].forEach(function (r) { hputs(g, ax + r[0], ax + r[1], ay, 'E'); hputs(g, ax + r[0], ax + r[1], ay + 1, 'E'); put(g, ax + r[0] + 1, ay + 1, 'P'); });
+      hputs(g, ax - 3, ax + 3, ay + 3, 'm'); hputs(g, ax - 3, ax + 3, ay + 4, 'm'); [-2, 0, 2].forEach(function (dx) { put(g, ax + dx, ay + 3, 'X'); put(g, ax + dx, ay + 4, 'X'); }); }
+    else if (mid) { hputs(g, ax - 3, ax + 3, ay - 1, 'q'); [-2, -1, 1, 2].forEach(function (dx) { put(g, ax + dx, ay, 'E'); }); put(g, ax - 2, ay, 'P'); put(g, ax + 1, ay, 'P');
+      hputs(g, ax - 2, ax + 2, ay + 2, 'm'); put(g, ax - 1, ay + 2, 'X'); put(g, ax + 1, ay + 2, 'X'); hputs(g, ax - 2, ax + 2, ay + 3, 'm'); put(g, ax, ay + 3, 'X'); }
+    else { hputs(g, ax - 2, ax + 2, ay - 1, 'q'); put(g, ax - 2, ay, 'E'); put(g, ax - 1, ay, 'P'); put(g, ax + 1, ay, 'E'); put(g, ax + 2, ay, 'P'); hputs(g, ax - 1, ax + 1, ay + 2, 'm'); put(g, ax - 1, ay + 2, 'X'); put(g, ax + 1, ay + 2, 'X'); } }
+  function buildStarman() { var g = grid();
+    for (var y = 2; y <= 12; y++) for (var x = 11; x <= 21; x++) { var dx = x - 16, dy = y - 7; if (dx * dx + dy * dy <= 28) set(g, x, y, 'W'); }
+    for (var x1 = 14; x1 <= 18; x1++) set(g, x1, 12, 'd');
+    for (var y2 = 13; y2 <= 21; y2++) { var inset = y2 > 18 ? 1 : 0; for (var x2 = 11 + inset; x2 <= 21 - inset; x2++) set(g, x2, y2, 'W'); }
+    for (var y3 = 14; y3 <= 19; y3++) for (var x3 = 21; x3 <= 24; x3++) set(g, x3, y3, 'I');
+    thick(g, 12, 14, 8, 11, 'W'); thick(g, 8, 11, 3, 5, 'h'); set(g, 2, 4, 'h'); set(g, 3, 4, 'h'); set(g, 4, 4, 'h'); set(g, 2, 5, 'h'); set(g, 3, 5, 'h'); set(g, 4, 5, 'h');
+    thick(g, 21, 15, 25, 22, 'W'); set(g, 25, 23, 'W'); set(g, 26, 23, 'W');
+    thick(g, 13, 21, 10, 29, 'W'); thick(g, 18, 21, 22, 29, 'W');
+    for (var bx = 8; bx <= 12; bx++) { set(g, bx, 29, 'W'); set(g, bx, 30, 'W'); }
+    for (var bx2 = 20; bx2 <= 24; bx2++) { set(g, bx2, 29, 'W'); set(g, bx2, 30, 'W'); }
+    for (var sy = 15; sy <= 20; sy++) set(g, 16, sy, 'd');
+    set(g, 18, 14, 'N'); set(g, 19, 14, 'Z'); set(g, 20, 14, 'U'); set(g, 18, 15, 'Z'); set(g, 19, 15, 'U'); set(g, 20, 15, 'N');
+    return g; }
+  function helmetCenter(g) { var minY = 99, maxY = -1, y, x;
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) if (g[y][x] && g[y][x] !== 'h' && g[y][x] !== 'I') { if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    if (minY === 99) return { x: 16, y: 8, top: 2, bot: 12, x0: 12, x1: 20 };
+    var yCut = minY + Math.max(6, Math.round((maxY - minY) * 0.34)), sx = 0, sy = 0, n = 0, x0 = 99, x1 = -1;
+    for (y = minY; y <= yCut; y++) for (x = 0; x < N; x++) { var k = g[y][x]; if (!k || k === 'h' || k === 'I') continue; sx += x; sy += y; n++; if (x < x0) x0 = x; if (x > x1) x1 = x; }
+    if (!n) return { x: 16, y: 8, top: minY, bot: yCut, x0: 12, x1: 20 };
+    return { x: Math.round(sx / n), y: Math.round(sy / n), top: minY, bot: yCut, x0: x0, x1: x1 }; }
+  function bridgeNeck(g) { var h = helmetCenter(g), cx = h.x, yBot = h.bot + 2;
+    for (var dx = -1; dx <= 1; dx++) { var x = cx + dx, gap = -1, seen = false; for (var y = h.top; y <= yBot; y++) { if (g[y] && g[y][x]) { if (seen && gap >= 0 && y - gap <= 3) { for (var yy = gap; yy < y; yy++) g[yy][x] = 'd'; } seen = true; gap = -1; } else if (seen && gap < 0) gap = y; } } }
+  function shadeSuit(g) { var b = bbox(g); if (b.x1 < 0) return; var cut = b.y0 + (b.y1 - b.y0) * 0.4;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { if (g[y][x] !== 'W' || y < cut) continue; var t = (x - b.x0) / Math.max(1, b.x1 - b.x0); if (t > 0.78) g[y][x] = 'd'; else if (t > 0.55 && (x + y) % 4 === 0) g[y][x] = 'w'; } }
+  function paintStarman(g, stage) { var h = helmetCenter(g), cx = h.x, mid = h.y, rad = stage >= 3 ? 2 : 1;
+    for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad - 1; dx <= rad + 1; dx++) { var x = cx + dx, y = mid + dy; if (!g[y] || !g[y][x]) continue; if (g[y][x] !== 'W' && g[y][x] !== 'w' && g[y][x] !== 'd') continue;
+      var nx = dx / (rad + 1.25), ny = dy / (rad + 0.7); if (nx * nx + ny * ny > 1) continue; g[y][x] = (dx >= rad || dy > 0) ? 'a' : 'A'; }
+    put(g, cx - rad, mid - 1, 'E'); put(g, cx - rad + 1, mid, 'E'); if (stage >= 3) put(g, cx - rad, mid, 'E');
+    var colY = Math.min(N - 2, h.bot); for (var x2 = h.x0 + 1; x2 <= h.x1 - 1; x2++) if (g[colY] && (g[colY][x2] === 'W' || g[colY][x2] === 'w' || g[colY][x2] === 'A' || g[colY][x2] === 'a')) g[colY][x2] = 'd';
+    var fx = cx + (stage >= 3 ? 4 : 3), fy = colY + 1, pat = stage >= 2 ? ['NZU', 'UZN'] : ['NZ', 'ZU'];
+    for (var ry = 0; ry < pat.length; ry++) for (var rx = 0; rx < pat[ry].length; rx++) { var X = fx + rx, Y = fy + ry; if (g[Y] && g[Y][X] && g[Y][X] !== 'h' && g[Y][X] !== 'E' && g[Y][X] !== 'A' && g[Y][X] !== 'a') g[Y][X] = pat[ry].charAt(rx); } }
+  function shag(g, lite) { var add = [];
+    for (var y = 2; y < N - 2; y++) { var face = false; for (var i = 0; i < N; i++) if (g[y][i] === 'E' || g[y][i] === 'P' || g[y][i] === 'R' || g[y][i] === 'X' || g[y][i] === 'm' || g[y][i] === 'B') face = true; if (face || y % 4 !== 1) continue;
+      for (var x = 1; x < N - 1; x++) { if (!g[y][x]) continue; if (!g[y][x - 1] && g[y][x + 1] && g[y - 1][x] && g[y + 1][x]) add.push([x - 1, y]); if (!g[y][x + 1] && g[y][x - 1] && g[y - 1][x] && g[y + 1][x]) add.push([x + 1, y]); } }
+    add.forEach(function (p) { if (!g[p[1]][p[0]]) g[p[1]][p[0]] = lite; }); }
+  function mythicGlow(g, id, frame) { var o = g.map(function (r) { return r.slice(); });
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { if (g[y][x]) continue; var touch = false;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var X = x + d[0], Y = y + d[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && g[Y][X] === 'n') touch = true; });
+      if (touch) o[y][x] = (id === 'starman' && (x * 3 + y + (frame || 0)) % 7 === 0) ? 'y' : 'Y'; } return o; }
   function draw(id, stage, frame, gear) {
     frame = frame || 0; stage = stage || 0;
     if (!stage) return outline(egg(id, frame));
-    var g = parse(id);
+    var g = id === 'chupacabra' ? buildChupa() : id === 'starman' ? buildStarman() : parse(id);
+    if (id === 'yeti') prepYeti(g); else if (id === 'sasquatch') prepSquatch(g); else if (id === 'greypepe') prepPepe(g);
     g = scaleTo(g, HEIGHT[stage]);
+    if (id === 'greypepe') peelEyeCrust(g);
+    if (id === 'starman') { bridgeNeck(g); shadeSuit(g); }
+    var fur = id === 'sasquatch' ? 'w' : id === 'greypepe' ? 'U' : 'W';
+    var anchor = takeAnchor(g, fur) || fallbackAnchor(g, 0.5, id === 'sasquatch' ? 0.2 : id === 'chupacabra' ? 0.28 : 0.34);
+    if (id === 'yeti') paintYetiFace(g, anchor, stage);
+    else if (id === 'sasquatch') paintSquatchFace(g, anchor, stage);
+    else if (id === 'chupacabra') paintChupaFace(g, anchor, stage);
+    if (id === 'starman') paintStarman(g, stage);
+    if (id === 'yeti' || id === 'sasquatch') shag(g, id === 'yeti' ? 'W' : 'S');
     ensureEyes(g, id);
     if (frame === 3) g = nudge(g, id);
     if (frame === 2) g = blink(g, LID[id]);
     if (frame === 1) g = shift(g, -1, 0);
-    if (stage) markGear(g);
-    gearOn(g, stage ? gear : null, eyeTop(g));
-    return outline(g);
+    markGear(g);
+    gearOn(g, gear, eyeTop(g));
+    g = outline(g);
+    if (stage === 5) g = mythicGlow(g, id, frame);
+    return g;
   }
   function render(id, stage, frame, bg, gear, opts) { var g = draw(id, stage, frame, gear), pal = PAL[id], dead = opts && opts.dead, d = [], Bg = hexRgb(bg || '#1b2430');
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = null;
