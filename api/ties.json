@@ -1,6 +1,6 @@
 {
- "lastBlock": 975231,
- "count": 253,
+ "lastBlock": 975237,
+ "count": 259,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1693,7 +1693,7 @@
    "species": "orangedragon",
    "speciesLabel": "Orange Dragon",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 3480,
@@ -3038,6 +3038,78 @@
    "speciesLabel": "Lepo (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 33062,
+   "asset": "A12237548322246733173",
+   "tiedBlock": 975232,
+   "tiedTx": "a68f908cc5c3e26c1f203baa36ebceed71cabf99509c7dcc069061cc3e3a90af",
+   "kind": "deed",
+   "name": "Furi",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 44521,
+   "asset": "A5736241960003254398",
+   "tiedBlock": 975232,
+   "tiedTx": "ec6fab33debad5ad643b895db8bf454e01ed2b702e2d18c2a9c01d54c572ef9a",
+   "kind": "deed",
+   "name": "Pujili",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 83366,
+   "asset": "A6004647027564081772",
+   "tiedBlock": 975232,
+   "tiedTx": "faf0ad8405fc88588a6bc8127672633395306b61e03a43893dc6c8a15bdcf238",
+   "kind": "deed",
+   "name": "Old Hickory Pepe",
+   "species": "jacksonpepe",
+   "speciesLabel": "Old Hickory Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 89553,
+   "asset": "A17306186236219994151",
+   "tiedBlock": 975233,
+   "tiedTx": "609a7a1540e3eed790a99b677ac1f9c96c02aedf7586be1dd08a1b38f13b5b43",
+   "kind": "deed",
+   "name": "Wavizibun",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 127415,
+   "asset": "A14406461222039096936",
+   "tiedBlock": 975234,
+   "tiedTx": "5b773b689fe455f6e36fc803034fdbac870dc63441e32feaed2467634e60e700",
+   "kind": "deed",
+   "name": "Nooloozook",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 145213,
+   "asset": "A9192786938479189110",
+   "tiedBlock": 975234,
+   "tiedTx": "a3e75d6d4870e0fc40a1aecee8885a7c6202cb2e04e6c22ec27cfc2564decf6f",
+   "kind": "deed",
+   "name": "Jafuputot",
+   "species": "starlordkek",
+   "speciesLabel": "Star-Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
