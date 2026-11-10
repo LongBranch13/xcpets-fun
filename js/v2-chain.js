@@ -401,7 +401,9 @@
      * When the fresh burns + sale data are the SAME as the copy the burn was built from (sigOf unchanged), that rebuild cannot change the pet
      * numbers, so the check answers as soon as the verified read lands and the rebuild finishes in the background (same rule as the old
      * same:true path). Changed data still waits for the rebuild, because the recheck judges the burn against it. */
-    function readDone(p) { return new Promise(function (res) { var iv = setInterval(function () { if (S.verified && sigOf() === was) { clearInterval(iv); res(); } }, 100);
+    function readDone(p) { return new Promise(function (res) { var noted = false, iv = setInterval(function () { if (!S.verified) return; if (sigOf() === was) { clearInterval(iv); res(); return; }
+        /* chores-fresh-1110: the read already landed and the burns changed, so the rest of this wait is the local pet rebuild. Say that, not that the servers are still quiet. */
+        if (!noted) { noted = true; staleBar('Updating pets to the latest block before your burn… Nothing is signed until this finishes.', 'none'); } }, 100);
       Promise.resolve(p).then(function () { clearInterval(iv); res(); }, function () { clearInterval(iv); res(); }); }); }
     var slowT = setTimeout(function () { if (!S.verified) staleBar('Still checking the latest chain data… the Counterparty servers are slow right now. Nothing is signed until this finishes.', 'none'); }, 15000);
     function tryRead(k) { try { if (E.Chain.forgetBlocked) E.Chain.forgetBlocked(); } catch (e) {} if (S.feed) S.feed = false;
@@ -410,10 +412,15 @@
     checking++; var p = tryRead(0);
     return Promise.resolve(p).then(function () { checking--; clearTimeout(slowT); if (S.verified) { if (sigOf() === was) { var b0 = document.getElementById('v2stale'); if (b0 && !b0.querySelector('button')) b0.remove(); } return { ok: true, same: sigOf() === was }; }
       staleBar('Could not reach the Counterparty servers to check the latest chain data. Nothing was signed or sent.', true); return { ok: false, same: false }; }); }
+  /* chores-fresh-1110: the world on screen is already a replay of the burns + sale data just read. A provisional
+   * older save, or the empty placeholder before the first world, is not that copy. */
+  function sameShown() { if (S.provisional) return false; if (current()) return true; return !!(lastW && !lastW.pending && lastOps === JSON.stringify(S.ops || [])); }
   /* boot-from-cache: whenFresh() = the chain re-read above (whenRead), then, while updating() (a provisional saved world, or the worker still
-   * rebuilding), it WAITS for the fresh world before answering. same is false when the world the page showed at the press is not the fresh one,
-   * so js/v2-wallet.js re-judges the action against the fresh world (recheck) or stops with nothing sent. */
-  function whenFresh() { var wasW = lastSig; return whenRead().then(function (r) { if (!r.ok || !updating()) return r;
+   * rebuilding a world that is NOT the one on screen), it WAITS for the fresh world before answering. same is false when the world the page
+   * showed at the press is not the fresh one, so js/v2-wallet.js re-judges the action against the fresh world (recheck) or stops with nothing sent.
+   * chores-fresh-1110: a successful read whose burns + sale data match the copy the burn was built from does NOT wait for that
+   * rebuild. Those pet numbers cannot change. A changed read, or a provisional older world, still waits. */
+  function whenFresh() { var wasW = lastSig; return whenRead().then(function (r) { if (!r.ok) return r; if (r.same && sameShown()) return r; if (!updating()) return r;
     staleBar('Updating pets to the latest block before your burn… Nothing is signed until this finishes.', 'none');
     return waitWorld().then(function () { try { world(); } catch (e) {} var b = document.getElementById('v2stale'); if (b && !b.querySelector('button')) b.remove();
       return { ok: !!S.verified, same: r.same && lastSig === wasW }; }); }); }

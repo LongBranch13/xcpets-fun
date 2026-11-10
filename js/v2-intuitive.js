@@ -27,7 +27,7 @@
   var sheet;
   function sheetEl() { if (sheet) return sheet; sheet = d.createElement('div'); sheet.id = 'ipSheet'; sheet.className = 'ip-sheet'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.hidden = true;
     sheet.innerHTML = '<div class="ip-sh-bg" data-ipclose></div><div class="ip-sh-box"><button type="button" class="q ip-sh-x" data-ipclose aria-label="Close">✕</button><div class="ip-sh-body"></div></div>';
-    d.body.appendChild(sheet); sheet.addEventListener('click', function (e) { if (e.target.closest('[data-ipclose]')) close(); });
+    d.body.appendChild(sheet); sheet.addEventListener('click', function (e) { if (e.target.closest('[data-ipclose]')) { var re = resumeStillSaved(sheet); close(); if (re) releaseResume(); } });
     d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) close(); }); return sheet; }
   function open(h) { var s = sheetEl(); s.querySelector('.ip-sh-body').innerHTML = h; s.hidden = false; html.classList.add('ip-sheet-on'); var x = s.querySelector('.ip-sh-x'); try { x.focus({ preventScroll: true }); } catch (e) { } return s; }
   function close() { if (sheet) { sheet.hidden = true; html.classList.remove('ip-sheet-on'); } }
@@ -132,15 +132,36 @@
       var tl = tools(); if (tl) tl.insertBefore(wrap, tl.firstChild); else { wrap.classList.add('ip-awayfix'); d.body.appendChild(wrap); } chip = $('ipAway'); chip.onclick = awaySheet; $('ipAwayX').onclick = skipAll; }
     wrap.hidden = false; chip.textContent = '🔔 ' + n; chip.title = n + ' thing' + (n === 1 ? '' : 's') + ' happened while you were away'; chip.setAttribute('aria-label', chip.title); }
   window.V2IpChip = function () { setTimeout(chipUi, 0); };
-  function skipAll() { close(); var rq = d.querySelector('#inReqBox.on'); if (rq) { var lb = [].slice.call(rq.querySelectorAll('button')).filter(function (b) { return /later/i.test(b.textContent); })[0]; if (lb) lb.click(); else rq.classList.remove('on'); }
-    var eg = d.getElementById('eggPop'); if (eg) eg.remove(); held = []; if (window.V2Held) V2Held.skip(); html.classList.remove('ip-hold'); chipUi(); }
+  function resumeHtml(h) { return /class="resume"|class="resdrop"|data-resume/.test(h || ''); }
+  function resumeStillSaved(root) { return !!(root && root.querySelector && root.querySelector('a.resume, a.resdrop') && window.V2UI && V2UI.resumePending && V2UI.resumePending()); }
+  /* X and Skip all throw away the copied sheet. If an unfinished run is still saved, put a live Continue toast back after the hold, so the player is not stuck with a link that only existed inside the closed sheet. Dismiss is what forgets the run. */
+  function releaseResume() { held = held.filter(function (h) { return !resumeHtml(h); }); html.classList.remove('ip-hold'); chipUi(); if (window.V2UI && V2UI.resumeReoffer) V2UI.resumeReoffer(); }
+  function skipAll() { var re = !!(window.V2UI && V2UI.resumePending && V2UI.resumePending()); close(); var rq = d.querySelector('#inReqBox.on'); if (rq) { var lb = [].slice.call(rq.querySelectorAll('button')).filter(function (b) { return /later/i.test(b.textContent); })[0]; if (lb) lb.click(); else rq.classList.remove('on'); }
+    var eg = d.getElementById('eggPop'); if (eg) eg.remove(); held = []; if (window.V2Held) V2Held.skip(); html.classList.remove('ip-hold'); chipUi(); if (re) releaseResume(); }
   function watchAll() { close(); held = []; html.classList.remove('ip-hold'); if (window.V2Held) V2Held.run(); chipUi(); }
   function awaySheet() { var L = [], rq = d.querySelector('#inReqBox.on'), eg = d.getElementById('eggPop');
     if (rq) L.push('<li>' + esc((rq.querySelector('h2,h3,#irqTitle') || rq).textContent.trim().slice(0, 90)) + '</li>'); if (eg) L.push('<li>🥚 ' + esc(eg.textContent.replace(/\s+/g, ' ').trim().slice(0, 90)) + '</li>');
-    held.forEach(function (h) { L.push('<li>' + h + '</li>'); }); if (window.V2Held) V2Held.list().forEach(function (h) { L.push('<li>' + esc(h) + '</li>'); });
+    held.forEach(function (h) { if (resumeHtml(h) && !(window.V2UI && V2UI.resumePending && V2UI.resumePending())) return; L.push('<li>' + h + '</li>'); }); if (window.V2Held) V2Held.list().forEach(function (h) { L.push('<li>' + esc(h) + '</li>'); });
     var pops = rq || eg || heldN(), s = open('<h3>While you were away</h3><ul class="ip-list">' + L.join('') + '</ul>' + (pops ? '<p class="row"><button type="button" class="btn" id="ipShowPops">▶ Watch all</button> <button type="button" class="q" id="ipSkipAll">Skip all</button></p>' : ''));
     var b = s.querySelector('#ipShowPops'); if (b) b.onclick = watchAll; var k = s.querySelector('#ipSkipAll'); if (k) k.onclick = skipAll;
     if (!pops) { held = []; html.classList.remove('ip-hold'); setTimeout(chipUi, 0); } }
+  /* chores-resume-1110: Continue / Dismiss on an unfinished burn. The toast HTML is copied into this sheet (and the Rare Room
+   * queue) as a string, which drops the toast's own click handlers. One document listener runs for the live toast and for every copy.
+   * v2.js resumeGo opens the same confirm sheet as a tap on the toast used to; resumeDrop forgets the saved run. */
+  d.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a.resume, a.resdrop, a[data-replay], a[data-breplay], a[data-cemreplay]'); if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    var UI = window.V2UI || {};
+    if (a.classList.contains('resume') || a.classList.contains('resdrop')) {
+      var drop = a.classList.contains('resdrop');
+      if (drop) { if (UI.resumeDrop) UI.resumeDrop(); held = held.filter(function (h) { return !resumeHtml(h); }); chipUi(); }
+      else if (UI.resumeGo) UI.resumeGo();
+    } else if (a.hasAttribute('data-replay')) { if (UI.replayFight) UI.replayFight(a.getAttribute('data-replay')); }
+    else if (a.hasAttribute('data-breplay')) { if (UI.replayBreed) UI.replayBreed(a.getAttribute('data-breplay')); }
+    else if (a.hasAttribute('data-cemreplay')) { if (UI.replayCem) UI.replayCem(a.getAttribute('data-cemreplay')); }
+    var toastEl = a.closest('.toast'); if (toastEl && toastEl.remove) toastEl.remove();
+    if (a.closest('#ipSheet')) { var li = a.closest('li'); if (li && li.remove) li.remove(); close(); }
+  }, true);
   function watchToasts() { var t = $('toasts'); if (!t || t._ip) return; t._ip = 1;
     new MutationObserver(function (ms) { if (!holdOn() || Date.now() - t0 > 20000) return; ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType !== 1 || !n.classList.contains('toast') || n.getAttribute('data-calm') || Date.now() - lastTap < 1500) return; held.push(n.innerHTML); n.remove(); chipUi(); }); }); }).observe(t, { childList: true }); }
   var lastTap = 0; d.addEventListener('pointerdown', function () { lastTap = Date.now(); }, true);
