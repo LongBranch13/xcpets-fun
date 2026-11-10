@@ -1,6 +1,6 @@
 {
- "lastBlock": 975350,
- "count": 287,
+ "lastBlock": 975355,
+ "count": 288,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3446,6 +3446,18 @@
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 2393,
+   "asset": "A15284189908694756962",
+   "tiedBlock": 975352,
+   "tiedTx": "7da43cb8d2e8cac6e1171df7b73fcb947721b599b91055050963374030b54118",
+   "kind": "deed",
+   "name": "Zuba",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
