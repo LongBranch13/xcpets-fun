@@ -22,7 +22,16 @@
   function shN(p) { var S = (p && p.shards) || {}; return Object.keys(S).reduce(function (a, k) { return a + (S[k] || 0); }, 0); }
   function gain(p, b) { if (!p || p.dead || p.released) return 0; var R = V(); if (sOn(b)) return R.shardRoom ? R.shardRoom(p) : Math.max(0, (R.SHARD_CAP || 15) - shN(p) - (p.questBoost || 0)); return Math.max(0, QCAP - (p.questBoost || 0)); }
   function worn(w, p) { var R = V(); try { return R.wornOf ? R.wornOf(w, p.id).length : 0; } catch (e) { return 0; } }
-  function looks(w, p) { var R = V(), n = 0; try { n += R.shownLooks ? R.shownLooks(w, p).length : 0; } catch (e) { } try { if (!R.shownLooks && R.earnedLooks) n += R.earnedLooks(p).length; } catch (e) { } return n; }
+  /* shownLooks() asks copyList() to sort every look copy. Sorting a large wallet by Looks called that once per pet
+   * (about 9,166 living pets, 582 copies: ~1s, and the Rare Room station used to do it again inside the comparator).
+   * One index for this sort, then one pass per pet: flame looks, then copies sitting on that pet, one per type. Same count. */
+  var lookBy = null;
+  function lookIndex(w) { var by = {}, C = w.lookCopies, k, c; for (k in C) { c = C[k]; if (c && c.at) (by[c.at] = by[c.at] || []).push(c); } return by; }
+  function countLooks(w, p, by) { var R = V(), types = {}, n = 0, i, L, arr = p.flameLooks || [], c;
+    for (i = 0; i < arr.length; i++) { L = R.lookDef('flame', arr[i]); if (L && L.type && !types[L.type]) { types[L.type] = 1; n++; } }
+    arr = by[p.id] || []; for (i = 0; i < arr.length; i++) { c = arr[i]; if (c.holder !== p.owner) continue; L = R.lookDef(c.kind, c.id); if (L && L.type && !types[L.type]) { types[L.type] = 1; n++; } }
+    return n; }
+  function looks(w, p) { var R = V(), n = 0; if (lookBy && lookBy.w === w) return countLooks(w, p, lookBy.by); try { n += R.shownLooks ? R.shownLooks(w, p).length : 0; } catch (e) { } try { if (!R.shownLooks && R.earnedLooks) n += R.earnedLooks(p).length; } catch (e) { } return n; }
   function bleft(p, b) { var R = V(); try { var x = R.breedsLeft ? R.breedsLeft(p, b) : null; return x ? x.left : -(p.breeds || 0); } catch (e) { return 0; } }
   function free(p) { var o = p.openSlots; return Array.isArray(o) ? o.length : Number(o) || 0; } /* openSlots is the list of free slot names */
   function wr(p) { var n = (p.wins || 0) + (p.losses || 0); return n ? (p.wins || 0) / n : -1; }
@@ -53,7 +62,8 @@
   function cmp(A, B) { for (var i = 0; i < A.length; i++) { var a = A[i], b = B[i]; if (a !== b) return typeof a === 'string' ? (a < b ? -1 : 1) : (b - a); } return 0; }
   /* sort(w, list, k, pet?, b?) -> new array; pet(x) maps an item to its pet (default: the item is the pet) */
   function sort(w, list, k, pet, b) { if (!k) return list; pet = pet || function (x) { return x; }; var rev = k.slice(-1) === '-', key = rev ? k.slice(0, -1) : k, K = BY[key]; if (!K) return list;
-    var rows = list.map(function (x, i) { var p = pet(x); return { x: x, i: i, k: key === 'sp' ? sp(p) : K[4](w, p, b) }; });
+    var prevLooks = lookBy; if (key === 'looks' && w && w.lookCopies && V().lookDef) lookBy = { w: w, by: lookIndex(w) };
+    var rows; try { rows = list.map(function (x, i) { var p = pet(x); return { x: x, i: i, k: key === 'sp' ? sp(p) : K[4](w, p, b) }; }); } finally { lookBy = prevLooks; }
     rows.sort(function (a, c) { if (key === 'sp') { var A = a.k, B = c.k, d = (A[0] < B[0] ? -1 : A[0] > B[0] ? 1 : 0) || A[1] - B[1] || (A[2] < B[2] ? -1 : A[2] > B[2] ? 1 : 0); return (rev ? -d : d) || a.i - c.i; }
       var e = cmp(a.k, c.k); return (rev ? -e : e) || a.i - c.i; });
     return rows.map(function (r) { return r.x; }); }

@@ -21,6 +21,29 @@
   var UNDO = null, TGT = null;
   /** target(): 'sel' when the player chose the board selection and it is not empty, else 'pet' (the Lair pet). Default: 'sel' if pets are selected. */
   function target() { var n = window.V2UI && V2UI.pickIds ? V2UI.pickIds().length : 0; /* mypets-checkbox: the checked pets (was starred) */ if (!n) return 'pet'; return TGT || 'sel'; }
+  /* auto-equip label (My Pets checkbox + this bar) used to call V2Rules.autoEquipOps, which walks every pet and, for each open slot,
+   * every piece in the world. On the owner wallet that is 9,166 living pets and ~2,800 pieces: about 1.4–2.6s, and the label asked twice
+   * (this bar and the hidden button), so Select all froze the page. Same pieces as autoEquipOps: one pass over free stash copies, highest
+   * tier first, earliest copy of that tier, eligibility from equipCheck (the same uiElig the rules use). Display planning only. */
+  var AE = null;
+  function sameIds(a, b) { if (a.length !== b.length) return false; for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+  function autoEquipOps(w, owner, ids, block) { var V = window.V2Rules; if (!V || !V.autoEquipOps || !w || !ids || !ids.length) return [];
+    var list = w.itemList || [], free = {}, mark = 0, i, g, j, s;
+    for (i = 0; i < list.length; i++) { g = list[i]; if (g.owner !== owner || g.on != null) continue; s = String(g.gid); mark = (mark + i + (g.tier | 0)) | 0; for (j = 0; j < s.length; j++) mark = Math.imul(mark ^ s.charCodeAt(j), 16777619); (free[g.slot] = free[g.slot] || []).push({ g: g, i: i }); }
+    if (AE && AE.w === w && AE.owner === owner && AE.block === block && AE.mark === mark && sameIds(AE.ids, ids)) return AE.ops;
+    try {
+      Object.keys(free).forEach(function (s) { free[s].sort(function (a, b) { return b.g.tier - a.g.tier || a.i - b.i; }); });
+      var set = new Set(ids), used = {}, ops = [], cache = {};
+      function can(p, itemId) { var one = V.isOneOfOne && V.isOneOfOne(p) ? 1 : 0, body = V.bodyOf ? V.bodyOf(p) : p.species, k = p.species + '\0' + p.tier + '\0' + body + '\0' + one + '\0' + itemId, hit = cache[k];
+        if (hit != null) return hit; var c = V.equipCheck(w, owner, p.id, itemId); hit = !!(c && (c.ok || c.worn)); cache[k] = hit; return hit; }
+      w.pets.forEach(function (p) { if (p.owner !== owner || !set.has(p.id) || p.dead) return;
+        var slots = (p.openSlots || []).concat(p.species === 'wizard' && V.slotOpen && V.slotOpen(p, 'weapon') ? ['weapon'] : []), worn = V.wornOf ? V.wornOf(w, p.id) : [];
+        slots.forEach(function (slot) { var cur = null, arr = free[slot] || [], j; for (j = 0; j < worn.length; j++) if (worn[j].slot === slot) { cur = worn[j]; break; }
+          var floor = cur ? cur.tier : -Infinity;
+          for (j = 0; j < arr.length; j++) { g = arr[j].g; if (!(g.tier > floor)) break; if (used[g.gid]) continue; if (!can(p, g.item)) continue;
+            used[g.gid] = 1; ops.push({ kind: 'equip', owner: owner, petId: p.id, slot: slot, gid: g.gid, block_index: block }); break; } }); });
+      AE = { w: w, owner: owner, block: block, mark: mark, ids: ids.slice(), ops: ops }; return ops;
+    } catch (e) { return V.autoEquipOps(w, owner, ids, block); } }
   function bestPlan(w, P) { var V = window.V2Rules, ME = V2UI.ME, D = V2Shop.dmg, free = (w.itemList || []).filter(function (x) { return x.owner === ME && x.on == null; }), worn = V.wornOf(w, P.id), out = [];
     (P.openSlots || []).forEach(function (sl) { var cur = worn.filter(function (x) { return x.slot === sl; })[0], c0 = cur ? D(cur.item) : 0;
       var best = free.filter(function (x) { var it = (V.GEAR_BY_ID || {})[x.item]; return it && it.slot === sl && V.equipCheck(w, ME, P.id, x.item).ok; }).sort(function (a, b) { return D(b.item) - D(a.item); })[0];
@@ -41,7 +64,7 @@
     var St = V2UI.S(), sIds = V2UI.pickIds ? V2UI.pickIds(w) : (St.sel || []), nSel = sIds.length, sh = V2Shop._state(), lp = w.byId[sh.pet != null ? sh.pet : sh.rollPet] || V2UI.mine(w).filter(function (p) { return !p.dead; })[0], tg = target();
     /* sticky-feed-bar: one 'Acts on' switch for Equip Best / Auto-equip and the roll button. Lair pet = old Equip Best / Lair roll; Selected = old sticky-bar Auto-equip / Roll gear (same #bAuto / #bRoll handlers). */
     h += '<div class="lq-row lq-tgt" role="group" aria-label="Which pets the buttons act on"><span class="lq-rvh">Acts on</span>' + (lp ? chip('tgt', 'pet', '#' + lp.id + ' Mirror pet', tg === 'pet') : '') + chip('tgt', 'sel', '\u2611 ' + nSel + ' selected', tg === 'sel') + '</div>';
-    var ae = tg === 'sel' ? window.V2Rules.autoEquipOps(w, V2UI.ME, sIds, St.tip) : null;
+    var ae = tg === 'sel' ? autoEquipOps(w, V2UI.ME, sIds, St.tip) : null;
     h += '<div class="lq-row">' + (tg === 'sel' ? '<button type="button" class="btn ico-flame lq-best" id="lqAuto"' + (ae.length ? '' : ' disabled') + '>\u2728 Auto-equip ' + nSel + ' selected <span class="cost">' + (ae.length ? ae.length + ' piece' + (ae.length === 1 ? '' : 's') + ' \u00b7 free' : 'nothing better in your stash') + '</span></button>' : '<button type="button" class="btn ico-flame lq-best" id="lqBest">\u26a1 Equip Best' + (lp ? ' on #' + lp.id : '') + ' <span class="cost">free</span></button>') + (UNDO ? '<button type="button" class="q" id="lqUndo">\u21a9 Undo</button>' : '') +
       (R.length ? '<span class="lq-rv"><span class="lq-rvh">Recent</span>' + R.map(function (k) { var src = ''; try { src = V2Render.iconCanvas(byG[k].item).toDataURL(); } catch (e) { } return '<button type="button" class="lq-rvi" data-lqr="' + esc(k) + '" title="' + esc(byG[k].label || byG[k].item) + '">' + (src ? '<img src="' + src + '" alt="" width="24" height="24">' : '?') + '</button>'; }).join('') + '<button type="button" class="q lq-clr" id="lqClr" title="Clear recently viewed">\u2715</button></span>' : '') + '</div>';
     el.innerHTML = h;
@@ -53,5 +76,5 @@
     'html.viewonly #lqBest,html.viewonly #lqUndo,html.viewonly #lqAuto{display:none!important}@media (max-width:520px){.lq-strip{flex-wrap:nowrap}.lq-chip{font-size:9px}}';
   if (typeof document !== 'undefined' && !document.getElementById('lqCss')) { var s = document.createElement('style'); s.id = 'lqCss'; s.textContent = CSS; (document.head || document.documentElement).appendChild(s); }
   document.addEventListener('xcpets-sel', function () { try { var w = window.V2UI && V2UI.world(); if (w) { mount(w); if (window.V2Shop && V2Shop.refreshRoll) V2Shop.refreshRoll(); } } catch (e) { } }); /* mypets-checkbox: a checkbox change updates the counts */
-  window.V2LairQoL = { hasUndo: function () { return !!UNDO; }, remember: function (pid, plan) { UNDO = { pid: pid, plan: plan }; }, apply: apply, viewed: viewed, mount: mount, bestPlan: bestPlan, equipBest: equipBest, undo: undo, target: target };
+  window.V2LairQoL = { hasUndo: function () { return !!UNDO; }, remember: function (pid, plan) { UNDO = { pid: pid, plan: plan }; }, apply: apply, viewed: viewed, mount: mount, bestPlan: bestPlan, equipBest: equipBest, undo: undo, target: target, autoEquipOps: autoEquipOps };
 })();

@@ -371,7 +371,8 @@
   /* discard-pile 2026-10-21 (restored Oct 29 2026): starred pets are NEVER discarded, on every path (card 🗑️, detail, Discard selected, pack review, #discard-ID). Unstar first. */
   function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kk = ids.filter(isKept); ids = dropKept(ids);
     if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
-  function mine(w) { var h = hiddenIds(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && h.indexOf(p.id) < 0; }); }
+  function hiddenSet() { var a = hiddenIds(), s = new Set(); for (var i = 0; i < a.length; i++) s.add(a[i]); return s; }
+  function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !h.has(p.id); }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
   // ---------------------------------------------------------------- gear-win notification (single roll, bulk rolls, live/free-token rolls, trophies)
@@ -810,7 +811,7 @@
       box.appendChild(mb); mb.querySelector('button').onclick = function (e) { e.stopPropagation(); var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();
         put(list.slice(i0, upto), tail); if (list.length > upto) { mb.querySelector('button').textContent = 'Show more (' + fmt(list.length - upto) + ' left)'; box.insertBefore(mb, tail.nextSibling); } else mb.remove();
         $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
-    var gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hiddenIds().indexOf(p.id) >= 0 && !!p.dead === !!cem; });
+    var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem) pileLink(gone.length); /* discard-pile jump link */
     $('petPager').textContent = list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
@@ -935,7 +936,7 @@
   $('bFeedSel').onclick = function () { feedAsync('Feed selected pets', window.UXB && UXB.shownSel ? UXB.shownSel(sel()) : sel(), true); }; /* mypets-species-filter: only the checked pets that are shown */
   $('bRoll').onclick = function () { var ids = pickIds(), rn = Math.max(1, Math.min(10, Number($('rollN').value) || 1)), q = V.rollQueue(world(), ME, ids, rn); if (!ids.length) return toast('☑ Tick pets in My Pets first: the roll acts on your selected pets.'); var sp = ids.length + ' selected pet' + (ids.length === 1 ? '' : 's'), wh = q.length && q[0].tag === 'pet:spin'; confirmPlans(wh ? '🎡 ' + q.length + ' wheel spin' + (q.length === 1 ? '' : 's') + ' for your ' + sp + ' (' + rn + ' each; the wheel picks a random pet)' : '🎲 Roll gear for your ' + sp + ' · ' + q.length + ' roll' + (q.length === 1 ? '' : 's'), q); }; /* mypets-checkbox: selected pets */
   if ($('bRelease')) $('bRelease').onclick = function () { if (V.retiredUI && V.retiredUI(world())) return toast('Release (pet:rel) was retired at block ' + V.retireGate() + '. Use Discard instead.'); if (!S.sel.length) return toast('Select pets first'); confirmPlans('Release ' + S.sel.length + ' pets (max ' + V.MAX_RELEASE_PER_BURN + ' per burn)', V.releaseBatches(sel())); };
-  $('bAuto').onclick = function () { if (viewBlock()) return; var ids = pickIds(); if (!ids.length) return toast('☑ Tick pets in My Pets first: Auto-equip acts on your selected pets.'); var ops = V.autoEquipOps(world(), ME, ids, S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip on ' + ids.length + ' selected pet' + (ids.length === 1 ? '' : 's') + ': ' + ops.length + ' pieces (free, no burn)'); render(); }; /* mypets-checkbox: selected pets */
+  $('bAuto').onclick = function () { if (viewBlock()) return; var ids = pickIds(); if (!ids.length) return toast('☑ Tick pets in My Pets first: Auto-equip acts on your selected pets.'); var plan = window.V2LairQoL && V2LairQoL.autoEquipOps ? V2LairQoL.autoEquipOps : V.autoEquipOps, ops = plan(world(), ME, ids, S.tip); S.ops = S.ops.concat(ops); save(); toast('✨ Auto-equip on ' + ids.length + ' selected pet' + (ids.length === 1 ? '' : 's') + ': ' + ops.length + ' pieces (free, no burn)'); render(); }; /* mypets-checkbox: selected pets. The lair planner picks the same pieces without scanning every item for every pet. */
   if ($('bOutfit')) $('bOutfit').onclick = function () { if (viewBlock()) return;
     if (!pickIds().length) return toast('☑ Tick pets in My Pets first: Outfit acts on your selected pets.'); var w = world(), inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; });
     $('outfitBody').innerHTML = '<p class="small">Uses free copies from your stash. Missing copies or closed slots are skipped.</p>' + V.V2_SLOTS.map(function (sl) { var k = {}; inv.filter(function (g) { return g.slot === sl; }).forEach(function (g) { (k[g.item] = k[g.item] || { l: g.label, n: 0 }).n++; });
