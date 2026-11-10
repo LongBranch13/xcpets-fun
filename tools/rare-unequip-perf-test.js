@@ -1,6 +1,9 @@
 /* rare-room-unequip: Take off and Unequip all stay on the main thread only long enough to
  * update the one pet. A large wallet (the owner address, 14k pets, hundreds of worn pieces)
  * must not replay the chain or rebuild the hidden raid list. Display only. Never signs.
+ * rare-room-dress: opening the Rare Room (and coming back to it) used to sort every living
+ * pet by shownLooks(), which re-sorts every look copy on each comparison, and Chrome showed
+ * "Page Unresponsive" while the room was on screen (the Dress door click landed in that task).
  *   node tools/rare-unequip-perf-test.js
  */
 'use strict';
@@ -56,8 +59,8 @@ const INIT = `(() => {
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
     const t0 = Date.now();
-    await page.goto(origin + '/rare-room.html?addr=' + encodeURIComponent(ADDR) + '#dressing-room', { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 1000 && !V2Mock.world().pending && document.querySelector('#drStrip, #rrDress, #drEnter'), null, { timeout: 180000 });
+    await page.goto(origin + '/rare-room.html?addr=' + encodeURIComponent(ADDR) + '#rare-room', { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 1000 && !V2Mock.world().pending && document.querySelector('#shopScene canvas') && document.querySelector('#lookStation') && document.querySelector('#drEnter'), null, { timeout: 180000 });
     await page.waitForTimeout(600);
     return { page: page, ctx: ctx, errors: errors, openMs: Date.now() - t0 };
   }
@@ -85,6 +88,68 @@ const INIT = `(() => {
     ok(opened.raidPets === 0, 'hidden raid list is not built (' + opened.raidPets + ')');
     ok(opened.fTheirs === 0, 'hidden arena fighter list is not built (' + opened.fTheirs + ')');
     ok(opened.overflow <= 8, 'no horizontal overflow at 1280 (' + opened.overflow + ')');
+    ok(opened.longMax < 8000, 'opening the Rare Room has no multi-second freeze (' + opened.longMax + 'ms, was 133702ms)');
+    const station = await desk.page.evaluate(() => {
+      const el = document.getElementById('lookStation'); if (el) el.remove();
+      window.__long.length = 0;
+      const t0 = performance.now();
+      V2LookPicker.tick();
+      const ms = Math.round(performance.now() - t0);
+      const w = V2UI.world(), me = V2UI.ME;
+      const live = w.pets.filter(p => p.owner === me && !p.dead && !p.released && !p.community);
+      const counts = V2LookPicker.looksOn(w, live);
+      const sample = [];
+      for (let i = 0; i < 12; i++) sample.push(live[(i * 997) % live.length]);
+      const shown = live.filter(p => (p.flameLooks && p.flameLooks.length) || (w.lookCopies && Object.keys(w.lookCopies).some(k => w.lookCopies[k].at === p.id))).slice(0, 8);
+      shown.forEach(p => { if (sample.indexOf(p) < 0) sample.push(p); });
+      let mismatch = 0;
+      sample.forEach(p => { if ((counts[p.id] || 0) !== V2Rules.shownLooks(w, p).length) mismatch++; });
+      const heading = (document.querySelector('#lpBody h3') || {}).textContent || '';
+      const m = /#(\d+)/.exec(heading);
+      const picked = m ? +m[1] : 0;
+      return { ms: ms, longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0), mismatch: mismatch, picked: picked, start: V2LookPicker.startPet(w, live), live: live.length, copies: w.lookCopies ? Object.keys(w.lookCopies).length : 0 };
+    });
+    results.station = station;
+    console.log('MEASURE station', JSON.stringify(station));
+    ok(station.ms < 2500, 'Flex Forge station under 2.5s (' + station.ms + 'ms, was tens of seconds)');
+    ok(station.longMax < 2500, 'Flex Forge station long task under 2.5s (' + station.longMax + 'ms)');
+    ok(station.mismatch === 0, 'fast look count matches shownLooks (' + station.mismatch + ' mismatches)');
+    ok(station.picked === station.start, 'station opens on the most-looks pet #' + station.start + ' (showing #' + station.picked + ')');
+    const dress = await desk.page.evaluate(async () => {
+      window.__long.length = 0;
+      if (location.hash !== '#rare-room') location.hash = '#rare-room';
+      await new Promise(res => setTimeout(res, 80));
+      const c = document.querySelector('#shopScene canvas');
+      const r = c.getBoundingClientRect();
+      const cx = r.left + ((112 + 10) / 320) * r.width, cy = r.top + ((60 + 18) / 150) * r.height;
+      window.__long.length = 0;
+      const t0 = performance.now();
+      c.dispatchEvent(new MouseEvent('click', { clientX: cx, clientY: cy, bubbles: true, cancelable: true, view: window }));
+      const until = performance.now() + 8000;
+      while ((location.hash !== '#dressing-room' || !document.querySelector('#rrDress')) && performance.now() < until) await new Promise(res => setTimeout(res, 40));
+      const clickMs = Math.round(performance.now() - t0);
+      const delays = [];
+      for (let i = 0; i < 3; i++) { const a = performance.now(); await new Promise(res => setTimeout(res, 0)); delays.push(Math.round(performance.now() - a)); }
+      const w = V2UI.world(), pid = V2Shop._state().pet, P = w.byId[pid];
+      const worn = P ? V2Rules.wornOf(w, pid).map(g => g.item).sort() : [];
+      const dom = Array.prototype.map.call(document.querySelectorAll('#rrDress .dr-slots canvas[data-gic]'), cv => cv.getAttribute('data-gic')).sort();
+      return {
+        clickMs: clickMs, hash: location.hash, dress: !!document.querySelector('#rrDress'),
+        strip: document.querySelectorAll('#drStrip .dr-pt').length,
+        pid: pid, sameGear: worn.join() === dom.join(), wornN: worn.length,
+        longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0),
+        delay: Math.max(0, ...delays)
+      };
+    });
+    results.dress = dress;
+    console.log('MEASURE dress click', JSON.stringify(dress));
+    ok(dress.hash === '#dressing-room' && dress.dress, 'Dress door opens the dressing room');
+    ok(dress.clickMs < 2500, 'Dress click under 2.5s (' + dress.clickMs + 'ms)');
+    ok(dress.longMax < 2500, 'Dress click long task under 2.5s (' + dress.longMax + 'ms)');
+    ok(dress.delay < 400, 'page accepts input after Dress (' + dress.delay + 'ms)');
+    ok(dress.strip > 0, 'dressing room lists pets (' + dress.strip + ')');
+    ok(dress.sameGear, 'dressing room slots match worn gear for #' + dress.pid + ' (' + dress.wornN + ' pieces)');
+    await desk.page.screenshot({ path: path.join(ART, 'rare-room-dress-1280.png') });
     const gear = await desk.page.evaluate(async () => {
       const w = V2UI.world(), me = V2UI.ME, worn = (w.itemList || []).filter(g => g.owner === me && g.on != null);
       const by = {}; worn.forEach(g => { (by[g.on] = by[g.on] || []).push(g); });
@@ -176,8 +241,33 @@ const INIT = `(() => {
     results.phone = phone;
     ok(phone.overflow <= 8, 'no horizontal overflow at 390 (' + phone.overflow + ')');
     ok(phone.hall > 0, 'hall is on screen at 390 (' + phone.hall + ' cards)');
-    ok(opened.longMax < 8000, 'opening the Rare Room has no multi-second freeze (' + opened.longMax + 'ms, was 133702ms)');
     await desk.page.screenshot({ path: path.join(ART, 'rare-room-unequip-390.png') });
+    const tBack = Date.now();
+    await desk.page.setViewportSize({ width: 1280, height: 800 });
+    await desk.page.goto(origin + '/rare-room.html?addr=' + encodeURIComponent(ADDR) + '#rare-room', { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await desk.page.waitForFunction(() => window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 1000 && !V2Mock.world().pending && document.querySelector('#shopScene canvas') && document.querySelector('#lookStation') && document.querySelector('#drEnter'), null, { timeout: 180000 });
+    await desk.page.waitForTimeout(400);
+    const back = await desk.page.evaluate(() => ({
+      longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0),
+      longTop: (window.__long || []).slice().sort((a, b) => b - a).slice(0, 6),
+      hall: document.querySelectorAll('#rhGrid .rh-card').length,
+      hallMore: !!document.querySelector('#rhGrid .rh-more'),
+      station: !!document.querySelector('#lookStation'),
+      enter: !!document.querySelector('#drEnter'),
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    }));
+    back.ms = Date.now() - tBack;
+    results.returnHall = back;
+    console.log('MEASURE return hall', JSON.stringify(back));
+    ok(back.station && back.enter, 'coming back shows the Rare Room and Flex Forge');
+    ok(back.longMax < 8000, 'coming back has no multi-second freeze (' + back.longMax + 'ms)');
+    ok(back.hall > 0 && back.hall <= 64 && (back.hall <= 16 || back.hallMore), 'hall still pages after coming back (' + back.hall + (back.hallMore ? ', more below' : '') + ')');
+    await desk.page.setViewportSize({ width: 390, height: 844 });
+    await desk.page.waitForTimeout(300);
+    const phoneBack = await desk.page.evaluate(() => ({ overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, hall: document.querySelectorAll('#rhGrid .rh-card').length, enter: !!document.querySelector('#drEnter') }));
+    results.phoneReturn = phoneBack;
+    ok(phoneBack.overflow <= 8, 'no horizontal overflow at 390 after coming back (' + phoneBack.overflow + ')');
+    await desk.page.screenshot({ path: path.join(ART, 'rare-room-return-390.png') });
     const bad = desk.errors.filter(e => !/favicon|net::ERR_FAILED|Failed to load resource/i.test(e));
     ok(!bad.length, 'no page errors' + (bad.length ? ': ' + bad.slice(0, 3).join(' | ') : ''));
     await desk.ctx.close();

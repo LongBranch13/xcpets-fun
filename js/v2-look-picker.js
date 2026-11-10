@@ -89,9 +89,32 @@
     el.querySelectorAll('[data-mv]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.mv], sel = el.querySelector('xc-select[data-mvs="' + b.dataset.mv + '"]'), to = sel && +sel.value; if (!to) return; send(to, [{ code: L.code, on: true }]); }; });
     el.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.off]; L.on.forEach(function (pid) { send(pid, [{ code: L.code, on: false }]); }); }; });
     el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]; if (p) preview(c, w, p, lookFx(L)); }); }
+  /* shownLooks() asks copyList() to sort every look copy in the world. Doing that inside a sort of every living pet
+   * (about 9k for the owner wallet, each comparison sorting the copies again) was one long task of tens of seconds
+   * and Chrome's "Page Unresponsive" on the Rare Room: the room had already painted, so it showed up when you
+   * clicked Dress, and again every time you left and came back. One pass, same pet: most looks, then Pet Score, then lowest #. */
+  function flameType(id) { var V = window.V2Rules, T = V && V.FLAME_TIERS || [], i, j, L; for (i = 0; i < T.length; i++) { L = T[i].looks || []; for (j = 0; j < L.length; j++) if (L[j].id === id) return L[j].type; } return null; }
+  function looksOn(w, live) { var V = window.V2Rules, n = {}, i, p, types, t, arr, j, c, buckets, C, k;
+    for (i = 0; i < live.length; i++) n[live[i].id] = 0;
+    if (!V) return n;
+    if (w.lookCopies) { buckets = {}; C = w.lookCopies; for (k in C) { c = C[k]; if (c && c.at != null && n[c.at] != null) (buckets[c.at] = buckets[c.at] || []).push(c); }
+      for (i = 0; i < live.length; i++) { p = live[i]; types = {}; arr = p.flameLooks || [];
+        for (j = 0; j < arr.length; j++) { t = flameType(arr[j]); if (t && !types[t]) { types[t] = 1; n[p.id]++; } }
+        arr = buckets[p.id] || []; for (j = 0; j < arr.length; j++) { c = arr[j]; if (c.holder !== p.owner) continue; t = V.lookDef ? (V.lookDef(c.kind, c.id) || {}).type : null; if (t && !types[t]) { types[t] = 1; n[p.id]++; } } }
+      return n; }
+    var codes = V.QUEST_CODES || [], Q = V.QUESTS || {};
+    for (i = 0; i < live.length; i++) { p = live[i]; types = {}; arr = p.flameLooks || [];
+      for (j = 0; j < arr.length; j++) { t = flameType(arr[j]); if (t && !types[t]) { types[t] = 1; n[p.id]++; } }
+      arr = p.questLooks || []; for (j = 0; j < arr.length; j++) for (var ci = 0; ci < codes.length; ci++) { var L2 = Q[codes[ci]] && Q[codes[ci]].look; if (L2 && L2.id === arr[j] && !types[L2.type]) { types[L2.type] = 1; n[p.id]++; } }
+      if (V.earnedLooks) { var E = V.earnedLooks(p); for (j = 0; j < E.length; j++) if (E[j] && E[j].type && !types[E[j].type]) { types[E[j].type] = 1; n[p.id]++; } } }
+    return n; }
+  function startPet(w, live) { var counts = looksOn(w, live), PS = window.PetScore, best = live[0], bn = -1, bs = -1, i, p, s, c;
+    for (i = 0; i < live.length; i++) { p = live[i]; c = counts[p.id] || 0; s = PS && PS.of ? ((PS.of(w, p) || {}).score || 0) : 0;
+      if (c > bn || (c === bn && s > bs) || (c === bn && s === bs && p.id < best.id)) { best = p; bn = c; bs = s; } }
+    return best.id; }
   /* Rare Room Looks station: pick one of your pets (shared picker + sort menu), then the panel for it */
   function station(el, w, ME) { css(); if (!el.__st) el.__st = { pid: 0 }; var S = el.__st, live = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; });
-    if (!S.pid && live[0]) { var sc = function (p) { var r = window.PetScore && PetScore.of(w, p); return (V2Rules.shownLooks(w, p).length * 1e5) + (r ? r.score : 0); }; S.pid = live.slice().sort(function (a, b) { return sc(b) - sc(a) || a.id - b.id; })[0].id; } /* start on the pet already wearing the most looks, then the best Pet Score */
+    if (!S.pid && live[0]) S.pid = startPet(w, live); /* start on the pet already wearing the most looks, then the best Pet Score */
     el.innerHTML = '<h2 class="sec" data-ico="gear">🃏 ' + esc(NAMES.station) + '</h2><p class="small muted">Pick a pet, then decorate its card with any look you own. All its changes go out together (up to 6 changes per burn).</p><div id="lpPick"></div><div id="lpBody"></div>';
     if (window.V2Picker) V2Picker.mount($('lpPick'), { id: 'looks', w: w, me: ME, noWho: true, dir: true, sorts: ['score', 'rarity', 'power', 'newest'], selected: S.pid,
       records: function () { return live.map(function (p) { return { key: p.id, pets: [p], newest: p.hatchBlock || p.id, html: V2Picker.petChip(w) }; }); },
@@ -106,5 +129,5 @@
     var pp = $('petsPanel'); if (pp && ME && page === 'play' && keys.my !== k) { keys.my = k; var ml = $('myLooks'); if (!ml) { ml = document.createElement('div'); ml.id = 'myLooks'; pp.appendChild(ml); } /* below the pet list (owner 2026-10-27: pets first) */ myLooks(ml, w, ME); }
     var inv = $('invPanel'); if (inv && ME && page === 'rare' && keys.rr !== k) { keys.rr = k; var s = $('lookStation'); if (!s) { s = document.createElement('section'); s.id = 'lookStation'; s.className = 'panel shop8 split-keep'; inv.parentNode.insertBefore(s, inv.nextSibling); } station(s, w, ME); } }
   if (typeof document !== 'undefined') { setInterval(tick, 3000); if (document.readyState !== 'loading') setTimeout(tick, 600); else document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 600); }); }
-  window.V2LookPicker = { panel: panel, myLooks: myLooks, station: station, tick: function () { keys = {}; tick(); } };
+  window.V2LookPicker = { panel: panel, myLooks: myLooks, station: station, looksOn: looksOn, startPet: startPet, tick: function () { keys = {}; tick(); } };
 })();
