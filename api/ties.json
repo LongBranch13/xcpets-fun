@@ -1,6 +1,6 @@
 {
- "lastBlock": 975239,
- "count": 259,
+ "lastBlock": 975247,
+ "count": 264,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3110,6 +3110,66 @@
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 8782,
+   "asset": "A7033530072406810671",
+   "tiedBlock": 975242,
+   "tiedTx": "339e785426eeea1679df8818689ec8944f0ccacf364140c83aebd74ff9404204",
+   "kind": "deed",
+   "name": "Bomo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 16813,
+   "asset": "A9824504726158567087",
+   "tiedBlock": 975242,
+   "tiedTx": "e59bdd415cb5c4ff2420a16ea6916e8f2f532fbc5d3cda70fe389f19db834fbf",
+   "kind": "deed",
+   "name": "Funuri",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 19711,
+   "asset": "A5902530976190062652",
+   "tiedBlock": 975242,
+   "tiedTx": "5ac8670829a621d545decd9449bd7d488562fb38bca1cc8ceaca94a60d43fd6a",
+   "kind": "deed",
+   "name": "Tikzu",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22041,
+   "asset": "A1496372919840504428",
+   "tiedBlock": 975242,
+   "tiedTx": "a902ec3df1c854f4ddafd71b65bd97411961688af89e456c177a0083c299a912",
+   "kind": "deed",
+   "name": "Tikrito",
+   "species": "wizard",
+   "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 49079,
+   "asset": "A17131008609932054277",
+   "tiedBlock": 975242,
+   "tiedTx": "1104ae12d52e2f23790c3437513b9cdf399c73c337c17679a0d5b3ffe4931c98",
+   "kind": "deed",
+   "name": "Pomoofebun",
+   "species": "hyb:pepe:doge",
+   "speciesLabel": "Pege (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
