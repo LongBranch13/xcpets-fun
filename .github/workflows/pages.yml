@@ -5,7 +5,8 @@
 # Until then it does nothing, so it does not race the branch deploy. Once it is the publisher it:
 #   - omits previews/ (design screenshots, ~24MB of the ~47MB compressed artifact, not used by any page)
 #   - packs api/pets.json to columnar v2 if the committed file is still the old object list
-#   - waits 30 minutes for syncing_files instead of 10, and does not cancel an in-progress sync for a newer push
+#   - asks deploy-pages for 30 minutes. actions/deploy-pages@v5 clamps any larger value to 600000 ms (10 minutes)
+#     and prints that warning. A newer push waits (cancel-in-progress: false) instead of cancelling the sync.
 name: pages
 on:
   push:
