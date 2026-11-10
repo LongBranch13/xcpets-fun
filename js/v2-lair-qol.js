@@ -26,7 +26,7 @@
       var best = free.filter(function (x) { var it = (V.GEAR_BY_ID || {})[x.item]; return it && it.slot === sl && V.equipCheck(w, ME, P.id, x.item).ok; }).sort(function (a, b) { return D(b.item) - D(a.item); })[0];
       if (best && D(best.item) > c0) out.push({ sl: sl, gid: V.equipCheck(w, ME, P.id, best.item).gid, prev: cur ? cur.gid : null, d: D(best.item) - c0 }); });
     return out; }
-  function push(pid, list, key) { var U = window.V2UI, St = U.S(); list.forEach(function (o) { St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: o.sl, gid: o[key], block_index: St.tip }); }); U.save(); U.render(); }
+  function push(pid, list, key) { var U = window.V2UI, St = U.S(); list.forEach(function (o) { St.ops.push({ kind: 'equip', owner: U.ME, petId: pid, slot: o.sl, gid: o[key], block_index: St.tip }); }); U.save(); if (U.refreshGear) U.refreshGear(pid); else U.render(); }
   function equipBest() { var U = window.V2UI, w = U.world(); if (U.viewOnly && U.viewOnly()) return U.confirmPlans('Equip', [{}]); var st = V2Shop._state(), P = w.byId[st.pet != null ? st.pet : st.rollPet] || U.mine(w).filter(function (p) { return !p.dead; })[0];
     if (!P) return U.toast('No pet to dress'); var plan = bestPlan(w, P); if (!plan.length) return U.toast('#' + P.id + ' already wears its best');
     var before = V2Shop.dmg ? window.V2Rules.wornOf(w, P.id).reduce(function (s, x) { return s + V2Shop.dmg(x.item); }, 0) : 0, gain = plan.reduce(function (s, o) { return s + o.d; }, 0);
