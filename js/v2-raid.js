@@ -19,7 +19,8 @@
     return '<div class="rd-meter rm-z-' + z + '"><div class="rm-top"><span class="rm-lbl">' + (z === 'd' ? 'DANGER!' : z === 'k' ? 'DEFEATED' : 'BOSS HP') + '</span><span class="rm-pct">' + (pct > 0 && pct < 1 ? '<1' : Math.ceil(pct)) + '%</span></div>' +
       '<div class="rd-hp" role="progressbar" aria-label="Boss HP" aria-valuemin="0" aria-valuemax="' + R.hp + '" aria-valuenow="' + R.left + '"><b class="ra-lag" style="width:' + pct.toFixed(2) + '%"></b><i style="width:' + pct.toFixed(2) + '%"></i><em class="rm-seg" aria-hidden="true"></em><span>' + fmt(R.left) + ' / ' + fmt(R.hp) + ' HP</span></div>' +
       '<div class="rm-combo" aria-hidden="true"></div>' + (tick ? '<div class="rm-tick"><p class="rm-th">Last hits</p><ol aria-live="polite">' + tick + '</ol></div>' : '') + '</div>'; }
-  function draw() { var el = $('raidBox'), V = window.V2Rules; if (!el || !V || !V.raidInfo) return; var w = world(), T = tip(); if (!w || !T) return;
+  function shown() { var p = $('raidPanel'); return !!(p && !p.hidden && p.getAttribute('aria-hidden') !== 'true' && !p.classList.contains('split-off')); }
+  function draw() { var el = $('raidBox'), V = window.V2Rules; if (!el || !V || !V.raidInfo || !shown()) return; var w = world(), T = tip(); if (!w || !T) return;
     var b = T + 1, I = window.XCPETS_RAID_DEMO || V.raidInfo(w, b), R = I.raid, ME = me(), key = JSON.stringify([T, ME, R && R.left, R && R.board.length, R && R.settled, selPet]); if (key === last) return; last = key;
     var h = '';
     if (!I.on && !R) { h = '<div class="rd-wait"><h3>Raids start at block ' + fmt(I.gate) + '</h3><p>' + (I.gate > b ? 'In ' + fmt(I.gate - b) + ' blocks (' + hrs(I.gate - b) + ').' : 'Waiting for the opening block hash.') + ' A boss appears, everyone burns to hit it, and if it falls every attacker gets a badge.</p></div>'; }
