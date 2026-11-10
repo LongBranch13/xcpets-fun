@@ -1,6 +1,6 @@
 {
- "lastBlock": 975308,
- "count": 268,
+ "lastBlock": 975315,
+ "count": 269,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3216,6 +3216,18 @@
    "name": "Nuru",
    "species": "dodo",
    "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 21016,
+   "asset": "A14621483413755146717",
+   "tiedBlock": 975315,
+   "tiedTx": "cbdb79c2ca32159c93fb390ce048021a224e6bf15fe64b3d14e73a1d457bc22a",
+   "kind": "deed",
+   "name": "Wawapo",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
