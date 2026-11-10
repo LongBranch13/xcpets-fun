@@ -1,6 +1,6 @@
 {
- "lastBlock": 975265,
- "count": 265,
+ "lastBlock": 975267,
+ "count": 266,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3182,6 +3182,18 @@
    "speciesLabel": "Doge",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 147177,
+   "asset": "A10974229327086347438",
+   "tiedBlock": 975267,
+   "tiedTx": "e25529088d89626c51406afd6838f77be18745fc973348dc9c88b55108648543",
+   "kind": "deed",
+   "name": "Pepafuzy",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
