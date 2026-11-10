@@ -15,7 +15,7 @@
   var TIERS = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   var STATUS = ['alive', 'dead', 'released'];
   var STAGES = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
-  var SLOTS = ['head', 'face', 'body', 'back', 'hand', 'feet'];
+  var SLOTS = ['head', 'face', 'body', 'back', 'hand', 'feet', 'weapon'];
   var STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
   function intern(list, map, value) {
     var i = map.get(value);
