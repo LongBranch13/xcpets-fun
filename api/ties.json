@@ -1,6 +1,6 @@
 {
- "lastBlock": 975263,
- "count": 264,
+ "lastBlock": 975265,
+ "count": 265,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3168,6 +3168,18 @@
    "name": "Pomoofebun",
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 915,
+   "asset": "A6668867399326264157",
+   "tiedBlock": 975264,
+   "tiedTx": "0f6b85e3281428149013998781314423835871e6f534062ba071660deb0eb451",
+   "kind": "deed",
+   "name": "Yoto",
+   "species": "doge",
+   "speciesLabel": "Doge",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
