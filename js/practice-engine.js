@@ -138,7 +138,7 @@
 
   /* ---- the pretend node: answers the same URLs rjs/chain.js and js/v2-chain.js read */
   function serve(url) { var l = load(), u; try { u = new URL(url, root.location && root.location.href); } catch (e) { return null; } var p = u.pathname.replace(/\/+$/, '') || '/';
-    var core = /:4000$/.test(u.host) || /counterparty|unspendablelabs|xcp\.fun/.test(u.host), mp = /mempool\.space|blockstream\.info/.test(u.host);
+    var core = /:4000$/.test(u.host) || /counterparty|unspendablelabs|xcp\.fun|node\.xcpets\.fun/.test(u.host), mp = /mempool\.space|blockstream\.info/.test(u.host);
     if (mp) { var m;
       if ((m = /\/block-height\/(\d+)$/.exec(p))) { var h = blockHash(m[1]); return h ? txt(h) : txt('Block height out of range', 404); }
       if (/\/blocks\/tip\/height$/.test(p)) return txt(String(l.tip));

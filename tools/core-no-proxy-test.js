@@ -13,17 +13,20 @@ function ctx(fetchImpl) { const st = {}, ls = { getItem: k => (k in st ? st[k] :
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8'), c, { filename: 'config.js' });
   return { win, c, calls }; }
 (async () => {
+  const CACHE = 'https://node.xcpets.fun/v2';
   const { win } = ctx(() => Promise.reject(new TypeError('fetch failed'))), C = win.XCPETS_CONFIG;
-  ok(C && C.read.every(u => !/xcp\.fun/.test(u)), 'mainnet read list has no api.xcp.fun: ' + (C && C.read.join(' ')));
+  ok(C && C.read.every(u => !/api\.xcp\.fun/.test(u)), 'mainnet read list has no api.xcp.fun: ' + (C && C.read.join(' ')));
   ok(C && !C.coreFallback, 'no coreFallback');
-  ok(C && C.read[0] === 'https://api.counterparty.io:4000/v2' && C.read[1] === 'https://api.unspendablelabs.com:4000/v2', 'Core first, backup second');
+  ok(C && C.read[0] === CACHE && C.read[1] === 'https://api.counterparty.io:4000/v2' && C.read[2] === 'https://api.unspendablelabs.com:4000/v2', 'cache first, then Core, then backup');
+  ok(C && C.compose === 'https://api.counterparty.io:4000/v2' && (C.composeList || []).join(' ') === 'https://api.counterparty.io:4000/v2 https://api.unspendablelabs.com:4000/v2', 'compose stays on the public Core nodes');
+  ok(C && C.select('testnet4').read.join(' ') === 'https://testnet4.counterparty.io:44000/v2' && C.select('signet').read.join(' ') === 'https://signet.counterparty.io:34000/v2', 'testnet and signet reads unchanged');
   ok(C && /api\.xcp\.fun\/v2/.test(C.launch || C.xcpfunApi || ''), 'api.xcp.fun/v2 kept for xcp.fun features (launch / candles)');
   { const t = ctx(() => Promise.reject(new TypeError('fetch failed'))); let err = null;
     try { await t.win.XCPETS_CONFIG.coreFetch('/', 200); } catch (e) { err = e; }
-    ok(err && /every Counterparty node failed/.test(err.message), 'coreFetch: both :4000 blocked -> error, no proxy');
-    ok(t.calls.length === 2 && t.calls.every(u => /:4000\/v2\//.test(u)), 'coreFetch asked only the two Core nodes: ' + t.calls.join(' ')); }
-  { const t = ctx(u => /counterparty\.io/.test(u) ? Promise.reject(new TypeError('fetch failed')) : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ result: {} }) }));
-    const r = await t.win.XCPETS_CONFIG.coreFetch('/', 200); ok(r && r.ok && /unspendablelabs/.test(t.calls[1]), 'primary blocked -> backup answers'); }
+    ok(err && /every Counterparty node failed/.test(err.message), 'coreFetch: cache and both :4000 blocked -> error, no api.xcp.fun proxy');
+    ok(t.calls.length === 3 && t.calls[0].indexOf(CACHE) === 0 && t.calls.slice(1).every(u => /:4000\/v2\//.test(u)), 'coreFetch: cache, then the two Core nodes: ' + t.calls.join(' ')); }
+  { const t = ctx(u => /node\.xcpets\.fun|counterparty\.io/.test(u) ? Promise.reject(new TypeError('fetch failed')) : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ result: {} }) }));
+    const r = await t.win.XCPETS_CONFIG.coreFetch('/', 200); ok(r && r.ok && /unspendablelabs/.test(t.calls[2]), 'cache and primary blocked -> backup answers'); }
   for (const f of ['js/v2-sales.js', 'rjs/chain.js', 'tools/api-feed.js']) { const s = fs.readFileSync(path.join(ROOT, f), 'utf8');
     ok(!/pagesAt\(API|getJ\(API \+ path\)|xcpCredits\(A\); throw/.test(s), f + ': no proxy fallback call left'); }
   console.log('core-no-proxy: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

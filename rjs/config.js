@@ -13,17 +13,16 @@
   // LAUNCH SWITCH: false = pre-launch owner gate on every real-game page; true = gate removed, robots/noindex opened.
   var LAUNCHED = true;
   var COUNTERPARTY_CORE = 'https://api.counterparty.io:4000/v2', CORE_BACKUP = 'https://api.unspendablelabs.com:4000/v2';
+  var READ_CACHE = 'https://node.xcpets.fun/v2'; /* public HTTPS cache of the Core v2 read API. GET/HEAD/OPTIONS only. Not compose or broadcast. */
   var XCPFUN_API = 'https://api.xcp.fun/v2', XCPFUN_NODE_FALLBACK = 'https://api.xcp.fun/node/v2';
   var NETWORKS = {
-    /* direct-counterparty-api (2026-10-25). Two kinds of outside API, kept apart on purpose:
-     *  COUNTERPARTY_CORE: the documented Counterparty Core v2 API (https://apidocs.counterparty.io/). Every read of chain data (destructions,
-     *    blocks, assets, balances, credits, orders, matches, mempool) and every compose goes here, directly, never through a proxy.
-     *    CORE_BACKUP is a second public Core node with the same API.
+    /* Reads and compose stay apart. Mainnet reads try READ_CACHE first (https://node.xcpets.fun/v2), then COUNTERPARTY_CORE, then CORE_BACKUP.
+     *  COUNTERPARTY_CORE: the documented Counterparty Core v2 API (https://apidocs.counterparty.io/). CORE_BACKUP is a second public Core node
+     *    with the same API. Compose and broadcast stay on these two only (compose / composeList), never the cache.
      *  XCPFUN_API: xcp.fun's own features that are NOT Counterparty Core (the launch/sale record and the XCPETS candles). The only xcp.fun dependency.
-     *  XCPFUN_NODE_FALLBACK: api.xcp.fun/node/v2 is an unpublished proxy of Core (same JSON). Used ONLY when both :4000 nodes fail with a
-     *    timeout / network error (port 4000 is blocked on some networks), never because a node answered 429. Remove when Core is on 443. */
-    mainnet: { read: [COUNTERPARTY_CORE, CORE_BACKUP], compose: COUNTERPARTY_CORE, coreFallback: null, /* core-no-proxy (2026-10-25, XCP Wallet dev): api.xcp.fun/node is just api.counterparty.io behind a rate-limit helper, never a Core fallback. Core is not on 443 (checked: 443 times out on both nodes), so the fallback is CORE_BACKUP, then a Retry message. */
-      composeList: [COUNTERPARTY_CORE, CORE_BACKUP], // both verified 2026-10-11: compose destroy 200 + ACAO *; api.xcp.fun/node is read-only
+     *  XCPFUN_NODE_FALLBACK: api.xcp.fun/node/v2 is not a read or compose fallback (coreFallback is null). */
+    mainnet: { read: [READ_CACHE, COUNTERPARTY_CORE, CORE_BACKUP], compose: COUNTERPARTY_CORE, coreFallback: null, /* reads: HTTPS cache, then the two public Core nodes. api.xcp.fun/node is never a fallback. */
+      composeList: [COUNTERPARTY_CORE, CORE_BACKUP], // compose stays on the public Core nodes (verified 2026-10-11: compose destroy 200 + ACAO *); the cache and api.xcp.fun/node are read-only
       launch: XCPFUN_API, xcpfunApi: XCPFUN_API, siteBase: 'https://xcpets.fun', funSite: 'https://xcp.fun', art: 'https://xcp.fun/art/', mempool: 'https://mempool.space', mempoolApi: 'https://mempool.space/api',
       asset: 'XCPETS', burnAddr: '1CounterpartyXXXXXXXXXXXXXXXUWLpVr', hrp: 'bc', b58: '[13]', label: 'Bitcoin mainnet' },
     testnet4: { read: ['https://testnet4.counterparty.io:44000/v2'], compose: 'https://testnet4.counterparty.io:44000/v2',
@@ -61,9 +60,9 @@
     } catch (e) { /* storage blocked */ }
     return pick({ network: net, asset: asset });
   }
-  /** coreFetch(cfg, path, ms) -> Promise<Response> for a Counterparty Core v2 GET (path starts with '/'). Direct Core nodes in order
-   *  (cfg.read minus cfg.coreFallback); a node that answers at all (any HTTP status, 429 included) is final. Only when every direct node
-   *  failed with a timeout / network error is the XCPFUN_NODE_FALLBACK proxy asked. Per-node timeout ms (default 3500). Read-only GETs. */
+  /** coreFetch(cfg, path, ms) -> Promise<Response> for a Counterparty v2 GET (path starts with '/'). Tries cfg.read in order
+   *  (minus cfg.coreFallback). Mainnet: the HTTPS cache first, then the public Core nodes. A node that answers at all (any HTTP status,
+   *  429 included) is final. Compose does not use this. Per-node timeout ms (default 3500). Read-only GETs. */
   function coreFetch(cfg, path, ms) { var core = cfg.read.filter(function (b) { return b !== cfg.coreFallback; }), fb = cfg.coreFallback;
     function one(base) { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac ? setTimeout(function () { ac.abort(); }, ms || 3500) : null;
       return fetch(base + path, ac ? { method: 'GET', signal: ac.signal } : { method: 'GET' }).then(function (r) { if (t) clearTimeout(t); return r; }, function (e) { if (t) clearTimeout(t); throw e; }); }
