@@ -27,8 +27,9 @@
    * a hash of every block hash, i.e. everything V.replay reads besides the local ops (opsSig). load() used to drop the cache on every read, so the 60 s
    * play.html poll threw away an identical world and the next click paid a full replay (≈12 s on a phone). Same inputs -> same world object. */
   function fnv(s, h) { h = h == null ? 0x811c9dc5 : h; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-  function inSig() { var hk = Object.keys(S.hashes || {}).sort(function (a, b) { return a - b; }), hh = 0x811c9dc5; hk.forEach(function (k) { hh = fnv(k + ':' + S.hashes[k] + ';', hh); });
-    return S.tip + '|' + (S.rows || []).length + '|' + fnv(JSON.stringify(S.rows || [])).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (S.dex ? '|dex' + fnv(JSON.stringify([S.dex.issuances, S.dex.orders, S.dex.matches, S.dex.credits || null, S.dex.destructions || null])).toString(16) : ''); } /* pet-shop-sales: S.dex only exists once ACTIVATE_SALES_BLOCK is set */
+  function inSigOf(st) { st = st || S; var hk = Object.keys(st.hashes || {}).sort(function (a, b) { return a - b; }), hh = 0x811c9dc5; hk.forEach(function (k) { hh = fnv(k + ':' + st.hashes[k] + ';', hh); });
+    var rows = st.rows || []; return st.tip + '|' + rows.length + '|' + fnv(JSON.stringify(rows)).toString(16) + '|' + hk.length + '|' + hh.toString(16) + (st.dex ? '|dex' + fnv(JSON.stringify([st.dex.issuances, st.dex.orders, st.dex.matches, st.dex.credits || null, st.dex.destructions || null])).toString(16) : ''); } /* pet-shop-sales: dex only exists once ACTIVATE_SALES_BLOCK is set. Pure, for the sync builder and tests. */
+  function inSig() { return inSigOf(S); }
   function keepOrDrop() { if (cache && cacheSig !== inSig()) cache = null; }
   /* Cross-visit cache (smooth-perf): the last replayed world is kept in IndexedDB under ONE entry, keyed by build id + inSig() + opsSig. A page whose
    * inputs match (same build, burns, tip, hashes and local ops) reuses it instead of replaying; anything else replays as before. The stored value is
@@ -107,6 +108,7 @@
   function ruleUrls() { var all = Array.prototype.map.call(document.scripts || [], function (x) { return x.src || ''; }), out = [];
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
   function wkKill() { try { if (wk) wk.terminate(); } catch (e) {} wk = null; }
+  function stopReplay() { var old = pend; pend = null; wkKill(); if (old && old.fin) old.fin(); }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
     var sig0 = inSig(), oj0 = JSON.stringify(S.ops || []);
@@ -116,7 +118,8 @@
       function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
       job.fin = fin;
       try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; S.workerMs = m.ms; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
+        function noteMs(ms) { S.workerMs = ms; try { localStorage.setItem('xcpets-worker-ms', String(ms | 0)); } catch (e1) {} }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -136,7 +139,9 @@
    * replaces it (bootShow/armFresh repaint the page). While it shows, js/v2-wallet.js and the inscribe flow wait for the fresh world (updating())
    * and recheck the action against it. Replay inputs and results are unchanged; only what is on screen during the first seconds changes. */
   var provKey = null, storedKey = null;
-  function fromIdb(prov) { if (cache) return Promise.resolve(); wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
+  function fromIdb(prov) { if (cache) return Promise.resolve();
+    var gate = window.V2BootSync && V2BootSync.ready; if (gate && typeof gate.then === 'function') { V2BootSync.ready = null; return Promise.resolve(gate).then(function () { return fromIdb(prov); }, function () { return fromIdb(prov); }); }
+    wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
     return idbGet().then(function (v) { end(); if (!v || cache) return;
       if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
         lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
@@ -292,8 +297,21 @@
           return chain.getJson(P + '&cursor=' + jj.next_cursor).then(function (k) { k = k || {}; rows = rows.concat(k.result || []); return more(k); }); }
         return { rows: rows, fullAt: now }; }
       return more(j); }); }
+  function syncApi() { return { state: function () { return S; }, seed: function () { return window.XCPETS_BLOCK_HASHES || {}; },
+    hashCache: function () { try { return JSON.parse(localStorage.getItem(HKEY)) || {}; } catch (e) { return {}; } },
+    saveHashCache: function (hc) { try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {} },
+    finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, inSig: inSig, idbKey: idbKey, rulesSig: rulesSig, rsig: function () { return RSIG; },
+    dropShallow: function () { try { sessionStorage.removeItem(SKEY); localStorage.removeItem('xcpets-dex-last-1'); sessionStorage.removeItem('xcpets-dex-cache-2'); } catch (e) {} },
+    finish: function (fullAt) { keepOrDrop(); S.fullAt = fullAt; S.verified = true; S.stale = false; S.missingBlocks = []; S.dataAt = Date.now(); toSession(); toLast(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
+    step: step, chainTip: function () { return refTip().then(function () { return S.chainTip || 0; }); },
+    balanceRead: function () { if (!ME) return Promise.resolve(); var chain = new E.Chain(); return chain.balance(ME, E.CFG.asset).then(function (b) { var n = Number(b) / 1e8; if (isFinite(n)) S.balance = n; }, function () {}); },
+    peekWorld: function () { return idb().then(function (db) { return idbGetKey(db, 'world').then(function (v) { try { db.close(); } catch (e) {} return v && v.key ? { key: v.key, v: v.v } : null; }, function () { try { db.close(); } catch (e) {} return null; }); }, function () { return null; }); },
+    stopReplay: stopReplay, storedKey: function () { return storedKey; }, reread: function () { return fromIdb(false); } }; }
   function load(force) {
     if (!force && fromSession()) return Promise.resolve();
+    if (window.V2BootSync && typeof V2BootSync.tryLoad === 'function') { var hooked = V2BootSync.tryLoad(function () { return loadNow(force); }, syncApi()); if (hooked) return hooked; }
+    return loadNow(force); }
+  function loadNow(force) {
     var chain = new E.Chain();
     /* smooth-perf: the ?addr= balance read starts together with the burns (it used to wait for them); display only, never a replay input */
     var bal = ME ? chain.balance(ME, E.CFG.asset).then(function (b) { return Number(b) / 1e8; }, function () { return null; }) : null;
@@ -475,7 +493,8 @@
   /* nav-cache-1102: a saved copy from a full chain read in this build under 5 min old is shown without waiting for api/boot.json (still a
    * stale copy: S.verified stays false, so burns wait for the re-read). api/boot.json is still read in the background for the feed tip. */
   var LAST_NOW = 5 * 60e3;
-  function boot(then) { var st = document.getElementById('v2boot');
+  function boot(then) { if (window.V2BootSync && typeof V2BootSync.arm === 'function') { try { V2BootSync.arm(syncApi()); } catch (e) {} } return bootNow(then); }
+  function bootNow(then) { var st = document.getElementById('v2boot');
     if (fromSession()) return bootShow(st, then, null);
     if (/[?&]fresh=1/.test(location.search)) return whenOpen(function () { run(st, then); });
     whenOpen(refTip); var last = readLast(), age = last ? Date.now() - last.at : -1;
@@ -509,5 +528,5 @@
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();

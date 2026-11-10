@@ -227,6 +227,13 @@
       try { var c = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (c && c.key === key && c.d) { c.d.stale = c.at; window.dispatchEvent(new CustomEvent('xcpets-dex-stale', { detail: { at: c.at } })); return c.d; } } catch (e) { }
       throw err; }); }); }
   function lkey(rows, ma) { var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); return as.sort().join(','); }
+  /* Pure sort and trim shared with the sync service. Same rows loadDex2 already kept: one slim issuance, deduped orders and matches. */
+  function normalizeDex(d) { if (!d) return d; var seenO = {}, seenM = {};
+    return { issuances: (d.issuances || []).map(slimI).sort(function (a, b) { return a.tx_index - b.tx_index; }),
+      credits: (d.credits || []).map(slimC).sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index || (a.asset < b.asset ? -1 : a.asset > b.asset ? 1 : 0); }),
+      destructions: (d.destructions || []).map(slimX).sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; }),
+      orders: (d.orders || []).filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; }),
+      matches: (d.matches || []).filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); }) }; }
   function loadDex2(rows, ma, pre, base) {
     var as = deedAssets(rows); (ma || []).forEach(function (A) { if (as.indexOf(A) < 0) as.push(A); }); as.sort(); var key = as.join(',');
     try { var c = JSON.parse(sessionStorage.getItem(CKEY) || 'null'); if (c && c.key === key && Date.now() - c.at < TTL) return Promise.resolve(c.d); } catch (e) { }
@@ -238,12 +245,8 @@
       var iss = r[0].filter(function (i) { return i.status == null || i.status === 'valid'; }).sort(function (a, b) { return a.tx_index - b.tx_index; })[0]; if (iss) d.issuances.push(slimI(iss));
       d.orders = d.orders.concat(r[1], r[2]); d.matches = d.matches.concat(r[3], r[4]); }); }
     function next() { return q.length ? one(q.shift()).then(next) : null; } /* one token at a time: kind to the API */
-    return Promise.all([next(), next()]).then(function () { var seenO = {}, seenM = {};
-      d.issuances.sort(function (a, b) { return a.tx_index - b.tx_index; });
-      d.credits.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index || (a.asset < b.asset ? -1 : a.asset > b.asset ? 1 : 0); });
-      d.destructions.sort(function (a, b) { return a.block_index - b.block_index || a.tx_index - b.tx_index; });
-      d.orders = d.orders.filter(function (o) { return !seenO[o.tx_hash] && (seenO[o.tx_hash] = 1); }).map(slim).sort(function (a, b) { return a.tx_index - b.tx_index; });
-      d.matches = d.matches.filter(function (m) { return !seenM[m.id] && (seenM[m.id] = 1); }).map(slimM).sort(function (a, b) { return a.block_index - b.block_index || a.tx1_index - b.tx1_index || (a.id < b.id ? -1 : 1); });
+    return Promise.all([next(), next()]).then(function () { var n = normalizeDex(d);
+      d.issuances = n.issuances; d.credits = n.credits; d.destructions = n.destructions; d.orders = n.orders; d.matches = n.matches;
       if (orderRows.stale.length) { d.staleAssets = orderRows.stale.slice().sort(); return d; } /* feed-invalid-order-fix: a pet whose order book could not be read is not cached */
       try { sessionStorage.setItem(CKEY, JSON.stringify({ at: Date.now(), key: key, d: d })); } catch (e) { } return d; }); }
   /** freeDeed() -> a random numeric asset nobody has issued (404 on /assets/{A}); 6 tries. */
@@ -298,7 +301,7 @@
     if (PREVIEW) return Promise.resolve(plan);
     return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
-  window.V2Sales = { feed: FEED, loadDex: loadDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck, chainPend: chainPend, chainTie: chainTie } };
+  window.V2Sales = { feed: FEED, loadDex: loadDex, normalizeDex: normalizeDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck, chainPend: chainPend, chainTie: chainTie } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
