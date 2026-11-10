@@ -32,7 +32,8 @@ jobs:
         with: { node-version: '20' }
       - name: See how this repo publishes
         id: src
-        env: { GH_TOKEN: ${{ github.token }} }
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           bt=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type || echo unknown)
           echo "build_type=$bt"
