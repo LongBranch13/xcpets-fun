@@ -76,5 +76,6 @@ X.reset(); ok(X.state().rows >= 0 && X.state().stats.hatched === 0 && X.state().
 ok(Object.keys(st).every(k => /^xcpets-practice-/.test(k)), 'saved only under xcpets-practice-*: ' + Object.keys(st).join(','));
 const core = X.serve('https://api.counterparty.io:4000/v2/blocks/last');
 ok(core !== null, 'the pretend node answers Core URLs (nothing reaches the real API)');
+ok(X.serve('https://node.xcpets.fun/v2/') !== null, 'the pretend node answers the mainnet read cache (practice stays offline)');
 
 console.log('practice-mode-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
