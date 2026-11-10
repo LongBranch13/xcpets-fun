@@ -44,7 +44,13 @@ self.onmessage = function (ev) {
   try {
     if (!loaded) { shim(); importScripts.apply(self, m.scripts); self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG }; loaded = true; }
     var t0 = Date.now(), w = self.V2Rules.replay(m.rows, m.hashes, m.ops, { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex }), ms = Date.now() - t0;
-    self.postMessage({ id: m.id, ok: true, world: w, ms: ms });
-    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w).then(function (ok) { if (ok) self.postMessage({ stored: true, key: m.idbKey }); }); /* boot-from-cache: the page may reload once it is stored */
+    /* rare-room-unequip: posting the whole world clones ~147k pets onto the main thread in one task
+     * (measured 133 s, Chrome "page unresponsive"). Store it here and let the page read one part at a time.
+     * If that store fails, post the world as before so the page still comes up. */
+    function sendWorld() { self.postMessage({ id: m.id, ok: true, world: w, ms: ms }); }
+    if (m.idbKey && typeof indexedDB !== 'undefined') idbPut(m.idbKey, w).then(function (ok) {
+      if (ok) self.postMessage({ id: m.id, ok: true, idb: true, stored: true, key: m.idbKey, ms: ms });
+      else sendWorld();
+    }); else sendWorld();
   } catch (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); }
 };

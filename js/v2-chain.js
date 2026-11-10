@@ -63,19 +63,35 @@
    * (20-30 s, the static 'Reading XCPETS burns from the chain…' line). Now 2.5 s only guards opening the database; once a saved world is being
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
+  function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
   function idbRaw() { return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    idb().then(function (db) { if (!done) { clearTimeout(t); t = setTimeout(function () { done = true; res(null); }, IDB_READ_MS); } var os = db.transaction('w', 'readonly').objectStore('w'), q = os.get('world'); q.onsuccess = function () { var v = q.result; if (v && v.v === 2 && v.root && v.parts > 0) { var all = os.getAll(IDBKeyRange.bound('world:', 'world:\uffff')), kq = os.getAllKeys(IDBKeyRange.bound('world:', 'world:\uffff')); all.onsuccess = function () { kq.onsuccess = function () { db.close(); if (done) return; done = true; clearTimeout(t); var w = null; try { w = wsDecode(v, all.result, kq.result); } catch (e) { w = null; } res(w ? { key: v.key, at: v.at, world: w } : null); }; }; all.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; return; } db.close(); if (done) return; done = true; clearTimeout(t); res(v && v.world ? v : null); };
-      q.onerror = function () { db.close(); if (!done) { done = true; clearTimeout(t); res(null); } }; }, function () { if (!done) { done = true; clearTimeout(t); res(null); } }); }); }
+    function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, IDB_READ_MS); }
+    function finish(v) { if (done) return; done = true; clearTimeout(t); res(v); }
+    idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } arm();
+      idbGetKey(db, 'world').then(function (v) { if (done) return;
+        if (!(v && v.v === 2 && v.root && v.parts > 0)) { try { db.close(); } catch (e) {} finish(v && v.world ? { key: v.key, at: v.at, world: v.world } : null); return; }
+        /* one record per turn: a single getAll of every pet was one long task and froze the page */
+        var parts = [], keys = [], i = 0;
+        function next() { if (done) return; if (i >= v.parts) { try { db.close(); } catch (e) {} wsDecode(v, parts, keys).then(function (w) { finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); return; }
+          arm(); idbGetKey(db, 'world:' + i).then(function (part) { if (done) return; if (!part) { try { db.close(); } catch (e) {} finish(null); return; } parts.push(part); keys.push('world:' + i); i++; setTimeout(next, 0); }, function () { try { db.close(); } catch (e) {} finish(null); }); }
+        next();
+      }, function () { try { db.close(); } catch (e) {} finish(null); });
+    }, function () { finish(null); }); }); }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
    * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
   function wsDecode(v, parts, keys) { var byIx = [], i, j, T = [], M = '__wsr';
     for (i = 0; i < keys.length; i++) { var k = /^world:(\d+)$/.exec(keys[i]); if (k) byIx[+k[1]] = parts[i]; }
-    for (i = 0; i < v.parts; i++) { if (!byIx[i]) return null; for (j = 0; j < byIx[i].length; j++) T.push(byIx[i][j]); }
-    if (T.length !== v.n) return null;
+    for (i = 0; i < v.parts; i++) { if (!byIx[i]) return Promise.resolve(null); for (j = 0; j < byIx[i].length; j++) T.push(byIx[i][j]); }
+    if (T.length !== v.n) return Promise.resolve(null);
     function isP(o) { if (!o || typeof o !== 'object') return false; if (Array.isArray(o)) return true; var p = Object.getPrototypeOf(o); return p === Object.prototype || p === null; }
+    /* A saved-world marker is exactly {__wsr: n}. Checking that first skips Object.keys on every other object.
+     * The old check built a key list for every nested object of every pet (about 147k pets), one long task of
+     * well over a minute on a big wallet, which is the "Rare Room is not responding" freeze on a return visit. */
+    function marker(val) { if (typeof val[M] !== 'number') return false; for (var p in val) if (p !== M) return false; return true; }
     function fix(o) { var st = [o], x, ks, n, a, val; while (st.length) { x = st.pop(); a = Array.isArray(x); ks = a ? null : Object.keys(x); n = a ? x.length : ks.length;
-      for (var q = 0; q < n; q++) { var kk = a ? q : ks[q]; val = x[kk]; if (!isP(val)) continue; if (!Array.isArray(val) && typeof val[M] === 'number' && Object.keys(val).length === 1) { var r = T[val[M]]; if (!r) throw new Error('ws ref'); x[kk] = r; } else st.push(val); } } }
-    for (i = 0; i < T.length; i++) fix(T[i]); fix(v.root); return v.root; }
+      for (var q = 0; q < n; q++) { var kk = a ? q : ks[q]; val = x[kk]; if (!isP(val)) continue; if (marker(val)) { var r = T[val[M]]; if (!r) throw new Error('ws ref'); x[kk] = r; } else st.push(val); } } }
+    /* One table entry per turn-slice, so putting the shared pet objects back never holds the main thread long enough for "page unresponsive". */
+    return new Promise(function (res) { var n = 0; function step() { var t0 = Date.now(); try { while (n < T.length && Date.now() - t0 < 12) fix(T[n++]); if (n < T.length) return setTimeout(step, 0); fix(v.root); res(v.root); } catch (e) { res(null); } } step(); }); }
   var idbPre = null;
   function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return Promise.all([p, rulesSig()]).then(function (r) { var v = r[0]; if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,
@@ -100,7 +116,7 @@
       function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
       job.fin = fin;
       try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; S.workerMs = m.ms; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; S.workerMs = m.ms; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -136,8 +152,37 @@
   function mergeOps(stored, mine) { if (!stored || !stored.length) return mine.slice(); var cnt = {}; stored.forEach(function (o) { var k = opKey(o); cnt[k] = (cnt[k] || 0) + 1; });
     var out = stored.slice(); mine.forEach(function (o) { var k = opKey(o); if (cnt[k]) cnt[k]--; else out.push(o); }); return out; }
   function storedOps() { try { var v = JSON.parse(localStorage.getItem(KEY)); return v && Array.isArray(v.ops) ? v.ops : []; } catch (e) { return []; } }
+  /* rare-room-unequip (owner Nov 9 2026, build 6ccf513d18): Take off / Unequip all used to drop the replay cache, so the
+   * next world() rebuilt all 147k pets on the main thread (measured 55 s for one piece, 28 s for Unequip all) and Chrome
+   * showed "page unresponsive". A local equip is one worn-slot write. Apply that write on the world already in memory
+   * (same result as replay's applyOp for an equip appended at the current tip: sweeps already ran, liveAt already
+   * finished the pet) and keep the cache. The ops are still saved, so the next full replay (next visit, worker) is
+   * the same world. Anything other than appended equips still drops the cache and replays, exactly as before. */
+  function applyLocalEquip(w, o) {
+    if (!w || !o || o.kind !== 'equip') return false;
+    var p = w.byId && w.byId[o.petId];
+    if (!p || p.owner !== o.owner || p.dead || p.released) return true;
+    var worn = V.wornOf ? V.wornOf(w, p.id) || [] : [];
+    if (o.gid == null) { var cur = null; for (var i = 0; i < worn.length; i++) if (worn[i].slot === o.slot) { cur = worn[i]; break; } if (cur) cur.on = null; return true; }
+    var g = w.items && w.items[o.gid];
+    if (!g || g.owner !== o.owner || g.grave != null) return true;
+    worn.slice().forEach(function (x) { if (x.slot === g.slot) x.on = null; });
+    g.on = p.id; return true;
+  }
+  function applyAppended(w, prevJson, ops) {
+    var prev; try { prev = JSON.parse(prevJson || '[]'); } catch (e) { return false; }
+    if (!Array.isArray(prev) || !ops || ops.length < prev.length) return false;
+    var i; for (i = 0; i < prev.length; i++) if (JSON.stringify(ops[i]) !== JSON.stringify(prev[i])) return false;
+    for (i = prev.length; i < ops.length; i++) if (!applyLocalEquip(w, ops[i])) return false;
+    return true;
+  }
   function save() { var j = JSON.stringify(S.ops || []); S.ops = mergeOps(storedOps(), S.ops || []);
-    try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {} if (JSON.stringify(S.ops) !== opsSig || j !== opsSig) cache = null; }
+    var nj = JSON.stringify(S.ops);
+    try { localStorage.setItem(KEY, JSON.stringify({ ops: S.ops, sel: S.sel, hide: S.hide, hidden: S.hidden || [] })); } catch (e) {}
+    if (nj === opsSig && j === opsSig) return;
+    if (cache && applyAppended(cache, opsSig, S.ops)) { opsSig = nj; lastW = cache; lastOps = nj; return; }
+    if (!cache && lastW && applyAppended(lastW, lastOps, S.ops)) { lastOps = nj; return; }
+    cache = null; }
   try { window.addEventListener('storage', function (e) { if (e.key !== KEY || !e.newValue) return; var v; try { v = JSON.parse(e.newValue); } catch (x) { return; }
     if (!v || !Array.isArray(v.ops)) return; var m = mergeOps(v.ops, S.ops || []); if (JSON.stringify(m) === JSON.stringify(S.ops || [])) return; S.ops = m; cache = null;
     try { window.dispatchEvent(new Event('xcpets-ops-sync')); } catch (x) {} }); } catch (e) {}
