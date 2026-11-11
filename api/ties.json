@@ -1,5 +1,5 @@
 {
- "lastBlock": 975479,
+ "lastBlock": 975484,
  "count": 300,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -2617,7 +2617,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 77,
@@ -2665,7 +2665,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93719,
@@ -2677,7 +2677,7 @@
    "species": "hyb:sarutobi:bobo",
    "speciesLabel": "Sabo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93721,
@@ -2689,7 +2689,7 @@
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 108675,
@@ -2797,7 +2797,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 46592,
@@ -2821,7 +2821,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 104746,
@@ -2917,7 +2917,7 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 109499,
@@ -2929,7 +2929,7 @@
    "species": "chad",
    "speciesLabel": "Chad",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 4104,
@@ -3001,7 +3001,7 @@
    "species": "hyb:lenny:pepe",
    "speciesLabel": "Lepe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93713,
@@ -3013,7 +3013,7 @@
    "species": "hyb:lenny:bobo",
    "speciesLabel": "Lebo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 140028,
@@ -3025,7 +3025,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 74340,
@@ -3193,7 +3193,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 147179,
@@ -3205,7 +3205,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 899,
@@ -3433,7 +3433,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 148182,
@@ -3445,7 +3445,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 2393,
