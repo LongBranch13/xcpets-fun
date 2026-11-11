@@ -1,6 +1,6 @@
 {
- "lastBlock": 975368,
- "count": 288,
+ "lastBlock": 975373,
+ "count": 290,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3458,6 +3458,30 @@
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 68299,
+   "asset": "A18033148208282595662",
+   "tiedBlock": 975370,
+   "tiedTx": "c48c799681a072715651ebc1eb5a5c54fac7ecce4ad5bddf42bd3725ddce599d",
+   "kind": "deed",
+   "name": "Roolajopop",
+   "species": "hyb:doge:chud",
+   "speciesLabel": "Dogchud (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 147175,
+   "asset": "A15674692822162343709",
+   "tiedBlock": 975372,
+   "tiedTx": "b4f02911e4a025bcfdde6fefe7baabc5b466f06fb48a5ffa28fb97776f117b23",
+   "kind": "deed",
+   "name": "Sikoochupop",
+   "species": "hyb:viking:dodo",
+   "speciesLabel": "Vikdo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
