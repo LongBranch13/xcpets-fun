@@ -1,10 +1,11 @@
-/* XCPETS Pet Cemetery v2 (scene Oct 28 2026; cemetery loop Oct 29 2026). The scene is display only; the finder and zombies read the replayed world (V.cemGraves / V.cemView).
+/* XCPETS Pet Cemetery v2 (scene Oct 28 2026; cemetery loop Oct 29 2026). The scene is display only.
  * 1) THE SCENE: an 8-bit perspective graveyard. Thousands of generic headstones (not tied to any pet) recede in rows toward one vanishing
  *    point and fade into fog under a full moon. Same build as the other place scenes: one 320x180 pixel canvas scaled by V2Sharp, a hint bar,
  *    tap Mort for a small card, RAF paused off screen and while the tab is hidden, prefers-reduced-motion = one still frame.
  *    Speed: the whole stone field is drawn ONCE into an offscreen 320x180 layer (a few ms); each frame only blits it and moves sky, fog and Mort.
- * 2) THE LIST: every dead pet from every player, built from the site's own api/pets.json (fetched and cut down to dead rows inside a Web Worker,
- *    so the 30+ MB file never parses on the page thread). Until it arrives (or if it fails) the replayed chain world fills the list.
+ * 2) THE LIST: counts plus one page of graves (24 on a phone, 60 on a desktop) from the paged index (GET /xp/v1/graves) or, if that
+ *    index is not published yet, from compact rows of pets already in memory (js/v2-grave-index.js). The page does not call V.cemGraves
+ *    for the whole world. Opening a grave, or Raise at the altar, loads that one pet (V.cemView).
  *    Sorts: newest death, oldest (hatch block), rarest tier, most powerful (Vigor+Spark+Grit+Zoom+Luck, the Ranking sum), most gear, longest lived.
  *    Filters: species, tier, meals. Find a grave (#, name, species, owner), My graves, #tomb-ID / ?id= deep links, paging for thousands of graves.
  * 3) THE ALTAR (Oct 28 2026 evening; live behind the cemetery gate Oct 29): a stone altar with candles on the grass beside the path. Tap it for a card; every grave in the list has
@@ -160,11 +161,9 @@
 
   /* ------------------------------------------------------------------ the list ------------------------------------------------------------------ */
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
-  /* grave finder (owner, Oct 29 2026 6:49 PM CT): sort and filter by rarity, stage, days dead, raise difficulty, name / number; "Rarest first" quick pick.
-   * Every grave fact comes from the replayed world through V.cemGraves (same block as the rules), so state and difficulty are exact. */
-  /* cemetery-rarity-1103 (owner [pt2761u]: "rarest sorts by power. rarity is not shown, and power isnt an option to pick from"): every sort is done
-   * here in the page (display only; V.cemGraves still filters, its own sort order is not used), each one doing exactly what its label says.
-   * "Strongest at death" is now "Most power at death" so the power sort is easy to find. */
+  /* grave finder: sort and filter run on the compact index (one page painted). Opening a grave loads V.cemView for that pet.
+   * cemetery-rarity-1103: each sort does what its label says. Rarity score is filled in when that grave is opened.
+   * "Most power at death" is the power sort. */
   var SORTS = [['rarest', 'Rarest first'], ['newest', 'Newest graves'], ['oldest', 'Longest dead'], ['easiest', 'Easiest to raise'], ['strongest', 'Most power at death'], ['gear', 'Most gear'], ['lived', 'Longest lived'], ['id', 'Pet number']];
   /* rarity rank, same tier logic as the hatch review (js/pet-sort.js, hatch-review-tiers-1103): Mythic (a stage, shown above every tier), then
    * Legendary, Rare, Uncommon, Common (the hatch tier, art.tierIndex). The game has no Epic tier. Inside a rank: 💎 Rarity score, then power. */
@@ -183,6 +182,7 @@
     gear: function (a, c) { return c.gear - a.gear || c.power - a.power || a.id - c.id; },
     lived: function (a, c) { return life(c) - life(a) || a.id - c.id; },
     id: function (a, c) { return a.id - c.id; } };
+  var LOC = SORTF; /* cemetery-rarity-1103: these eight sorts stay in the page. The paged index uses the same order. */
   var DAYS = [['', 'Any time'], ['0-1', '0 to 1 days'], ['2-7', '2 to 7 days'], ['8-30', '8 to 30 days'], ['31-', 'Over 30 days']];
   var DIFF = { easy: 'Easy', medium: 'Medium', hard: 'Hard', closed: 'Closed' };
   var STATE = { resting: 'Resting: owner may seance after 3 days', hunted: 'Hunted: laid to rest for good', dust: 'Turned to dust', halo: 'Resurrected: rests with its halo' };
@@ -192,11 +192,9 @@
   function page(ctx) { var w = ctx.w, M = ctx.M, R = ctx.R, V = ctx.V, ME = ctx.ME, fmt = ctx.fmt, sa = ctx.shortAddr, $ = function (id) { return document.getElementById(id); };
     var b = (w.tip || (M.state && M.state().tip) || 0) + 1, on = V.cemOn ? V.cemOn(b) : false, pub = on && V.cemPublic(b), CE = V.CEM || {}, gate = V.cemeteryGate ? V.cemeteryGate() : null;
     ctx.b = b; S.cemOn = on; css(); artJs(function () { if (st.ready) { zombies(); paint(); } });
-    function row(g) { var p = w.byId[g.id], s = p.zDeath || p.stats || {}; return { id: g.id, name: g.name || ('#' + g.id), species: g.species, spl: V.speciesLabel ? V.speciesLabel(g.species) : g.species, tier: g.tier, stage: g.stage, stageName: g.stageName, owner: g.owner,
-      gear: R.graveCount ? R.graveCount(w, p) : 0, power: g.deathPower, born: p.hatchBlock, died: g.deathBlock, fed: p.lastFed, hybrid: V.isHybrid ? !!V.isHybrid(g.species) : false, days: g.daysDead, diff: g.diff, need: g.need, needLabel: g.needLabel, state: g.state, restUntil: g.restUntil, restOwner: g.restOwner, open: g.open, raisable: g.raisable, af: g.ageFactor, crumbles: g.crumbles, mythic: !!g.mythic, rank: rankOf(p, g), rbits: RM[g.id] ? RM[g.id].bits : -1, oneIn: RM[g.id] ? (PetScore.fmtN ? PetScore.fmtN(RM[g.id].oneIn) : String(Math.round(RM[g.id].oneIn))) : '' }; }
-    var RM = rarMap(w), all = V.cemGraves(w, b, { sort: 'id' }).map(row), phone = window.matchMedia && matchMedia('(max-width: 640px)').matches, PER = phone ? 24 : 60;
-    var st = { q: '', mine: false, sort: 'rarest', sp: '', tier: '', stage: '', days: '', diff: '', raisable: false, meals: '', page: 0, list: [] }, tombs = $('tombs');
-    mount(w, all);
+    var GI = window.V2GraveIndex, phone = window.matchMedia && matchMedia('(max-width: 640px)').matches, PER = GI ? GI.per() : (phone ? 24 : 60);
+    var st = { q: '', mine: false, sort: 'rarest', sp: '', tier: '', stage: '', days: '', diff: '', raisable: false, meals: '', open: false, page: 0, list: [], index: null, remote: '', matched: 0, source: '' }, tombs = $('tombs');
+    mount(w, []);
     var zs = document.createElement('section'); zs.className = 'cv2-zombies'; zs.id = 'cemZombies'; tombs.parentNode.insertBefore(zs, tombs);
     var bar = document.createElement('div'); bar.className = 'uxp-find cemfind cemv2bar'; bar.id = 'cemFinder';
     var opt = function (L, cur) { return L.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === cur ? ' selected' : '') + '>' + s[1] + '</option>'; }).join(''); };
@@ -213,17 +211,20 @@
       '<p class="small muted" id="cemMsg" aria-live="polite"></p>';
     tombs.parentNode.insertBefore(bar, tombs);
     var pg = function (id) { var d = document.createElement('div'); d.className = 'cv2-pager'; d.id = id; return d; }, pTop = pg('cemPagerTop'), pBot = pg('cemPager'); tombs.parentNode.insertBefore(pTop, tombs); tombs.parentNode.insertBefore(pBot, tombs.nextSibling);
-    function opts() { var n = {}, lab = {}, sg = {}; all.forEach(function (p) { var k = p.hybrid ? '__hyb' : p.species; n[k] = (n[k] || 0) + 1; lab[k] = p.hybrid ? 'Hybrids' : p.spl; sg[p.stage] = p.stageName; });
+    function opts() { var n = {}, lab = {}, sg = {}, c0 = st.counts || { species: {}, stages: {} };
+      Object.keys(c0.species || {}).forEach(function (k) { n[k] = c0.species[k]; lab[k] = k === '__hyb' ? 'Hybrids' : (V.speciesLabel ? V.speciesLabel(k) : k); });
+      Object.keys(c0.stages || {}).forEach(function (k) { sg[k] = (V.STAGE_NAMES && V.STAGE_NAMES[k]) || ('Stage ' + k); });
       var s = $('cemSp'), cur = s.value; s.innerHTML = '<option value="">All species</option>' + Object.keys(n).sort(function (a, c) { return a === '__hyb' ? 1 : c === '__hyb' ? -1 : String(lab[a]).localeCompare(lab[c]); }).map(function (k) { return '<option value="' + esc(k) + '">' + esc(lab[k]) + ' (' + fmt(n[k]) + ')</option>'; }).join(''); s.value = cur; if (s.value !== cur) s.value = '';
       var t = $('cemStage'), c2 = t.value; t.innerHTML = '<option value="">All stages</option>' + Object.keys(sg).sort(function (a, c) { return a - c; }).map(function (k) { return '<option value="' + k + '">' + esc(sg[k]) + '</option>'; }).join(''); t.value = c2; if (t.value !== c2) t.value = ''; }
     function gateLine() { return on ? (pub ? '' : ' 🧪 Owner test: until launch only grave #' + CE.OWNER_GRAVE + ' can be raised, by the owner wallet.') : ' 🕯️ Raising the dead opens at block ' + (gate == null ? '(set at launch)' : fmt(gate)) + '; until then the finder is read-only.'; }
-    function status() { $('status').textContent = fmt(all.length) + ' grave' + (all.length === 1 ? '' : 's') + ' in the Pet Cemetery, from every player (replayed from ' + fmt(M.state().rows.length) + ' XCPETS burns). A pet dies after 7 full chain days (144 blocks each) with no feed.' + gateLine(); }
-    function canRaise(p) { if (!on || !p.raisable) return false; if (p.restOwner) return ME === p.restOwner && !V.cemGraveWhy(w, w.byId[p.id], ME, b); if (!pub) return p.id === CE.OWNER_GRAVE && ME === CE.OWNER; return true; }
-    function tomb(p) { var wp = w.byId[p.id], gl = wp && R.graveCount && R.graveCount(w, wp) ? R.graveLine(w, wp) : '', lf = life(p), v = p.open ? V.cemView(w, wp, b) : null;
+    function graveCount() { return st.total || (st.index ? st.index.length : 0); }
+    function status() { $('status').textContent = fmt(graveCount()) + ' grave' + (graveCount() === 1 ? '' : 's') + ' in the Pet Cemetery, from every player. One page of ' + PER + ' is loaded at a time' + (st.source === 'index' ? ' from the grave index' : '') + '. A pet dies after 7 full chain days (144 blocks each) with no feed.' + gateLine(); }
+    function canRaise(p) { if (!on || !p || !p.raisable) return false; var wp = w.byId && w.byId[p.id]; if (p.restOwner) return !!(ME === p.restOwner && wp && !V.cemGraveWhy(w, wp, ME, b)); if (!pub) return p.id === CE.OWNER_GRAVE && ME === CE.OWNER; if (wp && V.cemGraveWhy && V.cemGraveWhy(w, wp, ME, b)) return false; return true; }
+    function tomb(p) { var wp = w.byId && w.byId[p.id], gl = wp && R.graveCount && R.graveCount(w, wp) ? R.graveLine(w, wp) : '', lf = life(p), v = p.open && wp && V.cemView ? V.cemView(w, wp, b) : null;
       var badge = p.state ? '<span class="cv2-diff d-closed">' + art(p.state === 'halo' ? 'halo' : p.state, 12) + ' ' + STATE[p.state] + '</span>' : '<span class="cv2-diff d-' + p.diff + '" title="Needs at least 1 ' + esc(p.needLabel) + ' offering">' + art(p.diff, 12) + ' ' + DIFF[p.diff] + ' · needs ' + esc(p.needLabel) + '</span>';
       return '<div class="tomb gtomb' + (p.mythic ? ' tomb-mythic' : '') + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas>' + rarChip(p) + '<h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
         '<div class="small">' + esc(p.spl) + ' · <span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span> · reached ' + esc(p.stageName) + '</div>' +
-        (R.eraChip ? R.eraChip(w, wp) : '') +
+        (wp && R.eraChip ? R.eraChip(w, wp) : '') +
         '<div class="small cv2-badges">' + badge + (p.mythic ? ' <span class="cv2-diff mg-grave" title="A Mythic eaten by an unleashed zombie. Raise it with a Legendary or better offering; raised, it can be resurrected into a Mythic God.">💜 Mythic grave</span>' : '') + '</div>' +
         '<div class="small cv2-facts">⚡ ' + fmt(p.power) + ' power · 🎒 ' + fmt(p.gear) + ' gear · 💀 ' + fmt(p.days) + ' day' + (p.days === 1 ? '' : 's') + ' dead' + (p.raisable && p.af < 1 ? ' · grave strength ' + Math.round(p.af * 100) + '%' : '') + (p.crumbles ? ' · crumbled ' + p.crumbles + ' time' + (p.crumbles === 1 ? '' : 's') : '') + '</div>' +
         '<div class="small muted tombowner" title="' + esc(p.owner) + '" style="overflow-wrap:anywhere">owner ' + esc(sa(p.owner)) + (ME && p.owner === ME ? ' (you)' : '') + ' · ⏳ ' + (lf >= 0 ? '~' + fmt(Math.floor(lf / 144)) + ' day' + (Math.floor(lf / 144) === 1 ? '' : 's') + ' lived' : '?') + '</div>' +
@@ -264,34 +265,39 @@
       else if ((z = t.getAttribute('data-res'))) go([V.cemPlan(w, 'resurrect', +z, null, b)], '😇 Resurrection of #' + z); });
     function pager(el, pages) { if (pages <= 1) { el.innerHTML = ''; return; } var bt = function (k, t, dis) { return '<button type="button" class="q" data-pg="' + k + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>'; };
       el.innerHTML = bt('first', '⏮ First', !st.page) + bt('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + bt('next', 'Next ▶', st.page >= pages - 1) + bt('last', 'Last ⏭', st.page >= pages - 1); }
-    function paint() { var pages = Math.max(1, Math.ceil(st.list.length / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list.slice(st.page * PER, st.page * PER + PER);
+    function paint() { var pages = Math.max(1, Math.ceil((st.matched || 0) / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list || [];
       tombs.innerHTML = L.length ? L.map(tomb).join('') : '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address, or clear a filter.</p>';
-      stoneJs(function () { L.forEach(function (p) { var wp = w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected && wp && wp.art) window.V2Gravestone.draw(c, { art: wp.art, stage: wp.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open, mythic: !!p.mythic }); }); });
+      stoneJs(function () { L.forEach(function (p) { var wp = w.byId && w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected && wp && wp.art) window.V2Gravestone.draw(c, { art: wp.art, stage: wp.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open, mythic: !!p.mythic }); }); });
       pager(pTop, pages); pager(pBot, pages); }
-    var LOC = SORTF; /* cemetery-rarity-1103: every sort is local (see SORTF) */
-    function apply(keepPage) { var q0 = st.q.trim().toLowerCase(), exact = /^#\d+$/.test(q0), q = q0.replace(/^#/, ''), num = /^\d+$/.test(q), meals = q ? '' : st.meals, dd = st.days ? st.days.split('-') : null;
-      var Q = { tier: st.tier, stage: st.stage, diff: st.diff, raisable: st.raisable, sort: LOC[st.sort] ? 'id' : st.sort }; if (dd) { Q.minDays = +dd[0]; if (dd[1] !== '') Q.maxDays = +dd[1]; }
-      var ids = {}, ord = {}; V.cemGraves(w, b, Q).forEach(function (g, i) { ids[g.id] = 1; ord[g.id] = i; });
-      st.list = all.filter(function (p) { if (!ids[p.id]) return false; if (st.mine && p.owner !== ME) return false; if (st.open && !p.open) return false; if (st.sp && (st.sp === '__hyb' ? !p.hybrid : p.species !== st.sp || p.hybrid)) return false;
-        if (meals === 'fed' && p.fed == null) return false; if (meals === 'nf' && p.fed != null) return false; if (!q) return true;
-        return exact ? String(p.id) === q : num ? String(p.id).indexOf(q) === 0 : String(p.name).toLowerCase().indexOf(q) >= 0 || String(p.spl).toLowerCase().indexOf(q) >= 0 || String(p.owner).toLowerCase() === q || (q.length >= 6 && String(p.owner).toLowerCase().indexOf(q) >= 0); });
-      st.list.sort(LOC[st.sort] || function (a, c) { return ord[a.id] - ord[c.id]; }); if (num) st.list.sort(function (a, c) { return (String(c.id) === q) - (String(a.id) === q); });
-      if (!keepPage) st.page = 0; var n = st.list.length;
-      $('cemMsg').innerHTML = fmt(n) + ' grave' + (n === 1 ? '' : 's') + ' shown' + (q ? ' for "' + esc(st.q.trim()) + '"' : '') + ' · sorted ' + esc((SORTS.filter(function (s) { return s[0] === st.sort; })[0] || SORTS[0])[1].toLowerCase()) + (q && st.meals ? ' · a search looks through every grave' : '');
+    function ask() { var dd = st.days ? st.days.split('-') : null, q = { page: st.page, per: PER, sort: st.sort, tier: st.tier, stage: st.stage, diff: st.diff, raisable: !!st.raisable, open: !!st.open, mine: !!st.mine, owner: ME || '', sp: st.sp, meals: st.q.trim() ? '' : st.meals, text: st.q };
+      if (dd) { q.minDays = +dd[0]; if (dd[1] !== '') q.maxDays = +dd[1]; } return q; }
+    function showPage(out) { st.list = out.rows || []; st.matched = out.matched || 0; if (out.page != null) st.page = out.page; if (out.total != null) st.total = out.total; S.total = st.total || st.matched;
+      var q = st.q.trim(); $('cemMsg').innerHTML = fmt(st.matched) + ' grave' + (st.matched === 1 ? '' : 's') + ' shown' + (q ? ' for "' + esc(q) + '"' : '') + ' · page ' + fmt(st.page + 1) + ' · ' + PER + ' at a time · sorted ' + esc((SORTS.filter(function (s) { return s[0] === st.sort; })[0] || SORTS[0])[1].toLowerCase());
       quick(); paint(); }
+    function apply(keepPage, done) { if (!keepPage) st.page = 0; var q = ask();
+      function finish(out) { showPage(out); if (done) done(); }
+      if (st.remote && GI && GI.fetchPage) { GI.fetchPage(st.remote, q).then(finish).catch(function () { st.remote = ''; st.source = 'world'; if (!st.index) localIndex(function () { apply(true, done); }); else finish(GI.query(st.index, ask())); }); return; }
+      if (!st.index || !GI) return; finish(GI.query(st.index, q)); }
     function quick() { var set = function (id, v) { var e = $(id); if (e) e.setAttribute('aria-pressed', !!v); };
       var base = !st.tier && !st.stage && !st.days && !st.sp && !st.meals && !st.q;
       set('cemRarest', st.sort === 'rarest' && st.raisable && base && !st.diff); set('cemEasiest', st.sort === 'easiest' && st.raisable); set('cemFresh', st.sort === 'newest' && st.days === '0-1'); set('cemOpen', !!st.open); }
     function sync() { $('cemSort').value = st.sort; $('cemTier').value = st.tier; $('cemStage').value = st.stage; $('cemDays').value = st.days; $('cemDiff').value = st.diff; $('cemRaisable').checked = st.raisable; $('cemSp').value = st.sp; $('cemMeals').value = st.meals; $('cemFind').value = st.q; }
     function reset() { st.tier = st.stage = st.days = st.diff = st.sp = st.meals = st.q = ''; st.raisable = false; st.open = false; }
-    function onPager(e) { var t = e.target.closest('[data-pg]'); if (!t) return; var pages = Math.ceil(st.list.length / PER), k = t.getAttribute('data-pg'); st.page = k === 'first' ? 0 : k === 'last' ? pages - 1 : k === 'prev' ? st.page - 1 : st.page + 1; paint(); if (this === pBot) pTop.scrollIntoView({ block: 'start' }); }
-    function onPgIn(e) { if (!e.target.hasAttribute('data-pgin')) return; var v = parseInt(e.target.value, 10); if (v > 0) { st.page = v - 1; paint(); } }
+    function onPager(e) { var t = e.target.closest('[data-pg]'); if (!t) return; var pages = Math.ceil((st.matched || 0) / PER) || 1, k = t.getAttribute('data-pg'); st.page = k === 'first' ? 0 : k === 'last' ? pages - 1 : k === 'prev' ? st.page - 1 : st.page + 1; apply(true); if (this === pBot) pTop.scrollIntoView({ block: 'start' }); }
+    function onPgIn(e) { if (!e.target.hasAttribute('data-pgin')) return; var v = parseInt(e.target.value, 10); if (v > 0) { st.page = v - 1; apply(true); } }
     [pTop, pBot].forEach(function (el) { el.addEventListener('click', onPager); el.addEventListener('change', onPgIn); });
     /* "Raise at the altar": load the altar module on first use, then open the seance panel for that grave (hidden until the gate; owner test: grave #2, owner wallet) */
     /* owner's raise flow (Oct 29 2026 8:35 PM CT), step 1: click a gravestone to begin raising that dead pet (the whole stone, not only the button) */
-    tombs.addEventListener('click', function (e) { var bt = e.target.closest('[data-raise]'), tb = e.target.closest('.tomb'); if (!bt && tb && !e.target.closest('a,button,select,xc-select,input,label')) bt = tb.querySelector('[data-raise]'); if (!bt) return; var id = +bt.getAttribute('data-raise'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g || !canRaise(g)) return;
+    function graveById(id) { var i, L = st.list || []; for (i = 0; i < L.length; i++) if (+L[i].id === +id) return L[i]; L = st.index || []; for (i = 0; i < L.length; i++) if (+L[i].id === +id) return L[i]; var p = w.byId && w.byId[id]; return p && p.dead ? { id: p.id, raisable: 1, owner: p.owner, name: p.name } : null; }
+    function showDetail(id) { var box = $('cemDetail'); if (!box) { box = document.createElement('div'); box.id = 'cemDetail'; box.className = 'small cv2-detail'; tombs.parentNode.insertBefore(box, tombs); }
+      var p = w.byId && w.byId[id]; if (!p || !V.cemView) { box.innerHTML = '<p>Grave #' + fmt(id) + '</p>'; return; }
+      var v = V.cemView(w, p, b), bits = '';
+      try { if (window.PetScore && PetScore.of) { var sc = PetScore.of(w, p); if (sc && isFinite(sc.bits)) bits = ' · rarity ' + sc.bits.toFixed(1); } } catch (e) {}
+      box.innerHTML = '<p><b>' + esc(p.name || ('#' + id)) + ' #' + id + '</b> · ' + esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species) + ' · died at block ' + fmt(p.deathBlock) + (v && v.grave ? ' · ' + (v.state || 'open') : '') + (v && v.altar ? ' · altar closes in ' + fmt(v.altar.closesIn) + ' blocks' : '') + (v && v.why ? ' · ' + esc(v.why) : '') + bits + (R.graveCount && R.graveCount(w, p) ? ' · ' + R.graveLine(w, p) : '') + '</p>'; }
+    tombs.addEventListener('click', function (e) { var bt = e.target.closest('[data-raise]'), tb = e.target.closest('.tomb'); if (tb && !e.target.closest('a')) { var tid = tb.id && tb.id.indexOf('tomb-') === 0 ? +tb.id.slice(5) : 0; if (tid) showDetail(tid); }
+      if (!bt && tb && !e.target.closest('a,button,select,xc-select,input,label')) bt = tb.querySelector('[data-raise]'); if (!bt) return; var id = +bt.getAttribute('data-raise'), g = graveById(id); showDetail(id); if (!g || !canRaise(g)) return;
       bt.disabled = true; altarJs(function () { bt.disabled = false; if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); });
-    S.openAltar = function () { var g = st.list.filter(canRaise)[0] || all.filter(canRaise)[0]; if (g) altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); };
+    S.openAltar = function () { var g = (st.list || []).filter(canRaise)[0] || (st.index || []).filter(canRaise)[0]; if (g) altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); };
     var inp = $('cemFind'), tmr; inp.oninput = function () { clearTimeout(tmr); tmr = setTimeout(function () { st.q = inp.value; apply(); }, 200); };
     inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
     $('cemGo').onclick = function () { clearTimeout(tmr); st.q = inp.value; apply(); };
@@ -303,17 +309,23 @@
     $('cemClear').onclick = function () { reset(); st.sort = 'rarest'; sync(); apply(); };
     $('cemSort').onchange = function () { st.sort = this.value; apply(); }; $('cemSp').onchange = function () { st.sp = this.value; apply(); }; $('cemTier').onchange = function () { st.tier = this.value; apply(); }; $('cemMeals').onchange = function () { st.meals = this.value; apply(); };
     $('cemStage').onchange = function () { st.stage = this.value; apply(); }; $('cemDays').onchange = function () { st.days = this.value; apply(); }; $('cemDiff').onchange = function () { st.diff = this.value; apply(); }; $('cemRaisable').onchange = function () { st.raisable = this.checked; apply(); };
-    function deep() { var d = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id'); if (!d || !all.some(function (p) { return String(p.id) === String(d); })) return false;
-      inp.value = '#' + d; st.q = '#' + d; apply(true); var e = $('tomb-' + d); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } return true; }
+    function deep() { var d = (location.hash.match(/^#tomb-(\d+)$/) || [])[1] || new URLSearchParams(location.search).get('id'); if (!d) return false;
+      inp.value = '#' + d; st.q = '#' + d; apply(true, function () { var e = $('tomb-' + d); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } showDetail(+d); }); return true; }
     window.addEventListener('hashchange', deep);
-    opts(); status(); zombies(); st.ready = true; resumeNote(); if (!all.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; } else if (!deep()) apply();
+    function afterIndex() { opts(); status(); zombies(); st.ready = true; resumeNote(); window.__cemV2 = { src: st.source, n: graveCount(), page: PER, block: b - 1, on: on, pub: pub, indexMs: st.indexMs || 0 };
+      if (!graveCount()) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; } if (!deep()) apply(); }
+    function localIndex(done) { if (!GI) { tombs.innerHTML = '<p class="muted">The grave index did not load.</p>'; return; }
+      var t0 = (window.performance && performance.now) ? performance.now() : Date.now(); st.index = GI.compact(w, b, V); st.counts = GI.countsOf(st.index); st.total = st.index.length; st.source = 'world'; S.total = st.total;
+      st.indexMs = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0); if (done) done(); else afterIndex(); }
+    function startIndex() { var sync = GI && GI.base ? GI.base() : ''; if (!sync || !GI.counts) return localIndex();
+      GI.counts(sync).then(function (c) { if (!c || c.dead == null) return localIndex(); st.remote = sync; st.counts = c; st.total = c.dead; st.source = 'index'; S.total = c.dead; afterIndex(); }).catch(function () { localIndex(); }); }
+    startIndex();
     /* cemetery-handoff: an offering saved in this browser (not yet sent, or stopped half way) gets a note at the top of the list with an Open button */
     function resumeNote() { if (!ME) return; var o = {}; try { o = JSON.parse(localStorage.getItem('xcpets-cem-build-v1-' + ME) || '{}') || {}; } catch (e) { o = {}; }
       var ids = Object.keys(o).filter(function (k) { var x = o[k]; return x && Date.now() - (x.at || 0) < 24 * 3600e3 && ((x.offered && x.offered.length) || (x.run && x.run.left && x.run.left.length)); });
       var old = $('cemResume'); if (old) old.remove(); if (!ids.length) return; var m = $('cemMsg'); if (!m) return; var d = document.createElement('p'); d.id = 'cemResume'; d.className = 'small cem-resume';
       d.innerHTML = '🕯️ Unsent offering saved in this browser: ' + ids.map(function (k) { var x = o[k]; return '<button type="button" class="q" data-resume="' + esc(k) + '">Open #' + esc(k) + ' ' + esc(x.name || '') + ' (' + ((x.offered || []).length) + ' pet' + ((x.offered || []).length === 1 ? '' : 's') + ')</button>'; }).join(' ');
-      m.parentNode.insertBefore(d, m); d.onclick = function (e) { var bt = e.target.closest('[data-resume]'); if (!bt) return; var id = +bt.getAttribute('data-resume'), g = all.filter(function (p) { return p.id === id; })[0]; if (!g || !canRaise(g)) { bt.disabled = true; bt.title = 'This grave can no longer be raised'; return; } altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); }; }
-    window.__cemV2 = { src: 'chain', n: all.length, block: b - 1, on: on, pub: pub };
+      m.parentNode.insertBefore(d, m); d.onclick = function (e) { var bt = e.target.closest('[data-resume]'); if (!bt) return; var id = +bt.getAttribute('data-resume'), g = graveById(id); if (!g || !canRaise(g)) { bt.disabled = true; bt.title = 'This grave can no longer be raised'; return; } showDetail(id); altarJs(function () { if (window.V2CemeteryAltar) V2CemeteryAltar.open(g, ctx); }); }; }
   }
   function artJs(cb) { if (window.V2CemArt) return; if (document.getElementById('cemArtJs')) return; var v = ver(), sc = document.createElement('script'); sc.id = 'cemArtJs'; sc.src = 'js/v2-cemetery-art.js' + (v ? '?' + v : ''); sc.onload = cb; document.head.appendChild(sc); }
   /* THE gravestone (option C, owner's pick Oct 29 2026): loaded once, then every finder card draws its stone */
