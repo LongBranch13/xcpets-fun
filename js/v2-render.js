@@ -685,10 +685,34 @@
   function clownWanted(ids, ov) { var a = (ids || []).concat(ov || []), i; for (i = 0; i < a.length; i++) if (a[i] === 'v2-honk') return true; return false; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
     if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0); return fr; }
+  /* dj-sign (display only, 2026-11-11): DjPepeSprite paints signature Grip/Headwear and a one-row Guise tint.
+   * It never paints Drip. A banner (Number go up, Burn it, WAGMI, HODL, the other signs and flags) can be
+   * equipped and still be missing on the sprite. Draw that one class with the same BonusGear banner pass
+   * every other pet uses: pole just left of the body, cloth across the top, pole tucked behind the body.
+   * Eggs stay bare. Slot rules, what can be equipped, and the sprite's other gear are unchanged. */
+  function djRgb(h) { h = String(h || '').replace('#', ''); return h.length >= 6 ? [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)] : [42, 58, 46]; }
+  function djPx(img, x, y) { var i = (y * 32 + x) * 4, d = img.data; return [d[i], d[i + 1], d[i + 2]]; }
+  function djSame(a, b) { return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]; }
+  function djDripSign(fr, art, stage, itemIds, extraOv) {
+    if (!fr || !fr.length || !stage || !window.BonusGear) return fr;
+    var ids = (extraOv || []).concat(itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), ban = null, i;
+    for (i = 0; i < ids.length; i++) { var def = BonusGear.DEFS[ids[i]]; if (def && def.at === 'banner') ban = ids[i]; }
+    if (!ban) return fr;
+    var want = djRgb(art && art.bgColor || '#2a3a2e'), c0 = djPx(fr[0], 0, 0), bg = djSame(c0, want) ? want : c0, map = BonusGear.DEFS[ban].map, w = map && map[0] ? map[0].length : 18;
+    var minX = 32, y, x;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (!djSame(djPx(fr[0], x, y), bg)) minX = Math.min(minX, x);
+    var bx = minX >= 32 ? 0 : Math.max(0, minX - 2); if (bx + w > 32) bx = Math.max(0, 32 - w);
+    return fr.map(function (img) {
+      var data = img.data && img.data.slice ? img.data.slice() : img.data, sil = new Uint8Array(1024), out = Object.assign({}, img, { data: data }), p;
+      for (p = 0; p < 1024; p++) if (data[p * 4] !== bg[0] || data[p * 4 + 1] !== bg[1] || data[p * 4 + 2] !== bg[2]) sil[p] = 1;
+      try { BonusGear.apply(ban, out, { minX: 0, maxX: 31, minY: 0, maxY: 31, bannerX: bx, isSil: function (x2, y2) { return x2 >= 0 && y2 >= 0 && x2 < 32 && y2 < 32 && !!sil[y2 * 32 + x2]; } }, 0); } catch (e) {}
+      return out;
+    });
+  }
   function framesWithB(art, stage, itemIds, extraOv, cap, baseGo) {
     if (art && !stage && art.rareHatch && art.rareHatch.kind === 'wrong-egg') art = Object.assign({}, art, { species: art.rareHatch.expected, hybrid:null, cross:null });
-    if (art && art.hybrid && art.hybrid.shape === 'djpepe' && window.DjPepeSprite) return djHybFrames(art,stage,itemIds);
-    if (art && art.species === 'djpepe' && !art.hybrid && window.DjPepeSprite) return DjPepeSprite.frames(stage || 0, art.bgColor || '#2a3a2e', wizGearOf(itemIds), {});
+    if (art && art.hybrid && art.hybrid.shape === 'djpepe' && window.DjPepeSprite) return djDripSign(djHybFrames(art, stage, itemIds), art, stage, itemIds, extraOv);
+    if (art && art.species === 'djpepe' && !art.hybrid && window.DjPepeSprite) return djDripSign(DjPepeSprite.frames(stage || 0, art.bgColor || '#2a3a2e', wizGearOf(itemIds), {}), art, stage, itemIds, extraOv);
     if (art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS) return ContestSprite.CROSS.frames(art.cross, stage || 0, art.bgColor || '#14101e', wizGearOf(itemIds)); /* 1 OF 1 CROSS (branch allpets-crosses-1101 PREVIEW, inert: V2Rules.ACTIVATE_ONEOFONE_CROSS_BLOCK null) */
     if (art && window.ContestSprite && ContestSprite.SPECIES.indexOf(art.species) >= 0 && !art.hybrid) return contestFrames(art, stage, itemIds); /* contest eggs (branch contest-eggs, DRAFT; ContestSprite not loaded by any page yet = inert) */
     if (art && art.species === 'orangedragon' && !art.hybrid && window.DragonSprite) return DragonSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the ORANGE DRAGON 1 of 1 (inert: V2Rules.ACTIVATE_DRAGON_BLOCK null) */
@@ -1312,8 +1336,29 @@
   /** wizardHybridFrames: a hybrid whose body shape is the Wizard. Assembled by V2Rules.hybridRender (colours/feature from the other roots) with the
    * pet's worn pieces drawn by WizardSprite's gear layer (same anchors as a player Wizard). Hat rule: hybrids may wear their parents' ★ pieces EXCEPT
    * the hat, so the Wizard Hat is never drawn on a hybrid. Black eye + bandage traced on the Wizard eye cells, exactly like wizardPetFrames. */
+  /** wizardHybridFrames: a hybrid whose body shape is the Wizard. Assembled by V2Rules.hybridRender (colours/feature from the other roots) with the
+   * pet's worn pieces drawn by WizardSprite's gear layer (same anchors as a player Wizard). Hat rule: hybrids may wear their parents' ★ pieces EXCEPT
+   * the hat, so the Wizard Hat is never drawn on a hybrid. Black eye + bandage traced on the Wizard eye cells, exactly like wizardPetFrames.
+   * A head part (Kek nemes, and the same kind) tucks the raised flame and skips the phantom hat, and an arm part (Snibby claws) is moved
+   * off the fist onto the robe. Display only: Hematoopo #74349's headdress was a torn cluster where those three overlapped. */
+  function wizKind(art, kind) { return !!((art && art.hybrid && art.hybrid.parts) || []).some(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); return d && d.kind === kind; }); }
+  function shiftClawFrame(full, bare) { var A = full.data, B = bare.data, diff = [], j, i, top = 99, eye = 0, nEye = 0;
+    for (j = 0; j < 1024; j++) { i = j * 4; if (A[i] !== B[i] || A[i + 1] !== B[i + 1] || A[i + 2] !== B[i + 2]) diff.push(j); if ((j >> 5) < 18 && B[i] < 20 && B[i + 1] < 30 && B[i + 2] > 40) { eye += j >> 5; nEye++; } }
+    if (diff.length < 4) return full; diff.forEach(function (p) { if ((p >> 5) < top) top = p >> 5; });
+    var yArm = nEye ? Math.round(eye / nEye) + 3 : 14; if (top >= yArm) return full; var drop = yArm - top, out = new Uint8ClampedArray(B);
+    diff.forEach(function (p) { var y = (p >> 5) + drop, x = p & 31; if (y < 0 || y > 28) return; var t = (y * 32 + x) * 4, s = p * 4; out[t] = A[s]; out[t + 1] = A[s + 1]; out[t + 2] = A[s + 2]; out[t + 3] = 255; });
+    return Object.assign({}, full, { data: out }); }
+  function shiftWizardClaws(art, stage, G, fr) { var rest = art.hybrid.parts.filter(function (q) { var d = V.partDef(q.sp, q.part); return !d || d.kind !== 'arms'; });
+    var art2 = Object.assign({}, art, { hybrid: Object.assign({}, art.hybrid, { parts: rest }) });
+    var bare = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art2, { stage: stage || 0, frame: f, wizGear: G }); });
+    return fr.map(function (f, i) { return shiftClawFrame(f, bare[i]); }); }
   function wizardHybridFrames(art, stage, ids, extraOv) { var G = wizGearOf((ids || []).filter(function (id) { return id !== 'wizard-hat'; }));
-    var fr = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art, { stage: stage || 0, frame: f, wizGear: G }); });
+    var top = wizKind(art, 'top'), arms = wizKind(art, 'arms'), fr;
+    if (top && window.WizardSprite && WizardSprite.tuck) WizardSprite.tuck(1);
+    try {
+      fr = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art, { stage: stage || 0, frame: f, wizGear: G }); });
+      if (arms) fr = shiftWizardClaws(art, stage, G, fr);
+    } finally { if (window.WizardSprite && WizardSprite.tuck) WizardSprite.tuck(0); }
     return wizardShiner(fr, stage, G, extraOv); }
   function wizardPetFrames(art, stage, ids, extraOv) { var G = wizGearOf(ids), fr = WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, art && art.rareHatch ? {pal:{O:'#e11d2e',o:'#9b0f1c'}} : {});
     return wizardShiner(fr, stage, G, extraOv); }
@@ -1714,7 +1759,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=0b7ff4cbf6'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=73f9c52a74'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
