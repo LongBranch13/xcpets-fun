@@ -642,7 +642,7 @@
   /* WIZARD_SIGN_CLAIM_ON (hotfix Oct 19 2026): false hides the play.html "Join us" sign claim button (pet:sign). Set true to restore at launch. UI only. */
   var WIZARD_SIGN_CLAIM_ON = false;
   function render() {
-    var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
+    var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
     $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
     petTotal(w);
@@ -663,7 +663,7 @@
       $('community').insertAdjacentHTML('beforeend', '<div class="sharedwrap cstats"><div class="stats"><div><span>Stage</span><b id="pcStage">' + esc(cs.stage) + '</b></div><div><span>Fed to the community pet</span><b id="pcFed">' + F(cs.fed) + '</b></div><div><span>Next stage</span><b id="pcNext">' + (cs.next != null ? F(cs.next) + ' to ' + esc(cs.nextName) : 'Mythic reached') + '</b></div></div>' +
         '<div class="progress"><div id="pcProg" style="width:' + cs.pct.toFixed(1) + '%"></div></div><div class="stats"><div><span>Burns</span><b id="pcBurns">' + F(cs.burns) + '</b></div><div><span>Pets hatched</span><b id="pcPets">' + F(cs.pets) + '</b></div></div></div>'); }
     if (R.kekOn && R.kekOn(w)) $('community').insertAdjacentHTML('beforeend', '<details class="small muted" id="kekCard"><summary>Card</summary>' + esc(R.KEK_CARD) + '</details>'); /* gated: only when Lord Kek is the community pet */
-    if (R.kekOn && R.kekOn(w) && window.V2KekArrival) { $('community').insertAdjacentHTML('beforeend', '<div class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</div>'); V2KekArrival.bindReplay($('community'), world); V2KekArrival.watch($('communityPanel') || commAnim.c, world); } /* Lord Kek arrival scene: once per player, display only */ if (w.community && w.community.current === 'rabbit') { (function () { function go() { if (!window.V2RabbitArrival) { var s = document.createElement('script'); s.src = 'js/v2-rabbit-arrival.js?v=8c16688ef4'; s.onload = go; document.body.appendChild(s); return; } var row = $('rabbitReplayRow'); if (!row && $('community')) { $('community').insertAdjacentHTML('beforeend', '<div class="small" id="rabbitReplayRow">' + V2RabbitArrival.LINK + '</div>'); row = $('rabbitReplayRow'); } if (row) { V2RabbitArrival.bindReplay(row, world); V2RabbitArrival.watch($('communityPanel') || (commAnim && commAnim.c), world); } } go(); })(); } /* White Rabbit arrival: once per player, display only */
+    if (R.kekOn && R.kekOn(w) && window.V2KekArrival) { $('community').insertAdjacentHTML('beforeend', '<div class="small" id="kekReplayRow">' + V2KekArrival.LINK + '</div>'); V2KekArrival.bindReplay($('community'), world); V2KekArrival.watch($('communityPanel') || commAnim.c, world); } /* Lord Kek arrival scene: once per player, display only */ if (w.community && w.community.current === 'rabbit') { (function () { function go() { if (!window.V2RabbitArrival) { var s = document.createElement('script'); s.src = 'js/v2-rabbit-arrival.js?v=cdaabed640'; s.onload = go; document.body.appendChild(s); return; } var row = $('rabbitReplayRow'); if (!row && $('community')) { $('community').insertAdjacentHTML('beforeend', '<div class="small" id="rabbitReplayRow">' + V2RabbitArrival.LINK + '</div>'); row = $('rabbitReplayRow'); } if (row) { V2RabbitArrival.bindReplay(row, world); V2RabbitArrival.watch($('communityPanel') || (commAnim && commAnim.c), world); } } go(); })(); } /* White Rabbit arrival: once per player, display only */
     if (gap && w.kekMythic && R.setNextNo) R.setNextNo(4); /* gated: Lord Kek in Cold Storage -> next is #4 */
     if (gap) { var nn = '#' + R.COMMUNITY_NEXT_NO; $('community').innerHTML = '<b>' + esc(R.comingSoonText()) + '</b>' + '<div class="small muted">' + (w.kekMythic ? 'Lord Kek' : 'The Bitcoin Wizard') + ' reached Mythic and is in Cold Storage. Community feeding and gear rolls open when pet ' + nn + ' arrives.</div>' + (R.wizardTopHtml ? R.wizardTopHtml(w, esc, fmt) : ''); }
     var crOn = V.crollOn(S.tip) && !gap; $('crollBtn').textContent = 'Community gear roll (' + fmt(V.COSTS.croll) + ')'; $('crollBtn').disabled = !crOn;
@@ -819,6 +819,7 @@
         $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
     var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
+    if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) pileLink(gone.length); /* discard-pile jump link */
     $('petPager').textContent = list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
   }
@@ -901,6 +902,32 @@
     return hb; }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
   function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
+  /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
+   * One burn is 1 dander. If the pets do not fit one 34-byte tag, the sheet says so and lists the exact burns. */
+  function huKey() { return 'xcpets-hu-sent-' + NET + '-' + (ME || ''); }
+  function noteHuSent(ids) { try { var cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); sessionStorage.setItem(huKey(), JSON.stringify(cur.concat(ids))); } catch (e) {} }
+  function sweepHu(w) { if (!ME || !w || !V.hdOn || !V.hdOn((S.tip || 0) + 1)) return; var cur; try { cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); } catch (e) { return; }
+    if (!cur || !cur.length) return; var drop = {}; cur.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && !p.hd) drop[id] = 1; });
+    var hid = hiddenIds(), next = hid.filter(function (id) { return !drop[Number(id)]; }); if (next.length !== hid.length) setHidden(next);
+    try { sessionStorage.setItem(huKey(), JSON.stringify(cur.filter(function (id) { return !drop[id]; }))); } catch (e) {} }
+  function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
+    var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
+    var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
+    var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Make ' + fmt(n) + ' browser discards permanent');
+    if (!plan.one) title = 'This selection does not fit in one 34-byte burn. ' + plan.plans.length + ' exact burns, 1 dander each. ' + (plan.why || '');
+    else title += ' · 1 burn · 1 dander, plus the Bitcoin fee.' + (plan.why ? ' ' + plan.why : '');
+    confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
+  function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !isKept(id); });
+    var chain = (w.pets || []).filter(function (p) { return p.owner === ME && p.hd === ME && !p.dead && !p.released; });
+    if (!hid.length && !chain.length) return null;
+    var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
+    el.innerHTML = '<p class="muted">' + (on ? 'On-chain discard is 1 dander for the burn, however many pets it names. If they do not fit one tag, you will see the smallest number of exact burns before anything is sent. The game does not sign the burn.' : 'On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.') + '</p>' +
+      (hid.length ? '<button type="button" class="btn" id="hdMigrate">Make my browser discards permanent (' + fmt(hid.length) + ')</button> ' : '') +
+      (on && chain.length ? '<button type="button" class="q" id="hdBack">Add discarded pets back (' + fmt(chain.length) + ')</button>' : '');
+    var m = el.querySelector('#hdMigrate'); if (m) m.onclick = function () { chainDiscardIds(hid, false); };
+    var bk = el.querySelector('#hdBack'); if (bk) bk.onclick = function () { chainDiscardIds(chain.map(function (p) { return p.id; }), true); };
+    return el; }
   function pileLink(n) { var a = $('dpJump'); if (!a) { var anc = $('bulkAnchor'); if (!anc) return; a = document.createElement('button'); a.type = 'button'; a.className = 'q'; a.id = 'dpJump'; anc.parentNode.appendChild(a);
       a.onclick = openPile; }
     a.hidden = !n; a.textContent = '🗑️ Discard pile (' + n + ')'; a.title = 'Open the Discard pile: restore pets you discarded'; }
@@ -1430,7 +1457,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=8c16688ef4';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=cdaabed640';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
