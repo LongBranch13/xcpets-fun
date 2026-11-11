@@ -30,6 +30,25 @@
   function head(p) { var hy = V().isHybrid && V().isHybrid(p.species);
     return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span></div>' +
       '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
+  /* Carried stat floors live on p.carried and on the full card as "Carries: Dodo traits from Name #id (GRIT 30 floor for its future children)".
+   * Beside that stat here, a mate pick does not need the full card. No extra text when the pet carries nothing. Hidden-trait
+   * carriers stay off this card, the same as the full card. Display only: the stored floor is shown, never recomputed. */
+  function carryBeside(w, p, k) {
+    var cs = (p.carried || []).filter(function (c) { return c && c.stat === k && c.value != null; });
+    if (!cs.length) return '';
+    var bits = cs.map(function (c) {
+      var q = w && w.byId && c.from != null ? w.byId[c.from] : null, sp = c.species == null ? '' : (spL(c.species) || String(c.species));
+      return { sp: sp, who: c.from == null ? '' : ((q && q.name ? q.name + ' ' : '') + '#' + c.from), value: c.value, stat: String(c.stat || k).toUpperCase() };
+    });
+    var title = bits.map(function (x) { return (x.sp ? x.sp + ' traits' : 'Carried') + (x.who ? ' from ' + x.who : '') + ' (' + x.stat + ' ' + x.value + ' floor for its future children)'; }).join(' \u00b7 ');
+    var text = bits.map(function (x) { var floor = '<span class="hc-floor">floor ' + x.value + '</span>'; return x.sp ? esc('carries ' + x.sp + ' traits' + (x.who ? ' from ' + x.who : '')) + ', ' + floor : floor; }).join(' \u00b7 ');
+    return ' <i class="hc-car" title="' + esc(title) + '">(' + text + ')</i>';
+  }
+  function statBits(w, p) { var s = p.stats || {}, carried = [];
+    var line = STATS.map(function (k) { var note = carryBeside(w, p, k);
+      if (note) carried.push('<i class="hc-bit"><i class="hc-iv">' + k.slice(0, 3) + ' ' + (s[k] || 0) + '</i>' + note + '</i>');
+      return '<i class="hc-iv">' + k.slice(0, 3) + ' ' + (s[k] || 0) + '</i>'; }).join(' \u00b7 ');
+    return '<i class="hc-plain">' + line + '</i>' + carried.join(''); }
   /** breeding facts, straight from V2Rules.breedable / breedsLeft / breedChild */
   function breedHtml(w, p) { var R = V(), b = (w.tip || 0) + 1, why = R.breedable ? R.breedable(p, b) : null, h = head(p);
     if (p.species === 'wizard' && why) h += '<div class="hc-no">🧙 Wizards can\u2019t breed</div>';
@@ -41,7 +60,7 @@
     var s = p.stats || {}, best = STATS.reduce(function (m, k) { return (s[k] || 0) > (s[m] || 0) ? k : m; }, STATS[0]);
     h += '<div class="hc-sub">Passes down</div>' + row('Species', esc(spL(p.species)) + ' (50/50, mixed pair can hatch a hybrid)') +
       row('Tier', esc((p.resurrected ? 'God' : TL[p.tier]) || '') + ' (baby: lower, higher or +1 tier)') +
-      row('Stats', STATS.map(function (k) { return k.slice(0, 3) + ' ' + (s[k] || 0); }).join(' · ')) +
+      row('Stats', statBits(w, p), 'hc-stats') +
       row('', 'baby = parents\u2019 average ±2; hybrid keeps best ' + best + ' ' + (s[best] || 0), 'hc-m');
     var a = p.art || {}, tr = [];
     if (a.pattern) tr.push(lbl('PATTERNS', a.pattern)); if (a.eyes) tr.push(lbl('EYES', a.eyes) + ' eyes');
@@ -111,6 +130,7 @@
     '.hc-t{font-size:10px;padding:1px 5px;border:1px solid #000;background:#2b2350;white-space:nowrap}.hc-t.t1{background:#1f6b3a}.hc-t.t2{background:#1f4f9a}.hc-t.t3{background:#9a6b1f}.hc-s{color:#9fe8ff;font-size:11px;margin:2px 0 4px}' +
     '.hc-ok,.hc-no{font-size:11px;margin:3px 0;padding:2px 5px;border:1px solid #000}.hc-ok{background:#16351f;color:#8dffa8}.hc-no{background:#3a1420;color:#ffb3c1}' +
     '.hc-r{display:flex;gap:6px;justify-content:space-between;border-top:1px dashed #2b2350;padding:2px 0}.hc-r span{color:#bbb;white-space:nowrap}.hc-r b{font-weight:normal;text-align:right;color:#fff}.hc-m b{color:#9fe8ff;font-size:11px}' +
+    '.hc-stats{align-items:flex-start}.hc b i.hc-plain{display:block;font-style:normal;color:#fff}.hc b i.hc-bit{display:block;max-width:100%;font-style:normal;text-align:right}.hc b i.hc-iv{font-style:normal;white-space:nowrap;color:#fff}.hc b i.hc-car{font-style:normal;color:#9fe8ff;font-size:11px}.hc b i.hc-car .hc-floor{white-space:nowrap;color:#9fe8ff}' +
     '.hc-sub{font-family:"Press Start 2P",monospace;font-size:8px;color:#ff8fb1;margin:6px 0 2px}.hc-x{position:absolute;top:3px;right:4px;background:none;border:0;color:#ffd166;cursor:pointer;font-size:13px;padding:2px 4px}' +
     '.hc-full{display:block;width:100%;margin-top:6px;font-size:12px;padding:4px;background:#2b2350;color:#ffd166;border:2px solid #000;cursor:pointer;box-shadow:2px 2px 0 #000}' +
     '.hc-i{position:absolute;top:2px;right:2px;width:15px;height:15px;line-height:13px;font:bold 10px/13px Georgia,serif;font-style:italic;text-align:center;background:#2b2350;color:#ffd166;border:1px solid #000;cursor:pointer;z-index:2;opacity:.85}.hc-i:hover{opacity:1;background:#ffd166;color:#140f24}' +
