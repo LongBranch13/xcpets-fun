@@ -1,6 +1,6 @@
 {
- "lastBlock": 975390,
- "count": 293,
+ "lastBlock": 975392,
+ "count": 299,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3516,6 +3516,78 @@
    "name": "Keliboo",
    "species": "homer",
    "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 1955,
+   "asset": "A326386658253558867",
+   "tiedBlock": 975392,
+   "tiedTx": "152ccea3e898d276af571cace7f8a066d02e85ef44567ad87ac6cb0831974c5c",
+   "kind": "deed",
+   "name": "Mine",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2020,
+   "asset": "A2358270569960773783",
+   "tiedBlock": 975392,
+   "tiedTx": "d9df0c94546f98dab96b478c701f6fbcbbfe4248523238b979f0a0ce22ac4b0d",
+   "kind": "deed",
+   "name": "Lumi",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2089,
+   "asset": "A15124091941192259779",
+   "tiedBlock": 975392,
+   "tiedTx": "ae3caf89cd4b9cf97cefe6e80b0a0c843aca6ef4174f772ffc1daea8d9e9d5e5",
+   "kind": "deed",
+   "name": "Wawa",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 3621,
+   "asset": "A15329999064794880903",
+   "tiedBlock": 975392,
+   "tiedTx": "c976d0f02c4b5ada12248cff21cdb45d377980bf10188fbe0a28f5d545a491c8",
+   "kind": "deed",
+   "name": "Luba",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 3751,
+   "asset": "A4187206189625728376",
+   "tiedBlock": 975392,
+   "tiedTx": "36b2a83cce214ad071975fe8741b37c67b98a297aedfd9ded9d21a1cee2f728a",
+   "kind": "deed",
+   "name": "Tofuri",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 4009,
+   "asset": "A14929884271580682121",
+   "tiedBlock": 975392,
+   "tiedTx": "216cf90adf983f99bfcfc4c530193b1422932d6e88bd2ee3654e2dfb09a6778e",
+   "kind": "deed",
+   "name": "Pipchine",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
