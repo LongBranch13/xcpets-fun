@@ -642,7 +642,7 @@
   /* WIZARD_SIGN_CLAIM_ON (hotfix Oct 19 2026): false hides the play.html "Join us" sign claim button (pet:sign). Set true to restore at launch. UI only. */
   var WIZARD_SIGN_CLAIM_ON = false;
   function render() {
-    var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
+    var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
     $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
     petTotal(w);
@@ -819,6 +819,7 @@
         $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
     var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
+    if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) pileLink(gone.length); /* discard-pile jump link */
     $('petPager').textContent = list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets';
   }
@@ -901,6 +902,32 @@
     return hb; }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
   function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
+  /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
+   * One burn is 1 dander. If the pets do not fit one 34-byte tag, the sheet says so and lists the exact burns. */
+  function huKey() { return 'xcpets-hu-sent-' + NET + '-' + (ME || ''); }
+  function noteHuSent(ids) { try { var cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); sessionStorage.setItem(huKey(), JSON.stringify(cur.concat(ids))); } catch (e) {} }
+  function sweepHu(w) { if (!ME || !w || !V.hdOn || !V.hdOn((S.tip || 0) + 1)) return; var cur; try { cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); } catch (e) { return; }
+    if (!cur || !cur.length) return; var drop = {}; cur.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && !p.hd) drop[id] = 1; });
+    var hid = hiddenIds(), next = hid.filter(function (id) { return !drop[Number(id)]; }); if (next.length !== hid.length) setHidden(next);
+    try { sessionStorage.setItem(huKey(), JSON.stringify(cur.filter(function (id) { return !drop[id]; }))); } catch (e) {} }
+  function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
+    var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
+    var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
+    var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Make ' + fmt(n) + ' browser discards permanent');
+    if (!plan.one) title = 'This selection does not fit in one 34-byte burn. ' + plan.plans.length + ' exact burns, 1 dander each. ' + (plan.why || '');
+    else title += ' · 1 burn · 1 dander, plus the Bitcoin fee.' + (plan.why ? ' ' + plan.why : '');
+    confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
+  function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !isKept(id); });
+    var chain = (w.pets || []).filter(function (p) { return p.owner === ME && p.hd === ME && !p.dead && !p.released; });
+    if (!hid.length && !chain.length) return null;
+    var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
+    el.innerHTML = '<p class="muted">' + (on ? 'On-chain discard is 1 dander for the burn, however many pets it names. If they do not fit one tag, you will see the smallest number of exact burns before anything is sent. The game does not sign the burn.' : 'On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.') + '</p>' +
+      (hid.length ? '<button type="button" class="btn" id="hdMigrate">Make my browser discards permanent (' + fmt(hid.length) + ')</button> ' : '') +
+      (on && chain.length ? '<button type="button" class="q" id="hdBack">Add discarded pets back (' + fmt(chain.length) + ')</button>' : '');
+    var m = el.querySelector('#hdMigrate'); if (m) m.onclick = function () { chainDiscardIds(hid, false); };
+    var bk = el.querySelector('#hdBack'); if (bk) bk.onclick = function () { chainDiscardIds(chain.map(function (p) { return p.id; }), true); };
+    return el; }
   function pileLink(n) { var a = $('dpJump'); if (!a) { var anc = $('bulkAnchor'); if (!anc) return; a = document.createElement('button'); a.type = 'button'; a.className = 'q'; a.id = 'dpJump'; anc.parentNode.appendChild(a);
       a.onclick = openPile; }
     a.hidden = !n; a.textContent = '🗑️ Discard pile (' + n + ')'; a.title = 'Open the Discard pile: restore pets you discarded'; }
