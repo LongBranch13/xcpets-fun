@@ -136,6 +136,26 @@ function fixtureState() {
   ok(saver.window.V2BootSync.ready == null, 'data saver does not arm a snapshot');
   const verify = loadPage(() => Promise.reject(new Error('no'))); verify.location.pathname = '/verify-pet.html';
   ok(verify.window.V2BootSync.localOnly() === true, 'verify-pet stays a local rebuild');
+  const site = loadPage(() => Promise.reject(new Error('no')));
+  site.location.hostname = 'xcpets.fun'; site.location.search = ''; site.location.href = 'https://xcpets.fun/play.html';
+  ok(site.window.V2BootSync.base() === 'https://node.xcpets.fun' && site.window.V2BootSync.enabled() === true, 'xcpets.fun defaults to https://node.xcpets.fun');
+  const www = loadPage(() => Promise.reject(new Error('no')));
+  www.location.hostname = 'www.xcpets.fun'; www.location.search = '';
+  ok(www.window.V2BootSync.base() === 'https://node.xcpets.fun', 'www.xcpets.fun uses the same default');
+  const other = loadPage(() => Promise.reject(new Error('no')));
+  other.location.hostname = '127.0.0.1'; other.location.search = '';
+  ok(other.window.V2BootSync.base() === '' && other.window.V2BootSync.enabled() === false, 'other origins do not default the sync URL');
+  const off = loadPage(() => Promise.reject(new Error('no')));
+  off.location.hostname = 'xcpets.fun'; off.location.search = '?sync=0';
+  ok(off.window.V2BootSync.base() === '' && off.window.V2BootSync.enabled() === false, '?sync=0 turns the live default off');
+  const off2 = loadPage(() => Promise.reject(new Error('no')));
+  off2.location.hostname = 'xcpets.fun'; off2.location.search = '?sync=off';
+  ok(off2.window.V2BootSync.base() === '', '?sync=off turns the live default off');
+  const flag = loadPage(() => Promise.reject(new Error('no')));
+  flag.location.hostname = 'xcpets.fun'; flag.location.search = '';
+  flag.localStorage.setItem('xcpets-sync', 'http://127.0.0.1:9');
+  ok(flag.window.V2BootSync.base() === 'http://127.0.0.1:9', 'localStorage xcpets-sync overrides the live default');
+  ok(!/\bsync\s*:/.test(fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8')), 'rjs/config.js still has no sync field');
 
   /* bad part hash writes nothing */
   const good = Buffer.from('{"a":1}'); const goodSha = crypto.createHash('sha256').update(good).digest('hex');

@@ -1,8 +1,8 @@
-# xcpets-sync (review only)
+# xcpets-sync
 
-One-shot chain read and a pre-built pet world for the pages in this branch. Nothing here is installed on the live server, and nothing turns the feature on for players.
+One-shot chain read and a pre-built pet world. On `xcpets.fun` and `www.xcpets.fun`, `js/v2-boot-sync.js` uses `https://node.xcpets.fun`. That default is not in `rjs/config.js`. `?sync=<base>` and localStorage `xcpets-sync` override it. `?sync=0` and `?sync=off` turn it off. Other origins stay on today's chain read unless one of those overrides is set.
 
-The live config does not set a sync URL. A page uses this path only when it is opened with `?sync=` or when this browser has the `xcpets-sync` localStorage flag. Otherwise the page reads the chain exactly as it does today.
+verify-pet.html never uses the snapshot world. It still rebuilds locally. Practice pages do not load the boot file.
 
 ## Preview on this machine
 

@@ -1,7 +1,9 @@
-/* One-shot chain read and pre-built world (review only). Loaded before js/v2-chain.js on chain pages.
- * Off unless the page was opened with ?sync=<base>, localStorage xcpets-sync is a base URL, or CFG.sync is a URL.
- * The live config leaves that unset, so every page keeps today's boot. Any failure uses today's load() unchanged.
- * Practice pages do not load this file. verify-pet.html may sync the public read, then always replays locally. */
+/* One-shot chain read and pre-built world. Loaded before js/v2-chain.js on chain pages.
+ * On xcpets.fun and www.xcpets.fun the sync base is https://node.xcpets.fun. That default lives here, not in
+ * rjs/config.js, so the hashed rule files stay the bytes already live. ?sync=<base> and localStorage xcpets-sync
+ * override it. ?sync=0 and ?sync=off turn it off. Other origins stay off unless one of those overrides is set.
+ * Any failure uses today's load() unchanged. Practice pages do not load this file.
+ * verify-pet.html may sync the public read, then always replays locally. */
 (function () {
   'use strict';
   var FAIL_KEY = 'xcpets-sync-fail', FLAG_KEY = 'xcpets-sync', SLOW_KEY = 'xcpets-worker-ms';
@@ -12,13 +14,17 @@
   var usedExact = false, pollT = null;
 
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
+  function hostDefault() {
+    try { var h = String(location.hostname || '').toLowerCase(); if (h === 'xcpets.fun' || h === 'www.xcpets.fun') return 'https://node.xcpets.fun'; } catch (e) {}
+    return '';
+  }
   function base() {
     var s = q('sync');
     if (s === '0' || s === 'off') return '';
     if (s) return String(s).replace(/\/+$/, '');
     try { var f = localStorage.getItem(FLAG_KEY); if (f) return String(f).replace(/\/+$/, ''); } catch (e) {}
     try { var c = window.XCPETS_CONFIG && window.XCPETS_CONFIG.sync; if (typeof c === 'string' && c) return c.replace(/\/+$/, ''); } catch (e2) {}
-    return '';
+    return hostDefault();
   }
   function readFail() { try { return JSON.parse(sessionStorage.getItem(FAIL_KEY)) || {}; } catch (e) { return {}; } }
   function skipped() { var o = readFail(); return !!(o.until && Date.now() < o.until); }
