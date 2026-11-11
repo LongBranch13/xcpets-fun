@@ -9,7 +9,7 @@ const { buildAnswer } = require('./sync-server/answer');
 const { blank, tick, singleFlight } = require('./sync-server/follow');
 const { timedFetch, clientIp } = require('./sync-server/net');
 const { patchRules, wsDecode, STALE_MAX, staleOk } = require('../js/v2-resume');
-const { createServer } = require('./sync-server/server');
+const { createServer, worldFile } = require('./sync-server/server');
 const { buildSnapshot, chainInSig } = require('./sync-server/snapshot');
 let pass = 0, fail = 0;
 function ok(c, m) { if (c) { pass++; console.log('ok  ', m); } else { fail++; console.log('FAIL', m); } }
@@ -181,6 +181,27 @@ function fixtureState() {
   ok(clientIp({ headers: { 'x-forwarded-for': '198.51.100.8, 10.1.1.1' }, socket: { remoteAddress: '127.0.0.1' } }) === '198.51.100.8', 'loopback trusts X-Forwarded-For when X-Real-IP is absent');
   ok(clientIp({ headers: { 'x-real-ip': '198.51.100.4' }, socket: { remoteAddress: '203.0.113.1' } }) === '203.0.113.1', 'a public socket does not trust a spoofed X-Real-IP');
   lim.server.close();
+
+  const sig = 'r' + 'ab'.repeat(16), cpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xp-cp-'));
+  const cpRoot = path.join(cpDir, 'world', sig, '9');
+  fs.mkdirSync(cpRoot, { recursive: true });
+  for (const name of ['cp-root.json', 'cp-meta.json', 'cp-part-000.json', 'root.json', 'part-000.json', 'manifest.json']) fs.writeFileSync(path.join(cpRoot, name), '{"ok":"' + name + '"}');
+  fs.writeFileSync(path.join(cpRoot, 'cp-root.json.br'), Buffer.from('not-br'));
+  const allowNames = ['cp-root.json', 'cp-meta.json', 'cp-part-000.json', 'cp-part-063.json', 'root.json', 'part-000.json', 'manifest.json'];
+  const denyNames = ['cp-other.json', 'cp-root.json.txt', 'cp-part-00.json', 'cp-part-0000.json', 'cp-part.json', '../cp-root.json', '..', 'secret.json', 'cp-meta.json/../../etc'];
+  ok(allowNames.every(n => worldFile(cpDir, [sig, '9', n]) === path.join(cpRoot, n)), 'checkpoint names are on the snapshot allowlist');
+  ok(denyNames.every(n => worldFile(cpDir, [sig, '9', n]) == null) && worldFile(cpDir, [sig, '9', 'cp-root.json', 'extra']) == null && worldFile(cpDir, ['../' + sig, '9', 'cp-root.json']) == null, 'other snapshot names and path escapes are rejected');
+  const cpSrv = createServer({ getState: () => ({ tip: 9, ready: true, upstream: 'public' }), dataDir: cpDir });
+  const cpPort = await listen(cpSrv.server);
+  const ask = (method, urlPath) => new Promise((res, rej) => { const q = http.request({ hostname: '127.0.0.1', port: cpPort, path: urlPath, method: method }, r => { const chunks = []; r.on('data', c => chunks.push(c)); r.on('end', () => res({ status: r.statusCode, cors: r.headers['access-control-allow-origin'], cache: r.headers['cache-control'], body: Buffer.concat(chunks).toString() })); }); q.on('error', rej); q.end(); });
+  const cpBase = '/xp/v1/world/' + sig + '/9/';
+  const gotRoot = await ask('GET', cpBase + 'cp-root.json'), gotMeta = await ask('GET', cpBase + 'cp-meta.json'), gotPart = await ask('GET', cpBase + 'cp-part-000.json');
+  const headPart = await ask('HEAD', cpBase + 'cp-part-000.json'), postRoot = await ask('POST', cpBase + 'cp-root.json');
+  const otherName = await ask('GET', cpBase + 'cp-other.json'), extraSeg = await ask('GET', cpBase + 'cp-root.json/extra'), encodedDot = await ask('GET', cpBase + '..%2F..%2Fcp-root.json');
+  ok(gotRoot.status === 200 && gotMeta.status === 200 && gotPart.status === 200 && gotRoot.body.includes('cp-root.json') && gotMeta.body.includes('cp-meta.json') && gotPart.body.includes('cp-part-000.json'), 'GET serves cp-root, cp-meta, and cp-part-NNN');
+  ok(headPart.status === 200 && headPart.body === '' && headPart.cors === '*' && /immutable/.test(gotPart.cache) && gotPart.cors === '*', 'HEAD and CORS and immutable caching match the other snapshot files');
+  ok(postRoot.status === 405 && otherName.status === 404 && extraSeg.status === 404 && encodedDot.status === 404, 'checkpoint routes stay GET/HEAD and reject other names');
+  cpSrv.server.close();
 
   /* A snapshot two blocks behind, plus the burns in that gap, matches a full replay at the later tip. */
   {

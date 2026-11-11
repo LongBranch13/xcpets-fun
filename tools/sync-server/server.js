@@ -22,7 +22,8 @@ function worldFile(dataDir, parts) {
   if (parts.length !== 3) return null;
   const rsig = parts[0], tip = parts[1], file = parts[2];
   if (!/^r[0-9a-f]{32}$/.test(rsig) || !/^\d+$/.test(tip)) return null;
-  if (file !== 'manifest.json' && file !== 'root.json' && file !== 'latest.json' && !/^part-\d{3}\.json$/.test(file)) return null;
+  /* Checkpoint files (cp-root, cp-meta, cp-part-NNN) are the stale catch-up download. Same names only: no extra suffix, no other cp- file. */
+  if (file !== 'manifest.json' && file !== 'root.json' && file !== 'latest.json' && file !== 'cp-root.json' && file !== 'cp-meta.json' && !/^part-\d{3}\.json$/.test(file) && !/^cp-part-\d{3}\.json$/.test(file)) return null;
   const p = path.join(dataDir, 'world', rsig, tip, file);
   if (!p.startsWith(path.join(dataDir, 'world') + path.sep)) return null;
   return p;
