@@ -252,7 +252,7 @@
    * pets stay on the world (history and add-back) and leave refList, feeds, cemetery place lists, and
    * the Pepe Wheel. They cannot breed. A discard burn skips a pet that is no longer eligible instead
    * of rejecting the other pets in the same burn. Cost is 1 dander for the burn, not per pet. */
-  var ACTIVATE_ONCHAIN_DISCARD_BLOCK = 975480; /* chain tip 975474 (node.xcpets.fun /v2, 2026-11-11) + 6. Move to the deploy tip + 6 if this block has passed. */
+  var ACTIVATE_ONCHAIN_DISCARD_BLOCK = 975490; /* chain tip 975484 (node.xcpets.fun /v2, 2026-11-11, read just before go-live) + 6. */
   var HD_COST = 0.00000001, HD_BODY = 24, HD_MODE_BODY = 22;
   function hdOn(b) { return ACTIVATE_ONCHAIN_DISCARD_BLOCK != null && b != null && Number(b) >= ACTIVATE_ONCHAIN_DISCARD_BLOCK; }
   function hdHidden(p, src, b) { return !!(hdOn(b) && p && p.hd && p.hd === src); }

@@ -19,7 +19,7 @@ RULES.forEach(f => {
   console.log((now === was ? '  same ' : '  CHANGED ') + now + '  ' + f);
   if (f !== 'js/v2-rules.js') ok(now === was, 'only v2-rules.js may change (' + f + ')');
 });
-ok(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK === 975480, 'gate is block 975480 (tip 975474 + 6)');
+ok(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK === 975490, 'gate is block 975490 (tip 975484 + 6)');
 ok(V.parseTag('pet:hd:all').action === 'hd' && V.parseTag('pet:hd:NF').filter === 'nf' && V.parseTag('pet:hu:C').action === 'hu', 'class filters parse');
 ok(V.parseTag('pet:hd:00:0HNN0').runs && V.parseTag('pet:hd:00:0HNN0').runs[1] === 6000, 'a run of 6,000 decodes');
 ok(V.parseTag('pet:hd:1:00:0F').mode === 1, 'invert mode parses');
@@ -27,7 +27,7 @@ ok(V.parseTag('pet:hd:' + '1'.repeat(40)).action === 'invalid', 'an over-long di
 
 const ME = 'bc1qdiscardowner000000000000000000000000';
 function makeWorld(n) {
-  const A = 975480, pets = [], byId = {};
+  const A = 975490, pets = [], byId = {};
   for (let i = 0; i < n; i++) {
     const p = { id: i + 1, owner: ME, community: false, hatchBlock: A - 30, lastFed: i % 19 === 0 ? null : A - 4, tier: i % 4, stage: i % 6, dead: false, released: false, name: 'P' + (i + 1) };
     if (i === 7) { p.deed = 'A12345678901234567'; p.tier = 3; } /* tokenized, not listed: discard is allowed */
@@ -69,7 +69,7 @@ console.log('MEASURE planner all ' + allMs + 'ms, scattered 6000-step ' + scMs +
 
 /* engine: below the gate the tag is community food; at the gate it hides, blocks breed and the wheel, and a transfer clears it */
 const YOU = 'bc1qdiscardbuyer000000000000000000000000';
-const B = 975470;
+const B = 975488;
 let rows = [row(B, ME, 0.00000001, 'pet:hi'), row(B, YOU, 0.00000001, 'pet:hi')];
 for (let i = 0; i < 4; i++) rows.push(row(B, ME, 69, 'pet:hatch'));
 rows.push(row(B + 1, ME, 0.00000001, 'pet:hd:ALL')); /* below the gate */
@@ -83,18 +83,18 @@ const mine = () => w.pets.filter(p => p.owner === ME && !p.dead);
 ok(mine().length === 4 && mine().every(p => !p.hd), 'a discard below the gate does not hide any pet (' + mine().length + ' of yours)');
 const early = w.log.filter(e => e.block === B + 1);
 ok(early.some(e => /unknown pet: tag \(community food\)/.test(e.msg)), 'a discard below the gate is community food, same as any unknown pet tag');
-rows.push(row(975481, ME, 0.00000001, 'pet:hd:ALL'));
-w = play(rows, 975481);
+rows.push(row(975491, ME, 0.00000001, 'pet:hd:ALL'));
+w = play(rows, 975491);
 ok(mine().length === 4 && mine().every(p => p.hd === ME), 'pet:hd:ALL at the gate discards every living pet the signer owns');
-ok(V.refList(w, ME, 975481, 975482).length === 0, 'discarded pets leave refList');
-ok(V.wheelPets(w, ME, 975482, true).length === 0, 'discarded pets leave the Pepe Wheel');
-const breed = V.breedable(mine()[0], 975482);
+ok(V.refList(w, ME, 975491, 975492).length === 0, 'discarded pets leave refList');
+ok(V.wheelPets(w, ME, 975492, true).length === 0, 'discarded pets leave the Pepe Wheel');
+const breed = V.breedable(mine()[0], 975492);
 ok(breed === 'discarded', 'a discarded pet cannot breed (' + breed + ')');
-rows.push(row(975482, ME, 0.00000001, 'pet:hu:ALL'));
-w = play(rows, 975482);
-ok(mine().every(p => !p.hd) && V.refList(w, ME, 975482, 975483).length === 4, 'pet:hu:ALL adds every discarded pet back');
-rows.push(row(975483, ME, 0.00000001, 'pet:hd:C'));
-w = play(rows, 975483);
+rows.push(row(975492, ME, 0.00000001, 'pet:hu:ALL'));
+w = play(rows, 975492);
+ok(mine().every(p => !p.hd) && V.refList(w, ME, 975492, 975493).length === 4, 'pet:hu:ALL adds every discarded pet back');
+rows.push(row(975493, ME, 0.00000001, 'pet:hd:C'));
+w = play(rows, 975493);
 const commons = mine().filter(p => (p.tier | 0) === 0);
 ok(commons.length && commons.every(p => p.hd === ME) && w.pets.some(p => (p.tier | 0) !== 0 && !p.hd), 'pet:hd:C discards only Commons');
 const gifted = Object.assign({}, commons[0]);
