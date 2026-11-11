@@ -182,6 +182,7 @@
     gear: function (a, c) { return c.gear - a.gear || c.power - a.power || a.id - c.id; },
     lived: function (a, c) { return life(c) - life(a) || a.id - c.id; },
     id: function (a, c) { return a.id - c.id; } };
+  var LOC = SORTF; /* cemetery-rarity-1103: these eight sorts stay in the page. The paged index uses the same order. */
   var DAYS = [['', 'Any time'], ['0-1', '0 to 1 days'], ['2-7', '2 to 7 days'], ['8-30', '8 to 30 days'], ['31-', 'Over 30 days']];
   var DIFF = { easy: 'Easy', medium: 'Medium', hard: 'Hard', closed: 'Closed' };
   var STATE = { resting: 'Resting: owner may seance after 3 days', hunted: 'Hunted: laid to rest for good', dust: 'Turned to dust', halo: 'Resurrected: rests with its halo' };
