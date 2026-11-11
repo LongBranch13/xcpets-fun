@@ -86,10 +86,16 @@
     var tip = Object.keys(W).map(function (k) { return LABEL[k] + ' ' + b[k].points + '/' + Math.round(W[k] * 1000); }).join(' · ');
     return '<span class="psw" tabindex="0" role="button" aria-label="Pet Score ' + s.score + ', rank ' + s.rank + '. Tap for breakdown" title="' + esc('Pet Score (rank #' + s.rank + '): ' + tip) + '"><span class="chip pscore' + (s.dead ? ' psdead' : '') + '">⭐ ' + esc(label(s)) + (s.dead ? ' · 🪦' : '') + '</span>' +
       '<span class="psbd"><b>Pet Score ' + s.score + '/1000</b> · rank #' + s.rank + (s.dead ? ' · 🪦 dead' : '') + '<table>' + rows + '</table><span class="muted">Display only, from the chain replay. Not the hatch tier.</span></span></span>'; }
+  /* score-popup (display only): the breakdown used to be position:absolute under the chip, so a card edge could cut it off.
+   * The owner's phone shot is a My Pets card (mint hover border, ~6px corner, care bar): the chip sits on that bottom edge,
+   * and hover/focus applies a transform (css/game.css .pet.card:hover) which mobile browsers clip to the rounded border.
+   * The phone "one at a time" stage clips too (overflow:hidden on .mps-stage), and the same chip on pet.html sits in
+   * .pcard / .pc-inner. The table is moved to document.body and placed in the viewport: under the chip when it fits,
+   * otherwise above it. Score math is unchanged. */
   var CSS = '.chip.prar{background:#1d2b53;border-color:#7fd3ff;color:#bfe9ff;white-space:nowrap}.psw{position:relative;display:inline-block;cursor:pointer;outline:none}.chip.pscore{background:#2b2350;border-color:#ffd166;color:#ffd166;white-space:nowrap}.chip.pscore.psdead{opacity:.75}' +
-    '.psbd{display:none;position:absolute;z-index:80;left:0;top:100%;margin-top:4px;min-width:190px;max-width:min(260px,86vw);background:#14122b;color:#eee;border:2px solid #ffd166;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.5);white-space:normal}' +
+    '.psbd{display:none;position:fixed;z-index:240;left:0;top:0;min-width:190px;max-width:min(260px,calc(100vw - 16px));background:#14122b;color:#eee;border:2px solid #ffd166;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.5);white-space:normal}' +
     '.psbd table{width:100%;border-collapse:collapse;margin:4px 0}.psbd td{padding:1px 4px}.psbd td:nth-child(n+2){text-align:right}.psbd .muted{font-size:11px}' +
-    '@media (hover:hover){.psw:hover .psbd{display:block}}.psw:focus .psbd,.psw.open .psbd{display:block}.psw.open,.psw:hover,.psw:focus{z-index:90}*:has(> .chips .psw.open),*:has(> .chips .psw:hover),*:has(> .chips .psw:focus),#chips:has(.psw.open){position:relative;z-index:60}';
+    '.psbd.on{display:block}.psw.open,.psw:hover,.psw:focus{z-index:90}';
 
   /* player-qol 2026-10-24 (display only): everything a player needs to decide Keep or Discard, inline on the egg review / Discard pile card,
    * so no clicking in and out. Traits = species, eyes, pattern, background, cheeks (plus mutation and throwback in the score), each with its own '1 in N' across every pet; the
@@ -109,9 +115,46 @@
     '@media (max-width:600px){#packBox:not(.gearmode) .packgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.dinfo .dit{min-width:40px}}' +
     '.dcard .dinfo{margin:4px 0}';
   function install(doc) { if (!doc || doc.getElementById('psCss')) return; var s = doc.createElement('style'); s.id = 'psCss'; s.textContent = CSS + DCSS; (doc.head || doc.documentElement).appendChild(s);
-    doc.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('.psw') : null;
-      doc.querySelectorAll('.psw.open').forEach(function (x) { if (x !== t) x.classList.remove('open'); });
-      if (t) { e.stopPropagation(); e.preventDefault(); t.classList.toggle('open'); } }, true); }
+    var view = doc.defaultView, open = null, hover = null, timer = null;
+    var canHover = !!(view && view.matchMedia && view.matchMedia('(hover: hover) and (pointer: fine)').matches);
+    function ownerOf(node) { if (!node || !node.closest) return null; var psw = node.closest('.psw'); if (psw) return psw; var bd = node.closest('.psbd'); return (bd && bd._psw) || null; }
+    function park(psw) { var bd = psw && psw._bd; if (!bd) return; bd.classList.remove('on'); bd.style.left = bd.style.top = bd.style.visibility = bd.style.maxHeight = bd.style.maxWidth = bd.style.minWidth = bd.style.overflow = ''; bd.removeAttribute('data-ps-place');
+      if (psw.isConnected) psw.appendChild(bd); else if (bd.parentNode) bd.parentNode.removeChild(bd); psw._bd = null; }
+    function dismiss(psw) { if (!psw) return; if (psw._psRaf && view && view.cancelAnimationFrame) view.cancelAnimationFrame(psw._psRaf); psw._psRaf = 0; psw.classList.remove('open'); if (psw.setAttribute) psw.setAttribute('aria-expanded', 'false'); park(psw); if (hover === psw) hover = null; if (open === psw) open = null; }
+    function place(psw) {
+      var bd = psw._bd; if (!bd || !psw.isConnected) { dismiss(psw); return; }
+      var vw = doc.documentElement.clientWidth || (view && view.innerWidth) || 0, vh = doc.documentElement.clientHeight || (view && view.innerHeight) || 0, r = psw.getBoundingClientRect();
+      if (vw && vh && (r.bottom <= 0 || r.top >= vh || r.right <= 0 || r.left >= vw)) { dismiss(psw); return; }
+      var m = 8, gap = 4, cap = Math.max(120, Math.min(260, (vw || 260) - m * 2)), shown = bd.classList.contains('on');
+      bd.style.minWidth = Math.min(190, cap) + 'px'; bd.style.maxWidth = cap + 'px'; bd.style.maxHeight = ''; bd.style.overflow = ''; if (!shown) bd.style.visibility = 'hidden'; bd.classList.add('on');
+      var w = bd.offsetWidth, h = bd.offsetHeight, left = r.left, below = vh - r.bottom - gap - m, above = r.top - gap - m, placeBelow = h <= below || below >= above, top = placeBelow ? r.bottom + gap : r.top - gap - h;
+      if (left + w > vw - m) left = vw - m - w; if (left < m) left = m;
+      if (vh && h > vh - m * 2) { bd.style.maxHeight = (vh - m * 2) + 'px'; bd.style.overflow = 'auto'; top = m; bd.setAttribute('data-ps-place', 'scroll'); }
+      else { if (top < m) top = m; if (vh && top + h > vh - m) top = Math.max(m, vh - m - h); bd.setAttribute('data-ps-place', placeBelow ? 'below' : 'above'); }
+      bd.style.left = Math.round(left) + 'px'; bd.style.top = Math.round(top) + 'px'; bd.style.visibility = 'visible';
+    }
+    function arm(psw) { if (!view || !view.requestAnimationFrame || psw._psRaf) return; psw._psRaf = view.requestAnimationFrame(function () { psw._psRaf = 0; if (open !== psw) return; if (!psw.isConnected) { dismiss(psw); return; }
+      var r = psw.getBoundingClientRect(), key = (r.top | 0) + ',' + (r.left | 0) + ',' + (r.bottom | 0); if (key !== psw._psAt) { psw._psAt = key; place(psw); } if (open === psw) arm(psw); }); }
+    function show(psw) { if (!psw) return; if (open && open !== psw) dismiss(open); var bd = psw.querySelector('.psbd') || psw._bd; if (!bd) return; psw._bd = bd; bd._psw = psw; if (doc.body && bd.parentNode !== doc.body) doc.body.appendChild(bd); open = psw; if (psw.setAttribute) psw.setAttribute('aria-expanded', 'true'); place(psw);
+      if (open === psw) { var r = psw.getBoundingClientRect(); psw._psAt = (r.top | 0) + ',' + (r.left | 0) + ',' + (r.bottom | 0); arm(psw); } }
+    doc.addEventListener('click', function (e) { var t = ownerOf(e.target); clearTimeout(timer);
+      if (!t) { if (open) dismiss(open); return; }
+      e.stopPropagation(); e.preventDefault();
+      if (t.classList.contains('open')) { t.classList.remove('open'); if (hover !== t) dismiss(t); }
+      else { t.classList.add('open'); show(t); }
+    }, true);
+    if (canHover) {
+      doc.addEventListener('pointerover', function (e) { var t = ownerOf(e.target); if (!t) return; clearTimeout(timer); hover = t; if (open !== t) show(t); });
+      doc.addEventListener('pointerout', function (e) { var t = ownerOf(e.target); if (!t || t !== open) return; var n = e.relatedTarget; if (n && (t.contains(n) || (t._bd && t._bd.contains(n)))) return;
+        clearTimeout(timer); timer = setTimeout(function () { if (hover === t) hover = null; if (!t.classList.contains('open')) dismiss(t); }, 140); });
+    }
+    doc.addEventListener('focusin', function (e) { var t = e.target && e.target.closest && e.target.closest('.psw'); if (t) show(t); });
+    doc.addEventListener('focusout', function (e) { var t = e.target && e.target.closest && e.target.closest('.psw'); if (!t) return;
+      setTimeout(function () { if (t.contains(doc.activeElement)) return; if (!t.classList.contains('open') && hover !== t) dismiss(t); }, 0); });
+    function repos() { if (open && open.isConnected) place(open); else if (open) dismiss(open); }
+    doc.addEventListener('scroll', repos, true);
+    if (view) { view.addEventListener('resize', repos); if (view.visualViewport) { view.visualViewport.addEventListener('resize', repos); view.visualViewport.addEventListener('scroll', repos); } }
+  }
   var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
