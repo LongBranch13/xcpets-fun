@@ -28,7 +28,7 @@ ok(/fS === 'tok'/.test(v2) && /noTok/.test(v2) && /\|t' \+ tokKind\(\)/.test(v2)
 ok(/fS === 'weird'/.test(v2) && /DS_SORTS = \[\['recent'/.test(v2) && /'weird', 'Weird first'/.test(v2), 'Weird sort on My Pets and the discard pile stays');
 ['templates/game.html', 'play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', 'practice.html', 'practice-fight.html', 'practice-rare.html', 'practice-breed.html'].forEach(f => {
   const h = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-  ok(/js\/v2-tok-filter\.js\?v=b1b06db385/.test(h) && /id="fTok"/.test(h) && /value="tok">🎟 Tokenized first/.test(h) && /value="away">Token held elsewhere/.test(h), f + ': token filter and Tokenized first sort');
+  ok(/js\/v2-tok-filter\.js\?v=d37d37bee2/.test(h) && /id="fTok"/.test(h) && /value="tok">🎟 Tokenized first/.test(h) && /value="away">Token held elsewhere/.test(h), f + ': token filter and Tokenized first sort');
 });
 console.log('mypets-tok-filter: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function (d) {
   'use strict';
   var Wallet = d.Wallet, BurnCore = d.BurnCore, CFG = d.CFG, win = d.win, F = d.fetch, store = d.storage;
-  var NET = CFG.network, ME_KEY = 'xcpets-v2-me', ADDR_KEY = 'xcpets-xcpwallet-address', COMPOSE_MS = d.composeMs != null ? d.composeMs : 12000, BACKOFF = d.backoffMs != null ? d.backoffMs : 1500, wallet = null;
+  var NET = CFG.network, ME_KEY = 'xcpets-v2-me', ADDR_KEY = 'xcpets-xcpwallet-address', COMPOSE_MS = d.composeMs != null ? d.composeMs : 8000, BACKOFF = d.backoffMs != null ? d.backoffMs : 1500, wallet = null; /* compose-failover-1110: 8s on one public Core node, then the other. A hung node no longer burns the whole 90s budget retrying itself. */
   var tracker = new Wallet.Tracker(store, 'xcpets-v2-pending-' + NET);
   var STORE = 'https://chromewebstore.google.com/detail/xcp-wallet/nicpjdbehgcjbjfjkobcidnfmfpijohg';
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -152,7 +152,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going) */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going). chores-fresh-1110: that 8 s covers only a read that has not verified yet. Once the servers have answered, a local pet rebuild is not a server timeout; Cancel is the way out. */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
   /* cheaper-fees (owner Oct 27 2026, "cheaper fees asap"): read mempool.space /v1/fees/precise (decimal rates) instead of /v1/fees/recommended
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
@@ -181,32 +181,43 @@
   /* Callers that pass no progress callback (shop, quests, gifts, looks, deeds) get the same line as a toast, right before the XCP Wallet window. */
   function feeToast(info, what) { try { var D = win.document, t = D && D.getElementById('toasts'); if (!t) return; var x = D.createElement('div'); x.className = 'toast'; x.setAttribute('role', 'status');
     x.textContent = '⛽ ' + (what ? what + ': ' : '') + info.text + '. Approve it in ' + label() + '.'; t.appendChild(x); setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 8000); } catch (e) { } }
-  function composeNodes() { return (CFG.composeList && CFG.composeList.length ? CFG.composeList : [CFG.compose]).filter(function (u) { return !/xcp\.fun/.test(u); }); }
+  function composeNodes() { return (CFG.composeList && CFG.composeList.length ? CFG.composeList : [CFG.compose]).filter(function (u) { u = String(u || ''); return u && !/xcp\.fun/i.test(u) && !/node\.xcpets\.fun/i.test(u); }); } /* reads may use the cache; compose never does */
   /** whole-XCPETS amount as the decimal string BurnCore.toRaw expects (v2 release = 0.00000001 would stringify as 1e-8) */
   function amt(a) { return typeof a === 'number' ? a.toFixed(8).replace(/\.?0+$/, '') : String(a); }
   function composeUrl(me, plan, fee, base) { return BurnCore.composeUrl(base, me, { asset: CFG.asset, quantityRaw: BurnCore.toRaw(amt(plan.amount)), tag: plan.tag, satPerVbyte: fee }); }
   function chainOpts(mode) { var ex = live(); if (mode === 'change' && lastChange) return '&inputs_set=' + encodeURIComponent(lastChange.u) + '&allow_unconfirmed_inputs=true';
     return (ex.length ? '&exclude_utxos=' + encodeURIComponent(ex.join(',')) : '') + (mode === 'unconf' ? '&allow_unconfirmed_inputs=true' : ''); }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function composeAt(me, plan, fee, onTry) {
-    var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag, satPerVbyte: fee }, urls = composeNodes(), errs = [];
+  function composeAt(me, plan, fee, onTry, g0) {
+    if (g0 == null) g0 = cancelGen;
+    var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag, satPerVbyte: fee }, urls = composeNodes(), errs = [], stops = [];
+    /* compose-failover-1110: Cancel aborts the request in flight. A hang fails over to the other public Core node immediately.
+     * A 429 or 503 gets one short retry on the node that answered, then the other node. Not three exponential waits. */
+    function stopAll() { stops.splice(0).forEach(function (fn) { try { fn(); } catch (e) {} }); }
+    cancelWait.push(stopAll);
+    function unhook(p) { return p.then(function (x) { var i = cancelWait.indexOf(stopAll); if (i >= 0) cancelWait.splice(i, 1); return x; }, function (e) { var i = cancelWait.indexOf(stopAll); if (i >= 0) cancelWait.splice(i, 1); throw e; }); }
     function call(i, mode, tries) {
-      tries = tries || 0; var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode), unconf = mode === 'change' || mode === 'unconf';
-      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, COMPOSE_MS);
-      var done = false, bodyT = null; /* burn-compose-fix: the abort timer also covers reading the body (a stalled body used to hang forever) */
-      var body = function (r) { return new Promise(function (res, rej) { bodyT = setTimeout(function () { var e6 = new Error('timed out after ' + COMPOSE_MS / 1000 + ' s reading the reply'); e6.retryable = true; e6.backoff = true; rej(e6); }, COMPOSE_MS); Promise.resolve(r.json()).then(res, function (e) { var e7 = new Error('unreadable reply (' + ((e && e.message) || 'bad JSON') + ')'); e7.retryable = true; e7.backoff = true; rej(e7); }); }).then(function (x) { clearTimeout(bodyT); return x; }, function (e) { clearTimeout(bodyT); throw e; }); };
-      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t);
-        /* api-hardening: 503 = node not ready / catching up, 409 = a pending transaction in the node's mempool conflicts; both wait (backoff) and retry with the node's own words */
+      tries = tries || 0;
+      if (g0 !== cancelGen) return Promise.reject(cancelErr());
+      var url = composeUrl(me, plan, fee, urls[i]) + chainOpts(mode), unconf = mode === 'change' || mode === 'unconf';
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { try { ac.abort(); } catch (e) {} }, COMPOSE_MS);
+      stops.push(function () { try { if (ac) ac.abort(); } catch (e) {} if (t) clearTimeout(t); });
+      var bodyT = null; /* burn-compose-fix: the abort timer also covers reading the body (a stalled body used to hang forever) */
+      var body = function (r) { return new Promise(function (res, rej) { bodyT = setTimeout(function () { var e6 = new Error('timed out after ' + COMPOSE_MS / 1000 + ' s reading the reply'); e6.retryable = true; rej(e6); }, COMPOSE_MS); Promise.resolve(r.json()).then(res, function (e) { var e7 = new Error('unreadable reply (' + ((e && e.message) || 'bad JSON') + ')'); e7.retryable = true; rej(e7); }); }).then(function (x) { clearTimeout(bodyT); return x; }, function (e) { clearTimeout(bodyT); throw e; }); };
+      return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); if (g0 !== cancelGen) throw cancelErr();
+        /* api-hardening: 503 = node not ready / catching up, 409 = a pending transaction in the node's mempool conflicts. Try the other public node now; do not sit on this one. */
         if (r.status === 503 || r.status === 409) return body(r).then(null, function () { return null; }).then(function (jj) { var nm = jj && jj.error ? (typeof jj.error === 'string' ? jj.error : JSON.stringify(jj.error)) : '';
-          var e9 = new Error(r.status === 409 ? 'A pending transaction conflicts with this one (HTTP 409' + (nm ? ': ' + nm : '') + '). Wait for it to confirm, then try again.' : 'The Counterparty node is not ready or still catching up (HTTP 503' + (nm ? ': ' + nm : '') + ').'); e9.retryable = true; e9.backoff = true; e9.http = r.status; throw e9; });
-        if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status + (r.status === 429 ? ' (rate limited)' : '')); e5.retryable = true; e5.backoff = true; throw e5; } return body(r); }, function (e) {
-        if (t) clearTimeout(t); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; e2.backoff = true; throw e2; })
+          var e9 = new Error(r.status === 409 ? 'A pending transaction conflicts with this one (HTTP 409' + (nm ? ': ' + nm : '') + '). Wait for it to confirm, then try again.' : 'The Counterparty node is not ready or still catching up (HTTP 503' + (nm ? ': ' + nm : '') + ').'); e9.retryable = true; e9.http = r.status; throw e9; });
+        if (r.status === 429 || r.status >= 500) { var e5 = new Error('node error HTTP ' + r.status + (r.status === 429 ? ' (rate limited)' : '')); e5.retryable = true; e5.http = r.status; throw e5; } return body(r); }, function (e) {
+        if (t) clearTimeout(t); if (g0 !== cancelGen) throw cancelErr(); var e2 = new Error(e && e.name === 'AbortError' ? 'timed out after ' + COMPOSE_MS / 1000 + ' s' : 'no response (' + ((e && e.message) || 'network error') + '; offline, blocked, or a rate limit without CORS)'); e2.retryable = true; throw e2; })
         .then(function (j) {
+          if (g0 !== cancelGen) throw cancelErr();
           if (!j || typeof j !== 'object') { var e8 = new Error('empty reply'); e8.retryable = true; throw e8; }
           if (j.error) { var e3 = new Error(typeof j.error === 'string' ? j.error : JSON.stringify(j.error)); e3.retryable = /unsupported node operation|not ready|unavailable/i.test(e3.message); throw e3; }
           if (onTry) onTry(i + 1, urls.length, 'check'); var chk; try { chk = BurnCore.checkComposeResult(j.result, exp); } catch (ce) { chk = { ok: false, problems: ['safety check error: ' + ((ce && ce.message) || ce)] }; } if (!chk.ok) { var e4 = new Error('Safety check stopped this burn before signing (nothing was signed or sent): ' + chk.problems.join(', ')); e4.retryable = true; throw e4; }
           j.result._url = url; if (unconf) j.result._unconf = true; return j.result;
-        }).catch(function (e) { if (e.backoff && tries < 3) return sleep(BACKOFF * Math.pow(2, tries)).then(function () { return call(i, mode, tries + 1); }); throw e; });
+        }).catch(function (e) { if (e && e.cancelled) throw e; if (g0 !== cancelGen) throw cancelErr();
+          if (e.retryable && e.http && e.http !== 409 && tries < 1) return sleep(BACKOFF).then(function () { return call(i, mode, tries + 1); }); throw e; });
     }
     function friendly(e) {
       var m = e.message;
@@ -219,12 +230,14 @@
     function host(u) { return String(u).replace(/^https?:\/\//, '').replace(/\/.*$/, ''); }
     var chained = !!(live().length || lastChange), plainRetry = false, allowUnconf = tryOnce || !!(lastChange && pendingChain() < CHAIN_CAP); tryOnce = false; /* feed-chain: build on our own last burn's change */
     function go(i) {
+      if (g0 !== cancelGen) return Promise.reject(cancelErr());
       if (i >= urls.length) {
         if (chained && !plainRetry) { if (pendingChain() > 0) throw waitErr(); plainRetry = true; chainClear(); errs.push('retrying without coin exclusions'); return go(0); }  /* hotfix-compose: one clean retry (never while our own burns are unconfirmed) */
         return Promise.reject(new Error('Could not build your burn: every Counterparty node failed. ' + errs.join(' · ')));
       }
       if (onTry) onTry(i + 1, urls.length);
       return call(i, false).catch(function (e) {
+        if (e && e.cancelled) throw e;
         if (!e.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e.message) && !allowUnconf) {
           /* burn-wait-confirm: no confirmed coin left. Stop with the wait note (nothing composed on unconfirmed change) unless 'Try anyway'. */
           if (chained && !plainRetry) { if (pendingChain() > 0) throw confirmErr(); plainRetry = true; chainClear(); return call(i, false).catch(function (e3) { if (!e3.retryable && /utxo|insufficient.*btc|not enough|no .*inputs|unconfirmed/i.test(e3.message)) throw confirmErr(); throw friendly(e3); }); }
@@ -235,7 +248,7 @@
         throw friendly(e);
       });
     }
-    return withTimeout(go(0), COMPOSE_TOTAL_MS, 'Could not build your burn within ' + Math.round(COMPOSE_TOTAL_MS / 1000) + ' s: the Counterparty nodes are slow or rate-limiting right now. Nothing was signed or sent. Wait a minute, then press Continue.' + (errs.length ? ' (' + errs.join(' · ') + ')' : ''), 'composeTimeout');
+    return unhook(withTimeout(go(0), COMPOSE_TOTAL_MS, 'Could not build your burn within ' + Math.round(COMPOSE_TOTAL_MS / 1000) + ' s: the Counterparty nodes are slow or rate-limiting right now. Nothing was signed or sent. Wait a minute, then press Continue.' + (errs.length ? ' (' + errs.join(' · ') + ')' : ''), 'composeTimeout'));
   }
   /** send(plan {tag, amount, label}, viewedAddr) -> Promise<{txid, composed}>: connect, compose (live flow), wallet signs + broadcasts. */
   /* site-fast-reread: pressed while the page still shows the saved copy -> wait for the chain re-read (V2Mock.whenFresh), then go on only if the
@@ -248,23 +261,40 @@
   /* boot-from-cache (Oct 31 2026): also while the page shows a provisional saved world or the fresh replay is still being built (V2Mock.updating()):
    * whenFresh then waits for the fresh world and answers same:false if it differs from the one the action was built from (recheck or stop). */
   function upd() { try { return !!(window.V2Mock && window.V2Mock.updating && window.V2Mock.updating()); } catch (e) { return false; } }
+  function mockState() { try { return window.V2Mock && window.V2Mock.state && window.V2Mock.state(); } catch (e) { return null; } }
+  /* chores-fresh-1110: FRESH_MS is only for a read that has not verified. After S.verified, the rest is this device rebuilding pets.
+   * That wait is not "the servers did not answer". Cancel (cancelP) still stops a burn that has not reached the wallet. */
+  var FRESH_SERVER = 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.';
+  function freshGate(p, onTry, regStop) { var timer, settled = false, noted = false, reject, t0 = Date.now();
+    function stop() { settled = true; if (timer) clearTimeout(timer); }
+    if (regStop) regStop(stop);
+    function arm(ms) { if (timer) clearTimeout(timer); if (!settled) timer = setTimeout(tick, ms); }
+    function tick() { if (settled) return; var VS = mockState();
+      if (VS && VS.verified) { if (upd() && !noted) { noted = true; if (onTry) onTry(0, 0, 'world'); } arm(400); return; }
+      if (Date.now() - t0 < FRESH_MS) { arm(200); return; }
+      var e = new Error(FRESH_SERVER); e.timeout = true; e.unverified = true; e.retry = true; stop(); reject(e); }
+    var cap = new Promise(function (_, j) { reject = j; arm(200); });
+    return Promise.race([Promise.resolve(p).then(function (x) { stop(); return x; }, function (e) { stop(); throw e; }), cap]); }
   /* burn-stuck-1101: cancel() (the sheet's Cancel) drops every burn that has not reached the wallet window yet; nothing is signed or sent. */
   var cancelGen = 0, cancelWait = []; function cancel() { cancelGen++; var w = cancelWait; cancelWait = []; w.forEach(function (f) { try { f(); } catch (e) { } }); }
   function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
   function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
-  function send(plan, viewed, onTry, recheck) { var g0 = cancelGen, VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+  function send(plan, viewed, onTry, recheck) { var g0 = cancelGen, VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
-    if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null;
-    return Promise.race([cancelP(), withTimeout(window.V2Mock.whenFresh(), FRESH_MS, 'The Counterparty servers did not answer in time, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.')]).then(function (r) { cancelWait = [];
+    if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null, stopFresh = function () {};
+    var gate = freshGate(window.V2Mock.whenFresh(), onTry, function (fn) { stopFresh = fn; }); cancelWait.push(stopFresh);
+    return Promise.race([cancelP(), gate]).then(function (r) { cancelWait = [];
       if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
-      var VB = window.V2Mock.state(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
+      var VB = mockState(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
-      if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0); }); }
-  function send0(plan, viewed, onTry, g0) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
+      if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0, !!(r.ok && r.same && VB && VB.verified && !VB.provisional)); }, function (e) { cancelWait = []; throw e; }); }
+  function send0(plan, viewed, onTry, g0, freshSame) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
-    var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (VS && VS.prod && upd()) { var eu = new Error('Still updating pets to the latest block, so pet numbers could be out of date. Nothing was burned. Try again in a moment.'); eu.unverified = true; eu.retry = true; return Promise.reject(eu); }
+    var VS = mockState();
+    /* chores-fresh-1110: a same-data verified read already proved these pet numbers. Rebuilding that same world on this device is not a reason to refuse.
+     * The verified gate below is unchanged, and a provisional older world still refuses. */
+    if (VS && VS.prod && upd() && !(freshSame && VS.verified && !VS.provisional)) { var eu = new Error('Still updating pets to the latest block, so pet numbers could be out of date. Nothing was burned. Try again in a moment.'); eu.unverified = true; eu.retry = true; return Promise.reject(eu); }
     if (VS && VS.prod && !VS.verified) { var ev = new Error(VS.stale ? 'Still checking the latest chain data, so pet numbers could be out of date. Nothing was burned. Try again in a moment.' : "Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now();
@@ -274,7 +304,7 @@
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
       if (onTry) onTry(0, 0, 'fee');
-      var fee; return feeRate().then(function (f) { fee = f; return composeAt(w.address, plan, fee, onTry); }).then(function (res) {
+      var fee; return feeRate().then(function (f) { fee = f; return composeAt(w.address, plan, fee, onTry, g0); }).then(function (res) {
         var fi = feeInfo(res, fee); if (onTry) onTry(0, 0, 'sign', fi); else feeToast(fi, plan && (plan.label || plan.tag));
         if (g0 !== cancelGen) throw cancelErr(); /* burn-stuck-1101: Cancel pressed while building: the wallet window never opens */
         return w.signAndBroadcast(res).catch(function (we) {
@@ -346,13 +376,20 @@
     return Promise.all(as.map(function (A) { return T.tokenAt(A).then(function (t) { return t && t.utxo ? utxoErr(A, t.utxo) : null; }, function () { return null; }); })).then(function (r) { r = r.filter(Boolean); if (r.length) throw r[0]; }); }
   function conflictMsg(e) { var raw = String((e && e.raw) || (e && e.message) || ''); if (e && !e.utxoHeld && !/safety check/i.test(e.message || '') && /already exists in .*mempool|pending .* already exists|mempool conflict|HTTP 409/i.test(raw)) { var x = new Error('One of your transactions for this is still pending (not in a block yet), and the node will not build another on top of it. Wait for it to confirm, then try again. Nothing was sent.'); Object.keys(e).forEach(function (k) { if (!(k in x)) x[k] = e[k]; }); x.raw = raw; x.conflict = true; return x; } return e; }
   function sendDex(plan, viewed) { return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
-  function sendDexF(plan, viewed) { var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+  function sendDexF(plan, viewed) { var VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
-    return window.V2Mock.whenFresh().then(function (r) { if (r.ok && !r.same) throw staleErr();
-      return sendDex0(plan, viewed); }); }
-  function sendDex0(plan, viewed) {
-    var VS = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
-    if (VS && VS.prod && upd()) return Promise.reject(new Error('Still updating pets to the latest block. Nothing was sent. Try again in a moment.'));
+    /* same gate as a burn: an unanswered read is a server error; a local pet rebuild is not, and same burns + sale data may proceed while that rebuild finishes */
+    var stopFresh = function () {};
+    var gate = freshGate(window.V2Mock.whenFresh(), null, function (fn) { stopFresh = fn; }); cancelWait.push(stopFresh);
+    return Promise.race([cancelP(), gate]).then(function (r) { cancelWait = [];
+      if (!r || !r.ok) { var ef = new Error('Could not reach the Counterparty servers, so this order was not sent. Nothing was signed. Try again in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
+      if (!r.same) throw staleErr();
+      var VB = mockState();
+      return sendDex0(plan, viewed, !!(r.same && VB && VB.verified && !VB.provisional));
+    }, function (e) { cancelWait = []; throw e; }); }
+  function sendDex0(plan, viewed, freshSame) {
+    var VS = mockState();
+    if (VS && VS.prod && upd() && !(freshSame && VS.verified && !VS.provisional)) return Promise.reject(new Error('Still updating pets to the latest block. Nothing was sent. Try again in a moment.'));
     if (VS && VS.prod && !VS.verified) return Promise.reject(new Error(VS.stale ? 'Still checking the latest chain data. Nothing was sent. Try again in a moment.' : "Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now(); function release() { if (signing === mine) signing = 0; }
@@ -366,8 +403,10 @@
             u = (Array.isArray(u) ? u : []).filter(function (x) { return x && /^[0-9a-f]{64}$/.test(x.txid) && x.value > 1000; });
             if (!u.length) throw new Error('This wallet has no bitcoin to pay the network fee. Add a little BTC to ' + w.address + ' and try again. Nothing was sent.');
             extra = '&inputs_set=' + encodeURIComponent(u.map(function (x) { return x.txid + ':' + x.vout; }).join(',')) + '&allow_unconfirmed_inputs=true'; errs = []; return go(0); }); }
+        function dexFetch(url) { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { try { ac.abort(); } catch (e) {} }, COMPOSE_MS);
+          return F(url, ac ? { signal: ac.signal } : {}).then(function (r) { if (t) clearTimeout(t); return r; }, function (e) { if (t) clearTimeout(t); throw e; }); }
         function go(i) { if (i >= urls.length) { if (!tried && noUtxo()) return retryUtxos(); var E = new Error(/safety check/i.test(errs.join(' ')) ? 'The safety check stopped this order before signing. Nothing was sent. Reload the page and try again.' : /insufficient|balance/i.test(errs.join(' ')) ? 'This wallet does not hold enough to pay for this. Nothing was sent.' : 'The Counterparty servers could not build this order right now. Nothing was sent. Try again in a minute.'); E.raw = errs.join(' · '); try { console.warn('[xcpets] order compose failed:', E.raw); } catch (x) {} throw E; }
-          return F(dexUrl(urls[i], w.address, plan, fee) + extra).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
+          return dexFetch(dexUrl(urls[i], w.address, plan, fee) + extra).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.error || !j.result) throw new Error((j && j.error) || 'empty response');
             var bad = dexCheck(j.result, w.address, plan, fee); if (bad.length) throw new Error('Safety check stopped this before signing (nothing was signed or sent): ' + bad.join(', ')); return j.result; })
             .catch(function (e) { errs.push(String(urls[i]).replace(/^https?:\/\//, '').replace(/\/.*$/, '') + ': ' + (e.message || e)); return go(i + 1); }); }
         return go(0).then(function (res) { feeToast(feeInfo(res, fee), plan && plan.label); return res; }); }).then(function (res) { return w.signAndBroadcast(res).then(function (r) { noteSent(res, r.txid); tracker.add(dexEntry(plan, r.txid)); return { txid: r.txid, composed: res }; }); });
