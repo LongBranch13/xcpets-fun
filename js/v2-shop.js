@@ -6,8 +6,10 @@
   var W = 320, H = 150, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   var S = { c: null, x: null, items: [], icons: {}, raf: 0, hits: [], ang: 0, spinUntil: 0, line: 0 };
   /* THE PEPE WHEEL (remove-dan, owner Oct 21 2026 10:29-10:31 PM CT): a freestanding Pepe prize wheel on the Rare Room floor (between the vending machines and the mirror) is the roll spot.
-   * Tap it = jump to the Pepe Wheel roll panel. It spins (display only) when a roll is sent (pending count goes up) or lands (your gear count goes up),
-   * turns slowly while a roll is on the way, and stays still with prefers-reduced-motion. Same pet:roll:ID 345 burns; no rule change. */
+   * Tap it = jump to the Pepe Wheel roll panel. It spins briefly (display only) when a roll is sent or when gear lands, then holds
+   * still while that burn waits for a block. prefers-reduced-motion: no spin. Same burns; no rule change.
+   * wheel-wait (Nov 10 2026): do not keep turning for the whole mempool wait. A slow burn looked stuck: the canvas kept rotating
+   * while a counted roll was pending, and a saved-spin burn (pet:ut / pet:usespin) was not marked in flight at all. */
   var WH = { x: 250, y: 119, r: 17 }; /* right side of the floor (the old doorway spot), clear of the card walls, the mirror and the rose window; the desktop price-tag sign moved to the left */
   /* Captain Dan's lines live in data/dan-lines.json (groups core / dank / cpnews / mined; each line {text, added, expires?}).
    * Lines show from 'added' and hide automatically from 'expires' (local date, YYYY-MM-DD), so news lines rotate without code changes.
@@ -82,6 +84,36 @@
       for (var i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r0) + Math.abs(d[i + 1] - g1) + Math.abs(d[i + 2] - b0) < 12 || (d[i] > 200 && d[i + 1] < 70 && d[i + 2] > 200)) d[i + 3] = 0; g0.putImageData(id, 0, 0); } catch (e) { c = null; } return c ? { id: p.id, c: c } : null; }).filter(Boolean); } /* backdrop keyed out like the motel guests */
   function drawAmb(x, t) { (S.amb || []).forEach(function (a, n) { var sp = AMB[n]; if (!sp) return; var b = !reduced() && Math.floor(t / 600 + n) % 2 ? 1 : 0; px(x, 'rgba(0,0,0,.3)', sp.x + 3, sp.y + sp.s - 1, sp.s - 6, 2); V2Render.drawSprite(x,a.c,sp.x,sp.y-b,sp.s,false,{x:0,y:40,w:W,h:H-40}); }); }
   function spinNow(ms) { if (reduced()) return; S.spinStart = performance.now(); S.spinUntil = Math.max(S.spinUntil || 0, performance.now() + (ms || 2400)); }
+  /* wheel-wait: rate is only the short send/land spin. A burn sitting in the mempool does not add speed. */
+  function wheelRateAt(t, until, reduce) { return reduce || !(t < until) ? 0 : 0.012; }
+  function wheelPhaseAt(t, until, flight, reduce) { if (!reduce && t < until) return 'spin'; return flight > 0 ? 'wait' : 'idle'; }
+  function wheelCaptionAt(on, phase) {
+    if (phase === 'wait') return 'PEPE WHEEL \u00b7 WAITING';
+    if (phase === 'spin') return on ? 'PEPE WHEEL \u00b7 SPINNING' : 'PEPE WHEEL \u00b7 ROLLING';
+    return on ? 'PEPE WHEEL \u00b7 TAP TO SPIN' : 'PEPE WHEEL \u00b7 TAP TO ROLL';
+  }
+  /* same saved-spin tag already unconfirmed: the Nov 10 double send (pet:ut plan twice, ~30s apart). Paid pet:spin is a different purchase and is not blocked here. */
+  function savedDupPlans(plans, tags) {
+    if (!plans || !plans.length) return false;
+    var have = {}; (tags || []).forEach(function (t) { if (t) have[String(t)] = 1; });
+    var saved = plans.filter(function (p) { return p && /^pet:(usespin\b|ut:)/.test(String(p.tag)); });
+    return saved.length === plans.length && saved.every(function (p) { return have[p.tag]; });
+  }
+  function rollPending() { return pendAll() + (window.UXB && UXB.pendingSpins ? UXB.pendingSpins() : 0); }
+  /* saved-spin burns are not in pendingSpins (that counts pet:spin only). Scan the tracker + mempool, and cache the confirmed-tx map so the draw loop does not rescan the chain. */
+  function savedPending() { try { var U = window.V2UI, V = window.V2Rules; if (!U || !V || !V.parseTag || !U.S) return 0; var st = U.S() || {}, rows = st.rows || [], conf = S.conf;
+    if (!conf || conf.rows !== rows || conf.n !== rows.length) { var m = {}; rows.forEach(function (r) { if (r && r.tx_hash) m[r.tx_hash] = 1; }); conf = S.conf = { rows: rows, n: rows.length, m: m }; }
+    var n = 0, seen = {}; function add(tx, tag) { if (!tag || !tx || seen[tx] || conf.m[tx]) return; var t; try { t = V.parseTag(tag); } catch (e) { return; } if (!t || (t.action !== 'usespin' && t.action !== 'usespint')) return; seen[tx] = 1; n++; }
+    if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t && t.status !== 'confirmed') add(t.txid, t.tag); });
+    (st.mempool || []).forEach(function (x) { if (x && x.source === U.ME) add(x.tx_hash, x.tag); }); return n; } catch (e) { return 0; } }
+  function flightCount() { S.flight = rollPending() + savedPending(); return S.flight; }
+  function tickWheel(t) { var pn = rollPending(); if (S.doorT || S.doorCT) { var dt0 = t - Math.max(S.doorT || 0, S.doorCT || 0); if (dt0 > DOOR_MS + 50) { S.doorT = S.doorT && drMode() ? S.doorT : 0; S.doorCT = 0; } }
+    if (S.pend0 != null && pn > S.pend0) spinNow(2400); if (S.tot0 != null && S.total > S.tot0) spinNow(2400); S.pend0 = pn; S.tot0 = S.total; S.flight = pn + savedPending();
+    var dt = Math.min(100, Math.max(0, t - (S.wt || t))); S.wt = t; var reduce = reduced(); if (!reduce) S.ang += dt * wheelRateAt(t, S.spinUntil || 0, reduce);
+    var phase = wheelPhaseAt(t, S.spinUntil || 0, S.flight, reduce); return { phase: phase, caption: wheelCaptionAt(wheelOnNow(), phase), flight: S.flight, ang: S.ang }; }
+  function waitToast(msg) { var box = document.getElementById('toasts'); if (!box) return; var d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = msg || 'That roll is already waiting for the next block. Nothing else was sent.'; box.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
+  function holdDup(plans) { var tags = []; try { tags = window.V2UI && V2UI.myPendingTags ? V2UI.myPendingTags() : []; } catch (e) { tags = []; } if (!savedDupPlans(plans, tags)) return false; waitToast('That saved-spin burn is already waiting for the next block. Nothing else was sent.'); return true; }
+  function waitNote() { if (!(flightCount() > 0)) return ''; return '<p class="wh-wait" role="status">Waiting for the next block. Your roll is in flight and lands when it confirms. You can keep using the shop.</p>'; }
   function onWheel(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return Math.abs(mx - WH.x) <= WH.r + 6 && my >= WH.y - WH.r - 12 && my <= WH.y + WH.r + 12; }
   function wheel(x, cx, cy, R0, ang, pepe) { var J = ['#d0284f', '#1fb5a5', '#7b3fe4', '#2f6fe0'], i, a;
     px(x, '#000', cx - 4, cy + R0 - 2, 8, 14); px(x, '#e8b84a', cx - 3, cy + R0 - 2, 6, 13); px(x, '#000', cx - 12, cy + R0 + 10, 24, 5); px(x, '#efe8f6', cx - 11, cy + R0 + 11, 22, 3); px(x, '#e8b84a', cx - 11, cy + R0 + 10, 22, 1); /* gilded stand on a marble plinth */
@@ -185,9 +217,10 @@
         S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it }); } }); }
     if (!(LAY ? (S.all || []) : S.items).length) plate(x, 'EMPTY WALLS: SPIN THE PEPE WHEEL', 160, 76, 5);
     if (S.more > 0 && !LAY) plate(x, '+' + S.more + ' MORE', 290, 46, 5);
-    var pn = pendAll() + (window.UXB && UXB.pendingSpins ? UXB.pendingSpins() : 0); if (S.doorT || S.doorCT) { var dt0 = t - Math.max(S.doorT || 0, S.doorCT || 0); if (dt0 > DOOR_MS + 50) { S.doorT = S.doorT && drMode() ? S.doorT : 0; S.doorCT = 0; } } if (pn > (S.pend0 || 0)) spinNow(2400); if (S.tot0 != null && S.total > S.tot0) spinNow(2400); S.pend0 = pn; S.tot0 = S.total;
-    var dt = Math.min(100, Math.max(0, t - (S.wt || t))); S.wt = t; if (!reduced()) S.ang += dt * (t < S.spinUntil ? 0.012 : pn ? 0.006 : 0); /* wheel-click-spin: keeps visibly spinning while a spin burn is pending; the real tier lands via V2WheelAnim on confirm */
-    var wl = wheelLive(); if (wl) wheelGlow(x, WH.x, WH.y, WH.r, t); tapState(S.c && S.c.parentNode && S.c.parentNode.querySelector('.wh-tap'), wl); wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, wheelOnNow() ? 'PEPE WHEEL \u00b7 TAP TO SPIN' : 'PEPE WHEEL \u00b7 TAP TO ROLL', WH.x + 8, 148, 4); drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
+    var st = tickWheel(t); /* short spin on send/land only; a mempool wait holds the wheel still and the plate says WAITING. V2WheelAnim still reveals the piece once it confirms. */
+    var wl = st.phase === 'idle' && wheelOnNow(); if (wl) wheelGlow(x, WH.x, WH.y, WH.r, t); tapState(S.c && S.c.parentNode && S.c.parentNode.querySelector('.wh-tap'), st.phase); wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, st.caption, WH.x + 8, 148, 4);
+    if (S.c && S.c._ph !== st.phase) { S.c._ph = st.phase; S.c.setAttribute('aria-label', st.phase === 'wait' ? 'The Rare Room. The Pepe Wheel is waiting for the next block. Your roll is in flight.' : st.phase === 'spin' ? 'The Rare Room. The Pepe Wheel is doing a short spin.' : 'The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)'); }
+    drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
     bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
     plate(x, 'YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 104, 149, 5);
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
@@ -324,7 +357,7 @@
     m.querySelectorAll('[name="pkN"]').forEach(function (r) { r.onchange = function () { PK.n = r.value === 'all' ? 'all' : Math.max(1, Math.min(have, +m.querySelector('.pk-k').value || 1)); pkDraw(); }; });
     var kk = m.querySelector('.pk-k'); if (kk) kk.onchange = function () { PK.n = Math.max(1, Math.min(have, +kk.value || 1)); pkDraw(); };
     m.querySelector('#pkX').onclick = pkClose;
-    m.querySelector('#pkGo').onclick = function () { var P = pkPlans(); if (!P) return; var t = rw ? 'Re-wear ' + Number(G ? G.n : 0).toLocaleString('en-US') + ' pieces on ' + PK.ids.size + ' picked pets' : 'Use ' + (PK.n === 'all' ? 'all ' + Number(have).toLocaleString('en-US') : PK.n) + ' saved spins on ' + PK.ids.size + ' picked pets'; pkClose(); spinNow(700); U.confirmPlans(t, P, spinFx); }; }
+    m.querySelector('#pkGo').onclick = function () { var P = pkPlans(); if (!P) return; if (PK.mode !== 'rw' && holdDup(P)) return; var t = rw ? 'Re-wear ' + Number(G ? G.n : 0).toLocaleString('en-US') + ' pieces on ' + PK.ids.size + ' picked pets' : 'Use ' + (PK.n === 'all' ? 'all ' + Number(have).toLocaleString('en-US') : PK.n) + ' saved spins on ' + PK.ids.size + ' picked pets'; pkClose(); spinNow(700); U.confirmPlans(t, P, spinFx); }; }
   function warnHtml() { return '<p class="small wh-warn" role="note">⚠️ <b>Saved spins land on a random living pet of yours</b>, pets you never fed and pets you discarded included (Discard only hides a pet in this browser; the chain still counts it). <b>Use all</b> does this for every spin in 1 burn, so hundreds of pieces can end up on pets you don\'t play with.</p>'; }
   function savedHtml() { var V = window.V2Rules, U = window.V2UI, M = window.V2Mock, tip = (M.state().tip || 0) + 1, pv = /[?&]preview=spins\b/.test(location.search);
     if (!V.spinsLeft || (!pv && (!V.spinsOn(tip) || !M.ME))) return ''; var n = pv ? 7 : V.spinsLeft(U.world(), M.ME, tip, U.myPendingTags ? U.myPendingTags() : []), k = Math.min(V.SPINS_MAX_PER_BURN, n);
@@ -338,31 +371,35 @@
   function spinBurn() { var U = window.V2UI, V = window.V2Rules; spinNow(700); U.confirmPlans('Spin the Pepe Wheel', [{ tag: V.buildTag('spin'), amount: V.COSTS.roll }], spinFx); }
   /* wheel-click-spin (owner Oct 24 2026): the drawn wheel is a real control. A tap/click/Enter does exactly what the 'Spin the wheel' button does (spinBurn ->
    * the same wallet confirm; view-only / no wallet get confirmPlans' own message). No eligible pet: the same note the panel shows instead of the button. */
-  function wheelClick() { var U = window.V2UI, V = window.V2Rules; if (!wheelOnNow()) { openWheel(); return; }
+  function wheelClick() { var U = window.V2UI, V = window.V2Rules; if (wheelWaiting()) { openWheel(true); waitToast('Your roll is already waiting for the next block. Nothing else was sent.'); return; } if (!wheelOnNow()) { openWheel(); return; }
     var w = U && U.world && U.world(), n = w && U.ME && V.wheelPool ? V.wheelPool(w, U.ME).length : 1;
     if (U.ME && !n && !(U.viewOnly && U.viewOnly())) { spinNow(700); openWheel(); var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = V.allSlotsNow && V.allSlotsNow(w) ? 'You have no living pet for the wheel to pick yet.' : 'None of your living pets has an open gear slot yet. Slots open as pets grow (age and days fed).'; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } return; }
     spinBurn(); }
   function placeTap(c) { var b = c && c.parentNode && c.parentNode.querySelector('.wh-tap'); if (!b) return; var L = (WH.x - WH.r - 6) / W, T = (WH.y - WH.r - 8) / H;
     b.style.left = (c.offsetLeft + L * c.offsetWidth) + 'px'; b.style.top = (c.offsetTop + T * c.offsetHeight) + 'px'; b.style.width = ((2 * WH.r + 12) / W * c.offsetWidth) + 'px'; b.style.height = ((2 * WH.r + 16) / H * c.offsetHeight) + 'px';
-    tapState(b, wheelLive()); }
-  /* shop-spin-overlap: the 'Tap to spin' pill is gone (it sat on Captain Dan's bubble); the wheel itself glows while it can be spun */
-  function wheelBusy() { return performance.now() < (S.spinUntil || 0) || (pendAll() + (window.UXB && UXB.pendingSpins ? UXB.pendingSpins() : 0)) > 0; }
-  function wheelLive() { return wheelOnNow() && !wheelBusy(); }
-  function tapState(b, live) { if (!b) return; var on = wheelOnNow(), k = live ? 'L' : on ? 'B' : 'O'; if (b._k === k) return; b._k = k; b.classList.toggle('wh-live', live);
-    b.setAttribute('aria-label', live ? 'Tap to spin' : on ? 'Pepe Wheel spinning' : 'Open the Pepe Wheel'); b.title = live ? 'Spin the Pepe Wheel (' + spinCost() + ' XCPETS, same as the Spin the wheel button)' : ''; }
+    tapState(b); }
+  /* shop-spin-overlap: the 'Tap to spin' pill is gone (it sat on Captain Dan's bubble); the wheel itself glows while it can be spun.
+   * wheel-wait: "busy" is only the short spin. A mempool wait is a waiting label, not a lock on the rest of the shop. */
+  function wheelBusy() { return wheelPhaseAt(performance.now(), S.spinUntil || 0, 0, reduced()) === 'spin'; }
+  function wheelWaiting() { return wheelPhaseAt(performance.now(), S.spinUntil || 0, flightCount(), reduced()) === 'wait'; }
+  function wheelLive() { return wheelOnNow() && wheelPhaseAt(performance.now(), S.spinUntil || 0, flightCount(), reduced()) === 'idle'; }
+  function tapState(b, phase) { if (!b) return; if (phase !== 'spin' && phase !== 'wait' && phase !== 'idle') phase = wheelPhaseAt(performance.now(), S.spinUntil || 0, flightCount(), reduced());
+    var on = wheelOnNow(), live = on && phase === 'idle', k = live ? 'L' : phase === 'wait' ? 'W' : on ? 'B' : 'O'; if (b._k === k) return; b._k = k; b.classList.toggle('wh-live', !!live);
+    b.setAttribute('aria-label', live ? 'Tap to spin' : phase === 'wait' ? 'Waiting for the next block' : on ? 'Pepe Wheel spinning' : 'Open the Pepe Wheel');
+    b.title = live ? 'Spin the Pepe Wheel (' + spinCost() + ' XCPETS, same as the Spin the wheel button)' : phase === 'wait' ? 'Your roll is in flight. It lands when the burn confirms. The shop stays open.' : ''; }
   function wheelGlow(x, cx, cy, R, t) { /* pixel ring just outside the gold rim: 1px black + 1px rare-blue, outer pixels pulse in 2 steps (static with reduced motion) */
     var ph = reduced() ? 0 : Math.floor(t / 600) % 2, ring = function (r, col) { var seen = {}, a, px, py; x.fillStyle = col; for (a = 0; a < 360; a += 2) { px = Math.round(cx + r * Math.cos(a * Math.PI / 180)); py = Math.round(cy + r * Math.sin(a * Math.PI / 180)); if (seen[px + ',' + py]) continue; seen[px + ',' + py] = 1; x.fillRect(px, py, 1, 1); } };
     x.save(); ring(R + 2, '#000'); ring(R + 3, '#4f9dff'); x.globalAlpha = ph ? 0.85 : 0.35; ring(R + 4, '#ece6ff'); x.restore(); }
   function lastSpin(w) { var U = window.V2UI, L = w.log || []; for (var i = L.length - 1; i >= 0; i--) { var l = L[i]; if (l.kind === 'roll' && l.wheel && l.gid && w.items[l.gid] && w.items[l.gid].owner === U.ME) return { item: w.items[l.gid], pet: l.petId != null ? w.byId[l.petId] : null, n: l.wheel, block: l.block }; } return null; }
-  function wheelPanel2(w) { var V = window.V2Rules, U = window.V2UI, pool = V.wheelPool(w, U.ME), n = pool.length, bp = null, pend = window.UXB && UXB.pendingSpins ? UXB.pendingSpins() : 0, ls = lastSpin(w), TN = ['Common', 'Uncommon', 'Rare', 'Legendary'];
-    var head = '<div class="rr-door" id="pepeWheel"><div class="rr-dh">🎡 The Pepe Wheel · <span data-ck="roll">' + spinCost() + '</span> a spin</div>' + savedHtml();
+  function wheelPanel2(w) { var V = window.V2Rules, U = window.V2UI, pool = V.wheelPool(w, U.ME), n = pool.length, bp = null, pend = window.UXB && UXB.pendingSpins ? UXB.pendingSpins() : 0, note = waitNote(), flight = S.flight || 0, ls = lastSpin(w), TN = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+    var head = '<div class="rr-door" id="pepeWheel"><div class="rr-dh">🎡 The Pepe Wheel · <span data-ck="roll">' + spinCost() + '</span> a spin</div>' + savedHtml() + note;
     if (!n) return head + '<p class="small">' + (V.allSlotsNow && V.allSlotsNow(w) ? 'You have no living pet for the wheel to pick yet.' : 'None of your living pets has an open gear slot yet. Slots open as pets grow (age and days fed).') + '</p></div>';
     var res = ls ? '<div class="wh-res"><canvas class="wh-pc" width="32" height="32" data-cpid="' + (ls.pet ? ls.pet.id : '') + '"></canvas><div class="wh-rt"><small>' + (ls.item.on != null ? 'Last spin: the wheel picked' : 'Last spin (in your bag): rolled for') + '</small><b>' + (ls.pet ? '#' + ls.pet.id + ' ' + esc(String(ls.pet.name || '')).slice(0, 14) : '?') + '</b><span><canvas width="16" height="16" data-gic="' + esc(ls.item.item) + '"></canvas> ' + esc(ls.item.label || ls.item.item) + ' · ' + (TN[tierOfG(ls.item)] || '') + '</span></div><button type="button" class="btn wh-wear" data-wpid="' + (ls.pet ? ls.pet.id : (bp ? bp.id : '')) + '" data-wgid="' + esc(ls.item.gid) + '">👕 Wear it</button></div>' : '';
     return head + '<p class="small rr-dsub">Tap the wheel (or the button). It picks a <b>random pet of yours</b> with an open slot (rarer pets are likelier: Common 1 · Uncommon 2 · Rare 4 · Legendary 8), rolls a piece for it like a normal roll and puts it straight on.</p>' +
-      '<button type="button" class="btn ico-flame rr-best" id="whSpin">🎡 Spin the wheel · ' + spinCost() + ' <span class="cost">' + (pend ? '🎁 ' + pend + ' spin' + (pend === 1 ? '' : 's') + ' on the way' : 'one piece onto a random pet of yours') + '</span></button>' + res + '</div>'; }
+      '<button type="button" class="btn ico-flame rr-best" id="whSpin">🎡 Spin the wheel · ' + spinCost() + ' <span class="cost">' + (flight ? 'Waiting for the next block' + (pend ? ' · ' + pend + ' paid spin' + (pend === 1 ? '' : 's') + ' in flight' : '') : 'one piece onto a random pet of yours') + '</span></button>' + res + '</div>'; }
   function bindWheel2(el) { var U = window.V2UI, V = window.V2Rules, w = U.world(), b = el.querySelector('#whSpin'); if (b) b.onclick = spinBurn;
-    var us = el.querySelectorAll('[data-usespin]'); [].forEach.call(us, function (q) { q.onclick = function () { var n = +q.dataset.usespin; spinNow(700); U.confirmPlans('Use ' + n + ' saved spin' + (n === 1 ? '' : 's'), [V.useSpinPlan(n)], spinFx); }; });
-    [].forEach.call(el.querySelectorAll('[data-useall]'), function (q) { q.onclick = function () { var n = +q.dataset.useall; spinNow(700); U.confirmPlans('Use all ' + n.toLocaleString('en-US') + ' saved spins', [V.useAllSpinsPlan(n)], spinFx); }; });
+    var us = el.querySelectorAll('[data-usespin]'); [].forEach.call(us, function (q) { q.onclick = function () { var n = +q.dataset.usespin, P = [V.useSpinPlan(n)]; if (holdDup(P)) return; spinNow(700); U.confirmPlans('Use ' + n + ' saved spin' + (n === 1 ? '' : 's'), P, spinFx); }; });
+    [].forEach.call(el.querySelectorAll('[data-useall]'), function (q) { q.onclick = function () { var n = +q.dataset.useall, P = [V.useAllSpinsPlan(n)]; if (holdDup(P)) return; spinNow(700); U.confirmPlans('Use all ' + n.toLocaleString('en-US') + ' saved spins', P, spinFx); }; });
     [].forEach.call(el.querySelectorAll('[data-pickspins]'), function (q) { q.onclick = function () { pkOpen('ut'); }; });
     [].forEach.call(el.querySelectorAll('[data-rewear]'), function (q) { q.onclick = function () { pkOpen('rw'); }; });
     el.querySelectorAll('[data-wgid]').forEach(function (q) { q.onclick = function () { enterDress(q.dataset.wpid, q.dataset.wgid); }; });
@@ -470,7 +507,7 @@
   var CREW_N = 8;
   function crewSort(pets) { return pets.filter(function (p) { return !p.released && (p.openSlots || []).length; }).sort(function (a, b) { return (b.openSlots || []).length - (a.openSlots || []).length || a.id - b.id; }); }
   function pendAll() { var U = window.V2UI, f = window.UXB && UXB.pendingFor; if (!U || !f) return 0; if (UXB.pendingForIds) try { return UXB.pendingForIds(U.mine(U.world()).map(function (p) { return p.id; })); } catch (e) { return 0; } /* speed1-1101: one pass */ try { return U.mine(U.world()).reduce(function (s, p) { return s + (+f(p.id) || 0); }, 0); } catch (e) { return 0; } }
-  function openWheel() { var d = document.getElementById('pepeWheel'); if (!d) return; d.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); d.classList.remove('rr-flash'); void d.offsetWidth; d.classList.add('rr-flash'); spinNow(900); }
+  function openWheel(still) { var d = document.getElementById('pepeWheel'); if (!d) return; d.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); d.classList.remove('rr-flash'); void d.offsetWidth; d.classList.add('rr-flash'); if (!still) spinNow(900); }
   function wheelPanel(w, pets) { var V = window.V2Rules, L = crewSort(pets), best = L[0], pend = window.UXB && UXB.pendingFor ? UXB.pendingFor : null, n = S.crewN || CREW_N;
     if (!L.length) return '<div class="rr-door"><div class="rr-dh">🎡 The Pepe Wheel · Roll for gear</div><p class="small">' + (V.allSlotsNow && V.allSlotsNow(w) ? 'No living pet to roll for yet.' : 'No living pet with an open slot yet. Slots open as pets grow (age and days fed).') + '</p></div>';
     var row = function (p) { var os = p.openSlots || [], k = os.length, pn = pend ? pend(p.id) : 0;
@@ -561,7 +598,7 @@
     '.rr-card.t1{border-color:#4fd18b}.rr-card.t2{border-color:#4f9dff}.rr-card.t3{border-color:#ffc93c}.rr-card canvas{width:48px;height:48px;image-rendering:pixelated;background:#2a0f4a}.rr-card.sel{outline-color:#fff1a8;outline-style:dashed}' +
     '.rr-card.t2 canvas,.rr-card.t3 canvas{background:linear-gradient(115deg,#2a0f4a 20%,#7b3fe4 40%,#1fb5a5 55%,#2a0f4a 75%);background-size:300% 100%;animation:rrHolo 3s linear infinite}.rr-card.t3::after{content:"\\2726";position:absolute;top:-8px;right:-4px;color:#fff1a8;text-shadow:1px 1px 0 #000;font-size:14px}' +
     '@keyframes rrHolo{to{background-position:300% 0}}@media (prefers-reduced-motion:reduce){.rr-card canvas{animation:none!important}}.rr-nm{font-size:10px;font-weight:700;color:#140f24;line-height:1.1;text-align:center;max-width:100%;overflow:hidden}.rr-on{position:absolute;right:4px;bottom:4px;width:10px;height:10px;background:#3ddc84;border:2px solid #000}' +
-    '#shopScene{position:relative}.wh-tap{position:absolute;z-index:2;background:transparent;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent}.wh-tap:focus-visible{outline:3px solid #ffd166;outline-offset:2px}.wh-tap{border-radius:50%} /* shop-spin-overlap: no pill; the canvas draws a pulsing pixel ring round the wheel while it can be spun */' +
+    '#shopScene{position:relative}.wh-tap{position:absolute;z-index:2;background:transparent;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent}.wh-tap:focus-visible{outline:3px solid #ffd166;outline-offset:2px}.wh-tap{border-radius:50%}.wh-wait{margin:8px 0;padding:8px 10px;border:3px solid #e8b84a;background:#3a2a10;color:#fff1a8;font-weight:700;line-height:1.45} /* shop-spin-overlap: no pill; the canvas draws a pulsing pixel ring round the wheel while it can be spun. wheel-wait: the note is in the panel, not a lock over the shop */' +
     '.rr-flash{animation:rrFlash 1.2s ease-out 1}@keyframes rrFlash{0%{box-shadow:0 0 0 2px #000,0 0 0 8px #fff1a8}100%{box-shadow:0 0 0 2px #000,4px 4px 0 2px #000}}@media (prefers-reduced-motion:reduce){.rr-flash{animation:none}}' +
     '.rr-rackw{margin:8px 0 0;padding:8px;background:#1c0f33;border:3px solid #e8b84a;box-shadow:0 0 0 2px #000}.rr-rackh{color:#fff1a8;font-weight:700;margin:0 0 4px}.rr-rack{display:flex;gap:10px;overflow-x:auto;padding:8px 6px 12px;scroll-snap-type:x proximity}.rr-rack .rr-card{flex:0 0 82px;scroll-snap-align:start}.rr-rmore{flex:0 0 auto;align-self:center}' +
     '.shop8 .shop-scene .sfx-scene{position:relative;right:auto;top:auto;display:block;margin:4px 6px 4px auto;min-width:44px;min-height:44px}' + /* rare-room-v2: sound button under the scene at every width, never over the FEET frame */
@@ -593,5 +630,5 @@
     '@media (max-width:520px){.rr-page{grid-template-columns:repeat(3,1fr);gap:8px;padding:6px}.rr-cab{grid-template-columns:repeat(2,1fr)}}' +
     '@media (max-width:520px){.rr-cards{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}.rr-chip{font-size:10px}.rr-crew{flex-wrap:wrap}.rr-roll{width:100%}}';
     (document.head || document.documentElement).appendChild(rs); }
-  window.V2Shop = { _spinFx: function () { spinFx(); }, enterDress: enterDress, drawWheel: wheel, LINES: LINES, DANK: DANK, lineAt: lineAt, setPool: setPool, active: function (g) { return (ACT[g] || []).slice(); }, spin: spinNow, openWheel: openWheel, rackPick: rackPick, clearance: clearance, render: render, afterGear: afterGear, select: function (g) { S.sel = g; say(g); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, dmg: dmg, op: op };
+  window.V2Shop = { _spinFx: function () { spinFx(); }, _wheel: { rate: wheelRateAt, phase: wheelPhaseAt, caption: wheelCaptionAt, savedDup: savedDupPlans, tick: tickWheel, note: waitNote, hold: holdDup, click: wheelClick, burn: spinBurn }, enterDress: enterDress, drawWheel: wheel, LINES: LINES, DANK: DANK, lineAt: lineAt, setPool: setPool, active: function (g) { return (ACT[g] || []).slice(); }, spin: spinNow, openWheel: openWheel, rackPick: rackPick, clearance: clearance, render: render, afterGear: afterGear, select: function (g) { S.sel = g; say(g); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); }, hover: function (g) { S.hov = g; if (g) say(g); draw(performance.now()); }, _state: function () { return S; }, refreshRoll: refreshRoll, dmg: dmg, op: op };
 })();
