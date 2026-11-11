@@ -1,5 +1,5 @@
 {
- "lastBlock": 975485,
+ "lastBlock": 975489,
  "count": 300,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -3085,7 +3085,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 127415,
@@ -3097,7 +3097,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 145213,
@@ -3109,7 +3109,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8782,
@@ -3469,7 +3469,7 @@
    "species": "hyb:doge:chud",
    "speciesLabel": "Dogchud (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 147175,
