@@ -1336,8 +1336,29 @@
   /** wizardHybridFrames: a hybrid whose body shape is the Wizard. Assembled by V2Rules.hybridRender (colours/feature from the other roots) with the
    * pet's worn pieces drawn by WizardSprite's gear layer (same anchors as a player Wizard). Hat rule: hybrids may wear their parents' ★ pieces EXCEPT
    * the hat, so the Wizard Hat is never drawn on a hybrid. Black eye + bandage traced on the Wizard eye cells, exactly like wizardPetFrames. */
+  /** wizardHybridFrames: a hybrid whose body shape is the Wizard. Assembled by V2Rules.hybridRender (colours/feature from the other roots) with the
+   * pet's worn pieces drawn by WizardSprite's gear layer (same anchors as a player Wizard). Hat rule: hybrids may wear their parents' ★ pieces EXCEPT
+   * the hat, so the Wizard Hat is never drawn on a hybrid. Black eye + bandage traced on the Wizard eye cells, exactly like wizardPetFrames.
+   * A head part (Kek nemes, and the same kind) tucks the raised flame and skips the phantom hat, and an arm part (Snibby claws) is moved
+   * off the fist onto the robe. Display only: Hematoopo #74349's headdress was a torn cluster where those three overlapped. */
+  function wizKind(art, kind) { return !!((art && art.hybrid && art.hybrid.parts) || []).some(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); return d && d.kind === kind; }); }
+  function shiftClawFrame(full, bare) { var A = full.data, B = bare.data, diff = [], j, i, top = 99, eye = 0, nEye = 0;
+    for (j = 0; j < 1024; j++) { i = j * 4; if (A[i] !== B[i] || A[i + 1] !== B[i + 1] || A[i + 2] !== B[i + 2]) diff.push(j); if ((j >> 5) < 18 && B[i] < 20 && B[i + 1] < 30 && B[i + 2] > 40) { eye += j >> 5; nEye++; } }
+    if (diff.length < 4) return full; diff.forEach(function (p) { if ((p >> 5) < top) top = p >> 5; });
+    var yArm = nEye ? Math.round(eye / nEye) + 3 : 14; if (top >= yArm) return full; var drop = yArm - top, out = new Uint8ClampedArray(B);
+    diff.forEach(function (p) { var y = (p >> 5) + drop, x = p & 31; if (y < 0 || y > 28) return; var t = (y * 32 + x) * 4, s = p * 4; out[t] = A[s]; out[t + 1] = A[s + 1]; out[t + 2] = A[s + 2]; out[t + 3] = 255; });
+    return Object.assign({}, full, { data: out }); }
+  function shiftWizardClaws(art, stage, G, fr) { var rest = art.hybrid.parts.filter(function (q) { var d = V.partDef(q.sp, q.part); return !d || d.kind !== 'arms'; });
+    var art2 = Object.assign({}, art, { hybrid: Object.assign({}, art.hybrid, { parts: rest }) });
+    var bare = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art2, { stage: stage || 0, frame: f, wizGear: G }); });
+    return fr.map(function (f, i) { return shiftClawFrame(f, bare[i]); }); }
   function wizardHybridFrames(art, stage, ids, extraOv) { var G = wizGearOf((ids || []).filter(function (id) { return id !== 'wizard-hat'; }));
-    var fr = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art, { stage: stage || 0, frame: f, wizGear: G }); });
+    var top = wizKind(art, 'top'), arms = wizKind(art, 'arms'), fr;
+    if (top && window.WizardSprite && WizardSprite.tuck) WizardSprite.tuck(1);
+    try {
+      fr = [0, 1, 2, 3].map(function (f) { return V.hybridRender(art, { stage: stage || 0, frame: f, wizGear: G }); });
+      if (arms) fr = shiftWizardClaws(art, stage, G, fr);
+    } finally { if (window.WizardSprite && WizardSprite.tuck) WizardSprite.tuck(0); }
     return wizardShiner(fr, stage, G, extraOv); }
   function wizardPetFrames(art, stage, ids, extraOv) { var G = wizGearOf(ids), fr = WizardSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, art && art.rareHatch ? {pal:{O:'#e11d2e',o:'#9b0f1c'}} : {});
     return wizardShiner(fr, stage, G, extraOv); }
