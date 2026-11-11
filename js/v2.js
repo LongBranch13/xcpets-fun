@@ -63,9 +63,10 @@
       '<div class="small zb-sum" data-pow="' + (v.power || 0) + '"></div>' +
       '<p class="small zb-noact zb-need"' + (pre.length ? ' hidden' : '') + '>' + (D.length ? 'Tick a Discarded pet to feed it.' : 'No Discarded pets to feed. Discard pets in My Pets first.') + '</p>' +
       '<button type="button" class="btn zb-feedbtn"' + (pre.length ? '' : ' hidden') + '>' + zBtnText(w, p.id, pre, b) + '</button>' +
+      '<details class="zb-meals"><summary class="small">Pick pets (' + fmt(D.length) + ' discarded' + (L.length - D.length ? ', ' + fmt(L.length - D.length) + ' other' : '') + ')</summary>' +
       zSortBar('feed', D.length, L.length > D.length) +
-      zList({ items: L, w: w, H: H, pre: pre, valOf: function (a) { return zMealGain(w, p, [a]); }, unit: '⚡', empty: empty }) +
-      '</div>'; }
+      zList({ items: L, w: w, H: H, pre: pre, valOf: function (a) { return zMealGain(w, p, [a]); }, unit: '⚡', empty: empty }, true) +
+      '</details></div>'; }
   /* cem-pickers (owner Oct 30 2026 7:55 PM CT "sacrifice options shown by rarity or pet score or power or something not all pick best"): both pet
    * pickers (zombie meal + Resurrection pledge) get a sort (discarded first / rarity / pet score / power / what it adds) and a rarity + discarded-only
    * filter, and every row shows what that pet is worth here: the ⚡ power it alone would add to the zombie (zfeed math read from V.CEM.MEAL_SHARE,
@@ -127,11 +128,15 @@
     var sn = 'Discarded'; if (el) { var sb = el.querySelector('.zb-sortb[aria-pressed="true"]'); if (sb) sn = sb.textContent; }
     return { h: h, c: R.items.length ? 'Showing ' + fmt(n) + ' of ' + fmt(A.length) + (A.length < R.items.length ? ' (' + fmt(R.items.length) + ' in all)' : '') + ' ' + nm + ' · ' + sn + ' · ' + fmt(R.sel.size) + ' ticked' : '' }; }
   /* the list box for one picker: R = { items, w, H, valOf, unit, empty } for pets or { gear: true, items, empty } for gear */
-  function zList(R) { var k = zReg(R), o = zListInner(null, R); return '<div class="zb-list" data-zk="' + k + '">' + o.h + '</div><div class="small muted zb-cnt">' + o.c + '</div>'; }
+  function zList(R, defer) { var k = zReg(R); if (defer) return '<div class="zb-lazy" data-zk="' + k + '"></div>'; var o = zListInner(null, R); return '<div class="zb-list" data-zk="' + k + '">' + o.h + '</div><div class="small muted zb-cnt">' + o.c + '</div>'; }
+  function zMaterialize(root) { if (!root) return; root.querySelectorAll('.zb-lazy[data-zk]').forEach(function (host) {
+      var box = host.closest('details'); if (box && !box.open) return; if (host.dataset.filled) return; host.dataset.filled = '1';
+      var k = host.getAttribute('data-zk'), list = document.createElement('div'), cnt = document.createElement('div');
+      list.className = 'zb-list'; list.setAttribute('data-zk', k); cnt.className = 'small muted zb-cnt'; host.replaceWith(list, cnt); }); }
   function zListDraw(el, list, keep) { var R = ZPK[list.getAttribute('data-zk')]; if (!R) return; R.el = el; if (!keep) R.shown = ZPAGE; var st = list.scrollTop, o = zListInner(el, R); list.innerHTML = o.h; list.scrollTop = keep ? st : 0;
     var c = list.nextElementSibling; if (c && c.classList.contains('zb-cnt')) c.textContent = o.c; }
   function zPickSort(el, keep) { el.querySelectorAll('.zb-list[data-zk]').forEach(function (list) { zListDraw(el, list, keep); }); }
-  function zRec(el, gear) { var L = el.querySelectorAll('.zb-list[data-zk]'); for (var i = 0; i < L.length; i++) { var R = ZPK[L[i].getAttribute('data-zk')]; if (R && !!R.gear === !!gear) return R; } return null; }
+  function zRec(el, gear) { var L = el.querySelectorAll('.zb-list[data-zk], .zb-lazy[data-zk]'); for (var i = 0; i < L.length; i++) { var R = ZPK[L[i].getAttribute('data-zk')]; if (R && !!R.gear === !!gear) return R; } return null; }
   function zPendIds(acts, z) { var o = []; myPendingTags().forEach(function (tag) { var t = zParse(tag); if (t && acts.indexOf(t.action) >= 0 && (z == null || +t.zombie === +z)) (t.ids || []).forEach(function (id) { o.push(+id); }); }); return o; }
   /* unresp-1101: zPledgedAny was O(all pets) per candidate pet, run for every candidate of every zombie card on every render(), so with many pets
    * + zombies each button press (all call render) froze the page ~10 s. Same answer from one pass: a set of ids pledged to any open zombie,
@@ -160,7 +165,7 @@
     var all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0 && !done[a.id] && !zPledgedAny(w, a.id); }), L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length;
     var H = zDiscarded(w), D = L.filter(function (a) { return H[a.id]; }), G = zMyGear(w, p, b), cost = V.cemCost(w, 'rpl', b), ri = V.cemResInfo(w, p, b), MIN = ri.min || (V.CEM && V.CEM.RES_MIN) || 25;
     var pl = (ri.pets || []).map(function (a) { return esc(a.name || '#' + a.id) + ' #' + a.id + ' (+' + zRpPts(a) + ')'; }).concat((ri.gear || []).map(function (g) { return esc(g.label || g.gid) + ' (+' + zRpPts(g) + ')'; }));
-    var gr = G.length ? zList({ gear: true, items: G, empty: 'No gear you can pledge.' }) : '';
+    var gr = G.length ? zList({ gear: true, items: G, empty: 'No gear you can pledge.' }, true) : '';
     var pts = TL.map(function (t, i) { return esc(t) + ' ' + zRpPts({ tier: i }); }).join(' · ');
     var ready = ri.points >= MIN, resCost = fmt(V.cemCost(w, 'resurrect', b));
     var resHelp = 'Pledged pets and gear are <b>used up when the Resurrection is tried</b>, win or lose. Points by rarity: ' + pts + '. It needs ' + MIN + ' points to try. The pledge fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>; one burn pledges as many as fit in it. Resurrect itself is ' + resCost + ' XCPETS. You have ' + ri.points + (ri.bonus ? ' plus ' + ri.bonus + ' Halloween' : '') + ' points, about ' + Math.round(ri.chance * 100) + '% chance.' + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + ' Pets offered at a seance are Sacrificed. A pledge is used up only when you try the Resurrection.';
@@ -170,7 +175,7 @@
       res +
       '<details class="zb-pickbox"><summary class="small">😇 Pledge pets &amp; gear <span class="muted">(' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ' points · ' + Math.round(ri.chance * 100) + '% chance)</span></summary>' +
       '<p class="small zb-stepnote">Tick pets or gear. They are used up when you try the Resurrection.</p>' +
-      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') }) +
+      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') }, true) +
       (G.length ? '<details class="zb-gear"><summary class="small">🛡️ Your gear (' + fmt(G.length) + ')</summary>' + gr + '</details>' : '') +
       '<div class="small zb-sum"></div>' +
       '<p class="small zb-noact zb-need">Tick a pet or a gear piece to pledge it.</p>' +
@@ -224,7 +229,8 @@
   function zFeedBind(root) { if (!root) return; root.querySelectorAll('.zb-pk').forEach(function (el) { if (el._zb) return; el._zb = true; var rp = el.dataset.pk === 'rpl', z = +(el.dataset.zf || el.dataset.zr);
     function picked(c) { var R = zRec(el, c === '.zb-gpick'); return R ? Array.from(R.sel) : []; } /* the ticks live in JS (ZPK), so ticked rows that are not drawn still count */
     function cnt() { el.querySelectorAll('.zb-list[data-zk]').forEach(function (list) { var R = ZPK[list.getAttribute('data-zk')], c = list.nextElementSibling; if (R && c && c.classList.contains('zb-cnt')) c.textContent = c.textContent.replace(/[\d,]+ ticked$/, fmt(R.sel.size) + ' ticked'); }); }
-    el.querySelectorAll('.zb-list[data-zk]').forEach(function (list) { var R = ZPK[list.getAttribute('data-zk')]; if (R) R.el = el; });
+    el.querySelectorAll('.zb-list[data-zk], .zb-lazy[data-zk]').forEach(function (list) { var R = ZPK[list.getAttribute('data-zk')]; if (R) R.el = el; });
+    el.addEventListener('toggle', function (e) { var d = e.target; if (!d || !d.open || !d.classList) return; if (!d.classList.contains('zb-meals') && !d.classList.contains('zb-pickbox') && !d.classList.contains('zb-gear')) return; zMaterialize(d); zPickSort(el); }, true);
     function press(sel, on) { el.querySelectorAll(sel).forEach(function (x) { var hit = x === on; x.setAttribute('aria-pressed', hit ? 'true' : 'false'); x.classList.toggle('on', hit); }); }
     function upd() { var w = world(), b = (S.tip || 0) + 1, ids = picked(), gids = rp ? picked('.zb-gpick') : [], bt = el.querySelector('.zb-feedbtn'), sm = el.querySelector('.zb-sum'), need = el.querySelector('.zb-need'), Z = w.byId[z];
       var ready = !!(ids.length || gids.length); if (bt) { bt.hidden = !ready; bt.disabled = !ready; bt.textContent = rp ? zRplBtn(w, z, ids, gids, b) : zBtnText(w, z, ids, b); } if (need) need.hidden = ready; if (!sm || !Z) return;
@@ -829,8 +835,12 @@
     var never = p.lastFed == null, ago = never ? null : Math.max(0, Math.floor(w.tip / 144) - Math.floor(p.lastFed / 144));
     var line = never ? 'Never fed' : ago === 0 ? 'Last fed today' : 'Last fed ' + ago + ' day' + (ago === 1 ? '' : 's') + ' ago';
     return { chip: p.fedToday ? 'Fed today ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full', warn: !!p.hungry, line: line }; }
+  function pileSummary(n, open) { return '<details' + (open ? ' open' : '') + '><summary><span class="dp-title">🗑️ Discard pile</span> <span class="chip">' + n + ' pet' + (n === 1 ? '' : 's') + '</span> <span class="small muted">' + (open ? 'tap to close' : 'tap to open') + '</span></summary></details>'; }
+  function pileToggle(det) { det.ontoggle = function () { if (discardedBox.busy || this.open === DS.open) return; DS.open = this.open; discardedBox.busy = true; try { render(); } finally { discardedBox.busy = false; } }; }
   function discardedBox(gone, w) {
     var hb = document.createElement('div'); hb.className = 'hiddenbox dpile'; hb.id = 'discardPile';
+    /* Closed pile: title, count, and tap-to-open only. Filters, sort, cards, and sprites wait until it is opened. */
+    if (!DS.open) { hb.innerHTML = pileSummary(gone.length, false); pileToggle(hb.querySelector('details')); return hb; }
     var order = hiddenIds(), pos = {}; order.forEach(function (id, i) { pos[id] = i; });
     var spOf = function (p) { return spLabel(p.species); }, spList = gone.map(spOf).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort();
     if (DS.sp !== 'all' && spList.indexOf(DS.sp) < 0) DS.sp = 'all';
@@ -875,7 +885,7 @@
       '<button type="button" class="btn" data-dsa="sel"' + (nsel ? '' : ' disabled') + '>↩️ Restore selected' + (nsel ? ' (' + nsel + ')' : '') + '</button> <button type="button" class="q" data-dsa="all">Restore all (' + gone.length + ')</button></div>' +
       '<div class="dgrid">' + (shown.length ? shown.map(card).join('') : '<p class="muted small">' + (iq && iq.mode === 'bad' ? 'Those entries are not pet numbers. Nothing was restored or discarded.' : iq && iq.mode === 'ids' ? 'None of those IDs are in the Discard pile.' : 'No discarded pets match.') + '</p>') + '</div>' +
       (list.length > shown.length ? '<p><button type="button" class="q" data-dsa="more">Show more (' + (list.length - shown.length) + ' left)</button></p>' : '') + '</details>';
-    hb.querySelector('details').ontoggle = function () { DS.open = this.open; var t = hb.querySelector('summary .small'); if (t) t.textContent = this.open ? 'tap to close' : 'tap to open'; };
+    pileToggle(hb.querySelector('details'));
     hb.querySelector('[data-ds="sort"]').value = DS.sort; hb.querySelector('[data-ds="tier"]').value = DS.tier; hb.querySelector('[data-ds="sp"]').value = DS.sp;
     hb.querySelectorAll('[data-dbirth]').forEach(function (b) { b.onclick = function () { DS.birth = b.getAttribute('data-dbirth') || ''; DS.n = 120; render(); }; });
     hb.querySelectorAll('xc-select[data-ds]').forEach(function (x) { x.onchange = function () { DS[x.dataset.ds] = x.value; render(); }; });
@@ -891,7 +901,7 @@
     hb.querySelectorAll('.dcard').forEach(function (d) { var p = w.byId[d.dataset.did]; if (p) R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); });
     return hb; }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
-  function openPile() { DS.open = true; var d = document.querySelector('#discardPile details'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } else render(); }
+  function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
   /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
    * One burn is 1 dander. If the pets do not fit one 34-byte tag, the sheet says so and lists the exact burns. */
   function huKey() { return 'xcpets-hu-sent-' + NET + '-' + (ME || ''); }
