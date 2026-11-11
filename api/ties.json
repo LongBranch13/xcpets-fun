@@ -1,6 +1,6 @@
 {
- "lastBlock": 975429,
- "count": 299,
+ "lastBlock": 975433,
+ "count": 300,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3589,6 +3589,18 @@
    "species": "lenny",
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 2480,
+   "asset": "A15194406022885335001",
+   "tiedBlock": 975432,
+   "tiedTx": "438241f2050cb76af9f3f75183f083619c92f4bb78425c0339650ee7fe789f12",
+   "kind": "deed",
+   "name": "Chipo",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
