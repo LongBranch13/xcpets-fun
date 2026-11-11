@@ -4,6 +4,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), zlib =
 const { buildAnswer } = require('./answer');
 const { hostKind } = require('./client');
 const { clientIp } = require('./net');
+const { answer: graveAnswer } = require('./graves');
 function rateLimit(max) { const hits = new Map(); return function (ip) { const now = Date.now(), slot = hits.get(ip) || { t: now, n: 0 };
   if (now - slot.t > 10000) { slot.t = now; slot.n = 0; } slot.n++; hits.set(ip, slot); return slot.n <= max; }; }
 function cors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS'); res.setHeader('Access-Control-Expose-Headers', 'ETag'); res.setHeader('Vary', 'Accept-Encoding'); }
@@ -53,6 +54,20 @@ function createServer(opts) {
       if (ans.etag) headers.ETag = ans.etag;
       if (ans.etag && req.headers['if-none-match'] === ans.etag) { cors(res); Object.keys(headers).forEach(k => res.setHeader(k, headers[k])); res.writeHead(304); res.end(); return; }
       send(req, res, ans.status, ans.body, headers); return;
+    }
+    if (p === '/xp/v1/graves' || p === '/xp/v1/graves/counts') {
+      const latestFile = path.join(dataDir, 'world', 'latest.json');
+      let latest = null; try { latest = JSON.parse(fs.readFileSync(latestFile, 'utf8')); } catch (e) { latest = null; }
+      const gdir = latest && latest.rsig && latest.tip != null ? path.join(dataDir, 'world', latest.rsig, String(latest.tip), 'graves') : '';
+      if (!gdir || !fs.existsSync(path.join(gdir, 'counts.json'))) { send(req, res, 404, { v: 1, error: 'no grave index' }, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); return; }
+      if (p === '/xp/v1/graves/counts') {
+        send(req, res, 200, fs.readFileSync(path.join(gdir, 'counts.json')), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=30' }); return;
+      }
+      const n = k => { const v = u.searchParams.get(k); return v == null || v === '' ? undefined : (/^-?\d+$/.test(v) ? +v : v); };
+      const flag = k => u.searchParams.get(k) === '1' || u.searchParams.get(k) === 'true';
+      const q = { page: n('page') || 0, per: n('per') || 60, sort: u.searchParams.get('sort') || 'newest', tier: n('tier'), stage: n('stage'), diff: u.searchParams.get('diff') || '', sp: u.searchParams.get('sp') || '', meals: u.searchParams.get('meals') || '', text: u.searchParams.get('text') || u.searchParams.get('q') || '', owner: u.searchParams.get('owner') || '', mine: flag('mine'), raisable: flag('raisable'), open: flag('open'), minDays: n('minDays'), maxDays: n('maxDays') };
+      let body; try { body = graveAnswer(gdir, q); } catch (e) { send(req, res, 500, { v: 1, error: 'grave index' }, { 'Content-Type': 'application/json; charset=utf-8' }); return; }
+      send(req, res, 200, body, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=15' }); return;
     }
     if (p === '/xp/v1/world/latest.json') {
       const f = path.join(dataDir, 'world', 'latest.json');

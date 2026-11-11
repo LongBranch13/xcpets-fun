@@ -135,6 +135,16 @@ async function buildSnapshot(opts) {
     n: enc.n, parts: fileMeta.length, root: rootMeta, files: fileMeta,
     digest: digest, builtAt: new Date().toISOString(), replayMs: Date.now() - t0, maxRss: maxRss };
   if (checkpoint) manifest.checkpoint = checkpoint;
+  /* Paged grave index (display only). Same replayed world, compact rows, one shard per 2,000 graves.
+   * Cemetery pages fetch a page from /xp/v1/graves. This does not change the world digest or the rules. */
+  if (opts.outDir && world) {
+    try {
+      const graves = require('./graves');
+      const grow = graves.fromWorld(ctx, world, opts.tip);
+      const gmeta = graves.writeIndex(path.join(opts.outDir, 'graves'), grow, { tip: opts.tip });
+      manifest.graves = { dead: gmeta.dead, shards: gmeta.shards, counts: 'graves/counts.json' };
+    } catch (e) { console.error('graves index: ' + String(e && e.message || e).split('\n')[0]); }
+  }
   if (opts.outDir) {
     fs.writeFileSync(path.join(opts.outDir, 'manifest.json'), JSON.stringify(manifest));
     prune(path.dirname(path.dirname(opts.outDir)), rsig);

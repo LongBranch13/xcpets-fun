@@ -34,6 +34,6 @@ Open a chain page with the flag, for example:
 
 Health: `http://127.0.0.1:8787/xp/v1/health`
 
-`XP_SNAPSHOT=0` skips the pet-world build. With snapshots left on, the first ready tip is replayed in a child process (about a minute) and then published at `/xp/v1/world/latest.json`. Desktop-class browsers re-check that world in the background. verify-pet.html never uses it; that page always replays locally.
+`XP_SNAPSHOT=0` skips the pet-world build. With snapshots left on, the first ready tip is replayed in a child process (about a minute) and then published at `/xp/v1/world/latest.json`. The same build writes a compact grave index beside that world. `GET /xp/v1/graves?page=&per=` returns one page (24 or 60 rows) plus the counts at `GET /xp/v1/graves/counts`. Cemetery uses that index when this sync base is on, and still paints one page from memory when it is not. Desktop-class browsers re-check that world in the background. verify-pet.html never uses it; that page always replays locally.
 
 Compose and broadcast are unchanged and are not served here. This process answers GET, HEAD and OPTIONS only.
