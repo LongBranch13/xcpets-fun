@@ -63,10 +63,16 @@
     for (var f = 0; f < 3; f++) set(g, xl - 1, y + f, 'y'); set(g, xl - 2, y, 'y'); set(g, xl - 2, y + 2, 'y');
     set(g, xr + 1, y + 1, k); set(g, xr + 1, y + 2, kd); set(g, xr + 2, y + 2, kd); set(g, xr + 1, y, kh); }
   function flame(g, x, y, big) { set(g, x, y, 'O'); set(g, x + 1, y, 'O'); set(g, x, y - 1, 'y'); set(g, x + 1, y - 1, 'O'); set(g, x, y - 2, 'y'); if (big) { set(g, x - 1, y - 1, 'o'); set(g, x + 1, y - 2, 'y'); set(g, x + 1, y - 3, 'y'); set(g, x - 1, y - 3, 'O'); } }
+  /* tucked flame: same fire, but beside the raised fist instead of climbing into the head. A kept headdress (Lord Kek nemes on a Wizard body)
+   * sits in the rows the tall flame used, so the two drew as one torn cluster (Hematoopo #74349). */
+  function flameBeside(g, hx, hy, big) { set(g, hx - 1, hy, 'y'); set(g, hx - 1, hy + 1, 'O'); set(g, hx - 2, hy, 'O'); set(g, hx - 2, hy + 1, 'y'); if (big) { set(g, hx - 3, hy, 'y'); set(g, hx - 3, hy + 1, 'o'); } }
+  /* Set by V2Render around a Wizard hybrid that wears a head part. Display only. While set, the flame stays beside the fist
+   * and the signature hat is not drawn, so the hybrid fitter's hat measurement is empty (the body is hatless). */
+  var TUCK = 0;
   /* gear (optional, display only): { head|face|back|hand|body|feet: { label, item, cols: ['#hex', '#hex'] } }. Anchors: head = head top row
    * (faceY) / columns fx..fx+fw-1; face = eye row faceY+3; back = behind the robe; body = robe recolour; hand = the RAISED fist (hx, hy; the
    * piece replaces the flame; the sign is held low-left); weapon = the Bitcoin staff in the right hand (own slot); feet = two shoes on the carpet under the hem. */
-  function draw(stage, frame, gear) {
+  function draw(stage, frame, gear, opts) {
     var g = grid(), bob = [0, -1, -1, 0][frame || 0], G = gear || {};
     function kind(sl) { return G[sl] ? String(G[sl].label || G[sl].item || '').toLowerCase() : ''; }
     function col(sl, i) { var x = G[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); }
@@ -106,7 +112,8 @@
     line(g, ax0, ay0, hx, hy + 2, 'h'); line(g, ax0 + 1, ay0, hx + 1, hy + 2, 'R'); line(g, ax0 + 1, ay0 + 1, hx + 2, hy + 2, 'r'); line(g, ax0 + 2, ay0 + 1, hx + 2, hy + 3, 'r');
     set(g, hx, hy, 'F'); set(g, hx + 1, hy, 'f'); set(g, hx, hy + 1, 'F'); set(g, hx + 1, hy + 1, 'F');
     var lowHand = G.hand && /^(sig-wizard-sign|sig-wizard-staff)$/.test(G.hand.item) || (G.hand && /sword|spear|katana|blade|axe|scepter|rapier|baton|hammer|pole/.test(kind('hand')) && G.hand.item !== 'wiz-paint-staff');
-    if (!G.hand || lowHand) flame(g, hx, hy - 1, stage >= 3);
+    var tuck = TUCK || (opts && opts.tuck);
+    if (!G.hand || lowHand) { if (tuck) flameBeside(g, hx, hy, stage >= 3); else flame(g, hx, hy - 1, stage >= 3); }
     // oversized square head: loose orange hair at the back, ear, dot eyes, pink nose, smile
     for (var r0 = 0; r0 < D.hh; r0++) hline(g, fx, fe, faceY + r0, 'S');
     set(g, fe, faceY + D.hh - 1, 's'); hline(g, fx, fx + 1, faceY + D.hh - 1, 's');
@@ -124,10 +131,11 @@
     // Outfits recolour the robe, tail and sleeve (not the hat or carpet); the white streaks become a light tone of the piece
     if (G.body && G.body.item !== 'wiz-star-robe') { var b0 = col('body'), b1 = col('body', 1), bd = shade(b1, 0.85), bl = shade(b0, 1.15); for (var by = 0; by < N; by++) for (var bx = 0; bx < N; bx++) { var q0 = g[by][bx]; if (q0 === 'R') g[by][bx] = b0; else if (q0 === 'r') g[by][bx] = bd; else if (q0 === 'h') g[by][bx] = bl; else if (q0 === 'X' && by >= shY && by <= cy) g[by][bx] = bl; }
       if (/armor|armour|plate|mail|chest/.test(kind('body'))) { hline(g, cx - half(1), cx + half(1) - 1, shY + 1, b1); set(g, cx - half(2), shY + 2, bl); set(g, cx + half(2) - 1, shY + 2, bl); } }
-    // head: floppy Wizard Hat, or the orange hair + another Headwear piece
-    if (isHat(G.head)) hat(g, fx, fe, faceY, D.hat, stage, 'B', 'b', 'c');
+    // head: floppy Wizard Hat, or the orange hair + another Headwear piece. A tucked hybrid is hatless: drawing the hat here
+    // only feeds the fitter a phantom hat to erase, which punches the hair and the fist (Hematoopo #74349).
+    if (isHat(G.head) && !tuck) hat(g, fx, fe, faceY, D.hat, stage, 'B', 'b', 'c');
     else { hline(g, fx, fe, faceY - 1, 'H'); hline(g, fx + 1, fe - 1, faceY - 2, 'J'); set(g, fx + 3, faceY - 2, 'H'); set(g, fe - 2, faceY - 1, 'J');
-      if (G.head) { var hk = kind('head'), hc = col('head'), hd = col('head', 1);
+      if (G.head && !isHat(G.head)) { var hk = kind('head'), hc = col('head'), hd = col('head', 1);
         if (/crown|tiara/.test(hk)) { hline(g, fx, fe, faceY - 2, hc); for (var ci = fx; ci <= fe; ci += 2) set(g, ci, faceY - 3, hc); set(g, fx + Math.floor(fw / 2), faceY - 2, hd); }
         else if (!/band|hachimaki|halo|visor/.test(hk) && /hat|cap|beanie|helmet|hood|bucket|fedora|beret|bowl|newsboy/.test(hk)) { rect(g, fx, faceY - 3, fw, 2, hc); rect(g, fx + 1, faceY - 5, fw - 2, 2, hc); hline(g, fx - 1, fe + 1, faceY - 1, hd); }
         else { hline(g, fx - 1, fe, faceY + 1, hc); set(g, fx + Math.floor(fw / 2), faceY + 1, hd); set(g, fe + 1, faceY + 2, hc); } } }   // headband-style (across the brow)
@@ -167,8 +175,8 @@
     return o;
   }
   /** render(stage, frame, bg, gear?) -> { width, height, data: [RGBA...] } */
-  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL; if (opts && opts.pal) P = Object.assign({}, P, opts.pal); /* opts.pal: per-key colour override (Wizard hybrids, wizard-hybrids branch) */
+  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear, opts), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL; if (opts && opts.pal) P = Object.assign({}, P, opts.pal); /* opts.pal: per-key colour override (Wizard hybrids, wizard-hybrids branch) */
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
-  return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, WIZARD_HAT: WIZARD_HAT, render: render, frames: frames, draw: draw };
+  return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, WIZARD_HAT: WIZARD_HAT, render: render, frames: frames, draw: draw, tuck: function (v) { TUCK = v ? 1 : 0; } };
 });
