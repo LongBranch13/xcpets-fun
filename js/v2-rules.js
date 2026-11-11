@@ -4293,8 +4293,6 @@
         var capT = Math.min.apply(null, cTop.filter(function (q) { return tw[q >> 5] >= 5; }).map(function (q) { return q >> 5; }).concat([99])), stray = []; if (!(h.fix && capT === 99)) for (var js0 = 0; js0 < capT * 32; js0++) if (CA.s[js0]) stray.push(js0); erase(stray, true); } /* fix: no wide top row (bobbed-up frame) used to erase the whole pet */
       else if (kind === 'top' && EYE_DOME_BODIES[h.shape]) { /* Pepe / Peepo: the forked 'top' of the head IS the pair of eye domes; erasing it deleted the eyes (owner Oct 22 1:27 AM: 'completely missing eyes'
         * with Bobo ears / Mumu horns). Nothing is erased: the part sits on top of the domes (onTop lift keeps it off the eye pixels). */ }
-      else if (kind === 'top' && h.shape === 'wizard') { /* hybrid fit: a Wizard body is drawn hatless, so CA.top is the floppy hat he is not wearing.
-        * Erasing those pixels punched his orange back-hair and the raised-fist flame, which read as a torn cluster on the left of a kept headdress (Hematoopo #74349). The hair-kind path already skips this hat. */ }
       else erase(CA[kind] || [], true);
       if (kind === 'top' && def.hat) { drawHat(kF, D); return; }
       var onTopX = def.onTop && h.shape !== 'dodo'; /* Dodo bodies keep the pre-Oct-22 placement (owner revert 1:30 AM CT) */
@@ -4377,9 +4375,7 @@
         var k2 = def.draw ? 1 : clampK(sb.h / DA.bb.h, kind === 'tail' && stg > 2 ? 1 : 0.55, 1.35), pad = kind === 'tail' ? 2 : 1;
         var pr = scaled(js, k2, [sd < 0 ? 1 : 0, 0.5]), b2 = bbList(pr.map(function (p) { return p.t; })), ty, se;
         { var rel = ((jb.t + jb.b) / 2 - DA.bb.t) / DA.bb.h; ty = Math.round(sb.t + (def.draw && kind === 'tail' ? 0.58 : rel) * sb.h); dy = Math.round(ty - (b2.t + b2.b) / 2);
-          /* Wizard's raised fist sits beside the head. An arm part (Snibby claws) anchored on that fist drew as a torn cluster on the headdress (Hematoopo #74349). The whole part sits on the robe, under the head. */
-          var yArm = h.shape === 'wizard' && kind === 'arms' && CA.eyeBox ? CA.eyeBox.b + 3 : -1; if (yArm > 0 && b2.t + dy < yArm) { var drop = yArm - (b2.t + dy); dy += drop; ty += drop; }
-          var rows = []; for (var yy = b2.t + dy; yy <= b2.b + dy; yy++) if (yy >= sb.t && yy <= sb.b && yy >= yArm) { var e = edgeAt(M, yy, sd); if (e >= 0) rows.push(e); }
+          var rows = []; for (var yy = b2.t + dy; yy <= b2.b + dy; yy++) if (yy >= sb.t && yy <= sb.b) { var e = edgeAt(M, yy, sd); if (e >= 0) rows.push(e); }
           se = rows.length ? (sd < 0 ? Math.min.apply(null, rows) : Math.max.apply(null, rows)) : (sd < 0 ? sb.l : sb.r); dx = sd < 0 ? se - b2.r : se - b2.l; dx = Math.max(Math.max(pad, mg) - b2.l, Math.min(31 - Math.max(pad, mg) - b2.r, dx)); }
         var sp2 = shift(pr, dx, dy); if (kind === 'tail') { var tOn = {}; sp2.forEach(function (p) { tOn[p.t] = 1; }); var wasBody = sp2.filter(function (p) { return M[p.t]; }).length;
           paste(js, kF, sp2); if (wasBody) sp2.forEach(function (p) { [p.t + 1, p.t + 32, p.t - 32].forEach(function (n) { if (n >= 0 && n < 1024 && !tOn[n] && CA.s[n]) { set(n, INK); touched[n] = 1; } }); }); return; } /* a tail in front of a wide body gets its own ink outline */
@@ -4473,7 +4469,7 @@
     return { R: c.body, B: c.body, r: shade(c.body, 0.7), b: shade(c.body, 0.7), h: shade(c.body, 1.3), c: shade(c.body, 1.3), G: c.belly, W: c.belly, g: shade(c.belly, 0.72) }; }
   /** renderRoot(art, o, pal): one root's frame. 'wizard' -> WizardSprite (solid bg = art.bgColor, or #ff00ff for key renders); others PetCore.render. */
   function renderWizRoot(art, o, pal) { var WS = wizSprite(), st = o.stage == null ? 3 : o.stage;
-    var r = WS.render(st, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), o.wizGear || {}, { pal: pal || {}, tuck: o.wizTuck ? 1 : 0 });
+    var r = WS.render(st, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), o.wizGear || {}, { pal: pal || {} });
     return { width: 32, height: 32, data: new Uint8ClampedArray(r.data) }; }
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame. */
   /** hybridRender(art, opts): PetCore.render for a hybrid (art.hybrid = plan). Split-colour egg at stage 0; a small hybrid badge on every frame.
@@ -4483,7 +4479,6 @@
    * body; the badge moves to the top-left corner when a crest fills the top-right. */
   function hybridRender(art, opts) {
     var h = art.hybrid, S = speciesObj(h.shape), C = speciesObj(h.color), F = speciesObj(h.featSp || h.color), o = Object.assign({}, opts || {}), img;
-    if (S.id === 'wizard' && h.parts && h.parts.some(function (q) { var d = partDef(q.sp, q.part); return d && d.kind === 'top'; })) o.wizTuck = 1; /* a head part covers the rows the raised flame climbs; tuck the flame beside the fist so it does not tear the headdress */
     var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color }), featArt = Object.assign({}, art, { species: F.id });
     var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
     var shade = function (c3, k) { var v = hx(c3); return '#' + v.map(function (n) { var m = Math.max(0, Math.min(255, Math.round(n * k))); return (m < 16 ? '0' : '') + m.toString(16); }).join(''); };
