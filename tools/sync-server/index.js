@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-/* xcpets-sync, review only. Nothing here is installed on a live server.
+/* xcpets-sync. Listens on loopback; Caddy publishes it.
  *   node tools/sync-server/index.js
  *   XP_UPSTREAMS   comma-separated Core /v2 bases. Default: the two public Core nodes.
  *                  A loopback read proxy may be listed first. Its address stays in the environment.
@@ -8,12 +8,16 @@
  *   XP_DATA        snapshots and state (default a temp directory)
  *   XP_BOOT_CACHE  optional boot.json used as the hash and sale base, the same way the feed does
  *   XP_SNAPSHOT=0  do not build a pet-world snapshot
+ *   XP_SNAPSHOT_EVERY  build when the published snapshot is at least this many blocks behind (default 6)
+ *   XP_SNAPSHOT_HEAP   Node heap cap in MB for the builder (default 1536)
+ *   XP_FETCH_MS    per-request upstream timeout in ms (default 15000)
  *   XP_RULES_BASE  optional http(s) prefix for rule-file bytes. Default: this repo. */
 const fs = require('fs'), path = require('path'), http = require('http'), { spawn } = require('child_process'), os = require('os');
 const { upstreams, hostKind, scrub, bootSync, PUBLIC, ROOT } = require('./client');
-const { blank, tick } = require('./follow');
+const { blank, tick, singleFlight } = require('./follow');
 const { createServer } = require('./server');
 const { pageInputs } = require('./answer');
+const { timedFetch, FETCH_MS } = require('./net');
 const LIM = require('../lib/core-limiter');
 function chainFns() {
   const vm = require('vm');
@@ -31,26 +35,26 @@ function seedHashes() {
   return ctx.window.XCPETS_BLOCK_HASHES || {};
 }
 function makeIo(bases) {
-  const raw = (u, o) => fetch(u, o);
-  const limited = LIM.makeFetch(raw, { conc: +(process.env.XP_CONC || 1), rps: +(process.env.XP_RPS || 2), match: u => bases.some(b => String(u).indexOf(b) === 0) });
+  const raw = (u, o) => timedFetch(u, o, FETCH_MS);
+  const limited = LIM.makeFetch(raw, { conc: +(process.env.XP_CONC || 1), rps: +(process.env.XP_RPS || 2), timeoutMs: FETCH_MS, match: u => bases.some(b => String(u).indexOf(b) === 0) });
   let lastKind = hostKind(bases[0]);
   async function getJson(pathname) { let last = 'failed';
     for (const base of bases) { try { const r = await limited(base + pathname); if (r.status === 404) return { result: [] };
       if (!r.ok) { last = String(r.status); continue; } lastKind = hostKind(base); return await r.json(); } catch (e) { last = 'down'; } }
     throw new Error('upstream ' + last); }
   async function hashOf(n) {
-    try { const r = await fetch('https://mempool.space/api/block-height/' + n); const t = (await r.text()).trim(); if (/^[0-9a-f]{64}$/.test(t)) return t; } catch (e) {}
+    try { const r = await timedFetch('https://mempool.space/api/block-height/' + n, {}, FETCH_MS); const t = (await r.text()).trim(); if (/^[0-9a-f]{64}$/.test(t)) return t; } catch (e) {}
     const j = await getJson('/blocks/' + n); const h = j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(h || '')) throw new Error('missing hash'); return h;
   }
   async function mempool() { const j = await getJson('/mempool/events/ASSET_DESTRUCTION?limit=1000'); return bootSync().mempoolOf((j && j.result) || [], 'XCPETS'); }
-  async function mempoolHeight() { const r = await fetch('https://mempool.space/api/blocks/tip/height'); const t = await r.text(); const n = parseInt(t, 10); return n > 0 ? n : 0; }
+  async function mempoolHeight() { const r = await timedFetch('https://mempool.space/api/blocks/tip/height', {}, FETCH_MS); const t = await r.text(); const n = parseInt(t, 10); return n > 0 ? n : 0; }
   return { getJson, hashOf, mempool, mempoolHeight, upstreamOf: () => lastKind };
 }
 function salesIo(bases, boot) {
   const vm = require('vm');
   const { getJson, hashOf, mempool, mempoolHeight, upstreamOf } = makeIo(bases);
-  const limitedFetch = (u, o) => fetch(u, o);
-  const wrapped = LIM.makeFetch(limitedFetch, { conc: 1, rps: +(process.env.XP_RPS || 2), match: () => true });
+  const limitedFetch = (u, o) => timedFetch(u, o, FETCH_MS);
+  const wrapped = LIM.makeFetch(limitedFetch, { conc: 1, rps: +(process.env.XP_RPS || 2), timeoutMs: FETCH_MS, match: () => true });
   const store = {}; const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const win = { console, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'xcpets-sync' },
     setTimeout, clearTimeout, URLSearchParams: global.URLSearchParams, URL: global.URL, TextEncoder, TextDecoder, AbortController: global.AbortController, fetch: wrapped,
@@ -85,19 +89,26 @@ function startSnapshot(state, dataDir) {
   const out = path.join(dataDir, 'world', 'pending-' + state.tip);
   const args = [path.join(__dirname, 'snapshot.js'), '--state', st, '--out', out];
   if (process.env.XP_SNAPSHOT_COMPRESS === '0') args.push('--no-compress');
+  const heap = String(+(process.env.XP_SNAPSHOT_HEAP || 1536));
+  const nodeArgs = ['--max-old-space-size=' + heap, ...args];
   const cmd = process.platform === 'win32' ? null : 'nice';
-  const child = cmd ? spawn(cmd, ['-n', '10', process.execPath, ...args], { stdio: ['ignore', 'pipe', 'pipe'] }) : spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = cmd ? spawn(cmd, ['-n', '10', process.execPath, ...nodeArgs], { stdio: ['ignore', 'pipe', 'pipe'] }) : spawn(process.execPath, nodeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
   let buf = ''; child.stdout.on('data', d => { buf += d; });
   child.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
-  child.on('exit', code => { startSnapshot.running = false; if (code !== 0) { console.error('snapshot exit ' + code); return; }
-    let info; try { info = JSON.parse(buf.trim().split('\n').pop()); } catch (e) { return; }
+  child.on('exit', code => { startSnapshot.running = false; if (code !== 0) { startSnapshot.failAt = Date.now(); console.error('snapshot exit ' + code); return; } startSnapshot.failAt = 0;
+    let info; try { info = JSON.parse(buf.trim().split('\n').pop()); } catch (e) { startSnapshot.failAt = Date.now(); return; }
     const dest = path.join(dataDir, 'world', info.rsig, String(info.tip));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.rmSync(dest, { recursive: true, force: true }); fs.renameSync(out, dest);
     const latest = { v: 1, rsig: info.rsig, tip: info.tip, manifest: '/xp/v1/world/' + info.rsig + '/' + info.tip + '/manifest.json', builtAt: new Date().toISOString() };
     fs.writeFileSync(path.join(dataDir, 'world', 'latest.json'), JSON.stringify(latest));
     state.world = { ready: true, rsig: info.rsig, tip: info.tip, manifest: latest.manifest }; });
-  child.on('error', () => { startSnapshot.running = false; if (cmd) { startSnapshot.running = true; const c2 = spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] }); c2.stdout.on('data', d => { buf += d; }); c2.on('exit', () => { startSnapshot.running = false; }); } });
+  child.on('error', () => { startSnapshot.running = false; startSnapshot.failAt = Date.now(); if (!cmd) return;
+    startSnapshot.running = true; startSnapshot.failAt = 0;
+    const c2 = spawn(process.execPath, nodeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    c2.stdout.on('data', d => { buf += d; });
+    c2.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
+    c2.on('exit', code => { startSnapshot.running = false; if (code !== 0) startSnapshot.failAt = Date.now(); }); });
 }
 function main() {
   const bases = upstreams(); const dataDir = process.env.XP_DATA || path.join(os.tmpdir(), 'xcpets-sync');
@@ -110,11 +121,14 @@ function main() {
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   let timer = null, held = false;
-  async function loop() { try {
+  const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
+  const loop = singleFlight(async function () { try {
     if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
-    if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && (!state.world || state.world.tip !== state.tip)) startSnapshot(state, dataDir);
-  } catch (e) { console.error('sync tick failed'); } }
+    const behindSnap = state.world && state.world.tip ? state.tip - state.world.tip : state.tip;
+    const cooled = !startSnapshot.failAt || Date.now() - startSnapshot.failAt > 10 * 60 * 1000;
+    if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && cooled && (!state.world || !state.world.tip || behindSnap >= every)) startSnapshot(state, dataDir);
+  } catch (e) { console.error('sync tick failed'); } });
   loop(); timer = setInterval(loop, 10000);
   console.log('xcpets-sync on 127.0.0.1:' + port + ' upstreams ' + bases.map(hostKind).join(','));
   return { server: httpd.server, state, stop() { clearInterval(timer); httpd.server.close(); } };

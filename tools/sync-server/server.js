@@ -3,6 +3,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), zlib = require('zlib'), { URL } = require('url');
 const { buildAnswer } = require('./answer');
 const { hostKind } = require('./client');
+const { clientIp } = require('./net');
 function rateLimit(max) { const hits = new Map(); return function (ip) { const now = Date.now(), slot = hits.get(ip) || { t: now, n: 0 };
   if (now - slot.t > 10000) { slot.t = now; slot.n = 0; } slot.n++; hits.set(ip, slot); return slot.n <= max; }; }
 function cors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS'); res.setHeader('Access-Control-Expose-Headers', 'ETag'); res.setHeader('Vary', 'Accept-Encoding'); }
@@ -30,7 +31,7 @@ function createServer(opts) {
   const getState = opts.getState, dataDir = opts.dataDir || path.join(require('os').tmpdir(), 'xcpets-sync');
   const allow = rateLimit(opts.ratePer10s || +(process.env.XP_RATE_PER_10S || 60));
   const server = http.createServer((req, res) => {
-    const ip = req.socket && req.socket.remoteAddress || '';
+    const ip = clientIp(req);
     let pathOnly = '/'; try { pathOnly = new URL(req.url, 'http://127.0.0.1').pathname; } catch (e) {}
     /* A first visit fetches every snapshot part. Those files are immutable and are not counted against the short sync limit. */
     const limited = !/^\/xp\/v1\/world\/r[0-9a-f]{32}\/\d+\//.test(pathOnly);

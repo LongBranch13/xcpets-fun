@@ -62,4 +62,13 @@ async function tick(state, io) {
   else { state.builtAt = new Date().toISOString(); state.lag = Math.max(0, Math.max(state.coreHeight || 0, state.mempoolHeight || 0) - state.tip); }
   return state;
 }
-module.exports = { blank, tick, applyTip, fillRing, readRows, fillHashes, dropShallow };
+/* One follow at a time. A tick that is still reading must not start another. */
+function singleFlight(fn) {
+  let pending = null;
+  return function () {
+    if (pending) return pending;
+    pending = Promise.resolve().then(fn).finally(() => { pending = null; });
+    return pending;
+  };
+}
+module.exports = { blank, tick, applyTip, fillRing, readRows, fillHashes, dropShallow, singleFlight };

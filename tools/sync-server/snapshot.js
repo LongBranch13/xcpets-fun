@@ -4,6 +4,7 @@
  * A part is published only when a JSON round trip (undefined marked as {"__u":1}) matches the encoded value. */
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib'), crypto = require('crypto');
 const { bootSync, sha256, ROOT } = require('./client');
+const { patchRules } = require('../../js/v2-resume');
 const RULES = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-replay-worker.js'];
 function rulesSig(files) {
   let n = 0; const bufs = files.map(b => Buffer.isBuffer(b) ? b : Buffer.from(b));
@@ -27,14 +28,27 @@ function replayWorld(ctx, rows, hashes, tip, dex) {
   ctx.location = { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/js/v2-replay-worker.js', protocol: 'https:' };
   ctx.navigator = { userAgent: 'xcpets-sync' };
   vm.runInContext('shim()', ctx);
-  for (const f of RULES) { if (f === 'js/v2-replay-worker.js') continue; vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
+  for (const f of RULES) {
+    if (f === 'js/v2-replay-worker.js') continue;
+    let src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (f === 'js/v2-rules.js') src = patchRules(src);
+    vm.runInContext(src, ctx, { filename: f });
+  }
   vm.runInContext('self.LiveEngine={RealCore:self.RealCore,Chain:self.Chain&&self.Chain.Chain,CFG:self.XCPETS_CONFIG};', ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8'), ctx, { filename: 'js/v2-sales.js' });
   ctx.__rows = rows; ctx.__hashes = hashes; ctx.__tip = tip; ctx.__dex = dex || undefined;
   /* Same normalizeDex the page runs on the sync body, so the world key matches after JSON.parse. */
   vm.runInContext('if (__dex && self.V2Sales && self.V2Sales.normalizeDex) __dex = self.V2Sales.normalizeDex(__dex);', ctx);
-  vm.runInContext('__world = self.V2Rules.replay(__rows, __hashes, [], { tip: __tip, live: self.LiveEngine.RealCore, dex: __dex });', ctx);
-  return ctx.__world;
+  vm.runInContext('__world = self.V2Rules.replay(__rows, __hashes, [], { tip: __tip, live: self.LiveEngine.RealCore, dex: __dex, _beforeTail: function (w, seen) {\n' +
+    '  if (typeof saveCheckpoint !== "function") return;\n' +
+    '  var enc = wsEncode(w), keys = [], k;\n' +
+    '  for (k in seen) if (Object.prototype.hasOwnProperty.call(seen, k)) keys.push(k);\n' +
+    '  saveCheckpoint(enc, keys, w._dexPos || 0, w._grand ? 1 : 0);\n' +
+    '  enc.root = null; enc.parts = null;\n' +
+    '} });', ctx);
+  const world = ctx.__world;
+  ctx.__rows = null; ctx.__hashes = null; ctx.__dex = null;
+  return world;
 }
 function encodeWorld(ctx, world) { ctx.__w = world; vm.runInContext('__enc = wsEncode(__w)', ctx); const enc = ctx.__enc; ctx.__w = null; ctx.__enc = null; return enc; }
 function jsonPart(value) {
@@ -52,35 +66,82 @@ function writeCompressed(file, json, compress) {
   fs.writeFileSync(file + '.gz', zlib.gzipSync(buf, { level: 9 }));
   fs.writeFileSync(file + '.br', zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 6 } }));
 }
+function describeValue(value) {
+  const json = jsonPart(value);
+  return { json: json, bytes: Buffer.byteLength(json), sha256: sha256(json) };
+}
+function spillValue(dir, name, value, compress) {
+  const d = describeValue(value);
+  fs.mkdirSync(dir, { recursive: true });
+  writeCompressed(path.join(dir, name), d.json, compress);
+  d.json = null;
+  return { url: name, bytes: d.bytes, sha256: d.sha256 };
+}
+function spillEnc(dir, enc, prefix, compress) {
+  const rootName = prefix + 'root.json';
+  const root = spillValue(dir, rootName, enc.root, compress);
+  enc.root = null;
+  const files = [];
+  for (let i = 0; i < enc.parts.length; i++) {
+    const name = prefix + 'part-' + String(i).padStart(3, '0') + '.json';
+    files.push(Object.assign({ i: i }, spillValue(dir, name, enc.parts[i], compress)));
+    enc.parts[i] = null;
+  }
+  return { root: root, files: files, n: enc.n, parts: files.length };
+}
 async function buildSnapshot(opts) {
   const t0 = Date.now();
+  let maxRss = process.memoryUsage().rss;
+  const memT = setInterval(() => { const r = process.memoryUsage().rss; if (r > maxRss) maxRss = r; }, 250);
+  try {
   const bytes = opts.bytes || loadBytes(opts.rulesDir || ROOT);
   const rsig = rulesSig(bytes);
   const ctx = workerFns();
-  const wire = JSON.parse(JSON.stringify({ rows: opts.rows || [], hashes: opts.hashes || {}, dex: opts.dex || null }));
-  const world = replayWorld(ctx, wire.rows, wire.hashes, opts.tip, wire.dex);
+  const rows = opts.rows || [], hashes = opts.hashes || {}, dexIn = opts.dex || null;
+  let checkpoint = null;
+  if (opts.outDir) {
+    ctx.saveCheckpoint = (enc, keys, dexPos, grand) => {
+      const meta = { v: 1, tip: opts.tip, dexPos: dexPos || 0, grand: grand ? 1 : 0, seen: keys };
+      const body = spillEnc(opts.outDir, enc, 'cp-', opts.compress !== false);
+      const metaFile = spillValue(opts.outDir, 'cp-meta.json', meta, opts.compress !== false);
+      checkpoint = { tip: opts.tip, n: body.n, parts: body.parts, root: body.root, files: body.files, meta: metaFile };
+      enc.parts = null;
+    };
+  }
+  const world = replayWorld(ctx, rows, hashes, opts.tip, dexIn);
   const dex = ctx.__dex || null;
   const enc = encodeWorld(ctx, world);
-  const C = bootSync();
-  const rootJson = jsonPart(enc.root);
-  const partJson = enc.parts.map(jsonPart);
+  ctx.__world = null;
   const digest = await digestOf(enc.root, enc.parts);
   const build = opts.build || (fs.existsSync(path.join(ROOT, 'build-id.txt')) ? fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() : '');
   let inSig = opts.inSig || '';
-  if (!inSig && opts.inSigOf) inSig = opts.inSigOf({ tip: opts.tip, rows: wire.rows, hashes: wire.hashes, dex: dex });
+  if (!inSig && opts.inSigOf) inSig = opts.inSigOf({ tip: opts.tip, rows: rows, hashes: hashes, dex: dex });
   const key = rsig + '|' + inSig + '|[]';
-  const manifest = { v: 1, format: 'ws2-json', rsig: rsig, build: build, tip: opts.tip, tipHash: (opts.hashes && opts.hashes[opts.tip]) || '', ops: '[]', inSig: inSig, key: key,
-    n: enc.n, parts: enc.parts.length, root: { url: 'root.json', bytes: Buffer.byteLength(rootJson), sha256: sha256(rootJson) },
-    files: partJson.map((json, i) => ({ i: i, url: 'part-' + String(i).padStart(3, '0') + '.json', bytes: Buffer.byteLength(json), sha256: sha256(json) })),
-    digest: digest, builtAt: new Date().toISOString(), replayMs: Date.now() - t0 };
+  const compress = opts.compress !== false;
+  let rootMeta, fileMeta;
   if (opts.outDir) {
     fs.mkdirSync(opts.outDir, { recursive: true });
-    writeCompressed(path.join(opts.outDir, 'root.json'), rootJson, opts.compress !== false);
-    partJson.forEach((json, i) => writeCompressed(path.join(opts.outDir, manifest.files[i].url), json, opts.compress !== false));
+    const spilled = spillEnc(opts.outDir, enc, '', compress);
+    rootMeta = spilled.root; fileMeta = spilled.files;
+  } else {
+    const rootD = describeValue(enc.root); enc.root = null; rootMeta = { url: 'root.json', bytes: rootD.bytes, sha256: rootD.sha256 };
+    fileMeta = [];
+    for (let i = 0; i < enc.parts.length; i++) {
+      const d = describeValue(enc.parts[i]); enc.parts[i] = null;
+      fileMeta.push({ i: i, url: 'part-' + String(i).padStart(3, '0') + '.json', bytes: d.bytes, sha256: d.sha256 });
+    }
+  }
+  const manifest = { v: 1, format: 'ws2-json', rsig: rsig, build: build, tip: opts.tip, tipHash: (hashes && hashes[opts.tip]) || '', ops: '[]', inSig: inSig, key: key,
+    n: enc.n, parts: fileMeta.length, root: rootMeta, files: fileMeta,
+    digest: digest, builtAt: new Date().toISOString(), replayMs: Date.now() - t0, maxRss: maxRss };
+  if (checkpoint) manifest.checkpoint = checkpoint;
+  if (opts.outDir) {
     fs.writeFileSync(path.join(opts.outDir, 'manifest.json'), JSON.stringify(manifest));
     prune(path.dirname(path.dirname(opts.outDir)), rsig);
   }
-  return { manifest: manifest, rsig: rsig, enc: opts.keepEnc ? enc : null };
+  manifest.maxRss = maxRss;
+  return { manifest: manifest, rsig: rsig, enc: opts.keepEnc ? enc : null, maxRss: maxRss };
+  } finally { clearInterval(memT); }
 }
 function prune(worldRoot, rsig) {
   if (!worldRoot || !fs.existsSync(worldRoot)) return;

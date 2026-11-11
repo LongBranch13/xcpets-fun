@@ -4,6 +4,10 @@ One-shot chain read and a pre-built pet world. On `xcpets.fun` and `www.xcpets.f
 
 verify-pet.html never uses the snapshot world. It still rebuilds locally. Practice pages do not load the boot file.
 
+A published snapshot may be up to 8 blocks behind the page. The page applies just those missing blocks, using the burn rows, block hashes, and sale data already in the sync answer, and stores the resulting world under the current key. Farther behind than that, the page rebuilds locally.
+
+The builder runs when the published snapshot is at least `XP_SNAPSHOT_EVERY` blocks behind (default 6), skips a build that is already running, and is capped at `XP_SNAPSHOT_HEAP` MB (default 1536) so it cannot grow to the multi-gigabyte peak that pushed the small server into swap. Upstream reads time out after `XP_FETCH_MS` ms (default 15000). Behind Caddy, the per-address limit uses `X-Real-IP`, then `X-Forwarded-For`. Snapshot part downloads are not counted. Only one chain follow runs at a time.
+
 ## Preview on this machine
 
 The service reads the two public Core nodes unless `XP_UPSTREAMS` lists something else. A loopback read proxy, if you have one, is an environment value only. Do not put its address in the repo.

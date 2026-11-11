@@ -223,12 +223,17 @@
       w.postMessage({ cmd: 'seed', id: 1, files: files, idbKey: key, parts: parts, n: n });
     });
   }
+  function staleMax() { return (window.XcpResume && XcpResume.STALE_MAX) || 8; }
   function acceptManifest(man, api, rsig) {
     if (!man || man.v !== 1 || man.format !== 'ws2-json') return null;
     if (man.rsig !== rsig || man.ops !== '[]') return null;
     var S = api.state(), ops = JSON.stringify((S && S.ops) || []);
-    var exact = man.tip === S.tip && man.inSig === api.inSig() && ops === '[]';
-    return { exact: exact, provisional: !exact };
+    if (ops !== '[]') return null;
+    var behind = (S.tip || 0) - (man.tip || 0);
+    var exact = behind === 0 && man.inSig === api.inSig();
+    var catchup = !exact && behind > 0 && behind <= staleMax() && !!man.checkpoint;
+    if (!exact && !catchup) return { exact: false, catchup: false, provisional: true };
+    return { exact: exact, catchup: catchup, provisional: false, behind: behind };
   }
   function fetchManifest(api) {
     return fetch(base() + '/xp/v1/world/latest.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }).then(function (latest) {
@@ -237,13 +242,34 @@
       return fetch(abs, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) { man._url = abs; return man; });
     });
   }
+  function noteSeeded(api, later) {
+    usedExact = true; window.V2BootSync.justSeeded = true;
+    if (desktop()) { if (later) window.V2BootSync._recheck = function () { scheduleRecheck(api); }; else scheduleRecheck(api); }
+  }
   function writeSnapshot(man, api, how, later) {
     var dir = dirOf(man._url), key = how.exact ? api.idbKey() : man.key;
-    return runWorker(seedFiles(man, dir), key, man.n, man.parts).then(function () {
-      if (how.exact) { usedExact = true; window.V2BootSync.justSeeded = true;
-        if (desktop()) { if (later) window.V2BootSync._recheck = function () { scheduleRecheck(api); }; else scheduleRecheck(api); } }
-      return how;
+    return runWorker(seedFiles(man, dir), key, man.n, man.parts).then(function () { if (how.exact) noteSeeded(api, later); return how; });
+  }
+  function catchFiles(man, dir) {
+    var cp = man.checkpoint, files = [{ url: dir + cp.root.url, sha256: cp.root.sha256, role: 'root' }];
+    (cp.files || []).forEach(function (f) { files.push({ url: dir + f.url, sha256: f.sha256, role: 'part', i: f.i }); });
+    files.push({ url: dir + cp.meta.url, sha256: cp.meta.sha256, role: 'meta' });
+    return files;
+  }
+  function runCatch(msg) {
+    return new Promise(function (res, rej) {
+      var w, t; try { w = new Worker(new URL('js/v2-catchup-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
+      t = setTimeout(function () { try { w.terminate(); } catch (e2) {} rej(new Error('catchup timeout')); }, SEED_MS);
+      w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e3) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'catchup')); };
+      w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e4) {} rej(new Error('catchup worker')); };
+      w.postMessage(msg);
     });
+  }
+  function catchUp(man, api) {
+    var urls = ruleUrls(); if (!urls) return Promise.reject(new Error('rules'));
+    var S = api.state();
+    return runCatch({ cmd: 'catchup', id: 1, files: catchFiles(man, dirOf(man._url)), parts: man.checkpoint.parts, n: man.checkpoint.n,
+      scripts: urls.slice(0, -1), rows: S.rows, hashes: S.hashes, dex: S.dex || null, tip: S.tip, baseTip: man.tip, idbKey: api.idbKey() });
   }
   function keyRsig(key) { var m = /^(r[0-9a-f]{32})\|/.exec(key || ''); return m ? m[1] : null; }
   function peekAndSeed(api) {
@@ -260,8 +286,9 @@
           return false;
         }
         return rowsReady(200).then(function () { return fetchManifest(api).then(function (man) {
-          var how = acceptManifest(man, api, rsig); if (!how) return false;
-          if (!how.exact && !empty && !wrong) return false;
+          var how = acceptManifest(man, api, rsig); if (!how || how.provisional) return false;
+          if (!how.exact && !how.catchup && !empty && !wrong) return false;
+          if (how.catchup) return catchUp(man, api).then(function () { noteSeeded(api, false); return true; });
           return writeSnapshot(man, api, how).then(function () { if (!how.exact) pollManifest(api, rsig); return true; });
         }); });
       });
@@ -287,8 +314,9 @@
         if (saved && saved.key === api.idbKey()) return false;
         return fetchManifest(api).then(function (man) {
           var how = acceptManifest(man, api, rsig);
-          if (!how || !how.exact) return false;
-          return writeSnapshot(man, api, how, true).then(function () { return true; });
+          if (!how || how.provisional || (!how.exact && !how.catchup)) return false;
+          var job = how.catchup ? catchUp(man, api).then(function () { noteSeeded(api, true); return true; }) : writeSnapshot(man, api, how, true).then(function () { return true; });
+          return job;
         });
       });
     }).then(function (v) { return !!v; }, function () { return false; });

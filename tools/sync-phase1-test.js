@@ -6,7 +6,9 @@ const fs = require('fs'), path = require('path'), http = require('http'), crypto
 const ROOT = path.resolve(__dirname, '..');
 const { bootSync, checkOf, PUBLIC } = require('./sync-server/client');
 const { buildAnswer } = require('./sync-server/answer');
-const { blank, tick } = require('./sync-server/follow');
+const { blank, tick, singleFlight } = require('./sync-server/follow');
+const { timedFetch, clientIp } = require('./sync-server/net');
+const { patchRules, wsDecode, STALE_MAX, staleOk } = require('../js/v2-resume');
 const { createServer } = require('./sync-server/server');
 const { buildSnapshot, chainInSig } = require('./sync-server/snapshot');
 let pass = 0, fail = 0;
@@ -46,7 +48,7 @@ function fixtureState() {
 (async () => {
   const C = bootSync();
   ok(PUBLIC.join(' ') === 'https://api.counterparty.io:4000/v2 https://api.unspendablelabs.com:4000/v2', 'default upstreams are the two public Core nodes');
-  const tree = fs.readdirSync(path.join(ROOT, 'tools/sync-server')).filter(f => f.endsWith('.js') || f.endsWith('.md')).map(f => fs.readFileSync(path.join(ROOT, 'tools/sync-server', f), 'utf8')).concat(['js/v2-boot-sync.js', 'js/v2-seed-worker.js', 'js/v2-chain.js', 'js/v2-sales.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))).join('\n');
+  const tree = fs.readdirSync(path.join(ROOT, 'tools/sync-server')).filter(f => f.endsWith('.js') || f.endsWith('.md')).map(f => fs.readFileSync(path.join(ROOT, 'tools/sync-server', f), 'utf8')).concat(['js/v2-boot-sync.js', 'js/v2-seed-worker.js', 'js/v2-catchup-worker.js', 'js/v2-resume.js', 'js/v2-chain.js', 'js/v2-sales.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))).join('\n');
   ok(!/\.onion\b|start9/i.test(tree), 'no onion or private proxy host in the new code');
   ok(!/method:\s*'POST'|method:\s*"POST"/.test(fs.readFileSync(path.join(ROOT, 'tools/sync-server/index.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'tools/sync-server/server.js'), 'utf8')), 'the sync service does not POST');
 
@@ -156,6 +158,58 @@ function fixtureState() {
   flag.localStorage.setItem('xcpets-sync', 'http://127.0.0.1:9');
   ok(flag.window.V2BootSync.base() === 'http://127.0.0.1:9', 'localStorage xcpets-sync overrides the live default');
   ok(!/\bsync\s*:/.test(fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8')), 'rjs/config.js still has no sync field');
+  ok(staleOk(2) && staleOk(STALE_MAX) && !staleOk(0) && !staleOk(STALE_MAX + 1), 'stale catch-up allows 1..' + STALE_MAX + ' blocks and no more');
+
+  let flights = 0; const gate = singleFlight(() => { flights++; return new Promise(r => setTimeout(r, 30)); });
+  const first = gate(), second = gate();
+  ok(first === second, 'a follow that is still running is not started again');
+  await first; ok(flights === 1, 'the overlapped call did not run a second follow');
+  const third = gate(); await third; ok(flights === 2, 'the next follow starts after the previous one finishes');
+
+  const hang = http.createServer(() => {}); await new Promise(r => hang.listen(0, '127.0.0.1', r));
+  let aborted = false; try { await timedFetch('http://127.0.0.1:' + hang.address().port + '/stuck', {}, 200); } catch (e) { aborted = true; }
+  hang.close(); ok(aborted, 'a stuck upstream fetch times out');
+
+  const lim = createServer({ getState: () => ({ tip: 1, coreHeight: 1, lag: 0, ready: true, upstream: 'public', world: { tip: 1 } }), dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'xp-ip-')), ratePer10s: 1 });
+  const ipPort = await listen(lim.server);
+  const hit = (ip, path) => new Promise((res, rej) => { const q = http.request({ hostname: '127.0.0.1', port: ipPort, path: path, headers: ip ? { 'x-real-ip': ip } : {} }, r => { res(r.statusCode); r.resume(); }); q.on('error', rej); q.end(); });
+  const a = await hit('203.0.113.5', '/xp/v1/health'), b = await hit('203.0.113.9', '/xp/v1/health'), c = await hit('203.0.113.5', '/xp/v1/health');
+  const worldStatus = await hit('203.0.113.5', '/xp/v1/world/r' + 'ab'.repeat(16) + '/1/part-000.json');
+  ok(a === 200 && b === 200 && c === 429, 'X-Real-IP is the rate-limit address');
+  ok(worldStatus === 404, 'a snapshot part is not counted against the rate limit');
+  ok(clientIp({ headers: { 'x-real-ip': '198.51.100.4, 10.0.0.1' }, socket: { remoteAddress: '127.0.0.1' } }) === '198.51.100.4', 'loopback trusts X-Real-IP');
+  ok(clientIp({ headers: { 'x-forwarded-for': '198.51.100.8, 10.1.1.1' }, socket: { remoteAddress: '127.0.0.1' } }) === '198.51.100.8', 'loopback trusts X-Forwarded-For when X-Real-IP is absent');
+  ok(clientIp({ headers: { 'x-real-ip': '198.51.100.4' }, socket: { remoteAddress: '203.0.113.1' } }) === '203.0.113.1', 'a public socket does not trust a spoofed X-Real-IP');
+  lim.server.close();
+
+  /* A snapshot two blocks behind, plus the burns in that gap, matches a full replay at the later tip. */
+  {
+    const snap = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/snapshots/snap-972901.json'), 'utf8'));
+    const T = snap.tip, baseTip = T - 2;
+    const rowsAll = snap.rows.filter(r => r.block_index <= T), rowsBase = rowsAll.filter(r => r.block_index <= baseTip);
+    ok(rowsAll.length - rowsBase.length >= 1, 'the catch-up fixture has burns in the two-block gap');
+    const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-replay-worker.js'];
+    function boot(patch) {
+      const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: memStore(), sessionStorage: memStore(), location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout, clearTimeout, URLSearchParams, URL, TextEncoder, TextDecoder, addEventListener() {} };
+      win.document = { getElementById() { return null; }, querySelector() { return null; }, querySelectorAll() { return []; }, createElement() { return { style: {} }; }, addEventListener() {}, body: null, documentElement: { style: {} } };
+      win.window = win; win.self = win; const ctx = vm.createContext(win);
+      for (const f of SCRIPTS) { let src = fs.readFileSync(path.join(ROOT, f), 'utf8'); if (patch && f === 'js/v2-rules.js') src = patchRules(src); if (f === 'rjs/chain.js') vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); vm.runInContext(src, ctx, { filename: f }); }
+      return ctx;
+    }
+    const plain = boot(false), patched = boot(true);
+    const full = plain.V2Rules.replay(rowsAll, snap.hashes, [], { tip: T, live: plain.LiveEngine.RealCore });
+    let saved = null;
+    patched.V2Rules.replay(rowsBase, snap.hashes, [], { tip: baseTip, live: patched.LiveEngine.RealCore, _beforeTail(w, seen) {
+      const enc = patched.wsEncode(w);
+      saved = { w: wsDecode(enc.root, enc.parts), seen: Object.assign({}, seen), dexPos: w._dexPos || 0, grand: w._grand ? 1 : 0, tip: baseTip };
+    } });
+    const resumed = patched.V2Rules.replay(rowsAll, snap.hashes, [], { tip: T, live: patched.LiveEngine.RealCore, _resume: saved });
+    const encFull = plain.wsEncode(full), encResume = patched.wsEncode(resumed);
+    const [dFull, dResume] = await Promise.all([bootSync().digestOf(encFull.root, encFull.parts), bootSync().digestOf(encResume.root, encResume.parts)]);
+    const keyFull = chainInSig(rowsAll, snap.hashes, T, null), keyBase = chainInSig(rowsBase, snap.hashes, baseTip, null);
+    ok(dFull === dResume && keyFull !== keyBase, 'snapshot at tip T-2 plus catch-up matches a full replay at tip T');
+    ok(resumed.pets.length === full.pets.length && resumed.tip === T, 'the caught-up world is the current tip');
+  }
 
   /* bad part hash writes nothing */
   const good = Buffer.from('{"a":1}'); const goodSha = crypto.createHash('sha256').update(good).digest('hex');
