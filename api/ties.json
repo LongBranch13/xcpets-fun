@@ -1,6 +1,6 @@
 {
- "lastBlock": 975373,
- "count": 290,
+ "lastBlock": 975381,
+ "count": 293,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3482,6 +3482,42 @@
    "speciesLabel": "Vikdo (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 19710,
+   "asset": "A4504485101405652037",
+   "tiedBlock": 975377,
+   "tiedTx": "70490f13cc08c55b5606b0e777c8a3eb906e22eee0c4d834fdb9b1d40c9dd3bc",
+   "kind": "deed",
+   "name": "Potolu",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 49136,
+   "asset": "A13982912411159769504",
+   "tiedBlock": 975377,
+   "tiedTx": "21f990e447ff9b2dae6b2bd02c74bea64e7d90f279fc3a15621d7060d6cc3fc7",
+   "kind": "deed",
+   "name": "Zusoyepo",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 96034,
+   "asset": "A13690764905156264516",
+   "tiedBlock": 975377,
+   "tiedTx": "cd84504c4d0dbf19e7aa3b9c5868727373ee1ce9192893deb6f1c80bfb8a0711",
+   "kind": "deed",
+   "name": "Keliboo",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
