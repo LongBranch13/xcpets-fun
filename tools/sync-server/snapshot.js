@@ -29,7 +29,10 @@ function replayWorld(ctx, rows, hashes, tip, dex) {
   vm.runInContext('shim()', ctx);
   for (const f of RULES) { if (f === 'js/v2-replay-worker.js') continue; vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
   vm.runInContext('self.LiveEngine={RealCore:self.RealCore,Chain:self.Chain&&self.Chain.Chain,CFG:self.XCPETS_CONFIG};', ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8'), ctx, { filename: 'js/v2-sales.js' });
   ctx.__rows = rows; ctx.__hashes = hashes; ctx.__tip = tip; ctx.__dex = dex || undefined;
+  /* Same normalizeDex the page runs on the sync body, so the world key matches after JSON.parse. */
+  vm.runInContext('if (__dex && self.V2Sales && self.V2Sales.normalizeDex) __dex = self.V2Sales.normalizeDex(__dex);', ctx);
   vm.runInContext('__world = self.V2Rules.replay(__rows, __hashes, [], { tip: __tip, live: self.LiveEngine.RealCore, dex: __dex });', ctx);
   return ctx.__world;
 }
@@ -54,7 +57,9 @@ async function buildSnapshot(opts) {
   const bytes = opts.bytes || loadBytes(opts.rulesDir || ROOT);
   const rsig = rulesSig(bytes);
   const ctx = workerFns();
-  const world = replayWorld(ctx, opts.rows || [], opts.hashes || {}, opts.tip, opts.dex);
+  const wire = JSON.parse(JSON.stringify({ rows: opts.rows || [], hashes: opts.hashes || {}, dex: opts.dex || null }));
+  const world = replayWorld(ctx, wire.rows, wire.hashes, opts.tip, wire.dex);
+  const dex = ctx.__dex || null;
   const enc = encodeWorld(ctx, world);
   const C = bootSync();
   const rootJson = jsonPart(enc.root);
@@ -62,7 +67,7 @@ async function buildSnapshot(opts) {
   const digest = await digestOf(enc.root, enc.parts);
   const build = opts.build || (fs.existsSync(path.join(ROOT, 'build-id.txt')) ? fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() : '');
   let inSig = opts.inSig || '';
-  if (!inSig && opts.inSigOf) inSig = opts.inSigOf({ tip: opts.tip, rows: opts.rows, hashes: opts.hashes, dex: opts.dex });
+  if (!inSig && opts.inSigOf) inSig = opts.inSigOf({ tip: opts.tip, rows: wire.rows, hashes: wire.hashes, dex: dex });
   const key = rsig + '|' + inSig + '|[]';
   const manifest = { v: 1, format: 'ws2-json', rsig: rsig, build: build, tip: opts.tip, tipHash: (opts.hashes && opts.hashes[opts.tip]) || '', ops: '[]', inSig: inSig, key: key,
     n: enc.n, parts: enc.parts.length, root: { url: 'root.json', bytes: Buffer.byteLength(rootJson), sha256: sha256(rootJson) },
@@ -98,10 +103,11 @@ function chainInSig(rows, hashes, tip, dex) {
 }
 if (require.main === module) {
   const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
-  const state = JSON.parse(fs.readFileSync(opt('--state'), 'utf8'));
+  const raw = JSON.parse(fs.readFileSync(opt('--state'), 'utf8'));
+  const view = require('./answer').pageInputs(raw);
   const out = opt('--out');
-  buildSnapshot({ rows: state.rows, hashes: state.hashes, tip: state.tip, dex: state.dex, outDir: out, compress: !A.includes('--no-compress'), inSigOf: o => chainInSig(o.rows, o.hashes, o.tip, o.dex) }).then(r => {
-    process.stdout.write(JSON.stringify({ rsig: r.rsig, tip: r.manifest.tip, digest: r.manifest.digest, parts: r.manifest.parts, replayMs: r.manifest.replayMs }) + '\n');
-  }).catch(e => { console.error('snapshot failed'); process.exit(1); });
+  buildSnapshot({ rows: view.rows, hashes: view.hashes, tip: view.tip, dex: view.dex, outDir: out, compress: !A.includes('--no-compress'), inSigOf: o => chainInSig(o.rows, o.hashes, o.tip, o.dex) }).then(r => {
+    process.stdout.write(JSON.stringify({ rsig: r.rsig, tip: r.manifest.tip, inSig: r.manifest.inSig, digest: r.manifest.digest, parts: r.manifest.parts, replayMs: r.manifest.replayMs }) + '\n');
+  }).catch(e => { console.error(String(e && e.stack || e).split('\n')[0]); process.exit(1); });
 }
 module.exports = { buildSnapshot, rulesSig, loadBytes, workerFns, replayWorld, encodeWorld, jsonPart, chainInSig, RULES, prune };

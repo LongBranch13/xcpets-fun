@@ -6,7 +6,7 @@
   'use strict';
   var FAIL_KEY = 'xcpets-sync-fail', FLAG_KEY = 'xcpets-sync', SLOW_KEY = 'xcpets-worker-ms';
   var RECHECK_KEY = 'xcpets-snap-recheck', OFF_PREFIX = 'xcpets-snap-off-';
-  var DELTA_MS = 2500, FULL_MS = 5000, SKIP_MS = 10 * 60 * 1000, SEED_MS = 90000, DEPTH = 6;
+  var DELTA_MS = 2500, FULL_MS = 5000, SKIP_MS = 10 * 60 * 1000, SEED_MS = 300000, DEPTH = 6;
   /* same list js/v2-chain.js gives the replay worker, so a quiet recheck loads the same bytes */
   var RULE_SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
   var usedExact = false, pollT = null;
@@ -231,9 +231,13 @@
       return fetch(abs, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) { man._url = abs; return man; });
     });
   }
-  function writeSnapshot(man, api, how) {
+  function writeSnapshot(man, api, how, later) {
     var dir = dirOf(man._url), key = how.exact ? api.idbKey() : man.key;
-    return runWorker(seedFiles(man, dir), key, man.n, man.parts).then(function () { if (how.exact) { usedExact = true; if (desktop()) scheduleRecheck(api); } return how; });
+    return runWorker(seedFiles(man, dir), key, man.n, man.parts).then(function () {
+      if (how.exact) { usedExact = true; window.V2BootSync.justSeeded = true;
+        if (desktop()) { if (later) window.V2BootSync._recheck = function () { scheduleRecheck(api); }; else scheduleRecheck(api); } }
+      return how;
+    });
   }
   function keyRsig(key) { var m = /^(r[0-9a-f]{32})\|/.exec(key || ''); return m ? m[1] : null; }
   function peekAndSeed(api) {
@@ -267,6 +271,27 @@
       }, function () {});
     }, 10000);
   }
+  /* First visit: read the chain, then store the matching snapshot, before the local rebuild starts. */
+  function seedExact(api) {
+    if (!api || !api.state().verified || localOnly() || saveData()) return Promise.resolve(false);
+    if (JSON.stringify((api.state().ops) || []) !== '[]') return Promise.resolve(false);
+    return Promise.resolve(api.rulesSig()).then(function (rsig) {
+      if (!rsig || offFor(rsig)) return false;
+      return Promise.resolve(api.peekWorld()).then(function (saved) {
+        if (saved && saved.key === api.idbKey()) return false;
+        return fetchManifest(api).then(function (man) {
+          var how = acceptManifest(man, api, rsig);
+          if (!how || !how.exact) return false;
+          return writeSnapshot(man, api, how, true).then(function () { return true; });
+        });
+      });
+    }).then(function (v) { return !!v; }, function () { return false; });
+  }
+  function bootFirst(api, next) {
+    if (!enabled() || !api || localOnly() || saveData()) return next();
+    var p = tryLoad(function () { return Promise.resolve(); }, api);
+    return Promise.resolve(p).then(function () { return seedExact(api); }, function () { return false; }).then(function () { return next(); }, function () { return next(); });
+  }
   function arm(api) {
     if (!enabled() || !api || localOnly() || saveData()) return;
     var B = window.V2BootSync; B.ready = new Promise(function (res) {
@@ -299,5 +324,5 @@
     try { w.postMessage({ id: id, scripts: scripts, rows: S.rows, hashes: S.hashes, ops: [], tip: S.tip, dex: S.dex || undefined, idbKey: api.idbKey() }); } catch (e) { try { w.terminate(); } catch (e2) {} }
   }
 
-  window.V2BootSync = { enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, ready: null };
+  window.V2BootSync = { enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, bootFirst: bootFirst, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, ready: null };
 })();

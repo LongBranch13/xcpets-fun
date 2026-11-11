@@ -31,7 +31,10 @@ function createServer(opts) {
   const allow = rateLimit(opts.ratePer10s || +(process.env.XP_RATE_PER_10S || 60));
   const server = http.createServer((req, res) => {
     const ip = req.socket && req.socket.remoteAddress || '';
-    if (!allow(ip)) { send(req, res, 429, { v: 1, error: 'slow down' }, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); return; }
+    let pathOnly = '/'; try { pathOnly = new URL(req.url, 'http://127.0.0.1').pathname; } catch (e) {}
+    /* A first visit fetches every snapshot part. Those files are immutable and are not counted against the short sync limit. */
+    const limited = !/^\/xp\/v1\/world\/r[0-9a-f]{32}\/\d+\//.test(pathOnly);
+    if (limited && !allow(ip)) { send(req, res, 429, { v: 1, error: 'slow down' }, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); return; }
     if (req.method === 'OPTIONS') { cors(res); res.setHeader('Access-Control-Max-Age', '86400'); res.writeHead(204); res.end(); return; }
     if (req.method !== 'GET' && req.method !== 'HEAD') { cors(res); res.setHeader('Allow', 'GET, HEAD, OPTIONS'); res.writeHead(405); res.end(); return; }
     let u; try { u = new URL(req.url, 'http://127.0.0.1'); } catch (e) { send(req, res, 400, { v: 1, error: 'bad url' }); return; }

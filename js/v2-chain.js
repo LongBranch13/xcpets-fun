@@ -65,15 +65,20 @@
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
-  function idbRaw() { return new Promise(function (res) { var done = false, t = setTimeout(function () { done = true; res(null); }, IDB_WAIT_MS);
-    function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, IDB_READ_MS); }
+  function idbRaw() { return new Promise(function (res) {
+    /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
+       they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
+    var seeded = !!(window.V2BootSync && V2BootSync.justSeeded);
+    var openMs = seeded ? 30000 : IDB_WAIT_MS, readMs = seeded ? 120000 : IDB_READ_MS;
+    var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
+    function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
     function finish(v) { if (done) return; done = true; clearTimeout(t); res(v); }
     idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } arm();
       idbGetKey(db, 'world').then(function (v) { if (done) return;
         if (!(v && v.v === 2 && v.root && v.parts > 0)) { try { db.close(); } catch (e) {} finish(v && v.world ? { key: v.key, at: v.at, world: v.world } : null); return; }
         /* one record per turn: a single getAll of every pet was one long task and froze the page */
         var parts = [], keys = [], i = 0;
-        function next() { if (done) return; if (i >= v.parts) { try { db.close(); } catch (e) {} wsDecode(v, parts, keys).then(function (w) { finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); return; }
+        function next() { if (done) return; if (i >= v.parts) { try { db.close(); } catch (e) {} clearTimeout(t); /* decode is in memory now; the read timer must not throw that world away */ wsDecode(v, parts, keys).then(function (w) { finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); return; }
           arm(); idbGetKey(db, 'world:' + i).then(function (part) { if (done) return; if (!part) { try { db.close(); } catch (e) {} finish(null); return; } parts.push(part); keys.push('world:' + i); i++; setTimeout(next, 0); }, function () { try { db.close(); } catch (e) {} finish(null); }); }
         next();
       }, function () { try { db.close(); } catch (e) {} finish(null); });
@@ -139,10 +144,16 @@
    * replaces it (bootShow/armFresh repaint the page). While it shows, js/v2-wallet.js and the inscribe flow wait for the fresh world (updating())
    * and recheck the action against it. Replay inputs and results are unchanged; only what is on screen during the first seconds changes. */
   var provKey = null, storedKey = null;
-  function fromIdb(prov) { if (cache) return Promise.resolve();
+  function fromIdb(prov) {
+    /* A poller can rebuild on the main thread while the snapshot is still downloading. That local world is not the one to burn from. */
+    if (cache && window.V2BootSync && V2BootSync.justSeeded && !S.fromCache) { cache = null; cacheSig = null; }
+    if (cache) return Promise.resolve();
     var gate = window.V2BootSync && V2BootSync.ready; if (gate && typeof gate.then === 'function') { V2BootSync.ready = null; return Promise.resolve(gate).then(function () { return fromIdb(prov); }, function () { return fromIdb(prov); }); }
     wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
-    return idbGet().then(function (v) { end(); if (!v || cache) return;
+    return idbGet().then(function (v) { end();
+      if (!v && window.V2BootSync && V2BootSync.justSeeded && (fromIdb.tries || 0) < 4) { fromIdb.tries = (fromIdb.tries || 0) + 1; return new Promise(function (r) { setTimeout(r, 250); }).then(function () { return fromIdb(prov); }); }
+      if (v) try { V2BootSync.justSeeded = false; } catch (eS) {}
+      if (!v || cache) return;
       if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
         lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
       var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
@@ -493,8 +504,20 @@
   /* nav-cache-1102: a saved copy from a full chain read in this build under 5 min old is shown without waiting for api/boot.json (still a
    * stale copy: S.verified stays false, so burns wait for the re-read). api/boot.json is still read in the background for the feed tip. */
   var LAST_NOW = 5 * 60e3;
-  function boot(then) { if (window.V2BootSync && typeof V2BootSync.arm === 'function') { try { V2BootSync.arm(syncApi()); } catch (e) {} } return bootNow(then); }
+  function boot(then) {
+    var B = window.V2BootSync;
+    if (B && B.bootFirst && B.enabled() && !B.localOnly() && !B.saveData()) {
+      /* Hold the replay slot so a badge/paint timer cannot rebuild every pet while the snapshot is on its way. */
+      wkBusy++; var held = true;
+      function release() { if (!held) return; held = false; wkBusy--; }
+      return B.bootFirst(syncApi(), function () { release(); return bootNow(then); });
+    }
+    return bootNow(then); }
   function bootNow(then) { var st = document.getElementById('v2boot');
+    /* A preview sync already landed, with the snapshot stored when the key matched. Do not replace it with the older feed copy. */
+    if (S.verified && S.rows && S.rows.length && window.V2BootSync && V2BootSync.enabled()) return bootShow(st, then, function () {
+      var f = V2BootSync._recheck; if (f) { V2BootSync._recheck = null; try { f(); } catch (eR) {} }
+    });
     if (fromSession()) return bootShow(st, then, null);
     if (/[?&]fresh=1/.test(location.search)) return whenOpen(function () { run(st, then); });
     whenOpen(refTip); var last = readLast(), age = last ? Date.now() - last.at : -1;

@@ -76,4 +76,15 @@ function buildAnswer(state, query, opt) {
   const etag = '"' + [tip, String(body.tipHash).slice(0, 16), String(dexAns && dexAns.hash || '').slice(0, 16), since, state.mempoolGen || 0].join('-') + '"';
   return { status: 200, etag: etag, body: body };
 }
-module.exports = { buildAnswer, slicesFor, touchedSince, dexAssetsOf, DEPTH, WINDOW };
+/* The hash set every page puts in S.hashes after a sync: burn blocks plus the gate ranges, nothing else.
+ * The snapshot key is inSig of this set, so a device and the builder agree. */
+function pageInputs(state) {
+  const C = bootSync();
+  const gates = state.gates || {};
+  const rows = state.rows || [];
+  const need = C.neededBlocks(rows, state.tip, gates);
+  const hashes = {};
+  need.forEach(b => { if (state.hashes && state.hashes[b]) hashes[b] = state.hashes[b]; });
+  return { rows: rows, hashes: hashes, tip: state.tip, dex: state.dex || null, gates: gates };
+}
+module.exports = { buildAnswer, slicesFor, touchedSince, dexAssetsOf, pageInputs, DEPTH, WINDOW };

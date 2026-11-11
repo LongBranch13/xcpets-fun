@@ -13,6 +13,7 @@ const fs = require('fs'), path = require('path'), http = require('http'), { spaw
 const { upstreams, hostKind, scrub, bootSync, PUBLIC, ROOT } = require('./client');
 const { blank, tick } = require('./follow');
 const { createServer } = require('./server');
+const { pageInputs } = require('./answer');
 const LIM = require('../lib/core-limiter');
 function chainFns() {
   const vm = require('vm');
@@ -79,13 +80,16 @@ function startSnapshot(state, dataDir) {
   if (startSnapshot.running) return; startSnapshot.running = true;
   const st = path.join(dataDir, 'state.json');
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(st, JSON.stringify({ rows: state.rows, hashes: state.hashes, tip: state.tip, dex: state.dex }));
+  const view = pageInputs(state);
+  fs.writeFileSync(st, JSON.stringify({ rows: view.rows, hashes: view.hashes, tip: view.tip, dex: view.dex, gates: view.gates }));
   const out = path.join(dataDir, 'world', 'pending-' + state.tip);
   const args = [path.join(__dirname, 'snapshot.js'), '--state', st, '--out', out];
+  if (process.env.XP_SNAPSHOT_COMPRESS === '0') args.push('--no-compress');
   const cmd = process.platform === 'win32' ? null : 'nice';
   const child = cmd ? spawn(cmd, ['-n', '10', process.execPath, ...args], { stdio: ['ignore', 'pipe', 'pipe'] }) : spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   let buf = ''; child.stdout.on('data', d => { buf += d; });
-  child.on('exit', code => { startSnapshot.running = false; if (code !== 0) return;
+  child.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
+  child.on('exit', code => { startSnapshot.running = false; if (code !== 0) { console.error('snapshot exit ' + code); return; }
     let info; try { info = JSON.parse(buf.trim().split('\n').pop()); } catch (e) { return; }
     const dest = path.join(dataDir, 'world', info.rsig, String(info.tip));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -105,8 +109,9 @@ function main() {
   const httpd = createServer({ getState: () => state, dataDir: dataDir });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
-  let timer = null;
-  async function loop() { try { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public';
+  let timer = null, held = false;
+  async function loop() { try {
+    if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
     if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && (!state.world || state.world.tip !== state.tip)) startSnapshot(state, dataDir);
   } catch (e) { console.error('sync tick failed'); } }
