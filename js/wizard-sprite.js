@@ -63,10 +63,13 @@
     for (var f = 0; f < 3; f++) set(g, xl - 1, y + f, 'y'); set(g, xl - 2, y, 'y'); set(g, xl - 2, y + 2, 'y');
     set(g, xr + 1, y + 1, k); set(g, xr + 1, y + 2, kd); set(g, xr + 2, y + 2, kd); set(g, xr + 1, y, kh); }
   function flame(g, x, y, big) { set(g, x, y, 'O'); set(g, x + 1, y, 'O'); set(g, x, y - 1, 'y'); set(g, x + 1, y - 1, 'O'); set(g, x, y - 2, 'y'); if (big) { set(g, x - 1, y - 1, 'o'); set(g, x + 1, y - 2, 'y'); set(g, x + 1, y - 3, 'y'); set(g, x - 1, y - 3, 'O'); } }
+  /* tucked flame: same fire, but beside the raised fist instead of climbing into the head. A kept headdress (Lord Kek nemes on a Wizard body)
+   * sits in the rows the tall flame used, so the two drew as one torn cluster (Hematoopo #74349). */
+  function flameBeside(g, hx, hy, big) { set(g, hx - 1, hy, 'y'); set(g, hx - 1, hy + 1, 'O'); set(g, hx - 2, hy, 'O'); set(g, hx - 2, hy + 1, 'y'); if (big) { set(g, hx - 3, hy, 'y'); set(g, hx - 3, hy + 1, 'o'); } }
   /* gear (optional, display only): { head|face|back|hand|body|feet: { label, item, cols: ['#hex', '#hex'] } }. Anchors: head = head top row
    * (faceY) / columns fx..fx+fw-1; face = eye row faceY+3; back = behind the robe; body = robe recolour; hand = the RAISED fist (hx, hy; the
    * piece replaces the flame; the sign is held low-left); weapon = the Bitcoin staff in the right hand (own slot); feet = two shoes on the carpet under the hem. */
-  function draw(stage, frame, gear) {
+  function draw(stage, frame, gear, opts) {
     var g = grid(), bob = [0, -1, -1, 0][frame || 0], G = gear || {};
     function kind(sl) { return G[sl] ? String(G[sl].label || G[sl].item || '').toLowerCase() : ''; }
     function col(sl, i) { var x = G[sl], c = x && x.cols; return (c && (c[i || 0] || c[0])) || (i ? '#c49a1a' : '#ffd23f'); }
@@ -106,7 +109,7 @@
     line(g, ax0, ay0, hx, hy + 2, 'h'); line(g, ax0 + 1, ay0, hx + 1, hy + 2, 'R'); line(g, ax0 + 1, ay0 + 1, hx + 2, hy + 2, 'r'); line(g, ax0 + 2, ay0 + 1, hx + 2, hy + 3, 'r');
     set(g, hx, hy, 'F'); set(g, hx + 1, hy, 'f'); set(g, hx, hy + 1, 'F'); set(g, hx + 1, hy + 1, 'F');
     var lowHand = G.hand && /^(sig-wizard-sign|sig-wizard-staff)$/.test(G.hand.item) || (G.hand && /sword|spear|katana|blade|axe|scepter|rapier|baton|hammer|pole/.test(kind('hand')) && G.hand.item !== 'wiz-paint-staff');
-    if (!G.hand || lowHand) flame(g, hx, hy - 1, stage >= 3);
+    if (!G.hand || lowHand) { if (opts && opts.tuck) flameBeside(g, hx, hy, stage >= 3); else flame(g, hx, hy - 1, stage >= 3); }
     // oversized square head: loose orange hair at the back, ear, dot eyes, pink nose, smile
     for (var r0 = 0; r0 < D.hh; r0++) hline(g, fx, fe, faceY + r0, 'S');
     set(g, fe, faceY + D.hh - 1, 's'); hline(g, fx, fx + 1, faceY + D.hh - 1, 's');
@@ -167,7 +170,7 @@
     return o;
   }
   /** render(stage, frame, bg, gear?) -> { width, height, data: [RGBA...] } */
-  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL; if (opts && opts.pal) P = Object.assign({}, P, opts.pal); /* opts.pal: per-key colour override (Wizard hybrids, wizard-hybrids branch) */
+  function render(stage, frame, bg, gear, opts) { var g = draw(stage, frame, gear, opts), d = [], B = hexRgb(bg || '#142018'), P = opts && opts.community ? Object.assign({}, PAL, PAL_COMMUNITY) : PAL; if (opts && opts.pal) P = Object.assign({}, P, opts.pal); /* opts.pal: per-key colour override (Wizard hybrids, wizard-hybrids branch) */
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var k = g[y][x], c = k ? hexRgb(P[k] || k) : B; d.push(c[0], c[1], c[2], 255); } return { width: N, height: N, data: d }; }
   function frames(stage, bg, gear, opts) { return [0, 1, 2, 3].map(function (f) { return render(stage, f, bg, gear, opts); }); }
   return { STAGES: STAGES, PAL: PAL, PAL_COMMUNITY: PAL_COMMUNITY, WIZARD_HAT: WIZARD_HAT, render: render, frames: frames, draw: draw };
