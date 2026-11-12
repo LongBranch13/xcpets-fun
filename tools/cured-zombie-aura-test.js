@@ -182,18 +182,35 @@ function peepo(id, fedFlag) {
   return p;
 }
 function countGold(fr) { let n = 0; const d = fr[0].data; for (let i = 0; i < 1024; i++) if (eq(px(d, i), LINE)) n++; return n; }
-t('petFrames: cured Peepo gets the aura, a normal zombie does not, and mythFx is skipped for the cured one', () => {
+t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie stays dead', () => {
   const w = p => ({ items: {}, pets: [p], byId: { [p.id]: p }, tip: 975606 });
+  const alive = peepo(50982, false); delete alive.zombie;
+  alive.stage = 2; alive.stageName = 'Juvenile'; alive.care = 69;
+  const curedPet = peepo(50982, true);
+  curedPet.art = alive.art; curedPet.stage = 2; curedPet.stageName = 'Juvenile'; curedPet.care = 69;
+  const aliveFr = full.V2Render.petFrames(alive, w(alive), { noHunger: true });
   mythCalls = 0;
-  const curedFr = full.V2Render.petFrames(peepo(50982, true), w(peepo(50982, true)), { noHunger: true });
+  const curedFr = full.V2Render.petFrames(curedPet, w(curedPet), { noHunger: true });
   const curedCalls = mythCalls;
+  let bodyDiff = 0, auraPx = 0;
+  const auraCol = c => eq(c, LINE) || eq(c, SPARK) || eq(c, HALO) || eq(c, HALO2);
+  for (let i = 0; i < 1024; i++) {
+    const a = px(aliveFr[0].data, i), c = px(curedFr[0].data, i);
+    if (eq(a, c)) continue;
+    if (auraCol(c)) auraPx++; else bodyDiff++;
+  }
+  assert.strictEqual(bodyDiff, 0, 'living face and colours stay; only the aura is added');
+  assert.ok(auraPx > 20, 'aura pixels ' + auraPx);
+  assert.ok(countGold(curedFr) > 15);
   mythCalls = 0;
   const normFr = full.V2Render.petFrames(peepo(12044, false), w(peepo(12044, false)), { noHunger: true });
-  assert.ok(countGold(curedFr) > 15, 'cured gold ' + countGold(curedFr));
   assert.strictEqual(countGold(normFr), 0);
   assert.strictEqual(curedCalls, 0);
   assert.ok(mythCalls > 0, 'normal zombie still takes the electric aura');
-  assert.strictEqual(full.V2Zombies.cured(peepo(50982, true), w(peepo(50982, true))), true);
+  let deadTint = 0;
+  for (let i = 0; i < 1024; i++) if (!eq(px(normFr[0].data, i), px(aliveFr[0].data, i))) deadTint++;
+  assert.ok(deadTint > 30, 'a normal zombie is still the dead look');
+  assert.strictEqual(full.V2Zombies.cured(curedPet, w(curedPet)), true);
   assert.strictEqual(full.V2Zombies.cured(peepo(12044, false), w(peepo(12044, false))), false);
 });
 t('rules file and replay worker are not part of this display change', () => {

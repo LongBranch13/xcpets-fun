@@ -3,7 +3,7 @@
  *   God (resurrected pets and God-born babies): a shining body (tint + glow aura + light sweep) plus 2 of 6 divine effects,
  *     a light tint and a halo style from sha256("XCPETS:god-look:" + id) (60 looks).
  *   Mythic God: its Pantheon seat recipe, a stronger shine, Twin Moons and the violet starlight trace (replaces the electric aura).
- *   Mythic-fed (cured) zombie: its own aura, a solid pale-gold outline and a soft teal halo (8-bit, never blended into the backdrop).
+ *   Mythic-fed (cured) zombie: the fully alive sprite (no rot, no dead eyes) plus its own aura, a solid pale-gold outline and a soft teal halo.
  *   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
  * God looks for existing Gods are on right away (owner Oct 31 2026 9:01 PM CT), not tied to the Mythic gate. ?godlook=0 turns them off (?godlook=1 kept, no-op).
  * Sprites carry no text. Effects are 8-frame loops on top of the pet's own idle frames. Loaded after js/v2-zombies.js. */
@@ -171,8 +171,8 @@
         img[j] = (k % 4 === 0) ? [70, 80, 100] : [112, 128, 152]; if ((seg * 7 + f) % 23 === 0 && k % 4 === 1) img[j] = [170, 190, 220]; /* a rare dying spark */ });
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
-  /* Cured (Mythic-fed) aura. Display only. Solid palette pixels, never blended into the card (the old cyan mix
-   * read as a muddy fringe, and the hot-pixel wash painted bars across the face). A clean pale-gold outline,
+  /* Cured (Mythic-fed) aura, painted on the living sprite (the zombie look is not applied to these pets).
+   * Display only. Solid palette pixels, never blended into the card. A clean pale-gold outline,
    * a soft teal halo one pixel further out, and a gentle step of which halo pixels are the bright ones.
    * That step rides the pet's existing idle frames: no extra timer, no CSS filter, so a large wallet stays cheap.
    * prefers-reduced-motion: the same calm halo on every frame, no walking spark. Bitcoin red on the body is not touched.

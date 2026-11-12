@@ -2,6 +2,8 @@
  * The replay gives every risen pet a p.zombie record (isZ). This file only changes how it LOOKS and what the UI offers:
  *  - the sprite gets the shared dead look (js/v2-zombie-look.js) and is drawn at the Mythic pose with the Mythic aura, dim and rot-green
  *    (owner Oct 28 2026: "in my pets looking mythic but zombie"); the stage chip still shows the engine's real stage;
+ *  - a Mythic-fed zombie is the exception (owner Nov 12 2026): it is cured, so it is drawn as the fully alive pet at its real stage.
+ *    No dead eyes, rot, flies or stink. js/v2-mythic-god.js adds its own aura on that living sprite;
  *  - no normal meals (hungry false, so Feed all and the feed queue skip it); a hunger bar drains instead: full at the raise or the last
  *    zombie meal, feral after 432 blocks, crumbles to dust 432 blocks after that unless it eats pets (pet:zfeed) or wins a hunt.
  * Never adds the fire aura, the grant flame crown or the edition gold frame. ?zombies=off turns the look off for a page view. Display only. */
@@ -10,7 +12,7 @@
   var OFF = /[?&]zombies=off\b/.test((window.location && window.location.search) || '');
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
   /* Mythic-fed (cured forever): isMythicFed, or mgView().fed when that helper is the one present. No new state.
-   * These pets do not wear the sickly electric aura; js/v2-mythic-god.js draws their own. */
+   * Drawn as the living pet. The cured aura is added later, in js/v2-mythic-god.js. */
   function cured(p, w) { var v = V();
     try { if (typeof v.isMythicFed === 'function') return !!v.isMythicFed(p); } catch (e) {}
     try { if (w && typeof v.mgView === 'function') { var mv = v.mgView(w, p, (w.tip || 0) + 1); return !!(mv && mv.fed); } } catch (e) {}
@@ -45,20 +47,19 @@
   var DONE = typeof WeakMap !== 'undefined' ? new WeakMap() : null, ZF = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
   function keyed(pf, p, w, extra, col) { var a = Object.assign({}, p.art || {}, { background: 'solid', bgColor: col, pattern: 'none' });
     return pf(Object.assign({}, p, { zombie: null, art: a, mutation: null, shows: null }), w, extra); }
-  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false, cu = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} try { cu = cured(p, w); } catch (e) { cu = false; } var hit = DONE.get(fr); if (hit && hit.__fe === fe && !!hit.__cu === cu) return hit; var A, B;
+  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} var hit = DONE.get(fr); if (hit && hit.__fe === fe) return hit; var A, B;
     try { A = keyed(pf, p, w, extra, '#ff00fe'); B = keyed(pf, p, w, extra, '#00ff01'); } catch (e) { return fr; }
     if (!A || !B || !A.length || !B.length) return fr; var KA = [], KB = [], out;
-    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var zopt = { eyes: (Z.gameEyes && Z.gameEyes(p.art, p.stage, fi)) || (Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null), feral: fe }; if (cu) { zopt.extras = false; zopt.rim = false; } /* cured: drop the flies, stink and patchy olive rim; the blessed aura replaces them */
-        var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, zopt);
-        if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF && !cu) ZF.add(g); return g; });
-      if (!cu && KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
+    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: (Z.gameEyes && Z.gameEyes(p.art, p.stage, fi)) || (Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null), feral: fe });
+        if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF) ZF.add(g); return g; });
+      if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }
-    try { out.__fe = fe; out.__cu = cu; } catch (e) {} DONE.set(fr, out); return out; }
-  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p)) return pf0.apply(this, arguments);
+    try { out.__fe = fe; } catch (e) {} DONE.set(fr, out); return out; }
+  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p) || cured(p, w)) return pf0.apply(this, arguments); /* cured: the living sprite, real stage, no dead look */
     /* no Mythic smug hand on zombies (owner Oct 29 2026): the zombie's frames and the keyed copies twist() reads are all drawn inside V2ZombieLook.noHand */
     var q = p.stage === 5 ? p : Object.assign({}, p, { stage: 5, stageName: 'Mythic' }), a2 = [q].concat([].slice.call(args, 1)); /* drawn at the Mythic pose (display only) */
     var run = function () { return twist(pf0.apply(self, a2), q, w, extra, pf0); }; return Z && Z.noHand ? Z.noHand(run) : run(); }; }
-  /* a normal zombie keeps the Mythic electric aura, but sickly and dim (a Mythic-fed zombie skips it; it has its own aura). The V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
+  /* a normal zombie keeps the Mythic electric aura, but sickly and dim. A Mythic-fed pet never reaches this (it is drawn alive). The V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
    * and the zombie's canvas + its aura overlay get a class (faint rot glow). Display only. */
   var LK = window.V2Looks;
   if (LK && !OFF) { var my0 = LK.myth; if (typeof my0 === 'function') LK.myth = function (img) { var r = my0.apply(this, arguments); if (r && ZF && ZF.has(img)) { r = Object.assign({}, r, { sick: true }); } return r; };
