@@ -1,5 +1,5 @@
 {
- "lastBlock": 975601,
+ "lastBlock": 975603,
  "count": 350,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -3025,7 +3025,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 74340,
@@ -3433,7 +3433,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 148182,
@@ -3445,7 +3445,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 2393,
@@ -3625,7 +3625,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 2149,
@@ -3889,7 +3889,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 2081,
@@ -3925,7 +3925,7 @@
    "species": "hyb3:kek:snibby:dodo",
    "speciesLabel": "Keknibdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 158204,
@@ -3937,7 +3937,7 @@
    "species": "hyb:dodo:nakamoto",
    "speciesLabel": "Doto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 2482,
