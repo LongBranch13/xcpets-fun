@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* HatchBot Pantheon hook. NOT ENABLED, NOT WIRED INTO THE LISTENER, NEVER RUN BY THE SITE, does not touch the laptop bot.
- * messages(w) -> one announcement per filled seat. No wallet addresses. send() posts ONLY when BOTH are set:
- *   HATCHBOT_PANTHEON=1   (env flag; unset means disabled)
- *   cfg.enabled === true  plus a token and a chat
- * The default is disabled. Dedupe is the seat key (seat number + tx): tick() skips keys already in seen.
+/* HatchBot Pantheon hook. The site never runs this. tools/hatchbot-listen.js is the listener the HatchBot
+ * server runs. It stays quiet unless BOTH are set:
+ *   HATCHBOT_PANTHEON=1   (env)
+ *   enabled: true         (config key, plus token and chat to actually post)
+ * The first enabled look records seats already filled and posts nothing. A later seat posts once.
+ * The same seat tx never posts twice. No wallet addresses.
  *   node tools/hatchbot-pantheon.js --print   (prints one example text from V2Pantheon.verse; sends nothing)
  */
 'use strict';
@@ -48,22 +49,36 @@ async function send(text, cfg) {
   const r = await fetch('https://api.telegram.org/bot' + cfg.token + '/sendMessage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: cfg.chat, text: text, disable_web_page_preview: true }) });
   return { sent: r.ok, status: r.status };
 }
-/* tick: post each new seat once. seen = keys already posted. A failed or refused send is not marked seen. */
+/* seen array = a baseline that already happened. store.baseline false, or neither, = first look. */
+function stateOf(o) {
+  if (o.store && o.store.baseline === true) return { baseline: true, keys: o.store.keys || [] };
+  if (o.store && o.store.baseline === false) return { baseline: false, keys: o.store.keys || [] };
+  if (Array.isArray(o.seen)) return { baseline: true, keys: o.seen };
+  return { baseline: false, keys: [] };
+}
+/* tick: first enabled look records seats already filled and posts nothing. After that, only a seat
+ * whose tx is not in the baseline is posted, and only once. A failed send is not marked seen. */
 async function tick(o) {
   o = o || {};
-  if (!envOn() || o.enabled !== true) return { sent: false, posted: [], skipped: [], reason: 'disabled' };
-  const seen = new Set(o.seen || []), posted = [], skipped = [];
-  const deliver = o.send || (t => send(t, o.cfg));
-  for (const m of messages(o.w, o)) {
+  const st = stateOf(o);
+  if (!envOn() || o.enabled !== true) return { sent: false, posted: [], skipped: [], baselined: [], reason: 'disabled', seen: st.keys.slice(), baseline: st.baseline };
+  const seen = new Set(st.keys), list = messages(o.w, o);
+  if (!st.baseline) {
+    const baselined = [];
+    list.forEach(m => { if (!seen.has(m.key)) { seen.add(m.key); baselined.push(m.key); } });
+    return { sent: false, posted: [], skipped: baselined, baselined: baselined, reason: 'baseline', seen: [...seen], baseline: true };
+  }
+  const posted = [], skipped = [], deliver = o.send || (t => send(t, o.cfg));
+  for (const m of list) {
     if (seen.has(m.key)) { skipped.push(m.key); continue; }
     if (!guard(m.text)) { skipped.push(m.key); continue; }
     let r; try { r = await deliver(m.text); } catch (e) { continue; }
     if (r && r.sent === false) continue;
     seen.add(m.key); posted.push(m.key);
   }
-  return { sent: posted.length > 0, posted: posted, skipped: skipped, seen: [...seen] };
+  return { sent: posted.length > 0, posted: posted, skipped: skipped, baselined: [], reason: posted.length ? 'posted' : 'quiet', seen: [...seen], baseline: true };
 }
-module.exports = { DEFAULT, ENV, WIRED: false, messages, guard, send, tick, textFor, envOn };
+module.exports = { DEFAULT, ENV, WIRED: true, messages, guard, send, tick, textFor, envOn, stateOf };
 if (require.main === module && process.argv.includes('--print')) {
   const c = engine();
   const seat = { n: 10, petId: 8033, name: 'Nefu', species: 'dodo', block: 983199, tx: 'example', owner: 'bc1qexampleowneraddressshouldnotappear', eatenBy: 9, eatenAt: 974000 };
