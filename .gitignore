@@ -9,3 +9,6 @@
 
 # offline tool output (tools/cross-sheet.js)
 /out/
+
+# HatchBot Pantheon seen file (tools/hatchbot-listen.js). Kept on the server, not in git.
+/var/
