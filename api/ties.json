@@ -1,6 +1,6 @@
 {
- "lastBlock": 975584,
- "count": 331,
+ "lastBlock": 975588,
+ "count": 337,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3974,6 +3974,78 @@
    "speciesLabel": "Lenny",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 88550,
+   "asset": "A17880069099599035771",
+   "tiedBlock": 975587,
+   "tiedTx": "03fc29497401bf9a8c22f26398d5eae6331e2201133a05516d18f239f09b8f13",
+   "kind": "deed",
+   "name": "Donoyub",
+   "species": "hyb:dodo:mumu",
+   "speciesLabel": "Domu (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 88551,
+   "asset": "A11594813564420049529",
+   "tiedBlock": 975587,
+   "tiedTx": "f9d2e10e745dc5c622eed8db067676f5999834d04459caaa8533eae5b184fcb7",
+   "kind": "deed",
+   "name": "Nujab",
+   "species": "hyb:kevin:snibby",
+   "speciesLabel": "Kebby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 122878,
+   "asset": "A13033458584434856635",
+   "tiedBlock": 975587,
+   "tiedTx": "b46b73dcfcd6e0076284b7545819ead19f1c69a7d0ae132e8b9e531c130d1c28",
+   "kind": "deed",
+   "name": "Jojopiru",
+   "species": "hyb:pepe:snibby",
+   "speciesLabel": "Pebby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 122879,
+   "asset": "A17758928785620541445",
+   "tiedBlock": 975587,
+   "tiedTx": "bf89815d3df39c8339ad6309d9da78f0c8b4d717136fc561d2bff2e3ffa42307",
+   "kind": "deed",
+   "name": "Gefabapip",
+   "species": "hyb:bobo:pepe",
+   "speciesLabel": "Bope (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 122880,
+   "asset": "A8995667500751510387",
+   "tiedBlock": 975587,
+   "tiedTx": "e47016f181bb263077a5a95aabd0388b3c31f0799e9f9a402f034d8706518a89",
+   "kind": "deed",
+   "name": "Roshimen",
+   "species": "hyb:nakamoto:kek",
+   "speciesLabel": "Nakek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 122881,
+   "asset": "A2792484317787615891",
+   "tiedBlock": 975587,
+   "tiedTx": "3120555eb1adcf898a8338767008faaf3fb0e050aef93ecd24de477b54213963",
+   "kind": "deed",
+   "name": "Yafalu",
+   "species": "hyb:peepo:dodo",
+   "speciesLabel": "Peedo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
   }
  ]
 }
