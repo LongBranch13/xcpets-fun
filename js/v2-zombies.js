@@ -9,6 +9,12 @@
   var M = window.V2Mock, R = window.V2Render, V = function () { return window.V2Rules || window.V2 || {}; };
   var OFF = /[?&]zombies=off\b/.test((window.location && window.location.search) || '');
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
+  /* Mythic-fed (cured forever): isMythicFed, or mgView().fed when that helper is the one present. No new state.
+   * These pets do not wear the sickly electric aura; js/v2-mythic-god.js draws their own. */
+  function cured(p, w) { var v = V();
+    try { if (typeof v.isMythicFed === 'function') return !!v.isMythicFed(p); } catch (e) {}
+    try { if (w && typeof v.mgView === 'function') { var mv = v.mgView(w, p, (w.tip || 0) + 1); return !!(mv && mv.fed); } } catch (e) {}
+    return false; }
   function apply(w) { if (!w || typeof w !== 'object' || !w.pets || w.__zb === w.tip) return w; w.__zb = w.tip;
     w.pets.forEach(function (p) { if (!isZ(p)) return; p.hungry = false; p.nextMeal = 0; p.fedToday = false; }); return w; }
   if (M && typeof M.world === 'function') { var w0 = M.world; M.world = function () { return apply(w0.apply(this, arguments)); };
@@ -39,19 +45,20 @@
   var DONE = typeof WeakMap !== 'undefined' ? new WeakMap() : null, ZF = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
   function keyed(pf, p, w, extra, col) { var a = Object.assign({}, p.art || {}, { background: 'solid', bgColor: col, pattern: 'none' });
     return pf(Object.assign({}, p, { zombie: null, art: a, mutation: null, shows: null }), w, extra); }
-  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} var hit = DONE.get(fr); if (hit && hit.__fe === fe) return hit; var A, B;
+  function twist(fr, p, w, extra, pf) { var Z = window.V2ZombieLook; if (!DONE || !Z || !fr || !fr.length || !fr[0] || !fr[0].data) return fr; var fe = false, cu = false; try { var hh = hunger(p, w); fe = !!(hh && hh.feral); } catch (e) {} try { cu = cured(p, w); } catch (e) { cu = false; } var hit = DONE.get(fr); if (hit && hit.__fe === fe && !!hit.__cu === cu) return hit; var A, B;
     try { A = keyed(pf, p, w, extra, '#ff00fe'); B = keyed(pf, p, w, extra, '#00ff01'); } catch (e) { return fr; }
     if (!A || !B || !A.length || !B.length) return fr; var KA = [], KB = [], out;
-    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, { eyes: (Z.gameEyes && Z.gameEyes(p.art, p.stage, fi)) || (Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null), feral: fe });
-        if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF) ZF.add(g); return g; });
-      if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
+    try { out = fr.map(function (f, fi) { if (!f || !f.data || f.data.length !== 4096) return f; var zopt = { eyes: (Z.gameEyes && Z.gameEyes(p.art, p.stage, fi)) || (Z.starEyes ? Z.starEyes(p.art, p.stage, fi) : null), feral: fe }; if (cu) { zopt.extras = false; zopt.rim = false; } /* cured: drop the flies, stink and patchy olive rim; the blessed aura replaces them */
+        var r = Z.frame(f.data, A[fi % A.length].data, B[fi % B.length].data, p.id, fi, fr.length, zopt);
+        if (!r) return f; KA.push({ width: 32, height: 32, data: r.ka }); KB.push({ width: 32, height: 32, data: r.kb }); var g = { width: 32, height: 32, data: r.img }; if (f.pid != null) g.pid = f.pid; if (ZF && !cu) ZF.add(g); return g; });
+      if (!cu && KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }
-    try { out.__fe = fe; } catch (e) {} DONE.set(fr, out); return out; }
+    try { out.__fe = fe; out.__cu = cu; } catch (e) {} DONE.set(fr, out); return out; }
   if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p)) return pf0.apply(this, arguments);
     /* no Mythic smug hand on zombies (owner Oct 29 2026): the zombie's frames and the keyed copies twist() reads are all drawn inside V2ZombieLook.noHand */
     var q = p.stage === 5 ? p : Object.assign({}, p, { stage: 5, stageName: 'Mythic' }), a2 = [q].concat([].slice.call(args, 1)); /* drawn at the Mythic pose (display only) */
     var run = function () { return twist(pf0.apply(self, a2), q, w, extra, pf0); }; return Z && Z.noHand ? Z.noHand(run) : run(); }; }
-  /* a zombie keeps the Mythic electric aura, but sickly and dim: the V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
+  /* a normal zombie keeps the Mythic electric aura, but sickly and dim (a Mythic-fed zombie skips it; it has its own aura). The V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
    * and the zombie's canvas + its aura overlay get a class (faint rot glow). Display only. */
   var LK = window.V2Looks;
   if (LK && !OFF) { var my0 = LK.myth; if (typeof my0 === 'function') LK.myth = function (img) { var r = my0.apply(this, arguments); if (r && ZF && ZF.has(img)) { r = Object.assign({}, r, { sick: true }); } return r; };
@@ -77,5 +84,5 @@
       '.zb-feed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.zb-feed .zb-ml{display:flex;gap:4px;align-items:center;color:#a7b48e;min-width:0}.zb-feed select{max-width:150px;min-width:0}.zb-pickbox{flex:1 1 100%;min-width:0}.zb-pickbox summary{cursor:pointer;color:#c9d6a9}.zb-warn{color:#e3c27a;margin:4px 0}.zb-list{max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding:4px;border:1px solid #3b4430;border-radius:6px}.zb-opt{display:flex;gap:6px;align-items:center;font-size:12px}.zb-pend{flex:1 1 100%;color:#e3c27a}.zb-feedbtn:disabled{opacity:.5;cursor:not-allowed}.zb-dhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}.zb-other{margin-top:6px}' +
       '.zb-step{flex:1 1 100%;margin-top:8px;padding:8px;border:1px solid #3b4430;border-radius:8px;background:#10160e}.zb-h{margin:0 0 4px;font-size:14px;line-height:1.3;color:#e7f6c9}.zb-stepnote{margin:0 0 6px;color:#d5e4b8}.zb-feed .zb-feedbtn{flex:1 1 100%;min-height:42px}.mg-unl.zb-quiet{border:0;background:transparent;padding:0}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
-  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, statusLine: statusLine, span: span };
+  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, cured: cured, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, statusLine: statusLine, span: span };
 })();

@@ -3,7 +3,8 @@
  *   God (resurrected pets and God-born babies): a shining body (tint + glow aura + light sweep) plus 2 of 6 divine effects,
  *     a light tint and a halo style from sha256("XCPETS:god-look:" + id) (60 looks).
  *   Mythic God: its Pantheon seat recipe, a stronger shine, Twin Moons and the violet starlight trace (replaces the electric aura).
- *   Mythic-fed zombie: cyan eyes and drool, a dotted cyan glow.   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
+ *   Mythic-fed (cured) zombie: its own aura, a solid pale-gold outline and a soft teal halo (8-bit, never blended into the backdrop).
+ *   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
  * God looks for existing Gods are on right away (owner Oct 31 2026 9:01 PM CT), not tied to the Mythic gate. ?godlook=0 turns them off (?godlook=1 kept, no-op).
  * Sprites carry no text. Effects are 8-frame loops on top of the pet's own idle frames. Loaded after js/v2-zombies.js. */
 (function () {
@@ -160,23 +161,64 @@
       if (fx.indexOf('C') >= 0) clouds(img, A, f, P, true);
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; g.godLook = true; out.push(g); }
     return out; }
-  /* Mythic-fed zombie: the swallowed Mythic light (cyan eyes + drool, a dotted cyan glow). Mythic zombie: a dead, broken grey-blue trace. */
-  var CY = [96, 236, 255], CY2 = [40, 150, 190];
-  function isHot(c) { return (c[0] > 150 && c[0] > c[1] * 1.8 && c[0] > c[2] * 1.8) || (c[1] > 170 && c[1] > c[0] * 1.4 && c[1] > c[2] * 1.6); }
-  function zFrames(fr, KA, KB, kind, p) { var out = [], n = Math.max(NF, fr.length);
+  /* Mythic zombie: a dead, broken grey-blue trace. Mythic-fed uses curedFrames (its own aura), not this trace and not the old cyan wash. */
+  function zFrames(fr, KA, KB, kind, p) {
+    if (kind === 'fed') return curedFrames(fr, KA, KB, p);
+    var out = [], n = Math.max(NF, fr.length);
     for (var f = 0; f < n; f++) { var src = fr[f % fr.length], a = KA[f % KA.length], b = KB[f % KB.length]; if (!src || !src.data || src.data.length !== 4096 || !a || !b) return null;
       var on = silOf(a.data, b.data), img = toImg(src.data), R2 = rim(on);
-      if (kind === 'fed') { for (var i = 0; i < 1024; i++) if (on[i] && isHot(img[i]) && !badge(i % 32, (i / 32) | 0)) { var c = img[i], l = Math.max(c[0], c[1]) / 255; img[i] = mix(CY2, [200, 250, 255], Math.min(1, l * 0.9 + (f % 4 === 1 ? 0.15 : 0))); }
-        R2.forEach(function (q, k) { var j = q[1] * 32 + q[0], ph = (k + f) % 3; img[j] = ph === 0 ? (f % 4 === 2 && k % 6 === 0 ? WH : CY) : mix(img[j], CY2, ph === 1 ? 0.35 : 0.15); }); }
-      else { R2.forEach(function (q, k) { var j = q[1] * 32 + q[0], seg = Math.floor(k / 4) + (p.id | 0); if (seg % 3 === 2) return; /* broken: every third stretch is gone */
-          img[j] = (k % 4 === 0) ? [70, 80, 100] : [112, 128, 152]; if ((seg * 7 + f) % 23 === 0 && k % 4 === 1) img[j] = [170, 190, 220]; /* a rare dying spark */ }); }
+      R2.forEach(function (q, k) { var j = q[1] * 32 + q[0], seg = Math.floor(k / 4) + (p.id | 0); if (seg % 3 === 2) return; /* broken: every third stretch is gone */
+        img[j] = (k % 4 === 0) ? [70, 80, 100] : [112, 128, 152]; if ((seg * 7 + f) % 23 === 0 && k % 4 === 1) img[j] = [170, 190, 220]; /* a rare dying spark */ });
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
+  /* Cured (Mythic-fed) aura. Display only. Solid palette pixels, never blended into the card (the old cyan mix
+   * read as a muddy fringe, and the hot-pixel wash painted bars across the face). A clean pale-gold outline,
+   * a soft teal halo one pixel further out, and a gentle step of which halo pixels are the bright ones.
+   * That step rides the pet's existing idle frames: no extra timer, no CSS filter, so a large wallet stays cheap.
+   * prefers-reduced-motion: the same calm halo on every frame, no walking spark. Bitcoin red on the body is not touched.
+   * Distinct from a normal zombie (no halo), a Mythic (electric cyan line), a Mythic zombie (broken grey-blue trace)
+   * and a Mythic God (body shine, violet starlight, moons). */
+  var CURED = {
+    line: [255, 236, 176], spark: [255, 252, 232],
+    halo: [112, 214, 198], haloSoft: [64, 150, 142],
+    pupil: [255, 244, 196], drip: [176, 236, 214]
+  };
+  var CURED_FROM = [[214, 255, 168], [150, 214, 96], [150, 210, 92], [214, 255, 150]]; /* zombie pupil + drool, not the rot skin */
+  function reducedMotion() { try { var mm = window.matchMedia; return !!(mm && mm.call(window, '(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  function isRedPx(c) { return c[0] >= 140 && c[0] > c[1] + 40 && c[0] > c[2] + 40; } /* Bitcoin red stays red; never shifted toward orange */
+  function nearAcc(c, t) { return Math.abs(c[0] - t[0]) <= 4 && Math.abs(c[1] - t[1]) <= 4 && Math.abs(c[2] - t[2]) <= 4; }
+  function blessAccent(c) { if (!c || isRedPx(c)) return null; for (var i = 0; i < CURED_FROM.length; i++) if (nearAcc(c, CURED_FROM[i])) return i < 2 ? CURED.pupil : CURED.drip; return null; }
+  function curedFrames(fr, KA, KB) { var out = [], n = Math.max(NF, fr.length), still = reducedMotion();
+    for (var f = 0; f < n; f++) { var src = fr[f % fr.length], a = KA[f % KA.length], b = KB[f % KB.length]; if (!src || !src.data || src.data.length !== 4096 || !a || !b) return null;
+      var on = silOf(a.data, b.data), img = toImg(src.data), ring = [], halo = [], inR = new Uint8Array(1024), i, x, y;
+      for (i = 0; i < 1024; i++) { if (!on[i] || badge(i % 32, (i / 32) | 0)) continue; var acc = blessAccent(img[i]); if (acc) img[i] = acc; }
+      var cand = [];
+      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { if (on[y * 32 + x] || badge(x, y)) continue;
+        if (onAt(on, x + 1, y) || onAt(on, x - 1, y) || onAt(on, x, y + 1) || onAt(on, x, y - 1)) cand.push(y * 32 + x); }
+      /* a pixel with pet on both sides is a bridge across a gap (between the eyes, a split brow), not the outline.
+         Same rule as the Mythic electric line (mythRimOuter). If that would erase the whole ring, keep it. */
+      for (i = 0; i < cand.length; i++) { var bi = cand[i], bx = bi % 32, by = (bi / 32) | 0, L = false, Rgt = false, dd;
+        for (dd = 1; dd < 32 && !(L && Rgt); dd++) { if (bx - dd >= 0 && on[by * 32 + bx - dd]) L = true; if (bx + dd < 32 && on[by * 32 + bx + dd]) Rgt = true; }
+        if (!(L && Rgt)) ring.push(bi); }
+      if (!ring.length) ring = cand;
+      for (i = 0; i < ring.length; i++) inR[ring[i]] = 1;
+      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { var hi = y * 32 + x; if (on[hi] || inR[hi] || badge(x, y)) continue;
+        if ((x < 31 && inR[hi + 1]) || (x > 0 && inR[hi - 1]) || (y < 31 && inR[hi + 32]) || (y > 0 && inR[hi - 32])) halo.push(hi); }
+      var sp = (!still && ring.length) ? (Math.floor(f * ring.length / NF) % ring.length) : -1, shift = still ? 0 : (f % NF);
+      for (i = 0; i < ring.length; i++) img[ring[i]] = i === sp ? CURED.spark : CURED.line;
+      for (i = 0; i < halo.length; i++) img[halo[i]] = ((i + shift) & 1) ? CURED.haloSoft : CURED.halo;
+      var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
+    return out; }
+  /* isMythicFed first (a pure read). mgView().fed only if that helper is missing. No new pet state. */
+  function fedOf(p, w) { var v = V();
+    try { if (typeof v.isMythicFed === 'function') return !!v.isMythicFed(p); } catch (e) {}
+    try { if (w && typeof v.mgView === 'function') { var mv = v.mgView(w, p); return !!(mv && mv.fed); } } catch (e) {}
+    return false; }
   /* ---------- which look a pet gets ---------- */
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
   function godBorn(w, p) { var v = V(); try { return !!(v.godBornOf && v.godBornOf(w, p)); } catch (e) { return false; } }
   function lookOf(p, w) { if (!p) return null;
-    if (isZ(p)) { if (p.zombie.mfed) return { z: 'fed' }; if (p.mgDead) return { z: 'mythic' }; return null; }
+    if (isZ(p)) { if (fedOf(p, w)) return { z: 'fed' }; if (p.mgDead) return { z: 'mythic' }; return null; }
     if (p.mythicGod) return seatLook(p.mythicGod.seat || 1);
     if (!gateOn(w)) return null;
     if (p.resurrected || godBorn(w, p)) return godMix(p.id);
@@ -214,5 +256,5 @@
       '.mg-dlg-warn{color:#ffb4a8;font-weight:600}.mg-name{width:100%;margin-top:6px}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
   window.V2MythicGod = { on: gateOn, force: FORCE, godMix: godMix, seatLook: seatLook, SEATS: SEATS, ROMAN: ROMAN, NAMES: NAMES, PAL: PAL, chips: chips, view: view, seatTitle: seatTitle, span: span, esc: esc,
-    godFrames: godFrames, zFrames: zFrames, lookOf: lookOf, NF: NF };
+    godFrames: godFrames, zFrames: zFrames, curedFrames: curedFrames, lookOf: lookOf, fedOf: fedOf, CURED: CURED, NF: NF };
 })();

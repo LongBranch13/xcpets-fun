@@ -125,7 +125,7 @@
   document.head.appendChild(css);
   var lastKey = '', scoreW = null, scoreR = null;
   function phoneMode() { return !!(root.matchMedia && root.matchMedia('(max-width:600px)').matches); }
-  function frameOf(p, w) { var R = root.V2Render; if (!R) return null; try { var fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); var f = fr && fr[0];return f&&f.data?f:null; } catch (e) { return null; } }
+  function frameOf(p, w) { var R = root.V2Render; if (!R) return null; try { var use = R.petFramesRaw || R.petFrames, G = root.V2MythicGod; try { var lk = G && G.lookOf && G.lookOf(p, w); if (lk && lk.z === 'fed' && R.petFrames) use = R.petFrames; } catch (e) {} var fr = use(p, w, { noHunger: true }); var f = fr && fr[0];return f&&f.data?f:null; } catch (e) { return null; } }
   function spriteOf(p, w) { var f = frameOf(p, w); return f ? (f.rareScene?f:f.data) : null; }
   function scoreOf(w, id) { if (!root.PetScore) return null; if (scoreW !== w) { try { scoreR = root.PetScore.compute(w); } catch (e) { scoreR = null; } scoreW = w; } return scoreR && scoreR.byId ? scoreR.byId[id] || null : null; }
   function toCanvas(r, c) { c.width = r.w; c.height = r.h; var x = c.getContext('2d'); x.putImageData(new ImageData(r.data, r.w, r.h), 0, 0); return c; }
