@@ -1,6 +1,6 @@
 {
- "lastBlock": 975510,
- "count": 324,
+ "lastBlock": 975512,
+ "count": 328,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3888,6 +3888,54 @@
    "name": "Roozotot",
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 2081,
+   "asset": "A14283256574141028354",
+   "tiedBlock": 975511,
+   "tiedTx": "dcf7e45539b701edc978b9af6a8aa666937add3abdc4a741970ea1f8b4a28cdc",
+   "kind": "deed",
+   "name": "Giruri",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 27504,
+   "asset": "A6577965474734756033",
+   "tiedBlock": 975511,
+   "tiedTx": "6b80070eef1df525f2941b3b5fa7f3ee187e21e46267ade4db30207480ca402c",
+   "kind": "deed",
+   "name": "Kasa",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 158203,
+   "asset": "A12300632672971086782",
+   "tiedBlock": 975511,
+   "tiedTx": "1aa8065259672cfffd7baab208569f75203c78d220415c0a0073ae2c056426d5",
+   "kind": "deed",
+   "name": "Bitijipip",
+   "species": "hyb3:kek:snibby:dodo",
+   "speciesLabel": "Keknibdo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 158204,
+   "asset": "A16631280300571524743",
+   "tiedBlock": 975511,
+   "tiedTx": "6c6011c909b3d0700ce8cfb362ee0ef023a257f839d38814fb06fd596768085b",
+   "kind": "deed",
+   "name": "Logukooni",
+   "species": "hyb:dodo:nakamoto",
+   "speciesLabel": "Doto (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
