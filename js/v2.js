@@ -83,7 +83,8 @@
   function zAtCap(Z) { var z = Z && Z.zombie; if (!z || !z.cap) return false; return Math.min(z.cap, 1 + 2 * (1 - z.keep)) >= z.cap - 0.05; }
   function zCapNote(Z) { if (!zAtCap(Z)) return ''; var z = Z.zombie, times = Math.round(Math.min(z.cap, 1 + 2 * (1 - z.keep)) * 100) / 100; return ' <b>' + esc(Z.name || '#' + Z.id) + ' is at ' + times + ' times its power cap of ' + z.cap + ' times</b>, so a meal adds almost no power (shown as +0). It still refills hunger.'; }
   function zPowAt(z, keep) { var c = Object.assign({}, z, { keep: keep }); return Object.keys(z.death || {}).reduce(function (s, k) { return s + V.cemExact(c, k); }, 0); }
-  /* the zfeed keep step of cemHandle, read-only: s = min(0.95, MEAL_SHARE[tier] × (ripe ? 1.5 : 1) × GRAVE_FACTOR[zombie tier]); keep ×= 1 − s */
+  /* the zfeed keep step of cemHandle, read-only: s = min(0.95, MEAL_SHARE[tier] × (ripe ? 1.5 : 1) × GRAVE_FACTOR[zombie tier]).
+     A Mythic zombie uses that same rarity grave factor (not the 0.5 raise factor) once ACTIVATE_MYTHIC_ZFEED_BLOCK is on. */
   function zMealGain(w, Z, meals) { var C = V.CEM, z = Z && Z.zombie; if (!C || !z || !V.cemExact || !C.MEAL_SHARE) return 0; var T = function (x) { return Math.max(0, Math.min(3, x | 0)); }, gf = C.GRAVE_FACTOR[T(Z.tier)], k = z.keep;
     meals.forEach(function (a) { var s = Math.min(0.95, C.MEAL_SHARE[T(a.tier)] * (a.neglected ? 1.5 : 1) * gf); k = Math.round(k * (1 - s) * 1e6) / 1e6; });
     return Math.round(zPowAt(z, k)) - Math.round(zPowAt(z, z.keep)); }
@@ -181,10 +182,12 @@
       '<p class="small zb-noact zb-need">Tick a pet or a gear piece to pledge it.</p>' +
       '<button type="button" class="btn zb-feedbtn" hidden>' + zRplBtn(w, p.id, [], [], b) + '</button></details></div>'; }
   /* MYTHIC GOD LOOP (display + burns through confirmPlans; the rules are V.mg*, gated by ACTIVATE_MYTHIC_UNLEASH_BLOCK):
-   * a Mythic-fed zombie is done (no feeding, no pledges); a Mythic zombie takes no zombie meals but can be pledged to its Resurrection (66+ points);
+   * a Mythic-fed zombie is done (no feeding, no pledges); a Mythic zombie can be pledged to its Resurrection (66+ points).
+   * Zombie meals (the same picker as any zombie) show beside that pledge once tip+1 reaches ACTIVATE_MYTHIC_ZFEED_BLOCK.
+   * Before that block the card stays pledge-only, matching the old "a Mythic zombie never eats" rule. Unleash stays off for a Mythic zombie.
    * a starving (feral) zombie of yours gets the red Unleash button, and after the burn "Unleashed: eats in N blocks". */
-  function zZoneHtml(p, w) { var mv = null; try { mv = V.mgView ? V.mgView(w, p, (S.tip || 0) + 1) : null; } catch (e) { mv = null; }
-    if (mv && mv.fed) return ''; if (mv && mv.mythicZombie) return zRplHtml(p, w); return zFeedHtml(p, w) + zRplHtml(p, w) + mgUnlHtml(p, w, mv); }
+  function zZoneHtml(p, w) { var mv = null, b = (S.tip || 0) + 1; try { mv = V.mgView ? V.mgView(w, p, b) : null; } catch (e) { mv = null; }
+    if (mv && mv.fed) return ''; if (mv && mv.mythicZombie) return (V.mythicZfeedOn && V.mythicZfeedOn(b) ? zFeedHtml(p, w) : '') + zRplHtml(p, w); return zFeedHtml(p, w) + zRplHtml(p, w) + mgUnlHtml(p, w, mv); }
   function unleashPlain(why) { if (!why) return '';
     if (/no Mythic it could eat/i.test(why)) return 'Unleash can\'t be used: you have no Mythic it can eat. A Mythic has to be held 30 days, and it can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
     if (/only a starving/i.test(why)) return 'Unleash can\'t be used until this zombie is feral.';
@@ -193,7 +196,7 @@
     if (/Pantheon is full/i.test(why)) return 'Unleash can\'t be used: the Pantheon is full (21 of 21).';
     if (/too late/i.test(why)) return 'Unleash can\'t be used: it would turn to dust before the meal.';
     if (/already Mythic-fed/i.test(why)) return 'Unleash can\'t be used: this zombie is already Mythic-fed.';
-    if (/Mythic zombie never/i.test(why)) return 'Unleash can\'t be used: a Mythic zombie does not eat this way.';
+    if (/Mythic zombie never/i.test(why)) return 'Unleash can\'t be used: a Mythic zombie cannot be unleashed.';
     return 'Unleash can\'t be used: ' + why; }
   function mgUnlHtml(p, w, mv) { if (!mv || !mv.on || !ME || p.owner !== ME || !V.mgPlan) return ''; var b = (S.tip || 0) + 1;
     if (mv.unleash) return '<div class="small mg-pend mg-unl" data-mgu="' + p.id + '">🩸 Unleashed: eats in ' + fmt(mv.unleash.left) + ' block' + (mv.unleash.left === 1 ? '' : 's') + ' (block ' + fmt(mv.unleash.mealAt) + ') · one of your ' + fmt(mv.unleash.pool) + ' Mythic' + (mv.unleash.pool === 1 ? '' : 's') + ', picked by that block\'s hash</div>';

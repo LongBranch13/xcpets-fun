@@ -10,9 +10,9 @@ const GATE = 972905, R = 973450, MEAL_H = 'ab'.repeat(32);
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const b32 = n => n.toString(32).toUpperCase(), ids = a => a.slice().sort((x, y) => x - y).map(b32).join('.');
 const row = (b, src, amt, tag) => L.row(b, src, amt, tag);
-/* W(rows, tip, o): o.gate (mythic gate, default GATE), o.hold (default 0 so the 30-day hold does not block the R-era scenario; the hold has its own test), o.seats, o.hashes */
+/* W(rows, tip, o): o.gate (mythic gate, default GATE), o.zfeed (ACTIVATE_MYTHIC_ZFEED_BLOCK; omit to keep the placeholder), o.hold (default 0 so the 30-day hold does not block the R-era scenario; the hold has its own test), o.seats, o.hashes */
 function W(rows, tip, o) { o = o || {}; const c = L.load(), V = c.V2Rules; V._setCemeteryActivation(GATE); V._setCemeteryPublic(GATE);
-  V._setMythicUnleashActivation(o.gate === undefined ? GATE : o.gate); V.MG.HOLD = o.hold === undefined ? 0 : o.hold; if (o.seats != null) V.MG.SEATS = o.seats;
+  V._setMythicUnleashActivation(o.gate === undefined ? GATE : o.gate); if ('zfeed' in o) V._setMythicZfeedActivation(o.zfeed); if (o.fullId != null) V._setMythicZFullId(o.fullId); if (o.fullWallet) V._setMythicZFullWallet(o.fullWallet); V.MG.HOLD = o.hold === undefined ? 0 : o.hold; if (o.seats != null) V.MG.SEATS = o.seats;
   const w = L.run(c, S, rows, tip, o.hashes); return { c, V, w }; }
 const logs = (w, b0, kind) => w.log.filter(e => e.block >= (b0 || 0) && (!kind || e.kind === kind));
 const rej = (w, b0, re, b1) => logs(w, b0).filter(e => b1 == null || e.block <= b1).filter(e => (e.kind === 'rejected' || e.kind === 'invalid') && (!re || re.test(e.msg)));
@@ -143,5 +143,69 @@ const base = [SEANCE, UNL];
   ok(V._mgWard(w, g, 'fight 8') === false, 'the second lost fight that day is a normal loss');
   w._b = R + 10 + 144; ok(V._mgWard(w, g, 'fight 9') === true, 'a new 144-block day: the ward is back');
   ok(V._mgWard(w, n, 'fight 9') === false && V._mgWard(w, { mythicGod: {} }, 'rumble week 3') === false, 'only Mythic Gods, only fights and hunts'); }
+
+/* ---------- 9. Mythic zombie meals (ACTIVATE_MYTHIC_ZFEED_BLOCK) ---------- */
+const STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
+const r6 = x => Math.round(x * 1e6) / 1e6, tierOf = x => Math.max(0, Math.min(3, x | 0));
+const sumStats = p => STATS.reduce((a, k) => a + (p.stats[k] || 0), 0);
+{ const V0 = L.load().V2Rules;
+  ok(V0.mythicZfeedGate() === 9999999 && V0.ACTIVATE_MYTHIC_ZFEED_BLOCK === 9999999 && !V0.mythicZfeedOn(975507) && !V0.mythicZfeedOn(9999998) && V0.mythicZfeedOn(9999999), 'placeholder ACTIVATE_MYTHIC_ZFEED_BLOCK is 9999999 (go-live sets it to tip + 6)');
+  ok(V0.MG.ZCAP === 3 && V0.MG.GOD_BOOST === 1.25 && V0.MG.RES_MIN === 66 && V0.MG.GRAVE_FACTOR === 0.5, 'cap 3, Resurrection boost 1.25 and the 66-point rule are unchanged; 0.5 stays the raise factor'); }
+const RAISE = base.concat([row(R + 451, SB, 100000, 'pet:seance:' + E + ':' + b32(20870))]);
+const MEAL = (() => { const pre = W(RAISE, R + 452, { hashes: H() }), Z = pre.w.byId[E], V = pre.V, F = V.CEM.FERAL;
+  const gf = V.CEM.GRAVE_FACTOR[tierOf(Z.tier)], pool = pre.w.pets.filter(p => p.owner === SB && p.id !== E && !V.cemOfferWhy(pre.w, p, SB, R + 452));
+  pool.sort((a, c) => (c.tier | 0) - (a.tier | 0) || (c.neglected ? 1 : 0) - (a.neglected ? 1 : 0) || a.id - c.id);
+  const snap = p => ({ id: p.id, tier: tierOf(p.tier), ripe: !!p.neglected });
+  const pile = []; pool.forEach(p => { if (pile.length >= 8) return; const b = R + 452 + pile.length; if (V.cemOfferWhy(pre.w, p, SB, b)) return; pile.push(snap(p)); });
+  const lateB = (pile.length ? R + 452 + pile.length - 1 : R + 451) + F + 1;
+  const late = pool.find(p => pile.every(q => q.id !== p.id) && !V.cemOfferWhy(pre.w, p, SB, lateB));
+  const myth = pre.w.pets.find(p => p.owner === SB && V.isMythic(p) && !p.dead && !p.released && p.id !== E);
+  return { gf: gf, keep0: Z.zombie.keep, stats0: sumStats(Z), fed0: Z.zombie.fedAt, myth: !!(Z.zombie && Z.zombie.mythic), cap: Z.zombie.cap, graveIsRaise: gf !== V.MG.GRAVE_FACTOR, pile: pile, late: late ? snap(late) : null, lateB: lateB, mythId: myth ? myth.id : null, share: V.CEM.MEAL_SHARE.slice(), feral: F, crumble: V.CEM.CRUMBLE }; })();
+ok(MEAL.myth && MEAL.cap === 3 && MEAL.pile.length >= 1, 'setup: a Mythic zombie, cap 3, with a pet it can eat');
+ok(MEAL.graveIsRaise, 'meal grave factor is the rarity table (' + MEAL.gf + '), not the 0.5 raise factor');
+{ const meal = MEAL.pile[0], early = W(RAISE.concat([row(R + 452, SB, 100000, 'pet:zfeed:' + E + ':' + b32(meal.id))]), R + 460, { hashes: H(), zfeed: R + 453 });
+  ok(rej(early.w, R + 452, /a Mythic zombie never eats/).length === 1 && !early.w.byId[meal.id].released && early.w.byId[E].zombie.keep === MEAL.keep0 && early.w.byId[E].zombie.fedAt === MEAL.fed0, 'before the block the meal is rejected and the pet is not eaten');
+  ok(/a Mythic zombie never eats/.test(early.V.cemSendWhy(early.w, { action: 'zfeed', zombie: E, ids: [meal.id] }, SB, R + 452, []) || ''), 'send guard: the same words before the block'); }
+{ const rows = RAISE.concat(MEAL.pile.map((p, i) => row(R + 452 + i, SB, 100000, 'pet:zfeed:' + E + ':' + b32(p.id))));
+  if (MEAL.mythId) rows.push(row(R + 470, SB, 100000, 'pet:zfeed:' + E + ':' + b32(MEAL.mythId)), row(R + 471, SB, 100000, 'pet:rpl:' + E + ':' + b32(MEAL.mythId)));
+  if (MEAL.late) rows.push(row(MEAL.lateB, SB, 100000, 'pet:zfeed:' + E + ':' + b32(MEAL.late.id)));
+  rows.push(row(MEAL.lateB + 2, SB, 100000, 'pet:unleash:' + E));
+  const on = W(rows, MEAL.lateB + 4, { hashes: H(), zfeed: R }), G = on.w.byId[E], z = G.zombie;
+  const step = (k, m) => r6(k * (1 - Math.min(0.95, MEAL.share[m.tier] * (m.ripe ? 1.5 : 1) * MEAL.gf)));
+  let expect = MEAL.keep0; MEAL.pile.forEach(m => { expect = step(expect, m); }); if (MEAL.late) expect = step(expect, MEAL.late);
+  if (logs(on.w, R + 452, 'zfeed').length !== MEAL.pile.length + (MEAL.late ? 1 : 0)) DBG(on.w, R + 450, MEAL.lateB + 3);
+  ok(logs(on.w, R + 452, 'zfeed').length === MEAL.pile.length + (MEAL.late ? 1 : 0) && on.w.byId[MEAL.pile[0].id].released === R + 452, 'at the block meals are accepted and the pet is eaten');
+  ok(z.keep === expect && z.keep < MEAL.keep0, 'keep shrinks by the ordinary meal share (' + MEAL.keep0 + ' -> ' + z.keep + ')');
+  ok(sumStats(G) > MEAL.stats0, 'stats rise (' + MEAL.stats0 + ' -> ' + sumStats(G) + ')');
+  ok(z.cap === 3 && STATS.every(k => G.stats[k] === Math.round(on.V.cemExact(z, k)) && G.stats[k] <= (z.death[k] || 0) * 3), 'stats match cemExact and stay at or under 3 times death stats');
+  ok(z.meals === MEAL.pile.length + (MEAL.late ? 1 : 0) && z.fedAt === (MEAL.late ? MEAL.lateB : R + 452 + MEAL.pile.length - 1) && !G.feral && !G.dead, 'the last meal resets fedAt, so it is not feral or crumbling');
+  ok(!MEAL.late || z.crumbleAt === MEAL.lateB + MEAL.feral + MEAL.crumble, 'crumble moves out with the reset fedAt');
+  ok(!/never eats/.test(on.V.cemSendWhy(on.w, { action: 'zfeed', zombie: E, ids: [MEAL.pile[0].id] }, SB, MEAL.lateB + 3, []) || ''), 'send guard allows a Mythic zombie meal once the block is on');
+  if (MEAL.mythId) ok(rej(on.w, R + 470, /Mythics cannot be offered/, R + 471).length === 2 && !on.w.byId[MEAL.mythId].released && on.w.byId[MEAL.mythId].pledge == null, 'a Mythic still cannot be eaten as a meal or pledged');
+  ok(rej(on.w, MEAL.lateB + 2, /a Mythic zombie never unleashes/).length === 1, 'a Mythic zombie still never unleashes');
+  const info = on.V.cemResInfo(on.w, G, MEAL.lateB + 3);
+  ok(info.mythic && info.min === 66 && on.V.MG.GOD_BOOST === 1.25, 'Resurrection still needs 66 points and the god boost is still 1.25'); }
+{ const fed = W([SEANCE, UNL, row(R + 451, SB, 100000, 'pet:zfeed:18846:' + b32(4111))], R + 460, { hashes: H(), zfeed: R });
+  ok(rej(fed.w, R + 451, /cured forever/).length === 1 && !fed.w.byId[4111].released, 'after the meal gate a Mythic-fed zombie still takes no meals (nothing used)'); }
+
+/* ---------- 10. one-time full-power grant for the Wizard-grant wallet's Mythic zombie #1765 ---------- */
+{ const V0 = L.load().V2Rules;
+  ok(V0.MZ_FULL_ID === 1765 && V0.JP_TO === 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', 'the grant names pet #1765 on the Wizard-grant wallet'); }
+let zedGrant = '', stGrant = '';
+{ const early = W(RAISE, R + 460, { hashes: H(), zfeed: R + 461, fullId: E, fullWallet: SB }), Ze = early.w.byId[E];
+  ok(Ze.zombie.keep !== 0 && !Ze.zombie.mzFull && Ze.zombie.fedAt === R + 451, 'before the block the grant does not run and fedAt stays the raise');
+  zedGrant = JSON.stringify(Ze.zombie); stGrant = JSON.stringify(Ze.stats); }
+{ const plain = W(RAISE, R + 460, { hashes: H() });
+  ok(JSON.stringify(plain.w.byId[E].zombie) === zedGrant && JSON.stringify(plain.w.byId[E].stats) === stGrant, 'before the block the Mythic zombie matches a replay that never lowers the gate'); }
+{ const on = W(RAISE, R + 460, { hashes: H(), zfeed: R + 452, fullId: E, fullWallet: SB }), G = on.w.byId[E], z = G.zombie;
+  if (!(z.mzFull && z.keep === 0)) DBG(on.w, R + 450, R + 460);
+  ok(z.keep === 0 && z.mzFull && z.mzFull.block === R + 452 && z.cap === 3 && z.fedAt === R + 451, 'at the block keep is 0, cap stays 3, fedAt is not moved');
+  ok(STATS.every(k => G.stats[k] === (z.death[k] || 0) * 3 && G.stats[k] === Math.round(on.V.cemExact(z, k))), 'stats are 3 times death stats');
+  ok(logs(on.w, 0, 'mzfull').length === 1 && logs(on.w, 0, 'mzfull')[0].block === R + 452 && !/G Money/i.test(logs(on.w, 0, 'mzfull')[0].msg), 'logged once at the activation block, with no wallet name');
+  const snap = JSON.stringify(G.stats), keep = z.keep, nlog = logs(on.w, 0, 'mzfull').length;
+  on.V._grantMythicZFull(on.w, R + 900);
+  ok(z.keep === keep && JSON.stringify(G.stats) === snap && logs(on.w, 0, 'mzfull').length === nlog, 'calling the grant again changes nothing'); }
+{ const other = W(RAISE, R + 460, { hashes: H(), zfeed: R + 452, fullId: 18846, fullWallet: SB }), N = other.w.byId[18846], Mz = other.w.byId[E];
+  ok(!(N.zombie && N.zombie.mzFull) && Mz.zombie.keep !== 0 && !Mz.zombie.mzFull, 'a different pet is not granted, and this zombie is not granted either'); }
 
 console.log('mythic-god-test: ' + pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
