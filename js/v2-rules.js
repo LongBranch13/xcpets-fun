@@ -3102,8 +3102,8 @@
    * invalid grave: the log says rejected, nothing is pledged, and offered pets and gear are not sacrificed. The XCPETS in the burn stay burned,
    * as with every other rejected cemetery burn. At death block + MYTHIC_HEADSTART_BLOCKS anyone may raise it again. Non-Mythic graves are not
    * read by this check. A hunted or dust grave keeps its own rule. Before the activation block mythicHeadStart returns null and cemGraveWhy is
-   * unchanged, so replay is byte-identical. PLACEHOLDER: at go-live set ACTIVATE_MYTHIC_HEADSTART_BLOCK to the chain tip + 6. */
-  var ACTIVATE_MYTHIC_HEADSTART_BLOCK = 9000000;
+   * unchanged, so replay is byte-identical. LIVE at block 975528 (Counterparty tip 975522 + 6, read from node.xcpets.fun just before go-live). */
+  var ACTIVATE_MYTHIC_HEADSTART_BLOCK = 975528;
   var MYTHIC_HEADSTART_BLOCKS = 144;
   function mythicHeadstartOn(b) { return ACTIVATE_MYTHIC_HEADSTART_BLOCK != null && b != null && Number(b) >= ACTIVATE_MYTHIC_HEADSTART_BLOCK; }
   /** mythicGraveDeath(G): the death this grave is in now, { block, owner }, or null. The first death is the meal; a crumble is a new death. */
@@ -3406,12 +3406,12 @@
    *            costs no gear and no black eye), breeding cooldown 2 times, a Pantheon seat 1..21 in order. */
   var ACTIVATE_MYTHIC_UNLEASH_BLOCK = 974074; /* owner Oct 31 2026 9:01 PM CT [pt2525u] "Send it": Counterparty tip 974,068 + 6 at deploy (replay SAME: no snapshot reaches it) */
   /* MYTHIC ZOMBIE MEALS (owner Nov 11 2026 8:43 PM CT: "Change the rule so Mythic zombies can be fed to full power").
-   * PLACEHOLDER 9999999 is not the go-live block. At go-live set this to the Counterparty tip + 6. No burn reaches it before then, so replay stays SAME.
+   * LIVE at block 975528, the same block as ACTIVATE_MYTHIC_HEADSTART_BLOCK (Counterparty tip 975522 + 6, read from node.xcpets.fun just before go-live). No burn reaches it yet, so replay of history stays SAME.
    * FULL POWER GRANT (same decision, 8:50 PM CT): once, at this same block, MZ_FULL_ID is set to full zombie power if it is still JP_TO's risen
    * Mythic zombie. JP_TO is the wallet that received the Wizard grants. keep = 0, so cemMult = min(cap, 3) = MG.ZCAP = 3, then cemSetStats.
    * With no zombie bonus that is exactly 3 times death stats; a bonus still applies and the 3 times cap still holds. fedAt is not moved.
    * Stamped at the activation block (not the tip), so every replay that has reached the block stores the same pet. One time (w.mzFullGranted). */
-  var ACTIVATE_MYTHIC_ZFEED_BLOCK = 9999999;
+  var ACTIVATE_MYTHIC_ZFEED_BLOCK = 975528; /* tip 975522 + 6, same block as the Mythic owner head start */
   var MZ_FULL_ID = 1765; /* the one Mythic zombie owned by JP_TO in the block 975513 feed (Sabo). Alive, stage Mythic, death clock 976363 = seance block 975499 + 864. The 975507 feed had the same single candidate. */
   var MZ_FULL_TO = JP_TO;
   function mythicZfeedOn(b) { return ACTIVATE_MYTHIC_ZFEED_BLOCK != null && b != null && b >= ACTIVATE_MYTHIC_ZFEED_BLOCK; }

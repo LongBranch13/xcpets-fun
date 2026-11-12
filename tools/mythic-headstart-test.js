@@ -2,7 +2,7 @@
 /* Mythic owner head start (owner decision Nov 11 2026). For MYTHIC_HEADSTART_BLOCKS after a Mythic dies, only the
  * wallet that owned it at death can raise that grave. Another wallet's seance is rejected like any other invalid
  * grave: nothing pledged, offered pets and gear not sacrificed. Non-Mythic graves are unchanged. Before
- * ACTIVATE_MYTHIC_HEADSTART_BLOCK (placeholder 9000000, moved to tip + 6 at go-live) replay is unchanged, including
+ * ACTIVATE_MYTHIC_HEADSTART_BLOCK (live at 975528, tip 975522 + 6) replay of history is unchanged, including
  * the seance on Sabo #1765 at block 975499. Dev only. Nothing is signed or sent.
  *   node tools/mythic-headstart-test.js
  */
@@ -35,10 +35,10 @@ const SEANCE = row(R, SB, 100000, 'pet:seance:18846:' + b32(4133));
 const UNL = row(R + 440, SB, 100000, 'pet:unleash:18846');
 const base = [SEANCE, UNL];
 
-/* ---------- the shipped placeholder ---------- */
+/* ---------- the shipped block ---------- */
 { const V = L.load().V2Rules;
-  ok(V.mythicHeadstartGate() === 9000000 && V.MYTHIC_HEADSTART_BLOCKS === 144, 'window is the named constant 144 and the gate placeholder is block 9000000');
-  ok(!V.mythicHeadstartOn(975499) && !V.mythicHeadstartOn(8999999) && V.mythicHeadstartOn(9000000), 'the rule is off for all of today\'s history, including block 975499, and on at the placeholder'); }
+  ok(V.mythicHeadstartGate() === 975528 && V.MYTHIC_HEADSTART_BLOCKS === 144, 'window is the named constant 144 and the gate is block 975528 (tip 975522 + 6)');
+  ok(!V.mythicHeadstartOn(975499) && !V.mythicHeadstartOn(975527) && V.mythicHeadstartOn(975528), 'the rule is off for all of today\'s history, including block 975499, and on at 975528'); }
 
 /* the eaten Mythic: the meal log names it (the pool shrinks once it is dead, so it cannot be re-picked afterwards) */
 const pre = W(base, R + 449, { hashes: H() });
