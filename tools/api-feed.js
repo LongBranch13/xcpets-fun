@@ -111,7 +111,7 @@ function build(ctx, input, nowIso) {
     alive: pets.filter(p => p.status === 'alive').length, dead: pets.filter(p => p.status === 'dead').length, released: pets.filter(p => p.status === 'released').length,
     burns: rows.length, burnedXCPETS: burned, supplyXCPETS: input.supply == null ? null : Math.round(input.supply * 1e8) / 1e8,
     owners: new Set(pets.map(p => p.owner)).size, community: ctx.V2Community ? ctx.V2Community.state(w) : null, files: { pets: SITE + '/api/pets.json', meta: SITE + '/api/meta.json', docs: SITE + '/api/README.md' } };
-  return { pets, meta };
+  return { pets, meta, w }; /* w is the one replay of this input. tools/token-meta.js draws badges from it instead of replaying again. */
 }
 module.exports = { context, liveInput, build, SCRIPTS, SITE, LIMITED, feedReorg };
 if (require.main === module) (async () => {

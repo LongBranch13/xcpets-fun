@@ -40,4 +40,7 @@ ok(TP.fixPlan(1643, { asset: A, description: 'xcpets pet #9', issuer: 'bc1qx' },
 /* 6) CI: token-meta reuses the feed's chain read */
 const wf = fs.readFileSync(path.join(ROOT, '.github/workflows/api-feed.yml'), 'utf8');
 ok(/api-feed\.js --out api --save-input \/tmp\/feed-input\.json/.test(wf) && /token-meta\.js --tokened --input \/tmp\/feed-input\.json/.test(wf), 'workflow passes the feed input to token-meta');
+ok(/workflow_dispatch:\s*\{\}/.test(wf) && !/\n\s*push\s*:/.test(wf), 'api-feed is manual only: a site deploy does not start a second feed writer');
+const pages = fs.readFileSync(path.join(ROOT, '.github/workflows/pages.yml'), 'utf8');
+ok(/\n\s*push:\n\s*branches:\s*\[main\]/.test(pages), 'pages workflow still publishes on push to main');
 console.log('token-proof-test', pass, 'pass', fail, 'fail'); process.exit(fail ? 1 : 0);
