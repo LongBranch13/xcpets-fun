@@ -1,6 +1,6 @@
 {
- "lastBlock": 975607,
- "count": 361,
+ "lastBlock": 975609,
+ "count": 366,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3109,7 +3109,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 8782,
@@ -3469,7 +3469,7 @@
    "species": "hyb:doge:chud",
    "speciesLabel": "Dogchud (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 147175,
@@ -4333,6 +4333,66 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 103997,
+   "asset": "A17525023119411418704",
+   "tiedBlock": 975608,
+   "tiedTx": "a8a42b7e4d693e52dfff0afbf0c66908bf301e3d01895534c91f0d1ba9ddd109",
+   "kind": "deed",
+   "name": "Boogajuli",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 133333,
+   "asset": "A1859054401246071900",
+   "tiedBlock": 975608,
+   "tiedTx": "e64ec63af66b21e00702a644e53f5441b648eb1792f69ecba0d03de7adec58e2",
+   "kind": "deed",
+   "name": "Bigikin",
+   "species": "chad",
+   "speciesLabel": "Chad",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 134714,
+   "asset": "A3406051010335292649",
+   "tiedBlock": 975608,
+   "tiedTx": "12dc8f064c707aa2fdbb2a62a881cdc84d10c990dace1e558f37a6bc5513b2a9",
+   "kind": "deed",
+   "name": "Kozuzeki",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 135451,
+   "asset": "A17709056928861429009",
+   "tiedBlock": 975608,
+   "tiedTx": "19cf6a92aedfad4d36d56469f433c6c78950cf8a08118b1190817bf6daacb156",
+   "kind": "deed",
+   "name": "Boosuhep",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 135935,
+   "asset": "A11162934202131026227",
+   "tiedBlock": 975608,
+   "tiedTx": "67cfb79afcfd7a8f3f1c16b161528d09ef48a106559cb96856360d734f98fb04",
+   "kind": "deed",
+   "name": "Duzelaru",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
