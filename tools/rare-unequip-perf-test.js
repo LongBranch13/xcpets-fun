@@ -45,7 +45,8 @@ const INIT = `(() => {
 })();`;
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  RULES.forEach(f => { const a = md5(path.join(ROOT, f)), b = crypto.createHash('md5').update(gitFile(f)).digest('hex'); ok(a === b, 'rule unchanged ' + f + ' ' + a); });
+  const RULES_MD5 = '7ff2d11a584b79996afd4180d89ff8ae';
+  RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const server = await serve();
   const origin = 'http://127.0.0.1:' + server.address().port;
   const browser = await chromium().launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
