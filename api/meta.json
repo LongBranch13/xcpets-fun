@@ -1,6 +1,6 @@
 {
-  "blockHeight": 975533,
-  "generatedAt": "2026-11-12T08:39:28Z",
+  "blockHeight": 975534,
+  "generatedAt": "2026-11-12T09:00:56Z",
   "asset": "XCPETS",
   "totalPets": 163205,
   "alive": 86490,
@@ -11,7 +11,7 @@
   "supplyXCPETS": 68973931.24499013,
   "owners": 24,
   "community": {
-    "tip": 975533,
+    "tip": 975534,
     "current": {
       "id": "rabbit",
       "no": 6,
