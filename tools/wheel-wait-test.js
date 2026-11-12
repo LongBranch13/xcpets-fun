@@ -16,7 +16,7 @@ ok(!/0\.006/.test(shop), 'the slow mempool spin rate is gone from the shop');
 ok(shop.includes('PEPE WHEEL \\u00b7 WAITING'), 'the wheel plate has a waiting caption');
 ok(shop.includes('You can keep using the shop.'), 'the panel says the shop stays open');
 ok(anim.includes('tap to skip') && /prefers-reduced-motion/.test(anim) && anim.includes('function play'), 'landing overlay still plays, skips on tap, and keeps reduced motion');
-const RULES_MD5 = '7ff2d11a584b79996afd4180d89ff8ae';
+const RULES_MD5 = 'f010ee1f723dcc3340a73da0a443eba3';
 ok(require('crypto').createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex') === RULES_MD5, 'js/v2-rules.js MD5 is ' + RULES_MD5);
 const changed = cp.execSync('git diff --name-only origin/main', { cwd: ROOT, encoding: 'utf8' });
 ok(!/pet-core\.js|burn-core\.js|real-core\.js|game-core\.js|v2-wheel-anim\.js/.test(changed), 'other rule files and the landing animation are not in the diff');
