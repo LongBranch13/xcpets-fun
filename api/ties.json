@@ -1,6 +1,6 @@
 {
- "lastBlock": 975603,
- "count": 350,
+ "lastBlock": 975606,
+ "count": 361,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3997,7 +3997,7 @@
    "species": "hyb:pepe:snibby",
    "speciesLabel": "Pebby (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 122879,
@@ -4009,7 +4009,7 @@
    "species": "hyb:bobo:pepe",
    "speciesLabel": "Bope (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 122880,
@@ -4021,7 +4021,7 @@
    "species": "hyb:nakamoto:kek",
    "speciesLabel": "Nakek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 122881,
@@ -4033,7 +4033,7 @@
    "species": "hyb:peepo:dodo",
    "speciesLabel": "Peedo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 104166,
@@ -4201,6 +4201,138 @@
    "species": "wizard",
    "speciesLabel": "Bitcoin Wizard",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 95680,
+   "asset": "A1731928774296199026",
+   "tiedBlock": 975604,
+   "tiedTx": "5783cd8a9915657353f764e631c5b27c0b3cbbb5b9fed3eba13af83f1000eab5",
+   "kind": "deed",
+   "name": "Shufooguk",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 129736,
+   "asset": "A1838937450587755972",
+   "tiedBlock": 975604,
+   "tiedTx": "ec6f309230b8c2fd10c8e190fd96ec5c6b69e9f7c8c37d6b341ef569264bc4ff",
+   "kind": "deed",
+   "name": "Fejudin",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 129834,
+   "asset": "A3374395367146533682",
+   "tiedBlock": 975604,
+   "tiedTx": "6bec7b03e8cbf0c7c9f617fd81c3ab7040a2f95c8ef576e356972cf018f4e0fc",
+   "kind": "deed",
+   "name": "Yoosashazy",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 130914,
+   "asset": "A11502196418826069451",
+   "tiedBlock": 975604,
+   "tiedTx": "e03818b7e40629f318ec561660aed77c594f769007a51f7794bf8a4c2d7d233e",
+   "kind": "deed",
+   "name": "Yijavup",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 131150,
+   "asset": "A6703384580517460054",
+   "tiedBlock": 975604,
+   "tiedTx": "083868b35e4865648d0956207417e93653dcaacd7c93bfe820e5573e423956e4",
+   "kind": "deed",
+   "name": "Fenokookin",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 131766,
+   "asset": "A1344824653863155574",
+   "tiedBlock": 975604,
+   "tiedTx": "6efc333840396f2aa595e8fab7238e6164158c1d74d7470ff39efb8919c0bb95",
+   "kind": "deed",
+   "name": "Tiwipop",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 132188,
+   "asset": "A14182831933631234763",
+   "tiedBlock": 975604,
+   "tiedTx": "1f44a1a85802ab95cff55cad6eef84534a8b911f12a936f42e9c4eaef1770b68",
+   "kind": "deed",
+   "name": "Fijoyik",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 133037,
+   "asset": "A10940695135882064774",
+   "tiedBlock": 975604,
+   "tiedTx": "ce8f3047fa331dec67d2a89c07abeff69829c439083a792160b215d7d3e83525",
+   "kind": "deed",
+   "name": "Sezoyoopop",
+   "species": "starlordkek",
+   "speciesLabel": "Star-Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 133219,
+   "asset": "A13268948919649961485",
+   "tiedBlock": 975604,
+   "tiedTx": "4651a8c0f145706c1e8d9b1807967618091f98107db949ceb02ee8721bd0630c",
+   "kind": "deed",
+   "name": "Jitakupop",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 133548,
+   "asset": "A16935555004759593100",
+   "tiedBlock": 975604,
+   "tiedTx": "c32fdf448f4c14bc24f2b33bac257386396c4c28f4d22757ecef45c3d1cff1a7",
+   "kind": "deed",
+   "name": "Roogupaki",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 133788,
+   "asset": "A16280627948124483368",
+   "tiedBlock": 975604,
+   "tiedTx": "016647b73ccbbdeae5cc0f1c4fbcbc44dc730635074e718d6c2ba64f1fab517b",
+   "kind": "deed",
+   "name": "Zifeki",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
