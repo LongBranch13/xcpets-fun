@@ -14,6 +14,8 @@
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
     { id: 'raid', ico: '🐉', name: 'Raid Boss', url: 'raid.html', line: 'hit it together', pages: ['raid.html'] },
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
+    /* pantheon-nav: The Pantheon is a place, same header menu and home card as the cemetery (display only) */
+    { id: 'pantheon', ico: '🌕', name: 'The Pantheon', url: 'pantheon.html', line: '21 seats, 21 gods', pages: ['pantheon.html'] },
     { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
     /* live-activity (owner Nov 1 2026): the Live Feed, what just happened, newest first (display only, no wallet) */
     { id: 'live', ico: '📡', name: 'Live Feed', url: 'live.html', line: 'what just happened', pages: ['live.html'] }
@@ -49,9 +51,11 @@
     if (file === 'shop.html') root.addEventListener('hashchange', function () { if (/^#(buy|sell|trade|gift|press)$/.test(location.hash)) location.reload(); });
     /* front page: one card per place, same .scard look; places without a scene canvas get a pixel sign */
     var row = document.getElementById('sceneCards'); if (row) { if (!document.getElementById('places')) { var an = document.createElement('a'); an.id = 'places'; an.className = 'scene-anchor'; row.parentNode.insertBefore(an, row); }
-      PLACES.forEach(function (p) { if (p.pages.some(function (f) { return row.querySelector('a[href^="' + f + '"]'); })) return; if (row.querySelector('[data-place="' + p.id + '"]')) return;
+      PLACES.forEach(function (p) { var linked = null; p.pages.some(function (f) { var hit = row.querySelector('a[href^="' + f + '"]'); if (hit) linked = hit; return !!hit; });
+        if (linked) { var cv0 = linked.querySelector('canvas'); if (cv0 && !cv0.getAttribute('data-scene') && linked.getAttribute('data-place') !== p.id) { linked.setAttribute('data-place', p.id); sign(cv0, p); } return; }
+        if (row.querySelector('[data-place="' + p.id + '"]')) return;
         var a = document.createElement('a'); a.className = 'scard'; a.href = p.url; a.setAttribute('data-place', p.id);
-        a.innerHTML = '<canvas width="320" height="180" role="img" aria-label="' + esc(p.name + ': ' + ({ raid: 'a towering boss and tiny pet raiders in an arena', tokens: 'pets marching with token banners and medals', live: 'a pet news anchor, studio camera and live ticker' }[p.id] || 'pixel scene')) + '"></canvas><span class="sc-t">' + esc(p.name) + '</span><span class="sc-d">' + esc(p.line) + '</span>';
+        a.innerHTML = '<canvas width="320" height="180" role="img" aria-label="' + esc(p.name + ': ' + ({ raid: 'a towering boss and tiny pet raiders in an arena', tokens: 'pets marching with token banners and medals', live: 'a pet news anchor, studio camera and live ticker', pantheon: 'a moonlit temple of gold pillars and 21 empty seats' }[p.id] || 'pixel scene')) + '"></canvas><span class="sc-t">' + esc(p.name) + '</span><span class="sc-d">' + esc(p.line) + '</span>';
         row.appendChild(a); sign(a.querySelector('canvas'), p); });
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { row.querySelectorAll('[data-place]').forEach(function (a) { sign(a.querySelector('canvas'), PLACES.filter(function (p) { return p.id === a.getAttribute('data-place'); })[0]); }); }); }
   }
@@ -79,6 +83,14 @@
       R(ink,112,12,96,12);R('#9b1035',115,15,90,6);R('#d0284f',115,15,64,6);
       pet(35,137,2,'#8cc63f');pet(80,146,2,gold,true);pet(219,145,2,'#478001');pet(267,135,2,'#f2d7a0',true);
       [65,244].forEach(function(a){R(ink,a,127,3,34);R('#9aa3b5',a-2,122,7,19);R(gold,a-5,143,13,3);});
+    }else if(id==='pantheon'){
+      R('#0b0a1f',0,0,320,180);
+      for(i=0;i<40;i++)R(cream,(i*61)%320,(i*23)%70,1,1);
+      R(cream,248,18,28,28);R('#0b0a1f',238,12,22,22);
+      R('#14301f',0,148,320,32);R(ink,0,148,320,2);
+      [[46,78],[136,62],[226,78]].forEach(function(q){R(ink,q[0]-3,q[1]-3,46,78);R(gold,q[0],q[1],40,72);R('#2a2150',q[0]+6,q[1]+8,28,48);R(cream,q[0]+16,q[1]+22,8,22);});
+      R(ink,28,70,264,12);R(gold,32,74,256,6);R('#7f6be0',148,118,24,30);R(cream,152,124,16,16);
+      T('XXI',160,170,10);
     }else if(id==='tokens'){
       R('#25365a',0,0,320,109);
       for(i=0;i<6;i++){var a=i*58-10;R('#5a3a4a',a,20+(i%2)*12,50,89);R('#9b1035',a,18+(i%2)*12,50,5);for(j=0;j<3;j++){R(cream,a+8+j*13,43,7,12);R(teal,a+8+j*13,74,7,14);}}
@@ -100,7 +112,7 @@
     x.textAlign='left';x.textBaseline='alphabetic';
   }
   /* 8-bit sign: night sky, gold-framed board, emoji + name in the pixel font */
-  function sign(c, p) { if (['raid','tokens','live'].indexOf(p.id) >= 0) return townScene(c, p.id); var x = c.getContext('2d'), W = 320, H = 180; x.imageSmoothingEnabled = false; function R(cl, a, b, w, h) { x.fillStyle = cl; x.fillRect(a, b, w, h); }
+  function sign(c, p) { if (['raid','tokens','live','pantheon'].indexOf(p.id) >= 0) return townScene(c, p.id); var x = c.getContext('2d'), W = 320, H = 180; x.imageSmoothingEnabled = false; function R(cl, a, b, w, h) { x.fillStyle = cl; x.fillRect(a, b, w, h); }
     R('#100E14', 0, 0, W, H); for (var i = 0; i < 46; i++) R('#fff6c8', (i * 73 + p.id.length * 11) % W, (i * 37) % 70, 1, 1);
     R('#14301f', 0, 140, W, 40); R('#000', 0, 140, W, 2); R('#3a2a1a', 154, 118, 12, 24); R('#000', 40, 26, 240, 96); R('#E8B33A', 44, 30, 232, 88); R('#1d1530', 50, 36, 220, 76);
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '30px serif'; x.fillText(p.ico, 160, 60);
