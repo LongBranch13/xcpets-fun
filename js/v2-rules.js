@@ -3389,7 +3389,7 @@
    * With no zombie bonus that is exactly 3 times death stats; a bonus still applies and the 3 times cap still holds. fedAt is not moved.
    * Stamped at the activation block (not the tip), so every replay that has reached the block stores the same pet. One time (w.mzFullGranted). */
   var ACTIVATE_MYTHIC_ZFEED_BLOCK = 9999999;
-  var MZ_FULL_ID = 1765; /* the one Mythic zombie owned by JP_TO in the block 975507 feed (Sabo). Confirmed: stage Mythic, alive, death clock = seance block 975499 + 864 */
+  var MZ_FULL_ID = 1765; /* the one Mythic zombie owned by JP_TO in the block 975513 feed (Sabo). Alive, stage Mythic, death clock 976363 = seance block 975499 + 864. The 975507 feed had the same single candidate. */
   var MZ_FULL_TO = JP_TO;
   function mythicZfeedOn(b) { return ACTIVATE_MYTHIC_ZFEED_BLOCK != null && b != null && b >= ACTIVATE_MYTHIC_ZFEED_BLOCK; }
   function _setMythicZfeedActivation(b) { ACTIVATE_MYTHIC_ZFEED_BLOCK = b == null ? null : Number(b); }
