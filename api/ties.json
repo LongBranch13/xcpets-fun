@@ -1,6 +1,6 @@
 {
- "lastBlock": 975569,
- "count": 329,
+ "lastBlock": 975571,
+ "count": 331,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3949,6 +3949,30 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 50982,
+   "asset": "A6775189855835515188",
+   "tiedBlock": 975570,
+   "tiedTx": "939c7d659cbbeb42148738eb15fa84385ccb4b082fa4d000be81a7c442964768",
+   "kind": "deed",
+   "name": "Voogobo",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Rare",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 1765,
+   "asset": "A5933461948361438074",
+   "tiedBlock": 975571,
+   "tiedTx": "70e59c69b44ffa412384c1cbf4a81e02eb638d0a14b1a8fbb4f1c1cee25ad936",
+   "kind": "deed",
+   "name": "Sabo",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
