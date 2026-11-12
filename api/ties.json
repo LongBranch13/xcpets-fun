@@ -1,6 +1,6 @@
 {
- "lastBlock": 975523,
- "count": 328,
+ "lastBlock": 975525,
+ "count": 329,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3938,6 +3938,18 @@
    "speciesLabel": "Doto (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 2482,
+   "asset": "A17770834556852755211",
+   "tiedBlock": 975525,
+   "tiedTx": "8fad21107e08a9f7f822cc3568c588db387fa532275d743a757eca896562513a",
+   "kind": "deed",
+   "name": "Bozo",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
   }
  ]
 }
