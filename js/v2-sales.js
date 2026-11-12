@@ -426,7 +426,8 @@
     paint(); }
 
   /* ---- modal + wallet steps */
-  function modal(h) { var m = $('shModal'); m.innerHTML = '<div class="box">' + h + '</div>'; m.style.display = 'flex'; paint(); /* buy-card-art: draw pet sprites in modal cards (was left as an empty span) */ m.onclick = function (e) { if (e.target === m || e.target.hasAttribute('data-close')) m.style.display = 'none'; }; return m; }
+  function modal(h) { if (window.V2Wallet && V2Wallet.feeUiOn && V2Wallet.feeUiOn() && /Open wallet window/.test(h) && h.indexOf('data-nfee') < 0) h = h.replace(/(<button[^>]*>Open wallet window<\/button>)/, '<div data-nfee="1"></div>$1');
+    var m = $('shModal'); m.innerHTML = '<div class="box">' + h + '</div>'; m.style.display = 'flex'; paint(); if (window.V2Wallet && V2Wallet.mountFeeSlots) V2Wallet.mountFeeSlots(m); /* buy-card-art: draw pet sprites in modal cards (was left as an empty span) */ m.onclick = function (e) { if (e.target === m || e.target.hasAttribute('data-close')) m.style.display = 'none'; }; return m; }
   function close() { $('shModal').style.display = 'none'; }
   function toast(h) { var t = $('toasts'); var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
   function walletDex(plan, then) { if (PREVIEW) { toast('Preview: no wallet window, nothing was sent.'); return then && then({ txid: 'f00dbabe' + 'preview'.repeat(4) }); }
