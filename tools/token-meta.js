@@ -7,6 +7,7 @@
  *   t/<id>.png   128x128: tied pets = the Proof of Pet badge (js/v2-papers.js 'token' layout); others = frame-0 sprite (32x32 x4, nearest neighbour, RGB(A) PNG; no hunger look so it only changes with stage/gear/breed look)
  * plus t/index.json (ids + block). Files are only rewritten when their bytes change (small git diffs). Regenerate as pets hatch:
  *   node tools/token-meta.js                 live (same reads as tools/api-feed.js)
+ *   node tools/token-meta.js --input FILE    api-feed --save-input: one replay, issuances taken from that dex
  *   node tools/token-meta.js --snap FILE     offline snapshot      --out DIR (default t)   --ids 1,2,3 (subset)   --dex dex.json ({issuances:[...]} for offline verified tokens)
  * Generic fallback for a pet not generated yet: t/pet.png (the logo) is what the site links; the binding itself never depends on the file. */
 'use strict';
@@ -40,28 +41,41 @@ function put(f, buf) { try { if (fs.readFileSync(f).equals(buf)) return 0; } cat
 module.exports = { png, meta, crc32 };
 if (require.main === module) (async () => {
   const ctx = F.context(); ctx.setInterval = () => 0; ctx.clearInterval = () => {}; ctx.document.head = { appendChild() {} }; ctx.document.addEventListener = undefined; for (const f of EXTRA) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
-  /* token-proof: --input FILE = the api-feed run's own chain read (live, dex included); else a live read with 429 back-off (3 tries). */
+  /* token-proof: --input FILE = the api-feed run's own chain read (rows, tip, hashes, dex); else a live read with 429 back-off (3 tries). */
   const liveRetry = async () => { for (let i = 0; ; i++) { try { return await F.liveInput(ctx); } catch (e) { if (i >= 2 || !/429|busy/i.test(String(e && e.message || e))) throw e; console.log('token-meta: chain busy, retry in', 20 * (i + 1), 's'); await new Promise(r => setTimeout(r, 20000 * (i + 1))); } } };
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : opt('--input') && fs.existsSync(opt('--input')) ? JSON.parse(fs.readFileSync(opt('--input'), 'utf8')) : await liveRetry();
-  const V = ctx.V2Rules, E = ctx.LiveEngine, rows = input.rows.filter(r => r.block_index <= input.tip), hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, input.hashes);
-  const w = V.replay(rows, hashes, [], { tip: input.tip, live: E && E.RealCore, dex: input.dex || undefined }); /* proof-parade-sprite-1108: same opts as api-feed build() + js/v2-chain.js; without dex sale/ID order differed, so a badge drew another pet's sprite */ w.tip = w.tip || input.tip;
-  const { pets } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));
-  /* verified tokens: V2Rules.deedScan over the burns + each deed asset's first issuance (live: fetched; --snap: --dex FILE or none) */
+  const t0 = Date.now(), lap = m => console.log('token-meta:', m, ((Date.now() - t0) / 1000).toFixed(1) + 's');
+  const V = ctx.V2Rules, rows = input.rows.filter(r => r.block_index <= input.tip);
+  /* One replay. F.build is the same V.replay(rows, hashes, [], {tip, live, dex}) this file used to run first and then again.
+   * Two worlds of ~156k pets peaked near 1.3 GB. Sprites, deedScan and the public pet rows all come from this single world.
+   * proof-parade-sprite-1108: dex must be the feed dex, or a badge can draw another pet's sprite. */
+  const { pets, w } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));
+  lap('replay ' + pets.length + ' pets');
+  /* verified tokens: V2Rules.deedScan over the burns + each deed asset's first issuance.
+   * Live / --input: use the feed dex's first issuance when it has that asset (api-feed already read it). GET only what is missing.
+   * --snap: --dex FILE or none, same as before. --dex FILE still wins over the feed dex. */
   let dex = opt('--dex') ? JSON.parse(fs.readFileSync(opt('--dex'), 'utf8')) : null;
-  if (!dex && !opt('--snap')) { dex = { issuances: [], orders: [], matches: [] }; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.counterparty.io:4000/v2', seen = {};
-    for (const r of V.readBurns(rows)) { let t = null; try { t = V.parseTag(r.tag); } catch (e) { } if (!t || t.action !== 'deed' || seen[t.asset]) continue; seen[t.asset] = 1;
-      const j = await (await fetch(API + '/assets/' + t.asset + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } 
+  const feedByAsset = (!dex && !opt('--snap') && input.dex && Array.isArray(input.dex.issuances)) ? new Map() : null;
+  if (feedByAsset) for (const x of input.dex.issuances) if (x && x.asset && !feedByAsset.has(x.asset)) feedByAsset.set(x.asset, x);
+  const API0 = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.counterparty.io:4000/v2';
+  const fetchIss = async a => {
+    if (!dex || !a || dex.issuances.some(x => x.asset === a)) return 'have';
+    if (feedByAsset && feedByAsset.has(a)) { dex.issuances.push(feedByAsset.get(a)); return 'feed'; }
+    for (const u of [API0 + '/assets/' + a + '/issuances?verbose=true', 'https://tokenscan.io/api/issuances/' + a]) { try { const j = await (await fetch(u)).json(); const L = (j.result || j.data || []).filter(x => !x.status || x.status === 'valid').sort((x, y) => x.tx_index - y.tx_index); if (L[0]) { dex.issuances.push(L[0]); return 'net'; } } catch (e) { } }
+    return 'miss';
+  };
+  if (!dex && !opt('--snap')) { dex = { issuances: [], orders: [], matches: [] }; const seen = {}; let fromFeed = 0, fetched = 0;
+    const take = async a => { if (!a || seen[a]) return; seen[a] = 1; const how = await fetchIss(a); if (how === 'feed') fromFeed++; else if (how === 'net') fetched++; };
+    for (const r of V.readBurns(rows)) { let t = null; try { t = V.parseTag(r.tag); } catch (e) { } if (!t || t.action !== 'deed') continue; await take(t.asset); }
     /* mint-only ties (before ACTIVATE_ONE_TIE_PATH_BLOCK) have no burn: also check each asset already named in t/<id>.json (deedScan verifies it) */
-    try { for (const f of fs.readdirSync(OUT)) { if (!/^[0-9]+\.json$/.test(f)) continue; let a = null; try { a = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')).asset; } catch (e) { } if (typeof a !== 'string' || seen[a]) continue; seen[a] = 1;
-      const j = await (await fetch(API + '/assets/' + a + '/issuances?verbose=true')).json(); const i = (j.result || []).filter(x => !x.status || x.status === 'valid').sort((a, b) => a.tx_index - b.tx_index)[0]; if (i) dex.issuances.push(i); } } catch (e) { } }
+    try { for (const f of fs.readdirSync(OUT)) { if (!/^[0-9]+\.json$/.test(f)) continue; let a = null; try { a = JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')).asset; } catch (e) { } if (typeof a === 'string') await take(a); } } catch (e) { }
+    lap('issuances from feed ' + fromFeed + ', fetched ' + fetched); }
   /* --tokened (hourly CI): find owners' fresh mints BEFORE deedScan, so a pre-gate mint-only tie is verified on the first run (Nusa #1111 fix).
    * Lookback = last processed block (api/token-meta-state.json) minus 12, never a fixed window, so an outage or a throttled cron misses nothing.
    * --since BLOCK overrides. --assets A1,A2 force-checks named assets (manual repair). */
   let mints = {}; const STATE = path.join(ROOT, 'api', 'token-meta-state.json'); let since = Number(opt('--since')) || 0;
   if (!since) { try { since = Number(JSON.parse(fs.readFileSync(STATE, 'utf8')).lastBlock) - 12; } catch (e) { } }
   if (!since || !(since > 0)) since = input.tip - 36; since = Math.min(since, input.tip - 36);
-  const fetchIss = async a => { if (!dex || dex.issuances.some(x => x.asset === a)) return; const API = (ctx.XCPETS_CONFIG.read || [])[0] || 'https://api.counterparty.io:4000/v2';
-    for (const u of [API + '/assets/' + a + '/issuances?verbose=true', 'https://tokenscan.io/api/issuances/' + a]) { try { const j = await (await fetch(u)).json(); const L = (j.result || j.data || []).filter(x => !x.status || x.status === 'valid').sort((x, y) => x.tx_index - y.tx_index); if (L[0]) { dex.issuances.push(L[0]); return; } } catch (e) { } } };
   let mintsOk = true;
   if (A.includes('--tokened')) { const DS = require('./deed-scan.js'), CF = ctx.XCPETS_CONFIG, API = (CF.read || [])[0] || 'https://api.counterparty.io:4000/v2';
     const r = await DS.recentMints(pets, API, CF.composeList || [], since); mints = r.mints; mintsOk = r.ok; console.log('tokened: mint lookback from block', since, 'nodes ok', r.ok);
@@ -96,5 +110,6 @@ if (require.main === module) (async () => {
       return { id, asset: v.asset, tiedBlock: v.block, tiedTx: v.tx, kind: burnTx.has(v.tx) ? 'deed' : 'mint', name: p.name || '', species: p.species || '', speciesLabel: p.speciesLabel || '', rarity: p.tier || '', stage: p.stageName || '' }; })
       .sort((a, b) => a.tiedBlock - b.tiedBlock || a.id - b.id);
     put(path.join(ROOT, 'api', 'ties.json'), Buffer.from(JSON.stringify({ lastBlock: lb, count: ties.length, url: SITE + '/t/<id>.json', ties }, null, 1) + '\n')); console.log('ties.json', ties.length, 'lastBlock', lb); }
+  lap('write');
   console.log('tip', input.tip, 'pets', pets.length, 'json written', nj, 'png written', np, 'no sprite', bad, '->', OUT);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
