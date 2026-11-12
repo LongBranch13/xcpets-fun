@@ -149,7 +149,7 @@ const STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
 const r6 = x => Math.round(x * 1e6) / 1e6, tierOf = x => Math.max(0, Math.min(3, x | 0));
 const sumStats = p => STATS.reduce((a, k) => a + (p.stats[k] || 0), 0);
 { const V0 = L.load().V2Rules;
-  ok(V0.mythicZfeedGate() === 975528 && V0.ACTIVATE_MYTHIC_ZFEED_BLOCK === 975528 && !V0.mythicZfeedOn(975507) && !V0.mythicZfeedOn(975527) && V0.mythicZfeedOn(975528), 'ACTIVATE_MYTHIC_ZFEED_BLOCK is 975528 (tip 975522 + 6), the same block as the Mythic owner head start');
+  ok(V0.mythicZfeedGate() === 975529 && V0.ACTIVATE_MYTHIC_ZFEED_BLOCK === 975529 && !V0.mythicZfeedOn(975507) && !V0.mythicZfeedOn(975528) && V0.mythicZfeedOn(975529), 'ACTIVATE_MYTHIC_ZFEED_BLOCK is 975529 (tip 975523 + 6), the same block as the Mythic owner head start');
   ok(V0.MG.ZCAP === 3 && V0.MG.GOD_BOOST === 1.25 && V0.MG.RES_MIN === 66 && V0.MG.GRAVE_FACTOR === 0.5, 'cap 3, Resurrection boost 1.25 and the 66-point rule are unchanged; 0.5 stays the raise factor'); }
 const RAISE = base.concat([row(R + 451, SB, 100000, 'pet:seance:' + E + ':' + b32(20870))]);
 const MEAL = (() => { const pre = W(RAISE, R + 452, { hashes: H() }), Z = pre.w.byId[E], V = pre.V, F = V.CEM.FERAL;
