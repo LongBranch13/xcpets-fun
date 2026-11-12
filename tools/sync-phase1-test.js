@@ -65,7 +65,12 @@ function fixtureState() {
   ok(listed && C.RULE_SCRIPTS.join(',') === listed[1].replace(/['"\s]/g, ''), 'recheck script list matches v2-chain.js');
 
   CHAIN_PAGES.forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8'); const a = h.indexOf('js/v2-boot-sync.js'), b = h.indexOf('js/v2-chain.js'); ok(a > 0 && a < b, 'boot-sync before chain on ' + f); });
-  PRACTICE.forEach(f => { const cur = fs.readFileSync(path.join(ROOT, f)); ok(!cur.includes('v2-boot-sync.js') && cur.equals(gitBuf(f)), 'practice page unchanged ' + f); });
+  /* pantheon-nav: practice copies the live place links, including The Pantheon. It still must not load the live boot-sync.
+   * Stripping those Pantheon links leaves the page byte-identical to origin/main. */
+  const PANTHEON_LINKS = ['<a class="btn" href="pantheon.html">🌕 The Pantheon</a>', ' <a class="btn ghost" href="pantheon.html">🌕 The Pantheon</a>', ' · <a href="pantheon.html">🌕 The Pantheon</a>', ",'pantheon.html':'the Pantheon'"];
+  PRACTICE.forEach(f => { const cur = fs.readFileSync(path.join(ROOT, f)); ok(!cur.includes('v2-boot-sync.js'), 'practice page has no live boot-sync ' + f);
+    let s = cur.toString('utf8'); PANTHEON_LINKS.forEach(function (bit) { s = s.split(bit).join(''); });
+    ok(Buffer.from(s).equals(gitBuf(f)) && cur.includes('pantheon'), 'practice page matches main aside from the Pantheon links ' + f); });
 
   const state = fixtureState();
   const full = buildAnswer(state, { since: '0' });
