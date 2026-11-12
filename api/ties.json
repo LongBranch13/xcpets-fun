@@ -1,6 +1,6 @@
 {
- "lastBlock": 975485,
- "count": 300,
+ "lastBlock": 975493,
+ "count": 302,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -1249,7 +1249,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 53884,
@@ -3085,7 +3085,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 127415,
@@ -3097,7 +3097,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 145213,
@@ -3109,7 +3109,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8782,
@@ -3469,7 +3469,7 @@
    "species": "hyb:doge:chud",
    "speciesLabel": "Dogchud (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 147175,
@@ -3481,7 +3481,7 @@
    "species": "hyb:viking:dodo",
    "speciesLabel": "Vikdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 19710,
@@ -3602,6 +3602,30 @@
    "speciesLabel": "KEVIN",
    "rarity": "Rare",
    "stage": "Mythic"
+  },
+  {
+   "id": 139027,
+   "asset": "A8965165328468168731",
+   "tiedBlock": 975493,
+   "tiedTx": "6ee3dfd570f4f31c89e42304ceab55444d4fbf804655a88fa0b94e6bbaf95269",
+   "kind": "deed",
+   "name": "Sedooru",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 156196,
+   "asset": "A6956088593800511113",
+   "tiedBlock": 975493,
+   "tiedTx": "11ee195996479b7613f3552450e0e14296dc51f231c2f8ce7001393532a8db51",
+   "kind": "deed",
+   "name": "Koozubit",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
