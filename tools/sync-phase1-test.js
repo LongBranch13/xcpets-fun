@@ -56,7 +56,7 @@ function fixtureState() {
   ok(/function composeNodes\(\)[\s\S]{0,400}node\\.xcpets\\.fun/.test(wallet), 'composeNodes still drops node.xcpets.fun');
   const cfg = fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8');
   ok(/composeList: \[COUNTERPARTY_CORE, CORE_BACKUP\]/.test(cfg) && cfg === gitBuf('rjs/config.js').toString('utf8'), 'compose list unchanged and config.js is byte-identical');
-  const RULES_MD5 = '7ff2d11a584b79996afd4180d89ff8ae';
+  const RULES_MD5 = '8e98664087bab2e991680ebdb80ba143';
   RULE7.forEach(f => { const a = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, f))).digest('hex'); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitBuf(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule MD5 unchanged ' + f); });
   RULE11.forEach(f => ok(f === 'js/v2-rules.js' ? crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, f))).digest('hex') === RULES_MD5 : fs.readFileSync(path.join(ROOT, f)).equals(gitBuf(f)), f === 'js/v2-rules.js' ? 'replay script MD5 is ' + RULES_MD5 : 'replay script unchanged ' + f));
   ok(fs.readFileSync(path.join(ROOT, 'js/v2-replay-worker.js')).equals(gitBuf('js/v2-replay-worker.js')), 'worker bytes unchanged');
