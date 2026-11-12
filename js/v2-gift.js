@@ -34,8 +34,8 @@
     document.head.appendChild(st); }
   function modal(html) { css(); var m = $('gfBox'); if (!m) { m = document.createElement('div'); m.id = 'gfBox'; m.className = 'reveal gf'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); document.body.appendChild(m);
       m.addEventListener('click', function (e) { if (e.target === m) close(); }); document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); }); }
-    m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('on'); paint(m); return m; }
-  function close() { var m = $('gfBox'); if (m) m.classList.remove('on'); }
+    m.innerHTML = '<div class="box">' + html + '</div>'; m.classList.add('on'); paint(m); if (window.V2Wallet && V2Wallet.mountFeeSlots) V2Wallet.mountFeeSlots(m); return m; }
+  function close() { endGiftFee(); var m = $('gfBox'); if (m) m.classList.remove('on'); }
   function resolve(w, s) { s = String(s || '').trim(); if (!s) return null; var n = /^(bc1|[13])[0-9a-zA-Z]{20,}$/.test(s) ? V.playerNo(w, s) : V.parsePlayer(s), a = n ? V.playerAddr(w, n) : null;
     if (/^(bc1|[13])/.test(s) && !n) return { err: 'This wallet has no player # yet. Ask them to tap "Get my player #" (a 1-dander pet:hi burn) first.' };
     return a ? { n: n, a: a } : { err: 'No player #' + esc(s.toUpperCase().replace(/^P?#?/, '')) + ' yet.' }; }
@@ -66,7 +66,7 @@
     modal('<h2>🎁 Gift ' + (ok.length === 1 ? 'a pet' : ok.length + ' pets') + '</h2><div class="gf-pets">' + rows + '</div>' +
       '<label for="gfTo">Recipient Bitcoin address</label><input type="text" id="gfTo" autocomplete="off" spellcheck="false" placeholder="bc1… / 1… / 3…" value="' + esc(pre || '') + '"><p class="small warn" id="gfErr" role="alert"></p>' +
       '<p class="small muted">The pet is its token: sending the token sends the pet (worn and bag gear go with it). ' + '' + (V.isBurnAddr ? 'Sending to a burn address is allowed: the pet goes out of play. ' : '') + 'No undo.</p>' +
-      '<div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Send</button></div>');
+      '<div data-nfee="1"></div><div class="gf-bar"><button class="q" id="gfX">Cancel</button><button class="btn" id="gfGo"' + (ok.length ? '' : ' disabled') + '>🎁 Send</button></div>');
     $('gfX').onclick = close; $('gfTo').focus();
     $('gfGo').onclick = function () { var to = $('gfTo').value.trim();
       if (!validAddr(to)) { $('gfErr').textContent = 'Enter a Bitcoin address that starts with bc1, 1 or 3.'; return; }
@@ -86,12 +86,15 @@
     return core('/mempool/events/DEBIT?limit=1000').then(function (r) { return r.ok ? r.json() : { result: [] }; }).then(function (j) { var seen = {};
       ((j && j.result) || []).forEach(function (e) { var x = e.params || {}; if (assets.indexOf(x.asset) >= 0) seen[x.asset] = 1; }); return Object.keys(seen); }, function () { return []; }); }
   /* run(job): resumable; job.mint[id] = asset (window sent), job.tied[id] = 1 */
+  var giftFee = false;
+  function endGiftFee() { if (!giftFee) return; giftFee = false; try { if (window.V2Wallet && V2Wallet.feeBatchEnd) V2Wallet.feeBatchEnd(); } catch (e) { } }
   function run(job) { var w = W(), Wl = window.V2Wallet; if (!w || !Wl) return; gpend(job);
+    if (!giftFee && Wl.feeBatchBegin) { giftFee = true; return Wl.feeBatchBegin(true).then(function () { return run(job); }, function () { return run(job); }); }
     var need = job.ids.filter(function (id) { var p = w.byId[id], d = V.deedOf(w, p); return p && !(d && d.ok && d.holder === ME) && !job.tied[id]; });
     var noTok = need.filter(function (id) { return !job.mint[id]; });
     function msg(h) { modal('<h2>🎁 Gift</h2>' + h + '<div class="gf-bar"><button class="q" id="gfX">Close</button></div>'); $('gfX').onclick = close; }
     function fail(e) { msg('<p class="warn">Not sent: ' + esc(e && e.message || e) + '</p><p><button class="btn" id="gfRe">Try again</button></p>'); $('gfRe').onclick = function () { run(job); }; }
-    if (noTok.length) { gpend(null); msg('<p class="warn">#' + noTok.join(', #') + (noTok.length === 1 ? ' has' : ' have') + ' no token yet, so nothing was sent.</p><p>Gifts only send pets that already have their token. Take ' + (noTok.length === 1 ? 'it' : 'them') + ' to the <a href="shop.html#press">Token Press</a> first.</p>'); return; } /* token-press: no automatic minting (an unfinished gift that already made its tokens still continues below) */
+    if (noTok.length) { gpend(null); endGiftFee(); msg('<p class="warn">#' + noTok.join(', #') + (noTok.length === 1 ? ' has' : ' have') + ' no token yet, so nothing was sent.</p><p>Gifts only send pets that already have their token. Take ' + (noTok.length === 1 ? 'it' : 'them') + ' to the <a href="shop.html#press">Token Press</a> first.</p>'); return; } /* token-press: no automatic minting (an unfinished gift that already made its tokens still continues below) */
     if (need.length) { var waitIds = need.filter(function (id) { return job.mint[id]; });
       return Promise.all(waitIds.map(function (id) { return issued(job.mint[id]); })).then(function (h) {
         if (h.some(function (x) { return x !== ME; })) { msg('<p>Token' + (waitIds.length === 1 ? '' : 's') + ' sent. Waiting for 1 block to confirm… this window continues by itself (keep it open).</p>'); var t = setTimeout(function () { run(job); }, 30000); $('gfX').onclick = function () { clearTimeout(t); close(); }; return; }
@@ -100,7 +103,7 @@
         return Wl.send(plan, ME).then(function () { job.tied[id2] = 1; run(job); }); }).catch(fail); }
     /* all tokens held: send them, BUNDLE per transaction */
     var assets = job.ids.map(function (id) { var d = V.deedOf(w, w.byId[id]); return job.mint[id] || (d && d.asset); }).filter(Boolean), done = job.sent || 0;
-    if (done >= assets.length) { gpend(null); msg('<p>🎁 Sent! The pet' + (assets.length === 1 ? '' : 's') + ' move' + (assets.length === 1 ? 's' : '') + ' to ' + esc(job.to.slice(0, 12)) + '… when the send confirms.</p>'); return; }
+    if (done >= assets.length) { gpend(null); endGiftFee(); msg('<p>🎁 Sent! The pet' + (assets.length === 1 ? '' : 's') + ' move' + (assets.length === 1 ? 's' : '') + ' to ' + esc(job.to.slice(0, 12)) + '… when the send confirms.</p>'); return; }
     var chunk = assets.slice(done, done + BUNDLE), plan = chunk.length === 1 ? { kind: 'send', asset: chunk[0], destination: job.to, label: 'Gift token ' + chunk[0] } : { kind: 'mpma', assets: chunk, destination: job.to, label: 'Gift ' + chunk.length + ' pet tokens' };
     msg('<p>Sending ' + (chunk.length === 1 ? 'the pet token' : chunk.length + ' pet tokens in one send') + (assets.length > BUNDLE ? ' (' + (done + chunk.length) + ' of ' + assets.length + ')' : '') + '…</p>');
     return Wl.sendDex(plan, ME).then(function () { job.sent = done + chunk.length; run(job); }).catch(fail); }

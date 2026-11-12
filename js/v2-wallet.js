@@ -157,19 +157,67 @@
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
    * wrong, fall back to /recommended; if both fail, 2 sat/vB as before. Cached 60 s so a 16-burn chain does not ask 16 times. Fee only, rules unchanged. */
-  var FEE_FLOOR = 0.1, FEE_CAP = 500, FEE_FALLBACK = 2, FEE_CACHE_MS = 60000, BURN_VB = 155, BURN_VB_P2PKH = 240, feeCache = null; /* casatookan-wallet: a legacy 1... input is ~148 vB vs ~68 (segwit); Casa Tookan's default address is legacy */
+  var FEE_FLOOR = 0.1, FEE_CAP = 500, FEE_FALLBACK = 2, FEE_CACHE_MS = 60000, FEE_KEY = 'xcpets-v2-fee', BURN_VB = 155, BURN_VB_P2PKH = 240, feeCache = null; /* casatookan-wallet: a legacy 1... input is ~148 vB vs ~68 (segwit); Casa Tookan's default address is legacy */
+  /* network-fee picker: Economy is the current default (pickFee). Normal = halfHourFee, Fast = fastestFee, Custom = a saved sat/vB.
+   * The choice is remembered in this browser. A batch pins the resolved rate so every burn or order in that run uses the same sat/vB. */
+  var batchOpen = false, batchPin = null;
   function feeNum(x) { x = Number(x); return isFinite(x) && x > 0 ? x : NaN; }
   function pickFee(f) { if (!f || typeof f !== 'object') return NaN; var eco = feeNum(f.economyFee), hr = feeNum(f.hourFee), min = feeNum(f.minimumFee);
     var floor = Math.max(FEE_FLOOR, isFinite(min) ? min : FEE_FLOOR), x = isFinite(eco) ? eco : hr;
     if (isFinite(hr) && hr >= floor && (!isFinite(x) || hr < x)) x = hr;
     if (!isFinite(x)) return NaN; x = Math.max(floor, Math.min(FEE_CAP, x)); return Math.round(x * 1000) / 1000; }
+  function feeFloor(f) { var min = f && feeNum(f.minimumFee); return Math.max(FEE_FLOOR, isFinite(min) ? min : FEE_FLOOR); }
+  function clampRate(x, floor) { if (!isFinite(x)) return NaN; return Math.round(Math.max(floor, Math.min(FEE_CAP, x)) * 1000) / 1000; }
+  /** parseCustom(v, floor) -> {ok, rate} or {ok:false, error}. floor defaults to 0.1. Rejects blank, words, and anything outside floor..500. */
+  function parseCustom(v, floor) { floor = isFinite(floor) && floor > 0 ? floor : FEE_FLOOR; var s = String(v == null ? '' : v).trim();
+    if (s.indexOf(',') >= 0 && s.indexOf('.') < 0) s = s.replace(',', '.');
+    if (!/^\d+(\.\d+)?$/.test(s)) return { ok: false, error: 'Enter a number from ' + floor + ' to 500 sat/vB.' };
+    var x = Math.round(Number(s) * 1000) / 1000; if (!isFinite(x) || x <= 0) return { ok: false, error: 'Enter a number from ' + floor + ' to 500 sat/vB.' };
+    if (x < floor) return { ok: false, error: 'Minimum is ' + floor + ' sat/vB.' };
+    if (x > FEE_CAP) return { ok: false, error: 'Maximum is 500 sat/vB.' };
+    return { ok: true, rate: x }; }
+  function fieldRate(f, key) { var raw = feeNum(f && f[key]), floor = feeFloor(f); if (!isFinite(raw)) return { rate: NaN, note: '' };
+    var c = clampRate(raw, floor), note = raw > FEE_CAP ? 'Capped at 500 sat/vB.' : (c > raw + 1e-9 ? 'Network minimum is ' + floor + ' sat/vB.' : ''); return { rate: c, note: note }; }
+  /** pickTier(raw, mode, custom) -> sat/vB. economy = pickFee (unchanged default). Missing Normal/Fast fields fall back to that same default. */
+  function pickTier(f, mode, custom) { var floor = feeFloor(f);
+    if (mode === 'fast') { var a = fieldRate(f, 'fastestFee'); if (isFinite(a.rate)) return a.rate; a = fieldRate(f, 'halfHourFee'); if (isFinite(a.rate)) return a.rate; return pickFee(f); }
+    if (mode === 'normal') { var b = fieldRate(f, 'halfHourFee'); if (isFinite(b.rate)) return b.rate; b = fieldRate(f, 'hourFee'); if (isFinite(b.rate)) return b.rate; return pickFee(f); }
+    if (mode === 'custom') { var p = parseCustom(custom, FEE_FLOOR); if (!p.ok) return NaN; return clampRate(p.rate, floor); }
+    return pickFee(f); }
+  function feeChoice() { var o = null; try { o = JSON.parse(get(FEE_KEY) || ''); } catch (e) { o = null; }
+    var m = o && o.m, c = o && o.c != null ? feeNum(o.c) : NaN; if (m !== 'normal' && m !== 'fast' && m !== 'custom') m = 'economy';
+    var custom = isFinite(c) && c >= FEE_FLOOR && c <= FEE_CAP ? Math.round(c * 1000) / 1000 : null;
+    if (m === 'custom' && custom == null) m = 'economy';
+    return { mode: m, custom: custom }; }
+  function choiceKey(ch) { ch = ch || feeChoice(); return ch.mode + (ch.mode === 'custom' ? ':' + ch.custom : ''); }
+  function setFeeChoice(mode, custom) { var cur = feeChoice(); if (mode !== 'economy' && mode !== 'normal' && mode !== 'fast' && mode !== 'custom') return { ok: false, error: 'Pick Economy, Normal, Fast, or Custom.' };
+    var next = { m: mode }; if (cur.custom != null) next.c = cur.custom; if (mode === 'custom') { var floor = feeCache && feeCache.raw ? feeFloor(feeCache.raw) : FEE_FLOOR; var p = parseCustom(custom, floor); if (!p.ok) return p; next.c = p.rate; }
+    try { store.setItem(FEE_KEY, JSON.stringify(next)); } catch (e) { return { ok: false, error: 'Could not save the fee choice in this browser.' }; }
+    batchPin = null; /* an explicit change applies to the next compose; an open batch re-pins that new rate */
+    try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:fee', { detail: feeChoice() })); } catch (e2) { }
+    return { ok: true, choice: feeChoice() }; }
   function getFees(path) { return withTimeout(F(CFG.mempoolApi + path).then(function (r) { if (r && r.status && r.status >= 400) throw new Error('fee api ' + r.status); return r.json(); }), FEE_MS, 'fee rate timed out')
     .then(function (f) { var x = pickFee(f); if (!isFinite(x)) throw new Error('fee api gave no usable rate'); return { rate: x, src: path.indexOf('precise') >= 0 ? 'precise' : 'recommended', raw: f }; }); }
-  /** feeQuote() -> Promise<{rate, src: 'precise'|'recommended'|'fallback', at}>, never rejects */
-  function feeQuote() { var now = Date.now(); if (feeCache && now - feeCache.at < FEE_CACHE_MS) return Promise.resolve(feeCache);
-    return getFees('/v1/fees/precise').catch(function () { return getFees('/v1/fees/recommended'); }).then(function (q) { q.at = Date.now(); feeCache = q; return q; },
-      function () { return { rate: FEE_FALLBACK, src: 'fallback', at: Date.now() }; }); }
-  function feeRate() { return feeQuote().then(function (q) { return q.rate; }); }
+  function quoteFrom(raw, src, economy) { var ch = feeChoice(), rate = ch.mode === 'economy' ? economy : pickTier(raw, ch.mode, ch.custom);
+    if (!isFinite(rate)) rate = economy; var fr = fieldRate(raw, ch.mode === 'fast' ? 'fastestFee' : ch.mode === 'normal' ? 'halfHourFee' : ''), note = fr.note || '';
+    if (ch.mode === 'custom' && ch.custom != null && rate > ch.custom + 1e-9) note = 'Network minimum is ' + feeFloor(raw) + ' sat/vB.';
+    return { rate: rate, src: src, raw: raw, tier: ch.mode, custom: ch.custom, floor: feeFloor(raw), cap: FEE_CAP, note: note,
+      rates: { economy: economy, normal: pickTier(raw, 'normal', null), fast: pickTier(raw, 'fast', null) } }; }
+  function fallbackQuote() { var ch = feeChoice();
+    if (ch.mode === 'custom') { var p = parseCustom(ch.custom, FEE_FLOOR); if (p.ok) return { rate: p.rate, src: 'custom', tier: 'custom', custom: p.rate, floor: FEE_FLOOR, cap: FEE_CAP, at: Date.now(), rates: { economy: FEE_FALLBACK, normal: FEE_FALLBACK, fast: FEE_FALLBACK } }; }
+    return { rate: FEE_FALLBACK, src: 'fallback', tier: ch.mode === 'custom' ? 'economy' : ch.mode, floor: FEE_FLOOR, cap: FEE_CAP, at: Date.now(), rates: { economy: FEE_FALLBACK, normal: FEE_FALLBACK, fast: FEE_FALLBACK } }; }
+  /** feeQuote() -> Promise<{rate, src, tier, at, ...}>, never rejects. A pinned batch returns that same rate until it ends or the player picks again. */
+  function feeQuote() { if (batchPin) return Promise.resolve(batchPin.quote); var now = Date.now();
+    if (feeCache && now - feeCache.at < FEE_CACHE_MS && feeCache.raw) { if (feeCache.choiceKey === choiceKey() && feeCache.quote) return Promise.resolve(feeCache.quote);
+      var q0 = quoteFrom(feeCache.raw, feeCache.src, feeCache.economy); q0.at = feeCache.at; feeCache.choiceKey = choiceKey(); feeCache.quote = q0; return Promise.resolve(q0); }
+    return getFees('/v1/fees/precise').catch(function () { return getFees('/v1/fees/recommended'); }).then(function (g) { var q = quoteFrom(g.raw, g.src, g.rate); q.at = Date.now();
+      feeCache = { at: q.at, raw: g.raw, src: g.src, economy: g.rate, choiceKey: choiceKey(), quote: q }; return q; }, function () { return fallbackQuote(); }); }
+  function feeRate() { if (batchPin) return Promise.resolve(batchPin.rate); return feeQuote().then(function (q) { if (batchOpen) batchPin = { rate: q.rate, quote: q }; return q.rate; }); }
+  /** feeBatchBegin([force]) pins one rate for every later compose until feeBatchEnd. force refreshes from the current choice. */
+  function feeBatchBegin(force) { batchOpen = true; if (batchPin && !force) return Promise.resolve(batchPin.quote); batchPin = null;
+    return feeQuote().then(function (q) { batchPin = { rate: q.rate, quote: q }; return q; }); }
+  function feeBatchEnd() { batchOpen = false; batchPin = null; }
+  function feePinned() { return batchPin ? batchPin.quote : null; }
   /** feeEstimate(n, rate[, vb]) -> estimated sats for n burns at rate (about BURN_VB vB each: 1 input, OP_RETURN, change) */
   function burnVb() { return wallet && wallet.w.kind === 'webxcp' && /^1/.test(wallet.address || '') ? BURN_VB_P2PKH : BURN_VB; }
   function feeEstimate(n, rate, vb) { return Math.ceil((vb || burnVb()) * Number(rate || 0)) * Math.max(1, n || 1); }
@@ -478,9 +526,10 @@
       el = doc.createElement('div'); el.id = 'xwPill'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); doc.body.appendChild(el); }
     el.hidden = false; el.className = st;
     var L = label(); relabel(); /* wallet-name: the pill names the wallet */ var txt = st === 'on' ? esc(L) + ' connected <span class="xwlong">' + esc(short(wallet.address)) + '</span>' : st === 'locked' ? esc(L) + ' locked' : esc(L) + ' disconnected';
-    el.innerHTML = '<span class="xwdot" aria-hidden="true"></span><span class="xwt">' + txt + '</span>' + (st === 'on' ? '' : '<button type="button" id="xwRe">' + (st === 'locked' ? 'Unlock' : 'Reconnect') + '</button>');
+    el.innerHTML = '<span class="xwdot" aria-hidden="true"></span><span class="xwt">' + txt + '</span>' + (st === 'on' ? '' : '<button type="button" id="xwRe">' + (st === 'locked' ? 'Unlock' : 'Reconnect') + '</button>') + (feeUiOn() ? '<button type="button" id="xwFee">Fee</button>' : '');
     el.title = st === 'on' ? L + ' connected: ' + wallet.address : 'Tap to reconnect ' + L + (L === 'XCP Wallet' ? ' (opens the XCP Wallet window)' : '');
-    var b = el.querySelector('#xwRe'); if (b) b.onclick = function () { b.disabled = true; b.textContent = '…'; connect().then(function (a) { var me = get(ME_KEY); if (me && a !== me && win.location && /play\.html/.test(win.location.pathname || '')) win.location.reload(); }, function (e) { b.disabled = false; b.textContent = 'Retry'; el.title = errText(e); }); }; }
+    var b = el.querySelector('#xwRe'); if (b) b.onclick = function () { b.disabled = true; b.textContent = '…'; connect().then(function (a) { var me = get(ME_KEY); if (me && a !== me && win.location && /play\.html/.test(win.location.pathname || '')) win.location.reload(); }, function (e) { b.disabled = false; b.textContent = 'Retry'; el.title = errText(e); }); };
+    var fb = el.querySelector('#xwFee'); if (fb) fb.onclick = function (ev) { if (ev) ev.stopPropagation(); toggleFeePop(); }; }
   /* wallet-name (Nov 1 2026): static and late-built copy (owner login, wait overlay, any sheet button) names the wallet in use.
    * Only buttons + #waitText/#gWalletNote, only when the wallet is not XCP Wallet; inscription buttons stay XCP Wallet (inscribing is XCP Wallet only). */
   var relabelObs = null, relabelQ = 0;
@@ -499,6 +548,53 @@
     win.addEventListener('pageshow', function (e) { if (e && e.persisted) silent(true); }); }
   /* wagmi-daily (2026-10-22): a successful connect marks this tab so play.html can offer WAGMI once (survives the reload to the connected address). */
   var OFFER_KEY = 'xcpets-wagmi-connect';
+  function feeUiOn() { if (label() === 'Practice wallet') return false; try { if (win.location && /inscriptions\.html/.test(win.location.pathname || '')) return false; } catch (e) { } return true; }
+  var NFEE_CSS = '.nfee{margin:8px 0;padding:8px;background:#141a2e;border:3px solid #000;box-shadow:4px 4px 0 #000;color:#f4f4f4;text-align:left;image-rendering:pixelated;max-width:100%;box-sizing:border-box}' +
+    '.nfee-h{font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.6;color:#ffd166;letter-spacing:1px;margin:0 0 8px}' +
+    '.nfee-seg{display:flex;flex-wrap:wrap;gap:6px}.nfee-seg .q{flex:1 1 auto;min-height:40px;padding:8px 10px;font-weight:700}' +
+    '.nfee-seg .q.on{background:#3ddc84;color:#04140a;box-shadow:inset 0 0 0 2px #000}' +
+    '.nfee-custom{display:flex;gap:6px;align-items:center;margin-top:8px}.nfee-custom[hidden]{display:none}' +
+    '.nfee-custom input{font:inherit;font-weight:700;width:7.2em;min-height:40px;padding:6px 8px;background:#0d1410;color:#e8f5ec;border:3px solid #000;border-radius:8px}' +
+    '.nfee-err{color:#ff8a8a;font-size:12px;line-height:1.4;margin:6px 0 0}.nfee-err[hidden]{display:none}' +
+    '.nfee-rate{font-size:13px;line-height:1.4;margin:8px 0 0}.nfee-note{font-size:12px;opacity:.8;margin:4px 0 0}.nfee-hint{font-size:12px;opacity:.75;margin:6px 0 0}' +
+    '#nfeePop{position:fixed;left:8px;bottom:52px;z-index:9001;width:min(360px,calc(100vw - 16px))}#nfeePop[hidden]{display:none}' +
+    '@media (max-width:600px){.nfee-seg{display:grid;grid-template-columns:1fr 1fr}.nfee-seg .q{width:100%}#nfeePop{left:6px;bottom:calc(48px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 12px))}}';
+  function injectFeeCss() { var doc = win && win.document; if (!doc || !doc.head || doc.getElementById('nfee-css')) return; var st = doc.createElement('style'); st.id = 'nfee-css'; st.textContent = NFEE_CSS; doc.head.appendChild(st); }
+  function feeHtml(setting) { return '<div class="nfee"><div class="nfee-h">NETWORK FEE</div><div class="nfee-seg" role="radiogroup" aria-label="Network fee">' +
+    '<button type="button" class="q" data-nmode="economy" title="Cheapest usual rate">Economy</button>' +
+    '<button type="button" class="q" data-nmode="normal" title="About 30 minutes">Normal</button>' +
+    '<button type="button" class="q" data-nmode="fast" title="Next block">Fast</button>' +
+    '<button type="button" class="q" data-nmode="custom" title="Your own sat/vB">Custom</button></div>' +
+    '<label class="nfee-custom" hidden>sat/vB <input type="text" inputmode="decimal" maxlength="8" autocomplete="off" spellcheck="false" placeholder="0.1–500" aria-label="Custom sat per vbyte" data-ncustom><button type="button" class="q" data-nset>Set</button></label>' +
+    '<p class="nfee-err" role="alert" hidden></p><p class="nfee-rate" aria-live="polite">Checking the rate…</p>' +
+    (setting ? '<p class="nfee-hint">Used for every burn and order. Saved in this browser.</p>' : '<p class="nfee-hint">Same rate for every burn in this run.</p>') + '</div>'; }
+  /** mountFeePicker(host, {burns, setting, onQuote}) draws the picker into host and keeps it in sync. */
+  function mountFeePicker(host, opts) { if (!host || !feeUiOn() || !win.document) return null; opts = opts || {}; injectFeeCss();
+    if (host.__nfeeOff && win.removeEventListener) win.removeEventListener('xcpets:fee', host.__nfeeOff);
+    host.innerHTML = feeHtml(!!opts.setting); var root = host.querySelector('.nfee'), err = root.querySelector('.nfee-err'), rate = root.querySelector('.nfee-rate'), custom = root.querySelector('.nfee-custom'), input = root.querySelector('[data-ncustom]');
+    function showErr(t) { if (!t) { err.hidden = true; err.textContent = ''; return; } err.hidden = false; err.textContent = t; }
+    function applyCustom() { var r = setFeeChoice('custom', input.value); if (!r.ok) { showErr(r.error); return; } showErr(''); host.__customOpen = false; }
+    root.querySelectorAll('[data-nmode]').forEach(function (b) { b.onclick = function () { var m = b.getAttribute('data-nmode'), ch = feeChoice();
+      if (m === 'custom') { host.__customOpen = true; custom.hidden = false;
+        if (ch.mode === 'custom') { try { input.focus(); } catch (e) { } return; }
+        if (ch.custom != null) { var r = setFeeChoice('custom', ch.custom); if (!r.ok) showErr(r.error); else showErr(''); } else { try { input.focus(); } catch (e2) { } }
+        return; }
+      if (ch.mode === m) return; host.__customOpen = false; var r2 = setFeeChoice(m); if (!r2.ok) showErr(r2.error); else showErr(''); }; });
+    root.querySelector('[data-nset]').onclick = applyCustom;
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); applyCustom(); } });
+    input.addEventListener('change', applyCustom);
+    function paint() { var ch = feeChoice(), open = ch.mode === 'custom' || host.__customOpen; custom.hidden = !open;
+      root.querySelectorAll('[data-nmode]').forEach(function (b) { var on = b.getAttribute('data-nmode') === ch.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      if (win.document.activeElement !== input && ch.custom != null) input.value = String(ch.custom);
+      feeQuote().then(function (q) { if (root.isConnected === false) return; var n = Math.max(1, opts.burns || 1), one = feeEstimate(1, q.rate), all = feeEstimate(n, q.rate);
+        rate.textContent = rateText(q.rate) + ' · ~' + fmtSats(one) + ' sats' + (n > 1 ? ' per burn · ~' + fmtSats(all) + ' sats for ' + n : '');
+        var note = root.querySelector('.nfee-note'); if (q.note) { if (!note) { note = win.document.createElement('p'); note.className = 'nfee-note'; rate.insertAdjacentElement('afterend', note); } note.textContent = q.note; } else if (note) note.textContent = '';
+        if (opts.onQuote) try { opts.onQuote(q); } catch (e) { } }); }
+    host.__nfeeOff = paint; if (win.addEventListener) win.addEventListener('xcpets:fee', paint); paint(); return host; }
+  function mountFeeSlots(root) { if (!root || !root.querySelectorAll || !feeUiOn()) return; root.querySelectorAll('[data-nfee]').forEach(function (n) { if (n.__nfee) return; n.__nfee = 1; mountFeePicker(n, { burns: Number(n.getAttribute('data-nfee')) || 1 }); }); }
+  function toggleFeePop() { var doc = win.document; if (!doc || !doc.body || !feeUiOn()) return; injectFeeCss(); var pop = doc.getElementById('nfeePop');
+    if (!pop) { pop = doc.createElement('div'); pop.id = 'nfeePop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Network fee'); pop.hidden = true; doc.body.appendChild(pop); mountFeePicker(pop, { burns: 1, setting: true }); }
+    pop.hidden = !pop.hidden; }
   function connect() { return getWallet().then(function (w) { remember(); emit(); try { win.sessionStorage.setItem(OFFER_KEY, w.address); } catch (e) { }
     try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:connected', { detail: { address: w.address } })); } catch (e) { } return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
@@ -509,6 +605,6 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
-  return { cancel: cancel, allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, tracker: tracker, getWallet: getWallet,
+  return { cancel: cancel, allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _pickTier: pickTier, _parseCustom: parseCustom, feeChoice: feeChoice, setFeeChoice: setFeeChoice, feeBatchBegin: feeBatchBegin, feeBatchEnd: feeBatchEnd, feePinned: feePinned, feeUiOn: feeUiOn, mountFeePicker: mountFeePicker, mountFeeSlots: mountFeeSlots, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, FEE_CAP: FEE_CAP, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });
