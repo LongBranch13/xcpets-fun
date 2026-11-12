@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/* Pantheon ceremony tooling. Display only: the rules file MD5 stays f010ee1f723dcc3340a73da0a443eba3,
+/* Pantheon ceremony tooling. Display only: the rules file MD5 stays 8e98664087bab2e991680ebdb80ba143,
  * replay of snap-971786 matches origin/main (SAME), and the HatchBot text plus the X card use
  * the first and last lines of V2Pantheon.verse. The Telegram hook stays disabled and unwired.
  * Nothing is posted. */
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), cp = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const RULES_MD5 = 'f010ee1f723dcc3340a73da0a443eba3';
+const RULES_MD5 = '8e98664087bab2e991680ebdb80ba143';
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const md5 = p => crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex');

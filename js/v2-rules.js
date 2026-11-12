@@ -954,13 +954,12 @@
   var ACTIVATE_RARE_EGGS_BLOCK = 974962;
   var DJ_RARE_POOL_FROM = Infinity;
   function djRareBreedOn(b) { return rareEggsOn(b) && b >= DJ_RARE_POOL_FROM; }
-  /* DJ PEPE BREEDING (owner Nov 12 2026): DJ Pepe is a Legend egg hatch, not a community pet, and never goes to Cold Storage.
-   * ACTIVATE_DJ_BREED_BLOCK stays null until go-live (set it to tip + 6 then). Infinity is off too.
-   * From that block djBreedOn is true with no mythic record, so breedable() keeps only the ordinary checks
+  /* DJ PEPE BREEDING (owner Nov 12 2026, go-live 'Yes, send PR #36 live' 9:13 AM CT): DJ Pepe is a Legend egg hatch, not a community pet, and never goes to Cold Storage.
+   * ACTIVATE_DJ_BREED_BLOCK = 975572 (tip 975566 + 6). From that block djBreedOn is true with no mythic record, so breedable() keeps only the ordinary checks
    * (dead, released, quests, cooldowns, costs) and the legendary-mix third root may be djpepe.
-   * While the constant is null or not finite, djBreedOn is exactly djRareBreedOn, so replay stays byte-identical.
+   * Before 975572 djBreedOn is exactly djRareBreedOn, so replay of existing history stays byte-identical. Infinity would be off.
    * Gear (view since 'djpepe') stays on rareEggsOn. reindex still copies w.djpepeMythic into DJ_RARE_POOL_FROM; replay never sets that record. */
-  var ACTIVATE_DJ_BREED_BLOCK = null;
+  var ACTIVATE_DJ_BREED_BLOCK = 975572;
   function djBreedOn(b) { return (ACTIVATE_DJ_BREED_BLOCK != null && Number.isFinite(ACTIVATE_DJ_BREED_BLOCK) && b != null && b >= ACTIVATE_DJ_BREED_BLOCK) || djRareBreedOn(b); }
   var RARE_D = 86902439766912, RARE_48 = 281474976710656;
   var RARE_BUCKETS = [

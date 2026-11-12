@@ -1,5 +1,5 @@
 /* DJ Pepe breeding (owner Nov 12 2026). DJ Pepe is a Legend egg, not a community pet, and never goes to Cold Storage.
- * ACTIVATE_DJ_BREED_BLOCK stays null in this PR. Before it, breedable() and the legendary-mix pool match the old gate.
+ * ACTIVATE_DJ_BREED_BLOCK is 975572 (tip 975566 + 6, go-live 9:13 AM CT). Before it, breedable() and the legendary-mix pool match the old gate.
  * Dev only: nothing is signed or sent. */
 'use strict';
 const assert = require('assert'), crypto = require('crypto'), { execFileSync } = require('child_process'), path = require('path');
@@ -16,14 +16,17 @@ function ok(fn) { try { fn(); n++; } catch (e) { fail++; console.log('FAIL ' + (
 
 const adult = { id: 101, species: 'djpepe', stage: 3, tier: 2, breeds: 0, breedsV2: 0, owner: 'dj-owner', stats: Object.assign({}, st), parents: [], children: [], art: { species: 'djpepe', tierIndex: 2 } };
 
-ok(() => assert.strictEqual(V.ACTIVATE_DJ_BREED_BLOCK, null));
-ok(() => assert.strictEqual(V.djBreedGate(), null));
-for (const b of [0, 1, 974961, 974962, 975000, 975555, GATE - 1, GATE, GATE + 6]) {
-  ok(() => assert.strictEqual(V.djBreedOn(b), V.djRareBreedOn(b), 'null gate matches the old breed check at ' + b));
+const LIVE = 975572;
+ok(() => assert.strictEqual(V.ACTIVATE_DJ_BREED_BLOCK, LIVE));
+ok(() => assert.strictEqual(V.djBreedGate(), LIVE));
+for (const b of [0, 1, 974961, 974962, 975000, 975555, 975566, LIVE - 1]) {
+  ok(() => assert.strictEqual(V.djBreedOn(b), V.djRareBreedOn(b), 'before 975572 matches the old breed check at ' + b));
 }
-ok(() => assert.strictEqual(V.breedable(adult, GATE), WHY));
-ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { dead: true }), GATE - 1), 'dead'));
-ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { released: true }), GATE - 1), 'released'));
+ok(() => assert.strictEqual(V.breedable(adult, LIVE - 1), WHY));
+ok(() => assert.strictEqual(V.djBreedOn(LIVE), true));
+ok(() => assert.strictEqual(V.breedable(adult, LIVE), null));
+ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { dead: true }), LIVE), 'dead'));
+ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { released: true }), LIVE), 'released'));
 
 V._setDjBreedActivation(Infinity);
 ok(() => assert.strictEqual(V.djBreedOn(GATE), false));
