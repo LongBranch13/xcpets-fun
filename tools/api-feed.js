@@ -8,6 +8,8 @@
  *   --no-dex    (with --snap) replay a snapshot without sale data (old behaviour, for comparisons only)
  *   Live mode refuses to write anything if the sale data can't be read (ownership would be wrong after any sale/tie).
  *   --out DIR (default api)   --now ISO (fixed generated time, for reproducible output)
+ *   --token-meta  after the api files are written, also write t/ token metadata in this process, using the world just built.
+ *                 --tokened is passed through. A failure is logged and skipped; the api files stay. Without the flag, nothing here changes.
  * Output is deterministic for a given (burns, tip): pets sorted by id, fixed key order, no timestamps in pets.json.
  * pets.json is columnar v2 (js/pets-feed.js): one pet per line, dictionaries for repeated owners and species.
  * The expanded objects match the old file. GitHub Pages was aborting feed deploys at the 10 minute sync cap while this file was ~75MB. */
@@ -125,7 +127,7 @@ if (require.main === module) (async () => {
   if (!opt('--snap') && LIMITED.stats) console.error('feed: requests ' + JSON.stringify(LIMITED.stats));
   if (opt('--save-input')) fs.writeFileSync(opt('--save-input'), JSON.stringify(input));
   if (opt('--save-dex') && input.dex) { fs.mkdirSync(path.dirname(path.resolve(opt('--save-dex'))), { recursive: true }); } if (opt('--save-dex') && input.dex) fs.writeFileSync(opt('--save-dex'), JSON.stringify(input.dex));
-  const { pets, meta } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
+  const { pets, meta, w } = build(ctx, input, opt('--now') || new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'pets.json'), PetsFeed.stringify(pets, meta.blockHeight) /* v2, one pet per line: small git diffs */);
   /* site-fast: first-visit boot copy for js/v2-chain.js fromStatic() (only the hashes the rows need; the page re-reads the chain right after) */
@@ -135,5 +137,14 @@ if (require.main === module) (async () => {
       dexTip: input.dexCarry && input.dexAssets ? input.dexCarry.tip : input.dex && !input.dex.stale && input.dexAssets && input.hashes && input.hashes[input.tip] ? input.tip : undefined, dexHash: input.dexCarry ? input.dexCarry.hash : input.dex && input.hashes ? input.hashes[input.tip] : undefined, dexAssets: input.dexAssets || undefined, dexCarry: input.dexCarry ? true : undefined })); }
   fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
   console.log('tip', meta.blockHeight, 'pets', pets.length, 'burns', meta.burns, '->', OUT);
+  /* --token-meta: sprite scripts patch display helpers (hybrid frames, gear maps). Load them only after replay so they cannot change the world. */
+  if (A.includes('--token-meta')) {
+    try {
+      const TM = require('./token-meta.js');
+      ctx.setInterval = () => 0; ctx.clearInterval = () => {}; ctx.document.head = { appendChild() {} }; ctx.document.addEventListener = undefined;
+      for (const f of TM.EXTRA) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
+      await TM.run(ctx, input, { pets, w }, A);
+    } catch (e) { console.error(e && e.stack || e); console.log('token-meta failed, skipping this run'); }
+  }
   process.exit(0); /* feed-timeout-fix: a timed-out sale read keeps going in the background; never let it hold the run open after the files are written */
 })().catch(e => { console.error(e.stack || e); process.exit(2); });

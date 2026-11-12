@@ -9,14 +9,14 @@
  *   node tools/token-meta.js                 live (same reads as tools/api-feed.js)
  *   node tools/token-meta.js --input FILE    api-feed --save-input: one replay, issuances taken from that dex
  *   node tools/token-meta.js --snap FILE     offline snapshot      --out DIR (default t)   --ids 1,2,3 (subset)   --dex dex.json ({issuances:[...]} for offline verified tokens)
+ *   run(ctx, input, {pets, w}, argv)         used by api-feed --token-meta: that world is already built, so F.build() is skipped
  * Generic fallback for a pet not generated yet: t/pet.png (the logo) is what the site links; the binding itself never depends on the file. */
 'use strict';
 /* api-reduction (2026-10-25): every Counterparty read here goes through the same gate as tools/api-feed.js (tools/lib/core-limiter.js: 1 in flight, 2/s per host, shared 429 cooldown). FEED_NO_LIMIT=1 turns it off. */
 if (!process.env.FEED_NO_LIMIT && typeof globalThis.fetch === 'function' && !globalThis.fetch.__xcpLimited) { const RAWF = globalThis.fetch.bind(globalThis), LF = require('./lib/core-limiter.js').makeFetch(RAWF, { conc: 1, rps: 2 }); LF.__xcpLimited = true; globalThis.fetch = LF; }
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const F = require('./api-feed.js'); const PAPERS = require('../js/v2-papers.js');
-const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
-const ROOT = path.resolve(__dirname, '..'), OUT = path.resolve(ROOT, opt('--out') || 't'), SITE = F.SITE, SCALE = 4;
+const ROOT = path.resolve(__dirname, '..'), SITE = F.SITE, SCALE = 4;
 const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* proof-parade-sprite-1108: every sprite script pet.html loads (homer/rabbit/dragon/jackson were missing) */ /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
 function crc32(b) { let c, t = crc32.t; if (!t) { t = crc32.t = new Int32Array(256); for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } }
   c = -1; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
@@ -38,19 +38,23 @@ function meta(p, v, m, mintTie) { /* mintTie: verified tie with no pet:deed burn
     pet: { id: p.id, name: p.name, species: p.species, speciesLabel: p.speciesLabel, rarity: p.tier, rarityScore: p.rarityScore, stage: p.stageName, status: p.status, generation: p.generation } });
   return o; }
 function put(f, buf) { try { if (fs.readFileSync(f).equals(buf)) return 0; } catch (e) { } fs.writeFileSync(f, buf); return 1; }
-module.exports = { png, meta, crc32 };
-if (require.main === module) (async () => {
-  const ctx = F.context(); ctx.setInterval = () => 0; ctx.clearInterval = () => {}; ctx.document.head = { appendChild() {} }; ctx.document.addEventListener = undefined; for (const f of EXTRA) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
-  /* token-proof: --input FILE = the api-feed run's own chain read (rows, tip, hashes, dex); else a live read with 429 back-off (3 tries). */
-  const liveRetry = async () => { for (let i = 0; ; i++) { try { return await F.liveInput(ctx); } catch (e) { if (i >= 2 || !/429|busy/i.test(String(e && e.message || e))) throw e; console.log('token-meta: chain busy, retry in', 20 * (i + 1), 's'); await new Promise(r => setTimeout(r, 20000 * (i + 1))); } } };
-  const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : opt('--input') && fs.existsSync(opt('--input')) ? JSON.parse(fs.readFileSync(opt('--input'), 'utf8')) : await liveRetry();
+/** run(ctx, input, built, argv): write t/<id>.json + .png. built {pets, w} is api-feed's build(); when passed, F.build() is skipped. */
+async function run(ctx, input, built, argv) {
+  const A = argv || process.argv.slice(2);
+  /* The feed's argv is passed through (--tokened and the rest). Its --out is the api directory and its --snap is the feed's offline switch, not this tool's. */
+  const opt = k => { if (built && (k === '--out' || k === '--snap')) return null; const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
+  const OUT = path.resolve(ROOT, opt('--out') || 't');
   const t0 = Date.now(), lap = m => console.log('token-meta:', m, ((Date.now() - t0) / 1000).toFixed(1) + 's');
   const V = ctx.V2Rules, rows = input.rows.filter(r => r.block_index <= input.tip);
-  /* One replay. F.build is the same V.replay(rows, hashes, [], {tip, live, dex}) this file used to run first and then again.
+  /* One replay when this file is the process. F.build is the same V.replay(rows, hashes, [], {tip, live, dex}) the feed already ran.
    * Two worlds of ~156k pets peaked near 1.3 GB. Sprites, deedScan and the public pet rows all come from this single world.
-   * proof-parade-sprite-1108: dex must be the feed dex, or a badge can draw another pet's sprite. */
-  const { pets, w } = F.build(ctx, input, '1970-01-01T00:00:00Z'), byId = new Map(w.pets.map(p => [p.id, p]));
-  lap('replay ' + pets.length + ' pets');
+   * proof-parade-sprite-1108: dex must be the feed dex, or a badge can draw another pet's sprite.
+   * built {pets, w} means the feed just built that world: do not replay it again. */
+  let pets, w;
+  if (built) { pets = built.pets; w = built.w; }
+  else { ({ pets, w } = F.build(ctx, input, '1970-01-01T00:00:00Z')); }
+  const byId = new Map(w.pets.map(p => [p.id, p]));
+  lap((built ? 'feed world ' : 'replay ') + pets.length + ' pets');
   /* verified tokens: V2Rules.deedScan over the burns + each deed asset's first issuance.
    * Live / --input: use the feed dex's first issuance when it has that asset (api-feed already read it). GET only what is missing.
    * --snap: --dex FILE or none, same as before. --dex FILE still wins over the feed dex. */
@@ -112,4 +116,13 @@ if (require.main === module) (async () => {
     put(path.join(ROOT, 'api', 'ties.json'), Buffer.from(JSON.stringify({ lastBlock: lb, count: ties.length, url: SITE + '/t/<id>.json', ties }, null, 1) + '\n')); console.log('ties.json', ties.length, 'lastBlock', lb); }
   lap('write');
   console.log('tip', input.tip, 'pets', pets.length, 'json written', nj, 'png written', np, 'no sprite', bad, '->', OUT);
+}
+module.exports = { png, meta, crc32, run, EXTRA };
+if (require.main === module) (async () => {
+  const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
+  const ctx = F.context(); ctx.setInterval = () => 0; ctx.clearInterval = () => {}; ctx.document.head = { appendChild() {} }; ctx.document.addEventListener = undefined; for (const f of EXTRA) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
+  /* token-proof: --input FILE = the api-feed run's own chain read (rows, tip, hashes, dex); else a live read with 429 back-off (3 tries). */
+  const liveRetry = async () => { for (let i = 0; ; i++) { try { return await F.liveInput(ctx); } catch (e) { if (i >= 2 || !/429|busy/i.test(String(e && e.message || e))) throw e; console.log('token-meta: chain busy, retry in', 20 * (i + 1), 's'); await new Promise(r => setTimeout(r, 20000 * (i + 1))); } } };
+  const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : opt('--input') && fs.existsSync(opt('--input')) ? JSON.parse(fs.readFileSync(opt('--input'), 'utf8')) : await liveRetry();
+  await run(ctx, input, null, A);
 })().catch(e => { console.error(e.stack || e); process.exit(2); });
