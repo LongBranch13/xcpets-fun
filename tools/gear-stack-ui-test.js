@@ -75,7 +75,8 @@ const SEED = `() => {
   const RULES_MD5 = '8e98664087bab2e991680ebdb80ba143';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f); });
   const oldShop = gitFile('js/v2-shop.js');
-  ok(!/function stackPieces/.test(oldShop), 'origin/main still shows one card per copy');
+  const mainStacks = /function stackPieces/.test(oldShop);
+  ok(mainStacks, 'origin/main already stacks gear cards');
   ok(/function stackPieces/.test(fs.readFileSync(path.join(ROOT, 'js/v2-shop.js'), 'utf8')), 'this branch stacks gear cards');
   const server = await serve();
   const origin = 'http://127.0.0.1:' + server.address().port;
@@ -117,7 +118,7 @@ const SEED = `() => {
       return { n: cards.length, avi: avi, sample: names.slice(0, 6) };
     });
     console.log('before grid', JSON.stringify(beforeGrid));
-    ok(beforeGrid.avi > 8, 'before: Gold aviators is repeated as separate cards (' + beforeGrid.avi + ' on the first page)');
+    ok(mainStacks ? beforeGrid.avi >= 1 && beforeGrid.avi <= 8 : beforeGrid.avi > 8, mainStacks ? 'main already stacks, Gold aviators is one card (' + beforeGrid.avi + ')' : 'before: Gold aviators is repeated as separate cards (' + beforeGrid.avi + ' on the first page)');
     const dress = await before.page.$('#rrDress');
     await dress.screenshot({ path: path.join(ART, 'gear_grid_before_unstacked.png') });
     const dump = await before.page.evaluate(() => {

@@ -11,9 +11,9 @@ function chromium() {
   throw new Error('playwright-core not found');
 }
 function owner() {
-  const line = fs.readFileSync(path.join(ROOT, 'api/pets.json'), 'utf8').split('\n')[1].replace(/,\s*$/, '');
-  const row = JSON.parse(line);
-  return row && row.owner ? row.owner : '';
+  const F = require(path.join(ROOT, 'js/pets-feed.js'));
+  const doc = F.expand(JSON.parse(fs.readFileSync(path.join(ROOT, 'api/pets.json'), 'utf8')));
+  return doc.pets[0] && doc.pets[0].owner ? doc.pets[0].owner : '';
 }
 const ME = owner();
 let pass = 0, fail = 0;

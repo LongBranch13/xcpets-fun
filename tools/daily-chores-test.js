@@ -6,7 +6,8 @@
  *   5. every owner's plan fits 34 bytes and needs fewer burns than the old daily routine.   6. send guard.   node tools/daily-chores-test.js [--boot FILE] */
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const { load, ROOT } = require('./lib/load-rules');
+const { load } = require('./lib/fork-replay'); /* one live replay, then each scenario continues from that copy */
+const ROOT = path.resolve(__dirname, '..');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
@@ -28,7 +29,8 @@ const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = 
 const mk = (b, src, amt, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('dc-test:' + (seed || tag) + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: Math.round(amt * 1e8), tag: hex(tag), status: 'valid' });
 const G = V.dailyChoresGate(); ok(G === null ? (!V.choresOn(nb) && !V.choresOn(9e9)) : (Number.isInteger(G) && G > tip - 50000 && V.choresOn(G) && !V.choresOn(G - 1)), 'gate in the code: ACTIVATE_DAILY_CHORES_BLOCK = ' + G + (G === null ? ' (rule off at every block)' : ' (on from that block, off before)'));
 V._setDailyChoresActivation(null); /* sections 1-2 check the gate-off behaviour (every block before the gate) */
-const w = V.replay(rows, hashes, [], opts(tip));
+const w = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
+const play = (extra, t) => V.replay(rows.concat(extra), hashes, [], Object.assign(opts(t), { _forkUse: tip }));
 const owners = {}; w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 ok(V.dailyChoresPlan(w, Object.keys(owners)[0], nb) === null, 'gate off: the planner offers nothing');
 ok(/not set yet/.test(V.sendBlock(w, { tag: 'pet:dc:3' }, tip, { me: Object.keys(owners)[0] }) || ''), 'gate off: send guard says "opens at block (not set yet)"');
@@ -36,7 +38,7 @@ ok(/not set yet/.test(V.sendBlock(w, { tag: 'pet:dc:3' }, tip, { me: Object.keys
 const said = o => !!(w.wagmi[o] && w.wagmi[o][V.day(nb)]), who = Object.keys(owners).map(o => ({ o, eat: owners[o].filter(p => V.frEats(p, nb)).length, spins: V.spinsLeft(w, o, nb), said: said(o) })).filter(x => x.eat <= 400).sort((a, b) => (b.eat > 0) - (a.eat > 0) || a.said - b.said || (b.spins > 0) - (a.spins > 0) || b.eat - a.eat)[0];
 console.log('  test wallet ' + who.o.slice(0, 10) + '…: ' + who.eat + ' pets that eat, ' + who.spins + ' saved spins, WAGMI today: ' + who.said);
 { const r1 = mk(nb, who.o, 1, 'pet:dc:3', 'g'), r2 = Object.assign({}, r1, { tag: hex('pet:zz:3') });
-  const a = V.replay(rows.concat([r1]), hashes, [], opts(nb + 1)), b = V.replay(rows.concat([r2]), hashes, [], opts(nb + 1)), l = a.log.find(x => x.tx === r1.tx_hash);
+  const a = play([r1], nb + 1), b = play([r2], nb + 1), l = a.log.find(x => x.tx === r1.tx_hash);
   ok(l && l.kind === 'rejected' && /unknown pet: tag \(community food\)/.test(l.msg), 'gate off: pet:dc burn = unknown pet: tag (community food) [' + (l && l.msg) + ']');
   const strip = x => JSON.stringify({ log: x.log, wagmi: x.wagmi, spins: x.spins, pets: x.pets.map(p => [p.id, p.owner, p.care, p.lastFed]), c: x.community.burned });
   ok(strip(a) === strip(b), 'gate off: world identical to an unknown pet: tag with the same tx'); }
@@ -45,28 +47,29 @@ V._setDailyChoresActivation(nb); ok(V.choresOn(nb) && !V.choresOn(nb - 1), 'gate
 const plan = V.dailyChoresPlan(w, who.o, nb); ok(!!plan && /^pet:dc:[0-3]/.test(plan.plans[0].tag), 'plan: first burn is pet:dc [' + (plan && plan.plans.map(q => q.tag + ' @ ' + q.amount).join(' | ')) + ']');
 if (plan) { const head = plan.plans[0], all = plan.plans.map(q => mk(nb, who.o, q.amount, q.tag)), want = new Set(plan.plans.reduce((a, q) => a.concat(q.petIds || []), []));
   ok(plan.plans.every(q => Buffer.byteLength(q.tag) <= 34), 'plan: every tag fits 34 bytes');
-  const w2 = V.replay(rows.concat(all), hashes, [], opts(nb + 1)), lc = w2.log.find(x => x.tx === all[0].tx_hash && x.kind === 'chores');
+  const w2 = play(all, nb + 1), lc = w2.log.find(x => x.tx === all[0].tx_hash && x.kind === 'chores');
   ok(!!lc, 'engine: chores burn logged [' + (lc && lc.msg) + ']');
   ok(head.parts.wagmi ? !!(w2.wagmi[who.o] && w2.wagmi[who.o][V.day(nb)]) : true, 'engine: WAGMI check-in counted for chain day ' + V.day(nb));
   const fed = w2.pets.filter(p => p.lastFed === nb).map(p => p.id); ok(want.size > 0 && fed.length === want.size && fed.every(id => want.has(id)), 'engine: fed exactly the ' + want.size + ' planned pets');
-  ok(V.spinsLeft(w2, who.o, nb + 1) === 0, 'engine: no saved spins left (all used, incl. spins earned in the same burn)');
+  const spinPick = !!(V.spinTargetOn && V.spinTargetOn(nb)), usedOf = x => (x.spins && x.spins[who.o] ? x.spins[who.o].used : 0);
+  ok(spinPick ? usedOf(w2) === usedOf(w) : V.spinsLeft(w2, who.o, nb + 1) === 0, spinPick ? 'engine: spin targeting is on, so the chores burn spends no saved spins' : 'engine: no saved spins left (all used, incl. spins earned in the same burn)');
   /* same as three separate burns (feed / WAGMI / use all) */
   const sep = []; if (head.parts.wagmi) sep.push(mk(nb, who.o, 0.00000001, 'pet:wagmi')); if (head.petIds.length) sep.push(mk(nb, who.o, head.amount, 'pet:fr:' + head.tag.split(':').slice(3).join(':')));
   sep.push.apply(sep, all.slice(1).map(r => mk(nb, who.o, r.quantity / 1e8, Buffer.from(r.tag, 'hex').toString()))); const usp = mk(nb, who.o, 0.00000001, 'pet:usespin:all'); sep.push(usp);
-  const w3 = V.replay(rows.concat(sep), hashes, [], opts(nb + 1)), care = x => JSON.stringify(x.pets.filter(p => p.owner === who.o).map(p => [p.id, p.care, p.lastFed]));
+  const w3 = play(sep, nb + 1), care = x => JSON.stringify(x.pets.filter(p => p.owner === who.o).map(p => [p.id, p.care, p.lastFed]));
   ok(care(w2) === care(w3), 'same care and fed days as ' + sep.length + ' separate burns');
   ok(JSON.stringify(w2.wagmi[who.o] || {}) === JSON.stringify(w3.wagmi[who.o] || {}), 'same WAGMI days as separate burns');
   const used = x => (x.spins && x.spins[who.o] ? x.spins[who.o].used : 0); console.log('  spins used: one burn ' + used(w2) + ', separate burns ' + used(w3) + ' (separate: the spin burn comes last; lucky drops differ by tx seed)');
-  ok(V.spinsLeft(w3, who.o, nb + 1) === 0 && V.spinsLeft(w2, who.o, nb + 1) === 0, 'both ways end with 0 saved spins');
+  ok(spinPick ? usedOf(w3) === usedOf(w) && usedOf(w2) === usedOf(w) : V.spinsLeft(w3, who.o, nb + 1) === 0 && V.spinsLeft(w2, who.o, nb + 1) === 0, spinPick ? 'spin targeting is on: chores and the old use-all tag spend no saved spins' : 'both ways end with 0 saved spins');
   ok(w2.community.burned - w.community.burned < w3.community.burned - w.community.burned + 1e-9, 'one burn burns no more XCPETS than separate burns (' + (w2.community.burned - w.community.burned).toFixed(8) + ' vs ' + (w3.community.burned - w.community.burned).toFixed(8) + ')');
   /* 4. second burn the same day: every part skipped -> rejected, nothing changes */
-  const again = mk(nb + 1, who.o, 0.00000001, 'pet:dc:3'), w4 = V.replay(rows.concat(all, [again]), hashes, [], opts(nb + 2)), la = w4.log.filter(x => x.tx === again.tx_hash);
+  const again = mk(nb + 1, who.o, 0.00000001, 'pet:dc:3'), w4 = play(all.concat([again]), nb + 2), la = w4.log.filter(x => x.tx === again.tx_hash);
   ok(la.some(x => x.kind === 'rejected' && /did nothing/.test(x.msg)) && la.filter(x => x.kind === 'chores-skip').length === 2, 'second pet:dc:3 the same day: WAGMI + spins skipped, burn rejected [' + la.map(x => x.msg).join(' / ') + ']');
   ok(V.dailyChoresPlan(w2, who.o, nb + 1) === null, 'planner: nothing left to do after the chores');
   ok(/waiting to confirm/.test(V.sendBlock(w, head, tip, { me: who.o, pending: [head.tag] }) || ''), 'send guard: one chores burn at a time');
   ok(V.sendBlock(w, head, tip, { me: who.o }) === null, 'send guard: the planned burn may go');
   /* partial: spins only, none left -> rejected; WAGMI-only for a wallet that already said it today -> rejected */
-  const sp0 = mk(nb + 1, who.o, 0.00000001, 'pet:dc:2'), w5 = V.replay(rows.concat(all, [sp0]), hashes, [], opts(nb + 2));
+  const sp0 = mk(nb + 1, who.o, 0.00000001, 'pet:dc:2'), w5 = play(all.concat([sp0]), nb + 2);
   ok(w5.log.some(x => x.tx === sp0.tx_hash && x.kind === 'rejected'), 'pet:dc:2 with 0 spins left: rejected (community food)'); }
 /* 5. every owner: burns per day, old vs new */
 let oldT = 0, newT = 0, fit = true, n = 0; Object.keys(owners).forEach(o => { const q = V.dailyChoresPlan(w, o, nb); if (!q) return; n++; oldT += q.oldBurns; newT += q.plans.length; if (!q.plans.every(x => Buffer.byteLength(x.tag) <= 34)) fit = false; });

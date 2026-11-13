@@ -9,7 +9,7 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': '
 module.exports = async function serveRepo(pg, extra = {}, origin = 'http://localhost:8099') {
   await pg.route(u => u.href.startsWith(origin + '/'), r => {
     const p = decodeURIComponent(new URL(r.request().url()).pathname);
-    if (Object.prototype.hasOwnProperty.call(extra, p)) return r.fulfill({ contentType: 'text/html', body: extra[p] });
+    if (Object.prototype.hasOwnProperty.call(extra, p)) return r.fulfill({ contentType: TYPES[path.extname(p).toLowerCase()] || 'text/html', body: extra[p] });
     const f = path.join(ROOT, p === '/' ? 'index.html' : p);
     if (!f.startsWith(ROOT + path.sep) || !fs.existsSync(f) || !fs.statSync(f).isFile()) return r.fulfill({ status: 404, body: '' });
     return r.fulfill({ contentType: TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream', body: fs.readFileSync(f) });

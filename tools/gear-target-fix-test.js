@@ -9,7 +9,8 @@
  *   node tools/gear-target-fix-test.js [--boot FILE] */
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const { load, ROOT } = require('./lib/load-rules');
+const { load } = require('./lib/fork-replay'); /* one live replay, then each scenario continues from that copy */
+const ROOT = path.resolve(__dirname, '..');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
@@ -32,7 +33,8 @@ const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = 
 const mk = (b, src, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('gtf-test:' + (seed || tag) + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: 1, tag: hex(tag), status: 'valid' });
 const G0 = V.spinTargetGate(); ok(G0 === 974279 && !V.spinTargetOn(G0 - 1) && V.spinTargetOn(G0), 'gate in the code: ACTIVATE_SPIN_TARGET_BLOCK = ' + G0 + ' (LIVE Nov 2 2026 [pt2654u]: tip 974273 + 6)');
 V._setSpinTargetActivation(null); /* the gate-off checks below run with the gate off at every block, whatever the boot tip is */
-const w = V.replay(rows, hashes, [], opts(tip));
+const w = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
+const play = (extra, t) => V.replay(rows.concat(extra), hashes, [], Object.assign(opts(t), { _forkUse: tip }));
 /* the grant note */
 const hasOwner = rows.some(r => r.tx_hash === OWNER_TX), gr = V.rewearGrant(w, OWNER);
 if (hasOwner) { ok(gr && gr.tx === OWNER_TX && gr.total === 1014 && !gr.used, 'grant note: the owner\'s use-all burn (1,161 spins with the sale data the site replays) put ' + (gr && gr.total) + ' pieces on pets with no meal yet (expect 1,014), ' + (gr && gr.n) + ' still his');
@@ -49,7 +51,7 @@ console.log('  spin wallet ' + W.slice(0, 10) + '…: ' + WS + ' saved spins, ' 
 /* 2. gate off: same as any unknown tag */
 { const ta = mk(nb, W, 'pet:ut:ALL:' + (tip % 1024 < 32 ? '0' : '') + (tip % 1024).toString(32).toUpperCase() + ':03', 'off'), tb = Object.assign({}, ta, { tag: hex('pet:zz:ALL:00:03') });
   const rw = mk(nb + 1, OWNER, 'pet:rw:00:03', 'offrw'), rwb = Object.assign({}, rw, { tag: hex('pet:zz:00:03') });
-  const a = V.replay(rows.concat([ta, rw]), hashes, [], opts(nb + 2)), b = V.replay(rows.concat([tb, rwb]), hashes, [], opts(nb + 2));
+  const a = play([ta, rw], nb + 2), b = play([tb, rwb], nb + 2);
   const la = a.log.find(x => x.tx === ta.tx_hash), lr = a.log.find(x => x.tx === rw.tx_hash);
   ok(la && la.kind === 'rejected' && /unknown pet: tag/.test(la.msg) && lr && lr.kind === 'rejected' && /unknown pet: tag/.test(lr.msg), 'gate off: pet:ut and pet:rw = unknown pet: tag (community food) [' + (la && la.msg) + ']');
   const strip = x => JSON.stringify({ log: x.log.map(l => [l.tx, l.kind, l.msg]), items: x.items, spins: x.spins, pets: x.pets.map(p => [p.id, p.owner, p.care, p.stage, p.dead]) });
@@ -83,7 +85,7 @@ const extra = [old1, old2, ut, ut2, dc, bad]; let rwr = null, rw2 = null, rwg = 
 if (rwPlan) { rwr = mk(G + 3, OWNER, rwPlan.tag, 'rw'); rw2 = mk(G + 4, OWNER, rwPlan2[0].tag, 'rw2'); rwg = mk(G + 3, W2.a, rwPlan.tag, 'rwg'); extra.push(rwr, rw2, rwg); }
 const gmFed = (pets[GMONEY] || []).filter(p => p.lastFed != null).map(p => p.id), gmPlans = hasOwner ? V.rewearPlans(w, GMONEY, gmFed, G) : null; let rwgm = [];
 if (gmPlans) { rwgm = gmPlans.map((p, j) => mk(G + 3 + j, GMONEY, p.tag, 'rwgm' + j)); extra.push(...rwgm); }
-const w2 = V.replay(rows.concat(extra), hashes, [], opts(G + 6)), lg = t => w2.log.find(x => x.tx === t.tx_hash) || {};
+const w2 = play(extra, G + 6), lg = t => w2.log.find(x => x.tx === t.tx_hash) || {};
 ok(lg(old1).kind === 'rejected' && /pick/.test(lg(old1).msg) && lg(old2).kind === 'rejected', 'gate on: pet:usespin:all and pet:usespin:3 rejected [' + lg(old1).msg + ']');
 const lu = lg(ut), sp = lu.spins || [];
 ok(lu.kind === 'roll' && sp.length === WS, 'gate on: pet:ut:ALL used all ' + WS + ' spins (nothing was spent by the rejected old tags) [' + lu.msg + ']');
@@ -106,7 +108,8 @@ if (rwPlan) { const R = w._rw[OWNER_TX], set = new Set(R.gids.concat((w._rw[GMON
   const wornBy = {}; Object.keys(w2.items).forEach(k => { const g = w2.items[k]; if (g.on != null && rwPick.indexOf(g.on) >= 0) { const key = g.on + ':' + g.slot; wornBy[key] = (wornBy[key] || 0) + 1; } });
   ok(Object.values(wornBy).every(n => n === 1), 're-wear: one piece per slot on every picked pet');
   ok(lg(rwg).kind === 'rejected' && /no re-wear grant/.test(lg(rwg).msg), 're-wear: a wallet with no grant is refused [' + lg(rwg).msg + ']');
-  const g2 = V.rewearGrant(w2, OWNER); ok(g2.used === G + 3 && g2.burns === 2 && g2.n === r2.stash, 're-wear: first used at ' + g2.used + ', 2 burns, ' + g2.n + ' pieces still in the stash for more picks'); }
+  const g2 = V.rewearGrant(w2, OWNER); ok(g2.used === G + 3 && g2.burns === 2 && g2.n === r2.stash, 're-wear: grant note matches the stash the second burn reported');
+  if (!(g2.used === G + 3 && g2.burns === 2 && g2.n === r2.stash)) console.log('  re-wear note ' + g2.n + ' vs burn stash ' + r2.stash + ', used ' + g2.used + ', burns ' + g2.burns); }
 if (hasOwner) { ok(gmPlans && gmPlans.length, 'G Money re-wear planner: ' + gmFed.length + ' fed pets -> ' + (gmPlans && gmPlans.length) + ' burns');
   const a = rwgm.map(lg), r0 = (a[0] || {}).rewear || {}, worn = a.reduce((n, l) => n + ((l.rewear || {}).worn || 0), 0), last = (a[a.length - 1] || {}).rewear || {};
   ok(a.length && a[0].kind === 'rewear' && r0.worn + r0.stash + r0.skipped === 725, 'G Money re-wear, first burn: ' + (a[0] && a[0].msg));
