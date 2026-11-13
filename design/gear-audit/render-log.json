@@ -1,0 +1,1019 @@
+{
+  "sheets": [
+    "head-hats.png",
+    "head-bands.png",
+    "head-crown-gold.png",
+    "head-crown-tin.png",
+    "face-nose.png",
+    "face-eyewear.png",
+    "face-mouth.png",
+    "neck-scarf.png",
+    "back-capes.png",
+    "body-outfits.png",
+    "hand-held.png",
+    "hand-weapons.png",
+    "feet.png",
+    "peepo-headgear.png",
+    "peepo-face.png"
+  ],
+  "summary": {
+    "LOW": 191,
+    "CLIP+LOW": 18,
+    "CLIP": 159,
+    "CLIP+NECK": 3,
+    "NECK": 12,
+    "LOW+NECK": 14,
+    "CLIP+LOW+NECK": 2,
+    "MISS": 210,
+    "CLIP+HIGH": 25,
+    "BIG+CLIP": 2,
+    "HIGH": 165,
+    "BIG": 10,
+    "BIG+HIGH": 1,
+    "FLOAT": 1,
+    "FACE": 7
+  },
+  "md5": "8e98664087bab2e991680ebdb80ba143",
+  "anchors": {
+    "pepe": {
+      "tuples": [
+        "15,29,8,23,18,19",
+        "11,29,6,24,15,17",
+        "10,29,5,26,15,15",
+        "8,29,4,27,-1,-1",
+        "7,29,3,28,12,14"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "wojak": {
+      "tuples": [
+        "13,29,9,21,14,25",
+        "10,29,8,23,11,24",
+        "7,29,7,24,8,23",
+        "5,29,6,25,6,23",
+        "4,29,5,26,6,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "chud": {
+      "tuples": [
+        "13,29,9,21,17,22",
+        "10,29,8,23,15,22",
+        "7,29,7,24,13,22",
+        "5,29,6,25,11,23",
+        "4,29,5,26,11,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "chad": {
+      "tuples": [
+        "13,29,9,21,16,21",
+        "10,29,8,23,14,20",
+        "7,29,7,24,12,20",
+        "5,29,6,25,10,19",
+        "4,29,5,26,10,19"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "bobo": {
+      "tuples": [
+        "13,29,8,23,18,20",
+        "10,29,6,24,16,18",
+        "7,29,5,26,14,16",
+        "5,29,4,27,13,15",
+        "4,29,3,28,13,15"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "mumu": {
+      "tuples": [
+        "14,29,7,23,15,20",
+        "11,29,5,25,13,18",
+        "8,29,4,27,9,16",
+        "6,29,3,28,7,15",
+        "5,29,2,29,7,15"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "snibby": {
+      "tuples": [
+        "14,29,7,23,15,25",
+        "11,29,5,25,12,24",
+        "8,29,4,27,9,23",
+        "6,29,3,28,7,23",
+        "5,29,2,29,7,23"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "dodo": {
+      "tuples": [
+        "13,29,7,24,15,16",
+        "8,29,5,26,12,14",
+        "7,29,3,27,10,12",
+        "5,29,2,29,9,10",
+        "3,29,1,30,8,10"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "kevin": {
+      "tuples": [
+        "13,29,9,22,-1,-1",
+        "10,29,7,24,-1,-1",
+        "7,29,6,25,-1,-1",
+        "5,29,5,26,18,18",
+        "4,29,4,27,-1,-1"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "peepo": {
+      "tuples": [
+        "15,29,7,24,17,19",
+        "12,29,5,26,15,17",
+        "10,29,3,27,12,15",
+        "8,29,2,28,11,14",
+        "7,29,1,29,10,14"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "sarutobi": {
+      "tuples": [
+        "13,29,7,23,-1,-1",
+        "10,29,5,25,-1,-1",
+        "7,29,3,26,-1,-1",
+        "5,29,2,28,18,18",
+        "4,29,1,29,-1,-1"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "doge": {
+      "tuples": [
+        "13,29,8,23,15,25",
+        "9,29,6,25,12,24",
+        "6,29,4,26,9,23",
+        "4,29,3,28,7,22",
+        "3,29,2,29,7,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "lenny": {
+      "tuples": [
+        "13,29,8,23,-1,-1",
+        "10,29,6,24,-1,-1",
+        "7,29,5,26,14,14",
+        "5,29,4,27,13,18",
+        "4,29,3,28,13,13"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "nakamoto": {
+      "tuples": [
+        "13,29,10,21,22,22",
+        "9,29,7,23,17,18",
+        "5,29,6,24,16,16",
+        "3,29,6,25,15,15",
+        "4,29,5,26,15,15"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "kek": {
+      "tuples": [
+        "12,29,8,23,14,25",
+        "10,29,7,24,12,23",
+        "8,29,6,25,10,23",
+        "7,30,4,27,9,24",
+        "1,30,0,31,2,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "wizard": {
+      "tuples": [
+        "12,31,5,27,14,26",
+        "10,31,3,29,12,25",
+        "7,31,2,31,8,25",
+        "6,31,1,31,7,24",
+        "1,31,1,31,1,23"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "funtrump": {
+      "tuples": [
+        "9,30,5,26,22,22",
+        "7,30,2,28,20,20",
+        "6,30,2,28,19,19",
+        "3,30,0,30,18,18",
+        "2,31,0,31,2,23"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "homer": {
+      "tuples": [
+        "9,30,9,20,16,18",
+        "5,30,7,21,13,15",
+        "2,30,6,22,10,14",
+        "0,30,5,22,9,13",
+        "0,30,5,24,0,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "rabbit": {
+      "tuples": [
+        "12,29,9,21,13,25",
+        "8,29,8,22,9,23",
+        "4,29,7,23,5,22",
+        "2,29,6,24,3,22",
+        "0,29,4,25,0,21"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "viking": {
+      "tuples": [
+        "15,29,8,23,19,19",
+        "11,29,6,25,17,17",
+        "7,29,4,27,15,15",
+        "7,29,3,28,15,15",
+        "6,29,3,28,15,15"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "djpepe": {
+      "tuples": [
+        "9,28,8,23,10,23",
+        "7,28,6,24,8,22",
+        "4,29,2,29,5,22",
+        "3,29,2,29,4,22",
+        "1,29,0,31,1,21"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "orangedragon": {
+      "tuples": [
+        "8,28,3,31,13,16",
+        "7,28,2,31,12,15",
+        "1,30,0,31,10,14",
+        "0,30,0,31,10,15",
+        "0,30,0,31,9,14"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "bojackson": {
+      "tuples": [
+        "14,31,9,22,22,27",
+        "7,31,6,25,10,25",
+        "2,31,3,26,6,23",
+        "2,31,3,26,6,23",
+        "1,31,2,30,1,23"
+      ],
+      "allDiffer": false,
+      "unique": 4
+    },
+    "rarepigeon": {
+      "tuples": [
+        "17,29,9,21,-1,-1",
+        "10,28,5,24,-1,-1",
+        "3,28,1,27,-1,-1",
+        "0,28,1,27,1,20",
+        "0,29,0,29,0,21"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "jacksonpepe": {
+      "tuples": [
+        "9,30,6,25,10,22",
+        "5,30,5,26,6,21",
+        "0,30,3,27,1,22",
+        "0,30,3,28,1,22",
+        "0,30,3,28,1,22"
+      ],
+      "allDiffer": false,
+      "unique": 4
+    },
+    "starlordkek": {
+      "tuples": [
+        "18,29,9,22,21,23",
+        "16,29,8,23,19,24",
+        "5,29,2,28,6,21",
+        "5,29,2,30,6,23",
+        "2,31,1,31,6,23"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "gooby": {
+      "tuples": [
+        "15,29,6,24,21,26",
+        "12,29,5,25,19,24",
+        "9,29,3,26,17,23",
+        "8,29,3,27,16,23",
+        "2,30,1,30,7,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    },
+    "lukespam": {
+      "tuples": [
+        "16,29,9,26,-1,-1",
+        "14,29,8,27,21,21",
+        "12,29,7,28,19,19",
+        "11,29,5,28,18,24",
+        "2,30,1,30,10,22"
+      ],
+      "allDiffer": true,
+      "unique": 5
+    }
+  },
+  "rows": [
+    {
+      "id": "pepe",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-pepe-buckethat Pond bucket hat",
+        "band": "v2-pepe-band FEELS sweatband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-pepe-face Smug Pepe brows",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-pepe-cape Rare Pepe trading-card cape",
+        "body": "sig-pepe-body Feels-Good tee",
+        "held": "sig-pepe-held Comfy lily cup",
+        "weapon": "sig-pepe-weapon Pepe Cash scepter",
+        "feet": "sig-pepe-feet Pond-frog webbed feet"
+      }
+    },
+    {
+      "id": "wojak",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-wojak-hat Grey bobble beanie",
+        "band": "v2-wojak-band Grey sweatband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-wojak-face Feels-guy eye bags",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-wojak-cape Pink-wojak sell-wall cape",
+        "body": "sig-wojak-body Wagie apron",
+        "held": "sig-wojak-held \"It's over\" phone",
+        "weapon": "sig-wojak-weapon Spatula of cope",
+        "feet": "sig-wojak-feet Doomer slides"
+      }
+    },
+    {
+      "id": "chud",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-chud-hat Backwards gamer cap",
+        "band": "v2-chud-band Gamer headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-chud-bluelight Blue-light glasses",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-chud-cape Gamer chair back",
+        "body": "sig-chud-body \"Based\" hoodie",
+        "held": "sig-chud-held RGB controller",
+        "weapon": "sig-chud-weapon Ban hammer",
+        "feet": "sig-chud-feet LED gamer sneakers"
+      }
+    },
+    {
+      "id": "chad",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "bobo",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-bobo-hat Bear ushanka",
+        "band": "v2-bobo-band Red-candle bandana",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-bobo-face Shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-bobo-cape Red-candle cape",
+        "body": "sig-bobo-body Short-seller suit vest",
+        "held": "sig-bobo-held Liquidation notice",
+        "weapon": "sig-bobo-weapon Margin-call axe",
+        "feet": "sig-bobo-feet Grizzly claw boots"
+      }
+    },
+    {
+      "id": "mumu",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-mumu-hat Cowboy hat",
+        "band": "v2-mumu-band Green bull headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-mumu-face Bull-run war paint",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-mumu-cape Matador-green cape",
+        "body": "sig-mumu-body Green-candle sash",
+        "held": "sig-mumu-held Bull-market bell",
+        "weapon": "sig-mumu-weapon Golden bull horn spear",
+        "feet": "sig-mumu-feet Stampede hooves"
+      }
+    },
+    {
+      "id": "snibby",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-snibby-hat Sailor cap",
+        "band": "v2-snibby-band Seaweed band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-snibby-face Eyestalk goggles",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-snibby-cape Hermit-crab spiral shell",
+        "body": "sig-snibby-body Sideways-chart carapace",
+        "held": "sig-snibby-weapon Giant pincer claw",
+        "weapon": "sig-snibby-weapon Giant pincer claw",
+        "feet": "sig-snibby-feet Sideways crab legs"
+      }
+    },
+    {
+      "id": "dodo",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-dodo-hat Top hat",
+        "band": "v2-dodo-band Red feather band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-dodo-cape Black-swan wings",
+        "body": "sig-dodo-body Tail-risk feather ruff",
+        "held": "sig-dodo-held \"?\" event card (framed)",
+        "weapon": "sig-dodo-weapon Black Swan quill blade",
+        "feet": "sig-dodo-feet Swan webbed feet"
+      }
+    },
+    {
+      "id": "kevin",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-kevin-hat Stamp-collector cap",
+        "band": "v2-kevin-band Grey hair-clip band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-kevin-face Copy-paste visor",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-kevin-cape Stamp #4258 cape",
+        "body": "sig-kevin-body KEVIN name-tag cardigan",
+        "held": "sig-kevin-held Stamp album",
+        "weapon": "sig-kevin-weapon Giant KEVIN stamp",
+        "feet": "sig-kevin-feet Stamped penny loafers"
+      }
+    },
+    {
+      "id": "peepo",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-peepo-hat Confetti party hat",
+        "band": "v2-peepo-band Pink happy band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-peepo-face Peeking big eyes",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-peepo-cape Pink blanket-fort cape",
+        "body": "sig-peepo-body Pink peeking sweater (v2)",
+        "held": "sig-peepo-held Heart balloon",
+        "weapon": "sig-peepo-weapon Binocular baton",
+        "feet": "sig-peepo-feet Frog-peep slippers"
+      }
+    },
+    {
+      "id": "sarutobi",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-sarutobi-hat Monkey king cap",
+        "band": "v2-sarutobi-band Leaf-plate headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-sarutobi-face Monkey-king gold mask",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-sarutobi-cape Somersault cloud",
+        "body": "sig-sarutobi-body Ninja gi wrap",
+        "held": "v2-sarutobi-held Banana",
+        "weapon": "banana-katana Banana katana",
+        "feet": "smoke-sandals Smoke-bomb sandals"
+      }
+    },
+    {
+      "id": "doge",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-doge-hat Shiba-ear beanie",
+        "band": "v2-doge-band Bone headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-doge-face Side-eye Shiba look",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "wow-bandana \"Wow\" bandana",
+        "body": "sig-doge-body Much-wow Comic Sans tee",
+        "held": "sig-doge-held Dogecoin",
+        "weapon": "sig-doge-weapon To-the-moon rocket staff",
+        "feet": "sig-doge-feet Shiba toe-bean paws"
+      }
+    },
+    {
+      "id": "lenny",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "v2-lenny-hat Beret",
+        "band": "v2-lenny-band Lenny-brow yellow band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "lenny-monocle Lenny-face monocle",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-lenny-cape Lenny banner",
+        "body": "sig-lenny-body Smug turtleneck",
+        "held": "sig-lenny-held Monocle on a chain",
+        "weapon": "sig-lenny-weapon Paintbrush rapier",
+        "feet": "sig-lenny-feet Pointy loafers"
+      }
+    },
+    {
+      "id": "nakamoto",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "v2-nakamoto-band Genesis Block headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-nakamoto-face Shadowed face",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-nakamoto-cape Genesis-block cloak",
+        "body": "sig-nakamoto-body Cypherpunk trenchcoat",
+        "held": "sig-nakamoto-held Whitepaper scroll",
+        "weapon": "sig-nakamoto-weapon 21M hash staff",
+        "feet": "sig-nakamoto-feet Cold-wallet boots"
+      }
+    },
+    {
+      "id": "kek",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "kek-card LORDKEK Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "wizard",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "wizard-hat Wizard Hat",
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "wiz-star-cloak Star-cloak",
+        "body": "wiz-star-robe Star robe",
+        "held": "sig-wizard-sign \"Join us\" sign",
+        "weapon": "wiz-paint-staff MS Paint staff"
+      }
+    },
+    {
+      "id": "funtrump",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "ft-fun-cap FUN cap",
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "ft-aviators Fun aviator shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "ft-hairspray Golden Hairspray",
+        "weapon": "wooden-sword Wooden sword",
+        "feet": "ft-skateboard Skateboard"
+      }
+    },
+    {
+      "id": "homer",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "hp-rad-suit Radiation suit",
+        "held": "hp-donut Pink sprinkle donut",
+        "weapon": "wooden-sword Wooden sword",
+        "feet": "hp-slippers Comfy slippers"
+      }
+    },
+    {
+      "id": "rabbit",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "wr-shades Rabbit-hole shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "wr-waistcoat Checked waistcoat",
+        "held": "wr-pocket-watch Gold pocket watch",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "viking",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "djpepe",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "hat": "dj-headphones Studio headphones",
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "dj-gold-chain Gold Chain",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "orangedragon",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "bojackson",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "rarepigeon",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "jacksonpepe",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "starlordkek",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "gooby",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "lukespam",
+      "kind": "base",
+      "skip": "",
+      "picks": {
+        "band": "red-headband Red headband",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "v2-red-shades Red shades",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "red Red cape",
+        "body": "leather Leather armor",
+        "held": "rare-card Rare Pepe card",
+        "weapon": "wooden-sword Wooden sword"
+      }
+    },
+    {
+      "id": "hyb-peepo-bobo",
+      "kind": "hybrid",
+      "skip": "",
+      "picks": {
+        "hat": "v2-peepo-hat Confetti party hat",
+        "band": "v2-peepo-band Pink happy band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-peepo-face Peeking big eyes",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-peepo-cape Pink blanket-fort cape",
+        "body": "sig-peepo-body Pink peeking sweater (v2)",
+        "held": "sig-peepo-held Heart balloon",
+        "weapon": "sig-peepo-weapon Binocular baton",
+        "feet": "sig-peepo-feet Frog-peep slippers"
+      }
+    },
+    {
+      "id": "hyb-peepo-wojak",
+      "kind": "hybrid",
+      "skip": "",
+      "picks": {
+        "hat": "v2-peepo-hat Confetti party hat",
+        "band": "v2-peepo-band Pink happy band",
+        "crown": "gold-crown Gold crown",
+        "crown2": "v2-crown-tin Tin crown",
+        "nose": "v2-gold-nose-ring Gold nose ring (v2)",
+        "eye": "sig-peepo-face Peeking big eyes",
+        "mouth": "v2-gold-grill Gold grill",
+        "scarf": "red-scarf Red scarf",
+        "cape": "sig-peepo-cape Pink blanket-fort cape",
+        "body": "sig-peepo-body Pink peeking sweater (v2)",
+        "held": "sig-peepo-held Heart balloon",
+        "weapon": "sig-peepo-weapon Binocular baton",
+        "feet": "sig-peepo-feet Frog-peep slippers"
+      }
+    },
+    {
+      "id": "peepo-v2-peepo-hat",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-peepo-hat Confetti party hat"
+      }
+    },
+    {
+      "id": "peepo-party-hat",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "party-hat Party hat"
+      }
+    },
+    {
+      "id": "peepo-bino-hat",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "bino-hat Binoculars hat"
+      }
+    },
+    {
+      "id": "peepo-pimp-hat",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "pimp-hat Pepe Cash pimp hat"
+      }
+    },
+    {
+      "id": "peepo-v2-peepo-band",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-peepo-band Pink happy band"
+      }
+    },
+    {
+      "id": "peepo-v2-gold-nose-ring",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-gold-nose-ring Gold nose ring (v2)"
+      }
+    },
+    {
+      "id": "peepo-v2-septum-chain",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-septum-chain Septum chain"
+      }
+    },
+    {
+      "id": "peepo-v2-diamond-stud",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-diamond-stud Diamond nose stud"
+      }
+    },
+    {
+      "id": "peepo-nose-ring",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "nose-ring Gold nose ring"
+      }
+    },
+    {
+      "id": "peepo-v2-mumu-face",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-mumu-face Silver septum ring"
+      }
+    },
+    {
+      "id": "peepo-v2-peepo-face",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "v2-peepo-face Blush cheeks"
+      }
+    },
+    {
+      "id": "peepo-sig-peepo-face",
+      "kind": "peepo-extra",
+      "skip": "",
+      "picks": {
+        "extra": "sig-peepo-face Peeking big eyes"
+      }
+    }
+  ]
+}

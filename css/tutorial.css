@@ -54,6 +54,7 @@
 .tut-hand{position:fixed;z-index:100002;font-size:40px;pointer-events:none;animation:tutPoint .6s ease-in-out infinite alternate}
 @keyframes tutPoint{to{transform:translate(8px,8px)}}
 .tut-tip{position:fixed;z-index:100003;left:50%;transform:translateX(-50%);bottom:16px;width:min(520px,calc(100vw - 24px));background:#1b1430;border:3px solid #000;box-shadow:4px 4px 0 #000,0 0 0 2px #ffd24a inset;border-radius:14px;padding:12px;color:#fff}
+@media (max-width:600px){.tut-tip{box-sizing:border-box;width:min(520px, calc(100vw - 16px));max-width:calc(100vw - 16px);overflow-wrap:anywhere;bottom:max(16px, env(safe-area-inset-bottom))}}
 .tut-tip .tut-guide{margin:0}.tut-tip .tut-guide canvas{width:64px;height:64px}
 .tut-tip .tut-nav{margin-top:8px}
 /* Keeper Quests */

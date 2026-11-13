@@ -337,15 +337,22 @@
       }
     }
     if (iid('head') === 'dj-headphones') {
-      for (var xe = A.fx0 - 1; xe <= A.fx0; xe++) { set(xe, A.fy0 + 2, 'n'); set(xe, A.fy0 + 3, 'n'); }
-      for (var xe2 = A.fx1 - 1; xe2 <= A.fx1; xe2++) { set(xe2, A.fy0 + 2, 'n'); set(xe2, A.fy0 + 3, 'n'); }
-      for (var xb = A.fx0; xb <= A.fx1 - 1; xb++) set(xb, A.fy0 - 1, 'C');
+      for (var xe = A.fx0 - 1; xe <= A.fx0; xe++) { set(xe, A.fy0, 'n'); set(xe, A.fy0 + 1, 'n'); }
+      for (var xe2 = A.fx1 - 1; xe2 <= A.fx1; xe2++) { set(xe2, A.fy0, 'n'); set(xe2, A.fy0 + 1, 'n'); }
+      for (var xb = A.fx0; xb <= A.fx1 - 1; xb++) set(xb, Math.max(0, A.fy0 - 2), 'C');
     }
     if (iid('head') === 'dj-flat-cap') {
       for (var xh = A.fx0; xh <= A.fx1 - 1; xh++) { set(xh, A.fy0 - 1, 'n'); set(xh, A.fy0, 'n'); }
       for (var xb2 = A.fx0 - 1; xb2 <= A.fx1; xb2++) set(xb2, A.fy0 + 1, 'n');
     }
-    if (Gr.head && !iid('head')) for (var xh3 = A.fx0 + 2; xh3 <= A.fx1 - 3; xh3++) { set(xh3, A.fy0 - 1, col('head')); set(xh3, A.fy0, col('head', 1)); }
+    if (Gr.head && iid('head') !== 'dj-headphones' && iid('head') !== 'dj-flat-cap') {
+      if (/scarf/.test(String(Gr.head.label || Gr.head.item || '').toLowerCase())) { for (var xs = A.bx0; xs <= A.bx1; xs++) set(xs, A.by0, col('head')); }
+      else for (var xh3 = A.fx0 + 2; xh3 <= A.fx1 - 3; xh3++) { set(xh3, Math.max(0, A.fy0 - 2), col('head')); set(xh3, Math.max(0, A.fy0 - 1), col('head', 1)); }
+    }
+    if (Gr.face && /nose|septum|stud|ring/.test(String(Gr.face.label || Gr.face.item || '').toLowerCase())) {
+      var nx = Math.round((A.ex0 + A.ex1) / 2), ny = Math.min(A.fy1 - 1, A.ey + 3);
+      set(nx - 1, ny, 'y'); set(nx + 1, ny, 'y'); set(nx, ny + 1, 'y'); set(nx - 1, ny + 1, 'o'); set(nx + 1, ny + 1, 'o');
+    }
     if (Gr.face) for (var xf = A.ex0 - 1; xf <= A.ex1; xf++) set(xf, A.ey, col('face'));
     return g;
   }

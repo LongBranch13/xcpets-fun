@@ -95,8 +95,11 @@
       for (var yq = 0; yq < bl; yq++) { set(g, bxL, bt + yq, yq % 2 ? 'b' : 'B'); set(g, bxR, bt + yq, yq % 2 ? 'B' : 'b'); }
       set(g, bxL, bt + bl, myth ? 'Q' : 'r'); set(g, bxR, bt + bl, myth ? 'Q' : 'r'); }
     if (stage === 4) { set(g, cx - mw + 1, by0, 'c'); set(g, cx + mw - 2, by0 + 1, 'c'); }                                   // Elder: lighter streaks
-    /* horned helmet (part of him: Headwear gear is not drawn) */
+    /* horned helmet is part of him. A worn head piece sits on the rim (display only), using the helmet's own top row. */
     helmet(g, cx, headTop, D.hw, D.hl, D.hn, myth);
+    if (Gr.head) { var hkV = kind('head'), yV = Math.max(0, headTop);
+      if (/scarf/.test(hkV)) hline(g, cx - bw, cx + bw - 1, bodyTop, col('head'));
+      else hline(g, cx - D.hw + 2, cx + D.hw - 3, yV, col('head')); }
     /* round shield on his left arm (viewer's left), Adult+ */
     if (stage >= 3) shield(g, cx - bw - 2, bodyTop + 4, 3, myth); else if (stage === 2) shield(g, cx - bw - 1, bodyTop + 4, 2, false);
     /* right hand (viewer's right): the bearded axe from Elder, or the held Grip piece */
@@ -110,6 +113,7 @@
     if (Gr.face) { var gk = kind('face'), g0 = col('face');
       if (/tear/.test(gk)) set(g, cx - 3, ey + 1, g0);
       else if (/shade|sunglass|goggle|visor|laser|beam|glass|mask/.test(gk)) { hline(g, cx - 4, cx - 2, ey, g0); hline(g, cx + 1, cx + 3, ey, g0); }
+      else if (/nose|septum|stud|ring/.test(gk)) { set(g, cx - 1, noseY, g0); set(g, cx + 1, noseY, g0); set(g, cx, noseY + 1, g0); set(g, cx - 1, noseY + 1, g0); set(g, cx + 1, noseY + 1, g0); }
       else set(g, cx + 3, ey + 1, g0); }
     return outline(g);
   }

@@ -15,5 +15,6 @@ body.practice #zapBtn,body.practice #zapFence,body.practice #zapOdds,body.practi
 body.practice .pets .pet,body.practice .pets .card{position:relative}
 body.practice .pets .pet::after,body.practice .pets .card::after{content:'PRACTICE';position:absolute;right:6px;top:6px;font-family:'Press Start 2P',monospace;font-size:7px;background:rgba(255,210,63,.85);color:#1a1a1a;padding:2px 4px;border-radius:3px;pointer-events:none;z-index:3}
 .px-reveal-tag{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100000;font-family:'Press Start 2P',monospace;font-size:10px;background:#ffd23f;color:#1a1a1a;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:nowrap}
+@media (max-width:600px){.px-reveal-tag{box-sizing:border-box;max-width:calc(100vw - 16px);overflow-wrap:anywhere;white-space:normal;text-align:center}}
 html,body{overflow-x:hidden}
 @media (max-width:600px){.px-bar{margin:6px 6px 0;font-size:12px}.px-txt{flex-basis:100%}.px-btns .btn,.px-btns .q{font-size:11px;padding:4px 7px}}

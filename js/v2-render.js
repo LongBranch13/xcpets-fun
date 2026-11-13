@@ -131,6 +131,17 @@
       var ee = eR || eL, bk = null; for (y = ee[1] - 1; y <= ee[1] + 3; y++) for (x = ee[0] + 1; x < 32; x++) { if (!a.isSil(x, y)) continue; var q = px(x, y); if (q[0] >= 0xa0 && q[1] < 0x70 && q[2] < 0x70) {
         bk = bk || { x0: 99, x1: -1, y0: 99, y1: -1 }; bk.x0 = Math.min(bk.x0, x); bk.x1 = Math.max(bk.x1, x); bk.y0 = Math.min(bk.y0, y); bk.y1 = Math.max(bk.y1, y); } }
       if (bk) { nose = bk; nose.beak = true; ex = bk.x1 - 3; if (mouth.y <= bk.y1 + 1) mouth = { x: Math.round((bk.x0 + bk.x1) / 2), y: bk.y1 + 1, src: 'beak' }; } }
+    /* Peepo nostrils are dark green (#2d5b18), not the ink the nose pass looks for, so the hoop was landing above the holes. */
+    if (species === 'peepo') {
+      for (y = ey + 2; y <= Math.min(28, ey + 14); y++) { var reds = []; for (x = 0; x < 32; x++) { if (!a.isSil(x, y)) continue; var lp = px(x, y); if (Math.abs(lp[0] - 214) + Math.abs(lp[1] - 48) + Math.abs(lp[2] - 49) < 36) reds.push(x); }
+        if (reds.length >= 3) { mouth = { x: Math.round(reds.reduce(function (s, v) { return s + v; }, 0) / reds.length), y: y, src: 'peepo' }; break; } }
+      var hits = [], yN0 = ey + 1, yN1 = mouth ? mouth.y - 1 : ey + 8;
+      var dark = function (x2, y2) { var qn = px(x2, y2); return Math.abs(qn[0] - 45) + Math.abs(qn[1] - 91) + Math.abs(qn[2] - 24) <= 18; };
+      for (y = yN0; y <= yN1; y++) for (x = 1; x < 31; x++) { if (!a.isSil(x, y) || !dark(x, y)) continue; if (dark(x - 1, y) || dark(x + 1, y)) continue; if (a.isSil(x, y - 1) && a.isSil(x, y + 1)) hits.push([x, y]); }
+      var bestY = -1; hits.forEach(function (q) { if (q[1] > bestY) bestY = q[1]; }); /* the pair closest to the mouth */
+      var dots = hits.filter(function (q) { return q[1] === bestY; });
+      if (dots.length >= 1 && dots.length <= 4) { nose = { x0: 99, x1: -1, y0: 99, y1: -1, peepo: true };
+        dots.forEach(function (q) { nose.x0 = Math.min(nose.x0, q[0]); nose.x1 = Math.max(nose.x1, q[0]); nose.y0 = Math.min(nose.y0, q[1]); nose.y1 = Math.max(nose.y1, q[1]); }); } }
     return { ey: ey, ex: ex, nose: nose, mouth: mouth, fallbackNoseY: Math.min(mouth.y - 2, ey + fb.nose) };
   }
   /** fit audit 2026-10-14 (v2 only; bonus-gear.js untouched): keep held/hat maps inside the 32x32 canvas. Hands sit at armor row + 2, which pushes tall
@@ -152,7 +163,10 @@
       y0 = hy - Math.floor(h / 2);
       var yA = Math.max(0, y0); if (a.spId === 'nakamoto' && a.stage >= 1 && a.stage <= 3) yA = Math.max(yA, y0 + h - 4); /* audit fix 2026-10-20: on his bust body the wide head bobs into the piece's top rows in the up frame; fit the grip to the body rows only */
       for (y = yA; y < Math.min(a.maxY - 1, y0 + h); y++) for (x = 0; x < 32; x++) if (a.isSil(x, y)) { mx = Math.max(mx, x); mn = Math.min(mn, x); }
-      var v = Object.assign({}, a, { row: row }); if (mx >= 0 && d.at === 'handR' && mx < a.maxX - 1) v.maxX = mx + 1; if (mn < 99 && d.at === 'handL' && mn > a.minX + 1) v.minX = mn - 1; return v; }
+      var v = Object.assign({}, a, { row: row }); if (mx >= 0 && d.at === 'handR' && mx < a.maxX - 1) v.maxX = mx + 1; if (mn < 99 && d.at === 'handL' && mn > a.minX + 1) v.minX = mn - 1;
+      /* one pixel in from the frame when a held piece would touch the edge */
+      var hw = d.map[0].length; if (d.at === 'handR' && Math.min(32 - hw, v.maxX - 1) + hw - 1 >= 31 && v.maxX > 2) v.maxX -= 1;
+      if (d.at === 'handL' && Math.max(0, v.minX - hw + 2) <= 0 && v.minX < 30) v.minX += 1; return v; }
     if (d.at === 'tallR') { var tm = -1, ty; for (ty = 28 - h; ty < Math.min(a.maxY - 1, 28); ty++) for (var tx = 0; tx < 32; tx++) if (a.isSil(tx, ty)) tm = Math.max(tm, tx);
       if (tm >= 0 && tm < a.maxX - 1) return Object.assign({}, a, { maxX: tm + 1 }); }
     if (d.at === 'head' && HAT_SIT[id] != null) { /* hat-height pass 2026-10-14 (Jake): brimmed / cone / cap hats rest ON the head: the brim row sits HAT_SIT[id] rows into
@@ -163,9 +177,30 @@
       for (xx = 0; xx < w; xx++) if (last[xx] !== '.') for (yy = 0; yy < 32; yy++) if (a.isSil(hx0 + xx, yy)) { crown = Math.min(crown, yy); break; }
       var k = crown < 99 ? a.minY + (d.dy || 0) - (crown + HAT_SIT[id]) : 0, base = a.minYTop != null ? a.minYTop : a.minY; if (k < 0) k = 0;
       var t2 = base - k - h + 1 + (d.dy || 0); if (t2 < 0) k += t2; /* never off the top (constant across frames) */
-      if (k > 0) { var src = a; return Object.assign({}, a, { minY: a.minY - k, isSil: function (x2, y2) { return src.isSil(x2, y2 + k); } }); } }
-    if (d.at === 'head') { /* hat-bob fix 2026-10-14: clamp from the highest head top across the animation (a.minYTop) so the shift is constant and tall hats bob with the head */ var top = (a.minYTop != null ? a.minYTop : a.minY) - h + 1 + (d.dy || 0); if (top < 0) return Object.assign({}, a, { minY: a.minY - top }); }
-    return a; }
+      if (k > 0) { var src = a; return liftHeadAnchor(Object.assign({}, a, { minY: a.minY - k, isSil: function (x2, y2) { return src.isSil(x2, y2 + k); } }), id); } }
+    if (d.at === 'head') { /* hat-bob fix 2026-10-14: clamp from the highest head top across the animation (a.minYTop) so the shift is constant and tall hats bob with the head */ var top = (a.minYTop != null ? a.minYTop : a.minY) - h + 1 + (d.dy || 0); if (top < 0) return liftHeadAnchor(Object.assign({}, a, { minY: a.minY - top }), id); }
+    return liftHeadAnchor(a, id); }
+  /* Per-species head lift for overlay hats/crowns that cross the eyes. Peepo is placed separately (placePeepoHead). */
+  var HEAD_LIFT = { wojak: 2, mumu: 2, snibby: 2, doge: 1, rabbit: 1 };
+  function headLiftFor(sp, id) { if (sp === 'dodo' && /crown/.test(id || '')) return 2; return HEAD_LIFT[sp] || 0; }
+  function liftHeadAnchor(a, id) { var n = a && headLiftFor(a.spId, id); if (!n) return a; var d = BonusGear.DEFS[id], h = d && d.map ? d.map.length : 4, dy = (d && d.dy) || 0;
+    var lift = n, top = a.minY - lift - h + 1 + dy; if (top < 1) lift = Math.max(0, lift - (1 - top)); if (!lift) return a;
+    var src = a; return Object.assign({}, a, { minY: a.minY - lift, isSil: function (x2, y2) { return src.isSil(x2, y2 + lift); } }); }
+  function scaleMap(map, k) { if (!map || !map.length || k >= 0.98) return map; var h = map.length, w = map[0].length, nh = Math.max(3, Math.round(h * k)), nw = Math.max(3, Math.round(w * k)); if (nh === h && nw === w) return map; var out = [], y, x, sy, row;
+    for (y = 0; y < nh; y++) { sy = Math.min(h - 1, Math.floor(y * h / nh)); row = ''; for (x = 0; x < nw; x++) row += map[sy].charAt(Math.min(w - 1, Math.floor(x * w / nw))); out.push(row); } return out; }
+  function eyeTopOf(a) { var t = 99; [a.eyeL, a.eyeR].forEach(function (e) { if (e && e[2]) e[2].forEach(function (p) { if (p[1] < t) t = p[1]; }); }); return t > 40 ? null : t; }
+  /* Peepo: brim sits one row above the eye whites, scaled slightly so tall hats (party, pimp) stay inside the frame. */
+  function placePeepoHead(id, a) { var d = BonusGear.DEFS[id]; if (!d || d.at !== 'head' || !d.map || !d.map.length) return null;
+    var et = eyeTopOf(a); if (et == null) et = a.minY + 3; var space = Math.max(3, et - 2), map = d.map;
+    if (map.length > space) map = scaleMap(map, space / map.length); else map = scaleMap(map, 0.86);
+    var h = map.length, brim = Math.max(0, et - 2), guard = 0;
+    while (brim - h + 1 < 2 && h > 4 && guard++ < 5) { map = scaleMap(map, 0.75); h = map.length; }
+    if (brim - h + 1 < 2) brim = h + 1; /* room for the ink outline under the frame */
+    var tmp = id + '~peepo'; BonusGear.DEFS[tmp] = Object.assign({}, d, { map: map, dy: 0 });
+    return { id: tmp, a: Object.assign({}, a, { minY: brim }) }; }
+  /* Sarutobi's feather cap is taller than the frame. Shrink it so the feathers stay on the canvas. */
+  function placeScaled(id, k) { var d = BonusGear.DEFS[id]; if (!d || !d.map) return null; var map = scaleMap(d.map, k), tmp = id + '~s' + k; if (map === d.map) return null;
+    BonusGear.DEFS[tmp] = Object.assign({}, d, { map: map }); return tmp; }
   /** where a v2 face piece goes: 'v2mouth' (grill: centred on the mouth row, never above the nose) / 'v2nose' (hoop through the nose's right edge). */
   function facePos(at, map, sp) {
     var w = map[0].length, h = map.length, n = sp.nose, m = sp.mouth;
@@ -178,6 +213,19 @@
     // nose ring: hoop hooked through the nose's right edge, bottom row level with the nose bottom (+1), never down into the mouth row
     var x = n && n.beak ? n.x1 - 1 : n ? Math.min(n.x1, Math.round(sp.ex) + 3) : noM ? m.x + 1 : Math.round(sp.ex) + 1, yb = n ? n.y1 : noM ? m.y - 1 : sp.fallbackNoseY + 1; /* redraw-3: hoop bottom = nose bottom row (was +1, touching the mouth) */
     yb = Math.min(yb, m.y - 1); return [x, yb - h + 1];
+  }
+  /* Display-only nose nudge (rows). Positive moves the piece down. Peepo uses the real nostril dots instead. */
+  var NOSE_DY = { doge: -3, pepe: -2, mumu: -2, lenny: -2, djpepe: 2, orangedragon: 2 };
+  var MOUTH_DY = { peepo: 1, bobo: 1, snibby: 2, doge: 1, djpepe: 1, orangedragon: 1 };
+  function nudgeFace(p, at, map, sp, species) {
+    var dy = 0;
+    if (/nose|septum|stud/.test(at) || at === 'v2nose' || at === 'v2septum' || at === 'v2stud') dy = NOSE_DY[species] || 0;
+    else if (at === 'v2mouth') dy = MOUTH_DY[species] || 0;
+    if (!dy) return p;
+    var h = map.length, y = p[1] + dy;
+    if (species !== 'snibby' && sp.mouth && sp.ey != null && sp.mouth.y > sp.ey + 3 && y + h > sp.mouth.y && (at === 'v2nose' || at === 'v2septum' || at === 'v2stud')) y = sp.mouth.y - h;
+    if (y < 0) y = 0; if (y > 31) y = 31;
+    return [p[0], y];
   }
   /** drawFace: paints only on face pixels (inside the silhouette, never over the eyes): a piece can never float off the head or blind the pet. */
   /* face polish 2026-10-14 (Jake): the Gold grill spans the WHOLE detected mouth (corner to corner on the mouth row), teeth gG.. on top, solid gold below. */
@@ -211,7 +259,8 @@
   function drawFace(id, img, sp, a) { var d = typeof id === 'string' ? BonusGear.DEFS[id] : id;
     if (d && d.beard && a) { var bx = (V && V.BEARD_EXCLUDE) || {}, bsp = String(a.spId || ''), bsh = /^hyb/.test(bsp) ? null : bsp; if (bsh && bx[bsh]) return [0, 0]; return drawBeard(img, sp, a); } /* excluded bodies never show it (the rules also block rolling / wearing) */
     if (id === 'v2-gold-grill' && a) { var ms = mouthSpan(img, sp, a); if (ms) { var tw = ms[1] - ms[0] + 1, t0 = '', t1 = ''; for (var ti = 0; ti < tw; ti++) { t0 += ti % 2 ? 'G' : 'g'; t1 += 'g'; } d = Object.assign({}, d, { map: [t0, t1] }); sp = Object.assign({}, sp, { mouth: Object.assign({}, sp.mouth, { x: ms[0] + Math.floor(tw / 2) }) }); } }
-    var p = facePos(d.at, d.map, sp), C = BonusGear.COLORS, eye = {}, painted = 0;
+    if (a && a.spId === 'peepo' && d.at === 'v2stud') d = Object.assign({}, d, { map: ['.W.', 'WcW', '.g.'] }); /* two pixels did not read; a 5px diamond does */
+    var p = nudgeFace(facePos(d.at, d.map, sp), d.at, d.map, sp, a && a.spId), C = BonusGear.COLORS, eye = {}, painted = 0;
     if (a) [a.eyeL, a.eyeR].forEach(function (e) { if (e) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
     /* stud fallback (2026-10-16): if the stud would paint nothing (e.g. Nakamoto Juvenile: no nose, the spot lands on his glasses/eye row),
      * put it one row under the eye line, beside the centre of the mouth (the nose spot). Only used when the normal spot paints nothing. */
@@ -416,6 +465,32 @@
     for (var k = 0; k < m.length; k++) { if (k >= b0 && k <= b1) continue; var ty = k < b0 ? fy0 - (b0 - k) : fy1 + (k - b1);
       for (x = 0; x < w; x++) { var ch = m[k].charAt(x); if (ch === '.') continue; var tx = cx - Math.floor(w / 2) + x; if (k > b1 && !bd[(ty * 32 + tx) * 4 + 3]) continue; put(tx, ty, ch); } }
     return true; }
+  /* Bands that were sitting on the eyes, or on the neck because the species wears headbands as scarves. */
+  var BROW = { peepo: 2, kevin: 2, nakamoto: 2, wojak: 2, chud: 2, chad: 2, mumu: 2, snibby: 2, doge: 2 };
+  var CROWN_LIFT = { peepo: 2, wojak: 2, mumu: 2, snibby: 2, wizard: 1, rabbit: 1, jacksonpepe: 2, starlordkek: 2 };
+  function paintHex(img, x, y, rgb) { if (x < 0 || y < 0 || x > 31 || y > 31) return; var i = (y * 32 + x) * 4; img.data[i] = rgb[0]; img.data[i + 1] = rgb[1]; img.data[i + 2] = rgb[2]; img.data[i + 3] = 255; }
+  function drawBrowBand(img, a, d, gap) { var C = BonusGear.COLORS, m = d.map, best = -1, bi = 0, i, n;
+    for (i = 0; i < m.length; i++) { n = m[i].replace(/\./g, '').length; if (n > best) { best = n; bi = i; } }
+    var y0 = Math.max(0, a.minY); void gap;
+    var eye = {}; [a.eyeL, a.eyeR].forEach(function (e) { if (e && e[2]) e[2].forEach(function (q) { eye[q[0] + ',' + q[1]] = 1; }); });
+    var put = function (x, y, k) { if (!k || k === '.' || !C[k] || eye[x + ',' + y] || x < 0 || y < 0 || x > 31 || y > 31) return; var c = C[k].replace('#', ''), q = (y * 32 + x) * 4; img.data[q] = parseInt(c.slice(0, 2), 16); img.data[q + 1] = parseInt(c.slice(2, 4), 16); img.data[q + 2] = parseInt(c.slice(4, 6), 16); img.data[q + 3] = 255; };
+    var painted = false, xs = [], x;
+    for (x = 0; x < 32; x++) if (a.isSil(x, y0) && !eye[x + ',' + y0]) xs.push(x);
+    if (!xs.length && y0 > 0) { y0--; for (x = 0; x < 32; x++) if (a.isSil(x, y0)) xs.push(x); }
+    if (!xs.length) return false;
+    var row = m[bi], w = row.length, x0 = xs[0];
+    xs.forEach(function (xx) { put(xx, y0, row.charAt(((xx - x0) % w + w) % w)); painted = true; });
+    var cx = Math.floor((xs[0] + xs[xs.length - 1]) / 2);
+    var etBand = eyeTopOf(a);
+    for (i = 0; i < m.length; i++) { if (i === bi) continue; var ty = y0 + (i - bi); if (ty < 0 || ty > 31 || (etBand != null && ty >= etBand)) continue;
+      for (x = 0; x < m[i].length; x++) { var ch = m[i].charAt(x); if (ch === '.') continue; put(cx - Math.floor(m[i].length / 2) + x, ty, ch); painted = true; } }
+    return painted; }
+  function shiftPaint(img, on, off, dy, shrink) { var moves = [], p, i, x, y;
+    for (p = 0; p < 1024; p++) { i = p * 4; if (on[i] === off[i] && on[i + 1] === off[i + 1] && on[i + 2] === off[i + 2]) continue; moves.push([p % 32, (p / 32) | 0, img.data[i], img.data[i + 1], img.data[i + 2]]); }
+    if (!moves.length) return;
+    var x0 = 99, x1 = -1; moves.forEach(function (q) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); });
+    moves.forEach(function (q) { var j = (q[1] * 32 + q[0]) * 4; if (img.data[j] === q[2] && img.data[j + 1] === q[3] && img.data[j + 2] === q[4]) { var s = (q[1] * 32 + q[0]) * 4; img.data[s] = off[s]; img.data[s + 1] = off[s + 1]; img.data[s + 2] = off[s + 2]; } });
+    moves.forEach(function (q) { if (shrink && (q[0] === x0 || q[0] === x1)) return; var ny = q[1] - dy; if (ny < 0) return; paintHex(img, q[0], ny, [q[2], q[3], q[4]]); }); }
   /* Doge black eye (2026-10-14): the battle-loser 'v2-black-eye' overlay lands on the 'eyes' anchor, which on Doge's
    * 3/4-view face is the gap between his eyes. v2 moves the shiner onto Doge's right eye (viewer's right) per stage (DOGE_SHINER dx/dy) (the shiner keeps its own pupil),
    * matching how it surrounds the eye on Pepe and the others. Other species are unchanged. */
@@ -823,6 +898,9 @@
       function grab(before, after) { var out = []; for (var p3 = 0; p3 < 1024; p3++) { var i4 = p3 * 4; if (before[i4] !== after[i4] || before[i4 + 1] !== after[i4 + 1] || before[i4 + 2] !== after[i4 + 2] || before[i4 + 3] !== after[i4 + 3]) out.push(p3, after[i4], after[i4 + 1], after[i4 + 2], after[i4 + 3]); } return out; }
       function paste(dst, L3, dy3) { for (var q3 = 0; q3 < L3.length; q3 += 5) { var y5 = ((L3[q3] / 32) | 0) + dy3; if (y5 < 0 || y5 > 31) continue; var i5 = (y5 * 32 + L3[q3] % 32) * 4; dst[i5] = L3[q3 + 1]; dst[i5 + 1] = L3[q3 + 2]; dst[i5 + 2] = L3[q3 + 3]; dst[i5 + 3] = L3[q3 + 4]; } }
       fr.forEach(function (img, f) { var o = { stage: stage, frame: f, gearOverride: {} }, bare = PetCore.render(key, o); var a = BonusGear.anchors(bare, eyeRender(eyes, o), sp); a.minYTop = minYTop; a.chadBeard = art.hybrid && (art.hybrid.parts || []).some(function (p) {return p.sp === 'chad' && p.part === 'beard';}); a.spId = art.species; a.stage = stage;
+        if (go.crown && CROWN_LIFT[art.species]) { try { var cOn = PetCore.render(key, { stage: stage, frame: f, gearOverride: { crown: go.crown } }).data, cOff = PetCore.render(key, { stage: stage, frame: f, gearOverride: {} }).data; shiftPaint(img, cOn, cOff, CROWN_LIFT[art.species], art.species === 'peepo'); } catch (eC) {} }
+        if (go.band && BROW[art.species]) { try { var bOn = PetCore.render(key, { stage: stage, frame: f, gearOverride: { band: go.band } }).data, bOff = PetCore.render(key, { stage: stage, frame: f, gearOverride: {} }).data; var cols = [], bp, bi, tally = {}; for (bp = 0; bp < 1024; bp++) { bi = bp * 4; if (bOn[bi] === bOff[bi] && bOn[bi + 1] === bOff[bi + 1] && bOn[bi + 2] === bOff[bi + 2]) continue; var ck = bOn[bi] + ',' + bOn[bi + 1] + ',' + bOn[bi + 2]; tally[ck] = (tally[ck] || 0) + 1; cols.push(ck); img.data[bi] = bOff[bi]; img.data[bi + 1] = bOff[bi + 1]; img.data[bi + 2] = bOff[bi + 2]; }
+          if (cols.length) { var win = Object.keys(tally).sort(function (p, q) { return tally[q] - tally[p]; })[0].split(',').map(Number), yB = Math.max(0, a.minY), xb; for (xb = 0; xb < 32; xb++) if (a.isSil(xb, yB)) paintHex(img, xb, yB, win); } } catch (eB) {} }
         if (f === 0) bare0 = bare.data; var fdy = f === 0 ? 0 : bounceDy(bare.data);
         function rigidDraw(id, draw) { if (f > 0 && fdy != null && rigidD[id]) { paste(img.data, rigidD[id], fdy); return; } var kb = isKnotBand(id) && FACING[art.species] === 'right', snap = (f === 0 && isRigid(id)) || kb ? new Uint8ClampedArray(img.data) : null; draw(); if (kb) knotToBack(img.data, snap, a); if (snap && f === 0 && isRigid(id)) rigidD[id] = grab(snap, img.data); }
         var geared = PetCore.render(key, { stage: stage, frame: f, gearOverride: go, gearCap: cap }), gd = geared.data, bd = bare.data;
@@ -842,7 +920,9 @@
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
           rigidDraw(id, function () {
-          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && bandLikeRed(img, key, stage, f, bare, d)) { /* fitted like the Red headband */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa = fitAnchors(fid, a); if (isBoard(fid)) fa = boardOut(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
+          if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && (BROW[a.spId] ? drawBrowBand(img, a, d, BROW[a.spId]) : bandLikeRed(img, key, stage, f, bare, d))) { /* brow, or the red headband footprint */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa, placed = a.spId === 'peepo' ? placePeepoHead(fid, a) : null;
+            if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var tid = placeScaled(fid, a.spId === 'sarutobi' ? 0.58 : 0.85); if (tid) fid = tid; }
+            fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
   /* Counterparty logo override (2026-10-14): pet-core's 'xcp' / 'bxmix' backgrounds draw a 5x5 X-in-a-circle glyph.
@@ -1472,10 +1552,10 @@
   var COLD_SPRITES = { rabbit: function () { return window.RabbitSprite; }, homer: function () { return window.HomerSprite; }, wizard: function () { return window.WizardSprite; }, kek: function () { return window.KekSprite; }, funtrump: function () { return window.FuntrumpSprite; } };
   function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
     if (sp === 'funtrump') G = ftGearOf(ids);
-    if (sp === 'kek') { delete G.head; if ((ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; } /* same mapping as kekPetFrames */
+    if (sp === 'kek' && (ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; /* nemes stays; a worn head piece is drawn on it */
     var fr = S.frames(stage, '#2a3a2e', G, { community: true }); return stage === 5 && MYTH_PREVIEW ? mythFx(fr, function (bg) { return S.frames(stage, bg, G, { community: true }); }, MYTH_PREVIEW) : fr; }
   function contestFrames(art, stage, ids) { var G = wizGearOf(ids); return ContestSprite.frames(art.species, stage || 0, (art && art.bgColor) || '#14101e', G); } /* contest pets: worn gear drawn by ContestSprite.gearLayer */
-  function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); delete G.head; if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
+  function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
   function communityFrames(w) { var c = w && w.community; if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', wrGear(w), { community: true }); /* THE WHITE RABBIT (PREVIEW, inert) */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */

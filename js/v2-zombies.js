@@ -2,6 +2,8 @@
  * The replay gives every risen pet a p.zombie record (isZ). This file only changes how it LOOKS and what the UI offers:
  *  - the sprite gets the shared dead look (js/v2-zombie-look.js) and is drawn at the Mythic pose with the Mythic aura, dim and rot-green
  *    (owner Oct 28 2026: "in my pets looking mythic but zombie"); the stage chip still shows the engine's real stage;
+ *  - a Mythic-fed zombie is the exception (owner Nov 12 2026): it is cured, so it is drawn as the fully alive pet at its real stage.
+ *    No dead eyes, rot, flies or stink. js/v2-mythic-god.js adds a soft silver, white and red glow and a small badge on that living sprite;
  *  - no normal meals (hungry false, so Feed all and the feed queue skip it); a hunger bar drains instead: full at the raise or the last
  *    zombie meal, feral after 432 blocks, crumbles to dust 432 blocks after that unless it eats pets (pet:zfeed) or wins a hunt.
  * Never adds the fire aura, the grant flame crown or the edition gold frame. ?zombies=off turns the look off for a page view. Display only. */
@@ -9,6 +11,12 @@
   var M = window.V2Mock, R = window.V2Render, V = function () { return window.V2Rules || window.V2 || {}; };
   var OFF = /[?&]zombies=off\b/.test((window.location && window.location.search) || '');
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
+  /* Mythic-fed (cured forever): isMythicFed, or mgView().fed when that helper is the one present. No new state.
+   * Drawn as the living pet. The cured aura is added later, in js/v2-mythic-god.js. */
+  function cured(p, w) { var v = V();
+    try { if (typeof v.isMythicFed === 'function') return !!v.isMythicFed(p); } catch (e) {}
+    try { if (w && typeof v.mgView === 'function') { var mv = v.mgView(w, p, (w.tip || 0) + 1); return !!(mv && mv.fed); } } catch (e) {}
+    return false; }
   function apply(w) { if (!w || typeof w !== 'object' || !w.pets || w.__zb === w.tip) return w; w.__zb = w.tip;
     w.pets.forEach(function (p) { if (!isZ(p)) return; p.hungry = false; p.nextMeal = 0; p.fedToday = false; }); return w; }
   if (M && typeof M.world === 'function') { var w0 = M.world; M.world = function () { return apply(w0.apply(this, arguments)); };
@@ -47,11 +55,11 @@
       if (KA.length === out.length && R && typeof R.mythFx === 'function' && p.stage === 5) { var o2 = R.mythFx(out, function (bg) { return bg === '#ff00fe' ? KA : KB; }); if (o2 && o2 !== out && ZF) o2.forEach(function (g) { ZF.add(g); }); out = o2 || out; } }
     catch (e) { if (window.console) console.warn('zombie look failed #' + p.id, e); return fr; }
     try { out.__fe = fe; } catch (e) {} DONE.set(fr, out); return out; }
-  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p)) return pf0.apply(this, arguments);
+  if (R && typeof R.petFrames === 'function' && !OFF) { var pf0 = R.petFrames; R.petFrames = function (p, w, extra) { var Z = window.V2ZombieLook, self = this, args = arguments; if (!isZ(p) || cured(p, w)) return pf0.apply(this, arguments); /* cured: the living sprite, real stage, no dead look */
     /* no Mythic smug hand on zombies (owner Oct 29 2026): the zombie's frames and the keyed copies twist() reads are all drawn inside V2ZombieLook.noHand */
     var q = p.stage === 5 ? p : Object.assign({}, p, { stage: 5, stageName: 'Mythic' }), a2 = [q].concat([].slice.call(args, 1)); /* drawn at the Mythic pose (display only) */
     var run = function () { return twist(pf0.apply(self, a2), q, w, extra, pf0); }; return Z && Z.noHand ? Z.noHand(run) : run(); }; }
-  /* a zombie keeps the Mythic electric aura, but sickly and dim: the V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
+  /* a normal zombie keeps the Mythic electric aura, but sickly and dim. A Mythic-fed pet never reaches this (it is drawn alive). The V2Looks aura hook gets a sick flag for zombie frames (rot-green, ~half strength),
    * and the zombie's canvas + its aura overlay get a class (faint rot glow). Display only. */
   var LK = window.V2Looks;
   if (LK && !OFF) { var my0 = LK.myth; if (typeof my0 === 'function') LK.myth = function (img) { var r = my0.apply(this, arguments); if (r && ZF && ZF.has(img)) { r = Object.assign({}, r, { sick: true }); } return r; };
@@ -77,5 +85,5 @@
       '.zb-feed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.zb-feed .zb-ml{display:flex;gap:4px;align-items:center;color:#a7b48e;min-width:0}.zb-feed select{max-width:150px;min-width:0}.zb-pickbox{flex:1 1 100%;min-width:0}.zb-pickbox summary{cursor:pointer;color:#c9d6a9}.zb-warn{color:#e3c27a;margin:4px 0}.zb-list{max-height:180px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding:4px;border:1px solid #3b4430;border-radius:6px}.zb-opt{display:flex;gap:6px;align-items:center;font-size:12px}.zb-pend{flex:1 1 100%;color:#e3c27a}.zb-feedbtn:disabled{opacity:.5;cursor:not-allowed}.zb-dhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}.zb-other{margin-top:6px}' +
       '.zb-step{flex:1 1 100%;margin-top:8px;padding:8px;border:1px solid #3b4430;border-radius:8px;background:#10160e}.zb-h{margin:0 0 4px;font-size:14px;line-height:1.3;color:#e7f6c9}.zb-stepnote{margin:0 0 6px;color:#d5e4b8}.zb-feed .zb-feedbtn{flex:1 1 100%;min-height:42px}.mg-unl.zb-quiet{border:0;background:transparent;padding:0}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
-  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, statusLine: statusLine, span: span };
+  window.V2Zombies = { apply: apply, off: OFF, isZ: isZ, cured: cured, hunger: hunger, hungerChip: hungerChip, hungerBar: hungerBar, statusLine: statusLine, span: span };
 })();
