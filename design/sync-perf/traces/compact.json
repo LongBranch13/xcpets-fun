@@ -1,0 +1,350 @@
+[
+  {
+    "run": "desktop-cold-1",
+    "profile": "desktop",
+    "visit": "cold",
+    "syncedMs": 53972,
+    "verifiedMs": 1302,
+    "workerMs": 45880,
+    "workerWallMs": 49823,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": 246,
+    "catchup": false,
+    "sync": {
+      "url": "/xp/v1/sync?since=0&dt=0",
+      "status": 200,
+      "encoded": 444300,
+      "ttfbMs": 669.899,
+      "downloadMs": 0,
+      "totalMs": 766,
+      "cache": "net",
+      "mime": "application/json"
+    },
+    "v2count": 9,
+    "v2bytes": 1456045,
+    "worldCount": 2,
+    "worldBytes": 17498,
+    "syncBytes": 444300,
+    "longAll": {
+      "count": 6,
+      "totalMs": 697,
+      "maxMs": 216,
+      "over100": 2,
+      "over250": 0
+    },
+    "longDuringReplay": {
+      "count": 1,
+      "totalMs": 81,
+      "maxMs": 81
+    },
+    "longAfterReplay": {
+      "count": 5,
+      "totalMs": 616,
+      "maxMs": 216
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "desktop-cold-2",
+    "profile": "desktop",
+    "visit": "cold",
+    "syncedMs": 51755,
+    "verifiedMs": 1131,
+    "workerMs": 44723,
+    "workerWallMs": 48024,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": 246,
+    "catchup": false,
+    "sync": {
+      "url": "/xp/v1/sync?since=0&dt=0",
+      "status": 200,
+      "encoded": 444277,
+      "ttfbMs": 544.684,
+      "downloadMs": 0,
+      "totalMs": 641,
+      "cache": "net",
+      "mime": "application/json"
+    },
+    "v2count": 9,
+    "v2bytes": 1456020,
+    "worldCount": 2,
+    "worldBytes": 17521,
+    "syncBytes": 444277,
+    "longAll": {
+      "count": 5,
+      "totalMs": 667,
+      "maxMs": 221,
+      "over100": 2,
+      "over250": 0
+    },
+    "longDuringReplay": {
+      "count": 1,
+      "totalMs": 79,
+      "maxMs": 79
+    },
+    "longAfterReplay": {
+      "count": 4,
+      "totalMs": 588,
+      "maxMs": 221
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "desktop-warm-1",
+    "profile": "desktop",
+    "visit": "warm",
+    "syncedMs": 2818,
+    "verifiedMs": 989,
+    "workerMs": null,
+    "workerWallMs": null,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": null,
+    "catchup": false,
+    "sync": null,
+    "v2count": 5,
+    "v2bytes": 318055,
+    "worldCount": 0,
+    "worldBytes": 0,
+    "syncBytes": 444203,
+    "longAll": {
+      "count": 4,
+      "totalMs": 490,
+      "maxMs": 176,
+      "over100": 2,
+      "over250": 0
+    },
+    "longDuringReplay": {
+      "count": 4,
+      "totalMs": 490,
+      "maxMs": 176,
+      "over100": 2,
+      "over250": 0
+    },
+    "longAfterReplay": {
+      "count": 0,
+      "totalMs": 0,
+      "maxMs": 0
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "desktop-warm-2",
+    "profile": "desktop",
+    "visit": "warm",
+    "syncedMs": 3079,
+    "verifiedMs": 1237,
+    "workerMs": null,
+    "workerWallMs": null,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": null,
+    "catchup": false,
+    "sync": null,
+    "v2count": 2,
+    "v2bytes": 9609,
+    "worldCount": 0,
+    "worldBytes": 0,
+    "syncBytes": 444203,
+    "longAll": {
+      "count": 5,
+      "totalMs": 484,
+      "maxMs": 156,
+      "over100": 2,
+      "over250": 0
+    },
+    "longDuringReplay": {
+      "count": 5,
+      "totalMs": 484,
+      "maxMs": 156,
+      "over100": 2,
+      "over250": 0
+    },
+    "longAfterReplay": {
+      "count": 0,
+      "totalMs": 0,
+      "maxMs": 0
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "mobile-cold-1",
+    "profile": "mobile",
+    "visit": "cold",
+    "syncedMs": 56852,
+    "verifiedMs": 3202,
+    "workerMs": 41703,
+    "workerWallMs": 45311,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": 246,
+    "catchup": false,
+    "sync": {
+      "url": "/xp/v1/sync?since=0&dt=0",
+      "status": 200,
+      "encoded": 444277,
+      "ttfbMs": 485.88,
+      "downloadMs": 0,
+      "totalMs": 1084,
+      "cache": "net",
+      "mime": "application/json"
+    },
+    "v2count": 9,
+    "v2bytes": 1456059,
+    "worldCount": 2,
+    "worldBytes": 17521,
+    "syncBytes": 444277,
+    "longAll": {
+      "count": 48,
+      "totalMs": 5280,
+      "maxMs": 840,
+      "over100": 8,
+      "over250": 3
+    },
+    "longDuringReplay": {
+      "count": 3,
+      "totalMs": 376,
+      "maxMs": 259
+    },
+    "longAfterReplay": {
+      "count": 45,
+      "totalMs": 4904,
+      "maxMs": 840
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "mobile-cold-2",
+    "profile": "mobile",
+    "visit": "cold",
+    "syncedMs": 64787,
+    "verifiedMs": 3346,
+    "workerMs": 48175,
+    "workerWallMs": 52105,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": 246,
+    "catchup": false,
+    "sync": {
+      "url": "/xp/v1/sync?since=0&dt=0",
+      "status": 200,
+      "encoded": 444277,
+      "ttfbMs": 587.901,
+      "downloadMs": 0,
+      "totalMs": 1127,
+      "cache": "net",
+      "mime": "application/json"
+    },
+    "v2count": 9,
+    "v2bytes": 1456059,
+    "worldCount": 2,
+    "worldBytes": 17498,
+    "syncBytes": 444277,
+    "longAll": {
+      "count": 49,
+      "totalMs": 6057,
+      "maxMs": 828,
+      "over100": 16,
+      "over250": 3
+    },
+    "longDuringReplay": {
+      "count": 3,
+      "totalMs": 471,
+      "maxMs": 331
+    },
+    "longAfterReplay": {
+      "count": 46,
+      "totalMs": 5586,
+      "maxMs": 828
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "mobile-warm-1",
+    "profile": "mobile",
+    "visit": "warm",
+    "syncedMs": 11670,
+    "verifiedMs": 3033,
+    "workerMs": null,
+    "workerWallMs": null,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": null,
+    "catchup": false,
+    "sync": null,
+    "v2count": 6,
+    "v2bytes": 624950,
+    "worldCount": 0,
+    "worldBytes": 0,
+    "syncBytes": 444204,
+    "longAll": {
+      "count": 48,
+      "totalMs": 5929,
+      "maxMs": 766,
+      "over100": 10,
+      "over250": 4
+    },
+    "longDuringReplay": {
+      "count": 48,
+      "totalMs": 5929,
+      "maxMs": 766,
+      "over100": 10,
+      "over250": 4
+    },
+    "longAfterReplay": {
+      "count": 0,
+      "totalMs": 0,
+      "maxMs": 0
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  },
+  {
+    "run": "mobile-warm-2",
+    "profile": "mobile",
+    "visit": "warm",
+    "syncedMs": 10581,
+    "verifiedMs": 1952,
+    "workerMs": null,
+    "workerWallMs": null,
+    "rows": 4754,
+    "pets": 171223,
+    "behind": null,
+    "catchup": false,
+    "sync": null,
+    "v2count": 5,
+    "v2bytes": 318093,
+    "worldCount": 0,
+    "worldBytes": 0,
+    "syncBytes": 444203,
+    "longAll": {
+      "count": 48,
+      "totalMs": 6125,
+      "maxMs": 711,
+      "over100": 14,
+      "over250": 4
+    },
+    "longDuringReplay": {
+      "count": 48,
+      "totalMs": 6125,
+      "maxMs": 711,
+      "over100": 14,
+      "over250": 4
+    },
+    "longAfterReplay": {
+      "count": 0,
+      "totalMs": 0,
+      "maxMs": 0
+    },
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "fromCache": true
+  }
+]
