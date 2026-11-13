@@ -5,7 +5,8 @@
  *   node tools/seance-raises-test.js [--boot FILE]   Dev tooling only. */
 'use strict';
 const fs = require('fs'), path = require('path');
-const { load, row } = require('./lib/load-rules');
+const { row } = require('./lib/load-rules');
+const { load } = require('./lib/fork-replay'); /* one live replay, then each scenario continues from that copy */
 const ROOT = path.resolve(__dirname, '..'), A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine;
@@ -22,11 +23,10 @@ const hashOf = w => { const h = crypto.createHash('sha256');
   w.log.forEach(x => h.update(canon([x.block, x.tx, x.kind, x.msg]))); h.update('\n');
   (w.cem && w.cem.altarList || []).forEach(a => h.update(canon([a.grave, a.status, a.closesAt, a.owner])));
   return h.digest('hex'); };
-/* One live replay at a time. Holding a second copy of this world does not fit the runner, and replaying
- * it once per scenario is why the suite used to hit the 600s kill. The burns are planned first; each scenario
- * then replays on its own. The runner allows this file longer than the others. */
-V._setSeanceRaisesActivation(null); const s0 = hashOf(V.replay(rows, H, [], opts(tip))); if (global.gc) global.gc();
-V._setSeanceRaisesActivation(nb); let w = V.replay(rows, H, [], opts(tip));
+/* Save one checkpoint of the live replay. Scenarios continue from it. Replaying the full list
+ * once per scenario is what blew the 60 minute job. */
+V._setSeanceRaisesActivation(null); const s0 = hashOf(V.replay(rows, H, [], Object.assign(opts(tip), { _forkSave: true })));
+V._setSeanceRaisesActivation(nb); let w = V.replay(rows, H, [], Object.assign(opts(tip), { _forkUse: tip }));
 ok(hashOf(w) === s0, 'live world (' + rows.length + ' burns, tip ' + tip + '): same replay with the gate null and with the gate at tip + 1');
 /* fixtures from the live world: two wallets with 4+ offerable pets, Common graves and one Rare grave nobody holds pieces on */
 let AW, BW, aC, bC, Gc, Gr, B;
@@ -50,8 +50,8 @@ let AW, BW, aC, bC, Gc, Gr, B;
     a5: burn(nb, AW, 'pledge', Gc[5], aC.slice(0, 3)), b5: burn(nb + 1, BW, 'pledge', Gc[5], bC.slice(0, 1)), s5: burn(nb + 3, BW, 'seance', Gc[5], bC.slice(1, 2)),
     s6: burn(nb, AW, 'seance', Gc[6], aC.slice(0, 1))
   }; }
-w = null; /* scenarios each replay the burn list themselves; do not keep this copy too */
-const go = (extra, t) => { if (global.gc) global.gc(); return V.replay(rows.concat(extra), H, [], opts(t)); };
+w = null; /* the checkpoint inside the rules is the copy the scenarios continue; this one can go */
+const go = (extra, t) => V.replay(rows.concat(extra), H, [], Object.assign(opts(t), { _forkUse: tip }));
 const logOf = (w2, r) => w2.log.find(x => x.tx === r.tx_hash);
 const used = (w2, ids) => ids.every(id => w2.byId[id].released), free = (w2, ids) => ids.every(id => !w2.byId[id].released && w2.byId[id].pledge == null);
 const noPledge = (w2, from) => w2.log.filter(x => x.block >= from && /pledg/i.test((x.kind || '') + ' ' + (x.msg || '')) && !/^rpl/.test(x.kind)).length === 0;

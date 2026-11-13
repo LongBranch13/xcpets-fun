@@ -37,7 +37,7 @@ function availMem() { try { const m = /MemAvailable:\s+(\d+) kB/.exec(fs.readFil
 function rssOf(pid) { try { const m = /VmRSS:\s+(\d+) kB/.exec(fs.readFileSync('/proc/' + pid + '/status', 'utf8')); return m ? +m[1] * 1024 : 0; } catch (e) { return 0; } }
 const running = new Map(); /* pid -> { f, peak (bytes, observed this run) } */
 setInterval(() => running.forEach((r, pid) => { r.peak = Math.max(r.peak, rssOf(pid)); }), 500).unref();
-const want = f => mem[f] || (f === 'seance-raises-test.js' ? 5000 * MB : f === 'retire-tags-test.js' ? 4500 * MB : PEAK_DEFAULT);
+const want = f => mem[f] || (f === 'seance-raises-test.js' ? 7500 * MB : f === 'retire-tags-test.js' ? 4500 * MB : PEAK_DEFAULT);
 let pend = 0; /* admitted but not spawned yet */
 function roomFor(f) { if (!running.size && !pend) return true; let grow = pend; running.forEach((r, pid) => { grow += Math.max(0, want(r.f) - rssOf(pid)); }); return availMem() - grow - want(f) >= RESERVE; }
 const usedPorts = new Set();
@@ -45,11 +45,11 @@ function freePort() { return new Promise((res, rej) => { const s = net.createSer
   s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => usedPorts.has(p) ? freePort().then(res, rej) : (usedPorts.add(p), res(p))); }); }); }
 let tmpN = 0;
 function child(args, tag) { return new Promise(async res => { const port = await freePort(), tmp = fs.mkdtempSync(path.join(RUN_TMP, (tmpN++).toString(36) + '-'));
-  /* seance-raises keeps a replay checkpoint plus the live world. The default ~2GB heap aborts that. */
-  const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=5120', '--expose-gc'].filter(Boolean).join(' ') });
+  /* The live-world checkpoint needs more than the default ~2GB heap. */
+  const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=8192'].filter(Boolean).join(' ') });
   const t0 = Date.now(), p = spawn(process.execPath, args, { cwd: ROOT, env }), me = { f: tag, peak: 0 }; running.set(p.pid, me); pend -= want(tag);
   let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
-const killMs = tag === 'seance-raises-test.js' ? 2100000 : 600000;
+  const killMs = tag === 'seance-raises-test.js' ? 900000 : 600000;
   const kill = setTimeout(() => { out += '\nFAIL timeout after ' + (killMs / 1000) + ' s'; p.kill('SIGKILL'); }, killMs);
   p.on('close', (code, sig) => { clearTimeout(kill); running.delete(p.pid); if (me.peak) mem[tag] = me.peak; if (sig) out += '\nkilled by ' + sig + (sig === 'SIGKILL' ? ' (out of memory? see dmesg)' : ''); if (!keepTmp) fs.rmSync(tmp, { recursive: true, force: true }); res({ code, out, ms: Date.now() - t0, port, tmp }); }); }); }
 const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.json', 'snap-972901.json'];
