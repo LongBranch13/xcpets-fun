@@ -1,0 +1,35 @@
+# Rebuilds the bounded /pet/<id> preview cards. Does not push to main and does not touch the feed.
+# Download the artifact and commit pet/<id>/, img/share-generic.png and share/set.json when you want them live.
+name: share-cards
+on:
+  workflow_dispatch:
+    inputs:
+      top:
+        description: How many living pets (best Pet Score rank) get a card
+        default: "24"
+        required: false
+permissions:
+  contents: read
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: puppeteer-core (uses the runner Chrome)
+        run: npm install --no-save --no-package-lock puppeteer-core@23
+      - name: render cards
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node tools/share-cards.js --top ${{ github.event.inputs.top || '24' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pet-share-cards
+          path: |
+            pet
+            img/share-generic.png
+            share/set.json
+          if-no-files-found: error
