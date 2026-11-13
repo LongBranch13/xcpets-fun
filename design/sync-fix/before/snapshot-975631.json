@@ -1,0 +1,18 @@
+{
+  "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+  "tip": 975631,
+  "inSig": "975631|4778|793db39f|3448|bfac5ee7",
+  "ops": "[]",
+  "builtAt": "2026-11-13T04:41:43.557Z",
+  "replayMs": 118793,
+  "maxRss": 1830354944,
+  "n": 296021,
+  "parts": 75,
+  "build": "e6db15afb2",
+  "checkpoint": {
+    "tip": 975631,
+    "n": 296021,
+    "parts": 75,
+    "hasMeta": true
+  }
+}

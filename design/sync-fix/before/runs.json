@@ -1,0 +1,534 @@
+[
+  {
+    "label": "desktop-cold-1",
+    "profile": "desktop",
+    "visit": "cold",
+    "n": 1,
+    "synced": true,
+    "totalMs": 50487,
+    "pets": 172223,
+    "tip": 975631,
+    "rows": 4778,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 42717,
+    "provisional": false,
+    "path": "full-replay",
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 48166,
+            "ok": true,
+            "ms": 42717,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975631|4778|793db39f|3448|bfac5ee7|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 6,
+    "longMax": 246,
+    "longOver200": 1,
+    "bootLog": [
+      {
+        "t": 495,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1330,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      },
+      {
+        "t": 1595,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 0 s"
+      },
+      {
+        "t": 2594,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 1 s"
+      },
+      {
+        "t": 3595,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 2 s"
+      },
+      {
+        "t": 4594,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 3 s"
+      },
+      {
+        "t": 5594,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 4 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      },
+      {
+        "t": 6595,
+        "text": "Building every pet from 4,778 XCPETS burns (block 975,631, from the game feed)… 5 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277"
+    ]
+  },
+  {
+    "label": "desktop-warm-1",
+    "profile": "desktop",
+    "visit": "warm",
+    "n": 1,
+    "synced": true,
+    "totalMs": 53471,
+    "pets": 173223,
+    "tip": 975632,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 43278,
+    "provisional": false,
+    "path": "full-replay",
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 50761,
+            "ok": true,
+            "ms": 43278,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975632|4780|30f6b272|3449|fd6ee508|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 6,
+    "longMax": 306,
+    "longOver200": 2,
+    "bootLog": [
+      {
+        "t": 261,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1068,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      },
+      {
+        "t": 3524,
+        "text": null
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277"
+    ]
+  },
+  {
+    "label": "desktop-cold-2",
+    "profile": "desktop",
+    "visit": "cold",
+    "n": 2,
+    "synced": true,
+    "totalMs": 51330,
+    "pets": 173223,
+    "tip": 975632,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 44064,
+    "provisional": false,
+    "path": "full-replay",
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 49198,
+            "ok": true,
+            "ms": 44064,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975632|4780|30f6b272|3449|fd6ee508|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 6,
+    "longMax": 226,
+    "longOver200": 1,
+    "bootLog": [
+      {
+        "t": 420,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1427,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      },
+      {
+        "t": 1720,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 0 s"
+      },
+      {
+        "t": 2723,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 1 s"
+      },
+      {
+        "t": 3720,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 2 s"
+      },
+      {
+        "t": 4720,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 3 s"
+      },
+      {
+        "t": 5720,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 4 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      },
+      {
+        "t": 6720,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 5 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277"
+    ]
+  },
+  {
+    "label": "desktop-warm-2",
+    "profile": "desktop",
+    "visit": "warm",
+    "n": 2,
+    "synced": true,
+    "totalMs": 3534,
+    "pets": 173223,
+    "tip": 975632,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": null,
+    "provisional": false,
+    "path": "idb-hit",
+    "workers": [],
+    "worldReqs": 0,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 3,
+    "longMax": 161,
+    "longOver200": 0,
+    "bootLog": [
+      {
+        "t": 229,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1529,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428"
+    ]
+  },
+  {
+    "label": "mobile-cold-1",
+    "profile": "mobile",
+    "visit": "cold",
+    "n": 1,
+    "synced": true,
+    "totalMs": 60113,
+    "pets": 173223,
+    "tip": 975632,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 44910,
+    "provisional": false,
+    "path": "full-replay",
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 52710,
+            "ok": true,
+            "ms": 44910,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975632|4780|30f6b272|3449|fd6ee508|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 6,
+    "longMax": 765,
+    "longOver200": 2,
+    "bootLog": [
+      {
+        "t": 2036,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 3614,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      },
+      {
+        "t": 4237,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 0 s"
+      },
+      {
+        "t": 5236,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 1 s"
+      },
+      {
+        "t": 6236,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 2 s"
+      },
+      {
+        "t": 7236,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 3 s"
+      },
+      {
+        "t": 8236,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 4 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      },
+      {
+        "t": 9236,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,632, from the game feed)… 5 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277"
+    ]
+  },
+  {
+    "label": "mobile-warm-1",
+    "profile": "mobile",
+    "visit": "warm",
+    "n": 1,
+    "synced": true,
+    "totalMs": 75459,
+    "pets": 173223,
+    "tip": 975633,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": null,
+    "provisional": false,
+    "path": "idb-hit",
+    "workers": [],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 2,
+    "v2DestructionPages": 10,
+    "longMax": 589,
+    "longOver200": 3,
+    "bootLog": [
+      {
+        "t": 614,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1949,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383"
+    ]
+  },
+  {
+    "label": "mobile-cold-2",
+    "profile": "mobile",
+    "visit": "cold",
+    "n": 2,
+    "synced": true,
+    "totalMs": 58704,
+    "pets": 173223,
+    "tip": 975633,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 44009,
+    "provisional": false,
+    "path": "full-replay",
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 51792,
+            "ok": true,
+            "ms": 44009,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975633|4780|30f6b272|3450|96cfc504|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ],
+    "worldReqs": 2,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 6,
+    "longMax": 749,
+    "longOver200": 2,
+    "bootLog": [
+      {
+        "t": 2018,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 3623,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      },
+      {
+        "t": 4248,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 0 s"
+      },
+      {
+        "t": 5317,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 1 s"
+      },
+      {
+        "t": 6319,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 2 s"
+      },
+      {
+        "t": 7334,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 3 s"
+      },
+      {
+        "t": 8322,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 4 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      },
+      {
+        "t": 9321,
+        "text": "Building every pet from 4,780 XCPETS burns (block 975,633, from the game feed)… 5 s · first visit on this device or new data: this runs once, then pages open from the saved copy"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=15342",
+      "/xp/v1/world/latest.json",
+      "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=14277"
+    ]
+  },
+  {
+    "label": "mobile-warm-2",
+    "profile": "mobile",
+    "visit": "warm",
+    "n": 2,
+    "synced": true,
+    "totalMs": 8961,
+    "pets": 173223,
+    "tip": 975633,
+    "rows": 4780,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": null,
+    "provisional": false,
+    "path": "idb-hit",
+    "workers": [],
+    "worldReqs": 0,
+    "worldPartReqs": 0,
+    "syncReqs": 1,
+    "v2DestructionPages": 4,
+    "longMax": 596,
+    "longOver200": 3,
+    "bootLog": [
+      {
+        "t": 596,
+        "text": "Checking the latest chain data…"
+      },
+      {
+        "t": 1838,
+        "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+      }
+    ],
+    "reqSample": [
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/",
+      "/xp/v1/sync?since=0&dt=0",
+      "/v2/assets/XCPETS/destructions?limit=1000",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=17428",
+      "/v2/assets/XCPETS/destructions?limit=1000&cursor=16383"
+    ]
+  }
+]

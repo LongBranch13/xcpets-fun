@@ -1,0 +1,123 @@
+{
+  "base": {
+    "at": 51686,
+    "tip": 975633,
+    "rows": 4780,
+    "pets": 173223,
+    "path": [
+      "replay"
+    ],
+    "justSeeded": false,
+    "workerMs": 43661
+  },
+  "sawNewBlock": true,
+  "hit": {
+    "tip": 975635,
+    "rows": 4791,
+    "pets": 174223,
+    "workerMs": 45803,
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": [
+          {
+            "t": 1583,
+            "cmd": null,
+            "rows": 4780,
+            "tip": 975633,
+            "files": null,
+            "idbKey": "r16a9352e18f8366e445f7890f8148fc7|975633|4780|30f6b272|3450|96cfc504|dex6cdd0303|[]"
+          },
+          {
+            "t": 534745,
+            "cmd": null,
+            "rows": 4791,
+            "tip": 975635,
+            "files": null,
+            "idbKey": "r16a9352e18f8366e445f7890f8148fc7|975635|4791|463bf4c6|3452|a4a8db9a|dex6cdd0303|[]"
+          }
+        ],
+        "replies": [
+          {
+            "t": 48806,
+            "ok": true,
+            "ms": 43661,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975633|4780|30f6b272|3450|96cfc504|dex6cdd0303|[]"
+          },
+          {
+            "t": 583936,
+            "ok": true,
+            "ms": 45803,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975635|4791|463bf4c6|3452|a4a8db9a|dex6cdd0303|[]"
+          }
+        ]
+      }
+    ]
+  },
+  "changes": [
+    {
+      "at": 55701,
+      "tip": 975633,
+      "rows": 4780,
+      "pets": 173223,
+      "updating": false,
+      "workerMs": 43661,
+      "nWorkers": 1,
+      "kinds": [
+        "replay:1"
+      ]
+    },
+    {
+      "at": 533235,
+      "tip": 975635,
+      "rows": 4791,
+      "pets": null,
+      "updating": true,
+      "workerMs": 43661,
+      "nWorkers": 1,
+      "kinds": [
+        "replay:1"
+      ]
+    },
+    {
+      "at": 537240,
+      "tip": 975635,
+      "rows": 4791,
+      "pets": null,
+      "updating": true,
+      "workerMs": 43661,
+      "nWorkers": 1,
+      "kinds": [
+        "replay:2"
+      ]
+    },
+    {
+      "at": 585363,
+      "tip": 975635,
+      "rows": 4791,
+      "pets": null,
+      "updating": true,
+      "workerMs": 45803,
+      "nWorkers": 1,
+      "kinds": [
+        "replay:2"
+      ]
+    },
+    {
+      "at": 589376,
+      "tip": 975635,
+      "rows": 4791,
+      "pets": 174223,
+      "updating": false,
+      "workerMs": 45803,
+      "nWorkers": 1,
+      "kinds": [
+        "replay:2"
+      ]
+    }
+  ]
+}

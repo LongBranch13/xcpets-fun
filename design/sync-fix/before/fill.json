@@ -1,0 +1,302 @@
+[
+  {
+    "label": "desktop-cold-3",
+    "profile": "desktop",
+    "visit": "cold",
+    "n": 3,
+    "synced": true,
+    "totalMs": 52480,
+    "pets": 174223,
+    "tip": 975635,
+    "rows": 4791,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 43466,
+    "provisional": false,
+    "path": "full-replay",
+    "verifiedMs": 3014,
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 50346,
+            "ok": true,
+            "ms": 43466,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975635|4791|463bf4c6|3452|a4a8db9a|dex6cdd0303|[]",
+            "resumed": false
+          }
+        ]
+      }
+    ],
+    "sync": {
+      "count": 1,
+      "bytes": 446313,
+      "ttfbMs": [
+        706.854
+      ],
+      "totalMs": [
+        1171
+      ],
+      "downloadMs": [
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/sync?since=0&dt=0",
+          "encoded": 446313,
+          "ttfbMs": 706.854,
+          "totalMs": 1171,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "world": {
+      "count": 2,
+      "bytes": 19828,
+      "ttfbMs": [
+        97.006,
+        95.253
+      ],
+      "totalMs": [
+        98,
+        96
+      ],
+      "downloadMs": [
+        0,
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/world/latest.json",
+          "encoded": 199,
+          "ttfbMs": 97.006,
+          "totalMs": 98,
+          "downloadMs": 0
+        },
+        {
+          "url": "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+          "encoded": 19629,
+          "ttfbMs": 95.253,
+          "totalMs": 96,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "worldPartReqs": 0,
+    "v2DestructionPages": 1,
+    "v2bytes": 309323,
+    "longCount": 3,
+    "longSum": 379,
+    "longMax": 221,
+    "longOver200": 1
+  },
+  {
+    "label": "desktop-warm-3",
+    "profile": "desktop",
+    "visit": "warm",
+    "n": 3,
+    "synced": true,
+    "totalMs": 4016,
+    "pets": 174223,
+    "tip": 975635,
+    "rows": 4791,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": null,
+    "provisional": false,
+    "path": "idb-hit",
+    "verifiedMs": 1593,
+    "workers": [],
+    "sync": {
+      "count": 1,
+      "bytes": 446216,
+      "ttfbMs": [
+        914.8
+      ],
+      "totalMs": [
+        1288
+      ],
+      "downloadMs": [
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/sync?since=0&dt=0",
+          "encoded": 446216,
+          "ttfbMs": 914.8,
+          "totalMs": 1288,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "world": {
+      "count": 0,
+      "bytes": 0,
+      "ttfbMs": [],
+      "totalMs": [],
+      "downloadMs": [],
+      "urls": []
+    },
+    "worldPartReqs": 0,
+    "v2DestructionPages": 0,
+    "v2bytes": 0,
+    "longCount": 3,
+    "longSum": 494,
+    "longMax": 224,
+    "longOver200": 1
+  },
+  {
+    "label": "mobile-cold-3",
+    "profile": "mobile",
+    "visit": "cold",
+    "n": 3,
+    "synced": true,
+    "totalMs": 58175,
+    "pets": 174223,
+    "tip": 975635,
+    "rows": 4791,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": 43713,
+    "provisional": false,
+    "path": "full-replay",
+    "verifiedMs": 3352,
+    "workers": [
+      {
+        "kind": "replay",
+        "posts": 1,
+        "replies": [
+          {
+            "t": 51110,
+            "ok": true,
+            "ms": 43713,
+            "idb": true,
+            "error": null,
+            "key": "r16a9352e18f8366e445f7890f8148fc7|975635|4791|463bf4c6|3452|a4a8db9a|dex6cdd0303|[]",
+            "resumed": false
+          }
+        ]
+      }
+    ],
+    "sync": {
+      "count": 1,
+      "bytes": 446385,
+      "ttfbMs": [
+        771.622
+      ],
+      "totalMs": [
+        1409
+      ],
+      "downloadMs": [
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/sync?since=0&dt=0",
+          "encoded": 446385,
+          "ttfbMs": 771.622,
+          "totalMs": 1409,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "world": {
+      "count": 2,
+      "bytes": 19828,
+      "ttfbMs": [
+        167.536,
+        167.182
+      ],
+      "totalMs": [
+        169,
+        187
+      ],
+      "downloadMs": [
+        0,
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/world/latest.json",
+          "encoded": 199,
+          "ttfbMs": 167.536,
+          "totalMs": 169,
+          "downloadMs": 0
+        },
+        {
+          "url": "/xp/v1/world/r16a9352e18f8366e445f7890f8148fc7/975631/manifest.json",
+          "encoded": 19629,
+          "ttfbMs": 167.182,
+          "totalMs": 187,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "worldPartReqs": 0,
+    "v2DestructionPages": 1,
+    "v2bytes": 309225,
+    "longCount": 50,
+    "longSum": 4721,
+    "longMax": 758,
+    "longOver200": 2
+  },
+  {
+    "label": "mobile-warm-3",
+    "profile": "mobile",
+    "visit": "warm",
+    "n": 3,
+    "synced": true,
+    "totalMs": 9738,
+    "pets": 174223,
+    "tip": 975635,
+    "rows": 4791,
+    "fromCache": true,
+    "justSeeded": false,
+    "workerMs": null,
+    "provisional": false,
+    "path": "idb-hit",
+    "verifiedMs": 2404,
+    "workers": [],
+    "sync": {
+      "count": 1,
+      "bytes": 446216,
+      "ttfbMs": [
+        981.586
+      ],
+      "totalMs": [
+        1595
+      ],
+      "downloadMs": [
+        0
+      ],
+      "urls": [
+        {
+          "url": "/xp/v1/sync?since=0&dt=0",
+          "encoded": 446216,
+          "ttfbMs": 981.586,
+          "totalMs": 1595,
+          "downloadMs": 0
+        }
+      ]
+    },
+    "world": {
+      "count": 0,
+      "bytes": 0,
+      "ttfbMs": [],
+      "totalMs": [],
+      "downloadMs": [],
+      "urls": []
+    },
+    "worldPartReqs": 0,
+    "v2DestructionPages": 0,
+    "v2bytes": 576,
+    "longCount": 48,
+    "longSum": 4855,
+    "longMax": 591,
+    "longOver200": 3
+  }
+]
