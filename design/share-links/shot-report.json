@@ -1,0 +1,60 @@
+{
+  "pretty": {
+    "href": "/pet/15004?ref=",
+    "title": "#15004 Miwa",
+    "facts": "Owner bc1qtk…dn7q · hatched in block 972,217 (tx 0676ef8f1d4e…) · care 22,149 / 21,000 (Mythic shortcut)",
+    "gear": "Headwear: Red scarf\nGrip: Cattail spear\nOutfits: Staff harness\nDrip: Bear-hide cloak\nGuise: Blue-light glasses\nFootwear: Yellow slippers\n\nOnly the owner can cha",
+    "share": true,
+    "dead": false
+  },
+  "buttons": {
+    "x": 1,
+    "tg": 1,
+    "labels": [
+      "Share my pet",
+      "Share to Telegram",
+      "🎞️ Save GIF",
+      "💾 Save image"
+    ]
+  },
+  "toast412": {
+    "text": "Link copied\nhttps://xcpets.fun/pet/15004?ref=",
+    "left": 8,
+    "right": 404,
+    "top": 704.265625,
+    "bottom": 768,
+    "w": 412,
+    "h": 780,
+    "opened": [
+      "https://x.com/intent/post?text=Miwa%20%2315004%20(Legendary%20Mythic)%20on%20XCPETS&url=https%3A%2F%2Fxcpets.fun%2Fpet%2F15004%3Fref%3D"
+    ]
+  },
+  "toast360": {
+    "text": "Link copied\nhttps://xcpets.fun/pet/15004?ref=",
+    "left": 8,
+    "right": 352,
+    "top": 704.265625,
+    "bottom": 768,
+    "w": 360,
+    "h": 780,
+    "opened": [
+      "https://x.com/intent/post?text=Miwa%20%2315004%20(Legendary%20Mythic)%20on%20XCPETS&url=https%3A%2F%2Fxcpets.fun%2Fpet%2F15004%3Fref%3D"
+    ]
+  },
+  "fallback": {
+    "href": "/pet/1",
+    "title": "#1 Pori"
+  },
+  "hatch": "Share my pet",
+  "breed": {
+    "id": 4104,
+    "label": "Share my pet"
+  },
+  "mythic": {
+    "label": "Share my pet",
+    "left": 12,
+    "right": 400,
+    "w": 412,
+    "cap": "🌈 #15004 Miwa reached MYTHIC: it never starves now"
+  }
+}

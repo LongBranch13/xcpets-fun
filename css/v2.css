@@ -596,7 +596,7 @@ a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:point
 @media (max-width:600px){
   .toast.wintoast{max-width:100%;box-sizing:border-box}
   .toast.sticky-err>span,.toast.wintoast .winrow span{min-width:0;overflow-wrap:anywhere}
-  .shtoast{overflow-wrap:anywhere;box-sizing:border-box !important;max-width:calc(100vw - 16px) !important;bottom:max(24px, env(safe-area-inset-bottom)) !important}
+  .shtoast{left:max(8px, env(safe-area-inset-left)) !important;right:max(8px, env(safe-area-inset-right)) !important;transform:none !important;width:auto !important;margin-left:auto !important;margin-right:auto !important;overflow-wrap:anywhere;box-sizing:border-box !important;max-width:calc(100vw - 16px) !important;bottom:max(24px, env(safe-area-inset-bottom)) !important}
   .wagmi-offer{overflow-wrap:anywhere;box-sizing:border-box !important;width:min(440px, calc(100vw - 16px)) !important;max-width:calc(100vw - 16px) !important;bottom:max(18px, env(safe-area-inset-bottom)) !important;padding-left:max(14px, env(safe-area-inset-left)) !important;padding-right:max(14px, env(safe-area-inset-right)) !important}
   .wagmi-offer b,.wagmi-offer span{overflow-wrap:anywhere;min-width:0}
   #v2stale,#dexStaleNote,.bwc-note,#confirmBox .box,#confirmBox #cfBody,#confirmBox #pgt{overflow-wrap:anywhere}
