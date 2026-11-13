@@ -35,7 +35,26 @@
       if (c.saveData) return true; var t = String(c.effectiveType || ''); return t === '2g' || t === 'slow-2g'; } catch (e) { return false; }
   }
   function desktop() { try { return (navigator.hardwareConcurrency || 0) >= 4 && !saveData(); } catch (e) { return false; } }
-  function buildId() { try { var m = /[?&]v=([0-9a-f]{6,})/.exec((document.currentScript && document.currentScript.src) || ''); return m ? m[1] : ''; } catch (e) { return ''; } }
+  /* Captured while this file is being evaluated. document.currentScript is null once the
+   * load-time script has finished, which is when seedExact and catchUp actually run. */
+  var PAGE_BUILD = (function () { try { var m = /[?&]v=([0-9a-f]{6,})/.exec((document.currentScript && document.currentScript.src) || ''); return m ? m[1] : ''; } catch (e) { return ''; } })();
+  function buildId() { return PAGE_BUILD; }
+  /* inSig is tip|rows|rowHash|hashCount|hashHash and, once sale data exists, |dex<hash>.
+   * The published snapshot hashed the chain pieces and left the dex suffix off. A suffix
+   * that is present on both sides and differs is a different sale book, so it is refused. */
+  function sigParts(s) {
+    var m = /^(\d+)\|(\d+)\|([0-9a-f]+)\|(\d+)\|([0-9a-f]+)(?:\|dex([0-9a-f]+))?$/.exec(String(s || ''));
+    if (!m) return null;
+    return { tip: m[1], n: m[2], row: m[3], hc: m[4], hh: m[5], dex: m[6] || '' };
+  }
+  function sameInputs(manSig, pageSig) {
+    var a = sigParts(manSig), b = sigParts(pageSig);
+    if (!a || !b) return false;
+    if (a.tip !== b.tip || a.n !== b.n || a.row !== b.row || a.hc !== b.hc || a.hh !== b.hh) return false;
+    if (a.dex && a.dex !== b.dex) return false;
+    return true;
+  }
+  function logSeed(e) { try { console.warn('[xcpets] snapshot seed failed:', e && (e.message || e)); } catch (x) {} }
   function noteFail() { try { var o = readFail(); o.n = (o.n || 0) + 1; if (o.n >= 2) o.until = Date.now() + SKIP_MS; sessionStorage.setItem(FAIL_KEY, JSON.stringify(o)); } catch (e) {} }
   function noteOk() { try { sessionStorage.removeItem(FAIL_KEY); } catch (e) {} }
   function offFor(rsig) { try { return localStorage.getItem(OFF_PREFIX + rsig) === '1'; } catch (e) { return false; } }
@@ -214,13 +233,13 @@
   function dirOf(manifestUrl) { return String(manifestUrl || '').replace(/[^/]+$/, ''); }
   function seedFiles(man, dir) { var files = [{ url: dir + man.root.url, sha256: man.root.sha256, role: 'root' }];
     (man.files || []).forEach(function (f) { files.push({ url: dir + f.url, sha256: f.sha256, role: 'part', i: f.i }); }); return files; }
-  function runWorker(files, key, n, parts) {
+  function runWorker(files, key, n, parts, checkpoint) {
     return new Promise(function (res, rej) {
       var w, t; try { w = new Worker(new URL('js/v2-seed-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
       t = setTimeout(function () { try { w.terminate(); } catch (e) {} rej(new Error('seed timeout')); }, SEED_MS);
       w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'seed')); };
       w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e) {} rej(new Error('seed worker')); };
-      w.postMessage({ cmd: 'seed', id: 1, files: files, idbKey: key, parts: parts, n: n });
+      w.postMessage({ cmd: 'seed', id: 1, files: files, idbKey: key, parts: parts, n: n, checkpoint: checkpoint || null });
     });
   }
   function staleMax() { return (window.XcpResume && XcpResume.STALE_MAX) || 8; }
@@ -230,7 +249,7 @@
     var S = api.state(), ops = JSON.stringify((S && S.ops) || []);
     if (ops !== '[]') return null;
     var behind = (S.tip || 0) - (man.tip || 0);
-    var exact = behind === 0 && man.inSig === api.inSig();
+    var exact = behind === 0 && sameInputs(man.inSig, api.inSig());
     var catchup = !exact && behind > 0 && behind <= staleMax() && !!man.checkpoint;
     if (!exact && !catchup) return { exact: false, catchup: false, provisional: true };
     return { exact: exact, catchup: catchup, provisional: false, behind: behind };
@@ -243,12 +262,21 @@
     });
   }
   function noteSeeded(api, later) {
-    usedExact = true; window.V2BootSync.justSeeded = true;
+    usedExact = true; window.V2BootSync.justSeeded = true; window.V2BootSync._seedPending = true;
     if (desktop()) { if (later) window.V2BootSync._recheck = function () { scheduleRecheck(api); }; else scheduleRecheck(api); }
   }
+  function checkpointSpec(man, api) {
+    if (!man.checkpoint || !man.checkpoint.root || !window.XcpResume || !XcpResume.checkpointMeta) return null;
+    var S = api.state();
+    return { parts: man.checkpoint.parts, n: man.checkpoint.n, meta: XcpResume.checkpointMeta({
+      rows: S.rows, hashes: S.hashes, dex: S.dex || null, ops: S.ops || [], tip: S.tip, rsig: api.rsig ? api.rsig() : '',
+      parts: man.checkpoint.parts, n: man.checkpoint.n }) };
+  }
   function writeSnapshot(man, api, how, later) {
-    var dir = dirOf(man._url), key = how.exact ? api.idbKey() : man.key;
-    return runWorker(seedFiles(man, dir), key, man.n, man.parts).then(function () { if (how.exact) noteSeeded(api, later); return how; });
+    var dir = dirOf(man._url), key = how.exact ? api.idbKey() : man.key, files = seedFiles(man, dir), spec = null;
+    if (how.exact) { spec = checkpointSpec(man, api); if (spec) files = files.concat(catchFiles(man, dir).map(function (f) {
+      return { url: f.url, sha256: f.sha256, role: f.role === 'root' ? 'cproot' : f.role === 'meta' ? 'cpmeta' : 'cppart', i: f.i }; })); }
+    return runWorker(files, key, man.n, man.parts, spec).then(function () { if (how.exact) noteSeeded(api, later); return how; });
   }
   function catchFiles(man, dir) {
     var cp = man.checkpoint, files = [{ url: dir + cp.root.url, sha256: cp.root.sha256, role: 'root' }];
@@ -269,7 +297,8 @@
     var urls = ruleUrls(); if (!urls) return Promise.reject(new Error('rules'));
     var S = api.state();
     return runCatch({ cmd: 'catchup', id: 1, files: catchFiles(man, dirOf(man._url)), parts: man.checkpoint.parts, n: man.checkpoint.n,
-      scripts: urls.slice(0, -1), rows: S.rows, hashes: S.hashes, dex: S.dex || null, tip: S.tip, baseTip: man.tip, idbKey: api.idbKey() });
+      scripts: urls, rows: S.rows, hashes: S.hashes, dex: S.dex || null, ops: S.ops || [], tip: S.tip, baseTip: man.tip,
+      rsig: api.rsig ? api.rsig() : '', idbKey: api.idbKey() });
   }
   function keyRsig(key) { var m = /^(r[0-9a-f]{32})\|/.exec(key || ''); return m ? m[1] : null; }
   function peekAndSeed(api) {
@@ -292,7 +321,7 @@
           return writeSnapshot(man, api, how).then(function () { if (!how.exact) pollManifest(api, rsig); return true; });
         }); });
       });
-    }, function () { return false; });
+    }, function (e) { logSeed(e); return false; });
   }
   function pollManifest(api, rsig) {
     if (pollT) return; var n = 0;
@@ -314,12 +343,15 @@
         if (saved && saved.key === api.idbKey()) return false;
         return fetchManifest(api).then(function (man) {
           var how = acceptManifest(man, api, rsig);
-          if (!how || how.provisional || (!how.exact && !how.catchup)) return false;
+          if (!how || how.provisional || (!how.exact && !how.catchup)) {
+            try { console.warn('[xcpets] snapshot not used', JSON.stringify({ behind: (api.state().tip || 0) - (man.tip || 0), man: man.inSig, page: api.inSig(), manRsig: man.rsig, pageRsig: rsig, ops: man.ops, cp: !!man.checkpoint })); } catch (eL) {}
+            return false;
+          }
           var job = how.catchup ? catchUp(man, api).then(function () { noteSeeded(api, true); return true; }) : writeSnapshot(man, api, how, true).then(function () { return true; });
           return job;
         });
       });
-    }).then(function (v) { return !!v; }, function () { return false; });
+    }).then(function (v) { return !!v; }, function (e) { logSeed(e); return false; });
   }
   function bootFirst(api, next) {
     if (!enabled() || !api || localOnly() || saveData()) return next();
@@ -341,22 +373,28 @@
   }
   function recheck(api, rsig) {
     var urls = ruleUrls(); if (!urls || typeof Worker === 'undefined') return;
+    fetchManifest(api).then(function (man) {
+      if (!man || man.rsig !== rsig || man.tip !== api.state().tip || !sameInputs(man.inSig, api.inSig())) return;
+      recheckReplay(api, rsig, urls);
+    }, function () {});
+  }
+  function recheckReplay(api, rsig, urls) {
     var S = api.state(), id = 1, w;
-    try { w = new Worker(urls[urls.length - 1]); } catch (e) { return; }
+    try { w = new Worker(new URL('js/v2-resume-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return; }
     var scripts = urls.slice(0, -1);
     w.onmessage = function (ev) { var m = ev.data || {}; if (!m.ok || !m.idb) { try { w.terminate(); } catch (e) {} return; }
       try { w.terminate(); } catch (e2) {}
       var sw; try { sw = new Worker(new URL('js/v2-seed-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e3) { return; }
       sw.onmessage = function (ev2) { var d = ev2.data || {}; try { sw.terminate(); } catch (e) {} if (!d.ok || !d.digest) return;
-        fetchManifest(api).then(function (man) { if (!man || man.rsig !== rsig || man.tip !== api.state().tip || man.inSig !== api.inSig()) return; if (man.digest === d.digest) { try { localStorage.setItem(RECHECK_KEY, rsig); } catch (e) {} return; }
+        fetchManifest(api).then(function (man) { if (!man || man.rsig !== rsig || man.tip !== api.state().tip || !sameInputs(man.inSig, api.inSig())) return; if (man.digest === d.digest) { try { localStorage.setItem(RECHECK_KEY, rsig); } catch (e) {} return; }
           try { localStorage.setItem(OFF_PREFIX + rsig, '1'); localStorage.setItem(RECHECK_KEY, rsig); console.warn('[xcpets] snapshot world did not match a local rebuild for ' + rsig + '; using this device\'s world and not the snapshot again'); } catch (e2) {}
           if (api.reread) api.reread();
         }, function () {}); };
       sw.postMessage({ cmd: 'digest', id: 2 });
     };
     w.onerror = function () { try { w.terminate(); } catch (e) {} };
-    try { w.postMessage({ id: id, scripts: scripts, rows: S.rows, hashes: S.hashes, ops: [], tip: S.tip, dex: S.dex || undefined, idbKey: api.idbKey() }); } catch (e) { try { w.terminate(); } catch (e2) {} }
+    try { w.postMessage({ id: id, scripts: scripts, rows: S.rows, hashes: S.hashes, ops: [], tip: S.tip, dex: S.dex || undefined, idbKey: api.idbKey(), rsig: rsig }); } catch (e) { try { w.terminate(); } catch (e2) {} }
   }
 
-  window.V2BootSync = { enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, bootFirst: bootFirst, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, ready: null };
+  window.V2BootSync = { enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, bootFirst: bootFirst, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, sameInputs: sameInputs, buildId: buildId, ruleUrls: ruleUrls, ready: null };
 })();

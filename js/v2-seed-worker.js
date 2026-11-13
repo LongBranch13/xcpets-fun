@@ -19,10 +19,12 @@ function sha256Buf(buf) { return crypto.subtle.digest('SHA-256', buf).then(hexOf
 function sha256Text(s) { return sha256Buf(new TextEncoder().encode(s)); }
 function idbOpen() { return new Promise(function (res, rej) { var r = indexedDB.open('xcpets-world', 1);
   r.onupgradeneeded = function () { r.result.createObjectStore('w'); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
-function putWorld(key, root, parts, n) { return idbOpen().then(function (db) { return new Promise(function (res, rej) {
+function putWorld(key, root, parts, n, cp) { return idbOpen().then(function (db) { return new Promise(function (res, rej) {
   try { var tx = db.transaction('w', 'readwrite'), os = tx.objectStore('w'); os.clear();
     for (var i = 0; i < parts.length; i++) os.put(parts[i], 'world:' + i);
     os.put({ key: key, at: Date.now(), v: 2, parts: parts.length, n: n, root: root }, 'world');
+    if (cp && cp.meta && cp.root) { os.put(cp.meta, 'cpm'); os.put(cp.seen || [], 'cps'); os.put(cp.root, 'cpr');
+      for (var j = 0; j < cp.parts.length; j++) os.put(cp.parts[j], 'cp:' + j); }
     tx.oncomplete = function () { db.close(); res(true); }; tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} rej(tx.error || new Error('idb')); };
   } catch (e) { try { db.close(); } catch (x) {} rej(e); } }); }); }
 function getKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
@@ -37,10 +39,26 @@ function seed(m) {
   function fail(e) { if (!failed) failed = String(e && e.message || e); pump(); }
   function finish() { if (settled) return; if (failed) { settled = true; self.postMessage({ id: m.id, ok: false, error: failed }); return; }
     if (pending.length || running) return; settled = true;
-    var root = null, parts = []; got.forEach(function (g) { if (g.role === 'root') root = g.val; else parts[g.i] = g.val; });
+    var root = null, parts = [], cpRoot = null, cpParts = [], cpMeta = null;
+    got.forEach(function (g) {
+      if (g.role === 'root') root = g.val;
+      else if (g.role === 'part') parts[g.i] = g.val;
+      else if (g.role === 'cproot') cpRoot = g.val;
+      else if (g.role === 'cppart') cpParts[g.i] = g.val;
+      else if (g.role === 'cpmeta') cpMeta = g.val;
+    });
     if (!root || parts.length !== m.parts) { self.postMessage({ id: m.id, ok: false, error: 'parts' }); return; }
     for (var i = 0; i < parts.length; i++) if (!parts[i]) { self.postMessage({ id: m.id, ok: false, error: 'gap' }); return; }
-    putWorld(m.idbKey, root, parts, m.n).then(function () { self.postMessage({ id: m.id, ok: true, key: m.idbKey }); }, function (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); });
+    var cp = null;
+    if (m.checkpoint) {
+      if (!cpRoot || !cpMeta || cpParts.length !== m.checkpoint.parts) { self.postMessage({ id: m.id, ok: false, error: 'checkpoint' }); return; }
+      for (var c = 0; c < cpParts.length; c++) if (!cpParts[c]) { self.postMessage({ id: m.id, ok: false, error: 'checkpoint gap' }); return; }
+      var meta = m.checkpoint.meta || {};
+      meta.dexPos = cpMeta.dexPos || 0; meta.grand = cpMeta.grand ? 1 : 0; meta.parts = cpParts.length; meta.n = m.checkpoint.n;
+      if (cpMeta.tip) meta.tip = cpMeta.tip;
+      cp = { meta: meta, seen: cpMeta.seen || [], root: cpRoot, parts: cpParts };
+    }
+    putWorld(m.idbKey, root, parts, m.n, cp).then(function () { self.postMessage({ id: m.id, ok: true, key: m.idbKey }); }, function (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); });
   }
   function one(f) { return fetch(f.url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
     return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = unmarkValue(JSON.parse(new TextDecoder().decode(buf))); got.push({ role: f.role, i: f.i, val: val }); }); }); }

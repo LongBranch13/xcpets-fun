@@ -65,7 +65,8 @@
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
-  function idbRaw() { return new Promise(function (res) {
+  function notePhase(name, ms, extra) { try { var a = window.__xcpPhase || (window.__xcpPhase = []); a.push({ name: name, t: Math.round(performance.now()), ms: Math.round(ms), n: extra == null ? null : extra }); } catch (e) {} }
+  function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
     var seeded = !!(window.V2BootSync && V2BootSync.justSeeded);
@@ -73,16 +74,43 @@
     var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
     function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
     function finish(v) { if (done) return; done = true; clearTimeout(t); res(v); }
-    idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } arm();
+    var tOpen = Date.now();
+    idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } notePhase('idb-open', Date.now() - tOpen); arm();
       idbGetKey(db, 'world').then(function (v) { if (done) return;
         if (!(v && v.v === 2 && v.root && v.parts > 0)) { try { db.close(); } catch (e) {} finish(v && v.world ? { key: v.key, at: v.at, world: v.world } : null); return; }
-        /* one record per turn: a single getAll of every pet was one long task and froze the page */
-        var parts = [], keys = [], i = 0;
-        function next() { if (done) return; if (i >= v.parts) { try { db.close(); } catch (e) {} clearTimeout(t); /* decode is in memory now; the read timer must not throw that world away */ wsDecode(v, parts, keys).then(function (w) { finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); return; }
-          arm(); idbGetKey(db, 'world:' + i).then(function (part) { if (done) return; if (!part) { try { db.close(); } catch (e) {} finish(null); return; } parts.push(part); keys.push('world:' + i); i++; setTimeout(next, 0); }, function () { try { db.close(); } catch (e) {} finish(null); }); }
-        next();
+        /* One readonly transaction, one get per part. A single getAll of every pet was one
+         * long task. Measured on a 4× phone, the record delivery itself is about 4 s either way. */
+        var parts = new Array(v.parts), keys = [], tRead = Date.now(), left = v.parts, failed = false;
+        var tx = db.transaction('w', 'readonly'), os = tx.objectStore('w');
+        function decoded() { if (failed || done) return; try { db.close(); } catch (e) {} clearTimeout(t); notePhase('idb-read', Date.now() - tRead, v.parts); var tDec = Date.now(); wsDecode(v, parts, keys).then(function (w) { notePhase('deserialize', Date.now() - tDec); finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); }
+        for (var pi = 0; pi < v.parts; pi++) { keys.push('world:' + pi); (function (pi) {
+          var q = os.get('world:' + pi);
+          q.onsuccess = function () { if (failed || done) return; if (!q.result) { failed = true; try { db.close(); } catch (e) {} finish(null); return; } parts[pi] = q.result; if (--left === 0) decoded(); };
+          q.onerror = function () { if (failed || done) return; failed = true; try { db.close(); } catch (e) {} finish(null); };
+        })(pi); }
       }, function () { try { db.close(); } catch (e) {} finish(null); });
     }, function () { finish(null); }); }); }
+  /* The IndexedDB clone of the saved world runs in js/v2-decode-worker.js. Each message is a handful of objects,
+   * so the main thread never takes the multi-hundred-millisecond task a 17 MB record used to be. */
+  function idbRaw() {
+    /* js/v2-idb-early.js starts this read before the rule scripts download, so a return
+     * visit spends that wait on IndexedDB instead of after the chain check. A snapshot
+     * written in this boot drops the promise (boot sets idbPre null when justSeeded). */
+    var early = window.__xcpIdbEarly;
+    if (early && typeof early.then === 'function') {
+      window.__xcpIdbEarly = null;
+      return early.then(function (got) {
+        if (!got) return idbRawMain();
+        if (got.world && !got.parts) return { key: got.key, at: got.at, world: got.world };
+        if (!(got.v && got.parts && got.v.parts > 0)) return idbRawMain();
+        var keys = [], i;
+        for (i = 0; i < got.v.parts; i++) keys.push('world:' + i);
+        var tDec = Date.now();
+        return wsDecode(got.v, got.parts, keys).then(function (w) { notePhase('deserialize', Date.now() - tDec); return w ? { key: got.v.key, at: got.v.at, world: w } : null; }, function () { return null; });
+      }, function () { return idbRawMain(); });
+    }
+    return idbRawMain();
+  }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
    * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
   function wsDecode(v, parts, keys) { var byIx = [], i, j, T = [], M = '__wsr';
@@ -114,6 +142,18 @@
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
   function wkKill() { try { if (wk) wk.terminate(); } catch (e) {} wk = null; }
   function stopReplay() { var old = pend; pend = null; wkKill(); if (old && old.fin) old.fin(); }
+  /* Checkpoint meta is small. A matching rules hash and an unchanged burn prefix means the worker continues
+   * from that world. A rules change, a reorg, or a missing checkpoint is a full replay. */
+  function resumeInfo() { return new Promise(function (res) {
+    var done = false, t = setTimeout(function () { if (!done) { done = true; res(null); } }, 2000);
+    function fin(v) { if (done) return; done = true; clearTimeout(t); res(v); }
+    if (!window.XcpResume || !XcpResume.canResume || !RSIG) { fin(null); return; }
+    idb().then(function (db) { idbGetKey(db, 'cpm').then(function (meta) { try { db.close(); } catch (e) {}
+      if (!meta) { fin(null); return; }
+      var gate = XcpResume.canResume(meta, { rsig: RSIG, tip: S.tip, rows: S.rows, dex: S.dex || null, hashes: S.hashes, ops: S.ops || [], cutoff: V.CUTOFF_BLOCK });
+      fin(gate.ok ? { opsFrom: gate.opsFrom, tailOnly: !!gate.tailOnly } : null);
+    }, function () { try { db.close(); } catch (e) {} fin(null); }); }, function () { fin(null); });
+  }); }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
     var sig0 = inSig(), oj0 = JSON.stringify(S.ops || []);
@@ -122,9 +162,9 @@
     job.p = new Promise(function (res) { var id = ++wkId, sig = sig0, ops = S.ops || [], oj = oj0, key = idbKey(), done = false, t;
       function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
       job.fin = fin;
-      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
+      try { if (!wk) { wk = new Worker(new URL('js/v2-resume-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
         function noteMs(ms) { S.workerMs = ms; try { localStorage.setItem('xcpets-worker-ms', String(ms | 0)); } catch (e1) {} }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly }; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -133,7 +173,7 @@
          * the job keeps running and the page keeps the last world / placeholder; only a worker error (onerror / !ok) falls back to the main thread. */
         var slow = function () { if (done) return; try { console.warn('[v2] replay worker still busy after ' + Math.round((Date.now() - t0) / 1000) + ' s; waiting (no main-thread replay)'); } catch (e) {} t = setTimeout(slow, WORKER_MS); }, t0 = Date.now();
         t = setTimeout(slow, WORKER_MS);
-        wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
+        resumeInfo().then(function (info) { if (done) return; try { wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key, resume: info, rsig: RSIG || '' }); } catch (e2) { wkOff = true; wkKill(); fin(); } });
       } catch (e) { wkOff = true; wkKill(); fin(); } });
     return job.p; }
   /* page-unresponsive-fix: the cross-visit cache read (up to IDB_WAIT_MS) always runs right before workerReplay(); it counts as busy, so a poller
@@ -146,17 +186,17 @@
   var provKey = null, storedKey = null;
   function fromIdb(prov) {
     /* A poller can rebuild on the main thread while the snapshot is still downloading. That local world is not the one to burn from. */
-    if (cache && window.V2BootSync && V2BootSync.justSeeded && !S.fromCache) { cache = null; cacheSig = null; }
+    if (cache && window.V2BootSync && V2BootSync._seedPending && !S.fromCache) { cache = null; cacheSig = null; }
     if (cache) return Promise.resolve();
     var gate = window.V2BootSync && V2BootSync.ready; if (gate && typeof gate.then === 'function') { V2BootSync.ready = null; return Promise.resolve(gate).then(function () { return fromIdb(prov); }, function () { return fromIdb(prov); }); }
     wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
     return idbGet().then(function (v) { end();
-      if (!v && window.V2BootSync && V2BootSync.justSeeded && (fromIdb.tries || 0) < 4) { fromIdb.tries = (fromIdb.tries || 0) + 1; return new Promise(function (r) { setTimeout(r, 250); }).then(function () { return fromIdb(prov); }); }
-      if (v) try { V2BootSync.justSeeded = false; } catch (eS) {}
+      if (!v && window.V2BootSync && V2BootSync._seedPending && (fromIdb.tries || 0) < 4) { fromIdb.tries = (fromIdb.tries || 0) + 1; return new Promise(function (r) { setTimeout(r, 250); }).then(function () { return fromIdb(prov); }); }
+      if (v) try { V2BootSync._seedPending = false; } catch (eS) {}
       if (!v || cache) return;
       if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
         lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
-      var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
+      var w = v.world, tIx = Date.now(); if (V.reindex) V.reindex(w); notePhase('reindex', Date.now() - tIx); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   /* gear-stick (2026-10-28): local ops (equips) are append-only, but each tab read them ONCE at load and save() wrote its whole list back. So a
@@ -507,10 +547,16 @@
   function boot(then) {
     var B = window.V2BootSync;
     if (B && B.bootFirst && B.enabled() && !B.localOnly() && !B.saveData()) {
+      /* The chain check and the rules hash run before the page may paint. On a return visit
+       * the saved world is already here, so decode it during that wait. A snapshot that
+       * lands in this boot replaces the saved copy, and that in-flight read is dropped. */
+      notePhase('boot', 0);
+      if (!idbPre) idbPre = idbRaw();
+      rulesSig();
       /* Hold the replay slot so a badge/paint timer cannot rebuild every pet while the snapshot is on its way. */
       wkBusy++; var held = true;
       function release() { if (!held) return; held = false; wkBusy--; }
-      return B.bootFirst(syncApi(), function () { release(); return bootNow(then); });
+      return B.bootFirst(syncApi(), function () { release(); if (B.justSeeded) idbPre = null; return bootNow(then); });
     }
     return bootNow(then); }
   function bootNow(then) { var st = document.getElementById('v2boot');

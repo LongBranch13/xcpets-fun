@@ -1,9 +1,23 @@
 /* token-box: live XCPETS supply / burned (Counterparty read API) + 30-day daily chart
  * from xcp.fun's public candle feed (api.xcp.fun/v2/candles/XCPETS, CORS *).
  * Display only: touches no game state, replay stays SAME. Any failed load keeps the
- * section hidden (supply row and chart hide independently). */
+ * section hidden (supply row and chart hide independently).
+ * The burned total is the sum of the burn rows the page already loaded (the same
+ * destructions list). It is not paged off /v2 again. */
+function xcpBurnTotal(rows) {
+  var tot = 0, i, r, q;
+  for (i = 0; i < (rows ? rows.length : 0); i++) {
+    r = rows[i] || {};
+    if (r.quantity != null && r.quantity !== '') q = +r.quantity;
+    else if (r.amount != null && isFinite(+r.amount)) q = Math.round(+r.amount * 1e8);
+    else q = 0;
+    if (q) tot += q;
+  }
+  return tot;
+}
+if (typeof module === 'object' && module.exports) module.exports = { burnTotal: xcpBurnTotal };
 (function(){
-  var box=document.getElementById("tokenLive"); if(!box||!window.fetch) return;
+  var box=typeof document!=="undefined"&&document.getElementById?document.getElementById("tokenLive"):null; if(!box||!window.fetch) return;
   /* direct-counterparty-api: Core reads go direct (config.js coreFetch: COUNTERPARTY_CORE, CORE_BACKUP, proxy only if both are network-blocked);
    * the candle chart is an xcp.fun feature (XCPFUN_API), not a Core endpoint. */
   var CF=window.XCPETS_CONFIG||{}, XCPFUN_API=CF.xcpfunApi||"https://api.xcp.fun/v2";
@@ -17,11 +31,19 @@
   node("/assets/XCPETS").then(function(d){
     var s=d&&d.result&&d.result.supply; if(!(s>0)) throw 0;
     stats.textContent=fmt(s); stats.parentNode.hidden=false; show();
-    // total burned = sum of all XCPETS destroys (cursor paging; api-hardening: up to 200 pages, a repeated cursor or more pages hides the total instead of showing a short one)
-    var tot=0,pg=0,seen={};
-    function page(cur){return node("/assets/XCPETS/destructions?limit=1000"+(cur?"&cursor="+encodeURIComponent(cur):"")).then(function(r){
-      (r.result||[]).forEach(function(x){tot+=+x.quantity||0}); if(r.next_cursor&&(r.result||[]).length){ if(seen[r.next_cursor]||++pg>=200) throw 0; seen[r.next_cursor]=1; return page(r.next_cursor);} });}
-    return page().then(function(){ if(tot>0){burnEl.textContent=fmt(tot);burnEl.parentNode.hidden=false;} }).catch(function(){});
+    /* Same sum as paging every destruction: the chain read already holds that list. A saved total paints first, then the loaded rows replace it. */
+    var CACHE="xcpets-burn-sum-v1";
+    function paint(tot){ if(!(tot>0)||!burnEl) return; burnEl.textContent=fmt(tot); burnEl.parentNode.hidden=false; }
+    try{ var cached=JSON.parse(localStorage.getItem(CACHE)||"null"); if(cached&&cached.tot>0) paint(cached.tot); }catch(e){}
+    var tries=0;
+    (function tick(){
+      var M=window.V2Mock, S=M&&M.state&&M.state();
+      if(S&&S.rows&&S.rows.length&&(S.verified||S.fullAt)){
+        var tot=xcpBurnTotal(S.rows);
+        if(tot>0){ paint(tot); try{ localStorage.setItem(CACHE, JSON.stringify({tip:S.tip,n:S.rows.length,tot:tot})); }catch(e){} return; }
+      }
+      if(++tries<150) setTimeout(tick, 200);
+    })();
   }).catch(function(){});
   j(XCPFUN_API+"/candles/XCPETS").then(function(d){
     var c=(d&&d.result)||[]; if(!c.length) throw 0;

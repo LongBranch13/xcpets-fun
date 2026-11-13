@@ -1,0 +1,136 @@
+Proof run against game tree bfecc43c03caa8e63e1daece006ff465c9ce060b. The tests gained log lines that print both hashes. Rules and resume code are that commit.
+js/v2-rules.js MD5 8e98664087bab2e991680ebdb80ba143
+
+tools/sync-phase1-test.js: 119 passed, 0 failed
+tools/doom-week-test.js: 34 passed, 0 failed
+tools/practice-mode-test.js: 89 passed, 0 failed
+tools/resume-equiv-test.js: all passed (39 hash pairs, 0 mismatches)
+
+First visit on this commit, local page, live sync https://node.xcpets.fun
+Desktop 1280x800, no throttle: 14793 ms, tip 975668, 176223 pets, justSeeded true, catch-up
+Phone 412x915, 4x CPU, Fast 4G: 40927 ms, tip 975668, 176223 pets, justSeeded true, catch-up
+
+Canonical pet-state SHA-256. full is a replay from genesis. resume is a checkpoint plus the burns after it. The two lines are the two states.
+
+HASH snap-971786.json fraction 0.9
+  full   762798b8394f6a51e35446f73bd1c11371c694461653f985b8b6c949192094df
+  resume 762798b8394f6a51e35446f73bd1c11371c694461653f985b8b6c949192094df
+HASH snap-971786.json three blocks back
+  full   762798b8394f6a51e35446f73bd1c11371c694461653f985b8b6c949192094df
+  resume 762798b8394f6a51e35446f73bd1c11371c694461653f985b8b6c949192094df
+HASH snap-971786.json tip-only
+  full   e811be8501fca06dca49b63254ffbaefac254fc071e2fd2b5633dbd2a5e2bf92
+  resume e811be8501fca06dca49b63254ffbaefac254fc071e2fd2b5633dbd2a5e2bf92
+HASH snap-972550.json fraction 0.5
+  full   b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+  resume b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+HASH snap-972550.json fraction 0.9
+  full   b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+  resume b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+HASH snap-972550.json three blocks back
+  full   b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+  resume b2fac7b9ee3ccff34405d4597b3a2b54b6f68a777e3b54c2d65e54ac07346ef7
+HASH snap-972550.json tip-only
+  full   333d6b82e32f75bb0e846f9a7ffbd88dc1de0bafd2e71c90a73e2aa96439ff8a
+  resume 333d6b82e32f75bb0e846f9a7ffbd88dc1de0bafd2e71c90a73e2aa96439ff8a
+HASH snap-972561.json fraction 0.5
+  full   79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+  resume 79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+HASH snap-972561.json fraction 0.9
+  full   79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+  resume 79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+HASH snap-972561.json three blocks back
+  full   79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+  resume 79a88a3e10ecf1bb0811b5a2f83fe14f2f16a8248ded1451d5956fc869a0b078
+HASH snap-972561.json tip-only
+  full   c85f111b8891ed90af2da2aa3e01facf38d5e358c5b5591fe4d5d97fc0f098de
+  resume c85f111b8891ed90af2da2aa3e01facf38d5e358c5b5591fe4d5d97fc0f098de
+HASH snap-972634.json fraction 0.5
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-972634.json fraction 0.9
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-972634.json three blocks back
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-972634.json tip-only
+  full   8340cd6e3e9440419f9f1b9caecf41734bc5010c9ee47a7dcda2330851b61fb0
+  resume 8340cd6e3e9440419f9f1b9caecf41734bc5010c9ee47a7dcda2330851b61fb0
+HASH snap-972877.json fraction 0.5
+  full   d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+  resume d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+HASH snap-972877.json fraction 0.9
+  full   d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+  resume d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+HASH snap-972877.json three blocks back
+  full   d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+  resume d99c72f21edb519e5e575e4c2236913b39fae306297e9e0d3b85ea526f121595
+HASH snap-972877.json tip-only
+  full   d70ed7c1379ca2f3ce06426cf3e7715ad9c3457c6725e5409626f4bc8ac29627
+  resume d70ed7c1379ca2f3ce06426cf3e7715ad9c3457c6725e5409626f4bc8ac29627
+HASH snap-972883.json fraction 0.5
+  full   2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+  resume 2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+HASH snap-972883.json fraction 0.9
+  full   2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+  resume 2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+HASH snap-972883.json three blocks back
+  full   2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+  resume 2daa72559ad4a834bc331736b5ca27416498eaa88021cfab04595ba3909c2ade
+HASH snap-972883.json tip-only
+  full   674af575914502681bd780c79a20d53428d69aa4314d53844740266c1c50f7b0
+  resume 674af575914502681bd780c79a20d53428d69aa4314d53844740266c1c50f7b0
+HASH snap-972901.json fraction 0.5
+  full   25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+  resume 25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+HASH snap-972901.json fraction 0.9
+  full   25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+  resume 25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+HASH snap-972901.json three blocks back
+  full   25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+  resume 25602f9cc20fcc049fea8d68fa1c776c1295e4006569a4b3b3052003958c2262
+HASH snap-972901.json tip-only
+  full   41e373bd7394ba9e5c8b58accbe7d1d175f7d9b36c6a5023b8e89efb6e84574b
+  resume 41e373bd7394ba9e5c8b58accbe7d1d175f7d9b36c6a5023b8e89efb6e84574b
+HASH snap-now.json fraction 0.5
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-now.json fraction 0.9
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-now.json three blocks back
+  full   316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+  resume 316d240da30a63e0060d96a8a4d8517e952de3b00263df1412a07786a8e28b42
+HASH snap-now.json tip-only
+  full   8340cd6e3e9440419f9f1b9caecf41734bc5010c9ee47a7dcda2330851b61fb0
+  resume 8340cd6e3e9440419f9f1b9caecf41734bc5010c9ee47a7dcda2330851b61fb0
+HASH snap-fresh-v2.json fraction 0.5
+  full   3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+  resume 3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+HASH snap-fresh-v2.json fraction 0.9
+  full   3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+  resume 3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+HASH snap-fresh-v2.json three blocks back
+  full   3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+  resume 3f319d2ed836234922c6815a9c71b26e367632e25c17c821ee9f7338eb8dad28
+HASH snap-fresh-v2.json tip-only
+  full   ae4a96e56ebae4f01243ae6a7d3e21194037ab62a4c62fcbbfe7123e1c381abd
+  resume ae4a96e56ebae4f01243ae6a7d3e21194037ab62a4c62fcbbfe7123e1c381abd
+HASH live fraction 0.5
+  full   ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+  resume ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+HASH live fraction 0.9
+  full   ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+  resume ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+HASH live three blocks back
+  full   ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+  resume ad786541c564465b7d33ad3b5079734ebc89607f42c1cba3a2afd9c07728582c
+HASH live tip-only
+  full   7c0de08c23e92febe790ff45e95e1099ea67eddcee02f66409ee5248e98af4cf
+  resume 7c0de08c23e92febe790ff45e95e1099ea67eddcee02f66409ee5248e98af4cf
+
+Encoded-world digest for snap-972901, snapshot at tip T-2 plus catch-up, versus a full replay at tip T.
+HASH snapshot T-2 catch-up wsEncode
+  full   a19f307d295b8f7018fbcdc81fbaafabb5ce89204b373b5d199cbf5da41dddbd
+  resume a19f307d295b8f7018fbcdc81fbaafabb5ce89204b373b5d199cbf5da41dddbd

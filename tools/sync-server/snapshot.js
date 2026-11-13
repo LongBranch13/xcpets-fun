@@ -39,6 +39,7 @@ function replayWorld(ctx, rows, hashes, tip, dex) {
   ctx.__rows = rows; ctx.__hashes = hashes; ctx.__tip = tip; ctx.__dex = dex || undefined;
   /* Same normalizeDex the page runs on the sync body, so the world key matches after JSON.parse. */
   vm.runInContext('if (__dex && self.V2Sales && self.V2Sales.normalizeDex) __dex = self.V2Sales.normalizeDex(__dex);', ctx);
+  ctx.__dexUsed = ctx.__dex || null;
   vm.runInContext('__world = self.V2Rules.replay(__rows, __hashes, [], { tip: __tip, live: self.LiveEngine.RealCore, dex: __dex, _beforeTail: function (w, seen) {\n' +
     '  if (typeof saveCheckpoint !== "function") return;\n' +
     '  var enc = wsEncode(w), keys = [], k;\n' +
@@ -109,7 +110,7 @@ async function buildSnapshot(opts) {
     };
   }
   const world = replayWorld(ctx, rows, hashes, opts.tip, dexIn);
-  const dex = ctx.__dex || null;
+  const dex = ctx.__dexUsed || null;
   const enc = encodeWorld(ctx, world);
   ctx.__world = null;
   const digest = await digestOf(enc.root, enc.parts);

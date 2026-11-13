@@ -1,0 +1,17 @@
+{
+  "commit": "86d0fa62",
+  "measuredAt": "2026-11-13T10:42:56Z",
+  "snapshot": { "tip": 975661, "rsig": "rdf88024c90a3ff2b4443f6a3252f4ecc", "behind": 2 },
+  "pageTip": 975663,
+  "pets": 176223,
+  "runs": [
+    { "label": "desktop-cold-1", "totalMs": 15799, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 78, "longMax": 169, "longOver200": 0 },
+    { "label": "desktop-warm-1", "totalMs": 4806, "path": "idb-hit", "justSeeded": false, "longMax": 154, "longOver200": 0 },
+    { "label": "desktop-cold-2", "totalMs": 15767, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 78, "longMax": 180, "longOver200": 0 },
+    { "label": "desktop-warm-2", "totalMs": 4181, "path": "idb-hit", "justSeeded": false, "longMax": 159, "longOver200": 0 },
+    { "label": "mobile-cold-1", "totalMs": 41101, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 78, "longMax": 686, "longOver200": 2 },
+    { "label": "mobile-warm-1", "totalMs": 12980, "path": "idb-hit", "justSeeded": false, "longMax": 588, "longOver200": 3 },
+    { "label": "mobile-cold-2", "totalMs": 41478, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 78, "longMax": 695, "longOver200": 2 },
+    { "label": "mobile-warm-2", "totalMs": 13143, "path": "idb-hit", "justSeeded": false, "longMax": 662, "longOver200": 3 }
+  ]
+}
