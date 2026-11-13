@@ -1,6 +1,6 @@
 {
- "lastBlock": 975627,
- "count": 374,
+ "lastBlock": 975628,
+ "count": 376,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4490,6 +4490,30 @@
    "speciesLabel": "Pedotobi (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 85377,
+   "asset": "A16812850141599395037",
+   "tiedBlock": 975628,
+   "tiedTx": "186ded2cb8c0071258b5e1be49a5d522617812085f30c7c3791a141393e6e87b",
+   "kind": "deed",
+   "name": "Yute",
+   "species": "hyb:mumu:snibby",
+   "speciesLabel": "Mubby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 85378,
+   "asset": "A2078213269999834120",
+   "tiedBlock": 975628,
+   "tiedTx": "de5c75a5410cefe59b927ec33e9776e75d39f3b937c3699c6f61c8717c447880",
+   "kind": "deed",
+   "name": "Tutotot",
+   "species": "hyb:mumu:snibby",
+   "speciesLabel": "Mubby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
