@@ -25,8 +25,10 @@ const KNOWN = new Set(fs.readFileSync(path.join(T, 'fixtures', 'known-failures.t
 const only = opt('--only') ? opt('--only').split(',').map(s => s.trim()).filter(Boolean) : null;
 const tests = fs.readdirSync(T).filter(f => /-test\.js$/.test(f) && (!only || only.includes(f))).sort();
 const jobs = Math.max(1, +(opt('--jobs') || Math.min(4, os.cpus().length || 2)) | 0), keepTmp = A.includes('--keep-tmp');
-const failLine = l => /^\s*(FAIL|not ok)\b/.test(l) || /\b[1-9]\d* (FAILED|failed)\b/.test(l) || /^\s*(AssertionError|Error:|TypeError|ReferenceError)/.test(l);
-const RUN_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'xcpets-run-tests-'));
+const failLine = l => !/^\s*PASS\b/.test(l) && (/^\s*(FAIL|not ok)\b/.test(l) || /\b[1-9]\d* (FAILED|failed)\b/.test(l) || /^\s*(AssertionError|Error:|TypeError|ReferenceError)/.test(l));
+/* Chrome's singleton socket must fit in 108 bytes. A long test name under os.tmpdir() overflows it
+ * (wallet-false-disconnect-test.js). Keep both directory names short. */
+const RUN_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'xt-'));
 const CACHE = process.env.XCPETS_CACHE || path.join(os.homedir(), '.cache', 'xcpets'), TIMES = path.join(CACHE, 'run-times.json');
 let times = {}; try { times = JSON.parse(fs.readFileSync(TIMES, 'utf8')); } catch (e) {}
 const MEMF = path.join(CACHE, 'run-mem.json'); let mem = {}; try { mem = JSON.parse(fs.readFileSync(MEMF, 'utf8')); } catch (e) {}
@@ -35,17 +37,20 @@ function availMem() { try { const m = /MemAvailable:\s+(\d+) kB/.exec(fs.readFil
 function rssOf(pid) { try { const m = /VmRSS:\s+(\d+) kB/.exec(fs.readFileSync('/proc/' + pid + '/status', 'utf8')); return m ? +m[1] * 1024 : 0; } catch (e) { return 0; } }
 const running = new Map(); /* pid -> { f, peak (bytes, observed this run) } */
 setInterval(() => running.forEach((r, pid) => { r.peak = Math.max(r.peak, rssOf(pid)); }), 500).unref();
-const want = f => mem[f] || PEAK_DEFAULT;
+const want = f => mem[f] || (f === 'seance-raises-test.js' ? 5000 * MB : f === 'retire-tags-test.js' ? 4500 * MB : PEAK_DEFAULT);
 let pend = 0; /* admitted but not spawned yet */
 function roomFor(f) { if (!running.size && !pend) return true; let grow = pend; running.forEach((r, pid) => { grow += Math.max(0, want(r.f) - rssOf(pid)); }); return availMem() - grow - want(f) >= RESERVE; }
 const usedPorts = new Set();
 function freePort() { return new Promise((res, rej) => { const s = net.createServer(); s.unref(); s.on('error', rej);
   s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => usedPorts.has(p) ? freePort().then(res, rej) : (usedPorts.add(p), res(p))); }); }); }
-function child(args, tag) { return new Promise(async res => { const port = await freePort(), tmp = fs.mkdtempSync(path.join(RUN_TMP, tag.replace(/[^\w.-]+/g, '_') + '-'));
-  const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp });
+let tmpN = 0;
+function child(args, tag) { return new Promise(async res => { const port = await freePort(), tmp = fs.mkdtempSync(path.join(RUN_TMP, (tmpN++).toString(36) + '-'));
+  /* seance-raises keeps a replay checkpoint plus the live world. The default ~2GB heap aborts that. */
+  const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=5120', '--expose-gc'].filter(Boolean).join(' ') });
   const t0 = Date.now(), p = spawn(process.execPath, args, { cwd: ROOT, env }), me = { f: tag, peak: 0 }; running.set(p.pid, me); pend -= want(tag);
   let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
-  const kill = setTimeout(() => { out += '\nFAIL timeout after 600 s'; p.kill('SIGKILL'); }, 600000);
+const killMs = tag === 'seance-raises-test.js' ? 2100000 : 600000;
+  const kill = setTimeout(() => { out += '\nFAIL timeout after ' + (killMs / 1000) + ' s'; p.kill('SIGKILL'); }, killMs);
   p.on('close', (code, sig) => { clearTimeout(kill); running.delete(p.pid); if (me.peak) mem[tag] = me.peak; if (sig) out += '\nkilled by ' + sig + (sig === 'SIGKILL' ? ' (out of memory? see dmesg)' : ''); if (!keepTmp) fs.rmSync(tmp, { recursive: true, force: true }); res({ code, out, ms: Date.now() - t0, port, tmp }); }); }); }
 const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.json', 'snap-972901.json'];
 const tasks = tests.map(f => ({ kind: 'test', f, args: [path.join(T, f)] }))

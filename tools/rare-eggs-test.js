@@ -6,6 +6,8 @@ const c=load(),V=c.V2Rules,G=1000000,bh='a'.repeat(64),id=n=>n.toString(16).padS
 const same=(a,b)=>assert.strictEqual(JSON.stringify(a),JSON.stringify(b));
 const hash=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
 let checks=0;function ok(f){f();checks++;}
+ok(()=>assert.strictEqual(V.ACTIVATE_RARE_EGGS_BLOCK,974962));
+V._setRareEggsActivation(Infinity);
 ok(()=>assert.strictEqual(V.rareEggsOn(G),false));
 const old=V.hatchArt(bh,id(1),G-1),olde=V.electricArt(bh,id(1),G-1);
 V._setRareEggsActivation(G);

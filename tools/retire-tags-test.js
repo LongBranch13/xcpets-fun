@@ -8,7 +8,8 @@
  *   5. pet:dc (daily chores) works after its gate while retired tags are rejected.   node tools/retire-tags-test.js [--boot FILE] */
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const { load, ROOT } = require('./lib/load-rules');
+const { ROOT } = require('./lib/load-rules');
+const { load } = require('./lib/fork-replay'); /* one full replay, then scenarios continue from that checkpoint */
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex'), unhex = h => Buffer.from(h, 'hex').toString('utf8');
@@ -29,8 +30,9 @@ const mk = (b, src, amt, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.creat
 const strip = x => JSON.stringify({ wagmi: x.wagmi, spins: x.spins, ads: x.ads, fights: x.fights, pets: x.pets.map(p => [p.id, p.owner, p.care, p.lastFed, p.released, p.dead, p.skipBy, p.aura, p.gear]), c: x.community.burned });
 const stripLog = x => JSON.stringify(x.log.map(l => [l.tx, l.kind, l.msg]));
 /* 2a. full replay: gate on at tip + 1 vs off */
-V._setRetireActivation(null); const w0 = V.replay(rows, hashes, [], opts(tip));
-V._setRetireActivation(nb); const w1 = V.replay(rows, hashes, [], opts(tip));
+const fork = (t) => Object.assign(opts(t), { _forkUse: tip });
+V._setRetireActivation(null); const w0 = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
+V._setRetireActivation(nb); const w1 = V.replay(rows, hashes, [], fork(tip));
 ok(strip(w0) === strip(w1) && stripLog(w0) === stripLog(w1), 'full replay of ' + rows.length + ' burns: identical with the gate at tip + 1 or off (past effects stay)');
 /* sample tags: the latest real burn of each retired action, re-sent by the same wallet */
 const sample = {}; rows.forEach(r => { let s; try { s = unhex(r.tag); } catch (e) { return; } const t = V.parseTag(s); if (t && V.RETIRED_ACTIONS[t.action]) sample[t.action] = { tag: s, src: r.source, amt: r.quantity / 1e8 }; });
@@ -42,11 +44,11 @@ ok(Object.keys(V.RETIRED_ACTIONS).every(k => sample[k] && V.parseTag(sample[k].t
 /* 2b / 3: all samples in one block, replayed together (few replays keep the test fast) */
 const K = Object.keys(V.RETIRED_ACTIONS).filter(k => sample[k]);
 const pre = K.map(k => mk(nb, sample[k].src, sample[k].amt, sample[k].tag, 'pre-' + k));
-V._setRetireActivation(null); const a0 = V.replay(rows.concat(pre), hashes, [], opts(nb));
-V._setRetireActivation(G); const a1 = V.replay(rows.concat(pre), hashes, [], opts(nb));
+V._setRetireActivation(null); const a0 = V.replay(rows.concat(pre), hashes, [], fork(nb));
+V._setRetireActivation(G); const a1 = V.replay(rows.concat(pre), hashes, [], fork(nb));
 ok(strip(a0) === strip(a1) && stripLog(a0) === stripLog(a1) && !a1.log.some(x => /was retired/.test(x.msg || '')), K.length + ' retired-tag burns at ' + nb + ' (below the gate ' + G + '): world and log the same as with no gate');
 const at = K.map(k => mk(G, sample[k].src, sample[k].amt, sample[k].tag, 'at-' + k)), unk = at.map(r => Object.assign({}, r, { tag: hex('pet:zz:9') }));
-const b1 = V.replay(rows.concat(at), hashes, [], opts(G)), b2 = V.replay(rows.concat(unk), hashes, [], opts(G));
+const b1 = V.replay(rows.concat(at), hashes, [], fork(G)), b2 = V.replay(rows.concat(unk), hashes, [], fork(G));
 K.forEach((k, i) => { const la = b1.log.filter(x => x.tx === at[i].tx_hash);
   ok(la.length === 1 && la[0].kind === 'rejected' && /was retired at block \d+ \(community food\)/.test(la[0].msg), sample[k].tag.slice(0, 26) + ' at ' + G + ' (the gate): rejected [' + (la[0] && la[0].msg) + ']');
   ok(/was retired at block/.test(V.sendBlock(w0, { tag: sample[k].tag, amount: sample[k].amt }, G - 1, { me: sample[k].src }) || ''), '  ... send guard blocks it once the next block is the gate'); });
@@ -66,7 +68,7 @@ V._setRetireActivation(nb); ok(!V.feedAllOn || !V.feedAllOn(tip), 'feed-all (pet
 /* 5. pet:dc works after its gate, retired tags rejected in the same block */
 V._setRetireActivation(G); V._setDailyChoresActivation(G);
 const said = o => !!(w0.wagmi[o] && w0.wagmi[o][V.day(G)]), dcO = Object.keys(w0.pets.reduce((m, p) => { if (p.owner && !p.dead) m[p.owner] = 1; return m; }, {})).find(o => !said(o)) || owner;
-const dc = mk(G, dcO, 0.00000001, 'pet:dc:1'), fl = mk(G, sample.feedl.src, sample.feedl.amt, sample.feedl.tag, 'dc-fl'), w5 = V.replay(rows.concat([dc, fl]), hashes, [], opts(G));
+const dc = mk(G, dcO, 0.00000001, 'pet:dc:1'), fl = mk(G, sample.feedl.src, sample.feedl.amt, sample.feedl.tag, 'dc-fl'), w5 = V.replay(rows.concat([dc, fl]), hashes, [], fork(G));
 ok(w5.log.some(x => x.tx === dc.tx_hash && x.kind === 'chores') && !!(w5.wagmi[dcO] && w5.wagmi[dcO][V.day(G)]), 'pet:dc:1 at its gate ' + G + ': chores burn works (WAGMI counted)');
 ok(w5.log.some(x => x.tx === fl.tx_hash && x.kind === 'rejected' && /was retired/.test(x.msg)), 'pet:fl in the same block: retired (community food)');
 V._setRetireActivation(G0); V._setDailyChoresActivation(C0);

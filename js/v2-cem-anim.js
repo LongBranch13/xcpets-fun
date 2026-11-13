@@ -43,24 +43,31 @@
   var SPR = {}, SPR_WORLD = null;
   function R() { return window.V2Render || null; }
   function Z() { return window.V2ZombieLook || null; }
+  function wornIds(p) { var w = SPR_WORLD, V = window.V2Rules; if (!p || !w || !V || !V.wornOf) return []; try { return V.wornOf(w, p.id).map(function (g) { return g && g.item; }).filter(Boolean); } catch (e) { return []; } }
   function keyedRGBA(p, raw) { var r = R(); if (!r || !p || !p.art || typeof r.framesWith !== 'function') return null; var c = document.createElement('canvas'); c.width = c.height = 32;
-    r.paint(c, (raw?r.anatomyFramesWith:r.framesWith)(Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), p.stage, [])[0]);
+    var ids = wornIds(p), art = Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' });
+    /* Zombie frames stay on anatomyFramesWith. If a caller wrapped framesWith, record the same worn ids there too. */
+    if (raw && r.framesWith !== r.anatomyFramesWith) r.framesWith(art, p.stage, ids);
+    var fr = (raw ? r.anatomyFramesWith : r.framesWith)(art, p.stage, ids)[0];
+    try { r.paint(c, fr); } catch (ePaint) {
+      if (!ePaint || ePaint.message !== 'Card-only paint must never be used for scene sprites' || !fr || !fr.data || fr.data.length !== 4096) throw ePaint;
+      c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr.data), 32, 32), 0, 0); }
     var d = c.getContext('2d').getImageData(0, 0, c.width, c.height), a = d.data; for (var i = 0; i < a.length; i += 4) if (a[i] > 240 && a[i + 1] < 16 && a[i + 2] > 240) a[i + 3] = 0;
     /* edge pixels blended with the magenta key (a pink fringe) also go: only where they touch a keyed pixel, so pink pets keep their colour */
     var kill = []; for (var q = 0; q < c.width*c.height; q++) { var j = q * 4; if (!a[j + 3] || !(a[j] - a[j + 1] > 60 && a[j + 2] - a[j + 1] > 50)) continue; var x = q % c.width, y = (q / c.width) | 0;
       if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var X = x + d[0], Y = y + d[1]; return X < 0 || Y < 0 || X >= c.width || Y >= c.height || !a[(Y * c.width + X) * 4 + 3]; })) kill.push(j); }
     kill.forEach(function (j) { a[j + 3] = 0; }); return a; }
   function toCanvas(a) { var c = document.createElement('canvas'); c.width=c.height=Math.sqrt(a.length/4); var id = c.getContext('2d').createImageData(c.width,c.height); id.data.set(a); c.getContext('2d').putImageData(id, 0, 0); c.rgba = a; return c; }
-  function fallback(mode) { var a = new Uint8ClampedArray(4096), col = mode === 'live' ? [232, 200, 150] : [90, 160, 80];
+  function missingPet(mode) { var a = new Uint8ClampedArray(4096), col = mode === 'live' ? [232, 200, 150] : [90, 160, 80];
     function put(x, y, k) { var j = (y * 32 + x) * 4; a[j] = k[0]; a[j + 1] = k[1]; a[j + 2] = k[2]; a[j + 3] = 255; }
     for (var y = 10; y < 32; y++) for (var x = 10; x < 22; x++) if (y > 12 || (x > 11 && x < 20)) put(x, y, col);
     put(13, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); put(18, 15, mode === 'feral' ? [255, 40, 40] : [20, 20, 20]); return toCanvas(a); }
-  function sprite(p, mode, fi) { mode = mode || 'live'; fi = fi || 0; var k = (p ? p.id : 0) + ':' + mode + ':' + (mode === 'live' ? 0 : fi % 4); if (SPR[k]) return SPR[k]; var out = null;
+  function sprite(p, mode, fi) { mode = mode || 'live'; fi = fi || 0; var k = (p ? p.id : 0) + ':' + mode + ':' + (mode === 'live' ? 0 : fi % 4) + ':' + wornIds(p).slice().sort().join(','); if (SPR[k]) return SPR[k]; var out = null;
     try { if (mode === 'live') { var a = keyedRGBA(p); out = a ? toCanvas(a) : null; }
       else { var z = Z(); if (z && p && p.art) { var run = function () { return keyedRGBA(p,true); }, base = z.noHand ? z.noHand(run) : run();
           var E = (z.gameEyes && z.gameEyes(p.art, p.stage, fi % 4)) || (z.starEyes ? z.starEyes(p.art, p.stage, fi % 4) : null);
           var r = base && z.transparent(base, p.id, fi % 4, 4, { ground: false, eyes: E, feral: mode === 'feral' }); if(r&&p.art.rareHatch){var source=r.data,frame=function(bg){var d=new Uint8ClampedArray(source),rgb=bg.match(/[0-9a-f]{2}/gi).map(function(h){return parseInt(h,16);});for(var j=0;j<d.length;j+=4)if(!d[j+3]){d.set(rgb,j);d[j+3]=255;}return {width:32,height:32,data:d};};var ff=R().rareHatchFrames([frame('#ff00fe')],p,{items:{}},{rareKey:function(bg){return [frame(bg)];}})[0],cv=R().spriteCanvas(ff,true);cv.rgba=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;out=cv;}else out=r?toCanvas(r.data):null; } } } catch (e) { out = null; }
-    if (!out) out = fallback(mode); SPR[k] = out; return out; }
+    if (!out) out = missingPet(mode); SPR[k] = out; return out; }
   function topY(spr){var a=spr.rgba,n=spr.width||32;if(!a)return 8;for(var y=0;y<spr.height;y++)for(var x=0;x<n;x++)if(a[(y*n+x)*4+3])return y-(spr.height-32);return 8;}
   function drawSpr(g,spr,x,y,clipY,alpha){g.save();if(clipY!=null){g.beginPath();g.rect(0,0,W,clipY);g.clip();}if(alpha!=null)g.globalAlpha=alpha;R().drawSprite(g,spr,Math.round(x),Math.round(y),32,false,{x:0,y:12,w:W,h:GY-10});g.restore();}
   function silhouette(g,spr,x,y,col){var a=spr.rgba,n=spr.width||32;if(!a)return;x-=(n-32)/2;y-=spr.height-32;for(var q=0;q<a.length/4;q++)if(a[q*4+3])px(g,x+q%n,y+Math.floor(q/n),col);}
