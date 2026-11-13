@@ -109,7 +109,7 @@
     'v2-mumu-blanket': { p: pal('#e07a2a', '#ffffff'), d: 'blanket', hem: 'flat', short: true }, // Saddle blanket: orange wool, blue/white woven bands
     'v2-snibby-net': { p: pal('#2c4a5a', '#d8c89a'), d: 'net', hem: 'torn' },           // Fishing-net cape: rope mesh over sea blue, orange floats
     'v2-kevin-airmail': { p: pal('#dcecfb', '#2e5fbf'), d: 'airmail', hem: 'flat' },     // Airmail cape: pale-blue envelope paper, red/blue chevron hem
-    'sig-nakamoto-cape': { p: pal('#1e1e24', '#f7931a'), d: 'paper', hem: 'flat' }      // Genesis-block cloak: black with bitcoin-orange trim
+    'sig-nakamoto-cape': { p: pal('#1e1e24', '#da291c'), d: 'paper', hem: 'flat' }      // Genesis-block cloak: black with bitcoin-red trim
   };
   function isCape(id) { return !!CAPES[id]; }
   /** cape(img, a, id, frame): the cape behind the body + base gear (a.isFg), flared, folded, trimmed, swaying on frames 2-3. */
