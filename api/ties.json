@@ -1,6 +1,6 @@
 {
- "lastBlock": 975632,
- "count": 381,
+ "lastBlock": 975635,
+ "count": 383,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4573,6 +4573,30 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36563,
+   "asset": "A8206292588476699854",
+   "tiedBlock": 975635,
+   "tiedTx": "b20df47cd9a9affc8223874f45f4e650bd010aeec2a74e1a880d771d17534cc6",
+   "kind": "deed",
+   "name": "Povobun",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36890,
+   "asset": "A717026291608603134",
+   "tiedBlock": 975635,
+   "tiedTx": "23efb99ef3dc0ff09502e23978f49ee07df421c352065dc8af101732677b11d0",
+   "kind": "deed",
+   "name": "Shatib",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
