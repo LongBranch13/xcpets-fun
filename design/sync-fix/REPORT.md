@@ -129,14 +129,14 @@ Fix 1 is the change that removes the 45 s replay on a tip move. Fix 3 is the cha
 
 Same profiles, against a local copy of this branch with `?sync=https://node.xcpets.fun`. The chain and the snapshot are the live ones. `js/v2-rules.js` is still MD5 `8e98664087bab2e991680ebdb80ba143`.
 
-Measured again at 06:33 UTC on this branch after main was merged. The live snapshot was tip 975,637, rules hash `rdf88024c90a3ff2b4443f6a3252f4ecc`, which is the hash this tree computes, and the chain was 1 block ahead (975,638). Every first visit caught up from that snapshot. `justSeeded` was true. 77 checkpoint files. No full-history replay.
+Re-measured at 10:42 UTC on commit `86d0fa62`. The live snapshot was tip 975,661, rules hash `rdf88024c90a3ff2b4443f6a3252f4ecc` (this tree's hash), and the chain was 2 blocks ahead (975,663). Every first visit caught up. `justSeeded` was true. 78 checkpoint files. No full-history replay.
 
-| Profile | Visit | Nov 12 | Nov 13 before | After | After path |
+| Profile | Visit | Nov 12 | Nov 13 before | After (`86d0fa62`) | After path |
 |---|---|---:|---:|---:|---|
-| Desktop | First | 52.9 s | 51.3 s | **16.6 s** (17.0, 16.2) | catch-up, `justSeeded` true |
-| Desktop | Return, same block | 2.95 s | 3.78 s | **4.30 s** (4.46, 4.14) | IndexedDB |
-| Phone | First | 60.8 s | 58.7 s | **41.4 s** (42.5, 40.4) | catch-up, `justSeeded` true |
-| Phone | Return, same block | 11.1 s | 9.35 s | **12.7 s** (12.6, 12.8) | IndexedDB |
+| Desktop | First | 52.9 s | 51.3 s | **15.8 s** (15.80, 15.77) | catch-up, `justSeeded` true |
+| Desktop | Return, same block | 2.95 s | 3.78 s | **4.49 s** (4.81, 4.18) | IndexedDB |
+| Phone | First | 60.8 s | 58.7 s | **41.3 s** (41.1, 41.5) | catch-up, `justSeeded` true |
+| Phone | Return, same block | 11.1 s | 9.35 s | **13.1 s** (13.0, 13.1) | IndexedDB |
 
 Return visits in that same run: desktop **4.30 s** (4.46 s, 4.14 s) and phone **12.7 s** (12.6 s, 12.8 s). A later throttled phone return was 12.6 s. Desktop return long tasks stayed under 200 ms (max 159 and 189). Phone return still has tasks of about 600 ms.
 
@@ -159,7 +159,7 @@ The decompressed checkpoint is 270 MB and **16.5 MB** on the wire. Fast 4G’s d
 
 The catch-up worker now starts every checkpoint fetch before it imports the rule scripts, and it no longer queues them four at a time. That overlaps the script load with the transfer and keeps the pipe full. It does not shrink the 16.5 MB, so it cannot beat the 16.3 s floor. A smaller snapshot would, and that is a publisher change. The catch-up replay itself is 1.6 s, not the old 45 s full history.
 
-At 10:36 UTC the live snapshot was still tip 975,637, **26 blocks** behind 975,663. The client allows 8, so it correctly refused that snapshot and a first visit fell back to a full replay. The after first-visit numbers above are from 06:33 UTC, when the same rules hash was only 1 block behind. Return visits from that run, and a later throttled phone return, are the return numbers.
+The 10:42 run is the after measurement for `86d0fa62`, taken once the publisher had caught up to 2 blocks behind. An earlier attempt at 10:36 found the snapshot 26 blocks behind and correctly refused it. Pets at the end of the 10:42 runs: 176,223.
 
 ### Exact mode, and a snapshot on a different rules hash
 
