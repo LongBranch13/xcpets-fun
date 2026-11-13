@@ -70,6 +70,15 @@
   /* 3x5 pixel font for a few labels */
   var F = { S: '111100111001111', O: '111101101101111', N: '110101101101101', L: '100100100100111', I: '111010010010111', T: '111010010010010', R: '110101110101101', A: '010101111101101', D: '110101101101110', E: '111100111100111', G: '111100101101111', F: '111100111100100', W: '101101111111101', P: '110101110100100', M: '101111111101101', Y: '101101010010010', B: '110101110101110', K: '101101110101101', ' ': '000000000000000' };
   function txt(x, s, ox, oy, c) { for (var i = 0; i < s.length; i++) { var g = F[s[i]] || F[' ']; for (var k = 0; k < 15; k++) if (g[k] === '1') px(x, c, ox + i * 4 + (k % 3), oy + Math.floor(k / 3), 1, 1); } }
+  /* Red candles (Bitcoin red, white tip) on the counter so the cat is sitting on them, plus a PETS / SATS board. */
+  function doomBits(x) {
+    [[294, 103], [302, 104], [310, 103]].forEach(function (c) {
+      px(x, '#2a0a10', c[0], c[1], 3, 7); px(x, '#c8102e', c[0], c[1] + 2, 3, 5); px(x, '#8e0b20', c[0] + 2, c[1] + 2, 1, 5);
+      px(x, '#ffffff', c[0] + 1, c[1], 1, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1);
+    });
+    px(x, '#1a1020', 186, 62, 54, 24); px(x, '#c8102e', 187, 63, 52, 22); px(x, '#8e0b20', 187, 63, 52, 2);
+    txt(x, 'PETS', 196, 66, '#ffffff'); txt(x, 'SATS', 196, 74, '#ffffff');
+  }
 
   function draw() { var x = cv.getContext('2d'), t = reduced() ? 0 : ST.t, d = D(); PF.cw = d && d.W;
     ST.k = window.V2Sharp ? V2Sharp.fit(cv, W, H) : 1; if (window.V2Sharp) V2Sharp.begin(x, ST.k); else x.imageSmoothingEnabled = false;
@@ -118,6 +127,8 @@
     px(x, '#100E14', 200, 170, 54, 5); px(x, '#5A5A5A', 201, 171, 52, 3); var gq = Math.floor(t / 200) % 2; px(x, '#cfcfcf', 246 + gq, 134, 6, 6); px(x, '#5A5A5A', 248 + gq, 136, 2, 2);
     var cd = pr > 0.5 ? Math.min(1, (pr - 0.5) * 2) : 0; if (cd > 0) { px(x, '#000', 236 + Math.round(cd * 14), 158 - Math.round(cd * 6), 12, 16); px(x, '#E8B33A', 237 + Math.round(cd * 14), 159 - Math.round(cd * 6), 10, 14); px(x, '#FAFAF5', 238 + Math.round(cd * 14), 160 - Math.round(cd * 6), 8, 7); }
     else { px(x, '#4fd18b', 214, 164 - mj, 10, 6); px(x, '#100E14', 216, 165 - mj, 1, 1); px(x, '#100E14', 221, 165 - mj, 1, 1); }
+    /* Doom Week (display only): red candles under the shop cat, and a small sign. Drawn only while the switch is on, so the scene is unchanged when it is off. */
+    if (window.XCDoomWeek && XCDoomWeek.isOn && XCDoomWeek.isOn()) doomBits(x);
     /* hover glow on the canvas */
     var hv = ST.hover && HOT.filter(function (h) { return h.id === ST.hover; })[0]; if (hv) { x.globalAlpha = 0.9; x.strokeStyle = '#ffd84a'; x.lineWidth = 1; x.strokeRect(hv.x + 0.5, hv.y + 0.5, hv.w - 1, hv.h - 1); x.globalAlpha = 1; } }
 

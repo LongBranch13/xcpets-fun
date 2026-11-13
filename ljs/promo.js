@@ -13,8 +13,13 @@
   }, 280);
   function paint(ctx, img) { ctx.putImageData(new ImageData(new Uint8ClampedArray(img.data), 32, 32), 0, 0); }
   function canvas32(label) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'pixel'; if (label) { c.setAttribute('role', 'img'); c.setAttribute('aria-label', label); } return c; }
+  function doomOn() { try { return !!(window.XCDoomWeek && XCDoomWeek.showcaseOn()); } catch (e) { return false; } }
+  function doomFrames(pet, stage) {
+    if (!doomOn() || !window.DoomGear || !DoomGear.frames) return null;
+    try { var f = DoomGear.frames(pet, stage); return f && f.length ? f : null; } catch (e) { return null; }
+  }
   function show(canvas, pet, stage) {
-    var frames = PetCore.renderFrames(pet, { stage: stage }), ctx = canvas.getContext('2d');
+    var frames = doomFrames(pet, stage) || PetCore.renderFrames(pet, { stage: stage }), ctx = canvas.getContext('2d');
     paint(ctx, frames[0]);
     for (var i = 0; i < animated.length; i++) if (animated[i].canvas === canvas) { animated.splice(i, 1); break; }
     animated.push({ canvas: canvas, ctx: ctx, frames: frames, f: 0 });
@@ -29,8 +34,10 @@
   }
 
   // -------------------------------------------------------------------- hero
+  var heroFill = function () {}, castMode = 'legendary';
   (function hero() {
-    var box = $('heroPets'), ids = PetCore.SPECIES.map(function (s) { return s.id; }), slots = [], k = 0;
+    var box = $('heroPets'); if (!box) return;
+    var ids = PetCore.SPECIES.map(function (s) { return s.id; }), slots = [], k = 0;
     for (var i = 0; i < 9; i++) { var c = canvas32(); box.appendChild(c); slots.push(c); }
     function fill() {
       slots.forEach(function (c, i) {
@@ -40,6 +47,7 @@
       });
       k = (k + 9) % ids.length;
     }
+    heroFill = fill;
     fill(); setInterval(fill, 4200);
   })();
 
@@ -50,7 +58,7 @@
   var NOGEAR = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' };
   function liveTip() { try { return (window.V2Mock && V2Mock.state().tip) || null; } catch (e) { return null; } }
   function oddsBlock() { var t = liveTip(), lb = V && V.ACTIVATE_LEG_BOOST_BLOCK; return lb && (t == null || t < lb) ? lb : (t || lb); } // show the post-boost numbers (as pets.html)
-  function showLive(canvas, pet, stage) { var frames = G.renderFrames(Object.assign({}, pet, NOGEAR), { stage: stage }), ctx = canvas.getContext('2d'); paint(ctx, frames[0]);
+  function showLive(canvas, pet, stage) { var naked = Object.assign({}, pet, NOGEAR), frames = doomFrames(naked, stage) || G.renderFrames(naked, { stage: stage }), ctx = canvas.getContext('2d'); paint(ctx, frames[0]);
     for (var i = 0; i < animated.length; i++) if (animated[i].canvas === canvas) { animated.splice(i, 1); break; } animated.push({ canvas: canvas, ctx: ctx, frames: frames, f: 0 }); }
   var batch = 0;
   // home-gallery-seed-fix-1107: from the rare-eggs gate V2Rules.hatchArt only takes a 64-hex tx id (rareSeed throws on 'gallery-N'),
@@ -103,13 +111,14 @@
       var pet = (LIVE ? G : PetCore).characterPet(sp.id, { tier: tierId });
       var strip = document.createElement('div'); strip.className = 'strip6';
       PetCore.STAGES.forEach(function (name, si) {
-        var d = document.createElement('div'), c = canvas32(sp.label + ', ' + name);
-        paint(c.getContext('2d'), LIVE ? G.render(Object.assign({}, pet, NOGEAR), { stage: si }) : PetCore.render(pet, { stage: si }));
+        var d = document.createElement('div'), c = canvas32(sp.label + ', ' + name), bare = Object.assign({}, pet, NOGEAR), df = doomFrames(bare, si);
+        paint(c.getContext('2d'), df ? df[0] : (LIVE ? G.render(bare, { stage: si }) : PetCore.render(pet, { stage: si })));
         d.appendChild(c); d.appendChild(document.createTextNode(name)); strip.appendChild(d);
       });
       row.appendChild(strip); box.appendChild(row);
     });
-    if (LIVE) box.insertAdjacentHTML('beforeend', '<p class="muted small">Only species that can hatch at this tier are shown. Odds per egg, as on the <a href="pets.html#odds">Pet Guide</a>. Fresh hatches wear no gear.</p>');
+    if (LIVE) box.insertAdjacentHTML('beforeend', '<p class="muted small">Only species that can hatch at this tier are shown. Odds per egg, as on the <a href="pets.html#odds">Pet Guide</a>. ' + (doomOn() ? 'Doom Week look. Your own pets are not changed.' : 'Fresh hatches wear no gear.') + '</p>');
+    castMode = tierId;
     castOn(tierId);
     window.PromoLiveCast = LIVE;
   }
@@ -126,7 +135,8 @@
       d.insertAdjacentHTML('beforeend', '<h3 class="ch">' + esc(sp.label) + '</h3><span class="muted small">' + esc(sp.arc && sp.arc.length ? sp.arc[sp.arc.length - 1][0] : 'Mythic') + '</span>');
       if (LIVE) showLive(c, pet, 5); else show(c, pet, 5); grid.appendChild(d); });
     box.appendChild(grid);
-    box.insertAdjacentHTML('beforeend', '<p class="muted small">Mythic is the last of the six stages. Every pet that keeps eating grows into it, whatever its tier. Shown at Legendary with no gear.</p>');
+    box.insertAdjacentHTML('beforeend', '<p class="muted small">Mythic is the last of the six stages. Every pet that keeps eating grows into it, whatever its tier. ' + (doomOn() ? 'Doom Week look. Your own pets are not changed.' : 'Shown at Legendary with no gear.') + '</p>');
+    castMode = 'mythic';
     castOn('mythic');
   }
   PetCore.TIERS.forEach(function (t) {
@@ -141,5 +151,6 @@
     a.setAttribute('aria-label', 'Hybrids: browse every hybrid'); $('castTiers').appendChild(a); })();
   renderCast('legendary');
   renderGallery();
+  window.XCPromo = { redraw: function () { heroFill(); if (castMode === 'mythic') renderMythic(); else renderCast(castMode); renderGallery(); } };
   document.body.setAttribute('data-ready', 'yes');
 })();
