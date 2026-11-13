@@ -56,7 +56,7 @@
   /* drawProof(): Proof of Pet badge for ties the feed has not drawn yet (same as tools/token-meta.js: 'token' layout, looks baked at 4 pixels per badge pixel) */
   function drawProof(c) { var w = M && M.world(), e = byNo[c.getAttribute('data-id')], p = e && e.pet; if (!w || !p) return;
     var t = P.tieOf(w, p) || { asset: e.asset, block: e.block, tx: e.tx }, I = P.info(w, p, V, { tie: t }); if (!I) return;
-    var fr = null; try { fr = (R.petFramesRaw || R.petFrames)(p, w, { noHunger: true }); } catch (x) { fr = null; } var f0 = fr && fr[0] && fr[0].data && fr[0].data.length === 4096 ? fr[0] : null;
+    var fr = null; try { var use = R.petFramesRaw || R.petFrames, G = window.V2MythicGod; try { var lk = G && G.lookOf && G.lookOf(p, w); if (lk && lk.z === 'fed' && R.petFrames) use = R.petFrames; } catch (e2) {} fr = use(p, w, { noHunger: true }); } catch (x) { fr = null; } var f0 = fr && fr[0] && fr[0].data && fr[0].data.length === 4096 ? fr[0] : null;
     var r = P.render(I, f0 ? f0.data : null, 'token'); if (f0 && window.V2Looks && window.V2Looks.hasFx && window.V2Looks.hasFx(f0)) r = P.withLooks(P.scaleUp(r, 4), 4, f0);
     c.width = r.w; c.height = r.h; c.getContext('2d').putImageData(new ImageData(r.data, r.w, r.h), 0, 0); }
   function swapArt() {
