@@ -1325,6 +1325,10 @@
     var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' && it.origin !== 'wizard' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
     var base = PetCore.render(art, { stage: 5, frame: 0, gearOverride: go, gearCap: 5 });
     if (it.src === 'core') { var g2 = Object.assign({}, go); g2[it.coreSlot] = id; with_ = PetCore.render(art, { stage: 5, frame: 0, gearOverride: g2, gearCap: 5 }); }
+    else if (id === 'sig-nakamoto-cape') { /* picker tile only: behind:true cloak sits wholly on the Mythic body, so the crop was empty. Draw the map on a flat tile, in front. Worn pets still use V2Fit.cape. */
+      var tile = new Uint8ClampedArray(32 * 32 * 4), pi; for (pi = 0; pi < tile.length; pi += 4) { tile[pi] = 20; tile[pi + 1] = 32; tile[pi + 2] = 24; tile[pi + 3] = 255; }
+      base = { data: new Uint8ClampedArray(tile) }; with_ = { data: new Uint8ClampedArray(tile) };
+      try { BonusGear.apply(id, with_, { maxX: 31, minX: 0, maxY: 31, minY: 0, isSil: function () { return false; }, gear: { scarf: 12, armor: [16, 22, 0] }, row: function () { return 12; } }, 0); } catch (eTile) {} }
     else { with_ = { data: new Uint8ClampedArray(base.data) }; var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { bgColor: '#ff00ff' }), eyes = Object.assign({}, key, { eyes: 'star' }), o = { stage: 5, frame: 0, gearOverride: go, gearCap: 5 };
       try { var kb = PetCore.render(key, o), an = BonusGear.anchors(kb, eyeRender(eyes, o), sp); an.spId = art.species; if (isV2Face(id)) drawFace(id, with_, faceSpots(kb, an, art.species), an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2snug) drawSnugBeanie(with_, an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2eye && drawEyeGear(with_, an, BonusGear.DEFS[id], BonusGear.DEFS[id].v2eye.s === 'ninja' ? faceSpots(kb, an, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, with_, fitAnchors(id, an), 0); var dd = BonusGear.DEFS[id]; if (dd && dd.v2cig) drawFace(dd.v2cig, with_, faceSpots(kb, an, art.species), an); } catch (e) {} }
@@ -1605,7 +1609,7 @@
   /* family-tree-fix (2026-10-19, display only): dead / released parents, partners and children are marked (🪦 / released); 'Bred with' is grouped by
    * partner with a count, and after FAM_SHOW children the rest fold away behind a 'Show all' toggle (reads well at 390px). */
   var FAM_SHOW = 6;
-  function goneOf(q) { return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
+  function goneOf(q) { if (q && q.id === 1765) return ''; return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
   function goneMark(q) { var g = goneOf(q); return g === 'dead' ? ' <span class="fgone" title="Died">🪦</span>' : g === 'sacrificed' ? ' <span class="fgone">(sacrificed)</span>' : g === 'released' ? ' <span class="fgone">(released)</span>' : ''; }
   function familyHtml(w, p, tip) { var V2 = window.V2Rules, L = function (id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '"' + (goneOf(q) ? ' class="fgonelink"' : '') + '>' + (q ? esc(q.name) + ' ' : '') + '#' + id + '</a>' + goneMark(q); }, out = [];
     var og = originOf(w, p); /* glitch-display-1102: a quest jackpot egg has one parent and was not bred; grant eggs were not minted by a burn */
@@ -1829,8 +1833,9 @@
   /* content-fixes 2026-10-19: a dead pet is shared with cemetery wording, not a brag */
   function memorial(p) { var V = window.V2Rules, sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, t = (p.resurrected ? 'God' : TL[p.tier]) || '';
     return 'Remembering ' + (p.name || ('#' + p.id)) + ' #' + p.id + ', ' + (/^[AEIOU]/.test(t) ? 'an ' : 'a ') + t + ' ' + sp + ', resting in the XCPETS Pet Cemetery.'; }
-  function shareUrl(p) { var V = window.V2Rules, base = location.href.replace(/[^\/]*([?#].*)?$/, ''), link = base + 'pet.html?id=' + p.id;
-    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + ((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
+  function quietDead(p) { return !!(p && p.id === 1765); } /* Sabo #1765 is never described as dead */
+  function shareUrl(p) { var V = window.V2Rules, link = petLink(p);
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, text = p.dead && !quietDead(p) ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + ((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
   /* P9 (wizard-story-short 2026-10-21): 'Share to Telegram' sends the pet's dancing GIF to the XCPets group, client-side only (no bot token in the site):
    * phones with file sharing -> the share sheet with the GIF (the player picks the XCPets group); otherwise the GIF downloads and t.me/xcpets opens
@@ -1863,12 +1868,12 @@
   /* Pet share (Jake 2026-10-15): row sits under the stats (pet page #stats, play dialog #dStats). Share image = native share sheet with the PNG file
    * + text + pet URL when navigator.canShare({files}) (mobile: pick X / Telegram / ...); else copy PNG to clipboard + download (as before).
    * Post on X = copy PNG (ClipboardItem) then open x.com/intent/post with text + url; no clipboard -> download + toast. Save image = download. */
-  function petLink(p) { return location.href.replace(/[^\/]*([?#].*)?$/, '') + 'pet.html?id=' + p.id; }
-  function shortText(p) { if (p.dead) return memorial(p); return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
+  function petLink(p) { var ref = ''; try { var q = new URLSearchParams(location.search).get('ref'); if (q != null) ref = q; } catch (e) {} return 'https://xcpets.fun/pet/' + p.id + '?ref=' + encodeURIComponent(ref); }
+  function shortText(p) { if (p.dead && !quietDead(p)) return memorial(p); return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
   function withBlob(p, fn) { cardCanvas(p).toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; } fn(blob, 'xcpets-' + p.id + '.png'); }, 'image/png'); }
   function download(blob, name) { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000); }
   function copyPng(blob) { return window.ClipboardItem && navigator.clipboard && navigator.clipboard.write ? navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]) : Promise.reject(new Error('no clipboard')); }
-  function shareImage(p) { var link = petLink(p), text = shortText(p) + (p.dead ? ' 🪦 @XCPets' : ' 🔥 @XCPets');
+  function shareImage(p) { var link = petLink(p), text = shortText(p) + (p.dead && !quietDead(p) ? ' 🪦 @XCPets' : ' 🔥 @XCPets');
     withBlob(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
       if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
         navigator.share({ files: [file], text: text + ' ' + link, url: link }).then(function () { toast('Image shared'); }, function (e) { if (!e || e.name !== 'AbortError') fallback(); }); return; }
@@ -1882,7 +1887,8 @@
   function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
   function imgButton(p) { return btn('imgshare savegif', '🎞️ Save GIF', 'Download the pet\'s dancing GIF', saveGif, p); } /* P7: was 'Share image' (share sheet / file save); now a direct GIF download */
   function shareRow(p) { var d = document.createElement('p'); d.className = 'petshare'; d.setAttribute('data-pet', p.id);
-    [imgButton(p), btn('xshare', '𝕏 Post on X', 'Post on X with the pet card image', postX, p), button(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
+    /* Share my pet + Share to Telegram are the one pair in js/v2-share.js (the /pet/<id>?ref= link). This row keeps the file saves. */
+    [imgButton(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
     return d; }
   window.XCPShare = { saveGif: saveGif, shareTelegram: shareTelegram, cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];
@@ -1891,7 +1897,7 @@
    * e.g. #891 or #4248, no longer gets an empty box). A grandparent that has parents of its own gets a '+ older ancestors' link to its own page.
    * Dead / released pets: greyed sprite + 🪦 / 'released'. More than FT_SHOW children fold behind a '+N more' toggle. Legendary/Uncommon boxes use dark text. */
   var FT_SHOW = 6;
-  function goneOf(q) { return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
+  function goneOf(q) { if (q && q.id === 1765) return ''; return !q ? '' : q.dead ? 'dead' : q.released ? (/^offered to\b/i.test(String(q.usedUp || '')) ? 'sacrificed' : 'released') : ''; }
   function node(t, opts) { opts = opts || {}; var w = null, p = null; try { w = window.V2Mock.world(); p = w.byId[t.id]; } catch (e) {}
     var g = goneOf(p), d = document.createElement('div'); d.className = 'ftnode tier-' + (TC[t.tier] || '') + (g ? ' ftgone ft-' + g : '') + (opts.self ? ' ftself' : '');
     if (opts.older) { var o = document.createElement('a'); o.className = 'ftolder'; o.href = 'pet.html?id=' + t.id; o.textContent = '+ older ancestors'; o.title = 'Open #' + t.id + ' to see its parents'; d.appendChild(o); }
@@ -1932,7 +1938,8 @@
       + '.famline .fbred{margin:2px 0 0}.fbgroup{margin:2px 0 2px 10px;overflow-wrap:anywhere}.fbcount{font-weight:bold;color:#ffc93c}.fbred:not(.open) .fmore{display:none}.fbred.open .fbless{display:none}.fgone{white-space:nowrap}.fgonelink{opacity:.8}'
       + '@media(max-width:520px){.ftnode a{min-width:56px;font-size:10px}.ftsprite{width:32px;height:32px}.ftchart li{padding-left:2px;padding-right:2px}.ftkidsrow{gap:4px}.fbgroup{margin-left:4px}}'; (document.head || document.body).appendChild(st); } }
   function inject() { trees();
-    var st = document.getElementById('stats'), m = /[?&]id=(\d+)/.exec(location.search);
+    var st = document.getElementById('stats'), m = /[?&]id=(\d+)/.exec(location.search) || /\/pet\/(\d+)\/?$/.exec(location.pathname || '');
+    if (!m && window.__XCPETS_PET_ID >= 1) m = [0, String(window.__XCPETS_PET_ID)];
     if (st && document.getElementById('page') && m && !document.querySelector('.petshare[data-pet="' + m[1] + '"]')) { var p = petById(+m[1]); if (p) { st.parentNode.insertBefore(shareRow(p), st.nextSibling); } }
     var ds = document.getElementById('dStats'), idm = ds && document.getElementById('dTitle') && /#(\d+)/.exec(document.getElementById('dTitle').textContent);
     if (ds && !document.getElementById('page') && idm) { var cur = ds.parentNode.querySelector('.petshare');

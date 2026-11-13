@@ -605,6 +605,26 @@
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
   }
+  /* from the practice pet: connect the wallet before a real hatch. Other visits are unchanged. */
+  try {
+    var loc = win && win.location, doc = win && win.document;
+    if (loc && doc && /[?&]connect=1(&|$)/.test(String(loc.search || ''))) {
+      var hatchIds = ['hatchBtn', 'dozenBtn', 'caseBtn', 'zapBtn', 'wizEggBtn'];
+      function walletOn() { return !!(wallet && wallet.address); }
+      function lockHatch() {
+        if (walletOn()) { hatchIds.forEach(function (id) { var b = doc.getElementById(id); if (b && b.getAttribute('data-need-wallet')) { b.removeAttribute('data-need-wallet'); b.disabled = false; } }); return true; }
+        hatchIds.forEach(function (id) { var b = doc.getElementById(id); if (!b) return; b.disabled = true; b.setAttribute('data-need-wallet', '1'); });
+        return false;
+      }
+      var ticks = 0, asked = false, hold = setInterval(function () {
+        if (lockHatch() || ++ticks > 60) { clearInterval(hold); return; }
+        if (asked) return;
+        var c = doc.getElementById('wconnect');
+        if (c && c._v2) { asked = true; try { c.click(); } catch (e) {} }
+      }, 400);
+      if (win.addEventListener) win.addEventListener('xcpets:connected', lockHatch);
+    }
+  } catch (e) {}
   return { cancel: cancel, allowUnconfirmedOnce: allowUnconfirmedOnce, confirmNoteHtml: noteHtml, CONFIRM_NOTE: CONFIRM_NOTE, pollPending: pollPending, _dexEntry: dexEntry, _signLock: function () { return signing; }, send: send, sendDex: sendDex, _dexUrl: dexUrl, _dexCheck: dexCheck, validAddr: validAddr, connect: connect, paint: paint, inCasa: inCasa, errHtml: errHtml, composeAt: composeAt, errText: errText, decodeTx: decodeTx, _spent: function () { return live(); }, _chainClear: chainClear, pendingChain: pendingChain, CHAIN_CAP: CHAIN_CAP, composeUrl: composeUrl, composeNodes: composeNodes, feeRate: feeRate, feeQuote: feeQuote, feeEstimate: feeEstimate, feeInfo: feeInfo, rateText: rateText, _pickFee: pickFee, _pickTier: pickTier, _parseCustom: parseCustom, feeChoice: feeChoice, setFeeChoice: setFeeChoice, feeBatchBegin: feeBatchBegin, feeBatchEnd: feeBatchEnd, feePinned: feePinned, feeUiOn: feeUiOn, mountFeePicker: mountFeePicker, mountFeeSlots: mountFeeSlots, _feeReset: function () { feeCache = null; }, BURN_VB: BURN_VB, BURN_VB_P2PKH: BURN_VB_P2PKH, label: label, hasWallet: function () { return !!find(); }, NOT_FOUND: NOT_FOUND, FEE_FLOOR: FEE_FLOOR, FEE_CAP: FEE_CAP, tracker: tracker, getWallet: getWallet,
     reset: function () { wallet = null; locked = false; }, silent: silent, status: status, autoBoot: autoBoot, _locked: function () { return locked; }, current: function () { return wallet && wallet.address; } };
 });

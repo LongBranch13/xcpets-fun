@@ -1,6 +1,6 @@
 {
- "lastBlock": 975627,
- "count": 374,
+ "lastBlock": 975638,
+ "count": 383,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4490,6 +4490,114 @@
    "speciesLabel": "Pedotobi (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 85377,
+   "asset": "A16812850141599395037",
+   "tiedBlock": 975628,
+   "tiedTx": "186ded2cb8c0071258b5e1be49a5d522617812085f30c7c3791a141393e6e87b",
+   "kind": "deed",
+   "name": "Yute",
+   "species": "hyb:mumu:snibby",
+   "speciesLabel": "Mubby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 85378,
+   "asset": "A2078213269999834120",
+   "tiedBlock": 975628,
+   "tiedTx": "de5c75a5410cefe59b927ec33e9776e75d39f3b937c3699c6f61c8717c447880",
+   "kind": "deed",
+   "name": "Tutotot",
+   "species": "hyb:mumu:snibby",
+   "speciesLabel": "Mubby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 121915,
+   "asset": "A9905059184521683148",
+   "tiedBlock": 975630,
+   "tiedTx": "30325fe474dc53009f93b28530ea9152028250e1635b8599f490c0d6a0dad853",
+   "kind": "deed",
+   "name": "Tahavotot",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 122104,
+   "asset": "A2098900667889374533",
+   "tiedBlock": 975630,
+   "tiedTx": "de04b8f3e7be21cf5a5720e274911aab5e3556b22718669d3255a9a251ba94e7",
+   "kind": "deed",
+   "name": "Sematot",
+   "species": "wizard",
+   "speciesLabel": "Bitcoin Wizard",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 122133,
+   "asset": "A5639127862800963312",
+   "tiedBlock": 975630,
+   "tiedTx": "95866313eb09af7824ad1bb98abfa95f84fc639dd67b434c2c7e1cf5429bf394",
+   "kind": "deed",
+   "name": "Binipin",
+   "species": "djpepe",
+   "speciesLabel": "DJ Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 122598,
+   "asset": "A5651868490752510100",
+   "tiedBlock": 975630,
+   "tiedTx": "93c7a8bec2965537d8629680835f5004c1632000c760ceeef79074fcfc1468b6",
+   "kind": "deed",
+   "name": "Hafayelu",
+   "species": "djpepe",
+   "speciesLabel": "DJ Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 122749,
+   "asset": "A2111032921274843657",
+   "tiedBlock": 975630,
+   "tiedTx": "2fea0b9409f3488ab58fded688cb581afb5fcc6e8f6823972b9acf8bb59023ea",
+   "kind": "deed",
+   "name": "Zikanoobo",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36563,
+   "asset": "A8206292588476699854",
+   "tiedBlock": 975635,
+   "tiedTx": "b20df47cd9a9affc8223874f45f4e650bd010aeec2a74e1a880d771d17534cc6",
+   "kind": "deed",
+   "name": "Povobun",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 36890,
+   "asset": "A717026291608603134",
+   "tiedBlock": 975635,
+   "tiedTx": "23efb99ef3dc0ff09502e23978f49ee07df421c352065dc8af101732677b11d0",
+   "kind": "deed",
+   "name": "Shatib",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
