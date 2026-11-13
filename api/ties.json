@@ -1,6 +1,6 @@
 {
- "lastBlock": 975658,
- "count": 383,
+ "lastBlock": 975660,
+ "count": 384,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4596,6 +4596,18 @@
    "name": "Shatib",
    "species": "doge",
    "speciesLabel": "Doge",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 72323,
+   "asset": "A7812938746407342779",
+   "tiedBlock": 975660,
+   "tiedTx": "0a4378157705f98475621a8af7a4163ff56ecc083bda5898720f31e1b67c8371",
+   "kind": "deed",
+   "name": "Wizotot",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
