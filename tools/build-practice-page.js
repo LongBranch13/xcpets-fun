@@ -21,7 +21,7 @@ function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h 
   sub(/(<link rel="stylesheet" href="css\/v2\.css\?v=[^"]*">)/, '$1<link rel="stylesheet" href="css/practice.css?v=' + b + '">', 'v2.css');
   sub(/(<script src="js\/v2-wallet\.js\?v=[^"]*"><\/script>)/, '$1<script src="js/v2-practice-wallet.js?v=' + b + '"></script>', 'v2-wallet.js');
   sub(/(<script src="js\/v2-rules\.js\?v=[^"]*"><\/script>)/, '$1<script>XcpPractice.wrapRules(window.V2Rules);</script>', 'v2-rules.js');
-  ['block-hashes', 'v2-cached', 'casa-connect'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear', 'doom-week'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
   sub(/<\/body>/, '<script src="js/practice-ui.js?v=' + b + '" defer></script></body>', '</body>');
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');
   sub(/(<\/header><div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
@@ -50,7 +50,7 @@ function build(src, title) {
   /* scripts */
   sub(/(<script src="js\/v2-wallet\.js\?v=[^"]*"><\/script>)/, '$1<script src="js/v2-practice-wallet.js?v=' + B + '"></script>', 'v2-wallet.js');
   sub(/(<script src="js\/v2-rules\.js\?v=[^"]*"><\/script>)/, '$1<script>XcpPractice.wrapRules(window.V2Rules);</script>', 'v2-rules.js');
-  ['block-hashes', 'v2-cached', 'casa-connect'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear', 'doom-week'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
   sub(/<\/body>/, '<script src="js/practice-ui.js?v=' + B + '" defer></script></body>', '</body>');
   /* header nav: practice stays on this page; the rest of the site is the real game */
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');

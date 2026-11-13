@@ -65,10 +65,11 @@ function fixtureState() {
   ok(listed && C.RULE_SCRIPTS.join(',') === listed[1].replace(/['"\s]/g, ''), 'recheck script list matches v2-chain.js');
 
   CHAIN_PAGES.forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8'); const a = h.indexOf('js/v2-boot-sync.js'), b = h.indexOf('js/v2-chain.js'); ok(a > 0 && a < b, 'boot-sync before chain on ' + f); });
-  /* practice pages are rebuilt from the real pages for the free practice pet, so they are not the bytes on main.
-   * They still must not load the live boot-sync, and the Pantheon link stays. */
+  /* Practice pages are rebuilt from the live game pages, so they are not frozen to origin/main.
+   * They keep the Pantheon link, Share my pet (js/v2-share.js), the PRACTICE mark, and Hatch a real pet.
+   * They still do not load live boot-sync. */
   PRACTICE.forEach(f => { const cur = fs.readFileSync(path.join(ROOT, f)); ok(!cur.includes('v2-boot-sync.js'), 'practice page has no live boot-sync ' + f);
-    ok(cur.includes('pantheon') && cur.includes('PRACTICE') && cur.includes('Hatch a real pet'), 'practice page links the Pantheon and stays marked PRACTICE ' + f); });
+    ok(cur.includes('pantheon') && cur.includes('js/v2-share.js') && cur.includes('PRACTICE') && cur.includes('Hatch a real pet'), 'practice page links the Pantheon, Share my pet, and Hatch a real pet ' + f); });
 
   const state = fixtureState();
   const full = buildAnswer(state, { since: '0' });

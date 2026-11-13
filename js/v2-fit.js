@@ -77,6 +77,8 @@
     feather: function (u, t, x, y, p) { return t > 0.3 && (y + Math.abs(Math.round(u * 6))) % 4 === 0 ? p.hi : null; },
     paper: function (u, t, x, y) { return t > 0.15 && t < 0.92 && y % 3 === 0 && (x * 3 + y) % 7 > 1 ? '#a89a78' : null; },
     crease: function (u, t, x, y) { return ((x - y) % 5 === 0 || (x + y) % 7 === 0) && t > 0.1 ? '#cfc3a3' : null; },
+    /* Doom Week cape: small red candles down the cloth. White tip, Bitcoin red body. No orange. */
+    candles: function (u, t, x, y) { if ((x + 40) % 7 !== 2 || t < 0.35 || t > 0.9) return null; if (t > 0.78) return '#ffffff'; if (t > 0.68) return '#ff2a2a'; return '#c8102e'; },
     wow: function (u, t, x, y) { return t > 0.2 && t < 0.92 && (x * 7 + y * 5) % 13 === 0 ? ['#ff8fd0', '#5fd35f', '#4f9dff'][(x + y) % 3] : null; }, fur: function (u, t, x, y, p) { return t > 0.1 && (x * 5 + y * 3) % 7 === 0 ? p.hi : (x * 3 + y * 7) % 11 === 0 ? p.dark : null; }, /* star batch 2026-10-16: bear-hide tufts */
     blanket: function (u, t, x, y) { var b = Math.floor(t * 7); return b === 2 || b === 4 ? '#4f9dff' : b === 3 ? '#ffffff' : null; }, /* saddle blanket: woven blue/white bands */
     net: function (u, t, x, y) { if (t > 0.88 && x % 4 === 1) return '#ff7a1a'; return t > 0.08 && ((x + y) % 3 === 0 || (x - y + 30) % 3 === 0) ? '#d8c89a' : null; }, /* fishing net: rope mesh + orange floats */
@@ -86,7 +88,7 @@
   var CAPES = {
     'v2-pepe-cape': { p: pal('#2f9f5f', '#c9a54a'), d: 'lily', flower: true, hem: 'leaf' },          // Lily-pad cape
     'v2-dodo-cape': { p: pal('#2b2b33', '#da291c'), d: 'feather', hem: 'feather' },                     // Black-swan wing cape
-    'v2-nakamoto-cape': { p: pal('#f4ecd8', '#f7931a'), d: 'paper', hem: 'flat' },                      // Whitepaper cape
+    'v2-nakamoto-cape': { p: pal('#f4ecd8', '#da291c'), d: 'paper', hem: 'flat' },                      // Whitepaper cape: paper with bitcoin-red trim
     'v2-wojak-cape': { p: pal('#8d96a8', '#d8dde8'), d: 'hood', hood: true, hem: 'flat', short: true },  // Ash hoodie with hood
     'paper-cape': { p: pal('#f4ecd8', '#a89a78'), d: 'crease', hem: 'torn' },                           // Paper-hands cape
     red: { p: pal('#b8322a', '#e8b04a'), d: 'plain', hem: 'point' }, blue: { p: pal('#2e5fbf', '#d0d6e0'), d: 'plain', hem: 'point' },
@@ -109,8 +111,48 @@
     'v2-mumu-blanket': { p: pal('#e07a2a', '#ffffff'), d: 'blanket', hem: 'flat', short: true }, // Saddle blanket: orange wool, blue/white woven bands
     'v2-snibby-net': { p: pal('#2c4a5a', '#d8c89a'), d: 'net', hem: 'torn' },           // Fishing-net cape: rope mesh over sea blue, orange floats
     'v2-kevin-airmail': { p: pal('#dcecfb', '#2e5fbf'), d: 'airmail', hem: 'flat' },     // Airmail cape: pale-blue envelope paper, red/blue chevron hem
-    'sig-nakamoto-cape': { p: pal('#1e1e24', '#f7931a'), d: 'paper', hem: 'flat' }      // Genesis-block cloak: black with bitcoin-orange trim
+    'sig-nakamoto-cape': { p: pal('#1e1e24', '#da291c'), d: 'paper', hem: 'flat' },     // Genesis-block cloak: black with bitcoin-red trim
+    /* Doom Week only. Nothing wears this until a pet is drawn with the id, and no pet has it. */
+    'doom-candle-cape': { p: pal('#c8102e', '#1a1020'), d: 'candles', hem: 'point' }
   };
+  /* Per-species placement for the Doom Week pieces. Same ideas as the roster gear cleanup:
+   * Peepo hats sit just above the eye whites and scale down; Wojak and Mumu hats lift and shrink;
+   * held pieces come in one pixel from the frame. Display only. */
+  var DOOM_ANCHOR = {
+    peepo: { head: { scale: 0.86, aboveEyes: 2 } },
+    wojak: { head: { lift: 2, scale: 0.85 } },
+    mumu: { head: { lift: 2, scale: 0.85 } },
+    snibby: { head: { lift: 2 }, face: { dy: -1 } },
+    doge: { head: { lift: 1 }, face: { dy: 1 }, flag: { side: 'L' } },
+    rabbit: { head: { lift: 1 } },
+    dodo: { head: { lift: 1 }, face: { dy: 1 }, flag: { side: 'L' } },
+    kevin: { head: { lift: 1 } },
+    nakamoto: { head: { lift: 1 } },
+    sarutobi: { head: { lift: 1, scale: 0.8 } },
+    chud: { head: { lift: 1 } },
+    chad: { head: { lift: 1 } },
+    kek: { head: { lift: 2 } },
+    viking: { head: { lift: 1 } },
+    djpepe: { head: { lift: 1 }, face: { dy: 1 } },
+    wizard: { head: { lift: 1 } },
+    funtrump: { head: { lift: 1 } },
+    homer: { head: { lift: 1 } },
+    bojackson: { head: { lift: 0 } },
+    rarepigeon: { head: { lift: 0 } },
+    orangedragon: { head: { lift: 1 }, face: { dy: 1 } },
+    jacksonpepe: { head: { lift: 1 } },
+    pepe: { head: { lift: 0 } },
+    bobo: { head: { lift: 1 } },
+    lenny: { head: { lift: 0 } }
+  };
+  function doomAnchor(species, slot) {
+    var row = (DOOM_ANCHOR[species] || {})[slot] || {};
+    var a = { lift: row.lift, scale: row.scale, aboveEyes: row.aboveEyes, dy: row.dy, inset: row.inset, dx: row.dx, side: row.side };
+    if (slot === 'hand' && a.inset == null) a.inset = 1;
+    if (slot === 'head' && a.lift == null && a.aboveEyes == null) a.lift = 1;
+    if (slot === 'flag') { if (a.dx == null) a.dx = 0; if (a.dy == null) a.dy = 0; if (!a.side) a.side = 'R'; }
+    return a;
+  }
   function isCape(id) { return !!CAPES[id]; }
   /** cape(img, a, id, frame): the cape behind the body + base gear (a.isFg), flared, folded, trimmed, swaying on frames 2-3. */
   function cape(img, a, id, frame) {
@@ -142,5 +184,5 @@
     Object.keys(L).forEach(function (k) { var x = k % N, y = Math.floor(k / N); if (C.hood && !bg(x, y)) return; /* hoodie: ink only around cloth that shows (no lone ink dots) */ [[1, 0], [-1, 0], [0, 1]].forEach(function (q) { var nx = x + q[0], ny = y + q[1];
       if (L[key(nx, ny)] == null && bg(nx, ny) && ny <= 29 && nx >= 0 && nx < N) put(img, nx, ny, INK); }); });
     return img; }
-  return { torso: torso, outfit: outfit, armor: armor, cape: cape, isCape: isCape, CAPES: CAPES, mix: mix };
+  return { torso: torso, outfit: outfit, armor: armor, cape: cape, isCape: isCape, CAPES: CAPES, mix: mix, doomAnchor: doomAnchor };
 });

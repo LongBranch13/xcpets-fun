@@ -494,6 +494,8 @@
     if (rev.kind === 'eggs' && !rev.hatchAnim && !lifeReduced()) { rev.hatchAnim = 1; wspinOn = true; var r1 = rev, go = function () { wspinOn = false; if (rev !== r1) return; drawReveal(); open('packBox'); }; /* pixel-anims: the eggs crack open first (js/v2-life-anim.js, lazy) */
       withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
+  /* share-links: the real hatch review, for a preview (?moment=hatch&pet=ID). Display only. Sabo #1765 is left out. */
+  window.V2RevealPreview = function (ids) { ids = (ids || []).map(Number).filter(function (n) { return n >= 1 && n !== 1765; }); if (!ids.length || !$('packBox')) return; revealQ.push({ kind: 'eggs', eggs: ids }); nextReveal(); };
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
   /* hatch-review-simple 2026-10-28 (owner 1:28 AM CT: 'I dont like ticked duds. we need better wording. make this all very simple to do and sort through').
