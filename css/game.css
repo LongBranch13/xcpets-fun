@@ -47,8 +47,17 @@ input.amt, select.pick { background:#0a0f0b; color:var(--ink); border:1px solid 
 .bigamt { font: 800 30px ui-monospace, monospace; color: #ff9a5a; margin: 6px 0; }
 #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display:flex; flex-direction:column; gap:8px; max-width: 360px; }
 .toast { background:#16241a; border:2px solid #33d6ff; color: var(--ink); border-radius: 8px; padding: 10px 14px; font-weight:700; box-shadow: 3px 3px 0 #000; }
-/* toast-tidy-1101: phones show one compact toast at the bottom (newest), tap to close */
-@media (max-width: 600px) { #toasts { left: 8px; right: 8px; bottom: 8px; max-width: none; } #toasts > .toast:not(:last-child) { display: none; } #toasts .toast { padding: 6px 10px; font-size: 13px; line-height: 1.3; max-height: 28vh; overflow: auto; } }
+/* toast-tidy-1101: phones show one compact toast at the bottom (newest), tap to close.
+   phone-toast-fit: this left+right anchor used to keep shop.css's translateX(-50%) on .toasts, which
+   slid the full-width bar off the left edge. transform:none (an id, so it beats .toasts) stops that.
+   8px margins, safe-area padding, and a width cap keep every game toast inside the phone. */
+@media (max-width: 600px) {
+  #toasts { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); max-width: calc(100vw - 16px); width: auto; margin-left: auto; margin-right: auto; box-sizing: border-box; transform: none; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  #toasts > .toast:not(:last-child) { display: none; }
+  #toasts .toast { padding: 6px 10px; font-size: 13px; line-height: 1.3; max-height: 28vh; overflow: auto; overflow-wrap: anywhere; white-space: normal; min-width: 0; max-width: 100%; box-sizing: border-box; }
+  #toasts .toast.sticky-err > *, #toasts .toast.wintoast .winrow { min-width: 0; overflow-wrap: anywhere; }
+  #toasts .toast.wintoast .winrow { flex-wrap: wrap; }
+}
 .msg { min-height: 1.2em; font-size: 13px; } .warn { color:#ff8a8a; } .ok { color:#7fe0a8; }
 .bar { height: 10px; background:#0a0f0b; border:1px solid var(--line); border-radius: 99px; overflow:hidden; margin: 6px 0 2px; } .bar > i { display:block; height:100%; background: linear-gradient(90deg, #3ddc84, #33d6ff); }
 .logbox { font: 12px ui-monospace, monospace; max-height: 300px; overflow: auto; }

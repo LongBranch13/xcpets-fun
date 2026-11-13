@@ -38,6 +38,12 @@
 .sh-exact{font-size:15px}.sh-steps{padding-left:18px;font-size:13px}
 .sh-soon{text-align:center;margin:20px}
 .toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:90}.toasts .toast{background:#100E14;border:3px solid #E8B33A;padding:8px 12px;margin-top:6px}
+/* phone-toast-fit: desktop stays centered with the shift above. On a phone, game.css anchors #toasts
+   at the left, and that same shift pushed the gold shop toast off the left edge. Clear it here too. */
+@media (max-width:600px){
+  #toasts.toasts{left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));bottom:max(8px, env(safe-area-inset-bottom));transform:none;width:auto;max-width:calc(100vw - 16px);margin-left:auto;margin-right:auto;box-sizing:border-box;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  #toasts.toasts .toast{overflow-wrap:anywhere;white-space:normal;max-width:100%;min-width:0;box-sizing:border-box}
+}
 @media (max-width:640px){.sh-scene{flex-direction:column;align-items:center}.sh-sign{max-width:100%}.sh-bubble{margin:0 0 20px;font-size:9px}.sh-keeper{width:84px;height:84px}
  .sh-grid{gap:16px 8px}.sh-binder{padding:12px 6px 10px 22px}.sh-rings{left:5px;width:9px}.sh-card{font-size:6px}.sh-art{height:56px}.sh-art img,.sh-art canvas{width:50px;height:50px}.sh-tag{position:static;transform:none;margin:4px 3px 0;font-size:6px}
  .sh-buy{font-size:8px;padding:6px 8px}.sh-sellrow,.sh-row{flex-direction:column;align-items:stretch}.sh-sellrow>.sh-card,.sh-row .sh-card{flex:none;width:170px}}
