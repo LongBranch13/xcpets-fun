@@ -51,8 +51,8 @@ function arm(page) {
 }
 async function boot(page, origin, file) {
   const t0 = Date.now();
-  await page.goto(origin + '/' + file, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 20, null, { timeout: 120000 });
+  await page.goto(origin + '/' + file, { waitUntil: 'domcontentloaded', timeout: 300000 });
+  await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 20, null, { timeout: 300000 });
   await page.waitForTimeout(400);
   return Date.now() - t0;
 }

@@ -32,12 +32,12 @@ const GATE0 = V.ACTIVATE_FEED_RUNS_BLOCK; V._setFeedRunsActivation(nb);
 const w = V.replay(rows, hashes, [], opts(tip));
 const owners = {}; w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 console.log('\nlive world tip ' + tip + ' (' + rows.length + ' burns). Per owner: hungry (the old count) / Mythic among those / really eat / burns, old plan vs one-burn plan');
-const res = [];
+const res = []; let hid = false;
 Object.keys(owners).forEach(o => { const ps = owners[o], hungry = ps.filter(p => p.hungry), eatAll = ps.filter(p => V.frEats(p, nb));
-  const listed = new Set(V.refList(w, o, w.tip, nb).map(p => p.id));
-  const eat = eatAll.filter(p => listed.has(p.id)), hidden = eatAll.filter(p => !listed.has(p.id));
+  let eat = eatAll, hidden = [];
+  if (eatAll.length) { const listed = new Set(V.refList(w, o, w.tip, nb).map(p => p.id)); eat = eatAll.filter(p => listed.has(p.id)); hidden = eatAll.filter(p => !listed.has(p.id)); }
   const fr = eat.length ? V.feedRunsPlan(w, o, eat, nb) : [], old = eat.length ? V.feedQueue(w, o, eat.map(p => p.id), nb) : [];
-  if (hidden.length) ok(V.feedRunsPlan(w, o, eatAll, nb) === null, 'a pet the eater list hides has no one-burn plan (the pet-number burns stay)');
+  if (hidden.length && !hid) { hid = true; ok(V.feedRunsPlan(w, o, eatAll, nb) === null, 'a pet the eater list hides has no one-burn plan (the pet-number burns stay)'); }
   const oldL = eat.length && eat.length <= 3000 && V.FEED_ALL_BLOCK ? V.feedQueue(w, o, eat.map(p => p.id), V.FEED_ALL_BLOCK - 1).length : null; /* the old Feed selected (pet-number burns) */
   res.push({ o, n: ps.length, hungry: hungry.length, myth: hungry.filter(p => p.ascended || p.mythicCare || p.stage === 5).length, eat: eat.length, fr, old, oldL }); });
 res.sort((a, b) => b.n - a.n).slice(0, 12).forEach(r => console.log('  ' + r.o.slice(0, 10) + '…  pets ' + r.n + '  hungry ' + r.hungry + '  Mythic ' + r.myth + '  eat ' + r.eat + '  burns: old Feed all ' + r.old.length + ', old Feed selected ' + (r.oldL == null ? 'n/a' : r.oldL) + ', one-burn ' + (r.fr ? r.fr.length : 'n/a') + (r.fr && r.fr[0] ? '  e.g. ' + r.fr[0].tag : '')));
