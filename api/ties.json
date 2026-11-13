@@ -1,6 +1,6 @@
 {
- "lastBlock": 975662,
- "count": 388,
+ "lastBlock": 975663,
+ "count": 391,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4656,6 +4656,42 @@
    "name": "Lord Kekamozard",
    "species": "hyb3:nakamoto:wizard:kek",
    "speciesLabel": "Nazikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8431,
+   "asset": "A4747930553651754236",
+   "tiedBlock": 975663,
+   "tiedTx": "c1f436dbb88a59ac112f028ff1bf7558864554966d147070770b49a308b6843e",
+   "kind": "deed",
+   "name": "Tokamo",
+   "species": "hyb:mumu:bobo",
+   "speciesLabel": "Mubo (hybrid)",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 12478,
+   "asset": "A1310141977101660103",
+   "tiedBlock": 975663,
+   "tiedTx": "c13c29f4fd89f4011972e951d75d4a43521c9ed15b0a9df7265dfdb951149109",
+   "kind": "deed",
+   "name": "Zunumo",
+   "species": "hyb:kevin:peepo",
+   "speciesLabel": "Kepo (hybrid)",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 12479,
+   "asset": "A17967439047917169702",
+   "tiedBlock": 975663,
+   "tiedTx": "3e86f0439114782df819673ceea6c479d5a773937fa60671ac77876a5dce7f1b",
+   "kind": "deed",
+   "name": "Mosa",
+   "species": "hyb:dodo:peepo",
+   "speciesLabel": "Dopeep (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
