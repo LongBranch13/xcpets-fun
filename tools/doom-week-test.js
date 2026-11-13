@@ -45,6 +45,13 @@ ok(W.parseSupply({ result: { supply: '6851580174498903' } }) === 685158017449890
 ok(W.parseCoinbase({}) === null && W.parseKraken({}) === null && W.parseSupply({ error: 'no' }) === null, 'a bad quote or supply parses to null');
 var line = W.counterText(68593.695, 68515801.74498902);
 ok(line === '1 BTC: $68,594 · XCPETS left: 68.516 million' && !/price/i.test(line), 'counter line is the dollars-and-supply reading');
+ok(W.downFlags(null, 68000, 68e6).btc === false && W.downFlags(null, 68000, 68e6).supply === false, 'first reading has no arrow');
+ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68600.2, 68515801.74).btc === true, 'a lower dollar reading gets an arrow');
+ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.6, 68510000).supply === true && W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.6, 68510000).btc === false, 'only the number that fell gets an arrow');
+ok(W.downFlags({ usd: 68000, tokens: 68e6 }, 68000.4, 68e6 + 100).btc === false && W.downFlags({ usd: 68000, tokens: 68e6 }, 68100, 69e6).supply === false, 'a tie or a rise is not a drop');
+ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.4, 68515701.74).supply === false, 'a supply dip too small to change the shown millions is not a drop');
+var html = W.counterHtml(68000, 68e6, { btc: true, supply: false });
+ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,000') < html.indexOf('dw-down') && html.indexOf('dw-down') < html.indexOf('XCPETS left') && !/price/i.test(html), 'the arrow sits beside the number that went down');
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
 ok(W.START === 975640 && W.END === 976648 && W.SABO_ID === 1765, 'window and Sabo id');
 ['img/doom/sp-pepe.png', 'img/doom/sp-kek.png', 'img/doom/sp-wizard.png', 'img/doom/xcpets-cast.gif', 'img/doom/logo.png', 'img/doom/token.png', 'img/doom/badge.png', 'img/doom/doom-flag.png'].forEach(f => ok(fs.existsSync(path.join(ROOT, f)), 'asset ' + f));

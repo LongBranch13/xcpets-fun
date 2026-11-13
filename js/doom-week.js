@@ -23,9 +23,30 @@
     return n > 0 ? n : null;
   }
   function parseSupply(j) { var raw = j && j.result && Number(j.result.supply); return raw > 0 ? raw / 1e8 : null; }
+  var LAST_KEY = 'xcpets-doom-week-last', drops = { btc: false, supply: false };
   function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+  function shownUsd(n) { return Math.round(n); }
+  function shownMillions(tokens) { return Math.round(tokens / 1e6 * 1000) / 1000; }
   function millionsText(tokens) { return (tokens / 1e6).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' million'; }
   function counterText(usd, tokens) { return '1 BTC: ' + money(usd) + ' · XCPETS left: ' + millionsText(tokens); }
+  /* Arrow only when the number on screen is lower than the last live reading. First reading, a tie, and a rise get no arrow. */
+  function downFlags(prev, usd, tokens) {
+    if (!prev || !(prev.usd > 0) || !(prev.tokens > 0) || !(usd > 0) || !(tokens > 0)) return { btc: false, supply: false };
+    return { btc: shownUsd(usd) < shownUsd(prev.usd), supply: shownMillions(tokens) < shownMillions(prev.tokens) };
+  }
+  function readLast() {
+    try { var j = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); return j && j.usd > 0 && j.tokens > 0 ? j : null; } catch (e) { return null; }
+  }
+  function applyReading(usd, tokens) {
+    var flags = downFlags(readLast(), usd, tokens);
+    try { localStorage.setItem(LAST_KEY, JSON.stringify({ usd: usd, tokens: tokens })); } catch (e) {}
+    return flags;
+  }
+  function arrow(show) { return show ? '<span class="dw-down" aria-hidden="true"></span>' : ''; }
+  function counterHtml(usd, tokens, flags) {
+    flags = flags || {};
+    return '1 BTC: ' + money(usd) + arrow(flags.btc) + ' · XCPETS left: ' + millionsText(tokens) + arrow(flags.supply);
+  }
   function getJson(url) { return fetch(url, { credentials: 'omit' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.json(); }); }
   function loadBtc() {
     return getJson('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(function (j) {
@@ -52,7 +73,7 @@
       var main = document.querySelector('main'); if (main) main.insertBefore(countEl, main.firstChild); else document.body.appendChild(countEl);
     }
     countEl.setAttribute('aria-label', '1 BTC in dollars and XCPETS left');
-    countEl.innerHTML = '<b class="dw-joke">' + counterText(btcQuote.usd, supplyLeft.tokens) + '</b>';
+    countEl.innerHTML = '<b class="dw-joke">' + counterHtml(btcQuote.usd, supplyLeft.tokens, drops) + '</b>';
   }
   var burnMemo = null;
   function burners() {
@@ -167,7 +188,9 @@
   function turnOn() {
     if (on) return; on = true; loadCss(); root.classList.add('dw'); addLayer(); swapShowcase(true); watchShop(); watchCem();
     if (!btcQuote) Promise.all([loadBtc(), loadSupply()]).then(function (pair) {
-      btcQuote = pair[0]; supplyLeft = pair[1]; if (on) paintCount();
+      btcQuote = pair[0]; supplyLeft = pair[1];
+      if (btcQuote && supplyLeft) drops = applyReading(btcQuote.usd, supplyLeft.tokens);
+      if (on) paintCount();
     });
     paintCount(); paintBadge();
   }
@@ -185,7 +208,7 @@
   function start() { apply(); }
   window.XCDoomWeek = {
     ENABLED: ENABLED, START: START, END: END, SABO_ID: SABO_ID, inWindow: inWindow, wanted: wanted, isOn: function () { return on; }, showcaseOn: function () { return on; },
-    parseCoinbase: parseCoinbase, parseKraken: parseKraken, parseSupply: parseSupply, counterText: counterText, survivedAddr: function (addr, rows, at) {
+    parseCoinbase: parseCoinbase, parseKraken: parseKraken, parseSupply: parseSupply, counterText: counterText, downFlags: downFlags, counterHtml: counterHtml, survivedAddr: function (addr, rows, at) {
       var V = window.V2Rules; if (!V || !V.readBurns) return false;
       return V.readBurns(rows || []).some(function (r) { return r && r.source === addr && r.block_index >= START && r.block_index < END && (at == null || r.block_index <= at); });
     }
