@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib'), { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
-const ART = '/opt/cursor/artifacts/doom-week-v2';
+const ART = '/opt/cursor/artifacts/doom-week-v3';
 const SHOW = path.join(ART, 'showcase');
 const PLACES_DIR = path.join(ART, 'places');
 const DESIGN = __dirname;
@@ -150,11 +150,51 @@ DG.IDS.forEach((id, n) => {
   const z1 = scale(b, 32, 32, 1), z4 = scale(b, 32, 32, 4);
   save(path.join(ART, id + '-1x.png'), 32, 32, z1.rgba); save(path.join(DESIGN, id + '-1x.png'), 32, 32, z1.rgba);
   save(path.join(ART, id + '-4x.png'), z4.w, z4.h, z4.rgba); save(path.join(DESIGN, id + '-4x.png'), z4.w, z4.h, z4.rgba);
-  blitAt(itemRow, 5 * 160, 80, b, 32, 32, n * 160 + 16, 8, 2);
-  text(itemRow, 5 * 160, 80, id.replace('doom-', '').replace('candle-', ''), n * 160 + 8, 78 - 8, [244, 230, 234], 1);
+  blitAt(itemRow, DG.IDS.length * 160, 80, b, 32, 32, n * 160 + 16, 8, 2);
+  text(itemRow, DG.IDS.length * 160, 80, id.replace('doom-', '').replace('candle-', ''), n * 160 + 8, 78 - 8, [244, 230, 234], 1);
 });
 save(path.join(ART, 'items-1x-4x-sheet.png'), DG.IDS.length * 160, 80, itemRow);
 save(path.join(DESIGN, 'items-1x-4x-sheet.png'), DG.IDS.length * 160, 80, itemRow);
+
+/* Doom flag beside two game flags, same pole and cloth shape, 1x and 4x. */
+(function flags() {
+  const VG = C.V2Gear;
+  const cols = BGColors();
+  function iconOf(map) {
+    const h = map.length, w = map[0].length, img = Buffer.alloc(32 * 32 * 4);
+    for (let i = 0; i < img.length; i += 4) { img[i] = 16; img[i + 1] = 8; img[i + 2] = 12; img[i + 3] = 255; }
+    const x0 = Math.max(0, Math.floor((32 - w) / 2)), y0 = Math.max(0, Math.floor((32 - h) / 2));
+    for (let y = 0; y < h; y++) for (let x = 0; x < map[y].length; x++) {
+      const k = map[y][x]; if (!k || k === '.' || !cols[k]) continue;
+      const X = x0 + x, Y = y0 + y; if (X < 0 || Y < 0 || X > 31 || Y > 31) continue;
+      const c = cols[k], i = (Y * 32 + X) * 4; img[i] = c[0]; img[i + 1] = c[1]; img[i + 2] = c[2]; img[i + 3] = 255;
+    }
+    return img;
+  }
+  const pair = [['doom', DG.DEFS['doom-flag'].map], ['wagmi', VG.DEFS['v2-wagmi-flag'].map], ['burn', VG.DEFS['v2-burn-banner'].map]];
+  const row1 = paper(pair.length * 48, 40), row4 = paper(pair.length * 160, 140);
+  pair.forEach((p, n) => {
+    const b = iconOf(p[1]);
+    const z4 = scale(b, 32, 32, 4);
+    save(path.join(ART, p[0] + '-flag-1x.png'), 32, 32, b);
+    save(path.join(ART, p[0] + '-flag-4x.png'), z4.w, z4.h, z4.rgba);
+    blitAt(row1, pair.length * 48, 40, b, 32, 32, n * 48 + 8, 4, 1);
+    blitAt(row4, pair.length * 160, 140, b, 32, 32, n * 160 + 16, 8, 4);
+    text(row4, pair.length * 160, 140, p[0], n * 160 + 16, 8, [255, 42, 42], 1);
+  });
+  save(path.join(ART, 'flags-compare-1x.png'), pair.length * 48, 40, row1);
+  save(path.join(ART, 'flags-compare-4x.png'), pair.length * 160, 140, row4);
+  save(path.join(DESIGN, 'flags-compare-4x.png'), pair.length * 160, 140, row4);
+})();
+function BGColors() {
+  const C = {}, raw = (typeof global !== 'undefined' && false);
+  const hex = { y: '#ffd23f', Q: '#da291c', r: '#b3121a', w: '#ffffff', L: '#8a5a2b', l: '#c8955a', m: '#2f9f5f', Z: '#2b2b33', R: '#ff2a2a', n: '#1a1020' };
+  Object.keys(hex).forEach(k => { const h = hex[k]; C[k] = [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; });
+  const live = C_BG();
+  if (live) Object.keys(live).forEach(k => { const h = String(live[k]); if (h[0] === '#') C[k] = [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; });
+  return C;
+}
+function C_BG() { try { return C.BonusGear && C.BonusGear.COLORS; } catch (e) { return null; } }
 
 /* roster fit sheet: adult, full kit, anchors from v2-fit */
 const roster = species.filter(id => doomed[id] && doomed[id].adult);
@@ -257,8 +297,8 @@ function skyFill(dst, W, H, doom) {
   }
 }
 function flagAt(dst, W, H, x, y) {
-  const rows = ['n............', 'nQQQQQQQQQQQn', 'nQww.Q.w.QQQn', 'nQw.wQw.wQQQn', 'nQw.wQw.wQQQn', 'nQww.Q.w.QQQn', 'nQQQQQQQQQQQn', 'nQ.w.Qw...wQn', 'nQw.wQww.wwQn', 'nQw.wQw.w.wQn', 'nQ.w.Qw...wQn', 'nQrrrrrrrrrrn', 'n............'];
-  const col = { n: [26, 16, 32], Q: [218, 41, 28], w: [255, 255, 255], r: [179, 18, 26], '.': null };
+  const rows = DG.DEFS['doom-flag'].map;
+  const col = BGColors();
   rows.forEach((row, yy) => { for (let xx = 0; xx < row.length; xx++) { const c = col[row[xx]]; if (!c) continue; rect(dst, W, H, x + xx * 2, y + yy * 2, 2, 2, c); } });
 }
 function chartAt(dst, W, H, x, y) {

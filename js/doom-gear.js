@@ -2,30 +2,23 @@
  * js/v2-rules.js does not know their names, so replay is unchanged and nobody's pet receives them.
  * Maps use BonusGear colour keys that stay in the Bitcoin red family: Q #da291c, r #b3121a, R #ff2a2a, w white, n ink.
  * No orange keys (O, E, y, g). The cape itself is drawn by V2Fit from the roster anchors.
- * One flag per pet: a pole and a cloth that reads DOOM. It is fitted from V2Fit.doomAnchor(species, 'flag')
- * and kept in the upper half so it does not cover the legs. */
+ * The flag uses the same pole, cloth size, shape and banner placement as the other flags
+ * (js/v2-gear.js flag(), drawn with at:'banner'). Only the cloth is red, with DOOM in white. */
 (function (root) {
   'use strict';
   var SKY = '#14060c';
-  /* Two-line cloth (DO / OM) on a short pole. 11 wide, so it can sit in a corner of a 32px sprite. */
-  /* DO over OM. The M is five pixels wide so it does not turn into an H. */
-  var FLAG = [
-    'n............',
-    'nQQQQQQQQQQQn',
-    'nQww.Q.w.QQQn',
-    'nQw.wQw.wQQQn',
-    'nQw.wQw.wQQQn',
-    'nQww.Q.w.QQQn',
-    'nQQQQQQQQQQQn',
-    'nQ.w.Qw...wQn',
-    'nQw.wQww.wwQn',
-    'nQw.wQw.w.wQn',
-    'nQ.w.Qw...wQn',
-    'nQrrrrrrrrrrn',
-    'n............'
-  ];
+  /* Same builder as V2Gear.flag: gold top stitch, wood pole, 3x5 letters, 22-row pole. */
+  var FONT = { D: ['ww.', 'w.w', 'w.w', 'w.w', 'ww.'], O: ['www', 'w.w', 'w.w', 'w.w', 'www'], M: ['w.w', 'www', 'www', 'w.w', 'w.w'] };
+  function flagMap(word, bg, edge, ink) {
+    var rows = ['y' + new Array(word.length * 4 + 2).join(bg)], j, i;
+    for (j = 0; j < 5; j++) { var r = 'L' + bg; for (i = 0; i < word.length; i++) r += FONT[word[i]][j].replace(/\./g, bg).replace(/w/g, ink) + bg; rows.push(r); }
+    rows.push('L' + new Array(word.length * 4 + 2).join(edge));
+    for (j = 0; j < 22; j++) rows.push(j % 3 ? 'L' : 'l');
+    return rows;
+  }
+  var FLAG = flagMap('DOOM', 'Q', 'r', 'w');
   var DEFS = {
-    'doom-flag': { slot: 'hand', tier: 1, label: 'Doom flag', at: 'flag', kind: 'held', map: FLAG },
+    'doom-flag': { slot: 'back', tier: 1, label: 'Doom flag', at: 'banner', kind: 'banner', map: FLAG },
     'doom-candle-hat': { slot: 'head', tier: 1, label: 'Red candle hard hat', at: 'head', dy: 0, kind: 'hat',
       map: ['....w....', '...wRw...', '....n....', '..QQQQQ..', '.QQQQQQQ.', '.QQnnnQQ.', 'nnnnnnnnn'] },
     'doom-shades': { slot: 'face', tier: 1, label: 'Doom shades', at: 'eyes', kind: 'face',
@@ -112,64 +105,26 @@
       }
     }
   }
-  function isSky(img, x, y) {
-    if (x < 0 || y < 0 || x > 31 || y > 31) return false;
-    var d = img.data, i = (y * 32 + x) * 4, c = [d[i], d[i + 1], d[i + 2]];
-    return (c[0] === 58 && c[1] === 10 && c[2] === 18) || (c[0] === 36 && c[1] === 8 && c[2] === 14) || (c[0] === 20 && c[1] === 6 && c[2] === 12);
-  }
-  function freeBlock(img, x0, y0, w, h) {
-    var y, x;
-    for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (!isSky(img, x0 + x, y0 + y)) return false;
-    return true;
-  }
-  /* A short falling chart and one down arrow, only where the sky is still empty. */
-  function skyMarks(img) {
-    var spots = [[1, 1], [22, 1], [1, 22], [24, 23]];
-    var i, s, x, y, hh;
-    for (i = 0; i < spots.length; i++) {
-      s = spots[i];
-      if (i < 2 && freeBlock(img, s[0], s[1], 7, 6)) {
-        for (x = 0; x < 3; x++) { hh = 5 - x; put(img, s[0] + x * 2, s[1] + (5 - hh), '#ffffff'); put(img, s[0] + x * 2, s[1] + (6 - hh), x === 2 ? '#8e0b20' : '#ff2a2a');
-          for (y = 7 - hh; y < 6; y++) put(img, s[0] + x * 2, s[1] + y, '#c8102e'); }
-        break;
-      }
-    }
-    if (freeBlock(img, 27, 1, 4, 4)) { put(img, 28, 1, '#ff2a2a'); put(img, 28, 2, '#ff2a2a'); put(img, 27, 3, '#ff2a2a'); put(img, 28, 3, '#ff2a2a'); put(img, 29, 3, '#ff2a2a'); put(img, 28, 4, '#c8102e'); }
-    else if (freeBlock(img, 1, 26, 4, 4)) { put(img, 2, 26, '#ff2a2a'); put(img, 2, 27, '#ff2a2a'); put(img, 1, 28, '#ff2a2a'); put(img, 2, 28, '#ff2a2a'); put(img, 3, 28, '#ff2a2a'); put(img, 2, 29, '#c8102e'); }
-  }
-  function eyeCells(a) {
-    var s = {}, es = [a.eyeL, a.eyeR], i, p;
-    for (i = 0; i < es.length; i++) if (es[i] && es[i][2]) es[i][2].forEach(function (q) { s[q[0] + ',' + q[1]] = 1; });
-    else if (es[i]) s[es[i][0] + ',' + es[i][1]] = 1;
-    return s;
-  }
-  /* One flag, from the fit anchors. The cloth stays at or above the pet's midline. */
-  function placeFlag(img, a, species) {
-    var spec = root.V2Fit && V2Fit.doomAnchor ? V2Fit.doomAnchor(species, 'flag') : { side: 'R', dx: 0, dy: 0 };
-    var map = DEFS['doom-flag'].map, w = map[0].length, h = map.length;
-    var top = a.minY == null ? 6 : a.minY, bot = a.maxY == null ? 28 : a.maxY;
-    var mid = Math.floor((top + bot) / 2);
-    var x = spec.side === 'L' ? Math.max(0, spec.dx || 0) : Math.max(0, 32 - w - (spec.dx || 0));
-    var y = Math.max(0, spec.dy || 0);
-    if (y + h > mid) y = Math.max(0, mid - h);
-    var eyes = eyeCells(a), yy, xx, k;
-    for (yy = 0; yy < h; yy++) for (xx = 0; xx < map[yy].length; xx++) {
-      k = map[yy].charAt(xx); if (!k || k === '.') continue;
-      if (y + yy >= mid) continue;
-      if (eyes[(x + xx) + ',' + (y + yy)]) continue;
-      put(img, x + xx, y + yy, keyColor(k));
-    }
+  /* Small falling chart and a down arrow, fixed in the lower right of the cell. */
+  function cornerChart(img) {
+    var x0 = 23, y0 = 23;
+    [[0, 0, 7], [2, 2, 5], [4, 4, 3]].forEach(function (c) {
+      put(img, x0 + c[0], y0 + c[1], '#ffffff');
+      put(img, x0 + c[0], y0 + c[1] + 1, '#ff2a2a');
+      for (var k = 2; k < c[2]; k++) put(img, x0 + c[0], y0 + c[1] + k, '#c8102e');
+    });
+    put(img, x0 + 7, y0 + 2, '#ff2a2a'); put(img, x0 + 7, y0 + 3, '#ff2a2a'); put(img, x0 + 7, y0 + 4, '#ff2a2a');
+    put(img, x0 + 6, y0 + 5, '#ff2a2a'); put(img, x0 + 7, y0 + 5, '#c8102e'); put(img, x0 + 8, y0 + 5, '#ff2a2a');
+    put(img, x0 + 7, y0 + 6, '#8e0b20');
   }
   function dress(img, a, species, frame) {
     var F = root.V2Fit;
     a.isFg = a.isFg || a.isSil;
     if (F && F.isCape && F.isCape('doom-candle-cape')) F.cape(img, a, 'doom-candle-cape', frame || 0);
-    placeFlag(img, a, species);
-    var hat = headView(a, species);
-    applyMapped('doom-candle-hat', img, hat.a, hat.map);
-    drawShades(img, a, species);
+    install();
+    if (root.BonusGear) root.BonusGear.apply('doom-flag', img, a, frame || 0);
     skyPaint(img);
-    skyMarks(img);
+    cornerChart(img);
     return img;
   }
   function frames(pet, stage) {
