@@ -159,7 +159,23 @@ The decompressed checkpoint is 270 MB and **16.5 MB** on the wire. Fast 4G’s d
 
 The catch-up worker now starts every checkpoint fetch before it imports the rule scripts, and it no longer queues them four at a time. That overlaps the script load with the transfer and keeps the pipe full. It does not shrink the 16.5 MB, so it cannot beat the 16.3 s floor. A smaller snapshot would, and that is a publisher change. The catch-up replay itself is 1.6 s, not the old 45 s full history.
 
-The 10:42 run is the after measurement for `86d0fa62`, taken once the publisher had caught up to 2 blocks behind. An earlier attempt at 10:36 found the snapshot 26 blocks behind and correctly refused it. Pets at the end of the 10:42 runs: 176,223.
+The 10:42 run is `86d0fa62` with the snapshot 2 blocks behind. Pets 176,223.
+
+### Return visits, checked again
+
+Four reloads after one cold visit, same snapshot. `86d0fa62` only changes when the checkpoint fetch starts, which a return visit does not do.
+
+| | Desktop returns | Phone returns |
+|---|---|---|
+| Baseline | 3.78 s | 9.35 s |
+| `12e2a279` | 3.98, 3.98, 3.49, 4.24 s (mean 3.92 s) | 12.47, 12.33, 13.08, 12.83 s (mean 12.68 s) |
+| `86d0fa62` | 5.77, 3.73, 4.68, 3.69 s (mean 4.47 s) | 13.44, 12.67, 13.64, 12.73 s (mean 13.12 s) |
+
+`86d0fa62` is not slower than `12e2a279` in a way that repeats. The phone cluster is 12.3–13.6 s on both commits. The desktop gap is one 5.8 s sample. The phone gap versus the 9.35 s baseline is on both commits, so it is the saved-world read, not the early download. Reading that world through a worker cloned it onto the phone a second time. The page now reads IndexedDB once on the main thread. Four returns after that change: desktop 3.01, 3.13, 3.43, 2.65 s (mean **3.05 s**). Phone same-block returns stayed 13.40, 12.46, 12.71 s (mean **12.9 s**); one reload was a new block and is not in that mean. First visits on that same run stayed a catch-up: desktop 15.7 s, phone 41.5 s, `justSeeded` true.
+
+### Checkpoint size
+
+`node.xcpets.fun` (Caddy, not GitHub Pages) already compresses the 78 checkpoint files. For the 975,661 snapshot: uncompressed 273.5 MB, gzip 21.5 MB, brotli **16.8 MB**. Chrome asks for brotli and gets it. A new binary encoding would have to beat brotli of the JSON and ship a new publisher format. That is not a low-risk change, and it was not built. Fast 4G at 1,012,500 bytes/s needs at least 16.5 s to move 16.8 MB.
 
 ### Exact mode, and a snapshot on a different rules hash
 

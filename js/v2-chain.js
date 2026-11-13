@@ -86,43 +86,10 @@
   /* The IndexedDB clone of the saved world runs in js/v2-decode-worker.js. Each message is a handful of objects,
    * so the main thread never takes the multi-hundred-millisecond task a 17 MB record used to be. */
   function idbRaw() {
-    if (!BUILD || typeof Worker === 'undefined') return idbRawMain();
-    return new Promise(function (res) {
-      var w, finished = false, root = {}, parts = [], meta = null;
-      function give(v) { if (finished) return; finished = true; clearTimeout(timer); try { if (w) w.terminate(); } catch (e) {} res(v); }
-      function fail() { if (finished) return; finished = true; clearTimeout(timer); try { if (w) w.terminate(); } catch (e) {} idbRawMain().then(res, function () { res(null); }); }
-      var timer = setTimeout(fail, 120000);
-      try { w = new Worker(new URL('js/v2-decode-worker.js?v=' + BUILD, location.href).href); } catch (e) { return fail(); }
-      w.onerror = function () { fail(); };
-      w.onmessage = function (ev) {
-        var m = ev.data || {};
-        try {
-          if (m.type === 'meta') { meta = m; parts = new Array(m.parts || 0); return; }
-          if (m.type === 'legacy') { give({ key: m.key, at: m.at, world: m.world }); return; }
-          if (m.type === 'root-all') { root = m.root || {}; return; }
-          if (m.type === 'part-all') { parts[m.i] = m.items || []; return; }
-          if (m.type === 'root') {
-            if (m.once) root[m.k] = m.items[0];
-            else { if (!root[m.k]) root[m.k] = []; var a = m.items || [], ri; for (ri = 0; ri < a.length; ri++) root[m.k].push(a[ri]); }
-            return;
-          }
-          if (m.type === 'part') {
-            if (!parts[m.i]) parts[m.i] = [];
-            var b = m.items || [], pi; for (pi = 0; pi < b.length; pi++) parts[m.i].push(b[pi]);
-            return;
-          }
-          if (m.type === 'fail') { fail(); return; }
-          if (m.type === 'end') {
-            if (!meta) { fail(); return; }
-            var keys = [], i; for (i = 0; i < parts.length; i++) keys.push('world:' + i);
-            wsDecode({ root: root, parts: parts.length, n: meta.n }, parts, keys).then(function (world) {
-              give(world ? { key: meta.key, at: meta.at, world: world } : null);
-            }, function () { give(null); });
-          }
-        } catch (e) { fail(); }
-      };
-      w.postMessage({ cmd: 'decode' });
-    });
+    /* Reading in a worker cloned every saved part onto this thread a second time.
+     * On a 4× phone that return visit was about 13 s, against about 9 s when IndexedDB
+     * delivered the same records here once. One read on this thread is the faster path. */
+    return idbRawMain();
   }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
    * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
