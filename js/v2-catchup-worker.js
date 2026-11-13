@@ -22,7 +22,7 @@ function putWorld(key, root, parts, n, cp) { return idbOpen().then(function (db)
     tx.oncomplete = function () { db.close(); res(true); }; tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} rej(tx.error || new Error('idb')); };
   } catch (e) { try { db.close(); } catch (x) {} rej(e); } }); }); }
 function loadText(url) { return fetch(url, { cache: 'force-cache' }).then(function (r) { if (!r.ok) throw new Error('script ' + r.status); return r.text(); }); }
-function loadFile(f) { var tNet = Date.now(); return fetch(f.url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
+function loadFile(f) { var tNet = Date.now(); return fetch(f.url).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
   var net = Date.now() - tNet, tParse = Date.now();
   return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = JSON.parse(new TextDecoder().decode(buf));
     return { val: val, bytes: buf.byteLength, net: net, parse: Date.now() - tParse }; }); }); }
@@ -35,6 +35,10 @@ function unmark(v) {
 }
 function catchup(m) {
   var t0 = Date.now();
+  /* Start every checkpoint fetch before the rule scripts load, so the 16 MB transfer
+   * overlaps the script import instead of waiting behind it. Four-at-a-time left a gap
+   * on a high-latency link; the browser still caps total bandwidth. */
+  var early = ((m.files || []).slice()).map(loadFile);
   shim();
   var scripts = (m.scripts || []).slice(), rulesUrl = null, workerUrl = null, i;
   for (i = 0; i < scripts.length; i++) {
@@ -50,14 +54,19 @@ function catchup(m) {
     return workerUrl ? loadText(workerUrl) : Promise.reject(new Error('encode'));
   }).then(function (workerSrc) {
     var keep = self.onmessage; (0, eval)(workerSrc + '\nself.wsEncode=wsEncode;'); self.onmessage = keep;
-    var files = (m.files || []).slice(), pending = files.slice(), running = 0, got = [], failed = null, tFiles = Date.now(), phasesBytes = { n: 0, net: 0, parse: 0 };
-    return new Promise(function (res, rej) {
-      function fail(e) { if (!failed) failed = e; pump(); }
+    var files = (m.files || []).slice(), got = [], phasesBytes = { n: 0, net: 0, parse: 0 };
+    return Promise.all(early).then(function (loaded) {
+      for (var li = 0; li < loaded.length; li++) {
+        var f = files[li], got1 = loaded[li];
+        got.push({ role: f.role, i: f.i, val: unmark(got1.val) });
+        phasesBytes.n += got1.bytes || 0; phasesBytes.net = Math.max(phasesBytes.net, got1.net || 0); phasesBytes.parse += got1.parse || 0;
+      }
+      var tFiles = Date.now();
+      return new Promise(function (res, rej) {
       function finish() {
-        var phases = { scripts: tFiles - t0 };
+        var phases = { scripts: 0 };
         try {
-          if (failed) return rej(failed);
-          phases.files = Date.now() - tFiles; phases.bytes = phasesBytes.n; phases.netMax = phasesBytes.net; phases.parse = phasesBytes.parse;
+          phases.files = tFiles - t0; phases.afterFiles = Date.now() - tFiles; phases.bytes = phasesBytes.n; phases.netMax = phasesBytes.net; phases.parse = phasesBytes.parse;
           var root = null, parts = [], meta = null;
           got.forEach(function (g) { if (g.role === 'root') root = g.val; else if (g.role === 'meta') meta = g.val; else parts[g.i] = g.val; });
           if (!root || !meta || parts.length !== m.parts) return rej(new Error('parts'));
@@ -87,15 +96,10 @@ function catchup(m) {
           putWorld(m.idbKey, enc.root, enc.parts, enc.n, cp).then(function () { phases.idb = Date.now() - tIdb; phases.total = Date.now() - t0; res(phases); }, rej);
         } catch (e) { rej(e); }
       }
-      function one(f) { return loadFile(f).then(function (got1) { got.push({ role: f.role, i: f.i, val: unmark(got1.val) }); phasesBytes.n += got1.bytes || 0; phasesBytes.net = Math.max(phasesBytes.net, got1.net || 0); phasesBytes.parse += got1.parse || 0; }); }
-      function pump() {
-        if (failed && !running) return finish();
-        while (!failed && running < 4 && pending.length) { var f = pending.shift(); running++; one(f).then(function () { running--; if (!pending.length && !running) finish(); else pump(); }, function (e) { running--; fail(e); }); }
-        if (!pending.length && !running) finish();
-      }
       if (!files.length) return rej(new Error('no files'));
-      pump();
+      finish();
     });
+    }, function (e) { return Promise.reject(e); });
   });
 }
 self.onmessage = function (ev) {

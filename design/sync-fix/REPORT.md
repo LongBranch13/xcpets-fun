@@ -155,7 +155,11 @@ A throttled phone first visit in the same conditions (412 px, 4× CPU, Fast 4G, 
 | Decode the checkpoint | 0.5 s |
 | Main thread receives the saved world and finishes boot | about 7 s |
 
-The decompressed checkpoint is 270 MB. On the wire, Fast 4G moves it in about 17 s, which is the bandwidth of that throttle. Raising the four-at-a-time fetch cap would not get under that. A smaller snapshot would, and that is a publisher change, not a rules change. The catch-up replay itself is 1.6 s, not the old 45 s full history.
+The decompressed checkpoint is 270 MB and **16.5 MB** on the wire. Fast 4G’s download cap is 1,012,500 bytes/s, so the transfer itself cannot finish in less than about **16.3 s**. The measured 17.5 s is that floor plus a short gap from loading the rule scripts before the fetches started, and from taking files four at a time.
+
+The catch-up worker now starts every checkpoint fetch before it imports the rule scripts, and it no longer queues them four at a time. That overlaps the script load with the transfer and keeps the pipe full. It does not shrink the 16.5 MB, so it cannot beat the 16.3 s floor. A smaller snapshot would, and that is a publisher change. The catch-up replay itself is 1.6 s, not the old 45 s full history.
+
+At 10:36 UTC the live snapshot was still tip 975,637, **26 blocks** behind 975,663. The client allows 8, so it correctly refused that snapshot and a first visit fell back to a full replay. The after first-visit numbers above are from 06:33 UTC, when the same rules hash was only 1 block behind. Return visits from that run, and a later throttled phone return, are the return numbers.
 
 ### Exact mode, and a snapshot on a different rules hash
 
