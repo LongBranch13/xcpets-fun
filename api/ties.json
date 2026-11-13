@@ -1,6 +1,6 @@
 {
- "lastBlock": 975618,
- "count": 366,
+ "lastBlock": 975621,
+ "count": 372,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -2929,7 +2929,7 @@
    "species": "chad",
    "speciesLabel": "Chad",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 4104,
@@ -3193,7 +3193,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 147179,
@@ -3205,7 +3205,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 899,
@@ -3481,7 +3481,7 @@
    "species": "hyb:viking:dodo",
    "speciesLabel": "Vikdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 19710,
@@ -3613,7 +3613,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 156196,
@@ -3841,7 +3841,7 @@
    "species": "hyb:doge:pepe",
    "speciesLabel": "Dogpe (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 156195,
@@ -3853,7 +3853,7 @@
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 157197,
@@ -3865,7 +3865,7 @@
    "species": "hyb:pepe:funtrump",
    "speciesLabel": "Pepetrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 158199,
@@ -3877,7 +3877,7 @@
    "species": "hyb:mumu:nakamoto",
    "speciesLabel": "Mumoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 158202,
@@ -4392,6 +4392,78 @@
    "name": "Duzelaru",
    "species": "homer",
    "speciesLabel": "Homer Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 20628,
+   "asset": "A4061174492544808638",
+   "tiedBlock": 975621,
+   "tiedTx": "9ce736cfa82e175206ede29988ab1477ef44e1b8211aa0034e599c88bd0a10ea",
+   "kind": "deed",
+   "name": "Neka",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65118,
+   "asset": "A5000321974436685623",
+   "tiedBlock": 975621,
+   "tiedTx": "3e66b522c85215e10c8ead6b24a8614121600694a33fea01b720806a0a51ace5",
+   "kind": "deed",
+   "name": "Sekapapop",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66013,
+   "asset": "A13791126053718397676",
+   "tiedBlock": 975621,
+   "tiedTx": "f303d1ee190ab8846e21a2bd6879ef9b6880e70fb7776cb909f8e7e9f3e471a5",
+   "kind": "deed",
+   "name": "Shukachukin",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 68302,
+   "asset": "A10721502686932861873",
+   "tiedBlock": 975621,
+   "tiedTx": "fd7a17a7457ba00f5c3c59b2f87f98719ae8ef178ff29f650ada21c8a9dbaabf",
+   "kind": "deed",
+   "name": "Pefoogubit",
+   "species": "hyb:doge:sarutobi",
+   "speciesLabel": "Dogtobi (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 74345,
+   "asset": "A13431940503160108642",
+   "tiedBlock": 975621,
+   "tiedTx": "4375deb2da4415855e618038fb316577e66197d2eaef2975d7daf626bad19db7",
+   "kind": "deed",
+   "name": "Gonoozy",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 104796,
+   "asset": "A3885213769494063952",
+   "tiedBlock": 975621,
+   "tiedTx": "62199160852b29741a7c7dde15c95751510eea2c241c46079e612014ef21e7b8",
+   "kind": "deed",
+   "name": "Buneboo",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
    "rarity": "Rare",
    "stage": "Mythic"
   }
