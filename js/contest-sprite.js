@@ -197,8 +197,10 @@
     if (Gr.feet) { hline(g, cx - A.bw, cx - 2, A.bodyEnd + 1, col('feet')); hline(g, cx + 1, cx + A.bw - 1, A.bodyEnd + 1, col('feet', 1)); }
     if (Gr.face) { var gk = kind('face'), g0 = col('face'), ey = sp === 'starlordkek' ? A.headTop + 1 : A.eyeY;
       if (/shade|sunglass|goggle|visor|laser|beam|glass|monocle|mask/.test(gk)) { for (var xe = cx - A.hw + 1; xe < cx + A.hw - 1; xe++) { p(xe, ey, g0); if (xe !== cx && xe !== cx - 1) p(xe, ey + 1, g0); } }
+      else if (/nose|septum|stud|ring/.test(gk)) { var ny = Math.min(A.headBot - 1, ey + 3); p(cx - 1, ny, g0); p(cx + 1, ny, g0); p(cx, ny + 1, g0); p(cx - 1, ny + 1, g0); p(cx + 1, ny + 1, g0); }
       else p(cx + 2, A.headBot - 1, g0); }
-    if (Gr.head && sp !== 'gooby' && sp !== 'lukespam') { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = A.headTop - 2; /* Gooby's hat and Luke's cap are part of them (Headwear sits on top) */
+    if (Gr.head && /scarf/.test(kind('head'))) { hline(g, cx - A.bw, cx + A.bw - 1, A.bodyTop, col('head')); }
+    else if (Gr.head && sp !== 'gooby' && sp !== 'lukespam') { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = (sp === 'bojackson' || sp === 'rarepigeon') ? A.headTop : (sp === 'jacksonpepe' || sp === 'starlordkek') ? Math.max(0, A.headTop - 3) : A.headTop - 2; /* Gooby's hat and Luke's cap are part of them (Headwear sits on top) */
       if (/crown|tiara/.test(hk)) { for (var xc = cx - 4; xc < cx + 4; xc++) { p(xc, ht, h0); if (xc % 2) p(xc, ht - 1, h0); } }
       else { rect(g, cx - 4, ht - 2, 8, 2, h0); hline(g, cx - 6, cx + 5, ht, h1); } }
     else if (Gr.head) { var top = A.headTop - (sp === 'gooby' ? (st === 1 ? 4 : st === 2 ? 5 : 6) : 4) - 1; hline(g, cx - 2, cx + 1, top, col('head')); set(g, cx - 1, top - 1, col('head', 1)); }

@@ -32,6 +32,7 @@
     else { var g = a.gear || { armor: [20, 22, 0] }, t0 = Math.max(a.row(g.armor[0]), eyeY(a) + 4), b0 = Math.min(a.maxY - 2, a.row(g.armor[1] + 1) - 1);
       for (y = t0; y <= b0; y++) { var sp = span(a, y); if (sp) { rows[y] = []; for (x = sp[0]; x <= sp[1]; x++) rows[y].push(x); } } }
     var out = Object.keys(rows).map(Number).sort(function (p, q) { return p - q; }).map(function (yy) { return { y: yy, xs: rows[yy], l: Math.min.apply(null, rows[yy]), r: Math.max.apply(null, rows[yy]) }; });
+    var faceGap = { snibby: 5, doge: 5 }; if (a.spId && faceGap[a.spId]) { var cut = eyeY(a) + faceGap[a.spId]; out = out.filter(function (q) { return q.y >= cut; }); }
     var l = 99, rr = -1; out.forEach(function (q) { l = Math.min(l, q.l); rr = Math.max(rr, q.r); });
     return { top: out.length ? out[0].y : 0, bot: out.length ? out[out.length - 1].y : -1, rows: out, l: l, r: rr };
   }

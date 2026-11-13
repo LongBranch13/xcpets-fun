@@ -77,6 +77,10 @@
       if (/armor|armour|plate|mail|chest/.test(kind('body'))) { var wa = D.bw - 2; rect(g, cx - wa, bodyTop + 2, wa * 2, 2, b0c); hline(g, cx - wa, cx + wa - 1, bodyTop + 2, b1c); } }
     // head gear
     if (isNemes(Gr.head)) nemes(g, cx, headTop - 1, D.hw - 1, headBot + 2);
+    if (Gr.head && Gr.head.item && Gr.head.item !== 'kek-nemes' && !Gr.head.builtIn) { var hcK = col('head'), hkK = kind('head'), yK = Math.max(0, headTop - 2);
+      if (/crown|tiara/.test(hkK)) { hline(g, cx - 3, cx + 2, yK, hcK); for (var ciK = cx - 3; ciK <= cx + 2; ciK += 2) set(g, ciK, Math.max(0, yK - 1), hcK); }
+      else if (/scarf/.test(hkK)) hline(g, cx - D.hw + 1, cx + D.hw - 2, headBot + 1, hcK);
+      else hline(g, cx - D.hw + 2, cx + D.hw - 3, yK, hcK); }
     else if (false) { var hc = col('head'), hd = col('head', 1), hk = kind('head');
       if (/crown|tiara/.test(hk)) { hline(g, cx - 4, cx + 3, headTop - 2, hc); for (var ci = cx - 4; ci <= cx + 3; ci += 2) set(g, ci, headTop - 3, hc); set(g, cx, headTop - 2, hd); }
       else if (!/band|hachimaki|halo|visor/.test(hk)) { rect(g, cx - 4, headTop - 4, 8, 3, hc); hline(g, cx - 6, cx + 5, headTop - 1, hd); }

@@ -138,7 +138,8 @@
       if (G.head && !isHat(G.head)) { var hk = kind('head'), hc = col('head'), hd = col('head', 1);
         if (/crown|tiara/.test(hk)) { hline(g, fx, fe, faceY - 2, hc); for (var ci = fx; ci <= fe; ci += 2) set(g, ci, faceY - 3, hc); set(g, fx + Math.floor(fw / 2), faceY - 2, hd); }
         else if (!/band|hachimaki|halo|visor/.test(hk) && /hat|cap|beanie|helmet|hood|bucket|fedora|beret|bowl|newsboy/.test(hk)) { rect(g, fx, faceY - 3, fw, 2, hc); rect(g, fx + 1, faceY - 5, fw - 2, 2, hc); hline(g, fx - 1, fe + 1, faceY - 1, hd); }
-        else { hline(g, fx - 1, fe, faceY + 1, hc); set(g, fx + Math.floor(fw / 2), faceY + 1, hd); set(g, fe + 1, faceY + 2, hc); } } }   // headband-style (across the brow)
+        else if (/scarf/.test(hk)) { hline(g, fx, fe, shY, hc); hline(g, fx + 1, fe - 1, shY + 1, hd); }
+        else { hline(g, fx - 1, fe, faceY - 1, hc); set(g, fx + Math.floor(fw / 2), faceY - 1, hd); set(g, fe + 1, faceY, hc); } } }   // headband on the hairline, scarf at the shoulder
     function joinSign() { /* Grip gear 'sig-wizard-sign': the meme's orange 'Join us' board held low at the left, in front of the robe (ink squiggle 'letters'; sprites carry no text) */
     var sx0 = cx - D.sw - 1, sy0 = cy - D.sgh + 1; rect(g, sx0, sy0, D.sw, D.sgh, 'O'); hline(g, sx0, sx0 + D.sw - 1, sy0 + D.sgh - 1, 'o');
     for (var q = 0; q < D.sw - 2; q++) if (D.sgh >= 4 ? (q % 4 !== 3) : (q % 2 === 0)) set(g, sx0 + 1 + q, sy0 + 1 + (D.sgh >= 4 ? (q % 2) : 0), 'F');
