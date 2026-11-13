@@ -58,7 +58,7 @@ var ye = art('ye');
 var stages = [1, 2, 3, 4, 5].map(function (s) {
   return { stage: s, with: one(ye, s, [], shades), bare: one(ye, s, [], []) };
 });
-var bob = frames(ye, 3, [], shades).map(function (d, i) { return { frame: i, px: d }; });
+var bob = frames(ye, 3, [], []).map(function (d, i) { return { frame: i, px: d }; });
 
 /* One live piece per v2 slot. Head is an overlay hat (the PR #40 fitter).
  * Body is legendary gold armour (torso box). Back is the legendary midnight cape. */
@@ -80,12 +80,12 @@ if (!headId || !handId || !feetId || !R.GEAR_BY_ID[bodyId] || !R.GEAR_BY_ID[back
   throw new Error('missing gear ids ' + JSON.stringify({ headId: headId, handId: handId, feetId: feetId, body: !!R.GEAR_BY_ID[bodyId], back: !!R.GEAR_BY_ID[backId] }));
 }
 var slotItems = [
-  { slot: 'Headwear', id: headId, items: [headId], extra: shades },
+  { slot: 'Headwear', id: headId, items: [headId], extra: [] },
   { slot: 'Guise', id: 'ye-shades', items: [], extra: shades },
-  { slot: 'Drip', id: backId, items: [backId], extra: shades },
-  { slot: 'Outfits', id: bodyId, items: [bodyId], extra: shades },
-  { slot: 'Grip', id: handId, items: [handId], extra: shades },
-  { slot: 'Footwear', id: feetId, items: [feetId], extra: shades }
+  { slot: 'Drip', id: backId, items: [backId], extra: [] },
+  { slot: 'Outfits', id: bodyId, items: [bodyId], extra: [] },
+  { slot: 'Grip', id: handId, items: [handId], extra: [] },
+  { slot: 'Footwear', id: feetId, items: [feetId], extra: [] }
 ];
 var worn = slotItems.map(function (s) {
   return { slot: s.slot, id: s.id, label: (R.GEAR_BY_ID[s.id] || Ye.SHADES).label, px: one(ye, 3, s.items, s.extra) };
@@ -96,7 +96,7 @@ var allOn = { slot: 'All six', id: 'all', label: 'All six slots', px: one(ye, 3,
 function hybrid(shape, color) {
   var a = art(shape);
   a.hybrid = { key: 'hyb:' + shape + ':' + color, shape: shape, color: color, feature: 'head', eyes: 'classic', parts: [], roots: [shape, color] };
-  var extra = shape === 'ye' ? shades : [];
+  var extra = [];
   return { shape: shape, color: color, px: one(a, 3, [], extra) };
 }
 var crosses = [
