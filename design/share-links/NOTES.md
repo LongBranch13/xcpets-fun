@@ -40,7 +40,7 @@ A weekly run is enough. A brand-new hatch is not in the set until the next run, 
 
 ## Share button
 
-`Share my pet` copies `https://xcpets.fun/pet/<id>?ref=` and opens `https://x.com/intent/post` with the pet text and that URL. `Telegram` does the same with `https://t.me/share/url`.
+`Share my pet` copies `https://xcpets.fun/pet/<id>?ref=` and opens `https://x.com/intent/post` with the pet text and that URL. `Share to Telegram` does the same with `https://t.me/share/url`. That is the only share pair. Save GIF and Save image stay on the pet page.
 
 It is on the pet page, the hatch review, the breed egg popup, and the Mythic scene. The phone toast is anchored to the left and right edges (same idea as the toast-cutoff fix) so the URL is not shifted off a 360px or 412px screen.
 

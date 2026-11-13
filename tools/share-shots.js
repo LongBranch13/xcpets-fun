@@ -52,7 +52,7 @@ async function bootPet(page, url) {
   try {
     const page = await browser.newPage();
     page.setDefaultTimeout(180000);
-    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.setViewport({ width: 1280, height: 1300, deviceScaleFactor: 1 });
     await bootPet(page, origin + '/pet/15004?ref=');
     report.pretty = await page.evaluate(function () {
       var t = document.getElementById('title').textContent;
@@ -60,7 +60,16 @@ async function bootPet(page, url) {
       var gear = (document.getElementById('gear') || {}).innerText || '';
       return { href: location.pathname + location.search, title: t, facts: facts.slice(0, 180), gear: gear.slice(0, 160), share: !!document.querySelector('.sh-row'), dead: document.body.innerText.indexOf('Died of neglect') >= 0 };
     });
-    await page.screenshot({ path: path.join(OUT, 'pet-desktop.png') });
+    report.buttons = await page.evaluate(function () {
+      return { x: document.querySelectorAll('.sh-x, .xshare').length, tg: document.querySelectorAll('.sh-tg, .tgshare').length, labels: Array.prototype.map.call(document.querySelectorAll('.petshare .btn, .petshare .sh-btn'), function (b) { return b.textContent; }) };
+    });
+    await page.evaluate(function () { var el = document.querySelector('.pcard-wrap'); if (el) scrollTo(0, el.getBoundingClientRect().top + scrollY - 20); });
+    await sleep(300);
+    var desk = await page.evaluate(function () {
+      var r = document.querySelector('.pcard-wrap').getBoundingClientRect();
+      return { x: Math.round(Math.max(0, r.left - 20)), y: Math.round(Math.max(0, r.top - 12)), width: Math.round(r.width + 40), height: Math.round(Math.min(innerHeight - 8, r.bottom - r.top + 24)) };
+    });
+    await page.screenshot({ path: path.join(OUT, 'pet-desktop.png'), clip: desk });
     await page.setViewport({ width: 412, height: 820, deviceScaleFactor: 1 });
     await sleep(400);
     const card = await page.$('#petCard, .pcard-wrap, #cv');
@@ -109,8 +118,10 @@ async function bootPet(page, url) {
       V2Motel.eggPop(w, kid); window.__breed = kid && kid.id;
     });
     await page.waitForSelector('#eggPop .sh-row[data-sh="breed"]', { timeout: 10000 });
+    await page.evaluate(function () { document.querySelectorAll('.tut-tip,.tut-ov').forEach(function (n) { n.remove(); }); });
     await sleep(250);
-    await page.screenshot({ path: path.join(OUT, 'breed-modal-412.png') });
+    const egg = await page.$('#eggPop .ep-box');
+    await (egg || page).screenshot({ path: path.join(OUT, 'breed-modal-412.png') });
     report.breed = await page.evaluate(function () { return { id: window.__breed, label: document.querySelector('#eggPop .sh-x').textContent }; });
 
     await page.evaluate(function () {

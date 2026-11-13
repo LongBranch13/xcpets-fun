@@ -100,7 +100,7 @@ function start(root, api) {
       return b;
     }
     box.appendChild(btn('sh-x', 'Share my pet', 'x'));
-    box.appendChild(btn('sh-tg', 'Telegram', 'tg'));
+    box.appendChild(btn('sh-tg', 'Share to Telegram', 'tg'));
     box.addEventListener('click', function (e) { e.stopPropagation(); });
     return box;
   }

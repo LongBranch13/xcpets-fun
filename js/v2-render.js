@@ -1883,7 +1883,8 @@
   function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
   function imgButton(p) { return btn('imgshare savegif', '🎞️ Save GIF', 'Download the pet\'s dancing GIF', saveGif, p); } /* P7: was 'Share image' (share sheet / file save); now a direct GIF download */
   function shareRow(p) { var d = document.createElement('p'); d.className = 'petshare'; d.setAttribute('data-pet', p.id);
-    [imgButton(p), btn('xshare', '𝕏 Post on X', 'Post on X with the pet card image', postX, p), button(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
+    /* Share my pet + Share to Telegram are the one pair in js/v2-share.js (the /pet/<id>?ref= link). This row keeps the file saves. */
+    [imgButton(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
     return d; }
   window.XCPShare = { saveGif: saveGif, shareTelegram: shareTelegram, cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];

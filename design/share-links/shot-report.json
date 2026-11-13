@@ -7,6 +7,16 @@
     "share": true,
     "dead": false
   },
+  "buttons": {
+    "x": 1,
+    "tg": 1,
+    "labels": [
+      "Share my pet",
+      "Share to Telegram",
+      "🎞️ Save GIF",
+      "💾 Save image"
+    ]
+  },
   "toast412": {
     "text": "Link copied\nhttps://xcpets.fun/pet/15004?ref=",
     "left": 8,
