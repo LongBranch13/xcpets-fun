@@ -3,7 +3,7 @@
  *   God (resurrected pets and God-born babies): a shining body (tint + glow aura + light sweep) plus 2 of 6 divine effects,
  *     a light tint and a halo style from sha256("XCPETS:god-look:" + id) (60 looks).
  *   Mythic God: its Pantheon seat recipe, a stronger shine, Twin Moons and the violet starlight trace (replaces the electric aura).
- *   Mythic-fed (cured) zombie: the fully alive sprite (no rot, no dead eyes) plus its own aura, a solid pale-gold outline and a soft teal halo.
+ *   Mythic-fed (cured) zombie: the fully alive sprite (no rot, no dead eyes) plus a silver, white and red aura and a small badge.
  *   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
  * God looks for existing Gods are on right away (owner Oct 31 2026 9:01 PM CT), not tied to the Mythic gate. ?godlook=0 turns them off (?godlook=1 kept, no-op).
  * Sprites carry no text. Effects are 8-frame loops on top of the pet's own idle frames. Loaded after js/v2-zombies.js. */
@@ -172,26 +172,35 @@
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
   /* Cured (Mythic-fed) aura, painted on the living sprite (the zombie look is not applied to these pets).
-   * Display only. Solid palette pixels, never blended into the card. A clean pale-gold outline,
-   * a soft teal halo one pixel further out, and a gentle step of which halo pixels are the bright ones.
-   * That step rides the pet's existing idle frames: no extra timer, no CSS filter, so a large wallet stays cheap.
-   * prefers-reduced-motion: the same calm halo on every frame, no walking spark. Bitcoin red on the body is not touched.
+   * Display only. The body is not recolored. A two-pixel halo sits outside the silhouette and steps through
+   * silver, white and red. The step rides the pet's existing idle frames: no extra timer, no CSS filter.
+   * prefers-reduced-motion: the same halo on every frame. Bitcoin red on the body is not touched.
+   * CURED_BADGE picks the corner mark. 'cross' (default) is the small red cross. 'offset' is a red cross
+   * shifted onto a dark rounded badge, so it is not a red cross on white. Any other value draws 'cross'.
    * Distinct from a normal zombie (no halo), a Mythic (electric cyan line), a Mythic zombie (broken grey-blue trace)
    * and a Mythic God (body shine, violet starlight, moons). */
+  var CURED_BADGE = 'cross';
   var CURED = {
-    line: [255, 236, 176], spark: [255, 252, 232],
-    halo: [112, 214, 198], haloSoft: [64, 150, 142],
-    pupil: [255, 244, 196], drip: [176, 236, 214]
+    silver: [188, 196, 208], silverHi: [232, 236, 244],
+    white: [255, 255, 255], red: [214, 32, 40], redDeep: [168, 20, 28],
+    badgeDark: [36, 32, 48]
   };
-  var CURED_FROM = [[214, 255, 168], [150, 214, 96], [150, 210, 92], [214, 255, 150]]; /* zombie pupil + drool, not the rot skin */
+  var CURED_SEQ = null;
+  function curedSeq() { return CURED_SEQ || (CURED_SEQ = [CURED.silver, CURED.white, CURED.red, CURED.silverHi, CURED.white, CURED.redDeep]); }
   function reducedMotion() { try { var mm = window.matchMedia; return !!(mm && mm.call(window, '(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
-  function isRedPx(c) { return c[0] >= 140 && c[0] > c[1] + 40 && c[0] > c[2] + 40; } /* Bitcoin red stays red; never shifted toward orange */
-  function nearAcc(c, t) { return Math.abs(c[0] - t[0]) <= 4 && Math.abs(c[1] - t[1]) <= 4 && Math.abs(c[2] - t[2]) <= 4; }
-  function blessAccent(c) { if (!c || isRedPx(c)) return null; for (var i = 0; i < CURED_FROM.length; i++) if (nearAcc(c, CURED_FROM[i])) return i < 2 ? CURED.pupil : CURED.drip; return null; }
-  function curedFrames(fr, KA, KB) { var out = [], n = Math.max(NF, fr.length), still = reducedMotion();
+  function badgeMode() { var m = CURED_BADGE; try { var g = window.V2MythicGod; if (g && (g.CURED_BADGE === 'cross' || g.CURED_BADGE === 'offset')) m = g.CURED_BADGE; } catch (e) {} return m === 'offset' ? 'offset' : 'cross'; }
+  function around(list, on) { var bb = bbox(on), cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+    return list.slice().sort(function (a, b) { var ax = a % 32, ay = (a / 32) | 0, bx = b % 32, by = (b / 32) | 0, d = Math.atan2(ay - cy, ax - cx) - Math.atan2(by - cy, bx - cx); return d < 0 ? -1 : d > 0 ? 1 : a - b; }); }
+  /* 5x5 mark in the reserved corner (x27-31, y0-4). The cross is centered on white.
+     The offset mark is the same red cross shifted one pixel right, on a dark round, corners left empty. */
+  function stampBadge(img, mode) { var x0 = 27, y0 = 0, D = CURED.badgeDark, R = CURED.red, W = CURED.white, pix, i, p;
+    pix = mode === 'offset'
+      ? [[1, 0, D], [2, 0, D], [3, 0, D], [0, 1, D], [1, 1, D], [2, 1, D], [3, 1, R], [4, 1, D], [0, 2, D], [1, 2, D], [2, 2, R], [3, 2, R], [4, 2, R], [0, 3, D], [1, 3, D], [2, 3, D], [3, 3, R], [4, 3, D], [1, 4, D], [2, 4, D], [3, 4, D]]
+      : [[0, 0, W], [1, 0, W], [2, 0, W], [3, 0, W], [4, 0, W], [0, 1, W], [1, 1, W], [2, 1, R], [3, 1, W], [4, 1, W], [0, 2, W], [1, 2, R], [2, 2, R], [3, 2, R], [4, 2, W], [0, 3, W], [1, 3, W], [2, 3, R], [3, 3, W], [4, 3, W], [0, 4, W], [1, 4, W], [2, 4, W], [3, 4, W], [4, 4, W]];
+    for (i = 0; i < pix.length; i++) { p = pix[i]; img[(y0 + p[1]) * 32 + x0 + p[0]] = p[2]; } }
+  function curedFrames(fr, KA, KB) { var out = [], n = Math.max(NF, fr.length), still = reducedMotion(), seq = curedSeq(), mode = badgeMode();
     for (var f = 0; f < n; f++) { var src = fr[f % fr.length], a = KA[f % KA.length], b = KB[f % KB.length]; if (!src || !src.data || src.data.length !== 4096 || !a || !b) return null;
       var on = silOf(a.data, b.data), img = toImg(src.data), ring = [], halo = [], inR = new Uint8Array(1024), i, x, y;
-      for (i = 0; i < 1024; i++) { if (!on[i] || badge(i % 32, (i / 32) | 0)) continue; var acc = blessAccent(img[i]); if (acc) img[i] = acc; }
       var cand = [];
       for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { if (on[y * 32 + x] || badge(x, y)) continue;
         if (onAt(on, x + 1, y) || onAt(on, x - 1, y) || onAt(on, x, y + 1) || onAt(on, x, y - 1)) cand.push(y * 32 + x); }
@@ -204,9 +213,9 @@
       for (i = 0; i < ring.length; i++) inR[ring[i]] = 1;
       for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { var hi = y * 32 + x; if (on[hi] || inR[hi] || badge(x, y)) continue;
         if ((x < 31 && inR[hi + 1]) || (x > 0 && inR[hi - 1]) || (y < 31 && inR[hi + 32]) || (y > 0 && inR[hi - 32])) halo.push(hi); }
-      var sp = (!still && ring.length) ? (Math.floor(f * ring.length / NF) % ring.length) : -1, shift = still ? 0 : (f % NF);
-      for (i = 0; i < ring.length; i++) img[ring[i]] = i === sp ? CURED.spark : CURED.line;
-      for (i = 0; i < halo.length; i++) img[halo[i]] = ((i + shift) & 1) ? CURED.haloSoft : CURED.halo;
+      var phase = still ? 0 : (f % NF);
+      function lay(list, shift, skip) { var ord = around(list, on); for (var k = 0; k < ord.length; k++) { if (skip && ((k + phase) & 1)) continue; img[ord[k]] = seq[(k + phase * 2 + shift) % seq.length]; } }
+      lay(ring, 0, false); lay(halo, 3, true); stampBadge(img, mode);
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
   /* isMythicFed first (a pure read). mgView().fed only if that helper is missing. No new pet state. */
@@ -228,7 +237,7 @@
     return pf(Object.assign({}, p, keepZ ? { art: a } : { zombie: null, art: a, mutation: null, shows: null }), w, extra); }
   if (R && typeof R.petFrames === 'function') { var pf0 = R.petFrames;
     R.petFrames = function (p, w, extra) { var fr = pf0.apply(this, arguments), lk; try { lk = lookOf(p, w); } catch (e) { lk = null; } if (!lk || !DONE || !fr || !fr.length || !fr[0] || !fr[0].data) return fr;
-      var key = JSON.stringify(lk), hit = DONE.get(fr); if (hit && hit.__k === key) return hit; var out = null;
+      var key = JSON.stringify(lk) + (lk.z === 'fed' ? '|' + badgeMode() : ''), hit = DONE.get(fr); if (hit && hit.__k === key) return hit; var out = null;
       try { var zz = !!lk.z, KA = keyed(pf0, p, w, extra, '#ff00fe', zz), KB = keyed(pf0, p, w, extra, '#00ff01', zz);
         out = zz ? zFrames(fr, KA, KB, lk.z, p) : godFrames(fr, KA, KB, p, lk); } catch (e) { if (window.console) console.warn('mythic god look failed #' + (p && p.id), e); out = null; }
       if (!out) out = fr; try { out.__k = key; } catch (e) {} DONE.set(fr, out); return out; }; }
@@ -256,5 +265,5 @@
       '.mg-dlg-warn{color:#ffb4a8;font-weight:600}.mg-name{width:100%;margin-top:6px}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
   window.V2MythicGod = { on: gateOn, force: FORCE, godMix: godMix, seatLook: seatLook, SEATS: SEATS, ROMAN: ROMAN, NAMES: NAMES, PAL: PAL, chips: chips, view: view, seatTitle: seatTitle, span: span, esc: esc,
-    godFrames: godFrames, zFrames: zFrames, curedFrames: curedFrames, lookOf: lookOf, fedOf: fedOf, CURED: CURED, NF: NF };
+    godFrames: godFrames, zFrames: zFrames, curedFrames: curedFrames, lookOf: lookOf, fedOf: fedOf, CURED: CURED, CURED_BADGE: CURED_BADGE, NF: NF };
 })();

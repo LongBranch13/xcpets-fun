@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-/* Cured (Mythic-fed) zombie aura. Display only: pale-gold outline + teal halo, no cyan wash,
+/* Cured (Mythic-fed) zombie aura. Display only: a silver, white and red halo plus a small badge.
+ * Default badge is the red cross. 'offset' is a shifted red cross on a dark round.
  * Bitcoin red left red, reduced motion holds still, v2-rules.js byte-identical.
  * Does not draw Sabo #1765. */
 'use strict';
@@ -30,13 +31,21 @@ function boot(match) {
 }
 const stillFlag = { matches: false };
 const G = boot(stillFlag).V2MythicGod;
-const LINE = [255, 236, 176], SPARK = [255, 252, 232], HALO = [112, 214, 198], HALO2 = [64, 150, 142], PUPIL = [255, 244, 196];
-const CYAN = [96, 236, 255];
-t('palette is pale gold and teal, not orange and not the old cyan', () => {
-  assert.deepStrictEqual(rgb(G.CURED.line), LINE);
-  assert.deepStrictEqual(rgb(G.CURED.halo), HALO);
-  [G.CURED.line, G.CURED.spark, G.CURED.halo, G.CURED.haloSoft, G.CURED.pupil, G.CURED.drip].forEach(c => { assert.ok(!orange(c), c.join(',')); assert.ok(!eq(c, CYAN)); });
-  assert.ok(G.CURED.line[2] > 140 && G.CURED.halo[1] > G.CURED.halo[0] && G.CURED.halo[2] > 160);
+const SILVER = [188, 196, 208], SILVER_HI = [232, 236, 244], WHITE = [255, 255, 255], RED = [214, 32, 40], RED_DEEP = [168, 20, 28], DARK = [36, 32, 48];
+const GOLD = [255, 236, 176], TEAL = [112, 214, 198], TEAL2 = [64, 150, 142], CYAN = [96, 236, 255];
+const AURA = [SILVER, SILVER_HI, WHITE, RED, RED_DEEP];
+const tealish = c => c[1] > 140 && c[2] > 140 && c[1] > c[0] + 20 && c[2] > c[0] + 10;
+t('palette is silver, white and red, not orange, gold or teal', () => {
+  assert.strictEqual(G.CURED_BADGE, 'cross');
+  assert.deepStrictEqual(rgb(G.CURED.silver), SILVER);
+  assert.deepStrictEqual(rgb(G.CURED.red), RED);
+  assert.deepStrictEqual(rgb(G.CURED.white), WHITE);
+  [G.CURED.silver, G.CURED.silverHi, G.CURED.white, G.CURED.red, G.CURED.redDeep, G.CURED.badgeDark].forEach(c => {
+    assert.ok(!orange(c), c.join(','));
+    assert.ok(!tealish(c), 'teal ' + c.join(','));
+    assert.ok(!eq(c, CYAN) && !eq(c, TEAL) && !eq(c, TEAL2) && !eq(c, GOLD));
+  });
+  assert.ok(G.CURED.red[0] > 180 && G.CURED.red[1] < 50 && G.CURED.red[2] < 60);
 });
 function disc() {
   const src = new Uint8ClampedArray(4096), ka = new Uint8ClampedArray(4096), kb = new Uint8ClampedArray(4096);
@@ -64,43 +73,85 @@ function px(d, i) { const j = i * 4; return [d[j], d[j + 1], d[j + 2]]; }
 const blob = disc();
 stillFlag.matches = false;
 const fed = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
-t('cured aura is a solid gold outline and a teal halo, not a blended cyan fringe', () => {
+function at(d, x, y) { return px(d, y * 32 + x); }
+function auraCount(d) {
+  const n = { silver: 0, white: 0, red: 0 };
+  for (let i = 0; i < 1024; i++) {
+    const x = i % 32, y = (i / 32) | 0;
+    if (x >= 26 && y < 5) continue;
+    const c = px(d, i);
+    if (eq(c, SILVER) || eq(c, SILVER_HI)) n.silver++;
+    else if (eq(c, WHITE)) n.white++;
+    else if (eq(c, RED) || eq(c, RED_DEEP)) n.red++;
+  }
+  return n;
+}
+t('cured aura shimmers in silver, white and red, with no gold or teal fringe', () => {
   assert.ok(fed && fed.length >= 8);
-  let gold = 0, teal = 0, cyan = 0, off = 0;
+  let off = 0;
   const d = fed[0].data;
-  const known = [LINE, SPARK, HALO, HALO2, PUPIL, [80, 200, 60], [214, 46, 40], [8, 16, 40]];
+  const known = AURA.concat([DARK, [80, 200, 60], [214, 46, 40], [214, 255, 168], [8, 16, 40]]);
   for (let i = 0; i < 1024; i++) {
     const c = px(d, i);
-    if (eq(c, LINE) || eq(c, SPARK)) gold++;
-    if (eq(c, HALO) || eq(c, HALO2)) teal++;
-    if (eq(c, CYAN) || eq(c, [40, 150, 190])) cyan++;
-    if (!known.some(k => eq(c, k))) off++; /* a blended fringe would be an off-palette colour */
+    if (eq(c, GOLD) || eq(c, TEAL) || eq(c, TEAL2) || eq(c, CYAN)) off++;
+    if (!known.some(k => eq(c, k))) off++;
   }
-  assert.ok(gold > 20, 'gold ' + gold);
-  assert.ok(teal > 20, 'teal ' + teal);
-  assert.strictEqual(cyan, 0);
+  const n = auraCount(d);
+  assert.ok(n.silver > 8, 'silver ' + n.silver);
+  assert.ok(n.white > 4, 'white ' + n.white);
+  assert.ok(n.red > 4, 'red ' + n.red);
   assert.strictEqual(off, 0);
-  assert.deepStrictEqual(px(d, 0), [8, 16, 40]); /* far background untouched */
+  assert.deepStrictEqual(px(d, 0), [8, 16, 40]);
 });
-t('Bitcoin red stays red and bright skin is not repainted cyan', () => {
+t('the default badge is a red cross on white', () => {
+  const d = fed[0].data;
+  assert.deepStrictEqual(at(d, 27, 0), WHITE);
+  assert.deepStrictEqual(at(d, 31, 4), WHITE);
+  assert.deepStrictEqual(at(d, 29, 1), RED);
+  assert.deepStrictEqual(at(d, 28, 2), RED);
+  assert.deepStrictEqual(at(d, 29, 2), RED);
+  assert.deepStrictEqual(at(d, 30, 2), RED);
+  assert.deepStrictEqual(at(d, 29, 3), RED);
+  assert.deepStrictEqual(at(d, 28, 1), WHITE);
+});
+t('the offset badge is a shifted red cross on a dark round, not a red cross on white', () => {
+  G.CURED_BADGE = 'offset';
+  const off = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
+  const d = off[0].data;
+  assert.deepStrictEqual(at(d, 27, 0), [8, 16, 40]); /* rounded corner stays the backdrop */
+  assert.deepStrictEqual(at(d, 31, 0), [8, 16, 40]);
+  assert.deepStrictEqual(at(d, 28, 0), DARK);
+  assert.deepStrictEqual(at(d, 30, 1), RED);
+  assert.deepStrictEqual(at(d, 29, 2), RED);
+  assert.deepStrictEqual(at(d, 30, 2), RED);
+  assert.deepStrictEqual(at(d, 31, 2), RED);
+  assert.deepStrictEqual(at(d, 30, 3), RED);
+  let whiteSq = 0;
+  for (let y = 0; y < 5; y++) for (let x = 27; x < 32; x++) if (eq(at(d, x, y), WHITE)) whiteSq++;
+  assert.strictEqual(whiteSq, 0);
+  G.CURED_BADGE = 'nope';
+  const back = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
+  assert.deepStrictEqual(at(back[0].data, 27, 0), WHITE);
+  G.CURED_BADGE = 'cross';
+});
+t('Bitcoin red stays red and the living colours are not repainted', () => {
   const d = fed[0].data;
   assert.deepStrictEqual(px(d, blob.red / 4), [214, 46, 40]);
   assert.ok(!orange(px(d, blob.red / 4)));
   const skin = blob.bodyAt.find(j => j !== blob.red && j !== blob.pupil);
   assert.deepStrictEqual(px(d, skin / 4), [80, 200, 60]);
-  assert.deepStrictEqual(px(d, blob.pupil / 4), PUPIL);
+  assert.deepStrictEqual(px(d, blob.pupil / 4), [214, 255, 168]);
 });
 t('the halo steps across idle frames, and reduced motion holds one calm frame', () => {
   assert.notDeepStrictEqual(Buffer.from(fed[0].data), Buffer.from(fed[3].data));
-  let spark0 = 0, spark3 = 0;
-  for (let i = 0; i < 1024; i++) { if (eq(px(fed[0].data, i), SPARK)) spark0++; if (eq(px(fed[3].data, i), SPARK)) spark3++; }
-  assert.strictEqual(spark0, 1);
-  assert.strictEqual(spark3, 1);
+  const a0 = auraCount(fed[0].data), a3 = auraCount(fed[3].data);
+  assert.ok(a0.silver && a0.white && a0.red);
+  assert.ok(a3.silver && a3.white && a3.red);
   stillFlag.matches = true;
   const calm = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
   assert.deepStrictEqual(Buffer.from(calm[0].data), Buffer.from(calm[3].data));
-  let sparks = 0; for (let i = 0; i < 1024; i++) if (eq(px(calm[0].data, i), SPARK)) sparks++;
-  assert.strictEqual(sparks, 0);
+  const ac = auraCount(calm[0].data);
+  assert.ok(ac.silver > 8 && ac.white > 4 && ac.red > 4);
   stillFlag.matches = false;
 });
 t('a gap through the face is not filled with the outline', () => {
@@ -122,12 +173,17 @@ t('a gap through the face is not filled with the outline', () => {
   const gap = (15 * 32 + 16) * 4;
   assert.deepStrictEqual([out[0].data[gap], out[0].data[gap + 1], out[0].data[gap + 2]], [8, 16, 40]);
 });
-t('a Mythic zombie keeps the broken grey-blue trace, not the cured halo', () => {
+t('a Mythic zombie keeps the broken grey-blue trace, not the cured halo or badge', () => {
   const mz = G.zFrames(blob.fr, blob.KA, blob.KB, 'mythic', { id: 12044 });
-  let gold = 0, grey = 0;
-  for (let i = 0; i < 1024; i++) { const c = px(mz[0].data, i); if (eq(c, LINE) || eq(c, HALO)) gold++; if (eq(c, [70, 80, 100]) || eq(c, [112, 128, 152])) grey++; }
-  assert.strictEqual(gold, 0);
+  let curedCol = 0, grey = 0;
+  for (let i = 0; i < 1024; i++) {
+    const c = px(mz[0].data, i);
+    if (eq(c, SILVER) || eq(c, RED) || eq(c, WHITE) || eq(c, TEAL) || eq(c, GOLD)) curedCol++;
+    if (eq(c, [70, 80, 100]) || eq(c, [112, 128, 152])) grey++;
+  }
+  assert.strictEqual(curedCol, 0);
   assert.ok(grey > 10, 'grey ' + grey);
+  assert.notDeepStrictEqual(at(mz[0].data, 29, 2), RED);
 });
 t('lookOf follows isMythicFed and does not invent state', () => {
   const w = { tip: 1, byId: {} };
@@ -181,7 +237,7 @@ function peepo(id, fedFlag) {
   if (fedFlag) p.zombie.mfed = { block: 974800, mythic: 42, took: 30 };
   return p;
 }
-function countGold(fr) { let n = 0; const d = fr[0].data; for (let i = 0; i < 1024; i++) if (eq(px(d, i), LINE)) n++; return n; }
+function countSilver(fr) { let n = 0; const d = fr[0].data; for (let i = 0; i < 1024; i++) if (eq(px(d, i), SILVER) || eq(px(d, i), SILVER_HI)) n++; return n; }
 t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie stays dead', () => {
   const w = p => ({ items: {}, pets: [p], byId: { [p.id]: p }, tip: 975606 });
   const alive = peepo(50982, false); delete alive.zombie;
@@ -193,28 +249,39 @@ t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie st
   const curedFr = full.V2Render.petFrames(curedPet, w(curedPet), { noHunger: true });
   const curedCalls = mythCalls;
   let bodyDiff = 0, auraPx = 0;
-  const auraCol = c => eq(c, LINE) || eq(c, SPARK) || eq(c, HALO) || eq(c, HALO2);
+  const auraCol = c => AURA.some(k => eq(c, k)) || eq(c, DARK);
   for (let i = 0; i < 1024; i++) {
     const a = px(aliveFr[0].data, i), c = px(curedFr[0].data, i);
     if (eq(a, c)) continue;
     if (auraCol(c)) auraPx++; else bodyDiff++;
   }
-  assert.strictEqual(bodyDiff, 0, 'living face and colours stay; only the aura is added');
+  assert.strictEqual(bodyDiff, 0, 'living face and colours stay; only the aura and badge are added');
   assert.ok(auraPx > 20, 'aura pixels ' + auraPx);
-  assert.ok(countGold(curedFr) > 15);
+  assert.ok(countSilver(curedFr) > 8);
+  assert.deepStrictEqual(at(curedFr[0].data, 29, 2), RED);
+  assert.deepStrictEqual(at(curedFr[0].data, 27, 0), WHITE);
   mythCalls = 0;
-  const normFr = full.V2Render.petFrames(peepo(12044, false), w(peepo(12044, false)), { noHunger: true });
-  assert.strictEqual(countGold(normFr), 0);
+  const norm = peepo(12044, false);
+  const normFr = full.V2Render.petFrames(norm, w(norm), { noHunger: true });
+  assert.notDeepStrictEqual(at(normFr[0].data, 29, 1), RED);
   assert.strictEqual(curedCalls, 0);
   assert.ok(mythCalls > 0, 'normal zombie still takes the electric aura');
   let deadTint = 0;
   for (let i = 0; i < 1024; i++) if (!eq(px(normFr[0].data, i), px(aliveFr[0].data, i))) deadTint++;
   assert.ok(deadTint > 30, 'a normal zombie is still the dead look');
   assert.strictEqual(full.V2Zombies.cured(curedPet, w(curedPet)), true);
-  assert.strictEqual(full.V2Zombies.cured(peepo(12044, false), w(peepo(12044, false))), false);
+  assert.strictEqual(full.V2Zombies.cured(norm, w(norm)), false);
+  full.V2MythicGod.CURED_BADGE = 'offset';
+  const offFr = full.V2Render.petFrames(curedPet, w(curedPet), { noHunger: true });
+  assert.deepStrictEqual(at(offFr[0].data, 30, 2), RED);
+  assert.notDeepStrictEqual(at(offFr[0].data, 27, 0), WHITE);
+  full.V2MythicGod.CURED_BADGE = 'cross';
 });
 t('rules file and replay worker are not part of this display change', () => {
   assert.strictEqual(crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, RULES))).digest('hex'), '8e98664087bab2e991680ebdb80ba143');
-  assert.ok(!fs.readFileSync(path.join(ROOT, 'js/v2-mythic-god.js'), 'utf8').includes('isHot'));
+  const src = fs.readFileSync(path.join(ROOT, 'js/v2-mythic-god.js'), 'utf8');
+  assert.ok(!src.includes('isHot'));
+  assert.ok(!src.includes('255, 236, 176') && !src.includes('112, 214, 198') && !src.includes('64, 150, 142'));
+  assert.ok(!/heart/i.test(src));
 });
 console.log('ALL PASS (' + pass + ')');
