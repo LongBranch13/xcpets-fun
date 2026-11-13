@@ -129,20 +129,16 @@ Fix 1 is the change that removes the 45 s replay on a tip move. Fix 3 is the cha
 
 Same profiles, against a local copy of this branch with `?sync=https://node.xcpets.fun`. The chain and the snapshot are the live ones. `js/v2-rules.js` is still MD5 `8e98664087bab2e991680ebdb80ba143`.
 
-At 05:51 UTC the snapshot was still tip 975,631 on `r16a9352e18f8366e445f7890f8148fc7`, and the chain was 5 then 6 blocks ahead. That is inside the 8-block catch-up window. Every first visit downloaded the 77 checkpoint files and caught up. `justSeeded` was true. No full-history replay worker ran.
+Measured again at 06:33 UTC on this branch after main was merged. The live snapshot was tip 975,637, rules hash `rdf88024c90a3ff2b4443f6a3252f4ecc`, which is the hash this tree computes, and the chain was 1 block ahead (975,638). Every first visit caught up from that snapshot. `justSeeded` was true. 77 checkpoint files. No full-history replay.
 
 | Profile | Visit | Nov 12 | Nov 13 before | After | After path |
 |---|---|---:|---:|---:|---|
-| Desktop | First | 52.9 s | 51.3 s | **28.1 s** (28.9, 27.4) | catch-up, `justSeeded` true |
-| Desktop | Return, same block | 2.95 s | 3.78 s | **15.7 s** (15.9, 15.5) | IndexedDB |
-| Phone | First | 60.8 s | 58.7 s | **70.9 s** (70.7, 71.2) | catch-up, `justSeeded` true |
-| Phone | Return, same block | 11.1 s | 9.35 s | **55.6 s** (57.1, 54.0) | IndexedDB |
+| Desktop | First | 52.9 s | 51.3 s | **16.6 s** (17.0, 16.2) | catch-up, `justSeeded` true |
+| Desktop | Return, same block | 2.95 s | 3.78 s | **4.30 s** (4.46, 4.14) | IndexedDB |
+| Phone | First | 60.8 s | 58.7 s | **41.4 s** (42.5, 40.4) | catch-up, `justSeeded` true |
+| Phone | Return, same block | 11.1 s | 9.35 s | **12.7 s** (12.6, 12.8) | IndexedDB |
 
-Pets 174,223. Burns 4,791. Tip 975,637. Checkpoint parts downloaded on each first visit: 77. Destruction pages walked by the supply widget: 1 (the prefetch), not the old cursor walk.
-
-Desktop first visits are about 23 s shorter than the Nov 13 full replay. The phone first visit is slower: Fast 4G has to download the checkpoint, and that transfer is larger than the one-shot sync read the old path used. The 4× throttle does not slow the replay worker, so the old phone first visit was mostly unthrottled worker time. Catch-up trades that for a download.
-
-Return visits got slower. The decode worker was re-encoding the saved world into tiny slices and the main thread walked it again. Desktop return long tasks were 4–5, max 177–209 ms. Phone return long tasks were 8, max 607–634 ms, 3 of them over 200 ms, and the wall was about 56 s. After that measurement the worker was changed to hand the saved records through without a second encode. Those return numbers are for the slice decoder.
+Pets 174,223. The decode worker reads IndexedDB off the main thread and hands the saved records through. Desktop return long tasks stayed under 200 ms (max 159 and 189). Phone return still has tasks of 602–612 ms, three of them over 200 ms. An earlier pass, while the snapshot was 5–6 blocks behind on `r16a9352…`, was 28.1 s / 15.7 s desktop and 70.9 s / 55.6 s phone; those return times included a second encode of the world that this measurement does not.
 
 ### Exact mode, and a snapshot on a different rules hash
 

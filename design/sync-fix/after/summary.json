@@ -1,18 +1,16 @@
 {
-  "measuredAt": "2026-11-13T05:51:34Z",
-  "snapshot": { "tip": 975631, "rsig": "r16a9352e18f8366e445f7890f8148fc7", "behind": "5 then 6" },
-  "pageTip": 975637,
-  "rows": 4791,
+  "measuredAt": "2026-11-13T06:33:32Z",
+  "snapshot": { "tip": 975637, "rsig": "rdf88024c90a3ff2b4443f6a3252f4ecc", "behind": 1 },
+  "pageTip": 975638,
   "pets": 174223,
   "runs": [
-    { "label": "desktop-cold-1", "totalMs": 28884, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 179, "longOver200": 0 },
-    { "label": "desktop-warm-1", "totalMs": 15893, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 209, "longOver200": 1 },
-    { "label": "desktop-cold-2", "totalMs": 27358, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 127, "longOver200": 0 },
-    { "label": "desktop-warm-2", "totalMs": 15489, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 177, "longOver200": 0 },
-    { "label": "mobile-cold-1", "totalMs": 70666, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 507, "longOver200": 2 },
-    { "label": "mobile-warm-1", "totalMs": 57119, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 607, "longOver200": 3 },
-    { "label": "mobile-cold-2", "totalMs": 71167, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 490, "longOver200": 2 },
-    { "label": "mobile-warm-2", "totalMs": 54003, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 634, "longOver200": 3 }
-  ],
-  "note": "Return visits used the slice decoder. The decode worker was then changed to pass the saved records through without re-encoding."
+    { "label": "desktop-cold-1", "totalMs": 17043, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 176, "longOver200": 0 },
+    { "label": "desktop-warm-1", "totalMs": 4455, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 159, "longOver200": 0 },
+    { "label": "desktop-cold-2", "totalMs": 16197, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 184, "longOver200": 0 },
+    { "label": "desktop-warm-2", "totalMs": 4142, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 189, "longOver200": 0 },
+    { "label": "mobile-cold-1", "totalMs": 42515, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 660, "longOver200": 2 },
+    { "label": "mobile-warm-1", "totalMs": 12590, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 602, "longOver200": 3 },
+    { "label": "mobile-cold-2", "totalMs": 40370, "path": "snapshot-catchup", "justSeeded": true, "worldPartReqs": 77, "longMax": 679, "longOver200": 2 },
+    { "label": "mobile-warm-2", "totalMs": 12810, "path": "idb-hit", "justSeeded": false, "worldPartReqs": 0, "longMax": 612, "longOver200": 3 }
+  ]
 }
