@@ -17,6 +17,7 @@
   function isMythic(p) { return !!p && (p.stage >= 5 || !!p.mythicCare); }
   /* nezu-card-fix (2026-10-30): a risen zombie (the engine's p.zombie record, same test as js/v2-zombies.js) is labelled and offered as a zombie, not a Mythic */
   function isZ(p) { return !!(p && p.zombie && !p.zombie.end); }
+  function routeId() { var q = +(new URLSearchParams(location.search).get('id') || 0); if (q >= 1) return q; var m = String(location.pathname || '').match(/\/pet\/(\d+)\/?$/); if (m) return +m[1]; return window.__XCPETS_PET_ID >= 1 ? +window.__XCPETS_PET_ID : 0; }
   function zh(p, w) { try { return window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null; } catch (e) { return null; } }
   function hrs(n) { var h = n * 10 / 60; return h < 48 ? '~' + Math.round(h) + ' h' : '~' + (h / 24).toFixed(1) + ' days'; }
   /* offer-discards-only-1105 (owner Nov 5 2026): seance offerings read as Sacrificed, not "used up". usedUp field unchanged. */
@@ -120,15 +121,15 @@
         if (t.holder && t.holder !== me()) { T.pend(p.id, null); tokSay('That token sits in another wallet. Make a fresh one.'); tokPaint(true); return; }
         return window.V2Wallet.send(V.deedPlan(p.id, pd.asset), me()).then(function (r) { pd.tieTx = (r && r.txid) || 'sent'; T.pend(p.id, pd); tokSay('Step 2 sent! Almost there.'); tokPaint(true); });
       }).catch(function (e) { b.disabled = false; tokSay('Not sent: ' + (e && e.message || e)); }); }; }
-  function tokPaint(force) { var w = world(), id = +(new URLSearchParams(location.search).get('id') || 0), box = $('pcTok'); if (!w || !w.byId || !box) return;
+  function tokPaint(force) { var w = world(), id = routeId(), box = $('pcTok'); if (!w || !w.byId || !box) return;
     var p = w.byId[id]; if (!p) return; var ME = me(), h = tokHtml(w, p, !!ME && p.owner === ME); if (!force && h === tokLast) return; tokLast = h; box.innerHTML = h; box.hidden = !h; tokBind(w, p); }
   var last = '';
   function paint() {
-    var w = world(), id = +(new URLSearchParams(location.search).get('id') || 0), card = $('petCard'); if (!w || !w.byId || !card) return;
+    var w = world(), id = routeId(), card = $('petCard'); if (!w || !w.byId || !card) return;
     var p = w.byId[id]; if (!p) return; var ME = me(), mine = !!ME && p.owner === ME, zb = isZ(p), myth = !zb && isMythic(p), H = zb ? zh(p, w) : null;
     var I = questsOn() ? (window.V2Rules.questInfo(w, p, tip() + 1) || {}) : {};
     var key = [w.tip, id, ME, !!p.resurrected, (window.V2Rules && V2Rules.godBornOf && V2Rules.godBornOf(w, p)) ? 1 : 0, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start), zb, H && H.pct, H && H.feral].join('|'); if (key === last) return; last = key;
-    card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away);
+    card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead && p.id !== 1765); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away); /* Sabo #1765 is never shown dead */
     var sp = window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(p.species) : p.species;
     $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + ' times' : '') : p.resurrected ? 'God' : myth ? 'Mythic' : TIERS[p.tier] || '') + (window.V2Render && V2Render.godBornChip ? ' ' + V2Render.godBornChip(w, p, 'pc-gb') : '') + '</span><span>' + esc(sp) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + '</span>';
     $('pcFoot').textContent = 'No. ' + String(p.id).padStart(5, '0') + ' · blk ' + fmt(p.hatchBlock);

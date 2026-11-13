@@ -258,8 +258,8 @@
     { id: 'meme', ico: '😂', t: 'Meme contest', s: 'On X, ends Oct 31', steps: [
       ['Meme contest', 'Post your best XCPETS meme <b>on X</b> (X only). It ends <b>Saturday Oct 31</b> at midnight Central. Top 3 win special pet eggs. Follow @XCPets on X for the details.']],
       quiz: [] },
-    { id: 'go', ico: '🚀', t: 'Hatch your first egg', s: 'Your turn!', steps: [
-      ['Your turn, keeper!', 'You know the basics. Head to the Play page and crack your first egg. Coach Peepo will point the way.']], quiz: [], cta: 1 }
+    { id: 'go', ico: '🚀', t: 'Keep a practice pet', s: 'Your turn!', steps: [
+      ['Your turn, keeper!', 'You know the basics. Keep one practice pet in this browser. It is free and needs no wallet. When you want a real pet, connect your wallet and hatch one.']], quiz: [], cta: 1 }
   ];
 
   /* ---------- Tutorial page ---------- */
@@ -299,7 +299,7 @@
         if (s[2] && DEMOS[s[2]]) c.appendChild(DEMOS[s[2]]());
         if (ch.cta) {
           var h = el('div', 'tut-demo', ''); h.appendChild(sprite('pepe', 0, null, '')); h.firstChild.style.width = '96px'; h.firstChild.style.height = '96px';
-          var a = el('a', 'btn ico-egg', '🥚 Hatch your first egg'); a.href = 'play.html?coach=1#hatchPanel'; a.style.fontSize = '18px'; a.onclick = function () { done[ch.id] = 1; save(); };
+          var a = el('a', 'btn ico-egg', '🥚 Keep a practice pet'); a.id = 'pxKeep'; a.href = 'practice.html?keep=1'; a.style.fontSize = '18px'; a.onclick = function () { done[ch.id] = 1; save(); };
           h.appendChild(el('br')); h.appendChild(a); c.appendChild(h);
         }
       } else quiz(c, ch, function () { done[ch.id] = 1; save(); cheer(c); });
@@ -406,7 +406,9 @@
   var FRAMES = [[30, 'gold', '🥇 Gold streak frame'], [7, 'silver', '🥈 Silver streak frame'], [3, 'bronze', '🥉 Bronze streak frame']];
   /* Direct way in to The Big Beautiful Tutorial at the top of Home and Play (a small chip once graduated). Display only. */
   function entry() {
-    var m = document.querySelector('main'); if (!m || document.getElementById('tutEntry') || !/(^|\/)(index\.html|play\.html)?$/.test(location.pathname)) return;
+    var path = location.pathname || '';
+    if (/\/index\.html$/.test(path) || /\/$/.test(path)) return; /* home already has one New here? button */
+    var m = document.querySelector('main'); if (!m || document.getElementById('tutEntry') || !/(^|\/)play\.html$/.test(path)) return;
     var g = graduated(), a = el('a', g ? 'q tut-entry small' : 'btn tut-entry', g ? '🎓 Tutorial' : '🎓 Big Beautiful Tutorial'); a.id = 'tutEntry'; a.href = 'tutorial.html';
     var w = el('div', 'tut-entry-row' + (g ? ' grad' : '')); w.appendChild(a); if (!g) w.appendChild(el('span', 'muted small', 'New here? Learn the game in a few minutes.')); m.insertBefore(w, m.firstChild);
   }
