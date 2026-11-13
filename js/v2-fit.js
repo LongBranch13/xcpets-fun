@@ -88,7 +88,7 @@
   var CAPES = {
     'v2-pepe-cape': { p: pal('#2f9f5f', '#c9a54a'), d: 'lily', flower: true, hem: 'leaf' },          // Lily-pad cape
     'v2-dodo-cape': { p: pal('#2b2b33', '#da291c'), d: 'feather', hem: 'feather' },                     // Black-swan wing cape
-    'v2-nakamoto-cape': { p: pal('#f4ecd8', '#f7931a'), d: 'paper', hem: 'flat' },                      // Whitepaper cape
+    'v2-nakamoto-cape': { p: pal('#f4ecd8', '#da291c'), d: 'paper', hem: 'flat' },                      // Whitepaper cape: paper with bitcoin-red trim
     'v2-wojak-cape': { p: pal('#8d96a8', '#d8dde8'), d: 'hood', hood: true, hem: 'flat', short: true },  // Ash hoodie with hood
     'paper-cape': { p: pal('#f4ecd8', '#a89a78'), d: 'crease', hem: 'torn' },                           // Paper-hands cape
     red: { p: pal('#b8322a', '#e8b04a'), d: 'plain', hem: 'point' }, blue: { p: pal('#2e5fbf', '#d0d6e0'), d: 'plain', hem: 'point' },
@@ -111,7 +111,7 @@
     'v2-mumu-blanket': { p: pal('#e07a2a', '#ffffff'), d: 'blanket', hem: 'flat', short: true }, // Saddle blanket: orange wool, blue/white woven bands
     'v2-snibby-net': { p: pal('#2c4a5a', '#d8c89a'), d: 'net', hem: 'torn' },           // Fishing-net cape: rope mesh over sea blue, orange floats
     'v2-kevin-airmail': { p: pal('#dcecfb', '#2e5fbf'), d: 'airmail', hem: 'flat' },     // Airmail cape: pale-blue envelope paper, red/blue chevron hem
-    'sig-nakamoto-cape': { p: pal('#1e1e24', '#f7931a'), d: 'paper', hem: 'flat' },     // Genesis-block cloak: black with bitcoin-orange trim
+    'sig-nakamoto-cape': { p: pal('#1e1e24', '#da291c'), d: 'paper', hem: 'flat' },     // Genesis-block cloak: black with bitcoin-red trim
     /* Doom Week only. Nothing wears this until a pet is drawn with the id, and no pet has it. */
     'doom-candle-cape': { p: pal('#c8102e', '#1a1020'), d: 'candles', hem: 'point' }
   };

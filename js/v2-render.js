@@ -1325,6 +1325,10 @@
     var it = V.GEAR_BY_ID[id] || {}, art = bare(it.origin && it.origin !== 'nakamoto' && it.origin !== 'wizard' ? it.origin : 'pepe'), go = Object.assign({}, NONE), with_;
     var base = PetCore.render(art, { stage: 5, frame: 0, gearOverride: go, gearCap: 5 });
     if (it.src === 'core') { var g2 = Object.assign({}, go); g2[it.coreSlot] = id; with_ = PetCore.render(art, { stage: 5, frame: 0, gearOverride: g2, gearCap: 5 }); }
+    else if (id === 'sig-nakamoto-cape') { /* picker tile only: behind:true cloak sits wholly on the Mythic body, so the crop was empty. Draw the map on a flat tile, in front. Worn pets still use V2Fit.cape. */
+      var tile = new Uint8ClampedArray(32 * 32 * 4), pi; for (pi = 0; pi < tile.length; pi += 4) { tile[pi] = 20; tile[pi + 1] = 32; tile[pi + 2] = 24; tile[pi + 3] = 255; }
+      base = { data: new Uint8ClampedArray(tile) }; with_ = { data: new Uint8ClampedArray(tile) };
+      try { BonusGear.apply(id, with_, { maxX: 31, minX: 0, maxY: 31, minY: 0, isSil: function () { return false; }, gear: { scarf: 12, armor: [16, 22, 0] }, row: function () { return 12; } }, 0); } catch (eTile) {} }
     else { with_ = { data: new Uint8ClampedArray(base.data) }; var sp = PetCore.SPECIES.filter(function (s) { return s.id === art.species; })[0];
       var key = Object.assign({}, art, { bgColor: '#ff00ff' }), eyes = Object.assign({}, key, { eyes: 'star' }), o = { stage: 5, frame: 0, gearOverride: go, gearCap: 5 };
       try { var kb = PetCore.render(key, o), an = BonusGear.anchors(kb, eyeRender(eyes, o), sp); an.spId = art.species; if (isV2Face(id)) drawFace(id, with_, faceSpots(kb, an, art.species), an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2snug) drawSnugBeanie(with_, an); else if (BonusGear.DEFS[id] && BonusGear.DEFS[id].v2eye && drawEyeGear(with_, an, BonusGear.DEFS[id], BonusGear.DEFS[id].v2eye.s === 'ninja' ? faceSpots(kb, an, art.species) : null) !== false) { /* traced */ } else BonusGear.apply(id, with_, fitAnchors(id, an), 0); var dd = BonusGear.DEFS[id]; if (dd && dd.v2cig) drawFace(dd.v2cig, with_, faceSpots(kb, an, art.species), an); } catch (e) {} }
