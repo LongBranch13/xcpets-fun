@@ -123,9 +123,9 @@
     wojak: { head: { lift: 2, scale: 0.85 } },
     mumu: { head: { lift: 2, scale: 0.85 } },
     snibby: { head: { lift: 2 }, face: { dy: -1 } },
-    doge: { head: { lift: 1 }, face: { dy: 1 } },
+    doge: { head: { lift: 1 }, face: { dy: 1 }, flag: { side: 'L' } },
     rabbit: { head: { lift: 1 } },
-    dodo: { head: { lift: 1 }, face: { dy: 1 } },
+    dodo: { head: { lift: 1 }, face: { dy: 1 }, flag: { side: 'L' } },
     kevin: { head: { lift: 1 } },
     nakamoto: { head: { lift: 1 } },
     sarutobi: { head: { lift: 1, scale: 0.8 } },
@@ -147,9 +147,10 @@
   };
   function doomAnchor(species, slot) {
     var row = (DOOM_ANCHOR[species] || {})[slot] || {};
-    var a = { lift: row.lift, scale: row.scale, aboveEyes: row.aboveEyes, dy: row.dy, inset: row.inset };
+    var a = { lift: row.lift, scale: row.scale, aboveEyes: row.aboveEyes, dy: row.dy, inset: row.inset, dx: row.dx, side: row.side };
     if (slot === 'hand' && a.inset == null) a.inset = 1;
     if (slot === 'head' && a.lift == null && a.aboveEyes == null) a.lift = 1;
+    if (slot === 'flag') { if (a.dx == null) a.dx = 0; if (a.dy == null) a.dy = 0; if (!a.side) a.side = 'R'; }
     return a;
   }
   function isCape(id) { return !!CAPES[id]; }

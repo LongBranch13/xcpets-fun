@@ -8,6 +8,27 @@ html.dw body::before { background-color: #14060c; background-image: radial-gradi
   linear-gradient(#ffffff 0 2px, transparent 2px 3px, #ff2a2a 3px 5px, #c8102e 5px 12px, #8e0b20 12px);
   animation: dw-fall 9s steps(18) infinite; }
 .dw-ash { width: 2px; height: 2px; background: #c8102e; box-shadow: 0 0 0 1px #3a0a12; animation: dw-fall 7s steps(14) infinite; opacity: .8; }
+.dw-arrow, .dw-chart { position: absolute; top: -20px; display: block; image-rendering: pixelated; pointer-events: none; }
+.dw-arrow { width: 7px; height: 7px; background:
+  linear-gradient(#ff2a2a, #ff2a2a) 3px 0 / 1px 4px no-repeat,
+  linear-gradient(#ff2a2a, #ff2a2a) 0 3px / 7px 1px no-repeat,
+  linear-gradient(#c8102e, #c8102e) 1px 4px / 5px 1px no-repeat,
+  linear-gradient(#8e0b20, #8e0b20) 2px 5px / 3px 1px no-repeat,
+  linear-gradient(#8e0b20, #8e0b20) 3px 6px / 1px 1px no-repeat;
+  animation: dw-fall 10s steps(16) infinite; }
+.dw-chart { width: 13px; height: 12px; background:
+  linear-gradient(#fff, #fff) 0 0 / 3px 2px no-repeat,
+  linear-gradient(#ff2a2a, #ff2a2a) 0 2px / 3px 2px no-repeat,
+  linear-gradient(#c8102e, #c8102e) 0 4px / 3px 8px no-repeat,
+  linear-gradient(#fff, #fff) 5px 3px / 3px 2px no-repeat,
+  linear-gradient(#ff2a2a, #ff2a2a) 5px 5px / 3px 2px no-repeat,
+  linear-gradient(#c8102e, #c8102e) 5px 7px / 3px 5px no-repeat,
+  linear-gradient(#fff, #fff) 10px 6px / 3px 2px no-repeat,
+  linear-gradient(#8e0b20, #8e0b20) 10px 8px / 3px 4px no-repeat;
+  animation: dw-fall 12s steps(18) infinite; }
+.dw-r0 { left: 11%; animation-duration: 9s; } .dw-r1 { left: 37%; animation-duration: 13s; animation-delay: -4s; }
+.dw-r2 { left: 58%; animation-duration: 10s; animation-delay: -2s; } .dw-r3 { left: 81%; animation-delay: -6s; }
+.dw-c0 { left: 24%; animation-duration: 14s; } .dw-c1 { left: 49%; animation-delay: -5s; } .dw-c2 { left: 72%; animation-delay: -8s; }
 .dw-s0 { left: 6%; animation-duration: 8s; } .dw-s1 { left: 18%; animation-duration: 11s; animation-delay: -3s; }
 .dw-s2 { left: 31%; animation-duration: 9s; animation-delay: -6s; } .dw-s3 { left: 47%; animation-duration: 10s; animation-delay: -1s; }
 .dw-s4 { left: 62%; animation-duration: 8.5s; animation-delay: -4s; } .dw-s5 { left: 74%; } .dw-s6 { left: 86%; animation-delay: -2s; } .dw-s7 { left: 94%; animation-delay: -7s; }
@@ -43,12 +64,45 @@ html.dw .cem-scene { min-height: 180px; background: #14060c; }
 .dw-stone { position: absolute; width: 28px; height: 36px; background: #3a1820; box-shadow: inset 0 8px 0 #c8102e, inset -4px 0 0 #1a1020, 0 0 0 2px #1a1020; }
 .dw-stone::after { content: ''; position: absolute; left: 11px; top: -12px; width: 6px; height: 12px; background: linear-gradient(#fff 0 3px, #ff2a2a 3px 5px, #c8102e 5px); }
 @keyframes dw-fog { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+/* Place overlays. A child of the scene, pointer-events none, deleted when the switch is off. */
+html.dw .ar-scene, html.dw #motelScene, html.dw #shScene, html.dw #cemScene,
+html.dw #invPanel, html.dw #raidPanel, html.dw #pantheon, html.dw .tg8, html.dw .livefeed, html.dw .scard { position: relative; }
+.dw-place, .dw-cardfx { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.dw-band { height: 44px; bottom: auto; }
+.dw-place::before, .dw-cardfx::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
+  background: linear-gradient(rgba(92, 8, 20, .5), rgba(20, 6, 12, 0)); }
+.dw-band::before { height: 100%; background: linear-gradient(#3a0a12, rgba(20, 6, 12, .15)); }
+.dw-spam::before { height: 22%; }
+.dw-pennant { position: absolute; left: 8px; top: 6px; min-width: 46px; height: 16px; padding: 0 4px 0 8px;
+  background: #c8102e; color: #fff; border: 2px solid #1a1020; box-shadow: -4px 0 0 #1a1020, 2px 2px 0 #000;
+  font-family: "Press Start 2P", monospace; font-size: 8px; line-height: 12px; text-align: center; }
+.dw-pennant b { font-weight: normal; }
+.dw-pchart, .dw-parrow, .dw-ashbit { position: absolute; display: block; image-rendering: pixelated; }
+.dw-pchart { left: auto; right: 10px; top: 8px; width: 13px; height: 12px; background:
+  linear-gradient(#fff, #fff) 0 0 / 3px 2px no-repeat, linear-gradient(#ff2a2a, #ff2a2a) 0 2px / 3px 2px no-repeat, linear-gradient(#c8102e, #c8102e) 0 4px / 3px 8px no-repeat,
+  linear-gradient(#fff, #fff) 5px 3px / 3px 2px no-repeat, linear-gradient(#c8102e, #c8102e) 5px 5px / 3px 7px no-repeat,
+  linear-gradient(#fff, #fff) 10px 6px / 3px 2px no-repeat, linear-gradient(#8e0b20, #8e0b20) 10px 8px / 3px 4px no-repeat; }
+.dw-p2 { right: 28px; top: 14px; }
+.dw-parrow { right: 46px; top: 10px; width: 7px; height: 7px; background:
+  linear-gradient(#ff2a2a, #ff2a2a) 3px 0 / 1px 4px no-repeat, linear-gradient(#ff2a2a, #ff2a2a) 0 3px / 7px 1px no-repeat,
+  linear-gradient(#c8102e, #c8102e) 1px 4px / 5px 1px no-repeat, linear-gradient(#8e0b20, #8e0b20) 2px 5px / 3px 1px no-repeat,
+  linear-gradient(#8e0b20, #8e0b20) 3px 6px / 1px 1px no-repeat; }
+.dw-a2 { right: 58px; top: 18px; }
+.dw-ashbit { width: 2px; height: 2px; background: #c8102e; left: 40%; top: 22px; box-shadow: 18px 8px 0 #8e0b20, 36px -4px 0 #ff2a2a; }
+.dw-b2 { left: 62%; top: 12px; }
+.dw-circus .dw-pennant { left: 10px; top: 8px; } .dw-rare .dw-pennant { left: 50%; top: 8px; transform: translateX(-50%); }
+.dw-motel .dw-pennant { left: 12px; top: 10px; } .dw-raid .dw-pennant { left: 8px; top: 8px; }
+.dw-pantheon .dw-pennant { right: 8px; left: auto; top: 6px; } .dw-tokens .dw-pennant { left: 8px; top: 8px; }
+.dw-live .dw-pennant { left: 8px; top: 8px; } .dw-spam .dw-pennant { display: none; }
+.dw-cempen { left: 8px; top: 8px; } .dw-cemch { left: auto; right: 18px; top: 10px; } .dw-cemar { right: 40px; top: 12px; }
+.dw-cardfx { height: 62%; bottom: auto; }
+.dw-cardfx .dw-pennant { transform: scale(.85); transform-origin: top left; }
 @media (max-width: 700px) {
-  .dw-s4, .dw-s5, .dw-s6, .dw-s7, .dw-a8, .dw-a9, .dw-a10, .dw-a11, .dw-a12, .dw-a13 { display: none; }
+  .dw-s4, .dw-s5, .dw-s6, .dw-s7, .dw-a8, .dw-a9, .dw-a10, .dw-a11, .dw-a12, .dw-a13, .dw-r2, .dw-r3, .dw-c2, .dw-p2, .dw-a2 { display: none; }
   .dw-sale { font-size: 10px; } .dw-sign { font-size: 7px; max-width: 54%; }
   .dw-joke { font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dw-stick, .dw-ash, .dw-sale, .dw-fog { animation: none; }
-  .dw-stick, .dw-ash { top: 12%; opacity: .4; }
+  .dw-stick, .dw-ash, .dw-arrow, .dw-chart, .dw-sale, .dw-fog { animation: none; }
+  .dw-stick, .dw-ash, .dw-arrow, .dw-chart { top: 12%; opacity: .4; }
 }

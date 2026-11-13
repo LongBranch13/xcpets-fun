@@ -2,11 +2,12 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib'), { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
-const ART = '/opt/cursor/artifacts/doom-week';
+const ART = '/opt/cursor/artifacts/doom-week-v2';
 const SHOW = path.join(ART, 'showcase');
+const PLACES_DIR = path.join(ART, 'places');
 const DESIGN = __dirname;
 const DESIGN_SHOW = path.join(DESIGN, 'showcase');
-[ART, SHOW, DESIGN_SHOW, path.join(ROOT, 'img/doom')].forEach(d => fs.mkdirSync(d, { recursive: true }));
+[ART, SHOW, DESIGN_SHOW, PLACES_DIR, path.join(ROOT, 'img/doom')].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
 function load() {
   const st = {};
@@ -16,7 +17,7 @@ function load() {
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, currentScript: { src: '' }, head: { appendChild() {} }, body: null, documentElement: { style: {} }, readyState: 'loading' };
   win.window = win; win.self = win;
   const c = vm.createContext(win);
-  ['js/bonus-gear.js', 'js/v2-fit.js', 'js/pet-core.js', 'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/doom-gear.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), c, { filename: f }));
+  ['js/bonus-gear.js', 'js/v2-fit.js', 'js/pet-core.js', 'js/v2-gear.js', 'js/kek-sprite.js', 'js/wizard-sprite.js', 'js/doom-gear.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), c, { filename: f }));
   return c;
 }
 const C = load();
@@ -142,7 +143,7 @@ if (doomed.pepe) {
 })();
 
 /* item sprites 1x and 4x */
-const itemRow = paper(5 * 160, 80);
+const itemRow = paper(DG.IDS.length * 160, 80);
 DG.IDS.forEach((id, n) => {
   const ic = DG.icon(id); const b = bufOf(ic);
   fs.writeFileSync(path.join(ROOT, 'img/doom', id + '.png'), pngOf(32, 32, b));
@@ -152,8 +153,8 @@ DG.IDS.forEach((id, n) => {
   blitAt(itemRow, 5 * 160, 80, b, 32, 32, n * 160 + 16, 8, 2);
   text(itemRow, 5 * 160, 80, id.replace('doom-', '').replace('candle-', ''), n * 160 + 8, 78 - 8, [244, 230, 234], 1);
 });
-save(path.join(ART, 'items-1x-4x-sheet.png'), 5 * 160, 80, itemRow);
-save(path.join(DESIGN, 'items-1x-4x-sheet.png'), 5 * 160, 80, itemRow);
+save(path.join(ART, 'items-1x-4x-sheet.png'), DG.IDS.length * 160, 80, itemRow);
+save(path.join(DESIGN, 'items-1x-4x-sheet.png'), DG.IDS.length * 160, 80, itemRow);
 
 /* roster fit sheet: adult, full kit, anchors from v2-fit */
 const roster = species.filter(id => doomed[id] && doomed[id].adult);
@@ -240,3 +241,92 @@ swapped.forEach(pair => {
 fs.writeFileSync(path.join(DESIGN, 'swapped.json'), JSON.stringify(swapped, null, 2));
 fs.writeFileSync(path.join(ART, 'swapped.json'), JSON.stringify(swapped, null, 2));
 console.log('swapped', swapped.length);
+
+/* Place screens. Before is the ordinary night look. After is the same scene under the doom sky,
+ * with one DOOM flag, a falling candle chart, down arrows and a little red ash. No pet is redrawn here. */
+function rect(dst, dw, dh, x, y, w, h, rgb) {
+  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+    if (xx < 0 || yy < 0 || xx >= dw || yy >= dh) continue;
+    const i = (yy * dw + xx) * 4; dst[i] = rgb[0]; dst[i + 1] = rgb[1]; dst[i + 2] = rgb[2]; dst[i + 3] = 255;
+  }
+}
+function skyFill(dst, W, H, doom) {
+  for (let y = 0; y < H; y++) {
+    const c = doom ? (y < 50 ? [58, 10, 18] : y < 100 ? [36, 8, 14] : [20, 6, 12]) : (y < 70 ? [11, 10, 31] : y < 120 ? [29, 21, 48] : [20, 16, 28]);
+    rect(dst, W, H, 0, y, W, 1, c);
+  }
+}
+function flagAt(dst, W, H, x, y) {
+  const rows = ['n............', 'nQQQQQQQQQQQn', 'nQww.Q.w.QQQn', 'nQw.wQw.wQQQn', 'nQw.wQw.wQQQn', 'nQww.Q.w.QQQn', 'nQQQQQQQQQQQn', 'nQ.w.Qw...wQn', 'nQw.wQww.wwQn', 'nQw.wQw.w.wQn', 'nQ.w.Qw...wQn', 'nQrrrrrrrrrrn', 'n............'];
+  const col = { n: [26, 16, 32], Q: [218, 41, 28], w: [255, 255, 255], r: [179, 18, 26], '.': null };
+  rows.forEach((row, yy) => { for (let xx = 0; xx < row.length; xx++) { const c = col[row[xx]]; if (!c) continue; rect(dst, W, H, x + xx * 2, y + yy * 2, 2, 2, c); } });
+}
+function chartAt(dst, W, H, x, y) {
+  [[0, 0, 10], [8, 3, 7], [16, 6, 4]].forEach(c => { rect(dst, W, H, x + c[0], y + c[1], 5, 2, [255, 255, 255]); rect(dst, W, H, x + c[0], y + c[1] + 2, 5, 2, [255, 42, 42]); rect(dst, W, H, x + c[0], y + c[1] + 4, 5, c[2], [200, 16, 46]); });
+}
+function arrowAt(dst, W, H, x, y) {
+  rect(dst, W, H, x + 2, y, 2, 6, [255, 42, 42]); rect(dst, W, H, x, y + 4, 6, 2, [255, 42, 42]); rect(dst, W, H, x + 1, y + 6, 4, 2, [200, 16, 46]); rect(dst, W, H, x + 2, y + 8, 2, 2, [142, 11, 32]);
+}
+function ashAt(dst, W, H, n) {
+  for (let i = 0; i < n; i++) rect(dst, W, H, (i * 47 + 13) % (W - 4), 8 + (i * 19) % 40, 2, 2, i % 2 ? [200, 16, 46] : [255, 42, 42]);
+}
+function dressPlace(dst, W, H) { flagAt(dst, W, H, 12, 8); chartAt(dst, W, H, W - 40, 10); arrowAt(dst, W, H, W - 62, 14); arrowAt(dst, W, H, 150, 18); ashAt(dst, W, H, 8); }
+const INK = [16, 14, 20], GOLD = [232, 179, 58], CREAM = [255, 241, 168], SAND = [179, 139, 85];
+function paintPlace(id, doom) {
+  const W = 320, H = 180, d = Buffer.alloc(W * H * 4);
+  skyFill(d, W, H, doom);
+  if (id === 'circus') {
+    for (let i = 0; i < 10; i++) rect(d, W, H, i * 32, 28, 26, 70, doom ? [70, 16, 24] : [59, 23, 102]);
+    rect(d, W, H, 0, 96, W, 28, doom ? [90, 24, 32] : [90, 58, 74]); rect(d, W, H, 0, 122, W, 58, SAND);
+    rect(d, W, H, 118, 40, 84, 78, INK); rect(d, W, H, 126, 48, 68, 62, [82, 102, 85]); rect(d, W, H, 146, 78, 28, 32, [20, 12, 16]);
+    rect(d, W, H, 36, 136, 22, 18, [140, 198, 63]); rect(d, W, H, 258, 134, 22, 18, GOLD);
+    for (let i = 0; i < 18; i++) rect(d, W, H, 8 + (i % 9) * 10, 40 + Math.floor(i / 9) * 12, 4, 4, [i % 3 ? CREAM : [200, 16, 46]]);
+  } else if (id === 'rare') {
+    rect(d, W, H, 0, 0, W, 124, doom ? [42, 8, 16] : [42, 15, 74]);
+    [[16, 22], [16, 70], [244, 22], [244, 70]].forEach((s, n) => { rect(d, W, H, s[0], s[1], 58, 40, INK); rect(d, W, H, s[0] + 3, s[1] + 3, 52, 34, GOLD); rect(d, W, H, s[0] + 8, s[1] + 8, 42, 24, [[154, 163, 181], [79, 209, 139], [79, 157, 255], [200, 16, 46]][n]); });
+    rect(d, W, H, 140, 18, 40, 40, GOLD); rect(d, W, H, 148, 26, 24, 24, doom ? [200, 16, 46] : [191, 233, 214]);
+    rect(d, W, H, 0, 124, W, 56, [239, 232, 246]); for (let x = 0; x < W; x += 16) rect(d, W, H, x, 124, 16, 8, (x / 16) % 2 ? [28, 15, 51] : [239, 232, 246]);
+  } else if (id === 'motel') {
+    for (let i = 0; i < 30; i++) rect(d, W, H, (i * 53) % W, (i * 19) % 60, 1, 1, CREAM);
+    rect(d, W, H, 20, 36, 180, 28, INK); rect(d, W, H, 24, 40, 172, 20, doom ? [200, 16, 46] : [255, 79, 216]);
+    rect(d, W, H, 40, 90, 240, 70, [232, 160, 180]); rect(d, W, H, 150, 104, 80, 40, [242, 215, 160]);
+    rect(d, W, H, 0, 160, W, 20, [42, 42, 51]);
+  } else if (id === 'spam') {
+    [[0, 78, 36], [36, 58, 30], [284, 64, 36]].forEach(b => { rect(d, W, H, b[0], b[1], b[2], H - b[1], [43, 31, 77]); for (let yy = b[1] + 8; yy < 150; yy += 14) rect(d, W, H, b[0] + 6, yy, 6, 6, doom ? [200, 16, 46] : GOLD); });
+    rect(d, W, H, 96, 36, 148, 120, [59, 42, 26]); rect(d, W, H, 108, 48, 124, 16, doom ? [200, 16, 46] : [11, 10, 31]);
+    rect(d, W, H, 110, 78, 120, 46, [11, 10, 31]); rect(d, W, H, 0, 156, W, 24, [36, 26, 18]);
+  } else if (id === 'raid') {
+    for (let i = 0; i < 8; i++) rect(d, W, H, i * 40, 18, 30, 78, doom ? [58, 10, 18] : [59, 23, 102]);
+    rect(d, W, H, 104, 36, 112, 86, [82, 102, 85]); rect(d, W, H, 124, 52, 28, 16, [208, 40, 79]); rect(d, W, H, 168, 52, 28, 16, [208, 40, 79]);
+    rect(d, W, H, 140, 84, 40, 12, INK); rect(d, W, H, 0, 128, W, 52, SAND);
+    rect(d, W, H, 28, 142, 18, 16, [140, 198, 63]); rect(d, W, H, 270, 144, 18, 16, GOLD);
+  } else if (id === 'cemetery') {
+    for (let i = 0; i < 40; i++) rect(d, W, H, (i * 71) % W, (i * 17) % 70, 1, 1, CREAM);
+    rect(d, W, H, 248, 16, 28, 28, CREAM); rect(d, W, H, 0, 120, W, 60, [20, 48, 31]);
+    [[40, 112], [100, 126], [160, 108], [226, 124], [276, 114]].forEach(g => { rect(d, W, H, g[0], g[1] - 28, 24, 28, [138, 138, 160]); rect(d, W, H, g[0] + 10, g[1] - 36, 4, 10, doom ? [200, 16, 46] : [42, 42, 58]); });
+  } else if (id === 'pantheon') {
+    for (let i = 0; i < 30; i++) rect(d, W, H, (i * 61) % W, (i * 13) % 60, 1, 1, CREAM);
+    rect(d, W, H, 248, 16, 26, 26, CREAM); rect(d, W, H, 0, 148, W, 32, [20, 48, 31]);
+    [[46, 78], [136, 62], [226, 78]].forEach(q => { rect(d, W, H, q[0], q[1], 40, 72, GOLD); rect(d, W, H, q[0] + 8, q[1] + 10, 24, 40, [42, 33, 80]); });
+  } else if (id === 'tokens') {
+    rect(d, W, H, 0, 0, W, 109, doom ? [42, 10, 18] : [37, 54, 90]);
+    for (let i = 0; i < 5; i++) { rect(d, W, H, 18 + i * 60, 126, 24, 28, i % 2 ? GOLD : [140, 198, 63]); rect(d, W, H, 44 + i * 60, 90, 22, 28, doom ? [200, 16, 46] : GOLD); }
+    rect(d, W, H, 0, 120, W, 60, [68, 68, 84]);
+  } else {
+    rect(d, W, H, 8, 8, 304, 100, doom ? [42, 8, 16] : [59, 23, 102]);
+    rect(d, W, H, 78, 17, 168, 70, INK); rect(d, W, H, 82, 21, 160, 62, [37, 54, 90]);
+    rect(d, W, H, 14, 18, 55, 16, [155, 16, 53]); rect(d, W, H, 0, 124, W, 56, [68, 68, 84]);
+    text(d, W, H, 'ON AIR', 18, 30, CREAM, 1);
+  }
+  if (doom) dressPlace(d, W, H);
+  text(d, W, H, doom ? 'DOOM' : id.toUpperCase(), 8, H - 8, doom ? [255, 42, 42] : CREAM, 1);
+  return { w: W, h: H, rgba: d };
+}
+const PLACE_IDS = ['circus', 'rare', 'motel', 'spam', 'raid', 'cemetery', 'pantheon', 'tokens', 'live'];
+PLACE_IDS.forEach(id => {
+  const both = sideBySide(paintPlace(id, false), paintPlace(id, true), id.toUpperCase());
+  save(path.join(PLACES_DIR, id + '-before-after.png'), both.w, both.h, both.rgba);
+  console.log('place', id);
+});
+['doom-hodl-sign.png'].forEach(f => ['img/doom', 'design/doom-week'].forEach(dir => { const p = path.join(ROOT, dir, f); if (dir === 'design/doom-week') return; try { fs.unlinkSync(path.join(ROOT, dir, f)); } catch (e) {} }));
+['doom-hodl-sign-1x.png', 'doom-hodl-sign-4x.png', 'doom-hodl-sign.png'].forEach(f => { try { fs.unlinkSync(path.join(DESIGN, f)); } catch (e) {} try { fs.unlinkSync(path.join(ROOT, 'img/doom', f)); } catch (e) {} });

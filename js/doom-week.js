@@ -151,12 +151,14 @@
     if (layer) return; layer = el('div', 'dw-layer'); layer.setAttribute('aria-hidden', 'true');
     var h = '', i; for (i = 0; i < 8; i++) h += '<i class="dw-stick dw-s' + i + '"></i>';
     for (i = 0; i < 14; i++) h += '<i class="dw-ash dw-a' + i + '"></i>';
+    for (i = 0; i < 4; i++) h += '<i class="dw-arrow dw-r' + i + '"></i>';
+    for (i = 0; i < 3; i++) h += '<i class="dw-chart dw-c' + i + '"></i>';
     layer.innerHTML = h; document.body.appendChild(layer);
   }
   function shopBits() {
     var stage = document.querySelector('#shScene .cs-stage') || document.getElementById('shScene'); if (!stage || document.querySelector('.dw-sale')) return;
     var sale = el('div', 'dw-sale'); sale.textContent = 'DOOM SALE';
-    var sign = el('div', 'dw-sign'); sign.textContent = 'will trade pets for sats';
+    var sign = el('div', 'dw-sign'); sign.textContent = 'DOOM';
     var scene = document.getElementById('shScene'); if (scene) scene.insertBefore(sale, scene.firstChild); else stage.appendChild(sale);
     stage.appendChild(sign);
   }
@@ -175,6 +177,7 @@
       fx = el('div', 'dw-cemfx'); fx.setAttribute('aria-hidden', 'true');
       var h = '<div class="dw-fog dw-fog1"></div><div class="dw-fog dw-fog2"></div>';
       [[18, 62], [30, 70], [70, 58], [78, 74], [12, 78]].forEach(function (p) { h += '<i class="dw-stone" style="left:' + p[0] + '%;top:' + p[1] + '%"></i>'; });
+      h += '<i class="dw-pennant dw-cempen"><b>DOOM</b></i><i class="dw-pchart dw-cemch"></i><i class="dw-parrow dw-cemar"></i>';
       fx.innerHTML = h;
     }
     var c = box.querySelector('canvas');
@@ -185,8 +188,38 @@
     if (window.MutationObserver && !cemObs) { cemObs = new MutationObserver(function () { cemFx(); }); cemObs.observe(box, { childList: true }); }
   }
   function clearCem() { if (cemObs) { cemObs.disconnect(); cemObs = null; } document.querySelectorAll('.dw-cemfx').forEach(function (n) { n.parentNode.removeChild(n); }); }
+  /* Every in-game place (js/v2-places.js). Decor is a child overlay, removed entirely when the switch is off.
+   * Cemetery uses its own fog layer so Sabo is never one of the stones. Players' pets are not redrawn. */
+  var PLACE_HOSTS = [
+    { id: 'circus', sel: '.ar-scene', kind: 'scene' },
+    { id: 'rare', sel: '#invPanel', kind: 'band' },
+    { id: 'motel', sel: '#motelScene', kind: 'scene' },
+    { id: 'spam', sel: '#shScene', kind: 'scene' },
+    { id: 'raid', sel: '#raidPanel', kind: 'band' },
+    { id: 'pantheon', sel: '#pantheon', kind: 'band' },
+    { id: 'tokens', sel: '.tg8', kind: 'band' },
+    { id: 'live', sel: '.livefeed', kind: 'band' }
+  ];
+  function placeHtml() {
+    return '<i class="dw-pennant"><b>DOOM</b></i><i class="dw-pchart"></i><i class="dw-pchart dw-p2"></i><i class="dw-parrow"></i><i class="dw-parrow dw-a2"></i><i class="dw-ashbit"></i><i class="dw-ashbit dw-b2"></i>';
+  }
+  function watchPlaces() {
+    PLACE_HOSTS.forEach(function (p) {
+      var host = document.querySelector(p.sel); if (!host || host.querySelector('.dw-place')) return;
+      var box = el('div', 'dw-place dw-' + p.kind + ' dw-' + p.id); box.setAttribute('aria-hidden', 'true'); box.innerHTML = placeHtml();
+      host.appendChild(box);
+    });
+    document.querySelectorAll('#sceneCards .scard').forEach(function (card) {
+      if (card.querySelector('.dw-cardfx')) return;
+      var fx = el('span', 'dw-cardfx'); fx.setAttribute('aria-hidden', 'true'); fx.innerHTML = '<i class="dw-pennant"><b>DOOM</b></i><i class="dw-pchart"></i><i class="dw-parrow"></i>';
+      card.appendChild(fx);
+    });
+  }
+  function clearPlaces() {
+    document.querySelectorAll('.dw-place, .dw-cardfx').forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+  }
   function turnOn() {
-    if (on) return; on = true; loadCss(); root.classList.add('dw'); addLayer(); swapShowcase(true); watchShop(); watchCem();
+    if (on) return; on = true; loadCss(); root.classList.add('dw'); addLayer(); swapShowcase(true); watchShop(); watchCem(); watchPlaces();
     if (!btcQuote) Promise.all([loadBtc(), loadSupply()]).then(function (pair) {
       btcQuote = pair[0]; supplyLeft = pair[1];
       if (btcQuote && supplyLeft) drops = applyReading(btcQuote.usd, supplyLeft.tokens);
@@ -197,17 +230,18 @@
   function turnOff() {
     if (!on) return; on = false; badgeKey = 'x'; root.classList.remove('dw');
     if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null;
-    swapShowcase(false); clearShop(); clearCem();
+    swapShowcase(false); clearShop(); clearCem(); clearPlaces();
     if (countEl && countEl.parentNode) countEl.parentNode.removeChild(countEl); countEl = null;
     paintBadge();
     if (cssEl && cssEl.parentNode) cssEl.parentNode.removeChild(cssEl); cssEl = null;
   }
   function apply() { if (wanted()) turnOn(); else turnOff(); }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
-  setInterval(function () { if (!on && flag() === null) apply(); if (on) { paintCount(); paintBadge(); } }, 2500);
+  setInterval(function () { if (!on && flag() === null) apply(); if (on) { paintCount(); paintBadge(); watchPlaces(); watchCem(); } }, 2500);
   function start() { apply(); }
   window.XCDoomWeek = {
     ENABLED: ENABLED, START: START, END: END, SABO_ID: SABO_ID, inWindow: inWindow, wanted: wanted, isOn: function () { return on; }, showcaseOn: function () { return on; },
+    PLACES: ['circus', 'rare', 'motel', 'spam', 'raid', 'cemetery', 'pantheon', 'tokens', 'live'],
     parseCoinbase: parseCoinbase, parseKraken: parseKraken, parseSupply: parseSupply, counterText: counterText, downFlags: downFlags, counterHtml: counterHtml, survivedAddr: function (addr, rows, at) {
       var V = window.V2Rules; if (!V || !V.readBurns) return false;
       return V.readBurns(rows || []).some(function (r) { return r && r.source === addr && r.block_index >= START && r.block_index < END && (at == null || r.block_index <= at); });

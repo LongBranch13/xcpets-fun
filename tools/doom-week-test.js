@@ -29,9 +29,11 @@ ok(G.ITEMS.every(it => !/^doom-/.test(it.id)), 'doom pieces are not in V2Gear.IT
 ok(!V.GEAR_BY_ID['doom-flag'], 'rules catalog does not know the doom flag');
 const pool = V.pool('hand', 'pepe', 3, null).map(x => x.it.id);
 ok(pool.indexOf('doom-flag') < 0 && pool.indexOf('doom-hodl-sign') < 0, 'hand pool has no doom gear');
+ok(!D.DEFS['doom-hodl-sign'] && D.DEFS['doom-flag'].label === 'Doom flag' && D.DEFS['doom-flag'].map.join('').indexOf('w') >= 0, 'one doom flag, the cloth carries the word');
+ok(!/HODL/.test(fs.readFileSync(path.join(ROOT, 'js/doom-gear.js'), 'utf8')), 'doom gear file has no HODL wording');
 ok(F.doomAnchor('peepo', 'head').aboveEyes === 2 && F.doomAnchor('wojak', 'head').lift === 2 && F.doomAnchor('wojak', 'head').scale === 0.85, 'peepo and wojak head anchors');
 ok(F.doomAnchor('pepe', 'hand').inset === 1 && F.isCape('doom-candle-cape'), 'held inset and red candle cape');
-ok(D && D.IDS.length === 5 && D.frames(ctx.PetCore.characterPet('pepe', { tier: 'legendary' }), 3).length === 4, 'pepe doom frames render');
+ok(D && D.IDS.length === 4 && D.frames(ctx.PetCore.characterPet('pepe', { tier: 'legendary' }), 3).length === 4, 'pepe doom frames render');
 ok(D.frames(ctx.PetCore.characterPet('pepe', { tier: 'legendary' }), 0) === null, 'eggs are not dressed');
 const rows = [
   { tx_hash: 'a', block_index: 975640, source: 'bc1qdoom', status: 'valid', amount: 69 },
@@ -54,6 +56,7 @@ var html = W.counterHtml(68000, 68e6, { btc: true, supply: false });
 ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,000') < html.indexOf('dw-down') && html.indexOf('dw-down') < html.indexOf('XCPETS left') && !/price/i.test(html), 'the arrow sits beside the number that went down');
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
 ok(W.START === 975640 && W.END === 976648 && W.SABO_ID === 1765, 'window and Sabo id');
+ok(W.PLACES && W.PLACES.join(',') === 'circus,rare,motel,spam,raid,cemetery,pantheon,tokens,live', 'every place is on the doom list');
 ['img/doom/sp-pepe.png', 'img/doom/sp-kek.png', 'img/doom/sp-wizard.png', 'img/doom/xcpets-cast.gif', 'img/doom/logo.png', 'img/doom/token.png', 'img/doom/badge.png', 'img/doom/doom-flag.png'].forEach(f => ok(fs.existsSync(path.join(ROOT, f)), 'asset ' + f));
 ok(!fs.readFileSync(path.join(ROOT, 'practice.html'), 'utf8').includes('doom-week.js'), 'practice pages are not wired');
 console.log(pass + ' passed, ' + fail + ' failed');

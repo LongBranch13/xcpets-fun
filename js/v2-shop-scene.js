@@ -70,14 +70,18 @@
   /* 3x5 pixel font for a few labels */
   var F = { S: '111100111001111', O: '111101101101111', N: '110101101101101', L: '100100100100111', I: '111010010010111', T: '111010010010010', R: '110101110101101', A: '010101111101101', D: '110101101101110', E: '111100111100111', G: '111100101101111', F: '111100111100100', W: '101101111111101', P: '110101110100100', M: '101111111101101', Y: '101101010010010', B: '110101110101110', K: '101101110101101', ' ': '000000000000000' };
   function txt(x, s, ox, oy, c) { for (var i = 0; i < s.length; i++) { var g = F[s[i]] || F[' ']; for (var k = 0; k < 15; k++) if (g[k] === '1') px(x, c, ox + i * 4 + (k % 3), oy + Math.floor(k / 3), 1, 1); } }
-  /* Red candles (Bitcoin red, white tip) on the counter so the cat is sitting on them, plus a PETS / SATS board. */
+  /* Red candles under the shop cat, a DOOM board, and a short falling chart. Drawn only while Doom Week is on. */
   function doomBits(x) {
     [[294, 103], [302, 104], [310, 103]].forEach(function (c) {
       px(x, '#2a0a10', c[0], c[1], 3, 7); px(x, '#c8102e', c[0], c[1] + 2, 3, 5); px(x, '#8e0b20', c[0] + 2, c[1] + 2, 1, 5);
       px(x, '#ffffff', c[0] + 1, c[1], 1, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1);
     });
     px(x, '#1a1020', 186, 62, 54, 24); px(x, '#c8102e', 187, 63, 52, 22); px(x, '#8e0b20', 187, 63, 52, 2);
-    txt(x, 'PETS', 196, 66, '#ffffff'); txt(x, 'SATS', 196, 74, '#ffffff');
+    txt(x, 'DOOM', 196, 70, '#ffffff');
+    [[168, 58, 8], [173, 62, 6], [178, 66, 4]].forEach(function (c) {
+      px(x, '#ffffff', c[0], c[1], 3, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1); px(x, '#c8102e', c[0], c[1] + 2, 3, c[2] - 2);
+    });
+    px(x, '#ff2a2a', 222, 66, 1, 3); px(x, '#ff2a2a', 221, 68, 3, 1); px(x, '#c8102e', 222, 69, 1, 1);
   }
 
   function draw() { var x = cv.getContext('2d'), t = reduced() ? 0 : ST.t, d = D(); PF.cw = d && d.W;
