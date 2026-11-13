@@ -118,7 +118,8 @@ async function chrome() {
     await pg.addInitScript(([src, ME, parseSrc]) => { const S = window.__S = { calls: [], args: [], mode: 'ok' };
       setTimeout(() => { S.parse = window.Wallet._parseTx; window.webXCP = (0, eval)('(' + src + ')')(S, ME); }, 40); }, [casaStub.toString(), ME]);
     const ev = (f, a) => pg.evaluate(f, a), U = 'http://localhost:' + PORT + '/zz-webxcp.html';
-    await pg.goto(U); await pg.waitForTimeout(1000);
+    await pg.goto(U);
+    await pg.waitForFunction(() => window.V2Wallet && window.webXCP && V2Wallet.label() === 'Casa Tookan', null, { timeout: 20000 });
     chk('chrome: fresh page in Casa, never connected: no connect sheet', (await ev(() => __S.calls)).length === 0 && await ev(() => V2Wallet.status()) === 'none');
     chk('chrome: label before connect = Casa Tookan', await ev(() => V2Wallet.label()) === 'Casa Tookan');
     const a = await ev(() => V2Wallet.connect()); chk('chrome: connect -> casa address', a === ME, a);

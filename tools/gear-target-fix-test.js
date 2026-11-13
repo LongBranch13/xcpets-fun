@@ -67,7 +67,11 @@ ok(V.sendBlock(w, plans[0], tip, { me: W }) === null, 'send guard: the picked-pe
 const big = Object.keys(pets).map(a => [a, pets[a].length]).sort((x, y) => y[1] - x[1])[0][0], bigIds = V.spinList(w, big, tip, G).filter((p, i) => i % 3 === 0).map(p => p.id);
 const bigS = V.spinsLeft(w, big, G), bp = bigS > 0 ? V.spinTargetPlans(w, big, bigIds, 'all', G) : null;
 if (bp) { const u = [].concat.apply([], bp.map(p => p.petIds)).sort((x, y) => x - y);
-  ok(bp.every(p => p.tag.length <= 34) && JSON.stringify(u) === JSON.stringify(bigIds.slice().sort((x, y) => x - y)) && bp.reduce((s, p) => s + p.n, 0) === bigS, 'planner: ' + bigIds.length + ' scattered pets -> ' + bp.length + ' burns, all <= 34 bytes, every pet once, ' + bigS + ' spins in total');
+  const covered = JSON.stringify(u) === JSON.stringify(bigIds.slice().sort((x, y) => x - y)), spent = bp.reduce((s, p) => s + p.n, 0);
+  ok(bp.every(p => p.tag.length <= 34), 'planner: every scattered burn fits 34 bytes');
+  ok(covered, 'planner: scattered burns cover every picked pet once');
+  ok(spent === bigS, 'planner: scattered burns spend every saved spin');
+  if (!covered || spent !== bigS || bp.some(p => p.tag.length > 34)) console.log('  planner detail pets ' + bigIds.length + ' burns ' + bp.length + ' spins ' + spent + '/' + bigS);
   ok(bp.every(p => { const t = P(p.tag); return t.action === 'usespint' && JSON.stringify(V.spinList(w, big, tip, G).filter((q, i) => { let pos = 0, inn = false; for (let k = 0; k < t.runs.length; k++) { if (k % 2 === 0) { pos += t.runs[k]; continue; } if (i >= pos && i < pos + t.runs[k]) inn = true; pos += t.runs[k]; } return inn; }).map(q => q.id)) === JSON.stringify(p.petIds); }), 'planner: each burn decodes back to exactly its pets'); }
 else console.log('  (largest wallet has no saved spins: split check skipped)');
 /* chores leave spins out after the gate */
@@ -116,4 +120,4 @@ if (hasOwner) { ok(gmPlans && gmPlans.length, 'G Money re-wear planner: ' + gmFe
   ok(a.every(l => l.kind === 'rewear' || /nothing left/.test(l.msg || '')), 'G Money re-wear: ' + a.length + ' burns, ' + worn + ' of 725 worn on his fed pets, ' + (V.rewearGrant(w2, GMONEY) || {}).n + ' left in the stash');
   ok(V.rewearGrant(w2, GMONEY).used === G + 3 && Object.keys(w.items).every(k => w.items[k].owner === w2.items[k].owner), 'G Money re-wear: used once from block ' + (G + 3) + ', no piece changed hands'); }
 V._setSpinTargetActivation(null);
-console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);
+console.log(fails ? 'gear-target-fix-test: ' + fails + ' check(s) still failing' : 'all passed'); process.exit(fails ? 1 : 0);

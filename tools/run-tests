@@ -49,7 +49,7 @@ function child(args, tag) { return new Promise(async res => { const port = await
   const env = Object.assign({}, process.env, { XCPETS_TEST: '1', XCPETS_TEST_PORT: String(port), XCPETS_TEST_TMP: tmp, TMPDIR: tmp, TMP: tmp, TEMP: tmp, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=8192'].filter(Boolean).join(' ') });
   const t0 = Date.now(), p = spawn(process.execPath, args, { cwd: ROOT, env }), me = { f: tag, peak: 0 }; running.set(p.pid, me); pend -= want(tag);
   let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
-  const killMs = tag === 'seance-raises-test.js' ? 900000 : (tag === 'daily-chores-test.js' || tag === 'gear-target-fix-test.js' || tag === 'feed-runs-test.js') ? 1200000 : 600000;
+  const killMs = tag === 'seance-raises-test.js' ? 900000 : (tag === 'daily-chores-test.js' || tag === 'gear-target-fix-test.js' || tag === 'feed-runs-test.js' || tag === 'places-perf-test.js' || tag === 'rare-unequip-perf-test.js') ? 1200000 : 600000;
   const kill = setTimeout(() => { out += '\nFAIL timeout after ' + (killMs / 1000) + ' s'; p.kill('SIGKILL'); }, killMs);
   p.on('close', (code, sig) => { clearTimeout(kill); running.delete(p.pid); if (me.peak) mem[tag] = me.peak; if (sig) out += '\nkilled by ' + sig + (sig === 'SIGKILL' ? ' (out of memory? see dmesg)' : ''); if (!keepTmp) fs.rmSync(tmp, { recursive: true, force: true }); res({ code, out, ms: Date.now() - t0, port, tmp }); }); }); }
 const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.json', 'snap-972901.json'];

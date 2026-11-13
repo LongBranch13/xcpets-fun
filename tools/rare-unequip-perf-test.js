@@ -61,7 +61,7 @@ const INIT = `(() => {
     page.on('pageerror', e => errors.push(String(e)));
     const t0 = Date.now();
     await page.goto(origin + '/rare-room.html?addr=' + encodeURIComponent(ADDR) + '#rare-room', { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 1000 && !V2Mock.world().pending && document.querySelector('#shopScene canvas') && document.querySelector('#lookStation') && document.querySelector('#drEnter'), null, { timeout: 180000 });
+    await page.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 1000 && !V2Mock.world().pending && document.querySelector('#shopScene canvas') && document.querySelector('#lookStation') && document.querySelector('#drEnter'), null, { timeout: 300000 });
     await page.waitForTimeout(600);
     return { page: page, ctx: ctx, errors: errors, openMs: Date.now() - t0 };
   }

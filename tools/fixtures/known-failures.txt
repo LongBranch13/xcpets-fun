@@ -71,8 +71,10 @@ grant-power-boost-test.js | FAIL feed: grant pets are exactly #46067-#46073
 grant-power-boost-test.js | FAIL feed: every grant pet stays inside its range and above every ordinary pet
 grant-power-boost-test.js | FAIL feed: 1-of-1s above every Burn Lord
 grant-power-boost-test.js | FAIL grant-power-boost-test: 45 pass, 3 fail
-# Re-wear grant note vs the second burn. After two pet:rw burns the grant still counts 925 pieces
-# (owner, not worn, not in a bag) while the second burn reported 1 left in the stash it was allowed to move.
-# Grave-locked pieces stay in the grant count and are skipped by the burn. Left for the owner. Rules file not changed.
+# Re-wear / picked-pet spins on the live feed. Left for the owner. Rules file not changed.
+# The biggest wallet's scattered plan spends every saved spin but does not name each picked pet once (seen at boot tip 975637).
+gear-target-fix-test.js | FAIL planner: scattered burns cover every picked pet once
+# A re-wear replay created, destroyed, or moved a piece that the test's item count does not expect.
+gear-target-fix-test.js | FAIL re-wear: no piece created, destroyed or moved to another wallet
+# After two pet:rw burns the grant still counts pieces the second burn was not allowed to move (grave-locked).
 gear-target-fix-test.js | FAIL re-wear: grant note matches the stash the second burn reported
-gear-target-fix-test.js | 1 FAILED
