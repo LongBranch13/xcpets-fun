@@ -6,7 +6,7 @@
   'use strict';
   if (window.__dwLoaded) return; window.__dwLoaded = 1;
   /* Tip on Nov 13 2026 was 975,631. 1,008 blocks is about seven days. Set ENABLED to false to turn the week off. */
-  var ENABLED = true, START = 975640, END = 976648;
+  var ENABLED = true, START = 975630, END = 976648;
   var SABO_ID = 1765;
   var me = document.currentScript, ver = (me && /[?&]v=([\w.-]+)/.exec(me.src) || [])[1] || '';
   var root = document.documentElement, on = false, cssEl = null, layer = null, countEl = null, shopObs = null, cemObs = null, btcQuote = null, supplyLeft = null;
