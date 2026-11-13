@@ -37,7 +37,7 @@ ok(D && D.IDS.length === 4 && D.frames(ctx.PetCore.characterPet('pepe', { tier: 
 ok(D.frames(ctx.PetCore.characterPet('pepe', { tier: 'legendary' }), 0) === null, 'eggs are not dressed');
 const rows = [
   { tx_hash: 'a', block_index: 975640, source: 'bc1qdoom', status: 'valid', amount: 69 },
-  { tx_hash: 'b', block_index: 975639, source: 'bc1qearly', status: 'valid', amount: 69 },
+  { tx_hash: 'b', block_index: 975629, source: 'bc1qearly', status: 'valid', amount: 69 },
   { tx_hash: 'c', block_index: 976000, source: 'bc1qdoom', status: 'invalid', amount: 69 }
 ];
 ok(W.survivedAddr('bc1qdoom', rows, 976100) && !W.survivedAddr('bc1qearly', rows, 976100) && !W.survivedAddr('bc1qnobody', rows, 976100), 'badge is any real burn inside the window');
@@ -55,7 +55,7 @@ ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.4, 68515701.74).supp
 var html = W.counterHtml(68000, 68e6, { btc: true, supply: false });
 ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,000') < html.indexOf('dw-down') && html.indexOf('dw-down') < html.indexOf('XCPETS left') && !/price/i.test(html), 'the arrow sits beside the number that went down');
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
-ok(W.START === 975640 && W.END === 976648 && W.SABO_ID === 1765, 'window and Sabo id');
+ok(W.START === 975630 && W.END === 976648 && W.SABO_ID === 1765, 'window and Sabo id');
 ok(W.PLACES && W.PLACES.join(',') === 'circus,rare,motel,spam,raid,cemetery,pantheon,tokens,live', 'every place is on the doom list');
 ['img/doom/sp-pepe.png', 'img/doom/sp-kek.png', 'img/doom/sp-wizard.png', 'img/doom/xcpets-cast.gif', 'img/doom/logo.png', 'img/doom/token.png', 'img/doom/badge.png', 'img/doom/doom-flag.png'].forEach(f => ok(fs.existsSync(path.join(ROOT, f)), 'asset ' + f));
 ok(!fs.readFileSync(path.join(ROOT, 'practice.html'), 'utf8').includes('doom-week.js'), 'practice pages are not wired');
