@@ -65,7 +65,7 @@
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
-  function idbRaw() { return new Promise(function (res) {
+  function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
     var seeded = !!(window.V2BootSync && V2BootSync.justSeeded);
@@ -83,6 +83,47 @@
         next();
       }, function () { try { db.close(); } catch (e) {} finish(null); });
     }, function () { finish(null); }); }); }
+  /* The IndexedDB clone of the saved world runs in js/v2-decode-worker.js. Each message is a handful of objects,
+   * so the main thread never takes the multi-hundred-millisecond task a 17 MB record used to be. */
+  function idbRaw() {
+    if (!BUILD || typeof Worker === 'undefined') return idbRawMain();
+    return new Promise(function (res) {
+      var w, finished = false, root = {}, parts = [], meta = null;
+      function give(v) { if (finished) return; finished = true; clearTimeout(timer); try { if (w) w.terminate(); } catch (e) {} res(v); }
+      function fail() { if (finished) return; finished = true; clearTimeout(timer); try { if (w) w.terminate(); } catch (e) {} idbRawMain().then(res, function () { res(null); }); }
+      var timer = setTimeout(fail, 120000);
+      try { w = new Worker(new URL('js/v2-decode-worker.js?v=' + BUILD, location.href).href); } catch (e) { return fail(); }
+      w.onerror = function () { fail(); };
+      w.onmessage = function (ev) {
+        var m = ev.data || {};
+        try {
+          if (m.type === 'meta') { meta = m; parts = new Array(m.parts || 0); return; }
+          if (m.type === 'legacy') { give({ key: m.key, at: m.at, world: m.world }); return; }
+          if (m.type === 'root-all') { root = m.root || {}; return; }
+          if (m.type === 'part-all') { parts[m.i] = m.items || []; return; }
+          if (m.type === 'root') {
+            if (m.once) root[m.k] = m.items[0];
+            else { if (!root[m.k]) root[m.k] = []; var a = m.items || [], ri; for (ri = 0; ri < a.length; ri++) root[m.k].push(a[ri]); }
+            return;
+          }
+          if (m.type === 'part') {
+            if (!parts[m.i]) parts[m.i] = [];
+            var b = m.items || [], pi; for (pi = 0; pi < b.length; pi++) parts[m.i].push(b[pi]);
+            return;
+          }
+          if (m.type === 'fail') { fail(); return; }
+          if (m.type === 'end') {
+            if (!meta) { fail(); return; }
+            var keys = [], i; for (i = 0; i < parts.length; i++) keys.push('world:' + i);
+            wsDecode({ root: root, parts: parts.length, n: meta.n }, parts, keys).then(function (world) {
+              give(world ? { key: meta.key, at: meta.at, world: world } : null);
+            }, function () { give(null); });
+          }
+        } catch (e) { fail(); }
+      };
+      w.postMessage({ cmd: 'decode' });
+    });
+  }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
    * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
   function wsDecode(v, parts, keys) { var byIx = [], i, j, T = [], M = '__wsr';
@@ -114,6 +155,18 @@
     for (var i = 0; i < RULE_SCRIPTS.length; i++) { var f = RULE_SCRIPTS[i], hit = null; for (var j = 0; j < all.length; j++) { var u = all[j].split('?')[0]; if (u.slice(-f.length - 1) === '/' + f) { hit = all[j]; break; } } if (!hit) return null; out.push(hit); } return out; }
   function wkKill() { try { if (wk) wk.terminate(); } catch (e) {} wk = null; }
   function stopReplay() { var old = pend; pend = null; wkKill(); if (old && old.fin) old.fin(); }
+  /* Checkpoint meta is small. A matching rules hash and an unchanged burn prefix means the worker continues
+   * from that world. A rules change, a reorg, or a missing checkpoint is a full replay. */
+  function resumeInfo() { return new Promise(function (res) {
+    var done = false, t = setTimeout(function () { if (!done) { done = true; res(null); } }, 2000);
+    function fin(v) { if (done) return; done = true; clearTimeout(t); res(v); }
+    if (!window.XcpResume || !XcpResume.canResume || !RSIG) { fin(null); return; }
+    idb().then(function (db) { idbGetKey(db, 'cpm').then(function (meta) { try { db.close(); } catch (e) {}
+      if (!meta) { fin(null); return; }
+      var gate = XcpResume.canResume(meta, { rsig: RSIG, tip: S.tip, rows: S.rows, dex: S.dex || null, hashes: S.hashes, ops: S.ops || [], cutoff: V.CUTOFF_BLOCK });
+      fin(gate.ok ? { opsFrom: gate.opsFrom, tailOnly: !!gate.tailOnly } : null);
+    }, function () { try { db.close(); } catch (e) {} fin(null); }); }, function () { fin(null); });
+  }); }
   function workerReplay() { if (cache || wkOff || !BUILD || typeof Worker === 'undefined' || !(E.CFG && E.CFG.isMainnet)) return Promise.resolve();
     var urls = ruleUrls(); if (!urls) return Promise.resolve();
     var sig0 = inSig(), oj0 = JSON.stringify(S.ops || []);
@@ -122,9 +175,9 @@
     job.p = new Promise(function (res) { var id = ++wkId, sig = sig0, ops = S.ops || [], oj = oj0, key = idbKey(), done = false, t;
       function fin() { if (done) return; done = true; wkBusy--; clearTimeout(t); if (pend === job) pend = null; res(); }
       job.fin = fin;
-      try { if (!wk) { wk = new Worker(new URL('js/v2-replay-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
+      try { if (!wk) { wk = new Worker(new URL('js/v2-resume-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
         function noteMs(ms) { S.workerMs = ms; try { localStorage.setItem('xcpets-worker-ms', String(ms | 0)); } catch (e1) {} }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly }; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -133,7 +186,7 @@
          * the job keeps running and the page keeps the last world / placeholder; only a worker error (onerror / !ok) falls back to the main thread. */
         var slow = function () { if (done) return; try { console.warn('[v2] replay worker still busy after ' + Math.round((Date.now() - t0) / 1000) + ' s; waiting (no main-thread replay)'); } catch (e) {} t = setTimeout(slow, WORKER_MS); }, t0 = Date.now();
         t = setTimeout(slow, WORKER_MS);
-        wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key });
+        resumeInfo().then(function (info) { if (done) return; try { wk.postMessage({ id: id, scripts: urls, rows: S.rows, hashes: S.hashes, ops: ops, tip: S.tip, dex: S.dex || undefined, idbKey: key, resume: info, rsig: RSIG || '' }); } catch (e2) { wkOff = true; wkKill(); fin(); } });
       } catch (e) { wkOff = true; wkKill(); fin(); } });
     return job.p; }
   /* page-unresponsive-fix: the cross-visit cache read (up to IDB_WAIT_MS) always runs right before workerReplay(); it counts as busy, so a poller
@@ -146,13 +199,13 @@
   var provKey = null, storedKey = null;
   function fromIdb(prov) {
     /* A poller can rebuild on the main thread while the snapshot is still downloading. That local world is not the one to burn from. */
-    if (cache && window.V2BootSync && V2BootSync.justSeeded && !S.fromCache) { cache = null; cacheSig = null; }
+    if (cache && window.V2BootSync && V2BootSync._seedPending && !S.fromCache) { cache = null; cacheSig = null; }
     if (cache) return Promise.resolve();
     var gate = window.V2BootSync && V2BootSync.ready; if (gate && typeof gate.then === 'function') { V2BootSync.ready = null; return Promise.resolve(gate).then(function () { return fromIdb(prov); }, function () { return fromIdb(prov); }); }
     wkBusy++; var on = true; function end() { if (on) { on = false; wkBusy--; } }
     return idbGet().then(function (v) { end();
-      if (!v && window.V2BootSync && V2BootSync.justSeeded && (fromIdb.tries || 0) < 4) { fromIdb.tries = (fromIdb.tries || 0) + 1; return new Promise(function (r) { setTimeout(r, 250); }).then(function () { return fromIdb(prov); }); }
-      if (v) try { V2BootSync.justSeeded = false; } catch (eS) {}
+      if (!v && window.V2BootSync && V2BootSync._seedPending && (fromIdb.tries || 0) < 4) { fromIdb.tries = (fromIdb.tries || 0) + 1; return new Promise(function (r) { setTimeout(r, 250); }).then(function () { return fromIdb(prov); }); }
+      if (v) try { V2BootSync._seedPending = false; } catch (eS) {}
       if (!v || cache) return;
       if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
         lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }

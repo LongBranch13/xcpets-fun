@@ -13,10 +13,12 @@ function hexOf(buf) { return Array.prototype.map.call(new Uint8Array(buf), funct
 function sha256Buf(buf) { return crypto.subtle.digest('SHA-256', buf).then(hexOf); }
 function idbOpen() { return new Promise(function (res, rej) { var r = indexedDB.open('xcpets-world', 1);
   r.onupgradeneeded = function () { try { r.result.createObjectStore('w'); } catch (e) {} }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
-function putWorld(key, root, parts, n) { return idbOpen().then(function (db) { return new Promise(function (res, rej) {
+function putWorld(key, root, parts, n, cp) { return idbOpen().then(function (db) { return new Promise(function (res, rej) {
   try { var tx = db.transaction('w', 'readwrite'), os = tx.objectStore('w'); os.clear();
     for (var i = 0; i < parts.length; i++) os.put(parts[i], 'world:' + i);
     os.put({ key: key, at: Date.now(), v: 2, parts: parts.length, n: n, root: root }, 'world');
+    if (cp && cp.meta && cp.root) { os.put(cp.meta, 'cpm'); os.put(cp.seen || [], 'cps'); os.put(cp.root, 'cpr');
+      for (var j = 0; j < cp.parts.length; j++) os.put(cp.parts[j], 'cp:' + j); }
     tx.oncomplete = function () { db.close(); res(true); }; tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} rej(tx.error || new Error('idb')); };
   } catch (e) { try { db.close(); } catch (x) {} rej(e); } }); }); }
 function loadText(url) { return fetch(url, { cache: 'force-cache' }).then(function (r) { if (!r.ok) throw new Error('script ' + r.status); return r.text(); }); }
@@ -44,22 +46,34 @@ function catchup(m) {
     self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG };
     return workerUrl ? loadText(workerUrl) : Promise.reject(new Error('encode'));
   }).then(function (workerSrc) {
-    var keep = self.onmessage; (0, eval)(workerSrc); self.onmessage = keep;
+    var keep = self.onmessage; (0, eval)(workerSrc + '\nself.wsEncode=wsEncode;'); self.onmessage = keep;
     var files = (m.files || []).slice(), pending = files.slice(), running = 0, got = [], failed = null;
     return new Promise(function (res, rej) {
       function fail(e) { if (!failed) failed = e; pump(); }
       function finish() {
-        if (failed) return rej(failed);
-        var root = null, parts = [], meta = null;
-        got.forEach(function (g) { if (g.role === 'root') root = g.val; else if (g.role === 'meta') meta = g.val; else parts[g.i] = g.val; });
-        if (!root || !meta || parts.length !== m.parts) return rej(new Error('parts'));
-        for (var n = 0; n < parts.length; n++) if (!parts[n]) return rej(new Error('gap'));
-        var w = XcpResume.wsDecode(root, parts), seen = {}, list = meta.seen || [], s;
-        for (s = 0; s < list.length; s++) seen[list[s]] = 1;
-        var world = self.V2Rules.replay(m.rows, m.hashes, [], { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex || undefined,
-          _resume: { w: w, seen: seen, dexPos: meta.dexPos, grand: meta.grand, tip: meta.tip } });
-        var enc = wsEncode(world);
-        putWorld(m.idbKey, enc.root, enc.parts, enc.n).then(function () { res(true); }, rej);
+        try {
+          if (failed) return rej(failed);
+          var root = null, parts = [], meta = null;
+          got.forEach(function (g) { if (g.role === 'root') root = g.val; else if (g.role === 'meta') meta = g.val; else parts[g.i] = g.val; });
+          if (!root || !meta || parts.length !== m.parts) return rej(new Error('parts'));
+          for (var n = 0; n < parts.length; n++) if (!parts[n]) return rej(new Error('gap'));
+          if (typeof self.wsEncode !== 'function') return rej(new Error('encode'));
+          var w = XcpResume.wsDecode(root, parts), seen = {}, list = meta.seen || [], s, held = {};
+          for (s = 0; s < list.length; s++) seen[list[s]] = 1;
+          var world = self.V2Rules.replay(m.rows, m.hashes, m.ops || [], { tip: m.tip, live: self.LiveEngine.RealCore, dex: m.dex || undefined,
+            _resume: { w: w, seen: seen, dexPos: meta.dexPos, grand: meta.grand, tip: meta.tip },
+            _beforeTail: function (worldNow, seenNow) {
+              var keys = [], k; for (k in seenNow) if (Object.prototype.hasOwnProperty.call(seenNow, k)) keys.push(k);
+              held.enc = self.wsEncode(worldNow); held.seen = keys; held.dexPos = worldNow._dexPos || 0; held.grand = worldNow._grand ? 1 : 0;
+            } });
+          var enc = self.wsEncode(world), cp = null;
+          if (held.enc && m.rsig && self.XcpResume.checkpointMeta) {
+            var cmeta = XcpResume.checkpointMeta({ rows: m.rows, hashes: m.hashes, dex: m.dex || null, ops: m.ops || [], tip: m.tip, rsig: m.rsig,
+              dexPos: held.dexPos, grand: held.grand, parts: held.enc.parts.length, n: held.enc.n });
+            cp = { meta: cmeta, seen: held.seen || [], root: held.enc.root, parts: held.enc.parts };
+          }
+          putWorld(m.idbKey, enc.root, enc.parts, enc.n, cp).then(function () { res(true); }, rej);
+        } catch (e) { rej(e); }
       }
       function one(f) { return loadFile(f).then(function (val) { got.push({ role: f.role, i: f.i, val: unmark(val) }); }); }
       function pump() {

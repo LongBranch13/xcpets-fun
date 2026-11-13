@@ -125,6 +125,39 @@ The Nov 12 estimate for publishing a current snapshot (cold desktop about 53 s �
 
 Fix 1 is the change that removes the 45 s replay on a tip move. Fix 3 is the change for the phone return's long tasks (max about 590 ms, about 48 tasks, about 5 s). Fix 4 is the homepage destruction walk, still 6 pages on a first visit, still off the pet path. A snapshot the client actually stores is a separate client bug from those three: exact mode rejects the current manifest because of the dex suffix, and catch-up dies in `ruleUrls()` before any part is fetched.
 
+## After, on this branch
+
+Same profiles, against a local copy of this branch with `?sync=https://node.xcpets.fun`. The chain and the snapshot are the live ones. `js/v2-rules.js` is still MD5 `8e98664087bab2e991680ebdb80ba143`.
+
+At 05:51 UTC the snapshot was still tip 975,631 on `r16a9352e18f8366e445f7890f8148fc7`, and the chain was 5 then 6 blocks ahead. That is inside the 8-block catch-up window. Every first visit downloaded the 77 checkpoint files and caught up. `justSeeded` was true. No full-history replay worker ran.
+
+| Profile | Visit | Nov 12 | Nov 13 before | After | After path |
+|---|---|---:|---:|---:|---|
+| Desktop | First | 52.9 s | 51.3 s | **28.1 s** (28.9, 27.4) | catch-up, `justSeeded` true |
+| Desktop | Return, same block | 2.95 s | 3.78 s | **15.7 s** (15.9, 15.5) | IndexedDB |
+| Phone | First | 60.8 s | 58.7 s | **70.9 s** (70.7, 71.2) | catch-up, `justSeeded` true |
+| Phone | Return, same block | 11.1 s | 9.35 s | **55.6 s** (57.1, 54.0) | IndexedDB |
+
+Pets 174,223. Burns 4,791. Tip 975,637. Checkpoint parts downloaded on each first visit: 77. Destruction pages walked by the supply widget: 1 (the prefetch), not the old cursor walk.
+
+Desktop first visits are about 23 s shorter than the Nov 13 full replay. The phone first visit is slower: Fast 4G has to download the checkpoint, and that transfer is larger than the one-shot sync read the old path used. The 4× throttle does not slow the replay worker, so the old phone first visit was mostly unthrottled worker time. Catch-up trades that for a download.
+
+Return visits got slower. The decode worker was re-encoding the saved world into tiny slices and the main thread walked it again. Desktop return long tasks were 4–5, max 177–209 ms. Phone return long tasks were 8, max 607–634 ms, 3 of them over 200 ms, and the wall was about 56 s. After that measurement the worker was changed to hand the saved records through without a second encode. Those return numbers are for the slice decoder.
+
+### Exact mode, and a snapshot on a different rules hash
+
+The signature compare accepts the live manifest when the tip, burn count, burn hash, and block-hash hash match, including when the manifest omits `|dex…` and the page has it. It refuses a dex suffix that is present and different, and it refuses a different burn hash or tip. `tools/snapshot-accept-test.js` covers those cases.
+
+At 06:09 the publisher replaced the snapshot. The new manifest's chain signature was `975637|4791|463bf4c6|3454|b69e2e91`, the same chain components as the page plus the page's `|dex6cdd0303`. Its rules hash was `raf4e00a41637e02f188fa1123ba3e2b1`. The page's rules hash was still `r16a9352e18f8366e445f7890f8148fc7`. The page logged the refusal and did not download parts. A different rules hash is not applied.
+
+`buildId()` is captured while `v2-boot-sync.js` is evaluating, so `ruleUrls()` still returns the replay worker after `document.currentScript` is gone. A catch-up failure is logged (`[xcpets] snapshot seed failed` or `snapshot not used`) and the page falls back to a full replay.
+
+### Replay hashes
+
+A snapshot two blocks behind plus the burns in the gap matches a full replay at the later tip (same world digest) in `tools/sync-phase1-test.js`. That run also checked three snap fixtures and the then-current tip 975,635: the snapshot digest matched the replay worker in Chrome, and replay output was `SAME` against `origin/main`.
+
+Incremental resume matches a full replay by a sorted state hash, in `tools/resume-equiv-test.js`. Every snap fixture, and the shipped live list of 4,754 burns, matched at a half split, a 0.9 split, three blocks back, and a tip-only change (same burns, new tip, one extra sale credit). The live hash for the unchanged final tip was `f0023feef774`. The tip-only pair matched each other at `20f62a48c610`.
+
 ## Raw runs
 
-`design/sync-fix/before/runs.json` is the eight-visit matrix. `fill.json` is the later instrumented pair (cold 3 and return 3) with sync bytes. `block-watch.json` is the open page, reduced to the boot and the tip change. `snapshot-975631.json` is the manifest fields quoted above.
+`design/sync-fix/before/` is the Nov 13 live baseline. `design/sync-fix/after/summary.json` is the catch-up matrix above.
