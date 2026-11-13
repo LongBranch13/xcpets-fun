@@ -6,7 +6,7 @@
  * edition, special egg); trading / gifting / flame looks refused; copy rules. No network, no browser.
  *   node tools/practice-mode-test.js */
 'use strict';
-const fs = require('fs'), path = require('path'), vm = require('vm'), cp = require('child_process');
+const fs = require('fs'), path = require('path'), vm = require('vm'), cp = require('child_process'), crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..'), rd = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const PAGES = ['practice.html', 'practice-fight.html', 'practice-rare.html', 'practice-breed.html', 'practice-pet.html'];
@@ -62,7 +62,8 @@ ok(s1.stats.hatched === 1 && s1.stats.legendary === 1 && s1.stats.wow === 1, 'th
 const L = X.load(), w = X._replay(L.rows, L.tip), mine = w.pets.filter(p => p.owner === X.ME);
 ok(mine.length === 1 && mine[0].tier === 3, 'the real replay sees the practice pet as a Legendary');
 let leg = 0, bad = 0; const N = 30;
-for (let i = 0; i < N; i++) { const b = 980000 + i, g = X._grindHatch(X.blockHash(b), b, false); if (!g) continue; if (g.art.tierIndex === 3) leg++;
+/* blockHash() is null above the practice tip. A null hash is not a rare-hatch seed, so this luck check uses its own 64-hex block hash. */
+for (let i = 0; i < N; i++) { const b = 980000 + i, bh = crypto.createHash('sha256').update('practice-rare-hatch:' + b).digest('hex'), g = X._grindHatch(bh, b, false); if (!g) continue; if (g.art.tierIndex === 3) leg++;
   if (g.art.crown === 'flame-crown' || g.art.auraFire || g.art.edition || !X._okArt(g.art)) bad++; }
 ok(leg >= 5, 'boosted eggs: ' + leg + ' of ' + N + ' Legendary (real eggs about 1)');
 ok(bad === 0, 'never a flame crown, fire aura, edition or special egg');

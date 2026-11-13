@@ -3,7 +3,8 @@
  * wallet that owned it at death can raise that grave. Another wallet's seance is rejected like any other invalid
  * grave: nothing pledged, offered pets and gear not sacrificed. Non-Mythic graves are unchanged. Before
  * ACTIVATE_MYTHIC_HEADSTART_BLOCK (live at 975529, tip 975523 + 6) replay of history is unchanged, including
- * the seance on Sabo #1765 at block 975499. Dev only. Nothing is signed or sent.
+ * the seance on grave #1765 at block 975499. Later burns (meals, a token, a resurrect) may change that pet;
+ * the rule must not. Dev only. Nothing is signed or sent.
  *   node tools/mythic-headstart-test.js
  */
 'use strict';
@@ -123,7 +124,7 @@ const gid = gPiece ? +String(gPiece.gid).slice(1) : 0;
   ok(line(on) && line(on).kind === 'raise' && line(on).block === 975499 && JSON.stringify(line(on)) === JSON.stringify(line(off)), 'Sabo #1765 seance at 975499 still raises, same log line (' + (line(on) && line(on).msg) + ')');
   const pub = feed.pets.find(p => p.id === 1765);
   ok(pub && pOn.owner === pub.owner && (pOn.dead ? 'dead' : 'alive') === pub.status && pOn.deathBlock === pub.deathBlock && pOn.stage === pub.stage, 'replayed Sabo #1765 matches the published feed (owner, ' + (pub && pub.status) + ', death ' + (pub && pub.deathBlock) + ', stage ' + (pub && pub.stage) + ')');
-  ok(pOn.owner === pOff.owner && !!pOn.zombie && pOn.zombie.by === pOff.zombie.by && pOn.zombie.raisedAt === 975499, 'the zombie raised at block 975499 is unchanged'); }
+  ok(!!pOn && pOn.owner === pOff.owner && pOn.dead === pOff.dead && pOn.deathBlock === pOff.deathBlock && JSON.stringify(pOn.zombie) === JSON.stringify(pOff.zombie), 'pet #1765 matches with the rule on and off (owner ' + (pOn && pOn.owner) + ', dead ' + (pOn && pOn.dead) + ', death ' + (pOn && pOn.deathBlock) + ', zombie ' + (pOn && pOn.zombie ? pOn.zombie.raisedAt : 'none') + ')'); }
 
 console.log('\n' + (fail ? fail + ' FAILED' : 'all ok') + '  (' + pass + ' checks)');
 process.exitCode = fail ? 1 : 0;

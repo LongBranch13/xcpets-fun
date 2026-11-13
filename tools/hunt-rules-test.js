@@ -17,8 +17,11 @@ function world(win) { const w = clone(base); w.byId=Object.fromEntries(w.pets.ma
  keys.forEach(k => { a.stats[k]=win ? 500 : 1; z.stats[k]=win ? 1 : 500; z.zombie.death[k]=z.stats[k]; z.zDeath[k]=z.stats[k]; }); z.zombie.keep=1; z.zombie.bonus={}; return w; }
 function hunt(w,b,amount=690, id=13) { const r=L.row(b,OW,amount,'pet:fight:'+id+':18846'); w._b=b;
  return V.testHandle(w,r,V.parseTag('pet:fight:'+id+':18846'),amount,L.fakeHash(b),(r,kind,msg,extra) => {const e=Object.assign({block:b,tx:r.tx_hash,kind,msg},extra);w.log.push(e);return e;}); }
-ok(V.huntRulesGate() === Infinity, 'shipped gate off');
-for (const b of [0,G-1,G,G+1,1e9]) ok(!V.huntRulesOn(b), 'Infinity never activates');
+ok(V.huntRulesGate() === 975006, 'shipped gate is block 975006');
+ok(!V.huntRulesOn(975005) && V.huntRulesOn(975006), 'on from the shipped block');
+V._setHuntRulesActivation(null);
+ok(V.huntRulesGate() === Infinity, 'a null gate is off');
+for (const b of [0,G-1,G,G+1,1e9]) ok(!V.huntRulesOn(b), 'off gate never activates');
 V._setHuntRulesActivation(G);
 ok(!V.huntRulesOn(G-1) && V.huntRulesOn(G), 'exact gate');
 {

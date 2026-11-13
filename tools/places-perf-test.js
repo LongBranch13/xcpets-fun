@@ -389,7 +389,7 @@ async function renderMeasure(page, label) {
     results.baseline = baseline;
     console.log('MEASURE baseline origin/main scripts', JSON.stringify(baseline));
     if (baseline.timedOut || baseline.error) console.log('BASELINE FAIL previous scripts did not finish a stress render: ' + (baseline.error || 'still running at 20s'));
-    else if (baseline.gridB != null) ok(baseline.gridB > stressM.gridB, 'previous scripts built hidden partner cards (' + baseline.gridB + ') and this branch does not (' + stressM.gridB + ')');
+    else if (baseline.gridB != null) ok(baseline.gridB >= stressM.gridB && stressM.gridB === 0, 'hidden partner cards stay at none (previous scripts ' + baseline.gridB + ', this branch ' + stressM.gridB + ')');
     const shopPage = await context(1280, 800);
     let shop;
     try {

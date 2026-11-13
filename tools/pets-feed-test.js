@@ -36,12 +36,14 @@ ok(/timeout: 1800000/.test(wf) && /exclude previews/.test(wf) && /actions\/deplo
 ok(/group: pages-actions/.test(wf) && /cancel-in-progress: false/.test(wf), 'Actions deploys queue on their own group and do not cancel a running sync');
 const feed = fs.readFileSync(path.join(ROOT, 'tools/api-feed.js'), 'utf8');
 ok(/PetsFeed\.stringify/.test(feed), 'api-feed writes v2');
-const live = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/pets.json'), 'utf8'));
+const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/pets.json'), 'utf8'));
+const live = F.expand(raw); /* committed file is columnar v2; expand is what verify and the old object file both use */
 const packed = F.stringify(live.pets, live.blockHeight);
 const again = F.expand(JSON.parse(packed));
 let bad = 0;
 for (let i = 0; i < live.pets.length; i++) if (JSON.stringify(live.pets[i]) !== JSON.stringify(again.pets[i])) bad++;
+const objectBytes = JSON.stringify({ blockHeight: live.blockHeight, count: live.count, pets: live.pets }).length;
 ok(bad === 0 && again.pets.length === live.pets.length, 'committed pets.json round-trips (' + bad + ' mismatches, ' + again.pets.length + ' pets)');
-ok(packed.length < 20 * 1024 * 1024 && packed.length < JSON.stringify(live).length * 0.3, 'packed pets.json is under 20MB and under 30% of the object file (' + packed.length + ')');
+ok(packed.length < 20 * 1024 * 1024 && packed.length < objectBytes * 0.3, 'packed pets.json is under 20MB and under 30% of the object file (' + packed.length + ' vs ' + objectBytes + ')');
 console.log('pets-feed-test: ' + pass + ' passed, ' + fail + ' failed; packed ' + packed.length + ' bytes');
 process.exit(fail ? 1 : 0);
