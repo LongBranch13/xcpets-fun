@@ -1,0 +1,204 @@
+{
+  "blockHeight": 975627,
+  "generatedAt": "2026-11-13T04:23:32.198Z",
+  "top": 24,
+  "count": 24,
+  "bytes": 811162,
+  "note": "Living pets with the best Pet Score rank in api/pets.json, excluding Sabo #1765. Other pets use /pet/<id> via 404.html and the generic card.",
+  "ids": [
+    89553,
+    15004,
+    83362,
+    78355,
+    8809,
+    22041,
+    19710,
+    22043,
+    21016,
+    8782,
+    124410,
+    39216,
+    4344,
+    4495,
+    5445,
+    8368,
+    19172,
+    19403,
+    22599,
+    1258,
+    15236,
+    19713,
+    5291,
+    5905
+  ],
+  "pets": [
+    {
+      "id": 89553,
+      "name": "Wavizibun",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 32678
+    },
+    {
+      "id": 15004,
+      "name": "Miwa",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31743
+    },
+    {
+      "id": 83362,
+      "name": "Wichizook",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 33739
+    },
+    {
+      "id": 78355,
+      "name": "Shechibun",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 33197
+    },
+    {
+      "id": 8809,
+      "name": "Mizo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31247
+    },
+    {
+      "id": 22041,
+      "name": "Tikrito",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 32484
+    },
+    {
+      "id": 19710,
+      "name": "Potolu",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31337
+    },
+    {
+      "id": 22043,
+      "name": "Pochi",
+      "tier": "Legendary",
+      "stage": "God",
+      "png": 31690
+    },
+    {
+      "id": 21016,
+      "name": "Wawapo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31716
+    },
+    {
+      "id": 8782,
+      "name": "Bomo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31342
+    },
+    {
+      "id": 124410,
+      "name": "Yoboon",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 30286
+    },
+    {
+      "id": 39216,
+      "name": "Pitopip",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31434
+    },
+    {
+      "id": 4344,
+      "name": "Gibo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 29459
+    },
+    {
+      "id": 4495,
+      "name": "Lugigi",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 29963
+    },
+    {
+      "id": 5445,
+      "name": "Walu",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 29675
+    },
+    {
+      "id": 8368,
+      "name": "Luzo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 30802
+    },
+    {
+      "id": 19172,
+      "name": "Lunuchi",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31351
+    },
+    {
+      "id": 19403,
+      "name": "Riyo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 30849
+    },
+    {
+      "id": 22599,
+      "name": "Gilu",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 29416
+    },
+    {
+      "id": 1258,
+      "name": "Luzuru",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31025
+    },
+    {
+      "id": 15236,
+      "name": "Miri",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 30381
+    },
+    {
+      "id": 19713,
+      "name": "Pobo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 30758
+    },
+    {
+      "id": 5291,
+      "name": "Bababo",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 29914
+    },
+    {
+      "id": 5905,
+      "name": "Rulu",
+      "tier": "Legendary",
+      "stage": "Mythic",
+      "png": 31357
+    }
+  ]
+}
