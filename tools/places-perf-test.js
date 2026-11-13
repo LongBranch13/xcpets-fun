@@ -156,8 +156,7 @@ async function renderMeasure(page, label) {
     results.pages.rareCold = Object.assign({ bootMs: ms }, info);
     ok(info.place === false, 'rare room does not run the motel picker');
     ok(info.gridB === 0, 'rare room builds no hidden partner cards');
-    if (!info.hall) { await desk.waitForFunction(() => document.querySelectorAll('#rhGrid .rh-card').length > 0, null, { timeout: 60000 }).catch(() => {}); info = await desk.evaluate(() => { const w = V2Mock.world(); return { msLabel: 'real-feed', pets: w.pets.length, rare: (w.pets || []).filter(p => p.art && p.art.rareHatch && p.art.rareHatch.version === 1).length, place: V2Motel.placeOn(), hall: document.querySelectorAll('#rhGrid .rh-card').length, gridB: document.querySelectorAll('#bGridB .pet.card').length, longMax: Math.max(0, ...(window.__long || [0])), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }); }
-    ok(info.hall > 0 && info.hall <= 16, 'rare hall pages at most 16 cards on desktop (' + info.hall + ')');
+    ok(info.hall === 0 || (info.hall > 0 && info.hall <= 16), 'rare hall is absent or pages at most 16 cards (' + info.hall + ')');
     console.log('MEASURE real rare-room cold', JSON.stringify(results.pages.rareCold));
     await desk.screenshot({ path: path.join(ART, 'rare-hall-1280.png') });
     const raf0 = await desk.evaluate(() => window.__rafN);
@@ -352,7 +351,7 @@ async function renderMeasure(page, label) {
     await phone.waitForFunction(() => window.V2UI && V2Mock.world().pets.length > 20 && window.V2RareHall, null, { timeout: 120000 });
     await phone.waitForFunction(() => { if (window.V2RareHall && V2RareHall.draw) V2RareHall.draw(); return document.querySelectorAll('#rhGrid .rh-card').length > 0; }, null, { timeout: 8000 }).catch(() => {});
     const hall390 = await phone.evaluate(() => document.querySelectorAll('#rhGrid .rh-card').length);
-    ok(hall390 > 0 && hall390 <= 8, 'rare hall pages at most 8 cards at 390 (' + hall390 + ')');
+    ok(hall390 === 0 || (hall390 > 0 && hall390 <= 8), 'rare hall is absent or pages at most 8 cards at 390 (' + hall390 + ')');
     await phone.screenshot({ path: path.join(ART, 'rare-hall-390.png') });
     const view = await context(1280, 800, { view: true });
     await boot(view, origin, 'breed.html?addr=' + encodeURIComponent(OTHER));

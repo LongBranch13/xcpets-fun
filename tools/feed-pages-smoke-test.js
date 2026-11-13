@@ -36,7 +36,7 @@ function serve() {
 const PAGES = [
   { id: 'mypets', file: 'play.html#petsPanel', ready: () => document.querySelectorAll('#petsPanel .pet.card').length > 0 && !!(window.V2Mock && V2Mock.world && V2Mock.world().pets.length > 20), note: 'My Pets cards' },
   { id: 'pet', file: 'pet.html?id=1', ready: () => { const t = document.getElementById('title'); return !!(t && t.textContent && t.textContent !== 'Loading…' && document.getElementById('page') && document.getElementById('page').style.display !== 'none'); }, note: 'pet #1' },
-  { id: 'rare', file: 'rare-room.html', ready: () => document.querySelectorAll('#rhGrid .rh-card').length > 0, note: 'Rare Room cards' },
+  { id: 'rare', file: 'rare-room.html', ready: () => !!(window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 20 && document.querySelector('#drEnter')), note: 'Rare Room opened' },
   { id: 'rank', file: 'ranking.html', ready: () => document.querySelectorAll('#board tr, #board li, #board .row').length > 0, note: 'ranking rows' }
 ];
 function noise(s) { return /favicon|net::ERR_|Failed to load resource|fonts\.googleapis|fonts\.gstatic|sslip\.io|ERR_FAILED|aborted/i.test(s); }

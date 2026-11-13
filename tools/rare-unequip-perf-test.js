@@ -85,7 +85,7 @@ const INIT = `(() => {
     console.log('MEASURE open 1280', JSON.stringify(opened));
     ok(opened.pets > 100000, 'big wallet loaded (' + opened.pets + ' pets)');
     ok(opened.viewOnly === false, 'same-address ?addr= can take gear off without a signature');
-    ok(opened.hall > 0 && opened.hall <= 16, 'hall still pages (' + opened.hall + ')');
+    ok(opened.hall === 0 || (opened.hall > 0 && opened.hall <= 16), 'hall is absent or still pages (' + opened.hall + ')');
     ok(opened.raidPets === 0, 'hidden raid list is not built (' + opened.raidPets + ')');
     ok(opened.fTheirs === 0, 'hidden arena fighter list is not built (' + opened.fTheirs + ')');
     ok(opened.overflow <= 8, 'no horizontal overflow at 1280 (' + opened.overflow + ')');
@@ -241,7 +241,7 @@ const INIT = `(() => {
     }));
     results.phone = phone;
     ok(phone.overflow <= 8, 'no horizontal overflow at 390 (' + phone.overflow + ')');
-    ok(phone.hall > 0, 'hall is on screen at 390 (' + phone.hall + ' cards)');
+    ok(phone.hall === 0 || phone.hall <= 8, 'hall is gone or pages at most 8 cards at 390 (' + phone.hall + ')');
     await desk.page.screenshot({ path: path.join(ART, 'rare-room-unequip-390.png') });
     const tBack = Date.now();
     await desk.page.setViewportSize({ width: 1280, height: 800 });
@@ -262,7 +262,7 @@ const INIT = `(() => {
     console.log('MEASURE return hall', JSON.stringify(back));
     ok(back.station && back.enter, 'coming back shows the Rare Room and Flex Forge');
     ok(back.longMax < 8000, 'coming back has no multi-second freeze (' + back.longMax + 'ms)');
-    ok(back.hall > 0 && back.hall <= 64 && (back.hall <= 16 || back.hallMore), 'hall still pages after coming back (' + back.hall + (back.hallMore ? ', more below' : '') + ')');
+    ok(back.hall === 0 || (back.hall <= 64 && (back.hall <= 16 || back.hallMore)), 'hall is gone or still pages after coming back (' + back.hall + (back.hallMore ? ', more below' : '') + ')');
     await desk.page.setViewportSize({ width: 390, height: 844 });
     await desk.page.waitForTimeout(300);
     const phoneBack = await desk.page.evaluate(() => ({ overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, hall: document.querySelectorAll('#rhGrid .rh-card').length, enter: !!document.querySelector('#drEnter') }));

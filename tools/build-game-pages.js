@@ -25,7 +25,7 @@ function attr(s, sel, val) { return s.replace(new RegExp('(<meta (?:name|propert
 function build(mode) { const P = PAGES[mode]; let s = fs.readFileSync(path.join(ROOT, 'templates/game.html'), 'utf8').replace(/^<!--[^\n]*-->\n/, '');
   s = s.replace('data-split="@MODE@"', 'data-split="' + mode + '"');
   Object.keys(PANELS).forEach(k => { if (k !== mode) s = park(s, PANELS[k]); });
-  if (mode === 'play') return finish(s, mode);
+  if (mode === 'play') return s;
   s = park(s, 'splitGo');
   s = s.replace(new RegExp('(<section class="[^"]*)("[^>]*\\bid="' + PANELS[mode] + '")'), '$1 split-main$2');
   s = s.replace(/<title>[^<]*<\/title>/, '<title>' + P.title + '</title>');
@@ -33,16 +33,6 @@ function build(mode) { const P = PAGES[mode]; let s = fs.readFileSync(path.join(
   s = attr(s, 'og:url', 'https://xcpets.fun/' + P.file);
   s = s.replace('<nav>', '<nav><a class="navplay" href="play.html"><span class="navegg" aria-hidden="true"></span>Play</a>');
   s = s.replace('<a class="' + P.nav + '" ', '<a class="' + P.nav + '" aria-current="page" ');
-  return finish(s, mode); }
-/* The live pages carry a canonical link, and the Rare Room keeps the Hall of Rare Finds. The builder emits both so
- * --check matches the pages that are already live, without rewriting them. */
-function finish(s, mode) {
-  const file = PAGES[mode].file;
-  if (!s.includes('rel="canonical"')) s = s.replace(/<title>[^<]*<\/title>/, m => m + '<link rel="canonical" href="https://xcpets.fun/' + file + '">');
-  if (mode === 'rare' && !s.includes('id="rareHall"')) {
-    s = s.replace('  <section class="panel" id="counter">', '  <section class="panel split-keep" id="rareHall" aria-label="Hall of Rare Finds"></section>\n  <section class="panel" id="counter">');
-    s = s.replace(/(<script src="js\/v2-places\.js\?v=)([^"]+)(" defer><\/script>)/, '$1$2$3<script src="js/v2-rare-hall.js?v=$2" defer></script>');
-  }
   return s; }
 const check = process.argv.includes('--check'); let bad = 0;
 Object.keys(PAGES).forEach(m => { const f = path.join(ROOT, PAGES[m].file), out = build(m);
