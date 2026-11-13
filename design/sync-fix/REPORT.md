@@ -171,7 +171,41 @@ Four reloads after one cold visit, same snapshot. `86d0fa62` only changes when t
 | `12e2a279` | 3.98, 3.98, 3.49, 4.24 s (mean 3.92 s) | 12.47, 12.33, 13.08, 12.83 s (mean 12.68 s) |
 | `86d0fa62` | 5.77, 3.73, 4.68, 3.69 s (mean 4.47 s) | 13.44, 12.67, 13.64, 12.73 s (mean 13.12 s) |
 
-`86d0fa62` is not slower than `12e2a279` in a way that repeats. The phone cluster is 12.3–13.6 s on both commits. The desktop gap is one 5.8 s sample. The phone gap versus the 9.35 s baseline is on both commits, so it is the saved-world read, not the early download. Reading that world through a worker cloned it onto the phone a second time. The page now reads IndexedDB once on the main thread. Four returns after that change: desktop 3.01, 3.13, 3.43, 2.65 s (mean **3.05 s**). Phone same-block returns stayed 13.40, 12.46, 12.71 s (mean **12.9 s**); one reload was a new block and is not in that mean. First visits on that same run stayed a catch-up: desktop 15.7 s, phone 41.5 s, `justSeeded` true.
+`86d0fa62` is not slower than `12e2a279` in a way that repeats. The phone cluster is 12.3–13.6 s on both commits. The desktop gap is one 5.8 s sample. The phone gap versus the 9.35 s baseline is on both commits, so it is the saved-world read, not the early download. Reading that world through a worker cloned it onto the phone a second time. The page now reads IndexedDB once on the main thread. Four returns after that change (`60b1c4f1`): desktop 3.01, 3.13, 3.43, 2.65 s (mean **3.05 s**). Phone same-block returns stayed 13.40, 12.46, 12.71 s (mean **12.9 s**); one reload was a new block and is not in that mean. First visits on that same run stayed a catch-up: desktop 15.7 s, phone 41.5 s, `justSeeded` true.
+
+### Phone return, split apart
+
+Same phone profile (412×915, 4× CPU, Fast 4G), tip 975,667, 176,223 pets, after `60b1c4f1`. A same-block reload does not start a replay worker. `justSeeded` stays false.
+
+| Piece | Warm 1 | Warm 2 | Warm 3 |
+|---|---:|---:|---:|
+| Wall | 13.24 s | 13.14 s | 14.10 s |
+| IndexedDB read, 76 parts | 4.19 s | 4.80 s | 4.64 s |
+| Deserialize | 1.75 s | 1.60 s | 1.61 s |
+| Replay | none | none | none |
+| Reindex | 0.14 s | 0.09 s | 0.09 s |
+
+The IndexedDB read is the delivery of the records onto the main thread. Opening the database is under 60 ms. Putting every get in one transaction, with no timer between records, left that read at about 4.0 s (4.04, 4.20, 3.97 s). A second transaction per record was not the wait.
+
+About 7 s of the 13 s sits outside those phases. On the next run the timestamps showed where: `boot()` starts only after the blocking scripts, at about 4.5–7.5 s, and the saved-world read used to start then, after the chain check and the rules hash. Decode then ran on a busy 4× thread.
+
+`js/v2-idb-early.js` starts the IndexedDB read before `rjs/config.js` downloads. It does not create a database, and it does nothing while the page is prerendering or Save-Data is on. `boot()` still decodes during the chain check, and it drops that read when this visit stored a new snapshot. The file is not in the rules hash.
+
+Three same-block phone returns after that change, tip 975,667:
+
+| Piece | Warm 1 | Warm 2 | Warm 3 |
+|---|---:|---:|---:|
+| Wall | **8.97 s** | **8.49 s** | **9.74 s** |
+| IndexedDB read | 4.04 s, finished at 5.90 s | 3.99 s, finished at 5.66 s | 3.94 s, finished at 5.62 s |
+| Scripts done (`boot`) | 6.02 s | 5.74 s | 5.72 s |
+| Deserialize | 2.78 s | 2.59 s | 1.77 s |
+| Replay | none | none | none |
+| Reindex | 72 ms | 85 ms | 73 ms |
+| After reindex, until the boot line is gone | 72 ms | 56 ms | 62 ms |
+
+Median **8.97 s** (mean 9.07 s). The 4 s read now finishes before the scripts do, so it is no longer added on top of them. What is left on the clock is the script load under Fast 4G and 4× CPU, then deserialize. Replay is still none. Long tasks are still over 200 ms (max 593, 557, and 1,359 ms).
+
+Desktop returns on the same build, no throttle: **2.31, 2.46, 2.08 s** (median **2.31 s**), no replay worker, `justSeeded` false. The desktop first visit in that run was a catch-up, **16.7 s**, `justSeeded` true. The phone first visit in the phone run was **40.9 s**, `justSeeded` true. The checkpoint transfer is unchanged.
 
 ### Checkpoint size
 
@@ -190,6 +224,8 @@ At 06:09 the publisher replaced the snapshot. The new manifest's chain signature
 A snapshot two blocks behind plus the burns in the gap matches a full replay at the later tip (same world digest) in `tools/sync-phase1-test.js`. That run also checked three snap fixtures and the then-current tip 975,635: the snapshot digest matched the replay worker in Chrome, and replay output was `SAME` against `origin/main`.
 
 Incremental resume matches a full replay by a sorted state hash, in `tools/resume-equiv-test.js`. Every snap fixture, and the shipped live list of 4,754 burns, matched at a half split, a 0.9 split, three blocks back, and a tip-only change (same burns, new tip, one extra sale credit). The live hash for the unchanged final tip was `f0023feef774`. The tip-only pair matched each other at `20f62a48c610`.
+
+Re-run on this tree, after the early IndexedDB read: `tools/sync-phase1-test.js` **119 passed, 0 failed**, including “snapshot at tip T-2 plus catch-up matches a full replay at tip T” and `SAME` for snap-971786, snap-972883, and snap-972901. `tools/doom-week-test.js` **34 passed, 0 failed**. `tools/practice-mode-test.js` **89 passed, 0 failed**. `tools/resume-equiv-test.js` **all passed**. The shipped live list is now tip 975,637 with 4,791 burns. Half, 0.9, and three blocks back each hashed `ad786541c564`. The tip-only pair hashed `7c0de08c23e9`. `js/v2-rules.js` MD5 is still `8e98664087bab2e991680ebdb80ba143`.
 
 ## Raw runs
 

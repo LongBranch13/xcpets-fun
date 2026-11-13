@@ -65,6 +65,7 @@
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
   var IDB_READ_MS = 15000;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
+  function notePhase(name, ms, extra) { try { var a = window.__xcpPhase || (window.__xcpPhase = []); a.push({ name: name, t: Math.round(performance.now()), ms: Math.round(ms), n: extra == null ? null : extra }); } catch (e) {} }
   function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
@@ -73,22 +74,41 @@
     var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
     function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
     function finish(v) { if (done) return; done = true; clearTimeout(t); res(v); }
-    idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } arm();
+    var tOpen = Date.now();
+    idb().then(function (db) { if (done) { try { db.close(); } catch (e) {} return; } notePhase('idb-open', Date.now() - tOpen); arm();
       idbGetKey(db, 'world').then(function (v) { if (done) return;
         if (!(v && v.v === 2 && v.root && v.parts > 0)) { try { db.close(); } catch (e) {} finish(v && v.world ? { key: v.key, at: v.at, world: v.world } : null); return; }
-        /* one record per turn: a single getAll of every pet was one long task and froze the page */
-        var parts = [], keys = [], i = 0;
-        function next() { if (done) return; if (i >= v.parts) { try { db.close(); } catch (e) {} clearTimeout(t); /* decode is in memory now; the read timer must not throw that world away */ wsDecode(v, parts, keys).then(function (w) { finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); return; }
-          arm(); idbGetKey(db, 'world:' + i).then(function (part) { if (done) return; if (!part) { try { db.close(); } catch (e) {} finish(null); return; } parts.push(part); keys.push('world:' + i); i++; setTimeout(next, 0); }, function () { try { db.close(); } catch (e) {} finish(null); }); }
-        next();
+        /* One readonly transaction, one get per part. A single getAll of every pet was one
+         * long task. Measured on a 4× phone, the record delivery itself is about 4 s either way. */
+        var parts = new Array(v.parts), keys = [], tRead = Date.now(), left = v.parts, failed = false;
+        var tx = db.transaction('w', 'readonly'), os = tx.objectStore('w');
+        function decoded() { if (failed || done) return; try { db.close(); } catch (e) {} clearTimeout(t); notePhase('idb-read', Date.now() - tRead, v.parts); var tDec = Date.now(); wsDecode(v, parts, keys).then(function (w) { notePhase('deserialize', Date.now() - tDec); finish(w ? { key: v.key, at: v.at, world: w } : null); }, function () { finish(null); }); }
+        for (var pi = 0; pi < v.parts; pi++) { keys.push('world:' + pi); (function (pi) {
+          var q = os.get('world:' + pi);
+          q.onsuccess = function () { if (failed || done) return; if (!q.result) { failed = true; try { db.close(); } catch (e) {} finish(null); return; } parts[pi] = q.result; if (--left === 0) decoded(); };
+          q.onerror = function () { if (failed || done) return; failed = true; try { db.close(); } catch (e) {} finish(null); };
+        })(pi); }
       }, function () { try { db.close(); } catch (e) {} finish(null); });
     }, function () { finish(null); }); }); }
   /* The IndexedDB clone of the saved world runs in js/v2-decode-worker.js. Each message is a handful of objects,
    * so the main thread never takes the multi-hundred-millisecond task a 17 MB record used to be. */
   function idbRaw() {
-    /* Reading in a worker cloned every saved part onto this thread a second time.
-     * On a 4× phone that return visit was about 13 s, against about 9 s when IndexedDB
-     * delivered the same records here once. One read on this thread is the faster path. */
+    /* js/v2-idb-early.js starts this read before the rule scripts download, so a return
+     * visit spends that wait on IndexedDB instead of after the chain check. A snapshot
+     * written in this boot drops the promise (boot sets idbPre null when justSeeded). */
+    var early = window.__xcpIdbEarly;
+    if (early && typeof early.then === 'function') {
+      window.__xcpIdbEarly = null;
+      return early.then(function (got) {
+        if (!got) return idbRawMain();
+        if (got.world && !got.parts) return { key: got.key, at: got.at, world: got.world };
+        if (!(got.v && got.parts && got.v.parts > 0)) return idbRawMain();
+        var keys = [], i;
+        for (i = 0; i < got.v.parts; i++) keys.push('world:' + i);
+        var tDec = Date.now();
+        return wsDecode(got.v, got.parts, keys).then(function (w) { notePhase('deserialize', Date.now() - tDec); return w ? { key: got.v.key, at: got.v.at, world: w } : null; }, function () { return null; });
+      }, function () { return idbRawMain(); });
+    }
     return idbRawMain();
   }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
@@ -176,7 +196,7 @@
       if (!v || cache) return;
       if (v.old) { if (!prov || (lastW && lastW.pets && lastW.pets.length) || !v.world || !Array.isArray(v.world.pets)) return; try { if (V.reindex) V.reindex(v.world); } catch (e) { return; }
         lastW = v.world; lastOps = JSON.stringify(S.ops || []); lastSig = 'prov:' + v.key; provKey = v.key; S.provisional = true; S.provisionalTip = v.world.tip || null; return; }
-      var w = v.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
+      var w = v.world, tIx = Date.now(); if (V.reindex) V.reindex(w); notePhase('reindex', Date.now() - tIx); cache = w; cacheSig = inSig(); opsSig = JSON.stringify(S.ops || []); idbKeyStored = v.key; S.fromCache = true; }, function () { end(); }); }
   /* hotfix 2 (2026-10-14): save() used to drop the replay cache on EVERY call (every checkbox / click), so each click re-replayed all
    * burns (4,086 pets) and re-rendered everything. Selection / hidden list don't change the world: only a change in the local ops does. */
   /* gear-stick (2026-10-28): local ops (equips) are append-only, but each tab read them ONCE at load and save() wrote its whole list back. So a
@@ -527,10 +547,16 @@
   function boot(then) {
     var B = window.V2BootSync;
     if (B && B.bootFirst && B.enabled() && !B.localOnly() && !B.saveData()) {
+      /* The chain check and the rules hash run before the page may paint. On a return visit
+       * the saved world is already here, so decode it during that wait. A snapshot that
+       * lands in this boot replaces the saved copy, and that in-flight read is dropped. */
+      notePhase('boot', 0);
+      if (!idbPre) idbPre = idbRaw();
+      rulesSig();
       /* Hold the replay slot so a badge/paint timer cannot rebuild every pet while the snapshot is on its way. */
       wkBusy++; var held = true;
       function release() { if (!held) return; held = false; wkBusy--; }
-      return B.bootFirst(syncApi(), function () { release(); return bootNow(then); });
+      return B.bootFirst(syncApi(), function () { release(); if (B.justSeeded) idbPre = null; return bootNow(then); });
     }
     return bootNow(then); }
   function bootNow(then) { var st = document.getElementById('v2boot');
