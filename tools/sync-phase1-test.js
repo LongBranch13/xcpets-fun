@@ -233,6 +233,9 @@ function fixtureState() {
     const encFull = plain.wsEncode(full), encResume = patched.wsEncode(resumed);
     const [dFull, dResume] = await Promise.all([bootSync().digestOf(encFull.root, encFull.parts), bootSync().digestOf(encResume.root, encResume.parts)]);
     const keyFull = chainInSig(rowsAll, snap.hashes, T, null), keyBase = chainInSig(rowsBase, snap.hashes, baseTip, null);
+    console.log('HASH snapshot T-2 catch-up wsEncode');
+    console.log('  full   ' + dFull);
+    console.log('  resume ' + dResume);
     ok(dFull === dResume && keyFull !== keyBase, 'snapshot at tip T-2 plus catch-up matches a full replay at tip T');
     ok(resumed.pets.length === full.pets.length && resumed.tip === T, 'the caught-up world is the current tip');
   }

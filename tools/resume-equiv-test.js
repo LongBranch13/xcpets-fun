@@ -86,6 +86,9 @@ async function resumeCase(label, rows, hashes, finalTip, dex, baseRows, baseTip,
   const resumed = patched.V2Rules.replay(rows, hashes, ops || [], { tip: finalTip, live: patched.LiveEngine.RealCore, dex: dex || undefined,
     _resume: { w: saved.w, seen: seen, dexPos: saved.dexPos, grand: saved.grand, tip: baseTip, opsFrom: (ops || []).length } });
   const dFull = stateHash(full), dResume = stateHash(resumed);
+  console.log('HASH ' + label);
+  console.log('  full   ' + dFull);
+  console.log('  resume ' + dResume);
   ok(dFull === dResume && resumed.pets.length === full.pets.length && resumed.tip === finalTip, label + ' resumed == full (' + (dFull === dResume ? dFull.slice(0, 12) : 'DIFF') + ')');
 }
 function predicateChecks(rows, hashes, tip) {
