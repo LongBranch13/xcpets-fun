@@ -138,7 +138,24 @@ Measured again at 06:33 UTC on this branch after main was merged. The live snaps
 | Phone | First | 60.8 s | 58.7 s | **41.4 s** (42.5, 40.4) | catch-up, `justSeeded` true |
 | Phone | Return, same block | 11.1 s | 9.35 s | **12.7 s** (12.6, 12.8) | IndexedDB |
 
-Pets 174,223. The decode worker reads IndexedDB off the main thread and hands the saved records through. Desktop return long tasks stayed under 200 ms (max 159 and 189). Phone return still has tasks of 602–612 ms, three of them over 200 ms. An earlier pass, while the snapshot was 5–6 blocks behind on `r16a9352…`, was 28.1 s / 15.7 s desktop and 70.9 s / 55.6 s phone; those return times included a second encode of the world that this measurement does not.
+Return visits in that same run: desktop **4.30 s** (4.46 s, 4.14 s) and phone **12.7 s** (12.6 s, 12.8 s). A later throttled phone return was 12.6 s. Desktop return long tasks stayed under 200 ms (max 159 and 189). Phone return still has tasks of about 600 ms.
+
+### Where the 41.4 s phone first visit goes
+
+A throttled phone first visit in the same conditions (412 px, 4× CPU, Fast 4G, snapshot one block behind) took **40.1 s** wall, `justSeeded` true. The catch-up worker reported:
+
+| Piece | Time |
+|---|---:|
+| Checkpoint download and parse | **17.5 s** |
+| Write the world to IndexedDB | 2.4 s |
+| Encode the finished world | 2.0 s |
+| Encode the next checkpoint | 1.9 s |
+| Catch-up replay (new burns and the final pass) | 1.6 s |
+| Load the rule scripts | 2.2 s |
+| Decode the checkpoint | 0.5 s |
+| Main thread receives the saved world and finishes boot | about 7 s |
+
+The decompressed checkpoint is 270 MB. On the wire, Fast 4G moves it in about 17 s, which is the bandwidth of that throttle. Raising the four-at-a-time fetch cap would not get under that. A smaller snapshot would, and that is a publisher change, not a rules change. The catch-up replay itself is 1.6 s, not the old 45 s full history.
 
 ### Exact mode, and a snapshot on a different rules hash
 
