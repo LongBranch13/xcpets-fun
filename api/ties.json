@@ -1,6 +1,6 @@
 {
- "lastBlock": 975625,
- "count": 372,
+ "lastBlock": 975627,
+ "count": 374,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4466,6 +4466,30 @@
    "speciesLabel": "Snibby",
    "rarity": "Rare",
    "stage": "Mythic"
+  },
+  {
+   "id": 93554,
+   "asset": "A17776931344877557049",
+   "tiedBlock": 975627,
+   "tiedTx": "d206b1d1c48b8d05f50cc82a1e4af761bf2cda54ae2fc2f8f641fd31be766335",
+   "kind": "deed",
+   "name": "Belupekin",
+   "species": "hyb3:dodo:lenny:pepe",
+   "speciesLabel": "Dolenpe (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 154192,
+   "asset": "A7363484362933563252",
+   "tiedBlock": 975627,
+   "tiedTx": "200167c246cf0f3022f24a1ba62b3cbd657d0de6b7e011942d7413b1235d5724",
+   "kind": "deed",
+   "name": "Yulon",
+   "species": "hyb3:pepe:dodo:sarutobi",
+   "speciesLabel": "Pedotobi (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
