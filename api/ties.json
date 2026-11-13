@@ -1,6 +1,6 @@
 {
- "lastBlock": 975663,
- "count": 391,
+ "lastBlock": 975665,
+ "count": 398,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4692,6 +4692,90 @@
    "name": "Mosa",
    "species": "hyb:dodo:peepo",
    "speciesLabel": "Dopeep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 12482,
+   "asset": "A15226930438566753505",
+   "tiedBlock": 975664,
+   "tiedTx": "ae188a30225f2bd5ebc4031f4416155217c59b4214198c55a65da39a99c13058",
+   "kind": "deed",
+   "name": "Neki",
+   "species": "hyb:mumu:dodo",
+   "speciesLabel": "Mudod (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 20871,
+   "asset": "A13738448670311584843",
+   "tiedBlock": 975664,
+   "tiedTx": "8fb3faab602e9ee33ab5b3fb3e1b374e49f57f2d8f253d3240d6e88b4ee7faaf",
+   "kind": "deed",
+   "name": "Rigi",
+   "species": "hyb3:mumu:dodo:peepo",
+   "speciesLabel": "Mudopo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22039,
+   "asset": "A12990634530559546913",
+   "tiedBlock": 975664,
+   "tiedTx": "5f578629193cb9ae916796bdfafdd429575b468c714f5a7f3a4ba3e65261747c",
+   "kind": "deed",
+   "name": "Toru",
+   "species": "hyb:wizard:kevin",
+   "speciesLabel": "Wizvin (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22040,
+   "asset": "A9894328979214920630",
+   "tiedBlock": 975664,
+   "tiedTx": "7ff6160d3dd6552b208fe61e1194bc1e50c2dcb3ea26eb4be1968da7c72e70b7",
+   "kind": "deed",
+   "name": "Pomo",
+   "species": "hyb3:mumu:dodo:doge",
+   "speciesLabel": "Mudoge (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22191,
+   "asset": "A3514689839187650200",
+   "tiedBlock": 975664,
+   "tiedTx": "e299815ed330fca8bfdf5138ff9798983f05187355a7bd528107f33c9ca7a988",
+   "kind": "deed",
+   "name": "Fuyo",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22337,
+   "asset": "A7692633943139090535",
+   "tiedBlock": 975664,
+   "tiedTx": "10897aa633b0bdf9032197a106410732e5dc331910e55604f5b4151c39448715",
+   "kind": "deed",
+   "name": "Ribo",
+   "species": "hyb:snibby:kevin",
+   "speciesLabel": "Snivin (hybrid)",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22770,
+   "asset": "A16688346889943529835",
+   "tiedBlock": 975664,
+   "tiedTx": "b28bc6f4b71bf881346b7da5b6337f3aca1ac7726db62fb3e0f3c217344bba1e",
+   "kind": "deed",
+   "name": "Minu",
+   "species": "hyb:nakamoto:dodo",
+   "speciesLabel": "Nadod (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
