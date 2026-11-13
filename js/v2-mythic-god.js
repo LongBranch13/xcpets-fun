@@ -3,7 +3,7 @@
  *   God (resurrected pets and God-born babies): a shining body (tint + glow aura + light sweep) plus 2 of 6 divine effects,
  *     a light tint and a halo style from sha256("XCPETS:god-look:" + id) (60 looks).
  *   Mythic God: its Pantheon seat recipe, a stronger shine, Twin Moons and the violet starlight trace (replaces the electric aura).
- *   Mythic-fed (cured) zombie: the fully alive sprite (no rot, no dead eyes) plus a silver, white and red aura and a small badge.
+ *   Mythic-fed (cured) zombie: the fully alive sprite (no rot, no dead eyes) plus a soft silver, white and red glow and a small badge.
  *   Mythic zombie: a dead, broken grey-blue trace where its electric rim was.
  * God looks for existing Gods are on right away (owner Oct 31 2026 9:01 PM CT), not tied to the Mythic gate. ?godlook=0 turns them off (?godlook=1 kept, no-op).
  * Sprites carry no text. Effects are 8-frame loops on top of the pet's own idle frames. Loaded after js/v2-zombies.js. */
@@ -171,13 +171,13 @@
         img[j] = (k % 4 === 0) ? [70, 80, 100] : [112, 128, 152]; if ((seg * 7 + f) % 23 === 0 && k % 4 === 1) img[j] = [170, 190, 220]; /* a rare dying spark */ });
       var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
-  /* Cured (Mythic-fed) aura, painted on the living sprite (the zombie look is not applied to these pets).
-   * Display only. The body is not recolored. A two-pixel halo sits outside the silhouette and steps through
-   * silver, white and red. The step rides the pet's existing idle frames: no extra timer, no CSS filter.
-   * prefers-reduced-motion: the same halo on every frame. Bitcoin red on the body is not touched.
-   * CURED_BADGE picks the corner mark. 'cross' (default) is the small red cross. 'offset' is a red cross
-   * shifted onto a dark rounded badge, so it is not a red cross on white. Any other value draws 'cross'.
-   * Distinct from a normal zombie (no halo), a Mythic (electric cyan line), a Mythic zombie (broken grey-blue trace)
+  /* Cured (Mythic-fed) look. Display only. The 32x32 sprite stays the living pet, crisp, plus a small badge.
+   * The shine is not painted into those pixels: curedGlow() is a smooth silver, white and red glow (soft falloff,
+   * a sweep, and fine sparkles) drawn on a smooth overlay, or baked into previews. The pet body is never recolored.
+   * prefers-reduced-motion: one still glow. Bitcoin red on the body is not touched.
+   * CURED_BADGE: 'cross' (default) is the small red cross. 'offset' is a red cross shifted on a dark round,
+   * inset so the whole mark sits inside the frame. Any other value draws 'cross'.
+   * Distinct from a normal zombie (no glow), a Mythic (electric line), a Mythic zombie (broken grey-blue trace)
    * and a Mythic God (body shine, violet starlight, moons). */
   var CURED_BADGE = 'cross';
   var CURED = {
@@ -185,39 +185,58 @@
     white: [255, 255, 255], red: [214, 32, 40], redDeep: [168, 20, 28],
     badgeDark: [36, 32, 48]
   };
-  var CURED_SEQ = null;
-  function curedSeq() { return CURED_SEQ || (CURED_SEQ = [CURED.silver, CURED.white, CURED.red, CURED.silverHi, CURED.white, CURED.redDeep]); }
   function reducedMotion() { try { var mm = window.matchMedia; return !!(mm && mm.call(window, '(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
   function badgeMode() { var m = CURED_BADGE; try { var g = window.V2MythicGod; if (g && (g.CURED_BADGE === 'cross' || g.CURED_BADGE === 'offset')) m = g.CURED_BADGE; } catch (e) {} return m === 'offset' ? 'offset' : 'cross'; }
-  function around(list, on) { var bb = bbox(on), cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
-    return list.slice().sort(function (a, b) { var ax = a % 32, ay = (a / 32) | 0, bx = b % 32, by = (b / 32) | 0, d = Math.atan2(ay - cy, ax - cx) - Math.atan2(by - cy, bx - cx); return d < 0 ? -1 : d > 0 ? 1 : a - b; }); }
-  /* 5x5 mark in the reserved corner (x27-31, y0-4). The cross is centered on white.
-     The offset mark is the same red cross shifted one pixel right, on a dark round, corners left empty. */
-  function stampBadge(img, mode) { var x0 = 27, y0 = 0, D = CURED.badgeDark, R = CURED.red, W = CURED.white, pix, i, p;
-    pix = mode === 'offset'
-      ? [[1, 0, D], [2, 0, D], [3, 0, D], [0, 1, D], [1, 1, D], [2, 1, D], [3, 1, R], [4, 1, D], [0, 2, D], [1, 2, D], [2, 2, R], [3, 2, R], [4, 2, R], [0, 3, D], [1, 3, D], [2, 3, D], [3, 3, R], [4, 3, D], [1, 4, D], [2, 4, D], [3, 4, D]]
-      : [[0, 0, W], [1, 0, W], [2, 0, W], [3, 0, W], [4, 0, W], [0, 1, W], [1, 1, W], [2, 1, R], [3, 1, W], [4, 1, W], [0, 2, W], [1, 2, R], [2, 2, R], [3, 2, R], [4, 2, W], [0, 3, W], [1, 3, W], [2, 3, R], [3, 3, W], [4, 3, W], [0, 4, W], [1, 4, W], [2, 4, W], [3, 4, W], [4, 4, W]];
+  /* 'cross' fills the corner. 'offset' is the same size, moved in by a pixel on the top and the right so it is not cut off. */
+  function stampBadge(img, mode) { var D = CURED.badgeDark, R = CURED.red, W = CURED.white, pix, i, p, x0, y0;
+    if (mode === 'offset') { x0 = 26; y0 = 1; pix = [[1, 0, D], [2, 0, D], [3, 0, D], [0, 1, D], [1, 1, D], [2, 1, D], [3, 1, R], [4, 1, D], [0, 2, D], [1, 2, D], [2, 2, R], [3, 2, R], [4, 2, R], [0, 3, D], [1, 3, D], [2, 3, D], [3, 3, R], [4, 3, D], [1, 4, D], [2, 4, D], [3, 4, D]]; }
+    else { x0 = 27; y0 = 0; pix = [[0, 0, W], [1, 0, W], [2, 0, W], [3, 0, W], [4, 0, W], [0, 1, W], [1, 1, W], [2, 1, R], [3, 1, W], [4, 1, W], [0, 2, W], [1, 2, R], [2, 2, R], [3, 2, R], [4, 2, W], [0, 3, W], [1, 3, W], [2, 3, R], [3, 3, W], [4, 3, W], [0, 4, W], [1, 4, W], [2, 4, W], [3, 4, W], [4, 4, W]]; }
     for (i = 0; i < pix.length; i++) { p = pix[i]; img[(y0 + p[1]) * 32 + x0 + p[0]] = p[2]; } }
-  function curedFrames(fr, KA, KB) { var out = [], n = Math.max(NF, fr.length), still = reducedMotion(), seq = curedSeq(), mode = badgeMode();
+  function curedFrames(fr, KA, KB) { var out = [], n = Math.max(NF, fr.length), mode = badgeMode();
     for (var f = 0; f < n; f++) { var src = fr[f % fr.length], a = KA[f % KA.length], b = KB[f % KB.length]; if (!src || !src.data || src.data.length !== 4096 || !a || !b) return null;
-      var on = silOf(a.data, b.data), img = toImg(src.data), ring = [], halo = [], inR = new Uint8Array(1024), i, x, y;
-      var cand = [];
-      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { if (on[y * 32 + x] || badge(x, y)) continue;
-        if (onAt(on, x + 1, y) || onAt(on, x - 1, y) || onAt(on, x, y + 1) || onAt(on, x, y - 1)) cand.push(y * 32 + x); }
-      /* a pixel with pet on both sides is a bridge across a gap (between the eyes, a split brow), not the outline.
-         Same rule as the Mythic electric line (mythRimOuter). If that would erase the whole ring, keep it. */
-      for (i = 0; i < cand.length; i++) { var bi = cand[i], bx = bi % 32, by = (bi / 32) | 0, L = false, Rgt = false, dd;
-        for (dd = 1; dd < 32 && !(L && Rgt); dd++) { if (bx - dd >= 0 && on[by * 32 + bx - dd]) L = true; if (bx + dd < 32 && on[by * 32 + bx + dd]) Rgt = true; }
-        if (!(L && Rgt)) ring.push(bi); }
-      if (!ring.length) ring = cand;
-      for (i = 0; i < ring.length; i++) inR[ring[i]] = 1;
-      for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { var hi = y * 32 + x; if (on[hi] || inR[hi] || badge(x, y)) continue;
-        if ((x < 31 && inR[hi + 1]) || (x > 0 && inR[hi - 1]) || (y < 31 && inR[hi + 32]) || (y > 0 && inR[hi - 32])) halo.push(hi); }
-      var phase = still ? 0 : (f % NF);
-      function lay(list, shift, skip) { var ord = around(list, on); for (var k = 0; k < ord.length; k++) { if (skip && ((k + phase) & 1)) continue; img[ord[k]] = seq[(k + phase * 2 + shift) % seq.length]; } }
-      lay(ring, 0, false); lay(halo, 3, true); stampBadge(img, mode);
-      var g = { width: 32, height: 32, data: toData(img, src.data) }; if (src.pid != null) g.pid = src.pid; out.push(g); }
+      var on = silOf(a.data, b.data), img = toImg(src.data);
+      stampBadge(img, mode);
+      var g = { width: 32, height: 32, data: toData(img, src.data), curedOn: on, curedFrame: f % NF }; if (src.pid != null) g.pid = src.pid; out.push(g); }
     return out; }
+  function blurBox(src, w, h, r) { if (r < 1) return src; var a = new Float32Array(src.length), b = new Float32Array(src.length), div = 1 / (r * 2 + 1), y, x, sum, i;
+    for (y = 0; y < h; y++) { sum = 0; for (i = -r; i <= r; i++) sum += src[y * w + (i < 0 ? 0 : i)];
+      for (x = 0; x < w; x++) { a[y * w + x] = sum * div; sum += src[y * w + Math.min(w - 1, x + r + 1)] - src[y * w + Math.max(0, x - r)]; } }
+    for (x = 0; x < w; x++) { sum = 0; for (i = -r; i <= r; i++) sum += a[(i < 0 ? 0 : i) * w + x];
+      for (y = 0; y < h; y++) { b[y * w + x] = sum * div; sum += a[Math.min(h - 1, y + r + 1) * w + x] - a[Math.max(0, y - r) * w + x]; } }
+    return b; }
+  function mix3(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  /* Soft glow at size S. Alpha 0 on the pet and on the badge corner, so the crisp sprite shows through. */
+  function curedGlow(on, S, frame, still) { S = S || 96; if (!on || S < 16) return null; var out = new Uint8ClampedArray(S * S * 4), mask = new Float32Array(S * S), sc = S / 32, y, x, yy, xx;
+    var cx = 0, cy = 0, nb = 0;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (on[y * 32 + x]) { cx += x; cy += y; nb++; var x0 = Math.floor(x * sc), x1 = Math.ceil((x + 1) * sc), y0 = Math.floor(y * sc), y1 = Math.ceil((y + 1) * sc);
+      for (yy = y0; yy < y1 && yy < S; yy++) for (xx = x0; xx < x1 && xx < S; xx++) mask[yy * S + xx] = 1; }
+    if (!nb) return out; cx /= nb; cy /= nb;
+    var rad = Math.max(2, Math.round(sc * 3.6)), soft = mask; for (var p = 0; p < 3; p++) soft = blurBox(soft, S, S, Math.max(1, Math.round(rad / 3)));
+    var phase = still ? 0.9 : ((frame % NF) / NF) * Math.PI * 2, o, ix, iy, m, ang, redW, sweep, near, col, a;
+    for (yy = 0; yy < S; yy++) for (xx = 0; xx < S; xx++) { ix = Math.min(31, (xx * 32 / S) | 0); iy = Math.min(31, (yy * 32 / S) | 0);
+      if (on[iy * 32 + ix] || (ix >= 25 && iy <= 5)) continue; m = soft[yy * S + xx]; if (m < 0.018) continue;
+      ang = Math.atan2((yy + 0.5) * 32 / S - cy, (xx + 0.5) * 32 / S - cx);
+      redW = Math.pow(Math.max(0, Math.cos(ang - phase)), 3); sweep = Math.pow(Math.max(0, Math.cos(ang - phase - 0.55)), 8);
+      near = Math.min(1, m * 2.1); col = mix3(CURED.silver, CURED.silverHi, near); col = mix3(col, CURED.white, 0.22 + 0.5 * near);
+      col = mix3(col, CURED.red, redW * 0.78); col = mix3(col, CURED.white, sweep * 0.92);
+      a = Math.min(0.94, m * 2.8) * (0.7 + 0.3 * sweep); o = (yy * S + xx) * 4; out[o] = col[0]; out[o + 1] = col[1]; out[o + 2] = col[2]; out[o + 3] = a * 255; }
+    for (var s = 0; s < 11; s++) { var sa = s * 2.399963 + phase * 0.85, radS = 8.6 + (s % 3) * 0.85 + Math.sin(phase + s) * 0.35;
+      var gx = cx + Math.cos(sa) * radS, gy = cy + Math.sin(sa) * radS * 0.9, tw = still ? 0.72 : 0.22 + 0.78 * Math.max(0, Math.sin(phase * 2 + s * 1.7));
+      var scol = s % 3 === 0 ? CURED.red : (s % 3 === 1 ? CURED.white : CURED.silverHi), sig = 0.4, reach = sig * 3.2 * sc;
+      var ox = gx * sc, oy = gy * sc, yA = Math.max(0, Math.floor(oy - reach)), yB = Math.min(S - 1, Math.ceil(oy + reach)), xA = Math.max(0, Math.floor(ox - reach)), xB = Math.min(S - 1, Math.ceil(ox + reach));
+      for (yy = yA; yy <= yB; yy++) for (xx = xA; xx <= xB; xx++) { ix = Math.min(31, (xx * 32 / S) | 0); iy = Math.min(31, (yy * 32 / S) | 0); if (on[iy * 32 + ix] || (ix >= 25 && iy <= 5)) continue;
+        var dx = (xx + 0.5) / sc - gx, dy = (yy + 0.5) / sc - gy, gau = Math.exp(-(dx * dx + dy * dy) / (2 * sig * sig)) * tw; if (gau < 0.05) continue;
+        o = (yy * S + xx) * 4; var oa = out[o + 3] / 255, na = Math.min(0.98, oa + gau * 0.95), k = na > 0 ? Math.min(1, gau / na) : 0;
+        out[o] = out[o] * (1 - k) + scol[0] * k; out[o + 1] = out[o + 1] * (1 - k) + scol[1] * k; out[o + 2] = out[o + 2] * (1 - k) + scol[2] * k; out[o + 3] = na * 255; } }
+    return out; }
+  function syncCured(c, img) { if (!c || typeof document === 'undefined') return;
+    if (!img || !img.curedOn || !c.parentNode) { if (c._cured && c._cured.parentNode) c._cured.parentNode.removeChild(c._cured); if (c) c._cured = null; return; }
+    var o = c._cured; if (!o || !o.isConnected || o.parentNode !== c.parentNode) { o = document.createElement('canvas'); o.className = 'cured-shine'; o.setAttribute('aria-hidden', 'true');
+      o.style.cssText = 'position:absolute;pointer-events:none;image-rendering:auto;margin:0;background:transparent;z-index:2;'; c.parentNode.insertBefore(o, c.nextSibling); c._cured = o; }
+    var w = c.offsetWidth || c.width || 32, h = c.offsetHeight || c.height || 32; o.style.left = (c.offsetLeft || 0) + 'px'; o.style.top = (c.offsetTop || 0) + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px';
+    var dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1), S = Math.max(64, Math.min(320, Math.round(w * dpr / 32) * 32)); if (o.width !== S) o.width = o.height = S;
+    var g = o.getContext && o.getContext('2d'); if (!g || typeof ImageData !== 'function') return; var glow = curedGlow(img.curedOn, S, img.curedFrame || 0, reducedMotion()); if (!glow) return;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, S, S); g.putImageData(new ImageData(glow, S, S), 0, 0); }
   /* isMythicFed first (a pure read). mgView().fed only if that helper is missing. No new pet state. */
   function fedOf(p, w) { var v = V();
     try { if (typeof v.isMythicFed === 'function') return !!v.isMythicFed(p); } catch (e) {}
@@ -240,7 +259,8 @@
       var key = JSON.stringify(lk) + (lk.z === 'fed' ? '|' + badgeMode() : ''), hit = DONE.get(fr); if (hit && hit.__k === key) return hit; var out = null;
       try { var zz = !!lk.z, KA = keyed(pf0, p, w, extra, '#ff00fe', zz), KB = keyed(pf0, p, w, extra, '#00ff01', zz);
         out = zz ? zFrames(fr, KA, KB, lk.z, p) : godFrames(fr, KA, KB, p, lk); } catch (e) { if (window.console) console.warn('mythic god look failed #' + (p && p.id), e); out = null; }
-      if (!out) out = fr; try { out.__k = key; } catch (e) {} DONE.set(fr, out); return out; }; }
+      if (!out) out = fr; try { out.__k = key; } catch (e) {} DONE.set(fr, out); return out; };
+    if (typeof R.paint === 'function') { var paint0 = R.paint; R.paint = function (c, img) { var r = paint0.apply(this, arguments); try { syncCured(c, img); } catch (e) {} return r; }; } }
   /* ---------- chips and lines (labels only) ---------- */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function view(w, p) { var v = V(); try { return v.mgView ? v.mgView(w, p) : null; } catch (e) { return null; } }
@@ -265,5 +285,5 @@
       '.mg-dlg-warn{color:#ffb4a8;font-weight:600}.mg-name{width:100%;margin-top:6px}';
     (document.head || document.documentElement).appendChild(css); } catch (e) {}
   window.V2MythicGod = { on: gateOn, force: FORCE, godMix: godMix, seatLook: seatLook, SEATS: SEATS, ROMAN: ROMAN, NAMES: NAMES, PAL: PAL, chips: chips, view: view, seatTitle: seatTitle, span: span, esc: esc,
-    godFrames: godFrames, zFrames: zFrames, curedFrames: curedFrames, lookOf: lookOf, fedOf: fedOf, CURED: CURED, CURED_BADGE: CURED_BADGE, NF: NF };
+    godFrames: godFrames, zFrames: zFrames, curedFrames: curedFrames, curedGlow: curedGlow, lookOf: lookOf, fedOf: fedOf, CURED: CURED, CURED_BADGE: CURED_BADGE, NF: NF };
 })();

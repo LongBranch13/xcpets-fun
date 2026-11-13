@@ -3,7 +3,7 @@
  *  - the sprite gets the shared dead look (js/v2-zombie-look.js) and is drawn at the Mythic pose with the Mythic aura, dim and rot-green
  *    (owner Oct 28 2026: "in my pets looking mythic but zombie"); the stage chip still shows the engine's real stage;
  *  - a Mythic-fed zombie is the exception (owner Nov 12 2026): it is cured, so it is drawn as the fully alive pet at its real stage.
- *    No dead eyes, rot, flies or stink. js/v2-mythic-god.js adds a silver, white and red aura and a small badge on that living sprite;
+ *    No dead eyes, rot, flies or stink. js/v2-mythic-god.js adds a soft silver, white and red glow and a small badge on that living sprite;
  *  - no normal meals (hungry false, so Feed all and the feed queue skip it); a hunger bar drains instead: full at the raise or the last
  *    zombie meal, feral after 432 blocks, crumbles to dust 432 blocks after that unless it eats pets (pet:zfeed) or wins a hunt.
  * Never adds the fire aura, the grant flame crown or the edition gold frame. ?zombies=off turns the look off for a page view. Display only. */

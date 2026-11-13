@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-/* Cured (Mythic-fed) zombie aura. Display only: a silver, white and red halo plus a small badge.
- * Default badge is the red cross. 'offset' is a shifted red cross on a dark round.
+/* Cured (Mythic-fed) zombie aura. Display only: a soft silver, white and red glow plus a small badge.
+ * The 32x32 sprite stays crisp. Default badge is the red cross. 'offset' is a shifted red cross
+ * on a dark round, inset so it is fully inside the frame.
  * Bitcoin red left red, reduced motion holds still, v2-rules.js byte-identical.
  * Does not draw Sabo #1765. */
 'use strict';
@@ -74,34 +75,43 @@ const blob = disc();
 stillFlag.matches = false;
 const fed = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
 function at(d, x, y) { return px(d, y * 32 + x); }
-function auraCount(d) {
-  const n = { silver: 0, white: 0, red: 0 };
-  for (let i = 0; i < 1024; i++) {
-    const x = i % 32, y = (i / 32) | 0;
-    if (x >= 26 && y < 5) continue;
-    const c = px(d, i);
-    if (eq(c, SILVER) || eq(c, SILVER_HI)) n.silver++;
-    else if (eq(c, WHITE)) n.white++;
-    else if (eq(c, RED) || eq(c, RED_DEEP)) n.red++;
+const BG = [8, 16, 40];
+function glowStats(buf, S, on) {
+  let partial = 0, covered = 0, teal = 0, gold = 0, shine = 0;
+  for (let i = 0; i < S * S; i++) {
+    const x = i % S, y = (i / S) | 0, a = buf[i * 4 + 3];
+    const ix = Math.min(31, (x * 32 / S) | 0), iy = Math.min(31, (y * 32 / S) | 0);
+    const c = [buf[i * 4], buf[i * 4 + 1], buf[i * 4 + 2]];
+    if (on[iy * 32 + ix] || (ix >= 25 && iy <= 5)) { if (a > 8) covered++; continue; }
+    if (a > 18 && a < 250) partial++;
+    if (a > 40) {
+      if (tealish(c) || eq(c, TEAL) || eq(c, TEAL2) || eq(c, CYAN)) teal++;
+      if (eq(c, GOLD) || (c[0] > 220 && c[1] > 180 && c[2] > 120 && c[2] < 210 && c[1] > c[2])) gold++;
+      if (orange(c)) gold++;
+    }
+    if (a > 140) shine++;
   }
-  return n;
+  return { partial, covered, teal, gold, shine };
 }
-t('cured aura shimmers in silver, white and red, with no gold or teal fringe', () => {
-  assert.ok(fed && fed.length >= 8);
-  let off = 0;
-  const d = fed[0].data;
-  const known = AURA.concat([DARK, [80, 200, 60], [214, 46, 40], [214, 255, 168], [8, 16, 40]]);
-  for (let i = 0; i < 1024; i++) {
-    const c = px(d, i);
-    if (eq(c, GOLD) || eq(c, TEAL) || eq(c, TEAL2) || eq(c, CYAN)) off++;
-    if (!known.some(k => eq(c, k))) off++;
-  }
-  const n = auraCount(d);
-  assert.ok(n.silver > 8, 'silver ' + n.silver);
-  assert.ok(n.white > 4, 'white ' + n.white);
-  assert.ok(n.red > 4, 'red ' + n.red);
-  assert.strictEqual(off, 0);
-  assert.deepStrictEqual(px(d, 0), [8, 16, 40]);
+t('the sprite stays crisp and the glow is a soft silver, white and red shine', () => {
+  assert.ok(fed && fed.length >= 8 && fed[0].curedOn);
+  let changed = 0;
+  for (let i = 0; i < 1024; i++) if (!eq(px(fed[0].data, i), px(blob.fr[0].data, i))) changed++;
+  assert.ok(changed > 10 && changed < 40, 'only the badge is added on the sprite, changed ' + changed);
+  assert.deepStrictEqual(px(fed[0].data, 0), BG);
+  const S = 48;
+  const g0 = G.curedGlow(fed[0].curedOn, S, 0, false);
+  const g3 = G.curedGlow(fed[0].curedOn, S, 3, false);
+  const s0 = glowStats(g0, S, fed[0].curedOn);
+  assert.ok(s0.partial > 40, 'soft edge pixels ' + s0.partial);
+  assert.strictEqual(s0.covered, 0);
+  assert.strictEqual(s0.teal, 0);
+  assert.strictEqual(s0.gold, 0);
+  assert.ok(s0.shine > 8, 'bright shine ' + s0.shine);
+  assert.notDeepStrictEqual(Buffer.from(g0), Buffer.from(g3));
+  const calm0 = G.curedGlow(fed[0].curedOn, S, 0, true);
+  const calm3 = G.curedGlow(fed[0].curedOn, S, 3, true);
+  assert.deepStrictEqual(Buffer.from(calm0), Buffer.from(calm3));
 });
 t('the default badge is a red cross on white', () => {
   const d = fed[0].data;
@@ -114,20 +124,20 @@ t('the default badge is a red cross on white', () => {
   assert.deepStrictEqual(at(d, 29, 3), RED);
   assert.deepStrictEqual(at(d, 28, 1), WHITE);
 });
-t('the offset badge is a shifted red cross on a dark round, not a red cross on white', () => {
+t('the offset badge is a shifted red cross on a dark round, fully inside the frame', () => {
   G.CURED_BADGE = 'offset';
   const off = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
   const d = off[0].data;
-  assert.deepStrictEqual(at(d, 27, 0), [8, 16, 40]); /* rounded corner stays the backdrop */
-  assert.deepStrictEqual(at(d, 31, 0), [8, 16, 40]);
-  assert.deepStrictEqual(at(d, 28, 0), DARK);
-  assert.deepStrictEqual(at(d, 30, 1), RED);
+  for (let x = 0; x < 32; x++) assert.deepStrictEqual(at(d, x, 0), BG);
+  for (let y = 0; y < 7; y++) assert.deepStrictEqual(at(d, 31, y), BG);
+  assert.deepStrictEqual(at(d, 27, 1), DARK);
   assert.deepStrictEqual(at(d, 29, 2), RED);
-  assert.deepStrictEqual(at(d, 30, 2), RED);
-  assert.deepStrictEqual(at(d, 31, 2), RED);
+  assert.deepStrictEqual(at(d, 28, 3), RED);
+  assert.deepStrictEqual(at(d, 29, 3), RED);
   assert.deepStrictEqual(at(d, 30, 3), RED);
+  assert.deepStrictEqual(at(d, 29, 4), RED);
   let whiteSq = 0;
-  for (let y = 0; y < 5; y++) for (let x = 27; x < 32; x++) if (eq(at(d, x, y), WHITE)) whiteSq++;
+  for (let y = 0; y < 7; y++) for (let x = 25; x < 32; x++) if (eq(at(d, x, y), WHITE)) whiteSq++;
   assert.strictEqual(whiteSq, 0);
   G.CURED_BADGE = 'nope';
   const back = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
@@ -142,16 +152,11 @@ t('Bitcoin red stays red and the living colours are not repainted', () => {
   assert.deepStrictEqual(px(d, skin / 4), [80, 200, 60]);
   assert.deepStrictEqual(px(d, blob.pupil / 4), [214, 255, 168]);
 });
-t('the halo steps across idle frames, and reduced motion holds one calm frame', () => {
-  assert.notDeepStrictEqual(Buffer.from(fed[0].data), Buffer.from(fed[3].data));
-  const a0 = auraCount(fed[0].data), a3 = auraCount(fed[3].data);
-  assert.ok(a0.silver && a0.white && a0.red);
-  assert.ok(a3.silver && a3.white && a3.red);
+t('the sprite itself does not change between idle frames', () => {
+  assert.deepStrictEqual(Buffer.from(fed[0].data), Buffer.from(fed[3].data));
   stillFlag.matches = true;
   const calm = G.zFrames(blob.fr, blob.KA, blob.KB, 'fed', { id: 50982 });
   assert.deepStrictEqual(Buffer.from(calm[0].data), Buffer.from(calm[3].data));
-  const ac = auraCount(calm[0].data);
-  assert.ok(ac.silver > 8 && ac.white > 4 && ac.red > 4);
   stillFlag.matches = false;
 });
 t('a gap through the face is not filled with the outline', () => {
@@ -237,8 +242,7 @@ function peepo(id, fedFlag) {
   if (fedFlag) p.zombie.mfed = { block: 974800, mythic: 42, took: 30 };
   return p;
 }
-function countSilver(fr) { let n = 0; const d = fr[0].data; for (let i = 0; i < 1024; i++) if (eq(px(d, i), SILVER) || eq(px(d, i), SILVER_HI)) n++; return n; }
-t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie stays dead', () => {
+t('petFrames: cured Peepo is the living sprite plus a badge; the glow is separate; a normal zombie stays dead', () => {
   const w = p => ({ items: {}, pets: [p], byId: { [p.id]: p }, tip: 975606 });
   const alive = peepo(50982, false); delete alive.zombie;
   alive.stage = 2; alive.stageName = 'Juvenile'; alive.care = 69;
@@ -248,21 +252,24 @@ t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie st
   mythCalls = 0;
   const curedFr = full.V2Render.petFrames(curedPet, w(curedPet), { noHunger: true });
   const curedCalls = mythCalls;
-  let bodyDiff = 0, auraPx = 0;
-  const auraCol = c => AURA.some(k => eq(c, k)) || eq(c, DARK);
+  let bodyDiff = 0, badgePx = 0;
+  const badgeCol = c => eq(c, WHITE) || eq(c, RED) || eq(c, DARK);
   for (let i = 0; i < 1024; i++) {
     const a = px(aliveFr[0].data, i), c = px(curedFr[0].data, i);
     if (eq(a, c)) continue;
-    if (auraCol(c)) auraPx++; else bodyDiff++;
+    if (badgeCol(c)) badgePx++; else bodyDiff++;
   }
-  assert.strictEqual(bodyDiff, 0, 'living face and colours stay; only the aura and badge are added');
-  assert.ok(auraPx > 20, 'aura pixels ' + auraPx);
-  assert.ok(countSilver(curedFr) > 8);
+  assert.strictEqual(bodyDiff, 0, 'living face and colours stay; only the badge is painted on the sprite');
+  assert.ok(badgePx > 10 && badgePx < 40, 'badge pixels ' + badgePx);
+  assert.ok(curedFr[0].curedOn);
+  const shine = glowStats(full.V2MythicGod.curedGlow(curedFr[0].curedOn, 48, 0, false), 48, curedFr[0].curedOn);
+  assert.ok(shine.partial > 30 && shine.covered === 0 && shine.teal === 0 && shine.gold === 0);
   assert.deepStrictEqual(at(curedFr[0].data, 29, 2), RED);
   assert.deepStrictEqual(at(curedFr[0].data, 27, 0), WHITE);
   mythCalls = 0;
   const norm = peepo(12044, false);
   const normFr = full.V2Render.petFrames(norm, w(norm), { noHunger: true });
+  assert.ok(!normFr[0].curedOn);
   assert.notDeepStrictEqual(at(normFr[0].data, 29, 1), RED);
   assert.strictEqual(curedCalls, 0);
   assert.ok(mythCalls > 0, 'normal zombie still takes the electric aura');
@@ -273,8 +280,9 @@ t('petFrames: cured Peepo is the living sprite plus the aura; a normal zombie st
   assert.strictEqual(full.V2Zombies.cured(norm, w(norm)), false);
   full.V2MythicGod.CURED_BADGE = 'offset';
   const offFr = full.V2Render.petFrames(curedPet, w(curedPet), { noHunger: true });
-  assert.deepStrictEqual(at(offFr[0].data, 30, 2), RED);
+  assert.deepStrictEqual(at(offFr[0].data, 30, 3), RED);
   assert.notDeepStrictEqual(at(offFr[0].data, 27, 0), WHITE);
+  assert.deepStrictEqual(at(offFr[0].data, 31, 3), at(aliveFr[0].data, 31, 3));
   full.V2MythicGod.CURED_BADGE = 'cross';
 });
 t('rules file and replay worker are not part of this display change', () => {
