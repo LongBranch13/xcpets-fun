@@ -1,6 +1,6 @@
 {
- "lastBlock": 975660,
- "count": 384,
+ "lastBlock": 975661,
+ "count": 388,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4608,6 +4608,54 @@
    "name": "Wizotot",
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 22192,
+   "asset": "A15546886090861744791",
+   "tiedBlock": 975661,
+   "tiedTx": "1a4590dcef6aed2e9756348400d1a0e3d8d1c57e6482a4f44125355cfb7d70ae",
+   "kind": "deed",
+   "name": "Zuchika",
+   "species": "hyb3:kevin:lenny:dodo",
+   "speciesLabel": "Kelendo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 31750,
+   "asset": "A13757573830351481745",
+   "tiedBlock": 975661,
+   "tiedTx": "728b5f087d3edcc8ceb4b6f95dcd2d99f291aeb6afd993bbe3401b4c493de1d7",
+   "kind": "deed",
+   "name": "Baka",
+   "species": "hyb:dodo:bobo",
+   "speciesLabel": "Dobo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 46067,
+   "asset": "A12241718342575956592",
+   "tiedBlock": 975661,
+   "tiedTx": "400c04456a8dead8aa46879f5b17873e3d48b21e9b22614cb189cab381e84e3e",
+   "kind": "deed",
+   "name": "Diredoboo",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 46072,
+   "asset": "A17563755386363830824",
+   "tiedBlock": 975661,
+   "tiedTx": "a20f1db444f2013f32159b1210ce291d97f489c8af961d22696a0beed67a9b50",
+   "kind": "deed",
+   "name": "Lord Kekamozard",
+   "species": "hyb3:nakamoto:wizard:kek",
+   "speciesLabel": "Nazikek (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
   }
