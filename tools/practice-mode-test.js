@@ -23,16 +23,27 @@ PAGES.forEach(f => {
   ok(!src.some(s => /casa-connect|block-hashes|v2-cached|smooth-perf/.test(s)), f + ': no wallet connector, cached chain data or real block hashes: ' + src.join(' '));
   ok(/class="px-bar"/.test(h) && /PRACTICE/.test(h) && /class="px-badge"/.test(h), f + ': PRACTICE bar');
   ok(/<a class="btn px-real[^"]*" href="play\.html"/.test(h), f + ': Play for real button');
+  ok(/Hatch a real pet/.test(h) && /href="play\.html#hatchPanel"/.test(h), f + ': Hatch a real pet leads to the real burn');
+  ok(/id="pxReset"/.test(h) && /Reset practice pet/.test(h), f + ': reset is the practice pet only');
   ok(/noindex/.test(h), f + ': preview page is noindex');
   ok(/<body[^>]*class="[^"]*\bpractice\b/.test(h), f + ': body.practice');
   ok(!/<link[^>]*rel="(preconnect|prefetch|dns-prefetch)"[^>]*(counterparty|xcp\.io|mempool)/i.test(h), f + ': no chain preconnects');
 });
 ok(/data-split="fight"/.test(rd('practice-fight.html')) && /data-split="breed"/.test(rd('practice-breed.html')) && /data-split="rare"/.test(rd('practice-rare.html')), 'game places keep their real layouts');
-ok(/href="practice\.html"/.test(rd('index.html')), 'index links to practice mode');
+ok(/href="practice\.html(#hatchPanel)?"/.test(rd('index.html')), 'index links to practice mode');
+const home = rd('index.html');
+ok(/Try a free practice pet/.test(home) && /id="pxTry"/.test(home) && /href="practice\.html#hatchPanel"/.test(home), 'home: one-tap Try a free practice pet');
+ok(/Hatch a real pet/.test(home) && /id="pxRealHome"/.test(home) && /href="play\.html#hatchPanel"/.test(home), 'home: Hatch a real pet opens the real hatch');
+ok(/xcpets-v2-me/.test(home) && /px-try-lead/.test(home), 'home entry leads until a wallet is saved');
+ok(home.indexOf('xcpets-practice') < 0 && home.indexOf('XcpPractice') < 0, 'home does not read the practice ledger');
 
 /* 3 · storage + isolation */
 const guard = rd('js/practice-guard.js'), ui = rd('js/practice-ui.js'), eng = rd('js/practice-engine.js'), wal = rd('js/v2-practice-wallet.js'), css = rd('css/practice.css');
 ok(/xcpets-practice-/.test(guard) && /indexedDB/.test(guard) && /serviceWorker/.test(guard), 'guard prefixes storage and turns off IndexedDB / service workers');
+ok(/px-shot/.test(css) && /px-shot/.test(ui) && /NOT A REAL PET/.test(css), 'the pet picture itself is marked PRACTICE');
+ok(/NOT A REAL PET/.test(ui) && /cardCanvas/.test(ui), 'a saved practice card image says it is not a real pet');
+ok(/Reset the practice pet\?/.test(ui) && /Real pets are not touched/.test(ui), 'reset confirms it clears only the practice pet');
+ok(/api\|t/.test(guard) || /\/\(api\|t\)/.test(guard), 'guard refuses the real api and feed files');
 ok(/'xcpets-practice-ledger'/.test(eng), "pretend chain key is 'xcpets-practice-ledger'");
 const realJs = fs.readdirSync(path.join(ROOT, 'js')).filter(f => /\.js$/.test(f) && !OWN.includes(f)).map(f => 'js/' + f).concat(fs.readdirSync(path.join(ROOT, 'rjs')).filter(f => /\.js$/.test(f)).map(f => 'rjs/' + f));
 ok(realJs.every(f => rd(f).indexOf('xcpets-practice') < 0 && rd(f).indexOf('XcpPractice') < 0), 'no real-game script reads practice data (rankings, feeds, replay never see practice pets)');

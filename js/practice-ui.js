@@ -13,11 +13,11 @@
   if ($('pxGrow')) $('pxGrow').onclick = function () { var b = this; busy(b, true); msg('Feeding your practice pets…'); later(function () { var n = 0; try { n = XP.growDay(); } catch (e) { msg(String(e.message || e)); } busy(b, false); msg(n ? '🍽️ Fed ' + n + ' pet' + (n === 1 ? '' : 's') + ', then skipped to the next day. Keep going: pets turn Mythic after about 9 days.' : '⏭️ Next day. Hatch a pet first, then Grow a day to watch it grow up.'); reread(); }); };
   if ($('pxDayBtn')) $('pxDayBtn').onclick = function () { XP.nextDay(); msg('⏭️ Skipped 144 pretend blocks: a new chain day. Your pets are hungry again.'); reread(); };
   if ($('pxRefill')) $('pxRefill').onclick = function () { XP.refill(); msg('💰 Pretend balance refilled to ' + fmt(XP.START_BAL) + '.'); reread(); };
-  if ($('pxReset')) $('pxReset').onclick = function () { if (!confirm('Start practice over? Your practice pets in this browser are cleared.')) return; try { window.__xcpPracticeStore.wipe(); } catch (e) {} XP._forget(); location.reload(); };
+  if ($('pxReset')) $('pxReset').onclick = function () { if (!confirm('Reset the practice pet? Only the practice pet in this browser is cleared. Real pets are not touched.')) return; try { window.__xcpPracticeStore.wipe(); } catch (e) {} XP._forget(); location.reload(); };
   /* hatch reveal: a small PRACTICE tag while the real reveal plays, and a nudge to the real game after it */
   var tag = null, seen = false;
   function watch() { var on = [].some.call(document.querySelectorAll('#animBox, #packBox.on'), function (el) { var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0; }) || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy());
-    if (on && !tag) { tag = document.createElement('div'); tag.className = 'px-reveal-tag'; tag.textContent = 'PRACTICE · pretend pet'; document.body.appendChild(tag); seen = true; }
+    if (on && !tag) { tag = document.createElement('div'); tag.className = 'px-reveal-tag'; tag.textContent = 'PRACTICE · not a real pet'; document.body.appendChild(tag); seen = true; }
     if (!on && tag) { tag.remove(); tag = null; var c = $('pxCta'); if (c && seen) { c.classList.remove('px-pop'); void c.offsetWidth; c.classList.add('px-pop'); } } }
   setInterval(watch, 400);
   /* practice burns land in a block right away, so never hold the reveal back as a 'while you were away' replay */
@@ -27,10 +27,19 @@
   function tidyToasts() { var box = $('toasts'); if (!box) return; [].slice.call(box.children).forEach( function (t) { if (!t.__px && WAIT.test(t.textContent || '')) { if (box.querySelector('.px-done')) { t.remove(); return; } t.__px = 1; t.classList.add('px-done'); t.innerHTML = '✨ Practice burn done right away in a pretend block. Nothing went on chain.'; } }); }
   function tidyPgt() { var g = $('pgt'); if (g && !g.__pxBusy && WAIT.test(g.textContent || '')) { g.__pxBusy = 1; g.textContent = String(g.textContent).replace(/ ?They appear here once confirmed in a block\.?/, ' Done in a pretend block, no waiting.').replace(/\s*·\s*tx [0-9a-f]{6,}…/i, ''); g.__pxBusy = 0; } }
   /* real-wallet only buttons (tokenize, gift, sell, post to X): not part of practice */
-  var REAL_ONLY = /^(🎟 ?Tokenize|🎁 ?Gift|𝕏 ?Post|🏷️ ?Sell|💸 ?Sell|Sell\b|List for sale|Make an offer)/;
+  var REAL_ONLY = /^(🎟 ?Tokenize|🎁 ?Gift|𝕏 ?Post|🎞️ ?Save GIF|🏷️ ?Sell|💸 ?Sell|Sell\b|List for sale|Make an offer)/;
   function tidyReal() { [].forEach.call(document.querySelectorAll('main button:not([data-px]), main a.btn:not([data-px]), #petOverlay button:not([data-px])'), function (b) { b.setAttribute('data-px', '1'); if (REAL_ONLY.test((b.textContent || '').trim())) { b.hidden = true; b.style.display = 'none'; } }); }
   function tidyFee() { var f = $('cfFee'); if (f && /^network fee/.test(f.textContent || '')) f.textContent = 'No network fee: practice burns are free and pretend.'; }
-  try { new MutationObserver(function () { tidyToasts(); tidyPgt(); tidyFee(); tidyReal(); }).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (e) {}
+  function tidyConfirm() { var y = $('cfYes'); if (!y) return; if (/Sign & burn|Confirm breed · sign/i.test(y.textContent || '')) y.textContent = 'Pretend burn, free'; }
+  function tidyCoach() { [].forEach.call(document.querySelectorAll('.tut-tip, .tut-card'), function (t) { var w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT), n; while ((n = w.nextNode())) { if (/wallet asks you to sign/i.test(n.nodeValue)) n.nodeValue = n.nodeValue.replace(/Your wallet asks you to sign\.?/i, 'This hatch is pretend. Nothing is signed.'); } }); }
+  /* the picture itself says PRACTICE, so a screenshot of the pet cannot pass as a real one */
+  var SHOT = '#pets canvas.sprite, #mpsBox canvas.sprite, .pc-art > canvas, #dCanvas, .bgrid .pet.card > canvas, .fpc > canvas, #packBox .packgrid canvas';
+  function veil() { [].forEach.call(document.querySelectorAll(SHOT), function (c) { if (!c || c.closest('.px-shot')) return; var w = document.createElement('span'); w.className = 'px-shot'; c.parentNode.insertBefore(w, c); w.appendChild(c); }); }
+  function stampShare() { var S = window.XCPShare; if (!S || S.__pxStamp || typeof S.cardCanvas !== 'function') return; var orig = S.cardCanvas;
+    S.cardCanvas = function (p) { var c = orig(p); try { var g = c.getContext('2d'), W = c.width; g.save(); g.translate(W / 2, c.height * 0.42); g.rotate(-0.3); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.font = "72px 'Press Start 2P', monospace"; g.lineWidth = 16; g.strokeStyle = '#1a1200'; g.fillStyle = '#ffd23f'; g.strokeText('PRACTICE', 0, 0); g.fillText('PRACTICE', 0, 0); g.font = "28px 'Press Start 2P', monospace"; g.strokeText('NOT A REAL PET', 0, 96); g.fillText('NOT A REAL PET', 0, 96); g.restore(); } catch (e) {} return c; };
+    S.__pxStamp = 1; }
+  try { new MutationObserver(function () { tidyToasts(); tidyPgt(); tidyFee(); tidyConfirm(); tidyCoach(); tidyReal(); veil(); stampShare(); }).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (e) {}
+  veil(); stampShare();
   document.addEventListener('click', function (e) { var a = e.target && e.target.closest && e.target.closest('a[href*="mempool.space"], a[href*="xcp.io"], a[href*="horizon.market"]'); if (a) { e.preventDefault(); e.stopPropagation(); msg('That link opens a real chain page. Practice burns never leave this browser.'); } }, true);
   /* stay inside practice: the pet page and the game places (arena, Rare Room, breeding motel) have practice copies */
   var MAP = { 'pet.html': 'practice-pet.html', 'play.html': 'practice.html', 'fight.html': 'practice-fight.html', 'breed.html': 'practice-breed.html', 'rare-room.html': 'practice-rare.html' };

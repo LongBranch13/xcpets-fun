@@ -65,10 +65,10 @@ function fixtureState() {
   ok(listed && C.RULE_SCRIPTS.join(',') === listed[1].replace(/['"\s]/g, ''), 'recheck script list matches v2-chain.js');
 
   CHAIN_PAGES.forEach(f => { const h = fs.readFileSync(path.join(ROOT, f), 'utf8'); const a = h.indexOf('js/v2-boot-sync.js'), b = h.indexOf('js/v2-chain.js'); ok(a > 0 && a < b, 'boot-sync before chain on ' + f); });
-  /* pantheon-nav is on main, so the practice pages match origin/main byte for byte, links included.
-   * They still must not load the live boot-sync. */
+  /* practice pages are rebuilt from the real pages for the free practice pet, so they are not the bytes on main.
+   * They still must not load the live boot-sync, and the Pantheon link stays. */
   PRACTICE.forEach(f => { const cur = fs.readFileSync(path.join(ROOT, f)); ok(!cur.includes('v2-boot-sync.js'), 'practice page has no live boot-sync ' + f);
-    ok(cur.equals(gitBuf(f)) && cur.includes('pantheon'), 'practice page matches main and links the Pantheon ' + f); });
+    ok(cur.includes('pantheon') && cur.includes('PRACTICE') && cur.includes('Hatch a real pet'), 'practice page links the Pantheon and stays marked PRACTICE ' + f); });
 
   const state = fixtureState();
   const full = buildAnswer(state, { since: '0' });

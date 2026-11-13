@@ -5,7 +5,7 @@
 .px-btns .btn,.px-btns .q{padding:5px 9px;font-size:12px;min-height:32px}
 .px-msg{flex-basis:100%;min-height:0;color:#ffd23f}.px-msg:empty{display:none}
 .btn.px-real{background:#2ecc71;border-color:#1e8f4d;color:#08240f;font-weight:700}.btn.px-real.big{font-size:16px;padding:10px 16px}
-.px-nav{display:flex;gap:4px 12px;align-items:center;flex-wrap:wrap;justify-content:center;min-width:0}.px-nav a{white-space:nowrap}.px-nav .btn{padding:5px 10px}
+.px-nav{display:flex;gap:4px 12px;align-items:center;flex-wrap:wrap;justify-content:center;min-width:0;max-width:100%}.px-nav a{white-space:nowrap}.px-nav .btn{padding:5px 10px}
 @media (max-width:600px){.px-nav{gap:2px 9px;font-size:12px}.px-nav .btn{padding:3px 8px;font-size:12px}}
 .px-odds{background:rgba(255,210,63,.08);border:1px dashed rgba(255,210,63,.5);border-radius:8px;padding:6px 8px}
 .px-cta{border:2px solid #2ecc71;background:rgba(46,204,113,.08)}.px-cta.px-pop{animation:pxpop .6s ease-out}
@@ -14,7 +14,23 @@ body.practice #zapBtn,body.practice #zapFence,body.practice #zapOdds,body.practi
 /* a faint PRACTICE stamp on every pet card and on the hatch reveal */
 body.practice .pets .pet,body.practice .pets .card{position:relative}
 body.practice .pets .pet::after,body.practice .pets .card::after{content:'PRACTICE';position:absolute;right:6px;top:6px;font-family:'Press Start 2P',monospace;font-size:7px;background:rgba(255,210,63,.85);color:#1a1a1a;padding:2px 4px;border-radius:3px;pointer-events:none;z-index:3}
-.px-reveal-tag{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100000;font-family:'Press Start 2P',monospace;font-size:10px;background:#ffd23f;color:#1a1a1a;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:nowrap}
+.px-reveal-tag{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100020;font-family:'Press Start 2P',monospace;font-size:10px;background:#ffd23f;color:#1a1a1a;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:nowrap}
 @media (max-width:600px){.px-reveal-tag{box-sizing:border-box;max-width:calc(100vw - 16px);overflow-wrap:anywhere;white-space:normal;text-align:center}}
 html,body{overflow-x:hidden}
 @media (max-width:600px){.px-bar{margin:6px 6px 0;font-size:12px}.px-txt{flex-basis:100%}.px-btns .btn,.px-btns .q{font-size:11px;padding:4px 7px}}
+/* the pet picture carries the mark, so cropping the card still shows PRACTICE */
+.px-shot{position:relative;display:inline-block;max-width:100%;vertical-align:top;line-height:0;container-type:inline-size}
+.pet.card>.px-shot{display:block;width:100%}
+.px-shot::after{content:'PRACTICE';position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) rotate(-16deg);z-index:6;pointer-events:none;font-family:'Press Start 2P',monospace;font-size:clamp(7px,16cqw,18px);line-height:1.35;color:#1a1200;background:rgba(255,210,63,.92);border:2px solid #1a1200;border-radius:4px;padding:3px 5px;white-space:nowrap;box-shadow:2px 2px 0 #000}
+.px-shot::before{content:'NOT A REAL PET';position:absolute;left:50%;bottom:6%;transform:translateX(-50%);z-index:6;pointer-events:none;font-family:'Press Start 2P',monospace;font-size:clamp(6px,8cqw,11px);line-height:1.4;color:#1a1200;background:rgba(255,210,63,.92);border:2px solid #1a1200;border-radius:3px;padding:2px 4px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+@container (max-width:72px){.px-shot::before{display:none}.px-shot::after{font-size:6px;padding:1px 2px;border-width:1px}}
+.px-cta-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.px-cta-row .btn,.px-btns .btn,.px-btns .q{box-sizing:border-box}
+@media (max-width:420px){
+  .px-bar{margin:6px 8px 0}
+  .px-btns{width:100%}
+  .px-btns .btn,.px-btns .q{flex:1 1 calc(50% - 6px);text-align:center}
+  .px-nav{width:100%;box-sizing:border-box;justify-content:flex-start}
+  .px-cta-row .btn{flex:1 1 100%;text-align:center}
+  .px-reveal-tag{font-size:9px}
+}
