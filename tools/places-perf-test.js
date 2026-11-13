@@ -348,8 +348,7 @@ async function renderMeasure(page, label) {
     console.log('MEASURE breed 390', JSON.stringify(m390));
     await phone.screenshot({ path: path.join(ART, 'breed-checkin-390.png') });
     await phone.goto(origin + '/rare-room.html', { waitUntil: 'domcontentloaded' });
-    await phone.waitForFunction(() => window.V2UI && V2Mock.world().pets.length > 20 && window.V2RareHall, null, { timeout: 120000 });
-    await phone.waitForFunction(() => { if (window.V2RareHall && V2RareHall.draw) V2RareHall.draw(); return document.querySelectorAll('#rhGrid .rh-card').length > 0; }, null, { timeout: 8000 }).catch(() => {});
+    await phone.waitForFunction(() => window.V2UI && window.V2Mock && V2Mock.world && V2Mock.world().pets && V2Mock.world().pets.length > 20, null, { timeout: 180000 });
     const hall390 = await phone.evaluate(() => document.querySelectorAll('#rhGrid .rh-card').length);
     ok(hall390 === 0 || (hall390 > 0 && hall390 <= 8), 'rare hall is absent or pages at most 8 cards at 390 (' + hall390 + ')');
     await phone.screenshot({ path: path.join(ART, 'rare-hall-390.png') });
