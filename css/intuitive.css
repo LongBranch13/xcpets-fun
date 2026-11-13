@@ -49,3 +49,8 @@ body.kek-arr-open .ip-tour{display:none!important}
 .ip-awayx{background:#000;color:#ffd23f;border:2px solid #000;font:700 11px/1 inherit;font-family:inherit;min-height:28px;min-width:24px;cursor:pointer;padding:0 5px}
 .ip-awayfix{position:fixed;right:10px;bottom:10px;z-index:8000}
 body:has(.reveal.on) .ip-awaywrap{visibility:hidden}
+@media (max-width:600px){
+  .ip-tour{box-sizing:border-box;width:min(360px, calc(100vw - 16px));max-width:calc(100vw - 16px);overflow-wrap:anywhere;bottom:max(14px, env(safe-area-inset-bottom))}
+  .ip-awayfix{left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));bottom:max(10px, env(safe-area-inset-bottom));max-width:calc(100vw - 16px);box-sizing:border-box}
+  .ip-awayfix .ip-away{overflow-wrap:anywhere;white-space:normal;max-width:100%}
+}
