@@ -10,7 +10,7 @@
 .px-odds{background:rgba(255,210,63,.08);border:1px dashed rgba(255,210,63,.5);border-radius:8px;padding:6px 8px}
 .px-cta{border:2px solid #2ecc71;background:rgba(46,204,113,.08)}.px-cta.px-pop{animation:pxpop .6s ease-out}
 @keyframes pxpop{0%{transform:scale(.97)}60%{transform:scale(1.02)}100%{transform:scale(1)}}
-body.practice #zapBtn,body.practice #zapFence,body.practice #zapOdds,body.practice #wdisconnect,body.practice #balRefresh{display:none!important}
+body.practice #zapBtn,body.practice #zapFence,body.practice #zapOdds,body.practice #wdisconnect,body.practice #balRefresh,body.practice #dozenBtn,body.practice #caseBtn,body.practice #wizEggBtn{display:none!important}
 /* a faint PRACTICE stamp on every pet card and on the hatch reveal */
 body.practice .pets .pet,body.practice .pets .card{position:relative}
 body.practice .pets .pet::after,body.practice .pets .card::after{content:'PRACTICE';position:absolute;right:6px;top:6px;font-family:'Press Start 2P',monospace;font-size:7px;background:rgba(255,210,63,.85);color:#1a1a1a;padding:2px 4px;border-radius:3px;pointer-events:none;z-index:3}

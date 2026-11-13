@@ -23,19 +23,19 @@ PAGES.forEach(f => {
   ok(!src.some(s => /casa-connect|block-hashes|v2-cached|smooth-perf/.test(s)), f + ': no wallet connector, cached chain data or real block hashes: ' + src.join(' '));
   ok(/class="px-bar"/.test(h) && /PRACTICE/.test(h) && /class="px-badge"/.test(h), f + ': PRACTICE bar');
   ok(/<a class="btn px-real[^"]*" href="play\.html"/.test(h), f + ': Play for real button');
-  ok(/Hatch a real pet/.test(h) && /href="play\.html#hatchPanel"/.test(h), f + ': Hatch a real pet leads to the real burn');
+  ok(/Hatch a real pet/.test(h) && /href="play\.html\?connect=1#hatchPanel"/.test(h), f + ': Hatch a real pet connects the wallet first');
   ok(/id="pxReset"/.test(h) && /Reset practice pet/.test(h), f + ': reset is the practice pet only');
   ok(/noindex/.test(h), f + ': preview page is noindex');
   ok(/<body[^>]*class="[^"]*\bpractice\b/.test(h), f + ': body.practice');
   ok(!/<link[^>]*rel="(preconnect|prefetch|dns-prefetch)"[^>]*(counterparty|xcp\.io|mempool)/i.test(h), f + ': no chain preconnects');
 });
 ok(/data-split="fight"/.test(rd('practice-fight.html')) && /data-split="breed"/.test(rd('practice-breed.html')) && /data-split="rare"/.test(rd('practice-rare.html')), 'game places keep their real layouts');
-ok(/href="practice\.html(#hatchPanel)?"/.test(rd('index.html')), 'index links to practice mode');
 const home = rd('index.html');
-ok(/Try a free practice pet/.test(home) && /id="pxTry"/.test(home) && /href="practice\.html#hatchPanel"/.test(home), 'home: one-tap Try a free practice pet');
-ok(/Hatch a real pet/.test(home) && /id="pxRealHome"/.test(home) && /href="play\.html#hatchPanel"/.test(home), 'home: Hatch a real pet opens the real hatch');
-ok(/xcpets-v2-me/.test(home) && /px-try-lead/.test(home), 'home entry leads until a wallet is saved');
+ok(/id="pxNew"/.test(home) && />New here\?<\/a>/.test(home) && /href="tutorial\.html"/.test(home), 'home: one New here? button opens the tutorial');
+ok(!/Try a free practice pet|id="pxTry"|practice\.html/.test(home), 'home has no separate practice button');
 ok(home.indexOf('xcpets-practice') < 0 && home.indexOf('XcpPractice') < 0, 'home does not read the practice ledger');
+ok(/Keep a practice pet/.test(rd('js/v2-tutorial.js')) && /practice\.html\?keep=1/.test(rd('js/v2-tutorial.js')), 'tutorial final step keeps one practice pet');
+ok(/connect=1/.test(rd('js/v2-wallet.js')) && /data-need-wallet/.test(rd('js/v2-wallet.js')), 'a real hatch from practice connects the wallet first');
 
 /* 3 · storage + isolation */
 const guard = rd('js/practice-guard.js'), ui = rd('js/practice-ui.js'), eng = rd('js/practice-engine.js'), wal = rd('js/v2-practice-wallet.js'), css = rd('css/practice.css');
@@ -70,6 +70,7 @@ ok(s0.bal === X.START_BAL && s0.tip === X.START_TIP && s0.day === 1, 'fresh prac
 const r1 = X.burn({ tag: 'pet:hatch', amount: 69 }), s1 = X.state();
 ok(/^[0-9a-f]{64}$/.test(r1.txid) && r1.block === X.START_TIP + 1 && s1.bal === X.START_BAL - 69, 'a hatch burn mines one pretend block and costs 69 pretend XCPETS');
 ok(s1.stats.hatched === 1 && s1.stats.legendary === 1 && s1.stats.wow === 1, 'the first practice egg is a Legendary with a showy trait');
+ok((() => { try { X.burn({ tag: 'pet:hatch', amount: 69 }); return false; } catch (e) { return /One practice pet/.test(e.message) && X.state().stats.hatched === 1; } })(), 'one practice pet: a second hatch is refused');
 const L = X.load(), w = X._replay(L.rows, L.tip), mine = w.pets.filter(p => p.owner === X.ME);
 ok(mine.length === 1 && mine[0].tier === 3, 'the real replay sees the practice pet as a Legendary');
 let leg = 0, bad = 0; const N = 30;
@@ -85,6 +86,7 @@ ok(refuse('pet:hatchzap') && refuse('pet:aura:1') && refuse('pet:deed:1') && ref
 ok((() => { try { X.burn({ tag: 'pet:hatch', amount: 9e9 }); return false; } catch (e) { return /Refill/.test(e.message); } })(), 'over-spending asks for a free Refill');
 const d0 = X.state().day; X.nextDay(); ok(X.state().day === d0 + 1, 'Next day skips one pretend day');
 X.reset(); ok(X.state().rows >= 0 && X.state().stats.hatched === 0 && X.state().bal === X.START_BAL, 'Start over gives a fresh pretend wallet');
+ok((() => { try { X.burn({ tag: 'pet:hatch12', amount: 690 }); return false; } catch (e) { return /One practice pet/.test(e.message) && X.state().stats.hatched === 0; } })(), 'a pack cannot make extra practice pets');
 ok(Object.keys(st).every(k => /^xcpets-practice-/.test(k)), 'saved only under xcpets-practice-*: ' + Object.keys(st).join(','));
 const core = X.serve('https://api.counterparty.io:4000/v2/blocks/last');
 ok(core !== null, 'the pretend node answers Core URLs (nothing reaches the real API)');

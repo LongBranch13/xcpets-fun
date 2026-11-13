@@ -104,7 +104,8 @@
   function burn(plan) { var l = load(), tag = String(plan.tag || ''), amt = r8(plan.amount), T = tag.toLowerCase();
     if (!(amt > 0)) throw err('That burn has no amount.');
     if (amt > l.bal + 1e-9) throw err('Not enough practice XCPETS. Tap "Refill" in the PRACTICE bar (it is pretend and free).');
-    if (/^pet:hatchzap$/.test(T)) throw err('The Electric Shock Box (1,000 eggs) is not in practice. Try a Crack Pack or the Yolk Booster Box.');
+    if (/^pet:hatchzap$/.test(T)) throw err('The Electric Shock Box (1,000 eggs) is not in practice.');
+    if (/^pet:hatch(12|144|wiz)$/.test(T) || (T === 'pet:hatch' && l.stats.hatched >= 1)) throw err('One practice pet per browser. Reset the practice pet if you want a new one.');
     if (/^pet:aura:/.test(T) || (/^pet:look:/.test(T) && /:ka:/.test(T + ':'))) throw err('Flame looks are not part of practice.');
     if (/^pet:(order|deed|unsell|swap|give|gives|sell)/.test(T) || plan.kind) throw err('Trading and gifting are real-wallet only. In practice, hatch, feed, gear up, fight and breed.');
     var b = ++l.tip, bh = blockHash(b), tx = null, src = ME;

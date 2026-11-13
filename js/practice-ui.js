@@ -2,9 +2,24 @@
 (function () {
   'use strict';
   var XP = window.XcpPractice; if (!XP) return;
+  /* tutorial final step: ?keep=1 makes the one practice pet, then opens this page without the flag */
+  try {
+    var keepQ = new URLSearchParams(location.search);
+    if (keepQ.get('keep') === '1') {
+      if (!XP.state().stats.hatched) { try { XP.burn({ tag: 'pet:hatch', amount: 69 }); } catch (e) {} }
+      keepQ.delete('keep');
+      location.replace(location.pathname + (keepQ.toString() ? '?' + keepQ : '') + location.hash);
+      return;
+    }
+  } catch (e) {}
   var $ = function (id) { return document.getElementById(id); };
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
-  function paint() { var s = XP.state(); if ($('pxDay')) $('pxDay').textContent = s.day; if ($('pxBal')) $('pxBal').textContent = fmt(s.bal);
+  function onePet(s) {
+    ['dozenBtn', 'caseBtn', 'wizEggBtn'].forEach(function (id) { var b = $(id); if (b) { b.hidden = true; b.style.display = 'none'; } });
+    var h = $('hatchBtn'); if (!h) return;
+    if (s.stats.hatched >= 1) { h.disabled = true; if (h.textContent !== 'One practice pet') h.textContent = 'One practice pet'; h.title = 'This browser already has its practice pet. Reset it to start over.'; }
+  }
+  function paint() { var s = XP.state(); onePet(s); if ($('pxDay')) $('pxDay').textContent = s.day; if ($('pxBal')) $('pxBal').textContent = fmt(s.bal);
     var st = $('pxStats'); if (st) st.textContent = s.stats.hatched ? 'This practice run: ' + fmt(s.stats.hatched) + ' egg' + (s.stats.hatched === 1 ? '' : 's') + ' hatched, ' + s.stats.legendary + ' Legendary, ' + s.stats.wow + ' with a showy trait.' : 'Crack your first practice egg: it is always a Legendary.'; }
   function msg(t) { var m = $('pxMsg'); if (m) m.textContent = t || ''; }
   function reread() { try { window.dispatchEvent(new Event('xcpets:practice-refresh')); } catch (e) {} setTimeout(paint, 50); }
@@ -38,7 +53,13 @@
   function stampShare() { var S = window.XCPShare; if (!S || S.__pxStamp || typeof S.cardCanvas !== 'function') return; var orig = S.cardCanvas;
     S.cardCanvas = function (p) { var c = orig(p); try { var g = c.getContext('2d'), W = c.width; g.save(); g.translate(W / 2, c.height * 0.42); g.rotate(-0.3); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.font = "72px 'Press Start 2P', monospace"; g.lineWidth = 16; g.strokeStyle = '#1a1200'; g.fillStyle = '#ffd23f'; g.strokeText('PRACTICE', 0, 0); g.fillText('PRACTICE', 0, 0); g.font = "28px 'Press Start 2P', monospace"; g.strokeText('NOT A REAL PET', 0, 96); g.fillText('NOT A REAL PET', 0, 96); g.restore(); } catch (e) {} return c; };
     S.__pxStamp = 1; }
-  try { new MutationObserver(function () { tidyToasts(); tidyPgt(); tidyFee(); tidyConfirm(); tidyCoach(); tidyReal(); veil(); stampShare(); }).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (e) {}
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('#hatchBtn, #dozenBtn, #caseBtn, #wizEggBtn');
+    if (!b || (b.id === 'hatchBtn' && XP.state().stats.hatched < 1)) return;
+    e.preventDefault(); e.stopPropagation();
+    msg('One practice pet per browser. Reset the practice pet if you want a new one.');
+  }, true);
+  try { new MutationObserver(function () { tidyToasts(); tidyPgt(); tidyFee(); tidyConfirm(); tidyCoach(); tidyReal(); onePet(XP.state()); veil(); stampShare(); }).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (e) {}
   veil(); stampShare();
   document.addEventListener('click', function (e) { var a = e.target && e.target.closest && e.target.closest('a[href*="mempool.space"], a[href*="xcp.io"], a[href*="horizon.market"]'); if (a) { e.preventDefault(); e.stopPropagation(); msg('That link opens a real chain page. Practice burns never leave this browser.'); } }, true);
   /* stay inside practice: the pet page and the game places (arena, Rare Room, breeding motel) have practice copies */
@@ -47,10 +68,11 @@
     var f = u.pathname.split('/').pop(), to = MAP[f]; if (!to) return null; var hash = u.hash; return to + u.search.replace(/([?&])addr=[^&]*&?/, '$1').replace(/[?&]$/, '') + hash; }
   function savePetRet(id) { try { sessionStorage.setItem('xcpets-v2-petret', JSON.stringify({ y: Math.round(window.scrollY), id: id, at: Date.now(), path: location.pathname + location.search })); } catch (x) {} }
   document.addEventListener('click', function (e) { if (e.defaultPrevented) return; var t = e.target; if (!t || !t.closest) return;
-    var a = t.closest('a[href]'); if (a && !a.classList.contains('px-real') && !a.hasAttribute('data-real')) { var to = mapUrl(a.getAttribute('href')); if (to) { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey || e.metaKey || a.target === '_blank') window.open(to, '_blank'); else location.href = to; } return; }
+    var a = t.closest('a[href]'); if (a && (a.classList.contains('px-real') || a.hasAttribute('data-real'))) { window.__pxAllowReal = 1; setTimeout(function () { window.__pxAllowReal = 0; }, 1500); return; }
+    if (a) { var to = mapUrl(a.getAttribute('href')); if (to) { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey || e.metaKey || a.target === '_blank') window.open(to, '_blank'); else location.href = to; } return; }
     var card = t.closest('#pets .pet.card[data-pid]'); if (card && !a && !(e.shiftKey || document.body.classList.contains('selmode')) && (t.closest('.openbtn') || !t.closest('button, input, label, select,xc-select, .keepbtn, .pet-discard'))) { var id = card.dataset.pid; e.preventDefault(); e.stopPropagation(); savePetRet(+id); var u = 'practice-pet.html?id=' + id; if (e.ctrlKey || e.metaKey) window.open(u, '_blank'); else location.href = u; } }, true);
   /* anything else that sets location to a real page we have a practice copy of (Navigation API where the browser has it) */
-  try { if (window.navigation && navigation.addEventListener) navigation.addEventListener('navigate', function (e) { if (!e.cancelable || e.hashChange || e.downloadRequest) return; var to = mapUrl(e.destination.url); if (to) { e.preventDefault(); location.href = to; } }); } catch (e) {}
+  try { if (window.navigation && navigation.addEventListener) navigation.addEventListener('navigate', function (e) { if (!e.cancelable || e.hashChange || e.downloadRequest || window.__pxAllowReal) return; if (/[?&]connect=1(&|#|$)/.test(e.destination.url || '')) return; var to = mapUrl(e.destination.url); if (to) { e.preventDefault(); location.href = to; } }); } catch (e) {}
   /* the pet page has no live re-render: after a practice burn there, read it again */
   if (document.body.getAttribute('data-v2page') === 'pet') window.addEventListener('xcpets:practice', function () { setTimeout(function () { location.reload(); }, 600); });
   window.addEventListener('xcpets:practice', paint);
