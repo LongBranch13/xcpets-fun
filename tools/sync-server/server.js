@@ -23,6 +23,7 @@ function viewRel(parts) {
   if (parts[2] !== 'view') return null;
   if (parts.length === 4 && parts[3] === 'summary.json') return path.join('view', 'summary.json');
   if (parts.length === 5 && parts[3] === 'o' && /^[0-9a-f]{2}\.json$/.test(parts[4])) return path.join('view', 'o', parts[4]);
+  if (parts.length === 5 && parts[3] === 'own' && /^[0-9a-f]{64}(?:\.\d+)?\.json$/.test(parts[4])) return path.join('view', 'own', parts[4]);
   if (parts.length === 5 && parts[3] === 'p' && /^\d{5}\.json$/.test(parts[4])) return path.join('view', 'p', parts[4]);
   return null;
 }

@@ -67,7 +67,7 @@ function replay(snap) {
   const world = replayWorld(ctx, snap.rows, snap.hashes, snap.tip, null);
   return world;
 }
-function prove(name) {
+async function prove(name) {
   const snap = loadSnap(name);
   const t0 = Date.now();
   const world = replay(snap);
@@ -90,15 +90,20 @@ function prove(name) {
   ok(det && fields(det).join('|') === fields(sample).join('|'), name + ' mid pet ' + sample.id + ' shard matches');
   if (world.community) ok(built.summary.burned === world.community.burned, name + ' burned ' + built.summary.burned);
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'split-'));
-  const meta = split.write(out, world, { tip: world.tip, rsig: rulesSig(loadBytes()) });
+  const petN = world.pets.length, petTip = world.tip;
+  const meta = await split.write(out, world, { tip: world.tip, rsig: rulesSig(loadBytes()) });
   const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
-  ok(summary.n === world.pets.length && summary.tip === world.tip, name + ' written summary ' + summary.n + ' files ' + meta.files + ' bytes ' + meta.bytes);
+  ok(summary.n === petN && summary.tip === petTip, name + ' written summary ' + summary.n + ' files ' + meta.files + ' bytes ' + meta.bytes);
   ok(summary.rsig && summary.rsig[0] === 'r', name + ' summary carries the rules signature');
-  return { ms: ms, n: world.pets.length, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
+  const first = JSON.parse(fs.readFileSync(path.join(out, 'own', meta.top[0].key + '.json'), 'utf8'));
+  ok(first.pets.length <= split.PAGE && first.n === meta.top[0].n, name + ' first owner page is at most ' + split.PAGE + ' pets (' + first.pets.length + ' of ' + first.n + ')');
+  return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
 }
-const a = prove('snap-971786.json');
-const b = prove('snap-972901.json');
+(async () => {
+const a = await prove('snap-971786.json');
+const b = await prove('snap-972901.json');
 console.log('builder-like write tip ' + a.n + ' pets files ' + a.files + ' bytes ' + a.bytes + ' rssMB ' + Math.round(a.rss / 1e6));
 console.log('builder-like write tip ' + b.n + ' pets files ' + b.files + ' bytes ' + b.bytes + ' rssMB ' + Math.round(b.rss / 1e6));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });

@@ -5,12 +5,16 @@
  * and a pet-detail shard (2,000 ids each). The page paints from these and does
  * not reindex the full world. Keyed by the snapshot directory, which is already
  * rules-signature + tip. Missing or stale files are the page's fallback. */
-const fs = require('fs'), path = require('path'), crypto = require('crypto');
+const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
 const PET_SHARD = 2000;
+const PAGE = 24;
 const COLD_KEYS = ['wizard', 'kek', 'homer', 'rabbit', 'funtrump', 'djpepe'];
 
+function ownerKey(addr) {
+  return crypto.createHash('sha256').update(String(addr || '')).digest('hex');
+}
 function ownerShard(addr) {
-  return crypto.createHash('sha256').update(String(addr || '')).digest('hex').slice(0, 2);
+  return ownerKey(addr).slice(0, 2);
 }
 function petShard(id) {
   const n = Math.floor(Number(id) / PET_SHARD);
@@ -115,22 +119,127 @@ function writeJson(file, obj) {
   fs.writeFileSync(file, json);
   return Buffer.byteLength(json);
 }
-function write(dir, world, meta) {
-  const built = fromWorld(world);
-  built.summary.rsig = meta && meta.rsig || '';
-  built.summary.tip = meta && meta.tip != null ? meta.tip : built.summary.tip;
-  let bytes = 0, files = 0;
-  bytes += writeJson(path.join(dir, 'summary.json'), built.summary); files++;
-  built.owners.forEach((bucket, shard) => {
-    bytes += writeJson(path.join(dir, 'o', shard + '.json'), { v: 1, tip: built.summary.tip, rsig: built.summary.rsig, owners: bucket });
-    files++;
-  });
-  built.owners.clear();
-  built.pets.forEach((bucket, shard) => {
-    bytes += writeJson(path.join(dir, 'p', shard + '.json'), { v: 1, tip: built.summary.tip, rsig: built.summary.rsig, pets: bucket });
-    files++;
-  });
-  built.pets.clear();
-  return { v: 1, summary: 'view/summary.json', owners: 'view/o', pets: 'view/p', ownerShard: 'sha256-2', petShard: PET_SHARD, files: files, bytes: bytes, n: built.summary.n, alive: built.summary.alive };
+function fieldsOf(p) {
+  return [p.id, p.owner || '', p.name || '', p.species, p.tier, p.stage, p.care || 0, p.dead ? 1 : 0, p.wins || 0, p.losses || 0];
 }
-module.exports = { PET_SHARD, COLD_KEYS, ownerShard, petShard, fromWorld, write, itemRec, petRec };
+/* Spill pets to disk one shard at a time so a 180k-pet world is not copied twice.
+ * Each owner is then written in pages of PAGE pets. The first page is what a visit downloads. */
+function write(dir, world, meta) {
+  const tip = meta && meta.tip != null ? meta.tip : (world.tip || 0);
+  const rsig = meta && meta.rsig || '';
+  const wornBy = new Map();
+  const items = world.items || {};
+  const list = world.itemList || Object.keys(items).map(k => items[k]);
+  for (let i = 0; i < list.length; i++) {
+    const g = list[i];
+    if (!g || g.on == null) continue;
+    let a = wornBy.get(g.on);
+    if (!a) wornBy.set(g.on, a = []);
+    const rec = itemRec(g);
+    if (rec) a.push(rec);
+  }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xcpets-view-'));
+  const outs = new Array(256);
+  const petOut = new Map();
+  for (let i = 0; i < 256; i++) outs[i] = fs.createWriteStream(path.join(tmp, i.toString(16).padStart(2, '0') + '.ndjson'));
+  let alive = 0, dead = 0, released = 0, n = 0;
+  const counts = new Map();
+  const fieldByOwner = new Map();
+  const sample = [];
+  const all = world.pets || [];
+  function writeLine(stream, line) {
+    if (stream.write(line)) return null;
+    return new Promise(res => stream.once('drain', res));
+  }
+  async function spill() {
+    for (let i = 0; i < all.length; i++) {
+      const p = all[i];
+      if (!p) continue;
+      n++;
+      if (p.released) released++;
+      else if (p.dead) dead++;
+      else alive++;
+      const owner = p.owner || '';
+      counts.set(owner, (counts.get(owner) || 0) + 1);
+      let bag = fieldByOwner.get(owner);
+      if (!bag) fieldByOwner.set(owner, bag = []);
+      bag.push(fieldsOf(p));
+      const rec = petRec(p, wornBy.get(p.id) || []);
+      const key = ownerKey(owner);
+      const line = JSON.stringify({ k: key, o: owner, rec: rec }) + '\n';
+      const w1 = writeLine(outs[parseInt(key.slice(0, 2), 16)], line);
+      if (w1) await w1;
+      const ps = petShard(p.id);
+      let po = petOut.get(ps);
+      if (!po) { po = fs.createWriteStream(path.join(tmp, 'p-' + ps + '.ndjson')); petOut.set(ps, po); }
+      const w2 = writeLine(po, JSON.stringify(rec) + '\n');
+      if (w2) await w2;
+      if (sample.length < 40) sample.push(fieldsOf(p));
+      else if (Math.random() < 40 / n) sample[Math.floor(Math.random() * 40)] = fieldsOf(p);
+      all[i] = null;
+    }
+    world.pets = null;
+  }
+  return spill().then(() => {
+  const summary = {
+    v: 2, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
+    pageSize: PAGE,
+    burned: world.community && world.community.burned || 0,
+    burns: world.log ? world.log.length : 0,
+    community: communityCopy(world.community),
+    cold: coldCopy(world),
+    leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20)
+  };
+  function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
+  return Promise.all(outs.map(end).concat([...petOut.values()].map(end))).then(() => {
+    let bytes = 0, files = 0, largestOwner = { bytes: 0, file: '', n: 0 }, largestPage = { bytes: 0, file: '' }, largestShard = { bytes: 0, file: '' };
+    bytes += writeJson(path.join(dir, 'summary.json'), summary); files++;
+    const ownDir = path.join(dir, 'own');
+    fs.mkdirSync(ownDir, { recursive: true });
+    for (let i = 0; i < 256; i++) {
+      const name = i.toString(16).padStart(2, '0');
+      const text = fs.readFileSync(path.join(tmp, name + '.ndjson'), 'utf8');
+      fs.rmSync(path.join(tmp, name + '.ndjson'));
+      if (!text) continue;
+      const by = new Map();
+      text.split('\n').forEach(line => {
+        if (!line) return;
+        const row = JSON.parse(line);
+        let arr = by.get(row.k);
+        if (!arr) by.set(row.k, arr = []);
+        arr.push(row);
+      });
+      by.forEach((rows, key) => {
+        rows.sort((a, b) => a.rec.id - b.rec.id);
+        const pages = Math.ceil(rows.length / PAGE) || 1;
+        for (let pg = 0; pg < pages; pg++) {
+          const slice = rows.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
+          const body = { v: 2, tip: tip, rsig: rsig, owner: rows[0].o, n: rows.length, page: pg, pages: pages, pageSize: PAGE, pets: slice };
+          const file = pg === 0 ? key + '.json' : key + '.' + pg + '.json';
+          const nb = writeJson(path.join(ownDir, file), body);
+          bytes += nb; files++;
+          const rel = 'view/own/' + file;
+          if (pg === 0 && rows.length > largestOwner.n) largestOwner = { bytes: nb, file: rel, n: rows.length, pages: pages };
+          if (nb > largestPage.bytes) largestPage = { bytes: nb, file: rel };
+        }
+      });
+    }
+    const petDir = path.join(dir, 'p');
+    fs.mkdirSync(petDir, { recursive: true });
+    petOut.forEach((stream, shard) => {
+      const text = fs.readFileSync(path.join(tmp, 'p-' + shard + '.ndjson'), 'utf8');
+      fs.rmSync(path.join(tmp, 'p-' + shard + '.ndjson'));
+      const pets = {};
+      text.split('\n').forEach(line => { if (!line) return; const rec = JSON.parse(line); pets[String(rec.id)] = rec; });
+      const nb = writeJson(path.join(petDir, shard + '.json'), { v: 2, tip: tip, rsig: rsig, pets: pets });
+      bytes += nb; files++;
+      if (nb > largestShard.bytes) largestShard = { bytes: nb, file: 'view/p/' + shard + '.json' };
+    });
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([owner, count]) => ({ owner: owner, n: count, key: ownerKey(owner), fields: fieldByOwner.get(owner) || [] }));
+    fieldByOwner.clear();
+    return { v: 2, summary: 'view/summary.json', owners: 'view/own', pets: 'view/p', pageSize: PAGE, ownerShard: 'sha256', petShard: PET_SHARD, files: files, bytes: bytes, n: n, alive: alive, largestOwner: largestOwner, largestPage: largestPage, largestShard: largestShard, top: ranked, sample: sample };
+  });
+  });
+}
+module.exports = { PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf };

@@ -254,7 +254,7 @@
   /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
    * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
   function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
-  function updating() { return !!S.provisional || (!current() && wkBusy > 0); }
+  function updating() { if (S.view) return false; return !!S.provisional || (!current() && wkBusy > 0); }
   function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
   function world() {
     if (S.view && lastW && lastW._view && !S.viewVerify) { if (V.syncCosts) V.syncCosts(lastW, (lastW.tip || 0) + 1); return lastW; }
@@ -558,6 +558,7 @@
     setTimeout(function () { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {} }, 400);
   }
   function loadReal(cb) {
+    if (S.view && window.V2Split && V2Split.startVerify) return V2Split.startVerify().then(function () { if (cb) cb(); });
     if (loadReal.p) return loadReal.p;
     S.viewVerify = true; S.view = false; S.provisional = false;
     cache = null; cacheSig = null;

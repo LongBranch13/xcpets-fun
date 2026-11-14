@@ -147,7 +147,7 @@ async function buildSnapshot(opts) {
     } catch (e) { console.error('graves index: ' + String(e && e.message || e).split('\n')[0]); }
     try {
       const split = require('./split');
-      manifest.view = split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig });
+      manifest.view = await split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig });
     } catch (e) { console.error('split view: ' + String(e && e.message || e).split('\n')[0]); }
   }
   if (opts.outDir) {
