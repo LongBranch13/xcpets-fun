@@ -1,5 +1,5 @@
 {
- "lastBlock": 975810,
+ "lastBlock": 975811,
  "count": 417,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -3469,7 +3469,7 @@
    "species": "hyb:doge:chud",
    "speciesLabel": "Dogchud (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 147175,
