@@ -4,7 +4,7 @@ One-shot chain read and a pre-built pet world. On `xcpets.fun` and `www.xcpets.f
 
 verify-pet.html never uses the snapshot world. It still rebuilds locally. Practice pages do not load the boot file.
 
-A published snapshot may be up to 8 blocks behind the page. The page applies just those missing blocks, using the burn rows, block hashes, and sale data already in the sync answer, and stores the resulting world under the current key. Farther behind than that, the page rebuilds locally.
+A published snapshot may be up to 8 blocks behind the page. The page can apply just those missing blocks and store that world, and farther behind than that it rebuilds locally. The same build also writes a split view beside the world (`view/summary.json`, `view/o/<shard>.json`, `view/p/<shard>.json`): counts, community and Cold Storage, each owner's pets, and per-pet detail. Pages paint from that view and do not reindex the full world. A snapshot more than 8 blocks behind, or a missing view, uses today's replay. The **Verify** button runs that full replay on demand. The builder process is capped at `XP_SNAPSHOT_HEAP` (default 1536 MB) and must stay under 3 GB.
 
 The builder runs when the published snapshot is at least `XP_SNAPSHOT_EVERY` blocks behind (default 6), skips a build that is already running, and is capped at `XP_SNAPSHOT_HEAP` MB (default 1536) so it cannot grow to the multi-gigabyte peak that pushed the small server into swap. Upstream reads time out after `XP_FETCH_MS` ms (default 15000). Behind Caddy, the per-address limit uses `X-Real-IP`, then `X-Forwarded-For`. Snapshot part downloads are not counted. Only one chain follow runs at a time.
 

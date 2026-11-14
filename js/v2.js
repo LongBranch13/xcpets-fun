@@ -636,6 +636,7 @@
    * incl. dead, released and bred pets. Shows '…' until every burn's block hash is known, so an incomplete replay never shows a wrong number. */
   var ptLast = null, ptT = null;
   function petTotal(w) { var el = $('petTotal'); if (!el) return;
+    if (w && w._counts) { $('ptN').textContent = fmt(w._counts.n); $('ptAlive').textContent = '· ' + fmt(w._counts.alive) + ' alive'; ptLast = w._counts.n; return; }
     var miss = (S.rows || []).some(function (r) { return !(S.hashes || {})[r.block_index]; });
     if (miss) { $('ptN').textContent = '…'; $('ptAlive').textContent = '· syncing'; ptLast = null; return; }
     var n = w.pets.length, alive = w.pets.filter(function (p) { return !p.dead && !p.released; }).length;
@@ -649,7 +650,7 @@
   function render() {
     var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
-    $('cBurned').textContent = fmt(c.burned); $('cGame').textContent = fmt(S.rows.length); $('cPets').textContent = fmt(w.pets.length);
+    $('cBurned').textContent = fmt(w._counts && w._counts.burned != null ? w._counts.burned : c.burned); $('cGame').textContent = fmt(w._counts && w._counts.burns != null ? w._counts.burns : S.rows.length); $('cPets').textContent = fmt(w._counts ? w._counts.n : w.pets.length);
     petTotal(w);
     /* Wizard Cold Storage (Oct 19 2026): egg + sign claim buttons appear once the rule is on at the next block (V2Rules.wizColdOn) */
     var wzOn = V.wizColdOn && V.wizColdOn(w, (S.tip || 0) + 1), wm = w.wizardMythic; if ($('wizEggBtn')) { $('wizEggBtn').hidden = !(WIZARD_EGG_ON_SALE && wzOn); $('wizEggBtn').style.display = $('wizEggBtn').hidden ? 'none' : ''; }
@@ -664,7 +665,7 @@
     var cFed = c.current === 'rabbit' ? c.rabbitFed || 0 : c.current === 'homer' ? c.homerFed || 0 : c.current === 'funtrump' ? c.funtrumpFed || 0 : c.current === 'kek' ? c.kekFed || 0 : null; /* site-audit 2026-10-27: each community pet's own counter */
     $('community').innerHTML = '<b>' + esc(c.petName) + '</b>' + (c.petRole && c.petName !== 'Nakamoto' ? ' · ' + esc(c.petRole) : '') + ' · ' + c.petStageName + ' · ' + fmt(Math.floor(cFed != null ? cFed : c.burned)) + ' <span class="asset">XCPETS</span> ' + (cFed != null ? 'fed to ' + esc(c.petName) : 'burned'); /* community-gear-hover: old 'Wearing:' line removed (owner 2026-10-29); hover/tap tooltip shows worn gear */
     /* home-page community readout on play (same numbers as index: V2Render.communityStats) */
-    if (R.communityStats) { var cs = R.communityStats(w, (V2Mock.state().rows || []).length), F = function (n) { return fmt(n); };
+    if (R.communityStats) { var cs = R.communityStats(w, w._counts && w._counts.burns != null ? w._counts.burns : (V2Mock.state().rows || []).length), F = function (n) { return fmt(n); };
       $('community').insertAdjacentHTML('beforeend', '<div class="sharedwrap cstats"><div class="stats"><div><span>Stage</span><b id="pcStage">' + esc(cs.stage) + '</b></div><div><span>Fed to the community pet</span><b id="pcFed">' + F(cs.fed) + '</b></div><div><span>Next stage</span><b id="pcNext">' + (cs.next != null ? F(cs.next) + ' to ' + esc(cs.nextName) : 'Mythic reached') + '</b></div></div>' +
         '<div class="progress"><div id="pcProg" style="width:' + cs.pct.toFixed(1) + '%"></div></div><div class="stats"><div><span>Burns</span><b id="pcBurns">' + F(cs.burns) + '</b></div><div><span>Pets hatched</span><b id="pcPets">' + F(cs.pets) + '</b></div></div></div>'); }
     if (R.kekOn && R.kekOn(w)) $('community').insertAdjacentHTML('beforeend', '<details class="small muted" id="kekCard"><summary>Card</summary>' + esc(R.KEK_CARD) + '</details>'); /* gated: only when Lord Kek is the community pet */

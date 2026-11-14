@@ -2,6 +2,8 @@
  * Display only. A missing database is left untouched. js/v2-chain.js consumes
  * window.__xcpIdbEarly. This file is not part of the rules hash. */
 (function () {
+  /* speed phase 2: a page that paints the published split world must not pull the full saved world into this tab first. */
+  if (window.__xcpSplitHold) return;
   if (typeof indexedDB === 'undefined' || typeof indexedDB.databases !== 'function') return;
   try { if (document.prerendering) return; } catch (e) {}
   try { if (navigator.connection && navigator.connection.saveData) return; } catch (e2) {}
