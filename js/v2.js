@@ -1166,6 +1166,7 @@
     if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' times ' + fmt(V.cemCost(w, k, b)); });
     return ' (cost per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   function confirmPlans(title, plans, after, pre) {
+    if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop();
     if (viewBlock()) return;
     if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own wallet: XCP Wallet on desktop Chrome, or the Casa Tookan app on your phone (open xcpets.fun inside it). Connect it to play, or look up any address to view its pets.'); return; }
     if (FEED_ALL_PAUSED && plans.some(function (q) { return isFeedAllTag(q && q.tag); })) { plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); toast(FA_NOTE + ' Those burns were not sent.'); if (!plans.length) return; }
@@ -1263,20 +1264,20 @@
     var cb = $('confirmBox'), y = $('cfYes'), mo = new MutationObserver(function () { if (!cb.classList.contains('on')) { y.style.display = ''; mo.disconnect(); } }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }
   /* Resume (build 2): the unsent part of a stopped multi-burn run is kept per network + address so a reload offers Continue instead of rebuilding sent burns */
   function resumeKey() { return 'xcpets-v2-resume-' + NET + '-' + (ME || ''); }
-  function saveResume(title, rest) { try { if (rest && rest.length) localStorage.setItem(resumeKey(), JSON.stringify({ title: title, plans: rest, at: Date.now() })); else localStorage.removeItem(resumeKey()); } catch (e) { } }
+  function saveResume(title, rest) { if (window.XCPETS_MAINTENANCE) { try { localStorage.removeItem(resumeKey()); } catch (eM) {} return; } try { if (rest && rest.length) localStorage.setItem(resumeKey(), JSON.stringify({ title: title, plans: rest, at: Date.now() })); else localStorage.removeItem(resumeKey()); } catch (e) { } }
   function loadResume() { try { var o = JSON.parse(localStorage.getItem(resumeKey()) || 'null'); if (o && o.plans && o.plans.length && Date.now() - o.at < 24 * 3600e3) return o; localStorage.removeItem(resumeKey()); } catch (e) { } return null; }
   var resumeShown = false;
   /* chores-resume-1110: Continue / Dismiss are not onclick on the toast node. The away sheet (and the Rare Room queue)
    * copy the toast's HTML and drop those handlers. js/v2-intuitive.js listens on the document, so the same links work
    * in the toast and in the copied sheet. Both call these. */
-  function resumeGo() { var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false; confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
+  function resumeGo() { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false; confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
   function resumeDrop() { saveResume(null, null); return true; }
   function resumePending() { var o = loadResume(); return !!(o && o.plans && o.plans.length); }
   /* X / Skip all close the sheet and drop its copied HTML. The saved run is still there, so show a live Continue toast once the hold is off. Dismiss is the only action that forgets it. */
   function resumeReoffer() { if (!resumePending()) return false; resumeShown = false; offerResume(); return true; }
   function replayFight(id) { var w = world(), f = w && w.fights && w.fights[+id - 1]; if (f) playFight(f); }
   function replayCem(key) { var ev = window.V2CemReplay && window.V2CemReplay[key], CA = window.V2CemAnim; if (ev && CA && CA.play) CA.play(ev, { w: world() }); }
-  function offerResume() { if (resumeShown || !ME || viewOnly()) return; var o = loadResume(); if (!o) return; resumeShown = true;
+  function offerResume() { if (window.XCPETS_MAINTENANCE) { try { saveResume(null, null); } catch (eM) {} return; } if (resumeShown || !ME || viewOnly()) return; var o = loadResume(); if (!o) return; resumeShown = true;
     if (FEED_ALL_PAUSED && o.plans.some(function (q) { return isFeedAllTag(q && q.tag); })) { saveResume(null, null); toast('⏸️ ' + FA_NOTE + ' Your unfinished Feed all run was stopped. Nothing more will be sent.', 15000); return; }
     toast('⏸️ ' + o.plans.length + ' burn' + (o.plans.length > 1 ? 's' : '') + ' from an unfinished run (' + esc(o.title || 'burns') + ') were not sent. <a href="#" class="resume">Continue</a> · <a href="#" class="resdrop">Dismiss</a>', 30000); }
   /* error-card (Nov 1 2026, owner-approved critique plan item 5): one plain-words card when a burn run stops. It says what happened,
@@ -1300,7 +1301,7 @@
    * exactly like Cancel (same handler: stops a running burn queue and cancels a pending wallet request). Nothing is signed here. */
   $('confirmBox').addEventListener('click', function (e) { if (e.target === $('confirmBox')) $('cfNo').click(); });
   document.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && $('confirmBox').classList.contains('on')) $('cfNo').click(); });
-  $('cfYes').onclick = function () { var plans = pendingPlans; if (!plans) return; var s = V.burnSummary(plans); if (!ME || V2Wallet.current() !== ME) { toast('Connecting ' + WL() + '…'); V2Wallet.connect().then(function (a) { if (a !== ME) location.reload(); else $('cfYes').onclick(); }, function (e) { toast(V2Wallet.errHtml(e)); }); return; } if (s.total > S.balance && !(S.stale && !S.verified)) return toast('Not enough XCPETS in this wallet'); /* direct-counterparty-api: a saved copy has no balance yet (0); the pre-burn re-read reads it and v2-wallet re-checks */
+  $('cfYes').onclick = function () { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var plans = pendingPlans; if (!plans) return; var s = V.burnSummary(plans); if (!ME || V2Wallet.current() !== ME) { toast('Connecting ' + WL() + '…'); V2Wallet.connect().then(function (a) { if (a !== ME) location.reload(); else $('cfYes').onclick(); }, function (e) { toast(V2Wallet.errHtml(e)); }); return; } if (s.total > S.balance && !(S.stale && !S.verified)) return toast('Not enough XCPETS in this wallet'); /* direct-counterparty-api: a saved copy has no balance yet (0); the pre-burn re-read reads it and v2-wallet re-checks */
     var run = sendRun = { stop: false }; $('cfYes').disabled = true; $('cfNo').disabled = false; $('cfNo').textContent = 'Cancel'; var i = 0, sentTx = [], title = $('cfTitle').textContent, day0 = V.day(S.tip || 0); saveResume(title, plans);
     /* wasted-burn guard (2026-10-20): a long Feed all queue can cross a 144-block chain day while it is being signed. When the day changes, the unsent
      * feed burns are rebuilt for the new day (same feedGuard), so no meal is sized or skipped for the old day. Other burns are untouched. */
@@ -1309,7 +1310,7 @@
     /* habits-ux: right before each feed burn is composed (wallet chaining too), drop it if none of its pets can still eat */
     function feedDrop() { var q = plans[i], t = q && V.parseTag(q.tag); if (!t || !/^feed/.test(t.action)) return false; var g = feedGuard(world(), [q]); if (!g.blocked) return false;
       plans.splice(i, 1); toast('🍽️ Skipped ' + esc(q.tag) + ' before signing: ' + esc(g.text)); return true; }
-    function sendOnce(p, k, n) { /* wallet-one-window: no auto-retry on -32005 (each retry rebuilt the burn and opened another XCP Wallet window); V2Wallet.send turns it into a finish-or-close message */
+    function sendOnce(p, k, n) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); /* wallet-one-window: no auto-retry on -32005 (each retry rebuilt the burn and opened another XCP Wallet window); V2Wallet.send turns it into a finish-or-close message */
       /* burn-compose-fix: show which step the burn is on (chain check / fee / node i of n / safety check / XCP Wallet) instead of one static line */
       var pre = 'Burn ' + k + ' of ' + n + ': ';
       return V2Wallet.send(p, ME, function (a, b, ph, fi) { var m = ph === 'fresh' ? 'checking the latest chain data…' : ph === 'world' ? 'updating pets to the latest block on this device… nothing is signed until this finishes.' : ph === 'fee' ? 'getting the network fee rate…' : ph === 'check' ? 'safety-checking ' + p.tag + ' (node ' + a + ' of ' + b + ')…' : ph === 'sign' ? (fi && fi.text ? fi.text + ' · ' : '') + 'approve ' + p.tag + ' in ' + WL() + ' now.' + (WL() === 'XCP Wallet' ? ' If no window opened, click the XCP Wallet icon in your browser toolbar.' : '') : 'building ' + p.tag + ' on Counterparty node ' + a + ' of ' + b + '…'; $('pgt').textContent = pre + m; }, staleCheck(p)); }

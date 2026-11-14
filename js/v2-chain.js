@@ -568,6 +568,15 @@
     return loadReal.p;
   }
   function boot(then) {
+    if (window.XCPETS_MAINTENANCE) {
+      wkBusy++;
+      lastW = { pets: [], byId: {}, items: {}, itemList: [], community: { burned: 0 }, log: [], tip: 0, pending: true, _view: 1 };
+      lastOps = JSON.stringify(S.ops || []);
+      S.view = true; S.verified = false; S.provisional = true;
+      var stM = document.getElementById('v2boot'); if (stM) stM.textContent = '';
+      then();
+      return;
+    }
     if (window.V2Split && V2Split.prepare && !S.viewVerify && !/[?&]split=(0|off)(?:&|$)/.test(location.search)) {
       var st0 = document.getElementById('v2boot');
       if (st0) st0.textContent = 'Reading the published world…';

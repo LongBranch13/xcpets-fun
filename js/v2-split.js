@@ -144,6 +144,7 @@
     try { window.dispatchEvent(new Event('xcpets-verified')); } catch (e) {}
   }
   function startVerify() {
+    if (window.XCPETS_MAINTENANCE) return Promise.resolve(null);
     if (readyP) return readyP;
     if (off() || !base() || !last) return Promise.resolve(null);
     var scripts = scriptList();
