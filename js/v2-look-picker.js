@@ -121,9 +121,11 @@
       records: function () { return live.map(function (p) { return { key: p.id, pets: [p], newest: p.hatchBlock || p.id, html: V2Picker.petChip(w) }; }); },
       onPick: function (r) { S.pid = r.key; station(el, w, ME); } });
     var p = w.byId[S.pid]; if (p) panel($('lpBody'), w, p, ME, { id: 'lpStation' }); else $('lpBody').innerHTML = '<p class="lp-note">No living pets to dress up in this wallet.</p>'; }
-  var keys = {};
+  var keys = {}, olMemo = { w: null, me: null, tip: null, s: '' };
+  /* playfreeze-1113: the change key only moves when the world object, tip or wallet does */
+  function ownedSig(V, w, ME) { if (!ME) return ''; if (olMemo.w === w && olMemo.me === ME && olMemo.tip === w.tip) return olMemo.s; var s = V.ownedLooks(w, ME).map(function (L) { return L.code + L.on.join('.'); }).join(); olMemo = { w: w, me: ME, tip: w.tip, s: s }; return s; }
   function tick() { var V = window.V2Rules, w = world(), ME = me(); if (!V || !V.ownedLooks || !w || !w.byId) return;
-    var k = [w.tip, ME, w.lookCopies ? Object.keys(w.lookCopies).length : 0, !!window.V2Looks, ME ? V.ownedLooks(w, ME).map(function (L) { return L.code + L.on.join('.'); }).join() : ''].join('|'), page = document.body.getAttribute('data-split'), id = Number(new URLSearchParams(location.search).get('id'));
+    var k = [w.tip, ME, w.lookCopies ? Object.keys(w.lookCopies).length : 0, !!window.V2Looks, ownedSig(V, w, ME)].join('|'), page = document.body.getAttribute('data-split'), id = Number(new URLSearchParams(location.search).get('id'));
     if (/pet\.html/.test(location.pathname) && id) { var p = w.byId[id], anchor = $('questCard') || $('starveWarn') || $('facts'), el = $('lookPanel');
       if (!p || !ME || p.owner !== ME || p.dead || p.released) { if (el) el.remove(); }
       else if (anchor && keys.pet !== k + id) { keys.pet = k + id; if (!el) { el = document.createElement('section'); el.id = 'lookPanel'; el.className = 'panel'; anchor.parentNode.insertBefore(el, anchor.nextSibling); } panel(el, w, p, ME, { id: 'looks' }); } }

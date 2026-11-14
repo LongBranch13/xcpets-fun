@@ -52,6 +52,9 @@
     var set = new Set(ids); ids.indexOf = function (x) { return set.has(x) ? 0 : -1; }; /* the planner asks ids.indexOf(id) >= 0 per pet; a Set keeps big wallets fast */
     var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
     P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }
+  /* playfreeze-1113: the 2 s ensure() loop only needs a new plan when the world, tip, wallet or discarded list changes. go() still calls plan() fresh. */
+  var pm = { k: null, w: null, P: null };
+  function planMemo(u, tip) { var w = u && u.world && u.world(), k = [tip, u && u.ME, Array.from(hiddenSet()).join(',')].join('|'); if (pm.w === w && pm.k === k) return pm.P; var P = plan(); pm = { k: k, w: w, P: P }; return P; }
   function feedLine(P) { var n = P.feedTotal != null ? P.feedTotal : P.parts.feed; return n ? '✓ feed ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') : '– no pet needs food'; }
   function goneLine(P) { var g = P.discardedSkipped || 0; return g ? '– ' + fmt(g) + ' discarded pet' + (g === 1 ? '' : 's') + ' left out (not fed)' : ''; }
   function sheetParts(P) { var p = P.parts; return '<ul class="dc-parts small" style="text-align:left;margin:6px auto;max-width:420px;padding-left:18px">' +
@@ -73,9 +76,10 @@
     var gate = v.dailyChoresGate(), on = gate != null || PREVIEW, row = $('dcRow');
     if (!on || !u.ME || bar.style.display === 'none') { if (row) row.style.display = 'none'; return; }
     css(); if (!row) { row = document.createElement('div'); row.id = 'dcRow'; row.className = 'dc-row'; bar.parentNode.insertBefore(row, bar.nextSibling); }
-    row.style.display = ''; var tip = (u.S && u.S().tip) || 0, live = gate != null && tip + 1 >= gate, P = live ? plan() : null;
+    row.style.display = ''; var tip = (u.S && u.S().tip) || 0, live = gate != null && tip + 1 >= gate, P = live ? planMemo(u, tip) : null;
     var note = !live ? (gate == null ? 'Preview: opens when the rule goes live' : 'Opens at block ' + fmt(gate)) : P ? (P.feedTotal ? 'feeds ' + fmt(P.feedTotal) + ' pet' + (P.feedTotal === 1 ? '' : 's') + ' · ' : '') + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + (P.discardedSkipped ? ' · ' + fmt(P.discardedSkipped) + ' discarded left out' : '') : 'All done today';
-    row.innerHTML = '<button class="dc-btn" id="dcBtn" type="button"' + (live && P ? '' : ' disabled') + '>🧹 Daily chores</button><span class="dc-note">WAGMI + feed + spins in one burn · ' + note + '</span>';
+    var html = '<button class="dc-btn" id="dcBtn" type="button"' + (live && P ? '' : ' disabled') + '>🧹 Daily chores</button><span class="dc-note">WAGMI + feed + spins in one burn · ' + note + '</span>';
+    if (row._dcHtml !== html || !$('dcBtn')) { row.innerHTML = html; row._dcHtml = html; }
     var b = $('dcBtn'); if (b && !b.disabled) b.onclick = go; }
   /* watch the log for your own confirmed chores burns and queue the pixel animation once per tx */
   var seen = {}; try { seen = JSON.parse(localStorage.getItem('xcpets.dcSeen') || '{}'); } catch (e) { seen = {}; }
