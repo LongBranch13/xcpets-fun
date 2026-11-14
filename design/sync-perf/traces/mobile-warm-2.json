@@ -1,0 +1,847 @@
+{
+  "label": "mobile-warm-2",
+  "profile": "mobile",
+  "visit": "warm",
+  "n": 2,
+  "startedAt": "2026-11-13T03:50:31.828Z",
+  "navError": null,
+  "perfNav": {
+    "type": "reload",
+    "dcl": 599,
+    "load": 618,
+    "responseEnd": 169,
+    "transferSize": 300,
+    "encodedBodySize": 10138
+  },
+  "synced": true,
+  "totalMs": 10581,
+  "pets": 171223,
+  "worldTip": 975627,
+  "pageTip": 975627,
+  "rows": 4754,
+  "fromCache": true,
+  "provisional": false,
+  "provisionalTip": null,
+  "workerMsState": null,
+  "lastRead": "sync",
+  "chainTip": 975627,
+  "hw": 4,
+  "finalBoot": null,
+  "finalUpd": null,
+  "finalUpdating": false,
+  "gap": null,
+  "snapshot": {
+    "latest": null,
+    "manifest": null,
+    "rsig": "r16a9352e18f8366e445f7890f8148fc7",
+    "idb": {
+      "key": "r16a9352e18f8366e445f7890f8148fc7|975627|4754|5e05f05c|3444|171a3fa9|dex376d216d|[]",
+      "at": 1794541820407,
+      "v": 2,
+      "parts": 74,
+      "n": 294463
+    }
+  },
+  "blocksBehind": null,
+  "phases": {
+    "a": {
+      "note": "Chain read / snapshot check, navigation to verified burn rows.",
+      "verifiedAtMs": 1952,
+      "step3TextAtMs": 1946,
+      "net": {
+        "tracked": 68,
+        "byHost": {
+          "xcpets.fun": {
+            "count": 61,
+            "bytes": 88
+          },
+          "api.xcp.fun": {
+            "count": 1,
+            "bytes": 0
+          },
+          "node.xcpets.fun": {
+            "count": 6,
+            "bytes": 762296
+          }
+        },
+        "nodeV2": {
+          "count": 5,
+          "bytes": 318093,
+          "failed": 0
+        },
+        "sync": {
+          "count": 1,
+          "bytes": 444203,
+          "failed": []
+        },
+        "world": {
+          "count": 0,
+          "bytes": 0,
+          "failed": 0
+        },
+        "slowest": [
+          {
+            "url": "/js/v2-spins.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 228.58,
+            "downloadMs": 0,
+            "totalMs": 67038,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-cached.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 249.665,
+            "downloadMs": 0,
+            "totalMs": 67038,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-simple.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 204.685,
+            "downloadMs": 0,
+            "totalMs": 67038,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-firesale.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 237.337,
+            "downloadMs": 0,
+            "totalMs": 67037,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-tutorial.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 194.784,
+            "downloadMs": 0,
+            "totalMs": 67037,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-calm.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 240.802,
+            "downloadMs": 0,
+            "totalMs": 67037,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-boot-sync.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 236.083,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-chain.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 227.378,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-sales.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 247.482,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-halving.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 233.492,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-datalag.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 238.556,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          },
+          {
+            "url": "/js/v2-onfire.js?v=e6db15afb2",
+            "status": 200,
+            "encoded": 0,
+            "ttfbMs": 250.875,
+            "downloadMs": 0,
+            "totalMs": 67036,
+            "cache": "net",
+            "mime": "application/javascript"
+          }
+        ]
+      }
+    },
+    "b": {
+      "note": "No catch-up worker. Snapshot was not applied.",
+      "ran": false,
+      "startMs": null,
+      "endMs": null,
+      "wallMs": null,
+      "gapBurns": null,
+      "gapBlocksWithBurns": null,
+      "blocksBehind": null,
+      "reply": null
+    },
+    "c": {
+      "note": "Rebuild shown as step 3 / Building every pet, or the replay worker.",
+      "startMs": 1946,
+      "endMs": 10581,
+      "wallMs": 8635,
+      "workerMs": null,
+      "workerWallMs": null,
+      "rowsPosted": null,
+      "idbKey": null,
+      "replyOk": null,
+      "longTasks": {
+        "count": 46,
+        "totalMs": 5708,
+        "maxMs": 711,
+        "over100": 12,
+        "over250": 3
+      },
+      "ranWorker": false
+    }
+  },
+  "bootLog": [
+    {
+      "t": 670,
+      "text": "Checking the latest chain data…"
+    },
+    {
+      "t": 1946,
+      "text": "Rebuilding every pet from the burns… (step 3 of 3)"
+    },
+    {
+      "t": 10538,
+      "text": null
+    }
+  ],
+  "updLog": [],
+  "workers": [],
+  "longTaskSummary": {
+    "count": 48,
+    "totalMs": 6125,
+    "maxMs": 711,
+    "over100": 14,
+    "over250": 4
+  },
+  "longTasks": [
+    {
+      "t": 277,
+      "d": 136
+    },
+    {
+      "t": 1656,
+      "d": 281
+    },
+    {
+      "t": 2073,
+      "d": 711
+    },
+    {
+      "t": 2812,
+      "d": 632
+    },
+    {
+      "t": 3938,
+      "d": 99
+    },
+    {
+      "t": 4049,
+      "d": 79
+    },
+    {
+      "t": 4138,
+      "d": 95
+    },
+    {
+      "t": 4243,
+      "d": 81
+    },
+    {
+      "t": 4337,
+      "d": 118
+    },
+    {
+      "t": 4467,
+      "d": 89
+    },
+    {
+      "t": 4570,
+      "d": 88
+    },
+    {
+      "t": 4690,
+      "d": 94
+    },
+    {
+      "t": 4799,
+      "d": 88
+    },
+    {
+      "t": 4900,
+      "d": 99
+    },
+    {
+      "t": 5013,
+      "d": 82
+    },
+    {
+      "t": 5106,
+      "d": 83
+    },
+    {
+      "t": 5214,
+      "d": 95
+    },
+    {
+      "t": 5322,
+      "d": 91
+    },
+    {
+      "t": 5424,
+      "d": 98
+    },
+    {
+      "t": 5532,
+      "d": 82
+    },
+    {
+      "t": 5628,
+      "d": 86
+    },
+    {
+      "t": 5743,
+      "d": 94
+    },
+    {
+      "t": 5847,
+      "d": 84
+    },
+    {
+      "t": 5957,
+      "d": 94
+    },
+    {
+      "t": 6061,
+      "d": 89
+    },
+    {
+      "t": 6160,
+      "d": 102
+    },
+    {
+      "t": 6277,
+      "d": 90
+    },
+    {
+      "t": 6377,
+      "d": 93
+    },
+    {
+      "t": 6498,
+      "d": 98
+    },
+    {
+      "t": 6608,
+      "d": 87
+    },
+    {
+      "t": 6723,
+      "d": 90
+    },
+    {
+      "t": 6831,
+      "d": 87
+    },
+    {
+      "t": 6930,
+      "d": 102
+    },
+    {
+      "t": 7042,
+      "d": 85
+    },
+    {
+      "t": 7139,
+      "d": 148
+    },
+    {
+      "t": 7322,
+      "d": 114
+    },
+    {
+      "t": 7447,
+      "d": 84
+    },
+    {
+      "t": 7544,
+      "d": 123
+    },
+    {
+      "t": 7679,
+      "d": 102
+    },
+    {
+      "t": 7793,
+      "d": 92
+    },
+    {
+      "t": 7912,
+      "d": 95
+    },
+    {
+      "t": 8022,
+      "d": 88
+    },
+    {
+      "t": 8128,
+      "d": 105
+    },
+    {
+      "t": 8251,
+      "d": 90
+    },
+    {
+      "t": 8357,
+      "d": 95
+    },
+    {
+      "t": 8463,
+      "d": 104
+    },
+    {
+      "t": 8577,
+      "d": 51
+    },
+    {
+      "t": 10189,
+      "d": 332
+    }
+  ],
+  "samples": [
+    {
+      "at": 636,
+      "verified": false,
+      "updating": true,
+      "tip": 0,
+      "rows": 0,
+      "pets": null,
+      "provisional": false,
+      "boot": "Checking the latest chain data…",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 889,
+      "verified": false,
+      "updating": true,
+      "tip": 0,
+      "rows": 0,
+      "pets": null,
+      "provisional": false,
+      "boot": "Checking the latest chain data…",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 1145,
+      "verified": false,
+      "updating": true,
+      "tip": 0,
+      "rows": 0,
+      "pets": null,
+      "provisional": false,
+      "boot": "Checking the latest chain data…",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 1398,
+      "verified": false,
+      "updating": true,
+      "tip": 0,
+      "rows": 0,
+      "pets": null,
+      "provisional": false,
+      "boot": "Checking the latest chain data…",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 1952,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 2800,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 3458,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 3713,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 4048,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 4336,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 4666,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 5011,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 5321,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 5624,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 5943,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 6275,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 6609,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 6929,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 7309,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 7680,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 8021,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 8356,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 8639,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 8902,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 9165,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 9425,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 9679,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 9939,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 10196,
+      "verified": true,
+      "updating": true,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": null,
+      "provisional": false,
+      "boot": "Rebuilding every pet from the burns… (step 3 of 3)",
+      "upd": null,
+      "fromCache": false,
+      "workerMs": null
+    },
+    {
+      "at": 10581,
+      "verified": true,
+      "updating": false,
+      "tip": 975627,
+      "rows": 4754,
+      "pets": 171223,
+      "provisional": false,
+      "boot": null,
+      "upd": null,
+      "fromCache": true,
+      "workerMs": null
+    }
+  ],
+  "console": []
+}

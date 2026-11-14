@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xcpets.fun sync time</title>
+<style>
+  body { margin: 0; background: #f7f4ee; color: #1c1915; font: 15px/1.4 "Segoe UI", system-ui, sans-serif; }
+  .wrap { padding: 28px 32px 22px; width: 1100px; }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: #5c564c; margin: 0 0 18px; font-size: 13px; }
+  .row { display: grid; grid-template-columns: 210px 1fr 92px; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .lab { font-size: 14px; }
+  .lab b { display: block; font-size: 15px; }
+  .lab span { color: #5c564c; font-size: 12px; }
+  .track { height: 36px; background: #efeae2; border-radius: 6px; position: relative; }
+  .seg { position: absolute; top: 0; bottom: 0; }
+  .seg.fetch { background: #2f5d8c; border-radius: 6px 0 0 6px; }
+  .seg.rebuild { background: #d4652f; }
+  .seg.rebuild.only { border-radius: 0 6px 6px 0; }
+  .seg.fetch.end { border-radius: 6px; }
+  .val { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .legend { display: flex; gap: 18px; margin: 8px 0 0 220px; font-size: 13px; color: #3f3a34; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .note { margin: 16px 0 0; font-size: 13px; color: #3f3a34; max-width: 980px; }
+  .axis { margin: 0 0 8px 220px; position: relative; height: 16px; color: #8a8278; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Time until pets are fully synced</h1>
+  <p class="sub">Live https://xcpets.fun · 13 Nov 2026 · median of 2 runs · catch-up phase was 0s in every run</p>
+  <div class="axis">
+    <span style="position:absolute;left:0">0</span>
+    <span style="position:absolute;left:23%">15s</span>
+    <span style="position:absolute;left:46%">30s</span>
+    <span style="position:absolute;left:69%">45s</span>
+    <span style="position:absolute;right:0">65s</span>
+  </div>
+  <div class="row">
+    <div class="lab"><b>Desktop, first visit</b><span>1280px, cold cache</span></div>
+    <div class="track">
+      <div class="seg fetch" style="left:0;width:1.88%"></div>
+      <div class="seg rebuild only" style="left:1.88%;width:79.46%"></div>
+    </div>
+    <div class="val">52.9s</div>
+  </div>
+  <div class="row">
+    <div class="lab"><b>Desktop, return</b><span>same tip, warm cache</span></div>
+    <div class="track">
+      <div class="seg fetch" style="left:0;width:1.71%"></div>
+      <div class="seg rebuild only" style="left:1.71%;width:2.83%"></div>
+    </div>
+    <div class="val">2.9s</div>
+  </div>
+  <div class="row">
+    <div class="lab"><b>Phone, first visit</b><span>412px, 4× CPU, Fast 4G</span></div>
+    <div class="track">
+      <div class="seg fetch" style="left:0;width:5.04%"></div>
+      <div class="seg rebuild only" style="left:5.04%;width:88.53%"></div>
+    </div>
+    <div class="val">60.8s</div>
+  </div>
+  <div class="row">
+    <div class="lab"><b>Phone, return</b><span>same tip, warm cache</span></div>
+    <div class="track">
+      <div class="seg fetch" style="left:0;width:3.83%"></div>
+      <div class="seg rebuild only" style="left:3.83%;width:13.28%"></div>
+    </div>
+    <div class="val">11.1s</div>
+  </div>
+  <div class="legend">
+    <div><span class="sw" style="background:#2f5d8c"></span>Fetch the chain read (to verified rows)</div>
+    <div><span class="sw" style="background:#d4652f"></span>Rebuild or read the saved world</div>
+  </div>
+  <p class="note">Orange on a first visit is a full replay of 4,754 burns into 171,223 pets (about 45s inside the worker), then IndexedDB. The published snapshot was 246 blocks behind and its rules hash did not match, so catch-up never started. A return visit at the same block reads the saved world and skips that replay. Scale is 65 seconds.</p>
+</div>
+</body>
+</html>
