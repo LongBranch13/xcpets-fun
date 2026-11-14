@@ -173,7 +173,10 @@
     if (!v) return; d.querySelectorAll('#inReqBox button, #motelReqs button, #motelDesk button, #fPending button').forEach(function (b) { if (/accept/i.test(b.textContent) && !b.classList.contains('ip-hide')) b.classList.add('ip-hide'); }); }
 
   // ------------------------------------------------------------------ item 2 + 14: urgency badge + next-best-action line
-  function myLive(w) { var m = me(); if (!w || !m) return []; return w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; }); }
+  /* playfreeze-1113: tick() runs every 1.2 s and badge/nba/urgent each filtered every pet in the world. Same world object + same wallet = same list. */
+  var liveMemo = { w: null, m: null, tip: null, n: -1, list: [] };
+  function myLive(w) { var m = me(); if (!w || !m) return []; if (liveMemo.w === w && liveMemo.m === m && liveMemo.tip === w.tip && liveMemo.n === w.pets.length) return liveMemo.list;
+    var list = w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; }); liveMemo = { w: w, m: m, tip: w.tip, n: w.pets.length, list: list }; return list; }
   function urgent(w) { return myLive(w).filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; }); }
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function badge(w) { var tab = $('tabAlive'); if (!tab) return; var n = urgent(w).length;
