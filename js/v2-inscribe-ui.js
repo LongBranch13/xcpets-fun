@@ -19,7 +19,7 @@
   function savePending(rec) { var l = pending().filter(function (x) { return x.commitTxid !== rec.commitTxid; }); l.push(rec); lsSet(PKEY, l); }
   function F(p, o) { return E.fetch(E.mempoolApi + p, o); }
   function json(p) { return F(p).then(function (r) { if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; } return r.json(); }); }
-  function broadcast(raw) { return F('/tx', { method: 'POST', body: raw }).then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error('broadcast refused: ' + t.slice(0, 200)); return t.trim(); }); }); }
+  function broadcast(raw) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); return F('/tx', { method: 'POST', body: raw }).then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error('broadcast refused: ' + t.slice(0, 200)); return t.trim(); }); }); }
   function txLink(id) { return '<a href="' + esc(E.explorer) + '/tx/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…</a>'; }
   function inscLink(id) { return E.ordinals ? '<a href="' + esc(E.ordinals) + '/inscription/' + esc(id) + '" target="_blank" rel="noopener">' + esc(id.slice(0, 10)) + '…i0</a>' : '<span title="' + esc(id) + '">' + esc(id.slice(0, 10)) + '…i0</span>'; }
   function toF(img) { img=R.exportFrame(img); return { w: img.width || 32, h: img.height || 32, data: new Uint8ClampedArray(img.data) }; }

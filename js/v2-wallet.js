@@ -119,11 +119,12 @@
   }
   function guard(x) {
     var sb = x.signAndBroadcast, sm = x.signMessage;
-    function retry(f) { return function () { var self = this, a = arguments; return f.apply(self, a).catch(function (e) { if (!e || e.code !== 4100) throw e; return unlock().then(function () { return f.apply(self, a); }); }); }; }
+    function retry(f) { return function () { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); var self = this, a = arguments; return f.apply(self, a).catch(function (e) { if (!e || e.code !== 4100) throw e; return unlock().then(function () { return f.apply(self, a); }); }); }; }
     x.signAndBroadcast = retry(sb); x.signMessage = retry(sm); return x;
   }
   /* casatookan-wallet: Casa Tookan signs, the site broadcasts (POST mempool /tx, like the inscribe flow). 30 s limit; a timeout may still have sent it. */
   function broadcast(hex) {
+    if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err());
     return withTimeout(F(CFG.mempoolApi + '/tx', { method: 'POST', body: hex }).then(function (r) { return r.text().then(function (t) { t = String(t || '').trim();
       if (!r.ok) throw new Error('The network refused the signed transaction (' + (t || 'HTTP ' + r.status) + '). Nothing was sent.'); return t; }); }),
       30000, 'Broadcasting did not answer in 30 s. The transaction may still have been sent: check your address on mempool.space before trying again.');
@@ -237,6 +238,7 @@
     return (ex.length ? '&exclude_utxos=' + encodeURIComponent(ex.join(',')) : '') + (mode === 'unconf' ? '&allow_unconfirmed_inputs=true' : ''); }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function composeAt(me, plan, fee, onTry, g0) {
+    if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err());
     if (g0 == null) g0 = cancelGen;
     var raw = BurnCore.toRaw(amt(plan.amount)), exp = { address: me, quantityRaw: raw, tag: plan.tag, satPerVbyte: fee }, urls = composeNodes(), errs = [], stops = [];
     /* compose-failover-1110: Cancel aborts the request in flight. A hang fails over to the other public Core node immediately.
@@ -327,7 +329,7 @@
   var cancelGen = 0, cancelWait = []; function cancel() { cancelGen++; var w = cancelWait; cancelWait = []; w.forEach(function (f) { try { f(); } catch (e) { } }); }
   function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
   function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
-  function send(plan, viewed, onTry, recheck) { var g0 = cancelGen, VS = mockState();
+  function send(plan, viewed, onTry, recheck) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); var g0 = cancelGen, VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null, stopFresh = function () {};
     var gate = freshGate(window.V2Mock.whenFresh(), onTry, function (fn) { stopFresh = fn; }); cancelWait.push(stopFresh);
@@ -336,7 +338,7 @@
       var VB = mockState(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
       if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0, !!(r.ok && r.same && VB && VB.verified && !VB.provisional)); }, function (e) { cancelWait = []; throw e; }); }
-  function send0(plan, viewed, onTry, g0, freshSame, checked) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
+  function send0(plan, viewed, onTry, g0, freshSame, checked) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = mockState();
@@ -429,7 +431,7 @@
     if (!(VS && VS.prod) || !T || !T.tokenAt || !as.length) return Promise.resolve();
     return Promise.all(as.map(function (A) { return T.tokenAt(A).then(function (t) { return t && t.utxo ? utxoErr(A, t.utxo) : null; }, function () { return null; }); })).then(function (r) { r = r.filter(Boolean); if (r.length) throw r[0]; }); }
   function conflictMsg(e) { var raw = String((e && e.raw) || (e && e.message) || ''); if (e && !e.utxoHeld && !/safety check/i.test(e.message || '') && /already exists in .*mempool|pending .* already exists|mempool conflict|HTTP 409/i.test(raw)) { var x = new Error('One of your transactions for this is still pending (not in a block yet), and the node will not build another on top of it. Wait for it to confirm, then try again. Nothing was sent.'); Object.keys(e).forEach(function (k) { if (!(k in x)) x[k] = e[k]; }); x.raw = raw; x.conflict = true; return x; } return e; }
-  function sendDex(plan, viewed) { return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
+  function sendDex(plan, viewed) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
   function sendDexF(plan, viewed) { var VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
     /* same gate as a burn: an unanswered read is a server error; a local pet rebuild is not, and same burns + sale data may proceed while that rebuild finishes */
@@ -441,7 +443,7 @@
       var VB = mockState();
       return sendDex0(plan, viewed, !!(r.same && VB && VB.verified && !VB.provisional));
     }, function (e) { cancelWait = []; throw e; }); }
-  function sendDex0(plan, viewed, freshSame) {
+  function sendDex0(plan, viewed, freshSame) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err());
     var VS = mockState();
     if (VS && VS.prod && upd() && !(freshSame && VS.verified && !VS.provisional)) return Promise.reject(new Error('Still updating pets to the latest block. Nothing was sent. Try again in a moment.'));
     if (VS && VS.prod && !VS.verified) return Promise.reject(new Error(VS.stale ? 'Still checking the latest chain data. Nothing was sent. Try again in a moment.' : "Couldn't verify every block yet. Nothing was sent. Reload the page and press Retry."));
