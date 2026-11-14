@@ -336,7 +336,7 @@
       var VB = mockState(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
       if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
       if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0, !!(r.ok && r.same && VB && VB.verified && !VB.provisional)); }, function (e) { cancelWait = []; throw e; }); }
-  function send0(plan, viewed, onTry, g0, freshSame) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
+  function send0(plan, viewed, onTry, g0, freshSame, checked) { if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */
     var VS = mockState();
@@ -344,6 +344,12 @@
      * The verified gate below is unchanged, and a provisional older world still refuses. */
     if (VS && VS.prod && upd() && !(freshSame && VS.verified && !VS.provisional)) { var eu = new Error('Still updating pets to the latest block, so pet numbers could be out of date. Nothing was burned. Try again in a moment.'); eu.unverified = true; eu.retry = true; return Promise.reject(eu); }
     if (VS && VS.prod && !VS.verified) { var ev = new Error(VS.stale ? 'Still checking the latest chain data, so pet numbers could be out of date. Nothing was burned. Try again in a moment.' : "Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
+    /* The published view is on screen. The full world stays in the check worker. Ask it before anything is signed. */
+    if (!checked && VS && VS.view && window.V2Split && V2Split.checkPlans) return V2Split.checkPlans([plan]).then(function (out) {
+      if (!out || out.ok === false) { var e = new Error((out && out.skip && out.skip[0]) || 'The check did not finish. Nothing was burned.'); e.unverified = true; e.retry = true; throw e; }
+      if (out.skip && out.skip.length) { var e2 = new Error(out.skip[0]); e2.retry = false; throw e2; }
+      return send0(plan, viewed, onTry, g0, freshSame, true);
+    });
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now();
     function release() { if (signing === mine) signing = 0; }
