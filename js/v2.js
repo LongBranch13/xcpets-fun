@@ -679,9 +679,14 @@
     $('lb').innerHTML = c.leaderboard.slice(0, 8).map(function (x) { return '<li' + (x.address === ME ? ' class="me"' : '') + '>' + esc(x.address) + ' · ' + fmt(x.amount) + '</li>'; }).join('');
     $('cfeedBtn').textContent = cfeedText(); $('cfeedBtn').disabled = !!gap; /* hatchspeed-1101: same label as the chip fast path (172.5 showed as 172 though 172.5 is burned) */
     if (gap) { var sn = 'Opens when pet #' + R.COMMUNITY_NEXT_NO + ' arrives'; $('cfeedBtn').textContent = 'Feed community · ' + sn.toLowerCase(); $('crollBtn').textContent = 'Community gear roll · ' + sn.toLowerCase(); $('cfeedBtn').title = $('crollBtn').title = sn; } else $('cfeedBtn').title = '';
-    renderPets(w); renderInv(w); lairRender(w); /* pet-shop mockup; lair-perf: only while the Lair is on (or near) screen */ renderBattles(w); notifyFights(w); notifyBreeds(w); notifyCem(w); notifyLife(w); renderBreed(w); if (window.V2Motel) { try { V2Motel.render(w); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w); try { inReqPopup(w); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w); } catch (e) { if (window.console) console.error(e); } }
-    if (detailId && $('detail').classList.contains('on')) detail(w.byId[detailId], w);
-    offerResume();
+    renderPets(w);
+    function renderRest() { var w2 = w; renderInv(w2); lairRender(w2); /* pet-shop mockup; lair-perf: only while the Lair is on (or near) screen */ renderBattles(w2); notifyFights(w2); notifyBreeds(w2); notifyCem(w2); notifyLife(w2); renderBreed(w2); if (window.V2Motel) { try { V2Motel.render(w2); } catch (e) { if (window.console) console.error(e); } } /* no-tail-motel mockup */ renderLog(w2); try { inReqPopup(w2); } catch (e) { if (window.console) console.error(e); } if (window.UXB) { try { UXB.after(w2); } catch (e) { if (window.console) console.error(e); } }
+      if (detailId && $('detail').classList.contains('on')) detail(w2.byId[detailId], w2); offerResume(); }
+    /* speed-phase0: the first paint stops after the visible pet cards. Inventory, the log and the other panels run on the next turn, and the page is interactive. */
+    if (!window.__xcReady) { window.__xcReady = 1; try { performance.mark('xc-ready'); } catch (e) {}
+      var yld = (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : null;
+      if (yld && yld.then) yld.then(renderRest); else setTimeout(renderRest, 0); return; }
+    renderRest();
   }
   // ---------------------------------------------------------------- My Pets (live card markup + checkbox)
   /* hotfix 3: the filtered + sorted pet list (shared by renderPets and the sort-only reorder) */
@@ -691,9 +696,9 @@
     if (!cem && S.ui_starOnly) { var KS = new Set(keptIds()); list = list.filter(function (p) { return KS.has(p.id); }); } /* Starred filter (favorite-star-restore, display only) */
     if (X) list = list.filter(function (p) { return X.keep(p); }); /* ux-batch: minimum rarity, origin, search (display only) */
     if (fS === 'num') list.sort(function (a, b) { return a.id - b.id; }); if (fS === 'urgent' && window.IPQ) { var UW = world(); list.sort(function (a, b) { var x = IPQ.urgency(UW, a), y = IPQ.urgency(UW, b); return (x === y ? 0 : x < y ? -1 : 1) || a.id - b.id; }); } /* intuitive-pass item 2: most urgent first (engine deathBlock - tip), display only */
-    if (fS === 'tier') { var RW = world(), RB = function (p) { return window.PetScore ? PetScore.bitsOf(RW, p) : -1; }; list.sort(function (a, b) { return b.tier - a.tier || RB(b) - RB(a) || a.id - b.id; }); } /* rarity-sort 2026-10-20: tier, trait-rarity bits, pet number (display only) */ if (fS === 'power' && window.UXB && UXB.power) list.sort(function (a, b) { return UXB.power(b) - UXB.power(a) || a.id - b.id; }); if (fS === 'stage') list.sort(function (a, b) { return b.stage - a.stage || b.care - a.care || b.id - a.id; });
+    if (fS === 'tier') { var RW = world(), readyT = window.PetScore && PetScore.cached && PetScore.cached(RW), RB = function (p) { return readyT ? PetScore.bitsOf(RW, p) : -1; }; if (window.PetScore && PetScore.ensure && !readyT) PetScore.ensure(RW, function () { render(); }); list.sort(function (a, b) { return b.tier - a.tier || RB(b) - RB(a) || a.id - b.id; }); } /* rarity-sort 2026-10-20: tier, trait-rarity bits, pet number (display only). speed-phase0: bits wait until the chunked score cache is warm */ if (fS === 'power' && window.UXB && UXB.power) list.sort(function (a, b) { return UXB.power(b) - UXB.power(a) || a.id - b.id; }); if (fS === 'stage') list.sort(function (a, b) { return b.stage - a.stage || b.care - a.care || b.id - a.id; });
     if (fS === 'species' && X && X.spKey) list.sort(function (a, b) { var x = X.spKey(a), y = X.spKey(b); return x < y ? -1 : x > y ? 1 : a.id - b.id; }); /* species-sort (2026-10-19, display only) */
-    if (fS === 'score' && window.PetScore) { var PSw = world(); list.sort(function (a, b) { var x = PetScore.of(PSw, a), y = PetScore.of(PSw, b); return (y ? y.score : -1) - (x ? x.score : -1) || a.id - b.id; }); } /* pet-score (2026-10-19, display only) */
+    if (fS === 'score' && window.PetScore) { var PSw = world(); if (PetScore.cached && PetScore.cached(PSw)) { list.sort(function (a, b) { var x = PetScore.of(PSw, a), y = PetScore.of(PSw, b); return (y ? y.score : -1) - (x ? x.score : -1) || a.id - b.id; }); } else if (PetScore.ensure) PetScore.ensure(PSw, function () { render(); }); } /* pet-score (2026-10-19, display only). speed-phase0: do not compute every score inside the first paint */
     if (window.V2PetSort && ['new', 'old', 'name', 'vigor', 'spark', 'grit', 'zoom', 'luck', 'wins', 'gear'].indexOf(fS) >= 0) { var PSc = V2PetSort.comparator(fS, world()); if (PSc) list.sort(PSc); } /* pet-sort (Oct 24 2026, display only): js/v2-pet-sort.js */
     if (fS === 'starred') { var KS3 = new Set(keptIds()); list.sort(function (a, b) { return (KS3.has(b.id) ? 1 : 0) - (KS3.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* favorite-star-restore (display only): starred favorites first, then pet # */
     if (fS === 'sel') { var KS2 = new Set(S.sel.map(Number)); list.sort(function (a, b) { return (KS2.has(b.id) ? 1 : 0) - (KS2.has(a.id) ? 1 : 0) || a.id - b.id; }); } /* mypets-checkbox (display only): checked pets first, then pet # (was starred first) */
@@ -743,6 +748,16 @@
       '.wagmi-offer b{font-family:"Press Start 2P",monospace;font-size:11px;color:#ffc93c;line-height:1.5}.wagmi-offer span{font-size:13px;line-height:1.4}.wagmi-offer .wo-btns{display:flex;gap:8px;flex-wrap:wrap}.wagmi-offer .btn{min-height:40px}';
     document.head.appendChild(woc); }
   var CARDC = new Map(); /* speed2-1101: last grid card per pet id (see mk) */
+  /* speed-phase0: Pet Score for the whole world is not part of the first card paint. Badges fill in after ensure() yields through the population. */
+  function scoreHtml(w, p) { var PS = window.PetScore; if (!PS || !p) return '';
+    if (!(PS.cached && PS.cached(w))) { if (PS.ensure && scoreHtml.armed !== w) { scoreHtml.armed = w; PS.ensure(w, function () { if (scoreHtml.armed === w) scoreHtml.armed = null; fillScores(w); }); } return ''; }
+    return (PS.badge ? PS.badge(w, p) : '') + (PS.rarityChip ? PS.rarityChip(w, p) : ''); }
+  function fillScores(w) { var PS = window.PetScore; if (!PS || !PS.cached || !PS.cached(w)) return;
+    var cards = document.querySelectorAll('#pets .pet.card[data-pid]'), i = 0;
+    function step() { var end = Math.min(cards.length, i + 24); for (; i < end; i++) { var d = cards[i]; if (!d || d.querySelector('.pscore')) continue; var p = w.byId[+d.dataset.pid]; if (!p) continue;
+        var html = (PS.badge(w, p) || '') + (PS.rarityChip ? PS.rarityChip(w, p) : ''); var row = d.querySelector('.zb-nums') || d.querySelector('.chips'); if (row && html) row.insertAdjacentHTML('beforeend', html); }
+      if (i < cards.length) { var y = (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : null; if (y && y.then) y.then(step); else setTimeout(step, 0); } }
+    step(); }
   function renderPets(w) {
     if (CARDC.size > 4000) CARDC.clear();
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
@@ -792,7 +807,7 @@
       var mark = ZB(p) ? '<span class="chip zb-risen" title="Raised at the seance altar in the cemetery. Pets offered there are Sacrificed.">🧟 Risen</span>' : (p.resurrected ? '<span class="chip zb-halo" title="Brought back to life by a Resurrection at block ' + fmt(p.resurrected.block) + ': a halo for good, power ceiling ' + p.resurrected.cap + ' times">😇 Halo</span>' : '');
       var idCore = tm.html + mark + (R.godBornChip ? R.godBornChip(w, p) : '') + (window.V2MythicGod ? V2MythicGod.chips(p, w) : '') + '<span class="chip">' + esc(spLabel(p.species)) + '</span>' + tierPill(p.tier, p) + '<span class="chip stg">' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</span>';
       var powChip = window.UXB && UXB.power ? (ZB(p) ? (function (h) { return '<span class="chip pow zb-pow" title="Zombie power, set at the seance altar' + (h ? ': ' + h.times + ' times its death stats' + (h.milestone ? ' (' + esc(h.milestone) + ')' : '') : '') + '">⚡ ' + UXB.power(p) + ' zombie</span>'; })(window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null) : '<span class="chip pow"' + ptA(p) + '>⚡ ' + UXB.power(p) + '</span>') : '';
-      var numChips = '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + powChip + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '') + (window.UXB ? UXB.origin(p, w) : '') + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + (R.starveChip ? R.starveChip(w, p) : '') + (qWhy ? '<span class="chip quest-chip" title="' + esc(qWhy) + ': can\'t fight, breed, feed, gift or sell until it is home">🗺️ Gone Questing · back at ' + fmt(p.quest.end) + '</span>' : '') + (qNap ? '<span class="chip" title="Resting after a quest: can fight, breed and eat, but can\'t start a new quest yet">💤 Nap Time until ' + fmt(p.napUntil) + '</span>' : '');
+      var numChips = '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + powChip + scoreHtml(w, p) + (window.UXB ? UXB.origin(p, w) : '') + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + (R.starveChip ? R.starveChip(w, p) : '') + (qWhy ? '<span class="chip quest-chip" title="' + esc(qWhy) + ': can\'t fight, breed, feed, gift or sell until it is home">🗺️ Gone Questing · back at ' + fmt(p.quest.end) + '</span>' : '') + (qNap ? '<span class="chip" title="Resting after a quest: can fight, breed and eat, but can\'t start a new quest yet">💤 Nap Time until ' + fmt(p.napUntil) + '</span>' : '');
       var genEra = (R.genChip ? R.genChip(w, p) : '') + (R.eraChip ? R.eraChip(w, p) : '');
       var _h = ZB(p)
         ? (window.V2Zombies && V2Zombies.hungerBar ? V2Zombies.hungerBar(p, w) : '') + head + '<div class="chips zb-groups"><div class="zb-chiprow zb-who" aria-label="Who this zombie is">' + idCore + (R.eraChip ? R.eraChip(w, p) : '') + '</div><div class="zb-chiprow zb-nums" aria-label="Numbers">' + (R.genChip ? R.genChip(w, p) : '') + numChips + '</div></div><div class="small zb-by">🧟 Raised by ' + shortAddr(p.zombie.by) + '</div>' + zZoneHtml(p, w)
@@ -814,9 +829,11 @@
     /* bigfix 2026-10-20: Ranking-style paging. Only the first PG.n cards are built (150 a page); 'Show more (N left)' adds the next 150.
      * Counts, Select all, filters and bulk feed still work from the full list, not from the cards on screen. */
     var key = [cem ? 'c' : 'a'].concat(['fTier', 'fHide', 'fSort', 'fMin', 'fOrigin', 'fSearch', 'fSpecies', 'fDir'].map(function (k) { var e = $(k); return e ? (e.value != null && e.tagName !== 'BUTTON' ? e.value : e.textContent) : ''; })).join('|') + '|' + (S.ui_starOnly ? 's' : '') + '|' + (NF[cem ? 'c' : 'a'] ? 'n' : '') + '|z' + ZFK + '|t' + tokKind() + '|' + (window.UXB && UXB.spsKey ? UXB.spsKey() : ''); if (PG.key !== key) { PG.key = key; PG.n = CH; }
-    var upto = Math.min(list.length, Math.max(CH, PG.n));
-    put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
-    (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
+    var upto = Math.min(list.length, Math.max(CH, PG.n)), FIRST = 16;
+    put(list.slice(0, Math.min(FIRST, upto)));
+    if (!window.__xcFirstPet && box.querySelector('.pet.card[data-pid]')) { window.__xcFirstPet = 1; try { performance.mark('xc-first-pet'); } catch (e) {} }
+    box.appendChild(tail);
+    (function more(i) { if (i >= upto) return; var go = function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + 40)), tail); more(i + 40); }; var y = (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : null; if (y && y.then) y.then(go); else setTimeout(go, 0); })(Math.min(FIRST, upto));
     if (list.length > upto) { var mb = document.createElement('div'); mb.className = 'row petmore'; mb.style.cssText = 'justify-content:center;margin:10px 0;width:100%;grid-column:1/-1';
       mb.innerHTML = '<button type="button" class="q" id="petMore">Show more (' + fmt(list.length - upto) + ' left)</button>';
       box.appendChild(mb); mb.querySelector('button').onclick = function (e) { e.stopPropagation(); var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();

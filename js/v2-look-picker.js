@@ -74,7 +74,8 @@
     el.querySelector('[data-send]').onclick = function () { send(p.id, ops, function (ok) { if (ok) { st.want = {}; } }); };
     return { owned: owned.length, ops: ops }; }
   /* one-tap move row for My Looks: a pet menu (pets this look is not on) + Move, and Off when it is on a pet */
-  function moveRow(w, ME, L, i) { var V = window.V2Rules, open = V.lookPickOn(tip(w) + 1), pets = w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released && !q.community && L.on.indexOf(q.id) < 0; }).sort(function (a, b) { return a.id - b.id; });
+  function liveOwned(w, ME) { if (liveOwned.w === w && liveOwned.m === ME) return liveOwned.list; var list = [], i, q; for (i = 0; i < w.pets.length; i++) { q = w.pets[i]; if (q.owner === ME && !q.dead && !q.released && !q.community) list.push(q); } list.sort(function (a, b) { return a.id - b.id; }); liveOwned.w = w; liveOwned.m = ME; liveOwned.list = list; return list; }
+  function moveRow(w, ME, L, i) { var V = window.V2Rules, open = V.lookPickOn(tip(w) + 1), pets = liveOwned(w, ME).filter(function (q) { return L.on.indexOf(q.id) < 0; });
     if (!pets.length && !L.on.length) return '';
     var full = L.kind === 'flame' && L.cap > 1 && L.on.length >= L.cap;
     /* label only: the burn really moves the look only when it is on as many pets as it can be (flame limit 1, or every copy placed); otherwise it goes on as well */
@@ -89,7 +90,11 @@
         '<p class="lp-note">Pick a pet and tap ' + NAMES.wear + ' or ' + NAMES.move + ' (one burn). ' + NAMES.move + ' shows when the look is already on as many pets as it can be, so it comes off a pet it is on now. ' + NAMES.off + ' takes it off every card it is on (one burn per card). For several changes at once use a pet\'s ' + NAMES.panel + ' or the ' + NAMES.station + ' in The Rare Room.</p>' : '<p class="lp-note">No looks yet. Go earn some!</p>') + '</details>';
     el.querySelectorAll('[data-mv]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.mv], sel = el.querySelector('xc-select[data-mvs="' + b.dataset.mv + '"]'), to = sel && +sel.value; if (!to) return; send(to, [{ code: L.code, on: true }]); }; });
     el.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.off]; L.on.forEach(function (pid) { send(pid, [{ code: L.code, on: false }]); }); }; });
-    el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]; if (p) preview(c, w, p, lookFx(L)); }); }
+    /* speed-phase0: sprite previews are the slow part. Two at a time, yielding, so this list is not one long task. */
+    var canvases = el.querySelectorAll('canvas[data-i]'), ci = 0, fallback = null;
+    function paintAt() { var end = Math.min(canvases.length, ci + 2); for (; ci < end; ci++) { var c = canvases[ci], L = owned[+c.dataset.i], p = L.on.length ? w.byId[L.on[0]] : null; if (!p) { if (!fallback) fallback = liveOwned(w, ME)[0] || null; p = fallback; } if (p) preview(c, w, p, lookFx(L)); }
+      if (ci < canvases.length) { var y = (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : null; if (y && y.then) y.then(paintAt); else setTimeout(paintAt, 0); } }
+    paintAt(); }
   /* shownLooks() asks copyList() to sort every look copy in the world. Doing that inside a sort of every living pet
    * (about 9k for the owner wallet, each comparison sorting the copies again) was one long task of tens of seconds
    * and Chrome's "Page Unresponsive" on the Rare Room: the room had already painted, so it showed up when you
@@ -129,7 +134,7 @@
     if (/pet\.html/.test(location.pathname) && id) { var p = w.byId[id], anchor = $('questCard') || $('starveWarn') || $('facts'), el = $('lookPanel');
       if (!p || !ME || p.owner !== ME || p.dead || p.released) { if (el) el.remove(); }
       else if (anchor && keys.pet !== k + id) { keys.pet = k + id; if (!el) { el = document.createElement('section'); el.id = 'lookPanel'; el.className = 'panel'; anchor.parentNode.insertBefore(el, anchor.nextSibling); } panel(el, w, p, ME, { id: 'looks' }); } }
-    var pp = $('petsPanel'); if (pp && ME && page === 'play' && keys.my !== k) { keys.my = k; var ml = $('myLooks'); if (!ml) { ml = document.createElement('div'); ml.id = 'myLooks'; pp.appendChild(ml); } /* below the pet list (owner 2026-10-27: pets first) */ myLooks(ml, w, ME); }
+    var pp = $('petsPanel'); if (pp && ME && page === 'play' && keys.my !== k) { keys.my = k; var ml = $('myLooks'); if (!ml) { ml = document.createElement('div'); ml.id = 'myLooks'; pp.appendChild(ml); } /* below the pet list (owner 2026-10-27: pets first). speed-phase0: not in the same turn as the first pet cards */ var y = (typeof scheduler !== 'undefined' && scheduler.yield) ? scheduler.yield() : null; var go = function () { if (ml.isConnected) myLooks(ml, w, ME); }; if (y && y.then) y.then(go); else setTimeout(go, 0); }
     var inv = $('invPanel'); if (inv && ME && page === 'rare' && keys.rr !== k) { keys.rr = k; var s = $('lookStation'); if (!s) { s = document.createElement('section'); s.id = 'lookStation'; s.className = 'panel shop8 split-keep'; inv.parentNode.insertBefore(s, inv.nextSibling); } station(s, w, ME); } }
   if (typeof document !== 'undefined') { setInterval(tick, 3000); if (document.readyState !== 'loading') setTimeout(tick, 600); else document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 600); }); }
   window.V2LookPicker = { panel: panel, myLooks: myLooks, station: station, looksOn: looksOn, startPet: startPet, tick: function () { keys = {}; tick(); } };

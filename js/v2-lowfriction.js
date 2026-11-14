@@ -104,7 +104,9 @@
   var SC = { k: '', c: null }; function spSel(w) { var s = $('lfSp'); if (!s) return; var sk = (dateFor(w) ? whys(w).k : 'm' + (w.pets ? w.pets.length : 0) + (U().ME || '')) + '|' + st.who, c = SC.k === sk && SC.w === w && SC.c; if (!c) { c = {}; pool(w).forEach(function (p) { var k = spK(p); c[k] = (c[k] || 0) + 1; }); SC = { k: sk, w: w, c: c }; } /* motel-partner-1103: counted once per state (the date pool can be thousands of pets) */ var ks = Object.keys(c).sort(), sig = ks.map(function (k) { return k + c[k]; }).join(',');
     if (s.dataset.sig === sig) return; s.dataset.sig = sig; if (st.sp && !c[st.sp]) st.sp = '';
     s.innerHTML = '<option value="">🐸 All species</option>' + ks.map(function (k) { return '<option value="' + esc(k) + '"' + (k === st.sp ? ' selected' : '') + '>' + esc(spLabel(k)) + ' (' + c[k].toLocaleString('en-US') + ')</option>'; }).join(''); try { s.value = st.sp; } catch (e) { } }
-  function dock() { var sc = $('motelScene'); if (!sc || !U() || !U().cardFor) return false; var d = $('lfDock');
+  function dock() { var sc = $('motelScene'); if (!sc || !U() || !U().cardFor) return false;
+    /* speed-phase0: play.html still has the motel scene in the DOM, hidden. Building the dock there ran the breed picker and drew cards on a timer. The dock belongs on the breed page. */
+    if (mode() !== 'breed') return false; var d = $('lfDock');
     if (!d) { css(); d = document.createElement('div'); d.id = 'lfDock'; d.setAttribute('role', 'region'); d.setAttribute('aria-label', 'Pet dock: drag a pet onto the motel, or tap a pet then the motel');
       d.innerHTML = '<div class="lf-bar"><input type="search" id="lfQ" placeholder="Find: #12, name, species" aria-label="Find a pet in the dock"><button type="button" class="q" id="lfFeedSel" hidden>🍼 Feed selected</button></div>' +
         '<div class="lf-row" role="group" aria-label="Sort the dock"><span class="lb">Sort</span>' + chips('srt', SORTS, st.sort) + '</div>' +

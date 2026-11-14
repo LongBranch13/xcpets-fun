@@ -31,10 +31,12 @@
     var c = rcache && rcache.get(w); if (c && c.tip === w.tip && c.len === n) return c.r;
     var pets = population(w), b = traitBits(pets).bits, r = pets.map(function (p, i) { return { id: p.id, bits: b[i], oneIn: Math.pow(2, b[i]) }; });
     if (rcache) rcache.set(w, { tip: w.tip, len: n, r: r }); return r; }
-  function compute(w, opt) {
+  /* speed-phase0: the population tables (prep) and the per-pet score (one) are the same maths as before.
+   * compute() still does them in one turn. ensure() paints nothing itself; the page calls it and yields between slices. */
+  function prep(w, opt) {
     opt = opt || {}; var V = opt.rules || root.V2Rules, tip = w.tip || 0;
-    var pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }), N = pets.length, byId = {};
-    if (!N) return { tip: tip, n: 0, byId: byId, ranked: [] };
+    var pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }), N = pets.length;
+    if (!N) return { w: w, tip: tip, N: 0, pets: pets, V: V };
     /* Stats: total percentile within species (hybrids vs hybrids) */
     var grp = {}; pets.forEach(function (p, i) { var g = isHyb(p) ? 'hybrid' : String(p.species); (grp[g] = grp[g] || []).push(i); });
     var sStats = new Array(N); Object.keys(grp).forEach(function (g) { var ix = grp[g], pc = pctMap(ix.map(function (i) { return total(pets[i]); })); ix.forEach(function (i, k) { sStats[i] = pc[k]; }); });
@@ -51,22 +53,56 @@
     /* Scarcity: inverse species count */
     var sc = {}; pets.forEach(function (p) { var g = isHyb(p) ? 'hybrid' : String(p.species); sc[g] = (sc[g] || 0) + 1; });
     var minC = Math.min.apply(null, Object.keys(sc).map(function (k) { return sc[k]; })), maxL = Math.log(N / minC) || 1;
-    var res = pets.map(function (p, i) {
-      var th = null; try { th = V && V.petThresholds ? V.petThresholds(w, p, tip) : null; } catch (e) { th = null; }
-      var my = th && th[5] ? th[5] : 69069, prog = p.ascended || p.mythicCare ? 1 : Math.min(1, (p.care || 0) / my), st = streak(p, tip);
-      var growth = Math.min(1, 0.85 * prog + 0.15 * Math.min(st, 7) / 7);
-      var gear = 1 - Math.exp(-(gv[p.id] || 0) / 12);
-      var f = (p.wins || 0) + (p.losses || 0), battles = f < 3 ? 0.5 : 0.6 * (p.wins || 0) / f + 0.4 * Math.min(1, (p.wins || 0) / 10);
-      var g = isHyb(p) ? 'hybrid' : String(p.species), inv = Math.log(N / sc[g]) / maxL;
-      var scarcity = Math.min(1, 0.4 * inv + (isHyb(p) ? 0.4 : 0) + (RARE_SP[p.species] ? 0.3 : 0) + (p.parents ? 0.2 : 0)); /* rarity-sort 2026-10-20: player Wizards get Nakamoto's +0.3 (by species) */
-      var parts = { stats: sStats[i], looks: sLooks[i], growth: growth, gear: gear, battles: battles, scarcity: scarcity }, s = 0, bd = {};
-      Object.keys(W).forEach(function (k) { var v = Math.max(0, Math.min(1, parts[k])); s += W[k] * v; bd[k] = { value: Math.round(v * 1000) / 1000, weight: W[k], points: Math.round(W[k] * v * 1000) }; });
-      bd.stats.total = total(p); bd.looks.sameCombo = cf[ck[i]]; bd.growth.streak = st; bd.growth.mythicPct = Math.round(prog * 100); bd.gear.won = gv[p.id] || 0; bd.battles.fights = f; bd.battles.wins = p.wins || 0;
-      return { id: p.id, score: Math.round(s * 1000), dead: !!p.dead, breakdown: bd, rarityBits: rBits[i], rarityOneIn: Math.pow(2, rBits[i]), traitOneIn: rk[i].map(function (k) { return N / RF[k]; }) }; });
-    res.sort(function (a, b) { return b.score - a.score || a.id - b.id; });
+    return { w: w, tip: tip, N: N, pets: pets, V: V, sStats: sStats, sLooks: sLooks, ck: ck, cf: cf, gv: gv, RF: RF, rk: rk, rBits: rBits, sc: sc, maxL: maxL };
+  }
+  function one(p, i, c) {
+    var V = c.V, tip = c.tip, N = c.N, gv = c.gv, sc = c.sc, maxL = c.maxL, sStats = c.sStats, sLooks = c.sLooks, ck = c.ck, cf = c.cf, rBits = c.rBits, rk = c.rk, RF = c.RF;
+    var th = null; try { th = V && V.petThresholds ? V.petThresholds(c.w, p, tip) : null; } catch (e) { th = null; }
+    var my = th && th[5] ? th[5] : 69069, prog = p.ascended || p.mythicCare ? 1 : Math.min(1, (p.care || 0) / my), st = streak(p, tip);
+    var growth = Math.min(1, 0.85 * prog + 0.15 * Math.min(st, 7) / 7);
+    var gear = 1 - Math.exp(-(gv[p.id] || 0) / 12);
+    var f = (p.wins || 0) + (p.losses || 0), battles = f < 3 ? 0.5 : 0.6 * (p.wins || 0) / f + 0.4 * Math.min(1, (p.wins || 0) / 10);
+    var g = isHyb(p) ? 'hybrid' : String(p.species), inv = Math.log(N / sc[g]) / maxL;
+    var scarcity = Math.min(1, 0.4 * inv + (isHyb(p) ? 0.4 : 0) + (RARE_SP[p.species] ? 0.3 : 0) + (p.parents ? 0.2 : 0)); /* rarity-sort 2026-10-20: player Wizards get Nakamoto's +0.3 (by species) */
+    var parts = { stats: sStats[i], looks: sLooks[i], growth: growth, gear: gear, battles: battles, scarcity: scarcity }, s = 0, bd = {};
+    Object.keys(W).forEach(function (k) { var v = Math.max(0, Math.min(1, parts[k])); s += W[k] * v; bd[k] = { value: Math.round(v * 1000) / 1000, weight: W[k], points: Math.round(W[k] * v * 1000) }; });
+    bd.stats.total = total(p); bd.looks.sameCombo = cf[ck[i]]; bd.growth.streak = st; bd.growth.mythicPct = Math.round(prog * 100); bd.gear.won = gv[p.id] || 0; bd.battles.fights = f; bd.battles.wins = p.wins || 0;
+    return { id: p.id, score: Math.round(s * 1000), dead: !!p.dead, breakdown: bd, rarityBits: rBits[i], rarityOneIn: Math.pow(2, rBits[i]), traitOneIn: rk[i].map(function (k) { return N / RF[k]; }) };
+  }
+  function cmpScore(a, b) { return b.score - a.score || a.id - b.id; }
+  function rank(res, tip) {
+    var N = res.length, byId = {};
+    res.sort(cmpScore);
     res.forEach(function (r, i) { r.rank = i > 0 && res[i - 1].score === r.score ? res[i - 1].rank : i + 1; r.percentile = Math.round(1000 * (1 - (r.rank - 1) / N)) / 10;
       r.top = Math.max(1, Math.ceil(100 * r.rank / N)); byId[r.id] = r; });
     return { tip: tip, n: N, byId: byId, ranked: res };
+  }
+  function compute(w, opt) {
+    var c = prep(w, opt); if (!c.N) return { tip: c.tip, n: 0, byId: {}, ranked: [] };
+    var res = new Array(c.N), i; for (i = 0; i < c.N; i++) res[i] = one(c.pets[i], i, c); return rank(res, c.tip);
+  }
+  function yieldNow() {
+    try { if (typeof scheduler !== 'undefined' && scheduler.yield) return scheduler.yield(); } catch (e) {}
+    return new Promise(function (res) { setTimeout(res, 0); });
+  }
+  var jobs = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function cached(w) { if (!w || !cache) return null; var c = cache.get(w); if (c && c.tip === w.tip && c.len === (w.pets || []).length) return c.r; return null; }
+  /* ensure(w, cb): same result as compute(), written into the same cache, but the per-pet slice yields so the first cards can paint. */
+  function ensure(w, cb) {
+    var hit = cached(w); if (hit) { if (cb) cb(hit); return; }
+    if (!w) return;
+    var job = jobs && jobs.get(w); if (job) { if (cb) job.cbs.push(cb); return; }
+    job = { cbs: cb ? [cb] : [] }; if (jobs) jobs.set(w, job);
+    var SLICE = 1500, ctx = null, res = null, i = 0, phase = 0;
+    function finish(out) { if (cache) cache.set(w, { tip: w.tip, len: (w.pets || []).length, r: out }); if (jobs) jobs.delete(w); job.cbs.forEach(function (fn) { try { fn(out); } catch (e) {} }); }
+    function step() {
+      try {
+        if (phase === 0) { ctx = prep(w, {}); phase = 1; if (!ctx.N) return finish({ tip: ctx.tip, n: 0, byId: {}, ranked: [] }); res = new Array(ctx.N); return yieldNow().then(step); }
+        if (phase === 1) { var end = Math.min(ctx.N, i + SLICE); for (; i < end; i++) res[i] = one(ctx.pets[i], i, ctx); if (i < ctx.N) return yieldNow().then(step); phase = 2; return yieldNow().then(step); }
+        finish(rank(res, ctx.tip));
+      } catch (e) { if (jobs) jobs.delete(w); }
+    }
+    yieldNow().then(step);
   }
   var cache = typeof WeakMap === 'function' ? new WeakMap() : null;
   function get(w) { if (!w) return null; var c = cache && cache.get(w); if (c && c.tip === w.tip && c.len === (w.pets || []).length) return c.r;
@@ -155,7 +191,7 @@
     doc.addEventListener('scroll', repos, true);
     if (view) { view.addEventListener('resize', repos); if (view.visualViewport) { view.visualViewport.addEventListener('resize', repos); view.visualViewport.addEventListener('scroll', repos); } }
   }
-  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
+  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, ensure: ensure, cached: cached, get: get, of: of, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
 })(typeof window !== 'undefined' ? window : globalThis);

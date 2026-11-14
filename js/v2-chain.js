@@ -596,6 +596,6 @@
     var chain = new E.Chain(), m0 = (S.mempool || []).map(function (x) { return x.tx_hash; }).join();
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
-  function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
+  function refreshFull(cb) { var t = S.tip; return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.tip === t) return; cb(); }, function () {}); } /* speed-phase0: no new block, no full re-render */
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();
