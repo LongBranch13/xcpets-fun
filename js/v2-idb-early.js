@@ -1,6 +1,27 @@
 /* Read the saved world from IndexedDB while the rule scripts are still downloading.
  * Display only. A missing database is left untouched. js/v2-chain.js consumes
- * window.__xcpIdbEarly. This file is not part of the rules hash. */
+ * window.__xcpIdbEarly. This file is not part of the rules hash.
+ * speed phase 1: pollers of 1s or slower share one clock (XcpTick). Animation timers stay their own. */
+(function () {
+  if (typeof window !== 'undefined' && window.setInterval && !window.XcpTick) {
+    var nativeSI = window.setInterval, nativeCI = window.clearInterval, subs = {}, seq = 0x40000000, BASE = 250;
+    function fire(s) { try { s.fn.apply(window, s.args); } catch (err) { setTimeout(function () { throw err; }, 0); } }
+    nativeSI(function () {
+      var now = Date.now(), id;
+      for (id in subs) { var s = subs[id]; if (!s || s.dead) continue; if (now - s.last >= s.ms) { s.last = now; fire(s); } }
+    }, BASE);
+    window.setInterval = function (fn, ms) {
+      ms = +ms || 0;
+      if (typeof fn !== 'function' || ms < 1000) return nativeSI.apply(window, arguments);
+      var id = ++seq, args = [], i;
+      for (i = 2; i < arguments.length; i++) args.push(arguments[i]);
+      subs[id] = { fn: fn, ms: ms, last: Date.now(), args: args, dead: false };
+      return id;
+    };
+    window.clearInterval = function (id) { if (subs[id]) { subs[id].dead = true; delete subs[id]; return; } return nativeCI(id); };
+    window.XcpTick = { every: function (ms, fn) { return window.setInterval(fn, ms); } };
+  }
+})();
 (function () {
   if (typeof indexedDB === 'undefined' || typeof indexedDB.databases !== 'function') return;
   try { if (document.prerendering) return; } catch (e) {}

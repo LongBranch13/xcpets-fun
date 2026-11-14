@@ -60,8 +60,12 @@ function seed(m) {
     }
     putWorld(m.idbKey, root, parts, m.n, cp).then(function () { self.postMessage({ id: m.id, ok: true, key: m.idbKey }); }, function (e) { self.postMessage({ id: m.id, ok: false, error: String(e && e.message || e) }); });
   }
-  function one(f) { return fetch(f.url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
-    return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = unmarkValue(JSON.parse(new TextDecoder().decode(buf))); got.push({ role: f.role, i: f.i, val: val }); }); }); }
+  function one(f) {
+    function check(buf) { return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = unmarkValue(JSON.parse(new TextDecoder().decode(buf))); got.push({ role: f.role, i: f.i, val: val }); }); }
+    function net() { return fetch(f.url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(check); }
+    if (f.buf) return check(f.buf).catch(function () { return net(); });
+    return net();
+  }
   function pump() { if (failed && !running) return finish();
     while (!failed && running < MAX && pending.length) { var f = pending.shift(); running++; one(f).then(function () { running--; if (!pending.length && !running) finish(); else pump(); }, function (e) { running--; fail(e); }); }
     if (!pending.length && !running) finish(); }

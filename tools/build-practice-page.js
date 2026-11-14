@@ -12,6 +12,12 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const B = () => (fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() || 'dev');
+/* speed phase 1: seasonal scripts are one loader (js/v2-events.js), and the snapshot prefetch is real-chain only.
+ * Practice never loads doom-week. Older play.html still names doom-week.js; either tag is removed, neither is required. */
+function stripLoaders(h) {
+  ['doom-week', 'v2-events', 'v2-prefetch'].forEach(n => { h = h.replace(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"(?: defer| async)?></script>', 'g'), ''); });
+  return h.replace(/<link rel="preload" as="script" href="js\/v2-rules\.js\?v=[^"]*">/g, '');
+}
 function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h = h.replace(/<script src="js\/v2-resume\.js\?v=[^"]*"><\/script>/g, ''); h = h.replace(/<script src="js\/v2-boot-sync\.js\?v=[^"]*"><\/script>/g, ''); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); h = h.replace(/<!--err-report-1102-->[\s\S]*?<!--err-report-1102-->/, ''); h = h.replace(/<!--mypets-snap-1103-->[\s\S]*?<!--mypets-snap-1103-->/, ''); /* site-speed-1103: no saved My Pets view on practice pages */ /* safeguards-1102: practice pages send nothing anywhere (practice-guard refuses outside hosts), so no page-error reporter */ /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */ const b = B();
   const must = (re, what) => { if (!re.test(h)) throw new Error('build-practice-page: ' + src + ' changed, cannot find ' + what); };
   const sub = (re, to, what) => { must(re, what); h = h.replace(re, to); };
@@ -21,7 +27,8 @@ function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h 
   sub(/(<link rel="stylesheet" href="css\/v2\.css\?v=[^"]*">)/, '$1<link rel="stylesheet" href="css/practice.css?v=' + b + '">', 'v2.css');
   sub(/(<script src="js\/v2-wallet\.js\?v=[^"]*"><\/script>)/, '$1<script src="js/v2-practice-wallet.js?v=' + b + '"></script>', 'v2-wallet.js');
   sub(/(<script src="js\/v2-rules\.js\?v=[^"]*"><\/script>)/, '$1<script>XcpPractice.wrapRules(window.V2Rules);</script>', 'v2-rules.js');
-  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear', 'doom-week'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  h = stripLoaders(h);
   sub(/<\/body>/, '<script src="js/practice-ui.js?v=' + b + '" defer></script></body>', '</body>');
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');
   sub(/(<\/header><div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
@@ -50,7 +57,8 @@ function build(src, title) {
   /* scripts */
   sub(/(<script src="js\/v2-wallet\.js\?v=[^"]*"><\/script>)/, '$1<script src="js/v2-practice-wallet.js?v=' + B + '"></script>', 'v2-wallet.js');
   sub(/(<script src="js\/v2-rules\.js\?v=[^"]*"><\/script>)/, '$1<script>XcpPractice.wrapRules(window.V2Rules);</script>', 'v2-rules.js');
-  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear', 'doom-week'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear'].forEach(n => sub(new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'), '', n + '.js'));
+  h = stripLoaders(h);
   sub(/<\/body>/, '<script src="js/practice-ui.js?v=' + B + '" defer></script></body>', '</body>');
   /* header nav: practice stays on this page; the rest of the site is the real game */
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');

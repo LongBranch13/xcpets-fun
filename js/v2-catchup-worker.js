@@ -22,10 +22,13 @@ function putWorld(key, root, parts, n, cp) { return idbOpen().then(function (db)
     tx.oncomplete = function () { db.close(); res(true); }; tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} rej(tx.error || new Error('idb')); };
   } catch (e) { try { db.close(); } catch (x) {} rej(e); } }); }); }
 function loadText(url) { return fetch(url, { cache: 'force-cache' }).then(function (r) { if (!r.ok) throw new Error('script ' + r.status); return r.text(); }); }
-function loadFile(f) { var tNet = Date.now(); return fetch(f.url).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
-  var net = Date.now() - tNet, tParse = Date.now();
-  return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = JSON.parse(new TextDecoder().decode(buf));
-    return { val: val, bytes: buf.byteLength, net: net, parse: Date.now() - tParse }; }); }); }
+function loadFile(f) { var tNet = Date.now();
+  function use(buf) { var net = Date.now() - tNet, tParse = Date.now();
+    return sha256Buf(buf).then(function (h) { if (h !== f.sha256) throw new Error('bad hash'); var val = JSON.parse(new TextDecoder().decode(buf));
+      return { val: val, bytes: buf.byteLength, net: net, parse: Date.now() - tParse }; }); }
+  function net() { return fetch(f.url).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(use); }
+  if (f.buf) return use(f.buf).catch(net);
+  return net(); }
 function unmark(v) {
   if (!v || typeof v !== 'object') return v;
   if (Array.isArray(v)) { var a = new Array(v.length), i; for (i = 0; i < v.length; i++) if (i in v) a[i] = unmark(v[i]); return a; }

@@ -234,12 +234,15 @@
   function seedFiles(man, dir) { var files = [{ url: dir + man.root.url, sha256: man.root.sha256, role: 'root' }];
     (man.files || []).forEach(function (f) { files.push({ url: dir + f.url, sha256: f.sha256, role: 'part', i: f.i }); }); return files; }
   function runWorker(files, key, n, parts, checkpoint) {
-    return new Promise(function (res, rej) {
-      var w, t; try { w = new Worker(new URL('js/v2-seed-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
-      t = setTimeout(function () { try { w.terminate(); } catch (e) {} rej(new Error('seed timeout')); }, SEED_MS);
-      w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'seed')); };
-      w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e) {} rej(new Error('seed worker')); };
-      w.postMessage({ cmd: 'seed', id: 1, files: files, idbKey: key, parts: parts, n: n, checkpoint: checkpoint || null });
+    return withBufs(files).then(function (ready) {
+      return new Promise(function (res, rej) {
+        var w, t, xfer = []; try { w = new Worker(new URL('js/v2-seed-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
+        ready.forEach(function (f) { if (f.buf) xfer.push(f.buf); });
+        t = setTimeout(function () { try { w.terminate(); } catch (e) {} rej(new Error('seed timeout')); }, SEED_MS);
+        w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'seed')); };
+        w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e) {} rej(new Error('seed worker')); };
+        w.postMessage({ cmd: 'seed', id: 1, files: ready, idbKey: key, parts: parts, n: n, checkpoint: checkpoint || null }, xfer);
+      });
     });
   }
   function staleMax() { return (window.XcpResume && XcpResume.STALE_MAX) || 8; }
@@ -255,11 +258,28 @@
     return { exact: exact, catchup: catchup, provisional: false, behind: behind };
   }
   function fetchManifest(api) {
+    var pre = window.__xcpSnap;
+    if (pre) {
+      window.__xcpSnap = null;
+      return Promise.resolve(pre).then(function (man) { if (man && man.v === 1 && man._url) return man; return fetchManifestNet(); }, fetchManifestNet);
+    }
+    return fetchManifestNet();
+  }
+  function fetchManifestNet() {
     return fetch(base() + '/xp/v1/world/latest.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }).then(function (latest) {
       var path = latest && (latest.manifest || latest.url); if (!path) throw new Error('latest');
       var abs = /^https?:/.test(path) ? path : base() + path;
       return fetch(abs, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) { man._url = abs; return man; });
     });
+  }
+  function takeBuf(url) {
+    var bag = window.__xcpFile, p = bag && bag[url];
+    if (!p) return Promise.resolve(null);
+    delete bag[url];
+    return Promise.resolve(p).then(function (b) { return b && b.byteLength ? b : null; }, function () { return null; });
+  }
+  function withBufs(files) {
+    return Promise.all(files.map(function (f) { return takeBuf(f.url).then(function (buf) { if (buf) f.buf = buf; return f; }); }));
   }
   function noteSeeded(api, later) {
     usedExact = true; window.V2BootSync.justSeeded = true; window.V2BootSync._seedPending = true;
@@ -285,12 +305,16 @@
     return files;
   }
   function runCatch(msg) {
-    return new Promise(function (res, rej) {
-      var w, t; try { w = new Worker(new URL('js/v2-catchup-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
-      t = setTimeout(function () { try { w.terminate(); } catch (e2) {} rej(new Error('catchup timeout')); }, SEED_MS);
-      w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e3) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'catchup')); };
-      w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e4) {} rej(new Error('catchup worker')); };
-      w.postMessage(msg);
+    return withBufs(msg.files || []).then(function (files) {
+      msg.files = files;
+      return new Promise(function (res, rej) {
+        var w, t, xfer = []; try { w = new Worker(new URL('js/v2-catchup-worker.js?v=' + (buildId() || '0'), location.href).href); } catch (e) { return rej(e); }
+        files.forEach(function (f) { if (f.buf) xfer.push(f.buf); });
+        t = setTimeout(function () { try { w.terminate(); } catch (e2) {} rej(new Error('catchup timeout')); }, SEED_MS);
+        w.onmessage = function (ev) { clearTimeout(t); try { w.terminate(); } catch (e3) {} var m = ev.data || {}; if (m.ok) res(m); else rej(new Error(m.error || 'catchup')); };
+        w.onerror = function () { clearTimeout(t); try { w.terminate(); } catch (e4) {} rej(new Error('catchup worker')); };
+        w.postMessage(msg, xfer);
+      });
     });
   }
   function catchUp(man, api) {
