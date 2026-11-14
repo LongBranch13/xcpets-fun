@@ -107,7 +107,7 @@
     var chunk = assets.slice(done, done + BUNDLE), plan = chunk.length === 1 ? { kind: 'send', asset: chunk[0], destination: job.to, label: 'Gift token ' + chunk[0] } : { kind: 'mpma', assets: chunk, destination: job.to, label: 'Gift ' + chunk.length + ' pet tokens' };
     msg('<p>Sending ' + (chunk.length === 1 ? 'the pet token' : chunk.length + ' pet tokens in one send') + (assets.length > BUNDLE ? ' (' + (done + chunk.length) + ' of ' + assets.length + ')' : '') + '…</p>');
     return Wl.sendDex(plan, ME).then(function () { job.sent = done + chunk.length; run(job); }).catch(fail); }
-  function resume() { var j = gpend(); if (!j || !j.to || !ME) return; modal('<h2>🎁 Unfinished gift</h2><p>' + j.ids.length + ' pet' + (j.ids.length === 1 ? '' : 's') + ' to ' + esc(j.to) + '.</p><div class="gf-bar"><button class="q" id="gfDrop">Forget it</button><button class="btn" id="gfCont">Continue</button></div>');
+  function resume() { if (window.XCPETS_MAINTENANCE) { try { gpend(null); } catch (eM) {} return; } var j = gpend(); if (!j || !j.to || !ME) return; modal('<h2>🎁 Unfinished gift</h2><p>' + j.ids.length + ' pet' + (j.ids.length === 1 ? '' : 's') + ' to ' + esc(j.to) + '.</p><div class="gf-bar"><button class="q" id="gfDrop">Forget it</button><button class="btn" id="gfCont">Continue</button></div>');
     $('gfDrop').onclick = function () { gpend(null); close(); }; $('gfCont').onclick = function () { run(j); }; }
   function toast2(h) { var t = $('toasts'); if (!t) { alert(h.replace(/<[^>]+>/g, '')); return; } var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
   var TOK = !!(V.tokenOnly && V.tokenOnly());
