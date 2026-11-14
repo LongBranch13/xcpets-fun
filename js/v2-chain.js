@@ -254,9 +254,10 @@
   /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
    * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
   function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
-  function updating() { return !!S.provisional || (!current() && wkBusy > 0); }
+  function updating() { if (S.view) return false; return !!S.provisional || (!current() && wkBusy > 0); }
   function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
   function world() {
+    if (S.view && lastW && lastW._view && !S.viewVerify) { if (V.syncCosts) V.syncCosts(lastW, (lastW.tip || 0) + 1); return lastW; }
     if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
       if (lastW && lastOps === oj) { if (V.syncCosts) V.syncCosts(lastW, (S.tip || 0) + 1); return lastW; }
       if (!emptyW) { emptyW = V.replay([], {}, [], { tip: S.tip, live: E.RealCore }); emptyW.pending = true; } return emptyW; }
@@ -544,7 +545,40 @@
   /* nav-cache-1102: a saved copy from a full chain read in this build under 5 min old is shown without waiting for api/boot.json (still a
    * stale copy: S.verified stays false, so burns wait for the re-read). api/boot.json is still read in the background for the feed tip. */
   var LAST_NOW = 5 * 60e3;
+  function bootFromView(view, then) {
+    lastW = view; lastOps = JSON.stringify(S.ops || []);
+    cache = null; cacheSig = null;
+    S.view = true; S.provisional = true; S.verified = false;
+    if (view && view.tip) S.tip = view.tip;
+    wkBusy++;
+    var st = document.getElementById('v2boot');
+    if (st) st.textContent = '';
+    if (window.V2Split && V2Split.install) V2Split.install(view);
+    then();
+    setTimeout(function () { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {} }, 400);
+  }
+  function loadReal(cb) {
+    if (S.view && window.V2Split && V2Split.startVerify) return V2Split.startVerify().then(function () { if (cb) cb(); });
+    if (loadReal.p) return loadReal.p;
+    S.viewVerify = true; S.view = false; S.provisional = false;
+    cache = null; cacheSig = null;
+    var st = document.getElementById('v2boot');
+    if (st) { st.style.display = ''; st.textContent = 'Checking every burn on this device…'; }
+    loadReal.p = Promise.resolve().then(function () { return bootChain(function () { if (st) st.textContent = ''; if (cb) cb(); }); });
+    return loadReal.p;
+  }
   function boot(then) {
+    if (window.V2Split && V2Split.prepare && !S.viewVerify && !/[?&]split=(0|off)(?:&|$)/.test(location.search)) {
+      var st0 = document.getElementById('v2boot');
+      if (st0) st0.textContent = 'Reading the published world…';
+      return V2Split.prepare(function (view) {
+        if (!view) return bootChain(then);
+        return bootFromView(view, then);
+      });
+    }
+    return bootChain(then);
+  }
+  function bootChain(then) {
     var B = window.V2BootSync;
     if (B && B.bootFirst && B.enabled() && !B.localOnly() && !B.saveData()) {
       /* The chain check and the rules hash run before the page may paint. On a return visit
@@ -591,11 +625,15 @@
       if (applyStale(j, j.hashes)) return fromIdb().then(workerReplay).then(function () { feedBar(); cb(); }); }, function () {}); }
   var lastFull = Date.now();
   if (typeof setInterval === 'function' && typeof document !== 'undefined') setInterval(function () { if (!booted || document.hidden || S.verified || lastCb) return; refTip(); if (S.feed) feedPoll(feedCb); }, 60e3); /* stale-copy-fix: no-poll pages */
-  function refresh(cb) { if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
+  function refresh(cb) {
+    if (S.view && !S.viewVerify && window.V2Split && V2Split.recheck) {
+      return V2Split.recheck().then(function (ok) { if (ok) { if (cb) cb(); return; } return loadReal(cb); });
+    }
+    if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
     if (!S.verified || !S.tip || Date.now() - lastFull > 600e3) { lastFull = Date.now(); return refreshFull(cb); }
     var chain = new E.Chain(), m0 = (S.mempool || []).map(function (x) { return x.tx_hash; }).join();
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, refresh: refresh, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, rulesSig: rulesSig, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();
