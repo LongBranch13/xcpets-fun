@@ -74,9 +74,30 @@ function start(m) {
           for (s = 0; s < list.length; s++) seen[list[s]] = 1;
           world = self.V2Rules.replay(rows, sync.hashes || {}, [], { tip: tip, live: self.LiveEngine.RealCore, dex: sync.dex && sync.dex.body || undefined,
             _resume: { w: w, seen: seen, dexPos: meta.dexPos || 0, grand: meta.grand ? 1 : 0, tip: meta.tip } });
-          var alive = 0, i2, pets = world.pets || [];
+          var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {};
           for (i2 = 0; i2 < pets.length; i2++) if (pets[i2] && !pets[i2].dead && !pets[i2].released) alive++;
-          self.postMessage({ cmd: 'ready', ok: true, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0 });
+          if (meAddr) {
+            var items = world.items || {}, ik = Object.keys(items), gi, g;
+            for (gi = 0; gi < ik.length; gi++) { g = items[ik[gi]]; if (g && g.on != null) (wornBy[g.on] = wornBy[g.on] || []).push(g); }
+            for (i2 = 0; i2 < pets.length; i2++) {
+              var p = pets[i2];
+              if (!p || p.owner !== meAddr) continue;
+              var c = {}, pk = Object.keys(p), pi;
+              for (pi = 0; pi < pk.length; pi++) c[pk[pi]] = p[pk[pi]];
+              c.worn = wornBy[p.id] || [];
+              mine.push(c); ids[p.id] = 1;
+            }
+            var fs = world.fights || [], fi, f;
+            for (fi = 0; fi < fs.length; fi++) { f = fs[fi]; if (ids[f.a] || ids[f.b] || f.challenger === meAddr) fights.push(f); }
+          }
+          self.postMessage({ cmd: 'ready', ok: true, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
+          var STEP = 400;
+          function sendChunk(from) {
+            var last = from + STEP >= mine.length || !mine.length;
+            self.postMessage({ cmd: 'mine', pets: mine.slice(from, from + STEP), from: from, total: mine.length, last: last, fights: last ? fights : null, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0 });
+            if (!last) setTimeout(function () { sendChunk(from + STEP); }, 0);
+          }
+          setTimeout(function () { sendChunk(0); }, 0);
         });
       });
     });

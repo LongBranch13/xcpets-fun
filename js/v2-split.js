@@ -58,7 +58,7 @@
     var itemList = [];
     Object.keys(items).forEach(function (k) { itemList.push(items[k]); });
     return {
-      tip: summary.tip, pets: pets, byId: byId, items: items, itemList: itemList, log: [],
+      tip: summary.tip, pets: pets, byId: byId, items: items, itemList: itemList, log: [], fights: [],
       community: summary.community || {},
       tokens: {},
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
@@ -66,7 +66,7 @@
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
   }
-  var last = null;
+  var last = null, lastSummary = null;
   function prepare(cb) {
     if (off() || !base()) { cb(null); return; }
     var root = base();
@@ -91,20 +91,21 @@
         var folder = dirOf(manUrl);
         return getJson(folder + 'view/summary.json').then(function (summary) {
           if (!summary || (summary.v !== 1 && summary.v !== 2) || summary.tip !== man.tip || summary.rsig !== man.rsig) throw new Error('summary');
+          lastSummary = summary;
           var who = me();
           if (!who) return assemble(summary, null);
           return sha2(who).then(function (hex) {
             return getJson(folder + 'view/own/' + hex + '.json').then(function (page) {
               if (!page || !page.pets || !page.pets.length) return assemble(summary, null);
-              var one = {}; one[page.owner || who] = page.pets;
+              var one = {}; one[page.owner || who] = aliveFirst(page.pets.slice());
               var view = assemble(summary, { owners: one });
-              view._pages = { n: page.n, pages: page.pages, page: 0, key: hex, folder: folder };
+              view._pages = { n: page.n, pages: page.pages, page: 0, key: hex, folder: folder, raw: page.pets };
               return view;
             }, function () { return assemble(summary, null); });
           });
         });
       });
-    }).then(function (view) { last = { man: man, url: manUrl, tip: chainTip }; cb(view); }, function () { cb(null); });
+    }).then(function (view) { last = { man: man, url: manUrl, tip: chainTip }; if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
   }
   function recheck() {
     if (!last || !last.man) return Promise.resolve(false);
@@ -135,6 +136,58 @@
     }
     return out;
   }
+  var pageJob = null, verifiedTakeover = false;
+  function aliveFirst(list) {
+    return list.sort(function (a, b) {
+      var ad = (a.dead || a.released) ? 1 : 0, bd = (b.dead || b.released) ? 1 : 0;
+      if (ad !== bd) return ad - bd;
+      return (a.id | 0) - (b.id | 0);
+    });
+  }
+  function publishOwner(pets, pages, fights, done) {
+    if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
+    var who = me(), one = {};
+    one[who] = aliveFirst(pets.slice());
+    var v = assemble(lastSummary, { owners: one });
+    v._pages = pages || null;
+    v._full = done ? 1 : 0;
+    v.fights = fights || [];
+    V2Mock.setViewWorld(v);
+  }
+  var restView = null;
+  function rest() { var v = restView; restView = null; if (v) loadRest(v); }
+  function loadRest(view) {
+    var pg = view._pages;
+    if (!pg || !(pg.pages > 1)) return;
+    pageJob = { pets: (pg.raw || view.pets || []).slice(), fights: view.fights || [], pages: pg };
+    var left = [], i;
+    for (i = 1; i < pg.pages; i++) left.push(i);
+    function step() {
+      if (verifiedTakeover) return;
+      if (!left.length) { publishOwner(pageJob.pets, pg, pageJob.fights, true); return; }
+      var slice = left.splice(0, 6);
+      Promise.all(slice.map(function (n) {
+        return getJson(pg.folder + 'view/own/' + pg.key + '.' + n + '.json').then(function (page) {
+          if (page && page.pets) pageJob.pets = pageJob.pets.concat(page.pets);
+        }, function () {});
+      })).then(function () {
+        if (verifiedTakeover) return;
+        pageJob.batches = (pageJob.batches || 0) + 1;
+        if (!left.length || pageJob.batches % 8 === 0) publishOwner(pageJob.pets, pg, pageJob.fights, !left.length);
+        if (left.length) setTimeout(step, 0);
+      });
+    }
+    setTimeout(step, 40);
+  }
+  function takeMine(m) {
+    if (!m || !m.total) return;
+    verifiedTakeover = true;
+    var pages = pageJob && pageJob.pages;
+    if (!pageJob || m.from === 0) pageJob = { pets: [], fights: [], pages: pages };
+    if (m.pets && m.pets.length) pageJob.pets = pageJob.pets.concat(m.pets);
+    if (m.fights) pageJob.fights = m.fights;
+    if (m.last) publishOwner(pageJob.pets, pageJob.pages, pageJob.fights, true);
+  }
   function unlock(m) {
     ready = true;
     var S = window.V2Mock && V2Mock.state && V2Mock.state();
@@ -150,16 +203,17 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=3a86bf4818', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=00a80f9312', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
         if (m.cmd === 'progress') { var note = document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
+        if (m.cmd === 'mine') { takeMine(m); return; }
         if (m.cmd === 'ready') { if (m.ok) unlock(m); else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
       };
       worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
-      worker.postMessage({ cmd: 'start', base: base(), scripts: scripts });
+      worker.postMessage({ cmd: 'start', base: base(), scripts: scripts, me: me() });
     });
     return readyP;
   }
@@ -190,5 +244,5 @@
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     setTimeout(function () { startVerify(); }, 400);
   }
-  window.V2Split = { STALE: STALE, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
+  window.V2Split = { STALE: STALE, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
 })();

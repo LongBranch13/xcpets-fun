@@ -2,6 +2,8 @@
 var MAINTENANCE = true;
 (function () {
   'use strict';
+  /* ?maint=0 skips the overlay and the block for this page load only. The switch above stays true. */
+  try { if (/[?&]maint=0(?:&|$)/.test(location.search)) MAINTENANCE = false; } catch (e) {}
   var MSG = "XCPETS is down for maintenance. Your pets are safe on chain. Please don't burn anything right now; we'll be back soon.";
   window.XCPETS_MAINTENANCE = !!MAINTENANCE;
   function err() {

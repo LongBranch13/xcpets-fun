@@ -570,7 +570,7 @@
   function boot(then) {
     if (window.XCPETS_MAINTENANCE) {
       wkBusy++;
-      lastW = { pets: [], byId: {}, items: {}, itemList: [], community: { burned: 0 }, log: [], tip: 0, pending: true, _view: 1 };
+      lastW = { pets: [], byId: {}, items: {}, itemList: [], community: { burned: 0 }, log: [], fights: [], tip: 0, pending: true, _view: 1 };
       lastOps = JSON.stringify(S.ops || []);
       S.view = true; S.verified = false; S.provisional = true;
       var stM = document.getElementById('v2boot'); if (stM) stM.textContent = '';
@@ -644,5 +644,7 @@
     return chain.tip().then(function (t) { if (t !== S.tip) { lastFull = Date.now(); return refreshFull(cb); }
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, rulesSig: rulesSig, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  var viewPaint = 0;
+  function setViewWorld(w) { if (!S.view || !w) return; lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, rulesSig: rulesSig, setViewWorld: setViewWorld, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();

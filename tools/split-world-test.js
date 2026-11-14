@@ -49,6 +49,27 @@ function check(world, label) {
 }
 check(toy(10), 'tip 10');
 check(toy(20), 'tip 20');
+ok(/fights: \[\]/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2-split.js'), 'utf8')), 'a view world has a fights list');
+ok(/\(w\.fights \|\| \[\]\)/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2.js'), 'utf8')), 'fight notices tolerate a view with no fights');
+(function () { var w = { pets: [{ id: 1, owner: 'carol' }] }; (w.fights || []).forEach(function () { throw new Error('called'); }); })();
+ok(true, 'a view with no fights does not throw');
+async function many() {
+  const pets = [];
+  for (let i = 1; i <= 30; i++) pets.push({ id: i, owner: 'carol', name: 'P' + i, species: 'pepe', tier: 0, stage: 1, care: i, dead: i % 2 === 0, wins: 0, losses: 0, released: false });
+  const world = { tip: 30, pets: pets, items: {}, community: { burned: 1, leaderboard: [] }, log: [] };
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'split-many-'));
+  await split.write(out, world, { tip: 30, rsig: 'rtest' });
+  const key = split.ownerKey('carol');
+  const first = JSON.parse(fs.readFileSync(path.join(out, 'own', key + '.json'), 'utf8'));
+  ok(first.n === 30 && first.pages > 1 && first.pets.length === split.PAGE, 'owner with 30 pets is paged (' + first.pets.length + ' on page 0)');
+  ok(first.pets.slice(0, 15).every(p => !p.dead) && first.pets[15].dead, 'alive pets lead the first page');
+  let n = 0, alive = 0;
+  for (let pg = 0; pg < first.pages; pg++) {
+    const file = pg === 0 ? key + '.json' : key + '.' + pg + '.json';
+    JSON.parse(fs.readFileSync(path.join(out, 'own', file), 'utf8')).pets.forEach(p => { n++; if (!p.dead && !p.released) alive++; });
+  }
+  ok(n === 30 && alive === 15, 'all 30 pets are in the owner pages (' + alive + ' alive)');
+}
 
 const sig = 'r' + 'ab'.repeat(16);
 const dir = path.join(os.tmpdir(), 'split-worldfile-' + process.pid);
@@ -100,6 +121,7 @@ async function prove(name) {
   return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
 }
 (async () => {
+await many();
 const a = await prove('snap-971786.json');
 const b = await prove('snap-972901.json');
 console.log('builder-like write tip ' + a.n + ' pets files ' + a.files + ' bytes ' + a.bytes + ' rssMB ' + Math.round(a.rss / 1e6));
