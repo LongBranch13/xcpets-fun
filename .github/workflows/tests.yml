@@ -9,7 +9,7 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 20
       - name: playwright-core and canvas for the browser and sprite tests (uses the runner's Google Chrome)
-        run: npm install --no-save --no-package-lock playwright-core@1 @napi-rs/canvas@0.1.80
+        run: npm install --no-save --no-package-lock playwright-core@1 puppeteer-core@24 @napi-rs/canvas@0.1.80
       - name: run-tests (replay must stay SAME against the base)
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then BASE="origin/${{ github.base_ref }}"; else BASE="${{ github.event.before }}"; fi

@@ -66,9 +66,11 @@ function textOf(html) { return String(html).replace(/<[^>]+>/g, '').replace(/\s+
   const puppeteer = require('puppeteer-core');
   const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', protocolTimeout: 60000, args: ['--no-sandbox', '--font-render-hinting=none'] });
   const neu = fs.readFileSync(path.join(ROOT, 'js/v2-hovercard.js'), 'utf8');
-  const old = cp.execSync('git show main:js/v2-hovercard.js', { cwd: ROOT, maxBuffer: 8e6 }).toString();
-  ok(!/js\/v2-rules\.js|rjs\/pet-core\.js|rjs\/game-core\.js|rjs\/real-core\.js|rjs\/burn-core\.js|rjs\/config\.js|js\/pet-core\.js/.test(cp.execSync('git diff --name-only main', { cwd: ROOT }).toString()), 'rule files are not in the diff');
-  ok(neu.indexOf('carryBeside') > 0 && old.indexOf('carryBeside') < 0, 'carry note is new display code');
+  const baseRef = ['origin/main', 'main'].find(r => { try { cp.execSync('git rev-parse --verify ' + r, { cwd: ROOT, stdio: 'ignore' }); return true; } catch (e) { return false; } }) || 'origin/main';
+  const old = cp.execSync('git show ' + baseRef + ':js/v2-hovercard.js', { cwd: ROOT, maxBuffer: 8e6 }).toString();
+  ok(!/js\/v2-rules\.js|rjs\/pet-core\.js|rjs\/game-core\.js|rjs\/real-core\.js|rjs\/burn-core\.js|rjs\/config\.js|js\/pet-core\.js/.test(cp.execSync('git diff --name-only ' + baseRef, { cwd: ROOT }).toString()), 'rule files are not in the diff');
+  const addedHere = old.indexOf('carryBeside') < 0;
+  ok(neu.indexOf('carryBeside') > 0, addedHere ? 'carry note is new display code' : 'carry note is in the hover card (already on ' + baseRef + ')');
   const page = await boot(browser, neu);
   const oldPage = await boot(browser, old);
   const ids = [BOWANE, TIKPIP, ZORI];
@@ -97,7 +99,7 @@ function textOf(html) { return String(html).replace(/<[^>]+>/g, '').replace(/\s+
   ok(z.text.indexOf('carries') < 0 && z.html.indexOf('hc-car') < 0 && z.text.indexOf('Shadow socks') < 0 && z.text.indexOf('socks') < 0, 'a pet with no stat carry and a hidden trait adds no clutter');
   ok(textOf(z.text).indexOf('vig 17') >= 0 && z.text.indexOf('Two-tone') >= 0, 'Zori stats and traits still show');
   ok(before['card-19975'] === z.text, 'Zori card text matches the previous card');
-  ok(before['card-20221'].indexOf('carries') < 0 && before['card-20221'].indexOf('gri 19') >= 0, 'previous Bowane card had the stats and no carry note');
+  ok(before['card-20221'].indexOf('gri 19') >= 0 && (addedHere ? before['card-20221'].indexOf('carries') < 0 : before['card-20221'].indexOf('carries') >= 0), addedHere ? 'previous Bowane card had the stats and no carry note' : 'origin/main Bowane card already shows the stats and the carry note');
   ok(fight.indexOf('carries') < 0 && fight.indexOf('hc-car') < 0, 'the fight hover does not grow a carry note');
   ok(!b.overflow && !t.overflow && !z.overflow, 'cards do not overflow sideways (' + [b.w, t.w, z.w].join(',') + ')');
   const bare = await page.evaluate(function () {

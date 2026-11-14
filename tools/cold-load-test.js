@@ -12,6 +12,7 @@ const block = cut('  var IDB_NAME =', '\n  function idb()') + cut('  var IDB_REA
 function sim(openAt, readAt) { // fake clock: timers + idb open/get callbacks
   let now = 0; const q = []; const at = (ms, f) => { const o = { t: now + ms, f }; q.push(o); return o; };
   const ctx = vm.createContext({ setTimeout: (f, ms) => at(ms, f), clearTimeout: o => { if (o) o.f = () => {}; }, Promise });
+  ctx.window = ctx; ctx.self = ctx;
   ctx.idb = () => new Promise((res, rej) => { if (openAt == null) return; at(openAt, () => res({ close() {}, transaction: () => ({ objectStore: () => ({ get: () => { const r = {}; at(readAt, () => { r.result = { key: 'k', world: { pets: [1] } }; r.onsuccess(); }); return r; } }) }) })); });
   vm.runInContext(block.replace('function idb()', 'function idb_unused()') + '\nthis.raw = idbRaw; this.W = IDB_WAIT_MS; this.R = IDB_READ_MS;', ctx);
   let out = 'pending'; ctx.raw().then(v => { out = v; });
