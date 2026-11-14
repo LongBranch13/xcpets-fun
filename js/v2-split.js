@@ -6,6 +6,10 @@
 (function () {
   'use strict';
   window.__xcpSplitHold = true;
+  /* Register before the snapshot download so the first visit stores the checkpoint and the next visit reads it back. */
+  if (navigator.serviceWorker && !/[?&]sw=(0|off)(?:&|$)/.test(location.search) && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js?v=sw60-1').catch(function () {});
+  }
   var STALE = 8;
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function off() { return q('split') === '0' || q('split') === 'off'; }
@@ -149,6 +153,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
+      var go = function () {
       try { worker = new Worker(new URL('js/v2-verify-worker.js?v=3a86bf4818', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
@@ -159,6 +164,9 @@
       };
       worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
       worker.postMessage({ cmd: 'start', base: base(), scripts: scripts });
+      };
+      var wait = (navigator.serviceWorker && navigator.serviceWorker.ready) ? navigator.serviceWorker.ready : Promise.resolve();
+      Promise.race([wait, new Promise(function (r) { setTimeout(r, 2000); })]).then(go, go);
     });
     return readyP;
   }
