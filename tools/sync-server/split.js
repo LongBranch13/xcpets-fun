@@ -210,7 +210,7 @@ function write(dir, world, meta) {
         arr.push(row);
       });
       by.forEach((rows, key) => {
-        rows.sort((a, b) => a.rec.id - b.rec.id);
+        rows.sort((a, b) => ((a.rec.dead || a.rec.released) ? 1 : 0) - ((b.rec.dead || b.rec.released) ? 1 : 0) || (a.rec.id - b.rec.id));
         const pages = Math.ceil(rows.length / PAGE) || 1;
         for (let pg = 0; pg < pages; pg++) {
           const slice = rows.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
