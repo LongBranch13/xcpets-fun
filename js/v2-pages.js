@@ -544,7 +544,9 @@
     if (!(id >= 1)) { var rm = String(location.pathname || '').match(/\/pet\/(\d+)\/?$/); if (rm) id = Number(rm[1]); else if (window.__XCPETS_PET_ID >= 1) id = Number(window.__XCPETS_PET_ID); }
     if (!(id >= 1)) { var mineP = w.pets.filter(function (p) { return p.owner === ME && !p.released; }); id = mineP.length ? mineP[0].id : 1; history.replaceState(null, '', 'pet.html?id=' + id); }
     var p = w.byId[id];
-    if (!p) { $('title').textContent = 'Pet #' + id + ' does not exist (yet).'; return; }
+    if (!p) {
+      if (window.V2Split && V2Split.ensurePet && !pet.loading) { pet.loading = 1; $('title').textContent = 'Loading pet #' + id + '…'; V2Split.ensurePet(id).then(function () { pet.loading = 0; pet(); }, function () { pet.loading = 0; }); return; }
+      $('title').textContent = 'Pet #' + id + ' does not exist (yet).'; return; }
     function draw(msg) {
       w = M.world(); p = w.byId[id];
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;

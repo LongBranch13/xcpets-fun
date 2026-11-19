@@ -63,13 +63,13 @@
    * pass 2.5 s on a busy laptop or a phone, and the old single 2.5 s cut-off then threw it away, so the page waited for a FULL rebuild of every pet
    * (20-30 s, the static 'Reading XCPETS burns from the chain…' line). Now 2.5 s only guards opening the database; once a saved world is being
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
-  var IDB_READ_MS = 15000;
+  var IDB_READ_MS = 15000, idbLong = false;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
   function notePhase(name, ms, extra) { try { var a = window.__xcpPhase || (window.__xcpPhase = []); a.push({ name: name, t: Math.round(performance.now()), ms: Math.round(ms), n: extra == null ? null : extra }); } catch (e) {} }
   function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
-    var seeded = !!(window.V2BootSync && V2BootSync.justSeeded);
+    var seeded = idbLong || !!(window.V2BootSync && V2BootSync.justSeeded);
     var openMs = seeded ? 30000 : IDB_WAIT_MS, readMs = seeded ? 120000 : IDB_READ_MS;
     var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
     function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
@@ -164,7 +164,9 @@
       job.fin = fin;
       try { if (!wk) { wk = new Worker(new URL('js/v2-resume-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
         function noteMs(ms) { S.workerMs = ms; try { localStorage.setItem('xcpets-worker-ms', String(ms | 0)); } catch (e1) {} }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly }; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly };
+          /* The boot read is the previous saved copy. Drop it and read the world just stored, with the long snapshot limit, so the update bar is not stuck on the old copy. */
+          idbPre = null; idbLong = true; fromIdb(false).then(function () { idbLong = false; fin(); }, function () { idbLong = false; fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
@@ -254,8 +256,14 @@
   /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
    * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
   function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
-  function updating() { if (S.view) return false; return !!S.provisional || (!current() && wkBusy > 0); }
-  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
+  function atTip() {
+    var saved = lastW && lastW.tip | 0, tip = S.tip | 0, chain = S.chainTip | 0;
+    if (!S.verified || !saved || !tip) return false;
+    if (chain && chain > tip) return false;
+    return saved >= tip;
+  }
+  function updating() { if (S.view) return false; if (atTip() && lastW && !lastW.pending) return false; return !!S.provisional || (!current() && wkBusy > 0); }
+  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend) || atTip()) return res(); setTimeout(chk, 200); })(); }); }
   function world() {
     if (S.view && lastW && lastW._view && !S.viewVerify) { if (V.syncCosts) V.syncCosts(lastW, (lastW.tip || 0) + 1); return lastW; }
     if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
@@ -524,8 +532,8 @@
     softReload(); }
   function armFresh() { if (armed) return; armed = true; updBar(true);
     /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once */
-    var settle = function () { return waitWorld().then(function () { if (!reval) return; return reval.then(settle, settle); }); };
-    settle().then(function () { try { world(); } catch (e) {} S.provisional = false; updBar(false);
+    var settle = function () { return waitWorld().then(function () { if (!reval || atTip()) return; return reval.then(settle, settle); }); };
+    settle().then(function () { if (current()) { try { world(); } catch (e) {} } else if (!atTip()) { try { world(); } catch (e) {} } S.provisional = false; updBar(false);
       /* hooks are registered by the page scripts the boot callback loads: give them until the window load event */
       var fire = function () { setTimeout(repaint, 50); }; if (document.readyState === 'complete') fire(); else window.addEventListener('load', fire, { once: true }); }); }
   /* nav-cache-1102: Chrome may PRERENDER a page the pointer rests on (js/nav-fast.js), so the click shows it at once. While prerendered

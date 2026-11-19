@@ -209,17 +209,23 @@ function write(dir, world, meta) {
       });
       by.forEach((rows, key) => {
         rows.sort((a, b) => ((a.rec.dead || a.rec.released) ? 1 : 0) - ((b.rec.dead || b.rec.released) ? 1 : 0) || (a.rec.id - b.rec.id));
-        const pages = Math.ceil(rows.length / PAGE) || 1;
-        for (let pg = 0; pg < pages; pg++) {
-          const slice = rows.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
-          const body = { v: 2, tip: tip, rsig: rsig, owner: rows[0].o, n: rows.length, page: pg, pages: pages, pageSize: PAGE, pets: slice };
-          const file = pg === 0 ? key + '.json' : key + '.' + pg + '.json';
-          const nb = writeJson(path.join(ownDir, file), body);
-          bytes += nb; files++;
-          const rel = 'view/own/' + file;
-          if (pg === 0 && rows.length > largestOwner.n) largestOwner = { bytes: nb, file: rel, n: rows.length, pages: pages };
-          if (nb > largestPage.bytes) largestPage = { bytes: nb, file: rel };
+        const living = rows.filter(r => !(r.rec.dead || r.rec.released));
+        const graves = rows.filter(r => r.rec.dead || r.rec.released);
+        function writeSet(list, nameOf, extra) {
+          const pages = Math.ceil(list.length / PAGE) || (list === living ? 1 : 0);
+          for (let pg = 0; pg < pages; pg++) {
+            const slice = list.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
+            const body = Object.assign({ v: 2, tip: tip, rsig: rsig, owner: rows[0].o, n: list.length, alive: living.length, dead: graves.length, page: pg, pages: pages, pageSize: PAGE, pets: slice }, extra || {});
+            const file = nameOf(pg);
+            const nb = writeJson(path.join(ownDir, file), body);
+            bytes += nb; files++;
+            const rel = 'view/own/' + file;
+            if (list === living && pg === 0 && living.length > largestOwner.n) largestOwner = { bytes: nb, file: rel, n: living.length, pages: pages };
+            if (nb > largestPage.bytes) largestPage = { bytes: nb, file: rel };
+          }
         }
+        writeSet(living, pg => pg === 0 ? key + '.json' : key + '.' + pg + '.json');
+        writeSet(graves, pg => pg === 0 ? key + '.d.json' : key + '.d.' + pg + '.json', { graves: 1 });
       });
     }
     const petDir = path.join(dir, 'p');

@@ -26,7 +26,7 @@
   }
   /** compactPet(p, b, V, w): one grave row, or null when the pet is not a grave. No world scan. */
   function compactPet(p, b, V, w) {
-    if (!p || p.community || p.released) return null;
+    if (!p || p.community || p.released || p.id === 1765) return null; /* Sabo #1765 is never a grave */
     if (p.zombie && !p.zombie.end) return null;
     if (!p.dead) return null;
     var d0 = p.zFirstDeath != null ? p.zFirstDeath : p.deathBlock, tier = Math.max(0, Math.min(3, p.tier | 0));
@@ -55,6 +55,7 @@
     return out;
   }
   function pass(p, q) {
+    if (!p || p.id === 1765) return false; /* Sabo #1765 is never listed as a grave */
     if (q.tier !== '' && q.tier != null && p.tier !== +q.tier) return false;
     if (q.stage !== '' && q.stage != null && p.stage !== +q.stage) return false;
     if (q.diff && p.diff !== q.diff) return false;

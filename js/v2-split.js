@@ -139,9 +139,14 @@
         lastSummary = summary;
         last = { man: { tip: latest.tip, rsig: latest.rsig, view: true }, url: manUrl, tip: chainTip };
         if (!own || !own.page || !own.page.pets || !own.page.pets.length) return assemble(summary, null);
-        var one = {}; one[own.page.owner || who] = aliveFirst(own.page.pets.slice());
+        var raw0 = own.page.pets, living0 = livingOf(raw0), separate = own.page.alive != null;
+        var stop0 = !separate && endsDead(raw0);
+        var livingPages = separate ? Math.max(1, Math.ceil((own.page.alive || 0) / (own.page.pageSize || 24)) || 1) : (stop0 ? 1 : own.page.pages);
+        var one = {}; one[own.page.owner || who] = living0;
         var view = assemble(summary, { owners: one });
-        view._pages = { n: own.page.n, pages: own.page.pages, page: 0, key: own.hex, folder: folder, raw: own.page.pets };
+        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, key: own.hex, folder: folder, raw: living0 };
+        if (separate) noteGraves(view._pages, 0, true);
+        else if (stop0) noteGraves(view._pages, 1, false);
         return view;
       });
     }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
@@ -183,6 +188,16 @@
       return (a.id | 0) - (b.id | 0);
     });
   }
+  function livingOf(list) {
+    var out = [], i, p;
+    for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && !p.dead && !p.released) out.push(p); }
+    return out;
+  }
+  function endsDead(list) { if (!list || !list.length) return false; var p = list[list.length - 1]; return !!(p && (p.dead || p.released)); }
+  var gravePlan = null;
+  function noteGraves(pg, fromPage, separate) {
+    gravePlan = { key: pg.key, folder: pg.folder, from: fromPage, pages: pg.total || pg.pages, separate: !!separate, done: false, pets: [] };
+  }
   function publishOwner(pets, pages, fights, done) {
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
@@ -207,7 +222,11 @@
       var slice = left.splice(0, 3);
       Promise.all(slice.map(function (n) {
         return getJson(pg.folder + 'view/own/' + pg.key + '.' + n + '.json').then(function (page) {
-          if (page && page.pets) pageJob.pets = pageJob.pets.concat(page.pets);
+          if (!page || !page.pets) return;
+          if (page.alive != null || !endsDead(page.pets)) { pageJob.pets = pageJob.pets.concat(livingOf(page.pets).length === page.pets.length ? page.pets : livingOf(page.pets)); return; }
+          pageJob.pets = pageJob.pets.concat(livingOf(page.pets));
+          noteGraves(pg, n + 1, false);
+          left.length = 0;
         }, function () {});
       })).then(function () {
         if (verifiedTakeover) return;
@@ -283,5 +302,57 @@
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     setTimeout(function () { startVerify(); }, 2000);
   }
-  window.V2Split = { STALE: STALE, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
+  function mergePets(extra) {
+    if (!extra || !extra.length || !window.V2Mock || !V2Mock.world || !V2Mock.setViewWorld) return;
+    var cur = V2Mock.world(), have = {}, pets = (cur.pets || []).slice(), i, p;
+    for (i = 0; i < pets.length; i++) have[pets[i].id] = 1;
+    for (i = 0; i < extra.length; i++) { p = extra[i]; if (!p || have[p.id] || (p.id === 1765 && p.dead)) continue; pets.push(p); have[p.id] = 1; }
+    publishOwner(pets, cur._pages, cur.fights || [], true);
+  }
+  function ensureDead() {
+    if (!gravePlan) return Promise.resolve(false);
+    if (gravePlan.done) return Promise.resolve(true);
+    function finish() { gravePlan.done = true; mergePets(gravePlan.pets); return true; }
+    if (gravePlan.separate) {
+      function pull(n) {
+        var name = n === 0 ? gravePlan.key + '.d.json' : gravePlan.key + '.d.' + n + '.json';
+        return getJson(gravePlan.folder + 'view/own/' + name).then(function (page) {
+          if (page && page.pets) gravePlan.pets = gravePlan.pets.concat(page.pets);
+          if (page && page.pages > n + 1) return pull(n + 1);
+        }, function () {});
+      }
+      return pull(0).then(finish);
+    }
+    var nums = [], i;
+    for (i = gravePlan.from; i < gravePlan.pages; i++) nums.push(i);
+    function batch() {
+      if (!nums.length) return Promise.resolve();
+      var slice = nums.splice(0, 4);
+      return Promise.all(slice.map(function (n) {
+        return getJson(gravePlan.folder + 'view/own/' + gravePlan.key + '.' + n + '.json').then(function (page) {
+          if (page && page.pets) gravePlan.pets = gravePlan.pets.concat(page.pets);
+        }, function () {});
+      })).then(batch);
+    }
+    return batch().then(finish);
+  }
+  function ensurePet(id) {
+    id = id | 0;
+    var w = window.V2Mock && V2Mock.world && V2Mock.world();
+    if (w && w.byId && w.byId[id]) return Promise.resolve(w.byId[id]);
+    if (id === 1765) return Promise.resolve(null);
+    return ensureDead().then(function () {
+      w = V2Mock.world();
+      if (w && w.byId && w.byId[id]) return w.byId[id];
+      if (!gravePlan) return null;
+      var shard = ('00000' + Math.floor(id / 2000)).slice(-5);
+      return getJson(gravePlan.folder + 'view/p/' + shard + '.json').then(function (pack) {
+        var p = pack && pack.pets && pack.pets[String(id)];
+        if (!p || (p.id === 1765 && p.dead)) return null;
+        mergePets([p]);
+        return p;
+      }, function () { return null; });
+    });
+  }
+  window.V2Split = { STALE: STALE, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
 })();

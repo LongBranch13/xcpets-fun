@@ -61,20 +61,17 @@ async function many() {
   await split.write(out, world, { tip: 30, rsig: 'rtest' });
   const key = split.ownerKey('carol');
   const first = JSON.parse(fs.readFileSync(path.join(out, 'own', key + '.json'), 'utf8'));
-  ok(first.n === 30 && first.pages > 1 && first.pets.length === split.PAGE, 'owner with 30 pets is paged (' + first.pets.length + ' on page 0)');
-  ok(first.pets.slice(0, 15).every(p => !p.dead) && first.pets[15].dead, 'alive pets lead the first page');
-  let n = 0, alive = 0;
-  for (let pg = 0; pg < first.pages; pg++) {
-    const file = pg === 0 ? key + '.json' : key + '.' + pg + '.json';
-    JSON.parse(fs.readFileSync(path.join(out, 'own', file), 'utf8')).pets.forEach(p => { n++; if (!p.dead && !p.released) alive++; });
-  }
-  ok(n === 30 && alive === 15, 'all 30 pets are in the owner pages (' + alive + ' alive)');
+  ok(first.alive === 15 && first.dead === 15 && first.pets.length === 15 && first.pets.every(p => !p.dead), 'the main owner page is the 15 living pets only');
+  const deadFile = JSON.parse(fs.readFileSync(path.join(out, 'own', key + '.d.json'), 'utf8'));
+  ok(deadFile.graves === 1 && deadFile.pets.length === 15 && deadFile.pets.every(p => p.dead), 'the 15 dead pets are a separate file');
+  ok(!fs.existsSync(path.join(out, 'own', key + '.1.json')), 'no second main page once the dead pets are split out');
 }
 
 const sig = 'r' + 'ab'.repeat(16);
 const dir = path.join(os.tmpdir(), 'split-worldfile-' + process.pid);
 ok(worldFile(dir, [sig, '9', 'view', 'summary.json']) === path.join(dir, 'world', sig, '9', 'view', 'summary.json'), 'summary path is allowed');
 ok(worldFile(dir, [sig, '9', 'view', 'o', 'ab.json']) === path.join(dir, 'world', sig, '9', 'view', 'o', 'ab.json'), 'owner shard path is allowed');
+ok(worldFile(dir, [sig, '9', 'view', 'own', 'ab'.repeat(32) + '.d.json']) === path.join(dir, 'world', sig, '9', 'view', 'own', 'ab'.repeat(32) + '.d.json'), 'dead-pet page path is allowed');
 ok(worldFile(dir, [sig, '9', 'view', 'p', '00001.json']) === path.join(dir, 'world', sig, '9', 'view', 'p', '00001.json'), 'pet shard path is allowed');
 ok(worldFile(dir, [sig, '9', 'cp-root.json', 'extra']) == null && worldFile(dir, [sig, '9', 'view', 'o', '../ab.json']) == null, 'view path escapes are rejected');
 
@@ -117,7 +114,7 @@ async function prove(name) {
   ok(summary.n === petN && summary.tip === petTip, name + ' written summary ' + summary.n + ' files ' + meta.files + ' bytes ' + meta.bytes);
   ok(summary.rsig && summary.rsig[0] === 'r', name + ' summary carries the rules signature');
   const first = JSON.parse(fs.readFileSync(path.join(out, 'own', meta.top[0].key + '.json'), 'utf8'));
-  ok(first.pets.length <= split.PAGE && first.n === meta.top[0].n, name + ' first owner page is at most ' + split.PAGE + ' pets (' + first.pets.length + ' of ' + first.n + ')');
+  ok(first.pets.length <= split.PAGE && first.alive + first.dead === meta.top[0].n && first.pets.every(p => !p.dead && !p.released), name + ' first page is living pets only (' + first.pets.length + ' of ' + first.alive + ' alive, ' + first.dead + ' dead aside)');
   return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
 }
 (async () => {
