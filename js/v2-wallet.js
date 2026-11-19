@@ -335,9 +335,15 @@
     var gate = freshGate(window.V2Mock.whenFresh(), onTry, function (fn) { stopFresh = fn; }); cancelWait.push(stopFresh);
     return Promise.race([cancelP(), gate]).then(function (r) { cancelWait = [];
       if (!r.ok) { var ef = new Error('Could not reach the Counterparty servers, so the safety check on your pet numbers could not finish. Nothing was signed or sent. Press Retry in a moment.'); ef.unverified = true; ef.retry = true; throw ef; }
-      var VB = mockState(); if (VB && Number(plan && plan.amount) > Number(VB.balance || 0)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
-      if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
-      if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0, !!(r.ok && r.same && VB && VB.verified && !VB.provisional)); }, function (e) { cancelWait = []; throw e; }); }
+      function goBal() {
+        var VB = mockState();
+        if (VB && VB.balanceAt && Number(plan && plan.amount) > Number(VB.balance)) { var eb = new Error('Not enough XCPETS in this wallet. Nothing was signed or sent.'); eb.retry = false; throw eb; }
+        if (r.ok && !r.same) { var why = recheck && recheck.still ? recheck.still(snap) : ''; if (why !== null) throw staleErr(why); }
+        if (g0 !== cancelGen) throw cancelErr(); return send0(plan, viewed, onTry, g0, !!(r.ok && r.same && VB && VB.verified && !VB.provisional));
+      }
+      var VB0 = mockState();
+      if (VB0 && !VB0.balanceAt && Number(plan && plan.amount) > 0 && window.V2Mock && window.V2Mock.readBalance) return window.V2Mock.readBalance({ force: true }).then(goBal, goBal);
+      return goBal(); }, function (e) { cancelWait = []; throw e; }); }
   function send0(plan, viewed, onTry, g0, freshSame, checked) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); if (g0 == null) g0 = cancelGen; if (g0 !== cancelGen) return Promise.reject(cancelErr());
     /* family-tree-fix (2026-10-19): no burn tag may be built from an incomplete replay. js/v2-chain.js only sets verified after every block hash
      * checked out; until then refuse before connecting/composing (nothing is signed or sent). */

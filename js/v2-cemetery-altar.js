@@ -397,7 +397,9 @@
   function step() { var c = A.ctx, V = c.V, R = A.run; if (!R || R.busy) return; var me = c.ME;
     if (V2Wallet.current && V2Wallet.current() !== me) { connect(step); return; }
     if (R.i >= R.plans.length) return finish();
-    var S0 = VS(), left = R.plans.slice(R.i), tot = left.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0); if (tot > Number(S0.balance || 0) && !(S0.stale && !S0.verified)) { try { if (V2Wallet.feeBatchEnd) V2Wallet.feeBatchEnd(); } catch (e) { } setMsg('Not enough XCPETS in this wallet for the ' + left.length + ' burn' + (left.length === 1 ? '' : 's') + ' left (' + fmt(tot) + ' needed). Nothing was sent.'); renderSend(); return; }
+    var S0 = VS(), left = R.plans.slice(R.i), tot = left.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0);
+    if (!S0.balanceAt && !(S0.stale && !S0.verified) && tot > 0 && !R._balPass) { R._balPass = 1; setMsg('Checking your XCPETS balance…'); var again = function () { step(); }; if (window.V2Mock && window.V2Mock.readBalance) window.V2Mock.readBalance({ force: true }).then(again, again); else again(); return; }
+    R._balPass = 0; if (S0.balanceAt && tot > Number(S0.balance) && !(S0.stale && !S0.verified)) { try { if (V2Wallet.feeBatchEnd) V2Wallet.feeBatchEnd(); } catch (e) { } setMsg('Not enough XCPETS in this wallet for the ' + left.length + ' burn' + (left.length === 1 ? '' : 's') + ' left (' + fmt(tot) + ' needed). Nothing was sent.'); renderSend(); return; }
     var p = R.plans[R.i], k = R.i + 1, n = R.plans.length, why = V.sendBlock ? V.sendBlock(c.w, p, c.w.tip, { me: me, pending: pendingTags() }) : null;
     if (why) { try { if (V2Wallet.feeBatchEnd) V2Wallet.feeBatchEnd(); } catch (e) { } R.msg = '<span class="warn">Burn ' + k + ' of ' + n + ' not sent: ' + esc(why) + '. Nothing was burned for it.' + (R.zombie ? '' : ' Press ↻ refresh, then Hold seance again (your offering is saved).') + '</span>'; R.done = true; saveBuild(); renderSend(); var pg = document.getElementById('altPg'); if (pg) pg.innerHTML = R.msg; return; }
     R.busy = true; R.msg = 'Burn ' + k + ' of ' + n + ': building ' + p.tag + '…'; renderSend(); renderBtns();
