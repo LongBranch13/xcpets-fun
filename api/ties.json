@@ -1,5 +1,5 @@
 {
- "lastBlock": 976534,
+ "lastBlock": 976537,
  "count": 417,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -3193,7 +3193,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 147179,
@@ -3205,7 +3205,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 899,
@@ -3853,7 +3853,7 @@
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 157197,
@@ -3865,7 +3865,7 @@
    "species": "hyb:pepe:funtrump",
    "speciesLabel": "Pepetrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 158199,
@@ -3877,7 +3877,7 @@
    "species": "hyb:mumu:nakamoto",
    "speciesLabel": "Mumoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 158202,
