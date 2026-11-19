@@ -64,7 +64,7 @@
     var why = R.breedable ? R.breedable(p, b) : null, cool = R.mgBreedCool ? R.mgBreedCool(p) : R.BREED_COOLDOWN;
     if (bl && bl.on && bl.left <= 0) out.bWhy = 'no breeds left';
     else if (!why) out.breed = 0;
-    else if (/cooldown/.test(why) && p.lastBreed != null) out.breed = Math.max(0, p.lastBreed + cool - b);
+    else if (/cooldown/.test(why) && p.lastBreed != null) out.breed = Math.max(0, R.span ? cool - R.span(b, p.lastBreed) : p.lastBreed + cool - b);
     else if (/quest/.test(why) && p.quest) { out.breed = Math.max(0, p.quest.end - b); out.bWhy = 'away on a quest'; }
     else out.bWhy = why;
     if (!R.questOn || !R.questOn(b)) out.qWhy = 'quests not open';
