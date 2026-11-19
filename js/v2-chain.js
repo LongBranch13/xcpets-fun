@@ -63,13 +63,13 @@
    * pass 2.5 s on a busy laptop or a phone, and the old single 2.5 s cut-off then threw it away, so the page waited for a FULL rebuild of every pet
    * (20-30 s, the static 'Reading XCPETS burns from the chain…' line). Now 2.5 s only guards opening the database; once a saved world is being
    * read it gets up to IDB_READ_MS (still far faster than a rebuild). Display/cache only: the same entry, same key check. */
-  var IDB_READ_MS = 15000;
+  var IDB_READ_MS = 15000, idbLong = false;
   function idbGetKey(db, key) { return new Promise(function (res, rej) { var q = db.transaction('w', 'readonly').objectStore('w').get(key); q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); }; }); }
   function notePhase(name, ms, extra) { try { var a = window.__xcpPhase || (window.__xcpPhase = []); a.push({ name: name, t: Math.round(performance.now()), ms: Math.round(ms), n: extra == null ? null : extra }); } catch (e) {} }
   function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
-    var seeded = !!(window.V2BootSync && V2BootSync.justSeeded);
+    var seeded = idbLong || !!(window.V2BootSync && V2BootSync.justSeeded);
     var openMs = seeded ? 30000 : IDB_WAIT_MS, readMs = seeded ? 120000 : IDB_READ_MS;
     var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
     function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
@@ -164,7 +164,12 @@
       job.fin = fin;
       try { if (!wk) { wk = new Worker(new URL('js/v2-resume-worker.js?v=' + BUILD, location.href).href); wk.onerror = function () { wkOff = true; wkKill(); if (pend) pend.fin(); }; }
         function noteMs(ms) { S.workerMs = ms; try { localStorage.setItem('xcpets-worker-ms', String(ms | 0)); } catch (e1) {} }
-        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly }; fromIdb(false).then(function () { fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
+        wk.onmessage = function (ev) { var m = ev.data || {}; if (m.stored && !m.idb) { storedKey = m.key; return; } if (m.id !== id || done) return; if (m.ok && m.idb && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { storedKey = m.key; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows, tailOnly: !!m.tailOnly };
+          /* The read started at boot is the previous saved copy. The worker just replaced it. Waiting on that
+           * read returned the old world (or gave up at IDB_READ_MS) and world() then rebuilt every pet on the
+           * main thread, so the update bar never left "showing your last saved copy". Read the world just stored,
+           * and give that read the same long limit a snapshot gets. */
+          idbPre = null; idbLong = true; fromIdb(false).then(function () { idbLong = false; fin(); }, function () { idbLong = false; fin(); }); return; } if (m.ok && m.world && !cache && inSig() === sig && JSON.stringify(S.ops || []) === oj) { var w = m.world; if (V.reindex) V.reindex(w); cache = w; cacheSig = sig; opsSig = oj; idbKeyStored = key; S.fromCache = false; noteMs(m.ms); S.lastReplay = { resumed: !!m.resumed, ms: m.ms, rows: m.rows }; }
           else if (!m.ok) wkOff = true;
           else if (!cache) { /* inputs changed while it ran: replay the new ones in the worker before this job lets go (wkBusy never drops to 0 in between) */
             clearTimeout(t); if (pend === job) pend = null; var nx = workerReplay(); done = true; wkBusy--; nx.then(res); return; }
