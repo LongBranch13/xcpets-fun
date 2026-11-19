@@ -13,10 +13,9 @@
     function fin(v) { if (settled) return; settled = true; res(v); }
     indexedDB.databases().then(function (list) {
       var i, hit = false;
-      var dbName = window.XCPETS_TEST_COPY ? 'xcpets-world-test' : 'xcpets-world';
-      for (i = 0; i < list.length; i++) if (list[i] && list[i].name === dbName) hit = true;
+      for (i = 0; i < list.length; i++) if (list[i] && list[i].name === 'xcpets-world') hit = true;
       if (!hit) return fin(null);
-      var tOpen = Date.now(), r = indexedDB.open(dbName);
+      var tOpen = Date.now(), r = indexedDB.open('xcpets-world');
       r.onerror = function () { fin(null); };
       r.onsuccess = function () {
         stamp('idb-open', Date.now() - tOpen);

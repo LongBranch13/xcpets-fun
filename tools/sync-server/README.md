@@ -10,7 +10,7 @@ The builder runs when the published snapshot is at least `XP_SNAPSHOT_EVERY` blo
 
 ## Preview on this machine
 
-The service reads the two public Core nodes unless `XP_UPSTREAMS` lists something else. A loopback read proxy, if you have one, is an environment value only. Do not put its address in the repo. `XP_ASSET` defaults to `XCPETS`. A test copy of the game uses `XCPETS.TEST` and needs its own process, its own `XP_DATA` directory, and its own port. Do not point that process at the live feed directory.
+The service reads the two public Core nodes unless `XP_UPSTREAMS` lists something else. A loopback read proxy, if you have one, is an environment value only. Do not put its address in the repo.
 
 ```bash
 # optional: seed hashes and the sale base from the published feed, then catch up from Core

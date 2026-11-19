@@ -21,11 +21,6 @@
   function base() {
     var s = q('sync');
     if (s === '0' || s === 'off') return '';
-    /* The test copy never reads the live snapshot. A saved sync base from the live game is ignored too. */
-    if (window.XCPETS_CONFIG && XCPETS_CONFIG.testCopy) {
-      if (!s || /node\.xcpets\.fun/i.test(s)) return '';
-      return String(s).replace(/\/+$/, '');
-    }
     if (s) return String(s).replace(/\/+$/, '');
     try { var f = localStorage.getItem(FLAG_KEY); if (f) return String(f).replace(/\/+$/, ''); } catch (e) {}
     try { var c = window.XCPETS_CONFIG && window.XCPETS_CONFIG.sync; if (typeof c === 'string' && c) return c.replace(/\/+$/, ''); } catch (e2) {}
