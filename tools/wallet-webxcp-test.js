@@ -115,10 +115,11 @@ async function chrome() {
     await pg.route(/^http:\/\/localhost:\d+\//, r => { const u = new URL(r.request().url()); if (u.pathname === '/zz-webxcp.html') return r.fulfill({ contentType: 'text/html', body: HARNESS });
       const f = path.join(ROOT, path.normalize(u.pathname)); if (!f.startsWith(ROOT) || !fs.existsSync(f)) return r.fulfill({ status: 404, body: '' }); return r.fulfill({ contentType: 'application/javascript', body: fs.readFileSync(f, 'utf8') }); });
     /* Casa injects a few ms after load (postMessage + eval), not at document start */
-    await pg.addInitScript(([src, ME, parseSrc]) => { const S = window.__S = { calls: [], args: [], mode: 'ok' };
-      setTimeout(() => { S.parse = window.Wallet._parseTx; window.webXCP = (0, eval)('(' + src + ')')(S, ME); }, 40); }, [casaStub.toString(), ME]);
+    await pg.addInitScript(([src, ME]) => { const S = window.__S = { calls: [], args: [], mode: 'ok' };
+      (function arm() { if (!window.Wallet || !window.Wallet._parseTx) return setTimeout(arm, 50); S.parse = window.Wallet._parseTx; window.webXCP = (0, eval)('(' + src + ')')(S, ME); })(); }, [casaStub.toString(), ME]);
     const ev = (f, a) => pg.evaluate(f, a), U = 'http://localhost:' + PORT + '/zz-webxcp.html';
-    await pg.goto(U); await pg.waitForTimeout(1000);
+    await pg.goto(U);
+    await pg.waitForFunction(() => window.V2Wallet && window.webXCP && V2Wallet.label() === 'Casa Tookan', null, { timeout: 20000 });
     chk('chrome: fresh page in Casa, never connected: no connect sheet', (await ev(() => __S.calls)).length === 0 && await ev(() => V2Wallet.status()) === 'none');
     chk('chrome: label before connect = Casa Tookan', await ev(() => V2Wallet.label()) === 'Casa Tookan');
     const a = await ev(() => V2Wallet.connect()); chk('chrome: connect -> casa address', a === ME, a);

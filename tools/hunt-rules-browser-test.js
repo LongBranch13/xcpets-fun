@@ -1,11 +1,11 @@
 /* Offline rendering of real gated hunt-engine fixtures. No wallet, network, signing or sends. */
 'use strict';
 const fs = require('fs'), path = require('path'), assert = require('assert');
-const {chromium} = require('/usr/local/lib/pnpm/5/.pnpm/playwright-core@1.59.1/node_modules/playwright-core');
-const ROOT=path.resolve(__dirname,'..'), OUT='/workspace/xcpets/previews/hunt-rules-1107';
+function chromium(){for(const p of [process.env.PW,'playwright-core','playwright','/usr/local/lib/pnpm/5/.pnpm/playwright-core@1.59.1/node_modules/playwright-core']){if(!p)continue;try{return require(p).chromium}catch(e){}}throw new Error('playwright-core not found')}
+const ROOT=path.resolve(__dirname,'..'), OUT=process.env.HUNT_PREVIEW_OUT || require('os').tmpdir() + '/hunt-rules-1107';
 (async()=>{
  require('child_process').execFileSync(process.execPath,['tools/hunt-rules-test.js'],{cwd:ROOT,stdio:'pipe'});
- const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});let checks=0;
+ const browser=await chromium().launch({executablePath:process.env.CHROME||'/usr/bin/google-chrome',args:['--no-sandbox']});let checks=0;
  try {for (const width of [1280,390]) for (const result of ['win','loss']) {
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='warning'&&m.text().startsWith('life anim'))errors.push(m.text());});

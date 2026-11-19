@@ -28,7 +28,7 @@ ok(/\(s\.fall \? x\.p\.stage >= 1 && !x\.p\.dead : !x\.why && x\.p\.stage >= 3\)
 ok(/if \(Bp && !s\.req && !resX\(Bp\)/.test(E), 'easy flow: a picked mixed mate is not pinned back into the list');
 ok(!/greyed out/.test(E), "easy flow: the hint says hidden (no 'greyed out' view left)");
 ok(/src = sd === 'A' \? L\.mine : L\.partners\.filter\(function \(x\) \{ return !resX\(x\.p\); \}\)/.test(M), 'motel: Browse pets leaves out mixed mates');
-ok(/okB = L\.partners\.filter\(function \(x\) \{ return !x\.why && x\.p\.stage >= 3; \}\)/.test(M), 'motel: chips list only mates with no reason (mixed ones have one)');
+ok(/okB = (?:ezOn \? \[\] : )?L\.partners\.filter\(function \(x\) \{ return !x\.why && x\.p\.stage >= 3; \}\)/.test(M), 'motel: chips list only mates with no reason (mixed ones have one)');
 ok(/return '<button[^\n]*/.test(rd('js/v2.js')) && /okB = L\.partners\.filter\(function \(x\) \{ return !x\.why; \}\)/.test(rd('js/v2.js')), 'play grid: only mates with no reason');
 /* 4. rules page copy + wording */
 const H = rd('rules.html');
