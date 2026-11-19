@@ -712,11 +712,11 @@
   var PG = { n: 150, key: '' }, NF = {}, ZFK = window.V2ZombieFilter ? V2ZombieFilter.load() : ''; /* mypets-zombie-filter: '' (off) | all | hungry | feral | soon, this browser session */ /* habits-ux: never-fed group open state per tab (a = alive, c = cemetery), this visit only */
   /* WAGMI bar: streak alive = WAGMI + day count; a missed chain day = NGMI with a joke (never shaming); 'new' = how to start. Only pet:wagmi counts (not feeding). */
   var NGMI_JOKES = ['Your streak took a nap. One WAGMI wakes it up.', 'Streak got rugged (by a good night\u2019s sleep). Day 1 is one tap away.', 'Just a vibe check. Say WAGMI and you\u2019re so back.', 'Even Satoshi took days off. Probably. Tap WAGMI to restart.', 'Ser, the streak fell in the mempool. Fish it out with a WAGMI.'];
-  function wagmiBar(stk, w) { var tip = w.tip || S.tip || 0, left = 144 - (tip % 144), hrs = left * 10 / 60, lt = hrs >= 1 ? '~' + Math.round(hrs) + 'h' : '~' + Math.max(1, Math.round(left * 10)) + ' min';
+  function wagmiBar(stk, w) { var tip = w.tip || S.tip || 0, game = V.clock ? V.clock(tip) : tip, left = 144 - (game % 144), hrs = left * 10 / 60, lt = hrs >= 1 ? '~' + Math.round(hrs) + 'h' : '~' + Math.max(1, Math.round(left * 10)) + ' min';
     var on = V.wagmiOn && V.wagmiOn(tip + 1), ro = viewOnly() || !ME, why = !on ? 'WAGMI check-ins open soon' : stk.today ? 'Already said WAGMI today' : ro ? 'View only: connect your wallet to say WAGMI' : '';
     var btn = '<button type="button" class="btn sk-btn" id="wagmiBtn"' + (why ? ' disabled title="' + esc(why) + '"' : ' title="Burns 1 dander of XCPETS with the tag pet:wagmi"') + '>' + (stk.today ? '✓ WAGMI\u2019d today' : '🚀 Say WAGMI') + ' <span class="cost">' + (on ? '1 dander' : 'soon') + '</span></button>';
     var msg = stk.state === 'wagmi' ? '<span class="sk-tag sk-w">WAGMI</span> <b>🔥 ' + stk.current + '-day streak</b> <span class="sk-best">best ' + stk.best + '</span> ' + (stk.today ? '<span class="sk-ok">see you next chain day</span>' : '<span class="sk-warn">say WAGMI in the next ' + lt + ' to make it ' + (stk.current + 1) + '</span>')
-      : stk.state === 'ngmi' ? '<span class="sk-tag sk-n">NGMI</span> <b>💀 streak reset</b> <span class="sk-joke">' + esc(NGMI_JOKES[Math.floor(tip / 144) % NGMI_JOKES.length]) + '</span> <span class="sk-best">best ' + stk.best + '</span>'
+      : stk.state === 'ngmi' ? '<span class="sk-tag sk-n">NGMI</span> <b>💀 streak reset</b> <span class="sk-joke">' + esc(NGMI_JOKES[Math.floor(game / 144) % NGMI_JOKES.length]) + '</span> <span class="sk-best">best ' + stk.best + '</span>'
       : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 dander, no feeding needed.</span>';
     setTimeout(function () { var b = $('wagmiBtn'); if (b && !b.disabled) b.onclick = function () { confirmPlans('WAGMI check-in', [{ tag: 'pet:wagmi', amount: 0.00000001 }]); }; }, 0);
     return '<span class="sk-msg">' + msg + '</span>' + btn; }
@@ -726,7 +726,7 @@
   var WAGMI_PLAN = { tag: 'pet:wagmi', amount: 0.00000001 };
   function wagmiOffer(w) { try {
     if (!ME || viewOnly() || !w || !w.tip || !V.wagmiOn || !V.wagmiOn(w.tip + 1)) return; var ss = window.sessionStorage, ls = window.localStorage;
-    if (ss.getItem('xcpets-wagmi-connect') !== ME) return; var d = Math.floor((w.tip + 1) / 144), k = 'xcpets-wagmi-offer:' + ME;
+    if (ss.getItem('xcpets-wagmi-connect') !== ME) return; var d = V.day ? V.day(w.tip + 1) : Math.floor((w.tip + 1) / 144), k = 'xcpets-wagmi-offer:' + ME;
     if (ls.getItem(k) === String(d) || $('wagmiOffer') || sendWhy(WAGMI_PLAN)) return;
     ls.setItem(k, String(d)); ss.removeItem('xcpets-wagmi-connect');
     var first = V.wagmiFirst ? V.wagmiFirst(w, d).length : 5, prize = V.wagmiPrizeOn && V.wagmiPrizeOn(w.tip + 1) && first < (V.WAGMI_PRIZE_N || 5);

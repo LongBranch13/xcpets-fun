@@ -456,9 +456,12 @@
   /** streakOf(w, addr, tip) -> { current, best, today, days, last, state }. current = consecutive WAGMI chain days ending today (or yesterday while
    * today is still open: the streak lives until a FULL chain day is missed). state: 'wagmi' (streak alive), 'ngmi' (said WAGMI before, then missed
    * a whole chain day: streak reset to 0), 'new' (never said WAGMI). */
-  function streakOf(w, addr, tip) { var raw = (w && w.wagmi && w.wagmi[addr]) || {}, freeze = day(PAUSE_FROM > 0 ? PAUSE_FROM - 1 : 0), c = {};
-    Object.keys(raw).forEach(function (k) { if (!raw[k]) return; var d = +k, use = PAUSE_FROM > 0 && d * BLOCKS_PER_DAY >= PAUSE_FROM ? freeze : d; c[use] = 1; });
-    var ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
+  /* A WAGMI check-in on a chain day that starts inside the pause counts as the last open game day,
+   * so the pause cannot open a gap and drop a streak. Check-ins before the pause stay on their own days. */
+  function wagmiDays(raw) { var freeze = PAUSE_FROM > 0 ? day(PAUSE_FROM - 1) : 0, c = {};
+    Object.keys(raw || {}).forEach(function (k) { if (!raw[k]) return; var d = +k, use = PAUSE_FROM > 0 && d * BLOCKS_PER_DAY >= PAUSE_FROM ? freeze : d; c[use] = 1; });
+    return c; }
+  function streakOf(w, addr, tip) { var c = wagmiDays(w && w.wagmi && w.wagmi[addr]), ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
     ds.forEach(function (d) { run = prev != null && d === prev + 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
     var t = day(tip != null ? tip : w.tip), d = c[t] ? t : t - 1, cur = 0; while (c[d]) { cur++; d--; }
     return { current: cur, best: best, today: !!c[t], days: ds.length, last: prev, state: cur ? 'wagmi' : ds.length ? 'ngmi' : 'new' }; }
@@ -3873,7 +3876,7 @@
       case 'wagmi': {
         if (b < ACTIVATE_WAGMI_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (!(amt >= COSTS.wagmi)) return L(r, 'rejected', 'below WAGMI cost 1 sat');
-        var wd = (w.wagmi[src] = w.wagmi[src] || {}); if (wd[day(b)]) return L(r, 'wagmi', src + ' already said WAGMI on chain day ' + day(b) + ' (counts once)');
+        var wd = (w.wagmi[src] = w.wagmi[src] || {}); if (wagmiDays(wd)[day(b)]) return L(r, 'wagmi', src + ' already said WAGMI on chain day ' + day(b) + ' (counts once)');
         wd[day(b)] = 1;
         if (wagmiPrizeOn(b)) { var F5 = (w.wagmiFirst[day(b)] = w.wagmiFirst[day(b)] || []); /* top-five prize: first 5 distinct wallets of the chain day (block, then tx order) */
           if (F5.length < WAGMI_PRIZE_N) { F5.push(src); earnSpin(w, src, b, r.tx_hash, 'wagmi', 1); return L(r, 'wagmi', src + ' said WAGMI for chain day ' + day(b) + ' (#' + F5.length + ' of the day: +1 saved spin)', { first5: F5.length }); } }
@@ -5037,7 +5040,7 @@
    * fit go in normal pet:fr burns after it (same plan as Feed all, packed to 22 characters so the first burn can carry the flags). */
   var DC_BODY = MAX_TAG_BYTES - DC_PREFIX.length - 2 - 3;
   function dailyChoresPlan(w, owner, nb, o) { o = o || {}; var A = w && w.tip; if (A == null || !owner) return null; nb = nb != null ? nb : A + 1; if (!choresOn(nb)) return null;
-    var wg = !(w.wagmi && w.wagmi[owner] && w.wagmi[owner][day(nb)]), sp = o.spins !== false && !spinTargetOn(nb), f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
+    var wg = !(w.wagmi && wagmiDays(w.wagmi[owner])[day(nb)]), sp = o.spins !== false && !spinTargetOn(nb), f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
     var ps = w.pets.filter(function (p) { return p.owner === owner && frEats(p, nb) && (!o.ids || o.ids.indexOf(p.id) >= 0); }), inRef = new Set(refList(w, owner, A, nb).map(function (p) { return p.id; }));
     var left = ps.filter(function (p) { return !inRef.has(p.id); }); ps = ps.filter(function (p) { return inRef.has(p.id); }); /* a pet outside the eater list goes in a pet-number feed burn after the chores (same as Feed all) */
     var fr = ps.length ? feedRunsPlan(w, owner, ps, nb, DC_BODY) : null, extra = left.length ? feedQueue(w, owner, left.map(function (p) { return p.id; }), nb) : [];
