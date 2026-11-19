@@ -283,15 +283,16 @@
     var lo = wiz ? T[st] : 0, hi = wiz && st < 5 ? T[st + 1] : null, fed = wiz ? c.wizardFed : 0;
     $('crNext').textContent = hi ? fmt(Math.ceil(hi - fed - 1e-6)) + ' to ' + N[st + 1] : 'Mythic reached';
     $('crProg').style.width = (hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100).toFixed(1) + '%';
-    if (c.current === 'rabbit' && R.communityStats) { var rs2 = R.communityStats(w, M.state().rows.length); /* THE WHITE RABBIT (community pet #6, PREVIEW, gated, inert): care = burns since Homer Pepe's Mythic */
+    var rowsN = w._counts && w._counts.burns != null ? w._counts.burns : M.state().rows.length, petsN = w._counts ? w._counts.n : w.pets.length;
+    if (c.current === 'rabbit' && R.communityStats) { var rs2 = R.communityStats(w, rowsN); /* THE WHITE RABBIT (community pet #6, PREVIEW, gated, inert): care = burns since Homer Pepe's Mythic */
       $('crFed').textContent = fmt(rs2.fed); $('crNext').textContent = rs2.next != null ? fmt(rs2.next) + ' to ' + rs2.nextName : 'Mythic reached'; $('crProg').style.width = rs2.pct.toFixed(1) + '%'; }
-    if (c.current === 'homer' && R.communityStats) { var hs2 = R.communityStats(w, M.state().rows.length); /* HOMER PEPE (community pet #5, PREVIEW, gated, inert): care = burns since FUNTRUMP's Mythic */
+    if (c.current === 'homer' && R.communityStats) { var hs2 = R.communityStats(w, rowsN); /* HOMER PEPE (community pet #5, PREVIEW, gated, inert): care = burns since FUNTRUMP's Mythic */
       $('crFed').textContent = fmt(hs2.fed); $('crNext').textContent = hs2.next != null ? fmt(hs2.next) + ' to ' + hs2.nextName : 'Mythic reached'; $('crProg').style.width = hs2.pct.toFixed(1) + '%'; }
-    if (c.current === 'funtrump' && R.communityStats) { var fs2 = R.communityStats(w, M.state().rows.length); /* FUNTRUMP (community pet #4, gated, inert): care = burns since Lord Kek's Mythic */
+    if (c.current === 'funtrump' && R.communityStats) { var fs2 = R.communityStats(w, rowsN); /* FUNTRUMP (community pet #4, gated, inert): care = burns since Lord Kek's Mythic */
       $('crFed').textContent = fmt(fs2.fed); $('crNext').textContent = fs2.next != null ? fmt(fs2.next) + ' to ' + fs2.nextName : 'Mythic reached'; $('crProg').style.width = fs2.pct.toFixed(1) + '%'; }
-    if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, M.state().rows.length); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
+    if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, rowsN); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
       $('crFed').textContent = fmt(ks.fed); $('crNext').textContent = ks.next != null ? fmt(ks.next) + ' to ' + ks.nextName : 'Mythic reached'; $('crProg').style.width = ks.pct.toFixed(1) + '%'; }
-    if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(M.state().rows.length); $('crPets').textContent = fmt(w.pets.length);
+    if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(rowsN); $('crPets').textContent = fmt(petsN);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('crQuestTxt').textContent = wiz ? 'Nakamoto\'s finished story' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
     if (gap) { var soon = R.comingSoonText(), nn = '#' + R.COMMUNITY_NEXT_NO; $('crName').textContent = nn + ' coming soon'; $('crCanvas').setAttribute('aria-label', soon);

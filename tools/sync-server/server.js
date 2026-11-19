@@ -19,14 +19,28 @@ function send(req, res, status, body, headers) {
   if (/\bgzip\b/.test(enc)) return zip(raw, 'gzip', (b, cb) => zlib.gzip(b, cb));
   res.writeHead(status); res.end(raw);
 }
+function viewRel(parts) {
+  if (parts[2] !== 'view') return null;
+  if (parts.length === 4 && parts[3] === 'summary.json') return path.join('view', 'summary.json');
+  if (parts.length === 5 && parts[3] === 'o' && /^[0-9a-f]{2}\.json$/.test(parts[4])) return path.join('view', 'o', parts[4]);
+  if (parts.length === 5 && parts[3] === 'own' && /^[0-9a-f]{64}(?:\.\d+)?\.json$/.test(parts[4])) return path.join('view', 'own', parts[4]);
+  if (parts.length === 5 && parts[3] === 'p' && /^\d{5}\.json$/.test(parts[4])) return path.join('view', 'p', parts[4]);
+  return null;
+}
 function worldFile(dataDir, parts) {
-  if (parts.length !== 3) return null;
-  const rsig = parts[0], tip = parts[1], file = parts[2];
+  if (!parts || parts.length < 3) return null;
+  const rsig = parts[0], tip = parts[1];
   if (!/^r[0-9a-f]{32}$/.test(rsig) || !/^\d+$/.test(tip)) return null;
-  /* Checkpoint files (cp-root, cp-meta, cp-part-NNN) are the stale catch-up download. Same names only: no extra suffix, no other cp- file. */
-  if (file !== 'manifest.json' && file !== 'root.json' && file !== 'latest.json' && file !== 'cp-root.json' && file !== 'cp-meta.json' && !/^part-\d{3}\.json$/.test(file) && !/^cp-part-\d{3}\.json$/.test(file)) return null;
-  const p = path.join(dataDir, 'world', rsig, tip, file);
-  if (!p.startsWith(path.join(dataDir, 'world') + path.sep)) return null;
+  let rel = null;
+  if (parts.length === 3) {
+    const file = parts[2];
+    /* Checkpoint files (cp-root, cp-meta, cp-part-NNN) are the stale catch-up download. Same names only: no extra suffix, no other cp- file. */
+    if (file === 'manifest.json' || file === 'root.json' || file === 'latest.json' || file === 'cp-root.json' || file === 'cp-meta.json' || /^part-\d{3}\.json$/.test(file) || /^cp-part-\d{3}\.json$/.test(file)) rel = file;
+  } else rel = viewRel(parts);
+  if (!rel) return null;
+  const root = path.join(dataDir, 'world');
+  const p = path.join(root, rsig, tip, rel);
+  if (!p.startsWith(root + path.sep)) return null;
   return p;
 }
 function createServer(opts) {
