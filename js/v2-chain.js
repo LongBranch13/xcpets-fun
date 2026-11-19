@@ -69,7 +69,8 @@
   function idbRawMain() { return new Promise(function (res) {
     /* A just-written snapshot is one big IndexedDB read. The short open/read limits are for an ordinary visit;
        they were discarding this world before decode finished, and the page then rebuilt every pet itself. */
-    var seeded = idbLong || !!(window.V2BootSync && V2BootSync.justSeeded);
+    var root = typeof window !== 'undefined' ? window : null;
+    var seeded = idbLong || !!(root && root.V2BootSync && root.V2BootSync.justSeeded);
     var openMs = seeded ? 30000 : IDB_WAIT_MS, readMs = seeded ? 120000 : IDB_READ_MS;
     var done = false, t = setTimeout(function () { done = true; res(null); }, openMs);
     function arm() { clearTimeout(t); t = setTimeout(function () { if (done) return; done = true; res(null); }, readMs); }
@@ -96,9 +97,10 @@
     /* js/v2-idb-early.js starts this read before the rule scripts download, so a return
      * visit spends that wait on IndexedDB instead of after the chain check. A snapshot
      * written in this boot drops the promise (boot sets idbPre null when justSeeded). */
-    var early = window.__xcpIdbEarly;
+    var root = typeof window !== 'undefined' ? window : null;
+    var early = root && root.__xcpIdbEarly;
     if (early && typeof early.then === 'function') {
-      window.__xcpIdbEarly = null;
+      root.__xcpIdbEarly = null;
       return early.then(function (got) {
         if (!got) return idbRawMain();
         if (got.world && !got.parts) return { key: got.key, at: got.at, world: got.world };

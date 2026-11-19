@@ -30,10 +30,13 @@ V._setSeanceRaisesActivation(nb); let w = V.replay(rows, H, [], opts(tip));
 ok(hashOf(w) === s0, 'live world (' + rows.length + ' burns, tip ' + tip + '): same replay with the gate null and with the gate at tip + 1');
 /* fixtures from the live world: two wallets with 4+ offerable pets, Common graves and one Rare grave nobody holds pieces on */
 let AW, BW, aC, bC, Gc, Gr, B;
-{ const own = {}; w.pets.forEach(p => { if (p.owner && !V.cemOfferWhy(w, p, p.owner, nb) && (p.deathBlock == null || p.deathBlock > nb + 400)) (own[p.owner] = own[p.owner] || []).push(p); });
+/* deathBlock is on the game clock. The pause leaves that clock behind the raw tip, so a raw tip + 400
+ * comparison kept every living pet out and the next line crashed on a missing wallet. */
+{ const livePast = V.clock ? V.clock(nb + 400) : nb + 400;
+  const own = {}; w.pets.forEach(p => { if (p.owner && !V.cemOfferWhy(w, p, p.owner, nb) && (p.deathBlock == null || p.deathBlock > livePast)) (own[p.owner] = own[p.owner] || []).push(p); });
   const wallets = Object.keys(own).filter(o => own[o].filter(p => (p.tier | 0) === 0).length >= 4 && own[o].some(p => (p.tier | 0) >= 1)).sort((a, b) => own[b].length - own[a].length);
   AW = wallets[0]; BW = wallets[1]; ok(!!AW && !!BW, 'two test wallets found (' + (AW || '').slice(0, 10) + '…, ' + (BW || '').slice(0, 10) + '…)');
-  const com = o => own[o].filter(p => (p.tier | 0) === 0).map(p => p.id).sort((a, b) => a - b);
+  const com = o => (own[o] || []).filter(p => (p.tier | 0) === 0).map(p => p.id).sort((a, b) => a - b);
   aC = com(AW); bC = com(BW);
   const graves = w.pets.filter(p => !V.cemView(w, p, nb).zombie && V.cemView(w, p, nb).grave && !V.cemView(w, p, nb).why && !V.cemView(w, p, nb).altar && !p.mgDead);
   Gc = graves.filter(p => (p.tier | 0) === 0).map(p => p.id); Gr = graves.filter(p => (p.tier | 0) === 2).map(p => p.id)[0];
