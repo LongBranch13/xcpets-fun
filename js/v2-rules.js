@@ -239,7 +239,7 @@
   /** frMythic(w, p, b): the pet is a Mythic (never eats). Pure: no refresh. */
   function frMythic(w, p, b) { return !!p.ascended || p.care >= petThresholds(w, p, b)[5]; }
   /** frDeadAt(w, p, b, A): the pet was dead at block A (same death clock as liveAt; pure). */
-  function frDeadAt(w, p, b, A) { if (frMythic(w, p, b)) return false; var last = p.lastFed != null ? p.lastFed : p.hatchBlock; if (p.clockFrom != null) last = Math.max(last, p.clockFrom); return (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY <= A; }
+  function frDeadAt(w, p, b, A) { if (frMythic(w, p, b)) return false; var last = p.lastFed != null ? p.lastFed : p.hatchBlock; if (p.clockFrom != null) last = Math.max(last, p.clockFrom); return (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY <= clock(A); }
   function frOwnedAt(w, p, src, A) { var moved = p.lastGot != null && p.lastGot > A; return p.owner === src ? !moved : moved && !!w.leftBy && w.leftBy[p.id] === src; }
   /** refList(w, src, A, b): the signer's eater list at anchor A (see above). Same function for the planner (A = tip) and the rules (A from the tag). */
   function refList(w, src, A, b) { return w.pets.filter(function (p) { return !p.community && p.hatchBlock != null && p.hatchBlock <= A && frOwnedAt(w, p, src, A) && !(p.released && !(typeof p.released === 'number' && p.released > A)) && !frDeadAt(w, p, b, A) && !(frMythic(w, p, b) && !(p.lastFed != null && p.lastFed > A)) && !hdHidden(p, src, b); }).sort(function (x, y) { return x.id - y.id; }); }
@@ -400,7 +400,7 @@
     if (q.gear && !ownsGear(w, p, q.gear)) return 'needs to own ' + ((BY_ID[q.gear] || {}).label || q.gear);
     if (q.power && petPower(p) < q.power) return 'needs Power ' + q.power + '+ (has ' + petPower(p) + ')'; return null; }
   /** adState(w, ad, b): 'open' | 'taken' | 'cancelled' | 'expired' | 'closed' (poster pet dead, released or no longer the poster's). */
-  function adState(w, ad, b) { if (ad.state !== 'open') return ad.state; if (retireOn(b)) return 'closed'; /* Rug Me retired: open ads close at ACTIVATE_RETIRE_TAGS_BLOCK */ var P = w.byId[ad.pet]; if (!P || P.dead || P.released || P.owner !== ad.owner) return 'closed'; return b - ad.block >= AD_WINDOW ? 'expired' : 'open'; }
+  function adState(w, ad, b) { if (ad.state !== 'open') return ad.state; if (retireOn(b)) return 'closed'; /* Rug Me retired: open ads close at ACTIVATE_RETIRE_TAGS_BLOCK */ var P = w.byId[ad.pet]; if (!P || P.dead || P.released || P.owner !== ad.owner) return 'closed'; return span(b, ad.block) >= AD_WINDOW ? 'expired' : 'open'; }
   var RUG_AD_COST = 69; /* owner, Oct 22 8:42 PM: posting costs 69 per pet; accepting (pet:rug) is breedCost(b): 690 (total 759) before ACTIVATE_BREED_135_BLOCK, 135 (total 204) from it */
   /** onRug(w, p, b): p has an open Rug Me ad (shown as a card, and 'On Rug Me' on its pet page). */
   function onRug(w, p, b) { return !!(p && (w.ads || []).some(function (a) { return a.pet === p.id && adState(w, a, b) === 'open'; })); }
@@ -437,11 +437,28 @@
   // ---------------------------------------------------------------- helpers
   function sha(s) { return PetCore.sha256Hex(String(s)); }
   function stream(seed) { var n = 0, buf = '', i = 0; return function () { if (i + 8 > buf.length) { buf = sha(seed + ':' + (n++)); i = 0; } var v = parseInt(buf.slice(i, i + 8), 16); i += 8; return v; }; }
-  function day(b) { return Math.floor(b / BLOCKS_PER_DAY); }
+  /* Game pause. Maintenance went on at 2026-11-14T16:46:57Z. Block 975816 was 16:38:44Z;
+   * block 975817 was 16:51:45Z, the first block at or after that time. PAUSE_UNTIL is the resume
+   * block, set at go-live. null means the pause is still on. Burns in the pause still apply.
+   * Clocks (days, hunger, death, streaks, windows, cooldowns) use clock(), which skips pause blocks. */
+  var PAUSE_FROM = 975817, PAUSE_UNTIL = null;
+  function pauseLen(block) {
+    block = block | 0;
+    if (!(PAUSE_FROM > 0) || block < PAUSE_FROM) return 0;
+    var last = PAUSE_UNTIL == null ? block : Math.min(block, PAUSE_UNTIL - 1);
+    if (last < PAUSE_FROM) return 0;
+    return last - PAUSE_FROM + 1;
+  }
+  function clock(block) { block = block | 0; return block - pauseLen(block); }
+  function span(later, earlier) { return clock(later) - clock(earlier); }
+  function inPause(block) { return pauseLen(block) > 0 && (PAUSE_UNTIL == null || (block | 0) < PAUSE_UNTIL); }
+  function day(b) { return Math.floor(clock(b) / BLOCKS_PER_DAY); }
   /** streakOf(w, addr, tip) -> { current, best, today, days, last, state }. current = consecutive WAGMI chain days ending today (or yesterday while
    * today is still open: the streak lives until a FULL chain day is missed). state: 'wagmi' (streak alive), 'ngmi' (said WAGMI before, then missed
    * a whole chain day: streak reset to 0), 'new' (never said WAGMI). */
-  function streakOf(w, addr, tip) { var c = (w && w.wagmi && w.wagmi[addr]) || {}, ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
+  function streakOf(w, addr, tip) { var raw = (w && w.wagmi && w.wagmi[addr]) || {}, freeze = day(PAUSE_FROM > 0 ? PAUSE_FROM - 1 : 0), c = {};
+    Object.keys(raw).forEach(function (k) { if (!raw[k]) return; var d = +k, use = PAUSE_FROM > 0 && d * BLOCKS_PER_DAY >= PAUSE_FROM ? freeze : d; c[use] = 1; });
+    var ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
     ds.forEach(function (d) { run = prev != null && d === prev + 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
     var t = day(tip != null ? tip : w.tip), d = c[t] ? t : t - 1, cur = 0; while (c[d]) { cur++; d--; }
     return { current: cur, best: best, today: !!c[t], days: ds.length, last: prev, state: cur ? 'wagmi' : ds.length ? 'ngmi' : 'new' }; }
@@ -449,7 +466,7 @@
    * any stray burn). A rumble whose entries were made before the block still resolves normally at its seed block. Before the block: unchanged. */
   var ACTIVATE_RUMBLE_OFF_BLOCK = 971771; // tip 971,765 + 6 at push time (Jake approved 2026-10-16)
   function rumbleOff(b) { return b != null && b >= ACTIVATE_RUMBLE_OFF_BLOCK; }
-  function weekOf(b) { return Math.floor(b / WEEK); }
+  function weekOf(b) { return Math.floor(clock(b) / WEEK); }
   function seedBlockOfWeek(w) { return (w + 1) * WEEK; }
   function utf8Len(s) { return unescape(encodeURIComponent(s)).length; }
 
@@ -1302,7 +1319,7 @@
   function halvingBlocks(w) { var h1 = halving1Block(w); if (h1 == null) return []; var out = [h1];
     if (autoHalvingOn()) { coldStorageAfterKek(w).forEach(function (cs) { out.push(Math.max(cs + HALVING_DELAY, ACTIVATE_AUTO_HALVING_BLOCK, out[out.length - 1] + 1)); }); return out; }
     COMMUNITY_PET_ARRIVAL_BLOCKS.forEach(function (L) { if (L >= ACTIVATE_COMMUNITY_TRIGGER_BLOCK && L + HALVING_DELAY > h1) out.push(Math.max(L + HALVING_DELAY, out[out.length - 1] + 1)); }); return out; }
-  function eraAt(w, b) { if (!halvingOn(b)) return 0; var n = 0; halvingBlocks(w).forEach(function (g) { if (b >= g) n++; }); return n; }
+  function eraAt(w, b) { if (!halvingOn(b)) return 0; var n = 0; halvingBlocks(w).forEach(function (g) { if (g >= PAUSE_FROM && inPause(b)) return; if (clock(b) >= g - pauseLen(g > 0 ? g - 1 : 0)) n++; }); return n; }
   function r8(x) { return Math.round(x * 1e8) / 1e8; }
   function costAt(w, base, b, feed) { var e = eraAt(w, b), f = fireFactor(w, b, feed); return e || f !== 1 ? r8(base / Math.pow(2, e) * f) : base; }
   function fullAt(w, base, b) { var e = eraAt(w, b); return e ? r8(base / Math.pow(2, e)) : base; } /* era price, no sale */
@@ -1343,11 +1360,11 @@
   function fireBlackout(w, B) { if (!w || !w.kekMythic) return false; var h1 = halving1Block(w); return B >= w.kekMythic.block && (h1 == null || B < h1 + FIRE_KEK_PAUSE); }
   /** fireExtend(w, upTo): decide arms for every block <= upTo (in order; stops at the first block whose hash is unknown). */
   function fireExtend(w, upTo) { if (ACTIVATE_FIRESALE_BLOCK == null || upTo < ACTIVATE_FIRESALE_BLOCK) return; var F = w.fire || (w.fire = { next: ACTIVATE_FIRESALE_BLOCK, sales: [], missing: null });
-    for (var B = F.next; B <= upTo; B++) { var h = FIRE_HASHES[B]; if (!h) { F.missing = B; return; }
-      var last = F.sales[F.sales.length - 1], busy = last && B < last.end + FIRE_COOLDOWN;
+    for (var B = F.next; B <= upTo; B++) { if (inPause(B)) { F.next = B + 1; continue; } var h = FIRE_HASHES[B]; if (!h) { F.missing = B; return; }
+      var last = F.sales[F.sales.length - 1], busy = last && span(B, last.arm) < FIRE_WARN + FIRE_LEN + FIRE_COOLDOWN;
       if (!busy && !fireBlackout(w, B) && fireRoll(h) < FIRE_ODDS_1K) F.sales.push({ arm: B, start: B + FIRE_WARN, end: B + FIRE_WARN + FIRE_LEN });
       F.next = B + 1; } F.missing = null; }
-  function saleAt(w, b) { if (!fireOn(b) || !w || !w.fire) return null; var L = w.fire.sales; for (var i = L.length - 1; i >= 0; i--) { if (b >= L[i].start && b < L[i].end) return L[i]; if (L[i].end <= b) break; } return null; }
+  function saleAt(w, b) { if (!fireOn(b) || !w || !w.fire) return null; var L = w.fire.sales; for (var i = L.length - 1; i >= 0; i--) { var d = span(b, L[i].arm); if (d >= FIRE_WARN && d < FIRE_WARN + FIRE_LEN) return L[i]; } return null; }
   function fireFactor(w, b, feed) { return saleAt(w, b) ? (feed ? FIRE_FEED_PAY : FIRE_PAY) : 1; }
   function fireInfo(w, tip) { var b = (tip || (w && w.tip) || 0) + 1, F = (w && w.fire) || { sales: [] }, last = F.sales[F.sales.length - 1] || null, live = saleAt(w, b);
     return { gate: ACTIVATE_FIRESALE_BLOCK, live: live, warning: last && b < last.start ? last : null, last: last, sales: F.sales.slice(), missing: F.missing || null, nextBlock: b }; }
@@ -1573,7 +1590,7 @@
   var ACTIVATE_ARENA_MODES_BLOCK = 972641; // deploy Oct 22 2026 ~12:20 PM CT: tip 972,635 + 6 (owner approved)
   function modesOn(b) { return ACTIVATE_ARENA_MODES_BLOCK != null && b != null && b >= ACTIVATE_ARENA_MODES_BLOCK; }
   function fightPets(f) { return [f.a, f.a2, f.b, f.b2].filter(function (x) { return x != null; }); }
-  function inOpenFight(w, id, b, except) { return w.fights.some(function (f) { return f !== except && f.status === 'open' && b - f.block <= FIGHT_WINDOW && fightPets(f).indexOf(id) >= 0; }); }
+  function inOpenFight(w, id, b, except) { return w.fights.some(function (f) { return f !== except && f.status === 'open' && span(b, f.block) <= FIGHT_WINDOW && fightPets(f).indexOf(id) >= 0; }); }
   function beardPartOn(b) { return ACTIVATE_CHUD_BEARD_PART_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_PART_BLOCK; }
   function beardOn(b) { return ACTIVATE_CHUD_BEARD_BLOCK != null && b != null && b >= ACTIVATE_CHUD_BEARD_BLOCK; }
   /* FUNTRUMP FLAGS (owner Oct 26 2026, branch funtrump-flags, PREVIEW): from ACTIVATE_FT_FLAGS_BLOCK (LIVE Oct 26 2026 10:45 PM CT: 973343 = tip 973337 + 6)
@@ -1701,9 +1718,9 @@
   /** giveLocks(w, p, b) -> reason string or null: the locks a gift checks (shared by the replay and the UI). */
   function giveLocks(w, p, b, exceptSwap) {
     var qz = questBusyWhy(p, b); if (qz) return qz; /* Mythic quests: no gift / swap while away */
-    if (p.lastGot != null && b < p.lastGot + GIVE_SETTLE) return 'just changed hands: can be gifted again from block ' + (p.lastGot + GIVE_SETTLE);
-    if ((w.fights || []).some(function (f) { return f.status === 'open' && b - f.block <= FIGHT_WINDOW && fightPets(f).indexOf(p.id) >= 0; })) return 'pet has an open fight';
-    if ((w.breedReqs || []).some(function (q) { return !q.used && b - q.block <= BREED_WINDOW && (q.a === p.id || q.b === p.id); })) return 'pet has a pending breed request';
+    if (p.lastGot != null && span(b, p.lastGot) < GIVE_SETTLE) return 'just changed hands: can be gifted again from block ' + (p.lastGot + GIVE_SETTLE);
+    if ((w.fights || []).some(function (f) { return f.status === 'open' && span(b, f.block) <= FIGHT_WINDOW && fightPets(f).indexOf(p.id) >= 0; })) return 'pet has an open fight';
+    if ((w.breedReqs || []).some(function (q) { return !q.used && span(b, q.block) <= BREED_WINDOW && (q.a === p.id || q.b === p.id); })) return 'pet has a pending breed request';
     if (onRug(w, p, b)) return 'pet has an open Rug Me ad'; /* pet-shop-sales: Rug Me ads are an array of {pet, state}; the old object check never fired */
     if (saleListing(w, p.id, b)) return 'pet is listed in the shop';
     if ((w.swaps || []).some(function (X) { return X !== exceptSwap && swapOpen(w, X, b) && X.mine === p.id; })) return 'pet is offered in an open swap';
@@ -1731,9 +1748,9 @@
       out.push({ tag: tag, ids: inB, amount: COSTS.give, label: 'Gift ' + inB.length + ' pet' + (inB.length > 1 ? 's' : '') + ' to player #' + P }); i += inB.length; }
     out.forEach(function (p, k) { if (out.length > 1) p.label += ' (burn ' + (k + 1) + ' of ' + out.length + ')'; }); return out; }
   function giftsTo(w, a) { return (w.giftLog || []).filter(function (g) { return g.to === a; }); }
-  function swapOpen(w, X, b) { return X && X.status === 'open' && b - X.block <= SWAP_WINDOW; }
+  function swapOpen(w, X, b) { return X && X.status === 'open' && span(b, X.block) <= SWAP_WINDOW; }
   /** swapWhy(w, X, src, b) -> why the accept fails (null = ok). */
-  function swapWhy(w, X, src, b) { if (!X) return 'no such swap offer'; if (X.status !== 'open') return 'offer is ' + X.status; if (b - X.block > SWAP_WINDOW) return 'offer expired at block ' + (X.block + SWAP_WINDOW);
+  function swapWhy(w, X, src, b) { if (!X) return 'no such swap offer'; if (X.status !== 'open') return 'offer is ' + X.status; if (span(b, X.block) > SWAP_WINDOW) return 'offer expired at block ' + (X.block + SWAP_WINDOW);
     var A = w.byId[X.mine], B = w.byId[X.theirs]; if (!A || !B) return 'no such pet'; if (B.owner !== src) return 'only the owner of #' + X.theirs + ' can accept'; if (A.owner !== X.from) return '#' + X.mine + ' changed hands';
     var e = function (p) { return p.community ? 'community pet' : p.released ? 'released' : p.dead ? 'dead (Pet Cemetery)' : giveLocks(w, p, b, X); };
     return e(A) ? '#' + A.id + ': ' + e(A) : e(B) ? '#' + B.id + ': ' + e(B) : null; }
@@ -1933,7 +1950,7 @@
   var ACTIVATE_TRANSFER_GAPS_BLOCK = 975005;
   function xferOn(b) { return ACTIVATE_TRANSFER_GAPS_BLOCK != null && b != null && b >= ACTIVATE_TRANSFER_GAPS_BLOCK; }
   function blockFinalHolder(ix, asset, b) { var L = ix && ix.hold && ix.hold[asset], h = null; (L || []).forEach(function (c) { if (Number(c.block_index) === b) h = creditTo(c) || h; }); return h; }
-  function voidMovedFights(w, P, b, tx) { (w.fights || []).forEach(function (f) { if (f.status !== 'open' || b - f.block > FIGHT_WINDOW || fightPets(f).indexOf(P.id) < 0) return;
+  function voidMovedFights(w, P, b, tx) { (w.fights || []).forEach(function (f) { if (f.status !== 'open' || span(b, f.block) > FIGHT_WINDOW || fightPets(f).indexOf(P.id) < 0) return;
       f.status = 'void'; f.voidBlock = b; f.voidWhy = '#' + P.id + ' changed owner'; w.log.push({ block: b, tx: tx, kind: 'fightVoid', petId: P.id, fightId: f.id, msg: 'fight ' + f.id + ' was called off: #' + P.id + ' changed owner (fight uses already spent stay spent)' }); }); }
   function applyCredit(w, c, b, ix) { var D = w.deeds && w.deeds[c.asset]; if (!D) return; var to = creditTo(c); if (!to) return; D.holder = to;
     var P = w.byId[D.petId]; if (!P || P.deed !== c.asset || P.dead || P.released || P.community) return;
@@ -2299,7 +2316,7 @@
       cm.rabbitFed = WRc.fed; cm.rabbitStage = stageFor(WRc.fed, COMMUNITY_THRESHOLDS); cm.current = 'rabbit'; cm.nextPet = w.rabbitMythic ? null : 'rabbit';
       cm.petName = 'White Rabbit'; cm.petStage = cm.rabbitStage; cm.petStageName = STAGE_NAMES[cm.petStage]; }
     w.community.leaderboard = Object.keys(w.community.feeders).map(function (a) { return { address: a, amount: w.community.feeders[a] }; }).sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); });
-    w.fights.forEach(function (f) { if (f.status === 'open' && tip - f.block > FIGHT_WINDOW) f.status = 'expired'; });
+    w.fights.forEach(function (f) { if (f.status === 'open' && span(tip, f.block) > FIGHT_WINDOW) f.status = 'expired'; });
     w.itemList = Object.keys(w.items).map(function (k) { return w.items[k]; }).filter(function (g) { return g.bag == null; }); /* any-slot rolls: pet-bound bag pieces stay out of the stash */
     if (w._cg && !w._cg.rec) delete w._cg; /* the record is only needed while replaying */
     return w;
@@ -2319,7 +2336,7 @@
     if (mythicKeepOn(b) && !p.community && !p.released && !p.mgDead && !(p.zombie && !p.zombie.end) && w.everMythic && w.everMythic[p.id] != null) p.ascended = true;
     p.mythicCare = p.care >= th[5] || !!p.ascended;
     p.deathBlock = p.mythicCare ? null : (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY;
-    p.dead = !p.released && p.deathBlock != null && b >= p.deathBlock;
+    p.dead = !p.released && p.deathBlock != null && clock(b) >= p.deathBlock;
     p.neglected = !p.mythicCare && day(b) - day(last) >= NEGLECTED_AFTER_DAYS;
     p.stage = p.ascended ? 5 : stageFor(p.care, th); p.stageName = STAGE_NAMES[p.stage]; if (p.stage === 5) noteMythicOwner(w, p, b);
     p.ageDays = day(b) - day(p.hatchBlock); p.fedDays = Object.keys(p.feedDays).length;
@@ -2338,7 +2355,7 @@
     if (p.dead) { var keep = !!p.graveGear && graveOn(p.graveGear); /* grave gear: a flagged pet keeps what it wore at death (on + grave = its id); default: back to the bag */
       wornOf(w, p.id).forEach(function (g) { if (keep) g.grave = p.id; else g.on = null; }); } /* gear index (smooth-perf): same items taken off, no full scan per dead pet */
     p.fedToday = !!p.feedDays[day(tip)]; p.nextMeal = mealFor(p.care, p.species, tip, petThresholds(w, p, tip)); var nmc = mealCost(w, p, p.nextMeal, tip + 1); if (nmc !== p.nextMeal) { p.nextCare = p.nextMeal; p.nextMeal = nmc; } /* nextMeal = XCPETS to burn (halving), nextCare = care it adds */ p.hungry = !p.dead && !p.released && !p.fedToday && p.nextMeal > 0;
-    p.blackEye = p.blackEyeUntil != null && tip < p.blackEyeUntil; p.crowned = p.crownUntil != null && tip < p.crownUntil;
+    p.blackEye = p.blackEyeUntil != null && span(tip, p.blackEyeUntil - BLACK_EYE_BLOCKS) < BLACK_EYE_BLOCKS; p.crowned = p.crownUntil != null && span(tip, p.crownUntil - WEEK) < WEEK;
   }
   // ---------------------------------------------------------------- live reader + cutoff import (2026-10-14)
   var LIVE_ENGINE = null; function setLiveEngine(e) { LIVE_ENGINE = e || null; }
@@ -2403,7 +2420,7 @@
   function breedable(p, b) { if (!p) return 'no such pet'; var qz = questBusyWhy(p, b); if (qz) return qz; if (p.released) return 'released'; if (p.dead) return 'dead'; if (hdHidden(p, p.owner, b)) return 'discarded'; if (p.species === 'nakamoto' && (!nakaNormal(b) || p.community)) return 'Nakamoto cannot breed'; if (p.species === 'wizard' && !WIZ_CAN_BREED && !wizBreedOn(b)) return 'Bitcoin Wizard cannot breed (yet)'; if (p.species === 'kek' && !(KEK_CAN_BREED && kekOn(b))) return 'Lord Kek cannot breed (yet)'; if (p.species === 'homer' && !hpBreedOn(b)) return 'Homer Pepe can breed once he reaches Cold Storage'; if (p.species === 'rabbit' && !wrBreedOn(b)) return 'The White Rabbit can breed once he reaches Cold Storage'; if (p.species === 'djpepe' && !djBreedOn(b)) return 'DJ Pepe breeding awaits his community Cold Storage'; if (p.species === 'funtrump' && !(FUNTRUMP_CAN_BREED && ftBreedOn(b))) return 'FUNTRUMP can breed once he reaches Cold Storage';
     if (p.community) return 'community pet cannot breed'; if ((p.burnLord || p.supreme || p.contest) && !grantBreedOn(b)) return 'edition egg pets cannot breed'; if (isContestSp(p.species) && !contestOn(b)) return 'contest pets breed from the contest gate'; if (p.stage < 3) return 'needs Adult+'; if (p.neglected) return 'neglected'; if (breedCapOn(b) && p.breeds >= BREED_MAX) return 'max ' + BREED_MAX + ' breedings';
     if (breedV2On(b) && (p.breedsV2 || 0) >= BREED_CAP_V2) return 'breeding cap reached (' + BREED_CAP_V2 + '/' + BREED_CAP_V2 + ' lifetime breeds used)';
-    var bc = mgBreedCool(p); if (p.lastBreed != null && b - p.lastBreed < bc) return 'breeding cooldown (' + (bc - (b - p.lastBreed)) + ' blocks left)'; return null; }
+    var bc = mgBreedCool(p); if (p.lastBreed != null && span(b, p.lastBreed) < bc) return 'breeding cooldown (' + (bc - span(b, p.lastBreed)) + ' blocks left)'; return null; }
 
   /* breed-accept-guard (2026-10-20, display/send guard only; NOT used by replay): would a pet:breed:A:B burn sent now be rejected?
    * Same checks and order as handle() 'breed' (pets must be breedable at the next block). Returns null or a player-facing reason. */
@@ -2434,20 +2451,20 @@
     if (/^(ad|rug|unad)$/.test(t.action)) { if (!rugOn(b)) return 'Rug Me is not open yet' + (ACTIVATE_RUGME_BLOCK != null ? ' (block ' + ACTIVATE_RUGME_BLOCK + ')' : ''); var dup = pend.some(function (q) { return q.action === t.action && String(q.ids || q.petId) === String(t.ids || t.petId) && q.adId === t.adId; }); if (dup) return 'that Rug Me burn is still waiting to confirm'; return me ? rugCheck(w, t, me, b, amt, P) : null; }
     if (t.action === 'breed') { var X = P(t.a), Y = P(t.b); if (amt != null && below(w, amt, breedCost(b), b)) return 'below breed cost ' + costAt(w, breedCost(b), b); if (!X) return 'no such pet #' + t.a; if (me && X.owner !== me) return 'first pet must be yours'; if (t.a === t.b) return 'two different pets';
       var why = breedWhy(t.a, breedable(X, b)) || breedWhy(t.b, breedable(Y, b)); if (why) return why; if (breedV2On(b) && kinWhy(X, Y)) return '#' + t.a + ' x #' + t.b + ': ' + kinWhy(X, Y) + ' (no inbreeding)'; if (resPairWhy(X, Y, b)) return '#' + t.a + ' x #' + t.b + ': ' + resPairWhy(X, Y, b);
-      var locks = function (q) { var A = P(q.a), B = P(q.b); return A && B && (A.owner === B.owner || w.breedReqs.some(function (r) { return r.a === q.b && r.b === q.a && !r.used && b - r.block <= BREED_WINDOW; })); };
+      var locks = function (q) { var A = P(q.a), B = P(q.b); return A && B && (A.owner === B.owner || w.breedReqs.some(function (r) { return r.a === q.b && r.b === q.a && !r.used && span(b, r.block) <= BREED_WINDOW; })); };
       var pb = pend.filter(function (q) { return q.action === 'breed' && locks(q) && [q.a, q.b].some(function (id) { return id === t.a || id === t.b; }); })[0];
       if (pb) return 'a breed burn with #' + ([pb.a, pb.b].indexOf(t.a) >= 0 ? t.a : t.b) + ' is still waiting to confirm';
-      if (Y.owner !== X.owner) { var mir = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used; }), live = mir.filter(function (q) { return b - q.block <= BREED_WINDOW; })[0];
-        if (live) { var left = live.block + BREED_WINDOW - b; if (left < SEND_MARGIN) return 'the request window closes at block ' + (live.block + BREED_WINDOW) + ': an accept sent now may confirm too late and only become a new request'; return null; }
+      if (Y.owner !== X.owner) { var mir = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used; }), live = mir.filter(function (q) { return span(b, q.block) <= BREED_WINDOW; })[0];
+        if (live) { var left = BREED_WINDOW - span(b, live.block); if (left < SEND_MARGIN) return 'the request window closes at block ' + (live.block + BREED_WINDOW) + ': an accept sent now may confirm too late and only become a new request'; return null; }
         if (plan && plan.accept) return mir.length ? 'that request expired at block ' + (mir[mir.length - 1].block + BREED_WINDOW) + ' (this burn would only send a new request)' : 'no open request to accept';
-        var dup = w.breedReqs.filter(function (q) { return q.a === t.a && q.b === t.b && !q.used && b - q.block <= BREED_WINDOW; })[0]; if (dup) return 'you already asked #' + t.b + ' (until block ' + (dup.block + BREED_WINDOW) + ')';
+        var dup = w.breedReqs.filter(function (q) { return q.a === t.a && q.b === t.b && !q.used && span(b, q.block) <= BREED_WINDOW; })[0]; if (dup) return 'you already asked #' + t.b + ' (until block ' + (dup.block + BREED_WINDOW) + ')';
         if (pend.some(function (q) { return q.action === 'breed' && q.a === t.a && q.b === t.b; })) return 'you already asked #' + t.b + ' (waiting to confirm)'; }
       return null; }
     if (t.action === 'sd' || t.action === 'tt' || t.action === 'join' || (t.action === 'accept' && w.fights && w.fights[t.fightId - 1] && w.fights[t.fightId - 1].mode)) return modeSendBlock(w, t, b, me, amt, pend);
     if (t.action === 'accept') { var F = w.fights && w.fights[t.fightId - 1]; if (!F) return 'no such fight'; if (amt != null && below(w, amt, COSTS.accept, b)) return 'below accept cost ' + costAt(w, COSTS.accept, b); if (F.status !== 'open') return 'fight is ' + F.status;
-      if (b - F.block > FIGHT_WINDOW) return 'challenge expired at block ' + (F.block + FIGHT_WINDOW); if (me && P(F.b) && P(F.b).owner !== me) return 'only the challenged pet\'s owner can accept';
+      if (span(b, F.block) > FIGHT_WINDOW) return 'challenge expired at block ' + (F.block + FIGHT_WINDOW); if (me && P(F.b) && P(F.b).owner !== me) return 'only the challenged pet\'s owner can accept';
       var fe = fightable(P(F.a), b), fe2 = fightable(P(F.b), b); if (fe) return 'challenger #' + F.a + ': ' + fe; if (fe2) return '#' + F.b + ': ' + fe2;
-      if (F.block + FIGHT_WINDOW - b < SEND_MARGIN - 1) return 'the challenge closes at block ' + (F.block + FIGHT_WINDOW) + ': an accept sent now may confirm too late';
+      if (FIGHT_WINDOW - span(b, F.block) < SEND_MARGIN - 1) return 'the challenge closes at block ' + (F.block + FIGHT_WINDOW) + ': an accept sent now may confirm too late';
       if (pend.some(function (q) { return q.action === 'accept' && q.fightId === t.fightId; })) return 'your accept is still waiting to confirm';
       return battleBlock(w, tag, tip); }
     if (t.action === 'cemr') { if (!cemRunsOn(b)) return 'cemetery runs open at block ' + (ACTIVATE_CEM_RUNS_BLOCK == null ? '(not set yet)' : ACTIVATE_CEM_RUNS_BLOCK); var crK = t.kind; t = cemRunsResolve(w, me, t, b); if (!t.ids.length) return 'no pets at those places'; if (amt != null && below(w, amt, cemRunsBase(crK, t.ids.length, b), b)) return 'below cost ' + cemRunsCost(w, crK, t.ids.length, b) + ' for ' + t.ids.length + ' pet' + (t.ids.length === 1 ? '' : 's') + ' (cemetery runs are priced per pet)'; }
@@ -2456,7 +2473,7 @@
     if (t.action === 'fight' && cemOn(b) && P(t.b) && isZ(P(t.b)) && (liveAt(w, P(t.b), b), P(t.b).feral)) return (huntRulesOn(b) && amt != null && amt + 1e-10 < huntQuote(w, t.a, t.b, b).amount ? 'below hunt cost ' + huntQuote(w, t.a, t.b, b).amount : null) || cemHuntWhy(w, t.a, t.b, me, b) || (pend.some(function (q) { return q.action === 'fight' && q.a === t.a; }) ? '#' + t.a + ' already has a burn waiting' : null); /* a hunt */
     if (t.action === 'fight') { var A = P(t.a), B = P(t.b); if (amt != null && below(w, amt, COSTS.fight, b)) return 'below fight cost ' + costAt(w, COSTS.fight, b); if (!A || (me && A.owner !== me)) return 'challenger must be your pet'; if (t.a === t.b) return 'cannot fight itself';
       var f1 = fightable(A, b); if (f1) return '#' + t.a + ': ' + f1; var f2 = fightable(B, b); if (f2) return 'opponent #' + t.b + ': ' + f2;
-      if (w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && b - f.block <= FIGHT_WINDOW; }) || pend.some(function (q) { return q.action === 'fight' && (q.a === t.a || q.b === t.a); })) return '#' + t.a + ' already has an open challenge';
+      if (w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && span(b, f.block) <= FIGHT_WINDOW; }) || pend.some(function (q) { return q.action === 'fight' && (q.a === t.a || q.b === t.a); })) return '#' + t.a + ' already has an open challenge';
       return battleBlock(w, tag, tip); }
     if (t.action === 'chores') { if (!choresOn(b)) return 'Daily chores (one burn) opens at block ' + (ACTIVATE_DAILY_CHORES_BLOCK == null ? '(not set yet)' : ACTIVATE_DAILY_CHORES_BLOCK);
       if (t.runs && plan && plan.anchor != null && b - plan.anchor > 900) return 'this chores plan is too old, press Daily chores again';
@@ -2479,8 +2496,8 @@
       if (ids.some(function (x, i) { return ids.indexOf(x) !== i; })) return 'each pet can only be in the fight once';
       for (var i = 0; i < ids.length; i++) { var c = chk(ids[i]); if (c) return c; }
       if (pend.some(function (q) { return (q.action === 'sd' || q.action === 'tt' || q.action === 'fight') && [].concat(q.a).some(function (z) { return ids.indexOf(z) >= 0; }); })) return 'a challenge with one of these pets is still waiting to confirm'; return null; }
-    var F = w.fights[t.fightId - 1]; if (!F || !F.mode) return 'no such fight'; if (F.status !== 'open') return 'fight is ' + F.status; if (b - F.block > FIGHT_WINDOW) return 'challenge expired at block ' + (F.block + FIGHT_WINDOW);
-    if (F.block + FIGHT_WINDOW - b < SEND_MARGIN - 1) return 'the challenge closes at block ' + (F.block + FIGHT_WINDOW) + ': a burn sent now may confirm too late';
+    var F = w.fights[t.fightId - 1]; if (!F || !F.mode) return 'no such fight'; if (F.status !== 'open') return 'fight is ' + F.status; if (span(b, F.block) > FIGHT_WINDOW) return 'challenge expired at block ' + (F.block + FIGHT_WINDOW);
+    if (FIGHT_WINDOW - span(b, F.block) < SEND_MARGIN - 1) return 'the challenge closes at block ' + (F.block + FIGHT_WINDOW) + ': a burn sent now may confirm too late';
     if (t.action === 'join') { if (F.needJoin.indexOf(t.petId) < 0) return '#' + t.petId + ' is not a partner in fight ' + F.id; if (F.joins[t.petId]) return 'already joined'; if (me && P(t.petId).owner !== me) return 'only the partner pet\'s owner can join'; if (amt != null && below(w, amt, COSTS.join, b)) return 'below join cost ' + costAt(w, COSTS.join, b); return chk(t.petId, F); }
     if (F.accepted) return 'already accepted'; if (me && P(F.b) && P(F.b).owner !== me) return 'only the challenged pet\'s owner can accept';
     var cost = acceptCost(w, F.id); if (amt != null && below(w, amt, cost, b)) return 'below accept cost ' + costAt(w, cost, b);
@@ -2512,7 +2529,7 @@
       w.fights.push(f); return L(r, 'fight', '#' + ids.join(', #') + ': ' + (sd ? 'Sudden Death' : 'Tag Team') + ' challenge (fight ' + f.id + ', accept by block ' + f.expires + ')', { fightId: f.id, mode: t.action });
     }
     var F = w.fights[t.fightId - 1];
-    e = !F || !F.mode ? 'no such fight' : F.status !== 'open' ? 'fight is ' + F.status : b - F.block > FIGHT_WINDOW ? 'challenge expired' : null;
+    e = !F || !F.mode ? 'no such fight' : F.status !== 'open' ? 'fight is ' + F.status : span(b, F.block) > FIGHT_WINDOW ? 'challenge expired' : null;
     if (e) { if (F && F.mode && e === 'challenge expired') F.status = 'expired'; return L(r, 'rejected', e); }
     if (t.action === 'join') {
       var J = pet(t.petId); e = F.mode !== 'tt' ? 'only Tag Team fights take partners' : F.needJoin.indexOf(t.petId) < 0 ? '#' + t.petId + ' is not a partner in fight ' + F.id : F.joins[t.petId] ? '#' + t.petId + ' already joined' : !J || J.owner !== src ? 'only the partner pet\'s owner can join' : below(w, amt, COSTS.join, b) ? 'below join cost ' + costAt(w, COSTS.join, b) : fightable(J, b) || (dayBusy(J, F) ? 'pet already fought this day' : null) || (inOpenFight(w, t.petId, b, F) ? 'pet already has an open challenge' : null);
@@ -2652,8 +2669,8 @@
   var POB_TIERS = [{ id: 'gold', name: 'Gold Ash', min: 1000000 }, { id: 'silver', name: 'Silver Ash', min: 100000 }, { id: 'bronze', name: 'Bronze Ash', min: 0 }];
   function isMythic(p) { return !!(p && (p.stage === 5 || p.mythicCare)); }
   function questCost(w, code, b) { return costAt(w, QUESTS[code].base, b); }
-  function questAway(p, b) { return !!(p && p.quest && b < p.quest.end); }
-  function questNap(p, b) { return !!(p && !questAway(p, b) && p.napUntil != null && b < p.napUntil); }
+  function questAway(p, b) { return !!(p && p.quest && clock(b) < clock(p.quest.start) + (p.quest.end - p.quest.start)); }
+  function questNap(p, b) { if (!p || questAway(p, b) || p.napUntil == null) return false; if (p.napBlocks == null) return b < p.napUntil || (inPause(b) && p.napUntil >= PAUSE_FROM); return span(b, p.napUntil - p.napBlocks) < p.napBlocks; }
   function questBusyWhy(p, b) { if (!questOn(b) || !p) return null; if (questAway(p, b)) return 'away on a quest (' + QUESTS[p.quest.code].name + ', back at block ' + p.quest.end + ')'; return null; }
   function walletBurned(w, a) { return (w.burnedBy && w.burnedBy[a]) || 0; }
   function flameTierOf(w, a) { var t = walletBurned(w, a), r = null; FLAME_TIERS.forEach(function (T) { if (t >= T.min) r = T; }); return r; }
@@ -2727,7 +2744,7 @@
     if (!P.questBadges.nakamoto && QUEST_CODES.every(function (c) { return P.questBadges[c]; })) { P.questBadges.nakamoto = 1; rec.nakamoto = true; }
     var lk = Q.look, pr = P.questProgress[lk.id] || 0, add = lk.by === 'haul' ? (tier === 'haul' ? 1 : 0) : 1; /* finish-based looks count every finish, Came Home Empty included */
     P.questProgress[lk.id] = pr + add; if (pr < lk.need && pr + add >= lk.need) { rec.look = lk.id; (P.questLooks = P.questLooks || []).push(lk.id); }
-    P.questHist.push(rec); P.quest = null; P.napUntil = b + Q.len / 2; w.questFeed.push({ petId: P.id, rec: rec });
+    P.questHist.push(rec); P.quest = null; P.napBlocks = Q.len / 2; P.napUntil = b + P.napBlocks; w.questFeed.push({ petId: P.id, rec: rec });
     L({ block_index: b, tx_hash: q.tx }, 'quest', '#' + P.id + ' came home from ' + Q.name + ': ' + QUEST_TIERS[tier] + (got.length ? ' (' + got.map(function (g) { return g.kind === 'gear' ? g.label : g.kind === 'spins' ? g.n + ' saved spin' + (g.n > 1 ? 's' : '') : g.kind === 'egg' ? (g.ambush ? 'FUNTRUMP Ambush! ' : '') + 'Jackpot Egg #' + g.petId : g.kind === 'shards' ? '+' + g.n + ' shard point' + (g.n > 1 ? 's' : '') + ' (' + Object.keys(g.stats).map(function (k) { return k + ' +' + g.stats[k]; }).join(', ') + ')' : '+1 ' + g.stat; }).join(', ') + ')' : ''), { petId: P.id, quest: rec }); }
   function questInit(p) { if (!p.questBadges) { p.questBadges = {}; p.questProgress = {}; p.questHist = []; } }
   /** questWhy(w, p, src, code, amt, b) -> reason the quest burn is refused (null = it starts). */
@@ -2867,7 +2884,7 @@
       if (top && S.topDays >= EARN.crownDays) earnGive(top, 'crown', b, '#1 on the Power board for ' + EARN.crownDays + ' days'); } }
   function earnedLooks(p) { return ((p && p.earn && p.earn.looks) || []).map(function (id) { return EARN_LOOKS[id]; }).filter(Boolean); }
   /** questInfo(w, p, b): everything the pet page / My Pets need (display only). */
-  function questInfo(w, p, b) { if (!p) return null; b = b == null ? w.tip : b; var q = p.quest && b < p.quest.end ? p.quest : null;
+  function questInfo(w, p, b) { if (!p) return null; b = b == null ? w.tip : b; var q = p.quest && clock(b) < clock(p.quest.start) + (p.quest.end - p.quest.start) ? p.quest : null;
     return { on: questOn(b), away: q ? { code: q.code, name: QUESTS[q.code].name, start: q.start, end: q.end, left: q.end - b, free: !!q.free } : null, napUntil: questNap(p, b) ? p.napUntil : null,
       badges: p.questBadges || {}, progress: p.questProgress || {}, hist: p.questHist || [], looks: shownLooks(w, p), questLooks: p.questLooks || [], flameLooks: p.flameLooks || [], earnedLooks: (p.earn && p.earn.looks) || [], earn: p.earn || null,
       freeQuest: !!(p.freeQuest && !(p.questHist && p.questHist.length) && !q), mythic: isMythic(p), pob: pobOf(w, p), boost: p.questBoost || 0,
@@ -3092,8 +3109,8 @@
   function cemR6(x) { return Math.round(x * 1e6) / 1e6; }
   function cemW(w) { return w.cem || (w.cem = { altars: {}, altarList: [], zombies: [], hunts: [], huntDay: {}, firstRise: null, raisedBy: {}, huntedBy: {}, log: [] }); }
   /** cemLive(p, b): zombie clocks from block numbers (called by liveAt). Alive until crumbleAt; feral from feralAt. */
-  function cemLive(p, b) { var z = p.zombie; if (!z || z.end) return; if (z.mfed) { z.feralAt = z.crumbleAt = null; p.dead = false; p.neglected = false; p.deathBlock = null; p.feral = false; if (p.stage < 2) { p.stage = 2; p.stageName = STAGE_NAMES[2]; } return; } /* MYTHIC GOD: Mythic-fed = cured forever */ var fa = z.fedAt + CEM_FERAL_BLOCKS, ca = fa + CEM_CRUMBLE_BLOCKS; z.feralAt = fa; z.crumbleAt = ca;
-    if (b < ca) { p.dead = false; p.neglected = false; p.deathBlock = ca; p.feral = b >= fa; if (p.stage < 2) { p.stage = 2; p.stageName = STAGE_NAMES[2]; } } /* a risen zombie fights at least as a stage-2 pet */ else { p.dead = true; p.feral = false; p.deathBlock = ca; } }
+  function cemLive(p, b) { var z = p.zombie; if (!z || z.end) return; if (z.mfed) { z.feralAt = z.crumbleAt = null; p.dead = false; p.neglected = false; p.deathBlock = null; p.feral = false; if (p.stage < 2) { p.stage = 2; p.stageName = STAGE_NAMES[2]; } return; } /* MYTHIC GOD: Mythic-fed = cured forever */ var fedSpan = span(b, z.fedAt), fa = z.fedAt + CEM_FERAL_BLOCKS, ca = fa + CEM_CRUMBLE_BLOCKS; z.feralAt = fa; z.crumbleAt = ca;
+    if (fedSpan < CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS) { p.dead = false; p.neglected = false; p.deathBlock = ca; p.feral = fedSpan >= CEM_FERAL_BLOCKS; if (p.stage < 2) { p.stage = 2; p.stageName = STAGE_NAMES[2]; } } /* a risen zombie fights at least as a stage-2 pet */ else { p.dead = true; p.feral = false; p.deathBlock = ca; } }
   function cemAgeFactor(G, b) { var d0 = G.zFirstDeath != null ? G.zFirstDeath : G.deathBlock; var days = Math.max(0, day(b) - day(d0)); return Math.max(CEM_AGE_FLOOR, 1 - CEM_AGE_STEP * days); }
   function cemMult(z) { return Math.min(z.cap, 1 + 2 * (1 - z.keep)); }
   function cemExact(z, k) { var d = z.death[k] || 0, v = d * cemMult(z) + (z.bonus[k] || 0); return Math.max(d, Math.min(d * z.cap, v)); }
@@ -3199,7 +3216,7 @@
     (p.zPast = p.zPast || []).push(z); p.zombie = null; liveAt(w, p, b); }
   /** cemSweep(w, b): crumble zombies whose clock ran out and auto-close pools 144 blocks after the first pledge (before any burn at block b). */
   function cemSweep(w, b, L) { if (!cemOn(b) || !w.cem) return; var C = w.cem;
-    C.zombies.forEach(function (id) { var p = w.byId[id]; if (!isZ(p) || p.zombie.mfed) return; var ca = p.zombie.fedAt + CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS; if (b >= ca) { cemEnd(w, p, 'crumble', ca); w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, msg: '#' + p.id + ' crumbled back into its grave (unfed): it can be raised again' }); } });
+    C.zombies.forEach(function (id) { var p = w.byId[id]; if (!isZ(p) || p.zombie.mfed) return; var ca = p.zombie.fedAt + CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS; if (span(b, p.zombie.fedAt) >= CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS) { cemEnd(w, p, 'crumble', ca); w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, msg: '#' + p.id + ' crumbled back into its grave (unfed): it can be raised again' }); } });
     C.altarList.forEach(function (A) { if (A.status !== 'open' || b < A.closesAt) return;
       if (seanceOn(A.opened)) { cemDissolve(w, A, A.closesAt, 'missed'); w.log.push({ block: A.closesAt, tx: null, kind: 'altarClosed', petId: A.grave, msg: 'seance pieces on #' + A.grave + ' were held ' + CEM_POOL_BLOCKS + ' blocks with no seance: everything handed back' }); return; } /* SEANCE ALWAYS RAISES: no auto-raise */
       var G = w.byId[A.grave], top = cemCheck(w, A, A.closesAt).top, gw = cemGraveWhy(w, G, top, A.closesAt), rz = gw ? { why: gw } : cemRaise(w, A, A.closesAt, null);
@@ -3324,7 +3341,7 @@
     var o = { pets: pets, gear: gear, points: pts, bonus: hw ? CEM_RES_HW_PTS : 0, chance: Math.round(ch * 10000) / 10000 }; return Z.mgDead ? mgResInfo(w, Z, b, o) : o; }
   /** cemView(w, p, b): display info for a grave / zombie (UI only; never read by replay). */
   function cemView(w, p, b) { if (!p) return null; b = b != null ? b : (w.tip || 0) + 1; liveAt(w, p, b); var z = p.zombie, o = { id: p.id };
-    if (isZ(p)) { o.zombie = true; o.feral = !!p.feral; if (z.mfed) { o.mfed = z.mfed; o.hungerLeft = null; o.crumbleIn = null; o.hunger = 1; } else { o.hungerLeft = Math.max(0, z.feralAt - b); o.crumbleIn = Math.max(0, z.crumbleAt - b); o.hunger = Math.max(0, Math.min(1, (z.feralAt - b) / CEM_FERAL_BLOCKS)); } o.mythic = !!z.mythic; if (z.unleash) o.unleash = z.unleash;
+    if (isZ(p)) { o.zombie = true; o.feral = !!p.feral; if (z.mfed) { o.mfed = z.mfed; o.hungerLeft = null; o.crumbleIn = null; o.hunger = 1; } else { var zSpan = span(b, z.fedAt); o.hungerLeft = Math.max(0, CEM_FERAL_BLOCKS - zSpan); o.crumbleIn = Math.max(0, CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS - zSpan); o.hunger = Math.max(0, Math.min(1, o.hungerLeft / CEM_FERAL_BLOCKS)); } o.mythic = !!z.mythic; if (z.unleash) o.unleash = z.unleash;
       o.times = cemR6(cemTimes(z)); o.milestone = cemMilestone(o.times); o.power = Math.round(cemPower(z)); o.deathPower = cemDeathPower(z); o.ceiling = Math.round(cemDeathPower(z) * z.cap); o.cap = z.cap;
       o.by = z.by; o.prevOwner = z.prevOwner; o.givers = z.givers; o.hw = z.hw; o.firstRise = !!z.firstRise; o.meals = z.meals; o.res = cemResInfo(w, p, b); return o; }
     o.grave = !!p.dead && !p.community && !p.released; o.state = p.graveState || (p.resurrected ? 'halo' : null); var rest = huntRulesOn(b) && huntRest(p); if (rest) { o.rest = rest; o.state = 'resting'; }
@@ -3706,7 +3723,7 @@
       case 'fight': {
         var A = pet(t.a), B = pet(t.b), e = below(w, amt, COSTS.fight, b) ? 'below fight cost ' + costAt(w, COSTS.fight, b) : !A || A.owner !== src ? 'challenger must be your pet' : t.a === t.b ? 'cannot fight itself' : fightable(A, b) || (fightable(B, b) ? 'opponent: ' + fightable(B, b) : null);
         if (!e && (A.fightDays[day(b)] || B.fightDays[day(b)])) e = 'one challenge fight per pet per 144-block day';
-        if (!e && w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && b - f.block <= FIGHT_WINDOW; })) e = 'pet already has an open challenge';
+        if (!e && w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && span(b, f.block) <= FIGHT_WINDOW; })) e = 'pet already has an open challenge';
         if (!e && modesOn(b) && inOpenFight(w, t.a, b)) e = 'pet already has an open challenge'; /* arena modes: Tag Team partners count too */
         if (e) return L(r, 'rejected', e);
         A.fightDays[day(b)] = 1;
@@ -3716,9 +3733,9 @@
       case 'sd': case 'tt': case 'join': return modeBurn(w, r, t, amt, bh, L, pet);
       case 'accept': {
         if (w.fights[t.fightId - 1] && w.fights[t.fightId - 1].mode) return modeBurn(w, r, t, amt, bh, L, pet);
-        var F = w.fights[t.fightId - 1], err = !F ? 'no such fight' : below(w, amt, COSTS.accept, b) ? 'below accept cost ' + costAt(w, COSTS.accept, b) : F.status !== 'open' ? 'fight is ' + F.status : b - F.block > FIGHT_WINDOW ? 'challenge expired' : null;
+        var F = w.fights[t.fightId - 1], err = !F ? 'no such fight' : below(w, amt, COSTS.accept, b) ? 'below accept cost ' + costAt(w, COSTS.accept, b) : F.status !== 'open' ? 'fight is ' + F.status : span(b, F.block) > FIGHT_WINDOW ? 'challenge expired' : null;
         if (!err && w.byId[F.b].owner !== src) err = 'only the challenged pet\'s owner can accept';
-        if (F && !err && b - F.block > FIGHT_WINDOW) F.status = 'expired';
+        if (F && !err && span(b, F.block) > FIGHT_WINDOW) F.status = 'expired';
         var Pa = F && pet(F.a), Pb = F && pet(F.b);
         if (!err) err = fightable(Pa, b) || fightable(Pb, b); if (!err && Pb.fightDays[day(b)]) err = 'pet already fought this day';
         if (!err && day(F.block) !== day(b) && Pa.fightDays[day(b)]) err = 'challenger already fought this day'; /* 2026-10-14: a challenge from an earlier day can't give the challenger a second battle today */
@@ -3747,7 +3764,7 @@
         if (!be) be = resPairWhy(X, Y, b);
         if (be) return L(r, 'rejected', be);
         if (Y.owner !== src) { // two owners: this is a request (or the acceptance of the partner's mirrored request)
-          var req = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used && b - q.block <= BREED_WINDOW; })[0];
+          var req = w.breedReqs.filter(function (q) { return q.a === t.b && q.b === t.a && !q.used && span(b, q.block) <= BREED_WINDOW; })[0];
           if (!req) { w.breedReqs.push({ a: t.a, b: t.b, block: b, tx: r.tx_hash, owner: src }); return L(r, 'breedReq', '#' + t.a + ' asked #' + t.b + ' to breed (partner burns pet:breed:' + t.b + ':' + t.a + ' within ' + BREED_WINDOW + ' blocks)'); }
           req.used = true; if (!bh) return L(r, 'rejected', 'block hash pending');
           var kid = breed(w, Y, X, bh, r.tx_hash, b, req.owner); return L(r, 'breed', 'bred #' + Y.id + ' x #' + X.id + ' -> Egg #' + kid.id + (kid.twinOf ? ' + twin Egg #' + kid.twinOf : ''), { petId: kid.id });
@@ -5200,7 +5217,7 @@
     THRESHOLDS: THRESHOLDS, NAKAMOTO_THRESHOLDS: NAKAMOTO_THRESHOLDS, NAKAMOTO_MEAL_SIZES: NAKAMOTO_MEAL_SIZES, WIZARD_THRESHOLDS: WIZARD_THRESHOLDS, ACTIVATE_COMMUNITY_100X_BLOCK: ACTIVATE_COMMUNITY_100X_BLOCK, COMMUNITY_GROWTH_X: COMMUNITY_GROWTH_X, COMMUNITY_THRESHOLDS: COMMUNITY_THRESHOLDS, communityThresholds: communityThresholds, ACTIVATE_WIZ_COLD_BLOCK: ACTIVATE_WIZ_COLD_BLOCK, mythicCount: function (w) { /* every Mythic pet (alive, not released) + each community pet that reached Mythic (Bitcoin Wizard, same Mythic as everyone) */ return (w.pets || []).filter(function (p) { return p.stage === 5 && !p.dead && !p.released && !p.community; }).length + (w.wizardMythic ? 1 : 0); }, WIZ_EGG_COST: WIZ_EGG_COST, WIZ_SIGN_ITEM: WIZ_SIGN_ITEM, WIZ_SIGN_MIN: WIZ_SIGN_MIN, wizColdOn: wizColdOn, wizPoolOn: wizPoolOn, wizPoolFrom: function () { return WIZ_POOL_FROM; }, COMMUNITY_GOAL: COMMUNITY_GOAL, returnProgress: returnProgress, noBornShades: noBornShades, bornTraits: bornTraits, _breed: breed, BURN_ADDRESS: BURN_ADDRESS,
     ACTIVATE_SALE_CARRY_BLOCK: ACTIVATE_SALE_CARRY_BLOCK, carryOn: carryOn, _setSaleCarry: function (b) { ACTIVATE_SALE_CARRY_BLOCK = b; }, _setGearRoots: function (b) { ACTIVATE_GEAR_ROOTS_BLOCK = b; }, ACTIVATE_GEAR_ROOTS_BLOCK: ACTIVATE_GEAR_ROOTS_BLOCK, gearRootsOn: gearRootsOn, isOneOfOne: isOneOfOne, ACTIVATE_WIZ_STAFF_BLOCK: ACTIVATE_WIZ_STAFF_BLOCK, ACTIVATE_CHUD_BEARD_BLOCK: ACTIVATE_CHUD_BEARD_BLOCK, ACTIVATE_CHUD_BEARD_PART_BLOCK: ACTIVATE_CHUD_BEARD_PART_BLOCK, beardPartOn: beardPartOn, CHUD_BEARD_PART: CHUD_BEARD_PART, BEARD_PART_EXCLUDE: BEARD_PART_EXCLUDE, _setChudBeardPartActivation: function (b) { ACTIVATE_CHUD_BEARD_PART_BLOCK = b; }, _pool: pool, _setEligB: function (b) { ELIG_B = b; }, partDef: partDef, CHUD_BEARD_ITEM: CHUD_BEARD_ITEM, BEARD_EXCLUDE: BEARD_EXCLUDE, bodyOf: bodyOf, beardOn: beardOn, _setChudBeardActivation: function (b) { ACTIVATE_CHUD_BEARD_BLOCK = b; }, WIZ_STAFF_ITEM: WIZ_STAFF_ITEM, slotOpen: slotOpen, staffOn: staffOn, COMMUNITY_GOAL_NAME: COMMUNITY_GOAL_NAME, COMMUNITY_PET: COMMUNITY_PET, ACTIVATE_SLOTNAME_BLOCK: ACTIVATE_SLOTNAME_BLOCK, SLOT_NAME_CODES: SLOT_NAME_CODES, COMMUNITY_WIZARD_NAME: COMMUNITY_WIZARD_NAME, STAGE_NAMES: STAGE_NAMES, V2_SLOTS: V2_SLOTS, NAKAMOTO_CAST_STAGE: NAKAMOTO_CAST_STAGE, castShowsNakamoto: castShowsNakamoto, SLOT_LABELS: SLOT_LABELS, slotLabel: slotLabel, newWins: newWins, newHatches: newHatches, TIER_LABELS: TIER_LABELS, equipCheck: equipCheck, pickerPieces: pickerPieces, catalogBySlot: catalogBySlot, BLACK_EYE_BLOCKS: BLACK_EYE_BLOCKS, FIGHT_WINDOW: FIGHT_WINDOW, ACTIVATE_FIGHT_GEAR_BLOCK: ACTIVATE_FIGHT_GEAR_BLOCK, fightGearOn: fightGearOn, _setFightGearActivation: function (b) { ACTIVATE_FIGHT_GEAR_BLOCK = b; CG_CACHE = null; },
     BREED_COOLDOWN: BREED_COOLDOWN, ACTIVATE_BREEDCARRY_BLOCK: ACTIVATE_BREEDCARRY_BLOCK, BREED_MAX: BREED_MAX, ACTIVATE_BREEDING_V2_BLOCK: ACTIVATE_BREEDING_V2_BLOCK, BREED_CAP_V2: BREED_CAP_V2, breedV2On: breedV2On, breedsLeft: breedsLeft, _setBreedingV2Activation: function (b) { ACTIVATE_BREEDING_V2_BLOCK = b; }, _anatomy: anatomy, _topDbg: function () { return TOPDBG; }, _keyedRender: keyedRender, _spriteEyes: spriteEyes, kinWhy: kinWhy, genOf: genOf, breederBadges: breederBadges, lookFx: lookFx, hiddenLabel: hiddenLabel, HIDDEN_TRAITS: HIDDEN_TRAITS, ODD_EYE_COLOURS: ODD_EYE_COLOURS, ODD_EYE_SPOTS: ODD_EYE_SPOTS, _oddEyeHand: oddEyeHand, PALETTE_SETS: PALETTE_SETS, mutationLabel: mutationLabel, TWIN_1_IN: TWIN_1_IN, MUTATION_1_IN: MUTATION_1_IN, HIDDEN_FRESH_1_IN: HIDDEN_FRESH_1_IN, LEGMIX_1_IN: LEGMIX_1_IN, _breedExtras: breedExtras, twinDraw: twinDraw, HYBRID_PARTS: HYBRID_PARTS, hybridParts: hybridParts, partOk: partOk, partsFor: partsFor, ONE_EYED: ONE_EYED, PART_EXCLUDE: PART_EXCLUDE, partLabel: partLabel, ACTIVATE_BREED_UNCAPPED_BLOCK: ACTIVATE_BREED_UNCAPPED_BLOCK, breedCapOn: breedCapOn, BREED_WINDOW: BREED_WINDOW, TIER_LABELS: TIER_LABELS, SPECIES13: SPECIES13, ALL_GEAR: ALL, GEAR_BY_ID: BY_ID,
-    sha: sha, day: day, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
+    sha: sha, day: day, clock: clock, span: span, inPause: inPause, PAUSE_FROM: PAUSE_FROM, PAUSE_UNTIL: PAUSE_UNTIL, weekOf: weekOf, seedBlockOfWeek: seedBlockOfWeek, pickSpecies: pickSpecies, thresholdsFor: thresholdsFor, mealFor: mealFor, mealsToMythic: mealsToMythic, stageFor: stageFor, wizardStage: wizardStage,
     isLegendary: isLegendary, eligible: eligible, legendaryOf: legendaryOf, pool: pool, pickItem: pickItem, capacity: capacity, parseTag: parseTag, battleBlock: battleBlock, breedBlock: breedBlock, sendBlock: sendBlock, fightable: fightable, acceptBlock: acceptBlock, acceptRejected: acceptRejected, releaseBatches: releaseBatches, burnSummary: burnSummary,
     ACTIVATE_JACKPOT_CHILD_BLOCK: ACTIVATE_JACKPOT_CHILD_BLOCK, jackpotChildOn: jackpotChildOn, _jackpotChildSweep: jackpotChildSweep, _setJackpotChildActivation: function (b) { ACTIVATE_JACKPOT_CHILD_BLOCK = b; }, ACTIVATE_JACKPOT_NOBREED_BLOCK: ACTIVATE_JACKPOT_NOBREED_BLOCK, jackpotNobreedOn: jackpotNobreedOn, jackpotUsedBreed: jackpotUsedBreed, _jackpotNobreedSweep: jackpotNobreedSweep, _setJackpotNobreedActivation: function (b) { ACTIVATE_JACKPOT_NOBREED_BLOCK = b; }, validFeedAmount: validFeedAmount, ACTIVATE_WAGMI_BLOCK: ACTIVATE_WAGMI_BLOCK, wagmiOn: wagmiOn, ACTIVATE_WAGMI_PRIZE_BLOCK: ACTIVATE_WAGMI_PRIZE_BLOCK, WAGMI_PRIZE_N: WAGMI_PRIZE_N, wagmiPrizeOn: wagmiPrizeOn, _setWagmiPrizeActivation: function (b) { ACTIVATE_WAGMI_PRIZE_BLOCK = b; }, wagmiFirst: function (w, d) { return (w && w.wagmiFirst && w.wagmiFirst[d]) || []; }, ACTIVATE_WHEEL_RANDOM_BLOCK: ACTIVATE_WHEEL_RANDOM_BLOCK, wheelOn: wheelOn, ACTIVATE_ANY_SLOT_BLOCK: ACTIVATE_ANY_SLOT_BLOCK, anySlotOn: anySlotOn, ACTIVATE_MYTHIC_SLOTS_BLOCK: ACTIVATE_MYTHIC_SLOTS_BLOCK, mythicSlotsOn: mythicSlotsOn, _setMythicSlotsActivation: function (b) { ACTIVATE_MYTHIC_SLOTS_BLOCK = b; }, _setAllSlotsActivation: function (b) { ACTIVATE_ALL_SLOTS_BLOCK = b; }, ACTIVATE_ALL_SLOTS_BLOCK: ACTIVATE_ALL_SLOTS_BLOCK, allSlotsOn: allSlotsOn, allSlotsNow: allSlotsNow, allSlotsText: allSlotsText, bagOf: bagOf, slotUnlock: slotUnlock, _setAnySlotActivation: function (b) { ACTIVATE_ANY_SLOT_BLOCK = b; }, _liveAt: liveAt, wheelPool: function (w, owner) { return wheelPool(w, owner, null, false); }, wheelWt: wheelWt, WHEEL_W: WHEEL_W, _setWheelRandomActivation: function (b) { ACTIVATE_WHEEL_RANDOM_BLOCK = b; }, streakOf: streakOf, _setWagmiActivation: function (b) { ACTIVATE_WAGMI_BLOCK = b; }, simulateFight: simulateFight, simulateSudden: simulateSudden, simulateTag: simulateTag, modesOn: modesOn, acceptCost: acceptCost, modeTeamCost: modeTeamCost, fightPets: fightPets, inOpenFight: inOpenFight, ACTIVATE_ARENA_MODES_BLOCK: ACTIVATE_ARENA_MODES_BLOCK, _setArenaModesActivation: function (b) { ACTIVATE_ARENA_MODES_BLOCK = b; }, replay: replay, breedChild: breedChild, breedable: breedable, feedQueue: feedQueue, feedQueueAsync: feedQueueAsync, feedBatches: feedBatches, feedPlan: feedPlan, feedListOn: feedListOn, feedAllOn: feedAllOn, feedRunsOn: feedRunsOn, feedRunsPlan: feedRunsPlan, feedRunsQueue: feedRunsQueue, feedRunsIds: feedRunsIds, cemRunsOn: cemRunsOn, cemRunsIds: cemRunsIds, cemRunsResolve: cemRunsResolve, cemRunsPlan: cemRunsPlan, cemRunsBase: cemRunsBase, cemRunsCost: cemRunsCost, cemPetAmount: cemPetAmount, cemRunsGate: function () { return ACTIVATE_CEM_RUNS_BLOCK; }, _setCemRunsActivation: function (b) { ACTIVATE_CEM_RUNS_BLOCK = b == null ? null : Number(b); }, frEats: frEats, refList: refList, frDecode: frDecode, frVar: frVar, frAnchor: frAnchor, ACTIVATE_ONCHAIN_DISCARD_BLOCK: ACTIVATE_ONCHAIN_DISCARD_BLOCK, hdOn: hdOn, hdPlan: hdPlan, hdIdsOf: hdIdsOf, hdPlaceList: hdPlaceList, HD_COST: HD_COST, wheelPets: wheelPets, _noteGot: noteGot, _setOnchainDiscardActivation: function (b) { ACTIVATE_ONCHAIN_DISCARD_BLOCK = b == null ? null : Number(b); }, ACTIVATE_FEED_RUNS_BLOCK: ACTIVATE_FEED_RUNS_BLOCK, _setFeedRunsActivation: function (b) { ACTIVATE_FEED_RUNS_BLOCK = b; }, feedAllPlan: feedAllPlan, FEED_ALL_BLOCK: FEED_ALL_BLOCK, _setFeedAllActivation: function (b) { FEED_ALL_BLOCK = b; }, ACTIVATE_FEEDALL_LIVECHECK_BLOCK: ACTIVATE_FEEDALL_LIVECHECK_BLOCK, feedAllLiveOn: feedAllLiveOn, _setFeedAllLiveCheckActivation: function (b) { ACTIVATE_FEEDALL_LIVECHECK_BLOCK = b; }, FEED_LIST_BLOCK: FEED_LIST_BLOCK, _setFeedListActivation: function (b) { FEED_LIST_BLOCK = b; }, freeRolls: freeRolls, freeRollPlan: freeRollPlan, gravePlan: gravePlan, graveOn: graveOn, graveLocked: graveLocked, ACTIVATE_GRAVE_GEAR_BLOCK: ACTIVATE_GRAVE_GEAR_BLOCK, ACTIVATE_FOUNDER_BLOCK: ACTIVATE_FOUNDER_BLOCK, _setFounderActivation: function (b) { ACTIVATE_FOUNDER_BLOCK = b; }, _setFounderGrant: function (kit, credits) { if (kit) FOUNDER_KIT_PER_ROLL = kit; if (credits != null) FOUNDER_CREDITS_PER_ROLL = credits; }, founderGrant: function () { return { kit: FOUNDER_KIT_PER_ROLL.slice(), credits: FOUNDER_CREDITS_PER_ROLL }; }, FOUNDER_ROLLS: FOUNDER_ROLLS, ACTIVATE_CROLL_BLOCK: ACTIVATE_CROLL_BLOCK, _setCrollActivation: function (b) { ACTIVATE_CROLL_BLOCK = b; }, crollOn: crollOn, communityRollPlan: communityRollPlan, communityGear: communityGear, ACTIVATE_WIZ_HAT_CLEAR_BLOCK: ACTIVATE_WIZ_HAT_CLEAR_BLOCK, _setWizHatClearActivation: function (b) { ACTIVATE_WIZ_HAT_CLEAR_BLOCK = b; }, ACTIVATE_DEDUP_BLOCK: ACTIVATE_DEDUP_BLOCK, _setDedupActivation: function (b) { ACTIVATE_DEDUP_BLOCK = b; }, ownedCounts: ownedCounts, dampW: dampW, ACTIVATE_TOKENS_BLOCK: ACTIVATE_TOKENS_BLOCK, _setTokensActivation: function (b) { ACTIVATE_TOKENS_BLOCK = b; }, TOKEN_DROP_10K: TOKEN_DROP_10K, tokensOf: function (w, owner) { return (w && w.tokens && w.tokens[owner]) || 0; }, ACTIVATE_FEEDM_BLOCK: ACTIVATE_FEEDM_BLOCK, _setFeedmActivation: function (b) { ACTIVATE_FEEDM_BLOCK = b; }, rollQueue: rollQueue, communityFeedPlan: communityFeedPlan,
     autoEquipOps: autoEquipOps, outfitOps: outfitOps, outfitReport: outfitReport, hideAtOrBelow: hideAtOrBelow, familyTree: familyTree, buildTag: buildTag, wornOf: wornOf, reindex: reindex, myRanks: myRanks, breedPicker: breedPicker,

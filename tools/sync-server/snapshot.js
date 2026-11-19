@@ -145,10 +145,6 @@ async function buildSnapshot(opts) {
       const gmeta = graves.writeIndex(path.join(opts.outDir, 'graves'), grow, { tip: opts.tip });
       manifest.graves = { dead: gmeta.dead, shards: gmeta.shards, counts: 'graves/counts.json' };
     } catch (e) { console.error('graves index: ' + String(e && e.message || e).split('\n')[0]); }
-    try {
-      const split = require('./split');
-      manifest.view = await split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig });
-    } catch (e) { console.error('split view: ' + String(e && e.message || e).split('\n')[0]); }
   }
   if (opts.outDir) {
     fs.writeFileSync(path.join(opts.outDir, 'manifest.json'), JSON.stringify(manifest));
