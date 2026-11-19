@@ -1,6 +1,6 @@
 {
- "lastBlock": 976608,
- "count": 417,
+ "lastBlock": 976610,
+ "count": 418,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3433,7 +3433,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 148182,
@@ -3445,7 +3445,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 2393,
@@ -3625,7 +3625,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 2149,
@@ -3889,7 +3889,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 2081,
@@ -3925,7 +3925,7 @@
    "species": "hyb3:kek:snibby:dodo",
    "speciesLabel": "Keknibdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 158204,
@@ -3937,7 +3937,7 @@
    "species": "hyb:dodo:nakamoto",
    "speciesLabel": "Doto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 2482,
@@ -4813,7 +4813,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 68313,
@@ -4849,7 +4849,7 @@
    "species": "doge",
    "speciesLabel": "Doge",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 93699,
@@ -5006,6 +5006,18 @@
    "speciesLabel": "DJ Pepe",
    "rarity": "Rare",
    "stage": "Elder"
+  },
+  {
+   "id": 188486,
+   "asset": "A2295499719798626664",
+   "tiedBlock": 976609,
+   "tiedTx": "f0f5c8eab6912c8e3431a02ea3486bc5208a3f824c5e4a471d28fa04ccfefc77",
+   "kind": "deed",
+   "name": "Naperu",
+   "species": "starlordkek",
+   "speciesLabel": "Star-Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Adult"
   }
  ]
 }
