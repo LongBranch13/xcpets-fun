@@ -7,7 +7,8 @@
 'use strict';
 var VERSION = 'sw65-1';
 var CACHE = 'xcpets-' + VERSION;
-var MAX_ENTRIES = 220;
+/* One large wallet is about 1,900 living pages. Two tips are already dropped above. */
+var MAX_ENTRIES = 4000;
 var KEEP_TIPS = 2;
 
 self.addEventListener('install', function () { self.skipWaiting(); });
@@ -45,7 +46,7 @@ function isWorldFile(url) {
   if (!/^r[0-9a-f]{32}\/\d+\//.test(url.pathname.slice('/xp/v1/world/'.length))) return false;
   if (/\/(?:cp-root|cp-meta|cp-part-\d+|root|part-\d+|manifest)\.json$/.test(url.pathname)) return true;
   if (/\/view\/summary\.json$/.test(url.pathname)) return true;
-  if (/\/view\/own\/[0-9a-f]{64}(?:\.\d+)?\.json$/.test(url.pathname)) return true;
+  if (/\/view\/own\/[0-9a-f]{64}(?:\.\d+|\.d(?:\.\d+)?)?\.json$/.test(url.pathname)) return true;
   if (/\/view\/p\/\d{5}\.json$/.test(url.pathname)) return true;
   return false;
 }

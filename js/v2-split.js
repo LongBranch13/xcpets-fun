@@ -219,7 +219,7 @@
     function step() {
       if (verifiedTakeover) return;
       if (!left.length) { publishOwner(pageJob.pets, pg, pageJob.fights, true); return; }
-      var slice = left.splice(0, 3);
+      var slice = left.splice(0, 8);
       Promise.all(slice.map(function (n) {
         return getJson(pg.folder + 'view/own/' + pg.key + '.' + n + '.json').then(function (page) {
           if (!page || !page.pets) return;

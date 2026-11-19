@@ -260,7 +260,7 @@
     var saved = lastW && lastW.tip | 0, tip = S.tip | 0, chain = S.chainTip | 0;
     if (!S.verified || !saved || !tip) return false;
     if (chain && chain > tip) return false;
-    return saved >= tip;
+    return saved === tip;
   }
   function updating() { if (S.view) return false; if (atTip() && lastW && !lastW.pending) return false; return !!S.provisional || (!current() && wkBusy > 0); }
   function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend) || atTip()) return res(); setTimeout(chk, 200); })(); }); }
