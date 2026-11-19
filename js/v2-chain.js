@@ -279,8 +279,8 @@
   var SKEY = 'xcpets-v2-prod-rows', STTL = 60000;
   function fromSession() { try { var c = JSON.parse(sessionStorage.getItem(SKEY)); if (!c || Date.now() - c.at > STTL || !c.rows) return false;
     var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
-    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* sale-owner-fix: no sale data in the copy -> full load (never replay owners without sales) */ S.dex = c.dex || undefined; S.fullAt = c.fullAt || null; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
-  function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), fullAt: S.fullAt || null, rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balance, dex: S.dex || null })); } catch (e) {} }
+    S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* sale-owner-fix: no sale data in the copy -> full load (never replay owners without sales) */ S.dex = c.dex || undefined; S.fullAt = c.fullAt || null; S.verified = true; if (c.me === ME) { var bn = c.balance == null || c.balance === '' ? NaN : Number(c.balance); if (isFinite(bn) && c.balanceAt) { S.balance = bn; S.balanceAt = c.balanceAt; } } else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
+  function toSession() { try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), fullAt: S.fullAt || null, rows: S.rows, tip: S.tip, mempool: S.mempool, me: ME, balance: S.balanceAt ? S.balance : null, balanceAt: S.balanceAt || null, dex: S.dex || null })); } catch (e) {} }
   /* site-fast (2026-10-24): stale-while-revalidate. The last COMPLETE load (verified rows + tip + sale data) is kept in localStorage (LAST) and a
    * CI-built copy ships as api/boot.json. A page with no 60 s session copy renders AT ONCE from one of these (S.verified stays false and S.stale
    * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
@@ -366,7 +366,7 @@
     dropShallow: function () { try { sessionStorage.removeItem(SKEY); localStorage.removeItem('xcpets-dex-last-1'); sessionStorage.removeItem('xcpets-dex-cache-2'); } catch (e) {} },
     finish: function (fullAt) { keepOrDrop(); S.fullAt = fullAt; S.verified = true; S.stale = false; S.missingBlocks = []; S.dataAt = Date.now(); toSession(); toLast(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
     step: step, chainTip: function () { return refTip().then(function () { return S.chainTip || 0; }); },
-    balanceRead: function () { if (!ME) return Promise.resolve(); var chain = new E.Chain(); return chain.balance(ME, E.CFG.asset).then(function (b) { var n = Number(b) / 1e8; if (isFinite(n)) S.balance = n; }, function () {}); },
+    balanceRead: function () { return readViewBalance({ force: true }); },
     peekWorld: function () { return idb().then(function (db) { return idbGetKey(db, 'world').then(function (v) { try { db.close(); } catch (e) {} return v && v.key ? { key: v.key, v: v.v } : null; }, function () { try { db.close(); } catch (e) {} return null; }); }, function () { return null; }); },
     stopReplay: stopReplay, storedKey: function () { return storedKey; }, reread: function () { return fromIdb(false); } }; }
   function load(force) {
@@ -409,7 +409,7 @@
         /* sale-owner-fix (2026-10-24): gate set but V2Sales missing = no sale data -> fail like any other read (Couldn't reach + Retry), never replay without it */
         if (!dx && V.salesGate && V.salesGate() != null) throw new Error('pet sale reader did not load, so pet owners could be out of date');
         if (!dx) { S.rows = rows; S.hashes = nHashes; S.tip = nTip; fullAt = fullAt0; } /* site-fast-reread: rows + hashes + tip + sale data change as ONE set, so a failed sale read never mixes new burns with old sales */
-        return Promise.all([dx, bal && bal.then(function (b) { if (b != null) S.balance = b; })]);
+        return Promise.all([dx, bal && bal.then(function (b) { if (b != null && isFinite(b)) { S.balance = b; S.balanceAt = Date.now(); } })]);
       });
     }).then(function () { keepOrDrop(); S.fullAt = fullAt; S.verified = true; S.stale = false; S.missingBlocks = []; S.dataAt = Date.now(); toSession(); toLast(); step('Rebuilding every pet from the burns… (step 3 of 3)'); },
       function (e) { if (e && e.missingBlocks) S.missingBlocks = e.missingBlocks; throw e; });
@@ -565,21 +565,64 @@
     if (st) st.textContent = '';
     if (window.V2Split && V2Split.install) V2Split.install(view);
     then();
-    readViewBalance();
+    readViewBalance({ force: true });
     setTimeout(function () { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {} }, 400);
   }
   /* The published view paints pets without the burn-list load, which is where the balance read used to run.
-   * Without this the number stays 0 and Continue treats that 0 as the real balance. Display only. */
-  function readViewBalance() {
-    if (!ME) return;
-    var chain = new E.Chain();
-    chain.balance(ME, E.CFG.asset).then(function (b) {
-      var n = Number(b) / 1e8;
-      if (!isFinite(n)) return;
-      S.balance = n; S.balanceAt = Date.now();
-      var el = document.getElementById('bal');
-      if (el) el.textContent = n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 });
-    }, function () {});
+   * A failed read used to be swallowed, so the number stayed 0 and Continue could treat that 0 as empty.
+   * Retry twice, and again from refresh / wallet connect. Display only: replay inputs are untouched. */
+  var BAL_GAP = 30000, balTryAt = 0, balFlight = null, BAL_BACKOFF = [400, 900];
+  function meNow() {
+    if (ME) return ME;
+    try {
+      var w = window.V2Wallet && V2Wallet.current && V2Wallet.current();
+      if (w) return w;
+      return localStorage.getItem('xcpets-v2-me') || '';
+    } catch (e) { return ''; }
+  }
+  function adoptMe(addr) {
+    if (!addr || ME) return ME || addr || '';
+    ME = addr;
+    try { if (window.V2Mock) window.V2Mock.ME = ME; } catch (e) {}
+    return ME;
+  }
+  function paintBal() {
+    var el = document.getElementById('bal'); if (!el) return;
+    if (!S.balanceAt) { el.textContent = '\u2013'; return; }
+    var n = Number(S.balance);
+    el.textContent = n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 });
+  }
+  function applyBal(raw, addr) {
+    var n = Number(raw) / 1e8; if (!isFinite(n)) return false;
+    S.balance = n; S.balanceAt = Date.now(); paintBal();
+    try { var c = JSON.parse(sessionStorage.getItem(SKEY) || 'null'); if (c && c.rows && c.me === addr) { c.balance = S.balance; c.balanceAt = S.balanceAt; sessionStorage.setItem(SKEY, JSON.stringify(c)); } } catch (e) {}
+    return true;
+  }
+  function readViewBalance(opts) {
+    opts = opts || {};
+    var addr = adoptMe(meNow());
+    if (!addr || !E || typeof E.Chain !== 'function' || !E.CFG) return Promise.resolve(false);
+    if (balFlight) return balFlight;
+    var now = Date.now();
+    if (!opts.force && balTryAt && now - balTryAt < BAL_GAP) return Promise.resolve(!!S.balanceAt);
+    balTryAt = now;
+    var chain; try { chain = new E.Chain(); } catch (e) { return Promise.resolve(false); }
+    function once(left) {
+      return Promise.resolve().then(function () { return chain.balance(addr, E.CFG.asset); }).then(function (b) {
+        if (!applyBal(b, addr)) throw new Error('bad balance'); return true;
+      }).catch(function () {
+        if (left <= 0) return false;
+        return new Promise(function (r) { setTimeout(r, BAL_BACKOFF[BAL_BACKOFF.length - left] || 900); }).then(function () { return once(left - 1); });
+      });
+    }
+    var p = once(2).then(function (ok) { if (balFlight === p) balFlight = null; return ok; }, function () { if (balFlight === p) balFlight = null; return false; });
+    balFlight = p; return p;
+  }
+  function onWalletAddr(addr) { if (addr) adoptMe(addr); if (meNow() && !S.balanceAt) readViewBalance({ force: true }); }
+  function watchWallet() {
+    if (watchWallet.on || !window.addEventListener) return; watchWallet.on = true;
+    window.addEventListener('xcpets:connected', function (e) { onWalletAddr(e && e.detail && e.detail.address); });
+    window.addEventListener('xcpets:wallet', function (e) { var d = e && e.detail; if (d && d.status === 'on' && d.address) onWalletAddr(d.address); });
   }
   function loadReal(cb) {
     if (S.view && window.V2Split && V2Split.startVerify) return V2Split.startVerify().then(function () { if (cb) cb(); });
@@ -631,7 +674,7 @@
     if (S.verified && S.rows && S.rows.length && window.V2BootSync && V2BootSync.enabled()) return bootShow(st, then, function () {
       var f = V2BootSync._recheck; if (f) { V2BootSync._recheck = null; try { f(); } catch (eR) {} }
     });
-    if (fromSession()) return bootShow(st, then, null);
+    if (fromSession()) { readViewBalance({ force: true }); return bootShow(st, then, null); }
     if (/[?&]fresh=1/.test(location.search)) return whenOpen(function () { run(st, then); });
     whenOpen(refTip); var last = readLast(), age = last ? Date.now() - last.at : -1;
     if (last && BUILD && last.build === BUILD && age >= 0 && age <= LAST_NOW && applyStale(last, lastHashes(last))) { fetchStatic(); return bootStale(st, then); }
@@ -660,6 +703,7 @@
   if (typeof setInterval === 'function' && typeof document !== 'undefined') setInterval(function () { if (!booted || document.hidden || S.verified || lastCb) return; refTip(); if (S.feed) feedPoll(feedCb); }, 60e3); /* stale-copy-fix: no-poll pages */
   function refresh(cb) {
     if (S.view && !S.viewVerify && window.V2Split && V2Split.recheck) {
+      readViewBalance();
       return V2Split.recheck().then(function (ok) { if (ok) { if (cb) cb(); return; } return loadReal(cb); });
     }
     if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
@@ -670,5 +714,6 @@
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
   var viewPaint = 0;
   function setViewWorld(w) { if (!S.view || !w) return; lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
-  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, rulesSig: rulesSig, setViewWorld: setViewWorld, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
+  watchWallet();
+  window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, readBalance: function (opts) { return readViewBalance(opts || { force: true }); }, rulesSig: rulesSig, setViewWorld: setViewWorld, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();

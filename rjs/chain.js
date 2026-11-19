@@ -132,9 +132,13 @@
     }
     return page(null);
   };
+  /* A filtered balance can come back as one object or as several rows (address balance plus utxo rows).
+   * The wallet total is every row added together. Display only: the same quantity string a single row already returned. */
   Chain.prototype.balance = function (addr, asset) {
     return this.getJson('/addresses/' + addr + '/balances/' + (asset || ASSET)).then(function (j) {
-      var r = j.result; if (Array.isArray(r)) r = r[0]; return r ? String(r.quantity) : '0';
+      var r = j && j.result, i, q, sum;
+      if (Array.isArray(r)) { sum = 0; for (i = 0; i < r.length; i++) { q = r[i] && r[i].quantity != null ? Number(r[i].quantity) : 0; if (isFinite(q)) sum += q; } return String(sum); }
+      return r && r.quantity != null ? String(r.quantity) : '0';
     });
   };
   Chain.prototype.tip = function () { return this.getJson('/').then(function (j) { return (j.result && (j.result.counterparty_height || j.result.last_block && j.result.last_block.block_index)) || null; }); };

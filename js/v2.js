@@ -649,7 +649,7 @@
   var WIZARD_SIGN_CLAIM_ON = false;
   function render() {
     var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
-    $('bal').textContent = fmt(S.balance); V2Wallet.paint(ME, $);
+    $('bal').textContent = S.balanceAt ? fmt(S.balance) : '\u2013'; V2Wallet.paint(ME, $);
     $('cBurned').textContent = fmt(w._counts && w._counts.burned != null ? w._counts.burned : c.burned); $('cGame').textContent = fmt(w._counts && w._counts.burns != null ? w._counts.burns : S.rows.length); $('cPets').textContent = fmt(w._counts ? w._counts.n : w.pets.length);
     petTotal(w);
     /* Wizard Cold Storage (Oct 19 2026): egg + sign claim buttons appear once the rule is on at the next block (V2Rules.wizColdOn) */
@@ -1179,7 +1179,7 @@
     var fe = fireEndPlans(bw, plans); /* firesale-countdown-1104: last 2 sale blocks -> offer the full cost */
     var s = V.burnSummary(plans); pendingPlans = plans; pendingAfter = after;
     $('cfTitle').textContent = title;
-    $('cfBody').innerHTML = zEatNote(plans, bw) + (fe ? fireEndNote(fe) : '') + '<div class="bigamt" id="cfAmt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + cemRunsNote(plans, bw) + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + fmt(S.balance - s.total) + '</p>' +
+    $('cfBody').innerHTML = zEatNote(plans, bw) + (fe ? fireEndNote(fe) : '') + '<div class="bigamt" id="cfAmt">' + fmt(s.total) + ' XCPETS</div><p class="small">' + s.burns + ' burn' + (s.burns > 1 ? 's, each signed separately' : '') + cemRunsNote(plans, bw) + (plans.some(function (q) { return q && q.runs && q.petIds; }) ? ' feeding ' + fmt(plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : 0); }, 0)) + ' pets (Mythics never eat)' : '') + ' · <span id="cfFee">' + feeLine(s.burns, null) + '</span> · balance after ' + (S.balanceAt ? fmt(S.balance - s.total) : '\u2013') + '</p>' +
       blocksNote(s.burns) + setupNote(plans) + spinNote(plans, bw) + '<div class="logbox small" id="cfLog">' + plans.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (plans.length > 12 ? '<div>… +' + (plans.length - 12) + ' more</div>' : '') + '</div>' +
       (fg.skipped.length ? '<p class="small warn">🍽️ Skipped ' + fg.skipped.length + ' pet' + (fg.skipped.length > 1 ? 's' : '') + ' that would gain nothing from a meal: ' + esc(fg.text) + '</p>' : '') +
       (window.UXB ? UXB.confirmExtra(plans, bw) : '') + '<div class="bar"><i id="pg" style="width:0"></i></div><div class="small" id="pgt"></div>';
@@ -1227,7 +1227,7 @@
       return JSON.stringify({ pets: pets, costs: V.costsAt ? V.costsAt(w, b) : null }); }
     /* still(snap) -> null = go on (nothing that matters changed), '' = plain double-check note, or words that fit the action */
     return { snap: function () { try { return look(); } catch (e) { return null; } },
-      still: function (before) { try { if (S.balance != null && Number(p.amount) > S.balance) return 'your wallet now holds ' + fmt(S.balance) + ' XCPETS, less than the ' + fmt(p.amount) + ' this ' + (egg ? 'egg buy' : 'burn') + ' needs';
+      still: function (before) { try { if (S.balanceAt && Number(p.amount) > S.balance) return 'your wallet now holds ' + fmt(S.balance) + ' XCPETS, less than the ' + fmt(p.amount) + ' this ' + (egg ? 'egg buy' : 'burn') + ' needs';
         var why = sendWhy(p); if (why) return (egg ? 'these eggs can\'t be bought right now (' : 'this pet action can\'t go now (') + why + ')';
         if (before == null) return ''; var now = JSON.parse(look()), was = JSON.parse(before);
         if (JSON.stringify(now.costs) !== JSON.stringify(was.costs)) return egg ? 'the egg cost changed' : 'the burn cost changed';
@@ -1302,7 +1302,7 @@
    * exactly like Cancel (same handler: stops a running burn queue and cancels a pending wallet request). Nothing is signed here. */
   $('confirmBox').addEventListener('click', function (e) { if (e.target === $('confirmBox')) $('cfNo').click(); });
   document.addEventListener('keydown', function (e) { if ((e.key === 'Escape' || e.key === 'Esc') && $('confirmBox').classList.contains('on')) $('cfNo').click(); });
-  $('cfYes').onclick = function () { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var plans = pendingPlans; if (!plans) return; var s = V.burnSummary(plans); if (!ME || V2Wallet.current() !== ME) { toast('Connecting ' + WL() + '…'); V2Wallet.connect().then(function (a) { if (a !== ME) location.reload(); else $('cfYes').onclick(); }, function (e) { toast(V2Wallet.errHtml(e)); }); return; } if (s.total > S.balance && !(S.stale && !S.verified) && !(S.view && !S.balanceAt)) return toast('Not enough XCPETS in this wallet'); /* a saved copy, and the published view before its balance read returns, still have 0; that 0 is not the wallet */
+  $('cfYes').onclick = function () { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var plans = pendingPlans; if (!plans) return; var s = V.burnSummary(plans); if (!ME || V2Wallet.current() !== ME) { toast('Connecting ' + WL() + '…'); V2Wallet.connect().then(function (a) { if (a !== ME) location.reload(); else $('cfYes').onclick(); }, function (e) { toast(V2Wallet.errHtml(e)); }); return; } if ($('cfYes')._balWait) return; if (!S.balanceAt && !(S.stale && !S.verified) && !$('cfYes')._balPass) { $('cfYes')._balWait = 1; var again = $('cfYes').onclick, go = function () { $('cfYes')._balWait = 0; $('cfYes')._balPass = 1; again(); }; if (M.readBalance) M.readBalance({ force: true }).then(go, go); else go(); return; } $('cfYes')._balPass = 0; if (S.balanceAt && s.total > S.balance && !(S.stale && !S.verified)) return toast('Not enough XCPETS in this wallet'); /* an unread balance is not 0: re-read once, and only a landed read can stop the burn */
     var run = sendRun = { stop: false }; $('cfYes').disabled = true; $('cfNo').disabled = false; $('cfNo').textContent = 'Cancel'; var i = 0, sentTx = [], title = $('cfTitle').textContent, day0 = V.day(S.tip || 0); saveResume(title, plans);
     /* wasted-burn guard (2026-10-20): a long Feed all queue can cross a 144-block chain day while it is being signed. When the day changes, the unsent
      * feed burns are rebuilt for the new day (same feedGuard), so no meal is sized or skipped for the old day. Other burns are untouched. */
