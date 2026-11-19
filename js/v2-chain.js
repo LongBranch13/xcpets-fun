@@ -565,7 +565,21 @@
     if (st) st.textContent = '';
     if (window.V2Split && V2Split.install) V2Split.install(view);
     then();
+    readViewBalance();
     setTimeout(function () { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {} }, 400);
+  }
+  /* The published view paints pets without the burn-list load, which is where the balance read used to run.
+   * Without this the number stays 0 and Continue treats that 0 as the real balance. Display only. */
+  function readViewBalance() {
+    if (!ME) return;
+    var chain = new E.Chain();
+    chain.balance(ME, E.CFG.asset).then(function (b) {
+      var n = Number(b) / 1e8;
+      if (!isFinite(n)) return;
+      S.balance = n; S.balanceAt = Date.now();
+      var el = document.getElementById('bal');
+      if (el) el.textContent = n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 });
+    }, function () {});
   }
   function loadReal(cb) {
     if (S.view && window.V2Split && V2Split.startVerify) return V2Split.startVerify().then(function () { if (cb) cb(); });
