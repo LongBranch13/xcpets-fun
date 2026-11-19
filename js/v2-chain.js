@@ -4,7 +4,8 @@
  * Burns go through js/v2-wallet.js (live compose + XCP Wallet signing); this file only reads. Local equips are saved per device. */
 (function () {
   'use strict';
-  var V = window.V2Rules, E = window.LiveEngine, KEY = 'xcpets-v2-prod', HKEY = 'xcpets-v2-prod-hashes';
+  var V = window.V2Rules, E = window.LiveEngine, TEST = !!(E.CFG && E.CFG.testCopy);
+  var KEY = TEST ? 'xcpets-v2-test' : 'xcpets-v2-prod', HKEY = TEST ? 'xcpets-v2-test-hashes' : 'xcpets-v2-prod-hashes';
   /* chain-deps-1106: a failed rules script used to publish a working-looking adapter with V permanently undefined.
    * Boot then rejected at salesGate and UI pollers threw at replay. Fail closed BEFORE caches, timers or V2Mock
    * are installed; the page's existing missing-adapter panel offers a full reload (not an empty/fake world).
@@ -36,7 +37,7 @@
    * a structured clone of the world V.replay returned, so it is the same data; V.reindex() rebuilds the gear index on it. Best effort: any IDB error,
    * a missing build id or a slow read (> IDB_WAIT_MS) simply means a normal replay. */
   var BUILD = (function () { try { var m = /[?&]v=([0-9a-f]{6,})/.exec((document.currentScript && document.currentScript.src) || ''); return m ? m[1] : null; } catch (e) { return null; } })();
-  var IDB_NAME = 'xcpets-world', IDB_WAIT_MS = 2500, idbKeyStored = null;
+  var IDB_NAME = TEST ? 'xcpets-world-test' : 'xcpets-world', IDB_WAIT_MS = 2500, idbKeyStored = null;
   function idb() { return new Promise(function (res, rej) { if (!BUILD || typeof indexedDB === 'undefined') return rej(new Error('no idb'));
     var r = indexedDB.open(IDB_NAME, 1); r.onupgradeneeded = function () { r.result.createObjectStore('w'); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; r.onblocked = function () { rej(new Error('blocked')); }; }); }
   /* rules-key-1103 (site-speed, owner 'whole game is a loading bug'): the saved world used to be keyed to the BUILD id, so EVERY deploy (most are UI
@@ -266,7 +267,7 @@
   function burn() { var m = 'Burns from the v2 pages are not wired to a wallet in this build. Nothing was burned.'; try { var t = document.getElementById('toasts'); if (t) { var d = document.createElement('div'); d.className = 'toast'; d.textContent = m; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); } else alert(m); } catch (e) {} }
   /* hotfix 3: a short-TTL (60 s) sessionStorage copy of the burns + tip, so moving between pages doesn't re-read the whole chain;
    * refresh() always goes to the network. Block hashes were already cached in localStorage (HKEY). */
-  var SKEY = 'xcpets-v2-prod-rows', STTL = 60000;
+  var SKEY = TEST ? 'xcpets-v2-test-rows' : 'xcpets-v2-prod-rows', STTL = 60000;
   function fromSession() { try { var c = JSON.parse(sessionStorage.getItem(SKEY)); if (!c || Date.now() - c.at > STTL || !c.rows) return false;
     var hc = JSON.parse(localStorage.getItem(HKEY)) || {}; if (!c.rows.every(function (x) { return hc[x.block_index]; })) return false;
     S.rows = c.rows; S.tip = c.tip; S.mempool = c.mempool || []; S.hashes = hc; if (V.salesGate && V.salesGate() != null && !c.dex) return false; /* sale-owner-fix: no sale data in the copy -> full load (never replay owners without sales) */ S.dex = c.dex || undefined; S.fullAt = c.fullAt || null; S.verified = true; if (c.me === ME) S.balance = c.balance || 0; else if (ME) return false; keepOrDrop(); return true; } catch (e) { return false; } }
@@ -275,7 +276,7 @@
    * CI-built copy ships as api/boot.json. A page with no 60 s session copy renders AT ONCE from one of these (S.verified stays false and S.stale
    * is set, so js/v2-wallet.js refuses every burn), then load(true) re-reads the chain in the background. Same rows + hashes + sale data in ->
    * the same replay out (rules unchanged); when the fresh read differs, a small bar offers a refresh. */
-  var LAST = 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5, LAST_FRESH = 30 * 60e3; /* stale-copy-fix: older than 30 min = only used when api/boot.json can't load */
+  var LAST = TEST ? 'xcpets-v2-test-last' : 'xcpets-v2-last-1', LAST_MAX = 7 * 864e5, LAST_FRESH = 30 * 60e3; /* stale-copy-fix: older than 30 min = only used when api/boot.json can't load */
   /* refresh-banner-1103 (Fix B): the saved copy also keeps the SHALLOW block hashes (within 6 of its tip) from the verified read it came from.
    * They are never written to the HKEY cache (api-hardening: final hashes only); applyStale uses them only for the stale render (S.verified
    * stays false, burns still wait for the re-read). Before, a copy whose newest burns were < 6 deep failed the 'every row has a hash' check, so
@@ -304,7 +305,7 @@
   /* nav-cache-1102: api/boot.json is checked with the server (cache: 'no-cache') at most once a minute per tab; a page opened within 60 s of that
    * check takes the browser's copy of the same file (it is the copy that check confirmed), so moving between pages skips one round trip. */
   var BKEY = 'xcpets-boot-at', BOOT_REUSE_MS = 60e3;
-  function fetchStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000), reuse = false;
+  function fetchStatic() { if (TEST) return Promise.resolve(null); var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000), reuse = false;
     try { var ba = Number(sessionStorage.getItem(BKEY)) || 0; reuse = Date.now() - ba >= 0 && Date.now() - ba < BOOT_REUSE_MS; } catch (e) {}
     return fetch('api/boot.json', ac ? { signal: ac.signal, cache: reuse ? 'default' : 'no-cache' } : undefined).then(function (r) { clearTimeout(t); if (r.ok && !reuse) try { sessionStorage.setItem(BKEY, String(Date.now())); } catch (e) {} return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (j) { if (j && j.tip) { S.feedTip = Math.max(S.feedTip || 0, j.tip); try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} } return j && j.tip ? j : null; }, function () { return null; }); }
@@ -628,7 +629,7 @@
   var lastCb = null; function feedCb() { if (lastCb) return lastCb(); staleBar('Newer game data is ready (block ' + fmtN(S.tip) + ').', false); }
   function toFeed() { S.feed = true; feedBar(); }
   var feedAt = 0;
-  function feedPoll(cb) { if (Date.now() - feedAt < 60e3) return Promise.resolve(); feedAt = Date.now(); var t0 = S.tip;
+  function feedPoll(cb) { if (TEST) return Promise.resolve(); if (Date.now() - feedAt < 60e3) return Promise.resolve(); feedAt = Date.now(); var t0 = S.tip;
     return fetch('api/boot.json?t=' + Math.floor(Date.now() / 60e3), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       if (j && j.tip) S.feedTip = Math.max(S.feedTip || 0, j.tip); if (!j || !(j.tip > t0)) return; try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {}
       if (applyStale(j, j.hashes)) return fromIdb().then(workerReplay).then(function () { feedBar(); cb(); }); }, function () {}); }

@@ -116,7 +116,8 @@ function main() {
   const state = blank(); if (boot && boot.hashes) Object.keys(boot.hashes).forEach(k => { if (+k <= boot.tip - 6) state.hashes[k] = boot.hashes[k]; });
   if (boot && boot.rows && boot.tip) { state.rows = boot.rows; state.tip = boot.tip; state.dex = boot.dex || null; state.dexTip = boot.dexTip || 0; state.dexHash = boot.dexHash || ''; state.dexAssets = boot.dexAssets || []; }
   const io0 = salesIo(bases, boot); state.gates = io0.gates;
-  const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed });
+  const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed, asset: process.env.XP_ASSET || 'XCPETS' });
+  state.asset = io.asset;
   const httpd = createServer({ getState: () => state, dataDir: dataDir });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');

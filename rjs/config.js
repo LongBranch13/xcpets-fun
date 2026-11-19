@@ -1,6 +1,8 @@
 /*!
  * XCPETS config.js — single network switch. Load BEFORE every other script.
  * Browser: ?network=testnet4|signet|mainnet (persisted in localStorage; ?network=mainnet resets), ?asset=NAME (testnets only).
+ * The live game's asset is XCPETS. A test copy sets window.XCPETS_TEST_COPY before this file and then uses XCPETS.TEST.
+ * That switch does nothing on xcpets.fun or www.xcpets.fun.
  * Node: env XCPETS_NETWORK, XCPETS_ASSET (testnets). Exposes XCPETS_CONFIG (window) / module.exports.
  */
 (function (root, factory) {
@@ -38,7 +40,7 @@
     if (!NETWORKS[net]) net = 'mainnet';
     var c = {}, base = NETWORKS[net], k;
     for (k in base) c[k] = Array.isArray(base[k]) ? base[k].slice() : base[k];
-    c.network = net; c.isMainnet = net === 'mainnet'; c.launched = LAUNCHED;
+    c.network = net; c.isMainnet = net === 'mainnet'; c.launched = LAUNCHED; c.testCopy = false;
     if (!c.isMainnet && asset && /^[A-Z][A-Z0-9.]{3,}$|^A[0-9]{17,20}$/.test(String(asset).toUpperCase())) c.asset = String(asset).toUpperCase();
     c.isAddress = function (a) {
       a = String(a || '').trim();
@@ -73,16 +75,20 @@
     function on(i) { if (i >= core.length) return fb ? one(fb) : Promise.reject(new Error('every Counterparty node failed')); return one(core[i]).catch(function () { mark(core[i]); return on(i + 1); }); }
     return on(0); }
   function select(network, asset) { return pick({ network: network, asset: asset }); }
-  /** Adds a fixed TESTNET badge on non-mainnet networks. */
+  function liveHost(w) {
+    try { var h = String(w.location.hostname || '').toLowerCase(); return h === 'xcpets.fun' || h === 'www.xcpets.fun'; } catch (e) { return false; }
+  }
+  /** Adds a fixed TESTNET badge on non-mainnet networks, and a test-copy banner when this page is the XCPETS.TEST copy. */
   function badge(cfg, doc) {
-    if (cfg.isMainnet || !doc || !doc.body) return;
+    if (!doc || !doc.body || (!cfg.testCopy && cfg.isMainnet)) return;
     var b = doc.createElement('div'); b.id = 'netBadge';
-    b.textContent = cfg.network.toUpperCase() + ' · test coins only · asset ' + cfg.asset + ' · ';
-    var a = doc.createElement('a'); a.href = '?network=mainnet'; a.textContent = 'switch to mainnet'; a.style.color = '#fff'; b.appendChild(a);
+    b.textContent = cfg.testCopy ? ('TEST COPY · asset ' + cfg.asset + ' · not the live game') : (cfg.network.toUpperCase() + ' · test coins only · asset ' + cfg.asset + ' · ');
+    if (!cfg.testCopy) { var a = doc.createElement('a'); a.href = '?network=mainnet'; a.textContent = 'switch to mainnet'; a.style.color = '#fff'; b.appendChild(a); }
     b.setAttribute('style', 'position:sticky;top:0;z-index:9999;background:#c0392b;color:#fff;font:700 14px system-ui,sans-serif;text-align:center;padding:6px');
     doc.body.insertBefore(b, doc.body.firstChild);
   }
   var cfg = win ? fromLocation(win.location && win.location.search, win.localStorage) : pick({ network: env.XCPETS_NETWORK, asset: env.XCPETS_ASSET });
+  if (win && win.XCPETS_TEST_COPY === true && !liveHost(win)) { cfg.asset = 'XCPETS.TEST'; cfg.testCopy = true; }
   cfg.fromLocation = fromLocation; cfg.badge = badge;
   if (win && win.document) {
     if (win.document.readyState === 'loading') win.document.addEventListener('DOMContentLoaded', function () { badge(cfg, win.document); });

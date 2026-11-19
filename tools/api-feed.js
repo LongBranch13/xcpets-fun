@@ -118,6 +118,7 @@ function build(ctx, input, nowIso) {
 module.exports = { context, liveInput, build, SCRIPTS, SITE, LIMITED, feedReorg };
 if (require.main === module) (async () => {
   const ctx = context();
+  if (!ctx.XCPETS_CONFIG || ctx.XCPETS_CONFIG.asset !== 'XCPETS') { console.error('feed: refusing to write the live feed for asset ' + (ctx.XCPETS_CONFIG && ctx.XCPETS_CONFIG.asset)); process.exit(1); }
   const input = opt('--snap') ? Object.assign({ supply: null }, JSON.parse(fs.readFileSync(opt('--snap'), 'utf8'))) : await liveInput(ctx);
   if (opt('--snap')) input.tip = +(opt('--tip') || input.tip);
   if (opt('--snap') && A.includes('--no-dex')) input.noDex = true; /* offline replays of old snapshots only; live mode never skips sales */

@@ -68,7 +68,7 @@ function buildAnswer(state, query, opt) {
     }
   }
   const lag = Math.max(0, (Math.max(state.coreHeight || 0, state.mempoolHeight || 0) || tip) - tip);
-  const body = { v: 1, network: 'mainnet', asset: 'XCPETS', tip: tip, tipHash: state.tipHash || state.hashes[tip] || '', coreHeight: state.coreHeight || tip, lag: lag,
+  const body = { v: 1, network: 'mainnet', asset: state.asset || 'XCPETS', tip: tip, tipHash: state.tipHash || state.hashes[tip] || '', coreHeight: state.coreHeight || tip, lag: lag,
     builtAt: state.builtAt || new Date().toISOString(), mode: mode, since: since,
     rows: { count: rows.length, from: from, list: list }, hashes: sendH, mempool: state.mempool || [], dex: dexAns,
     world: state.world || { ready: false }, check: '' };
