@@ -53,7 +53,7 @@
   function breedHtml(w, p) { var R = V(), b = (w.tip || 0) + 1, why = R.breedable ? R.breedable(p, b) : null, h = head(p);
     if (p.species === 'wizard' && why) h += '<div class="hc-no">🧙 Wizards can\u2019t breed</div>';
     else h += why ? '<div class="hc-no">✋ ' + esc(why) + '</div>' : '<div class="hc-ok">✅ Can breed now</div>';
-    var cd = R.BREED_COOLDOWN || 1008, left = p.lastBreed != null ? cd - (b - p.lastBreed) : 0;
+    var cd = R.mgBreedCool ? R.mgBreedCool(p) : (R.BREED_COOLDOWN || 1008), left = p.lastBreed != null ? cd - (R.span ? R.span(b, p.lastBreed) : (b - p.lastBreed)) : 0;
     h += row('⏳ Cooldown', left > 0 ? fmtN(left) + ' blocks (' + hrs(left) + ')' : 'ready');
     if (R.breedsLeft) { var bl = R.breedsLeft(p, b); if (bl.on) h += row('🥚 Breeds left', bl.left + ' / ' + bl.cap); }
     var A = selA(w); if (A && A.id !== p.id && R.kinWhy) { var k = R.kinWhy(A, p); if (k) h += '<div class="hc-no">👪 with #' + A.id + ': ' + esc(k) + '</div>'; } if (A && A.id !== p.id && R.resPairWhy) { var rq = R.resPairWhy(A, p, (w.tip || 0) + 1); if (rq) h += '<div class="hc-no">😇 with #' + A.id + ': ' + esc(rq) + '</div>'; }
