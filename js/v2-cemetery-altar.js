@@ -194,7 +194,10 @@
   /* ---------------------------------------------------------------- panel ---------------------------------------------------------------- */
   function host() { var el = document.getElementById('cemAltar'); if (el) return el; el = document.createElement('section'); el.id = 'cemAltar'; el.className = 'cem-altar'; el.hidden = true; el.setAttribute('aria-label', 'Seance at the altar');
     var after = document.getElementById('cemCard') || document.getElementById('cemScene'); after.parentNode.insertBefore(el, after.nextSibling); return el; }
-  function open(grave, ctx) { if (ctx) A.ctx = ctx; if (!A.ctx || !grave) return; var w = A.ctx.w, wp = w.byId ? w.byId[grave.id] : null, s = wp ? (wp.zDeath || wp.stats) : null, base = {};
+  function open(grave, ctx, again) { if (ctx) A.ctx = ctx; if (!A.ctx || !grave) return; var w = A.ctx.w, wp = w.byId ? w.byId[grave.id] : null;
+    /* Living pages omit graves. A raise or seance loads that grave before the altar reads its stats. */
+    if (!wp && !again && grave.id !== 1765 && window.V2Split && V2Split.ensurePet) { V2Split.ensurePet(grave.id).then(function () { if (A.ctx.M && A.ctx.M.world) { A.ctx.w = A.ctx.M.world(); if (ctx) ctx.w = A.ctx.w; } open(grave, A.ctx, 1); }); return; }
+    var s = wp ? (wp.zDeath || wp.stats) : null, base = {};
     STATS.forEach(function (k) { base[k] = s ? (s[k] || 0) : 0; });
     A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.splats = 0; A.bwant = 0; A.bflow = 0; A.fire = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
     A.run = null; A.sentLog = []; var rs = A.ctx.ME ? restore() : 0;

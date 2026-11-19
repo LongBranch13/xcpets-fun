@@ -293,8 +293,9 @@
     /* "Raise at the altar": load the altar module on first use, then open the seance panel for that grave (hidden until the gate; owner test: grave #2, owner wallet) */
     /* owner's raise flow (Oct 29 2026 8:35 PM CT), step 1: click a gravestone to begin raising that dead pet (the whole stone, not only the button) */
     function graveById(id) { var i, L = st.list || []; for (i = 0; i < L.length; i++) if (+L[i].id === +id) return L[i]; L = st.index || []; for (i = 0; i < L.length; i++) if (+L[i].id === +id) return L[i]; var p = w.byId && w.byId[id]; return p && p.dead ? { id: p.id, raisable: 1, owner: p.owner, name: p.name } : null; }
-    function showDetail(id) { var box = $('cemDetail'); if (!box) { box = document.createElement('div'); box.id = 'cemDetail'; box.className = 'small cv2-detail'; tombs.parentNode.insertBefore(box, tombs); }
-      var p = w.byId && w.byId[id]; if (!p || !V.cemView) { box.innerHTML = '<p>Grave #' + fmt(id) + '</p>'; return; }
+    function showDetail(id, again) { var box = $('cemDetail'); if (!box) { box = document.createElement('div'); box.id = 'cemDetail'; box.className = 'small cv2-detail'; tombs.parentNode.insertBefore(box, tombs); }
+      var p = w.byId && w.byId[id]; if (!p && !again && id !== 1765 && window.V2Split && V2Split.ensurePet) { V2Split.ensurePet(id).then(function () { w = ctx.M && ctx.M.world ? ctx.M.world() : w; ctx.w = w; showDetail(id, 1); }); return; }
+      if (!p || p.id === 1765 || !V.cemView) { box.innerHTML = '<p>Grave #' + fmt(id) + '</p>'; return; }
       var v = V.cemView(w, p, b), bits = '';
       try { if (window.PetScore && PetScore.of) { var sc = PetScore.of(w, p); if (sc && isFinite(sc.bits)) bits = ' · rarity ' + sc.bits.toFixed(1); } } catch (e) {}
       var hs = headStart(p); box.innerHTML = '<p><b>' + esc(p.name || ('#' + id)) + ' #' + id + '</b> · ' + esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species) + ' · died at block ' + fmt(p.deathBlock) + (v && v.grave ? ' · ' + (v.state || 'open') : '') + (v && v.altar ? ' · altar closes in ' + fmt(v.altar.closesIn) + ' blocks' : '') + (v && v.why ? ' · ' + esc(v.why) : '') + bits + (R.graveCount && R.graveCount(w, p) ? ' · ' + R.graveLine(w, p) : '') + '</p>' + hsHtml(hs); }
@@ -321,8 +322,8 @@
     function localIndex(done) { if (!GI) { tombs.innerHTML = '<p class="muted">The grave index did not load.</p>'; return; }
       var t0 = (window.performance && performance.now) ? performance.now() : Date.now(); st.index = GI.compact(w, b, V); st.counts = GI.countsOf(st.index); st.total = st.index.length; st.source = 'world'; S.total = st.total;
       st.indexMs = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0); if (done) done(); else afterIndex(); }
-    function startIndex() { var sync = GI && GI.base ? GI.base() : ''; if (!sync || !GI.counts) return localIndex();
-      GI.counts(sync).then(function (c) { if (!c || c.dead == null) return localIndex(); st.remote = sync; st.counts = c; st.total = c.dead; st.source = 'index'; S.total = c.dead; afterIndex(); }).catch(function () { localIndex(); }); }
+    function startIndex() { var sync = GI && GI.base ? GI.base() : ''; function local() { var go = function () { w = ctx.M && ctx.M.world ? ctx.M.world() : w; ctx.w = w; localIndex(); }; if (window.V2Split && V2Split.ensureDead) V2Split.ensureDead().then(go, go); else go(); } if (!sync || !GI.counts) return local();
+      GI.counts(sync).then(function (c) { if (!c || c.dead == null) return local(); st.remote = sync; st.counts = c; st.total = c.dead; st.source = 'index'; S.total = c.dead; afterIndex(); }).catch(function () { local(); }); }
     startIndex();
     /* cemetery-handoff: an offering saved in this browser (not yet sent, or stopped half way) gets a note at the top of the list with an Open button */
     function resumeNote() { if (!ME) return; var o = {}; try { o = JSON.parse(localStorage.getItem('xcpets-cem-build-v1-' + ME) || '{}') || {}; } catch (e) { o = {}; }

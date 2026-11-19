@@ -41,7 +41,8 @@ const chk = cp.spawnSync(process.execPath, [path.join(__dirname, 'build-err-repo
 const pc = cp.spawnSync(process.execPath, [path.join(__dirname, 'build-practice-page.js'), '--check'], { encoding: 'utf8' }); ok(pc.status === 0, 'practice pages match build-practice-page');
 fs.readdirSync(ROOT).filter(f => /\.html$/.test(f)).forEach(f => { const s = fs.readFileSync(path.join(ROOT, f), 'utf8'), pr = /^practice/.test(f);
   ok((s.match(/<!--err-report-1102--><script>/g) || []).length === (pr ? 0 : 1), f + (pr ? ': practice page has no reporter (practice sends nothing anywhere)' : ': exactly one reporter'));
-  if (!pr) ok(s.indexOf('<!--err-report-1102-->') > s.lastIndexOf('<!--nav-cache-1102-->') && s.indexOf('<!--err-report-1102-->') < s.indexOf('<script src='), f + ': after the prerender guard, before any page script'); });
+  /* maintenance.js is the one script that belongs before the prerender guard. The reporter still sits after that guard and before every other page script. */
+  if (!pr) { const rest = s.replace(/<script src="js\/maintenance\.js\?v=[^"]*"><\/script>/, ''); ok(rest.indexOf('<!--err-report-1102-->') > rest.lastIndexOf('<!--nav-cache-1102-->') && rest.indexOf('<!--err-report-1102-->') < rest.indexOf('<script src='), f + ': after the prerender guard, before any page script'); } });
 /* 4. tie tag = real rules */
 const R = require('./lib/load-rules.js').load().V2Rules;
 if (R && R.deedTag) { const t = R.deedTag(53884, 'A15031558553763406198'), p = R.deedPlan(53884, 'A15031558553763406198');

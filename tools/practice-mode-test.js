@@ -18,7 +18,8 @@ let chk = ''; try { chk = cp.execFileSync(process.execPath, [path.join(ROOT, 'to
 /* 2 · every practice page */
 PAGES.forEach(f => {
   const h = rd(f), src = (h.match(/<script[^>]*src="([^"?]+)/g) || []).map(s => s.replace(/.*src="/, ''));
-  ok(src[0] === 'js/practice-guard.js' && src[1] === 'js/practice-engine.js', f + ': guard + pretend chain load before everything else');
+  const page = src.filter(s => s !== 'js/maintenance.js');
+  ok(page[0] === 'js/practice-guard.js' && page[1] === 'js/practice-engine.js', f + ': guard + pretend chain load before everything else');
   ok(src.includes('js/practice-ui.js'), f + ': loads the practice bar');
   ok(!src.some(s => /casa-connect|block-hashes|v2-cached|smooth-perf/.test(s)), f + ': no wallet connector, cached chain data or real block hashes: ' + src.join(' '));
   ok(/class="px-bar"/.test(h) && /PRACTICE/.test(h) && /class="px-badge"/.test(h), f + ': PRACTICE bar');
