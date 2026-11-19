@@ -1,5 +1,5 @@
 /* One switch. Set MAINTENANCE to false and the site plays again. */
-var MAINTENANCE = true;
+var MAINTENANCE = false;
 (function () {
   'use strict';
   var MSG = "XCPETS is down for maintenance. Your pets are safe on chain. Please don't burn anything right now; we'll be back soon.";

@@ -439,9 +439,11 @@
   function stream(seed) { var n = 0, buf = '', i = 0; return function () { if (i + 8 > buf.length) { buf = sha(seed + ':' + (n++)); i = 0; } var v = parseInt(buf.slice(i, i + 8), 16); i += 8; return v; }; }
   /* Game pause. Maintenance went on at 2026-11-14T16:46:57Z. Block 975816 was 16:38:44Z;
    * block 975817 was 16:51:45Z, the first block at or after that time. PAUSE_UNTIL is the resume
-   * block, set at go-live. null means the pause is still on. Burns in the pause still apply.
+   * block: the first block whose time counts. null would mean the pause is still on.
+   * Go-live 2026-11-19: Counterparty and Bitcoin were both at 976517, so 976518 is the resume block.
+   * Burns in the pause still apply.
    * Clocks (days, hunger, death, streaks, windows, cooldowns) use clock(), which skips pause blocks. */
-  var PAUSE_FROM = 975817, PAUSE_UNTIL = null;
+  var PAUSE_FROM = 975817, PAUSE_UNTIL = 976518;
   function pauseLen(block) {
     block = block | 0;
     if (!(PAUSE_FROM > 0) || block < PAUSE_FROM) return 0;
