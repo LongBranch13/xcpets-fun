@@ -259,8 +259,17 @@
   /* boot-from-cache: current() = the cache was built from exactly the inputs now loaded; updating() = what world() hands out is not that world
    * yet (a provisional saved world, or the last world while the worker rebuilds). Burns and other owner actions wait while updating(). */
   function current() { return !!cache && cacheSig === inSig() && opsSig === JSON.stringify(S.ops || []); }
-  function updating() { return !!S.provisional || (!current() && wkBusy > 0); }
-  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend)) return res(); setTimeout(chk, 200); })(); }); }
+  /* The saved copy's tip is the chain block it was built at, not the pause-adjusted game clock.
+   * Once that block has reached the verified tip, and the chain is not ahead of it, catch-up is done.
+   * Waiting for another full rebuild after that is the step that never finishes, so burns stay blocked. */
+  function atTip() {
+    var saved = lastW && lastW.tip | 0, tip = S.tip | 0, chain = S.chainTip | 0;
+    if (!S.verified || !saved || !tip) return false;
+    if (chain && chain > tip) return false;
+    return saved >= tip;
+  }
+  function updating() { if (atTip() && lastW && !lastW.pending) return false; return !!S.provisional || (!current() && wkBusy > 0); }
+  function waitWorld() { return new Promise(function (res) { (function chk() { if (current() || (!wkBusy && !pend) || atTip()) return res(); setTimeout(chk, 200); })(); }); }
   function world() {
     if (!cache && wkBusy) { var oj = JSON.stringify(S.ops || []);
       if (lastW && lastOps === oj) { if (V.syncCosts) V.syncCosts(lastW, (S.tip || 0) + 1); return lastW; }
@@ -527,9 +536,10 @@
     if (freshHooks.length) { freshHooks.forEach(function (fn) { try { fn(); } catch (e) { try { console.warn('[v2] repaint', e); } catch (x) {} } }); return; }
     softReload(); }
   function armFresh() { if (armed) return; armed = true; updBar(true);
-    /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once */
-    var settle = function () { return waitWorld().then(function () { if (!reval) return; return reval.then(settle, settle); }); };
-    settle().then(function () { try { world(); } catch (e) {} S.provisional = false; updBar(false);
+    /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once.
+     * A copy that has already reached the verified tip does not wait on that re-read, and it does not rebuild every pet on the main thread. */
+    var settle = function () { return waitWorld().then(function () { if (!reval || atTip()) return; return reval.then(settle, settle); }); };
+    settle().then(function () { if (current()) { try { world(); } catch (e) {} } else if (!atTip()) { try { world(); } catch (e) {} } S.provisional = false; updBar(false);
       /* hooks are registered by the page scripts the boot callback loads: give them until the window load event */
       var fire = function () { setTimeout(repaint, 50); }; if (document.readyState === 'complete') fire(); else window.addEventListener('load', fire, { once: true }); }); }
   /* nav-cache-1102: Chrome may PRERENDER a page the pointer rests on (js/nav-fast.js), so the click shows it at once. While prerendered
