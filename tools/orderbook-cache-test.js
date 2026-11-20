@@ -36,7 +36,7 @@ function getJson(url) {
 
 (async () => {
   const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-  ok(rulesMd5 === 'bd4f122684da8512056ceceb29a4c362', 'js/v2-rules.js bytes unchanged');
+  ok(rulesMd5 === 'f0bd22928c2fe51763d9d34ed4552c04', 'js/v2-rules.js bytes unchanged');
   const wallet = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');
   ok(/function composeNodes\(\)[\s\S]{0,500}!\/node\\.xcpets\\.fun\/i\.test\(u\)/.test(wallet), 'composeNodes still refuses node.xcpets.fun');
   ok(!/composeList:[^\n]*node\.xcpets\.fun/.test(fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8')), 'composeList does not name the read cache');

@@ -7,9 +7,9 @@
 const https = require('https'), zlib = require('zlib');
 const { load } = require('./lib/load-rules');
 const V = load().V2Rules;
-const TIP = 976738;
+const TIP = 976787;
 const AT = V.retireDeadGate();
-const BASE = 'https://node.xcpets.fun/xp/v1/world/rb040142c49c6125e806e543754af6737/' + TIP + '/view/p/';
+const BASE = 'https://node.xcpets.fun/xp/v1/world/r3346c4c282d6b0e7a8ee30f3f4fa67f8/' + TIP + '/view/p/';
 const TIERS = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'];
 const w = { mythicOwners: {}, everMythic: {}, tip: TIP, pets: [], byId: {} };
 

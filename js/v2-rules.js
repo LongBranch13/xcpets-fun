@@ -2376,9 +2376,9 @@
   /* Game-clock value at which p leaves, or 0 if this pet never leaves. Recomputed when liveAt marks the pet dirty. */
   function retireStamp(w, p, b) {
     if (!p || retireSpareWhy(p)) return 0;
-    var raw = retireDeathClock(w, p, b);
-    if (raw == null) return 0;
-    return retireClockOf(raw) + RETIRE_DEAD_DAYS * BLOCKS_PER_DAY;
+    var dc = retireDeathClock(w, p, b);
+    if (dc == null) return 0;
+    return dc + RETIRE_DEAD_DAYS * BLOCKS_PER_DAY;
   }
   function retireMemo(w) {
     if (w._retireMemo) return w._retireMemo;
