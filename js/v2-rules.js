@@ -3131,10 +3131,10 @@
    * The gate is required. Hunt 5 (block 975511, capture of #50836) recorded feedBy 975943 and crumbleAt 976375,
    * and that feedBy is in the hunt log line. Rewriting it would change that hunt. The three hunger crumbles
    * already on the chain (#36808 at 975160, #35311 at 975180, #36530 at 975211) land on the same block either
-   * way, because their windows never enter the pause. 976763 is Counterparty tip 976757 + 6 on 20 Nov 2026.
+   * way, because their windows never enter the pause. 976767 is Counterparty tip 976761 + 6 on 20 Nov 2026.
    * #22046 and #35336 are the first living zombies whose real crumble is 976940 (last unleash block 976933).
-   * If this is still open once the chain passes 976763, move the constant up, and keep it at or before 976933. */
-  var ACTIVATE_ZOMBIE_CLOCK_BLOCK = 976763;
+   * Keep this at or before 976933. */
+  var ACTIVATE_ZOMBIE_CLOCK_BLOCK = 976767;
   function zombieClockOn(b) { return ACTIVATE_ZOMBIE_CLOCK_BLOCK != null && b != null && (b | 0) >= ACTIVATE_ZOMBIE_CLOCK_BLOCK; }
   function cemDue(start, n, b) { return zombieClockOn(b) ? spanAt(start, n) : (start | 0) + (n | 0); }
   /** cemLive(p, b): zombie clocks from block numbers (called by liveAt). Alive until crumbleAt; feral from feralAt. */

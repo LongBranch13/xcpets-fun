@@ -6,7 +6,7 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const ROOT = path.join(__dirname, '..');
 const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(md5 === 'da9320aad59a1d7a0d198c12c155b293', 'rules MD5 unchanged');
+ok(md5 === 'bd4f122684da8512056ceceb29a4c362', 'rules MD5 unchanged');
 ok(/var ENABLED = false/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week file stays off');
 ok(/var DOOM_ENABLED = false/.test(fs.readFileSync(path.join(ROOT, 'js/v2-events.js'), 'utf8')), 'loader doom switch stays off');
 ok(!fs.readFileSync(path.join(ROOT, 'practice.html'), 'utf8').includes('doom-week.js'), 'practice html does not name doom-week');

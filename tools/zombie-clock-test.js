@@ -29,7 +29,7 @@ const dueOf = (start, n) => L.load().V2Rules.spanAt(start, n);
 /* ---------- spanAt: the first block where span(block, start) >= n ---------- */
 {
   const V = L.load().V2Rules;
-  ok(V.zombieClockGate() === 976763, 'shipped gate is 976763 (tip 976757 + 6)');
+  ok(V.zombieClockGate() === 976767, 'shipped gate is 976767 (tip 976761 + 6)');
   ok(V.spanAt(970000, 432) === 970432 && V.spanAt(970000, 864) === 970864, 'a window before the pause is start + n');
   ok(V.spanAt(976667, 432) === 977099 && V.spanAt(976667, 864) === 977531, 'a window after the pause is start + n');
   ok(V.spanAt(975596, 432) === 976729 && V.spanAt(975596, 864) === 977161, 'a window across the pause lands 701 blocks later (#74534)');
@@ -87,7 +87,7 @@ const dueOf = (start, n) => L.load().V2Rules.spanAt(start, n);
 {
   const early = 975100, rows = FEEDS.concat([row(early, SB, 100000, 'pet:seance:' + GRAVE + ':' + b32(OFFER))]);
   const tip = 976700, raw = early + 864, due = dueOf(early, 864);
-  ok(due < 976763 && due <= tip && raw !== due, 'this meal crumbles before the gate and the two blocks differ');
+  ok(due < L.load().V2Rules.zombieClockGate() && due <= tip && raw !== due, 'this meal crumbles before the gate and the two blocks differ');
   const old = W(rows, tip), hit = logs(old.w, 'crumble').filter(e => e.petId === GRAVE);
   if (!hit.length) console.log(logs(old.w).filter(e => e.block >= 974000).map(e => e.block + ' ' + e.kind + ' ' + e.msg).join('\n'));
   ok(hit.length === 1 && hit[0].block === raw, 'before the gate the sweep still writes the raw block ' + raw + ' (' + (hit[0] && hit[0].block) + ')');

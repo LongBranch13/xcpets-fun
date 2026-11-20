@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, '..');
 let fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fail++; };
 const rules = fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'));
-ok(crypto.createHash('md5').update(rules).digest('hex') === 'da9320aad59a1d7a0d198c12c155b293', 'rules MD5 unchanged');
+ok(crypto.createHash('md5').update(rules).digest('hex') === 'bd4f122684da8512056ceceb29a4c362', 'rules MD5 unchanged');
 const V = load().V2Rules;
 const tip = 976619, last = 975366, b = tip;
 const span = V.span(b, last), raw = b - last;
