@@ -1,6 +1,6 @@
 {
- "lastBlock": 976665,
- "count": 418,
+ "lastBlock": 976669,
+ "count": 419,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3853,7 +3853,7 @@
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 157197,
@@ -3865,7 +3865,7 @@
    "species": "hyb:pepe:funtrump",
    "speciesLabel": "Pepetrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 158199,
@@ -3877,7 +3877,7 @@
    "species": "hyb:mumu:nakamoto",
    "speciesLabel": "Mumoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 158202,
@@ -5018,6 +5018,18 @@
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
    "stage": "Adult"
+  },
+  {
+   "id": 165211,
+   "asset": "A5100991627355930394",
+   "tiedBlock": 976667,
+   "tiedTx": "a135509a79dd5c1feff61e5730568c1a4e3f19fddfd343c475d6a078d2472f97",
+   "kind": "deed",
+   "name": "Degohuzy",
+   "species": "hyb3:dodo:wizard:bobo",
+   "speciesLabel": "Dozibo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
   }
  ]
 }
