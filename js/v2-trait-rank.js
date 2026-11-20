@@ -55,7 +55,8 @@
         ' <label class="small tr-alivebox"><input type="checkbox" id="trAlive"' + (st.alive ? ' checked' : '') + '> Alive only</label>' + (ME ? ' <button type="button" class="q" id="trMine">📍 My rarest pet</button>' : '') + '</div>';
       var body = rows.map(function (r, k) { return rowHtml(r, a + k); }).join('');
       shell(ctl + pager(L.length) + (rows.length ? '<div class="tw"><table class="board trboard">' + body + '</table></div>' : '<p class="muted small">No pets match these filters yet.</p>') + pager(L.length));
-      $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      var ids = []; $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var id = +c.getAttribute('data-id'), p = w.byId[id]; ids.push(id); if (p && p.art) R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      if (window.V2Split && V2Split.dress) V2Split.dress(ids).then(function (n) { if (!n) return; $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[+c.getAttribute('data-id')]; if (p && p.art) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); });
       $('board').querySelectorAll('[data-egg]').forEach(function (x) { x.onclick = function () { st.eggOnly = x.dataset.egg === '1'; st.pg = 1; st.hits = null; st.focus = 0; draw(); }; });
       $('board').querySelectorAll('[data-pg]').forEach(function (x) { x.onclick = function () { st.pg = +x.dataset.pg; st.hits = null; draw(true); }; });
       if ($('trAlive')) $('trAlive').onchange = function () { st.alive = this.checked; st.pg = 1; st.hits = null; st.focus = 0; draw(); };
