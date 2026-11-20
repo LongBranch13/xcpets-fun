@@ -300,7 +300,41 @@
     S.c = c; S.x = c.getContext('2d'); cancelAnimationFrame(S.fitRaf); S.fitRaf = requestAnimationFrame(function () { S.fitRaf = 0; fitDraw(c); }); } /* lair-perf: measure + first draw on the next frame, so a render never forces a full-page layout */
   /* Rare Room mirror: the pet you are dressing (S.pet / roll pet / first living pet), wearing the tapped piece as a live try-on (same framesWith as the Wear panel) */
   function toCv(fr){return fr&&fr[0]?V2Render.spriteCanvas(fr[0],false):null;}
-  function mirrorPet(w) { var U = window.V2UI, V = window.V2Rules, R = window.V2Render; if (!U || !V || !R) return; var pets = U.mine(w).filter(function (p) { return !p.dead && !p.released; }), P = w.byId[S.pet != null ? S.pet : S.rollPet] || pets[0];
+  function rrPendId() {
+    var id = 0;
+    try { if (window.V2Preselect && V2Preselect.pending) id = +V2Preselect.pending() || 0; } catch (e) { }
+    if (!(id >= 1)) { try { id = +window.__XCPETS_RR_PET || 0; } catch (e2) { } }
+    if (!(id >= 1)) { var hm = /^#rare-room-(\d+)$/.exec(location.hash || ''); if (hm) id = +hm[1]; }
+    try { if (id && window.V2Preselect && V2Preselect.used && V2Preselect.used(id)) id = 0; } catch (e3) { }
+    return id >= 1 ? id : 0;
+  }
+  function rrClear(id) { try { if (window.V2Preselect && V2Preselect.clear) V2Preselect.clear(id); } catch (e) { } try { if (!window.__XCPETS_RR_PET || window.__XCPETS_RR_PET === id) window.__XCPETS_RR_PET = 0; } catch (e2) { } }
+  function rrOwned(w, id, me) { var p = w && w.byId && w.byId[id]; return p && me && p.owner === me && !p.dead && !p.released ? p : null; }
+  /* This visit's URL pet wins over the saved key and over the top of the strip. While it is still loading, do not set S.dpInit or lock S.pet. */
+  function rrTake(w, U) {
+    var id = rrPendId();
+    if (!id) return null;
+    if (!U.ME) return 'later';
+    var p = w.byId && w.byId[id];
+    if (p) { rrClear(id); return rrOwned(w, id, U.ME) || false; }
+    if (S.rrMiss === id) { rrClear(id); return false; }
+    if (S.rrWait === id) return 'wait';
+    if (window.V2Split && V2Split.ensurePet) {
+      S.rrWait = id;
+      V2Split.ensurePet(id).then(function (got) {
+        if (S.rrWait === id) S.rrWait = 0;
+        var w2 = U.world() || w, row = (w2.byId && w2.byId[id]) || got;
+        if (!row || row.owner !== U.ME || row.dead || row.released) S.rrMiss = id;
+        else if (w2.byId && !w2.byId[id]) { w2.byId[id] = row; if (w2.pets && w2.pets.indexOf(row) < 0) w2.pets.push(row); }
+        counter();
+      }, function () { if (S.rrWait === id) S.rrWait = 0; S.rrMiss = id; counter(); });
+      return 'wait';
+    }
+    S.rrMiss = id; rrClear(id); return false;
+  }
+  function mirrorPet(w) { var U = window.V2UI, V = window.V2Rules, R = window.V2Render; if (!U || !V || !R || !w) return; var pets = U.mine(w).filter(function (p) { return !p.dead && !p.released; }), pend = rrPendId(), P = w.byId[S.pet != null ? S.pet : S.rollPet];
+    if (pend && U.ME && !rrOwned(w, pend, U.ME) && S.rrMiss !== pend) { S.mirror = null; S.mirrorKey = null; return; }
+    if (!P) P = pets[0];
     if (!S.pepe) { var pp = (w.pets || []).filter(function (q) { return q.species === 'pepe' && q.stage >= 3; })[0]; if (pp) try { S.pepe = toCv(R.framesWith(Object.assign({}, pp.art, { background: 'solid', bgColor: '#bfe9d6', pattern: 'none' }), pp.stage, [], [])); } catch (e) { } }
     if (!P) { S.mirror = null; return; } var worn = V.wornOf(w, P.id), ids = worn.map(function (x) { return x.item; }), g = S.sel;
     if (g && g.item) { var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot; if ((P.openSlots || []).indexOf(sl) >= 0 || (V.slotOpen && V.slotOpen(P, sl))) ids = worn.filter(function (x) { return x.slot !== sl; }).map(function (x) { return x.item; }).concat([g.item]); }
@@ -488,8 +522,13 @@
   function counter() { var U = window.V2UI, V = window.V2Rules, el = document.getElementById('shopCounter'); if (!el || !U) return; var w = U.world(); mirrorPet(w);
     var pets = U.mine(w).filter(function (p) { return !p.dead; }), live = drPets(w), P = w.byId[S.pet != null ? S.pet : S.rollPet];
     var own = (w.itemList || []).filter(function (x) { return x.owner === U.ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); }); S.all = window.V2LairQoL ? V2LairQoL.apply(own) : own; /* same list as render(); counter can run before the scene paints */
-    if (!P && !S.dpInit) { S.dpInit = 1; var lp = +(lsGet(DPKEY) || 0); if (lp && w.byId[lp] && w.byId[lp].owner === U.ME) P = w.byId[lp]; } /* last-used pet (this browser), else the best (top of the strip) */
-    if (!P || P.dead || P.released || P.owner !== U.ME) P = live[0]; if (P) S.pet = P.id; var g = S.sel ? (w.items[S.sel.gid] || S.sel) : null; if (g && P && !fitsP(P, g)) g = null; S.sel = g;
+    var hold = rrTake(w, U);
+    if (hold === 'wait') { applyMode(); el.innerHTML = '<p class="small" id="rrHold">Opening #' + rrPendId() + ' in the Rare Room…</p>'; return; }
+    var opened = false;
+    if (hold && hold !== 'later') { P = hold; opened = true; }
+    else if (hold !== 'later' && !P && !S.dpInit) { S.dpInit = 1; var lp = +(lsGet(DPKEY) || 0); if (lp && w.byId[lp] && w.byId[lp].owner === U.ME && !w.byId[lp].dead && !w.byId[lp].released) P = w.byId[lp]; } /* saved key only when no URL pet is still pending */
+    if (hold !== 'later') { if (!P || P.dead || P.released || P.owner !== U.ME) P = live[0]; if (P) S.pet = P.id; if (opened && P) { S.dpInit = 1; try { localStorage.setItem(DPKEY, String(P.id)); } catch (e) { } } }
+    var g = S.sel ? (w.items[S.sel.gid] || S.sel) : null; if (g && P && !fitsP(P, g)) g = null; S.sel = g;
     var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove();
     applyMode(); var DM = drMode(), WO = wheelOnNow();
     if (DM) el.innerHTML = '<div class="dr-top"><button type="button" class="btn dr-back" id="drBack">← Back to the Rare Room</button><span class="small dr-where">🚪 You are in the dressing room · wearing gear is free</span></div>' + dress(w, P, g) + secondary();
