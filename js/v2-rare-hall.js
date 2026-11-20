@@ -30,12 +30,12 @@
   function pageSize() { if (!window.IntersectionObserver) return 1e6; var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 800; return w <= 520 ? 8 : 16; }
   function shell() { var box = $('rareHall'); if (!box || box.getAttribute('data-ready')) return box; box.setAttribute('data-ready', '1'); css();
     box.innerHTML = '<h2 class="sec" data-ico="egg">🏆 Hall of Rare Finds</h2>' +
-      '<p class="small">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. Here is every one found so far, live from the chain.</p>' +
+      '<p class="small">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. This page lists the finds it has loaded. Look up a wallet address or a pet number to add more. The whole world is not loaded here.</p>' +
       '<div class="rh-odds">' + ODDS.map(function (o) { return '<div class="rh-o' + (o[2] === 'God pet' ? ' rh-g' : '') + '"><span aria-hidden="true">' + o[0] + '</span><b>' + o[1] + '</b><span class="small">' + o[2] + '</span><div class="rh-n">' + o[3] + '</div></div>'; }).join('') +
       '<div class="rh-o rh-w"><span aria-hidden="true">🌀</span><b>Weird hatch</b><span class="small">' + WEIRD.join(' · ') + '</span><div class="rh-n">about 1 in 5,400 each</div></div>' +
       '<div class="rh-o rh-w"><span aria-hidden="true">🧬</span><b>Weird babies</b><span class="small">each weird parent passes its weirdness on</span><div class="rh-n">1 in 77</div></div></div>' +
       '<div class="rh-tabs" role="group" aria-label="Show"><button type="button" class="btn ghost q on" data-rh="all" aria-pressed="true">All finds <span class="rh-c" data-c="all"></span></button><button type="button" class="btn ghost q" data-rh="legend" aria-pressed="false">🏆 Legends <span class="rh-c" data-c="legend"></span></button><button type="button" class="btn ghost q" data-rh="weird" aria-pressed="false">🌀 Weird <span class="rh-c" data-c="weird"></span></button></div>' +
-      '<div class="rh-grid" id="rhGrid"><div class="rh-none muted">Reading the chain…</div></div>';
+      '<div id="rareLookHost"></div><div class="rh-grid" id="rhGrid"><div class="rh-none muted">Reading the chain…</div></div>';
     box.querySelector('.rh-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rh]'); if (!b) return; show = b.getAttribute('data-rh'); applyFilter(); });
     var g = $('rhGrid');
     g.addEventListener('focusin', function () { var cards = g.querySelectorAll('.rh-card'), last = cards[cards.length - 1]; if (last && (document.activeElement === last || last.contains(document.activeElement))) more(); });
@@ -47,6 +47,7 @@
     window.addEventListener('scroll', function () { hotAt = performance.now(); }, { passive: true });
     document.addEventListener('visibilitychange', syncLoop);
     if (RM.addEventListener) RM.addEventListener('change', syncLoop);
+    placeLook();
     return box; }
   function filtered() { return !listAll ? [] : listAll.filter(function (x) { return show === 'all' || (show === 'legend' ? x.i.legend : !x.i.legend); }); }
   function counts() { var c = { all: listAll ? listAll.length : 0, legend: listAll ? listAll.filter(function (x) { return x.i.legend; }).length : 0 }; c.weird = c.all - c.legend; return c; }
@@ -54,7 +55,14 @@
     Array.prototype.forEach.call(box.querySelectorAll('[data-rh]'), function (b) { var on = b.getAttribute('data-rh') === show; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
   function cardHtml(x) { var p = x.p, R = window.V2Render, w = worldRef; return '<a class="rh-card" href="pet.html?id=' + p.id + '"><canvas width="32" height="32" data-rh-id="' + p.id + '"></canvas>' + (R && R.rareChip ? R.rareChip(w, p) : '') +
     '<span class="rh-nm">#' + p.id + ' ' + esc(p.name || '') + '</span><span class="small">' + esc(window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(p.species) : p.species) + (x.i.block ? ' · block ' + fmt(x.i.block) : '') + (p.dead ? ' · in the Pet Cemetery' : '') + '</span></a>'; }
-  function emptyHtml() { return '<div class="rh-none muted">' + (show === 'weird' ? 'No weird pets yet. Who will be first?' : show === 'legend' ? 'No Legends yet. Who will be first?' : 'Nothing found yet. Who will be first?') + '</div>'; }
+  function light() { return !!(worldRef && worldRef._view && !worldRef._ranked); }
+  function emptyHtml() {
+    var looked = window.V2Lookup && V2Lookup.last && V2Lookup.last(), none = !listAll || !listAll.length;
+    if (looked && looked.query && none) return '<div class="rh-none muted">' + esc(looked.error || ((looked.pets && looked.pets.length) ? 'Loaded ' + looked.pets.length + ' pet' + (looked.pets.length === 1 ? '' : 's') + '. None of them is a Legend or a weird hatch.' : looked.note) || 'Nothing in that lookup is a rare find.') + '</div>';
+    if (light() && none) return '<div class="rh-none muted">No rare find is loaded yet. Type a wallet address or a pet number above. This page does not load the whole world.</div>';
+    return '<div class="rh-none muted">' + (show === 'weird' ? 'No weird pets yet. Who will be first?' : show === 'legend' ? 'No Legends yet. Who will be first?' : 'Nothing found yet. Who will be first?') + '</div>'; }
+  function placeLook() { var box = $('rareHall'); if (!box || !window.V2Lookup) return; var host = $('rareLookHost'); if (!host) return;
+    V2Lookup.mount(host, { id: 'rareLook', mode: 'rare', onReady: function () { worldRef = null; listAll = null; draw(); } }); }
   function skey(p, w) { var R = window.V2Render; try { if (R && R.frKey) return R.frKey(p, w); } catch (e) {} var r = p.art && p.art.rareHatch; return p.id + '|' + p.stage + '|' + (r && r.kind) + '|' + (r && r.block); }
   function blit(cv, fr) { var R = window.V2Render, img = fr && fr.length ? fr[reduced() ? 0 : (fi % fr.length)] : null; if (!img) return;
     if (R && R.paint) { try { R.paint(cv, img); return; } catch (e) {} }
@@ -94,12 +102,17 @@
   /* Never call world() before rows exist: that replays an empty chain on the main thread and pins the empty world. While a rebuild is in
    * progress, world() only hands back the last world (or nothing). */
   function worldSafe() { var M = window.V2Mock; if (!M || !M.world || !M.state) return null; var S; try { S = M.state(); } catch (e) { return null; }
-    if (!S || !S.rows || !S.rows.length) return null; var busy = false; try { busy = !!(M.updating && M.updating()); } catch (e2) {}
+    if (!S) return null;
+    /* A published view already has its world. world() returns that object and does not replay.
+     * Calling it before burn rows exist is what pins an empty replay, so that path still waits. */
+    if (S.view) { var vw; try { vw = M.world(); } catch (e1) { return null; } if (!vw || vw.pending || !vw._view || !vw.pets) return null; return vw; }
+    if (!S.rows || !S.rows.length) return null; var busy = false; try { busy = !!(M.updating && M.updating()); } catch (e2) {}
     if (!(busy || S.provisional || S.verified || S.fromCache || S.workerMs != null)) return null;
     var w; try { w = M.world(); } catch (e3) { return null; } if (!w || w.pending || !w.pets) return null; return w; }
   function draw() { var box = shell(); if (!box || !window.V2Render || !V2Render.rareInfo) return false; var w = worldSafe(); if (!w) return false;
     if (w === worldRef && listAll) return true; worldRef = w; listAll = finds(w); applyFilter(); return true; }
-  function start() { if (!$('rareHall')) return; shell(); var n = 0, hooked = false;
+  function hallOn() { var box = $('rareHall'); if (!box) return false; var p = box.closest ? box.closest('section') : null; if (p && (p.hidden || p.classList.contains('split-off') || p.getAttribute('aria-hidden') === 'true')) return false; return true; }
+  function start() { if (!hallOn()) return; shell(); var n = 0, hooked = false;
     (function wait() { var M = window.V2Mock; if (M && M.onFresh && !hooked) { hooked = true; M.onFresh(function () { worldRef = null; draw(); }); }
       if (!draw() && n++ < 240) setTimeout(wait, 500); })();
     setInterval(function () { if (!document.hidden) draw(); }, 30e3); }
