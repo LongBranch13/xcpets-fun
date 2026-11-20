@@ -13,6 +13,93 @@
  *    hooks('lit') turns the candles green while the panel is open; flare() makes them jump when an offering lands. Still no rule and no burn. */
 (function () {
   'use strict';
+  /* living-rest-1107: pages other than play.html never called V2Split.rest(), so the first paint
+   * only had owner page 0 (24 living pets). This waits for the same 5,000-pet background load
+   * play.html uses, then fetches Discard-pile ids that are still missing. It does not call loadBoard. */
+  (function () {
+    if (window.xcpLivingFill) return;
+    function world() { try { return window.V2Mock && V2Mock.world && V2Mock.world(); } catch (e) { return null; } }
+    function restDone(w) {
+      if (!w) return false;
+      if (w._full) return true;
+      var pg = w._pages;
+      if (!pg || !(pg.pages > 1)) return true;
+      var cap = (window.V2Split && V2Split.AUTO_CAP) || 5000;
+      var screen = (window.V2Split && V2Split.SCREEN_PAGES) || 7;
+      var got = pg.got || 1;
+      if ((pg.n || 0) > 0 && (pg.n || 0) <= cap) return got >= (pg.pages || 1);
+      return got >= Math.min(screen, pg.pages || 1);
+    }
+    function discIds(me) {
+      var net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
+      var raw;
+      try { raw = JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]'); } catch (e) { return []; }
+      if (!raw || !raw.forEach) return [];
+      var out = [], seen = {};
+      raw.forEach(function (id) { id = +id; if (id > 0 && !seen[id]) { seen[id] = 1; out.push(id); } });
+      return out;
+    }
+    function discardMiss(me) {
+      var w = world(), by = (w && w.byId) || {}, ids = discIds(me), miss = [], i;
+      for (i = 0; i < ids.length; i++) if (!by[ids[i]]) miss.push(ids[i]);
+      return miss;
+    }
+    function ensureIds(ids) {
+      if (!ids.length || !window.V2Split || !V2Split.ensurePet) return Promise.resolve(world());
+      var i = 0, n = 0;
+      return new Promise(function (res) {
+        function pump() {
+          if (i >= ids.length && !n) return res(world());
+          while (n < 4 && i < ids.length) {
+            n++;
+            V2Split.ensurePet(ids[i++]).then(function () { n--; pump(); }, function () { n--; pump(); });
+          }
+        }
+        pump();
+      });
+    }
+    var job = null, fillJob = null;
+    function livingRest() {
+      if (job) return job;
+      if (window.V2Split && V2Split.rest) { try { V2Split.rest(); } catch (e) {} }
+      job = new Promise(function (res) {
+        var last = '', moved = false, still = 0, n = 0, t0 = Date.now();
+        function finish(w) { job = null; res(w); }
+        function tick() {
+          var w = world();
+          if (restDone(w)) return finish(w);
+          var pg = w && w._pages;
+          var sig = (pg ? (pg.got || 1) : 0) + ':' + ((w && w.pets && w.pets.length) || 0) + ':' + (w && w._full ? 1 : 0);
+          if (sig !== last) { if (last) moved = true; last = sig; still = 0; } else still++;
+          n++;
+          if (!moved && Date.now() - t0 > 1500) return finish(w);
+          if (moved && still >= 60) return finish(w);
+          if (n > 240) return finish(w);
+          setTimeout(tick, 250);
+        }
+        tick();
+      });
+      return job;
+    }
+    function livingFill(me) {
+      var key = me || '';
+      if (fillJob && fillJob.key === key) return fillJob.p;
+      var p = livingRest().then(function () {
+        var miss = discardMiss(me);
+        if (!miss.length) return world();
+        return ensureIds(miss);
+      });
+      fillJob = { key: key, p: p };
+      var clear = function () { if (fillJob && fillJob.p === p) fillJob = null; };
+      p.then(clear, clear);
+      return p;
+    }
+    window.xcpRestDone = restDone;
+    window.xcpDiscardMiss = discardMiss;
+    window.xcpLivingRest = livingRest;
+    window.xcpLivingFill = livingFill;
+  })();
+  /* /living-rest-1107 */
   var W = 320, H = 180, HZ = 74, VX = 160, F = 70, CAMH = 1.6, RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   var S = { c: null, x: null, k: 1, raf: 0, off: false, hid: false, layer: null, sky: null, hits: [], sel: null, hov: null, line: 0, lt: 0, hook: 'off', total: 0, say: null };
   var LINES = ['Evenin\u2019. Mind the mud.', 'Feed \u2019em daily. Spares me the shovel.', 'Seven days. That\u2019s all it takes.', 'Rows go on past the fog.',
@@ -189,7 +276,7 @@
   function life(p) { return p.born != null && p.died != null ? p.died - p.born : -1; }
   function art(n, s, l) { return window.V2CemArt ? V2CemArt.img(n, s, l) : ''; }
   /** page(ctx): the whole cemetery page body (called by js/v2-pages.js cemetery()). ctx = { w, M, R, V, ME, fmt, shortAddr } */
-  function page(ctx) { var w = ctx.w, M = ctx.M, R = ctx.R, V = ctx.V, ME = ctx.ME, fmt = ctx.fmt, sa = ctx.shortAddr, $ = function (id) { return document.getElementById(id); };
+  function page(ctx) { if (window.xcpLivingRest) window.xcpLivingRest(); var w = ctx.w, M = ctx.M, R = ctx.R, V = ctx.V, ME = ctx.ME, fmt = ctx.fmt, sa = ctx.shortAddr, $ = function (id) { return document.getElementById(id); };
     var b = (w.tip || (M.state && M.state().tip) || 0) + 1, on = V.cemOn ? V.cemOn(b) : false, pub = on && V.cemPublic(b), CE = V.CEM || {}, gate = V.cemeteryGate ? V.cemeteryGate() : null;
     ctx.b = b; S.cemOn = on; css(); artJs(function () { if (st.ready) { zombies(); paint(); } });
     var GI = window.V2GraveIndex, phone = window.matchMedia && matchMedia('(max-width: 640px)').matches, PER = GI ? GI.per() : (phone ? 24 : 60);
@@ -236,7 +323,9 @@
         hsHtml(hs) +
         (canRaise(p) ? '<button type="button" class="btn cv2-raise" data-raise="' + p.id + '">' + art('shovel', 12) + ' ' + (p.open ? 'Join the seance' : 'Raise at the altar') + '</button>' : p.raisable && on && !pub ? '<div class="small muted cv2-lock">🧪 Owner test: ' + (p.id === CE.OWNER_GRAVE ? 'only the owner wallet can raise this grave' : 'only grave #' + CE.OWNER_GRAVE + ' can be raised for now') + '</div>' : '') + '</div>'; }
     /* risen zombies: hunger, feral, crumble countdown; Hunt (anyone, feral only), zombie feed / Resurrection (owner only) */
-    function myLiving() { return ME ? w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.isZ(p); }) : []; }
+    function syncWorld() { var nw = ctx.M && ctx.M.world ? ctx.M.world() : null; if (nw) { w = nw; ctx.w = nw; } return w; }
+    function myLiving() { return ME ? (w.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.isZ(p); }) : []; }
+    function huntWait() { syncWorld(); if (!(window.xcpLivingFill && window.xcpRestDone)) return false; return !xcpRestDone(w) || !!(window.xcpDiscardMiss && xcpDiscardMiss(ME).length); }
     function zcard(p) { var v = V.cemView(w, p, b), mine = ME && p.owner === ME, hp = Math.round(v.hunger * 100), res = v.res;
       var acts = '';
       if (on && !mine && ME) acts += '<div class="cv2-zact"><button type="button" class="btn" data-hunt="' + p.id + '">⚔️ Hunt · choose your fighter</button><span class="small"> ' + fmt(V.cemCost(w, 'hunt', b)) + ' XCPETS</span></div>';
@@ -263,7 +352,7 @@
      * send guard as play.html) instead of a redirect to play.html#cem-...; the old link stays only as a fallback if the altar file fails to load */
     function go(L, title) { var tags = L.map(function (p) { return p.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (p) { return V.cemPetAmount ? V.cemPetAmount(w, p, b) : p; }), ctx); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }
     zs.addEventListener('click', function (e) { var t = e.target.closest('[data-hunt],[data-zfeed],[data-rpl],[data-res]'); if (!t || t.disabled) return; var z;
-      if ((z = t.getAttribute('data-hunt'))) window.V2HuntPicker.open({ w: w, V: V, R: R, me: ME, zombie: +z, block: b, pets: myLiving(), send: go });
+      if ((z = t.getAttribute('data-hunt'))) { var pend = huntWait(); window.V2HuntPicker.open({ w: w, V: V, R: R, me: ME, zombie: +z, block: b, pets: myLiving(), pending: pend, send: go }); if (pend && window.xcpLivingFill) window.xcpLivingFill(ME).then(function () { syncWorld(); var d = document.getElementById('huntPicker'); if (d && d._fill) d._fill(myLiving(), w); }); }
       else if ((z = t.getAttribute('data-zfeed'))) { var f = +zs.querySelector('[data-fpick="' + z + '"]').value; go([V.cemPlan(w, 'zfeed', +z, [f], b)], '🍖 Zombie meal for #' + z); }
       else if ((z = t.getAttribute('data-rpl'))) { var r = +zs.querySelector('[data-rpick="' + z + '"]').value; go([V.cemPlan(w, 'rpl', +z, [r], b)], '😇 Resurrection offering for #' + z); }
       else if ((z = t.getAttribute('data-res'))) go([V.cemPlan(w, 'resurrect', +z, null, b)], '😇 Resurrection of #' + z); });
@@ -318,7 +407,9 @@
       inp.value = '#' + d; st.q = '#' + d; apply(true, function () { var e = $('tomb-' + d); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } showDetail(+d); }); return true; }
     window.addEventListener('hashchange', deep);
     function afterIndex() { opts(); status(); zombies(); st.ready = true; resumeNote(); window.__cemV2 = { src: st.source, n: graveCount(), page: PER, block: b - 1, on: on, pub: pub, indexMs: st.indexMs || 0 };
-      if (window.V2Split && V2Split.loadZombies) V2Split.loadZombies(function (got, total) { var s = $('status'); if (s) s.textContent = 'Reading risen zombies… ' + got + (total ? ' / ' + total : ''); }).then(function () { w = ctx.M && ctx.M.world ? ctx.M.world() : w; ctx.w = w; status(); zombies(); }, function () {});
+      /* rest() publishes owner pages and would drop zombies loaded first. Load them after the living pets settle. */
+      function zLoad() { if (!(window.V2Split && V2Split.loadZombies)) return; V2Split.loadZombies(function (got, total) { var s = $('status'); if (s) s.textContent = 'Reading risen zombies… ' + got + (total ? ' / ' + total : ''); }).then(function () { syncWorld(); status(); zombies(); }, function () {}); }
+      if (window.xcpLivingRest) window.xcpLivingRest().then(function () { syncWorld(); zLoad(); }, zLoad); else zLoad();
       if (!graveCount()) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; } if (!deep()) apply(); }
     function localIndex(done) { if (!GI) { tombs.innerHTML = '<p class="muted">The grave index did not load.</p>'; return; }
       var t0 = (window.performance && performance.now) ? performance.now() : Date.now(); st.index = GI.compact(w, b, V); st.counts = GI.countsOf(st.index); st.total = st.index.length; st.source = 'world'; S.total = st.total;

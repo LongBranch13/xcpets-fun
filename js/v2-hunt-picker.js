@@ -8,9 +8,13 @@
     var V = c.V, w = c.w, Z = w.byId[c.zombie], focus = document.activeElement, page = 0, query = '', chosen = null, size = 24;
     var d = document.createElement('dialog'); d.id = 'huntPicker'; d.className = 'hunt-picker'; d.setAttribute('aria-labelledby', 'huntTitle');
     var revised = V.huntRulesOn && V.huntRulesOn(c.block);
-    var rows = c.pets.map(function (p) { var why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); return {p:p, why:why, power:V.petPower(p) * (revised ? 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100 : 1), search:((p.name || '') + ' #' + p.id).toLowerCase()}; });
-    rows.sort(function (a,b) { return b.power - a.power || a.p.id - b.p.id; });
-    var best = rows.filter(function (r) { return !r.why; })[0];
+    var rows = [], best = null;
+    function build(pets) {
+      rows = (pets || []).map(function (p) { var why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); return {p:p, why:why, power:V.petPower(p) * (revised ? 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100 : 1), search:((p.name || '') + ' #' + p.id).toLowerCase()}; });
+      rows.sort(function (a,b) { return b.power - a.power || a.p.id - b.p.id; });
+      best = rows.filter(function (r) { return !r.why; })[0];
+    }
+    build(c.pets);
     function close() { d.close(); }
     d.addEventListener('close', function () { d.remove(); if (focus && focus.isConnected) focus.focus(); });
     function name(p) { return esc(p.name || 'Pet') + ' #' + p.id; }
@@ -28,7 +32,9 @@
       var q = query.trim().toLowerCase(), filtered = rows.filter(function (r) { return !q || (/^#?\d+$/.test(q) ? String(r.p.id) === q.replace(/^#/, '') : r.search.indexOf(q) >= 0); }), pages = Math.max(1, Math.ceil(filtered.length / size));
       page = Math.max(0, Math.min(page, pages - 1));
       var el = d.querySelector('#huntResults');
-      el.innerHTML = '<p class="small" role="status">' + filtered.length.toLocaleString() + ' pets · Page ' + (page + 1) + ' of ' + pages + '</p><div class="hunt-grid">' + filtered.slice(page*size, (page+1)*size).map(function (r) {
+      if (c.pending && !query && !rows.length) { el.innerHTML = '<p class="small" role="status">Loading your pets…</p>'; return; }
+      var note = c.pending ? '<p class="small" role="status">Loading the rest of your pets…</p>' : '';
+      el.innerHTML = note + '<p class="small" role="status">' + filtered.length.toLocaleString() + ' pets · Page ' + (page + 1) + ' of ' + pages + '</p><div class="hunt-grid">' + filtered.slice(page*size, (page+1)*size).map(function (r) {
         return '<button type="button" class="hunt-card' + (r === best ? ' suggested' : '') + '" data-pick="' + r.p.id + '"' + (r.why ? ' disabled' : '') + '>' + (r === best ? '<b class="hunt-badge">★ SUGGESTED</b>' : '') + sprite(r.p) + '<strong>' + name(r.p) + '</strong><span>⚡ ' + Math.round(r.power * 100) / 100 + ' power</span><small>' + (r.why ? esc(r.why) : 'Ready to hunt') + '</small></button>';
       }).join('') + '</div>' + (!filtered.length ? '<p>No pets match. Try another name or number.</p>' : '') + '<nav aria-label="Hunter pages"><button type="button" class="btn" data-prev' + (!page ? ' disabled' : '') + '>◀ Previous</button><button type="button" class="btn" data-next' + (page+1 >= pages ? ' disabled' : '') + '>Next ▶</button></nav>';
       el.querySelector('[data-prev]').onclick = function () { page--; list(); d.scrollTop = 0; el.querySelector('[data-prev]').focus(); };
@@ -44,6 +50,13 @@
       d.querySelector('[data-back]').onclick = pick;
       d.querySelector('[data-ready]').onclick = function () { if (!chosen) return; var why = V.cemHuntWhy(w, chosen.id, Z.id, c.me, c.block); if (why) { d.querySelector('#huntError').textContent = why; return; } var title = 'Hunt with ' + (chosen.name || 'Pet') + ' #' + chosen.id + ' against #' + Z.id + ' · ' + plan.amount + ' XCPETS'; close(); c.send([plan], title); }; paint(); d.querySelector('[data-back]').focus();
     }
+    d._fill = function (pets, world) {
+      c.pending = false;
+      if (world) { w = world; if (world.byId && world.byId[c.zombie]) Z = world.byId[c.zombie]; }
+      if (!Z) return;
+      build(pets);
+      if (!chosen && d.isConnected) { page = 0; list(); }
+    };
     document.body.appendChild(d); pick(); d.showModal();
   }
   window.V2HuntPicker = { open: open };
