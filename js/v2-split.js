@@ -1,12 +1,16 @@
 /* Published split world (speed phase 2). The snapshot builder writes a summary, per-owner
  * pet lists and per-pet shards next to the world. This file paints from those and does not
- * read the saved full world or reindex it. Full replay runs only from the Verify button.
- * If the files are missing, the rules signature differs, or the snapshot is more than 8
- * blocks behind, the page uses today's path. Doom Week is not involved. */
+ * read the saved full world or reindex it. The full checkpoint check runs when the player
+ * presses Verify, or when a burn asks the check worker. It does not start by itself.
+ * If the files are missing, the rules signature differs, or the snapshot is more than
+ * STALE blocks behind, the page uses today's chain read. Doom Week is not involved.
+ * STALE is 48 blocks (about eight hours). A view a few blocks behind the tip stays usable.
+ * Farther than that, the published files are treated as unusable. */
 (function () {
   'use strict';
   window.__xcpSplitHold = true;
-  var STALE = 8;
+  var STALE = 48;
+  var SCREEN_PAGES = 7; /* first screen is 150 cards, and an owner page holds 24 pets */
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function off() { return q('split') === '0' || q('split') === 'off'; }
   function base() {
@@ -125,6 +129,7 @@
       var snapTip = latest.tip || 0;
       if (chainTip && snapTip && chainTip - snapTip > STALE) throw new Error('stale');
       var folder = dirOf(manUrl);
+      viewFolder = folder;
       var summaryP = getJson(folder + 'view/summary.json', 12000, false);
       var who = me();
       var pageP = who ? sha2(who).then(function (hex) {
@@ -144,7 +149,8 @@
         var livingPages = separate ? Math.max(1, Math.ceil((own.page.alive || 0) / (own.page.pageSize || 24)) || 1) : (stop0 ? 1 : own.page.pages);
         var one = {}; one[own.page.owner || who] = living0;
         var view = assemble(summary, { owners: one });
-        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, key: own.hex, folder: folder, raw: living0 };
+        viewFolder = folder;
+        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0 };
         if (separate) noteGraves(view._pages, 0, true);
         else if (stop0) noteGraves(view._pages, 1, false);
         return view;
@@ -180,7 +186,7 @@
     }
     return out;
   }
-  var pageJob = null, verifiedTakeover = false;
+  var pageJob = null, verifiedTakeover = false, viewFolder = '', nextPage = 1, paging = null;
   function aliveFirst(list) {
     return list.sort(function (a, b) {
       var ad = (a.dead || a.released) ? 1 : 0, bd = (b.dead || b.released) ? 1 : 0;
@@ -209,33 +215,59 @@
     V2Mock.setViewWorld(v);
   }
   var restView = null;
-  function rest() { var v = restView; restView = null; if (v) loadRest(v); }
-  function loadRest(view) {
+  function adoptJob(view) {
     var pg = view._pages;
-    if (!pg || !(pg.pages > 1)) return;
+    if (!pg) return null;
     pageJob = { pets: (pg.raw || view.pets || []).slice(), fights: view.fights || [], pages: pg };
-    var left = [], i;
-    for (i = 1; i < pg.pages; i++) left.push(i);
-    function step() {
-      if (verifiedTakeover) return;
-      if (!left.length) { publishOwner(pageJob.pets, pg, pageJob.fights, true); return; }
-      var slice = left.splice(0, 8);
-      Promise.all(slice.map(function (n) {
-        return getJson(pg.folder + 'view/own/' + pg.key + '.' + n + '.json').then(function (page) {
-          if (!page || !page.pets) return;
-          if (page.alive != null || !endsDead(page.pets)) { pageJob.pets = pageJob.pets.concat(livingOf(page.pets).length === page.pets.length ? page.pets : livingOf(page.pets)); return; }
-          pageJob.pets = pageJob.pets.concat(livingOf(page.pets));
-          noteGraves(pg, n + 1, false);
-          left.length = 0;
-        }, function () {});
-      })).then(function () {
-        if (verifiedTakeover) return;
-        pageJob.batches = (pageJob.batches || 0) + 1;
-        if (!left.length || pageJob.batches === 1 || pageJob.batches % 8 === 0) publishOwner(pageJob.pets, pg, pageJob.fights, !left.length);
-        if (left.length) setTimeout(step, 0);
-      });
+    nextPage = pg.got || 1;
+    viewFolder = pg.folder || viewFolder;
+    return pageJob;
+  }
+  function takeLiving(pg, page, n) {
+    if (!page || !page.pets) return true;
+    if (page.alive != null || !endsDead(page.pets)) {
+      pageJob.pets = pageJob.pets.concat(livingOf(page.pets).length === page.pets.length ? page.pets : livingOf(page.pets));
+      return true;
     }
-    setTimeout(step, 40);
+    pageJob.pets = pageJob.pets.concat(livingOf(page.pets));
+    noteGraves(pg, n + 1, false);
+    return false;
+  }
+  function publishJob(done) {
+    if (!pageJob) return;
+    pageJob.pages.got = nextPage;
+    publishOwner(pageJob.pets, pageJob.pages, pageJob.fights, !!done);
+  }
+  function more(n) {
+    if (paging) return paging;
+    if (!pageJob && restView) { adoptJob(restView); restView = null; }
+    if (!pageJob || !pageJob.pages) return Promise.resolve(false);
+    var pg = pageJob.pages, count = n || SCREEN_PAGES, last = Math.min(pg.pages, nextPage + count), nums = [], i;
+    if (!(nextPage < last)) { if (nextPage >= pg.pages) publishJob(true); return Promise.resolve(false); }
+    for (i = nextPage; i < last; i++) nums.push(i);
+    var stop = false;
+    paging = Promise.all(nums.map(function (ni) {
+      return getJson(pg.folder + 'view/own/' + pg.key + '.' + ni + '.json').then(function (page) {
+        return { n: ni, page: page };
+      }, function () { return { n: ni, page: null }; });
+    })).then(function (rows) {
+      rows.sort(function (a, b) { return a.n - b.n; });
+      for (i = 0; i < rows.length; i++) {
+        if (verifiedTakeover || stop) break;
+        if (!takeLiving(pg, rows[i].page, rows[i].n)) stop = true;
+      }
+      nextPage = stop ? pg.pages : last;
+      paging = null;
+      publishJob(nextPage >= pg.pages);
+      return true;
+    }, function () { paging = null; return false; });
+    return paging;
+  }
+  function rest() {
+    var v = restView;
+    if (!v || !v._pages || !(v._pages.pages > 1)) { restView = null; return; }
+    var need = Math.min(SCREEN_PAGES, v._pages.pages) - (v._pages.got || 1);
+    if (need > 0) more(need);
   }
   function takeMine(m) {
     if (!m || !m.total) return;
@@ -276,7 +308,8 @@
     return readyP;
   }
   function checkPlans(plans) {
-    if (!worker) return Promise.resolve({ ok: false, plans: plans || [], skip: ['The check has not started'] });
+    if (!worker) startVerify();
+    if (!worker) return Promise.resolve({ ok: false, plans: plans || [], skip: ['Press Verify to check this world. Nothing was burned.'] });
     return (readyP || Promise.resolve(null)).then(function () {
       if (!ready) return { ok: false, plans: [], skip: ['The check did not finish. Nothing was burned.'] };
       return new Promise(function (res) {
@@ -296,18 +329,33 @@
       bar.style.cssText = 'background:#1d1b2e;color:#d7ffe4;padding:6px 10px;font-size:12px;line-height:1.5;text-align:center';
       document.body.insertBefore(bar, document.body.firstChild);
     }
-    bar.innerHTML = 'Published world at block <b id="splitViewTip"></b>. <button type="button" class="q" id="splitVerify">Verify</button>';
+    var behind = last && last.tip && view && view.tip ? last.tip - view.tip : 0;
+    var lag = behind > 0 ? ' <span class="muted">(' + behind + ' block' + (behind === 1 ? '' : 's') + ' behind the tip)</span>' : '';
+    bar.innerHTML = 'Published world at block <b id="splitViewTip"></b>' + lag + '. <button type="button" class="q" id="splitVerify">Verify</button>';
     var t = document.getElementById('splitViewTip');
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
-    setTimeout(function () { startVerify(); }, 2000);
+    trimStore();
+  }
+  function trimStore() {
+    var i, k, v;
+    try { sessionStorage.removeItem('xcpets-v2-prod-rows'); } catch (e) {}
+    var big = ['xcpets-v2-last-1', 'xcpets-v2-prod-hashes', 'xcpets-dex-last-1', 'xcpets-dex-cache'];
+    for (i = 0; i < big.length; i++) {
+      k = big[i];
+      try { v = localStorage.getItem(k); if (v && v.length > 80000) localStorage.removeItem(k); } catch (e2) {}
+    }
+    if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
+      try { indexedDB.deleteDatabase('xcpets-world'); } catch (e3) {}
+    }
   }
   function mergePets(extra) {
     if (!extra || !extra.length || !window.V2Mock || !V2Mock.world || !V2Mock.setViewWorld) return;
     var cur = V2Mock.world(), have = {}, pets = (cur.pets || []).slice(), i, p;
     for (i = 0; i < pets.length; i++) have[pets[i].id] = 1;
     for (i = 0; i < extra.length; i++) { p = extra[i]; if (!p || have[p.id] || (p.id === 1765 && p.dead)) continue; pets.push(p); have[p.id] = 1; }
-    publishOwner(pets, cur._pages, cur.fights || [], true);
+    var pg = cur._pages, done = !pg || !!cur._full || (pg.got || 1) >= (pg.pages || 1);
+    publishOwner(pets, pg, cur.fights || [], done);
   }
   function ensureDead() {
     if (!gravePlan) return Promise.resolve(false);
@@ -341,18 +389,15 @@
     var w = window.V2Mock && V2Mock.world && V2Mock.world();
     if (w && w.byId && w.byId[id]) return Promise.resolve(w.byId[id]);
     if (id === 1765) return Promise.resolve(null);
-    return ensureDead().then(function () {
-      w = V2Mock.world();
-      if (w && w.byId && w.byId[id]) return w.byId[id];
-      if (!gravePlan) return null;
-      var shard = ('00000' + Math.floor(id / 2000)).slice(-5);
-      return getJson(gravePlan.folder + 'view/p/' + shard + '.json').then(function (pack) {
-        var p = pack && pack.pets && pack.pets[String(id)];
-        if (!p || (p.id === 1765 && p.dead)) return null;
-        mergePets([p]);
-        return p;
-      }, function () { return null; });
-    });
+    var folder = viewFolder || (gravePlan && gravePlan.folder) || (pageJob && pageJob.pages && pageJob.pages.folder) || '';
+    if (!folder) return Promise.resolve(null);
+    var shard = ('00000' + Math.floor(id / 2000)).slice(-5);
+    return getJson(folder + 'view/p/' + shard + '.json').then(function (pack) {
+      var p = pack && pack.pets && pack.pets[String(id)];
+      if (!p || (p.id === 1765 && p.dead)) return null;
+      mergePets([p]);
+      return p;
+    }, function () { return null; });
   }
-  window.V2Split = { STALE: STALE, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
 })();
