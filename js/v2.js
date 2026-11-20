@@ -818,16 +818,20 @@
     var upto = Math.min(list.length, Math.max(CH, PG.n));
     put(list.slice(0, Math.min(CH, upto))); box.appendChild(tail);
     (function more(i) { if (i >= upto) return; setTimeout(function () { if (renderPets.tok !== tok || !tail.parentNode) return; put(list.slice(i, Math.min(upto, i + CH)), tail); more(i + CH); }, 0); })(CH);
-    if (list.length > upto) { var mb = document.createElement('div'); mb.className = 'row petmore'; mb.style.cssText = 'justify-content:center;margin:10px 0;width:100%;grid-column:1/-1';
-      mb.innerHTML = '<button type="button" class="q" id="petMore">Show more (' + fmt(list.length - upto) + ' left)</button>';
-      box.appendChild(mb); mb.querySelector('button').onclick = function (e) { e.stopPropagation(); var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();
-        put(list.slice(i0, upto), tail); if (list.length > upto) { mb.querySelector('button').textContent = 'Show more (' + fmt(list.length - upto) + ' left)'; box.insertBefore(mb, tail.nextSibling); } else mb.remove();
+    var morePages = !!(w._pages && !w._full && (w._pages.got || 1) < w._pages.pages);
+    if (list.length > upto || morePages) { var mb = document.createElement('div'); mb.className = 'row petmore'; mb.style.cssText = 'justify-content:center;margin:10px 0;width:100%;grid-column:1/-1';
+      var leftMem = Math.max(0, list.length - upto);
+      mb.innerHTML = '<button type="button" class="q" id="petMore">' + (leftMem ? 'Show more (' + fmt(leftMem) + ' left)' : 'Show more living pets') + '</button>';
+      box.appendChild(mb); mb.querySelector('button').onclick = function (e) { e.stopPropagation();
+        if (upto >= list.length && morePages && window.V2Split && V2Split.more) { PG.n = upto + CH; this.disabled = true; this.textContent = 'Loading more pets…'; V2Split.more(V2Split.SCREEN_PAGES || 7); return; }
+        var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();
+        put(list.slice(i0, upto), tail); if (list.length > upto || morePages) { mb.querySelector('button').textContent = list.length > upto ? 'Show more (' + fmt(list.length - upto) + ' left)' : 'Show more living pets'; box.insertBefore(mb, tail.nextSibling); } else mb.remove();
         $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
     var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) pileLink(gone.length); /* discard-pile jump link */
-    $('petPager').textContent = (w._pages && !w._full) ? 'Showing ' + fmt(Math.min(upto, list.length)) + ' so far · loading all ' + fmt(w._pages.n) + ' pets' : (list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets');
+    $('petPager').textContent = (w._pages && !w._full) ? 'Showing ' + fmt(Math.min(upto, list.length)) + ' of ' + fmt(list.length) + ' loaded · ' + fmt(w._pages.n) + ' living' : (list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets');
   }
   /* Discard pile (discard-pile, 2026-10-21; was 'Show discarded', build 2 2026-10-16). Display/localStorage only: no burn, nothing on chain.
    * Same cards as My Pets: name + #id + star, species / rarity / stage / fed state / gear / Power chips, a 'Last fed' line, Open ▸ (pet page) and ↩️ Restore.
@@ -1768,7 +1772,7 @@
     function navH() { var n = document.querySelector('header.nav'); document.documentElement.style.setProperty('--navh', (n ? Math.ceil(n.getBoundingClientRect().height) : 0) + 'px'); }
     navH(); window.addEventListener('resize', navH); })();
   window.V2UI = { hiddenIds: hiddenIds, pickIds: pickIds, starIds: starIds, keptIds: keptIds, isKept: isKept, toggleKeep: toggleKeep, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, refreshGear: refreshGear, toast: toast, confirmPlans: confirmPlans, resumeGo: resumeGo, resumeDrop: resumeDrop, resumePending: resumePending, resumeReoffer: resumeReoffer, replayFight: replayFight, replayBreed: replayBreed, replayCem: replayCem, breedSum: breedSum, breedReview: breedReview, breedFlip: breedFlip, breedFlipText: breedFlipText, breedFlipNote: breedFlipNote, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
-  if (window.V2Split && V2Split.rest) setTimeout(V2Split.rest, 0); /* owner pages after the first paint, so they do not crowd out the scripts */
+  if (window.V2Split && V2Split.rest) setTimeout(V2Split.rest, 0); /* enough living pets for the first screen; the rest wait for Show more */
   render(); route();
   if (M.onFresh) M.onFresh(function () { render(); }); /* boot-from-cache: repaint when the fresh world replaces the saved one */
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or

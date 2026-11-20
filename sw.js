@@ -5,7 +5,7 @@
  * Old cache names are deleted on activate. World files from tips older than the two newest
  * are dropped, and the cache is capped so a phone does not keep every past tip. */
 'use strict';
-var VERSION = 'sw65-1';
+var VERSION = 'sw66-1';
 var CACHE = 'xcpets-' + VERSION;
 /* One large wallet is about 1,900 living pages. Two tips are already dropped above. */
 var MAX_ENTRIES = 4000;
@@ -29,7 +29,9 @@ function sameOrigin(url) { return url.origin === self.location.origin; }
 function isNav(req) {
   return req.mode === 'navigate' || ((req.headers.get('accept') || '').indexOf('text/html') >= 0 && req.destination !== 'script');
 }
-function isRules(url) { return /\/js\/v2-rules\.js$/.test(url.pathname); }
+/* A versioned rules URL changes when the file changes, so it can stay in the cache.
+ * A rules URL with no ?v= is still checked on the network. */
+function isRules(url) { return /\/js\/v2-rules\.js$/.test(url.pathname) && !/[?&]v=/.test(url.search); }
 function versionedStatic(url) {
   if (!sameOrigin(url) || !/[?&]v=/.test(url.search)) return false;
   if (isRules(url) || /\/sw\.js$/.test(url.pathname)) return false;

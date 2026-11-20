@@ -27,7 +27,7 @@
       navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
       if (window.caches && caches.keys) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
     } else if (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
-      navigator.serviceWorker.register('sw.js?v=sw65-1').catch(function () {});
+      navigator.serviceWorker.register('sw.js?v=sw66-1').catch(function () {});
     }
   }
 })();
