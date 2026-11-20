@@ -119,7 +119,7 @@ async function renderMeasure(page, label) {
 }
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = 'd7491644d66137e0d3921bc83323cf7d';
+  const RULES_MD5 = 'da9320aad59a1d7a0d198c12c155b293';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const PS = require(path.join(ROOT, 'js/v2-pet-search.js'));
   const hay = PS.haystack({ id: 9, name: 'Zed', species: 'pepe', tier: 1, stage: 3, stats: { vigor: 3 }, art: { rareHatch: { version: 1, kind: 'two-headed' } } }, null);

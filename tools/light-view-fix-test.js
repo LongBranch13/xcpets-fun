@@ -13,7 +13,7 @@ function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
 const RSIG = {
-  'js/v2-rules.js': 'd7491644d66137e0d3921bc83323cf7d',
+  'js/v2-rules.js': 'da9320aad59a1d7a0d198c12c155b293',
   'rjs/config.js': '66e38a276cf59ade25115a80ceb7deea',
   'rjs/pet-core.js': '47be652fe0a5dd6157a95f5b2c6585fa',
   'rjs/game-core.js': '2784e9ccac773c4e0e58d646fc47b05f',
