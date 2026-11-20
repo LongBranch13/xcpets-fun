@@ -249,7 +249,9 @@
       return copy;
     }
     var cat = opt && opt.itemOf ? opt.itemOf(g.i) : null;
-    return { gid: g.g, item: g.i, tier: g.t | 0, legendary: g.L ? 1 : 0, sig: g.s || undefined, owner: owner || '', on: on == null ? null : on, label: (cat && cat.label) || g.i || '', slot: g.slot || (cat && cat.slot) || '' };
+    var out = { gid: g.g, item: g.i, tier: g.t | 0, legendary: g.L ? 1 : 0, sig: g.s || undefined, owner: owner || '', on: on == null ? null : on, label: (cat && cat.label) || g.i || '', slot: g.slot || (cat && cat.slot) || '' };
+    if (g.bag != null) out.bag = g.bag;
+    return out;
   }
   exp.seedParts = seedParts;
   exp.overlay = overlay;

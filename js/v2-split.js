@@ -75,6 +75,15 @@
       }
     });
     if (pack && pack.rise) pack.rise.forEach(addPet);
+    if (pack && pack.stash) {
+      var opt = artOpt(), si, sg;
+      for (si = 0; si < pack.stash.length; si++) {
+        sg = pack.stash[si];
+        if (!sg) continue;
+        if (window.XcpArt && XcpArt.openGear && !sg.gid && !sg.label) sg = XcpArt.openGear(sg, sg.owner || pack.owner || '', null, opt);
+        addItem(sg, null);
+      }
+    }
     var cold = summary.cold || {};
     var itemList = [];
     Object.keys(items).forEach(function (k) { itemList.push(items[k]); });
@@ -183,8 +192,8 @@
           if (!own || !own.page || !own.page.pets || !own.page.pets.length) {
             if (own && own.page && (own.page.deeds || own.page.roster || own.page.mythicAt != null || (own.page.rise && own.page.rise.length))) {
               var mythic0 = {}; if (own.page.mythicAt != null) mythic0[own.page.owner || who] = own.page.mythicAt;
-              var bare = assemble(summary, { deeds: own.page.deeds || null, mythicOwners: mythic0, roster: own.page.roster || null, rise: own.page.rise || null });
-              viewHold = { deeds: bare.deeds, mythicOwners: bare.mythicOwners, roster: bare._roster || null, cem: bare.cem || null };
+              var bare = assemble(summary, { deeds: own.page.deeds || null, mythicOwners: mythic0, roster: own.page.roster || null, rise: own.page.rise || null, stash: own.page.stash || null, owner: own.page.owner || who });
+              viewHold = { deeds: bare.deeds, mythicOwners: bare.mythicOwners, roster: bare._roster || null, cem: bare.cem || null, stash: own.page.stash || null, owner: own.page.owner || who };
               return bare;
             }
             return assemble(summary, null);
@@ -197,13 +206,13 @@
         var livingPages = separate ? Math.max(1, Math.ceil((own.page.alive || 0) / (own.page.pageSize || 24)) || 1) : (stop0 ? 1 : own.page.pages);
         var one = {}; one[own.page.owner || who] = living0.concat(own.page.rise || []);
         var mythic = {}; if (own.page.mythicAt != null) mythic[own.page.owner || who] = own.page.mythicAt;
-        var view = assemble(summary, { owners: one, deeds: own.page.deeds || null, mythicOwners: mythic, roster: own.page.roster || null, rise: own.page.rise || null });
+        var view = assemble(summary, { owners: one, deeds: own.page.deeds || null, mythicOwners: mythic, roster: own.page.roster || null, rise: own.page.rise || null, stash: own.page.stash || null, owner: own.page.owner || who });
         if (!view._roster) view._roster = savedRoster() || {};
         if (view._roster) {
           if (own.page.alive != null) view._roster.alive = own.page.alive;
           if (own.page.dead != null) view._roster.dead = own.page.dead;
         }
-        viewHold = { deeds: view.deeds, mythicOwners: view.mythicOwners, roster: view._roster || null, cem: view.cem || null };
+        viewHold = { deeds: view.deeds, mythicOwners: view.mythicOwners, roster: view._roster || null, cem: view.cem || null, stash: own.page.stash || null, owner: own.page.owner || who };
         viewFolder = folder;
         view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0 };
         if (separate) noteGraves(view._pages, 0, true);
@@ -246,7 +255,7 @@
     return out;
   }
   var pageJob = null, verifiedTakeover = false, viewFolder = '', nextPage = 1, paging = null;
-  var viewHold = { deeds: null, mythicOwners: null, roster: null, cem: null };
+  var viewHold = { deeds: null, mythicOwners: null, roster: null, cem: null, stash: null, owner: '' };
   function rosterKey() { return 'xcpets-v2-roster-' + (me() || '') + '-' + ((lastSummary && lastSummary.tip) || ''); }
   function hybPet(p) { return !!(p && (p.hybrid || (p.art && p.art.hybrid) || (typeof p.species === 'string' && (p.species.indexOf('hyb:') === 0 || p.species.indexOf('hyb3:') === 0)))); }
   function rememberRoster(w) {
@@ -340,7 +349,7 @@
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
     one[who] = aliveFirst(pets.slice());
-    var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt() });
+    var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt(), stash: viewHold.stash, owner: viewHold.owner });
     v._pages = pages || null;
     v._full = done ? 1 : 0;
     if (done) viewHold.roster = null;
@@ -487,7 +496,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=c4e1a7b618', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=d4b8e198c7', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};

@@ -10,7 +10,7 @@ const { wsDecode } = require('../js/v2-resume');
 const split = require('./sync-server/split');
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
-ok(crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex') === 'd7491644d66137e0d3921bc83323cf7d', 'rules bytes unchanged');
+ok(crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules bytes unchanged');
 
 function rulesCtx() {
   const vm = require('vm');
@@ -95,7 +95,13 @@ ok(kn && kn.as === ':child', 'a bred pet stores only the :child suffix');
 (async function view() {
   const pets = [];
   for (let i = 1; i <= 30; i++) pets.push({ id: i, owner: 'carol', name: 'P' + i, species: 'pepe', tier: 0, stage: 1, care: i, dead: i % 2 === 0, wins: 0, losses: 0, released: false, hatchBlock: 1000 + i, stats: { vigor: 1, spark: 1, grit: 1, zoom: 1, luck: 1 } });
-  const world = { tip: 30, pets: pets, items: { g1: { gid: 'g1', item: 'hat', label: 'Hat', slot: 'head', tier: 1, owner: 'carol', on: 1 } }, community: { burned: 1, leaderboard: [] }, log: [] };
+  pets[0].deed = 'A1';
+  const world = { tip: 30, pets: pets, deeds: { A1: { petId: 1, holder: 'carol', block: 10, tx: 't', issuer: 'carol' } }, mythicOwners: { carol: 100 }, items: {
+    g1: { gid: 'g1', item: 'hat', label: 'Hat', slot: 'head', tier: 1, owner: 'carol', on: 1 },
+    g9: { gid: 'g9', item: 'wojak-cape', label: 'Wojak cape', slot: 'body', tier: 1, owner: 'carol', on: null },
+    g10: { gid: 'g10', item: 'bandana', label: 'WOW bandana', slot: 'body', tier: 1, owner: 'carol', on: null, bag: 2 },
+    g11: { gid: 'g11', item: 'hat', label: 'Hat', slot: 'head', tier: 0, owner: 'dana', on: null }
+  }, community: { burned: 1, leaderboard: [] }, log: [] };
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'slim-view-'));
   const meta = await split.write(out, world, { tip: 30, rsig: 'rtest' });
   const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
@@ -110,6 +116,35 @@ ok(kn && kn.as === ':child', 'a bred pet stores only the :child suffix');
   ok(rank.pets.length === 30 && rank.owners.indexOf('carol') === 0, 'rank file lists every pet once');
   const shard = JSON.parse(fs.readFileSync(path.join(out, 'p', '00000.json'), 'utf8'));
   ok(shard.v === 3 && shard.pets['1'] && !shard.pets['1'].art && shard.pets['1'].o === 0, 'shard row is slim and owner is an index');
+  ok(first.deeds && first.deeds.A1 && first.deeds.A1.holder === 'carol' && first.mythicAt === 100 && first.roster && first.roster.alive === 15 && Array.isArray(first.rise), 'page 0 keeps deeds, mythicAt, roster and rise');
+  ok(first.stash && first.stash.length === 2 && first.stash.some(g => g.g === 'g9' && g.slot === 'body' && !g.i.includes('hat')) && first.stash.some(g => g.g === 'g10' && g.bag === 2) && !first.stash.some(g => g.g === 'g1' || g.g === 'g11'), 'page 0 stash is only this owner\'s unworn gear');
+  const bare = JSON.parse(JSON.stringify(first)); delete bare.stash;
+  const added = Buffer.byteLength(JSON.stringify(first)) - Buffer.byteLength(JSON.stringify(bare));
+  ok(added > 20 && added < 400, 'two unworn pieces add ' + added + ' bytes to the owner page');
+  const vm = require('vm');
+  const ctx = {
+    console: console, crypto: crypto, TextEncoder: TextEncoder, TextDecoder: TextDecoder, URL: URL, URLSearchParams: URLSearchParams,
+    setTimeout: setTimeout, clearTimeout: clearTimeout, fetch: function () { return Promise.reject(new Error('offline')); },
+    document: { scripts: [], getElementById: function () { return null; }, body: { insertBefore: function () {} } },
+    location: { search: '', href: 'https://xcpets.fun/play.html' },
+    localStorage: { getItem: function () { return null; }, setItem: function () {}, removeItem: function () {} },
+    sessionStorage: { getItem: function () { return null; }, setItem: function () {}, removeItem: function () {} },
+    V2Rules: { itemOf: function () { return { label: 'Cape', slot: 'back' }; } }
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js/v2-art.js'), 'utf8'), ctx, { filename: 'js/v2-art.js' });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js/v2-split.js'), 'utf8'), ctx, { filename: 'js/v2-split.js' });
+  const built = ctx.V2Split.assemble({ tip: 30, n: 30, alive: 15, dead: 15, burned: 1, burns: 0, community: {}, cold: {}, wagmi: {} }, {
+    owners: { carol: first.pets }, stash: first.stash, owner: 'carol', deeds: first.deeds, mythicOwners: { carol: first.mythicAt }, roster: first.roster, rise: first.rise
+  });
+  const cape = (built.itemList || []).filter(function (g) { return g.gid === 'g9'; })[0];
+  const band = (built.itemList || []).filter(function (g) { return g.gid === 'g10'; })[0];
+  ok(built.deeds && built.deeds.A1 && built.mythicOwners.carol === 100 && built._roster && built._roster.alive === 15, 'assemble keeps deeds, the Mythic block and the roster');
+  ok(cape && cape.on == null && cape.owner === 'carol' && cape.slot === 'body' && cape.item === 'wojak-cape', 'assemble puts unworn stash gear on itemList');
+  ok(band && band.bag === 2 && band.on == null, 'a bagged stash piece stays bagged');
+  const { worldFile } = require('./sync-server/server');
+  ok(worldFile('/data', ['r' + 'ab'.repeat(16), '30', 'view', 'rank.json']) && worldFile('/data', ['r' + 'ab'.repeat(16), '30', 'view', 'owners.json']), 'rank and owner tables are publishable paths');
   const fresh = [];
   for (let i = 1; i <= 30; i++) fresh.push({ id: i, owner: 'carol', name: 'P' + i, species: 'pepe', tier: 0, stage: 1, care: i, dead: i % 2 === 0, wins: 0, losses: 0, released: false, hatchBlock: 1000 + i, stats: { vigor: 1, spark: 1, grit: 1, zoom: 1, luck: 1 } });
   const saboWorld = { tip: 40, pets: fresh.concat([{ id: 1765, owner: 'carol', name: 'Sabo', species: 'wojak', tier: 3, stage: 5, care: 9, dead: true, wins: 0, losses: 0, released: false, hatchBlock: 900, stats: { vigor: 20, spark: 20, grit: 20, zoom: 20, luck: 20 }, art: { eyes: 'classic', pattern: 'none', background: 'solid', cheeks: false, species: 'wojak' } }]), items: {}, community: { burned: 1, leaderboard: [] }, log: [] };

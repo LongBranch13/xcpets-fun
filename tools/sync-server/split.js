@@ -239,15 +239,31 @@ function rankPet(p, rec, tip, hof, bits) {
   if (rec._bh) row._bh = rec._bh;
   return row;
 }
+function stashRec(g) {
+  const o = Art.slimGear(g);
+  if (!o) return null;
+  if (g.bag != null) o.bag = g.bag;
+  return o;
+}
 function write(dir, world, meta) {
   const tip = meta && meta.tip != null ? meta.tip : (world.tip || 0);
   const rsig = meta && meta.rsig || '';
   const wornBy = new Map();
+  const stashBy = new Map();
   const items = world.items || {};
   const list = world.itemList || Object.keys(items).map(k => items[k]);
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
-    if (!g || g.on == null) continue;
+    if (!g) continue;
+    if (g.on == null) {
+      const who = g.owner || '';
+      if (!who) continue;
+      let bag = stashBy.get(who);
+      if (!bag) stashBy.set(who, bag = []);
+      const rec = stashRec(g);
+      if (rec) bag.push(rec);
+      continue;
+    }
     let a = wornBy.get(g.on);
     if (!a) wornBy.set(g.on, a = []);
     const rec = itemRec(g);
@@ -380,6 +396,10 @@ function write(dir, world, meta) {
               }
               body.pets = slice.map(r => packPet(r.rec));
               if (Array.isArray(body.rise) && body.rise.length) body.rise = body.rise.map(packPet);
+              if (list === living) {
+                const stash = stashBy.get(rows[0].o);
+                if (stash && stash.length) body.stash = stash;
+              }
               if (used.length) body.hashes = used;
             }
             const file = nameOf(pg);
