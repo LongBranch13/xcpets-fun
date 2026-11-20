@@ -2260,6 +2260,139 @@
     return { winner: ia < As.length ? 'a' : 'b', bouts: bouts, out: out };
   }
 
+  // ---------------------------------------------------------------- dead pets leave after 14 game days
+  /* DEAD PET RETIRE (owner Nov 20 2026). From ACTIVATE_RETIRE_DEAD_BLOCK a dead pet leaves the world
+   * once it has been dead for RETIRE_DEAD_DAYS game days. Game days are clock() / BLOCKS_PER_DAY (144).
+   * The pause PAUSE_FROM–PAUSE_UNTIL (975817–976518) does not count. The death moment is p.deathBlock,
+   * the same field liveAt writes. For a starved pet that value is already a game-clock number:
+   * (day(last meal) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY, and the pet is dead when clock(b) >= deathBlock.
+   * Fourteen game days later is clock(b) >= deathBlock + 14 * 144. A deathBlock that is not a multiple of
+   * 144 is a chain height (a Mythic meal, or a zombie crumble clock) and is passed through clock() so the
+   * pause is still skipped. Before the activation block this sweep does nothing, so earlier burns replay
+   * the same. At the activation block every pet already past 14 game days dead leaves at once.
+   * Proposed height: node.xcpets.fun tip 976738 on 2026-11-20 plus 288 blocks (two game days) = 977026.
+   * The owner sets the real height. Sabo #1765 (MZ_FULL_ID) is never retired and this rule never describes
+   * that pet as dead. Who else stays is retireSpareWhy(), one function, so the list can be trimmed. */
+  var ACTIVATE_RETIRE_DEAD_BLOCK = 977026, RETIRE_DEAD_DAYS = 14;
+  function retireDeadOn(b) { return ACTIVATE_RETIRE_DEAD_BLOCK != null && b != null && Number(b) >= Number(ACTIVATE_RETIRE_DEAD_BLOCK); }
+  /* Limited species, read from the rules' own species tables: community species, the hand-drawn
+   * community and 1-of-1 species objects, contest species, and the extra ids isContestSp names.
+   * Ordinary hatch species (SPECIES12 and Chad) are removed. */
+  function retireRareSpecies() {
+    var ids = {}, add = function (id) { if (id) ids[id] = 1; };
+    (PetCore.SPECIES || []).forEach(function (s) { if (s && s.community) add(s.id); });
+    [WIZ_SP, KEK_SP, FT_SP, HP_SP, WR_SP, DJ_SP, VIK_SP, JP_SP, DR_SP].forEach(function (s) { if (s) add(s.id); });
+    Object.keys(CONTEST || {}).forEach(add);
+    ['bojackson', 'rarepigeon', 'borp', 'jacksonpepe'].forEach(function (id) { if (isContestSp(id)) add(id); });
+    (SPECIES12 || []).forEach(function (s) { delete ids[s.id]; });
+    delete ids.chad;
+    return ids;
+  }
+  var RETIRE_RARE_SPECIES = null;
+  function retireRareMap() { return RETIRE_RARE_SPECIES || (RETIRE_RARE_SPECIES = retireRareSpecies()); }
+  function retireWeird(p) { var r = p && ((p.art && p.art.rareHatch) || p.rareHatch); return !!(r && r.version === 1 && WEIRD_KINDS.indexOf(r.kind) >= 0); }
+  function retireLegendHatch(p) { var r = p && ((p.art && p.art.rareHatch) || p.rareHatch); return !!(r && r.version === 1 && (r.kind === 'djpepe' || r.kind === 'wizard' || r.kind === 'kek' || r.kind === 'god')); }
+  /* First match wins. Trim or add a line here. Era badges are not a flag: every pet is born in some era. */
+  function retireSpareWhy(p) {
+    if (!p) return null;
+    if (p.id === MZ_FULL_ID) return 'sabo';
+    if (p.community) return 'community';
+    if ((p.tier | 0) === 3) return 'legendary';
+    if (p.stage === 5 || p.mythicCare || p.ascended || p.mythicGod || (p.mgDead && !p.mgDead.over)) return 'mythic';
+    if (retireRareMap()[p.species]) return 'rare-species';
+    if (isHybrid(p.species) || isHybrid3(p.species) || p.hybrid || (p.art && p.art.hybrid)) return 'hybrid';
+    if (p.burnLord || p.supreme || p.contest || p.top3Grant || p.priorityGrant || isOneOfOne(p)) return 'grant';
+    if (p.deed || p.keepsake) return 'deed';
+    if (p.jackpot) return 'event';
+    if (retireLegendHatch(p)) return 'legend-hatch';
+    if (retireWeird(p)) return 'weird';
+    return null;
+  }
+  function retireSpareFlags(p) {
+    if (!p) return [];
+    var f = [];
+    if (p.id === MZ_FULL_ID) f.push('sabo');
+    if (p.community) f.push('community');
+    if ((p.tier | 0) === 3) f.push('legendary');
+    if (p.stage === 5 || p.mythicCare || p.ascended || p.mythicGod || (p.mgDead && !p.mgDead.over)) f.push('mythic');
+    if (retireRareMap()[p.species]) f.push('rare-species');
+    if (isHybrid(p.species) || isHybrid3(p.species) || p.hybrid || (p.art && p.art.hybrid)) f.push('hybrid');
+    if (p.burnLord || p.supreme || p.contest || p.top3Grant || p.priorityGrant || isOneOfOne(p)) f.push('grant');
+    if (p.deed || p.keepsake) f.push('deed');
+    if (p.jackpot) f.push('event');
+    if (retireLegendHatch(p)) f.push('legend-hatch');
+    if (retireWeird(p)) f.push('weird');
+    return f;
+  }
+  /* The death clock liveAt would store, without writing the pet. Null means this pet is not dead at b. */
+  function retireDeathClock(w, p, b) {
+    if (!p || p.released || p.community || p.mythicGod || p.id === MZ_FULL_ID) return null;
+    if (p.zombie && !p.zombie.end) {
+      if (p.zombie.mfed) return null;
+      if (span(b, p.zombie.fedAt) < CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS) return null;
+      /* Same crumble block cemLive stores: spanAt once ACTIVATE_ZOMBIE_CLOCK_BLOCK is on, a raw sum before it. */
+      return clock(cemDue(p.zombie.fedAt, CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS, b));
+    }
+    if (p.mgDead && !p.mgDead.over) return clock(p.mgDead.block);
+    var last = p.lastFed != null ? p.lastFed : p.hatchBlock;
+    if (last == null) return null;
+    if (p.clockFrom != null) last = Math.max(last, p.clockFrom);
+    var th = petThresholds(w, p, b), mythic = p.care >= th[5] || !!p.ascended;
+    if (mythicKeepOn(b) && w && w.everMythic && w.everMythic[p.id] != null) mythic = true;
+    if (mythic) return null;
+    return (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY;
+  }
+  function retireDeadDue(w, p, b) {
+    if (!retireDeadOn(b) || !p || retireSpareWhy(p)) return false;
+    var dc = retireDeathClock(w, p, b);
+    if (dc == null) return false;
+    return clock(b) >= dc + RETIRE_DEAD_DAYS * BLOCKS_PER_DAY;
+  }
+  function retireDeadTargets(t) {
+    if (!t) return [];
+    var ids = [], add = function (x) { if (typeof x === 'number' && x > 0) ids.push(x); };
+    if (t.action === 'fight' || t.action === 'breed' || t.action === 'sd' || t.action === 'rumble') { add(t.a); add(t.b); add(t.petId); }
+    else if (t.action === 'tt') { (t.a || []).forEach(add); (t.b || []).forEach(add); }
+    else if (t.action === 'swap') { add(t.mine); add(t.theirs); }
+    else if (t.action === 'cemr') add(t.target);
+    else { add(t.petId); add(t.grave); add(t.zombie); (t.ids || []).forEach(add); }
+    return ids;
+  }
+  function retireDeadSendWhy(w, t, b) {
+    if (!retireDeadOn(b) || !t || !w || !w.byId) return null;
+    var ids = retireDeadTargets(t), i, id, p;
+    for (i = 0; i < ids.length; i++) {
+      id = ids[i]; if (id === MZ_FULL_ID) continue;
+      p = w.byId[id];
+      if (!p) return 'No such pet #' + id + '. Pets that have been dead for ' + RETIRE_DEAD_DAYS + ' game days have left the game, and this burn would only feed the community pet.';
+      if (retireDeadDue(w, p, b)) return 'Pet #' + id + ' has left the game after ' + RETIRE_DEAD_DAYS + ' days dead. This burn would only feed the community pet.';
+    }
+    return null;
+  }
+  function retireDeadBanner() {
+    if (ACTIVATE_RETIRE_DEAD_BLOCK == null) return '';
+    return 'From block ' + Number(ACTIVATE_RETIRE_DEAD_BLOCK).toLocaleString('en-US') + ', a pet that has been dead for ' + RETIRE_DEAD_DAYS + ' game days leaves the game. Legendary and Mythic pets, rare species, special pets, and weird hatches stay. A burn aimed at a pet that has left only feeds the community pet. This page will not ask you to sign one.';
+  }
+  function retireDeadSweep(w, b) {
+    if (!retireDeadOn(b) || !w || !w.pets) return 0;
+    if (w._retireDeadBlock === b) return 0;
+    w._retireDeadBlock = b;
+    var gone = {}, n = 0, i, p, C;
+    for (i = 0; i < w.pets.length; i++) { p = w.pets[i]; if (!retireDeadDue(w, p, b)) continue; gone[p.id] = 1; n++; }
+    if (!n) return 0;
+    Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g) return;
+      if (g.on != null && gone[g.on]) g.on = null; if (g.grave != null && gone[g.grave]) g.grave = null; if (g.bag != null && gone[g.bag]) g.bag = null; });
+    if (w.bags) Object.keys(gone).forEach(function (id) { delete w.bags[id]; });
+    C = w.cem;
+    if (C && C.altars) Object.keys(gone).forEach(function (id) { var A = C.altars[id]; if (!A || A.status !== 'open') return; cemFree(w, A, null); A.status = 'missed'; A.closed = b; });
+    if (C && C.zombies) C.zombies = C.zombies.filter(function (id) { return !gone[id]; });
+    if (w.everMythic) Object.keys(gone).forEach(function (id) { delete w.everMythic[id]; });
+    Object.keys(gone).forEach(function (id) { delete w.byId[id]; });
+    w.pets = w.pets.filter(function (q) { return !gone[q.id]; });
+    w.retiredDead = (w.retiredDead || 0) + n;
+    return n;
+  }
+
   // ---------------------------------------------------------------- replay
   var SALE_DEX = null;
   var CG_CACHE = null;
@@ -2297,7 +2430,8 @@
     ev.forEach(function (e) {
       cemFlush(w, e.b); /* SEANCE ALWAYS RAISES: finish earlier blocks' seances first */
       if (saleIx) settleSales(w, e.b, saleIx);
-      spinsGate(w, e.b); mgSweep(w, e.b, blockHashes); cemSweep(w, e.b); wizHatClear(w, e.b); jackpotChildSweep(w, e.b); jackpotNobreedSweep(w, e.b); mythicKeepSweep(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); grantBurnLords(w, e.b, blockHashes); grantContestEggs(w, e.b, blockHashes); grantBo(w, e.b, blockHashes); grantRp(w, e.b, blockHashes); grantJp(w, e.b, blockHashes); grantViking(w, e.b, blockHashes); grantDragon(w, e.b, blockHashes); grantPowerSweep(w, e.b); grantMythicZFull(w, e.b); grantKekFlags(w, e.b); relabelTiers(w, e.b); wizTierRelabel(w, e.b); wizTier2Relabel(w, e.b); repairGear(w, e.b); allSlotsSweep(w, e.b); maybeRumbles(e.b); questLaunch(w, e.b); questSettle(w, e.b, blockHashes, L); earnSweep(w, e.b); lookSweep(w, e.b); raidSweep(w, e.b, blockHashes); raidSettle(w, e.b, blockHashes, L);
+      spinsGate(w, e.b); mgSweep(w, e.b, blockHashes); cemSweep(w, e.b); wizHatClear(w, e.b); jackpotChildSweep(w, e.b); jackpotNobreedSweep(w, e.b); mythicKeepSweep(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); grantBurnLords(w, e.b, blockHashes); grantContestEggs(w, e.b, blockHashes); grantBo(w, e.b, blockHashes); grantRp(w, e.b, blockHashes); grantJp(w, e.b, blockHashes); grantViking(w, e.b, blockHashes); grantDragon(w, e.b, blockHashes); grantPowerSweep(w, e.b); grantMythicZFull(w, e.b); grantKekFlags(w, e.b); relabelTiers(w, e.b); wizTierRelabel(w, e.b); wizTier2Relabel(w, e.b); repairGear(w, e.b); allSlotsSweep(w, e.b); maybeRumbles(e.b); questLaunch(w, e.b); questSettle(w, e.b, blockHashes, L); earnSweep(w, e.b); lookSweep(w, e.b);       raidSweep(w, e.b, blockHashes); raidSettle(w, e.b, blockHashes, L);
+      retireDeadSweep(w, e.b); /* dead pets past 14 game days leave before this block's burns; no-op below ACTIVATE_RETIRE_DEAD_BLOCK */
       if (e.op) { applyOp(w, e.op); return; }
       var r = e.r; if (seen[r.tx_hash]) return; seen[r.tx_hash] = 1; playerSeen(w, r.source);
       var amt = Number(r.amount), bh = blockHashes[r.block_index], t = parseTag(r.tag), v2 = r.block_index >= V2_FROM_BLOCK;
@@ -2312,6 +2446,7 @@
     cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);
     lookSweep(w, tip); if (fireOn(tip)) fireExtend(w, tip); spinsGate(w, tip); mgSweep(w, tip, blockHashes); cemSweep(w, tip); wizHatClear(w, tip); jackpotChildSweep(w, tip); jackpotNobreedSweep(w, tip); mythicKeepSweep(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); grantBurnLords(w, tip, blockHashes); grantContestEggs(w, tip, blockHashes); grantBo(w, tip, blockHashes); grantRp(w, tip, blockHashes); grantJp(w, tip, blockHashes); grantViking(w, tip, blockHashes); grantDragon(w, tip, blockHashes); grantPowerSweep(w, tip); grantMythicZFull(w, tip); grantKekFlags(w, tip); relabelTiers(w, tip); wizTierRelabel(w, tip); wizTier2Relabel(w, tip); repairGear(w, tip); allSlotsSweep(w, tip); maybeRumbles(tip); questLaunch(w, tip); questSettle(w, tip, blockHashes, L); earnSweep(w, tip); raidSweep(w, tip, blockHashes); raidSettle(w, tip, blockHashes, L);
     w.pets.forEach(function (p) { finish(w, p, tip); });
+    retireDeadSweep(w, tip); /* catch deaths the clock reached after the last burn; no-op below the gate */
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
     cm.returned = rp.done; cm.returnCount = rp.count; cm.goal = COMMUNITY_GOAL; cm.goalPct = rp.pct;
@@ -2448,6 +2583,7 @@
   var SEND_MARGIN = 3; /* blocks: an accept sent with fewer blocks left than this may confirm after the window */
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;
     var b = (tip || w.tip || 0) + 1, me = o.me, P = function (id) { return w.byId[id]; }, pend = (o.pending || []).map(function (g) { return parseTag(g); }).filter(Boolean), amt = plan && plan.amount;
+    var rdWhy = retireDeadSendWhy(w, t, b); if (rdWhy) return rdWhy; /* UI only: block a burn at a pet that has left, before anything is signed */
     if (retiredAt(t, b)) return RETIRED_ACTIONS[t.action] + ' was retired at block ' + ACTIVATE_RETIRE_TAGS_BLOCK + ': this burn would only be community food';
     if (t.action === 'hd' || t.action === 'hu') { if (!hdOn(b)) return 'on-chain discard opens at block ' + ACTIVATE_ONCHAIN_DISCARD_BLOCK; if (amt != null && !(Number(amt) >= HD_COST)) return 'below discard cost 1 dander'; return null; }
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
@@ -3171,6 +3307,7 @@
   function mythicHeadStartWhy(hs) { return 'Owner\'s head start: only the last owner can raise this Mythic for ' + hs.left + ' more block' + (hs.left === 1 ? '' : 's'); }
   /** graveWhy: can grave G be raised at block b (by src)? null = yes. */
   function cemGraveWhy(w, G, src, b) { if (!G) return 'no such grave'; liveAt(w, G, b);
+    if (G.id !== MZ_FULL_ID && retireDeadDue(w, G, b)) return 'left the game after ' + RETIRE_DEAD_DAYS + ' days dead';
     if (!cemPublic(b) && (G.id !== CEM_OWNER_GRAVE || src !== CEM_OWNER_ADDR)) return 'owner test: only grave #' + CEM_OWNER_GRAVE + ' by the owner wallet for now';
     if (G.community) return 'community pets never die'; if (isZ(G)) return 'already risen'; if (G.released || !G.dead) return 'not a grave (the pet is not dead)';
     var rest = huntRulesOn(b) && huntRest(G); if (rest) { if (src !== rest.owner) return 'only its owner can raise this rested zombie'; if (b < rest.until) return 'seance opens at block ' + rest.until; }
@@ -5229,6 +5366,7 @@
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
+    retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
     ACTIVATE_MYTHIC_HEADSTART_BLOCK: ACTIVATE_MYTHIC_HEADSTART_BLOCK, MYTHIC_HEADSTART_BLOCKS: MYTHIC_HEADSTART_BLOCKS, mythicHeadstartGate: function () { return ACTIVATE_MYTHIC_HEADSTART_BLOCK; }, mythicHeadstartOn: mythicHeadstartOn, mythicHeadStart: mythicHeadStart, mythicHeadStartWhy: mythicHeadStartWhy, _setMythicHeadstartActivation: function (b) { ACTIVATE_MYTHIC_HEADSTART_BLOCK = b == null ? null : Number(b); },
