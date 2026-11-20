@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Cemetery and shop pickers call the same living-pet load as play.html (V2Split.rest, 5,000 cap).
  * Discard-pile ids still missing are loaded with ensurePet. loadBoard is not used.
- * js/v2-rules.js, js/v2-split.js and tools/sync-server/split.js stay the bytes this branch started from.
+ * js/v2-rules.js stays the main bytes. The split files are the slim publisher.
  * Nothing is signed or sent. */
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
@@ -12,8 +12,8 @@ function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
 ok(md5('js/v2-rules.js') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules MD5 unchanged after #77');
-ok(md5('js/v2-split.js') === 'fdae8729230b39ff71f360f13e125702', 'js/v2-split.js unchanged');
-ok(md5('tools/sync-server/split.js') === 'c0463776e09c0c5e858c623974cebda5', 'tools/sync-server/split.js unchanged');
+ok(md5('js/v2-split.js') === '06c433e3b9e0509fee11d5b87c5c21aa', 'js/v2-split.js is the slim publisher client');
+ok(md5('tools/sync-server/split.js') === 'e33840d7a328484734a2c2ac90b93976', 'tools/sync-server/split.js is the slim publisher');
 
 function block(src) {
   const a = src.indexOf('  /* living-rest-1107:'), b = src.indexOf('  /* /living-rest-1107 */');

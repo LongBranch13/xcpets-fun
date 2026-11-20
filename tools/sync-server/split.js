@@ -6,6 +6,7 @@
  * not reindex the full world. Keyed by the snapshot directory, which is already
  * rules-signature + tip. Missing or stale files are the page's fallback. */
 const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const Art = require('../../js/v2-art');
 const PET_SHARD = 2000;
 const PAGE = 24;
 const COLD_KEYS = ['wizard', 'kek', 'homer', 'rabbit', 'funtrump', 'djpepe'];
@@ -91,7 +92,8 @@ function ownerSide(rows, world) {
     }
     if (p.deed && src[p.deed]) {
       deeds[p.deed] = deedRec(src[p.deed]);
-      if (!gone && src[p.deed].holder === (p.owner || '')) tokenized++;
+      const who = p.owner || rows[i].o || '';
+      if (!gone && src[p.deed].holder === who) tokenized++;
       else if (!gone) away++;
     }
   }
@@ -172,15 +174,96 @@ function fieldsOf(p) {
 }
 /* Spill pets to disk one shard at a time so a 180k-pet world is not copied twice.
  * Each owner is then written in pages of PAGE pets. The first page is what a visit downloads. */
+function artOpt(meta) {
+  const V = meta && meta.ctx && meta.ctx.V2Rules;
+  const PC = meta && meta.ctx && (meta.ctx.PetCore || meta.ctx.self && meta.ctx.self.PetCore);
+  return {
+    PetCore: PC || null,
+    ftLook: V && V.ftLookOfTier ? function (t) { return V.ftLookOfTier(t); } : null,
+    itemOf: V && V.itemOf ? function (id) { return V.itemOf(id); } : null
+  };
+}
+function traitVec(p) {
+  const a = p.art || {};
+  const cheek = a.cheeks === true ? 'blush' : (!a.cheeks ? 'none' : String(a.cheeks));
+  const hy = !!(p.hybrid || a.hybrid || /^hyb:/.test(String(p.species || '')));
+  return [hy ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheek,
+    p.mutation ? 'mut-' + (p.mutation.kind || 'odd') : 'none', p.shows ? 'tb-' + p.shows : 'none'];
+}
+function isComm(p) { return !!(p.community || (p.art && p.art.community)); }
+function viewPet(p, worn, tables, opt) {
+  const rec = copy(p) || { id: p.id };
+  const note = opt && opt.PetCore && p.art ? Art.artNote(p, opt.PetCore, opt) : null;
+  delete rec.art; delete rec.owner;
+  rec.id = p.id;
+  rec.o = tables.owner(p.owner || '');
+  if (note && !note.keep) {
+    rec._h = tables.hash(note.bh);
+    if (note.as) rec.as = note.as;
+    if (note.sid) rec.sid = note.sid;
+    if (note.ax) rec.ax = note.ax;
+    if (note.ac) rec._ac = 1;
+  } else if (p.art) rec.art = copy(p.art);
+  rec.worn = (worn || []).map(g => Art.slimGear(g) || g);
+  return rec;
+}
+function streakAt(p, tip) {
+  const fd = p.feedDays || {}, d0 = Math.floor((tip || 0) / 144);
+  let d = fd[d0] ? d0 : d0 - 1, n = 0;
+  while (fd[d]) { n++; d--; }
+  return { sk: n, td: fd[d0] ? 1 : 0 };
+}
+function rankPet(p, rec, tip, hof, bits) {
+  const s = p.stats || {}, st = streakAt(p, tip);
+  const row = {
+    id: p.id | 0, o: rec.o, name: p.name || '', sp: p.species || '', ti: p.tier | 0, st: p.stage | 0,
+    sn: p.stageName || '', care: p.care || 0, w: p.wins || 0, l: p.losses || 0, hb: p.hatchBlock == null ? null : p.hatchBlock,
+    sg: [s.vigor || 0, s.spark || 0, s.grit || 0, s.zoom || 0, s.luck || 0],
+    dead: p.dead ? 1 : 0, rel: p.released ? 1 : 0, cm: isComm(p) ? 1 : 0, hy: p.hybrid ? 1 : 0, rs: p.resurrected || 0,
+    par: p.parents && p.parents.length ? p.parents.length : 0, sk: st.sk, td: st.td, hf: hof, rb: bits,
+    tx: p.hatchTx || '', dd: p.deed || ''
+  };
+  if (p.shards) row.shards = p.shards;
+  if (p.mutation) row.mu = p.mutation;
+  if (p.shows) row.shw = p.shows;
+  if (p.blackEye) row.be = p.blackEye;
+  if (p.crowned) row.cr = p.crowned;
+  if (p.electric) row.el = 1;
+  if (p.rareHatch) row.rareHatch = p.rareHatch;
+  if (p.hybrid && typeof p.hybrid === 'object') row.hybrid = p.hybrid;
+  if (rec._h != null) row._h = rec._h;
+  if (rec.as) row.as = rec.as;
+  if (rec.sid) row.sid = rec.sid;
+  if (rec.ax) row.ax = rec.ax;
+  if (rec._ac) row._ac = 1;
+  if (rec._bh) row._bh = rec._bh;
+  return row;
+}
+function stashRec(g) {
+  const o = Art.slimGear(g);
+  if (!o) return null;
+  if (g.bag != null) o.bag = g.bag;
+  return o;
+}
 function write(dir, world, meta) {
   const tip = meta && meta.tip != null ? meta.tip : (world.tip || 0);
   const rsig = meta && meta.rsig || '';
   const wornBy = new Map();
+  const stashBy = new Map();
   const items = world.items || {};
   const list = world.itemList || Object.keys(items).map(k => items[k]);
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
-    if (!g || g.on == null) continue;
+    if (!g) continue;
+    if (g.on == null) {
+      const who = g.owner || '';
+      if (!who) continue;
+      let bag = stashBy.get(who);
+      if (!bag) stashBy.set(who, bag = []);
+      const rec = stashRec(g);
+      if (rec) bag.push(rec);
+      continue;
+    }
     let a = wornBy.get(g.on);
     if (!a) wornBy.set(g.on, a = []);
     const rec = itemRec(g);
@@ -191,10 +274,27 @@ function write(dir, world, meta) {
   const petOut = new Map();
   const zstream = fs.createWriteStream(path.join(tmp, 'zombies.ndjson'));
   for (let i = 0; i < 256; i++) outs[i] = fs.createWriteStream(path.join(tmp, i.toString(16).padStart(2, '0') + '.ndjson'));
+  const rankOut = fs.createWriteStream(path.join(tmp, 'rank.ndjson'));
+  const opt = artOpt(meta);
+  const owners = [], omap = new Map(), hashes = [], hmap = new Map();
+  const tables = {
+    owner: function (addr) { let i = omap.get(addr); if (i == null) { i = owners.length; owners.push(addr); omap.set(addr, i); } return i; },
+    hash: function (h) { let i = hmap.get(h); if (i == null) { i = hashes.length; hashes.push(h); hmap.set(h, i); } return i; },
+    hashes: hashes
+  };
+  const all = world.pets || [];
+  const RF = {};
+  let traitN = 0;
+  for (let ti = 0; ti < all.length; ti++) {
+    const tp = all[ti];
+    if (!tp || isComm(tp) || tp.released || (tp.id | 0) === 1765) continue;
+    traitN++;
+    const vec = traitVec(tp);
+    for (let t = 0; t < vec.length; t++) { const key = t + ':' + vec[t]; RF[key] = (RF[key] || 0) + 1; }
+  }
   let alive = 0, dead = 0, released = 0, n = 0;
   const counts = new Map();
   const sample = [];
-  const all = world.pets || [];
   function writeLine(stream, line) {
     if (stream.write(line)) return null;
     return new Promise(res => stream.once('drain', res));
@@ -209,7 +309,19 @@ function write(dir, world, meta) {
       else alive++;
       const owner = p.owner || '';
       counts.set(owner, (counts.get(owner) || 0) + 1);
-      const rec = petRec(p, wornBy.get(p.id) || []);
+      const rec = viewPet(p, wornBy.get(p.id) || [], tables, opt);
+      let bits = null;
+      if (!isComm(p) && !p.released && (p.id | 0) !== 1765 && traitN) {
+        const vec = traitVec(p); bits = 0;
+        for (let t = 0; t < vec.length; t++) bits -= Math.log2((RF[t + ':' + vec[t]] || 1) / traitN);
+      }
+      const worn = wornBy.get(p.id) || [];
+      let gn = 0, gt = 0;
+      for (let gi = 0; gi < worn.length; gi++) { const g = worn[gi]; if (!g) continue; gn++; gt += g.legendary ? 3 : (g.tier | 0); }
+      if ((p.id | 0) !== 1765) {
+        const w2 = writeLine(rankOut, JSON.stringify(rankPet(p, rec, tip, [gn, gt], bits)) + '\n');
+        if (w2) await w2;
+      }
       const key = ownerKey(owner);
       const line = JSON.stringify({ k: key, o: owner, rec: rec }) + '\n';
       const w1 = writeLine(outs[parseInt(key.slice(0, 2), 16)], line);
@@ -228,7 +340,8 @@ function write(dir, world, meta) {
   }
   return spill().then(() => {
   const summary = {
-    v: 2, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
+    v: 3, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
+    owners: 'view/owners.json', rank: 'view/rank.json', slim: 1,
     pageSize: PAGE,
     burned: world.community && world.community.burned || 0,
     burns: world.log ? world.log.length : 0,
@@ -238,7 +351,7 @@ function write(dir, world, meta) {
     wagmi: copy(world.wagmi) || {}
   };
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
-  return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream)])).then(() => {
+  return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream), end(rankOut)])).then(() => {
     let bytes = 0, files = 0, largestOwner = { bytes: 0, file: '', n: 0 }, largestPage = { bytes: 0, file: '' }, largestShard = { bytes: 0, file: '' };
     bytes += writeJson(path.join(dir, 'summary.json'), summary); files++;
     const ownDir = path.join(dir, 'own');
@@ -264,9 +377,31 @@ function write(dir, world, meta) {
         function writeSet(list, nameOf, extraFor) {
           const pages = Math.ceil(list.length / PAGE) || (list === living ? 1 : 0);
           for (let pg = 0; pg < pages; pg++) {
-            const slice = list.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
+            const slice = list.slice(pg * PAGE, (pg + 1) * PAGE);
+            const ids = slice.map(r => r.rec.id);
             const extra = typeof extraFor === 'function' ? extraFor(pg) : extraFor;
-            const body = Object.assign({ v: 2, tip: tip, rsig: rsig, owner: rows[0].o, n: list.length, alive: living.length, dead: graves.length, page: pg, pages: pages, pageSize: PAGE, pets: slice }, extra || {});
+            const body = Object.assign({ v: 3, tip: tip, rsig: rsig, owner: rows[0].o, n: list.length, alive: living.length, dead: graves.length, page: pg, pages: pages, pageSize: PAGE, ids: ids }, extra || {});
+            if (pg === 0) {
+              const used = [], map = new Map();
+              function packPet(src) {
+                const pet = Object.assign({}, src);
+                pet.owner = rows[0].o;
+                if (pet._h != null) {
+                  const bh = hashes[pet._h];
+                  let ix = map.get(bh);
+                  if (ix == null) { ix = used.length; used.push(bh); map.set(bh, ix); }
+                  pet._h = ix;
+                }
+                return pet;
+              }
+              body.pets = slice.map(r => packPet(r.rec));
+              if (Array.isArray(body.rise) && body.rise.length) body.rise = body.rise.map(packPet);
+              if (list === living) {
+                const stash = stashBy.get(rows[0].o);
+                if (stash && stash.length) body.stash = stash;
+              }
+              if (used.length) body.hashes = used;
+            }
             const file = nameOf(pg);
             const nb = writeJson(path.join(ownDir, file), body);
             bytes += nb; files++;
@@ -285,8 +420,19 @@ function write(dir, world, meta) {
       const text = fs.readFileSync(path.join(tmp, 'p-' + shard + '.ndjson'), 'utf8');
       fs.rmSync(path.join(tmp, 'p-' + shard + '.ndjson'));
       const pets = {};
-      text.split('\n').forEach(line => { if (!line) return; const rec = JSON.parse(line); pets[String(rec.id)] = rec; });
-      const nb = writeJson(path.join(petDir, shard + '.json'), { v: 2, tip: tip, rsig: rsig, pets: pets });
+      const used = [], map = new Map();
+      text.split('\n').forEach(line => {
+        if (!line) return;
+        const rec = JSON.parse(line);
+        if (rec._h != null) {
+          const bh = hashes[rec._h];
+          let ix = map.get(bh);
+          if (ix == null) { ix = used.length; used.push(bh); map.set(bh, ix); }
+          rec._h = ix;
+        }
+        pets[String(rec.id)] = rec;
+      });
+      const nb = writeJson(path.join(petDir, shard + '.json'), { v: 3, tip: tip, rsig: rsig, hashes: used, pets: pets });
       bytes += nb; files++;
       if (nb > largestShard.bytes) largestShard = { bytes: nb, file: 'view/p/' + shard + '.json' };
     });
@@ -296,6 +442,12 @@ function write(dir, world, meta) {
     const huntedBy = (world.cem && world.cem.huntedBy) || {};
     bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, pets: zpets });
     files++;
+    bytes += writeJson(path.join(dir, 'owners.json'), owners); files++;
+    const rankPets = [];
+    const rankText = fs.readFileSync(path.join(tmp, 'rank.ndjson'), 'utf8');
+    rankText.split('\n').forEach(line => { if (line) rankPets.push(JSON.parse(line)); });
+    rankPets.sort((a, b) => a.id - b.id);
+    bytes += writeJson(path.join(dir, 'rank.json'), { v: 3, tip: tip, rsig: rsig, owners: owners, hashes: hashes, pets: rankPets }); files++;
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
     /* Counts and keys only. The old list put every pet of the largest wallets into the manifest,
      * and that file grew past 10 MB. A phone then sat on it and never painted. */

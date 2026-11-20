@@ -28,11 +28,11 @@ vm.createContext(ctx);
 vm.runInContext([grab('unleashPos'), grab('unleashMax'), grab('unleashTips'), grab('unleashFix'), grab('unleashPlain'), grab('unleashCard')].join('\n'), ctx);
 const card = ctx.unleashCard, tipsOf = ctx.unleashTips, fixOf = ctx.unleashFix;
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === 'bd4f122684da8512056ceceb29a4c362', 'js/v2-rules.js is untouched (' + rulesMd5 + ')');
+ok(rulesMd5 === 'f0bd22928c2fe51763d9d34ed4552c04', 'js/v2-rules.js matches main (' + rulesMd5 + ')');
 ok(/function mgUnlHtml\(/.test(src) && /return unleashCard\(V, S, w, p, ME/.test(src), 'the My Pets unleash box is the pause-aware card');
 ok(/unleashEvalBlock\(world\(\)/.test(src), 'the confirm dialog prices the burn at the same tip the card used');
 const play = fs.readFileSync(path.join(ROOT, 'play.html'), 'utf8');
-ok(/js\/v2\.js\?v=8a0853d5cb/.test(play) && /js\/v2-split\.js\?v=8a0853d5cb/.test(play), 'play.html cache-busts the unleash scripts');
+ok(/js\/v2\.js\?v=8a0853d5cb/.test(play) && /js\/v2-split\.js\?v=d4b8e198c7/.test(play), 'play.html keeps the #80 v2.js query and bumps v2-split.js');
 ok(!/js\/v2\.js\?v=c4e1a7b618/.test(play), 'play.html does not keep the previous v2.js url');
 
 const V0 = L.load().V2Rules;

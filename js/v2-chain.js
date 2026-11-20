@@ -115,6 +115,12 @@
   }
   /* idb-split-1107: read a v:2 saved world (see js/v2-replay-worker.js wsEncode): table parts world:0..N-1 in index order, every {__wsr:i}
    * replaced by table entry i (the same object everywhere it was referenced). Any gap or mismatch -> null = a normal replay. */
+  function opened(w) {
+    if (w && window.XcpArt && window.PetCore && (w._owners || w._hashes)) {
+      try { XcpArt.restore(w, PetCore, { ftLook: window.V2Rules && V2Rules.ftLookOfTier ? function (t) { return V2Rules.ftLookOfTier(t); } : null }); } catch (e) {}
+    }
+    return w;
+  }
   function wsDecode(v, parts, keys) { var byIx = [], i, j, T = [], M = '__wsr';
     for (i = 0; i < keys.length; i++) { var k = /^world:(\d+)$/.exec(keys[i]); if (k) byIx[+k[1]] = parts[i]; }
     for (i = 0; i < v.parts; i++) { if (!byIx[i]) return Promise.resolve(null); for (j = 0; j < byIx[i].length; j++) T.push(byIx[i][j]); }
@@ -127,7 +133,7 @@
     function fix(o) { var st = [o], x, ks, n, a, val; while (st.length) { x = st.pop(); a = Array.isArray(x); ks = a ? null : Object.keys(x); n = a ? x.length : ks.length;
       for (var q = 0; q < n; q++) { var kk = a ? q : ks[q]; val = x[kk]; if (!isP(val)) continue; if (marker(val)) { var r = T[val[M]]; if (!r) throw new Error('ws ref'); x[kk] = r; } else st.push(val); } } }
     /* One table entry per turn-slice, so putting the shared pet objects back never holds the main thread long enough for "page unresponsive". */
-    return new Promise(function (res) { var n = 0; function step() { var t0 = Date.now(); try { while (n < T.length && Date.now() - t0 < 12) fix(T[n++]); if (n < T.length) return setTimeout(step, 0); fix(v.root); res(v.root); } catch (e) { res(null); } } step(); }); }
+    return new Promise(function (res) { var n = 0; function step() { var t0 = Date.now(); try { while (n < T.length && Date.now() - t0 < 12) fix(T[n++]); if (n < T.length) return setTimeout(step, 0); fix(v.root); res(opened(v.root)); } catch (e) { res(null); } } step(); }); }
   var idbPre = null;
   function idbGet() { var p = idbPre || idbRaw(); idbPre = null; return Promise.all([p, rulesSig()]).then(function (r) { var v = r[0]; if (!v) return null; var key = idbKey(); return v.key === key ? v : { key: v.key, world: v.world, old: true }; }); }
   /* Replay worker (smooth-perf): the boot replay (and a poll that brought new burns) runs in js/v2-replay-worker.js with the page's own rule scripts,

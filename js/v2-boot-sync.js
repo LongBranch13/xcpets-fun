@@ -244,7 +244,7 @@
   }
   function staleMax() { return (window.XcpResume && XcpResume.STALE_MAX) || 8; }
   function acceptManifest(man, api, rsig) {
-    if (!man || man.v !== 1 || man.format !== 'ws2-json') return null;
+    if (!man || man.v !== 1 || (man.format !== 'ws2-json' && man.format !== 'ws3-json')) return null;
     if (man.rsig !== rsig || man.ops !== '[]') return null;
     var S = api.state(), ops = JSON.stringify((S && S.ops) || []);
     if (ops !== '[]') return null;
