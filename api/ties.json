@@ -1,6 +1,6 @@
 {
- "lastBlock": 976764,
- "count": 421,
+ "lastBlock": 976768,
+ "count": 427,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3625,7 +3625,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 2149,
@@ -3853,7 +3853,7 @@
    "species": "hyb:pepe:doge",
    "speciesLabel": "Pege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 157197,
@@ -3865,7 +3865,7 @@
    "species": "hyb:pepe:funtrump",
    "speciesLabel": "Pepetrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 158199,
@@ -3877,7 +3877,7 @@
    "species": "hyb:mumu:nakamoto",
    "speciesLabel": "Mumoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 158202,
@@ -3889,7 +3889,7 @@
    "species": "hyb:dodo:pepe",
    "speciesLabel": "Dopep (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 2081,
@@ -3925,7 +3925,7 @@
    "species": "hyb3:kek:snibby:dodo",
    "speciesLabel": "Keknibdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 158204,
@@ -3937,7 +3937,7 @@
    "species": "hyb:dodo:nakamoto",
    "speciesLabel": "Doto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 2482,
@@ -4813,7 +4813,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 68313,
@@ -4849,7 +4849,7 @@
    "species": "doge",
    "speciesLabel": "Doge",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93699,
@@ -5029,7 +5029,7 @@
    "species": "hyb3:dodo:wizard:bobo",
    "speciesLabel": "Dozibo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 68298,
@@ -5054,6 +5054,78 @@
    "speciesLabel": "Wivido (hybrid)",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 62806,
+   "asset": "A16593961005020784680",
+   "tiedBlock": 976766,
+   "tiedTx": "c66b0a24fdc915483deafb2d89ab1d961ef96e6903898c248833027141d16551",
+   "kind": "deed",
+   "name": "Duduchetot",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65156,
+   "asset": "A7301533728075578520",
+   "tiedBlock": 976766,
+   "tiedTx": "64a76e116b37d074f1a85ad4050837946eadab4eabe3e7f98e761d8ba82bdab4",
+   "kind": "deed",
+   "name": "Wudoolu",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 65982,
+   "asset": "A16171837618978499593",
+   "tiedBlock": 976766,
+   "tiedTx": "80f32859a7f881ee15c273e849b447bb9ce3a08e1d40e771459d5e641c3130bc",
+   "kind": "deed",
+   "name": "Maboohaki",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 68301,
+   "asset": "A17096257199496249874",
+   "tiedBlock": 976766,
+   "tiedTx": "f3322e3d19e20f505b0dda0efa7f2ace8e2a4ccab4812a1df3010794c126bc23",
+   "kind": "deed",
+   "name": "Pamezy",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 74347,
+   "asset": "A3968721322735883331",
+   "tiedBlock": 976766,
+   "tiedTx": "58b74398c6a7f68d8cee9319a2bdaaef153b7de1080c527bad50d3c4396434b4",
+   "kind": "deed",
+   "name": "Yonoojoopo",
+   "species": "hyb:bobo:funtrump",
+   "speciesLabel": "Botrump (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 78837,
+   "asset": "A7433133753018166234",
+   "tiedBlock": 976766,
+   "tiedTx": "7cd09534ed452a72cfebdffa30f45b392ae80704a59fe95a492906ccbae2e838",
+   "kind": "deed",
+   "name": "Lavatupop",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
