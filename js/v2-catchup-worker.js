@@ -1,7 +1,7 @@
 /* Applies the blocks a snapshot is missing, then stores that world under the current key.
  * The rule file on disk is not changed. This worker evals a copy that can resume. */
 'use strict';
-importScripts('v2-resume.js');
+importScripts('v2-resume.js', 'v2-art.js?v=d4b8e198c7');
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
   self.window = self; self.localStorage = st; self.sessionStorage = st;
@@ -74,6 +74,7 @@ function catchup(m) {
           if (typeof self.wsEncode !== 'function') return rej(new Error('encode'));
           var tDec = Date.now();
           var w = XcpResume.wsDecode(root, parts), seen = {}, list = meta.seen || [], s, held = {};
+          if (self.XcpArt && (w._owners || w._hashes)) XcpArt.restore(w, self.PetCore, { ftLook: self.V2Rules && V2Rules.ftLookOfTier ? function (t) { return V2Rules.ftLookOfTier(t); } : null });
           phases.decode = Date.now() - tDec;
           for (s = 0; s < list.length; s++) seen[list[s]] = 1;
           var tReplay = Date.now();

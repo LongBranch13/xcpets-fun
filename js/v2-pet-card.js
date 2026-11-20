@@ -23,16 +23,16 @@
   /* offer-discards-only-1105 (owner Nov 5 2026): seance offerings read as Sacrificed, not "used up". usedUp field unchanged. */
   function sacLine(u) { u = String(u == null ? '' : u); var m = /^offered to #(\d+)$/i.exec(u); if (m) return 'Sacrificed to #' + m[1]; if (/^offered to\b/i.test(u) || !u) return 'Sacrificed'; m = /#(\d+)/.exec(u); if (m && (/^eaten by\b/i.test(u) || /^Resurrection of\b/i.test(u))) return 'Sacrificed to #' + m[1]; return 'Sacrificed'; }
 
-  function acts(p, mine) {
+  function acts(p, mine, known) {
     if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? sacLine(p.usedUp) : 'Out of play.'); return '<p class="small muted pc-none">' + gone + '</p>'; }
-    var own = mine && !viewOnly(), q = function (h) { return own ? h + '-' + p.id : h; };
+    var own = mine && !viewOnly(), passRr = !known || !!mine; /* rare room keeps the id when this pet is yours, or the wallet is not known yet */
     if (isZ(p)) { var zp = own ? 'play.html#pet-' + p.id : 'play.html'; /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt */
       return '<div class="pc-actrow"><a class="pc-act pc-zb" href="' + zp + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>Feed it pets</b><small>' + (own ? 'Your discarded pets, on Play' : mine ? 'Connect the wallet on Play' : 'Owner only, on Play') + '</small></a>' +
         '<a class="pc-act pc-bt" href="fight.html#' + (own ? 'battle-' + p.id : 'kekimus') + '"><span class="pc-ico" aria-hidden="true">⚔️</span><b>Battle</b><small>The arena</small></a></div>' +
         '<p class="small muted pc-note">🧟 Risen zombie: no breeding, quests or XCPETS meals. It eats pets at the altar or wins hunts.' + (own ? '' : mine ? ' View only: connect the owner wallet on Play to act.' : '') + '</p>'; }
     var PAGE = function (h) { return /^(battle|kekimus)/.test(h) ? 'fight.html' : /^(breed|gooby|no-tail)/.test(h) ? 'breed.html' : /^rare-room/.test(h) ? 'rare-room.html' : 'play.html'; }; /* species-ranks-split: straight to the place's own page */
     var b = function (href, ico, label, sub, cls) { return '<a class="pc-act ' + cls + '" href="' + PAGE(href) + '#' + href + '"><span class="pc-ico" aria-hidden="true">' + ico + '</span><b>' + label + '</b><small>' + sub + '</small></a>'; };
-    return '<div class="pc-actrow">' + b(q('rare-room'), '💎', 'Rare Room', own ? 'Gear for #' + p.id : 'Gear & spins', 'pc-rr') +
+    return '<div class="pc-actrow">' + b(passRr ? 'rare-room-' + p.id : 'rare-room', '💎', 'Rare Room', passRr ? 'Gear for #' + p.id : 'Gear & spins', 'pc-rr') +
       b(own ? 'breed-' + p.id : 'gooby-inn', '🏨', 'Breed', "Gooby's Hotel", 'pc-br') + b(own ? 'battle-' + p.id : 'kekimus', '⚔️', 'Battle', 'The arena', 'pc-bt') + '</div>' +
       (own ? '' : '<p class="small muted pc-note">' + (mine ? 'View only: connect the owner wallet on Play to act.' : 'Opens the place on Play. Only the owner can pick this pet there.') + '</p>');
   }
@@ -126,7 +126,7 @@
   var last = '';
   function paint() {
     var w = world(), id = routeId(), card = $('petCard'); if (!w || !w.byId || !card) return;
-    var p = w.byId[id]; if (!p) return; var ME = me(), mine = !!ME && p.owner === ME, zb = isZ(p), myth = !zb && isMythic(p), H = zb ? zh(p, w) : null;
+    var p = w.byId[id]; if (!p) return; var ME = me(), known = !!ME, mine = known && p.owner === ME, zb = isZ(p), myth = !zb && isMythic(p), H = zb ? zh(p, w) : null;
     var I = questsOn() ? (window.V2Rules.questInfo(w, p, tip() + 1) || {}) : {};
     var key = [w.tip, id, ME, !!p.resurrected, (window.V2Rules && V2Rules.godBornOf && V2Rules.godBornOf(w, p)) ? 1 : 0, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start), zb, H && H.pct, H && H.feral].join('|'); if (key === last) return; last = key;
     card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead && p.id !== 1765); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away); /* Sabo #1765 is never shown dead */
@@ -134,7 +134,8 @@
     $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + ' times' : '') : p.resurrected ? 'God' : myth ? 'Mythic' : TIERS[p.tier] || '') + (window.V2Render && V2Render.godBornChip ? ' ' + V2Render.godBornChip(w, p, 'pc-gb') : '') + '</span><span>' + esc(sp) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + '</span>';
     $('pcFoot').textContent = 'No. ' + String(p.id).padStart(5, '0') + ' · blk ' + fmt(p.hatchBlock);
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';
-    $('pcActs').innerHTML = acts(p, mine);
+    $('pcActs').innerHTML = acts(p, mine, known);
+    if (window.V2Places && V2Places.stampRare) V2Places.stampRare(p.id, !known || mine);
     $('pcQuests').innerHTML = quests(w, p, mine);
     if (!$('pcTok')) { var tb = document.createElement('div'); tb.id = 'pcTok'; tb.className = 'pc-tokbox'; $('pcQuests').parentNode.insertBefore(tb, $('pcQuests')); }
     $('pcQuests').querySelectorAll('[data-pcq]').forEach(function (x) { x.onclick = function () { if (x.disabled || !window.V2Quests || !V2Quests.start) return; V2Quests.start(p.id, x.getAttribute('data-pcq')); }; });

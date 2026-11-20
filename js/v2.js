@@ -186,7 +186,7 @@
    * Zombie meals (the same picker as any zombie) show beside that pledge once tip+1 reaches ACTIVATE_MYTHIC_ZFEED_BLOCK.
    * Before that block the card stays pledge-only, matching the old "a Mythic zombie never eats" rule. Unleash stays off for a Mythic zombie.
    * a starving (feral) zombie of yours gets the red Unleash button, and after the burn "Unleashed: eats in N blocks". */
-  function zZoneHtml(p, w) { var mv = null, b = (S.tip || 0) + 1; try { mv = V.mgView ? V.mgView(w, p, b) : null; } catch (e) { mv = null; }
+  function zZoneHtml(p, w) { var blk = unleashEvalBlock(w), b = blk || ((S.tip || 0) + 1), mv = null; try { mv = V.mgView ? V.mgView(w, p, b) : null; } catch (e) { mv = null; }
     if (mv && mv.fed) return ''; if (mv && mv.mythicZombie) return (V.mythicZfeedOn && V.mythicZfeedOn(b) ? zFeedHtml(p, w) : '') + zRplHtml(p, w); return zFeedHtml(p, w) + zRplHtml(p, w) + mgUnlHtml(p, w, mv); }
   function unleashPlain(why) { if (!why) return '';
     if (/no Mythic it could eat/i.test(why)) return 'Unleash can\'t be used: you have no Mythic it can eat. A Mythic has to be held 30 days, and it can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
@@ -198,15 +198,95 @@
     if (/already Mythic-fed/i.test(why)) return 'Unleash can\'t be used: this zombie is already Mythic-fed.';
     if (/Mythic zombie never/i.test(why)) return 'Unleash can\'t be used: a Mythic zombie cannot be unleashed.';
     return 'Unleash can\'t be used: ' + why; }
-  function mgUnlHtml(p, w, mv) { if (!mv || !mv.on || !ME || p.owner !== ME || !V.mgPlan) return ''; var b = (S.tip || 0) + 1;
-    if (mv.unleash) return '<div class="small mg-pend mg-unl" data-mgu="' + p.id + '">🩸 Unleashed: eats in ' + fmt(mv.unleash.left) + ' block' + (mv.unleash.left === 1 ? '' : 's') + ' (block ' + fmt(mv.unleash.mealAt) + ') · one of your ' + fmt(mv.unleash.pool) + ' Mythic' + (mv.unleash.pool === 1 ? '' : 's') + ', picked by that block\'s hash</div>';
-    if (myPendingTags().indexOf('pet:unleash:' + p.id) >= 0) return '<div class="small mg-pend mg-unl">⏳ Unleash burn waiting for a block. The meal comes 6 blocks after it confirms.</div>';
-    var h = window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null; if (!h || !h.feral) return '';
-    var cost = V.mgPlan(w, p.id, b).amount, why = mv.unleashWhy, nEat = (mv.edible || []).length;
-    var more = 'The game said: ' + esc(why || 'it can be unleashed') + '. Unleash spends ' + fmt(cost) + ' XCPETS. Six blocks later the zombie eats one eligible Mythic at random. A Mythic has to be held 30 days. It can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
-    if (why) return '<div class="mg-unl zb-quiet" data-mgu="' + p.id + '"><p class="zb-noact">' + esc(unleashPlain(why)) + ' ' + zQ(more) + '</p></div>';
-    return '<div class="mg-unl" data-mgu="' + p.id + '"><button type="button" class="btn mg-red mg-unlbtn" data-z="' + p.id + '">🩸 Unleash · ' + fmt(cost) + ' XCPETS</button> ' + zQ('Starving: unleash it and it eats ONE of your ' + fmt(nEat) + ' Mythic' + (nEat === 1 ? '' : 's') + ' that can be eaten, picked at random 6 blocks later. ' + more) + '</div>'; }
-  function mgUnlDialog(z) { var w = world(), b = (S.tip || 0) + 1, Z = w.byId[z], mv = V.mgView ? V.mgView(w, Z, b) : null; if (!Z || !mv || !mv.edible || !mv.edible.length) return toast(mv && mv.unleashWhy ? 'Can\'t unleash: ' + mv.unleashWhy : 'No Mythic of yours can be eaten.');
+  /* Display only. Replay still asks cemDue at the burn's own block. A tab that still has S.tip below
+   * ACTIVATE_ZOMBIE_CLOCK_BLOCK would otherwise read the raw fedAt+864 and say the zombie already
+   * turned to dust. Hunger uses span() at whatever block it is given. Unleash does that too once the
+   * highest known tip (this tab, the world, boot, health, or the chain) is at or past the gate. */
+  function unleashPos(n) { n = Number(n); return isFinite(n) && n > 0 ? (n | 0) : 0; }
+  function unleashMax(xs) { var m = 0, i; for (i = 0; i < xs.length; i++) if (xs[i] > m) m = xs[i]; return m; }
+  function unleashTips(S, w, gate) {
+    S = S || {};
+    var health = unleashPos(S.healthTip), boot = unleashPos(S.feedTip) || unleashPos(S.bootTip), chain = unleashPos(S.chainTip);
+    try { if (typeof window !== 'undefined' && window.V2Split && typeof V2Split.healthTip === 'function') { var h = unleashPos(V2Split.healthTip()); if (h > health) health = h; } } catch (e) {}
+    var live = unleashMax([boot, health, chain]), replay = unleashMax([unleashPos(S.tip), unleashPos(w && w.tip)]), real = unleashMax([replay, live]);
+    gate = gate | 0;
+    var unknown = real <= 0, pause = !unknown && gate > 0 && real >= gate;
+    return { real: real, live: live, replay: replay, gate: gate, unknown: unknown, pause: !!pause, b: unknown ? 0 : real + 1 };
+  }
+  function unleashFix(V, why, tips, fedAt) {
+    var fed = fedAt | 0, raw = fed + 864, spanC = V && typeof V.spanAt === 'function' ? V.spanAt(fed, 864) : raw, crosses = spanC !== raw;
+    if (!tips || tips.unknown) { if (why && /too late/i.test(why)) return { why: null, checking: true, crumble: null, raw: raw }; return { why: why || null, checking: false, crumble: null, raw: raw }; }
+    if (tips.pause && V && typeof V.span === 'function' && typeof V.spanAt === 'function') {
+      var b = tips.b, delay = (V.MG && V.MG.DELAY) || 6, late = V.span(b, fed) >= 864 || (b + delay) >= spanC;
+      if (why && /too late/i.test(why)) {
+        if (!late) return { why: null, checking: false, crumble: spanC, raw: raw, cleared: true };
+        return { why: 'too late: it crumbles at block ' + spanC + ' before the meal block', checking: false, crumble: spanC, raw: raw };
+      }
+      return { why: why || null, checking: false, crumble: spanC, raw: raw };
+    }
+    if (crosses && why && /too late/i.test(why) && !tips.fresh) return { why: null, checking: true, crumble: null, raw: raw };
+    return { why: why || null, checking: false, crumble: null, raw: raw };
+  }
+  function unleashGate() { return (V.zombieClockGate && V.zombieClockGate()) || 976767; }
+  function unleashEvalBlock(w) { var tips = unleashTips(S, w, unleashGate()); return tips.b || 0; }
+  var unleashFresh = false;
+  function unleashAsk() {
+    if (unleashAsk.busy) return;
+    if (unleashAsk.at && Date.now() - unleashAsk.at < 20000) return;
+    unleashAsk.busy = true; unleashAsk.at = Date.now();
+    var jobs = [], saw = 0;
+    function keep(n, key) { n = unleashPos(n); if (!n) return; saw = Math.max(saw, n); if (S && n > unleashPos(S[key])) S[key] = n; }
+    try { if (window.V2Split && V2Split.pingHealth) jobs.push(V2Split.pingHealth().then(function (n) { keep(n, 'healthTip'); }, function () {})); } catch (e) {}
+    try {
+      if (typeof fetch === 'function') {
+        jobs.push(fetch('api/boot.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' }).then(function (r) { return r && r.ok ? r.json() : null; }).then(function (j) { if (j && j.tip) keep(j.tip, 'feedTip'); }, function () {}));
+        var cfg = window.XCPETS_CONFIG || (window.LiveEngine && LiveEngine.CFG), api = (cfg && cfg.mempoolApi) || 'https://mempool.space/api';
+        jobs.push(fetch(api + '/blocks/tip/height', { cache: 'no-store' }).then(function (r) { return r && r.ok ? r.text() : ''; }).then(function (t) { var n = parseInt(t, 10); if (n > 0) keep(n, 'chainTip'); }, function () {}));
+      }
+    } catch (e) {}
+    if (!jobs.length) { unleashAsk.busy = false; return; }
+    Promise.all(jobs).then(function () { unleashAsk.busy = false; if (!saw) return; unleashFresh = true; try { render(); } catch (e) {} }, function () { unleashAsk.busy = false; });
+  }
+  function unleashCard(V, S, w, p, me, opt) {
+    opt = opt || {};
+    if (!V || !p || !me || p.owner !== me || !V.mgPlan || !V.mgView) return '';
+    var uq = function (html) { return '<button type="button" class="ip-q zb-qbtn" aria-expanded="false" aria-label="What is this?">?</button><div class="zb-help" hidden>' + html + '</div>'; };
+    var nf = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); };
+    var es = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+    var gate = (typeof V.zombieClockGate === 'function' && V.zombieClockGate()) || 976767;
+    var tips = unleashTips(S, w, gate); tips.fresh = !!opt.fresh;
+    var feralN = (V.CEM && V.CEM.FERAL) || 432, dustN = feralN + ((V.CEM && V.CEM.CRUMBLE) || 432);
+    var checking = '<div class="mg-unl zb-quiet" data-mgu="' + p.id + '"><p class="zb-noact">Checking the chain…</p></div>';
+    if (tips.unknown) {
+      if ((opt.hunger && opt.hunger.feral) || p.feral) { if (opt.ask) opt.ask(); return checking; }
+      return '';
+    }
+    var b = tips.b, mv = null;
+    try { mv = V.mgView(w, p, b); } catch (e) { mv = null; }
+    if (!mv || !mv.on || mv.fed || mv.mythicZombie) return '';
+    if (mv.unleash) return '<div class="small mg-pend mg-unl" data-mgu="' + p.id + '">🩸 Unleashed: eats in ' + nf(mv.unleash.left) + ' block' + (mv.unleash.left === 1 ? '' : 's') + ' (block ' + nf(mv.unleash.mealAt) + ') · one of your ' + nf(mv.unleash.pool) + ' Mythic' + (mv.unleash.pool === 1 ? '' : 's') + ', picked by that block\'s hash</div>';
+    if ((opt.pending || []).indexOf('pet:unleash:' + p.id) >= 0) return '<div class="small mg-pend mg-unl">⏳ Unleash burn waiting for a block. The meal comes 6 blocks after it confirms.</div>';
+    var fed = p.zombie && p.zombie.fedAt, fix = unleashFix(V, mv.unleashWhy, tips, fed == null ? 0 : fed);
+    if (fix.checking) { if (opt.ask) opt.ask(); return checking; }
+    var spanFeral = false;
+    if (fed != null && typeof V.span === 'function') { var sp = V.span(b, fed | 0); spanFeral = sp >= feralN && sp < dustN; }
+    var feral = tips.pause ? spanFeral : !!((opt.hunger && opt.hunger.feral) || p.feral);
+    if (!feral) return '';
+    var why = fix.why, cost = V.mgPlan(w, p.id, b).amount, nEat = (mv.edible || []).length;
+    var said = why || 'it can be unleashed';
+    if (tips.pause && fix.crumble != null && !why && typeof V.span === 'function') said += '. Dust at block ' + fix.crumble + ' (' + Math.max(0, dustN - V.span(b, fed | 0)) + ' blocks left)';
+    var more = 'The game said: ' + es(said) + '. Unleash spends ' + nf(cost) + ' XCPETS. Six blocks later the zombie eats one eligible Mythic at random. A Mythic has to be held 30 days. It can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
+    if (why) return '<div class="mg-unl zb-quiet" data-mgu="' + p.id + '"><p class="zb-noact">' + es(unleashPlain(why)) + ' ' + uq(more) + '</p></div>';
+    return '<div class="mg-unl" data-mgu="' + p.id + '"><button type="button" class="btn mg-red mg-unlbtn" data-z="' + p.id + '">🩸 Unleash · ' + nf(cost) + ' XCPETS</button> ' + uq('Starving: unleash it and it eats ONE of your ' + nf(nEat) + ' Mythic' + (nEat === 1 ? '' : 's') + ' that can be eaten, picked at random 6 blocks later. ' + more) + '</div>';
+  }
+  function mgUnlHtml(p, w, mv) {
+    if (!ME || !p || p.owner !== ME || !V.mgPlan) return '';
+    if (mv && mv.fed) return '';
+    if (mv && mv.mythicZombie) return '';
+    var hunger = window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null;
+    return unleashCard(V, S, w, p, ME, { pending: typeof myPendingTags === 'function' ? myPendingTags() : [], hunger: hunger, ask: unleashAsk, fresh: unleashFresh });
+  }
+  function mgUnlDialog(z) { var w = world(), b = unleashEvalBlock(w) || ((S.tip || 0) + 1), Z = w.byId[z], mv = V.mgView ? V.mgView(w, Z, b) : null; if (!Z || !mv || !mv.edible || !mv.edible.length) return toast(mv && mv.unleashWhy ? 'Can\'t unleash: ' + mv.unleashWhy : 'No Mythic of yours can be eaten.');
     var nm = Z.name || ('#' + z), old = document.getElementById('mgDlg'); if (old) old.remove(); var d = document.createElement('div'); d.id = 'mgDlg'; d.className = 'mg-dlg-wrap';
     d.innerHTML = '<div class="mg-dlg" role="dialog" aria-modal="true" aria-labelledby="mgDlgT"><h3 id="mgDlgT">🩸 Unleash ' + esc(nm) + ' #' + z + '</h3>' +
       '<p class="mg-dlg-warn">Your zombie ' + esc(nm) + ' will EAT ONE of these Mythics, picked at random. The eaten Mythic dies. You can raise it again, but it may be lost forever.</p>' +
@@ -219,7 +299,7 @@
     inp.addEventListener('input', function () { yes.disabled = inp.value.trim().toLowerCase() !== String(nm).trim().toLowerCase(); });
     inp.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Escape') d.remove(); });
     d.querySelector('.mg-no').onclick = function () { d.remove(); }; d.addEventListener('click', function (e) { if (e.target === d) d.remove(); });
-    yes.onclick = function () { if (yes.disabled) return; d.remove(); var P = V.mgPlan(world(), z, (S.tip || 0) + 1); confirmPlans('🩸 Unleash ' + esc(nm) + ' #' + z + ' · it eats ONE of your ' + mv.edible.length + ' Mythic' + (mv.edible.length === 1 ? '' : 's') + ' at random, 6 blocks after this burn', [{ tag: P.tag, amount: P.amount, petId: z, label: 'unleash' }]); };
+    yes.onclick = function () { if (yes.disabled) return; d.remove(); var P = V.mgPlan(world(), z, unleashEvalBlock(world()) || b); confirmPlans('🩸 Unleash ' + esc(nm) + ' #' + z + ' · it eats ONE of your ' + mv.edible.length + ' Mythic' + (mv.edible.length === 1 ? '' : 's') + ' at random, 6 blocks after this burn', [{ tag: P.tag, amount: P.amount, petId: z, label: 'unleash' }]); };
     setTimeout(function () { try { inp.focus(); } catch (e) {} }, 0); }
   if (typeof document !== 'undefined') document.addEventListener('click', function (e) {
     var qb = e.target && e.target.closest && e.target.closest('.zb-qbtn');
