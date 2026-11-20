@@ -43,6 +43,7 @@
   window.V2ArenaReplay = RP;
   function render(w) { var box = $('arenaBody'), U = window.V2UI; if (!box || !U || !w) return; var ME = U.ME, tip = (U.S && U.S().tip) || w.tip, d = data(w, tip);
     var my = U.fighters(w, ME), th = U.fighters(w, ME, true);
+    if (window.V2Lookup) V2Lookup.mount($('battlePanel') || box, { id: 'fightLook', mode: 'fight', onReady: function () { if (U.render) U.render(); } });
     var o = function (p) { return '<option value="' + p.id + '">' + esc(p.name) + ' #' + p.id + ' · ⚡' + pow(p) + '</option>'; };
     var SP = window.V2Sponsor, st = SP ? SP.state : null; if (SP) { SP.load(tip); st = SP.state; } /* fixed rotating sponsor, no reads */
     
