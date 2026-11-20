@@ -55,6 +55,53 @@ function petRec(p, worn) {
   rec.worn = worn || [];
   return rec;
 }
+function isHybRec(p) {
+  return !!(p && (p.hybrid || (p.art && p.art.hybrid) || (typeof p.species === 'string' && (p.species.indexOf('hyb:') === 0 || p.species.indexOf('hyb3:') === 0))));
+}
+/* The light view never replays, so page 0 carries the two maps deedOf and petThresholds read. */
+function deedRec(D) {
+  if (!D) return null;
+  const o = { petId: D.petId, holder: D.holder == null ? null : D.holder, block: D.block == null ? null : D.block, tx: D.tx || null, issuer: D.issuer || null };
+  if (D.destroyed) o.destroyed = D.destroyed;
+  if (D.untied) o.untied = D.untied;
+  if (D.prev) o.prev = D.prev;
+  return o;
+}
+function ownerSide(rows, world) {
+  const owner = rows[0] && rows[0].o || '';
+  const deeds = {};
+  const species = {}, deadSpecies = {};
+  let hybrid = 0, deadHybrid = 0, tokenized = 0, away = 0, zombies = 0, feral = 0, alive = 0, dead = 0;
+  const rise = [];
+  const src = world.deeds || {};
+  for (let i = 0; i < rows.length; i++) {
+    const p = rows[i].rec;
+    if (!p) continue;
+    const gone = !!(p.dead || p.released);
+    const hyb = isHybRec(p);
+    if (p.zombie && !p.zombie.end) { zombies++; if (p.feral) feral++; rise.push(p); }
+    if (!gone) {
+      alive++;
+      if (hyb) hybrid++;
+      else species[p.species || ''] = (species[p.species || ''] || 0) + 1;
+    } else if (!p.released) {
+      dead++;
+      if (hyb) deadHybrid++;
+      else deadSpecies[p.species || ''] = (deadSpecies[p.species || ''] || 0) + 1;
+    }
+    if (p.deed && src[p.deed]) {
+      deeds[p.deed] = deedRec(src[p.deed]);
+      if (!gone && src[p.deed].holder === (p.owner || '')) tokenized++;
+      else if (!gone) away++;
+    }
+  }
+  const mythicAt = world.mythicOwners && Object.prototype.hasOwnProperty.call(world.mythicOwners, owner) ? world.mythicOwners[owner] : null;
+  return {
+    deeds: deeds, mythicAt: mythicAt,
+    roster: { alive: alive, dead: dead, species: species, hybrid: hybrid, deadSpecies: deadSpecies, deadHybrid: deadHybrid, tokenized: tokenized, away: away, zombies: zombies, feral: feral },
+    rise: rise
+  };
+}
 function communityCopy(c) {
   if (!c) return null;
   const o = copy(c) || {};
@@ -142,6 +189,7 @@ function write(dir, world, meta) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xcpets-view-'));
   const outs = new Array(256);
   const petOut = new Map();
+  const zstream = fs.createWriteStream(path.join(tmp, 'zombies.ndjson'));
   for (let i = 0; i < 256; i++) outs[i] = fs.createWriteStream(path.join(tmp, i.toString(16).padStart(2, '0') + '.ndjson'));
   let alive = 0, dead = 0, released = 0, n = 0;
   const counts = new Map();
@@ -171,6 +219,7 @@ function write(dir, world, meta) {
       if (!po) { po = fs.createWriteStream(path.join(tmp, 'p-' + ps + '.ndjson')); petOut.set(ps, po); }
       const w2 = writeLine(po, JSON.stringify(rec) + '\n');
       if (w2) await w2;
+      if (p.zombie && !p.zombie.end) { const wz = writeLine(zstream, JSON.stringify(rec) + '\n'); if (wz) await wz; }
       if (sample.length < 40) sample.push(fieldsOf(p));
       else if (Math.random() < 40 / n) sample[Math.floor(Math.random() * 40)] = fieldsOf(p);
       all[i] = null;
@@ -189,7 +238,7 @@ function write(dir, world, meta) {
     wagmi: copy(world.wagmi) || {}
   };
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
-  return Promise.all(outs.map(end).concat([...petOut.values()].map(end))).then(() => {
+  return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream)])).then(() => {
     let bytes = 0, files = 0, largestOwner = { bytes: 0, file: '', n: 0 }, largestPage = { bytes: 0, file: '' }, largestShard = { bytes: 0, file: '' };
     bytes += writeJson(path.join(dir, 'summary.json'), summary); files++;
     const ownDir = path.join(dir, 'own');
@@ -211,10 +260,12 @@ function write(dir, world, meta) {
         rows.sort((a, b) => ((a.rec.dead || a.rec.released) ? 1 : 0) - ((b.rec.dead || b.rec.released) ? 1 : 0) || (a.rec.id - b.rec.id));
         const living = rows.filter(r => !(r.rec.dead || r.rec.released));
         const graves = rows.filter(r => r.rec.dead || r.rec.released);
-        function writeSet(list, nameOf, extra) {
+        const side = ownerSide(rows, world);
+        function writeSet(list, nameOf, extraFor) {
           const pages = Math.ceil(list.length / PAGE) || (list === living ? 1 : 0);
           for (let pg = 0; pg < pages; pg++) {
             const slice = list.slice(pg * PAGE, (pg + 1) * PAGE).map(r => r.rec);
+            const extra = typeof extraFor === 'function' ? extraFor(pg) : extraFor;
             const body = Object.assign({ v: 2, tip: tip, rsig: rsig, owner: rows[0].o, n: list.length, alive: living.length, dead: graves.length, page: pg, pages: pages, pageSize: PAGE, pets: slice }, extra || {});
             const file = nameOf(pg);
             const nb = writeJson(path.join(ownDir, file), body);
@@ -224,7 +275,7 @@ function write(dir, world, meta) {
             if (nb > largestPage.bytes) largestPage = { bytes: nb, file: rel };
           }
         }
-        writeSet(living, pg => pg === 0 ? key + '.json' : key + '.' + pg + '.json');
+        writeSet(living, pg => pg === 0 ? key + '.json' : key + '.' + pg + '.json', pg => pg === 0 ? { deeds: side.deeds, mythicAt: side.mythicAt, roster: side.roster, rise: side.rise } : null);
         writeSet(graves, pg => pg === 0 ? key + '.d.json' : key + '.d.' + pg + '.json', { graves: 1 });
       });
     }
@@ -239,6 +290,12 @@ function write(dir, world, meta) {
       bytes += nb; files++;
       if (nb > largestShard.bytes) largestShard = { bytes: nb, file: 'view/p/' + shard + '.json' };
     });
+    const ztext = fs.readFileSync(path.join(tmp, 'zombies.ndjson'), 'utf8');
+    const zpets = [];
+    ztext.split('\n').forEach(line => { if (!line) return; zpets.push(JSON.parse(line)); });
+    const huntedBy = (world.cem && world.cem.huntedBy) || {};
+    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, pets: zpets });
+    files++;
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
     /* Counts and keys only. The old list put every pet of the largest wallets into the manifest,
      * and that file grew past 10 MB. A phone then sat on it and never painted. */
@@ -247,4 +304,4 @@ function write(dir, world, meta) {
   });
   });
 }
-module.exports = { PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf };
+module.exports = { PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };

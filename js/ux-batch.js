@@ -30,8 +30,11 @@
   var SPF = ['bobo', 'chud', 'dodo', 'doge', 'kevin', 'lenny', 'mumu', 'nakamoto', 'peepo', 'pepe', 'sarutobi', 'snibby', 'wojak'];
   function spOf(p) { return isHyb(p) ? 'hybrid' : p.species; }
   function spName(id) { return id === 'hybrid' ? 'Hybrids' : id === 'kevin' ? 'Kevin' : spL(id); }
-  function paintSpecies(pets) { var sel = $('fSpecies'); if (!sel) return; var c = { all: pets.length };
-    pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
+  function rosterOn() { var w = lastW; return w && w._roster && !w._full ? w._roster : null; }
+  function paintSpecies(pets) { var sel = $('fSpecies'); if (!sel) return; var c = { all: pets.length }, r = rosterOn(), deadTab = U.cem && U.cem();
+    var src = r && (deadTab ? r.deadSpecies : r.species);
+    if (r && src && Object.keys(src).length) { c.all = deadTab ? r.dead : r.alive; Object.keys(src).forEach(function (k) { c[k] = src[k]; }); c.hybrid = deadTab ? (r.deadHybrid || 0) : (r.hybrid || 0); }
+    else pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
     /* wiz-display-fix (Oct 20 2026, display only): player Bitcoin Wizards / Lord Kek / any other non-hybrid species the list doesn't know get an option when owned */
     var extra = Object.keys(c).filter(function (k) { return k !== 'all' && k !== 'hybrid' && SPF.indexOf(k) < 0; }), list = SPF.concat(extra).sort(function (a, b) { return spName(a).toLowerCase() < spName(b).toLowerCase() ? -1 : 1; });
     var h = '<option value="all">All (' + fmt(c.all) + ')</option>' + list.concat(['hybrid']).map(function (k) { return '<option value="' + k + '">' + esc(spName(k)) + ' (' + fmt(c[k] || 0) + ')</option>'; }).join('');
@@ -66,8 +69,10 @@
     document.addEventListener('click', function (e) { var bx = $('fSpBox'); if (bx && !bx.hidden && !e.target.closest('#fSpWrap')) spsOpen(false); });
     document.addEventListener('keydown', function (e) { var bx = $('fSpBox'); if (e.key === 'Escape' && bx && !bx.hidden) { spsOpen(false); $('fSpBtn').focus(); } });
     return true; }
-  function paintSps(pets) { if (!spsMount()) return; var c = { all: pets.length };
-    pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
+  function paintSps(pets) { if (!spsMount()) return; var c = { all: pets.length }, r = rosterOn(), deadTab = U.cem && U.cem();
+    var src = r && (deadTab ? r.deadSpecies : r.species);
+    if (r && src && Object.keys(src).length) { c.all = deadTab ? r.dead : r.alive; Object.keys(src).forEach(function (k) { c[k] = src[k]; }); c.hybrid = deadTab ? (r.deadHybrid || 0) : (r.hybrid || 0); }
+    else pets.forEach(function (p) { var k = spOf(p); c[k] = (c[k] || 0) + 1; });
     var on = new Set(F.sps), h = '<label class="psp-all"><input type="checkbox" data-sp="all"' + (on.size ? '' : ' checked') + '> All species <span class="psp-n muted">' + fmt(c.all) + '</span></label>' +
       spsList(c).map(function (k) { var n = c[k] || 0; return '<label' + (n || on.has(k) ? '' : ' class="zero"') + '><input type="checkbox" data-sp="' + esc(k) + '"' + (on.has(k) ? ' checked' : '') + '> ' + esc(spName(k)) + ' <span class="psp-n muted">' + fmt(n) + '</span></label>'; }).join('') +
       '<button type="button" class="q psp-done">Done</button>';
@@ -119,13 +124,15 @@
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
   }
   function paintControls(w) {
+    lastW = w;
     var asc = F.sort === 'num' ? !F.flip : F.flip; $('fDir').textContent = asc ? '🔼' : '🔽'; $('fDir').title = F.sort === 'num' ? (asc ? 'Lowest number first' : 'Highest number first') : (F.flip ? 'Reversed' : 'Normal order');
     var alive = U.mine(w).filter(function (p) { return !p.dead; }); paintSpecies(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintSps(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); paintRar(U.cem() ? U.mine(w).filter(function (p) { return p.dead; }) : alive); var shown = U.cem() ? null : U.petList(w);
     var iq = window.V2PetSearch && V2PetSearch.idQuery && V2PetSearch.idQuery(F.q), idLine = '';
     if (iq && iq.mode === 'bad') idLine = 'Those entries are not pet numbers. Nothing was selected.';
     else if (iq && iq.mode === 'ids' && shown) { var set = {}, hit = 0; iq.ids.forEach(function (id) { set[id] = 1; }); alive.forEach(function (p) { if (set[p.id]) hit++; });
       idLine = fmt(shown.length) + ' shown · ' + fmt(hit) + ' of ' + fmt(iq.pasted) + ' IDs in this list' + (iq.pasted - hit > 0 ? ' · ' + fmt(iq.pasted - hit) + ' not here' : '') + (iq.capped ? ' · first ' + fmt(V2PetSearch.ID_CAP) + ' only' : ''); }
-    $('fShowing').textContent = idLine || (shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : ''); /* bigfix: the cards themselves page 150 at a time (see #petPager) */
+    var rw = lastW, rr = rw && rw._roster && !rw._full ? rw._roster : null;
+    $('fShowing').textContent = idLine || (rr ? fmt(alive.length) + ' of ' + fmt(rr.alive) + ' loaded' : (shown ? fmt(shown.length) + ' of ' + fmt(alive.length) + ' pets match' : '')); /* bigfix: the cards themselves page 150 at a time (see #petPager) */
     $('fReset').style.display = filtered() ? '' : 'none';
     $('ctlToggle').textContent = '⚙️ More filters' + ((F.origin !== 'all' || (F.sp && F.sp !== 'all') || F.flip) ? ' •' : ''); /* pet-flow-smoother: Sort and Show (minimum rarity) sit outside, so the dot only flags the hidden filters */
   }
