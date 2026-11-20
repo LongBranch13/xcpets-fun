@@ -28,7 +28,23 @@
   function menu() { return '<details class="navplaces"><summary>🗺️ Places</summary><div class="np-menu" role="menu">' +
     PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- the site\'s existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a>' +
     '<!-- the tutorial, standalone in the banner (not a place) --><a class="navtut" href="' + TUTORIAL.url + '" title="' + esc(TUTORIAL.title) + '"><span aria-hidden="true">' + TUTORIAL.ico + '</span> ' + esc(TUTORIAL.name) + '</a>'; }
-  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, menu: menu };
+  function petPageId() {
+    if (typeof document === 'undefined' || !document.body || document.body.getAttribute('data-v2page') !== 'pet') return 0;
+    var q = 0;
+    try { q = +(new URLSearchParams(location.search).get('id') || 0); } catch (e) { }
+    if (q >= 1) return q;
+    var m = String(location.pathname || '').match(/\/pet\/(\d+)\/?$/);
+    if (m) return +m[1];
+    return (typeof window !== 'undefined' && window.__XCPETS_PET_ID >= 1) ? +window.__XCPETS_PET_ID : 0;
+  }
+  /* On a pet page the Places link keeps this pet's id. pass === false only once the page knows the pet is not yours. */
+  function stampRare(id, pass) {
+    if (typeof document === 'undefined' || !document.body || document.body.getAttribute('data-v2page') !== 'pet') return;
+    id = id >= 1 ? id | 0 : petPageId();
+    var href = pass !== false && id >= 1 ? 'rare-room.html#rare-room-' + id : 'rare-room.html';
+    document.querySelectorAll('a.np-rare').forEach(function (a) { if (a.getAttribute('href') !== href) a.setAttribute('href', href); });
+  }
+  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, menu: menu, petPageId: petPageId, stampRare: stampRare };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.V2Places = api;
@@ -39,6 +55,7 @@
       if (here) { var a = d.querySelector('.np-' + here.id); if (a) a.setAttribute('aria-current', 'page'); d.querySelector('summary').classList.add('np-on'); }
       document.addEventListener('click', function (e) { if (d.open && !d.contains(e.target)) d.open = false; });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.open = false; }); });
+    if (document.body && document.body.getAttribute('data-v2page') === 'pet') stampRare(petPageId(), true);
     /* banner tutorial link: mark it on tutorial.html */
     if (file === TUTORIAL.url) document.querySelectorAll('header.nav nav a.navtut').forEach(function (a) { a.setAttribute('aria-current', 'page'); });
     /* place pages: Town bar + stations */
