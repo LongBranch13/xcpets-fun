@@ -1753,9 +1753,10 @@
   function eraChip(w, p) { return rareChip(w, p) + eraChip0(w, p); }
   function eraChip0(w, p) {
     var C = window.V2Community, e = C && C.eraOf(w, p); if (!e) return '';
-    var tip = 'Born in block ' + e.birth.toLocaleString('en-US') + '. Community pet era: ' + e.name +
+    var label = e.name + ' era';
+    var tip = label + '. Born in block ' + e.birth.toLocaleString('en-US') + '. Community pet era: ' + e.name +
       (e.start ? ' (from block ' + e.start.toLocaleString('en-US') + ')' : '') + '. The hand-off block belongs to the new era. Looks only.';
-    return '<span class="era-badge" data-era="' + esc(e.id) + '" title="' + esc(tip) + '">' + eraIcon(e) + '<span>' + esc(e.name) + ' era</span></span>';
+    return '<span class="era-badge" data-era="' + esc(e.id) + '" role="img" title="' + esc(tip) + '" aria-label="' + esc(label) + '">' + eraIcon(e) + '</span>';
   }
   /** genChip(w, p): 'Gen N' chip (Gen 0 = hatched) plus 'n/6 breeds' for cards. Display only. */
   function genChip(w, p) { var V2 = window.V2Rules; if (!V2 || !V2.genOf) return ''; var bl = V2.breedsLeft(p, w && w.tip);
