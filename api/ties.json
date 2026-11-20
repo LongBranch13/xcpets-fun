@@ -1,6 +1,6 @@
 {
- "lastBlock": 976775,
- "count": 427,
+ "lastBlock": 976778,
+ "count": 428,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5124,6 +5124,18 @@
    "name": "Lavatupop",
    "species": "funtrump",
    "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 109899,
+   "asset": "A12311338230598164386",
+   "tiedBlock": 976778,
+   "tiedTx": "dfd65e633307550af4fdf5b6cbbfea1c98198819ae5c8d3dfbf51998ae309049",
+   "kind": "deed",
+   "name": "Zitip",
+   "species": "djpepe",
+   "speciesLabel": "DJ Pepe",
    "rarity": "Rare",
    "stage": "Mythic"
   }
