@@ -45,7 +45,8 @@ ok(tag === 'pet:deed:36032:s26f5mi0zkwh', 'tie tag matches the one on chain (' +
   { const { T } = sandbox(api); ok((await T.chainPend(20149, ME, { deeds: {} })) === null, 'no token for another pet = none (window 1 is right)'); }
   { const { T } = sandbox(api); T.pend(ID, { petId: ID, asset: A, at: 973087, tieTx: 'abc' }); const pd = await T.chainPend(ID, ME, {}); ok(pd.tieTx === 'abc', 'local record kept as is'); }
   { const { T, calls } = sandbox(api); await T.chainPend(ID, ME, { deeds: {} });
-    ok(calls.length && calls.every(u => /^https:\/\/api\.counterparty\.io:4000\/v2\//.test(u)), 'chain reads go to Core :4000 first, not the proxy: ' + calls.join(' '));
+    ok(calls.length && calls[0].indexOf('https://node.xcpets.fun/v2/') === 0, 'chain reads try the read cache first: ' + calls[0]);
+    ok(calls.every(u => u.indexOf('https://node.xcpets.fun/v2/') === 0), 'a cache answer is final (no :4000 and no api.xcp.fun): ' + calls.join(' '));
     ok(calls.length <= 4, 'few reads (' + calls.length + ')');
     const n = calls.length; T.pend(ID, null); await T.chainPend(ID, ME, { deeds: {} }); ok(calls.length === n, 'second look within 5 min is cached'); }
   const src = fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8');

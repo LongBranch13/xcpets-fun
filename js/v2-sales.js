@@ -34,7 +34,13 @@
     return inflight[url]; }
   /* feed-429-fix: the hourly feed (tools/api-feed.js sets XCPETS_PATIENT) keeps the old patient 429 backoff (6 tries, honor Retry-After up to 60 s); pages keep the short 2-retry cap */
   var PATIENT = typeof window !== 'undefined' && !!window.XCPETS_PATIENT;
-  function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j);
+  /* node.xcpets.fun answers about 80 GETs / 10 s per IP. Stay under that. A 429 retry is the same request and is not paced again. The feed has its own limiter. */
+  var PACE_N = 60, PACE_WIN = 10000, paceAt = [];
+  function paceCache(url) { if (PATIENT || String(url).indexOf('node.xcpets.fun') < 0) return Promise.resolve();
+    function go() { var now = Date.now(); paceAt = paceAt.filter(function (t) { return now - t < PACE_WIN; }); if (paceAt.length >= PACE_N) return wait(Math.max(20, PACE_WIN - (now - paceAt[0]) + 20)).then(go); paceAt.push(Date.now()); return Promise.resolve(); }
+    return go(); }
+  function getJ0(url, n) { n = n || 0; var c = mem[url]; if (c && Date.now() - c.at < TTL) return Promise.resolve(c.j); if (n) return getJ0b(url, n); return paceCache(url).then(function () { return getJ0b(url, 0); }); }
+  function getJ0b(url, n) {
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, /:4000\//.test(url) && !/cursor=|\/issuances\?/.test(url) ? 3000 : REQ_MS) /* site-fast-hotfix: a :4000 node gets 3 s for its first page (site-fast-reread: not the global /issuances scan, ~10 MB per page, which a phone can't download in 3 s) */ : 0; /* sales-net-fallback: one slow server can't hold the page */
     return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm);
       if (r.status === 429 || r.status === 503 || r.status === 409) { if (n >= (PATIENT ? 6 : 2)) { var eb = new Error('DEX API busy (' + r.status + (r.status === 503 ? ': node not ready or catching up' : r.status === 409 ? ': a pending transaction conflicts' : ': rate limited') + ')'); eb.busy = true; eb.http = r.status; throw eb; } /* api-hardening: 409 (pending mempool conflict) waits and retries like 503 */ /* direct-counterparty-api: at most 2 short retries, then the next Core node (was 6 tries x up to 60 s each) */ var ra = r.headers.get('Retry-After'), s = Number(ra);
@@ -42,18 +48,24 @@
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
       if (!r.ok) return r.text().then(function (t) { return t; }, function () { return ''; }).then(function (t) { var m = ''; try { var jj = JSON.parse(t); m = jj && (jj.error || jj.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (x) { } /* api-hardening: say what the node said (400 = bad request, the same on every node) */
         var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
-  /* direct-counterparty-api (2026-10-25): every DEX/token read goes to the Counterparty Core nodes directly (COUNTERPARTY_CORE, then CORE_BACKUP),
-   * one node per paginated list (cursors belong to one node). The api.xcp.fun proxy (API above) is asked only when every Core node failed with a
-   * timeout / network error (port 4000 blocked), never after a 429. Same JSON from all of them, so the replay input is unchanged. */
-  /* NETDEAD = Core nodes that failed with a timeout / network error, shared with rjs/chain.js through sessionStorage (same key, {base: until}),
-   * so a network that blocks port 4000 pays the short timeout once per session, not on every read or page. */
+  /* Read-only GETs try the HTTPS cache first (CFG.read: node.xcpets.fun/v2, then the two public Core nodes).
+   * Composing and signing stay on composeList and never use this list. One node per paginated list (cursors belong to one node).
+   * api.xcp.fun is not a read. Same JSON from every node, so the replay input is unchanged. */
+  /* NETDEAD = public :4000 nodes that failed with a timeout / network error, shared with rjs/chain.js through sessionStorage (same key, {base: until}),
+   * so a network that blocks port 4000 pays the short timeout once per session, not on every read or page. The read cache is not parked there:
+   * a 429 is backed off inside getJ0, and a slow moment must not write node.xcpets.fun into xcpets-dead-nodes for the session. */
   var NET_KEY = 'xcpets-api-netsick', NETDEAD = (function () { var r = {}; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}, t = Date.now(); Object.keys(o).forEach(function (k) { if (o[k] > t) r[k] = 1; }); } catch (e) { } return r; })();
   function netDead(b) { if (NETDEAD[b]) return true; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; return o[b] > Date.now(); } catch (e) { return false; } }
   function markNet(b) { NETDEAD[b] = 1; try { var o = JSON.parse(sessionStorage.getItem(NET_KEY)) || {}; o[b] = Date.now() + 10 * 60e3; /* session only */ sessionStorage.setItem(NET_KEY, JSON.stringify(o)); } catch (e) { } }
-  function coreBases() { var CFG = window.XCPETS_CONFIG || {}; return (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'])
-    .filter(function (u) { return !/xcp\.fun/.test(u); }).map(function (u) { u = String(u).replace(/\/+$/, ''); return /\/v2$/.test(u) ? u : u + '/v2'; }); }
+  function readBases() { var CFG = window.XCPETS_CONFIG || window.CFG || {}, list = (CFG.read && CFG.read.length) ? CFG.read : ['https://node.xcpets.fun/v2', 'https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'], seen = {};
+    return list.map(function (u) { u = String(u || '').replace(/\/+$/, ''); if (!u || /xcp\.fun/i.test(u)) return ''; return /\/v2$/.test(u) ? u : u + '/v2'; }).filter(function (u) { if (!u || seen[u]) return false; seen[u] = 1; return true; }); }
+  function coreBases() { return readBases(); }
+  function cacheHost(u) { return /node\.xcpets\.fun/i.test(String(u || '')); }
+  function softFail(e) { return !!(e && (e.busy || e.http === 429 || e.http === 503)); }
+  function noteNet(base, e) { if (isNet(e) && !cacheHost(base)) markNet(base); }
+  function noteDead(base, e) { if (softFail(e) || cacheHost(base) || (e && e.status === 404)) return; DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} }
   function isNet(e) { return !!e && !e.busy && e.status == null && !/DEX API \d/.test(e.message || '') && (e.name === 'AbortError' || /abort|fetch|network|timed out|load failed/i.test(e.message || String(e))); }
-  /* core-no-proxy: no api.xcp.fun fallback for Core reads. Both Core nodes failed -> one clear error; a network that blocks :4000 gets the Retry text */
+  /* core-no-proxy: no api.xcp.fun fallback for Core reads. Cache and both Core nodes failed -> one clear error; a network that blocks :4000 gets the Retry text only when the cache is blocked too */
   function coreErr(errs) { var e = new Error((coreBlocked() ? 'Could not reach the Counterparty servers (port 4000 may be blocked on this network). Press Retry, or try another network. ' : 'every Counterparty node failed ') + '(' + errs.join('; ') + ')'); e.retry = true; e.unverified = true; return e; }
   function coreBlocked() { var b = coreBases(); return b.length > 0 && b.every(function (u) { return netDead(u); }); }
   /* api-hardening (2026-10-27): every list here pages by next_cursor (Core caps offset= at 10,000 on address history; cursors have no cap). A list
@@ -66,12 +78,12 @@
     return go(null); }
   function pages(path, cap) { cap = cap || 50; var bs = coreBases().filter(function (u) { return !DEAD[u] && !netDead(u); }), errs = [];
     function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
-      return pagesAt(bs[i], path, cap).catch(function (e) { errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
+      return pagesAt(bs[i], path, cap).catch(function (e) { errs.push(e && e.message || String(e)); noteNet(bs[i], e); return on(i + 1); }); }
     return on(0); }
   /** coreJ(path): one non-paginated read, same order and fallback rule as pages() */
   function coreJ(path) { var bs = coreBases().filter(function (u) { return !netDead(u); }), errs = [];
     function on(i) { if (i >= bs.length) { return Promise.reject(coreErr(errs)); }
-      return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); if (isNet(e)) markNet(bs[i]); return on(i + 1); }); }
+      return getJ(bs[i] + path).catch(function (e) { if (e && e.status === 404) throw e; errs.push(e && e.message || String(e)); noteNet(bs[i], e); return on(i + 1); }); }
     return on(0); }
   /* feed-status-filter (2026-10-28): order lists ask Core for an explicit status list instead of status=all (XCP wallet dev advice: Core supports
    * comma-separated statuses). OrderStatus in Core 11.x = all | open | expired | filled | cancelled; an 'invalid: ...' order matches none of the four,
@@ -83,16 +95,16 @@
   var slimM = function (m) { return { id: m.id, tx0_hash: m.tx0_hash, tx1_hash: m.tx1_hash, tx0_address: m.tx0_address, tx1_address: m.tx1_address, forward_asset: m.forward_asset, forward_quantity: m.forward_quantity,
     backward_asset: m.backward_asset, backward_quantity: m.backward_quantity, block_index: m.block_index, tx1_index: m.tx1_index, status: m.status }; };
   var slimI = function (i) { return { tx_hash: i.tx_hash, tx_index: i.tx_index, block_index: i.block_index, asset: i.asset, source: i.source, issuer: i.issuer, quantity: i.quantity, divisible: i.divisible, locked: i.locked, description: i.description, status: i.status }; };
-  /* token is the pet: every credit of a pet token (sends, MPMA, DEX fills, dispenses, ...). api.xcp.fun has no /credits route, so read the
-   * full Counterparty nodes (CFG.composeList, read-only GETs). Any failure rejects loadDex -> the world stays unverified (never a silent guess). */
+  /* token is the pet: every credit of a pet token (sends, MPMA, DEX fills, dispenses, ...). api.xcp.fun has no /credits route, so read
+   * the read cache, then the public Counterparty nodes (read-only GETs). Any failure rejects loadDex -> the world stays unverified (never a silent guess). */
   var slimC = function (c) { return { asset: c.asset, address: c.address || null, utxo: c.utxo || null, utxo_address: c.utxo_address || null, quantity: c.quantity, block_index: c.block_index, tx_index: c.tx_index, calling_function: c.calling_function, event: c.event }; };
   var slimX = function (x) { return { asset: x.asset, quantity: x.quantity, block_index: x.block_index, tx_index: x.tx_index, tx_hash: x.tx_hash, source: x.source, status: x.status }; };
-  function nodeCredits(A) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
+  function nodeCredits(A) { var nodes = readBases();
     function on(i) { if (i >= nodes.length) return Promise.reject(new Error('every Counterparty node failed'));
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = [], k = 0, seen = {}; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base] || netDead(base)) return on(i + 1);
+      var base = nodes[i], out = [], k = 0, seen = {}; if (DEAD[base] || netDead(base)) return on(i + 1);
       function go(cur) { return getJ(base + '/assets/' + A + '/credits?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad credits reply');
         out = out.concat(j.result); var nc = j.result.length ? nextCur(j, seen, ++k, 200, A + ' credits') : null; if (nc) return go(nc); return out; }, function (e) { if (e.status === 404) return out; throw e; }); }
-      return go(null).catch(function (e) { if (isNet(e)) markNet(base); if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
+      return go(null).catch(function (e) { noteNet(base, e); noteDead(base, e); return on(i + 1); }); }
     return on(0); }
   /* xcpfun-backup: api.xcp.fun has no /assets/A/credits, so rebuild that list from per-address credits/debits of every address that can have touched
    * the token (issuer, current holders, order sources, match parties), then PROVE it is complete or reject: every send-type debit/credit must pair by
@@ -142,13 +154,13 @@
    *  global /issuances list (newest first) back to the gate; [] while the rules gate is null or not reached. Every node failing (or the page cap
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
   function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
-    var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); }); nodes = nodes.filter(function (u) { return !netDead(String(u).replace(/\/+$/, '')); }).concat(nodes.filter(function (u) { return netDead(String(u).replace(/\/+$/, '')); }));
+    var nodes = readBases(); nodes = nodes.filter(function (u) { return !netDead(u); }).concat(nodes.filter(function (u) { return netDead(u); }));
     function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG && !window.XCPETS_MINT_SCAN) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
-      var base = String(nodes[i]).replace(/\/+$/, ''), out = {}, k = 0, seen = {}; if (!/\/v2$/.test(base)) base += '/v2'; if (DEAD[base]) return on(i + 1);
+      var base = nodes[i], out = {}, k = 0, seen = {}; if (DEAD[base]) return on(i + 1);
       function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
         if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); return go(nextCur(j, seen, ++k, 50, 'issuances to scan')); }); }
-      return go(null).catch(function (e) { if (!e || e.status !== 404) { DEAD[base] = 1; try { sessionStorage.setItem('xcpets-dead-nodes', JSON.stringify({ at: Date.now(), n: DEAD })); } catch (x) {} } return on(i + 1); }); }
+      return go(null).catch(function (e) { noteNet(base, e); noteDead(base, e); return on(i + 1); }); }
     return on(0); }
   /* sale-cache: a verified BASE copy of the sale data (CI's api/boot.json, or this browser's last verified read) is stamped {tip, hash, assets}.
    * It is used only when (1) the fresh chain read has the SAME block hash at base.tip (no reorg), and (2) a full node's per-block event list
@@ -167,11 +179,11 @@
   function recent() { if (!REC) REC = (typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? getJ0('api/recent-events.json?t=' + Math.floor(Date.now() / 60000)).then(function (j) { try { if (j && j.tip) FEED.tip = +j.tip; if (j && j.generatedAt) FEED.at = Date.parse(j.generatedAt) || null; } catch (e) {} return j && j.v === 1 && j.blocks ? j : null; }, function () { return null; }) : Promise.resolve(null)); return REC; }
   function blockEvents(n, hx) { return recent().then(function (R) { var e = R && R.blocks[n]; if (e && e.complete === true && Array.isArray(e.events) && hx && hx[n] && e.hash === hx[n]) { blockEvents.src[n] = 'file'; return e.events; } blockEvents.src[n] = 'node'; return blockEvents0(n); }); }
   blockEvents.src = {};
-  function blockEvents0(n) { var CFG = window.XCPETS_CONFIG || window.CFG || {}, nodes = (CFG.composeList && CFG.composeList.length ? CFG.composeList : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2']).filter(function (u) { return !/xcp\.fun/.test(u); });
-    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i].replace(/\/$/, ''), out = [], k = 0, seen = {};
+  function blockEvents0(n) { var nodes = readBases();
+    function on(i) { if (i >= nodes.length) return Promise.reject(new Error('no node gave block ' + n + ' events')); var base = nodes[i], out = [], k = 0, seen = {};
       function go(cur) { return getJ0(base + '/blocks/' + n + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad events');
         out = out.concat(j.result); var nc = j.result.length ? nextCur(j, seen, ++k, 50, 'block ' + n + ' events') : null; if (nc) return go(nc); return out; }); }
-      if (DEAD[base]) return on(i + 1); return go(null).catch(function (e) { if (e && e.status != null) DEAD[base] = 1; /* ratelimit-calm: a CORS-less 429 looks like a network error; do not write the node off for the whole page */ return on(i + 1); }); }
+      if (DEAD[base]) return on(i + 1); return go(null).catch(function (e) { if (e && e.status != null && !softFail(e) && !cacheHost(base)) DEAD[base] = 1; /* a 429 is backed off, and the read cache is not written into xcpets-dead-nodes */ return on(i + 1); }); }
     return on(0); }
   function touched(base, tip, as, hs) { var need = {}, n = [], b; for (b = base.tip + 1; b <= tip; b++) n.push(b); if (n.length > (window.XCPETS_TOUCH_MAX || 60)) return Promise.reject(new Error('base too old'));
     var hx = {}; as.forEach(function (A) { if (base.assets.indexOf(A) < 0) { need[A] = 1; return; } var sl = slice(base.d, A); sl.orders.forEach(function (o) { hx[o.tx_hash] = A; }); sl.matches.forEach(function (m) { hx[m.tx0_hash] = A; hx[m.tx1_hash] = A; }); });
@@ -301,7 +313,7 @@
     if (PREVIEW) return Promise.resolve(plan);
     return fetch('api/token-meta-state.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
       .then(function (st) { var w = TP.serviceWhy(st, tip); if (w) throw new Error(w); return plan; }); }
-  window.V2Sales = { feed: FEED, loadDex: loadDex, normalizeDex: normalizeDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck, chainPend: chainPend, chainTie: chainTie } };
+  window.V2Sales = { feed: FEED, loadDex: loadDex, normalizeDex: normalizeDex, setBase: setBase, _slice: slice, deedAssets: deedAssets, _bases: readBases, _getJ: getJ, _xcpCredits: xcpCredits, _slimC: slimC, tok: { freeDeed: freeDeed, tokenAt: tokenAt, pend: pend, mintCheck: mintCheck, chainPend: chainPend, chainTie: chainTie } };
   if (!$('shop')) return;
   /* Spam City is one package: Buy / Sell (pet tokens) / Trade (swaps) / Gift (one or many), one launch gate (V.spamCityGate).
    * Trade + Gift reuse js/v2-gift.js flows; they confirm on play.html exactly like the pet.html / play.html entry points. */
@@ -330,9 +342,40 @@
     W.gifts = [{ tx: 'gf1', petId: 4203, from: 'bc1qpreviewseller000000000000000000000s1', to: ME, block: TIP - 30 }];
     window.V2Mock = { ME: ME, prod: false, world: function () { return W; }, state: function () { return { tip: TIP, verified: true }; } };
     if (V._setGiveActivation) V._setGiveActivation(TIP - 100); }
+  function ruleScripts() { var files = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'], all = document.scripts || [], out = [], i, j, hit, u;
+    for (i = 0; i < files.length; i++) { hit = null; for (j = 0; j < all.length; j++) { u = (all[j].src || '').split('?')[0]; if (u.slice(-files[i].length - 1) === '/' + files[i]) { hit = all[j].src; break; } } if (!hit) return null; out.push(hit); } return out; }
+  function dexPlain(d) { d = d || {}; return { issuances: d.issuances || [], orders: d.orders || [], matches: d.matches || [], credits: d.credits || [], destructions: d.destructions || [] }; }
+  /* The light published view has pets but not the sale book. Rebuild that book from the saved feed plus a live cache read, off the main thread. */
+  function bookInputs() { return getJ0('api/boot.json?t=' + Math.floor(Date.now() / 60000)).then(function (boot) { if (!boot || !boot.rows || !boot.dex) throw new Error('no saved sale book');
+    if (boot.dex && boot.dexTip && boot.dexHash && boot.dexAssets) setBase(boot);
+    var rows = boot.rows.slice(), hashes = Object.assign({}, boot.hashes || {}), tip = +boot.tip || 0, seed = window.XCPETS_BLOCK_HASHES || {}, sk;
+    for (sk in seed) if (!hashes[sk]) hashes[sk] = seed[sk];
+    function pack(dex) { return { rows: rows, hashes: hashes, tip: tip, dex: dexPlain(dex || boot.dex) }; }
+    function withDex() { return loadDex(rows, { tip: tip, hashes: hashes }).then(function (d) { return pack(d || boot.dex); }, function () { return pack(boot.dex); }); }
+    return coreJ('/').then(function (j) { var live = j && j.result && (j.result.counterparty_height || (j.result.last_block && j.result.last_block.block_index)) || tip; if (!(live > tip)) return withDex();
+      return coreJ('/assets/XCPETS/destructions?limit=1000').then(function (d) { var have = {}; rows.forEach(function (r) { if (r && r.tx_hash) have[r.tx_hash] = 1; });
+        var extra = (d.result || []).filter(function (r) { return r && r.tx_hash && !have[r.tx_hash] && Number(r.block_index) + 6 >= tip; }); if (extra.length) rows = extra.concat(rows);
+        var need = {}, i; extra.forEach(function (r) { need[r.block_index] = 1; }); for (i = (+boot.dexTip || tip) + 1; i <= live; i++) if (!hashes[i]) need[i] = 1; var blocks = Object.keys(need);
+        function hashesOf(k) { if (k >= blocks.length) return null; var b = blocks[k]; return coreJ('/blocks/' + b).then(function (bj) { var h = bj && bj.result && bj.result.block_hash; if (/^[0-9a-f]{64}$/.test(h || '')) hashes[b] = h; return hashesOf(k + 1); }, function () { return hashesOf(k + 1); }); }
+        tip = Math.max(tip, +live || 0); return Promise.resolve(hashesOf(0)).then(withDex); }, withDex); }, withDex); }); }
+  function replayBook(inp) { var scripts = ruleScripts(); if (!scripts || typeof Worker === 'undefined') return Promise.reject(new Error('the order book could not be rebuilt in this browser'));
+    return new Promise(function (ok, no) { var worker, done = false, t; try { worker = new Worker(new URL('js/v2-orderbook-worker.js?v=a5f208f817', location.href).href); } catch (e) { no(e); return; }
+      t = setTimeout(function () { if (done) return; done = true; try { worker.terminate(); } catch (x) {} no(new Error('the order book read took too long')); }, 240000);
+      worker.onmessage = function (ev) { if (done) return; done = true; clearTimeout(t); try { worker.terminate(); } catch (x) {} var m = ev.data || {}; if (!m.ok) no(new Error(m.error || 'replay failed')); else ok(m); };
+      worker.onerror = function () { if (done) return; done = true; clearTimeout(t); no(new Error('the order book could not be rebuilt')); };
+      worker.postMessage({ scripts: scripts, rows: inp.rows, hashes: inp.hashes, tip: inp.tip, dex: inp.dex }); }); }
+  function applyBook(pack) { var view = W && W._view ? W : null, byId = {}, id;
+    (pack.pets || []).forEach(function (p) { if (p && p.id != null) byId[p.id] = p; });
+    if (view && view.byId) Object.keys(view.byId).forEach(function (k) { if (!byId[k]) byId[k] = view.byId[k]; });
+    var pets = []; Object.keys(byId).forEach(function (k) { pets.push(byId[k]); });
+    W = { tip: pack.tip || TIP, pets: pets, byId: byId, listings: pack.listings || [], deeds: pack.deeds || {}, items: (view && view.items) || {}, itemList: (view && view.itemList) || [],
+      fights: (view && view.fights) || [], log: [], community: (view && view.community) || { burned: 0 }, rug: { ads: [] }, breedReqs: [], swaps: [], gifts: [], players: (view && view.players) || {}, playerAddr: (view && view.playerAddr) || {} };
+    TIP = W.tip || TIP; BOOK = pack.orders || []; }
   function load() { if (PREVIEW) return Promise.resolve();
-    var M = window.V2Mock; ME = M.ME; W = M.world(); TIP = W.tip || M.state().tip;
-    return (M.state().dex ? Promise.resolve(M.state().dex) : loadDex(M.state().rows)).then(function (d) { BOOK = (d && d.orders) || []; }); }
+    var M = window.V2Mock, S = M.state(); ME = M.ME; W = M.world(); TIP = (W && W.tip) || S.tip || 0;
+    if (W && W.listings && W.listings.length && !(W._view && !S.viewVerify)) { BOOK = (S.dex && S.dex.orders) || []; return Promise.resolve(); }
+    if (S.dex && S.rows && S.rows.length && W && !W._view) { BOOK = S.dex.orders || []; return Promise.resolve(); }
+    return bookInputs().then(replayBook).then(applyBook); }
   function on() { return PREVIEW || V.salesOn(TIP + 1); }
   function blk(n) { return Number(n).toLocaleString('en-US'); }
   function short(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
@@ -593,7 +636,8 @@
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
     card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
-  function start() { load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { $('shop').innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
+  function start() { var root = $('shop'); if (root && !PREVIEW) root.innerHTML = '<p class="sh-hint">Reading the order book…</p>';
+    load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { if (root) root.innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();
 })();
