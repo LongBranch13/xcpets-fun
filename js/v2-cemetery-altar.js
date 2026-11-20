@@ -190,6 +190,27 @@
     A.stash = [0, 0, 0, 0]; A.gearItems = [[], [], [], []]; var items = w.itemList || Object.keys(w.items || {}).map(function (k) { return w.items[k]; });
     if (me) items.forEach(function (g) { if (g && g.owner === me && g.on == null && !g.bag && /^g\d+$/.test(g.gid || '') && !V.cemGearWhy(w, g, me, b)) { var t = gTier(g); A.stash[t]++; A.gearItems[t].push(g); } }); }
   function selGear() { var L = []; (A.gearItems || []).forEach(function (arr, t) { L = L.concat(arr.slice(0, A.gear[t] || 0)); }); return L; }
+  /* Page 0 is 24 pets. rest() loads the rest up to the same 5,000 cap as play.html, then any Discard id still missing. */
+  function primeOffers() {
+    if (!window.xcpLivingFill || !A.ctx) { A.loading = false; return; }
+    var me = A.ctx.ME, w = A.ctx.w;
+    var wait = !(window.xcpRestDone && xcpRestDone(w)) || !!(window.xcpDiscardMiss && xcpDiscardMiss(me).length);
+    A.loading = !!(wait && !(A.mine && A.mine.length));
+    if (!wait) return;
+    var seq = ++A.fillN;
+    window.xcpLivingFill(me).then(function () {
+      if (seq !== A.fillN || !A.grave || !A.ctx) return;
+      var nw = A.ctx.M && A.ctx.M.world ? A.ctx.M.world() : null;
+      if (nw) A.ctx.w = nw;
+      A.loading = false;
+      var offered = A.offered.slice(), gear = A.gear.slice();
+      buildMine();
+      A.offered = offered.filter(function (o) { return A.mine.some(function (p) { return p.id === o.id && !p.why; }); });
+      gear.forEach(function (n, t) { A.gear[t] = Math.min(A.stash[t] || 0, n); });
+      [0, 1, 2, 3].forEach(function (i) { var e = document.getElementById('altG' + i); if (e) e.textContent = A.gear[i]; });
+      if (document.getElementById('altTiles')) renderAll(false);
+    }, function () { A.loading = false; if (seq === A.fillN && A.grave && document.getElementById('altTiles')) renderTiles(); });
+  }
 
   /* ---------------------------------------------------------------- panel ---------------------------------------------------------------- */
   function host() { var el = document.getElementById('cemAltar'); if (el) return el; el = document.createElement('section'); el.id = 'cemAltar'; el.className = 'cem-altar'; el.hidden = true; el.setAttribute('aria-label', 'Seance at the altar');
@@ -199,7 +220,7 @@
     if (!wp && !again && grave.id !== 1765 && window.V2Split && V2Split.ensurePet) { V2Split.ensurePet(grave.id).then(function () { if (A.ctx.M && A.ctx.M.world) { A.ctx.w = A.ctx.M.world(); if (ctx) ctx.w = A.ctx.w; } open(grave, A.ctx, 1); }); return; }
     var s = wp ? (wp.zDeath || wp.stats) : null, base = {};
     STATS.forEach(function (k) { base[k] = s ? (s[k] || 0) : 0; });
-    A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.splats = 0; A.bwant = 0; A.bflow = 0; A.fire = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
+    A.grave = grave; A.base = base; A.offered = []; A.gear = [0, 0, 0, 0]; A.tally = 0; A.splats = 0; A.bwant = 0; A.bflow = 0; A.fire = 0; A.fx = []; A.rise = null; A.shown = PAGE; A.lastMile = -1; A.seq = 0; buildMine(); primeOffers(); A.ctxW = w; var CE = A.ctx.V.CEM; if (CE) { CAP = CE.CAP; MILES = CE.MILESTONES.map(function (m) { return [m.at, m.name]; }).concat([[CAP, 'Ceiling']]); }
     A.run = null; A.sentLog = []; var rs = A.ctx.ME ? restore() : 0;
     var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); [0, 1, 2, 3].forEach(function (i) { var e = document.getElementById('altG' + i); if (e) e.textContent = A.gear[i]; }); renderAll(true);
     if (A.restored) toast(rs ? '↩ Restored your unsent offering: ' + rs + ' pet' + (rs === 1 ? '' : 's') : '↩ Restored your unfinished seance');
@@ -245,7 +266,7 @@
       '<input type="checkbox" data-id="' + p.id + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + ' aria-label="Offer ' + esc(p.name) + ' #' + p.id + '">' +
       '<canvas width="32" height="32" data-sp="' + p.id + '" class="alt-sp"></canvas><span class="alt-tn">' + esc(p.name) + '</span><span class="alt-tm">#' + p.id + ' · <span class="tc">' + (p && p.resurrected ? 'God' : TL[p.tier]) + '</span></span>' +
       '<span class="alt-tags">' + (dis ? '<span class="alt-tag lock">🔒 ' + esc(lockFace(p)) + '</span>' : '') + (p.ripe && !dis ? '<span class="alt-tag ripe">🍂 RIPE</span>' + (p.dies != null ? '<span class="alt-tag dies' + (soon(p) ? ' soon' : '') + '" title="Unfed: it dies at block ' + p.dies + ' unless it is fed or offered first' + (soon(p) ? ' (in ' + (p.dies - bk()) + ' blocks: it may die before your burns confirm)' : '') + '">☠ dies at block ' + p.dies + (soon(p) ? ' ⚠' : '') + '</span>' : '') : '') + (p.worn.length ? '<span class="alt-tag gear" title="Its worn gear comes off and stays in your stash">🎒' + p.worn.length + ' back</span>' : '') + '</span></label>'; }
-  function renderTiles() { var el = document.getElementById('altTiles'); if (!el) return; var L = visible(), R = A.ctx.R, w = A.ctx.w; el.innerHTML = L.slice(0, A.shown).map(tile).join('') || '<p class="small muted">' + ((A.ctx.V.cemTokenOfferOn && A.ctx.V.cemTokenOfferOn(bk()) && !(A.mine && A.mine.length)) ? 'No Discarded pets to offer. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets in this filter.') + '</p>';
+  function renderTiles() { var el = document.getElementById('altTiles'); if (!el) return; var L = visible(), R = A.ctx.R, w = A.ctx.w; el.innerHTML = L.slice(0, A.shown).map(tile).join('') || '<p class="small muted" role="status">' + (A.loading ? 'Loading your pets…' : ((A.ctx.V.cemTokenOfferOn && A.ctx.V.cemTokenOfferOn(bk()) && !(A.mine && A.mine.length)) ? 'No Discarded pets to offer. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets in this filter.')) + '</p>';
     var note = document.getElementById('altHdNote'), hn = hdCount(); if (note) { note.hidden = !hn; note.innerHTML = hn ? hdExplainHtml(hn) : ''; }
     L.slice(0, A.shown).forEach(function (p) { var c = el.querySelector('canvas[data-sp="' + p.id + '"]'), wp = w.byId ? w.byId[p.id] : null; if (c && wp && wp.art && R.lazy) R.lazy(c, function () { return R.framesWith(wp.art, wp.stage, []); }, true); });
     var m = document.getElementById('altMore'); m.hidden = L.length <= A.shown; m.textContent = 'Show more (' + (L.length - A.shown) + ' left)';

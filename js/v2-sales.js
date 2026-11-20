@@ -496,7 +496,29 @@
       if (n < list.length) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sh-btn sh-ghost sh-more'; b.textContent = 'Show ' + Math.min(PICK_PER, list.length - n) + ' more (' + n + ' of ' + list.length + ' shown)'; b.onclick = function (e) { e.stopPropagation(); more(); }; box.appendChild(b); }
       paint(); }
     more(); }
-  function sellPick() { var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
+  function absorbViewPets() {
+    var live = window.V2Mock && V2Mock.world && V2Mock.world();
+    if (!live || !live.byId || !W || !W.pets || !W.byId || W === live) return;
+    var id, p;
+    for (id in live.byId) { p = live.byId[id]; if (!p || W.byId[p.id]) continue; W.byId[p.id] = p; W.pets.push(p); }
+  }
+  function sellPick() {
+    absorbViewPets();
+    var live = (window.V2Mock && V2Mock.world && V2Mock.world()) || W;
+    var wait = window.xcpLivingFill && (!(window.xcpRestDone && xcpRestDone(live)) || (window.xcpDiscardMiss && xcpDiscardMiss(ME).length));
+    var nFree = (W && W.pets || []).filter(function (p) { return p.owner === ME && sellable(p); }).length;
+    if (wait && !sellPick.skip) {
+      if (!nFree) modal('<h3>List my pet</h3><p class="small" data-petload role="status">Loading your pets…</p>');
+      window.xcpLivingFill(ME).then(function () {
+        absorbViewPets();
+        sellPick.skip = 1;
+        var m = $('shModal');
+        if (m && m.style.display !== 'none' && (m.querySelector('[data-petload]') || m.querySelector('.sh-pick'))) sellPick();
+        sellPick.skip = 0;
+      }, function () { sellPick.skip = 0; });
+      if (!nFree) return;
+    }
+    var free = W.pets.filter(function (p) { return p.owner === ME && sellable(p); }), fS = PF.load('sell'),
       mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     modal('<h3>List my pet</h3><p class="sh-hint">Pick a pet. Pets in a fight, a breed request, a Rug Me ad or a pending gift/swap are locked and are not shown. Pets with a 🎟 token you hold list in one wallet window.</p>' + PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
       (mine.length ? '' : '<p>No free pets right now.</p>') + '</div><button class="sh-btn" data-close>Close</button>');
@@ -636,7 +658,7 @@
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
     card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
-  function start() { var root = $('shop'); if (root && !PREVIEW) root.innerHTML = '<p class="sh-hint">Reading the order book…</p>';
+  function start() { if (!PREVIEW && window.xcpLivingRest) window.xcpLivingRest(); var root = $('shop'); if (root && !PREVIEW) root.innerHTML = '<p class="sh-hint">Reading the order book…</p>';
     load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { if (root) root.innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();
