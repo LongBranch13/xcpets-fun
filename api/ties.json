@@ -1,6 +1,6 @@
 {
- "lastBlock": 976691,
- "count": 419,
+ "lastBlock": 976692,
+ "count": 420,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5030,6 +5030,18 @@
    "speciesLabel": "Dozibo (hybrid)",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 68298,
+   "asset": "A4422090322393549643",
+   "tiedBlock": 976692,
+   "tiedTx": "763d85e9ff5270eb51280035b973c4a930108104590cb21d9280ea2ac09813b8",
+   "kind": "deed",
+   "name": "Cheputot",
+   "species": "hyb:peepo:mumu",
+   "speciesLabel": "Peemu (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
