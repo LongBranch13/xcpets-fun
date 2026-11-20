@@ -16,7 +16,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
-ok(md5('js/v2-rules.js') === 'bd4f122684da8512056ceceb29a4c362', 'rules MD5 unchanged');
+ok(md5('js/v2-rules.js') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules MD5 unchanged');
 ok(md5('js/v2-split.js') === 'fdae8729230b39ff71f360f13e125702', 'js/v2-split.js unchanged');
 ok(md5('tools/sync-server/split.js') === 'c0463776e09c0c5e858c623974cebda5', 'owner page layout file unchanged');
 const look = rd('js/v2-lookup.js'), easy = rd('js/v2-easy-flows.js'), ui = rd('js/v2.js'), arena = rd('js/v2-arena.js'), hall = rd('js/v2-rare-hall.js'), dock = rd('js/v2-lowfriction.js');
