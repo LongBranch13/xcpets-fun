@@ -2373,12 +2373,50 @@
     if (ACTIVATE_RETIRE_DEAD_BLOCK == null) return '';
     return 'From block ' + Number(ACTIVATE_RETIRE_DEAD_BLOCK).toLocaleString('en-US') + ', a pet that has been dead for ' + RETIRE_DEAD_DAYS + ' game days leaves the game. Legendary and Mythic pets, rare species, special pets, and weird hatches stay. A burn aimed at a pet that has left only feeds the community pet. This page will not ask you to sign one.';
   }
-  function retireDeadSweep(w, b) {
+  /* Game-clock value at which p leaves, or 0 if this pet never leaves. Recomputed when liveAt marks the pet dirty. */
+  function retireStamp(w, p, b) {
+    if (!p || retireSpareWhy(p)) return 0;
+    var raw = retireDeathClock(w, p, b);
+    if (raw == null) return 0;
+    return retireClockOf(raw) + RETIRE_DEAD_DAYS * BLOCKS_PER_DAY;
+  }
+  function retireMemo(w) {
+    if (w._retireMemo) return w._retireMemo;
+    Object.defineProperty(w, '_retireMemo', { value: new Map(), writable: true, configurable: true });
+    Object.defineProperty(w, '_retireDirty', { value: [], writable: true, configurable: true });
+    Object.defineProperty(w, '_retireSoon', { value: [], writable: true, configurable: true });
+    Object.defineProperty(w, '_retireCursor', { value: 0, writable: true, configurable: true });
+    return w._retireMemo;
+  }
+  function hide(w, k, v) { Object.defineProperty(w, k, { value: v, writable: true, configurable: true }); }
+  function retireDeadSweep(w, b, force) {
     if (!retireDeadOn(b) || !w || !w.pets) return 0;
-    if (w._retireDeadBlock === b) return 0;
-    w._retireDeadBlock = b;
-    var gone = {}, n = 0, i, p, C;
-    for (i = 0; i < w.pets.length; i++) { p = w.pets[i]; if (!retireDeadDue(w, p, b)) continue; gone[p.id] = 1; n++; }
+    if (!force && w._retireDeadBlock === b) return 0;
+    hide(w, '_retireDeadBlock', b);
+    var M = retireMemo(w), ck = clock(b), i, p, id, at, soon, dirty, seen, gone, n, C;
+    if (!w._retireReady) {
+      soon = [];
+      for (i = 0; i < w.pets.length; i++) { p = w.pets[i]; at = retireStamp(w, p, b); M.set(p.id, at); if (at) soon.push({ id: p.id, at: at }); }
+      soon.sort(function (x, y) { return x.at - y.at || x.id - y.id; });
+      hide(w, '_retireSoon', soon); hide(w, '_retireCursor', 0);
+      hide(w, '_retireReady', 1);
+    } else if (w._retireDirty && w._retireDirty.length) {
+      dirty = w._retireDirty; hide(w, '_retireDirty', []); seen = {};
+      for (i = 0; i < dirty.length; i++) {
+        id = dirty[i]; if (seen[id]) continue; seen[id] = 1;
+        p = w.byId[id]; if (!p) { M.delete(id); continue; }
+        at = retireStamp(w, p, b); M.set(id, at);
+      }
+      soon = []; M.forEach(function (when, pid) { if (when) soon.push({ id: pid, at: when }); });
+      soon.sort(function (x, y) { return x.at - y.at || x.id - y.id; });
+      hide(w, '_retireSoon', soon); hide(w, '_retireCursor', 0);
+    }
+    soon = w._retireSoon; gone = {}; n = 0;
+    while (w._retireCursor < soon.length && soon[w._retireCursor].at <= ck) {
+      id = soon[w._retireCursor].id; w._retireCursor++;
+      if (!w.byId[id] || gone[id]) continue;
+      gone[id] = 1; n++;
+    }
     if (!n) return 0;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g) return;
       if (g.on != null && gone[g.on]) g.on = null; if (g.grave != null && gone[g.grave]) g.grave = null; if (g.bag != null && gone[g.bag]) g.bag = null; });
@@ -2446,7 +2484,7 @@
     cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);
     lookSweep(w, tip); if (fireOn(tip)) fireExtend(w, tip); spinsGate(w, tip); mgSweep(w, tip, blockHashes); cemSweep(w, tip); wizHatClear(w, tip); jackpotChildSweep(w, tip); jackpotNobreedSweep(w, tip); mythicKeepSweep(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); grantBurnLords(w, tip, blockHashes); grantContestEggs(w, tip, blockHashes); grantBo(w, tip, blockHashes); grantRp(w, tip, blockHashes); grantJp(w, tip, blockHashes); grantViking(w, tip, blockHashes); grantDragon(w, tip, blockHashes); grantPowerSweep(w, tip); grantMythicZFull(w, tip); grantKekFlags(w, tip); relabelTiers(w, tip); wizTierRelabel(w, tip); wizTier2Relabel(w, tip); repairGear(w, tip); allSlotsSweep(w, tip); maybeRumbles(tip); questLaunch(w, tip); questSettle(w, tip, blockHashes, L); earnSweep(w, tip); raidSweep(w, tip, blockHashes); raidSettle(w, tip, blockHashes, L);
     w.pets.forEach(function (p) { finish(w, p, tip); });
-    retireDeadSweep(w, tip); /* catch deaths the clock reached after the last burn; no-op below the gate */
+    retireDeadSweep(w, tip, true); /* finish() refreshed every pet; drop anyone now past 14 game days. No-op below the gate. */
     var rp = returnProgress(w.community.burned), cm = w.community;
     if (rp.done && cm.returnBlock == null) cm.returnBlock = w.cutoff ? w.cutoff.lastLiveBlock : tip; // already past it in the imported live total
     cm.returned = rp.done; cm.returnCount = rp.count; cm.goal = COMMUNITY_GOAL; cm.goalPct = rp.pct;
@@ -2499,6 +2537,7 @@
     if (w.bags && w.bags[p.id]) unbag(w, p); /* any-slot rolls: a bagged piece frees up once its slot opens */
     if (p.mgDead || p.mythicGod) mgLive(p); /* MYTHIC GOD: an eaten Mythic is dead (its zombie is handled next); a Mythic God never dies */
     if (p.zombie) cemLive(p, b); /* CEMETERY LOOP: a zombie lives on its hunger clock (only ever set after the gate) */
+    if (w._retireDirty) w._retireDirty.push(p.id); /* dead-pet retire: this pet changed, so the next sweep rechecks it */
   }
   function finish(w, p, tip) {
     w._noNote = true; try { liveAt(w, p, tip); } finally { w._noNote = false; } /* only gated (mythicRaisedOnlyOn) inside noteMythicOwner */

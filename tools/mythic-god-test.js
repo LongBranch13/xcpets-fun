@@ -86,7 +86,9 @@ let E = null;
   const nh = W([SEANCE, UNL], R + 450).w; ok(nh.cem.mg.unleash[0].status === 'waiting' && !nh.byId[E].mgDead, 'no meal block hash yet: the meal waits (nothing eaten)');
   const more = W([SEANCE, UNL, row(R + 451, SB, 100000, 'pet:zfeed:18846:' + b32(4111)), row(R + 452, SB, 100000, 'pet:rpl:18846:' + ids([20870, 20871])), row(R + 453, SB, 100000, 'pet:resurrect:18846'), row(R + 4800, SB, 100000, 'pet:unleash:18846')], R + 4810, { hashes: H() }).w;
   if (rej(more, R + 451, /cured forever/, R + 453).length !== 3) DBG(more, R + 451, R + 453);
-  ok(rej(more, R + 451, /cured forever/, R + 453).length === 3 && !more.byId[4111].released && !more.byId[20870].pledge, 'a Mythic-fed zombie takes no zombie meals, no pledges, no Resurrection (nothing used)');
+  /* A long-dead ordinary pet may have left the game by this tip (14 game days). Gone means the meal did not use it. */
+  var mealPet = more.byId[4111], pledgePet = more.byId[20870];
+  ok(rej(more, R + 451, /cured forever/, R + 453).length === 3 && (!mealPet || !mealPet.released) && (!pledgePet || pledgePet.pledge == null), 'a Mythic-fed zombie takes no zombie meals, no pledges, no Resurrection (nothing used)');
   ok(rej(more, R + 4800, /already Mythic-fed/).length === 1, 'and it never unleashes again'); }
 function isZalive(p) { return !!(p && p.zombie && !p.zombie.end && !p.dead); }
 
