@@ -74,8 +74,9 @@ function start(m) {
           for (s = 0; s < list.length; s++) seen[list[s]] = 1;
           world = self.V2Rules.replay(rows, sync.hashes || {}, [], { tip: tip, live: self.LiveEngine.RealCore, dex: sync.dex && sync.dex.body || undefined,
             _resume: { w: w, seen: seen, dexPos: meta.dexPos || 0, grand: meta.grand ? 1 : 0, tip: meta.tip } });
-          var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {};
+          var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {}, ownerDeeds = {}, mythicOwners = {};
           for (i2 = 0; i2 < pets.length; i2++) if (pets[i2] && !pets[i2].dead && !pets[i2].released) alive++;
+          if (meAddr && world.mythicOwners && world.mythicOwners[meAddr] != null) mythicOwners[meAddr] = world.mythicOwners[meAddr];
           if (meAddr) {
             var items = world.items || {}, ik = Object.keys(items), gi, g;
             for (gi = 0; gi < ik.length; gi++) { g = items[ik[gi]]; if (g && g.on != null) (wornBy[g.on] = wornBy[g.on] || []).push(g); }
@@ -83,25 +84,48 @@ function start(m) {
               var p = pets[i2];
               if (!p || p.owner !== meAddr) continue;
               var c = {}, pk = Object.keys(p), pi;
-              for (pi = 0; pi < pk.length; pi++) c[pk[pi]] = p[pk[pi]];
+              for (pi = 0; pi < pk.length; pi++) if (pk[pi] !== 'art') c[pk[pi]] = p[pk[pi]];
               c.worn = wornBy[p.id] || [];
-              mine.push(c); ids[p.id] = 1;
+              if (p.deed && world.deeds && world.deeds[p.deed]) ownerDeeds[p.deed] = world.deeds[p.deed];
+              if (!p.dead && !p.released) mine.push(c);
+              ids[p.id] = c;
             }
             var fs = world.fights || [], fi, f;
             for (fi = 0; fi < fs.length; fi++) { f = fs[fi]; if (ids[f.a] || ids[f.b] || f.challenger === meAddr) fights.push(f); }
           }
+          self._mine = mine; self._owned = ids; self._fights = fights; self._deeds = ownerDeeds; self._mythic = mythicOwners; self._tip = world.tip; self._n = pets.length; self._alive = alive;
           self.postMessage({ cmd: 'ready', ok: true, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
-          var STEP = 400;
-          function sendChunk(from) {
-            var last = from + STEP >= mine.length || !mine.length;
-            self.postMessage({ cmd: 'mine', pets: mine.slice(from, from + STEP), from: from, total: mine.length, last: last, fights: last ? fights : null, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0 });
-            if (!last) setTimeout(function () { sendChunk(from + STEP); }, 0);
-          }
-          setTimeout(function () { sendChunk(0); }, 0);
         });
       });
     });
   });
+}
+function petSig(p) {
+  var z = p && p.zombie;
+  return [(p && p.care | 0), (p && p.owner) || '', p && p.dead ? 1 : 0, p && p.released ? 1 : 0, p && p.stage | 0, (p && p.deed) || '', (z && !z.end) ? (z.fedAt | 0) : 0, p && p.feral ? 1 : 0].join(':');
+}
+function syncMine(m) {
+  var sigs = m.sigs || {}, only = !!m.onlyChanged, mine = self._mine || [], owned = self._owned || {}, out = [], i, p, s, id;
+  for (i = 0; i < mine.length; i++) {
+    p = mine[i]; s = petSig(p);
+    if (only) { if (sigs[p.id] == null || sigs[p.id] === s) continue; }
+    else if (sigs[p.id] === s) continue;
+    out.push(p);
+  }
+  var ks = Object.keys(owned);
+  for (i = 0; i < ks.length; i++) {
+    id = ks[i]; p = owned[id];
+    if (!p || (!p.dead && !p.released)) continue;
+    if (sigs[id] == null || sigs[id] === petSig(p)) continue;
+    out.push(p);
+  }
+  var STEP = 400, from = 0;
+  function send() {
+    var last = from + STEP >= out.length || !out.length;
+    self.postMessage({ cmd: 'mine', mode: 'diff', pets: out.slice(from, from + STEP), from: from, total: out.length || 1, last: last, fights: last ? (self._fights || []) : null, deeds: last ? (self._deeds || {}) : null, mythicOwners: last ? (self._mythic || {}) : null, tip: self._tip, n: self._n, alive: self._alive });
+    if (!last) { from += STEP; setTimeout(send, 0); }
+  }
+  send();
 }
 function check(m) {
   if (!world || !self.V2Rules || !self.V2Rules.sendBlock) { self.postMessage({ id: m.id, cmd: 'check', ok: false, error: 'not ready' }); return; }
@@ -116,6 +140,7 @@ function check(m) {
 self.onmessage = function (ev) {
   var m = ev.data || {};
   if (m.cmd === 'check') { check(m); return; }
+  if (m.cmd === 'sync') { syncMine(m); return; }
   if (m.cmd !== 'start') return;
   start(m).catch(function (e) { self.postMessage({ cmd: 'ready', ok: false, error: String(e && e.message || e) }); });
 };

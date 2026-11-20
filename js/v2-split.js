@@ -11,6 +11,7 @@
   window.__xcpSplitHold = true;
   var STALE = 48;
   var SCREEN_PAGES = 7; /* first screen is 150 cards, and an owner page holds 24 pets */
+  var AUTO_CAP = 5000; /* wallets at or under this many living pets load the rest in the background */
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function off() { return q('split') === '0' || q('split') === 'off'; }
   function base() {
@@ -41,7 +42,7 @@
   }
   function dirOf(manifestUrl) { return String(manifestUrl || '').replace(/[^/]+$/, ''); }
   function assemble(summary, pack) {
-    var pets = [], items = {}, n = 1, byId = {};
+    var pets = [], items = {}, n = 1, byId = {}, deeds = {}, mythicOwners = {};
     function addItem(g, on) {
       if (!g) return;
       var id = g.gid || ('v' + (n++));
@@ -52,30 +53,43 @@
       items[id] = copy;
     }
     function addPet(p) {
-      if (!p) return;
+      if (!p || byId[p.id]) return;
       var copy = {};
       Object.keys(p).forEach(function (k) { if (k !== 'worn') copy[k] = p[k]; });
+      if (!copy.art && addPet.prev && addPet.prev[copy.id] && addPet.prev[copy.id].art) copy.art = addPet.prev[copy.id].art;
       pets.push(copy);
       byId[copy.id] = copy;
       (p.worn || []).forEach(function (g) { addItem(g, copy.id); });
     }
+    function takeDeeds(src) { if (!src) return; Object.keys(src).forEach(function (k) { deeds[k] = src[k]; }); }
+    function takeMythic(src) { if (!src) return; Object.keys(src).forEach(function (k) { if (src[k] != null) mythicOwners[k] = src[k]; }); }
+    addPet.prev = pack && pack.keepArt || null;
+    if (pack) { takeDeeds(pack.deeds); takeMythic(pack.mythicOwners); }
     if (pack && pack.owners) Object.keys(pack.owners).forEach(function (addr) {
       var o = pack.owners[addr];
       if (Array.isArray(o)) o.forEach(addPet);
-      else if (o && o.pets) o.pets.forEach(addPet);
+      else if (o && o.pets) {
+        o.pets.forEach(addPet);
+        takeDeeds(o.deeds);
+        if (o.mythicAt != null) mythicOwners[o.owner || addr] = o.mythicAt;
+      }
     });
+    if (pack && pack.rise) pack.rise.forEach(addPet);
     var cold = summary.cold || {};
     var itemList = [];
     Object.keys(items).forEach(function (k) { itemList.push(items[k]); });
-    return {
+    var w = {
       tip: summary.tip, pets: pets, byId: byId, items: items, itemList: itemList, log: [], fights: [], breedReqs: [],
       community: summary.community || {},
-      tokens: {},
+      tokens: {}, deeds: deeds, mythicOwners: mythicOwners,
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
       rabbitMythic: cold.rabbit || null, funtrumpMythic: cold.funtrump || null, djpepeMythic: cold.djpepe || null,
       wagmi: summary.wagmi || {},
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
+    if (pack && pack.roster) w._roster = pack.roster;
+    if (pack && pack.cem) w.cem = pack.cem;
+    return w;
   }
   var last = null, lastSummary = null;
   /* The published manifest embeds a pet sample for the largest wallets and is many megabytes.
@@ -140,19 +154,35 @@
       return Promise.all([sigP, summaryP, pageP]).then(function (got) {
         var rsig = got[0], summary = got[1], own = got[2];
         if (!rsig || rsig !== latest.rsig) throw new Error('rules');
-        if (!summary || (summary.v !== 1 && summary.v !== 2) || summary.tip !== latest.tip || summary.rsig !== latest.rsig) throw new Error('summary');
+        if (!summary || (summary.v !== 1 && summary.v !== 2 && summary.v !== 3) || summary.tip !== latest.tip || summary.rsig !== latest.rsig) throw new Error('summary');
         lastSummary = summary;
         last = { man: { tip: latest.tip, rsig: latest.rsig, view: true }, url: manUrl, tip: chainTip };
-        if (!own || !own.page || !own.page.pets || !own.page.pets.length) return assemble(summary, null);
+        if (!own || !own.page || !own.page.pets || !own.page.pets.length) {
+          if (own && own.page && (own.page.deeds || own.page.roster || own.page.mythicAt != null)) {
+            var mythic0 = {}; if (own.page.mythicAt != null) mythic0[own.page.owner || who] = own.page.mythicAt;
+            var bare = assemble(summary, { deeds: own.page.deeds || null, mythicOwners: mythic0, roster: own.page.roster || null, rise: own.page.rise || null });
+            viewHold = { deeds: bare.deeds, mythicOwners: bare.mythicOwners, roster: bare._roster || null, cem: bare.cem || null };
+            return bare;
+          }
+          return assemble(summary, null);
+        }
         var raw0 = own.page.pets, living0 = livingOf(raw0), separate = own.page.alive != null;
         var stop0 = !separate && endsDead(raw0);
         var livingPages = separate ? Math.max(1, Math.ceil((own.page.alive || 0) / (own.page.pageSize || 24)) || 1) : (stop0 ? 1 : own.page.pages);
-        var one = {}; one[own.page.owner || who] = living0;
-        var view = assemble(summary, { owners: one });
+        var one = {}; one[own.page.owner || who] = living0.concat(own.page.rise || []);
+        var mythic = {}; if (own.page.mythicAt != null) mythic[own.page.owner || who] = own.page.mythicAt;
+        var view = assemble(summary, { owners: one, deeds: own.page.deeds || null, mythicOwners: mythic, roster: own.page.roster || null, rise: own.page.rise || null });
+        if (!view._roster) view._roster = savedRoster() || {};
+        if (view._roster) {
+          if (own.page.alive != null) view._roster.alive = own.page.alive;
+          if (own.page.dead != null) view._roster.dead = own.page.dead;
+        }
+        viewHold = { deeds: view.deeds, mythicOwners: view.mythicOwners, roster: view._roster || null, cem: view.cem || null };
         viewFolder = folder;
         view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0 };
         if (separate) noteGraves(view._pages, 0, true);
         else if (stop0) noteGraves(view._pages, 1, false);
+        if (!(view._pages.pages > 1)) { view._full = 1; viewHold.roster = null; view._roster = null; }
         return view;
       });
     }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
@@ -187,6 +217,24 @@
     return out;
   }
   var pageJob = null, verifiedTakeover = false, viewFolder = '', nextPage = 1, paging = null;
+  var viewHold = { deeds: null, mythicOwners: null, roster: null, cem: null };
+  function rosterKey() { return 'xcpets-v2-roster-' + (me() || '') + '-' + ((lastSummary && lastSummary.tip) || ''); }
+  function hybPet(p) { return !!(p && (p.hybrid || (p.art && p.art.hybrid) || (typeof p.species === 'string' && (p.species.indexOf('hyb:') === 0 || p.species.indexOf('hyb3:') === 0)))); }
+  function rememberRoster(w) {
+    if (!w || !w.pets || typeof sessionStorage === 'undefined') return;
+    try {
+      var who = me(), species = {}, deadSpecies = {}, hybrid = 0, deadHybrid = 0, zombies = 0, feral = 0, tokenized = 0, away = 0, alive = 0, deadN = 0, i, p, d, V = window.V2Rules;
+      for (i = 0; i < w.pets.length; i++) {
+        p = w.pets[i]; if (!p || (who && p.owner !== who) || p.released) continue;
+        if (p.zombie && !p.zombie.end) { zombies++; if (p.feral) feral++; }
+        if (p.dead) { deadN++; if (hybPet(p)) deadHybrid++; else deadSpecies[p.species || ''] = (deadSpecies[p.species || ''] || 0) + 1; continue; }
+        alive++; if (hybPet(p)) hybrid++; else species[p.species || ''] = (species[p.species || ''] || 0) + 1;
+        d = V && V.deedOf && V.deedOf(w, p); if (d && d.ok) tokenized++; else if (d) away++;
+      }
+      sessionStorage.setItem(rosterKey(), JSON.stringify({ alive: alive, dead: deadN, species: species, hybrid: hybrid, deadSpecies: deadSpecies, deadHybrid: deadHybrid, tokenized: tokenized, away: away, zombies: zombies, feral: feral }));
+    } catch (e) {}
+  }
+  function savedRoster() { try { return JSON.parse(sessionStorage.getItem(rosterKey()) || 'null'); } catch (e) { return null; } }
   function aliveFirst(list) {
     return list.sort(function (a, b) {
       var ad = (a.dead || a.released) ? 1 : 0, bd = (b.dead || b.released) ? 1 : 0;
@@ -204,21 +252,29 @@
   function noteGraves(pg, fromPage, separate) {
     gravePlan = { key: pg.key, folder: pg.folder, from: fromPage, pages: pg.total || pg.pages, separate: !!separate, done: false, pets: [] };
   }
+  function keepArt() {
+    var cur = window.V2Mock && V2Mock.world && V2Mock.world(), map = {}, i, p;
+    if (!cur || !cur.pets) return null;
+    for (i = 0; i < cur.pets.length; i++) { p = cur.pets[i]; if (p && p.art) map[p.id] = p; }
+    return map;
+  }
   function publishOwner(pets, pages, fights, done) {
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
     one[who] = aliveFirst(pets.slice());
-    var v = assemble(lastSummary, { owners: one });
+    var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt() });
     v._pages = pages || null;
     v._full = done ? 1 : 0;
+    if (done) viewHold.roster = null;
     v.fights = fights || [];
     V2Mock.setViewWorld(v);
+    if (done) rememberRoster(v);
   }
   var restView = null;
   function adoptJob(view) {
     var pg = view._pages;
     if (!pg) return null;
-    pageJob = { pets: (pg.raw || view.pets || []).slice(), fights: view.fights || [], pages: pg };
+    pageJob = { pets: (view.pets || pg.raw || []).slice(), fights: view.fights || [], pages: pg };
     nextPage = pg.got || 1;
     viewFolder = pg.folder || viewFolder;
     return pageJob;
@@ -263,20 +319,70 @@
     }, function () { paging = null; return false; });
     return paging;
   }
+  function underCap(pg) { return !!pg && (pg.n || 0) > 0 && (pg.n || 0) <= AUTO_CAP; }
+  function drain() {
+    if (!pageJob && restView) { adoptJob(restView); restView = null; }
+    if (!pageJob || !pageJob.pages || verifiedTakeover) return;
+    if (!(nextPage < pageJob.pages.pages)) { publishJob(true); if (ready) requestSync(); return; }
+    more(SCREEN_PAGES).then(function (ok) {
+      if (!ok || verifiedTakeover || !pageJob) return;
+      if (nextPage < pageJob.pages.pages) drain();
+      else requestSync();
+    });
+  }
   function rest() {
     var v = restView;
     if (!v || !v._pages || !(v._pages.pages > 1)) { restView = null; return; }
+    if (underCap(v._pages)) { drain(); return; }
     var need = Math.min(SCREEN_PAGES, v._pages.pages) - (v._pages.got || 1);
     if (need > 0) more(need);
   }
+  var diffBuf = [];
   function takeMine(m) {
     if (!m || !m.total) return;
+    if (m.mode === 'diff') {
+      if (m.deeds) viewHold.deeds = m.deeds;
+      if (m.mythicOwners) viewHold.mythicOwners = m.mythicOwners;
+      if (m.pets && m.pets.length) diffBuf = diffBuf.concat(m.pets);
+      if (!m.last) return;
+      var shown = (window.V2Mock && V2Mock.world && V2Mock.world()) || {};
+      var cur = (pageJob && pageJob.pets && pageJob.pets.length) ? pageJob.pets : (shown.pets || []);
+      var map = {}, i, p, old;
+      for (i = 0; i < cur.length; i++) if (cur[i]) map[cur[i].id] = cur[i];
+      for (i = 0; i < diffBuf.length; i++) {
+        p = diffBuf[i]; if (!p) continue;
+        old = map[p.id];
+        if (old && old.art && !p.art) p.art = old.art;
+        if (old && old.worn && !(p.worn && p.worn.length)) p.worn = old.worn;
+        map[p.id] = p;
+      }
+      diffBuf = [];
+      var pets = [];
+      Object.keys(map).forEach(function (id) { pets.push(map[id]); });
+      if (pageJob) pageJob.pets = pets;
+      var pg = pageJob && pageJob.pages;
+      publishOwner(pets, pg, (m.fights || (pageJob && pageJob.fights) || []), !!(pg && nextPage >= pg.pages));
+      return;
+    }
     verifiedTakeover = true;
     var pages = pageJob && pageJob.pages;
     if (!pageJob || m.from === 0) pageJob = { pets: [], fights: [], pages: pages };
     if (m.pets && m.pets.length) pageJob.pets = pageJob.pets.concat(m.pets);
     if (m.fights) pageJob.fights = m.fights;
+    if (m.deeds) viewHold.deeds = m.deeds;
+    if (m.mythicOwners) viewHold.mythicOwners = m.mythicOwners;
     if (m.last) publishOwner(pageJob.pets, pageJob.pages, pageJob.fights, true);
+  }
+  function petSig(p) {
+    var z = p && p.zombie;
+    return [(p && p.care | 0), (p && p.owner) || '', p && p.dead ? 1 : 0, p && p.released ? 1 : 0, p && p.stage | 0, (p && p.deed) || '', (z && !z.end) ? (z.fedAt | 0) : 0, p && p.feral ? 1 : 0].join(':');
+  }
+  function requestSync() {
+    if (!worker || !ready) return;
+    var w = window.V2Mock && V2Mock.world && V2Mock.world(), sigs = {}, pets = (w && w.pets) || [], i, full;
+    for (i = 0; i < pets.length; i++) if (pets[i] && pets[i].id != null) sigs[pets[i].id] = petSig(pets[i]);
+    full = !!(w && (w._full || !w._pages || (w._pages.got || 1) >= (w._pages.pages || 1)));
+    try { worker.postMessage({ cmd: 'sync', sigs: sigs, onlyChanged: !full }); } catch (e) {}
   }
   function unlock(m) {
     ready = true;
@@ -293,14 +399,14 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=00a80f9312', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=c4e1a7b618', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
         if (m.cmd === 'progress') { var note = document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
         if (m.cmd === 'mine') { takeMine(m); return; }
-        if (m.cmd === 'ready') { if (m.ok) unlock(m); else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
+        if (m.cmd === 'ready') { if (m.ok) { unlock(m); requestSync(); } else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
       };
       worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
       worker.postMessage({ cmd: 'start', base: base(), scripts: scripts, me: me() });
@@ -547,5 +653,48 @@
       return p;
     }, function () { return null; });
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
+  var zombieP = null;
+  function applyZombies(z) {
+    if (!z || !z.pets) return 0;
+    viewHold.cem = { huntedBy: z.huntedBy || {} };
+    if (z.pets.length) mergePets(z.pets);
+    else if (window.V2Mock && V2Mock.world && V2Mock.setViewWorld) {
+      var cur = V2Mock.world();
+      cur.cem = viewHold.cem;
+      V2Mock.setViewWorld(cur);
+    }
+    return z.pets.length;
+  }
+  function scanZombies(folder, onProg) {
+    var found = [], next = 0, inflight = 0, stop = false, done = false;
+    return new Promise(function (res) {
+      function finish() { if (done) return; done = true; applyZombies({ pets: found, huntedBy: {} }); res(found.length); }
+      function pump() {
+        if (stop && !inflight) return finish();
+        while (!stop && inflight < 2 && next < 160) {
+          (function (i) {
+            inflight++;
+            pullShard(folder + 'view/p/' + ('00000' + i).slice(-5) + '.json').then(function (pack) {
+              inflight--;
+              if (!pack) { stop = true; if (onProg) onProg(i, found.length); pump(); return; }
+              var map = pack.pets || {}, ks = Object.keys(map), k, p;
+              for (k = 0; k < ks.length; k++) { p = map[ks[k]]; if (p && p.zombie && !p.zombie.end) found.push(p); }
+              if (onProg) onProg(i + 1, found.length);
+              pump();
+            }, function () { inflight--; stop = true; pump(); });
+          })(next++);
+        }
+        if (!inflight && (stop || next >= 160)) finish();
+      }
+      pump();
+    });
+  }
+  function loadZombies(onProg) {
+    if (zombieP) return zombieP;
+    var folder = viewFolder || (gravePlan && gravePlan.folder) || '';
+    if (!folder) return Promise.resolve(0);
+    zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
+    return zombieP;
+  }
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig };
 })();

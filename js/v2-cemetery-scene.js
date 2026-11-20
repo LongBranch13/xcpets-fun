@@ -318,6 +318,7 @@
       inp.value = '#' + d; st.q = '#' + d; apply(true, function () { var e = $('tomb-' + d); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } showDetail(+d); }); return true; }
     window.addEventListener('hashchange', deep);
     function afterIndex() { opts(); status(); zombies(); st.ready = true; resumeNote(); window.__cemV2 = { src: st.source, n: graveCount(), page: PER, block: b - 1, on: on, pub: pub, indexMs: st.indexMs || 0 };
+      if (window.V2Split && V2Split.loadZombies) V2Split.loadZombies(function (got, total) { var s = $('status'); if (s) s.textContent = 'Reading risen zombies… ' + got + (total ? ' / ' + total : ''); }).then(function () { w = ctx.M && ctx.M.world ? ctx.M.world() : w; ctx.w = w; status(); zombies(); }, function () {});
       if (!graveCount()) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; } if (!deep()) apply(); }
     function localIndex(done) { if (!GI) { tombs.innerHTML = '<p class="muted">The grave index did not load.</p>'; return; }
       var t0 = (window.performance && performance.now) ? performance.now() : Date.now(); st.index = GI.compact(w, b, V); st.counts = GI.countsOf(st.index); st.total = st.index.length; st.source = 'world'; S.total = st.total;
