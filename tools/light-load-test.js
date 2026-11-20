@@ -51,6 +51,8 @@ ok(/v2-arena/.test(play) && /__s\[__k\]/.test(play), 'place scripts are chosen f
 ok(/wizard-sprite\.js\?v=[^"]+" defer/.test(play), 'sprite scripts do not block the published-world read');
 ok(/js\/v2-rules\.js\?v=/.test(play) && !/v2-rules\.js\?v=[^"]+" defer/.test(play), 'the rules file is still loaded before boot');
 ok(/split=\(\?:0\|off\)/.test(play), 'the light view does not prefetch the full burn list');
+ok(/function loadBoard\(/.test(split) && !/\/xp\/v1\/sync/.test(split), 'rankings read pet shards, not the full sync');
+ok(/w\._ranked/.test(rd('js/v2-token-gallery.js')) && /!p && w && w\._ranked/.test(rd('js/v2-token-gallery.js')), 'Proof Parade keeps feed rows until the whole living world is read');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

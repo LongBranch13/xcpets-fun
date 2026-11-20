@@ -384,6 +384,154 @@
     }
     return batch().then(finish);
   }
+  /* Rankings and Proof Parade need every living pet, not just this wallet. The published
+   * pet shards already hold them. This reads those shards (never the checkpoint, never every
+   * owner page), keeps a small row per living pet, and the real art of each wallet's top pet. */
+  var boardP = null, boardBytes = 0, boardFiles = 0;
+  function slimPet(p) {
+    var s = p.stats || {}, worn = p.worn || [], gn = 0, gt = 0, i, g;
+    for (i = 0; i < worn.length; i++) { g = worn[i]; if (!g) continue; gn++; gt += g.legendary ? 3 : (g.tier | 0); }
+    return {
+      id: p.id | 0, owner: p.owner || '', name: p.name || '', species: p.species || '',
+      tier: p.tier | 0, stage: p.stage | 0, stageName: p.stageName || '', care: p.care || 0,
+      wins: p.wins || 0, losses: p.losses || 0, hatchBlock: p.hatchBlock, dead: false, released: false,
+      community: p.community || null, resurrected: p.resurrected || null, hybrid: p.hybrid || null,
+      parents: p.parents || null, mutation: p.mutation || null, shows: p.shows || null,
+      blackEye: p.blackEye || null, crowned: p.crowned || null,
+      stats: { vigor: s.vigor || 0, spark: s.spark || 0, grit: s.grit || 0, zoom: s.zoom || 0, luck: s.luck || 0 },
+      _hof: { n: gn, t: gt }
+    };
+  }
+  function hangGear(w, list) {
+    var i, j, p, g, id, c, ks, k;
+    w.items = w.items || {};
+    for (i = 0; i < list.length; i++) {
+      p = list[i]; if (!p || !p.worn) continue;
+      for (j = 0; j < p.worn.length; j++) {
+        g = p.worn[j]; if (!g) continue;
+        id = g.gid || ('rk' + p.id + ':' + j);
+        c = {}; ks = Object.keys(g);
+        for (k = 0; k < ks.length; k++) c[ks[k]] = g[ks[k]];
+        c.gid = id; c.on = p.id; w.items[id] = c;
+      }
+    }
+  }
+  function absorbShard(pack, pets, best) {
+    var map = pack && pack.pets || {}, ks = Object.keys(map), i, p, row, prev;
+    for (i = 0; i < ks.length; i++) {
+      p = map[ks[i]];
+      if (!p || p.dead || p.released || p.id === 1765) continue;
+      row = slimPet(p);
+      prev = best[row.owner];
+      if (row.owner && (!prev || row.tier > prev.tier || (row.tier === prev.tier && row.stage > prev.stage) || (row.tier === prev.tier && row.stage === prev.stage && row.id < prev.id))) {
+        if (prev) { delete prev.art; delete prev.worn; }
+        row.art = p.art || null;
+        row.worn = p.worn || null;
+        best[row.owner] = row;
+      }
+      pets.push(row);
+    }
+  }
+  function pullShard(url, attempt) {
+    return fetch(url, { cache: 'force-cache' }).then(function (r) {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error('shard');
+      var n = Number(r.headers.get('Content-Length')) || 0;
+      return r.arrayBuffer().then(function (buf) {
+        boardBytes += n || buf.byteLength;
+        boardFiles++;
+        return JSON.parse(new TextDecoder().decode(buf));
+      });
+    }, function () { if (attempt) return null; return pullShard(url, 1); });
+  }
+  function publishBoard(pets, best) {
+    var byId = {}, i, cur, w, list = [];
+    for (i = 0; i < pets.length; i++) byId[pets[i].id] = pets[i];
+    cur = window.V2Mock && V2Mock.world && V2Mock.world();
+    if (cur && cur.pets) cur.pets.forEach(function (p) {
+      if (!p || p.id == null) return;
+      var prev = byId[p.id];
+      if (prev) {
+        if (!p.art && prev.art) p.art = prev.art;
+        if (!p.worn && prev.worn) p.worn = prev.worn;
+        if (!p._hof) p._hof = prev._hof;
+      }
+      byId[p.id] = p.art ? p : (prev || p);
+    });
+    Object.keys(byId).forEach(function (id) { list.push(byId[id]); });
+    w = assemble(lastSummary, null);
+    w.pets = list;
+    w.byId = byId;
+    w.wagmi = (cur && cur.wagmi) || w.wagmi;
+    w.community = (cur && cur.community) || w.community;
+    w.fights = (cur && cur.fights) || [];
+    w.items = {};
+    w._counts = (cur && cur._counts) || w._counts;
+    w._view = 1;
+    w._ranked = 1;
+    w._pages = cur && cur._pages;
+    hangGear(w, list);
+    if (window.V2Mock && V2Mock.setViewWorld) V2Mock.setViewWorld(w);
+    return w;
+  }
+  function loadBoard(onProg) {
+    if (boardP) return boardP;
+    var folder = viewFolder;
+    if (!folder || !lastSummary) return Promise.resolve(null);
+    boardP = new Promise(function (res) {
+      var pets = [], best = {}, next = 0, inflight = 0, stop = false, finished = false, CONC = 4;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        try { res(publishBoard(pets, best)); } catch (e) { res(null); }
+      }
+      function pump() {
+        if (stop && !inflight) return finish();
+        while (!stop && inflight < CONC && next < 160) {
+          (function (i) {
+            inflight++;
+            pullShard(folder + 'view/p/' + ('00000' + i).slice(-5) + '.json').then(function (pack) {
+              inflight--;
+              if (!pack) { stop = true; if (onProg) onProg(i, pets.length); pump(); return; }
+              absorbShard(pack, pets, best);
+              if (onProg) onProg(i + 1, pets.length);
+              pump();
+            }, function () { inflight--; stop = true; pump(); });
+          })(next++);
+        }
+        if (!inflight && (stop || next >= 160)) finish();
+      }
+      pump();
+    });
+    return boardP;
+  }
+  function dress(ids) {
+    var w = window.V2Mock && V2Mock.world && V2Mock.world();
+    var folder = viewFolder;
+    if (!w || !w.byId || !folder || !ids || !ids.length) return Promise.resolve(0);
+    var need = {}, i, id, p, name, names, n = 0;
+    for (i = 0; i < ids.length; i++) {
+      id = ids[i] | 0; p = w.byId[id];
+      if (!p || p.art) continue;
+      name = ('00000' + Math.floor(id / 2000)).slice(-5);
+      (need[name] = need[name] || []).push(id);
+    }
+    names = Object.keys(need);
+    if (!names.length) return Promise.resolve(0);
+    return Promise.all(names.map(function (nm) {
+      return pullShard(folder + 'view/p/' + nm + '.json').then(function (pack) {
+        var map = pack && pack.pets || {}, j, src, dst;
+        for (j = 0; j < need[nm].length; j++) {
+          dst = w.byId[need[nm][j]]; src = map[String(need[nm][j])];
+          if (!dst || !src) continue;
+          if (src.art) dst.art = src.art;
+          if (src.worn) dst.worn = src.worn;
+          n++;
+        }
+        hangGear(w, need[nm].map(function (pid) { return w.byId[pid]; }));
+      }, function () {});
+    })).then(function () { return n; });
+  }
   function ensurePet(id) {
     id = id | 0;
     var w = window.V2Mock && V2Mock.world && V2Mock.world();
@@ -399,5 +547,5 @@
       return p;
     }, function () { return null; });
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); } };
 })();

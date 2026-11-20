@@ -316,7 +316,30 @@
     cast(w);
     var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); /* address-lookup: a viewed address is not a connection. casa-connect: 'Connect Casa Tookan' inside Casa */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
+  function dressCanvases(root, w) {
+    if (!root) return;
+    var ids = [], nodes = root.querySelectorAll('canvas[data-id]');
+    Array.prototype.forEach.call(nodes, function (c) {
+      var id = +c.getAttribute('data-id'), p = w.byId && w.byId[id];
+      ids.push(id);
+      if (p && p.art && R.lazy) R.lazy(c, function () { return R.petFrames(p, w); }, true);
+    });
+    if (!window.V2Split || !V2Split.dress) return;
+    V2Split.dress(ids).then(function (n) {
+      if (!n) return;
+      Array.prototype.forEach.call(root.querySelectorAll('canvas[data-id]'), function (c) {
+        var p = w.byId && w.byId[+c.getAttribute('data-id')];
+        if (p && p.art && R.lazy) R.lazy(c, function () { return R.petFrames(p, w); }, true);
+      });
+    });
+  }
   function ranking() {
+    var w0 = M.world();
+    if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && window.V2Split && V2Split.loadBoard) {
+      var st0 = $('status'); if (st0) st0.textContent = 'Reading every living pet for the boards…';
+      V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { var nw = M.world(); if (!nw || !nw._ranked) ranking.gaveUp = 1; ranking(); }, function () { ranking.gaveUp = 1; ranking(); });
+      return;
+    }
     /* rankings-species-1107: the boards stay on the same replayed world as Play (V2Mock.world). capture() re-reads it when the fresh world lands
      * and on the 60s poll, so an open Rankings tab does not keep the first saved copy. */
     var w, live, tip, burned, burnedWk, winsWk, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
@@ -449,7 +472,7 @@
       var empty = st.sp ? 'No living ' + esc(crewOne(st.sp)) + ' on this board yet.' : (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.');
       $('board').innerHTML = tabs + ctl + f5 + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + empty + '</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
-      $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      dressCanvases($('board'), w);
       wireBoards();
       $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; st.all = null; render(); }; });
@@ -547,6 +570,10 @@
     if (!p) {
       if (window.V2Split && V2Split.ensurePet && !pet.loading) { pet.loading = 1; $('title').textContent = 'Loading pet #' + id + '…'; V2Split.ensurePet(id).then(function () { pet.loading = 0; pet(); }, function () { pet.loading = 0; }); return; }
       $('title').textContent = 'Pet #' + id + ' does not exist (yet).'; return; }
+    if (p.parents && window.V2Split && V2Split.ensurePet && !pet.fams) {
+      var miss = p.parents.filter(function (pid) { return !w.byId[pid]; });
+      if (miss.length) pet.fams = Promise.all(miss.map(function (pid) { return V2Split.ensurePet(pid); })).then(function () { pet(); });
+    }
     function draw(msg) {
       w = M.world(); p = w.byId[id];
       $('title').textContent = '#' + p.id + ' ' + p.name; document.title = 'XCPETS ' + $('title').textContent;
@@ -618,6 +645,12 @@
   /* Hybrids browser (hybrids.html, homepage-cast 2026-10-19): every hybrid mix that exists on chain (V.castHybrids, the same list the
    * home cast used to print inline), one fixed card per mix in a wrapping grid, each body it can hatch with shown at the picked stage. */
   function hybrids() {
+    var w0 = M.world();
+    if (w0 && w0._view && !w0._ranked && !hybrids.gaveUp && window.V2Split && V2Split.loadBoard) {
+      var hs = $('hybStatus'); if (hs) hs.textContent = 'Reading every living pet…';
+      V2Split.loadBoard(function (i) { if (hs) hs.textContent = 'Reading every living pet… ' + i + ' files'; }).then(function (w) { if (!w || !w._ranked) hybrids.gaveUp = 1; hybrids(); }, function () { hybrids.gaveUp = 1; hybrids(); });
+      return;
+    }
     var w = M.world(), list = V.castHybrids(w), n = {}, G = window.GenPetCore || PetCore, stage = 5, grid = $('hybGrid'), tabs = $('hybStages');
     (w.pets || []).forEach(function (p) { if (V.isHybrid(p.species) && !p.released) n[p.species] = (n[p.species] || 0) + 1; });
     var three = list.filter(function (e) { return (e.roots || []).length > 2; }).length;
@@ -656,7 +689,7 @@
   function hofRank(w) { var worn = {};
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g || g.on == null) return; var o = worn[g.on] || (worn[g.on] = { n: 0, t: 0 }); o.n++; o.t += g.legendary ? 3 : (g.tier | 0); });
     var groups = {};
-    (w.pets || []).forEach(function (p) { if (p.dead || p.released || p.community) return; var k = V.isHybrid(p.species) ? 'hybrid' : p.species, g = worn[p.id] || { n: 0, t: 0 };
+    (w.pets || []).forEach(function (p) { if (p.dead || p.released || p.community) return; var k = V.isHybrid(p.species) ? 'hybrid' : p.species, g = worn[p.id] || p._hof || { n: 0, t: 0 };
       (groups[k] = groups[k] || []).push({ p: p, pw: V.petPower(p), t: hofTier(p), g: g.n, gt: g.t, w: p.wins || 0 }); });
     /* hof-power-first (owner Oct 28 2026, display only): ⚡ Power first (V2Rules.petPower, the stat total shown on pet cards; gear is NOT in it,
      * gear adds per hit in fights), then the old order: tier, gear worn, gear quality, battle wins, lowest pet number. */
@@ -682,7 +715,7 @@
           '<td class="num"><b class="hof-pw"' + ptA(p) + '>⚡ ' + fmt(r.pw) + ' power</b><div><b style="color:' + col + '">' + HOF_TIER[r.t] + '</b></div><div class="small muted">🎒 ' + r.g + ' gear · ⚔️ ' + fmt(r.w) + ' win' + (r.w === 1 ? '' : 's') + '</div></td></tr>'; }).join('');
       $('board').innerHTML = (O.top || '') + tabs + '<h2 class="sec hof-h" data-ico="trophy">' + esc(lbl(st.sp)) + ' Hall of Fame</h2>' + (rows.length ? '<div class="tw"><table class="board">' + body + '</table></div>' : '<p class="muted small">No living pets here yet.</p>');
       var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
-      $('board').querySelectorAll('canvas[data-id]').forEach(function (c) { var p = w.byId[c.getAttribute('data-id')]; R.lazy(c, function () { return R.petFrames(p, w); }, true); });
+      dressCanvases($('board'), w);
       if (!O.noTabs) $('board').querySelectorAll('[data-sp]').forEach(function (x) { x.onclick = function () { st.sp = x.dataset.sp; st.n = STEP; render(); }; }); if (O.wire) O.wire();
       /* status line (owner Oct 28 2026: plain words, no burn or species-tab counts) */
       $('status').textContent = fmt(rows.length) + ' living ' + (st.sp === 'hybrid' ? 'hybrid' : lbl(st.sp)) + ' pet' + (rows.length === 1 ? '' : 's') + ' on this board.';

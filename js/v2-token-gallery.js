@@ -33,7 +33,10 @@
       by[p.id] = { idx: Infinity, id: p.id, asset: a, block: D.block, tx: D.tx, kind: 'deed', name: p.name, rarity: RAR[p.tier], species: (p.species === 'kevin' ? 'KEVIN' : String(p.species || '').charAt(0).toUpperCase() + String(p.species || '').slice(1)), stage: p.stageName }; });
     Object.keys(by).forEach(function (k) { var e = by[k], p = w && w.byId && w.byId[e.id];
       if (p) { e.owner = p.owner; e.name = p.name || e.name; e.stage = p.stageName || e.stage; e.pet = p; if (p.deed && p.deed !== e.asset) e.asset = p.deed; }
-      if (w && w.byId && !alive(p)) return; /* living pets only (no world loaded = the feed's list as is) */
+      /* A partial view only holds one wallet. A pet that is not in it is not known to be dead, so the feed row stays.
+         Once every living pet has been read, a missing pet is not alive and stays out of the parade. */
+      if (p && !alive(p)) return;
+      if (!p && w && w._ranked) return;
       e.listed = !!listed[e.id]; out.push(e); });
     /* same block: api/ties.json order (its index); ties replayed past the feed come after, by tx then id */
     out.sort(function (a, b) { return a.block - b.block || (a.idx === b.idx ? 0 : a.idx === Infinity ? 1 : b.idx === Infinity ? -1 : a.idx - b.idx) || String(a.tx).localeCompare(String(b.tx)) || a.id - b.id; });
@@ -82,5 +85,14 @@
     $('tgHolder').oninput = function () { st.holder = this.value; render(); };
     var b = $('tgOrder'); b.onclick = function () { st.newest = !st.newest; b.setAttribute('aria-pressed', String(st.newest)); b.textContent = st.newest ? '⬇️ Newest first' : '⬆️ Oldest first'; render(); };
   }
-  load().then(function (feed) { st.list = build(feed); wire(); render(); window.V2TokenGallery = { list: function () { return st.list; } }; });
+  load().then(function (feed) {
+    function go() { st.list = build(feed); wire(); render(); window.V2TokenGallery = { list: function () { return st.list; } }; }
+    var w = null; try { w = M && M.world(); } catch (e) {}
+    if (w && w._view && !w._ranked && window.V2Split && V2Split.loadBoard) {
+      var s = $('status'); if (s) s.textContent = 'Reading every living pet…';
+      V2Split.loadBoard(function (i, n) { if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(go, go);
+      return;
+    }
+    go();
+  });
 })();
