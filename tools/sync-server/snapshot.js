@@ -123,8 +123,10 @@ async function buildSnapshot(opts) {
   const dex = ctx.__dexUsed || null;
   const enc = encodeWorld(ctx, world);
   ctx.__world = null;
-  const slim = slimEnc(ctx, enc);
+  /* Digest is the full wsEncode a replay worker stores. The desktop recheck compares it to that.
+   * Slimming the bytes that get written happens after, so a match still means the same world. */
   const digest = await digestOf(enc.root, enc.parts);
+  const slim = slimEnc(ctx, enc);
   const build = opts.build || (fs.existsSync(path.join(ROOT, 'build-id.txt')) ? fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() : '');
   let inSig = opts.inSig || '';
   if (!inSig && opts.inSigOf) inSig = opts.inSigOf({ tip: opts.tip, rows: rows, hashes: hashes, dex: dex });
