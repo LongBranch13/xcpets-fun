@@ -73,6 +73,10 @@
   function sprites(root, w) { var R = window.V2Render; if (!R) return; root.querySelectorAll('[data-ezsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-ezsp')]; if (!p) return; var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c);
     if (R.lazy && R.petFrames) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
   function strip(items, more, empty) { return '<div class="ez-strip" role="listbox">' + (items.join('') || '<p class="ez-empty">' + empty + '</p>') + (more > 0 ? '<span class="ez-more">+' + fmt(more) + ' more · search to find them</span>' : '') + '</div>'; }
+  function lookRev() { return window.V2Lookup ? V2Lookup.rev() : 0; }
+  /* The light view has only this wallet. Other wallets and opponents load when the player types an address or a pet number. */
+  function placeLook(el, mode) { if (!window.V2Lookup || !el) return; var strips = el.querySelectorAll('.ez-strip'), strip = strips[strips.length - 1]; if (!strip || !strip.parentNode) return;
+    V2Lookup.mount(strip.parentNode, { id: mode === 'breed' ? 'breedLook' : 'fightLook', mode: mode, before: strip, onReady: function () { var u = U(); if (u && u.render) u.render(); } }); }
   function head(n, title, qid, q, extra, sort) { return '<div class="ez-hd"><span class="ez-n">' + n + '</span><b>' + title + '</b><input type="search" class="ez-q" id="' + qid + '" value="' + esc(q) + '" placeholder="# name species" aria-label="Search ' + esc(title) + '">' + (sort || '') + (extra || '') + '</div>'; }
   function tabs(list, cur) { return '<div class="ez-tabs" role="tablist">' + list.map(function (t) { return '<button type="button" role="tab" class="ez-tab' + (t[0] === cur ? ' on' : '') + (t[2] ? ' hot' : '') + '" data-eztab="' + t[0] + '" aria-selected="' + (t[0] === cur) + '">' + t[1] + '</button>'; }).join('') + '</div>'; }
   /* keep the panel where it is: a repaint must never move the page (no scroll jumps) */
@@ -112,12 +116,12 @@
     if (s.tab === 'inc') { var ii = inc.filter(function (f) { return match(w.byId[f.a], s.qb) || match(w.byId[f.b], s.qb); });
       opp = ii.slice(0, MAX).map(function (f) { var Y = w.byId[f.a], X = w.byId[f.b]; return card(w, Y, { key: 'f' + f.id, on: s.inc === f.id, tag: 'vs your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: ['⚡ ' + pow(Y) + ' vs your ⚡ ' + pow(X), rec(Y) + ' · fight ' + f.id, '⏳ by block ' + fmt(f.expires)] }); });
       h += strip(opp, ii.length - MAX, 'No one is challenging your pets right now.'); }
-    else { var ap = A ? pow(A) : 0, srt = s.tab === 'sug' ? (A ? 'a' + ap : 's') : 'i', th = memo(w, 'th|' + ME + '|' + T + '|' + srt, function () { var t = UI.fighters(w, ME, true).slice();
+    else { var ap = A ? pow(A) : 0, srt = s.tab === 'sug' ? (A ? 'a' + ap : 's') : 'i', th = memo(w, 'th|' + ME + '|' + T + '|' + srt + '|' + lookRev(), function () { var t = UI.fighters(w, ME, true).slice();
         if (s.tab === 'sug') t.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
         else t.sort(function (a, b) { return a.id - b.id; }); return t; }).filter(function (p) { return match(p, s.qb); }); /* sorted once per world, then filtered: same order (stable sort) */
       if (B && !th.slice(0, MAX).some(function (p) { return p.id === B.id; })) th = [B].concat(th.filter(function (p) { return p.id !== B.id; }));
       opp = th.slice(0, MAX).map(function (p) { return card(w, p, { on: B && B.id === p.id && !s.inc, why: why(p, w), lines: lines(p).concat(['👤 ' + esc(short(p.owner))]) }); });
-      h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent can fight today.'); }
+      h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent is loaded yet. Type a wallet address or a pet number above.'); }
     /* 3 · one button */
     var label, ok = false, hint = '';
     if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept * V().acceptCost(w, +s.inc) / V().acceptCost(null, 0)) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
@@ -133,7 +137,7 @@
     h += '<div class="ez-foot">' + cmp + '<div class="ez-acts"><button type="button" class="btn ico-flame ez-go" id="ezFGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button>' +
       (s.tab === 'inc' && s.inc ? '<button type="button" class="q" id="ezFIgn">Ignore</button>' : '<button type="button" class="q ez-qm" id="ezFQm">🎲 Quick match</button>') + '</div>' +
       '<div class="ez-hint">' + esc(s.msg || hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn.' : '') + '</div></div></div>';
-    el.innerHTML = h; sprites(el, w);
+    el.innerHTML = h; sprites(el, w); if (s.tab !== 'inc') placeLook(el, 'fight');
     el.querySelectorAll('[data-ez]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('aria-disabled')) { UI.toast('#' + b.dataset.ez + ': ' + (b.querySelector('.ez-why') || {}).textContent); return; } var k = b.dataset.ez; s.msg = '';
       if (k[0] === 'f') { var f = w.fights[+k.slice(1) - 1]; s.inc = s.inc === f.id ? null : f.id; UXB.setFace(f.b, f.a); return; }
       var inMine = b.closest('.ez-strip') === el.querySelectorAll('.ez-strip')[0]; s.inc = null;
@@ -182,7 +186,7 @@
         return card(w, Y, { key: 'r' + k, on: s.req === k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: info(Y, s.sb).concat(['👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144))]) }); }), rr.length - MAX, 'No one has asked your pets yet.'); }
     else { var resX = function (p) { return !!(A && Vr.resPairWhy && Vr.resPairWhy(A, p, T + 1)); }; /* gods-breed-gods-1102: a God (resurrected, Mythic Gods too) sees only Gods as mates and a non-God never sees a God, even with 'Show all' on */
       var egK = EGGK.some(function (e) { return e[0] === s.sb; });
-      var base = memo(w, ['mate', s.tab, s.fall ? 1 : 0, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, s.sb, A ? A.id : 0, T].join('|'), function () {
+      var base = memo(w, ['mate', s.tab, s.fall ? 1 : 0, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, s.sb, A ? A.id : 0, T, lookRev()].join('|'), function () {
         var raw = L.partners.filter(function (x) { return (s.fall ? x.p.stage >= 1 && !x.p.dead : !x.why && x.p.stage >= 3) && !resX(x.p) && fok(s, x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME); });
         raw = egK && A ? eggSort(raw, s.sb, A, px, T + 1) : psort(w, raw, egK ? '' : s.sb, px, T + 1);
         return raw.filter(function (x) { return !kin(x.p); }).concat(raw.filter(function (x) { return kin(x.p); })); });
@@ -192,7 +196,7 @@
       var RW = Vr.RES_BREED_WHY, resHid = RW && A ? L.partners.filter(function (x) { return x.p.id !== A.id && (s.fall ? x.p.stage >= 1 : !x.why || x.why === RW) && resX(x.p) && (s.tab === 'mine' ? x.p.owner === ME : x.p.owner !== ME); }).length : 0;
       if (resHid) h += '<div class="ez-hint ez-res" role="note">😇 ' + (A.resurrected ? '#' + A.id + ' is a God (resurrected). ' : '') + 'Resurrected pets only breed with other resurrected pets: ' + fmt(resHid) + ' ' + (A.resurrected ? 'non-resurrected pet' + (resHid === 1 ? '' : 's') : (resHid === 1 ? 'God' : (Vr.GOD_PLURAL || 'Gods'))) + ' hidden.</div>';
       h += strip(pool.slice(0, MAX).map(function (x) { var k = kin(x.p); return card(w, x.p, { on: Bp && Bp.id === x.p.id && !s.req, why: k ? k + ' (no inbreeding)' : x.why || null, lines: info(x.p, s.sb).concat(A && x.p.id !== A.id ? [eggLine(eggOf(A, x.p, T + 1)), eggTags(eggOf(A, x.p, T + 1))].filter(Boolean) : []).concat(x.p.owner !== ME ? ['👤 ' + esc(short(x.p.owner))] : []) }); }), pool.length - MAX,
-        s.tab === 'mine' ? 'No other pet of yours can breed right now.' : 'No pet matches. Search by #, name, species or the start of a wallet address.'); }
+        s.tab === 'mine' ? 'No other pet of yours can breed right now.' : (s.qb ? 'No pet matches. Search by #, name, species, or look up a wallet address or pet number.' : 'No other wallet is loaded yet. Type a wallet address or a pet number above.')); }
     h += '</div></div>';
     if (A || Bp) h += '<details class="hs-wb"' + (s.ways ? ' open' : '') + ' id="ezWays"><summary>⚡ Ways to more power</summary><div class="hs-wg">' + waysBox(w, A, T) + (Bp && (!A || Bp.id !== A.id) ? waysBox(w, Bp, T) : '') + '</div>' + '<div class="hs-bfp"><b>💞 Breeding for Power</b><p>An egg\u2019s stats start at its parents\u2019 average, give or take 2 each. Pair your strongest pets, then breed the best egg with another strong pet: each generation starts from a higher average. Same-species eggs can come out bred true (+3 on one stat), a hybrid egg keeps each parent\u2019s best stat at full value, and a carried stat sets a floor. Quest Hauls (up to +3) also pass down through the average. The block hash picks each egg, so no climb is certain.</p></div></details>';
     /* 3 · one button (the motel bell / the desk Accept, unchanged) */
@@ -210,7 +214,7 @@
       if (v2 && P1.species !== P2.species) od += '<div class="ez-hint">🧬 Different species: body parts can trade in the egg.</div>'; od += pairCard(P1, P2, T + 1); }
     h += '</div>';
     placeCheck('<div class="ez-checkin" role="region" aria-label="Check in">' + od + (flip ? UI.breedFlipNote(flip) : '') + '<div class="ez-acts"><button type="button" class="btn ico-egg ez-go" id="ezBGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button></div><div class="ez-hint">' + (flip ? '' : esc(hint)) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn. Nothing is signed from this page until you confirm.' : (flip ? '' : ' Motel check-in (pet:breed), not the daily WAGMI check-in.')) + '</div></div>');
-    el.innerHTML = h; sprites(el, w);
+    el.innerHTML = h; sprites(el, w); if (s.tab === 'other') placeLook(el, 'breed');
     var pick = function (side, id) { $(side === 'A' ? 'bA' : 'bB').value = id; if (side === 'A' && $('bB').value === id) $('bB').value = ''; var S = M && M._state ? M._state() : null; if (S) { S.fresh = null; S.pickSide = null; if (id) { S.bubble = 'Room #' + id + '? Gooby pls.'; S.lt = performance.now(); } } UI.render(); };
     el.querySelectorAll('[data-ez]').forEach(function (bt) { bt.onclick = function () { if (bt.getAttribute('aria-disabled')) { UI.toast((bt.querySelector('.ez-why') || {}).textContent || ''); return; } var k = bt.dataset.ez;
       if (k[0] === 'r') { k = k.slice(1); if (s.req === k) { s.req = null; breed(U().world()); return; } s.req = k; var q2 = k.split(':'); $('bA').value = q2[0]; $('bB').value = q2[1]; pick('B', q2[1]); return; }

@@ -1502,6 +1502,7 @@
     var a = $('fMine').value, b = $('fTheirs').value;
     $('fMine').innerHTML = fighters(w, ME).map(opt).join('') || '<option value="">no eligible pet</option>'; $('fTheirs').innerHTML = fighters(w, ME, true).map(opt).join('');
     if (a) $('fMine').value = a; if (b) $('fTheirs').value = b;
+    if (window.V2Lookup) V2Lookup.mount($('battlePanel'), { id: 'fightLook', mode: 'fight', onReady: function () { render(); } });
     $('fights').innerHTML = (w.fights || []).slice().reverse().map(function (f) { var A = w.byId[f.a], B = w.byId[f.b];
       return '<div class="txrow">⚔️ fight ' + f.id + ': #' + f.a + ' ' + esc(A.name) + ' vs #' + f.b + ' ' + esc(B.name) + ' · ' + f.status + (f.status === 'open' ? ' (accept by block ' + f.expires + ')' : '') +
         (f.status === 'done' ? ' · winner #' + f.winner + (f.spoils ? ' took ' + esc(f.spoils.label) : '') + ' <button class="q" data-view="' + f.id + '">▶ Replay</button>' : '') +
