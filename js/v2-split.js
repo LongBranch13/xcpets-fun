@@ -91,7 +91,23 @@
     if (pack && pack.cem) w.cem = pack.cem;
     return w;
   }
-  var last = null, lastSummary = null;
+  var last = null, lastSummary = null, healthTipN = 0;
+  /* The published health tip. Unleash reads this so a stale replay tip cannot invent a dust deadline. */
+  function noteHealth(n) {
+    n = n | 0;
+    if (!(n > 0)) return 0;
+    if (n > healthTipN) healthTipN = n;
+    try {
+      var S = window.V2Mock && V2Mock.state && V2Mock.state();
+      if (S && n > (S.healthTip || 0)) S.healthTip = n;
+    } catch (e) {}
+    return healthTipN;
+  }
+  function pingHealth() {
+    var root = base();
+    if (!root || typeof fetch !== 'function') return Promise.resolve(healthTipN);
+    return getJson(root + '/xp/v1/health', 8000, true).then(function (h) { return noteHealth(h && h.tip); }, function () { return healthTipN; });
+  }
   /* The published manifest embeds a pet sample for the largest wallets and is many megabytes.
    * A slow phone sat on that download and never reached the 18 KB summary. First paint uses
    * latest.json, summary.json and one owner page. The manifest is left for the check worker. */
@@ -135,6 +151,7 @@
     var sigP = pageRsig();
     getJson(root + '/xp/v1/health', 8000, true).then(function (h) {
       chainTip = h && h.tip || 0;
+      noteHealth(chainTip);
       return getJson(root + '/xp/v1/world/latest.json', 8000, true);
     }).then(function (latest) {
       var path = latest && (latest.manifest || latest.url);
@@ -191,6 +208,7 @@
     if (!last || !last.man) return Promise.resolve(false);
     return getJson(base() + '/xp/v1/health', 8000, true).then(function (h) {
       var tip = h && h.tip || 0;
+      noteHealth(tip);
       return !(tip && last.man.tip != null && tip - last.man.tip > STALE);
     }, function () { return false; });
   }
@@ -696,5 +714,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth };
 })();
