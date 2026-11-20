@@ -7,7 +7,7 @@ let failed = 0;
 function ok(cond, msg) { if (cond) console.log('ok ' + msg); else { failed++; console.error('FAIL ' + msg); } }
 const files = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
 const scripts = files.map(f => ({ src: 'https://xcpets.fun/' + f + '?v=e6db15afb2' }));
-scripts.push({ src: 'https://xcpets.fun/js/v2-boot-sync.js?v=e6db15afb2' });
+scripts.push({ src: 'https://xcpets.fun/js/v2-boot-sync.js?v=e7c3a198c7' });
 const document = { currentScript: scripts[scripts.length - 1], scripts: scripts, hidden: true, addEventListener() {}, getElementById() { return null; }, querySelector() { return null; } };
 const location = { href: 'https://xcpets.fun/', hostname: 'xcpets.fun', search: '', protocol: 'https:' };
 const window = { document: document, location: location, console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: setInterval, clearInterval: clearInterval, URL: URL, URLSearchParams: URLSearchParams, addEventListener() {}, fetch() { return Promise.reject(new Error('offline')); } };

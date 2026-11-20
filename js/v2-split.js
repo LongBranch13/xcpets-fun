@@ -91,7 +91,7 @@
     if (pack && pack.cem) w.cem = pack.cem;
     return w;
   }
-  var last = null, lastSummary = null, healthTipN = 0;
+  var last = null, lastSummary = null, viewOwners = null, rankHashes = null, healthTipN = 0;
   /* The published health tip. Unleash reads this so a stale replay tip cannot invent a dust deadline. */
   function noteHealth(n) {
     n = n | 0;
@@ -174,15 +174,24 @@
         if (!summary || (summary.v !== 1 && summary.v !== 2 && summary.v !== 3) || summary.tip !== latest.tip || summary.rsig !== latest.rsig) throw new Error('summary');
         lastSummary = summary;
         last = { man: { tip: latest.tip, rsig: latest.rsig, view: true }, url: manUrl, tip: chainTip };
-        if (!own || !own.page || !own.page.pets || !own.page.pets.length) {
-          if (own && own.page && (own.page.deeds || own.page.roster || own.page.mythicAt != null)) {
-            var mythic0 = {}; if (own.page.mythicAt != null) mythic0[own.page.owner || who] = own.page.mythicAt;
-            var bare = assemble(summary, { deeds: own.page.deeds || null, mythicOwners: mythic0, roster: own.page.roster || null, rise: own.page.rise || null });
-            viewHold = { deeds: bare.deeds, mythicOwners: bare.mythicOwners, roster: bare._roster || null, cem: bare.cem || null };
-            return bare;
+        function paint(owners) {
+          viewOwners = owners || viewOwners;
+          if (own && own.page && own.page.v === 3) {
+            if (own.page.pets) own.page.pets = openList(own.page.pets, own.page.hashes);
+            if (own.page.rise) own.page.rise = openList(own.page.rise, own.page.hashes);
           }
-          return assemble(summary, null);
+          if (!own || !own.page || !own.page.pets || !own.page.pets.length) {
+            if (own && own.page && (own.page.deeds || own.page.roster || own.page.mythicAt != null || (own.page.rise && own.page.rise.length))) {
+              var mythic0 = {}; if (own.page.mythicAt != null) mythic0[own.page.owner || who] = own.page.mythicAt;
+              var bare = assemble(summary, { deeds: own.page.deeds || null, mythicOwners: mythic0, roster: own.page.roster || null, rise: own.page.rise || null });
+              viewHold = { deeds: bare.deeds, mythicOwners: bare.mythicOwners, roster: bare._roster || null, cem: bare.cem || null };
+              return bare;
+            }
+            return assemble(summary, null);
+          }
+          return painted();
         }
+        function painted() {
         var raw0 = own.page.pets, living0 = livingOf(raw0), separate = own.page.alive != null;
         var stop0 = !separate && endsDead(raw0);
         var livingPages = separate ? Math.max(1, Math.ceil((own.page.alive || 0) / (own.page.pageSize || 24)) || 1) : (stop0 ? 1 : own.page.pages);
@@ -201,6 +210,8 @@
         else if (stop0) noteGraves(view._pages, 1, false);
         if (!(view._pages.pages > 1)) { view._full = 1; viewHold.roster = null; view._roster = null; }
         return view;
+        }
+        return paint(null);
       });
     }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
   }
@@ -266,6 +277,55 @@
     return out;
   }
   function endsDead(list) { if (!list || !list.length) return false; var p = list[list.length - 1]; return !!(p && (p.dead || p.released)); }
+  function artOpt() {
+    var V = window.V2Rules;
+    return { PetCore: window.PetCore, owners: viewOwners, hashes: null, ftLook: V && V.ftLookOfTier ? function (t) { return V.ftLookOfTier(t); } : null, itemOf: V && V.itemOf ? function (id) { return V.itemOf(id); } : null };
+  }
+  function openList(list, hashes) {
+    if (!list) return [];
+    if (!window.XcpArt || !window.XcpArt.openPet) return list;
+    var opt = artOpt(); opt.hashes = hashes || null;
+    var out = [], i;
+    for (i = 0; i < list.length; i++) out.push(XcpArt.openPet(list[i], opt));
+    return out;
+  }
+  var ownersP = null;
+  function ownersReady() {
+    if (viewOwners) return Promise.resolve(viewOwners);
+    if (ownersP) return ownersP;
+    ownersP = getJson(viewFolder + 'view/owners.json', 12000, false).then(function (rows) { viewOwners = rows || []; return viewOwners; }, function () { viewOwners = []; return viewOwners; });
+    return ownersP;
+  }
+  function resolveIds(ids) {
+    var folder = viewFolder, need = {}, i, id, name, names;
+    if (!ids || !ids.length || !folder) return Promise.resolve([]);
+    return ownersReady().then(function () { return resolveIdsNow(ids); });
+  }
+  function resolveIdsNow(ids) {
+    var folder = viewFolder, need = {}, i, id, name, names;
+    for (i = 0; i < ids.length; i++) {
+      id = ids[i] | 0;
+      name = ('00000' + Math.floor(id / 2000)).slice(-5);
+      (need[name] = need[name] || []).push(id);
+    }
+    names = Object.keys(need);
+    return Promise.all(names.map(function (nm) {
+      return getJson(folder + 'view/p/' + nm + '.json').then(function (pack) {
+        var map = pack && pack.pets || {}, hashes = pack && pack.hashes || [], j, src, out = [];
+        for (j = 0; j < need[nm].length; j++) {
+          src = map[String(need[nm][j])];
+          if (!src) continue;
+          if (pack && pack.v === 3) out.push(openList([src], hashes)[0]);
+          else out.push(src);
+        }
+        return out;
+      }, function () { return []; });
+    })).then(function (groups) {
+      var all = [], g, k;
+      for (g = 0; g < groups.length; g++) for (k = 0; k < groups[g].length; k++) all.push(groups[g][k]);
+      return all;
+    });
+  }
   var gravePlan = null;
   function noteGraves(pg, fromPage, separate) {
     gravePlan = { key: pg.key, folder: pg.folder, from: fromPage, pages: pg.total || pg.pages, separate: !!separate, done: false, pets: [] };
@@ -326,6 +386,15 @@
       }, function () { return { n: ni, page: null }; });
     })).then(function (rows) {
       rows.sort(function (a, b) { return a.n - b.n; });
+      var chain = Promise.resolve();
+      rows.forEach(function (row) {
+        chain = chain.then(function () {
+          var page = row.page;
+          if (!page || page.pets || !page.ids) return null;
+          return resolveIds(page.ids).then(function (pets) { page.pets = pets; });
+        });
+      });
+      return chain.then(function () {
       for (i = 0; i < rows.length; i++) {
         if (verifiedTakeover || stop) break;
         if (!takeLiving(pg, rows[i].page, rows[i].n)) stop = true;
@@ -334,6 +403,7 @@
       paging = null;
       publishJob(nextPage >= pg.pages);
       return true;
+      });
     }, function () { paging = null; return false; });
     return paging;
   }
@@ -481,6 +551,12 @@
     var pg = cur._pages, done = !pg || !!cur._full || (pg.got || 1) >= (pg.pages || 1);
     publishOwner(pets, pg, cur.fights || [], done);
   }
+  function takePagePets(page) {
+    if (!page) return Promise.resolve([]);
+    if (page.pets && page.pets.length) return Promise.resolve(page.v === 3 ? openList(page.pets, page.hashes) : page.pets);
+    if (page.ids && page.ids.length) return resolveIds(page.ids);
+    return Promise.resolve([]);
+  }
   function ensureDead() {
     if (!gravePlan) return Promise.resolve(false);
     if (gravePlan.done) return Promise.resolve(true);
@@ -489,8 +565,10 @@
       function pull(n) {
         var name = n === 0 ? gravePlan.key + '.d.json' : gravePlan.key + '.d.' + n + '.json';
         return getJson(gravePlan.folder + 'view/own/' + name).then(function (page) {
-          if (page && page.pets) gravePlan.pets = gravePlan.pets.concat(page.pets);
-          if (page && page.pages > n + 1) return pull(n + 1);
+          return takePagePets(page).then(function (pets) {
+            if (pets && pets.length) gravePlan.pets = gravePlan.pets.concat(pets);
+            if (page && page.pages > n + 1) return pull(n + 1);
+          });
         }, function () {});
       }
       return pull(0).then(finish);
@@ -502,7 +580,7 @@
       var slice = nums.splice(0, 4);
       return Promise.all(slice.map(function (n) {
         return getJson(gravePlan.folder + 'view/own/' + gravePlan.key + '.' + n + '.json').then(function (page) {
-          if (page && page.pets) gravePlan.pets = gravePlan.pets.concat(page.pets);
+          return takePagePets(page).then(function (pets) { if (pets && pets.length) gravePlan.pets = gravePlan.pets.concat(pets); });
         }, function () {});
       })).then(batch);
     }
@@ -598,8 +676,58 @@
     if (window.V2Mock && V2Mock.setViewWorld) V2Mock.setViewWorld(w);
     return w;
   }
+  function feedDays(tip, sk, td) {
+    var d = Math.floor((tip || 0) / 144), fd = {}, i;
+    if (td) { fd[d] = 1; for (i = 1; i < sk; i++) fd[d - i] = 1; }
+    else for (i = 1; i <= sk; i++) fd[d - i] = 1;
+    return fd;
+  }
+  function expandRank(row, tip) {
+    var s = row.sg || [];
+    var p = {
+      id: row.id | 0, owner: (viewOwners || [])[row.o] || '', name: row.name || '', species: row.sp || '',
+      tier: row.ti | 0, stage: row.st | 0, stageName: row.sn || '', care: row.care || 0,
+      wins: row.w || 0, losses: row.l || 0, hatchBlock: row.hb, hatchTx: row.tx || '',
+      dead: !!row.dead, released: !!row.rel, community: row.cm ? 1 : null, resurrected: row.rs || null,
+      hybrid: row.hybrid || (row.hy ? 1 : null), parents: row.par ? new Array(row.par).fill(0) : null,
+      mutation: row.mu || null, shows: row.shw || null, blackEye: row.be || null, crowned: row.cr || null,
+      deed: row.dd || '', electric: row.el ? 1 : 0, rareHatch: row.rareHatch || null, shards: row.shards || null,
+      stats: { vigor: s[0] || 0, spark: s[1] || 0, grit: s[2] || 0, zoom: s[3] || 0, luck: s[4] || 0 },
+      feedDays: feedDays(tip, row.sk || 0, row.td), _hof: { n: (row.hf && row.hf[0]) || 0, t: (row.hf && row.hf[1]) || 0 },
+      _bits: row.rb, _h: row._h, as: row.as || '', sid: row.sid || '', ax: row.ax || null, _ac: row._ac || 0
+    };
+    return p;
+  }
+  function hangHof(w, list) {
+    var i, p, n, t, k;
+    w.items = w.items || {};
+    for (i = 0; i < list.length; i++) {
+      p = list[i]; if (!p || !p._hof || !p._hof.n) continue;
+      n = p._hof.n; t = p._hof.t || 0;
+      for (k = 0; k < n; k++) w.items['hf' + p.id + ':' + k] = { gid: 'hf' + p.id + ':' + k, on: p.id, tier: k ? 0 : t, legendary: 0, item: 'hof', owner: p.owner };
+    }
+  }
+  function loadRank(onProg) {
+    var folder = viewFolder;
+    boardP = getJson(folder + 'view/rank.json', 20000, false).then(function (rank) {
+      if (!rank || !rank.pets) return null;
+      viewOwners = rank.owners || viewOwners;
+      rankHashes = rank.hashes || [];
+      var pets = [], i, row;
+      for (i = 0; i < rank.pets.length; i++) { row = expandRank(rank.pets[i], rank.tip || (lastSummary && lastSummary.tip) || 0); pets.push(row); }
+      boardBytes += 1; boardFiles += 1;
+      if (onProg) onProg(1, pets.length);
+      var w = publishBoard(pets, {});
+      hangHof(w, pets);
+      w._bits = 1;
+      if (window.V2Mock && V2Mock.setViewWorld) V2Mock.setViewWorld(w);
+      return w;
+    }, function () { boardP = null; return null; });
+    return boardP;
+  }
   function loadBoard(onProg) {
     if (boardP) return boardP;
+    if (lastSummary && lastSummary.v === 3 && lastSummary.rank) return loadRank(onProg);
     var folder = viewFolder;
     if (!folder || !lastSummary) return Promise.resolve(null);
     boardP = new Promise(function (res) {
@@ -633,21 +761,27 @@
     var w = window.V2Mock && V2Mock.world && V2Mock.world();
     var folder = viewFolder;
     if (!w || !w.byId || !folder || !ids || !ids.length) return Promise.resolve(0);
-    var need = {}, i, id, p, name, names, n = 0;
+    var need = {}, i, id, p, name, names, n = 0, opt;
+    opt = artOpt(); opt.hashes = rankHashes;
     for (i = 0; i < ids.length; i++) {
       id = ids[i] | 0; p = w.byId[id];
-      if (!p || p.art) continue;
+      if (!p || (p.art && p.art.dna)) continue;
+      if (window.XcpArt && window.PetCore && rankHashes && p._h != null) {
+        try { p.art = XcpArt.buildArt(p, rankHashes, PetCore, opt); n++; } catch (e) {}
+        continue;
+      }
       name = ('00000' + Math.floor(id / 2000)).slice(-5);
       (need[name] = need[name] || []).push(id);
     }
     names = Object.keys(need);
-    if (!names.length) return Promise.resolve(0);
+    if (!names.length) return Promise.resolve(n);
     return Promise.all(names.map(function (nm) {
       return pullShard(folder + 'view/p/' + nm + '.json').then(function (pack) {
         var map = pack && pack.pets || {}, j, src, dst;
         for (j = 0; j < need[nm].length; j++) {
           dst = w.byId[need[nm][j]]; src = map[String(need[nm][j])];
           if (!dst || !src) continue;
+          if (pack && pack.v === 3) src = openList([src], pack.hashes)[0];
           if (src.art) dst.art = src.art;
           if (src.worn) dst.worn = src.worn;
           n++;
@@ -665,10 +799,14 @@
     if (!folder) return Promise.resolve(null);
     var shard = ('00000' + Math.floor(id / 2000)).slice(-5);
     return getJson(folder + 'view/p/' + shard + '.json').then(function (pack) {
+      function use(p) {
+        if (!p || (p.id === 1765 && p.dead)) return null;
+        mergePets([p]);
+        return p;
+      }
       var p = pack && pack.pets && pack.pets[String(id)];
-      if (!p || (p.id === 1765 && p.dead)) return null;
-      mergePets([p]);
-      return p;
+      if (p && pack.v === 3) return ownersReady().then(function () { return use(openList([p], pack.hashes)[0]); });
+      return use(p);
     }, function () { return null; });
   }
   var zombieP = null;

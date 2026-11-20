@@ -3,7 +3,7 @@
  * and a sendBlock answer, not the world. js/v2-rules.js is loaded as text and
  * patched the same way the catch-up worker patches it. The file on disk is not changed. */
 'use strict';
-importScripts('v2-resume.js');
+importScripts('v2-resume.js', 'v2-art.js');
 var world = null;
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
@@ -67,6 +67,7 @@ function start(m) {
           if (!root || !meta) throw new Error('parts');
           self.postMessage({ cmd: 'progress', phase: 'replay', got: 0, total: 1 });
           var w = XcpResume.wsDecode(root, parts);
+          if (self.XcpArt && (w._owners || w._hashes)) XcpArt.restore(w, self.PetCore, { ftLook: self.V2Rules && V2Rules.ftLookOfTier ? function (t) { return V2Rules.ftLookOfTier(t); } : null });
           root = null; parts = null;
           var rows = (sync.rows && sync.rows.list) || [];
           var tip = sync.tip || man.tip;

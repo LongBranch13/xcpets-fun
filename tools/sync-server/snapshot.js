@@ -5,6 +5,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib'), crypto = require('crypto');
 const { bootSync, sha256, ROOT } = require('./client');
 const { patchRules } = require('../../js/v2-resume');
+const Art = require('../../js/v2-art');
 const RULES = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-replay-worker.js'];
 function rulesSig(files) {
   let n = 0; const bufs = files.map(b => Buffer.isBuffer(b) ? b : Buffer.from(b));
@@ -52,6 +53,14 @@ function replayWorld(ctx, rows, hashes, tip, dex) {
   return world;
 }
 function encodeWorld(ctx, world) { ctx.__w = world; vm.runInContext('__enc = wsEncode(__w)', ctx); const enc = ctx.__enc; ctx.__w = null; ctx.__enc = null; return enc; }
+function artOpt(ctx) {
+  const V = ctx && ctx.V2Rules;
+  return { ftLook: V && V.ftLookOfTier ? function (t) { return V.ftLookOfTier(t); } : null };
+}
+function slimEnc(ctx, enc) {
+  if (!enc || !enc.root || !ctx || !ctx.PetCore) return null;
+  return Art.slimEncoded(enc.root, enc.parts, ctx.PetCore, artOpt(ctx));
+}
 function jsonPart(value) {
   const C = bootSync();
   const json = JSON.stringify(C.markValue(value));
@@ -102,6 +111,7 @@ async function buildSnapshot(opts) {
   let checkpoint = null;
   if (opts.outDir) {
     ctx.saveCheckpoint = (enc, keys, dexPos, grand) => {
+      slimEnc(ctx, enc);
       const meta = { v: 1, tip: opts.tip, dexPos: dexPos || 0, grand: grand ? 1 : 0, seen: keys };
       const body = spillEnc(opts.outDir, enc, 'cp-', opts.compress !== false);
       const metaFile = spillValue(opts.outDir, 'cp-meta.json', meta, opts.compress !== false);
@@ -113,6 +123,7 @@ async function buildSnapshot(opts) {
   const dex = ctx.__dexUsed || null;
   const enc = encodeWorld(ctx, world);
   ctx.__world = null;
+  const slim = slimEnc(ctx, enc);
   const digest = await digestOf(enc.root, enc.parts);
   const build = opts.build || (fs.existsSync(path.join(ROOT, 'build-id.txt')) ? fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() : '');
   let inSig = opts.inSig || '';
@@ -132,7 +143,7 @@ async function buildSnapshot(opts) {
       fileMeta.push({ i: i, url: 'part-' + String(i).padStart(3, '0') + '.json', bytes: d.bytes, sha256: d.sha256 });
     }
   }
-  const manifest = { v: 1, format: 'ws2-json', rsig: rsig, build: build, tip: opts.tip, tipHash: (hashes && hashes[opts.tip]) || '', ops: '[]', inSig: inSig, key: key,
+  const manifest = { v: 1, format: slim ? 'ws3-json' : 'ws2-json', slim: slim ? 1 : 0, rsig: rsig, build: build, tip: opts.tip, tipHash: (hashes && hashes[opts.tip]) || '', ops: '[]', inSig: inSig, key: key,
     n: enc.n, parts: fileMeta.length, root: rootMeta, files: fileMeta,
     digest: digest, builtAt: new Date().toISOString(), replayMs: Date.now() - t0, maxRss: maxRss };
   if (checkpoint) manifest.checkpoint = checkpoint;
@@ -147,7 +158,7 @@ async function buildSnapshot(opts) {
     } catch (e) { console.error('graves index: ' + String(e && e.message || e).split('\n')[0]); }
     try {
       const split = require('./split');
-      manifest.view = await split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig });
+      manifest.view = await split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig, ctx: ctx });
     } catch (e) { console.error('split view: ' + String(e && e.message || e).split('\n')[0]); }
   }
   if (opts.outDir) {
