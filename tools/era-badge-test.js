@@ -22,15 +22,16 @@ C.PETS.splice(-2);
 // Render module with the same VM shims as api-feed; no browser/Telegram/wallet.
 c.document.readyState='loading';c.setInterval=()=>0;c.setTimeout=()=>0;
 vm.runInContext(fs.readFileSync(path.join(root,'js/v2-render.js'),'utf8'),c,{filename:'v2-render.js'});
-const html=c.V2Render.eraChip(w,p(974841));check(html.includes('White Rabbit era')&&html.includes('data-era="rabbit"'),'shared renderer label');check(html.includes('974,841')&&html.includes('Looks only'),'birth/help is accessible in title');check(html.includes('<svg')&&!/position:/.test(html),'8-bit icon, no sprite overlay');check(c.V2Render.eraChip(w,p(null))==='','missing birth never guesses');
+const html=c.V2Render.eraChip(w,p(974841));check(html.includes('data-era="rabbit"')&&html.includes('aria-label="White Rabbit era"')&&html.includes('role="img"'),'shared renderer keeps the era name as aria-label');check(/title="White Rabbit era\. Born in block 974,841\./.test(html)&&html.includes('Looks only'),'title tooltip keeps the label and the birth note');check(!/<span>[^<]* era<\/span>/.test(html),'no visible era words');check(html.includes('<svg')&&!/position:/.test(html),'8-bit icon, no sprite overlay');check(c.V2Render.eraChip(w,p(null))==='','missing birth never guesses');
 for(const f of ['js/v2.js','js/v2-pages.js','js/v2-sales.js','js/v2-cemetery-scene.js','js/v2-rugme.js','js/v2-token-gallery.js','js/v2-trait-rank.js'])check(fs.readFileSync(path.join(root,f),'utf8').includes('.eraChip('),'card integration '+f);
 for(const f of ['play.html','pet.html','shop.html','templates/game.html']){const t=fs.readFileSync(path.join(root,f),'utf8');check(t.indexOf('js/v2-community.js')<t.indexOf('js/v2-chain.js'),'catalogue before boot '+f)}
 // Real sprite pixels, no new art or rule changes. Delayed modules recover on a later render.
 check(html.includes('era-pending-icon'),'missing sprite keeps a safe fallback');
 for(const name of ['wizard','kek','funtrump','homer','rabbit'])vm.runInContext(fs.readFileSync(path.join(root,'js/'+name+'-sprite.js'),'utf8'),c,{filename:name+'-sprite.js'});
-for(const [birth,id] of [[971631,'nakamoto'],[971632,'wizard'],[972396,'kek'],[972880,'funtrump'],[973365,'homer'],[974841,'rabbit']]) {
+for(const [birth,id,label] of [[971631,'nakamoto','Nakamoto era'],[971632,'wizard','Wizard era'],[972396,'kek','Lord Kek era'],[972880,'funtrump','FUNTRUMP era'],[973365,'homer','Homer Pepe era'],[974841,'rabbit','White Rabbit era']]) {
  const before=JSON.stringify(w),a=c.V2Render.eraChip(w,p(birth));
  check(a.includes('data-era-icon="'+id+'"'),'actual portrait '+id);
+ check(!/<span>[^<]* era<\/span>/.test(a)&&a.includes('aria-label="'+label+'"')&&a.includes('title="'+label+'.'),'icon only, '+label+' stays on the tooltip');
  check(a.includes('viewBox="0 0 24 24"')&&a.includes('shape-rendering="crispEdges"'),'native pixel geometry '+id);
  check((a.match(/<path /g)||[]).length>2,'colored existing sprite '+id);
  check(a===c.V2Render.eraChip(w,p(birth)),'stable cached portrait '+id);
