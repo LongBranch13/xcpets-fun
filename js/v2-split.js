@@ -648,15 +648,17 @@
   }
   function publishBoard(pets, best) {
     var byId = {}, i, cur, w, list = [];
-    for (i = 0; i < pets.length; i++) byId[pets[i].id] = pets[i];
+    for (i = 0; i < pets.length; i++) { if (window.XcpArt && XcpArt.onRankBoard && !XcpArt.onRankBoard(pets[i])) continue; if ((pets[i].id | 0) === 1765) continue; byId[pets[i].id] = pets[i]; }
     cur = window.V2Mock && V2Mock.world && V2Mock.world();
     if (cur && cur.pets) cur.pets.forEach(function (p) {
-      if (!p || p.id == null) return;
+      if (!p || p.id == null || (p.id | 0) === 1765) return;
       var prev = byId[p.id];
-      if (prev) {
+      if (prev && window.XcpArt && XcpArt.carryRank) XcpArt.carryRank(p, prev);
+      else if (prev) {
         if (!p.art && prev.art) p.art = prev.art;
         if (!p.worn && prev.worn) p.worn = prev.worn;
         if (!p._hof) p._hof = prev._hof;
+        if (p._bits == null && prev._bits != null) p._bits = prev._bits;
       }
       byId[p.id] = p.art ? p : (prev || p);
     });
@@ -714,7 +716,7 @@
       viewOwners = rank.owners || viewOwners;
       rankHashes = rank.hashes || [];
       var pets = [], i, row;
-      for (i = 0; i < rank.pets.length; i++) { row = expandRank(rank.pets[i], rank.tip || (lastSummary && lastSummary.tip) || 0); pets.push(row); }
+      for (i = 0; i < rank.pets.length; i++) { if ((rank.pets[i].id | 0) === 1765) continue; row = expandRank(rank.pets[i], rank.tip || (lastSummary && lastSummary.tip) || 0); pets.push(row); }
       boardBytes += 1; boardFiles += 1;
       if (onProg) onProg(1, pets.length);
       var w = publishBoard(pets, {});

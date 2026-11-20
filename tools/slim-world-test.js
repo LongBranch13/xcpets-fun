@@ -79,6 +79,19 @@ ok(kn && kn.as === ':child', 'a bred pet stores only the :child suffix');
   console.log('encoded sample bytes ' + raw);
 })();
 
+(function saboAndScore() {
+  const own = { id: 4, art: { dna: 'x' }, name: 'Mine' };
+  const prev = { id: 4, _bits: 12.5, _hof: { n: 1, t: 2 }, art: { dna: 'rank' } };
+  Art.carryRank(own, prev);
+  ok(own._bits === 12.5 && own._hof.n === 1 && own.art.dna === 'x', 'a wallet pet keeps the builder trait score when it replaces the rank row');
+  const board = [own, { id: 1765, dead: true, _bits: 40, name: 'Sabo' }, { id: 9, _bits: 3 }].filter(p => Art.onRankBoard(p) && p._bits != null && (p.id | 0) !== 1765);
+  ok(board.map(p => p.id).join(',') === '4,9', 'Sabo #1765 is left off the trait board');
+  ok(!board.some(p => p.dead), 'the trait board does not mark Sabo dead');
+  const slim = Art.slimGear({ gid: 'cape', item: 'wojak-cape', tier: 1, slot: 'body', label: 'Cape', owner: 'a', on: 4 });
+  const opened = Art.openGear(slim, 'a', 4, { itemOf: function () { return { label: 'Cape', slot: 'back' }; } });
+  ok(opened.slot === 'body', 'a stored body slot stays body when the catalog says back');
+})();
+
 (async function view() {
   const pets = [];
   for (let i = 1; i <= 30; i++) pets.push({ id: i, owner: 'carol', name: 'P' + i, species: 'pepe', tier: 0, stage: 1, care: i, dead: i % 2 === 0, wins: 0, losses: 0, released: false, hatchBlock: 1000 + i, stats: { vigor: 1, spark: 1, grit: 1, zoom: 1, luck: 1 } });
@@ -97,6 +110,14 @@ ok(kn && kn.as === ':child', 'a bred pet stores only the :child suffix');
   ok(rank.pets.length === 30 && rank.owners.indexOf('carol') === 0, 'rank file lists every pet once');
   const shard = JSON.parse(fs.readFileSync(path.join(out, 'p', '00000.json'), 'utf8'));
   ok(shard.v === 3 && shard.pets['1'] && !shard.pets['1'].art && shard.pets['1'].o === 0, 'shard row is slim and owner is an index');
+  const fresh = [];
+  for (let i = 1; i <= 30; i++) fresh.push({ id: i, owner: 'carol', name: 'P' + i, species: 'pepe', tier: 0, stage: 1, care: i, dead: i % 2 === 0, wins: 0, losses: 0, released: false, hatchBlock: 1000 + i, stats: { vigor: 1, spark: 1, grit: 1, zoom: 1, luck: 1 } });
+  const saboWorld = { tip: 40, pets: fresh.concat([{ id: 1765, owner: 'carol', name: 'Sabo', species: 'wojak', tier: 3, stage: 5, care: 9, dead: true, wins: 0, losses: 0, released: false, hatchBlock: 900, stats: { vigor: 20, spark: 20, grit: 20, zoom: 20, luck: 20 }, art: { eyes: 'classic', pattern: 'none', background: 'solid', cheeks: false, species: 'wojak' } }]), items: {}, community: { burned: 1, leaderboard: [] }, log: [] };
+  const saboOut = fs.mkdtempSync(path.join(os.tmpdir(), 'slim-sabo-'));
+  await split.write(saboOut, saboWorld, { tip: 40, rsig: 'rtest' });
+  const saboRank = JSON.parse(fs.readFileSync(path.join(saboOut, 'rank.json'), 'utf8'));
+  ok(!saboRank.pets.some(p => p.id === 1765), 'rank.json leaves Sabo #1765 out');
+  ok(saboRank.pets.some(p => p.id === 1 && p.rb != null), 'other pets still carry a trait score');
   console.log('toy view bytes ' + meta.bytes + ' rank ' + fs.statSync(path.join(out, 'rank.json')).size);
 })().then(function () {
   const files = ['/tmp/s0.json', '/tmp/hyb.json'].filter(f => fs.existsSync(f));

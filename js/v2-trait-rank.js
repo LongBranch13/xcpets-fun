@@ -12,7 +12,7 @@
   function egg(p) { return !(p.parents && p.parents.length) && !isHyb(p); }
   /** sorted(w) -> [{ p, oneIn, bits }] rarest first (ties: lower pet # first). Cached per world. */
   function sorted(w) { var c = cache && cache.get(w), n = (w.pets || []).length; if (c && c.tip === w.tip && c.len === n) return c.list;
-    if (w && w._ranked) { var pre = [], pi, pp; for (pi = 0; pi < n; pi++) { pp = w.pets[pi]; if (!pp || pp.released || pp.community || pp._bits == null) continue; pre.push({ p: pp, bits: pp._bits, oneIn: Math.pow(2, pp._bits) }); }
+    if (w && w._ranked) { var pre = [], pi, pp; for (pi = 0; pi < n; pi++) { pp = w.pets[pi]; if (!pp || pp.released || pp.community || pp._bits == null || (pp.id | 0) === 1765) continue; pre.push({ p: pp, bits: pp._bits, oneIn: Math.pow(2, pp._bits) }); }
       pre.sort(function (a, b) { return b.bits - a.bits || a.p.id - b.p.id; }); if (cache) cache.set(w, { tip: w.tip, len: n, list: pre }); return pre; }
     var list = []; if (!window.PetScore) return list; /* rarityAll: only the trait part of PetScore (same numbers as the 💎 chip), not the full score */
     (PetScore.rarityAll ? PetScore.rarityAll(w) : PetScore.get(w).ranked.map(function (r) { return { id: r.id, bits: r.rarityBits, oneIn: r.rarityOneIn }; })).forEach(function (r) { var p = w.byId[r.id]; if (p) list.push({ p: p, oneIn: r.oneIn, bits: r.bits }); });
@@ -42,7 +42,7 @@
     shell('<p class="small muted" id="trWait">💎 Ranking every pet by trait rarity…</p>');
     var L = null;
     function rowHtml(r, i) { var p = r.p, me = !!ME && p.owner === ME, god = p.resurrected, col = TCOL[p.tier] || '#666', hit = st.hits && st.hits.indexOf(i) >= 0;
-      var life = p.dead ? '<span class="badge bad">💀 dead</span>' : p.zombie && !p.zombie.end ? '<span class="chip tr-alive">🧟 risen</span>' : '<span class="chip tr-alive">💚 alive</span>';
+      var life = p.dead && (p.id | 0) !== 1765 ? '<span class="badge bad">💀 dead</span>' : p.zombie && !p.zombie.end ? '<span class="chip tr-alive">🧟 risen</span>' : '<span class="chip tr-alive">💚 alive</span>';
       return '<tr id="rk' + i + '" data-pet="' + p.id + '" class="' + (me ? 'me' : '') + (hit ? ' uxp-hit' : '') + (p.id === st.focus ? ' tr-focus' : '') + '"><td class="rk">' + (r.rank <= 3 ? MED[r.rank - 1] + ' ' : '') + '#' + fmt(r.rank) + '</td>' +
         '<td><a href="pet.html?id=' + p.id + '" aria-label="' + esc(p.name) + ' #' + p.id + ' pet card"><canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px' + (p.dead ? ';filter:grayscale(1) brightness(.75)' : '') + '"></canvas></a></td>' +
         '<td><a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(O.spLabel(p.species)) + ' · <span style="color:' + col + '">' + (god ? 'God' : esc(O.TL[p.tier] || '')) + '</span></span> ' + life +

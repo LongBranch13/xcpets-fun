@@ -219,11 +219,24 @@
     }
     return p;
   }
+  var SABO = 1765;
+  /* Sabo is left off every rank board. The old shard walk skipped this id. */
+  function onRankBoard(p) { return !!(p && (p.id | 0) !== SABO); }
+  /* A wallet pet replaces its rank row. Keep the builder's trait score and hall gear. */
+  function carryRank(p, prev) {
+    if (!p || !prev) return p;
+    if (!p.art && prev.art) p.art = prev.art;
+    if (!p.worn && prev.worn) p.worn = prev.worn;
+    if (p._hof == null && prev._hof != null) p._hof = prev._hof;
+    if (p._bits == null && prev._bits != null) p._bits = prev._bits;
+    return p;
+  }
   function slimGear(g) {
     if (!g) return null;
     var o = { g: g.gid, i: g.item, t: g.tier | 0 };
     if (g.legendary) o.L = 1;
     if (g.sig) o.s = g.sig;
+    if (g.slot) o.slot = g.slot;
     return o;
   }
   function openGear(g, owner, on, opt) {
@@ -236,7 +249,7 @@
       return copy;
     }
     var cat = opt && opt.itemOf ? opt.itemOf(g.i) : null;
-    return { gid: g.g, item: g.i, tier: g.t | 0, legendary: g.L ? 1 : 0, sig: g.s || undefined, owner: owner || '', on: on == null ? null : on, label: (cat && cat.label) || g.i || '', slot: (cat && cat.slot) || '' };
+    return { gid: g.g, item: g.i, tier: g.t | 0, legendary: g.L ? 1 : 0, sig: g.s || undefined, owner: owner || '', on: on == null ? null : on, label: (cat && cat.label) || g.i || '', slot: g.slot || (cat && cat.slot) || '' };
   }
   exp.seedParts = seedParts;
   exp.overlay = overlay;
@@ -246,6 +259,9 @@
   exp.buildArt = buildArt;
   exp.restore = restore;
   exp.slimEncoded = slimEncoded;
+  exp.SABO = SABO;
+  exp.onRankBoard = onRankBoard;
+  exp.carryRank = carryRank;
   exp.openPet = openPet;
   exp.slimGear = slimGear;
   exp.openGear = openGear;

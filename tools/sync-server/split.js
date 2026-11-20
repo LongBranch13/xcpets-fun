@@ -271,7 +271,7 @@ function write(dir, world, meta) {
   let traitN = 0;
   for (let ti = 0; ti < all.length; ti++) {
     const tp = all[ti];
-    if (!tp || isComm(tp) || tp.released) continue;
+    if (!tp || isComm(tp) || tp.released || (tp.id | 0) === 1765) continue;
     traitN++;
     const vec = traitVec(tp);
     for (let t = 0; t < vec.length; t++) { const key = t + ':' + vec[t]; RF[key] = (RF[key] || 0) + 1; }
@@ -295,14 +295,14 @@ function write(dir, world, meta) {
       counts.set(owner, (counts.get(owner) || 0) + 1);
       const rec = viewPet(p, wornBy.get(p.id) || [], tables, opt);
       let bits = null;
-      if (!isComm(p) && !p.released && traitN) {
+      if (!isComm(p) && !p.released && (p.id | 0) !== 1765 && traitN) {
         const vec = traitVec(p); bits = 0;
         for (let t = 0; t < vec.length; t++) bits -= Math.log2((RF[t + ':' + vec[t]] || 1) / traitN);
       }
       const worn = wornBy.get(p.id) || [];
       let gn = 0, gt = 0;
       for (let gi = 0; gi < worn.length; gi++) { const g = worn[gi]; if (!g) continue; gn++; gt += g.legendary ? 3 : (g.tier | 0); }
-      {
+      if ((p.id | 0) !== 1765) {
         const w2 = writeLine(rankOut, JSON.stringify(rankPet(p, rec, tip, [gn, gt], bits)) + '\n');
         if (w2) await w2;
       }
