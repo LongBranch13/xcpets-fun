@@ -1,5 +1,5 @@
 {
- "lastBlock": 976672,
+ "lastBlock": 976673,
  "count": 419,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -4489,7 +4489,7 @@
    "species": "hyb3:pepe:dodo:sarutobi",
    "speciesLabel": "Pedotobi (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 85377,
@@ -5005,7 +5005,7 @@
    "species": "djpepe",
    "speciesLabel": "DJ Pepe",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 188486,
