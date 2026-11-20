@@ -5,6 +5,93 @@
  * The Gift Wrap counter comes later with the shop scene; for now gifting lives here. */
 (function () {
   'use strict';
+  /* living-rest-1107: pages other than play.html never called V2Split.rest(), so the first paint
+   * only had owner page 0 (24 living pets). This waits for the same 5,000-pet background load
+   * play.html uses, then fetches Discard-pile ids that are still missing. It does not call loadBoard. */
+  (function () {
+    if (window.xcpLivingFill) return;
+    function world() { try { return window.V2Mock && V2Mock.world && V2Mock.world(); } catch (e) { return null; } }
+    function restDone(w) {
+      if (!w) return false;
+      if (w._full) return true;
+      var pg = w._pages;
+      if (!pg || !(pg.pages > 1)) return true;
+      var cap = (window.V2Split && V2Split.AUTO_CAP) || 5000;
+      var screen = (window.V2Split && V2Split.SCREEN_PAGES) || 7;
+      var got = pg.got || 1;
+      if ((pg.n || 0) > 0 && (pg.n || 0) <= cap) return got >= (pg.pages || 1);
+      return got >= Math.min(screen, pg.pages || 1);
+    }
+    function discIds(me) {
+      var net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
+      var raw;
+      try { raw = JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]'); } catch (e) { return []; }
+      if (!raw || !raw.forEach) return [];
+      var out = [], seen = {};
+      raw.forEach(function (id) { id = +id; if (id > 0 && !seen[id]) { seen[id] = 1; out.push(id); } });
+      return out;
+    }
+    function discardMiss(me) {
+      var w = world(), by = (w && w.byId) || {}, ids = discIds(me), miss = [], i;
+      for (i = 0; i < ids.length; i++) if (!by[ids[i]]) miss.push(ids[i]);
+      return miss;
+    }
+    function ensureIds(ids) {
+      if (!ids.length || !window.V2Split || !V2Split.ensurePet) return Promise.resolve(world());
+      var i = 0, n = 0;
+      return new Promise(function (res) {
+        function pump() {
+          if (i >= ids.length && !n) return res(world());
+          while (n < 4 && i < ids.length) {
+            n++;
+            V2Split.ensurePet(ids[i++]).then(function () { n--; pump(); }, function () { n--; pump(); });
+          }
+        }
+        pump();
+      });
+    }
+    var job = null, fillJob = null;
+    function livingRest() {
+      if (job) return job;
+      if (window.V2Split && V2Split.rest) { try { V2Split.rest(); } catch (e) {} }
+      job = new Promise(function (res) {
+        var last = '', moved = false, still = 0, n = 0, t0 = Date.now();
+        function finish(w) { job = null; res(w); }
+        function tick() {
+          var w = world();
+          if (restDone(w)) return finish(w);
+          var pg = w && w._pages;
+          var sig = (pg ? (pg.got || 1) : 0) + ':' + ((w && w.pets && w.pets.length) || 0) + ':' + (w && w._full ? 1 : 0);
+          if (sig !== last) { if (last) moved = true; last = sig; still = 0; } else still++;
+          n++;
+          if (!moved && Date.now() - t0 > 1500) return finish(w);
+          if (moved && still >= 60) return finish(w);
+          if (n > 240) return finish(w);
+          setTimeout(tick, 250);
+        }
+        tick();
+      });
+      return job;
+    }
+    function livingFill(me) {
+      var key = me || '';
+      if (fillJob && fillJob.key === key) return fillJob.p;
+      var p = livingRest().then(function () {
+        var miss = discardMiss(me);
+        if (!miss.length) return world();
+        return ensureIds(miss);
+      });
+      fillJob = { key: key, p: p };
+      var clear = function () { if (fillJob && fillJob.p === p) fillJob = null; };
+      p.then(clear, clear);
+      return p;
+    }
+    window.xcpRestDone = restDone;
+    window.xcpDiscardMiss = discardMiss;
+    window.xcpLivingRest = livingRest;
+    window.xcpLivingFill = livingFill;
+  })();
+  /* /living-rest-1107 */
   var V = window.V2Rules, M = window.V2Mock; if (!V || !V.giveOn || !M) return;
   var $ = function (id) { return document.getElementById(id); }, ME = M.ME;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
@@ -112,7 +199,21 @@
   function toast2(h) { var t = $('toasts'); if (!t) { alert(h.replace(/<[^>]+>/g, '')); return; } var d = document.createElement('div'); d.className = 'toast'; d.innerHTML = h; t.appendChild(d); setTimeout(function () { d.remove(); }, 6000); }
   var TOK = !!(V.tokenOnly && V.tokenOnly());
   /* ---- batch picker (play.html My Pets) */
-  function picker() { var w = W(); if (!w || !ME) return; var b = tip() + 1, mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = PF ? PF.load('gift') : {};
+  function picker() {
+    var w0 = W(); if (!w0 || !ME) return;
+    var mine0 = (w0.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; });
+    var wait = window.xcpLivingFill && (!(window.xcpRestDone && xcpRestDone(w0)) || (window.xcpDiscardMiss && xcpDiscardMiss(ME).length));
+    if (wait && !picker.skip) {
+      if (!mine0.length) modal('<h2>🎁 Gift several pets</h2><p class="small" data-petload role="status">Loading your pets…</p>');
+      window.xcpLivingFill(ME).then(function () {
+        picker.skip = 1;
+        var m = $('gfBox');
+        if (m && m.classList.contains('on') && (m.querySelector('[data-petload]') || (m.querySelector('#gfNext') && !m.querySelector('input[data-gfid]:checked')))) picker();
+        picker.skip = 0;
+      }, function () { picker.skip = 0; });
+      if (!mine0.length) return;
+    }
+    var w = W() || w0, b = tip() + 1, mine = (w.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = PF ? PF.load('gift') : {};
     function opts(list, cur) { return '<option value="">All</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
     var sps = {}; mine.forEach(function (p) { sps[p.species] = spL(p); });
     function shown() { return V.petFilter(w, mine.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; }); }
