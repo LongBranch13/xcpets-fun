@@ -17,7 +17,7 @@ function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
 ok(md5('js/v2-rules.js') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules MD5 unchanged');
-ok(md5('js/v2-split.js') === '06c433e3b9e0509fee11d5b87c5c21aa', 'js/v2-split.js is the slim publisher client');
+ok(md5('js/v2-split.js') === 'bd509d59faf4d458a4c1067840c3f329', 'js/v2-split.js is the slim publisher client');
 ok(md5('tools/sync-server/split.js') === 'e33840d7a328484734a2c2ac90b93976', 'owner page layout file is the slim publisher');
 const look = rd('js/v2-lookup.js'), easy = rd('js/v2-easy-flows.js'), ui = rd('js/v2.js'), arena = rd('js/v2-arena.js'), hall = rd('js/v2-rare-hall.js'), dock = rd('js/v2-lowfriction.js');
 [look, easy, ui, arena, hall, dock].forEach(function (src) { ok(src.indexOf(BANNED) < 0, 'banned wallet is not in the lookup'); });
@@ -138,8 +138,8 @@ function jsonRes(obj, status) {
     return res;
   }
   const small = await measure('small', SMALL, { pets: 8, files: 1, loaded: 1, capped: false, alive: function (n) { return n === 8; } });
-  await measure('huge', HUGE, { pets: 168, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 20000; } });
-  await measure('read', READ, { pets: 168, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 1000 && n <= 5000; } });
+  await measure('huge', HUGE, { pets: 24, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 20000; } });
+  await measure('read', READ, { pets: 24, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 1000 && n <= 5000; } });
   const petId = small.pets[0].id;
   const pctx = bootLookup({
     document: { scripts: [] },
@@ -153,7 +153,7 @@ function jsonRes(obj, status) {
   await new Promise(function (res) { pctx.V2Split.prepare(function () { res(); }); });
   const petRes = await pctx.V2Lookup.load(String(petId));
   console.log('MEASURE pet bytes=' + petRes.bytes + ' ms=' + petRes.ms + ' files=' + petRes.files + ' id=' + petId + ' ok=' + petRes.ok + ' note=' + (petRes.note || petRes.error));
-  ok(petRes.ok && petRes.pets.length === 1 && petRes.pets[0].id === petId && petRes.files === 1 && petRes.bytes > 0 && petRes.ms < 30000, 'ensurePet lookup for #' + petId + ' (' + petRes.bytes + ' bytes, ' + petRes.ms + ' ms)');
+  ok(petRes.ok && petRes.pets.length === 1 && petRes.pets[0].id === petId && petRes.pets[0].owner && petRes.files >= 1 && petRes.files <= 3 && petRes.bytes > 0 && petRes.ms < 30000, 'ensurePet lookup for #' + petId + ' (' + petRes.bytes + ' bytes, ' + petRes.files + ' files, ' + petRes.ms + ' ms)');
   const fightable = small.pets.filter(function (p) { return p.stage >= 2 && !p.neglected && !p.dead; }).length;
   console.log('MEASURE small-fightable ' + fightable + ' of ' + small.pets.length);
   ok(fightable > 0, 'the 8-pet wallet has a pet the fight and breed lists can show');

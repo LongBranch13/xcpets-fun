@@ -111,6 +111,12 @@
     var ks = Object.keys(v);
     return ks.length === 1 && ks[0] === '__s' && typeof v.__s === 'number';
   }
+  /* A marker stays a marker until the owner table has a real address at that index.
+   * owners[undefined] used to wipe the index, and the pet could never be filled later. */
+  function ownerAt(owners, ix) {
+    var s = owners && owners[ix];
+    return typeof s === 'string' && s ? s : '';
+  }
   function expandOwners(o, owners, seen) {
     if (!o || typeof o !== 'object') return;
     if (seen.has(o)) return;
@@ -120,9 +126,27 @@
     n = ks ? ks.length : o.length;
     for (i = 0; i < n; i++) {
       var v = ks ? o[ks[i]] : o[i];
-      if (isMarker(v)) { if (ks) o[ks[i]] = owners[v.__s]; else o[i] = owners[v.__s]; }
-      else expandOwners(v, owners, seen);
+      if (isMarker(v)) {
+        var s = ownerAt(owners, v.__s);
+        if (s) { if (ks) o[ks[i]] = s; else o[i] = s; }
+      } else expandOwners(v, owners, seen);
     }
+  }
+  /* Slim rows store the owner as o (an index) and nested addresses as {__s:N}.
+   * pageOwner is the wallet this page was published for, used when the table is not here yet. */
+  function fillOwners(p, owners, pageOwner) {
+    if (!p || typeof p !== 'object') return p;
+    if (!p.owner && p.o != null) {
+      var from = ownerAt(owners, p.o);
+      if (from) p.owner = from;
+      else if (pageOwner) p.owner = pageOwner;
+    }
+    if (owners) expandOwners(p, owners, new Set());
+    if (p.owner && p.worn) {
+      var i, g;
+      for (i = 0; i < p.worn.length; i++) { g = p.worn[i]; if (g && (g.gid || g.label) && !g.owner) g.owner = p.owner; }
+    }
+    return p;
   }
   function restoreArts(o, hashes, PetCore, opt, seen) {
     if (!o || typeof o !== 'object' || seen.has(o)) return;
@@ -205,7 +229,7 @@
     opt = opt || {};
     var p = {}, ks = Object.keys(rec || {}), i;
     for (i = 0; i < ks.length; i++) p[ks[i]] = rec[ks[i]];
-    if (p.o != null && !p.owner && opt.owners) p.owner = opt.owners[p.o];
+    fillOwners(p, opt.owners, opt.pageOwner || '');
     if (p.worn) {
       var worn = [], j;
       for (j = 0; j < p.worn.length; j++) worn.push(openGear(p.worn[j], p.owner, p.id, opt));
@@ -265,6 +289,7 @@
   exp.onRankBoard = onRankBoard;
   exp.carryRank = carryRank;
   exp.openPet = openPet;
+  exp.fillOwners = fillOwners;
   exp.slimGear = slimGear;
   exp.openGear = openGear;
   exp.addr = addr;
