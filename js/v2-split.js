@@ -587,20 +587,6 @@
       });
     });
   }
-  function attachBurns(view) {
-    var tip, since;
-    if (!view || !view._view || (view.log && view.log.length) || !base()) return Promise.resolve(0);
-    tip = view.tip | 0;
-    since = tip > 288 ? tip - 288 : 0;
-    return getJson(base() + '/xp/v1/sync?since=' + since, 12000, true).then(function (ans) {
-      var list = ans && ans.rows && ans.rows.list || [], lines;
-      if (!view._view || (view.log && view.log.length)) return 0;
-      lines = rowsToLog(list);
-      view.log = lines;
-      try { if (window.V2UI && V2UI.render) V2UI.render(); } catch (e) {}
-      return lines.length;
-    }, function () { return 0; });
-  }
   function rest() {
     var v = restView, pg;
     if (!v || !v._pages || !(v._pages.pages > 1)) { restView = null; return; }
@@ -674,7 +660,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=e5c82a1d90', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=a7c4e91b36', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -717,7 +703,6 @@
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     trimStore();
-    attachBurns(view);
   }
   function trimStore() {
     var i, k, v;
@@ -1045,5 +1030,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, attachBurns: attachBurns };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();

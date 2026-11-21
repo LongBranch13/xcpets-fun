@@ -127,10 +127,6 @@
     for (i = 0; i < n; i++) {
       var v = ks ? o[ks[i]] : o[i];
       if (isMarker(v)) {
-        /* A checkpoint pet stores its owner as {__s:N} into the world's owner table, which is not the
-         * view table. A view row stores that same fact as o. Expanding the marker with the view table
-         * assigns a different wallet and every later owner check fails. Leave that marker for resolvePetOwner. */
-        if (ks && ks[i] === 'owner' && o && o.id != null && o.o == null) continue;
         var s = ownerAt(owners, v.__s);
         if (s) { if (ks) o[ks[i]] = s; else o[i] = s; }
       } else expandOwners(v, owners, seen);
@@ -140,6 +136,10 @@
    * pageOwner is the wallet this page was published for, used when the table is not here yet. */
   function fillOwners(p, owners, pageOwner) {
     if (!p || typeof p !== 'object') return p;
+    /* Checkpoint pets keep {__s:N} until restore(), which expands them with the checkpoint table.
+     * This function is given the view table. Those two lists do not share indexes, so a checkpoint
+     * owner marker is left alone here. A view row has o instead, and is filled below. */
+    if (isMarker(p.owner) && p.o == null) return p;
     if (!p.owner && p.o != null) {
       var from = ownerAt(owners, p.o);
       if (from) p.owner = from;

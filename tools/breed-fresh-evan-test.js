@@ -80,6 +80,11 @@ const feed = S.rowsToLog([{ block_index: 976843, tx_hash: 'aa', source: EVAN, ta
 ok(feed.length === 1 && feed[0].src === EVAN && feed[0].kind === 'feed' && feed[0].msg === 'pet:feed:193865', 'a sync row becomes a burn-log line for that wallet');
 ok(fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8').indexOf('l.src && l.src === ME') >= 0, 'your burn log keeps lines the view filled from the sync feed');
 ok(fs.readFileSync(path.join(ROOT, 'js/v2-split.js'), 'utf8').indexOf('loadNewest(pg)') >= 0, 'the fast view loads the newest owner pages before the rest');
+const splitSrc = fs.readFileSync(path.join(ROOT, 'js/v2-split.js'), 'utf8');
+const play = fs.readFileSync(path.join(ROOT, 'play.html'), 'utf8');
+const rank = fs.readFileSync(path.join(ROOT, 'ranking.html'), 'utf8');
+ok(splitSrc.indexOf('/xp/v1/sync') < 0, 'the rankings script does not request the chain window');
+ok(play.indexOf('js/v2-view-log.js?v=') >= 0 && rank.indexOf('v2-view-log.js') < 0, 'the burn log is filled from the player page only');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
