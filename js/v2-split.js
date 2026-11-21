@@ -25,6 +25,39 @@
     if (a) return a;
     try { return localStorage.getItem('xcpets-v2-me') || ''; } catch (e) { return ''; }
   }
+  /* The unleash button compares the pet to the page wallet (V2UI.ME). The background check used to send only
+   * ?addr= or localStorage, which is empty when the connected wallet is the page wallet and that key is not.
+   * An empty check wallet makes every owned zombie fail with "zombie owner only". */
+  function pageWallet() {
+    var ui = '';
+    try { ui = (window.V2UI && V2UI.ME) || (window.V2Mock && V2Mock.ME) || ''; } catch (e) {}
+    if (ui) return ui;
+    try { var c = window.V2Wallet && V2Wallet.current && V2Wallet.current(); if (c) return c; } catch (e2) {}
+    return me();
+  }
+  function resolveWorld(w, only) {
+    if (!w || !w.byId) return w;
+    var opt = { view: viewOwners, checkpoint: w._owners || w.__owners || null };
+    function one(p) { if (window.XcpArt && XcpArt.resolvePetOwner) XcpArt.resolvePetOwner(p, opt); }
+    var want = null, i, id, b, p;
+    if (only && only.length) { want = {}; for (i = 0; i < only.length; i++) want[only[i]] = 1; }
+    var ids = want ? Object.keys(want) : Object.keys(w.byId);
+    for (i = 0; i < ids.length; i++) one(w.byId[ids[i]]);
+    var pets = w.pets || [];
+    for (i = 0; i < pets.length; i++) {
+      p = pets[i];
+      if (!p || p.id == null || (want && !want[p.id])) continue;
+      b = w.byId[p.id];
+      if (!b) { w.byId[p.id] = p; b = p; }
+      if (b !== p) {
+        if (typeof p.owner === 'string' && p.owner && !(typeof b.owner === 'string' && b.owner)) b.owner = p.owner;
+        else if (typeof b.owner === 'string' && b.owner && !(typeof p.owner === 'string' && p.owner)) p.owner = b.owner;
+      }
+      one(b);
+      one(p);
+    }
+    return w;
+  }
   function sha2(s) {
     var buf = new TextEncoder().encode(String(s || ''));
     return crypto.subtle.digest('SHA-256', buf).then(function (d) {
@@ -557,7 +590,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=e1b0a77c4d', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=c91e7ab4f2', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -567,7 +600,7 @@
         if (m.cmd === 'ready') { if (m.ok) { unlock(m); requestSync(); } else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
       };
       worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
-      worker.postMessage({ cmd: 'start', base: base(), scripts: scripts, me: me() });
+      worker.postMessage({ cmd: 'start', base: base(), scripts: scripts, me: pageWallet() });
     });
     return readyP;
   }
@@ -580,7 +613,7 @@
         var id = ++seq;
         pending[id] = res;
         var S = window.V2Mock && V2Mock.state && V2Mock.state();
-        worker.postMessage({ cmd: 'check', id: id, plans: plans || [], tip: S && S.tip, me: me(), pending: [] });
+        worker.postMessage({ cmd: 'check', id: id, plans: plans || [], tip: S && S.tip, me: pageWallet(), pending: [] });
       });
     });
   }
@@ -927,5 +960,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld };
 })();

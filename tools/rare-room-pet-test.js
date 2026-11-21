@@ -30,10 +30,10 @@ function git(rel) { return cp.execSync('git show origin/main:' + rel, { cwd: ROO
   ok(/passRr = !known \|\| !!mine/.test(card) && /passRr \? 'rare-room-' \+ p\.id : 'rare-room'/.test(card), 'the card button keeps the id when the pet is yours or the wallet is unknown');
   ok(/!ME \|\| p\.owner === ME \? 'Change this pet\\'s gear in the <a href="rare-room\.html#rare-room-' \+ p\.id/.test(pages), 'the gear link keeps the id when the pet is yours or the wallet is unknown');
   const room = rd('rare-room.html'), pet = rd('pet.html');
-  ok(/js\/v2\.js\?v=e1b0a77c4d/.test(room) && /js\/v2-split\.js\?v=e1b0a77c4d/.test(room) && /js\/v2-art\.js\?v=e1b0a77c4d/.test(room), 'rare-room.html bumps v2.js, v2-art.js and v2-split.js');
+  ok(/js\/v2\.js\?v=c91e7ab4f2/.test(room) && /js\/v2-split\.js\?v=c91e7ab4f2/.test(room) && /js\/v2-art\.js\?v=c91e7ab4f2/.test(room), 'rare-room.html bumps v2.js, v2-art.js and v2-split.js');
   ok(/js\/v2-preselect\.js\?v=1c2a44316d/.test(room) && /js\/v2-shop\.js\?v=86c2a46d3f/.test(room), 'rare-room.html loads the new preselect and shop');
   ok(/js\/v2-pet-card\.js\?v=7589a0a30f/.test(pet) && /js\/v2-pages\.js\?v=6e0e8b819a/.test(pet) && /js\/v2-places\.js\?v=16a8c8a9c1/.test(pet), 'pet.html loads the new card, page and places scripts');
-  ok(/js\/v2-split\.js\?v=e1b0a77c4d/.test(pet) && /js\/v2-art\.js\?v=e1b0a77c4d/.test(pet), 'pet.html bumps v2-art.js and v2-split.js');
+  ok(/js\/v2-split\.js\?v=c91e7ab4f2/.test(pet) && /js\/v2-art\.js\?v=c91e7ab4f2/.test(pet), 'pet.html bumps v2-art.js and v2-split.js');
 })();
 
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }

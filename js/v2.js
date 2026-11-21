@@ -1257,13 +1257,26 @@
       var n = isR ? (q.ids ? q.ids.length : V.cemRunsIds(w, ME, t, b).length) : (t.ids || []).length, k = a === 'zfeed' ? 'zmeal' : a === 'rpl' ? 'rpl' : 'pledge'; by[k] = (by[k] || 0) + n; tot += n; if (a === 'seance') sr = true; if (isR) runs = true; });
     if (!tot) return ''; var parts = Object.keys(by).map(function (k) { return fmt(by[k]) + ' pet' + (by[k] === 1 ? '' : 's') + ' times ' + fmt(V.cemCost(w, k, b)); });
     return ' (cost per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
+  /* The ids a burn tag names. The send check reads w.byId[id], which can be a different object from the card. */
+  function sendIds(plans) {
+    var ids = [], i, t, k, n;
+    if (!V.parseTag) return null;
+    var keys = ['zombie', 'petId', 'a', 'b', 'mine', 'theirs', 'grave'];
+    for (i = 0; i < (plans || []).length; i++) {
+      t = plans[i] && plans[i].tag ? V.parseTag(plans[i].tag) : null;
+      if (!t) continue;
+      for (k = 0; k < keys.length; k++) if (typeof t[keys[k]] === 'number') ids.push(t[keys[k]]);
+      if (t.ids) for (n = 0; n < t.ids.length; n++) if (typeof t.ids[n] === 'number') ids.push(t.ids[n]);
+    }
+    return ids;
+  }
   function confirmPlans(title, plans, after, pre) {
     if (window.V2Split && V2Split.ownersReady && !V2Split.ownersKnown()) { toast('loading owners'); return V2Split.ownersReady().then(function () { confirmPlans(title, plans, after, pre); }); }
     if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop();
     if (viewBlock()) return;
     if (!ME) { /* no wallet: a small sheet (flow-fixes 2026-10-22: no auto-scroll / auto-click any more) */ nwSheet('🔌 Every action is a burn signed in your own wallet: XCP Wallet on desktop Chrome, or the Casa Tookan app on your phone (open xcpets.fun inside it). Connect it to play, or look up any address to view its pets.'); return; }
     if (FEED_ALL_PAUSED && plans.some(function (q) { return isFeedAllTag(q && q.tag); })) { plans = plans.filter(function (q) { return !isFeedAllTag(q && q.tag); }); toast(FA_NOTE + ' Those burns were not sent.'); if (!plans.length) return; }
-    var bw = world(), skip = []; if (V.planAmount) plans = plans.map(function (p) { return V.planAmount(bw, p, (S.tip || 0) + 1); }); if (V.cemPetAmount) plans = plans.map(function (p) { return V.cemPetAmount(bw, p, (S.tip || 0) + 1); }); /* cemetery: per pet from the runs gate */ /* halving: burn the price at the next block */ plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
+    var bw = world(), skip = []; if (window.V2Split && V2Split.resolveWorld) V2Split.resolveWorld(bw, sendIds(plans)); if (V.planAmount) plans = plans.map(function (p) { return V.planAmount(bw, p, (S.tip || 0) + 1); }); if (V.cemPetAmount) plans = plans.map(function (p) { return V.cemPetAmount(bw, p, (S.tip || 0) + 1); }); /* cemetery: per pet from the runs gate */ /* halving: burn the price at the next block */ plans = plans.filter(function (p) { var m = V.battleBlock(bw, p.tag, S.tip); if (m) skip.push(m); return !m; }); /* battle cap (2026-10-14) */
     var sp = myPendingTags(); plans = plans.filter(function (p) { if (bw && bw._view) return true; /* the background check judges this burn before anything is signed */ var m = V.sendBlock ? V.sendBlock(bw, p, S.tip, { me: ME, pending: sp }) : null; if (m) skip.push('🚫 Not sent (' + p.tag + '): ' + m); else sp.push(p.tag); return !m; }); /* wasted-burn guard (2026-10-20): one shared check mirroring the engine (breed, accept, fight, rolls); never ask the wallet to sign a burn the replay would reject */
     if (skip.length) { toast(skip.length === 1 ? skip[0] : 'Skipped ' + skip.length + ': ' + skip.join(' · ')); window.V2LastBlocked = skip; }
     var fg = feedGuard(bw, plans); plans = fg.plans; if (pre && pre.skipped.length && !fg.skipped.length) fg = { plans: plans, skipped: pre.skipped, text: pre.text };
