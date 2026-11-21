@@ -1,5 +1,5 @@
 {
- "lastBlock": 976913,
+ "lastBlock": 976914,
  "count": 428,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5053,7 +5053,7 @@
    "species": "hyb3:wizard:viking:dodo",
    "speciesLabel": "Wivido (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 62806,
