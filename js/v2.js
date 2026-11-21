@@ -1294,14 +1294,18 @@
     return ' (cost per pet: ' + parts.join(' + ') + (sr ? ' + raise ' + fmt(V.cemCost(w, 'raise', b)) : '') + (runs ? '; cemetery runs name pets by their place in your pet list' : '') + ')'; }
   /* The ids a burn tag names. The send check reads w.byId[id], which can be a different object from the card. */
   function sendIds(plans) {
-    var ids = [], i, t, k, n;
+    var ids = [], i, t;
     if (!V.parseTag) return null;
-    var keys = ['zombie', 'petId', 'a', 'b', 'mine', 'theirs', 'grave'];
     for (i = 0; i < (plans || []).length; i++) {
       t = plans[i] && plans[i].tag ? V.parseTag(plans[i].tag) : null;
       if (!t) continue;
-      for (k = 0; k < keys.length; k++) if (typeof t[keys[k]] === 'number') ids.push(t[keys[k]]);
-      if (t.ids) for (n = 0; n < t.ids.length; n++) if (typeof t.ids[n] === 'number') ids.push(t.ids[n]);
+      if (window.XcpArt && XcpArt.tagPetIds) ids = ids.concat(XcpArt.tagPetIds(t));
+      else {
+        if (typeof t.a === 'number') ids.push(t.a);
+        if (typeof t.b === 'number') ids.push(t.b);
+        if (typeof t.petId === 'number') ids.push(t.petId);
+        if (typeof t.zombie === 'number') ids.push(t.zombie);
+      }
     }
     return ids;
   }
@@ -1373,7 +1377,7 @@
         if (JSON.stringify(now.costs) !== JSON.stringify(was.costs)) return egg ? 'the egg cost changed' : 'the burn cost changed';
         if (JSON.stringify(now.pets) !== JSON.stringify(was.pets)) return 'a pet in this burn changed (owner, stage or meal)';
         return null; } catch (e) { return ''; } } }; }
-  function sendWhy(plan) { return V.sendBlock ? V.sendBlock(world(), plan, S.tip, { me: ME, pending: myPendingTags() }) : null; }
+  function sendWhy(plan) { var w = world(); if (window.V2Split && V2Split.resolveWorld) V2Split.resolveWorld(w, sendIds([plan])); return V.sendBlock ? V.sendBlock(w, plan, S.tip, { me: ME, pending: myPendingTags() }) : null; }
   function pendingBreedIds() { var o = {}; myPendingTags().forEach(function (g) { var t = V.parseTag(g); if (t && t.action === 'breed') { o[t.a] = 1; var A = world().byId[t.a], B = world().byId[t.b]; if (A && B && A.owner === B.owner) o[t.b] = 1; } }); return o; }
   function pendingFeedIds() { var o = {}, conf = {}; (S.rows || []).forEach(function (r) { conf[r.tx_hash] = 1; });
     function add(tag) { var t = V.parseTag(tag); if (!t) return; if (t.action === 'feed') o[t.petId] = 1; if (t.action === 'feedm' || t.action === 'feedl') t.ids.forEach(function (id) { o[id] = 1; }); if (t.action === 'feedr' && V.feedRunsIds) V.feedRunsIds(world(), ME, t, (S.tip || 0) + 1).forEach(function (id) { o[id] = 1; }); if (t.action === 'feeda') { var ex = new Set(t.ex); world().pets.forEach(function (p) { if (p.owner === ME && (t.un ? (ex.has(p.id) || p.skipBy !== ME) : (!ex.has(p.id) && p.skipBy !== ME))) o[p.id] = 1; }); } }
@@ -1857,12 +1861,14 @@
     var KL = { fight: 'challenge', fightDone: 'fight result' }; /* 2026-10-15: plain labels for battle lines (display only) */
     var row = function (l) { return '<a href="#" class="txrow" data-tx="' + esc(l.tx) + '">' + esc(KL[l.kind] || l.kind) + ' · block ' + l.block + ' · ' + esc(l.msg) + '</a>'; };
     var mineTx = {}; S.rows.forEach(function (r) { if (r.source === ME) mineTx[r.tx_hash] = 1; });
+    /* A published view has no replay log. attachBurns fills display lines and marks each with src. */
+    function mineLine(l) { return mineTx[l.tx] || (l.src && l.src === ME); }
     if (V2Wallet.sweepPending) V2Wallet.sweepPending();
     var pl = V2Wallet.tracker.list(); if (V2Wallet.pollPending && pl.some(function (t) { return t.status !== 'confirmed'; })) V2Wallet.pollPending().then(function (n) { if (n) try { renderLog(world()); } catch (e) { } }); /* post-buy-fixes */
     pl = V2Wallet.tracker.list();
     var pend = pl.filter(function (t) { return t.status !== 'confirmed' && !S.rows.some(function (x) { return x.tx_hash === t.txid; }); }).reverse().map(function (t) { var dex = t.kind === 'dex' || /^(order|cancel|issuance|send|mpma)$/.test(t.tag || ''), act = t.act || { issuance: 'token', mpma: 'send' }[t.tag] || t.tag; var what = dex ? (t.give && t.give.qty ? 'gives ' + fmt(t.give.qty) + ' ' + esc(t.give.asset) : esc({ token: 'token issue', cancel: 'cancel', send: 'token send', order: 'order' }[act] || act || 'order')) : t.amount != null ? fmt(t.amount) + ' XCPETS' : '';
       return '<div class="small">⏳ ' + esc(t.label || t.tag) + (what ? ' · ' + what : '') + ' · <a target="_blank" rel="noopener" href="https://mempool.space/tx/' + t.txid + '">' + t.txid.slice(0, 8) + '…</a> · waiting for a block <button type="button" class="q" data-drop="' + t.txid + '">Dismiss</button></div>'; }).join('');
-    $('pending').innerHTML = pend + (w.log.filter(function (l) { return mineTx[l.tx]; }).slice(-8).reverse().map(row).join('') || (pend ? '' : 'None yet.'));
+    $('pending').innerHTML = pend + (w.log.filter(mineLine).slice(-8).reverse().map(row).join('') || (pend ? '' : 'None yet.'));
     /* bigfix 2026-10-20: say how many lines are shown and let players load older ones (200 at a time) */
     var LN = renderLog.n = renderLog.n || 200, tot = w.log.length, sh = Math.min(LN, tot);
     $('log').innerHTML = (tot ? '<div class="small muted">Latest ' + fmt(sh) + ' of ' + fmt(tot) + ' burns, newest first</div>' : '') + w.log.slice(-sh).reverse().map(row).join('') +

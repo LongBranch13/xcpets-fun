@@ -95,7 +95,8 @@ ok(shard.owner !== CHECK7, 'checkpoint index 7 is not applied to a view o index'
 const marked = zed({ owner: { __s: 3 }, o: 7 });
 const mixed = zed({ owner: { __s: 3 } });
 Art.fillOwners(mixed, view);
-ok(mixed.owner === OTHER && mixed.owner !== EVAN, 'the view table on a checkpoint marker assigns the wrong wallet');
+ok(mixed.owner && mixed.owner.__s === 3, 'a checkpoint owner marker is not filled from the view table');
+mixed.owner = OTHER;
 ok(why(worldOf({ 74534: mixed }), EVAN) === 'zombie owner only', 'that wrong wallet is the zombie-owner-only rejection');
 const markW = worldOf({ 74534: marked });
 markW._owners = checkpoint;
@@ -121,7 +122,7 @@ const worker = fs.readFileSync(path.join(ROOT, 'js/v2-verify-worker.js'), 'utf8'
 ok(/V2Split\.resolveWorld\)/.test(v2) && /sendIds\(plans\)/.test(v2), 'confirmPlans resolves the pets a burn names before the send check');
 ok(/me: pageWallet\(\)/.test(splitJs), 'the verify worker is posted the page wallet');
 ok(/resolveChecked\(/.test(worker) && /checkpoint: ownerTable/.test(worker), 'the worker fills a checkpoint marker before sendBlock');
-ok(/v2-art\.js\?v=c91e7ab4f2/.test(worker), 'the worker loads the art file that resolves owners');
+ok(/v2-art\.js\?v=a7c4e91b36/.test(worker), 'the worker loads the art file that resolves owners');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

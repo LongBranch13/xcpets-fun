@@ -136,6 +136,10 @@
    * pageOwner is the wallet this page was published for, used when the table is not here yet. */
   function fillOwners(p, owners, pageOwner) {
     if (!p || typeof p !== 'object') return p;
+    /* Checkpoint pets keep {__s:N} until restore(), which expands them with the checkpoint table.
+     * This function is given the view table. Those two lists do not share indexes, so a checkpoint
+     * owner marker is left alone here. A view row has o instead, and is filled below. */
+    if (isMarker(p.owner) && p.o == null) return p;
     if (!p.owner && p.o != null) {
       var from = ownerAt(owners, p.o);
       if (from) p.owner = from;
@@ -170,6 +174,19 @@
   function markerIndex(v) {
     if (!isMarker(v)) return null;
     return v.__s;
+  }
+  /* Every id a parsed burn tag can name. Team fights store a and b as arrays. Cemetery runs store the
+   * zombie or grave on target. Feed lists, gifts and Rug Me store ids. */
+  function tagPetIds(t) {
+    var ids = [], i, k, v, keys = ['zombie', 'petId', 'a', 'b', 'a2', 'b2', 'mine', 'theirs', 'grave', 'target'];
+    if (!t) return ids;
+    for (i = 0; i < keys.length; i++) {
+      v = t[keys[i]];
+      if (typeof v === 'number') ids.push(v);
+      else if (v && v.length) for (k = 0; k < v.length; k++) if (typeof v[k] === 'number') ids.push(v[k]);
+    }
+    if (t.ids) for (i = 0; i < t.ids.length; i++) if (typeof t.ids[i] === 'number') ids.push(t.ids[i]);
+    return ids;
   }
   function restoreArts(o, hashes, PetCore, opt, seen) {
     if (!o || typeof o !== 'object' || seen.has(o)) return;
@@ -314,6 +331,7 @@
   exp.openPet = openPet;
   exp.fillOwners = fillOwners;
   exp.resolvePetOwner = resolvePetOwner;
+  exp.tagPetIds = tagPetIds;
   exp.slimGear = slimGear;
   exp.openGear = openGear;
   exp.addr = addr;
