@@ -191,6 +191,7 @@
       api.dropShallow();
     }
     var fin = api.finalHashes(merged.hashes, merged.tip);
+    try { if (window.Chain && window.Chain.noteTrusted) window.Chain.noteTrusted(fin); } catch (e) {}
     Object.keys(fin).forEach(function (k) { hc[k] = fin[k]; });
     api.saveHashCache(hc);
     S.rows = merged.rows; S.hashes = merged.hashes; S.tip = merged.tip; S.dex = merged.dex || undefined; S.mempool = merged.mempool || [];

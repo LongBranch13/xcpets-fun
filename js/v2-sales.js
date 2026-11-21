@@ -356,7 +356,9 @@
       return coreJ('/assets/XCPETS/destructions?limit=1000').then(function (d) { var have = {}; rows.forEach(function (r) { if (r && r.tx_hash) have[r.tx_hash] = 1; });
         var extra = (d.result || []).filter(function (r) { return r && r.tx_hash && !have[r.tx_hash] && Number(r.block_index) + 6 >= tip; }); if (extra.length) rows = extra.concat(rows);
         var need = {}, i; extra.forEach(function (r) { need[r.block_index] = 1; }); for (i = (+boot.dexTip || tip) + 1; i <= live; i++) if (!hashes[i]) need[i] = 1; var blocks = Object.keys(need);
-        function hashesOf(k) { if (k >= blocks.length) return null; var b = blocks[k]; return coreJ('/blocks/' + b).then(function (bj) { var h = bj && bj.result && bj.result.block_hash; if (/^[0-9a-f]{64}$/.test(h || '')) hashes[b] = h; return hashesOf(k + 1); }, function () { return hashesOf(k + 1); }); }
+        /* Same rule as rjs/chain.js: a block boot.json does not already list is kept only when two independent sources agree (or one agrees with a trusted hash). One Core answer is not stored. */
+        function hashesOf(k) { if (k >= blocks.length) return null; var b = blocks[k], Ctor = window.Chain && window.Chain.Chain; if (!Ctor) return hashesOf(k + 1);
+          return new Ctor().blockHash(b, null).then(function (h) { if (h) hashes[b] = h; return hashesOf(k + 1); }, function () { return hashesOf(k + 1); }); }
         tip = Math.max(tip, +live || 0); return Promise.resolve(hashesOf(0)).then(withDex); }, withDex); }, withDex); }); }
   function replayBook(inp) { var scripts = ruleScripts(); if (!scripts || typeof Worker === 'undefined') return Promise.reject(new Error('the order book could not be rebuilt in this browser'));
     return new Promise(function (ok, no) { var worker, done = false, t; try { worker = new Worker(new URL('js/v2-orderbook-worker.js?v=a5f208f817', location.href).href); } catch (e) { no(e); return; }
