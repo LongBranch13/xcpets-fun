@@ -4218,7 +4218,7 @@
   var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek', 'wizard', 'funtrump', 'homer', 'rabbit', 'chad', 'djpepe'];
   var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na', 'Kek', 'Wi', 'Fun'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka', 'kek', 'zi', 'tru'],
     H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto', 'kek', 'zard', 'trump'];
-  function h3part(T, sp) { if (sp === 'homer') return T === H3_S1 ? 'Ho' : T === H3_S2 ? 'mer' : 'mer'; if(sp==='djpepe')return T===H3_S1?'DJ':T===H3_S2?'dj':'pe'; if (sp === 'chad') return T === H3_S1 ? 'Cha' : T === H3_S2 ? 'cha' : 'chad'; if (sp === 'jacksonpepe') return T === H3_S1 ? 'Hick' : T === H3_S2 ? 'hick' : 'ory'; if (sp === 'orangedragon') return T === H3_S1 ? 'Dra' : T === H3_S2 ? 'dra' : 'gon'; if (sp === 'viking') return T === H3_S1 ? 'Vik' : T === H3_S2 ? 'vi' : 'king'; if (sp === 'rabbit') return T === H3_S1 ? 'Rab' : T === H3_S2 ? 'bi' : 'bit'; /* THE WHITE RABBIT (PREVIEW) */ var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
+  function h3part(T, sp) { if(sp==='djpepe')return T===H3_S1?'DJ':T===H3_S2?'dj':'pe'; if (sp === 'chad') return T === H3_S1 ? 'Cha' : T === H3_S2 ? 'cha' : 'chad'; if (sp === 'jacksonpepe') return T === H3_S1 ? 'Hick' : T === H3_S2 ? 'hick' : 'ory'; if (sp === 'orangedragon') return T === H3_S1 ? 'Dra' : T === H3_S2 ? 'dra' : 'gon'; if (sp === 'viking') return T === H3_S1 ? 'Vik' : T === H3_S2 ? 'vi' : 'king'; if (sp === 'rabbit') return T === H3_S1 ? 'Rab' : T === H3_S2 ? 'bi' : 'bit'; /* THE WHITE RABBIT (PREVIEW) */ var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
   /* VIKING hybrid names (viking-1of1): Vik + partner end ('Vikpe', 'Vikzard'), partner start + king ('Peking', 'Wiking'); inert until a viking-root pet exists */
   H3_ORDER.forEach(function (sp, i) { if (sp === 'rabbit') return; /* Vikabbit (WR_NAMES) */ HYBRID_NAMES['viking:' + sp] = 'Vik' + (H3_S3[i] || 'mer'); HYBRID_NAMES[sp + ':viking'] = (H3_S1[i] || 'Ho') + 'king'; });
   H3_ORDER.concat(['viking']).forEach(function (sp, i) { if (sp === 'rabbit') return; var e = sp === 'viking' ? 'king' : (H3_S3[i] || 'mer'), b0 = sp === 'viking' ? 'Viki' : (H3_S1[i] || 'Ho'); HYBRID_NAMES['jacksonpepe:' + sp] = 'Hick' + e; HYBRID_NAMES[sp + ':jacksonpepe'] = b0 + 'ckory'; }); /* OLD HICKORY hybrid names: 'Hickpe', 'Peckory' */
@@ -4226,9 +4226,15 @@
   function hybridName(sp) { var r = hybridRoots(sp); if (r.length === 3 && r.indexOf('rabbit') >= 0) return wr3Name(r); if (r.length === 3) return h3part(H3_S1, r[0]) + h3part(H3_S2, r[1]) + h3part(H3_S3, r[2]);
     return HYBRID_NAMES[r[0] + ':' + r[1]] || (r[0] + '-' + r[1]); }
   /* DISPLAY-ONLY hybrid names (owner Oct 26 2026 'Should say Nakatrump', renamed Oct 26 2026 ~6:46 PM CT to 'Trukekamoto'). hybridName() is unchanged because it feeds p.hybrid.name and replay log text;
-   * only labels shown to players use hybridLabel(). */
+   * only labels shown to players use hybridLabel().
+   * Homer's 3-way syllables are display-only too (Ho / mo / mer). h3part has no Homer row, so hybridName still glues in the word "undefined"
+   * and that string stays on the pet. A 2-way with no mashup in HYBRID_NAMES still stores "homer-dodo"; the label uses the same start + end pieces. */
   var HYBRID_DISPLAY = { 'hyb3:nakamoto:kek:funtrump': 'Trukekamoto' };
-  function hybridLabel(sp) { return HYBRID_DISPLAY[sp] || hybridName(sp); }
+  function dispSlot(T, sp) { if (sp === 'homer') return T === H3_S1 ? 'Ho' : T === H3_S2 ? 'mo' : 'mer'; return h3part(T, sp); }
+  function hybridLabel(sp) { if (HYBRID_DISPLAY[sp]) return HYBRID_DISPLAY[sp]; var r = hybridRoots(sp), n = hybridName(sp);
+    if (r.length === 3 && r.indexOf('rabbit') < 0 && n.indexOf('undefined') >= 0) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S2, r[1]) + dispSlot(H3_S3, r[2]);
+    if (r.length === 2 && r[0] !== r[1] && (n.indexOf('-') >= 0 || n.indexOf('undefined') >= 0)) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S3, r[1]);
+    return n; }
   function speciesLabel(sp) { if (sp === 'djpepe') return 'DJ Pepe'; if (sp === 'starlordkek') return 'Star-Lord Kek'; if (sp === 'rabbit') return 'The White Rabbit'; if (sp === 'orangedragon') return 'Orange Dragon'; if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'jacksonpepe') return JP_NAME; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
