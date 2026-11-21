@@ -463,7 +463,10 @@
   function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kset = new Set(keptIds()), kk = [], keep = [], i; for (i = 0; i < ids.length; i++) (kset.has(Number(ids[i])) ? kk : keep).push(ids[i]); ids = keep;
     if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
   function hiddenSet() { var a = hiddenIds(), s = new Set(); for (var i = 0; i < a.length; i++) s.add(a[i]); return s; }
-  function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !h.has(p.id); }); }
+  /* On-chain discard (pet:hd) is this owner's flag on the pet. It survives a cache clear.
+   * Browser Discard is a separate list. The main profile hides both. */
+  function onChainDiscarded(p) { return !!(p && ME && p.hd === ME); }
+  function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !h.has(p.id) && !onChainDiscarded(p); }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
   // ---------------------------------------------------------------- gear-win notification (single roll, bulk rolls, live/free-token rolls, trophies)
@@ -552,19 +555,51 @@
    * still read); (2) the last seen set is also kept in memory, so a failed save can never re-queue a hatch in the same page. Display only:
    * V.newHatches gets exactly the same key object it always did. */
   var hMem = null;
+  /* hatch-replay-1114: the published world paints one owner page, then the rest.
+   * A missing seen-list (a cache clear) used to baseline only that first page and then
+   * open a sort screen for every older hatch. Pets already in this published tip are
+   * not a new hatch. A saved baseline still announces hatches that landed after it.
+   * Display only. newHatches is unchanged. Nothing is signed. */
+  function hatchListSettled(w) {
+    if (!w || w.pending) return false;
+    var pg = w._pages;
+    if (pg && !w._full && (pg.got || 1) < (pg.pages || 1)) return false;
+    return true;
+  }
+  function hatchKeepGroups(groups, tip, haveBaseline) {
+    if (haveBaseline) return groups || [];
+    var out = [], i, g, eggs, j, p;
+    for (i = 0; i < (groups || []).length; i++) {
+      g = groups[i]; eggs = [];
+      for (j = 0; j < (g.eggs || []).length; j++) { p = g.eggs[j]; if ((p.hatchBlock || 0) > tip) eggs.push(p); }
+      if (eggs.length) out.push({ tx: g.tx, eggs: eggs, n: eggs.length });
+    }
+    return out;
+  }
+  var hatchTip = null;
+  /* /hatch-replay-1114 */
   function hPack(s) { var t = {}; Object.keys(s).forEach(function (k) { var i = k.lastIndexOf(':'), n = Number(k.slice(i + 1)); if (i < 1 || !(n > 0) || n % 1) { (t['!'] = t['!'] || []).push(k); return; } (t[k.slice(0, i)] = t[k.slice(0, i)] || []).push(n); });
     Object.keys(t).forEach(function (tx) { if (tx === '!') return; var a = t[tx].sort(function (x, y) { return x - y; }), out = [], lo = a[0], hi = a[0];
       for (var j = 1; j <= a.length; j++) { if (j < a.length && a[j] === hi + 1) { hi = a[j]; continue; } out.push(lo === hi ? String(lo) : lo + '-' + hi); if (j < a.length) lo = hi = a[j]; } t[tx] = out.join(','); });
-    return { v: 2, t: t }; }
+    var o = { v: 2, t: t }; if (hatchTip != null) o.tip = hatchTip; return o; }
   function hUnpack(o) { if (!o || typeof o !== 'object') return null; if (o.v !== 2 || !o.t) return o; var s = {};
     Object.keys(o.t).forEach(function (tx) { if (tx === '!') { (o.t[tx] || []).forEach(function (k) { s[k] = 1; }); return; }
       String(o.t[tx]).split(',').forEach(function (r) { var m = r.split('-'), lo = Number(m[0]), hi = m.length > 1 ? Number(m[1]) : lo; for (var n = lo; n <= hi; n++) s[tx + ':' + n] = 1; }); });
     return s; }
   function notifyHatch(w) { dataSeen();
-    var seen = null; try { seen = hUnpack(JSON.parse(localStorage.getItem(HKEY))); } catch (e) { }
+    if (!ME || !w || !w.pets) return [];
+    var raw = null; try { raw = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
+    var persisted = hUnpack(raw);
+    var hasKeys = !!(persisted && Object.keys(persisted).length);
+    var savedTip = raw && raw.v === 2 && raw.tip != null ? Number(raw.tip) : null;
+    var seen = persisted ? Object.assign({}, persisted) : null;
     if (hMem) seen = Object.assign(seen || {}, hMem);
-    var r = V.newHatches(w, ME, seen); hMem = r.seen; try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { }
-    r.groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return r.groups;
+    if (hatchTip == null) hatchTip = savedTip != null ? savedTip : (w.tip || 0);
+    var settled = hatchListSettled(w);
+    var r = V.newHatches(w, ME, seen); hMem = r.seen;
+    if (hasKeys || settled) { try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { } }
+    var groups = hatchKeepGroups(r.groups, hatchTip, hasKeys);
+    groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return groups;
   }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
   function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
@@ -1047,14 +1082,14 @@
     S.sel = this.checked ? shown.map(function (p) { return p.id; }) : []; save(); selUi(); };
   if ($('selMode')) $('selMode').onclick = function () { var on = document.body.classList.toggle('selmode'); this.classList.toggle('on', on); this.setAttribute('aria-pressed', on ? 'true' : 'false'); toast(on ? 'Select mode on: tap cards to select' : 'Select mode off: tap a card to open it'); };
   $('selNone').onclick = function () { S.sel = []; save(); selUi(); toast('Selection cleared'); }; /* Select none */
-  /* Feed all hungry / Feed selected NEVER include a discarded pet: filtered by the discard set itself (hiddenIds), not by what is on screen,
-   * so 'Show discarded', a stale selection or an active filter can't leak one in. */
-  function noDiscarded(plans) { var h = hiddenIds(); return plans.filter(function (q) { return h.indexOf(q.petId) < 0; }); }
+  /* Feed all hungry / Feed selected NEVER include a discarded pet: the browser discard list, or an on-chain pet:hd flag.
+   * Filtered by those sets, not by what is on screen, so a cache clear or an active filter can't feed a discarded pet. */
+  function noDiscarded(plans) { var h = hiddenIds(); return plans.filter(function (q) { return h.indexOf(q.petId) < 0 && !(q.petId && onChainDiscarded(world().byId[q.petId])); }); }
   /* bigfix 2026-10-20: big feeds are planned in small slices (V.feedQueueAsync) with a progress bar in the confirm box, so the page never freezes.
    * The overfeed guard runs on the pet list first, so the plan is built once. Same burns as before. */
   var feedTok = 0;
   function feedAsync(title, ids, list) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
-    var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry; });
+    var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry && !onChainDiscarded(p); });
     if (runsOn(w) != null) { var gr = guardIds(w, hungry); if (!gr.ok.length) return feedBlocked(title, gr.text); return confirmPlans(title, noDiscarded(feedQ(w, ME, gr.ok, undefined, list)), null, gr); } /* feed-all-one-burn: runs plan, no slow planner */
     if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(feedQ(w, ME, hungry, undefined, list)));
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */
