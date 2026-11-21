@@ -153,10 +153,12 @@
     var self = this, out = {};
     function round(list) { var missing = [], q = list.slice(), k = 0;
       function one(b) { b = Number(b); var deep = tip != null && b <= tip - FINAL_DEPTH;
-        /* smooth-perf: a hash already in the cache is used even when the tip read failed (tip null). The cache only ever holds final hashes
-         * (written at FINAL_DEPTH or more, or shipped in js/block-hashes.js), so the value is the one a fresh lookup would give. */
-        if (cache && cache[b]) { out[b] = cache[b]; return Promise.resolve(); }
-        return self.blockHash(b, deep ? cache : null).then(function (h) { if (h) { out[b] = h; if (deep && cache) cache[b] = h; } else missing.push(b); }); }
+        /* A cached hash is used with no request only when it is durable: it matches a trusted publication (api/boot.json, the
+         * node.xcpets.fun world snapshot, or the shipped js/block-hashes.js seed) or two independent sources already agreed and this
+         * cache wrote it. A first answer from one API is not durable, so a poisoned localStorage entry is fetched again. When the tip
+         * read failed, a durable cache entry is still used (it was stored at FINAL_DEPTH or came from a trusted publication). */
+        if (cache && cache[b] && (tip == null || deep) && Chain.durable(b, cache[b])) { out[b] = Chain.normHash(cache[b]); return Promise.resolve(); }
+        return self.blockHash(b, deep ? cache : null).then(function (h) { if (h) out[b] = h; else missing.push(b); }); }
       function worker() { if (k >= q.length) return Promise.resolve(); return one(q[k++]).then(worker); } /* at most BLOCK_CONC lookups in flight (no 429 storm) */
       var ws = []; for (var j = 0; j < Math.min(BLOCK_CONC, q.length); j++) ws.push(worker());
       return Promise.all(ws).then(function () { return missing.sort(function (a, b) { return a - b; }); }); }
@@ -169,12 +171,54 @@
   };
   Chain.FINAL_DEPTH = FINAL_DEPTH; Chain.errNote = errNote; Chain.fetchT = fetchT; Chain.failover = failover; Chain._resetSick = function () { sick = {}; }; Chain.coreBlocked = function () { return allNetSick(CFG.read || []); }; Chain.forgetBlocked = function () { netSick = {}; sick = {}; probeP = null; try { sessionStorage.removeItem(NET_KEY); localStorage.removeItem(NET_KEY); } catch (e) {} };
   Chain.TIMEOUTS = { HASH_RETRY_ROUNDS: HASH_RETRY_ROUNDS, HASH_RETRY_WAIT_MS: HASH_RETRY_WAIT_MS, PRIMARY_MS: PRIMARY_MS, BACKUP_MS: BACKUP_MS, DEADLINE_MS: DEADLINE_MS, BACKOFF_MS: BACKOFF_MS, MAX_RETRY_AFTER_MS: MAX_RETRY_AFTER_MS, SICK_MS: SICK_MS, PASSES: PASSES, BLOCK_CONC: BLOCK_CONC };
+  /* hash-guard: a block hash is cached for good only when it matches a trusted publication or two independent hosts agree, and the
+   * hash has the leading zero nibbles Bitcoin proof-of-work requires on this network. The first 64-hex body from one API is not stored.
+   * Disagreement is not cached; the other sources are asked, and the page-error beacon (err-report-1102) is told. A hash already in
+   * api/boot.json, the world snapshot, or js/block-hashes.js is returned with no request when the caller is allowed to cache it
+   * (the block is FINAL_DEPTH deep). A shallower block still asks one live source so a reorg within 6 blocks is seen; that source
+   * agreeing with the trusted hash is enough, so boot.json does not add a second request. */
+  var POW_NIBBLES = CFG.network === 'mainnet' ? 16 : 4; /* mainnet XCPETS-era hashes have >= 18; 16 rejects a random 64-hex body (2^-64) and still accepts a modest difficulty drop */
+  var trusted = {}, okSet = {}, hashNotes = [], beaconed = {}, OK_KEY = 'xcpets-v2-hash-ok';
+  function normHash(x) { var s = String(x == null ? '' : x).trim().toLowerCase(); return /^[0-9a-f]{64}$/.test(s) ? s : ''; }
+  function powOk(x) { x = normHash(x); if (!x) return false; var i = 0; while (i < POW_NIBBLES && x.charAt(i) === '0') i++; return i >= POW_NIBBLES; }
+  function loadOk() { try { var raw = typeof localStorage !== 'undefined' && localStorage.getItem ? localStorage.getItem(OK_KEY) : ''; var o = raw ? JSON.parse(raw) : null; if (o && typeof o === 'object') okSet = o; } catch (e) { okSet = {}; } }
+  function saveOk() { try { if (typeof localStorage !== 'undefined' && localStorage.setItem) localStorage.setItem(OK_KEY, JSON.stringify(okSet)); } catch (e) {} }
+  loadOk();
+  function hashBeacon(height, msg) { var key = String(height) + '|' + msg; if (beaconed[key]) return; beaconed[key] = 1; hashNotes.push(msg); try { console.warn('[xcpets] ' + msg); } catch (e) {}
+    try { var W = typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : null); if (W && typeof W.ErrorEvent === 'function' && W.dispatchEvent) W.dispatchEvent(new W.ErrorEvent('error', { message: msg, filename: 'rjs/chain.js', lineno: 176, colno: 1 })); } catch (e2) {} }
+  function trustedAt(h) { var k = String(h), t = trusted[k]; if (t && powOk(t)) return t; var seed = null; try { seed = (typeof self !== 'undefined' && self.XCPETS_BLOCK_HASHES) || (typeof window !== 'undefined' && window.XCPETS_BLOCK_HASHES); } catch (e) {}
+    var x = seed ? normHash(seed[k] != null ? seed[k] : seed[h]) : ''; return x && powOk(x) ? x : ''; }
+  function noteTrusted(map) { if (!map) return; Object.keys(map).forEach(function (k) { var x = normHash(map[k]); if (x && powOk(x)) trusted[String(k)] = x; }); }
+  function durable(height, hash) { var x = normHash(hash); if (!x || !powOk(x)) return false; var t = trustedAt(height); if (t) return t === x; return okSet[String(height)] === x; }
+  function hostOf(base) { var s = String(base), m = /^https?:\/\/([^\/:]+)/.exec(s); return (m ? m[1] : s).toLowerCase(); }
+  function blockSources() { return BLOCK_APIS.map(function (b) { var mp = b.indexOf('mempool:') === 0, u = mp ? b.slice(8) : b, fn = function (p) { return u + p; }; fn.mp = mp; fn.host = hostOf(u); fn.toString = function () { return u; }; return fn; }); }
+  function readOne(f, base, height, ac) { return fetchT(f, base(String(height)), 4000, ac).then(function (r) { if (!r.ok) throw new Error(String(base) + ' HTTP ' + r.status);
+    return (base.mp ? r.text() : r.json()).then(function (j) { var x = normHash(base.mp ? j : (j && j.result && j.result.block_hash)); if (!x) throw new Error('bad block hash'); return { hash: x, host: base.host, pow: powOk(x) }; }); }); }
+  function quorum(answers) { var by = {}; answers.forEach(function (a) { if (!a || !a.pow) return; var g = by[a.hash] || (by[a.hash] = { n: 0, live: 0, seen: {} }); if (g.seen[a.host]) return; g.seen[a.host] = 1; g.n++; if (a.host !== 'trusted') g.live++; });
+    var best = null, bestLive = -1, bestN = 0; Object.keys(by).forEach(function (h) { var g = by[h]; if (g.n < 2) return; if (g.live > bestLive || (g.live === bestLive && g.n > bestN)) { best = h; bestLive = g.live; bestN = g.n; } }); return best; }
+  function noteAnswers(height, answers) { var weak = [], seen = {}, hashes = []; answers.forEach(function (a) { if (!a || a.host === 'trusted') return; if (!a.pow) weak.push(a.host); if (!seen[a.hash]) { seen[a.hash] = 1; hashes.push(a.hash); } });
+    if (weak.length) hashBeacon(height, 'block ' + height + ' hash from ' + weak.join(', ') + ' failed the proof-of-work check'); if (hashes.length > 1) hashBeacon(height, 'block ' + height + ' hash sources disagree'); }
+  function askSources(f, bases, height, trust) { var left = bases.slice(), answers = []; if (trust) answers.push({ hash: trust, host: 'trusted', pow: true });
+    function batch(n) { var list = []; while (list.length < n && left.length) list.push(left.shift()); return new Promise(function (res) { var pending = list.length, done = false, acs = [];
+      function finish(hit) { if (done) return; done = true; acs.forEach(function (a) { try { if (a) a.abort(); } catch (e) {} }); res(hit || null); }
+      if (!pending) { finish(quorum(answers)); return; }
+      list.forEach(function (b) { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null; if (ac) acs.push(ac);
+        readOne(f, b, height, ac).then(function (a) { if (!done && a) answers.push(a); }, function () {}).then(function () { if (done) return; var q = quorum(answers); if (q) return finish(q); if (--pending <= 0) finish(null); }); }); }); }
+    function next() { if (!left.length) { noteAnswers(height, answers); return Promise.resolve(null); } return batch(trust ? 1 : Math.min(2, left.length)).then(function (hit) { if (hit) { noteAnswers(height, answers); return hit; } if (!left.length) { noteAnswers(height, answers); return null; } return next(); }); }
+    return next(); }
+  Chain.normHash = normHash; Chain.powOk = powOk; Chain.noteTrusted = noteTrusted; Chain.trustedHash = trustedAt; Chain.durable = durable; Chain.hashNotes = function () { return hashNotes.slice(); };
+  Chain._resetHashState = function () { trusted = {}; okSet = {}; hashNotes = []; beaconed = {}; try { if (typeof localStorage !== 'undefined' && localStorage.removeItem) localStorage.removeItem(OK_KEY); } catch (e) {} };
   Chain.prototype.blockHash = function (h, cache) {
-    if (cache && cache[h]) return Promise.resolve(cache[h]);
-    var bases = BLOCK_APIS.map(function (b) { var mp = b.indexOf('mempool:') === 0, u = mp ? b.slice(8) : b, fn = function (p) { return u + p; }; fn.mp = mp; fn.toString = function () { return u; }; return fn; });
-    return failover(this.f, bases, String(h), function (r, base) { return (base.mp ? r.text() : r.json()).then(function (j) {
-        var x = base.mp ? String(j).trim() : j && j.result && j.result.block_hash; if (!/^[0-9a-f]{64}$/.test(x || '')) throw new Error('bad block hash'); if (cache) cache[h] = x; return x; }); }, { deadline: 12000, hedgeMs: 1000 }) /* burn-check-fast: a slow mempool.space no longer holds a hash for seconds; same hash from every source */
-      .catch(function () { return null; });
+    var trust = trustedAt(h);
+    /* Deep enough to cache, and a trusted publication already has this block: no network. A cached value that disagrees is dropped. */
+    if (cache && trust) { if (normHash(cache[h]) && normHash(cache[h]) !== trust) hashBeacon(h, 'block ' + h + ' cached hash disagrees with a trusted source'); cache[h] = trust; return Promise.resolve(trust); }
+    if (cache && durable(h, cache[h])) return Promise.resolve(normHash(cache[h]));
+    return askSources(this.f, blockSources(), h, trust).then(function (hit) {
+      if (!hit) return null;
+      /* cache is passed only for blocks FINAL_DEPTH under the tip, so a shallow reorg is never written here */
+      if (cache) { cache[h] = hit; if (okSet[String(h)] !== hit) { okSet[String(h)] = hit; saveOk(); } }
+      return hit;
+    }).catch(function () { return null; });
   };
   /** txStatus(txid) -> {confirmed, block, seen}: confirmed = the Counterparty node has parsed it in a block (so replay includes it). */
   Chain.prototype.txStatus = function (txid) {
@@ -187,5 +231,5 @@
         .then(function (s) { return s ? { confirmed: false, seen: true, btcConfirmed: !!s.confirmed } : null; }).catch(function () { return null; });
     });
   };
-  return { Chain: Chain, APIS: APIS, BLOCK_APIS: BLOCK_APIS, ASSET: ASSET, network: CFG.network };
+  return { Chain: Chain, APIS: APIS, BLOCK_APIS: BLOCK_APIS, ASSET: ASSET, network: CFG.network, noteTrusted: noteTrusted, durable: durable, powOk: powOk, trustedHash: trustedAt };
 });

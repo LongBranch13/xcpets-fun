@@ -32,7 +32,7 @@ ok(rulesMd5 === '3638b4453d7b9b0c13c59c230f1b118c', 'js/v2-rules.js matches main
 ok(/function mgUnlHtml\(/.test(src) && /return unleashCard\(V, S, w, p, ME/.test(src), 'the My Pets unleash box is the pause-aware card');
 ok(/unleashEvalBlock\(world\(\)/.test(src), 'the confirm dialog prices the burn at the same tip the card used');
 const play = fs.readFileSync(path.join(ROOT, 'play.html'), 'utf8');
-ok(/js\/v2\.js\?v=a7c4e91b36/.test(play) && /js\/v2-split\.js\?v=a7c4e91b36/.test(play) && /js\/v2-art\.js\?v=a7c4e91b36/.test(play), 'play.html bumps v2.js, v2-art.js and v2-split.js');
+ok(/js\/v2\.js\?v=a7c4e91b36/.test(play) && /js\/v2-split\.js\?v=5f9cf87677/.test(play) && /js\/v2-art\.js\?v=a7c4e91b36/.test(play), 'play.html bumps v2.js, v2-art.js and v2-split.js');
 ok(!/js\/v2\.js\?v=8a0853d5cb/.test(play) && !/js\/v2-split\.js\?v=d4b8e198c7/.test(play), 'play.html does not keep the previous v2.js or v2-split.js url');
 
 const V0 = L.load().V2Rules;

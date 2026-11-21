@@ -16,7 +16,7 @@ const RSIG = {
   'rjs/game-core.js': '2784e9ccac773c4e0e58d646fc47b05f',
   'rjs/bonus-gear.js': 'deaa0b54f40c5ab1887ea9e5fa641e6c',
   'rjs/real-core.js': '601044a00a67c15f6013235f73fe9cdc',
-  'rjs/chain.js': 'f905e7eea23d1fd30484517b25ae3836',
+  'rjs/chain.js': '0767140323f23834ffac525de41f823e', /* hash-guard: block-hash consensus; v2-rules.js pin above is unchanged */
   'js/pet-core.js': '1c45c5e9f400faf17b3b57fe72166f0e',
   'js/bonus-gear.js': '36734cff209497808af0142e2510630d',
   'js/v2-gear.js': 'd0d440f3b7d6ded06837e2992651778d',

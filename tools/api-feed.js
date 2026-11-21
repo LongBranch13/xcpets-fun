@@ -61,6 +61,7 @@ async function liveInput(ctx) {
    * blocks since then (plus new tokens) are re-read. Its dexTip hash is fetched FRESH below and must match (a reorg there -> full re-read). --full skips it. */
   const prev = A.includes('--full') ? null : prevBoot(); if (prev && ctx.V2Sales && ctx.V2Sales.setBase) ctx.V2Sales.setBase(prev);
   const hc = Object.assign({}, prevBootHashes(), ctx.XCPETS_BLOCK_HASHES || {}), blocks = [...new Set(rows.map(r => r.block_index).concat([tip], gateBlocks(ctx.V2Rules, tip), prev && prev.dexTip && +prev.dexTip <= tip ? [+prev.dexTip] : []))]; /* sale-cache-feed: the tip's own hash too, so boot.json's sale data gets its dexTip/dexHash stamp */
+  if (ctx.Chain && ctx.Chain.noteTrusted) ctx.Chain.noteTrusted(prevBootHashes()); /* hashes already in the last boot.json are trusted: no second fetch */
   const bh = await chain.blockHashes(blocks, hc, tip);
   const miss = (bh.missing || []).filter(b => !hc[b] && !bh.hashes[b]); if (miss.length) throw new Error('missing block hashes: ' + miss.join(', '));
   /* sale-owner-fix: pet-token data, same call as js/v2-chain.js load(). Any failure throws -> nothing is written (never publish owners without sales). */

@@ -19,12 +19,20 @@ function unmark(v) {
   if (ks.length === 1 && ks[0] === '__u' && v.__u === 1) return undefined;
   var o = {}; for (var j = 0; j < ks.length; j++) o[ks[j]] = unmark(v[ks[j]]); return o;
 }
+function hexOf(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); }
+function sha256Buf(buf) { return crypto.subtle.digest('SHA-256', buf).then(hexOf); }
+/* Same check as js/v2-catchup-worker.js loadFile and the seed worker: the manifest sha256 must match the bytes.
+ * A mismatch throws 'bad hash' before the bytes are parsed. start() then posts ready ok:false, and the page keeps
+ * the published world instead of the tampered part (the catch-up caller falls back to today's load the same way). */
 function loadFile(f, got, total) {
   return fetch(f.url).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
-    got.n++;
-    self.postMessage({ cmd: 'progress', phase: 'files', got: got.n, total: total });
-    var val = unmark(JSON.parse(new TextDecoder().decode(buf)));
-    return { role: f.role, i: f.i, val: val };
+    return sha256Buf(buf).then(function (h) {
+      if (h !== f.sha256) throw new Error('bad hash');
+      got.n++;
+      self.postMessage({ cmd: 'progress', phase: 'files', got: got.n, total: total });
+      var val = unmark(JSON.parse(new TextDecoder().decode(buf)));
+      return { role: f.role, i: f.i, val: val };
+    });
   });
 }
 function loadText(url) { return fetch(url, { cache: 'force-cache' }).then(function (r) { if (!r.ok) throw new Error('script ' + r.status); return r.text(); }); }

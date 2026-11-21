@@ -319,11 +319,11 @@
   function readLast() { try { var c = JSON.parse(localStorage.getItem(LAST)); return c && c.tip && Date.now() - c.at <= LAST_MAX ? c : null; } catch (e) { return null; } }
   /* nav-cache-1102: api/boot.json is checked with the server (cache: 'no-cache') at most once a minute per tab; a page opened within 60 s of that
    * check takes the browser's copy of the same file (it is the copy that check confirmed), so moving between pages skips one round trip. */
-  var BKEY = 'xcpets-boot-at', BOOT_REUSE_MS = 60e3;
+  var BKEY = 'xcpets-boot-at', BOOT_REUSE_MS = 60e3, bootNoted = false;
   function fetchStatic() { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac && setTimeout(function () { ac.abort(); }, 4000), reuse = false;
     try { var ba = Number(sessionStorage.getItem(BKEY)) || 0; reuse = Date.now() - ba >= 0 && Date.now() - ba < BOOT_REUSE_MS; } catch (e) {}
     return fetch('api/boot.json', ac ? { signal: ac.signal, cache: reuse ? 'default' : 'no-cache' } : undefined).then(function (r) { clearTimeout(t); if (r.ok && !reuse) try { sessionStorage.setItem(BKEY, String(Date.now())); } catch (e) {} return r.ok ? r.json() : null; }, function () { return null; })
-      .then(function (j) { if (j && j.tip) { S.feedTip = Math.max(S.feedTip || 0, j.tip); try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} } return j && j.tip ? j : null; }, function () { return null; }); }
+      .then(function (j) { if (j && j.hashes) { try { if (E.Chain && E.Chain.noteTrusted) E.Chain.noteTrusted(j.hashes); } catch (e) {} bootNoted = true; } if (j && j.tip) { S.feedTip = Math.max(S.feedTip || 0, j.tip); try { if (window.V2Sales && window.V2Sales.setBase) window.V2Sales.setBase(j); } catch (e) {} } return j && j.tip ? j : null; }, function () { return null; }); }
   /* stale-copy-fix (2026-10-26): a phone showed its own 9-hour-old saved copy (block 973,246) while api/boot.json was at 973,306, because the saved
    * copy always won and boot.json was never read. pickCopy: the saved copy only when it is under 30 min old AND its tip is >= boot.json's;
    * otherwise boot.json; an older saved copy (up to 7 days) only when boot.json can't load. Pure, for tools/stale-copy-test.js. */
@@ -391,15 +391,20 @@
     var mp = readMempool(chain);
     var tp = chain.tip().then(function (t) { if (t > (S.chainTip || 0)) S.chainTip = t; return t; }).catch(function () { return null; }); /* data-lag-banner: keep the tip even if the burn read fails (same call, no extra read) */
     var fullAt = null;
-    return Promise.all([readRows(chain), tp, mp]).then(function (r) { S.mempool = r[2] || [];
+    /* boot.json hashes are trusted, so a block it already lists is not fetched again. A page that has not read the feed yet reads it once first. */
+    function begin() { return bootNoted ? Promise.resolve() : fetchStatic().then(function () {}, function () {}); }
+    return begin().then(function () { return Promise.all([readRows(chain), tp, mp]); }).then(function (r) { S.mempool = r[2] || [];
       var rows = r[0].rows, tip = r[1], fullAt0 = r[0].fullAt, blocks = {}; /* chain-read-fix-1102: 'blocks' declared again (nav-cache-1102 turned it into an undeclared assignment, a ReferenceError in strict mode, so no chain read ever verified and every burn and token step was refused) */ rows.forEach(function (x) { blocks[x.block_index] = 1; }); var FG = V.ACTIVATE_FIRESALE_BLOCK; if (FG != null && tip >= FG) for (var fb = FG; fb <= tip; fb++) blocks[fb] = 1; /* fire sales: every block's hash from the gate decides the schedule */
       var QG = V.questGate ? V.questGate() : null; if (QG != null && tip >= QG) for (var qb = QG; qb <= tip; qb++) blocks[qb] = 1; /* Mythic quests (2026-10-24): every block from the quest gate on, so each Homecoming block's hash is there even with no burn in it; inert while the gate is null */
       var RG = V.raidGate ? V.raidGate() : null; if (RG != null && tip >= RG) for (var rb = RG; rb <= tip; rb++) blocks[rb] = 1; /* raids: every block from the raid gate on (raid opening + kill block hashes); inert while the gate is null */
       /* api-hardening: reorg rollback. Cached hashes within 6 of this tip (or above it) are re-read, never trusted; a changed hash vs the last load
        * drops the 60 s session copy and the saved sale base so nothing from the orphaned blocks is reused. */
       var prevH = S.hashes, shallow = shallowDrop(hc, tip || S.chainTip || 0);
-      var need = Object.keys(blocks).filter(function (b) { return !hc[b]; }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
+      function hashReady(b) { var C = E.Chain; if (C && C.trustedHash && C.trustedHash(b) && (!hc[b] || C.durable(b, hc[b]))) return true; return !!(hc[b] && C && C.durable && C.durable(b, hc[b])); }
+      var need = Object.keys(blocks).filter(function (b) { return !hashReady(b); }).length; step('Read ' + rows.length + ' burns. Checking block hashes' + (need ? ' (' + need + ' to fetch)' : '') + '… (step 2 of 3)');
       return chain.blockHashes(Object.keys(blocks), hc, tip, function (n, miss) { step('Some block-hash servers are busy. Retrying ' + miss.length + ' block' + (miss.length === 1 ? '' : 's') + ' (try ' + (n + 1) + ' of 4)… (step 2 of 3)'); }).then(function (bh) {
+        /* Only durable hashes stay in the permanent cache. A single API answer, or one that disagrees with boot.json / the snapshot, is dropped. */
+        if (E.Chain && E.Chain.durable) Object.keys(hc).forEach(function (k) { if (!E.Chain.durable(k, hc[k])) delete hc[k]; });
         try { localStorage.setItem(HKEY, JSON.stringify(hc)); } catch (e) {}
         /* family-tree-fix (2026-10-19): never replay with a block hash missing. Rules reject hatch/breed/roll burns in a block without its hash
          * ('block hash pending'), so every later pet would be renumbered and family links would point at the wrong pet. Stop here instead:
