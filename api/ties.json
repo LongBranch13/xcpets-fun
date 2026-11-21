@@ -1,6 +1,6 @@
 {
- "lastBlock": 976914,
- "count": 428,
+ "lastBlock": 976917,
+ "count": 429,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5138,6 +5138,18 @@
    "speciesLabel": "DJ Pepe",
    "rarity": "Rare",
    "stage": "Mythic"
+  },
+  {
+   "id": 74534,
+   "asset": "A7413075144769394985",
+   "tiedBlock": 976915,
+   "tiedTx": "eba995343e1fe54ca3d37f5bc9d7de600a02778e677d06fc63751ff1ad989c4f",
+   "kind": "deed",
+   "name": "Sebazubit",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
