@@ -46,7 +46,7 @@ In a browser, [verify-pet.html](https://xcpets.fun/verify-pet.html) does the sam
 
 ## Public data feed
 
-[`api/`](api/) has free, read-only JSON, rebuilt every hour by replaying every burn with these same rules ([`tools/api-feed.js`](tools/api-feed.js)):
+[`api/`](api/) has free, read-only JSON, rebuilt by the game server about every 20–25 minutes by replaying every burn with these same rules ([`tools/api-feed.js`](tools/api-feed.js)):
 
 - [`api/pets.json`](https://xcpets.fun/api/pets.json): every pet (owner, species, rarity, stage, care, gear, parents, born/fed/death blocks). Columnar file; [`js/pets-feed.js`](js/pets-feed.js) expands it to those objects.
 - [`api/meta.json`](https://xcpets.fun/api/meta.json): block height, totals, supply
@@ -60,7 +60,7 @@ In a browser, [verify-pet.html](https://xcpets.fun/verify-pet.html) does the sam
 | `js/pet-core.js`, `js/v2-rules.js`, `rjs/` | The rules: pet rolls and the replay |
 | `js/` (the rest) | Drawing, pages, wallet hand-off (display only) |
 | `css/`, `fonts/`, `img/` | The 8-bit look |
-| `api/` | The hourly public JSON feed |
+| `api/` | The public JSON feed |
 | `tools/` | Tests (`node tools/run-tests --jobs 4`), replay check, build helpers |
 | `previews/`, `design/` | Art previews and design notes |
 

@@ -7,7 +7,7 @@ Free, read-only, static JSON. No key, no rate limit beyond GitHub Pages' own. Se
 | `https://xcpets.fun/api/pets.json` | Every pet, sorted by `id` (columnar file; expand to objects, below) |
 | `https://xcpets.fun/api/meta.json` | Block height, generated time, totals |
 
-The data comes from replaying every XCPETS burn on Counterparty with the game's own rules, the same replay that xcpets.fun runs in your browser. It is rebuilt every hour, so it can trail the site by a block or two. Check `blockHeight` in `meta.json`. The burns on chain are the source of truth.
+The data comes from replaying every XCPETS burn on Counterparty with the game's own rules, the same replay that xcpets.fun runs in your browser. The game server timer (`xcpets-feed.timer` on xcpets-bot-1) is the writer. A publish lands about every 20–25 minutes when pets, totals, or the chain tip have moved. A run that only changes the clock does not commit. The old hourly note, and the later every-10-minutes GitHub schedule, are no longer how it runs. GitHub Actions can still rebuild it by hand if that server is down. Each run is limited to 30 minutes. It can trail the site by a block or two. Check `blockHeight` in `meta.json`. The burns on chain are the source of truth.
 
 ## meta.json
 
@@ -26,7 +26,7 @@ The data comes from replaying every XCPETS burn on Counterparty with the game's 
 
 `{ "v": 2, "blockHeight": N, "count": N, "urlBase": "https://xcpets.fun/pet.html?id=", "dict": { ... }, "cols": [ ... ], "pets": [ ... ] }`.
 
-Each pet is one array, one line, in `cols` order. Repeated owners, species and species labels live once in `dict` (the row stores an index). `stageName`, `hybrid` and `url` are not stored: `stageName` is `dict.stageName[stage]`, `hybrid` is a species id starting with `hyb`, and `url` is `urlBase` + id. Gear is `[slotIndex, item, name, tierIndex]` with `dict.slot` and `dict.tier`. Stats are five numbers in `dict.stat` order (`vigor`, `spark`, `grit`, `zoom`, `luck`).
+Each pet is one array, one line, in `cols` order. Repeated owners, species and species labels live once in `dict` (the row stores an index). `stageName`, `hybrid` and `url` are not stored: `stageName` is `dict.stageName[stage]`, `hybrid` is true when the species id starts with `hyb` (`hyb:` or `hyb3:`), and `url` is `urlBase` + id. Gear is `[slotIndex, item, name, tierIndex]` with `dict.slot` and `dict.tier`. Stats are five numbers in `dict.stat` order (`vigor`, `spark`, `grit`, `zoom`, `luck`).
 
 This is the same data as the old object list. It is packed so a feed push stays small enough for GitHub Pages to publish (the object file had grown to about 75MB and deploys were aborting at 10 minutes). `js/pets-feed.js` (`XCPETSPetsFeed.expand`) turns it back into the objects below. An old file that still has object pets expands as itself.
 
@@ -36,14 +36,16 @@ The expanded object for each pet:
 |---|---|
 | `id` | Pet number (`https://xcpets.fun/pet.html?id=<id>`) |
 | `name` | Display name |
-| `species` | Species id (`pepe`, `wojak`, …; hybrids are `hyb:<a>:<b>`) |
+| `species` | Species id (`pepe`, `wojak`, …). A two-parent hybrid is `hyb:<a>:<b>`. A three-way hybrid is `hyb3:<a>:<b>:<c>` (three parent species, in that order) |
 | `speciesLabel` | Name as the site shows it (e.g. `Pepodo (hybrid)`) |
-| `hybrid` | `true` for hybrids |
+| `hybrid` | `true` when `species` starts with `hyb` (both `hyb:` and `hyb3:`) |
 | `tier` | Hatch rarity: `Common`, `Uncommon`, `Rare`, `Legendary` |
 | `rarityScore` / `rarityRank` | Pet Score 0-1000 and its rank (same as the site; `null` for released pets) |
 | `stage` / `stageName` | 0-5: Egg, Hatchling, Juvenile, Adult, Elder, Mythic |
 | `care` | Total XCPETS fed |
 | `status` | `alive`, `dead` or `released` |
+| `usedUp` | Why a released pet was used up, or `null`. A zombie meal is `eaten by #N`. A seance offering is `offered to #N`. A Resurrection pledge is `Resurrection of #N` |
+| `rareHatch` | Legend or weird hatch record, or `null` for an ordinary pet. Shape: `{ version: 1, kind, block }`. `kind` is a Legend hatch (`djpepe`, `wizard`, `kek`, `god`) or a weird hatch (`tiny`, `giant`, `two-headed`, `inverted`, `ghost`, `backwards`, `wrong-egg`). A wrong egg also has `expected` and `actual`. A weird trait passed on by breeding adds `origin` (`breed`), `inheritedFrom` (parent id), and `parentIndex` |
 | `community` | `true` for a community pet |
 | `owner` | Owner's Bitcoin address |
 | `generation` | 0 = hatched; bred pets are 1 + the higher parent's generation |
@@ -56,7 +58,7 @@ The expanded object for each pet:
 | `deathBlock` | Block it died in (`null` if alive) |
 | `url` | Pet page. Sprites are drawn in the browser, so there is no image URL. The pet page has the art and a share image. |
 
-Pets are on one line each, so you can stream the file line by line. At block 975220 (147,174 pets) the packed file is about 15MB raw, about 2.8MB gzipped (GitHub Pages gzips it). The expanded objects are the same size the old file was.
+Pets are on one line each, so you can stream the file line by line. At block 976,939 (204,397 pets) the packed file is about 21.8 MB raw (21,845,697 bytes) and about 4.2 MB gzipped on the wire (about 4,178,012 bytes). GitHub Pages gzips it. The expanded objects are the same size the old file was.
 
 ## Example
 
