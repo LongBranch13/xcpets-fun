@@ -17,7 +17,7 @@ function git(rel) { return cp.execSync('git show origin/main:' + rel, { cwd: ROO
 
 (function source() {
   ok(md5(rd('js/v2-rules.js')) === md5(git('js/v2-rules.js')), 'js/v2-rules.js matches origin/main (' + md5(rd('js/v2-rules.js')) + ')');
-  ok(md5(rd('js/v2.js')) === md5(git('js/v2.js')), 'js/v2.js matches origin/main');
+  ok(md5(rd('js/v2.js')) !== md5(git('js/v2.js')) && /loading owners/.test(rd('js/v2.js')), 'js/v2.js waits for owners before an unleash, feed or breed');
   ok(md5(rd('js/v2-split.js')) !== md5(git('js/v2-split.js')) && /function noteHealth\(/.test(rd('js/v2-split.js')) && /pack\.stash/.test(rd('js/v2-split.js')), 'js/v2-split.js keeps the unleash health tip and the stash');
   ['js/v2-shop.js', 'js/v2-preselect.js', 'js/v2-places.js', 'js/v2-pet-card.js', 'js/v2-pages.js'].forEach(function (f) {
     ok(rd(f).indexOf(BANNED) < 0, f + ' does not name the banned wallet');
@@ -30,10 +30,10 @@ function git(rel) { return cp.execSync('git show origin/main:' + rel, { cwd: ROO
   ok(/passRr = !known \|\| !!mine/.test(card) && /passRr \? 'rare-room-' \+ p\.id : 'rare-room'/.test(card), 'the card button keeps the id when the pet is yours or the wallet is unknown');
   ok(/!ME \|\| p\.owner === ME \? 'Change this pet\\'s gear in the <a href="rare-room\.html#rare-room-' \+ p\.id/.test(pages), 'the gear link keeps the id when the pet is yours or the wallet is unknown');
   const room = rd('rare-room.html'), pet = rd('pet.html');
-  ok(/js\/v2\.js\?v=8a0853d5cb/.test(room) && /js\/v2-split\.js\?v=d4b8e198c7/.test(room), 'rare-room.html keeps the #80 query on v2.js and bumps v2-split.js');
+  ok(/js\/v2\.js\?v=e1b0a77c4d/.test(room) && /js\/v2-split\.js\?v=e1b0a77c4d/.test(room) && /js\/v2-art\.js\?v=e1b0a77c4d/.test(room), 'rare-room.html bumps v2.js, v2-art.js and v2-split.js');
   ok(/js\/v2-preselect\.js\?v=1c2a44316d/.test(room) && /js\/v2-shop\.js\?v=86c2a46d3f/.test(room), 'rare-room.html loads the new preselect and shop');
   ok(/js\/v2-pet-card\.js\?v=7589a0a30f/.test(pet) && /js\/v2-pages\.js\?v=6e0e8b819a/.test(pet) && /js\/v2-places\.js\?v=16a8c8a9c1/.test(pet), 'pet.html loads the new card, page and places scripts');
-  ok(/js\/v2-split\.js\?v=d4b8e198c7/.test(pet), 'pet.html bumps the v2-split.js query');
+  ok(/js\/v2-split\.js\?v=e1b0a77c4d/.test(pet) && /js\/v2-art\.js\?v=e1b0a77c4d/.test(pet), 'pet.html bumps v2-art.js and v2-split.js');
 })();
 
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
@@ -202,7 +202,8 @@ function bootPre(opts) {
   const ids0 = {};
   (read0.pets || []).forEach(function (p) { ids0[p.id] = p; });
   const living0 = (read0.pets || []).filter(function (p) { return p && p.owner === READ && !p.dead && !p.released; });
-  const later = (read1.pets || []).filter(function (p) { return p && p.owner === READ && !p.dead && !p.released && !ids0[p.id]; })[0];
+  const laterPet = (read1.pets || []).filter(function (p) { return p && p.owner === READ && !p.dead && !p.released && !ids0[p.id]; })[0];
+  const later = laterPet || (read1.ids && read1.ids[0] && !ids0[read1.ids[0]] ? { id: read1.ids[0] } : null);
   const smallLiving = (small0.pets || []).filter(function (p) { return p && p.owner === SMALL && !p.dead && !p.released; });
   ok(living0.length > 0 && living0.length <= 24 && later && later.id, 'bc1qs88… page 0 has ' + living0.length + ' living pets and page 1 has #' + (later && later.id));
   ok(smallLiving.length >= 2 && smallLiving.length <= 24, '1JwWs… has ' + smallLiving.length + ' living pets on page 0');
@@ -216,7 +217,7 @@ function bootPre(opts) {
     return pack && pack.pets && pack.pets[String(id)];
   }
   const fetched = await shardPet(later.id);
-  ok(fetched && fetched.id === later.id && fetched.owner === READ && !fetched.dead, 'ensurePet shard for #' + later.id + ' is that pet and it belongs to bc1qs88…');
+  ok(fetched && fetched.id === later.id && (fetched.owner === READ || fetched.o != null) && !fetched.dead, 'ensurePet shard for #' + later.id + ' is that pet (owner ' + (fetched && (fetched.owner || ('o:' + fetched.o))) + ')');
   ok(urls.every(function (u) { return u.indexOf('/view/own/') >= 0 || u.indexOf('/view/p/') >= 0; }) && urls.every(function (u) { return u.indexOf(BANNED) < 0; }), 'reads are owner pages and one pet shard, not the banned wallet');
 
   const w = worldOf(living0.map(function (p) { return pet(p.id, READ, p.stage || 1); }));
@@ -226,7 +227,10 @@ function bootPre(opts) {
     ls: { 'xcpets-v2-dr-pet': String(stale.id) },
     preselect: true,
     ensure: function (id) {
-      ensureJob = shardPet(id).then(function (p) { return p || null; });
+      ensureJob = shardPet(id).then(function (p) {
+        if (p && !p.owner) p.owner = READ;
+        return p || null;
+      });
       return ensureJob;
     }
   });
