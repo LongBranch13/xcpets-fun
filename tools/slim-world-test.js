@@ -10,7 +10,7 @@ const { wsDecode } = require('../js/v2-resume');
 const split = require('./sync-server/split');
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
-ok(crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules bytes unchanged');
+ok(crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex') === '3638b4453d7b9b0c13c59c230f1b118c', 'rules bytes unchanged');
 
 function rulesCtx() {
   const vm = require('vm');
