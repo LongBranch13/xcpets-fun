@@ -45,7 +45,7 @@ const INIT = `(() => {
 })();`;
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = 'f0bd22928c2fe51763d9d34ed4552c04';
+  const RULES_MD5 = '3638b4453d7b9b0c13c59c230f1b118c';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const server = await serve();
   const origin = 'http://127.0.0.1:' + server.address().port;
