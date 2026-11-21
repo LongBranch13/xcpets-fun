@@ -148,6 +148,29 @@
     }
     return p;
   }
+  /* The published pet shards store the owner as o (view/owners.json). The checkpoint stores it as {__s:N}
+   * into a different table on the world. Those two tables do not share indexes. A send check that reads
+   * byId must fill from the table that wrote the field, and must not treat one table as the other. */
+  function resolvePetOwner(p, opt) {
+    opt = opt || {};
+    if (!p || typeof p !== 'object') return p;
+    if (typeof p.owner === 'string' && p.owner) return p;
+    var ix = markerIndex(p.owner);
+    if (ix != null) {
+      var s = ownerAt(opt.checkpoint, ix);
+      if (s) p.owner = s;
+      return p;
+    }
+    if ((p.owner == null || p.owner === '') && p.o != null) {
+      var v = ownerAt(opt.view, p.o);
+      if (v) p.owner = v;
+    }
+    return p;
+  }
+  function markerIndex(v) {
+    if (!isMarker(v)) return null;
+    return v.__s;
+  }
   function restoreArts(o, hashes, PetCore, opt, seen) {
     if (!o || typeof o !== 'object' || seen.has(o)) return;
     seen.add(o);
@@ -290,6 +313,7 @@
   exp.carryRank = carryRank;
   exp.openPet = openPet;
   exp.fillOwners = fillOwners;
+  exp.resolvePetOwner = resolvePetOwner;
   exp.slimGear = slimGear;
   exp.openGear = openGear;
   exp.addr = addr;

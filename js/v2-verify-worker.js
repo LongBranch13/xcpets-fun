@@ -3,8 +3,8 @@
  * and a sendBlock answer, not the world. js/v2-rules.js is loaded as text and
  * patched the same way the catch-up worker patches it. The file on disk is not changed. */
 'use strict';
-importScripts('v2-resume.js', 'v2-art.js?v=e1b0a77c4d');
-var world = null;
+importScripts('v2-resume.js', 'v2-art.js?v=c91e7ab4f2');
+var world = null, ownerTable = null;
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
   self.window = self; self.localStorage = st; self.sessionStorage = st;
@@ -67,6 +67,7 @@ function start(m) {
           if (!root || !meta) throw new Error('parts');
           self.postMessage({ cmd: 'progress', phase: 'replay', got: 0, total: 1 });
           var w = XcpResume.wsDecode(root, parts);
+          ownerTable = w._owners || null;
           if (self.XcpArt && (w._owners || w._hashes)) XcpArt.restore(w, self.PetCore, { ftLook: self.V2Rules && V2Rules.ftLookOfTier ? function (t) { return V2Rules.ftLookOfTier(t); } : null });
           root = null; parts = null;
           var rows = (sync.rows && sync.rows.list) || [];
@@ -128,10 +129,32 @@ function syncMine(m) {
   }
   send();
 }
+function planIds(plan) {
+  var t = self.V2Rules && V2Rules.parseTag ? V2Rules.parseTag(plan && plan.tag) : null, ids = [], i;
+  if (!t) return ids;
+  ['zombie', 'petId', 'a', 'b', 'mine', 'theirs', 'grave'].forEach(function (k) { if (typeof t[k] === 'number') ids.push(t[k]); });
+  if (t.ids) for (i = 0; i < t.ids.length; i++) if (typeof t.ids[i] === 'number') ids.push(t.ids[i]);
+  return ids;
+}
+/* A checkpoint pet keeps its owner as {__s:N} until restore. The view shard uses o, a different index list.
+ * Fill whichever form is still on the pet from the table that wrote it, then the owner check can see the address. */
+function resolveChecked(plan) {
+  if (!world || !world.byId || !self.XcpArt || !XcpArt.resolvePetOwner) return;
+  var ids = planIds(plan), i, p, sib, list = world.pets || [];
+  for (i = 0; i < ids.length; i++) {
+    p = world.byId[ids[i]];
+    if (!p) continue;
+    if (!(typeof p.owner === 'string' && p.owner)) {
+      for (var j = 0; j < list.length; j++) { sib = list[j]; if (sib && sib.id === p.id && sib !== p && typeof sib.owner === 'string' && sib.owner) { p.owner = sib.owner; break; } }
+    }
+    XcpArt.resolvePetOwner(p, { checkpoint: ownerTable });
+  }
+}
 function check(m) {
   if (!world || !self.V2Rules || !self.V2Rules.sendBlock) { self.postMessage({ id: m.id, cmd: 'check', ok: false, error: 'not ready' }); return; }
   var plans = m.plans || [], pending = (m.pending || []).slice(), kept = [], skip = [], i, why;
   for (i = 0; i < plans.length; i++) {
+    resolveChecked(plans[i]);
     why = self.V2Rules.sendBlock(world, plans[i], m.tip || world.tip, { me: m.me || '', pending: pending });
     if (why) skip.push(why);
     else { kept.push(plans[i]); if (plans[i] && plans[i].tag) pending.push(plans[i].tag); }
