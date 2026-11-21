@@ -25,6 +25,8 @@ function attr(s, sel, val) { return s.replace(new RegExp('(<meta (?:name|propert
 function build(mode) { const P = PAGES[mode]; let s = fs.readFileSync(path.join(ROOT, 'templates/game.html'), 'utf8').replace(/^<!--[^\n]*-->\n/, '');
   s = s.replace('data-split="@MODE@"', 'data-split="' + mode + '"');
   Object.keys(PANELS).forEach(k => { if (k !== mode) s = park(s, PANELS[k]); });
+  /* The burn-log fetch belongs on the player's page only. Rankings and the other place pages stay off that request. */
+  if (mode !== 'play') s = s.replace(/<!--own-log-->[\s\S]*?<!--\/own-log-->/, '');
   if (mode === 'play') return s;
   s = park(s, 'splitGo');
   s = s.replace(new RegExp('(<section class="[^"]*)("[^>]*\\bid="' + PANELS[mode] + '")'), '$1 split-main$2');

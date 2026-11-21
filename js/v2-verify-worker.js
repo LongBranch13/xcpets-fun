@@ -3,7 +3,7 @@
  * and a sendBlock answer, not the world. js/v2-rules.js is loaded as text and
  * patched the same way the catch-up worker patches it. The file on disk is not changed. */
 'use strict';
-importScripts('v2-resume.js', 'v2-art.js?v=c91e7ab4f2');
+importScripts('v2-resume.js', 'v2-art.js?v=a7c4e91b36');
 var world = null, ownerTable = null;
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
@@ -130,9 +130,15 @@ function syncMine(m) {
   send();
 }
 function planIds(plan) {
-  var t = self.V2Rules && V2Rules.parseTag ? V2Rules.parseTag(plan && plan.tag) : null, ids = [], i;
-  if (!t) return ids;
-  ['zombie', 'petId', 'a', 'b', 'mine', 'theirs', 'grave'].forEach(function (k) { if (typeof t[k] === 'number') ids.push(t[k]); });
+  var t = self.V2Rules && V2Rules.parseTag ? V2Rules.parseTag(plan && plan.tag) : null;
+  if (!t) return [];
+  if (self.XcpArt && XcpArt.tagPetIds) return XcpArt.tagPetIds(t);
+  var ids = [], i;
+  ['zombie', 'petId', 'a', 'b', 'mine', 'theirs', 'grave', 'target'].forEach(function (k) {
+    var v = t[k];
+    if (typeof v === 'number') ids.push(v);
+    else if (v && v.length) for (i = 0; i < v.length; i++) if (typeof v[i] === 'number') ids.push(v[i]);
+  });
   if (t.ids) for (i = 0; i < t.ids.length; i++) if (typeof t.ids[i] === 'number') ids.push(t.ids[i]);
   return ids;
 }
