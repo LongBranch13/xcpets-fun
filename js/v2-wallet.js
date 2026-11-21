@@ -329,7 +329,9 @@
   var cancelGen = 0, cancelWait = []; function cancel() { cancelGen++; var w = cancelWait; cancelWait = []; w.forEach(function (f) { try { f(); } catch (e) { } }); }
   function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
   function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
-  function send(plan, viewed, onTry, recheck) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); var g0 = cancelGen, VS = mockState();
+  function send(plan, viewed, onTry, recheck) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err());
+    if (window.V2Split && V2Split.ownersReady && !V2Split.ownersKnown()) { if (onTry) onTry(0, 0, 'owners'); return V2Split.ownersReady().then(function () { return send(plan, viewed, onTry, recheck); }); }
+    var g0 = cancelGen, VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
     if (onTry) onTry(0, 0, 'fresh'); var snap = recheck && recheck.snap ? recheck.snap() : null, stopFresh = function () {};
     var gate = freshGate(window.V2Mock.whenFresh(), onTry, function (fn) { stopFresh = fn; }); cancelWait.push(stopFresh);

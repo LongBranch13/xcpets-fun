@@ -184,11 +184,8 @@
         lastSummary = summary;
         last = { man: { tip: latest.tip, rsig: latest.rsig, view: true }, url: manUrl, tip: chainTip };
         function paint(owners) {
-          viewOwners = owners || viewOwners;
-          if (own && own.page && own.page.v === 3) {
-            if (own.page.pets) own.page.pets = openList(own.page.pets, own.page.hashes);
-            if (own.page.rise) own.page.rise = openList(own.page.rise, own.page.hashes);
-          }
+          if (owners) viewOwners = owners;
+          if (own && own.page) openOwnerPets(own.page, who);
           if (!own || !own.page || !own.page.pets || !own.page.pets.length) {
             if (own && own.page && (own.page.deeds || own.page.roster || own.page.mythicAt != null || (own.page.rise && own.page.rise.length))) {
               var mythic0 = {}; if (own.page.mythicAt != null) mythic0[own.page.owner || who] = own.page.mythicAt;
@@ -220,7 +217,9 @@
         if (!(view._pages.pages > 1)) { view._full = 1; viewHold.roster = null; view._roster = null; }
         return view;
         }
-        return paint(null);
+        var view = paint(null);
+        ownersReady();
+        return view;
       });
     }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
   }
@@ -290,19 +289,79 @@
     var V = window.V2Rules;
     return { PetCore: window.PetCore, owners: viewOwners, hashes: null, ftLook: V && V.ftLookOfTier ? function (t) { return V.ftLookOfTier(t); } : null, itemOf: V && V.itemOf ? function (id) { return V.itemOf(id); } : null };
   }
-  function openList(list, hashes) {
+  var noted = typeof WeakSet === 'function' ? new WeakSet() : null, notedList = [];
+  function notePet(p) {
+    if (!p || typeof p !== 'object') return;
+    if (noted) { if (noted.has(p)) return; noted.add(p); }
+    notedList.push(p);
+  }
+  function notePets(list) { var i; for (i = 0; i < (list || []).length; i++) notePet(list[i]); }
+  function stampOwner(p, owners, pageOwner) {
+    if (!p || p.owner) return p;
+    var from = p.o != null && owners && typeof owners[p.o] === 'string' ? owners[p.o] : '';
+    if (from) p.owner = from;
+    else if (pageOwner) p.owner = pageOwner;
+    return p;
+  }
+  function openList(list, hashes, pageOwner) {
     if (!list) return [];
-    if (!window.XcpArt || !window.XcpArt.openPet) return list;
-    var opt = artOpt(); opt.hashes = hashes || null;
-    var out = [], i;
-    for (i = 0; i < list.length; i++) out.push(XcpArt.openPet(list[i], opt));
+    var opt = artOpt(); opt.hashes = hashes || null; opt.pageOwner = pageOwner || '';
+    var out = [], i, p;
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      if (window.XcpArt && XcpArt.openPet) p = XcpArt.openPet(p, opt);
+      stampOwner(p, opt.owners, opt.pageOwner);
+      notePet(p);
+      out.push(p);
+    }
     return out;
   }
+  /* Own-page pets belong to the page wallet even before owners.json arrives. */
+  function openOwnerPets(page, who) {
+    if (!page || page.v !== 3) return page;
+    var known = page.owner || who || '';
+    if (page.pets) page.pets = openList(page.pets, page.hashes, known);
+    if (page.rise) page.rise = openList(page.rise, page.hashes, known);
+    return page;
+  }
+  function eachOpen(fn) {
+    var i, p, w, seen = typeof WeakSet === 'function' ? new WeakSet() : null;
+    function one(p) {
+      if (!p || typeof p !== 'object') return;
+      if (seen) { if (seen.has(p)) return; seen.add(p); }
+      fn(p);
+    }
+    for (i = 0; i < notedList.length; i++) one(notedList[i]);
+    w = window.V2Mock && V2Mock.world && V2Mock.world();
+    if (w && w.pets) for (i = 0; i < w.pets.length; i++) one(w.pets[i]);
+    if (w && w.byId) Object.keys(w.byId).forEach(function (id) { one(w.byId[id]); });
+    if (w) one(w);
+    if (pageJob && pageJob.pets) for (i = 0; i < pageJob.pets.length; i++) one(pageJob.pets[i]);
+    if (gravePlan && gravePlan.pets) for (i = 0; i < gravePlan.pets.length; i++) one(gravePlan.pets[i]);
+    if (diffBuf && diffBuf.length) for (i = 0; i < diffBuf.length; i++) one(diffBuf[i]);
+    return w;
+  }
+  function fillWorld() {
+    if (!viewOwners) return;
+    var w = eachOpen(function (p) {
+      if (window.XcpArt && XcpArt.fillOwners) XcpArt.fillOwners(p, viewOwners, '');
+      else stampOwner(p, viewOwners, '');
+    });
+    if (w && window.V2Mock && V2Mock.setViewWorld) { try { V2Mock.setViewWorld(w); } catch (e) {} }
+  }
   var ownersP = null;
+  function ownersKnown() { return viewOwners != null || !viewFolder; }
+  function ownerTable() { return viewOwners; }
+  function adoptOwners(rows) {
+    viewOwners = rows || [];
+    try { fillWorld(); } catch (e) {}
+    return viewOwners;
+  }
   function ownersReady() {
     if (viewOwners) return Promise.resolve(viewOwners);
     if (ownersP) return ownersP;
-    ownersP = getJson(viewFolder + 'view/owners.json', 12000, false).then(function (rows) { viewOwners = rows || []; return viewOwners; }, function () { viewOwners = []; return viewOwners; });
+    if (!viewFolder) return Promise.resolve(null);
+    ownersP = getJson(viewFolder + 'view/owners.json', 12000, false).then(function (rows) { return adoptOwners(rows || []); }, function () { return adoptOwners([]); });
     return ownersP;
   }
   function resolveIds(ids) {
@@ -355,6 +414,7 @@
     if (done) viewHold.roster = null;
     v.fights = fights || [];
     V2Mock.setViewWorld(v);
+    if (viewOwners) fillWorld();
     if (done) rememberRoster(v);
   }
   var restView = null;
@@ -368,6 +428,7 @@
   }
   function takeLiving(pg, page, n) {
     if (!page || !page.pets) return true;
+    if (page.v === 3) page.pets = openList(page.pets, page.hashes, page.owner || '');
     if (page.alive != null || !endsDead(page.pets)) {
       pageJob.pets = pageJob.pets.concat(livingOf(page.pets).length === page.pets.length ? page.pets : livingOf(page.pets));
       return true;
@@ -496,7 +557,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=d4b8e198c7', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=e1b0a77c4d', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -562,7 +623,7 @@
   }
   function takePagePets(page) {
     if (!page) return Promise.resolve([]);
-    if (page.pets && page.pets.length) return Promise.resolve(page.v === 3 ? openList(page.pets, page.hashes) : page.pets);
+    if (page.pets && page.pets.length) return Promise.resolve(page.v === 3 ? openList(page.pets, page.hashes, page.owner || '') : page.pets);
     if (page.ids && page.ids.length) return resolveIds(page.ids);
     return Promise.resolve([]);
   }
@@ -786,6 +847,8 @@
     }
     names = Object.keys(need);
     if (!names.length) return Promise.resolve(n);
+    return ownersReady().then(function () {
+    opt = artOpt(); opt.hashes = rankHashes;
     return Promise.all(names.map(function (nm) {
       return pullShard(folder + 'view/p/' + nm + '.json').then(function (pack) {
         var map = pack && pack.pets || {}, j, src, dst;
@@ -800,6 +863,7 @@
         hangGear(w, need[nm].map(function (pid) { return w.byId[pid]; }));
       }, function () {});
     })).then(function () { return n; });
+    });
   }
   function ensurePet(id) {
     id = id | 0;
@@ -824,7 +888,7 @@
   function applyZombies(z) {
     if (!z || !z.pets) return 0;
     viewHold.cem = { huntedBy: z.huntedBy || {} };
-    if (z.pets.length) mergePets(z.pets);
+    if (z.pets.length) mergePets(openList(z.pets, null, ''));
     else if (window.V2Mock && V2Mock.world && V2Mock.setViewWorld) {
       var cur = V2Mock.world();
       cur.cem = viewHold.cem;
@@ -863,5 +927,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable };
 })();

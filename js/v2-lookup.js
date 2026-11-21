@@ -67,6 +67,20 @@
     for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && p.id && !p.dead && !p.released && p.id !== 1765) out.push(p); }
     return out;
   }
+  /* A v3 owner page stores owner as an index. Open it the same way the own page does,
+   * so a looked-up pet is not left with an empty owner. */
+  function openRows(page) {
+    var pets = (page && page.pets) || [];
+    if (!page || page.v !== 3) return pets;
+    if (root.V2Split && V2Split.openList) return V2Split.openList(pets, page.hashes, page.owner || '');
+    if (root.XcpArt && XcpArt.openPet) {
+      var out = [], i;
+      for (i = 0; i < pets.length; i++) out.push(XcpArt.openPet(pets[i], { pageOwner: page.owner || '', owners: root.V2Split && V2Split.ownerTable ? V2Split.ownerTable() : null }));
+      if (root.V2Split && V2Split.notePets) V2Split.notePets(out);
+      return out;
+    }
+    return pets;
+  }
   function hook() {
     var M = root.V2Mock;
     if (hooked || !M || typeof M.setViewWorld !== 'function' || M.setViewWorld.__lookup) return;
@@ -142,10 +156,10 @@
           var page = first.json, pages = page.pages || 1, take = Math.min(pages, cap), rest = [], i;
           for (i = 1; i < take; i++) rest.push(pull(rootUrl + 'view/own/' + hex + '.' + i + '.json', fetcher));
           return Promise.all(rest).then(function (more) {
-            var pets = living(page.pets), bytes = first.bytes || 0, files = first.files || 0, j;
+            var pets = living(openRows(page)), bytes = first.bytes || 0, files = first.files || 0, j;
             for (j = 0; j < more.length; j++) {
               bytes += more[j].bytes || 0; files += more[j].files || 0;
-              if (more[j].json && more[j].json.pets) pets = pets.concat(living(more[j].json.pets));
+              if (more[j].json && more[j].json.pets) pets = pets.concat(living(openRows(more[j].json)));
             }
             var res = finish('wallet', addr, pets, { bytes: bytes, files: files, pages: pages, loadedPages: take, alive: page.alive == null ? pets.length : page.alive, capped: pages > take }, t0);
             if (res.ok) ownerCache[cacheKey] = res;
