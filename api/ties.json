@@ -1,6 +1,6 @@
 {
- "lastBlock": 976922,
- "count": 430,
+ "lastBlock": 976924,
+ "count": 434,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5162,6 +5162,54 @@
    "speciesLabel": "undefineddjdo (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 48896,
+   "asset": "A12703586355091862240",
+   "tiedBlock": 976924,
+   "tiedTx": "106a2d7a61aafa50138ef39c1c438c14945f3fe370de7e3e19f733216771e0bb",
+   "kind": "deed",
+   "name": "Foonoli",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 52175,
+   "asset": "A3758146476975433894",
+   "tiedBlock": 976924,
+   "tiedTx": "0a4d3f14fdce0f0fccba3fac7e845c1a3e4b6b5d24383b62f608c34d2c65f70e",
+   "kind": "deed",
+   "name": "Metarepip",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 192392,
+   "asset": "A15215800997127812174",
+   "tiedBlock": 976924,
+   "tiedTx": "2ff50eb597188653c33732f10bd29d37fbe6f92b6427083ba126422ed2dba2c0",
+   "kind": "deed",
+   "name": "Mavoru",
+   "species": "hyb:wizard:kek",
+   "speciesLabel": "Wikek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 192393,
+   "asset": "A17506242676659779088",
+   "tiedBlock": 976924,
+   "tiedTx": "a350a739950ae34770e17c47af554225d3888fb1ebc7c38d28ae6801aac534b1",
+   "kind": "deed",
+   "name": "Jejatapip",
+   "species": "hyb:chud:doge",
+   "speciesLabel": "Chuge (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Adult"
   }
  ]
 }
