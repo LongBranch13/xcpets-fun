@@ -1,6 +1,6 @@
 {
- "lastBlock": 976917,
- "count": 429,
+ "lastBlock": 976922,
+ "count": 430,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5017,7 +5017,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 165211,
@@ -5150,6 +5150,18 @@
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 202394,
+   "asset": "A3693693693693693693",
+   "tiedBlock": 976920,
+   "tiedTx": "acd440711968bbf2a607c3f6bd23e7f926b7547ffd22c20f21c38d447f9c4513",
+   "kind": "deed",
+   "name": "Wookibo",
+   "species": "hyb3:homer:djpepe:dodo",
+   "speciesLabel": "undefineddjdo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
