@@ -122,7 +122,7 @@ const worker = fs.readFileSync(path.join(ROOT, 'js/v2-verify-worker.js'), 'utf8'
 ok(/V2Split\.resolveWorld\)/.test(v2) && /sendIds\(plans\)/.test(v2), 'confirmPlans resolves the pets a burn names before the send check');
 ok(/me: pageWallet\(\)/.test(splitJs), 'the verify worker is posted the page wallet');
 ok(/resolveChecked\(/.test(worker) && /checkpoint: ownerTable/.test(worker), 'the worker fills a checkpoint marker before sendBlock');
-ok(/v2-art\.js\?v=d8c41e7b22/.test(worker), 'the worker loads the art file that resolves owners');
+ok(/v2-art\.js\?v=e5c82a1d90/.test(worker), 'the worker loads the art file that resolves owners');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
