@@ -1,6 +1,6 @@
 {
- "lastBlock": 976940,
- "count": 434,
+ "lastBlock": 976942,
+ "count": 435,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -4489,7 +4489,7 @@
    "species": "hyb3:pepe:dodo:sarutobi",
    "speciesLabel": "Pedotobi (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 85377,
@@ -5210,6 +5210,18 @@
    "speciesLabel": "Chuge (hybrid)",
    "rarity": "Legendary",
    "stage": "Adult"
+  },
+  {
+   "id": 162482,
+   "asset": "A4008782899944328610",
+   "tiedBlock": 976941,
+   "tiedTx": "16226d142be4fcce7f3dc52a9601767a563ae622f3f9960ec34fbe8689ff6b38",
+   "kind": "deed",
+   "name": "Pubimi",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
