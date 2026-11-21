@@ -1,16 +1,9 @@
-/* Homer Pepe is missing from the 3-way syllable table in js/v2-rules.js (H3_S1 / H3_S2 / H3_S3).
- * h3part() looks Homer up at H3_ORDER index 16, and those arrays stop at funtrump (index 15),
- * so the slot is the value undefined and the mashup contains the word "undefined".
- *
- * The syllables the rest of the file already uses for Homer are Ho (start), mer (middle), mer (end):
- *   wr3Name: Ho / mer for a White Rabbit 3-way
- *   viking, Old Hickory and Orange Dragon 2-ways: Ho + king, Vik + mer
- * Putting those into h3part (same shape as the chad / djpepe special cases) would name
- *   hyb3:homer:djpepe:dodo  (#202394)  undefineddjdo -> Hodjdo
- *   hyb3:kek:homer:dodo     (#176224)  Kekundefineddo -> Kekmerdo
- * That edit is NOT in this test. hybridName() is stored on the pet as hybrid.name and
- * replayed into world state, and js/v2-rules.js is frozen. This file only locks today's
- * output and the name the owner would get from that one rules change.
+/* Homer Pepe's 3-way syllables live in h3part(): Ho (start), mer (middle), mer (end).
+ * The same pieces were already used by wr3Name and by the viking / Old Hickory / Orange Dragon
+ * 2-way fallback. hybridName() is what replay stores on the pet as hybrid.name.
+ *   hyb3:homer:djpepe:dodo  (#202394)  Hodjdo
+ *   hyb3:kek:homer:dodo     (#176224)  Kekmerdo
+ * 2-way names are a different table and stay hyphenated (homer-dodo).
  * Dev only: nothing is signed or sent. */
 'use strict';
 const assert = require('assert');
@@ -47,20 +40,23 @@ ok(function () { assert.strictEqual(V.hybridName('hyb3:pepe:homer:rabbit'), 'Pem
 ok(function () { assert.strictEqual(V.hybridName('hyb:homer:viking'), 'Hoking'); });
 ok(function () { assert.strictEqual(V.hybridName('hyb:viking:homer'), 'Vikmer'); });
 
-/* The two published pets. Personal names stay as they are; only the species mashup is broken. */
-ok(function () { assert.strictEqual(V.hybridName('hyb3:homer:djpepe:dodo'), 'undefineddjdo'); });
-ok(function () { assert.strictEqual(V.hybridLabel('hyb3:homer:djpepe:dodo'), 'undefineddjdo'); });
-ok(function () { assert.strictEqual(V.speciesLabel('hyb3:homer:djpepe:dodo'), 'undefineddjdo (hybrid)'); });
+/* The two published pets. Personal names stay Wookibo and Shechugokin. The species mashup is the stored hybrid.name. */
+ok(function () { assert.strictEqual(V.hybridName('hyb3:homer:djpepe:dodo'), 'Hodjdo'); });
+ok(function () { assert.strictEqual(V.hybridLabel('hyb3:homer:djpepe:dodo'), 'Hodjdo'); });
+ok(function () { assert.strictEqual(V.speciesLabel('hyb3:homer:djpepe:dodo'), 'Hodjdo (hybrid)'); });
+ok(function () { assert.strictEqual(V.hybridPlan('ab'.repeat(32), 'hyb3:homer:djpepe:dodo', 976914).name, 'Hodjdo'); });
 ok(function () { assert.strictEqual(proposed3('homer', 'djpepe', 'dodo'), 'Hodjdo'); });
-ok(function () { assert.strictEqual(V.hybridName('hyb3:kek:homer:dodo'), 'Kekundefineddo'); });
+ok(function () { assert.strictEqual(V.hybridName('hyb3:kek:homer:dodo'), 'Kekmerdo'); });
+ok(function () { assert.strictEqual(V.hybridPlan('cd'.repeat(32), 'hyb3:kek:homer:dodo', 976000).name, 'Kekmerdo'); });
 ok(function () { assert.strictEqual(proposed3('kek', 'homer', 'dodo'), 'Kekmerdo'); });
 ok(function () { assert.strictEqual(proposed3('kek', 'dodo', 'homer'), 'Kekdomer'); });
+ok(function () { assert.strictEqual(V.hybridName('hyb3:kek:dodo:homer'), 'Kekdomer'); });
 
 /* Known good rows, so a bad slice cannot hide a missing species. */
 const KNOWN = {
   pepe: ['Pe', 'pe', 'pe'], wojak: ['Wo', 'jo', 'jak'], funtrump: ['Fun', 'tru', 'trump'],
   djpepe: ['DJ', 'dj', 'pe'], chad: ['Cha', 'cha', 'chad'], viking: ['Vik', 'vi', 'king'],
-  jacksonpepe: ['Hick', 'hick', 'ory'], orangedragon: ['Dra', 'dra', 'gon'], homer: ['undefined', 'undefined', 'undefined']
+  jacksonpepe: ['Hick', 'hick', 'ory'], orangedragon: ['Dra', 'dra', 'gon'], homer: ['Ho', 'mer', 'mer']
 };
 Object.keys(KNOWN).forEach(function (sp) {
   ok(function () { assert.deepStrictEqual([0, 1, 2].map(function (i) { return partOf(sp, i); }), KNOWN[sp], sp); });
@@ -69,7 +65,7 @@ Object.keys(KNOWN).forEach(function (sp) {
 /* Live hybrid roots. Rabbit 3-ways use wr3Name, not the three slots, so it is checked above. */
 const LIVE = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek', 'wizard', 'funtrump', 'homer', 'chad', 'djpepe', 'viking', 'jacksonpepe', 'orangedragon'];
 const undefinedRoots = LIVE.filter(function (sp) { return [0, 1, 2].some(function (i) { return partOf(sp, i) === 'undefined'; }); });
-ok(function () { assert.deepStrictEqual(undefinedRoots, ['homer']); });
+ok(function () { assert.deepStrictEqual(undefinedRoots, []); });
 
 /* No syllable at all: the namer pastes the raw id. These are not normal breed roots
  * (contest pets breed as the partner; kekamozard and don are cross labels). */

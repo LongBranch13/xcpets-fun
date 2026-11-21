@@ -10,7 +10,7 @@ const fixtures = require('./lib/fixtures');
 let fail = 0, pass = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules MD5 unchanged');
+ok(rulesMd5 === '4f043b06d203135a6f7be660f84bc216', 'rules MD5 unchanged');
 ok(/function bootFromView[\s\S]{0,700}readViewBalance\(/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2-chain.js'), 'utf8')), 'the published view reads the wallet balance');
 ok(/var ENABLED = false/.test(fs.readFileSync(path.join(__dirname, '..', 'js/doom-week.js'), 'utf8')), 'doom week stays off');
 

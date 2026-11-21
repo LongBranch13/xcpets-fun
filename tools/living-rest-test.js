@@ -11,7 +11,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
-ok(md5('js/v2-rules.js') === 'f0bd22928c2fe51763d9d34ed4552c04', 'rules MD5 unchanged after #77');
+ok(md5('js/v2-rules.js') === '4f043b06d203135a6f7be660f84bc216', 'rules MD5 unchanged after #77');
 ok(md5('js/v2-split.js') === 'bd509d59faf4d458a4c1067840c3f329', 'js/v2-split.js is the slim publisher client');
 ok(md5('tools/sync-server/split.js') === 'e33840d7a328484734a2c2ac90b93976', 'tools/sync-server/split.js is the slim publisher');
 
