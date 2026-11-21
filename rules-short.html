@@ -7,17 +7,17 @@
 <h1 class="sec" data-ico="flame">Rules in short</h1>
 <p class="small muted">Short version. The full page with every detail stays at <a href="rules.html">Rules</a>; every date and old rule is in <a href="rules.html#v2rules">Rule history</a>.</p>
 <p>XCPETS is a Counterparty token on Bitcoin. You play by <b>burning</b> XCPETS with a short tag. Each burn is a Bitcoin transaction you sign in your own wallet; it also pays a small Bitcoin network fee (in sats). Anyone can rebuild the game from the chain: same burns, same result, no server.</p>
-<p class="small"><b>Dander:</b> 1 dander = 0.00000001 XCPETS. Costs below are today’s (after 2 halvings). A Fire Sale cuts every cost to 31% for 36 blocks.</p>
+<p class="small"><b>Dander:</b> 1 dander = 0.00000001 XCPETS. <span data-cp="cost-now">Amounts are what a burn costs now. A Fire Sale cuts them further.</span> A Fire Sale is 31% for 36 blocks.</p>
 
 <h2 class="sec" data-ico="egg">1. Hatch</h2>
 <ul>
-<li><b>pet:hatch</b> 17.25 · one egg. <b>pet:hatch12</b> 172.5 · 12 eggs. <b>pet:hatch144</b> 1,725 · 144 eggs. <b>pet:hatchzap</b> 25,000 · 1,000 Electric Eggs (better tier odds).</li>
+<li><b>pet:hatch</b> <span data-cost="69">8.625</span> · one egg. <b>pet:hatch12</b> <span data-cost="690">86.25</span> · 12 eggs. <b>pet:hatch144</b> <span data-cost="6900">862.5</span> · 144 eggs. <b>pet:hatchzap</b> <span data-cost="100000">12,500</span> · 1,000 Electric Eggs (better tier odds).</li>
 <li>Species, tier and looks come from the block hash and your tx id, so nobody knows them in advance. Paying less hatches nothing (it feeds the community pet).</li>
 </ul>
 
 <h2 class="sec" data-ico="pet">2. Daily care</h2>
 <ul>
-<li><b>One meal a day per pet</b> (a day = 144 blocks). Meal: 1,035 / 1,725 / 2,415 / 2,300 by stage. Only the owner can feed; Mythics don’t eat.</li>
+<li><b>One meal a day per pet</b> (a day = 144 blocks). Meal: <span data-cost="4140">517.5</span> / <span data-cost="6900">862.5</span> / <span data-cost="9660">1,207.5</span> / <span data-cost="9200">1,150</span> by stage. Only the owner can feed; Mythics don’t eat.</li>
 <li><b>Feed all</b> is one burn: <b>pet:fr:AA:RUNS</b>, the exact total of the meals. Single pet: <b>pet:feed:ID</b>.</li>
 <li><b>WAGMI</b>: <b>pet:wagmi</b>, 1 dander, once a day keeps your 🔥 streak. The first 5 wallets each day get +1 saved spin.</li>
 <li><b>🧹 Daily chores</b> (new, from block 974,163): <b>pet:dc:F[:AA:RUNS]</b> does WAGMI + Feed all + use all saved spins in <b>one</b> burn. Cost = the meals (at least 1 dander). Each part is skipped on its own if there is nothing to do.</li>
@@ -27,7 +27,7 @@
 <h2 class="sec" data-ico="gear">3. Gear and the Pepe Wheel</h2>
 <ul>
 <li>Every pet has 6 open slots: Headwear, Grip, Outfits, Drip, Guise, Footwear.</li>
-<li><b>pet:spin</b> 86.25 · picks one of your pets (Legendary 8 times as likely as Common) and puts a new piece on it.</li>
+<li><b>pet:spin</b> <span data-cost="345">43.125</span> · picks one of your pets (Legendary 8 times as likely as Common) and puts a new piece on it.</li>
 <li><b>Saved spins</b> come from lucky drops (25% per stage-up, 2% per meal), Fire Sales, Mythic overflow and raids. From block 974,279 they land only on pets you pick: <b>Pick pets for your spins</b> in the Rare Room (<code>pet:ut</code>, only the Bitcoin fee). Before that block each spin went to a random living pet of yours, never-fed and discarded pets included.</li>
 <li>Looks: <b>pet:look:ID:CODE:on|off</b>, 1 dander, up to 6 changes per burn.</li>
 </ul>
@@ -35,8 +35,8 @@
 <h2 class="sec" data-ico="sword">4. Fight, breed, raid, quest</h2>
 <ul>
 <li><b>Fight</b>: pet:fight:A:B, accepted with pet:accept:N. The loser can lose one worn piece (★ signature pieces are never taken).</li>
-<li><b>Breed</b>: pet:breed:A:B 135 (Adult or older, 6 breeds per pet, 1,008 blocks between breeds). Two owners: both pay 135.</li>
-<li><b>Raid</b>: pet:raid:ID, 17.25 or more, once per pet per day. Damage = amount times pet bonus (1.00 to 1.50) times crit (1, 2 or 3 times). Rewards only if the boss falls.</li>
+<li><b>Breed</b>: pet:breed:A:B <span data-cost="135">16.875</span> (Adult or older, 6 breeds per pet, 1,008 blocks between breeds). Two owners: both pay <span data-cost="135">16.875</span>.</li>
+<li><b>Raid</b>: pet:raid:ID, <span data-cost="69">8.625</span> or more, once per pet per day. Damage = amount times pet bonus (1.00 to 1.50) times crit (1, 2 or 3 times). Rewards only if the boss falls.</li>
 <li><b>Quest</b>: pet:quest:ID:Q sends a Mythic away for loot.</li>
 </ul>
 
@@ -47,12 +47,13 @@
 
 <h2 class="sec" data-ico="skull">6. Cemetery and Gods</h2>
 <ul>
-<li>A pet that is never fed dies and gets a grave. Graves can be raised as zombies; a zombie can be resurrected (Resurrection) or, if it is a starving zombie, unleashed on one of your Mythics (<b>pet:unleash:ID</b>) to try for a Mythic God (21 Pantheon seats ever).</li>
+<li>A pet that is never fed dies and gets a grave. From block 977,026, a pet that has been dead for 14 game days leaves. Legendary and Mythic pets stay. So do rare species (the limited ones, not a normal Pepe and not just a Rare tier), hybrids, special pets (1 of 1s, contest prizes, burn lords, grants, tokenized pets, jackpot pets, and Legend hatches), and weird hatches (tiny, giant, two-headed, inverted, ghost, backwards, and wrong egg). An Electric Egg is not spared for being an Electric Egg. A burn aimed at a pet that has left only feeds the community pet.</li>
+<li>Graves can be raised as zombies; a zombie can be resurrected (Resurrection) or, if it is a starving zombie, unleashed on one of your Mythics (<b>pet:unleash:ID</b>) to try for a Mythic God (21 Pantheon seats ever).</li>
 </ul>
 
 <h2 class="sec" data-ico="flame">7. Community pet, halvings, Fire Sales</h2>
 <ul>
-<li>Every burn, and any burn that breaks a rule, feeds the shared community pet (now Homer Pepe). When it reaches Mythic it goes to Cold Storage, the next one arrives, and 6 blocks later every cost halves once more.</li>
+<li>Every burn, and any burn that breaks a rule, feeds the shared community pet, <span data-cp="cur">the community pet</span>. When it reaches Mythic it goes to Cold Storage, the next one arrives, and 6 blocks later every cost halves once more.</li>
 <li>Captain Dan calls Fire Sales from lucky blocks: 6 blocks of warning, then 36 blocks at 31%.</li>
 </ul>
 
