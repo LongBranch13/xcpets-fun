@@ -127,6 +127,10 @@
     for (i = 0; i < n; i++) {
       var v = ks ? o[ks[i]] : o[i];
       if (isMarker(v)) {
+        /* A checkpoint pet stores its owner as {__s:N} into the world's owner table, which is not the
+         * view table. A view row stores that same fact as o. Expanding the marker with the view table
+         * assigns a different wallet and every later owner check fails. Leave that marker for resolvePetOwner. */
+        if (ks && ks[i] === 'owner' && o && o.id != null && o.o == null) continue;
         var s = ownerAt(owners, v.__s);
         if (s) { if (ks) o[ks[i]] = s; else o[i] = s; }
       } else expandOwners(v, owners, seen);
@@ -170,6 +174,19 @@
   function markerIndex(v) {
     if (!isMarker(v)) return null;
     return v.__s;
+  }
+  /* Every id a parsed burn tag can name. Team fights store a and b as arrays. Cemetery runs store the
+   * zombie or grave on target. Feed lists, gifts and Rug Me store ids. */
+  function tagPetIds(t) {
+    var ids = [], i, k, v, keys = ['zombie', 'petId', 'a', 'b', 'a2', 'b2', 'mine', 'theirs', 'grave', 'target'];
+    if (!t) return ids;
+    for (i = 0; i < keys.length; i++) {
+      v = t[keys[i]];
+      if (typeof v === 'number') ids.push(v);
+      else if (v && v.length) for (k = 0; k < v.length; k++) if (typeof v[k] === 'number') ids.push(v[k]);
+    }
+    if (t.ids) for (i = 0; i < t.ids.length; i++) if (typeof t.ids[i] === 'number') ids.push(t.ids[i]);
+    return ids;
   }
   function restoreArts(o, hashes, PetCore, opt, seen) {
     if (!o || typeof o !== 'object' || seen.has(o)) return;
@@ -314,6 +331,7 @@
   exp.openPet = openPet;
   exp.fillOwners = fillOwners;
   exp.resolvePetOwner = resolvePetOwner;
+  exp.tagPetIds = tagPetIds;
   exp.slimGear = slimGear;
   exp.openGear = openGear;
   exp.addr = addr;

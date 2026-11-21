@@ -58,6 +58,33 @@
     }
     return w;
   }
+  /* Page 0 of an owner file is the oldest living pets. Yesterday's hatches sit on the last pages.
+   * The first paint must ask for those pages, or a fast load looks finished while they are still absent. */
+  function newestPages(pageCount, got) {
+    var last = (pageCount | 0) - 1, from, i, out = [];
+    if (!(last > 0)) return out;
+    from = Math.max(got || 1, last - 1);
+    for (i = from; i <= last; i++) out.push(i);
+    return out;
+  }
+  function tagText(h) {
+    h = String(h || '');
+    if (!/^[0-9a-f]+$/i.test(h) || h.length % 2) return h;
+    var o = '', i;
+    for (i = 0; i < h.length; i += 2) o += String.fromCharCode(parseInt(h.substr(i, 2), 16));
+    return o;
+  }
+  /* Display lines for a published view, whose world is built with an empty log. Not a replay input. */
+  function rowsToLog(list) {
+    var out = [], i, r, text;
+    for (i = 0; i < (list || []).length; i++) {
+      r = list[i]; if (!r) continue;
+      text = tagText(r.tag);
+      out.push({ block: r.block_index | 0, tx: r.tx_hash || '', kind: (text.split(':')[1] || 'burn'), msg: text, src: r.source || '' });
+    }
+    out.sort(function (a, b) { return a.block - b.block || (a.tx < b.tx ? -1 : a.tx > b.tx ? 1 : 0); });
+    return out;
+  }
   function sha2(s) {
     var buf = new TextEncoder().encode(String(s || ''));
     return crypto.subtle.digest('SHA-256', buf).then(function (d) {
@@ -521,12 +548,69 @@
       else requestSync();
     });
   }
+  function loadNewest(pg) {
+    var nums, i;
+    if (!pg || !(pg.pages > 1) || !pg.folder || !pg.key) return Promise.resolve(0);
+    nums = newestPages(pg.pages, pg.got);
+    if (!nums.length) return Promise.resolve(0);
+    return Promise.all(nums.map(function (ni) {
+      return getJson(pg.folder + 'view/own/' + pg.key + '.' + ni + '.json').then(function (page) {
+        return { n: ni, page: page };
+      }, function () { return { n: ni, page: null }; });
+    })).then(function (rows) {
+      var chain = Promise.resolve();
+      rows.forEach(function (row) {
+        chain = chain.then(function () {
+          var page = row.page;
+          if (!page || page.pets || !page.ids) return null;
+          return resolveIds(page.ids).then(function (pets) { page.pets = pets; });
+        });
+      });
+      return chain.then(function () {
+        var extra = [], r, p, list, j;
+        for (r = 0; r < rows.length; r++) {
+          p = rows[r].page;
+          if (!p) continue;
+          list = p.pets || [];
+          if (p.v === 3 && list.length && !(list[0] && list[0].id != null)) list = openList(list, p.hashes, p.owner || '');
+          for (j = 0; j < list.length; j++) if (list[j] && list[j].id != null && !list[j].dead && !list[j].released) extra.push(list[j]);
+        }
+        if (extra.length) {
+          if (pageJob && pageJob.pets) {
+            var have = {}, n;
+            for (n = 0; n < pageJob.pets.length; n++) if (pageJob.pets[n]) have[pageJob.pets[n].id] = 1;
+            for (n = 0; n < extra.length; n++) if (!have[extra[n].id]) pageJob.pets.push(extra[n]);
+          }
+          mergePets(extra);
+        }
+        return extra.length;
+      });
+    });
+  }
+  function attachBurns(view) {
+    var tip, since;
+    if (!view || !view._view || (view.log && view.log.length) || !base()) return Promise.resolve(0);
+    tip = view.tip | 0;
+    since = tip > 288 ? tip - 288 : 0;
+    return getJson(base() + '/xp/v1/sync?since=' + since, 12000, true).then(function (ans) {
+      var list = ans && ans.rows && ans.rows.list || [], lines;
+      if (!view._view || (view.log && view.log.length)) return 0;
+      lines = rowsToLog(list);
+      view.log = lines;
+      try { if (window.V2UI && V2UI.render) V2UI.render(); } catch (e) {}
+      return lines.length;
+    }, function () { return 0; });
+  }
   function rest() {
-    var v = restView;
+    var v = restView, pg;
     if (!v || !v._pages || !(v._pages.pages > 1)) { restView = null; return; }
-    if (underCap(v._pages)) { drain(); return; }
-    var need = Math.min(SCREEN_PAGES, v._pages.pages) - (v._pages.got || 1);
-    if (need > 0) more(need);
+    if (!pageJob) adoptJob(v);
+    restView = null;
+    pg = v._pages;
+    loadNewest(pg).then(function () {
+      if (underCap(pg)) drain();
+      else { var need = Math.min(SCREEN_PAGES, pg.pages) - (pg.got || 1); if (need > 0) more(need); }
+    }, function () { if (underCap(pg)) drain(); });
   }
   var diffBuf = [];
   function takeMine(m) {
@@ -590,7 +674,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=c91e7ab4f2', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=d8c41e7b22', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -633,6 +717,7 @@
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     trimStore();
+    attachBurns(view);
   }
   function trimStore() {
     var i, k, v;
@@ -960,5 +1045,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, attachBurns: attachBurns };
 })();

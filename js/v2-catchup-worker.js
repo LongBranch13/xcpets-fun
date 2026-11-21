@@ -1,7 +1,7 @@
 /* Applies the blocks a snapshot is missing, then stores that world under the current key.
  * The rule file on disk is not changed. This worker evals a copy that can resume. */
 'use strict';
-importScripts('v2-resume.js', 'v2-art.js?v=c91e7ab4f2');
+importScripts('v2-resume.js', 'v2-art.js?v=d8c41e7b22');
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
   self.window = self; self.localStorage = st; self.sessionStorage = st;
