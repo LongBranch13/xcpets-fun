@@ -337,6 +337,18 @@
     var mv = ch.filter(function (q) { return q % 32 > R; }).map(function (q) { var i = q * 4; return [q, D[i], D[i + 1], D[i + 2], D[i + 3]]; });
     mv.forEach(function (m) { var i = m[0] * 4; D[i] = before[i]; D[i + 1] = before[i + 1]; D[i + 2] = before[i + 2]; D[i + 3] = before[i + 3]; });
     mv.forEach(function (m) { var X = L + R - m[0] % 32; if (X < 0) return; var i = (((m[0] / 32) | 0) * 32 + X) * 4; D[i] = m[1]; D[i + 1] = m[2]; D[i + 2] = m[3]; D[i + 3] = m[4]; }); }
+  /* gear-sprites 2026-11-22 (Jake): the DJ Pepe headwear was drawn as small fixed maps that floated above every other species' head.
+   * Studio headphones now hug the head: a band over the crown and padded gold cups over the ears at eye height. The Flat-brim cap gets a real brim and sits on the head.
+   * Render-only (v2-gear.js, a rule file, is untouched; the cap uses a render-side copy of its DEF). */
+  var FLAT_CAP = ['...nnnnnnn...', '..nZZZZZZZn..', '.nZZZGGZZZZn..', '.nZZZZZZZZZn..', 'nnnnnnnnnnnnnnn', '.nZZZZZZZZZZZZn', '..nnnnnnnnnnnn.'];
+  function drawStudioPhones(img, a) { var C = BonusGear.COLORS, D = img.data, hex = function (h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }, INK = hex(C.n), BAND = hex(C.Z), GOLD = hex(C.G), HI = hex(C.g);
+    var ey = a.eyeL ? a.eyeL[1] : a.eyeR ? a.eyeR[1] : a.minY + 5, L = 99, R = -1, x, y; for (x = 0; x < 32; x++) if (a.isSil(x, ey)) { L = Math.min(L, x); R = Math.max(R, x); } if (R < 0) return false;
+    var put = function (x2, y2, c) { if (x2 < 0 || y2 < 0 || x2 > 31 || y2 > 31) return; var i = (y2 * 32 + x2) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; D[i + 3] = 255; };
+    var cx0 = (L + R) >> 1, top = 0; while (top < ey && !a.isSil(cx0, top)) top++; top -= 1; var l = L - 1, r = R + 1;
+    for (y = top; y <= ey; y++) { var rl = 99, rr = -1; for (x = 0; x < 32; x++) if (a.isSil(x, y)) { rl = Math.min(rl, x); rr = Math.max(rr, x); }
+      if (y === top) { var sl = 99, sr = -1; for (x = 0; x < 32; x++) if (a.isSil(x, y + 1)) { sl = Math.min(sl, x); sr = Math.max(sr, x); } for (x = sl; x <= sr; x++) { put(x, y, BAND); put(x, y - 1, INK); } put(sl - 1, y, INK); put(sr + 1, y, INK); } else if (rr >= 0) { put(rl - 1, y, INK); put(rr + 1, y, INK); } }
+    [l - 1, r - 1].forEach(function (cx) { for (y = ey - 2; y <= ey + 2; y++) for (x = cx; x < cx + 3; x++) { var edge = y === ey - 2 || y === ey + 2 || x === cx || x === cx + 2; put(x, y, edge ? INK : (y === ey - 1 ? HI : GOLD)); } });
+    return true; }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -919,9 +931,9 @@
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {};
-          rigidDraw(id, function () {
+          rigidDraw(id, function () { if (id === 'dj-headphones' && drawStudioPhones(img, a)) return; if (id === 'dj-flat-cap') { if (!BonusGear.DEFS['dj-flat-cap~v2']) BonusGear.DEFS['dj-flat-cap~v2'] = Object.assign({}, BonusGear.DEFS['dj-flat-cap'], { dy: 2, map: FLAT_CAP }); id = 'dj-flat-cap~v2'; d = BonusGear.DEFS[id]; }
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && (BROW[a.spId] ? drawBrowBand(img, a, d, BROW[a.spId]) : bandLikeRed(img, key, stage, f, bare, d))) { /* brow, or the red headband footprint */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa, placed = a.spId === 'peepo' ? placePeepoHead(fid, a) : null;
-            if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var tid = placeScaled(fid, a.spId === 'sarutobi' ? 0.58 : 0.85); if (tid) fid = tid; }
+            if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var hd = BonusGear.DEFS[fid], fa0 = fitAnchors(fid, a), hh = hd.map ? hd.map.length : 0, htop = fa0.minY - hh + 1 + (hd.dy || 0); /* gear-sprites 2026-11-22: shrink a hat only when it would leave the canvas, and only as much as needed (a fixed 58%/85% shrink turned hats into smudges and broke lettering) */ if (hh && htop < 0) { var tid = placeScaled(fid, Math.max(0.6, (hh + htop) / hh)); if (tid) fid = tid; } }
             fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); } catch (e) {} }); restoreEyes(); injureAfter(img, a); }); }
     return fr;
   }
