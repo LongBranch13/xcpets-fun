@@ -37,3 +37,9 @@ Health: `http://127.0.0.1:8787/xp/v1/health`
 `XP_SNAPSHOT=0` skips the pet-world build. With snapshots left on, the first ready tip is replayed in a child process (about a minute) and then published at `/xp/v1/world/latest.json`. The same build writes a compact grave index beside that world. `GET /xp/v1/graves?page=&per=` returns one page (24 or 60 rows) plus the counts at `GET /xp/v1/graves/counts`. Cemetery uses that index when this sync base is on, and still paints one page from memory when it is not. Desktop-class browsers re-check that world in the background. verify-pet.html never uses it; that page always replays locally.
 
 Compose and broadcast are unchanged and are not served here. This process answers GET, HEAD and OPTIONS only.
+
+## Follows main by itself (Nov 22 2026)
+
+The world builder no longer depends on the rule files someone copied onto the server. Every 3 minutes (`XP_RULES_EVERY_S`) the service asks GitHub for main's newest commit. When main moved, it downloads the builder's files at that exact commit (rule files, replay worker, `js/v2-sales.js`, `js/v2-art.js`, `tools/sync-server/*.js` and every repo file they name) into `<XP_DATA>/code/<sha12>/`, checks that each script parses and that `snapshot.js` loads, and points `<XP_DATA>/code/current.json` at it. The builder then runs `snapshot.js` from that copy, so the published world has the same rules signature (rsig) as the pages main serves. When the rsig changes it builds right away instead of waiting 6 blocks. Any failure keeps the previous copy. `XP_RULES_FOLLOW=0` turns this off. `/xp/v1/health` shows `rules` (commit, rsig, failures) and `worldRsig`. The service process itself (chain follow, HTTP) is still updated with the server-repair workflow.
+
+Each rsig also keeps its own pointer, `/xp/v1/world/<rsig>/latest.json`. During a rules change, pages that still run the previous rules keep finding the previous world there instead of rebuilding everything in the browser.
