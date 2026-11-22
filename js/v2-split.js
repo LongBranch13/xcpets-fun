@@ -114,6 +114,7 @@
       copy.gid = id;
       if (on != null) copy.on = on;
       items[id] = copy;
+      return copy;
     }
     function addPet(p) {
       if (!p || byId[p.id]) return;
@@ -122,7 +123,9 @@
       if (!copy.art && addPet.prev && addPet.prev[copy.id] && addPet.prev[copy.id].art) copy.art = addPet.prev[copy.id].art;
       pets.push(copy);
       byId[copy.id] = copy;
-      (p.worn || []).forEach(function (g) { addItem(g, copy.id, (typeof copy.owner === 'string' && copy.owner) || addPet.owner || ''); });
+      /* keep the opened worn list on the copy: publishOwner re-assembles from these copies as more owner pages arrive, and a copy
+       * without worn dropped page 0's gear again on the next rebuild (fastcheck, Nov 22 2026). */
+      copy.worn = []; (p.worn || []).forEach(function (g) { var it = addItem(g, copy.id, (typeof copy.owner === 'string' && copy.owner) || addPet.owner || ''); if (it) copy.worn.push(it); });
     }
     function takeDeeds(src) { if (!src) return; Object.keys(src).forEach(function (k) { deeds[k] = src[k]; }); }
     function takeMythic(src) { if (!src) return; Object.keys(src).forEach(function (k) { if (src[k] != null) mythicOwners[k] = src[k]; }); }
