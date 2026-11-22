@@ -2,10 +2,19 @@
 name: tests
 on:
   pull_request:
+    paths-ignore: ['api/**']
   push:
     branches: [main]
+    # Nov 22 2026: the game-server timer commits api/ (the feed) every 20-25 minutes. Each of those started a full
+    # hour-long run of the same code, and about ten runs were stacked at once. Feed-only pushes no longer run the suite.
+    paths-ignore: ['api/**']
 permissions:
   contents: read
+# A newer push to a pull request replaces the run still going for the older one. Pushes to main are never cancelled:
+# each one compares replay against the push before it, so a skipped run would hide a rules change.
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   tests:
     runs-on: ubuntu-latest
