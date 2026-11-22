@@ -410,8 +410,19 @@
   function hiddenIds() { try { return JSON.parse(localStorage.getItem(hidKey()) || '[]'); } catch (e) { return []; } }
   function setHidden(l) { zHidRev++; var seen = new Set(), out = [], i, x; for (i = 0; i < l.length; i++) { x = l[i]; if (seen.has(x)) continue; seen.add(x); out.push(x); } localStorage.setItem(hidKey(), JSON.stringify(out)); }
   function hideLocal(ids) { setHidden(hiddenIds().concat(ids)); var drop = new Set(); for (var i = 0; i < ids.length; i++) { drop.add(ids[i]); drop.add(Number(ids[i])); } S.sel = S.sel.filter(function (x) { return !drop.has(x) && !drop.has(Number(x)); }); save(); render();
-    toast('🗑️ Moved ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to the Discard pile (only in this browser, still on chain). <a href="#" class="undo">Undo</a>', 9000);
-    var u = $('toasts').lastChild.querySelector('.undo'); if (u) u.onclick = function (e) { e.preventDefault(); restoreLocal(ids); this.parentNode.remove(); }; }
+    toast('🗑️ Moved ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to the Discard pile. ' + (hdLive() ? 'Sign the tiny burn to make it permanent on every device. ' : '') + '<a href="#" class="undo">Undo</a>', 9000);
+    var u = $('toasts').lastChild.querySelector('.undo'); if (u) u.onclick = function (e) { e.preventDefault(); hdQueue = hdQueue.filter(function (x) { return ids.indexOf(x) < 0; }); restoreLocal(ids); this.parentNode.remove(); };
+    hdLater(ids); }
+  /* Discard = permanent (owner Nov 22 2026, 'Permanent only'). The pet hides at once in this browser, then ONE on-chain pet:hd burn is offered
+   * for everything discarded in the last moment (1 dander + the Bitcoin fee, however many pets fit the tag). During a hatch or gear review
+   * it waits until the review closes, so sorting eggs asks once. Cancelling leaves them browser-only, and the 'Make my browser discards
+   * permanent' bar keeps offering it. Nothing is signed without the wallet window. */
+  var hdQueue = [], hdTimer = null;
+  function hdLive() { return !!(ME && V.hdOn && V.hdPlan && V.hdOn((S.tip || 0) + 1)); }
+  function hdLater(ids) { if (!hdLive()) return; ids.forEach(function (id) { id = Number(id); if (hdQueue.indexOf(id) < 0) hdQueue.push(id); }); clearTimeout(hdTimer); hdTimer = setTimeout(hdFlush, 900); }
+  function hdFlush() { clearTimeout(hdTimer); if (!hdQueue.length) return; if (rev || ($('packBox') && $('packBox').classList.contains('on'))) return; /* closeReveal flushes */
+    var w = world(), ids = hdQueue.filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && p.hd !== ME && !isKept(id); }); hdQueue = [];
+    if (ids.length) chainDiscardIds(ids, false); }
   function idList(ids) { return '#' + ids.slice(0, 5).join(', #') + (ids.length > 5 ? ' +' + (ids.length - 5) + ' more' : ''); }
   var JUST_BACK = []; /* restore-fix (owner Oct 27 2026, "I can't find my never fed pets I took out of the discard pile"): pets restored this visit go to the top of My Pets, outside the Never fed fold, so they show right away (they used to land folded inside Never fed, often past the first 150 cards) */
   function restoreLocal(ids) { setHidden(hiddenIds().filter(function (x) { return ids.indexOf(x) < 0; })); JUST_BACK = ids.map(Number).concat(JUST_BACK.filter(function (x) { return ids.indexOf(x) < 0; })); render(); toast('↩️ Restored ' + idList(ids) + ' to My Pets. They are at the top of the list.'); }
@@ -635,7 +646,7 @@
   function plural(n, a) { return n.toLocaleString('en-US') + ' ' + a + (n === 1 ? '' : 's'); }
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
     var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be discarded. Unstar them first.', 6000); return; }
-    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never discarded).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. Free, no burn, only in this browser. Undo anytime.')) return;
+    if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never discarded).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. When you close this review you can make it permanent on every device with one tiny burn (1 dander).')) return;
     hideIds(ids); ids = ids.filter(function (id) { return kk.indexOf(id) < 0; }); /* starred pets stay in the review too */ rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
     if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x) && revSpShows(rev.sp, x); })) rev.f = 'all'; }
     if (rev.sp && rev.sp !== 'all') { var w2 = world(); if (!rev.eggs.some(function (id) { var x = w2.byId[id]; return x && revSpShows(rev.sp, x); })) rev.sp = 'all'; }
@@ -750,7 +761,7 @@
   var GEAR_CAPS = [['gm. it\'s something.', 'ser, this is a Common.', 'it\'s honest work.'], ['not bad, anon.', 'a little drip never hurt.', 'up only (slightly).'], ['wen moon? now.', 'rare drip acquired.', 'number go up.'], ['MUCH WOW. VERY RARE.', 'GIGABRAIN DROP.', 'WAGMI. legendary pull.']];
   function UXB_CAP(list) { var best = null; list.forEach(function (x) { var t = x.legendary ? 3 : x.tier || 0; if (!best || t > best.t) best = { t: t, x: x }; });
     return best ? GEAR_CAPS[best.t][(String(best.x.gid || best.x.item).length + best.t) % 3] : ''; }
-  function closeReveal() { var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+  function closeReveal() { setTimeout(hdFlush, 400); var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
     if (toPets && $('petsPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('petsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300);
     if (toInv && $('invPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('invPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300); }
   /* pet total near the hatch buttons (2026-10-19, display only): every pet in the replayed world (w.pets.length, same as the top 'pets hatched'),
@@ -1052,7 +1063,7 @@
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
-    var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Make ' + fmt(n) + ' browser discards permanent');
+    var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');
     if (!plan.one) title = 'This selection does not fit in one 34-byte burn. ' + plan.plans.length + ' exact burns, 1 dander each. ' + (plan.why || '');
     else title += ' · 1 burn · 1 dander, plus the Bitcoin fee.' + (plan.why ? ' ' + plan.why : '');
     confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
