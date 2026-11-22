@@ -54,6 +54,6 @@ eq('resurrection chance formula in the rules is the one the tutorial uses', /P =
 eq('odds table (25, 50, 100, 300, 1000 points; normal | Halloween)', N.resRows.map(p => [T.resChance(p), T.resChance(p, 1)]), [[0.17, 0.2056], [0.25, 0.275], [0.35, 0.3643], [0.5, 0.5037], [0.5955, 0.5959]]);
 eq('Halloween window by block = Oct 31 to Nov 11 (cemHw)', [V.cemHw(N.cemHw[0] - 1), V.cemHw(N.cemHw[0]), V.cemHw(N.cemHw[1]), V.cemHw(N.cemHw[1] + 1)], [false, true, true, false]);
 eq('Resurrection step teaches points, 25 minimum, one roll, dust forever, halo, Halloween bonus, live chance', ['Common 1', 'Uncommon 3', 'Rare 10', 'Legendary 33', '25 points', 'one roll', 'dust forever', 'halo', '+10 bonus points', 'live chance'].every(k => cs.indexOf(k) >= 0), true);
-eq('cemetery card shows the live chance next to Resurrect', /Math\.round\(res\.chance \* 100\) \+ '% chance; a miss turns it to dust/.test(fs.readFileSync(path.join(ROOT, 'js/v2-cemetery-scene.js'), 'utf8')), true);
+eq('cemetery card shows the live chance next to Resurrect', /Resurrect · ' \+ Math\.round\(res\.chance \* 100\) \+ '%/.test(fs.readFileSync(path.join(ROOT, 'js/v2-cemetery-scene.js'), 'utf8')), true);
 eq('no G Money in the tutorial', /G Money/i.test(src), false);
 console.log(fail ? fail + ' FAILED' : 'tutorial: all checks pass'); process.exit(fail ? 1 : 0);
