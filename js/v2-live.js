@@ -36,7 +36,7 @@
     return out; }
   function events(w, V, opt) { opt = opt || {}; var tip = w.tip || 0, from = tip - (opt.window || WINDOW), by = w.byId || {}, out = [], log = w.log || [];
     function P(id) { return by[id]; }
-    function add(e) { if (e.block == null || e.block < from || e.block > tip) return; out.push(e); }
+    function add(e) { if (e.block == null || e.block < from || e.block > tip) return; if (window.XcpSlots && e.t) e.t = e.t.map(function (s) { return typeof s === 'string' ? XcpSlots.text(s) : s; }); out.push(e); } /* slot-names: Drip shows as Cape */
     var feeds = {}, fedIn = {};
     log.forEach(function (l) { if (l.kind !== 'feed' || l.block == null) return; var ids = l.petIds || (l.petId != null ? [l.petId] : []); ids.forEach(function (id) { (feeds[id] = feeds[id] || []).push(l); if (l.block >= from) fedIn[id] = 1; }); });
     Object.keys(feeds).forEach(function (id) { if (!fedIn[id]) delete feeds[id]; });
