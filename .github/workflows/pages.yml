@@ -47,6 +47,14 @@ jobs:
           rsync -a --exclude _site --exclude .git --exclude previews --exclude node_modules ./ _site/
           node tools/pets-pack.js --compact _site/api/pets.json
           echo "staged $(du -sb _site | awk '{print $1}') bytes, pets.json $(wc -c < _site/api/pets.json) bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Never go dark (Nov 22 2026): when this push changes the rules, wait (up to 20 minutes) until the game server has built a
+      # world for the new rules, so players never land on rules the server has no fast world for. Immediate when the rules did
+      # not change; skipped when the server does not follow main yet or does not answer. Never fails the deploy.
+      - name: Wait for the server's world for these rules
+        if: steps.src.outputs.type == 'workflow'
+        continue-on-error: true
+        timeout-minutes: 22
+        run: node tools/worldwatch.js --wait-for-rsig "$(node tools/worldwatch.js --rsig-of-checkout)" --wait 20
       - uses: actions/upload-pages-artifact@v3
         if: steps.src.outputs.type == 'workflow'
         with: { path: _site }
