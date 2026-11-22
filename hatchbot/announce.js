@@ -83,6 +83,13 @@ function collect(V, w, tip, from) {
   const leg = w.pets.filter(p => p && p.hatchBlock > from && p.hatchBlock <= tip && (p.tier | 0) >= 3 && !p.community);
   if (leg.length > 3) add('hatch-leg-' + leg.map(p => p.id).join('.').slice(0, 120), leg[0].hatchBlock, '🌟 LEGENDARY HATCHES! ' + leg.length + ' Legendary pets just hatched: ' + leg.slice(0, 10).map(p => petName(w, p.id, V)).join(', ') + (leg.length > 10 ? ' and more' : '') + '.', 3);
   else leg.forEach(p => add('hatch-leg-' + p.id, p.hatchBlock, '🌟 LEGENDARY HATCH! ' + petName(w, p.id, V) + ' just cracked out of its egg.\n' + link(p.id), 3));
+  /* 2b) raids: boss appears, HP milestones (50%, 25%, 10%), defeated or escaped */
+  (w.raids || []).forEach(R => { const B = V.raidBossById ? V.raidBossById(R.boss) : null, nm = B ? B.name : 'The boss', url = '\nxcpets.fun/raid.html', f = n => Number(n).toLocaleString('en-US');
+    if (R.open > from && R.open <= tip) add('raid-open-' + R.n, R.open, '👹 RAID ' + R.n + ': ' + nm + ' has appeared with ' + f(R.hp) + ' HP! You have 3 days to take it down.' + (R.v2 ? ' Every feed, breed and hatch hits it too.' : '') + url, 4);
+    const live = R.killBlock == null && tip <= R.end, pct = R.hp ? R.left / R.hp * 100 : 100;
+    if (live) [50, 25, 10].forEach(m => { if (pct <= m) add('raid-hp-' + R.n + '-' + m, tip, (m === 10 ? '🩸 ' : '⚔️ ') + nm + ' is down to ' + Math.max(1, Math.ceil(pct)) + '% HP (' + f(R.left) + ' left). ' + f(R.end - tip + 1) + ' blocks to finish it!' + url, m === 10 ? 4 : 3); });
+    if (R.killBlock != null && R.killBlock > from) { const who = R.killPet != null ? petName(w, R.killPet, V) : 'a community burn'; add('raid-kill-' + R.n, R.killBlock, '💥 ' + nm + ' IS DEFEATED! The killing blow came from ' + who + '. Rewards count in 6 blocks.' + url, 5); }
+    if (R.result === 'escaped' && R.decided != null && R.decided > from && (R.order.length || R.chipTotal)) add('raid-esc-' + R.n, R.decided, '💨 ' + nm + ' escaped with ' + f(R.left) + ' HP left. Next boss in a few days.' + url, 2); });
   /* 3) the existing HatchBot hooks: halvings + fire sales, Legendary/Mythic gifts and swaps, Pantheon seats */
   try { require(path.join(ROOT, 'tools/hatchbot-warnings.js')).events(w, tip, V).forEach(e => add(e.id, tip, e.text, 5)); } catch (e) { console.log('warnings hook skipped: ' + e.message); }
   try { require(path.join(ROOT, 'tools/hatchbot-gifts.js')).messages(w).forEach(e => { if (e.at > from) add(e.key, e.at, e.text, 2); }); } catch (e) { console.log('gifts hook skipped: ' + e.message); }

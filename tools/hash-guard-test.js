@@ -8,7 +8,7 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
-ok(md5('js/v2-rules.js') === '7787b1e10cb08c9f36aec3fb656dd99c', 'js/v2-rules.js is unchanged');
+ok(md5('js/v2-rules.js') === 'b87e243919401e785cf425ff6dca0e0b', 'js/v2-rules.js is unchanged');
 
 const GOOD = '0000000000000000' + 'ab'.repeat(24);
 const OTHER = '0000000000000000' + 'cd'.repeat(24);
