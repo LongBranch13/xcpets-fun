@@ -107,6 +107,20 @@ jobs:
             journalctl -D "$J" -u xcpets-sync --since -2h --no-pager -o short-iso 2>/dev/null | tail -30 | scrub | cut -c1-220
             echo "---"
           fi
+          # the separate world builder (XP_SNAPSHOT=0 on the sync service; a watch timer builds instead)
+          for U in xcpets-sync-watch.timer xcpets-sync-watch.service; do F=/mnt/r/etc/systemd/system/$U; [ -f "$F" ] || continue
+            echo "== $U: $(grep -hE '^(OnCalendar|OnUnitActiveSec|OnBootSec|Type|TimeoutStartSec|TimeoutSec|RuntimeMaxSec|MemoryMax|Nice)=' "$F" | tr '\n' ' ')"
+            X=$(grep -m1 '^ExecStart=' "$F" | cut -d= -f2- | grep -oE '/[^ ]+\.(sh|js|py)' | head -1)
+            [ -n "$X" ] && echo "   runs $(basename "$X") ($(wc -l < "/mnt/r$X" 2>/dev/null) lines); its snapshot/world lines:" && grep -nE 'snapshot|latest|world|pending|XP_|timeout|lock' "/mnt/r$X" 2>/dev/null | grep -viE 'token|secret|pass|key|auth' | scrub | cut -c1-200 | head -30
+          done
+          ls -la /mnt/r/etc/systemd/system/timers.target.wants 2>/dev/null | grep -o 'xcpets[^ ]*' | sed 's/^/   enabled timer: /'
+          if [ -d "$J" ]; then
+            echo "--- watch lines, last 40 ---"
+            journalctl -D "$J" -u xcpets-sync-watch.service --since -3d --no-pager -o short-iso 2>/dev/null | tail -40 | scrub | cut -c1-220
+            echo "--- watch lines around 13:00-14:30 UTC ---"
+            journalctl -D "$J" -u xcpets-sync-watch.service --since '2026-11-22 13:00' --until '2026-11-22 14:30' --no-pager -o short-iso 2>/dev/null | tail -25 | scrub | cut -c1-220
+            echo "---"
+          fi
           if [ "$LOOK" = "true" ]; then echo "diagnose only: nothing changed"; umount /mnt/r; exit 0; fi
           echo "swap/memory: $(grep -E 'MemTotal' /proc/meminfo | awk '{print int($2/1024)" MB RAM in rescue"}')"
           N=$(ls -d "/mnt/r$DATA"/pending-* 2>/dev/null | wc -l)
