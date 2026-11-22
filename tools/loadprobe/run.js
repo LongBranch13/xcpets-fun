@@ -22,7 +22,7 @@ function kind(u) { if (/\/view\/own\/[^/]*\.d[.0-9]*json/.test(u)) return 'grave
   if (/\.js(\?|$)/.test(u)) return 'scripts'; if (/\.(png|gif|webp|jpg|svg)(\?|$)/.test(u)) return 'images'; if (/\.(woff2?|ttf)(\?|$)/.test(u)) return 'fonts'; if (/node\.xcpets|counterparty|\/v2\//.test(u)) return 'chain reads'; return 'other'; }
 async function probe(browser, page, addr) {
   const cx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); localStorage.setItem('xcpets-coach-seen', '1'); } catch (e) {} }, addr);
+  await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); localStorage.setItem('xcpets-tut-coach-skip', '1'); } catch (e) {} }, addr);
   const pg = await cx.newPage(), reqs = [], errors = [];
   if (SLOW) { const s = await cx.newCDPSession(pg); await s.send('Network.enable'); await s.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 9e6 / 8, uploadThroughput: 2e6 / 8 }); await s.send('Emulation.setCPUThrottlingRate', { rate: 4 }); }
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 160)));
