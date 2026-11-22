@@ -70,7 +70,9 @@ function collect(V, w, tip, from) {
   /* 1) log lines worth a post */
   (w.log || []).forEach(x => { if (!x || x.block <= from) return; const m = String(x.msg || ''), id = (m.match(/#(\d+)/) || [])[1], k = x.kind + '-' + (x.tx || '') + '-' + x.block + '-' + (id || '');
     if (x.kind === 'raise') add(k, x.block, '🧟 RISE! ' + petName(w, +id, V) + ' clawed its way out of the grave as a zombie' + ((m.match(/\(([\d.]+) times/) || [])[1] ? ' at ' + m.match(/\(([\d.]+) times/)[1] + ' times its death power' : '') + '.\n' + link(id), 3);
-    else if (x.kind === 'resurrect') add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4);
+    else if (x.kind === 'resurrect') { /* the rules log a failed try under the same kind ("...turned to dust forever"), so read the outcome */
+      if (/failed|dust/i.test(m)) add(k, x.block, '💨 So close... ' + petName(w, +id, V) + ' tried to come back, but the resurrection failed. It turned to dust forever.\n' + link(id), 3);
+      else if (/ALIVE again/.test(m)) add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4); }
     else if (x.kind === 'unleash') add(k, x.block, '🩸 UNLEASHED! Zombie ' + petName(w, +id, V) + ' is starving and has been let loose. In 6 blocks it eats one of its owner\'s Mythics...\n' + link(id), 4);
     else if (x.kind === 'mgmeal') { const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1)); add(k, x.block, '💜 A Mythic was devoured! Zombie ' + petName(w, ids[0], V) + ' ate ' + petName(w, ids[1], V) + '. The zombie is cured forever, and the Mythic now rests in a Mythic grave, waiting for a seance.\n' + link(ids[1]), 5); }
     else if (x.kind === 'hunt' && /won|defeated|beat/i.test(m)) add(k, x.block, '⚔️ Zombie hunt! ' + clean(m).slice(0, 200), 2);
