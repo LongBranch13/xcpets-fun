@@ -7,8 +7,11 @@
   root.XcpResume = api;
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  /* A build every 6 blocks finishes near the tip. 8 covers that gap plus a block that arrives while the build runs. */
-  var STALE_MAX = 8;
+  /* How far behind the page the server's world may be and still be caught up in the browser (only the newer burns are applied).
+   * Was 8 (one build interval). 144 (about a day) keeps players on the fast path when the server's builder stalls, as it did on Nov 22 2026.
+   * Checked with tools/rebuild-bench.js --resume-from: catching up 8, 50, 150 and 500 blocks to 977,083 gave the same world as a full replay
+   * (500 blocks, 304 burns: 25 s against a 128 s full replay on the same machine). */
+  var STALE_MAX = 144;
 
   function patchRules(src) {
     var seenFrom = '    var seen = {};\n    if (preRows.length) importLive(w, eng.replay(preRows.map(function (r) { return r.raw; }), blockHashes, { tip: cut - 1 }), cut);';

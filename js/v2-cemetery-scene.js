@@ -337,14 +337,18 @@
       var FER = CE.FERAL || 432, CRU = CE.CRUMBLE || 432, food = v.mfed ? 100 : v.feral ? Math.round(100 * Math.max(0, v.crumbleIn) / CRU) : Math.round(100 * Math.max(0, v.hungerLeft) / FER);
       var foodTxt = v.mfed ? 'Never hungry' : v.feral ? 'Starving · grave in ' + tm(v.crumbleIn) : 'Feral in ' + tm(v.hungerLeft);
       var pts = res.points + (res.bonus || 0), ready = res.points >= min, haloPct = Math.min(100, Math.round(100 * res.points / min));
-      var feed = function (main) { return '<a class="btn' + (main ? '' : ' ghost cv2-small') + '" href="play.html#pet-' + p.id + '" title="Sacrifice Discarded pets to it, gone for good. Picks open on its card in My Pets.">🍖 Feed it' + (main ? ' <small>' + fmt(V.cemCost(w, 'zmeal', b)) + '</small>' : '') + '</a>'; };
-      var halo = function (main) { return '<a class="btn' + (main ? '' : ' ghost cv2-small') + '" href="play.html#pet-' + p.id + '" title="Sacrifice pets or gear: Common ' + PTS[0] + ', Uncommon ' + PTS[1] + ', Rare ' + PTS[2] + ', Legendary ' + PTS[3] + ' halo points. Picks open on its card in My Pets.">' + art('halo', 12) + ' Add halo points' + (main ? ' <small>' + fmt(V.cemCost(w, 'rpl', b)) + '</small>' : '') + '</a>'; };
+      var feed = function (main) { return '<button type="button" class="btn' + (main ? '' : ' ghost cv2-small') + '" data-zsac="zfeed" data-z="' + p.id + '" title="Sacrifice pets from your Discard pile to it, gone for good">🍖 Feed it' + (main ? ' <small>' + fmt(V.cemCost(w, 'zmeal', b)) + '</small>' : '') + '</button>'; };
+      var halo = function (main) { return '<button type="button" class="btn' + (main ? '' : ' ghost cv2-small') + '" data-zsac="rpl" data-z="' + p.id + '" title="Sacrifice pets: Common ' + PTS[0] + ', Uncommon ' + PTS[1] + ', Rare ' + PTS[2] + ', Legendary ' + PTS[3] + ' halo points (gear: on its card in My Pets)">' + art('halo', 12) + ' Add halo points' + (main ? ' <small>' + fmt(V.cemCost(w, 'rpl', b)) + '</small>' : '') + '</button>'; };
       var resB = function (main) { return '<button type="button" class="btn' + (main ? ' cv2-gold' : ' ghost cv2-small') + '" data-res="' + p.id + '"' + (ready ? '' : ' disabled title="Needs ' + min + ' halo points"') + '>😇 Resurrect · ' + Math.round(res.chance * 100) + '%' + (main ? ' <small>' + fmt(V.cemCost(w, 'resurrect', b)) + '</small>' : '') + '</button>'; };
       var acts = '', why = '';
       if (on && mine) {
         if (v.feral || (!v.mfed && v.hungerLeft <= 144)) { acts = feed(true) + halo(false) + (ready ? resB(false) : ''); why = v.feral ? '<b>Anyone can hunt it now.</b> If their pet wins, the zombie becomes theirs. Feed it to make it safe.' : 'Feed it within ' + tm(v.hungerLeft) + ' or it goes feral and can be hunted.'; }
         else if (ready) { acts = resB(true) + halo(false) + (v.mfed ? '' : feed(false)); why = '<b>' + Math.round(res.chance * 100) + '% chance.</b> Win: it lives again as a God, for good. Miss: it turns to dust. More halo points, better odds.'; }
         else { acts = halo(true) + (v.mfed ? '' : feed(false)); why = (min - res.points) + ' more halo point' + (min - res.points === 1 ? '' : 's') + ' to try a Resurrection: a Rare gives ' + PTS[2] + ', a Legendary ' + PTS[3] + '.'; } }
+      /* cem-unleash: the Mythic God path on the card. The burn itself stays on the zombie's My Pets card, which holds the live-tip safety checks. */
+      if (on && mine && V.mgView && !v.mfed) { var mv = null; try { mv = V.mgView(w, p, b); } catch (e) { mv = null; }
+        if (mv && mv.unleash) why += '<br>💜 <b>Unleashed:</b> it eats one of your Mythics in ' + tm(mv.unleash.left) + '.';
+        else if (mv && v.feral && !mv.unleashWhy) { acts += '<a class="btn ghost cv2-small cv2-violet" href="play.html#pet-' + p.id + '" title="It eats one of your Mythics held 30 days, is cured for good, and the Mythic leaves a violet grave you can raise into a Mythic God. Once every 30 days. Opens on its card in My Pets.">💜 Unleash on a Mythic</a>'; } }
       else if (on && !mine) {
         if (ME && v.feral && !v.mfed) { acts = '<button type="button" class="btn cv2-red" data-hunt="' + p.id + '">⚔️ Hunt it <small>' + fmt(V.cemCost(w, 'hunt', b)) + '</small></button>'; why = '<b>Feral:</b> win the fight and this zombie is yours.'; }
         else why = v.mfed ? 'Cured by a Mythic meal: it can never be hunted.' : v.feral ? 'Feral: connect a wallet to hunt it.' : 'Fed, so it can’t be hunted. It goes feral in ' + tm(v.hungerLeft) + ' unless its owner feeds it.'; }
@@ -376,7 +380,7 @@
         else if (v.hungerLeft <= 144) u = { k: 'hungry', n: 1, p: p, v: v, t: v.hungerLeft };
         else if (r.points >= min) u = { k: 'res', n: 2, p: p, v: v };
         if (u && (!best || u.n < best.n || (u.n === best.n && (u.t || 0) < (best.t || 0)))) best = u; }); return best; }
-    function nextCard(mine) { if (!ME || !on) { nextBox.hidden = true; return; } var u = urgent(mine), feed = function (p) { return '<a class="btn" href="play.html#pet-' + p.id + '">🍖 Feed ' + esc(p.name || '#' + p.id) + '</a>'; }, h = '', img = '';
+    function nextCard(mine) { if (!ME || !on) { nextBox.hidden = true; return; } var u = urgent(mine), feed = function (p) { return '<button type="button" class="btn" data-zsac="zfeed" data-z="' + p.id + '">🍖 Feed ' + esc(p.name || '#' + p.id) + '</button>'; }, h = '', img = '';
       if (u) { var nm = esc(u.p.name || '#' + u.p.id), r = u.v.res || {}; img = art(u.k === 'res' ? 'halo' : u.k === 'feral' ? 'feral' : 'zombie', 48);
         if (u.k === 'feral') h = '<p class="cv2-next-k">⚠ Do this next</p><b class="cv2-next-h">' + nm + ' is FERAL. Anyone can hunt it and take it from you.</b><p class="small">Feed it a Discarded pet and it is safe again. It turns back into a grave in ' + tm(u.v.crumbleIn) + '.</p><div class="cv2-next-acts">' + feed(u.p) + '</div>';
         else if (u.k === 'hungry') h = '<p class="cv2-next-k">⏳ Do this next</p><b class="cv2-next-h">' + nm + ' goes feral in ' + tm(u.v.hungerLeft) + '.</b><p class="small">Feed it a Discarded pet before then, or other players can hunt it.</p><div class="cv2-next-acts">' + feed(u.p) + '</div>';
@@ -385,7 +389,8 @@
       nextBox.hidden = !h; if (!h) { nextBox.innerHTML = ''; return; } nextBox.className = 'cv2-next' + (u && u.k === 'feral' ? ' bad' : u && u.k === 'hungry' ? ' warn' : '');
       nextBox.innerHTML = '<div class="cv2-next-ico">' + img + '</div><div class="cv2-next-t">' + h + '</div>';
       var ez = $('cemNextEasy'); if (ez) ez.onclick = function () { setDoor('raise', true); var q = $('cemEasiest'); if (q) q.click(); var f = $('cemFinder'); if (f) f.scrollIntoView({ block: 'start', behavior: 'smooth' }); }; }
-    nextBox.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
+    nextBox.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true);
+      var sc = e.target.closest('[data-zsac]'); if (sc) { var zid = +sc.getAttribute('data-z'); sacJs(function () { syncWorld(); if (window.V2CemSacrifice) V2CemSacrifice.open({ kind: 'zfeed', z: zid, w: w, V: V, R: R, ME: ME, b: b, send: function (L, title) { go(L, title); } }); }); } });
     function zombies() { var Z = zAll(), C = w.cem || {}, HB = C.huntedBy || {}, top = Object.keys(HB).sort(function (a, c) { return HB[c] - HB[a]; }).slice(0, 5);
       var vw = {}; Z.forEach(function (p) { vw[p.id] = V.cemView(w, p, b); });
       Z.sort(function (a, c) { var x = vw[a.id], y = vw[c.id]; return (y.feral - x.feral) || (x.crumbleIn - y.crumbleIn) || a.id - c.id; });
@@ -408,7 +413,8 @@
           '<p><a class="btn ghost cem-pantheon" href="pantheon.html">🌕 The Pantheon: 21 seats for 21 Mythic Gods</a></p>'; }
       zs.innerHTML = html;
       list.forEach(function (p) { var c = zs.querySelector('canvas[data-z="' + p.id + '"]'); if (c && p.art && R.lazy) R.lazy(c, function () { return R.framesWith(p.art, Math.max(5, p.stage), []); }, true); }); }
-    zs.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
+    zs.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true);
+      var sc = e.target.closest('[data-zsac]'); if (sc) { var zid = +sc.getAttribute('data-z'), kind = sc.getAttribute('data-zsac'); sacJs(function () { syncWorld(); if (window.V2CemSacrifice) V2CemSacrifice.open({ kind: kind, z: zid, w: w, V: V, R: R, ME: ME, b: b, send: function (L, title) { go(L, title); } }); }); } });
     /* cemetery-handoff (Nov 1 2026): zombie meal / Resurrection pledge / Resurrection / hunt are signed right here (V2CemeteryAltar.sendPlans, same
      * send guard as play.html) instead of a redirect to play.html#cem-...; the old link stays only as a fallback if the altar file fails to load */
     function go(L, title) { var tags = L.map(function (p) { return p.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (p) { return V.cemPetAmount ? V.cemPetAmount(w, p, b) : p; }), ctx); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }
@@ -492,6 +498,8 @@
   /* cem-guide: v2-cem-guide.js needs the badges (V2CemArt) first; both load once with this script's ?v token */
   function guideJs(cb) { if (window.V2CemGuide) return cb(); var v = ver(), add = function (src, done) { var sc = document.createElement('script'); sc.src = src + (v ? '?' + v : ''); sc.onload = done; document.head.appendChild(sc); };
     var go = function () { add('js/v2-cem-guide.js', cb); }; if (window.V2CemArt) go(); else { var t = setInterval(function () { if (window.V2CemArt) { clearInterval(t); go(); } }, 50); setTimeout(function () { clearInterval(t); }, 20000); } }
+  /* cem-sacrifice (step 4): the feed / halo-points sheet, loaded on first use with this script's ?v token */
+  function sacJs(cb) { if (window.V2CemSacrifice) return cb(); var v = ver(), sc = document.createElement('script'); sc.src = 'js/v2-cem-sacrifice.js' + (v ? '?' + v : ''); sc.onload = cb; document.head.appendChild(sc); }
   function artJs(cb) { if (window.V2CemArt) return; if (document.getElementById('cemArtJs')) return; var v = ver(), sc = document.createElement('script'); sc.id = 'cemArtJs'; sc.src = 'js/v2-cemetery-art.js' + (v ? '?' + v : ''); sc.onload = cb; document.head.appendChild(sc); }
   /* THE gravestone (option C, owner's pick Oct 29 2026): loaded once, then every finder card draws its stone */
   function stoneJs(cb) { if (window.V2Gravestone) return cb(); (S.gsQ = S.gsQ || []).push(cb); if (S.gsQ.length > 1) return; var v = ver(), sc = document.createElement('script'); sc.src = 'js/v2-gravestone.js' + (v ? '?' + v : '');
