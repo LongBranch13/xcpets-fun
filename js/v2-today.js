@@ -3,6 +3,7 @@
  *   🍖 hungry pets      -> jumps to the existing "Feed hungry" button (the wallet still signs that burn)
  *   🪦 pets in danger   -> sorts My Pets by most urgent
  *   ⚔️ pets that can fight today -> X Circus Kekimus
+ *   🍽️ countdown to the next feed day (every 144 blocks)
  *   🔥 check-in streak  -> days in a row this browser opened the game (visits only, never money spent)
  * It replaces the one-line "next best action" hint (#ipNba) while it shows. Reads the page's world (V2Mock.world) every 2 s
  * and repaints only when the tip, the wallet or the pet count changed. */
@@ -38,6 +39,7 @@
     s.textContent = 
       '#todayCard h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}' +
       '#todayCard .td-day{font:12px "Press Start 2P",monospace;opacity:.75}' +
+      '#todayCard .td-next{font-size:12px;opacity:.85;white-space:nowrap}' +
       '#todayCard .td-streak{margin-left:auto;font:11px/1.4 "Press Start 2P",monospace;padding:6px 10px;border:2px solid #2b2b2b;border-radius:8px;background:#ffe27a;color:#2b2b2b;box-shadow:0 3px 0 #2b2b2b;white-space:nowrap}' +
       '#todayCard .td-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}' +
       '@media (max-width:640px){#todayCard .td-grid{grid-template-columns:1fr}}' +
@@ -84,7 +86,9 @@
     var soon = danger.length ? Math.min.apply(null, danger.map(function (p) { return p.deathBlock - w.tip; })) : 0;
     var fight = L.filter(function (p) { return p.stage >= 2 && !p.neglected && !(p.fightDays && p.fightDays[day]); }).length;
     var partial = w._pages && !w._full;
+    var nextIn = BPD - ((w.tip || 0) % BPD); /* players asked almost daily when the next feed day starts (Telegram review, Nov 22 2026) */
     c.innerHTML = '<h2 class="sec" data-ico="flame">Today <span class="td-day">game day ' + fmt(day) + (partial ? ' · still loading your pets' : '') + '</span>' +
+      '<span class="td-next" title="A new game day starts every 144 blocks. Pets fed today can eat again then.">🍽️ new feed day in ~' + left(nextIn) + ' (' + nextIn + ' block' + (nextIn === 1 ? '' : 's') + ')</span>' +
       '<span class="td-streak" title="Days in a row you opened XCPETS on this device. Best: ' + STREAK.best + '">🔥 ' + STREAK.n + '-day streak</span></h2>' +
       '<div class="td-grid">' +
       (hungry ? tile('feed', '🍖', fmt(hungry), 'hungry', pick(SAY.hungry, day), '') : tile('pets', '🍖', '0', 'hungry', pick(SAY.fed, day), 'td-ok')) +
