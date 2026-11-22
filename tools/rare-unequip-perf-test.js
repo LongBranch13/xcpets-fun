@@ -136,7 +136,7 @@ const INIT = `(() => {
       const dom = Array.prototype.map.call(document.querySelectorAll('#rrDress .dr-slots canvas[data-gic]'), cv => cv.getAttribute('data-gic')).sort();
       return {
         clickMs: clickMs, hash: location.hash, dress: !!document.querySelector('#rrDress'),
-        strip: document.querySelectorAll('#drStrip .dr-pt').length,
+        strip: document.querySelectorAll('#drStrip .dr-pt, #drChg').length /* pet-picker: the strip is now one Change pet bar (js/v2-pick.js) */,
         pid: pid, sameGear: worn.join() === dom.join(), wornN: worn.length,
         longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0),
         delay: Math.max(0, ...delays)

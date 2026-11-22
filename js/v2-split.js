@@ -265,10 +265,15 @@
       }) : Promise.resolve(null);
       return Promise.all([sigP, summaryP, pageP]).then(function (got) {
         var rsig = got[0], summary = got[1], own = got[2];
-        if (!rsig || rsig !== latest.rsig) throw new Error('rules');
+        /* never-slow (Nov 22 2026): a rules update can go live before the server has built a world for it (Seasons, PR 129: the
+         * server was out of memory). A full replay in the browser then took 1-2 minutes on every page. New rules only start at a
+         * future ACTIVATE_*_BLOCK (old eras are frozen), so the newest world built with the previous rules shows the same pets.
+         * Paint from it. The check worker still resumes it with this page's rules before any burn opens, and the bar says so. */
+        if (!rsig) throw new Error('rules');
+        var otherRules = rsig !== latest.rsig;
         if (!summary || (summary.v !== 1 && summary.v !== 2 && summary.v !== 3) || summary.tip !== latest.tip || summary.rsig !== latest.rsig) throw new Error('summary');
         lastSummary = summary;
-        last = { man: { tip: latest.tip, rsig: latest.rsig, view: true }, url: manUrl, tip: chainTip };
+        last = { man: { tip: latest.tip, rsig: latest.rsig, view: true, other: otherRules }, url: manUrl, tip: chainTip };
         function paint(owners) {
           if (owners) viewOwners = owners;
           if (own && own.page) openOwnerPets(own.page, who);
@@ -730,7 +735,8 @@
     }
     var behind = last && last.tip && view && view.tip ? last.tip - view.tip : 0;
     var lag = behind > 0 ? ' <span class="muted">(' + behind + ' block' + (behind === 1 ? '' : 's') + ' behind the tip)</span>' : '';
-    bar.innerHTML = 'Published world at block <b id="splitViewTip"></b>' + lag + '. <button type="button" class="q" id="splitVerify">Verify</button>';
+    var newRules = last && last.man && last.man.other ? ' <span class="muted">(built just before the latest rules update; the new world is on its way)</span>' : '';
+    bar.innerHTML = 'Published world at block <b id="splitViewTip"></b>' + lag + newRules + '. <button type="button" class="q" id="splitVerify">Verify</button>';
     var t = document.getElementById('splitViewTip');
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
