@@ -1,0 +1,52 @@
+# HatchBot commands (/meme, /chainday, /help) on Cloudflare Workers (free plan). Deploys hatchbot/worker.js, then points
+# the Telegram bot at it and sets its command list. Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, TELEGRAM_BOT_TOKEN.
+# Until they are set this job does nothing.
+name: hatchbot-worker
+on:
+  push:
+    branches: [main]
+    paths: ['hatchbot/worker.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
+  workflow_dispatch: {}
+permissions: { contents: read }
+concurrency: { group: hatchbot-worker, cancel-in-progress: false }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+    steps:
+      - name: Check setup
+        id: ready
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "::notice::HatchBot commands are not set up yet (Cloudflare + Telegram secrets)."; echo "go=" >> "$GITHUB_OUTPUT"; else echo "go=1" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go
+        with: { node-version: '20' }
+      - name: Build meme list
+        if: steps.ready.outputs.go
+        run: node hatchbot/build-memes.js
+      - name: Deploy worker
+        if: steps.ready.outputs.go
+        working-directory: hatchbot
+        run: |
+          npx --yes wrangler@3 deploy
+          printf '%s' "$TELEGRAM_BOT_TOKEN" | npx --yes wrangler@3 secret put TELEGRAM_BOT_TOKEN
+      - name: Point Telegram at the worker
+        if: steps.ready.outputs.go
+        run: |
+          SUB=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).result.subdomain))")
+          URL="https://hatchbot.$SUB.workers.dev/tg"
+          SECRET=$(node -e "console.log(require('crypto').createHash('sha256').update('hatchbot:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,48))")
+          API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
+          curl -fsS "$API/setWebhook" -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true" -o /dev/null
+          CMDS='[{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"help","description":"List HatchBot commands"}]'
+          for SCOPE in '{"type":"default"}' '{"type":"all_group_chats"}' '{"type":"all_private_chats"}'; do
+            curl -fsS "$API/deleteMyCommands" --data-urlencode "scope=$SCOPE" -o /dev/null || true
+            curl -fsS "$API/setMyCommands" --data-urlencode "commands=$CMDS" --data-urlencode "scope=$SCOPE" -o /dev/null
+          done
+          curl -fsS "$API/getWebhookInfo" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).result;console.log('webhook ok:', !!r.url, 'pending:', r.pending_update_count, 'last error:', r.last_error_message||'none')})"
