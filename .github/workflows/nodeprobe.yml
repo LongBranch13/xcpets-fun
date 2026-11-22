@@ -1,0 +1,24 @@
+# Node probe (Nov 22 2026): is the published world keeping up? Prints only public numbers from node.xcpets.fun's health and latest.json
+# (tips, lags, build time). Runs by hand and when this file changes on a branch.
+name: nodeprobe
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/nodeprobe.yml']
+permissions: { contents: read }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health and latest world
+        run: |
+          for i in 1 2 3; do
+            node -e "
+              const get = u => fetch(u + '?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+              Promise.all([get('https://node.xcpets.fun/xp/v1/health'), get('https://node.xcpets.fun/xp/v1/world/latest.json'), get('https://xcpets.fun/api/meta.json').catch(() => ({}))]).then(([h, l, m]) => {
+                const pick = o => Object.fromEntries(Object.entries(o).filter(([k, v]) => typeof v === 'number' || typeof v === 'boolean' || v === null || /At$|^rsig$|^v$/.test(k)));
+                console.log(new Date().toISOString(), JSON.stringify({ health: pick(h), latest: pick(l), feedTip: m.blockHeight || m.tip || null }));
+              }).catch(e => console.log('probe failed:', e.message));"
+            sleep 20
+          done

@@ -59,6 +59,7 @@ function createServer(opts) {
     if (p === '/xp/v1/health') {
       const s = getState() || {};
       const body = { tip: s.tip || 0, coreHeight: s.coreHeight || 0, lag: s.lag || 0, lastBlockAt: s.lastBlockAt || null, lastSnapshotTip: s.world && s.world.tip || 0, snapshotLag: s.ready ? Math.max(0, (s.tip || 0) - ((s.world && s.world.tip) || 0)) : null, upstream: s.upstream === 'private' ? 'private' : 'public' };
+      try { if (typeof s.snap === 'function') body.builder = s.snap(); } catch (e) { } /* numbers and short codes only, no paths */
       send(req, res, 200, body, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
     }
     if (p === '/xp/v1/sync') {

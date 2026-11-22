@@ -260,10 +260,27 @@
     }
     el._onReady = opts.onReady || null;
     el.setAttribute('data-xmode', opts.mode);
+    if (opts.mode !== 'rare') browse(el);
     if (opts.before && opts.before.parentNode === parent) parent.insertBefore(el, opts.before);
     else if (el.parentNode !== parent) parent.appendChild(el);
     paint(el);
     return el;
+  }
+  /* Nov 22 2026 (Jake: "other wallets dont show"): an empty Other wallets / opponents list looked broken. On first open, load one
+   * screen from each of the top 3 players by XCPETS burned (the published leaderboard, not this wallet), so there is always
+   * someone to pick. Typing an address or a pet number still loads anyone. Display only. */
+  var browsed = false;
+  function browse(el) {
+    if (browsed) return; var w = world(), lb = w && w.community && w.community.leaderboard; if (!lb || !lb.length) return;
+    var own = me(), picks = lb.map(function (x) { return x && x.address; }).filter(function (a) { return a && a !== own && parse(a).ok; }).slice(0, 3);
+    if (!picks.length) return; browsed = true;
+    var st = boxes[el.id] || (boxes[el.id] = { q: '', msg: '' }); st.busy = true; paint(el);
+    var n = 0, i = 0;
+    (function next() {
+      if (i >= picks.length) { st.busy = false; st.msg = n ? 'Showing ' + n + ' pets from the top ' + picks.length + ' players. Type a wallet address or a pet number for anyone else.' : ''; paint(el);
+        var nodes = root.document ? document.querySelectorAll('.xlook') : [], k; for (k = 0; k < nodes.length; k++) { var fn = nodes[k]._onReady; if (fn) try { fn({ ok: true, browse: true }); } catch (e) {} } return; }
+      loadOwner(picks[i++], { cap: 3 }).then(function (res) { n += (res && res.pets && res.pets.length) || 0; next(); }, function () { next(); });
+    })();
   }
   root.V2Lookup = {
     PAGE_CAP: PAGE_CAP, parse: parse, rev: function () { return rev; }, last: function () { return last; },
