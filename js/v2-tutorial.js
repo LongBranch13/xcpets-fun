@@ -225,7 +225,7 @@
       ['Rare surprises', 'Twins 1 in 50, mutations 1 in 100, and hidden traits like Odd eyes (gold, ice, toxic or magenta).']],
       quiz: [['What stage must both parents be?', ['Adult or older', 'Hatchling', 'Any'], 0], ['How often are twins?', ['1 in 50', '1 in 2', 'Never'], 0]] },
     { id: 'gear', ico: '🎡', t: 'Gear & spins', s: 'Drip, slots, the Pepe Wheel', steps: [
-      ['Six slots', 'Headwear, Guise, Cape, Grip, Outfits and Footwear. From block 973,560 every pet has all 6 open, whatever its age, feeding, tier or stage.'],
+      ['Six slots', 'Headwear, Guise, Drip, Grip, Armor and Footwear. From block 973,560 every pet has all 6 open, whatever its age, feeding, tier or stage.'],
       ['The Pepe Wheel', 'Spin for gear in The Rare Room. Each spin is a small burn: the Play page shows the live amount. Saved spins from lucky drops cost only the Bitcoin fee. Each copy you own makes that item a bit less likely, so duplicates are rarer.']],
       quiz: [['How many gear slots does a Mythic have?', ['6', '2', '1'], 0]] },
     { id: 'shop', ico: '🛒', t: 'Shop & gifting', s: 'Spam City Games', steps: [
@@ -335,9 +335,17 @@
   }
   function welcome(onPlay) {
     ls(SEEN, '1');
-    tip('<b>New here, keeper?</b> I\'m Coach Peepo. Want a quick tour? It takes about 2 minutes.', [
+    /* Place pages (Circus, Motel, Raid): a small chip instead of the big card, so the place's scene stays in view. Tap to open the full welcome. */
+    var sp = document.body && document.body.dataset.split;
+    if (!onPlay && /^(fight|breed|raid)$/.test(sp || '')) {
+      var c = el('button', 'tut-tip tut-chip', '🐸 New here? 2-min tour'); c.type = 'button'; c.setAttribute('aria-label', 'Coach Peepo: new here? Open the 2-minute tour');
+      var x = el('span', 'tut-chip-x', '✕'); x.setAttribute('aria-label', 'Dismiss'); x.onclick = function (e) { e.stopPropagation(); c.remove(); }; c.appendChild(x);
+      c.onclick = function () { c.remove(); full(); }; document.body.appendChild(c); return;
+    }
+    full();
+    function full() { tip('<b>New here, keeper?</b> I\'m Coach Peepo. Want a quick tour? It takes about 2 minutes.', [
       ['No thanks', null, 'q'], ['🎓 The Big Beautiful Tutorial', null, 'q', 'tutorial.html'],
-      onPlay ? ['▶ Show me around', coach, 'btn'] : ['▶ Start the tour', null, 'btn', 'play.html?coach=1']]);
+      onPlay ? ['▶ Show me around', coach, 'btn'] : ['▶ Start the tour', null, 'btn', 'play.html?coach=1']]); }
   }
 
   /* ---------- Play page coach marks: spotlight + pointing hand on the REAL buttons, one action per step ---------- */

@@ -48,7 +48,7 @@
     var rh = (p.art && p.art.rareHatch && p.art.rareHatch.version === 1 && p.art.rareHatch) || (p.rareHatch && p.rareHatch.version === 1 && p.rareHatch) || null;
     if (rh && rh.kind) { out.push(rh.kind, String(rh.kind).replace(/-/g, ' ')); var WK = { tiny: 1, giant: 1, 'two-headed': 1, inverted: 1, ghost: 1, backwards: 1, 'wrong-egg': 1 }, LK = { djpepe: 1, wizard: 1, kek: 1, god: 1 }; if (WK[rh.kind]) out.push('weird', 'birth'); if (LK[rh.kind]) out.push('legend', 'legendary'); }
     try { if (w && V2.wornOf) V2.wornOf(w, p.id).forEach(function (g) { out.push('gear', g.label, g.item, g.slot, TL[g.tier] || '', g.legendary ? 'legendary' : '');
-      try { out.push(V2.slotLabel(g.slot)); if (g.slot === 'back') out.push('Drip'); } catch (e) { } /* slot-names: the old name still finds Cape pieces */ }); } catch (e) { }
+      try { out.push(V2.slotLabel(g.slot)); if (g.slot === 'body') out.push('Outfits'); } catch (e) { } /* slot-names: the old name still finds Armor pieces */ }); } catch (e) { }
     return out.filter(Boolean).join(' | ').toLowerCase(); }
   function cmp(a, op, b) { return op === '>' ? a > b : op === '>=' ? a >= b : op === '<' ? a < b : op === '<=' ? a <= b : a === b; }
   function one(t, p, h) { var m = /^([a-z]+)\s*(>=|<=|>|<|=|:)\s*(\d+)$/.exec(t);
