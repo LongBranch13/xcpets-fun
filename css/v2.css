@@ -602,3 +602,8 @@ a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:point
   #v2stale,#dexStaleNote,.bwc-note,#confirmBox .box,#confirmBox #cfBody,#confirmBox #pgt{overflow-wrap:anywhere}
   #dexStaleNote{left:max(8px, env(safe-area-inset-left)) !important;right:max(8px, env(safe-area-inset-right)) !important;bottom:max(8px, env(safe-area-inset-bottom)) !important;max-width:calc(100vw - 16px) !important;box-sizing:border-box !important}
 }
+/* place-first (Nov 22 2026, display only): on a place page (Circus, Motel, Raid, Rare Room) the place itself comes right after the
+ * Town bar. The wallet panel (balance, My Pets, view by address) moves below it; the header's Connect wallet stays on top.
+ * Before, a phone showed the header, the wallet panel and the address box first, and the place started below the fold. */
+body[data-split]:not([data-split="play"]) main{display:flex;flex-direction:column}
+body[data-split]:not([data-split="play"]) main>#topBar{order:1}
