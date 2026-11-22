@@ -1,0 +1,65 @@
+/* phone.css (Nov 22 2026, display only): the phone layout pass. Everything is inside one phone-width query, so tablets,
+ * laptops and desktops are untouched. Loaded on every page. Rules are prefixed with "html body" so they win over the
+ * stylesheets and injected <style> blocks that load later, without !important.
+ * Left alone on purpose: the place scenes (.ar-scene, .motel-scene, .shop-scene, .raid-scene and later .<place>-scene,
+ * owned by the living-scenes work), js/v2-sharp.js, css/mobile-fullscreen.css, the place-first block in css/v2.css,
+ * Coach Peepo, selection chips (.lq-chip) and the pickers' own cards. Never touches rules, tags, burns or costs. */
+@media (max-width:600px){
+
+  /* 1 · header: the nav row fits on one 390px line. Before, Ranking hung 36px past the right edge
+     (the row scrolled sideways with no hint). Ranking becomes a trophy button; its text stays for screen readers. */
+  html body header.nav{padding-left:8px;padding-right:8px}
+  html body header.nav nav{gap:4px;overflow-x:visible}
+  html body header.nav nav > a,html body header.nav nav > details{margin-left:0;margin-right:0}
+  html body header.nav nav a.navplay{margin:0}
+  html body header.nav nav details.navplaces > summary{padding-left:7px;padding-right:7px}
+  html body header.nav nav a.navrank{order:9;font-size:0;width:44px;min-width:44px;min-height:40px;padding:0;justify-content:center;
+    border:2px solid #000;border-radius:4px;background:#1d1530;box-shadow:2px 2px 0 #000;box-sizing:border-box}
+  html body header.nav nav a.navrank::before{content:"\1F3C6";font-size:18px;line-height:1}
+  html body header.nav nav a.navrank[aria-current="page"]{background:#24402f}
+  html body header.nav .xc-snav .xc-sm{margin-left:0;padding-left:8px;padding-right:8px}
+
+  /* 2 · header icon buttons (sound, book, receipts): 40px squares instead of 30 to 34px */
+  html body header.nav .ip-tools{gap:4px;right:8px;top:4px}
+  html body header.nav .ip-tools > a,html body header.nav .ip-tools > button{min-width:40px;min-height:40px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
+  html body #xc-music.hdr{height:40px}
+  html body #xc-music.hdr.abs{top:4px}
+  html body #xc-music.hdr #xc-music-btn{width:40px;height:40px}
+  html body #xc-music.hdr #xc-music-knob{height:40px;width:20px}
+  html body #xc-music.hdr #xc-music-pan{top:46px}
+
+  /* 3 · small "?" help buttons keep their look but get a 44px tap area */
+  html body .ip-q{position:relative}
+  html body .ip-q::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+
+  /* 4 · form fields: 16px text stops iPhones zooming the page when a box is tapped, and every field is a 44px target */
+  html body input:is([type="text"],[type="number"],[type="search"],[type="email"],[type="url"],:not([type])),html body select,html body textarea{font-size:16px}
+  html body input:is([type="text"],[type="number"],[type="search"],:not([type])),html body select{min-height:44px;box-sizing:border-box}
+  html body xc-select{min-height:44px}
+  html body input[type="checkbox"],html body input[type="radio"]{width:22px;height:22px;min-width:22px;vertical-align:middle;accent-color:#3ddc84}
+
+  /* 5 · plain buttons and button-looking links: at least 44px tall (chips, pickers and in-scene controls keep their size) */
+  html body main :is(button.btn,a.btn,button.q,a.q):not(.lq-chip):not([class*="pk-"]):not(.ez-c):not(.ip-q):not([class*="-scene"] *){min-height:44px;box-sizing:border-box}
+  html body main :is(a.btn,a.q):not([class*="-scene"] *){display:inline-flex;align-items:center;justify-content:center}
+
+  /* 6 · Circus: the Challenge button rides along the bottom of the screen while you scroll the two pet lists */
+  html body[data-split="fight"] #arenaPanel .ez-foot{position:sticky;bottom:0;z-index:7;background:inherit;
+    margin-left:-8px;margin-right:-8px;padding:6px 8px max(8px,env(safe-area-inset-bottom));box-shadow:0 -4px 0 rgba(0,0,0,.35)}
+  html body[data-split="fight"] #arenaPanel .ez-box{background-clip:padding-box}
+
+  /* 7 · Raid: bigger pet rows, a real-size amount box and an attack button that stays in view */
+  html body .rd-atk .rd-pet{display:flex;align-items:center;min-height:44px;box-sizing:border-box}
+  html body .rd-atk p:has(#rdGo){position:sticky;bottom:0;z-index:7;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px -8px 0;
+    padding:8px 8px max(8px,env(safe-area-inset-bottom));background:#fff4dc;border-top:3px solid #000}
+  html body .rd-atk #rdAmt{width:7.5em;font-size:16px;min-height:44px}
+  html body .rd-atk #rdGo{flex:1 1 140px;min-height:52px}
+
+  /* 8 · Live feed rows: share and Telegram buttons and the # link are 44px targets */
+  html body :is(.lv-sh,.lv-tg){min-height:44px;display:inline-flex;align-items:center}
+  html body .lv-perma{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:44px}
+
+  /* 9 · nothing pokes past the right edge: long words and addresses wrap, pictures shrink to fit */
+  html body main{overflow-wrap:break-word}
+  html body main :is(img,video){max-width:100%}
+  html body main pre{max-width:100%;overflow-x:auto}
+}
