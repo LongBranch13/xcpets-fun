@@ -1,1 +1,0 @@
---pages fight.html,breed.html,breed.html?pooldemo=1,raid.html,pantheon.html,pantheon.html?demo=1
