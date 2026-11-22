@@ -1265,6 +1265,11 @@
   function renderInv(w) {
     var items = w.itemList.filter(function (g) { return g.owner === ME; }), box = $('inv'); var nFree = items.filter(function (g) { return g.on == null; }).length; $('invCount').textContent = items.length; if ($('invCountTxt')) $('invCountTxt').textContent = (items.length === 1 ? 'piece' : 'pieces') + ' of gear · ' + nFree + ' unworn'; /* one gear count (owner Oct 20 2026): same 'N pieces · U unworn' as the Lair */
     $('tokens').textContent = String(V.tokensOf(w, ME)); // roll tokens this wallet's pets found (each already became a free gear item)
+    /* freeze-hunt (Nov 22 2026): the first render runs before js/ux-batch.js has loaded, so it drew this whole per-piece grid (one icon per
+     * gear piece; the 0.3 to 1 s freeze when My Pets opens, measured) and ux-batch threw it away right after. Hidden panel: skip it.
+     * ux-batch still loading: wait one turn and let it paint its own stash. */
+    var ipn = $('invPanel'); if (ipn && ipn.hidden) return;
+    if (!window.UXB && (renderInv.n = (renderInv.n || 0) + 1) <= 100 && document.querySelector('script[src*="js/ux-batch.js"]')) { clearTimeout(renderInv.t); renderInv.t = setTimeout(function () { var w2 = world(); if (window.UXB && UXB.paintInv) { if (lairOn()) UXB.paintInv(w2); } else renderInv(w2); }, 50); return; }
     if (window.UXB && UXB.paintInv) return; /* lair-perf (Oct 20 2026): ux-batch paints #inv (My stash / Collection log) right after, so this per-piece grid (2,000+ icons for big owners) was drawn and thrown away */
     var cat = V.catalogBySlot(), slots = invSlot === 'all' ? V.V2_SLOTS : [invSlot];
     var h = '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (invView === 'mine' ? ' on' : '') + '" data-iv="mine">My gear by slot</button><button type="button" class="tab' + (invView === 'all' ? ' on' : '') + '" data-iv="all">Every piece by slot (' + V.ALL_GEAR.length + ')</button></div>' +
