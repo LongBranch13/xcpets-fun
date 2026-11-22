@@ -1,0 +1,31 @@
+# Fast vs full check (Nov 22 2026): opens the live site for real wallets in view-only mode, compares the fast-loaded game
+# with a full replay of the chain, and lists every difference (pets, gear, before-signing checks). Read-only: no wallet,
+# nothing signed, nothing pushed. Report: the run summary and the fastcheck-report artifact.
+name: fastcheck
+on:
+  workflow_dispatch:
+    inputs:
+      wallets:
+        description: 'Comma-separated wallets (empty = owner, Evan, test wallets, biggest holders, a few small ones)'
+        required: false
+        default: ''
+  schedule:
+    - cron: '23 */6 * * *'
+permissions: { contents: read }
+concurrency: { group: fastcheck, cancel-in-progress: false }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install --no-save --no-package-lock playwright-core@1
+      - name: Compare fast and full
+        env: { WALLETS: '${{ github.event.inputs.wallets }}' }
+        run: node --max-old-space-size=6000 tools/fastcheck/run.js --out out --max-wait 300 ${WALLETS:+--wallets "$WALLETS"}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: fastcheck-report, path: out/, if-no-files-found: ignore }
