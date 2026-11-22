@@ -148,6 +148,12 @@ jobs:
           if [ "$RULES" = "true" ] && ! grep -q "\"rsig\":\"$MAINRSIG\"" "/mnt/r$DATA/world/latest.json"; then
             mv "/mnt/r$DATA/world/latest.json" "/mnt/r$DATA/world/latest.json.old-rsig" && echo "set the old-rsig world aside so a new one is built right after boot"
           fi
+          # every file under the data folder must belong to the service user (a world folder made by root broke publishing: EACCES)
+          SU=$(stat -c %u:%g "/mnt/r$DATA/state.json" 2>/dev/null || stat -c %u:%g "/mnt/r$DATA")
+          NB=$(find "/mnt/r$DATA" ! -user "${SU%%:*}" 2>/dev/null | wc -l)
+          echo "entries in the data folder not owned by the service user: $NB"
+          ls -ld "/mnt/r$DATA"/world/r* 2>/dev/null | awk '{print "   " $3 " " $NF}' | sed 's#.*/world/#   world/#;s#^#  #' | head -8
+          [ "$NB" -gt 0 ] && chown -R "$SU" "/mnt/r$DATA" && echo "gave them back to the service user"
           if [ "$BUILD" = "true" ]; then
             for F in "$UNIT" ${ENVF:+"/mnt/r$ENVF"}; do
               if grep -q 'XP_SNAPSHOT=0' "$F" 2>/dev/null; then cp -a "$F" "$F.bak-$(date -u +%Y%m%d%H%M)"; sed -i 's/XP_SNAPSHOT=0/XP_SNAPSHOT=1/' "$F"; echo "world builder turned on in $(basename "$F") (old copy kept as .bak)"; fi
