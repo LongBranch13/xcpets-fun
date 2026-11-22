@@ -7,7 +7,8 @@
   function shardSub(p) { var n = shardTot(p); return n ? '💠 ' + n + ' shard point' + (n === 1 ? '' : 's') + (p.shardsIn ? ' (' + p.shardsIn + ' from parents)' : '') : ''; }
   function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
-  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
+  var fmt = (function () { var F2 = null, F8 = null; try { F2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }); F8 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }); } catch (e) {} /* freeze-hunt: one formatter each, not a new one per number (was the top cost of drawing big pet lists) */
+    return function (n) { n = Number(n); var two = Math.abs(n) >= 1 || n === 0; if (F2) return (two ? F2 : F8).format(n); return n.toLocaleString('en-US', { maximumFractionDigits: two ? 2 : 8 }); }; })(); /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'];
   function spLabel(id) { return V.speciesLabel(id); }
   function streak(p, tip) { var d = V.day(tip), n = 0; if (!p.feedDays[d]) d--; while (p.feedDays[d]) { n++; d--; } return n; }

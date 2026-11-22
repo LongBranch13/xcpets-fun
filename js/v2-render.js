@@ -1697,7 +1697,8 @@
    * its mutation explained (mutationChip / mutationTip / mutationRow) with the odds of the roll that actually made it (badgesOf fixes the MUTANT tip).
    * JACKPOT_ODDS mirrors v2-rules.js JACKPOT (not exported); tools/glitch-display-test.js fails if they drift. */
   var JACKPOT_ODDS = { twin1In: 5, mutation1In: 5, hidden1In: 3, legMix1In: 2 };
-  function nfmt(n) { return Number(n).toLocaleString('en-US'); }
+  var NFMT = null; try { NFMT = new Intl.NumberFormat('en-US'); } catch (e) {}
+  function nfmt(n) { return NFMT ? NFMT.format(Number(n)) : Number(n).toLocaleString('en-US'); } /* freeze-hunt: one shared formatter */
   /* genOf: like V2Rules.genOf but a one-parent quest jackpot egg counts too (parent gen + 1); memoised per world, cycle-safe */
   var GEN_MEMO = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function genOf(w, p) { if (!p) return 0; var m = GEN_MEMO && w ? GEN_MEMO.get(w) : null; if (!m) { m = {}; if (GEN_MEMO && w) GEN_MEMO.set(w, m); }
@@ -1737,11 +1738,14 @@
   // Read-only mini portraits from the canonical era's existing adult sprite. No RNG or pet writes.
   // Resolve names case-insensitively: a future DJPepeSprite needs no renderer switch case.
   var eraIconCache = Object.create(null);
+  var eraKeyOf = Object.create(null);
   function eraIcon(e) {
     var C = window.V2Community, q = C && C.byId(e.id), sp = q && (q.sp || q.id), S, NG;
     if (!sp) return '';
     var wanted = String(q.eraSprite || (sp + 'Sprite')).toLowerCase();
-    var key = Object.keys(window).filter(function (k) { return k.toLowerCase() === wanted; })[0];
+    /* freeze-hunt: the sprite's global name is looked up once (scanning every window property per card was a top cost on big lists). A miss is not
+     * remembered, so a sprite script that loads later is still found. */
+    var key = eraKeyOf[wanted]; if (!key || !window[key]) { key = Object.keys(window).filter(function (k) { return k.toLowerCase() === wanted; })[0]; if (key) eraKeyOf[wanted] = key; }
     if (key) S = window[key];
     NG = sp === 'nakamoto' && window.PetCore;
     var source = S || NG, cached = eraIconCache[sp];

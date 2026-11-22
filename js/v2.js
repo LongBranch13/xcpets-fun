@@ -364,7 +364,8 @@
     if (fr && (ok.length >= 300 || fr.length === 1)) return fr; /* big feeds: the runs plan, without the slow pet-number planner */
     var q = feedQold(w, me, ok, nb, list); return fr && fr.length <= q.length ? fr : q; }
   function feedSelQ(w, me, ids, nb) { return feedQ(w, me, ids, nb, true); } /* Feed selected: list burns only */
-  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); };
+  var fmt = (function () { var F2 = null, F8 = null; try { F2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }); F8 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }); } catch (e) {} /* freeze-hunt: one formatter each, not a new one per number (was the top cost of drawing big pet lists) */
+    return function (n) { n = Number(n); var two = Math.abs(n) >= 1 || n === 0; if (F2) return (two ? F2 : F8).format(n); return n.toLocaleString('en-US', { maximumFractionDigits: two ? 2 : 8 }); }; })();
   function cfeedText() { var a = Number(($('cAmt') || {}).value) || 0; return 'Feed community (' + fmt(Math.max(a, 0)) + ')'; } /* hatchspeed-1101: display only (halving amounts like 172.5 keep their decimals, as v2-halving.js shows them) */ /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   /* similar-bugs-fix: the accept cost of fight id now (a Tag Team accept costs the team cost, not the 1v1 accept), same halving / Fire Sale as V.COSTS. Display only; planAmount sets the burn. */
   function accNow(w, id) { return V.COSTS.accept * V.acceptCost(w, id) / V.acceptCost(null, 0); }
