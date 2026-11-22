@@ -103,14 +103,18 @@
   function dirOf(manifestUrl) { return String(manifestUrl || '').replace(/[^/]+$/, ''); }
   function assemble(summary, pack) {
     var pets = [], items = {}, n = 1, byId = {}, deeds = {}, mythicOwners = {};
-    function addItem(g, on) {
+    function addItem(g, on, owner) {
       if (!g) return;
+      /* Nov 22 2026: owner page 0 arrives with slim gear {g, i, t, slot} (Art.slimGear). Later pages go through openList; this path did not,
+       * so the first 24 pets' worn gear got ids v1, v2... and no item (fastcheck: 34 pieces on Evan's page 0). Open it the same way. */
+      if (!g.gid && !g.label && g.i && window.XcpArt && XcpArt.openGear) g = XcpArt.openGear(g, owner || '', on, artOpt());
       var id = g.gid || ('v' + (n++));
       var copy = {};
       Object.keys(g).forEach(function (k) { copy[k] = g[k]; });
       copy.gid = id;
       if (on != null) copy.on = on;
       items[id] = copy;
+      return copy;
     }
     function addPet(p) {
       if (!p || byId[p.id]) return;
@@ -119,7 +123,9 @@
       if (!copy.art && addPet.prev && addPet.prev[copy.id] && addPet.prev[copy.id].art) copy.art = addPet.prev[copy.id].art;
       pets.push(copy);
       byId[copy.id] = copy;
-      (p.worn || []).forEach(function (g) { addItem(g, copy.id); });
+      /* keep the opened worn list on the copy: publishOwner re-assembles from these copies as more owner pages arrive, and a copy
+       * without worn dropped page 0's gear again on the next rebuild (fastcheck, Nov 22 2026). */
+      copy.worn = []; (p.worn || []).forEach(function (g) { var it = addItem(g, copy.id, (typeof copy.owner === 'string' && copy.owner) || addPet.owner || ''); if (it) copy.worn.push(it); });
     }
     function takeDeeds(src) { if (!src) return; Object.keys(src).forEach(function (k) { deeds[k] = src[k]; }); }
     function takeMythic(src) { if (!src) return; Object.keys(src).forEach(function (k) { if (src[k] != null) mythicOwners[k] = src[k]; }); }
@@ -127,6 +133,7 @@
     if (pack) { takeDeeds(pack.deeds); takeMythic(pack.mythicOwners); }
     if (pack && pack.owners) Object.keys(pack.owners).forEach(function (addr) {
       var o = pack.owners[addr];
+      addPet.owner = (o && o.owner) || addr;
       if (Array.isArray(o)) o.forEach(addPet);
       else if (o && o.pets) {
         o.pets.forEach(addPet);

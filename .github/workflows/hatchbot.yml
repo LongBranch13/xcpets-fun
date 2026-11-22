@@ -12,7 +12,7 @@ on:
         description: 'Game update to post in Telegram (leave empty to just check for new events)'
         required: false
         default: ''
-permissions: { contents: write }
+permissions: { contents: write, issues: write }
 concurrency: { group: hatchbot, cancel-in-progress: false }
 jobs:
   run:
@@ -33,6 +33,13 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.ready.outputs.go
         with: { node-version: '20' }
+      - name: Bug reports to GitHub issues
+        if: steps.ready.outputs.go && env.UPDATE == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node hatchbot/bugs-to-issues.js
       - name: Post game update
         if: steps.ready.outputs.go && env.UPDATE != ''
         run: node hatchbot/announce.js --post "$UPDATE"
