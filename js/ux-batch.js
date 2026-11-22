@@ -7,7 +7,8 @@
   function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, U = window.V2UI, R = window.V2Render; if (!V || !U || !R) return;
   var $ = function (id) { return document.getElementById(id); }, ME = U.ME;
-  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); }; /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
+  var fmt = (function () { var F2 = null, F8 = null; try { F2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }); F8 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }); } catch (e) {} /* freeze-hunt: one formatter each, not a new one per number (was the top cost of drawing big pet lists) */
+    return function (n) { n = Number(n); var two = Math.abs(n) >= 1 || n === 0; if (F2) return (two ? F2 : F8).format(n); return n.toLocaleString('en-US', { maximumFractionDigits: two ? 2 : 8 }); }; })(); /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'], SL = V.slotLabel, SLOTS = V.V2_SLOTS, STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
   var LSK = 'xcpets-ux-' + (ME || 'anon');

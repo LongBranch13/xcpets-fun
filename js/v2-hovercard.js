@@ -71,7 +71,7 @@
   /** fighting facts, from the simulateFight formulas (HP, hit, crit, dodge, gear) + V2ArenaFun streaks / belts */
   function fightHtml(w, p) { var R = V(), s = p.stats || {}, h = head(p), why = window.UXB && UXB.whyNot ? UXB.whyNot(p, w) : (R.fightable ? R.fightable(p, (w.tip || 0) + 1) : null);
     h += why ? '<div class="hc-no">✋ ' + esc(why) + '</div>' : '<div class="hc-ok">✅ Can fight today</div>';
-    var pow = STATS.reduce(function (a, k) { return a + (s[k] || 0); }, 0), sc = window.PetScore && PetScore.of ? PetScore.of(w, p) : null;
+    var pow = STATS.reduce(function (a, k) { return a + (s[k] || 0); }, 0), sc = window.PetScore && (PetScore.peek || PetScore.of) ? (PetScore.peek || PetScore.of)(w, p) : null; /* freeze-hunt: never score a whole world on hover */
     h += row('⚡ Power', '<span' + ptA(p) + '>' + pow + '</span>' + (sc ? ' · ⭐ ' + sc.score + (sc.rank ? ' (#' + sc.rank + ')' : '') : ''));
     h += row('Stats', STATS.map(function (k) { return k.slice(0, 3) + ' ' + (s[k] || 0); }).join(' · '));
     var worn = R.wornOf ? R.wornOf(w, p.id) : [], gb = worn.reduce(function (a, g) { var it = R.itemOf && R.itemOf(g.item); return a + 1 + (it ? it.tier || 0 : 0) * 2; }, 0);
