@@ -1,5 +1,5 @@
 /* HatchBot (Cloudflare Worker). Telegram calls POST /tg for every message the bot can see.
- * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /bug, /help (and /chatid). /rate stays removed (owner).
+ * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help (and /chatid). /rate stays removed (owner).
  * The old HatchBot commands were ported by Grok Bot on Nov 22 2026 and brought into the repo (owner: "yes on commands").
  * Also POST /e: page error reports from every xcpets.fun page (see pageError). POST /selftest: dry run of a command (secret key).
  * Bindings (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN, HB_TEST_KEY (secrets), BUGS (KV), DB (D1, hatchbot/schema.sql),
@@ -9,7 +9,7 @@ import CAPTIONS from './captions.json';
 const TOKEN_IDS = MEMES.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
 var BOT_COMMANDS = [["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
 var LIMITS = { userCooldownMs: 5e3, maxPerHour: 30, memeChatMs: 15e3, roundMs: 60e3, lateS: 120, lateMaxS: 24 * 3600 };
 var SORRY = "Sorry for the slow reply, I was offline for a bit.";
@@ -51,6 +51,21 @@ var link = (id) => SITE + "/pet.html?id=" + id;
 var short = (a) => a ? a.length > 12 ? a.slice(0, 6) + "\u2026" + a.slice(-4) : a : "unknown";
 var capText = (t, n) => t.length > (n || 1e3) ? t.slice(0, (n || 1e3) - 1) + "\u2026" : t;
 
+/* /season: display-only schedule from data/seasons.json (same file as the site's season bar). "announce": false = a teaser line only. */
+async function cmdSeason() {
+  let cfg = null;
+  try { const r = await fetch(SITE + "/data/seasons.json", { cf: { cacheTtl: 300, cacheEverything: true } }); if (r.ok) cfg = await r.json(); } catch (e) { }
+  if (!cfg || !cfg.announce) return "\u{1F440} Seasons are coming to XCPETS. Stay tuned.";
+  const b = await tipNow();
+  if (!b) return "The chain is not answering right now. Try again in a minute.";
+  const L = cfg.length || 4032, T = cfg.tease || 1008, S = cfg.seasons || [];
+  const about = (n) => { const h = Math.round(n * 10 / 60); return h < 48 ? h + " h" : Math.floor(h / 24) + " days"; };
+  const live = S.find((s) => b >= s.start && b < s.start + L);
+  if (live) { const left = live.start + L - b; return (live.emoji || "") + " Season " + live.n + ": " + live.name + " is LIVE\nLimited " + live.egg + "s are out. Finale boss: " + live.boss + ".\nEnds in " + fmt(left) + " blocks (about " + about(left) + "), at block " + fmt(live.start + L) + ".\n\nPlay at xcpets.fun"; }
+  const next = S.find((s) => b < s.start);
+  if (next) { const left = next.start - b; return (next.emoji || "") + " Season " + next.n + ": " + next.name + "\n" + next.tagline + "\nStarts in " + fmt(left) + " blocks (about " + about(left) + "), at block " + fmt(next.start) + "." + (left <= T ? "\nLimited " + next.egg + "s drop at the start." : ""); }
+  return "No season is running right now. The next one will be announced here.";
+}
 // ---------- game data (read-only, public feeds) ----------
 var PETS = null, WORLD = null, ME = null;
 var SPECIES = ["pepe", "wojak", "chud", "peepo", "doge", "bobo", "mumu", "sarutobi", "lenny", "snibby", "kevin", "dodo", "nakamoto", "wizard"];
@@ -395,10 +410,10 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"];
+  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"];
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
-  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/whosthat"].includes(cmd))) return null;
+  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat"].includes(cmd))) return null;
   const lim = await rateCheck(env, msg.from && msg.from.id || chat, chat, name, now);
   if (lim) { console.log("rate limited", lim, cmd); return null; }
   await rateHit(env, msg.from && msg.from.id || chat, chat, name, now);
@@ -415,6 +430,7 @@ async function command(env, msg) {
     const day = Math.floor(b / 144), left = 144 - b % 144;
     return reply("\u{1F4C5} Chain day " + fmt(day) + " \xB7 block " + fmt(b) + "\n" + left + " block" + (left === 1 ? "" : "s") + " left today (about " + (left * 10 >= 90 ? Math.round(left * 10 / 60) + " h" : left * 10 + " min") + ")");
   }
+  if (cmd === "/season") return reply(await cmdSeason());
   if (cmd === "/bug") {
     if (!env.BUGS)
       return reply("Bug reports are not switched on yet. Please tell the team in the chat for now.");
