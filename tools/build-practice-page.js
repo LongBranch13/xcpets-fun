@@ -12,6 +12,8 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const MAINT = require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'js/maintenance.js'))).digest('hex').slice(0, 10);
+/* the pretend chain gets its own content token, so a fix to it reaches browsers without a whole-site build-id bump */
+const ENG = require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'js/practice-engine.js'))).digest('hex').slice(0, 10);
 const B = () => (fs.readFileSync(path.join(ROOT, 'build-id.txt'), 'utf8').trim() || 'dev');
 function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h = h.replace(/<script src="js\/v2-resume\.js\?v=[^"]*"><\/script>/g, ''); h = h.replace(/<script src="js\/v2-boot-sync\.js\?v=[^"]*"><\/script>/g, ''); h = h.replace(/<!--nav-cache-1102-->[\s\S]*?<!--nav-cache-1102-->/, ''); h = h.replace(/<!--err-report-1102-->[\s\S]*?<!--err-report-1102-->/, ''); h = h.replace(/<!--mypets-snap-1103-->[\s\S]*?<!--mypets-snap-1103-->/, ''); /* site-speed-1103: no saved My Pets view on practice pages */ /* safeguards-1102: practice pages send nothing anywhere (practice-guard refuses outside hosts), so no page-error reporter */ /* nav-cache-1102: practice pages are never prerendered (links to them are left out), so no prerender guard here */ const b = B();
   const must = (re, what) => { if (!re.test(h)) throw new Error('build-practice-page: ' + src + ' changed, cannot find ' + what); };
@@ -19,7 +21,7 @@ function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h 
   h = h.replace(/<link rel="preconnect" href="https:\/\/api\.counterparty\.io[^>]*>/g, '').replace(/<link rel="prefetch"[^>]*>/g, '');
   sub(/<script>\/\* smooth-perf:[\s\S]*?<\/script>/, '', 'smooth-perf prefetch');
   h = h.replace(/<script src="js\/maintenance\.js\?v=[^"]*"><\/script>/g, '');
-  sub(/<meta charset="utf-8">/, '<meta charset="utf-8"><script src="js/maintenance.js?v=' + MAINT + '"></script><script src="js/practice-guard.js?v=' + b + '"></script><script src="js/practice-engine.js?v=' + b + '"></script>', 'charset');
+  sub(/<meta charset="utf-8">/, '<meta charset="utf-8"><script src="js/maintenance.js?v=' + MAINT + '"></script><script src="js/practice-guard.js?v=' + b + '"></script><script src="js/practice-engine.js?v=' + ENG + '"></script>', 'charset');
   sub(/(<link rel="stylesheet" href="css\/v2\.css\?v=[^"]*">)/, '$1<link rel="stylesheet" href="css/practice.css?v=' + b + '">', 'v2.css');
   sub(/(<script src="js\/v2-wallet\.js\?v=[^"]*"><\/script>)/, '$1<script src="js/v2-practice-wallet.js?v=' + b + '"></script>', 'v2-wallet.js');
   sub(/(<script src="js\/v2-rules\.js\?v=[^"]*"><\/script>)/, '$1<script>XcpPractice.wrapRules(window.V2Rules);</script>', 'v2-rules.js');
@@ -48,7 +50,7 @@ function build(src, title) {
   sub(/<script>\/\* smooth-perf:[\s\S]*?<\/script>/, '', 'smooth-perf prefetch');
   h = h.replace(/<link rel="prefetch"[^>]*>/g, '');
   h = h.replace(/<script src="js\/maintenance\.js\?v=[^"]*"><\/script>/g, '');
-  sub(/<meta charset="utf-8">/, '<meta charset="utf-8"><script src="js/maintenance.js?v=' + MAINT + '"></script><script src="js/practice-guard.js?v=' + B + '"></script><script src="js/practice-engine.js?v=' + B + '"></script>', 'charset');
+  sub(/<meta charset="utf-8">/, '<meta charset="utf-8"><script src="js/maintenance.js?v=' + MAINT + '"></script><script src="js/practice-guard.js?v=' + B + '"></script><script src="js/practice-engine.js?v=' + ENG + '"></script>', 'charset');
   sub(/(<link rel="stylesheet" href="css\/v2\.css\?v=[^"]*">)/, '$1<link rel="stylesheet" href="css/practice.css?v=' + B + '">', 'v2.css');
   sub(/<body class="/, '<body data-practice="1" class="practice ', 'body');
   /* scripts */
