@@ -1,5 +1,6 @@
 /* HatchBot commands (Cloudflare Worker, Nov 22 2026). Telegram calls POST /tg for every message the bot can see.
  * Commands: /meme, /chainday, /help (and /chatid, to find the group id once). /rate was removed (owner).
+ * Also POST /e: page error reports from every xcpets.fun page (see pageError below).
  * Secrets (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN. The webhook secret is derived from the token,
  * so nothing else has to be stored. Read-only: it never signs, burns or touches wallets. */
 import MEMES from './memes.json';
@@ -51,10 +52,42 @@ async function command(env, msg) {
   return null;
 }
 
+/* Page error reports (owner Nov 22 2026: "hatchbot worker"). Every xcpets.fun page carries a tiny reporter (tools/build-err-report.js)
+ * that sends ONLY {k, m, f, l, c, b, p}: kind, message (addresses, long hex and emails already cut), script path, line, column,
+ * build id, page path. No wallet, no query string, no IP is stored. Same error = one KV key per UTC day with a count, so the free
+ * plan's daily write budget is not burned by one loud bug (each isolate writes a signature at most once per 10 minutes).
+ * hatchbot/bugs-to-issues.js turns each finished day into one GitHub issue labelled 'page-errors' and deletes the keys. */
+const ERR_SEEN = new Map();
+function clip(v, n) { return String(v == null ? '' : v).replace(/\b(bc1|tb1)[a-z0-9]{20,90}\b/gi, '<addr>').replace(/\b[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g, '<addr>').replace(/\b[0-9a-f]{40,}\b/gi, '<hex>').replace(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi, '<email>').slice(0, n); }
+async function pageError(raw, env) {
+  if (!env.BUGS) return;
+  if (!raw || raw.length > 4000) return;
+  let o; try { o = JSON.parse(raw); } catch (e) { return; }
+  if (!o || typeof o !== 'object') return;
+  const r = { k: o.k === 'rejection' ? 'rejection' : 'error', m: clip(o.m, 300), f: clip(o.f, 120), l: o.l | 0, c: o.c | 0, b: clip(o.b, 12), p: clip(o.p, 80) };
+  if (!r.m) return;
+  const sigTxt = [r.k, r.m, r.f, r.l, r.b].join('|'), d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sigTxt));
+  const sig = Array.from(new Uint8Array(d).slice(0, 8)).map(x => x.toString(16).padStart(2, '0')).join('');
+  const now = Date.now(), last = ERR_SEEN.get(sig) || 0, held = (ERR_SEEN.get(sig + ':n') || 0) + 1;
+  if (now - last < 10 * 60 * 1000) { ERR_SEEN.set(sig + ':n', held); return; }
+  ERR_SEEN.set(sig, now); ERR_SEEN.set(sig + ':n', 0); if (ERR_SEEN.size > 2000) ERR_SEEN.clear();
+  const key = 'err:' + new Date(now).toISOString().slice(0, 10) + ':' + sig;
+  let cur = null; try { cur = JSON.parse(await env.BUGS.get(key) || 'null'); } catch (e) { cur = null; }
+  const pages = (cur && cur.pages) || []; if (pages.indexOf(r.p) < 0 && pages.length < 8) pages.push(r.p);
+  await env.BUGS.put(key, JSON.stringify(Object.assign({}, r, { n: ((cur && cur.n) || 0) + held, pages, first: (cur && cur.first) || new Date(now).toISOString(), last: new Date(now).toISOString() })), { expirationTtl: 21 * 86400 });
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/') return new Response('HatchBot is awake 🐸');
+    if (req.method === 'POST' && url.pathname === '/e') {
+      let raw = ''; try { raw = await req.text(); } catch (e) { raw = ''; }
+      const job = pageError(raw, env).catch(e => console.log('page error report failed', e && e.message));
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+      return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*' } });
+    }
+    if (req.method === 'OPTIONS' && url.pathname === '/e') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' } });
     if (req.method !== 'POST' || url.pathname !== '/tg') return new Response('not found', { status: 404 });
     if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== await hookSecret(env.TELEGRAM_BOT_TOKEN)) return new Response('forbidden', { status: 403 });
     let up = null; try { up = await req.json(); } catch (e) { return new Response('ok'); }
