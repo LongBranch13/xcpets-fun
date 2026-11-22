@@ -56,6 +56,24 @@ function fakeGithub(state) {
   const r4 = await RF.checkOnce(data, { fetch });
   ok(r4.changed && r4.rsig !== want && r4.was === want, 'rules change on main gives a new rsig (' + r4.rsig + ')');
 
+  /* 4b. main moves again without touching the builder's files (the feed timer's commits): same folder, nothing reloaded */
+  const dir4 = RF.readCurrent(data).dir, SHA3 = 'c'.repeat(40);
+  st.sha = SHA3;
+  const r4b = await RF.checkOnce(data, { fetch });
+  ok(!r4b.changed && r4b.rsig === r4.rsig && RF.readCurrent(data).sha === SHA3 && RF.readCurrent(data).dir === dir4, 'a commit that changes no builder file keeps the same copy (no reload, no new folder)');
+  ok(fs.readdirSync(path.join(data, 'code')).filter(n => /^[0-9a-f]{12}$/.test(n)).length === 2, 'two copies on disk, one per distinct set of files');
+
+  /* 4c. pruning never removes a copy a running build may still read */
+  const croot = path.join(data, 'code');
+  for (let i = 0; i < 4; i++) fs.mkdirSync(path.join(croot, String(i).repeat(12)), { recursive: true });
+  RF.prune(data, path.basename(dir4));
+  ok(fs.readdirSync(croot).filter(n => /^[0-9a-f]{12}$/.test(n)).length === 6, 'young copies are kept even past the 3 newest');
+  const old = (Date.now() - RF.KEEP_YOUNG_MS - 60000) / 1000;
+  for (let i = 0; i < 4; i++) fs.utimesSync(path.join(croot, String(i).repeat(12)), old, old);
+  RF.prune(data, path.basename(dir4));
+  const left = fs.readdirSync(croot).filter(n => /^[0-9a-f]{12}$/.test(n));
+  ok(left.length === 3 && left.includes(path.basename(dir4)), 'old copies past the 3 newest are removed, the current one stays');
+
   /* 5. follower never throws, and is off with XP_RULES_FOLLOW=0 */
   const fo = RF.follower(data, { fetch: async () => { throw new Error('offline https://x.invalid/secret'); } });
   const r5 = await fo.poll(true);

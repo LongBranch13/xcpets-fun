@@ -4,7 +4,8 @@
  *
  * Now the server keeps its own copy of the world builder at the newest main commit:
  *   - every XP_RULES_EVERY_S seconds (default 180) it asks GitHub for main's commit (one API call, no key),
- *   - when main moved, it downloads the builder's files at that exact commit into <XP_DATA>/code/<sha12>/
+ *   - when main moved, it downloads the builder's files at that exact commit into <XP_DATA>/code/<content12>/ (named by a hash
+ *     of the files, so a commit that changes nothing the builder uses, like the feed timer's, reuses the same folder)
  *     (the rule files, the replay worker, js/v2-sales.js, js/v2-art.js, tools/sync-server/*.js and every repo file
  *     they name), checks that each script parses and that snapshot.js loads, then points <XP_DATA>/code/current.json at it,
  *   - the world builder (a child process) then runs snapshot.js from that folder, so the published world always uses
@@ -23,6 +24,10 @@ const SEED = ['tools/sync-server/snapshot.js', 'tools/sync-server/client.js', 't
   'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-replay-worker.js',
   'js/v2-sales.js', 'js/v2-chain.js', 'js/v2-boot-sync.js', 'js/v2-resume.js', 'js/v2-art.js', 'js/v2-grave-index.js', 'js/block-hashes.js'];
 const MAX_FILES = 120, KEEP = 3;
+/* Nov 22 2026: a world build (up to 30 min) read js/v2-chain.js from a copy that had just been pruned (ENOENT), because the
+ * feed timer moves main every ~20 min and each commit made a new folder. Copies are now named by content and a copy younger
+ * than this is never removed. */
+const KEEP_YOUNG_MS = 2 * 3600 * 1000;
 const EVERY_MS = Math.max(60, +(process.env.XP_RULES_EVERY_S || 180)) * 1000;
 
 function enabled() { return process.env.XP_RULES_FOLLOW !== '0'; }
@@ -31,9 +36,10 @@ function readCurrent(dataDir) {
   try {
     const cur = JSON.parse(fs.readFileSync(path.join(codeRoot(dataDir), 'current.json'), 'utf8'));
     if (!cur || !/^[0-9a-f]{40}$/.test(cur.sha || '')) return null;
-    const dir = path.join(codeRoot(dataDir), cur.sha.slice(0, 12));
+    const name = /^[0-9a-f]{12}$/.test(cur.name || '') ? cur.name : cur.sha.slice(0, 12);
+    const dir = path.join(codeRoot(dataDir), name);
     if (!fs.existsSync(path.join(dir, 'tools', 'sync-server', 'snapshot.js'))) return null;
-    return Object.assign({}, cur, { dir: dir });
+    return Object.assign({}, cur, { name: name, dir: dir });
   } catch (e) { return null; }
 }
 /* Repo-relative paths a file points at: relative require() calls and quoted 'js/…', 'rjs/…' paths. */
@@ -54,7 +60,7 @@ async function mainSha(fetchFn) {
   return t;
 }
 async function download(sha, dir, fetchFn) {
-  const want = SEED.slice(), seen = new Set(), seed = new Set(SEED);
+  const want = SEED.slice(), seen = new Set(), seed = new Set(SEED), got = [];
   while (want.length) {
     const rel = want.shift(); if (seen.has(rel)) continue; seen.add(rel);
     if (seen.size > MAX_FILES) throw new Error('too many files');
@@ -71,15 +77,20 @@ async function download(sha, dir, fetchFn) {
     if (!dest.startsWith(dir + path.sep)) throw new Error('bad path');
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, buf);
+    got.push([rel, buf]);
   }
-  return seen.size;
+  const h = crypto.createHash('sha256');
+  got.sort((a, b) => (a[0] < b[0] ? -1 : 1)).forEach(([rel, buf]) => { h.update(rel + '\0' + buf.length + '\0'); h.update(buf); });
+  return { files: got.length, name: h.digest('hex').slice(0, 12) };
 }
-function prune(dataDir, keepName) {
-  const root = codeRoot(dataDir); let names = [];
+function prune(dataDir, keepName, now) {
+  const root = codeRoot(dataDir); let names = []; now = now || Date.now();
   try { names = fs.readdirSync(root).filter(n => /^[0-9a-f]{12}$/.test(n) || /^[0-9a-f]{12}\.tmp$/.test(n)); } catch (e) { return; }
   names.filter(n => /\.tmp$/.test(n)).forEach(n => fs.rmSync(path.join(root, n), { recursive: true, force: true }));
-  names = names.filter(n => !/\.tmp$/.test(n)).sort((a, b) => fs.statSync(path.join(root, b)).mtimeMs - fs.statSync(path.join(root, a)).mtimeMs);
-  names.slice(KEEP).forEach(n => { if (n !== keepName) fs.rmSync(path.join(root, n), { recursive: true, force: true }); });
+  const age = n => { try { return fs.statSync(path.join(root, n)).mtimeMs; } catch (e) { return 0; } };
+  names = names.filter(n => !/\.tmp$/.test(n)).sort((a, b) => age(b) - age(a));
+  /* a running build may still read an older copy: only copies past KEEP and older than KEEP_YOUNG_MS go */
+  names.slice(KEEP).forEach(n => { if (n !== keepName && now - age(n) > KEEP_YOUNG_MS) fs.rmSync(path.join(root, n), { recursive: true, force: true }); });
 }
 /* One check. Resolves { changed, sha, rsig } or throws; never touches the published world. */
 async function checkOnce(dataDir, opts) {
@@ -87,19 +98,28 @@ async function checkOnce(dataDir, opts) {
   const cur = readCurrent(dataDir);
   const sha = await mainSha(fetchFn);
   if (cur && cur.sha === sha) return { changed: false, sha: sha, rsig: cur.rsig };
-  const root = codeRoot(dataDir), name = sha.slice(0, 12), tmp = path.join(root, name + '.tmp'), dir = path.join(root, name);
+  const root = codeRoot(dataDir), tmp = path.join(root, sha.slice(0, 12) + '.tmp');
   fs.rmSync(tmp, { recursive: true, force: true }); fs.mkdirSync(tmp, { recursive: true });
   try {
-    const files = await download(sha, tmp, fetchFn);
-    /* snapshot.js must load with everything it requires, in a separate process so a broken copy can't touch this one */
-    execFileSync(process.execPath, ['-e', 'require(process.argv[1])', path.join(tmp, 'tools', 'sync-server', 'snapshot.js')], { stdio: 'ignore', timeout: 60000 });
-    fs.rmSync(dir, { recursive: true, force: true }); fs.renameSync(tmp, dir);
-    const rsig = String(execFileSync(process.execPath, ['-e', 'const s=require(process.argv[1]);process.stdout.write(s.rulesSig(s.loadBytes(process.argv[2])))', path.join(dir, 'tools', 'sync-server', 'snapshot.js'), dir], { timeout: 60000 })).trim();
+    const got = await download(sha, tmp, fetchFn), name = got.name, dir = path.join(root, name);
+    let rsig = null;
+    if (fs.existsSync(path.join(dir, 'tools', 'sync-server', 'snapshot.js'))) {
+      /* same files as a copy we already have (main moved for something else): keep that folder, a build may be reading it */
+      fs.rmSync(tmp, { recursive: true, force: true });
+      rsig = cur && cur.name === name ? cur.rsig : null;
+    } else {
+      /* snapshot.js must load with everything it requires, in a separate process so a broken copy can't touch this one */
+      execFileSync(process.execPath, ['-e', 'require(process.argv[1])', path.join(tmp, 'tools', 'sync-server', 'snapshot.js')], { stdio: 'ignore', timeout: 60000 });
+      fs.rmSync(dir, { recursive: true, force: true }); fs.renameSync(tmp, dir);
+    }
+    if (!rsig) rsig = String(execFileSync(process.execPath, ['-e', 'const s=require(process.argv[1]);process.stdout.write(s.rulesSig(s.loadBytes(process.argv[2])))', path.join(dir, 'tools', 'sync-server', 'snapshot.js'), dir], { timeout: 60000 })).trim();
     if (!/^r[0-9a-f]{32}$/.test(rsig)) throw new Error('rsig');
-    const next = { v: 1, sha: sha, rsig: rsig, files: files, at: new Date().toISOString() };
+    const now = new Date(); try { fs.utimesSync(dir, now, now); } catch (e) { }
+    const next = { v: 2, sha: sha, name: name, rsig: rsig, files: got.files, at: now.toISOString() };
     fs.writeFileSync(path.join(root, 'current.json.tmp'), JSON.stringify(next)); fs.renameSync(path.join(root, 'current.json.tmp'), path.join(root, 'current.json'));
     prune(dataDir, name);
-    return { changed: true, sha: sha, rsig: rsig, was: cur && cur.rsig || null };
+    /* changed: the builder's files changed (not just main's commit), so the service reloads its gates only then */
+    return { changed: !cur || cur.name !== name, sha: sha, rsig: rsig, was: cur && cur.rsig || null };
   } catch (e) { fs.rmSync(tmp, { recursive: true, force: true }); throw e; }
 }
 /* Throttled wrapper for the service's 10 s loop. Never throws. */
@@ -122,4 +142,4 @@ function follower(dataDir, opts) {
   function dir() { const c = readCurrent(dataDir); return c ? c.dir : null; }
   return { poll, info, dir, state: st };
 }
-module.exports = { follower, checkOnce, readCurrent, namedPaths, SEED, REPO };
+module.exports = { follower, checkOnce, readCurrent, namedPaths, prune, SEED, REPO, KEEP_YOUNG_MS };
