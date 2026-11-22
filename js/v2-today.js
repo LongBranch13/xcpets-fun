@@ -5,6 +5,9 @@
  *   ⚔️ pets that can fight today -> X Circus Kekimus
  *   🧹 one-burn button for the existing Daily chores (feed + WAGMI + spins), shown while pets are hungry
  *   🍽️ countdown to the next feed day (every 144 blocks)
+ *   ⏱️ ready now: how many pets can breed / quest right now and when the next one is ready (timers from V2QuestClarity.timers,
+ *      the same numbers as "My cooldowns" in the Motel on breed.html, which the button opens). Quest counts only once the full
+ *      world is loaded, because the fast world has no quest data.
  *   🔥 check-in streak  -> days in a row this browser opened the game (visits only, never money spent)
  * It replaces the one-line "next best action" hint (#ipNba) while it shows. Reads the page's world (V2Mock.world) every 2 s
  * and repaints only when the tip, the wallet or the pet count changed. */
@@ -43,7 +46,7 @@
       '#todayCard .td-next{font-size:12px;opacity:.85;white-space:nowrap}' +
       '#todayCard .td-streak{margin-left:auto;font:11px/1.4 "Press Start 2P",monospace;padding:6px 10px;border:2px solid #2b2b2b;border-radius:8px;background:#ffe27a;color:#2b2b2b;box-shadow:0 3px 0 #2b2b2b;white-space:nowrap}' +
       '#todayCard .td-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}' +
-      '@media (max-width:640px){#todayCard .td-grid{grid-template-columns:1fr}}' +
+      '@media (max-width:640px){#todayCard .td-grid{grid-template-columns:1fr}#todayCard .td-next{white-space:normal;font-size:10px;line-height:1.6}}' +
       '#todayCard .td-tile{display:flex;align-items:center;gap:12px;text-align:left;font:inherit;color:inherit;cursor:pointer;padding:12px;border-radius:10px;border:3px solid #2b2b2b;background:rgba(255,255,255,.06);box-shadow:0 4px 0 #2b2b2b;transition:transform .08s steps(2)}' +
       '#todayCard .td-tile:hover{transform:translateY(-2px)}#todayCard .td-tile:active{transform:translateY(2px);box-shadow:0 1px 0 #2b2b2b}' +
       '#todayCard .td-ico{font-size:30px;line-height:1;image-rendering:pixelated}' +
@@ -55,6 +58,8 @@
       '@media (prefers-reduced-motion:reduce){#todayCard .td-hot{animation:none}}' +
       '#todayCard .td-chores{display:block;width:100%;margin-top:10px;font:12px/1.5 "Press Start 2P",monospace;padding:12px;border:3px solid #2b2b2b;border-radius:10px;background:#ffe27a;color:#2b2b2b;box-shadow:0 4px 0 #2b2b2b;cursor:pointer}' +
       '#todayCard .td-chores:active{transform:translateY(2px);box-shadow:0 1px 0 #2b2b2b}' +
+      '#todayCard .td-ready{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;width:100%;margin-top:10px;text-align:left;font:inherit;font-size:13px;color:inherit;cursor:pointer;padding:10px 12px;border:2px dashed #2b2b2b;border-radius:10px;background:rgba(255,255,255,.04)}' +
+      '#todayCard .td-ready b{font:12px "Press Start 2P",monospace}#todayCard .td-ready .td-go{margin-left:auto;opacity:.8;white-space:nowrap}' +
       'body.has-today #ipNba{display:none}';
     d.head.appendChild(s);
   }
@@ -69,12 +74,27 @@
       else if (k === 'urgent') { var s = $('fSort'); if (s) { s.value = 'urgent'; s.dispatchEvent(new Event('change', { bubbles: true })); } var pp = $('petsPanel'); if (pp) pp.scrollIntoView({ behavior: 'smooth' }); }
       else if (k === 'fight') location.href = 'fight.html';
       else if (k === 'chores') { var db = $('dcBtn'); if (db && !db.disabled) db.click(); else if (db) db.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      else if (k === 'ready') location.href = 'breed.html#myCooldowns';
       else if (k === 'pets') { var p2 = $('petsPanel'); if (p2) p2.scrollIntoView({ behavior: 'smooth' }); }
     });
     return c;
   }
   function tile(k, ico, n, label, say, cls) {
     return '<button type="button" class="td-tile ' + (cls || '') + '" data-td="' + k + '"><span class="td-ico" aria-hidden="true">' + ico + '</span><span><span class="td-n">' + n + ' ' + label + '</span><span class="td-say">' + say + '</span></span></button>';
+  }
+  /* ready now: breed and quest timers for the wallet's pets (display only; read with the same helper as the Motel table) */
+  function ready(w, L) {
+    var Q = window.V2QuestClarity, R = window.V2Rules; if (!Q || !Q.timers || !R || !R.breedable) return '';
+    var b = (w.tip || 0) + 1, quests = !!(w._full && R.questOn && R.questOn(b)), nB = 0, nQ = 0, nextB = Infinity, nextQ = Infinity;
+    for (var i = 0; i < L.length; i++) {
+      var t = null; try { t = Q.timers(w, L[i], b); } catch (e) { t = null; } if (!t) continue;
+      if (t.breed === 0) nB++; else if (t.breed > 0 && t.breed < nextB) nextB = t.breed;
+      if (quests) { if (t.quest === 0) nQ++; else if (t.quest > 0 && t.quest < nextQ) nextQ = t.quest; }
+    }
+    if (!nB && nextB === Infinity && !nQ && nextQ === Infinity) return '';
+    var bits = ['<span>🥚 <b>' + fmt(nB) + '</b> can breed now' + (!nB && nextB < Infinity ? ' · next in ~' + left(nextB) : '') + '</span>'];
+    if (quests && (nQ || nextQ < Infinity)) bits.push('<span>🗺️ <b>' + fmt(nQ) + '</b> can quest now' + (!nQ && nextQ < Infinity ? ' · next in ~' + left(nextQ) : '') + '</span>');
+    return '<button type="button" class="td-ready" data-td="ready" title="Breed and quest timers for every pet: My cooldowns in the Motel">⏱️ ' + bits.join('') + '<span class="td-go">see every timer ›</span></button>';
   }
   var last = '';
   function paint() {
@@ -98,7 +118,7 @@
       (hungry ? tile('feed', '🍖', fmt(hungry), 'hungry', pick(SAY.hungry, day), '') : tile('pets', '🍖', '0', 'hungry', pick(SAY.fed, day), 'td-ok')) +
       (danger.length ? tile('urgent', '🪦', fmt(danger.length), 'in danger', 'first one dies in ~' + left(soon) + ' · ' + pick(SAY.danger, day), 'td-hot') : tile('pets', '🪦', '0', 'in danger', pick(SAY.safe, day), 'td-ok')) +
       (fight ? tile('fight', '⚔️', fmt(fight), 'can fight', pick(SAY.fight, day), '') : tile('pets', '⚔️', '0', 'can fight', pick(SAY.rest, day), 'td-ok')) +
-      '</div>' +
+      '</div>' + ready(w, L) +
       /* one burn for the whole routine: the existing Daily chores (pet:dc, live since block 974,163); the wallet still signs it */
       (hungry && $('dcBtn') && !$('dcBtn').disabled ? '<button type="button" class="td-chores" data-td="chores">🧹 Do it all in one burn: feed everyone, WAGMI, use your spins</button>' : '');
   }
