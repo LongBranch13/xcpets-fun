@@ -65,15 +65,38 @@
     if (st === 'won' && p.st !== 'won' && !fresh.length) A.defeat(wrap);
     if (st === 'escaped' && p.st === 'live') A.escape(wrap);
     AS[R.n] = { pct: pct, hits: R.hits.length, st: st }; }
+  /* pet-picker (owner Jake Nov 22 2026: one fun, easy pet picker everywhere): the old radio list of every pet is replaced by the shared picker
+   * (js/v2-pick.js): YOUR HITTER vs THE BOSS on top, "hits for about N" under it, then shelves of big sprite cards. Same raidPlan / raidWhy / confirm. */
+  var PS = { shelf: 'best', st: {} }, PC = { k: '', all: null };
+  function hitters(w, b, ME) { var V = window.V2Rules, k = [b, ME, w.pets.length, tip()].join('|'); if (PC.k === k && PC.w === w) return PC.all;
+    var min = V.raidPlan(0, w, b, 0).amount, all = []; for (var i = 0; i < w.pets.length; i++) { var p = w.pets[i]; if (p.owner !== ME || p.dead || p.released) continue; all.push({ p: p, why: V.raidWhy(w, p, ME, min, b) || null, m: V.raidMult(p) }); }
+    all.sort(function (x, y) { return (!!x.why - !!y.why) || y.m - x.m || x.p.id - y.p.id; }); PC = { k: k, w: w, all: all }; return all; }
+  function dmg(p, a) { var V = window.V2Rules; return Math.floor((Number(a) || 0) * V.raidMult(p) / 100); }
   function attackBox(w, b, ME, R) { var V = window.V2Rules;
     if (!ME) return '<div class="rd-atk"><p>Connect your wallet to attack with your pets.</p></div>';
-    var mine = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released; }); if (!mine.length) return '<div class="rd-atk"><p>You have no pets yet. <a href="play.html">Hatch one</a> to join the raid.</p></div>';
-    var min = V.raidPlan(0, w, b, 0).amount, rows = mine.map(function (p) { var why = V.raidWhy(w, p, ME, min, b);
-      return '<label class="rd-pet' + (why ? ' rd-no' : '') + '"><input type="radio" name="rdpet" value="' + p.id + '"' + (why ? ' disabled' : '') + (selPet === p.id && !why ? ' checked' : '') + '> #' + p.id + ' ' + esc(p.name) + ' <span class="muted small">' + STAGE[p.stage] + ' · ' + (V.raidMult(p) / 100).toFixed(2) + ' times' + (why ? ' · ' + esc(why) : '') + '</span></label>'; }).join('');
-    return '<div class="rd-atk"><h3 class="rd-h">Attack</h3><div class="rd-pets">' + rows + '</div><p><label>Burn <input id="rdAmt" type="number" min="' + min + '" step="any" value="' + min + '"> XCPETS</label> <button class="btn" id="rdGo">' + (R.boss.champion ? '⚔️ Help Lord Kek' : '⚔️ Attack') + '</button></p><p class="small muted" id="rdEst">Pick a pet.</p></div>'; }
-  function bind(el, w, b, R) { var V = window.V2Rules, go = $('rdGo'), amt = $('rdAmt'), est = $('rdEst'); if (!go) return;
-    function upd() { var p = selPet && w.byId[selPet], a = Number(amt.value) || 0; est.textContent = p ? 'Hit for about ' + fmt(Math.floor(a * V.raidMult(p) / 100)) + ' damage, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 2) + ' on a crit, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 3) + ' on a mega crit.' : 'Pick a pet.'; }
-    el.querySelectorAll('input[name=rdpet]').forEach(function (x) { x.onchange = function () { selPet = Number(x.value); upd(); }; });
+    var all = hitters(w, b, ME); if (!all.length) return '<div class="rd-atk"><p>You have no pets yet. <a href="play.html">Hatch one</a> to join the raid.</p></div>';
+    var min = V.raidPlan(0, w, b, 0).amount;
+    return '<div class="rd-atk"><h3 class="rd-h">Attack</h3><div id="rdPick"></div><p><label>Burn <input id="rdAmt" type="number" min="' + min + '" step="any" value="' + (PS.amt || min) + '"> XCPETS</label> <button class="btn" id="rdGo">' + (R.boss.champion ? '⚔️ Help Lord Kek' : '⚔️ Attack') + '</button></p><p class="small muted" id="rdEst">Pick a pet.</p></div>'; }
+  function pick(w, b, ME, R) { var el = $('rdPick'), PK = window.V2Pick, V = window.V2Rules; if (!el) return; if (!PK) { setTimeout(function () { last = ''; draw(); }, 400); return; } /* the picker script loads after this one */ var all = hitters(w, b, ME), p = selPet && w.byId[selPet], amt = $('rdAmt'), a = amt ? amt.value : V.raidPlan(0, w, b, 0).amount;
+    var ready = all.filter(function (x) { return !x.why; }), deco = function (c) { c = Object.assign({}, c); c.stat = '× ' + (c.m / 100).toFixed(2); c.line = STAGE[c.p.stage] + ' · ⚡ ' + (window.UXB && UXB.power ? UXB.power(c.p) : ''); return c; };
+    var n = PS.st.n || 24, dec = function (L) { return L.slice(0, n).map(deco).concat(L.slice(n)); };
+    var B = R.boss, bossArt = '<span class="pk2-big"><img src="img/raids/' + esc(B.art) + '.png" alt=""></span>';
+    PK.render(el, { id: 'raid', w: w, mid: 'VS', active: 'A',
+      slots: [{ key: 'A', label: 'YOUR HITTER', pet: p, empty: 'Pick a pet', buddy: p && p.id === PK.buddy(), clear: true, sub: p ? '× ' + (V.raidMult(p) / 100).toFixed(2) + ' damage' : '' },
+        { key: 'B', label: B.champion ? 'LORD KEK VS' : 'THE BOSS', pet: { id: 0, name: B.name, tier: 3 }, art: bossArt, tagline: fmt(R.left) + ' HP left', locked: true }],
+      verdict: p ? { tone: 'good', big: 'HITS FOR ABOUT ' + fmt(dmg(p, a)), small: fmt(dmg(p, a) * 2) + ' on a crit, ' + fmt(dmg(p, a) * 3) + ' on a mega crit. Older and rarer pets hit harder.' } : { tone: 'wait', big: 'PICK WHO HITS THE BOSS', small: 'Each pet can hit once per chain day.' },
+      prompt: 'Pick your hitter', shelf: PS.shelf, searchList: PS.st.q ? dec(all.filter(function (c) { return PK.match(c.p, PS.st.q); })) : null, searchPh: 'Search ' + fmt(all.length) + ' pets: name, #number, species', selected: p ? p.id : '',
+      shelves: [{ id: 'best', label: '⭐ Hardest hitters', list: dec(ready), why: 'Your pets that can hit today, biggest damage first.', empty: 'None of your pets can hit right now. Try 📋 All my pets to see why.' },
+        { id: 'fav', label: '★ Favorites', list: dec(PK.favOf(all)), why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorites yet. Tap the ☆ on a pet.' },
+        { id: 'recent', label: '🕘 Recent', list: dec(PK.recentOf(all)), why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
+        { id: 'all', label: '📋 All my pets', list: dec(all), why: 'Every living pet. The ones that can\u2019t hit say why.', empty: 'No living pets yet.' }],
+      drop: [document.getElementById('raidScene')], onRedraw: function () { pick(w, b, ME, R); },
+      onSlot: function () { }, onClear: function () { selPet = null; last = ''; draw(); },
+      onShelf: function (id) { PS.shelf = id; pick(w, b, ME, R); },
+      onPick: function (c) { selPet = c.p.id; PK.used(c.p.id, true); PS.st.q = ''; last = ''; draw(); } }, PS.st); }
+  function bind(el, w, b, R) { var V = window.V2Rules, go = $('rdGo'), amt = $('rdAmt'), est = $('rdEst'); if (!go) return; pick(w, b, me(), R);
+    function upd() { var p = selPet && w.byId[selPet], a = Number(amt.value) || 0; PS.amt = amt.value; est.textContent = p ? 'Hit for about ' + fmt(Math.floor(a * V.raidMult(p) / 100)) + ' damage, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 2) + ' on a crit, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 3) + ' on a mega crit.' : 'Pick a pet.';
+      var vb = el.querySelector('#rdPick .pk2-v b'), vs = el.querySelector('#rdPick .pk2-v span'); if (p && vb) { vb.textContent = 'HITS FOR ABOUT ' + fmt(dmg(p, a)); if (vs) vs.textContent = fmt(dmg(p, a) * 2) + ' on a crit, ' + fmt(dmg(p, a) * 3) + ' on a mega crit. Older and rarer pets hit harder.'; } }
     amt.oninput = upd; upd();
     go.onclick = function () { var p = selPet && w.byId[selPet]; if (!p) { est.textContent = 'Pick a pet first.'; return; } var pl = V.raidPlan(p.id, w, b, amt.value), why = V.raidWhy(w, p, me(), pl.amount, b);
       if (why) { est.textContent = 'Not now: ' + why; return; }

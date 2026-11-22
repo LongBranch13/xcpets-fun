@@ -38,7 +38,11 @@ async function check() {
   const live = await Promise.all(RULES.map(f => get(SITE + '/' + f, 'buf').catch(() => null)));
   out.liveRsig = live.every(Boolean) ? rulesSig(live) : null;
   try { out.mainRsig = checkoutRsig(); } catch (e) { out.mainRsig = null; }
-  const [h, latest, meta] = await Promise.all([tryGet(NODE + '/xp/v1/health'), tryGet(NODE + '/xp/v1/world/latest.json'), tryGet(SITE + '/api/meta.json')]);
+  const [h, latest, meta, cache] = await Promise.all([tryGet(NODE + '/xp/v1/health'), tryGet(NODE + '/xp/v1/world/latest.json'), tryGet(SITE + '/api/meta.json'),
+    tryGet(NODE + '/v2/assets/XCPETS')]);
+  /* Nov 22 2026: the node cache (node.xcpets.fun/v2, the pages' first chain read and the feed's) answered 502 while /xp/v1 was fine. */
+  out.nodeCache = cache && !cache.__err ? 'ok' : (cache && cache.__err) || 'not answering';
+  if (out.nodeCache !== 'ok') out.problems.push('The node cache (node.xcpets.fun/v2) is ' + out.nodeCache + '. Pages fall back to the slower public Counterparty nodes and the feed and recap cannot be built. Last time the node cache had hung: Actions > server-restart (type RESTART) fixed it.');
   if (h.__err) out.problems.push('The game server (node.xcpets.fun) health check is ' + h.__err + '. Pages fall back to the slow load.');
   out.chainTip = h.tip || null; out.builder = h.builder || null; out.follow = h.rules || null;
   if (!out.liveRsig) out.problems.push('Could not read the rule files from the live site.');
@@ -70,7 +74,7 @@ function report(r) {
     '| Chain tip | ' + (r.chainTip || '?') + ' |', '| World players use | ' + (r.worldTip || 'none') + (r.behind != null ? ' (' + r.behind + ' behind)' : '') + ' |',
     '| Live rules / main rules | ' + (r.liveRsig || '?') + ' / ' + (r.mainRsig || '?') + ' |', '| latest.json rules | ' + (r.latestRsig || '?') + ' |',
     '| Server follows main | ' + (r.follow ? (r.follow.follow ? 'yes, ' + (r.follow.sha || '?') + ' ' + (r.follow.rsig || '') : 'off') : 'not installed yet') + ' |',
-    '| Feed tip | ' + (r.feedTip || '?') + ' |', ''];
+    '| Feed tip | ' + (r.feedTip || '?') + ' |', '| Node cache (/v2) | ' + (r.nodeCache || '?') + ' |', ''];
   r.problems.forEach(p => lines.push('- **' + p + '**')); r.notes.forEach(n => lines.push('- ' + n));
   const md = lines.join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md); } catch (e) {}

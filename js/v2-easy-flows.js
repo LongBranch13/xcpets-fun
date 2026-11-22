@@ -102,69 +102,99 @@
 
   // ================================================================ BATTLE
   function fight(w) { var bp = $('battlePanel'), UI = U(); if (!bp || !UI || !w || !window.UXB || !UXB.faceoff) return; var el = $('ezFight');
-    if (!el) { el = document.createElement('div'); el.id = 'ezFight'; el.className = 'ez ez-fight'; bp.insertBefore(el, bp.firstChild); bp.classList.add('ez-on'); }
+    if (!el) { el = document.createElement('div'); el.id = 'ezFight'; el.className = 'ez ez-fight'; var sg = $('arStage'); /* pet-picker: right under the arena scene */ if (sg && sg.parentNode) sg.parentNode.insertBefore(el, sg.nextSibling); else bp.insertBefore(el, bp.firstChild); bp.classList.add('ez-on'); }
     keep(el, function () { paintFight(el, w); }); }
   /* page-unresponsive-fix (2026-10-27): the fighter picker re-sorted all ~1,600 of your pets and every opponent on each tap. Lists are now sorted once
    * per world (and tip / address / sort) and reused; a new world (new block or burn) starts fresh. Display only, same lists in the same order. */
   var MEMO = typeof WeakMap === 'function' ? new WeakMap() : null;
   function memo(w, k, fn) { if (!MEMO || !w || typeof w !== 'object') return fn(); var m = MEMO.get(w); if (!m) MEMO.set(w, m = {}); if (!Object.prototype.hasOwnProperty.call(m, k)) { var ks = Object.keys(m); if (ks.length > 40) delete m[ks[0]]; m[k] = fn(); } return m[k]; }
-  function paintFight(el, w) { var UI = U(), ME = UI.ME, FO = UXB.faceoff(), why = UXB.whyNot, T = tip(w), s = ST.f, view = UI.viewOnly && UI.viewOnly();
+  function paintFight(el, w) { var UI = U(), ME = UI.ME, FO = UXB.faceoff(), why = UXB.whyNot, T = tip(w), s = ST.f, view = UI.viewOnly && UI.viewOnly(), PK = window.V2Pick;
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], IGN = UXB.fightIgnored ? UXB.fightIgnored() : [];
     var inc = (w.fights || []).filter(function (f) { var q = w.byId[f.b]; return f.status === 'open' && T + 1 - f.block <= V().FIGHT_WINDOW && q && q.owner === ME && IGN.indexOf(f.id) < 0; });
     if (s.inc && !inc.some(function (f) { return f.id === s.inc; })) s.inc = null;
-    if (!s.tab) s.tab = inc.length ? 'inc' : 'sug';
     var rec = function (p) { return '🏆 ' + (p.wins || 0) + '-' + (p.losses || 0); };
-    var lines = function (p) { return ['<span' + ptA(p) + '>⚡ ' + pow(p) + '</span> · ⭐ ' + score(w, p), rec(p) + ' · ' + esc(spL(p.species))]; };
-    var h = '';
     if (!ME) { el.innerHTML = '<div class="ez-box"><p class="ez-lead">⚔️ Pick your fighter, pick an opponent, burn. Connect your ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to start.</p><button type="button" class="btn ico-flame ez-go" id="ezFGo">🔌 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '</button></div>';
       $('ezFGo').onclick = function () { UI.confirmPlans('Challenge', [{}]); }; return; }
-    /* 1 · your fighter */
-    var mine = memo(w, 'mine|' + ME + '|' + T, function () { return UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w) }; })
-      .sort(function (a, b) { return (!!a.why - !!b.why) || pow(b.p) - pow(a.p) || a.p.id - b.p.id; }); });
-    var mq = mine.filter(function (x) { return match(x.p, s.qa); }), nOk = mine.filter(function (x) { return !x.why; }).length;
-    if (A && !mq.slice(0, MAX).some(function (x) { return x.p.id === A.id; })) mq = [{ p: A, why: why(A, w) }].concat(mq.filter(function (x) { return x.p.id !== A.id; }));
-    h += '<div class="ez-box">' + head('1', 'Your fighter', 'ezFqA', s.qa, '<span class="ez-cnt">' + fmt(nOk) + ' of ' + fmt(mine.length) + ' can fight today</span>') +
-      strip(mq.slice(0, MAX).map(function (x) { return card(w, x.p, { on: A && A.id === x.p.id, why: x.why, lines: lines(x.p) }); }), mq.length - MAX, mine.length ? 'No pet matches.' : 'No living pets at this address yet. Hatch one first.');
-    /* 2 · opponent */
-    var tl = [['inc', '📥 Challenging you (' + inc.length + ')', inc.length], ['sug', '🎯 Suggested'], ['all', '🔎 Any pet']];
-    h += head('2', s.tab === 'inc' ? 'Accept a challenge' : 'Opponent', 'ezFqB', s.qb, '') + tabs(tl, s.tab);
-    var opp = [];
-    if (s.tab === 'inc') { var ii = inc.filter(function (f) { return match(w.byId[f.a], s.qb) || match(w.byId[f.b], s.qb); });
-      opp = ii.slice(0, MAX).map(function (f) { var Y = w.byId[f.a], X = w.byId[f.b]; return card(w, Y, { key: 'f' + f.id, on: s.inc === f.id, tag: 'vs your ' + esc(X.name) + ' #' + X.id, tagMe: true, lines: ['⚡ ' + pow(Y) + ' vs your ⚡ ' + pow(X), rec(Y) + ' · fight ' + f.id, '⏳ by block ' + fmt(f.expires)] }); });
-      h += strip(opp, ii.length - MAX, 'No one is challenging your pets right now.'); }
-    else { var ap = A ? pow(A) : 0, srt = s.tab === 'sug' ? (A ? 'a' + ap : 's') : 'i', th = memo(w, 'th|' + ME + '|' + T + '|' + srt + '|' + lookRev(), function () { var t = UI.fighters(w, ME, true).slice();
-        if (s.tab === 'sug') t.sort(function (a, b) { return A ? Math.abs(pow(a) - ap) - Math.abs(pow(b) - ap) || score(w, b) - score(w, a) : score(w, b) - score(w, a); });
-        else t.sort(function (a, b) { return a.id - b.id; }); return t; }).filter(function (p) { return match(p, s.qb); }); /* sorted once per world, then filtered: same order (stable sort) */
-      if (B && !th.slice(0, MAX).some(function (p) { return p.id === B.id; })) th = [B].concat(th.filter(function (p) { return p.id !== B.id; }));
-      opp = th.slice(0, MAX).map(function (p) { return card(w, p, { on: B && B.id === p.id && !s.inc, why: why(p, w), lines: lines(p).concat(['👤 ' + esc(short(p.owner))]) }); });
-      h += strip(opp, th.length - MAX, A || s.qb ? 'No opponent matches.' : 'No opponent is loaded yet. Type a wallet address or a pet number above.'); }
-    /* 3 · one button */
+    /* pet-picker (Nov 22 2026): ONE picker. Side A = your fighter, side B = the opponent (or a challenger). */
+    var F = s.inc ? w.fights[s.inc - 1] : null, CA = F ? w.byId[F.b] : A, CB = F ? w.byId[F.a] : B;
+    var side = s.side || (A || s.inc ? 'B' : 'A'); if (!A && !s.inc) side = 'A'; s.side = side;
+    var mine = memo(w, 'mine|' + ME + '|' + T, function () { return UI.mine(w).filter(function (p) { return !p.dead && !p.released; }).map(function (p) { return { p: p, why: why(p, w), k: pow(p) }; })
+      .sort(function (a, b) { return (!!a.why - !!b.why) || b.k - a.k || a.p.id - b.p.id; }); });
+    var ready = mine.filter(function (x) { return !x.why; });
+    var opp = memo(w, 'opp|' + ME + '|' + T + '|' + lookRev(), function () { return UI.fighters(w, ME, true).map(function (p) { return { p: p, k: pow(p) }; }); });
+    var ap = A ? pow(A) : 0;
+    var oppBest = memo(w, 'oppB|' + ME + '|' + T + '|' + lookRev() + '|' + ap, function () { return opp.slice().sort(function (x, y) { var ux = x.k <= ap ? 0 : 1, uy = y.k <= ap ? 0 : 1; return ux - uy || (ux ? x.k - y.k : y.k - x.k) || x.p.id - y.p.id; }); }); /* likely wins first (closest first), then the tougher ones */
+    var oppStrong = memo(w, 'oppS|' + ME + '|' + T + '|' + lookRev(), function () { return opp.slice().sort(function (x, y) { return y.k - x.k || x.p.id - y.p.id; }); });
+    var oppAny = memo(w, 'oppI|' + ME + '|' + T + '|' + lookRev(), function () { return opp.slice().sort(function (x, y) { return x.p.id - y.p.id; }); });
+    var statA = function (c) { c.stat = '<span' + ptA(c.p) + '>⚡ ' + pow(c.p) + '</span>'; c.line = rec(c.p) + ' · ' + esc(spL(c.p.species)); return c; };
+    var statB = function (c) { if (!('why' in c)) c.why = why(c.p, w); var wc = A && !c.why ? PK.winChance(w, A, c.p, 60) : null; c.stat = wc != null ? 'WIN ~' + wc + '%' : '<span' + ptA(c.p) + '>⚡ ' + pow(c.p) + '</span>';
+      c.line = (wc != null ? '⚡ ' + pow(c.p) + ' · ' : '') + rec(c.p) + ' · 👤 ' + esc(short(c.p.owner)); return c; };
+    var st = side === 'A' ? (s.pa = s.pa || {}) : (s.pb = s.pb || {}), nShow = st.n || 24;
+    var dec = function (list, f) { return list.slice(0, nShow).map(function (c) { return f(Object.assign({}, c)); }).concat(list.slice(nShow)); };
+    var shelves, shelf, all;
+    if (side === 'A') {
+      all = mine;
+      shelves = [{ id: 'best', label: '⭐ Best', list: ready, why: 'Your strongest pets that can fight today (' + fmt(ready.length) + ' of ' + fmt(mine.length) + ').', empty: mine.length ? 'None of your pets can fight today (Juvenile+, one fight per pet per day). Try 📋 All my pets to see why.' : 'No living pets at this address yet. Hatch one first.' },
+        { id: 'fav', label: '★ Favorites', list: PK.favOf(mine), why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorites yet. Tap the ☆ on a pet.' },
+        { id: 'recent', label: '🕘 Recent', list: PK.recentOf(mine), why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
+        { id: 'all', label: '📋 All my pets', list: mine, why: 'Every living pet. The ones that can’t fight today say why.', empty: 'No living pets at this address yet.' }];
+      shelf = s.shA || 'best'; }
+    else {
+      all = opp;
+      var incL = inc.map(function (f) { var Y = w.byId[f.a], X = w.byId[f.b]; return { p: Y, key: 'f' + f.id, why: null, tag: 'vs your ' + esc(X.name) + ' #' + X.id, tagMe: true, stat: (function () { var wc = PK.winChance(w, X, Y, 60); return wc != null ? 'YOU WIN ~' + wc + '%' : '⚡ ' + pow(Y); })(), line: '⚡ ' + pow(Y) + ' vs your ⚡ ' + pow(X) + ' · ⏳ ' + fmt(f.expires) }; });
+      shelves = (incL.length ? [{ id: 'inc', label: '📥 Challenging you (' + incL.length + ')', hot: true, list: incL, why: 'These pets challenged one of yours. Pick one, then accept.' }] : [])
+        .concat([{ id: 'best', label: '🎯 Best match', list: oppBest, why: A ? 'Fights ' + esc(A.name) + ' is likely to win come first, closest ones first.' : 'Pick your fighter first to see win chances.', empty: 'No opponent is loaded yet. Try 🔎 Any pet and look up a wallet or pet number.' },
+          { id: 'strong', label: '💪 Strongest', list: oppStrong, why: 'Most power first. Big risk, big glory.', empty: 'No opponent is loaded yet.' },
+          { id: 'any', label: '🔎 Any pet', list: oppAny, why: 'Type a wallet address or a pet number to load more opponents.', empty: 'No opponent is loaded yet. Type a wallet address or a pet number above.', top: '<div class="pk2-look" id="pkFLookAt"></div>' },
+          { id: 'fav', label: '★ Favorites', list: PK.favOf(opp), why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorite opponents yet. Tap the ☆ on a pet.' },
+          { id: 'recent', label: '🕘 Recent', list: PK.recentOf(opp), why: 'Pets you picked lately.', empty: 'Nothing picked yet.' }]);
+      shelf = s.shB || (incL.length && !A ? 'inc' : 'best'); }
+    if (!shelves.some(function (x) { return x.id === shelf; })) shelf = shelves[0].id;
+    var deco = side === 'A' ? statA : statB; shelves.forEach(function (x) { if (x.id !== 'inc') x.list = dec(x.list, deco); });
+    var searchList = st.q ? dec(all.filter(function (c) { return PK.match(c.p, st.q, spL); }), deco) : null;
+    /* verdict */
+    var verdict, wc0 = CA && CB ? PK.winChance(w, CA, CB, 200) : null;
+    if (CA && CB) { var wa = why(CA, w), wb = F ? null : why(CB, w);
+      verdict = wa || wb ? { tone: 'bad', big: '✋ ' + esc(wa ? 'Your pet: ' + wa : 'Opponent: ' + wb), small: 'Pick another pet.' }
+        : { tone: wc0 == null ? 'meh' : wc0 >= 60 ? 'good' : wc0 >= 40 ? 'meh' : 'bad', big: wc0 == null ? 'READY TO FIGHT' : 'YOU WIN ABOUT ' + wc0 + '% OF THE TIME',
+          small: (wc0 == null ? '' : wc0 >= 60 ? 'Good odds. ' : wc0 >= 40 ? 'Coin flip. ' : 'Risky: try 🎯 Best match. ') + 'Loser gives 1 random worn piece (★ safe) and gets a black eye.' + (F ? '' : ' Their owner has ' + V().FIGHT_WINDOW + ' blocks to accept.') }; }
+    else verdict = { tone: 'wait', big: !A && !s.inc ? 'PICK YOUR FIGHTER' : 'NOW PICK WHO TO FIGHT', small: !A ? 'Tap one of your pets below.' : '🎯 Best match shows the fights you are likely to win.' };
+    var bud = PK.buddy();
+    var slotA = { key: 'A', label: 'YOU', pet: CA, empty: 'Pick your fighter', buddy: CA && CA.id === bud, clear: !F, locked: !!F, sub: CA ? '⚡ ' + pow(CA) + ' · ' + rec(CA) : '' };
+    var slotB = { key: 'B', label: F ? 'CHALLENGER' : 'THEM', pet: CB, empty: A ? 'Pick an opponent' : 'Then an opponent', clear: true, sub: CB ? '⚡ ' + pow(CB) + ' · 👤 ' + esc(short(CB.owner)) : '' };
+    /* one button: the face-off burn, or accept */
     var label, ok = false, hint = '';
-    if (s.tab === 'inc' && s.inc) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can\u2019t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept * V().acceptCost(w, +s.inc) / V().acceptCost(null, 0)) + ' XCPETS'; hint = 'Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
-    else if (s.tab === 'inc') label = inc.length ? 'Tap a challenger above' : 'Pick 🎯 Suggested to start a fight';
-    else if (!A) label = 'Pick your fighter (1)';
-    else if (!B) label = 'Pick an opponent (2)';
-    else { var wa = why(A, w), wb = why(B, w), sw2 = !wa && !wb && UI.sendWhy ? UI.sendWhy({ tag: 'pet:fight:' + A.id + ':' + B.id }) : null; ok = !wa && !wb && !sw2;
-      label = ok ? '⚔️ Challenge #' + B.id + ' · burn ' + fmt(V().COSTS.fight) + ' XCPETS' : '✋ ' + (sw2 || (wa ? 'Your pet: ' + wa : 'Opponent: ' + wb));
-      hint = 'Their owner has ' + V().FIGHT_WINDOW + ' blocks to accept. Loser gives 1 random worn piece (★ safe) and gets a black eye.'; }
-    var cmp = ''; var CA = s.tab === 'inc' && s.inc ? w.byId[(w.fights[s.inc - 1] || {}).b] : A, CB = s.tab === 'inc' && s.inc ? w.byId[(w.fights[s.inc - 1] || {}).a] : B;
-    if (CA && CB && (s.tab !== 'inc' || s.inc)) { var K = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
-      cmp = '<div class="ez-cmp"><b>' + esc(CA.name) + ' <span' + ptA(CA) + '>⚡' + pow(CA) + '</span></b><span class="ez-vs">VS</span><b>' + esc(CB.name) + ' <span' + ptA(CB) + '>⚡' + pow(CB) + '</span></b><span class="ez-st">' + K.map(function (k) { var a = (CA.stats || {})[k] || 0, b = (CB.stats || {})[k] || 0; return '<i class="' + (a > b ? 'up' : a < b ? 'dn' : '') + '" title="' + k + '">' + k.slice(0, 3).toUpperCase() + ' ' + a + '/' + b + '</i>'; }).join('') + '</span></div>'; }
-    h += '<div class="ez-foot">' + cmp + '<div class="ez-acts"><button type="button" class="btn ico-flame ez-go" id="ezFGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button>' +
-      (s.tab === 'inc' && s.inc ? '<button type="button" class="q" id="ezFIgn">Ignore</button>' : '<button type="button" class="q ez-qm" id="ezFQm">🎲 Quick match</button>') + '</div>' +
-      '<div class="ez-hint">' + esc(s.msg || hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn.' : '') + '</div></div></div>';
-    el.innerHTML = h; sprites(el, w); if (s.tab !== 'inc') placeLook(el, 'fight');
-    el.querySelectorAll('[data-ez]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('aria-disabled')) { UI.toast('#' + b.dataset.ez + ': ' + (b.querySelector('.ez-why') || {}).textContent); return; } var k = b.dataset.ez; s.msg = '';
-      if (k[0] === 'f') { var f = w.fights[+k.slice(1) - 1]; s.inc = s.inc === f.id ? null : f.id; UXB.setFace(f.b, f.a); return; }
-      var inMine = b.closest('.ez-strip') === el.querySelectorAll('.ez-strip')[0]; s.inc = null;
-      if (inMine) UXB.setFace(FO.a === +k ? null : +k, undefined); else UXB.setFace(undefined, FO.b === +k ? null : +k); }; });
-    el.querySelectorAll('[data-eztab]').forEach(function (b) { b.onclick = function () { s.tab = b.dataset.eztab; s.inc = null; s.msg = ''; fight(U().world()); }; });
-    bindQ(el, 'ezFqA', function (v) { s.qa = v; }, function () { fight(U().world()); }); bindQ(el, 'ezFqB', function (v) { s.qb = v; }, function () { fight(U().world()); });
+    if (F) { var sw = UI.sendWhy ? UI.sendWhy({ tag: 'pet:accept:' + s.inc }) : null; ok = !sw; label = sw ? 'Can’t accept: ' + sw : '🔥 Accept fight ' + s.inc + ' · burn ' + fmt(V().COSTS.accept * V().acceptCost(w, +s.inc) / V().acceptCost(null, 0)) + ' XCPETS'; }
+    else if (!A) label = 'Pick your fighter';
+    else if (!B) label = 'Pick an opponent';
+    else { var wa2 = why(A, w), wb2 = why(B, w), sw2 = !wa2 && !wb2 && UI.sendWhy ? UI.sendWhy({ tag: 'pet:fight:' + A.id + ':' + B.id }) : null; ok = !wa2 && !wb2 && !sw2;
+      label = ok ? '⚔️ FIGHT! Challenge #' + B.id + ' · burn ' + fmt(V().COSTS.fight) + ' XCPETS' : '✋ ' + (sw2 || (wa2 ? 'Your pet: ' + wa2 : 'Opponent: ' + wb2)); }
+    var cmp = ''; if (CA && CB) { var K = ['vigor', 'spark', 'grit', 'zoom', 'luck'];
+      cmp = '<details class="pk2-dt"><summary>📊 Stats side by side</summary><div class="ez-cmp"><b>' + esc(CA.name) + ' <span' + ptA(CA) + '>⚡' + pow(CA) + '</span></b><span class="ez-vs">VS</span><b>' + esc(CB.name) + ' <span' + ptA(CB) + '>⚡' + pow(CB) + '</span></b><span class="ez-st">' + K.map(function (k) { var a = (CA.stats || {})[k] || 0, b = (CB.stats || {})[k] || 0; return '<i class="' + (a > b ? 'up' : a < b ? 'dn' : '') + '" title="' + k + '">' + k.slice(0, 3).toUpperCase() + ' ' + a + '/' + b + '</i>'; }).join('') + '</span></div></details>'; }
+    el.innerHTML = '<div id="ezFPick"></div><div class="ez-checkin ez-ffoot">' + cmp + '<div class="ez-acts"><button type="button" class="btn ico-flame ez-go" id="ezFGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button>' +
+      (F ? '<button type="button" class="q" id="ezFIgn">Ignore</button>' : '<button type="button" class="q ez-qm" id="ezFQm">🎲 Quick match</button>') + '</div>' +
+      '<div class="ez-hint">' + esc(s.msg || hint) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn.' : '') + '</div></div>';
+    var redraw = function () { fight(U().world()); };
+    PK.render($('ezFPick'), { id: 'circus', w: w, mid: 'VS', active: side, slots: [slotA, slotB], verdict: verdict, prompt: side === 'A' ? 'Pick your fighter' : (shelf === 'inc' ? 'Pick a challenger' : 'Pick who to fight'),
+      shelves: shelves, shelf: shelf, searchList: searchList, searchPh: side === 'A' ? 'Search ' + fmt(mine.length) + ' pets: name, #number, species' : 'Search opponents: name, #number, species', selected: side === 'A' ? (A ? A.id : '') : (s.inc ? 'f' + s.inc : B ? B.id : ''),
+      drop: [$('arStage')], onRedraw: redraw,
+      onSlot: function (k) { if (k === 'B' && !A && !s.inc) UI.toast('Pick your fighter first.'); s.side = k === 'B' && !A && !s.inc ? 'A' : k; redraw(); },
+      onClear: function (k) { s.msg = ''; if (F) { s.inc = null; s.side = 'A'; UXB.setFace(null, null); return; } s.side = k; if (k === 'A') UXB.setFace(null, undefined); else UXB.setFace(undefined, null); },
+      onShelf: function (id) { if (side === 'A') s.shA = id; else s.shB = id; if (id !== 'inc' && s.inc) { s.inc = null; UXB.setFace(null, null); return; } redraw(); },
+      onPick: function (c, slotKey) { var k = String(c.key || c.p.id); s.msg = '';
+        if (k[0] === 'f') { var f = w.fights[+k.slice(1) - 1]; if (s.inc === f.id) { s.inc = null; s.side = 'A'; UXB.setFace(null, null); return; } s.inc = f.id; PK.used(f.a, false); UXB.setFace(f.b, f.a); return; }
+        if (s.inc) { s.inc = null; }
+        var sd = slotKey === 'A' || slotKey === 'B' ? slotKey : side; if (sd === 'B' && !FO.a) sd = 'A';
+        if (sd === 'A' && c.p.owner !== ME) { UI.toast('#' + c.p.id + ' is not yours: it can only be the opponent.'); return; }
+        if (sd === 'B' && c.p.owner === ME) { UI.toast('#' + c.p.id + ' is yours: pick another player’s pet to fight.'); return; }
+        PK.used(c.p.id, c.p.owner === ME); (s.pa || {}).q = ''; (s.pb || {}).q = '';
+        s.side = sd === 'A' && !FO.b ? 'B' : sd; if (sd === 'A') UXB.setFace(c.p.id, undefined); else UXB.setFace(undefined, c.p.id); } }, st);
+    var la = $('pkFLookAt'); if (la && window.V2Lookup) V2Lookup.mount(la, { id: 'fightLook', mode: 'fight', onReady: function () { var u = U(); if (u && u.render) u.render(); } });
     var go = $('ezFGo'); if (go) go.onclick = function () {
-      if (s.tab === 'inc' && s.inc) { var id = String(s.inc); return UI.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: (V2Rules.acceptCost ? V2Rules.acceptCost(V2Mock.world(), +(id)) : 690) }], function () { UI.afterAccept(id); }); }
+      if (F) { var id = String(s.inc); return UI.confirmPlans('Accept fight ' + id, [{ tag: 'pet:accept:' + id, amount: (V2Rules.acceptCost ? V2Rules.acceptCost(V2Mock.world(), +(id)) : 690) }], function () { UI.afterAccept(id); }); }
       var g = $('foGo'); if (g && !g.disabled) g.click(); };
-    var qm = $('ezFQm'); if (qm) qm.onclick = function () { var q = $('arQuick'); if (!q) return; if (s.tab === 'inc') s.tab = 'sug'; q.click(); var m = $('arQmsg'); s.msg = m ? m.textContent : ''; fight(U().world()); };
-    var ig = $('ezFIgn'); if (ig) ig.onclick = function () { var id = s.inc; s.inc = null; UXB.ignoreFight(id); UI.toast('Ignored here. It expires on its own if nobody accepts.'); }; }
+    var qm = $('ezFQm'); if (qm) qm.onclick = function () { var q = $('arQuick'); if (!q) return; q.click(); var m = $('arQmsg'); s.msg = m ? m.textContent : ''; s.side = 'B'; fight(U().world()); };
+    var ig = $('ezFIgn'); if (ig) ig.onclick = function () { var id = s.inc; s.inc = null; s.side = 'A'; UXB.ignoreFight(id); UI.toast('Ignored here. It expires on its own if nobody accepts.'); }; }
 
   // ================================================================ BREED
   /* pet-picker (Nov 22 2026): the order under the motel scene is picker (#ezBreed) -> check-in button (#ezCheck). The old pet dock (#lfDock) is hidden. */
@@ -284,7 +314,7 @@
   window.V2Easy = { rolesBox: rolesBox, carryOf: carryOf, fight: function (w) { try { fight(w); } catch (e) { console.warn('easy fight', e); } }, breed: function (w) { try { breed(w); } catch (e) { console.warn('easy breed', e); } } };
   if (window.V2Motel && V2Motel.render) { var mr = V2Motel.render; V2Motel.render = function (w) { var r = mr.apply(this, arguments); V2Easy.breed(w); return r; }; }
   if (!document.getElementById('ezCss')) { var cs = document.createElement('style'); cs.id = 'ezCss';
-    cs.textContent = 'body.pk2-motel #lfDock{display:none}.pk2-fx,.pk2-dt{margin:8px 0 0;border:2px solid #4b3f7a;background:#120e22}.pk2-fx>summary,.pk2-dt>summary{cursor:pointer;padding:8px;font-weight:bold;color:#ffd84d;min-height:28px}.pk2-fx>*:not(summary){margin:4px 8px 8px}.pk2-dt>*:not(summary){margin:4px 6px 6px}.pk2-look{margin:0 0 8px}' +
+    cs.textContent = 'body.pk2-motel #lfDock{display:none}.ez-ffoot{margin-top:10px}.ez-ffoot .pk2-dt{margin:0 0 8px}.pk2-fx,.pk2-dt{margin:8px 0 0;border:2px solid #4b3f7a;background:#120e22}.pk2-fx>summary,.pk2-dt>summary{cursor:pointer;padding:8px;font-weight:bold;color:#ffd84d;min-height:28px}.pk2-fx>*:not(summary){margin:4px 8px 8px}.pk2-dt>*:not(summary){margin:4px 6px 6px}.pk2-look{margin:0 0 8px}' +
       '.ez-on>#faceoff,.ez-on>.ar-h{display:none}#breedPanel.ez-on .motel-bell,#breedPanel.ez-on #motelDesk .mt-guests,#breedPanel.ez-on #motelDesk .mt-browse,#breedPanel.ez-on #motelDesk #motelPick,#breedPanel.ez-on #motelDesk .mt-odds,#breedPanel.ez-on #motelDesk .mt-hint,#breedPanel.ez-on #motelDesk .brv-flip{display:none}' +
       '.ez-roles{margin:6px 0 8px;border:3px solid #000;background:#2b1946;box-shadow:3px 3px 0 #000;padding:6px 8px;color:#fff}.ez-rh{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffd166;margin:0 0 6px;letter-spacing:1px}' +
       '.ez-rr{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ez-roles.same .ez-rr{grid-template-columns:1fr}.ez-rc{display:flex;gap:8px;align-items:flex-start;border:2px solid #000;padding:6px;min-width:0}.ez-rc.egg{background:#1e3a2a}.ez-rc.car{background:#22284a}' +
