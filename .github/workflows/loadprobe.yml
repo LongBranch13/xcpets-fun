@@ -1,0 +1,30 @@
+# Load probe (Nov 22 2026): how fast each page opens for real wallets on the live site, and what it downloads.
+# View-only, nothing signed. Results: the run summary. Runs by hand, and when tools/loadprobe changes on a branch.
+name: loadprobe
+on:
+  workflow_dispatch:
+    inputs:
+      wallets: { description: 'Comma-separated wallets (empty = Evan, owner, a test wallet)', required: false, default: '' }
+      pages: { description: 'Comma-separated pages', required: false, default: 'index.html,play.html,breed.html,cemetery.html,raid.html,live.html' }
+      slow: { description: 'Also run on a phone network with a slower CPU', type: boolean, default: true }
+  push:
+    paths: ['tools/loadprobe/**', '.github/workflows/loadprobe.yml']
+permissions: { contents: read }
+concurrency: { group: loadprobe, cancel-in-progress: true }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install --no-save --no-package-lock playwright-core@1
+      - name: Fast network
+        env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}' }
+        run: node tools/loadprobe/run.js ${WALLETS:+--wallets "$WALLETS"} ${PAGES:+--pages "$PAGES"}
+      - name: Phone network, slower CPU
+        if: github.event_name == 'push' || github.event.inputs.slow == 'true'
+        env: { WALLETS: '${{ github.event.inputs.wallets }}' }
+        run: node tools/loadprobe/run.js --slow --pages play.html,cemetery.html ${WALLETS:+--wallets "$WALLETS"}
