@@ -78,7 +78,7 @@
     if (n == null) return '<span class="qc-no">—</span><small>' + esc(why) + '</small>';
     return '<b>' + fmt(n) + ' blocks</b><small>' + hrs(n) + (why ? ' · ' + esc(why) : '') + '</small>'; }
   var SORTS = { either: 'Soonest ready (breed or quest)', breed: 'Soonest breed-ready', quest: 'Soonest quest-ready', id: 'Pet number' };
-  var st = { sort: 'either', all: false }, lastKey = '';
+  var st = { sort: 'either', all: false }, lastKey = '', jumped = false;
   try { var sv = localStorage.getItem('xcpets-cooldowns-sort'); if (SORTS[sv]) st.sort = sv; } catch (e) {}
   function key(t, k) { var x = k === 'either' ? [t.breed, t.quest].filter(function (v) { return v != null; }) : [t[k]]; x = x.filter(function (v) { return v != null; }); return x.length ? Math.min.apply(null, x) : Infinity; }
   function paint(force) { var R = V(), w = world(), host = $('breedPanel'); if (!R || !w || !w.pets || !host) return; var b = tip() + 1, a = me();
@@ -96,6 +96,7 @@
         return '<tr><td><a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name || '') + '</a>' + (R.isMythic(p) ? ' <span class="qc-m">MYTHIC</span>' : '') + '</td><td>' + cell(t.breed, t.bWhy) + '</td><td>' + (t.left ? t.left.left + ' of ' + t.left.cap : '—') + '</td><td>' + cell(t.quest, t.qWhy) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
       (list.length > show.length || nNo ? '<p class="small muted">' + (st.all ? 'Showing all ' + fmt(pets.length) + ' pets.' : 'Showing ' + fmt(show.length) + ' of ' + fmt(live.length) + ' pets with a timer' + (nNo ? '; ' + fmt(nNo) + ' more can\u2019t breed or quest yet (not Adult or not Mythic)' : '') + '.') + '</p><button type="button" class="q" id="qcAll">' + (st.all ? 'Show only pets with a timer' : 'Show all ' + fmt(pets.length)) + '</button>' : '');
     el.innerHTML = h;
+    if (!jumped && location.hash === '#myCooldowns') { jumped = true; el.scrollIntoView({ block: 'start' }); } /* from the Today card's "ready now" line on play.html */
     var s = $('qcSort'); if (s) s.onchange = function () { st.sort = s.value; try { localStorage.setItem('xcpets-cooldowns-sort', st.sort); } catch (e) {} paint(true); };
     var m = $('qcAll'); if (m) m.onclick = function () { st.all = !st.all; paint(true); }; }
   function css() { if ($('qcCss') || !document.head) return; var s = document.createElement('style'); s.id = 'qcCss'; s.textContent =
