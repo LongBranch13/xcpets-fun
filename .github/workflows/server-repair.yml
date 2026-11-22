@@ -135,6 +135,21 @@ jobs:
           echo "rule files that differ from main:${DIFF:- none}"
           echo "published world rsig: $(grep -oE '"rsig":"r[0-9a-f]+"' "/mnt/r$DATA/world/latest.json" | head -1) (main: $MAINRSIG)"
           if [ -d "/mnt/r$ROOT/.git" ]; then echo "server repo copy: git, HEAD $(cat /mnt/r$ROOT/.git/HEAD | sed 's#ref: refs/heads/##'), changed $(date -u -r /mnt/r$ROOT/.git/HEAD +%FT%TZ)"; fi
+          # node cache path (node.xcpets.fun/v2): the cache, the Start9 proxy and tor. Unit settings and log tails, addresses scrubbed.
+          for U in xcpets-node-cache xcpets-start9-proxy tor tor@default caddy; do
+            F=$(ls /mnt/r/etc/systemd/system/$U.service /mnt/r/lib/systemd/system/$U.service 2>/dev/null | head -1)
+            [ -n "$F" ] || { echo "== $U: no unit file"; continue; }
+            EN=$(ls /mnt/r/etc/systemd/system/*.wants/ 2>/dev/null | grep -c "^$U.service$")
+            echo "== $U (enabled links: $EN): $(grep -hE '^(Type|Restart|RestartSec|TimeoutStartSec|MemoryMax|After|Requires)=' "$F" | tr '\n' ' ')"
+            X=$(grep -m1 '^ExecStart=' "$F" | cut -d= -f2- | grep -oE '/[^ ]+\.(sh|js|py)' | head -1)
+            [ -n "$X" ] && echo "   runs $(basename "$X") ($(wc -l < "/mnt/r$X" 2>/dev/null) lines)"
+            if [ -d "$J" ]; then
+              echo "   restarts/failures in 2 days: $(journalctl -D "$J" -u $U --since -2d --no-pager -o cat 2>/dev/null | grep -ciE 'failed|start request repeated|main process exited|killed')"
+              echo "   --- last 25 lines ---"
+              journalctl -D "$J" -u $U --since -6h --no-pager -o short-iso 2>/dev/null | tail -25 | scrub | cut -c1-220 | sed 's/^/   /'
+            fi
+          done
+          if [ -d "$J" ]; then echo "--- kernel/oom lines since -6h (last 10) ---"; journalctl -D "$J" -k --since -6h --no-pager -o short-iso 2>/dev/null | grep -iE 'oom|killed process|out of memory' | tail -10 | scrub | cut -c1-200; fi
           if [ "$LOOK" = "true" ]; then echo "diagnose only: nothing changed"; umount /mnt/r; exit 0; fi
           echo "swap/memory: $(grep -E 'MemTotal' /proc/meminfo | awk '{print int($2/1024)" MB RAM in rescue"}')"
           N=$(ls -d "/mnt/r$DATA"/pending-* 2>/dev/null | wc -l)
