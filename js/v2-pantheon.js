@@ -89,6 +89,7 @@
     else { h += '<div class="pn-ody"><div class="pn-bard"><canvas width="32" height="32" id="pnBard" role="img" aria-label="Homer Pepe"></canvas><br>Homer Pepe, the bard</div><div class="pn-scroll" id="pnScroll"></div></div>' +
       '<h3>Books so far</h3><ol class="pn-books">' + seats.map(function (s) { return '<li id="book-' + s.n + '"><a data-book="' + s.n + '"><b>Book ' + G.ROMAN[s.n - 1] + '</b>: ' + esc(G.seatTitle(s.n)) + '</a> · ' + esc(s.name || ('#' + s.petId)) + '</li>'; }).join('') + '</ol>'; }
     root.innerHTML = h;
+    try { if (window.V2PantheonScene) V2PantheonScene.set({ w: w, seats: seats.map(function (s) { return { n: s.n, petId: s.petId, name: s.name, pet: godPet(s, w) }; }) }); } catch (e) { } /* living-scenes: the thrones at the top */
     var rev = 0, locked = false;
     function book(n) { var s = seats[n - 1], box = document.getElementById('pnScroll'); if (!s || !box) return; rev++;
       box.innerHTML = '<h3>Book ' + G.ROMAN[n - 1] + ': The ' + esc(G.seatTitle(n)) + '</h3><ol>' + verse(s, w).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ol>'; }
