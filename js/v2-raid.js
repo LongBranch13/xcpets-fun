@@ -25,7 +25,7 @@
     scene(w, I, R, b);
     var h = '';
     if (!I.on && !R) { h = '<div class="rd-wait"><h3>Raids start at block ' + fmt(I.gate) + '</h3><p>' + (I.gate > b ? 'In ' + fmt(I.gate - b) + ' blocks (' + hrs(I.gate - b) + ').' : 'Waiting for the opening block hash.') + ' A boss appears, everyone burns to hit it, and if it falls every attacker gets a badge.</p></div>'; }
-    else if (!R) { h = '<div class="rd-wait"><h3>Raid 1 opens at block ' + fmt(I.nextOpen) + '</h3><p>Waiting for the opening block hash to pick the boss.</p></div>'; }
+    else if (!R) { h = '<div class="rd-wait"><h3>The next raid opens at block ' + fmt(I.nextOpen) + '</h3><p>Waiting for the opening block hash to pick the boss.</p></div>'; }
     else { var B = R.boss, pct = Math.max(0, Math.min(100, R.left / R.hp * 100)), st = R.live ? 'live' : R.result === 'won' || R.killBlock != null ? 'won' : b <= R.end ? 'live' : 'escaped';
       h += '<div class="rd-stage rd-' + st + (B.event ? ' rd-event' : '') + '">' + (window.V2RaidAnim ? V2RaidAnim.stage(B, st) : '<div class="rd-boss"><img src="img/raids/' + esc(B.art) + '.png" alt="' + esc(B.name) + '"' + (st === 'won' ? ' class="rd-dead"' : '') + '></div>') + '<div class="rd-info">' +
         '<p class="rd-tag">Raid ' + R.n + (B.event ? ' · EVENT BOSS' : '') + (B.champion ? ' · LORD KEK VS ' + esc(String(B.name).toUpperCase()) : '') + '</p><h3>' + esc(B.name) + '</h3>' +
