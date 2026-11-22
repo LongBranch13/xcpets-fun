@@ -36,6 +36,22 @@
     return base.replace(/(<xc-select[^>]*>)/, '$1' + eg); }
   function eggLine(e) { if (!e) return null; return '🥚 egg ⚡ ~' + (e.expHi > e.exp ? Math.round(e.exp) + '-' + Math.round(e.expHi) : Math.round(e.exp)) + ' (' + e.lo + ' to ' + e.hi + ')'; }
   function eggTags(e) { if (!e) return null; var t = []; if (e.hybridPct) t.push('keeps best stats ' + Math.round(e.hybridPct) + '%'); if (e.bredTrue) t.push('bred true +3'); if (e.passes.some(function (x) { return /^Carried/.test(x); })) t.push('carried floor'); if (e.passes.some(function (x) { return /^Hidden/.test(x); })) t.push('hidden trait'); return t.length ? '🧬 ' + t.join(' · ') : null; }
+  /* breed-roles (Nov 22 2026, players: "which pet is the egg and which is the carrier?"). Display only. Who gets what, in one look, before the burn.
+   * Mirrors js/v2-rules.js breed(): in a TWO-OWNER breed the wallet that asked first gets the egg; the other wallet's pet becomes a CARRIER of the
+   * asker's pet's best stat (picked on shardView(A,1) with carry-pick + shards on, else A.stats; first max in key order; value from shardView when
+   * shards are on) and every later egg of the carrier gets at least that value in that stat. Same owner: the egg is yours and nobody carries. */
+  var STAT_NM = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
+  function carryOf(A, b) { var V = window.V2Rules || {}; if (!A || !A.stats) return null;
+    var sh = !!(V.shardsOn && V.shardsOn(b) && V.shardView), view = sh ? V.shardView(A, 1).stats : A.stats, CS = V.carryPickOn && V.carryPickOn(b) && sh ? view : A.stats, ks = Object.keys(CS);
+    if (!ks.length) return null; var bk = ks.reduce(function (m, k) { return CS[k] > CS[m] ? k : m; }, ks[0]); return { stat: bk, value: view[bk] }; }
+  function rolesBox(mine, theirs, mode, b) { if (!mine || !theirs) return '';
+    var nm = function (p) { return '<b>' + esc(p.name || 'Pet') + '</b> <span class="ez-id">#' + p.id + '</span>'; }, sp = function (p) { return '<span class="ez-rsp" data-ezsp="' + p.id + '"></span>'; };
+    if (mode === 'same') return '<div class="ez-roles same" role="note"><div class="ez-rh">WHO GETS WHAT</div><div class="ez-rr"><div class="ez-rc egg">' + sp(mine) + sp(theirs) + '<div class="ez-rt"><span class="ez-rb">🥚 THE EGG IS YOURS</span><small>Both pets are yours, so nobody becomes a carrier.</small></div></div></div></div>';
+    var asker = mode === 'ask' ? mine : theirs, carrier = mode === 'ask' ? theirs : mine, c = carryOf(asker, b), st = c ? STAT_NM[c.stat] || c.stat : 'its best stat', v = c ? ' ' + c.value : '';
+    return '<div class="ez-roles" role="note"><div class="ez-rh">WHO GETS WHAT</div><div class="ez-rr">' +
+      '<div class="ez-rc egg">' + sp(asker) + '<div class="ez-rt"><span class="ez-rb">🥚 GETS THE EGG</span>' + nm(asker) + '<small>' + (mode === 'ask' ? 'You asked first, so the egg lands in <b>your</b> wallet.' : 'They asked first, so the egg goes to <b>their</b> wallet.') + '</small></div></div>' +
+      '<div class="ez-rc car">' + sp(carrier) + '<div class="ez-rt"><span class="ez-rb">🧬 BECOMES A CARRIER</span>' + nm(carrier) + '<small>' + (mode === 'ask' ? 'Their pet' : 'Your pet') + ' learns <b>' + esc(st + v) + '</b> from #' + asker.id + '. Every future egg of #' + carrier.id + ' gets at least ' + esc(st + v) + '.</small></div></div>' +
+      '</div></div>'; }
   function pairCard(P1, P2, b) { var e = eggOf(P1, P2, b); if (!e) return ''; var SL = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
     var rows = EggPower.KEYS.map(function (k) { var x = e.stats[k], mk = (x.keep ? ' <i title="hybrid egg keeps this best stat">kept</i>' : '') + (x.floor != null ? ' <i title="carried stat floor">≥' + x.floor + '</i>' : '');
       return '<tr><th>' + SL[k] + '</th><td>' + x.a + '</td><td class="eg">' + x.lo + ' to ' + x.hi + ' <small>~' + (Math.round(x.exp * 10) / 10) + '</small>' + mk + '</td><td>' + x.b + '</td></tr>'; }).join('');
@@ -212,9 +228,10 @@
     var od = '';
     if (P1 && P2 && M && M.odds) { try { var o = M.odds(Vr, P1, P2); od = '<div class="ez-odds"><b>ODDS</b> ' + o.sp.map(function (x) { return esc(x[0]) + ' ' + x[1].toFixed(x[1] === 100 ? 0 : 1) + '%'; }).join(' · ') + ' · ' + TL[o.hiT] + ' ' + o.tier.hi.toFixed(1) + '%' + (o.tier.up ? ' · ⬆ ' + TL[Math.min(3, o.hiT + 1)] + ' ' + o.tier.up.toFixed(1) + '%' : '') + (o.tier.lo ? ' · ' + TL[o.loT] + ' ' + o.tier.lo.toFixed(1) + '%' : '') + '</div>'; } catch (e) { od = ''; }
       if (v2 && P1.species !== P2.species) od += '<div class="ez-hint">🧬 Different species: body parts can trade in the egg.</div>'; od += pairCard(P1, P2, T + 1); }
+    if (P1 && P2) { var rmode = P1.owner === P2.owner ? 'same' : (s.tab === 'asks' && s.req) || flip ? 'accept' : 'ask'; try { od = rolesBox(P1, P2, rmode, T + 1) + od; } catch (e) { } }
     h += '</div>';
     placeCheck('<div class="ez-checkin" role="region" aria-label="Check in">' + od + (flip ? UI.breedFlipNote(flip) : '') + '<div class="ez-acts"><button type="button" class="btn ico-egg ez-go" id="ezBGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button></div><div class="ez-hint">' + (flip ? '' : esc(hint)) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn. Nothing is signed from this page until you confirm.' : (flip ? '' : ' Motel check-in (pet:breed), not the daily WAGMI check-in.')) + '</div></div>');
-    el.innerHTML = h; sprites(el, w); if (s.tab === 'other') placeLook(el, 'breed');
+    el.innerHTML = h; sprites(el, w); if ($('ezCheck')) sprites($('ezCheck'), w); if (s.tab === 'other') placeLook(el, 'breed');
     var pick = function (side, id) { $(side === 'A' ? 'bA' : 'bB').value = id; if (side === 'A' && $('bB').value === id) $('bB').value = ''; var S = M && M._state ? M._state() : null; if (S) { S.fresh = null; S.pickSide = null; if (id) { S.bubble = 'Room #' + id + '? Gooby pls.'; S.lt = performance.now(); } } UI.render(); };
     el.querySelectorAll('[data-ez]').forEach(function (bt) { bt.onclick = function () { if (bt.getAttribute('aria-disabled')) { UI.toast((bt.querySelector('.ez-why') || {}).textContent || ''); return; } var k = bt.dataset.ez;
       if (k[0] === 'r') { k = k.slice(1); if (s.req === k) { s.req = null; breed(U().world()); return; } s.req = k; var q2 = k.split(':'); $('bA').value = q2[0]; $('bB').value = q2[1]; pick('B', q2[1]); return; }
@@ -230,10 +247,14 @@
     $('ezBGo').onclick = function () { if (s.tab === 'asks' && s.req) { var acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'); if (acc) acc.click(); return; } var bell = $('bGo'); if (bell && !bell.disabled) bell.click(); }; }
 
   /* hooks: repaint after the existing face-off / motel renders (their state stays the single source of truth) */
-  window.V2Easy = { fight: function (w) { try { fight(w); } catch (e) { console.warn('easy fight', e); } }, breed: function (w) { try { breed(w); } catch (e) { console.warn('easy breed', e); } } };
+  window.V2Easy = { rolesBox: rolesBox, carryOf: carryOf, fight: function (w) { try { fight(w); } catch (e) { console.warn('easy fight', e); } }, breed: function (w) { try { breed(w); } catch (e) { console.warn('easy breed', e); } } };
   if (window.V2Motel && V2Motel.render) { var mr = V2Motel.render; V2Motel.render = function (w) { var r = mr.apply(this, arguments); V2Easy.breed(w); return r; }; }
   if (!document.getElementById('ezCss')) { var cs = document.createElement('style'); cs.id = 'ezCss';
     cs.textContent = '.ez-on>#faceoff,.ez-on>.ar-h{display:none}#breedPanel.ez-on .motel-bell,#breedPanel.ez-on #motelDesk .mt-guests,#breedPanel.ez-on #motelDesk .mt-browse,#breedPanel.ez-on #motelDesk #motelPick,#breedPanel.ez-on #motelDesk .mt-odds,#breedPanel.ez-on #motelDesk .mt-hint,#breedPanel.ez-on #motelDesk .brv-flip{display:none}' +
+      '.ez-roles{margin:6px 0 8px;border:3px solid #000;background:#2b1946;box-shadow:3px 3px 0 #000;padding:6px 8px;color:#fff}.ez-rh{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffd166;margin:0 0 6px;letter-spacing:1px}' +
+      '.ez-rr{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ez-roles.same .ez-rr{grid-template-columns:1fr}.ez-rc{display:flex;gap:8px;align-items:flex-start;border:2px solid #000;padding:6px;min-width:0}.ez-rc.egg{background:#1e3a2a}.ez-rc.car{background:#22284a}' +
+      '.ez-rsp canvas{width:48px;height:48px;image-rendering:pixelated;display:block}.ez-rt{min-width:0;font-size:13px;line-height:1.35}.ez-rt small{display:block;color:#e6e0ff;font-size:12px;margin-top:2px}.ez-rb{display:block;font-family:Bangers,Impact,sans-serif;font-size:17px;letter-spacing:.5px;color:#3ddc84}.ez-rc.car .ez-rb{color:#7ad7ff}' +
+      '@media (max-width:520px){.ez-rr{grid-template-columns:1fr}}' +
       '.ez-pair{margin:6px 0;border:3px solid #000;background:#1b1530;box-shadow:3px 3px 0 #000;padding:6px;color:#fff}.ez-pair table{border-collapse:collapse;width:100%;margin-top:4px}.ez-pair th,.ez-pair td{padding:2px 4px;text-align:center;border-bottom:1px solid #3a2d55}.ez-pair th:first-child{text-align:left}.ez-pair td.eg{color:#ffe066}.ez-pair i{font-style:normal;font-size:.8em;background:#3c9a2e;color:#fff;padding:0 3px;margin-left:2px}.ez-pair tr.tot th,.ez-pair tr.tot td{border-top:2px solid #000;font-weight:bold}.ez-pass{margin:4px 0 0;padding-left:16px;font-size:.85em}.hs-bfp{margin-top:6px;border-top:2px dashed #3a2d55;padding-top:4px}.hs-bfp p{margin:2px 0;font-size:.9em}' +
       '.ez{margin:8px 0}.ez-box{border:3px solid #000;background:#1b1530;box-shadow:4px 4px 0 #000;padding:8px;min-width:0}.ez-breed .ez-box{background:#2a1530}.ez-lead{margin:4px 0 8px;color:#fff}' +
       '.ez-hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:4px 0}.ez-hd b{color:#ffd166;font-size:15px}.ez-n{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;background:#ffd166;color:#140f24;font-weight:700;border:2px solid #000}' +
