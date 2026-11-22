@@ -34,7 +34,10 @@
   function blank() { return { v: VERSION, salt: rnd64().slice(0, 16), tip: START_TIP, start: START_TIP, bal: START_BAL, burned: 0, rows: [], n: 0, made: now(), stats: { hatched: 0, legendary: 0, wow: 0, glitch: 0 } }; }
   function load() { if (L) return L; var S = ls(); try { var o = S && JSON.parse(S.get(LKEY)); if (o && o.v === VERSION && Array.isArray(o.rows)) return (L = o); } catch (e) {} L = blank(); seed(L); save(); return L; }
   function save() { var S = ls(); if (S && L) try { S.set(LKEY, JSON.stringify(L)); } catch (e) {} }
-  function blockHash(n) { var l = load(); n = Number(n); if (!(n > 0) || n > l.tip) return null; return sha('xcpets-practice-block:' + l.salt + ':' + n); }
+  /* first-egg-fix (Nov 22 2026): pretend block hashes start with 18 zeros like real Bitcoin ones, so they pass the proof-of-work check
+   * rjs/chain.js added in PR #88 (a random 64-hex hash never does, which left the practice egg locked on "Couldn't verify block"). */
+  var POW0 = '000000000000000000';
+  function blockHash(n) { var l = load(); n = Number(n); if (!(n > 0) || n > l.tip) return null; return POW0 + sha('xcpets-practice-block:' + l.salt + ':' + n).slice(POW0.length); }
   function row(l, src, tag, amt, b, tx) { l.n++; var r = { tx_index: 100000000 + l.n, tx_hash: tx || rnd64(), block_index: b, source: src, asset: 'XCPETS', asset_longname: null, quantity: Math.round(amt * UNIT), tag: hexTag(tag), status: 'valid', _t: tag }; l.rows.push(r); return r; }
 
   /* ---- the luck grinders (real rules, pretend tx ids) */
@@ -69,7 +72,7 @@
 
   /* ---- replays (the real V2Rules.replay over the practice ledger) */
   function hashesTo(tip) { var h = {}, l = load(); var from = Math.max(l.start - 40 * BPD, 0); l.rows.forEach(function (r) { h[r.block_index] = blockHash(r.block_index); }); for (var b = Math.max(from, l.tip - 2 * BPD); b <= tip; b++) h[b] = h[b] || hashAt(b, tip); return h; }
-  function hashAt(b, tip) { var l = load(); return sha('xcpets-practice-block:' + l.salt + ':' + b); }
+  function hashAt(b, tip) { var l = load(); return POW0 + sha('xcpets-practice-block:' + l.salt + ':' + b).slice(POW0.length); }
   function replayRows(rows, tip) { var V = root.V2Rules, E = root.LiveEngine || {}; var h = {}, l = load(), G = [V.ACTIVATE_FIRESALE_BLOCK, V.questGate && V.questGate(), V.raidGate && V.raidGate()].filter(function (x) { return x != null; });
     var lo = G.length ? Math.min.apply(null, G) : tip; rows.forEach(function (r) { h[r.block_index] = hashAt(r.block_index); }); for (var b = lo; b <= tip; b++) if (!h[b]) h[b] = hashAt(b);
     var sorted = rows.slice().sort(function (a, b) { return b.tx_index - a.tx_index; });
