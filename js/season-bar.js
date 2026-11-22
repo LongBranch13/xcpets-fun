@@ -29,6 +29,7 @@
       '.sbar-n{font-family:"Bangers","Impact",sans-serif;font-size:20px;letter-spacing:1px;text-shadow:2px 2px 0 #000}' +
       '.sbar-c{font-family:"Press Start 2P",monospace;font-size:10px;background:#000;color:#7CFC00;padding:5px 7px;border-radius:3px}' +
       '.sbar-c.hot{color:#ff3b3b;animation:sbarBlink 1s steps(2) infinite}@keyframes sbarBlink{50%{opacity:.35}}' +
+      '.sbar-i{flex-basis:100%;font-size:13px}.sbar-buy{margin-left:6px;font-family:"Press Start 2P",monospace;font-size:9px;padding:6px 8px;background:#ffe14d;color:#000;border:2px solid #000;box-shadow:2px 2px 0 #000;cursor:pointer}' +
       '.sbar-x{position:absolute;top:4px;right:6px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer;line-height:1}' +
       '.sbar-snow{position:absolute;inset:0;pointer-events:none}.sbar-snow i{position:absolute;top:-6px;width:3px;height:3px;background:#fff;opacity:.8;animation:sbarFall 6s linear infinite}' +
       '@keyframes sbarFall{to{transform:translateY(90px)}}@media (prefers-reduced-motion:reduce){.sbar-snow,.sbar-c.hot{animation:none}.sbar-snow i{display:none}}';
@@ -44,7 +45,17 @@
         '<span class="sbar-n">' + esc(s.emoji || '') + ' ' + esc(s.name) + '</span>' +
         '<span>' + esc(P.live ? 'Limited ' + s.egg + 's are out. Finale boss: ' + s.boss + '.' : s.tagline + ' Limited ' + s.egg + 's drop at block ' + fmt(s.start) + '.') + '</span>' +
         '<span class="sbar-c" id="sbarLeft"></span><button type="button" class="sbar-x" aria-label="Hide the season bar">&times;</button>'; }
+    var info = document.getElementById('sbarInfo'), RI = rulesInfo(P);
+    if (P.live && RI && RI.season) { if (!info) { info = document.createElement('span'); info.id = 'sbarInfo'; info.className = 'sbar-i'; el.insertBefore(info, el.querySelector('.sbar-x')); }
+      var m = RI.me, h = '<b>' + fmt(RI.eggsLeft) + '</b> of ' + fmt(RI.supply) + ' eggs left' + (m ? ' · You: <b>' + fmt(m.pts) + '</b> pts' + (m.tierName ? ' (' + esc(m.tierName) + ')' : '') + (m.next ? ', next tier at ' + fmt(m.next) : '') + ' · today ' + m.today + '/' + RI.dayCap : '');
+      if (m && RI.eggsLeft > 0 && m && RI.mineBought < RI.walletCap) h += ' <button type="button" class="sbar-buy" id="sbarBuy">Hatch a ' + esc(P.s.egg) + '</button>';
+      if (info.dataset.h !== h) { info.dataset.h = h; info.innerHTML = h; } } else if (info) info.remove();
     var c = document.getElementById('sbarLeft'); if (c) { c.textContent = (P.live ? 'Ends in ' : 'Starts in ') + fmt(P.left) + ' block' + (P.left === 1 ? '' : 's') + ' (~' + about(P.left) + ')'; c.className = 'sbar-c' + (P.left <= 12 ? ' hot' : ''); } }
+  /* rules side (only once js/v2-rules.js has a season gate set): supply, my points, buy button. Burns go through the normal confirm flow; the site never signs. */
+  function rulesInfo(P) { try { var V = window.V2Rules, M = window.V2Mock; if (!V || !V.seasonInfo || !V.seasonsGate || V.seasonsGate() == null || !M || !M.world) return null;
+      var w = M.world(), t = v2Tip(); if (!w || !t) return null; var me = (M.ME) || (window.V2UI && V2UI.ME) || null, I = V.seasonInfo(w, t + 1, me); return I && I.season && I.season.n === P.s.n ? I : null; } catch (e) { return null; } }
+  function buy() { try { var V = window.V2Rules, M = window.V2Mock; if (!V || !V.seasonPlan || !window.V2UI || !V2UI.confirmPlans) return; var w = M.world(), t = v2Tip(); V2UI.confirmPlans('Season egg', [V.seasonPlan(w, t + 1, 1)]); } catch (e) { } }
+  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'sbarBuy') buy(); });
   function tick() { if (!cfg) return; if (!cfg.announce && !pv) return render(null); var t = tip();
     if (pv === 'live' && cfg.seasons && cfg.seasons[0]) t = cfg.seasons[0].start + 500; else if (pv === '1' && cfg.seasons && cfg.seasons[0] && (t == null || pick(t) == null)) t = cfg.seasons[0].start - 700;
     if (t == null) return; try { render(pick(t)); } catch (e) { } }

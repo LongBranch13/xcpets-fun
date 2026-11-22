@@ -12,7 +12,7 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === 'b87e243919401e785cf425ff6dca0e0b', 'rules MD5 unchanged');
+ok(rulesMd5 === 'bd47929530201cc653d086e673d58184', 'rules MD5 unchanged');
 
 const chainSrc = fs.readFileSync(path.join(ROOT, 'rjs/chain.js'), 'utf8');
 const v2chain = fs.readFileSync(path.join(ROOT, 'js/v2-chain.js'), 'utf8');
