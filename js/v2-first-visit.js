@@ -10,7 +10,7 @@
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
   var path = location.pathname, onPlay = /(^|\/)play\.html$/.test(path), onHome = /(^|\/)(index\.html)?$/.test(path);
-  if (!(onPlay || onHome) || w.XcpPractice || /practice/.test(path)) return;
+  if (!(onPlay || onHome) || /practice/.test(path)) return;
   var qs = new URLSearchParams(location.search);
   if (get(KEY) || get('xcpets-v2-me') || qs.has('addr') || qs.has('coach') || qs.has('cc') || qs.has('fresh')) return;
   function walletIn() { return !!(w.xcpwallet || w.webXCP || w.web3xcp || w.casaTookan); }
