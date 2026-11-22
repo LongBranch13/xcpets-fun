@@ -77,7 +77,7 @@
     if (S.champ) { if (S.statueSil) { [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (o) { V2Render.drawSprite(x,S.statueSil,CX-16+o[0],top-32+o[1],32,false,{x:CX-38,y:26,w:76,h:top-26}); }); } V2Render.drawSprite(x,S.statue,CX-16,top-32,32,false,{x:CX-38,y:26,w:76,h:top-26});
       x.fillStyle = '#3ddc84'; for (var lv = 0; lv < 5; lv++) { x.fillRect(CX - 7 + lv * 3, top - 23 + (lv === 2 ? -1 : 0), 2, 2); } /* laurel */
       if (small()) bigPlate(x, '#' + S.champ.p.id, top + 17); else { plateText(x, String(S.champ.p.name || 'Pet'), ' #' + S.champ.p.id, top + 12); plateText(x, S.champ.streak + ' WIN STREAK', '', top + 18); } if (S.champ.streak >= 3 && window.V2ArenaFun) V2ArenaFun.belt(x, CX, top - 6); }
-    else if (small()) bigPlate(x, 'OPEN', top + 17); else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
+    else if (S.loading) { if (small()) bigPlate(x, '...', top + 17); else { plateText(x, 'THE GATES', '', top + 12); plateText(x, 'ARE OPENING', '', top + 18); } } else if (small()) bigPlate(x, 'OPEN', top + 17); else { plateText(x, 'AWAITING', '', top + 12); plateText(x, 'A CHAMPION', '', top + 18); }
     x.textAlign = 'left'; if (window.V2ArenaFun) V2ArenaFun.beltCase(x, !(S.champ && S.champ.streak >= 3)); }
   function actor(a,t){var g=S.x,bob=Math.floor(t/120)%2;V2Render.drawSprite(g,a.img[Math.floor(t/150)%a.img.length],Math.round(a.x)-12,Math.round(a.y)-24-bob,24,!!a.flip,{x:0,y:26,w:W,h:H-26});}
   function caption(s) { if (!s) return; var x = S.x; x.font = '7px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = '#000'; x.fillText(s, CX + 1, 171); x.fillStyle = '#ffd166'; x.fillText(s, CX, 170); x.textAlign = 'left'; }
@@ -111,7 +111,7 @@
   function isVisible() { if (!S.c || !S.c.getBoundingClientRect) return false; var r = S.c.getBoundingClientRect(); return r.bottom > 0 && r.top < (window.innerHeight || 800); }
   function kick() { if (!S.raf) S.raf = requestAnimationFrame(frame); }
   /** mount(canvas, w): (re)build the scene for world w */
-  function mount(c, w, opt) { if (!c) return; S.thumb = !!(opt && opt.thumb); var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
+  function mount(c, w, opt) { if (!c) return; S.thumb = !!(opt && opt.thumb); S.loading = !!(opt && opt.loading); var champ = champion(w), key = champ ? champ.p.id + ':' + champ.streak : '-';
     S.c = c; S.x = c.getContext('2d'); S.w = w; if (S.key !== key) { S.key = key; S.champ = champ; S.statue = champ ? toCanvas((frames(champ.p, w) || [])[0], true) : null; S.statueSil = S.statue ? silhouette(S.statue) : null; }
     fit(); if (!mount.rs) { mount.rs = 1; var rz = function () { var k0 = S.k; fit(); if (S.k !== k0) { if (reduced() || !S.raf) frame(performance.now()); } }; window.addEventListener('resize', rz); if (window.matchMedia) { try { window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)').addEventListener('change', rz); } catch (e) { } } }
     if (!S.wall && window.V2Sponsor && V2Sponsor.wall) { S.wall = document.createElement('canvas'); S.wall.width = W; S.wall.height = 26; V2Sponsor.wall(S.wall, V2Sponsor.WALL_TEXT); }
@@ -174,5 +174,10 @@
     S.actors = mode === 'walk' ? [{ p: A, img: frames(A, w).map(function (i) { return toCanvas(i); }) }, { p: B, img: frames(B, w).map(function (i) { return toCanvas(i); }) }] : mode === 'idle' ? [] : [{ p: Wn, img: frames(Wn, w).map(function (i) { return toCanvas(i); }) }];
     if (mode === 'fight' || mode === 'result') { S.f = f; S.koT = 0; S.hitT = 0; S.evT = null; S.gbT = null; S.fx = []; S.fxT = -1; S.actors = [{ p: A, img: mk(A, w), lose: mk(A, w, true) }, { p: B, img: mk(B, w), lose: mk(B, w, true) }]; var kk = Math.floor(t / TICK), ti2 = Math.min(f.turns.length, Math.floor(kk / 4)) - 1; S.hp = ti2 >= 0 ? { a: f.turns[ti2].hpA, b: f.turns[ti2].hpB } : { a: f.maxA, b: f.maxB }; }
     S.ann = window.V2Announcer ? V2Announcer.script(f, w) : []; S.rv = window.V2Rivals ? V2Rivals.rivalryFor(w, f) : null; S.mode = mode; var now = performance.now(); S.t0 = now - t; S.onWalk = null; var keep = window.__arenaReducedMotion; window.__arenaReducedMotion = true; frame(now); window.__arenaReducedMotion = keep; }
+  /* living-scenes (Nov 22 2026): fight.html paints the arena the moment the page opens (crowd, tunnel, 'the gates are opening' on the plinth);
+   * js/v2-arena.js remounts it with the real world and today's champion. */
+  function early() { var b = document.body, c = document.getElementById('arScene'); if (!b || b.getAttribute('data-split') !== 'fight' || !c || S.c || !document.getElementById('arStage')) return;
+    try { mount(c, { pets: [], fights: [], byId: {} }, { loading: true }); } catch (e) { } }
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', early); else setTimeout(early, 0); }
   window.V2ArenaScene = { mount: mount, sequence: sequence, champion: champion, _pose: _pose, _state: function () { return S; } };
 })();

@@ -237,12 +237,20 @@
   function frVar(n) { var d = [n % 16]; n = Math.floor(n / 16); while (n > 0) { d.unshift(16 + n % 16); n = Math.floor(n / 16); } return d.map(function (x) { return x.toString(32).toUpperCase(); }).join(''); }
   function frAnchor(b, code) { return b - (((b - code) % FR_ANCHOR_MOD) + FR_ANCHOR_MOD) % FR_ANCHOR_MOD; }
   /** frMythic(w, p, b): the pet is a Mythic (never eats). Pure: no refresh. */
-  function frMythic(w, p, b) { return !!p.ascended || p.care >= petThresholds(w, p, b)[5]; }
+  function frMythic(w, p, b) { return !!p.ascended || p.care >= petTh5(w, p, b); }
+  /** petTh5(w, p, b): petThresholds(w, p, b)[5] without building the discounted copy (full-rebuild speed; same value). */
+  function petTh5(w, p, b) { var th = p && p.community && b != null && b >= ACTIVATE_COMMUNITY_100X_BLOCK ? COMMUNITY_THRESHOLDS : thresholdsFor(p.species, b); if (!p || p.community || !mythicDiscountOn(b) || !w || !w.mythicOwners) return th[5];
+    var q = w.mythicOwners[p.owner]; if (q == null || q > b || th[5] <= MYTHIC_DISCOUNT_CARE) return th[5]; return MYTHIC_DISCOUNT_CARE; }
   /** frDeadAt(w, p, b, A): the pet was dead at block A (same death clock as liveAt; pure). */
-  function frDeadAt(w, p, b, A) { if (frMythic(w, p, b)) return false; var last = p.lastFed != null ? p.lastFed : p.hatchBlock; if (p.clockFrom != null) last = Math.max(last, p.clockFrom); return (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY <= clock(A); }
+  function frDeadAt(w, p, b, A) { if (frMythic(w, p, b)) return false; return frClockDead(p, A); }
+  function frClockDead(p, A) { var last = p.lastFed != null ? p.lastFed : p.hatchBlock; if (p.clockFrom != null) last = Math.max(last, p.clockFrom); return (day(last) + NEGLECT_DAYS + 1) * BLOCKS_PER_DAY <= clock(A); }
   function frOwnedAt(w, p, src, A) { var moved = p.lastGot != null && p.lastGot > A; return p.owner === src ? !moved : moved && !!w.leftBy && w.leftBy[p.id] === src; }
   /** refList(w, src, A, b): the signer's eater list at anchor A (see above). Same function for the planner (A = tip) and the rules (A from the tag). */
-  function refList(w, src, A, b) { return w.pets.filter(function (p) { return !p.community && p.hatchBlock != null && p.hatchBlock <= A && frOwnedAt(w, p, src, A) && !(p.released && !(typeof p.released === 'number' && p.released > A)) && !frDeadAt(w, p, b, A) && !(frMythic(w, p, b) && !(p.lastFed != null && p.lastFed > A)) && !hdHidden(p, src, b); }).sort(function (x, y) { return x.id - y.id; }); }
+  function refList(w, src, A, b) { var P = w.pets, out = [], p, m; /* one pass, frMythic once per pet (same list as the filter it replaced) */
+    for (var i = 0; i < P.length; i++) { p = P[i];
+      if (p.community || p.hatchBlock == null || !(p.hatchBlock <= A) || !frOwnedAt(w, p, src, A) || (p.released && !(typeof p.released === 'number' && p.released > A))) continue;
+      m = frMythic(w, p, b); if (!m && frClockDead(p, A)) continue; if (m && !(p.lastFed != null && p.lastFed > A)) continue; if (hdHidden(p, src, b)) continue; out.push(p); }
+    return out.sort(function (x, y) { return x.id - y.id; }); }
   /* ON-CHAIN DISCARD (review). pet:hd hides pets the signer still owns. pet:hu adds them back.
    * One 34-byte destroy. A class/filter or a contiguous frVar run can name thousands. If a selection
    * does not fit one tag, hdPlan returns the smallest set of exact burns and says so. It never drops
@@ -256,7 +264,9 @@
   var HD_COST = 0.00000001, HD_BODY = 24, HD_MODE_BODY = 22;
   function hdOn(b) { return ACTIVATE_ONCHAIN_DISCARD_BLOCK != null && b != null && Number(b) >= ACTIVATE_ONCHAIN_DISCARD_BLOCK; }
   function hdHidden(p, src, b) { return !!(hdOn(b) && p && p.hd && p.hd === src); }
-  function hdPlaceList(w, src, A, b) { return (w.pets || []).filter(function (p) { return !p.community && p.hatchBlock != null && p.hatchBlock <= A && frOwnedAt(w, p, src, A) && !(p.released && !(typeof p.released === 'number' && p.released > A)) && !frDeadAt(w, p, b, A) && !isZ(p); }).sort(function (x, y) { return x.id - y.id; }); }
+  function hdPlaceList(w, src, A, b) { var P = w.pets || [], out = [], p;
+    for (var i = 0; i < P.length; i++) { p = P[i]; if (p.community || p.hatchBlock == null || !(p.hatchBlock <= A) || !frOwnedAt(w, p, src, A) || (p.released && !(typeof p.released === 'number' && p.released > A)) || frDeadAt(w, p, b, A) || isZ(p)) continue; out.push(p); }
+    return out.sort(function (x, y) { return x.id - y.id; }); }
   function hdCode(p, code) { code = String(code || '').toLowerCase(); if (code === 'all') return true; if (code === 'c') return (p.tier | 0) === 0; if (code === 'u') return (p.tier | 0) === 1; if (code === 'r') return (p.tier | 0) === 2; if (code === 'l') return (p.tier | 0) === 3; if (code === 'nf') return p.lastFed == null; if (/^s[0-5]$/.test(code)) return (p.stage | 0) === +code.slice(1); return false; }
   function hdEligible(w, p, src, b) { if (!p || p.community || p.released || p.owner !== src || p.dead || isZ(p)) return false; if (saleListing(w, p.id, b)) return false; return true; }
   function hdIdsOf(w, src, t, b) { if (!t || (t.action !== 'hd' && t.action !== 'hu')) return []; var place = hdPlaceList(w, src, t.a != null ? frAnchor(b, t.a) : b, b);
@@ -1109,7 +1119,7 @@
   var ACTIVATE_MYTHIC_KEEP_BLOCK = 974682; // Counterparty tip 974676 (api.counterparty.io:4000 + api.unspendablelabs.com:4000 agree) + 6 at push, owner 'Yes, put it live' 7:09 AM CT Nov 5 2026 [pt2888u]
   function mythicKeepOn(b) { return ACTIVATE_MYTHIC_KEEP_BLOCK != null && b != null && b >= ACTIVATE_MYTHIC_KEEP_BLOCK; }
   /** noteGot(w, P, to): record an ownership change (call BEFORE P.owner is set). mythic = P was already Mythic for its old owner, or past the natural Mythic line. */
-  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; (w.leftBy || (w.leftBy = {}))[P.id] = P.owner; /* feed runs: who had it before (world-level map, not a pet field) */ if (P.skipBy) P.skipBy = null; /* feed-skip clears on any transfer */ if (P.hd) delete P.hd; /* on-chain discard is this owner's flag; a new owner sees a normal pet */ w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
+  function noteGot(w, P, to) { if (!P || !to || P.owner === to) return; lookDirty(w, P); (w.leftBy || (w.leftBy = {}))[P.id] = P.owner; /* feed runs: who had it before (world-level map, not a pet field) */ if (P.skipBy) P.skipBy = null; /* feed-skip clears on any transfer */ if (P.hd) delete P.hd; /* on-chain discard is this owner's flag; a new owner sees a normal pet */ w.mythicGot = w.mythicGot || {}; w.mythicGot[P.id] = { owner: to, own: 0 }; }
   /** noteOwnCare(w, P, m): the owner fed P m care (feeds are owner-only); counted only for a pet that has changed owner (never-moved pets qualify by (a)). */
   function noteOwnCare(w, P, m) { var g = w.mythicGot && w.mythicGot[P.id]; if (g && g.owner === P.owner) g.own += m; }
   /** raisedBy(w, p): true when p's current owner raised it: never moved (a), or the owner added more than half of its care (b). */
@@ -1884,7 +1894,7 @@
     if (carryOn(b)) advertise(w, S);
     w.listings.push(S); w.log.push({ block: b, tx: o.tx_hash, kind: 'listing', petId: D.petId, listing: S.n, msg: '#' + D.petId + ' is in the shop (listing ' + S.n + ', until block ' + S.expire + ')' }); return S; }
   /** bindDeed(w, t, src, b, tx, ix): a valid pet:deed burn. Orders up to SALE_ORDER_LAG blocks old that are still unmatched become a listing from b. */
-  function bindDeed(w, p, asset, src, b, tx, ix) { var old = p.deed; p.deed = asset; var h = (ix && holderAt(ix, asset, b)) || src; w.deeds[asset] = { petId: p.id, block: b, tx: tx, issuer: src, holder: h, prev: old || null };
+  function bindDeed(w, p, asset, src, b, tx, ix) { var old = p.deed; p.deed = asset; earnMark(w, p); var h = (ix && holderAt(ix, asset, b)) || src; w.deeds[asset] = { petId: p.id, block: b, tx: tx, issuer: src, holder: h, prev: old || null };
     if (h !== src) movePet(w, p, h, b, tx, 'tie'); /* token already sent on (e.g. mint -> tie + send in one go): the pet goes to the holder at once */
     var c = (ix.byGive[asset] || []).filter(function (o) { var ob = Number(o.block_index); return ob < b && b - ob <= SALE_ORDER_LAG && o.source === src && !(ix.matches[o.tx_hash] || []).some(function (m) { return m.block_index < b; }); })
       .sort(function (a, z) { return (Number(z.tx_index) || 0) - (Number(a.tx_index) || 0); });
@@ -1919,7 +1929,7 @@
     var keep = (P.flameLooks || []).slice(); A.flame.forEach(function (id) { if (keep.indexOf(id) < 0) keep.push(id); }); P.flameLooks = keep;
     Object.keys(C).forEach(function (k) { var c = C[k]; if (c.holder !== seller) return; if (A.copies.indexOf(k) >= 0 || c.at === P.id) { c.holder = buyer; c.at = P.id; } });
     var types = {}; P.flameLooks = P.flameLooks.filter(function (id) { var L2 = flameLook(id); if (!L2 || types[L2.type]) return false; types[L2.type] = 1; return true; }); /* one look per kind */
-    LO[P.id] = buyer; }
+    LO[P.id] = buyer; lookDirty(w, P); }
   /** saleFill(S, m) -> {ok, buyer, why}: is match m an exact, completed fill of listing S (1 token for exactly the price)? */
   function saleFill(S, m) { var mine0 = m.tx0_hash === S.order;
     var gaveA = mine0 ? m.forward_asset : m.backward_asset, gaveQ = Number(mine0 ? m.forward_quantity : m.backward_quantity),
@@ -2538,6 +2548,7 @@
     if (p.mgDead || p.mythicGod) mgLive(p); /* MYTHIC GOD: an eaten Mythic is dead (its zombie is handled next); a Mythic God never dies */
     if (p.zombie) cemLive(p, b); /* CEMETERY LOOP: a zombie lives on its hunger clock (only ever set after the gate) */
     if (w._retireDirty) w._retireDirty.push(p.id); /* dead-pet retire: this pet changed, so the next sweep rechecks it */
+    earnMark(w, p);
   }
   function finish(w, p, tip) {
     w._noNote = true; try { liveAt(w, p, tip); } finally { w._noNote = false; } /* only gated (mythicRaisedOnlyOn) inside noteMythicOwner */
@@ -2567,7 +2578,7 @@
         fromLive: true, clockFrom: LIVE_DEATH_FROM_BLOCK, ascended: !!q.ascended, released: !!q.released, liveStage: q.stage, liveTokens: q.tokens || 0, liveKeys: q.keys || 0,
         liveSlots: (q.openSlots || []).map(function (sl) { return CORE_SLOT[sl]; }).filter(function (sl, i, a) { return sl && a.indexOf(sl) === i; }) };
       Object.keys(q.feedDays || {}).forEach(function (d) { p.feedDays[d] = 1; });
-      w.pets.push(p); w.byId[p.id] = p; liveAt(w, p, cut - 1); });
+      w.pets.push(p); w.byId[p.id] = p; lookDirty(w, p); liveAt(w, p, cut - 1); });
     w.nextPet = maxId + 1;
     (st.items || []).forEach(function (g) { var it = itemOf(g.item); if (!it) return; var gid = 'L' + g.gid, on = g.on != null && w.byId[g.on] && !w.byId[g.on].dead ? g.on : null;
       trk(w, w.items[gid] = { gid: gid, item: it.id, label: it.label, slot: it.slot, tier: it.tier, legendary: isLegendary(it), owner: g.owner, on: on, src: 'live', liveGid: g.gid, liveSlot: g.slot, liveItem: g.item, rolledOn: g.rolledOn }); });
@@ -2933,8 +2944,8 @@
     P.questBadges[q.code] = (P.questBadges[q.code] || 0) + 1;
     if (!P.questBadges.nakamoto && QUEST_CODES.every(function (c) { return P.questBadges[c]; })) { P.questBadges.nakamoto = 1; rec.nakamoto = true; }
     var lk = Q.look, pr = P.questProgress[lk.id] || 0, add = lk.by === 'haul' ? (tier === 'haul' ? 1 : 0) : 1; /* finish-based looks count every finish, Came Home Empty included */
-    P.questProgress[lk.id] = pr + add; if (pr < lk.need && pr + add >= lk.need) { rec.look = lk.id; (P.questLooks = P.questLooks || []).push(lk.id); }
-    P.questHist.push(rec); P.quest = null; P.napBlocks = Q.len / 2; P.napUntil = b + P.napBlocks; w.questFeed.push({ petId: P.id, rec: rec });
+    P.questProgress[lk.id] = pr + add; if (pr < lk.need && pr + add >= lk.need) { rec.look = lk.id; (P.questLooks = P.questLooks || []).push(lk.id); lookDirty(w, P); }
+    P.questHist.push(rec); earnMark(w, P); P.quest = null; P.napBlocks = Q.len / 2; P.napUntil = b + P.napBlocks; w.questFeed.push({ petId: P.id, rec: rec });
     L({ block_index: b, tx_hash: q.tx }, 'quest', '#' + P.id + ' came home from ' + Q.name + ': ' + QUEST_TIERS[tier] + (got.length ? ' (' + got.map(function (g) { return g.kind === 'gear' ? g.label : g.kind === 'spins' ? g.n + ' saved spin' + (g.n > 1 ? 's' : '') : g.kind === 'egg' ? (g.ambush ? 'FUNTRUMP Ambush! ' : '') + 'Jackpot Egg #' + g.petId : g.kind === 'shards' ? '+' + g.n + ' shard point' + (g.n > 1 ? 's' : '') + ' (' + Object.keys(g.stats).map(function (k) { return k + ' +' + g.stats[k]; }).join(', ') + ')' : '+1 ' + g.stat; }).join(', ') + ')' : ''), { petId: P.id, quest: rec }); }
   function questInit(p) { if (!p.questBadges) { p.questBadges = {}; p.questProgress = {}; p.questHist = []; } }
   /** questWhy(w, p, src, code, amt, b) -> reason the quest burn is refused (null = it starts). */
@@ -2984,14 +2995,26 @@
   function lookSrcIds(p) { return { quest: (p.questLooks || []).slice(), earn: ((p.earn && p.earn.looks) || []).slice() }; }
   /** lookSweep(w, b): from the gate, every quest / earned look not yet a wallet copy becomes one (holder = pet owner now, sitting on that pet). */
   function lookSweep(w, b) { if (!lookPickOn(b)) return; var C = w.lookCopies || (w.lookCopies = {}), LO = w.lookOwners || (w.lookOwners = {});
-    /* pet changed hands since the last sweep: wallet flame looks come off it (the seller keeps its flame tier and can place them again) */
-    w.pets.forEach(function (p) { var o = LO[p.id]; if (o && o !== p.owner && carryOn(p.lastGot)) { Object.keys(C).forEach(function (k) { if (C[k].at === p.id && C[k].holder === o) C[k].holder = p.owner; }); LO[p.id] = p.owner; return; } /* sale-carry: from the gate the looks go with the pet */
-      if (o && o !== p.owner && p.flameLooks && p.flameLooks.length) p.flameLooks = []; LO[p.id] = p.owner; });
-    var M = LSM.get(w); if (!M) { M = {}; LSM.set(w, M); }
-    w.pets.forEach(function (p) { if (p.community || p.released) return; var q = p.questLooks, e = p.earn && p.earn.looks, sg = (q ? q.join(',') : '') + '|' + (e ? e.join(',') : '');
-      if (M[p.id] === sg) return; M[p.id] = sg; var S = lookSrcIds(p);
-      ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; if (!C[key]) C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id, since: b }; }); }); }); }
-  var LSM = typeof WeakMap === 'function' ? new WeakMap() : { get: function () { return null; }, set: function () {} };
+    /* Full-rebuild speed: the first sweep of a world checks every pet. Later sweeps check only the pets marked with lookDirty since the last sweep
+     * (new pets, owner changes, wallet-look holder writes, new quest / earned looks). An unmarked pet has the same owner as in w.lookOwners and the
+     * same looks as last time, so the full check would do nothing for it. Pets are taken in pet-number order, which is w.pets order. */
+    var M = LSM.get(w), D = LSD ? LSD.get(w) : null, P, i, p, ks;
+    if (!M || !D) { if (!M) { M = {}; LSM.set(w, M); } if (LSD) LSD.set(w, {}); P = w.pets; for (i = 0; i < P.length; i++) lookPet(C, LO, M, P[i], b); return; }
+    LSD.set(w, {}); ks = Object.keys(D);
+    for (i = 0; i < ks.length; i++) { p = D[ks[i]]; if (w.byId[p.id] === p) lookPet(C, LO, M, p, b); } }
+  /** lookDirty(w, p): p's owner, wallet-look holder or quest / earned looks may have changed; the next lookSweep re-checks it. Call it wherever those change. */
+  function lookDirty(w, p) { var D = LSD && w && p ? LSD.get(w) : null; if (D) D[p.id] = p; }
+  /* Per pet: first the holder check, then the copy check (same steps, same order as the two passes this replaced; neither reads what the other writes for another pet). */
+  function lookPet(C, LO, M, p, b) { var o = LO[p.id], q, e, sg;
+    if (!(o === p.owner && o !== undefined)) lookHolder(C, LO, p, o); /* unchanged holder: nothing to do */
+    if (p.community || p.released) return; q = p.questLooks; e = p.earn && p.earn.looks; sg = (!q || !q.length) && (!e || !e.length) ? '|' : (q ? q.join(',') : '') + '|' + (e ? e.join(',') : '');
+    if (M[p.id] === sg) return; M[p.id] = sg; lookCopyAdd(C, p, b); }
+  /* pet changed hands since the last sweep: wallet flame looks come off it (the seller keeps its flame tier and can place them again) */
+  function lookHolder(C, LO, p, o) { if (o && o !== p.owner && carryOn(p.lastGot)) { Object.keys(C).forEach(function (k) { if (C[k].at === p.id && C[k].holder === o) C[k].holder = p.owner; }); LO[p.id] = p.owner; return; } /* sale-carry: from the gate the looks go with the pet */
+    if (o && o !== p.owner && p.flameLooks && p.flameLooks.length) p.flameLooks = []; LO[p.id] = p.owner; }
+  function lookCopyAdd(C, p, b) { var S = lookSrcIds(p);
+    ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; if (!C[key]) C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id, since: b }; }); }); }
+  var LSM = typeof WeakMap === 'function' ? new WeakMap() : { get: function () { return null; }, set: function () {} }, LSD = typeof WeakMap === 'function' ? new WeakMap() : null;
   function copyList(w) { var C = w.lookCopies; if (!C) { C = {}; w.pets.forEach(function (p) { if (p.community || p.released) return; var S = lookSrcIds(p); /* before the gate (display only): each look sits on its own pet */
       ['quest', 'earn'].forEach(function (k) { S[k].forEach(function (id) { var key = k + ':' + id + ':' + p.id; C[key] = { key: key, kind: k, id: id, src: p.id, holder: p.owner, at: p.id }; }); }); }); } return Object.keys(C).sort(function (a, z) { var A = C[a], Z = C[z]; return A.kind !== Z.kind ? (A.kind === 'quest' ? -1 : 1) : A.src !== Z.src ? A.src - Z.src : A.id < Z.id ? -1 : 1; }).map(function (k) { return C[k]; }); }
   function copyOnPet(w, c) { var q = c.at ? w.byId[c.at] : null; return !!(q && q.owner === c.holder && !q.dead && !q.released); }
@@ -3050,28 +3073,39 @@
   var EARN_LOOKS = { laurels: { id: 'laurels', name: 'Laurels', type: 'top' }, halo: { id: 'halo', name: 'Halo', type: 'top' }, 'holo-foil': { id: 'holo-foil', name: 'Holo foil', type: 'foil' },
     crown: { id: 'crown', name: 'Crown', type: 'top' }, wings: { id: 'wings', name: 'Wings', type: 'back' }, 'flame-aura': { id: 'flame-aura', name: 'Flame aura', type: 'aura' } };
   function earnRec(p) { return p.earn || (p.earn = { looks: [], mythicWins: 0, streak: 0, bestStreak: 0, burned: 0, milestones: [], log: [] }); }
-  function earnGive(p, id, b, why) { var E = earnRec(p); if (E.looks.indexOf(id) >= 0) return false; E.looks.push(id); E.log.push({ look: id, block: b, why: why }); return true; }
+  function earnGive(p, id, b, why, w) { var E = earnRec(p); if (E.looks.indexOf(id) >= 0) return false; E.looks.push(id); E.log.push({ look: id, block: b, why: why }); lookDirty(w, p); return true; } /* w: the world, so lookSweep re-checks p (pass it at every call) */
   function earnLive(p) { return p && !p.dead && !p.released && !p.community; }
   /** earnFight(w, win, los, b): called after a duel resolves (both duel kinds). */
   function earnFight(w, win, los, b) { if (!earnOn(b)) return; [win, los].forEach(function (p) { if (p && !p.community) earnRec(p); });
     if (los && los.earn) los.earn.streak = 0; if (!win || !win.earn) return; var E = win.earn; E.streak++; if (E.streak > E.bestStreak) E.bestStreak = E.streak; if (isMythic(win)) E.mythicWins++;
-    if (E.mythicWins >= EARN.laurelsMythicWins) earnGive(win, 'laurels', b, EARN.laurelsMythicWins + ' Mythic duel wins');
-    else if (E.streak >= EARN.laurelsStreak) earnGive(win, 'laurels', b, EARN.laurelsStreak + ' duel wins in a row'); }
+    if (E.mythicWins >= EARN.laurelsMythicWins) earnGive(win, 'laurels', b, EARN.laurelsMythicWins + ' Mythic duel wins', w);
+    else if (E.streak >= EARN.laurelsStreak) earnGive(win, 'laurels', b, EARN.laurelsStreak + ' duel wins in a row', w); }
   /** earnBurn(w, p, amt, b): a valid burn on this pet's own action. */
   function earnBurn(w, p, amt, b) { if (!earnOn(b) || !earnLive(p) || !(amt > 0)) return; var E = earnRec(p); E.burned += amt;
     EARN.flameMilestones.forEach(function (m) { if (E.burned >= m && E.milestones.indexOf(m) < 0) E.milestones.push(m); });
-    if (E.burned >= EARN.flameBurn) earnGive(p, 'flame-aura', b, EARN.flameBurn.toLocaleString('en-US') + ' XCPETS burned on this pet'); }
+    if (E.burned >= EARN.flameBurn) earnGive(p, 'flame-aura', b, EARN.flameBurn.toLocaleString('en-US') + ' XCPETS burned on this pet', w); }
   /** earnSweep(w, b): once per event block from the gate: quest/token/Mythic-time checks and the daily Power board check. */
   function earnSweep(w, b) { if (!earnOn(b)) return; var S = w.earnState || (w.earnState = { day: Math.floor(b / 144), top: null, topDays: 0 });
     if (S.lastB === b) return; S.lastB = b;
-    w.pets.forEach(function (p) { if (!earnLive(p)) return;
-      if (p.questHist && p.questHist.length >= EARN.haloQuests) earnGive(p, 'halo', b, EARN.haloQuests + ' Mythic quests finished');
-      if (p.deed) earnGive(p, 'holo-foil', b, 'tied to a pet token (Proof of Pet)');
-      if (isMythic(p)) { var E = earnRec(p); if (E.mythicFrom == null) E.mythicFrom = b; if (b - E.mythicFrom >= EARN.wingsBlocks) earnGive(p, 'wings', b, 'Mythic alive ' + EARN.wingsBlocks.toLocaleString('en-US') + ' blocks'); } });
+    /* Full-rebuild speed: earnPet only acts on a pet with 'halo' quests, a deed or Mythic status (earnCand). The first sweep of a world checks every
+     * pet and remembers those; later sweeps check the remembered pets plus any marked by earnMark (liveAt, bindDeed, quest finish). Pet-number order = w.pets order. */
+    var K = ECD ? ECD.get(w) : null, P, p, i, ks;
+    if (!K) { K = {}; if (ECD) ECD.set(w, K); P = w.pets; for (i = 0; i < P.length; i++) { p = P[i]; if (earnCand(p)) K[p.id] = p; if (!earnLive(p)) continue; earnPet(w, p, b); } }
+    else { ks = Object.keys(K); for (i = 0; i < ks.length; i++) { p = K[ks[i]]; if (w.byId[p.id] !== p) { delete K[ks[i]]; continue; } if (!earnLive(p)) continue; earnPet(w, p, b); } }
+    earnDay(w, S, b); }
+  var ECD = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function earnCand(p) { return !!((p.questHist && p.questHist.length >= EARN.haloQuests) || p.deed || isMythic(p)); }
+  /** earnMark(w, p): p may now have halo quests, a deed or Mythic status; earnSweep keeps checking it. Call it wherever those change. */
+  function earnMark(w, p) { var K = ECD && w && p ? ECD.get(w) : null; if (K && earnCand(p)) K[p.id] = p; }
+  function earnPet(w, p, b) {
+      if (p.questHist && p.questHist.length >= EARN.haloQuests) earnGive(p, 'halo', b, EARN.haloQuests + ' Mythic quests finished', w);
+      if (p.deed) earnGive(p, 'holo-foil', b, 'tied to a pet token (Proof of Pet)', w);
+      if (isMythic(p)) { var E = earnRec(p); if (E.mythicFrom == null) E.mythicFrom = b; if (b - E.mythicFrom >= EARN.wingsBlocks) earnGive(p, 'wings', b, 'Mythic alive ' + EARN.wingsBlocks.toLocaleString('en-US') + ' blocks', w); } }
+  function earnDay(w, S, b) {
     var d = Math.floor(b / 144); if (d > S.day) { S.day = d; /* one Power board check per new day (state between events does not change) */
-      var top = null; w.pets.forEach(function (p) { if (!earnLive(p)) return; if (!top || petPower(p) > petPower(top) || (petPower(p) === petPower(top) && p.id < top.id)) top = p; });
+      var top = null, tp = 0; w.pets.forEach(function (p) { if (!earnLive(p)) return; var pp = petPower(p); if (!top || pp > tp || (pp === tp && p.id < top.id)) { top = p; tp = pp; } }); /* petPower once per pet (pure) */
       if (top && S.top === top.id) S.topDays++; else { S.top = top ? top.id : null; S.topDays = top ? 1 : 0; }
-      if (top && S.topDays >= EARN.crownDays) earnGive(top, 'crown', b, '#1 on the Power board for ' + EARN.crownDays + ' days'); } }
+      if (top && S.topDays >= EARN.crownDays) earnGive(top, 'crown', b, '#1 on the Power board for ' + EARN.crownDays + ' days', w); } }
   function earnedLooks(p) { return ((p && p.earn && p.earn.looks) || []).map(function (id) { return EARN_LOOKS[id]; }).filter(Boolean); }
   /** questInfo(w, p, b): everything the pet page / My Pets need (display only). */
   function questInfo(w, p, b) { if (!p) return null; b = b == null ? w.tip : b; var q = p.quest && clock(b) < clock(p.quest.start) + (p.quest.end - p.quest.start) ? p.quest : null;
@@ -3124,7 +3158,7 @@
    *     A chip can be the killing blow (killPet null, killBy = wallet). Direct pet:raid attacks are unchanged (full damage, once per pet per day).
    *   Rewards when won (on top of badges, trophies and the lucky drop): every wallet that hit the boss (direct or chip) gets RAID_V2_SPINS saved
    *     Pepe Wheel spin(s). The lucky drop stays among directly attacking pets. */
-  var ACTIVATE_RAID_V2_BLOCK = null;
+  var ACTIVATE_RAID_V2_BLOCK = 977120; /* LIVE: Nov 22 2026 ~3:45 PM CT, server tip 977,106 + 14 (raid 6 opens 978,050 = first rebalanced raid; raid 5 stays as it was). Owner: "merge all" */
   var RAID_V2_DIV = 20, RAID_V2_BASE_HALVINGS = 3, RAID_V2_MIN_HP = 1000, RAID_CHIP_PCT = 2, RAID_V2_SPINS = 1;
   function raidV2On(b) { return ACTIVATE_RAID_V2_BLOCK != null && b != null && b >= ACTIVATE_RAID_V2_BLOCK; }
   function raidHpAt(w, B, open) { if (!raidV2On(open)) return B.hp; var h = 0; try { h = halvingBlocks(w).filter(function (x) { return x <= open; }).length; } catch (e) { h = RAID_V2_BASE_HALVINGS; }
@@ -3418,7 +3452,7 @@
     var freshRest = huntRulesOn(b) && huntRest(G); if (freshRest) keep = 1;
     var prev = G.owner, owner = freshRest ? freshRest.owner : chk.top; if (G.zDeath == null) G.zDeath = Object.assign({}, G.stats); if (G.zFirstDeath == null) G.zFirstDeath = G.deathBlock;
     G.zRaises = (G.zRaises || 0) + 1; if (G.deed) { G.keepsake = G.deed; if (w.deeds && w.deeds[G.deed]) w.deeds[G.deed].untied = b; G.deed = null; } /* raising unties the old token (a keepsake) */
-    G.owner = owner; G.lastGot = b; if (freshRest) { delete G.zRest; delete G.graveState; } delete G.graveGear; delete G.graveTx;
+    lookDirty(w, G); G.owner = owner; G.lastGot = b; if (freshRest) { delete G.zRest; delete G.graveState; } delete G.graveGear; delete G.graveTx;
     G.zombie = { gen: G.zRaises, raisedAt: b, tx: tx, by: owner, prevOwner: prev, death: Object.assign({}, G.zDeath), keep: cemR6(keep), bonus: {}, cap: G.mgDead ? MG.ZCAP : CEM_CAP, fedAt: b, meals: 0,
       givers: chk.givers.map(function (x) { return { src: x.src, points: x.points }; }), points: chk.givers.reduce(function (s, x) { return s + x.points; }, 0), shares: shares,
       hw: cemHw(b), pool: only ? false : A.pledges.length > 1 || A.pool, altar: A.n, rpl: [] };
@@ -3488,7 +3522,7 @@
     A.zHunts = (A.zHunts || 0) + 1; C.huntedBy[src] = (C.huntedBy[src] || 0) + 1;
     if (huntRulesOn(b)) { var old = Z.owner; /* Capture moves the pet, never an on-chain token or the old owner's gear. */
       wornOf(w, Z.id).forEach(function (g) { g.on = null; }); Object.keys(w.items || {}).forEach(function (id) { var g = w.items[id]; if (g.bag === Z.id) g.bag = null; }); if (w.bags) delete w.bags[Z.id];
-      lookSweep(w, b); Object.keys(w.lookCopies || {}).forEach(function (id) { var c = w.lookCopies[id]; if (c.at === Z.id) c.at = null; }); if (Z.flameLooks) Z.flameLooks = []; (w.lookOwners || (w.lookOwners = {}))[Z.id] = src;
+      lookSweep(w, b); Object.keys(w.lookCopies || {}).forEach(function (id) { var c = w.lookCopies[id]; if (c.at === Z.id) c.at = null; }); if (Z.flameLooks) Z.flameLooks = []; (w.lookOwners || (w.lookOwners = {}))[Z.id] = src; lookDirty(w, Z);
       if (Z.deed) { Z.keepsake = Z.deed; if (w.deeds && w.deeds[Z.deed]) w.deeds[Z.deed].untied = b; Z.deed = null; }
       noteGot(w, Z, src); Z.owner = src; Z.lastGot = b; Z.movedAt = b; if (Z.pob) { Z.pob = false; Z.pobLost = b; }
       Z.zombie.rpl = []; Z.zombie.captured = { from: old, by: src, block: b, hunter: A.id, tx: r.tx_hash }; Z.zombie.fedAt = b; liveAt(w, Z, b);
@@ -4144,7 +4178,7 @@
       lastFed: null, feedDays: {}, fightDays: {}, breeds: 0, lastBreed: null, parents: null, children: [], wins: 0, losses: 0, trophies: [] };
     if (p.species === 'kek' && specialNamesOn(b) && !w.pets.some(function (q) { return q.species === 'kek' && !q.parents && !q.hybrid; })) p.name = 'Kek'; /* SPECIAL EGG NAMES: the very first Lord Kek egg ever hatched keeps the name 'Kek' */
     if (rareEggsOn(b) && art.rareHatch) p.rareHatch = Object.assign({}, art.rareHatch);
-    w.pets.push(p); w.byId[p.id] = p; liveAt(w, p, b); return p;
+    w.pets.push(p); w.byId[p.id] = p; lookDirty(w, p); liveAt(w, p, b); return p;
   }
   // ---------------------------------------------------------------- HYBRIDS (v2, 2026-10-14)
   // HYBRID_NAMES: display name per ORDERED pair 'parentA:parentB' (A = the requester / first pet). 13 x 12 = 156 entries; the 24 Nakamoto pairs

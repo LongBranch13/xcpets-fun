@@ -69,7 +69,7 @@ const SEED = `() => {
 
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '3638b4453d7b9b0c13c59c230f1b118c';
+  const RULES_MD5 = 'b87e243919401e785cf425ff6dca0e0b';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f); });
   const oldShop = gitFile('js/v2-shop.js');
   const mainStacks = /function stackPieces/.test(oldShop);

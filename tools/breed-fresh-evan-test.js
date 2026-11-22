@@ -15,7 +15,7 @@ const BANNED = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4';
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === '3638b4453d7b9b0c13c59c230f1b118c', 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
+ok(rulesMd5 === 'b87e243919401e785cf425ff6dca0e0b', 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
 ok(fs.readFileSync(__filename, 'utf8').indexOf(BANNED) >= 0, 'the banned wallet is named only so this test can refuse it');
 
 const ctx = L.load();

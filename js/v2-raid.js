@@ -22,9 +22,10 @@
   function shown() { var p = $('raidPanel'); return !!(p && !p.hidden && p.getAttribute('aria-hidden') !== 'true' && !p.classList.contains('split-off')); }
   function draw() { var el = $('raidBox'), V = window.V2Rules; if (!el || !V || !V.raidInfo || !shown()) return; var w = world(), T = tip(); if (!w || !T) return;
     var b = T + 1, I = window.XCPETS_RAID_DEMO || V.raidInfo(w, b), R = I.raid, ME = me(), key = JSON.stringify([T, ME, R && R.left, R && R.board.length, R && R.settled, selPet]); if (key === last) return; last = key;
+    scene(w, I, R, b);
     var h = '';
     if (!I.on && !R) { h = '<div class="rd-wait"><h3>Raids start at block ' + fmt(I.gate) + '</h3><p>' + (I.gate > b ? 'In ' + fmt(I.gate - b) + ' blocks (' + hrs(I.gate - b) + ').' : 'Waiting for the opening block hash.') + ' A boss appears, everyone burns to hit it, and if it falls every attacker gets a badge.</p></div>'; }
-    else if (!R) { h = '<div class="rd-wait"><h3>Raid 1 opens at block ' + fmt(I.nextOpen) + '</h3><p>Waiting for the opening block hash to pick the boss.</p></div>'; }
+    else if (!R) { h = '<div class="rd-wait"><h3>The next raid opens at block ' + fmt(I.nextOpen) + '</h3><p>Waiting for the opening block hash to pick the boss.</p></div>'; }
     else { var B = R.boss, pct = Math.max(0, Math.min(100, R.left / R.hp * 100)), st = R.live ? 'live' : R.result === 'won' || R.killBlock != null ? 'won' : b <= R.end ? 'live' : 'escaped';
       h += '<div class="rd-stage rd-' + st + (B.event ? ' rd-event' : '') + '">' + (window.V2RaidAnim ? V2RaidAnim.stage(B, st) : '<div class="rd-boss"><img src="img/raids/' + esc(B.art) + '.png" alt="' + esc(B.name) + '"' + (st === 'won' ? ' class="rd-dead"' : '') + '></div>') + '<div class="rd-info">' +
         '<p class="rd-tag">Raid ' + R.n + (B.event ? ' · EVENT BOSS' : '') + (B.champion ? ' · LORD KEK VS ' + esc(String(B.name).toUpperCase()) : '') + '</p><h3>' + esc(B.name) + '</h3>' +
@@ -47,6 +48,12 @@
       (V.raidV2Gate && V.raidV2Gate() != null ? '<li>From block ' + fmt(V.raidV2Gate()) + ': bosses have 1/' + V.RAID.V2_DIV + ' of their old HP, every feed, breed and hatch during a raid chips ' + V.RAID.CHIP_PCT + '% of its burn into the boss, and every wallet that hits a fallen boss gets ' + V.RAID.V2_SPINS + ' saved spin.</li>' : '') +
       '<li>Results count after 6 confirmations. More on the <a href="rules.html#raids">rules page</a>.</li></ul></details>';
     el.innerHTML = h; bind(el, w, b, R); animate(el, R, b); }
+  /* living-scenes (Nov 22 2026): hand the same raid to the canvas scene at the top of the page (js/v2-raid-scene.js). Display only. */
+  function scene(w, I, R, b) { var RS = window.V2RaidScene; if (!RS || (RS._state && RS._state().demo)) return; try {
+    if (!R) { RS.set({ mode: 'wait', nextIn: Math.max(0, (I.on ? I.nextOpen : I.gate) - b) || null }); return; }
+    var st = R.live ? 'live' : R.result === 'won' || R.killBlock != null ? 'won' : b <= R.end ? 'live' : 'escaped', sp = function (id) { var p = w && w.byId && w.byId[id]; return p ? p.species : 'pepe'; };
+    RS.set({ w: w, mode: st, boss: { name: R.boss.name, art: R.boss.art, champion: R.boss.champion || null }, hp: R.hp, left: R.left, blocksLeft: Math.max(0, R.end - b + 1), killPet: R.killPet,
+      hits: R.hits.map(function (x) { return { petId: x.petId, hit: x.hit, crit: x.crit, sp: sp(x.petId), pet: w && w.byId ? w.byId[x.petId] : null }; }) }); } catch (e) { } }
   /* animation state survives the innerHTML rebuilds: last HP %, hit count and status per raid */
   var AS = {};
   function animate(el, R, b) { var A = window.V2RaidAnim; if (!A || !R) return; var wrap = el.querySelector('.ra-wrap'), bar = el.querySelector('.rd-hp');
