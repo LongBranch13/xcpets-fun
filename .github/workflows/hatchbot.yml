@@ -1,0 +1,54 @@
+# HatchBot announcer (Nov 22 2026). Every 10 minutes: replay the game from api/boot.json and post new cool events to Telegram.
+# Run it by hand with a message to post a game update ("Post update"): Actions > hatchbot > Run workflow > type the update.
+# Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID. Until both are set this job does nothing.
+# Memory of what was posted lives on the hatchbot-state branch (not main), so it never triggers a site deploy.
+name: hatchbot
+on:
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Game update to post in Telegram (leave empty to just check for new events)'
+        required: false
+        default: ''
+permissions: { contents: write }
+concurrency: { group: hatchbot, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      UPDATE: ${{ github.event.inputs.message }}
+    steps:
+      - name: Check setup
+        id: ready
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then echo "::notice::HatchBot is not set up yet (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets). Nothing posted."; echo "go=" >> "$GITHUB_OUTPUT"; else echo "go=1" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go
+        with: { ref: main, fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go
+        with: { node-version: '20' }
+      - name: Post game update
+        if: steps.ready.outputs.go && env.UPDATE != ''
+        run: node hatchbot/announce.js --post "$UPDATE"
+      - name: Load memory
+        if: steps.ready.outputs.go && env.UPDATE == ''
+        run: |
+          mkdir -p state
+          if git fetch --depth 1 origin hatchbot-state 2>/dev/null; then git show FETCH_HEAD:state.json > state/state.json || rm -f state/state.json; fi
+      - name: Announce new events
+        if: steps.ready.outputs.go && env.UPDATE == ''
+        run: node --max-old-space-size=6000 hatchbot/announce.js --state state/state.json
+      - name: Save memory
+        if: steps.ready.outputs.go && env.UPDATE == ''
+        run: |
+          [ -f state/state.json ] || exit 0
+          cd state && git init -q && git checkout -q -b hatchbot-state
+          git config user.name "hatchbot"; git config user.email "actions@users.noreply.github.com"
+          git add state.json && git commit -q -m "hatchbot memory $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hatchbot-state
