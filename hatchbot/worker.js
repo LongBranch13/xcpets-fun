@@ -5,7 +5,7 @@
 import MEMES from './memes.json';
 import CAPTIONS from './captions.json';
 
-const HELP = '🐸 HatchBot commands\n/meme · a random XCPETS meme\n/chainday · the current 144-block game day and blocks left\n/help · this list\n\nPlay at xcpets.fun';
+const HELP = '🐸 HatchBot commands\n/meme · a random XCPETS meme\n/chainday · the current 144-block game day and blocks left\n/bug <what happened> · report a bug to the XCPETS team (pet numbers help!)\n/help · this list\n\nPlay at xcpets.fun';
 
 async function hookSecret(token) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hatchbot:' + token));
@@ -31,6 +31,18 @@ async function command(env, msg) {
     const b = await tipNow(); if (!b) return reply('The chain is not answering right now. Try again in a minute.');
     const day = Math.floor(b / 144), left = 144 - (b % 144);
     return reply('📅 Chain day ' + fmt(day) + ' · block ' + fmt(b) + '\n' + left + ' block' + (left === 1 ? '' : 's') + ' left today (about ' + (left * 10 >= 90 ? Math.round(left * 10 / 60) + ' h' : left * 10 + ' min') + ')');
+  }
+  if (cmd === '/bug') {
+    /* Bug reports (owner Nov 22 2026). Saved to KV; the hatchbot GitHub job turns each into a public GitHub issue (first name only). */
+    if (!env.BUGS) return reply('Bug reports are not switched on yet. Please tell the team in the chat for now.');
+    const body = text.replace(/^\/bug(@\S+)?\s*/i, '').trim(), quoted = msg.reply_to_message && (msg.reply_to_message.text || msg.reply_to_message.caption) || '';
+    if (body.length < 5 && !quoted) return reply('Tell me what went wrong after /bug, for example:\n/bug the seance button stays grey on grave #100790');
+    const who = (msg.from && msg.from.id) || 0, rk = 'rate:' + who, n = +(await env.BUGS.get(rk) || 0);
+    if (n >= 5) return reply('Thanks! You have sent 5 reports this hour. Please wait a little before sending more.');
+    await env.BUGS.put(rk, String(n + 1), { expirationTtl: 3600 });
+    const key = 'bug:' + Date.now() + ':' + msg.message_id;
+    await env.BUGS.put(key, JSON.stringify({ text: body.slice(0, 3000), quoted: String(quoted).slice(0, 1500), name: (msg.from && msg.from.first_name || 'A player').slice(0, 40), at: new Date((msg.date || Date.now() / 1000) * 1000).toISOString(), photo: !!(msg.reply_to_message && msg.reply_to_message.photo) }), { expirationTtl: 14 * 86400 });
+    return reply('🐞 Thanks, got it! Your report is logged for the XCPETS team (it shows on GitHub with your first name only).');
   }
   if (cmd === '/meme') {
     const p = pick(MEMES), cap = pick(CAPTIONS).replace(/\{name\}/g, p.name);

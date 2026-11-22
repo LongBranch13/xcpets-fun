@@ -5,7 +5,7 @@ name: hatchbot-worker
 on:
   push:
     branches: [main]
-    paths: ['hatchbot/worker.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
+    paths: ['hatchbot/worker.js', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
   workflow_dispatch: {}
 permissions: { contents: read }
 concurrency: { group: hatchbot-worker, cancel-in-progress: false }
@@ -30,6 +30,14 @@ jobs:
       - name: Build meme list
         if: steps.ready.outputs.go
         run: node hatchbot/build-memes.js
+      - name: Bug report storage (Cloudflare KV)
+        if: steps.ready.outputs.go
+        working-directory: hatchbot
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces"
+          ID=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API?per_page=100" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=(JSON.parse(s).result||[]).find(n=>n.title==='hatchbot-bugs');console.log(r?r.id:'')})")
+          if [ -z "$ID" ]; then ID=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -d '{"title":"hatchbot-bugs"}' "$API" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).result.id))"); fi
+          printf '\n[[kv_namespaces]]\nbinding = "BUGS"\nid = "%s"\n' "$ID" >> wrangler.toml
       - name: Deploy worker
         if: steps.ready.outputs.go
         working-directory: hatchbot
@@ -44,7 +52,7 @@ jobs:
           SECRET=$(node -e "console.log(require('crypto').createHash('sha256').update('hatchbot:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,48))")
           API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
           curl -fsS "$API/setWebhook" -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true" -o /dev/null
-          CMDS='[{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"help","description":"List HatchBot commands"}]'
+          CMDS='[{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"bug","description":"Report a bug to the XCPETS team"},{"command":"help","description":"List HatchBot commands"}]'
           for SCOPE in '{"type":"default"}' '{"type":"all_group_chats"}' '{"type":"all_private_chats"}'; do
             curl -fsS "$API/deleteMyCommands" --data-urlencode "scope=$SCOPE" -o /dev/null || true
             curl -fsS "$API/setMyCommands" --data-urlencode "commands=$CMDS" --data-urlencode "scope=$SCOPE" -o /dev/null
