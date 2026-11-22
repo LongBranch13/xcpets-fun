@@ -1938,7 +1938,16 @@
   window.V2UI = { hiddenIds: hiddenIds, pickIds: pickIds, starIds: starIds, keptIds: keptIds, isKept: isKept, toggleKeep: toggleKeep, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, refreshGear: refreshGear, toast: toast, confirmPlans: confirmPlans, resumeGo: resumeGo, resumeDrop: resumeDrop, resumePending: resumePending, resumeReoffer: resumeReoffer, replayFight: replayFight, replayBreed: replayBreed, replayCem: replayCem, breedSum: breedSum, breedReview: breedReview, breedFlip: breedFlip, breedFlipText: breedFlipText, breedFlipNote: breedFlipNote, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
   if (window.V2Split && V2Split.rest) setTimeout(V2Split.rest, 0); /* enough living pets for the first screen; the rest wait for Show more */
   render(); route();
-  if (M.onFresh) M.onFresh(function () { render(); }); /* boot-from-cache: repaint when the fresh world replaces the saved one */
+  /* freeze-hunt (Nov 22 2026): while a big wallet's pages are still arriving, the world is replaced 5 or 6 times and each one redrew the whole
+   * page (0.3 to 0.5 s each on a phone, measured). Partial worlds now repaint at most every 4 s, with one repaint after the last batch;
+   * the complete world repaints at once, exactly as before. */
+  var freshAt = 0, freshT = 0;
+  function freshRender() { var w = null; try { w = world(); } catch (e) {} var pg = w && w._pages, partial = !!(pg && !w._full && (pg.got || 1) < (pg.pages || 1));
+    if (freshT) { clearTimeout(freshT); freshT = 0; }
+    var wait = partial ? freshAt + 4000 - Date.now() : 0;
+    if (wait > 0) { freshT = setTimeout(freshRender, wait); return; }
+    freshAt = Date.now(); render(); }
+  if (M.onFresh) M.onFresh(freshRender); /* boot-from-cache: repaint when the fresh world replaces the saved one */
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
   var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }
