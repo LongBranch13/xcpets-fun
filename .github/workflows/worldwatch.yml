@@ -1,0 +1,39 @@
+# World watch (Nov 22 2026). Checks that players get the fast load: the server has a fresh world for the rules the live site runs.
+# Runs every 15 minutes, after every site deploy (it then keeps checking for up to 25 minutes while the new world builds), and by hand.
+# On a problem it opens one GitHub issue labelled world-alert (or comments on the open one, at most every 2 hours) and, when the
+# TELEGRAM_ALERT_CHAT_ID secret is set, HatchBot sends the alert to that chat. When things are fine again it closes the issue and says so.
+# Reads only public URLs. Nothing is changed on the server.
+name: worldwatch
+on:
+  schedule:
+    - cron: '4,19,34,49 * * * *'
+  workflow_run:
+    workflows: [pages]
+    types: [completed]
+  workflow_dispatch: {}
+permissions: { contents: read, issues: write }
+concurrency: { group: worldwatch, cancel-in-progress: false }
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Check the live site and the published world
+        id: check
+        env: { WAIT: "${{ github.event_name == 'workflow_run' && '25' || '0' }}" }
+        run: |
+          set +e
+          node tools/worldwatch.js --wait "$WAIT" --json "$RUNNER_TEMP/ww.json"
+          echo "bad=$?" >> "$GITHUB_OUTPUT"
+      - name: Alert or all clear
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          BAD: ${{ steps.check.outputs.bad }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/worldwatch-alert.js "$RUNNER_TEMP/ww.json"
