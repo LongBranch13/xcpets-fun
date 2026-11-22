@@ -163,16 +163,18 @@ function main() {
   const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed });
   state.snap = snapState; state.rules = rules.info;
   backfillRsigLatest(dataDir);
-  /* After main moved: read the gates and the chain merge from the new copy too, so the blocks this service collects match the new rules. */
-  function adopt(r) { if (!r || !r.changed) return;
-    try { const fresh = salesIo(bases, boot, rules.dir()); const keep = io.upstream; Object.assign(io, fresh, { upstream: keep, seed: io.seed }); io0 = fresh; state.gates = fresh.gates; }
-    catch (e) { console.error('rules: new copy did not load in the service: ' + String(e && e.message || e).split('\n')[0].slice(0, 120)); } }
+  /* After the builder's files changed on main: the gates and the chain merge must come from the new copy too. Nov 22 2026: loading
+   * a second rules context in this process (and its sales data) ran the service out of heap within minutes, every time main moved.
+   * Now the service restarts itself instead (systemd starts it again and it loads the new copy once), but never during a build. */
+  let restartWanted = null;
+  function adopt(r) { if (!r || !r.changed) return; restartWanted = r.rsig || 'new files'; console.log('rules: builder files changed (' + restartWanted + '); restarting the service once no build runs'); }
   const httpd = createServer({ getState: () => state, dataDir: dataDir });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   let timer = null, held = false;
   const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
   const loop = singleFlight(async function () { try {
+    if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); setTimeout(() => process.exit(75), 200); return; }
     if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
     const behindSnap = state.world && state.world.tip ? state.tip - state.world.tip : state.tip;
