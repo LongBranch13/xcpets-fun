@@ -417,6 +417,10 @@
     function startIndex() { var sync = GI && GI.base ? GI.base() : ''; function local() { var go = function () { w = ctx.M && ctx.M.world ? ctx.M.world() : w; ctx.w = w; localIndex(); }; if (window.V2Split && V2Split.ensureDead) V2Split.ensureDead().then(go, go); else go(); } if (!sync || !GI.counts) return local();
       GI.counts(sync).then(function (c) { if (!c || c.dead == null) return local(); st.remote = sync; st.counts = c; st.total = c.dead; st.source = 'index'; S.total = c.dead; afterIndex(); }).catch(function () { local(); }); }
     startIndex();
+    /* Nov 22 2026: newer game data repaints this page in place. Without a hook v2-chain.js reloaded the whole page a few seconds after it opened. */
+    if (M && M.onFresh) M.onFresh(function () { syncWorld(); b = (w.tip || b - 1) + 1; ctx.b = b; if (!st.ready) return;
+      var re = function () { try { opts(); status(); zombies(); apply(true); } catch (e) { try { console.warn('[cemetery] repaint', e); } catch (x) {} } };
+      if (st.source === 'world') localIndex(re); else re(); });
     /* cemetery-handoff: an offering saved in this browser (not yet sent, or stopped half way) gets a note at the top of the list with an Open button */
     function resumeNote() { if (!ME) return; var o = {}; try { o = JSON.parse(localStorage.getItem('xcpets-cem-build-v1-' + ME) || '{}') || {}; } catch (e) { o = {}; }
       var ids = Object.keys(o).filter(function (k) { var x = o[k]; return x && Date.now() - (x.at || 0) < 24 * 3600e3 && ((x.offered && x.offered.length) || (x.run && x.run.left && x.run.left.length)); });

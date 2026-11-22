@@ -224,7 +224,7 @@
     A.run = null; A.sentLog = []; var rs = A.ctx.ME ? restore() : 0;
     var el = host(); el.hidden = false; el.innerHTML = shell(); A.cv = el.querySelector('#altCv'); A.zc = el.querySelector('#altZc'); bind(el); [0, 1, 2, 3].forEach(function (i) { var e = document.getElementById('altG' + i); if (e) e.textContent = A.gear[i]; }); renderAll(true);
     if (A.restored) toast(rs ? '↩ Restored your unsent offering: ' + rs + ' pet' + (rs === 1 ? '' : 's') : '↩ Restored your unfinished seance');
-    if (!A.hooked && A.ctx.M && A.ctx.M.onFresh) { A.hooked = true; A.ctx.M.onFresh(function () { if (A.grave || (A.run && A.run.zombie)) refreshWorld(false); else { saveBuild(); try { location.reload(); } catch (e) {} } }); } poll();
+    if (!A.hooked && A.ctx.M && A.ctx.M.onFresh) { A.hooked = true; A.ctx.M.onFresh(function () { if (A.grave || (A.run && A.run.zombie)) refreshWorld(false); else saveBuild(); /* the cemetery list repaints itself (v2-cemetery-scene.js); no page reload */ }); } poll();
     topGap(); if (!A.rz) { A.rz = true; window.addEventListener('resize', topGap); } if (window.IntersectionObserver && !A.io) { A.io = new IntersectionObserver(function (es) { A.off = !es[0].isIntersecting; if (!A.off) kick(); }); } if (A.io) { A.io.disconnect(); A.io.observe(A.cv); }
     if (window.V2CemeteryScene && V2CemeteryScene.hooks) V2CemeteryScene.hooks('lit'); kick(); el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }
   /* the sticky stage sits just under the site's sticky nav, whatever height the nav wraps to on a phone */
