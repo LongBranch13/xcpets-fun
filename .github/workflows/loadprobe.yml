@@ -1,11 +1,12 @@
 # Load probe (Nov 22 2026): how fast each page opens for real wallets on the live site, and what it downloads.
-# View-only, nothing signed. Results: the run summary. Runs by hand, and when tools/loadprobe changes on a branch.
+# View-only, nothing signed. Results: the run summary. Runs by hand, and when tools/loadprobe changes on a branch. On a branch it also measures
+# the branch's own pages and scripts against live data (--branch), next to the live site.
 name: loadprobe
 on:
   workflow_dispatch:
     inputs:
       wallets: { description: 'Comma-separated wallets (empty = Evan, owner, a test wallet)', required: false, default: '' }
-      pages: { description: 'Comma-separated pages', required: false, default: 'index.html,play.html,breed.html,cemetery.html,raid.html,live.html' }
+      pages: { description: 'Comma-separated pages', required: false, default: 'play.html,breed.html,cemetery.html' }
       slow: { description: 'Also run on a phone network with a slower CPU', type: boolean, default: true }
   push:
     paths: ['tools/loadprobe/**', '.github/workflows/loadprobe.yml']
@@ -22,9 +23,9 @@ jobs:
         with: { node-version: '20' }
       - run: npm install --no-save --no-package-lock playwright-core@1
       - name: Fast network
-        env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}' }
-        run: node tools/loadprobe/run.js ${WALLETS:+--wallets "$WALLETS"} ${PAGES:+--pages "$PAGES"}
+        env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
+        run: node tools/loadprobe/run.js ${BRANCH_FLAG} ${WALLETS:+--wallets "$WALLETS"} ${PAGES:+--pages "$PAGES"}
       - name: Phone network, slower CPU
         if: github.event_name == 'push' || github.event.inputs.slow == 'true'
-        env: { WALLETS: '${{ github.event.inputs.wallets }}' }
-        run: node tools/loadprobe/run.js --slow --pages play.html,cemetery.html ${WALLETS:+--wallets "$WALLETS"}
+        env: { WALLETS: '${{ github.event.inputs.wallets }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
+        run: node tools/loadprobe/run.js --slow ${BRANCH_FLAG} --pages play.html --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd}"
