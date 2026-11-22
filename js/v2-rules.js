@@ -3187,7 +3187,7 @@
    * Rewards at the end block + 6 once the end block hash is known: tiers by points (Bronze 100: badge; Silver 400: + 3 saved spins;
    *   Gold 800: + season trophy; Diamond Hands 1,200: + one free season egg, outside the supply). Top 3 wallets by points (ties: earlier
    *   first point) are the season champions. */
-  var ACTIVATE_SEASONS_BLOCK = null;
+  var ACTIVATE_SEASONS_BLOCK = 979058; /* Season 1 (Kekmas in Cold Storage) opens here, about Dec 6 2026. Nothing changes before this block. */
   var SEASON_LEN = 4032, SEASON_EGG_SUPPLY = 690, SEASON_WALLET_CAP = 69, SEASON_LEGEND_ODDS = 690, SEASON_TRAIT_ODDS = 7, SEASON_DAY_CAP = 50, SEASON_CONFIRM = 6;
   var SEASON_TIERS = [100, 400, 800, 1200], SEASON_TIER_NAMES = ['', 'Bronze', 'Silver', 'Gold', 'Diamond Hands'], SEASON_SILVER_SPINS = 3;
   var SEASON_PTS = { day: 10, breed: 5, seasonEgg: 5, egg: 1, raid: 20 };
