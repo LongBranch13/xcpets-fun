@@ -24,8 +24,8 @@ ok(/mgAscend/.test(R) && /function resPairWhy\(A,\s*B,\s*b\)/.test(R), 'rules: m
 /* 3. pickers: God and non-God mates are left out, 'Show all' included */
 const E = rd('js/v2-easy-flows.js'), M = rd('js/v2-motel.js');
 ok(/var resX = function \(p\) \{ return !!\(A && Vr\.resPairWhy && Vr\.resPairWhy\(A, p, T \+ 1\)\); \}/.test(E), 'easy flow: resX uses the live resPairWhy');
-ok(/\(s\.fall \? x\.p\.stage >= 1 && !x\.p\.dead : !x\.why && x\.p\.stage >= 3\) && !resX\(x\.p\)/.test(E), "easy flow: the partner pool drops mixed mates in both views (incl. 'Show all')");
-ok(/if \(Bp && !s\.req && !resX\(Bp\)/.test(E), 'easy flow: a picked mixed mate is not pinned back into the list');
+ok(/x\.p\.stage >= 1 && !x\.p\.dead && !resX\(x\.p\)/.test(E) && /!x\.why && x\.p\.stage >= 3 && !resX\(x\.p\)/.test(E), "easy flow (pet picker): every date shelf drops mixed mates (all dates and the ready ones)");
+ok(!/pool = \[\{ p: Bp \}\]/.test(E), 'easy flow (pet picker): a picked mate sits in its slot and is never pinned back into a list');
 ok(!/greyed out/.test(E), "easy flow: the hint says hidden (no 'greyed out' view left)");
 ok(/src = sd === 'A' \? L\.mine : L\.partners\.filter\(function \(x\) \{ return !resX\(x\.p\); \}\)/.test(M), 'motel: Browse pets leaves out mixed mates');
 ok(/okB = (?:ezOn \? \[\] : )?L\.partners\.filter\(function \(x\) \{ return !x\.why && x\.p\.stage >= 3; \}\)/.test(M), 'motel: chips list only mates with no reason (mixed ones have one)');

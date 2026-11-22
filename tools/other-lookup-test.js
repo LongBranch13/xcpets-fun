@@ -23,7 +23,7 @@ const look = rd('js/v2-lookup.js'), easy = rd('js/v2-easy-flows.js'), ui = rd('j
 [look, easy, ui, arena, hall, dock].forEach(function (src) { ok(src.indexOf(BANNED) < 0, 'banned wallet is not in the lookup'); });
 ok(/function loadOwner\(/.test(look) && /view\/own\//.test(look) && /PAGE_CAP/.test(look) && /S\.ensurePet/.test(look) && !/loadBoard/.test(look), 'lookup reads owner pages or ensurePet, never loadBoard');
 ok(/Loading…/.test(look) && /No living pets published/.test(look) && /Could not load that/.test(look), 'loading, empty and error text');
-ok(/placeLook\(el, 'breed'\)/.test(easy) && /placeLook\(el, 'fight'\)/.test(easy) && /No other wallet is loaded yet/.test(easy), 'Gooby Other wallets and fight portraits ask for a lookup');
+ok(/V2Lookup\.mount\(la, \{ id: 'breedLook', mode: 'breed'/.test(easy) && /placeLook\(el, 'fight'\)/.test(easy) && /No other wallet is loaded yet/.test(easy), 'Gooby Other wallets and fight portraits ask for a lookup');
 ok(/V2Lookup\.mount\(\$\('battlePanel'\)/.test(ui) && /fighters\(w, ME, true\)/.test(ui), 'battle select still uses fighters and can look a wallet up');
 ok(/V2Lookup\.mount\(\$\('battlePanel'\) \|\| box/.test(arena) && /U\.fighters\(w, ME, true\)/.test(arena), 'arena opponent list can look a wallet up');
 ok(/function finds\(w\)/.test(hall) && /placeLook\(/.test(hall) && /does not load the whole world/.test(hall) && !/loadBoard/.test(hall), 'rare hall keeps finds() and adds a lookup');
