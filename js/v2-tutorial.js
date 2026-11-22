@@ -335,9 +335,17 @@
   }
   function welcome(onPlay) {
     ls(SEEN, '1');
-    tip('<b>New here, keeper?</b> I\'m Coach Peepo. Want a quick tour? It takes about 2 minutes.', [
+    /* Place pages (Circus, Motel, Raid): a small chip instead of the big card, so the place's scene stays in view. Tap to open the full welcome. */
+    var sp = document.body && document.body.dataset.split;
+    if (!onPlay && /^(fight|breed|raid)$/.test(sp || '')) {
+      var c = el('button', 'tut-tip tut-chip', '🐸 New here? 2-min tour'); c.type = 'button'; c.setAttribute('aria-label', 'Coach Peepo: new here? Open the 2-minute tour');
+      var x = el('span', 'tut-chip-x', '✕'); x.setAttribute('aria-label', 'Dismiss'); x.onclick = function (e) { e.stopPropagation(); c.remove(); }; c.appendChild(x);
+      c.onclick = function () { c.remove(); full(); }; document.body.appendChild(c); return;
+    }
+    full();
+    function full() { tip('<b>New here, keeper?</b> I\'m Coach Peepo. Want a quick tour? It takes about 2 minutes.', [
       ['No thanks', null, 'q'], ['🎓 The Big Beautiful Tutorial', null, 'q', 'tutorial.html'],
-      onPlay ? ['▶ Show me around', coach, 'btn'] : ['▶ Start the tour', null, 'btn', 'play.html?coach=1']]);
+      onPlay ? ['▶ Show me around', coach, 'btn'] : ['▶ Start the tour', null, 'btn', 'play.html?coach=1']]); }
   }
 
   /* ---------- Play page coach marks: spotlight + pointing hand on the REAL buttons, one action per step ---------- */

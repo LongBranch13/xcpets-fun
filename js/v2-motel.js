@@ -109,15 +109,49 @@
       el.innerHTML = '<b class="mg-who">GOOBY</b><span class="mg-line">' + esc(l) + '</span>' + tip; },
     wake: function (l) { var n = performance.now(); G.it = n; S.bubble = l; S.lt = n; try { localStorage.setItem('xcpets-gooby-tapped', '1'); } catch (e) { } G.said = ''; if (!S.raf && S.c) draw(n); },
     hit: function (lx, ly) { if (lx >= 125 && lx <= 140 && ly >= 88 && ly <= 103) return 'book'; /* guestbook-close: the little ledger on the desk */ if (lx >= 112 && lx <= 139 && ly >= 70 && ly <= 100) return 'gooby'; if (lx >= 70 && lx <= 86 && ly >= 108 && ly <= 141) return 'can';
-      var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; return null; },
+      var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; if (lx >= POOL.x - 3 && lx <= POOL.x + POOL.w + 3 && ly >= POOL.y - 10 && ly <= POOL.y + POOL.h + 3) return 'pool'; return null; },
     click: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(), lx = (e.clientX - r.left) / r.width * W, ly = (e.clientY - r.top) / r.height * H, h = G.hit(lx, ly), n = performance.now(); if (!h) return;
       if (h === 'book') { G.tap = n; G.wake('The guest book. Every stay is on Bitcoin.'); openBook(true); }
       else if (h === 'gooby') { openBook(true); var wasAsleep = G.mode(n).sleep; G.tap = n; G.wake(wasAsleep ? 'Huh? Gooby\u2019s up. Gooby\u2019s up.' : (G.taps = (G.taps || 0) + 1) % 2 ? TAPL[(G.taps >> 1) % TAPL.length] : (G.facts()[(G.taps >> 1) % Math.max(1, G.facts().length)] || TAPL[0])); }
       else if (h === 'can') { var cn = CANS[G.cans++ % CANS.length]; G.can = n; G.canCol = cn[1]; G.wake(cn[0]); }
+      else if (h === 'pool') { G.wake(poolLine()); var qc = !(S.A && S.B) && (S.lounge || []).length && document.querySelector('.qc-h'); if (qc && qc.scrollIntoView) qc.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); }
       else if (h === 'door') G.wake(S.A && S.B ? 'Room #' + S.A.id + ' + #' + S.B.id + '. Ring the bell below.' : 'Pick two guests below. Gooby has keys.');
       else { var rm0 = S.rooms[+h.slice(4)]; G.wake(!rm0 ? 'Empty room. Clean sheets. Probably.' : 'Room ' + rm0.room + ': #' + rm0.a + ' + #' + rm0.b + (rm0.mode === 'sil' ? '. DND sign up.' : '. Real guests, real burns.')); } },
     move: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(); var hh = G.hit((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); c.style.cursor = hh ? 'pointer' : ''; c.title = hh === 'book' || hh === 'gooby' ? 'Guest book' : ''; } };
   G.it = typeof performance !== 'undefined' ? performance.now() : 0;
+  /* GENE POOL + COOLDOWN LOUNGE (living-scenes, Nov 22 2026; display only). The pool finally has a job:
+   * 1) pick two guests and the pool fills with rubber ducks, one duck per ~1/8 of the baby's species odds (the same odds() as the desk card);
+   *    a hybrid outcome is a golden duck. 2) your own pets that are resting after a breed float on rings, each with the blocks left until they can
+   *    check in again (the same breedable()/lastBreed math as "My cooldowns"). Tap the pool = Gooby reads the odds or the lounge. */
+  var DUCK = ['#ffd84a', '#7dff6a', '#4fe0ff', '#ff9ad5', '#ff8a3d', '#c9a8ff'], POOL = { x: 239, y: 159, w: 58, h: 24 };
+  function duckCol(label, i) { var h = 0; label = String(label || ''); for (var k = 0; k < label.length; k++) h = (h * 31 + label.charCodeAt(k)) >>> 0; return DUCK[(h + i) % DUCK.length]; }
+  function ducks(od) { if (!od || !od.sp || !od.sp.length) return []; var out = [], n = 8, left = n;
+    od.sp.forEach(function (q, i) { var k = i === od.sp.length - 1 ? left : Math.max(q[1] > 0 ? 1 : 0, Math.round(q[1] / 100 * n)); k = Math.min(k, left); left -= k;
+      var gold = /hybrid/i.test(q[0]) || (od.hyb > 0 && i === 0 && od.sp.length === 3); for (var j = 0; j < k; j++) out.push({ c: gold ? '#ffd700' : duckCol(q[0], i), gold: gold, lab: q[0] }); }); return out; }
+  function lounge(w, ME, tip) { var R = window.V2Rules, U = window.V2UI; if (!R || !ME || !U || !U.mine || !R.breedable) return [];
+    var b = (tip || w.tip || 0) + 1, out = []; try { U.mine(w).forEach(function (p) { if (p.released || p.dead || p.lastBreed == null) return; var why = R.breedable(p, b); if (!why || !/cooldown/.test(why)) return;
+      var cool = R.mgBreedCool ? R.mgBreedCool(p) : R.BREED_COOLDOWN, left = Math.max(0, R.span ? cool - R.span(b, p.lastBreed) : p.lastBreed + cool - b); if (left > 0) out.push({ p: p, left: left }); }); } catch (e) { return []; }
+    return out.sort(function (a, c) { return a.left - c.left; }); }
+  var POOL_DEMO = typeof location !== 'undefined' && /[?&]pooldemo=1\b/.test(location.search); /* previews only: fake odds + the first pets in the world as loungers */
+  function pool(x, t, rm) { if (POOL_DEMO && !(S.A && S.B)) demoPool(); var P = POOL, D = (S.A && S.B) || S.demoOd ? ducks(S.od || S.demoOd) : [], L = (S.lounge || []).slice(0, D.length ? 2 : 3), i;
+    var lx0 = D.length ? P.x + 34 : P.x + 6, lstep = 18;
+    L.forEach(function (o, n) { var cx = lx0 + n * lstep + 6, fy = rm ? 0 : Math.round(Math.sin(t / 520 + n * 1.7)), cy = P.y + 17 + fy;
+      px(x, '#ff4fd8', cx - 6, cy - 1, 12, 4); px(x, '#1e90c8', cx - 3, cy, 6, 2); px(x, '#fff', cx - 5, cy - 1, 2, 1);
+      if (o.p && V2Render) try { putPet(x, o.p, cx, cy + 1, 12, t); } catch (e) { }
+      x.font = '4px "Press Start 2P", monospace'; x.textAlign = 'center'; var lab = o.left > 99 ? Math.round(o.left / 6) / 1 + 'h' : String(o.left);
+      px(x, '#140f24', cx - 6, cy - 19, 12, 6); x.fillStyle = '#ffd166'; x.fillText(lab, cx, cy - 14); x.textAlign = 'left'; });
+    if (!L.length && !D.length) { var fy0 = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy0, 10, 6); px(x, '#1e90c8', 261, 170 + fy0, 4, 2); px(x, '#fff', 259, 168 + fy0, 2, 1); }
+    D.forEach(function (d, n) { var col = n % 4, row = n >> 2, dx = P.x + 3 + col * 7 + (row ? 3 : 0) + (rm ? 0 : Math.round(Math.sin(t / 700 + n) * 1.5)), dy = P.y + 6 + row * 9 + (rm ? 0 : Math.round(Math.sin(t / 380 + n * 2)));
+      px(x, d.c, dx, dy + 1, 5, 3); px(x, d.c, dx + 3, dy - 1, 3, 3); px(x, '#ff8a00', dx + 6, dy, 2, 1); px(x, '#140f24', dx + 4, dy - 1, 1, 1); px(x, 'rgba(255,255,255,.35)', dx, dy + 4, 5, 1);
+      if (d.gold && !rm && Math.floor(t / 220 + n) % 5 === 0) { px(x, '#fff', dx + 2, dy - 3, 1, 1); px(x, '#fff', dx + 1, dy - 2, 3, 1); } });
+    if (D.length) { px(x, '#140f24', P.x + 2, P.y - 9, 38, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#4fe0ff'; x.fillText('GENE POOL', P.x + 4, P.y - 4); }
+    else if (L.length) { px(x, '#140f24', P.x + 2, P.y - 9, 34, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#ff9ad5'; x.fillText('LOUNGE', P.x + 9, P.y - 4); } }
+  function demoPool() { S.demoOd = { hyb: 0.07, sp: [['Pepe x Doge hybrid', 0.07], ['Pepe', 49.97], ['Doge', 49.97]] };
+    if (!S.lounge || !S.lounge.length) { var w = S.w || (window.V2UI && V2UI.world && V2UI.world()); if (w && w.pets) S.lounge = w.pets.filter(function (p) { return p.stage >= 2 && !p.dead; }).slice(0, 2).map(function (p, i) { return { p: p, left: 37 + i * 52 }; }); } }
+  function poolLine() { var D = S.A && S.B && S.od, L = S.lounge || [];
+    if (D) return 'Gene pool: ' + S.od.sp.map(function (q) { return q[0] + ' ' + (q[1] === 100 ? '100' : q[1].toFixed(1)) + '%'; }).join(', ') + '. Golden duck = hybrid.';
+    if (L.length) return L.length + (L.length === 1 ? ' guest is' : ' guests are') + ' resting. Next back: #' + L[0].p.id + ' in ' + L[0].left + ' blocks.';
+    return 'The pool. Pick two guests and the gene pool fills up.'; }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* ground: grass, sidewalk path to the office, walkway */ px(x, '#14301f', 0, 140, W, H - 140); for (var g = 0; g < 60; g++) px(x, '#1f4a2c', (g * 37) % W, 146 + (g * 13) % (H - 148), 1, 2);
@@ -159,7 +193,7 @@
       if (k >= 1 || rm) { px(x, '#f5efe0', dx0 + 7, WY - 9, 8, 9); px(x, '#f5efe0', dx0 + 8, WY - 10, 6, 1); px(x, '#e8c38a', dx0 + 9, WY - 6, 2, 2); } } /* the egg at the door */
     /* front: bushes, flower beds, pool, palm */ bush(x, 104, 146, 14); flowers(x, 120, 146, 18); flowers(x, 162, 146, 40); bush(x, 204, 146, 12); flowers(x, 218, 146, 30); bush(x, 300, 146, 16); bush(x, 2, 150, 18); flowers(x, 40, 150, 22);
     px(x, '#d8d4c8', 236, 156, 64, 30); px(x, '#1e90c8', 239, 159, 58, 24); for (var wv = 0; wv < 5; wv++) px(x, '#7fd4ff', 243 + ((wv * 13 + (rm ? 0 : Math.floor(t / 200))) % 50), 163 + (wv * 5) % 18, 4, 1);
-    var fy = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy, 10, 6); px(x, '#1e90c8', 261, 170 + fy, 4, 2); px(x, '#fff', 259, 168 + fy, 2, 1); /* floatie */
+    pool(x, t, rm); /* gene-pool (Nov 22 2026): odds ducks + the cooldown lounge, or the lone floatie */
     px(x, '#c0c0c0', 292, 152, 1, 6); px(x, '#c0c0c0', 296, 152, 1, 6); px(x, '#c0c0c0', 292, 152, 5, 1); /* pool ladder */ palm(x, 306, 160, t); palm(x, 12, 168, t + 900); bush(x, 170, 168, 14); flowers(x, 180, 186, 26); flowers(x, 100, 186, 30);
     /* guests: A then B (the date) walk in */ var talk = null, gline = null;
     ['A', 'B'].forEach(function (who) { var p = S[who]; if (!p || !S.walk[who] || S.walk[who].id !== p.id) return; var q = pose(who, t); if (!q || q.hide) return;
@@ -229,7 +263,7 @@
      * each chip now shows species, rarity, Pet Score and an owner badge. If none can, one short line with the main reason replaces the empty box. */
     var mainWhy = function () { var c = {}; L.mine.forEach(function (x) { var r = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); if (!r) return; r = /cooldown/.test(r) ? 'on breeding cooldown' : /Adult|young|stage/i.test(r) ? 'too young (Adult+)' : r; c[r] = (c[r] || 0) + 1; });
       var k = Object.keys(c).sort(function (p, q) { return c[q] - c[p]; })[0]; return k ? ' · mostly ' + k : (L.mine.length ? '' : ' · no live pets at this address'); };
-    var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+    var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary']; S.od = od; S.lounge = lounge(w, ME, tip); /* gene-pool */
     var side0 = S.pickSide || step, resX = function (p) { return !!(s.A && V.resPairWhy && V.resPairWhy(s.A, p, (tip || 0) + 1)); }, resHid = !ezOn && V.RES_BREED_WHY && s.A ? L.partners.filter(function (x) { return (!x.why || x.why === V.RES_BREED_WHY) && x.p.stage >= 3 && resX(x.p); }).length : 0; /* resurrected-breed-only: one line with the reason when the rule hides mates */
     var flip = s.A && s.B && s.st !== 'open' && U.breedFlip ? U.breedFlip(w, s.A.id, s.B.id) : null; /* two-owner flip: warn before Check in when this burn would accept their request */
     var hint = flip ? U.breedFlipText(flip) : !ME ? 'Connect your wallet to check in' : step === 'A' ? '1 · Pick your guest' : step === 'B' ? '2 · Pick the date (yours or anyone\u2019s)' : s.st === 'half' ? 'Checked in · waiting for #' + s.B.id + '\u2019s owner' : s.st === 'invite' ? '💌 #' + s.B.id + ' already checked in · ring to join' : s.st === 'open' ? '🥚 Door\u2019s open: egg #' + (s.kid && s.kid.id) : '3 · Ring the bell';
@@ -385,5 +419,12 @@
       '.eggpop:not(.rm) .ep-fx{animation:epb .6s steps(3) 4}.eggpop:not(.rm) .ep-sp{display:inline-block;animation:epw .5s steps(2) 5}@keyframes epb{50%{transform:translateY(-6px)}}@keyframes epw{50%{transform:rotate(6deg)}}@media (prefers-reduced-motion:reduce){.eggpop .ep-fx,.eggpop .ep-sp{animation:none!important}}';
     (document.head || document.documentElement).appendChild(es); }
   function checkedIn(a, b) { S.fresh = [String(a), String(b)].sort().join(':'); if (window.V2Sfx) V2Sfx.creak(); S.bubble = 'Keys out. Door opens when both are in.'; S.lt = performance.now(); }
+  /* living-scenes (Nov 22 2026): paint the motel the moment the page opens (Gooby at the desk, the pool, the rooms), before the chain is read.
+   * render(w) takes over the same canvas when the world arrives. */
+  function early() { if (S.c || !placeOn()) return; var box = document.getElementById('motelScene'); if (!box || box.querySelector('canvas')) return;
+    box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, the rooms and the gene pool"></canvas>'; var c = box.querySelector('canvas');
+    S.c = c; S.x = c.getContext('2d'); c.dataset.gb = '1'; c.addEventListener('click', G.click); c.addEventListener('mousemove', G.move);
+    if (window.V2Sharp) S.k = V2Sharp.fit(c, W, H); draw(performance.now()); kick(); }
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', early); else setTimeout(early, 0); }
   window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, celebrate: celebrate, eggPop: eggPop, LINES: LINES, picker: picker, placeOn: placeOn, bredKids: bredKids, _state: function () { return S; } };
 })();
