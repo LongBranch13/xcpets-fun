@@ -22,3 +22,12 @@ jobs:
               }).catch(e => console.log('probe failed:', e.message));"
             sleep 20
           done
+      - name: Raids in the slim view
+        run: |
+          node -e "
+            const B = 'https://node.xcpets.fun', get = u => fetch(u + '?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+            get(B + '/xp/v1/world/latest.json').then(l => get(B + l.manifest.replace(/manifest\.json$/, '') + 'view/summary.json')).then(s => {
+              const R = s.raids;
+              console.log('summary tip', s.tip, 'rsig', s.rsig, Array.isArray(R) ? R.length + ' raids' : 'NO raids key');
+              (R || []).forEach(r => console.log(' raid', r.n, 'open', r.open, 'end', r.end, 'boss', r.boss, 'hp', r.left + '/' + r.hp, 'hits', (r.hits || []).length, r.settled ? 'settled ' + r.result : 'live'));
+            }).catch(e => console.log('raids probe failed:', e.message));"

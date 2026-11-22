@@ -1,0 +1,12 @@
+{
+  "_note": "Display-only season schedule (bar on the site + HatchBot /season). Changing this file changes no game rules. 'announce' false = nothing is shown publicly (preview with ?season=1). Blocks: a season is 4032 blocks and starts on a raid opening (973010 + k*1008). The teaser shows 1008 blocks before the start.",
+  "announce": false,
+  "length": 4032,
+  "tease": 1008,
+  "seasons": [
+    { "n": 1, "id": "kekmas", "name": "Kekmas in Cold Storage", "emoji": "❄️", "start": 979058, "egg": "Frozen Egg", "boss": "Krampus Kek", "tagline": "Lord Kek plays Santa. The naughty list is real." },
+    { "n": 2, "id": "rug", "name": "Rug Season", "emoji": "🧶", "start": 983090, "egg": "Rugged Egg", "boss": "The Rug Lord", "tagline": "New year, new rug." },
+    { "n": 3, "id": "laser", "name": "Laser Eyes Season", "emoji": "🔴", "start": 987122, "egg": "Laser Egg", "boss": "Bear Market Moloch", "tagline": "Number go up." },
+    { "n": 4, "id": "spam", "name": "Spam Season", "emoji": "🥫", "start": 991154, "egg": "Spam Can Egg", "boss": "The Spam Tsunami", "tagline": "Spam City takes over." }
+  ]
+}
