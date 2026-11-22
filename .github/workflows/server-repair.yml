@@ -237,6 +237,16 @@ jobs:
             mkdir -p /mnt/r/etc/systemd/system/xcpets-node-cache.service.d && printf '[Service]\nCPUWeight=300\nOOMScoreAdjust=-500\nRestart=always\nRestartSec=3\n' > /mnt/r/etc/systemd/system/xcpets-node-cache.service.d/priority.conf
             # the sync service restarts itself (exit 75) to load new rules; make sure systemd always starts it again
             mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d && printf '[Unit]\nStartLimitIntervalSec=0\n[Service]\nRestart=always\nRestartSec=5\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/restart.conf
+            # The cache tests every answer for an onion address with /[A-Za-z0-9._-]+\.onion/, which is quadratic on long runs of
+            # letters and digits (hex, base64): one big answer can hold its only thread for minutes, so every other request times out.
+            # A plain substring check first makes that linear; the regex still runs when '.onion' really appears.
+            NCJS="/mnt/r$(grep -h -m1 '^ExecStart=' /mnt/r/etc/systemd/system/xcpets-node-cache.service 2>/dev/null | grep -oE '/[^ ]+\.js' | head -1)"
+            if [ -f "$NCJS" ] && grep -q '  if (!ONION_RE.test(raw)) return buf;' "$NCJS" && ! grep -q "indexOf('.onion')" "$NCJS"; then
+              cp -a "$NCJS" "$NCJS.bak-$(date -u +%Y%m%d%H%M)"
+              sed -i "s/  if (!ONION_RE.test(raw)) return buf;/  if (raw.toLowerCase().indexOf('.onion') < 0 || !ONION_RE.test(raw)) return buf;/" "$NCJS"
+              node -e "new (require('vm').Script)(require('fs').readFileSync(process.argv[1],'utf8').replace(/^#!.*/,''))" "$NCJS" 2>/dev/null || true
+              grep -q "indexOf('.onion')" "$NCJS" && echo "node cache: onion check made linear (old copy kept as .bak)"
+            fi
             [ -x /mnt/r/usr/bin/curl ] && echo "watchdog installed (curl present on the server)" || echo "WARNING: curl is missing on the server, the watchdog cannot check"
           fi
           echo "disk after: $(df -m /mnt/r | awk 'NR==2{print $4" MB free"}')"
