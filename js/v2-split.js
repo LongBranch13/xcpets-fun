@@ -157,7 +157,7 @@
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;
-    if (pack && pack.cem) w.cem = pack.cem;
+    if (pack && pack.cem) w.cem = cemFill(pack.cem);
     return w;
   }
   var last = null, lastSummary = null, viewOwners = null, rankHashes = null, healthTipN = 0;
@@ -987,10 +987,14 @@
       return use(p);
     }, function () { return null; });
   }
+  /* The slim world only carries part of w.cem. Give it the same shape the rules engine builds (cemW in v2-rules.js),
+   * so cemView and the altar do not crash on a missing altars table (seance button stayed off, Nov 22 2026). Display only. */
+  function cemFill(c) { c = c || {}; if (!c.altars) c.altars = {}; if (!c.altarList) c.altarList = []; if (!c.zombies) c.zombies = []; if (!c.hunts) c.hunts = [];
+    if (!c.huntDay) c.huntDay = {}; if (!c.raisedBy) c.raisedBy = {}; if (!c.huntedBy) c.huntedBy = {}; if (!c.log) c.log = []; return c; }
   var zombieP = null;
   function applyZombies(z) {
     if (!z || !z.pets) return 0;
-    viewHold.cem = { huntedBy: z.huntedBy || {} };
+    viewHold.cem = cemFill({ huntedBy: z.huntedBy || {}, altars: z.altars || {} });
     if (z.pets.length) mergePets(openList(z.pets, null, ''));
     else if (window.V2Mock && V2Mock.world && V2Mock.setViewWorld) {
       var cur = V2Mock.world();

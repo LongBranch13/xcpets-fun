@@ -440,7 +440,9 @@ function write(dir, world, meta) {
     const zpets = [];
     ztext.split('\n').forEach(line => { if (!line) return; zpets.push(JSON.parse(line)); });
     const huntedBy = (world.cem && world.cem.huntedBy) || {};
-    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, pets: zpets });
+    /* open altars (pledges held for a seance), so the slim cemetery shows pieces a player already gave */
+    const altars = {}; Object.keys((world.cem && world.cem.altars) || {}).forEach(k => { const a = world.cem.altars[k]; if (a && a.status === 'open') altars[k] = a; });
+    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, altars: altars, pets: zpets });
     files++;
     bytes += writeJson(path.join(dir, 'owners.json'), owners); files++;
     const rankPets = [];
