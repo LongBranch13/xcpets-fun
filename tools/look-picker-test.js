@@ -90,7 +90,7 @@ sp.owner = was; void own;
 { const M = run({ q: QG, e: QG, l: LG }), mw = M.w, MV = M.V, P = mw.byId[cp.src], seller = P.owner, buyer = 'bc1qbuyerxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
   mw.lookCopies[cp.key].at = P.id; P.flameLooks = ['laurels']; MV._lookSweep(mw, TIP);
   ok(MV.shownLooks(mw, P).length >= 2, 'before the sale #' + P.id + ' shows the flame look and the copy');
-  P.owner = buyer; MV._lookSweep(mw, TIP + 1);
+  MV._noteGot(mw, P, buyer); P.owner = buyer; MV._lookSweep(mw, TIP + 1); /* replay moves pets through noteGot, which marks the pet for the next lookSweep */
   ok(!MV.shownLooks(mw, P).length && !(P.flameLooks || []).length, 'after the sale #' + P.id + ' shows no looks (flame and copies off)');
   ok(MV.ownedLooks(mw, seller).some(o => o.kind === cp.kind && o.id === cp.id && !o.on.length), 'seller still holds the copy, on no pet, ready to place');
   ok(!MV.ownedLooks(mw, buyer).length, 'buyer gets no looks');

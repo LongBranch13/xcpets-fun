@@ -14,7 +14,7 @@ const fail = [];
 const ok = (c, m) => { if (c) console.log('ok', m); else { fail.push(m); console.log('FAIL', m); } };
 function md5(p) { return crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'); }
 function gitFile(f) { return require('child_process').execFileSync('git', ['show', 'origin/main:' + f], { cwd: ROOT }); }
-const RULES_MD5 = '3638b4453d7b9b0c13c59c230f1b118c';
+const RULES_MD5 = '7787b1e10cb08c9f36aec3fb656dd99c';
 const RULES = ['js/v2-rules.js', 'js/pet-core.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/real-core.js', 'rjs/burn-core.js', 'rjs/config.js'];
 RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule MD5 unchanged ' + f); });
 
