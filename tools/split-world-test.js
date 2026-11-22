@@ -110,10 +110,15 @@ async function prove(name) {
   if (world.community) ok(built.summary.burned === world.community.burned, name + ' burned ' + built.summary.burned);
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'split-'));
   const petN = world.pets.length, petTip = world.tip;
+  const hadSeasons = 'seasons' in world;
+  if (!hadSeasons) world.seasons = { 1: { n: 1, id: 'kekmas', sold: 3, pts: { bc1qtest: 15 }, legends: [], settled: false } };
   const meta = await split.write(out, world, { tip: world.tip, rsig: rulesSig(loadBytes()) });
+  const wantSeasons = JSON.stringify(world.seasons);
+  if (!hadSeasons) delete world.seasons;
   const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
   ok(summary.n === petN && summary.tip === petTip, name + ' written summary ' + summary.n + ' files ' + meta.files + ' bytes ' + meta.bytes);
   ok(summary.rsig && summary.rsig[0] === 'r', name + ' summary carries the rules signature');
+  ok(JSON.stringify(summary.seasons) === wantSeasons, name + ' summary carries the season records (eggs sold, points)');
   const first = JSON.parse(fs.readFileSync(path.join(out, 'own', meta.top[0].key + '.json'), 'utf8'));
   ok(first.pets.length <= split.PAGE && first.alive + first.dead === meta.top[0].n && first.pets.every(p => !p.dead && !p.released), name + ' first page is living pets only (' + first.pets.length + ' of ' + first.alive + ' alive, ' + first.dead + ' dead aside)');
   return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
