@@ -1,0 +1,1 @@
+{ "issue": "", "level": "warn", "note": "Known-issue notice shown in the status line on every game page (js/v2-status.js). Put a short sentence in issue to show it; empty hides it." }

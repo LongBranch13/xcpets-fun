@@ -27,7 +27,7 @@ const RSIG = {
 };
 Object.keys(RSIG).forEach(rel => ok(md5(rel) === RSIG[rel], rel + ' bytes unchanged'));
 const ui = rd('js/v2-split.js');
-ok(/AUTO_CAP = 5000/.test(ui) && /SCREEN_PAGES = 7/.test(ui), 'small wallets load through; huge wallets still page 7 at a time');
+ok(/AUTO_CAP = 12000/.test(ui) && /SCREEN_PAGES = 7/.test(ui) && /DRAIN_MAX = 64/.test(ui), "wallets up to 12,000 load through in growing batches; bigger ones still page 7 at a time");
 ok(/function drain\(/.test(ui) && /underCap\(/.test(ui), 'background drain is only for wallets under the cap');
 ok(!/for \(i = 1; i < pg\.pages; i\+\+\) left\.push\(i\)/.test(ui), 'owner pages are still not all queued at once');
 ok(/deeds: deeds, mythicOwners: mythicOwners/.test(ui), 'assemble keeps deeds and mythicOwners');
