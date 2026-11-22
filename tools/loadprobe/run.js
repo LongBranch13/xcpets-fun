@@ -46,7 +46,7 @@ async function probe(browser, page, addr, branch) {
   if (NO_WORLD) await cx.route(u => /node\.xcpets\.fun\/xp\/v1\/world\//.test(u.href || String(u)), r => r.abort());
   const pg = await cx.newPage(), reqs = [], errors = [];
   let prof = null;
-  if (PROFILE) { prof = await cx.newCDPSession(pg); await prof.send('Profiler.enable'); await prof.send('Profiler.setSamplingInterval', { interval: 2000 }); await prof.send('Profiler.start'); }
+  if (PROFILE) { prof = await cx.newCDPSession(pg); await prof.send('Profiler.enable'); await prof.send('Profiler.setSamplingInterval', { interval: 2000 }); await prof.send('Profiler.start'); try { prof.t0Page = await pg.evaluate(() => performance.now()); } catch (e) { prof.t0Page = 0; } }
   if (SLOW) { const s = await cx.newCDPSession(pg); await s.send('Network.enable'); await s.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 9e6 / 8, uploadThroughput: 2e6 / 8 }); await s.send('Emulation.setCPUThrottlingRate', { rate: 4 }); }
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 160)));
   pg.on('requestfinished', async r => { try { const z = await r.sizes(); reqs.push({ u: r.url(), b: z.responseBodySize + z.responseHeadersSize }); } catch (e) {} });
@@ -55,7 +55,7 @@ async function probe(browser, page, addr, branch) {
     await pg.goto(SITE + '/' + page + '?probe=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 90000 });
     while (Date.now() - t0 < MAX_WAIT) {
       await pg.waitForTimeout(500);
-      st = await pg.evaluate(me => { try { const w = window.V2Mock && V2Mock.world && V2Mock.world(); const drawn = document.querySelectorAll('canvas[data-id]').length;
+      st = await pg.evaluate(me => { try { const w = window.V2Mock && V2Mock.world && V2Mock.world(); const drawn = Array.prototype.filter.call(document.querySelectorAll('#pets canvas.sprite, canvas[data-id]'), c => !!c._fr).length;
         if (!w || !w.pets) return { ready: false, drawn }; const pgs = w._pages, mine = w.pets.filter(p => p.owner === me).length;
         return { ready: true, mine, pets: w.pets.length, pending: !!w.pending, drawn, full: !!w._full || !pgs || (pgs.got || 1) >= (pgs.pages || 1), n: pgs ? pgs.n : null, got: pgs ? pgs.got : null, pages: pgs ? pgs.pages : null,
           heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null }; } catch (e) { return { ready: false, err: String(e) }; } }, addr);
@@ -72,7 +72,7 @@ async function probe(browser, page, addr, branch) {
   try { blank = await pg.evaluate(BLANK_SRC); } catch (e) {}
   if (SCROLL) try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
   try { lt = await pg.evaluate(() => window.__probeLT || []); } catch (e) {}
-  if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
+  if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); top.tasks = taskFns(profile, prof.t0Page, lt); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
   await cx.close();
   const by = {}; let total = 0; reqs.forEach(r => { const k = kind(r.u); by[k] = by[k] || { n: 0, b: 0 }; by[k].n++; by[k].b += r.b; total += r.b; });
   return { branch: !!branch, page, addr, tWorld, tDraw, tFull, st, errors, total, n: reqs.length, by, big: reqs.sort((a, b) => b.b - a.b).slice(0, 8), secs: (Date.now() - t0) / 1000,
@@ -89,8 +89,14 @@ const BLANK_SRC = `(() => { const out = { onScreen: 0, blank: 0, cards: document
 async function scrollTest(pg) {
   const t0 = await pg.evaluate(() => performance.now()), steps = [];
   if (!(await pg.evaluate(() => document.querySelectorAll('#pets .pet.card').length))) return null;
+  await pg.evaluate(() => { const c = document.querySelector('#pets .pet.card'); if (c) c.scrollIntoView({ block: 'start' }); });
+  await pg.waitForTimeout(500);
+  const vp = pg.viewportSize() || { width: 390, height: 844 };
   for (let i = 0; i < 60; i++) {
-    const more = await pg.evaluate(() => { const y = scrollY; scrollBy(0, innerHeight * 0.9); return scrollY > y; });
+    /* a real wheel/finger scroll over the list, so whatever element scrolls (window or a container) moves */
+    const y0 = await pg.evaluate(() => { const c = document.querySelector('#pets .pet.card'); return c ? c.getBoundingClientRect().top : 0; });
+    await pg.mouse.move(vp.width / 2, vp.height / 2); await pg.mouse.wheel(0, Math.round(vp.height * 0.9));
+    const more = await pg.evaluate(y => { const c = document.querySelector('#pets .pet.card'); return !!c && Math.abs(c.getBoundingClientRect().top - y) > 4; }, y0);
     await pg.waitForTimeout(250); const a = await pg.evaluate(BLANK_SRC);
     await pg.waitForTimeout(750); const b = await pg.evaluate(BLANK_SRC);
     steps.push([a.onScreen, a.blank, b.blank]);
@@ -110,6 +116,24 @@ function topFns(profile) {
   const ms = v => Math.round(v / 1000);
   return { fns: [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => [k, ms(v)]), files: [...byFile].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => [k, ms(v)]) };
 }
+/* For each of the longest tasks (over 300 ms): the functions that ran inside it (profile samples mapped onto page time). */
+function taskFns(profile, t0Page, lt) {
+  const byId = new Map(); profile.nodes.forEach(n => byId.set(n.id, n));
+  const big = lt.filter(x => x[1] >= 300).sort((a, b) => b[1] - a[1]).slice(0, 6), dt = profile.timeDeltas || [], sm = profile.samples || [];
+  if (!big.length) return [];
+  const par = new Map(); profile.nodes.forEach(x => (x.children || []).forEach(c => par.set(c, x.id)));
+  const at = []; let t = 0; for (let i = 0; i < sm.length; i++) { t += dt[i] || 0; at.push(t0Page + t / 1000); }
+  return big.map(([st, du]) => { const self = new Map(), stack = new Map();
+    for (let i = 0; i < sm.length; i++) { if (at[i] < st || at[i] > st + du) continue; let n = byId.get(sm[i]); if (!n) continue; const cf = n.callFrame;
+      const k = (cf.functionName || '(anon)') + ' ' + (cf.url ? cf.url.replace(/\?.*/, '').split('/').slice(-2).join('/') + ':' + (cf.lineNumber + 1) : '');
+      self.set(k, (self.get(k) || 0) + (dt[i] || 0));
+      /* the outermost page-script frame = what started the task */
+      let outer = null;
+      for (let id = sm[i]; id != null; id = par.get(id)) { const f = byId.get(id).callFrame; if (f.url && f.url.indexOf('http') === 0) outer = (f.functionName || '(anon)') + ' ' + f.url.replace(/\?.*/, '').split('/').slice(-2).join('/') + ':' + (f.lineNumber + 1); }
+      if (outer) stack.set(outer, (stack.get(outer) || 0) + (dt[i] || 0)); }
+    const top = m => [...m].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => k + ' ' + Math.round(v / 1000) + ' ms').join(' · ');
+    return { at: Math.round(st), ms: du, self: top(self), from: top(stack) }; });
+}
 function ltSum(lt, from, to) { const a = lt.filter(x => x[0] >= (from || 0) && x[0] < (to == null ? Infinity : to)); return { n: a.length, total: a.reduce((s, x) => s + x[1], 0), max: a.reduce((m, x) => Math.max(m, x[1]), 0), over1s: a.filter(x => x[1] >= 1000).length }; }
 const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toFixed(1) + ' s';
 (async () => {
@@ -128,7 +152,8 @@ const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toF
   for (const r of detail) { const sc = r.scroll, L = ltSum(r.lt, 0, sc ? sc.t0 : null), Ls = sc ? ltSum(r.lt, sc.t0, sc.t1) : null, s1 = v => (v / 1000).toFixed(1) + ' s';
     md += `| ${r.page}${r.branch ? ' (branch)' : ''} | ${r.addr.slice(0, 8)}… | ${L.n} | ${s1(L.total)} | ${s1(L.max)} | ${L.over1s} | ${r.blank ? r.blank.blank + ' of ' + r.blank.onScreen + ' (' + r.blank.cards + ' cards)' : '–'} | ${Ls ? Ls.n + ' / ' + s1(Ls.max) : '–'} | ${sc ? sc.blank250 + ' / ' + sc.blank1s + ' (of ' + sc.shown + ')' : '–'} |\n`; }
   if (PROFILE) { md += '\n## Where the main thread went (CPU profile, self time)\n\n';
-    for (const r of detail) if (r.top) md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** files: ` + r.top.files.map(([k, v]) => k + ' ' + v + ' ms').join(' · ') + '\n\n' + r.top.fns.map(([k, v]) => '- ' + v + ' ms ' + k.replace(/\|/g, '/')).join('\n') + '\n\n'; }
+    for (const r of detail) if (r.top) md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** files: ` + r.top.files.map(([k, v]) => k + ' ' + v + ' ms').join(' · ') + '\n\n' + r.top.fns.map(([k, v]) => '- ' + v + ' ms ' + k.replace(/\|/g, '/')).join('\n') + '\n\n' +
+      (r.top.tasks && r.top.tasks.length ? 'Longest tasks:\n' + r.top.tasks.map(x => `- ${x.ms} ms at ${(x.at / 1000).toFixed(1)} s: inside ${x.self} | started by ${x.from}`).join('\n') + '\n\n' : ''); }
   md += '\n## Where the bytes go\n\n';
   for (const r of detail) {
     md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + Object.entries(r.by).sort((a, b) => b[1].b - a[1].b).map(([k, v]) => `${k} ${MB(v.b)} (${v.n})`).join(' · ') + '\n\nBiggest: ' + r.big.map(b => b.u.replace(/\?.*/, '').split('/').slice(-2).join('/') + ' ' + MB(b.b)).join(' · ') + '\n\n';
