@@ -16,6 +16,7 @@
 const fs = require('fs');
 const A = process.argv.slice(2), opt = (k, d) => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : d; };
 const SITE = opt('--site', 'https://xcpets.fun').replace(/\/$/, ''), MAX_WAIT = +opt('--max-wait', 180) * 1000, SLOW = A.includes('--slow');
+const EMPTY_S = +opt('--empty-after', 90);
 const NO_WORLD = A.includes('--no-world'), SCROLL = A.includes('--scroll'), PROFILE = A.includes('--profile');
 const BRANCH = A.includes('--branch'), ROOT = require('path').resolve(__dirname, '../..');
 const WALLETS = (opt('--wallets', '') || [
@@ -56,13 +57,14 @@ async function probe(browser, page, addr, branch) {
       await pg.waitForTimeout(500);
       st = await pg.evaluate(me => { try { const w = window.V2Mock && V2Mock.world && V2Mock.world(); const drawn = document.querySelectorAll('canvas[data-id]').length;
         if (!w || !w.pets) return { ready: false, drawn }; const pgs = w._pages, mine = w.pets.filter(p => p.owner === me).length;
-        return { ready: true, mine, pets: w.pets.length, drawn, full: !!w._full || !pgs || (pgs.got || 1) >= (pgs.pages || 1), n: pgs ? pgs.n : null, got: pgs ? pgs.got : null, pages: pgs ? pgs.pages : null,
+        return { ready: true, mine, pets: w.pets.length, pending: !!w.pending, drawn, full: !!w._full || !pgs || (pgs.got || 1) >= (pgs.pages || 1), n: pgs ? pgs.n : null, got: pgs ? pgs.got : null, pages: pgs ? pgs.pages : null,
           heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null }; } catch (e) { return { ready: false, err: String(e) }; } }, addr);
       const s = (Date.now() - t0) / 1000;
       if (st.ready && st.mine > 0 && tWorld == null) tWorld = s;
       if (st.drawn > 0 && tDraw == null) tDraw = s;
       /* the first world can be an empty placeholder that already says 'full': wait for this wallet's pets (or 25 s for a wallet with none) */
-      if (st.ready && st.full && tFull == null && (st.mine > 0 || s > 25)) { tFull = s; await pg.waitForTimeout(3000); break; }
+      /* An in-browser rebuild can take minutes: a wallet with pets waits for them (up to --max-wait); one that still shows none after EMPTY_S is empty. */
+      if (st.ready && st.full && tFull == null && (st.mine > 0 || (s > EMPTY_S && !st.pending && st.pets > 0))) { tFull = s; await pg.waitForTimeout(3000); break; }
     }
   } catch (e) { errors.push('goto: ' + String(e.message || e).slice(0, 160)); }
   await pg.waitForTimeout(1000);
