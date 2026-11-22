@@ -71,14 +71,16 @@ const J = v => JSON.stringify(v);
 function compare(fast, full, partial) {
   const diffs = []; const add = (kind, key, f, g) => diffs.push({ kind, key, fast: f, full: g });
   const fp = fast.pets, gp = full.pets;
-  Object.keys(gp).forEach(id => { if (!fp[id] && !partial) add('pet missing on fast page', id, null, gp[id].dead ? 'dead' : 'alive'); });
+  /* Expected, not bugs: My Pets leaves graves out (the cemetery loads them on its own), and zombies hide the living-pet hunger meter (js/v2-zombies.js). */
+  const deadOn = g => { const o = full.items[g] && full.items[g].on; return o != null && gp[o] && gp[o].dead; }, ZH = { hungry: 1, nextMeal: 1, fedToday: 1 };
+  Object.keys(gp).forEach(id => { if (!fp[id] && !partial && !gp[id].dead) add('pet missing on fast page', id, null, 'alive'); });
   Object.keys(fp).forEach(id => { if (!gp[id]) add('pet on fast page but not owned in full game', id, fp[id].owner, null); });
-  Object.keys(fp).forEach(id => { const a = fp[id], b = gp[id]; if (!b) return; Object.keys(Object.assign({}, a, b)).forEach(k => { if (J(a[k]) !== J(b[k])) add('pet field: ' + k, id, a[k], b[k]); }); });
-  Object.keys(full.items).forEach(g => { if (!fast.items[g] && !partial) add('gear missing on fast page', g, null, full.items[g].item); });
+  Object.keys(fp).forEach(id => { const a = fp[id], b = gp[id]; if (!b) return; Object.keys(Object.assign({}, a, b)).forEach(k => { if (b.zombie && ZH[k]) return; if (J(a[k]) !== J(b[k])) add('pet field: ' + k, id, a[k], b[k]); }); });
+  Object.keys(full.items).forEach(g => { if (!fast.items[g] && !partial && !deadOn(g)) add('gear missing on fast page', g, null, full.items[g].item + (full.items[g].on != null ? ' on #' + full.items[g].on : ' in stash')); });
   Object.keys(fast.items).forEach(g => { const a = fast.items[g], b = full.items[g]; if (!b) { add('gear on fast page but not owned in full game', g, a.item, null); return; }
     Object.keys(Object.assign({}, a, b)).forEach(k => { if (J(a[k]) !== J(b[k])) add('gear field: ' + k, g, a[k], b[k]); }); });
   Object.keys(fast.checks).forEach(id => { const a = fast.checks[id], b = full.checks[id] || {}; Object.keys(Object.assign({}, a, b)).forEach(k => { if (J(a[k]) !== J(b[k])) add('check: ' + k, id, a[k], b[k]); }); });
-  ['communityFed', 'halving', 'mythicOwner'].concat(partial ? [] : ['ownPets', 'ownAlive']).forEach(k => { if (J(fast.world[k]) !== J(full.world[k])) add('world: ' + k, '-', fast.world[k], full.world[k]); });
+  ['communityFed', 'halving', 'mythicOwner'].concat(partial ? [] : ['ownAlive']).forEach(k => { if (J(fast.world[k]) !== J(full.world[k])) add('world: ' + k, '-', fast.world[k], full.world[k]); });
   return diffs;
 }
 

@@ -158,8 +158,15 @@
     };
     if (pack && pack.roster) w._roster = pack.roster;
     if (pack && pack.cem) w.cem = cemFill(pack.cem);
+    poolSwitches(w);
     return w;
   }
+  /* Nov 22 2026: the rules keep 'has this community Mythic reached Cold Storage' switches in memory (FUNTRUMP, DJ Pepe, White Rabbit,
+   * Homer, Kek, Wizard pools and breeding). A replay or V2Rules.reindex sets them; the fast world never ran either, so FUNTRUMP-line
+   * pets showed 'FUNTRUMP can breed once he reaches Cold Storage' here while the game allowed the breed. Set only the switches: a stub
+   * with __ix skips the gear index, which would go stale while more owner pages arrive. */
+  function poolSwitches(w) { try { if (w && window.V2Rules && V2Rules.reindex) V2Rules.reindex({ items: {}, __ix: 1, djpepeMythic: w.djpepeMythic, rabbitMythic: w.rabbitMythic,
+    homerMythic: w.homerMythic, funtrumpMythic: w.funtrumpMythic, kekMythic: w.kekMythic, wizardMythic: w.wizardMythic }); } catch (e) {} }
   var last = null, lastSummary = null, viewOwners = null, rankHashes = null, healthTipN = 0;
   /* The published health tip. Unleash reads this so a stale replay tip cannot invent a dust deadline. */
   function noteHealth(n) {
