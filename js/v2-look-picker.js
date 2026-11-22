@@ -44,6 +44,11 @@
       g.n++; if (L.src) g.srcs.push(L.src); L.on.forEach(function (i) { if (g.on.indexOf(i) < 0) g.on.push(i); }); }); return out; }
   function copies(L) { return L.kind === 'flame' ? '' : L.n > 1 ? ' · ' + L.n + ' copies' : L.srcs.length ? ' · from #' + L.srcs[0] : ''; }
   function preview(c, w, p, L) { try { var R = window.V2Render, fr = R.petFrames(p, w, { looks: L ? [L] : [], noHunger: true }); R.paint(c, fr[0]); } catch (e) { } }
+  /* freeze-hunt (Nov 22 2026): My Looks drew every preview in one go each time the list changed (a 0.35 to 0.55 s freeze, measured, every few
+   * seconds while a big wallet's pets were still arriving). Same previews, drawn a few at a time with a break for taps and scrolling in between. */
+  var pq = [], pqT = 0;
+  function pqDrain() { pqT = 0; var t0 = Date.now(); while (pq.length && Date.now() - t0 < 12) { var j = pq.shift(); if (j[0].isConnected) preview(j[0], j[1], j[2], j[3]); } if (pq.length) pqT = setTimeout(pqDrain, 0); }
+  function previewSoon(c, w, p, L) { pq.push([c, w, p, L]); if (!pqT) pqT = setTimeout(pqDrain, 0); }
   function lookFx(L) { return { id: L.id, type: L.type, name: L.name, kind: L.kind }; }
   function gateText(w) { var V = window.V2Rules, b = tip(w) + 1; return V.lookPickOn(b) ? '' : NAMES.feature + ' opens at block ' + fmt(V.lookPickGate()) + ' (about ' + Math.max(1, V.lookPickGate() - b) + ' blocks from now). Until then, this is a sneak peek at the looks you own.'; }
   function send(petId, ops, done) { var V = window.V2Rules, plans = V.lookPlans(petId, ops), ME = me(); if (!plans.length) return;
@@ -89,7 +94,7 @@
         '<p class="lp-note">Pick a pet and tap ' + NAMES.wear + ' or ' + NAMES.move + ' (one burn). ' + NAMES.move + ' shows when the look is already on as many pets as it can be, so it comes off a pet it is on now. ' + NAMES.off + ' takes it off every card it is on (one burn per card). For several changes at once use a pet\'s ' + NAMES.panel + ' or the ' + NAMES.station + ' in The Rare Room.</p>' : '<p class="lp-note">No looks yet. Go earn some!</p>') + '</details>';
     el.querySelectorAll('[data-mv]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.mv], sel = el.querySelector('xc-select[data-mvs="' + b.dataset.mv + '"]'), to = sel && +sel.value; if (!to) return; send(to, [{ code: L.code, on: true }]); }; });
     el.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.off]; L.on.forEach(function (pid) { send(pid, [{ code: L.code, on: false }]); }); }; });
-    el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]; if (p) preview(c, w, p, lookFx(L)); }); }
+    var first = null; el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || first || (first = w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]); if (p) previewSoon(c, w, p, lookFx(L)); }); }
   /* shownLooks() asks copyList() to sort every look copy in the world. Doing that inside a sort of every living pet
    * (about 9k for the owner wallet, each comparison sorting the copies again) was one long task of tens of seconds
    * and Chrome's "Page Unresponsive" on the Rare Room: the room had already painted, so it showed up when you

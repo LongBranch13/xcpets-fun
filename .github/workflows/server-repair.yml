@@ -17,6 +17,7 @@ on:
       diagnose_only: { description: 'Only look: print the diagnosis and change nothing on the disk', type: boolean, default: false }
       sync_rules: { description: 'Install the 12 rule files from main (the rsig files) and rebuild the world if its rsig differs from main', type: boolean, default: false }
       enable_builder: { description: 'Turn the world builder in the sync service back on (XP_SNAPSHOT=0 becomes 1; a .bak copy is kept)', type: boolean, default: false }
+      node_watchdog: { description: 'Install the node cache watchdog (restarts the cache when it stops answering) and let the sync service restart itself', type: boolean, default: false }
 permissions: { contents: read }
 concurrency: { group: server-restart, cancel-in-progress: false }
 jobs:
@@ -63,7 +64,7 @@ jobs:
           done
           echo "The rescue system did not answer within 10 minutes."; exit 1
       - name: Diagnose and repair
-        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}' }
+        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}', DOG: '${{ github.event.inputs.node_watchdog }}' }
         run: |
           echo "::add-mask::$IP"
           S="ssh -i $RUNNER_TEMP/k -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR root@$IP"
@@ -74,9 +75,9 @@ jobs:
           echo "main rsig: $MAINRSIG"
           scp -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$RUNNER_TEMP/rules.tgz" root@"$IP":/root/rules.tgz
           scp -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$RUNNER_TEMP/ss.tgz" root@"$IP":/root/ss.tgz
-          $S "UPDATE=$UPDATE LOOK=$LOOK BUILD=$BUILD RULES=$RULES MAINRSIG=$MAINRSIG bash -s" <<'EOS'
+          $S "UPDATE=$UPDATE LOOK=$LOOK BUILD=$BUILD RULES=$RULES DOG=$DOG MAINRSIG=$MAINRSIG bash -s" <<'EOS'
           set -u
-          scrub() { sed -E 's/[a-z2-7]{16,56}\.onion/<onion>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s#[a-z]+://[^ ]+#<url>#g; s/[0-9a-f]{0,4}(:[0-9a-f]{0,4}){3,7}/<ip6>/g'; }
+          scrub() { sed -E 's/[A-Za-z0-9.-]*\.(sslip|nip|xip)\.io/<host>/g; s/[0-9]{1,3}(-[0-9]{1,3}){3}/<ip>/g; s/[a-z2-7]{16,56}\.onion/<onion>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s#[a-z]+://[^ ]+#<url>#g; s/[0-9a-f]{0,4}(:[0-9a-f]{0,4}){3,7}/<ip6>/g'; }
           # the server's disk: the biggest ext4/xfs partition
           DEV=$(lsblk -lnpbo NAME,FSTYPE,SIZE | awk '$2=="ext4"||$2=="xfs"{print $3, $1}' | sort -n | tail -1 | cut -d' ' -f2)
           [ -n "$DEV" ] || { echo "no disk partition found"; exit 1; }
@@ -135,6 +136,55 @@ jobs:
           echo "rule files that differ from main:${DIFF:- none}"
           echo "published world rsig: $(grep -oE '"rsig":"r[0-9a-f]+"' "/mnt/r$DATA/world/latest.json" | head -1) (main: $MAINRSIG)"
           if [ -d "/mnt/r$ROOT/.git" ]; then echo "server repo copy: git, HEAD $(cat /mnt/r$ROOT/.git/HEAD | sed 's#ref: refs/heads/##'), changed $(date -u -r /mnt/r$ROOT/.git/HEAD +%FT%TZ)"; fi
+          # node cache path (node.xcpets.fun/v2): the cache, the Start9 proxy and tor. Unit settings and log tails, addresses scrubbed.
+          for U in xcpets-node-cache xcpets-start9-proxy tor tor@default caddy; do
+            F=$(ls /mnt/r/etc/systemd/system/$U.service /mnt/r/lib/systemd/system/$U.service 2>/dev/null | head -1)
+            [ -n "$F" ] || { echo "== $U: no unit file"; continue; }
+            EN=$(ls /mnt/r/etc/systemd/system/*.wants/ 2>/dev/null | grep -c "^$U.service$")
+            echo "== $U (enabled links: $EN): $(grep -hE '^(Type|Restart|RestartSec|TimeoutStartSec|MemoryMax|After|Requires)=' "$F" | tr '\n' ' ')"
+            X=$(grep -m1 '^ExecStart=' "$F" | cut -d= -f2- | grep -oE '/[^ ]+\.(sh|js|py)' | head -1)
+            [ -n "$X" ] && echo "   runs $(basename "$X") ($(wc -l < "/mnt/r$X" 2>/dev/null) lines)"
+            if [ -d "$J" ]; then
+              echo "   restarts/failures in 2 days: $(journalctl -D "$J" -u $U --since -2d --no-pager -o cat 2>/dev/null | grep -ciE 'failed|start request repeated|main process exited|killed')"
+              echo "   --- last 25 lines ---"
+              journalctl -D "$J" -u $U --since -6h --no-pager -o short-iso 2>/dev/null | tail -25 | scrub | cut -c1-220 | sed 's/^/   /'
+            fi
+          done
+          if [ -d "$J" ]; then echo "--- kernel/oom lines since -6h (last 10) ---"; journalctl -D "$J" -k --since -6h --no-pager -o short-iso 2>/dev/null | grep -iE 'oom|killed process|out of memory' | tail -10 | scrub | cut -c1-200; fi
+          # memory and routing (Nov 22: /v2 gave 502 while the sync service ran out of heap and the box swapped). Ports and
+          # address kinds only: loopback stays, private/tailnet ranges become <lan>/<tailnet>, everything else <ip>.
+          ipkind() { sed -E 's/\b127\.0\.0\.1\b/LOOPBACK/g; s/\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+/<tailnet>/g; s/\b(10\.[0-9]+|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]+\.[0-9]+/<lan>/g; s/\b192\.168\.[0-9]+\.[0-9]+/<lan>/g' | scrub | sed 's/LOOPBACK/127.0.0.1/g'; }
+          echo "== memory: $(awk '/MemTotal/{print int($2/1024)" MB RAM"}' /proc/meminfo); swap in fstab: $(grep -v '^#' /mnt/r/etc/fstab 2>/dev/null | awk '$3=="swap"{print $1}' | sed 's#.*/##' | tr '\n' ' ')$(ls -la /mnt/r/swapfile /mnt/r/swap.img 2>/dev/null | awk '{print int($5/1048576)" MB "$NF}' | tr '\n' ' ')"
+          for U in xcpets-sync xcpets-node-cache xcpets-start9-proxy caddy; do F=$(ls /mnt/r/etc/systemd/system/$U.service /mnt/r/lib/systemd/system/$U.service 2>/dev/null | head -1); [ -n "$F" ] || continue
+            EF=$(grep -h '^EnvironmentFile=' "$F" | head -1 | cut -d= -f2- | sed 's/^-//')
+            echo "   $U limits/settings: $(grep -hE '^(MemoryMax|MemoryHigh|MemoryLow|OOMScoreAdjust|Nice|CPUWeight)=' "$F" | tr '\n' ' ') $( (cat "$F"; [ -n "$EF" ] && cat "/mnt/r$EF" 2>/dev/null) | grep -oE '\b(NODE_OPTIONS|XP_SNAPSHOT[A-Z_]*|XP_PORT|PORT|LISTEN[A-Z_]*|[A-Z_]*_PORT|MAX_[A-Z_]*|[A-Z_]*TIMEOUT[A-Z_]*)=[^ "]*' | ipkind | tr '\n' ' ')"
+            [ -d /mnt/r/etc/systemd/system/$U.service.d ] && echo "   $U drop-ins: $(cat /mnt/r/etc/systemd/system/$U.service.d/*.conf 2>/dev/null | grep -vE '^\s*(#|$)' | grep -viE 'token|secret|pass|key|auth' | ipkind | tr '\n' ' ' | cut -c1-300)"
+          done
+          for X in $(for U in xcpets-node-cache xcpets-start9-proxy; do grep -h -m1 '^ExecStart=' /mnt/r/etc/systemd/system/$U.service 2>/dev/null | grep -oE '/[^ ]+\.js' | head -1; done); do
+            echo "   $(basename "$X") listen/limit lines: $(grep -nE 'listen\(|PORT|timeout|Timeout|too large|MAX|maxBody|socks|9050' "/mnt/r$X" 2>/dev/null | grep -viE 'token|secret|pass|auth' | ipkind | cut -c1-140 | head -14 | tr '\n' '|')"
+          done
+          NC=$(grep -h -m1 '^ExecStart=' /mnt/r/etc/systemd/system/xcpets-node-cache.service 2>/dev/null | grep -oE '/[^ ]+\.js' | head -1)
+          [ -n "$NC" ] && { echo "--- node cache: cache and request code (lines 70-130, scrubbed) ---"; sed -n '70,130p' "/mnt/r$NC" | grep -viE 'token|secret|pass|auth' | ipkind | cut -c1-170; }
+          echo "   sync service restart policy: $(grep -hE '^(Restart|RestartSec|StartLimit[A-Za-z]*)=' "$UNIT" /mnt/r/etc/systemd/system/xcpets-sync.service.d/*.conf 2>/dev/null | tr '\n' ' ')"
+          CF=$(ls /mnt/r/etc/caddy/Caddyfile 2>/dev/null)
+          [ -n "$CF" ] && echo "== Caddy routes: $(grep -nE 'reverse_proxy|handle|route|^[^ #].*\{|to |lb_|health|fail_duration|dial_timeout|response_header_timeout' "$CF" | grep -viE 'token|secret|pass|auth|basicauth' | ipkind | sed -E 's/\s+/ /g' | tr '\n' '|' | cut -c1-900)"
+          if [ -d "$J" ]; then
+            for B in -1 0; do
+              echo "--- boot $B: caddy upstream errors by target and reason (last 30 s of the boot left out) ---"
+              journalctl -D "$J" -b $B -u caddy --no-pager -o short-unix 2>/dev/null > /tmp/cad.log
+              END=$(tail -1 /tmp/cad.log | cut -d. -f1); [ -n "$END" ] || END=0
+              awk -v e="$END" '{split($1,a,"."); if (a[1] < e-30) print}' /tmp/cad.log | grep '"level":"error"' | sed -nE 's/.*"msg":"([^"]*)".*"uri":"(\/[A-Za-z0-9_-]*).*/\1  path \2/p' | ipkind | sort | uniq -c | sort -rn | head -12
+              echo "   errors per 10 min (server time): $(journalctl -D "$J" -b $B -u caddy --no-pager -o short-iso 2>/dev/null | grep '"level":"error"' | cut -c12-15 | uniq -c | tr -s ' ' | tr '\n' ',' | cut -c1-400)"
+            done
+            for U in xcpets-node-cache xcpets-start9-proxy; do
+              echo "--- $U lines in 2 days by kind ---"
+              journalctl -D "$J" -u $U --since -2d --no-pager -o cat 2>/dev/null | ipkind | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -12 | cut -c1-160
+            done
+            echo "--- sync service: out-of-heap crashes and memory peaks in 2 days ---"
+            journalctl -D "$J" -u xcpets-sync --since -2d --no-pager -o short-iso 2>/dev/null | grep -E 'heap out of memory|memory peak|snapshot: (Error|over)|snapshot exit|publish failed|rules: ' | ipkind | cut -c1-200 | tail -30
+            echo "--- memory peaks of the other units in 2 days ---"
+            journalctl -D "$J" --since -2d --no-pager -o short-iso 2>/dev/null | grep -E 'memory peak' | grep -v 'xcpets-sync.service' | sed -E 's/.*systemd\[1\]: //' | cut -c1-160 | tail -15
+          fi
           if [ "$LOOK" = "true" ]; then echo "diagnose only: nothing changed"; umount /mnt/r; exit 0; fi
           echo "swap/memory: $(grep -E 'MemTotal' /proc/meminfo | awk '{print int($2/1024)" MB RAM in rescue"}')"
           N=$(ls -d "/mnt/r$DATA"/pending-* 2>/dev/null | wc -l)
@@ -164,6 +214,40 @@ jobs:
             cp -a "$T/sync-server" "$T/$B" && tar -C "/mnt/r$ROOT" -xzf /root/ss.tgz && echo "installed tools/sync-server from main (old copy kept as tools/$B)"
             OWN=$(stat -c %u:%g "$T/$B/index.js"); chown -R "$OWN" "$T/sync-server"
             grep -q 'XP_SNAPSHOT_MAX_MIN' "$T/sync-server/index.js" && echo "check: new builder code is in place"
+          fi
+          if [ "$DOG" = "true" ]; then
+            # Nov 22 2026: the node cache stopped accepting connections (Caddy: dial 127.0.0.1:<port> i/o timeout, 3,000 times) while
+            # its unit stayed 'running', so systemd never restarted it. Every minute this asks the cache directly; two misses in a
+            # row (no answer at all within 15 s, any HTTP status counts as an answer) restart it. The cache also gets CPU priority
+            # over the world builder.
+            NCPORT=$(grep -hoE 'LISTEN_PORT=[0-9]+' /mnt/r/etc/systemd/system/xcpets-node-cache.service 2>/dev/null | head -1 | cut -d= -f2); NCPORT=${NCPORT:-18500}
+            cat > /mnt/r/usr/local/bin/xcpets-node-watchdog.sh <<WD
+          #!/bin/sh
+          # restart the node cache when it does not answer twice in a row (installed by server-repair)
+          command -v curl >/dev/null 2>&1 || exit 0
+          F=/run/xcpets-node-watchdog.miss
+          C=\$(curl -s -o /dev/null -m 15 -w '%{http_code}' http://127.0.0.1:$NCPORT/v2/ 2>/dev/null)
+          if [ "\$C" != "000" ] && [ -n "\$C" ]; then rm -f \$F; exit 0; fi
+          if [ -f \$F ]; then rm -f \$F; echo "node cache did not answer twice: restarting it"; systemctl restart xcpets-node-cache.service; else touch \$F; echo "node cache did not answer once"; fi
+          WD
+            sed -i 's/^          //' /mnt/r/usr/local/bin/xcpets-node-watchdog.sh; chmod 755 /mnt/r/usr/local/bin/xcpets-node-watchdog.sh
+            printf '[Unit]\nDescription=XCPETS node cache watchdog\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/xcpets-node-watchdog.sh\n' > /mnt/r/etc/systemd/system/xcpets-node-watchdog.service
+            printf '[Unit]\nDescription=XCPETS node cache watchdog, every minute\n[Timer]\nOnBootSec=3min\nOnUnitActiveSec=1min\nAccuracySec=10s\n[Install]\nWantedBy=timers.target\n' > /mnt/r/etc/systemd/system/xcpets-node-watchdog.timer
+            mkdir -p /mnt/r/etc/systemd/system/timers.target.wants && ln -sf /etc/systemd/system/xcpets-node-watchdog.timer /mnt/r/etc/systemd/system/timers.target.wants/xcpets-node-watchdog.timer
+            mkdir -p /mnt/r/etc/systemd/system/xcpets-node-cache.service.d && printf '[Service]\nCPUWeight=300\nOOMScoreAdjust=-500\nRestart=always\nRestartSec=3\n' > /mnt/r/etc/systemd/system/xcpets-node-cache.service.d/priority.conf
+            # the sync service restarts itself (exit 75) to load new rules; make sure systemd always starts it again
+            mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d && printf '[Unit]\nStartLimitIntervalSec=0\n[Service]\nRestart=always\nRestartSec=5\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/restart.conf
+            # The cache tests every answer for an onion address with /[A-Za-z0-9._-]+\.onion/, which is quadratic on long runs of
+            # letters and digits (hex, base64): one big answer can hold its only thread for minutes, so every other request times out.
+            # A plain substring check first makes that linear; the regex still runs when '.onion' really appears.
+            NCJS="/mnt/r$(grep -h -m1 '^ExecStart=' /mnt/r/etc/systemd/system/xcpets-node-cache.service 2>/dev/null | grep -oE '/[^ ]+\.js' | head -1)"
+            if [ -f "$NCJS" ] && grep -q '  if (!ONION_RE.test(raw)) return buf;' "$NCJS" && ! grep -q "indexOf('.onion')" "$NCJS"; then
+              cp -a "$NCJS" "$NCJS.bak-$(date -u +%Y%m%d%H%M)"
+              sed -i "s/  if (!ONION_RE.test(raw)) return buf;/  if (raw.toLowerCase().indexOf('.onion') < 0 || !ONION_RE.test(raw)) return buf;/" "$NCJS"
+              node -e "new (require('vm').Script)(require('fs').readFileSync(process.argv[1],'utf8').replace(/^#!.*/,''))" "$NCJS" 2>/dev/null || true
+              grep -q "indexOf('.onion')" "$NCJS" && echo "node cache: onion check made linear (old copy kept as .bak)"
+            fi
+            [ -x /mnt/r/usr/bin/curl ] && echo "watchdog installed (curl present on the server)" || echo "WARNING: curl is missing on the server, the watchdog cannot check"
           fi
           echo "disk after: $(df -m /mnt/r | awk 'NR==2{print $4" MB free"}')"
           sync; umount /mnt/r

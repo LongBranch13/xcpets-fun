@@ -364,7 +364,8 @@
     if (fr && (ok.length >= 300 || fr.length === 1)) return fr; /* big feeds: the runs plan, without the slow pet-number planner */
     var q = feedQold(w, me, ok, nb, list); return fr && fr.length <= q.length ? fr : q; }
   function feedSelQ(w, me, ids, nb) { return feedQ(w, me, ids, nb, true); } /* Feed selected: list burns only */
-  var fmt = function (n) { n = Number(n); return n.toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1 || n === 0 ? 2 : 8 }); };
+  var fmt = (function () { var F2 = null, F8 = null; try { F2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }); F8 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }); } catch (e) {} /* freeze-hunt: one formatter each, not a new one per number (was the top cost of drawing big pet lists) */
+    return function (n) { n = Number(n); var two = Math.abs(n) >= 1 || n === 0; if (F2) return (two ? F2 : F8).format(n); return n.toLocaleString('en-US', { maximumFractionDigits: two ? 2 : 8 }); }; })();
   function cfeedText() { var a = Number(($('cAmt') || {}).value) || 0; return 'Feed community (' + fmt(Math.max(a, 0)) + ')'; } /* hatchspeed-1101: display only (halving amounts like 172.5 keep their decimals, as v2-halving.js shows them) */ /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   /* similar-bugs-fix: the accept cost of fight id now (a Tag Team accept costs the team cost, not the 1v1 accept), same halving / Fire Sale as V.COSTS. Display only; planAmount sets the burn. */
   function accNow(w, id) { return V.COSTS.accept * V.acceptCost(w, id) / V.acceptCost(null, 0); }
@@ -1264,6 +1265,11 @@
   function renderInv(w) {
     var items = w.itemList.filter(function (g) { return g.owner === ME; }), box = $('inv'); var nFree = items.filter(function (g) { return g.on == null; }).length; $('invCount').textContent = items.length; if ($('invCountTxt')) $('invCountTxt').textContent = (items.length === 1 ? 'piece' : 'pieces') + ' of gear · ' + nFree + ' unworn'; /* one gear count (owner Oct 20 2026): same 'N pieces · U unworn' as the Lair */
     $('tokens').textContent = String(V.tokensOf(w, ME)); // roll tokens this wallet's pets found (each already became a free gear item)
+    /* freeze-hunt (Nov 22 2026): the first render runs before js/ux-batch.js has loaded, so it drew this whole per-piece grid (one icon per
+     * gear piece; the 0.3 to 1 s freeze when My Pets opens, measured) and ux-batch threw it away right after. Hidden panel: skip it.
+     * ux-batch still loading: wait one turn and let it paint its own stash. */
+    var ipn = $('invPanel'); if (ipn && ipn.hidden) return;
+    if (!window.UXB && (renderInv.n = (renderInv.n || 0) + 1) <= 100 && document.querySelector('script[src*="js/ux-batch.js"]')) { clearTimeout(renderInv.t); renderInv.t = setTimeout(function () { var w2 = world(); if (window.UXB && UXB.paintInv) { if (lairOn()) UXB.paintInv(w2); } else renderInv(w2); }, 50); return; }
     if (window.UXB && UXB.paintInv) return; /* lair-perf (Oct 20 2026): ux-batch paints #inv (My stash / Collection log) right after, so this per-piece grid (2,000+ icons for big owners) was drawn and thrown away */
     var cat = V.catalogBySlot(), slots = invSlot === 'all' ? V.V2_SLOTS : [invSlot];
     var h = '<div class="pettabs invtabs" role="tablist"><button type="button" class="tab' + (invView === 'mine' ? ' on' : '') + '" data-iv="mine">My gear by slot</button><button type="button" class="tab' + (invView === 'all' ? ' on' : '') + '" data-iv="all">Every piece by slot (' + V.ALL_GEAR.length + ')</button></div>' +
@@ -1937,7 +1943,16 @@
   window.V2UI = { hiddenIds: hiddenIds, pickIds: pickIds, starIds: starIds, keptIds: keptIds, isKept: isKept, toggleKeep: toggleKeep, feedAllPaused: FEED_ALL_PAUSED, feedQueue: feedQ, feedSelQueue: feedSelQ, lairOn: function () { var on = lairOn(); if (!on) lairStale = true; return on; }, sendWhy: sendWhy, myPendingTags: myPendingTags, pendingBreedIds: pendingBreedIds, viewOnly: viewOnly, viewBlock: viewBlock, autoEquip: autoEquipIsOn, aeToggleHtml: aeToggleHtml, bindAeTogs: bindAeTogs, S: function () { return S; }, ME: ME, world: world, render: render, refreshGear: refreshGear, toast: toast, confirmPlans: confirmPlans, resumeGo: resumeGo, resumeDrop: resumeDrop, resumePending: resumePending, resumeReoffer: resumeReoffer, replayFight: replayFight, replayBreed: replayBreed, replayCem: replayCem, breedSum: breedSum, breedReview: breedReview, breedFlip: breedFlip, breedFlipText: breedFlipText, breedFlipNote: breedFlipNote, save: save, selUi: selUi, mine: mine, fighters: fighters, afterAccept: afterAccept, detail: function (id) { detailId = id; detail(world().byId[id]); }, petList: function (w) { var all = mine(w); return petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })); }, cem: function () { return cem; }, playFight: playFight, cardFor: function (p, w) { if (!renderPets.mk) return null; var d = renderPets.mk(p); R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w || world()); }); return d; }, statBars: statBars, goPet: goPet, feed: function (id) { if (viewBlock()) return; var p = world().byId[id]; if (!ME || !p || p.owner !== ME || p.dead || p.released) return toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + id + '.'); confirmPlans('Feed #' + id, V.feedQueue(world(), ME, [id])); } };
   if (window.V2Split && V2Split.rest) setTimeout(V2Split.rest, 0); /* enough living pets for the first screen; the rest wait for Show more */
   render(); route();
-  if (M.onFresh) M.onFresh(function () { render(); }); /* boot-from-cache: repaint when the fresh world replaces the saved one */
+  /* freeze-hunt (Nov 22 2026): while a big wallet's pages are still arriving, the world is replaced 5 or 6 times and each one redrew the whole
+   * page (0.3 to 0.5 s each on a phone, measured). Partial worlds now repaint at most every 4 s, with one repaint after the last batch;
+   * the complete world repaints at once, exactly as before. */
+  var freshAt = 0, freshT = 0;
+  function freshRender() { var w = null; try { w = world(); } catch (e) {} var pg = w && w._pages, partial = !!(pg && !w._full && (pg.got || 1) < (pg.pages || 1));
+    if (freshT) { clearTimeout(freshT); freshT = 0; }
+    var wait = partial ? freshAt + 4000 - Date.now() : 0;
+    if (wait > 0) { freshT = setTimeout(freshRender, wait); return; }
+    freshAt = Date.now(); render(); }
+  if (M.onFresh) M.onFresh(freshRender); /* boot-from-cache: repaint when the fresh world replaces the saved one */
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */
   var lastPoll = Date.now(); function poll() { lastPoll = Date.now(); M.refresh(render); }

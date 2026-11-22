@@ -11,7 +11,7 @@ on:
     workflows: [pages]
     types: [completed]
   workflow_dispatch: {}
-permissions: { contents: read, issues: write }
+permissions: { contents: read, issues: write, actions: write }
 # After-deploy runs wait up to 25 minutes; they get their own group (a newer deploy replaces the wait) so they never hold up the
 # 15-minute checks or a run by hand.
 concurrency: { group: "worldwatch-${{ github.event_name == 'workflow_run' && 'deploy' || 'check' }}", cancel-in-progress: "${{ github.event_name == 'workflow_run' }}" }
@@ -39,3 +39,14 @@ jobs:
           BAD: ${{ steps.check.outputs.bad }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node tools/worldwatch-alert.js "$RUNNER_TEMP/ww.json"
+      # A rules deploy held back by pages.yml (no world yet for the new rules): once the server has that world, publish it.
+      - name: Re-run a held rules deploy once its world exists
+        if: always()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          [ -f "$RUNNER_TEMP/ww.json" ] || exit 0
+          READY=$(node -e "const r=require(process.argv[1]);console.log(r.liveRsig&&r.mainRsig&&r.liveRsig!==r.mainRsig&&r.mainWorldTip?1:0)" "$RUNNER_TEMP/ww.json")
+          [ "$READY" = "1" ] || exit 0
+          BUSY=$(gh run list -R "$GITHUB_REPOSITORY" --workflow pages.yml --limit 5 --json status --jq '[.[]|select(.status!="completed")]|length')
+          if [ "${BUSY:-0}" != "0" ]; then echo "A pages deploy is already running."; exit 0; fi
+          gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref main && echo "The world for main's rules exists: re-running the held deploy." | tee -a "$GITHUB_STEP_SUMMARY"
