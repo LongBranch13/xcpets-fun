@@ -1,0 +1,34 @@
+# Scene shots (Nov 22 2026): phone screenshots of each place page on real data (view-only, nothing signed), for design review.
+# Runs when tools/sceneshot changes on a branch AND tools/sceneshot/args.txt is not empty (that file is the on-switch and holds the run.js
+# arguments, e.g. --pages raid.html; empty it again before opening the PR). Serves that branch's own pages and scripts against the live feed, and commits the PNGs
+# back to the same branch under previews/scenes/ (previews/ is never published to the site).
+name: sceneshot
+on:
+  push:
+    branches-ignore: [main]
+    paths: ['tools/sceneshot/**', '.github/workflows/sceneshot.yml']
+permissions: { contents: write }
+concurrency: { group: 'sceneshot-${{ github.ref }}', cancel-in-progress: true }
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: Off unless args.txt has arguments
+        id: on
+        run: if grep -q '[^[:space:]]' tools/sceneshot/args.txt 2>/dev/null; then echo go=1 >> "$GITHUB_OUTPUT"; fi
+      - if: steps.on.outputs.go == '1'
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - if: steps.on.outputs.go == '1'
+        run: npm install --no-save --no-package-lock playwright-core@1
+      - if: steps.on.outputs.go == '1'
+        run: node tools/sceneshot/run.js --branch $(cat tools/sceneshot/args.txt 2>/dev/null)
+      - name: Commit the shots to this branch
+        if: steps.on.outputs.go == '1'
+        run: |
+          git config user.name "sceneshot" && git config user.email "actions@users.noreply.github.com"
+          git add previews/scenes && git commit -q -m "Scene shots [skip ci]" || exit 0
+          git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}"
