@@ -58,3 +58,47 @@ html.hw .tomb.gtomb::after{display:none}
 .tomb .cv2-rk.rk-legendary{background:#3a2a08;color:#ffd75e;border-color:#f2b417}
 .tomb .cv2-rk.rk-mythic{background:#2a1440;color:#e2c4ff;border-color:#b46cff;box-shadow:0 0 8px rgba(180,108,255,.45)}
 .tomb .cv2-rbits{background:#101a24;color:#9fe6f5;border-color:#2f6f86;font-weight:600}
+
+/* cem-doors (Nov 22 2026): four doors (Raise / My zombies / Hunt / Gods), the "Do this next" card, the folded filters */
+.cv2-doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 8px}
+.cv2-door{font-family:var(--meme,Bangers),Impact,sans-serif;font-size:20px;letter-spacing:.05em;line-height:1;background:#2f2a4a;color:#f3ecd8;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.cv2-door small{font-family:var(--pixel);font-size:7px;letter-spacing:0;line-height:1.4;color:#b9b4d0;overflow-wrap:anywhere}
+.cv2-door[aria-selected=true]{background:#7dff6a;color:#0b1a08}.cv2-door[aria-selected=true] small{color:#1d3a17}
+.cv2-door.alert[aria-selected=false]{box-shadow:3px 3px 0 #000,inset 0 0 0 3px #ff4d4d}
+.cv2-door:focus-visible{outline:3px solid #fff3b0;outline-offset:2px}
+.cv2-door:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.cv2-next{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:12px 0 4px;padding:12px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#1c2a1a;color:#f3ecd8}
+.cv2-next.warn{background:#2e2610}.cv2-next.bad{background:linear-gradient(180deg,#3a1414,#241020)}
+.cv2-next-ico .cem-art{display:block}
+.cv2-next-t{min-width:0;display:flex;flex-direction:column;gap:4px}
+.cv2-next-k{margin:0;font-family:var(--pixel);font-size:8px;letter-spacing:.06em;color:#ffc93c}.cv2-next.bad .cv2-next-k{color:#ff4d4d}
+.cv2-next-h{font-family:var(--meme,Bangers),Impact,sans-serif;font-weight:400;font-size:22px;letter-spacing:.04em;line-height:1.1}
+.cv2-next p.small{margin:0}
+.cv2-next-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.cv2-empty{border:3px dashed #b9b4d0;padding:10px 12px;background:#0f0d1e}
+.cv2-calm{margin-top:12px}.cv2-calm>summary{cursor:pointer;color:#9fe8ff}
+.cemv2bar .cv2-more>summary{cursor:pointer;font-family:var(--pixel);font-size:8px;line-height:1.6;color:#9fe8ff;padding:4px 0}
+.cemv2bar .cv2-more[open]>summary{margin-bottom:6px}
+.cemv2bar .cv2-fhint{margin:0}
+@media (max-width:640px){.cv2-doors{grid-template-columns:repeat(2,minmax(0,1fr))}.cv2-next-h{font-size:19px}}
+.cv2-zombies .linkish{background:none;border:0;padding:0;color:#9fe8ff;text-decoration:underline;cursor:pointer;font:inherit}
+.cv2-off{display:none!important}
+/* cem-zcard (Nov 22 2026): zombie card states, food and halo bars, one main button */
+.cv2-zrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:4px 0 2px}
+.cv2-state{font-family:var(--meme,Bangers),Impact,sans-serif;font-size:18px;letter-spacing:.06em;line-height:1.1;border:3px solid #000;padding:1px 8px}
+.cv2-state.s-fed{background:#7dff6a;color:#0b1a08}.cv2-state.s-hungry{background:#ffc93c;color:#221400}.cv2-state.s-feral{background:#ff4d4d;color:#1a0000;animation:cv2throb 1s steps(2) infinite}.cv2-state.s-cured{background:#b07cff;color:#14052a}
+@keyframes cv2throb{50%{filter:brightness(1.3)}}
+@media (prefers-reduced-motion:reduce){.cv2-state.s-feral{animation:none}}
+.cv2-lvl{font-family:var(--pixel);font-size:8px;color:#7dff6a}
+.cv2-bar{position:relative;height:18px;border:3px solid #000;background:#0b0a16;margin:5px 0}
+.cv2-bar i{position:absolute;left:0;top:0;bottom:0;display:block}
+.cv2-bar em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:normal 7px/1 var(--pixel);color:#fff;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden}
+.cv2-food i{background:repeating-linear-gradient(90deg,#7dff6a 0 8px,#5fd04e 8px 10px)}
+.cv2-food.warn i{background:repeating-linear-gradient(90deg,#ffc93c 0 8px,#d9a520 8px 10px)}
+.cv2-food.bad i{background:repeating-linear-gradient(90deg,#ff4d4d 0 8px,#b02a2a 8px 10px)}
+.cv2-halobar i{background:repeating-linear-gradient(90deg,#fff3b0 0 8px,#e7d77a 8px 10px)}
+.cv2-why{margin:4px 0}
+.cv2-zact .btn small{font-family:var(--pixel);font-size:7px;opacity:.85;margin-left:4px}
+.cv2-zact .btn.cv2-small{font-size:13px;padding:3px 8px}
+.cv2-zact .btn.cv2-gold{background:#ffc93c;color:#221400}.cv2-zact .btn.cv2-red{background:#ff4d4d;color:#1a0000}
+.cv2-zown{margin-top:6px}
