@@ -3,6 +3,7 @@
  *   🍖 hungry pets      -> jumps to the existing "Feed hungry" button (the wallet still signs that burn)
  *   🪦 pets in danger   -> sorts My Pets by most urgent
  *   ⚔️ pets that can fight today -> X Circus Kekimus
+ *   🧹 one-burn button for the existing Daily chores (feed + WAGMI + spins), shown while pets are hungry
  *   🍽️ countdown to the next feed day (every 144 blocks)
  *   🔥 check-in streak  -> days in a row this browser opened the game (visits only, never money spent)
  * It replaces the one-line "next best action" hint (#ipNba) while it shows. Reads the page's world (V2Mock.world) every 2 s
@@ -52,6 +53,8 @@
       '#todayCard .td-ok{opacity:.8}' +
       '@keyframes tdPulse{50%{box-shadow:0 4px 0 #2b2b2b,0 0 0 3px rgba(255,91,91,.45)}}' +
       '@media (prefers-reduced-motion:reduce){#todayCard .td-hot{animation:none}}' +
+      '#todayCard .td-chores{display:block;width:100%;margin-top:10px;font:12px/1.5 "Press Start 2P",monospace;padding:12px;border:3px solid #2b2b2b;border-radius:10px;background:#ffe27a;color:#2b2b2b;box-shadow:0 4px 0 #2b2b2b;cursor:pointer}' +
+      '#todayCard .td-chores:active{transform:translateY(2px);box-shadow:0 1px 0 #2b2b2b}' +
       'body.has-today #ipNba{display:none}';
     d.head.appendChild(s);
   }
@@ -65,6 +68,7 @@
       if (k === 'feed') { var fb = $('bFeedHungry'); if (fb) { fb.scrollIntoView({ block: 'center', behavior: 'smooth' }); fb.classList.add('ip-flash'); setTimeout(function () { fb.classList.remove('ip-flash'); }, 1600); } }
       else if (k === 'urgent') { var s = $('fSort'); if (s) { s.value = 'urgent'; s.dispatchEvent(new Event('change', { bubbles: true })); } var pp = $('petsPanel'); if (pp) pp.scrollIntoView({ behavior: 'smooth' }); }
       else if (k === 'fight') location.href = 'fight.html';
+      else if (k === 'chores') { var db = $('dcBtn'); if (db && !db.disabled) db.click(); else if (db) db.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       else if (k === 'pets') { var p2 = $('petsPanel'); if (p2) p2.scrollIntoView({ behavior: 'smooth' }); }
     });
     return c;
@@ -77,7 +81,7 @@
     var w = null; try { w = window.V2Mock && V2Mock.world && V2Mock.world(); } catch (e) { w = null; }
     var m = me(), c = $('todayCard');
     if (!w || !w.pets || !m) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
-    var key = m + '|' + w.tip + '|' + w.pets.length + '|' + (w._full ? 1 : 0); if (key === last && c && !c.hidden) return; last = key;
+    var dcb = $('dcBtn'), key = m + '|' + w.tip + '|' + w.pets.length + '|' + (w._full ? 1 : 0) + '|' + (dcb && !dcb.disabled ? 1 : 0); if (key === last && c && !c.hidden) return; last = key;
     var day = Math.floor((w.tip || 0) / BPD), L = w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; });
     if (!L.length) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
     c = card(); if (!c) return; c.hidden = false; d.body.classList.add('has-today');
@@ -94,7 +98,9 @@
       (hungry ? tile('feed', '🍖', fmt(hungry), 'hungry', pick(SAY.hungry, day), '') : tile('pets', '🍖', '0', 'hungry', pick(SAY.fed, day), 'td-ok')) +
       (danger.length ? tile('urgent', '🪦', fmt(danger.length), 'in danger', 'first one dies in ~' + left(soon) + ' · ' + pick(SAY.danger, day), 'td-hot') : tile('pets', '🪦', '0', 'in danger', pick(SAY.safe, day), 'td-ok')) +
       (fight ? tile('fight', '⚔️', fmt(fight), 'can fight', pick(SAY.fight, day), '') : tile('pets', '⚔️', '0', 'can fight', pick(SAY.rest, day), 'td-ok')) +
-      '</div>';
+      '</div>' +
+      /* one burn for the whole routine: the existing Daily chores (pet:dc, live since block 974,163); the wallet still signs it */
+      (hungry && $('dcBtn') && !$('dcBtn').disabled ? '<button type="button" class="td-chores" data-td="chores">🧹 Do it all in one burn: feed everyone, WAGMI, use your spins</button>' : '');
   }
   function go() { paint(); setInterval(paint, 2000); }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', go); else go();
