@@ -243,6 +243,38 @@
   function frOwnedAt(w, p, src, A) { var moved = p.lastGot != null && p.lastGot > A; return p.owner === src ? !moved : moved && !!w.leftBy && w.leftBy[p.id] === src; }
   /** refList(w, src, A, b): the signer's eater list at anchor A (see above). Same function for the planner (A = tip) and the rules (A from the tag). */
   function refList(w, src, A, b) { return w.pets.filter(function (p) { return !p.community && p.hatchBlock != null && p.hatchBlock <= A && frOwnedAt(w, p, src, A) && !(p.released && !(typeof p.released === 'number' && p.released > A)) && !frDeadAt(w, p, b, A) && !(frMythic(w, p, b) && !(p.lastFed != null && p.lastFed > A)) && !hdHidden(p, src, b); }).sort(function (x, y) { return x.id - y.id; }); }
+  /* PANTRY: prepaid meals (owner Jake Nov 22 2026: "prepay is cool"; picked "Only pets the player picks"). Inert while ACTIVATE_PANTRY_BLOCK is null:
+   * below the gate every tag here is an unknown pet: tag (community food), exactly as before.
+   *   pet:pantry        the whole burn goes into the signer's pantry (a balance in XCPETS; it can't be taken back out).
+   *   pet:pp:AA:RUNS    same, and add pets to the pantry list (runs over the signer's eater list at anchor AA, the same encoding as pet:fr).
+   *   pet:px:AA:RUNS    same, and take those pets off the list.   pet:px   same, and empty the list.
+   * At the first block of every game day (dayStart: the first block whose clock reaches the day; pause blocks don't count) the pantry feeds each
+   * listed pet that is still the signer's, alive, not discarded, not a zombie, not a Mythic, not away on a quest and not fed that day.
+   * Hungriest first (oldest last meal, then pet number), at that block's meal price (halvings and sales included), while the balance covers
+   * the meal; a pet the balance can't pay for waits. This runs before any burn of that block. No lucky drops (there is no burn to seed them).
+   * Feeds count for the 7-day feeding streak like any feed. Records: w.pantry[addr] = { bal, paid, spent, meals, ids, last }, w.pantryLog. */
+  var ACTIVATE_PANTRY_BLOCK = null, PANTRY_FILL = 'pet:pantry', PANTRY_PREFIX = 'pet:pp:', PANTRY_DEL_PREFIX = 'pet:px:', PANTRY_CLEAR = 'pet:px', PANTRY_DUST = 1e-8;
+  function pantryOn(b) { return ACTIVATE_PANTRY_BLOCK != null && b != null && b >= ACTIVATE_PANTRY_BLOCK && feedRunsOn(b); }
+  /** dayStart(d): the first block of game day d (clock(b) >= d * 144). */
+  function dayStart(d) { return spanAt(0, d * BLOCKS_PER_DAY); }
+  function runIds(list, runs) { var o = [], pos = 0; for (var q = 0; q < runs.length; q++) { if (q % 2 === 0) { pos += runs[q]; continue; } for (var j = 0; j < runs[q] && pos < list.length; j++) o.push(list[pos++].id); } return o; }
+  function pantryRec(w, a) { w.pantry = w.pantry || {}; return w.pantry[a] || (w.pantry[a] = { bal: 0, paid: 0, spent: 0, meals: 0, ids: [], last: null }); }
+  /** pantryEats(w, p, a, b): this listed pet would eat from a's pantry at block b (pure apart from liveAt). */
+  function pantryEats(w, z, a, b) { if (!z || z.community || z.released || z.owner !== a) return false; liveAt(w, z, b);
+    return !(z.dead || hdHidden(z, a, b) || isZ(z) || z.ascended || z.mythicCare || z.stage === 5 || (questOn(b) && questAway(z, b))); }
+  /** pantrySweep(w, b): feed every pantry list for each game day that started since the last sweep, up to block b. */
+  function pantrySweep(w, b) { if (!w.pantry || w.pantryDay == null || !pantryOn(b)) return; var D = day(b);
+    for (var d = w.pantryDay + 1; d <= D; d++) { var fb = dayStart(d); if (fb > b) break; pantryFeedDay(w, d, fb); w.pantryDay = d; } }
+  function pantryFeedDay(w, d, fb) { if (fireOn(fb)) fireExtend(w, fb - 1);
+    Object.keys(w.pantry).sort().forEach(function (a) { var P = w.pantry[a]; if (!P.ids.length || !(P.bal > 0)) return; var ps = [], fed = [], cost = 0, short = 0;
+      P.ids.forEach(function (id) { var z = w.byId[id]; if (!pantryEats(w, z, a, fb) || z.feedDays[d]) return; var m = mealFor(z.care, z.species, fb, petThresholds(w, z, fb));
+        if (m > 0) ps.push({ z: z, m: m, last: z.lastFed != null ? z.lastFed : z.hatchBlock }); });
+      ps.sort(function (x, y) { return x.last - y.last || x.z.id - y.z.id; });
+      ps.forEach(function (q) { var z = q.z, c = mealCost(w, z, q.m, fb); if (P.bal + 1e-9 < c) { short++; return; }
+        P.bal = r8(P.bal - c); cost += c; z.care += q.m; noteOwnCare(w, z, q.m); z.feedDays[d] = 1; z.lastFed = fb; liveAt(w, z, fb); streakFeed(w, a, z, fb, null); fed.push(z.id); });
+      if (!fed.length && !short) return;
+      P.spent = r8(P.spent + cost); P.meals += fed.length; P.last = { day: d, block: fb, fed: fed.length, cost: r8(cost), short: short };
+      (w.pantryLog || (w.pantryLog = [])).push({ block: fb, day: d, owner: a, petIds: fed, cost: r8(cost), short: short, bal: P.bal }); }); }
   /* ON-CHAIN DISCARD (review). pet:hd hides pets the signer still owns. pet:hu adds them back.
    * One 34-byte destroy. A class/filter or a contiguous frVar run can name thousands. If a selection
    * does not fit one tag, hdPlan returns the smallest set of exact burns and says so. It never drops
@@ -2163,6 +2195,11 @@
       if (p.length === 4 && idOk(p[2]) && /^[0-9A-V]{1,24}$/.test(p[3])) { var ids = [];
         for (var j = 0; j < p[3].length; j++) { var v = parseInt(p[3][j], 32); for (var b = 0; b < 5; b++) if (v & (1 << b)) ids.push(n(2) + 5 * j + b); } return { action: 'release', ids: ids }; }
     }
+    if (a === 'PANTRY' && p.length === 2) return { action: 'pantry' }; /* PANTRY (inert before ACTIVATE_PANTRY_BLOCK) */
+    if (a === 'PX' && p.length === 2) return { action: 'pantry', op: 'clear' };
+    if ((a === 'PP' || a === 'PX') && p.length === 4 && /^[0-9A-V]{2}$/.test(p[2]) && /^[0-9A-V]{2,24}$/.test(p[3]) && t.length <= MAX_TAG_BYTES) {
+      var ppr = frDecode(p[3]); if (!ppr || ppr.length < 2 || ppr.length % 2) return { action: 'invalid' }; for (var ppk = 1; ppk < ppr.length; ppk++) if (!(ppr[ppk] > 0)) return { action: 'invalid' };
+      return { action: 'pantry', op: a === 'PP' ? 'add' : 'del', a: parseInt(p[2], 32), runs: ppr }; }
     if ((a === 'HD' || a === 'HU') && t.length <= MAX_TAG_BYTES) { /* on-chain discard / add back (community food before ACTIVATE_ONCHAIN_DISCARD_BLOCK) */
       var hide = a === 'HD';
       if (p.length === 3 && /^(ALL|C|U|R|L|NF|S[0-5])$/.test(p[2])) return { action: hide ? 'hd' : 'hu', filter: p[2].toLowerCase() };
@@ -2466,6 +2503,7 @@
     w.burnedBy = {}; w.questsOut = []; w.questFeed = []; preRows.forEach(function (r) { var x = r.raw || r, a = Number(r.amount != null ? r.amount : x.quantity / 1e8); if (a > 0) w.burnedBy[x.source] = (w.burnedBy[x.source] || 0) + a; });
     w.freeRolls = {}; w.overflowUsed = {}; w.mythicOwners = {}; w.founderSeen = {}; preRows.forEach(function (r) { w.founderSeen[r.raw ? r.raw.tx_hash : r.tx_hash] = 1; });
     ev.forEach(function (e) {
+      pantrySweep(w, e.b); /* PANTRY: day-start feeds come before anything else at this block; no-op below ACTIVATE_PANTRY_BLOCK */
       cemFlush(w, e.b); /* SEANCE ALWAYS RAISES: finish earlier blocks' seances first */
       if (saleIx) settleSales(w, e.b, saleIx);
       spinsGate(w, e.b); mgSweep(w, e.b, blockHashes); cemSweep(w, e.b); wizHatClear(w, e.b); jackpotChildSweep(w, e.b); jackpotNobreedSweep(w, e.b); mythicKeepSweep(w, e.b); grantFounders(w, e.b); grantWizPriority(w, e.b); grantTop3Wiz(w, e.b); grantBurnLords(w, e.b, blockHashes); grantContestEggs(w, e.b, blockHashes); grantBo(w, e.b, blockHashes); grantRp(w, e.b, blockHashes); grantJp(w, e.b, blockHashes); grantViking(w, e.b, blockHashes); grantDragon(w, e.b, blockHashes); grantPowerSweep(w, e.b); grantMythicZFull(w, e.b); grantKekFlags(w, e.b); relabelTiers(w, e.b); wizTierRelabel(w, e.b); wizTier2Relabel(w, e.b); repairGear(w, e.b); allSlotsSweep(w, e.b); maybeRumbles(e.b); questLaunch(w, e.b); questSettle(w, e.b, blockHashes, L); earnSweep(w, e.b); lookSweep(w, e.b);       raidSweep(w, e.b, blockHashes); raidSettle(w, e.b, blockHashes, L);
@@ -2481,6 +2519,7 @@
       if (fireOn(r.block_index)) fireExtend(w, r.block_index - 1); /* fire sale arms are decided for blocks before this burn */
       var res = handle(w, r, t, amt, bh, L); if (fireOn(r.block_index)) fireCredit(w, r, t, amt, res); if (earnOn(r.block_index) && res && res.kind !== 'rejected' && res.kind !== 'plain' && res.petId != null) earnBurn(w, w.byId[res.petId], amt, r.block_index);
     });
+    pantrySweep(w, tip);
     cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);
     lookSweep(w, tip); if (fireOn(tip)) fireExtend(w, tip); spinsGate(w, tip); mgSweep(w, tip, blockHashes); cemSweep(w, tip); wizHatClear(w, tip); jackpotChildSweep(w, tip); jackpotNobreedSweep(w, tip); mythicKeepSweep(w, tip); grantFounders(w, tip); grantWizPriority(w, tip); grantTop3Wiz(w, tip); grantBurnLords(w, tip, blockHashes); grantContestEggs(w, tip, blockHashes); grantBo(w, tip, blockHashes); grantRp(w, tip, blockHashes); grantJp(w, tip, blockHashes); grantViking(w, tip, blockHashes); grantDragon(w, tip, blockHashes); grantPowerSweep(w, tip); grantMythicZFull(w, tip); grantKekFlags(w, tip); relabelTiers(w, tip); wizTierRelabel(w, tip); wizTier2Relabel(w, tip); repairGear(w, tip); allSlotsSweep(w, tip); maybeRumbles(tip); questLaunch(w, tip); questSettle(w, tip, blockHashes, L); earnSweep(w, tip); raidSweep(w, tip, blockHashes); raidSettle(w, tip, blockHashes, L);
     w.pets.forEach(function (p) { finish(w, p, tip); });
@@ -2665,6 +2704,9 @@
       var f1 = fightable(A, b); if (f1) return '#' + t.a + ': ' + f1; var f2 = fightable(B, b); if (f2) return 'opponent #' + t.b + ': ' + f2;
       if (w.fights.some(function (f) { return f.status === 'open' && (f.a === t.a || f.b === t.a) && span(b, f.block) <= FIGHT_WINDOW; }) || pend.some(function (q) { return q.action === 'fight' && (q.a === t.a || q.b === t.a); })) return '#' + t.a + ' already has an open challenge';
       return battleBlock(w, tag, tip); }
+    if (t.action === 'pantry') { if (!pantryOn(b)) return 'The Pantry opens at block ' + (ACTIVATE_PANTRY_BLOCK == null ? '(not set yet)' : ACTIVATE_PANTRY_BLOCK);
+      if (t.runs && plan && plan.anchor != null && b - plan.anchor > 900) return 'this pantry plan is too old, press it again';
+      if (amt != null && !(amt > 0)) return 'a pantry burn needs some XCPETS'; return null; }
     if (t.action === 'chores') { if (!choresOn(b)) return 'Daily chores (one burn) opens at block ' + (ACTIVATE_DAILY_CHORES_BLOCK == null ? '(not set yet)' : ACTIVATE_DAILY_CHORES_BLOCK);
       if (t.runs && plan && plan.anchor != null && b - plan.anchor > 900) return 'this chores plan is too old, press Daily chores again';
       if (pend.some(function (q) { return q.action === 'chores'; })) return 'your daily chores burn is still waiting to confirm';
@@ -3754,6 +3796,7 @@
     if (t.action === 'feedr' && !feedRunsOn(b)) t = { action: 'invalid' }; /* feed runs OFF: same as before (unknown tag) */
     if ((t.action === 'hd' || t.action === 'hu') && !hdOn(b)) t = { action: 'invalid' }; /* on-chain discard OFF: same as before (unknown tag, community food) */
     if (t.action === 'chores' && !choresOn(b)) t = { action: 'invalid' }; /* daily chores OFF: same as before (unknown tag) */
+    if (t.action === 'pantry' && !pantryOn(b)) t = { action: 'invalid' }; /* pantry OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
     if (t.action === 'cemr') { if (!cemRunsOn(b)) t = { action: 'invalid' }; /* cemetery runs OFF: same as before (unknown tag) */
       else { var crKind = t.kind; t = cemRunsResolve(w, src, t, b); if (!t.ids.length) return L(r, 'rejected', 'cemetery runs: no pets at those places');
@@ -3865,6 +3908,17 @@
         if (t.spins) { if (spinsLeft(w, src, b) > 0) dcRun('spins', { action: 'usespin', n: 0, all: true }, amt); else { DL(r, 'rejected', 'no saved spins left'); dcParts.push({ part: 'spins', done: false, msg: 'no saved spins left' }); } }
         if (!dcDid) return L(r, 'rejected', 'daily chores did nothing (' + dcParts.map(function (q) { return q.part; }).join(', ') + ' all skipped)', { chores: 1, parts: dcParts });
         return L(r, 'chores', 'daily chores: ' + dcParts.map(function (q) { return (q.done ? '\u2713 ' : '\u2013 ') + q.part; }).join(' · '), { chores: 1, src: r.source, parts: dcParts, petId: dcFeed ? dcFeed.petId : null, petIds: dcFeed ? dcFeed.petIds : [] });
+      }
+      case 'pantry': { /* PANTRY: the whole burn goes into the signer's pantry; pp/px also change the list (see ACTIVATE_PANTRY_BLOCK) */
+        if (!(amt > 0)) return L(r, 'rejected', 'pantry: nothing burned');
+        var PR = pantryRec(w, src); if (w.pantryDay == null) w.pantryDay = day(b); PR.bal = r8(PR.bal + amt); PR.paid = r8(PR.paid + amt);
+        var pids = t.runs ? runIds(refList(w, src, frAnchor(b, t.a), b), t.runs) : [], had = new Set(PR.ids), pch = 0;
+        if (t.op === 'add') pids.forEach(function (id) { if (!had.has(id)) { had.add(id); pch++; } });
+        else if (t.op === 'del') pids.forEach(function (id) { if (had.delete(id)) pch++; });
+        else if (t.op === 'clear') { pch = had.size; had.clear(); }
+        if (t.op) PR.ids = Array.from(had).sort(function (x, y) { return x - y; });
+        return L(r, 'pantry', 'pantry +' + r8(amt) + ' XCPETS (balance ' + PR.bal + ')' + (t.op === 'add' ? ' · added ' + pch + ' pet' + (pch === 1 ? '' : 's') : t.op === 'del' ? ' · took ' + pch + ' pet' + (pch === 1 ? '' : 's') + ' off' : t.op === 'clear' ? ' · emptied the list (' + pch + ' pets)' : '') + ' · ' + PR.ids.length + ' on the list',
+          { src: src, pantry: { op: t.op || 'fill', n: pch, bal: PR.bal, list: PR.ids.length }, pantryIds: pids });
       }
       case 'feedr': { /* FEED RUNS: turn the runs into pet numbers from the signer's eater list at the anchor block, then feed them like pet:fl */
         if (!feedRunsOn(b)) return L(r, 'rejected', 'unknown pet: tag (community food)');
@@ -5243,6 +5297,35 @@
   /** feedRunsQueue(w, owner, ids, nb) -> the pet:fr plans for the hungry pets that eat among ids (null = all), or null when the gate is off. */
   function feedRunsQueue(w, owner, ids, nb) { nb = nb != null ? nb : (w && w.tip != null ? w.tip + 1 : null); if (!feedRunsOn(nb)) return null; var idSet = ids ? new Set(ids) : null;
     return feedRunsPlan(w, owner, w.pets.filter(function (p) { return p.owner === owner && frEats(p, nb) && (!idSet || idSet.has(p.id)); }), nb); }
+  /** pantryPlan(w, owner, o) -> { plans, skipped } or null (gate off / nothing to do). o.amount = XCPETS to add, o.add / o.del = pet numbers to put
+   * on / take off the list, o.clear = empty the list (sent alone: burns in one block may confirm in any order). Picks are pet:pp / pet:px runs over the
+   * owner's eater list at A = tip (exact places, packed into 34-byte tags); a pet outside that list (Mythic, dead, discarded, not yours) can't be
+   * picked and is returned in skipped. The amount rides on the first burn; any other burn carries 1 dander (it goes in the pantry too). */
+  function pantryPlan(w, owner, o) { o = o || {}; var A = w && w.tip; if (A == null || !owner) return null; var nb = A + 1; if (!pantryOn(nb)) return null;
+    var amt = o.amount > 0 ? r8(o.amount) : 0, out = [], skipped = [];
+    if (o.clear) out.push({ tag: PANTRY_CLEAR, amount: PANTRY_DUST, petIds: [], pantry: 'clear', label: 'Empty the pantry list' });
+    else { var ref = refList(w, owner, A, nb), pos = {}, code = A % FR_ANCHOR_MOD, aa = (code < 32 ? '0' : '') + code.toString(32).toUpperCase(), bodyMax = MAX_TAG_BYTES - PANTRY_PREFIX.length - 3;
+      ref.forEach(function (p, i) { pos[p.id] = i; });
+      var runs = function (ids, pre, op) { var at = [], seen = {}; (ids || []).forEach(function (id) { id = Number(id); if (seen[id]) return; seen[id] = 1; if (pos[id] == null) skipped.push(id); else at.push(pos[id]); });
+        at.sort(function (x, y) { return x - y; }); var blocks = []; for (var i = 0; i < at.length; i++) { var s0 = at[i], n = 1; while (i + 1 < at.length && at[i + 1] === at[i] + 1) { i++; n++; } blocks.push([s0, n]); }
+        var cur = null; function close() { if (!cur) return; var pids = []; cur.bl.forEach(function (bk) { for (var q = bk[0]; q < bk[0] + bk[1]; q++) pids.push(ref[q].id); });
+          out.push({ tag: pre + aa + ':' + cur.body, amount: PANTRY_DUST, petIds: pids, anchor: A, runs: true, pantry: op, label: (op === 'add' ? 'Put ' : 'Take ') + pids.length + ' pet' + (pids.length === 1 ? '' : 's') + (op === 'add' ? ' on' : ' off') + ' the pantry list' }); cur = null; }
+        blocks.forEach(function (bk) { var add = cur ? frVar(bk[0] - cur.end) + frVar(bk[1]) : null;
+          if (cur && cur.body.length + add.length <= bodyMax) { cur.body += add; cur.bl.push(bk); cur.end = bk[0] + bk[1]; return; }
+          close(); cur = { body: frVar(bk[0]) + frVar(bk[1]), bl: [bk], end: bk[0] + bk[1] }; }); close(); };
+      runs(o.del, PANTRY_DEL_PREFIX, 'del'); runs(o.add, PANTRY_PREFIX, 'add'); }
+    if (!out.length) { if (!amt) return skipped.length ? { plans: [], skipped: skipped } : null; out.push({ tag: PANTRY_FILL, amount: amt, petIds: [], pantry: 'fill', label: 'Fill the pantry' }); }
+    else if (amt) { out[0].amount = amt; }
+    if (out.length > 1) out.forEach(function (p, k) { p.label += ' (burn ' + (k + 1) + ' of ' + out.length + ')'; });
+    return { plans: out, skipped: skipped }; }
+  /** pantryInfo(w, owner, nb) -> the owner's pantry for the UI: balance, list, how many listed pets will eat next feed day, their meal cost
+   * at today's price and roughly how many days the balance lasts (meals grow as pets grow, so it is an estimate). null when the gate is off. */
+  function pantryInfo(w, owner, nb) { if (!w || !owner) return null; nb = nb != null ? nb : (w.tip || 0) + 1; if (!pantryOn(nb) && !(w.pantry && w.pantry[owner])) return null;
+    var P = (w.pantry && w.pantry[owner]) || { bal: 0, paid: 0, spent: 0, meals: 0, ids: [], last: null }, eat = [], daily = 0, wait = 0;
+    P.ids.forEach(function (id) { var z = w.byId && w.byId[id]; if (!z) { wait++; return; } var ok = !z.community && !z.released && z.owner === owner && !z.dead && !hdHidden(z, owner, nb) && !isZ(z) && !z.ascended && !z.mythicCare && z.stage !== 5;
+      if (!ok) { wait++; return; } var m = mealFor(z.care, z.species, nb, petThresholds(w, z, nb)); if (m > 0) { eat.push(z.id); daily += mealCost(w, z, m, nb); } });
+    daily = r8(daily); return { on: pantryOn(nb), gate: ACTIVATE_PANTRY_BLOCK, bal: P.bal, paid: P.paid, spent: P.spent, meals: P.meals, ids: P.ids.slice(), eat: eat, idle: wait, daily: daily,
+      days: daily > 0 ? Math.floor((P.bal + 1e-9) / daily) : null, last: P.last, nextFeed: dayStart(day(nb) + 1) }; }
   /** dailyChoresPlan(w, owner, nb, o) -> { plans, parts } or null (gate off / nothing to do). o.spins (default true) = add 'use all saved spins'.
    * The first burn is pet:dc:F[:AA:RUNS] (WAGMI if not said today + feed runs that fit 22 run characters + use all spins); any pets that do not
    * fit go in normal pet:fr burns after it (same plan as Feed all, packed to 22 characters so the first burn can carry the flags). */
@@ -5412,6 +5495,7 @@
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
     retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
+    pantryGate: function () { return ACTIVATE_PANTRY_BLOCK; }, pantryOn: pantryOn, pantryPlan: pantryPlan, pantryInfo: pantryInfo, dayStart: dayStart, PANTRY_PREFIX: PANTRY_PREFIX, _pantrySweep: pantrySweep, _setPantryActivation: function (b) { ACTIVATE_PANTRY_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
     ACTIVATE_MYTHIC_HEADSTART_BLOCK: ACTIVATE_MYTHIC_HEADSTART_BLOCK, MYTHIC_HEADSTART_BLOCKS: MYTHIC_HEADSTART_BLOCKS, mythicHeadstartGate: function () { return ACTIVATE_MYTHIC_HEADSTART_BLOCK; }, mythicHeadstartOn: mythicHeadstartOn, mythicHeadStart: mythicHeadStart, mythicHeadStartWhy: mythicHeadStartWhy, _setMythicHeadstartActivation: function (b) { ACTIVATE_MYTHIC_HEADSTART_BLOCK = b == null ? null : Number(b); },
