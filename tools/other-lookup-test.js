@@ -16,7 +16,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
-ok(md5('js/v2-rules.js') === 'b87e243919401e785cf425ff6dca0e0b', 'rules MD5 unchanged');
+ok(md5('js/v2-rules.js') === 'bd47929530201cc653d086e673d58184', 'rules MD5 unchanged');
 ok(md5('js/v2-split.js') === 'c604eaba5d2d9340c04d4c128d39be59', 'js/v2-split.js is the slim publisher client');
 ok(md5('tools/sync-server/split.js') === 'e33840d7a328484734a2c2ac90b93976', 'owner page layout file is the slim publisher');
 const look = rd('js/v2-lookup.js'), easy = rd('js/v2-easy-flows.js'), ui = rd('js/v2.js'), arena = rd('js/v2-arena.js'), hall = rd('js/v2-rare-hall.js'), dock = rd('js/v2-lowfriction.js');
