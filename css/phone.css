@@ -9,7 +9,7 @@
   /* 1 · header: the nav row fits on one 390px line. Before, Ranking hung 36px past the right edge
      (the row scrolled sideways with no hint). Ranking becomes a trophy button; its text stays for screen readers. */
   html body header.nav{padding-left:8px;padding-right:8px}
-  html body header.nav nav{gap:4px;overflow-x:visible}
+  html body header.nav nav{gap:4px}
   html body header.nav nav > a,html body header.nav nav > details{margin-left:0;margin-right:0}
   html body header.nav nav a.navplay{margin:0}
   html body header.nav nav details.navplaces > summary{padding-left:7px;padding-right:7px}
@@ -17,6 +17,9 @@
     border:2px solid #000;border-radius:4px;background:#1d1530;box-shadow:2px 2px 0 #000;box-sizing:border-box}
   html body header.nav nav a.navrank::before{content:"\1F3C6";font-size:18px;line-height:1}
   html body header.nav nav a.navrank[aria-current="page"]{background:#24402f}
+  /* home page: its jump links (How it works, The cast, Community pet, Gallery) and the X / Telegram icons made the row
+     scroll 430px sideways. The sections are right below and the X / Telegram links are in the footer, so phones hide them here. */
+  html body header.nav nav > a[href^="#"],html body header.nav nav > a.navico{display:none}
   html body header.nav .xc-snav .xc-sm{margin-left:0;padding-left:8px;padding-right:8px}
 
   /* 2 · header icon buttons (sound, book, receipts): 40px squares instead of 30 to 34px */
@@ -24,6 +27,7 @@
   html body header.nav .ip-tools > a,html body header.nav .ip-tools > button{min-width:40px;min-height:40px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
   html body #xc-music.hdr{height:40px}
   html body #xc-music.hdr.abs{top:4px}
+  html body header.nav > #xc-music.hdr:not(.abs){position:absolute;right:8px;top:4px;margin:0} /* pages without the book button (Spam City): no extra row */
   html body #xc-music.hdr #xc-music-btn{width:40px;height:40px}
   html body #xc-music.hdr #xc-music-knob{height:40px;width:20px}
   html body #xc-music.hdr #xc-music-pan{top:46px}
@@ -31,6 +35,7 @@
   /* 3 · small "?" help buttons keep their look but get a 44px tap area */
   html body .ip-q{position:relative}
   html body .ip-q::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+  html body .hc-i::after{content:"";position:absolute;left:50%;top:50%;width:36px;height:36px;transform:translate(-50%,-50%)}
 
   /* 4 · form fields: 16px text stops iPhones zooming the page when a box is tapped, and every field is a 44px target */
   html body input:is([type="text"],[type="number"],[type="search"],[type="email"],[type="url"],:not([type])),html body select,html body textarea{font-size:16px}
@@ -45,7 +50,10 @@
   /* 6 · Circus: the Challenge button rides along the bottom of the screen while you scroll the two pet lists */
   html body[data-split="fight"] #arenaPanel .ez-foot{position:sticky;bottom:0;z-index:7;background:inherit;
     margin-left:-8px;margin-right:-8px;padding:6px 8px max(8px,env(safe-area-inset-bottom));box-shadow:0 -4px 0 rgba(0,0,0,.35)}
-  html body[data-split="fight"] #arenaPanel .ez-box{background-clip:padding-box}
+  html body[data-split="fight"] #arenaPanel .ez-foot .ez-acts{flex-wrap:nowrap;gap:6px}
+  html body[data-split="fight"] #arenaPanel .ez-foot .ez-go{flex:1 1 auto;min-width:0;min-height:48px;font-size:15px}
+  html body[data-split="fight"] #arenaPanel .ez-foot :is(.ez-qm,#ezFIgn){flex:0 0 auto;white-space:nowrap}
+  html body[data-split="fight"] #arenaPanel .ez-foot .ez-hint{font-size:12px;line-height:1.3;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
   /* 7 · Raid: bigger pet rows, a real-size amount box and an attack button that stays in view */
   html body .rd-atk .rd-pet{display:flex;align-items:center;min-height:44px;box-sizing:border-box}
