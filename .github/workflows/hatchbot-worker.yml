@@ -49,7 +49,6 @@ jobs:
         run: |
           SUB=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).result.subdomain))")
           URL="https://hatchbot.$SUB.workers.dev/tg"
-          echo "Page error reports go to https://hatchbot.$SUB.workers.dev/e (the address tools/build-err-report.js uses)" | tee -a "$GITHUB_STEP_SUMMARY"
           SECRET=$(node -e "console.log(require('crypto').createHash('sha256').update('hatchbot:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,48))")
           API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
           curl -fsS "$API/setWebhook" -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true" -o /dev/null
