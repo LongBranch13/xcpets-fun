@@ -31,7 +31,9 @@ function rulesSig(bufs) {
 const checkoutRsig = () => rulesSig(RULES.map(f => fs.readFileSync(path.join(ROOT, f))));
 async function get(u, as) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
-  try { const r = await fetch(u + (u.includes('?') ? '&' : '?') + 'cb=' + Date.now(), { cache: 'no-store', signal: ctl.signal, headers: { 'User-Agent': 'xcpets-worldwatch' } });
+  /* the node cache passes queries on to Counterparty, which answers 400 to an unknown parameter: no cache-buster there */
+  const cb = u.indexOf(NODE + '/v2/') === 0 ? '' : (u.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+  try { const r = await fetch(u + cb, { cache: 'no-store', signal: ctl.signal, headers: { 'User-Agent': 'xcpets-worldwatch' } });
     if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
     return as === 'buf' ? Buffer.from(await r.arrayBuffer()) : await r.json(); } finally { clearTimeout(t); }
 }
