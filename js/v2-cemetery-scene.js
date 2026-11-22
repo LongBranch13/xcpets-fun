@@ -287,16 +287,16 @@
     var zs = document.createElement('section'); zs.className = 'cv2-zombies'; zs.id = 'cemZombies'; tombs.parentNode.insertBefore(zs, tombs);
     var bar = document.createElement('div'); bar.className = 'uxp-find cemfind cemv2bar'; bar.id = 'cemFinder';
     var opt = function (L, cur) { return L.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === cur ? ' selected' : '') + '>' + s[1] + '</option>'; }).join(''); };
-    bar.innerHTML = '<h3 class="cv2-fh">🔎 Grave finder</h3><div class="cv2-row"><label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + ' <a class="btn ghost cem-pantheon" href="pantheon.html" title="21 seats for 21 Mythic Gods">🌕 The Pantheon</a></div>' +
+    bar.innerHTML = '<h3 class="cv2-fh">🔎 Find a grave to raise</h3><p class="small muted cv2-fhint">Any grave can be raised, even another player\u2019s. The zombie is yours. Each grave says what sacrifice it needs.</p><div class="cv2-row"><label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '</div>' +
       '<div class="cv2-row cv2-quick" role="group" aria-label="Quick picks"><button type="button" class="q" id="cemRarest" aria-pressed="false">💎 Rarest first</button><button type="button" class="q" id="cemEasiest" aria-pressed="false">' + art('easy', 12) + ' Easiest to raise</button><button type="button" class="q" id="cemFresh" aria-pressed="false">🪦 Freshest graves</button><button type="button" class="q" id="cemOpen" aria-pressed="false">' + art('candle', 12) + ' Open altars</button><button type="button" class="q" id="cemClear">↺ Clear filters</button></div>' +
-      '<div class="cv2-row cv2-sel"><label class="small">Sort <xc-select id="cemSort">' + opt(SORTS, st.sort) + '</xc-select></label>' +
+      '<details class="cv2-more"><summary>⚙️ More filters: sort, rarity, stage, days dead, difficulty, species, meals</summary><div class="cv2-row cv2-sel"><label class="small">Sort <xc-select id="cemSort">' + opt(SORTS, st.sort) + '</xc-select></label>' +
       '<label class="small">Rarity <xc-select id="cemTier"><option value="">All rarities</option>' + TL.map(function (t, i) { return '<option value="' + i + '">' + t + '</option>'; }).join('') + '</xc-select></label>' +
       '<label class="small">Stage <xc-select id="cemStage"><option value="">All stages</option></xc-select></label>' +
       '<label class="small">Days dead <xc-select id="cemDays">' + opt(DAYS, '') + '</xc-select></label>' +
       '<label class="small">Difficulty <xc-select id="cemDiff"><option value="">Any</option><option value="easy">Easy (Common+ offering)</option><option value="medium">Medium (Uncommon+)</option><option value="hard">Hard (Rare+)</option><option value="closed">Closed graves</option></xc-select></label>' +
       '<label class="small">Species <xc-select id="cemSp"><option value="">All species</option></xc-select></label>' +
       '<label class="small">Meals <xc-select id="cemMeals"><option value="">All graves</option><option value="fed">Fed at least once</option><option value="nf">Never fed</option></xc-select></label>' +
-      '<label class="small cv2-chk"><input type="checkbox" id="cemRaisable"> Raisable only</label></div>' +
+      '<label class="small cv2-chk"><input type="checkbox" id="cemRaisable"> Raisable only</label></div></details>' +
       '<p class="small muted" id="cemMsg" aria-live="polite"></p>';
     tombs.parentNode.insertBefore(bar, tombs);
     var pg = function (id) { var d = document.createElement('div'); d.className = 'cv2-pager'; d.id = id; return d; }, pTop = pg('cemPagerTop'), pBot = pg('cemPager'); tombs.parentNode.insertBefore(pTop, tombs); tombs.parentNode.insertBefore(pBot, tombs.nextSibling);
@@ -341,16 +341,58 @@
         '<div class="cv2-hunger" title="Feral in ' + tm(v.hungerLeft) + ' (' + fmt(v.hungerLeft) + ' blocks)"><i style="width:' + hp + '%"></i></div>' +
         '<div class="small">' + (v.mfed ? '😇 Mythic-fed: cured for good, never goes feral, never crumbles, can\u2019t be hunted' : v.feral ? '<b class="cv2-feral">FERAL</b>: starving, anyone can hunt it · back to a grave in ' + tm(v.crumbleIn) : '🍖 Fed · goes feral in ' + tm(v.hungerLeft) + ' unless it eats again') + '</div>' +
         '<div class="small muted">raised by ' + esc(sa(v.by || '')) + ' · owner ' + esc(sa(p.owner)) + (mine ? ' (you)' : '') + (v.meals ? ' · ' + v.meals + ' meal' + (v.meals === 1 ? '' : 's') : '') + '</div>' + acts + '</div>'; }
-    function zombies() { var Z = w.pets.filter(function (p) { return V.isZ(p); }), C = w.cem || {}, HB = C.huntedBy || {}, top = Object.keys(HB).sort(function (a, c) { return HB[c] - HB[a]; }).slice(0, 5);
-      Z.sort(function (a, c) { var x = V.cemView(w, a, b), y = V.cemView(w, c, b); return (y.feral - x.feral) || (x.crumbleIn - y.crumbleIn) || a.id - c.id; });
+    /* cem-doors (Nov 22 2026, Jake: "all the workings there need to be more intuitive"): four doors, one job each. Raise = the grave finder,
+     * My zombies = yours (most urgent first), Hunt = other players' FERAL zombies (the only ones a hunt can take), Gods = brought back.
+     * A "Do this next" card above the doors names the one most urgent thing for the connected wallet. Display only: every button is the one
+     * the zombie cards already had. The open door is kept for this tab (sessionStorage). */
+    var DOORS = [['raise', '🕯️ Raise', 'pick a grave'], ['mine', '🧟 My zombies', ''], ['hunt', '⚔️ Hunt', ''], ['gods', '😇 Gods', 'brought back']];
+    var door = (function () { try { return sessionStorage.getItem('xcpets-cem-door') || ''; } catch (e) { return ''; } })();
+    var doorBar = document.createElement('div'); doorBar.className = 'cv2-doors'; doorBar.id = 'cemDoors'; doorBar.setAttribute('role', 'tablist'); doorBar.setAttribute('aria-label', 'What do you want to do?');
+    var nextBox = document.createElement('div'); nextBox.className = 'cv2-next'; nextBox.id = 'cemNext'; nextBox.hidden = true;
+    zs.parentNode.insertBefore(nextBox, zs); zs.parentNode.insertBefore(doorBar, zs);
+    function setDoor(k, user) { door = k; if (user) { try { sessionStorage.setItem('xcpets-cem-door', k); } catch (e) {} }
+      var raise = k === 'raise'; zombies(); }
+    doorBar.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
+    function zAll() { return w.pets.filter(function (p) { return V.isZ(p); }); }
+    function urgent(Z) { var best = null; Z.forEach(function (p) { var v = V.cemView(w, p, b), r = v.res || {}, min = r.min || CE.RES_MIN || 25, u = null;
+        if (v.mfed) u = r.points >= min ? { k: 'res', n: 3, p: p, v: v } : null;
+        else if (v.feral) u = { k: 'feral', n: 0, p: p, v: v, t: v.crumbleIn };
+        else if (v.hungerLeft <= 144) u = { k: 'hungry', n: 1, p: p, v: v, t: v.hungerLeft };
+        else if (r.points >= min) u = { k: 'res', n: 2, p: p, v: v };
+        if (u && (!best || u.n < best.n || (u.n === best.n && (u.t || 0) < (best.t || 0)))) best = u; }); return best; }
+    function nextCard(mine) { if (!ME || !on) { nextBox.hidden = true; return; } var u = urgent(mine), feed = function (p) { return '<a class="btn" href="play.html#pet-' + p.id + '">🍖 Feed ' + esc(p.name || '#' + p.id) + '</a>'; }, h = '', img = '';
+      if (u) { var nm = esc(u.p.name || '#' + u.p.id), r = u.v.res || {}; img = art(u.k === 'res' ? 'halo' : u.k === 'feral' ? 'feral' : 'zombie', 48);
+        if (u.k === 'feral') h = '<p class="cv2-next-k">⚠ Do this next</p><b class="cv2-next-h">' + nm + ' is FERAL. Anyone can hunt it and take it from you.</b><p class="small">Feed it a Discarded pet and it is safe again. It turns back into a grave in ' + tm(u.v.crumbleIn) + '.</p><div class="cv2-next-acts">' + feed(u.p) + '</div>';
+        else if (u.k === 'hungry') h = '<p class="cv2-next-k">⏳ Do this next</p><b class="cv2-next-h">' + nm + ' goes feral in ' + tm(u.v.hungerLeft) + '.</b><p class="small">Feed it a Discarded pet before then, or other players can hunt it.</p><div class="cv2-next-acts">' + feed(u.p) + '</div>';
+        else h = '<p class="cv2-next-k">😇 Ready</p><b class="cv2-next-h">' + nm + ' has ' + r.points + ' halo points: it can try a Resurrection (' + Math.round((r.chance || 0) * 100) + '% chance).</b><p class="small">Win: it lives again as a God, for good. Miss: it turns to dust. More halo points, better odds.</p><div class="cv2-next-acts"><button type="button" class="btn" data-door="mine">🧟 Open My zombies</button></div>'; }
+      else if (!mine.length) { img = art('candle', 48); h = '<p class="cv2-next-k">🕯️ Start here</p><b class="cv2-next-h">Raise your first zombie.</b><p class="small">Pick an easy grave, then sacrifice a pet from your Discard pile at the altar. The zombie is yours.</p><div class="cv2-next-acts"><button type="button" class="btn" id="cemNextEasy">🕯️ Show easy graves</button></div>'; }
+      nextBox.hidden = !h; if (!h) { nextBox.innerHTML = ''; return; } nextBox.className = 'cv2-next' + (u && u.k === 'feral' ? ' bad' : u && u.k === 'hungry' ? ' warn' : '');
+      nextBox.innerHTML = '<div class="cv2-next-ico">' + img + '</div><div class="cv2-next-t">' + h + '</div>';
+      var ez = $('cemNextEasy'); if (ez) ez.onclick = function () { setDoor('raise', true); var q = $('cemEasiest'); if (q) q.click(); var f = $('cemFinder'); if (f) f.scrollIntoView({ block: 'start', behavior: 'smooth' }); }; }
+    nextBox.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
+    function zombies() { var Z = zAll(), C = w.cem || {}, HB = C.huntedBy || {}, top = Object.keys(HB).sort(function (a, c) { return HB[c] - HB[a]; }).slice(0, 5);
+      var vw = {}; Z.forEach(function (p) { vw[p.id] = V.cemView(w, p, b); });
+      Z.sort(function (a, c) { var x = vw[a.id], y = vw[c.id]; return (y.feral - x.feral) || (x.crumbleIn - y.crumbleIn) || a.id - c.id; });
       var H = w.pets.filter(function (p) { return p.resurrected && !p.dead; }).sort(function (a, c) { return c.resurrected.block - a.resurrected.block || a.id - c.id; });
-      zs.hidden = !Z.length && !top.length && !H.length; if (zs.hidden) { zs.innerHTML = ''; return; }
-      zs.innerHTML = '<h3>🧟 Risen zombies <span class="small muted">(' + fmt(Z.length) + ')</span></h3><p class="small muted">A zombie needs a meal every ' + tm(CE.FERAL || 432) + '. Without one it goes FERAL: anyone can hunt it, and ' + tm(CE.CRUMBLE || 432) + ' later it crumbles back into a grave.</p>' +
-        (top.length ? '<p class="small cv2-hunters">' + art('hunter', 16) + ' <b>Zombie Hunters:</b> ' + top.map(function (a) { return esc(sa(a)) + (a === ME ? ' (you)' : '') + ' · ' + HB[a]; }).join(' · ') + '</p>' : '') +
-        '<div class="tombs">' + Z.map(zcard).join('') + '</div>' +
-        (H.length ? '<h3>' + art('halo', 16) + ' Brought back <span class="small muted">(' + fmt(H.length) + ')</span></h3><p class="small muted">A Resurrection that succeeds makes the zombie a living pet again, with a halo for good (power ceiling ' + CE.CAP_RES + ' times). One that fails turns it to dust.</p><div class="cv2-halos">' +
-          H.slice(0, 24).map(function (p) { return '<a class="cv2-halo" href="pet.html?id=' + p.id + '">' + art('halo', 12) + ' ' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + ' · block ' + fmt(p.resurrected.block) + (ME && p.owner === ME ? ' · yours' : '') + '</span></a>'; }).join('') + '</div>' : '');
-      Z.forEach(function (p) { var c = zs.querySelector('canvas[data-z="' + p.id + '"]'); if (c && p.art && R.lazy) R.lazy(c, function () { return R.framesWith(p.art, Math.max(5, p.stage), []); }, true); }); }
+      var mine = ME ? Z.filter(function (p) { return p.owner === ME; }) : [], prey = Z.filter(function (p) { return p.owner !== ME && vw[p.id].feral && !vw[p.id].mfed; }), calm = Z.filter(function (p) { return p.owner !== ME && !(vw[p.id].feral && !vw[p.id].mfed); });
+      var need = mine.filter(function (p) { return vw[p.id].feral || (!vw[p.id].mfed && vw[p.id].hungerLeft <= 144); }).length;
+      if (!door) door = need ? 'mine' : 'raise';
+      var sub = { raise: fmt(graveCount()) + ' graves', mine: ME ? (mine.length ? fmt(mine.length) + (need ? ' · ' + need + ' need' + (need === 1 ? 's' : '') + ' you' : '') : 'none yet') : 'connect a wallet', hunt: prey.length ? fmt(prey.length) + ' feral now' : 'none feral now', gods: fmt(H.length) + ' brought back' };
+      doorBar.innerHTML = DOORS.map(function (d) { return '<button type="button" role="tab" class="cv2-door' + (d[0] === 'mine' && need ? ' alert' : '') + '" data-door="' + d[0] + '" aria-selected="' + (d[0] === door) + '">' + d[1] + '<small>' + esc(sub[d[0]] || d[2]) + '</small></button>'; }).join('');
+      nextCard(mine);
+      ['cemFinder', 'cemPagerTop', 'cemPager', 'tombs', 'cemDetail', 'cemResume'].forEach(function (id) { var el = $(id); if (el) el.classList.toggle('cv2-off', door !== 'raise'); }); zs.classList.toggle('cv2-off', door === 'raise'); /* a class, not [hidden]: .tombs and the finder set display */
+      var rule = '<p class="small muted">A zombie needs a meal every ' + tm(CE.FERAL || 432) + '. Without one it goes FERAL: anyone can hunt it, and ' + tm(CE.CRUMBLE || 432) + ' later it crumbles back into a grave.</p>', list = [], html = '';
+      if (door === 'mine') { list = mine; html = '<h3>🧟 My zombies <span class="small muted">(' + fmt(mine.length) + ')</span></h3>' + rule + (mine.length ? '<div class="tombs">' + mine.map(zcard).join('') + '</div>' : '<p class="cv2-empty">' + (ME ? 'No zombies yet. Open <button type="button" class="linkish" data-door="raise">🕯️ Raise</button>, pick a grave and sacrifice a pet from your Discard pile.' : 'Connect XCP Wallet to see your zombies.') + '</p>'); }
+      else if (door === 'hunt') { list = prey.concat(calm); html = '<h3>⚔️ Hunt <span class="small muted">(' + fmt(prey.length) + ' feral)</span></h3><p class="small">Only a FERAL (starving) zombie can be hunted. Pick your fighter: win and the zombie is yours' + (V.huntRulesOn && V.huntRulesOn(b) ? '' : '') + ', plus a saved Pepe Wheel spin once a day. Lose and your pet gets a black eye.</p>' +
+          (top.length ? '<p class="small cv2-hunters">' + art('hunter', 16) + ' <b>Zombie Hunters:</b> ' + top.map(function (a) { return esc(sa(a)) + (a === ME ? ' (you)' : '') + ' · ' + HB[a]; }).join(' · ') + '</p>' : '') +
+          (prey.length ? '<div class="tombs">' + prey.map(zcard).join('') + '</div>' : '<p class="cv2-empty">No feral zombies right now. Check back: any zombie that misses its meal for ' + tm(CE.FERAL || 432) + ' turns feral.</p>') +
+          (calm.length ? '<details class="cv2-calm"><summary>Other players’ zombies that are fed (' + fmt(calm.length) + '): can’t be hunted yet</summary><div class="tombs">' + calm.map(zcard).join('') + '</div></details>' : ''); }
+      else if (door === 'gods') { html = '<h3>' + art('halo', 16) + ' Gods: brought back <span class="small muted">(' + fmt(H.length) + ')</span></h3><p class="small muted">A zombie that wins its Resurrection lives again with a halo, for good (power ceiling ' + CE.CAP_RES + ' times). Gods only breed with other Gods. A miss turns the zombie to dust.</p>' +
+          (H.length ? '<div class="cv2-halos">' + H.slice(0, 60).map(function (p) { return '<a class="cv2-halo" href="pet.html?id=' + p.id + '">' + art('halo', 12) + ' ' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + ' · block ' + fmt(p.resurrected.block) + (ME && p.owner === ME ? ' · yours' : '') + '</span></a>'; }).join('') + '</div>' : '<p class="cv2-empty">No Gods yet. Be the first.</p>') +
+          '<p><a class="btn ghost cem-pantheon" href="pantheon.html">🌕 The Pantheon: 21 seats for 21 Mythic Gods</a></p>'; }
+      zs.innerHTML = html;
+      list.forEach(function (p) { var c = zs.querySelector('canvas[data-z="' + p.id + '"]'); if (c && p.art && R.lazy) R.lazy(c, function () { return R.framesWith(p.art, Math.max(5, p.stage), []); }, true); }); }
+    zs.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
     /* cemetery-handoff (Nov 1 2026): zombie meal / Resurrection pledge / Resurrection / hunt are signed right here (V2CemeteryAltar.sendPlans, same
      * send guard as play.html) instead of a redirect to play.html#cem-...; the old link stays only as a fallback if the altar file fails to load */
     function go(L, title) { var tags = L.map(function (p) { return p.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (p) { return V.cemPetAmount ? V.cemPetAmount(w, p, b) : p; }), ctx); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }

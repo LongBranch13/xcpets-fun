@@ -58,3 +58,28 @@ html.hw .tomb.gtomb::after{display:none}
 .tomb .cv2-rk.rk-legendary{background:#3a2a08;color:#ffd75e;border-color:#f2b417}
 .tomb .cv2-rk.rk-mythic{background:#2a1440;color:#e2c4ff;border-color:#b46cff;box-shadow:0 0 8px rgba(180,108,255,.45)}
 .tomb .cv2-rbits{background:#101a24;color:#9fe6f5;border-color:#2f6f86;font-weight:600}
+
+/* cem-doors (Nov 22 2026): four doors (Raise / My zombies / Hunt / Gods), the "Do this next" card, the folded filters */
+.cv2-doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 8px}
+.cv2-door{font-family:var(--meme,Bangers),Impact,sans-serif;font-size:20px;letter-spacing:.05em;line-height:1;background:#2f2a4a;color:#f3ecd8;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.cv2-door small{font-family:var(--pixel);font-size:7px;letter-spacing:0;line-height:1.4;color:#b9b4d0;overflow-wrap:anywhere}
+.cv2-door[aria-selected=true]{background:#7dff6a;color:#0b1a08}.cv2-door[aria-selected=true] small{color:#1d3a17}
+.cv2-door.alert[aria-selected=false]{box-shadow:3px 3px 0 #000,inset 0 0 0 3px #ff4d4d}
+.cv2-door:focus-visible{outline:3px solid #fff3b0;outline-offset:2px}
+.cv2-door:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.cv2-next{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:12px 0 4px;padding:12px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#1c2a1a;color:#f3ecd8}
+.cv2-next.warn{background:#2e2610}.cv2-next.bad{background:linear-gradient(180deg,#3a1414,#241020)}
+.cv2-next-ico .cem-art{display:block}
+.cv2-next-t{min-width:0;display:flex;flex-direction:column;gap:4px}
+.cv2-next-k{margin:0;font-family:var(--pixel);font-size:8px;letter-spacing:.06em;color:#ffc93c}.cv2-next.bad .cv2-next-k{color:#ff4d4d}
+.cv2-next-h{font-family:var(--meme,Bangers),Impact,sans-serif;font-weight:400;font-size:22px;letter-spacing:.04em;line-height:1.1}
+.cv2-next p.small{margin:0}
+.cv2-next-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.cv2-empty{border:3px dashed #b9b4d0;padding:10px 12px;background:#0f0d1e}
+.cv2-calm{margin-top:12px}.cv2-calm>summary{cursor:pointer;color:#9fe8ff}
+.cemv2bar .cv2-more>summary{cursor:pointer;font-family:var(--pixel);font-size:8px;line-height:1.6;color:#9fe8ff;padding:4px 0}
+.cemv2bar .cv2-more[open]>summary{margin-bottom:6px}
+.cemv2bar .cv2-fhint{margin:0}
+@media (max-width:640px){.cv2-doors{grid-template-columns:repeat(2,minmax(0,1fr))}.cv2-next-h{font-size:19px}}
+.cv2-zombies .linkish{background:none;border:0;padding:0;color:#9fe8ff;text-decoration:underline;cursor:pointer;font:inherit}
+.cv2-off{display:none!important}
