@@ -1,0 +1,134 @@
+# Server repair / update (Nov 22 2026). The published world stopped at 977,059 and a reboot did not fix it: the server runs
+# the sync-server code from before PR #98, which keeps failing the same build. This workflow reaches the disk without any
+# login on the server, using only the HCLOUD_TOKEN secret:
+#   1. makes a one-time SSH key on the runner and hands its public half to Hetzner,
+#   2. boots the server into Hetzner's rescue system with that key and mounts the server's disk,
+#   3. prints a short diagnosis (free disk, leftover build folders, builder error lines with any address scrubbed),
+#   4. removes leftover pending-<tip> build folders and installs tools/sync-server/*.js from main (old copy kept beside it),
+#   5. boots the server normally, deletes the one-time key from Hetzner, and waits for a new published world.
+# No key stays behind, nothing is printed about the server's address (it is masked) or its settings.
+# Runs only by hand: Actions tab > server-repair > Run workflow, type REPAIR. About 5 minutes offline.
+name: server-repair
+on:
+  workflow_dispatch:
+    inputs:
+      confirm: { description: 'Type REPAIR to boot the game server into rescue mode, update its sync-server code and boot it again', required: true, default: '' }
+      update_code: { description: 'Install tools/sync-server from main (off = only diagnose and clear leftover build folders)', type: boolean, default: true }
+permissions: { contents: read }
+concurrency: { group: server-restart, cancel-in-progress: false }
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env: { HCLOUD_TOKEN: '${{ secrets.HCLOUD_TOKEN }}' }
+    steps:
+      - name: Check
+        env: { CONFIRM: '${{ github.event.inputs.confirm }}' }
+        run: |
+          [ "$CONFIRM" = "REPAIR" ] || { echo "Type REPAIR in the confirm box to run this."; exit 1; }
+          [ -n "$HCLOUD_TOKEN" ] || { echo "The HCLOUD_TOKEN secret is missing (Settings > Secrets and variables > Actions)."; exit 1; }
+      - uses: actions/checkout@v4
+        with: { ref: main, path: src }
+      - name: Health before
+        run: node -e "fetch('https://node.xcpets.fun/xp/v1/health?cb='+Date.now()).then(r=>r.json()).then(h=>{delete h.upstream;console.log('before',JSON.stringify(h))}).catch(e=>console.log('health not answering:',e.message))"
+      - name: One-time key, rescue boot
+        run: |
+          ssh-keygen -q -t ed25519 -N '' -C repair-$GITHUB_RUN_ID -f "$RUNNER_TEMP/k"
+          node -e "
+            const fs = require('fs'), H = { Authorization: 'Bearer ' + process.env.HCLOUD_TOKEN, 'Content-Type': 'application/json' }, api = 'https://api.hetzner.cloud/v1';
+            const call = async (p, o) => { const r = await fetch(api + p, Object.assign({ headers: H }, o)); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(p.split('/').slice(0, 3).join('/') + ' answered ' + r.status + ' ' + ((j.error && j.error.code) || '')); return j; };
+            const wait = async id => { for (let i = 0; i < 60; i++) { const a = (await call('/actions/' + id)).action; if (a.status !== 'running') { if (a.status !== 'success') throw new Error('action ' + a.command + ' ' + a.status); return; } await new Promise(r => setTimeout(r, 3000)); } throw new Error('action timed out'); };
+            (async () => {
+              const all = (await call('/servers?per_page=50')).servers || [];
+              let ips = []; try { ips = await require('dns').promises.resolve4('node.xcpets.fun'); } catch (e) {}
+              let s = all.filter(x => x.public_net && x.public_net.ipv4 && ips.includes(x.public_net.ipv4.ip)); if (!s.length && all.length === 1) s = all;
+              if (s.length !== 1) throw new Error('Could not tell which server is the game server. Nothing was changed.');
+              const sv = s[0], ip = sv.public_net.ipv4.ip;
+              const key = (await call('/ssh_keys', { method: 'POST', body: JSON.stringify({ name: 'xcpets-repair-' + process.env.GITHUB_RUN_ID, public_key: fs.readFileSync(process.env.RUNNER_TEMP + '/k.pub', 'utf8').trim() }) })).ssh_key;
+              fs.appendFileSync(process.env.GITHUB_ENV, 'SV=' + sv.id + '\nKEYID=' + key.id + '\nIP=' + ip + '\n');
+              console.log('::add-mask::' + ip);
+              await wait((await call('/servers/' + sv.id + '/actions/enable_rescue', { method: 'POST', body: JSON.stringify({ type: 'linux64', ssh_keys: [key.id] }) })).action.id);
+              await wait((await call('/servers/' + sv.id + '/actions/reboot', { method: 'POST' })).action.id);
+              console.log('rescue boot started (server was ' + sv.status + ')');
+            })().catch(e => { console.error(e.message); process.exit(1); });"
+      - name: Wait for the rescue system
+        run: |
+          echo "::add-mask::$IP"
+          for i in $(seq 1 60); do
+            if ssh -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 -o LogLevel=ERROR root@"$IP" true >/dev/null 2>&1; then echo "rescue system answers after $((i*10)) s"; exit 0; fi
+            sleep 10
+          done
+          echo "The rescue system did not answer within 10 minutes."; exit 1
+      - name: Diagnose and repair
+        env: { UPDATE: '${{ github.event.inputs.update_code }}' }
+        run: |
+          echo "::add-mask::$IP"
+          S="ssh -i $RUNNER_TEMP/k -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR root@$IP"
+          tar -C src -czf "$RUNNER_TEMP/ss.tgz" tools/sync-server
+          scp -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$RUNNER_TEMP/ss.tgz" root@"$IP":/root/ss.tgz
+          $S "UPDATE=$UPDATE bash -s" <<'EOS'
+          set -u
+          scrub() { sed -E 's/[a-z2-7]{16,56}\.onion/<onion>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s#[a-z]+://[^ ]+#<url>#g; s/[0-9a-f]{0,4}(:[0-9a-f]{0,4}){3,7}/<ip6>/g'; }
+          # the server's disk: the biggest ext4/xfs partition
+          DEV=$(lsblk -lnpbo NAME,FSTYPE,SIZE | awk '$2=="ext4"||$2=="xfs"{print $3, $1}' | sort -n | tail -1 | cut -d' ' -f2)
+          [ -n "$DEV" ] || { echo "no disk partition found"; exit 1; }
+          mkdir -p /mnt/r && mount "$DEV" /mnt/r || { echo "mount failed"; exit 1; }
+          echo "disk: $(df -m /mnt/r | awk 'NR==2{print $4" MB free of "$2" MB ("$5" used)"}')"
+          UNIT=$(find /mnt/r/etc/systemd/system /mnt/r/lib/systemd/system /mnt/r/usr/lib/systemd/system -maxdepth 1 -name 'xcpets-sync.service' 2>/dev/null | head -1)
+          [ -n "$UNIT" ] || { echo "service file xcpets-sync.service not found"; exit 1; }
+          ENVF=$(grep -h '^EnvironmentFile=' "$UNIT" | head -1 | cut -d= -f2- | sed 's/^-//')
+          ALL="$(cat "$UNIT"; [ -n "$ENVF" ] && cat "/mnt/r$ENVF" 2>/dev/null)"
+          DATA=$(printf '%s\n' "$ALL" | grep -oE 'XP_DATA=[^ "]+' | head -1 | cut -d= -f2-); [ -n "$DATA" ] || DATA=/tmp/xcpets-sync
+          WD=$(printf '%s\n' "$ALL" | grep -m1 '^WorkingDirectory=' | cut -d= -f2-)
+          IDX=$(printf '%s\n' "$ALL" | grep -m1 '^ExecStart=' | grep -oE '/[^ ]*sync-server/index\.js' | head -1)
+          if [ -n "$IDX" ]; then ROOT=$(dirname "$(dirname "$(dirname "$IDX")")"); elif [ -n "$WD" ] && [ -f "/mnt/r$WD/tools/sync-server/index.js" ]; then ROOT=$WD; else ROOT=/opt/xcpets-sync; fi
+          [ -f "/mnt/r$ROOT/tools/sync-server/index.js" ] || { echo "sync-server code not found where the service runs it"; exit 1; }
+          echo "service found; data folder found: $([ -d "/mnt/r$DATA" ] && echo yes || echo no)"
+          # memory killer and builder error lines from the last day (addresses scrubbed)
+          J=/mnt/r/var/log/journal
+          if [ -d "$J" ]; then
+            echo "out-of-memory kills in the log: $(journalctl -D "$J" -k --since -2d --no-pager 2>/dev/null | grep -ci 'out of memory\|oom-kill\|killed process')"
+            echo "--- builder lines (last 25) ---"
+            journalctl -D "$J" -u xcpets-sync --since -12h --no-pager -o cat 2>/dev/null | grep -i 'snapshot' | tail -25 | scrub | cut -c1-200
+            echo "---"
+          fi
+          echo "swap/memory: $(grep -E 'MemTotal' /proc/meminfo | awk '{print int($2/1024)" MB RAM in rescue"}')"
+          N=$(ls -d "/mnt/r$DATA"/pending-* 2>/dev/null | wc -l)
+          echo "leftover build folders: $N ($(du -smc "/mnt/r$DATA"/pending-* 2>/dev/null | tail -1 | cut -f1) MB)"
+          [ "$N" -gt 0 ] && rm -rf "/mnt/r$DATA"/pending-* && echo "removed them"
+          if [ "$UPDATE" = "true" ]; then
+            T="/mnt/r$ROOT/tools"; B="sync-server.before-$(date -u +%Y%m%d%H%M)"
+            cp -a "$T/sync-server" "$T/$B" && tar -C "/mnt/r$ROOT" -xzf /root/ss.tgz && echo "installed tools/sync-server from main (old copy kept as tools/$B)"
+            OWN=$(stat -c %u:%g "$T/$B/index.js"); chown -R "$OWN" "$T/sync-server"
+            grep -q 'XP_SNAPSHOT_MAX_MIN' "$T/sync-server/index.js" && echo "check: new builder code is in place"
+          fi
+          echo "disk after: $(df -m /mnt/r | awk 'NR==2{print $4" MB free"}')"
+          sync; umount /mnt/r
+          EOS
+      - name: Boot normally and remove the one-time key
+        if: always()
+        run: |
+          [ -n "${SV:-}" ] || exit 0
+          node -e "
+            const H = { Authorization: 'Bearer ' + process.env.HCLOUD_TOKEN, 'Content-Type': 'application/json' }, api = 'https://api.hetzner.cloud/v1';
+            (async () => {
+              const r1 = await fetch(api + '/servers/' + process.env.SV + '/actions/disable_rescue', { method: 'POST', headers: H }); console.log('rescue off:', r1.status);
+              await new Promise(r => setTimeout(r, 4000));
+              const r2 = await fetch(api + '/servers/' + process.env.SV + '/actions/reboot', { method: 'POST', headers: H }); console.log('normal boot:', r2.status);
+              if (process.env.KEYID) { const r3 = await fetch(api + '/ssh_keys/' + process.env.KEYID, { method: 'DELETE', headers: H }); console.log('one-time key deleted:', r3.status); }
+            })().catch(e => { console.error(e.message); process.exit(1); });"
+      - name: Wait for the game server and a new published world
+        if: always()
+        run: |
+          sleep 45
+          node -e "
+            const t0 = Date.now(); let first = null, base = null;
+            (async function loop() {
+              try { const h = await (await fetch('https://node.xcpets.fun/xp/v1/health?cb=' + Date.now())).json(); delete h.upstream;
+                if (h.tip) { if (!first) { first = Date.now(); console.log('back after ' + Math.round((first - t0) / 1000 + 45) + ' s:', JSON.stringify(h)); }
+                  const l = await (await fetch('https://node.xcpets.fun/xp/v1/world/latest.json?cb=' + Date.now())).json();
+                  if (base == null) base = l.tip;
+                  if (l.tip > base || h.snapshotLag != null && h.snapshotLag < 6) { console.log('published world now at', l.tip, 'built', l.builtAt, JSON.stringify(h.builder || {})); return; }
+                  if ((Date.now() - t0) % 120000 < 15000) console.log('waiting, world at', l.tip, 'builder', JSON.stringify(h.builder || {})); } } catch (e) {}
+              if (Date.now() - t0 > 25 * 60000) { console.log('No new published world within 25 minutes. See the builder lines above.'); process.exit(1); }
+              setTimeout(loop, 15000); })();"
