@@ -348,7 +348,10 @@ function write(dir, world, meta) {
     community: communityCopy(world.community),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
-    wagmi: copy(world.wagmi) || {}
+    wagmi: copy(world.wagmi) || {},
+    /* Nov 22 2026: raids were missing from the slim view, so the Raid page said 'waiting for the opening block hash' on every
+     * fast load and the catch-up sweep could not rebuild them (it needs raid 1's old opening hash). A few small records. */
+    raids: copy(world.raids) || []
   };
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
   return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream), end(rankOut)])).then(() => {

@@ -162,6 +162,7 @@
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
       rabbitMythic: cold.rabbit || null, funtrumpMythic: cold.funtrump || null, djpepeMythic: cold.djpepe || null,
       wagmi: summary.wagmi || {},
+      raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;
