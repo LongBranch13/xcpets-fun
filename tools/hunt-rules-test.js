@@ -53,8 +53,9 @@ ok(!V.huntRulesOn(G-1) && V.huntRulesOn(G), 'exact gate');
   ok(h.grudge.stacks===Math.min(3,i+1),'stack cap three'); near(h.snapA.stats.vigor,1+Math.min(3,i)*0.05,'Grudge applied only to fight');
   near(h.grudge.credit,Math.floor((cost/4+1e-10)*1e8)/1e8,'next loss credit is quarter actually paid');
  }
- fs.mkdirSync('/workspace/xcpets/previews/hunt-rules-1107',{recursive:true});
- fs.writeFileSync('/workspace/xcpets/previews/hunt-rules-1107/loss-fixture.json',JSON.stringify({w:{tip:G,pets:[w.byId[13],w.byId[18846]],byId:{13:w.byId[13],18846:w.byId[18846]},items:{},wear:{}},event:w.cem.hunts.at(-1)}));
+ const huntPrev = process.env.HUNT_PREVIEW_OUT || require('os').tmpdir() + '/hunt-rules-1107';
+ fs.mkdirSync(huntPrev,{recursive:true});
+ fs.writeFileSync(huntPrev + '/loss-fixture.json',JSON.stringify({w:{tip:G,pets:[w.byId[13],w.byId[18846]],byId:{13:w.byId[13],18846:w.byId[18846]},items:{},wear:{}},event:w.cem.hunts.at(-1)}));
 }
 {
  const w=world(true), a=w.byId[13], z=w.byId[18846]; const oldStats=clone(z.stats); z.deed='TOKEN'; w.deeds.TOKEN={holder:SB,petId:z.id};
@@ -71,7 +72,7 @@ ok(!V.huntRulesOn(G-1) && V.huntRulesOn(G), 'exact gate');
  const listed={status:'open',petId:z.id,seller:SB,give:'TOKEN',expire:G+100};ok(V.saleState(w,listed,G)==='void','old listing cannot sell captured pet');
  ok(/already risen/.test(V.cemGraveWhy(w,z,SB,G+432)||''),'original owner cannot raise captured zombie');
  ok(/own zombie/.test(V.cemHuntWhy(w,13,z.id,OW,G+432)||''),'cannot hunt own capture');
- fs.writeFileSync('/workspace/xcpets/previews/hunt-rules-1107/win-fixture.json',JSON.stringify({w:{tip:G,pets:[a,z],byId:{13:a,18846:z},items:{},wear:{}},event:H}));
+ fs.writeFileSync((process.env.HUNT_PREVIEW_OUT || require('os').tmpdir() + '/hunt-rules-1107') + '/win-fixture.json',JSON.stringify({w:{tip:G,pets:[a,z],byId:{13:a,18846:z},items:{},wear:{}},event:H}));
  const dustWorld=clone(w);dustWorld.byId=Object.fromEntries(dustWorld.pets.map(p=>[p.id,p]));const dustZ=dustWorld.byId[z.id];V.testEnd(dustWorld,dustZ,'dust',G+1);ok(/dust/.test(V.cemGraveWhy(dustWorld,dustZ,OW,G+999)||''),'capture never makes failed Resurrection dust revivable');
  V.testEnd(w,z,'crumble',G+864);
  ok(z.zRest && z.zRest.owner===OW && z.zRest.until===G+1296,'later rest belongs to current captor');

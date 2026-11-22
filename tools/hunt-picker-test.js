@@ -1,14 +1,15 @@
 /* Offline UI test and honest synthetic-wallet previews; never connects a wallet. */
 'use strict';
 const fs = require('fs'), path = require('path'), assert = require('assert');
-const { chromium } = require('/usr/local/lib/pnpm/5/.pnpm/playwright-core@1.59.1/node_modules/playwright-core');
+function chromium(){for(const p of [process.env.PW,'playwright-core','playwright','/usr/local/lib/pnpm/5/.pnpm/playwright-core@1.59.1/node_modules/playwright-core']){if(!p)continue;try{return require(p).chromium}catch(e){}}throw new Error('playwright-core not found')}
+const chromiumLib = chromium();
 const L = require('./lib/load-rules');
 (async () => {
   const scene = fs.readFileSync(path.join(L.ROOT,'js/v2-cemetery-scene.js'),'utf8'); assert(!scene.includes('data-hpick'), 'no hunter dropdown'); assert(scene.includes('window.V2HuntPicker.open'), 'Hunt launches explicit picker');
   const ctx = L.load(), snap = L.snap(), w = L.run(ctx, snap, [], snap.tip), base = w.pets.find(p => p.art && p.stage >= 2 && !p.dead && !p.released && !p.zombie && !p.community);
   assert(base, 'real replay pet for sprite fixture');
-  const out = process.env.HUNT_PREVIEW_OUT || '/workspace/xcpets/previews/hunt-picker-1107'; fs.mkdirSync(out, {recursive:true});
-  const browser = await chromium.launch({executablePath:'/usr/bin/google-chrome', args:['--no-sandbox']});
+  const out = process.env.HUNT_PREVIEW_OUT || require('os').tmpdir() + '/hunt-picker-1107'; fs.mkdirSync(out, {recursive:true});
+  const browser = await chromiumLib.launch({executablePath: process.env.CHROME || '/usr/bin/google-chrome', args:['--no-sandbox']});
   try {
     for (const width of [1280,390]) {
       const page = await browser.newPage({viewport:{width,height:900}}), errors=[]; page.on('pageerror', e=>errors.push(e.message));

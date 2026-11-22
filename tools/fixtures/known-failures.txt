@@ -48,3 +48,31 @@ spam-rules-test.js | FAIL rule 3: owner mint with the right description ties at 
 spam-rules-test.js | FAIL rules gate after the tip: world identical to rules off
 spam-rules-test.js | FAIL rules off: last move in a block wins (old behaviour)
 spam-rules-test.js | spam-rules-test: 17 passed, 10 failed (snapshot tip 972901)
+# Cemetery one-burn plans (cemRunsPlan) return null once on-chain discard is live (block 975490).
+# From that block cemOfferWhy allows only discarded pets, and refList hides those same pets (hdHidden),
+# so a legal offer is never in the list the runs planner can see. The rules say null means "use the list form".
+# The test still requires a runs plan for every offerable pet. Left for the owner. Rules file not changed.
+cemetery-runs-test.js | FAIL runs plan found for every pick (every offerable pet is in the list)
+cemetery-runs-test.js | FAIL every run tag fits 34 bytes
+cemetery-runs-test.js | FAIL altar: runs never need more burns than the list form
+cemetery-runs-test.js | FAIL offering ALL offerable pets is 1 burn for every owner
+cemetery-runs-test.js | FAIL every plan covers exactly the picked pets
+cemetery-runs-test.js | FAIL seance plans: pledges first, the seance burn last
+cemetery-runs-test.js | FAIL per pet: every seance plan costs raise + pets x pledge, however it is split into burns
+cemetery-runs-test.js | FAIL per pet: each burn pays its own pets (ar = n x pledge, sr = raise + n x pledge)
+cemetery-runs-test.js | FAIL   24 random: totals are exactly per pet
+cemetery-runs-test.js | FAIL   96 scattered: totals are exactly per pet
+cemetery-runs-test.js | FAIL   100 in a row: totals are exactly per pet
+cemetery-runs-test.js | 14 FAILED  (gate in the code: 974003)
+# Live-feed grant check. The frozen snapshot checks still pass. On today's boot the replay flags more
+# burn-lord / 1-of-1 pets than #46067-#46073, and an ordinary pet reaches power 439 (stats in the 80s),
+# above the grant range of 142-160. Left for the owner. Rules file not changed.
+grant-power-boost-test.js | FAIL feed: grant pets are exactly #46067-#46073
+grant-power-boost-test.js | FAIL feed: every grant pet stays inside its range and above every ordinary pet
+grant-power-boost-test.js | FAIL feed: 1-of-1s above every Burn Lord
+grant-power-boost-test.js | FAIL grant-power-boost-test: 45 pass, 3 fail
+# Re-wear / picked-pet spins on the live feed. Left for the owner. Rules file not changed.
+# The biggest wallet's scattered plan spends every saved spin but does not name each picked pet once (seen at boot tip 975637).
+gear-target-fix-test.js | FAIL planner: scattered burns cover every picked pet once
+# After two pet:rw burns the grant still counts pieces the second burn was not allowed to move (grave-locked).
+gear-target-fix-test.js | FAIL re-wear: grant note matches the stash the second burn reported
