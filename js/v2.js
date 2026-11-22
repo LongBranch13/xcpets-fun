@@ -473,6 +473,10 @@
   var WKEY = 'xcpets-v2-seen-' + KEY + '-' + ME;
   var winsLooks = 0; /* wins found on the first look or in the first 2 minutes after page load = they landed while the player was away ("While you were away") */
   function notifyWins(w) {
+    /* Nov 22 2026 ("The Great Remembering"): a player's pets and gear arrive in pages. Looking before they are all here made every piece
+     * from a later page look new, so a new browser or a cleared cache replayed old gear as 'While you were away'. Wait for the full list,
+     * like notifyHatch does. Wallets too big to load in the background keep the old behaviour. */
+    if (!hatchListSettled(w) && !(w._pages && (w._pages.n || 0) > ((window.V2Split && V2Split.AUTO_CAP) || 5000))) return [];
     var seen = null; try { seen = JSON.parse(localStorage.getItem(WKEY)); } catch (e) { }
     var r = V.newWins(w, ME, seen); try { localStorage.setItem(WKEY, JSON.stringify(r.seen)); } catch (e) { }
     if (r.wins.length) try { if (autoEquipChoice(w, r.wins)) setTimeout(render, 0); } catch (e) { if (window.console) console.warn('auto-equip choice', e); }
