@@ -335,4 +335,7 @@
   exp.slimGear = slimGear;
   exp.openGear = openGear;
   exp.addr = addr;
-})(typeof module !== 'undefined' && module.exports ? module.exports : (typeof window !== 'undefined' ? (window.XcpArt = {}) : this));
+})(typeof module !== 'undefined' && module.exports ? module.exports : (typeof window !== 'undefined' ? (window.XcpArt = {}) : (typeof self !== 'undefined' ? (self.XcpArt = self.XcpArt || {}) : this)));
+/* Workers (verify, catch-up) load this with importScripts before any window shim. They read self.XcpArt. Before Nov 22 2026 the
+ * exports landed on the worker global instead, so XcpArt.restore never ran there: checkpoint owners stayed {__s:N} markers and every
+ * owner check before signing failed ("zombie owner only", "first pet must be yours"). */
