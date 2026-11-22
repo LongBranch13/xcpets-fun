@@ -82,6 +82,25 @@ function fakeGithub(state) {
   ok(bad.status === 404, 'no path tricks');
   const h = await get('/xp/v1/health');
   ok(h.json.rules && h.json.rules.rsig === B && h.json.worldRsig === B, 'health shows the rsig the builder follows and the world rsig');
+  /* 7. the page asks for its own rules' world when latest.json has other rules */
+  const vm = require('vm'), crypto = require('crypto');
+  const mem = () => { const o = {}; return { getItem: k => (k in o ? o[k] : null), setItem: (k, v) => { o[k] = String(v); }, removeItem: k => { delete o[k]; } }; };
+  const ctx = { window: {}, location: { search: '?sync=' + base, href: base + '/play.html', pathname: '/play.html' }, localStorage: mem(), sessionStorage: mem(),
+    navigator: { hardwareConcurrency: 8, connection: {} }, document: { currentScript: { src: 'http://x/js/v2-boot-sync.js?v=abcdef' }, scripts: [] },
+    URLSearchParams, URL, TextEncoder, TextDecoder, crypto: crypto.webcrypto, console, fetch: globalThis.fetch, setTimeout, clearTimeout, AbortController };
+  ctx.window.window = ctx.window; vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-boot-sync.js'), 'utf8'), ctx);
+  const B2 = ctx.window.V2BootSync;
+  for (const [rs, sig] of [[A, 'previous rules'], [B, 'current rules']]) {
+    fs.mkdirSync(path.join(data, 'world', rs, String(rs === A ? 100 : 106)), { recursive: true });
+    fs.writeFileSync(path.join(data, 'world', rs, String(rs === A ? 100 : 106), 'manifest.json'), JSON.stringify({ v: 1, rsig: rs, tip: rs === A ? 100 : 106, tag: sig }));
+  }
+  const mA = await B2._fetchManifest({ rsig: () => A }), mB = await B2._fetchManifest({ rsig: () => B }), mC = await B2._fetchManifest({ rsig: () => 'r' + '3'.repeat(32) });
+  ok(mA.rsig === A && /\/world\/r1{32}\/100\/manifest\.json$/.test(mA._url), 'page on the previous rules gets the previous world, not a slow rebuild');
+  ok(mB.rsig === B, 'page on the current rules gets latest.json');
+  ok(mC.rsig === B, 'page with rules nobody built still gets latest.json (and refuses it as before)');
+  const split = fs.readFileSync(path.join(ROOT, 'js/v2-split.js'), 'utf8');
+  ok(/\/xp\/v1\/world\/' \+ rsig \+ '\/latest\.json'/.test(split) && /manifest: last && last\.url/.test(split), 'fast view looks for its own rules\' world and verifies that same world');
   srv.server.close();
   fs.rmSync(data, { recursive: true, force: true });
   console.log('\n' + pass + ' passed, ' + fail + ' failed');
