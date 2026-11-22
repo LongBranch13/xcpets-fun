@@ -39,7 +39,8 @@ async function probe(browser, page, addr) {
       const s = (Date.now() - t0) / 1000;
       if (st.ready && st.mine > 0 && tWorld == null) tWorld = s;
       if (st.drawn > 0 && tDraw == null) tDraw = s;
-      if (st.ready && st.full && tFull == null) { tFull = s; await pg.waitForTimeout(3000); break; }
+      /* the first world can be an empty placeholder that already says 'full': wait for this wallet's pets (or 25 s for a wallet with none) */
+      if (st.ready && st.full && tFull == null && (st.mine > 0 || s > 25)) { tFull = s; await pg.waitForTimeout(3000); break; }
     }
   } catch (e) { errors.push('goto: ' + String(e.message || e).slice(0, 160)); }
   await pg.waitForTimeout(1000);
