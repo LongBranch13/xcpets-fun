@@ -5,7 +5,7 @@
  * Old cache names are deleted on activate. World files from tips older than the two newest
  * are dropped, and the cache is capped so a phone does not keep every past tip. */
 'use strict';
-var VERSION = 'sw66-1';
+var VERSION = 'sw67-1'; /* Nov 22 2026: drop every cached file once; an old v2-easy-flows.js kept running under an unchanged ?v= token */
 var CACHE = 'xcpets-' + VERSION;
 /* One large wallet is about 1,900 living pages. Two tips are already dropped above. */
 var MAX_ENTRIES = 4000;

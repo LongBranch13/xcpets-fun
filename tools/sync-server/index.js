@@ -10,6 +10,7 @@
  *   XP_SNAPSHOT=0  do not build a pet-world snapshot
  *   XP_SNAPSHOT_EVERY  build when the published snapshot is at least this many blocks behind (default 6)
  *   XP_SNAPSHOT_HEAP   Node heap cap in MB for the builder (default 1536)
+ *   XP_SNAPSHOT_MAX_MIN  stop a build that runs longer than this many minutes (default 30) so one hung build can't stop every later one
  *   XP_FETCH_MS    per-request upstream timeout in ms (default 15000)
  *   XP_RULES_BASE  optional http(s) prefix for rule-file bytes. Default: this repo. */
 const fs = require('fs'), path = require('path'), http = require('http'), { spawn } = require('child_process'), os = require('os');
@@ -80,8 +81,20 @@ function salesIo(bases, boot) {
 }
 function readBoot(file) { try { const j = JSON.parse(fs.readFileSync(file, 'utf8')); return j && j.tip ? j : null; } catch (e) { return null; } }
 function readLatest(dataDir) { try { return JSON.parse(fs.readFileSync(path.join(dataDir, 'world', 'latest.json'), 'utf8')); } catch (e) { return null; } }
+/* Nov 22 2026: the published world stopped at 977,059 for hours while the follower stayed current. A build that hangs kept
+ * startSnapshot.running true forever, and a build that failed left its pending-<tip> folder behind on every retry (10 min apart),
+ * which can fill the disk so every later build fails too. Now: a build is stopped after XP_SNAPSHOT_MAX_MIN, leftover pending
+ * folders are removed before each build and after a failed one, the exit handler can't throw, and /xp/v1/health shows the
+ * builder's state (numbers only). */
+function snapState() { const S = startSnapshot; return { running: !!S.running, runningSec: S.running && S.startedAt ? Math.round((Date.now() - S.startedAt) / 1000) : 0,
+  fails: S.fails || 0, lastExit: S.lastExit || null, lastOkAt: S.okAt || null, lastFailAt: S.failAt ? new Date(S.failAt).toISOString() : null, killed: S.killed || 0, freeMB: freeMB(S.dir) }; }
+function freeMB(dir) { try { const st = fs.statfsSync(dir || os.tmpdir()); return Math.floor(st.bavail * st.bsize / 1048576); } catch (e) { return null; } }
+function clearPending(dataDir) { const root = path.join(dataDir, 'world'); try { fs.readdirSync(root).filter(n => /^pending-\d+$/.test(n)).forEach(n => fs.rmSync(path.join(root, n), { recursive: true, force: true })); } catch (e) { } }
+function snapDone(code, out, why) { const S = startSnapshot; S.running = false; clearTimeout(S.timer); S.timer = null;
+  if (code === 0) return; S.failAt = Date.now(); S.fails = (S.fails || 0) + 1; S.lastExit = why || ('exit ' + code); try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) { } }
 function startSnapshot(state, dataDir) {
-  if (startSnapshot.running) return; startSnapshot.running = true;
+  if (startSnapshot.running) return; startSnapshot.running = true; startSnapshot.startedAt = Date.now(); startSnapshot.dir = dataDir;
+  clearPending(dataDir);
   const st = path.join(dataDir, 'state.json');
   fs.mkdirSync(dataDir, { recursive: true });
   const view = pageInputs(state);
@@ -94,21 +107,26 @@ function startSnapshot(state, dataDir) {
   const cmd = process.platform === 'win32' ? null : 'nice';
   const child = cmd ? spawn(cmd, ['-n', '10', process.execPath, ...nodeArgs], { stdio: ['ignore', 'pipe', 'pipe'] }) : spawn(process.execPath, nodeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
   let buf = ''; child.stdout.on('data', d => { buf += d; });
+  const maxMs = Math.max(5, +(process.env.XP_SNAPSHOT_MAX_MIN || 30)) * 60000;
+  startSnapshot.timer = setTimeout(() => { startSnapshot.killed = (startSnapshot.killed || 0) + 1; console.error('snapshot: over ' + (maxMs / 60000) + ' min, stopping it'); try { child.kill('SIGKILL'); } catch (e) { } }, maxMs);
   child.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
-  child.on('exit', code => { startSnapshot.running = false; if (code !== 0) { startSnapshot.failAt = Date.now(); console.error('snapshot exit ' + code); return; } startSnapshot.failAt = 0;
-    let info; try { info = JSON.parse(buf.trim().split('\n').pop()); } catch (e) { startSnapshot.failAt = Date.now(); return; }
-    const dest = path.join(dataDir, 'world', info.rsig, String(info.tip));
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.rmSync(dest, { recursive: true, force: true }); fs.renameSync(out, dest);
-    const latest = { v: 1, rsig: info.rsig, tip: info.tip, manifest: '/xp/v1/world/' + info.rsig + '/' + info.tip + '/manifest.json', builtAt: new Date().toISOString() };
-    fs.writeFileSync(path.join(dataDir, 'world', 'latest.json'), JSON.stringify(latest));
-    state.world = { ready: true, rsig: info.rsig, tip: info.tip, manifest: latest.manifest }; });
-  child.on('error', () => { startSnapshot.running = false; startSnapshot.failAt = Date.now(); if (!cmd) return;
+  child.on('exit', (code, signal) => { if (code !== 0) { snapDone(code, out, signal ? 'signal ' + signal : 'exit ' + code); console.error('snapshot exit ' + (signal || code)); return; }
+    try {
+      const info = JSON.parse(buf.trim().split('\n').pop());
+      const dest = path.join(dataDir, 'world', info.rsig, String(info.tip));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.rmSync(dest, { recursive: true, force: true }); fs.renameSync(out, dest);
+      const latest = { v: 1, rsig: info.rsig, tip: info.tip, manifest: '/xp/v1/world/' + info.rsig + '/' + info.tip + '/manifest.json', builtAt: new Date().toISOString() };
+      fs.writeFileSync(path.join(dataDir, 'world', 'latest.json'), JSON.stringify(latest));
+      state.world = { ready: true, rsig: info.rsig, tip: info.tip, manifest: latest.manifest };
+      snapDone(0, out); startSnapshot.failAt = 0; startSnapshot.fails = 0; startSnapshot.lastExit = null; startSnapshot.okAt = latest.builtAt;
+    } catch (e) { snapDone(1, out, 'publish failed: ' + String(e && e.code || 'error')); console.error('snapshot publish failed: ' + String(e && e.message || e).slice(0, 160)); } });
+  child.on('error', () => { snapDone(1, out, 'spawn failed'); if (!cmd) return;
     startSnapshot.running = true; startSnapshot.failAt = 0;
     const c2 = spawn(process.execPath, nodeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     c2.stdout.on('data', d => { buf += d; });
     c2.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
-    c2.on('exit', code => { startSnapshot.running = false; if (code !== 0) startSnapshot.failAt = Date.now(); }); });
+    c2.on('exit', (code, signal) => { snapDone(code, out, signal ? 'signal ' + signal : 'exit ' + code); }); });
 }
 function main() {
   const bases = upstreams(); const dataDir = process.env.XP_DATA || path.join(os.tmpdir(), 'xcpets-sync');
@@ -117,6 +135,7 @@ function main() {
   if (boot && boot.rows && boot.tip) { state.rows = boot.rows; state.tip = boot.tip; state.dex = boot.dex || null; state.dexTip = boot.dexTip || 0; state.dexHash = boot.dexHash || ''; state.dexAssets = boot.dexAssets || []; }
   const io0 = salesIo(bases, boot); state.gates = io0.gates;
   const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed });
+  state.snap = snapState;
   const httpd = createServer({ getState: () => state, dataDir: dataDir });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');

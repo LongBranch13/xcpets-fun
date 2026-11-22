@@ -26,3 +26,7 @@ html.hw .tomb.zg2::after{display:block}
 @keyframes zgFog{from{background-position:0 0}to{background-position:120px 0}}
 @keyframes zgFlick{0%{transform:scaleY(1)}33%{transform:scaleY(.82) translateX(1px)}66%{transform:scaleY(1.08) translateX(-1px)}}
 @media (prefers-reduced-motion:reduce){.tomb.zg > canvas.zgbg,.tomb.zg2::after,.zgflame{animation:none!important}}
+
+/* Nov 22 2026 (Jake: "overlap"): the slate's ground, fog and glow reach a few px past the card, so the heading under the zombie grid sat on top of it */
+.cv2-zombies .tombs{margin-bottom:26px;row-gap:22px}
+.cv2-zombies .tombs + h3{margin-top:8px;clear:both}
