@@ -72,8 +72,8 @@ function compare(fast, full, partial) {
   const diffs = []; const add = (kind, key, f, g) => diffs.push({ kind, key, fast: f, full: g });
   const fp = fast.pets, gp = full.pets;
   /* Expected, not bugs: My Pets leaves graves out (the cemetery loads them on its own), and zombies hide the living-pet hunger meter (js/v2-zombies.js). */
-  const deadOn = g => { const o = full.items[g] && full.items[g].on; return o != null && gp[o] && gp[o].dead; }, ZH = { hungry: 1, nextMeal: 1, fedToday: 1 };
-  Object.keys(gp).forEach(id => { if (!fp[id] && !partial && !gp[id].dead) add('pet missing on fast page', id, null, 'alive'); });
+  const deadOn = g => { const o = full.items[g] && full.items[g].on; return o != null && gp[o] && (gp[o].dead || gp[o].released); }, ZH = { hungry: 1, nextMeal: 1, fedToday: 1 };
+  Object.keys(gp).forEach(id => { if (!fp[id] && !partial && !gp[id].dead && !gp[id].released) add('pet missing on fast page', id, null, 'alive'); });
   Object.keys(fp).forEach(id => { if (!gp[id]) add('pet on fast page but not owned in full game', id, fp[id].owner, null); });
   Object.keys(fp).forEach(id => { const a = fp[id], b = gp[id]; if (!b) return; Object.keys(Object.assign({}, a, b)).forEach(k => { if (b.zombie && ZH[k]) return; if (J(a[k]) !== J(b[k])) add('pet field: ' + k, id, a[k], b[k]); }); });
   Object.keys(full.items).forEach(g => { if (!fast.items[g] && !partial && !deadOn(g)) add('gear missing on fast page', g, null, full.items[g].item + (full.items[g].on != null ? ' on #' + full.items[g].on : ' in stash')); });
