@@ -17,7 +17,7 @@ const BRANCH = A.includes('--branch'), ROOT = require('path').resolve(__dirname,
 const WALLETS = (opt('--wallets', '') || [
   'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', /* Evan */
   'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4', /* owner */
-  'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', /* test wallet, tens of thousands of pets */
+  'bc1pd8pantl2vmvdf5uvtvvn0r3xnnuxvp0wln8xmlxqmykxfnte3mwqmes2ut', /* about 10,000 living pets */
   '1JwWsArppwALMEdXWPmpDBcP1jwWsAPYkD' ].join(',')).split(',').map(s => s.trim()).filter(s => s.length > 20);
 const PAGES = opt('--pages', 'play.html,breed.html,cemetery.html').split(',');
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
