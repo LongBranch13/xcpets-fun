@@ -1,7 +1,7 @@
 /* XCPETS Pet Cemetery loop: small 8-bit badges (Oct 29 2026), drawn from pixel maps as crisp SVG so they stay sharp at any size.
  * Same palette as the cemetery scene and altar: outline #16141f, stone greys, zombie green #7dff6a, candle gold #ffc93c.
  * halo (resurrected), feral (red eyes), hunted (grave with a stake), dust (crumbled grave), hunter (Zombie Hunter badge),
- * candle (open altar), shovel (raise), easy / medium / hard (raise difficulty skulls). UI only; never read by replay. */
+ * candle (open altar), shovel (raise), easy / medium / hard (raise difficulty skulls), grave / mgrave (plain and violet Mythic grave), zombie (fed zombie). UI only; never read by replay. */
 (function () {
   'use strict';
   var PAL = { k: '#16141f', s: '#9a9ea8', S: '#c8ccd4', d: '#525560', g: '#7dff6a', G: '#3c8a34', y: '#ffc93c', Y: '#fff3b0', r: '#ff4d4d', R: '#8a1c1c', b: '#6a4a2a', B: '#3e2a18', w: '#e9e3d0', W: '#ffffff', p: '#b07cff', o: '#ff9a3c', m: '#7c808c', e: '#2a1d14' };
@@ -15,7 +15,10 @@
     shovel: ['.........kk.', '........kbk.', '.......kbk..', '......kbk...', '.....kbk....', '..kkkbk.....', '.kSSkk......', 'kSSSSk......', 'kSSSSk......', 'kSsSk.......', '.kkk........', '............'],
     easy: ['............', '...kkkkkk...', '..kgggggGk..', '.kgggggggGk.', '.kgkkggkkGk.', '.kgkkggkkGk.', '.kgggkkggGk.', '..kggggggk..', '...kgkgkk...', '...kkkkk....', '............', '............'],
     medium: ['............', '...kkkkkk...', '..kyyyyyok..', '.kyyyyyyyok.', '.kykkyykkok.', '.kykkyykkok.', '.kyyykkyyok.', '..kyyyyyyk..', '...kykykk...', '...kkkkk....', '............', '............'],
-    hard: ['..k......k..', '..kk.kk.kk..', '..krkkkkrk..', '.krrrrrrrRk.', '.krkkrrkkRk.', '.krkkrrkkRk.', '.krrrkkrrRk.', '..krrrrrrk..', '...krkrkk...', '...kkkkk....', '............', '............']
+    hard: ['..k......k..', '..kk.kk.kk..', '..krkkkkrk..', '.krrrrrrrRk.', '.krkkrrkkRk.', '.krkkrrkkRk.', '.krrrkkrrRk.', '..krrrrrrk..', '...krkrkk...', '...kkkkk....', '............', '............'],
+    grave: ['...kkkkkk...', '..kSSSSSsk..', '.kSSSdSSSsk.', '.kSSddddSsk.', '.kSSSdSSSsk.', '.kSSSdSSSsk.', '.kSSSSSSSsk.', '.kSsSSSSssk.', '.kSSSSSSSsk.', 'kGkkkkkkkkGk', 'GgGBBbBBBgGg', 'kkkkkkkkkkkk'],
+    mgrave: ['Y..kkkkkk..Y', '..kppppppk..', '.kppWppppYk.', '.kpWWWWppYk.', '.kppWppppYk.', '.kppWppppYk.', '.kppppppppk.', '.kpYpppppYk.', '.kppppppppk.', 'kGkkkkkkkkGk', 'GgGBBbBBBgGg', 'kkkkkkkkkkkk'],
+    zombie: ['............', '..kk....kk..', '.kGGk..kGGk.', '.kggkkkkggk.', 'kgggggggggk.', 'kgkWgggkWgk.', 'kgkkgggkkgk.', 'kggggkggggk.', '.kgkwkwkgk..', '.kggGgggk...', '..kkGkkk....', '....G.......']
   };
   var CACHE = {};
   function svg(name) { if (CACHE[name]) return CACHE[name]; var m = MAP[name]; if (!m) return ''; var h = m.length, w = m[0].length, r = [];
