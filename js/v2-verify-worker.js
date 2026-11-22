@@ -3,7 +3,7 @@
  * and a sendBlock answer, not the world. js/v2-rules.js is loaded as text and
  * patched the same way the catch-up worker patches it. The file on disk is not changed. */
 'use strict';
-importScripts('v2-resume.js', 'v2-art.js?v=a7c4e91b36');
+importScripts('v2-resume.js', 'v2-art.js?v=af3b16f45f');
 var world = null, ownerTable = null;
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
