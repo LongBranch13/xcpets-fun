@@ -1,5 +1,5 @@
 {
- "lastBlock": 977066,
+ "lastBlock": 977067,
  "count": 435,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5161,7 +5161,7 @@
    "species": "hyb3:homer:djpepe:dodo",
    "speciesLabel": "Hodjdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 48896,
