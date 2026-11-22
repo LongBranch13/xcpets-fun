@@ -12,7 +12,9 @@ on:
     types: [completed]
   workflow_dispatch: {}
 permissions: { contents: read, issues: write }
-concurrency: { group: worldwatch, cancel-in-progress: false }
+# After-deploy runs wait up to 25 minutes; they get their own group (a newer deploy replaces the wait) so they never hold up the
+# 15-minute checks or a run by hand.
+concurrency: { group: "worldwatch-${{ github.event_name == 'workflow_run' && 'deploy' || 'check' }}", cancel-in-progress: "${{ github.event_name == 'workflow_run' }}" }
 jobs:
   watch:
     runs-on: ubuntu-latest
