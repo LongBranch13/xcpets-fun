@@ -143,7 +143,8 @@
   function setView(v) { if (!/^[abc]$/.test(v) || v === LAY) return; LAY = v; try { localStorage.setItem(VKEY, v); } catch (e) { } S.bp = 0; S.dr = null; var b = document.querySelector('#shopScene .rr-rackw'); if (b && v !== 'b') b.remove(); var U = window.V2UI; if (U) render(U.world()); }
   function viewBar() { return '<div class="rr-views" role="group" aria-label="Gear view">' + [['a', '📒 Binder'], ['b', '🃏 Rack'], ['c', '🗄️ Drawers']].map(function (q) { return '<button type="button" class="q' + (LAY === q[0] ? ' on' : '') + '" data-rrv="' + q[0] + '" aria-pressed="' + (LAY === q[0]) + '">' + q[1] + '</button>'; }).join('') + '</div>'; }
   function slotOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; return sl === 'weapon' ? 'hand' : sl; }
-  var SLOT_SHORT = { head: 'HEAD', hand: 'GRIP', body: 'DRIP', back: 'OUTFIT', face: 'GUISE', feet: 'FEET' };
+  /* rare-room-simple (owner Nov 22 2026 'rare room is very confusing'): plain slot words on the walls. The old plates had body/back swapped vs the stash names. */
+  var SLOT_SHORT = { head: 'HAT', hand: 'HAND', body: 'BODY', back: 'BACK', face: 'FACE', feet: 'FEET' };
   function featured(n) { var w = window.V2UI && V2UI.world(), pid = S.pet != null ? S.pet : S.rollPet, L = S.all || [], a = L.filter(function (g) { return pid != null && g.on === pid; }), b = L.filter(function (g) { return a.indexOf(g) < 0; }).sort(function (p, q) { return tierOfG(q) - tierOfG(p); }); return a.concat(b).slice(0, n); }
   function bySlot() { var by = {}; (S.all || []).forEach(function (g) { var sl = slotOfG(g); (by[sl] = by[sl] || []).push(g); }); SLOT_ORDER.forEach(function (sl) { (by[sl] = by[sl] || []).sort(function (a, b) { return tierOfG(b) - tierOfG(a) || (a.on == null ? 1 : -1); }); }); return by; }
   var RR = { wall: '#2a0f4a', wall2: '#3b1766', velvet: '#9b1035', velvetHi: '#d0284f', velvetLo: '#5a0820', gold: '#e8b84a', goldHi: '#fff1a8', goldLo: '#8a5a12', teal: '#1fb5a5', emerald: '#0f6b55', floorA: '#efe8f6', floorB: '#1c0f33', vein: '#c9b8e0', sky: '#8fe3ff', jewel: ['#d0284f', '#1fb5a5', '#e8b84a', '#7b3fe4', '#2f6fe0'] };
@@ -175,10 +176,18 @@
     /* try-on mirror on a dais, showing the pet you are dressing */
     px(x, '#000', 138, 98, 44, 7); px(x, RR.floorA, 139, 99, 42, 5); px(x, RR.gold, 139, 98, 42, 1);
     gild(x, 147, 59, 26, 38); px(x, RR.sky, 147, 59, 26, 38); px(x, '#d8f6ff', 149, 61, 2, 26); if (S.mirror) V2Render.drawSprite(x,S.mirror,144,64,32,false,{x:144,y:48,w:64,h:64});
-    /* SOON objects (design only, nothing to buy): Can-o-Rare + Gear-o-Matic vending machines and the sale rack */
-    [[8, RR.velvet, 'CAN-O-RARE'], [38, RR.emerald, 'GEAR-O-MATIC']].forEach(function (m) { var a = m[0], b = 102; px(x, '#000', a - 1, b - 1, 24, 34); px(x, m[1], a, b, 22, 32); px(x, RR.gold, a, b, 22, 2); px(x, '#bfe9ff', a + 3, b + 5, 11, 16); px(x, '#4fd18b', a + 5, b + 7, 7, 3); px(x, '#4f9dff', a + 5, b + 12, 7, 3); px(x, '#ffc93c', a + 5, b + 17, 7, 3); px(x, RR.goldHi, a + 16, b + 7, 3, 10); px(x, '#111', a + 3, b + 25, 16, 4); });
-    plate(x, 'SOON', 19, 100, 4); plate(x, 'SOON', 49, 100, 4);
-    px(x, RR.gold, 196, 106, 30, 2); px(x, RR.gold, 197, 106, 2, 24); px(x, RR.gold, 223, 106, 2, 24); px(x, RR.velvet, 201, 118, 20, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText('SALE', 211, 124); x.textAlign = 'left'; plate(x, 'SOON', 211, 138, 4);
+    /* rare-room-simple (owner Nov 22 2026 'vending machines ... haven't found a reason for them'): the two machines now do real, free things.
+     * BEST-O-MATIC (red) = Equip Best on the pet in the mirror (the same free local op as the Equip Best button). SPIN-O-MATIC (green) = your saved spins:
+     * its window shows the count and a tap opens Pick pets for your spins with the mirror pet ticked (the same pet:ut burns, the game's confirm, no rule change).
+     * The SOON sale rack is gone (nothing to buy there). */
+    plate(x, 'TAP TO DRESS UP', 160, 114, 4);
+    var sv = savedN(), hot = !reduced() && Math.floor(t / 450) % 2;
+    [[VM.best, RR.velvet, 'BEST', true], [VM.spin, RR.emerald, 'SPINS', sv > 0]].forEach(function (m) { var a = m[0].x, b = m[0].y, on = m[3], hv = S.vmHov === m[0];
+      px(x, '#000', a - 1, b - 1, 24, 34); px(x, m[1], a, b, 22, 32); px(x, hv ? RR.goldHi : RR.gold, a, b, 22, 2); px(x, '#bfe9ff', a + 3, b + 5, 11, 16);
+      if (m[0] === VM.spin) { x.font = '8px "Press Start 2P", monospace'; x.textAlign = 'center'; x.fillStyle = sv ? '#0f6b55' : '#7f8aa0'; x.fillText(sv > 99 ? '99' : String(sv), a + 9, b + 17); x.textAlign = 'left'; }
+      else { px(x, '#4fd18b', a + 5, b + 7, 7, 3); px(x, '#4f9dff', a + 5, b + 12, 7, 3); px(x, '#ffc93c', a + 5, b + 17, 7, 3); }
+      px(x, on && hot ? RR.goldHi : RR.gold, a + 16, b + 7, 3, 10); px(x, '#111', a + 3, b + 25, 16, 4); if (on && hot) px(x, RR.goldHi, a + 5, b + 26, 12, 2);
+      plate(x, m[2], a + 11, b - 2, 4); });
     [[60, 8], [250, 10], [128, 40], [192, 38]].forEach(function (q, n) { if (!reduced() && Math.floor(t / 700 + n) % 3 === 0) return; px(x, RR.goldHi, q[0], q[1] - 1, 1, 3); px(x, RR.goldHi, q[0] - 1, q[1], 3, 1); }); }
   /* three window concepts (no radial wedges, no hub: they must read as windows, not as a second wheel). Area x 118-202, y 4-42. */
   function lead(x, a, b, w, h) { px(x, '#000', a, b, w, h); }
@@ -215,14 +224,13 @@
         if (it.on != null) { px(x, '#000', ix + 11, iy + 12 - lift, 6, 6); px(x, '#3ddc84', ix + 12, iy + 13 - lift, 4, 4); } /* worn = green dot (the old EQP tag) */
         if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
         S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it }); } }); }
-    if (!(LAY ? (S.all || []) : S.items).length) plate(x, 'EMPTY WALLS: SPIN THE PEPE WHEEL', 160, 76, 5);
+    if (LAY !== 'a' && !(LAY ? (S.all || []) : S.items).length) plate(x, 'EMPTY WALLS: SPIN THE PEPE WHEEL', 160, 76, 5);
     if (S.more > 0 && !LAY) plate(x, '+' + S.more + ' MORE', 290, 46, 5);
     var st = tickWheel(t); /* short spin on send/land only; a mempool wait holds the wheel still and the plate says WAITING. V2WheelAnim still reveals the piece once it confirms. */
     var wl = st.phase === 'idle' && wheelOnNow(); if (wl) wheelGlow(x, WH.x, WH.y, WH.r, t); tapState(S.c && S.c.parentNode && S.c.parentNode.querySelector('.wh-tap'), st.phase); wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, st.caption, WH.x + 8, 148, 4);
     if (S.c && S.c._ph !== st.phase) { S.c._ph = st.phase; S.c.setAttribute('aria-label', st.phase === 'wait' ? 'The Rare Room. The Pepe Wheel is waiting for the next block. Your roll is in flight.' : st.phase === 'spin' ? 'The Rare Room. The Pepe Wheel is doing a short spin.' : 'The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)'); }
     drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
     bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
-    plate(x, 'YOUR GEAR: ' + S.total + ' PIECES \u00b7 ' + S.free + ' UNWORN', 104, 149, 5);
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function hang(x, t, it, ix, iy, slot) { var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
     if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); }
@@ -230,9 +238,10 @@
     if (sel) { x.strokeStyle = RR.goldHi; x.lineWidth = 1; x.strokeRect(ix - 3.5, iy - lift - 3.5, 23, 25); }
     S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: it, slot: slot }); }
   function wallsLayout(x, t) { var i;
-    if (LAY === 'a') { var by = bySlot(); SLOT_ORDER.forEach(function (sl, n) { var G = by[sl], ix = (n < 3 ? 12 : 224) + (n % 3) * 32, iy = 22; /* 32 px pitch: the OUTFIT/GUISE labels keep a 4 px gap */ plate(x, SLOT_SHORT[sl], ix + 8, 13, 4);
-        if (G.length) { hang(x, t, G[0], ix, iy, sl); plate(x, '\u00d7' + G.length, ix + 8, 52, 5); } else { px(x, '#000', ix - 1, iy - 1, 18, 20); px(x, '#1c0f33', ix, iy, 16, 18); plate(x, '\u00d70', ix + 8, 52, 5); } });
-      plate(x, 'BEST OF EACH SLOT', 53, 64, 4); plate(x, 'FULL SET: BINDER \u25bc', 267, 64, 4); return; }
+    if (LAY === 'a') { var wp = S.mpId, by = {}; (S.all || []).forEach(function (g) { if (wp != null && g.on === wp) by[slotOfG(g)] = g; }); /* rare-room-simple: the six frames are what the pet in the mirror wears; tap one to change it */
+      SLOT_ORDER.forEach(function (sl, n) { var g = by[sl], ix = (n < 3 ? 12 : 224) + (n % 3) * 32, iy = 22; plate(x, SLOT_SHORT[sl], ix + 8, 13, 4);
+        if (g) { if (!S.icons[g.item]) try { S.icons[g.item] = V2Render.iconCanvas(g.item); } catch (e) { } hang(x, t, g, ix, iy, sl); } else { px(x, '#000', ix - 1, iy - 1, 18, 20); px(x, '#1c0f33', ix, iy, 16, 18); px(x, RR.goldLo, ix + 7, iy + 5, 2, 8); px(x, RR.goldLo, ix + 4, iy + 8, 8, 2); S.hits.push({ x: ix - 1, y: iy - 4, w: 18, h: 26, it: null, slot: sl }); } });
+      if (wp != null) { plate(x, '#' + wp + ' IS WEARING', 53, 56, 4); plate(x, 'TAP A FRAME TO CHANGE', 267, 56, 4); } else { plate(x, 'YOUR PET WEARS', 53, 56, 4); plate(x, 'SIX SLOTS', 267, 56, 4); } return; }
     var F = featured(LAY === 'b' ? 8 : 4), pos = LAY === 'b' ? [[12, 18], [34, 18], [56, 18], [78, 18], [226, 18], [248, 18], [270, 18], [292, 18]] : [[26, 26], [62, 26], [240, 26], [276, 26]];
     F.forEach(function (g, n) { hang(x, t, g, pos[n][0], pos[n][1]); });
     plate(x, LAY === 'b' ? 'FEATURED' : 'ON SHOW', 53, 58, 5); plate(x, LAY === 'b' ? 'ALL GEAR: RACK \u25bc' : 'ALL GEAR: DRAWERS \u25bc', 267, 58, 4); }
@@ -287,13 +296,14 @@
     var ME = U.ME, items = (w.itemList || []).filter(function (g) { return g.owner === ME; }).sort(function (a, b) { return (b.tier || 0) - (a.tier || 0) || (String(a.gid) < String(b.gid) ? -1 : 1); });
     S.total = items.length; S.free = items.filter(function (g) { return g.on == null; }).length; var SL = (window.V2LairQoL ? V2LairQoL.apply(items) : items.filter(function (g) { return g.on == null; }).concat(items.filter(function (g) { return g.on != null; }))); S.all = SL; S.items = LAY ? [] : SL.slice(0, 20); S.more = Math.max(0, SL.length - 20); /* tonight bundle: Lair chip strip narrows/sorts the shelves */
     (LAY ? (LAY === 'a' ? SLOT_ORDER.map(function (sl) { return bySlot()[sl][0]; }).filter(Boolean) : featured(8)) : S.items).forEach(function (g) { if (!S.icons[g.item]) try { S.icons[g.item] = R.iconCanvas(g.item); } catch (e) { } });
-    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)"></canvas><div class="shop-hint small">👇 Your gear hangs on these walls · tap a card to try it on</div><button type="button" class="wh-tap" aria-label="Tap to spin"></button>'; c = box.querySelector('canvas'); var wt = box.querySelector('.wh-tap'); wt.onclick = function (e) { e.preventDefault(); wheelClick(); }; window.addEventListener('resize', function () { placeTap(S.c); });
+    var c = box.querySelector('canvas'); if (!c) { box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)"></canvas><div class="shop-hint small">👆 Wheel = new gear · mirror = dress up · Best-o-Matic = best outfit · Spin-o-Matic = your free spins</div><button type="button" class="wh-tap" aria-label="Tap to spin"></button>'; c = box.querySelector('canvas'); var wt = box.querySelector('.wh-tap'); wt.onclick = function (e) { e.preventDefault(); wheelClick(); }; window.addEventListener('resize', function () { placeTap(S.c); });
       if (window.IntersectionObserver) { new IntersectionObserver(function (es) { var off = !es[0].isIntersecting; if (off === S.off) return; S.off = off; if (!off && !S.raf) draw(performance.now()); else if (off) { cancelAnimationFrame(S.raf); S.raf = 0; } }, { threshold: 0 }).observe(c); } /* lair speed (owner Oct 20 2026): no redraw loop while the scene is off screen */
-      c.addEventListener('mousemove', function (e) { var dh = onDoor(c, e); if (dh !== !!S.doorHov) { S.doorHov = dh; if (reduced()) draw(performance.now()); } c.style.cursor = dh || onWheel(c, e) || hitAt(c, e) ? 'pointer' : 'default'; var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
+      c.addEventListener('mousemove', function (e) { var vh = onVM(c, e); if (vh !== (S.vmHov || null)) { S.vmHov = vh; if (reduced()) draw(performance.now()); } var dh = onDoor(c, e); if (dh !== !!S.doorHov) { S.doorHov = dh; if (reduced()) draw(performance.now()); } c.style.cursor = dh || vh || onMirror(c, e) || onWheel(c, e) || hitAt(c, e) ? 'pointer' : 'default'; var h = hitAt(c, e); var g = h ? h.it : null; if ((g && g.gid) !== (S.hov && S.hov.gid)) { S.hov = g; if (g) say(g); if (reduced()) draw(performance.now()); } });
       c.addEventListener('dblclick', function () { var wb = document.getElementById('scWear'); if (wb && !wb.disabled) wb.click(); }); /* quick wins: double-tap a shelf piece to wear it (same free equip op) */
-      c.addEventListener('mouseleave', function () { S.hov = null; S.doorHov = false; if (reduced()) draw(performance.now()); });
+      c.addEventListener('mouseleave', function () { S.hov = null; S.doorHov = false; S.vmHov = null; if (reduced()) draw(performance.now()); });
       c.addEventListener('click', function (e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height;
-        if (onDoor(c, e)) { enterDress(); return; } if (onWheel(c, e)) { wheelClick(); return; } var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
+        if (onDoor(c, e) || onMirror(c, e)) { enterDress(S.mpId); return; } var vm = onVM(c, e); if (vm) { vmTap(vm); return; } if (onWheel(c, e)) { wheelClick(); return; } var h = S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; if (!h) return;
+        if (LAY === 'a' && h.slot) { S.dslot = h.slot; enterDress(S.mpId); return; }
         if (h.slot) { S.bs = h.slot; S.bp = 0; S.dslot = h.slot; } (function (g) { var U = window.V2UI, w = U.world(), P = w.byId[S.pet]; if (!P || !fitsP(P, g)) { var f = g.on != null ? w.byId[g.on] : drPets(w).filter(function (p) { return fitsP(p, g); })[0]; if (f) S.pet = f.id; } })(h.it); S.sel = h.it; say(h.it); mirrorPet(window.V2UI.world()); counter(); draw(performance.now()); if (window.V2LairQoL) V2LairQoL.viewed(h.it); }); }
     var ovb = box.querySelector('.rr-vw'); if (ovb) ovb.remove(); var ork = box.querySelector('.rr-rackw'); if (ork) ork.remove(); /* equip pass: view toggle + rack live in the 'More ways to browse' fold */ var mo = box.querySelector('.shop-more'); if (S.more > 0 && !LAY) { if (!mo) { box.insertAdjacentHTML('beforeend', '<a href="#" class="shop-more small"></a>'); mo = box.querySelector('.shop-more'); mo.onclick = function (e) { e.preventDefault(); var d = document.querySelector('details.shop-all'); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }; } mo.textContent = '+' + S.more + ' more in your stash: see them all ▸'; } else if (mo) mo.remove();
     mirrorPet(w); ambPets(w); counter(); clearance(w); if (window.V2LairQoL) V2LairQoL.mount(w);
@@ -336,7 +346,7 @@
     if (pend && U.ME && !rrOwned(w, pend, U.ME) && S.rrMiss !== pend) { S.mirror = null; S.mirrorKey = null; return; }
     if (!P) P = pets[0];
     if (!S.pepe) { var pp = (w.pets || []).filter(function (q) { return q.species === 'pepe' && q.stage >= 3; })[0]; if (pp) try { S.pepe = toCv(R.framesWith(Object.assign({}, pp.art, { background: 'solid', bgColor: '#bfe9d6', pattern: 'none' }), pp.stage, [], [])); } catch (e) { } }
-    if (!P) { S.mirror = null; return; } var worn = V.wornOf(w, P.id), ids = worn.map(function (x) { return x.item; }), g = S.sel;
+    S.mpId = P ? P.id : null; if (!P) { S.mirror = null; return; } var worn = V.wornOf(w, P.id), ids = worn.map(function (x) { return x.item; }), g = S.sel;
     if (g && g.item) { var it = (V.GEAR_BY_ID || {})[g.item] || g, sl = it.slot || g.slot; if ((P.openSlots || []).indexOf(sl) >= 0 || (V.slotOpen && V.slotOpen(P, sl))) ids = worn.filter(function (x) { return x.slot !== sl; }).map(function (x) { return x.item; }).concat([g.item]); }
     var key = P.id + ':' + ids.join(','); if (S.mirrorKey === key) return; S.mirrorKey = key;
     try { S.mirror = toCv(R.framesWith(Object.assign({}, P.art, { background: 'solid', bgColor: RR.sky, pattern: 'none' }), P.stage, ids, P.blackEye ? ['v2-black-eye'] : [])); } catch (e) { S.mirror = null; } }
@@ -383,6 +393,16 @@
     if (lw > 12) { x.font = '4px "Press Start 2P", monospace'; var tw = Math.ceil(x.measureText('DRESS').width); px(x, '#000', a + 1, ly + 6, tw + 3, 7); px(x, RR.velvet, a + 2, ly + 7, tw + 1, 5); x.fillStyle = RR.goldHi; x.fillText('DRESS', a + 2, ly + 11); }
     px(x, '#000', a - 3, 95, w + 6, 1); }
   function onDoor(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return mx >= DR.x - 3 && mx <= DR.x + DR.w + 3 && my >= DR.y - 3 && my <= DR.y + DR.h + 1; }
+  var VM = { best: { x: 8, y: 102 }, spin: { x: 38, y: 102 } };
+  function savedN() { try { var V = window.V2Rules, U = window.V2UI, M = window.V2Mock; if (!V || !V.spinsLeft || !U || !M || !M.ME) return 0; var tip = (M.state().tip || 0) + 1; if (V.spinsOn && !V.spinsOn(tip)) return 0; return V.spinsLeft(U.world(), M.ME, tip, U.myPendingTags ? U.myPendingTags() : []) || 0; } catch (e) { return 0; } }
+  function onVM(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return [VM.best, VM.spin].filter(function (m) { return mx >= m.x - 2 && mx <= m.x + 23 && my >= m.y - 8 && my <= m.y + 33; })[0] || null; }
+  function vmToast(s) { var t = document.getElementById('toasts'); if (!t) return; var d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = s; t.appendChild(d); setTimeout(function () { d.remove(); }, 5000); }
+  function vmTap(m) { var U = window.V2UI, V = window.V2Rules, w = U && U.world && U.world(); if (!w) return;
+    if (m === VM.best) { var Q = window.V2LairQoL; if (S.mpId == null) return vmToast('Hatch a pet first: the Best-o-Matic dresses the pet in the mirror.'); S.pet = S.mpId; if (Q && Q.equipBest) { Q.equipBest(); counter(); } return; }
+    var n = savedN(); if (!n) return vmToast('No free spins yet. Lucky drops (growing a stage, some meals), Fire Sales and raids fill the Spin-o-Matic.');
+    if (V.spinTargetOn && V.spinTargetOn(((U.S() || {}).tip || 0) + 1)) { pkOpen('ut'); if (S.mpId != null) { PK.ids = new Set([S.mpId]); pkDraw(); } return; }
+    var b = document.querySelector('#whSaved button'); if (b) b.click(); }
+  function onMirror(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return mx >= 140 && mx <= 180 && my >= 56 && my <= 118; } /* rare-room-simple: the mirror (and its TAP TO DRESS UP plate) opens the dressing room too */
   function drMode() { return location.hash === '#dressing-room'; }
   function enterDress(pid, gid) { var U = window.V2UI, w = U && U.world(); if (pid != null && pid !== '') { S.pet = +pid; try { localStorage.setItem(DPKEY, String(S.pet)); } catch (e) { } } if (gid && w && w.items[gid]) S.sel = w.items[gid]; S.pushed = 1;
     if (reduced() || !S.c || S.off) { location.hash = 'dressing-room'; return; } S.doorT = performance.now(); S.doorCT = 0; if (!S.raf) draw(S.doorT); setTimeout(function () { location.hash = 'dressing-room'; }, DOOR_MS); }
