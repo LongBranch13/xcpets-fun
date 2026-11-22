@@ -28,4 +28,25 @@ const gh = (p, body) => fetch('https://api.github.com/repos/' + REPO + p, { meth
     await cf('/' + ns.id + '/values/' + encodeURIComponent(k), { method: 'DELETE' });
   }
   console.log('bug inbox: ' + made + ' new issue(s)');
+  /* Page error digest (owner Nov 22 2026): the worker keeps one key per error per UTC day ('err:<day>:<sig>'). Each finished day becomes
+   * ONE issue labelled 'page-errors' (most frequent first), then its keys are deleted. No wallets, query strings or IPs are ever stored. */
+  const today = new Date().toISOString().slice(0, 10), ek = [];
+  for (let cur = ''; ;) { const j = await (await cf('/' + ns.id + '/keys?prefix=err:&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : ''))).json();
+    (j.result || []).forEach(k => ek.push(k.name)); cur = j.result_info && j.result_info.cursor; if (!cur) break; }
+  const days = {}; ek.forEach(k => { const d = k.split(':')[1]; if (d && d < today) (days[d] = days[d] || []).push(k); });
+  if (Object.keys(days).length) await gh('/labels', { name: 'page-errors', color: 'fbca04', description: 'Daily digest of errors players hit on xcpets.fun pages' }).catch(() => {});
+  for (const d of Object.keys(days).sort()) {
+    const rows = [];
+    for (const k of days[d]) { const r = await cf('/' + ns.id + '/values/' + encodeURIComponent(k)); if (!r.ok) continue; try { rows.push(JSON.parse(await r.text())); } catch (e) { } }
+    rows.sort((a, b) => (b.n || 0) - (a.n || 0));
+    const total = rows.reduce((t, r) => t + (r.n || 0), 0), esc = s => String(s || '').replace(/@/g, '@​').replace(/\|/g, '/').replace(/[\r\n]+/g, ' ').replace(/`/g, "'");
+    const body = 'Errors players\' browsers hit on xcpets.fun on **' + d + '** (UTC), most frequent first. Counts are at least this many (repeats within 10 minutes may be folded).\n\n' +
+      '| Times | Kind | Message | Where | Build | Pages | First / last seen |\n|---:|---|---|---|---|---|---|\n' +
+      rows.slice(0, 60).map(r => '| ' + (r.n || 1) + ' | ' + esc(r.k) + ' | `' + esc(r.m).slice(0, 200) + '` | ' + esc(r.f) + ':' + (r.l | 0) + ':' + (r.c | 0) + ' | ' + esc(r.b) + ' | ' + (r.pages || []).map(esc).join(' ') + ' | ' + esc(r.first).slice(11, 16) + ' / ' + esc(r.last).slice(11, 16) + ' |').join('\n') +
+      (rows.length > 60 ? '\n\n_' + (rows.length - 60) + ' rarer errors left out._' : '') + '\n\n<sub>Collected by the HatchBot worker from the page error reporter (tools/build-err-report.js)</sub>';
+    if (rows.length) { const ir = await gh('/issues', { title: '🧯 Page errors ' + d + ': ' + rows.length + ' kind(s), ' + total + ' report(s)', body, labels: ['page-errors'] });
+      if (!ir.ok) { console.log('error digest failed ' + ir.status + ' for ' + d); continue; } }
+    for (const k of days[d]) await cf('/' + ns.id + '/values/' + encodeURIComponent(k), { method: 'DELETE' });
+    console.log('error digest: ' + d + ', ' + rows.length + ' kind(s)');
+  }
 })().catch(e => { console.log('bug inbox failed: ' + (e && e.message)); });

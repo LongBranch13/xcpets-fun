@@ -11,7 +11,8 @@
   window.__xcpSplitHold = true;
   var STALE = 48;
   var SCREEN_PAGES = 7; /* first screen is 150 cards, and an owner page holds 24 pets */
-  var AUTO_CAP = 5000; /* wallets at or under this many living pets load the rest in the background */
+  var AUTO_CAP = 12000; /* wallets at or under this many living pets load the rest in the background (5,000 until Nov 22 2026;
+                          * the background batches now grow, see drain(), so a 10,000-pet wallet no longer rebuilds its world 60 times) */
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function off() { return q('split') === '0' || q('split') === 'off'; }
   function base() {
@@ -552,11 +553,16 @@
     return paging;
   }
   function underCap(pg) { return !!pg && (pg.n || 0) > 0 && (pg.n || 0) <= AUTO_CAP; }
+  /* Every background batch ends in publishJob, which re-assembles the whole owner world and repaints My Pets. With a fixed
+   * 7-page batch that is pages/7 full rebuilds, so a big wallet's cost grew with the square of its size. Each batch is now
+   * twice the last (7, 14, 28, 56, then 64 pages at most), so a 10,000-pet wallet (417 pages) rebuilds about 10 times. */
+  var drainBatch = 0, DRAIN_MAX = 64;
   function drain() {
     if (!pageJob && restView) { adoptJob(restView); restView = null; }
     if (!pageJob || !pageJob.pages || verifiedTakeover) return;
     if (!(nextPage < pageJob.pages.pages)) { publishJob(true); if (ready) requestSync(); return; }
-    more(SCREEN_PAGES).then(function (ok) {
+    drainBatch = drainBatch ? Math.min(DRAIN_MAX, drainBatch * 2) : SCREEN_PAGES;
+    more(drainBatch).then(function (ok) {
       if (!ok || verifiedTakeover || !pageJob) return;
       if (nextPage < pageJob.pages.pages) drain();
       else requestSync();
