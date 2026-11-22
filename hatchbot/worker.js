@@ -3,7 +3,7 @@
  * The old HatchBot commands were ported by Grok Bot on Nov 22 2026 and brought into the repo (owner: "yes on commands").
  * Also POST /e: page error reports from every xcpets.fun page (see pageError). POST /selftest: dry run of a command (secret key).
  * Bindings (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN, HB_TEST_KEY (secrets), BUGS (KV), DB (D1, hatchbot/schema.sql),
- * a cron every minute to reveal /whosthat rounds. Read-only toward the game: it never signs, burns or touches wallets. */
+ * a cron every 2 minutes to reveal /whosthat rounds (D1 if the token may create it, otherwise KV). Read-only toward the game: it never signs, burns or touches wallets. */
 import MEMES from './memes.json';
 import CAPTIONS from './captions.json';
 const TOKEN_IDS = MEMES.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
@@ -190,9 +190,34 @@ async function silhouettePng(bytes) {
 }
 
 // ---------- state (D1) ----------
+/* /whosthat rounds: in D1 when the deploy could create it, otherwise in the BUGS KV namespace ('round:<chat>', expires by itself). */
+async function roundGet(env, chat) {
+  if (env.DB) return (await dbq(env, "SELECT * FROM rounds WHERE chat_id = ?", String(chat))).first();
+  if (!env.BUGS) return null;
+  try { return JSON.parse(await env.BUGS.get("round:" + chat) || "null"); } catch (e) { return null; }
+}
+async function roundPut(env, g) {
+  if (env.DB) return (await dbq(env, "INSERT OR REPLACE INTO rounds(chat_id, pet_id, species, name, ends, started) VALUES (?, ?, ?, ?, ?, ?)", g.chat_id, g.pet_id, g.species, g.name, g.ends, g.started)).run();
+  if (env.BUGS) return env.BUGS.put("round:" + g.chat_id, JSON.stringify(g), { expirationTtl: 3600 });
+}
+async function roundDel(env, chat) {
+  if (env.DB) { const r = await (await dbq(env, "DELETE FROM rounds WHERE chat_id = ?", String(chat))).run(); return !(r && r.meta && r.meta.changes === 0); }
+  if (!env.BUGS) return false;
+  const had = await env.BUGS.get("round:" + chat); if (!had) return false;
+  await env.BUGS.delete("round:" + chat); return true;
+}
+async function roundsDue(env) {
+  if (env.DB) return ((await env.DB.prepare("SELECT * FROM rounds WHERE ends <= ? LIMIT 20").bind(Date.now()).all()).results) || [];
+  if (!env.BUGS) return [];
+  const keys = ((await env.BUGS.list({ prefix: "round:", limit: 20 })).keys) || [], due = [];
+  for (const k of keys) { try { const g = JSON.parse(await env.BUGS.get(k.name) || "null"); if (g && g.ends <= Date.now()) due.push(g); } catch (e) { } }
+  return due;
+}
 async function dbq(env, sql, ...args) { if (!env.DB) return null; return env.DB.prepare(sql).bind(...args); }
+var COOL = new Map(); /* without D1: a 5 s per-person cooldown kept in this worker's memory */
 async function rateCheck(env, userId, chatId, cmd, now) {
-  if (!env.DB || env.__dry) return null;
+  if (env.__dry) return null;
+  if (!env.DB) { const t = COOL.get(String(userId)) || 0; if (now - t < LIMITS.userCooldownMs) return "user_cooldown_5s"; COOL.set(String(userId), now); if (COOL.size > 5000) COOL.clear(); return null; }
   try {
     const last = await (await dbq(env, "SELECT MAX(ts) AS t FROM hits WHERE user_id = ?", String(userId))).first();
     if (last && last.t && now - last.t < LIMITS.userCooldownMs) return "user_cooldown_5s";
@@ -319,8 +344,8 @@ async function cmdBurns(env) {
 }
 async function cmdWhosthat(env, S, chat, replyTo) {
   const now = Date.now();
-  if (env.DB) {
-    const g = await (await dbq(env, "SELECT * FROM rounds WHERE chat_id = ?", String(chat))).first();
+  {
+    const g = await roundGet(env, chat);
     if (g && g.ends > now) return { text: "A round is already running! Reply to the silhouette photo with the species or name. Answer is revealed in " + Math.max(1, Math.round((g.ends - now) / 1e3)) + "s." };
     if (g) await revealRound(env, g, "\u23F0 Time's up on the last round!");
   }
@@ -330,34 +355,33 @@ async function cmdWhosthat(env, S, chat, replyTo) {
     let blob;
     try { const r = await fetch(spriteUrl(id), { cf: { cacheTtl: 3600 } }); if (!r.ok) continue; blob = await silhouettePng(await r.arrayBuffer()); } catch (e) { console.log("silhouette failed", id, e && e.message); continue; }
     const p = view(S, S.byId.get(id)), text = "\u2753 WHO'S THAT PET? First to REPLY to this photo with its species or name wins. " + Math.round(LIMITS.roundMs / 1e3) + " seconds!";
-    if (env.DB) await (await dbq(env, "INSERT OR REPLACE INTO rounds(chat_id, pet_id, species, name, ends, started) VALUES (?, ?, ?, ?, ?, ?)", String(chat), id, p.species, norm(p.name), now + LIMITS.roundMs, now)).run();
+    await roundPut(env, { chat_id: String(chat), pet_id: id, species: p.species, name: norm(p.name), ends: now + LIMITS.roundMs, started: now });
     const form = new FormData();
     form.append("chat_id", String(chat)); form.append("caption", text);
     if (replyTo) form.append("reply_to_message_id", String(replyTo));
     form.append("photo", blob, "whosthat.png");
     const r = await tgForm(env, "sendPhoto", form, { caption: text, silhouetteBytes: blob.size, answerId: env.__dry ? id : void 0 });
-    if (!r.ok && env.DB) await (await dbq(env, "DELETE FROM rounds WHERE chat_id = ?", String(chat))).run();
+    if (!r.ok) await roundDel(env, chat);
     return { sent: true };
   }
   return { text: "Couldn't draw a silhouette right now. Try /whosthat again in a bit." };
 }
 async function revealRound(env, g, lead) {
-  if (env.DB) await (await dbq(env, "DELETE FROM rounds WHERE chat_id = ?", String(g.chat_id))).run();
+  await roundDel(env, g.chat_id);
   let p = null;
   try { const S = await loadPets(); p = view(S, S.byId.get(g.pet_id)); } catch (e) {}
   const text = (lead || "\u23F0 Time's up!") + " It was #" + g.pet_id + (p ? " " + p.name + " the " + p.speciesLabel : "") + ".\n" + link(g.pet_id);
   return sendCard(env, g.chat_id, null, text, [g.pet_id]);
 }
 async function checkGuess(env, msg) {
-  if (!env.DB) return false;
+  if (!env.DB && !env.BUGS) return false;
   const chat = msg.chat.id, text = String(msg.text || "");
-  const g = await (await dbq(env, "SELECT * FROM rounds WHERE chat_id = ?", String(chat))).first();
+  const g = await roundGet(env, chat);
   if (!g) return false;
   if (g.ends <= Date.now()) { await revealRound(env, g); return true; }
-  const words = text.split(/\s+/), hit = words.some((w) => speciesOf(w) === g.species || norm(w) === g.name) || norm(text) === g.name;
+  const words = text.split(/\s+/), hit = words.some((w) => speciesOf(w) === g.species || norm(w) === norm(g.species) || norm(w) === g.name) || norm(text) === g.name;
   if (!hit) return false;
-  const del = await (await dbq(env, "DELETE FROM rounds WHERE chat_id = ? AND pet_id = ?", String(chat), g.pet_id)).run();
-  if (del && del.meta && del.meta.changes === 0) return false;
+  if (!await roundDel(env, chat)) return false;
   const who = msg.from && msg.from.username ? "@" + msg.from.username : msg.from && msg.from.first_name || "Someone";
   let p = null;
   try { const S = await loadPets(); p = view(S, S.byId.get(g.pet_id)); } catch (e) {}
@@ -432,10 +456,8 @@ async function handleUpdate(env, up) {
   if (isReplyToBot || msg.chat.type === "private") return checkGuess(env, msg);
 }
 async function scheduled(env) {
-  if (!env.DB) return;
-  const rows = await env.DB.prepare("SELECT * FROM rounds WHERE ends <= ? LIMIT 20").bind(Date.now()).all();
-  for (const g of rows.results || []) { try { await revealRound(env, g); } catch (e) { console.log("reveal failed", e && e.message); } }
-  try {
+  for (const g of await roundsDue(env)) { try { await revealRound(env, g); } catch (e) { console.log("reveal failed", e && e.message); } }
+  if (env.DB) try {
     const k = "menu_v3", done = await env.DB.prepare("SELECT v FROM kv WHERE k = ?").bind(k).first();
     if (!done) {
       const r = await tg(env, "setMyCommands", { commands: BOT_COMMANDS.map(([command2, description]) => ({ command: command2, description })) });
