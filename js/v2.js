@@ -948,7 +948,10 @@
         if (upto >= list.length && morePages && window.V2Split && V2Split.more) { PG.n = upto + CH; this.disabled = true; this.textContent = 'Loading more pets…'; V2Split.more(V2Split.SCREEN_PAGES || 7); return; }
         var i0 = upto; PG.n = upto + CH; upto = Math.min(list.length, PG.n); mb.remove();
         put(list.slice(i0, upto), tail); if (list.length > upto || morePages) { mb.querySelector('button').textContent = list.length > upto ? 'Show more (' + fmt(list.length - upto) + ' left)' : 'Show more living pets'; box.insertBefore(mb, tail.nextSibling); } else mb.remove();
-        $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); }; }
+        $('petPager').textContent = 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets'; if (window.UXB && UXB.sel) UXB.sel(); };
+      /* Nov 22 2026: scrolling near the end shows the next batch by itself (players had to press Show more again and again). The button stays for keyboards. */
+      if (window.IntersectionObserver) { var mbIo = new IntersectionObserver(function (es) { if (renderPets.tok !== tok || !mb.parentNode) { if (renderPets.tok !== tok) mbIo.disconnect(); return; }
+        var bt = mb.querySelector('button'); if (es[0] && es[0].isIntersecting && bt && !bt.disabled) bt.click(); }, { rootMargin: '800px 0px' }); mbIo.observe(mb); } }
     var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
