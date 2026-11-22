@@ -6,7 +6,9 @@ on:
   push:
     branches: [main]
     paths: ['hatchbot/worker.js', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      subdomain: { description: 'Optional: give the account a neutral workers.dev subdomain (only when hatchbot is the only worker)', required: false, default: '' }
 permissions: { contents: read }
 concurrency: { group: hatchbot-worker, cancel-in-progress: false }
 jobs:
@@ -55,6 +57,15 @@ jobs:
           npx --yes wrangler@3 deploy
           printf '%s' "$TELEGRAM_BOT_TOKEN" | npx --yes wrangler@3 secret put TELEGRAM_BOT_TOKEN
           node -e "process.stdout.write(require('crypto').createHash('sha256').update('hbtest:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,40))" | npx --yes wrangler@3 secret put HB_TEST_KEY
+      - name: Neutral workers.dev address (by hand only)
+        if: steps.ready.outputs.go && github.event.inputs.subdomain != ''
+        env: { WANT: '${{ github.event.inputs.subdomain }}' }
+        run: |
+          case "$WANT" in *[!a-z0-9-]*) echo "::error::subdomain must be lowercase letters, digits and dashes"; exit 1;; esac
+          N=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).result||[];console.log(r.filter(x=>x.id!=='hatchbot').length)})")
+          if [ "$N" != "0" ]; then echo "::warning::$N other worker(s) on this account would change address too; not renaming."; exit 0; fi
+          curl -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -d "{\"subdomain\":\"$WANT\"}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(j.success?'renamed: hatchbot.'+process.env.WANT+'.workers.dev':'rename failed: '+JSON.stringify(j.errors))})"
+          sleep 20
       - name: Point Telegram at the worker
         if: steps.ready.outputs.go
         run: |
