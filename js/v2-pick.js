@@ -73,8 +73,8 @@
     var view = list.slice(0, st.n), selId = String(cfg.selected || '');
     var v = cfg.verdict || {};
     var h = '<div class="pk2" data-pk2id="' + esc(cfg.id) + '">' +
-      '<div class="pk2-stage">' + slotHtml(cfg.slots[0], cfg.active === cfg.slots[0].key) + '<span class="pk2-mid" aria-hidden="true">' + esc(cfg.mid || 'VS') + '</span>' +
-      (cfg.slots[1] ? slotHtml(cfg.slots[1], cfg.active === cfg.slots[1].key) : '') + '</div>' +
+      (cfg.slots && cfg.slots.length ? '<div class="pk2-stage">' + slotHtml(cfg.slots[0], cfg.active === cfg.slots[0].key) + '<span class="pk2-mid" aria-hidden="true">' + esc(cfg.mid || 'VS') + '</span>' +
+      (cfg.slots[1] ? slotHtml(cfg.slots[1], cfg.active === cfg.slots[1].key) : '') + '</div>' : '') + /* no slots = shelves only (the Dressing Room has its own big preview) */
       (v.big ? '<div class="pk2-v ' + esc(v.tone || 'wait') + '" aria-live="polite"><b>' + v.big + '</b>' + (v.small ? '<span>' + v.small + '</span>' : '') + '</div>' : '') +
       '<div class="pk2-pick"><div class="pk2-pr">' + esc(cfg.prompt || '') + ' <span aria-hidden="true">⬇</span></div>' +
       '<div class="pk2-tabs" role="tablist" aria-label="Suggestions">' + cfg.shelves.map(function (s) { var on = s.id === sh.id && !q;
