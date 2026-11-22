@@ -1,0 +1,1 @@
+--pages raid.html,fight.html,breed.html,pantheon.html
