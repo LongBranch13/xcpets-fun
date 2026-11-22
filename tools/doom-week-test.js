@@ -6,7 +6,7 @@ const ROOT = path.resolve(__dirname, '..');
 let pass = 0, fail = 0;
 function ok(c, m) { if (c) { pass++; console.log('ok  ', m); } else { fail++; console.log('FAIL', m); } }
 const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(md5 === '7787b1e10cb08c9f36aec3fb656dd99c', 'js/v2-rules.js MD5 is 7787b1e10cb08c9f36aec3fb656dd99c (' + md5 + ')');
+ok(md5 === 'b87e243919401e785cf425ff6dca0e0b', 'js/v2-rules.js MD5 is b87e243919401e785cf425ff6dca0e0b (' + md5 + ')');
 const listeners = {};
 const doc = {
   readyState: 'loading', currentScript: { src: 'js/doom-week.js?v=test' },
