@@ -613,7 +613,7 @@
       var rx = new RegExp('#' + id + '(?![0-9])'), tagRx = new RegExp(':' + id + '(:|$)');
       function names(e) { if (e.petId === id || (e.ids && e.ids.indexOf(id) >= 0) || rx.test(e.msg || '')) return true;
         var m = /#(\d+)-#(\d+)/.exec(e.msg || ''); if (m && id >= +m[1] && id <= +m[2]) return true; return tagRx.test(tagText((byTx[e.tx] || {}).tag)); }
-      var hist = w.log.filter(names).map(function (e) { return { block: e.block, tx: e.tx, res: e.kind + ': ' + e.msg }; }), seen = {}; hist.forEach(function (h) { if (h.tx) seen[h.tx] = 1; });
+      var hist = w.log.filter(names).map(function (e) { return { block: e.block, tx: e.tx, res: e.kind + ': ' + (window.XcpSlots ? XcpSlots.text(e.msg) : e.msg) }; }), seen = {}; hist.forEach(function (h) { if (h.tx) seen[h.tx] = 1; });
       var cut = V.CUTOFF_BLOCK || 971500;
       RW.forEach(function (r) { if (seen[r.tx_hash] || r.block_index > cut) return; var t = tagText(r.tag);
         if (r.tx_hash === p.hatchTx) hist.push({ block: r.block_index, tx: r.tx_hash, res: 'hatch: hatched #' + id + ' (before v2)' });

@@ -162,6 +162,7 @@
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
       rabbitMythic: cold.rabbit || null, funtrumpMythic: cold.funtrump || null, djpepeMythic: cold.djpepe || null,
       wagmi: summary.wagmi || {},
+      raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;
@@ -237,6 +238,15 @@
       chainTip = h && h.tip || 0;
       noteHealth(chainTip);
       return getJson(root + '/xp/v1/world/latest.json', 8000, true);
+    }).then(function (latest) {
+      /* Never go dark (Nov 22 2026): latest.json built with other rules than this page's? The server keeps the newest
+       * world for each rules signature at world/<rsig>/latest.json; use this page's own before falling back to a replay. */
+      return sigP.then(function (rsig) {
+        if (!latest || !rsig || latest.rsig === rsig) return latest;
+        return getJson(root + '/xp/v1/world/' + rsig + '/latest.json', 8000, true).then(function (own) {
+          return own && own.rsig === rsig && (own.manifest || own.url) ? own : latest;
+        }, function () { return latest; });
+      });
     }).then(function (latest) {
       var path = latest && (latest.manifest || latest.url);
       if (!path || !latest.rsig) throw new Error('latest');
@@ -680,7 +690,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=8522aed49a', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=faa2d522b6', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -690,7 +700,8 @@
         if (m.cmd === 'ready') { if (m.ok) { unlock(m); requestSync(); } else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
       };
       worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
-      worker.postMessage({ cmd: 'start', base: base(), scripts: scripts, me: pageWallet() });
+      /* the same world the page painted from (it may be this page's rules' world rather than latest.json) */
+      worker.postMessage({ cmd: 'start', base: base(), manifest: last && last.url || '', scripts: scripts, me: pageWallet() });
     });
     return readyP;
   }

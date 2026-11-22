@@ -112,7 +112,12 @@
   function draw() { var box = shell(); if (!box || !window.V2Render || !V2Render.rareInfo) return false; var w = worldSafe(); if (!w) return false;
     if (w === worldRef && listAll) return true; worldRef = w; listAll = finds(w); applyFilter(); return true; }
   function hallOn() { var box = $('rareHall'); if (!box) return false; var p = box.closest ? box.closest('section') : null; if (p && (p.hidden || p.classList.contains('split-off') || p.getAttribute('aria-hidden') === 'true')) return false; return true; }
-  function start() { if (!hallOn()) return; shell(); var n = 0, hooked = false;
+  /* rare-room-simple (owner Nov 22 2026): the hall is about rare HATCHES, not gear, so it lives on the Hatch page (play.html) under the hatch panel.
+   * The Rare Room keeps a one-line link to it. Display only: the same hall, moved in the page. */
+  function relocate() { var box = $('rareHall'), sp = document.body && document.body.getAttribute('data-split'); if (!box) return;
+    if (sp === 'rare') { var a = document.createElement('p'); a.className = 'small rh-moved'; a.innerHTML = '🏆 Looking for the <b>Hall of Rare Finds</b>? It moved next to the eggs: <a href="' + (document.body.getAttribute('data-practice') ? 'practice.html' : 'play.html') + '#rareHall">see the rare hatches →</a>'; box.parentNode.replaceChild(a, box); return; }
+    if (sp === 'play') { var hp = $('hatchPanel'); if (!hp || !hp.parentNode) return; var sec = document.createElement('section'); sec.className = 'panel rh-panel'; sec.id = 'rareHallPanel'; hp.parentNode.insertBefore(sec, hp.nextSibling); sec.appendChild(box); if (location.hash === '#rareHall') setTimeout(function () { box.scrollIntoView({ block: 'start' }); }, 600); } }
+  function start() { relocate(); if (!hallOn()) return; shell(); var n = 0, hooked = false;
     (function wait() { var M = window.V2Mock; if (M && M.onFresh && !hooked) { hooked = true; M.onFresh(function () { worldRef = null; draw(); }); }
       if (!draw() && n++ < 240) setTimeout(wait, 500); })();
     setInterval(function () { if (!document.hidden) draw(); }, 30e3); }

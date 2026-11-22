@@ -13,7 +13,7 @@ XCPETS is an on-chain pet game on Bitcoin/Counterparty. Players burn XCPETS toke
 - Test wallets: `1JwWsArppwALMEdXWPmpDBcP1jwWsAPYkD`, `bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q`.
 
 ## Architecture in one page
-- `js/v2-rules.js`: the live rules engine (replay). Huge (~5.4k lines) with `ACTIVATE_*_BLOCK` height gates. Old eras are frozen. New rules are added behind a new activation block. Current MD5 (Nov 21, 2026): `3638b4453d7b9b0c13c59c230f1b118c`.
+- `js/v2-rules.js`: the live rules engine (replay). Huge (~5.4k lines) with `ACTIVATE_*_BLOCK` height gates. Old eras are frozen. New rules are added behind a new activation block. Current MD5 (Nov 22, 2026, full-rebuild speedup): `b87e243919401e785cf425ff6dca0e0b`. `node tools/rebuild-bench.js --compare origin/main` replays `api/boot.json` on both trees and must print SAME for any change meant to keep the replay output identical.
 - `rjs/*`: the frozen engine for burns up to block 971,500. `rjs/chain.js` reads block hashes. It requires a trusted source or two agreeing sources plus a proof-of-work check (PR #88).
 - Rules signature (rsig): a hash of the rule files (incl. `js/v2-rules.js` and `rjs/chain.js`). Changing any of them changes the rsig.
 - World snapshot: a pre-built world served at `https://node.xcpets.fun/xp/v1/world/latest.json` (+ slim view files: `view/summary.json`, `owners.json`, `rank.json`, `p/000NN.json` shards, `own/<sha256(addr)>.json`). Browsers use it only if its rsig matches the page's rules, otherwise they replay locally (slow). It is built by the sync server itself on the VPS (`tools/sync-server`, every 6 blocks, from the rule files on the VPS disk). **After any rules or rsig change, the VPS copy of the repo must be updated too**, or players fall back to the slow load.

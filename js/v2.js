@@ -1883,7 +1883,7 @@
   // ---------------------------------------------------------------- burns + log (live .txrow look)
   function renderLog(w) {
     var KL = { fight: 'challenge', fightDone: 'fight result' }; /* 2026-10-15: plain labels for battle lines (display only) */
-    var row = function (l) { return '<a href="#" class="txrow" data-tx="' + esc(l.tx) + '">' + esc(KL[l.kind] || l.kind) + ' · block ' + l.block + ' · ' + esc(l.msg) + '</a>'; };
+    var row = function (l) { return '<a href="#" class="txrow" data-tx="' + esc(l.tx) + '">' + esc(KL[l.kind] || l.kind) + ' · block ' + l.block + ' · ' + esc(window.XcpSlots ? XcpSlots.text(l.msg) : l.msg) + '</a>'; };
     var mineTx = {}; S.rows.forEach(function (r) { if (r.source === ME) mineTx[r.tx_hash] = 1; });
     /* A published view has no replay log. attachBurns fills display lines and marks each with src. */
     function mineLine(l) { return mineTx[l.tx] || (l.src && l.src === ME); }
@@ -1927,7 +1927,7 @@
       if (!a) return toast(WL + ' returned no address.'); try { localStorage.setItem('xcpets-v2-me', a); localStorage.setItem('xcpets-xcpwallet-address', a); } catch (e) { }
       if (a !== ME) location.reload(); else toast('✓ ' + WL + ' connected'); }, function (e) { b.disabled = false; toast(e && e.code === 4001 ? 'You cancelled in the wallet.' : WL + ' connect failed: ' + ((e && e.message) || 'try again')); }); };
   function showTx(tx) { var w = world(), l = w.log.filter(function (x) { return x.tx === tx; })[0], r = S.rows.filter(function (x) { return x.tx_hash === tx; })[0]; if (!l) return;
-    $('txInfo').innerHTML = '<p class="small"><b>' + esc(l.kind) + '</b> · ' + esc(l.msg) + '</p><table class="small"><tr><td>block</td><td>' + l.block + '</td></tr><tr><td>tx</td><td><code>' + esc(tx) + '</code></td></tr>' + (r ? '<tr><td>from</td><td>' + esc(r.source) + '</td></tr><tr><td>tag</td><td><code>' + esc(r.tag) + '</code></td></tr><tr><td>amount</td><td>' + fmt(r.amount) + ' XCPETS</td></tr>' : '') + '</table><p class="small muted">Burn sent from your ' + esc((window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet')) + '.</p>'; open('txBox'); }
+    $('txInfo').innerHTML = '<p class="small"><b>' + esc(l.kind) + '</b> · ' + esc(window.XcpSlots ? XcpSlots.text(l.msg) : l.msg) + '</p><table class="small"><tr><td>block</td><td>' + l.block + '</td></tr><tr><td>tx</td><td><code>' + esc(tx) + '</code></td></tr>' + (r ? '<tr><td>from</td><td>' + esc(r.source) + '</td></tr><tr><td>tag</td><td><code>' + esc(r.tag) + '</code></td></tr><tr><td>amount</td><td>' + fmt(r.amount) + ' XCPETS</td></tr>' : '') + '</table><p class="small muted">Burn sent from your ' + esc((window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet')) + '.</p>'; open('txBox'); }
   ['pending', 'log'].forEach(function (id) { $(id).onclick = function (e) { var drop = e.target.closest('[data-drop]'); if (drop && window.V2Wallet && V2Wallet.dismissPending) { e.preventDefault(); V2Wallet.dismissPending(drop.getAttribute('data-drop')); renderLog(world()); return; } var a = e.target.closest('a[data-tx]'); if (!a) return; e.preventDefault(); showTx(a.dataset.tx); }; });
   function route() { if (actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash); if (m && world().byId[m[1]]) { detailId = Number(m[1]); detail(world().byId[detailId]); }
     var dm = /^#discard-(\d+)$/.exec(location.hash); if (dm) { var dp = world().byId[dm[1]]; history.replaceState(null, '', location.pathname + location.search);

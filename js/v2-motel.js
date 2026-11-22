@@ -109,15 +109,49 @@
       el.innerHTML = '<b class="mg-who">GOOBY</b><span class="mg-line">' + esc(l) + '</span>' + tip; },
     wake: function (l) { var n = performance.now(); G.it = n; S.bubble = l; S.lt = n; try { localStorage.setItem('xcpets-gooby-tapped', '1'); } catch (e) { } G.said = ''; if (!S.raf && S.c) draw(n); },
     hit: function (lx, ly) { if (lx >= 125 && lx <= 140 && ly >= 88 && ly <= 103) return 'book'; /* guestbook-close: the little ledger on the desk */ if (lx >= 112 && lx <= 139 && ly >= 70 && ly <= 100) return 'gooby'; if (lx >= 70 && lx <= 86 && ly >= 108 && ly <= 141) return 'can';
-      var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; return null; },
+      var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; if (lx >= POOL.x - 3 && lx <= POOL.x + POOL.w + 3 && ly >= POOL.y - 10 && ly <= POOL.y + POOL.h + 3) return 'pool'; return null; },
     click: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(), lx = (e.clientX - r.left) / r.width * W, ly = (e.clientY - r.top) / r.height * H, h = G.hit(lx, ly), n = performance.now(); if (!h) return;
       if (h === 'book') { G.tap = n; G.wake('The guest book. Every stay is on Bitcoin.'); openBook(true); }
       else if (h === 'gooby') { openBook(true); var wasAsleep = G.mode(n).sleep; G.tap = n; G.wake(wasAsleep ? 'Huh? Gooby\u2019s up. Gooby\u2019s up.' : (G.taps = (G.taps || 0) + 1) % 2 ? TAPL[(G.taps >> 1) % TAPL.length] : (G.facts()[(G.taps >> 1) % Math.max(1, G.facts().length)] || TAPL[0])); }
       else if (h === 'can') { var cn = CANS[G.cans++ % CANS.length]; G.can = n; G.canCol = cn[1]; G.wake(cn[0]); }
+      else if (h === 'pool') { G.wake(poolLine()); var qc = !(S.A && S.B) && (S.lounge || []).length && document.querySelector('.qc-h'); if (qc && qc.scrollIntoView) qc.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); }
       else if (h === 'door') G.wake(S.A && S.B ? 'Room #' + S.A.id + ' + #' + S.B.id + '. Ring the bell below.' : 'Pick two guests below. Gooby has keys.');
       else { var rm0 = S.rooms[+h.slice(4)]; G.wake(!rm0 ? 'Empty room. Clean sheets. Probably.' : 'Room ' + rm0.room + ': #' + rm0.a + ' + #' + rm0.b + (rm0.mode === 'sil' ? '. DND sign up.' : '. Real guests, real burns.')); } },
     move: function (e) { var c = S.c; if (!c) return; var r = c.getBoundingClientRect(); var hh = G.hit((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); c.style.cursor = hh ? 'pointer' : ''; c.title = hh === 'book' || hh === 'gooby' ? 'Guest book' : ''; } };
   G.it = typeof performance !== 'undefined' ? performance.now() : 0;
+  /* GENE POOL + COOLDOWN LOUNGE (living-scenes, Nov 22 2026; display only). The pool finally has a job:
+   * 1) pick two guests and the pool fills with rubber ducks, one duck per ~1/8 of the baby's species odds (the same odds() as the desk card);
+   *    a hybrid outcome is a golden duck. 2) your own pets that are resting after a breed float on rings, each with the blocks left until they can
+   *    check in again (the same breedable()/lastBreed math as "My cooldowns"). Tap the pool = Gooby reads the odds or the lounge. */
+  var DUCK = ['#ffd84a', '#7dff6a', '#4fe0ff', '#ff9ad5', '#ff8a3d', '#c9a8ff'], POOL = { x: 239, y: 159, w: 58, h: 24 };
+  function duckCol(label, i) { var h = 0; label = String(label || ''); for (var k = 0; k < label.length; k++) h = (h * 31 + label.charCodeAt(k)) >>> 0; return DUCK[(h + i) % DUCK.length]; }
+  function ducks(od) { if (!od || !od.sp || !od.sp.length) return []; var out = [], n = 8, left = n;
+    od.sp.forEach(function (q, i) { var k = i === od.sp.length - 1 ? left : Math.max(q[1] > 0 ? 1 : 0, Math.round(q[1] / 100 * n)); k = Math.min(k, left); left -= k;
+      var gold = /hybrid/i.test(q[0]) || (od.hyb > 0 && i === 0 && od.sp.length === 3); for (var j = 0; j < k; j++) out.push({ c: gold ? '#ffd700' : duckCol(q[0], i), gold: gold, lab: q[0] }); }); return out; }
+  function lounge(w, ME, tip) { var R = window.V2Rules, U = window.V2UI; if (!R || !ME || !U || !U.mine || !R.breedable) return [];
+    var b = (tip || w.tip || 0) + 1, out = []; try { U.mine(w).forEach(function (p) { if (p.released || p.dead || p.lastBreed == null) return; var why = R.breedable(p, b); if (!why || !/cooldown/.test(why)) return;
+      var cool = R.mgBreedCool ? R.mgBreedCool(p) : R.BREED_COOLDOWN, left = Math.max(0, R.span ? cool - R.span(b, p.lastBreed) : p.lastBreed + cool - b); if (left > 0) out.push({ p: p, left: left }); }); } catch (e) { return []; }
+    return out.sort(function (a, c) { return a.left - c.left; }); }
+  var POOL_DEMO = typeof location !== 'undefined' && /[?&]pooldemo=1\b/.test(location.search); /* previews only: fake odds + the first pets in the world as loungers */
+  function pool(x, t, rm) { if (POOL_DEMO && !(S.A && S.B)) demoPool(); var P = POOL, D = (S.A && S.B) || S.demoOd ? ducks(S.od || S.demoOd) : [], L = (S.lounge || []).slice(0, D.length ? 2 : 3), i;
+    var lx0 = D.length ? P.x + 34 : P.x + 6, lstep = 18;
+    L.forEach(function (o, n) { var cx = lx0 + n * lstep + 6, fy = rm ? 0 : Math.round(Math.sin(t / 520 + n * 1.7)), cy = P.y + 17 + fy;
+      px(x, '#ff4fd8', cx - 6, cy - 1, 12, 4); px(x, '#1e90c8', cx - 3, cy, 6, 2); px(x, '#fff', cx - 5, cy - 1, 2, 1);
+      if (o.p && V2Render) try { putPet(x, o.p, cx, cy + 1, 12, t); } catch (e) { }
+      x.font = '4px "Press Start 2P", monospace'; x.textAlign = 'center'; var lab = o.left > 99 ? Math.round(o.left / 6) / 1 + 'h' : String(o.left);
+      px(x, '#140f24', cx - 6, cy - 19, 12, 6); x.fillStyle = '#ffd166'; x.fillText(lab, cx, cy - 14); x.textAlign = 'left'; });
+    if (!L.length && !D.length) { var fy0 = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy0, 10, 6); px(x, '#1e90c8', 261, 170 + fy0, 4, 2); px(x, '#fff', 259, 168 + fy0, 2, 1); }
+    D.forEach(function (d, n) { var col = n % 4, row = n >> 2, dx = P.x + 3 + col * 7 + (row ? 3 : 0) + (rm ? 0 : Math.round(Math.sin(t / 700 + n) * 1.5)), dy = P.y + 6 + row * 9 + (rm ? 0 : Math.round(Math.sin(t / 380 + n * 2)));
+      px(x, d.c, dx, dy + 1, 5, 3); px(x, d.c, dx + 3, dy - 1, 3, 3); px(x, '#ff8a00', dx + 6, dy, 2, 1); px(x, '#140f24', dx + 4, dy - 1, 1, 1); px(x, 'rgba(255,255,255,.35)', dx, dy + 4, 5, 1);
+      if (d.gold && !rm && Math.floor(t / 220 + n) % 5 === 0) { px(x, '#fff', dx + 2, dy - 3, 1, 1); px(x, '#fff', dx + 1, dy - 2, 3, 1); } });
+    if (D.length) { px(x, '#140f24', P.x + 2, P.y - 9, 38, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#4fe0ff'; x.fillText('GENE POOL', P.x + 4, P.y - 4); }
+    else if (L.length) { px(x, '#140f24', P.x + 2, P.y - 9, 34, 7); x.font = '4px "Press Start 2P", monospace'; x.fillStyle = '#ff9ad5'; x.fillText('LOUNGE', P.x + 9, P.y - 4); } }
+  function demoPool() { S.demoOd = { hyb: 0.07, sp: [['Pepe x Doge hybrid', 0.07], ['Pepe', 49.97], ['Doge', 49.97]] };
+    if (!S.lounge || !S.lounge.length) { var w = S.w || (window.V2UI && V2UI.world && V2UI.world()); if (w && w.pets) S.lounge = w.pets.filter(function (p) { return p.stage >= 2 && !p.dead; }).slice(0, 2).map(function (p, i) { return { p: p, left: 37 + i * 52 }; }); } }
+  function poolLine() { var D = S.A && S.B && S.od, L = S.lounge || [];
+    if (D) return 'Gene pool: ' + S.od.sp.map(function (q) { return q[0] + ' ' + (q[1] === 100 ? '100' : q[1].toFixed(1)) + '%'; }).join(', ') + '. Golden duck = hybrid.';
+    if (L.length) return L.length + (L.length === 1 ? ' guest is' : ' guests are') + ' resting. Next back: #' + L[0].p.id + ' in ' + L[0].left + ' blocks.';
+    return 'The pool. Pick two guests and the gene pool fills up.'; }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* ground: grass, sidewalk path to the office, walkway */ px(x, '#14301f', 0, 140, W, H - 140); for (var g = 0; g < 60; g++) px(x, '#1f4a2c', (g * 37) % W, 146 + (g * 13) % (H - 148), 1, 2);
@@ -159,7 +193,7 @@
       if (k >= 1 || rm) { px(x, '#f5efe0', dx0 + 7, WY - 9, 8, 9); px(x, '#f5efe0', dx0 + 8, WY - 10, 6, 1); px(x, '#e8c38a', dx0 + 9, WY - 6, 2, 2); } } /* the egg at the door */
     /* front: bushes, flower beds, pool, palm */ bush(x, 104, 146, 14); flowers(x, 120, 146, 18); flowers(x, 162, 146, 40); bush(x, 204, 146, 12); flowers(x, 218, 146, 30); bush(x, 300, 146, 16); bush(x, 2, 150, 18); flowers(x, 40, 150, 22);
     px(x, '#d8d4c8', 236, 156, 64, 30); px(x, '#1e90c8', 239, 159, 58, 24); for (var wv = 0; wv < 5; wv++) px(x, '#7fd4ff', 243 + ((wv * 13 + (rm ? 0 : Math.floor(t / 200))) % 50), 163 + (wv * 5) % 18, 4, 1);
-    var fy = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy, 10, 6); px(x, '#1e90c8', 261, 170 + fy, 4, 2); px(x, '#fff', 259, 168 + fy, 2, 1); /* floatie */
+    pool(x, t, rm); /* gene-pool (Nov 22 2026): odds ducks + the cooldown lounge, or the lone floatie */
     px(x, '#c0c0c0', 292, 152, 1, 6); px(x, '#c0c0c0', 296, 152, 1, 6); px(x, '#c0c0c0', 292, 152, 5, 1); /* pool ladder */ palm(x, 306, 160, t); palm(x, 12, 168, t + 900); bush(x, 170, 168, 14); flowers(x, 180, 186, 26); flowers(x, 100, 186, 30);
     /* guests: A then B (the date) walk in */ var talk = null, gline = null;
     ['A', 'B'].forEach(function (who) { var p = S[who]; if (!p || !S.walk[who] || S.walk[who].id !== p.id) return; var q = pose(who, t); if (!q || q.hide) return;
@@ -229,7 +263,7 @@
      * each chip now shows species, rarity, Pet Score and an owner badge. If none can, one short line with the main reason replaces the empty box. */
     var mainWhy = function () { var c = {}; L.mine.forEach(function (x) { var r = x.why || (x.p.stage >= 3 ? '' : 'needs Adult+'); if (!r) return; r = /cooldown/.test(r) ? 'on breeding cooldown' : /Adult|young|stage/i.test(r) ? 'too young (Adult+)' : r; c[r] = (c[r] || 0) + 1; });
       var k = Object.keys(c).sort(function (p, q) { return c[q] - c[p]; })[0]; return k ? ' · mostly ' + k : (L.mine.length ? '' : ' · no live pets at this address'); };
-    var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+    var step = !a ? 'A' : !b ? 'B' : null, od = s.A && s.B ? odds(V, s.A, s.B) : null, T = ['Common', 'Uncommon', 'Rare', 'Legendary']; S.od = od; S.lounge = lounge(w, ME, tip); /* gene-pool */
     var side0 = S.pickSide || step, resX = function (p) { return !!(s.A && V.resPairWhy && V.resPairWhy(s.A, p, (tip || 0) + 1)); }, resHid = !ezOn && V.RES_BREED_WHY && s.A ? L.partners.filter(function (x) { return (!x.why || x.why === V.RES_BREED_WHY) && x.p.stage >= 3 && resX(x.p); }).length : 0; /* resurrected-breed-only: one line with the reason when the rule hides mates */
     var flip = s.A && s.B && s.st !== 'open' && U.breedFlip ? U.breedFlip(w, s.A.id, s.B.id) : null; /* two-owner flip: warn before Check in when this burn would accept their request */
     var hint = flip ? U.breedFlipText(flip) : !ME ? 'Connect your wallet to check in' : step === 'A' ? '1 · Pick your guest' : step === 'B' ? '2 · Pick the date (yours or anyone\u2019s)' : s.st === 'half' ? 'Checked in · waiting for #' + s.B.id + '\u2019s owner' : s.st === 'invite' ? '💌 #' + s.B.id + ' already checked in · ring to join' : s.st === 'open' ? '🥚 Door\u2019s open: egg #' + (s.kid && s.kid.id) : '3 · Ring the bell';
@@ -265,42 +299,99 @@
   /* GUESTBOOK (owner 7:58 PM CT): past breeding results from the replayed world, one short PG-13 note per egg, newest first, paged on the desk. */
   var NOTES = ['Left the DND sign up all night.', 'Room service: one egg.', 'Gooby heard nothing. Gooby pls.', 'Five stars. Would nest again.', 'Ice bucket never got used.', 'Checked out early. Glowing.',
     'Towels: missing. Egg: present.', 'Asked for late checkout. Got an egg.', 'The walls are thin. Congrats.', 'Paid cash. Left a hatchling.', 'Mint on the pillow, egg on the bed.', 'Swore it was "just a nap".'];
-  /* GUESTBOOK v2 (gooby-guestbook 2026-10-21): every row is a real breed from the replayed chain. Top: guests checked in and waiting for their date
-   * (live unused breed requests). Then check-outs, newest first: both parents' sprites + names -> the egg's sprite, #, name, species, rarity pill,
-   * hybrid badge, block and rough age. Gooby's PG-13 note is labelled as his note (a joke, not news). Filter: All stays / My pets. Paged (arrows + swipe). */
-  var BK = { page: 0, mine: false };
+  /* GUESTBOOK v3 (Nov 22 2026, owner: 'can Gooby's book be better too'): display only, every row is still a real breed from the replayed chain.
+   * - Looks like a real book: red cover, ruled cream paper, a two-page spread on wide screens (one page on phones), Gooby doodled in the corner.
+   * - Chapter bookmarks: All stays / Big moments (God eggs, the first pet ever of a species, lucky rarity-up rolls) / Hybrids / My stays / Regulars (who checks in most: pets, wallets, busiest night).
+   * - Each stay: both parents -> the egg drawn big, with a rubber stamp (LEGENDARY, GOD, HYBRID), names, rough age (block number on hover) and
+   *   Gooby's note, which now fits the stay (legendary, hybrid, two wallets, my pet) and is labelled as his joke.
+   * - NEW sticky note on stays that arrived since this device last opened the book; the closed cover shows how many.
+   * - Rare/God pets paint a 64 px scene that used to double their size in the list; frames are fixed-size now. Page turn, close/open fold, swipe,
+   *   Esc and tap-outside close are unchanged (they work on the .gb element). */
+  var BK = { page: 0, ch: 'all', seen0: null };
+  try { var ch0 = localStorage.getItem('xcpets-gb-ch'); if (/^(all|wow|hyb|mine|reg)$/.test(ch0 || '')) BK.ch = ch0; } catch (e) { }
   function ago(tip, b) { if (!tip || !b) return ''; var m = Math.max(0, tip - b) * 10; return m < 60 ? 'just now' : m < 1440 ? '~' + Math.round(m / 60) + ' h ago' : '~' + Math.round(m / 1440) + ' d ago'; }
-  function gbSpr(p) { return p ? '<canvas class="gb-spr" width="32" height="32" data-gbp="' + p.id + '" title="#' + p.id + ' ' + esc(p.name || '') + '"></canvas>' : '<span class="gb-spr gb-q">?</span>'; }
+  function gbSpr(p, big) { return p ? '<span class="gb-fr' + (big ? ' gb-big' : '') + '"><canvas width="32" height="32" data-gbp="' + p.id + '" title="#' + p.id + ' ' + esc(p.name || '') + '"></canvas></span>' : '<span class="gb-fr gb-q' + (big ? ' gb-big' : '') + '">?</span>'; }
   function gbName(w, id) { var p = w.byId[id]; return '<a href="pet.html?id=' + id + '">#' + id + '</a>' + (p && p.name ? ' ' + esc(p.name) : ''); }
+  var NOTE_LEG = ['Legendary egg. Gooby changed the sheets twice.', 'Gold egg. Gooby called his mom.', 'Framed the receipt. Legendary stay.', 'Room glowed all night. Gooby saw nothing.'],
+    NOTE_GOD = ['A god checked in. Gooby bowed. Twice.', 'Holy egg. Gooby put on a clean hat.'],
+    NOTE_HYB = ['Two species, one room. Science.', 'Mixed-up kid. Gooby approves.', 'Hybrid! Nobody asked questions.', 'New species just dropped. Room 4B.'],
+    NOTE_TWO = ['Two wallets, one key. Modern love.', 'Met at the pool. Now look.', 'Long-distance wallets. Short stay.'],
+    NOTE_MINE = ['Your guest. Gooby kept the porch light on.', 'Regular customer. Free mint.'],
+    NOTE_FIRST = ['Never seen one of these. Gooby checked twice.', 'A brand-new species. In MY motel. Gooby pls.', 'First of its kind. Gooby is telling everybody.'],
+    NOTE_LUCKY = ['Rarer than both parents. Lucky room.', 'Rolled up a rarity. Gooby smelled luck.', 'Lucky egg. Gooby wants to know your secret.'];
+  function gbNote(w, c, mineP) { var V = window.V2Rules || {}, A = w.byId[c.parents[0]], B = w.byId[c.parents[1]], n = c.id, pick = function (L) { return L[n % L.length]; };
+    var m = gbMoment(w, c); if (m === 'god') return pick(NOTE_GOD); if (m === 'first') return pick(NOTE_FIRST); if (m === 'lucky') return pick(NOTE_LUCKY); if (c.tier === 3 && n % 4 === 1) return pick(NOTE_LEG); if (V.isHybrid && V.isHybrid(c.species) && n % 2) return pick(NOTE_HYB);
+    if (mineP(c.id) && n % 2) return pick(NOTE_MINE); if (A && B && A.owner && B.owner && A.owner !== B.owner && n % 2 === 0) return pick(NOTE_TWO); return NOTES[n % NOTES.length]; }
+  /* big moments: most motel eggs are Legendary (Legendary parents), so a Legendary stamp on every row meant nothing. Stamps mark what is rare here:
+   * a God egg, the FIRST pet ever of its species (a brand-new hybrid), or a LUCKY roll (egg rarer than both parents). */
+  var firstMap = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function firstOf(w) { var hit = firstMap && firstMap.get(w); if (hit) return hit; var f = {}; (w.pets || []).forEach(function (p) { var o = f[p.species]; if (!o || (p.hatchBlock || 0) < (o.hatchBlock || 0) || ((p.hatchBlock || 0) === (o.hatchBlock || 0) && p.id < o.id)) f[p.species] = p; });
+    var ids = {}; Object.keys(f).forEach(function (k) { ids[f[k].id] = 1; }); if (firstMap) firstMap.set(w, ids); return ids; }
+  function gbMoment(w, c) { if (c.resurrected) return 'god'; if (firstOf(w)[c.id]) return 'first'; var A = w.byId[c.parents[0]], B = w.byId[c.parents[1]]; if (A && B && c.tier > Math.max(A.tier || 0, B.tier || 0)) return 'lucky'; return ''; }
+  function gbStamp(w, c, V) { var m = gbMoment(w, c); if (m === 'god') return '<b class="gb-stamp gb-st-god">GOD!</b>'; if (m === 'first') return '<b class="gb-stamp gb-st-first">FIRST EVER!</b>'; if (m === 'lucky') return '<b class="gb-stamp gb-st-lucky">LUCKY!</b>';
+    return V.isHybrid && V.isHybrid(c.species) ? '<b class="gb-stamp gb-st-hyb">HYBRID</b>' : ''; }
+  function gbShort(a) { a = String(a || ''); return a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a; }
+  function gbSeen(all) { var top = all.length ? Math.max.apply(null, all.map(function (c) { return c.id; })) : 0;
+    if (BK.seen0 == null) { var s = null; try { s = localStorage.getItem('xcpets-gb-seen'); } catch (e) { } BK.seen0 = s == null ? top : +s || 0; }
+    return top; }
+  function gbMarkSeen(top) { if (!top) return; try { if ((+localStorage.getItem('xcpets-gb-seen') || 0) < top) localStorage.setItem('xcpets-gb-seen', String(top)); } catch (e) { } }
+  function gbDoodle(cv, t) { try { var x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height); dog(x, 2, 1, t || 0, { talk: false }); } catch (e) { } }
+  function regulars(w, all, ME) { var byPet = {}, byOwn = {}, byDay = {};
+    all.forEach(function (c) { c.parents.forEach(function (id) { byPet[id] = (byPet[id] || 0) + 1; }); if (c.owner) byOwn[c.owner] = (byOwn[c.owner] || 0) + 1; var d = Math.floor((c.hatchBlock || 0) / 144); byDay[d] = (byDay[d] || 0) + 1; });
+    var top = function (o, n) { return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return b[1] - a[1] || (a[0] < b[0] ? -1 : 1); }).slice(0, n); };
+    var pets = top(byPet, 5), owns = top(byOwn, 5), day = top(byDay, 1)[0], medal = ['🥇', '🥈', '🥉', '4.', '5.'];
+    var h = '<div class="gb-page"><div class="gb-sec">🏆 Gooby’s regulars <small>(most eggs as a parent)</small></div>' + (pets.length ? pets.map(function (r, i) { var p = w.byId[r[0]];
+      return '<div class="gb-row gb-reg"><span class="gb-medal">' + medal[i] + '</span>' + gbSpr(p) + '<div class="gb-txt"><span class="gb-main">' + gbName(w, r[0]) + (p && ME && p.owner === ME ? ' <em class="bk-own me">My Pets</em>' : '') + '</span><span class="gb-meta">' + r[1] + (r[1] === 1 ? ' egg' : ' eggs') + ' at the motel</span></div></div>'; }).join('') : '<div class="gb-row gb-empty">No regulars yet.</div>') + '</div>';
+    h += '<div class="gb-page"><div class="gb-sec">👜 Most eggs taken home</div>' + (owns.length ? owns.map(function (r, i) { var me = ME && r[0] === ME;
+      return '<div class="gb-row gb-reg' + (me ? ' gb-me' : '') + '"><span class="gb-medal">' + medal[i] + '</span><div class="gb-txt"><span class="gb-main" title="' + esc(r[0]) + '">' + (me ? 'You' : esc(gbShort(r[0]))) + '</span><span class="gb-meta">' + r[1] + (r[1] === 1 ? ' egg' : ' eggs') + '</span></div></div>'; }).join('') : '') +
+      (day ? '<div class="gb-sec">🌙 Busiest night</div><div class="gb-row gb-reg"><span class="gb-medal">🔥</span><div class="gb-txt"><span class="gb-main">' + day[1] + ' eggs in one night</span><span class="gb-meta">around block ' + Number(day[0] * 144).toLocaleString('en-US') + (w.tip ? ' · ' + ago(w.tip, day[0] * 144) : '') + '</span></div></div>' : '') +
+      '<div class="gb-note gb-hand">Gooby: “Regulars get a free mint. Everybody else gets a mint too. Gooby is nice.”</div></div>';
+    return h; }
   function book(w) { var el = document.getElementById('motelBook'); if (!el) return; var V = window.V2Rules || {}, ME = window.V2UI && V2UI.ME, tip = w.tip || 0, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
     var mineP = function (id) { var p = w.byId[id]; return !!(p && ME && p.owner === ME); };
-    var all = bredKids(w);
-    var L = BK.mine ? all.filter(function (c) { return mineP(c.id) || mineP(c.parents[0]) || mineP(c.parents[1]); }) : all;
-    var wait = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)) && (!BK.mine || mineP(r.a) || mineP(r.b)); }).sort(function (p, q) { return q.block - p.block; });
-    var today = all.filter(function (c) { return tip && tip - (c.hatchBlock || 0) <= 144; }).length, hyb = all.filter(function (c) { return V.isHybrid && V.isHybrid(c.species); }).length;
-    BK.w = w; var gk = [tip, all.length, (w.breedReqs || []).length, wait.length, BK.page, BK.mine, ME, BK.closed].join('|'); if (el._gk === gk && el.firstChild) return; el._gk = gk; /* re-renders often: keep the sprite canvases unless something changed */
-    if (BK.closed) { el.innerHTML = '<div class="gb gb-cover"><button type="button" class="gb-open" data-gbo="1" aria-expanded="false" aria-controls="motelBook"><b class="gb-h">📒 GUESTBOOK</b><span class="gb-ot">Open book ▸</span></button><span class="gb-sub">🥚 ' + all.length + ' eggs · ' + hyb + ' hybrids · tap Gooby or the book on his desk</span></div>'; el.querySelector('[data-gbo]').onclick = function () { openBook(false); }; el.ontouchstart = el.ontouchend = null; return; }
-    var per = 6, pages = Math.max(1, Math.ceil(L.length / per)); BK.page = Math.min(BK.page, pages - 1); var P = L.slice(BK.page * per, BK.page * per + per);
-    var h = '<div class="gb"><div class="gb-top"><b class="gb-h">📒 GUESTBOOK</b><span class="gb-sub">Every stay is a real breed burn on Bitcoin</span><button type="button" class="gb-x" data-gbx="1" aria-expanded="true" aria-label="Close guest book" title="Close (Esc)">✕ Close book</button></div>' +
-      '<div class="gb-stats"><span>🥚 <b>' + all.length + '</b> eggs</span><span>🌙 <b>' + today + '</b> today</span><span>🧬 <b>' + hyb + '</b> hybrids</span><span>🛎️ <b>' + (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); }).length + '</b> waiting</span></div>' +
-      (ME ? '<div class="gb-tabs" role="tablist"><button type="button" class="q' + (BK.mine ? '' : ' on') + '" data-gbf="0" aria-pressed="' + !BK.mine + '">All stays</button><button type="button" class="q' + (BK.mine ? ' on' : '') + '" data-gbf="1" aria-pressed="' + BK.mine + '">My pets</button></div>' : '');
-    if (BK.page === 0 && wait.length) h += '<div class="gb-sec">🛎️ Checked in, waiting for a date</div>' + wait.slice(0, 3).map(function (r) {
-      var left = tip ? Math.max(0, (V.BREED_WINDOW || 144) - (tip - r.block)) : null;
-      return '<div class="gb-row gb-wait"><div class="gb-pics">' + gbSpr(w.byId[r.a]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[r.b]) + '</div><div class="gb-txt"><span class="gb-main">' + gbName(w, r.a) + ' is waiting for ' + gbName(w, r.b) + '</span>' +
-        '<span class="gb-meta">checked in at block ' + Number(r.block).toLocaleString('en-US') + (left != null ? ' · key expires in ' + left + ' blocks' : '') + '</span></div></div>'; }).join('');
-    h += '<div class="gb-sec">🥚 Checked out with an egg</div>' + (P.length ? P.map(function (c) { var hy = V.isHybrid && V.isHybrid(c.species), sp = V.speciesLabel ? V.speciesLabel(c.species) : c.species;
-        return '<div class="gb-row"><div class="gb-pics">' + gbSpr(w.byId[c.parents[0]]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[c.parents[1]]) + '<span class="gb-op">→</span>' + gbSpr(c) + '</div>' +
-          '<div class="gb-txt"><span class="gb-main">' + gbName(w, c.parents[0]) + ' × ' + gbName(w, c.parents[1]) + '</span>' +
-          '<span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (c.resurrected ? 'god' : TID[c.tier] || 'common') + '">' + esc((c.resurrected ? 'God' : TL[c.tier]) || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
-          '<span class="gb-meta">block ' + Number(c.hatchBlock || 0).toLocaleString('en-US') + (ago(tip, c.hatchBlock) ? ' · ' + ago(tip, c.hatchBlock) : '') + '</span>' +
-          '<span class="gb-note">Gooby\u2019s note: \u201c' + NOTES[c.id % NOTES.length] + '\u201d</span></div></div>'; }).join('') : '<div class="gb-row gb-empty">' + (BK.mine ? 'None of my pets have stayed here yet. Pick two guests above.' : 'No guests yet. Be the first.') + '</div>') +
-      '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span>' + (BK.page + 1) + ' / ' + pages + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button></div></div>';
-    el.innerHTML = h;
+    var all = bredKids(w), topId = gbSeen(all), fresh = function (c) { return BK.seen0 != null && c.id > BK.seen0; }, nNew = all.filter(fresh).length;
+    if (BK.ch === 'mine' && !ME) BK.ch = 'all';
+    var isHy = function (c) { return !!(V.isHybrid && V.isHybrid(c.species)); }, myStay = function (c) { return mineP(c.id) || mineP(c.parents[0]) || mineP(c.parents[1]); };
+    var isWow = function (c) { return !!gbMoment(w, c); };
+    var L = BK.ch === 'wow' ? all.filter(isWow) : BK.ch === 'hyb' ? all.filter(isHy) : BK.ch === 'mine' ? all.filter(myStay) : all;
+    var live = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); });
+    var wait = live.filter(function (r) { return BK.ch !== 'mine' || mineP(r.a) || mineP(r.b); }).sort(function (p, q) { return q.block - p.block; });
+    var today = all.filter(function (c) { return tip && tip - (c.hatchBlock || 0) <= 144; }).length, hyb = all.filter(isHy).length, wowN = all.filter(isWow).length;
+    var wide = (el.clientWidth || (el.parentNode && el.parentNode.clientWidth) || 0) >= 720, per = wide ? 6 : 4;
+    BK.w = w; BK.wide = wide; var gk = [tip, all.length, (w.breedReqs || []).length, wait.length, BK.page, BK.ch, ME, BK.closed, wide, BK.seen0].join('|'); if (el._gk === gk && el.firstChild) return; el._gk = gk; /* re-renders often: keep the sprite canvases unless something changed */
+    if (BK.closed) { el.innerHTML = '<div class="gb gb-cover"><button type="button" class="gb-open" data-gbo="1" aria-expanded="false" aria-controls="motelBook"><canvas class="gb-dood" width="24" height="20" aria-hidden="true"></canvas><span class="gb-ct"><b class="gb-title">Gooby’s Guest Book</b><span class="gb-ot">Open book ▸</span></span>' + (nNew ? '<span class="gb-newb">' + nNew + ' new</span>' : '') + '</button><span class="gb-sub">🥚 ' + all.length + ' eggs · ' + hyb + ' hybrids · ' + wowN + ' big moments · tap Gooby or the book on his desk</span></div>';
+      gbDoodle(el.querySelector('.gb-dood')); el.querySelector('[data-gbo]').onclick = function () { openBook(false); }; el.ontouchstart = el.ontouchend = null; return; }
+    gbMarkSeen(topId);
+    var reg = BK.ch === 'reg', pages = reg ? 1 : Math.max(1, Math.ceil(L.length / per)); BK.page = Math.min(BK.page, pages - 1); var P = reg ? [] : L.slice(BK.page * per, BK.page * per + per);
+    var tabs = [['all', '📖', 'All stays', all.length], ['wow', '🎉', 'Big moments', wowN], ['hyb', '🧬', 'Hybrids', hyb]].concat(ME ? [['mine', '⭐', 'My stays', all.filter(myStay).length]] : []).concat([['reg', '🏆', 'Regulars', null]]);
+    var stay = function (c) { var hy = isHy(c), sp = V.speciesLabel ? V.speciesLabel(c.species) : c.species, nw = fresh(c);
+      return '<div class="gb-row gb-stay' + (nw ? ' gb-isnew' : '') + (isWow(c) ? ' gb-gold' : '') + '">' + (nw ? '<span class="gb-new">NEW</span>' : '') +
+        '<div class="gb-pics">' + gbSpr(w.byId[c.parents[0]]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[c.parents[1]]) + '<span class="gb-op gb-arw">→</span><span class="gb-kidpic">' + gbSpr(c, true) + gbStamp(w, c, V) + '</span></div>' +
+        '<div class="gb-txt"><span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (c.resurrected ? 'god' : TID[c.tier] || 'common') + '">' + esc((c.resurrected ? 'God' : TL[c.tier]) || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
+        '<span class="gb-main">' + gbName(w, c.parents[0]) + ' × ' + gbName(w, c.parents[1]) + '</span>' +
+        '<span class="gb-meta" title="block ' + Number(c.hatchBlock || 0).toLocaleString('en-US') + '">' + (ago(tip, c.hatchBlock) || 'block ' + Number(c.hatchBlock || 0).toLocaleString('en-US')) + '</span>' +
+        '<span class="gb-note gb-hand">Gooby: “' + esc(gbNote(w, c, mineP)) + '”</span></div></div>'; };
+    var empty = { all: 'No guests yet. Be the first.', wow: 'No big moments yet. Gooby is waiting.', hyb: 'No hybrids yet. Mix two species to make one.', mine: 'None of my pets have stayed here yet. Pick two guests above.' }[BK.ch] || '';
+    var body;
+    if (reg) body = regulars(w, all, ME);
+    else { var waitH = BK.page === 0 && wait.length && BK.ch !== 'wow' && BK.ch !== 'hyb' ? '<div class="gb-post"><b>🛎️ Waiting at the desk</b>' + wait.slice(0, 3).map(function (r) { var left = tip ? Math.max(0, (V.BREED_WINDOW || 144) - (tip - r.block)) : null;
+        return '<div class="gb-row gb-wait"><div class="gb-pics">' + gbSpr(w.byId[r.a]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[r.b]) + '</div><div class="gb-txt"><span class="gb-main">' + gbName(w, r.a) + ' is waiting for ' + gbName(w, r.b) + '</span><span class="gb-meta">' + (left != null ? 'key expires in ' + left + ' blocks (~' + Math.max(1, Math.round(left / 6)) + ' h)' : 'checked in at block ' + Number(r.block).toLocaleString('en-US')) + '</span></div></div>'; }).join('') + '</div>' : '';
+      var rows = P.map(stay), half = wide ? Math.ceil(per / 2) : per;
+      body = !rows.length ? '<div class="gb-page">' + waitH + '<div class="gb-row gb-empty">' + empty + '</div></div>' : '<div class="gb-page">' + waitH + rows.slice(0, half).join('') + '</div>' + (wide ? '<div class="gb-page">' + (rows.slice(half).join('') || '<div class="gb-row gb-empty gb-end">The end. For now. Gooby pls.</div>') + '</div>' : ''); }
+    var pgLbl = reg ? 'Regulars' : wide ? 'Pages ' + (BK.page * 2 + 1) + '–' + (BK.page * 2 + 2) + ' of ' + pages * 2 : 'Page ' + (BK.page + 1) + ' of ' + pages;
+    var h = '<div class="gb' + (wide ? ' gb-wide' : '') + '"><div class="gb-tabs" role="tablist" aria-label="Guest book chapters">' + tabs.map(function (t) { var on = BK.ch === t[0]; return '<button type="button" role="tab" class="gb-tab gb-t-' + t[0] + (on ? ' on' : '') + '" data-gbc="' + t[0] + '" aria-selected="' + on + '"><span aria-hidden="true">' + t[1] + '</span> ' + t[2] + (t[3] != null ? ' <small>' + t[3] + '</small>' : '') + '</button>'; }).join('') + '</div>' +
+      '<div class="gb-paper"><div class="gb-top"><canvas class="gb-dood" width="24" height="20" aria-hidden="true"></canvas><div class="gb-hd"><b class="gb-title">Gooby’s Guest Book</b><span class="gb-sub">Every stay is a real breed burn on Bitcoin</span></div><button type="button" class="gb-x" data-gbx="1" aria-expanded="true" aria-label="Close guest book" title="Close (Esc)">✕ Close</button></div>' +
+      '<div class="gb-stats"><span class="gb-stk">🥚 <b>' + all.length + '</b> eggs</span><span class="gb-stk">🌙 <b>' + today + '</b> today</span><span class="gb-stk">🧬 <b>' + hyb + '</b> hybrids</span><span class="gb-stk">🎉 <b>' + wowN + '</b> big moments</span><span class="gb-stk">🛎️ <b>' + live.length + '</b> waiting</span>' + (nNew ? '<span class="gb-stk gb-stk-new">✨ <b>' + nNew + '</b> new since last visit</span>' : '') + '</div>' +
+      '<div class="gb-spread">' + body + '</div>' +
+      (reg ? '' : '<div class="gb-pg"><button type="button" class="pk-arr" data-gb="-1" aria-label="Newer"' + (BK.page ? '' : ' disabled') + '>◀</button><span class="gb-pgn">' + pgLbl + '</span><button type="button" class="pk-arr" data-gb="1" aria-label="Older"' + (BK.page < pages - 1 ? '' : ' disabled') + '>▶</button>' + (BK.page > 1 ? '<button type="button" class="gb-first" data-gb0="1">⏮ Newest</button>' : '') + '</div>') + '</div></div>';
+    el.innerHTML = h; gbDoodle(el.querySelector('.gb-dood'));
     var R = window.V2Render; el.querySelectorAll('canvas[data-gbp]').forEach(function (cv) { var p = w.byId[cv.dataset.gbp]; if (!p || !R) return; var mk = function () { return R.petFrames(p, w); }; if (R.lazy) R.lazy(cv, mk, true); else try { R.paint(cv, mk()[0]); } catch (e) { } });
     el.querySelectorAll('[data-gb]').forEach(function (b) { b.onclick = function () { turn(w, +b.dataset.gb, BK.page + +b.dataset.gb); }; });
+    var g0 = el.querySelector('[data-gb0]'); if (g0) g0.onclick = function () { turn(w, -1, 0); };
     el.querySelector('[data-gbx]').onclick = function () { closeBook(); };
-    el.querySelectorAll('[data-gbf]').forEach(function (b) { b.onclick = function () { BK.mine = b.dataset.gbf === '1'; BK.page = 0; book(w); }; });
+    el.querySelectorAll('[data-gbc]').forEach(function (b) { b.onclick = function () { if (BK.ch === b.dataset.gbc) return; var dir = tabs.map(function (t) { return t[0]; }).indexOf(b.dataset.gbc) > tabs.map(function (t) { return t[0]; }).indexOf(BK.ch) ? 1 : -1; BK.ch = b.dataset.gbc; try { localStorage.setItem('xcpets-gb-ch', BK.ch); } catch (e) { } if (window.V2Sfx && V2Sfx.creak) try { V2Sfx.creak(); } catch (e) { } turn(w, dir, 0); }; });
     var x0 = null; el.ontouchstart = function (e) { x0 = e.touches[0].clientX; }; el.ontouchend = function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { var np = Math.max(0, Math.min(pages - 1, BK.page + (dx < 0 ? 1 : -1))); if (np !== BK.page) turn(w, dx < 0 ? 1 : -1, np); } }; }
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', function () { var el = document.getElementById('motelBook'); if (!el || !BK.w || BK.closed) return; var wide = (el.clientWidth || 0) >= 720; if (wide !== BK.wide) { BK.page = 0; el._gk = null; book(BK.w); } });
   /* guestbook-close (owner Oct 22 2026 ~11:29 PM CT: 'we should be able to close Gooby's guest book'): ✕ Close book, Esc, or a tap outside the book on a phone
    * closes it to a cover (fold toward the spine, same 8-step leaf as the page turn), and puts the player back at the scroll spot they had when it opened
    * (or keeps the cover in view). Open again with the cover button, Gooby, or the little book on his desk. Remembered per device. Display only. */
@@ -369,14 +460,39 @@
       '.gb-leaf>.gb-front,.gb-backface{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}.gb-leaf>.gb-front{box-shadow:none}' +
       '.gb-backface{transform:rotateY(180deg);border:3px solid #000;background:#e9dfc6 repeating-linear-gradient(#e9dfc6 0 15px,#c9b996 15px 17px);box-shadow:inset 6px 0 0 #d6c7a6}' +
       '.gb-shade{position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(90deg,rgba(0,0,0,0) 0 50%,rgba(42,21,48,.12) 50% 75%,rgba(42,21,48,.28) 75% 100%)}.gb-back .gb-shade{transform:scaleX(-1)}' +
-      '.gb-top{flex-wrap:wrap;gap:2px 8px;position:relative;padding-right:118px}.gb-x{position:absolute;top:-2px;right:0;min-height:40px;padding:4px 10px;font-family:"Press Start 2P",monospace;font-size:9px;background:#2a1530;color:#ffd1ec;border:2px solid #000;box-shadow:2px 2px 0 #000;cursor:pointer}.gb-x:hover,.gb-x:focus-visible{background:#c8102e;color:#fff}.gb-x:active{transform:translate(2px,2px);box-shadow:none}' +
-      '.gb-cover{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.gb-open{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;background:#c8102e;color:#fff;border:3px solid #000;box-shadow:inset 6px 0 0 #7a0a1c,3px 3px 0 #000;cursor:pointer;font:inherit}.gb-open .gb-h{color:#ffd166}.gb-ot{font-family:"Press Start 2P",monospace;font-size:9px}.gb-open:hover,.gb-open:focus-visible{filter:brightness(1.12)}.gb-open:active{transform:translate(2px,2px);box-shadow:inset 6px 0 0 #7a0a1c}' +
-      '@media (max-width:520px){.gb-top{padding-right:0;padding-top:44px}.gb-x{top:0}}' +
-      '.gb-top{flex-wrap:wrap;gap:2px 8px}.gb-sub{font-size:12px;color:#6a4a5a}.gb-stats{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0;font-size:13px}.gb-tabs{display:flex;gap:6px;margin:4px 0 6px}.gb-tabs .q{min-height:40px;padding:4px 12px;background:#f5efe0;color:#2a1530;border:2px solid #000;box-shadow:2px 2px 0 #000}.gb-tabs .q.on{background:#4fd18b;color:#0d1a12}.gb-kid a,.gb-main a{color:#2e5aa8}' +
-      '.gb-sec{margin:8px 0 2px;font-weight:700;color:#2a1530;border-bottom:2px solid #2a1530}.motel-book .gb-row{flex-direction:row;gap:8px;align-items:center}.gb-wait{background:#ffe9f4}' +
-      '.gb-pics{display:flex;align-items:center;gap:2px;flex:0 0 auto}.gb-spr{width:32px;height:32px;image-rendering:pixelated;border:2px solid #000;background:#1a2b4a;display:inline-block}.gb-q{color:#fff;text-align:center;line-height:28px}.gb-op{font-weight:700;color:#c8102e;font-size:12px}' +
-      '.gb-txt{display:flex;flex-direction:column;min-width:0;flex:1}.gb-kid{font-size:13px}.gb-kid .pill.tier{font-size:11px}.gb-hyb{font-size:12px;font-weight:700;color:#7a2a8a;white-space:nowrap}.gb-meta{font-size:12px;color:#6a6a6a}.gb-empty{font-style:italic}' +
-      '@media (max-width:520px){.gb-spr{width:28px;height:28px}.motel-book .gb-row{flex-direction:column;align-items:flex-start;gap:3px}.mg-cap{font-size:13px}}';
+      /* guestbook v3 (Nov 22 2026): a real book. Overrides the old flat card from css/v2.css (.motel-book .gb). */
+      '.motel-book .gb{margin:10px 9px 14px;padding:0;background:none;border:0;box-shadow:none;color:#2a1530;font-size:13px;position:relative}' +
+      '.gb-tabs{display:flex;gap:4px;padding:0 10px;overflow-x:auto;scrollbar-width:none;position:relative;z-index:1;margin:0 0 -1px}.gb-tabs::-webkit-scrollbar{display:none}' +
+      '.gb-tab{flex:0 0 auto;min-height:40px;padding:6px 10px 6px;border:3px solid #000;border-bottom:0;border-radius:8px 8px 0 0;font:700 13px var(--comic,"Comic Neue"),"Comic Sans MS",sans-serif;color:#2a1530;cursor:pointer;transform:translateY(6px);filter:saturate(.75) brightness(.95);transition:transform .12s steps(2),filter .12s}' +
+      '.gb-tab small{font:9px "Press Start 2P",monospace;margin-left:2px;opacity:.75}.gb-tab:hover,.gb-tab:focus-visible{transform:translateY(2px);filter:none}.gb-tab.on{transform:none;filter:none;padding-bottom:12px;box-shadow:3px 0 0 #000}' +
+      '.gb-t-all{background:#ffd166}.gb-t-wow{background:#ffb627}.gb-t-hyb{background:#d4b3ff}.gb-t-mine{background:#4fd18b}.gb-t-reg{background:#7fe7ff}' +
+      '.gb-paper{position:relative;padding:12px;background:#fbf3dc repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 23px,rgba(79,120,200,.16) 23px 24px);border:3px solid #000;border-radius:2px 6px 6px 2px;box-shadow:0 0 0 6px #c8102e,0 0 0 9px #000,7px 7px 0 9px #000}' +
+      '.gb-top{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:0}.gb-dood{width:48px;height:40px;image-rendering:pixelated;flex:0 0 auto}.gb-hd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}' +
+      '.gb-title{font-family:var(--meme,"Bangers"),Impact,cursive;font-weight:400;font-size:clamp(22px,4.2vw,32px);letter-spacing:1px;line-height:1;color:#c8102e;text-shadow:2px 2px 0 #ffd166,3px 3px 0 #000}' +
+      '.gb-x{flex:0 0 auto;align-self:flex-start;min-height:40px;padding:4px 10px;font-family:"Press Start 2P",monospace;font-size:9px;background:#2a1530;color:#ffd1ec;border:2px solid #000;box-shadow:2px 2px 0 #000;cursor:pointer}.gb-x:hover,.gb-x:focus-visible{background:#c8102e;color:#fff}.gb-x:active{transform:translate(2px,2px);box-shadow:none}' +
+      '.gb-sub{font-size:12px;color:#6a4a5a}.gb-stats{display:flex;flex-wrap:wrap;gap:6px 8px;margin:10px 0 6px}.gb-stk{display:inline-flex;align-items:baseline;gap:4px;padding:2px 8px;background:#fff;border:2px solid #000;border-radius:12px;box-shadow:2px 2px 0 #000;font-size:12px;white-space:nowrap;transform:rotate(-1.2deg)}.gb-stk:nth-child(even){transform:rotate(1deg)}.gb-stk-new{background:#ffeb3b}' +
+      '.gb-spread{display:grid;grid-template-columns:minmax(0,1fr)}.gb-wide .gb-spread{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.gb-page{min-width:0}' +
+      '.gb-wide .gb-page:first-child{padding-right:14px;border-right:2px solid #cdb88a;box-shadow:inset -16px 0 14px -14px rgba(70,35,10,.35)}.gb-wide .gb-page+.gb-page{padding-left:14px;box-shadow:inset 16px 0 14px -14px rgba(70,35,10,.35)}' +
+      '.gb-sec{margin:8px 0 4px;font-weight:700;color:#2a1530;border-bottom:2px solid #2a1530}.gb-sec small{font-weight:400;color:#6a4a5a}' +
+      '.motel-book .gb-row{flex-direction:row;gap:10px;align-items:center;position:relative;padding:8px 4px;border-bottom:2px dashed #d3c19a}.motel-book .gb-page>.gb-row:last-child{border-bottom:0}' +
+      '.gb-gold{background:linear-gradient(90deg,rgba(255,200,60,.38),rgba(255,200,60,0) 75%)}.gb-isnew{background:linear-gradient(90deg,rgba(255,235,59,.45),rgba(255,235,59,0) 80%)}' +
+      '.gb-pics{display:flex;align-items:center;gap:3px;flex:0 0 auto}.gb-fr{width:32px;height:32px;display:inline-block;flex:0 0 auto;border:2px solid #000;background:#1a2b4a;overflow:hidden;vertical-align:middle}.gb-fr canvas{display:block;width:100%!important;height:100%!important;max-width:none!important;image-rendering:pixelated}' +
+      '.gb-big{width:58px;height:58px;border-width:3px;box-shadow:3px 3px 0 #000}.gb-q{color:#fff;text-align:center;line-height:28px}.gb-big.gb-q{line-height:52px}.gb-op{font-weight:700;color:#c8102e;font-size:13px}.gb-arw{margin:0 2px}' +
+      '.gb-kidpic{position:relative;display:inline-block;margin-right:22px}.gb-stamp{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%) rotate(-9deg);font-family:var(--meme,"Bangers"),Impact,cursive;font-weight:400;font-size:12px;letter-spacing:1px;line-height:1.15;padding:0 3px;border:2px solid currentColor;border-radius:3px;background:rgba(255,248,225,.93);white-space:nowrap;pointer-events:none}' +
+      '.gb-st-first{color:#c8102e}.gb-st-lucky{color:#1f8a4c}.gb-st-god{color:#8a2be2}.gb-st-rare{color:#2e5aa8}.gb-st-hyb{color:#7a2a8a}' +
+      '.gb-new{position:absolute;top:4px;right:2px;z-index:1;background:#ffeb3b;color:#000;font:8px "Press Start 2P",monospace;padding:3px 5px;border:2px solid #000;box-shadow:2px 2px 0 #000;transform:rotate(6deg)}' +
+      '.gb-txt{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}.gb-kid{font-size:14px;font-weight:700;padding-right:40px}.gb-kid .pill.tier{font-size:11px}.gb-kid a,.gb-main a{color:#2e5aa8}.gb-main{font-size:13px}.gb-hyb{font-size:12px;font-weight:700;color:#7a2a8a;white-space:nowrap}.gb-meta{font-size:12px;color:#6a6a6a}' +
+      '.gb-hand{font-family:var(--comic,"Comic Neue"),"Comic Sans MS",cursive;font-weight:700;font-style:normal;color:#1f4fa8;font-size:13px;line-height:1.25}.gb-page>.gb-note{margin-top:8px}.gb-empty{font-style:italic;color:#6a4a5a}.gb-end{text-align:center;padding-top:30px}' +
+      '.gb-post{margin:4px 0 8px;padding:6px 8px;background:#ffd6ea;border:2px solid #000;box-shadow:3px 3px 0 #000;transform:rotate(-.6deg)}.gb-post>b{font-size:13px}.motel-book .gb-post .gb-row{border-bottom:0;padding:4px 0}' +
+      '.gb-reg .gb-medal{font-size:20px;width:30px;text-align:center;flex:0 0 auto}.gb-me{background:rgba(79,209,139,.25)}' +
+      '.motel-book .gb-pg{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:2px solid #cdb88a}.gb-pgn{font:9px "Press Start 2P",monospace;color:#2a1530}.motel-book .gb-pg .pk-arr{min-height:40px;min-width:44px}' +
+      '.gb-first{min-height:40px;padding:4px 10px;background:#f5efe0;color:#2a1530;border:2px solid #000;box-shadow:2px 2px 0 #000;font:700 13px var(--comic,"Comic Neue"),sans-serif;cursor:pointer}' +
+      '.motel-book .gb.gb-cover{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}.gb-open{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 16px 8px 20px;background:#c8102e;color:#fff;border:3px solid #000;border-radius:3px 10px 10px 3px;box-shadow:inset 9px 0 0 #7a0a1c,inset 11px 0 0 #000,4px 4px 0 #000;cursor:pointer;font:inherit;position:relative}' +
+      '.gb-open .gb-title{color:#ffd166;font-size:24px;text-shadow:2px 2px 0 #000}.gb-ct{display:flex;flex-direction:column;align-items:flex-start;gap:3px}.gb-ot{font-family:"Press Start 2P",monospace;font-size:9px}.gb-open:hover,.gb-open:focus-visible{filter:brightness(1.12)}.gb-open:active{transform:translate(2px,2px);box-shadow:inset 9px 0 0 #7a0a1c,inset 11px 0 0 #000}' +
+      '.gb-cover>.gb-sub{color:#e4d4ec}.gb-newb{position:absolute;top:-10px;right:-10px;background:#ffeb3b;color:#000;font:8px "Press Start 2P",monospace;padding:4px 6px;border:2px solid #000;box-shadow:2px 2px 0 #000;transform:rotate(8deg)}' +
+      '@media (prefers-reduced-motion:no-preference){.gb-paper .gb-stamp{animation:gbSlam .42s steps(4,end) both}.gb-paper .gb-row:nth-child(2) .gb-stamp{animation-delay:.08s}.gb-paper .gb-row:nth-child(3) .gb-stamp{animation-delay:.16s}.gb-paper .gb-row:nth-child(4) .gb-stamp{animation-delay:.24s}.gb-newb,.gb-stk-new{animation:gbBob 1.2s steps(2,end) infinite}}' +
+      '@keyframes gbSlam{0%{opacity:0;transform:translateX(-50%) rotate(-24deg) scale(2.4)}70%{opacity:1;transform:translateX(-50%) rotate(-7deg) scale(.88)}100%{opacity:1;transform:translateX(-50%) rotate(-9deg) scale(1)}}@keyframes gbBob{50%{translate:0 -2px}}' +
+      '@media (max-width:520px){.motel-book .gb{margin:10px 9px 14px}.gb-paper{padding:10px 8px}.gb-dood{width:36px;height:30px}.motel-book .gb-row.gb-stay{flex-direction:column;align-items:flex-start;gap:8px}.motel-book .gb-stay .gb-pics{margin-bottom:6px}.gb-kid{padding-right:44px}.gb-tab{padding:6px 8px;font-size:12px}.gb-tab small{display:none}.gb-x{padding:4px 8px}.mg-cap{font-size:13px}}';
     (document.head || document.documentElement).appendChild(gs); }
   if (typeof document !== 'undefined' && !document.getElementById('epCss')) { var es = document.createElement('style'); es.id = 'epCss';
     es.textContent = '.bk-sent{margin:6px 0;padding:8px;border:2px solid #000;background:#2a1530;color:#ffd1ec;font-size:14px;box-shadow:3px 3px 0 #000;overflow-wrap:anywhere}.bk-sent a{color:#9fe8ff}' +
@@ -385,5 +501,12 @@
       '.eggpop:not(.rm) .ep-fx{animation:epb .6s steps(3) 4}.eggpop:not(.rm) .ep-sp{display:inline-block;animation:epw .5s steps(2) 5}@keyframes epb{50%{transform:translateY(-6px)}}@keyframes epw{50%{transform:rotate(6deg)}}@media (prefers-reduced-motion:reduce){.eggpop .ep-fx,.eggpop .ep-sp{animation:none!important}}';
     (document.head || document.documentElement).appendChild(es); }
   function checkedIn(a, b) { S.fresh = [String(a), String(b)].sort().join(':'); if (window.V2Sfx) V2Sfx.creak(); S.bubble = 'Keys out. Door opens when both are in.'; S.lt = performance.now(); }
+  /* living-scenes (Nov 22 2026): paint the motel the moment the page opens (Gooby at the desk, the pool, the rooms), before the chain is read.
+   * render(w) takes over the same canvas when the world arrives. */
+  function early() { if (S.c || !placeOn()) return; var box = document.getElementById('motelScene'); if (!box || box.querySelector('canvas')) return;
+    box.innerHTML = '<canvas width="' + W + '" height="' + H + '" role="img" aria-label="Gooby\u2019s No-Tail Motel at night: Gooby at the desk, the rooms and the gene pool"></canvas>'; var c = box.querySelector('canvas');
+    S.c = c; S.x = c.getContext('2d'); c.dataset.gb = '1'; c.addEventListener('click', G.click); c.addEventListener('mousemove', G.move);
+    if (window.V2Sharp) S.k = V2Sharp.fit(c, W, H); draw(performance.now()); kick(); }
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', early); else setTimeout(early, 0); }
   window.V2Motel = { drawGooby: dog, neon: neon, render: render, book: book, NOTES: NOTES, odds: odds, checkedIn: checkedIn, celebrate: celebrate, eggPop: eggPop, LINES: LINES, picker: picker, placeOn: placeOn, bredKids: bredKids, _state: function () { return S; } };
 })();

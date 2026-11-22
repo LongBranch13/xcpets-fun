@@ -36,7 +36,7 @@
     return out; }
   function events(w, V, opt) { opt = opt || {}; var tip = w.tip || 0, from = tip - (opt.window || WINDOW), by = w.byId || {}, out = [], log = w.log || [];
     function P(id) { return by[id]; }
-    function add(e) { if (e.block == null || e.block < from || e.block > tip) return; out.push(e); }
+    function add(e) { if (e.block == null || e.block < from || e.block > tip) return; if (window.XcpSlots && e.t) e.t = e.t.map(function (s) { return typeof s === 'string' ? XcpSlots.text(s) : s; }); out.push(e); } /* slot-names: Drip shows as Cape */
     var feeds = {}, fedIn = {};
     log.forEach(function (l) { if (l.kind !== 'feed' || l.block == null) return; var ids = l.petIds || (l.petId != null ? [l.petId] : []); ids.forEach(function (id) { (feeds[id] = feeds[id] || []).push(l); if (l.block >= from) fedIn[id] = 1; }); });
     Object.keys(feeds).forEach(function (id) { if (!fedIn[id]) delete feeds[id]; });
@@ -203,6 +203,49 @@
       '<span class="lv-th">' + (p && p.art ? '<a href="pet.html?id=' + p.id + '" tabindex="-1" aria-hidden="true"><canvas class="lv-cv' + (e.dead || (p.dead && !p.zombie) ? ' lv-dead' : '') + (p.zombie ? ' lv-zom' : '') + '" width="32" height="32" data-id="' + p.id + '"></canvas></a>' : '<span class="lv-ico" aria-hidden="true">' + e.icon + '</span>') + '</span>' +
       '<span class="lv-body"><span class="lv-txt">' + (e.rare ? '<span class="lv-rtag">' + esc(e.rare.banner) + '</span>' : '') + '<span aria-hidden="true">' + e.icon + '</span> ' + line(e) + '</span>' +
       '<span class="lv-meta"><span class="lv-time" data-b="' + e.block + '">' + esc(timeTxt(e.block)) + '</span> · block ' + fmt(e.block) + ' · <span class="lv-cat">' + CAT[e.cat] + '</span>' + (e.anim ? ' · <span class="lv-play">▶ replay</span>' : '') + (p ? ' · <a href="pet.html?id=' + p.id + '">pet page →</a>' : '') + ' · <a class="lv-perma" href="?ev=' + encodeURIComponent(evKey(e)) + '" title="Permalink to this event">#</a></span>' + shareBar(e, i) + '</span></li>'; }
+  /* PENDING NOW (Arvik's idea, Nov 22 2026): everyone's unconfirmed XCPETS burns from the node mempool, at the top of the feed, until a block
+   * confirms them. Display only: read from M.state().mempool (the same read-only list the battles box uses); never passed to the replay. */
+  function pnum(n) { return n == null ? '' : '#' + n; }
+  function pids(L) { L = L || []; return L.length === 1 ? pnum(L[0]) : L.length ? fmt(L.length) + ' pets' : 'pets'; }
+  function pendWhat(t) { if (!t || !t.action) return 'a burn'; var a = t.action;
+    if (a === 'hatch' || a === 'hatchwiz') return 'hatching an egg';
+    if (a === 'pack') return 'hatching ' + fmt(t.n || 0) + ' eggs';
+    if (a === 'zap') return 'opening an Electric Egg box (' + fmt(t.n || 0) + ' eggs)';
+    if (a === 'feed' || a === 'froll') return 'feeding ' + pnum(t.petId);
+    if (a === 'feedm' || a === 'feedl') return 'feeding ' + pids(t.ids);
+    if (a === 'feedr' || a === 'feeda' || a === 'chores') return a === 'chores' ? 'doing the daily chores' : 'feeding their pets';
+    if (a === 'cfeed') return 'feeding the community pet';
+    if (a === 'breed') return 'breeding ' + pnum(t.a) + ' × ' + pnum(t.b);
+    if (a === 'fight') return 'challenging ' + pnum(t.b) + ' with ' + pnum(t.a);
+    if (a === 'accept') return 'accepting fight ' + t.fightId;
+    if (a === 'rumble') return 'joining the rumble with ' + pnum(t.petId);
+    if (a === 'raid') return 'hitting the raid boss with ' + pnum(t.petId);
+    if (a === 'quest') return 'sending ' + pnum(t.petId) + ' on a quest';
+    if (a === 'roll' || a === 'spin' || a === 'croll' || a === 'usespin' || a === 'usespint') return 'spinning the Pepe Wheel';
+    if (a === 'wagmi' || a === 'wsign') return 'checking in (WAGMI)';
+    if (a === 'deed') return 'tying ' + pnum(t.petId) + ' to a token';
+    if (a === 'look' || a === 'aura' || a === 'rewear') return 'changing looks';
+    if (a === 'hd' || a === 'release') return 'discarding pets';
+    if (a === 'seance' || a === 'alt' || a === 'altg' || a === 'raise' || a === 'cemr') return 'at the Cemetery altar' + (t.grave != null ? ' (grave ' + pnum(t.grave) + ')' : '');
+    if (a === 'zfeed' || a === 'rpl' || a === 'rplg' || a === 'resurrect' || a === 'unleash') return 'tending zombie ' + pnum(t.zombie);
+    if (a === 'ad' || a === 'rug') return 'at Rug Me';
+    return 'a burn'; }
+  function pendAgo(ms) { if (!ms) return 'waiting for a block'; var m = Math.max(0, Math.round((Date.now() - ms) / 60000)); return 'sent ' + (m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'); }
+  function pendingNow() { var s = M.state ? M.state() : {}, conf = {}, seen = {}, out = [];
+    (s.rows || []).forEach(function (r) { if (r && r.tx_hash) conf[r.tx_hash] = 1; });
+    (s.mempool || []).forEach(function (x) { if (!x || !x.tx_hash || conf[x.tx_hash] || seen[x.tx_hash]) return; seen[x.tx_hash] = 1; var t = null; try { t = V.parseTag(x.tag); } catch (e) {} out.push({ x: x, t: t }); });
+    return out.sort(function (a, b) { return (b.x.at || 0) - (a.x.at || 0); }); }
+  function drawPending() { var box = $('lvPend'); if (!box) { var list = $('lvList'); if (!list || !list.parentNode) return; box = document.createElement('div'); box.id = 'lvPend'; box.className = 'lv-pend'; box.setAttribute('aria-live', 'polite'); list.parentNode.insertBefore(box, list); }
+    var L = pendingNow(); if (!L.length) { box.hidden = true; box.innerHTML = ''; return; }
+    var short = function (a) { a = String(a || ''); return a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a; }, shown = L.slice(0, 12);
+    box.hidden = false;
+    box.innerHTML = '<p class="lv-pend-h"><span class="lv-pend-dot" aria-hidden="true">⏳</span> <b>Pending now</b> · ' + fmt(L.length) + ' burn' + (L.length === 1 ? '' : 's') + ' waiting for the next block</p><ul class="lv-pend-l">' +
+      shown.map(function (u) { var x = u.x; return '<li><span class="lv-pend-who" title="' + esc(x.source) + '">' + esc(short(x.source)) + '</span> is ' + esc(pendWhat(u.t)) +
+        (x.amount ? ' · ' + fmt(Math.round(x.amount * 100) / 100) + ' XCPETS' : '') + ' · <span class="muted">' + esc(pendAgo(x.at)) + '</span> · <a href="https://mempool.space/tx/' + encodeURIComponent(x.tx_hash) + '" target="_blank" rel="noopener">tx ' + esc(String(x.tx_hash).slice(0, 8)) + '…</a></li>'; }).join('') +
+      '</ul>' + (L.length > shown.length ? '<p class="small muted">and ' + fmt(L.length - shown.length) + ' more</p>' : '') + '<p class="small muted lv-pend-note">Not final until a block confirms it. The result shows up in the feed below.</p>'; }
+  if (typeof document !== 'undefined' && !document.getElementById('lvPendCss')) { var pcs = document.createElement('style'); pcs.id = 'lvPendCss';
+    pcs.textContent = '.lv-pend{border:2px dashed #f5b301;border-radius:8px;padding:6px 10px;margin:0 0 10px;background:rgba(245,179,1,.08)}.lv-pend-h{margin:0 0 4px}.lv-pend-l{list-style:none;margin:0;padding:0}.lv-pend-l li{padding:3px 0;border-top:1px dotted rgba(127,127,127,.35);overflow-wrap:anywhere}.lv-pend-l li:first-child{border-top:0}.lv-pend-who{font-family:monospace}.lv-pend-note{margin:4px 0 0}@media (prefers-reduced-motion:no-preference){.lv-pend-dot{display:inline-block;animation:lvPendPulse 1.6s ease-in-out infinite}}@keyframes lvPendPulse{50%{opacity:.35}}';
+    (document.head || document.documentElement).appendChild(pcs); }
   function fmatch(F, e) { return F._rare ? !!e.rare : !!F[e.cat]; }
   function list() { var F = FILTERS[filt]; return F ? EV.filter(function (e) { return fmatch(F, e); }) : EV; }
   function draw() { var box = $('lvList'); if (!box || !W) return; var L = list(), vis = L.slice(0, shown);
@@ -215,7 +258,7 @@
     el.innerHTML = '<span class="lv-dot" aria-hidden="true"></span> Live at block <b>' + fmt(W.tip) + '</b>' + (timeTxt(W.tip) ? ' (' + esc(timeTxt(W.tip)) + ')' : '') + (beh ? ' · ' + fmt(beh) + ' block' + (beh === 1 ? '' : 's') + ' behind the chain, catching up' : '') + (s.provisional ? ' · updating to the latest block…' : '') + ' · checks for new blocks every minute · ' + fmt(EV.length) + ' events in the last ' + Math.round(WINDOW / 144) + ' days'; }
   function build() { var w = M.world(); if (!w || !w.pets) return false; if (W && w === W && EV.length) return false; var old = EV; W = w;
     EV = events(w, V); if (!firstDraw) { seenTx = {}; old.forEach(function (e) { seenTx[e.tx + ':' + e.cat + ':' + e.pet] = 1; }); } else seenTx = null; firstDraw = false; return true; }
-  function refresh() { try { if (build()) { needTime(W.tip); draw(); } status(); openWanted(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } }
+  function refresh() { try { if (build()) { needTime(W.tip); draw(); } status(); openWanted(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } try { drawPending(); } catch (e) { if (root.console) console.warn('[live] refresh', e); } }
   /* ---- animations: loaded on the first tap ---- */
   var animP = null;
   function loadAnims() { if (animP) return animP; var L = ['js/v2-clip.js', 'js/v2-life-anim.js', 'js/v2-cem-anim.js', 'js/v2-mg-anim.js']; /* download-clips-1107: + the ⬇️ Download recorder */

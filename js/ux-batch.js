@@ -235,7 +235,7 @@
     try { if (window.V2Wallet && V2Wallet.tracker) V2Wallet.tracker.list().forEach(function (t) { if (t.status !== 'confirmed') add(t.txid, t.tag, t.at); }); } catch (e) { }
     (S.mempool || []).forEach(function (x) { if (x.source === ME) add(x.tx_hash, x.tag, x.at); }); return out; }
   function paintAeRow() { var inv = $('invPanel'); if (!inv || $('aeRow') || !U.aeToggleHtml) return; var d = document.createElement('div'); d.id = 'aeRow'; d.className = 'aerow'; d.innerHTML = U.aeToggleHtml();
-    var h = inv.querySelector('h2'); inv.insertBefore(d, h ? h.nextSibling : inv.firstChild); U.bindAeTogs(d); }
+    var lm = $('lairMore'), h = inv.querySelector('h2'); if (lm) lm.appendChild(d); else inv.insertBefore(d, h ? h.nextSibling : inv.firstChild); U.bindAeTogs(d); } /* rare-room-simple: inside the More fold */
   function paintCrates(w) { paintAeRow(); var box = $('crates'); if (!box) { box = document.createElement('div'); box.id = 'crates'; box.className = 'crates'; var inv = $('invPanel'); inv.insertBefore(box, inv.querySelector('.statline')); }
     var L = pendingRolls(); box.hidden = !L.length;
     box.innerHTML = L.length ? '<div class="small"><b>🎁 Gear on the way: ' + L.length + ' roll' + (L.length === 1 ? '' : 's') + '</b> · each piece arrives once its burn confirms, usually in about 10 minutes.</div><div class="cratelist">' + L.slice(0, 24).map(function (c) { var p = c.id != null ? w.byId[c.id] : null;

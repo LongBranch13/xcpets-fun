@@ -255,8 +255,18 @@
     if (!exact && !catchup) return { exact: false, catchup: false, provisional: true };
     return { exact: exact, catchup: catchup, provisional: false, behind: behind };
   }
+  /* Never go dark (Nov 22 2026): latest.json is the newest world. When it was built with other rules than this page's
+   * (a rules change is being rolled out, or the server is behind), the server also keeps the newest world for each
+   * rules signature at /xp/v1/world/<rsig>/latest.json. Use that one before giving up on the fast load. */
+  function ownLatest(latest, rsig) {
+    if (!latest || !rsig || latest.rsig === rsig || !/^r[0-9a-f]{32}$/.test(rsig)) return Promise.resolve(latest);
+    return fetch(base() + '/xp/v1/world/' + rsig + '/latest.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (own) { return own && own.rsig === rsig && (own.manifest || own.url) ? own : latest; }, function () { return latest; });
+  }
   function fetchManifest(api) {
     return fetch(base() + '/xp/v1/world/latest.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }).then(function (latest) {
+      return ownLatest(latest, api && api.rsig ? api.rsig() : null);
+    }).then(function (latest) {
       var path = latest && (latest.manifest || latest.url); if (!path) throw new Error('latest');
       var abs = /^https?:/.test(path) ? path : base() + path;
       return fetch(abs, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) { man._url = abs; return man; });
@@ -397,5 +407,5 @@
     try { w.postMessage({ id: id, scripts: scripts, rows: S.rows, hashes: S.hashes, ops: [], tip: S.tip, dex: S.dex || undefined, idbKey: api.idbKey(), rsig: rsig }); } catch (e) { try { w.terminate(); } catch (e2) {} }
   }
 
-  window.V2BootSync = { enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, bootFirst: bootFirst, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, sameInputs: sameInputs, buildId: buildId, ruleUrls: ruleUrls, ready: null };
+  window.V2BootSync = { _fetchManifest: fetchManifest, enabled: enabled, base: base, localOnly: localOnly, saveData: saveData, tryLoad: tryLoad, bootFirst: bootFirst, arm: arm, mergeSync: mergeSync, mergeDex: mergeDex, checkText: checkText, markValue: markValue, unmarkValue: unmarkValue, sameValue: sameValue, digestOf: digestOf, sha256Text: sha256Text, mempoolOf: mempoolOf, neededBlocks: neededBlocks, hashSet: hashSet, RULE_SCRIPTS: RULE_SCRIPTS, sameInputs: sameInputs, buildId: buildId, ruleUrls: ruleUrls, ready: null };
 })();

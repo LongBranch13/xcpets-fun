@@ -186,3 +186,10 @@ body[data-split="raid"] #raidPanel .rm-pd span{position:relative;font-family:var
 @media (max-width:370px){body[data-split="raid"] #raidPanel h2.sec{font-size:21px}body[data-split="raid"] #raidPanel .rd-info h3{font-size:19px}body[data-split="raid"] #raidPanel .ra-call b{font-size:21px}body[data-split="raid"] #raidPanel .ra-call3 b{font-size:24px}body[data-split="raid"] #raidPanel .ra-banner,body[data-split="raid"] #raidPanel .ra-banner.ra-fb{font-size:19px}body[data-split="raid"] #raidPanel .ra-n3{font-size:23px}body[data-split="raid"] #raidPanel .ra-n2{font-size:21px}}
 @media (prefers-reduced-motion:reduce){body[data-split="raid"] #raidPanel .rd-meter *,body[data-split="raid"] #raidPanel .rd-meter,body[data-split="raid"] #raidPanel .ra-call{animation:none!important;transition:none!important}body[data-split="raid"] #raidPanel .ra-call{display:none!important}body[data-split="raid"] #raidPanel .rm-z-d .rd-hp{box-shadow:0 0 0 3px #ff1a3a,0 0 18px #ff1a3a}}
 @media (prefers-reduced-motion:reduce){#raidBox .ra-wrap *,#raidBox .ra-wrap,#raidBox .rd-stage{animation:none!important;transition:none!important}#raidBox .ra-parts,#raidBox .ra-fx,#raidBox .ra-banner,#raidBox .ra-bolt,#raidBox .ra-slash{display:none!important}#raidBox .rd-hp i,#raidBox .rd-hp b{transition:none!important}}
+
+/* living-scenes (Nov 22 2026): the raid scene canvas at the top of raid.html (js/v2-raid-scene.js). The scene shows the boss, so the old boss picture in the info box is hidden. */
+.raid-scene{border:3px solid #1a0d1f;box-shadow:4px 4px 0 #1a0d1f;background:#140a1c;margin:0 0 12px;line-height:0}
+.raid-scene canvas{display:block;width:100%;height:auto;image-rendering:pixelated;cursor:pointer}
+body:not([data-split="raid"]) .raid-scene{display:none}
+#raidPanel.rs-on #raidBox .rd-boss{display:none}
+#raidPanel.rs-on #raidBox .rd-stage{grid-template-columns:1fr}
