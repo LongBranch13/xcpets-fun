@@ -1,6 +1,6 @@
 {
- "lastBlock": 977072,
- "count": 435,
+ "lastBlock": 977075,
+ "count": 436,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5222,6 +5222,18 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 205412,
+   "asset": "A1111011110111101111",
+   "tiedBlock": 977073,
+   "tiedTx": "e5f2082cab76d27ce50126154842a55648f17cdcd1e5879d37011c4497cfcc15",
+   "kind": "deed",
+   "name": "Tutopip",
+   "species": "hyb3:bobo:dodo:viking",
+   "speciesLabel": "Bodoking (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
