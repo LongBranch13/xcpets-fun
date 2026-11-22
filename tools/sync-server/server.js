@@ -60,6 +60,8 @@ function createServer(opts) {
       const s = getState() || {};
       const body = { tip: s.tip || 0, coreHeight: s.coreHeight || 0, lag: s.lag || 0, lastBlockAt: s.lastBlockAt || null, lastSnapshotTip: s.world && s.world.tip || 0, snapshotLag: s.ready ? Math.max(0, (s.tip || 0) - ((s.world && s.world.tip) || 0)) : null, upstream: s.upstream === 'private' ? 'private' : 'public' };
       try { if (typeof s.snap === 'function') body.builder = s.snap(); } catch (e) { } /* numbers and short codes only, no paths */
+      try { if (typeof s.rules === 'function') body.rules = s.rules(); } catch (e) { } /* main commit and rsig the builder follows (public) */
+      if (s.world && s.world.rsig) body.worldRsig = s.world.rsig;
       send(req, res, 200, body, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
     }
     if (p === '/xp/v1/sync') {
@@ -87,6 +89,13 @@ function createServer(opts) {
     if (p === '/xp/v1/world/latest.json') {
       const f = path.join(dataDir, 'world', 'latest.json');
       if (!fs.existsSync(f)) { send(req, res, 404, { v: 1, ready: false }); return; }
+      send(req, res, 200, fs.readFileSync(f), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
+    }
+    /* the newest world built with one rules signature (see writeLatest in index.js) */
+    const perRsig = /^\/xp\/v1\/world\/(r[0-9a-f]{32})\/latest\.json$/.exec(p);
+    if (perRsig) {
+      const f = path.join(dataDir, 'world', perRsig[1], 'latest.json');
+      if (!fs.existsSync(f)) { send(req, res, 404, { v: 1, ready: false }, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return; }
       send(req, res, 200, fs.readFileSync(f), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
     }
     if (p.indexOf('/xp/v1/world/') === 0) {

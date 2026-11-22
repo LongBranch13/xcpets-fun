@@ -49,7 +49,7 @@ function start(m) {
   var base = String(m.base || '').replace(/\/$/, '');
   self.postMessage({ cmd: 'progress', phase: 'sync', got: 0, total: 1 });
   return Promise.all([
-    fetch(base + '/xp/v1/world/latest.json').then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }),
+    m.manifest && /^https?:/.test(m.manifest) ? Promise.resolve({ manifest: m.manifest }) : fetch(base + '/xp/v1/world/latest.json').then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }),
     fetch(base + '/xp/v1/sync').then(function (r) { if (!r.ok) throw new Error('sync'); return r.json(); })
   ]).then(function (pair) {
     var latest = pair[0], sync = pair[1];
