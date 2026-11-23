@@ -1,5 +1,5 @@
 /* HatchBot (Cloudflare Worker). Telegram calls POST /tg for every message the bot can see.
- * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help (and /chatid). /rate only when auto-config.json commands.rate is true (default off).
+ * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help (and /chatid). /rate stays removed (owner).
  * The old HatchBot commands were ported by Grok Bot on Nov 22 2026 and brought into the repo (owner: "yes on commands").
  * Also POST /e: page error reports from every xcpets.fun page (see pageError). POST /selftest: dry run of a command (secret key).
  * Bindings (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN, HB_TEST_KEY (secrets), BUGS (KV), DB (D1, hatchbot/schema.sql),
@@ -13,28 +13,6 @@ const TOKEN_IDS = MEMES.map(m => m.id); /* every pet with a 512x512 picture (hat
 var SITE = "https://xcpets.fun";
 var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
 var BOT_COMMANDS = [["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
-var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
-if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
-/* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
-function cmdRate(S, args) {
-  const q = String(args || "").trim();
-  let row;
-  if (!q) row = pick(S.rows.filter((r) => aliveRow(S, r)));
-  else { const f = findRows(S, q); if (!f.length) return { text: "I couldn't find that pet. Try /rate 42 or /rate Pori." }; row = f.length > 1 ? pick(f) : f[0]; }
-  const p = view(S, row), st = p.stats || {}, ks = Object.keys(st), pow = ks.reduce((a, k) => a + (st[k] || 0), 0);
-  const best = ks.slice().sort((a, b) => st[b] - st[a])[0], worst = ks.slice().sort((a, b) => st[a] - st[b])[0], L = [];
-  if (p.dead) L.push("Rest easy, legend. Gone but never unfed in our hearts. \u{1FAA6}");
-  else if (p.tier === "Legendary") L.push("LEGENDARY. Other pets ask for this one's autograph. \u{1F451}");
-  else if (p.tier === "Common") L.push("Common? More like Common-ly underrated. \u{1F4AA}");
-  else L.push(p.tier + " and knows it. \u{1F60E}");
-  if (p.stage === "Mythic") L.push("Mythic status: never goes hungry, never stops flexing.");
-  else if (p.stage === "Egg") L.push("Still an egg. Big things coming. Probably.");
-  if (best) L.push("Best stat: " + best + " " + st[best] + ". Worst stat: " + worst + " " + st[worst] + " (we don't talk about that).");
-  if (p.wins || p.losses) L.push("Arena record " + p.wins + "-" + p.losses + (p.wins > p.losses ? ". Certified menace. \u{1F94A}" : ". Heart of a champion, record of a participant."));
-  if (p.gear.length >= 3) L.push("Drip level: " + p.gear.length + " pieces. Fashion week called."); else if (!p.gear.length) L.push("Wearing nothing but confidence.");
-  const score = Math.min(10, Math.max(1, Math.round(pow / 12 + ["Common", "Uncommon", "Rare", "Legendary"].indexOf(p.tier))));
-  return { text: "\u{1F4CB} #" + p.id + " " + p.name + " (" + p.tier + " " + p.speciesLabel + ", " + p.stage + ")\n" + L.join("\n") + "\nHatchBot rating: " + score + "/10\n" + link(p.id), ids: [p.id] };
-}
 var LIMITS = { userCooldownMs: 5e3, maxPerHour: 30, memeChatMs: 15e3, roundMs: 60e3, lateS: 120, lateMaxS: 24 * 3600 };
 var SORRY = "Sorry for the slow reply, I was offline for a bit.";
 async function hookSecret(token) {
@@ -294,19 +272,50 @@ async function sendCard(env, chat, replyTo, text, ids) {
   return tg(env, "sendMessage", Object.assign({}, base, { text: capText(text), disable_web_page_preview: true }));
 }
 
+// Risen zombies (Nov 23 2026). pets.json has no zombie data and is up to ~25 min old, so a pet raised from the grave still read
+// "in the Pet Cemetery" with its old owner. The node's published world lists every risen zombie (view/zombies.json, rebuilt every
+// 6 blocks): when the pet is there, its card shows the raiser, the zombie power, its stage and the gear it wears now.
+var ZOMBIES = null;
+async function loadZombies() {
+  if (ZOMBIES && Date.now() - ZOMBIES.at < 3e5) return ZOMBIES;
+  const base = "https://node.xcpets.fun";
+  const latest = await (await fetch(base + "/xp/v1/world/latest.json", { cf: { cacheTtl: 60 } })).json();
+  const dir = String(latest.manifest || "").replace(/[^/]*$/, "");
+  const r = await fetch(base + dir + "view/zombies.json", { cf: { cacheTtl: 120, cacheEverything: true } });
+  if (!r.ok) throw new Error("zombies HTTP " + r.status);
+  const j = await r.json(), byId = new Map();
+  for (const z of j.pets || []) if (z && z.zombie) byId.set(Number(z.id), z);
+  ZOMBIES = { at: Date.now(), tip: j.tip, byId };
+  return ZOMBIES;
+}
+async function withZombie(p) {
+  let Z = null;
+  try { Z = await loadZombies(); } catch (e) { console.log("zombies load failed", e && e.message); return p; }
+  const z = Z.byId.get(p.id);
+  if (!z || !z.zombie || z.zombie.end) return p;
+  const st = z.stats || {}, stats = {};
+  STAT_NAMES.forEach(([k]) => { stats[k] = Math.round(st[k] || 0); });
+  p.zombie = { by: z.zombie.by || z.owner, at: z.zombie.raisedAt, gen: z.zombie.gen || 1, mythic: !!z.zombie.mythic, feral: !!z.feral };
+  p.dead = false; p.released = false; p.stats = stats; p.owner = z.owner || p.owner;
+  if (z.stageName) p.stage = z.stageName;
+  if (Array.isArray(z.worn)) p.gear = z.worn.filter(Boolean).map((g) => g.label || g.item);
+  return p;
+}
+
 // ---------- ported commands (old HatchBot, Oct-Nov 2026) ----------
 var STAT_NAMES = [["vigor", "Vigor"], ["spark", "Spark"], ["grit", "Grit"], ["zoom", "Zoom"], ["luck", "Luck"]];
 function petCard(S, p, lead) {
   const L = [];
   if (lead) L.push(lead);
-  L.push("#" + p.id + " " + p.name + (p.dead ? " (in the Pet Cemetery)" : p.released ? " (released)" : ""));
+  L.push("#" + p.id + " " + p.name + (p.zombie ? " \u{1F9DF} RISEN " + (p.zombie.mythic ? "MYTHIC " : "") + "ZOMBIE" + (p.zombie.feral ? " (FERAL)" : "") : p.dead ? " (in the Pet Cemetery)" : p.released ? " (released)" : ""));
+  if (p.zombie) L.push("Raised from the grave by " + short(p.zombie.by) + (p.zombie.at ? " at block " + fmt0(p.zombie.at) : "") + (p.zombie.gen > 1 ? " (rise #" + p.zombie.gen + ")" : ""));
   L.push("Species: " + p.speciesLabel);
   L.push("Stage: " + p.stage + " \xB7 Rarity: " + p.tier);
-  L.push(STAT_NAMES.map(([k, n]) => n + " " + (p.stats[k] || 0)).join(" \xB7 ") + " (power " + STAT_NAMES.reduce((a, [k]) => a + (p.stats[k] || 0), 0) + ")");
+  L.push(STAT_NAMES.map(([k, n]) => n + " " + (p.stats[k] || 0)).join(" \xB7 ") + " (" + (p.zombie ? "zombie power " : "power ") + STAT_NAMES.reduce((a, [k]) => a + (p.stats[k] || 0), 0) + ")");
   L.push("Gear (" + p.gear.length + "): " + (p.gear.length ? p.gear.join(", ") : "none worn"));
   if (p.parents && p.parents.length) L.push("Parents: " + p.parents.map((id) => "#" + id + " " + ((S.byId.get(id) || [])[1] || "?")).join(" \xD7 "));
   if (p.wins || p.losses) L.push("Arena record: " + p.wins + "-" + p.losses);
-  L.push("Owner: " + short(p.owner));
+  L.push((p.zombie ? "Zombie owner: " : "Owner: ") + short(p.owner));
   L.push(link(p.id));
   return capText(L.join("\n"));
 }
@@ -330,6 +339,7 @@ async function cmdPet(env, S, args) {
     if (pool.length > 1) lead = fmt0(pool.length) + " pets are named " + row[1] + ". Here's one (use /pet <number> for a specific one):";
   } else return { text: "I didn't get that. Try /pet, /pet 123, /pet Pori or /pet dodo. /pet help lists them all." };
   const p = view(S, row);
+  await withZombie(p);
   return { text: petCard(S, p, lead), ids: [p.id] };
 }
 async function cmdBreed(env, S, args) {
@@ -434,7 +444,7 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"];
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
   if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat"].includes(cmd))) return null;
@@ -479,7 +489,6 @@ async function command(env, msg) {
   let r;
   if (cmd === "/pet") r = await cmdPet(env, S, args);
   else if (cmd === "/breed") r = await cmdBreed(env, S, args);
-  else if (cmd === "/rate") r = cmdRate(S, args);
   else if (cmd === "/battle") {
     let W; try { W = await loadWorld(); } catch (e) { console.log("world load failed", e && e.message); return reply("I couldn't load the arena right now. Try again in a minute."); }
     r = await cmdBattle(env, S, W, args);

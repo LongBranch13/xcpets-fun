@@ -21,6 +21,5 @@
     "leaderboard": false
   },
   "recap": false,
-  "recap_hour_ct": 8,
-  "commands": { "rate": false }
+  "recap_hour_ct": 8
 }
