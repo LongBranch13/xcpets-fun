@@ -59,3 +59,8 @@
 /* one start on Home: the hero's button. The older start cards stay on Play. */
 body[data-v2page="front"] #uxpStart,body[data-v2page="front"] .uxp-quick,body[data-v2page="front"] #tutEntry{display:none!important}
 @media (min-width:821px){html body .fv3-row .hero-pets{grid-template-columns:repeat(3,88px);gap:8px}html body .fv3-row .hero-pets canvas{width:88px;height:88px}}
+/* returning players: a normal-size "Play" button (Jake Nov 23 2026: "too big") */
+html body .fv3-go.fv3-back{font-size:24px;padding:10px 22px;gap:10px;width:auto;max-width:none;animation:none;box-shadow:4px 4px 0 #000}
+html body .fv3-go.fv3-back .fv3-egg{width:20px;height:24px}
+html.fv3-quiet .fv3-dot{background:#9aa0a6;animation:none}html.fv3-quiet .fv3-tick b{color:#9aa0a6}
+@keyframes fv3New{0%{background:#ffd23f33}100%{background:transparent}}.fv3-tick.fv3-new{animation:fv3New 2s ease-out}

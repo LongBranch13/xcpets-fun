@@ -17,7 +17,8 @@
     var me = ls('xcpets-v2-me'), go = $('heroHatch'), tx = $('heroHatchTxt'), why = $('heroWhy'), real = $('heroReal');
     if (!go) return;
     if (me) {
-      go.href = 'play.html#petsPanel'; tx.textContent = 'Back to my pets'; go.classList.add('fv3-back');
+      /* Jake Nov 23 2026: "the back to my pets button is too big and should just say play" */
+      go.href = 'play.html'; tx.textContent = 'Play'; go.classList.add('fv3-back');
       why.textContent = 'Feed them, hatch more, send them to fight.';
       if (real) { real.href = 'play.html#hatchPanel'; real.textContent = '🥚 Hatch another'; }
     }
@@ -56,27 +57,12 @@
     return out; }
   function short(a) { a = String(a || ''); return a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a; }
   function ago(blocks) { var m = Math.max(0, blocks) * 10; return m < 15 ? 'just now' : m < 90 ? '~' + m + ' min ago' : m < 60 * 36 ? '~' + Math.round(m / 60) + ' h ago' : '~' + Math.round(m / 1440) + ' days ago'; }
-  function liveQueue(wd) {
-    var ps = wd && wd.pets; if (!ps || !ps.length || !w.V2Render || !V2Render.petFrames) return null;
-    var best = []; /* top 24 by hatch block without sorting 160k pets */
-    for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (!p || p.hatchBlock == null || p.dead) continue;
-      if (best.length < 24) { best.push(p); if (best.length === 24) best.sort(cmp); continue; }
-      if (cmp(p, best[23]) < 0) { best[23] = p; best.sort(cmp); } }
-    best.sort(cmp);
-    var V = w.V2Rules || {}, out = [];
-    best.reverse().forEach(function (p) { try { var sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
-      if (/^hyb/.test(String(p.species))) sp = String(p.species).split(':').slice(1).map(function (x) { return V.speciesLabel ? V.speciesLabel(x) : x; }).join(' × ');
-      out.push({ fr: offFrames(V2Render.petFrames(p, wd)), tier: Math.max(0, Math.min(3, p.tier | 0)), id: p.id,
-        line: '#' + Number(p.id).toLocaleString('en-US') + (p.name ? ' ' + p.name : '') + ' · ' + TIERN[Math.max(0, Math.min(3, p.tier | 0))] + ' ' + sp + ' · hatched ' + ago((wd.tip || p.hatchBlock) - p.hatchBlock) + ' by ' + short(p.owner) }); } catch (e) { } });
-    return out.length ? out : null;
-    function cmp(a, b) { return (b.hatchBlock - a.hatchBlock) || (b.id - a.id); }
-  }
   function say(t) { var s = $('hatchTickTxt'); if (s && s.textContent !== t) s.textContent = t; }
 
   function emit() { if (!queue.length) return; var q = queue[qi % queue.length]; qi++;
     riders.push({ q: q, x: MX - 2, born: performance.now() });
     if (!still) for (var k = 0; k < 12; k++) spark.push({ x: MX - 4, y: 26, vx: -Math.random() * 40, vy: -20 - Math.random() * 30, life: 0.7 });
-    lastOut = q; say(q.demo ? 'warming up the hatchery…' : q.line); }
+    lastOut = q; if (q.demo) say('warming up the hatchery…'); }
   function machine(t) {
     /* the Hatch-O-Matic: a purple box, a blinking lamp, a pipe with an egg dropping in */
     g.fillStyle = '#000'; g.fillRect(MX - 1, 4, W - MX + 2, 50);
@@ -118,13 +104,78 @@
     if (w.IntersectionObserver) new IntersectionObserver(function (es) { vis = es[es.length - 1].isIntersecting; if (vis && !raf) { last = 0; raf = requestAnimationFrame(loop); } }).observe(cv);
     d.addEventListener('visibilitychange', function () { if (!d.hidden && vis && !raf) { last = 0; raf = requestAnimationFrame(loop); } });
     raf = requestAnimationFrame(loop); }
-  function goLive() { if (live) return true; var M = w.V2Mock, wd = null; try { wd = M && M.world && M.world(); } catch (e) { }
-    var q = liveQueue(wd); if (!q) return false; live = true; queue = q; qi = 0; riders = riders.filter(function (r) { return r.x < MX - GAP * 2; });
-    if (still) { riders = []; prefill(); draw(performance.now()); say(lastOut.line); } return true; }
+  /* LIVE (Jake Nov 23 2026: "the live hatches dont seem live"). The fast world only holds the viewer's own pets, so the newest pets of
+   * the whole game come from the published pet shards (view/p/NNNNN.json, 2,000 ids each): the burn rows the page already reads name
+   * recent pet ids (pet:feed:205414 ...), so the shard with the newest ids is the one holding that id or the next. Hatch burns on the
+   * chain (and in the mempool) that are newer than the newest pet shown ride in as cracking eggs, so a hatch shows up within a block.
+   * Every item says how long ago it happened; nothing old is called live. Refreshes every 2 minutes. */
+  var shown = {}, newestBlock = 0, folderP = null, lastShard = 0;
+  function tipNow() { var t = 0; try { t = (w.V2Mock && V2Mock.state && V2Mock.state().tip) || 0; } catch (e) { } try { t = Math.max(t, (w.V2Split && V2Split.healthTip && V2Split.healthTip()) || 0); } catch (e) { } return t; }
+  function tagOf(r) { var h = String(r && r.tag || ''), o = ''; if (!/^[0-9a-f]+$/i.test(h) || h.length % 2) return h; for (var i = 0; i < h.length; i += 2) o += String.fromCharCode(parseInt(h.substr(i, 2), 16)); return o; }
+  function rows() { try { var S = V2Mock.state(); return { chain: S.rows || [], pool: S.mempool || [] }; } catch (e) { return { chain: [], pool: [] }; } }
+  function eggCrate() { var c = d.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), E = ['....XXXX....', '..XXWWWWXX..', '.XWWWWWWWWX.', '.XWWSWWWWSX.', 'XWWWWWWWWWWX', 'XWWWWWWWWWWX', 'XKWKWWWKWWWX', 'XWKWKWKWKWKX', 'XWWWWKWWWKWX', 'XWSWWWWWWWWX', '.XWWWWWWWSX.', '.XWWWWWWWWX.', '..XXWWWWXX..', '....XXXX....'], col = { X: '#000', W: '#fff6dc', S: '#f2c14e', K: '#2b2b2b' };
+    x.fillStyle = '#241a3d'; x.fillRect(0, 0, 32, 32); E.forEach(function (row, y) { for (var i = 0; i < 12; i++) if (col[row[i]]) { x.fillStyle = col[row[i]]; x.fillRect(4 + i * 2, 2 + y * 2, 2, 2); } }); return c; }
+  var EGG = null;
+  function hatchBurns() { var R = rows(), out = [];
+    function take(r, pend) { var t = tagOf(r), m = /^pet:hatch(\d*|zap)$/.exec(t); if (!m) return; var n = m[1] === 'zap' ? 1 : (+m[1] || 1);
+      out.push({ tx: r.tx_hash, block: pend ? 0 : (r.block_index | 0), src: r.source, n: n, zap: m[1] === 'zap', pend: pend }); }
+    R.pool.forEach(function (r) { take(r, true); }); for (var i = 0; i < R.chain.length && out.length < 40; i++) take(R.chain[i], false);
+    return out; }
+  function agoTxt(block, tip) { if (!block) return 'hatching now (waiting for a block)'; return 'hatched ' + ago(Math.max(0, tip - block)) + ' · block ' + block.toLocaleString('en-US'); }
+  function eggItem(b, tip) { EGG = EGG || [eggCrate()]; return { fr: EGG, tier: 3, egg: true, key: 'tx' + b.tx, block: b.block || tip + 1,
+    line: '🥚 ' + short(b.src) + ' ' + (b.zap ? 'cracked a ⚡ zap egg' : b.n > 1 ? 'hatched ' + b.n + ' eggs' : 'hatched an egg') + ' · ' + (b.block ? agoTxt(b.block, tip).replace(/^hatched /, '') : 'waiting for a block') }; }
+  function petItem(p, wd, tip) { var V = w.V2Rules || {}, sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
+    if (/^hyb/.test(String(p.species))) sp = String(p.species).split(':').slice(1).map(function (x) { return V.speciesLabel ? V.speciesLabel(x) : x; }).join(' × ');
+    var t = Math.max(0, Math.min(3, p.tier | 0));
+    return { fr: offFrames(V2Render.petFrames(p, wd)), tier: t, id: p.id, key: 'p' + p.id, block: p.hatchBlock | 0,
+      line: '#' + Number(p.id).toLocaleString('en-US') + (p.name ? ' ' + p.name : '') + ' · ' + TIERN[t] + ' ' + sp + ' · ' + agoTxt(p.hatchBlock | 0, tip) + (p.owner ? ' · ' + short(p.owner) : '') }; }
+  function folder() { if (folderP) return folderP; var B = w.V2BootSync, root = B && B.base && B.base(); if (!root || !w.fetch) return Promise.resolve('');
+    folderP = fetch(root + '/xp/v1/world/latest.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (l) {
+      var u = l && (l.manifest || l.url); if (!u) return ''; u = /^https?:/.test(u) ? u : root + u; return u.slice(0, u.lastIndexOf('/') + 1); }, function () { return ''; });
+    setTimeout(function () { folderP = null; }, 10 * 60e3); return folderP; }
+  function refId() { var R = rows(), best = 0; R.chain.slice(0, 400).concat(R.pool).forEach(function (r) { var m = /^pet:[a-z]+:(\d{3,7})\b/.exec(tagOf(r)); if (m) best = Math.max(best, +m[1]); }); return best; }
+  /* the newest ids in the shards, then V2Split.ensurePet for each (it decodes art and owners; the shard comes from the HTTP cache) */
+  function newestPets() { var ref = refId(); if (!ref || !w.V2Split || !V2Split.ensurePet) return Promise.resolve([]);
+    return folder().then(function (f) { if (!f) return [];
+      var s0 = Math.max(lastShard, Math.floor(ref / 2000)), names = [s0, s0 + 1].map(function (s) { return ('00000' + s).slice(-5); });
+      return Promise.all(names.map(function (nm) { return fetch(f + 'view/p/' + nm + '.json').then(function (r) { return r.ok ? r.json() : null; }, function () { return null; }); })).then(function (packs) {
+        var recs = []; packs.forEach(function (pk, k) { if (pk && pk.pets) { lastShard = Math.max(lastShard, s0 + k); Object.keys(pk.pets).forEach(function (id) { var r = pk.pets[id]; if (r && r.hatchBlock != null && !r.released) recs.push(r); }); } });
+        recs.sort(function (a, b) { return (b.hatchBlock - a.hatchBlock) || (b.id - a.id); }); recs = recs.slice(0, 16);
+        var out = [], chain = Promise.resolve();
+        recs.forEach(function (r) { chain = chain.then(function () { return V2Split.ensurePet(r.id).then(function (p) { if (p) out.push(p); }, function () { }); }); });
+        return chain.then(function () { return out; }); }); }); }
+  function fullWorldPets(wd) { var ps = wd && wd.pets; if (!ps || ps.length < 50000) return []; var best = [];
+    for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (!p || p.hatchBlock == null || p.released) continue; if (best.length < 16 || cmp(p, best[best.length - 1]) < 0) { best.push(p); best.sort(cmp); if (best.length > 16) best.pop(); } }
+    return best; function cmp(a, b) { return (b.hatchBlock - a.hatchBlock) || (b.id - a.id); } }
+  var refreshing = false;
+  function refresh() { if (refreshing || !w.V2Render || !V2Render.petFrames) return; var M = w.V2Mock, wd = null; try { wd = M && M.world && M.world(); } catch (e) { } if (!wd) return;
+    refreshing = true; var full = fullWorldPets(wd);
+    (full.length ? Promise.resolve(full) : newestPets()).then(function (pets) {
+      var tip = tipNow(), items = [];
+      pets.forEach(function (p) { try { items.push(petItem(p, wd, tip)); } catch (e) { } });
+      var top = items.reduce(function (m, it) { return Math.max(m, it.block); }, 0);
+      /* hatch burns newer than the newest pet shown (or all of them, when no pet art could be read) ride in as eggs */
+      hatchBurns().forEach(function (b) { if (!b.block || b.block > top || !items.length) items.push(eggItem(b, tip)); });
+      items.sort(function (a, b) { return b.block - a.block; }); /* newest first: it comes out of the machine next and the ticker names it */
+      if (!items.length) return;
+      items = items.slice(0, 16);
+      var fresh = items.filter(function (it) { return !shown[it.key]; });
+      if (!live) { live = true; queue = items; qi = 0; riders = riders.filter(function (r) { return r.x < MX - GAP * 2; }); }
+      else if (fresh.length) { queue = items; qi = 0; }
+      items.forEach(function (it) { shown[it.key] = 1; });
+      newestBlock = items[0].block;
+      say(items[0].line); /* the ticker always names the newest hatch, not whichever crate is passing */
+      if (fresh.length && fresh.length < items.length) { var tk = $('hatchTick'); if (tk) { tk.classList.remove('fv3-new'); void tk.offsetWidth; tk.classList.add('fv3-new'); } }
+      var old = tip && newestBlock && tip - newestBlock > 144; /* nothing in the last day: say so, don't call it live */
+      var lb = d.querySelector('#hatchTick b'); if (lb) lb.textContent = old ? 'LATEST HATCHES' : 'LIVE HATCHES';
+      d.documentElement.classList.toggle('fv3-quiet', !!old);
+      if (still) { riders = []; prefill(); draw(performance.now()); }
+    }).then(function () { refreshing = false; }, function () { refreshing = false; }); }
+  function goLive() { refresh(); return live; }
   cv.addEventListener('click', function (e) { var r = cv.getBoundingClientRect(), gx = (e.clientX - r.left) * W / r.width, hit = null;
     riders.forEach(function (x) { if (gx >= x.x - 35 && gx <= x.x) hit = x; }); if (hit && hit.q.id) location.href = 'pet.html?id=' + hit.q.id; else if (gx >= MX) location.href = $('heroHatch').href; });
   cv.style.cursor = 'pointer';
-  function boot() { start(); var n = 0, tm = setInterval(function () { if (goLive() || ++n > 400) clearInterval(tm); }, 1500); }
+  function boot() { start(); var n = 0, tm = setInterval(function () { if (goLive() || ++n > 400) { clearInterval(tm); setInterval(refresh, 120000); } }, 3000); }
   if (w.PetCore) boot(); else w.addEventListener('load', boot);
-  w.V2FrontHero = { live: function () { return live; } };
+  w.V2FrontHero = { live: function () { return live; }, refresh: refresh };
 })();
