@@ -127,16 +127,16 @@ const INIT = `(() => {
       const t0 = performance.now();
       c.dispatchEvent(new MouseEvent('click', { clientX: cx, clientY: cy, bubbles: true, cancelable: true, view: window }));
       const until = performance.now() + 8000;
-      while ((location.hash !== '#dressing-room' || !document.querySelector('#rrDress')) && performance.now() < until) await new Promise(res => setTimeout(res, 40));
+      while ((location.hash !== '#closet' || !document.querySelector('#dzModal')) && performance.now() < until) /* rare-room-rethink (Nov 23 2026): the room's door opens the shared dressing drawer in the Closet */ await new Promise(res => setTimeout(res, 40));
       const clickMs = Math.round(performance.now() - t0);
       const delays = [];
       for (let i = 0; i < 3; i++) { const a = performance.now(); await new Promise(res => setTimeout(res, 0)); delays.push(Math.round(performance.now() - a)); }
       const w = V2UI.world(), pid = V2Shop._state().pet, P = w.byId[pid];
       const worn = P ? V2Rules.wornOf(w, pid).map(g => g.item).sort() : [];
-      const dom = Array.prototype.map.call(document.querySelectorAll('#rrDress .dr-slots canvas[data-gic]'), cv => cv.getAttribute('data-gic')).sort();
+      const dom = Array.prototype.map.call(document.querySelectorAll('#dzModal [data-worn]'), el => el.getAttribute('data-worn')).sort();
       return {
-        clickMs: clickMs, hash: location.hash, dress: !!document.querySelector('#rrDress'),
-        strip: document.querySelectorAll('#drStrip .dr-pt, #drChg').length /* pet-picker: the strip is now one Change pet bar (js/v2-pick.js) */,
+        clickMs: clickMs, hash: location.hash, dress: !!document.querySelector('#dzModal'),
+        strip: document.querySelectorAll('#rrCloset .rrc-pet, #rrCloset .rrc-up').length /* rare-room-rethink: the Closet's change-pet bar and Best upgrades rows */,
         pid: pid, sameGear: worn.join() === dom.join(), wornN: worn.length,
         longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0),
         delay: Math.max(0, ...delays)
@@ -144,22 +144,22 @@ const INIT = `(() => {
     });
     results.dress = dress;
     console.log('MEASURE dress click', JSON.stringify(dress));
-    ok(dress.hash === '#dressing-room' && dress.dress, 'Dress door opens the dressing room');
+    ok(dress.hash === '#closet' && dress.dress, 'Dress door opens the dressing drawer in the Closet');
     ok(dress.clickMs < 2500, 'Dress click under 2.5s (' + dress.clickMs + 'ms)');
     ok(dress.longMax < 2500, 'Dress click long task under 2.5s (' + dress.longMax + 'ms)');
     ok(dress.delay < 3000, 'page accepts input after Dress (' + dress.delay + 'ms)');
-    ok(dress.strip > 0, 'dressing room lists pets (' + dress.strip + ')');
-    ok(dress.sameGear, 'dressing room slots match worn gear for #' + dress.pid + ' (' + dress.wornN + ' pieces)');
+    ok(dress.strip > 0, 'the Closet lists pets (' + dress.strip + ')');
+    ok(dress.sameGear, 'drawer slots match worn gear for #' + dress.pid + ' (' + dress.wornN + ' pieces)');
     await desk.page.screenshot({ path: path.join(ART, 'rare-room-dress-1280.png') });
     const gear = await desk.page.evaluate(async () => {
       const w = V2UI.world(), me = V2UI.ME, worn = (w.itemList || []).filter(g => g.owner === me && g.on != null);
       const by = {}; worn.forEach(g => { (by[g.on] = by[g.on] || []).push(g); });
       const pid = Object.keys(by).map(Number).sort((a, b) => by[b].length - by[a].length)[0];
-      if (window.V2Shop) { V2Shop._state().pet = pid; if (location.hash !== '#dressing-room') location.hash = '#dressing-room'; if (V2Shop.refreshRoll) V2Shop.refreshRoll(); }
+      if (window.V2Dress) V2Dress.open(pid);
       await new Promise(r => setTimeout(r, 50));
       const before = window.V2Rules.wornOf(V2UI.world(), pid).map(g => g.slot + ':' + g.gid);
-      const btn = document.querySelector('#rrDress [data-droff]');
-      const slot = btn ? btn.getAttribute('data-droff') : '';
+      const btn = document.querySelector('#dzModal [data-off]');
+      const slot = btn ? btn.getAttribute('data-off') : '';
       window.__replays = 0; window.__long.length = 0;
       const t0 = performance.now();
       if (btn) btn.click();
@@ -169,6 +169,7 @@ const INIT = `(() => {
       const afterOne = window.V2Rules.wornOf(V2UI.world(), pid).map(g => g.slot + ':' + g.gid);
       const ops = V2UI.S().ops.length;
       /* Unequip all: the same Yes button as the pet's gear box */
+      if (window.V2Dress) V2Dress.close();
       window.V2UI.detail(pid);
       await new Promise(r => setTimeout(r, 50));
       const allBtn = document.querySelector('[data-offall]');
@@ -222,9 +223,10 @@ const INIT = `(() => {
       localStorage.setItem('xcpets-xcpwallet-address', 'bc1qviewonlynottheowner000000000000000');
       if (window.V2View && V2View.mark) V2View.mark();
       const only = !!(V2UI.viewOnly && V2UI.viewOnly());
-      if (window.V2Shop) { V2Shop._state().pet = pid; if (V2Shop.refreshRoll) V2Shop.refreshRoll(); }
-      const btn = document.querySelector('#rrDress [data-droff]');
+      if (window.V2Dress) V2Dress.open(pid);
+      const btn = document.querySelector('#dzModal [data-off]');
       if (btn) btn.click();
+      if (window.V2Dress) V2Dress.close();
       const after = V2UI.S().ops.length, worn2 = window.V2Rules.wornOf(V2UI.world(), pid).length;
       localStorage.setItem('xcpets-xcpwallet-address', addr.addr);
       if (window.V2View && V2View.mark) V2View.mark();

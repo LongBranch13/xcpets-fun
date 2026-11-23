@@ -101,7 +101,7 @@
   /* ---- the room's mirror and door open the drawer here (they used to switch the page into #dressing-room) */
   function onHash() { var h = location.hash; if (h === '#dressing-room') { var pid = null; try { var s = V2Shop._state(); pid = s.pet != null ? s.pet : s.mpId; } catch (e) { }
       setDoor('closet', false); try { history.replaceState(null, '', '#closet'); window.dispatchEvent(new HashChangeEvent('hashchange')); } catch (e) { }
-      if (pid != null && D()) { ST.pet = +pid; D().open(+pid); } return; }
+      if (pid != null && D()) { ST.pet = +pid; try { V2Shop._state().pet = +pid; } catch (e) { } D().open(+pid); } return; }
     var k = fromHash(); if (k && k !== ST.door) setDoor(k, false); }
   var CSS = 'body.rrd-on #rrFits,body.rrd-on #drEnter{display:none!important}' +
     'body.rrd-on:not(.rrd-spin) #shopCounter,body.rrd-on:not(.rrd-spin) #pepeWheel,body.rrd-on:not(.rrd-spin) #invPanel .statline,body.rrd-on:not(.rrd-spin) #tokList,body.rrd-on:not(.rrd-spin) #crates,body.rrd-on:not(.rrd-spin) #shopClearance{display:none!important}' +
