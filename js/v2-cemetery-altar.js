@@ -506,7 +506,10 @@
     el.querySelector('#altHelpB').onclick = function () { var h = document.getElementById('altHelp'); h.hidden = !h.hidden; this.setAttribute('aria-expanded', !h.hidden); };
     el.querySelector('#altFill').onclick = function () { if (A.run && A.run.busy) return; fill(); };
     el.querySelector('#altAll').onclick = function () { if (A.run && A.run.busy) return; offerAll(); };
-    el.querySelector('#altGo2').onclick = function () { var n = A.step || 1; if (n === 1) goStep(2); else if (n === 2) hold('seance'); else close(); };
+    el.querySelector('#altGo2').onclick = function () { var n = A.step || 1;
+      if (n === 1 && window.V2SacGuard) { var pk = A.offered.filter(function (o) { return o.kind !== 'gear' && !o.held; }).map(function (o) { return o.id; }); /* sac-guard (Nov 23 2026): name special pets before the review */
+        if (pk.length) return V2SacGuard.check({ w: A.ctx.w, ids: pk, me: A.ctx.ME, verb: 'offer them at this altar', onGo: function (keep) { pk.forEach(function (id) { if (keep.indexOf(id) < 0) takeBack(id); }); if (A.offered.length || (A.gear || []).some(function (x) { return x > 0; })) goStep(2); } }); }
+      if (n === 1) goStep(2); else if (n === 2) hold('seance'); else close(); };
     el.querySelector('#altBack').onclick = function () { goStep(1); };
     el.querySelector('#altDig').onclick = digTap;
     el.querySelector('#altNext').onclick = function (e) { var b = e.target.closest('[data-nudge]'); if (b) offer(+b.getAttribute('data-nudge')); };
