@@ -353,7 +353,9 @@ function write(dir, world, meta) {
      * fast load and the catch-up sweep could not rebuild them (it needs raid 1's old opening hash). A few small records. */
     raids: copy(world.raids) || [],
     /* Seasons (gated by ACTIVATE_SEASONS_BLOCK): eggs sold, points and tiers per wallet. Small; the season bar and the catch-up sweep need it. */
-    seasons: copy(world.seasons) || {}
+    seasons: copy(world.seasons) || {},
+    /* Pantry (prepaid meals; gated by ACTIVATE_PANTRY_BLOCK): each player's balance and pet list, so the slim Play page shows it */
+    pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null
   };
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
   return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream), end(rankOut)])).then(() => {
