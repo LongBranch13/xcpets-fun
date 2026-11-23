@@ -10,7 +10,7 @@
  * Kinds: idle, shine (new Mythic, Legendary), hatch (egg wobbles, cracks, pet pops out), rise (zombie climbs out of its grave),
  * miracle (resurrection: grey pet, light from above, colour and halo), dust (failed resurrection: the pet crumbles),
  * breed (two parents, a heart, an egg), devour (a zombie eats a Mythic), rage (unleashed or full-power zombie),
- * lineup (several pets in one picture). */
+ * lineup (several pets in one picture), grind (Meat Grinder: pet into the hopper, sausages out). */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const ROOT = path.resolve(__dirname, '..');
@@ -198,6 +198,28 @@ function rage(S, o) { o = o || {}; const c = o.color || C.red, out = [];
     im.sprite(sp, p.x + (f % 2 ? 1 : 0), p.y, { cut: true, fx: (x, y, cc) => lerp(cc, c, pulse * 0.6) });
     out.push(im); }
   return { frames: out, delays: 9 }; }
+function grind(S) { /* Meat Grinder: the pet waits over the hopper, drops in, the grinder shakes, sausage links roll out (the last one golden) */
+  const out = [], d = [], WW = W0 + 28, HH = H0 + 18, T = 18, gy = HH - 4, steel = [150, 156, 172], steelD = [86, 90, 108], meat = [196, 82, 78], meatL = [236, 130, 120], cx = 22;
+  const machine = (im, f, shake) => { const sx = shake ? (f % 2 ? 1 : -1) : 0;
+    for (let j = 0; j < 9; j++) { const half = 13 - j; for (let x = -half; x <= half; x++) im.px(cx + x + sx, T + 12 + j, Math.abs(x) >= half - 1 || j === 0 ? steelD : steel); }
+    im.rect(cx - 8 + sx, T + 21, 17, 13, steel); im.rect(cx - 8 + sx, T + 21, 17, 1, steelD); im.rect(cx - 8 + sx, T + 33, 17, 1, steelD);
+    [[cx - 6, 23], [cx + 6, 23], [cx - 6, 31], [cx + 6, 31]].forEach(([x, y]) => im.px(x + sx, T + y, steelD));
+    im.rect(cx + 9 + sx, T + 25, 9, 5, steel); im.rect(cx + 9 + sx, T + 25, 9, 1, steelD); im.rect(cx + 17 + sx, T + 24, 2, 7, steelD);
+    const a = f * 0.9, hx = cx - 11 + Math.round(Math.cos(a) * 4), hy = T + 27 + Math.round(Math.sin(a) * 4); /* crank */
+    im.rect(cx - 12 + sx, T + 26, 4, 3, steelD); for (let t = 0; t <= 4; t++) im.px(cx - 11 + (hx - cx + 11) * t / 4 + sx, T + 27 + (hy - T - 27) * t / 4, steelD); im.rect(hx - 1 + sx, hy - 1, 3, 3, C.red);
+    im.rect(cx - 7, T + 34, 3, gy - T - 34, steelD); im.rect(cx + 5, T + 34, 3, gy - T - 34, steelD); };
+  const link = (im, x, y, gold) => { const c = gold ? C.gold : meat, l = gold ? C.goldL : meatL; im.rect(x + 1, y, 6, 4, c); im.rect(x, y + 1, 8, 2, c); im.rect(x + 2, y + 1, 3, 1, l); };
+  const N = 36, F0 = 10; /* frames; the drop starts at F0 */
+  for (let f = 0; f < N; f++) { const sp = S[f % S.length], im = new Img(WW, HH, C.night); stars(im, 21, f); im.rect(0, gy, WW, 4, C.ground);
+    const g = f - F0, shake = g >= 8 && g < 20, top = T + 12 - sp.h + 2;
+    if (g < 9) { const y = g < 0 ? top + (f % 4 === 0 ? -1 : 0) : Math.round(top + (g / 8) * (sp.h + 4)); im.sprite(sp, cx - (sp.w >> 1) + (g < 0 && f % 2 ? 1 : 0), y, { cut: true, clipY: T + 19 }); }
+    machine(im, f, shake);
+    if (shake) { const r = rnd(f * 29 + 3); for (let k = 0; k < 6; k++) im.px(cx - 10 + r() * 20, T + 4 + r() * 8, k % 2 ? meat : meatL); }
+    const made = Math.max(0, Math.min(5, Math.floor((g - 10) / 3) + 1)); let goldX = -1;
+    for (let k = 0; k < made; k++) { const age = g - (10 + k * 3), x = Math.min(WW - 10 - k * 9, cx + 19 + age * 3), y = age < 1 ? T + 26 : gy - 4; link(im, x, y, k === 4); if (k === 4) goldX = x; }
+    if (goldX >= 0 && g >= 24) { const r = rnd(f * 5); for (let k = 0; k < 3; k++) sparkle(im, goldX - 1 + r() * 10, gy - 9 + r() * 5, C.goldL, 1); }
+    out.push(im); d.push(f === N - 1 ? 170 : g < 0 ? 12 : 9); }
+  return { frames: out, delays: d }; }
 function lineup(sets) { const n = Math.min(6, sets.length), cols = n <= 3 ? n : 3, rows = Math.ceil(n / cols), cw = 38, ch = 40, im = new Img(cols * cw + 4, rows * ch + 4, C.night);
   stars(im, 1, 0); sets.slice(0, n).forEach((S, i) => { const sp = S[0], x = 2 + (i % cols) * cw + ((cw - sp.w) >> 1), y = 2 + ((i / cols) | 0) * ch + (ch - 4 - sp.h);
     im.rect(2 + (i % cols) * cw + 2, 2 + ((i / cols) | 0) * ch + ch - 5, cw - 4, 2, C.ground); im.sprite(sp, x, y, { cut: true });
@@ -220,8 +242,9 @@ function event(ctx, w, ev) {
   if (k === 'rise') return anim(rise(S, { tint: ev.mythic ? C.purple : null }));
   if (k === 'miracle') return anim(miracle(S));
   if (k === 'dust') return anim(dust(S));
+  if (k === 'grind') return anim(grind(S));
   if (k === 'rage') return anim(rage(S, { color: ev.color === 'green' ? C.green : C.red }));
   if (k === 'shine') return anim(idle(S, { sparkle: true, halo: ev.halo }));
   return anim(idle(S));
 }
-module.exports = { load, event, spriteSet, png, gif, Img, EXTRA, SCALE, _scenes: { idle, hatch, rise, miracle, dust, breed, devour, rage, lineup } };
+module.exports = { load, event, spriteSet, png, gif, Img, EXTRA, SCALE, _scenes: { grind, idle, hatch, rise, miracle, dust, breed, devour, rage, lineup } };
