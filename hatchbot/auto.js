@@ -373,36 +373,71 @@ function routineSent(st, it, nowMs) {
 async function blockAtTime(unix) { const r = await fetch("https://mempool.space/api/v1/mining/blocks/timestamp/" + Math.floor(unix)); if (!r.ok) throw new Error("mempool " + r.status); return (await r.json()).height; }
 const decTag = (h) => { try { return new TextDecoder().decode(Uint8Array.from((h || "").match(/../g) || [], (x) => parseInt(x, 16))); } catch (e) { return ""; } };
 export function prevDay(nowMs) { const end = ctDayStart(nowMs); return [ctDayStart(end - 3600e3), end]; }
+/* Recap kinds: the 2nd part of each burn tag, grouped into the fun lines below. */
+const RECAP_GRAVE = { alt: "altar", ar: "altar", altg: "altar", seance: "seance", sr: "seance", resurrect: "rise", raise: "rise", rpl: "zmeal", rr: "zmeal", rplg: "zmeal", zfeed: "zmeal", zr: "zmeal", zfm: "zmeal" };
+const RECAP_VIBES = ["Absolute cinema \u{1F3AC}", "The chain never sleeps \u{1F440}", "Certified degen activity \u{1F9EA}", "The pets were NOT quiet \u{1F4E3}", "Another day in pet paradise \u{1F334}", "Somebody check on the cemetery \u{1F47B}", "Peak pet behavior \u{1F525}"];
+async function hasThumb(id) { try { const r = await fetch(SITE + "/t/" + id + ".png", { method: "HEAD", cf: { cacheTtl: 300 } }); return r.ok; } catch (e) { return false; } }
 export async function recapFor(day, P, W, meta, boot) {
   const dayStartMs = day[0], hStart = await blockAtTime(day[0] / 1000), hEnd = await blockAtTime(day[1] / 1000);
   if (P.tip < hEnd || +boot.tip < hEnd) return { wait: "feed behind the end of the day (feed " + Math.min(P.tip, +boot.tip) + ", day ends " + hEnd + ")" };
+  let hPrev = null; try { hPrev = await blockAtTime((day[0] - 864e5) / 1000); } catch (e) { hPrev = null; }
   const inR = (b) => b > hStart && b <= hEnd;
-  let burns = 0, sats = 0n, big = 0n; const wallets = new Set(), kinds = {};
-  for (const r of boot.rows) { if (r.status !== "valid" || !inR(r.block_index)) continue; burns++; const q = BigInt(r.quantity); sats += q; if (q > big) big = q; wallets.add(r.source); const k = decTag(r.tag).split(":")[1] || "other"; kinds[k] = (kinds[k] || 0) + 1; }
-  let hatched = 0, bred = 0, died = 0, fed = 0;
+  let burns = 0, sats = 0n, big = 0n, prevSats = 0n; const wallets = new Map(), kinds = {};
+  for (const r of boot.rows) {
+    if (r.status !== "valid") continue;
+    const q = BigInt(r.quantity);
+    if (hPrev != null && r.block_index > hPrev && r.block_index <= hStart) prevSats += q;
+    if (!inR(r.block_index)) continue;
+    burns++; sats += q; if (q > big) big = q;
+    const w = wallets.get(r.source) || { sats: 0n, n: 0 }; w.sats += q; w.n++; wallets.set(r.source, w);
+    const k = decTag(r.tag).split(":")[1] || "other"; kinds[k] = (kinds[k] || 0) + 1;
+  }
+  let hatched = 0, bred = 0, died = 0, fed = 0, best = null; const deadIds = [];
   for (const r of P.rows) {
     if (r[10]) continue;
-    if (inR(r[18])) { if (r[13]) bred++; else hatched++; }
-    if (r[8] === 1 && r[0] !== 1765 && inR(r[20])) died++;
+    if (inR(r[18])) { if (r[13]) bred++; else hatched++; if (r[4] != null && (!best || r[3] > best[3] || (r[3] === best[3] && r[4] > best[4]))) best = r; }
+    if (r[8] === 1 && r[0] !== 1765 && inR(r[20])) { died++; deadIds.push(r[0]); }
     if (inR(r[19])) fed++;
   }
-  const mythics = Object.values(W.everMythic).filter((b) => inR(+b)).length;
+  const myIds = Object.keys(W.everMythic).filter((id) => inR(+W.everMythic[id])).map(Number), mythics = myIds.length;
+  const myPets = myIds.map((id) => petOf(P, rowById(P, id))).filter(Boolean).sort((a, b) => (b.score || 0) - (a.score || 0));
   const label = new Date(dayStartMs + 12 * 3600e3).toLocaleDateString("en-US", { timeZone: "America/Chicago", weekday: "long", month: "short", day: "numeric" });
-  const cm = cmName(meta, W), L = ["\u{1F4C5} XCPETS recap for " + label, ""];
+  const dayName = (ms) => new Date(ms + 12 * 3600e3).toLocaleDateString("en-US", { timeZone: "America/Chicago", weekday: "long" });
+  const cm = cmName(meta, W), L = ["☀️ GM! XCPETS daily recap for " + label, ""];
   const f8 = (v) => { const i = v / 100000000n, r = (v % 100000000n).toString().padStart(8, "0").replace(/0+$/, ""); return i.toLocaleString("en-US") + (r ? "." + r.slice(0, 2) : ""); };
-  if (burns) L.push("\u{1F525} " + fmt(burns) + " burns from " + fmt(wallets.size) + " wallet" + (wallets.size === 1 ? "" : "s"));
-  if (hatched + bred) L.push("\u{1F95A} " + fmt(hatched + bred) + " new pets (" + fmt(hatched) + " hatched, " + fmt(bred) + " bred)");
-  if (fed) L.push("\u{1F356} " + fmt(fed) + " pets got a meal");
-  if (mythics) L.push("\u2728 " + fmt(mythics) + " new Mythic" + (mythics === 1 ? "" : "s"));
-  if (died) L.push("\u{1FAA6} " + fmt(died) + (died === 1 ? " pet" : " pets") + " passed on to the Pet Cemetery, so keep those bowls full");
+  const whole = (v) => (v / 100000000n).toLocaleString("en-US");
+  const pl = (n, one, many) => fmt(n) + " " + (n === 1 ? one : (many || one + "s"));
+  const g = (ks) => ks.reduce((a, k) => a + (kinds[k] || 0), 0);
+  /* the burn line: total XCPETS, then how it compares with the day before */
+  if (burns) {
+    let vs = "";
+    if (hPrev != null && prevSats > 0n) { const pct = Number((sats - prevSats) * 1000n / prevSats) / 10; vs = Math.abs(pct) < 1 ? " (same as " + dayName(day[0] - 864e5) + ")" : pct > 0 ? " (\u{1F53A} " + fmt(pct) + "% more than " + dayName(day[0] - 864e5) + ")" : " (\u{1F53B} " + fmt(-pct) + "% less than " + dayName(day[0] - 864e5) + ")"; }
+    L.push("\u{1F525} " + whole(sats) + " XCPETS burned" + vs);
+    L.push("\u{1F9FE} " + pl(burns, "burn") + " from " + pl(wallets.size, "wallet"));
+    const top = [...wallets.values()].sort((a, b) => (b.sats > a.sats ? 1 : b.sats < a.sats ? -1 : 0))[0];
+    if (top && wallets.size > 1) L.push("\u{1F40B} Whale of the day burned " + whole(top.sats) + " XCPETS in " + pl(top.n, "burn") + " (" + fmt(Number(top.sats * 100n / sats)) + "% of the whole day)");
+  }
+  if (hatched + bred) L.push("\u{1F95A} " + fmt(hatched + bred) + " new pets (" + fmt(hatched) + " hatched, " + fmt(bred) + " bred)" + (sats > 0n ? ", so " + fmt(Number(sats / 100000000n) / (hatched + bred)) + " XCPETS burned per new pet" : ""));
+  if (best && (best[3] | 0) >= 2) { const b = petOf(P, best); L.push("\u{1F48E} Rarest newborn: " + b.name + " #" + b.id + ", " + an(TIER[b.tier]) + " " + TIER[b.tier] + " " + b.label); }
+  if (mythics) L.push("✨ " + pl(mythics, "new Mythic") + (myPets[0] ? (mythics === 1 ? ": " : ", led by ") + myPets[0].name + " #" + myPets[0].id + " the " + myPets[0].label : ""));
+  if (fed) L.push("\u{1F356} " + pl(fed, "pet") + " got a meal");
+  if (died) L.push("\u{1FAA6} " + (died === 1 ? "1 pet" : fmt(died) + " pets") + " passed on to the Pet Cemetery, so keep those bowls full");
+  const gv = {}; for (const k in kinds) if (RECAP_GRAVE[k]) gv[RECAP_GRAVE[k]] = (gv[RECAP_GRAVE[k]] || 0) + kinds[k];
+  const grave = [[gv.altar, "altar offering"], [gv.seance, "séance"], [gv.rise, "pet back from the dead", "pets back from the dead"], [gv.zmeal, "zombie snack"]].filter((x) => x[0]).map((x) => pl(x[0], x[1], x[2]));
+  if (grave.length) L.push("\u{1F9DF} Graveyard shift: " + grave.join(", "));
+  const action = [[g(["raid"]), "raid hit"], [g(["grind"]), "pet thrown in the Meat Grinder", "pets thrown in the Meat Grinder"], [g(["dip"]), "pool dip"], [g(["roll", "spin", "usespin"]), "gear spin"]].filter((x) => x[0]).map((x) => pl(x[0], x[1], x[2]));
+  if (action.length) L.push("\u{1F4A5} " + action.join(", "));
   if (W.cm.current) { const s = W.cm.stage, hi = s < 5 ? CM_T[s + 1] : null; L.push("\u{1F451} " + cm + " is " + an(STAGE[s]) + " " + STAGE[s] + (hi ? ", " + fmt(Math.max(0, hi - W.cm.fed)) + " XCPETS of snacks to " + STAGE[s + 1] : "")); }
-  const extra = [["quest", kinds.quest], ["fight", (kinds.fight || 0) + (kinds.accept || 0)], ["WAGMI", kinds.wagmi], ["pet token", kinds.deed]].filter((x) => x[1]).map((x) => fmt(x[1]) + " " + x[0] + (x[1] === 1 ? "" : "s"));
-  if (extra.length) L.push("\u2694\uFE0F " + extra.join(", "));
-  if (big > 0n) L.push("\u{1F3C6} Biggest burn: " + f8(big) + " XCPETS");
-  L.push("", "Go feed your pets \u{1F49B}");
+  const extra = [["quest", kinds.quest], ["fight", (kinds.fight || 0) + (kinds.accept || 0) + (kinds.rumble || 0)], ["WAGMI", kinds.wagmi], ["pet token", kinds.deed]].filter((x) => x[1]).map((x) => fmt(x[1]) + " " + x[0] + (x[1] === 1 ? "" : "s"));
+  if (extra.length) L.push("⚔️ " + extra.join(", "));
+  if (big > 0n) L.push("\u{1F3C6} Biggest single burn: " + f8(big) + " XCPETS");
+  L.push("", RECAP_VIBES[h32(label) % RECAP_VIBES.length] + " Go feed your pets \u{1F49B}");
   let text = noQuotes(L.join("\n"));
-  if (text.length > 999) text = text.slice(0, 960).replace(/\n[^\n]*$/, "") + "\n\nGo feed your pets \u{1F49B}";
-  return { text, blocks: [hStart + 1, hEnd], counts: { burns, wallets: wallets.size, hatched, bred, fed, mythics, died, kinds } };
+  if (text.length > 999) { const tail = "\n\nGo feed your pets \u{1F49B}"; text = text.slice(0, 999 - tail.length).replace(/\n[^\n]*$/, "") + tail; }
+  /* picture: the day's star pet (top new Mythic, else the rarest newborn) when the site has its picture */
+  let photoId = null;
+  for (const id of myPets.slice(0, 3).map((p) => p.id).concat(best ? [best[0]] : [])) if (await hasThumb(id)) { photoId = id; break; }
+  return { text, photoId, blocks: [hStart + 1, hEnd], counts: { burns, sats: String(sats), prevSats: String(prevSats), wallets: wallets.size, hatched, bred, fed, mythics, died, kinds } };
 }
 
 /* ---------------------------------------------------------------- state + sending */
@@ -490,7 +525,7 @@ export async function watch(st, C, nowMs, opt) {
     if (!st.recapInit) { st.recapInit = nowMs; st.recapDay = p.date; out.recapBaseline = p.date; } /* first look: the first recap is the next morning */
     if (p.h >= (C.recap_hour_ct || 8) && p.h < 12 && st.recapDay !== p.date) {
       const boot = await getJson(SITE + "/api/boot.json", 60), r = await recapFor(prevDay(nowMs), P, W, meta, boot);
-      if (r.text) { st.recapDay = p.date; out.posts.push({ type: "recap", prio: 0, keys: ["recap:" + p.date], block: r.blocks[1], text: r.text }); }
+      if (r.text) { st.recapDay = p.date; out.posts.push({ type: "recap", prio: 0, keys: ["recap:" + p.date], block: r.blocks[1], text: r.text, photoId: r.photoId || undefined }); }
       else out.recapWait = r.wait;
     }
   }
@@ -520,6 +555,6 @@ export async function preview(C, opts) {
   add(lagPosts({ blockHeight: meta.blockHeight }, meta.blockHeight, { lag: { state: "behind", n: 3 } }, lagC), "sample: caught up");
   out.push({ type: "feed_lag_now", note: "live check", lag: (await chainTip()) - meta.blockHeight });
   add(routinePosts(P, W, {}, C, now, true), "routines, forced now (normally at their CT hour)");
-  try { const boot = await getJson(SITE + "/api/boot.json", 60), r = await recapFor(prevDay(now), P, W, meta, boot); if (r.text) add([{ type: "recap", text: r.text }], "recap for the previous CT day, blocks " + r.blocks.join("-")); else out.push({ type: "recap", wait: r.wait }); } catch (e) { out.push({ type: "recap", error: e.message }); }
+  try { const boot = await getJson(SITE + "/api/boot.json", 60), r = await recapFor(prevDay(now), P, W, meta, boot); if (r.text) add([{ type: "recap", text: r.text, photoId: r.photoId }], "recap for the previous CT day, blocks " + r.blocks.join("-")); else out.push({ type: "recap", wait: r.wait }); } catch (e) { out.push({ type: "recap", error: e.message }); }
   return { tips: { meta: meta.blockHeight, pets: P.tip, world: W.tip }, communityPet: cmName(meta, W), posts: out };
 }
