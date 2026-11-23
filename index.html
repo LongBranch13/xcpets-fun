@@ -28,7 +28,7 @@
     <div class="hero-copy">
       <h1 class="meme"><span>XCPETS</span></h1>
       <p class="tagline">8-bit meme pets, rolled from Bitcoin blocks.</p>
-      <p class="lede">Thirteen pixel meme characters: Pepe, Wojak, Chud, Bobo, Mumu, Snibby, Dodo, KEVIN, Peepo, Sarutobi, Doge, Lenny and Nakamoto. Every pet is derived from a block hash (plus a pet id), so anyone can re-derive any pet and get exactly the same pixels.</p>
+      <p class="lede">A whole cast of pixel meme characters, from Pepe, Wojak and Chud to Doge, Lenny and Nakamoto, plus every hybrid players breed. Every pet is derived from a block hash (plus a pet id), so anyone can re-derive any pet and get exactly the same pixels.</p>
       <div class="cta" id="homeCta">
         <a class="btn" id="pxNew" href="tutorial.html">New here?</a>
         <button class="btn" type="button" id="xcpConnect" data-xcp-connect="xcpMsg">Connect wallet</button>
@@ -74,22 +74,20 @@
   </section>
 
   <section id="how" class="panel">
+    <!-- sweep-1123 (Jake Nov 23 2026, redundancy): a short teaser; the full explainer lives on how-it-works.html -->
     <h2 class="sec" data-ico="flame">How It Works</h2>
     <div class="facts">
-      <div><b>Seeded by Bitcoin</b><span class="muted small">Every pet comes from a Bitcoin block, so anyone can check it and nobody can fake it.</span></div>
-      <div><b>Four rarity tiers</b><span class="muted small">Every pet hatches as Common 60%, Uncommon 27%, Rare 10%, or Legendary 3%. Rarer pets get bigger stat bonuses, rarer looks and better gear. Some species only hatch at higher tiers, and Dodo is Legendary only.</span><a class="small" href="pets.html" style="display:block;margin-top:6px">See every pet and its odds →</a></div>
-      <div><b>Six stages</b><span class="muted small">Egg → Hatchling → Juvenile → Adult → Elder → Mythic. Each stage changes your pet's face. Every pet has all 6 gear slots open.</span></div>
-      <div><b>Stacking gear</b><span class="muted small">Dress your pet in six slots: Headwear, Grip, Armor, Drip, Guise and Footwear. From block 973,560 every pet has all 6 open, whatever its age, feeding, tier or stage. Every species except Nakamoto has its own ★ signature hat. Win gear, or lose it, in battles.</span></div>
-      <div><b>Burn XCPETS to play</b><span class="muted small">Every extra costs XCPETS, and the tokens are burned for good. Burn to hatch a pet, then keep burning to feed it. Feed it once a day to grow it toward the next stage, and dress it in all 6 gear slots.</span></div>
-      <div id="featCommunity"><b>The community pet</b><span class="muted small">Everyone grows one shared pet together, <span data-cp="cur">Homer Pepe</span>, and every burn helps him grow.</span></div>
-      <div><b>Feed daily or it dies</b><span class="muted small">A pet unfed for 7 days dies and moves to the Pet Cemetery; its gear goes back to the owner's stash. Mythic pets never starve.</span><a class="small" href="how-it-works.html#hunger" style="display:block;margin-top:6px">How hunger works →</a></div>
+      <div><b>🥚 Hatch</b><span class="muted small">Burn XCPETS to hatch a pet rolled from a Bitcoin block: Common, Uncommon, Rare or Legendary.</span></div>
+      <div><b>🍖 Feed</b><span class="muted small">Feed it once a day and it grows all the way to Mythic. Unfed for 7 days, it dies.</span></div>
+      <div><b>⚔️ Play</b><span class="muted small">Gear it up, battle, breed and raid together. Every burn also grows the community pet.</span></div>
     </div>
+    <p style="margin:12px 0 0"><a class="btn" href="how-it-works.html">The full How It Works →</a></p>
   </section>
 
 
   <section id="cast" class="panel">
     <h2 class="sec" data-ico="pet">The cast</h2>
-    <p class="muted">Pets hatch as one of thirteen 8-bit meme characters. Pick a tier to see each pet at that rarity, or Mythic to see every species at its final stage. Hybrids opens the full list of mixes bred so far.</p>
+    <p class="muted">Pets hatch as one of the 8-bit meme characters below. Pick a tier to see each pet at that rarity, or Mythic to see every species at its final stage. Hybrids opens the full list of mixes bred so far.</p>
     <picture><source srcset="img/xcpets-cast.webp" type="image/webp"><img loading="lazy" decoding="async" class="cast-gif" src="img/xcpets-cast.gif" width="600" height="376" alt="The XCPETS cast in signature gear" style="display:block;max-width:100%;height:auto;margin:6px auto 14px;border:0;background:none;box-shadow:none;image-rendering:pixelated"></picture>
     <div class="tabs casttiers" id="castTiers" aria-label="Pick a tier, Mythic, or browse the hybrids"></div>
     <div class="cast" id="castRows"></div>
