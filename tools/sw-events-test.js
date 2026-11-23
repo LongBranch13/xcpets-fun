@@ -71,8 +71,8 @@ function events() {
     return added;
   }
   const off = run('', '/play.html', Date.UTC(2026, 10, 14));
-  ok(off.length === 1 && off[0].indexOf('doom-week.js') >= 0, 'only doom-week loads while doom week 2 is switched on');
-  ok(run('', '/play.html', Date.UTC(2026, 11, 4)).length === 0, 'no seasonal script once doom week 2 is surely over');
+  ok(off.length === 1 && off[0].indexOf('doom-week.js') >= 0, 'only doom-week loads while doom 2 is switched on');
+  ok(run('', '/play.html', Date.UTC(2027, 0, 4)).length === 1, 'doom 2 keeps loading until switched off');
   ok(run('?doom=0', '/play.html', Date.UTC(2026, 10, 24)).length === 0, '?doom=0 skips doom-week');
   ok(run('?halloween=1', '/play.html', Date.UTC(2026, 10, 14)).some(s => s.indexOf('halloween.js') >= 0), 'halloween preview flag loads it');
   ok(run('?votingday=1', '/index.html', Date.UTC(2026, 10, 14)).some(s => s.indexOf('voting-day.js') >= 0), 'voting-day preview flag loads it');

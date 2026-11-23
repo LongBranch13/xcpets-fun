@@ -57,8 +57,8 @@ ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.4, 68515701.74).supp
 var html = W.counterHtml(68000, 68e6, { btc: true, supply: false });
 ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,000') < html.indexOf('dw-down') && html.indexOf('dw-down') < html.indexOf('XCPETS left') && !/price/i.test(html), 'the arrow sits beside the number that went down');
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
-ok(W.inWindow(977136) && W.inWindow(978143) && !W.inWindow(977135) && !W.inWindow(978144) && !W.inWindow(null), 'turns on at 977,136 and off at 978,144');
-ok(W.ENABLED === true && W.START === 977136 && W.END === W.START + 1008 && W.SABO_ID === 1765, 'doom week 2 window (1,008 blocks) and Sabo id');
+ok(W.inWindow(977136) && W.inWindow(990000) && !W.inWindow(977135) && !W.inWindow(null), 'turns on at 977,136 and stays on (no end block)');
+ok(W.ENABLED === true && W.START === 977136 && W.END === 99999999 && W.SABO_ID === 1765, 'doom 2 start, open end, and Sabo id');
 ok(!/xcpets_token/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'the XCPETS token art is never swapped');
 ok(!/V2Mock\.world\(/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week never builds the full world');
 { const pp = ctx.PetCore.characterPet('pepe', { tier: 'legendary' }); ok(D.frames(pp, 4) === D.frames(Object.assign({}, pp), 4), 'dressed showcase frames are cached'); }

@@ -5,10 +5,10 @@
 (function () {
   'use strict';
   if (window.__dwLoaded) return; window.__dwLoaded = 1;
-  /* Doom Week 2 (owner Nov 23 2026: "Id like to bring doom back"). 1,008 blocks is about seven days.
+  /* Doom 2 (owner Nov 23 2026: "Id like to bring doom back", "On until I say stop"). Starts at 977,136 with no end block.
    * The first week (975,630 to 976,648) froze phones and swapped the token art; both are fixed below.
-   * Set ENABLED to false (and DOOM_ENABLED in js/v2-events.js) to turn the week off early. */
-  var ENABLED = true, START = 977136, END = START + 1008;
+   * To stop it: set ENABLED to false here AND DOOM_ENABLED to false in js/v2-events.js, then bump v2-events.js ?v=. */
+  var ENABLED = true, START = 977136, END = 99999999;
   var SABO_ID = 1765;
   var me = document.currentScript, ver = (me && /[?&]v=([\w.-]+)/.exec(me.src) || [])[1] || '';
   var root = document.documentElement, on = false, cssEl = null, layer = null, countEl = null, shopObs = null, cemObs = null, btcQuote = null, supplyLeft = null;
