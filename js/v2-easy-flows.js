@@ -20,7 +20,7 @@
   function short(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '\u2026' + a.slice(-4) : a; }
   function tip(w) { return (U().S && U().S().tip) || w.tip || 0; }
   function match(p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0) || spL(p.species).toLowerCase().indexOf(q) === 0; }
-  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'mate', fsp: '', fst: '', frar: '', fall: false, fslot: false, ways: false } };
+  var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'mate', fsp: '', fst: '', frar: '', fall: false, fslot: false, ways: null } };
   /* hotel-mate-sort 2026-10-24: Sort dropdown on both breed lists, same options + logic as the egg review (js/pet-sort.js PetSort). Default stays
    * Power: high to low (= the old Pet Score order). Base order = hatch order (hatch block, then #id), so 'Hatch order' and every tie keep it. */
   function hatchOrd(arr, pet) { return arr.slice().sort(function (x, y) { var a = pet(x), b = pet(y); return (a.hatchBlock || 0) - (b.hatchBlock || 0) || a.id - b.id; }); }
@@ -214,14 +214,29 @@
     var resX = function (p) { return !!(A && Vr.resPairWhy && Vr.resPairWhy(A, p, T + 1)); }; /* gods-breed-gods-1102: a God sees only Gods as mates and a non-God never sees a God */
     var px = function (x) { return x.p; }, reqs = incoming(w, ME, T);
     if (s.req && !reqs.some(function (r) { return r.b + ':' + r.a === s.req; })) s.req = null;
-    /* pet-picker (Nov 22 2026): ONE picker. Side A = your pet, side B = the date. Tap a slot to choose the side; shelves fill it. */
-    var side = s.side || (A || s.req ? 'B' : 'A'); if (!A && !s.req) side = 'A'; s.side = side;
+    /* pet-picker (Nov 22 2026): ONE picker. Side A = your pet, side B = the date. Tap a slot to choose the side; shelves fill it.
+     * goobys-lost (Nov 23 2026, players: "much more functional before" / "no indicator to the person receiving the request"):
+     * - breed requests for you: a big pink bar on top, and Gooby's opens straight on 💌 Asking you (no need to pick your own pet first);
+     * - info back on every card (Detailed view, default): Pet Score, generation, badges, breeds left; for a date also the egg's power range and gene notes;
+     * - sort chips in view; Detailed / Simple / List switch (List = compact rows, 48 a page); both sides side by side on wide screens. Display only. */
+    var dual = !!(window.matchMedia && matchMedia('(min-width: 900px)').matches);
+    if (!s.opened) { s.opened = true; if (reqs.length && !A && !s.req && !s.side) { s.side = 'B'; s.shB = 'asks'; } }
+    var side = s.side || (A || s.req ? 'B' : 'A'); if (!A && !s.req && !(side === 'B' && reqs.length && s.shB === 'asks')) side = 'A'; s.side = side;
     var notReady = function (x) { return x.why || (x.p.stage >= 3 ? null : 'Too young: Adult+ only'); };
     var pw = function (p) { return pow(p); };
+    var gen = function (p) { var R2 = window.V2Render; try { return R2 && R2.genOf ? R2.genOf(w, p) : Vr.genOf ? Vr.genOf(w, p) : 0; } catch (e) { return 0; } }; /* glitch-display-1102: a quest jackpot egg is one generation after its one parent */
+    var badges = function (p) { var R2 = window.V2Render, x = []; try { x = R2 && R2.badgesOf ? R2.badgesOf(w, p) : Vr.breederBadges ? Vr.breederBadges(w, p) : []; } catch (e) { x = []; } return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
+    var scoreOf = function (p) { var r = window.PetScore && PetScore.peek ? PetScore.peek(w, p) : null; return r ? r.score : null; }; /* peek: never scores a big world inside a paint */
+    var NOLINE = { '': 1, pow: 1, sc: 1, bl: 1, gen: 1, mate: 1, egg: 1, 'egg-': 1, pass: 1 };
+    var info = function (p, k) { var sc = scoreOf(p), bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p), PS = window.PetSort, gn = PS && PS.gain ? PS.gain(p) : 0, sl = null;
+      if (k && !NOLINE[String(k).replace(/-$/, '')] && PS && PS.line) try { sl = PS.line(w, p, k, T + 1); } catch (e) { sl = null; }
+      return [(sc != null ? '⭐ ' + sc + ' · ' : '') + 'Gen ' + g + (bd ? ' ' + bd : '') + (gn ? ' · <small class="hs-g">+' + gn + ' to gain</small>' : ''),
+        bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' breeds left' : '💞 bred ' + (p.breeds || 0) + ' times'].concat(sl ? [esc(sl)] : []); };
+    var tierL = function (p) { return p.resurrected ? 'God' : TL[p.tier] || ''; };
     var allA = memo(w, ['pkA', ME, T, L.mine.length].join('|'), function () { return L.mine.filter(function (x) { return x.p.stage >= 1 && !x.p.dead; }).map(function (x) { return { p: x.p, why: notReady(x), k: pw(x.p) }; })
       .sort(function (x, y) { return (!!x.why - !!y.why) || y.k - x.k || x.p.id - y.p.id; }); }); /* power worked out once per pet (big wallets) */
     var bestA = memo(w, ['pkAb', s.sa, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, T, ME].join('|'), function () { return psort(w, L.mine.filter(function (x) { return !x.why && x.p.stage >= 3 && fok(s, x.p); }), s.sa, px, T + 1).map(function (x) { return { p: x.p }; }); });
-    var statA = function (c) { var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(c.p, T + 1) : null; c.stat = '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>'; c.line = esc(spL(c.p.species)) + (bl ? ' · 💞 ' + bl.left + '/' + bl.cap : ''); return c; };
+    var statA = function (c) { c.stat = '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>'; c.line = esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)); c.lines = info(c.p, s.sa); return c; };
     var egK = EGGK.some(function (e) { return e[0] === s.sb; });
     var allB = memo(w, ['pkB', A ? A.id : 0, T, lookRev(), ME].join('|'), function () {
       var raw = L.partners.filter(function (x) { return x.p.stage >= 1 && !x.p.dead && !resX(x.p) && (!A || x.p.id !== A.id); });
@@ -231,31 +246,40 @@
       raw = A && window.EggPower && (!s.sb || egK) ? eggSort(raw, egK ? s.sb : 'mate', A, px, T + 1) : psort(w, raw, egK ? '' : s.sb, px, T + 1);
       return raw.map(function (x) { return { p: x.p }; }); });
     var statB = function (c) { var e = A && c.p.id !== A.id ? eggOf(A, c.p, T + 1) : null; c.stat = e ? '🥚 ⚡' + Math.round(e.exp) : '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>';
-      c.line = esc(spL(c.p.species)) + (c.p.owner !== ME ? ' · 👤 ' + esc(short(c.p.owner)) : ' · yours'); return c; };
+      c.line = esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)) + (c.p.owner !== ME ? ' · 👤 ' + esc(short(c.p.owner)) : ' · yours');
+      c.lines = (e ? [eggLine(e), eggTags(e), 'its own ⚡ ' + pw(c.p)] : []).filter(Boolean).concat(info(c.p, egK ? '' : s.sb)); return c; };
+    var per = PK.perOf ? PK.perOf(PK.viewMode()) : 24;
     var dec = function (list, f, n) { return list.slice(0, n).map(function (c) { return f(Object.assign({}, c)); }).concat(list.slice(n)); };
-    var shelves, shelf, cfgList;
-    var st = side === 'A' ? (s.pa = s.pa || {}) : (s.pb = s.pb || {}), nShow = (st.n || 24);
-    if (side === 'A') {
-      shelves = [{ id: 'best', label: '⭐ Best', list: bestA, why: 'Your strongest pets that can breed right now.', empty: L.mine.length ? 'None of your pets can breed right now (Adult+, fed, off cooldown). Try 📋 All my pets to see why.' : 'No living pets at this address yet.' },
-        { id: 'fav', label: '★ Favorites', list: PK.favOf(allA), why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorites yet. Tap the ☆ on a pet.' },
-        { id: 'recent', label: '🕘 Recent', list: PK.recentOf(allA), why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
-        { id: 'all', label: '📋 All my pets', list: allA, why: fmt(bestA.length) + ' of ' + fmt(allA.length) + ' can breed now. The rest say why.', empty: 'No living pets at this address yet.' }];
-      shelf = s.shA || 'best'; cfgList = allA; }
-    else {
-      var asks = reqs.map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null, rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null;
-        return { p: Y, key: 'r' + k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, stat: '<span' + ptA(Y) + '>⚡ ' + pw(Y) + '</span>', line: '👤 ' + esc(short(Y.owner)) + ' · until ' + fmt(r.block + (Vr.BREED_WINDOW || 144)), noStar: false }; });
-      var mineB = bestB.filter(function (c) { return c.p.owner === ME; }), otherB = bestB.filter(function (c) { return c.p.owner !== ME; });
-      shelves = (asks.length ? [{ id: 'asks', label: '💌 Asking you (' + asks.length + ')', hot: true, list: asks, why: 'Other players asked one of your pets out. Pick one, then accept: the egg goes to them, your pet gets the stat carry.' }] : [])
-        .concat([{ id: 'best', label: '⭐ Best match', list: bestB, why: A ? 'Dates with the strongest eggs for ' + esc(A.name) + ' (🥚 ⚡ = egg power, about).' : 'Pick your pet first for egg power.', empty: 'No date can breed right now. Try 🌍 Other players.' },
-          { id: 'mine', label: '🏠 My pets', list: mineB, why: 'Both pets yours: one burn, the egg is yours.', empty: 'No other pet of yours can breed right now.' },
-          { id: 'other', label: '🌍 Other players', list: otherB, why: 'Their owner gets ' + (Vr.BREED_WINDOW || 144) + ' blocks to accept. Type a wallet address or a pet number to load more.', empty: 'No other wallet is loaded yet. Type a wallet address or a pet number above.', top: '<div class="pk2-look" id="pkLookAt"></div>' },
-          { id: 'fav', label: '★ Favorites', list: PK.favOf(allB), why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorite dates yet. Tap the ☆ on a pet.' },
-          { id: 'recent', label: '🕘 Recent', list: PK.recentOf(allB), why: 'Pets you picked lately.', empty: 'Nothing picked yet.' }]);
-      shelf = s.shB || (asks.length && !A ? 'asks' : 'best'); cfgList = allB; }
-    if (!shelves.some(function (x) { return x.id === shelf; })) shelf = shelves[0].id;
-    var deco = side === 'A' ? statA : statB;
-    shelves.forEach(function (x) { if (x.id !== 'asks') x.list = dec(x.list, deco, nShow); });
-    var searchList = dec(PK && st.q ? cfgList.filter(function (c) { return PK.match(c.p, st.q, spL); }) : [], deco, nShow);
+    var SORT_A = [['pow', '⚡ Power'], ['sc', '⭐ Score'], ['rar', '💎 Rarity'], ['bl', '💞 Breeds left'], ['gen', '🌳 Gen'], ['', '🐣 Oldest']];
+    var SORT_B = (A && window.EggPower ? [['mate', '🥚 Best egg'], ['egg', '🥚 Egg power'], ['pass', '🧬 Traits']] : []).concat([['pow', '⚡ Power'], ['sc', '⭐ Score'], ['rar', '💎 Rarity']]);
+    var asks = reqs.map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null, rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null, e = eggOf(Y, X, T + 1);
+      return { p: Y, key: 'r' + k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, stat: '<span' + ptA(Y) + '>⚡ ' + pw(Y) + '</span>',
+        line: esc(spL(Y.species)) + ' · ' + esc(tierL(Y)) + ' · 👤 ' + esc(short(Y.owner)), lines: ['⏳ until block ' + fmt(r.block + (Vr.BREED_WINDOW || 144)) + (T ? ' (~' + Math.max(1, Math.round(Math.max(0, r.block + (Vr.BREED_WINDOW || 144) - T) / 6)) + ' h left)' : '')].concat(e ? [eggLine(e)] : []).concat(info(Y, '')), noStar: false }; });
+    var sideCfg = function (sd) { var st = sd === 'A' ? (s.pa = s.pa || {}) : (s.pb = s.pb || {}), nShow = Math.max(st.n || 0, per), shelves, shelf, cfgList;
+      if (sd === 'A') {
+        shelves = [{ id: 'best', label: '⭐ Best', list: bestA, why: 'Your pets that can breed right now.', empty: L.mine.length ? 'None of your pets can breed right now (Adult+, fed, off cooldown). Try 📋 All my pets to see why.' : 'No living pets at this address yet.' },
+          { id: 'fav', label: '★ Favorites', list: PK.favOf(allA), sort: false, why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorites yet. Tap the ☆ on a pet.' },
+          { id: 'recent', label: '🕘 Recent', list: PK.recentOf(allA), sort: false, why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
+          { id: 'all', label: '📋 All my pets', list: allA, sort: false, why: fmt(bestA.length) + ' of ' + fmt(allA.length) + ' can breed now. The rest say why.', empty: 'No living pets at this address yet.' }];
+        shelf = s.shA || 'best'; cfgList = allA; }
+      else {
+        var mineB = bestB.filter(function (c) { return c.p.owner === ME; }), otherB = bestB.filter(function (c) { return c.p.owner !== ME; });
+        shelves = (asks.length ? [{ id: 'asks', label: '💌 Asking you (' + asks.length + ')', hot: true, sort: false, list: asks, why: 'Other players asked one of your pets out. Pick one, then accept: the egg goes to them, your pet gets the stat carry.' }] : [])
+          .concat([{ id: 'best', label: '⭐ Best match', list: bestB, why: A ? 'Dates with the strongest eggs for ' + esc(A.name) + ' (🥚 ⚡ = egg power, about).' : 'Pick your pet first for egg power.', empty: 'No date can breed right now. Try 🌍 Other players.' },
+            { id: 'mine', label: '🏠 My pets', list: mineB, why: 'Both pets yours: one burn, the egg is yours.', empty: 'No other pet of yours can breed right now.' },
+            { id: 'other', label: '🌍 Other players', list: otherB, why: 'Their owner gets ' + (Vr.BREED_WINDOW || 144) + ' blocks to accept. Type a wallet address or a pet number to load more.', empty: 'No other wallet is loaded yet. Type a wallet address or a pet number above.', top: '<div class="pk2-look" id="pkLookAt"></div>' },
+            { id: 'fav', label: '★ Favorites', list: PK.favOf(allB), sort: false, why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorite dates yet. Tap the ☆ on a pet.' },
+            { id: 'recent', label: '🕘 Recent', list: PK.recentOf(allB), sort: false, why: 'Pets you picked lately.', empty: 'Nothing picked yet.' }]);
+        shelf = s.shB || (asks.length && !A ? 'asks' : 'best'); cfgList = allB; }
+      if (!shelves.some(function (x) { return x.id === shelf; })) shelf = shelves[0].id;
+      var deco = sd === 'A' ? statA : statB;
+      shelves.forEach(function (x) { if (x.id !== 'asks') x.list = dec(x.list, deco, nShow); });
+      var searchList = st.q ? dec(cfgList.filter(function (c) { return PK.match(c.p, st.q, spL); }), deco, nShow) : null;
+      return { st: st, shelves: shelves, shelf: shelf, searchList: searchList, sorts: sd === 'A' ? SORT_A : SORT_B, sortOn: sd === 'A' ? s.sa : s.sb,
+        searchPh: sd === 'A' ? 'Search ' + fmt(allA.length) + ' pets: name, #number, species' : 'Search dates: name, #number, species', selected: sd === 'A' ? (A ? A.id : '') : (s.req ? 'r' + s.req : Bp ? Bp.id : ''),
+        prompt: sd === 'A' ? (dual ? '1 · Your pet' : 'Pick your pet') : (shelf === 'asks' ? (dual ? '2 · ' : '') + 'Pick a request' : (dual ? '2 · The date' : 'Pick a date') + (A ? ' for ' + (A.name || '#' + A.id) : '')) }; };
+    var cur = sideCfg(side), cA = dual ? (side === 'A' ? cur : sideCfg('A')) : null, cB = dual ? (side === 'B' ? cur : sideCfg('B')) : null;
+    var shelfB = dual ? cB.shelf : side === 'B' ? cur.shelf : '';
     /* verdict + slots */
     var P1 = A, P2 = Bp, flip = null, verdict = null, rmode = '';
     if (s.req) { var q0 = s.req.split(':'); P1 = w.byId[q0[0]]; P2 = w.byId[q0[1]]; }
@@ -263,28 +287,39 @@
       var kw2 = kin(P2); verdict = { tone: kw2 ? 'bad' : 'good', big: kw2 ? '🚫 ' + esc(kw2) : o ? 'EGG: ' + o.tier.hi.toFixed(0) + '% ' + TL[o.hiT].toUpperCase() + (o.tier.up ? ' · ' + o.tier.up.toFixed(0) + '% ' + TL[Math.min(3, o.hiT + 1)].toUpperCase() + '!' : '') : 'READY TO CHECK IN',
         small: rmode === 'same' ? 'Both pets are yours: one burn, the egg is yours.' : rmode === 'accept' ? (flip ? 'You are accepting their request: the egg goes to them, your pet gets the stat carry.' : 'The egg goes to the pet that asked. Your pet gets the stat carry.') : 'The egg is yours. Their owner has ' + (Vr.BREED_WINDOW || 144) + ' blocks to say yes at Gooby’s desk.' };
       if (v2 && P1.species !== P2.species && !kw2) verdict.small += ' 🧬 Different species: a hybrid egg can happen.'; }
+    else if (!A && reqs.length && shelfB === 'asks') verdict = { tone: 'wait', big: '💌 PICK A REQUEST', small: 'Tap a pet that asked yours out, then accept. Or pick your own pet to start a new date.' };
     else verdict = { tone: 'wait', big: !A ? 'PICK YOUR PET' : 'NOW PICK A DATE FOR ' + esc(String(A.name || '#' + A.id).toUpperCase()), small: !A ? 'Tap a pet below, or drag it onto the motel.' : '⭐ Best match shows the dates with the strongest eggs.' };
-    var bud = PK.buddy(), subA = function (p) { var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null; return '⚡ ' + pw(p) + (bl ? ' · 💞 ' + bl.left + ' of ' + bl.cap + ' left' : ''); };
+    var bud = PK.buddy(), subA = function (p) { var bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, sc = scoreOf(p); return '⚡ ' + pw(p) + (sc != null ? ' · ⭐ ' + sc : '') + (bl ? ' · 💞 ' + bl.left + ' of ' + bl.cap + ' left' : '') + ' · Gen ' + gen(p); };
     var slotA = { key: 'A', label: 'YOUR PET', pet: P1, empty: 'Pick your pet', buddy: P1 && P1.id === bud && P1.owner === ME, clear: !s.req, sub: P1 ? subA(P1) : '', locked: !!s.req };
-    var slotB = { key: 'B', label: s.req ? 'ASKED BY' : 'THE DATE', pet: P2, empty: A ? 'Pick a date' : 'Then a date', clear: true, sub: P2 ? (P2.owner === ME ? '⚡ ' + pw(P2) + ' · yours' : '⚡ ' + pw(P2) + ' · 👤 ' + esc(short(P2.owner))) : '' };
-    var extra = '<details class="pk2-fx"' + (s.fx ? ' open' : '') + ' id="pkFx"><summary>⚙️ Filters and sort</summary>' + fbar(w, s, (side === 'A' ? L.mine : L.partners).map(px)) +
+    var slotB = { key: 'B', label: s.req ? 'ASKED BY' : 'THE DATE', pet: P2, empty: !A && reqs.length ? '💌 ' + reqs.length + ' asking you' : A ? 'Pick a date' : 'Then a date', clear: true, sub: P2 ? (P2.owner === ME ? '⚡ ' + pw(P2) + ' · yours' : '⚡ ' + pw(P2) + ' · 👤 ' + esc(short(P2.owner))) : '' };
+    var extra = '<details class="pk2-fx"' + (s.fx ? ' open' : '') + ' id="pkFx"><summary>⚙️ Filters and more sorts</summary>' + fbar(w, s, (side === 'A' ? L.mine : L.partners).map(px)) +
       (side === 'A' ? sortSel('ezBsA', s.sa, 'Your pet') : sortSelMate('ezBsB', s.sb, A)) + '</details>';
-    if (A || Bp) extra += '<details class="hs-wb"' + (s.ways ? ' open' : '') + ' id="ezWays"><summary>⚡ Ways to more power</summary><div class="hs-wg">' + waysBox(w, A, T) + (Bp && (!A || Bp.id !== A.id) ? waysBox(w, Bp, T) : '') + '</div>' + '<div class="hs-bfp"><b>💞 Breeding for Power</b><p>An egg’s stats start at its parents’ average, give or take 2 each. Pair your strongest pets, then breed the best egg with another strong pet: each generation starts from a higher average. Same-species eggs can come out bred true (+3 on one stat), a hybrid egg keeps each parent’s best stat at full value, and a carried stat sets a floor. Quest Hauls (up to +3) also pass down through the average. The block hash picks each egg, so no climb is certain.</p></div></details>';
+    if (A || Bp) extra += '<details class="hs-wb"' + ((s.ways == null ? dual : s.ways) ? ' open' : '') + ' id="ezWays"><summary>⚡ Ways to more power</summary><div class="hs-wg">' + waysBox(w, A, T) + (Bp && (!A || Bp.id !== A.id) ? waysBox(w, Bp, T) : '') + '</div>' + '<div class="hs-bfp"><b>💞 Breeding for Power</b><p>An egg’s stats start at its parents’ average, give or take 2 each. Pair your strongest pets, then breed the best egg with another strong pet: each generation starts from a higher average. Same-species eggs can come out bred true (+3 on one stat), a hybrid egg keeps each parent’s best stat at full value, and a carried stat sets a floor. Quest Hauls (up to +3) also pass down through the average. The block hash picks each egg, so no climb is certain.</p></div></details>';
+    /* the pink bar: shown while requests wait and the Asking you shelf is not the one on screen */
+    var alert = null; if (reqs.length && !s.req && shelfB !== 'asks') { var r0 = reqs[0], Y0 = w.byId[r0.a], X0 = w.byId[r0.b];
+      alert = { html: '<b>💌 ' + reqs.length + ' breed request' + (reqs.length === 1 ? '' : 's') + ' for your pets!</b><span class="pk2-ago">' + (Y0 && X0 ? esc(Y0.name || 'Pet') + ' #' + Y0.id + ' asked your ' + esc(X0.name || 'pet') + ' #' + X0.id + (reqs.length > 1 ? ' and ' + (reqs.length - 1) + ' more' : '') + '.' : '') + ' They expire after ' + (Vr.BREED_WINDOW || 144) + ' blocks (about a day).</span><span class="pk2-go">SEE WHO ▸</span>' }; }
     var redraw = function () { breed(U().world()); };
     var setPet = function (sd, id) { $(sd === 'A' ? 'bA' : 'bB').value = id; if (sd === 'A' && $('bB').value === id) $('bB').value = ''; var S = M && M._state ? M._state() : null; if (S) { S.fresh = null; S.pickSide = null; if (id) { S.bubble = 'Room #' + id + '? Gooby pls.'; S.lt = performance.now(); } } UI.render(); };
-    PK.render(el, { id: 'motel', w: w, mid: '+', active: side, slots: [slotA, slotB], verdict: verdict, prompt: side === 'A' ? 'Pick your pet' : (s.req ? 'Pick a request' : 'Pick a date' + (A ? ' for ' + (A.name || '#' + A.id) : '')),
-      shelves: shelves, shelf: shelf, searchList: st.q ? searchList : null, searchPh: side === 'A' ? 'Search ' + fmt(allA.length) + ' pets: name, #number, species' : 'Search dates: name, #number, species', selected: side === 'A' ? (A ? A.id : '') : (s.req ? 'r' + s.req : Bp ? Bp.id : ''),
+    var cfg = { id: 'motel', w: w, mid: '+', active: side, slots: [slotA, slotB], verdict: verdict, views: true, alert: alert,
       extra: extra, drop: [$('motelScene')], onRedraw: redraw,
-      onSlot: function (k) { if (k === 'B' && !A && !s.req) { UI.toast('Pick your pet first.'); } s.side = k === 'B' && !A && !s.req ? 'A' : k; redraw(); },
+      onAlert: function () { s.side = 'B'; s.shB = 'asks'; (s.pb || {}).q = ''; redraw(); var pk = el.querySelector('.pk2-pick[data-pk2side="' + (dual ? 'B' : '') + '"]') || el; try { pk.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { } },
+      onSort: function (k, sd) { sd = sd || side; if (sd === 'A') { s.sa = k; s.shA = 'best'; } else { s.sb = k; if (!/^(best|mine|other)$/.test(s.shB || '')) s.shB = 'best'; } s.side = sd === 'B' && !A ? s.side : sd; redraw(); },
+      onSlot: function (k) { if (k === 'B' && !A && !s.req) { if (reqs.length) { s.side = 'B'; s.shB = 'asks'; redraw(); return; } UI.toast('Pick your pet first.'); } s.side = k === 'B' && !A && !s.req ? 'A' : k; redraw(); },
       onClear: function (k) { if (s.req) { s.req = null; $('bA').value = ''; $('bB').value = ''; s.side = 'A'; setPet('B', ''); return; } s.side = k; setPet(k, ''); },
-      onShelf: function (id) { if (side === 'A') s.shA = id; else s.shB = id; if (id !== 'asks' && s.req) { s.req = null; $('bA').value = ''; $('bB').value = ''; s.side = 'A'; } redraw(); },
+      onShelf: function (id, sd) { sd = sd || side; if (sd === 'A') s.shA = id; else s.shB = id;
+        if (sd === 'B' && s.req && id !== 'asks') { s.req = null; $('bA').value = ''; $('bB').value = ''; }
+        if (!dual && sd === 'B' && !$('bA').value && id !== 'asks') UI.toast('Pick your pet first. Then this shelf shows dates for it.'); s.side = sd; redraw(); },
       onPick: function (c, slotKey) { var k = String(c.key || c.p.id);
         if (k[0] === 'r') { k = k.slice(1); if (s.req === k) { s.req = null; s.side = 'A'; $('bA').value = ''; setPet('B', ''); return; } s.req = k; var q2 = k.split(':'); $('bA').value = q2[0]; PK.used(c.p.id, false); setPet('B', q2[1]); return; }
         if (s.req) { s.req = null; $('bA').value = ''; $('bB').value = ''; }
         var sd = slotKey === 'A' || slotKey === 'B' ? slotKey : side; if (sd === 'B' && !$('bA').value) sd = 'A';
         if (sd === 'A' && c.p.owner !== ME) { UI.toast('#' + c.p.id + ' is not yours: it can only be the date.'); return; }
         PK.used(c.p.id, c.p.owner === ME); (s.pa || {}).q = ''; (s.pb || {}).q = '';
-        s.side = sd === 'A' && !$('bB').value ? 'B' : sd; setPet(sd, k); } }, st);
+        if (sd === 'A' && s.shB === 'asks') s.shB = 'best'; /* your own pet picked: show dates for it (the pink bar keeps the requests one tap away) */
+        s.side = sd === 'A' && !$('bB').value ? 'B' : sd; setPet(sd, k); } };
+    if (dual) cfg.dual = { A: cA, B: cB }; else { cfg.prompt = cur.prompt; cfg.shelves = cur.shelves; cfg.shelf = cur.shelf; cfg.searchList = cur.searchList; cfg.searchPh = cur.searchPh; cfg.selected = cur.selected; cfg.sorts = cur.sorts; cfg.sortOn = cur.sortOn; }
+    PK.render(el, cfg, cur.st);
+    if (window.matchMedia && !ST.mqOn) { ST.mqOn = true; var mq = matchMedia('(min-width: 900px)'), re = function () { var u = U(); if (u && u.world) breed(u.world()); }; if (mq.addEventListener) mq.addEventListener('change', re); else if (mq.addListener) mq.addListener(re); }
     /* the other-players lookup (wallet address or pet number) sits on its shelf, above the cards */
     var la = $('pkLookAt'); if (la && window.V2Lookup) V2Lookup.mount(la, { id: 'breedLook', mode: 'breed', onReady: function () { var u = U(); if (u && u.render) u.render(); } });
     /* 3 · one button (the motel bell / the desk Accept, unchanged) */
