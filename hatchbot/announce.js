@@ -4,8 +4,10 @@
  * last run and posts them to the XCPETS Telegram group. Read-only for the game: it never signs or burns anything.
  *
  *   node hatchbot/announce.js --state FILE            post new events (needs TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)
- *   node hatchbot/announce.js --state FILE --dry      print what it would post, send nothing
+ *   node hatchbot/announce.js --state FILE --dry      print what it would post, send nothing (--art-out DIR also saves the pictures)
+ *   --no-art                                          text only, no pictures
  *   node hatchbot/announce.js --post "text"           post one game update (the "Post update" button)
+ *   node hatchbot/announce.js --update NAME            post the prepared series hatchbot/updates/NAME.json (text + pet pictures)
  *
  * The first run with no state file records everything that already happened and posts nothing.
  * Posts never contain wallet addresses or prices. */
@@ -33,6 +35,30 @@ async function tg(method, body) {
   return false;
 }
 const say = text => tg('sendMessage', { text: clean(text), disable_web_page_preview: true });
+/* Posts with a picture (Nov 23 2026): the pet drawn by the site's own renderer, as a short GIF for big moments (hatchbot/art.js).
+ * A file upload (multipart), so Telegram never fetches anything from us. Any drawing or upload problem falls back to the plain text post. */
+const ART_OUT = opt('--art-out'), NO_ART = has('--no-art');
+async function tgFile(method, field, file, name, caption) {
+  if (DRY || !TOKEN || !CHAT) { if (ART_OUT) { fs.mkdirSync(ART_OUT, { recursive: true }); const f = path.join(ART_OUT, String(++tgFile.n).padStart(2, '0') + '-' + name); fs.writeFileSync(f, file); console.log('--- ' + method + ' ' + f); } else console.log('--- ' + method + ' (' + file.length + ' bytes)'); console.log(caption); return true; }
+  for (let i = 0; i < 3; i++) {
+    const fd = new FormData(); fd.append('chat_id', CHAT); fd.append('caption', caption); fd.append(field, new Blob([file]), name);
+    const r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', body: fd });
+    if (r.ok) return true;
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 429 && j.parameters && j.parameters.retry_after) { await new Promise(res => setTimeout(res, (j.parameters.retry_after + 1) * 1000)); continue; }
+    console.log('telegram ' + method + ' failed ' + r.status + ' ' + (j.description || '')); return false;
+  }
+  return false;
+}
+tgFile.n = 0;
+async function post(ev, ctx, w) {
+  const text = clean(ev.text);
+  if (ev.art && ctx && !NO_ART && text.length <= 1000) {
+    let a = null; try { a = require('./art.js').event(ctx, w, ev.art); } catch (e) { console.log('art skipped for ' + ev.key + ': ' + (e && e.message)); }
+    if (a) { const ok = a.type === 'photo' ? await tgFile('sendPhoto', 'photo', a.file, a.name, text) : await tgFile('sendAnimation', 'animation', a.file, a.name, text); if (ok) return true; }
+  }
+  return say(text);
+}
 
 /* ---------------------------------------------------------------- replay */
 function engine() {
@@ -54,7 +80,7 @@ function replay() {
   const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
   const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {});
   const w = V.replay(rows, hashes, [], { tip: boot.tip, live: ctx.LiveEngine.RealCore, dex: boot.dex });
-  return { V, w, tip: boot.tip };
+  return { V, w, tip: boot.tip, ctx };
 }
 
 /* ---------------------------------------------------------------- events */
@@ -66,25 +92,25 @@ const isMythic = p => !!p && (p.mythicCare || p.stage >= 5);
 
 /* Every event has a stable key, the block it happened at and its text. Old keys are never posted twice. */
 function collect(V, w, tip, from) {
-  const out = [], add = (key, at, text, prio) => out.push({ key, at, text, prio: prio || 1 });
+  const out = [], add = (key, at, text, prio, art) => out.push({ key, at, text, prio: prio || 1, art: art || null });
   /* 1) log lines worth a post */
   (w.log || []).forEach(x => { if (!x || x.block <= from) return; const m = String(x.msg || ''), id = (m.match(/#(\d+)/) || [])[1], k = x.kind + '-' + (x.tx || '') + '-' + x.block + '-' + (id || '');
-    if (x.kind === 'raise') add(k, x.block, '🧟 RISE! ' + petName(w, +id, V) + ' clawed its way out of the grave as a zombie' + ((m.match(/\(([\d.]+) times/) || [])[1] ? ' at ' + m.match(/\(([\d.]+) times/)[1] + ' times its death power' : '') + '.\n' + link(id), 3);
+    if (x.kind === 'raise') add(k, x.block, '🧟 RISE! ' + petName(w, +id, V) + ' clawed its way out of the grave as a zombie' + ((m.match(/\(([\d.]+) times/) || [])[1] ? ' at ' + m.match(/\(([\d.]+) times/)[1] + ' times its death power' : '') + '.\n' + link(id), 3, { kind: 'rise', id: +id, mythic: /Mythic zombie/.test(m) });
     else if (x.kind === 'resurrect') { /* the rules log a failed try under the same kind ("...turned to dust forever"), so read the outcome */
-      if (/failed|dust/i.test(m)) add(k, x.block, '💨 So close... ' + petName(w, +id, V) + ' tried to come back, but the resurrection failed. It turned to dust forever.\n' + link(id), 3);
-      else if (/ALIVE again/.test(m)) add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4); }
-    else if (x.kind === 'unleash') add(k, x.block, '🩸 UNLEASHED! Zombie ' + petName(w, +id, V) + ' is starving and has been let loose. In 6 blocks it eats one of its owner\'s Mythics...\n' + link(id), 4);
-    else if (x.kind === 'mgmeal') { const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1)); add(k, x.block, '💜 A Mythic was devoured! Zombie ' + petName(w, ids[0], V) + ' ate ' + petName(w, ids[1], V) + '. The zombie is cured forever, and the Mythic now rests in a Mythic grave, waiting for a seance.\n' + link(ids[1]), 5); }
+      if (/failed|dust/i.test(m)) add(k, x.block, '💨 So close... ' + petName(w, +id, V) + ' tried to come back, but the resurrection failed. It turned to dust forever.\n' + link(id), 3, { kind: 'dust', id: +id });
+      else if (/ALIVE again/.test(m)) add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4, { kind: 'miracle', id: +id }); }
+    else if (x.kind === 'unleash') add(k, x.block, '🩸 UNLEASHED! Zombie ' + petName(w, +id, V) + ' is starving and has been let loose. In 6 blocks it eats one of its owner\'s Mythics...\n' + link(id), 4, { kind: 'rage', id: +id });
+    else if (x.kind === 'mgmeal') { const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1)); add(k, x.block, '💜 A Mythic was devoured! Zombie ' + petName(w, ids[0], V) + ' ate ' + petName(w, ids[1], V) + '. The zombie is cured forever, and the Mythic now rests in a Mythic grave, waiting for a seance.\n' + link(ids[1]), 5, { kind: 'devour', ids: ids.slice(0, 2) }); }
     else if (x.kind === 'hunt' && /won|defeated|beat/i.test(m)) add(k, x.block, '⚔️ Zombie hunt! ' + clean(m).slice(0, 200), 2);
     else if (x.kind === 'breed') { const egg = (m.match(/Egg #(\d+)/) || [])[1]; const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1));
       const big = ids.slice(0, 2).some(i => w.byId[i] && ((w.byId[i].tier | 0) >= 3 || isMythic(w.byId[i])));
-      if (big) add(k, x.block, '🥚 Love is in the swamp! ' + petName(w, ids[0], V) + ' and ' + petName(w, ids[1], V) + ' made an egg' + (egg ? ' (#' + egg + ')' : '') + '.', 2); }
-    else if (x.kind === 'mzfull') add(k, x.block, '💀 ' + petName(w, +id, V) + ' stands at FULL zombie power.\n' + link(id), 3);
+      if (big) add(k, x.block, '🥚 Love is in the swamp! ' + petName(w, ids[0], V) + ' and ' + petName(w, ids[1], V) + ' made an egg' + (egg ? ' (#' + egg + ')' : '') + '.', 2, { kind: 'breed', ids: ids.slice(0, 2), egg: egg ? +egg : null }); }
+    else if (x.kind === 'mzfull') add(k, x.block, '💀 ' + petName(w, +id, V) + ' stands at FULL zombie power.\n' + link(id), 3, { kind: 'rage', id: +id, color: 'green' });
   });
   /* 2) Legendary hatches (one post per pet, or one roundup when a big egg case drops several) */
   const leg = w.pets.filter(p => p && p.hatchBlock > from && p.hatchBlock <= tip && (p.tier | 0) >= 3 && !p.community);
-  if (leg.length > 3) add('hatch-leg-' + leg.map(p => p.id).join('.').slice(0, 120), leg[0].hatchBlock, '🌟 LEGENDARY HATCHES! ' + leg.length + ' Legendary pets just hatched: ' + leg.slice(0, 10).map(p => petName(w, p.id, V)).join(', ') + (leg.length > 10 ? ' and more' : '') + '.', 3);
-  else leg.forEach(p => add('hatch-leg-' + p.id, p.hatchBlock, '🌟 LEGENDARY HATCH! ' + petName(w, p.id, V) + ' just cracked out of its egg.\n' + link(p.id), 3));
+  if (leg.length > 3) add('hatch-leg-' + leg.map(p => p.id).join('.').slice(0, 120), leg[0].hatchBlock, '🌟 LEGENDARY HATCHES! ' + leg.length + ' Legendary pets just hatched: ' + leg.slice(0, 10).map(p => petName(w, p.id, V)).join(', ') + (leg.length > 10 ? ' and more' : '') + '.', 3, { kind: 'lineup', ids: leg.slice(0, 6).map(p => p.id) });
+  else leg.forEach(p => add('hatch-leg-' + p.id, p.hatchBlock, '🌟 LEGENDARY HATCH! ' + petName(w, p.id, V) + ' just cracked out of its egg.\n' + link(p.id), 3, { kind: 'hatch', id: p.id }));
   /* 2b) raids: boss appears, HP milestones (50%, 25%, 10%), defeated or escaped */
   (w.raids || []).forEach(R => { const B = V.raidBossById ? V.raidBossById(R.boss) : null, nm = B ? B.name : 'The boss', url = '\nxcpets.fun/raid.html', f = n => Number(n).toLocaleString('en-US');
     if (R.open > from && R.open <= tip) add('raid-open-' + R.n, R.open, '👹 RAID ' + R.n + ': ' + nm + ' has appeared with ' + f(R.hp) + ' HP! You have 3 days to take it down.' + (R.v2 ? ' Every feed, breed and hatch hits it too.' : '') + url, 4);
@@ -94,7 +120,7 @@ function collect(V, w, tip, from) {
     if (R.result === 'escaped' && R.decided != null && R.decided > from && (R.order.length || R.chipTotal)) add('raid-esc-' + R.n, R.decided, '💨 ' + nm + ' escaped with ' + f(R.left) + ' HP left. Next boss in a few days.' + url, 2); });
   /* 2c) seasons: legend pulls, egg supply milestones, the season result */
   Object.values(w.seasons || {}).forEach(Z => { const sup = V.SEASON ? V.SEASON.SUPPLY : 690, url = '\nxcpets.fun';
-    (Z.legends || []).forEach(id => { const p = w.byId[id]; if (p && p.hatchBlock > from) add('season-legend-' + id, p.hatchBlock, '👑 SEASON LEGEND! ' + petName(w, id, V) + ' hatched from a Season ' + Z.n + ' egg. 1 in ' + (V.SEASON ? V.SEASON.LEGEND_ODDS : 690) + '!\n' + link(id), 5); });
+    (Z.legends || []).forEach(id => { const p = w.byId[id]; if (p && p.hatchBlock > from) add('season-legend-' + id, p.hatchBlock, '👑 SEASON LEGEND! ' + petName(w, id, V) + ' hatched from a Season ' + Z.n + ' egg. 1 in ' + (V.SEASON ? V.SEASON.LEGEND_ODDS : 690) + '!\n' + link(id), 5, { kind: 'hatch', id }); });
     if (!Z.settled) [[sup / 2, '50'], [sup * 3 / 4, '75'], [sup - 10, 'last10'], [sup, 'soldout']].forEach(([n, k]) => { if (Z.sold >= n) add('season-supply-' + Z.n + '-' + k, tip, k === 'soldout' ? '🚨 SOLD OUT! All ' + sup + ' Season ' + Z.n + ' eggs are gone. Breeding is the only way to get the trait now.' + url : k === 'last10' ? '⏳ Only ' + (sup - Z.sold) + ' Season ' + Z.n + ' eggs left!' + url : '🥚 ' + (sup - Z.sold) + ' of ' + sup + ' Season ' + Z.n + ' eggs left.' + url, k === 'soldout' ? 5 : 3); });
     if (Z.settled && Z.decided > from) { const ch = (Z.champions || []).map((a, i) => ['🥇', '🥈', '🥉'][i] + ' ' + clean(a) + ' (' + Z.pts[a] + ' pts)').join('  '); add('season-end-' + Z.n, Z.decided, '🏆 SEASON ' + Z.n + ' IS OVER! ' + Object.keys(Z.tiers || {}).length + ' players reached a reward tier, ' + Z.sold + ' season eggs hatched.' + (ch ? '\nChampions: ' + ch : '') + url, 5); } });
   /* 3) the existing HatchBot hooks: halvings + fire sales, Legendary/Mythic gifts and swaps, Pantheon seats */
@@ -106,14 +132,21 @@ function collect(V, w, tip, from) {
 /* Mythics are found by comparing the list with the last run (a pet can reach Mythic without a log line). */
 function newMythics(V, w, st) { const now = w.pets.filter(p => p && isMythic(p) && !p.dead && !p.community).map(p => p.id);
   const old = new Set(st.mythics || []), fresh = st.mythics ? now.filter(id => !old.has(id)) : [];
-  st.mythics = now; return fresh.map(id => ({ key: 'mythic-' + id, at: w.tip, prio: 5, text: '👑 A NEW MYTHIC! ' + petName(w, id, V) + ' has reached Mythic.\n' + link(id) })); }
+  st.mythics = now; return fresh.map(id => ({ key: 'mythic-' + id, at: w.tip, prio: 5, text: '👑 A NEW MYTHIC! ' + petName(w, id, V) + ' has reached Mythic.\n' + link(id), art: { kind: 'shine', id, halo: false } })); }
 
 /* ---------------------------------------------------------------- main */
 async function main() {
+  if (opt('--update') != null) { /* a prepared update series (hatchbot/updates/<name>.json): { posts: [{ text, art? }] }, posted in order with its pictures */
+    const f = path.resolve(ROOT, 'hatchbot/updates', path.basename(opt('--update')).replace(/\.json$/, '') + '.json');
+    const U = JSON.parse(fs.readFileSync(f, 'utf8')), posts = (U.posts || []).filter(x => x && x.text);
+    if (!posts.length) throw new Error('no posts in ' + f);
+    const needArt = !NO_ART && posts.some(x => x.art), R = needArt ? replay() : null; let bad = 0;
+    for (const x of posts) { const ok = await post({ key: 'update', text: x.text, art: x.art || null }, R && R.ctx, R && R.w); if (!ok && !DRY) bad++; await new Promise(r => setTimeout(r, 2500)); }
+    process.exit(bad ? 1 : 0); }
   if (opt('--post') != null) { const t = opt('--post').trim(); if (!t) throw new Error('empty update'); const ok = await tg('sendMessage', { text: '📣 XCPETS update\n\n' + t, disable_web_page_preview: true }); process.exit(ok ? 0 : 1); }
   if (!STATE) throw new Error('--state FILE is required');
   const st = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : null, first = !st, S = st || { v: 1, posted: [] };
-  const t0 = Date.now(), { V, w, tip } = replay(); console.log('replayed to block ' + tip + ' in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+  const t0 = Date.now(), { V, w, tip, ctx } = replay(); console.log('replayed to block ' + tip + ' in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
   if (S.tip && tip <= S.tip) { console.log('no new blocks since ' + S.tip); return; }
   const from = S.tip || tip, seen = new Set(S.posted || []);
   let ev = collect(V, w, tip, first ? tip : from).concat(newMythics(V, w, S)).filter(e => !seen.has(e.key));
@@ -125,7 +158,7 @@ async function main() {
   let posts = ev;
   if (ev.length > MAX_POSTS) { const keep = ev.slice().sort((a, b) => b.prio - a.prio).slice(0, MAX_POSTS - 1), rest = ev.filter(e => keep.indexOf(e) < 0);
     posts = keep.sort((a, b) => a.at - b.at).concat([{ key: 'roundup-' + tip, at: tip, text: '📜 Also in the last few blocks: ' + rest.length + ' more cool moments. See them all at xcpets.fun/live.html', keys: rest.map(e => e.key) }]); }
-  for (const p of posts) { const ok = await say(p.text); if (ok || DRY) { seen.add(p.key); (p.keys || []).forEach(k => seen.add(k)); } await new Promise(r => setTimeout(r, 1200)); }
+  for (const p of posts) { const ok = await post(p, ctx, w); if (ok || DRY) { seen.add(p.key); (p.keys || []).forEach(k => seen.add(k)); } await new Promise(r => setTimeout(r, 1200)); }
   S.tip = tip; S.posted = Array.from(seen).slice(-5000); S.at = new Date().toISOString();
   if (!DRY) fs.writeFileSync(STATE, JSON.stringify(S));
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
