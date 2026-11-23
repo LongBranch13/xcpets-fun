@@ -2,7 +2,7 @@
    The site's pet-tile layer is body::before (z-index -1), so the sky has to replace that layer. Removing .dw restores it. */
 html.dw body,
 html.dw body::before { background-color: #14060c; background-image: radial-gradient(900px 420px at 50% -8%, #5c0814 0%, transparent 58%), linear-gradient(#1a0508, #0c0406 42%, #14060c); background-size: auto; }
-.dw-layer { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+.dw-layer { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; } /* card-tidy (Nov 23 2026): behind the page content, so the candles and ash fall past the cards, not over them */
 .dw-stick, .dw-ash { position: absolute; top: -24px; display: block; image-rendering: pixelated; }
 .dw-stick { width: 7px; height: 14px; background:
   linear-gradient(#ffffff 0 2px, transparent 2px 3px, #ff2a2a 3px 5px, #c8102e 5px 12px, #8e0b20 12px);
