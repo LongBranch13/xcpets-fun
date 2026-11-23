@@ -2,6 +2,7 @@
  * One slim line under the header on every game page: which block the page shows, whether that is current, and any known issue
  * the team posted in /status.json, so players don't hard-reset again and again when something is already known (Jacob did).
  *   🟢 Live · block 977,075          checked against the chain and at most 3 blocks behind the newest tip the page knows
+ *   🟢 Up to date · block N          the server's published world, at most 3 blocks behind (burns still run the full check first)
  *   📦 Saved copy · block N          the page still shows its saved or published copy while it reads the chain
  *   🟡 Catching up · block N         the data-lag bar (js/v2-datalag.js) or the chain line (#v2stale) already explains; this line stays short
  *   ⚠️ <known issue>                 from status.json { "issue": "text", "level": "warn" | "info" }; empty issue = nothing shown
@@ -37,7 +38,11 @@
     var M = window.V2Mock, S = null; try { S = M && M.state ? M.state() : null; } catch (e) { S = null; }
     var tip = S && S.tip, F = (window.V2Sales && V2Sales.feed) || {}, ref = Math.max((S && S.chainTip) || 0, (S && S.feedTip) || 0, F.tip || 0);
     var lag = !!(d.getElementById('dataLagBar') || d.getElementById('v2stale') || (tip && ref && ref - tip > 3));
-    var head = !(M && M.state) ? '' : !tip ? '<span class="st-dot">⏳ Loading</span>' : lag ? '<span class="st-dot">🟡 Catching up</span> · block ' + fmt(tip) : !S.verified ? '<span class="st-dot">📦 Saved copy</span> · block ' + fmt(tip) + ' · checking the chain' : '<span class="st-dot">🟢 Live</span> · block ' + fmt(tip);
+    /* Nov 23 2026: a page painted from the server's published world (S.view) is current once it is within 3 blocks of the newest tip the
+     * page knows. It used to say 'Saved copy · checking the chain' until a burn or Verify ran the full check, which read as stuck. Burns still
+     * get that full check before anything is signed (js/v2-split.js checkPlans); this line is display only. */
+    var fresh = S && !S.verified && S.view && ref > 0 && !lag;
+    var head = !(M && M.state) ? '' : !tip ? '<span class="st-dot">⏳ Loading</span>' : lag ? '<span class="st-dot">🟡 Catching up</span> · block ' + fmt(tip) : fresh ? '<span class="st-dot" title="Built by the game server from the chain. Burns get one more check before you sign.">🟢 Up to date</span> · block ' + fmt(tip) : !S.verified ? '<span class="st-dot">📦 Saved copy</span> · block ' + fmt(tip) + ' · checking the chain' : '<span class="st-dot">🟢 Live</span> · block ' + fmt(tip);
     var html = head + (issue ? ' <span class="st-issue ' + issue.level + '">' + (issue.level === 'info' ? 'ℹ️ ' : '⚠️ ') + esc(issue.text) + '</span>' : '');
     if (html === last) return; last = html; var el = line(); el.innerHTML = html; el.hidden = !html;
   }

@@ -324,11 +324,41 @@
     }, function () { return false; });
   }
   function progressText(m) {
-    if (!m) return 'Checking every burn…';
-    if (m.phase === 'files') return 'Checking the published world… ' + (m.got || 0) + ' / ' + (m.total || 0) + ' files';
-    if (m.phase === 'rules') return 'Checking the rules…';
-    if (m.phase === 'replay') return 'Applying the newest blocks…';
-    return 'Checking every burn…';
+    if (!m) return 'Getting burns ready…';
+    if (m.phase === 'files') return 'Getting burns ready… ' + Math.round(100 * (m.got || 0) / Math.max(1, m.total || 1) * 0.6) + '%';
+    if (m.phase === 'rules') return 'Getting burns ready… 60%';
+    if (m.phase === 'replay') return 'Getting burns ready… 75%';
+    return 'Getting burns ready…';
+  }
+  /* Nov 23 2026 (faster burns): the full check used to start only when a burn or Verify asked for it, so the first burn waited for the whole
+   * world to download and decode ('Applying the newest blocks…'). With a wallet connected it now starts by itself a few seconds after the page
+   * is idle, without touching the bar; the bar only shows progress when someone is waiting on it (a burn, Verify, or a stale view). Skipped on
+   * small-memory devices and with Data Saver. Nothing is signed here: burns still go through checkPlans exactly as before. */
+  var wantBar = false, lastProg = null, warmT = 0;
+  function showProgress() {
+    wantBar = true;
+    if (ready) return;
+    var note = document.getElementById('splitViewBar');
+    if (note) note.textContent = progressText(lastProg);
+  }
+  function warmOk() {
+    try {
+      if (navigator.connection && navigator.connection.saveData) return false;
+      if (navigator.deviceMemory && navigator.deviceMemory < 4) return false;
+    } catch (e) {}
+    return true;
+  }
+  function connected() { try { return !!(window.V2Wallet && V2Wallet.current && V2Wallet.current()); } catch (e) { return false; } }
+  function warm() {
+    if (readyP || warmT || !last || !last.man || !warmOk() || !connected()) return;
+    warmT = setTimeout(function () {
+      var go = function () { warmT = 0; if (!readyP && connected()) startVerify(true); };
+      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 5000 }); else go();
+    }, 3000);
+  }
+  if (window.addEventListener) {
+    window.addEventListener('xcpets:connected', function () { warm(); });
+    window.addEventListener('xcpets:wallet', function (e) { var d = e && e.detail; if (d && d.status === 'on') warm(); });
   }
   var worker = null, seq = 0, pending = {}, readyP = null, ready = false;
   function scriptList() {
@@ -690,29 +720,36 @@
     if (note) note.textContent = 'Checked at block ' + (m.tip || '') + '. ' + (m.n || 0) + ' pets. Burns are open.';
     try { window.dispatchEvent(new Event('xcpets-verified')); } catch (e) {}
   }
-  function startVerify() {
+  function startVerify(quiet) {
     if (window.XCPETS_MAINTENANCE) return Promise.resolve(null);
+    if (quiet !== true) showProgress();
     if (readyP) return readyP;
     if (off() || !base() || !last) return Promise.resolve(null);
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=faa2d522b6', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=br1123a', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
-        if (m.cmd === 'progress') { var note = document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
+        if (m.cmd === 'progress') { lastProg = m; var note = wantBar && document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
         if (m.cmd === 'mine') { takeMine(m); return; }
-        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
+        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else failed(); res(m); }
       };
-      worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
+      worker.onerror = function () { failed(); res({ ok: false }); };
+      /* a failed check (network, bad hash) must not stick: the next burn or Verify starts a fresh one */
+      function failed() {
+        var b = wantBar && document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.';
+        var w0 = worker; setTimeout(function () { if (worker === w0 && !ready) { try { w0.terminate(); } catch (e) {} worker = null; readyP = null; lastProg = null; } }, 0);
+      }
       /* the same world the page painted from (it may be this page's rules' world rather than latest.json) */
       worker.postMessage({ cmd: 'start', base: base(), manifest: last && last.url || '', scripts: scripts, me: pageWallet() });
     });
     return readyP;
   }
   function checkPlans(plans) {
+    showProgress();
     if (!worker) startVerify();
     if (!worker) return Promise.resolve({ ok: false, plans: plans || [], skip: ['Press Verify to check this world. Nothing was burned.'] });
     return (readyP || Promise.resolve(null)).then(function () {
@@ -742,6 +779,7 @@
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     trimStore();
+    warm();
   }
   function trimStore() {
     var i, k, v;

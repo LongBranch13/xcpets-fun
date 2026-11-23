@@ -60,9 +60,11 @@ function start(m) {
     return fetch(manUrl).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) {
       mark('manifest');
       var files = filesOf(man, dirOf(manUrl)), got = { n: 0 }, loaded = [];
-      var chain = Promise.resolve();
-      files.forEach(function (f) { chain = chain.then(function () { return loadFile(f, got, files.length).then(function (row) { loaded.push(row); }); }); });
-      return chain.then(function () {
+      /* Nov 23 2026: four parts at a time instead of one after another (each part is still hash-checked before it is used). */
+      var queue = files.slice(), lanes = [], L;
+      function lane() { var f = queue.shift(); if (!f) return Promise.resolve(); return loadFile(f, got, files.length).then(function (row) { loaded.push(row); return lane(); }); }
+      for (L = 0; L < 4; L++) lanes.push(lane());
+      return Promise.all(lanes).then(function () {
         mark('files'); T.nFiles = files.length; T.bytes = VBYTES;
         self.postMessage({ cmd: 'progress', phase: 'rules', got: files.length, total: files.length });
         shim();
