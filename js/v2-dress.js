@@ -1,16 +1,17 @@
 /* XCPETS Dress drawer (rare-room-rethink, Jake Nov 23 2026: "there are so much gear and pets its hard to make sense of it with the rare room",
  * "dressing pets on the cards may be better"; he picked "Both, one shared drawer"). Display + the SAME free local equip op the Rare Room uses
  * (an 'equip' entry in V2UI.S().ops, V2UI.save(), V2UI.refreshGear). No burns, no rule change, nothing is signed.
- *  1) Every living pet card in My Pets gets a "👕 Dress" button. When spare gear you own would make that pet stronger it reads "👕 Dress +N"
- *     (gear power: 1 + 2 x tier per worn piece, the same number Equip Best and the fight math use). Worked out only for cards on screen.
+ *  1) The pet's own page (pet.html) shows "👕 Dress" for your living pet, "👕 Dress +N" when spare gear you own would make it stronger
+ *     (gear power: 1 + 2 x tier per worn piece, the same number Equip Best and the fight math use). Since card-tidy (Jake, Nov 23 2026) the
+ *     My Pets cards have no Dress button: tap the card, dress it on its page.
  *  2) V2Dress.open(id): one drawer (a bottom sheet on phones) with a mirror, the six slots (what it wears, the best spare piece, +N, Wear or
  *     Take off, and every other spare piece that fits, tap = try it on in the mirror), "Wear all best" and Undo.
  *  3) ⚙️ More on My Pets gets "Dress every pet in its best gear" (one pass over your spare gear, strongest pets first, each piece used once).
- * View-only (someone else's address): the buttons are hidden. Big wallets: no pass over every pet, only the cards that scroll into view. */
+ * View-only (someone else's address): the buttons are hidden. Big wallets: no pass over every pet until you ask for Dress every pet. */
 (function () {
   'use strict';
   var d = document;
-  function UI() { return window.V2UI; }
+  function UI() { return window.V2UI || petUI(); }
   function RL() { return window.V2Rules; }
   function $(id) { return d.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -116,29 +117,32 @@
       DR.undo = L.map(function (o) { return { sl: o.sl, gid: worn[o.sl] ? worn[o.sl].gid : null }; }); DR.tryOn = {}; push(p.id, L); U.toast('⚡ #' + p.id + ' in its best gear: ⚔ ' + pl.now + ' → ' + (pl.now + pl.gain) + ' (free)'); return draw(); }
     if (ds.undo && DR.undo) { var u = DR.undo; DR.undo = null; push(p.id, u); U.toast('↩ Outfit restored on #' + p.id + ' (free)'); return draw(); } }
 
-  /* ---- the Dress button on My Pets cards. Filled in only when a card scrolls into view. */
-  var io = null;
-  function fill(b) { if (!ready() || !b.isConnected) return; var w = UI().world(), p = w && w.byId[+b.dataset.dress]; if (!p || p.dead || p.owner !== UI().ME) { b.hidden = true; return; }
-    var pl = plan(w, p); b._v = VER; b.hidden = false; b.classList.toggle('up', pl.gain > 0);
-    var t = pl.gain > 0 ? '👕 Dress +' + pl.gain : '👕 Dress'; if (b.textContent !== t) b.textContent = t;
-    b.title = pl.gain > 0 ? 'Spare gear you own would add ' + pl.gain + ' gear power to #' + p.id + ' (' + pl.n + ' slot' + (pl.n === 1 ? '' : 's') + '). Wearing is free.' : 'Change #' + p.id + '’s gear'; }
-  function watch(b) { if (!io) { if (!window.IntersectionObserver) return fill(b); io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { fill(e.target); io.unobserve(e.target); } }); }, { rootMargin: '300px 0px' }); }
-    if (b._w === VER) return; b._w = VER; io.unobserve(b); io.observe(b); } /* once per index version: re-observing on every DOM change kept postponing the first callback */
-  var BOXES = ['pets', 'mpsBox']; /* the grid, and the phone 'One at a time' card (js/v2-mypets-swipe.js, the same card via V2UI.cardFor) */
-  function decorate() { if (!ready() || viewOnly()) return; var w = UI().world(); if (w) index(w); BOXES.forEach(function (id) { var box = $(id); if (box) dec(box, id === 'mpsBox'); }); }
-  function dec(box, one) {
-    var cs = box.querySelectorAll('.pet.card:not(.dead)'); for (var i = 0; i < cs.length; i++) { var c = cs[i], b = c.querySelector(':scope > .dressbtn');
-      if (!b) { var pid = c.dataset.pid; if (!pid) continue; b = d.createElement('button'); b.type = 'button'; b.className = 'q dressbtn'; b.dataset.dress = pid; b.textContent = '👕 Dress'; b.setAttribute('aria-label', 'Dress #' + pid);
-        var ob = c.querySelector(':scope > .openbtn'); if (ob) c.insertBefore(b, ob); else c.appendChild(b); if (one) fill(b); else watch(b); }
-      else if (b._v !== VER) { if (one) fill(b); else watch(b); } } } /* the one-card view holds a single card: fill it at once (it slides in, so waiting on the observer missed it) */
-  var queued = 0;
-  function soon() { if (queued) return; queued = 1; (window.requestAnimationFrame || setTimeout)(function () { queued = 0; try { decorate(); } catch (e) { if (window.console) console.error(e); } }); }
-  function hookPets() { BOXES.forEach(function (id) { var box = $(id); if (box && !box._dz) hook(box, id === 'mpsBox'); }); }
-  function hook(box, deep) { box._dz = 1;
-    new MutationObserver(soon).observe(box, { childList: true, subtree: deep });
-    box.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.dressbtn'); if (!b) return; e.stopPropagation(); e.preventDefault(); open(+b.dataset.dress); }, true);
-    box.addEventListener('keydown', function (e) { if (e.target.classList && e.target.classList.contains('dressbtn') && (e.key === 'Enter' || e.key === ' ')) e.stopPropagation(); }, true);
-    soon(); }
+  /* ---- the Dress button on the pet's own page (pet.html). card-tidy (Jake Nov 23 2026: "I dont like the dress buttons here, I want to click the pet,
+   * go to its pet card and see it there"): My Pets cards carry no Dress button any more; the pet page shows "👕 Dress +N" under the card's hub
+   * buttons for your own living pet, and it opens the same drawer. pet.html has no V2UI, so a small stand-in (petUI) uses V2Mock directly:
+   * the same 'equip' op in V2Mock.state().ops and V2Mock.save(), exactly what V2UI.S() / V2UI.save() do on the game pages. */
+  function petPage() { return !!(d.body && d.body.getAttribute('data-v2page') === 'pet'); }
+  function petId() { var q = +(new URLSearchParams(location.search).get('id') || 0); if (q >= 1) return q; var m = String(location.pathname || '').match(/\/pet\/(\d+)\/?$/); return m ? +m[1] : (window.__XCPETS_PET_ID >= 1 ? +window.__XCPETS_PET_ID : 0); }
+  var PUI = null;
+  function petUI() { var M = window.V2Mock; if (!petPage() || !M || !M.state || !M.world) return null; if (PUI) { PUI.ME = M.ME || ''; return PUI; }
+    PUI = { ME: M.ME || '', S: function () { return M.state(); }, world: function () { var w = M.world(); return w && !w.pending ? w : null; }, save: function () { M.save(); },
+      mine: function (w) { var me = PUI.ME; return (w && w.pets || []).filter(function (p) { return p.owner === me; }); },
+      viewOnly: function () { try { return !!(window.V2View && V2View.viewOnly && V2View.viewOnly()); } catch (e) { return false; } },
+      refreshGear: function () { try { if (window.__xcPetRedraw) window.__xcPetRedraw(); } catch (e) { } try { if (window.V2PetCard) V2PetCard.paint(); } catch (e) { } petBtn(true); },
+      render: function () { PUI.refreshGear(); },
+      confirmPlans: function () { PUI.toast('View only: connect your wallet to dress your pets.'); },
+      toast: function (t) { var b = $('dzToast'); if (!b) { b = d.createElement('div'); b.id = 'dzToast'; b.className = 'dz-toast'; b.setAttribute('role', 'status'); d.body.appendChild(b); }
+        b.innerHTML = t; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(function () { b.hidden = true; }, 3200); } };
+    return PUI; }
+  function petBtn(force) { if (!petPage() || !ready()) return; var anchor = $('pcActs'); if (!anchor) return; var b = $('pcDress');
+    if (!b) { b = d.createElement('button'); b.type = 'button'; b.id = 'pcDress'; b.className = 'btn dressbtn'; b.hidden = true; b.onclick = function () { open(petId()); }; anchor.parentNode.insertBefore(b, anchor.nextSibling); }
+    var U = UI(), w = U.world(), p = w && w.byId[petId()];
+    if (!p || p.dead || p.released || !U.ME || p.owner !== U.ME || viewOnly()) { b.hidden = true; return; }
+    if (!force && b._v === VER && b._p === p) return; b._v = VER; b._p = p;
+    var pl = plan(w, p); b.hidden = false; b.classList.toggle('up', pl.gain > 0);
+    b.innerHTML = '👕 Dress' + (pl.gain > 0 ? ' <b>+' + pl.gain + '</b>' : '') + ' <small>' + (pl.gain > 0 ? 'gear power from spare gear you own · free' : 'change its gear · free') + '</small>';
+    b.title = pl.gain > 0 ? 'Spare gear you own would add ' + pl.gain + ' gear power to #' + p.id + '. Wearing is free.' : 'Change #' + p.id + '’s gear'; }
+  function decorate() { petBtn(true); } /* kept for callers; My Pets cards get no button */
 
   /* ---- ⚙️ More on My Pets: dress every pet in its best gear (Auto-equip's pieces, one pass over your stash) */
   /* one pass: strongest pets first (stage, then tier), each open slot gets the strongest spare piece it can wear that beats its current one; a piece is used once */
@@ -156,8 +160,9 @@
     b.onclick = dressAll;
     sec.insertBefore(b, sec.firstChild); }
 
-  var CSS = '.dressbtn{display:block;width:100%;margin-top:6px;min-height:36px;font-family:"Press Start 2P",monospace;font-size:9px}.dressbtn.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:2px 2px 0 #000}.dressbtn[hidden]{display:none}' +
-    'html.viewonly .dressbtn,html.viewonly #dzAllBtn,body.selmode .dressbtn{display:none!important}' +
+  var CSS = '#pcDress{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;width:100%;margin:10px 0 4px;min-height:48px;font-family:"Press Start 2P",monospace;font-size:11px}#pcDress b{color:inherit}#pcDress small{font-family:"Comic Neue",sans-serif;font-size:12px;font-weight:700;opacity:.85}#pcDress.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:3px 3px 0 #000}#pcDress[hidden]{display:none}' +
+    '.dz-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483001;max-width:90vw;background:#160c28;color:#f3eaff;border:2px solid #3ddc84;border-radius:8px;padding:8px 14px;font:700 14px "Comic Neue",sans-serif;box-shadow:3px 3px 0 #000}.dz-toast[hidden]{display:none}' +
+    'html.viewonly #pcDress,html.viewonly #dzAllBtn{display:none!important}' +
     '.dz-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(8,4,16,.66);display:flex;align-items:flex-end;justify-content:center}html.dz-open{overflow:hidden}' +
     '.dz-box{width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;background:#221238;color:#f3eaff;border:3px solid #ffd166;border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 0 #000;font-family:"Comic Neue",sans-serif}' +
     '@media (min-width:700px){.dz-modal{align-items:center}.dz-box{border-bottom:3px solid #ffd166;border-radius:14px;max-height:88vh}}' +
@@ -175,7 +180,7 @@
     '.dz-tryrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 2px 2px 14px;font-size:13px}' +
     '.dz-foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:2px solid #3a2560}.dz-all{flex:1 1 200px;min-height:48px}.dz-all:disabled{opacity:.5;filter:grayscale(1)}.dz-spin{min-height:44px;display:inline-flex;align-items:center;text-decoration:none}';
   function css() { if ($('dzCss')) return; var s = d.createElement('style'); s.id = 'dzCss'; s.textContent = CSS; (d.head || d.documentElement).appendChild(s); }
-  function boot() { css(); hookPets(); hookMore(); }
+  function boot() { css(); hookMore(); petBtn(); }
   /* a fresh world (new block, fast-load page batch) or ops from another tab: rebuild the index, refresh the open drawer and the visible buttons */
   function tick() { try { boot(); var w = ready() && UI().world(); if (w && (!IX || IX.w !== w || IX.o !== opsN() || IX.mk !== wornMark(w.itemList || []))) { index(w); if (DR.pid != null && $('dzModal')) draw(); soon(); } } catch (e) { } }
   if (typeof window !== 'undefined') { boot(); setInterval(tick, 1500); }
