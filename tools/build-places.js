@@ -5,14 +5,17 @@
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..'), P = require('../js/v2-places.js');
 const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html'];
-const TAG = '<script src="js/v2-places.js?v=lb1123a" defer></script>';
+const TAG = '<script src="js/v2-places.js?v=gd1123a" defer></script>';
+/* merge-pages-1123: the Guide search index (and h2 ids) first, so the strip carries the index token */
+const GUIDE = process.argv.includes('--check') ? require('./build-guide.js').build() : (() => { const r = require('./build-guide.js').build(), o = path.join(ROOT, 'data/guide-index.json'); if (!fs.existsSync(o) || fs.readFileSync(o, 'utf8') !== r.json) fs.writeFileSync(o, r.json); return r; })();
 function fix(s, F) { const M = '<!--places-->' + P.menu() + '<!--/places-->';
   s = /<!--places-->[\s\S]*?<!--\/places-->/.test(s) ? s.replace(/<!--places-->[\s\S]*?<!--\/places-->/, M) : s.replace(/(<a class="navplay"[^>]*>[\s\S]*?<\/a>|<nav>)/, '$1' + M);
   /* fewer-pages (Nov 22 2026): the how-to links now live in the Learn menu, so drop their old one-off copies from the header bar */
   s = s.replace(/<header[\s\S]*?<\/header>/, h => h.replace(/<!--\/places-->([\s\S]*?)<\/nav>/, (m, tail) => '<!--/places-->' + tail.replace(/<a href="(?:index\.html#cast|pets\.html|rules\.html|rules-short\.html|how-it-works\.html)"[^>]*>[\s\S]*?<\/a>/g, '') + '</nav>'));
   /* merge-pages-1123: the Leaderboards tab strip on every list page, first thing inside <main> */
   const lb = P.BOARD_PAGES.some(b => b[2] === F);
-  if (lb) { const B = '<!--boards-->' + P.boardsBar(F) + '<!--/boards-->'; s = /<!--boards-->[\s\S]*?<!--\/boards-->/.test(s) ? s.replace(/<!--boards-->[\s\S]*?<!--\/boards-->/, B) : s.replace(/<main([^>]*)>/, '<main$1>' + B); }
+  if (lb) { const B = '<!--boards-->' + P.boardsBar(F) + '<!--/boards-->'; s = /<!--boards-->[\s\S]*?<!--\/boards-->/.test(s) ? s.replace(/<!--boards-->[\s\S]*?<!--\/boards-->/, () => B) : s.replace(/<main([^>]*)>/, (m, a) => '<main' + a + '>' + B); }
+  if (P.GUIDE_PAGES.some(g => g[2] === F)) { const G = '<!--guide-->' + P.guideBar(F, GUIDE.token) + '<!--/guide-->'; s = /<!--guide-->[\s\S]*?<!--\/guide-->/.test(s) ? s.replace(/<!--guide-->[\s\S]*?<!--\/guide-->/, () => G) : s.replace(/<main([^>]*)>/, (m, a) => '<main' + a + '>' + G); } /* function replacers: the strip's script holds $& and $1 */
   if (s.indexOf('js/v2-places.js') < 0) s = s.replace('</body>', TAG + '\n</body>'); return s; }
 const files = fs.readdirSync(ROOT).filter(f => /\.html$/.test(f) && SKIP.indexOf(f) < 0).concat(['templates/game.html']);
 const check = process.argv.includes('--check'); let bad = 0;

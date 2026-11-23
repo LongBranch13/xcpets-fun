@@ -24,11 +24,34 @@
    * (its own link after Ranking on every page with the banner), never in the Places menu, the My Pets 'Places' card or the front-page place cards. */
   var TUTORIAL = { ico: '🎓', name: 'Tutorial', title: 'The Big Beautiful Tutorial', url: 'tutorial.html' };
   /* fewer-pages (owner Nov 22 2026): the how-to pages, under the header "Learn" menu next to the tutorial (old URLs unchanged) */
-  var LEARN = [['🐸', 'The cast', 'index.html#cast'], ['📖', 'Pet Guide', 'pets.html'], ['📜', 'Rules', 'rules.html'], ['📝', 'Short rules', 'rules-short.html'], ['⚙️', 'How It Works', 'how-it-works.html']];
+  /* merge-pages-1123: ONE searchable Guide. The four how-to pages share one Guide strip with a search box over all of them (written between
+   * <!--guide--> and <!--/guide--> by tools/build-places.js; the search index is data/guide-index.json from tools/build-guide.js). */
+  var GUIDE_PAGES = [['⚡', 'Quick start', 'rules-short.html'], ['⚙️', 'How it works', 'how-it-works.html'], ['📖', 'Pets', 'pets.html'], ['📜', 'Full rules', 'rules.html']];
+  var LEARN = [['📚', 'Guide', 'rules-short.html']];
   /* merge-pages-1123 (Jake Nov 23 2026, "merge the duplicates"): ONE Leaderboards place. The list pages share one tab strip (written between
    * <!--boards--> and <!--/boards--> by tools/build-places.js) and the header has one "🏆 Leaderboards" link. Hall of Fame is the Rankings
    * 'hof' board (hall-of-fame.html forwards there). Old URLs keep working. Display only. */
   var BOARD_PAGES = [['🏆', 'Rankings', 'ranking.html'], ['🌕', 'Pantheon', 'pantheon.html'], ['🧊', 'Cold Storage', 'archive.html'], ['🎖️', 'Proof Parade', 'tokens.html']];
+  function guideBar(file, idx) { return '<style>.gdbar{max-width:1100px;margin:0 auto 10px;padding:8px;border:3px solid #000;background:#14101f;box-shadow:3px 3px 0 #000}' +
+    '.gdtabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.gdtabs b{font-family:"Press Start 2P",monospace;font-size:10px;color:#E8B33A;margin-right:4px}' +
+    '.gdtabs a{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border:2px solid #000;background:#1d1530;color:#FAFAF5;text-decoration:none;font-weight:700;font-size:14px;box-shadow:2px 2px 0 #000}' +
+    '.gdtabs a:hover,.gdtabs a:focus-visible{outline:2px solid #E8B33A}.gdtabs a[aria-current]{background:#E8B33A;color:#100E14}.gdtabs a.gdtut{margin-left:auto;background:#24402f}' +
+    '.gdsearch{position:relative;margin-top:8px}.gdsearch input{width:100%;box-sizing:border-box;padding:10px 12px;border:3px solid #000;background:#FAFAF5;color:#100E14;font:inherit;font-size:16px}' +
+    '.gdres{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto}.gdres[hidden]{display:none}' +
+    '.gdres a{display:block;padding:8px 10px;border:2px solid #000;background:#1d1530;color:#FAFAF5;text-decoration:none}.gdres a:hover,.gdres a:focus{outline:2px solid #E8B33A}' +
+    '.gdres .gdt{font-weight:700;color:#ffe68a}.gdres .gdp{font-size:12px;opacity:.75;margin-left:6px}.gdres .gds{display:block;font-size:13px;opacity:.9;margin-top:2px;line-height:1.35}.gdres mark{background:#E8B33A;color:#100E14}.gdres .gdnone{padding:8px;opacity:.8}' +
+    '@media (max-width:600px){html body .gdbar{margin:0 8px 8px;padding:6px}html body .gdtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}html body .gdtabs b{display:none}html body .gdtabs a{justify-content:center;font-size:13px;padding:8px 6px;white-space:nowrap}html body .gdtabs a.gdtut{margin:0;grid-column:1/-1}}</style>' +
+    '<nav class="gdbar" id="gdBar" aria-label="Guide"><div class="gdtabs"><b>📚 Guide</b>' + GUIDE_PAGES.map(function (g) { return '<a href="' + g[2] + '"' + (g[2] === file ? ' aria-current="page"' : '') + '><span aria-hidden="true">' + g[0] + '</span> ' + esc(g[1]) + '</a>'; }).join('') +
+    '<a class="gdtut" href="' + TUTORIAL.url + '"><span aria-hidden="true">' + TUTORIAL.ico + '</span> Play the tutorial</a></div>' +
+    '<div class="gdsearch" role="search"><label class="sr-only" for="gdQ" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search the guide</label><input id="gdQ" type="search" autocomplete="off" placeholder="🔍 Search the guide: breed, feed, raid, gear, halving…" data-idx="' + esc(idx || '') + '"><ul class="gdres" id="gdRes" hidden aria-live="polite"></ul></div></nav>' +
+    '<script>(function(){var q=document.getElementById("gdQ"),out=document.getElementById("gdRes"),I=null,ask=0,t=0;if(!q||!out)return;' +
+    'function esc(s){return String(s).replace(/[&<>"]/g,function(c){return"&#"+c.charCodeAt(0)+";"});}' +
+    'function load(){if(I||ask)return;ask=1;fetch("data/guide-index.json?v="+q.getAttribute("data-idx")).then(function(r){return r.json()}).then(function(j){I=j;run();},function(){ask=0;});}' +
+    'function snip(x,w){var lx=x.toLowerCase(),i=lx.indexOf(w[0]),a=Math.max(0,i-60),s=(a?"…":"")+x.slice(a,a+170)+(a+170<x.length?"…":"");s=esc(s);w.forEach(function(k){if(k.length>1)s=s.replace(new RegExp("("+k.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&")+")","ig"),"<mark>$1</mark>");});return s;}' +
+    'function run(){var v=q.value.trim().toLowerCase();if(v.length<2){out.hidden=true;out.innerHTML="";return;}if(!I){load();return;}var w=v.split(/\\s+/).filter(Boolean),hits=[];' +
+    'I.s.forEach(function(x){var h=x.h.toLowerCase(),b=x.t.toLowerCase(),sc=0;for(var i=0;i<w.length;i++){var k=w[i],inh=h.indexOf(k)>=0,inb=b.indexOf(k)>=0;if(!inh&&!inb)return;sc+=inh?10:1;}hits.push({x:x,sc:sc});});' +
+    'hits.sort(function(a,b){return b.sc-a.sc;});out.hidden=false;out.innerHTML=hits.length?hits.slice(0,10).map(function(o){var x=o.x;return"<li><a href=\\""+x.u+"\\"><span class=gdt>"+esc(x.h)+"</span><span class=gdp>"+esc(I.p[x.p])+"</span><span class=gds>"+snip(x.t,w)+"</span></a></li>";}).join(""):"<li class=gdnone>Nothing found for \\u201c"+esc(q.value.trim())+"\\u201d. Try one word, like feed or breed.</li>";}' +
+    'q.addEventListener("focus",load);q.addEventListener("input",function(){clearTimeout(t);t=setTimeout(run,120);});q.addEventListener("keydown",function(e){if(e.key==="Escape"){q.value="";run();}});})();</script>'; }
   function boardsBar(file) { return '<style>.lbbar{max-width:1100px;margin:0 auto 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border:3px solid #000;background:#14101f;box-shadow:3px 3px 0 #000}' +
     '.lbbar b{font-family:"Press Start 2P",monospace;font-size:10px;color:#E8B33A;margin-right:4px}.lbbar a{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border:2px solid #000;background:#1d1530;color:#FAFAF5;text-decoration:none;font-weight:700;font-size:14px;box-shadow:2px 2px 0 #000}' +
     '.lbbar a:hover,.lbbar a:focus-visible{outline:2px solid #E8B33A}.lbbar a[aria-current]{background:#E8B33A;color:#100E14}' +
@@ -58,7 +81,7 @@
     var href = pass !== false && id >= 1 ? 'rare-room.html#rare-room-' + id : 'rare-room.html';
     document.querySelectorAll('a.np-rare').forEach(function (a) { if (a.getAttribute('href') !== href) a.setAttribute('href', href); });
   }
-  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, LEARN: LEARN, BOARD_PAGES: BOARD_PAGES, boardsBar: boardsBar, menu: menu, petPageId: petPageId, stampRare: stampRare };
+  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, LEARN: LEARN, BOARD_PAGES: BOARD_PAGES, boardsBar: boardsBar, GUIDE_PAGES: GUIDE_PAGES, guideBar: guideBar, menu: menu, petPageId: petPageId, stampRare: stampRare };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.V2Places = api;
@@ -66,7 +89,7 @@
   function boot() {
     /* header: mark the current place, close the menu on outside tap / Esc */
     document.querySelectorAll('details.navplaces').forEach(function (d) {
-      if (d.classList.contains('navlearn')) { var cur = d.querySelector('a[href="' + file + '"]'); if (cur) { cur.setAttribute('aria-current', 'page'); d.querySelector('summary').classList.add('np-on'); } }
+      if (d.classList.contains('navlearn')) { var cur = d.querySelector('a[href="' + file + '"]') || (GUIDE_PAGES.some(function (g) { return g[2] === file; }) ? d.querySelector('a[href="' + LEARN[0][2] + '"]') : null); if (cur) { cur.setAttribute('aria-current', 'page'); d.querySelector('summary').classList.add('np-on'); } }
       else if (here) { var a = d.querySelector('.np-' + here.id); if (a) a.setAttribute('aria-current', 'page'); d.querySelector('summary').classList.add('np-on'); }
       document.addEventListener('click', function (e) { if (d.open && !d.contains(e.target)) d.open = false; });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.open = false; }); });
