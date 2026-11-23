@@ -75,7 +75,15 @@ jobs:
           if git fetch --depth 1 origin hatchbot-state 2>/dev/null; then git show FETCH_HEAD:state.json > state/state.json || rm -f state/state.json; fi
       - name: Announce new events
         if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
-        run: node --max-old-space-size=6000 hatchbot/announce.js --state state/state.json
+        run: node --max-old-space-size=6000 hatchbot/announce.js --state state/state.json --pics pics
+      - name: Publish pet pictures for the Cloudflare bot (branch hatchbot-art, never main)
+        if: always() && steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
+        run: |
+          [ -f pics/index.json ] || exit 0
+          cd pics && git init -q && git checkout -q -b hatchbot-art
+          git config user.name "hatchbot"; git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -q -m "hatchbot pet pictures $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" hatchbot-art
       - name: Save memory
         # always(): also after a crash, hang or timeout, so what was already posted is never posted again
         if: always() && steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
