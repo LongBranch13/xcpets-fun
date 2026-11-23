@@ -1,0 +1,6 @@
+# Scene shots (branch, 2026-11-23T04:02:54.020Z)
+
+- petdex.html (new visitor): 66 s, errors: probe: {"pets":0,"full":false,"mine":0,"sample":[],"own":{},"got":0,"total":0,"rows":0,"leg":0,"hyb":0}
+- petdex.html (player): 10 s, errors: probe: {"pets":163865,"full":false,"mine":8,"sample":["id","owner","name","species","tier","stage","stageName","care","wins","losses","hatchBlock","hatchTx","dead","released","community","resurrected","hybrid","parents","mutation","shows","blackEye","crowned","deed","electric","rareHatch","shards","stats","feedDays","_hof","_bits","_h","as","sid","ax","_ac","art"],"own":{"o":50000},"got":7,"total":67,"rows":14,"leg":11,"hyb":127}
+- petdex.html?tab=hybrids (new visitor): 67 s, errors: probe: {"pets":0,"full":false,"mine":0,"sample":[],"own":{},"got":0,"total":0,"rows":0,"leg":0,"hyb":0}
+- petdex.html?tab=hybrids (player): 10 s, errors: probe: {"pets":163865,"full":false,"mine":8,"sample":["id","owner","name","species","tier","stage","stageName","care","wins","losses","hatchBlock","hatchTx","dead","released","community","resurrected","hybrid","parents","mutation","shows","blackEye","crowned","deed","electric","rareHatch","shards","stats","feedDays","_hof","_bits","_h","as","sid","ax","_ac"],"own":{"o":50000},"got":7,"total":67,"rows":14,"leg":11,"hyb":127}
