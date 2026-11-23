@@ -1,5 +1,5 @@
 {
- "lastBlock": 977203,
+ "lastBlock": 977208,
  "count": 443,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5161,7 +5161,7 @@
    "species": "hyb3:homer:djpepe:dodo",
    "speciesLabel": "Hodjdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 48896,
@@ -5233,7 +5233,7 @@
    "species": "hyb3:bobo:dodo:viking",
    "speciesLabel": "Bodoking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 205411,
