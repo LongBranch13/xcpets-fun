@@ -61,7 +61,7 @@
     var slots = [2, 28, 54, 114, 140, 166], spark = [], t0 = performance.now(), raf = 0;
     function sky() { var gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0d0a24'); gr.addColorStop(1, '#3a2466'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
     function frame(now) {
-      if (!cv.isConnected) return; var t = (now - t0) / 1000; sky();
+      if (!cv.isConnected) return; var t = Math.max(0, (now - t0) / 1000); /* the first animation frame can be stamped before t0: a negative t picked frame -1 and drawImage threw */ sky();
       stars.forEach(function (s, k) { var on = still || ((t * 2 + k * 0.37) % 3) > 0.4; g.fillStyle = s[2] === 0 ? '#ffd23f' : '#cfc6ff'; if (on) g.fillRect(s[0], s[1], 1, 1); });
       g.fillStyle = '#fff3b0'; g.fillRect(12, 6, 8, 8); g.fillStyle = '#0d0a24'; g.fillRect(16, 6, 4, 4); /* pixel moon */
       g.fillStyle = '#1e5a34'; g.fillRect(0, 62, W, 10); g.fillStyle = '#3ddc84'; for (var x = 0; x < W; x += 4) g.fillRect(x, 61 + (x % 8 ? 0 : -1), 2, 2);
