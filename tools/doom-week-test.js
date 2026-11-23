@@ -59,6 +59,11 @@ ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
 ok(W.inWindow(977136) && W.inWindow(990000) && !W.inWindow(977135) && !W.inWindow(null), 'turns on at 977,136 and stays on (no end block)');
 ok(W.ENABLED === true && W.START === 977136 && W.END === 99999999 && W.SABO_ID === 1765, 'doom 2 start, open end, and Sabo id');
+{ const src = fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8');
+  ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'shop.html', 'raid.html', 'cemetery.html', 'pantheon.html', 'tokens.html', 'live.html', 'ranking.html', 'pet.html'].forEach(f => ok(src.indexOf("'" + f + "': [") >= 0, 'doom sign for ' + f));
+  const pg = fs.readFileSync(path.join(ROOT, 'js/v2-pages.js'), 'utf8');
+  ok(/DoomGear\.frames\(pet, HERO_STAGE/.test(pg) && /shuffled\(\)/.test(pg), 'front-page grid rolls a fresh mix of pets in Doom gear');
+  ok(/buildDoom\(\)/.test(pg), 'cast parade marches in Doom gear'); }
 ok(!/xcpets_token/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'the XCPETS token art is never swapped');
 ok(!/V2Mock\.world\(/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week never builds the full world');
 { const pp = ctx.PetCore.characterPet('pepe', { tier: 'legendary' }); ok(D.frames(pp, 4) === D.frames(Object.assign({}, pp), 4), 'dressed showcase frames are cached'); }

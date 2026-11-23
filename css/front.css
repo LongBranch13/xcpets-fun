@@ -1,0 +1,56 @@
+/* front-v3 (Jake Nov 23 2026): the one-screen Home. Display only. Hero = Hatch-O-Matic conveyor + one big button; the rest folds. */
+.hero.fv3{display:block;padding:14px 0 8px}
+.fv3-belt{margin:0 auto 14px;max-width:1100px}
+#hatchBelt{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;border:3px solid #000;border-radius:10px;box-shadow:4px 4px 0 #000;background:#0d0a24}
+.fv3-tick{margin:8px 2px 0;font-size:13px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink,#e9e4ff)}
+.fv3-tick b{font-family:'Press Start 2P',monospace;font-size:9px;color:#ff5a5a;letter-spacing:.5px;margin-right:4px}
+.fv3-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff5a5a;margin-right:6px;vertical-align:1px;animation:fv3Blink 1.2s steps(2) infinite}
+@keyframes fv3Blink{50%{opacity:.25}}
+.fv3-row{display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;max-width:1100px;margin:0 auto}
+.fv3-row .hero-pets{position:static}
+.fv3-copy{text-align:left}
+.fv3-copy h1{margin:0;line-height:1}
+.fv3-copy .tagline{margin:6px 0 16px}
+.fv3-go{display:inline-flex;align-items:center;gap:12px;font-family:Bangers,Impact,sans-serif;font-size:34px;letter-spacing:1px;padding:16px 28px;border-radius:14px;text-decoration:none;
+  background:#3ddc84;color:#0b1a10;border:3px solid #000;box-shadow:6px 6px 0 #000;animation:fv3Pulse 2.4s ease-in-out infinite}
+.fv3-go:hover{transform:translate(-1px,-1px);box-shadow:7px 7px 0 #000}
+.fv3-go:active{transform:translate(4px,4px);box-shadow:2px 2px 0 #000}
+@keyframes fv3Pulse{0%,100%{filter:none}50%{filter:brightness(1.12)}}
+.fv3-egg{width:28px;height:33px;flex:none;image-rendering:pixelated;animation:fv3Wob 1.6s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes fv3Wob{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-10deg)}80%{transform:rotate(9deg)}90%{transform:rotate(-4deg)}}
+.fv3-why{margin:10px 0 4px;font-size:15px}
+.fv3-alt{margin:6px 0 0;font-size:14px}
+.fv3-peek{margin-top:10px;max-width:480px}
+.fv3-peek>summary{display:none}
+.fv3-peek .addrview{margin-top:6px}
+.fv3-places{max-width:1100px;margin:6px auto 18px}
+.fv3-h{font-family:'Press Start 2P',monospace;font-size:12px;margin:0 0 8px;color:var(--green,#3ddc84);text-shadow:2px 2px 0 #000}
+.fv3-places .scene-cards{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(200px,1fr);overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0;padding:2px 6px 10px 2px}
+.fv3-places .scard{scroll-snap-align:start}
+.fv3-more{max-width:1100px;margin:16px auto}
+.fv3-more>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:3px solid #000;box-shadow:4px 4px 0 #000;border-radius:10px;background:#1b1430}
+.fv3-more>summary::-webkit-details-marker{display:none}
+.fv3-more>summary>span:first-child{font-family:'Press Start 2P',monospace;font-size:12px;color:#ffd23f}
+.fv3-more>summary>span:first-child::after{content:' ▾'}
+.fv3-more[open]>summary>span:first-child::after{content:' ▴'}
+@media (max-width:820px){
+  .fv3-row{grid-template-columns:1fr;gap:10px}
+  .fv3-row .hero-pets{display:none}
+  .fv3-copy{text-align:center}
+  .fv3-go{font-size:28px;padding:14px 20px;width:100%;max-width:420px;justify-content:center;box-sizing:border-box}
+  .fv3-peek{margin-left:auto;margin-right:auto}
+}
+@media (max-width:600px){
+  html body .hero.fv3{padding-top:8px}
+  html body .fv3-copy h1{font-size:44px}
+  html body .fv3-copy .tagline{font-size:17px;margin-bottom:12px}
+  html body .fv3-places .scene-cards{grid-auto-columns:72%}
+  html body .fv3-tick{font-size:12px}
+  html body .fv3-go{font-size:26px;white-space:nowrap;gap:10px}
+  html body .fv3-egg{width:22px;height:26px}
+  html.hd3 body #ccBar .cc-t{font-size:13px;margin:4px 0}
+}
+@media (prefers-reduced-motion:reduce){.fv3-go,.fv3-egg,.fv3-dot{animation:none}}
+/* one start on Home: the hero's button. The older start cards stay on Play. */
+body[data-v2page="front"] #uxpStart,body[data-v2page="front"] .uxp-quick,body[data-v2page="front"] #tutEntry{display:none!important}
+@media (min-width:821px){html body .fv3-row .hero-pets{grid-template-columns:repeat(3,88px);gap:8px}html body .fv3-row .hero-pets canvas{width:88px;height:88px}}
