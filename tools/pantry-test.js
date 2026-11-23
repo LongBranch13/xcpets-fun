@@ -27,7 +27,8 @@ const H = t => { const h = Object.assign({}, hashes); for (let b = tip; b <= t; 
 const sig = w => JSON.stringify(w.pets.map(p => [p.id, p.owner, p.care, p.lastFed, p.dead ? 1 : 0]));
 
 /* 1. gate off */
-ok(V.pantryGate() === null, 'ACTIVATE_PANTRY_BLOCK is null on this branch');
+ok(V.pantryGate() === 977265, 'ACTIVATE_PANTRY_BLOCK is 977265 (opens about 7 PM Central Nov 23 2026)');
+V._setPantryActivation(null); /* the gate-off checks below run with the gate cleared */
 ok(V.parseTag('pet:pantry').action === 'pantry' && V.parseTag('pet:px').action === 'pantry' && V.parseTag('pet:pp:0A:12').action === 'pantry', 'parseTag reads pet:pantry, pet:px and pet:pp');
 const w0 = V.replay(rows, hashes, [], opts(tip));
 const someone = Object.keys(w0.pets.reduce((m, p) => { if (!p.community && !p.dead && p.owner) m[p.owner] = 1; return m; }, {}))[0];
