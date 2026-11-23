@@ -184,7 +184,7 @@ function ckStart() {
     if (!m || child !== CK.proc) return;
     if (m.cmd === 'loaded') { CK.busy = false; CK.rssMB = m.rssMB || 0;
       if (m.ok) { CK.tip = m.tip; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
-    if (m.cmd === 'checked') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
+    if (m.cmd === 'checked' || m.cmd === 'shopped') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
   });
   child.on('exit', (code, sig) => { if (child !== CK.proc) return; CK.crashes++; CK.why = sig ? 'signal ' + sig : 'exit ' + code; CK.restAt = Date.now(); ckStop('crashed'); });
   child.on('error', () => { if (child !== CK.proc) return; CK.crashes++; CK.restAt = Date.now(); ckStop('crashed'); });
@@ -221,6 +221,18 @@ function ckAsk(state, body) {
     try { CK.proc.send({ cmd: 'check', id: id, plans: body.plans, me: body.me, pending: body.pending }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
   });
 }
+/* Spam City's order book from the check service's world (GET /xp/v1/shop). One answer per checker world, kept in this process. */
+const SHOP = { tip: 0, at: 0, body: null };
+function ckShop(state) {
+  return new Promise(res => {
+    if (CK.state !== 'ready' || !CK.proc || CK.busy || CK.tip < (state.tip || 0)) { res({ ok: false, error: 'not ready', state: CK.state }); return; }
+    if (SHOP.body && SHOP.tip === CK.tip && SHOP.loads === CK.loads) { res(SHOP.body); return; }
+    const id = ++CK.seq, t = setTimeout(() => { CK.pend.delete(id); res({ ok: false, error: 'slow' }); }, 5000);
+    CK.pend.set(id, m => { clearTimeout(t); const out = Object.assign({}, m); delete out.cmd; delete out.id;
+      if (out.ok) { SHOP.tip = out.tip; SHOP.loads = CK.loads; SHOP.body = out; } res(out); });
+    try { CK.proc.send({ cmd: 'shop', id: id }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
+  });
+}
 function main() {
   const bases = upstreams(); const dataDir = process.env.XP_DATA || path.join(os.tmpdir(), 'xcpets-sync');
   const boot = process.env.XP_BOOT_CACHE ? readBoot(process.env.XP_BOOT_CACHE) : null;
@@ -240,7 +252,7 @@ function main() {
   let restartWanted = null;
   function adopt(r) { if (!r || !r.changed) return; restartWanted = r.rsig || 'new files'; console.log('rules: builder files changed (' + restartWanted + '); restarting the service once no build runs'); }
   state.check = ckInfo; state.mem = memInfo;
-  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body) });
+  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state) });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   let timer = null, held = false;
@@ -262,4 +274,4 @@ function main() {
   return { server: httpd.server, state, stop() { clearInterval(timer); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckStop };
+module.exports = { main, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };

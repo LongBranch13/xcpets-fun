@@ -756,8 +756,14 @@
    * comes within 3 s and is at least as new as every tip this page knows; anything else (no answer, an error, an older world, ?servercheck=0)
    * falls back to this device's own check, exactly as before. A finished device check is used directly. Nothing is signed here. */
   var SERVER_MS = 3000, serverStat = { asked: 0, used: 0, last: '' };
+  /* The server's answers count only when its world was built from this page's exact rule files (same rsig). */
+  var RSIG_P = null;
+  function myRsig() { if (!RSIG_P) RSIG_P = pageRsig().then(function (r) { return r || null; }, function () { return null; }); return RSIG_P; }
   function serverCheck(plans) {
     if (ready || off() || !base() || q('servercheck') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    return myRsig().then(function (rsig) { if (!rsig) { serverStat.last = 'no rules'; return null; } return serverCheck0(plans, rsig); });
+  }
+  function serverCheck0(plans, rsig) {
     var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
     var plain = [], i, k, p, o;
     for (i = 0; i < (plans || []).length; i++) {
@@ -772,7 +778,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (t) clearTimeout(t);
-        if (!j || j.ok !== true || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
+        if (!j || j.ok !== true || j.rsig !== rsig || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
         /* hand back this page's own plan objects, in order, for the plans the server kept */
         var kept = [], n = 0;
         for (i = 0; i < plans.length && n < j.plans.length; i++) if (j.plans[n] && j.plans[n].tag === plans[i].tag) { kept.push(plans[i]); n++; }
@@ -780,6 +786,21 @@
         serverStat.used++; serverStat.last = 'ok';
         return { ok: true, plans: kept, skip: j.skip, server: j.tip };
       }, function () { if (t) clearTimeout(t); serverStat.last = 'failed'; return null; });
+  }
+  /* Spam City (Nov 23 2026): the order book (listings, listed pets, pet tokens, dex orders) from the server's checked world, instead of
+   * a full replay in the browser. Used only when it is from this page's rules and at least as new as every tip the page knows. */
+  function serverShop() {
+    if (off() || !base() || q('servershop') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
+    return myRsig().then(function (rsig) {
+      if (!rsig) return null;
+      var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 8000) : null;
+      return fetch(base() + '/xp/v1/shop', { signal: ctl ? ctl.signal : undefined }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (t) clearTimeout(t);
+        if (!j || j.ok !== true || j.rsig !== rsig || !(j.tip >= need) || !Array.isArray(j.listings) || !Array.isArray(j.pets) || !Array.isArray(j.orders)) return null;
+        return { ok: true, tip: j.tip, listings: j.listings, pets: j.pets, deeds: j.deeds || {}, orders: j.orders, n: j.n, open: j.open, server: true };
+      }, function () { if (t) clearTimeout(t); return null; });
+    });
   }
   function checkPlans(plans) {
     return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
@@ -1147,5 +1168,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();
