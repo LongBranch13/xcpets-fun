@@ -348,7 +348,7 @@
     var w, live, tip, burned, burnedWk, winsWk, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
     /* ranking tabs (ux-batch 2026-10-16, UI only): every board is computed from the same replayed world; dead and released pets never count */
     var WEEK = 1008, RW = [1, 3, 10, 33];
-    function capture() { w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released; }); tip = w.tip || M.state().tip || 0;
+    function capture() { rowGen = (typeof rowGen === 'number' ? rowGen : 0) + 1; w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released; }); tip = w.tip || M.state().tip || 0;
       burned = {}; burnedWk = {}; winsWk = {}; }
     capture();
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
@@ -392,7 +392,8 @@
     function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
     function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
     function petRows(B, wk) { var L = live.filter(function (p) { return speciesMatch(p, st.sp); }), sc;
-      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
+      if (B.id === 'wagmi') { /* rank-speed-1123: score each pet once, then sort (the old sort re-scored on every compare: ~5 M streak walks, seconds on a phone) */
+        L = L.map(function (p) { return { p: p, v: score(p) }; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; }).map(function (r) { return r.p; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
@@ -417,7 +418,12 @@
       return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit, sub: B.id === 'power' && best[o] ? shardSub(best[o]) : undefined }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
-    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
+    /* rank-speed-1123 (Jake: 'rankings page went unresponsive'): the rows of a board are built once per world copy and reused by every
+     * render (Show more, Find me, Find a pet, the podium) instead of re-sorting every living pet on each tap. capture() starts a new copy. */
+    var rowMemo = {}, rowGen = 0;
+    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', k = rowGen + '|' + B.id + '|' + md + '|' + wk + '|' + st.sp, rows = rowMemo[k];
+      if (!rows) { rowMemo = {}; rows = rowMemo[k] = md === 'pets' ? petRows(B, wk) : playerRows(B, wk); }
+      return { B: B, md: md, wk: wk, rows: rows }; }
     function wireBoards() { $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; if (st.board !== 'hof') st.base = st.board; if (st.board !== 'hof' && st.hofAuto) { st.sp = ''; st.hofAuto = false; } /* rankings-tidy: the species the Hall of Fame picked by itself does not follow you to other boards */ st.n = STEP; st.hits = null; st.all = null; $('boardAll').onclick = more; try { var u = new URL(location.href); ['pets', 'alive', 'page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } /* trait-rank-1101: the Trait rarity board's own params do not follow to other boards */ render(); }; }); }
     function tabsHtml(on) { return '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { var sel = x.id === on; return '<button type="button" role="tab" class="tab' + (sel ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + sel + '">' + esc(x.label) + '</button>'; }).join('') + '</div>'; }
     function syncUrl() { try { var u = new URL(location.href), B = board(); u.searchParams.set('board', B.id);
@@ -522,8 +528,10 @@
     paintNgmi();
     /* rankings-species-1107: same refresh as Play (js/v2.js poll). onFresh repaints when the background chain read replaces the saved copy;
      * the 60s poll follows new blocks after that. A hidden tab does not read. */
-    var refreshing = false;
-    function refreshWorld() { if (refreshing) return; refreshing = true; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
+    var refreshing = false, lastRows = (M.state().rows || []).length;
+    /* rank-speed-1123: the view-world poll calls back every 60 s even when nothing changed (same world copy, same tip); redoing every board
+     * over ~160,000 pets then froze the page for seconds (Jake tapped Home mid-refresh). Same copy = nothing to redo. */
+    function refreshWorld() { var nw = M.world(); if (nw && nw === w && (nw.tip || 0) === (w.tip || 0) && (M.state().rows || []).length === lastRows) return; if (refreshing) return; refreshing = true; lastRows = (M.state().rows || []).length; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
     if (M.onFresh) M.onFresh(refreshWorld);
     var lastPoll = Date.now();
     function poll() { if (!M.refresh || document.hidden) return; lastPoll = Date.now(); M.refresh(refreshWorld); }

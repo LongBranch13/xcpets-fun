@@ -16,3 +16,28 @@ body.rk-finds #rkSpecies,body.rk-finds .uxp-find{display:none}
 }
 #rareHall[data-rank] .rh-odds{align-items:start}
 @media (max-width:600px){html body #rareHall[data-rank] .rh-odds{grid-template-columns:repeat(2,1fr)}html body #rareHall[data-rank] .rh-o{padding:6px}}
+/* rank-calm-1123 (Jake Nov 23 2026): the board is the hero. Podium + one calm toolbar (js/v2-rank-calm.js). */
+body.rkc .rksp-lead,body.rkc #rkSpecies .rksp{display:none}
+body.rkc .panel > p.muted:first-of-type{display:none}
+body.rkc #rkTabsHost .rktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+body.rkc #rkTabsHost .rktabs .tab{flex:none;padding:6px 11px;font-size:13px}
+.rkcalm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px}
+.rkcalm .rkc-sp{display:inline-flex;align-items:center;gap:6px}.rkcalm .rkc-l{font-size:13px;opacity:.8}
+.rkcalm select{font:inherit;font-size:14px;font-weight:700;padding:7px 28px 7px 10px;border:2px solid #000;background:#1d1530;color:#FAFAF5;max-width:200px}
+.rkcalm .q{min-height:36px}.rkcalm .rkc-help{width:36px;padding:0;font-weight:900}
+.rkcalm [aria-expanded="true"]{background:#E8B33A;color:#100E14}
+body.rkc .uxp-find{display:none}body.rkc.rkc-find .uxp-find{display:flex;max-width:520px}
+body.rkc .rknote{display:none}body.rkc.rkc-help-on .rknote{display:block;border-left:3px solid #E8B33A;padding:4px 0 4px 10px}
+body.rkc .rkctl #rkFind{display:none}
+.rkpod{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:end;margin:8px 0 14px}
+.rkp{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px 12px;border:3px solid #000;background:#1d1530;color:#FAFAF5;text-decoration:none;text-align:center;box-shadow:3px 3px 0 #000;min-width:0}
+.rkp:hover,.rkp:focus-visible{outline:3px solid #E8B33A}
+.rkp1{background:linear-gradient(#3a2d0b,#1d1530);border-color:#E8B33A;padding-top:16px;padding-bottom:18px}
+.rkp.me{outline:3px dashed #3BD16F}
+.rkp-m{font-size:26px;line-height:1}.rkp1 .rkp-m{font-size:34px}
+.rkp canvas{width:80px;height:80px;image-rendering:pixelated}.rkp1 canvas{width:112px;height:112px}
+.rkp-nocv{font-size:48px;line-height:80px}
+.rkp-n{font-size:15px;overflow-wrap:anywhere;line-height:1.2}.rkp-s{font-size:11px;opacity:.7;overflow-wrap:anywhere}
+.rkp-v{font-size:13px;color:#ffe68a;font-weight:700}
+@media (max-width:600px){html body .rkpod{gap:6px}html body .rkp{padding:8px 3px 10px}html body .rkp canvas{width:60px;height:60px}html body .rkp1 canvas{width:84px;height:84px}html body .rkp-n{font-size:13px}html body .rkp-s{display:none}html body .rkcalm select{max-width:150px}html body .rkcalm .rkc-l,html body .rkcalm .rkc-long{display:none}html body .rkcalm{gap:6px}html body .rkcalm .q{padding-left:10px;padding-right:10px}}
+body.rkc .wf5{padding:8px 10px}body.rkc .wf5 .small{display:block;margin:2px 0}body.rkc .wf5 ol{display:flex;flex-wrap:wrap;gap:4px 18px;margin:4px 0 0;padding-left:20px}
