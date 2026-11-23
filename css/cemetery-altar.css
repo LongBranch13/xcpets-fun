@@ -165,3 +165,27 @@
 #altP2 #altHold{display:none}
 #altP3{overflow:hidden;padding:8px 0}
 @media (max-width:760px){.alt-howx{display:none}}
+/* altar-dock (owner Nov 23 2026): a small live copy of the altar + power bar pinned to the screen while you scroll down the pets, so every throw is seen */
+.alt-dock{position:fixed;z-index:40;top:calc(var(--altTop,64px) + 6px);right:max(10px,env(safe-area-inset-right,0px));width:232px;display:grid;gap:4px;padding:6px;background:#120f20;border:3px solid #2b4a33;box-shadow:4px 4px 0 #000;border-radius:4px}
+.alt-dock.in{animation:altDockIn .25s steps(4)}
+@keyframes altDockIn{from{transform:translateY(-14px);opacity:0}}
+.alt-dock.bump .alt-dockbar{animation:altDockBump .35s steps(3)}
+@keyframes altDockBump{50%{transform:scaleY(1.6);filter:brightness(1.6)}}
+.alt-dockcv{position:relative;display:block;padding:0;margin:0;border:2px solid #000;background:#0b0a1f;cursor:pointer;line-height:0;overflow:hidden}
+.alt-dockcv canvas{display:block;width:100%;aspect-ratio:160/100;image-rendering:pixelated}
+.alt-dockcv::after{content:"▲ altar";position:absolute;right:3px;bottom:3px;font:7px/1 var(--pixel);color:#c9ffb0;background:rgba(0,0,0,.6);padding:2px 3px;opacity:.75}
+.alt-dockfx{position:absolute;inset:0;pointer-events:none;line-height:1}
+.alt-dpop{position:absolute;left:50%;top:28%;transform:translateX(-50%);font-family:var(--meme);font-size:22px;color:#7dff6a;-webkit-text-stroke:1px #000;text-shadow:2px 2px 0 #000;white-space:nowrap;animation:altFl 1.05s ease-out forwards}
+.alt-dpop.t1{color:#4fd18b}.alt-dpop.t2{color:#4f9dff}.alt-dpop.t3{color:#ffc93c;font-size:26px}
+.alt-dban{position:absolute;left:0;right:0;top:32%;text-align:center;font-family:var(--meme);font-size:26px;color:#fff;-webkit-text-stroke:1.5px #000;text-shadow:3px 3px 0 #000;letter-spacing:1px;animation:altMeme 1.8s ease-out forwards}
+.alt-dockp{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 6px}
+.alt-dockr{font-family:var(--meme);font-weight:400;font-size:18px;letter-spacing:1px;color:#ffd23f;-webkit-text-stroke:.5px #000;text-shadow:2px 2px 0 #000;line-height:1}
+.alt-dockn{font-size:12px;color:#93a89a;white-space:nowrap}.alt-dockn b{font:14px var(--pixel);color:#7dff6a}
+.alt-dockbar{flex:1 0 100%;position:relative;height:10px;background:#2a2f3a;border:2px solid #000;overflow:hidden}
+.alt-dockbar i{position:absolute;top:0;bottom:0;left:0;background:#5b6470}.alt-dockbar i+i{background:#7dff6a;transition:width .3s,left .3s}
+.alt-dockx{flex:1 0 100%;font-size:11px;color:#ffd23f}
+.alt-docknarrow .alt-pick .alt-tiles{margin-right:244px}
+.alt-flyer{position:fixed;z-index:60;image-rendering:pixelated;pointer-events:none;filter:drop-shadow(0 0 6px #7dff6a)}
+@media (max-width:760px){.alt-dock{width:168px;padding:4px;right:6px}.alt-dockr{font-size:14px}.alt-dockn{font-size:10px}.alt-dockn b{font-size:11px}}
+.alt-dock.side{right:auto}
+@media (prefers-reduced-motion:reduce){.alt-dock.in,.alt-dock.bump .alt-dockbar,.alt-dpop,.alt-dban{animation:none}.alt-dpop,.alt-dban{display:none}}

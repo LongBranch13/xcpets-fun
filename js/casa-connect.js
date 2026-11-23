@@ -11,7 +11,11 @@
   var w = window, d = document; if (w.__casaConnect) return; w.__casaConnect = 1;
   var POLL_MS = 250, POLL_FOR = 8000, CSS = '#ccBar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;max-width:1100px;margin:8px auto 0;padding:6px 10px;box-sizing:border-box}' +
     '#ccBar .btn{min-height:40px}#ccBar #ccBtn.on{background:#1d2b23;color:#3ddc84;border-color:#3ddc84}#ccBar .cc-t{flex:1 1 100%;text-align:center;margin:0;font-size:13px;line-height:1.45}#ccBar .cc-t:empty{display:none}' +
-    '#ccBar .cc-hint{color:#ffc93c}#ccBar a.cc-open{font-size:13px}';
+    '#ccBar .cc-hint{color:#ffc93c}#ccBar a.cc-open{font-size:13px}' +
+    /* sweep-1123 (Jake Nov 23 2026: "look for redundancy"): one compact connect row on phones, and the page's own copies of the same
+     * button and Casa Tookan note are hidden while this bar is on the page (the page's Disconnect, balance and address box stay). */
+    '@media (max-width:600px){#ccBar{margin-top:4px;padding:4px 10px;gap:4px 8px}#ccBar .btn{min-height:36px;padding-top:4px;padding-bottom:4px;font-size:15px}#ccBar .cc-t{font-size:12px;line-height:1.35}}' +
+    'body.cc-has #wconnect:not(.cc-keep),body.cc-has #topBar .uxp-note,body.cc-has .uxp-quick a[href="#topBar"]{display:none!important}';
   function inCasa() { try { return !!(w.casaTookan && w.casaTookan.isCasaTookan); } catch (e) { return false; } }
   function casaProv() { return !!(w.webXCP || w.web3xcp); }
   function anyProv() { return !!(w.xcpwallet || casaProv()); }
@@ -29,6 +33,7 @@
     btn = bar.querySelector('#ccBtn'); msg = bar.querySelector('#ccMsg'); btn.onclick = function () { connect(true); };
     var h = d.querySelector('header.nav'), after = h && h.nextElementSibling && /pixdiv/.test(h.nextElementSibling.className || '') ? h.nextElementSibling : h;
     if (after && after.parentNode) after.parentNode.insertBefore(bar, after.nextSibling); else d.body.insertBefore(bar, d.body.firstChild);
+    d.body.classList.add('cc-has');
   }
   function say(html, cls) { if (!msg) return; msg.className = 'small cc-t' + (cls ? ' ' + cls : ''); msg.innerHTML = html || ''; }
   function openLink() { return '<a class="cc-open" href="casatookan://browse/' + encodeURIComponent(location.href.replace(/[?&]cc=1/, '')) + '">Open in Casa Tookan</a>'; }
@@ -41,7 +46,7 @@
       if (!b.onclick) b.onclick = function () { connect(true); }; });
     if (!anyProv() && Date.now() - t0 >= POLL_FOR && msg && !msg.innerHTML) {
       if (inCasa()) say('Casa Tookan has not attached its wallet to this page. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from <b>Browse \u203a Apps</b> (or type xcpets.fun/play.html).', 'cc-hint');
-      else if (phone()) say('No wallet in this browser. ' + openLink() + ' to play on your phone (XCP Wallet is the desktop Chrome extension).', 'cc-hint');
+      else if (phone()) say('No wallet here? ' + openLink() + ' to play on your phone.', 'cc-hint');
     }
     if (anyProv() && msg && /cc-hint/.test(msg.className)) say('');
   }
