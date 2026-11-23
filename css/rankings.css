@@ -1,0 +1,18 @@
+/* rankings-tidy (Jake Nov 23 2026, display only): Rankings page layout.
+ * - Board tabs on top (#rkTabsHost, lifted there by js/v2-pages.js), then the species filter, then the board.
+ * - One "Find me" button: the older "Jump to mine" and "My pets" buttons did the same job.
+ * - Phones: the 30-species filter is one sideways-scrolling strip instead of ten rows of buttons.
+ * - The Rare finds tab (Hall of Rare Finds) has no species filter or pet search. */
+#rkTabsHost{margin:4px 0 8px}
+#rkTabsHost .rktabs{margin:0}
+#ipMine,#uxpMine{display:none!important}
+body.rk-finds #rkSpecies,body.rk-finds .uxp-find{display:none}
+#rareHall[data-rank] .rknote{margin:6px 0}
+@media (max-width:600px){
+  html body #rkSpecies .rksp{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:2px 2px 8px;-webkit-overflow-scrolling:touch}
+  html body #rkSpecies .rksp-btn{flex:none;scroll-snap-align:start}
+  html body #rkTabsHost .rktabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  html body #rkTabsHost .rktabs .tab{flex:none}
+}
+#rareHall[data-rank] .rh-odds{align-items:start}
+@media (max-width:600px){html body #rareHall[data-rank] .rh-odds{grid-template-columns:repeat(2,1fr)}html body #rareHall[data-rank] .rh-o{padding:6px}}

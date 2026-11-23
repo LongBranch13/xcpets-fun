@@ -5,7 +5,7 @@
  * cached per look and painted one pet per turn, and one 300 ms timer for the visible sprites that stops off screen and in a hidden tab. */
 (function () {
   'use strict';
-  var ODDS = [['🎧', 'DJ Pepe', 'Legend', '1 in 3,888'], ['🧙', 'Wizard', 'Legend', '1 in 7,777'], ['🐸', 'Lord Kek', 'Legend', '1 in 7,777'], ['🌌', 'Starlord Kek', 'God pet', '1 in 77,777']];
+  var ODDS = [['🎧', 'DJ Pepe', 'Legend', '1 in 3,888'], ['🧙', 'Wizard', 'Legend', '1 in 7,777'], ['🐸', 'Lord Kek', 'Legend', '1 in 7,777'], ['🌌', 'Star-Lord Kek', 'God pet', '1 in 77,777']];
   var WEIRD = ['Tiny', 'Giant', 'Two-headed', 'Inverted', 'Ghost', 'Backwards', 'Wrong egg'];
   var show = 'all', worldRef = null, listAll = null, list = [], shown = 0, q = [], pumpT = 0, timer = 0, fi = 0, hotAt = 0;
   var cache = new Map(), live = new Map();
@@ -29,8 +29,10 @@
     document.head.appendChild(s); }
   function pageSize() { if (!window.IntersectionObserver) return 1e6; var w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 800; return w <= 520 ? 8 : 16; }
   function shell() { var box = $('rareHall'); if (!box || box.getAttribute('data-ready')) return box; box.setAttribute('data-ready', '1'); css();
-    box.innerHTML = '<h2 class="sec" data-ico="egg">🏆 Hall of Rare Finds</h2>' +
-      '<p class="small">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. This page lists the finds it has loaded. Look up a wallet address or a pet number to add more. The whole world is not loaded here.</p>' +
+    var inRank = !!box.getAttribute('data-rank');
+    box.innerHTML = (inRank ? '<p class="small rknote">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. Here is every one found so far, oldest first. Tap a card to see the pet.</p>' :
+      '<h2 class="sec" data-ico="egg">🏆 Hall of Rare Finds</h2>' +
+      '<p class="small">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. This page lists the finds it has loaded. Look up a wallet address or a pet number to add more. The whole world is not loaded here.</p>') +
       '<div class="rh-odds">' + ODDS.map(function (o) { return '<div class="rh-o' + (o[2] === 'God pet' ? ' rh-g' : '') + '"><span aria-hidden="true">' + o[0] + '</span><b>' + o[1] + '</b><span class="small">' + o[2] + '</span><div class="rh-n">' + o[3] + '</div></div>'; }).join('') +
       '<div class="rh-o rh-w"><span aria-hidden="true">🌀</span><b>Weird hatch</b><span class="small">' + WEIRD.join(' · ') + '</span><div class="rh-n">about 1 in 5,400 each</div></div>' +
       '<div class="rh-o rh-w"><span aria-hidden="true">🧬</span><b>Weird babies</b><span class="small">each weird parent passes its weirdness on</span><div class="rh-n">1 in 77</div></div></div>' +
@@ -76,7 +78,7 @@
   function runJob() { pumpT = 0; var job = q.shift(); while (job && !job.cv.isConnected) job = q.shift(); if (!job) { syncLoop(); return; }
     job.cv._rhPend = 0; if (!job.cv._rhVis) { if (q.length) pump(); return; }
     var R = window.V2Render, fr = cache.get(job.k);
-    if (!fr && R && R.petFrames) { try { fr = R.petFrames(job.p, worldRef); } catch (e) { fr = null; } if (fr && fr.length) { if (cache.size > 240) cache.clear(); cache.set(job.k, fr); } }
+    if (!fr && R && R.petFrames) { try { fr = R.petFrames(job.p, worldRef); } catch (e) { fr = null; } if (fr && fr.length && job.p.art && job.p.art.dna) { if (cache.size > 240) cache.clear(); cache.set(job.k, fr); } }
     if (fr && fr.length && job.cv.isConnected) { paintCv(job.cv, fr); job.cv._rhDone = 1; }
     if (q.length) pump(); else syncLoop(); }
   function anyLive() { var on = false; live.forEach(function (fr, cv) { if (cv.isConnected && cv._rhVis && fr && fr.length > 1) on = true; else live.delete(cv); }); return on; }
@@ -84,7 +86,12 @@
   function stop() { if (timer) { clearInterval(timer); timer = 0; } }
   function syncLoop() { if (document.hidden || reduced() || !anyLive()) { stop(); return; } if (!timer) timer = setInterval(step, 300); }
   var cvIO = null, moreIO = null;
-  function watch(g) { g.querySelectorAll('canvas[data-rh-id]').forEach(function (cv) { if (cv._rhWatch) return;
+  /* rankings-finds (Jake Nov 23 2026): on Rankings the board world is slim (no art), so fetch the art for new cards, then paint them again. */
+  function dressNew(g) { var S = window.V2Split, w = worldRef, ids = []; if (!S || !S.dress || !w || !w.byId) return;
+    g.querySelectorAll('canvas[data-rh-id]').forEach(function (cv) { var p = w.byId[cv.getAttribute('data-rh-id')]; if (p && !(p.art && p.art.dna) && !cv._rhArt) { cv._rhArt = 1; ids.push(p.id); } });
+    if (!ids.length) return;
+    S.dress(ids).then(function (n) { if (!n || w !== worldRef) return; g.querySelectorAll('canvas[data-rh-id]').forEach(function (cv) { if (ids.indexOf(+cv.getAttribute('data-rh-id')) < 0) return; cv._rhDone = 0; cv._rhPend = 0; if (cv._rhVis) enqueue(cv); }); }, function () {}); }
+  function watch(g) { dressNew(g); g.querySelectorAll('canvas[data-rh-id]').forEach(function (cv) { if (cv._rhWatch) return;
       var p = worldRef && worldRef.byId && worldRef.byId[cv.getAttribute('data-rh-id')], hit = p ? cache.get(skey(p, worldRef)) : null;
       if (hit) { cv._rhVis = true; paintCv(cv, hit); cv._rhDone = 1; }
       if (cvIO) { cv._rhWatch = 1; cvIO.observe(cv); }
@@ -115,12 +122,21 @@
   /* rare-room-simple (owner Nov 22 2026): the hall is about rare HATCHES, not gear, so it lives on the Hatch page (play.html) under the hatch panel.
    * The Rare Room keeps a one-line link to it. Display only: the same hall, moved in the page. */
   function relocate() { var box = $('rareHall'), sp = document.body && document.body.getAttribute('data-split'); if (!box) return;
-    if (sp === 'rare') { var a = document.createElement('p'); a.className = 'small rh-moved'; a.innerHTML = '🏆 Looking for the <b>Hall of Rare Finds</b>? It moved next to the eggs: <a href="' + (document.body.getAttribute('data-practice') ? 'practice.html' : 'play.html') + '#rareHall">see the rare hatches →</a>'; box.parentNode.replaceChild(a, box); return; }
-    if (sp === 'play') { var hp = $('hatchPanel'); if (!hp || !hp.parentNode) return; var sec = document.createElement('section'); sec.className = 'panel rh-panel'; sec.id = 'rareHallPanel'; hp.parentNode.insertBefore(sec, hp.nextSibling); sec.appendChild(box); if (location.hash === '#rareHall') setTimeout(function () { box.scrollIntoView({ block: 'start' }); }, 600); } }
+    /* rankings-finds (Jake Nov 23 2026: "get rid of the hall of rare finds or put it in rankings"): the hall is now a Rankings tab
+     * (ranking.html?board=finds). The Hatch page drops it; the Rare Room keeps a one-line link; old #rareHall links go to the tab. */
+    var practice = !!document.body.getAttribute('data-practice');
+    if (sp === 'play' && location.hash === '#rareHall' && !practice) { location.replace('ranking.html?board=finds'); return; }
+    if (sp === 'rare') { var a = document.createElement('p'); a.className = 'small rh-moved'; a.innerHTML = '🏆 Looking for the <b>rare hatches</b> (Legends, God pets, weird pets)? <a href="ranking.html?board=finds">See them in Rankings →</a>'; box.parentNode.replaceChild(a, box); return; }
+    if (sp) box.parentNode.removeChild(box); }
   function start() { relocate(); if (!hallOn()) return; shell(); var n = 0, hooked = false;
     (function wait() { var M = window.V2Mock; if (M && M.onFresh && !hooked) { hooked = true; M.onFresh(function () { worldRef = null; draw(); }); }
       if (!draw() && n++ < 240) setTimeout(wait, 500); })();
     setInterval(function () { if (!document.hidden) draw(); }, 30e3); }
-  window.V2RareHall = { finds: finds, draw: draw };
+  /* rankings-finds: Rankings draws its tab into host, then calls mount (each time the tab is opened). */
+  var hooked = false;
+  function mount(host) { if (!host) return; host.innerHTML = '<div id="rareHall" data-rank="1"></div>'; worldRef = null; listAll = null; shell(); var n = 0;
+    var M = window.V2Mock; if (M && M.onFresh && !hooked) { hooked = true; M.onFresh(function () { if ($('rareHall')) { worldRef = null; draw(); } }); }
+    (function wait() { if (!$('rareHall') || draw() || n++ > 240) return; setTimeout(wait, 500); })(); }
+  window.V2RareHall = { finds: finds, draw: draw, mount: mount };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
