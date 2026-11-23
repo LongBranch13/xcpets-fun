@@ -365,7 +365,11 @@
   function runsOn(w, nb) { var b = nb != null ? nb : ((w && w.tip) || 0); return !!(V.feedRunsOn && V.feedRunsOn(b)) ? b : null; }
   function eaters(w, me, ids, nb) { return (ids || w.pets.filter(function (p) { return p.owner === me; }).map(function (p) { return p.id; })).filter(function (id) { var p = w.byId[id]; return p && p.owner === me && V.frEats(p, nb); }); }
   function feedQold(w, me, ids, nb, list) { var q = V.feedQueue(w, me, ids, faNb(w, nb, list)); return (FEED_ALL_PAUSED || list) ? q.filter(function (p) { return !isFeedAllTag(p.tag); }) : q; }
-  function feedQ(w, me, ids, nb, list) { var rb = runsOn(w, nb); if (rb == null) return feedQold(w, me, ids, nb, list);
+  /* Nov 23 2026 (a 29,000-pet wallet 'can't even feed my pets'): runs (pet:fr) and feed-all tags (pet:fa/fx/fy) name pets by their place in
+   * the owner's WHOLE list, and their amount is for every hungry pet. While the list is still arriving in pages that list is short here, so the
+   * burn would point at other pets and the check refused it. Until every page is in, feed by pet number only (exact, always safe). */
+  function feedQ(w, me, ids, nb, list) { if (!hatchListSettled(w)) return feedQold(w, me, eaters(w, me, ids, (nb != null ? nb : ((w && w.tip) || 0) + 1)), nb, true);
+    var rb = runsOn(w, nb); if (rb == null) return feedQold(w, me, ids, nb, list);
     var ok = eaters(w, me, ids, rb), fr = ok.length > 1 ? V.feedRunsPlan(w, me, ok.map(function (id) { return w.byId[id]; }), rb) : null;
     if (fr && (ok.length >= 300 || fr.length === 1)) return fr; /* big feeds: the runs plan, without the slow pet-number planner */
     var q = feedQold(w, me, ok, nb, list); return fr && fr.length <= q.length ? fr : q; }

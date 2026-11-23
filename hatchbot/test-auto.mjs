@@ -26,7 +26,7 @@ for (const p of pv.posts) console.log("\n--- " + p.type + (p.note ? "  [" + p.no
 ok("no preview post breaks the guard", pv.posts.every((p) => !p.violations || !p.violations.length));
 const rc = pv.posts.find((p) => p.type === "recap");
 if (rc && rc.text) {
-  ok("recap starts with the date line", /^\u{1F4C5} XCPETS recap for \w+day, \w{3} \d{1,2}\n/u.test(rc.text));
+  ok("recap starts with the date line", /^\u2600\uFE0F GM! XCPETS daily recap for \w+day, \w{3} \d{1,2}\n/u.test(rc.text));
   ok("recap ends with Go feed your pets", rc.text.endsWith("Go feed your pets \u{1F49B}"));
   ok("recap under 1,000 chars", rc.text.length < 1000);
   ok("recap has no ASCII double quotes", !rc.text.includes('"'));
